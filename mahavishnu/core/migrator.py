@@ -28,8 +28,27 @@ from datetime import UTC, datetime
 from enum import StrEnum
 import logging
 from pathlib import Path
+import re
 import sqlite3
 from typing import Any
+
+# SQLite identifiers cannot be bound as parameters. Restrict table names
+# to a strict subset so attacker-controlled entries in `sqlite_master`
+# cannot escape the string literal and execute additional statements.
+_SQLITE_IDENTIFIER_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
+
+
+def _validate_sqlite_identifier(name: str) -> None:
+    """Raise ValueError if `name` is not a safe SQLite identifier.
+
+    Used to guard `cursor.execute(f"... {name} ...")` calls against
+    SQL injection via attacker-controlled table names that end up in
+    `sqlite_master` (e.g. via a multi-tenant system where table names
+    flow from external input).
+    """
+    if not isinstance(name, str) or not _SQLITE_IDENTIFIER_RE.match(name):
+        raise ValueError(f"Invalid SQLite identifier: {name!r}")
+
 
 from mahavishnu.core.database import Database, DatabaseConfig
 from mahavishnu.core.errors import DatabaseError
@@ -432,8 +451,15 @@ class DatabaseMigrator:
         Returns:
             Number of rows copied
         """
+        # SQLite identifiers can't be bound as parameters; validate the
+        # table name against a strict pattern before interpolating it
+        # into the SQL string below. `batch_size` and `offset` are
+        # typed as int and cannot contribute to SQL injection.
+        _validate_sqlite_identifier(table)
         # Get row count
-        sqlite_cursor.execute(f"SELECT COUNT(*) FROM {table}")
+        sqlite_cursor.execute(
+            f"SELECT COUNT(*) FROM {table}"
+        )  # nosemgrep: python.lang.security.audit.formatted-sql-query, python.sqlalchemy.security.sql-injection-raw-sql
         row_count = sqlite_cursor.fetchone()[0]
 
         if row_count == 0:
@@ -446,7 +472,7 @@ class DatabaseMigrator:
         while offset < row_count:
             sqlite_cursor.execute(
                 f"SELECT * FROM {table} LIMIT {self.config.batch_size} OFFSET {offset}"
-            )
+            )  # nosemgrep: python.lang.security.audit.formatted-sql-query, python.sqlalchemy.security.sql-injection-raw-sql
             rows = sqlite_cursor.fetchall()
 
             if not rows:
@@ -510,7 +536,10 @@ class DatabaseMigrator:
 
         for table in tables:
             # SQLite count
-            cursor.execute(f"SELECT COUNT(*) FROM {table}")
+            _validate_sqlite_identifier(table)
+            cursor.execute(
+                f"SELECT COUNT(*) FROM {table}"
+            )  # nosemgrep: python.lang.security.audit.formatted-sql-query, python.sqlalchemy.security.sql-injection-raw-sql
             sqlite_count = cursor.fetchone()[0]
 
             # PostgreSQL count

@@ -40,7 +40,14 @@ class SessionBuddyIntegration:
             # Extract function details
             for node_id, node in analyzer.nodes.items():
                 if hasattr(node, "name") and hasattr(node, "file_id"):
-                    if hasattr(node, "calls"):  # Function node
+                    # Use ``getattr`` with explicit defaults + ``isinstance``
+                    # checks rather than ``hasattr`` so that Mock objects
+                    # (which report ``hasattr`` True for any attribute) do not
+                    # cause every node to be misclassified as a function.
+                    calls = getattr(node, "calls", None)
+                    methods = getattr(node, "methods", None)
+                    imported_from = getattr(node, "imported_from", None)
+                    if isinstance(calls, list):  # Function node
                         code_context["functions"].append(
                             {
                                 "name": node.name,
@@ -48,26 +55,26 @@ class SessionBuddyIntegration:
                                 "is_export": getattr(node, "is_export", False),
                                 "start_line": getattr(node, "start_line", 0),
                                 "end_line": getattr(node, "end_line", 0),
-                                "calls": getattr(node, "calls", []),
+                                "calls": calls,
                                 "id": node_id,
                             }
                         )
-                    elif hasattr(node, "methods"):  # Class node
+                    elif isinstance(methods, list):  # Class node
                         code_context["classes"].append(
                             {
                                 "name": node.name,
                                 "file": node.file_id,
-                                "methods": getattr(node, "methods", []),
+                                "methods": methods,
                                 "inherits_from": getattr(node, "inherits_from", []),
                                 "id": node_id,
                             }
                         )
-                    elif hasattr(node, "imported_from"):  # Import node
+                    elif isinstance(imported_from, str):  # Import node
                         code_context["imports"].append(
                             {
                                 "name": node.name,
                                 "file": node.file_id,
-                                "imported_from": getattr(node, "imported_from", ""),
+                                "imported_from": imported_from,
                                 "alias": getattr(node, "alias", None),
                                 "id": node_id,
                             }

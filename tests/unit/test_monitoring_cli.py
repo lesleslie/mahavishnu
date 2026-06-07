@@ -65,21 +65,32 @@ def _parent_with_monitor() -> tuple[typer.Typer, typer.Typer]:
 
 
 def _find_attached_typer(app: typer.Typer, name: str) -> typer.Typer | None:
-    """Locate a sub-typer registered under ``name`` on ``app``."""
+    """Locate a sub-typer registered under ``name`` on ``app``.
+
+    Typer 0.26.x stores each attached sub-typer as a ``TyperInfo`` in
+    ``app.registered_groups``; the registration ``name`` lives on the
+    ``TyperInfo`` itself (``group.name``), not on the inner ``typer_instance``
+    (whose ``info.name`` is still a ``DefaultPlaceholder`` until the parent
+    is rendered). Earlier releases exposed sub-typers via ``_groups`` /
+    ``added_typer_instances``; we keep that fallback for forward-compat.
+    """
     groups = getattr(app, "registered_groups", None) or []
     for group in groups:
+        if getattr(group, "name", None) == name:
+            return getattr(group, "typer_instance", group)
         typer_instance = getattr(group, "typer_instance", None)
         if typer_instance is None and isinstance(group, typer.Typer):
             typer_instance = group
-        if getattr(typer_instance, "info", None) and typer_instance.info.name == name:
+        info = getattr(typer_instance, "info", None)
+        if info is not None and getattr(info, "name", None) == name:
             return typer_instance
     # Fallback: walk any known attribute that holds sub-typers.
     for attr in ("_groups", "added_typer_instances"):
         container = getattr(app, attr, None) or []
         for entry in container:
             candidate = getattr(entry, "typer_instance", entry)
-            info = getattr(candidate, "info", None)
-            if info is not None and getattr(info, "name", None) == name:
+            inner_info = getattr(candidate, "info", None)
+            if inner_info is not None and getattr(inner_info, "name", None) == name:
                 return candidate
     return None
 

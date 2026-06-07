@@ -90,7 +90,7 @@ def test_create_health_app_returns_fastapi_instance() -> None:
 def test_create_health_app_uses_server_name_in_title() -> None:
     """The server name is reflected in the OpenAPI title."""
     app = create_health_app(server_name="my-svc")
-    assert app.title == "My-svc Health API"
+    assert app.title == "My-Svc Health API"
 
 
 def test_create_health_app_accepts_health_config() -> None:

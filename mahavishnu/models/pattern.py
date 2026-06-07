@@ -5,7 +5,7 @@ Defines data models for pattern detection, analysis, and prediction.
 
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import UTC, datetime
 from enum import StrEnum
 from typing import Any
 from uuid import uuid4
@@ -120,7 +120,7 @@ class DetectedPattern(BaseModel):
     pattern_data: PatternBase
 
     # Detection metadata
-    detected_at: datetime = Field(default_factory=datetime.utcnow)
+    detected_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
     source_task_ids: list[str] = Field(default_factory=list)
     confidence_score: float = Field(ge=0.0, le=1.0)
 
@@ -145,7 +145,7 @@ class PatternMatch(BaseModel):
     pattern_id: str
     pattern_type: PatternType
     match_score: float = Field(ge=0.0, le=1.0)
-    matched_at: datetime = Field(default_factory=datetime.utcnow)
+    matched_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
 
     # What was matched
     matched_keywords: list[str] = Field(default_factory=list)
@@ -158,7 +158,7 @@ class PatternMatch(BaseModel):
 class PatternAnalysisResult(BaseModel):
     """Result of pattern analysis on a set of tasks."""
 
-    analyzed_at: datetime = Field(default_factory=datetime.utcnow)
+    analyzed_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
     task_count: int = 0
 
     # Detected patterns

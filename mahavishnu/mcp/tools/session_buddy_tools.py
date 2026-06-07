@@ -51,7 +51,7 @@ def register_session_buddy_tools(
         """Index codebase structure for better context in Session Buddy."""
         _warn_code_intel_deprecation("index_code_graph", "code_index.index_repo")
         try:
-            from ..session_buddy.integration import SessionBuddyManager
+            from ...session_buddy.integration import SessionBuddyManager
 
             # Assuming we have access to the main app through the server
             # In a real implementation, this would be properly injected
@@ -77,7 +77,7 @@ def register_session_buddy_tools(
     ) -> dict[str, Any]:
         """Get caller/callee context for a function for Session Buddy."""
         try:
-            from ..session_buddy.integration import SessionBuddyIntegration
+            from ...session_buddy.integration import SessionBuddyIntegration
 
             app = getattr(server, "app", None)
             if not app:

@@ -424,7 +424,8 @@ class AdapterPersistenceLayer:
             AdapterStateError: If the save operation fails.
         """
         await self._ensure_initialized()
-        assert self._db is not None  # Type guard after _ensure_initialized
+        if self._db is None:
+            raise RuntimeError("invariant violated: _db must be set after _ensure_initialized")
 
         try:
             data = state.to_dict()
@@ -474,7 +475,8 @@ class AdapterPersistenceLayer:
             AdapterStateError: If the load operation fails.
         """
         await self._ensure_initialized()
-        assert self._db is not None
+        if self._db is None:
+            raise RuntimeError("invariant violated: _db must be set after _ensure_initialized")
 
         try:
             async with self._db.execute(
@@ -522,7 +524,8 @@ class AdapterPersistenceLayer:
             AdapterStateError: If the load operation fails.
         """
         await self._ensure_initialized()
-        assert self._db is not None
+        if self._db is None:
+            raise RuntimeError("invariant violated: _db must be set after _ensure_initialized")
 
         try:
             states: dict[str, AdapterState] = {}
@@ -568,7 +571,8 @@ class AdapterPersistenceLayer:
             HealthRecordError: If the record operation fails.
         """
         await self._ensure_initialized()
-        assert self._db is not None
+        if self._db is None:
+            raise RuntimeError("invariant violated: _db must be set after _ensure_initialized")
 
         try:
             data = record.to_dict()
@@ -625,7 +629,8 @@ class AdapterPersistenceLayer:
             HealthRecordError: If the query fails.
         """
         await self._ensure_initialized()
-        assert self._db is not None
+        if self._db is None:
+            raise RuntimeError("invariant violated: _db must be set after _ensure_initialized")
 
         try:
             records: list[HealthRecord] = []
@@ -680,7 +685,8 @@ class AdapterPersistenceLayer:
             HealthRecordError: If the cleanup fails.
         """
         await self._ensure_initialized()
-        assert self._db is not None
+        if self._db is None:
+            raise RuntimeError("invariant violated: _db must be set after _ensure_initialized")
 
         retention = retention_days or self.DEFAULT_HEALTH_RETENTION_DAYS
 
@@ -729,7 +735,8 @@ class AdapterPersistenceLayer:
             AdapterStateError: If the delete operation fails.
         """
         await self._ensure_initialized()
-        assert self._db is not None
+        if self._db is None:
+            raise RuntimeError("invariant violated: _db must be set after _ensure_initialized")
 
         try:
             cursor = await self._db.execute(

@@ -299,7 +299,6 @@ exclude_lines = [
 
 [tool.bandit]
 exclude_dirs = [".venv", "tests", "test_*.py"]
-skips = ["B101"]
 
 [tool.pyright]
 include = ["mahavishnu"]

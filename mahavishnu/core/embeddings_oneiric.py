@@ -134,7 +134,7 @@ class EmbeddingConfig(BaseModel):
 
         # Ollama
         if ollama_url := os.getenv("MAHAVISHNU_EMBEDDINGS_OLLAMA_BASE_URL"):
-            config.llm.ollama_base_url = ollama_url  # type: ignore[attr-defined]
+            config.ollama_base_url = ollama_url
 
         # OpenAI
         if api_key := os.getenv("MAHAVISHNU_EMBEDDINGS_OPENAI_API_KEY"):

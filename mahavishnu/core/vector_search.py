@@ -12,6 +12,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from enum import Enum
 import logging
+import re
 from typing import TYPE_CHECKING, Any
 
 from pydantic import BaseModel, ConfigDict, Field
@@ -23,6 +24,21 @@ if TYPE_CHECKING:
     from mahavishnu.core.database import Database
 
 logger = logging.getLogger(__name__)
+
+# PostgreSQL identifiers cannot be bound as parameters in DDL statements
+# (CREATE INDEX, DROP INDEX). Restrict identifier inputs to a strict
+# pattern so caller-supplied names cannot escape the SQL literal.
+_SQL_IDENT_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
+
+
+def _validate_sql_identifier(name: str) -> None:
+    """Raise ValueError if `name` is not a safe SQL identifier.
+
+    Used to guard f-string interpolation in DDL statements where the
+    database driver (asyncpg) cannot bind identifier parameters.
+    """
+    if not isinstance(name, str) or not _SQL_IDENT_RE.match(name):
+        raise ValueError(f"Invalid SQL identifier: {name!r}")
 
 
 class SearchType(Enum):
@@ -114,12 +130,16 @@ class VectorIndex:
         m_val = m if m is not None else self.config.m
         ef_val = ef_construction if ef_construction is not None else self.config.ef_construction
 
+        # Validate identifiers before f-string interpolation. asyncpg
+        # cannot bind parameters for DDL statements.
+        _validate_sql_identifier(table)
+        _validate_sql_identifier(column)
         await self.db.execute(f"""
             CREATE INDEX IF NOT EXISTS {index_name}
             ON {table}
             USING hnsw ({column} vector_cosine_ops)
             WITH (m = {m_val}, ef_construction = {ef_val});
-        """)
+        """)  # nosemgrep: python.lang.security.audit.formatted-sql-query, python.sqlalchemy.security.sql-injection-raw-sql
 
         logger.info(
             f"Created HNSW index {index_name} on {table}.{column} (m={m_val}, ef_construction={ef_val})"
@@ -140,19 +160,26 @@ class VectorIndex:
         """
         index_name = f"{table}_{column}_ivf_idx"
 
+        _validate_sql_identifier(table)
+        _validate_sql_identifier(column)
         await self.db.execute(f"""
             CREATE INDEX IF NOT EXISTS {index_name}
             ON {table}
             USING ivfflat ({column} vector_cosine_ops)
             WITH (lists = {lists});
-        """)
+        """)  # nosemgrep: python.lang.security.audit.formatted-sql-query, python.sqlalchemy.security.sql-injection-raw-sql
 
         logger.info(f"Created IVFFlat index {index_name} on {table}.{column}")
 
     async def drop_index(self, table: str, column: str, index_type: str = "hnsw") -> None:
         """Drop an existing vector index."""
         index_name = f"{table}_{column}_{index_type}_idx"
-        await self.db.execute(f"DROP INDEX IF EXISTS {index_name};")
+        _validate_sql_identifier(table)
+        _validate_sql_identifier(column)
+        _validate_sql_identifier(index_type)
+        await self.db.execute(
+            f"DROP INDEX IF EXISTS {index_name};"
+        )  # nosemgrep: python.lang.security.audit.formatted-sql-query, python.sqlalchemy.security.sql-injection-raw-sql
         logger.info(f"Dropped index {index_name}")
 
 

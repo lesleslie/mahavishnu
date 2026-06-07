@@ -36,7 +36,11 @@ except ImportError:  # pragma: no cover - optional dependency
         def set(self, value: float) -> None:
             return None
 
-    Counter = Gauge = _NoopMetric  # type: ignore[assignment]
+    # If metrics are disabled, rebind Counter and Gauge to a no-op shim so
+    # call sites can stay unconditional. mypy classifies this reassignment
+    # of imported names as both `[misc]` and `[assignment]` violations; the
+    # runtime is correct.
+    Counter = Gauge = _NoopMetric  # type: ignore[misc, assignment]
 
 
 logger = logging.getLogger(__name__)
@@ -143,7 +147,10 @@ class ResilienceMetrics:
         if not self._enabled:
             return
         self._initialize()
-        assert self._retry_attempts_total is not None
+        if self._retry_attempts_total is None:
+            raise RuntimeError(
+                "invariant violated: _retry_attempts_total must be set after _initialize"
+            )
         self._retry_attempts_total.labels(
             dependency=dependency,
             operation=operation,
@@ -156,7 +163,10 @@ class ResilienceMetrics:
         if not self._enabled:
             return
         self._initialize()
-        assert self._retry_amplification_gauge is not None
+        if self._retry_amplification_gauge is None:
+            raise RuntimeError(
+                "invariant violated: _retry_amplification_gauge must be set after _initialize"
+            )
         ratio = attempts / max(successes, 1)
         self._retry_amplification_gauge.labels(dependency=dependency).set(ratio)
 
@@ -164,7 +174,10 @@ class ResilienceMetrics:
         if not self._enabled:
             return
         self._initialize()
-        assert self._circuit_transitions_total is not None
+        if self._circuit_transitions_total is None:
+            raise RuntimeError(
+                "invariant violated: _circuit_transitions_total must be set after _initialize"
+            )
         self._circuit_transitions_total.labels(
             dependency=dependency,
             from_state=from_state,

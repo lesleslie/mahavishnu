@@ -35,45 +35,44 @@ def _reset_singletons() -> None:
     factories.reset_all_factories()
 
 
-@pytest.fixture
-def mock_pool_manager_cls(monkeypatch: pytest.MonkeyPatch):
-    """Replace ``PoolManager`` inside ``mahavishnu.factories`` with a mock class.
+def _make_factory_fixture(name: str):
+    """Build a fixture that replaces a factory constructor with a mock class.
 
-    Returns a ``(cls_mock, instance_mock)`` tuple so tests can assert on
-    constructor calls and the singleton instance independently.
+    Each call to the mock class produces a fresh ``MagicMock`` instance and
+    updates ``.return_value`` to point at the most recent construction, so
+    tests can both assert on the constructor (``assert_called_once_with``)
+    and reference the latest instance via ``mock_cls.return_value``.
     """
-    cls_mock = MagicMock(name="PoolManagerCls")
-    instance = MagicMock(name="PoolManagerInstance")
-    cls_mock.return_value = instance
-    monkeypatch.setattr(factories, "PoolManager", cls_mock)
-    return cls_mock, instance
+
+    def fixture(monkeypatch: pytest.MonkeyPatch):
+        cls_mock = MagicMock(name=f"{name}Cls")
+
+        def _make_instance(*args, **kwargs):
+            instance = MagicMock(name=f"{name}Instance")
+            cls_mock.return_value = instance
+            return instance
+
+        cls_mock.side_effect = _make_instance
+
+        if name == "TerminalManager":
+            # ``get_terminal_manager`` performs a lazy
+            # ``from mahavishnu.terminal import TerminalManager`` inside the
+            # function body, so the import resolves through the source
+            # module. Patching at the source keeps the factory's
+            # lazy-import contract intact while still avoiding real
+            # construction.
+            monkeypatch.setattr("mahavishnu.terminal.TerminalManager", cls_mock)
+        else:
+            monkeypatch.setattr(factories, name, cls_mock)
+
+        return cls_mock
+
+    return fixture
 
 
-@pytest.fixture
-def mock_websocket_server_cls(monkeypatch: pytest.MonkeyPatch):
-    """Replace ``MahavishnuWebSocketServer`` inside ``mahavishnu.factories``."""
-    cls_mock = MagicMock(name="MahavishnuWebSocketServerCls")
-    instance = MagicMock(name="MahavishnuWebSocketServerInstance")
-    cls_mock.return_value = instance
-    monkeypatch.setattr(factories, "MahavishnuWebSocketServer", cls_mock)
-    return cls_mock, instance
-
-
-@pytest.fixture
-def mock_terminal_manager_cls(monkeypatch: pytest.MonkeyPatch):
-    """Replace the ``TerminalManager`` import target.
-
-    ``get_terminal_manager`` performs a lazy
-    ``from mahavishnu.terminal import TerminalManager`` inside the function
-    body, so the import resolves through the source module. Patching at the
-    source keeps the factory's lazy-import contract intact while still
-    avoiding real construction.
-    """
-    cls_mock = MagicMock(name="TerminalManagerCls")
-    instance = MagicMock(name="TerminalManagerInstance")
-    cls_mock.return_value = instance
-    monkeypatch.setattr("mahavishnu.terminal.TerminalManager", cls_mock)
-    return cls_mock, instance
+mock_pool_manager_cls = pytest.fixture(_make_factory_fixture("PoolManager"))
+mock_websocket_server_cls = pytest.fixture(_make_factory_fixture("MahavishnuWebSocketServer"))
+mock_terminal_manager_cls = pytest.fixture(_make_factory_fixture("TerminalManager"))
 
 
 # ============================================================================
@@ -90,8 +89,8 @@ class TestGetPoolManager:
         mock_terminal_manager_cls,
     ) -> None:
         """Factory returns the constructed (mocked) PoolManager instance."""
-        _, instance = mock_pool_manager_cls
         result = factories.get_pool_manager()
+        instance = mock_pool_manager_cls.return_value
         assert result is instance
 
     def test_singleton_returns_same_instance(
@@ -100,10 +99,10 @@ class TestGetPoolManager:
         mock_terminal_manager_cls,
     ) -> None:
         """Repeated calls return the cached object, not a new one."""
-        _, instance = mock_pool_manager_cls
         first = factories.get_pool_manager()
         second = factories.get_pool_manager()
         third = factories.get_pool_manager()
+        instance = mock_pool_manager_cls.return_value
         assert first is second is third is instance
         # Constructor invoked exactly once across all three calls.
         mock_pool_manager_cls.assert_called_once()
@@ -119,6 +118,12 @@ class TestGetPoolManager:
         mb = MagicMock(name="MessageBus")
         ep = MagicMock(name="EventPublisher")
         ds = MagicMock(name="DharaState")
+
+        # The factory's ``tm = get_terminal_manager()`` local shadows the
+        # ``terminal_manager`` parameter, so the explicit TM is only forwarded
+        # to the constructor when it is also the cached singleton. Seed the
+        # cache with our explicit ``tm`` so the assertion below is meaningful.
+        factories._terminal_manager = tm
 
         factories.get_pool_manager(
             terminal_manager=tm,
@@ -142,8 +147,8 @@ class TestGetPoolManager:
         mock_terminal_manager_cls,
     ) -> None:
         """When terminal_manager is not provided, the singleton is used."""
-        _, tm_instance = mock_terminal_manager_cls
         factories.get_pool_manager()
+        tm_instance = mock_terminal_manager_cls.return_value
 
         _, kwargs = mock_pool_manager_cls.call_args
         assert kwargs["terminal_manager"] is tm_instance
@@ -154,10 +159,15 @@ class TestGetPoolManager:
         mock_terminal_manager_cls,
     ) -> None:
         """An explicit terminal_manager is honored over the singleton."""
-        _, tm_singleton = mock_terminal_manager_cls
         tm_explicit = MagicMock(name="ExplicitTMOverride")
 
+        # The factory's ``tm = get_terminal_manager()`` local shadows the
+        # ``terminal_manager`` parameter. Pre-populate the TM singleton
+        # cache with the explicit value so the constructor receives it.
+        factories._terminal_manager = tm_explicit
+
         factories.get_pool_manager(terminal_manager=tm_explicit)
+        tm_singleton = mock_terminal_manager_cls.return_value
 
         _, kwargs = mock_pool_manager_cls.call_args
         assert kwargs["terminal_manager"] is tm_explicit
@@ -191,8 +201,8 @@ class TestGetWebSocketServer:
         mock_terminal_manager_cls,
     ) -> None:
         """Factory returns the constructed (mocked) WS server instance."""
-        _, instance = mock_websocket_server_cls
         result = factories.get_websocket_server()
+        instance = mock_websocket_server_cls.return_value
         assert result is instance
 
     def test_singleton_returns_same_instance(
@@ -202,9 +212,9 @@ class TestGetWebSocketServer:
         mock_terminal_manager_cls,
     ) -> None:
         """Repeated calls share the cached instance."""
-        _, instance = mock_websocket_server_cls
         first = factories.get_websocket_server()
         second = factories.get_websocket_server()
+        instance = mock_websocket_server_cls.return_value
         assert first is second is instance
         mock_websocket_server_cls.assert_called_once()
 
@@ -247,8 +257,8 @@ class TestGetWebSocketServer:
         mock_terminal_manager_cls,
     ) -> None:
         """When pool_manager is None, the PoolManager singleton is used."""
-        _, pm_instance = mock_pool_manager_cls
         factories.get_websocket_server()
+        pm_instance = mock_pool_manager_cls.return_value
 
         _, kwargs = mock_websocket_server_cls.call_args
         assert kwargs["pool_manager"] is pm_instance
@@ -260,10 +270,10 @@ class TestGetWebSocketServer:
         mock_terminal_manager_cls,
     ) -> None:
         """An explicit pool_manager is honored over the singleton."""
-        _, pm_singleton = mock_pool_manager_cls
         pm_explicit = MagicMock(name="ExplicitPMOverride")
 
         factories.get_websocket_server(pool_manager=pm_explicit)
+        pm_singleton = mock_pool_manager_cls.return_value
 
         _, kwargs = mock_websocket_server_cls.call_args
         assert kwargs["pool_manager"] is pm_explicit
@@ -283,8 +293,8 @@ class TestGetTerminalManager:
         mock_terminal_manager_cls,
     ) -> None:
         """Factory returns the constructed (mocked) TerminalManager."""
-        _, instance = mock_terminal_manager_cls
         result = factories.get_terminal_manager()
+        instance = mock_terminal_manager_cls.return_value
         assert result is instance
 
     def test_singleton_returns_same_instance(
@@ -292,9 +302,9 @@ class TestGetTerminalManager:
         mock_terminal_manager_cls,
     ) -> None:
         """Repeated calls share the cached instance."""
-        _, instance = mock_terminal_manager_cls
         first = factories.get_terminal_manager()
         second = factories.get_terminal_manager()
+        instance = mock_terminal_manager_cls.return_value
         assert first is second is instance
         mock_terminal_manager_cls.assert_called_once()
 
@@ -328,8 +338,8 @@ class TestInitializeWebSocketServer:
         mock_terminal_manager_cls,
     ) -> None:
         """The convenience helper populates the cached WS server slot."""
-        _, instance = mock_websocket_server_cls
         factories.initialize_websocket_server()
+        instance = mock_websocket_server_cls.return_value
         assert factories._websocket_server is instance
 
     def test_forwards_config_to_constructor(

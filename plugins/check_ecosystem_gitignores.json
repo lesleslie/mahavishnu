@@ -1,23 +1,25 @@
 {
-  "name": "check-ecosystem-gitignores",
-  "version": "1.0.0",
-  "type": "hook",
-  "description": "Audit .claude/.gitignore coverage across the Bodai ecosystem repos (mahavishnu, session-buddy, crackerjack, mcp-common, akosha, dhara, oneiric). Asserts that shared-content repos use selective ignores and runtime-only repos use blanket ignores. Exits 1 on any FAIL — gates the build.",
   "author": "Mahavishnu",
-  "license": "MIT",
+  "description": "Audit .claude/.gitignore coverage across the Bodai ecosystem repos (mahavishnu, session-buddy, crackerjack, mcp-common, akosha, dhara, oneiric). Asserts that shared-content repos use selective ignores and runtime-only repos use blanket ignores. Exits 1 on any FAIL — gates the build.",
   "hooks": [
     {
-      "name": "check-ecosystem-gitignores",
-      "description": "Walk the seven Bodai ecosystem repos, classify each .claude/ dir, and assert the right .gitignore rule is in place.",
       "command": [
         "python",
         "scripts/check_ecosystem_gitignores.py"
       ],
-      "file_patterns": ["*"],
-      "timeout": 30,
-      "stage": "fast",
+      "description": "Walk the seven Bodai ecosystem repos, classify each .claude/ dir, and assert the right .gitignore rule is in place.",
+      "file_patterns": [
+        "*"
+      ],
+      "name": "check-ecosystem-gitignores",
+      "parallel_safe": true,
       "requires_files": false,
-      "parallel_safe": true
+      "stage": "fast",
+      "timeout": 30
     }
-  ]
+  ],
+  "license": "MIT",
+  "name": "check-ecosystem-gitignores",
+  "type": "hook",
+  "version": "1.0.0"
 }

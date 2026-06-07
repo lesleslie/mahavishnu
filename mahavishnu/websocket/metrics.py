@@ -116,6 +116,15 @@ class WebSocketMetrics:
         self._subscription_gauge: Gauge | None = None
         self._error_counter: Counter | None = None
 
+        # Per-name aggregates read by ``get_metrics_summary``. These are
+        # referenced as ``self._broadcast_histograms`` (plural, dict-of-dicts)
+        # and ``self._error_counters`` (plural) in the summary code path but
+        # are populated lazily by the ``observe_broadcast`` / ``inc_error``
+        # hooks, so initialise them here to avoid AttributeError on early
+        # reads of the summary before any broadcast or error has happened.
+        self._broadcast_histograms: dict = {}
+        self._error_counters: dict = {}
+
     def _get_existing_collector(self, name: str):
         """Get an existing registered collector by metric name.
 

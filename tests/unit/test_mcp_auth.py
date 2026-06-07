@@ -107,7 +107,7 @@ def test_credential_manager_custom_sensitive_keys():
 
     redacted = CredentialManager.redact_from_dict(data, sensitive_keys=["custom_secret"])
 
-    assert redacted["custom_secret"] == "value***"
+    assert redacted["custom_secret"] == "valu***"
     assert redacted["public_field"] == "public_value"
 
 

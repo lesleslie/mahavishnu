@@ -86,7 +86,6 @@ class TestGetProfileTools:
         assert "_register_otel_tools" in tools
         assert "_register_self_improvement_tools" in tools
         assert "_register_goal_team_tools" in tools
-        # Note: _register_team_learning_tools is commented out / de-authorized
         assert "_register_treesitter_tools" in tools
         assert "_register_adapter_registry_tools" in tools
         assert "_register_pycharm_tools" in tools

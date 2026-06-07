@@ -1924,6 +1924,47 @@ class MahavishnuSettings(BaseSettings):
 
 
 # ============================================================================
+# Settings factory
+# ============================================================================
+
+
+_settings_cache: MahavishnuSettings | None = None
+
+
+def get_settings() -> MahavishnuSettings:
+    """Return the process-wide ``MahavishnuSettings`` (lazy module-level cache).
+
+    The first call instantiates ``MahavishnuSettings()`` (which reads from
+    environment variables and the Oneiric YAML files in ``settings/``).
+    Subsequent calls return the cached instance.
+
+    Stateless callers (e.g. FastAPI routers, MCP tool decorators) use this to
+    obtain a configured ``MahavishnuSettings`` without depending on a
+    particular app instance being available in their scope.
+
+    For tests and app-init code that need a pre-configured settings object,
+    use :func:`set_settings` to override the cache, or :func:`reset_settings`
+    to clear it.
+    """
+    global _settings_cache
+    if _settings_cache is None:
+        _settings_cache = MahavishnuSettings()
+    return _settings_cache
+
+
+def set_settings(settings: MahavishnuSettings) -> None:
+    """Override the cached settings (for app-init and test setup)."""
+    global _settings_cache
+    _settings_cache = settings
+
+
+def reset_settings() -> None:
+    """Clear the cached settings (for tests that need to re-read env / YAML)."""
+    global _settings_cache
+    _settings_cache = None
+
+
+# ============================================================================
 # Exports
 # ============================================================================
 
@@ -1970,4 +2011,8 @@ __all__ = [
     # Dhara state persistence
     "DharaStatePersistenceConfig",
     "MahavishnuSettings",
+    # Settings factory
+    "get_settings",
+    "set_settings",
+    "reset_settings",
 ]

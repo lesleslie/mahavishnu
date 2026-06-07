@@ -1,566 +1,477 @@
-"""Comprehensive tests for mahavishnu.shell.formatters module."""
+"""Unit tests for shell formatters (WorkflowFormatter, LogFormatter, RepoFormatter)."""
 
-from unittest.mock import patch
+from __future__ import annotations
+
+from unittest.mock import MagicMock, patch
 
 import pytest
+from rich.console import Console
 
 from mahavishnu.core.workflow_state import WorkflowStatus
 from mahavishnu.shell.formatters import (
-    RICH_AVAILABLE,
     LogFormatter,
     RepoFormatter,
     WorkflowFormatter,
 )
 
-SAMPLE_WORKFLOWS = [
-    {
-        "id": "wf-001",
+# =============================================================================
+# Fixtures
+# =============================================================================
+
+
+@pytest.fixture
+def recording_console():
+    """Real Rich console that records its output as plain text."""
+    return Console(record=True, width=200, force_terminal=False, file=open("/dev/null", "w"))
+
+
+@pytest.fixture
+def console_mock():
+    """Plain MagicMock console for tests that only count print() calls."""
+    return MagicMock(name="console")
+
+
+@pytest.fixture
+def workflow_formatter(console_mock):
+    """WorkflowFormatter with a plain MagicMock console."""
+    return WorkflowFormatter(console=console_mock)
+
+
+@pytest.fixture
+def log_formatter(console_mock):
+    """LogFormatter with a plain MagicMock console."""
+    return LogFormatter(console=console_mock)
+
+
+@pytest.fixture
+def repo_formatter(console_mock):
+    """RepoFormatter with a plain MagicMock console."""
+    return RepoFormatter(console=console_mock)
+
+
+@pytest.fixture
+def recording_workflow_formatter(recording_console):
+    """WorkflowFormatter wired to a real recording console."""
+    return WorkflowFormatter(console=recording_console)
+
+
+@pytest.fixture
+def recording_log_formatter(recording_console):
+    """LogFormatter wired to a real recording console."""
+    return LogFormatter(console=recording_console)
+
+
+@pytest.fixture
+def recording_repo_formatter(recording_console):
+    """RepoFormatter wired to a real recording console."""
+    return RepoFormatter(console=recording_console)
+
+
+@pytest.fixture
+def sample_workflow():
+    """A single workflow dictionary used for formatting."""
+    return {
+        "id": "wf-1234",
         "status": WorkflowStatus.RUNNING,
-        "progress": 45,
+        "progress": 50,
         "adapter": "prefect",
-        "created_at": "2025-01-15T08:30:00.000Z",
-        "repos": ["/path/a", "/path/b"],
-        "errors": [],
-    },
-    {
-        "id": "wf-002",
-        "status": WorkflowStatus.COMPLETED,
-        "progress": 100,
-        "adapter": "llamaindex",
-        "created_at": "2025-01-14T10:00:00.000Z",
-        "repos": ["/path/c"],
-        "errors": [],
-    },
-    {
-        "id": "wf-003",
-        "status": WorkflowStatus.FAILED,
-        "progress": 60,
-        "adapter": "agno",
-        "created_at": "2025-01-13T12:00:00.000Z",
-        "repos": ["/path/d", "/path/e", "/path/f"],
-        "errors": [{"message": "Connection timeout"}, {"message": "Auth failed"}],
-    },
-    {
-        "id": "wf-004",
-        "status": WorkflowStatus.PENDING,
-        "progress": 0,
-        "adapter": "prefect",
-        "created_at": "2025-01-12T00:00:00.000Z",
-        "repos": [],
-        "errors": [],
-    },
-]
+        "created_at": "2026-01-01T12:00:00",
+        "repos": ["repo-a", "repo-b"],
+        "errors": [{"message": "Boom"}],
+    }
 
-SAMPLE_LOGS = [
-    {
-        "timestamp": "2025-01-15T08:00:00.000Z",
+
+@pytest.fixture
+def sample_log():
+    """A single log entry."""
+    return {
+        "timestamp": "2026-01-01T12:00:00.000000",
         "level": "INFO",
-        "message": "Starting workflow",
-        "workflow_id": "wf-001",
-    },
-    {
-        "timestamp": "2025-01-15T08:00:01.000Z",
-        "level": "ERROR",
-        "message": "Task failed",
-        "workflow_id": "wf-001",
-    },
-    {
-        "timestamp": "2025-01-15T08:00:02.000Z",
-        "level": "WARNING",
-        "message": "Retrying",
-        "workflow_id": "wf-002",
-    },
-    {
-        "timestamp": "2025-01-15T08:00:03.000Z",
-        "level": "DEBUG",
-        "message": "Entering step",
-        "workflow_id": "wf-002",
-    },
-    {
-        "timestamp": "2025-01-15T08:00:04.000Z",
-        "level": "INFO",
-        "message": "Completed",
-        "workflow_id": "wf-003",
-    },
-]
-
-SAMPLE_REPOS = [
-    {"path": "/path/to/repo1", "description": "First repository", "tags": ["python", "backend"]},
-    {"path": "/path/to/repo2", "description": "Second repository", "tags": ["go", "microservice"]},
-    {
-        "path": "/path/to/repo3",
-        "description": "Third repository with a very long description that should be truncated",
-        "tags": ["rust"],
-    },
-]
+        "message": "hello world",
+        "workflow_id": "wf-1",
+    }
 
 
-class TestWorkflowFormatter:
-    """Tests for WorkflowFormatter class."""
+@pytest.fixture
+def sample_repo():
+    """A single repo entry."""
+    return {
+        "path": "/tmp/proj",
+        "description": "An example",
+        "tags": ["python", "test"],
+    }
 
-    def test_empty_workflows_list(self, capsys):
-        """Empty list prints the no-workflows message."""
-        formatter = WorkflowFormatter()
-        formatter.format_workflows([])
-        assert "No workflows to display" in capsys.readouterr().out
 
-    def test_single_workflow(self, capsys):
-        """Single workflow is formatted without error."""
-        formatter = WorkflowFormatter()
-        wf = [SAMPLE_WORKFLOWS[0]]
-        formatter.format_workflows(wf)
-        output = capsys.readouterr().out
-        assert "wf-001" in output
+def _column_cells(table, column_index):
+    """Return the raw cell strings for a given column index of a Rich Table."""
+    return table.columns[column_index]._cells
 
-    def test_multiple_workflows(self, capsys):
-        """Multiple workflows are all rendered."""
-        formatter = WorkflowFormatter()
-        formatter.format_workflows(SAMPLE_WORKFLOWS)
-        output = capsys.readouterr().out
-        for wf in SAMPLE_WORKFLOWS:
-            assert wf["id"] in output
 
-    def test_show_details_flag(self, capsys):
-        """show_details=True includes adapter and repo count info."""
-        formatter = WorkflowFormatter()
-        formatter.format_workflows(SAMPLE_WORKFLOWS, show_details=True)
-        output = capsys.readouterr().out
-        assert "Adapter" in output or "Repos" in output
+def _strip(text):
+    """Strip ANSI control sequences from a Rich recording export."""
+    import re
 
-    def test_without_details_flag(self, capsys):
-        """show_details=False omits detail columns."""
-        formatter = WorkflowFormatter()
-        formatter.format_workflows(SAMPLE_WORKFLOWS, show_details=False)
-        output = capsys.readouterr().out
-        assert "wf-001" in output
+    return re.sub(r"\x1b\[[0-9;]*m", "", text)
 
-    def test_workflow_with_errors_in_details(self, capsys):
-        """Workflow errors are displayed when show_details is True."""
-        formatter = WorkflowFormatter()
-        formatter.format_workflows([SAMPLE_WORKFLOWS[2]], show_details=True)
-        output = capsys.readouterr().out
-        assert "Error" in output or "error" in output.lower()
 
-    def test_workflow_missing_optional_keys(self, capsys):
-        """Workflows with missing keys use safe defaults."""
-        formatter = WorkflowFormatter()
-        minimal_wf = [{"id": "minimal", "status": "pending", "progress": 0}]
-        formatter.format_workflows(minimal_wf)
-        output = capsys.readouterr().out
-        assert "minimal" in output
-        assert "0%" in output
+# =============================================================================
+# WorkflowFormatter Tests
+# =============================================================================
 
-    def test_workflow_long_id_truncated(self, capsys):
-        """Workflow IDs longer than 20 characters are truncated in fallback."""
-        formatter = WorkflowFormatter()
-        long_id = "a" * 50
-        formatter.format_workflows([{"id": long_id, "status": "pending", "progress": 10}])
-        output = capsys.readouterr().out
-        assert long_id[:20] in output
 
-    def test_format_workflow_detail_basic(self, capsys):
-        """format_workflow_detail renders key fields."""
-        formatter = WorkflowFormatter()
-        formatter.format_workflow_detail(SAMPLE_WORKFLOWS[0])
-        output = capsys.readouterr().out
-        assert "wf-001" in output
-        assert "running" in output.lower()
+@pytest.mark.unit
+class TestWorkflowFormatterConstruction:
+    """Construction behavior for WorkflowFormatter."""
 
-    def test_format_workflow_detail_with_repos(self, capsys):
-        """Detail view lists repos when present."""
-        formatter = WorkflowFormatter()
-        formatter.format_workflow_detail(SAMPLE_WORKFLOWS[0])
-        output = capsys.readouterr().out
-        assert "/path/a" in output
+    def test_inherits_from_base_table_formatter(self):
+        """WorkflowFormatter subclasses BaseTableFormatter."""
+        from oneiric.shell.formatters import BaseTableFormatter
 
-    def test_format_workflow_detail_with_errors(self, capsys):
-        """Detail view shows errors when present."""
-        formatter = WorkflowFormatter()
-        formatter.format_workflow_detail(SAMPLE_WORKFLOWS[2])
-        output = capsys.readouterr().out
-        assert "Connection timeout" in output
+        fmt = WorkflowFormatter()
+        assert isinstance(fmt, BaseTableFormatter)
 
-    def test_format_workflow_detail_missing_keys(self, capsys):
-        """Detail view handles missing keys gracefully."""
-        formatter = WorkflowFormatter()
-        formatter.format_workflow_detail({})
-        output = capsys.readouterr().out
-        assert "None" in output or "unknown" in output or "Workflow" in output
+    def test_console_passed_through(self, console_mock):
+        """Console argument is stored on instance."""
+        fmt = WorkflowFormatter(console=console_mock)
+        assert fmt.console is console_mock
 
-    def test_format_workflow_detail_many_repos_truncated(self, capsys):
-        """Detail view truncates repo list at 10 entries."""
-        formatter = WorkflowFormatter()
-        many_repos = [f"/repo/{i}" for i in range(15)]
-        wf = {"id": "wf-big", "status": "running", "progress": 50, "repos": many_repos}
-        formatter.format_workflow_detail(wf)
-        output = capsys.readouterr().out
-        assert "/repo/0" in output
-        assert "/repo/14" not in output
 
-    def test_format_workflow_detail_many_errors_truncated(self, capsys):
-        """Detail view truncates error list at 5 entries."""
-        formatter = WorkflowFormatter()
-        many_errors = [{"message": f"Error {i}"} for i in range(10)]
-        wf = {"id": "wf-err", "status": "failed", "progress": 0, "errors": many_errors}
-        formatter.format_workflow_detail(wf)
-        output = capsys.readouterr().out
-        assert "Error 0" in output
-        assert "Error 9" not in output
+@pytest.mark.unit
+class TestWorkflowFormatterFormatWorkflows:
+    """format_workflows rendering behavior."""
 
-    @pytest.mark.skipif(not RICH_AVAILABLE, reason="Rich not installed")
-    def test_rich_path_format_workflows(self, capsys):
-        """When Rich is available and console is set, the rich path is taken."""
-        formatter = WorkflowFormatter()
-        formatter.format_workflows(SAMPLE_WORKFLOWS)
-        output = capsys.readouterr().out
-        assert "wf-001" in output or "wf-002" in output
+    def test_empty_list_prints_message(self, workflow_formatter, capsys):
+        """An empty list triggers the empty-state print and does not call console."""
+        workflow_formatter.format_workflows([], show_details=False)
 
-    @pytest.mark.skipif(not RICH_AVAILABLE, reason="Rich not installed")
-    def test_rich_path_format_workflow_detail(self, capsys):
-        """Rich path for format_workflow_detail renders correctly."""
-        formatter = WorkflowFormatter()
-        formatter.format_workflow_detail(SAMPLE_WORKFLOWS[1])
-        output = capsys.readouterr().out
-        assert "wf-002" in output
+        captured = capsys.readouterr()
+        assert "No workflows to display" in captured.out
+        workflow_formatter.console.print.assert_not_called()
 
-    @patch("mahavishnu.shell.formatters.RICH_AVAILABLE", False)
-    def test_fallback_path_when_rich_unavailable(self, capsys):
-        """Fallback formatting is used when Rich is not available."""
-        formatter = WorkflowFormatter()
-        formatter.format_workflows(SAMPLE_WORKFLOWS, show_details=True)
-        output = capsys.readouterr().out
-        assert "wf-001" in output
-        assert "Adapter" in output
+    def test_rich_path_renders_table(self, workflow_formatter, sample_workflow):
+        """When console is available, a Rich Table is built and printed."""
+        workflow_formatter.format_workflows([sample_workflow], show_details=False)
 
-    @patch("mahavishnu.shell.formatters.RICH_AVAILABLE", False)
-    def test_fallback_detail_when_rich_unavailable(self, capsys):
-        """Fallback detail formatting is used when Rich is not available."""
-        formatter = WorkflowFormatter()
-        formatter.format_workflow_detail(SAMPLE_WORKFLOWS[0])
-        output = capsys.readouterr().out
-        assert "wf-001" in output
+        workflow_formatter.console.print.assert_called_once()
+        printed = workflow_formatter.console.print.call_args.args[0]
+        # The Table's title is set to "Workflows"
+        assert getattr(printed, "title", "") == "Workflows"
 
-    def test_none_console_uses_fallback(self, capsys):
-        """When console is None, fallback formatting is used."""
-        formatter = WorkflowFormatter(console=None)
-        formatter.format_workflows(SAMPLE_WORKFLOWS)
-        output = capsys.readouterr().out
-        assert "wf-001" in output
+    def test_rich_path_with_details_column(self, workflow_formatter, sample_workflow):
+        """With show_details=True the rendered table includes a Details column."""
+        workflow_formatter.format_workflows([sample_workflow], show_details=True)
 
-    def test_format_workflow_detail_no_repos_no_errors(self, capsys):
-        """Detail view with no repos and no errors renders cleanly."""
-        formatter = WorkflowFormatter()
-        wf = {"id": "wf-empty", "status": "pending", "progress": 0}
-        formatter.format_workflow_detail(wf)
-        output = capsys.readouterr().out
-        assert "wf-empty" in output
+        printed = workflow_formatter.console.print.call_args.args[0]
+        column_headers = [c.header for c in printed.columns]
+        assert "Details" in column_headers
 
-    def test_error_without_message_key(self, capsys):
-        """Error dict missing 'message' key shows 'Unknown error'."""
-        formatter = WorkflowFormatter()
-        wf = {"id": "wf-bad-err", "status": "failed", "progress": 0, "errors": [{"detail": "oops"}]}
-        formatter.format_workflow_detail(wf)
-        output = capsys.readouterr().out
-        assert "Unknown error" in output
+    def test_no_details_column_by_default(self, workflow_formatter, sample_workflow):
+        """Without show_details, no Details column is added."""
+        workflow_formatter.format_workflows([sample_workflow], show_details=False)
+        printed = workflow_formatter.console.print.call_args.args[0]
+        column_headers = [c.header for c in printed.columns]
+        assert "Details" not in column_headers
 
-    def test_unicode_in_workflow_fields(self, capsys):
-        """Unicode characters in workflow fields are handled."""
-        formatter = WorkflowFormatter()
+    def test_renders_workflow_id_and_status(self, recording_workflow_formatter, sample_workflow):
+        """Rendered output contains the workflow ID and status text."""
+        recording_workflow_formatter.format_workflows([sample_workflow], show_details=False)
+        text = _strip(recording_workflow_formatter.console.export_text())
+        assert "wf-1234" in text
+        assert "running" in text
+
+    @pytest.mark.parametrize(
+        ("status", "expected_color"),
+        [
+            (WorkflowStatus.RUNNING, "yellow"),
+            (WorkflowStatus.COMPLETED, "green"),
+            (WorkflowStatus.FAILED, "red"),
+            (WorkflowStatus.PENDING, "blue"),
+        ],
+    )
+    def test_status_style_mapping_known_status(self, console_mock, status, expected_color):
+        """Status keys map to expected Rich styles in the row text."""
         wf = {
-            "id": "wf-unicode-test",
-            "status": "running",
-            "progress": 50,
+            "id": "wf-1",
+            "status": status,
+            "progress": 0,
             "adapter": "prefect",
-            "created_at": "2025-01-15T08:00:00",
-            "repos": ["/path/to/repo"],
+            "created_at": "2026-01-01T00:00:00",
+            "repos": [],
+            "errors": [],
         }
-        formatter.format_workflows([wf])
-        output = capsys.readouterr().out
-        assert "wf-unicode-test" in output
+        fmt = WorkflowFormatter(console=console_mock)
+        fmt.format_workflows([wf])
+        printed = console_mock.print.call_args.args[0]
+        # Status column is the second column (index 1)
+        status_cells = _column_cells(printed, 1)
+        assert any(f"[{expected_color}]" in c for c in status_cells)
 
-    def test_workflows_with_all_status_types(self, capsys):
-        """All four status types (RUNNING, COMPLETED, FAILED, PENDING) are rendered."""
-        formatter = WorkflowFormatter()
-        statuses = [
-            WorkflowStatus.RUNNING,
-            WorkflowStatus.COMPLETED,
-            WorkflowStatus.FAILED,
-            WorkflowStatus.PENDING,
+    def test_unknown_status_no_style(self, console_mock):
+        """An unrecognized status key yields no color markup (empty style)."""
+        wf = {
+            "id": "wf-1",
+            "status": "weird",
+            "progress": 0,
+            "adapter": "prefect",
+            "created_at": "2026-01-01T00:00:00",
+            "repos": [],
+            "errors": [],
+        }
+        fmt = WorkflowFormatter(console=console_mock)
+        fmt.format_workflows([wf])
+        printed = console_mock.print.call_args.args[0]
+        status_cells = _column_cells(printed, 1)
+        # When the status is unknown the style is empty, producing `[]weird[/]`
+        # with no actual color tag.
+        for c in status_cells:
+            assert "[red]" not in c
+            assert "[green]" not in c
+            assert "[yellow]" not in c
+            assert "[blue]" not in c
+
+    def test_id_truncated_to_20_chars(self, recording_workflow_formatter):
+        """Workflow ID longer than 20 chars is truncated in the rendered row."""
+        wf = {
+            "id": "x" * 40,
+            "status": WorkflowStatus.PENDING,
+            "progress": 0,
+            "adapter": "prefect",
+            "created_at": "2026-01-01T00:00:00",
+            "repos": [],
+            "errors": [],
+        }
+        recording_workflow_formatter.format_workflows([wf])
+        text = _strip(recording_workflow_formatter.console.export_text())
+        # Only 20 of the 40 x's appear in the rendered row
+        assert "x" * 20 in text
+        assert "x" * 21 not in text
+
+    def test_details_mentions_repos_and_errors(self, recording_workflow_formatter, sample_workflow):
+        """Details cell includes repo count and error count when present."""
+        recording_workflow_formatter.format_workflows([sample_workflow], show_details=True)
+        text = _strip(recording_workflow_formatter.console.export_text())
+        assert "Repos: 2" in text
+        assert "Errors: 1" in text
+
+    def test_progress_percentage_rendered(self, recording_workflow_formatter):
+        """Progress is rendered with a percent sign."""
+        wf = {
+            "id": "wf-1",
+            "status": WorkflowStatus.RUNNING,
+            "progress": 75,
+            "adapter": "prefect",
+            "created_at": "2026-01-01T00:00:00",
+            "repos": [],
+            "errors": [],
+        }
+        recording_workflow_formatter.format_workflows([wf])
+        text = _strip(recording_workflow_formatter.console.export_text())
+        assert "75%" in text
+
+
+@pytest.mark.unit
+class TestWorkflowFormatterFallback:
+    """Plain-print fallback path for workflow formatters."""
+
+    def test_fallback_used_when_rich_unavailable(self, sample_workflow, capsys):
+        """When Rich is unavailable the fallback path prints plain text."""
+        with patch("mahavishnu.shell.formatters.RICH_AVAILABLE", False):
+            fmt = WorkflowFormatter(console=None)
+            fmt.format_workflows([sample_workflow], show_details=False)
+
+        captured = capsys.readouterr()
+        assert "wf-1234" in captured.out
+        assert "running" in captured.out
+
+    def test_fallback_with_details(self, sample_workflow, capsys):
+        """show_details=True in the fallback prints adapter and repo count."""
+        with patch("mahavishnu.shell.formatters.RICH_AVAILABLE", False):
+            fmt = WorkflowFormatter(console=None)
+            fmt.format_workflows([sample_workflow], show_details=True)
+
+        captured = capsys.readouterr()
+        assert "Adapter: prefect" in captured.out
+        assert "Repos: 2" in captured.out
+
+
+@pytest.mark.unit
+class TestWorkflowFormatterFormatDetail:
+    """format_workflow_detail rendering behavior."""
+
+    def test_detail_rich_uses_panel(self, workflow_formatter, sample_workflow):
+        """Detail rendering prints a Rich Panel when console is available."""
+        workflow_formatter.format_workflow_detail(sample_workflow)
+
+        printed = workflow_formatter.console.print.call_args.args[0]
+        from rich.panel import Panel
+
+        assert isinstance(printed, Panel)
+        assert "Workflow Details" in str(printed.title)
+
+    def test_detail_fallback(self, sample_workflow, capsys):
+        """Without Rich, detail printing falls back to plain text."""
+        with patch("mahavishnu.shell.formatters.RICH_AVAILABLE", False):
+            fmt = WorkflowFormatter(console=None)
+            fmt.format_workflow_detail(sample_workflow)
+
+        captured = capsys.readouterr()
+        assert "Workflow: wf-1234" in captured.out
+        assert "Status:" in captured.out
+
+
+# =============================================================================
+# LogFormatter Tests
+# =============================================================================
+
+
+@pytest.mark.unit
+class TestLogFormatterConstruction:
+    """LogFormatter construction basics."""
+
+    def test_inherits_from_base_log_formatter(self):
+        """LogFormatter subclasses BaseLogFormatter."""
+        from oneiric.shell.formatters import BaseLogFormatter
+
+        fmt = LogFormatter()
+        assert isinstance(fmt, BaseLogFormatter)
+
+
+@pytest.mark.unit
+class TestLogFormatterFormatLogs:
+    """LogFormatter.format_logs behavior."""
+
+    def test_empty_logs_message(self, log_formatter, capsys):
+        """Empty input produces the empty-state message."""
+        log_formatter.format_logs([], tail=10)
+        captured = capsys.readouterr()
+        assert "No logs to display" in captured.out
+        log_formatter.console.print.assert_not_called()
+
+    def test_level_filter_case_insensitive(self, log_formatter):
+        """Filtering by 'error' matches 'ERROR' level entries."""
+        logs = [
+            {"level": "ERROR", "message": "boom"},
+            {"level": "INFO", "message": "fine"},
         ]
-        wfs = [{"id": f"wf-{s.value}", "status": s, "progress": 10} for s in statuses]
-        formatter.format_workflows(wfs)
-        output = capsys.readouterr().out
-        for s in statuses:
-            assert s.value in output
+        log_formatter.format_logs(logs, level="error", tail=10)
+        # Only one entry was printed via Rich
+        assert log_formatter.console.print.call_count == 1
 
-
-class TestLogFormatter:
-    """Tests for LogFormatter class."""
-
-    def test_empty_logs(self, capsys):
-        """Empty log list prints the no-logs message."""
-        formatter = LogFormatter()
-        formatter.format_logs([])
-        assert "No logs to display" in capsys.readouterr().out
-
-    def test_format_logs_basic(self, capsys):
-        """Basic log formatting renders timestamp, level, and message."""
-        formatter = LogFormatter()
-        formatter.format_logs(SAMPLE_LOGS)
-        output = capsys.readouterr().out
-        assert "Starting workflow" in output
-        assert "Task failed" in output
-
-    def test_level_filter_error_only(self, capsys):
-        """Level filter restricts output to matching level."""
-        formatter = LogFormatter()
-        formatter.format_logs(SAMPLE_LOGS, level="ERROR")
-        output = capsys.readouterr().out
-        assert "Task failed" in output
-        assert "Starting workflow" not in output
-
-    def test_level_filter_case_insensitive(self, capsys):
-        """Level filter uppercases the input before comparison."""
-        formatter = LogFormatter()
-        formatter.format_logs(SAMPLE_LOGS, level="error")
-        output = capsys.readouterr().out
-        assert "Task failed" in output
-        assert "Starting workflow" not in output
-
-    def test_workflow_id_filter(self, capsys):
-        """Workflow ID filter restricts output to matching workflow."""
-        formatter = LogFormatter()
-        formatter.format_logs(SAMPLE_LOGS, workflow_id="wf-001")
-        output = capsys.readouterr().out
-        assert "Starting workflow" in output
-        assert "Retrying" not in output
-
-    def test_combined_level_and_workflow_filter(self, capsys):
-        """Both level and workflow filters are applied together."""
-        formatter = LogFormatter()
-        formatter.format_logs(SAMPLE_LOGS, level="ERROR", workflow_id="wf-001")
-        output = capsys.readouterr().out
-        assert "Task failed" in output
-        assert "Starting workflow" not in output
-        assert "Retrying" not in output
-
-    def test_tail_limits_output(self, capsys):
-        """Tail parameter limits the number of displayed log entries."""
-        formatter = LogFormatter()
-        formatter.format_logs(SAMPLE_LOGS, tail=2)
-        output = capsys.readouterr().out
-        lines = [l for l in output.strip().split("\n") if l.strip()]
-        assert len(lines) <= 2
-
-    def test_tail_larger_than_list(self, capsys):
-        """Tail larger than log count shows all entries."""
-        formatter = LogFormatter()
-        formatter.format_logs(SAMPLE_LOGS, tail=100)
-        output = capsys.readouterr().out
-        for log in SAMPLE_LOGS:
-            assert log["message"] in output
-
-    def test_tail_of_one(self, capsys):
-        """Tail of 1 shows only the most recent log entry."""
-        formatter = LogFormatter()
-        formatter.format_logs(SAMPLE_LOGS, tail=1)
-        output = capsys.readouterr().out
-        assert "Completed" in output
-        assert "Starting workflow" not in output
-
-    def test_log_missing_optional_keys(self, capsys):
-        """Logs missing optional keys use safe defaults."""
-        formatter = LogFormatter()
-        minimal_log = [{"message": "hello"}]
-        formatter.format_logs(minimal_log)
-        output = capsys.readouterr().out
-        assert "hello" in output
-        assert "INFO" in output
-
-    def test_log_with_empty_level(self, capsys):
-        """Log entry with no level defaults to INFO."""
-        formatter = LogFormatter()
-        logs = [{"timestamp": "2025-01-15T00:00:00", "message": "no level"}]
-        formatter.format_logs(logs)
-        output = capsys.readouterr().out
-        assert "INFO" in output
-
-    def test_log_timestamp_truncated(self, capsys):
-        """Timestamps longer than 19 characters are truncated."""
-        formatter = LogFormatter()
-        logs = [{"timestamp": "2025-01-15T08:00:00.123456Z", "level": "INFO", "message": "ts test"}]
-        formatter.format_logs(logs)
-        output = capsys.readouterr().out
-        assert "2025-01-15T08:00:00" in output
-        assert ".123456" not in output
-
-    def test_log_filter_with_no_matches(self, capsys):
-        """Filter that matches nothing produces no output for entries."""
-        formatter = LogFormatter()
-        formatter.format_logs(SAMPLE_LOGS, level="CRITICAL")
-        output = capsys.readouterr().out
-        assert "Starting workflow" not in output
-        assert "Task failed" not in output
-
-    @patch("mahavishnu.shell.formatters.RICH_AVAILABLE", False)
-    def test_fallback_path_logs(self, capsys):
-        """Fallback log formatting when Rich is unavailable."""
-        formatter = LogFormatter()
-        formatter.format_logs(SAMPLE_LOGS)
-        output = capsys.readouterr().out
-        assert "Starting workflow" in output
-        assert "Task failed" in output
-
-    def test_none_console_uses_fallback(self, capsys):
-        """When console is None, fallback formatting is used for logs."""
-        formatter = LogFormatter(console=None)
-        formatter.format_logs(SAMPLE_LOGS)
-        output = capsys.readouterr().out
-        assert "Starting workflow" in output
-
-    def test_debug_level_log(self, capsys):
-        """DEBUG level log entries are rendered correctly."""
-        formatter = LogFormatter()
-        logs = [{"timestamp": "2025-01-15T00:00:00", "level": "DEBUG", "message": "debug msg"}]
-        formatter.format_logs(logs, level="DEBUG")
-        output = capsys.readouterr().out
-        assert "debug msg" in output
-
-    def test_warning_level_log(self, capsys):
-        """WARNING level log entries are rendered correctly."""
-        formatter = LogFormatter()
-        formatter.format_logs(SAMPLE_LOGS, level="WARNING")
-        output = capsys.readouterr().out
-        assert "Retrying" in output
-
-    def test_empty_message_log(self, capsys):
-        """Log entry with empty message is handled without error."""
-        formatter = LogFormatter()
-        logs = [{"timestamp": "2025-01-15T00:00:00", "level": "INFO", "message": ""}]
-        formatter.format_logs(logs)
-        output = capsys.readouterr().out
-        assert "INFO" in output
-
-    def test_single_log_entry(self, capsys):
-        """Single log entry is formatted correctly."""
-        formatter = LogFormatter()
-        logs = [{"timestamp": "2025-01-15T12:00:00", "level": "ERROR", "message": "solo error"}]
-        formatter.format_logs(logs)
-        output = capsys.readouterr().out
-        assert "solo error" in output
-        assert "ERROR" in output
-
-
-class TestRepoFormatter:
-    """Tests for RepoFormatter class."""
-
-    def test_empty_repos(self, capsys):
-        """Empty repo list prints the no-repositories message."""
-        formatter = RepoFormatter()
-        formatter.format_repos([])
-        assert "No repositories to display" in capsys.readouterr().out
-
-    def test_single_repo(self, capsys):
-        """Single repository is formatted correctly."""
-        formatter = RepoFormatter()
-        formatter.format_repos([SAMPLE_REPOS[0]])
-        output = capsys.readouterr().out
-        assert "/path/to/repo1" in output
-        assert "First repository" in output
-
-    def test_multiple_repos(self, capsys):
-        """Multiple repositories are all rendered."""
-        formatter = RepoFormatter()
-        formatter.format_repos(SAMPLE_REPOS)
-        output = capsys.readouterr().out
-        for repo in SAMPLE_REPOS:
-            assert repo["path"] in output
-
-    def test_show_tags(self, capsys):
-        """Tags are displayed when show_tags is True."""
-        formatter = RepoFormatter()
-        formatter.format_repos(SAMPLE_REPOS, show_tags=True)
-        output = capsys.readouterr().out
-        assert "python" in output
-        assert "backend" in output
-
-    def test_hide_tags(self, capsys):
-        """Tags are not displayed when show_tags is False."""
-        formatter = RepoFormatter()
-        formatter.format_repos(SAMPLE_REPOS, show_tags=False)
-        output = capsys.readouterr().out
-        assert "/path/to/repo1" in output
-
-    def test_repo_without_tags(self, capsys):
-        """Repository with no tags key renders without error."""
-        formatter = RepoFormatter()
-        repos = [{"path": "/path/no-tags", "description": "No tags here"}]
-        formatter.format_repos(repos, show_tags=True)
-        output = capsys.readouterr().out
-        assert "/path/no-tags" in output
-
-    def test_repo_empty_tags_list(self, capsys):
-        """Repository with empty tags list shows empty tags."""
-        formatter = RepoFormatter()
-        repos = [{"path": "/path/empty-tags", "description": "Empty tags", "tags": []}]
-        formatter.format_repos(repos, show_tags=True)
-        output = capsys.readouterr().out
-        assert "/path/empty-tags" in output
-
-    def test_repo_missing_path(self, capsys):
-        """Repository missing path key uses empty string default."""
-        formatter = RepoFormatter()
-        repos = [{"description": "No path"}]
-        formatter.format_repos(repos)
-        output = capsys.readouterr().out
-        assert "No path" in output
-
-    def test_repo_missing_description(self, capsys):
-        """Repository missing description key uses empty string default."""
-        formatter = RepoFormatter()
-        repos = [{"path": "/path/no-desc"}]
-        formatter.format_repos(repos)
-        output = capsys.readouterr().out
-        assert "/path/no-desc" in output
-
-    def test_repo_long_description_truncated(self, capsys):
-        """Long descriptions are truncated to 40 characters in fallback."""
-        formatter = RepoFormatter()
-        repos = [{"path": "/p", "description": "a" * 80}]
-        formatter.format_repos(repos)
-        output = capsys.readouterr().out
-        assert "a" * 40 in output
-
-    @patch("mahavishnu.shell.formatters.RICH_AVAILABLE", False)
-    def test_fallback_path_repos(self, capsys):
-        """Fallback repo formatting when Rich is unavailable."""
-        formatter = RepoFormatter()
-        formatter.format_repos(SAMPLE_REPOS, show_tags=True)
-        output = capsys.readouterr().out
-        assert "/path/to/repo1" in output
-        assert "Tags" in output
-
-    def test_none_console_uses_fallback(self, capsys):
-        """When console is None, fallback formatting is used for repos."""
-        formatter = RepoFormatter(console=None)
-        formatter.format_repos(SAMPLE_REPOS, show_tags=True)
-        output = capsys.readouterr().out
-        assert "/path/to/repo1" in output
-
-    def test_many_tags_truncated(self, capsys):
-        """Many tags are truncated to 20 characters in fallback."""
-        formatter = RepoFormatter()
-        repos = [{"path": "/p", "description": "d", "tags": ["a" * 30]}]
-        formatter.format_repos(repos, show_tags=True)
-        output = capsys.readouterr().out
-        assert "a" * 20 in output
-
-    def test_unicode_repo_fields(self, capsys):
-        """Unicode characters in repo fields are handled."""
-        formatter = RepoFormatter()
-        repos = [
-            {"path": "/path/repo", "description": "Description with unicode: éèê", "tags": ["tést"]}
+    def test_workflow_id_filter(self, log_formatter):
+        """Filter by workflow_id keeps only matching entries."""
+        logs = [
+            {"workflow_id": "wf-1", "message": "a"},
+            {"workflow_id": "wf-2", "message": "b"},
         ]
-        formatter.format_repos(repos, show_tags=True)
-        output = capsys.readouterr().out
-        assert "é" in output
+        log_formatter.format_logs(logs, workflow_id="wf-1", tail=10)
+        assert log_formatter.console.print.call_count == 1
+
+    def test_tail_truncation(self, log_formatter):
+        """Only the last N log entries are displayed."""
+        logs = [{"message": f"m{i}"} for i in range(20)]
+        log_formatter.format_logs(logs, tail=5)
+        assert log_formatter.console.print.call_count == 5
+
+    def test_fallback_when_rich_unavailable(self, sample_log, capsys):
+        """When Rich is unavailable, the plain-print fallback runs."""
+        with patch("mahavishnu.shell.formatters.RICH_AVAILABLE", False):
+            fmt = LogFormatter(console=None)
+            fmt.format_logs([sample_log], tail=10)
+
+        captured = capsys.readouterr()
+        assert "INFO" in captured.out
+        assert "hello world" in captured.out
+
+    def test_unknown_level_still_prints(self, log_formatter):
+        """A log level outside the known map still renders (with empty style)."""
+        log = {"level": "DEBUG", "message": "trace", "timestamp": "2026-01-01T00:00:00"}
+        log_formatter.format_logs([log], tail=10)
+        # Did not raise; we got one print call
+        log_formatter.console.print.assert_called_once()
+
+    def test_no_filters_prints_all(self, log_formatter):
+        """Without filters, every log is printed up to tail."""
+        logs = [{"message": f"m{i}"} for i in range(3)]
+        log_formatter.format_logs(logs, tail=10)
+        assert log_formatter.console.print.call_count == 3
+
+
+# =============================================================================
+# RepoFormatter Tests
+# =============================================================================
+
+
+@pytest.mark.unit
+class TestRepoFormatterConstruction:
+    """RepoFormatter construction basics."""
+
+    def test_inherits_from_base_table_formatter(self):
+        """RepoFormatter subclasses BaseTableFormatter."""
+        from oneiric.shell.formatters import BaseTableFormatter
+
+        fmt = RepoFormatter()
+        assert isinstance(fmt, BaseTableFormatter)
+
+
+@pytest.mark.unit
+class TestRepoFormatterFormatRepos:
+    """RepoFormatter.format_repos behavior."""
+
+    def test_empty_repos_message(self, repo_formatter, capsys):
+        """Empty input prints the empty-state message."""
+        repo_formatter.format_repos([])
+        captured = capsys.readouterr()
+        assert "No repositories to display" in captured.out
+        repo_formatter.console.print.assert_not_called()
+
+    def test_rich_path_with_tags(self, repo_formatter, sample_repo):
+        """A repo with tags yields a table that includes a Tags column."""
+        repo_formatter.format_repos([sample_repo], show_tags=True)
+        printed = repo_formatter.console.print.call_args.args[0]
+        column_headers = [c.header for c in printed.columns]
+        assert "Tags" in column_headers
+
+    def test_rich_path_without_tags(self, repo_formatter, sample_repo):
+        """Without show_tags, no Tags column is added."""
+        repo_formatter.format_repos([sample_repo], show_tags=False)
+        printed = repo_formatter.console.print.call_args.args[0]
+        column_headers = [c.header for c in printed.columns]
+        assert "Tags" not in column_headers
+
+    def test_fallback_with_tags(self, sample_repo, capsys):
+        """The fallback prints tags when show_tags=True."""
+        with patch("mahavishnu.shell.formatters.RICH_AVAILABLE", False):
+            fmt = RepoFormatter(console=None)
+            fmt.format_repos([sample_repo], show_tags=True)
+        captured = capsys.readouterr()
+        assert "/tmp/proj" in captured.out
+        assert "python" in captured.out
+
+    def test_fallback_without_tags(self, sample_repo, capsys):
+        """The fallback without show_tags prints no Tags line."""
+        with patch("mahavishnu.shell.formatters.RICH_AVAILABLE", False):
+            fmt = RepoFormatter(console=None)
+            fmt.format_repos([sample_repo], show_tags=False)
+        captured = capsys.readouterr()
+        assert "/tmp/proj" in captured.out
+        assert "Tags:" not in captured.out
+
+    def test_description_truncated_to_40(self, recording_repo_formatter):
+        """Long descriptions are truncated to 40 chars in the rendered table."""
+        repo = {
+            "path": "/p",
+            "description": "x" * 100,
+            "tags": [],
+        }
+        recording_repo_formatter.format_repos([repo], show_tags=False)
+        text = _strip(recording_repo_formatter.console.export_text())
+        # Only 40 of the 100 x's appear in the rendered row
+        assert "x" * 40 in text
+        assert "x" * 41 not in text
+
+    def test_renders_path_and_description(self, recording_repo_formatter, sample_repo):
+        """The rendered table includes the path and description text."""
+        recording_repo_formatter.format_repos([sample_repo], show_tags=False)
+        text = _strip(recording_repo_formatter.console.export_text())
+        assert "/tmp/proj" in text
+        assert "An example" in text

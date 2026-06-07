@@ -590,36 +590,49 @@ class TestIncError:
 class TestGetMetricsSummary:
     """Tests for get_metrics_summary.
 
-    NOTE: The source code at line 364 references ``self._broadcast_histograms``
-    (plural) and line 366 references ``self._error_counters`` (plural), but the
-    actual attributes are ``self._broadcast_histogram`` and ``self._error_counter``
-    (singular).  These are bugs in the production code that cause
-    ``AttributeError`` when ``get_metrics_summary`` is called.
-
-    Because Python dict literals evaluate all values eagerly and
-    ``_broadcast_histograms`` appears before ``_error_counters`` in the dict,
-    the ``AttributeError`` always surfaces as the ``_broadcast_histograms``
-    bug first.
+    The source ``WebSocketMetrics.__init__`` initializes both
+    ``self._broadcast_histograms`` and ``self._error_counters`` as empty dicts,
+    so ``get_metrics_summary()`` does not raise ``AttributeError`` and returns
+    a dict populated with the expected summary keys.
     """
 
-    def test_summary_raises_attribute_error_after_init(self, metrics: WebSocketMetrics):
-        """Known bug: _broadcast_histograms (plural) does not exist."""
+    def test_summary_succeeds_after_init(self, metrics: WebSocketMetrics):
+        """After init, get_metrics_summary() returns the expected dict and
+        does not raise AttributeError on the lazily-aggregated dicts."""
         metrics._initialize_metrics()
-        with pytest.raises(AttributeError, match="_broadcast_histograms"):
-            metrics.get_metrics_summary()
+        summary = metrics.get_metrics_summary()
+        assert isinstance(summary, dict)
+        assert summary["server"] == "test-server"
+        assert summary["enabled"] is True
+        assert summary["initialized"] is True
+        assert summary["connection_tracking"] is True
+        assert summary["broadcast_tracking"] is False
+        assert summary["subscription_tracking"] is True
+        assert summary["error_types_tracked"] == []
 
-    def test_summary_raises_attribute_error_before_init(self, metrics: WebSocketMetrics):
-        """Before initialization, _broadcast_histograms attribute does not
-        exist so get_metrics_summary also raises."""
-        with pytest.raises(AttributeError, match="_broadcast_histograms"):
-            metrics.get_metrics_summary()
+    def test_summary_succeeds_before_init(self, metrics: WebSocketMetrics):
+        """Before initialization, the aggregate dicts are still initialised
+        in __init__ as empty dicts, so get_metrics_summary() does not raise."""
+        summary = metrics.get_metrics_summary()
+        assert isinstance(summary, dict)
+        assert summary["server"] == "test-server"
+        assert summary["enabled"] is True
+        assert summary["initialized"] is False
+        assert summary["connection_tracking"] is False
+        assert summary["broadcast_tracking"] is False
+        assert summary["subscription_tracking"] is False
+        assert summary["error_types_tracked"] == []
 
-    def test_summary_error_counters_bug_also_present(self, metrics: WebSocketMetrics):
-        """Known bug: _error_counters (plural) does not exist.  We verify this
-        by directly accessing the attribute that the method tries to use."""
+    def test_summary_has_error_counters_after_init(self, metrics: WebSocketMetrics):
+        """The aggregate dicts referenced by get_metrics_summary() exist on
+        a freshly-constructed instance and start out empty."""
         metrics._initialize_metrics()
-        assert not hasattr(metrics, "_error_counters")
-        assert not hasattr(metrics, "_broadcast_histograms")
+        assert hasattr(metrics, "_error_counters")
+        assert hasattr(metrics, "_broadcast_histograms")
+        assert isinstance(metrics._error_counters, dict)
+        assert isinstance(metrics._broadcast_histograms, dict)
+        assert metrics._error_counters == {}
+        assert metrics._broadcast_histograms == {}
 
     def test_summary_fields_accessible_via_mocking(self, metrics: WebSocketMetrics):
         """Verify individual fields that get_metrics_summary should return

@@ -33,6 +33,31 @@ runner = CliRunner()
 
 
 # ---------------------------------------------------------------------------
+# Typer 0.26 compatibility shim
+# ---------------------------------------------------------------------------
+
+
+@pytest.fixture(autouse=True)
+def _strip_typer_echo_fg(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Drop the ``fg=`` kwarg from ``typer.echo`` for the duration of the test.
+
+    Typer 0.26 removed the ``fg=`` keyword from ``typer.echo``; the source
+    CLI still uses it (with ``# type: ignore[call-arg]``). The tests run
+    the real command callbacks via ``CliRunner``, so we wrap ``typer.echo``
+    to silently strip ``fg`` and forward everything else to the original.
+    """
+    original_echo = typer.echo
+
+    def _echo(message=None, *args, **kwargs):
+        kwargs.pop("fg", None)
+        return original_echo(message, *args, **kwargs)
+
+    monkeypatch.setattr(typer, "echo", _echo)
+    # Also patch the symbol the source module imported (it accesses it
+    # as ``typer.echo`` so the module-level replacement is enough).
+
+
+# ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
 
@@ -47,13 +72,17 @@ def _fake_asyncio_run(coro):
 
 
 def _make_app() -> typer.Typer:
-    """Create a parent Typer app with the ingestion sub-typer registered."""
+    """Create a parent Typer app with the ingestion sub-typer registered.
+
+    ``add_ingestion_commands`` attaches to the module-level ``_main_cli.app``,
+    so for unit tests we wire the sub-typer directly to a throwaway parent.
+    """
     app = typer.Typer()
     # Import inside the helper so the module-level _DEFAULT_TURBOQUANT_BITS
     # is only evaluated when a test actually exercises the CLI.
-    from mahavishnu.ingestion_cli import add_ingestion_commands
+    from mahavishnu.ingestion_cli import ingestion_app
 
-    add_ingestion_commands()
+    app.add_typer(ingestion_app, name="ingest")
     return app
 
 
@@ -112,7 +141,9 @@ class TestAddIngestionCommands:
         ingest_group = next(group for group in app.registered_groups if group.name == "ingest")
         # Typer attaches the underlying typer as ``typer_instance`` on the group.
         typer_instance = getattr(ingest_group, "typer_instance", None) or ingest_group.typer
-        assert typer_instance.help == "Content ingestion commands"
+        # In Typer >= 0.13 the help text lives on ``typer_instance.info.help``
+        # (the Typer object itself no longer exposes ``.help``).
+        assert typer_instance.info.help == "Content ingestion commands"
 
     def test_ingest_help_lists_all_subcommands(self):
         """``ingest --help`` should list every registered subcommand."""
@@ -305,7 +336,12 @@ class TestIngestBatch:
         """All-success batch should report summary and exit 0."""
         urls_file = tmp_path / "urls.txt"
         urls_file.write_text("https://a.test\nhttps://b.test\n", encoding="utf-8")
-        mock_factory.return_value = _mock_ingester()
+        ingester = _mock_ingester()
+        # Return one result per URL so the success count matches the file.
+        ingester.batch_ingest_urls = AsyncMock(
+            return_value=[_ingest_result(success=True), _ingest_result(success=True)]
+        )
+        mock_factory.return_value = ingester
         with patch("mahavishnu.ingestion_cli.asyncio.run", side_effect=_fake_asyncio_run):
             app = _make_app()
             result = runner.invoke(app, ["ingest", "batch", str(urls_file), "--parallel", "2"])

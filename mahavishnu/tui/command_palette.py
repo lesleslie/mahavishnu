@@ -28,13 +28,11 @@ import asyncio
 from dataclasses import dataclass, field
 from enum import Enum
 import logging
-from typing import TYPE_CHECKING, Any
+from collections.abc import Callable, Coroutine
+from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field
 from textual.command import Hit, Hits, Provider
-
-if TYPE_CHECKING:
-    from collections.abc import Callable, Coroutine
 
 logger = logging.getLogger(__name__)
 

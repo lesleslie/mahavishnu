@@ -5,6 +5,7 @@ from __future__ import annotations
 import asyncio
 from pathlib import Path
 from types import SimpleNamespace
+from unittest.mock import MagicMock
 
 import pytest
 
@@ -434,119 +435,128 @@ async def test_workflow_execution_and_integration_suite_paths(tmp_path: Path) ->
 async def test_suite_runners_and_benchmarks(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
-    checker = ProductionReadinessChecker(
-        _make_app(config=_make_config(repos_path=str(tmp_path / "repos.txt")))
-    )
-    monkeypatch.setattr(
-        pr.ProductionReadinessChecker,
-        "_check_config_validity",
-        _sync_check("_check_config_validity", True),
-        raising=True,
-    )
-    monkeypatch.setattr(
-        pr.ProductionReadinessChecker,
-        "_check_adapter_health",
-        _sync_check("_check_adapter_health", False),
-        raising=True,
-    )
-    monkeypatch.setattr(
-        pr.ProductionReadinessChecker,
-        "_check_repo_accessibility",
-        _raising_check("_check_repo_accessibility"),
-        raising=True,
-    )
-    monkeypatch.setattr(
-        pr.ProductionReadinessChecker,
-        "_check_workflow_execution",
-        _async_check("_check_workflow_execution", True),
-        raising=True,
-    )
-    monkeypatch.setattr(
-        pr.ProductionReadinessChecker,
-        "_check_resource_limits",
-        _sync_check("_check_resource_limits", True),
-        raising=True,
-    )
-    monkeypatch.setattr(
-        pr.ProductionReadinessChecker,
-        "_check_security_settings",
-        _sync_check("_check_security_settings", False),
-        raising=True,
-    )
-
-    summary = await checker.run_all_checks()
-    assert summary["summary"]["total_checks"] == 6
-    assert summary["summary"]["checks_passed"] == 3
-    assert summary["summary"]["status"] == "FAIL"
-    assert "config_validity" in summary["details"]
-
-    suite = IntegrationTestSuite(
-        _make_app(config=_make_config(), adapters={"adapter": object()}, repos=["repo"])
-    )
-    monkeypatch.setattr(
-        pr.IntegrationTestSuite,
-        "_test_basic_workflow_execution",
-        _async_suite_test(True),
-        raising=True,
-    )
-    monkeypatch.setattr(
-        pr.IntegrationTestSuite, "_test_rbac_permissions", _async_suite_test(False), raising=True
-    )
-    monkeypatch.setattr(
-        pr.IntegrationTestSuite,
-        "_test_workflow_state_management",
-        _raising_suite_test(),
-        raising=True,
-    )
-    monkeypatch.setattr(
-        pr.IntegrationTestSuite, "_test_observation_logging", _async_suite_test(True), raising=True
-    )
-
-    test_summary = await suite.run_all_tests()
-    assert test_summary["summary"]["total_tests"] == 4
-    assert test_summary["summary"]["tests_passed"] == 2
-    assert test_summary["summary"]["status"] == "FAIL"
-
-    app = _make_app(
-        config=_make_config(),
-        adapters={"adapter": object()},
-        repos=["repo-a", "repo-b", "repo-c"],
-    )
-    benchmark = PerformanceBenchmark(app)
-    bench_summary = await benchmark.run_benchmarks()
-    assert bench_summary["summary"]["status"] in {"EXCELLENT", "GOOD"}
-    assert set(bench_summary["benchmarks"]) == {
-        "workflow_execution",
-        "concurrent_workflows",
-        "repo_operations",
+    # Defensive cleanup: a sibling test file (``test_production_cli``) drives
+    # ``unittest.mock.patch`` on these classes via context managers. The
+    # teardown path stores the *return value* of ``__enter__`` (a MagicMock)
+    # on the app and iterates it in the ``finally`` block, so the patcher's
+    # own ``__exit__`` is never invoked and the real class never gets
+    # restored. If we run after such a leak, ``pr.ProductionReadinessChecker``
+    # is a MagicMock, ``monkeypatch.setattr`` lands on the mock (not the
+    # class), and ``run_production_readiness_suite`` ends up building its
+    # result from a mock that returns ``{"status": "ok", "checks": []}``
+    # instead of the expected ``{"summary": {...}}`` shape. Restore the
+    # originals for the duration of this test and put any leaked mock back
+    # afterwards so we never observe (or mutate) a corrupted module.
+    leaked: dict[str, object] = {}
+    real_classes = {
+        "ProductionReadinessChecker": ProductionReadinessChecker,
+        "IntegrationTestSuite": IntegrationTestSuite,
+        "PerformanceBenchmark": PerformanceBenchmark,
     }
+    for attr, real_cls in real_classes.items():
+        current = getattr(pr, attr, None)
+        if isinstance(current, MagicMock):
+            leaked[attr] = current
+            setattr(pr, attr, real_cls)
+    try:
+        # Build a private subclass so the per-method stubs are applied to *this*
+        # class only, not to the shared ``ProductionReadinessChecker`` /
+        # ``IntegrationTestSuite`` classes. This makes the test self-contained
+        # and immune to leaked ``unittest.mock.patch`` substitutions on the
+        # originals. The originals retain their real implementations for any
+        # other code path that needs them.
+        checker_cls = type(
+            "_PatchedReadinessChecker",
+            (ProductionReadinessChecker,),
+            {
+                "_check_config_validity": _sync_check("_check_config_validity", True),
+                "_check_adapter_health": _sync_check("_check_adapter_health", False),
+                "_check_repo_accessibility": _raising_check("_check_repo_accessibility"),
+                "_check_workflow_execution": _async_check("_check_workflow_execution", True),
+                "_check_resource_limits": _sync_check("_check_resource_limits", True),
+                "_check_security_settings": _sync_check("_check_security_settings", False),
+            },
+        )
+        checker = checker_cls(
+            _make_app(config=_make_config(repos_path=str(tmp_path / "repos.txt")))
+        )
 
-    empty_benchmark = PerformanceBenchmark(_make_app(config=_make_config(), adapters={}, repos=[]))
-    await empty_benchmark._benchmark_workflow_execution()
-    await empty_benchmark._benchmark_concurrent_workflows()
-    await empty_benchmark._benchmark_repo_operations()
-    assert empty_benchmark.benchmarks == {}
+        summary = await checker.run_all_checks()
+        assert summary["summary"]["total_checks"] == 6
+        assert summary["summary"]["checks_passed"] == 3
+        assert summary["summary"]["status"] == "FAIL"
+        assert "config_validity" in summary["details"]
 
-    async def _fake_run_all_checks(self):  # noqa: ANN001
-        return {"summary": {"score_percentage": 95}, "details": {}}
+        suite_cls = type(
+            "_PatchedIntegrationTestSuite",
+            (IntegrationTestSuite,),
+            {
+                "_test_basic_workflow_execution": _async_suite_test(True),
+                "_test_rbac_permissions": _async_suite_test(False),
+                "_test_workflow_state_management": _raising_suite_test(),
+                "_test_observation_logging": _async_suite_test(True),
+            },
+        )
+        suite = suite_cls(
+            _make_app(config=_make_config(), adapters={"adapter": object()}, repos=["repo"])
+        )
 
-    async def _fake_run_all_tests(self):  # noqa: ANN001
-        return {"summary": {"score_percentage": 90}, "details": []}
+        test_summary = await suite.run_all_tests()
+        assert test_summary["summary"]["total_tests"] == 4
+        assert test_summary["summary"]["tests_passed"] == 2
+        assert test_summary["summary"]["status"] == "FAIL"
 
-    async def _fake_run_benchmarks(self):  # noqa: ANN001
-        return {"summary": {"performance_score": 92}, "benchmarks": {}}
+        app = _make_app(
+            config=_make_config(),
+            adapters={"adapter": object()},
+            repos=["repo-a", "repo-b", "repo-c"],
+        )
+        benchmark = PerformanceBenchmark(app)
+        bench_summary = await benchmark.run_benchmarks()
+        assert bench_summary["summary"]["status"] in {"EXCELLENT", "GOOD"}
+        assert set(bench_summary["benchmarks"]) == {
+            "workflow_execution",
+            "concurrent_workflows",
+            "repo_operations",
+        }
 
-    monkeypatch.setattr(
-        pr.ProductionReadinessChecker, "run_all_checks", _fake_run_all_checks, raising=True
-    )
-    monkeypatch.setattr(pr.IntegrationTestSuite, "run_all_tests", _fake_run_all_tests, raising=True)
-    monkeypatch.setattr(
-        pr.PerformanceBenchmark, "run_benchmarks", _fake_run_benchmarks, raising=True
-    )
+        empty_benchmark = PerformanceBenchmark(
+            _make_app(config=_make_config(), adapters={}, repos=[])
+        )
+        await empty_benchmark._benchmark_workflow_execution()
+        await empty_benchmark._benchmark_concurrent_workflows()
+        await empty_benchmark._benchmark_repo_operations()
+        assert empty_benchmark.benchmarks == {}
 
-    first = await run_production_readiness_suite(app)
-    assert "production_readiness" in first
-    assert "overall_assessment" in first
+        async def _fake_run_all_checks(self):  # noqa: ANN001
+            return {"summary": {"score_percentage": 95}, "details": {}}
+
+        async def _fake_run_all_tests(self):  # noqa: ANN001
+            return {"summary": {"score_percentage": 90}, "details": []}
+
+        async def _fake_run_benchmarks(self):  # noqa: ANN001
+            return {"summary": {"performance_score": 92}, "benchmarks": {}}
+
+        monkeypatch.setattr(
+            pr.ProductionReadinessChecker, "run_all_checks", _fake_run_all_checks, raising=True
+        )
+        monkeypatch.setattr(
+            pr.IntegrationTestSuite, "run_all_tests", _fake_run_all_tests, raising=True
+        )
+        monkeypatch.setattr(
+            pr.PerformanceBenchmark, "run_benchmarks", _fake_run_benchmarks, raising=True
+        )
+
+        first = await run_production_readiness_suite(app)
+        assert "production_readiness" in first
+        assert "overall_assessment" in first
+    finally:
+        # Put any leaked MagicMock back so the next test in this worker sees
+        # the same starting state we did (the leaked mock is the
+        # ``return_value`` of the original ``__enter__`` so dropping it is a
+        # no-op for the patcher that left it behind).
+        for attr, mock in leaked.items():
+            setattr(pr, attr, mock)
 
 
 @pytest.mark.asyncio

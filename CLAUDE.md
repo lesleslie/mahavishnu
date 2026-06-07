@@ -564,13 +564,6 @@ pytest --cov=mahavishnu --cov-report=html
 
 Use the dedicated command sections above for Ruff, type checking, security, and MCP server smoke tests. Avoid duplicating those checks in ad hoc shell scripts.
 
-### Quality Expectations
-
-- Coverage target: enforce the configured floor and review `htmlcov/` after larger changes
-- Complexity target: keep functions below the configured complexity threshold
-- Type safety: prefer strict typing on adapters, tool inputs, and orchestration state
-- Security: keep secrets in environment variables and validate tool inputs rigorously
-
 ### MCP-Aware Usage
 
 When Crackerjack MCP is available, prefer using it for quality status, job tracking, and skill discovery instead of re-implementing local wrappers. See the Crackerjack repo docs for current MCP tool names and workflow details.
@@ -590,5 +583,59 @@ Default command sequence:
 1. `mahavishnu metrics engines --source auto --output table`
 1. `mahavishnu pool route --prompt "<task>" --selector least_loaded`
 1. If workflow semantics are needed, use workflow-triggering tools instead of ad hoc loops.
+
+## Crackerjack-Compliant Code
+
+> **Hard limits and tool config live in `pyproject.toml`** (Ruff, mypy, pyright, pytest, bandit, complexipy). The `crackerjack-compliant-code` skill is the full procedural reference — load it when implementing a feature. This section captures project **conventions that aren't obvious from the config** plus known enforcement gaps.
+
+### Conventions (project-level, not all in config)
+
+- **`from __future__ import annotations`** as the first non-comment line of every source file. Place after any module docstring.
+- **Imports sorted within each section** (stdlib → third-party → first-party, with `force-sort-within-sections = true` and `known-first-party = ["mahavishnu"]`).
+- **Modern syntax**: `X | None` (not `Optional[X]`), `list[str]` (not `List[str]`), `pathlib.Path` for filesystem paths (not `os.path`). Target Python 3.13.
+- **Function arguments with default `None`** must be typed `X | None = None` (mypy `no_implicit_optional = true`). `def f(x: int = None)` will fail.
+- **No `assert` in production code** (`mahavishnu/**`). Use the `mahavishnu/core/errors.py` exception hierarchy. Enforced by bandit B101.
+- **No `Any` in tool inputs or orchestration state.** Use `TYPE_CHECKING` and a typed protocol to escape. **Enforcement gap**: mypy warns on `Any` returns but not on `Any` parameters.
+- **In `except` blocks, use `logger.exception(...)`**, never `logger.error(..., exc_info=True)`.
+- **All I/O in the orchestration layer is async.** No blocking calls (`time.sleep`, `requests`, sync file I/O) inside async functions — use `httpx`, `aiofiles`, or `loop.run_in_executor`. Sync code only at worker boundaries and CLI entry points.
+- **Use the Oneiric logger** (`oneiric.logging`) — not stdlib `logging`, not `print()`.
+- **Remove unused imports and dead code immediately** (Ruff F401 / UP).
+
+### Test conventions
+
+- **Use the project pytest markers** (don't invent new ones): `unit`, `integration`, `e2e`, `property`, `slow`, `timeout`, `ci`, `crackerjack`, plus adapter-specific (`prefect`, `llamaindex`, `agno`, `hatchet`, `mcp`, `chaos`, `requires_network`, `requires_auth`).
+- **Async tests** don't need `@pytest.mark.asyncio` — `asyncio_mode = "auto"`.
+- **Per-test timeout: 300 s ceiling, not target.** Any test >10 s should be `@pytest.mark.slow` and skipped with `-m "not slow"` for fast feedback.
+- **The `tests.*` namespace has relaxed typing** (mypy `disallow_untyped_defs = false`), but the conventions above (imports, `__future__`, `pathlib`) still apply. Asserts are idiomatic in tests.
+
+### Hard limits (set in `pyproject.toml`; the gate fails on breach)
+
+| Limit | Value | Config key |
+|---|---|---|
+| Line length | 100 chars | `[tool.ruff] line-length` |
+| Function args | 10 (excludes `self`, `cls`, `*args`, `**kwargs`) | `[tool.ruff.lint.pylint] max-args` |
+| Branches | 15 | `[tool.ruff.lint.pylint] max-branches` |
+| Returns | 6 | `[tool.ruff.lint.pylint] max-returns` |
+| Statements | 55 ceiling — practical target 30 | `[tool.ruff.lint.pylint] max-statements` |
+| Coverage | 80% | `[tool.pytest] addopts --cov-fail-under` |
+
+If the gate is passing but this table disagrees, trust the gate. A sync test (analogous to `tests/unit/test_task_router.py::TestYAMLRoutingSync`) is worth adding to pin them.
+
+### Lint configuration (Ruff)
+
+- **Active**: `I`, `N`, `UP`, `B`, `C4`, `SIM`, `TCH`, plus the `P` pylint subset for hard limits.
+- **Ignored (gate won't catch)**: `B904`, `N806`, `E402`, `SIM102`, `SIM105`, `SIM108`. You may still fix these in new code; do not churn existing code to address them.
+- **Per-file-ignore**: B008 in `mahavishnu/**/*cli*.py` AND `mahavishnu/cli/**/*.py` (the two patterns overlap; both are intentional). Don't add new per-file-ignores without updating this section.
+
+### Type checker configuration
+
+- **Mypy strict** (Python 3.13, `disallow_untyped_defs`, `no_implicit_optional`, `warn_unused_ignores`, `warn_no_return`, `strict_optional`, `warn_return_any`).
+- **Pyright strict** with `reportMissingTypeStubs` downgraded to warning.
+- Both run; both must pass.
+
+### Known enforcement gaps
+
+- "No Any" is only partially enforced (mypy warns on returns, not params) — manual review.
+- Bandit does not scan test files — review auth, deserialization, and shell calls in tests by hand.
 
 <!-- CRACKERJACK_END -->

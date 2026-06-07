@@ -15,15 +15,15 @@ from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
     # Optional dependency — import only for static analysis, never at runtime.
-    from turboquant_pro import TurboQuantPGVector as _TurboQuantPGVector
+    from turboquant_pro import TurboQuantPGVector
 
     TURBOQUANT_AVAILABLE = True
 else:
     try:
-        from turboquant_pro import TurboQuantPGVector as _TurboQuantPGVector
+        from turboquant_pro import TurboQuantPGVector
     except ImportError:
-        _TurboQuantPGVector = None  # type: ignore[assignment,misc]
-    TURBOQUANT_AVAILABLE = _TurboQuantPGVector is not None
+        TurboQuantPGVector = None  # type: ignore[assignment,misc]
+    TURBOQUANT_AVAILABLE = TurboQuantPGVector is not None
 
 logger = logging.getLogger(__name__)
 
@@ -73,7 +73,7 @@ class TurboQuantCompressor:
         self._dimension = dimension
         self._bits = bits
         self._seed = seed
-        self._tq: _TurboQuantPGVector | None = None  # type: ignore[valid-type]
+        self._tq: TurboQuantPGVector | None = None  # type: ignore[valid-type]
 
     @property
     def available(self) -> bool:
@@ -96,7 +96,7 @@ class TurboQuantCompressor:
                 "turboquant-pro not installed. Install with: uv pip install turboquant-pro"
             )
         if self._tq is None:
-            self._tq = _TurboQuantPGVector(  # type: ignore[valid-type,call-arg,misc]
+            self._tq = TurboQuantPGVector(  # type: ignore[valid-type,call-arg,misc]
                 dim=self._dimension,
                 bits=self._bits,
                 seed=self._seed,

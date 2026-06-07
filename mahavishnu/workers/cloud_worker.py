@@ -181,7 +181,8 @@ class CloudWorker(BaseWorker):
                     error=f"Worker failed to start: {e}",
                 )
 
-        assert self._chain is not None
+        if self._chain is None:
+            raise RuntimeError("invariant violated: _chain must be set after worker initialization")
 
         prompt = task.get("prompt", "")
         if not prompt:

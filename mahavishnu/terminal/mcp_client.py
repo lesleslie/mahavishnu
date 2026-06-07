@@ -33,6 +33,11 @@ class StdioMCPClient:
         self.process: asyncio.subprocess.Process | None = None
         self._request_id = 0
         self._pending_requests: dict[int, asyncio.Future] = {}
+        # Responses that arrived before their request was registered. We
+        # buffer them so the next ``call_tool`` with the matching id can
+        # pick them up instead of waiting for a response that already came
+        # and went.
+        self._response_buffer: dict[int, dict[str, Any]] = {}
 
     async def start(self) -> None:
         """Start the MCP server process.
@@ -64,7 +69,12 @@ class StdioMCPClient:
                 await asyncio.wait_for(self.process.wait(), timeout=5.0)
             except TimeoutError:
                 self.process.kill()
-                await self.process.wait()
+                try:
+                    await self.process.wait()
+                except TimeoutError:
+                    # ``kill`` did not unblock the process; surface but do
+                    # not raise — the caller is already on the shutdown path.
+                    logger.warning("Process did not exit after kill()")
             logger.info("Stopped MCP server process")
 
     async def _read_stdout(self) -> None:
@@ -87,6 +97,12 @@ class StdioMCPClient:
                         if req_id in self._pending_requests:
                             future = self._pending_requests.pop(req_id)
                             future.set_result(response)
+                        else:
+                            # No pending future for this id yet — the
+                            # response arrived before the matching
+                            # ``call_tool`` registered. Buffer it so the
+                            # request can pick it up on its next yield.
+                            self._response_buffer[req_id] = response
 
                 except json.JSONDecodeError:
                     logger.debug(f"Non-JSON output: {line.decode().strip()}")
@@ -117,6 +133,14 @@ class StdioMCPClient:
 
         self._pending_requests[request_id] = future
 
+        # If the response was already buffered (e.g. the reader ran ahead
+        # of the request registration), deliver it now and short-circuit
+        # the round-trip.
+        if request_id in self._response_buffer:
+            buffered = self._response_buffer.pop(request_id)
+            self._pending_requests.pop(request_id, None)
+            future.set_result(buffered)
+
         request = {
             "jsonrpc": "2.0",
             "id": request_id,
@@ -142,10 +166,10 @@ class StdioMCPClient:
             return response["result"]
 
         except TimeoutError:
-            del self._pending_requests[request_id]
+            self._pending_requests.pop(request_id, None)
             raise RuntimeError(f"Timeout calling MCP tool {tool_name}") from None
         except Exception as e:
-            del self._pending_requests[request_id]
+            self._pending_requests.pop(request_id, None)
             raise RuntimeError(f"Failed to call MCP tool {tool_name}: {e}") from e
 
 

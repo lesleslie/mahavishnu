@@ -19,7 +19,7 @@ Mid-session quality checkpoint. Auto-generated; treat as informational.
 Sorted by line count within each bucket. See
 `scripts/find_untested_modules.py --json` for the machine-readable form.
 
-**Bucket 1 — easy wins (9 modules, <150 lines, pure logic):**
+**Bucket 1 — easy wins (9 modules, \<150 lines, pure logic):**
 
 - `mahavishnu/terminal/grid/models.py` (59)
 - `mahavishnu/core/config_dlq.py` (72)
@@ -92,12 +92,12 @@ functions if the fix is verified, and commit the cleanup.**
 
 1. Resolve the frontmatter validator mid-debug (remove the temporary
    tests, run the suite, commit).
-2. Fan out 3–4 parallel agents on Bucket 1 (the 9 easy wins). Each
-   module is <150 lines and pure logic — perfect for `pytest` and
+1. Fan out 3–4 parallel agents on Bucket 1 (the 9 easy wins). Each
+   module is \<150 lines and pure logic — perfect for `pytest` and
    `unittest.mock`. Use the JSON output of `find_untested_modules.py`
    as the work list.
-3. Investigate the 4 empty-agent files; either restore their bodies
+1. Investigate the 4 empty-agent files; either restore their bodies
    or remove the files.
-4. Reconnect to Session-Buddy and run `/mcp__session-buddy__checkpoint`
+1. Reconnect to Session-Buddy and run `/mcp__session-buddy__checkpoint`
    so the vector store picks up the new script and the 22-module work
    list.

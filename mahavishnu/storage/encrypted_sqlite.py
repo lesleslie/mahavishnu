@@ -156,8 +156,11 @@ class EncryptedSQLite:
         if not self._using_encryption or not self.enc_path.exists():
             return False
 
-        # Type narrowing: _using_encryption=True guarantees _fernet is not None
-        assert self._fernet is not None
+        # _using_encryption=True guarantees _fernet is not None
+        if self._fernet is None:
+            raise RuntimeError(
+                "invariant violated: _fernet must be set when _using_encryption is True"
+            )
 
         try:
             logger.debug(f"Decrypting database: {self.enc_path} → {self.db_path}")
@@ -191,8 +194,11 @@ class EncryptedSQLite:
         if not self._using_encryption or not self.db_path.exists():
             return False
 
-        # Type narrowing: _using_encryption=True guarantees _fernet is not None
-        assert self._fernet is not None
+        # _using_encryption=True guarantees _fernet is not None
+        if self._fernet is None:
+            raise RuntimeError(
+                "invariant violated: _fernet must be set when _using_encryption is True"
+            )
 
         try:
             logger.debug(f"Encrypting database: {self.db_path} → {self.enc_path}")
@@ -397,13 +403,37 @@ class EncryptedSQLite:
         else:
             # Fallback to SQLite backup API
             cursor = self._conn.cursor()
-            cursor.execute(f"VACUUM INTO '{backup_path}'")
+            # VACUUM INTO takes a string literal and cannot be parameterized
+            # via sqlite3's bound-parameter API. Two layers of defense:
+            #
+            # 1. Reject any path containing characters that could enable SQL
+            #    injection if not properly escaped.
+            # 2. SQL-standard single-quote escaping (double any embedded quote).
+            #
+            # A legitimate filename containing a single quote becomes
+            # unresolvable but cannot enable injection. The inline nosemgrep
+            # directive on the execute line is required because VACUUM INTO
+            # has no parameterized form in SQLite.
+            backup_path_str = str(backup_path)
+            forbidden_chars = set("';\\\x00\n\r")
+            if any(c in forbidden_chars for c in backup_path_str):
+                raise ValueError(
+                    f"backup_path contains characters that could enable SQL "
+                    f"injection: {backup_path!r}"
+                )
+            escaped_backup_path = backup_path_str.replace("'", "''")
+            cursor.execute(
+                f"VACUUM INTO '{escaped_backup_path}'"
+            )  # nosemgrep: python.lang.security.audit.formatted-sql-query, python.sqlalchemy.security.sql-injection-raw-sql
             self._conn.commit()
 
             # Encrypt backup if encryption enabled
             if self._using_encryption:
-                # Type narrowing: _using_encryption=True guarantees _fernet is not None
-                assert self._fernet is not None
+                # _using_encryption=True guarantees _fernet is not None
+                if self._fernet is None:
+                    raise RuntimeError(
+                        "invariant violated: _fernet must be set when _using_encryption is True"
+                    )
 
                 # Read plaintext backup
                 with open(backup_path, "rb") as f:
