@@ -26,21 +26,25 @@
 ## Session Accomplishments
 
 ### Wave 1-3: Test coverage fan-out
+
 - 42 new test files
 - ~1,588 new test cases
 - ~44 source files covered with targeted tests
 
 ### Triage (5 latent source bugs fixed)
+
 1. `mahavishnu/core/config.py` — added `get_settings()` factory
-2. `mahavishnu/websocket/metrics.py` — added missing dict init
-3. `mahavishnu/models/pattern.py` — replaced `datetime.utcnow()` deprecation
-4. `mahavishnu/mcp/tools/session_buddy_tools.py` — fixed import depth
-5. `mahavishnu/mcp/tools/team_learning_tools.py` — REMOVED (deprecation)
+1. `mahavishnu/websocket/metrics.py` — added missing dict init
+1. `mahavishnu/models/pattern.py` — replaced `datetime.utcnow()` deprecation
+1. `mahavishnu/mcp/tools/session_buddy_tools.py` — fixed import depth
+1. `mahavishnu/mcp/tools/team_learning_tools.py` — REMOVED (deprecation)
 
 ### SQL injection refactor
+
 - `mahavishnu/adapters/pgvector_adapter.py` — extracted 6 DDL helper methods; parameterized `SET LOCAL`
 
 ### Wave 4: 32 pre-existing failures → 0
+
 - `test_mcp_goal_team_tools.py` (16 fixes): API signature drift + Python 3.13 mock quirk
 - `test_factories.py` (13 fixes): mock fixture tuple-unpack bug
 - `test_mcp_auth.py` (1 fix): redaction test expectation
@@ -48,6 +52,7 @@
 - *Initial fix was incomplete; re-applied in final collection-error wave*
 
 ### Wave 5: 19 pre-existing failures → 0
+
 - `test_websocket_metrics.py` (3 fixes): regression-pin tests for pre-fix bug
 - `test_terminal_mcp_client.py` (5 fixes): real async race condition in `_response_buffer`
 - `test_turboquant_compressor.py` (4 fixes): import alias `_TurboQuantPGVector` → public
@@ -55,15 +60,18 @@
 - *Initial source fix was incomplete; re-applied in final collection-error wave*
 
 ### Wave 6: 2 remaining → 0
+
 - `test_monitoring_cli.py` (2 fixes): Typer 0.26.7 API drift
 - `test_production_readiness.py` (1 fix): leaked MagicMock state from sibling test
 
 ### Wave 7: 3 remaining → 0
+
 - `test_ingestion_cli.py` (25 fixes): Typer 0.26.7 API drift
 - `test_mcp_server.py`: transient flake, no change needed
 - `test_session_buddy_integration.py` (1 fix): real `hasattr()` Mock-attr collision
 
 ### Final collection-error fix wave
+
 - **Test file basename collision**: `tests/unit/test_health.py` → `test_health_app.py`
 - **Wave 4 source fix re-applied**: `mahavishnu/tui/command_palette.py` Callable runtime import
 - **Wave 5 source fix re-applied**: `mahavishnu/core/repositories/{embeddings,events}.py` UUID runtime import
@@ -105,10 +113,10 @@
 ## Workflow Recommendations for Next Session
 
 1. **Commit current state** — 25 modified files + 38 new test files. Suggested message: `feat(test): expand coverage + harden 14 latent source bugs (waves 1-7)`. Then a second commit: `fix(test): resolve 55+ pre-existing test failures and 1 collection error`.
-2. **Re-enable `--cov-fail-under=80`** — the original coverage gate was relaxed during the test-writing waves. Now that the suite is stable, re-enable to catch regressions.
-3. **Address pytest-benchmark warnings** — the 506 warnings are mostly from this plugin's "benchmarks disabled under xdist" message. Consider either running benchmarks serially (separate config) or disabling the plugin in dev runs.
-4. **Investigate the 4 Pydantic forward-ref bugs as a class** — they all share the same root cause pattern (`from __future__ import annotations` + import-under-TYPE_CHECKING). A project-wide scan for this pattern (e.g. via a custom Ruff rule or a one-shot grep script) would prevent future instances.
-5. **Document the test patterns** — the wave agents converged on a useful pattern (`pytestmark = pytest.mark.unit`, section dividers, fixture at top). Consider adding this to `AGENTS.md` so future test writers follow it.
+1. **Re-enable `--cov-fail-under=80`** — the original coverage gate was relaxed during the test-writing waves. Now that the suite is stable, re-enable to catch regressions.
+1. **Address pytest-benchmark warnings** — the 506 warnings are mostly from this plugin's "benchmarks disabled under xdist" message. Consider either running benchmarks serially (separate config) or disabling the plugin in dev runs.
+1. **Investigate the 4 Pydantic forward-ref bugs as a class** — they all share the same root cause pattern (`from __future__ import annotations` + import-under-TYPE_CHECKING). A project-wide scan for this pattern (e.g. via a custom Ruff rule or a one-shot grep script) would prevent future instances.
+1. **Document the test patterns** — the wave agents converged on a useful pattern (`pytestmark = pytest.mark.unit`, section dividers, fixture at top). Consider adding this to `AGENTS.md` so future test writers follow it.
 
 ## Notes for Next Session
 

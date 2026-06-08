@@ -5,6 +5,91 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.7.2] - 2026-06-07
+
+### Added
+
+- Add TerminalGridManager for grid orchestration
+- crackerjack: Wire ecosystem-gitignore audit into the quality gate
+- scripts: Cross-repo .gitignore audit for the Bodai ecosystem
+- terminal: Add grid models and exception hierarchy
+- terminal: Refactor ITerm2Adapter to use shared AppleScript bridge
+
+### Changed
+
+- automation: Remove PyXA/ATOMac, add NativeMacOSBackend using osascript+cliclick+screencapture
+- Mahavishnu (manual) - 2026-06-04 03:18
+- Mahavishnu (quality: 63/100) - 2026-05-31 04:40:38
+- Mahavishnu (quality: 66/100) - 2026-06-01 20:46:04
+- Mahavishnu (quality: 66/100) - 2026-06-02 04:46:57
+- Mahavishnu (quality: 66/100) - 2026-06-03 20:04:54
+- Mahavishnu (quality: 66/100) - 2026-06-03 20:56:54
+- Mahavishnu (quality: 67/100) - 2026-06-02 06:04:15
+- Mahavishnu (quality: 67/100) - 2026-06-03 04:01:36
+- Mahavishnu (quality: 67/100) - 2026-06-03 18:24:58
+- Mahavishnu (quality: 67/100) - 2026-06-04 00:23:08
+- Mahavishnu (quality: 67/100) - 2026-06-04 01:54:45
+- Mahavishnu (quality: 67/100) - 2026-06-04 02:15:04
+- Mahavishnu (quality: 67/100) - 2026-06-04 02:38:00
+- Mahavishnu (quality: 67/100) - 2026-06-04 02:38:53
+- Mahavishnu (quality: 67/100) - 2026-06-04 02:39:36
+- Mahavishnu (quality: 67/100) - 2026-06-04 03:07:13
+- Mahavishnu (quality: 67/100) - 2026-06-04 04:13:31
+- Mahavishnu (quality: 67/100) - 2026-06-04 21:04:38
+- Mahavishnu (quality: 67/100) - 2026-06-04 23:40:03
+- Mahavishnu (quality: 67/100) - 2026-06-05 04:23:35
+- Mahavishnu (quality: 67/100) - 2026-06-07 08:37:11
+- Mahavishnu (quality: 68/100) - 2026-05-22 06:04:43
+- Mahavishnu (quality: 68/100) - 2026-05-23 02:33:48
+- Mahavishnu (quality: 68/100) - 2026-05-23 05:52:04
+- Mahavishnu (quality: 68/100) - 2026-05-29 06:53:13
+- Mahavishnu (quality: 83/100) - 2026-05-25 06:21:15
+- Mahavishnu (quality: 97/100) - 2026-06-07
+- Move ecosystem deps to dependency-groups, remove optional-dependencies
+- test hook: verify auto-index
+
+### Fixed
+
+- Address code quality issues in TerminalGridManager
+- agents,audit,docs: Address Group 3 follow-ups (M5, M6, LOW #8, LOW #9)
+- agents: Replace literal \\\_ with _ in 13 agent frontmatter lines
+- index: Correct git hook command syntax (use positional REPO arg)
+- iterm2: Use canonical multi-line AppleScript escaping
+- terminal: Catch AppleScriptError in desktop creation fallback
+- terminal: Update iterm2 tests to expect AppleScriptError
+- test_apple_script_bridge: Use correct function name build_applescript_string
+- test_matrix,audit,tests: Address Tier 1 #1-4 + Tier 2 from multi-review
+- test_matrix: Add pass to keep empty if-block parseable
+- test_matrix: Treat 'from mahavishnu import X' as catch-all bucket
+- validator: Accept both `---` and 70-underscore frontmatter delimiters
+- validator: Enforce required_scripts policy via new validate_required_scripts
+
+### Documentation
+
+- Add terminal grid implementation plan
+- Add unified iTerm2 AppleScript integration design
+- Address Tier 1 #5-9 from multi-review (freshness fixes)
+- architecture,followups: Capture session review outputs
+- decisions: Add technical-debt-roadmap.md for side discoveries
+- decisions: Address Group 2 follow-ups (removed-scripts, CLAUDE.md, new README)
+- decisions: Mark Group 1 (test_matrix.py) resolved, add Group 4
+
+### Testing
+
+- apple_script: Add conformance tests against canonical spec
+- iterm2: Add cross-repo session ID compatibility tests
+
+### Internal
+
+- gitignore: Add backup file patterns to silence checkpoint tool artifacts
+- gitignore: Silence Claude Code session handoff reports
+- gitignore: Silence pytest-cov parallel-mode data files
+- hygiene: Address TD-2, TD-3, TD-4 from technical-debt-roadmap
+- Remove all *.backup* files
+- Remove nanobot remnant files (HEARTBEAT, SOUL, TOOLS, USER)
+- Remove stale *.backup files
+- Remove tracked worktree dir, add session-buddy migration plan
+
 ## [0.7.1] - 2026-05-20
 
 ### Added

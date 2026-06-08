@@ -92,9 +92,9 @@ Running `zuban check` on this minimal file produces a *clean, expected* output (
 - [x] Minimal repro of the `Literal` mismatch alone — no panic
 - [x] Adding `from __future__ import annotations` to the repro — no panic
 - [x] Running zuban 0.8.0 directly (no crackerjack involved) on the full file
-      — the panic seems tied to running over a directory of files, not a single file
+  — the panic seems tied to running over a directory of files, not a single file
 - [ ] Bisecting the session-buddy codebase to find the exact file combination that
-      triggers the panic — not done yet, would benefit from maintainer guidance
+  triggers the panic — not done yet, would benefit from maintainer guidance
 
 ## Suggested next steps
 
@@ -104,11 +104,11 @@ Running `zuban check` on this minimal file produces a *clean, expected* output (
    arm list and trying to remove from an empty collection. Is this a known
    panic signature?
 
-2. **If you can provide a debug build**: a `zuban` binary that prints the
+1. **If you can provide a debug build**: a `zuban` binary that prints the
    offending source location and the AST shape it was processing at the time of
    the panic would let me bisect more precisely.
 
-3. **Workaround in the meantime**: pinning `zuban<0.8.0` in projects that hit
+1. **Workaround in the meantime**: pinning `zuban<0.8.0` in projects that hit
    this avoids the panic. The previous version (whatever was used before
    2026-06-01) presumably did not have this regression.
 

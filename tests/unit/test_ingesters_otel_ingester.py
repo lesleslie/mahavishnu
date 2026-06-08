@@ -981,7 +981,7 @@ class TestSpanHelpers:
         assert ts.tzinfo is not None
 
     def test_extract_timestamp_handles_invalid_string(self) -> None:
-        """An unparseable start_time string falls back to datetime.now(UTC)."""
+        """An unparsable start_time string falls back to datetime.now(UTC)."""
         ingester = _make_ingester(preferred_backend="text_only")
         ts = ingester._extract_timestamp([{"start_time": "not-a-timestamp"}])
         assert isinstance(ts, datetime)

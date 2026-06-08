@@ -326,20 +326,15 @@ class MahavishnuAgent:
             from mahavishnu.factories import get_pool_manager
 
             pool_mgr = get_pool_manager()
-            status = await pool_mgr.get_all_pool_status()
+            status = await pool_mgr.list_pools()
 
-            pools_list = []
+            pools_list: list[dict[str, Any]] = []
             active_workers = 0
-            if isinstance(status, dict):
-                for pool_id, pool_info in status.items():
+            if isinstance(status, list):
+                for pool_info in status:
                     if isinstance(pool_info, dict):
-                        pools_list.append(
-                            {
-                                "pool_id": pool_id,
-                                **pool_info,
-                            }
-                        )
-                        active_workers += pool_info.get("active_workers", 0)
+                        pools_list.append(pool_info)
+                        active_workers += pool_info.get("workers", 0)
 
             return PoolStatusResult(
                 pools=pools_list,

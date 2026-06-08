@@ -251,11 +251,11 @@ class TestRouteTask:
 class TestGetPoolStatus:
     async def test_aggregates_pool_data(self, agent: MahavishnuAgent):
         pool_mgr = MagicMock()
-        pool_mgr.get_all_pool_status = AsyncMock(
-            return_value={
-                "pool_a": {"active_workers": 3, "status": "healthy"},
-                "pool_b": {"active_workers": 2, "status": "degraded"},
-            }
+        pool_mgr.list_pools = AsyncMock(
+            return_value=[
+                {"pool_id": "pool_a", "workers": 3, "status": "healthy"},
+                {"pool_id": "pool_b", "workers": 2, "status": "degraded"},
+            ]
         )
         with patch("mahavishnu.factories.get_pool_manager", return_value=pool_mgr):
             result = await agent.get_pool_status()
