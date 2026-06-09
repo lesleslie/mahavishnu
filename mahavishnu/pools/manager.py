@@ -14,7 +14,7 @@ from ..mcp.protocols.message_bus import MessageBus
 from .base import BasePool, PoolConfig
 from .kubernetes_pool import KubernetesPool
 from .mahavishnu_pool import MahavishnuPool
-from .peer_routing import PeerRouteResolver
+from .peer_routing import DEFAULT_ACL_PROVIDER, PeerRouteResolver
 from .routing_fitness import RoutingFitnessReader
 from .runpod_pool import RunPodPool
 from .session_buddy_pool import SessionBuddyPool
@@ -117,11 +117,26 @@ class PoolManager:
         # is duck-typed on session_buddy_client; an explicit
         # ``_peer_resolver`` attribute (set by tests or by a future
         # initializer) wins over the lazy default.
+        #
+        # Security: when the manager is constructed with a
+        # session_buddy_client and the resolver is auto-built with
+        # the default (deny) ACL provider, that's a smell — the
+        # operator probably forgot to pass an explicit ACL. The
+        # runtime check below logs a warning so the misconfiguration
+        # is visible in production. The deny default still applies
+        # (secure-by-default); the warning is a nudge, not a fail.
         self._peer_resolver: PeerRouteResolver | None = None
         if session_buddy_client is not None:
             self._peer_resolver = PeerRouteResolver(
                 session_buddy_client=session_buddy_client,
             )
+            if self._peer_resolver._acl_provider is DEFAULT_ACL_PROVIDER:
+                logger.warning(
+                    "PoolManager constructed with session_buddy_client but no "
+                    "explicit acl_provider — PEER_AFFINITY routing will be denied "
+                    "for all peers. Pass an acl_provider to PeerRouteResolver "
+                    "or to PoolManager (see ADR-014 / Item 2 in bodai-adoption-phase-1.5.md)."
+                )
 
         # Track current worker counts for validation (lazy deletion)
         self._pool_worker_counts: dict[str, int] = {}

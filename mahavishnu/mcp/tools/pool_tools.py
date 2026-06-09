@@ -105,6 +105,28 @@ def register_pool_tools(
         """Execute task with automatic pool routing."""
         from mahavishnu.pools.manager import PoolSelector
 
+        # Security: PEER_AFFINITY is experimental and refused at the
+        # MCP tool surface until caller-side authorization lands. The
+        # security review on the original Item 2 commit flagged the
+        # PEER_AFFINITY branch as having no caller-side authorization
+        # check (the per-peer ACL is checked, but the CALLER isn't
+        # authorized for the destination pool). Direct programmatic
+        # callers can still use PoolManager.route_task with the
+        # selector; the MCP tool refuses to make the experimental
+        # path reachable until ADR-014's "until then" condition is
+        # satisfied.
+        if pool_selector == PoolSelector.PEER_AFFINITY.value:
+            return {
+                "status": "failed",
+                "error": (
+                    "peer_affinity selector is experimental and not exposed via "
+                    "this MCP tool. Use least_loaded / round_robin / random / "
+                    "affinity instead. See ADR-014 / bodai-adoption-phase-1.5.md "
+                    "Item 2 for the caller-side authorization work that will "
+                    "re-enable this path."
+                ),
+            }
+
         task = {
             "prompt": prompt,
             "timeout": timeout,

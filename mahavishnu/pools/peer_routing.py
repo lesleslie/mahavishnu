@@ -17,9 +17,9 @@ to justify the migration cost.
 
 from __future__ import annotations
 
+from collections.abc import Awaitable, Callable
 import logging
 import re
-from collections.abc import Awaitable, Callable
 from typing import Any
 
 logger = logging.getLogger(__name__)
@@ -34,6 +34,26 @@ POOL_HINT_PATTERN = re.compile(r"\bpool:\s*([A-Za-z0-9_\-]+)\s*")
 # ACL scope required to read peer models. Cross-component consumers
 # (Mahavishnu routing, Akosha analytics) must hold this grant.
 PEER_MODELS_READ_SCOPE = "peer_models:read"
+
+
+def _default_acl_provider_deny(_peer_id: str) -> dict[str, Any] | None:
+    """Default ACL provider: deny all peer-model reads.
+
+    Per the security review on Item 2's commit, the previous
+    permissive default (which granted ``peer_models:read`` to every
+    peer) allowed ANY peer to be routed via PEER_AFFINITY. The
+    secure default is deny-everyone; operators that have a real
+    ACL must pass an explicit ``acl_provider``.
+
+    This function is exported as ``DEFAULT_ACL_PROVIDER`` (the
+    named reference is what makes ``PoolManager.__init__``'s
+    runtime detection possible — anonymous lambdas can't be
+    detected by identity comparison).
+    """
+    return None
+
+
+DEFAULT_ACL_PROVIDER = _default_acl_provider_deny
 
 
 def has_pool_acl_grant(acl: dict[str, Any] | None) -> bool:
@@ -97,8 +117,13 @@ class PeerRouteResolver:
             The returned dict must include a ``representation_text``
             key (may be None when no peer model row exists).
         acl_provider: Callable returning the per-peer ACL map, or
-            None when the caller is not granted. Defaults to a
-            permissive grant (caller already gated the user).
+            None when the caller is not granted. **Defaults to a
+            deny-everyone provider** (see :data:`DEFAULT_ACL_PROVIDER`).
+            Operators with a real ACL mechanism MUST pass an
+            explicit provider; the deny default is the secure
+            fallback for ad-hoc construction. ``PoolManager.__init__``
+            detects the default and logs a warning to nudge
+            operators.
     """
 
     def __init__(
@@ -107,11 +132,12 @@ class PeerRouteResolver:
         acl_provider: Callable[[str], dict[str, Any] | None] | None = None,
     ) -> None:
         self._client = session_buddy_client
-        # Default ACL provider grants access — useful when the
-        # caller (PoolManager) has already done an upstream ACL
-        # check and only wants the peer model lookup.
+        # Secure-by-default: deny-everyone when no provider is
+        # passed. The previous permissive default granted
+        # peer_models:read to every peer and was flagged as a
+        # HIGH-severity finding in the security review.
         self._acl_provider: Callable[[str], dict[str, Any] | None] = (
-            acl_provider if acl_provider is not None else lambda _peer_id: {PEER_MODELS_READ_SCOPE: True}
+            acl_provider if acl_provider is not None else DEFAULT_ACL_PROVIDER
         )
 
     async def resolve_pool(
@@ -171,6 +197,7 @@ class PeerRouteResolver:
 
 
 __all__ = [
+    "DEFAULT_ACL_PROVIDER",
     "PEER_MODELS_READ_SCOPE",
     "POOL_HINT_PATTERN",
     "PeerRouteResolver",

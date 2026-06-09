@@ -13,7 +13,6 @@ grant is denied the route and falls back to LEAST_LOADED.
 
 from __future__ import annotations
 
-from collections.abc import AsyncGenerator
 from datetime import UTC, datetime
 from unittest.mock import MagicMock, patch
 
@@ -21,7 +20,6 @@ import pytest
 
 from mahavishnu.pools import PoolConfig, PoolManager, PoolSelector
 from mahavishnu.pools.peer_routing import PeerRouteResolver
-
 
 # ---------------------------------------------------------------------------
 # In-memory stand-in for a Session-Buddy MCP client.

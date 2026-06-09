@@ -17,6 +17,7 @@ from unittest.mock import AsyncMock, MagicMock
 import pytest
 
 from mahavishnu.pools.peer_routing import (
+    DEFAULT_ACL_PROVIDER,
     POOL_HINT_PATTERN,
     PeerRouteResolver,
     has_pool_acl_grant,
@@ -192,16 +193,42 @@ class TestPeerRouteResolver:
 
 
 class TestPeerRouteResolverDefaultAclProvider:
-    """When acl_provider is omitted, ACL is assumed granted (caller already
-    gated the user). Useful when wrapping the resolver inside another
-    ACL check."""
+    """Secure-by-default: when ``acl_provider`` is omitted, the resolver
+    uses the deny-everyone default. Per the security review on
+    Item 2's commit, the previous permissive default (granting
+    ``peer_models:read`` to every peer) was a HIGH-severity finding.
+    This test pins the new behavior.
+    """
 
     @pytest.mark.asyncio
-    async def test_default_acl_provider_grants(self) -> None:
+    async def test_default_acl_provider_denies(self) -> None:
         client = MagicMock()
         client.peer_context = AsyncMock(
             return_value={"representation_text": "pool: pool_default"}
         )
         resolver = PeerRouteResolver(session_buddy_client=client)
         result = await resolver.resolve_pool(peer_id="alice", project_id="proj-x")
-        assert result == "pool_default"
+        assert result is None, (
+            "Default ACL must deny; the peer hint must NOT be returned"
+        )
+        # And the Session-Buddy client must NOT have been consulted
+        # (the ACL gate short-circuits BEFORE the peer_context call).
+        client.peer_context.assert_not_called()
+
+    def test_default_acl_provider_identity_is_default(self) -> None:
+        """The default ACL provider is the named sentinel so
+        ``PoolManager.__init__`` can detect it by identity."""
+        client = MagicMock()
+        resolver = PeerRouteResolver(session_buddy_client=client)
+        assert resolver._acl_provider is DEFAULT_ACL_PROVIDER
+
+    def test_explicit_acl_provider_is_preserved(self) -> None:
+        """Passing an explicit acl_provider overrides the default."""
+        client = MagicMock()
+        explicit = lambda _peer_id: {"peer_models:read": True}  # noqa: E731
+        resolver = PeerRouteResolver(
+            session_buddy_client=client,
+            acl_provider=explicit,
+        )
+        assert resolver._acl_provider is explicit
+        assert resolver._acl_provider is not DEFAULT_ACL_PROVIDER

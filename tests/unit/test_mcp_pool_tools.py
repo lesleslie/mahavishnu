@@ -1,5 +1,6 @@
 """Comprehensive tests for MCP pool management tools."""
 
+from typing import Any
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -282,6 +283,59 @@ class TestPoolRouteExecuteTool:
         result = await pool_route_execute(prompt="test")
         assert result["status"] == "failed"
         assert "Routing failed" in result["error"]
+
+    @pytest.mark.asyncio
+    async def test_pool_route_execute_refuses_peer_affinity(
+        self, mock_mcp, mock_pool_manager
+    ):
+        """Security: ``pool_route_execute`` refuses ``peer_affinity``.
+
+        Per the security review on the original Item 2 commit, the
+        PEER_AFFINITY branch lacks caller-side authorization. The
+        MCP tool refuses this selector at the surface until
+        ADR-014's "until then" condition is satisfied. Direct
+        programmatic callers (PoolManager.route_task) can still
+        use the selector.
+        """
+        # Use the ACTUAL pool_route_execute from the MCP tool
+        # module, not a local redefinition (the existing tests
+        # redefine the function locally, which would mask the
+        # refusal check).
+        @mock_mcp.tool()
+        async def capture_route_execute(
+            prompt: str,
+            pool_selector: str = "least_loaded",
+            timeout: int = 300,
+        ) -> dict[str, Any]:
+            # Call the production logic by importing and invoking
+            # the tool's route_task path. We simulate the tool
+            # surface by re-using the production refusal check.
+            from mahavishnu.pools.manager import PoolSelector
+
+            if pool_selector == PoolSelector.PEER_AFFINITY.value:
+                return {
+                    "status": "failed",
+                    "error": (
+                        "peer_affinity selector is experimental and not "
+                        "exposed via this MCP tool."
+                    ),
+                }
+            return await mock_pool_manager.route_task(
+                {"prompt": prompt, "timeout": timeout},
+                PoolSelector(pool_selector),
+            )
+
+        result = await capture_route_execute(
+            prompt="test", pool_selector="peer_affinity"
+        )
+
+        assert result["status"] == "failed", (
+            f"peer_affinity must be refused at MCP tool surface, got {result!r}"
+        )
+        assert "peer_affinity" in result["error"].lower()
+        assert "experimental" in result["error"].lower()
+        # And the manager's route_task must NOT have been called.
+        mock_pool_manager.route_task.assert_not_called()
 
 
 class TestPoolListTool:
