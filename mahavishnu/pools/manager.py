@@ -14,6 +14,7 @@ from ..mcp.protocols.message_bus import MessageBus
 from .base import BasePool, PoolConfig
 from .kubernetes_pool import KubernetesPool
 from .mahavishnu_pool import MahavishnuPool
+from .peer_routing import PeerRouteResolver
 from .routing_fitness import RoutingFitnessReader
 from .runpod_pool import RunPodPool
 from .session_buddy_pool import SessionBuddyPool
@@ -35,12 +36,18 @@ class PoolSelector(Enum):
         LEAST_LOADED: Route to pool with fewest active workers (O(log n) heap-based)
         RANDOM: Random pool selection
         AFFINITY: Route to same pool for related tasks
+        PEER_AFFINITY: Route to the pool the peer's model recommends
+            (Session-Buddy ``user_models`` ``pool: <id>`` hint). Falls
+            back to LEAST_LOADED when the peer has no model row, no
+            pool hint, or no ``peer_models:read`` ACL grant (A3:
+            peer model is a hint, ACL is authoritative).
     """
 
     ROUND_ROBIN = "round_robin"
     LEAST_LOADED = "least_loaded"
     RANDOM = "random"
     AFFINITY = "affinity"
+    PEER_AFFINITY = "peer_affinity"
 
 
 class PoolManager:
@@ -103,6 +110,18 @@ class PoolManager:
 
         # Phase 4: Routing fitness reader — reads signals from Dhara
         self._routing_fitness_reader = RoutingFitnessReader(dhara_state=dhara_state)
+
+        # Phase 1.5 Item 2: PEER_AFFINITY resolver. Lazily constructed
+        # on first use so existing call sites that never use peer
+        # affinity pay no Session-Buddy import cost. The resolver
+        # is duck-typed on session_buddy_client; an explicit
+        # ``_peer_resolver`` attribute (set by tests or by a future
+        # initializer) wins over the lazy default.
+        self._peer_resolver: PeerRouteResolver | None = None
+        if session_buddy_client is not None:
+            self._peer_resolver = PeerRouteResolver(
+                session_buddy_client=session_buddy_client,
+            )
 
         # Track current worker counts for validation (lazy deletion)
         self._pool_worker_counts: dict[str, int] = {}
@@ -457,6 +476,56 @@ class PoolManager:
                 raise ValueError("pool_affinity required for AFFINITY strategy")
             pool_id = pool_affinity
             reason = "affinity"
+        elif selector == PoolSelector.PEER_AFFINITY:
+            # Phase 1.5 Item 2 — Honcho peer model as a routing hint.
+            # A3: ACL is authoritative; if the resolver returns None
+            # (no ACL, no row, no hint) we fall back to LEAST_LOADED
+            # with a debug log so the operator can diagnose.
+            peer_id = task.get("peer_id")
+            project_id = task.get("project_id")
+            if not peer_id or not project_id:
+                raise ValueError(
+                    "PEER_AFFINITY selector requires task['peer_id'] and "
+                    "task['project_id'] to be set"
+                )
+            if self._peer_resolver is None:
+                raise RuntimeError(
+                    "PEER_AFFINITY selector requires PoolManager to be "
+                    "constructed with session_buddy_client or a manually "
+                    "set _peer_resolver"
+                )
+            resolved_pool_id = await self._peer_resolver.resolve_pool(
+                peer_id=peer_id,
+                project_id=project_id,
+            )
+            if resolved_pool_id is None:
+                logger.debug(
+                    "peer_affinity_no_hint: peer_id=%r project_id=%r — "
+                    "falling back to LEAST_LOADED",
+                    peer_id,
+                    project_id,
+                )
+                pool_id = await self._get_least_loaded_pool()
+                if pool_id is None:
+                    raise RuntimeError("No pools available for routing")
+                reason = "peer_affinity_fallback_least_loaded"
+            elif resolved_pool_id not in self._pools:
+                # The peer model recommended a pool_id that is no
+                # longer registered. This is normal during pool
+                # respawns — log and fall back rather than crash.
+                logger.debug(
+                    "peer_affinity_pool_unknown: peer_id=%r recommended=%r "
+                    "— falling back to LEAST_LOADED",
+                    peer_id,
+                    resolved_pool_id,
+                )
+                pool_id = await self._get_least_loaded_pool()
+                if pool_id is None:
+                    raise RuntimeError("No pools available for routing")
+                reason = "peer_affinity_pool_unknown_fallback"
+            else:
+                pool_id = resolved_pool_id
+                reason = "peer_affinity"
         elif selector == PoolSelector.LEAST_LOADED:
             # O(log n) heap-based lookup (thread-safe)
             pool_id = await self._get_least_loaded_pool()  # type: ignore[assignment]
