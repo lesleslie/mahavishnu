@@ -1,362 +1,616 @@
-"""Comprehensive tests for MCP server core functionality."""
+"""Tests for FastMCPServer core functionality in mahavishnu.mcp.server_core.
 
-from unittest.mock import AsyncMock, patch
+Covers initialization, tool registration, telemetry middleware,
+HTTP health endpoint registration, McpretentiousMCPClient dispatch,
+lifecycle, and tool-registration metrics.
+"""
 
-from mcp.types import Resource, Tool
+from __future__ import annotations
+
+from typing import Any
+from unittest.mock import AsyncMock, MagicMock, patch
+
+from fastmcp import FastMCP
 import pytest
 
-# Skip - API changed, needs test update
-pytest.skip("MCP server API has changed - test needs update", allow_module_level=True)
+from mahavishnu.core.app import MahavishnuApp
+from mahavishnu.core.config import MahavishnuSettings
+from mahavishnu.mcp.server_core import (
+    FastMCPServer,
+    McpretentiousMCPClient,
+    run_server,
+)
+from monitoring.metrics import mcp_tools_registered
 
-# from mahavishnu.core.config import MahavishnuSettings
-# from mahavishnu.mcp.server_core import FastMCPServer
+# =============================================================================
+# Fixtures
+# =============================================================================
+
+
+def _make_settings(**overrides: Any) -> MahavishnuSettings:
+    """Build a MahavishnuSettings instance with safe defaults for tests."""
+    defaults: dict[str, Any] = {
+        "server_name": "Test Server",
+        "observability_enabled": False,
+        "terminal_enabled": False,
+        "pools": {"enabled": False},
+        "workers": {"enabled": False},
+        "otel_storage": {"enabled": False},
+    }
+    defaults.update(overrides)
+    return MahavishnuSettings(**defaults)
 
 
 @pytest.fixture
-def mock_settings():
-    """Create mock settings for testing."""
-    return MahavishnuSettings(
-        server_name="Test Server",
-        llm_provider="anthropic",
-        observability_enabled=False,
-        llm={"model": "claude-sonnet-4"},
-    )
+def mock_settings() -> MahavishnuSettings:
+    """Create baseline mock settings for server core tests."""
+    return _make_settings()
 
 
 @pytest.fixture
-def server(mock_settings):
-    """Create server instance for testing."""
-    return MahavishnuMCPServer(settings=mock_settings)
+def mock_app(mock_settings: MahavishnuSettings) -> MagicMock:
+    """Create a MagicMock spec'd to MahavishnuApp for FastMCPServer init."""
+    app = MagicMock(spec=MahavishnuApp)
+    app.config = mock_settings
+    app.get_repos = MagicMock(return_value=[])
+    app.is_healthy = MagicMock(return_value=True)
+    app.adapters = {}
+    app.workflow_state_manager = MagicMock()
+    app.rbac_manager = MagicMock()
+    app.observability = MagicMock()
+    app.opensearch_integration = MagicMock()
+    app.error_recovery_manager = MagicMock()
+    app.monitoring_service = MagicMock()
+    app.pool_manager = None
+    app.worktree_coordinator = None
+    return app
 
 
-class TestMahavishnuMCPServerInitialization:
-    """Test server initialization and configuration."""
-
-    def test_server_initialization(self, server, mock_settings):
-        """Test server initializes with correct settings."""
-        assert server.settings == mock_settings
-        assert server.settings.server_name == "Test Server"
-        assert server.settings.llm_provider == "anthropic"
-
-    def test_server_name(self, server):
-        """Test server name property."""
-        assert server.name == "Mahavishnu Orchestrator"
-
-    def test_server_version(self, server):
-        """Test server version property."""
-        assert server.version == "1.0.0"
+@pytest.fixture
+def server(mock_app: MagicMock) -> FastMCPServer:
+    """Create a FastMCPServer bound to a mocked MahavishnuApp."""
+    return FastMCPServer(app=mock_app)
 
 
-class TestMahavishnuMCPServerLifecycle:
-    """Test server lifecycle methods."""
-
-    @pytest.mark.asyncio
-    async def test_server_startup(self, server):
-        """Test server startup initializes all components."""
-        # Mock the initialization methods
-        server._initialize_adapters = AsyncMock()
-        server._initialize_pools = AsyncMock()
-        server._initialize_workers = AsyncMock()
-        server._register_tools = AsyncMock()
-
-        await server.startup()
-
-        # Verify all initialization methods were called
-        server._initialize_adapters.assert_called_once()
-        server._initialize_pools.assert_called_once()
-        server._initialize_workers.assert_called_once()
-        server._register_tools.assert_called_once()
-
-    @pytest.mark.asyncio
-    async def test_server_shutdown(self, server):
-        """Test server shutdown cleans up resources."""
-        # Mock cleanup methods
-        server._cleanup_workers = AsyncMock()
-        server._cleanup_pools = AsyncMock()
-        server._cleanup_adapters = AsyncMock()
-
-        await server.shutdown()
-
-        # Verify all cleanup methods were called
-        server._cleanup_workers.assert_called_once()
-        server._cleanup_pools.assert_called_once()
-        server._cleanup_adapters.assert_called_once()
+# =============================================================================
+# FastMCPServer.__init__ Tests
+# =============================================================================
 
 
-class TestMahavishnuMCPServerTools:
-    """Test server tool registration and management."""
+class TestFastMCPServerInit:
+    """Test suite for FastMCPServer.__init__ behavior."""
 
-    @pytest.mark.asyncio
-    async def test_list_tools(self, server):
-        """Test listing all available tools."""
-        tools = await server.list_tools()
+    def test_init_with_explicit_app(self, mock_app: MagicMock) -> None:
+        """Server should accept and store an explicit app instance."""
+        with patch("mahavishnu.mcp.server_core.get_auth_from_config"):
+            srv = FastMCPServer(app=mock_app)
 
-        # Verify we get a list of tools
-        assert isinstance(tools, list)
-        assert len(tools) > 0
+        assert srv.app is mock_app
+        assert isinstance(srv.server, FastMCP)
 
-        # Verify tool structure
-        for tool in tools:
-            assert isinstance(tool, Tool)
-            assert hasattr(tool, "name")
-            assert hasattr(tool, "description")
-            assert hasattr(tool, "inputSchema")
+    def test_init_creates_mahavishnu_app_when_app_is_none(self) -> None:
+        """Server should auto-construct MahavishnuApp when app=None."""
+        cfg = _make_settings()
+        with (
+            patch("mahavishnu.mcp.server_core.MahavishnuApp") as mock_app_cls,
+            patch("mahavishnu.mcp.server_core.get_auth_from_config"),
+        ):
+            mock_instance = MagicMock()
+            mock_instance.config = cfg
+            mock_app_cls.return_value = mock_instance
 
-    @pytest.mark.asyncio
-    async def test_list_tools_includes_repository_tools(self, server):
-        """Test that repository management tools are included."""
-        tools = await server.list_tools()
+            FastMCPServer(app=None, config=cfg)
 
-        tool_names = [tool.name for tool in tools]
+            mock_app_cls.assert_called_once_with(cfg)
 
-        # Verify key repository tools are present
-        assert "list_repos" in tool_names
-        assert "get_repo_info" in tool_names
-        assert "validate_repo" in tool_names
+    def test_init_uses_explicit_config(self) -> None:
+        """Server should pass provided config to MahavishnuApp."""
+        cfg = _make_settings(server_name="Explicit Config")
+        with (
+            patch("mahavishnu.mcp.server_core.MahavishnuApp") as mock_app_cls,
+            patch("mahavishnu.mcp.server_core.get_auth_from_config"),
+        ):
+            mock_instance = MagicMock()
+            mock_instance.config = cfg
+            mock_app_cls.return_value = mock_instance
 
-    @pytest.mark.asyncio
-    async def test_list_tools_includes_pool_tools(self, server):
-        """Test that pool management tools are included."""
-        tools = await server.list_tools()
+            srv = FastMCPServer(app=None, config=cfg)
 
-        tool_names = [tool.name for tool in tools]
+            assert srv.app.config.server_name == "Explicit Config"
+            mock_app_cls.assert_called_once_with(cfg)
 
-        # Verify pool tools are present
-        assert "pool_spawn" in tool_names
-        assert "pool_list" in tool_names
-        assert "pool_execute" in tool_names
-        assert "pool_health" in tool_names
+    def test_init_tracks_registered_tool_count(self, server: FastMCPServer) -> None:
+        """Server should expose a tool count attribute starting at zero or more."""
+        assert hasattr(server, "_registered_tool_count")
+        assert isinstance(server._registered_tool_count, int)
+        assert server._registered_tool_count >= 0
 
-    @pytest.mark.asyncio
-    async def test_list_tools_includes_coordination_tools(self, server):
-        """Test that coordination tools are included."""
-        tools = await server.list_tools()
+    def test_init_creates_mcp_client_wrapper(self, server: FastMCPServer) -> None:
+        """Server should initialize a McpretentiousMCPClient wrapper."""
+        assert server.mcp_client is not None
+        assert isinstance(server.mcp_client, McpretentiousMCPClient)
 
-        tool_names = [tool.name for tool in tools]
+    def test_init_with_tracing_disabled_skips_middleware(
+        self, mock_app: MagicMock
+    ) -> None:
+        """Telemetry middleware should NOT be added when tracing is disabled."""
+        mock_app.config.observability = MagicMock(tracing_enabled=False)
 
-        # Verify coordination tools are present
-        assert "trigger_workflow" in tool_names
-        assert "get_workflow_status" in tool_names
-        assert "list_workflows" in tool_names
+        with (
+            patch("mahavishnu.mcp.server_core.get_auth_from_config"),
+            patch.object(FastMCP, "add_middleware") as mock_add,
+        ):
+            FastMCPServer(app=mock_app)
 
+            mock_add.assert_not_called()
 
-class TestMahavishnuMCPServerPrompts:
-    """Test server prompt management."""
+    def test_init_with_tracing_enabled_adds_middleware(
+        self, mock_app: MagicMock
+    ) -> None:
+        """Telemetry middleware should be added when tracing is enabled."""
+        from mcp_common.server.telemetry import FastMCPOpenTelemetryMiddleware
 
-    @pytest.mark.asyncio
-    async def test_list_prompts(self, server):
-        """Test listing all available prompts."""
-        prompts = await server.list_prompts()
-
-        # Verify we get a list of prompts
-        assert isinstance(prompts, list)
-
-    @pytest.mark.asyncio
-    async def test_get_prompt(self, server):
-        """Test getting a specific prompt."""
-        # Test getting a prompt that exists
-        prompt = await server.get_prompt(
-            name="workflow_orchestration", arguments={"task": "Test task"}
+        mock_app.config.observability = MagicMock(
+            tracing_enabled=True, environment="testing"
         )
 
-        assert prompt is not None
-        assert hasattr(prompt, "messages")
+        with (
+            patch("mahavishnu.mcp.server_core.get_auth_from_config"),
+            patch.object(FastMCP, "add_middleware") as mock_add,
+        ):
+            FastMCPServer(app=mock_app)
 
-    @pytest.mark.asyncio
-    async def test_get_prompt_not_found(self, server):
-        """Test getting a non-existent prompt raises error."""
-        with pytest.raises(Exception):
-            await server.get_prompt(name="nonexistent_prompt", arguments={})
-
-
-class TestMahavishnuMCPServerResources:
-    """Test server resource management."""
-
-    @pytest.mark.asyncio
-    async def test_list_resources(self, server):
-        """Test listing all available resources."""
-        resources = await server.list_resources()
-
-        # Verify we get a list of resources
-        assert isinstance(resources, list)
-
-        for resource in resources:
-            assert isinstance(resource, Resource)
-            assert hasattr(resource, "uri")
-            assert hasattr(resource, "name")
-            assert hasattr(resource, "description")
-
-    @pytest.mark.asyncio
-    async def test_read_resource(self, server):
-        """Test reading a specific resource."""
-        # Test reading a valid resource
-        content = await server.read_resource(uri="config://current")
-
-        assert content is not None
-        assert len(content) > 0
-
-    @pytest.mark.asyncio
-    async def test_read_resource_not_found(self, server):
-        """Test reading a non-existent resource raises error."""
-        with pytest.raises(Exception):
-            await server.read_resource(uri="nonexistent://resource")
+            # Confirm middleware is an instance of the OTel middleware
+            assert mock_add.called
+            middleware_arg = mock_add.call_args.args[0]
+            assert isinstance(middleware_arg, FastMCPOpenTelemetryMiddleware)
 
 
-class TestMahavishnuMCPServerToolExecution:
-    """Test actual tool execution."""
-
-    @pytest.mark.asyncio
-    async def test_call_tool_list_repos(self, server):
-        """Test calling list_repos tool."""
-        result = await server.call_tool(name="list_repos", arguments={})
-
-        assert result is not None
-        assert hasattr(result, "content")
-        assert len(result.content) > 0
-
-    @pytest.mark.asyncio
-    async def test_call_tool_with_invalid_arguments(self, server):
-        """Test calling tool with invalid arguments raises error."""
-        with pytest.raises(Exception):
-            await server.call_tool(name="list_repos", arguments={"invalid_arg": "value"})
-
-    @pytest.mark.asyncio
-    async def test_call_tool_not_found(self, server):
-        """Test calling non-existent tool raises error."""
-        with pytest.raises(Exception):
-            await server.call_tool(name="nonexistent_tool", arguments={})
+# =============================================================================
+# _register_telemetry_middleware Tests
+# =============================================================================
 
 
-class TestMahavishnuMCPServerConfiguration:
-    """Test server configuration handling."""
+class TestRegisterTelemetryMiddleware:
+    """Test suite for _register_telemetry_middleware."""
 
-    @pytest.mark.asyncio
-    async def test_initialize_with_default_config(self):
-        """Test server initializes with default configuration."""
-        settings = MahavishnuSettings()  # Use defaults
-        server = MahavishnuMCPServer(settings=settings)
+    def test_middleware_not_added_when_observability_missing(
+        self, server: FastMCPServer
+    ) -> None:
+        """No middleware when observability attribute is None."""
+        server.app.config.observability = None
 
-        assert server.settings is not None
-        assert server.settings.server_name is not None
+        with patch.object(server.server, "add_middleware") as mock_add:
+            server._register_telemetry_middleware()
+            mock_add.assert_not_called()
 
-    @pytest.mark.asyncio
-    async def test_initialize_with_custom_config(self):
-        """Test server initializes with custom configuration."""
-        settings = MahavishnuSettings(
-            server_name="Custom Server", llm_provider="openai", llm={"model": "gpt-4"}
+    def test_middleware_not_added_when_tracing_disabled(
+        self, server: FastMCPServer
+    ) -> None:
+        """No middleware when observability.tracing_enabled is False."""
+        server.app.config.observability = MagicMock(tracing_enabled=False)
+
+        with patch.object(server.server, "add_middleware") as mock_add:
+            server._register_telemetry_middleware()
+            mock_add.assert_not_called()
+
+    def test_middleware_added_when_tracing_enabled(
+        self, server: FastMCPServer
+    ) -> None:
+        """Middleware is added with correct service name and environment."""
+        from mcp_common.server.telemetry import FastMCPOpenTelemetryMiddleware
+
+        server.app.config.observability = MagicMock(
+            tracing_enabled=True, environment="ci"
         )
-        server = MahavishnuMCPServer(settings=settings)
+        server.app.config.server_name = "test-server"
 
-        assert server.settings.server_name == "Custom Server"
-        assert server.settings.llm_provider == "openai"
-        assert server.settings.llm_model == "gpt-4"
+        with patch.object(server.server, "add_middleware") as mock_add:
+            server._register_telemetry_middleware()
+
+            mock_add.assert_called_once()
+            middleware = mock_add.call_args.args[0]
+            assert isinstance(middleware, FastMCPOpenTelemetryMiddleware)
+            assert middleware.service_name == "test-server"
+            assert middleware.environment == "ci"
+
+    def test_middleware_defaults_environment_to_production(
+        self, server: FastMCPServer
+    ) -> None:
+        """When no environment is configured, fallback to 'production'."""
+        server.app.config.observability = MagicMock(
+            tracing_enabled=True, environment=None
+        )
+        server.app.config.server_name = "fallback-server"
+
+        with patch.object(server.server, "add_middleware") as mock_add:
+            server._register_telemetry_middleware()
+
+            middleware = mock_add.call_args.args[0]
+            assert middleware.environment == "production"
 
 
-class TestMahavishnuMCPServerErrorHandling:
-    """Test server error handling."""
-
-    @pytest.mark.asyncio
-    async def test_tool_execution_error_handling(self, server):
-        """Test that tool execution errors are handled gracefully."""
-        # Mock a tool that raises an error
-        with patch.object(server, "_execute_tool", side_effect=Exception("Test error")):
-            with pytest.raises(Exception) as exc_info:
-                await server.call_tool(name="failing_tool", arguments={})
-            assert "Test error" in str(exc_info.value)
-
-    @pytest.mark.asyncio
-    async def test_resource_read_error_handling(self, server):
-        """Test that resource read errors are handled gracefully."""
-        with patch.object(server, "_read_resource", side_effect=Exception("Read failed")):
-            with pytest.raises(Exception) as exc_info:
-                await server.read_resource(uri="failing://resource")
-            assert "Read failed" in str(exc_info.value)
+# =============================================================================
+# _register_tools and tool-registration metrics
+# =============================================================================
 
 
-class TestMahavishnuMCPServerHealth:
-    """Test server health and monitoring."""
-
-    @pytest.mark.asyncio
-    async def test_health_check(self, server):
-        """Test server health check."""
-        health = await server.health_check()
-
-        assert health is not None
-        assert "status" in health
-        assert health["status"] in ["healthy", "unhealthy", "degraded"]
+class TestRegisterTools:
+    """Test suite for tool registration and count tracking."""
 
     @pytest.mark.asyncio
-    async def test_health_check_includes_components(self, server):
-        """Test health check includes component status."""
-        health = await server.health_check()
-
-        # Verify health check includes component details
-        assert "components" in health or "details" in health
-
-
-class TestMahavishnuMCPServerMetrics:
-    """Test server metrics collection."""
+    async def test_register_tools_populates_count(self, server: FastMCPServer) -> None:
+        """Initial registration should yield a non-zero tool count."""
+        # Force re-registration to assert count was at zero before
+        server._registered_tool_count = 0
+        server._register_tools()
+        assert server._registered_tool_count > 0
 
     @pytest.mark.asyncio
-    async def test_get_metrics(self, server):
-        """Test getting server metrics."""
-        metrics = await server.get_metrics()
-
-        assert metrics is not None
-        assert isinstance(metrics, dict)
-
-        # Verify common metric keys
-        expected_keys = ["uptime", "requests_processed", "errors"]
-        for key in expected_keys:
-            assert key in metrics or any(k.startswith(key) for k in metrics.keys())
+    async def test_tool_count_matches_registered_tools(
+        self, server: FastMCPServer
+    ) -> None:
+        """The internal counter should match FastMCP's reported tool list."""
+        tools = await server.server.list_tools()
+        tool_names = {t.name for t in tools}
+        assert len(tool_names) == server._registered_tool_count
 
     @pytest.mark.asyncio
-    async def test_metrics_includes_tool_metrics(self, server):
-        """Test metrics include tool execution statistics."""
-        metrics = await server.get_metrics()
+    async def test_known_core_tools_are_registered(
+        self, server: FastMCPServer
+    ) -> None:
+        """Critical core tools should be present in the FastMCP registry."""
+        tools = await server.server.list_tools()
+        tool_names = {t.name for t in tools}
 
-        # Verify tool-related metrics are present
-        assert "tools" in metrics or "tool_calls" in metrics
+        expected = {
+            "list_repos",
+            "trigger_workflow",
+            "get_workflow_status",
+            "list_workflows",
+            "cancel_workflow",
+            "create_user",
+            "check_permission",
+            "get_health",
+            "list_adapters",
+            "get_observability_metrics",
+            "discover_tools",
+            "get_tool_versions",
+        }
+        missing = expected - tool_names
+        assert not missing, f"Missing tools: {missing}"
+
+    def test_metric_gauge_matches_count(self, server: FastMCPServer) -> None:
+        """mcp_tools_registered gauge should reflect the current count."""
+        server._update_registered_tool_metrics()
+        gauge_value = mcp_tools_registered.labels(server=server.app.config.server_name)
+        assert gauge_value._value.get() == server._registered_tool_count
+
+    def test_metric_gauge_uses_default_when_name_missing(
+        self, mock_app: MagicMock
+    ) -> None:
+        """Gauge label should fall back to 'mahavishnu' for empty/missing names."""
+        mock_app.config.server_name = ""
+        with patch("mahavishnu.mcp.server_core.get_auth_from_config"):
+            srv = FastMCPServer(app=mock_app)
+
+        srv._update_registered_tool_metrics()
+        gauge_value = mcp_tools_registered.labels(server="mahavishnu")
+        assert gauge_value._value.get() == srv._registered_tool_count
 
 
-class TestMahavishnuMCPServerLogging:
-    """Test server logging functionality."""
+# =============================================================================
+# HTTP health endpoint registration
+# =============================================================================
+
+
+class TestHealthEndpoint:
+    """Test suite for the /health and /ready HTTP endpoints."""
+
+    def test_health_endpoint_registered(self, server: FastMCPServer) -> None:
+        """GET /health should be reachable on the underlying FastMCP ASGI app."""
+        http_app = server.server.http_app()
+        paths = {route.path for route in http_app.routes if hasattr(route, "path")}
+
+        assert "/health" in paths
+
+    def test_healthz_endpoint_registered(self, server: FastMCPServer) -> None:
+        """GET /healthz should also be exposed for k8s-style health checks."""
+        http_app = server.server.http_app()
+        paths = {route.path for route in http_app.routes if hasattr(route, "path")}
+
+        assert "/healthz" in paths
+
+    def test_metrics_endpoint_registered(self, server: FastMCPServer) -> None:
+        """GET /metrics should be exposed for Prometheus scrapers."""
+        http_app = server.server.http_app()
+        paths = {route.path for route in http_app.routes if hasattr(route, "path")}
+
+        assert "/metrics" in paths
+
+
+# =============================================================================
+# McpretentiousMCPClient Tests
+# =============================================================================
+
+
+class TestMcpretentiousMCPClient:
+    """Test suite for the McpretentiousMCPClient wrapper."""
+
+    def test_initialization_defaults(self) -> None:
+        """Client should start un-started with a non-None inner client."""
+        client = McpretentiousMCPClient()
+        assert client._started is False
+        assert client._client is not None
+        assert hasattr(client._client, "start")
 
     @pytest.mark.asyncio
-    async def test_logging_configuration(self, server):
-        """Test logging is properly configured."""
-        assert server.logger is not None
-        assert hasattr(server.logger, "info")
-        assert hasattr(server.logger, "error")
-        assert hasattr(server.logger, "debug")
+    async def test_ensure_started_starts_first_time(self) -> None:
+        """First call should invoke the inner client's start."""
+        client = McpretentiousMCPClient()
+        client._client.start = AsyncMock()
+
+        await client._ensure_started()
+
+        assert client._started is True
+        client._client.start.assert_awaited_once()
 
     @pytest.mark.asyncio
-    async def test_log_messages(self, server, caplog):
-        """Test that server logs messages correctly."""
-        import logging
+    async def test_ensure_started_skips_when_already_started(self) -> None:
+        """Subsequent calls should not re-start the inner client."""
+        client = McpretentiousMCPClient()
+        client._client.start = AsyncMock()
+        client._started = True
 
-        with caplog.at_level(logging.INFO):
-            server.logger.info("Test log message")
+        await client._ensure_started()
 
-        assert "Test log message" in caplog.text
-
-
-class TestMahavishnuMCPServerConcurrency:
-    """Test server handles concurrent requests."""
+        client._client.start.assert_not_awaited()
 
     @pytest.mark.asyncio
-    async def test_concurrent_tool_calls(self, server):
-        """Test server handles multiple tool calls concurrently."""
-        import asyncio
+    async def test_start_failure_raises_runtime_error(self) -> None:
+        """A start failure should raise RuntimeError with install hint."""
+        client = McpretentiousMCPClient()
+        client._client.start = AsyncMock(side_effect=Exception("uvx missing"))
 
-        # Create multiple concurrent tool calls
-        tasks = [server.call_tool("list_repos", {}) for _ in range(5)]
+        with pytest.raises(RuntimeError, match="Could not start mcpretentious server"):
+            await client._ensure_started()
 
-        # Execute all concurrently
-        results = await asyncio.gather(*tasks, return_exceptions=True)
+    @pytest.mark.asyncio
+    async def test_call_tool_dispatches_open(self) -> None:
+        """mcpretentious-open should call open_terminal with provided dims."""
+        client = McpretentiousMCPClient()
+        client._client.start = AsyncMock()
+        client._client.open_terminal = AsyncMock(return_value="term_1")
 
-        # Verify all succeeded
-        assert len(results) == 5
-        for result in results:
-            if not isinstance(result, Exception):
-                assert result is not None
+        result = await client.call_tool(
+            "mcpretentious-open", {"columns": 120, "rows": 40}
+        )
+
+        assert result == {"terminal_id": "term_1"}
+        client._client.open_terminal.assert_awaited_once_with(columns=120, rows=40)
+
+    @pytest.mark.asyncio
+    async def test_call_tool_dispatches_type(self) -> None:
+        """mcpretentious-type should pass input splat to type_text."""
+        client = McpretentiousMCPClient()
+        client._client.start = AsyncMock()
+        client._client.type_text = AsyncMock()
+
+        result = await client.call_tool(
+            "mcpretentious-type", {"terminal_id": "t1", "input": ["ls", "-la"]}
+        )
+
+        assert result == {}
+        client._client.type_text.assert_awaited_once_with("t1", "ls", "-la")
+
+    @pytest.mark.asyncio
+    async def test_call_tool_dispatches_read(self) -> None:
+        """mcpretentious-read should map limit_lines -> lines."""
+        client = McpretentiousMCPClient()
+        client._client.start = AsyncMock()
+        client._client.read_text = AsyncMock(return_value="line1\nline2")
+
+        result = await client.call_tool(
+            "mcpretentious-read", {"terminal_id": "t1", "limit_lines": 5}
+        )
+
+        assert result == {"output": "line1\nline2"}
+        client._client.read_text.assert_awaited_once_with("t1", lines=5)
+
+    @pytest.mark.asyncio
+    async def test_call_tool_dispatches_close(self) -> None:
+        """mcpretentious-close should delegate to close_terminal."""
+        client = McpretentiousMCPClient()
+        client._client.start = AsyncMock()
+        client._client.close_terminal = AsyncMock()
+
+        result = await client.call_tool("mcpretentious-close", {"terminal_id": "t1"})
+
+        assert result == {}
+        client._client.close_terminal.assert_awaited_once_with("t1")
+
+    @pytest.mark.asyncio
+    async def test_call_tool_dispatches_list(self) -> None:
+        """mcpretentious-list should return terminals list."""
+        client = McpretentiousMCPClient()
+        client._client.start = AsyncMock()
+        client._client.list_terminals = AsyncMock(return_value=["t1", "t2"])
+
+        result = await client.call_tool("mcpretentious-list", {})
+
+        assert result == {"terminals": ["t1", "t2"]}
+        client._client.list_terminals.assert_awaited_once()
+
+    @pytest.mark.asyncio
+    async def test_call_tool_unknown_name_raises_value_error(self) -> None:
+        """An unknown tool name should raise ValueError."""
+        client = McpretentiousMCPClient()
+        client._client.start = AsyncMock()
+        await client._ensure_started()
+
+        with pytest.raises(ValueError, match="Unknown tool: nope"):
+            await client.call_tool("nope", {})
+
+    @pytest.mark.asyncio
+    async def test_call_tool_propagates_inner_errors(self) -> None:
+        """Underlying errors should be re-raised verbatim."""
+        client = McpretentiousMCPClient()
+        client._client.start = AsyncMock()
+        client._client.list_terminals = AsyncMock(side_effect=RuntimeError("boom"))
+
+        await client._ensure_started()
+
+        with pytest.raises(RuntimeError, match="boom"):
+            await client.call_tool("mcpretentious-list", {})
+
+
+# =============================================================================
+# Lifecycle Tests
+# =============================================================================
+
+
+class TestLifecycle:
+    """Test suite for FastMCPServer.start / stop / register_worktree_tools."""
+
+    @pytest.mark.asyncio
+    async def test_start_invokes_run_http_async(self, server: FastMCPServer) -> None:
+        """start() should call run_http_async with the provided host/port."""
+        server.server.run_http_async = AsyncMock()
+
+        await server.start(host="127.0.0.1", port=4001)
+
+        server.server.run_http_async.assert_awaited_once_with(
+            host="127.0.0.1", port=4001
+        )
+
+    @pytest.mark.asyncio
+    async def test_start_uses_default_host_and_port(
+        self, server: FastMCPServer
+    ) -> None:
+        """start() should default to 127.0.0.1:3000 when not specified."""
+        server.server.run_http_async = AsyncMock()
+
+        await server.start()
+
+        server.server.run_http_async.assert_awaited_once_with(host="127.0.0.1", port=3000)
+
+    @pytest.mark.asyncio
+    async def test_stop_invokes_client_stop(self, server: FastMCPServer) -> None:
+        """stop() should call _client.stop on the mcpretentious client."""
+        server.mcp_client._client.stop = AsyncMock()
+
+        await server.stop()
+
+        server.mcp_client._client.stop.assert_awaited_once()
+
+    @pytest.mark.asyncio
+    async def test_stop_handles_inner_errors(self, server: FastMCPServer) -> None:
+        """stop() should not propagate errors from the inner client."""
+        server.mcp_client._client.stop = AsyncMock(side_effect=Exception("ignored"))
+
+        # Should NOT raise
+        await server.stop()
+
+    @pytest.mark.asyncio
+    async def test_register_worktree_tools_noop_when_coordinator_missing(
+        self, server: FastMCPServer
+    ) -> None:
+        """register_worktree_tools should be a no-op when coordinator is None."""
+        server.app.worktree_coordinator = None
+
+        # Should not raise and should not register anything new
+        await server.register_worktree_tools()
+
+
+# =============================================================================
+# run_server helper
+# =============================================================================
+
+
+class TestRunServerHelper:
+    """Test the module-level run_server coroutine."""
+
+    @pytest.mark.asyncio
+    async def test_run_server_constructs_and_starts(self) -> None:
+        """run_server() should build a FastMCPServer and call start()."""
+        with patch("mahavishnu.mcp.server_core.FastMCPServer") as mock_cls:
+            mock_instance = MagicMock()
+            mock_instance.start = AsyncMock()
+            mock_cls.return_value = mock_instance
+
+            await run_server(config=None)
+
+            mock_cls.assert_called_once()
+            mock_instance.start.assert_awaited_once()
+
+
+# =============================================================================
+# Tool-handler wrapping
+# =============================================================================
+
+
+class TestToolHandlerWrapping:
+    """Test suite for _wrap_tool_handler and _classify_tool_result."""
+
+    @pytest.mark.asyncio
+    async def test_async_wrapper_records_success_metric(
+        self, server: FastMCPServer
+    ) -> None:
+        """An async tool returning a normal value should be classified as success."""
+        from monitoring.metrics import mcp_tool_calls_total
+
+        async def my_tool() -> dict[str, str]:
+            return {"hello": "world"}
+
+        wrapped = server._wrap_tool_handler(my_tool)
+        result = await wrapped()
+        assert result == {"hello": "world"}
+
+        counter = mcp_tool_calls_total.labels(tool_name="my_tool", status="success")
+        assert counter._value.get() >= 1
+
+    @pytest.mark.asyncio
+    async def test_async_wrapper_records_error_metric(
+        self, server: FastMCPServer
+    ) -> None:
+        """An async tool that raises should be classified as error."""
+        from monitoring.metrics import mcp_tool_calls_total
+
+        async def failing_tool() -> None:
+            raise RuntimeError("nope")
+
+        wrapped = server._wrap_tool_handler(failing_tool)
+        with pytest.raises(RuntimeError, match="nope"):
+            await wrapped()
+
+        counter = mcp_tool_calls_total.labels(tool_name="failing_tool", status="error")
+        assert counter._value.get() >= 1
+
+    def test_classify_tool_result_with_error_key(self, server: FastMCPServer) -> None:
+        """A dict containing an 'error' key should be classified as 'error'."""
+        assert server._classify_tool_result({"error": "bad"}) == "error"
+        assert server._classify_tool_result({"status": "error"}) == "error"
+        assert server._classify_tool_result({"status": "failed"}) == "error"
+        assert server._classify_tool_result({"status": "success"}) == "success"
+        assert server._classify_tool_result({"hello": "world"}) == "success"
+        # Non-dict inputs are always 'success'
+        assert server._classify_tool_result("plain string") == "success"
+        assert server._classify_tool_result(None) == "success"
+
+
+# =============================================================================
+# Server identity and version
+# =============================================================================
+
+
+class TestServerIdentity:
+    """Test suite for server name/version metadata."""
+
+    def test_server_name(self, server: FastMCPServer) -> None:
+        """The FastMCP server should be named 'Mahavishnu Orchestrator'."""
+        assert server.server.name == "Mahavishnu Orchestrator"
+
+    def test_server_has_version_string(self, server: FastMCPServer) -> None:
+        """A version string should be set on the FastMCP instance."""
+        assert isinstance(server.server.version, str)
+        assert server.server.version
