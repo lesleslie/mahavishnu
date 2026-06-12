@@ -234,11 +234,17 @@ class TestPoolRouting:
                 mock_pool.execute_task = mock_execute
                 app.pool_manager._pools[f"pool{i}"] = mock_pool
 
-            # Route with affinity to pool1
+            # Route with affinity to pool1. ADR-014 caller-side
+            # authorization: specific-pool selectors require a
+            # caller_pool_allowlist. Without it the manager
+            # refuses to honor the hint and falls back to
+            # LEAST_LOADED. Pass an allowlist that includes
+            # pool1 so the affinity route is honored.
             result = await app.pool_manager.route_task(
                 {"prompt": "Test"},
                 pool_selector=PoolSelector.AFFINITY,
                 pool_affinity="pool1",
+                caller_pool_allowlist={"pool0", "pool1", "pool2"},
             )
 
             # Should always route to pool1

@@ -88,3 +88,39 @@ Together, Items 1 and 2 are the implementation; this ADR is the contract they im
 - Session-Buddy `user_models` table (Phase 1.5) — peer model storage
 - Akosha `source_type` discriminator (Item 1) — `reflection` vs. `user_model` vs. `peer_signal`
 - `PoolSelector.PEER_AFFINITY` (Item 2) — first-class selector for peer-scoped routing
+
+## Implementation status — Item D (caller-side authorization)
+
+**Date:** 2026-06-12
+
+The "until then" condition flagged in the original Item 2
+commit is satisfied. `PoolManager.route_task` now takes a
+`caller_pool_allowlist: set[str] | None = None` parameter
+that is the gate for any selector that resolves to a specific
+pool (AFFINITY and PEER_AFFINITY). The contract:
+
+- **Allowlist set, pool in the set** → the specific pool
+  path is honored. For PEER_AFFINITY, the peer-suggested pool
+  is used (when it is also registered).
+- **Allowlist set, pool not in the set** → the hint is
+  discarded. The route falls back to LEAST_LOADED within the
+  allowlist (`reason = "peer_affinity_allowlist_filtered_fallback"`
+  or `"affinity_allowlist_filtered_fallback"`).
+- **Allowlist is `None`** → the caller has not declared which
+  pools it is authorized to dispatch into. The router refuses
+  to honor the specific-pool path and falls back to
+  LEAST_LOADED (`reason = "peer_affinity_no_caller_allowlist_fallback"`
+  or `"affinity_no_caller_allowlist_fallback"`).
+
+The `*` wildcard in the allowlist means "every
+currently-registered pool" — the intersection is computed
+against the live pool set at call time, so the allowlist
+stays accurate across pool respawns.
+
+The MCP-level refusal in `pool_route_execute` has been
+removed. The tool now forwards the call to
+`PoolManager.route_task` with the caller's allowlist (from
+the explicit `caller_pool_allowlist` argument, or from the
+`MAHAVISHNU_PEER_AFFINITY_ALLOWLIST` environment variable as
+a comma-separated list, or `*` for all registered pools).
+Authorization is enforced inside the manager.

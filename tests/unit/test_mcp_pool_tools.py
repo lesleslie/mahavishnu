@@ -288,54 +288,143 @@ class TestPoolRouteExecuteTool:
     async def test_pool_route_execute_refuses_peer_affinity(
         self, mock_mcp, mock_pool_manager
     ):
-        """Security: ``pool_route_execute`` refuses ``peer_affinity``.
+        """Security: ``pool_route_execute`` no longer refuses
+        ``peer_affinity`` at the surface. The experimental refusal
+        was removed in favor of caller-side authorization
+        (ADR-014). The tool now forwards the call to the manager
+        with the caller's allowlist; the manager is responsible
+        for honoring or rejecting the peer hint.
 
-        Per the security review on the original Item 2 commit, the
-        PEER_AFFINITY branch lacks caller-side authorization. The
-        MCP tool refuses this selector at the surface until
-        ADR-014's "until then" condition is satisfied. Direct
-        programmatic callers (PoolManager.route_task) can still
-        use the selector.
+        This test now asserts the NEW contract: the tool does
+        NOT short-circuit on ``peer_affinity`` — it delegates to
+        ``PoolManager.route_task`` and passes the allowlist
+        through. (Authorization is enforced downstream.)
         """
-        # Use the ACTUAL pool_route_execute from the MCP tool
-        # module, not a local redefinition (the existing tests
-        # redefine the function locally, which would mask the
-        # refusal check).
-        @mock_mcp.tool()
-        async def capture_route_execute(
-            prompt: str,
-            pool_selector: str = "least_loaded",
-            timeout: int = 300,
-        ) -> dict[str, Any]:
-            # Call the production logic by importing and invoking
-            # the tool's route_task path. We simulate the tool
-            # surface by re-using the production refusal check.
-            from mahavishnu.pools.manager import PoolSelector
+        registered: dict[str, Any] = {}
 
-            if pool_selector == PoolSelector.PEER_AFFINITY.value:
-                return {
-                    "status": "failed",
-                    "error": (
-                        "peer_affinity selector is experimental and not "
-                        "exposed via this MCP tool."
-                    ),
-                }
-            return await mock_pool_manager.route_task(
-                {"prompt": prompt, "timeout": timeout},
-                PoolSelector(pool_selector),
-            )
+        def capture_tool(fn=None):
+            if fn is None:
+                return lambda wrapped: capture_tool(wrapped)
+            registered[fn.__name__] = fn
+            return fn
 
-        result = await capture_route_execute(
-            prompt="test", pool_selector="peer_affinity"
+        mock_mcp.tool = capture_tool
+        register_pool_tools(mock_mcp, mock_pool_manager)
+
+        # Sanity: pool_route_execute was registered.
+        assert "pool_route_execute" in registered, (
+            "register_pool_tools must register pool_route_execute"
+        )
+        tool_fn = registered["pool_route_execute"]
+
+        # Configure the mock manager to return a successful
+        # route. The MCP tool must no longer refuse
+        # ``peer_affinity`` at the surface — it must delegate to
+        # the manager.
+        captured_kwargs: dict[str, Any] = {}
+
+        async def capture_route(*args, **kwargs):
+            captured_kwargs.update(kwargs)
+            return {
+                "pool_id": "pool_abc",
+                "status": "completed",
+                "routing_reason": "peer_affinity",
+            }
+
+        mock_pool_manager.route_task = capture_route
+
+        result = await tool_fn(
+            prompt="test",
+            pool_selector="peer_affinity",
+            caller_pool_allowlist=["pool_abc", "pool_xyz"],
         )
 
-        assert result["status"] == "failed", (
-            f"peer_affinity must be refused at MCP tool surface, got {result!r}"
+        # The tool must have delegated to the manager (no
+        # experimental refusal at the surface).
+        assert result["status"] == "completed", (
+            f"peer_affinity must reach PoolManager.route_task now "
+            f"that caller-side authorization is in place, got {result!r}"
         )
-        assert "peer_affinity" in result["error"].lower()
-        assert "experimental" in result["error"].lower()
-        # And the manager's route_task must NOT have been called.
-        mock_pool_manager.route_task.assert_not_called()
+        # And the allowlist must be forwarded.
+        assert "caller_pool_allowlist" in captured_kwargs, (
+            "pool_route_execute must forward caller_pool_allowlist "
+            "to PoolManager.route_task"
+        )
+        assert set(captured_kwargs["caller_pool_allowlist"]) == {
+            "pool_abc",
+            "pool_xyz",
+        }
+
+    @pytest.mark.asyncio
+    async def test_pool_route_execute_peer_affinity_with_allowlist(
+        self, mock_mcp, mock_pool_manager
+    ):
+        """Caller-side authorization: ``pool_route_execute`` accepts
+        a caller-supplied pool allowlist and forwards it to
+        ``PoolManager.route_task`` so PEER_AFFINITY can route to
+        pools the caller is authorized to dispatch into.
+
+        ADR-014 codifies that the ACL is authoritative. The MCP
+        tool surface is one such caller — once it supplies an
+        allowlist (typically from configuration), the experimental
+        refusal is no longer required and the call proceeds to the
+        manager with the allowlist applied.
+        """
+        registered: dict[str, Any] = {}
+
+        def capture_tool(fn=None):
+            if fn is None:
+                return lambda wrapped: capture_tool(wrapped)
+            registered[fn.__name__] = fn
+            return fn
+
+        mock_mcp.tool = capture_tool
+        register_pool_tools(mock_mcp, mock_pool_manager)
+
+        # Sanity: pool_route_execute was registered.
+        assert "pool_route_execute" in registered, (
+            "register_pool_tools must register pool_route_execute"
+        )
+        tool_fn = registered["pool_route_execute"]
+
+        # Capture the kwargs the MCP tool passes to route_task so
+        # we can assert the allowlist is forwarded. The capture
+        # returns a successful result directly (we are not
+        # exercising the manager's real PEER_AFFINITY logic here
+        # — that lives in tests/unit/pools/test_route_task_peer_affinity_auth.py).
+        captured_kwargs: dict[str, Any] = {}
+
+        async def capture_route(*args, **kwargs):
+            captured_kwargs.update(kwargs)
+            return {
+                "pool_id": "pool_abc",
+                "status": "completed",
+                "routing_reason": "peer_affinity",
+            }
+
+        mock_pool_manager.route_task = capture_route
+
+        result = await tool_fn(
+            prompt="do stuff",
+            pool_selector="peer_affinity",
+            caller_pool_allowlist=["pool_abc", "pool_xyz"],
+        )
+
+        # The tool must have routed successfully (no experimental
+        # refusal) AND forwarded the allowlist to the manager.
+        assert result["status"] == "completed"
+        assert result["pool_id"] == "pool_abc"
+        assert "caller_pool_allowlist" in captured_kwargs, (
+            "pool_route_execute must forward caller_pool_allowlist to "
+            "PoolManager.route_task so the manager can apply the "
+            "caller-side authorization check."
+        )
+        # The MCP tool should normalize the list to a set-like
+        # container that the manager can intersect.
+        forwarded = captured_kwargs["caller_pool_allowlist"]
+        assert set(forwarded) == {"pool_abc", "pool_xyz"}, (
+            f"forwarded allowlist must preserve pool ids, got {forwarded!r}"
+        )
 
 
 class TestPoolListTool:

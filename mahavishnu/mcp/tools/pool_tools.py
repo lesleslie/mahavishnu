@@ -1,6 +1,7 @@
 """Pool management MCP tools."""
 
 import logging
+import os
 from typing import Any
 
 from fastmcp import FastMCP
@@ -11,6 +12,37 @@ except Exception:  # pragma: no cover - optional import for test patching
     MemoryAggregator = None  # type: ignore[assignment]
 
 logger = logging.getLogger(__name__)
+
+
+def _resolve_peer_affinity_allowlist_from_env() -> set[str] | None:
+    """Resolve the MCP-side caller pool allowlist from environment.
+
+    Operators set ``MAHAVISHNU_PEER_AFFINITY_ALLOWLIST`` as a
+    comma-separated list of pool IDs the MCP tool is authorized to
+    dispatch PEER_AFFINITY traffic into. When unset or empty, the
+    MCP tool forwards ``None`` so the manager refuses to honor the
+    peer hint (the safe default).
+
+    Set ``MAHAVISHNU_PEER_AFFINITY_ALLOWLIST=*`` to opt into
+    "all currently-registered pools" — the allowlist is then
+    applied dynamically at call time by the manager, which
+    intersects the request with its live pool registry. This is
+    the documented escape hatch for the rare case where a
+    deployment is meant to expose PEER_AFFINITY for every
+    registered pool.
+    """
+    raw = os.environ.get("MAHAVISHNU_PEER_AFFINITY_ALLOWLIST", "").strip()
+    if not raw:
+        return None
+    if raw == "*":
+        # Sentinel: caller authorizes dispatch into any
+        # currently-registered pool. We pass a set containing the
+        # wildcard; the manager recognizes ``"*"`` and treats it
+        # as "intersect with the live pool set". This keeps the
+        # MCP tool stateless — it does not need to know which
+        # pools are currently registered.
+        return {"*"}
+    return {item.strip() for item in raw.split(",") if item.strip()}
 
 
 def register_pool_tools(
@@ -101,31 +133,44 @@ def register_pool_tools(
         prompt: str,
         pool_selector: str = "least_loaded",
         timeout: int = 300,
+        caller_pool_allowlist: list[str] | None = None,
     ) -> dict[str, Any]:
-        """Execute task with automatic pool routing."""
+        """Execute task with automatic pool routing.
+
+        ``caller_pool_allowlist`` is the ADR-014 caller-side
+        authorization contract. When the caller (this MCP tool) has
+        a known allowlist — typically from
+        ``MAHAVISHNU_PEER_AFFINITY_ALLOWLIST`` in the environment —
+        the list is forwarded to ``PoolManager.route_task`` so the
+        manager can authorize specific-pool selectors (AFFINITY and
+        PEER_AFFINITY) against it. When the caller does not supply
+        an allowlist, the manager refuses to honor specific-pool
+        selectors and falls back to LEAST_LOADED.
+
+        Note: this tool no longer refuses ``peer_affinity`` at the
+        surface. The MCP-level refusal has been removed now that
+        caller-side authorization is enforced inside
+        ``PoolManager.route_task``. To gate PEER_AFFINITY traffic
+        at the deployment boundary, set
+        ``MAHAVISHNU_PEER_AFFINITY_ALLOWLIST`` to a comma-separated
+        list of pool IDs (or ``*`` to allow all currently-
+        registered pools).
+        """
         from mahavishnu.pools.manager import PoolSelector
 
-        # Security: PEER_AFFINITY is experimental and refused at the
-        # MCP tool surface until caller-side authorization lands. The
-        # security review on the original Item 2 commit flagged the
-        # PEER_AFFINITY branch as having no caller-side authorization
-        # check (the per-peer ACL is checked, but the CALLER isn't
-        # authorized for the destination pool). Direct programmatic
-        # callers can still use PoolManager.route_task with the
-        # selector; the MCP tool refuses to make the experimental
-        # path reachable until ADR-014's "until then" condition is
-        # satisfied.
-        if pool_selector == PoolSelector.PEER_AFFINITY.value:
-            return {
-                "status": "failed",
-                "error": (
-                    "peer_affinity selector is experimental and not exposed via "
-                    "this MCP tool. Use least_loaded / round_robin / random / "
-                    "affinity instead. See ADR-014 / bodai-adoption-phase-1.5.md "
-                    "Item 2 for the caller-side authorization work that will "
-                    "re-enable this path."
-                ),
-            }
+        # Resolve the caller-side allowlist. Explicit
+        # ``caller_pool_allowlist`` argument wins over the
+        # environment default, so callers (and tests) can
+        # override the deployment default on a per-call basis.
+        if caller_pool_allowlist is None:
+            allowlist = _resolve_peer_affinity_allowlist_from_env()
+        else:
+            allowlist = set(caller_pool_allowlist)
+        # Note: when the allowlist contains the "*" wildcard
+        # sentinel, we pass the wildcard set through to the
+        # manager. The manager recognizes the sentinel and
+        # intersects with its live pool set so the allowlist
+        # stays accurate across pool respawns.
 
         task = {
             "prompt": prompt,
@@ -134,7 +179,11 @@ def register_pool_tools(
 
         try:
             selector = PoolSelector(pool_selector)
-            result = await pool_manager.route_task(task, selector)
+            result = await pool_manager.route_task(
+                task,
+                selector,
+                caller_pool_allowlist=allowlist,
+            )
             return result  # type: ignore[no-any-return]
         except Exception as e:
             logger.error(f"Failed to route task: {e}")

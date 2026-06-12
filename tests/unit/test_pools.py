@@ -576,6 +576,7 @@ class TestPoolManager:
             {"type": "workflow", "category": "workflow"},
             pool_selector=PoolSelector.AFFINITY,
             pool_affinity="pool1",
+            caller_pool_allowlist={"pool1"},
         )
 
         assert dhara_state.routings
@@ -597,6 +598,7 @@ class TestPoolManager:
             {"type": "workflow", "category": "workflow", "prompt": "Hello"},
             pool_selector=PoolSelector.AFFINITY,
             pool_affinity="pool1",
+            caller_pool_allowlist={"pool1"},
         )
 
         assert result["pool_id"] == "pool1"

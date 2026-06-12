@@ -265,6 +265,7 @@ class TestPoolManager:
             {"prompt": "test"},
             pool_selector=PoolSelector.AFFINITY,
             pool_affinity="affinity-pool",
+            caller_pool_allowlist={"affinity-pool"},
         )
 
         assert result["pool_id"] == "affinity-pool"
@@ -1010,8 +1011,13 @@ class TestPoolSelector:
         assert PoolSelector.AFFINITY.value == "affinity"
 
     def test_pool_selector_count(self):
-        """Test PoolSelector has expected number of values."""
-        assert len(list(PoolSelector)) == 4
+        """Test PoolSelector has expected number of values.
+
+        5 selectors as of Bodai Adoption Item 2 + 3: LEAST_LOADED,
+        ROUND_ROBIN, RANDOM, AFFINITY, and PEER_AFFINITY. Update
+        the count when adding/removing selectors.
+        """
+        assert len(list(PoolSelector)) == 5
 
 
 class TestPoolManagerIntegration:

@@ -9,6 +9,14 @@ returns None and the route falls back to LEAST_LOADED.
 
 The ACL gate (A3) is exercised end-to-end: a peer without an ACL
 grant is denied the route and falls back to LEAST_LOADED.
+
+ADR-014 caller-side authorization: every test passes a
+``caller_pool_allowlist`` containing both registered pools. The
+allowlist is the new gate — without it, the manager refuses to
+honor the peer hint and falls back to LEAST_LOADED (the
+"refusing to route via peer hint" contract). These tests verify
+the *positive* path: the caller is authorized, so the hint is
+honored or the documented fallback path runs.
 """
 
 from __future__ import annotations
@@ -127,6 +135,7 @@ async def test_peer_affinity_routes_to_named_pool(
     result = await pool_mgr_with_pools.route_task(
         task={"prompt": "do stuff", "peer_id": "alice", "project_id": "proj-x"},
         pool_selector=PoolSelector.PEER_AFFINITY,
+        caller_pool_allowlist={"pool_abc", "pool_xyz"},
     )
 
     assert result["pool_id"] == "pool_abc", (
@@ -158,6 +167,7 @@ async def test_peer_affinity_falls_back_to_least_loaded_when_no_row(
     result = await pool_mgr_with_pools.route_task(
         task={"prompt": "do stuff", "peer_id": "alice", "project_id": "proj-x"},
         pool_selector=PoolSelector.PEER_AFFINITY,
+        caller_pool_allowlist={"pool_abc", "pool_xyz"},
     )
 
     # Either pool is acceptable — the contract is "fall back to LEAST_LOADED".
@@ -187,6 +197,7 @@ async def test_peer_affinity_no_acl_falls_back_to_least_loaded(
     result = await pool_mgr_with_pools.route_task(
         task={"prompt": "do stuff", "peer_id": "alice", "project_id": "proj-x"},
         pool_selector=PoolSelector.PEER_AFFINITY,
+        caller_pool_allowlist={"pool_abc", "pool_xyz"},
     )
 
     assert result["pool_id"] in {"pool_abc", "pool_xyz"}
