@@ -17,6 +17,8 @@ import pytest
 import mahavishnu.mcp.tools.ecosystem_tools as et_module
 from mahavishnu.mcp.tools.ecosystem_tools import register_ecosystem_tools
 
+pytestmark = pytest.mark.unit
+
 
 class _StubMCP:
     """Minimal FastMCP stand-in that returns decorated functions unchanged."""
@@ -124,7 +126,7 @@ def test_register_attaches_three_tools(stub_mcp: _StubMCP) -> None:
     assert "register_ecosystem_tools" in et_module.__all__
 
 
-def test_ecosystem_status_returns_full_report(
+async def test_ecosystem_status_returns_full_report(
     stub_mcp: _StubMCP,
     monkeypatch: pytest.MonkeyPatch,
     fake_report: MagicMock,
@@ -132,9 +134,8 @@ def test_ecosystem_status_returns_full_report(
     _patch_service(monkeypatch, fake_report)
     register_ecosystem_tools(stub_mcp)
     fn = stub_mcp.tools["ecosystem_status"]
-    import asyncio
 
-    result = asyncio.run(fn())
+    result = await fn()
     assert result["schema_version"] == "1.0"
     assert result["status"] == "ok"
     assert "services" in result
@@ -142,7 +143,7 @@ def test_ecosystem_status_returns_full_report(
     assert "capabilities" in result
 
 
-def test_ecosystem_status_filters_sections(
+async def test_ecosystem_status_filters_sections(
     stub_mcp: _StubMCP,
     monkeypatch: pytest.MonkeyPatch,
     fake_report: MagicMock,
@@ -150,9 +151,8 @@ def test_ecosystem_status_filters_sections(
     _patch_service(monkeypatch, fake_report)
     register_ecosystem_tools(stub_mcp)
     fn = stub_mcp.tools["ecosystem_status"]
-    import asyncio
 
-    result = asyncio.run(fn(sections=["adapters", "alerts"]))
+    result = await fn(sections=["adapters", "alerts"])
     # Filtered response keeps envelope keys + only requested sections
     assert result["schema_version"] == "1.0"
     assert result["status"] == "ok"
@@ -163,7 +163,7 @@ def test_ecosystem_status_filters_sections(
     assert "capabilities" not in result
 
 
-def test_ecosystem_status_filters_unknown_sections_silently(
+async def test_ecosystem_status_filters_unknown_sections_silently(
     stub_mcp: _StubMCP,
     monkeypatch: pytest.MonkeyPatch,
     fake_report: MagicMock,
@@ -171,16 +171,15 @@ def test_ecosystem_status_filters_unknown_sections_silently(
     _patch_service(monkeypatch, fake_report)
     register_ecosystem_tools(stub_mcp)
     fn = stub_mcp.tools["ecosystem_status"]
-    import asyncio
 
-    result = asyncio.run(fn(sections=["nope", "missing"]))
+    result = await fn(sections=["nope", "missing"])
     # None of the unknown keys land in the result, but envelope is preserved
     assert "nope" not in result
     assert "missing" not in result
     assert result["status"] == "ok"
 
 
-def test_ecosystem_status_passes_timeout_to_service(
+async def test_ecosystem_status_passes_timeout_to_service(
     stub_mcp: _StubMCP,
     monkeypatch: pytest.MonkeyPatch,
     fake_report: MagicMock,
@@ -188,14 +187,13 @@ def test_ecosystem_status_passes_timeout_to_service(
     service_cls = _patch_service(monkeypatch, fake_report)
     register_ecosystem_tools(stub_mcp)
     fn = stub_mcp.tools["ecosystem_status"]
-    import asyncio
 
-    asyncio.run(fn(timeout_per_section_ms=2500))
+    await fn(timeout_per_section_ms=2500)
     kwargs = service_cls.call_args.kwargs
     assert kwargs["section_timeout_ms"] == 2500
 
 
-def test_ecosystem_status_uses_app_as_recovery_provider(
+async def test_ecosystem_status_uses_app_as_recovery_provider(
     stub_mcp: _StubMCP,
     monkeypatch: pytest.MonkeyPatch,
     fake_report: MagicMock,
@@ -204,13 +202,12 @@ def test_ecosystem_status_uses_app_as_recovery_provider(
     service_cls = _patch_service(monkeypatch, fake_report, app=app)
     register_ecosystem_tools(stub_mcp)
     fn = stub_mcp.tools["ecosystem_status"]
-    import asyncio
 
-    asyncio.run(fn())
+    await fn()
     assert service_cls.call_args.kwargs["recovery_provider"] is app
 
 
-def test_ecosystem_status_recovery_provider_none_when_no_app(
+async def test_ecosystem_status_recovery_provider_none_when_no_app(
     stub_mcp: _StubMCP,
     monkeypatch: pytest.MonkeyPatch,
     fake_report: MagicMock,
@@ -218,13 +215,12 @@ def test_ecosystem_status_recovery_provider_none_when_no_app(
     service_cls = _patch_service(monkeypatch, fake_report, app=None)
     register_ecosystem_tools(stub_mcp)
     fn = stub_mcp.tools["ecosystem_status"]
-    import asyncio
 
-    asyncio.run(fn())
+    await fn()
     assert service_cls.call_args.kwargs["recovery_provider"] is None
 
 
-def test_ecosystem_capabilities_returns_all(
+async def test_ecosystem_capabilities_returns_all(
     stub_mcp: _StubMCP,
     monkeypatch: pytest.MonkeyPatch,
     fake_report: MagicMock,
@@ -232,14 +228,13 @@ def test_ecosystem_capabilities_returns_all(
     _patch_service(monkeypatch, fake_report)
     register_ecosystem_tools(stub_mcp)
     fn = stub_mcp.tools["ecosystem_capabilities"]
-    import asyncio
 
-    result = asyncio.run(fn())
+    result = await fn()
     assert set(result) == {"code_generation", "code_review", "vector_search"}
     assert result["code_generation"] == {"name": "code_generation", "status": "ok"}
 
 
-def test_ecosystem_capabilities_filters_case_insensitively(
+async def test_ecosystem_capabilities_filters_case_insensitively(
     stub_mcp: _StubMCP,
     monkeypatch: pytest.MonkeyPatch,
     fake_report: MagicMock,
@@ -247,15 +242,14 @@ def test_ecosystem_capabilities_filters_case_insensitively(
     _patch_service(monkeypatch, fake_report)
     register_ecosystem_tools(stub_mcp)
     fn = stub_mcp.tools["ecosystem_capabilities"]
-    import asyncio
 
-    result = asyncio.run(fn(capability="CODE"))
+    result = await fn(capability="CODE")
     # Both "code_generation" and "code_review" contain "code" (case-insensitive)
     assert set(result) == {"code_generation", "code_review"}
     assert "vector_search" not in result
 
 
-def test_ecosystem_capabilities_filter_no_match(
+async def test_ecosystem_capabilities_filter_no_match(
     stub_mcp: _StubMCP,
     monkeypatch: pytest.MonkeyPatch,
     fake_report: MagicMock,
@@ -263,13 +257,12 @@ def test_ecosystem_capabilities_filter_no_match(
     _patch_service(monkeypatch, fake_report)
     register_ecosystem_tools(stub_mcp)
     fn = stub_mcp.tools["ecosystem_capabilities"]
-    import asyncio
 
-    result = asyncio.run(fn(capability="zzz"))
+    result = await fn(capability="zzz")
     assert result == {}
 
 
-def test_ecosystem_routing_readiness_classifies_adapters(
+async def test_ecosystem_routing_readiness_classifies_adapters(
     stub_mcp: _StubMCP,
     monkeypatch: pytest.MonkeyPatch,
     fake_report: MagicMock,
@@ -277,9 +270,8 @@ def test_ecosystem_routing_readiness_classifies_adapters(
     _patch_service(monkeypatch, fake_report)
     register_ecosystem_tools(stub_mcp)
     fn = stub_mcp.tools["ecosystem_routing_readiness"]
-    import asyncio
 
-    result = asyncio.run(fn(task_class="CODE_GENERATION"))
+    result = await fn(task_class="CODE_GENERATION")
     assert result["task_class"] == "CODE_GENERATION"
     assert result["overall_status"] == "ok"
     assert result["healthy_count"] == 2  # prefect, agno
@@ -292,7 +284,7 @@ def test_ecosystem_routing_readiness_classifies_adapters(
     assert result["available_adapters"]["agno"]["preference_score"] == 0.5
 
 
-def test_ecosystem_routing_readiness_handles_null_degradation_trend(
+async def test_ecosystem_routing_readiness_handles_null_degradation_trend(
     stub_mcp: _StubMCP,
     monkeypatch: pytest.MonkeyPatch,
     fake_report: MagicMock,
@@ -304,13 +296,12 @@ def test_ecosystem_routing_readiness_handles_null_degradation_trend(
     _patch_service(monkeypatch, fake_report)
     register_ecosystem_tools(stub_mcp)
     fn = stub_mcp.tools["ecosystem_routing_readiness"]
-    import asyncio
 
-    result = asyncio.run(fn(task_class="X"))
+    result = await fn(task_class="X")
     assert result["available_adapters"]["p"]["degradation_trend"] is None
 
 
-def test_ecosystem_routing_readiness_no_healthy_adapters(
+async def test_ecosystem_routing_readiness_no_healthy_adapters(
     stub_mcp: _StubMCP,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -325,9 +316,8 @@ def test_ecosystem_routing_readiness_no_healthy_adapters(
     _patch_service(monkeypatch, report)
     register_ecosystem_tools(stub_mcp)
     fn = stub_mcp.tools["ecosystem_routing_readiness"]
-    import asyncio
 
-    result = asyncio.run(fn(task_class="X"))
+    result = await fn(task_class="X")
     assert result["healthy_count"] == 0
     assert result["degraded_count"] == 1
     assert "No healthy adapters" in result["recommendation"]

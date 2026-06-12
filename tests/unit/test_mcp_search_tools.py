@@ -9,7 +9,6 @@ patch those source modules to keep the suite hermetic.
 
 from __future__ import annotations
 
-import asyncio
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
@@ -49,11 +48,6 @@ def _patch_engine(monkeypatch: pytest.MonkeyPatch, engine: MagicMock) -> None:
     """Stub out get_database and the lazy HybridSearchConfig default."""
     fake_db = MagicMock(name="fake_db")
     monkeypatch.setattr(st, "get_database", AsyncMock(return_value=fake_db))
-
-
-def _run(coro):
-    """Run a coroutine to completion (tests are sync)."""
-    return asyncio.get_event_loop().run_until_complete(coro) if False else asyncio.run(coro)
 
 
 # =============================================================================
@@ -103,11 +97,6 @@ class TestRegistration:
             "search_by_repository",
         }
 
-    def test_registered_callables_are_async(self, stub_mcp: _StubMCP) -> None:
-        register_search_tools(stub_mcp)
-        for fn in stub_mcp.tools.values():
-            assert asyncio.iscoroutinefunction(fn)
-
     def test_module_exports_register(self) -> None:
         assert "register_search_tools" in st.__all__
         assert callable(register_search_tools)
@@ -121,7 +110,7 @@ class TestRegistration:
 class TestHybridSearchTool:
     """hybrid_search delegates to HybridSearchEngine.search."""
 
-    def test_returns_serialized_results(
+    async def test_returns_serialized_results(
         self, stub_mcp: _StubMCP, fake_engine: MagicMock, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         fake_engine.search = AsyncMock(return_value=[_search_result("a"), _search_result("b")])
@@ -136,14 +125,14 @@ class TestHybridSearchTool:
 
         register_search_tools(stub_mcp)
         fn = stub_mcp.tools["hybrid_search"]
-        result = asyncio.run(fn(query="test", limit=5))
+        result = await fn(query="test", limit=5)
 
         assert isinstance(result, list)
         assert len(result) == 2
         assert result[0]["id"] == "a"
         assert result[1]["id"] == "b"
 
-    def test_uses_custom_weights(
+    async def test_uses_custom_weights(
         self, stub_mcp: _StubMCP, fake_engine: MagicMock, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         fake_engine.search = AsyncMock(return_value=[])
@@ -156,14 +145,12 @@ class TestHybridSearchTool:
 
         register_search_tools(stub_mcp)
         fn = stub_mcp.tools["hybrid_search"]
-        asyncio.run(
-            fn(
-                query="x",
-                semantic_weight=0.2,
-                lexical_weight=0.8,
-                limit=7,
-                min_score=0.42,
-            )
+        await fn(
+            query="x",
+            semantic_weight=0.2,
+            lexical_weight=0.8,
+            limit=7,
+            min_score=0.42,
         )
 
         # The tool creates a HybridSearchConfig with the caller-supplied
@@ -174,7 +161,7 @@ class TestHybridSearchTool:
         assert fake_engine.config.default_limit == 7
         assert fake_engine.config.min_score == 0.42
 
-    def test_propagates_engine_exception(
+    async def test_propagates_engine_exception(
         self, stub_mcp: _StubMCP, fake_engine: MagicMock, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         fake_engine.search = AsyncMock(side_effect=RuntimeError("db down"))
@@ -190,7 +177,7 @@ class TestHybridSearchTool:
         register_search_tools(stub_mcp)
         fn = stub_mcp.tools["hybrid_search"]
         with pytest.raises(RuntimeError, match="db down"):
-            asyncio.run(fn(query="q"))
+            await fn(query="q")
 
 
 # =============================================================================
@@ -201,7 +188,7 @@ class TestHybridSearchTool:
 class TestIndexDocumentTool:
     """index_document calls engine.index_document and returns a success envelope."""
 
-    def test_indexes_valid_uuid(
+    async def test_indexes_valid_uuid(
         self, stub_mcp: _StubMCP, fake_engine: MagicMock, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         fake_engine.index_document = AsyncMock(return_value=None)
@@ -216,15 +203,13 @@ class TestIndexDocumentTool:
 
         register_search_tools(stub_mcp)
         fn = stub_mcp.tools["index_document"]
-        result = asyncio.run(
-            fn(
-                doc_id="11111111-1111-1111-1111-111111111111",
-                title="Hello",
-                content="Body text",
-                repository="repo",
-                source_type="markdown",
-                metadata={"k": "v"},
-            )
+        result = await fn(
+            doc_id="11111111-1111-1111-1111-111111111111",
+            title="Hello",
+            content="Body text",
+            repository="repo",
+            source_type="markdown",
+            metadata={"k": "v"},
         )
 
         assert result["success"] is True
@@ -236,7 +221,7 @@ class TestIndexDocumentTool:
         assert kwargs["content"] == "Body text"
         assert kwargs["metadata"] == {"k": "v"}
 
-    def test_rejects_invalid_uuid(
+    async def test_rejects_invalid_uuid(
         self, stub_mcp: _StubMCP, fake_engine: MagicMock, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         monkeypatch.setattr(
@@ -251,9 +236,9 @@ class TestIndexDocumentTool:
         register_search_tools(stub_mcp)
         fn = stub_mcp.tools["index_document"]
         with pytest.raises(ValueError, match="Invalid document UUID"):
-            asyncio.run(fn(doc_id="not-a-uuid", title="T", content="c"))
+            await fn(doc_id="not-a-uuid", title="T", content="c")
 
-    def test_propagates_engine_exception(
+    async def test_propagates_engine_exception(
         self, stub_mcp: _StubMCP, fake_engine: MagicMock, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         fake_engine.index_document = AsyncMock(side_effect=RuntimeError("write fail"))
@@ -269,12 +254,10 @@ class TestIndexDocumentTool:
         register_search_tools(stub_mcp)
         fn = stub_mcp.tools["index_document"]
         with pytest.raises(RuntimeError, match="write fail"):
-            asyncio.run(
-                fn(
-                    doc_id="11111111-1111-1111-1111-111111111111",
-                    title="T",
-                    content="c",
-                )
+            await fn(
+                doc_id="11111111-1111-1111-1111-111111111111",
+                title="T",
+                content="c",
             )
 
 
@@ -286,7 +269,7 @@ class TestIndexDocumentTool:
 class TestDeleteDocumentTool:
     """delete_document returns success envelope with deleted flag."""
 
-    def test_delete_existing(
+    async def test_delete_existing(
         self, stub_mcp: _StubMCP, fake_engine: MagicMock, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         fake_engine.delete_document = AsyncMock(return_value=True)
@@ -301,13 +284,13 @@ class TestDeleteDocumentTool:
 
         register_search_tools(stub_mcp)
         fn = stub_mcp.tools["delete_document"]
-        result = asyncio.run(fn(doc_id="11111111-1111-1111-1111-111111111111"))
+        result = await fn(doc_id="11111111-1111-1111-1111-111111111111")
 
         assert result["success"] is True
         assert result["deleted"] is True
         assert "successfully" in result["message"].lower()
 
-    def test_delete_missing_reports_not_found(
+    async def test_delete_missing_reports_not_found(
         self, stub_mcp: _StubMCP, fake_engine: MagicMock, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         fake_engine.delete_document = AsyncMock(return_value=False)
@@ -322,13 +305,13 @@ class TestDeleteDocumentTool:
 
         register_search_tools(stub_mcp)
         fn = stub_mcp.tools["delete_document"]
-        result = asyncio.run(fn(doc_id="11111111-1111-1111-1111-111111111111"))
+        result = await fn(doc_id="11111111-1111-1111-1111-111111111111")
 
         assert result["success"] is True
         assert result["deleted"] is False
         assert "not found" in result["message"].lower()
 
-    def test_invalid_uuid_raises_value_error(
+    async def test_invalid_uuid_raises_value_error(
         self, stub_mcp: _StubMCP, fake_engine: MagicMock, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         monkeypatch.setattr(
@@ -343,7 +326,25 @@ class TestDeleteDocumentTool:
         register_search_tools(stub_mcp)
         fn = stub_mcp.tools["delete_document"]
         with pytest.raises(ValueError, match="Invalid document UUID"):
-            asyncio.run(fn(doc_id="nope"))
+            await fn(doc_id="nope")
+
+    async def test_propagates_engine_exception(
+        self, stub_mcp: _StubMCP, fake_engine: MagicMock, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        fake_engine.delete_document = AsyncMock(side_effect=RuntimeError("delete fail"))
+        monkeypatch.setattr(
+            "mahavishnu.mcp.tools.search_tools.HybridSearchEngine",
+            lambda database, config: fake_engine,
+        )
+        monkeypatch.setattr(
+            "mahavishnu.mcp.tools.search_tools.get_database",
+            AsyncMock(return_value=MagicMock()),
+        )
+
+        register_search_tools(stub_mcp)
+        fn = stub_mcp.tools["delete_document"]
+        with pytest.raises(RuntimeError, match="delete fail"):
+            await fn(doc_id="11111111-1111-1111-1111-111111111111")
 
 
 # =============================================================================
@@ -354,7 +355,7 @@ class TestDeleteDocumentTool:
 class TestSearchByRepositoryTool:
     """search_by_repository calls engine.search and returns serialized results."""
 
-    def test_returns_results(
+    async def test_returns_results(
         self, stub_mcp: _StubMCP, fake_engine: MagicMock, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         fake_engine.search = AsyncMock(return_value=[_search_result("a")])
@@ -369,7 +370,7 @@ class TestSearchByRepositoryTool:
 
         register_search_tools(stub_mcp)
         fn = stub_mcp.tools["search_by_repository"]
-        result = asyncio.run(fn(repository="mahavishnu", query="how to", limit=3))
+        result = await fn(repository="mahavishnu", query="how to", limit=3)
 
         assert isinstance(result, list)
         assert result[0]["id"] == "a"
@@ -379,7 +380,7 @@ class TestSearchByRepositoryTool:
         assert kwargs["repository"] == "mahavishnu"
         assert kwargs["limit"] == 3
 
-    def test_empty_query_uses_minimal_placeholder(
+    async def test_empty_query_uses_minimal_placeholder(
         self, stub_mcp: _StubMCP, fake_engine: MagicMock, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         fake_engine.search = AsyncMock(return_value=[])
@@ -394,10 +395,28 @@ class TestSearchByRepositoryTool:
 
         register_search_tools(stub_mcp)
         fn = stub_mcp.tools["search_by_repository"]
-        asyncio.run(fn(repository="mahavishnu", query="   "))
+        await fn(repository="mahavishnu", query="   ")
 
         kwargs = fake_engine.search.await_args.kwargs
         # Whitespace-only query is replaced with a single char so the
         # engine returns *something* without erroring out.
         assert kwargs["query"].strip() != ""
         assert kwargs["repository"] == "mahavishnu"
+
+    async def test_propagates_engine_exception(
+        self, stub_mcp: _StubMCP, fake_engine: MagicMock, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        fake_engine.search = AsyncMock(side_effect=RuntimeError("search down"))
+        monkeypatch.setattr(
+            "mahavishnu.mcp.tools.search_tools.HybridSearchEngine",
+            lambda database, config: fake_engine,
+        )
+        monkeypatch.setattr(
+            "mahavishnu.mcp.tools.search_tools.get_database",
+            AsyncMock(return_value=MagicMock()),
+        )
+
+        register_search_tools(stub_mcp)
+        fn = stub_mcp.tools["search_by_repository"]
+        with pytest.raises(RuntimeError, match="search down"):
+            await fn(repository="mahavishnu", query="hi")

@@ -3,11 +3,8 @@
 
 from __future__ import annotations
 
-import asyncio
 from typing import Any
 from unittest.mock import MagicMock
-
-import pytest
 
 from mahavishnu.mcp import websocket_tools as ws_module
 
@@ -81,30 +78,30 @@ async def _call_tool(tools: dict[str, Any], name: str, *args, **kwargs) -> Any:
 # ---------------------------------------------------------------------------
 
 
-def test_health_check_not_initialized() -> None:
+async def test_health_check_not_initialized() -> None:
     """When websocket_server is None, should return 'not_initialized'."""
     tools = _register(ws_server=None)
-    result = asyncio.run(_call_tool(tools, "websocket_health_check"))
+    result = await _call_tool(tools, "websocket_health_check")
     assert result["status"] == "not_initialized"
     assert result["port"] == 8690
 
 
-def test_health_check_not_running() -> None:
+async def test_health_check_not_running() -> None:
     """When server exists but is not running, should return 'stopped'."""
     fake_ws = _FakeWebSocketServer()
     fake_ws.is_running = False
     tools = _register(ws_server=fake_ws)
-    result = asyncio.run(_call_tool(tools, "websocket_health_check"))
+    result = await _call_tool(tools, "websocket_health_check")
     assert result["status"] == "stopped"
     assert result["connections"] == 0
     assert result["rooms"] == 0
 
 
-def test_health_check_healthy() -> None:
+async def test_health_check_healthy() -> None:
     """When server is running, should return healthy status with counts."""
     fake_ws = _FakeWebSocketServer()
     tools = _register(ws_server=fake_ws)
-    result = asyncio.run(_call_tool(tools, "websocket_health_check"))
+    result = await _call_tool(tools, "websocket_health_check")
     assert result["status"] == "healthy"
     assert result["connections"] == 2
     assert result["rooms"] == 2
@@ -112,7 +109,7 @@ def test_health_check_healthy() -> None:
     assert result["max_connections"] == 100
 
 
-def test_health_check_exception() -> None:
+async def test_health_check_exception() -> None:
     """Exceptions should be caught and returned as error status."""
 
     class _BrokenServer:
@@ -125,7 +122,7 @@ def test_health_check_exception() -> None:
             raise RuntimeError("connections broken")
 
     tools = _register(ws_server=_BrokenServer())
-    result = asyncio.run(_call_tool(tools, "websocket_health_check"))
+    result = await _call_tool(tools, "websocket_health_check")
     assert result["status"] == "error"
     assert "connections broken" in result["error"]
 
@@ -135,29 +132,29 @@ def test_health_check_exception() -> None:
 # ---------------------------------------------------------------------------
 
 
-def test_get_status_not_initialized() -> None:
+async def test_get_status_not_initialized() -> None:
     """None server should return not_running server status."""
     tools = _register(ws_server=None)
-    result = asyncio.run(_call_tool(tools, "websocket_get_status"))
+    result = await _call_tool(tools, "websocket_get_status")
     assert result["server"]["status"] == "not_running"
     assert result["connections"] == []
     assert result["rooms"] == []
 
 
-def test_get_status_not_running() -> None:
+async def test_get_status_not_running() -> None:
     """Stopped server should return not_running."""
     fake_ws = _FakeWebSocketServer()
     fake_ws.is_running = False
     tools = _register(ws_server=fake_ws)
-    result = asyncio.run(_call_tool(tools, "websocket_get_status"))
+    result = await _call_tool(tools, "websocket_get_status")
     assert result["server"]["status"] == "not_running"
 
 
-def test_get_status_running() -> None:
+async def test_get_status_running() -> None:
     """Running server should return connection and room details."""
     fake_ws = _FakeWebSocketServer()
     tools = _register(ws_server=fake_ws)
-    result = asyncio.run(_call_tool(tools, "websocket_get_status"))
+    result = await _call_tool(tools, "websocket_get_status")
 
     assert result["server"]["status"] == "running"
     assert result["server"]["host"] == "127.0.0.1"
@@ -170,7 +167,7 @@ def test_get_status_running() -> None:
     assert result["total_rooms"] == 2
 
 
-def test_get_status_exception() -> None:
+async def test_get_status_exception() -> None:
     """Exceptions should be caught and returned as error."""
 
     class _BrokenServer:
@@ -181,7 +178,7 @@ def test_get_status_exception() -> None:
             raise RuntimeError("get status broken")
 
     tools = _register(ws_server=_BrokenServer())
-    result = asyncio.run(_call_tool(tools, "websocket_get_status"))
+    result = await _call_tool(tools, "websocket_get_status")
     assert result["server"]["status"] == "error"
     assert "get status broken" in result["error"]
 
@@ -191,36 +188,36 @@ def test_get_status_exception() -> None:
 # ---------------------------------------------------------------------------
 
 
-def test_list_rooms_not_initialized() -> None:
+async def test_list_rooms_not_initialized() -> None:
     """None server should return empty rooms."""
     tools = _register(ws_server=None)
-    result = asyncio.run(_call_tool(tools, "websocket_list_rooms"))
+    result = await _call_tool(tools, "websocket_list_rooms")
     assert result["rooms"] == {}
     assert result["total_rooms"] == 0
 
 
-def test_list_rooms_not_running() -> None:
+async def test_list_rooms_not_running() -> None:
     """Stopped server should return empty rooms."""
     fake_ws = _FakeWebSocketServer()
     fake_ws.is_running = False
     tools = _register(ws_server=fake_ws)
-    result = asyncio.run(_call_tool(tools, "websocket_list_rooms"))
+    result = await _call_tool(tools, "websocket_list_rooms")
     assert result["rooms"] == {}
     assert result["total_rooms"] == 0
 
 
-def test_list_rooms_running() -> None:
+async def test_list_rooms_running() -> None:
     """Running server should return room list with subscriber counts."""
     fake_ws = _FakeWebSocketServer()
     tools = _register(ws_server=fake_ws)
-    result = asyncio.run(_call_tool(tools, "websocket_list_rooms"))
+    result = await _call_tool(tools, "websocket_list_rooms")
 
     assert result["total_rooms"] == 2
     assert result["rooms"]["room-alpha"]["subscribers"] == 1
     assert result["rooms"]["room-beta"]["subscribers"] == 2
 
 
-def test_list_rooms_exception() -> None:
+async def test_list_rooms_exception() -> None:
     """Exceptions should be caught."""
 
     class _BrokenServer:
@@ -231,7 +228,7 @@ def test_list_rooms_exception() -> None:
             raise RuntimeError("rooms broken")
 
     tools = _register(ws_server=_BrokenServer())
-    result = asyncio.run(_call_tool(tools, "websocket_list_rooms"))
+    result = await _call_tool(tools, "websocket_list_rooms")
     assert "error" in result
     assert result["total_rooms"] == 0
 
@@ -241,7 +238,6 @@ def test_list_rooms_exception() -> None:
 # ---------------------------------------------------------------------------
 
 
-@pytest.mark.asyncio
 async def test_broadcast_test_event_not_initialized() -> None:
     """None server should return error."""
     tools = _register(ws_server=None)
@@ -252,7 +248,6 @@ async def test_broadcast_test_event_not_initialized() -> None:
     assert "not running" in result["error"]
 
 
-@pytest.mark.asyncio
 async def test_broadcast_test_event_not_running() -> None:
     """Stopped server should return error."""
     fake_ws = _FakeWebSocketServer()
@@ -264,7 +259,6 @@ async def test_broadcast_test_event_not_running() -> None:
     assert result["status"] == "error"
 
 
-@pytest.mark.asyncio
 async def test_broadcast_test_event_success() -> None:
     """Successful broadcast should return broadcasted status with subscriber count."""
     fake_ws = _FakeWebSocketServer()
@@ -282,7 +276,6 @@ async def test_broadcast_test_event_success() -> None:
     assert result["message"] == "Test event broadcast successfully"
 
 
-@pytest.mark.asyncio
 async def test_broadcast_test_event_custom_type() -> None:
     """Unknown event types should still work (passed through)."""
     fake_ws = _FakeWebSocketServer()
@@ -294,7 +287,6 @@ async def test_broadcast_test_event_custom_type() -> None:
     assert result["event_type"] == "arbitrary.event"
 
 
-@pytest.mark.asyncio
 async def test_broadcast_test_event_empty_room() -> None:
     """Broadcasting to a room with 0 subscribers should still succeed."""
     fake_ws = _FakeWebSocketServer()
@@ -309,7 +301,6 @@ async def test_broadcast_test_event_empty_room() -> None:
     assert result["subscribers"] == 0
 
 
-@pytest.mark.asyncio
 async def test_broadcast_test_event_exception() -> None:
     """Exceptions should be caught and returned as error."""
 
@@ -330,30 +321,30 @@ async def test_broadcast_test_event_exception() -> None:
 # ---------------------------------------------------------------------------
 
 
-def test_get_metrics_not_initialized() -> None:
+async def test_get_metrics_not_initialized() -> None:
     """None server should return not-running metrics."""
     tools = _register(ws_server=None)
-    result = asyncio.run(_call_tool(tools, "websocket_get_metrics"))
+    result = await _call_tool(tools, "websocket_get_metrics")
     assert result["uptime_seconds"] == 0
     assert result["total_broadcasts"] == 0
     assert "not running" in result["message"]
 
 
-def test_get_metrics_not_running() -> None:
+async def test_get_metrics_not_running() -> None:
     """Stopped server should return not-running metrics."""
     fake_ws = _FakeWebSocketServer()
     fake_ws.is_running = False
     tools = _register(ws_server=fake_ws)
-    result = asyncio.run(_call_tool(tools, "websocket_get_metrics"))
+    result = await _call_tool(tools, "websocket_get_metrics")
     assert result["uptime_seconds"] == 0
     assert "not running" in result["message"]
 
 
-def test_get_metrics_running() -> None:
+async def test_get_metrics_running() -> None:
     """Running server should return current connection counts as metrics."""
     fake_ws = _FakeWebSocketServer()
     tools = _register(ws_server=fake_ws)
-    result = asyncio.run(_call_tool(tools, "websocket_get_metrics"))
+    result = await _call_tool(tools, "websocket_get_metrics")
 
     # peak/current connections reflect current connection dict
     assert result["peak_connections"] == 2
@@ -361,7 +352,7 @@ def test_get_metrics_running() -> None:
     assert "uptime_seconds" in result
 
 
-def test_get_metrics_exception() -> None:
+async def test_get_metrics_exception() -> None:
     """Exceptions should be caught."""
 
     class _BrokenServer:
@@ -372,7 +363,7 @@ def test_get_metrics_exception() -> None:
             raise RuntimeError("metrics broken")
 
     tools = _register(ws_server=_BrokenServer())
-    result = asyncio.run(_call_tool(tools, "websocket_get_metrics"))
+    result = await _call_tool(tools, "websocket_get_metrics")
     assert "error" in result
 
 
