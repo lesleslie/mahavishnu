@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import asyncio
 import time
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -23,8 +22,8 @@ from mahavishnu.core.embeddings import (
     EmbeddingService,
     EmbeddingServiceError,
     FastEmbedProvider,
-    OpenAIProvider,
     OllamaProvider,
+    OpenAIProvider,
     RateLimitConfig,
     SecureEmbeddingService,
     ServiceOverloadedError,
@@ -34,7 +33,6 @@ from mahavishnu.core.embeddings import (
     get_embedding_service,
     get_secure_embedding_service,
 )
-
 
 # -----------------------------------------------------------------------------
 # Enum / exception sanity
@@ -107,6 +105,7 @@ class TestEmbeddingResult:
 
     def test_explicit_created_at_used(self):
         from datetime import datetime
+
         dt = datetime(2020, 1, 1)
         r = EmbeddingResult(
             embeddings=[[0.0]],
@@ -283,14 +282,16 @@ class TestFastEmbedProvider:
     async def test_fallback_embed_when_fastembed_missing(self):
         p = FastEmbedProvider()
         # Force fallback by raising ImportError on from fastembed import TextEmbedding
-        with patch.dict("sys.modules", {"fastembed": None}):
-            with patch(
+        with (
+            patch.dict("sys.modules", {"fastembed": None}),
+            patch(
                 "builtins.__import__",
                 side_effect=ImportError("no fastembed"),
-            ):
-                # Instead of messing with __import__, just call _load_client
-                # and ensure that the fallback is used when fastembed raises.
-                pass
+            ),
+        ):
+            # Instead of messing with __import__, just call _load_client
+            # and ensure that the fallback is used when fastembed raises.
+            pass
         # Easier: directly construct the fallback
         fb = FastEmbedProvider._FallbackTextEmbedding("test-model")
         out = list(fb.embed(["hello", "world"]))
@@ -312,6 +313,7 @@ class TestFastEmbedProvider:
         p = FastEmbedProvider()
         # Simulate ImportError by patching the import inside _load_client
         import builtins
+
         real_import = builtins.__import__
 
         def fake_import(name, *args, **kwargs):
@@ -539,17 +541,15 @@ class TestEmbeddingService:
         s = EmbeddingService(provider=EmbeddingProvider.FASTEMBED)
         # Use fallback provider path (fastembed not installed) for deterministic
         s._providers[EmbeddingProvider.FASTEMBED] = FastEmbedProvider(model="m")
-        s._providers[EmbeddingProvider.FASTEMBED]._client = (
-            FastEmbedProvider._FallbackTextEmbedding("m")
-        )
+        s._providers[
+            EmbeddingProvider.FASTEMBED
+        ]._client = FastEmbedProvider._FallbackTextEmbedding("m")
         r = await s.embed(["x"])
         assert len(r.embeddings) == 1
 
     async def test_embed_preferred_provider_unavailable_no_fallback_raises(self):
         """When the preferred provider is unavailable and fallback disabled, raise."""
-        s = EmbeddingService(
-            provider=EmbeddingProvider.OPENAI, auto_fallback=False
-        )
+        s = EmbeddingService(provider=EmbeddingProvider.OPENAI, auto_fallback=False)
         # Simulate provider not available by using a stub that returns False
         stub = MagicMock()
         stub.is_available.return_value = False
@@ -558,9 +558,7 @@ class TestEmbeddingService:
             await s.embed(["x"])
 
     async def test_embed_with_circuit_breaker_open_no_fallback_raises(self):
-        s = EmbeddingService(
-            provider=EmbeddingProvider.OPENAI, auto_fallback=False
-        )
+        s = EmbeddingService(provider=EmbeddingProvider.OPENAI, auto_fallback=False)
         # Force the circuit breaker open
         cb = s._get_circuit_breaker(EmbeddingProvider.OPENAI)
         cb.state = CircuitState.OPEN
@@ -638,9 +636,7 @@ class TestEmbeddingService:
         ol = MagicMock()
         ol.is_available.return_value = True
         ol.embed = AsyncMock(
-            return_value=EmbeddingResult(
-                [[0.1, 0.2]], "m", EmbeddingProvider.OLLAMA
-            )
+            return_value=EmbeddingResult([[0.1, 0.2]], "m", EmbeddingProvider.OLLAMA)
         )
         s._providers[EmbeddingProvider.OLLAMA] = ol
         r = await s.embed(["x"])
@@ -656,9 +652,7 @@ class TestEmbeddingService:
         ol = MagicMock()
         ol.is_available.return_value = True
         ol.embed = AsyncMock(
-            return_value=EmbeddingResult(
-                [[0.5, 0.6]], "m", EmbeddingProvider.OLLAMA
-            )
+            return_value=EmbeddingResult([[0.5, 0.6]], "m", EmbeddingProvider.OLLAMA)
         )
         s._providers[EmbeddingProvider.OLLAMA] = ol
         r = await s.embed(["x"])
@@ -673,9 +667,7 @@ class TestEmbeddingService:
         ol = MagicMock()
         ol.is_available.return_value = True
         ol.embed = AsyncMock(
-            return_value=EmbeddingResult(
-                [[0.7, 0.8]], "m", EmbeddingProvider.OLLAMA
-            )
+            return_value=EmbeddingResult([[0.7, 0.8]], "m", EmbeddingProvider.OLLAMA)
         )
         s._providers[EmbeddingProvider.OLLAMA] = ol
         r = await s.embed(["x"])
@@ -783,9 +775,7 @@ class TestEmbedFunction:
 
         mod._default_service = None
         # Patch the service inside the singleton
-        with patch(
-            "mahavishnu.core.embeddings.get_embedding_service"
-        ) as gs:
+        with patch("mahavishnu.core.embeddings.get_embedding_service") as gs:
             service = MagicMock()
             result = MagicMock()
             result.embeddings = [[0.1, 0.2]]
@@ -902,9 +892,7 @@ class TestBatchEmbeddingRequest:
             BatchEmbeddingRequest(texts=["x"] * 101, user_id="u1")
 
     def test_validate_texts_strips_control_chars(self):
-        r = BatchEmbeddingRequest(
-            texts=["a\x00b", "c\x0fd"], user_id="u1"
-        )
+        r = BatchEmbeddingRequest(texts=["a\x00b", "c\x0fd"], user_id="u1")
         for t in r.texts:
             assert "\x00" not in t
             assert "\x0f" not in t
@@ -1048,9 +1036,7 @@ class TestSecureEmbeddingService:
         s = SecureEmbeddingService()
         s._service = MagicMock()
         s._service.embed = AsyncMock(
-            return_value=EmbeddingResult(
-                [[0.1, 0.2]], "m", EmbeddingProvider.FASTEMBED
-            )
+            return_value=EmbeddingResult([[0.1, 0.2]], "m", EmbeddingProvider.FASTEMBED)
         )
         req = EmbeddingRequest(text="hi", user_id="u1")
         r = await s.embed_secure(req)
@@ -1067,9 +1053,7 @@ class TestSecureEmbeddingService:
         s = SecureEmbeddingService()
         s._service = MagicMock()
         s._service.embed = AsyncMock(
-            return_value=EmbeddingResult(
-                [[0.0, 0.1]], "m", EmbeddingProvider.FASTEMBED
-            )
+            return_value=EmbeddingResult([[0.0, 0.1]], "m", EmbeddingProvider.FASTEMBED)
         )
         req = BatchEmbeddingRequest(texts=["a", "b", "c"], user_id="u1")
         results = await s.embed_batch_secure(req)
@@ -1081,9 +1065,7 @@ class TestSecureEmbeddingService:
         s = SecureEmbeddingService()
         s._service = MagicMock()
         s._service.embed = AsyncMock(
-            return_value=EmbeddingResult(
-                [[0.0]], "m", EmbeddingProvider.FASTEMBED
-            )
+            return_value=EmbeddingResult([[0.0]], "m", EmbeddingProvider.FASTEMBED)
         )
         texts = [f"text-{i}" for i in range(25)]
         req = BatchEmbeddingRequest(texts=texts, user_id="u1")
@@ -1124,15 +1106,12 @@ class TestSecureEmbeddingService:
         # Build a request with 2 texts -- the Pydantic max_length=100 is the
         # real limit, but we want to exercise the runtime check that the
         # service does. Build a manually-constructed request object.
-        from pydantic import ValidationError
 
         # Pydantic max_length=100 on texts allows up to 100; we just need
         # enough to exceed the runtime max_batch_size=1 but Pydantic still
         # accepts 2. We construct the model with `model_construct` to skip
         # validation, then call the service.
-        req = BatchEmbeddingRequest.model_construct(
-            texts=["a", "b"], user_id="u1", system_id=None
-        )
+        req = BatchEmbeddingRequest.model_construct(texts=["a", "b"], user_id="u1", system_id=None)
         # rate limit is 100/min; ensure not blocked
         assert s._check_rate_limit(req.user_id) is True
         with pytest.raises(ServiceOverloadedError):

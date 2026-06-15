@@ -51,7 +51,6 @@ from mahavishnu.engines.agno_tools.file_tools import (
     write_file,
 )
 
-
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
@@ -121,9 +120,7 @@ def test_get_allowed_base_dirs_with_settings() -> None:
     sentinel_dir = Path(tempfile.gettempdir()) / "fake_allowed_dir"
     sentinel_dir.mkdir(exist_ok=True)
     try:
-        with patch(
-            "mahavishnu.core.config.MahavishnuSettings"
-        ) as settings_cls:
+        with patch("mahavishnu.core.config.MahavishnuSettings") as settings_cls:
             instance = settings_cls.return_value
             instance.allowed_repo_paths = [str(sentinel_dir)]
             result = _get_allowed_base_dirs()
@@ -151,9 +148,7 @@ def test_get_allowed_base_dirs_fallback_when_settings_fails() -> None:
 @pytest.mark.unit
 def test_get_allowed_base_dirs_fallback_when_allowed_repo_paths_empty() -> None:
     """When allowed_repo_paths is empty, fall back to defaults."""
-    with patch(
-        "mahavishnu.core.config.MahavishnuSettings"
-    ) as settings_cls:
+    with patch("mahavishnu.core.config.MahavishnuSettings") as settings_cls:
         instance = settings_cls.return_value
         instance.allowed_repo_paths = []
         result = _get_allowed_base_dirs()
@@ -374,9 +369,9 @@ def test_read_file_impl_success(tmp_workspace: Path) -> None:
 def test_read_file_impl_latin1_fallback(tmp_workspace: Path) -> None:
     p = tmp_workspace / "latin.py"
     # Write raw latin-1 encoded bytes that fail UTF-8 decode
-    p.write_bytes(b"caf\xe9")
+    p.write_bytes(b"calf\xe9")
     result = _read_file_impl(str(p))
-    assert "caf" in result
+    assert "calf" in result
 
 
 @pytest.mark.unit
@@ -574,9 +569,7 @@ def test_search_files_impl_skips_outside_allowed_match(
     # On the *match* path, override resolve() to return /etc/passwd.
     # We can't patch globally without breaking _validate_path. Instead,
     # subclass the resolved match to behave like it's outside.
-    with patch.object(Path, "rglob", fake_rglob), patch.object(
-        Path, "is_file", return_value=True
-    ):
+    with patch.object(Path, "rglob", fake_rglob), patch.object(Path, "is_file", return_value=True):
         # Replace Path.resolve with a function that escapes only for the match
         original_resolve = Path.resolve
 
@@ -611,9 +604,11 @@ def test_search_files_impl_match_validation_exception(
             raise OSError("boom")
         return r
 
-    with patch.object(Path, "rglob", fake_rglob), patch.object(
-        Path, "is_file", return_value=True
-    ), patch.object(Path, "resolve", selective_resolve):
+    with (
+        patch.object(Path, "rglob", fake_rglob),
+        patch.object(Path, "is_file", return_value=True),
+        patch.object(Path, "resolve", selective_resolve),
+    ):
         matches = _search_files_impl("*.py", str(tmp_workspace))
     assert matches == []
 

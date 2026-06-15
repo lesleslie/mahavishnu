@@ -30,7 +30,6 @@ from mahavishnu.workers.registry import (
     validate_worker_dependencies,
 )
 
-
 pytestmark = pytest.mark.unit
 
 
@@ -225,7 +224,11 @@ class TestWorkerRegistry:
         for key, cfg in WORKER_REGISTRY.items():
             if cfg.category is WorkerCategory.AI_ASSISTANT:
                 # Either a completion marker is set, or it signals via JSON
-                assert cfg.completion_markers or cfg.complete_on_valid_json or cfg.stream_format == "json"
+                assert (
+                    cfg.completion_markers
+                    or cfg.complete_on_valid_json
+                    or cfg.stream_format == "json"
+                )
 
     def test_registry_size(self) -> None:
         # 39 keys expected per source
@@ -295,8 +298,7 @@ class TestResolveWorkerType:
     def test_communication_task_types_for_claude_routes_to_openclaw(self, task_type: str) -> None:
         with patch.dict(os.environ, {}, clear=True):
             assert (
-                resolve_worker_type("terminal-claude", task_type=task_type)
-                == "terminal-openclaw"
+                resolve_worker_type("terminal-claude", task_type=task_type) == "terminal-openclaw"
             )
 
     @pytest.mark.parametrize(
@@ -313,10 +315,7 @@ class TestResolveWorkerType:
     )
     def test_communication_task_types_for_qwen_routes_to_openclaw(self, task_type: str) -> None:
         with patch.dict(os.environ, {}, clear=True):
-            assert (
-                resolve_worker_type("terminal-qwen", task_type=task_type)
-                == "terminal-openclaw"
-            )
+            assert resolve_worker_type("terminal-qwen", task_type=task_type) == "terminal-openclaw"
 
     @pytest.mark.parametrize(
         "task_type",
@@ -332,10 +331,7 @@ class TestResolveWorkerType:
     )
     def test_communication_task_types_for_codex_routes_to_openclaw(self, task_type: str) -> None:
         with patch.dict(os.environ, {}, clear=True):
-            assert (
-                resolve_worker_type("terminal-codex", task_type=task_type)
-                == "terminal-openclaw"
-            )
+            assert resolve_worker_type("terminal-codex", task_type=task_type) == "terminal-openclaw"
 
     @pytest.mark.parametrize(
         "task_type",
@@ -353,8 +349,7 @@ class TestResolveWorkerType:
         # terminal-openclaw is itself in the routing set
         with patch.dict(os.environ, {}, clear=True):
             assert (
-                resolve_worker_type("terminal-openclaw", task_type=task_type)
-                == "terminal-openclaw"
+                resolve_worker_type("terminal-openclaw", task_type=task_type) == "terminal-openclaw"
             )
 
     # --- gateway routing ---
@@ -404,10 +399,7 @@ class TestResolveWorkerType:
     def test_prompt_marker_routes_to_openclaw(self, marker: str) -> None:
         with patch.dict(os.environ, {}, clear=True):
             prompt = f"please {marker} to the team"
-            assert (
-                resolve_worker_type("terminal-claude", prompt=prompt)
-                == "terminal-openclaw"
-            )
+            assert resolve_worker_type("terminal-claude", prompt=prompt) == "terminal-openclaw"
 
     def test_prompt_marker_case_insensitive(self) -> None:
         with patch.dict(os.environ, {}, clear=True):
@@ -456,15 +448,16 @@ class TestResolveWorkerType:
     def test_no_match_passes_through(self) -> None:
         with patch.dict(os.environ, {}, clear=True):
             assert (
-                resolve_worker_type("terminal-claude", task_type="code_generation", prompt="write tests")
+                resolve_worker_type(
+                    "terminal-claude", task_type="code_generation", prompt="write tests"
+                )
                 == "terminal-claude"
             )
 
     def test_unrelated_worker_passes_through_even_with_communication_prompt(self) -> None:
         with patch.dict(os.environ, {}, clear=True):
             assert (
-                resolve_worker_type("terminal-shell", task_type="communication")
-                == "terminal-shell"
+                resolve_worker_type("terminal-shell", task_type="communication") == "terminal-shell"
             )
 
     def test_unrelated_worker_passes_through_with_marker(self) -> None:
@@ -485,8 +478,7 @@ class TestResolveWorkerType:
     def test_empty_string_task_type(self) -> None:
         with patch.dict(os.environ, {}, clear=True):
             assert (
-                resolve_worker_type("terminal-claude", task_type="", prompt="")
-                == "terminal-claude"
+                resolve_worker_type("terminal-claude", task_type="", prompt="") == "terminal-claude"
             )
 
     def test_prompt_only_no_task_type(self) -> None:
@@ -657,9 +649,7 @@ class TestValidateWorkerDependencies:
 
     def test_shutil_which_called_with_correct_tool(self) -> None:
         calls: list[str] = []
-        with patch.object(
-            shutil, "which", side_effect=lambda x: calls.append(x) or None
-        ):
+        with patch.object(shutil, "which", side_effect=lambda x: calls.append(x) or None):
             validate_worker_dependencies()
         # Each requires_tool must have been queried
         expected = {cfg.requires_tool for cfg in WORKER_REGISTRY.values() if cfg.requires_tool}

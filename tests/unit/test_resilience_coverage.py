@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import asyncio
-import logging
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -26,8 +25,6 @@ from mahavishnu.core.resilience import (
     get_resilience_metrics,
     retry_async,
 )
-from mahavishnu.core.workflow_state import WorkflowStatus
-
 
 # ---------------------------------------------------------------------------
 # Shared metrics fix-up
@@ -498,9 +495,7 @@ class TestRetryAsync:
             return "done"
 
         policy = RetryPolicy(max_attempts=5, initial_delay_seconds=0.0, max_delay_seconds=0.0)
-        result, attempts = await retry_async(
-            op, policy=policy, operation="op", dependency="dep"
-        )
+        result, attempts = await retry_async(op, policy=policy, operation="op", dependency="dep")
         assert result == "done"
         assert attempts == 3
 
@@ -863,6 +858,7 @@ class TestExecuteWithResilience:
     async def test_fallback_fails(self) -> None:
         app = _make_app()
         mgr = ErrorRecoveryManager(app)
+
         # Replace resource fallback with one that fails
         async def bad_fallback(*args, **kwargs):
             raise RuntimeError("fb failed")
@@ -1026,7 +1022,9 @@ class TestMonitorAndHealWorkflows:
 
         mgr = ErrorRecoveryManager(app)
         with patch.object(
-            ErrorRecoveryManager, "execute_with_resilience", new=AsyncMock(return_value={"success": True})
+            ErrorRecoveryManager,
+            "execute_with_resilience",
+            new=AsyncMock(return_value={"success": True}),
         ):
             await mgr.monitor_and_heal_workflows()
         wsm.update.assert_awaited()
@@ -1049,7 +1047,9 @@ class TestMonitorAndHealWorkflows:
 
         mgr = ErrorRecoveryManager(app)
         with patch.object(
-            ErrorRecoveryManager, "execute_with_resilience", new=AsyncMock(return_value={"success": True})
+            ErrorRecoveryManager,
+            "execute_with_resilience",
+            new=AsyncMock(return_value={"success": True}),
         ):
             await mgr.monitor_and_heal_workflows()
         wsm.update.assert_awaited()
@@ -1172,9 +1172,7 @@ class TestCheckStuckWorkflows:
     async def test_skips_workflows_with_unparseable_date(self) -> None:
         app = _make_app()
         wsm = MagicMock()
-        wsm.list_workflows = AsyncMock(
-            return_value=[{"id": "wf1", "updated_at": "not-a-date"}]
-        )
+        wsm.list_workflows = AsyncMock(return_value=[{"id": "wf1", "updated_at": "not-a-date"}])
         wsm.update = AsyncMock()
         app.workflow_state_manager = wsm
 
@@ -1196,9 +1194,7 @@ class TestCheckStuckWorkflows:
     async def test_workflow_without_id_skipped(self) -> None:
         app = _make_app()
         wsm = MagicMock()
-        wsm.list_workflows = AsyncMock(
-            return_value=[{"updated_at": "2020-01-01T00:00:00+00:00"}]
-        )
+        wsm.list_workflows = AsyncMock(return_value=[{"updated_at": "2020-01-01T00:00:00+00:00"}])
         wsm.update = AsyncMock()
         app.workflow_state_manager = wsm
 

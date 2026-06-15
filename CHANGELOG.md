@@ -5,6 +5,29 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.7.3] - 2026-06-15
+
+### Added
+
+- fixup! feat(pools): add PEER_AFFINITY selector (Item 2)
+- pools: Add PEER_AFFINITY selector (Item 2)
+- routing: Caller-side auth for PEER_AFFINITY (Item D)
+
+### Fixed
+
+- Resolve 13 pre-existing test failures
+
+### Documentation
+
+- Add ADR-014 for Honcho peer model routing precedence (Item 3)
+
+### Testing
+
+- Fan-out coverage push to 10 modules (~11% -> ~99%)
+- Fan-out coverage push to 8 modules (wave 2026-06-12)
+- Fan-out coverage wave 2 — 8 more modules to 85-100%
+- Increase coverage by +1.47% (88.93% → 90.40%) across 9 modules
+
 ## [0.7.2] - 2026-06-07
 
 ### Added
@@ -87,7 +110,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - hygiene: Address TD-2, TD-3, TD-4 from technical-debt-roadmap
 - Remove all *.backup* files
 - Remove nanobot remnant files (HEARTBEAT, SOUL, TOOLS, USER)
-- Remove stale *.backup files
+- Remove stale \*.backup files
 - Remove tracked worktree dir, add session-buddy migration plan
 
 ## [0.7.1] - 2026-05-20

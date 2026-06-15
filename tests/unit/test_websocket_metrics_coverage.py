@@ -3,13 +3,11 @@
 from __future__ import annotations
 
 import importlib.util
-import logging
-import sys
 from pathlib import Path
+import sys
 from unittest.mock import MagicMock, patch
 
 import pytest
-
 
 # ---------------------------------------------------------------------------
 # Direct module import (bypass mahavishnu.websocket.__init__ to avoid pulling
@@ -18,12 +16,8 @@ import pytest
 # and pickling/identity checks see the real package path.
 # ---------------------------------------------------------------------------
 
-_METRICS_PATH = (
-    Path(__file__).resolve().parents[2] / "mahavishnu" / "websocket" / "metrics.py"
-)
-_SPEC = importlib.util.spec_from_file_location(
-    "mahavishnu.websocket.metrics", _METRICS_PATH
-)
+_METRICS_PATH = Path(__file__).resolve().parents[2] / "mahavishnu" / "websocket" / "metrics.py"
+_SPEC = importlib.util.spec_from_file_location("mahavishnu.websocket.metrics", _METRICS_PATH)
 assert _SPEC is not None and _SPEC.loader is not None
 metrics_mod = importlib.util.module_from_spec(_SPEC)
 # Register under both the dotted name and a sentinel name. The dotted name
@@ -330,9 +324,7 @@ class TestInitializeMetrics:
         m = WebSocketMetrics("srv-dup-conn")
         from prometheus_client import REGISTRY, Gauge
 
-        preexisting = Gauge(
-            "websocket_connections", "preexisting", ["server"]
-        )
+        preexisting = Gauge("websocket_connections", "preexisting", ["server"])
         try:
             m._initialize_metrics()
             assert m._connection_gauge is preexisting
@@ -345,9 +337,7 @@ class TestInitializeMetrics:
         m = WebSocketMetrics("srv-dup-sub")
         from prometheus_client import REGISTRY, Gauge
 
-        preexisting = Gauge(
-            "websocket_subscriptions", "preexisting", ["server"]
-        )
+        preexisting = Gauge("websocket_subscriptions", "preexisting", ["server"])
         try:
             m._initialize_metrics()
             assert m._subscription_gauge is preexisting
@@ -646,12 +636,15 @@ class TestStartMetricsServer:
     def test_returns_none_on_oserror(self) -> None:
         if not PROMETHEUS_AVAILABLE:
             pytest.skip("prometheus_client not available")
-        with patch.object(
-            metrics_mod, "start_http_server",
-            side_effect=OSError("port in use"),
+        with (
+            patch.object(
+                metrics_mod,
+                "start_http_server",
+                side_effect=OSError("port in use"),
+            ),
+            patch.object(metrics_mod, "logger") as log,
         ):
-            with patch.object(metrics_mod, "logger") as log:
-                result = start_metrics_server(9092)
+            result = start_metrics_server(9092)
         assert result is None
         # Two logger.error calls are emitted
         assert log.error.call_count == 2

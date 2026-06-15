@@ -8,7 +8,7 @@ patches actually take effect when running under coverage.
 
 from __future__ import annotations
 
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 import typer
@@ -175,7 +175,8 @@ class TestLearningTopSkills:
                         "executions": 12,
                     },
                     {
-                        "skills": "performance_analysis" * 6,  # >40 chars: exercise truncation branch
+                        "skills": "performance_analysis"
+                        * 6,  # >40 chars: exercise truncation branch
                         "success_rate": 0.70,
                         "avg_latency_ms": 250.0,
                         "executions": 6,

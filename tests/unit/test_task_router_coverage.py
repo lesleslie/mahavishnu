@@ -18,8 +18,6 @@ from pathlib import Path
 from typing import Any
 from unittest.mock import AsyncMock, MagicMock, patch
 
-import pytest
-
 from mahavishnu.core.adapters.base import (
     AdapterCapabilities,
     AdapterType,
@@ -37,7 +35,6 @@ from mahavishnu.core.task_router import (
     TaskType,
     WorkflowState,
 )
-
 
 # ---------------------------------------------------------------------------
 # Test helpers
@@ -223,9 +220,7 @@ class TestWorkflowState:
         assert ws.adapter_states == {}
 
     def test_with_states(self) -> None:
-        ws = WorkflowState(
-            workflow_id="wf-1", adapter_states={"prefect": {"x": 1}}
-        )
+        ws = WorkflowState(workflow_id="wf-1", adapter_states={"prefect": {"x": 1}})
         assert ws.adapter_states == {"prefect": {"x": 1}}
 
 
@@ -245,9 +240,7 @@ class TestStateManager:
         sm = StateManager(state_dir=tmp_path)
         import asyncio
 
-        asyncio.get_event_loop().run_until_complete(
-            sm.create("wf-1", {"prompt": "hi"}, ["/r1"])
-        )
+        asyncio.get_event_loop().run_until_complete(sm.create("wf-1", {"prompt": "hi"}, ["/r1"]))
         # New instance should load from disk
         sm2 = StateManager(state_dir=tmp_path)
         state = asyncio.get_event_loop().run_until_complete(sm2.get("wf-1"))
@@ -298,24 +291,18 @@ class TestStateManager:
         sm = StateManager(state_dir=tmp_path)
         # Force the underlying Path.write_text to raise; the _persist
         # wrapper has a try/except that logs and swallows.
-        with patch.object(
-            Path, "write_text", side_effect=OSError("disk full")
-        ):
+        with patch.object(Path, "write_text", side_effect=OSError("disk full")):
             with caplog.at_level(logging.WARNING, logger="mahavishnu.core.task_router"):
                 await sm.create("wf-1", {}, [])
             # State should still be in memory
             assert "wf-1" in sm._workflows
             # Warning was logged
-            assert any(
-                "Failed to persist" in record.message
-                for record in caplog.records
-            )
+            assert any("Failed to persist" in record.message for record in caplog.records)
 
     def test_normalize_status(self) -> None:
         assert StateManager._normalize_status(None) is None
         assert (
-            StateManager._normalize_status(WorkflowStatus.PENDING)
-            == WorkflowStatus.PENDING.value
+            StateManager._normalize_status(WorkflowStatus.PENDING) == WorkflowStatus.PENDING.value
         )
         assert StateManager._normalize_status("running") == "running"
         assert StateManager._normalize_status(123) == "123"
@@ -375,9 +362,7 @@ class TestStateManager:
         assert state["errors"] == [{"msg": "e"}]
         assert state["adapter_states"] == {"prefect": {"x": 1}}
 
-    async def test_update_with_none_collections_preserves_defaults(
-        self, tmp_path: Path
-    ) -> None:
+    async def test_update_with_none_collections_preserves_defaults(self, tmp_path: Path) -> None:
         sm = StateManager(state_dir=tmp_path)
         await sm.create("wf-1", {}, [])
         # results=None and errors=None are tolerated; only the in-memory
@@ -420,14 +405,10 @@ class TestStateManager:
         all_wfs = loop.run_until_complete(sm.list_workflows())
         assert {w["workflow_id"] for w in all_wfs} == {"wf-1", "wf-2"}
         # Only running
-        running = loop.run_until_complete(
-            sm.list_workflows(status=WorkflowStatus.RUNNING)
-        )
+        running = loop.run_until_complete(sm.list_workflows(status=WorkflowStatus.RUNNING))
         assert {w["workflow_id"] for w in running} == {"wf-1"}
         # Pending
-        pending = loop.run_until_complete(
-            sm.list_workflows(status=WorkflowStatus.PENDING)
-        )
+        pending = loop.run_until_complete(sm.list_workflows(status=WorkflowStatus.PENDING))
         assert {w["workflow_id"] for w in pending} == {"wf-2"}
 
     def test_list_workflows_limit(self, tmp_path: Path) -> None:
@@ -537,9 +518,7 @@ class TestStateManager:
         import asyncio
 
         loop = asyncio.get_event_loop()
-        rec = loop.run_until_complete(
-            sm.create_workflow_state("wf-1", "prefect", {"k": "v"})
-        )
+        rec = loop.run_until_complete(sm.create_workflow_state("wf-1", "prefect", {"k": "v"}))
         assert rec["adapter_states"]["prefect"] == {"k": "v"}
 
     def test_create_workflow_state_uses_enum_key(self, tmp_path: Path) -> None:
@@ -618,9 +597,7 @@ class TestCapabilityRouter:
         router = CapabilityRouter()
         import asyncio
 
-        result = asyncio.get_event_loop().run_until_complete(
-            router.route(TaskType.AI_TASK)
-        )
+        result = asyncio.get_event_loop().run_until_complete(router.route(TaskType.AI_TASK))
         assert result["success"] is False
         assert "No adapter registry" in result["error"]
         assert result["task_type"] == "ai_task"
@@ -641,9 +618,7 @@ class TestCapabilityRouter:
         router = CapabilityRouter(registry=registry)
         import asyncio
 
-        result = asyncio.get_event_loop().run_until_complete(
-            router.route(TaskType.AI_TASK)
-        )
+        result = asyncio.get_event_loop().run_until_complete(router.route(TaskType.AI_TASK))
         assert result["success"] is False
         assert "No adapter found" in result["error"]
 
@@ -663,9 +638,7 @@ class TestCapabilityRouter:
         router = CapabilityRouter(registry=registry)
         import asyncio
 
-        result = asyncio.get_event_loop().run_until_complete(
-            router.route(TaskType.AI_TASK)
-        )
+        result = asyncio.get_event_loop().run_until_complete(router.route(TaskType.AI_TASK))
         # If RoutingDecision is available we get a dataclass, otherwise a dict.
         # At least the adapter name should be "high".
         if hasattr(result, "adapter_name"):
@@ -679,9 +652,7 @@ class TestCapabilityRouter:
         router = CapabilityRouter(registry=registry)
         import asyncio
 
-        result = asyncio.get_event_loop().run_until_complete(
-            router.route(TaskType.WORKFLOW)
-        )
+        result = asyncio.get_event_loop().run_until_complete(router.route(TaskType.WORKFLOW))
         assert result["success"] is False
         assert "boom" in result["error"]
 
@@ -747,9 +718,7 @@ class TestTaskRouterHelpers:
 
     def test_normalize_preference_order_dedupes(self) -> None:
         tr = TaskRouter()
-        result = tr._normalize_preference_order(
-            [AdapterType.PREFECT, "prefect", AdapterType.AGNO]
-        )
+        result = tr._normalize_preference_order([AdapterType.PREFECT, "prefect", AdapterType.AGNO])
         assert result == [AdapterType.PREFECT, AdapterType.AGNO]
 
     def test_normalize_preference_order_filters_invalid(self) -> None:

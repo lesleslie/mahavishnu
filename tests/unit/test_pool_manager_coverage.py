@@ -26,7 +26,6 @@ from mahavishnu.pools.manager import (
 )
 from mahavishnu.pools.peer_routing import PeerRouteResolver
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
@@ -182,9 +181,10 @@ def test_init_with_session_buddy_warns_default_acl() -> None:
     """When a session_buddy_client is provided without an explicit ACL,
     the manager logs a warning (per Item 2 security review)."""
     fake_sb = MagicMock()
-    with patch("mahavishnu.core.app.TerminalManager"), patch(
-        "mahavishnu.pools.manager.logger.warning"
-    ) as warn:
+    with (
+        patch("mahavishnu.core.app.TerminalManager"),
+        patch("mahavishnu.pools.manager.logger.warning") as warn,
+    ):
         mgr = PoolManager(
             terminal_manager=MagicMock(),
             session_buddy_client=fake_sb,
@@ -199,9 +199,10 @@ def test_init_with_session_buddy_warns_default_acl() -> None:
 @pytest.mark.unit
 def test_init_with_explicit_peer_resolver_does_not_warn() -> None:
     """An explicit _peer_resolver (set externally) suppresses the warning."""
-    with patch("mahavishnu.core.app.TerminalManager"), patch(
-        "mahavishnu.pools.manager.logger.warning"
-    ) as warn:
+    with (
+        patch("mahavishnu.core.app.TerminalManager"),
+        patch("mahavishnu.pools.manager.logger.warning") as warn,
+    ):
         mgr = PoolManager(
             terminal_manager=MagicMock(),
             session_buddy_client=None,
@@ -487,8 +488,10 @@ async def test_spawn_pool_propagates_pool_start_error() -> None:
         )
     config = PoolConfig(name="bad", pool_type="mahavishnu", min_workers=1, max_workers=2)
     pool = _make_pool("bad", n_workers=1)
+
     async def _bad_start() -> str:
         raise RuntimeError("startup failure")
+
     pool.start = _bad_start
     with patch("mahavishnu.pools.manager.MahavishnuPool", return_value=pool):
         with pytest.raises(RuntimeError, match="startup failure"):
@@ -614,9 +617,7 @@ async def test_select_least_loaded_in_allowlist_subset(
     pool_mgr_with_pools: PoolManager,
 ) -> None:
     """Allowlist restricts candidates; least-loaded within wins."""
-    pid = await pool_mgr_with_pools._select_least_loaded_in_allowlist(
-        {"pool_b", "pool_c"}
-    )
+    pid = await pool_mgr_with_pools._select_least_loaded_in_allowlist({"pool_b", "pool_c"})
     # pool_c has count=2, pool_b has count=3
     assert pid == "pool_c"
 
@@ -626,9 +627,7 @@ async def test_select_least_loaded_in_allowlist_empty(
     pool_mgr_with_pools: PoolManager,
 ) -> None:
     """Empty intersection → None."""
-    pid = await pool_mgr_with_pools._select_least_loaded_in_allowlist(
-        {"no_such_pool"}
-    )
+    pid = await pool_mgr_with_pools._select_least_loaded_in_allowlist({"no_such_pool"})
     assert pid is None
 
 
@@ -680,9 +679,7 @@ async def test_execute_on_pool_runs_and_publishes(
         return await publish_mock.original(msg) if hasattr(publish_mock, "original") else None
 
     pool_mgr_with_pools.message_bus.publish = AsyncMock(return_value=None)
-    result = await pool_mgr_with_pools.execute_on_pool(
-        "pool_a", {"prompt": "hello"}
-    )
+    result = await pool_mgr_with_pools.execute_on_pool("pool_a", {"prompt": "hello"})
     assert result["status"] == "completed"
     assert pool_mgr_with_pools.message_bus.publish.await_count == 1
     msg = pool_mgr_with_pools.message_bus.publish.await_args.args[0]
@@ -937,9 +934,7 @@ async def test_route_task_peer_affinity_resolver_returns_unknown_pool(
         session_buddy_client=MagicMock(),
         acl_provider=lambda _pid: {"peer_models:read": True},
     )
-    pool_mgr_with_pools._peer_resolver.resolve_pool = AsyncMock(
-        return_value="pool_unknown"
-    )
+    pool_mgr_with_pools._peer_resolver.resolve_pool = AsyncMock(return_value="pool_unknown")
     r = await pool_mgr_with_pools.route_task(
         task={"prompt": "x", "peer_id": "alice", "project_id": "p"},
         pool_selector=PoolSelector.PEER_AFFINITY,
@@ -957,9 +952,7 @@ async def test_route_task_peer_affinity_hint_not_in_allowlist(
         session_buddy_client=MagicMock(),
         acl_provider=lambda _pid: {"peer_models:read": True},
     )
-    pool_mgr_with_pools._peer_resolver.resolve_pool = AsyncMock(
-        return_value="pool_b"
-    )
+    pool_mgr_with_pools._peer_resolver.resolve_pool = AsyncMock(return_value="pool_b")
     r = await pool_mgr_with_pools.route_task(
         task={"prompt": "x", "peer_id": "alice", "project_id": "p"},
         pool_selector=PoolSelector.PEER_AFFINITY,
@@ -978,9 +971,7 @@ async def test_route_task_peer_affinity_hint_in_allowlist(
         session_buddy_client=MagicMock(),
         acl_provider=lambda _pid: {"peer_models:read": True},
     )
-    pool_mgr_with_pools._peer_resolver.resolve_pool = AsyncMock(
-        return_value="pool_b"
-    )
+    pool_mgr_with_pools._peer_resolver.resolve_pool = AsyncMock(return_value="pool_b")
     r = await pool_mgr_with_pools.route_task(
         task={"prompt": "x", "peer_id": "alice", "project_id": "p"},
         pool_selector=PoolSelector.PEER_AFFINITY,
@@ -1103,9 +1094,7 @@ async def test_route_task_fitness_overrides_selector() -> None:
     mgr._routing_fitness_reader.get_fitness_signals = AsyncMock(
         return_value={"round_robin": fake_signal}
     )
-    mgr._routing_fitness_reader.get_best_selector = AsyncMock(
-        return_value="round_robin"
-    )
+    mgr._routing_fitness_reader.get_best_selector = AsyncMock(return_value="round_robin")
 
     r = await mgr.route_task(
         task={"prompt": "x", "task_class": "code_generation"},
@@ -1132,9 +1121,7 @@ async def test_route_task_fitness_returns_unknown_selector_passes_through() -> N
     mgr._routing_fitness_reader.get_fitness_signals = AsyncMock(
         return_value={"mystery_selector": fake_signal}
     )
-    mgr._routing_fitness_reader.get_best_selector = AsyncMock(
-        return_value="mystery_selector"
-    )
+    mgr._routing_fitness_reader.get_best_selector = AsyncMock(return_value="mystery_selector")
 
     # Should not raise — selector stays at LEAST_LOADED
     r = await mgr.route_task(
@@ -1241,6 +1228,7 @@ async def test_aggregate_results_handles_pool_errors(
 
     async def _status_ok() -> PoolStatus:
         return PoolStatus.RUNNING
+
     bad.status = _status_ok
 
     pool_mgr_with_pools._pools["bad"] = bad
@@ -1346,6 +1334,7 @@ async def test_list_pools_filters_exceptions(
 
     async def _bad_status():
         raise RuntimeError("nope")
+
     bad.status = _bad_status
     pool_mgr_with_pools._pools["bad"] = bad
 
@@ -1378,6 +1367,7 @@ async def test_health_check_degraded_when_some_unhealthy(
 
     async def _status():
         return PoolStatus.FAILED
+
     bad.status = _status
     pool_mgr_with_pools._pools["bad"] = bad
 
@@ -1394,6 +1384,7 @@ async def test_health_check_unhealthy_when_all_failed(
 
         async def _status() -> PoolStatus:
             return PoolStatus.FAILED
+
         pool_mgr_with_pools._pools[pid].status = _status
 
     out = await pool_mgr_with_pools.health_check()

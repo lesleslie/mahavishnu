@@ -12,7 +12,7 @@ freshly-mocked manager — the manager cannot be patched after the fact.
 from __future__ import annotations
 
 from contextlib import contextmanager
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import Any
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -24,7 +24,6 @@ from mahavishnu.messaging.repository_messenger import (
     MessageType,
     RepositoryMessage,
 )
-
 
 # =============================================================================
 # Fixtures and helpers
@@ -121,9 +120,7 @@ def _registered_tools(manager: MagicMock | None = None):
     app.get_repos = MagicMock(return_value=["repo_x", "repo_y"])
     mcp_client = MagicMock()
 
-    patch_target = (
-        "mahavishnu.mcp.tools.repository_messaging_tools.RepositoryMessengerManager"
-    )
+    patch_target = "mahavishnu.mcp.tools.repository_messaging_tools.RepositoryMessengerManager"
     with patch(patch_target, return_value=manager or _build_manager()):
         rmt.register_repository_messaging_tools(server, app, mcp_client)
 
@@ -382,9 +379,8 @@ class TestGetRepositoryMessages:
         assert call.kwargs["repo_name"] == "repo_b"
         assert call.kwargs["message_type"] == MessageType.WORKFLOW_STATUS_UPDATE
         assert call.kwargs["limit"] == 10
-        from datetime import timezone
 
-        assert call.kwargs["since"] == datetime(2026, 1, 1, 0, 0, 0, tzinfo=timezone.utc)
+        assert call.kwargs["since"] == datetime(2026, 1, 1, 0, 0, 0, tzinfo=UTC)
 
     async def test_get_messages_invalid_message_type(self) -> None:
         """Invalid message_type returns an error dict."""
@@ -497,14 +493,10 @@ class TestNotifyRepositoryChanges:
 
     async def test_notify_changes_manager_error_status(self) -> None:
         """When the manager returns an error status, it should be propagated."""
-        manager = _build_manager(
-            process_changes_return={"status": "error", "error": "no repos"}
-        )
+        manager = _build_manager(process_changes_return={"status": "error", "error": "no repos"})
 
         with _registered_tools(manager) as tools:
-            result = await tools["notify_repository_changes"](
-                repo_path="/path/to/repo", changes=[]
-            )
+            result = await tools["notify_repository_changes"](repo_path="/path/to/repo", changes=[])
         assert result["status"] == "error"
 
     async def test_notify_changes_manager_raises(self) -> None:
@@ -512,9 +504,7 @@ class TestNotifyRepositoryChanges:
         manager = _build_manager(process_changes_side_effect=RuntimeError("oops"))
 
         with _registered_tools(manager) as tools:
-            result = await tools["notify_repository_changes"](
-                repo_path="/path/to/repo", changes=[]
-            )
+            result = await tools["notify_repository_changes"](repo_path="/path/to/repo", changes=[])
         assert result["status"] == "error"
         assert "Failed to notify" in result["error"]
 
@@ -660,7 +650,7 @@ class TestRegistration:
         manager_cls_calls: list[Any] = []
         fake_manager = _build_manager()
 
-        server.tool = MagicMock(side_effect=lambda: (lambda fn: fn))
+        server.tool = MagicMock(side_effect=lambda: lambda fn: fn)
 
         def _capture_manager(*args, **kwargs):
             manager_cls_calls.append((args, kwargs))

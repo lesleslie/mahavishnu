@@ -26,7 +26,6 @@ from mahavishnu.mcp.protocols.message_bus import MessageBus
 from mahavishnu.pools import PoolConfig, PoolManager, PoolSelector
 from mahavishnu.pools.peer_routing import PeerRouteResolver
 
-
 # ---------------------------------------------------------------------------
 # Fixtures: a PoolManager with two pools, plus a fake Session-Buddy peer
 # resolver that recommends one of them.
@@ -204,6 +203,5 @@ def test_route_task_signature_accepts_caller_pool_allowlist() -> None:
     # Default is None — callers may omit the allowlist to opt into
     # the safe "fall back to LEAST_LOADED" behavior.
     assert param.default is None, (
-        f"caller_pool_allowlist default must be None (refuse-on-omit), "
-        f"got {param.default!r}"
+        f"caller_pool_allowlist default must be None (refuse-on-omit), got {param.default!r}"
     )

@@ -6,10 +6,10 @@ adapter_persistence.py to reach >=80% line+branch coverage.
 
 from __future__ import annotations
 
-import json
 from datetime import UTC, datetime, timedelta
+import json
 from pathlib import Path
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, patch
 
 import pytest
 
@@ -22,7 +22,6 @@ from mahavishnu.core.adapter_persistence import (
     HealthRecordError,
     PersistenceError,
 )
-
 
 # =============================================================================
 # Custom Exceptions
@@ -248,8 +247,10 @@ def test_health_record_from_dict_dict_details() -> None:
 def test_layer_default_path_uses_data_dir(tmp_path: Path) -> None:
     """Without explicit storage_path, the layer uses get_data_path."""
     fake_data_path = tmp_path / "adapter_persistence.db"
-    with patch.object(ap, "get_data_path", return_value=fake_data_path) as gdp_mock, \
-         patch.object(ap, "ensure_directories") as ed_mock:
+    with (
+        patch.object(ap, "get_data_path", return_value=fake_data_path) as gdp_mock,
+        patch.object(ap, "ensure_directories") as ed_mock,
+    ):
         layer = AdapterPersistenceLayer()
     ed_mock.assert_called_once()
     gdp_mock.assert_called_once_with("adapter_persistence.db")
@@ -301,7 +302,7 @@ async def test_initialize_fallback_on_primary_failure(tmp_path: Path) -> None:
     real_init_db = AdapterPersistenceLayer._initialize_database
     call_count = 0
 
-    async def fake_init(self: "AdapterPersistenceLayer", storage_path: Path) -> None:
+    async def fake_init(self: AdapterPersistenceLayer, storage_path: Path) -> None:
         nonlocal call_count
         call_count += 1
         if call_count == 1:
@@ -309,13 +310,15 @@ async def test_initialize_fallback_on_primary_failure(tmp_path: Path) -> None:
         # Second call: actually initialize at the fallback path
         await real_init_db(self, storage_path)
 
-    with patch.object(
-        AdapterPersistenceLayer,
-        "_initialize_database",
-        fake_init,
-    ), patch.object(
-        ap, "get_data_path", return_value=bad_path
-    ), patch.object(ap, "ensure_directories"):
+    with (
+        patch.object(
+            AdapterPersistenceLayer,
+            "_initialize_database",
+            fake_init,
+        ),
+        patch.object(ap, "get_data_path", return_value=bad_path),
+        patch.object(ap, "ensure_directories"),
+    ):
         layer = AdapterPersistenceLayer()  # No explicit path -> fallback eligible
         await layer.initialize()
     # Called twice: primary + fallback
@@ -413,11 +416,11 @@ async def test_load_state_raises_adapter_state_error_on_db_failure(tmp_path: Pat
     layer = AdapterPersistenceLayer(storage_path=str(tmp_path / "x.db"))
     await layer.initialize()
     try:
-        with patch.object(
-            layer._db, "execute", side_effect=RuntimeError("db exploded")
+        with (
+            patch.object(layer._db, "execute", side_effect=RuntimeError("db exploded")),
+            pytest.raises(AdapterStateError, match="load"),
         ):
-            with pytest.raises(AdapterStateError, match="load"):
-                await layer.load_state("prefect")
+            await layer.load_state("prefect")
     finally:
         await layer.close()
 
@@ -429,11 +432,11 @@ async def test_save_state_raises_adapter_state_error_on_db_failure(tmp_path: Pat
     await layer.initialize()
     try:
         state = AdapterState(adapter_id="prefect")
-        with patch.object(
-            layer._db, "execute", side_effect=RuntimeError("db exploded")
+        with (
+            patch.object(layer._db, "execute", side_effect=RuntimeError("db exploded")),
+            pytest.raises(AdapterStateError, match="save"),
         ):
-            with pytest.raises(AdapterStateError, match="save"):
-                await layer.save_state(state)
+            await layer.save_state(state)
     finally:
         await layer.close()
 
@@ -472,11 +475,11 @@ async def test_load_all_states_raises_on_db_failure(tmp_path: Path) -> None:
     layer = AdapterPersistenceLayer(storage_path=str(tmp_path / "x.db"))
     await layer.initialize()
     try:
-        with patch.object(
-            layer._db, "execute", side_effect=RuntimeError("nope")
+        with (
+            patch.object(layer._db, "execute", side_effect=RuntimeError("nope")),
+            pytest.raises(AdapterStateError, match="load_all"),
         ):
-            with pytest.raises(AdapterStateError, match="load_all"):
-                await layer.load_all_states()
+            await layer.load_all_states()
     finally:
         await layer.close()
 
@@ -549,11 +552,11 @@ async def test_record_health_raises_on_db_failure(tmp_path: Path) -> None:
             timestamp=datetime.now(UTC),
             healthy=True,
         )
-        with patch.object(
-            layer._db, "execute", side_effect=RuntimeError("nope")
+        with (
+            patch.object(layer._db, "execute", side_effect=RuntimeError("nope")),
+            pytest.raises(HealthRecordError, match="record"),
         ):
-            with pytest.raises(HealthRecordError, match="record"):
-                await layer.record_health(rec)
+            await layer.record_health(rec)
     finally:
         await layer.close()
 
@@ -564,11 +567,11 @@ async def test_get_health_history_raises_on_db_failure(tmp_path: Path) -> None:
     layer = AdapterPersistenceLayer(storage_path=str(tmp_path / "x.db"))
     await layer.initialize()
     try:
-        with patch.object(
-            layer._db, "execute", side_effect=RuntimeError("nope")
+        with (
+            patch.object(layer._db, "execute", side_effect=RuntimeError("nope")),
+            pytest.raises(HealthRecordError, match="get_history"),
         ):
-            with pytest.raises(HealthRecordError, match="get_history"):
-                await layer.get_health_history("prefect")
+            await layer.get_health_history("prefect")
     finally:
         await layer.close()
 
@@ -632,11 +635,11 @@ async def test_cleanup_old_health_records_raises_on_db_failure(tmp_path: Path) -
     layer = AdapterPersistenceLayer(storage_path=str(tmp_path / "x.db"))
     await layer.initialize()
     try:
-        with patch.object(
-            layer._db, "execute", side_effect=RuntimeError("nope")
+        with (
+            patch.object(layer._db, "execute", side_effect=RuntimeError("nope")),
+            pytest.raises(HealthRecordError, match="cleanup"),
         ):
-            with pytest.raises(HealthRecordError, match="cleanup"):
-                await layer.cleanup_old_health_records()
+            await layer.cleanup_old_health_records()
     finally:
         await layer.close()
 
@@ -679,11 +682,11 @@ async def test_delete_state_raises_on_db_failure(tmp_path: Path) -> None:
     layer = AdapterPersistenceLayer(storage_path=str(tmp_path / "x.db"))
     await layer.initialize()
     try:
-        with patch.object(
-            layer._db, "execute", side_effect=RuntimeError("nope")
+        with (
+            patch.object(layer._db, "execute", side_effect=RuntimeError("nope")),
+            pytest.raises(AdapterStateError, match="delete"),
         ):
-            with pytest.raises(AdapterStateError, match="delete"):
-                await layer.delete_state("prefect")
+            await layer.delete_state("prefect")
     finally:
         await layer.close()
 

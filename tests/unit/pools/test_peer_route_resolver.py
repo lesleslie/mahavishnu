@@ -117,9 +117,7 @@ class TestPeerRouteResolver:
         )
         result = await resolver.resolve_pool(peer_id="alice", project_id="proj-x")
         assert result == "pool_abc"
-        client.peer_context.assert_awaited_once_with(
-            peer_id="alice", project_id="proj-x"
-        )
+        client.peer_context.assert_awaited_once_with(peer_id="alice", project_id="proj-x")
 
     @pytest.mark.asyncio
     async def test_acl_grant_without_pool_hint_returns_none(self) -> None:
@@ -203,14 +201,10 @@ class TestPeerRouteResolverDefaultAclProvider:
     @pytest.mark.asyncio
     async def test_default_acl_provider_denies(self) -> None:
         client = MagicMock()
-        client.peer_context = AsyncMock(
-            return_value={"representation_text": "pool: pool_default"}
-        )
+        client.peer_context = AsyncMock(return_value={"representation_text": "pool: pool_default"})
         resolver = PeerRouteResolver(session_buddy_client=client)
         result = await resolver.resolve_pool(peer_id="alice", project_id="proj-x")
-        assert result is None, (
-            "Default ACL must deny; the peer hint must NOT be returned"
-        )
+        assert result is None, "Default ACL must deny; the peer hint must NOT be returned"
         # And the Session-Buddy client must NOT have been consulted
         # (the ACL gate short-circuits BEFORE the peer_context call).
         client.peer_context.assert_not_called()

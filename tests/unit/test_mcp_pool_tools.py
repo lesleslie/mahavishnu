@@ -285,9 +285,7 @@ class TestPoolRouteExecuteTool:
         assert "Routing failed" in result["error"]
 
     @pytest.mark.asyncio
-    async def test_pool_route_execute_refuses_peer_affinity(
-        self, mock_mcp, mock_pool_manager
-    ):
+    async def test_pool_route_execute_refuses_peer_affinity(self, mock_mcp, mock_pool_manager):
         """Security: ``pool_route_execute`` no longer refuses
         ``peer_affinity`` at the surface. The experimental refusal
         was removed in favor of caller-side authorization
@@ -347,8 +345,7 @@ class TestPoolRouteExecuteTool:
         )
         # And the allowlist must be forwarded.
         assert "caller_pool_allowlist" in captured_kwargs, (
-            "pool_route_execute must forward caller_pool_allowlist "
-            "to PoolManager.route_task"
+            "pool_route_execute must forward caller_pool_allowlist to PoolManager.route_task"
         )
         assert set(captured_kwargs["caller_pool_allowlist"]) == {
             "pool_abc",

@@ -25,7 +25,6 @@ Usage:
 from __future__ import annotations
 
 import asyncio
-from collections.abc import Callable, Coroutine
 from dataclasses import dataclass, field
 from enum import Enum
 import logging
@@ -35,6 +34,8 @@ from pydantic import BaseModel, ConfigDict, Field
 from textual.command import Hit, Hits, Provider
 
 if TYPE_CHECKING:
+    from collections.abc import Callable, Coroutine
+
     pass
 
 logger = logging.getLogger(__name__)

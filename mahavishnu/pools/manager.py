@@ -524,194 +524,20 @@ class PoolManager:
             raise RuntimeError("No pools available for routing")
 
         selector = pool_selector or self._pool_selector
-
-        # Phase 4: Consult RoutingFitnessReader for fitness-aware routing.
-        # If fitness signals exist for the task's class, override the selector
-        # to use the highest-score selector; fall back to configured selector
-        # (or least_loaded default) if Dhara is unavailable or no signals exist.
         task_class = task.get("task_class") or task.get("category", "")
-        if task_class:
-            try:
-                signals = await self._routing_fitness_reader.get_fitness_signals(task_class)
-                if signals:
-                    best = await self._routing_fitness_reader.get_best_selector(task_class)
-                    if best:
-                        try:
-                            selector = PoolSelector(best)
-                            logger.debug(
-                                "Fitness-aware routing for task_class=%r: selector=%s (score=%.3f)",
-                                task_class,
-                                best,
-                                signals[best].score,
-                            )
-                        except ValueError:
-                            pass  # Unknown selector string — keep current selector
-            except Exception:
-                pass  # Dhara unavailable — use selector as-is
+        selector = await self._apply_fitness_aware_routing(selector, task_class)
 
-        # Select pool
         if selector == PoolSelector.AFFINITY:
-            if not pool_affinity:
-                raise ValueError("pool_affinity required for AFFINITY strategy")
-            # ADR-014 caller-side authorization: the caller's
-            # declared allowlist is authoritative for any selector
-            # that resolves to a specific pool. If the caller has
-            # not declared an allowlist, or the requested pool is
-            # not in the allowlist, fall back to LEAST_LOADED
-            # within the allowlist.
-            if caller_pool_allowlist is None:
-                logger.debug(
-                    "affinity_no_caller_allowlist: pool_affinity=%r — "
-                    "refusing to honor affinity, falling back to "
-                    "LEAST_LOADED",
-                    pool_affinity,
-                )
-                pool_id = await self._get_least_loaded_pool()
-                if pool_id is None:
-                    raise RuntimeError("No pools available for routing")
-                reason = "affinity_no_caller_allowlist_fallback"
-            elif not self._is_pool_in_allowlist(
-                pool_affinity, caller_pool_allowlist
-            ):
-                logger.debug(
-                    "affinity_not_in_allowlist: pool_affinity=%r "
-                    "allowlist=%r — falling back to LEAST_LOADED within "
-                    "allowlist",
-                    pool_affinity,
-                    sorted(caller_pool_allowlist),
-                )
-                pool_id = await self._select_least_loaded_in_allowlist(
-                    caller_pool_allowlist,
-                )
-                if pool_id is None:
-                    raise RuntimeError(
-                        "No pools available for routing within "
-                        "caller_pool_allowlist"
-                    )
-                reason = "affinity_allowlist_filtered_fallback"
-            else:
-                pool_id = pool_affinity
-                reason = "affinity"
+            pool_id, reason = await self._route_by_affinity(pool_affinity, caller_pool_allowlist)
         elif selector == PoolSelector.PEER_AFFINITY:
-            # Phase 1.5 Item 2 — Honcho peer model as a routing hint.
-            # A3: ACL is authoritative; if the resolver returns None
-            # (no ACL, no row, no hint) we fall back to LEAST_LOADED
-            # with a debug log so the operator can diagnose.
-            #
-            # ADR-014 caller-side authorization: the peer model is a
-            # hint, the caller's declared pool allowlist is the gate.
-            # When no allowlist is supplied, refuse to route via the
-            # peer hint and fall back to LEAST_LOADED. This is the
-            # "refusing to route via peer hint" half of the contract
-            # — the MCP-level refusal that previously enforced this
-            # is now redundant and has been removed.
-            peer_id = task.get("peer_id")
-            project_id = task.get("project_id")
-            if not peer_id or not project_id:
-                raise ValueError(
-                    "PEER_AFFINITY selector requires task['peer_id'] and "
-                    "task['project_id'] to be set"
-                )
-            if self._peer_resolver is None:
-                raise RuntimeError(
-                    "PEER_AFFINITY selector requires PoolManager to be "
-                    "constructed with session_buddy_client or a manually "
-                    "set _peer_resolver"
-                )
-            # Per ADR-014 caller-side authorization: the peer
-            # model is a hint, but only if the CALLER has declared
-            # a pool allowlist. Without an allowlist, the caller
-            # has not authorized any specific pool for peer-routed
-            # dispatch — refuse the hint and fall back to
-            # LEAST_LOADED.
-            if caller_pool_allowlist is None:
-                logger.debug(
-                    "peer_affinity_no_caller_allowlist: peer_id=%r "
-                    "project_id=%r — refusing to route via peer hint, "
-                    "falling back to LEAST_LOADED",
-                    peer_id,
-                    project_id,
-                )
-                pool_id = await self._get_least_loaded_pool()
-                if pool_id is None:
-                    raise RuntimeError("No pools available for routing")
-                reason = "peer_affinity_no_caller_allowlist_fallback"
-            else:
-                resolved_pool_id = await self._peer_resolver.resolve_pool(
-                    peer_id=peer_id,
-                    project_id=project_id,
-                )
-                if resolved_pool_id is None:
-                    logger.debug(
-                        "peer_affinity_no_hint: peer_id=%r project_id=%r — "
-                        "falling back to LEAST_LOADED within allowlist",
-                        peer_id,
-                        project_id,
-                    )
-                    pool_id = await self._select_least_loaded_in_allowlist(
-                        caller_pool_allowlist,
-                    )
-                    if pool_id is None:
-                        raise RuntimeError(
-                            "No pools available for routing within "
-                            "caller_pool_allowlist"
-                        )
-                    reason = "peer_affinity_fallback_least_loaded"
-                elif resolved_pool_id not in self._pools:
-                    # The peer model recommended a pool_id that is
-                    # no longer registered. Normal during pool
-                    # respawns — log and fall back rather than crash.
-                    logger.debug(
-                        "peer_affinity_pool_unknown: peer_id=%r recommended=%r "
-                        "— falling back to LEAST_LOADED within allowlist",
-                        peer_id,
-                        resolved_pool_id,
-                    )
-                    pool_id = await self._select_least_loaded_in_allowlist(
-                        caller_pool_allowlist,
-                    )
-                    if pool_id is None:
-                        raise RuntimeError(
-                            "No pools available for routing within "
-                            "caller_pool_allowlist"
-                        )
-                    reason = "peer_affinity_pool_unknown_fallback"
-                elif not self._is_pool_in_allowlist(
-                    resolved_pool_id, caller_pool_allowlist
-                ):
-                    # The peer model recommended a pool the caller
-                    # is NOT authorized to dispatch into. The
-                    # allowlist is authoritative — discard the
-                    # hint and fall back within the allowlist.
-                    logger.debug(
-                        "peer_affinity_hint_not_in_allowlist: peer_id=%r "
-                        "recommended=%r allowlist=%r — falling back to "
-                        "LEAST_LOADED within allowlist",
-                        peer_id,
-                        resolved_pool_id,
-                        sorted(caller_pool_allowlist),
-                    )
-                    pool_id = await self._select_least_loaded_in_allowlist(
-                        caller_pool_allowlist,
-                    )
-                    if pool_id is None:
-                        raise RuntimeError(
-                            "No pools available for routing within "
-                            "caller_pool_allowlist"
-                        )
-                    reason = "peer_affinity_allowlist_filtered_fallback"
-                else:
-                    pool_id = resolved_pool_id
-                    reason = "peer_affinity"
+            pool_id, reason = await self._route_by_peer_affinity(task, caller_pool_allowlist)
         elif selector == PoolSelector.LEAST_LOADED:
-            # O(log n) heap-based lookup (thread-safe)
             pool_id = await self._get_least_loaded_pool()  # type: ignore[assignment]
             if pool_id is None:
                 raise RuntimeError("No pools available for routing")
             logger.debug(f"Least loaded pool: {pool_id}")
             reason = "least_loaded"
         elif selector == PoolSelector.ROUND_ROBIN:
-            # Round-robin through pools
             pool_ids = list(self._pools.keys())
             pool_id = pool_ids[self._round_robin_index % len(pool_ids)]
             self._round_robin_index += 1
@@ -722,26 +548,188 @@ class PoolManager:
             logger.debug(f"Random pool: {pool_id}")
             reason = "random"
 
-        # GPU category override: prefer a runpod pool for GPU-bound task categories.
-        # Falls back to the already-selected pool when no runpod pool is available.
-        task_category = task.get("category", "")
-        if task_category in {"vision", "ml_inference", "embedding"}:
-            runpod_pool_id = next(
-                (pid for pid, p in self._pools.items() if p.config.pool_type == "runpod"),
-                None,
-            )
-            if runpod_pool_id:
-                logger.debug(
-                    "GPU task category=%r — routing to runpod pool %s",
-                    task_category,
-                    runpod_pool_id,
-                )
-                pool_id = runpod_pool_id
-                reason = "gpu_override"
-
+        pool_id, reason = self._apply_gpu_category_override(pool_id, reason, task)
         await self._persist_routing_decision(task, pool_id, selector, pool_affinity, reason)
-
         return await self.execute_on_pool(pool_id, task)
+
+    async def _apply_fitness_aware_routing(
+        self,
+        selector: "PoolSelector",
+        task_class: str,
+    ) -> "PoolSelector":
+        """Phase 4: override selector from Dhara fitness signals when available."""
+        if not task_class:
+            return selector
+        try:
+            signals = await self._routing_fitness_reader.get_fitness_signals(task_class)
+            if signals:
+                best = await self._routing_fitness_reader.get_best_selector(task_class)
+                if best:
+                    try:
+                        override = PoolSelector(best)
+                        logger.debug(
+                            "Fitness-aware routing for task_class=%r: selector=%s (score=%.3f)",
+                            task_class,
+                            best,
+                            signals[best].score,
+                        )
+                        return override
+                    except ValueError:
+                        pass  # Unknown selector string — keep current selector
+        except Exception:
+            pass  # Dhara unavailable — use selector as-is
+        return selector
+
+    async def _route_by_affinity(
+        self,
+        pool_affinity: str | None,
+        caller_pool_allowlist: set[str] | None,
+    ) -> tuple[str, str]:
+        """ADR-014 caller-side authorization for AFFINITY selector."""
+        if not pool_affinity:
+            raise ValueError("pool_affinity required for AFFINITY strategy")
+        if caller_pool_allowlist is None:
+            logger.debug(
+                "affinity_no_caller_allowlist: pool_affinity=%r — "
+                "refusing to honor affinity, falling back to LEAST_LOADED",
+                pool_affinity,
+            )
+            pool_id = await self._get_least_loaded_pool()
+            if pool_id is None:
+                raise RuntimeError("No pools available for routing")
+            return pool_id, "affinity_no_caller_allowlist_fallback"
+        if not self._is_pool_in_allowlist(pool_affinity, caller_pool_allowlist):
+            logger.debug(
+                "affinity_not_in_allowlist: pool_affinity=%r allowlist=%r — "
+                "falling back to LEAST_LOADED within allowlist",
+                pool_affinity,
+                sorted(caller_pool_allowlist),
+            )
+            pool_id = await self._select_least_loaded_in_allowlist(caller_pool_allowlist)
+            if pool_id is None:
+                raise RuntimeError(
+                    "No pools available for routing within caller_pool_allowlist"
+                )
+            return pool_id, "affinity_allowlist_filtered_fallback"
+        return pool_affinity, "affinity"
+
+    async def _route_by_peer_affinity(
+        self,
+        task: dict[str, Any],
+        caller_pool_allowlist: set[str] | None,
+    ) -> tuple[str, str]:
+        """ADR-014 caller-side authorization for PEER_AFFINITY selector.
+
+        The peer model is a routing hint; the caller's declared allowlist is the gate.
+        Falls back to LEAST_LOADED within the allowlist whenever the hint is absent,
+        stale, or unauthorized.
+        """
+        peer_id = task.get("peer_id")
+        project_id = task.get("project_id")
+        if not peer_id or not project_id:
+            raise ValueError(
+                "PEER_AFFINITY selector requires task['peer_id'] and "
+                "task['project_id'] to be set"
+            )
+        if self._peer_resolver is None:
+            raise RuntimeError(
+                "PEER_AFFINITY selector requires PoolManager to be "
+                "constructed with session_buddy_client or a manually set _peer_resolver"
+            )
+        if caller_pool_allowlist is None:
+            logger.debug(
+                "peer_affinity_no_caller_allowlist: peer_id=%r project_id=%r — "
+                "refusing to route via peer hint, falling back to LEAST_LOADED",
+                peer_id,
+                project_id,
+            )
+            pool_id = await self._get_least_loaded_pool()
+            if pool_id is None:
+                raise RuntimeError("No pools available for routing")
+            return pool_id, "peer_affinity_no_caller_allowlist_fallback"
+
+        resolved_pool_id = await self._peer_resolver.resolve_pool(
+            peer_id=peer_id,
+            project_id=project_id,
+        )
+        return await self._resolve_peer_affinity_pool(
+            peer_id, resolved_pool_id, caller_pool_allowlist, project_id
+        )
+
+    async def _resolve_peer_affinity_pool(
+        self,
+        peer_id: str,
+        resolved_pool_id: str | None,
+        caller_pool_allowlist: set[str],
+        project_id: str,
+    ) -> tuple[str, str]:
+        """Select final pool_id from a peer resolver result, applying allowlist + staleness checks."""
+        if resolved_pool_id is None:
+            logger.debug(
+                "peer_affinity_no_hint: peer_id=%r project_id=%r — "
+                "falling back to LEAST_LOADED within allowlist",
+                peer_id,
+                project_id,
+            )
+            pool_id = await self._select_least_loaded_in_allowlist(caller_pool_allowlist)
+            if pool_id is None:
+                raise RuntimeError(
+                    "No pools available for routing within caller_pool_allowlist"
+                )
+            return pool_id, "peer_affinity_fallback_least_loaded"
+        if resolved_pool_id not in self._pools:
+            # Normal during pool respawns — log and fall back rather than crash.
+            logger.debug(
+                "peer_affinity_pool_unknown: peer_id=%r recommended=%r "
+                "— falling back to LEAST_LOADED within allowlist",
+                peer_id,
+                resolved_pool_id,
+            )
+            pool_id = await self._select_least_loaded_in_allowlist(caller_pool_allowlist)
+            if pool_id is None:
+                raise RuntimeError(
+                    "No pools available for routing within caller_pool_allowlist"
+                )
+            return pool_id, "peer_affinity_pool_unknown_fallback"
+        if not self._is_pool_in_allowlist(resolved_pool_id, caller_pool_allowlist):
+            # Allowlist is authoritative — discard the hint and fall back within it.
+            logger.debug(
+                "peer_affinity_hint_not_in_allowlist: peer_id=%r "
+                "recommended=%r allowlist=%r — falling back to LEAST_LOADED within allowlist",
+                peer_id,
+                resolved_pool_id,
+                sorted(caller_pool_allowlist),
+            )
+            pool_id = await self._select_least_loaded_in_allowlist(caller_pool_allowlist)
+            if pool_id is None:
+                raise RuntimeError(
+                    "No pools available for routing within caller_pool_allowlist"
+                )
+            return pool_id, "peer_affinity_allowlist_filtered_fallback"
+        return resolved_pool_id, "peer_affinity"
+
+    def _apply_gpu_category_override(
+        self,
+        pool_id: str,
+        reason: str,
+        task: dict[str, Any],
+    ) -> tuple[str, str]:
+        """Prefer a RunPod pool for GPU-bound task categories; no-op otherwise."""
+        task_category = task.get("category", "")
+        if task_category not in {"vision", "ml_inference", "embedding"}:
+            return pool_id, reason
+        runpod_pool_id = next(
+            (pid for pid, p in self._pools.items() if p.config.pool_type == "runpod"),
+            None,
+        )
+        if runpod_pool_id:
+            logger.debug(
+                "GPU task category=%r — routing to runpod pool %s",
+                task_category,
+                runpod_pool_id,
+            )
+            return runpod_pool_id, "gpu_override"
+        return pool_id, reason
 
     async def aggregate_results(
         self,

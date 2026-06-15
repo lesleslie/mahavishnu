@@ -10,7 +10,7 @@ from __future__ import annotations
 from contextlib import asynccontextmanager
 from datetime import UTC, datetime
 from typing import Any
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock
 from uuid import UUID, uuid4
 
 import pytest
@@ -28,7 +28,6 @@ from mahavishnu.core.repositories.tasks import (
     TaskUpdate,
 )
 from mahavishnu.core.status import TaskStatus
-
 
 pytestmark = pytest.mark.unit
 

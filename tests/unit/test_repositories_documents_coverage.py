@@ -13,10 +13,10 @@ from datetime import UTC, datetime
 from typing import Any
 from uuid import UUID, uuid4
 
-import pytest
 from pydantic import ValidationError
+import pytest
 
-from mahavishnu.core.repositories.base import BaseRepository, RepositoryError
+from mahavishnu.core.repositories.base import RepositoryError
 from mahavishnu.core.repositories.documents import (
     DocumentCreate,
     DocumentRead,
@@ -24,7 +24,6 @@ from mahavishnu.core.repositories.documents import (
     DocumentSearchResult,
     DocumentUpdate,
 )
-
 
 # ---------------------------------------------------------------------------
 # Helpers: fake asyncpg connection + pool wiring
@@ -216,9 +215,8 @@ class TestBaseClassBehavior:
         repo = make_repo(conn)
         with pytest.raises(NotImplementedError, match="create_document"):
             import asyncio
-            asyncio.run(repo.create(DocumentCreate(
-                source_type="t", source_key="k", content="c"
-            )))  # type: ignore[arg-type]
+
+            asyncio.run(repo.create(DocumentCreate(source_type="t", source_key="k", content="c")))  # type: ignore[arg-type]
 
 
 # ---------------------------------------------------------------------------
@@ -233,9 +231,7 @@ class TestCreateDocument:
         conn = FakeConn(rows=[row])
         repo = make_repo(conn)
 
-        data = DocumentCreate(
-            source_type="repo", source_key="key-1", content="hello world"
-        )
+        data = DocumentCreate(source_type="repo", source_key="key-1", content="hello world")
         result = await repo.create_document(data)
 
         assert isinstance(result, DocumentRead)
@@ -248,9 +244,7 @@ class TestCreateDocument:
     async def test_create_document_no_row_raises(self) -> None:
         conn = FakeConn(rows=[])  # fetchrow returns None
         repo = make_repo(conn)
-        data = DocumentCreate(
-            source_type="repo", source_key="missing", content="x"
-        )
+        data = DocumentCreate(source_type="repo", source_key="missing", content="x")
         with pytest.raises(RepositoryError) as exc:
             await repo.create_document(data)
         assert exc.value.operation == "create_document"
@@ -264,9 +258,7 @@ class TestCreateDocument:
         conn = BoomConn()
         repo = make_repo(conn)
         with pytest.raises(RepositoryError) as exc:
-            await repo.create_document(
-                DocumentCreate(source_type="t", source_key="k", content="c")
-            )
+            await repo.create_document(DocumentCreate(source_type="t", source_key="k", content="c"))
         assert exc.value.operation == "create_document"
         assert "db down" in str(exc.value)
 
@@ -379,9 +371,7 @@ class TestUpdateDocument:
         conn = FakeConn(rows=[row])
         repo = make_repo(conn)
 
-        result = await repo.update_document(
-            doc_id, DocumentUpdate(metadata={"tag": "x"})
-        )
+        result = await repo.update_document(doc_id, DocumentUpdate(metadata={"tag": "x"}))
         assert result is not None
         # Verify it picked the single-field metadata query
         sql, params = conn.fetchrow_calls[0]
@@ -396,9 +386,7 @@ class TestUpdateDocument:
         conn = FakeConn(rows=[row])
         repo = make_repo(conn)
 
-        result = await repo.update_document(
-            doc_id, DocumentUpdate(content="new body")
-        )
+        result = await repo.update_document(doc_id, DocumentUpdate(content="new body"))
         assert result is not None
         sql, params = conn.fetchrow_calls[0]
         assert "content = $2" in sql
@@ -413,9 +401,7 @@ class TestUpdateDocument:
 
         result = await repo.update_document(
             doc_id,
-            DocumentUpdate(
-                content="x", repository="r", system_name="s", metadata={"k": "v"}
-            ),
+            DocumentUpdate(content="x", repository="r", system_name="s", metadata={"k": "v"}),
         )
         assert result is not None
         sql, params = conn.fetchrow_calls[0]
@@ -430,9 +416,7 @@ class TestUpdateDocument:
         conn = FakeConn(rows=[row])
         repo = make_repo(conn)
 
-        await repo.update_document(
-            doc_id, DocumentUpdate(content="x", repository="r")
-        )
+        await repo.update_document(doc_id, DocumentUpdate(content="x", repository="r"))
         sql, params = conn.fetchrow_calls[0]
         assert "content = $2" in sql
         assert "repository = $3" in sql
@@ -457,9 +441,7 @@ class TestUpdateDocument:
     async def test_update_returns_none_when_no_row(self) -> None:
         conn = FakeConn(rows=[])
         repo = make_repo(conn)
-        result = await repo.update_document(
-            uuid4(), DocumentUpdate(content="x")
-        )
+        result = await repo.update_document(uuid4(), DocumentUpdate(content="x"))
         assert result is None
 
     async def test_update_exception_wrapped(self) -> None:
@@ -736,4 +718,5 @@ class TestRepositoryErrorDetails:
 
     async def test_repository_error_inherits_mahavishnu_error(self) -> None:
         from mahavishnu.core.errors import MahavishnuError
+
         assert issubclass(RepositoryError, MahavishnuError)

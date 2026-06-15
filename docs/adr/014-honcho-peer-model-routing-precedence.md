@@ -15,7 +15,7 @@ Mahavishnu's pool router currently uses `POOL_ROUTING_STRATEGY` (`round_robin`, 
 Two authority surfaces now overlap:
 
 1. **ACL** — the existing `pool_access_control` table / settings (who is allowed to run on which pool, repo-scoped or user-scoped). ACL is the security boundary: it answers "is this user permitted to dispatch to this pool at all?"
-2. **Peer model** — the LLM-derived preference hint. Peer model is the optimization signal: it answers "given what we know about this user, which pool is *likely* best for them?"
+1. **Peer model** — the LLM-derived preference hint. Peer model is the optimization signal: it answers "given what we know about this user, which pool is *likely* best for them?"
 
 The risk is precedence confusion. If the two surfaces disagree, a single dispatcher that consults both must have a deterministic answer for which wins, and the answer must be auditable from the trace log. Today there is no documented rule; the dispatcher would either silently drop the hint (no improvement) or silently override the ACL (security regression).
 
@@ -28,10 +28,10 @@ This ADR pins the rule so the dispatcher, the pool tools (`pool_route_execute`, 
 Concretely, when a `pool_route_execute` (or equivalent) call has a `user_id`:
 
 1. Resolve the user's ACL. Build the set of pools this user is *permitted* to dispatch to. If the user has no ACL entry, fall back to the project-wide default ACL.
-2. Consult the user's peer model (`user_models.peer_model_suggested_pool`) for a *suggested* pool.
-3. If the suggested pool is in the ACL allowlist, use it as the candidate.
-4. If the suggested pool is *not* in the ACL allowlist (denied, unknown, or simply missing), discard the hint and apply the configured `POOL_ROUTING_STRATEGY` against the ACL-allowlisted pools only.
-5. Emit a trace event (`task.pool_routing.hint_discarded` or `task.pool_routing.hint_applied`) so an operator can see which path was taken.
+1. Consult the user's peer model (`user_models.peer_model_suggested_pool`) for a *suggested* pool.
+1. If the suggested pool is in the ACL allowlist, use it as the candidate.
+1. If the suggested pool is *not* in the ACL allowlist (denied, unknown, or simply missing), discard the hint and apply the configured `POOL_ROUTING_STRATEGY` against the ACL-allowlisted pools only.
+1. Emit a trace event (`task.pool_routing.hint_discarded` or `task.pool_routing.hint_applied`) so an operator can see which path was taken.
 
 The shortcut form `acl_wins := (acl_permits and not peer_suggests_within_acl) -> apply routing_strategy(acl_pools)` is the canonical contract. The dispatcher does **not** check the peer model *after* the ACL — it checks the peer model *within* the ACL. The two are not in conflict by construction.
 

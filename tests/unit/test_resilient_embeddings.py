@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import asyncio
 import time
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -459,13 +458,16 @@ class TestResilientEmbeddingClientAkosha:
         client._embedding_cache = cache  # noqa: SLF001
 
         # No _akosha or _local_service should be hit
-        with patch.object(
-            client, "_try_akosha", AsyncMock(side_effect=AssertionError("should not call"))
-        ) as akosha_mock, patch.object(
-            client,
-            "_try_local_service",
-            AsyncMock(side_effect=AssertionError("should not call")),
-        ) as local_mock:
+        with (
+            patch.object(
+                client, "_try_akosha", AsyncMock(side_effect=AssertionError("should not call"))
+            ) as akosha_mock,
+            patch.object(
+                client,
+                "_try_local_service",
+                AsyncMock(side_effect=AssertionError("should not call")),
+            ) as local_mock,
+        ):
             result = await client.generate_embedding("text", use_cache=True)
 
         assert result.source == EmbeddingSource.CACHE

@@ -479,9 +479,7 @@ class TestTopicCoverage:
         # word_count < 50 → 0.1; sections == 0 → 0.3; 0.5*0.1 + 0.5*0.3 = 0.2
         score = score_completeness(text)
         # Compare to a known comprehensive text
-        long_score = score_completeness(
-            "# Title\n\n" + " ".join("word" for _ in range(300))
-        )
+        long_score = score_completeness("# Title\n\n" + " ".join("word" for _ in range(300)))
         assert score < long_score
 
     def test_short_text(self) -> None:

@@ -207,9 +207,7 @@ class TestSentenceTransformersWrapper:
 
 class TestFastEmbedWrapper:
     def test_raises_when_unavailable(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        monkeypatch.setattr(
-            "mahavishnu.ingesters.otel_ingester.FASTEMBED_AVAILABLE", False
-        )
+        monkeypatch.setattr("mahavishnu.ingesters.otel_ingester.FASTEMBED_AVAILABLE", False)
         with pytest.raises(ImportError, match="fastembed not available"):
             FastEmbedWrapper()
 
@@ -220,9 +218,7 @@ class TestFastEmbedWrapper:
         fake_model = MagicMock()
         fake_model.embed.return_value = iter([fake_array])
 
-        monkeypatch.setattr(
-            "mahavishnu.ingesters.otel_ingester.FASTEMBED_AVAILABLE", True
-        )
+        monkeypatch.setattr("mahavishnu.ingesters.otel_ingester.FASTEMBED_AVAILABLE", True)
         monkeypatch.setattr(
             "mahavishnu.ingesters.otel_ingester.TextEmbedding",
             MagicMock(return_value=fake_model),
@@ -301,7 +297,11 @@ class TestAkoshaEmbedder:
             ]
         }
 
-        with patch.object(embedder, "_get_client", AsyncMock(return_value=MagicMock(post=AsyncMock(return_value=fake_response)))):
+        with patch.object(
+            embedder,
+            "_get_client",
+            AsyncMock(return_value=MagicMock(post=AsyncMock(return_value=fake_response))),
+        ):
             result = await embedder._encode_async("test")
         assert result == [0.5] * 384
 
@@ -312,7 +312,11 @@ class TestAkoshaEmbedder:
         fake_response.raise_for_status = MagicMock()
         fake_response.json.return_value = {"no_content": True}
 
-        with patch.object(embedder, "_get_client", AsyncMock(return_value=MagicMock(post=AsyncMock(return_value=fake_response)))):
+        with patch.object(
+            embedder,
+            "_get_client",
+            AsyncMock(return_value=MagicMock(post=AsyncMock(return_value=fake_response))),
+        ):
             result = await embedder._encode_async("test")
         assert result == [0.0] * 384
 
@@ -327,12 +331,18 @@ class TestAkoshaEmbedder:
         fake_response = MagicMock()
         fake_response.status_code = 200
 
-        with patch.object(embedder, "_get_client", AsyncMock(return_value=MagicMock(post=AsyncMock(return_value=fake_response)))):
+        with patch.object(
+            embedder,
+            "_get_client",
+            AsyncMock(return_value=MagicMock(post=AsyncMock(return_value=fake_response))),
+        ):
             available = await embedder.check_available()
         assert available is True
         assert embedder._available is True
         # Second call should not re-check
-        with patch.object(embedder, "_get_client", AsyncMock(side_effect=AssertionError("should not be called"))):
+        with patch.object(
+            embedder, "_get_client", AsyncMock(side_effect=AssertionError("should not be called"))
+        ):
             available2 = await embedder.check_available()
         assert available2 is True
 
@@ -347,7 +357,11 @@ class TestAkoshaEmbedder:
         embedder = AkoshaEmbedder()
         fake_response = MagicMock()
         fake_response.status_code = 500
-        with patch.object(embedder, "_get_client", AsyncMock(return_value=MagicMock(post=AsyncMock(return_value=fake_response)))):
+        with patch.object(
+            embedder,
+            "_get_client",
+            AsyncMock(return_value=MagicMock(post=AsyncMock(return_value=fake_response))),
+        ):
             available = await embedder.check_available()
         assert available is False
 
@@ -363,7 +377,11 @@ class TestAkoshaEmbedder:
                 }
             ]
         }
-        with patch.object(embedder, "_get_client", AsyncMock(return_value=MagicMock(post=AsyncMock(return_value=fake_response)))):
+        with patch.object(
+            embedder,
+            "_get_client",
+            AsyncMock(return_value=MagicMock(post=AsyncMock(return_value=fake_response))),
+        ):
             result = await embedder.encode_batch_async(["a", "b"])
         assert result == [[0.1] * 384, [0.2] * 384]
 
@@ -372,7 +390,11 @@ class TestAkoshaEmbedder:
         fake_response = MagicMock()
         fake_response.raise_for_status = MagicMock()
         fake_response.json.return_value = {"content": []}
-        with patch.object(embedder, "_get_client", AsyncMock(return_value=MagicMock(post=AsyncMock(return_value=fake_response)))):
+        with patch.object(
+            embedder,
+            "_get_client",
+            AsyncMock(return_value=MagicMock(post=AsyncMock(return_value=fake_response))),
+        ):
             result = await embedder.encode_batch_async(["a", "b"])
         assert result == [[0.0] * 384, [0.0] * 384]
 
@@ -478,9 +500,7 @@ class TestCreateEmbedder:
             ingester._create_embedder()
 
     def test_fastembed_unavailable(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        monkeypatch.setattr(
-            "mahavishnu.ingesters.otel_ingester.FASTEMBED_AVAILABLE", False
-        )
+        monkeypatch.setattr("mahavishnu.ingesters.otel_ingester.FASTEMBED_AVAILABLE", False)
         ingester = _make_ingester(preferred_backend="fastembed")
         with pytest.raises(ImportError, match="fastembed is not available"):
             ingester._create_embedder()
@@ -491,15 +511,15 @@ class TestCreateEmbedder:
         fake_array.tolist.return_value = _fake_embedding()
         fake_model.embed.return_value = iter([fake_array])
 
-        monkeypatch.setattr(
-            "mahavishnu.ingesters.otel_ingester.FASTEMBED_AVAILABLE", True
-        )
+        monkeypatch.setattr("mahavishnu.ingesters.otel_ingester.FASTEMBED_AVAILABLE", True)
         monkeypatch.setattr(
             "mahavishnu.ingesters.otel_ingester.TextEmbedding",
             MagicMock(return_value=fake_model),
         )
 
-        ingester = _make_ingester(preferred_backend="fastembed", embedding_model="all-mpnet-base-v2")
+        ingester = _make_ingester(
+            preferred_backend="fastembed", embedding_model="all-mpnet-base-v2"
+        )
         embedder = ingester._create_embedder()
         assert isinstance(embedder, FastEmbedWrapper)
 
@@ -527,7 +547,9 @@ class TestMapToFastEmbedModel:
         ingester = _make_ingester()
         assert ingester._map_to_fastembed_model("all-MiniLM-L6-v2") == "BAAI/bge-small-en-v1.5"
         assert ingester._map_to_fastembed_model("all-mpnet-base-v2") == "BAAI/bge-base-en-v1.5"
-        assert ingester._map_to_fastembed_model("paraphrase-MiniLM-L6-v2") == "BAAI/bge-small-en-v1.5"
+        assert (
+            ingester._map_to_fastembed_model("paraphrase-MiniLM-L6-v2") == "BAAI/bge-small-en-v1.5"
+        )
 
     def test_unknown_mapping(self) -> None:
         ingester = _make_ingester()
@@ -562,19 +584,20 @@ class TestInitialize:
             await ingester.initialize()
 
     async def test_initialize_pgvector_with_dsn(self) -> None:
-        ingester = _make_ingester(
-            storage_type="postgresql", pgvector_dsn="postgres://localhost/db"
-        )
+        ingester = _make_ingester(storage_type="postgresql", pgvector_dsn="postgres://localhost/db")
         fake_adapter = AsyncMock()
         fake_adapter.init = AsyncMock()
         fake_adapter.create_collection = AsyncMock()
-        with patch(
-            "mahavishnu.adapters.pgvector_adapter.PgvectorAdapter",
-            return_value=fake_adapter,
-        ) as AdapterCls, patch(
-            "mahavishnu.adapters.pgvector_adapter.PgvectorSettings",
-            return_value=MagicMock(),
-        ) as SettingsCls:
+        with (
+            patch(
+                "mahavishnu.adapters.pgvector_adapter.PgvectorAdapter",
+                return_value=fake_adapter,
+            ) as AdapterCls,
+            patch(
+                "mahavishnu.adapters.pgvector_adapter.PgvectorSettings",
+                return_value=MagicMock(),
+            ) as SettingsCls,
+        ):
             await ingester.initialize()
         assert ingester._pgvector_adapter is fake_adapter
         fake_adapter.init.assert_awaited_once()
@@ -582,9 +605,11 @@ class TestInitialize:
 
     async def test_initialize_runtime_error(self) -> None:
         ingester = _make_ingester()
-        with patch.object(ingester, "_initialize_duckdb", AsyncMock(side_effect=ValueError("boom"))):
-            with pytest.raises(RuntimeError, match="OTel ingester initialization failed"):
-                await ingester.initialize()
+        with (
+            patch.object(ingester, "_initialize_duckdb", AsyncMock(side_effect=ValueError("boom"))),
+            pytest.raises(RuntimeError, match="OTel ingester initialization failed"),
+        ):
+            await ingester.initialize()
 
     async def test_initialize_uses_turboquant_when_available(self) -> None:
         ingester = _make_ingester(turboquant_bits=4)
@@ -596,9 +621,12 @@ class TestInitialize:
             "uncompressed_kb": 1500.0,
             "compressed_kb": 188.0,
         }
-        with patch("akosha.storage.HotStore", return_value=mock_hot), patch(
-            "mahavishnu.ingesters.otel_ingester.TurboQuantCompressor",
-            return_value=mock_compressor,
+        with (
+            patch("akosha.storage.HotStore", return_value=mock_hot),
+            patch(
+                "mahavishnu.ingesters.otel_ingester.TurboQuantCompressor",
+                return_value=mock_compressor,
+            ),
         ):
             await ingester.initialize()
         assert ingester._compressor is mock_compressor
@@ -609,14 +637,19 @@ class TestInitialize:
         mock_hot.initialize = AsyncMock()
         mock_compressor = MagicMock()
         mock_compressor.available = False
-        with patch("akosha.storage.HotStore", return_value=mock_hot), patch(
-            "mahavishnu.ingesters.otel_ingester.TurboQuantCompressor",
-            return_value=mock_compressor,
+        with (
+            patch("akosha.storage.HotStore", return_value=mock_hot),
+            patch(
+                "mahavishnu.ingesters.otel_ingester.TurboQuantCompressor",
+                return_value=mock_compressor,
+            ),
         ):
             await ingester.initialize()
         assert ingester._compressor is mock_compressor
 
-    async def test_initialize_import_error_falls_back(self, monkeypatch: pytest.MonkeyPatch) -> None:
+    async def test_initialize_import_error_falls_back(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
         ingester = _make_ingester(preferred_backend="sentence_transformers")
         mock_hot = AsyncMock()
         mock_hot.initialize = AsyncMock()
@@ -637,9 +670,10 @@ class TestInitialize:
         embedder = MagicMock()
         embedder.dimension = 768
         ingester._embedder = embedder
-        with patch("akosha.storage.HotStore", return_value=mock_hot), patch.object(
-            ingester, "_create_embedder"
-        ) as create:
+        with (
+            patch("akosha.storage.HotStore", return_value=mock_hot),
+            patch.object(ingester, "_create_embedder") as create,
+        ):
             await ingester.initialize()
         create.assert_not_called()
 
@@ -661,7 +695,9 @@ class TestTryFallbackBackends:
         # First two calls fail, third succeeds
         success = MagicMock()
         success.dimension = 256
-        with patch.object(ingester, "_create_embedder", side_effect=[ImportError("a"), ImportError("b"), success]):
+        with patch.object(
+            ingester, "_create_embedder", side_effect=[ImportError("a"), ImportError("b"), success]
+        ):
             result = ingester._try_fallback_backends()
         assert result is success
 
@@ -714,9 +750,7 @@ class TestIngestTraceDuckdb:
 
 class TestIngestTracePgvector:
     async def test_ingest_valid_trace(self) -> None:
-        ingester = _make_ingester(
-            storage_type="postgresql", pgvector_dsn="postgres://x"
-        )
+        ingester = _make_ingester(storage_type="postgresql", pgvector_dsn="postgres://x")
         adapter = AsyncMock()
         adapter.upsert = AsyncMock()
         ingester._pgvector_adapter = adapter
@@ -769,7 +803,9 @@ class TestIngestBatch:
         valid = _sample_trace("t1")
         broken = {"spans": []}  # no trace_id
         # Make broken hit the validation path so it raises
-        with patch.object(ingester, "_ingest_trace_duckdb", new=AsyncMock(side_effect=ValidationError("trace_id"))):
+        with patch.object(
+            ingester, "_ingest_trace_duckdb", new=AsyncMock(side_effect=ValidationError("trace_id"))
+        ):
             stats = await ingester.ingest_batch([valid, broken])
         assert stats["error_count"] >= 1
         assert isinstance(stats["errors"], list)
@@ -1140,9 +1176,10 @@ class TestSpanHelpers:
 class TestAsyncContextManager:
     async def test_aenter_aexit(self) -> None:
         ingester = _make_ingester()
-        with patch.object(ingester, "initialize", AsyncMock()) as init, patch.object(
-            ingester, "close", AsyncMock()
-        ) as close:
+        with (
+            patch.object(ingester, "initialize", AsyncMock()) as init,
+            patch.object(ingester, "close", AsyncMock()) as close,
+        ):
             async with ingester as ctx:
                 assert ctx is ingester
             init.assert_awaited_once()
@@ -1206,9 +1243,7 @@ class TestCreateOtelIngester:
         mock_hot = AsyncMock()
         mock_hot.initialize = AsyncMock()
         mock_hot.close = AsyncMock()
-        monkeypatch.setenv(
-            "MAHAVISHNU__OTEL_INGESTER__STORAGE__PG_URL", "postgres://env-host/db"
-        )
+        monkeypatch.setenv("MAHAVISHNU__OTEL_INGESTER__STORAGE__PG_URL", "postgres://env-host/db")
         with patch("akosha.storage.HotStore", return_value=mock_hot):
             ingester = await create_otel_ingester(
                 storage_type="duckdb",

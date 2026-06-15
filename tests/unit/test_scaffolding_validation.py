@@ -115,15 +115,14 @@ class TestValidatePattern:
             id="test/nested-slot",
             name="Nested Slot",
             structure={"dirs": [{"path": "settings/", "required": True}]},
-            slots={
-                "ok": {"name": "ok", "path": "settings/app.yaml", "type": "file-merge"}
-            },
+            slots={"ok": {"name": "ok", "path": "settings/app.yaml", "type": "file-merge"}},
         )
         issues = validate_pattern(p, library_with_project)
         assert not any("outside all pattern dirs" in i for i in issues)
 
     def test_circular_dependency_detected(self, library_with_project: PatternLibrary) -> None:
         """Circular dependencies (A -> B -> A) should be detected."""
+
         # Build a fake library that has two patterns A and B with mutual deps.
         class FakeLib:
             _file_paths: dict = {}

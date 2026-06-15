@@ -15,7 +15,6 @@ from pathlib import Path
 import subprocess
 import tempfile
 from typing import Any
-from unittest.mock import patch
 
 import pytest
 import yaml
@@ -35,7 +34,6 @@ from mahavishnu.core.coordination.models import (
 )
 from mahavishnu.core.errors import ConfigurationError
 from mahavishnu.core.status import DependencyStatus, IssueStatus, PlanStatus, TodoStatus
-
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -229,9 +227,7 @@ class TestCoordinationManagerInitialization:
         cm = CoordinationManager()
         assert cm.ecosystem_path == Path(ecosystem_path)
 
-    def test_falls_back_to_default_when_env_unset(
-        self, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
+    def test_falls_back_to_default_when_env_unset(self, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.delenv("MAHAVISHNU_ECOSYSTEM_PATH", raising=False)
         cm = CoordinationManager()
         assert str(cm.ecosystem_path).endswith("settings/ecosystem.yaml")
@@ -266,9 +262,7 @@ class TestCoordinationManagerInitialization:
         finally:
             os.unlink(path)
 
-    def test_empty_ecosystem_file_loads_with_empty_coordination(
-        self, empty_path: str
-    ) -> None:
+    def test_empty_ecosystem_file_loads_with_empty_coordination(self, empty_path: str) -> None:
         cm = CoordinationManager(empty_path)
         assert cm._ecosystem == {}
         assert cm._coordination == {}
@@ -288,41 +282,27 @@ class TestCoordinationManagerIssueCRUD:
     def test_list_issues_returns_loaded_issues(self, manager: CoordinationManager) -> None:
         assert len(manager.list_issues()) == 1
 
-    def test_list_issues_filter_status_pending(
-        self, manager: CoordinationManager
-    ) -> None:
+    def test_list_issues_filter_status_pending(self, manager: CoordinationManager) -> None:
         assert len(manager.list_issues(status=IssueStatus.PENDING)) == 1
 
-    def test_list_issues_filter_status_resolved_empty(
-        self, manager: CoordinationManager
-    ) -> None:
+    def test_list_issues_filter_status_resolved_empty(self, manager: CoordinationManager) -> None:
         assert manager.list_issues(status=IssueStatus.RESOLVED) == []
 
-    def test_list_issues_filter_priority(
-        self, manager: CoordinationManager
-    ) -> None:
+    def test_list_issues_filter_priority(self, manager: CoordinationManager) -> None:
         assert len(manager.list_issues(priority="medium")) == 1
         assert manager.list_issues(priority="high") == []
 
-    def test_list_issues_filter_repo_present(
-        self, manager: CoordinationManager
-    ) -> None:
+    def test_list_issues_filter_repo_present(self, manager: CoordinationManager) -> None:
         assert len(manager.list_issues(repo="mahavishnu")) == 1
 
-    def test_list_issues_filter_repo_absent(
-        self, manager: CoordinationManager
-    ) -> None:
+    def test_list_issues_filter_repo_absent(self, manager: CoordinationManager) -> None:
         assert manager.list_issues(repo="nope") == []
 
-    def test_list_issues_filter_assignee_none(
-        self, manager: CoordinationManager
-    ) -> None:
+    def test_list_issues_filter_assignee_none(self, manager: CoordinationManager) -> None:
         # Default fixture has no assignee.
         assert manager.list_issues(assignee="les") == []
 
-    def test_list_issues_combined_filters(
-        self, manager: CoordinationManager
-    ) -> None:
+    def test_list_issues_combined_filters(self, manager: CoordinationManager) -> None:
         result = manager.list_issues(
             status=IssueStatus.PENDING,
             priority="medium",
@@ -330,9 +310,7 @@ class TestCoordinationManagerIssueCRUD:
         )
         assert len(result) == 1
 
-    def test_list_issues_combined_filters_no_match(
-        self, manager: CoordinationManager
-    ) -> None:
+    def test_list_issues_combined_filters_no_match(self, manager: CoordinationManager) -> None:
         result = manager.list_issues(
             status=IssueStatus.PENDING,
             priority="high",  # not present
@@ -344,9 +322,7 @@ class TestCoordinationManagerIssueCRUD:
         assert issue is not None
         assert issue.id == "ISSUE-001"
 
-    def test_get_issue_returns_none_for_missing(
-        self, manager: CoordinationManager
-    ) -> None:
+    def test_get_issue_returns_none_for_missing(self, manager: CoordinationManager) -> None:
         assert manager.get_issue("ISSUE-999") is None
 
     def test_create_issue_appends(self, manager: CoordinationManager) -> None:
@@ -362,29 +338,21 @@ class TestCoordinationManagerIssueCRUD:
         assert manager.get_issue("ISSUE-002") is not None
         assert len(manager._coordination["issues"]) == 2
 
-    def test_create_issue_duplicate_id_raises(
-        self, manager: CoordinationManager
-    ) -> None:
+    def test_create_issue_duplicate_id_raises(self, manager: CoordinationManager) -> None:
         existing = manager.get_issue("ISSUE-001")
         assert existing is not None
         with pytest.raises(ConfigurationError, match="already exists"):
             manager.create_issue(existing)
 
-    def test_update_issue_modifies_field(
-        self, manager: CoordinationManager
-    ) -> None:
+    def test_update_issue_modifies_field(self, manager: CoordinationManager) -> None:
         manager.update_issue("ISSUE-001", {"title": "Renamed"})
         assert manager.get_issue("ISSUE-001").title == "Renamed"
 
-    def test_update_issue_missing_raises(
-        self, manager: CoordinationManager
-    ) -> None:
+    def test_update_issue_missing_raises(self, manager: CoordinationManager) -> None:
         with pytest.raises(ConfigurationError, match="not found"):
             manager.update_issue("ISSUE-999", {"title": "x"})
 
-    def test_update_issue_persists_in_raw_state(
-        self, manager: CoordinationManager
-    ) -> None:
+    def test_update_issue_persists_in_raw_state(self, manager: CoordinationManager) -> None:
         manager.update_issue("ISSUE-001", {"status": "in_progress"})
         raw = manager._coordination["issues"][0]
         assert raw["status"] == "in_progress"
@@ -394,15 +362,11 @@ class TestCoordinationManagerIssueCRUD:
         assert manager.get_issue("ISSUE-001") is None
         assert manager._coordination["issues"] == []
 
-    def test_delete_issue_missing_raises(
-        self, manager: CoordinationManager
-    ) -> None:
+    def test_delete_issue_missing_raises(self, manager: CoordinationManager) -> None:
         with pytest.raises(ConfigurationError, match="not found"):
             manager.delete_issue("ISSUE-999")
 
-    def test_delete_issue_leaves_other_issues_alone(
-        self, manager: CoordinationManager
-    ) -> None:
+    def test_delete_issue_leaves_other_issues_alone(self, manager: CoordinationManager) -> None:
         new = CrossRepoIssue(
             id="ISSUE-002",
             title="Other",
@@ -430,32 +394,22 @@ class TestCoordinationManagerPlanManagement:
     def test_list_plans_returns_loaded(self, manager: CoordinationManager) -> None:
         assert len(manager.list_plans()) == 1
 
-    def test_list_plans_filter_status_match(
-        self, manager: CoordinationManager
-    ) -> None:
+    def test_list_plans_filter_status_match(self, manager: CoordinationManager) -> None:
         assert len(manager.list_plans(status="draft")) == 1
 
-    def test_list_plans_filter_status_miss(
-        self, manager: CoordinationManager
-    ) -> None:
+    def test_list_plans_filter_status_miss(self, manager: CoordinationManager) -> None:
         assert manager.list_plans(status="active") == []
 
-    def test_list_plans_filter_repo_match(
-        self, manager: CoordinationManager
-    ) -> None:
+    def test_list_plans_filter_repo_match(self, manager: CoordinationManager) -> None:
         assert len(manager.list_plans(repo="mahavishnu")) == 1
 
-    def test_list_plans_filter_repo_miss(
-        self, manager: CoordinationManager
-    ) -> None:
+    def test_list_plans_filter_repo_miss(self, manager: CoordinationManager) -> None:
         assert manager.list_plans(repo="nope") == []
 
     def test_get_plan_found(self, manager: CoordinationManager) -> None:
         assert manager.get_plan("PLAN-001") is not None
 
-    def test_get_plan_missing_returns_none(
-        self, manager: CoordinationManager
-    ) -> None:
+    def test_get_plan_missing_returns_none(self, manager: CoordinationManager) -> None:
         assert manager.get_plan("PLAN-999") is None
 
 
@@ -473,29 +427,19 @@ class TestCoordinationManagerTodoManagement:
     def test_list_todos_returns_loaded(self, manager: CoordinationManager) -> None:
         assert len(manager.list_todos()) == 1
 
-    def test_list_todos_filter_status_match(
-        self, manager: CoordinationManager
-    ) -> None:
+    def test_list_todos_filter_status_match(self, manager: CoordinationManager) -> None:
         assert len(manager.list_todos(status=TodoStatus.PENDING)) == 1
 
-    def test_list_todos_filter_status_miss(
-        self, manager: CoordinationManager
-    ) -> None:
+    def test_list_todos_filter_status_miss(self, manager: CoordinationManager) -> None:
         assert manager.list_todos(status=TodoStatus.COMPLETED) == []
 
-    def test_list_todos_filter_repo_match(
-        self, manager: CoordinationManager
-    ) -> None:
+    def test_list_todos_filter_repo_match(self, manager: CoordinationManager) -> None:
         assert len(manager.list_todos(repo="mahavishnu")) == 1
 
-    def test_list_todos_filter_repo_miss(
-        self, manager: CoordinationManager
-    ) -> None:
+    def test_list_todos_filter_repo_miss(self, manager: CoordinationManager) -> None:
         assert manager.list_todos(repo="nope") == []
 
-    def test_list_todos_filter_assignee_none(
-        self, manager: CoordinationManager
-    ) -> None:
+    def test_list_todos_filter_assignee_none(self, manager: CoordinationManager) -> None:
         assert manager.list_todos(assignee="nobody") == []
 
     def test_get_todo_found(self, manager: CoordinationManager) -> None:
@@ -503,9 +447,7 @@ class TestCoordinationManagerTodoManagement:
         assert todo is not None
         assert todo.id == "TODO-001"
 
-    def test_get_todo_missing_returns_none(
-        self, manager: CoordinationManager
-    ) -> None:
+    def test_get_todo_missing_returns_none(self, manager: CoordinationManager) -> None:
         assert manager.get_todo("TODO-999") is None
 
 
@@ -520,38 +462,26 @@ class TestCoordinationManagerDependencyManagement:
         cm = CoordinationManager(empty_path)
         assert cm.list_dependencies() == []
 
-    def test_list_dependencies_returns_loaded(
-        self, manager: CoordinationManager
-    ) -> None:
+    def test_list_dependencies_returns_loaded(self, manager: CoordinationManager) -> None:
         deps = manager.list_dependencies()
         assert len(deps) == 1
         assert deps[0].id == "DEP-001"
 
-    def test_list_dependencies_filter_consumer(
-        self, manager: CoordinationManager
-    ) -> None:
+    def test_list_dependencies_filter_consumer(self, manager: CoordinationManager) -> None:
         assert len(manager.list_dependencies(consumer="fastblocks")) == 1
         assert manager.list_dependencies(consumer="nobody") == []
 
-    def test_list_dependencies_filter_provider(
-        self, manager: CoordinationManager
-    ) -> None:
+    def test_list_dependencies_filter_provider(self, manager: CoordinationManager) -> None:
         assert len(manager.list_dependencies(provider="oneiric")) == 1
         assert manager.list_dependencies(provider="nobody") == []
 
-    def test_list_dependencies_filter_type_match(
-        self, manager: CoordinationManager
-    ) -> None:
+    def test_list_dependencies_filter_type_match(self, manager: CoordinationManager) -> None:
         assert len(manager.list_dependencies(dependency_type="runtime")) == 1
 
-    def test_list_dependencies_filter_type_miss(
-        self, manager: CoordinationManager
-    ) -> None:
+    def test_list_dependencies_filter_type_miss(self, manager: CoordinationManager) -> None:
         assert manager.list_dependencies(dependency_type="mcp") == []
 
-    def test_check_dependencies_summary_keys(
-        self, manager: CoordinationManager
-    ) -> None:
+    def test_check_dependencies_summary_keys(self, manager: CoordinationManager) -> None:
         result = manager.check_dependencies()
         assert set(result.keys()) == {
             "total",
@@ -562,9 +492,7 @@ class TestCoordinationManagerDependencyManagement:
             "dependencies",
         }
 
-    def test_check_dependencies_per_dep_keys(
-        self, manager: CoordinationManager
-    ) -> None:
+    def test_check_dependencies_per_dep_keys(self, manager: CoordinationManager) -> None:
         result = manager.check_dependencies()
         dep_info = result["dependencies"][0]
         assert set(dep_info.keys()) == {
@@ -577,9 +505,7 @@ class TestCoordinationManagerDependencyManagement:
             "validation",
         }
 
-    def test_check_dependencies_filters_by_consumer(
-        self, manager: CoordinationManager
-    ) -> None:
+    def test_check_dependencies_filters_by_consumer(self, manager: CoordinationManager) -> None:
         result = manager.check_dependencies(consumer="fastblocks")
         assert result["total"] == 1
 
@@ -598,9 +524,7 @@ class TestCoordinationManagerDependencyManagement:
 
 @pytest.mark.unit
 class TestCoordinationManagerReporting:
-    def test_get_blocking_issues_excludes_resolved(
-        self, ecosystem_path: str
-    ) -> None:
+    def test_get_blocking_issues_excludes_resolved(self, ecosystem_path: str) -> None:
         path = _write(
             {
                 "coordination": {
@@ -613,15 +537,11 @@ class TestCoordinationManagerReporting:
         )
         try:
             cm = CoordinationManager(path)
-            assert {i.id for i in cm.get_blocking_issues("mahavishnu")} == {
-                "ISSUE-OPEN"
-            }
+            assert {i.id for i in cm.get_blocking_issues("mahavishnu")} == {"ISSUE-OPEN"}
         finally:
             os.unlink(path)
 
-    def test_get_blocking_issues_excludes_closed(
-        self, ecosystem_path: str
-    ) -> None:
+    def test_get_blocking_issues_excludes_closed(self, ecosystem_path: str) -> None:
         path = _write(
             {
                 "coordination": {
@@ -634,15 +554,11 @@ class TestCoordinationManagerReporting:
         )
         try:
             cm = CoordinationManager(path)
-            assert {i.id for i in cm.get_blocking_issues("mahavishnu")} == {
-                "ISSUE-BLOCKED"
-            }
+            assert {i.id for i in cm.get_blocking_issues("mahavishnu")} == {"ISSUE-BLOCKED"}
         finally:
             os.unlink(path)
 
-    def test_get_blocking_issues_repo_filter(
-        self, ecosystem_path: str
-    ) -> None:
+    def test_get_blocking_issues_repo_filter(self, ecosystem_path: str) -> None:
         path = _write(
             {
                 "coordination": {
@@ -655,9 +571,7 @@ class TestCoordinationManagerReporting:
         )
         try:
             cm = CoordinationManager(path)
-            assert {i.id for i in cm.get_blocking_issues("mahavishnu")} == {
-                "I-1"
-            }
+            assert {i.id for i in cm.get_blocking_issues("mahavishnu")} == {"I-1"}
             # I-2 affects "other" and is not resolved/closed, so it does
             # block the "other" repo.
             assert {i.id for i in cm.get_blocking_issues("other")} == {"I-2"}
@@ -666,9 +580,7 @@ class TestCoordinationManagerReporting:
         finally:
             os.unlink(path)
 
-    def test_get_repo_status_keys(
-        self, manager: CoordinationManager
-    ) -> None:
+    def test_get_repo_status_keys(self, manager: CoordinationManager) -> None:
         status = manager.get_repo_status("mahavishnu")
         assert set(status.keys()) == {
             "issues",
@@ -679,9 +591,7 @@ class TestCoordinationManagerReporting:
             "blocked_by",
         }
 
-    def test_get_repo_status_outgoing_vs_incoming(
-        self, ecosystem_path: str
-    ) -> None:
+    def test_get_repo_status_outgoing_vs_incoming(self, ecosystem_path: str) -> None:
         path = _write(
             {
                 "coordination": {
@@ -700,16 +610,12 @@ class TestCoordinationManagerReporting:
         finally:
             os.unlink(path)
 
-    def test_get_repo_status_blocking_todos(
-        self, manager: CoordinationManager
-    ) -> None:
+    def test_get_repo_status_blocking_todos(self, manager: CoordinationManager) -> None:
         # The default todo is pending, blocking=[], so blocking == [].
         status = manager.get_repo_status("mahavishnu")
         assert status["blocking"] == []
 
-    def test_get_repo_status_blocked_by(
-        self, manager: CoordinationManager
-    ) -> None:
+    def test_get_repo_status_blocked_by(self, manager: CoordinationManager) -> None:
         # The default dep is satisfied, so blocked_by == [].
         status = manager.get_repo_status("mahavishnu")
         assert status["blocked_by"] == []
@@ -748,9 +654,7 @@ class TestCoordinationManagerEcosystemStatus:
         finally:
             os.unlink(path)
 
-    def test_critical_blockers_uses_priority_and_status(
-        self, ecosystem_path: str
-    ) -> None:
+    def test_critical_blockers_uses_priority_and_status(self, ecosystem_path: str) -> None:
         path = _write(
             {
                 "coordination": {
@@ -776,9 +680,7 @@ class TestCoordinationManagerEcosystemStatus:
         finally:
             os.unlink(path)
 
-    def test_degraded_dependencies_count(
-        self, ecosystem_path: str
-    ) -> None:
+    def test_degraded_dependencies_count(self, ecosystem_path: str) -> None:
         path = _write(
             {
                 "coordination": {
@@ -799,16 +701,8 @@ class TestCoordinationManagerEcosystemStatus:
         finally:
             os.unlink(path)
 
-    def test_health_degraded_when_open_blocker(
-        self, ecosystem_path: str
-    ) -> None:
-        path = _write(
-            {
-                "coordination": {
-                    "issues": [_issue(priority="critical", status="pending")]
-                }
-            }
-        )
+    def test_health_degraded_when_open_blocker(self, ecosystem_path: str) -> None:
+        path = _write({"coordination": {"issues": [_issue(priority="critical", status="pending")]}})
         try:
             cm = CoordinationManager(path)
             assert cm.get_ecosystem_status()["health"] == "degraded"
@@ -843,9 +737,7 @@ class TestCoordinationManagerEcosystemStatus:
 
 @pytest.mark.unit
 class TestCoordinationManagerSaveReload:
-    def test_save_writes_to_disk(
-        self, manager: CoordinationManager, tmp_path: Path
-    ) -> None:
+    def test_save_writes_to_disk(self, manager: CoordinationManager, tmp_path: Path) -> None:
         new_path = tmp_path / "ecosystem.yaml"
         manager.ecosystem_path = new_path  # type: ignore[assignment]
         manager.create_issue(
@@ -874,9 +766,7 @@ class TestCoordinationManagerSaveReload:
         with pytest.raises(ConfigurationError, match="Failed to write"):
             manager.save()
 
-    def test_reload_replaces_state(
-        self, manager: CoordinationManager, tmp_path: Path
-    ) -> None:
+    def test_reload_replaces_state(self, manager: CoordinationManager, tmp_path: Path) -> None:
         new_path = tmp_path / "ecosystem.yaml"
         new_path.write_text(
             yaml.dump(
@@ -920,9 +810,7 @@ class TestCoordinationManagerSaveReload:
 
 @pytest.mark.unit
 class TestValidateDependencyBranch:
-    def test_validation_runs_command_and_passes(
-        self, ecosystem_path: str
-    ) -> None:
+    def test_validation_runs_command_and_passes(self, ecosystem_path: str) -> None:
         path = _write(
             {
                 "coordination": {
@@ -945,18 +833,8 @@ class TestValidateDependencyBranch:
         finally:
             os.unlink(path)
 
-    def test_validation_without_pattern_just_runs(
-        self, ecosystem_path: str
-    ) -> None:
-        path = _write(
-            {
-                "coordination": {
-                    "dependencies": [
-                        _dep(validation={"command": "echo ok"})
-                    ]
-                }
-            }
-        )
+    def test_validation_without_pattern_just_runs(self, ecosystem_path: str) -> None:
+        path = _write({"coordination": {"dependencies": [_dep(validation={"command": "echo ok"})]}})
         try:
             cm = CoordinationManager(path)
             result = cm.check_dependencies()["dependencies"][0]["validation"]
@@ -965,9 +843,7 @@ class TestValidateDependencyBranch:
         finally:
             os.unlink(path)
 
-    def test_validation_pattern_miss(
-        self, ecosystem_path: str
-    ) -> None:
+    def test_validation_pattern_miss(self, ecosystem_path: str) -> None:
         path = _write(
             {
                 "coordination": {
@@ -989,9 +865,7 @@ class TestValidateDependencyBranch:
         finally:
             os.unlink(path)
 
-    def test_validation_command_failure(
-        self, ecosystem_path: str
-    ) -> None:
+    def test_validation_command_failure(self, ecosystem_path: str) -> None:
         path = _write(
             {
                 "coordination": {
@@ -1036,9 +910,7 @@ class TestValidateDependencyBranch:
         assert result["passed"] is False
         assert result["details"] == "boom"
 
-    def test_validation_skipped_when_no_command(
-        self, ecosystem_path: str
-    ) -> None:
+    def test_validation_skipped_when_no_command(self, ecosystem_path: str) -> None:
         path = _write(
             {
                 "coordination": {
@@ -1056,17 +928,9 @@ class TestValidateDependencyBranch:
         finally:
             os.unlink(path)
 
-    def test_validation_skipped_when_command_none(
-        self, ecosystem_path: str
-    ) -> None:
+    def test_validation_skipped_when_command_none(self, ecosystem_path: str) -> None:
         path = _write(
-            {
-                "coordination": {
-                    "dependencies": [
-                        _dep(validation={"expected_pattern": "x"})
-                    ]
-                }
-            }
+            {"coordination": {"dependencies": [_dep(validation={"expected_pattern": "x"})]}}
         )
         try:
             cm = CoordinationManager(path)
@@ -1089,9 +953,7 @@ class TestValidateDependencyBranch:
 
 @pytest.mark.unit
 class TestCoordinationManagerNormalization:
-    def test_normalize_issue_status_legacy_resolved(
-        self, ecosystem_path: str
-    ) -> None:
+    def test_normalize_issue_status_legacy_resolved(self, ecosystem_path: str) -> None:
         path = _write({"coordination": {"issues": [_issue(status="fixed")]}})
         try:
             cm = CoordinationManager(path)
@@ -1099,9 +961,7 @@ class TestCoordinationManagerNormalization:
         finally:
             os.unlink(path)
 
-    def test_normalize_issue_status_legacy_closed(
-        self, ecosystem_path: str
-    ) -> None:
+    def test_normalize_issue_status_legacy_closed(self, ecosystem_path: str) -> None:
         path = _write({"coordination": {"issues": [_issue(status="closed")]}})
         try:
             cm = CoordinationManager(path)
@@ -1109,9 +969,7 @@ class TestCoordinationManagerNormalization:
         finally:
             os.unlink(path)
 
-    def test_normalize_issue_status_legacy_in_progress(
-        self, ecosystem_path: str
-    ) -> None:
+    def test_normalize_issue_status_legacy_in_progress(self, ecosystem_path: str) -> None:
         path = _write({"coordination": {"issues": [_issue(status="in progress")]}})
         try:
             cm = CoordinationManager(path)
@@ -1129,9 +987,7 @@ class TestCoordinationManagerNormalization:
         finally:
             os.unlink(path)
 
-    def test_normalize_issue_status_none_falls_back_to_pending(
-        self, ecosystem_path: str
-    ) -> None:
+    def test_normalize_issue_status_none_falls_back_to_pending(self, ecosystem_path: str) -> None:
         path = _write({"coordination": {"issues": [_issue(status=None)]}})
         try:
             cm = CoordinationManager(path)
@@ -1139,9 +995,7 @@ class TestCoordinationManagerNormalization:
         finally:
             os.unlink(path)
 
-    def test_normalize_issue_status_passthrough_enum(
-        self, ecosystem_path: str
-    ) -> None:
+    def test_normalize_issue_status_passthrough_enum(self, ecosystem_path: str) -> None:
         path = _write({"coordination": {"issues": [_issue()]}})
         try:
             cm = CoordinationManager(path)
@@ -1149,9 +1003,7 @@ class TestCoordinationManagerNormalization:
         finally:
             os.unlink(path)
 
-    def test_normalize_issue_priority_aliases(
-        self, ecosystem_path: str
-    ) -> None:
+    def test_normalize_issue_priority_aliases(self, ecosystem_path: str) -> None:
         path = _write({"coordination": {"issues": [_issue(priority="p0")]}})
         try:
             cm = CoordinationManager(path)
@@ -1159,9 +1011,7 @@ class TestCoordinationManagerNormalization:
         finally:
             os.unlink(path)
 
-    def test_normalize_issue_priority_unknown_defaults_to_medium(
-        self, ecosystem_path: str
-    ) -> None:
+    def test_normalize_issue_priority_unknown_defaults_to_medium(self, ecosystem_path: str) -> None:
         path = _write({"coordination": {"issues": [_issue(priority="zany")]}})
         try:
             cm = CoordinationManager(path)
@@ -1177,22 +1027,16 @@ class TestCoordinationManagerNormalization:
         finally:
             os.unlink(path)
 
-    def test_normalize_todo_status_in_progress_aliases(
-        self, ecosystem_path: str
-    ) -> None:
+    def test_normalize_todo_status_in_progress_aliases(self, ecosystem_path: str) -> None:
         for alias in ("in_progress", "in-progress", "in progress"):
-            path = _write(
-                {"coordination": {"todos": [_todo(status=alias)]}}
-            )
+            path = _write({"coordination": {"todos": [_todo(status=alias)]}})
             try:
                 cm = CoordinationManager(path)
                 assert cm.list_todos()[0].status == TodoStatus.IN_PROGRESS
             finally:
                 os.unlink(path)
 
-    def test_normalize_todo_status_unknown_falls_back_to_pending(
-        self, ecosystem_path: str
-    ) -> None:
+    def test_normalize_todo_status_unknown_falls_back_to_pending(self, ecosystem_path: str) -> None:
         path = _write({"coordination": {"todos": [_todo(status="??")]}})
         try:
             cm = CoordinationManager(path)
@@ -1200,9 +1044,7 @@ class TestCoordinationManagerNormalization:
         finally:
             os.unlink(path)
 
-    def test_normalize_todo_priority_inherits_issue_logic(
-        self, ecosystem_path: str
-    ) -> None:
+    def test_normalize_todo_priority_inherits_issue_logic(self, ecosystem_path: str) -> None:
         path = _write({"coordination": {"todos": [_todo(priority="p1")]}})
         try:
             cm = CoordinationManager(path)
@@ -1210,9 +1052,7 @@ class TestCoordinationManagerNormalization:
         finally:
             os.unlink(path)
 
-    def test_normalize_infer_repos_from_affected_files(
-        self, ecosystem_path: str
-    ) -> None:
+    def test_normalize_infer_repos_from_affected_files(self, ecosystem_path: str) -> None:
         issue = _issue()
         del issue["repos"]
         issue["affected_files"] = ["mahavishnu/a.py", "session-buddy/b.py"]
@@ -1224,9 +1064,7 @@ class TestCoordinationManagerNormalization:
         finally:
             os.unlink(path)
 
-    def test_normalize_infer_repos_from_pool(
-        self, ecosystem_path: str
-    ) -> None:
+    def test_normalize_infer_repos_from_pool(self, ecosystem_path: str) -> None:
         issue = _issue()
         del issue["repos"]
         issue["pool"] = "akosha"
@@ -1237,9 +1075,7 @@ class TestCoordinationManagerNormalization:
         finally:
             os.unlink(path)
 
-    def test_normalize_infer_repos_default(
-        self, ecosystem_path: str
-    ) -> None:
+    def test_normalize_infer_repos_default(self, ecosystem_path: str) -> None:
         issue = _issue()
         del issue["repos"]
         path = _write({"coordination": {"issues": [issue]}})
@@ -1249,9 +1085,7 @@ class TestCoordinationManagerNormalization:
         finally:
             os.unlink(path)
 
-    def test_normalize_issue_tags_to_labels(
-        self, ecosystem_path: str
-    ) -> None:
+    def test_normalize_issue_tags_to_labels(self, ecosystem_path: str) -> None:
         # The normalize pass only copies ``tags`` to ``labels`` when the
         # dict has no ``labels`` key at all.
         issue = _issue()
@@ -1264,9 +1098,7 @@ class TestCoordinationManagerNormalization:
         finally:
             os.unlink(path)
 
-    def test_normalize_todo_tags_to_labels(
-        self, ecosystem_path: str
-    ) -> None:
+    def test_normalize_todo_tags_to_labels(self, ecosystem_path: str) -> None:
         todo = _todo()
         todo["tags"] = "not-a-list"  # type: ignore[assignment]
         path = _write({"coordination": {"todos": [todo]}})
@@ -1276,9 +1108,7 @@ class TestCoordinationManagerNormalization:
         finally:
             os.unlink(path)
 
-    def test_normalize_todo_task_fallback_to_description(
-        self, ecosystem_path: str
-    ) -> None:
+    def test_normalize_todo_task_fallback_to_description(self, ecosystem_path: str) -> None:
         todo = _todo()
         del todo["task"]
         path = _write({"coordination": {"todos": [todo]}})
@@ -1289,9 +1119,7 @@ class TestCoordinationManagerNormalization:
         finally:
             os.unlink(path)
 
-    def test_normalize_todo_task_fallback_to_id(
-        self, ecosystem_path: str
-    ) -> None:
+    def test_normalize_todo_task_fallback_to_id(self, ecosystem_path: str) -> None:
         todo = _todo()
         del todo["task"]
         del todo["description"]
@@ -1303,9 +1131,7 @@ class TestCoordinationManagerNormalization:
         finally:
             os.unlink(path)
 
-    def test_normalize_todo_estimated_hours_default(
-        self, ecosystem_path: str
-    ) -> None:
+    def test_normalize_todo_estimated_hours_default(self, ecosystem_path: str) -> None:
         todo = _todo()
         del todo["estimated_hours"]
         path = _write({"coordination": {"todos": [todo]}})
@@ -1315,9 +1141,7 @@ class TestCoordinationManagerNormalization:
         finally:
             os.unlink(path)
 
-    def test_normalize_todo_estimate_hours_alias(
-        self, ecosystem_path: str
-    ) -> None:
+    def test_normalize_todo_estimate_hours_alias(self, ecosystem_path: str) -> None:
         todo = _todo()
         del todo["estimated_hours"]
         todo["estimate_hours"] = 12.0
@@ -1328,9 +1152,7 @@ class TestCoordinationManagerNormalization:
         finally:
             os.unlink(path)
 
-    def test_normalize_todo_infer_repo_from_issue(
-        self, ecosystem_path: str
-    ) -> None:
+    def test_normalize_todo_infer_repo_from_issue(self, ecosystem_path: str) -> None:
         todo = _todo()
         del todo["repo"]
         todo["issue_id"] = "ISSUE-001"
@@ -1350,9 +1172,7 @@ class TestCoordinationManagerNormalization:
         finally:
             os.unlink(path)
 
-    def test_normalize_todo_infer_repo_from_pool(
-        self, ecosystem_path: str
-    ) -> None:
+    def test_normalize_todo_infer_repo_from_pool(self, ecosystem_path: str) -> None:
         todo = _todo()
         del todo["repo"]
         todo["pool"] = "akosha"
@@ -1363,9 +1183,7 @@ class TestCoordinationManagerNormalization:
         finally:
             os.unlink(path)
 
-    def test_normalize_todo_infer_repo_default(
-        self, ecosystem_path: str
-    ) -> None:
+    def test_normalize_todo_infer_repo_default(self, ecosystem_path: str) -> None:
         todo = _todo()
         del todo["repo"]
         path = _write({"coordination": {"todos": [todo]}})
@@ -1375,9 +1193,7 @@ class TestCoordinationManagerNormalization:
         finally:
             os.unlink(path)
 
-    def test_normalize_datetime_objects_to_iso(
-        self, ecosystem_path: str
-    ) -> None:
+    def test_normalize_datetime_objects_to_iso(self, ecosystem_path: str) -> None:
         issue = _issue()
         issue["created"] = datetime(2026, 1, 1)
         issue["updated"] = datetime(2026, 1, 2)
@@ -1390,16 +1206,12 @@ class TestCoordinationManagerNormalization:
         finally:
             os.unlink(path)
 
-    def test_stringify_datetime_passthrough_string(
-        self, manager: CoordinationManager
-    ) -> None:
+    def test_stringify_datetime_passthrough_string(self, manager: CoordinationManager) -> None:
         # The helper should not modify non-datetime values.
         assert manager._stringify_datetime("plain-string") == "plain-string"
         assert manager._stringify_datetime(None) is None
 
-    def test_stringify_datetime_converts_datetime(
-        self, manager: CoordinationManager
-    ) -> None:
+    def test_stringify_datetime_converts_datetime(self, manager: CoordinationManager) -> None:
         result = manager._stringify_datetime(datetime(2026, 5, 10, 12, 30, 0))
         assert isinstance(result, str)
         assert result.startswith("2026-05-10")
@@ -1412,13 +1224,9 @@ class TestCoordinationManagerNormalization:
 
 @pytest.mark.unit
 class TestCoordinationManagerValidationErrors:
-    def test_list_issues_invalid_data_raises(
-        self, ecosystem_path: str
-    ) -> None:
+    def test_list_issues_invalid_data_raises(self, ecosystem_path: str) -> None:
         # Force an issue to have repos as a non-list.
-        path = _write(
-            {"coordination": {"issues": [_issue(repos="not-a-list")]}}
-        )
+        path = _write({"coordination": {"issues": [_issue(repos="not-a-list")]}})
         try:
             cm = CoordinationManager(path)
             with pytest.raises(ConfigurationError, match="Invalid issue data"):
@@ -1426,9 +1234,7 @@ class TestCoordinationManagerValidationErrors:
         finally:
             os.unlink(path)
 
-    def test_list_plans_invalid_data_raises(
-        self, ecosystem_path: str
-    ) -> None:
+    def test_list_plans_invalid_data_raises(self, ecosystem_path: str) -> None:
         path = _write({"coordination": {"plans": [_plan(repos=[])]}})
         try:
             cm = CoordinationManager(path)
@@ -1437,12 +1243,8 @@ class TestCoordinationManagerValidationErrors:
         finally:
             os.unlink(path)
 
-    def test_list_todos_invalid_data_raises(
-        self, ecosystem_path: str
-    ) -> None:
-        path = _write(
-            {"coordination": {"todos": [_todo(estimated_hours=0)]}}
-        )
+    def test_list_todos_invalid_data_raises(self, ecosystem_path: str) -> None:
+        path = _write({"coordination": {"todos": [_todo(estimated_hours=0)]}})
         try:
             cm = CoordinationManager(path)
             with pytest.raises(ConfigurationError, match="Invalid todo data"):
@@ -1450,9 +1252,7 @@ class TestCoordinationManagerValidationErrors:
         finally:
             os.unlink(path)
 
-    def test_list_dependencies_invalid_data_raises(
-        self, ecosystem_path: str
-    ) -> None:
+    def test_list_dependencies_invalid_data_raises(self, ecosystem_path: str) -> None:
         path = _write({"coordination": {"dependencies": [_dep(consumer="")]}})
         try:
             cm = CoordinationManager(path)
@@ -1461,9 +1261,7 @@ class TestCoordinationManagerValidationErrors:
         finally:
             os.unlink(path)
 
-    def test_check_dependencies_invalid_data_raises(
-        self, ecosystem_path: str
-    ) -> None:
+    def test_check_dependencies_invalid_data_raises(self, ecosystem_path: str) -> None:
         path = _write({"coordination": {"dependencies": [_dep(consumer="")]}})
         try:
             cm = CoordinationManager(path)
@@ -1492,54 +1290,36 @@ class TestCoordinationManagerPrivateHelpers:
         )
         assert manager._infer_todo_repo({"issue_id": "ISSUE-001"}) == "session-buddy"
 
-    def test_infer_todo_repo_from_pool(
-        self, manager: CoordinationManager
-    ) -> None:
+    def test_infer_todo_repo_from_pool(self, manager: CoordinationManager) -> None:
         assert manager._infer_todo_repo({"pool": "akosha"}) == "akosha"
 
-    def test_infer_todo_repo_default(
-        self, manager: CoordinationManager
-    ) -> None:
+    def test_infer_todo_repo_default(self, manager: CoordinationManager) -> None:
         assert manager._infer_todo_repo({}) == "mahavishnu"
 
-    def test_infer_todo_repo_strips_pool(
-        self, manager: CoordinationManager
-    ) -> None:
+    def test_infer_todo_repo_strips_pool(self, manager: CoordinationManager) -> None:
         assert manager._infer_todo_repo({"pool": "  akosha  "}) == "akosha"
 
-    def test_infer_todo_repo_ignores_blank_issue_id(
-        self, manager: CoordinationManager
-    ) -> None:
+    def test_infer_todo_repo_ignores_blank_issue_id(self, manager: CoordinationManager) -> None:
         # If issue_id is a non-empty whitespace string, the helper trims
         # and falls through.
         assert manager._infer_todo_repo({"issue_id": "   "}) == "mahavishnu"
 
-    def test_infer_issue_repos_default(
-        self, manager: CoordinationManager
-    ) -> None:
+    def test_infer_issue_repos_default(self, manager: CoordinationManager) -> None:
         assert manager._infer_issue_repos({}) == ["mahavishnu"]
 
-    def test_infer_issue_repos_from_pool(
-        self, manager: CoordinationManager
-    ) -> None:
+    def test_infer_issue_repos_from_pool(self, manager: CoordinationManager) -> None:
         assert manager._infer_issue_repos({"pool": "akosha"}) == ["akosha"]
 
-    def test_infer_issue_repos_dedup_and_sort(
-        self, manager: CoordinationManager
-    ) -> None:
+    def test_infer_issue_repos_dedup_and_sort(self, manager: CoordinationManager) -> None:
         repos = manager._infer_issue_repos(
             {"affected_files": ["zeta/x.py", "alpha/y.py", "zeta/z.py"]}
         )
         # First component only, sorted & deduplicated.
         assert repos == ["alpha", "zeta"]
 
-    def test_infer_issue_repos_ignores_non_string_paths(
-        self, manager: CoordinationManager
-    ) -> None:
+    def test_infer_issue_repos_ignores_non_string_paths(self, manager: CoordinationManager) -> None:
         # Non-string entries in affected_files are silently ignored.
-        repos = manager._infer_issue_repos(
-            {"affected_files": [None, 42, {"x": 1}, "alpha/a.py"]}
-        )
+        repos = manager._infer_issue_repos({"affected_files": [None, 42, {"x": 1}, "alpha/a.py"]})
         assert repos == ["alpha"]
 
     def test_normalize_issue_record_includes_status_and_priority(
@@ -1611,9 +1391,7 @@ class TestCoordinationManagerBehavior:
         # After reload, the in-memory change is lost (we never called save).
         assert manager.get_issue("ISSUE-TEMP") is None
 
-    def test_get_ecosystem_status_isolates_plan_filter(
-        self, ecosystem_path: str
-    ) -> None:
+    def test_get_ecosystem_status_isolates_plan_filter(self, ecosystem_path: str) -> None:
         path = _write(
             {
                 "coordination": {
@@ -1634,9 +1412,7 @@ class TestCoordinationManagerBehavior:
         finally:
             os.unlink(path)
 
-    def test_ecosystem_status_with_milestones_tracks_completion(
-        self, ecosystem_path: str
-    ) -> None:
+    def test_ecosystem_status_with_milestones_tracks_completion(self, ecosystem_path: str) -> None:
         plan = _plan(
             milestones=[
                 {
@@ -1672,14 +1448,10 @@ class TestCoordinationManagerBehavior:
         finally:
             os.unlink(path)
 
-    def test_ecosystem_path_is_path_instance(
-        self, manager: CoordinationManager
-    ) -> None:
+    def test_ecosystem_path_is_path_instance(self, manager: CoordinationManager) -> None:
         assert isinstance(manager.ecosystem_path, Path)
 
-    def test_pydantic_v2_model_dump_round_trip(
-        self, manager: CoordinationManager
-    ) -> None:
+    def test_pydantic_v2_model_dump_round_trip(self, manager: CoordinationManager) -> None:
         # CrossRepoIssue uses Pydantic v2 model_dump.
         issue = CrossRepoIssue(
             id="ISSUE-002",
@@ -1693,9 +1465,7 @@ class TestCoordinationManagerBehavior:
         assert dumped["id"] == "ISSUE-002"
         assert isinstance(dumped["repos"], list)
 
-    def test_dependency_validation_object_can_be_loaded(
-        self, ecosystem_path: str
-    ) -> None:
+    def test_dependency_validation_object_can_be_loaded(self, ecosystem_path: str) -> None:
         path = _write(
             {
                 "coordination": {
@@ -1793,45 +1563,31 @@ class TestCoordinationManagerDefensivePatching:
 
 @pytest.mark.unit
 class TestCoordinationManagerMisc:
-    def test_load_ecosystem_populates_internal_state(
-        self, manager: CoordinationManager
-    ) -> None:
+    def test_load_ecosystem_populates_internal_state(self, manager: CoordinationManager) -> None:
         assert "coordination" in manager._ecosystem
         assert "issues" in manager._coordination
 
-    def test_init_with_explicit_path_sets_path(
-        self, ecosystem_path: str
-    ) -> None:
+    def test_init_with_explicit_path_sets_path(self, ecosystem_path: str) -> None:
         cm = CoordinationManager(ecosystem_path)
         assert str(cm.ecosystem_path) == ecosystem_path
 
-    def test_list_issues_returns_pydantic_objects(
-        self, manager: CoordinationManager
-    ) -> None:
+    def test_list_issues_returns_pydantic_objects(self, manager: CoordinationManager) -> None:
         issues = manager.list_issues()
         assert all(isinstance(i, CrossRepoIssue) for i in issues)
 
-    def test_list_plans_returns_pydantic_objects(
-        self, manager: CoordinationManager
-    ) -> None:
+    def test_list_plans_returns_pydantic_objects(self, manager: CoordinationManager) -> None:
         plans = manager.list_plans()
         assert all(isinstance(p, CrossRepoPlan) for p in plans)
 
-    def test_list_todos_returns_pydantic_objects(
-        self, manager: CoordinationManager
-    ) -> None:
+    def test_list_todos_returns_pydantic_objects(self, manager: CoordinationManager) -> None:
         todos = manager.list_todos()
         assert all(isinstance(t, CrossRepoTodo) for t in todos)
 
-    def test_list_dependencies_returns_pydantic_objects(
-        self, manager: CoordinationManager
-    ) -> None:
+    def test_list_dependencies_returns_pydantic_objects(self, manager: CoordinationManager) -> None:
         deps = manager.list_dependencies()
         assert all(isinstance(d, Dependency) for d in deps)
 
-    def test_apply_issue_filters_is_static(
-        self, manager: CoordinationManager
-    ) -> None:
+    def test_apply_issue_filters_is_static(self, manager: CoordinationManager) -> None:
         # The static filter helper should be callable as a classmethod
         # without instantiating.
         from mahavishnu.core.coordination.manager import (
@@ -1896,9 +1652,7 @@ class TestCoordinationManagerMisc:
             updated="2026-01-15T00:00:00",
             target="2026-03-01T00:00:00",
         )
-        manager._coordination.setdefault("plans", []).append(
-            plan.model_dump(mode="json")
-        )
+        manager._coordination.setdefault("plans", []).append(plan.model_dump(mode="json"))
         new_path = tmp_path / "ecosystem.yaml"
         manager.ecosystem_path = new_path  # type: ignore[assignment]
         manager.save()

@@ -6,7 +6,6 @@ CoordinationManagerWithMemory public surface.
 
 from __future__ import annotations
 
-from datetime import datetime
 from typing import Any
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -33,7 +32,6 @@ from mahavishnu.core.status import (
     PlanStatus,
     TodoStatus,
 )
-
 
 # ---------------------------------------------------------------------------
 # Fixtures and helpers
@@ -411,7 +409,9 @@ class TestCoordinationMemoryStoreDependencyEvent:
         mem = CoordinationMemory(session_buddy_client=sb)
 
         validation = {"ok": True}
-        await mem.store_dependency_event("validated", _make_dependency(), validation_result=validation)
+        await mem.store_dependency_event(
+            "validated", _make_dependency(), validation_result=validation
+        )
         meta = sb.store_memory.await_args.kwargs["metadata"]
         assert meta["validation"] == validation
 
@@ -536,9 +536,7 @@ class TestCoordinationMemorySearch:
         sb.search = AsyncMock(return_value=[])
         mem = CoordinationMemory(session_buddy_client=sb)
 
-        await mem.search_coordination_history(
-            "foo", entity_type="todo", repo="x", limit=5
-        )
+        await mem.search_coordination_history("foo", entity_type="todo", repo="x", limit=5)
         kwargs = sb.search.await_args.kwargs
         assert kwargs["limit"] == 5
         assert kwargs["filters"]["entity_type"] == "todo"
@@ -599,7 +597,9 @@ class TestCoordinationMemoryAkoshaPush:
         mock_response = MagicMock()
         mock_response.raise_for_status = MagicMock()
 
-        with patch.object(mem._http, "post", new=AsyncMock(return_value=mock_response)) as mock_post:
+        with patch.object(
+            mem._http, "post", new=AsyncMock(return_value=mock_response)
+        ) as mock_post:
             await mem._push_to_akosha("c", {"m": 1})
 
         mock_post.assert_awaited_once()
@@ -614,18 +614,14 @@ class TestCoordinationMemoryAkoshaPush:
     @pytest.mark.asyncio
     async def test_push_to_akosha_http_error_logged(self) -> None:
         mem = CoordinationMemory(akosha_url="http://akosha:8682/mcp")
-        with patch.object(
-            mem._http, "post", new=AsyncMock(side_effect=httpx.TransportError("x"))
-        ):
+        with patch.object(mem._http, "post", new=AsyncMock(side_effect=httpx.TransportError("x"))):
             # Should not raise
             await mem._push_to_akosha("c", {})
 
     @pytest.mark.asyncio
     async def test_push_to_akosha_httperror_logged(self) -> None:
         mem = CoordinationMemory(akosha_url="http://akosha:8682/mcp")
-        with patch.object(
-            mem._http, "post", new=AsyncMock(side_effect=httpx.HTTPError("bad"))
-        ):
+        with patch.object(mem._http, "post", new=AsyncMock(side_effect=httpx.HTTPError("bad"))):
             await mem._push_to_akosha("c", {})
 
     @pytest.mark.asyncio
@@ -701,9 +697,7 @@ class TestCoordinationMemorySearchSemantic:
     @pytest.mark.asyncio
     async def test_search_semantic_http_error_returns_empty(self) -> None:
         mem = CoordinationMemory(akosha_url="http://akosha:8682/mcp")
-        with patch.object(
-            mem._http, "post", new=AsyncMock(side_effect=httpx.HTTPError("bad"))
-        ):
+        with patch.object(mem._http, "post", new=AsyncMock(side_effect=httpx.HTTPError("bad"))):
             assert await mem.search_semantic("q") == []
 
     @pytest.mark.asyncio
@@ -758,17 +752,13 @@ class TestCoordinationManagerWithMemoryDelegation:
 
     def test_list_issues_delegates(self) -> None:
         mgr = self._make_manager()
-        with patch.object(
-            mgr._coordination_mgr, "list_issues", return_value=["i"]
-        ) as mock_method:
+        with patch.object(mgr._coordination_mgr, "list_issues", return_value=["i"]) as mock_method:
             assert mgr.list_issues("a", key="v") == ["i"]
         mock_method.assert_called_once_with("a", key="v")
 
     def test_get_issue_delegates(self) -> None:
         mgr = self._make_manager()
-        with patch.object(
-            mgr._coordination_mgr, "get_issue", return_value="got"
-        ) as mock_method:
+        with patch.object(mgr._coordination_mgr, "get_issue", return_value="got") as mock_method:
             assert mgr.get_issue("X") == "got"
         mock_method.assert_called_once_with("X")
 
@@ -822,33 +812,25 @@ class TestCoordinationManagerWithMemoryDelegation:
 
     def test_list_dependencies_delegates(self) -> None:
         mgr = self._make_manager()
-        with patch.object(
-            mgr._coordination_mgr, "list_dependencies", return_value=[]
-        ) as m:
+        with patch.object(mgr._coordination_mgr, "list_dependencies", return_value=[]) as m:
             assert mgr.list_dependencies() == []
         m.assert_called_once_with()
 
     def test_check_dependencies_delegates(self) -> None:
         mgr = self._make_manager()
-        with patch.object(
-            mgr._coordination_mgr, "check_dependencies", return_value={}
-        ) as m:
+        with patch.object(mgr._coordination_mgr, "check_dependencies", return_value={}) as m:
             assert mgr.check_dependencies() == {}
         m.assert_called_once_with()
 
     def test_get_blocking_issues_delegates(self) -> None:
         mgr = self._make_manager()
-        with patch.object(
-            mgr._coordination_mgr, "get_blocking_issues", return_value=[]
-        ) as m:
+        with patch.object(mgr._coordination_mgr, "get_blocking_issues", return_value=[]) as m:
             assert mgr.get_blocking_issues() == []
         m.assert_called_once_with()
 
     def test_get_repo_status_delegates(self) -> None:
         mgr = self._make_manager()
-        with patch.object(
-            mgr._coordination_mgr, "get_repo_status", return_value={"a": 1}
-        ) as m:
+        with patch.object(mgr._coordination_mgr, "get_repo_status", return_value={"a": 1}) as m:
             assert mgr.get_repo_status() == {"a": 1}
         m.assert_called_once_with()
 
@@ -863,9 +845,10 @@ class TestCoordinationManagerWithMemoryIssueMethods:
         )
         issue = _make_issue()
 
-        with patch.object(mgr, "create_issue") as mock_create, patch.object(
-            mgr.memory, "store_issue_event", new=AsyncMock()
-        ) as mock_store:
+        with (
+            patch.object(mgr, "create_issue") as mock_create,
+            patch.object(mgr.memory, "store_issue_event", new=AsyncMock()) as mock_store,
+        ):
             await mgr.create_issue_with_memory(issue)
 
         mock_create.assert_called_once_with(issue)
@@ -879,11 +862,11 @@ class TestCoordinationManagerWithMemoryIssueMethods:
         )
         issue = _make_issue()
 
-        with patch.object(mgr, "get_issue", return_value=issue) as mock_get, patch.object(
-            mgr, "update_issue"
-        ) as mock_update, patch.object(
-            mgr.memory, "store_issue_event", new=AsyncMock()
-        ) as mock_store:
+        with (
+            patch.object(mgr, "get_issue", return_value=issue) as mock_get,
+            patch.object(mgr, "update_issue") as mock_update,
+            patch.object(mgr.memory, "store_issue_event", new=AsyncMock()) as mock_store,
+        ):
             await mgr.update_issue_with_memory("ISSUE-001", {"status": "closed"})
 
         # get_issue called twice: once for old, once for new
@@ -904,11 +887,11 @@ class TestCoordinationManagerWithMemoryIssueMethods:
         )
         issue = _make_issue()
 
-        with patch.object(mgr, "get_issue", return_value=issue), patch.object(
-            mgr, "update_issue"
-        ) as mock_update, patch.object(
-            mgr.memory, "store_issue_event", new=AsyncMock()
-        ) as mock_store:
+        with (
+            patch.object(mgr, "get_issue", return_value=issue),
+            patch.object(mgr, "update_issue") as mock_update,
+            patch.object(mgr.memory, "store_issue_event", new=AsyncMock()) as mock_store,
+        ):
             await mgr.close_issue_with_memory("ISSUE-001")
 
         mock_update.assert_called_once_with("ISSUE-001", {"status": "closed"})
@@ -926,9 +909,10 @@ class TestCoordinationManagerWithMemoryTodoMethods:
         mgr._coordination_mgr._coordination = {"todos": []}
         todo = _make_todo()
 
-        with patch.object(mgr, "save") as mock_save, patch.object(
-            mgr.memory, "store_todo_event", new=AsyncMock()
-        ) as mock_store:
+        with (
+            patch.object(mgr, "save") as mock_save,
+            patch.object(mgr.memory, "store_todo_event", new=AsyncMock()) as mock_store,
+        ):
             await mgr.create_todo_with_memory(todo)
 
         assert mgr._coordination_mgr._coordination["todos"] == [todo.model_dump(mode="json")]
@@ -942,13 +926,12 @@ class TestCoordinationManagerWithMemoryTodoMethods:
             session_buddy_client=MagicMock(),
         )
         todo = _make_todo()
-        mgr._coordination_mgr._coordination = {
-            "todos": [todo.model_dump(mode="json")]
-        }
+        mgr._coordination_mgr._coordination = {"todos": [todo.model_dump(mode="json")]}
 
-        with patch.object(mgr, "save") as mock_save, patch.object(
-            mgr.memory, "store_todo_event", new=AsyncMock()
-        ) as mock_store:
+        with (
+            patch.object(mgr, "save") as mock_save,
+            patch.object(mgr.memory, "store_todo_event", new=AsyncMock()) as mock_store,
+        ):
             await mgr.complete_todo_with_memory("TODO-001")
 
         saved = mgr._coordination_mgr._coordination["todos"][0]
@@ -991,13 +974,14 @@ class TestCoordinationManagerWithMemoryCheckDependencies:
         }
         check_result = {"dependencies": [dep_info]}
 
-        with patch.object(
-            mgr._coordination_mgr,
-            "check_dependencies",
-            return_value=check_result,
-        ), patch.object(
-            mgr.memory, "store_dependency_event", new=AsyncMock()
-        ) as mock_store:
+        with (
+            patch.object(
+                mgr._coordination_mgr,
+                "check_dependencies",
+                return_value=check_result,
+            ),
+            patch.object(mgr.memory, "store_dependency_event", new=AsyncMock()) as mock_store,
+        ):
             result = await mgr.check_dependencies_with_memory()
 
         assert result == check_result
@@ -1029,13 +1013,14 @@ class TestCoordinationManagerWithMemoryCheckDependencies:
         }
         check_result = {"dependencies": [dep_info]}
 
-        with patch.object(
-            mgr._coordination_mgr,
-            "check_dependencies",
-            return_value=check_result,
-        ), patch.object(
-            mgr.memory, "store_dependency_event", new=AsyncMock()
-        ) as mock_store:
+        with (
+            patch.object(
+                mgr._coordination_mgr,
+                "check_dependencies",
+                return_value=check_result,
+            ),
+            patch.object(mgr.memory, "store_dependency_event", new=AsyncMock()) as mock_store,
+        ):
             await mgr.check_dependencies_with_memory(consumer="x")
 
         kwargs = mock_store.await_args.kwargs

@@ -209,13 +209,13 @@ def test_init_non_localhost_no_tls_warns(caplog) -> None:
             "mahavishnu.websocket.server.get_websocket_tls_config",
             return_value={"tls_enabled": False, "cert_file": None},
         ),
+        caplog.at_level(logging.WARNING, logger="mahavishnu.websocket.server"),
     ):
-        with caplog.at_level(logging.WARNING, logger="mahavishnu.websocket.server"):
-            MahavishnuWebSocketServer(
-                pool_manager=_make_pool_manager(),
-                host="0.0.0.0",  # noqa: S104
-                port=8690,
-            )
+        MahavishnuWebSocketServer(
+            pool_manager=_make_pool_manager(),
+            host="0.0.0.0",  # noqa: S104
+            port=8690,
+        )
     assert any("SECURITY WARNING" in r.message for r in caplog.records)
 
 
@@ -234,13 +234,13 @@ def test_init_localhost_no_tls_no_warning(caplog) -> None:
             "mahavishnu.websocket.server.get_websocket_tls_config",
             return_value={"tls_enabled": False, "cert_file": None},
         ),
+        caplog.at_level(logging.WARNING, logger="mahavishnu.websocket.server"),
     ):
-        with caplog.at_level(logging.WARNING, logger="mahavishnu.websocket.server"):
-            MahavishnuWebSocketServer(
-                pool_manager=_make_pool_manager(),
-                host="127.0.0.1",
-                port=8690,
-            )
+        MahavishnuWebSocketServer(
+            pool_manager=_make_pool_manager(),
+            host="127.0.0.1",
+            port=8690,
+        )
     assert not any("SECURITY WARNING" in r.message for r in caplog.records)
 
 
@@ -456,9 +456,7 @@ async def test_handle_request_get_pool_status_not_found() -> None:
     ws = _make_ws()
     server._connection_ids[ws] = "c1"
     server.connections["c1"] = ws
-    msg = _make_message(
-        event="get_pool_status", data={"pool_id": "missing-pool"}
-    )
+    msg = _make_message(event="get_pool_status", data={"pool_id": "missing-pool"})
     await server._handle_request(ws, msg)
     ws.send.assert_awaited_once()
 
@@ -519,9 +517,7 @@ async def test_handle_request_get_workflow_status_ok() -> None:
     ws = _make_ws()
     server._connection_ids[ws] = "c1"
     server.connections["c1"] = ws
-    msg = _make_message(
-        event="get_workflow_status", data={"workflow_id": "wf-1"}
-    )
+    msg = _make_message(event="get_workflow_status", data={"workflow_id": "wf-1"})
     await server._handle_request(ws, msg)
     ws.send.assert_awaited_once()
 
@@ -560,9 +556,7 @@ async def test_on_message_event_type_routes_to_handler() -> None:
     server.connections["c1"] = ws
     server._connection_ids[ws] = "c1"
     with patch.object(server.rate_limiter, "check") as check:
-        check.return_value = RateLimitResult(
-            limited=False, retry_after=0.0, tokens_remaining=1.0
-        )
+        check.return_value = RateLimitResult(limited=False, retry_after=0.0, tokens_remaining=1.0)
         with patch.object(server, "_handle_event", new=AsyncMock()) as he:
             msg = _make_message(msg_type=MessageType.EVENT, event="client.telemetry")
             await server.on_message(ws, msg)
@@ -574,9 +568,7 @@ async def test_handle_event_envelope_passthrough() -> None:
     server = _make_server()
     envelope = MagicMock()
     sentinel = {"broadcast": True}
-    with patch.object(
-        server._event_bridge, "handle", new=AsyncMock(return_value=sentinel)
-    ) as bh:
+    with patch.object(server._event_bridge, "handle", new=AsyncMock(return_value=sentinel)) as bh:
         out = await server.handle_event_envelope(envelope)
     assert out is sentinel
     bh.assert_awaited_once_with(envelope)
@@ -602,59 +594,48 @@ async def test_get_workflow_status_exception_caught() -> None:
 
 def test_can_subscribe_admin_user() -> None:
     server = _make_server()
-    assert server._can_subscribe_to_channel(
-        {"permissions": ["admin"]}, "workflow:abc"
-    ) is True
+    assert server._can_subscribe_to_channel({"permissions": ["admin"]}, "workflow:abc") is True
 
 
 def test_can_subscribe_workflow_channel_with_perm() -> None:
     server = _make_server()
-    assert server._can_subscribe_to_channel(
-        {"permissions": ["workflow:read"]}, "workflow:abc"
-    ) is True
+    assert (
+        server._can_subscribe_to_channel({"permissions": ["workflow:read"]}, "workflow:abc") is True
+    )
 
 
 def test_can_subscribe_workflow_channel_without_perm() -> None:
     server = _make_server()
-    assert server._can_subscribe_to_channel(
-        {"permissions": []}, "workflow:abc"
-    ) is False
+    assert server._can_subscribe_to_channel({"permissions": []}, "workflow:abc") is False
 
 
 def test_can_subscribe_pool_channel_with_perm() -> None:
     server = _make_server()
-    assert server._can_subscribe_to_channel(
-        {"permissions": ["pool:read"]}, "pool:p1"
-    ) is True
+    assert server._can_subscribe_to_channel({"permissions": ["pool:read"]}, "pool:p1") is True
 
 
 def test_can_subscribe_worker_channel_with_perm() -> None:
     server = _make_server()
-    assert server._can_subscribe_to_channel(
-        {"permissions": ["worker:read"]}, "worker:w1"
-    ) is True
+    assert server._can_subscribe_to_channel({"permissions": ["worker:read"]}, "worker:w1") is True
 
 
 def test_can_subscribe_goal_teams_channel_with_perm() -> None:
     server = _make_server()
-    assert server._can_subscribe_to_channel(
-        {"permissions": ["team:read"]}, "goal-teams"
-    ) is True
+    assert server._can_subscribe_to_channel({"permissions": ["team:read"]}, "goal-teams") is True
 
 
 def test_can_subscribe_unknown_channel_denied() -> None:
     server = _make_server()
-    assert server._can_subscribe_to_channel(
-        {"permissions": ["workflow:read"]}, "totally:unknown"
-    ) is False
+    assert (
+        server._can_subscribe_to_channel({"permissions": ["workflow:read"]}, "totally:unknown")
+        is False
+    )
 
 
 def test_can_subscribe_user_specific_goal_teams_channel_with_perm() -> None:
     server = _make_server()
     # goal-teams prefix matches "team:read"
-    assert server._can_subscribe_to_channel(
-        {"permissions": ["team:read"]}, "goal-teams:u1"
-    ) is True
+    assert server._can_subscribe_to_channel({"permissions": ["team:read"]}, "goal-teams:u1") is True
 
 
 # ---------------------------------------------------------------------------
@@ -665,9 +646,7 @@ def test_can_subscribe_user_specific_goal_teams_channel_with_perm() -> None:
 def test_get_rate_limit_stats_delegates_to_limiter() -> None:
     server = _make_server()
     sentinel = {"ok": True}
-    with patch.object(
-        server.rate_limiter, "get_stats", return_value=sentinel
-    ) as gs:
+    with patch.object(server.rate_limiter, "get_stats", return_value=sentinel) as gs:
         result = server.get_rate_limit_stats("conn-1")
     assert result is sentinel
     gs.assert_called_once_with("conn-1")
@@ -690,9 +669,7 @@ async def test_handle_delegates_to_handle_event_envelope() -> None:
     server = _make_server()
     fake_envelope = MagicMock()
     sentinel = {"ok": True}
-    with patch.object(
-        server, "handle_event_envelope", AsyncMock(return_value=sentinel)
-    ) as hee:
+    with patch.object(server, "handle_event_envelope", AsyncMock(return_value=sentinel)) as hee:
         result = await server.handle(fake_envelope)
     assert result is sentinel
     hee.assert_awaited_once_with(fake_envelope)
@@ -705,6 +682,7 @@ async def test_handle_delegates_to_handle_event_envelope() -> None:
 
 async def test_get_pool_status_pool_without_attributes() -> None:
     server = _make_server()
+
     # Pool object missing .status and .workers attributes
     class Bare:
         pass
@@ -746,9 +724,7 @@ async def test_broadcast_workflow_started_calls_broadcast() -> None:
 async def test_broadcast_workflow_stage_completed() -> None:
     server = _make_server()
     with patch.object(server, "broadcast_to_room", new=AsyncMock()) as bc:
-        await server.broadcast_workflow_stage_completed(
-            "wf-1", "stage-a", {"ok": True}
-        )
+        await server.broadcast_workflow_stage_completed("wf-1", "stage-a", {"ok": True})
     bc.assert_awaited_once()
     assert bc.await_args.args[0] == "workflow:wf-1"
 
@@ -843,9 +819,7 @@ async def test_broadcast_team_parsed_with_user() -> None:
 async def test_broadcast_team_parsed_no_user() -> None:
     server = _make_server()
     with patch.object(server, "broadcast_to_room", new=AsyncMock()) as bc:
-        await server.broadcast_team_parsed(
-            goal="build", intent="build", skills=[], confidence=0.5
-        )
+        await server.broadcast_team_parsed(goal="build", intent="build", skills=[], confidence=0.5)
     assert bc.await_count == 1
 
 
@@ -853,9 +827,7 @@ async def test_broadcast_team_execution_started_truncates_long_task() -> None:
     server = _make_server()
     long_task = "x" * 500
     with patch.object(server, "broadcast_to_room", new=AsyncMock()) as bc:
-        await server.broadcast_team_execution_started(
-            team_id="t", task=long_task
-        )
+        await server.broadcast_team_execution_started(team_id="t", task=long_task)
     event = bc.await_args.args[1]
     # The encoded event holds the truncated task in its data
     decoded = event  # WebSocketMessage
@@ -866,9 +838,7 @@ async def test_broadcast_team_execution_started_truncates_long_task() -> None:
 async def test_broadcast_team_execution_started_with_user() -> None:
     server = _make_server()
     with patch.object(server, "broadcast_to_room", new=AsyncMock()) as bc:
-        await server.broadcast_team_execution_started(
-            team_id="t", task="short", user_id="u"
-        )
+        await server.broadcast_team_execution_started(team_id="t", task="short", user_id="u")
     assert bc.await_count == 2
 
 
@@ -884,9 +854,7 @@ async def test_broadcast_team_execution_completed_with_user() -> None:
 async def test_broadcast_team_execution_completed_no_user() -> None:
     server = _make_server()
     with patch.object(server, "broadcast_to_room", new=AsyncMock()) as bc:
-        await server.broadcast_team_execution_completed(
-            team_id="t", success=False, duration_ms=1.0
-        )
+        await server.broadcast_team_execution_completed(team_id="t", success=False, duration_ms=1.0)
     assert bc.await_count == 1
 
 
@@ -905,9 +873,7 @@ async def test_broadcast_team_error_with_user() -> None:
 async def test_broadcast_team_error_no_user() -> None:
     server = _make_server()
     with patch.object(server, "broadcast_to_room", new=AsyncMock()) as bc:
-        await server.broadcast_team_error(
-            team_id="t", error_code="E001", message="bad"
-        )
+        await server.broadcast_team_error(team_id="t", error_code="E001", message="bad")
     assert bc.await_count == 1
 
 
