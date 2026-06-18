@@ -314,7 +314,7 @@ rclone sync /path/to/postgres/backups gcs:your-bucket/postgres-backups
 
 **Sources**:
 
-- [PostgreSQL logical backup to GCS](https://blog.csdn.net/gitblog_01026/article/details/152007541)
+- PostgreSQL logical backup to GCS
 - [Postgres to GCS backup script](https://github.com/diogopms/postgres-gcs-backup)
 - [Simple Backups: Postgres to GCS](https://simplebackups.com/blog/how-to-backup-postgresql-to-google-cloud-storage-gcs)
 
@@ -353,7 +353,7 @@ s3 = boto3.client('s3')  # GCS is S3-compatible
 # (implementation depends on Weaviate backup API)
 ```
 
-**Source**: [Weaviate Cloud Storage docs](https://weaviate.io/documentation/cloud-storage)
+**Source**: Weaviate Cloud Storage docs
 
 ______________________________________________________________________
 
@@ -423,7 +423,7 @@ pip install agentdb-sdk
 **Sources**:
 
 - [AgentDB Official Site](https://agentdb.ruv.io/)
-- [AgentDB npm package](https://www.npmjs.com/package/agentdb)
+- AgentDB npm package
 - [AgentDB PyPI](https://pypi.org/project/agentDB/)
 
 ______________________________________________________________________
@@ -588,13 +588,13 @@ ______________________________________________________________________
 
 - [PostgreSQL pgvector Setup Guide](https://thedbadmin.com/blog/postgresql-pgvector-setup-guide)
 - [Install pgvector on macOS](https://stackoverflow.com/questions/75664004/install-pgv-ext-on-mac)
-- [Postgres to GCS backup guide](https://blog.csdn.net/gitblog_01026/article/details/152007541)
+- Postgres to GCS backup guide
 - [Postgres GCS backup tool](https://github.com/diogopms/postgres-gcs-backup)
 
 ### Weaviate
 
 - [Weaviate Homepage](https://weaviate.io/)
-- [Weaviate Cloud Storage](https://weaviate.io/documentation/cloud-storage)
+- Weaviate Cloud Storage
 
 ### LanceDB
 
@@ -609,7 +609,7 @@ ______________________________________________________________________
 ### AgentDB Information
 
 - [AgentDB Official Site](https://agentdb.ruv.io/)
-- [AgentDB npm package](https://www.npmjs.com/package/agentdb)
+- AgentDB npm package
 - [AgentDB integration discussion](https://github.com/ruvnet/claude-flow/issues/829)
 
 ______________________________________________________________________

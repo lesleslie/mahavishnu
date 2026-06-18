@@ -160,5 +160,5 @@ pytest tests/accessibility/ --cov=mahavishnu
 ## References
 
 - [WCAG 2.1 Guidelines](https://www.w3.org/WAI/WCAG21/quickref/)
-- [Terminal Accessibility Best Practices](https://accessibility.blog.gov.uk/2017/03/27/accessible-terminal-applications/)
+- Terminal Accessibility Best Practices
 - [CLI Accessibility Guidelines](https://clig.dev/#accessibility)

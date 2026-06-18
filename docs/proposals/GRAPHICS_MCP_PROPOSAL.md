@@ -434,4 +434,4 @@ class ApplicationWorker(BaseWorker):
 - [Oneiric Configuration](https://github.com/lesleslie/oneiric)
 - [GIMP Python API](https://www.gimp.org/docs/python/)
 - Inkscape Command Line
-- [Blender Python API](https://docs.blender.org/api/current/)
+- Blender Python API

@@ -522,5 +522,5 @@ async def _process_single_repo(
 ## References
 
 - [Microsoft Resilience Patterns](https://docs.microsoft.com/en-us/azure/architecture/patterns/category/resiliency)
-- [AWS Circuit Breaker Pattern](https://docs.aws.amazon.com/prescriptive-guidance/latest/implementing-circuit-breaker-pattern.html)
+- AWS Circuit Breaker Pattern
 - [Google SRE Book: Error Propagation](https://sre.google/sre-book/addressing-cascading-failures/)

@@ -524,7 +524,7 @@ ______________________________________________________________________
 
 - **Oneiric Vector Adapters**: `/Users/les/Projects/oneiric/docs/analysis/VECTOR_ADAPTERS.md`
 - **AgentDB Documentation**: [agentdb.ruv.io](https://agentdb.ruv.io/)
-- **AgentDB NPM**: [npmjs.com/package/agentdb](https://www.npmjs.com/package/agentdb)
+- **AgentDB NPM**: npmjs.com/package/agentdb
 - **Claude Flow (AgentDB integration)**: [github.com/ruvnet/claude-flow](https://github.com/ruvnet/claude-flow)
 - **pgvector GitHub**: [github.com/pgvector/pgvector](https://github.com/pgvector/pgvector)
 

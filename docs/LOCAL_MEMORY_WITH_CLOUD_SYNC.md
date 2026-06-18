@@ -667,7 +667,7 @@ ______________________________________________________________________
 ### Pgvector
 
 - [pgvector GitHub](https://github.com/pgvector/pgvector)
-- [Vector Database Comparisons](https://medium.com/@tech-ai-made-easy/vector-database-comparison-pinecone-vs-weaviate-vs-qdrant-vs-faiss-vs-milvus-vs-chroma-2025-15bf152f891d)
+- Vector Database Comparisons
 
 ### Sync Tools
 

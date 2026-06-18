@@ -284,5 +284,5 @@ export MAHAVISHNU_ONEIRIC_TLS_KEY="/secure/path/to/tls.key"
 
 - ADR 009: Hybrid Adapter Registry with Dynamic Discovery
 - [Python Entry Points Security](https://packaging.python.org/en/latest/specifications/entry-points/)
-- [OWASP Supply Chain Security](https://owasp.org/www-project-software-supply-chain-security/)
+- OWASP Supply Chain Security
 - [gRPC Security Best Practices](https://grpc.io/docs/guides/auth/)

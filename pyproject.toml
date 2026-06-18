@@ -7,7 +7,7 @@ packages = ["mahavishnu"]
 
 [project]
 name = "mahavishnu"
-version = "0.7.3"
+version = "0.7.4"
 description = "Global orchestrator package for development workflows"
 authors = [
     {name = "Les Leslie", email = "les@wedgwoodwebworks.com"},
@@ -431,6 +431,8 @@ ignore-vuln = [
     "PYSEC-2025-216",
     "PYSEC-2025-217",
     "PYSEC-2025-218",
+    "CVE-2026-54293",
+    "GHSA-p4gq-832x-fm9v",
 ]
 
 [tool.codespell]

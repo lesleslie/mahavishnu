@@ -607,9 +607,7 @@ class PoolManager:
             )
             pool_id = await self._select_least_loaded_in_allowlist(caller_pool_allowlist)
             if pool_id is None:
-                raise RuntimeError(
-                    "No pools available for routing within caller_pool_allowlist"
-                )
+                raise RuntimeError("No pools available for routing within caller_pool_allowlist")
             return pool_id, "affinity_allowlist_filtered_fallback"
         return pool_affinity, "affinity"
 
@@ -628,8 +626,7 @@ class PoolManager:
         project_id = task.get("project_id")
         if not peer_id or not project_id:
             raise ValueError(
-                "PEER_AFFINITY selector requires task['peer_id'] and "
-                "task['project_id'] to be set"
+                "PEER_AFFINITY selector requires task['peer_id'] and task['project_id'] to be set"
             )
         if self._peer_resolver is None:
             raise RuntimeError(
@@ -673,9 +670,7 @@ class PoolManager:
             )
             pool_id = await self._select_least_loaded_in_allowlist(caller_pool_allowlist)
             if pool_id is None:
-                raise RuntimeError(
-                    "No pools available for routing within caller_pool_allowlist"
-                )
+                raise RuntimeError("No pools available for routing within caller_pool_allowlist")
             return pool_id, "peer_affinity_fallback_least_loaded"
         if resolved_pool_id not in self._pools:
             # Normal during pool respawns — log and fall back rather than crash.
@@ -687,9 +682,7 @@ class PoolManager:
             )
             pool_id = await self._select_least_loaded_in_allowlist(caller_pool_allowlist)
             if pool_id is None:
-                raise RuntimeError(
-                    "No pools available for routing within caller_pool_allowlist"
-                )
+                raise RuntimeError("No pools available for routing within caller_pool_allowlist")
             return pool_id, "peer_affinity_pool_unknown_fallback"
         if not self._is_pool_in_allowlist(resolved_pool_id, caller_pool_allowlist):
             # Allowlist is authoritative — discard the hint and fall back within it.
@@ -702,9 +695,7 @@ class PoolManager:
             )
             pool_id = await self._select_least_loaded_in_allowlist(caller_pool_allowlist)
             if pool_id is None:
-                raise RuntimeError(
-                    "No pools available for routing within caller_pool_allowlist"
-                )
+                raise RuntimeError("No pools available for routing within caller_pool_allowlist")
             return pool_id, "peer_affinity_allowlist_filtered_fallback"
         return resolved_pool_id, "peer_affinity"
 

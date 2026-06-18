@@ -38,7 +38,7 @@ ______________________________________________________________________
 #### 1. Legacy Infrastructure Feel
 
 > "If Airflow feels like legacy infrastructure, Prefect feels like a modern Python library"
-> — [Medium: Airflow vs Prefect vs Dagster](https://medium.com/codex/airflow-vs-prefect-vs-dagster-which-workflow-tool-actually-fits-your-stack-d581e622cd27)
+> — Medium: Airflow vs Prefect vs Dagster
 
 **Key Issues:**
 
@@ -397,7 +397,7 @@ ______________________________________________________________________
 - **Speed**: Claims fastest execution among agent frameworks
 - **Python-first**: "Less is more" philosophy
 
-**From [Agno 2.0 announcement](https://medium.com/@pankaj_pandey/agno-2-0-agentos-from-framework-to-runtime-why-this-changes-multi-agent-engineering-465e282454ca):**
+**From Agno 2.0 announcement:**
 
 > "Agno 2.0 transforms from a Python agent framework to a high-performance runtime with AgentOS"
 
@@ -673,20 +673,20 @@ ______________________________________________________________________
 
 1. [DataCamp: CrewAI vs LangGraph vs AutoGen](https://www.datacamp.com/tutorial/crewai-vs-langgraph-vs-autogen)
 1. [TrueFoundry: CrewAI vs LangGraph](https://www.truefoundry.com/blog/crewai-vs-langgraph)
-1. [Medium: LangGraph vs CrewAI Comparison](https://medium.com/@shashank_shekhar_pandey/langgraph-vs-crewai-which-framework-should-you-choose-for-your-next-ai-agent-project-aa55dba5bbbf)
+1. Medium: LangGraph vs CrewAI Comparison
 1. [Xcelore: LangGraph vs CrewAI Production Guide](https://xcelore.com/blog/langgraph-vs-crewai/)
 1. [Langwatch: Best AI Agent Frameworks 2025](https://langwatch.ai/blog/best-ai-agent-frameworks-in-2025-comparing-langgraph-dspy-crewai-agno-and-more)
 1. [Prefect vs Airflow Comparison](https://www.prefect.io/compare/airflow)
-1. [Medium: Airflow vs Prefect vs Dagster](https://medium.com/codex/airflow-vs-prefect-vs-dagster-which-workflow-tool-actually-fits-your-stack-d581e622cd27)
+1. Medium: Airflow vs Prefect vs Dagster
 1. [Talent Blocks: Choosing Your Data Orchestrator](https://talentblocks.com/blog/airflow-vs-prefect-vs-dagster-choosing-the-right-data-orchestrator-for-your-project)
 1. [Windmill: 8 Alternatives to Airflow](https://www.windmill.dev/blog/airflow-alternatives)
 1. [Cure Intelligence: Data Pipeline Comparison](https://www.cure-intelligence.com/en/2025/03/25/automating-data-pipelines-a-comparison-of-the-most-popular-open-source-tools/)
 1. [Prefect: Microservices Orchestration Guide](https://www.prefect.io/blog/microservices-orchestration-what-it-is-how-to-use-it)
 1. [Advanced SysCon: Python Workflow Orchestration Tools](https://www.advsyscon.com/blog/workload-orchestration-tools-python/)
 1. [PracData: State of Workflow Orchestration 2025](https://www.pracdata.io/p/state-of-workflow-orchestration-ecosystem-2025)
-1. [Medium: Microservices Implementation Best Practices](https://sourabh-virdi.medium.com/the-complete-guide-to-microservices-part-2-implementation-best-practices-8e960ebb6546)
+1. Medium: Microservices Implementation Best Practices
 1. [GitHub: agno-agi/agno Repository](https://github.com/agno-agi/agno)
-1. [Medium: Agno 2.0 & AgentOS](https://medium.com/@pankaj_pandey/agno-2-0-agentos-from-framework-to-runtime-why-this-changes-multi-agent-engineering-465e282454ca)
+1. Medium: Agno 2.0 & AgentOS
 1. [LinkedIn: Agno 2.0 Release](https://www.linkedin.com/posts/agno-agi_ai-agents-multiagent-activity-7371609438761148416-msF5)
 1. [Agno Documentation](https://docs.agno.com)
 1. [Agno Community](https://community.agno.com)

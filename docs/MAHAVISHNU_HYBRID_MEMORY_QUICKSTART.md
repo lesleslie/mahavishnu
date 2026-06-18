@@ -251,7 +251,7 @@ ______________________________________________________________________
 - **Hybrid Memory Guide**: `docs/HYBRID_AGENTDB_PGVECTOR_MEMORY.md`
 - **Oneiric Vector Adapters**: `/Users/les/Projects/oneiric/docs/analysis/VECTOR_ADAPTERS.md`
 - **AgentDB Repo**: [github.com/ruvnet/claude-flow](https://github.com/ruvnet/claude-flow)
-- **AgentDB NPM**: [npmjs.com/package/agentdb](https://www.npmjs.com/package/agentdb)
+- **AgentDB NPM**: npmjs.com/package/agentdb
 
 ______________________________________________________________________
 
