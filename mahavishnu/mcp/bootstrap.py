@@ -208,6 +208,15 @@ async def _register_optional_tools(server: FastMCPServer, methods_set: set[str])
         except ImportError as exc:
             logger.warning("PyCharm tools not available: %s", exc)
 
+    if "_register_openhands_tools" in methods_set:
+        try:
+            from ..mcp.tools.openhands_tools import mcp as openhands_mcp
+
+            server.server.mount("openhands", openhands_mcp)
+            logger.info("Registered 4 OpenHands integration tools with MCP server")
+        except Exception as exc:  # noqa: BLE001 - defensive: service may be unavailable
+            logger.warning("OpenHands tools not available: %s", exc)
+
 
 async def register_profile_tools(server: FastMCPServer, methods_set: set[str]) -> None:
     """Register the profile-gated MCP tool groups on the server."""
