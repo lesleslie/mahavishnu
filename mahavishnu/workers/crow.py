@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import asyncio
-import inspect
 from typing import Any
 
 import httpx
@@ -14,14 +13,6 @@ from .base import BaseWorker, WorkerResult
 logger = get_logger(__name__)
 
 _ACP_TIMEOUT = 30.0
-
-
-async def _get_json(resp: Any) -> Any:
-    """Return JSON from a response, handling both sync and async json() methods."""
-    result = resp.json()
-    if inspect.isawaitable(result):
-        return await result
-    return result
 
 
 class CrowWorker(BaseWorker):
@@ -52,10 +43,10 @@ class CrowWorker(BaseWorker):
             json={"agent": "crow"},
         )
         resp.raise_for_status()
-        self._session_id = (await _get_json(resp))["session_id"]
+        self._session_id = resp.json()["session_id"]
         self._status = WorkerStatus.RUNNING
         logger.info(f"CrowWorker ACP session started: {self._session_id}")
-        return self._session_id  # type: ignore[return-value]
+        return self._session_id  # type: ignore[return-value]  # BaseWorker.start() returns str | None; always str here after assignment
 
     async def execute(self, task: dict[str, Any]) -> WorkerResult:
         """Send prompt to crow-cli ACP and poll for result."""
@@ -78,7 +69,7 @@ class CrowWorker(BaseWorker):
                 f"{self._base_url}/acp/status/{self._session_id}",
             )
             poll.raise_for_status()
-            data = await _get_json(poll)
+            data = poll.json()
 
             if data.get("status") == "completed":
                 return WorkerResult(
@@ -111,16 +102,18 @@ class CrowWorker(BaseWorker):
 
     async def stop(self) -> None:
         """Cancel ACP session."""
-        if self._session_id:
-            try:
-                await self._client.post(
-                    f"{self._base_url}/acp/cancel/{self._session_id}",
-                )
-            except Exception as e:
-                logger.warning(f"Failed to cancel CrowWorker ACP session: {e}")
-            finally:
-                self._status = WorkerStatus.COMPLETED
-                await self._client.aclose()
+        try:
+            if self._session_id:
+                try:
+                    await self._client.post(
+                        f"{self._base_url}/acp/cancel/{self._session_id}",
+                    )
+                except Exception as e:
+                    logger.warning(f"Failed to cancel CrowWorker ACP session: {e}")
+                finally:
+                    self._status = WorkerStatus.COMPLETED
+        finally:
+            await self._client.aclose()
 
     async def status(self) -> WorkerStatus:
         """Return current worker status."""

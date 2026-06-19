@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
@@ -20,10 +20,15 @@ async def test_crow_worker_execute_returns_completed_result() -> None:
 
     with patch("httpx.AsyncClient.post", new_callable=AsyncMock) as mock_post, \
          patch("httpx.AsyncClient.get", new_callable=AsyncMock) as mock_get:
-        mock_post.return_value.json.return_value = {"session_id": "sess-abc"}
-        mock_post.return_value.raise_for_status = lambda: None
-        mock_get.return_value.json.return_value = mock_response
-        mock_get.return_value.raise_for_status = lambda: None
+        post_resp = MagicMock()
+        post_resp.json.return_value = {"session_id": "sess-abc"}
+        post_resp.raise_for_status = MagicMock()
+        mock_post.return_value = post_resp
+
+        get_resp = MagicMock()
+        get_resp.json.return_value = mock_response
+        get_resp.raise_for_status = MagicMock()
+        mock_get.return_value = get_resp
 
         result = await worker.execute({"prompt": "Write a hello world script"})
 

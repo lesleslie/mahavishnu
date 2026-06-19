@@ -170,8 +170,8 @@ def terminal_claude_worker(mock_terminal_manager):
     )
 
 
-class TestTerminalAIWorker:
-    """Test GenericShellWorker class (formerly TerminalAIWorker)."""
+class TestGenericShellWorkerTerminal:
+    """Test GenericShellWorker class."""
 
     def test_initialization_qwen(self, terminal_qwen_worker):
         """Test Qwen worker initialization."""
