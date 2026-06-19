@@ -1,7 +1,7 @@
 # External Integrations Design: crow-cli, OpenHands, Toad TUI
 
 **Date:** 2026-06-19
-**Status:** Approved — ready for implementation planning (rev 2: post-review fixes)
+**Status:** Approved — ready for implementation planning (rev 3: +TurboVec Track 4)
 **Tracks:** 3 parallel, independent
 
 ---
@@ -9,6 +9,8 @@
 ## Revision Log
 
 - **rev 1** (2026-06-19): Initial spec
+- **rev 3** (2026-06-19): Added Track 4 — TurboVec explicit in-memory fallback for
+  LlamaIndex adapter; new `[vector]` dep group in pyproject.toml
 - **rev 2** (2026-06-19): Post-subagent review — deferred A2AWorker to Wave 2; moved
   quality loop from worker to MCP tool layer; made MHV-307 fallback config-driven;
   added Security section; added WebSocket/session-lifecycle/quality-loop/TUI test gaps;
@@ -40,6 +42,9 @@ CrowWorker (ACP)           OpenHandsClient (httpx)       monitor watch (Textual)
 adapter_preference: crow   quality loop in openhands_run TUI_AVAILABLE fallback
 MHV-307 error              MHV-308, MHV-309 errors       (always degrades cleanly)
 ```
+
+**Track 4 — TurboVec (LlamaIndex fallback):** small, independent of Tracks 1-3.
+`llamaindex_adapter_impl.py` except block + `[vector]` dep group.
 
 **Deferred (not in this spec):** Toad ACP agent (Python 3.14+), BrowserWorker,
 A2AWorker (Wave 2 — underspecified + SSRF risk), full A2A discovery mesh.
@@ -550,7 +555,138 @@ servers.
 
 ---
 
-## 8. Port and Transport Summary
+## 8. Track 4 — TurboVec Explicit In-Memory Fallback (LlamaIndex Adapter)
+
+### 8.1 Problem
+
+`mahavishnu/engines/llamaindex_adapter_impl.py` has a two-path vector store setup in
+`__init__` (lines 350–376):
+
+1. **Primary:** `OpensearchVectorStore` — used when OpenSearch is reachable
+2. **Fallback (line 375):** `self.vector_store = None` — when OpenSearch fails, index
+   creation at line 682 falls back to `VectorStoreIndex(nodes)` with LlamaIndex's
+   *implicit* `SimpleVectorStore`
+
+The silent `None` fallback makes the in-memory path unnamed, opaque, and untestable.
+The goal: replace `self.vector_store = None` with an explicit `TurboVec` instance.
+
+### 8.2 What TurboVec Is
+
+`turbovec[llama-index]` is a drop-in replacement for
+`llama_index.core.vector_stores.SimpleVectorStore` with the same public surface, same
+persistence semantics, same retriever and pipeline wiring. Source:
+https://github.com/RyanCodrai/turbovec
+
+### 8.3 File Changes
+
+**`mahavishnu/engines/llamaindex_adapter_impl.py`** — one targeted change in the
+OpenSearch `except` block (lines 368–376). Replace:
+
+```python
+        except Exception as e:
+            logger = __import__("logging").getLogger(__name__)
+            logger.debug(f"OpenSearch vector store unavailable: {e}")
+            logger.info(
+                "Using in-memory vector store (install opensearch-knn plugin for persistence)"
+            )
+            self.vector_store = None  # type: ignore[assignment]
+            self._vector_backend = "memory"
+```
+
+With:
+
+```python
+        except Exception as e:
+            logger = __import__("logging").getLogger(__name__)
+            logger.debug(f"OpenSearch vector store unavailable: {e}")
+            try:
+                from turbovec.integrations.llamaindex import TurboVec  # noqa: PLC0415
+
+                self.vector_store = TurboVec()
+                self._vector_backend = "turbovec"
+                logger.info("Using TurboVec in-memory vector store (install turbovec[llama-index])")
+            except ImportError:
+                self.vector_store = None  # type: ignore[assignment]
+                self._vector_backend = "memory-implicit"
+                logger.info(
+                    "Using LlamaIndex implicit SimpleVectorStore "
+                    "(install turbovec[llama-index] for explicit in-memory store)"
+                )
+```
+
+**Import path note:** Verify the exact `turbovec` import against the installed package.
+The pattern `from turbovec.integrations.llamaindex import TurboVec` is the expected form
+for the `[llama-index]` extra; confirm before implementing.
+
+**`_vector_backend` values after this change:**
+
+| Scenario | `_vector_backend` |
+|----------|-------------------|
+| OpenSearch reachable | `"opensearch"` |
+| OpenSearch down, TurboVec installed | `"turbovec"` |
+| OpenSearch down, TurboVec not installed | `"memory-implicit"` |
+
+**No changes to lines 674–682.** The `if self.vector_store:` / `else` branch remains.
+When `_vector_backend == "turbovec"`, `self.vector_store` is a `TurboVec` instance, so
+the `if` branch fires and `VectorStoreIndex` receives a `storage_context` with TurboVec.
+The `else` branch now represents "neither OpenSearch nor TurboVec available."
+
+**Conventions:**
+- The guarded import (`try/except ImportError`) matches the existing pattern for
+  `OpensearchVectorStore` and `LLAMAINDEX_AVAILABLE` in this file
+- `from __future__ import annotations` is missing from this file — out of scope for this
+  change but noted as tech debt
+- The `__import__("logging")` logger in the except block also violates the Oneiric logger
+  convention — out of scope, do not touch
+
+### 8.4 Dependency
+
+LlamaIndex is in core `[project.dependencies]` (no separate optional group).
+`turbovec[llama-index]` is an optional enhancement — add a new dep group:
+
+```toml
+[dependency-groups]
+vector = [
+    "turbovec[llama-index]~=0.1",
+]
+```
+
+Add `turbovec` to `[tool.creosote] exclude_deps` alongside `turboquant-pro`.
+
+### 8.5 Scope Boundary
+
+**Only touch:**
+- `mahavishnu/engines/llamaindex_adapter_impl.py` (the except block, lines 368–376)
+- `pyproject.toml` (new `[vector]` dep group + creosote exclusion)
+
+**Do not touch:** OTel ingester, Agno adapter, any other file.
+
+### 8.6 Test
+
+Add one unit test to `tests/unit/engines/test_llamaindex_adapter.py` (or
+`tests/unit/test_adapters/test_llamaindex_adapter.py` — whichever exists):
+
+```python
+@pytest.mark.unit
+def test_vector_store_fallback_uses_turbovec_when_available(monkeypatch):
+    """TurboVec is used as in-memory fallback when OpenSearch is unavailable."""
+    # mock OpenSearch import to fail, TurboVec to succeed
+    ...
+    assert adapter._vector_backend == "turbovec"
+    assert adapter.vector_store is not None
+
+@pytest.mark.unit
+def test_vector_store_fallback_uses_implicit_when_turbovec_unavailable(monkeypatch):
+    """Implicit SimpleVectorStore used when both OpenSearch and TurboVec unavailable."""
+    # mock both to fail
+    ...
+    assert adapter._vector_backend == "memory-implicit"
+    assert adapter.vector_store is None
+```
+
+---
+
+## 9. Port and Transport Summary
 
 | Server | Port | Bind | Transport | Entry |
 |--------|------|------|-----------|-------|
@@ -594,6 +730,11 @@ Existing Bodai ports: 8676 (Crackerjack), 8678 (Session-Buddy), 8680 (Mahavishnu
   `openhands:` block, `crow_mcp` health check entry
 - `.mcp.json` — add `crow-mcp` HTTP entry (127.0.0.1)
 - `pyproject.toml` — add `[a2a]` note deferred; no change needed this wave
+
+### Track 4 — Modified Files
+- `mahavishnu/engines/llamaindex_adapter_impl.py` — TurboVec fallback in except block
+- `pyproject.toml` — new `[vector]` dep group; creosote exclusion for `turbovec`
+- `tests/unit/engines/test_llamaindex_adapter.py` — 2 new unit tests for fallback paths
 
 ### Deleted Files
 - `mahavishnu/workers/terminal.py` — `TerminalAIWorker` removed
