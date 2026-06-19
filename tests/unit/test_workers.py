@@ -10,7 +10,7 @@ from mahavishnu.workers.base import BaseWorker, WorkerResult, WorkerStatus
 from mahavishnu.workers.container import ContainerWorker
 from mahavishnu.workers.debug_monitor import DebugMonitorWorker
 from mahavishnu.workers.manager import WorkerManager
-from mahavishnu.workers.terminal import TerminalAIWorker
+from mahavishnu.workers.generic_shell import GenericShellWorker
 from monitoring.metrics import agent_tasks_in_progress, agent_tasks_total
 
 # ============================================================================
@@ -150,10 +150,10 @@ def mock_terminal_manager():
 
 @pytest.fixture
 def terminal_qwen_worker(mock_terminal_manager):
-    """Create a TerminalAIWorker for Qwen."""
-    return TerminalAIWorker(
+    """Create a GenericShellWorker for Qwen."""
+    return GenericShellWorker(
         terminal_manager=mock_terminal_manager,
-        ai_type="qwen",
+        worker_type="terminal-qwen",
         session_id="session_123",
         session_buddy_client=None,
     )
@@ -161,27 +161,25 @@ def terminal_qwen_worker(mock_terminal_manager):
 
 @pytest.fixture
 def terminal_claude_worker(mock_terminal_manager):
-    """Create a TerminalAIWorker for Claude."""
-    return TerminalAIWorker(
+    """Create a GenericShellWorker for Claude."""
+    return GenericShellWorker(
         terminal_manager=mock_terminal_manager,
-        ai_type="claude",
+        worker_type="terminal-claude",
         session_id="session_123",
         session_buddy_client=None,
     )
 
 
 class TestTerminalAIWorker:
-    """Test TerminalAIWorker class."""
+    """Test GenericShellWorker class (formerly TerminalAIWorker)."""
 
     def test_initialization_qwen(self, terminal_qwen_worker):
         """Test Qwen worker initialization."""
-        assert terminal_qwen_worker.worker_name == "qwen"
         assert terminal_qwen_worker.session_id == "session_123"
         assert terminal_qwen_worker.worker_type == "terminal-qwen"
 
     def test_initialization_claude(self, terminal_claude_worker):
         """Test Claude worker initialization."""
-        assert terminal_claude_worker.worker_name == "claude"
         assert terminal_claude_worker.session_id == "session_123"
         assert terminal_claude_worker.worker_type == "terminal-claude"
 
@@ -702,9 +700,9 @@ class TestSessionBuddyIntegration:
         mock_terminal_manager.send_command = AsyncMock()
         mock_terminal_manager.capture_output = AsyncMock(return_value="")
 
-        worker = TerminalAIWorker(
+        worker = GenericShellWorker(
             terminal_manager=mock_terminal_manager,
-            ai_type="qwen",
+            worker_type="terminal-qwen",
             session_buddy_client=mock_sb_client,
         )
 
@@ -1014,11 +1012,11 @@ class TestErrorHandling:
             await worker.execute({"command": "echo test"})
 
     def test_terminal_worker_invalid_ai_type(self, mock_terminal_manager):
-        """Test that an unknown ai_type raises at construction time."""
+        """Test that an unknown worker_type raises at construction time."""
         with pytest.raises(ValueError, match="Unknown worker type: terminal-invalid"):
-            TerminalAIWorker(
+            GenericShellWorker(
                 terminal_manager=mock_terminal_manager,
-                ai_type="invalid",
+                worker_type="terminal-invalid",
                 session_buddy_client=None,
             )
 
@@ -1034,9 +1032,9 @@ class TestWorkerLifecycle:
     @pytest.mark.asyncio
     async def test_full_worker_lifecycle(self, mock_terminal_manager):
         """Test complete worker lifecycle: start -> execute -> stop."""
-        worker = TerminalAIWorker(
+        worker = GenericShellWorker(
             terminal_manager=mock_terminal_manager,
-            ai_type="qwen",
+            worker_type="terminal-qwen",
             session_buddy_client=None,
         )
 
@@ -1279,9 +1277,9 @@ class TestSessionBuddyStorage:
         mock_sb_client = MagicMock()
         mock_sb_client.call_tool = AsyncMock(side_effect=RuntimeError("Storage failed"))
 
-        worker = TerminalAIWorker(
+        worker = GenericShellWorker(
             terminal_manager=mock_terminal_manager,
-            ai_type="qwen",
+            worker_type="terminal-qwen",
             session_buddy_client=mock_sb_client,
         )
 
