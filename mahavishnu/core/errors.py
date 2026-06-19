@@ -11,6 +11,8 @@ Version: 3.4
 Related: 4-Agent Opus Review P0 issue - error code system
 """
 
+from __future__ import annotations
+
 from datetime import UTC, datetime
 from enum import StrEnum
 from typing import ClassVar
