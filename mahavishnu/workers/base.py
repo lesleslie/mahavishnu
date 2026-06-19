@@ -5,12 +5,10 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from datetime import datetime
-from typing import TYPE_CHECKING, Any, Final
+from typing import Any, Final
 
+from mahavishnu.core.errors import ErrorCode
 from mahavishnu.core.status import WorkerStatus
-
-if TYPE_CHECKING:
-    from mahavishnu.core.errors import ErrorCode
 
 
 @dataclass
@@ -53,6 +51,9 @@ class WorkerResult:
         status_str = data.get("status", "unknown")
         status = WorkerStatus(status_str) if isinstance(status_str, str) else data.get("status")
 
+        raw_code = data.get("error_code")
+        error_code = ErrorCode(raw_code) if raw_code is not None else None
+
         return cls(
             worker_id=data["worker_id"],
             status=status,  # type: ignore[arg-type]
@@ -62,6 +63,7 @@ class WorkerResult:
             duration_seconds=data.get("duration_seconds", 0.0),
             metadata=data.get("metadata", {}),
             timestamp=data.get("timestamp", ""),
+            error_code=error_code,
         )
 
     def to_dict(self) -> dict[str, Any]:

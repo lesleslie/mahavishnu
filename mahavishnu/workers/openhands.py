@@ -194,8 +194,10 @@ class OpenHandsWorker(BaseWorker):
         )
 
     async def stop(self) -> None:
-        self._status = WorkerStatus.COMPLETED
-        await self._client.close()
+        try:
+            self._status = WorkerStatus.COMPLETED
+        finally:
+            await self._client.close()
 
     async def status(self) -> WorkerStatus:
         return self._status
