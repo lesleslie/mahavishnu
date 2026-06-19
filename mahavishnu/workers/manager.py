@@ -465,12 +465,8 @@ class WorkerManager:
                 monitor_id = await self._debug_monitor_worker.start()
                 logger.info(f"Launched debug monitor: {monitor_id}")
 
-            except ImportError:
-                raise NotImplementedError(
-                    "DebugMonitorWorker is deprecated. "
-                    "Use CrowTerminalAdapter with GenericShellWorker for terminal debugging. "
-                    "Full removal scheduled for Wave 2."
-                )
+            except (ImportError, NotImplementedError):
+                logger.warning("DebugMonitorWorker deprecated/unavailable; skipping debug monitor")
 
         except Exception as e:
             logger.error(f"Failed to launch debug monitor: {e}")

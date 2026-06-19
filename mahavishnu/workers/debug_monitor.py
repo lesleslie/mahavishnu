@@ -47,10 +47,11 @@ class DebugMonitorWorker(BaseWorker):
             terminal_manager: TerminalManager for terminal control
             session_buddy_client: Session-Buddy MCP client
         """
-        super().__init__(worker_type="debug-monitor")
-        self.log_path = log_path
-        self.terminal_manager = terminal_manager
-        self.session_buddy_client = session_buddy_client
+        raise NotImplementedError(
+            "DebugMonitorWorker is deprecated. "
+            "Use CrowTerminalAdapter with GenericShellWorker for terminal debugging. "
+            "Full removal scheduled for Wave 2."
+        )
         self.session_id: str | None = None
         self._iterm2_connection = None
         self._streaming_task: asyncio.Task | None = None
