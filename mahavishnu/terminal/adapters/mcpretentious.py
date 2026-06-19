@@ -1,5 +1,7 @@
 """mcpretentious MCP server adapter for terminal management."""
 
+from __future__ import annotations
+
 from datetime import datetime
 from typing import Any
 
@@ -10,8 +12,13 @@ from ..adapters.base import TerminalAdapter
 class TerminalError(MahavishnuError):
     """Base exception for terminal operations."""
 
-    def __init__(self, message: str, details: dict | None = None) -> None:
-        super().__init__(message, ErrorCode.INTERNAL_ERROR, details=details)
+    def __init__(
+        self,
+        message: str,
+        error_code: ErrorCode = ErrorCode.INTERNAL_ERROR,
+        details: dict | None = None,
+    ) -> None:
+        super().__init__(message, error_code, details=details)
 
 
 class SessionNotFoundError(TerminalError):
