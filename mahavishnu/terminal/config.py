@@ -49,6 +49,10 @@ class TerminalSettings(BaseModel):
         default="mock",  # Use mock by default until iTerm2/mcpretentious are properly configured
         description="Preferred adapter: mock, mcpretentious, iterm2, or auto",
     )
+    fallback_on_probe_failure: bool = Field(
+        default=False,
+        description="Fall back to mock adapter if probe fails; True = fallback, False = fail startup",
+    )
     # Connection pooling settings (for iTerm2)
     iterm2_pooling_enabled: bool = Field(
         default=True,

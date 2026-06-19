@@ -466,7 +466,11 @@ class WorkerManager:
                 logger.info(f"Launched debug monitor: {monitor_id}")
 
             except ImportError:
-                logger.warning("DebugMonitorWorker not yet implemented (Phase 3)")
+                raise NotImplementedError(
+                    "DebugMonitorWorker is deprecated. "
+                    "Use CrowTerminalAdapter with GenericShellWorker for terminal debugging. "
+                    "Full removal scheduled for Wave 2."
+                )
 
         except Exception as e:
             logger.error(f"Failed to launch debug monitor: {e}")

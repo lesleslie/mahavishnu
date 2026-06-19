@@ -179,15 +179,14 @@ session_buddy_polling:
 
 # Terminal management
 terminal:
-  enabled: true  # Enable terminal management for pool workers
+  enabled: true
   default_columns: 120
   default_rows: 40
   capture_lines: 100
   poll_interval: 0.5
   max_concurrent_sessions: 20
-  # Adapter preference: "auto" (detect iTerm2, fallback to mcpretentious),
-  # "iterm2" (native iTerm2 Python API), or "mcpretentious" (PTY-based)
-  adapter_preference: "auto"
+  adapter_preference: "crow"
+  fallback_on_probe_failure: false
 
 # Embedding configuration with security and caching
 embeddings:
@@ -304,6 +303,12 @@ health:
       host: "localhost"  # Override via MAHAVISHNU_HEALTH__DEPENDENCIES__CRACKERJACK__HOST
       port: 8676
       required: false  # Optional - quality checks can run without it
+      timeout_seconds: 10
+      use_tls: false
+    crow_mcp:
+      host: "localhost"
+      port: 8675
+      required: false
       timeout_seconds: 10
       use_tls: false
 
