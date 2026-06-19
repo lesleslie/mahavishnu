@@ -77,3 +77,56 @@ class TestSessionNotFoundErrorBackcompat:
         assert isinstance(error, TerminalError)
         assert error.message == "Session sess_123 not found"
         assert error.details == {"session_id": "sess_123"}
+
+
+@pytest.mark.unit
+class TestGenericShellWorkerCommandGuard:
+    """Guard tests for GenericShellWorker command validation."""
+
+    def test_shell_category_with_empty_command_raises(self) -> None:
+        """SHELL category workers must have a non-empty command."""
+        from unittest.mock import MagicMock
+
+        from mahavishnu.terminal.manager import TerminalManager
+        from mahavishnu.workers.generic_shell import GenericShellWorker
+        from mahavishnu.workers.registry import WorkerCategory, WorkerConfig
+
+        config = WorkerConfig(
+            name="test",
+            worker_type="test-shell",
+            command="",
+            category=WorkerCategory.SHELL,
+            description="Test shell worker",
+        )
+
+        with pytest.raises(ValueError, match="requires a non-empty command"):
+            GenericShellWorker(
+                terminal_manager=MagicMock(spec=TerminalManager),
+                worker_type="test-shell",
+                config=config,
+            )
+
+    def test_gateway_category_with_empty_command_is_allowed(self) -> None:
+        """GATEWAY category workers (HTTP-API) intentionally use empty command."""
+        from unittest.mock import MagicMock
+
+        from mahavishnu.terminal.manager import TerminalManager
+        from mahavishnu.workers.generic_shell import GenericShellWorker
+        from mahavishnu.workers.registry import WorkerCategory, WorkerConfig
+
+        config = WorkerConfig(
+            name="test",
+            worker_type="test-gateway",
+            command="",
+            category=WorkerCategory.GATEWAY,
+            description="Test gateway worker",
+        )
+
+        # GATEWAY must NOT raise — dedicated HTTP-API workers use GenericShellWorker
+        # as base class with empty command; the real work happens via HTTP calls.
+        worker = GenericShellWorker(
+            terminal_manager=MagicMock(spec=TerminalManager),
+            worker_type="test-gateway",
+            config=config,
+        )
+        assert worker.worker_type == "test-gateway"
