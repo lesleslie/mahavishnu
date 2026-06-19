@@ -1,0 +1,5 @@
+  [mcp_servers.pycharm]
+    url = "http://127.0.0.1:64462/stream"
+
+    [mcp_servers.pycharm.headers]
+      IJ_MCP_SERVER_PROJECT_PATH = "/Users/les/Projects/mahavishnu"
