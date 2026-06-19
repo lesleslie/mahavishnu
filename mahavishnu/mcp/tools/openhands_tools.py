@@ -15,9 +15,6 @@ from mahavishnu.workers.openhands import OpenHandsClient, OpenHandsConfig, OpenH
 logger = get_logger(__name__)
 mcp = FastMCP("openhands")
 
-_settings = MahavishnuSettings()
-
-
 class OpenHandsRunInput(BaseModel):
     """Validated input for the openhands_run MCP tool."""
 
@@ -28,7 +25,8 @@ class OpenHandsRunInput(BaseModel):
 
 def _make_config() -> OpenHandsConfig:
     """Build OpenHandsConfig from MahavishnuSettings."""
-    oh_settings = getattr(_settings, "openhands", None)
+    settings = MahavishnuSettings()
+    oh_settings = getattr(settings, "openhands", None)
     base_url = (
         getattr(oh_settings, "base_url", "http://localhost:3000")
         if oh_settings
@@ -45,7 +43,7 @@ def _make_config() -> OpenHandsConfig:
     allowed_root = Path("/tmp").resolve()  # noqa: S108 - override via settings in production
     if oh_settings and hasattr(oh_settings, "workspace_root"):
         allowed_root = Path(oh_settings.workspace_root).resolve()
-    if not str(workspace_dir).startswith(str(allowed_root)):
+    if not workspace_dir.is_relative_to(allowed_root):
         raise ValueError(
             f"workspace_dir {workspace_dir} is outside allowed root {allowed_root}"
         )
@@ -60,8 +58,8 @@ async def _run_quality_check(output: str) -> int | None:
 
         score = await crackerjack_check(output)
         return score
-    except Exception as e:
-        logger.warning(f"Quality check failed (non-fatal): {e}")
+    except Exception:
+        logger.warning("Quality check failed (non-fatal); continuing without score")
         return None
 
 
