@@ -188,6 +188,14 @@ terminal:
   adapter_preference: "crow"
   fallback_on_probe_failure: false
 
+openhands:
+  enabled: true
+  base_url: "http://localhost:3000"
+  workspace_root: "/tmp"
+  workspace_dir: "/tmp/openhands-workspace"
+  timeout_seconds: 600
+  poll_interval_seconds: 3.0
+
 # Embedding configuration with security and caching
 embeddings:
   provider: "auto"  # auto, fastembed, ollama, openai

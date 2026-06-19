@@ -58,3 +58,15 @@ async def test_openhands_run_returns_quality_score_none_path(tmp_path: Path) -> 
 
     assert result["status"] == "completed"
     assert result.get("quality_score") is None
+
+
+@pytest.mark.unit
+def test_openhands_settings_rejects_workspace_dir_outside_root() -> None:
+    from mahavishnu.core.config import OpenHandsSettings
+    from pydantic import ValidationError
+
+    with pytest.raises(ValidationError):
+        OpenHandsSettings(
+            workspace_root="/tmp/safe",
+            workspace_dir="/etc/passwd",  # outside root
+        )
