@@ -3,6 +3,7 @@
 Available adapters:
 - ITerm2Adapter: AppleScript-based iTerm2 control (macOS only)
 - McpretentiousAdapter: MCP-based PTY terminal (requires mcpretentious MCP server)
+- CrowTerminalAdapter: crow-mcp PTY terminal (requires crow-mcp MCP server)
 - MockTerminalAdapter: Simulated terminal for testing
 
 Example usage:
@@ -10,6 +11,8 @@ Example usage:
     >>> adapter = MockTerminalAdapter()
     >>> session_id = await adapter.launch_session("qwen")
 """
+
+from __future__ import annotations
 
 from mahavishnu.terminal.adapters.base import TerminalAdapter
 from mahavishnu.terminal.adapters.mock import MockTerminalAdapter
@@ -62,7 +65,7 @@ def get_adapter_class(name: str) -> type[TerminalAdapter] | None:
     """Get adapter class by name.
 
     Args:
-        name: Adapter name ('mock', 'iterm2', 'mcpretentious')
+        name: Adapter name ('mock', 'iterm2', 'mcpretentious', 'crow')
 
     Returns:
         Adapter class or None if not available

@@ -2,15 +2,17 @@
 
 from __future__ import annotations
 
-from logging import getLogger
+import uuid
 from typing import Any
+
+from oneiric.core.logging import get_logger
 
 from mahavishnu.core.errors import ErrorCode
 
 from ..adapters.base import TerminalAdapter
 from .mcpretentious import SessionNotFoundError, TerminalError
 
-logger = getLogger(__name__)
+logger = get_logger(__name__)
 
 
 class CrowTerminalAdapter(TerminalAdapter):
@@ -63,8 +65,6 @@ class CrowTerminalAdapter(TerminalAdapter):
                 "terminal",
                 {"command": command},
             )
-            import uuid  # noqa: PLC0415
-
             session_id = str(uuid.uuid4())
             self._sessions[session_id] = {
                 "command": command,
