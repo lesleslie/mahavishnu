@@ -1,11 +1,16 @@
 """Base worker interface for task execution."""
 
+from __future__ import annotations
+
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from datetime import datetime
-from typing import Any, Final
+from typing import TYPE_CHECKING, Any, Final
 
 from mahavishnu.core.status import WorkerStatus
+
+if TYPE_CHECKING:
+    from mahavishnu.core.errors import ErrorCode
 
 
 @dataclass
@@ -17,6 +22,7 @@ class WorkerResult:
         status: Final execution status
         output: Worker output (stdout, response, etc.)
         error: Error message if execution failed
+        error_code: Structured error code (MHV-XXX) if execution failed
         exit_code: Process exit code (if applicable)
         duration_seconds: Execution duration in seconds
         metadata: Additional worker-specific metadata
@@ -27,6 +33,7 @@ class WorkerResult:
     status: WorkerStatus
     output: str | None = None
     error: str | None = None
+    error_code: ErrorCode | None = None
     exit_code: int | None = None
     duration_seconds: float = 0.0
     metadata: dict[str, Any] = field(default_factory=dict)
@@ -68,6 +75,7 @@ class WorkerResult:
             "status": self.status.value,
             "output": self.output,
             "error": self.error,
+            "error_code": self.error_code.value if self.error_code is not None else None,
             "exit_code": self.exit_code,
             "duration_seconds": self.duration_seconds,
             "metadata": self.metadata,

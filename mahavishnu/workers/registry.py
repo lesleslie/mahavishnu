@@ -514,6 +514,16 @@ WORKER_REGISTRY: dict[str, WorkerConfig] = {
         requires_tool="terraform",
         default_timeout=600,
     ),
+    "openhands": WorkerConfig(
+        name="OpenHands",
+        worker_type="openhands",
+        command="",  # GATEWAY worker — HTTP API, no shell command
+        category=WorkerCategory.GATEWAY,
+        description="OpenHands autonomous dev agent v1.7.0 — REST+WebSocket API",
+        completion_markers=[],
+        default_timeout=600,
+        requires_tool="openhands",
+    ),
 }
 
 

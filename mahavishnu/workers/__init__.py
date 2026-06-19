@@ -46,6 +46,7 @@ from mahavishnu.workers.registry import (
     validate_worker_dependencies,
 )
 from mahavishnu.workers.crow import CrowWorker
+from mahavishnu.workers.openhands import OpenHandsWorker
 
 __all__ = [
     # Base classes
@@ -60,6 +61,7 @@ __all__ = [
     "is_terminal_worker",
     # Workers
     "CrowWorker",
+    "OpenHandsWorker",
     "ContainerWorker",
     "DebugMonitorWorker",
     "GenericShellWorker",
