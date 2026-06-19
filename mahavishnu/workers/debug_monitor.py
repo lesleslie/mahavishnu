@@ -1,5 +1,7 @@
 """Debug monitor worker for iTerm2 log tailing with Session-Buddy streaming."""
 
+from __future__ import annotations
+
 import asyncio
 import logging
 from pathlib import Path
@@ -52,10 +54,6 @@ class DebugMonitorWorker(BaseWorker):
             "Use CrowTerminalAdapter with GenericShellWorker for terminal debugging. "
             "Full removal scheduled for Wave 2."
         )
-        self.session_id: str | None = None
-        self._iterm2_connection = None
-        self._streaming_task: asyncio.Task | None = None
-        self._running = False
 
     async def start(self) -> str:
         """Launch iTerm2 window with tail -f and start streaming to Session-Buddy.
