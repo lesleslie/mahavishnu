@@ -14,7 +14,6 @@ def _make_adapter() -> "LlamaIndexAdapter":  # noqa: UP037
     mock_config.llamaindex.opensearch_url = "http://localhost:9200"
     mock_config.llamaindex.opensearch_index = "test-index"
     adapter = LlamaIndexAdapter.__new__(LlamaIndexAdapter)
-    adapter._config = mock_config
     adapter.config = mock_config
     adapter.vector_store = None
     adapter._vector_backend = "unset"
@@ -62,7 +61,7 @@ def test_vector_backend_is_turbovec_when_opensearch_unavailable_and_turbovec_ins
         adapter._setup_vector_store()
 
     assert adapter._vector_backend == "turbovec"
-    assert adapter.vector_store is not None
+    assert adapter.vector_store is mock_turbo
 
 
 @pytest.mark.unit
