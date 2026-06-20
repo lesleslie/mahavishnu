@@ -1,9 +1,9 @@
 from __future__ import annotations
 
-import json
-import uuid
 from dataclasses import dataclass
+import json
 from typing import TYPE_CHECKING
+import uuid
 
 import httpx
 from oneiric.core.logging import get_logger
@@ -79,6 +79,7 @@ class A2AClient:
             base_url=config.url,
             headers=headers,
             timeout=httpx.Timeout(self._TASK_TIMEOUT),
+            follow_redirects=False,
         )
 
     async def fetch_card(self) -> AgentCard:
@@ -161,12 +162,30 @@ class A2AWorker(BaseWorker):
                 return await client.send_task_subscribe(task_id, prompt)
             data = await client.send_task(task_id, prompt)
             return _event_to_result(task_id, data)
-        except Exception as e:
-            logger.exception("A2A task failed for agent %r", agent_name)
+        except httpx.HTTPStatusError as e:
+            logger.exception("A2A HTTP error for agent %r", agent_name)
             return WorkerResult(
                 worker_id=task_id,
                 status=WorkerStatus.FAILED,
-                error=str(e),
+                error=f"Remote agent returned HTTP {e.response.status_code}",
+                error_code=ErrorCode.A2A_AGENT_ERROR,
+                metadata={"worker_type": "a2a", "agent": agent_name},
+            )
+        except A2AError:
+            logger.exception("A2A protocol error for agent %r", agent_name)
+            return WorkerResult(
+                worker_id=task_id,
+                status=WorkerStatus.FAILED,
+                error="A2A protocol error (stream closed without final event)",
+                error_code=ErrorCode.A2A_AGENT_ERROR,
+                metadata={"worker_type": "a2a", "agent": agent_name},
+            )
+        except Exception:
+            logger.exception("Unexpected error for A2A agent %r", agent_name)
+            return WorkerResult(
+                worker_id=task_id,
+                status=WorkerStatus.FAILED,
+                error="A2A task failed unexpectedly",
                 error_code=ErrorCode.A2A_AGENT_ERROR,
                 metadata={"worker_type": "a2a", "agent": agent_name},
             )

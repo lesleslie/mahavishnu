@@ -963,9 +963,19 @@ class A2ACardSettings(BaseModel):
 
     name: str = "Mahavishnu"
     description: str = "Bodai ecosystem orchestrator"
-    version: str = "0.7.x"
+    version: str = ""  # empty → _get_version() consulted at request time
     capabilities: A2ACapabilitiesSettings = A2ACapabilitiesSettings()
     skills: list[dict[str, str]] = []
+
+    @field_validator("skills")
+    @classmethod
+    def _validate_skills(cls, v: list[dict[str, str]]) -> list[dict[str, str]]:
+        required = {"id", "name", "description"}
+        for i, skill in enumerate(v):
+            missing = required - set(skill.keys())
+            if missing:
+                raise ValueError(f"skill[{i}] missing required keys: {missing}")
+        return v
 
 
 class A2AAgentEntry(BaseModel):
@@ -977,6 +987,18 @@ class A2AAgentEntry(BaseModel):
     url: str
     description: str = ""
     api_key_env: str | None = None  # env var name; resolved to actual value at runtime
+
+    @field_validator("url")
+    @classmethod
+    def _validate_url_scheme(cls, v: str) -> str:
+        from urllib.parse import urlparse
+
+        scheme = urlparse(v).scheme
+        if scheme not in ("http", "https"):
+            raise ValueError(
+                f"A2A agent URL must use http or https, got scheme {scheme!r}"
+            )
+        return v
 
 
 class A2ASettings(BaseModel):

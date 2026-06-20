@@ -138,6 +138,10 @@ def _agent_card_handler(settings: A2ASettings):  # type: ignore[no-untyped-def]
     return handler
 
 
+# Module-level set keeps background tasks alive until they complete (prevents GC).
+_background_tasks: set[asyncio.Task[None]] = set()
+
+
 def _tasks_send_handler(execute_fn: Any):  # type: ignore[no-untyped-def]
     async def handler(request: Request) -> JSONResponse:
         task_data = await request.json()
@@ -146,9 +150,9 @@ def _tasks_send_handler(execute_fn: Any):  # type: ignore[no-untyped-def]
         try:
             result = await execute_fn({"prompt": prompt})
             return JSONResponse(_result_to_a2a(task_id, result))
-        except Exception as e:  # noqa: BLE001
+        except Exception:  # noqa: BLE001
             logger.exception("A2A /tasks/send handler error")
-            return JSONResponse(_error_to_a2a(task_id, str(e)))
+            return JSONResponse(_error_to_a2a(task_id, "Task execution failed"))
 
     return handler
 
@@ -158,20 +162,22 @@ def _tasks_send_subscribe_handler(execute_fn: Any):  # type: ignore[no-untyped-d
         task_data = await request.json()
         task_id: str = task_data.get("id", str(uuid.uuid4()))
         prompt = _extract_prompt(task_data)
-        queue: asyncio.Queue[str | None] = asyncio.Queue()
+        queue: asyncio.Queue[str | None] = asyncio.Queue(maxsize=64)
 
         async def run_and_emit() -> None:
             await queue.put(_sse_event(task_id, "working", final=False))
             try:
                 result = await execute_fn({"prompt": prompt})
                 await queue.put(_sse_event(task_id, "completed", final=True, result=result))
-            except Exception as e:  # noqa: BLE001
+            except Exception:  # noqa: BLE001
                 logger.exception("A2A /tasks/sendSubscribe handler error")
-                await queue.put(_sse_event(task_id, "failed", final=True, error=str(e)))
+                await queue.put(_sse_event(task_id, "failed", final=True, error="Task execution failed"))
             finally:
                 await queue.put(None)
 
-        _bg = asyncio.create_task(run_and_emit())
+        task = asyncio.create_task(run_and_emit())
+        _background_tasks.add(task)
+        task.add_done_callback(_background_tasks.discard)
 
         async def event_generator() -> AsyncGenerator[str]:
             while True:
