@@ -950,12 +950,16 @@ class MonitoringConfig(BaseModel):
 class A2ACapabilitiesSettings(BaseModel):
     """Capabilities advertised in our outbound A2A agent card."""
 
+    model_config = {"extra": "forbid"}
+
     streaming: bool = True
     pushNotifications: bool = False  # noqa: N815
 
 
 class A2ACardSettings(BaseModel):
     """Fields used to build the /.well-known/agent.json response."""
+
+    model_config = {"extra": "forbid"}
 
     name: str = "Mahavishnu"
     description: str = "Bodai ecosystem orchestrator"
@@ -967,6 +971,8 @@ class A2ACardSettings(BaseModel):
 class A2AAgentEntry(BaseModel):
     """One entry in the outbound agent registry (from settings/mahavishnu.yaml)."""
 
+    model_config = {"extra": "forbid"}
+
     name: str
     url: str
     description: str = ""
@@ -975,6 +981,8 @@ class A2AAgentEntry(BaseModel):
 
 class A2ASettings(BaseModel):
     """Top-level A2A configuration block."""
+
+    model_config = {"extra": "forbid"}
 
     enabled: bool = False
     card: A2ACardSettings = A2ACardSettings()

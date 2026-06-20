@@ -12,6 +12,8 @@ from ..terminal.adapters.mcpretentious import McpretentiousAdapter
 from ..terminal.manager import TerminalManager
 
 if TYPE_CHECKING:
+    from typing import Any
+
     from .server_core import FastMCPServer
 
 logger = getLogger(__name__)
@@ -221,10 +223,38 @@ async def _register_optional_tools(server: FastMCPServer, methods_set: set[str])
     if a2a_config and a2a_config.enabled:
         try:
             from ..a2a.server import build_a2a_router
+            from ..core.status import WorkerStatus
+            from ..workers.base import WorkerResult
 
             worker_manager = getattr(server.app, "_worker_manager", None)
-            a2a_app = build_a2a_router(a2a_config, worker_manager)
-            server.server.http_app.mount("/", a2a_app)
+
+            async def _a2a_execute_fn(task: dict[str, Any]) -> Any:
+                """Route inbound A2A task to the first available worker."""
+                if worker_manager is None:
+                    return WorkerResult(
+                        worker_id="none",
+                        status=WorkerStatus.FAILED,
+                        error="No worker manager available",
+                    )
+                workers = list(worker_manager._workers.keys())
+                if not workers:
+                    return WorkerResult(
+                        worker_id="none",
+                        status=WorkerStatus.FAILED,
+                        error="No workers registered",
+                    )
+                return await worker_manager.execute_task(workers[0], task)
+
+            a2a_app = build_a2a_router(a2a_config, _a2a_execute_fn)
+
+            _orig_http_app = server.server.http_app
+
+            def _a2a_patched_http_app(*args: object, **kwargs: object) -> object:
+                app = _orig_http_app(*args, **kwargs)
+                app.mount("/", a2a_app)
+                return app
+
+            server.server.http_app = _a2a_patched_http_app  # type: ignore[method-assign]
             logger.info(
                 "Mounted A2A server routes "
                 "(/.well-known/agent.json, /tasks/send, /tasks/sendSubscribe)"

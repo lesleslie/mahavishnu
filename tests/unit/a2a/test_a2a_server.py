@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import AsyncMock
 
 import pytest
 from starlette.testclient import TestClient
@@ -12,14 +12,13 @@ from mahavishnu.workers.base import WorkerResult
 
 
 def _make_app(worker_result: WorkerResult) -> TestClient:
-    """Build a TestClient with a mock worker_manager."""
+    """Build a TestClient with a mock execute_fn."""
     settings = A2ASettings()
     settings.card.capabilities.streaming = True
 
-    worker_manager = MagicMock()
-    worker_manager.execute_task = AsyncMock(return_value=worker_result)
+    execute_fn = AsyncMock(return_value=worker_result)
 
-    app = build_a2a_router(settings, worker_manager)
+    app = build_a2a_router(settings, execute_fn)
     return TestClient(app, raise_server_exceptions=True)
 
 

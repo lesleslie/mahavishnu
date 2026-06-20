@@ -96,7 +96,7 @@ def _agent_card_handler(settings: A2ASettings):  # type: ignore[no-untyped-def]
             name=settings.card.name,
             description=settings.card.description,
             url=str(request.base_url).rstrip("/"),
-            version=_get_version(),
+            version=settings.card.version or _get_version(),
             capabilities=A2ACapabilities(
                 streaming=settings.card.capabilities.streaming,
                 pushNotifications=settings.card.capabilities.pushNotifications,
@@ -108,13 +108,13 @@ def _agent_card_handler(settings: A2ASettings):  # type: ignore[no-untyped-def]
     return handler
 
 
-def _tasks_send_handler(worker_manager: Any):  # type: ignore[no-untyped-def]
+def _tasks_send_handler(execute_fn: Any):  # type: ignore[no-untyped-def]
     async def handler(request: Request) -> JSONResponse:
         task_data = await request.json()
         task_id: str = task_data.get("id", str(uuid.uuid4()))
         prompt = _extract_prompt(task_data)
         try:
-            result = await worker_manager.execute_task({"prompt": prompt})
+            result = await execute_fn({"prompt": prompt})
             return JSONResponse(_result_to_a2a(task_id, result))
         except Exception as e:  # noqa: BLE001
             logger.exception("A2A /tasks/send handler error")
@@ -123,7 +123,7 @@ def _tasks_send_handler(worker_manager: Any):  # type: ignore[no-untyped-def]
     return handler
 
 
-def _tasks_send_subscribe_handler(worker_manager: Any):  # type: ignore[no-untyped-def]
+def _tasks_send_subscribe_handler(execute_fn: Any):  # type: ignore[no-untyped-def]
     async def handler(request: Request) -> StreamingResponse:
         task_data = await request.json()
         task_id: str = task_data.get("id", str(uuid.uuid4()))
@@ -133,7 +133,7 @@ def _tasks_send_subscribe_handler(worker_manager: Any):  # type: ignore[no-untyp
         async def run_and_emit() -> None:
             await queue.put(_sse_event(task_id, "working", final=False))
             try:
-                result = await worker_manager.execute_task({"prompt": prompt})
+                result = await execute_fn({"prompt": prompt})
                 await queue.put(
                     _sse_event(task_id, "completed", final=True, result=result)
                 )
@@ -160,7 +160,7 @@ def _tasks_send_subscribe_handler(worker_manager: Any):  # type: ignore[no-untyp
 # ─── public factory ───────────────────────────────────────────────────────────
 
 
-def build_a2a_router(settings: A2ASettings, worker_manager: Any) -> Starlette:
+def build_a2a_router(settings: A2ASettings, execute_fn: Any) -> Starlette:
     """Build a Starlette sub-application exposing Google A2A routes."""
     return Starlette(
         routes=[
@@ -171,12 +171,12 @@ def build_a2a_router(settings: A2ASettings, worker_manager: Any) -> Starlette:
             ),
             Route(
                 "/tasks/send",
-                endpoint=_tasks_send_handler(worker_manager),
+                endpoint=_tasks_send_handler(execute_fn),
                 methods=["POST"],
             ),
             Route(
                 "/tasks/sendSubscribe",
-                endpoint=_tasks_send_subscribe_handler(worker_manager),
+                endpoint=_tasks_send_subscribe_handler(execute_fn),
                 methods=["POST"],
             ),
         ]
