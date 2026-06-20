@@ -156,7 +156,6 @@ class CrowTerminalAdapter(TerminalAdapter):
 
         Raises:
             SessionNotFoundError: If session_id is not tracked locally.
-            TerminalError: If the crow-mcp call fails.
         """
         if session_id not in self._sessions:
             raise SessionNotFoundError(
@@ -165,15 +164,11 @@ class CrowTerminalAdapter(TerminalAdapter):
             )
         try:
             await self.mcp.call_tool("terminal", {"command": "exit"})
-            del self._sessions[session_id]
-            logger.debug(f"crow-mcp session closed: {session_id}")
         except Exception as e:
+            logger.warning("crow-mcp: close_session failed (non-fatal): %s", e)
+        finally:
             self._sessions.pop(session_id, None)
-            raise TerminalError(
-                message=f"crow-mcp: failed to close session: {e}",
-                error_code=ErrorCode.CROW_MCP_UNAVAILABLE,
-                details={"session_id": session_id},
-            ) from e
+            logger.debug(f"crow-mcp session closed: {session_id}")
 
     async def list_sessions(self) -> list[dict[str, Any]]:
         """Return all locally tracked crow-mcp sessions.
