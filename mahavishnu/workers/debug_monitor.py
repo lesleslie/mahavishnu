@@ -4,11 +4,14 @@ from __future__ import annotations
 
 import asyncio
 import logging
-from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
-from ..terminal.manager import TerminalManager
 from .base import BaseWorker, WorkerResult, WorkerStatus
+
+if TYPE_CHECKING:
+    from pathlib import Path
+
+    from ..terminal.manager import TerminalManager
 
 logger = logging.getLogger(__name__)
 
@@ -35,6 +38,17 @@ class DebugMonitorWorker(BaseWorker):
         >>> monitor_id = await monitor.start()
         >>> # Streams logs to Session-Buddy automatically
     """
+
+    # Class-level annotations for attributes set by __init__ before it raises.
+    # __init__ raises NotImplementedError immediately; these stubs exist so that
+    # mypy can type-check the unreachable method bodies below.
+    log_path: Path
+    terminal_manager: TerminalManager
+    session_buddy_client: Any
+    session_id: str | None
+    _running: bool
+    _streaming_task: asyncio.Task[None] | None
+    _iterm2_connection: Any
 
     def __init__(
         self,
@@ -88,7 +102,7 @@ class DebugMonitorWorker(BaseWorker):
             command=command,
             count=1,
         )
-        self.session_id = session_ids[0]
+        self.session_id = str(session_ids[0])
 
         # Start streaming to Session-Buddy
         if self.session_buddy_client:
@@ -96,7 +110,7 @@ class DebugMonitorWorker(BaseWorker):
             self._streaming_task = asyncio.create_task(self._stream_to_session_buddy())
 
         logger.info(f"Started iTerm2 debug monitor: {self.session_id}")
-        return self.session_id
+        return self.session_id or ""
 
     async def _start_terminal_monitor(self) -> str:
         """Start fallback terminal monitor.
@@ -109,7 +123,7 @@ class DebugMonitorWorker(BaseWorker):
             command=command,
             count=1,
         )
-        self.session_id = session_ids[0]
+        self.session_id = str(session_ids[0])
 
         # Still attempt streaming if Session-Buddy available
         if self.session_buddy_client:
@@ -117,7 +131,7 @@ class DebugMonitorWorker(BaseWorker):
             self._streaming_task = asyncio.create_task(self._stream_to_session_buddy())
 
         logger.info(f"Started terminal debug monitor: {self.session_id}")
-        return self.session_id
+        return self.session_id or ""
 
     async def _capture_iterm2_screen(self, iterm2: Any) -> str | None:
         if not self._iterm2_connection or not self.session_id:

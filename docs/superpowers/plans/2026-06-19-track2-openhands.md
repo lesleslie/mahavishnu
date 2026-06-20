@@ -20,7 +20,7 @@
 - All I/O async — no blocking calls inside async functions
 - Line length 100 chars max
 
----
+______________________________________________________________________
 
 ## File Map
 
@@ -36,15 +36,18 @@
 | `tests/unit/workers/test_openhands_worker.py` | Create | 5 worker unit test scenarios |
 | `tests/unit/mcp/test_openhands_tools.py` | Create | 4 tool unit test scenarios |
 
----
+______________________________________________________________________
 
 ## Task 1: Error Codes
 
 **Files:**
+
 - Modify: `mahavishnu/core/errors.py`
 
 **Interfaces:**
+
 - Consumes: existing `ErrorCode` enum
+
 - Produces: `ErrorCode.OPENHANDS_SERVICE_ERROR = "MHV-308"`, `ErrorCode.OPENHANDS_TASK_FAILED = "MHV-309"` (used by Tasks 2–3)
 
 - [ ] **Step 1: Add MHV-308 and MHV-309**
@@ -75,21 +78,27 @@ git add mahavishnu/core/errors.py
 git commit -m "feat(errors): add MHV-308 OPENHANDS_SERVICE_ERROR, MHV-309 OPENHANDS_TASK_FAILED"
 ```
 
----
+______________________________________________________________________
 
 ## Task 2: OpenHandsClient + OpenHandsWorker
 
 **Files:**
+
 - Create: `mahavishnu/workers/openhands.py`
 - Modify: `mahavishnu/workers/registry.py`
 - Modify: `mahavishnu/workers/__init__.py`
 - Create: `tests/unit/workers/test_openhands_worker.py`
 
 **Interfaces:**
+
 - Consumes: `ErrorCode.OPENHANDS_SERVICE_ERROR`, `ErrorCode.OPENHANDS_TASK_FAILED` from Task 1
+
 - Consumes: `BaseWorker`, `WorkerResult`, `WorkerStatus` from `mahavishnu/workers/base.py`
+
 - Produces: `OpenHandsConfig(base_url, workspace_dir, timeout_seconds, poll_interval_seconds)`
+
 - Produces: `OpenHandsClient(config)` with `create_conversation(task)`, `get_status(conv_id)`, `cancel_conversation(conv_id)`, `health_check()`
+
 - Produces: `OpenHandsWorker(config, crackerjack_client=None)` with `.execute(task)`, `.stop()`, `.status()`
 
 - [ ] **Step 1: Write failing tests**
@@ -458,6 +467,7 @@ In `mahavishnu/workers/registry.py`, add after the last existing AI_ASSISTANT en
 - [ ] **Step 5: Export from `workers/__init__.py`**
 
 Add:
+
 ```python
 from .openhands import OpenHandsWorker
 ```
@@ -479,19 +489,24 @@ git add mahavishnu/workers/openhands.py mahavishnu/workers/registry.py \
 git commit -m "feat(workers): add OpenHandsWorker + GATEWAY registry entry"
 ```
 
----
+______________________________________________________________________
 
 ## Task 3: MCP Tools + Profiles
 
 **Files:**
+
 - Create: `mahavishnu/mcp/tools/openhands_tools.py`
 - Modify: `mahavishnu/mcp/tools/profiles.py`
 - Create: `tests/unit/mcp/test_openhands_tools.py`
 
 **Interfaces:**
+
 - Consumes: `OpenHandsWorker`, `OpenHandsConfig`, `OpenHandsClient` from Task 2
+
 - Consumes: FastMCP `@mcp.tool()` decorator pattern from existing tool files
+
 - Produces: 4 registered MCP tools — `openhands_run`, `openhands_status`, `openhands_cancel`, `openhands_health`
+
 - Produces: `OpenHandsRunInput(prompt, timeout, run_quality_check)` Pydantic model
 
 - [ ] **Step 1: Write failing tool tests**
@@ -714,6 +729,7 @@ FULL_REGISTRATIONS = [
 ```
 
 Then in the tool-loading section (where other tool modules are imported), add:
+
 ```python
 from mahavishnu.mcp.tools.openhands_tools import mcp as openhands_mcp
 ```
@@ -736,16 +752,19 @@ git add mahavishnu/mcp/tools/openhands_tools.py mahavishnu/mcp/tools/profiles.py
 git commit -m "feat(mcp): add openhands_run, openhands_status, openhands_cancel, openhands_health tools"
 ```
 
----
+______________________________________________________________________
 
 ## Task 4: Settings + Security Validators
 
 **Files:**
+
 - Modify: `settings/mahavishnu.yaml`
 - Modify: `mahavishnu/core/config.py` (add `OpenHandsSettings` Pydantic model)
 
 **Interfaces:**
+
 - Consumes: `MahavishnuSettings` from `mahavishnu/core/config.py`
+
 - Produces: `MahavishnuSettings.openhands: OpenHandsSettings | None`
 
 - [ ] **Step 1: Add `OpenHandsSettings` model to `config.py`**
@@ -780,6 +799,7 @@ class OpenHandsSettings(BaseModel):
 ```
 
 Then add to `MahavishnuSettings`:
+
 ```python
 openhands: OpenHandsSettings | None = None
 ```

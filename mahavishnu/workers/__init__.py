@@ -23,6 +23,7 @@ Routing notes:
 from mahavishnu.workers.application import ApplicationWorker
 from mahavishnu.workers.base import BaseWorker, WorkerResult, WorkerStatus
 from mahavishnu.workers.container import ContainerWorker
+from mahavishnu.workers.crow import CrowWorker
 from mahavishnu.workers.debug_monitor import DebugMonitorWorker
 from mahavishnu.workers.generic_shell import GenericShellWorker
 from mahavishnu.workers.manager import WorkerManager
@@ -34,6 +35,7 @@ from mahavishnu.workers.openclaw_gateway import (
     OpenClawGatewayWorker,
     OpenClawTaskRequest,
 )
+from mahavishnu.workers.openhands import OpenHandsWorker
 from mahavishnu.workers.protocol import ProgressSnapshot, TerminalWorkerProtocol, is_terminal_worker
 from mahavishnu.workers.registry import (
     WORKER_REGISTRY,
@@ -45,8 +47,6 @@ from mahavishnu.workers.registry import (
     resolve_worker_type,
     validate_worker_dependencies,
 )
-from mahavishnu.workers.crow import CrowWorker
-from mahavishnu.workers.openhands import OpenHandsWorker
 
 __all__ = [
     # Base classes

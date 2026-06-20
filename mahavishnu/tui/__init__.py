@@ -52,9 +52,7 @@ class FallbackRichFormatter:
             table.add_row(str(key), str(value))
         self._console.print(table)
 
-    def format_list(
-        self, items: list[dict[str, Any]], columns: list[str], title: str = ""
-    ) -> None:
+    def format_list(self, items: list[dict[str, Any]], columns: list[str], title: str = "") -> None:
         """Render a list of dicts as a Rich table with specified columns."""
         table = Table(title=title, show_header=True, header_style="bold cyan")
         for col in columns:

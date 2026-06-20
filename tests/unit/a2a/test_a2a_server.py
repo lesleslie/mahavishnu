@@ -24,11 +24,10 @@ def _make_app(worker_result: WorkerResult) -> TestClient:
 
 # ── Scenario 1: GET /.well-known/agent.json ───────────────────────────────────
 
+
 @pytest.mark.unit
 def test_agent_card_returns_valid_json() -> None:
-    client = _make_app(
-        WorkerResult(worker_id="x", status=WorkerStatus.COMPLETED, output="")
-    )
+    client = _make_app(WorkerResult(worker_id="x", status=WorkerStatus.COMPLETED, output=""))
     resp = client.get("/.well-known/agent.json")
     assert resp.status_code == 200
     data = resp.json()
@@ -37,6 +36,7 @@ def test_agent_card_returns_valid_json() -> None:
 
 
 # ── Scenario 2: POST /tasks/send success ──────────────────────────────────────
+
 
 @pytest.mark.unit
 def test_tasks_send_success() -> None:
@@ -61,6 +61,7 @@ def test_tasks_send_success() -> None:
 
 
 # ── Scenario 3: POST /tasks/sendSubscribe returns SSE ────────────────────────
+
 
 @pytest.mark.unit
 def test_tasks_send_subscribe_streams_sse() -> None:
@@ -89,6 +90,7 @@ def test_tasks_send_subscribe_streams_sse() -> None:
 
 
 # ── Scenario 4: POST /tasks/send — worker failure ────────────────────────────
+
 
 @pytest.mark.unit
 def test_tasks_send_worker_failure() -> None:

@@ -25,14 +25,16 @@ Usage:
 from __future__ import annotations
 
 import asyncio
-from collections.abc import Callable, Coroutine
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from oneiric.core.logging import get_logger
 from pydantic import BaseModel, ConfigDict, Field
 from textual.command import Hit, Hits, Provider
+
+if TYPE_CHECKING:
+    from collections.abc import Callable, Coroutine
 
 logger = get_logger(__name__)
 
@@ -82,9 +84,11 @@ class CommandMatch(BaseModel):
     matched_text: str = ""
 
 
-# Rebuild CommandMatch after Command is fully defined
-# to resolve forward reference to Callable
-CommandMatch.model_rebuild()
+# Rebuild CommandMatch with Callable/Coroutine in scope — they're TYPE_CHECKING-only
+# imports so Pydantic can't resolve them automatically at model_rebuild time.
+from collections.abc import Callable, Coroutine  # noqa: E402, TCH003
+
+CommandMatch.model_rebuild(_types_namespace={"Callable": Callable, "Coroutine": Coroutine})
 
 
 class FuzzyMatcher:

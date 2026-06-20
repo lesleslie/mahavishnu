@@ -18,7 +18,7 @@
 - Add `turbovec` to `[tool.creosote] exclude_deps` in `pyproject.toml`
 - Scope: ONLY the `except` block (lines ~368-376) and `pyproject.toml`
 
----
+______________________________________________________________________
 
 ## File Map
 
@@ -28,15 +28,18 @@
 | `mahavishnu/engines/llamaindex_adapter_impl.py` | Modify | Expand `except` block for TurboVec fallback |
 | `tests/unit/engines/test_turbovec_fallback.py` | Create | 3 unit tests for the 3 `_vector_backend` values |
 
----
+______________________________________________________________________
 
 ## Task 1: pyproject.toml Changes
 
 **Files:**
+
 - Modify: `pyproject.toml`
 
 **Interfaces:**
+
 - Produces: `[dependency-groups] vector = ["turbovec[llama-index]~=0.1"]`
+
 - Produces: `"turbovec"` in `[tool.creosote] exclude_deps`
 
 - [ ] **Step 1: Add `[vector]` dependency group**
@@ -73,15 +76,17 @@ git add pyproject.toml
 git commit -m "feat(deps): add [vector] dep group with turbovec[llama-index]~=0.1"
 ```
 
----
+______________________________________________________________________
 
 ## Task 2: LlamaIndex Adapter Fallback + Tests
 
 **Files:**
+
 - Modify: `mahavishnu/engines/llamaindex_adapter_impl.py` (lines ~368-376 only)
 - Create: `tests/unit/engines/test_turbovec_fallback.py`
 
 **Interfaces:**
+
 - Consumes: `self.vector_store` and `self._vector_backend` set earlier in `_setup_vector_store` method
 - Produces: `self._vector_backend in ("opensearch", "turbovec", "memory-implicit")` (exhaustive)
 
@@ -256,6 +261,7 @@ Open `mahavishnu/engines/llamaindex_adapter_impl.py`. In the `except Exception a
 In the `_build_index` method (around lines 670-682), the else branch currently reads `"memory"`. Update its log message to match:
 
 Find:
+
 ```python
         else:
             index = VectorStoreIndex(nodes)

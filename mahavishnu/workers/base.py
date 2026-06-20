@@ -38,7 +38,7 @@ class WorkerResult:
     timestamp: str = field(default_factory=lambda: datetime.now().isoformat())
 
     @classmethod
-    def from_dict(cls, data: dict[str, Any]) -> "WorkerResult":
+    def from_dict(cls, data: dict[str, Any]) -> WorkerResult:
         """Create WorkerResult from dictionary.
 
         Args:

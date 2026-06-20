@@ -4,7 +4,7 @@
 **Status:** Approved
 **Scope:** Google A2A protocol — outbound A2AWorker (SSE client) + inbound A2A server routes
 
----
+______________________________________________________________________
 
 ## Context
 
@@ -17,7 +17,7 @@ adds the protocol layer that connects Mahavishnu to the broader agent ecosystem.
 resolves both: the SSRF risk is eliminated by name→URL resolution from settings (URLs
 never come from task input), and the spec now fully defines the protocol flow.
 
----
+______________________________________________________________________
 
 ## Global Constraints
 
@@ -32,7 +32,7 @@ never come from task input), and the spec now fully defines the protocol flow.
 - `enabled: false` default — A2A routes are not mounted unless explicitly opted in
 - SSRF guarantee: agent URLs come only from `settings/mahavishnu.yaml`, never from task input
 
----
+______________________________________________________________________
 
 ## Architecture
 
@@ -45,6 +45,7 @@ mahavishnu/workers/a2a.py     — A2AClient + A2AWorker (outbound)
 ```
 
 **Outbound flow:**
+
 ```
 task dict {"agent": "codegen-agent", "prompt": "..."}
 → name lookup in A2ARegistry (from settings) → A2AAgentConfig with base URL
@@ -54,6 +55,7 @@ task dict {"agent": "codegen-agent", "prompt": "..."}
 ```
 
 **Inbound flow:**
+
 ```
 POST /tasks/sendSubscribe (from external agent)
 → asyncio.Queue[str | None] per task
@@ -62,7 +64,7 @@ POST /tasks/sendSubscribe (from external agent)
 → SSE events: working → completed/failed
 ```
 
----
+______________________________________________________________________
 
 ## 1. Settings & Configuration
 
@@ -117,7 +119,7 @@ class A2ASettings(BaseModel):
 a2a: A2ASettings | None = None
 ```
 
----
+______________________________________________________________________
 
 ## 2. Shared Model — `mahavishnu/a2a/card.py`
 
@@ -143,7 +145,7 @@ class AgentCard(BaseModel):
     skills: list[A2ASkill] = []
 ```
 
----
+______________________________________________________________________
 
 ## 3. A2AWorker — `mahavishnu/workers/a2a.py`
 
@@ -328,7 +330,7 @@ WorkerRegistryEntry(
 )
 ```
 
----
+______________________________________________________________________
 
 ## 4. A2A Server — `mahavishnu/a2a/server.py`
 
@@ -419,6 +421,7 @@ def tasks_send_subscribe(worker_manager: Any):
 ```
 
 Helper:
+
 ```python
 def _sse_event(task_id: str, state: str, *, final: bool,
                result: Any = None, error: str | None = None) -> str:
@@ -454,7 +457,7 @@ if settings.a2a and settings.a2a.enabled:
     mcp.app.mount("/", build_a2a_router(settings.a2a, worker_manager))
 ```
 
----
+______________________________________________________________________
 
 ## 5. Testing
 
@@ -471,6 +474,7 @@ All use `respx` for httpx mocking and `@pytest.mark.unit`.
 | 5 | Card fetch 503 | `GET /.well-known/agent.json` → 503 | `status == FAILED` |
 
 SSE mock pattern for `respx` (streaming):
+
 ```python
 sse_body = (
     'data: {"id": "t1", "status": {"state": "working"}, "final": false}\n\n'
@@ -494,7 +498,7 @@ Use Starlette `TestClient` (sync) and `httpx.AsyncClient` for async SSE.
 | 3 | `POST /tasks/sendSubscribe` | 200, `content-type: text/event-stream`, final event present |
 | 4 | `POST /tasks/send` worker failure | 200, `status.state == "failed"` |
 
----
+______________________________________________________________________
 
 ## 6. File Manifest
 
@@ -513,7 +517,7 @@ Use Starlette `TestClient` (sync) and `httpx.AsyncClient` for async SSE.
 | Modify | `mahavishnu/mcp/server.py` — conditional mount |
 | Modify | `settings/mahavishnu.yaml` — `a2a:` block |
 
----
+______________________________________________________________________
 
 ## 7. Out of Scope
 

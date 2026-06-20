@@ -28,12 +28,15 @@ def test_vector_backend_is_opensearch_when_opensearch_available() -> None:
     mock_store = MagicMock()
     mock_client_cls = MagicMock(return_value=MagicMock())
 
-    with patch(
-        "mahavishnu.engines.llamaindex_adapter_impl.OpensearchVectorStore",
-        return_value=mock_store,
-    ), patch(
-        "llama_index.vector_stores.opensearch.OpensearchVectorClient",
-        mock_client_cls,
+    with (
+        patch(
+            "mahavishnu.engines.llamaindex_adapter_impl.OpensearchVectorStore",
+            return_value=mock_store,
+        ),
+        patch(
+            "llama_index.vector_stores.opensearch.OpensearchVectorClient",
+            mock_client_cls,
+        ),
     ):
         adapter._setup_vector_store()
 
@@ -47,16 +50,19 @@ def test_vector_backend_is_turbovec_when_opensearch_unavailable_and_turbovec_ins
     adapter = _make_adapter()
     mock_turbo = MagicMock()
 
-    with patch(
-        "mahavishnu.engines.llamaindex_adapter_impl.OpensearchVectorStore",
-        side_effect=ConnectionError("OpenSearch down"),
-    ), patch.dict(
-        "sys.modules",
-        {
-            "turbovec": MagicMock(),
-            "turbovec.integrations": MagicMock(),
-            "turbovec.integrations.llamaindex": MagicMock(TurboVec=lambda: mock_turbo),
-        },
+    with (
+        patch(
+            "mahavishnu.engines.llamaindex_adapter_impl.OpensearchVectorStore",
+            side_effect=ConnectionError("OpenSearch down"),
+        ),
+        patch.dict(
+            "sys.modules",
+            {
+                "turbovec": MagicMock(),
+                "turbovec.integrations": MagicMock(),
+                "turbovec.integrations.llamaindex": MagicMock(TurboVec=lambda: mock_turbo),
+            },
+        ),
     ):
         adapter._setup_vector_store()
 
@@ -69,10 +75,13 @@ def test_vector_backend_is_memory_implicit_when_neither_available() -> None:
     """When OpenSearch fails and turbovec is absent, _vector_backend = 'memory-implicit'."""
     adapter = _make_adapter()
 
-    with patch(
-        "mahavishnu.engines.llamaindex_adapter_impl.OpensearchVectorStore",
-        side_effect=ConnectionError("OpenSearch down"),
-    ), patch.dict("sys.modules", {"turbovec": None}):
+    with (
+        patch(
+            "mahavishnu.engines.llamaindex_adapter_impl.OpensearchVectorStore",
+            side_effect=ConnectionError("OpenSearch down"),
+        ),
+        patch.dict("sys.modules", {"turbovec": None}),
+    ):
         adapter._setup_vector_store()
 
     assert adapter._vector_backend == "memory-implicit"

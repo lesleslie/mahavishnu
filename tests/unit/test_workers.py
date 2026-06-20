@@ -9,8 +9,8 @@ import pytest
 from mahavishnu.workers.base import BaseWorker, WorkerResult, WorkerStatus
 from mahavishnu.workers.container import ContainerWorker
 from mahavishnu.workers.debug_monitor import DebugMonitorWorker
-from mahavishnu.workers.manager import WorkerManager
 from mahavishnu.workers.generic_shell import GenericShellWorker
+from mahavishnu.workers.manager import WorkerManager
 from monitoring.metrics import agent_tasks_in_progress, agent_tasks_total
 
 # ============================================================================

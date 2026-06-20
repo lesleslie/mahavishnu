@@ -1,10 +1,10 @@
 from __future__ import annotations
 
 from pathlib import Path
-from unittest.mock import AsyncMock, patch, MagicMock
+from unittest.mock import AsyncMock, MagicMock, patch
 
-import pytest
 from pydantic import ValidationError
+import pytest
 
 
 @pytest.mark.unit
@@ -45,14 +45,17 @@ async def test_openhands_run_returns_quality_score_none_path(tmp_path: Path) -> 
     mock_worker_result.status.value = "completed"
     mock_worker_result.output = "all tests pass"
 
-    with patch(
-        "mahavishnu.mcp.tools.openhands_tools.OpenHandsWorker.execute",
-        new_callable=AsyncMock,
-        return_value=mock_worker_result,
-    ), patch(
-        "mahavishnu.mcp.tools.openhands_tools._run_quality_check",
-        new_callable=AsyncMock,
-        return_value=None,  # quality_score=None
+    with (
+        patch(
+            "mahavishnu.mcp.tools.openhands_tools.OpenHandsWorker.execute",
+            new_callable=AsyncMock,
+            return_value=mock_worker_result,
+        ),
+        patch(
+            "mahavishnu.mcp.tools.openhands_tools._run_quality_check",
+            new_callable=AsyncMock,
+            return_value=None,  # quality_score=None
+        ),
     ):
         result = await run_openhands_task(inp)
 
@@ -62,8 +65,9 @@ async def test_openhands_run_returns_quality_score_none_path(tmp_path: Path) -> 
 
 @pytest.mark.unit
 def test_openhands_settings_rejects_workspace_dir_outside_root() -> None:
-    from mahavishnu.core.config import OpenHandsSettings
     from pydantic import ValidationError
+
+    from mahavishnu.core.config import OpenHandsSettings
 
     with pytest.raises(ValidationError):
         OpenHandsSettings(

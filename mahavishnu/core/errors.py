@@ -83,8 +83,8 @@ class ErrorCode(StrEnum):
     CROW_MCP_UNAVAILABLE = "MHV-307"
     OPENHANDS_SERVICE_ERROR = "MHV-308"
     OPENHANDS_TASK_FAILED = "MHV-309"
-    A2A_AGENT_NOT_FOUND = "MHV-310"   # agent name not in registry
-    A2A_AGENT_ERROR = "MHV-311"        # remote agent returned error or stream failed
+    A2A_AGENT_NOT_FOUND = "MHV-310"  # agent name not in registry
+    A2A_AGENT_ERROR = "MHV-311"  # remote agent returned error or stream failed
 
     # Prefect/Orchestration errors (400-449)
     PREFECT_CONNECTION_ERROR = "MHV-400"

@@ -4,7 +4,7 @@
 **Status:** Approved
 **Scope:** Unit-level chaos tests for OpenHandsWorker and CrowTerminalAdapter
 
----
+______________________________________________________________________
 
 ## Context
 
@@ -18,7 +18,7 @@ chaos scenarios:
 This patch validates that the existing Wave 1 production code handles these failure
 modes correctly, using `respx` transport mocking so no live services are required.
 
----
+______________________________________________________________________
 
 ## Global Constraints
 
@@ -31,7 +31,7 @@ modes correctly, using `respx` transport mocking so no live services are require
 - No `assert` in production code; `assert` is idiomatic in tests
 - No new production code unless a test reveals a real gap
 
----
+______________________________________________________________________
 
 ## Architecture
 
@@ -46,7 +46,7 @@ tests/unit/
     test_crow_chaos.py        ← 2 scenarios for CrowTerminalAdapter
 ```
 
----
+______________________________________________________________________
 
 ## 1. `tests/unit/workers/test_openhands_chaos.py`
 
@@ -140,7 +140,7 @@ async def test_task_timeout(oh_config: OpenHandsConfig) -> None:
     assert result.status == WorkerStatus.TIMEOUT
 ```
 
----
+______________________________________________________________________
 
 ## 2. `tests/unit/terminal/test_crow_chaos.py`
 
@@ -199,7 +199,7 @@ async def test_close_session_network_error_does_not_propagate() -> None:
         await adapter.close_session(session_id)
 ```
 
----
+______________________________________________________________________
 
 ## Verification
 
@@ -212,7 +212,7 @@ pytest tests/unit/workers/test_openhands_chaos.py tests/unit/terminal/test_crow_
 Expected: all 5 tests pass. If any fail, the failure identifies a real gap in Wave 1's
 error-handling paths — fix the production code, then re-run.
 
----
+______________________________________________________________________
 
 ## Out of Scope
 

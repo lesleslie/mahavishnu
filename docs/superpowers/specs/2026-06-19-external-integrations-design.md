@@ -4,7 +4,7 @@
 **Status:** Approved — ready for implementation planning (rev 3: +TurboVec Track 4)
 **Tracks:** 3 parallel, independent
 
----
+______________________________________________________________________
 
 ## Revision Log
 
@@ -17,7 +17,7 @@
   corrected `profiles.py` omission from file manifest; added crow-mcp runbook to new files;
   clarified `conv_id` pass-through; strengthened `workspace_dir` requirements.
 
----
+______________________________________________________________________
 
 ## Context
 
@@ -26,7 +26,7 @@ fake output because `MockTerminalAdapter` is the default. OpenHands provides aut
 coding capability Mahavishnu cannot replicate internally. Toad's Textual/Rich packages
 improve CLI readability in monitoring and quality workflows. This spec covers all three.
 
----
+______________________________________________________________________
 
 ## 1. Overall Architecture
 
@@ -49,7 +49,7 @@ MHV-307 error              MHV-308, MHV-309 errors       (always degrades cleanl
 **Deferred (not in this spec):** Toad ACP agent (Python 3.14+), BrowserWorker,
 A2AWorker (Wave 2 — underspecified + SSRF risk), full A2A discovery mesh.
 
----
+______________________________________________________________________
 
 ## 2. Track 1 — Terminal Gap (crow-cli)
 
@@ -89,13 +89,16 @@ server on port **8675**, binding to `127.0.0.1` only (never `0.0.0.0`).
 
 **Launch:** crow-mcp is a separate project. Mahavishnu *consumes* it; it does not manage
 its lifecycle. Operators start it via:
+
 ```bash
 cd /path/to/crow && uv run python -m crow_mcp --transport http --host 127.0.0.1 --port 8675
 ```
+
 A runbook lives at `docs/runbooks/crow-mcp-server.md` (see §8 new files). Consider
 adding a launchd plist alongside the existing Bifrost plist pattern.
 
 **`.mcp.json` entry:**
+
 ```json
 "crow-mcp": {
   "type": "http",
@@ -104,6 +107,7 @@ adding a launchd plist alongside the existing Bifrost plist pattern.
 ```
 
 **Health check entry** in `settings/mahavishnu.yaml`:
+
 ```yaml
 health:
   dependencies:
@@ -139,6 +143,7 @@ mechanism on crow-mcp's side is out of scope for this wave.
 ### 2.4 Config Flip
 
 `settings/mahavishnu.yaml`, under `terminal:`:
+
 ```yaml
 terminal:
   adapter_preference: "crow"         # was "auto"
@@ -150,10 +155,10 @@ terminal:
 **File:** `mahavishnu/workers/crow.py`
 
 `CrowWorker(BaseWorker)` for tasks that target crow-cli's ACP reasoning layer directly.
-Communicates via ACP session lifecycle: `initialize → new_session → prompt → (poll) →
-result`.
+Communicates via ACP session lifecycle: `initialize → new_session → prompt → (poll) → result`.
 
 **Decision rule (document in registry description):**
+
 - PTY execution (shell, REPL, AI assistant launched in terminal) → `GenericShellWorker`
   with `CrowTerminalAdapter`
 - Multi-step autonomous reasoning where crow-cli drives the loop → `CrowWorker`
@@ -181,7 +186,7 @@ Two guard tests must be confirmed or implemented:
 1. `GenericShellWorker` must raise `ValueError` when instantiated with a
    `WorkerCategory.GATEWAY` config. Add `test_generic_shell_rejects_gateway` to the
    relevant unit test file.
-2. `TerminalManager` with `adapter_preference="crow"` and `fallback_on_probe_failure=False`
+1. `TerminalManager` with `adapter_preference="crow"` and `fallback_on_probe_failure=False`
    must raise `MHV-307` (not fall back silently) when the probe fails.
 
 ### 2.8 Deletions
@@ -192,7 +197,7 @@ Two guard tests must be confirmed or implemented:
   Replace `logger.warning("not yet implemented")` with `raise NotImplementedError(...)`.
   Full removal deferred to Wave 2.
 
----
+______________________________________________________________________
 
 ## 3. Track 2 — OpenHands Worker
 
@@ -201,6 +206,7 @@ Two guard tests must be confirmed or implemented:
 Three components, following `openclaw_gateway.py` structure:
 
 **`OpenHandsConfig`** (dataclass):
+
 ```python
 base_url: str = "http://localhost:3000"
 api_key: str | None = None       # from OPENHANDS_API_KEY env var only
@@ -224,6 +230,7 @@ Falls back to REST polling automatically if WebSocket raises on connect. Both pa
 must be unit-tested (see §6.2).
 
 **`OpenHandsWorker(BaseWorker)`**:
+
 - `execute(task)` → create conversation → subscribe to events → return `WorkerResult`
 - `stop()` → DELETE conversation
 - `status()` → GET conversation mapped to `WorkerStatus`
@@ -254,6 +261,7 @@ OpenHands REST API — no Mahavishnu-side state is required between calls.
 ### 3.4 MCP Tools: `mahavishnu/mcp/tools/openhands_tools.py`
 
 **Input model (required — do not omit):**
+
 ```python
 class OpenHandsRunInput(BaseModel):
     prompt: str = Field(..., min_length=1, max_length=10_000)
@@ -269,6 +277,7 @@ class OpenHandsRunInput(BaseModel):
 | `openhands_cancel` | Cancel running conversation (stateless pass-through) |
 
 **Quality loop (in `openhands_run` only):**
+
 ```
 task_complete event received → WorkerResult returned by worker
   → if input.run_quality_check and settings.openhands.run_quality_check:
@@ -304,7 +313,7 @@ openhands:
 
 OpenHands does **not** go in `.mcp.json` — it exposes REST/WebSocket, not MCP.
 
----
+______________________________________________________________________
 
 ## 4. Track 3 — Toad TUI Packages
 
@@ -341,6 +350,7 @@ internally. No conditional branching in command bodies.
 New command in `mahavishnu/cli/monitoring_cli.py`. 2-second refresh timer.
 
 **TUI mode** (Textual installed):
+
 ```
 ┌─ System ──────────────┐ ┌─ Workers / Pools ──────────────┐
 │ CPU:    23%           │ │ terminal-claude  [RUNNING]  2s │
@@ -384,7 +394,7 @@ present via Typer.
 `textual>=8.2.7` already in `[tui]` dep group. Rich already a transitive dep. No
 `pyproject.toml` changes required.
 
----
+______________________________________________________________________
 
 ## 5. Error Handling
 
@@ -405,6 +415,7 @@ No new exception classes. `MHV-307` propagates as `TerminalError`; confirm that
 ### 5.2 Error Behaviour Per Component
 
 **CrowTerminalAdapter:**
+
 - Probe failure + `fallback_on_probe_failure: false` → raise `MHV-307`, block startup
 - Probe failure + `fallback_on_probe_failure: true` → WARNING (with `[MOCK FALLBACK ACTIVE]`),
   switch to `MockTerminalAdapter`
@@ -413,6 +424,7 @@ No new exception classes. `MHV-307` propagates as `TerminalError`; confirm that
 - No retry — retrying blind creates zombie PTY sessions
 
 **OpenHandsWorker:**
+
 - `httpx.ConnectError` → `MHV-308`, fast-fail, no retry
 - `httpx.TimeoutException` → exponential backoff via `tenacity`, max 3 retries, then
   `WorkerResult(status=TIMEOUT)`
@@ -420,11 +432,12 @@ No new exception classes. `MHV-307` propagates as `TerminalError`; confirm that
 - Conversation state `"error"` → `MHV-309`, error text in `WorkerResult.error`
 
 **`openhands_run` quality loop:**
+
 - Crackerjack MCP unavailable → try subprocess fallback
 - Both unavailable → WARNING, `quality_score=None`, task result unaffected
 - `WorkerResult.status` remains `COMPLETED` regardless of quality check outcome
 
----
+______________________________________________________________________
 
 ## 6. Security
 
@@ -432,6 +445,7 @@ No new exception classes. `MHV-307` propagates as `TerminalError`; confirm that
 
 `workspace_dir` is a `pathlib.Path` in config, validated at settings load time by a
 Pydantic validator that:
+
 - Resolves to absolute realpath (`Path.resolve()`)
 - Asserts containment under a configured allowed root (e.g. project directory)
 - Rejects symlinks outside the root
@@ -441,6 +455,7 @@ Pydantic validator that:
 ### 6.2 `api_key` Leak Prevention
 
 `OpenHandsConfig` must:
+
 - Mask `api_key` in `__repr__` and `__str__` (`"***"`)
 - Never place `api_key` in `WorkerResult.metadata`, error context, or MCP tool responses
 - Redact the raw httpx response before placing any part of it in metadata (no
@@ -460,12 +475,13 @@ data — it must never be interpolated into a shell command that Mahavishnu itse
 ### 6.5 Quality Loop Subprocess Safety
 
 When falling back to `subprocess crackerjack run`:
+
 - Invoke as argument list (`["crackerjack", "run"]`), `shell=False`
 - `cwd` = the validated `workspace_dir` from §6.1
 - Resolve absolute path to `crackerjack` executable before invocation
 - Apply a timeout matching `settings.openhands.default_timeout`
 
----
+______________________________________________________________________
 
 ## 7. Testing Strategy
 
@@ -490,23 +506,27 @@ tests/integration/
 ### 7.2 Unit Test Coverage Requirements
 
 **`test_openhands_worker.py`** — four scenarios (all via `respx`):
+
 1. Happy path: `POST /conversations` → WS `task_complete` → `WorkerResult(COMPLETED)`
-2. WS unavailable: WS connect raises → falls back to REST polling → `WorkerResult(COMPLETED)`
-3. `MHV-308`: `httpx.ConnectError` on `POST /conversations` → `WorkerResult` or raised error
-4. `MHV-309`: conversation state `"error"` → `WorkerResult(FAILED)` with error text
+1. WS unavailable: WS connect raises → falls back to REST polling → `WorkerResult(COMPLETED)`
+1. `MHV-308`: `httpx.ConnectError` on `POST /conversations` → `WorkerResult` or raised error
+1. `MHV-309`: conversation state `"error"` → `WorkerResult(FAILED)` with error text
 
 **`test_crow_adapter.py`** — four scenarios (all via mock MCP client):
+
 1. Protocol conformance: all 5 methods + `adapter_name` property return correct types
-2. `send_command` with unknown `session_id` → raises `TerminalError` with MHV-307
-3. PTY crash: `call_tool` returns error response → `capture_output` raises `TerminalError`
-4. `list_sessions` returns empty list when no sessions exist
+1. `send_command` with unknown `session_id` → raises `TerminalError` with MHV-307
+1. PTY crash: `call_tool` returns error response → `capture_output` raises `TerminalError`
+1. `list_sessions` returns empty list when no sessions exist
 
 **`test_tui_fallback.py`**:
+
 - Patch `mahavishnu.tui.TUI_AVAILABLE = False` (the boolean, not `find_spec`)
 - Assert `render_monitor_dashboard(data)` produces plain-text output
 - Separate test: `MonitorApp` construction raises → CLI catches and falls back gracefully
 
 **Quality loop test** (add to `test_openhands_worker.py` or a dedicated file):
+
 - Mock both Crackerjack MCP and subprocess to fail
 - Assert `result.metadata["quality_score"] is None`
 - Assert `result.status == WorkerStatus.COMPLETED`
@@ -514,6 +534,7 @@ tests/integration/
 ### 7.3 Guard Tests (CI-safe, always run)
 
 **Error code guard:**
+
 ```python
 def test_new_integration_error_codes_registered():
     # Use member identity to catch both renames and value changes
@@ -526,6 +547,7 @@ def test_new_integration_error_codes_registered():
 ```
 
 **GenericShellWorker GATEWAY rejection guard:**
+
 ```python
 def test_generic_shell_worker_rejects_gateway_category():
     config = WorkerConfig(name="test", worker_type="test",
@@ -537,9 +559,11 @@ def test_generic_shell_worker_rejects_gateway_category():
 ### 7.4 Smoke Test Assertion
 
 `test_crow_mcp_smoke.py` must assert adapter selection in addition to echo:
+
 ```python
 assert terminal_manager.active_adapter.__class__.__name__ == "CrowTerminalAdapter"
 ```
+
 A passing echo with a Mock fallback must not make this test green.
 
 ### 7.5 Coverage Target
@@ -553,7 +577,7 @@ servers.
 - Chaos test: OpenHands mid-task crash (connection dropped after `create_conversation`)
 - Chaos test: crow-mcp restart with active PTY sessions (orphaned session handling)
 
----
+______________________________________________________________________
 
 ## 8. Track 4 — TurboVec Explicit In-Memory Fallback (LlamaIndex Adapter)
 
@@ -563,7 +587,7 @@ servers.
 `__init__` (lines 350–376):
 
 1. **Primary:** `OpensearchVectorStore` — used when OpenSearch is reachable
-2. **Fallback (line 375):** `self.vector_store = None` — when OpenSearch fails, index
+1. **Fallback (line 375):** `self.vector_store = None` — when OpenSearch fails, index
    creation at line 682 falls back to `VectorStoreIndex(nodes)` with LlamaIndex's
    *implicit* `SimpleVectorStore`
 
@@ -632,6 +656,7 @@ the `if` branch fires and `VectorStoreIndex` receives a `storage_context` with T
 The `else` branch now represents "neither OpenSearch nor TurboVec available."
 
 **Conventions:**
+
 - The guarded import (`try/except ImportError`) matches the existing pattern for
   `OpensearchVectorStore` and `LLAMAINDEX_AVAILABLE` in this file
 - `from __future__ import annotations` is missing from this file — out of scope for this
@@ -656,6 +681,7 @@ Add `turbovec` to `[tool.creosote] exclude_deps` alongside `turboquant-pro`.
 ### 8.5 Scope Boundary
 
 **Only touch:**
+
 - `mahavishnu/engines/llamaindex_adapter_impl.py` (the except block, lines 368–376)
 - `pyproject.toml` (new `[vector]` dep group + creosote exclusion)
 
@@ -684,7 +710,7 @@ def test_vector_store_fallback_uses_implicit_when_turbovec_unavailable(monkeypat
     assert adapter.vector_store is None
 ```
 
----
+______________________________________________________________________
 
 ## 9. Port and Transport Summary
 
@@ -697,11 +723,12 @@ def test_vector_store_fallback_uses_implicit_when_turbovec_unavailable(monkeypat
 Existing Bodai ports: 8676 (Crackerjack), 8678 (Session-Buddy), 8680 (Mahavishnu),
 8682 (Akosha), 8683 (Dhara). Port 8675 is the only clean gap below 8676.
 
----
+______________________________________________________________________
 
 ## 9. File Manifest
 
 ### New Files
+
 - `mahavishnu/terminal/adapters/crow.py` — CrowTerminalAdapter
 - `mahavishnu/workers/crow.py` — CrowWorker (ACP)
 - `mahavishnu/workers/openhands.py` — OpenHandsWorker + OpenHandsClient + OpenHandsConfig
@@ -719,6 +746,7 @@ Existing Bodai ports: 8676 (Crackerjack), 8678 (Session-Buddy), 8680 (Mahavishnu
 - `tests/integration/test_crow_mcp_smoke.py`
 
 ### Modified Files
+
 - `mahavishnu/terminal/adapters/__init__.py` — export `CrowTerminalAdapter`
 - `mahavishnu/workers/__init__.py` — export new workers; remove `TerminalAIWorker`
 - `mahavishnu/workers/registry.py` — add 5 new worker entries
@@ -732,14 +760,17 @@ Existing Bodai ports: 8676 (Crackerjack), 8678 (Session-Buddy), 8680 (Mahavishnu
 - `pyproject.toml` — add `[a2a]` note deferred; no change needed this wave
 
 ### Track 4 — Modified Files
+
 - `mahavishnu/engines/llamaindex_adapter_impl.py` — TurboVec fallback in except block
 - `pyproject.toml` — new `[vector]` dep group; creosote exclusion for `turbovec`
 - `tests/unit/engines/test_llamaindex_adapter.py` — 2 new unit tests for fallback paths
 
 ### Deleted Files
+
 - `mahavishnu/workers/terminal.py` — `TerminalAIWorker` removed
 
 ### Wave 2 (not in this spec)
+
 - `mahavishnu/workers/a2a.py` — A2AWorker (deferred: SSRF risk, underspecified)
 - `tests/unit/workers/test_a2a_worker.py`
 - `tests/chaos/test_openhands_chaos.py`

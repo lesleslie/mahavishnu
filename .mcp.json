@@ -56,16 +56,16 @@
       "type": "http",
       "url": "http://localhost:3051/mcp"
     },
+    "pycharm": {
+      "headers": {
+        "IJ_MCP_SERVER_PROJECT_PATH": "/Users/les/Projects/mahavishnu"
+      },
+      "type": "http",
+      "url": "http://127.0.0.1:64462/stream"
+    },
     "session-buddy": {
       "type": "http",
       "url": "http://localhost:8678/mcp"
-    },
-    "pycharm": {
-      "url": "http://127.0.0.1:64462/stream",
-      "type": "http",
-      "headers": {
-        "IJ_MCP_SERVER_PROJECT_PATH": "/Users/les/Projects/mahavishnu"
-      }
     }
   }
 }

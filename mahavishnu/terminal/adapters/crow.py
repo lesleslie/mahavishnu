@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-import uuid
 from typing import Any
+import uuid
 
 from oneiric.core.logging import get_logger
 

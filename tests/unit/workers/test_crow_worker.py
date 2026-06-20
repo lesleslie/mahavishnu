@@ -7,8 +7,8 @@ import pytest
 
 @pytest.mark.unit
 async def test_crow_worker_execute_returns_completed_result() -> None:
-    from mahavishnu.workers.crow import CrowWorker
     from mahavishnu.core.status import WorkerStatus
+    from mahavishnu.workers.crow import CrowWorker
 
     worker = CrowWorker(base_url="http://localhost:8765")
 
@@ -18,8 +18,10 @@ async def test_crow_worker_execute_returns_completed_result() -> None:
         "result": "Task done.",
     }
 
-    with patch("httpx.AsyncClient.post", new_callable=AsyncMock) as mock_post, \
-         patch("httpx.AsyncClient.get", new_callable=AsyncMock) as mock_get:
+    with (
+        patch("httpx.AsyncClient.post", new_callable=AsyncMock) as mock_post,
+        patch("httpx.AsyncClient.get", new_callable=AsyncMock) as mock_get,
+    ):
         post_resp = MagicMock()
         post_resp.json.return_value = {"session_id": "sess-abc"}
         post_resp.raise_for_status = MagicMock()

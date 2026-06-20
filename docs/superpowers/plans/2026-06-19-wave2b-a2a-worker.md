@@ -21,7 +21,7 @@
 - `enabled: false` default in YAML — A2A routes are not mounted unless explicitly set to `true`
 - SSRF guarantee: agent URLs only from `settings/mahavishnu.yaml`, never from task input
 
----
+______________________________________________________________________
 
 ## File Map
 
@@ -40,18 +40,22 @@
 | Modify | `mahavishnu/mcp/bootstrap.py` | Conditional A2A mount in `_register_optional_tools` |
 | Modify | `settings/mahavishnu.yaml` | Add `a2a:` config block |
 
----
+______________________________________________________________________
 
 ## Task 1: Error Codes + `mahavishnu/a2a/` Package + AgentCard
 
 **Files:**
+
 - Modify: `mahavishnu/core/errors.py` (find the end of the `# External integration errors` block, currently ends at `OPENHANDS_TASK_FAILED = "MHV-309"`)
 - Create: `mahavishnu/a2a/__init__.py`
 - Create: `mahavishnu/a2a/card.py`
 
 **Interfaces:**
+
 - Produces: `ErrorCode.A2A_AGENT_NOT_FOUND` (`"MHV-310"`), `ErrorCode.A2A_AGENT_ERROR` (`"MHV-311"`)
+
 - Produces: `A2AError(Exception)` from `mahavishnu.a2a`
+
 - Produces: `AgentCard`, `A2ACapabilities`, `A2ASkill` from `mahavishnu.a2a.card`
 
 - [ ] **Step 1: Write the failing test**
@@ -163,16 +167,19 @@ git add mahavishnu/core/errors.py mahavishnu/a2a/__init__.py mahavishnu/a2a/card
 git commit -m "feat(a2a): add MHV-310/311 error codes and AgentCard model"
 ```
 
----
+______________________________________________________________________
 
 ## Task 2: Settings Models + YAML
 
 **Files:**
+
 - Modify: `mahavishnu/core/config.py` — add 4 Pydantic models and `a2a` field to `MahavishnuSettings`
 - Modify: `settings/mahavishnu.yaml` — add `a2a:` block
 
 **Interfaces:**
+
 - Consumes: `A2ACapabilitiesSettings`, `A2ACardSettings`, `A2AAgentEntry`, `A2ASettings` are new — no prior tasks define them
+
 - Produces: `MahavishnuSettings.a2a: A2ASettings | None` — consumed by Task 3 (worker construction) and Task 4 (server mount)
 
 - [ ] **Step 1: Write the failing test**
@@ -310,17 +317,20 @@ git add mahavishnu/core/config.py settings/mahavishnu.yaml
 git commit -m "feat(a2a): add A2ASettings config models and YAML block"
 ```
 
----
+______________________________________________________________________
 
 ## Task 3: A2AWorker + A2AClient + Tests + Registry
 
 **Files:**
+
 - Create: `mahavishnu/workers/a2a.py`
 - Create: `tests/unit/workers/test_a2a_worker.py`
 - Modify: `mahavishnu/workers/registry.py` — add A2A `WorkerConfig` entry
 
 **Interfaces:**
+
 - Consumes: `ErrorCode.A2A_AGENT_NOT_FOUND` / `A2A_AGENT_ERROR` (Task 1), `AgentCard`, `A2ACapabilities` (Task 1), `A2ASettings`, `A2AAgentEntry` (Task 2), `BaseWorker`, `WorkerResult` (from `mahavishnu.workers.base`), `WorkerStatus` (from `mahavishnu.core.status`)
+
 - Produces: `A2AAgentConfig` dataclass, `A2AClient` class, `A2AWorker(BaseWorker)` from `mahavishnu.workers.a2a`
 
 - [ ] **Step 1: Write the failing tests**
@@ -711,18 +721,21 @@ git add mahavishnu/workers/a2a.py mahavishnu/workers/registry.py \
 git commit -m "feat(a2a): add A2AClient, A2AWorker, and registry entry"
 ```
 
----
+______________________________________________________________________
 
 ## Task 4: A2A Server + Tests + Bootstrap Mount
 
 **Files:**
+
 - Create: `tests/unit/a2a/__init__.py`
 - Create: `mahavishnu/a2a/server.py`
 - Create: `tests/unit/a2a/test_a2a_server.py`
 - Modify: `mahavishnu/mcp/bootstrap.py` — add A2A conditional mount in `_register_optional_tools`
 
 **Interfaces:**
+
 - Consumes: `AgentCard`, `A2ACapabilities`, `A2ASkill` from `mahavishnu.a2a.card` (Task 1), `A2ASettings` from `mahavishnu.core.config` (Task 2)
+
 - Produces: `build_a2a_router(settings, worker_manager) -> Starlette` from `mahavishnu.a2a.server`
 
 - [ ] **Step 1: Write the failing tests**
@@ -1097,7 +1110,7 @@ git add mahavishnu/a2a/server.py tests/unit/a2a/__init__.py \
 git commit -m "feat(a2a): add inbound A2A server routes and bootstrap mount"
 ```
 
----
+______________________________________________________________________
 
 ## Final Verification
 

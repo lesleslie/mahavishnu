@@ -34,7 +34,7 @@ async def run_quality_check(output: str) -> int | None:
 
 @quality_app.command(name="check")
 def quality_check(
-    path: Path = typer.Argument(Path("."), help="Path to check (file or directory)"),
+    path: Path = typer.Argument(Path(), help="Path to check (file or directory)"),
     verbose: bool = typer.Option(False, "--verbose", "-v", help="Enable verbose output"),
 ) -> None:
     """Run quality checks on a path."""
@@ -46,7 +46,7 @@ def quality_check(
 
 @quality_app.command(name="fix")
 def quality_fix(
-    path: Path = typer.Argument(Path("."), help="Path to fix (file or directory)"),
+    path: Path = typer.Argument(Path(), help="Path to fix (file or directory)"),
     auto: bool = typer.Option(False, "--auto", "-a", help="Automatically apply fixes"),
 ) -> None:
     """Fix quality issues in a path."""

@@ -21,7 +21,7 @@
 - Line length 100 chars max
 - All new CLI commands follow typer conventions (typer.echo + Rich console, not print)
 
----
+______________________________________________________________________
 
 ## File Map
 
@@ -34,17 +34,21 @@
 | `mahavishnu/cli/monitoring_cli.py` | Modify | Replace `typer.echo()` with Rich-formatted `watch` subcommand |
 | `tests/unit/tui/test_tui_availability.py` | Create | 4 unit tests for TUI_AVAILABLE + fallback + patch |
 
----
+______________________________________________________________________
 
 ## Task 1: `mahavishnu/tui/` Module
 
 **Files:**
+
 - Create: `mahavishnu/tui/__init__.py`
 - Create: `tests/unit/tui/test_tui_availability.py`
 
 **Interfaces:**
+
 - Produces: `TUI_AVAILABLE: bool` — patched directly in tests as `mahavishnu.tui.TUI_AVAILABLE`
+
 - Produces: `get_console() -> Console` — returns a Rich `Console` instance
+
 - Produces: `FallbackRichFormatter` — plain Rich fallback when TUI_AVAILABLE is False
 
 - [ ] **Step 1: Create test directory and write failing tests**
@@ -190,15 +194,17 @@ git add mahavishnu/tui/__init__.py \
 git commit -m "feat(tui): add mahavishnu.tui module with TUI_AVAILABLE, FallbackRichFormatter, get_console"
 ```
 
----
+______________________________________________________________________
 
 ## Task 2: Textual Widgets + MonitorApp
 
 **Files:**
+
 - Create: `mahavishnu/tui/widgets.py`
 - Create: `mahavishnu/tui/monitor_app.py`
 
 **Interfaces:**
+
 - Consumes: `TUI_AVAILABLE` from `mahavishnu/tui/__init__.py` (Task 1)
 - Produces: `PoolStatusWidget`, `WorkerStatusWidget` — Textual `Static` widgets
 - Produces: `MonitorApp` — Textual `App` with auto-refresh and pool/worker tables
@@ -377,17 +383,22 @@ git add mahavishnu/tui/widgets.py mahavishnu/tui/monitor_app.py
 git commit -m "feat(tui): add MonitorApp Textual dashboard and Pool/Worker status widgets"
 ```
 
----
+______________________________________________________________________
 
 ## Task 3: `monitor watch` CLI Command
 
 **Files:**
+
 - Modify: `mahavishnu/cli/monitoring_cli.py`
 
 **Interfaces:**
+
 - Consumes: `MonitorApp` from `mahavishnu/tui/monitor_app.py` (Task 2)
+
 - Consumes: `TUI_AVAILABLE` from `mahavishnu/tui/__init__.py` (Task 1)
+
 - Consumes: `FallbackRichFormatter` from `mahavishnu/tui/__init__.py` (Task 1)
+
 - Produces: `mahavishnu monitor watch` CLI command — launches `MonitorApp` or prints Rich fallback
 
 - [ ] **Step 1: Read current monitoring_cli.py structure**
@@ -488,14 +499,16 @@ git add mahavishnu/cli/monitoring_cli.py
 git commit -m "feat(cli): add 'monitor watch' Textual dashboard command with Rich fallback"
 ```
 
----
+______________________________________________________________________
 
 ## Task 4: Rich Quality CLI
 
 **Files:**
+
 - Modify: `mahavishnu/quality_cli.py`
 
 **Interfaces:**
+
 - Consumes: `FallbackRichFormatter`, `get_console` from `mahavishnu/tui/__init__.py` (Task 1)
 - Produces: `mahavishnu quality check` — Rich table output (replaces the stub)
 

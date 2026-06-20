@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-import pytest
 import httpx
+import pytest
 import respx
 
 from mahavishnu.core.status import WorkerStatus
@@ -9,14 +9,12 @@ from mahavishnu.workers.a2a import A2AAgentConfig, A2AWorker
 
 
 def _make_worker(*names_urls: tuple[str, str]) -> A2AWorker:
-    registry = {
-        name: A2AAgentConfig(name=name, url=url)
-        for name, url in names_urls
-    }
+    registry = {name: A2AAgentConfig(name=name, url=url) for name, url in names_urls}
     return A2AWorker(agent_configs=registry)
 
 
 # ── Scenario 1: Happy path SSE ───────────────────────────────────────────────
+
 
 @pytest.mark.unit
 async def test_happy_path_sse(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -53,6 +51,7 @@ async def test_happy_path_sse(monkeypatch: pytest.MonkeyPatch) -> None:
 
 # ── Scenario 2: Non-streaming fallback ───────────────────────────────────────
 
+
 @pytest.mark.unit
 async def test_non_streaming_fallback() -> None:
     """Agent does NOT support streaming; falls back to /tasks/send."""
@@ -85,6 +84,7 @@ async def test_non_streaming_fallback() -> None:
 
 # ── Scenario 3: Unknown agent name ───────────────────────────────────────────
 
+
 @pytest.mark.unit
 async def test_unknown_agent_name() -> None:
     """Agent name not in registry returns FAILED with MHV-310."""
@@ -96,6 +96,7 @@ async def test_unknown_agent_name() -> None:
 
 
 # ── Scenario 4: Remote agent SSE error event ─────────────────────────────────
+
 
 @pytest.mark.unit
 async def test_remote_agent_sse_error_event() -> None:
@@ -129,6 +130,7 @@ async def test_remote_agent_sse_error_event() -> None:
 
 
 # ── Scenario 5: Card fetch 503 ────────────────────────────────────────────────
+
 
 @pytest.mark.unit
 async def test_card_fetch_503() -> None:

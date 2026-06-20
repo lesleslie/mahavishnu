@@ -534,6 +534,21 @@ class MahavishnuApp:
         """
         return await _get_active_workflows_helper(self)
 
+    async def get_metrics(self) -> dict[str, Any]:
+        """Return a snapshot of key system metrics for monitoring dashboards."""
+        pool_manager = getattr(self, "pool_manager", None)
+        worker_manager = getattr(self, "_worker_manager", None)
+        adapter_health = "healthy" if await self.is_healthy() else "degraded"
+        pools_active = len(getattr(pool_manager, "_pools", {})) if pool_manager else 0
+        workers_running = len(getattr(worker_manager, "_workers", {})) if worker_manager else 0
+        return {
+            "workflows_active": len(self.active_workflows),
+            "workflows_completed": 0,
+            "pools_active": pools_active,
+            "workers_running": workers_running,
+            "adapter_health": adapter_health,
+        }
+
     def _update_workflow_runtime_gauges(self) -> None:
         """Update shared Prometheus gauges for workflow runtime state."""
         _update_workflow_runtime_gauges_helper(self)

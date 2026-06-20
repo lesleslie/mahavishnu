@@ -19,7 +19,7 @@
 - Async throughout — no blocking calls inside async functions
 - Python 3.13 target
 
----
+______________________________________________________________________
 
 ## File Map
 
@@ -40,17 +40,20 @@
 | `tests/unit/terminal/test_crow_adapter.py` | Create | 4 unit test scenarios |
 | `tests/unit/workers/test_crow_worker.py` | Create | CrowWorker unit tests |
 
----
+______________________________________________________________________
 
 ## Task 1: Error Code + TerminalError Fix
 
 **Files:**
+
 - Modify: `mahavishnu/core/errors.py`
 - Modify: `mahavishnu/terminal/adapters/mcpretentious.py`
 - Test: (guard test appended to existing error test in Task 5)
 
 **Interfaces:**
+
 - Produces: `ErrorCode.CROW_MCP_UNAVAILABLE = "MHV-307"` (used by Tasks 2–3)
+
 - Produces: `TerminalError(message, error_code=ErrorCode.X, details={})` (backward-compatible)
 
 - [ ] **Step 1: Add MHV-307 to ErrorCode enum**
@@ -93,25 +96,29 @@ git add mahavishnu/core/errors.py mahavishnu/terminal/adapters/mcpretentious.py
 git commit -m "feat(terminal): add MHV-307 error code; fix TerminalError to accept custom code"
 ```
 
----
+______________________________________________________________________
 
 ## Task 2: CrowTerminalAdapter
 
 **Files:**
+
 - Create: `mahavishnu/terminal/adapters/crow.py`
 - Modify: `mahavishnu/terminal/adapters/__init__.py`
 - Create: `tests/unit/terminal/test_crow_adapter.py`
 
 **Interfaces:**
+
 - Consumes: `TerminalError`, `SessionNotFoundError`, `ErrorCode.CROW_MCP_UNAVAILABLE` from Task 1
 - Consumes: `TerminalAdapter` ABC from `mahavishnu/terminal/adapters/base.py`
 - Produces: `CrowTerminalAdapter(mcp_client)` — `adapter_name == "crow"`, all 5 async methods
 
 **NOTE on crow-mcp tool names:** crow-mcp exposes a `terminal` tool that maintains a persistent PTY with directory state. Verify the exact tool name and parameter schema against the installed crow-mcp package before implementing. The tool call pattern is:
+
 ```python
 result = await mcp_client.call_tool("terminal", {"command": "echo hello"})
 # result.content[0].text → output string
 ```
+
 For multi-session support, crow-mcp may use `session_id` parameters — verify and adjust.
 
 - [ ] **Step 1: Create `tests/unit/terminal/` directory and write the failing tests**
@@ -360,6 +367,7 @@ class CrowTerminalAdapter(TerminalAdapter):
 - [ ] **Step 4: Export from `__init__.py`**
 
 In `mahavishnu/terminal/adapters/__init__.py`, add:
+
 ```python
 from .crow import CrowTerminalAdapter
 ```
@@ -380,19 +388,23 @@ git add mahavishnu/terminal/adapters/crow.py mahavishnu/terminal/adapters/__init
 git commit -m "feat(terminal): add CrowTerminalAdapter backed by crow-mcp PTY toolserver"
 ```
 
----
+______________________________________________________________________
 
 ## Task 3: CrowWorker + Registry Additions
 
 **Files:**
+
 - Create: `mahavishnu/workers/crow.py`
 - Modify: `mahavishnu/workers/registry.py`
 - Modify: `mahavishnu/workers/__init__.py`
 - Create: `tests/unit/workers/test_crow_worker.py`
 
 **Interfaces:**
+
 - Consumes: `BaseWorker`, `WorkerResult`, `WorkerStatus` from `mahavishnu/workers/base.py`
+
 - Consumes: `WorkerCategory`, `WorkerConfig` from `mahavishnu/workers/registry.py`
+
 - Produces: `CrowWorker(base_url, session_buddy_client=None)` with `start()`, `execute(task)`, `stop()`, `status()`
 
 - [ ] **Step 1: Create `tests/unit/workers/` directory and write failing tests**
@@ -683,14 +695,18 @@ git rm mahavishnu/workers/terminal.py
 git commit -m "feat(workers): add CrowWorker (ACP), 5 new registry entries; delete TerminalAIWorker"
 ```
 
----
+______________________________________________________________________
 
 ## Task 4: Config, .mcp.json, Settings, Runbook
 
 **Files:**
+
 - Modify: `settings/mahavishnu.yaml`
+
 - Modify: `.mcp.json`
+
 - Create: `docs/runbooks/crow-mcp-server.md`
+
 - Modify: `mahavishnu/workers/debug_monitor.py`
 
 - [ ] **Step 1: Update `settings/mahavishnu.yaml` terminal block**
@@ -751,7 +767,7 @@ mkdir -p /Users/les/Projects/mahavishnu/docs/runbooks
 
 Create `docs/runbooks/crow-mcp-server.md`:
 
-```markdown
+````markdown
 # crow-mcp HTTP Server Runbook
 
 crow-mcp provides PTY terminal execution for Mahavishnu via MCP on port **8675**.
@@ -766,7 +782,7 @@ crow-mcp provides PTY terminal execution for Mahavishnu via MCP on port **8675**
 ```bash
 cd /path/to/crow-cli
 uv run python -m crow_mcp --transport http --host 127.0.0.1 --port 8675
-```
+````
 
 Or via uvicorn if crow-mcp exposes an ASGI app:
 
@@ -790,6 +806,7 @@ Mahavishnu probes crow-mcp on startup when `adapter_preference: "crow"`.
 With `fallback_on_probe_failure: false` (default), startup fails if crow-mcp is down.
 
 For development without crow-mcp, override via env var:
+
 ```bash
 export MAHAVISHNU_TERMINAL__ADAPTER_PREFERENCE=mock
 ```
@@ -804,7 +821,8 @@ include the uv/python invocation above with `127.0.0.1:8675`.
 
 - Add JWT auth header matching Mahavishnu's auth pattern
 - TLS via reverse proxy (nginx/caddy) for multi-user hosts
-```
+
+````
 
 - [ ] **Step 5: Verify settings parse cleanly**
 
@@ -815,7 +833,7 @@ s = MahavishnuSettings()
 print('adapter_preference:', s.terminal.adapter_preference)
 print('fallback_on_probe_failure:', s.terminal.fallback_on_probe_failure)
 "
-```
+````
 
 Expected: prints `crow` and `False`. If `fallback_on_probe_failure` is not yet a field in `MahavishnuSettings`, add it to the terminal config model with `fallback_on_probe_failure: bool = False`.
 
@@ -827,12 +845,14 @@ git add settings/mahavishnu.yaml .mcp.json mahavishnu/workers/debug_monitor.py \
 git commit -m "feat(config): activate crow adapter; add crow-mcp .mcp.json + runbook; deprecate DebugMonitorWorker"
 ```
 
----
+______________________________________________________________________
 
 ## Task 5: Guard Tests
 
 **Files:**
+
 - Modify or create: `tests/unit/test_error_codes.py`
+
 - Modify: relevant terminal/worker test file
 
 - [ ] **Step 1: Write guard tests**

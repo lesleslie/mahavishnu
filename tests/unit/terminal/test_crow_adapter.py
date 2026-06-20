@@ -17,9 +17,7 @@ class MockMcpResult:
 def make_mock_mcp(tool_results: dict[str, Any] | None = None) -> AsyncMock:
     mock = AsyncMock()
     if tool_results:
-        mock.call_tool.side_effect = lambda name, params: MockMcpResult(
-            tool_results.get(name, "")
-        )
+        mock.call_tool.side_effect = lambda name, params: MockMcpResult(tool_results.get(name, ""))
     else:
         mock.call_tool.return_value = MockMcpResult("output")
     return mock

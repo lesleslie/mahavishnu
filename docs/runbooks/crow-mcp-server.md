@@ -36,6 +36,7 @@ Mahavishnu probes crow-mcp on startup when `adapter_preference: "crow"`.
 With `fallback_on_probe_failure: false` (default), startup fails if crow-mcp is down.
 
 For development without crow-mcp, override via env var:
+
 ```bash
 export MAHAVISHNU_TERMINAL__ADAPTER_PREFERENCE=mock
 ```

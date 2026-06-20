@@ -42,6 +42,9 @@ exclude = [
   # Community sites that block bots
   "https://community.agno.com/",
   "https://discuss.cncf.io/",
+  # Sites that block bots (connection failures or persistent 403s)
+  "https://openai.com/",
+  "https://www.datacamp.com/",
   # Sites with TLS issues or HTTP/2 problems
   "https://appwrite.io/",
   # Grafana example URLs
