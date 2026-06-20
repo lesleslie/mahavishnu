@@ -137,6 +137,7 @@ WORKER_REGISTRY: dict[str, WorkerConfig] = {
             "For PTY pass-through use GenericShellWorker with CrowTerminalAdapter."
         ),
         completion_markers=[],
+        complete_on_valid_json=True,  # ACP protocol returns structured JSON responses
         default_timeout=300,
         requires_tool="crow",
     ),

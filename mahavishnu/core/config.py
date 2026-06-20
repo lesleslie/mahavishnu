@@ -339,7 +339,7 @@ class PrefectConfig(BaseModel):
     )
 
     @model_validator(mode="after")
-    def validate_cloud_config(self) -> "PrefectConfig":
+    def validate_cloud_config(self) -> PrefectConfig:
         """Validate configuration for Prefect Cloud.
 
         Ensures API key is provided when workspace is specified,
@@ -732,7 +732,7 @@ class AuthConfig(BaseModel):
     )
 
     @model_validator(mode="after")
-    def validate_secret(self) -> "AuthConfig":
+    def validate_secret(self) -> AuthConfig:
         """Validate auth secret is set if auth is enabled."""
         if self.enabled and not self.secret:
             raise ValueError(
@@ -767,7 +767,7 @@ class SubscriptionAuthConfig(BaseModel):
     )
 
     @model_validator(mode="after")
-    def validate_secret(self) -> "SubscriptionAuthConfig":
+    def validate_secret(self) -> SubscriptionAuthConfig:
         """Validate subscription auth secret is set if enabled."""
         if self.enabled and not self.secret:
             raise ValueError(
@@ -985,6 +985,13 @@ class A2ASettings(BaseModel):
     model_config = {"extra": "forbid"}
 
     enabled: bool = False
+    require_auth: bool = Field(
+        default=True,
+        description=(
+            "Require Bearer token on /tasks/send and /tasks/sendSubscribe. "
+            "Token is sourced from auth.secret. Set False only for trusted-network deployments."
+        ),
+    )
     card: A2ACardSettings = A2ACardSettings()
     agents: list[A2AAgentEntry] = []
 

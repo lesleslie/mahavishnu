@@ -2,13 +2,13 @@ from __future__ import annotations
 
 import asyncio
 import json
-import uuid
 from typing import TYPE_CHECKING
+import uuid
 
 from oneiric.core.logging import get_logger
 from starlette.applications import Starlette
-from starlette.requests import Request
-from starlette.responses import JSONResponse, StreamingResponse
+from starlette.middleware import Middleware
+from starlette.responses import JSONResponse, Response, StreamingResponse
 from starlette.routing import Route
 
 from mahavishnu.a2a.card import A2ACapabilities, A2ASkill, AgentCard
@@ -20,8 +20,40 @@ if TYPE_CHECKING:
     from collections.abc import AsyncGenerator
     from typing import Any
 
+    from starlette.requests import Request
+    from starlette.types import ASGIApp, Receive, Scope, Send
+
     from mahavishnu.core.config import A2ASettings
     from mahavishnu.workers.base import WorkerResult
+
+
+# ─── auth middleware ──────────────────────────────────────────────────────────
+
+
+class _A2ABearerMiddleware:
+    """Pure ASGI Bearer-token guard for A2A task endpoints.
+
+    /.well-known/agent.json is intentionally public (A2A spec requirement).
+    All other routes require ``Authorization: Bearer <token>``.
+    Uses pure ASGI (not BaseHTTPMiddleware) so StreamingResponse is unaffected.
+    """
+
+    def __init__(self, app: ASGIApp, *, auth_token: str) -> None:
+        self.app = app
+        self._token = auth_token
+
+    async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
+        if scope["type"] == "http" and scope.get("path") != "/.well-known/agent.json":
+            headers = dict(scope.get("headers", []))
+            auth = headers.get(b"authorization", b"").decode()
+            expected = f"Bearer {self._token}"
+            if auth != expected:
+                response = Response(
+                    '{"error":"Unauthorized"}', status_code=401, media_type="application/json"
+                )
+                await response(scope, receive, send)
+                return
+        await self.app(scope, receive, send)
 
 
 # ─── private helpers ──────────────────────────────────────────────────────────
@@ -79,9 +111,7 @@ def _sse_event(
         "final": final,
     }
     if result is not None:
-        payload["artifacts"] = [
-            {"parts": [{"type": "text", "text": result.output or ""}]}
-        ]
+        payload["artifacts"] = [{"parts": [{"type": "text", "text": result.output or ""}]}]
     if error:
         payload["status"]["message"] = error
     return f"data: {json.dumps(payload)}\n\n"
@@ -134,9 +164,7 @@ def _tasks_send_subscribe_handler(execute_fn: Any):  # type: ignore[no-untyped-d
             await queue.put(_sse_event(task_id, "working", final=False))
             try:
                 result = await execute_fn({"prompt": prompt})
-                await queue.put(
-                    _sse_event(task_id, "completed", final=True, result=result)
-                )
+                await queue.put(_sse_event(task_id, "completed", final=True, result=result))
             except Exception as e:  # noqa: BLE001
                 logger.exception("A2A /tasks/sendSubscribe handler error")
                 await queue.put(_sse_event(task_id, "failed", final=True, error=str(e)))
@@ -145,7 +173,7 @@ def _tasks_send_subscribe_handler(execute_fn: Any):  # type: ignore[no-untyped-d
 
         _bg = asyncio.create_task(run_and_emit())
 
-        async def event_generator() -> AsyncGenerator[str, None]:
+        async def event_generator() -> AsyncGenerator[str]:
             while True:
                 item = await queue.get()
                 if item is None:
@@ -160,24 +188,41 @@ def _tasks_send_subscribe_handler(execute_fn: Any):  # type: ignore[no-untyped-d
 # ─── public factory ───────────────────────────────────────────────────────────
 
 
-def build_a2a_router(settings: A2ASettings, execute_fn: Any) -> Starlette:
-    """Build a Starlette sub-application exposing Google A2A routes."""
-    return Starlette(
-        routes=[
-            Route(
-                "/.well-known/agent.json",
-                endpoint=_agent_card_handler(settings),
-                methods=["GET"],
-            ),
-            Route(
-                "/tasks/send",
-                endpoint=_tasks_send_handler(execute_fn),
-                methods=["POST"],
-            ),
-            Route(
-                "/tasks/sendSubscribe",
-                endpoint=_tasks_send_subscribe_handler(execute_fn),
-                methods=["POST"],
-            ),
-        ]
-    )
+def build_a2a_router(
+    settings: A2ASettings,
+    execute_fn: Any,
+    auth_token: str | None = None,
+) -> Starlette:
+    """Build a Starlette sub-application exposing Google A2A routes.
+
+    When ``settings.require_auth`` is True and ``auth_token`` is provided,
+    ``/tasks/send`` and ``/tasks/sendSubscribe`` require ``Authorization: Bearer <token>``.
+    ``/.well-known/agent.json`` is always public per the A2A spec.
+    """
+    routes = [
+        Route(
+            "/.well-known/agent.json",
+            endpoint=_agent_card_handler(settings),
+            methods=["GET"],
+        ),
+        Route(
+            "/tasks/send",
+            endpoint=_tasks_send_handler(execute_fn),
+            methods=["POST"],
+        ),
+        Route(
+            "/tasks/sendSubscribe",
+            endpoint=_tasks_send_subscribe_handler(execute_fn),
+            methods=["POST"],
+        ),
+    ]
+    middleware: list[Middleware] = []
+    if settings.require_auth:
+        if auth_token:
+            middleware = [Middleware(_A2ABearerMiddleware, auth_token=auth_token)]
+        else:
+            logger.warning(
+                "A2A server: require_auth=True but no auth_token available — "
+                "task endpoints are UNPROTECTED. Set auth.enabled + auth.secret to fix."
+            )
+    return Starlette(routes=routes, middleware=middleware)

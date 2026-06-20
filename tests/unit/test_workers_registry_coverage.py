@@ -231,8 +231,7 @@ class TestWorkerRegistry:
                 )
 
     def test_registry_size(self) -> None:
-        # 39 keys expected per source
-        assert len(WORKER_REGISTRY) == 39
+        assert len(WORKER_REGISTRY) == 46
 
 
 # ---------------------------------------------------------------------------

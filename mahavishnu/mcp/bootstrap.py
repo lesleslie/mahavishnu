@@ -214,7 +214,7 @@ async def _register_optional_tools(server: FastMCPServer, methods_set: set[str])
         try:
             from ..mcp.tools.openhands_tools import mcp as openhands_mcp
 
-            server.server.mount("openhands", openhands_mcp)
+            server.server.mount(openhands_mcp, "openhands")
             logger.info("Registered 4 OpenHands integration tools with MCP server")
         except Exception as exc:  # noqa: BLE001 - defensive: service may be unavailable
             logger.warning("OpenHands tools not available: %s", exc)
@@ -227,6 +227,12 @@ async def _register_optional_tools(server: FastMCPServer, methods_set: set[str])
             from ..workers.base import WorkerResult
 
             worker_manager = getattr(server.app, "_worker_manager", None)
+            auth_config = getattr(server.app.config, "auth", None)
+            auth_token: str | None = (
+                auth_config.secret
+                if auth_config and auth_config.enabled and auth_config.secret
+                else None
+            )
 
             async def _a2a_execute_fn(task: dict[str, Any]) -> Any:
                 """Route inbound A2A task to the first available worker."""
@@ -236,25 +242,25 @@ async def _register_optional_tools(server: FastMCPServer, methods_set: set[str])
                         status=WorkerStatus.FAILED,
                         error="No worker manager available",
                     )
-                workers = list(worker_manager._workers.keys())
-                if not workers:
+                worker_ids = worker_manager.list_worker_ids()
+                if not worker_ids:
                     return WorkerResult(
                         worker_id="none",
                         status=WorkerStatus.FAILED,
                         error="No workers registered",
                     )
-                return await worker_manager.execute_task(workers[0], task)
+                return await worker_manager.execute_task(worker_ids[0], task)
 
-            a2a_app = build_a2a_router(a2a_config, _a2a_execute_fn)
+            a2a_app = build_a2a_router(a2a_config, _a2a_execute_fn, auth_token=auth_token)
 
             _orig_http_app = server.server.http_app
 
             def _a2a_patched_http_app(*args: object, **kwargs: object) -> object:
-                app = _orig_http_app(*args, **kwargs)
+                app = _orig_http_app(*args, **kwargs)  # type: ignore[call-arg]
                 app.mount("/", a2a_app)
                 return app
 
-            server.server.http_app = _a2a_patched_http_app  # type: ignore[method-assign]
+            server.server.http_app = _a2a_patched_http_app  # type: ignore[assignment]
             logger.info(
                 "Mounted A2A server routes "
                 "(/.well-known/agent.json, /tasks/send, /tasks/sendSubscribe)"

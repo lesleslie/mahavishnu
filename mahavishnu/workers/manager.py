@@ -6,7 +6,7 @@ import asyncio
 import logging
 import os
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from monitoring.metrics import (
     agent_task_duration_seconds,
@@ -14,9 +14,11 @@ from monitoring.metrics import (
     agent_tasks_total,
 )
 
-from ..terminal.manager import TerminalManager
 from .base import BaseWorker, WorkerResult, WorkerStatus
 from .container import ContainerWorker
+
+if TYPE_CHECKING:
+    from ..terminal.manager import TerminalManager
 
 logger = logging.getLogger(__name__)
 
@@ -69,6 +71,10 @@ class WorkerManager:
         logger.info(
             f"Initialized WorkerManager (max_concurrent={self.max_concurrent}, debug={debug_mode})"
         )
+
+    def list_worker_ids(self) -> list[str]:
+        """Return IDs of all currently registered workers."""
+        return list(self._workers.keys())
 
     async def spawn_workers(
         self,
