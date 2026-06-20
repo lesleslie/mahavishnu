@@ -333,6 +333,36 @@ class MahavishnuError(Exception):
             "Try again later",
             "Use fallback options if available",
         ],
+        ErrorCode.CROW_MCP_UNAVAILABLE: [
+            "crow-mcp terminal server is not reachable",
+            "Check 'crow-mcp status' or restart the crow-mcp process",
+            "Verify crow-mcp is listed in .mcp.json and the server is running",
+            "Switch adapter: 'mahavishnu terminal switch-adapter mcpretentious'",
+        ],
+        ErrorCode.OPENHANDS_SERVICE_ERROR: [
+            "OpenHands service returned an unexpected error",
+            "Check the OpenHands server logs for details",
+            "Verify OPENHANDS_BASE_URL is reachable",
+            "Restart the OpenHands server and retry",
+        ],
+        ErrorCode.OPENHANDS_TASK_FAILED: [
+            "The task sent to OpenHands failed to complete",
+            "Check the task prompt and workspace configuration",
+            "Review OpenHands conversation logs for the root cause",
+            "Retry with a clearer or simpler task description",
+        ],
+        ErrorCode.A2A_AGENT_NOT_FOUND: [
+            "No A2A agent is registered under that name",
+            "Check a2a.agents in settings/mahavishnu.yaml for valid agent names",
+            "Agent name is case-sensitive; verify the exact name used",
+            "Add a new entry under a2a.agents if the agent is not yet configured",
+        ],
+        ErrorCode.A2A_AGENT_ERROR: [
+            "The remote A2A agent returned an error or the SSE stream failed",
+            "Check the remote agent's logs for details",
+            "Verify the agent URL in a2a.agents is reachable",
+            "Retry the task; transient network errors are common with SSE streams",
+        ],
         # Prefect/Orchestration error recovery guidance
         ErrorCode.PREFECT_CONNECTION_ERROR: [
             "Check if Prefect server is running",
