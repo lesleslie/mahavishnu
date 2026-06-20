@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
@@ -10,9 +9,6 @@ from mahavishnu.a2a.server import build_a2a_router
 from mahavishnu.core.config import A2ASettings
 from mahavishnu.core.status import WorkerStatus
 from mahavishnu.workers.base import WorkerResult
-
-if TYPE_CHECKING:
-    pass
 
 
 def _make_app(worker_result: WorkerResult) -> TestClient:

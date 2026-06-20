@@ -5,6 +5,7 @@ import json
 import uuid
 from typing import TYPE_CHECKING
 
+from oneiric.core.logging import get_logger
 from starlette.applications import Starlette
 from starlette.requests import Request
 from starlette.responses import JSONResponse, StreamingResponse
@@ -12,6 +13,8 @@ from starlette.routing import Route
 
 from mahavishnu.a2a.card import A2ACapabilities, A2ASkill, AgentCard
 from mahavishnu.core.status import WorkerStatus
+
+logger = get_logger(__name__)
 
 if TYPE_CHECKING:
     from collections.abc import AsyncGenerator
@@ -114,6 +117,7 @@ def _tasks_send_handler(worker_manager: Any):  # type: ignore[no-untyped-def]
             result = await worker_manager.execute_task({"prompt": prompt})
             return JSONResponse(_result_to_a2a(task_id, result))
         except Exception as e:  # noqa: BLE001
+            logger.exception("A2A /tasks/send handler error")
             return JSONResponse(_error_to_a2a(task_id, str(e)))
 
     return handler
@@ -134,11 +138,12 @@ def _tasks_send_subscribe_handler(worker_manager: Any):  # type: ignore[no-untyp
                     _sse_event(task_id, "completed", final=True, result=result)
                 )
             except Exception as e:  # noqa: BLE001
+                logger.exception("A2A /tasks/sendSubscribe handler error")
                 await queue.put(_sse_event(task_id, "failed", final=True, error=str(e)))
             finally:
                 await queue.put(None)
 
-        asyncio.create_task(run_and_emit())
+        _bg = asyncio.create_task(run_and_emit())
 
         async def event_generator() -> AsyncGenerator[str, None]:
             while True:
