@@ -48,6 +48,9 @@ from .monitoring_cli import add_monitoring_commands
 # Import production readiness CLI
 from .production_cli import add_production_commands
 
+# Import quality evaluation CLI
+from .quality_cli import add_quality_commands
+
 # Import adaptive routing CLI
 from .routing_cli import add_routing_commands
 
@@ -73,6 +76,9 @@ add_config_inventory_commands(app)
 
 # Add docs audit commands (docs audit)
 add_docs_commands(app)
+
+# Add quality evaluation commands (quality check, quality report)
+add_quality_commands(app)
 
 # Add comprehensive help system - DISABLED due to Click/Typer incompatibility
 # app.add_typer(help_group, name="help")
