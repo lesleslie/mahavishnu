@@ -217,6 +217,21 @@ async def _register_optional_tools(server: FastMCPServer, methods_set: set[str])
         except Exception as exc:  # noqa: BLE001 - defensive: service may be unavailable
             logger.warning("OpenHands tools not available: %s", exc)
 
+    a2a_config = getattr(server.app.config, "a2a", None)
+    if a2a_config and a2a_config.enabled:
+        try:
+            from ..a2a.server import build_a2a_router
+
+            worker_manager = getattr(server.app, "_worker_manager", None)
+            a2a_app = build_a2a_router(a2a_config, worker_manager)
+            server.server.http_app.mount("/", a2a_app)
+            logger.info(
+                "Mounted A2A server routes "
+                "(/.well-known/agent.json, /tasks/send, /tasks/sendSubscribe)"
+            )
+        except Exception as exc:  # noqa: BLE001 - defensive: A2A may be unavailable
+            logger.warning("A2A server routes not mounted: %s", exc)
+
 
 async def register_profile_tools(server: FastMCPServer, methods_set: set[str]) -> None:
     """Register the profile-gated MCP tool groups on the server."""
