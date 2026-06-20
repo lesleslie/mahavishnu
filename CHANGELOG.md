@@ -5,6 +5,74 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.8.0] - 2026-06-20
+
+### Added
+
+- a2a: Add MHV-310/311 error codes and AgentCard model
+- Activate crow adapter; add crow-mcp config + runbook; deprecate DebugMonitorWorker
+- Add A2AClient, A2AWorker, and registry entry
+- Add A2ASettings config models and YAML block
+- Add CrowTerminalAdapter backed by crow-mcp PTY toolserver
+- Add inbound A2A server routes and bootstrap mount
+- Add mahavishnu.tui module with TUI_AVAILABLE, FallbackRichFormatter, get_console
+- Add MHV-307 error code; fix TerminalError to accept custom code
+- cli: Add 'monitor watch' Textual dashboard command with Rich fallback
+- cli: Replace quality_check stub with Rich-formatted Crackerjack integration
+- config: Add crow-mcp entry to .mcp.json (http://127.0.0.1:8675/mcp)
+- config: Add OpenHandsSettings with is_relative_to path guard; add openhands yaml block + test
+- deps: Add [vector] dep group with turbovec[llama-index]~=0.1
+- errors: Add MHV-308 OPENHANDS_SERVICE_ERROR, MHV-309 OPENHANDS_TASK_FAILED
+- llamaindex: Add TurboVec fallback when OpenSearch unavailable; rename memory backend to memory-implicit
+- mcp: Add openhands_run, openhands_status, openhands_cancel, openhands_health tools
+- tui: Add MonitorApp Textual dashboard and Pool/Worker status widgets
+- workers: Add CrowWorker (ACP), 5 new registry entries; delete TerminalAIWorker
+- workers: Add OpenHandsWorker + GATEWAY registry entry
+
+### Changed
+
+- Mahavishnu (quality: 68/100) - 2026-06-19 01:43:16
+- Mahavishnu (quality: 68/100) - 2026-06-20 02:28:39
+- Mahavishnu (quality: 69/100) - 2026-06-20 08:38:15
+
+### Fixed
+
+- a2a: Add inbound auth middleware, public WorkerManager API, and registry fixes
+- a2a: Batch security and quality hardening from fan-out review
+- a2a: Fix http_app mount, execute_fn interface, config extra:forbid, version field
+- a2a: Store create_task ref, add logger to server, remove dead TYPE_CHECKING block
+- Add from __future__ import annotations to errors.py
+- Apply 4 post-merge cleanup items from Wave 1 review
+- cli: Complete get-dashboard Rich migration; remove unused refresh param; add future import
+- Complete resilience stub in test_initialize_runtime_services_fallback_branches
+- engines: Replace stdlib logger in llamaindex_adapter_impl with oneiric get_logger
+- errors: Add RECOVERY_GUIDANCE for MHV-307 through MHV-311
+- mcp: Lazy MahavishnuSettings; is_relative_to path check; fix logger.warning in except
+- Move DebugMonitorWorker deprecation to __init__; add from __future__ to config.py
+- SSE timeout, oneiric logger in bootstrap, quality_cli stub interface
+- terminal: Use oneiric.core.logging; hoist uuid import; update __init__ docstrings
+- tui: Use oneiric logger in command_palette
+- workers: Add from __future__ to debug_monitor + manager; remove dead code after raise
+- workers: Close httpx client unconditionally; remove _get_json anti-pattern; rename test class
+- workers: Stop() try/finally; from_dict error_code roundtrip; remove unused MagicMock import
+
+### Documentation
+
+- Add external integrations design spec (crow-cli, OpenHands, Toad TUI)
+- Add implementation plans for Track 1-4 (crow-cli, OpenHands, TUI, TurboVec)
+- Add Track 4 (TurboVec explicit LlamaIndex fallback) to integrations spec
+- Add Wave 2a chaos hardening spec (OpenHands + crow-mcp unit tests)
+- Add Wave 2b A2A worker & server spec (Google A2A protocol)
+- Add Wave 2b A2A Worker implementation plan
+- Fix 3 plan issues before SDD (unused imports, line length, settings test)
+- Revise external integrations spec (post-subagent review)
+
+### Testing
+
+- Add 5 unit chaos tests for OpenHandsWorker and CrowTerminalAdapter
+- llamaindex: Strengthen TurboVec test assertion to check exact instance
+- terminal: Add command-guard tests for SHELL rejection and GATEWAY allowance
+
 ## [0.7.3] - 2026-06-15
 
 ### Added
