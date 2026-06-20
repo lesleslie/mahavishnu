@@ -1014,6 +1014,12 @@ class A2ASettings(BaseModel):
             "Token is sourced from auth.secret. Set False only for trusted-network deployments."
         ),
     )
+    task_timeout_seconds: float = Field(
+        default=600.0,
+        ge=5.0,
+        le=3600.0,
+        description="Maximum seconds to wait for execute_fn on /tasks/sendSubscribe before timing out.",
+    )
     card: A2ACardSettings = A2ACardSettings()
     agents: list[A2AAgentEntry] = []
 

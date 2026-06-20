@@ -157,7 +157,7 @@ def _tasks_send_handler(execute_fn: Any):  # type: ignore[no-untyped-def]
     return handler
 
 
-def _tasks_send_subscribe_handler(execute_fn: Any):  # type: ignore[no-untyped-def]
+def _tasks_send_subscribe_handler(execute_fn: Any, timeout: float = 600.0):  # type: ignore[no-untyped-def]
     async def handler(request: Request) -> StreamingResponse:
         task_data = await request.json()
         task_id: str = task_data.get("id", str(uuid.uuid4()))
@@ -167,8 +167,11 @@ def _tasks_send_subscribe_handler(execute_fn: Any):  # type: ignore[no-untyped-d
         async def run_and_emit() -> None:
             await queue.put(_sse_event(task_id, "working", final=False))
             try:
-                result = await execute_fn({"prompt": prompt})
+                result = await asyncio.wait_for(execute_fn({"prompt": prompt}), timeout=timeout)
                 await queue.put(_sse_event(task_id, "completed", final=True, result=result))
+            except asyncio.TimeoutError:
+                logger.warning("A2A task timed out (%.0fs) for task_id=%s", timeout, task_id)
+                await queue.put(_sse_event(task_id, "failed", final=True, error="Task execution timed out"))
             except Exception:  # noqa: BLE001
                 logger.exception("A2A /tasks/sendSubscribe handler error")
                 await queue.put(_sse_event(task_id, "failed", final=True, error="Task execution failed"))
@@ -218,7 +221,7 @@ def build_a2a_router(
         ),
         Route(
             "/tasks/sendSubscribe",
-            endpoint=_tasks_send_subscribe_handler(execute_fn),
+            endpoint=_tasks_send_subscribe_handler(execute_fn, settings.task_timeout_seconds),
             methods=["POST"],
         ),
     ]

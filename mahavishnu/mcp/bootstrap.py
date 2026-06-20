@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
-from logging import getLogger
 from typing import TYPE_CHECKING
 
+from oneiric.core.logging import get_logger
 from starlette.responses import JSONResponse
 
 from ..terminal.adapters.iterm2 import ITERM2_AVAILABLE, ITerm2Adapter
@@ -16,7 +16,7 @@ if TYPE_CHECKING:
 
     from .server_core import FastMCPServer
 
-logger = getLogger(__name__)
+logger = get_logger(__name__)
 
 
 def init_terminal_manager(server: FastMCPServer) -> TerminalManager | None:
@@ -256,7 +256,7 @@ async def _register_optional_tools(server: FastMCPServer, methods_set: set[str])
             _orig_http_app = server.server.http_app
 
             def _a2a_patched_http_app(*args: object, **kwargs: object) -> object:
-                app = _orig_http_app(*args, **kwargs)  # type: ignore[call-arg]
+                app = _orig_http_app(*args, **kwargs)  # type: ignore[arg-type]
                 app.mount("/", a2a_app)
                 return app
 
