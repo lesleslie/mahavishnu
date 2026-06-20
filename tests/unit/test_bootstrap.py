@@ -969,7 +969,15 @@ class TestBootstrapDeepHelpers:
         install("mahavishnu.core.monitoring", MonitoringService=_NoOp)
         install("mahavishnu.core.opensearch_integration", OpenSearchIntegration=_NoOp)
         install("mahavishnu.core.repo_manager", RepositoryManager=_Boom)
-        install("mahavishnu.core.resilience", ErrorRecoveryManager=_NoOp, ResiliencePatterns=_NoOp)
+        install(
+            "mahavishnu.core.resilience",
+            ErrorRecoveryManager=_NoOp,
+            ResiliencePatterns=_NoOp,
+            RetryExhaustedError=Exception,
+            RetryPolicy=object,
+            retry_async=lambda *args, **kwargs: None,
+        )
+        install("mahavishnu.core.task_router", StateManager=_NoOp)
         install("mahavishnu.core.skill_registry", SkillRegistry=_NoOp)
         install("mahavishnu.core.learning_pipeline", LearningPipelineService=_NoOp)
         install(
