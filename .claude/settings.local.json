@@ -493,7 +493,7 @@
       "WebFetch(domain:api.minimaxi.com)"
     ]
   },
-  "enableAllProjectMcpServers": false,
+  "enableAllProjectMcpServers": true,
   "enabledMcpjsonServers": [
     "akosha",
     "chart-antv",
@@ -510,7 +510,8 @@
     "penpot",
     "penpot-api",
     "pycharm",
-    "session-buddy"
+    "session-buddy",
+    "crow-mcp"
   ],
   "outputStyle": "Explanatory",
   "additionalDirectories": []
