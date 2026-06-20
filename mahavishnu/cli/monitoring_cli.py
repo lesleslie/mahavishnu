@@ -28,7 +28,8 @@ def get_dashboard(
 
     Shows system metrics, workflow stats, and alert information.
     """
-    typer.echo("📊 Getting monitoring dashboard...")
+    console = get_console()
+    console.print("📊 Getting monitoring dashboard...")
 
     # Initialize app with config if provided
     maha_app = MahavishnuApp()
@@ -42,9 +43,8 @@ def get_dashboard(
     if output_file:
         with open(output_file, "w") as f:
             json.dump(dashboard_data, f, indent=2)
-        typer.echo(f"✅ Dashboard data saved to: {output_file}")
+        console.print(f"✅ Dashboard data saved to: {output_file}")
     else:
-        console = get_console()
         console.print("\n📈 SYSTEM METRICS:")
         system = dashboard_data["metrics"]["system"]
         console.print(f"   CPU Usage: {system['cpu_percent']}%")
@@ -218,9 +218,7 @@ def trigger_test_alert(
 
 
 @app.command(name="watch")
-def watch_dashboard(
-    refresh: int = typer.Option(5, help="Refresh interval in seconds"),
-) -> None:
+def watch_dashboard() -> None:
     """Launch a live Textual monitor dashboard (requires tui extra)."""
     if TUI_AVAILABLE:
         from ..tui.monitor_app import MonitorApp  # noqa: PLC0415
