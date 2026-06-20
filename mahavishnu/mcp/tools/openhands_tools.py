@@ -59,7 +59,7 @@ async def _run_quality_check(output: str) -> int | None:
         score = await crackerjack_check(output)
         return score
     except Exception:
-        logger.warning("Quality check failed (non-fatal); continuing without score")
+        logger.exception("Quality check failed (non-fatal); continuing without score")
         return None
 
 

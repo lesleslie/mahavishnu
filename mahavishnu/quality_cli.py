@@ -91,7 +91,7 @@ def quality_check(
     except typer.Exit:
         raise
     except Exception as e:
-        logger.exception("Quality check failed: %s", e)
+        logger.exception("Quality check failed")
         console.print(f"[red]Quality check error:[/red] {e}")
         raise typer.Exit(code=1)
 

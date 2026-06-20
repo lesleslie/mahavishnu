@@ -46,7 +46,7 @@ if TUI_AVAILABLE:
 
         def on_mount(self) -> None:
             self.set_interval(5, self.action_refresh)
-            self.action_refresh()
+            self.call_after_refresh(self.action_refresh)
 
         async def action_refresh(self) -> None:
             if self._data_provider:

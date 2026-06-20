@@ -10,9 +10,12 @@ This package provides:
 from __future__ import annotations
 
 import importlib.util
-from typing import Any
+from typing import TYPE_CHECKING
 
 from oneiric.core.logging import get_logger
+
+if TYPE_CHECKING:
+    from typing import Any
 from rich.console import Console
 from rich.table import Table
 
