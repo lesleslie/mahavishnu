@@ -942,6 +942,45 @@ class MonitoringConfig(BaseModel):
     model_config = {"extra": "forbid"}
 
 
+# ============================================================================
+# A2A (Agent-to-Agent) Protocol Configuration
+# ============================================================================
+
+
+class A2ACapabilitiesSettings(BaseModel):
+    """Capabilities advertised in our outbound A2A agent card."""
+
+    streaming: bool = True
+    pushNotifications: bool = False  # noqa: N815
+
+
+class A2ACardSettings(BaseModel):
+    """Fields used to build the /.well-known/agent.json response."""
+
+    name: str = "Mahavishnu"
+    description: str = "Bodai ecosystem orchestrator"
+    version: str = "0.7.x"
+    capabilities: A2ACapabilitiesSettings = A2ACapabilitiesSettings()
+    skills: list[dict[str, str]] = []
+
+
+class A2AAgentEntry(BaseModel):
+    """One entry in the outbound agent registry (from settings/mahavishnu.yaml)."""
+
+    name: str
+    url: str
+    description: str = ""
+    api_key_env: str | None = None  # env var name; resolved to actual value at runtime
+
+
+class A2ASettings(BaseModel):
+    """Top-level A2A configuration block."""
+
+    enabled: bool = False
+    card: A2ACardSettings = A2ACardSettings()
+    agents: list[A2AAgentEntry] = []
+
+
 class OpenHandsSettings(BaseModel):
     """Configuration for the OpenHands autonomous agent integration."""
 
@@ -1759,6 +1798,9 @@ class MahavishnuSettings(BaseSettings):
 
     # OpenHands autonomous agent integration (optional)
     openhands: OpenHandsSettings | None = None
+
+    # A2A (Agent-to-Agent) protocol configuration (optional)
+    a2a: A2ASettings | None = None
 
     # ===== Grouped Configuration =====
 

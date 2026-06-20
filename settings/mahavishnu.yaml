@@ -325,3 +325,23 @@ dhara_state:
   enabled: true
   flush_interval_seconds: 60
   max_routing_buffer_age_seconds: 3600
+
+# A2A (Agent-to-Agent) protocol — Google A2A spec
+# Set enabled: true and add agent entries to activate
+a2a:
+  enabled: false
+  card:
+    name: "Mahavishnu"
+    description: "Bodai ecosystem orchestrator"
+    version: "0.7.x"
+    capabilities:
+      streaming: true
+      pushNotifications: false
+    skills: []
+  agents: []
+  # Example agent entry:
+  # agents:
+  #   - name: "codegen-agent"
+  #     url: "http://agent.example.com"
+  #     description: "External code generation agent"
+  #     api_key_env: "CODEGEN_API_KEY"
