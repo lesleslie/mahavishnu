@@ -524,6 +524,17 @@ WORKER_REGISTRY: dict[str, WorkerConfig] = {
         default_timeout=600,
         requires_tool="openhands",
     ),
+    "a2a": WorkerConfig(
+        name="A2A Gateway",
+        worker_type="a2a",
+        command="",  # GATEWAY worker — HTTP/SSE API, no shell command
+        category=WorkerCategory.GATEWAY,
+        description=(
+            "Google A2A protocol — routes tasks to external agents by name. "
+            "Agent URLs resolved from settings only (SSRF-safe)."
+        ),
+        requires_tool=None,
+    ),
 }
 
 
