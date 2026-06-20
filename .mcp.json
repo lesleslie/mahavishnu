@@ -12,6 +12,10 @@
       "type": "http",
       "url": "http://localhost:8676/mcp"
     },
+    "crow-mcp": {
+      "type": "http",
+      "url": "http://127.0.0.1:8675/mcp"
+    },
     "css": {
       "type": "http",
       "url": "http://localhost:3050/mcp"

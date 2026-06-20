@@ -11,6 +11,8 @@ Version: 3.4
 Related: 4-Agent Opus Review P0 issue - error code system
 """
 
+from __future__ import annotations
+
 from datetime import UTC, datetime
 from enum import StrEnum
 from typing import ClassVar
@@ -78,6 +80,9 @@ class ErrorCode(StrEnum):
     EMBEDDING_SERVICE_ERROR = "MHV-304"
     NLP_PARSER_ERROR = "MHV-305"
     EXTERNAL_SERVICE_UNAVAILABLE = "MHV-306"
+    CROW_MCP_UNAVAILABLE = "MHV-307"
+    OPENHANDS_SERVICE_ERROR = "MHV-308"
+    OPENHANDS_TASK_FAILED = "MHV-309"
 
     # Prefect/Orchestration errors (400-449)
     PREFECT_CONNECTION_ERROR = "MHV-400"

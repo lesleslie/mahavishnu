@@ -127,6 +127,59 @@ WORKER_REGISTRY: dict[str, WorkerConfig] = {
         stream_format="text",
         requires_tool="clai",
     ),
+    "terminal-crow": WorkerConfig(
+        name="crow-cli ACP",
+        worker_type="terminal-crow",
+        command="",  # HTTP-ACP worker — no shell command
+        category=WorkerCategory.AI_ASSISTANT,
+        description=(
+            "crow-cli ACP agent — autonomous multi-step reasoning. "
+            "For PTY pass-through use GenericShellWorker with CrowTerminalAdapter."
+        ),
+        completion_markers=[],
+        default_timeout=300,
+        requires_tool="crow",
+    ),
+    "terminal-aider": WorkerConfig(
+        name="Aider",
+        worker_type="terminal-aider",
+        command="sh -lc 'aider --no-auto-commit'",
+        category=WorkerCategory.AI_ASSISTANT,
+        description="Aider AI pair-programming assistant",
+        completion_markers=[">"],
+        default_timeout=300,
+        requires_tool="aider",
+    ),
+    "terminal-goose": WorkerConfig(
+        name="Block Goose",
+        worker_type="terminal-goose",
+        command="sh -lc 'goose'",
+        category=WorkerCategory.AI_ASSISTANT,
+        description="Block Goose autonomous agent",
+        completion_markers=["Goose: "],
+        default_timeout=300,
+        requires_tool="goose",
+    ),
+    "terminal-gemini": WorkerConfig(
+        name="Gemini CLI",
+        worker_type="terminal-gemini",
+        command="sh -lc 'gemini'",
+        category=WorkerCategory.AI_ASSISTANT,
+        description="Gemini CLI AI assistant",
+        completion_markers=["> "],
+        default_timeout=300,
+        requires_tool="gemini",
+    ),
+    "terminal-amp": WorkerConfig(
+        name="Amp",
+        worker_type="terminal-amp",
+        command="sh -lc 'amp'",
+        category=WorkerCategory.AI_ASSISTANT,
+        description="Amp AI coding assistant",
+        completion_markers=["> "],
+        default_timeout=300,
+        requires_tool="amp",
+    ),
     "gateway-openclaw": WorkerConfig(
         name="OpenClaw Gateway",
         worker_type="gateway-openclaw",
@@ -460,6 +513,16 @@ WORKER_REGISTRY: dict[str, WorkerConfig] = {
         stream_format="text",
         requires_tool="terraform",
         default_timeout=600,
+    ),
+    "openhands": WorkerConfig(
+        name="OpenHands",
+        worker_type="openhands",
+        command="",  # GATEWAY worker — HTTP API, no shell command
+        category=WorkerCategory.GATEWAY,
+        description="OpenHands autonomous dev agent v1.7.0 — REST+WebSocket API",
+        completion_markers=[],
+        default_timeout=600,
+        requires_tool="openhands",
     ),
 }
 

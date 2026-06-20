@@ -163,6 +163,11 @@ automation-vision = [
     "opencv-python>=4.13.0.92",
 ]
 
+# Optional: Explicit in-memory vector store (TurboVec)
+vector = [
+    "turbovec[llama-index]~=0.1",
+]
+
 [tool.hatch.metadata]
 allow-direct-references = true
 
@@ -347,6 +352,7 @@ exclude_deps = [
     "pypdf",
     "ebooklib",
     "turboquant-pro",
+    "turbovec",
     "llama-cpp-python",
     "hatchet-sdk",
     "runpod-flash",

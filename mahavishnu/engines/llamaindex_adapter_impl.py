@@ -16,7 +16,10 @@ from types import SimpleNamespace
 from typing import Any
 import uuid
 
+from oneiric.core.logging import get_logger
 from tenacity import retry, stop_after_attempt, wait_exponential
+
+logger = get_logger(__name__)
 
 try:
     from llama_index.core import Document, SimpleDirectoryReader, VectorStoreIndex
@@ -348,13 +351,24 @@ class LlamaIndexAdapter(OrchestratorAdapter):
         self.node_parser = SentenceSplitter(chunk_size=1024, chunk_overlap=20, separator=" ")
 
         # Initialize OpenSearch vector store with security settings
+        self._setup_vector_store()
+
+        # Initialize OpenTelemetry instrumentation
+        self._init_otel_instrumentation()
+
+    def _setup_vector_store(self) -> None:
+        """Set up the vector store backend with a two-tier fallback.
+
+        Attempts OpenSearch first; falls back to TurboVec if available, then
+        to LlamaIndex's implicit SimpleVectorStore.
+        """
         # Note: llama-index-vector-stores-opensearch 0.6.x requires OpensearchVectorClient
         # Note: Requires opensearch-knn plugin for vector similarity search
         try:
             from llama_index.vector_stores.opensearch import OpensearchVectorClient
 
-            endpoint = getattr(config, "opensearch_endpoint", "http://localhost:9200")
-            index_name = getattr(config, "opensearch_index_name", "mahavishnu_code")
+            endpoint = getattr(self.config, "opensearch_endpoint", "http://localhost:9200")
+            index_name = getattr(self.config, "opensearch_index_name", "mahavishnu_code")
             dim = 768  # nomic-embed-text dimension
 
             # Create the client first (new API requirement)
@@ -366,17 +380,23 @@ class LlamaIndexAdapter(OrchestratorAdapter):
             self.vector_store = OpensearchVectorStore(client=os_client)
             self._vector_backend = "opensearch"
         except Exception as e:
-            # Fall back gracefully - in-memory store works for development
-            logger = __import__("logging").getLogger(__name__)
-            logger.debug(f"OpenSearch vector store unavailable: {e}")
-            logger.info(
-                "Using in-memory vector store (install opensearch-knn plugin for persistence)"
-            )
-            self.vector_store = None  # type: ignore[assignment]
-            self._vector_backend = "memory"
+            logger.debug("OpenSearch vector store unavailable: %s", e)
+            try:
+                from turbovec.integrations.llamaindex import TurboVec  # noqa: PLC0415
 
-        # Initialize OpenTelemetry instrumentation
-        self._init_otel_instrumentation()
+                self.vector_store = TurboVec()
+                self._vector_backend = "turbovec"
+                logger.info(
+                    "Using TurboVec in-memory vector store "
+                    "(install turbovec[llama-index] for explicit in-memory store)"
+                )
+            except ImportError:
+                self.vector_store = None  # type: ignore[assignment]
+                self._vector_backend = "memory-implicit"
+                logger.info(
+                    "Using LlamaIndex implicit SimpleVectorStore "
+                    "(install turbovec[llama-index] for explicit in-memory store)"
+                )
 
     def _init_otel_instrumentation(self) -> None:
         """Initialize OpenTelemetry components for tracing and metrics.

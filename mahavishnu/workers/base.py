@@ -1,10 +1,13 @@
 """Base worker interface for task execution."""
 
+from __future__ import annotations
+
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Any, Final
 
+from mahavishnu.core.errors import ErrorCode
 from mahavishnu.core.status import WorkerStatus
 
 
@@ -17,6 +20,7 @@ class WorkerResult:
         status: Final execution status
         output: Worker output (stdout, response, etc.)
         error: Error message if execution failed
+        error_code: Structured error code (MHV-XXX) if execution failed
         exit_code: Process exit code (if applicable)
         duration_seconds: Execution duration in seconds
         metadata: Additional worker-specific metadata
@@ -27,6 +31,7 @@ class WorkerResult:
     status: WorkerStatus
     output: str | None = None
     error: str | None = None
+    error_code: ErrorCode | None = None
     exit_code: int | None = None
     duration_seconds: float = 0.0
     metadata: dict[str, Any] = field(default_factory=dict)
@@ -46,6 +51,9 @@ class WorkerResult:
         status_str = data.get("status", "unknown")
         status = WorkerStatus(status_str) if isinstance(status_str, str) else data.get("status")
 
+        raw_code = data.get("error_code")
+        error_code = ErrorCode(raw_code) if raw_code is not None else None
+
         return cls(
             worker_id=data["worker_id"],
             status=status,  # type: ignore[arg-type]
@@ -55,6 +63,7 @@ class WorkerResult:
             duration_seconds=data.get("duration_seconds", 0.0),
             metadata=data.get("metadata", {}),
             timestamp=data.get("timestamp", ""),
+            error_code=error_code,
         )
 
     def to_dict(self) -> dict[str, Any]:
@@ -68,6 +77,7 @@ class WorkerResult:
             "status": self.status.value,
             "output": self.output,
             "error": self.error,
+            "error_code": self.error_code.value if self.error_code is not None else None,
             "exit_code": self.exit_code,
             "duration_seconds": self.duration_seconds,
             "metadata": self.metadata,

@@ -1,5 +1,7 @@
 """Worker lifecycle management and orchestration."""
 
+from __future__ import annotations
+
 import asyncio
 import logging
 import os
@@ -465,8 +467,8 @@ class WorkerManager:
                 monitor_id = await self._debug_monitor_worker.start()
                 logger.info(f"Launched debug monitor: {monitor_id}")
 
-            except ImportError:
-                logger.warning("DebugMonitorWorker not yet implemented (Phase 3)")
+            except (ImportError, NotImplementedError):
+                logger.warning("DebugMonitorWorker deprecated/unavailable; skipping debug monitor")
 
         except Exception as e:
             logger.error(f"Failed to launch debug monitor: {e}")

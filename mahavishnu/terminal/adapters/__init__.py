@@ -3,6 +3,7 @@
 Available adapters:
 - ITerm2Adapter: AppleScript-based iTerm2 control (macOS only)
 - McpretentiousAdapter: MCP-based PTY terminal (requires mcpretentious MCP server)
+- CrowTerminalAdapter: crow-mcp PTY terminal (requires crow-mcp MCP server)
 - MockTerminalAdapter: Simulated terminal for testing
 
 Example usage:
@@ -10,6 +11,8 @@ Example usage:
     >>> adapter = MockTerminalAdapter()
     >>> session_id = await adapter.launch_session("qwen")
 """
+
+from __future__ import annotations
 
 from mahavishnu.terminal.adapters.base import TerminalAdapter
 from mahavishnu.terminal.adapters.mock import MockTerminalAdapter
@@ -32,6 +35,11 @@ except ImportError:
     SessionNotFoundError = None  # type: ignore[misc,assignment]
     TerminalError = None  # type: ignore[misc,assignment]
 
+try:
+    from mahavishnu.terminal.adapters.crow import CrowTerminalAdapter
+except ImportError:
+    CrowTerminalAdapter = None  # type: ignore[misc,assignment]
+
 
 def get_available_adapters() -> list[str]:
     """Get list of available terminal adapter names.
@@ -47,6 +55,9 @@ def get_available_adapters() -> list[str]:
     if McpretentiousAdapter is not None:
         adapters.append("mcpretentious")
 
+    if CrowTerminalAdapter is not None:
+        adapters.append("crow")
+
     return adapters
 
 
@@ -54,7 +65,7 @@ def get_adapter_class(name: str) -> type[TerminalAdapter] | None:
     """Get adapter class by name.
 
     Args:
-        name: Adapter name ('mock', 'iterm2', 'mcpretentious')
+        name: Adapter name ('mock', 'iterm2', 'mcpretentious', 'crow')
 
     Returns:
         Adapter class or None if not available
@@ -65,6 +76,8 @@ def get_adapter_class(name: str) -> type[TerminalAdapter] | None:
         return ITerm2Adapter
     elif name == "mcpretentious" and McpretentiousAdapter is not None:
         return McpretentiousAdapter
+    elif name == "crow" and CrowTerminalAdapter is not None:
+        return CrowTerminalAdapter
     return None
 
 
@@ -80,6 +93,8 @@ __all__ = [
     "McpretentiousAdapter",
     "SessionNotFoundError",
     "TerminalError",
+    # Crow adapter (requires crow-mcp MCP server)
+    "CrowTerminalAdapter",
     # Utility functions
     "get_available_adapters",
     "get_adapter_class",

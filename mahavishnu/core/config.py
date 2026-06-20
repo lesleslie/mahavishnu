@@ -11,6 +11,8 @@ Architecture:
     - YAML files use nested structure matching the model hierarchy
 """
 
+from __future__ import annotations
+
 from enum import StrEnum
 from pathlib import Path
 
@@ -940,6 +942,31 @@ class MonitoringConfig(BaseModel):
     model_config = {"extra": "forbid"}
 
 
+class OpenHandsSettings(BaseModel):
+    """Configuration for the OpenHands autonomous agent integration."""
+
+    base_url: str = "http://localhost:3000"
+    workspace_dir: Path = Path("/tmp/openhands-workspace")  # noqa: S108
+    workspace_root: Path = Path("/tmp")  # noqa: S108
+    timeout_seconds: int = Field(600, ge=30, le=3600)
+    poll_interval_seconds: float = Field(3.0, ge=0.5, le=30.0)
+    enabled: bool = True
+
+    @field_validator("workspace_dir", "workspace_root")
+    @classmethod
+    def _validate_path_is_absolute(cls, v: Path) -> Path:
+        return Path(v).resolve()
+
+    @model_validator(mode="after")
+    def _workspace_dir_inside_root(self) -> OpenHandsSettings:
+        if not self.workspace_dir.is_relative_to(self.workspace_root):
+            raise ValueError(
+                f"workspace_dir ({self.workspace_dir}) must be "
+                f"inside workspace_root ({self.workspace_root})"
+            )
+        return self
+
+
 class WorkerConfig(BaseModel):
     """Worker orchestration configuration for headless AI execution."""
 
@@ -1729,6 +1756,9 @@ class MahavishnuSettings(BaseSettings):
         default_factory=TerminalSettings,
         description="Terminal session management settings",
     )
+
+    # OpenHands autonomous agent integration (optional)
+    openhands: OpenHandsSettings | None = None
 
     # ===== Grouped Configuration =====
 

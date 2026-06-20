@@ -1,5 +1,7 @@
 """Debug monitor worker for iTerm2 log tailing with Session-Buddy streaming."""
 
+from __future__ import annotations
+
 import asyncio
 import logging
 from pathlib import Path
@@ -47,14 +49,11 @@ class DebugMonitorWorker(BaseWorker):
             terminal_manager: TerminalManager for terminal control
             session_buddy_client: Session-Buddy MCP client
         """
-        super().__init__(worker_type="debug-monitor")
-        self.log_path = log_path
-        self.terminal_manager = terminal_manager
-        self.session_buddy_client = session_buddy_client
-        self.session_id: str | None = None
-        self._iterm2_connection = None
-        self._streaming_task: asyncio.Task | None = None
-        self._running = False
+        raise NotImplementedError(
+            "DebugMonitorWorker is deprecated. "
+            "Use CrowTerminalAdapter with GenericShellWorker for terminal debugging. "
+            "Full removal scheduled for Wave 2."
+        )
 
     async def start(self) -> str:
         """Launch iTerm2 window with tail -f and start streaming to Session-Buddy.
