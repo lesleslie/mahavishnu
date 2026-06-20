@@ -184,7 +184,7 @@ from __future__ import annotations
 
 import pytest
 
-from mahavishnu.core.config import A2ASettings, A2AAgentEntry, MahavishnuSettings
+from mahavishnu.core.config import A2AAgentEntry, A2ASettings, MahavishnuSettings
 
 
 @pytest.mark.unit
@@ -202,9 +202,9 @@ def test_a2a_agent_entry_api_key_optional() -> None:
 
 @pytest.mark.unit
 def test_mahavishnu_settings_has_a2a_field() -> None:
-    # MahavishnuSettings must accept a2a=None without error
-    s = MahavishnuSettings(a2a=None)
-    assert s.a2a is None
+    # Check the field is declared without instantiating the full settings object
+    # (instantiation triggers env-var / file validators that don't belong in unit tests)
+    assert "a2a" in MahavishnuSettings.model_fields
 ```
 
 - [ ] **Step 2: Run test to verify it fails**
@@ -486,7 +486,6 @@ Expected: `FAILED — ImportError: cannot import name 'A2AAgentConfig' from 'mah
 ```python
 from __future__ import annotations
 
-import asyncio
 import json
 import uuid
 from dataclasses import dataclass
@@ -496,7 +495,7 @@ import httpx
 from oneiric.core.logging import get_logger
 
 from mahavishnu.a2a import A2AError
-from mahavishnu.a2a.card import AgentCard, A2ACapabilities, A2ASkill  # noqa: F401
+from mahavishnu.a2a.card import AgentCard
 from mahavishnu.core.errors import ErrorCode
 from mahavishnu.core.status import WorkerStatus
 
@@ -1066,7 +1065,10 @@ In `_register_optional_tools`, find the end of the `if "_register_openhands_tool
             worker_manager = getattr(server.app, "_worker_manager", None)
             a2a_app = build_a2a_router(a2a_config, worker_manager)
             server.server.http_app.mount("/", a2a_app)
-            logger.info("Mounted A2A server routes (/.well-known/agent.json, /tasks/send, /tasks/sendSubscribe)")
+            logger.info(
+                "Mounted A2A server routes "
+                "(/.well-known/agent.json, /tasks/send, /tasks/sendSubscribe)"
+            )
         except Exception as exc:  # noqa: BLE001 - defensive: A2A may be unavailable
             logger.warning("A2A server routes not mounted: %s", exc)
 ```
