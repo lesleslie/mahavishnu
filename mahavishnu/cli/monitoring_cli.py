@@ -1,5 +1,7 @@
 """Monitoring CLI commands for Mahavishnu."""
 
+from __future__ import annotations
+
 import asyncio
 import json
 from pathlib import Path
@@ -7,6 +9,7 @@ from pathlib import Path
 import typer
 
 from ..core.app import MahavishnuApp
+from ..tui import TUI_AVAILABLE, FallbackRichFormatter, get_console
 
 app = typer.Typer(help="Monitoring and alerting commands for Mahavishnu")
 
@@ -41,30 +44,31 @@ def get_dashboard(
             json.dump(dashboard_data, f, indent=2)
         typer.echo(f"✅ Dashboard data saved to: {output_file}")
     else:
-        typer.echo("\n📈 SYSTEM METRICS:")
+        console = get_console()
+        console.print("\n📈 SYSTEM METRICS:")
         system = dashboard_data["metrics"]["system"]
-        typer.echo(f"   CPU Usage: {system['cpu_percent']}%")
-        typer.echo(f"   Memory Usage: {system['memory_percent']}%")
-        typer.echo(f"   Memory Available: {system['memory_available_gb']} GB")
-        typer.echo(f"   Disk Usage: {system['disk_percent']:.1f}%")
-        typer.echo(f"   Disk Available: {system['disk_available_gb']} GB")
-        typer.echo(f"   Uptime: {system['uptime_seconds']:.2f} seconds")
+        console.print(f"   CPU Usage: {system['cpu_percent']}%")
+        console.print(f"   Memory Usage: {system['memory_percent']}%")
+        console.print(f"   Memory Available: {system['memory_available_gb']} GB")
+        console.print(f"   Disk Usage: {system['disk_percent']:.1f}%")
+        console.print(f"   Disk Available: {system['disk_available_gb']} GB")
+        console.print(f"   Uptime: {system['uptime_seconds']:.2f} seconds")
 
-        typer.echo("\n🔄 WORKFLOW COUNTS:")
+        console.print("\n🔄 WORKFLOW COUNTS:")
         workflows = dashboard_data["metrics"]["workflows"]
         for status, count in workflows.items():
-            typer.echo(f"   {status}: {count}")
+            console.print(f"   {status}: {count}")
 
-        typer.echo("\n⚙️  ADAPTER HEALTH:")
+        console.print("\n⚙️  ADAPTER HEALTH:")
         adapters = dashboard_data["metrics"]["adapters"]
         for adapter, health in adapters.items():
             status_icon = "✅" if health == "healthy" else "❌"
-            typer.echo(f"   {adapter}: {status_icon} {health}")
+            console.print(f"   {adapter}: {status_icon} {health}")
 
-        typer.echo("\n🚨 ALERT COUNTS:")
+        console.print("\n🚨 ALERT COUNTS:")
         alerts = dashboard_data["metrics"]["alerts"]
         for severity, count in alerts.items():
-            typer.echo(f"   {severity}: {count}")
+            console.print(f"   {severity}: {count}")
 
     raise typer.Exit(code=0)
 
@@ -211,6 +215,51 @@ def trigger_test_alert(
     except Exception as e:
         typer.echo(f"❌ Failed to create test alert: {e}")
         raise typer.Exit(code=1) from None
+
+
+@app.command(name="watch")
+def watch_dashboard(
+    refresh: int = typer.Option(5, help="Refresh interval in seconds"),
+) -> None:
+    """Launch a live Textual monitor dashboard (requires tui extra)."""
+    if TUI_AVAILABLE:
+        from ..tui.monitor_app import MonitorApp  # noqa: PLC0415
+
+        monitor = MonitorApp()
+        monitor.run()
+    else:
+        console = get_console()
+        console.print(
+            "[yellow]Textual not installed.[/yellow] "
+            "Install: [bold]uv add --optional tui textual[/bold]\n"
+            "Falling back to one-shot Rich output...\n"
+        )
+        _print_rich_dashboard()
+
+
+def _print_rich_dashboard() -> None:
+    """Print a one-shot Rich-formatted system status to the terminal."""
+    from ..core.app import MahavishnuApp  # noqa: PLC0415
+
+    formatter = FallbackRichFormatter()
+
+    try:
+        app_instance = MahavishnuApp()
+        metrics = asyncio.run(app_instance.get_metrics())
+    except Exception as e:
+        formatter.format_dict({"error": str(e)}, title="Monitor Error")
+        return
+
+    formatter.format_dict(
+        {
+            "workflows_active": metrics.get("workflows_active", 0),
+            "workflows_completed": metrics.get("workflows_completed", 0),
+            "pools_active": metrics.get("pools_active", 0),
+            "workers_running": metrics.get("workers_running", 0),
+            "adapter_health": metrics.get("adapter_health", "unknown"),
+        },
+        title="Mahavishnu System Status",
+    )
 
 
 # Add this command group to the main CLI
