@@ -16,7 +16,10 @@ from types import SimpleNamespace
 from typing import Any
 import uuid
 
+from oneiric.core.logging import get_logger
 from tenacity import retry, stop_after_attempt, wait_exponential
+
+logger = get_logger(__name__)
 
 try:
     from llama_index.core import Document, SimpleDirectoryReader, VectorStoreIndex
@@ -377,8 +380,7 @@ class LlamaIndexAdapter(OrchestratorAdapter):
             self.vector_store = OpensearchVectorStore(client=os_client)
             self._vector_backend = "opensearch"
         except Exception as e:
-            logger = __import__("logging").getLogger(__name__)
-            logger.debug(f"OpenSearch vector store unavailable: {e}")
+            logger.debug("OpenSearch vector store unavailable: %s", e)
             try:
                 from turbovec.integrations.llamaindex import TurboVec  # noqa: PLC0415
 
