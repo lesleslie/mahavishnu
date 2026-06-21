@@ -168,6 +168,12 @@ async def _register_optional_tools(server: FastMCPServer, methods_set: set[str])
 
         register_self_improvement_tools(server.server, server.app)
 
+    if "_register_clone_tools" in methods_set:
+        from ..mcp.tools.clone_tools import register_clone_tools
+
+        register_clone_tools(server.server, server.app)
+        logger.info("Registered 3 clone detection and refactoring tools with MCP server")
+
     if "_register_goal_team_tools" in methods_set:
         from ..core.feature_flags import is_feature_enabled
 

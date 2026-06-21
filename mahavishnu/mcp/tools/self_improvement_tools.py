@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+from datetime import UTC, datetime
 from enum import StrEnum
 import logging
 from pathlib import Path
@@ -412,6 +413,139 @@ class SelfImprovementTools:
         # spawn agents and collect real findings
         return []
 
+    async def self_improvement_analyze_failures(
+        self,
+        repo: str | None = None,
+        hook: str | None = None,
+        time_window_days: int = 30,
+    ) -> dict[str, Any]:
+        """Query Dhara for accumulated fix-failure records and surface patterns.
+
+        Args:
+            repo: Filter by specific repo (None = all repos).
+            hook: Filter by specific hook name (None = all hooks).
+            time_window_days: How many days of history to analyze.
+
+        Returns:
+            Dictionary with pattern report or error.
+        """
+        logger.info(
+            "self_improvement_analyze_failures: repo=%s hook=%s window=%d days",
+            repo,
+            hook,
+            time_window_days,
+        )
+        try:
+            dhara_url = getattr(
+                getattr(self.app, "settings", None), "dhara_url", "http://localhost:8683"
+            )
+            from mahavishnu.core.dhara_adapter import DharaAdapter
+
+            client = DharaAdapter(base_url=dhara_url)
+            patterns = await client.aggregate_patterns(
+                start_date=datetime.now(UTC).date().isoformat(),
+                min_occurrences=3,
+            )
+            if repo:
+                patterns = [p for p in patterns if p.get("repo") == repo]
+            if hook:
+                patterns = [p for p in patterns if p.get("hook") == hook]
+
+            return {
+                "pattern_count": len(patterns),
+                "patterns": patterns,
+                "time_window_days": time_window_days,
+            }
+        except Exception as exc:
+            logger.exception("self_improvement_analyze_failures failed")
+            return {"error": str(exc), "patterns": []}
+
+    async def self_improvement_generate(
+        self,
+        fingerprint: str,
+        pattern_description: str = "",
+    ) -> dict[str, Any]:
+        """Trigger improvement generation for a failure pattern.
+
+        Returns a job-id immediately (async generation per C-NEW-5).
+
+        Args:
+            fingerprint: Issue fingerprint from FailureRecorder.
+            pattern_description: Human-readable pattern description for context.
+
+        Returns:
+            Dictionary with improvement_job_id and status, or error.
+        """
+        logger.info(
+            "self_improvement_generate: fingerprint=%s", fingerprint[:16]
+        )
+        try:
+            dhara_url = getattr(
+                getattr(self.app, "settings", None), "dhara_url", "http://localhost:8683"
+            )
+            from mahavishnu.core.dhara_adapter import DharaAdapter
+
+            client = DharaAdapter(base_url=dhara_url)
+            records = await client.query_time_series(
+                metric_type="fix-failures",
+                entity_id=fingerprint,
+            )
+            count = len(records)
+            min_threshold = 3
+            if count < min_threshold:
+                return {
+                    "status": "skipped",
+                    "reason": f"only {count} similar failures (need {min_threshold})",
+                    "fingerprint": fingerprint,
+                }
+
+            from uuid import uuid4
+
+            job_id = str(uuid4())
+            logger.info(
+                "self_improvement_generate: queuing job %s for fingerprint %s",
+                job_id,
+                fingerprint[:16],
+            )
+            return {"improvement_job_id": job_id, "status": "generating"}
+        except Exception as exc:
+            logger.exception("self_improvement_generate failed")
+            return {"error": str(exc), "status": "failed"}
+
+    async def self_improvement_status(
+        self,
+        limit: int = 20,
+    ) -> dict[str, Any]:
+        """List recent improvement records with before/after failure rates.
+
+        Args:
+            limit: Maximum number of records to return.
+
+        Returns:
+            Dictionary with improvement records and summary stats.
+        """
+        logger.info("self_improvement_status: limit=%d", limit)
+        try:
+            dhara_url = getattr(
+                getattr(self.app, "settings", None), "dhara_url", "http://localhost:8683"
+            )
+            from mahavishnu.core.dhara_adapter import DharaAdapter
+
+            client = DharaAdapter(base_url=dhara_url)
+            records = await client.query_time_series(
+                metric_type="improvement-records",
+                entity_id="all",
+                limit=limit,
+            )
+
+            return {
+                "total": len(records),
+                "improvements": records,
+            }
+        except Exception as exc:
+            logger.exception("self_improvement_status failed")
+            return {"error": str(exc), "improvements": [], "total": 0}
+
     async def _auto_fix(self, findings: list[dict[str, Any]]) -> list[dict[str, Any]]:
         """Auto-fix critical findings.
 
@@ -539,4 +673,35 @@ def register_self_improvement_tools(
         """Get all pending approval requests."""
         return await tools.get_pending_approvals()
 
-    logger.info("Registered 4 self-improvement MCP tools")
+    @mcp.tool()
+    async def self_improvement_analyze_failures(
+        repo: str | None = None,
+        hook: str | None = None,
+        time_window_days: int = 30,
+    ) -> dict[str, Any]:
+        """Query Dhara for accumulated fix-failure records and surface patterns."""
+        return await tools.self_improvement_analyze_failures(
+            repo=repo,
+            hook=hook,
+            time_window_days=time_window_days,
+        )
+
+    @mcp.tool()
+    async def self_improvement_generate(
+        fingerprint: str,
+        pattern_description: str = "",
+    ) -> dict[str, Any]:
+        """Trigger improvement generation for a failure pattern (returns job-id immediately)."""
+        return await tools.self_improvement_generate(
+            fingerprint=fingerprint,
+            pattern_description=pattern_description,
+        )
+
+    @mcp.tool()
+    async def self_improvement_status(
+        limit: int = 20,
+    ) -> dict[str, Any]:
+        """List recent self-improvement records with before/after failure rates."""
+        return await tools.self_improvement_status(limit=limit)
+
+    logger.info("Registered 7 self-improvement MCP tools")

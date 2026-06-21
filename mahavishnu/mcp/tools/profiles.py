@@ -53,6 +53,7 @@ STANDARD_REGISTRATIONS: list[str] = MINIMAL_REGISTRATIONS + [
 FULL_REGISTRATIONS: list[str] = STANDARD_REGISTRATIONS + [
     "_register_otel_tools",
     "_register_self_improvement_tools",
+    "_register_clone_tools",
     "_register_goal_team_tools",
     "_register_treesitter_tools",
     "_register_adapter_registry_tools",
