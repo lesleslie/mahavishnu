@@ -511,7 +511,7 @@
     "penpot-api",
     "pycharm",
     "session-buddy",
-    "crow-mcp"
+    "crow"
   ],
   "outputStyle": "Explanatory",
   "additionalDirectories": []

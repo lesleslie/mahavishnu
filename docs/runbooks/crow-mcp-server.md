@@ -1,53 +1,67 @@
-# crow-mcp HTTP Server Runbook
+# crow-mcp Runbook
 
-crow-mcp provides PTY terminal execution for Mahavishnu via MCP on port **8675**.
+crow-mcp is the built-in MCP toolserver for the Crow agent. It provides PTY terminal
+execution, file read/write/edit, web search (SearXNG), and web fetch tools.
 
-## Prerequisites
+**Transport:** stdio (started on-demand by Claude Code — no background daemon needed)
+**Package:** `crow-mcp` subpackage of the [crow-cli monorepo](https://github.com/crow-cli/crow-cli)
+**MCP config:** `.mcp.json` → `"crow": {"command": "crow-mcp"}`
 
-- crow-cli installed: `uv tool install crow-cli` (or per project install)
-- Verify: `crow-mcp --help`
+## Install
 
-## Start
-
-```bash
-cd /path/to/crow-cli
-uv run python -m crow_mcp --transport http --host 127.0.0.1 --port 8675
-```
-
-Or via uvicorn if crow-mcp exposes an ASGI app:
+crow-mcp is not published to PyPI independently — install directly from the monorepo:
 
 ```bash
-uv run uvicorn crow_mcp:app --host 127.0.0.1 --port 8675
+uv tool install "crow-mcp @ git+https://github.com/crow-cli/crow-cli.git#subdirectory=crow-mcp"
 ```
 
-**Important:** Always bind to `127.0.0.1`, never `0.0.0.0`.
-
-## Verify
+Verify:
 
 ```bash
-curl http://127.0.0.1:8675/health
-# Or via MCP health check:
-mahavishnu health check
+crow-mcp --help
+# or
+which crow-mcp   # → /Users/les/.local/bin/crow-mcp
 ```
 
-## Health Check
+## MCP Tools Provided
 
-Mahavishnu probes crow-mcp on startup when `adapter_preference: "crow"`.
-With `fallback_on_probe_failure: false` (default), startup fails if crow-mcp is down.
+| Tool | Description |
+|------|-------------|
+| `terminal` | Real PTY shell with directory state persistence, C-c/C-z support |
+| `read` | File reader with line numbers, binary detection, pagination |
+| `write` | File writer with auto mkdir -p |
+| `edit` | Fuzzy string replacement (9-level cascade: exact → Levenshtein → context-aware) |
+| `web_search` | Web search via SearXNG |
+| `web_fetch` | Fetch URL as markdown via readabilipy |
 
-For development without crow-mcp, override via env var:
+## Architecture
+
+crow-mcp is crow-cli's **toolserver** — crow-cli (ACP agent) connects to it as an MCP
+client for tool dispatch. Mahavishnu uses crow-mcp directly via `CrowTerminalAdapter`
+(see `mahavishnu/terminal/adapters/crow.py`) for PTY session management.
+
+```
+CrowTerminalAdapter → MCP client → crow-mcp (stdio) → pty.openpty()
+CrowWorker          → httpx       → crow-cli ACP      → crow-mcp (stdio)
+```
+
+## Update
 
 ```bash
-export MAHAVISHNU_TERMINAL__ADAPTER_PREFERENCE=mock
+uv tool upgrade crow-mcp
+# or reinstall:
+uv tool install --force "crow-mcp @ git+https://github.com/crow-cli/crow-cli.git#subdirectory=crow-mcp"
 ```
 
-## Supervision (Optional)
+## Logs
 
-Create a launchd plist at `~/Library/LaunchAgents/ai.crow.mcp.plist` following
-the pattern in `config/launchd/` for Bifrost. Key: `ProgramArguments` should
-include the uv/python invocation above with `127.0.0.1:8675`.
+crow-mcp writes terminal session logs to:
+```
+~/.cache/crow-mcp/logs/terminal_YYYYMMDD_HHMMSS.log
+```
 
-## Security Hardening (Wave 2)
+## Security
 
-- Add JWT auth header matching Mahavishnu's auth pattern
-- TLS via reverse proxy (nginx/caddy) for multi-user hosts
+- stdio transport: process-local, no network exposure
+- No launchd plist needed — Claude Code spawns crow-mcp on demand
+- No JWT/TLS required (stdio is inherently local)
