@@ -1,7 +1,7 @@
 # Bodai Crow MCP Server — Design Spec
 
 **Date:** 2026-06-21
-**Status:** Draft — pending user review (v3: rapidfuzz + oneiric httpx2 scope added)
+**Status:** Draft — pending user review (v4: httpx2 tier taxonomy; v5: review-pass fixes)
 **Port:** 8675 *(add to CLAUDE.md port table)*
 **Transport:** HTTP (SSE/StreamableHTTP via mcp-common `StandardServer`)
 
@@ -170,27 +170,33 @@ Spawning per-call would lose PTY session state (working directory, shell history
 from __future__ import annotations
 
 import asyncio
+from contextlib import AsyncExitStack
 from mcp import ClientSession, StdioServerParameters
 from mcp.client.stdio import stdio_client
 
 _crow_session: ClientSession | None = None
+_crow_exit_stack: AsyncExitStack | None = None
 _crow_lock = asyncio.Lock()
 
 
 async def init_crow_stdio_client(settings: CrowSettings) -> None:
-    global _crow_session
+    global _crow_session, _crow_exit_stack
     async with _crow_lock:
+        stack = AsyncExitStack()
         params = StdioServerParameters(command=settings.crow_mcp_command, args=[])
-        _read, _write = await stdio_client(params).__aenter__()
-        _crow_session = await ClientSession(_read, _write).__aenter__()
-        await _crow_session.initialize()
+        _read, _write = await stack.enter_async_context(stdio_client(params))
+        session = await stack.enter_async_context(ClientSession(_read, _write))
+        await session.initialize()
+        _crow_session = session
+        _crow_exit_stack = stack
 
 
 async def close_crow_stdio_client() -> None:
-    global _crow_session
-    if _crow_session is not None:
-        await _crow_session.__aexit__(None, None, None)
-        _crow_session = None
+    global _crow_session, _crow_exit_stack
+    if _crow_exit_stack is not None:
+        await _crow_exit_stack.aclose()   # exits ClientSession then stdio_client in LIFO order
+        _crow_exit_stack = None
+    _crow_session = None
 
 
 def get_crow_session() -> ClientSession:
@@ -846,7 +852,7 @@ mahavishnu/
         search_tools.py         # web_search
         terminal_proxy_tool.py  # terminal MCP tool (calls get_crow_session())
       vendor/
-        editor.py               # optional: vendored crow-mcp replace() + MIT header
+        editor.py               # vendored crow-mcp cascade + MIT header + rapidfuzz swap
 
 tests/
   unit/
@@ -916,11 +922,10 @@ def mock_http_client(monkeypatch):
     """respx router patched onto the shared client getter."""
     router = respx.MockRouter(assert_all_called=False)
     router.start()
+    client = httpx.AsyncClient(transport=respx.MockTransport(router))
 
-    async def _fake_client(settings):
-        return httpx.AsyncClient(transport=respx.MockTransport(router))
-
-    monkeypatch.setattr("mahavishnu.mcp.crow.client.get_http_client", _fake_client)
+    # get_http_client() is synchronous — the mock must be too
+    monkeypatch.setattr("mahavishnu.mcp.crow.client.get_http_client", lambda: client)
     yield router
     router.stop()
 ```
