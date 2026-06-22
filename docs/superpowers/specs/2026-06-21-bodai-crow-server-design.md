@@ -1,7 +1,7 @@
 # Bodai Crow MCP Server — Design Spec
 
 **Date:** 2026-06-21
-**Status:** Draft — pending user review (v2: post-review-audit)
+**Status:** Draft — pending user review (v3: rapidfuzz + oneiric httpx2 scope added)
 **Port:** 8675 *(add to CLAUDE.md port table)*
 **Transport:** HTTP (SSE/StreamableHTTP via mcp-common `StandardServer`)
 
@@ -305,23 +305,25 @@ cascade (exact → line-trimmed → block-anchor → whitespace-normalized → i
 escape-normalized → trimmed-boundary → context-aware → multi-occurrence). Pure Python, MIT
 licensed.
 
-**Bodai behavior:** import and call `replace()` from crow-mcp directly (no reimplementation),
-wrap in `asyncio.to_thread()` because the Levenshtein distance computations in levels 3–9 are
-CPU-bound. `replace(content, old_string, new_string)` takes file content as a string, not a
-file path — crow-mcp's internal path whitelist is never invoked. The Bodai edit tool applies
-`_resolve_workspace_path()` before reading the file, so path security is enforced at the tool
-boundary independently of crow-mcp internals.
+**Bodai behavior:** vendor the 466-line cascade into `mahavishnu/mcp/crow/vendor/editor.py`
+(MIT license header + provenance comment preserved). The pure Python `levenshtein()` function used
+in cascade levels 3–9 is replaced with `rapidfuzz.distance.Levenshtein.distance()` and
+`normalized_similarity(score_cutoff=0.5)` — C++-backed, ~40× faster, with `score_cutoff` enabling
+early exit on clearly non-matching blocks.
+
+Call the vendored `replace(content, old_string, new_string)` via `asyncio.to_thread()` (the
+distance computations are CPU-bound). `replace()` takes file content as a string, not a file path
+— crow-mcp's internal path whitelist is never invoked. Path security is enforced independently at
+the tool boundary via `_resolve_workspace_path()` before reading the file.
+
+Vendoring eliminates the crow-mcp import dependency and removes the SHA-pinning fragility noted in
+Open Q2 (which is now resolved).
 
 ```
 Inputs:  file_path: str, old_string: str, new_string: str, replace_all: bool = False,
          dry_run: bool = False
 Returns: {success: bool, path: str, level_used: str, changes: int}
 ```
-
-Pin `crow-mcp` to a specific git SHA in `pyproject.toml` (not a floating branch) so upstream
-internal restructuring does not silently break the import. If the import breaks at server startup,
-the error is immediate and visible. Alternative: vendor the 466-line file into
-`mahavishnu/mcp/crow/vendor/editor.py` with provenance comment.
 
 ### 5.5 `web_fetch`
 
@@ -706,17 +708,30 @@ doesn't appear in Claude Code's own session alongside `crow`.
 
 ## 9. httpx2 Migration Plan
 
-Migrate all six Bodai repos from `httpx[http2]` to `httpx2[zstd]`.
+Migrate all **seven** Bodai repos from `httpx[http2]` to `httpx2[zstd]`. Oneiric is Phase 0
+because all other repos inherit its `HTTPXClientMixin` and `HTTPClientAdapter` — migrating the
+foundation first means downstream repos pick up the change on their next Oneiric version bump.
 
-| Phase | Action |
-|-------|--------|
-| 1 | Inventory: `grep -r "import httpx\|from httpx" <repo>` in all 6 repos |
-| 2 | Swap dep: `httpx[http2]>=0.28.1` → `httpx2[zstd]~=0.1` in each `pyproject.toml` |
-| 3 | Add `http2=True` to all long-lived `AsyncClient` instantiations |
-| 4 | Audit sync `httpx.Client` usage in async contexts — replace with async or `to_thread` |
-| 5 | Enable zstd: `httpx2[zstd]` extra confirmed; no code change needed — httpx2 auto-negotiates |
+| Phase | Repo(s) | Action |
+|-------|---------|--------|
+| 0 | **oneiric** | Dep swap + delete `_AsyncClientShim` (replace with `httpx2.AsyncClient`); update `HTTPXClientMixin` type annotations; audit `dhara_pusher.py` sync client |
+| 1 | All 7 | Inventory: `grep -r "import httpx\|from httpx" <repo>` |
+| 2 | All 7 | Swap dep: `httpx[http2]>=0.27–0.28` → `httpx2[zstd]~=0.1` in each `pyproject.toml` |
+| 3 | All 7 | Add `http2=True` to all long-lived `AsyncClient` instantiations |
+| 4 | All 7 | Audit sync `httpx.Client` in async contexts — replace with async or `asyncio.to_thread` |
+| 5 | All 7 | Enable zstd: `httpx2[zstd]` extra confirmed; httpx2 auto-negotiates, no code change |
 
-**Repos in scope:** mahavishnu, mcp-common, session-buddy, akosha, dhara, crackerjack.
+**Repos in scope:** oneiric (Phase 0), mahavishnu, mcp-common, session-buddy, akosha, dhara,
+crackerjack.
+
+**Oneiric-specific changes:**
+- `oneiric/adapters/http/httpx.py`: delete `_AsyncClientShim` (was wrapping sync `httpx.Client`
+  in `asyncio.to_thread`); `HTTPClientAdapter.init()` creates `httpx2.AsyncClient` directly with
+  `http2=True`
+- `oneiric/adapters/httpx_base.py`: update `HTTPXClientMixin` type annotation from
+  `httpx.AsyncClient` to `httpx2.AsyncClient`
+- `oneiric/adapters/dhara_pusher.py`: sync `httpx.Client` used directly — Phase 4 audit target;
+  replace with `httpx2.AsyncClient` (Dhara pusher is called from async contexts)
 
 **API compatibility:** httpx2 is API-compatible with httpx 0.28. Import paths, method signatures,
 and exception types are unchanged. Migration is a dep-swap + `http2=True` audit.
@@ -739,6 +754,7 @@ Add to `mahavishnu/pyproject.toml`:
 "selectolax~=0.3"
 "markdownify~=0.13"
 "charset-normalizer~=3.4"
+"rapidfuzz~=3.9"     # C++ Levenshtein for vendored edit cascade (replaces pure-Python levenshtein())
 ```
 
 Add to dev/test dependencies:
@@ -1121,9 +1137,9 @@ async def test_web_search_with_real_searxng(crow_server):
 1. **Runbook split** *(resolved)*: Keep `crow-mcp-server.md` for Claude Code stdio usage. Add
    `bodai-crow-server.md` for the HTTP server. Both are needed.
 
-2. **crow-mcp `edit` import stability** *(action required)*: Pin `crow-mcp` to a specific git SHA
-   in `pyproject.toml` before implementation begins. Vendor as fallback if SHA pinning proves
-   fragile.
+2. **crow-mcp `edit` import stability** *(resolved)*: Vendor the 466-line cascade into
+   `vendor/editor.py` (see §5.4). rapidfuzz replaces the pure Python `levenshtein()` in levels
+   3–9. crow-mcp is no longer imported at runtime — no SHA pinning required.
 
 3. **SearXNG as hard dependency** *(resolved)*: Return structured error when SearXNG is down.
    See §7 retry policy.
@@ -1143,3 +1159,8 @@ async def test_web_search_with_real_searxng(crow_server):
 7. **`write` symlink semantics**: `os.replace` on a symlink path replaces the link itself, not
    the target. Decide intended behavior: follow the symlink (open target directly) or replace
    the link (current behavior). Document the decision in code.
+
+8. **niquests** *(deferred)*: Evaluated but not adopted. niquests offers HTTP/3 (QUIC) but
+   requires a full API rewrite across all 6 repos (requests-style, not httpx-style). httpx2
+   covers HTTP/2 + zstd, which is the gap. Revisit niquests when HTTP/3 becomes relevant for
+   Bodai network paths (internal traffic today; latency advantage is marginal).
