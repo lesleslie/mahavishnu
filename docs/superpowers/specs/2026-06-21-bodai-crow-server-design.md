@@ -736,6 +736,66 @@ crackerjack.
 **API compatibility:** httpx2 is API-compatible with httpx 0.28. Import paths, method signatures,
 and exception types are unchanged. Migration is a dep-swap + `http2=True` audit.
 
+### 9.1 Client Usage Tiers
+
+Not all direct `httpx` imports warrant the same treatment. Classify each usage site before
+migrating:
+
+**Tier 1 — Long-lived service clients** *(migrate to `HTTPXClientMixin` or `HTTPClientAdapter`)*
+
+Classes that own a persistent `httpx.AsyncClient` across many requests. These should use:
+- `HTTPXClientMixin` for lifecycle management (`_init_client`, `_cleanup_client`) when OTel
+  tracing is not needed
+- `HTTPClientAdapter` when the client makes Bodai-internal service calls (Akosha, Dhara,
+  Session-Buddy) — gains `inject_trace_context(headers)` and `observed_http_request()` wrapping,
+  which propagates distributed trace context into Grafana spans
+
+| File | Current pattern | Target |
+|------|----------------|--------|
+| `mahavishnu/ingesters/content_ingester.py` | 4 separate raw `AsyncClient()` instances | `HTTPClientAdapter` × 4 (Bodai-internal calls) |
+| `mahavishnu/pools/session_buddy_pool.py` | `httpx.AsyncClient(timeout=300.0)` | `HTTPXClientMixin` |
+| `mahavishnu/pools/memory_aggregator.py` | `httpx.AsyncClient(timeout=300.0)` | `HTTPXClientMixin` |
+| `mahavishnu/core/resilient_embeddings.py` | Lazy-init `AsyncClient` | `HTTPXClientMixin` |
+| `mahavishnu/core/dhara_adapter.py` | `httpx.AsyncClient(timeout, headers)` | `HTTPClientAdapter` |
+| `mahavishnu/core/coordination/memory.py` | Two inline `AsyncClient()` instances | `HTTPXClientMixin` |
+| `session_buddy/sync.py` | Multiple raw instances | `HTTPXClientMixin` |
+| `session_buddy/storage/akosha_sync.py` | Client passed as parameter | `HTTPClientAdapter` |
+
+**Tier 2 — Short-lived per-request clients** *(dep-swap only, leave as context managers)*
+
+`async with httpx.AsyncClient() as client:` for a single call. Converting to a full adapter adds
+lifecycle overhead for no benefit — the context manager is the correct pattern here.
+
+```python
+# Keep as-is (just swap httpx → httpx2 in the import):
+async with httpx.AsyncClient(timeout=timeout_s) as client:   # ecosystem_status.py
+    r = await client.get(url)
+
+async with httpx.AsyncClient(timeout=3.0) as client:         # tui/app.py
+    r = await client.get(...)
+```
+
+**Tier 3 — Type annotations only** *(dep-swap only)*
+
+`httpx.AsyncClient | None` used as a parameter or attribute type. Change `import httpx` to
+`import httpx2 as httpx` (or update the annotation directly). No behavioral change.
+
+**Exception — crow server outbound client:**
+
+The crow server's singleton `httpx2.AsyncClient` in `client.py` intentionally does NOT use
+`HTTPClientAdapter`, even though it is a Tier 1 long-lived client. The crow server fetches
+arbitrary public URLs — injecting Bodai trace headers into requests to external sites is
+incorrect. Raw `httpx2.AsyncClient` is right here.
+
+### 9.2 Refactor Sequencing
+
+The OTel adapter migration (§9.1 Tier 1) is a **separate refactor** from the dep swap. Run them
+independently:
+
+1. **Dep swap first** (Phase 0–5 above): mechanical, low-risk, no behavior change
+2. **OTel adapter migration second**: per-class refactor, adds tracing — higher cognitive load,
+   done after dep swap is stable across all repos
+
 ---
 
 ## 10. New Dependencies
