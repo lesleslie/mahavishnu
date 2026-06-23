@@ -50,7 +50,7 @@ class CoordinationExecutor:
 
         Args:
             todo_id: Todo identifier (e.g., TODO-001)
-            pool_type: Type of pool to use (mahavishnu, session-buddy, kubernetes)
+            pool_type: Type of pool to use (mahavishnu, session-buddy, runpod)
             pool_selector: Pool selection strategy (round_robin, least_loaded, random)
             timeout: Execution timeout in seconds
 

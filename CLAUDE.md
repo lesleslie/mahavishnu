@@ -108,12 +108,11 @@ Mahavishnu supports a **multi-pool orchestration architecture** that enables hor
 - Remote execution via MCP protocol
 - Use for: distributed workloads, multi-server deployments
 
-**KubernetesPool** (Cloud-Native):
+**RunPodPool** (GPU Cloud):
 
-- Deploys workers as Kubernetes Jobs/Pods
-- Auto-scaling via HorizontalPodAutoscaler
-- Cloud resource management
-- Use for: production deployments, auto-scaling workloads
+- Serverless GPU execution via RunPod Flash API
+- Auto-scales worker pods on demand
+- Use for: GPU/ML workloads in cloud
 
 ### Pool and Terminal Architecture
 
@@ -121,7 +120,7 @@ Mahavishnu has three independent pool/executor abstractions with distinct owners
 
 | Module | Location | Purpose | Scope |
 |--------|----------|---------|-------|
-| **Multi-pool orchestration** | `mahavishnu/pools/` | Production task distribution across MahavishnuPool, SessionBuddyPool, KubernetesPool | Cross-server, auto-scaling |
+| **Multi-pool orchestration** | `mahavishnu/pools/` | Production task distribution across MahavishnuPool, SessionBuddyPool, RunPodPool | Cross-server, auto-scaling |
 | **iTerm2 session pool** | `mahavishnu/terminal/pool.py` | macOS iTerm2 terminal session management via AppleScript | Local development only |
 | **Process pool executor** | `mahavishnu/core/process_pool_executor.py` | Generic ProcessPoolExecutor for blocking CPU-bound operations | Single-process offload |
 
@@ -221,7 +220,7 @@ results = await aggregator.cross_pool_search("API implementation", pool_mgr)
 - **Pool types**:
   - `mahavishnu`: Direct worker management (low latency)
   - `session_buddy`: Delegated to Session-Buddy instances (3 workers each)
-  - `kubernetes`: K8s-native deployment (planned)
+  - `runpod`: GPU cloud execution via RunPod Flash API
 
 ### Documentation
 
@@ -261,7 +260,7 @@ websocket:
 
 # Pool management
 pools_enabled: true
-default_pool_type: "mahavishnu"  # mahavishnu, session_buddy, kubernetes
+default_pool_type: "mahavishnu"  # mahavishnu, session_buddy, runpod
 
 # Content ingestion
 ingestion:
@@ -515,7 +514,7 @@ The `examples/` directory contains runnable examples for key features:
 - **Pool implementations**:
   - `mahavishnu/pools/mahavishnu_pool.py` - Direct worker management
   - `mahavishnu/pools/session_buddy_pool.py` - Delegated pool
-  - `mahavishnu/pools/kubernetes_pool.py` - K8s native (planned)
+  - `mahavishnu/pools/runpod_pool.py` - GPU cloud pool
 - **Memory aggregator**: `mahavishnu/pools/memory_aggregator.py` - Cross-pool memory sync
 - **WebSocket broadcasting**: `mahavishnu/pools/websocket/` - Real-time pool events
 

@@ -25,7 +25,7 @@
 - `mahavishnu/pools/manager.py` — Multi-pool orchestration
 - `mahavishnu/pools/mahavishnu_pool.py` — Direct worker management
 - `mahavishnu/pools/session_buddy_pool.py` — Delegated pool
-- `mahavishnu/pools/kubernetes_pool.py` — K8s native (planned)
+- `mahavishnu/pools/runpod_pool.py` — GPU cloud pool
 - `mahavishnu/pools/memory_aggregator.py` — Cross-pool memory sync
 - `mahavishnu/pools/websocket/` — Real-time pool events
 

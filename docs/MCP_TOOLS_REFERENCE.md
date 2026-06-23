@@ -41,7 +41,7 @@ async def pool_spawn(
 
 **Parameters:**
 
-- `pool_type` - Pool type: `"mahavishnu"`, `"session-buddy"`, `"kubernetes"`
+- `pool_type` - Pool type: `"mahavishnu"`, `"session-buddy"`, `"runpod"`
 - `name` - Pool name for identification
 - `min_workers` - Minimum worker count (1-10)
 - `max_workers` - Maximum worker count (1-100)

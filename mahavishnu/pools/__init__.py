@@ -3,7 +3,7 @@
 This package provides a multi-pool orchestration system that enables:
 - Direct pool management by Mahavishnu (wrapping WorkerManager)
 - Session-Buddy pool delegation (each SB instance manages 3 workers)
-- Kubernetes pool support (K8s-native worker deployment)
+- RunPod pool support (cloud GPU worker deployment)
 - Inter-pool communication (async message passing between pools)
 - Unified memory flow (Local pool → Session-Buddy → Akosha)
 - Real-time WebSocket broadcasting of pool events

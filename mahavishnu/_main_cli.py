@@ -1317,7 +1317,7 @@ def pool_spawn(
         "mahavishnu",
         "--type",
         "-t",
-        help="Type of pool (mahavishnu, session-buddy, kubernetes)",
+        help="Type of pool (mahavishnu, session-buddy, runpod)",
     ),
     name: str = typer.Option("default", "--name", "-n", help="Pool name"),
     min_workers: int = typer.Option(1, "--min", "-m", min=1, max=10, help="Minimum workers"),

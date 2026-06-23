@@ -325,7 +325,7 @@ class TestPoolConfigProperties:
 
     @given(
         pools_enabled=st.booleans(),
-        default_pool_type=st.sampled_from(["mahavishnu", "session-buddy", "kubernetes"]),
+        default_pool_type=st.sampled_from(["mahavishnu", "session-buddy", "runpod"]),
         routing_strategy=st.sampled_from(["round_robin", "least_loaded", "random", "affinity"]),
         min_workers=valid_pool_min_strategy,
         max_workers=valid_pool_max_strategy,

@@ -400,54 +400,6 @@ async def test_spawn_pool_session_buddy() -> None:
 
 
 @pytest.mark.unit
-async def test_spawn_pool_kubernetes_with_overrides() -> None:
-    """Kubernetes pool: namespace, container_image, kubeconfig_path."""
-    with patch("mahavishnu.core.app.TerminalManager"):
-        mgr = PoolManager(
-            terminal_manager=MagicMock(),
-            session_buddy_client=None,
-            message_bus=MessageBus(),
-        )
-    config = PoolConfig(
-        name="k8s",
-        pool_type="kubernetes",
-        min_workers=1,
-        max_workers=3,
-        extra_config={
-            "namespace": "test-ns",
-            "kubeconfig_path": "/tmp/kube",
-            "container_image": "my/image:1.0",
-        },
-    )
-    pool = _make_pool("k8s", pool_type="kubernetes", n_workers=1)
-    with patch("mahavishnu.pools.manager.KubernetesPool", return_value=pool) as mcls:
-        await mgr.spawn_pool("kubernetes", config)
-    kwargs = mcls.call_args.kwargs
-    assert kwargs["namespace"] == "test-ns"
-    assert kwargs["kubeconfig_path"] == "/tmp/kube"
-    assert kwargs["container_image"] == "my/image:1.0"
-
-
-@pytest.mark.unit
-async def test_spawn_pool_kubernetes_defaults() -> None:
-    """Kubernetes pool: defaults when config.get is missing keys."""
-    with patch("mahavishnu.core.app.TerminalManager"):
-        mgr = PoolManager(
-            terminal_manager=MagicMock(),
-            session_buddy_client=None,
-            message_bus=MessageBus(),
-        )
-    config = PoolConfig(name="k8s2", pool_type="kubernetes", min_workers=1, max_workers=3)
-    pool = _make_pool("k8s2", pool_type="kubernetes", n_workers=1)
-    with patch("mahavishnu.pools.manager.KubernetesPool", return_value=pool) as mcls:
-        await mgr.spawn_pool("kubernetes", config)
-    kwargs = mcls.call_args.kwargs
-    assert kwargs["namespace"] == "mahavishnu"
-    assert kwargs["container_image"] == "python:3.13-slim"
-    assert kwargs["kubeconfig_path"] is None
-
-
-@pytest.mark.unit
 async def test_spawn_pool_runpod() -> None:
     """RunPod pool branch."""
     with patch("mahavishnu.core.app.TerminalManager"):

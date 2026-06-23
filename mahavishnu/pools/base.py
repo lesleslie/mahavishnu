@@ -13,7 +13,7 @@ class PoolConfig:
 
     Attributes:
         name: Human-readable pool name
-        pool_type: Type identifier ("mahavishnu", "session-buddy", "kubernetes")
+        pool_type: Type identifier ("mahavishnu", "session-buddy", "runpod")
         min_workers: Minimum number of workers (default: 1)
         max_workers: Maximum number of workers (default: 10)
         worker_type: Type of workers to spawn (default: "terminal-claude")

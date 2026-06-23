@@ -6,7 +6,7 @@
 
 **SessionBuddyPool** — Delegated to Session-Buddy instances. Each instance manages exactly 3 workers. Remote execution via MCP. Use for: distributed workloads, multi-server deployments.
 
-**KubernetesPool** — Deploys workers as K8s Jobs/Pods with HorizontalPodAutoscaler. Use for: production deployments, auto-scaling workloads.
+**KubernetesPool** — Removed (Option B). Was for production deployments with K8s infrastructure; replaced by RunPodPool for cloud execution.
 
 ## Architecture
 

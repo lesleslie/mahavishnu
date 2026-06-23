@@ -553,14 +553,10 @@ ______________________________________________________________________
 At `mahavishnu/pools/manager.py`, find the existing import block:
 
 ```python
-from .kubernetes_pool import KubernetesPool
-```
-
-Add immediately after:
-
-```python
 from .runpod_pool import RunPodPool
 ```
+
+(Plan predates Kubernetes pool removal — adjust import block to current state.)
 
 - [ ] **Step 2: Add factory branch**
 
@@ -576,7 +572,7 @@ Find the `elif pool_type == "kubernetes":` block (lines ~166-172) and add a new 
 Also update the docstring for `spawn_pool()` — change:
 
 ```python
-            pool_type: Type of pool ("mahavishnu", "session-buddy", "kubernetes")
+            pool_type: Type of pool ("mahavishnu", "session-buddy", "runpod")
 ```
 
 to:

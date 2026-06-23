@@ -28,7 +28,7 @@ websocket:
 
 # Pool management
 pools_enabled: true
-default_pool_type: "mahavishnu"  # mahavishnu, session_buddy, kubernetes
+default_pool_type: "mahavishnu"  # mahavishnu, session_buddy, runpod
 
 # Content ingestion
 ingestion:

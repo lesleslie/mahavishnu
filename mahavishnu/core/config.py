@@ -370,7 +370,7 @@ class PoolConfig(BaseModel):
     )
     default_type: str = Field(
         default="mahavishnu",
-        description="Default pool type (mahavishnu, session-buddy, kubernetes)",
+        description="Default pool type (mahavishnu, session-buddy, runpod)",
     )
     routing_strategy: str = Field(
         default="least_loaded",

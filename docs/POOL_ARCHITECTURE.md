@@ -29,11 +29,11 @@ The pool management architecture enables Mahavishnu to orchestrate worker tasks 
 │           ┌────────────────────┼────────────────────┐                 │
 │           ↓                    ↓                    ↓                 │
 │  ┌─────────────────┐  ┌─────────────────┐  ┌─────────────────┐        │
-│  │ MahavishnuPool  │  │SessionBuddyPool│  │ KubernetesPool  │        │
-│  │   (Direct)      │  │  (Delegated)    │  │   (K8s)         │        │
+│  │ MahavishnuPool  │  │SessionBuddyPool│  │   RunPodPool    │        │
+│  │   (Direct)      │  │  (Delegated)    │  │   (GPU Cloud)   │        │
 │  ├─────────────────┤  ├─────────────────┤  ├─────────────────┤        │
 │  │ Wraps          │  │ Delegates to    │  │ Manages        │        │
-│  │ WorkerManager  │  │ Session-Buddy   │  │ K8s Jobs/Pods  │        │
+│  │ WorkerManager  │  │ Session-Buddy   │  │ RunPod Workers │        │
 │  └─────────────────┘  └─────────────────┘  └─────────────────┘        │
 │           │                    │                    │                 │
 │           ↓                    ↓                    ↓                 │
@@ -168,52 +168,12 @@ result = await pool_mgr.execute_on_pool(pool_id, {"prompt": "Analyze code"})
 └───────────────────────┘
 ```
 
-### 3. KubernetesPool (K8s-Native Management)
+### 3. KubernetesPool — REMOVED 2026-06-23
 
-**Purpose**: Kubernetes-native worker deployment
-
-**Use Cases**:
-
-- Cloud deployments
-- Auto-scaling workloads
-- Multi-cluster execution
-- Resource quotas
-
-**Implementation**:
-
-- Deploys workers as K8s Jobs/Pods
-- Python k8s client for job management
-- Auto-scaling via HorizontalPodAutoscaler (HPA)
-
-**Example**:
-
-```python
-config = PoolConfig(
-    name="cloud-pool",
-    pool_type="kubernetes",
-    extra_config={
-        "namespace": "mahavishnu",
-        "container_image": "python:3.13-slim",
-    },
-)
-
-pool_id = await pool_mgr.spawn_pool("kubernetes", config)
-result = await pool_mgr.execute_on_pool(pool_id, {"prompt": "Process data"})
-```
-
-**Architecture**:
-
-```
-┌─────────────────────────────────────┐
-│      KubernetesPool                 │
-│  • Python k8s client                │
-│  • Job management                   │
-│  • Pod monitoring                   │
-└─────────────────────────────────────┘
-            │ k8s API
-            ↓
-┌───────────────────────┐
-│  Kubernetes Cluster   │
+KubernetesPool was removed as part of the serverless-only pivot. The
+project now relies on managed serverless (Cloud Run) and RunPod for
+cloud GPU workloads. K8s manifests remain in `mahavishnu/core/k8s_manifests.py`
+for deployment documentation only; the pool implementation is gone.
 ├───────────────────────┤
 │  Namespace: mahavishnu│
 │  • Jobs               │
@@ -355,7 +315,7 @@ msg = await bus.receive("pool_def", timeout=5.0)
 
 1. LOCAL POOL MEMORY
    ┌─────────────────┐  ┌─────────────────┐  ┌─────────────────┐
-   │ MahavishnuPool  │  │SessionBuddyPool │  │ KubernetesPool  │
+   │ MahavishnuPool  │  │SessionBuddyPool │  │   RunPodPool    │
    ├─────────────────┤  ├─────────────────┤  ├─────────────────┤
    │ • Worker results│  │ • Worker results│  │ • Job logs      │
    │ • Pool metrics  │  │ • Pool metrics  │  │ • Pod status    │
@@ -536,7 +496,7 @@ results = await mcp.call_tool("pool_search_memory", {
 
 - **Local Development**: Use `MahavishnuPool`
 - **Production**: Use `SessionBuddyPool` for distributed execution
-- **Cloud**: Use `KubernetesPool` for auto-scaling
+- **Cloud GPU**: Use `RunPodPool` for serverless GPU workloads
 
 ### 2. Routing Strategy
 

@@ -47,7 +47,7 @@ graph TB
         PoolMgr[PoolManager]
         LocalPool[MahavishnuPool<br/>Local Workers]
         SessionPool[SessionBuddyPool<br/>Delegated]
-        K8sPool[KubernetesPool<br/>Cloud-Native]
+        K8sPool[KubernetesPool<br/>Removed 2026-06-23]
         MemoryAgg[MemoryAggregator<br/>Cross-Pool Search]
     end
 
@@ -152,7 +152,7 @@ graph TB
     subgraph "Pool Types"
         MP[MahavishnuPool<br/>Local Execution<br/>Low Latency]
         SB[SessionBuddyPool<br/>Delegated<br/>Remote Workers]
-        KP[KubernetesPool<br/>Cloud-Native<br/>Auto-Scaling]
+        KP[KubernetesPool<br/>Removed 2026-06-23]
     end
 
     subgraph "Worker Resources"
@@ -208,7 +208,7 @@ graph TB
 |-----------|---------|---------|----------|---------|
 | **MahavishnuPool** | Local (2-10) | < 10ms | Development, CI/CD | Direct management |
 | **SessionBuddyPool** | Remote (3 per instance) | 50-100ms | Distributed workloads | MCP delegation |
-| **KubernetesPool** | Horizontal (1000+) | 100-500ms | Production, auto-scaling | HPA-managed |
+| **KubernetesPool** | _Removed 2026-06-23_ | — | — | — |
 
 ______________________________________________________________________
 

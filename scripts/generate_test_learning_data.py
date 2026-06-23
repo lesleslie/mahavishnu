@@ -74,7 +74,7 @@ REPOS = ["mahavishnu", "oneiric", "session-buddy", "akosha", "fastblocks", "crac
 
 MODEL_TIERS = ["sonnet-4.5", "opus-4.6", "haiku-3.5"]
 
-POOL_TYPES = ["mahavishnu", "session-buddy", "kubernetes"]
+POOL_TYPES = ["mahavishnu", "session-buddy", "runpod"]
 
 ERROR_TYPES = [
     None,

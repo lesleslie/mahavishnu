@@ -604,47 +604,6 @@ class TestSpawnPoolTypes:
             assert pool_id == "session-buddy-pool-id"
 
     @pytest.mark.asyncio
-    async def test_spawn_pool_creates_kubernetes_pool_type(
-        self, terminal_manager, session_buddy, message_bus
-    ):
-        """Test spawn_pool() correctly instantiates KubernetesPool."""
-        pool_manager = PoolManager(
-            terminal_manager=terminal_manager,
-            session_buddy_client=session_buddy,
-            message_bus=message_bus,
-        )
-
-        config = PoolConfig(
-            name="test-k8s-pool",
-            pool_type="kubernetes",
-            min_workers=1,
-            max_workers=10,
-        )
-        config.extra_config["namespace"] = "test-namespace"
-        config.extra_config["kubeconfig_path"] = "/path/to/kubeconfig"
-        config.extra_config["container_image"] = "python:3.13-slim"
-
-        with patch("mahavishnu.pools.manager.KubernetesPool") as mock_pool_class:
-            mock_pool_instance = MagicMock()
-            mock_pool_instance.pool_id = "k8s-pool-id"
-            mock_pool_instance.config = config
-            mock_pool_instance._workers = {}
-            mock_pool_instance.start = AsyncMock(return_value="k8s-pool-id")
-            mock_pool_instance.stop = AsyncMock()
-            mock_pool_class.return_value = mock_pool_instance
-
-            pool_id = await pool_manager.spawn_pool("kubernetes", config)
-
-            mock_pool_class.assert_called_once()
-            call_kwargs = mock_pool_class.call_args[1]
-            assert call_kwargs["config"] == config
-            assert call_kwargs["namespace"] == "test-namespace"
-            assert call_kwargs["kubeconfig_path"] == "/path/to/kubeconfig"
-            assert call_kwargs["container_image"] == "python:3.13-slim"
-
-            assert pool_id == "k8s-pool-id"
-
-    @pytest.mark.asyncio
     async def test_spawn_pool_creates_runpod_pool_type(
         self, terminal_manager, session_buddy, message_bus
     ):

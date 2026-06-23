@@ -40,7 +40,7 @@ class TestPoolConfig:
         """Test PoolConfig with extra configuration."""
         config = PoolConfig(
             name="extra-pool",
-            pool_type="kubernetes",
+            pool_type="runpod",
             extra_config={"image": "ubuntu:22.04", "cpu_limit": 4},
         )
 

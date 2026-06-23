@@ -421,12 +421,6 @@ Mahavishnu uses a role-based taxonomy to organize repositories:
 - Remote execution via MCP protocol
 - Use for: distributed workloads, multi-server deployments
 
-**KubernetesPool** (Cloud-Native)
-
-- Deploys workers as Kubernetes Jobs/Pods
-- Auto-scaling via HPA
-- Use for: production deployments with K8s infrastructure
-
 **RunPodPool** (GPU Cloud)
 
 - Serverless GPU execution via RunPod Flash API

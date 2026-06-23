@@ -41,7 +41,7 @@ class TestExecutionRecordConstraints:
         task_description=st.text(min_size=1, max_size=500),
         repo=st.text(min_size=1, max_size=100),
         model_tier=st.sampled_from(["small", "medium", "large"]),
-        pool_type=st.sampled_from(["mahavishnu", "session-buddy", "kubernetes"]),
+        pool_type=st.sampled_from(["mahavishnu", "session-buddy", "runpod"]),
     )
     @settings(max_examples=50)
     def test_required_string_fields_accepted(
@@ -386,7 +386,7 @@ class TestEmbeddingContentGeneration:
         task_description=st.text(min_size=1, max_size=500),
         repo=st.text(min_size=1, max_size=100),
         model_tier=st.sampled_from(["small", "medium", "large"]),
-        pool_type=st.sampled_from(["mahavishnu", "session-buddy", "kubernetes"]),
+        pool_type=st.sampled_from(["mahavishnu", "session-buddy", "runpod"]),
     )
     @settings(max_examples=50)
     def test_embedding_content_contains_key_fields(

@@ -79,7 +79,7 @@ otel_ingester:
 # Pool management for multi-pool orchestration
 pools:
   enabled: true  # Enable pool management
-  default_type: "mahavishnu"  # Default pool type (mahavishnu, session-buddy, kubernetes)
+  default_type: "mahavishnu"  # Default pool type (mahavishnu, session-buddy, runpod)
   routing_strategy: "least_loaded"  # Pool selection (round_robin, least_loaded, random, affinity)
   min_workers: 1  # Default minimum workers per pool
   max_workers: 10  # Default maximum workers per pool

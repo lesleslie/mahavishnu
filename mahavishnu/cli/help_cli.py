@@ -235,7 +235,7 @@ COMMAND_CATEGORIES: dict[str, dict[str, Any]] = {
                 "usage": "mahavishnu pool spawn [options]",
                 "description": "Spawn a worker pool",
                 "options": {
-                    "-t, --type": "Pool type (mahavishnu, session-buddy, kubernetes)",
+                    "-t, --type": "Pool type (mahavishnu, session-buddy, runpod)",
                     "-n, --name": "Pool name",
                     "-m, --min": "Minimum workers",
                     "-M, --max": "Maximum workers",

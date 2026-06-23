@@ -51,7 +51,7 @@ Support modules in `engines/`:
 
 - MahavishnuPool — Direct worker management
 - SessionBuddyPool — Delegated to Session-Buddy instances
-- KubernetesPool — `pools/kubernetes_pool.py` (507 lines, not Note: untested without cluster)
+- RunPodPool — GPU cloud pool via RunPod Flash API
 - Pool Monitoring Dashboard — `docs/grafana/Pool_Monitoring.json`
 
 ### Additional Dashboards (COMPLETE)
@@ -266,7 +266,7 @@ ______________________________________________________________________
 | WebSocket Server | Running | 8690 | Real-time updates |
 | Routing Metrics | Running | 9091 | Prometheus metrics |
 | Pool Manager | Implemented | N/A | Multi-pool orchestration |
-| Kubernetes Pool | Implemented (untested) | N/A | Needs cluster for testing |
+| RunPod Pool | Implemented | N/A | GPU cloud via RunPod Flash API |
 | Grafana Dashboards | Complete | 3000 | 4 dashboards ready to import |
 | Test Suite | 194 files, 81K lines | Property + load tests, No chaos |
 

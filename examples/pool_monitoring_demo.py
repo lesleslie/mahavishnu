@@ -331,7 +331,7 @@ class PoolMonitorClient:
             - active_workers: int
             - idle_workers: int
             - error_workers: int
-            - pool_type: str (mahavishnu, session_buddy, kubernetes)
+            - pool_type: str (mahavishnu, session_buddy, runpod)
             - min_workers: int
             - max_workers: int
             - total_tasks_completed: int
