@@ -12,7 +12,6 @@ from monitoring.metrics import pool_workers_active
 
 from ..mcp.protocols.message_bus import MessageBus
 from .base import BasePool, PoolConfig
-from .kubernetes_pool import KubernetesPool
 from .mahavishnu_pool import MahavishnuPool
 from .peer_routing import DEFAULT_ACL_PROVIDER, PeerRouteResolver
 from .routing_fitness import RoutingFitnessReader
@@ -208,7 +207,7 @@ class PoolManager:
             if pool is not None:
                 worker_counts.setdefault(pool.config.pool_type, 0)
 
-        known_types = {"mahavishnu", "session-buddy", "kubernetes", "runpod"} | set(
+        known_types = {"mahavishnu", "session-buddy", "runpod"} | set(
             worker_counts.keys()
         )
         for pool_type in known_types:
@@ -222,7 +221,7 @@ class PoolManager:
         """Spawn a new pool of specified type.
 
         Args:
-            pool_type: Type of pool ("mahavishnu", "session-buddy", "kubernetes", "runpod")
+            pool_type: Type of pool ("mahavishnu", "session-buddy", "runpod")
             config: Pool configuration
 
         Returns:
@@ -256,13 +255,6 @@ class PoolManager:
                 pool = SessionBuddyPool(  # type: ignore[assignment]
                     config=config,
                     session_buddy_url=config.get("session_buddy_url", "http://localhost:8678/mcp"),
-                )
-            elif pool_type == "kubernetes":
-                pool = KubernetesPool(  # type: ignore[assignment]
-                    config=config,
-                    namespace=config.get("namespace", "mahavishnu"),
-                    kubeconfig_path=config.get("kubeconfig_path"),
-                    container_image=config.get("container_image", "python:3.13-slim"),
                 )
             elif pool_type == "runpod":
                 pool = RunPodPool(config=config)  # type: ignore[assignment]
