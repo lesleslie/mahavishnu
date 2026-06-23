@@ -1229,3 +1229,12 @@ async def test_web_search_with_real_searxng(crow_server):
    requires a full API rewrite across all 6 repos (requests-style, not httpx-style). httpx2
    covers HTTP/2 + zstd, which is the gap. Revisit niquests when HTTP/3 becomes relevant for
    Bodai network paths (internal traffic today; latency advantage is marginal).
+
+9. **crawl4ai** *(deferred)*: Evaluated 2026-06-22 for `web_fetch` JS-rendering support.
+   Not adopted. crawl4ai requires Playwright + Chromium (~150MB binary, post-install
+   `crawl4ai-setup` step), is pre-1.0 (0.9.x with frequent breaking changes), and has no
+   lightweight static-HTML mode — every call pays browser-launch cost. Static article
+   extraction stays on `trafilatura` (F1=0.937, zero browser deps). If JS rendering becomes
+   a real need, add an opt-in `web_fetch_js` tool behind `crawl4ai` declared as
+   `pyproject.toml [project.optional-dependencies] crow-js = [...]` so it doesn't bloat the
+   default install. Revisit when a concrete user-facing SPA-fetch requirement appears.
