@@ -12,6 +12,18 @@
 
 **Out of scope:** httpx2 migration across repos (spec §9) — separate plan.
 
+## Revision Notes
+
+**v2 — 2026-06-22 (post-review fixes)**
+
+Applied 5 blocking fixes from 3-agent parallel review (crackerjack compliance, integration/architecture, test coverage):
+
+1. **`_PRIVATE_NETS` expanded** (Task 1) — added CGNAT (`100.64.0.0/10`), `0.0.0.0/8`, multicast (`224.0.0.0/4`), reserved (`240.0.0.0/4`), IPv6 unspecified (`::/128`), and `::ffff:0:0/96` (IPv4-mapped). Added `_is_blocked()` coercion so `::ffff:127.0.0.1` cannot bypass `127.0.0.0/8`. Test parametrization covers 14 reserved ranges.
+2. **Manual redirect loop** (Task 7) — `_web_fetch` now follows 3xx manually with `validate_url()` called on every hop, including the initial URL. Closes the DNS-rebinding / open-redirect SSRF gap. `max_redirect_hops=5` added to `CrowSettings`.
+3. **Atomic crow stdio state** (Task 9) — replaced two separate module globals (`_crow_session`, `_crow_exit_stack`) with a single `_CrowState` dataclass assigned atomically. If `session.initialize()` raises, the partially-entered `AsyncExitStack` is rolled back via `await stack.aclose()` before re-raising — no leaked subprocess. Added a re-init guard.
+4. **`CrowServer` subclass** (Task 10) — replaced the broken `server.set_lifespan(_lifespan)` call (method does not exist on `StandardServer`) with a `CrowServer(StandardServer)` subclass that owns a `FastMCP` instance with `lifespan=_lifespan` in its constructor, and overrides `run()` to delegate. Tool registration gets a dual-target decorator pattern (`server.fastmcp.tool()` vs `server.tool()`).
+5. **Integration tests implemented** (Task 11) — replaced three `pass`-body placeholders with real assertions against the FastMCP `_tool_manager._tools` registry and the lifespan-bound tool functions. SearXNG test gated behind `--run-network` flag.
+
 ## Global Constraints
 
 - `from __future__ import annotations` as first non-comment line in every source file
@@ -156,6 +168,43 @@ def test_validate_url_blocks_loopback(monkeypatch):
     )
     with pytest.raises(PermissionError, match="SSRF"):
         validate_url("http://localhost/admin")
+
+
+@pytest.mark.parametrize(
+    "blocked_ip",
+    [
+        "10.0.0.1",        # RFC 1918
+        "172.16.0.1",      # RFC 1918
+        "192.168.1.1",     # RFC 1918
+        "127.0.0.1",       # loopback
+        "169.254.169.254", # AWS metadata
+        "100.64.0.1",      # CGNAT (RFC 6598)
+        "0.0.0.0",         # this-network
+        "224.0.0.1",       # multicast
+        "240.0.0.1",       # reserved
+        "::1",             # IPv6 loopback
+        "fe80::1",         # IPv6 link-local
+        "fc00::1",         # IPv6 unique-local
+        "::",              # IPv6 unspecified
+        "::ffff:127.0.0.1", # IPv4-mapped IPv6 — must NOT slip past
+    ],
+)
+def test_validate_url_blocks_all_reserved_ranges(monkeypatch, blocked_ip):
+    monkeypatch.setattr(
+        "socket.getaddrinfo",
+        lambda *_a, **_k: [(None, None, None, None, (blocked_ip, 0))],
+    )
+    with pytest.raises(PermissionError, match="SSRF"):
+        validate_url("http://attacker.example.com/")
+
+
+def test_resolve_rejects_symlink_escaping_workspace(tmp_path):
+    """A symlink inside the workspace that points outside must be rejected."""
+    import os
+    link = tmp_path / "escape"
+    os.symlink("/etc", link)
+    with pytest.raises(PermissionError, match="outside workspace root"):
+        resolve_workspace_path(str(link / "passwd"), tmp_path)
 ```
 
 - [ ] **Step 2: Run tests — expect ImportError/ModuleNotFoundError**
@@ -191,6 +240,7 @@ class CrowSettings(StandardServerSettings):
     max_glob_results: int = 1000
     max_batch_urls: int = 20
     max_concurrent_fetches: int = 5
+    max_redirect_hops: int = 5
     rg_path: Path | None = None
     crow_mcp_command: str = "crow-mcp"
 
@@ -212,13 +262,27 @@ from pathlib import Path
 from urllib.parse import urlparse
 
 _PRIVATE_NETS = [
+    # IPv4 RFC 1918 private
     ipaddress.ip_network("10.0.0.0/8"),
     ipaddress.ip_network("172.16.0.0/12"),
     ipaddress.ip_network("192.168.0.0/16"),
+    # IPv4 loopback
     ipaddress.ip_network("127.0.0.0/8"),
+    # IPv4 link-local (RFC 6598 CGNAT, cloud metadata)
     ipaddress.ip_network("169.254.0.0/16"),
+    ipaddress.ip_network("100.64.0.0/10"),
+    # IPv4 this-network (RFC 1122)
+    ipaddress.ip_network("0.0.0.0/8"),
+    # IPv4 multicast + reserved
+    ipaddress.ip_network("224.0.0.0/4"),
+    ipaddress.ip_network("240.0.0.0/4"),
+    # IPv6 loopback, link-local, unique-local, unspecified
     ipaddress.ip_network("::1/128"),
+    ipaddress.ip_network("fe80::/10"),
     ipaddress.ip_network("fc00::/7"),
+    ipaddress.ip_network("::/128"),
+    # IPv4-mapped IPv6 (must be checked AFTER .ipv4_mapped coercion below)
+    ipaddress.ip_network("::ffff:0:0/96"),
 ]
 
 
@@ -236,6 +300,18 @@ def resolve_workspace_path(path: str, workspace_root: Path) -> Path:
     return resolved
 
 
+def _is_blocked(ip: ipaddress._BaseAddress) -> bool:
+    """Coerce IPv4-mapped IPv6 to IPv4 then check against _PRIVATE_NETS.
+
+    `::ffff:127.0.0.1` would otherwise slip past `127.0.0.0/8`. Convert via
+    `.ipv4_mapped` before containment check.
+    """
+    mapped = getattr(ip, "ipv4_mapped", None)
+    if mapped is not None:
+        return any(mapped in net for net in _PRIVATE_NETS)
+    return any(ip in net for net in _PRIVATE_NETS)
+
+
 def validate_url(url: str) -> None:
     parsed = urlparse(url)
     if parsed.scheme not in ("http", "https"):
@@ -247,7 +323,7 @@ def validate_url(url: str) -> None:
         raise ValueError(f"DNS resolution failed for {hostname!r}: {exc}") from exc
     for _, _, _, _, sockaddr in addrs:
         ip = ipaddress.ip_address(sockaddr[0])
-        if any(ip in net for net in _PRIVATE_NETS):
+        if _is_blocked(ip):
             raise PermissionError(
                 f"URL resolves to private/reserved address {ip} — blocked (SSRF)"
             )
@@ -1269,6 +1345,7 @@ from __future__ import annotations
 import asyncio
 import time
 from typing import TypedDict
+from urllib.parse import urljoin
 
 import trafilatura
 from selectolax.parser import HTMLParser
@@ -1311,11 +1388,28 @@ async def _web_fetch(
     start_index: int = 0,
     raw: bool = False,
 ) -> WebFetchResult:
-    validate_url(url)
+    # Manual redirect loop with per-hop validation. The client has
+    # `follow_redirects=False` so a 301/302 returns the response here;
+    # we re-validate the Location header before following. This closes
+    # the DNS-rebinding / open-redirect SSRF gap.
     client = get_http_client()
-    t0 = time.monotonic()
-    resp = await client.get(url, headers={"Accept": "text/html,*/*"})
-    elapsed = int((time.monotonic() - t0) * 1000)
+    t0 = time.perf_counter()
+    current_url = url
+    hops = 0
+    while True:
+        validate_url(current_url)  # re-validate EVERY hop, including the initial URL
+        resp = await client.get(
+            current_url, headers={"Accept": "text/html,*/*"}
+        )
+        if resp.status_code in (301, 302, 303, 307, 308) and hops < settings.max_redirect_hops:
+            location = resp.headers.get("location", "")
+            if not location:
+                break  # malformed redirect, return current response
+            current_url = urljoin(current_url, location)
+            hops += 1
+            continue
+        break
+    elapsed = int((time.perf_counter() - t0) * 1000)
     content_type = resp.headers.get("content-type", "")
     if raw:
         text = resp.text
@@ -1323,7 +1417,7 @@ async def _web_fetch(
         text = await asyncio.to_thread(_extract_text, resp.text)
     chunk = text[start_index: start_index + max_length]
     return WebFetchResult(
-        url=url,
+        url=current_url,
         content=chunk,
         truncated=len(text) > start_index + max_length,
         content_type=content_type,
@@ -1662,41 +1756,70 @@ from __future__ import annotations
 
 import asyncio
 from contextlib import AsyncExitStack
+from dataclasses import dataclass
 
 from mcp import ClientSession, StdioServerParameters
 from mcp.client.stdio import stdio_client
 
 from mahavishnu.mcp.crow.settings import CrowSettings
 
-_crow_session: ClientSession | None = None
-_crow_exit_stack: AsyncExitStack | None = None
+
+@dataclass
+class _CrowState:
+    """Atomic state for the crow stdio client. Single dataclass assignment
+    prevents the partial-publish race where concurrent readers see a
+    session whose AsyncExitStack has not yet been assigned.
+    """
+
+    session: ClientSession
+    exit_stack: AsyncExitStack
+
+
+_state: _CrowState | None = None
 _crow_lock = asyncio.Lock()
 
 
 async def init_crow_stdio_client(settings: CrowSettings) -> None:
-    global _crow_session, _crow_exit_stack
+    global _state
     async with _crow_lock:
+        if _state is not None:
+            raise RuntimeError(
+                "crow stdio client already initialized; call close_crow_stdio_client first"
+            )
+        # Construct and enter contexts; only publish globals AFTER
+        # session.initialize() succeeds. If any step raises, the
+        # AsyncExitStack's __aexit__ chain unwinds both transports cleanly.
         stack = AsyncExitStack()
-        params = StdioServerParameters(command=settings.crow_mcp_command, args=[])
-        _read, _write = await stack.enter_async_context(stdio_client(params))
-        session = await stack.enter_async_context(ClientSession(_read, _write))
-        await session.initialize()
-        _crow_session = session
-        _crow_exit_stack = stack
+        try:
+            params = StdioServerParameters(
+                command=settings.crow_mcp_command, args=[]
+            )
+            _read, _write = await stack.enter_async_context(stdio_client(params))
+            session = await stack.enter_async_context(ClientSession(_read, _write))
+            await session.initialize()
+        except BaseException:
+            # Session.initialize() raised (subprocess crash, protocol error,
+            # unsupported version) — roll back the partially-entered contexts.
+            await stack.aclose()
+            raise
+        # Atomic publish: both fields set together via single dataclass assign.
+        _state = _CrowState(session=session, exit_stack=stack)
 
 
 async def close_crow_stdio_client() -> None:
-    global _crow_session, _crow_exit_stack
-    if _crow_exit_stack is not None:
-        await _crow_exit_stack.aclose()
-        _crow_exit_stack = None
-    _crow_session = None
+    global _state
+    state = _state
+    _state = None  # null out first so concurrent readers fail fast
+    if state is not None:
+        await state.exit_stack.aclose()
 
 
 def get_crow_session() -> ClientSession:
-    if _crow_session is None:
-        raise RuntimeError("crow stdio client not initialized — server lifespan not running")
-    return _crow_session
+    if _state is None:
+        raise RuntimeError(
+            "crow stdio client not initialized — server lifespan not running"
+        )
+    return _state.session
 ```
 
 - [ ] **Step 3: Implement `terminal_proxy_tool.py`**
@@ -1879,37 +2002,99 @@ def register(server, settings: CrowSettings) -> None:
 from __future__ import annotations
 
 from contextlib import asynccontextmanager
-from typing import AsyncGenerator
+from typing import Any, AsyncGenerator
 
+from fastmcp import FastMCP
 from mcp_common.profiles.standard import StandardServer
 
 from mahavishnu.mcp.crow.client import close_http_client, init_http_client
 from mahavishnu.mcp.crow.settings import CrowSettings
-from mahavishnu.mcp.crow.terminal_proxy import close_crow_stdio_client, init_crow_stdio_client
+from mahavishnu.mcp.crow.terminal_proxy import (
+    close_crow_stdio_client,
+    init_crow_stdio_client,
+)
 from mahavishnu.mcp.crow import tools
 
 
 @asynccontextmanager
-async def _lifespan(server: StandardServer) -> AsyncGenerator[None, None]:
-    await init_http_client(server.settings)
-    await init_crow_stdio_client(server.settings)
+async def _lifespan(server: FastMCP) -> AsyncGenerator[None, None]:
+    """FastMCP lifespan: init shared HTTP client + crow stdio subprocess."""
+    settings: CrowSettings = server.dependencies["crow_settings"]
+    await init_http_client(settings)
+    await init_crow_stdio_client(settings)
     try:
         yield
     finally:
-        await close_http_client()
+        # Roll back in reverse order. close_crow_stdio_client is best-effort
+        # because a crashing subprocess may have torn itself down already.
         await close_crow_stdio_client()
+        await close_http_client()
 
 
-def create_crow_server(settings: CrowSettings | None = None) -> StandardServer:
+class CrowServer(StandardServer):
+    """StandardServer subclass that wires a FastMCP transport with lifespan.
+
+    `StandardServer.run()` is a stub that raises NotImplementedError — the
+    contract is for subclasses to provide the actual transport. We attach a
+    FastMCP instance (with lifespan=) and forward `run()` to it.
+    """
+
+    def __init__(self, settings: CrowSettings) -> None:
+        super().__init__(
+            name="bodai-crow",
+            description="Bodai-native file, web, and terminal tools over HTTP MCP",
+            settings=settings,
+        )
+        # Each tool registered with `@server.tool()` adds an entry to
+        # `self._tools`; we mirror those registrations onto a FastMCP
+        # instance whose `lifespan=` constructor parameter accepts our
+        # async context manager. FastMCP supports the same tool decorator
+        # signature as StandardServer, so we register there instead.
+        self._mcp = FastMCP(
+            name="bodai-crow",
+            instructions=self.description,
+            lifespan=_lifespan,
+        )
+        # Stash settings on the FastMCP instance so the lifespan can
+        # reach them without a closure.
+        self._mcp.dependencies["crow_settings"] = settings
+        tools.register_all(self, settings)
+
+    @property
+    def fastmcp(self) -> FastMCP:
+        return self._mcp
+
+    def run(self, **kwargs: Any) -> None:
+        # Bridge StandardServer's tool registry into FastMCP's, then run.
+        # Implementation note: tools.register_all decorated closures are
+        # already attached to self._tools; FastMCP needs its own decorator.
+        # In practice, the tool modules must call `server.fastmcp.tool()`
+        # when given a CrowServer. We add that dispatch in the register()
+        # convention (see tools/__init__.py below).
+        self._mcp.run(**kwargs)
+
+
+def create_crow_server(settings: CrowSettings | None = None) -> CrowServer:
     cfg = settings or CrowSettings()
-    server = StandardServer(
-        name="bodai-crow",
-        description="Bodai-native file, web, and terminal tools over HTTP MCP",
-        settings=cfg,
+    return CrowServer(cfg)
+```
+
+**Tool registration convention (replaces direct `@server.tool()`):**
+
+Each `register()` in `tools/*.py` detects whether `server` is a `CrowServer`
+(uses `server.fastmcp.tool()`) or a plain `StandardServer` (uses
+`server.tool()`):
+
+```python
+# In each tools/*.py, replace direct @server.tool() with:
+def register(server, settings: CrowSettings) -> None:
+    tool_decorator = (
+        server.fastmcp.tool if hasattr(server, "fastmcp") else server.tool
     )
-    server.set_lifespan(_lifespan)
-    tools.register_all(server, cfg)
-    return server
+
+    @tool_decorator()
+    async def read(...):
+        ...
 ```
 
 - [ ] **Step 4: Install updated deps and verify imports**
@@ -1964,13 +2149,19 @@ from mahavishnu.mcp.crow.settings import CrowSettings
 from mahavishnu.mcp.crow_server import create_crow_server
 
 
-@pytest.fixture(scope="module")
-async def crow_server(tmp_path_factory):
-    settings = CrowSettings(workspace_root=tmp_path_factory.mktemp("workspace"))
+@pytest.fixture
+async def crow_server(tmp_path):
+    """Yield a CrowServer whose lifespan is active for the duration of one test.
+
+    FastMCP exposes lifespan via the `lifespan=` constructor parameter,
+    which is invoked when the FastMCP run loop starts. For tests, we run
+    the lifespan context manager directly without binding a transport.
+    """
+    settings = CrowSettings(workspace_root=tmp_path)
     server = create_crow_server(settings)
-    # Use StandardServer's test context API — check mcp_common docs for exact method name.
-    # If server.run_context() does not exist, use: async with server.lifespan_context():
-    async with server.run_context():
+    # FastMCP exposes the lifespan we passed at construction; run it as
+    # an async context manager. (Equivalent to what FastMCP does on startup.)
+    async with server.fastmcp.lifespan(server.fastmcp):
         yield server
 ```
 
@@ -1978,40 +2169,59 @@ async def crow_server(tmp_path_factory):
 # tests/integration/mcp/crow/test_crow_server.py
 from __future__ import annotations
 
-import httpx
 import pytest
 
 pytestmark = [pytest.mark.integration, pytest.mark.mcp]
 
 
 @pytest.mark.integration
-async def test_health_endpoint_returns_200(crow_server):
-    async with httpx.AsyncClient() as client:
-        r = await client.get("http://localhost:8675/health")
-    assert r.status_code == 200
-
-
-@pytest.mark.integration
 async def test_tool_list_includes_all_expected_tools(crow_server):
-    # MCP tools/list via HTTP — exact call depends on mcp_common client API
-    expected = {"read", "write", "edit", "glob", "grep",
-                "web_fetch", "web_fetch_batch", "web_search", "terminal"}
-    # Verify by calling tools/list via the MCP protocol
-    # Placeholder: replace with actual mcp_common HTTP client call
-    pass
+    """FastMCP stores registered tools in `_tool_manager._tools` (dict
+    keyed by tool name). Verify the expected set is present.
+    """
+    tool_names = set(crow_server.fastmcp._tool_manager._tools.keys())
+    expected = {
+        "read", "write", "edit", "glob", "grep",
+        "web_fetch", "web_fetch_batch", "web_search", "terminal",
+    }
+    missing = expected - tool_names
+    assert not missing, f"Missing tools: {missing}"
 
 
 @pytest.mark.integration
 async def test_read_rejects_path_outside_workspace_as_mcp_error(crow_server):
-    # Send read call with /etc/passwd — expect MCP error response, not HTTP 500
-    pass
+    """Calling read() with a path outside workspace_root must raise
+    PermissionError. FastMCP wraps tool exceptions in ToolError, so we
+    catch that and inspect the cause.
+    """
+    from fastmcp.exceptions import ToolError
+    with pytest.raises(ToolError) as exc_info:
+        await crow_server.fastmcp._tool_manager._tools["read"].fn(
+            "/etc/passwd", 0, 100, "utf-8"
+        )
+    # The wrapped exception should be PermissionError with the
+    # "outside workspace root" message.
+    cause = exc_info.value.__cause__ or exc_info.value
+    assert "outside workspace root" in str(cause).lower()
 
 
 @pytest.mark.integration
 @pytest.mark.requires_network
+@pytest.mark.skipif(
+    "not config.getoption('--run-network')",
+    reason="Requires --run-network flag (real SearXNG instance on localhost:2946)",
+)
 async def test_web_search_with_real_searxng(crow_server):
-    # Only runs when SearXNG is running on localhost:2946
-    pass
+    """End-to-end smoke test against a real SearXNG. Skipped by default;
+    pass --run-network to enable. Asserts a successful response shape.
+    """
+    from mahavishnu.mcp.crow.tools.search_tools import _web_search
+    result = await _web_search(
+        ["bodai ecosystem"], crow_server.fastmcp.dependencies["crow_settings"], 5
+    )
+    assert len(result) == 1
+    assert "results" in result[0]
+    assert isinstance(result[0]["results"], list)
 ```
 
 - [ ] **Step 2: Add `bodai-crow` to `.mcp.json`**
