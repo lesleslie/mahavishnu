@@ -65,7 +65,6 @@ dependencies = [
     "llama-index-vector-stores-opensearch>=0.6.3,<0.7.0",
     # Content ingestion
     "pypdf>=6.12.2",
-    "beautifulsoup4>=4.14.3",
     "httpx[http2]>=0.28.1",
     "ebooklib>=0.20",
     # AI integrations
@@ -342,7 +341,6 @@ exclude_deps = [
     "tomli",
     "defusedxml",
     "croniter",
-    "beautifulsoup4",
     "gitpython",
     "opencv-python",
     "Pillow",

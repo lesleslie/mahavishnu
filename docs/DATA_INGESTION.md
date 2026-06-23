@@ -8,7 +8,7 @@ Ingest web content, blogs, and books into the knowledge ecosystem.
 
 **Supported Types**:
 
-- Webpages (via BeautifulSoup HTTP fetching)
+- Webpages (delegated to `web_reader` MCP server on port 8699)
 - Blogs (RSS/Atom feeds)
 - Books (PDF via pypdf, EPUB via ebooklib)
 

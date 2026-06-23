@@ -22,7 +22,7 @@ Install with ingestion extras:
 uv pip install -e ".[ingestion]"
 
 # Or install specific dependencies
-uv pip install pypdf ebooklib beautifulsoup4
+uv pip install pypdf ebooklib
 ```
 
 ## Quick Start
