@@ -1,6 +1,6 @@
 # Project-Scoped SOP Evolution v1.0 — Design
 
-**Status:** Draft (brainstormed 2026-06-22)
+**Status:** **DEFERRED** — blocked on Dhara SQL `execute()` / `query()` surface (this spec imports `from mahavishnu.core.dhara_client import execute, query` for `skill_transitions` table inserts and reads; see `mahavishnu/core/dhara_adapter.py` for the current key-value-only surface). Spec 1-3 gate persistence (C3 outstanding) is the additional dependency: failure-mode catalog can't fire without `exit_reason`, `precommitment_slate`, `confidence_was_capped`, `unchecked_sources[].access_status`, `adjacent_problems[].status` being persisted by Specs #1-3.
 **Phase:** 3 (Adjacent)
 **Source:** `Building a Production Agent Harness` — "Loop 2 — Cross-case behavioral reinforcement." Per-project SOP that evolves based on the team's specific failure-mode frequencies. Each project's SOP teaches the next case what the previous cases failed at.
 

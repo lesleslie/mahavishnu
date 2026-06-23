@@ -1940,6 +1940,28 @@ Add to `[project.dependencies]`:
 "rapidfuzz~=3.9",
 ```
 
+**IMPORTANT (FastMCP version pin — regression test brittleness):** Task 11's integration tests inspect `crow_server.fastmcp._tool_manager._tools.keys()` and call `crow_server.fastmcp._tool_manager._tools["read"].fn(...)`. These are **private FastMCP APIs** (leading underscore). Any minor-version bump of FastMCP can rename or remove these attributes without warning, breaking the tests. Pin FastMCP explicitly so the test surface is hermetic:
+
+```toml
+"fastmcp~=2.5",  # pin minor; bump explicitly after testing _tool_manager._tools against new release
+```
+
+Add a regression note in `tests/integration/mcp/crow/test_crow_server.py` (Task 11) at the top of the file:
+
+```python
+# Integration tests inspect FastMCP private API:
+#   crow_server.fastmcp._tool_manager._tools (dict keyed by tool name)
+#   crow_server.fastmcp._tool_manager._tools[<name>].fn (callable)
+# These are underscore-prefixed (private) and may change without warning.
+# FastMCP is pinned in pyproject.toml to ~=2.5. When bumping:
+#   1. Run tests/integration/mcp/crow/ -m "integration and mcp" first
+#   2. If tests fail on attribute access, update the access pattern
+#   3. Consider switching to FastMCP's public list_tools()/call_tool()
+#      API if it stabilizes (preferred long-term)
+```
+
+If FastMCP's public `list_tools()` / `call_tool(name, args)` API stabilizes before the pin bump, replace the private-API access with the public API in Task 11. Public API is the long-term direction; the pin is the short-term safety net.
+
 - [ ] **Step 2: Implement `register_all` in `tools/__init__.py`**
 
 ```python
@@ -1962,23 +1984,31 @@ def register_all(server: StandardServer, settings: CrowSettings) -> None:
 
 Add the missing `register()` function to `file_tools.py` (append):
 
+**Important (Step 2 ↔ Step 3 ordering constraint):** This `register()` function MUST use the dual-target `tool_decorator` pattern shown in Step 3 (lines below) so it works whether the server is a `CrowServer` (uses `server.fastmcp.tool()`) or a plain `StandardServer` (uses `server.tool()`). **Tasks 3–9's `register()` functions MUST follow this same pattern** — Tasks 3–9's existing `@server.tool()` decorators must be retrofitted to use `tool_decorator`. Without this retrofit, `register_all` will crash at runtime when invoked against a `CrowServer`.
+
 ```python
 def register(server, settings: CrowSettings) -> None:
-    @server.tool()
+    # Dual-target decorator — works for both CrowServer (uses server.fastmcp.tool)
+    # and plain StandardServer (uses server.tool). See Step 3 for rationale.
+    tool_decorator = (
+        server.fastmcp.tool if hasattr(server, "fastmcp") else server.tool
+    )
+
+    @tool_decorator()
     async def read(
         file_path: str, offset: int = 0, limit: int | None = None, encoding: str = "utf-8"
     ) -> ReadResult:
         """(HTTP, for pool workers and CLI) — Read file contents with pagination."""
         return await _read(file_path, settings, offset, limit, encoding)
 
-    @server.tool()
+    @tool_decorator()
     async def write(
         file_path: str, content: str, dry_run: bool = False
     ) -> WriteResult:
         """(HTTP, for pool workers and CLI) — Write file atomically, preserving permissions."""
         return await _write(file_path, content, settings, dry_run)
 
-    @server.tool()
+    @tool_decorator()
     async def edit(
         file_path: str, old_string: str, new_string: str,
         replace_all: bool = False, dry_run: bool = False

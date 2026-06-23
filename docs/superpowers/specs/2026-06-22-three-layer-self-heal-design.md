@@ -290,10 +290,15 @@ async def run_with_l2(
                 trail=[vars(a) for a in trail],
             )
 
-        # Ground truth on the wire: re-run the real operation.
+        # Ground truth on the wire: run the real operation exactly once.
+        # (C4 fix: previously this code called `await operation(input)` twice on
+        # success — once to capture exit code, then again to return its result.
+        # Side-effecting operations (git push) must NOT execute twice. Capture
+        # the result on the same call.)
         wire_exit = -1
+        result = None
         try:
-            await operation(input)
+            result = await operation(input)
             wire_exit = 0
         except Exception as exc:
             wire_exit = getattr(exc, "returncode", 1)
@@ -319,7 +324,7 @@ async def run_with_l2(
                     "duration_ms": duration_ms,
                 },
             )
-            return await operation(input)  # type: ignore[return-value]
+            return result  # type: ignore[return-value]
 
         HEAL_ATTEMPTS_TOTAL.labels(operation=operation_name, outcome="wire_failure").inc()
         logger.warning(

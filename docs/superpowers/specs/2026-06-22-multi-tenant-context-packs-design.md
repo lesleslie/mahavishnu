@@ -1,10 +1,10 @@
 # Multi-Tenant Context Packs v1.0 — Design
 
-**Status:** Draft (brainstormed 2026-06-22)
+**Status:** **DEFERRED** — blocked on Dhara HTTP API surface for `/tenants/<tenant_id>/context-versions` (NOT blocked on in-process SQL `execute()` / `query()`; uses HTTP CRUD instead).
 **Phase:** 3 (Adjacent)
 **Source:** `Rebuilt Hermes / MAOS` Part 3 — "The Identity Layer — Multi-Client Without Multiple Installs." Per-client context bundles (voice, ICP, positioning, visual-identity) loaded at runtime and injected into agent prompts.
 
-**Pivot from spec #9 original framing:** Original was about "multi-client" in a single-org sense. Reframed as multi-tenant MCP deployment: each tenant (operator/customer) of a shared Bodai MCP server gets its own context bundle.
+**Pivot from earlier draft of this spec:** Original was about "multi-client" in a single-org sense. Reframed as multi-tenant MCP deployment: each tenant (operator/customer) of a shared Bodai MCP server gets its own context bundle.
 
 ---
 

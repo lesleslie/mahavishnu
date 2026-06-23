@@ -101,12 +101,19 @@ async def _lifespan(server: StandardServer) -> AsyncGenerator[None, None]:
 
 
 def create_crow_server(settings: CrowSettings) -> StandardServer:
+    """Construct the CrowServer, registering lifespan via FastMCP constructor.
+
+    Note (v2 fix #4): StandardServer / FastMCP owns the lifespan context — the
+    `set_lifespan()` method does not exist on StandardServer. We pass the
+    `_lifespan` async context manager to the StandardServer constructor's
+    `lifespan` parameter so FastMCP wraps and runs it correctly.
+    """
     server = StandardServer(
         name="bodai-crow",
         description="Bodai-native file, web, and terminal tools over HTTP MCP",
         settings=settings,
+        lifespan=_lifespan,
     )
-    server.set_lifespan(_lifespan)
     tools.register_all(server, settings)
     return server
 ```
@@ -472,14 +479,46 @@ import ipaddress, socket
 from urllib.parse import urlparse
 
 _PRIVATE_NETS = [
+    # RFC 1918 — private IPv4
     ipaddress.ip_network("10.0.0.0/8"),
     ipaddress.ip_network("172.16.0.0/12"),
     ipaddress.ip_network("192.168.0.0/16"),
+    # Loopback
     ipaddress.ip_network("127.0.0.0/8"),
-    ipaddress.ip_network("169.254.0.0/16"),   # link-local / cloud metadata
+    # Link-local / cloud metadata (AWS 169.254.169.254 etc.)
+    ipaddress.ip_network("169.254.0.0/16"),
+    # Carrier-grade NAT (RFC 6598)
+    ipaddress.ip_network("100.64.0.0/10"),
+    # Reserved / "this network"
+    ipaddress.ip_network("0.0.0.0/8"),
+    # Multicast
+    ipaddress.ip_network("224.0.0.0/4"),
+    # Reserved (future use)
+    ipaddress.ip_network("240.0.0.0/4"),
+    # IPv6 loopback
     ipaddress.ip_network("::1/128"),
+    # IPv6 unspecified
+    ipaddress.ip_network("::/128"),
+    # IPv6 unique-local
     ipaddress.ip_network("fc00::/7"),
+    # IPv6 link-local
+    ipaddress.ip_network("fe80::/10"),
+    # IPv4-mapped IPv6 (::ffff:0:0/96) — covert IPv4-in-IPv6 bypass
+    ipaddress.ip_network("::ffff:0:0/96"),
 ]
+
+def _is_blocked(ip: ipaddress.IPv4Address | ipaddress.IPv6Address) -> bool:
+    """Coerce IPv4-mapped IPv6 addresses to plain IPv4 before containment check.
+
+    v2 fix #1: an attacker could submit an IPv6 literal that wraps an IPv4
+    private address (e.g. `::ffff:127.0.0.1`). Containment check against
+    IPv6-only `ip_network` objects would miss this. Coercion is the canonical
+    defense per RFC 4291 §2.5.5.2.
+    """
+    if isinstance(ip, ipaddress.IPv6Address) and ip.ipv4_mapped is not None:
+        ip = ip.ipv4_mapped
+    return any(ip in net for net in _PRIVATE_NETS)
+
 
 def _validate_url(url: str) -> None:
     parsed = urlparse(url)
@@ -492,7 +531,7 @@ def _validate_url(url: str) -> None:
         raise ValueError(f"DNS resolution failed for {hostname!r}: {e}")
     for _, _, _, _, sockaddr in addrs:
         ip = ipaddress.ip_address(sockaddr[0])
-        if any(ip in net for net in _PRIVATE_NETS):
+        if _is_blocked(ip):
             raise PermissionError(
                 f"URL resolves to private/reserved address {ip} — blocked (SSRF)"
             )

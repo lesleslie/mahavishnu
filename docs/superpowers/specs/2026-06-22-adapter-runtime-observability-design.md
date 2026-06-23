@@ -1,6 +1,6 @@
 # Adapter Runtime Observability v1.0 — Design
 
-**Status:** Draft (brainstormed 2026-06-22)
+**Status:** **DEFERRED** — blocked on Dhara HTTP API surface for `/adapters/<id>/active-settings-version`, `/adapters/<id>/lifecycle-events`, `/adapters/<id>/metrics` (NOT blocked on the in-process SQL `execute()` / `query()` surface; uses HTTP CRUD instead). Reused by Spec #10 (live-observe) for the same Dhara HTTP API + partial-unique-index + append-only-history pattern.
 **Phase:** 3 (Adjacent)
 **Pivot:** This spec supersedes the original `cross-machine-session-continuity` design. The git-as-state-store pattern was solving the wrong problem (Claude Code transcript sync) for the wrong deployment model (stateful multi-machine). The actual need is operational telemetry for adapters deployed on stateless serverless infrastructure.
 
@@ -19,7 +19,7 @@ This spec defines the **operational telemetry substrate** for adapters deployed 
 
 **Cloud Run / serverless constraint:** MCP server instances are stateless and ephemeral. Every read goes to Dhara over HTTP; every write goes to Dhara over HTTP; the local process holds no state.
 
-**Akkosha consumes** the metrics stream for anomaly detection. Session-Buddy is not involved (these aren't human-memory events).
+**Akosha consumes** the metrics stream for anomaly detection. Session-Buddy is not involved (these aren't human-memory events).
 
 ---
 
@@ -73,7 +73,7 @@ Operator forensic query (rare, on-demand):
   GET Dhara /adapters/<id>/history?time_from=...&time_to=...
     → {settings_versions, lifecycle_events, performance_metrics, joined}
 
-Akkosha consumer (continuous):
+Akosha consumer (continuous):
   Subscribes to metrics table; flags anomalies (latency drift, error-rate spikes).
 ```
 
@@ -330,7 +330,7 @@ async def query_adapter_history(
 
 **Dhara tables** — append-only. Settings versions form an immutable history; deactivation is a new row, not a mutation.
 
-**MCP tools** for query. Operators use `query_adapter_history` for forensics. Akkosha consumes metrics for anomaly detection.
+**MCP tools** for query. Operators use `query_adapter_history` for forensics. Akosha consumes metrics for anomaly detection.
 
 **No local state.** Cloud Run instances are stateless; all state lives in Dhara.
 
