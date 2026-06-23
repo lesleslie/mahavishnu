@@ -448,7 +448,7 @@ async def test_run_with_l2_succeeds_on_first_attempt():
     )
     assert result == "ok"
     assert turn_calls == [1]
-    assert op_calls == [1, 1]  # first attempt + final verification re-run
+    assert op_calls == [1]  # operation called once for wire-truth verification; result returned
 
 
 @pytest.mark.asyncio
@@ -685,8 +685,9 @@ async def run_with_l2(
             )
 
         wire_exit = -1
+        operation_result: Any = None
         try:
-            await operation(input)
+            operation_result = await operation(input)
             wire_exit = 0
         except Exception as exc:
             wire_exit = getattr(exc, "returncode", 1)
@@ -714,7 +715,7 @@ async def run_with_l2(
                     "duration_ms": duration_ms,
                 },
             )
-            return await operation(input)
+            return operation_result
 
         heal_l2_attempts_total.labels(
             operation=operation_name, outcome="wire_failure"
@@ -1023,8 +1024,14 @@ def _red_line_check_push(action: str) -> None:
 async def _claude_turn_for_push(
     input: tuple[str, str], ctx: dict, attempt: int
 ) -> tuple[str, int]:
-    """Stub for L2's constrained Claude session. Production: real prompt."""
-    raise RuntimeError("L2 claude_turn not implemented; wire L2 in production")
+    """v1.0 stub for L2's constrained Claude session.
+
+    Production replaces this with a real Claude session that uses
+    prompt augmentation + Spec #1's publisher pipeline. v1.0 ships
+    a no-op action with confidence 100; the wire-truth path still runs,
+    so L2 success/failure detection works end-to-end without Claude.
+    """
+    return ("noop_recovery", 100)
 
 
 async def push_with_heal(repo_path: str, branch: str) -> None:
