@@ -15,22 +15,34 @@ from mahavishnu.messaging.repository_messenger import (
 from mahavishnu.messaging.repository_messenger import (
     MessageType as RepositoryMessageType,
 )
-from messaging.types import MessagePriority, MessageType, Priority, ProjectMessage
+from messaging.types import MessageStatus, MessageType, Priority, ProjectMessage
 
 
 def test_messaging_types_module_exports_shared_enums() -> None:
-    """The compatibility package should expose the expected shared enums."""
+    """The shared messaging.types module should expose Priority and MessageType."""
     assert Priority.NORMAL.value == "normal"
-    assert MessagePriority.NORMAL.value == "normal"
+    # Cross-module value consistency: the local repository MessagePriority and
+    # the shared messaging.types.Priority must agree on value strings.
+    assert RepositoryMessagePriority.NORMAL.value == Priority.NORMAL.value
     assert MessageType.REQUEST.value == "request"
 
 
-def test_project_message_defaults_are_usable() -> None:
+def test_project_message_constructible() -> None:
     """ProjectMessage should be constructible with the fields the integration uses."""
-    message = ProjectMessage(project_id="session_buddy", message={"type": "code_context"})
+    message = ProjectMessage(
+        id="msg-1",
+        from_project="session_buddy",
+        to_project="crackerjack",
+        timestamp="2025-01-24T10:30:00Z",
+        subject="test",
+        priority=Priority.NORMAL,
+        status=MessageStatus.UNREAD,
+        content_type=MessageType.NOTIFICATION,
+        content_message="test content",
+    )
 
-    assert message.project_id == "session_buddy"
-    assert message.message == {"type": "code_context"}
+    assert message.from_project == "session_buddy"
+    assert message.content_message == "test content"
     assert message.priority == Priority.NORMAL
 
 
@@ -44,5 +56,10 @@ def test_repository_messaging_helpers_accept_case_insensitive_values() -> None:
 
 
 def test_session_buddy_helpers_accept_case_insensitive_values() -> None:
-    """Session-Buddy messaging helpers should normalize enum values defensively."""
-    assert coerce_session_priority("NORMAL").value == MessagePriority.NORMAL.value
+    """Session-Buddy messaging helpers should normalize enum values defensively.
+
+    The session-buddy helper returns mahavishnu.messaging.MessagePriority
+    (re-exported from repository_messenger), not messaging.types.Priority --
+    so we assert against the local type.
+    """
+    assert coerce_session_priority("NORMAL") == RepositoryMessagePriority.NORMAL
