@@ -1005,6 +1005,11 @@ add_index_commands(app)
 # Add scaffold CLI
 app.add_typer(scaffold_app, name="scaffold")
 
+# Repo diff / PR create (Plan 3 Tier 1)
+from .repo_cli import repo_app
+
+app.add_typer(repo_app, name="repo")
+
 # Worker management
 workers_app = typer.Typer(help="Worker orchestration and management")
 app.add_typer(workers_app, name="workers")
