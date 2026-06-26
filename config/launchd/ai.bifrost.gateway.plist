@@ -8,7 +8,8 @@
 
     <key>ProgramArguments</key>
     <array>
-        <string>/Users/les/Projects/mahavishnu/scripts/bifrost-gateway.zsh</string>
+        <string>/Users/les/Projects/mahavishnu/.venv/bin/python3</string>
+        <string>/Users/les/Projects/mahavishnu/scripts/bifrost-gateway.py</string>
     </array>
 
     <key>WorkingDirectory</key>
@@ -30,8 +31,6 @@
         <string>/Users/les/.config/bifrost</string>
         <key>BIFROST_READY_FILE</key>
         <string>/Users/les/.local/state/mcp/ready/bifrost.ready</string>
-        <key>BIFROST_SECRETS_FILE</key>
-        <string>/Users/les/.config/opencode/shell-secrets.zsh</string>
     </dict>
 
     <key>RunAtLoad</key>

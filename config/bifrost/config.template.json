@@ -114,9 +114,9 @@
       "config": {
         "cache_by_model": true,
         "cache_by_provider": true,
-        "cleanup_on_shutdown": false,
+        "cleanup_on_shutdown": true,
         "dimension": 1,
-        "ttl": "5m"
+        "ttl": "30m"
       },
       "enabled": true,
       "name": "semantic_cache"
@@ -168,11 +168,37 @@
       "network_config": {
         "base_url": "https://api.openai.com"
       }
+    },
+    "anthropic": {
+      "custom_provider_config": {
+        "allowed_requests": {
+          "messages": true
+        },
+        "base_provider_type": "anthropic",
+        "request_path_overrides": {
+          "messages": "/anthropic/v1/messages"
+        }
+      },
+      "keys": [
+        {
+          "models": [
+            "MiniMax-M3",
+            "MiniMax-M2.7",
+            "MiniMax-M2.7-highspeed"
+          ],
+          "name": "minimax-anthropic-primary",
+          "value": "env.MINIMAX_API_KEY",
+          "weight": 1.0
+        }
+      ],
+      "network_config": {
+        "base_url": "https://api.minimax.io"
+      }
     }
   },
   "vector_store": {
     "config": {
-      "addr": "localhost:6380"
+      "addr": "localhost:6379"
     },
     "enabled": true,
     "type": "redis"

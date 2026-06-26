@@ -21,7 +21,7 @@
         <key>REDIS_STACK_HOST</key>
         <string>127.0.0.1</string>
         <key>REDIS_STACK_PORT</key>
-        <string>6380</string>
+        <string>6379</string>
         <key>REDIS_STACK_STATE_DIR</key>
         <string>/Users/les/.local/state/redis-stack-bifrost</string>
         <key>REDIS_STACK_CONFIG_DIR</key>

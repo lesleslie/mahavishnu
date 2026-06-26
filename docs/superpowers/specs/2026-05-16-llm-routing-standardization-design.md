@@ -264,7 +264,7 @@ LLMProviderChain.complete()
 LLMResponse(content, provider, model, usage, latency_ms)
 ```
 
-**Bifrost overlay** (Phase 2, optional): When `BIFROST_BASE_URL` is set, Tier 1 requests route through Bifrost at `http://127.0.0.1:8471`. The `x-bf-task` header carries the `TaskCategory` value. Bifrost adds semantic caching (5m TTL, Redis Stack port 6380 — ensure cached prompts/responses contain no secrets as cache keys) and load-aware routing. Bifrost does **not** override the model variant chosen by task_router. Tiers 2 and 3 bypass Bifrost.
+**Bifrost overlay** (Phase 2, optional): When `BIFROST_BASE_URL` is set, Tier 1 requests route through Bifrost at `http://127.0.0.1:8471`. The `x-bf-task` header carries the `TaskCategory` value. Bifrost adds semantic caching (5m TTL, Redis Stack on the conventional `6379` port — ensure cached prompts/responses contain no secrets as cache keys) and load-aware routing. Bifrost does **not** override the model variant chosen by task_router. Tiers 2 and 3 bypass Bifrost.
 
 ______________________________________________________________________
 
@@ -397,7 +397,7 @@ When ready to activate:
 1. Re-enable image route rule (already drafted, currently disabled)
 1. Restore LaunchAgent via `docs/bifrost-reactivation-runbook.md`
 1. Set `BIFROST_BASE_URL=http://127.0.0.1:8471` in local environment
-1. Verify Redis Stack (port 6380) TTL enforcement and confirm no secrets are used as cache keys
+1. Verify Redis Stack (port 6379) TTL enforcement and confirm no secrets are used as cache keys
 
 ______________________________________________________________________
 

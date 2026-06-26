@@ -5,7 +5,7 @@ set -euo pipefail
 export PATH="/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin:${PATH:-}"
 
 : "${REDIS_STACK_HOST:=127.0.0.1}"
-: "${REDIS_STACK_PORT:=6380}"
+: "${REDIS_STACK_PORT:=6379}"
 : "${REDIS_STACK_STATE_DIR:=${HOME}/.local/state/redis-stack-bifrost}"
 : "${REDIS_STACK_CONFIG_DIR:=${HOME}/.config/redis-stack-bifrost}"
 : "${REDIS_STACK_READY_FILE:=${HOME}/.local/state/mcp/ready/redis-stack-bifrost.ready}"

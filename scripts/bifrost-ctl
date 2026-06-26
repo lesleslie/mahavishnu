@@ -23,9 +23,10 @@ LOG_OUT="${HOME}/.local/state/mcp/logs/bifrost.log"
 LOG_ERR="${HOME}/.local/state/mcp/logs/bifrost.err"
 READY_FILE="${HOME}/.local/state/mcp/ready/bifrost.ready"
 GUI_DOMAIN="gui/$(id -u)"
+TOGGLE_HELPER="${SCRIPT_DIR}/bifrost-toggle-claude-url"
 
 usage() {
-    print "Usage: bifrost-ctl {install|sync-config|start|stop|restart|rebootstrap|status|tail}"
+    print "Usage: bifrost-ctl {install|sync-config|start|stop|restart|rebootstrap|status|tail|foreground}"
 }
 
 install_plist() {
@@ -74,6 +75,47 @@ print_ready_state() {
     fi
 }
 
+wait_for_ready_file() {
+    local timeout="${1:-60}"
+    local i
+    for i in $(seq 1 "${timeout}"); do
+        if [[ -f "${READY_FILE}" ]]; then
+            return 0
+        fi
+        sleep 1
+    done
+    return 1
+}
+
+toggle_claude_url() {
+    local action="$1"
+    if [[ ! -x "${TOGGLE_HELPER}" ]]; then
+        print "warning: toggle helper not found at ${TOGGLE_HELPER}; skipping"
+        return 0
+    fi
+    python3 "${TOGGLE_HELPER}" "${action}" || true
+}
+
+foreground_run() {
+    # Run the gateway wrapper directly in this shell. Used when the
+    # LaunchAgent-managed start path cannot bind the native binary
+    # (e.g., macOS Gatekeeper rejecting an unsigned cross-compiled Go
+    # binary). Press Ctrl-C to stop; the trap restores Claude's URL.
+    kill_listener
+    trap 'toggle_claude_url direct; rm -f "${READY_FILE}"' EXIT INT TERM
+    local py="${PROJECT_ROOT}/.venv/bin/python3"
+    [[ -x "$py" ]] || py="python3"
+    "$py" "${SCRIPT_DIR}/bifrost-gateway.py" &
+    local wrapper_pid=$!
+    if wait_for_ready_file 60; then
+        toggle_claude_url bifrost
+    else
+        print "warning: ${READY_FILE} not seen within 60s; leaving Claude URL untouched"
+    fi
+    wait "${wrapper_pid}"
+    return $?
+}
+
 case "${1:-}" in
     install)
         install_plist
@@ -90,8 +132,14 @@ case "${1:-}" in
         sleep 1
         bootstrap
         launchctl kickstart -k "${GUI_DOMAIN}/${LABEL}"
+        if wait_for_ready_file 60; then
+            toggle_claude_url bifrost
+        else
+            print "warning: ${READY_FILE} not seen within 60s; leaving Claude URL untouched"
+        fi
         ;;
     stop)
+        toggle_claude_url direct
         bootout
         kill_listener
         rm -f "${READY_FILE}"
@@ -103,6 +151,11 @@ case "${1:-}" in
         sleep 1
         bootstrap
         launchctl kickstart -k "${GUI_DOMAIN}/${LABEL}"
+        if wait_for_ready_file 60; then
+            toggle_claude_url bifrost
+        else
+            print "warning: ${READY_FILE} not seen within 60s; leaving Claude URL untouched"
+        fi
         ;;
     rebootstrap)
         install_plist
@@ -112,6 +165,11 @@ case "${1:-}" in
         sleep 1
         bootstrap
         launchctl kickstart -k "${GUI_DOMAIN}/${LABEL}"
+        if wait_for_ready_file 60; then
+            toggle_claude_url bifrost
+        else
+            print "warning: ${READY_FILE} not seen within 60s; leaving Claude URL untouched"
+        fi
         ;;
     status)
         if launchctl print "${GUI_DOMAIN}/${LABEL}" >/tmp/bifrost-status.$$ 2>/dev/null; then
@@ -123,9 +181,13 @@ case "${1:-}" in
         fi
         lsof -nP -iTCP:"${PORT}" -sTCP:LISTEN || true
         print_ready_state
+        toggle_claude_url status
         ;;
     tail)
         tail -F "${LOG_OUT}" "${LOG_ERR}"
+        ;;
+    foreground)
+        foreground_run
         ;;
     *)
         usage

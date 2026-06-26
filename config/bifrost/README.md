@@ -2,13 +2,24 @@
 
 This directory contains the bootstrap artifacts for the local Bifrost gateway.
 
-Current status:
+Current status (as of 2026-06-26):
 
-- bootstrap artifacts are preserved in-repo
+- **Bifrost is paused indefinitely.** The upstream `@maximhq/bifrost` npm
+  package ships a native Go binary with Mach-O metadata
+  (`LC_VERSION_MIN_MACOSX sdk 10.4`, no `LC_BUILD_VERSION`) that modern
+  macOS strict-validators and Gatekeeper reject. Re-downloading newer
+  package versions does not help — the npm `bin.js` hardcodes the same
+  `v1.6.0/bin/bifrost-http-0` path regardless of the package version.
+  The fix must come from the upstream build pipeline.
+- bootstrap artifacts are preserved in-repo for future reactivation
+- LaunchAgents (`ai.bifrost.gateway`, `ai.bifrost.redis-stack`) were
+  booted out on 2026-06-26; their `.plist` files remain in
+  `~/Library/LaunchAgents/` for future reactivation
 - live client cutover is paused
-- installed LaunchAgent copies were removed from `~/Library/LaunchAgents` on 2026-04-09
-- Bifrost is not on the critical path right now
-- subscription-backed tools are routed directly to their native providers again
+- subscription-backed tools are routed directly to their native providers
+- Claude Code is on `https://api.minimax.io/anthropic` (direct)
+- Mahavishnu workers do not reference Bifrost in code (full revert
+  already happened; nothing left to flip)
 
 ## Files
 
@@ -27,7 +38,7 @@ The template is intentionally conservative:
 
 - OpenAI provider configured for Codex/OpenAI Responses clients
 - OpenAI-compatible MiniMax provider configured for chat/completions traffic
-- dedicated Redis Stack cache backend configured on `127.0.0.1:6380`
+- dedicated Redis Stack cache backend configured on `127.0.0.1:6379`
 - semantic cache plugin enabled in direct-only mode
 
 This means:
@@ -118,7 +129,7 @@ Notes:
 As of 2026-04-08:
 
 - the LaunchAgent starts Bifrost on `127.0.0.1:8471`
-- the Redis Stack LaunchAgent starts a dedicated cache backend on `127.0.0.1:6380`
+- the Redis Stack LaunchAgent starts a dedicated cache backend on `127.0.0.1:6379`
 - OpenAI-compatible requests reach the MiniMax provider through `http://127.0.0.1:8471/v1/chat/completions`
 - `/v1/models` now advertises `openai/gpt-5.3-codex`, `openai/gpt-5.4`, and `openai/gpt-5.4-mini`
 - `/v1/responses` is reachable through Bifrost and fails with upstream `429 insufficient_quota` when the OpenAI account has no quota
@@ -134,7 +145,7 @@ As of 2026-04-08:
 - `x-bf-task: background` routes to the cheaper background model
 - `x-bf-task: cheap` routes to the cheaper background model
 - the OpenAI MiniMax custom provider still does not support `list_models`, so Bifrost falls back to static datasheets for `minimax-openai/*`
-- plain Homebrew Redis 8.6.2 on `6379` still lacks RediSearch `FT.*`, so Bifrost cache uses the dedicated Redis Stack instance on `6380`
+- plain Homebrew Redis 8.6.2 lacks RediSearch `FT.*`; Redis Stack now binds the conventional `6379` port so it can serve as the default cache backend for any Redis-compatible client (Oneiric, ad-hoc `redis-cli`, etc.)
 - Bifrost now reports `semantic_cache - active`
 - repeated requests with `x-bf-cache-type: direct` and a fixed `x-bf-cache-key` return the same message id on the second request and complete much faster, confirming direct cache hits
 - the launch wrapper now prefers the cached Bifrost `bin.js` under `~/.npm/_npx` and falls back to `npx` only when the cache is missing
@@ -196,7 +207,26 @@ Use [`scripts/redis-stack-ctl`](../../scripts/redis-stack-ctl) for the dedicated
 - `scripts/redis-stack-ctl restart`
 - `scripts/redis-stack-ctl status`
 
-Operational note:
+### Claude Code URL toggle
+
+`start`, `restart`, `rebootstrap`, and `stop` invoke
+[`scripts/bifrost-toggle-claude-url`](../../scripts/bifrost-toggle-claude-url)
+so Claude Code's `ANTHROPIC_BASE_URL` in `~/.claude/settings.json` follows
+Bifrost's lifecycle automatically:
+
+- `start`/`restart`/`rebootstrap`: flip Claude onto
+  `http://127.0.0.1:8471/anthropic` after the gateway writes its ready file.
+- `stop`: restore the prior URL *first*, then tear down the gateway.
+- `status`: report which URL Claude is currently configured with.
+
+The toggle is idempotent and never overwrites a URL it did not set itself.
+The prior URL is saved to `~/.config/bifrost/claude-url-backup.txt` while
+Bifrost is up and removed on stop.
+
+**Important:** Claude Code reads `~/.claude/settings.json` once per session.
+Restart Claude Code after toggling for the change to take effect.
+
+### Operational notes
 
 - after repeated rapid restarts, launchd may report `spawn scheduled` before the job becomes healthy again
 - in that state, wait roughly one `ThrottleInterval` window before assuming startup failed
@@ -204,3 +234,7 @@ Operational note:
 - `scripts/bifrost-ctl` now force-kills any orphan listener on `127.0.0.1:8471` before restart/rebootstrap so stale child processes do not hold the port open
 - when validating the OpenAI provider, distinguish protocol failures from account-state failures:
   `429 insufficient_quota` from `/v1/responses` means the gateway path is working and the backing OpenAI account needs billing/quota attention
+- if the launchd job fails to start with `spawnSync .../bifrost-http-0 EACCES`, the npm package's native binary landed without an execute bit.
+  Run `chmod +x ~/Library/Caches/bifrost/<version>/bin/bifrost-http-0` for the affected version, then re-run `scripts/bifrost-ctl start`.
+- if the launchd job still fails to start after the chmod (with `Unknown system error -88` from `spawnSync`), macOS Gatekeeper is rejecting the unsigned native binary.
+  Run `codesign --force --sign - ~/Library/Caches/bifrost/<version>/bin/bifrost-http-0` to ad-hoc sign it, then re-run `scripts/bifrost-ctl start`. See `docs/bifrost-reactivation-runbook.md` for details.
