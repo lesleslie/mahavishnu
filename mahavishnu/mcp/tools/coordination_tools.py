@@ -7,7 +7,7 @@ Exposes coordination functionality via FastMCP for AI agent access.
 from datetime import datetime
 from typing import Any
 
-from fastmcp import FastMCP
+from mcp_common.fastmcp import FastMCP
 
 from mahavishnu.core.coordination.manager import CoordinationManager
 from mahavishnu.core.coordination.models import (

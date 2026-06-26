@@ -162,7 +162,7 @@ async def collect_mcp_tool_inventory() -> list[str]:
 
 async def collect_health_tool_inventory() -> list[str]:
     """Collect the tool inventory from the health-tool registration helper."""
-    from fastmcp import FastMCP
+    from mcp_common.fastmcp import FastMCP
 
     from ..mcp.tools.health_tools import register_health_tools
 

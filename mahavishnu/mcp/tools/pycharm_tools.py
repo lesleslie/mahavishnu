@@ -17,7 +17,7 @@ import subprocess
 from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
-    from fastmcp import FastMCP
+    from mcp_common.fastmcp import FastMCP
 
 logger = logging.getLogger(__name__)
 

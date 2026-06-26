@@ -16,7 +16,7 @@ from dataclasses import dataclass, field
 from typing import Any
 from unittest.mock import AsyncMock, MagicMock, patch
 
-from fastmcp import FastMCP
+from mcp_common.fastmcp import FastMCP
 import pytest
 
 from mahavishnu.core.errors import ErrorCode, GoalParsingError, GoalTeamError

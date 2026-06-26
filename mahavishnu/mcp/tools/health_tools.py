@@ -47,7 +47,7 @@ from mahavishnu.core.health import (
 from monitoring.metrics import expose_metrics, get_metrics_registry
 
 if TYPE_CHECKING:
-    from fastmcp import FastMCP
+    from mcp_common.fastmcp import FastMCP
 
 
 def register_health_tools(mcp: FastMCP, app: Any = None) -> None:

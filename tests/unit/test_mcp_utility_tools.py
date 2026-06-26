@@ -5,7 +5,7 @@ from __future__ import annotations
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, patch
 
-from fastmcp import FastMCP
+from mcp_common.fastmcp import FastMCP
 import pytest
 
 from mahavishnu.core.health import HealthStatus

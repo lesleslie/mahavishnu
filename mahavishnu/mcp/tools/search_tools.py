@@ -19,7 +19,7 @@ from mahavishnu.core.database import get_database
 from mahavishnu.core.search import HybridSearchConfig, HybridSearchEngine
 
 if TYPE_CHECKING:
-    from fastmcp import FastMCP
+    from mcp_common.fastmcp import FastMCP
 
 logger = logging.getLogger(__name__)
 
