@@ -55,6 +55,7 @@ import asyncio
 from collections.abc import Callable
 from contextlib import asynccontextmanager
 from datetime import datetime
+import importlib
 import inspect
 import logging
 from pathlib import Path
@@ -921,14 +922,15 @@ class PrefectAdapter(OrchestratorAdapter):
 
     async def create_deployment(
         self,
-        flow_name: str,
-        deployment_name: str,
+        flow_name: str | None = None,
+        deployment_name: str | None = None,
         schedule: ScheduleConfig | None = None,
         parameters: dict[str, Any] | None = None,
         work_pool_name: str | None = None,
         tags: list[str] | None = None,
         description: str | None = None,
         version: str | None = None,
+        flow_path: str | None = None,
     ) -> DeploymentResponse:
         """Create a new Prefect deployment.
 
@@ -936,37 +938,77 @@ class PrefectAdapter(OrchestratorAdapter):
         parameters, and work pool assignment. Deployments can be triggered
         manually or automatically via schedules.
 
+        Two registration paths are supported:
+
+        - ``flow_name`` (legacy): resolve an already-registered flow by
+          name via the Prefect API. Used by the existing
+          ``clone_refactor_workflow`` path.
+        - ``flow_path`` (Plan 5 Phase A.0.3): import a Python module by
+          dotted path (``"pkg.module:func_name"``), locate the
+          ``@mahavishnu_workflow``-decorated function, register it via
+          the in-process ``FlowRegistry``, then create the deployment
+          under the resolved flow name. Used by the future
+          ``mahavishnu workflow publish`` CLI (Phase C.2).
+
+        Exactly one of ``flow_name`` or ``flow_path`` MUST be provided.
+
         Args:
-            flow_name: Name of the flow to deploy
-            deployment_name: Unique name for this deployment
-            schedule: Optional schedule configuration (CronSchedule, IntervalSchedule, RRuleSchedule)
-            parameters: Default parameters for flow runs from this deployment
-            work_pool_name: Name of the work pool for execution (default from config)
-            tags: List of tags for organization and filtering
-            description: Human-readable description of the deployment
-            version: Version string for the deployment
+            flow_name: Name of the flow to deploy (existing path).
+            deployment_name: Unique name for this deployment.
+            schedule: Optional schedule configuration.
+            parameters: Default parameters for flow runs.
+            work_pool_name: Name of the work pool for execution.
+            tags: List of tags for organization.
+            description: Human-readable description of the deployment.
+            version: Version string for the deployment.
+            flow_path: Dotted path ``"pkg.module:func_name"`` of a
+                ``@mahavishnu_workflow``-decorated function. Phase A.0.3.
 
         Returns:
-            DeploymentResponse with created deployment details
+            DeploymentResponse with created deployment details.
 
         Raises:
-            PrefectError: If deployment creation fails
+            PrefectError: If deployment creation fails, neither
+                ``flow_name`` nor ``flow_path`` is provided, or the
+                ``flow_path`` module/attribute cannot be resolved.
 
         Example:
             ```python
-            from mahavishnu.engines.prefect_schedules import CronSchedule
-
+            # Existing path (flow_name)
             deployment = await adapter.create_deployment(
                 flow_name="my-etl-flow",
                 deployment_name="production-daily",
-                schedule=CronSchedule(cron="0 9 * * *"),  # Daily at 9 AM
-                parameters={"environment": "production"},
-                work_pool_name="kubernetes-pool",
-                tags=["etl", "production"],
             )
-            print(f"Created deployment: {deployment.id}")
+
+            # New path (flow_path) — Plan 5 Phase A.0.3
+            deployment = await adapter.create_deployment(
+                flow_path="mahavishnu.workflows.clone_refactor_workflow:run",
+                deployment_name="distilled-01J...",
+            )
             ```
         """
+        if not flow_name and not flow_path:
+            raise PrefectError(
+                message="create_deployment: either 'flow_name' or 'flow_path' is required",
+                error_code=ErrorCode.PREFECT_API_ERROR,
+                details={"operation": "create_deployment"},
+            )
+        if not deployment_name:
+            raise PrefectError(
+                message="create_deployment: 'deployment_name' is required",
+                error_code=ErrorCode.PREFECT_API_ERROR,
+                details={"operation": "create_deployment"},
+            )
+
+        # Plan 5 Phase A.0.3: resolve flow_path to flow_name before the
+        # legacy path runs.
+        resolved_tags: list[str] | None = tags
+        if flow_path:
+            flow_name, resolved_tags = self._resolve_flow_path(flow_path, tags)
+            # If the caller also passed tags, merge them (caller's tags win).
+            if tags:
+                resolved_tags = list(dict.fromkeys([*tags, *resolved_tags]))
+
         if not self._initialized:
             await self.initialize()
 
@@ -980,7 +1022,7 @@ class PrefectAdapter(OrchestratorAdapter):
                     "flow_id": flow.id,
                     "name": deployment_name,
                     "parameters": parameters or {},
-                    "tags": tags or [],
+                    "tags": resolved_tags or [],
                 }
 
                 # Add optional fields
@@ -1004,6 +1046,7 @@ class PrefectAdapter(OrchestratorAdapter):
                         "deployment_id": str(deployment.id),
                         "deployment_name": deployment_name,
                         "flow_name": flow_name,
+                        "via": "flow_path" if flow_path else "flow_name",
                     },
                 )
 
@@ -1024,6 +1067,103 @@ class PrefectAdapter(OrchestratorAdapter):
                 },
             )
             raise error from exc
+
+    def _resolve_flow_path(
+        self, flow_path: str, supplied_tags: list[str] | None
+    ) -> tuple[str, list[str]]:
+        """Import ``flow_path`` (``"pkg.module:func"``) and register it.
+
+        Returns:
+            Tuple of ``(resolved_flow_name, spec_tags)`` so the caller can
+            pass them through to the legacy ``read_flow_by_name`` path.
+
+        Raises:
+            PrefectError: If the path is malformed, the module won't
+                import, or the attribute isn't decorated with
+                ``@mahavishnu_workflow``.
+        """
+        if ":" not in flow_path:
+            raise PrefectError(
+                message=(
+                    f"create_deployment: flow_path {flow_path!r} must be of the form "
+                    f"'pkg.module:func_name' (missing ':' separator)"
+                ),
+                error_code=ErrorCode.PREFECT_API_ERROR,
+                details={"flow_path": flow_path, "operation": "create_deployment"},
+            )
+        module_dotted, _, attr_name = flow_path.partition(":")
+        if not module_dotted or not attr_name:
+            raise PrefectError(
+                message=(
+                    f"create_deployment: flow_path {flow_path!r} must be of the form "
+                    f"'pkg.module:func_name' (empty module or attribute name)"
+                ),
+                error_code=ErrorCode.PREFECT_API_ERROR,
+                details={"flow_path": flow_path, "operation": "create_deployment"},
+            )
+
+        try:
+            module = importlib.import_module(module_dotted)
+        except ImportError as exc:
+            raise PrefectError(
+                message=(
+                    f"create_deployment: cannot import module {module_dotted!r} "
+                    f"from flow_path {flow_path!r}: {exc}"
+                ),
+                error_code=ErrorCode.PREFECT_API_ERROR,
+                details={
+                    "flow_path": flow_path,
+                    "module": module_dotted,
+                    "import_error": str(exc),
+                    "operation": "create_deployment",
+                },
+            ) from exc
+
+        func = getattr(module, attr_name, None)
+        if func is None:
+            raise PrefectError(
+                message=(
+                    f"create_deployment: flow_path {flow_path!r} resolved to module "
+                    f"{module_dotted!r} but attribute {attr_name!r} does not exist"
+                ),
+                error_code=ErrorCode.PREFECT_API_ERROR,
+                details={
+                    "flow_path": flow_path,
+                    "module": module_dotted,
+                    "attr": attr_name,
+                    "operation": "create_deployment",
+                },
+            )
+
+        spec = getattr(func, "__mahavishnu_workflow_spec__", None)
+        if spec is None:
+            raise PrefectError(
+                message=(
+                    f"create_deployment: attribute {attr_name!r} in module "
+                    f"{module_dotted!r} is not decorated with @mahavishnu_workflow; "
+                    f"missing __mahavishnu_workflow_spec__ attribute"
+                ),
+                error_code=ErrorCode.PREFECT_API_ERROR,
+                details={
+                    "flow_path": flow_path,
+                    "module": module_dotted,
+                    "attr": attr_name,
+                    "operation": "create_deployment",
+                },
+            )
+
+        # The flow name in the Prefect registry is the function's __name__.
+        resolved_flow_name = getattr(func, "__name__", attr_name)
+
+        # Pull tags from the spec; caller-supplied tags are merged later
+        # in create_deployment() so the spec's audit trail stays intact.
+        spec_tags: list[str] = list(getattr(spec, "tags", ()))
+
+        # Register through the same path the existing adapter uses, so the
+        # flow becomes visible to read_flow_by_name() downstream.
+        self.register_flow(func, resolved_flow_name, tags=spec_tags or None)
+
+        return resolved_flow_name, spec_tags
 
     async def update_deployment(
         self,
