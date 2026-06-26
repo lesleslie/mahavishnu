@@ -446,6 +446,20 @@ class TerminalManager:
             adapter = MockTerminalAdapter()
             return cls(adapter, terminal_config)
 
+        # crow adapter (requires MCP client pointing at Bodai crow HTTP server)
+        if preference == "crow":
+            if mcp_client is None:
+                raise ConfigurationError(
+                    message="crow adapter requires mcp_client pointing at the "
+                    "Bodai crow HTTP server",
+                    details={"adapter_preference": "crow"},
+                )
+            from .adapters.crow import CrowTerminalAdapter
+
+            adapter = CrowTerminalAdapter(mcp_client)  # type: ignore[assignment]
+            logger.info("Using crow terminal adapter")
+            return cls(adapter, terminal_config)
+
         # mcpretentious (requires MCP client)
         if preference == "mcpretentious" and mcp_client is not None:
             try:
