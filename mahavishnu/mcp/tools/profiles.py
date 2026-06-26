@@ -48,6 +48,7 @@ STANDARD_REGISTRATIONS: list[str] = MINIMAL_REGISTRATIONS + [
     "_register_git_analytics_tools",
     "_register_session_buddy_tools",
     "_register_openhands_tools",
+    "_register_primitive_tools",
 ]
 
 FULL_REGISTRATIONS: list[str] = STANDARD_REGISTRATIONS + [
