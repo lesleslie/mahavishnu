@@ -225,6 +225,65 @@ async def delete_file(
     return DeleteResult(deleted=True, path=str(path))
 
 
+def _tool_decorator(server):
+    return server.fastmcp.tool if hasattr(server, "fastmcp") else server.tool
+
+
+def register(server, settings: CrowSettings) -> None:
+    """Register the five file tools on ``server``."""
+    deco = _tool_decorator(server)
+
+    @deco()
+    async def read_file(
+        file_path: str,
+        offset: int = 0,
+        limit: int | None = None,
+        encoding: str = "utf-8",
+    ) -> ReadResult:
+        """(HTTP, for pool workers and CLI) - Read file with pagination."""
+        return await _read_impl(file_path, settings, offset, limit, encoding)
+
+    @deco()
+    async def write_file(
+        file_path: str, content: str, dry_run: bool = False
+    ) -> WriteResult:
+        """(HTTP, for pool workers and CLI) - Atomic write preserving mode."""
+        return await _write_impl(file_path, content, settings, dry_run)
+
+    @deco()
+    async def list_directory(
+        path: str,
+        include_hidden: bool = False,
+        max_entries: int | None = None,
+    ) -> ListDirectoryResult:
+        """(HTTP, for pool workers and CLI) - List directory contents."""
+        return await _list_directory_impl(
+            path, settings, include_hidden, max_entries
+        )
+
+    @deco()
+    async def stat(file_path: str) -> StatResult:
+        """(HTTP, for pool workers and CLI) - File metadata."""
+        return await _stat_impl(file_path, settings)
+
+    @deco()
+    async def delete_file(
+        file_path: str, recursive: bool = False
+    ) -> DeleteResult:
+        """(HTTP, for pool workers and CLI) - Delete file or directory."""
+        return await _delete_file_impl(file_path, settings, recursive)
+
+
+# Underscore-prefixed aliases used by register() above. They mirror the
+# public functions; the public names are the canonical exports for
+# direct (non-MCP) callers.
+_read_impl = read_file
+_write_impl = write_file
+_list_directory_impl = list_directory
+_stat_impl = stat
+_delete_file_impl = delete_file
+
+
 __all__ = [
     "read_file",
     "write_file",
@@ -236,4 +295,5 @@ __all__ = [
     "ListDirectoryResult",
     "StatResult",
     "DeleteResult",
+    "register",
 ]

@@ -173,4 +173,40 @@ async def rg_search(
     )
 
 
-__all__ = ["rg_search", "RgMatch", "RgResult", "Format"]
+def _tool_decorator(server):
+    return server.fastmcp.tool if hasattr(server, "fastmcp") else server.tool
+
+
+def register(server, settings: CrowSettings) -> None:
+    """Register the rg_search tool on ``server``."""
+    deco = _tool_decorator(server)
+
+    @deco()
+    async def rg_search(
+        pattern: str,
+        path: str = ".",
+        include: str | None = None,
+        format: str = "content",
+        max_matches: int | None = None,
+        case_sensitive: bool = True,
+        fixed_string: bool = False,
+        line_numbers: bool = True,
+    ) -> RgResult:
+        """(HTTP, for pool workers and CLI) - ripgrep-backed search."""
+        return await _rg_search_impl(
+            pattern,
+            settings,
+            path,
+            include,
+            format,
+            max_matches,
+            case_sensitive,
+            fixed_string,
+            line_numbers,
+        )
+
+
+_rg_search_impl = rg_search
+
+
+__all__ = ["rg_search", "RgMatch", "RgResult", "Format", "register"]
