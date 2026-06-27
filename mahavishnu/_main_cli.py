@@ -24,6 +24,9 @@ from .cli.index_cli import add_index_commands
 # Import scaffold CLI
 from .cli.scaffold_cli import app as scaffold_app
 
+# Import SOP evolution CLI (Spec #7)
+from .cli.sop_cli import add_sop_commands
+
 # Import team CLI
 from .cli.team_cli import add_team_commands
 
@@ -1004,6 +1007,9 @@ add_index_commands(app)
 
 # Add scaffold CLI
 app.add_typer(scaffold_app, name="scaffold")
+
+# Add SOP evolution CLI (Spec #7)
+add_sop_commands(app)
 
 # Worker management
 workers_app = typer.Typer(help="Worker orchestration and management")
