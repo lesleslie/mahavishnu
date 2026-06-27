@@ -1745,6 +1745,72 @@ class IntegrationConfig(BaseModel):
     model_config = {"extra": "forbid"}
 
 
+class DistillSettings(BaseModel):
+    """Distilled Workflows pipeline configuration (Plan 5).
+
+    Plan 5 audit H4 introduced a source provenance gate that runs
+    before the synthesizer. The gate requires a configured
+    MAHAVISHNU_PUBLISHER_ALLOWLIST so the distiller can reject
+    sessions whose originating run record is either external or
+    unattributed. Without this configuration the distiller falls
+    back to bootstrap mode (warn + audit; allow any reviewer
+    identity on a trusted-source record).
+
+    Attributes:
+        publisher_allowlist: Path to a newline-delimited allowlist
+            file, OR an inline comma-separated list. Read at distiller
+            invocation time. None triggers bootstrap mode.
+        evidence_threshold: Minimum tool-call count to admit a
+            candidate session.
+        require_reviewer: When True (default), a session without a
+            reviewer identity is rejected regardless of bootstrap mode.
+            Production deployments should leave this on.
+
+    Example YAML (settings/mahavishnu.yaml):
+
+        distill:
+            publisher_allowlist: settings/distill_publishers.txt
+            evidence_threshold: 3
+            require_reviewer: true
+
+    Example Environment Variables:
+
+        MAHAVISHNU_DISTILL__PUBLISHER_ALLOWLIST=/etc/mahavishnu/publishers.txt
+        MAHAVISHNU_DISTILL__EVIDENCE_THRESHOLD=5
+        MAHAVISHNU_DISTILL__REQUIRE_REVIEWER=true
+
+    The ``MAHAVISHNU_PUBLISHER_ALLOWLIST`` environment variable is
+    also accepted directly (read by ``ReviewerIdentity.from_env`` in
+    ``mahavishnu.distill.reviewer``). When both are configured the
+    env var wins; the YAML entry is a convenience for ops.
+    """
+
+    publisher_allowlist: str | None = Field(
+        default=None,
+        description=(
+            "Path to a newline-delimited allowlist file, OR an inline "
+            "comma-separated list. None triggers bootstrap mode (any "
+            "reviewer identity on a trusted-source record is accepted, "
+            "with a WARNING + audit log entry)."
+        ),
+    )
+    evidence_threshold: int = Field(
+        default=3,
+        ge=1,
+        description="Minimum tool-call count to admit a candidate session.",
+    )
+    require_reviewer: bool = Field(
+        default=True,
+        description=(
+            "When True (default), a session without a reviewer identity "
+            "is rejected regardless of bootstrap mode. Production "
+            "deployments should leave this on."
+        ),
+    )
+
+    model_config = {"extra": "forbid"}
+
+
 class MahavishnuSettings(BaseSettings):
     """Mahavishnu configuration extending MCPServerSettings.
 
@@ -1911,6 +1977,16 @@ class MahavishnuSettings(BaseSettings):
     resilience: ResilienceConfig = Field(
         default_factory=ResilienceConfig,
         description="Resilience configuration",
+    )
+
+    # Distilled Workflows (Plan 5)
+    distill: DistillSettings = Field(
+        default_factory=DistillSettings,
+        description=(
+            "Distilled Workflows pipeline configuration (Plan 5). "
+            "Controls the H4 source provenance gate (publisher "
+            "allowlist) and the H6 reviewer identity gate."
+        ),
     )
 
     # Observability
