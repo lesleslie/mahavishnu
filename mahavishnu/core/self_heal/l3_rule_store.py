@@ -15,11 +15,18 @@ Rule ID contract: ``extract_rule`` returns deterministic IDs derived
 from ``(operation, error_type, scrubbed_message)`` so duplicate failures
 dedupe naturally. Callers may override by passing an explicit
 ``rule_id`` on the ``RuleRecord`` constructor.
+
+Security note: ``extract_rule`` defensively scrubs credential-shaped
+patterns from exception messages before persisting them or feeding
+them into the deterministic ``rule_id`` hash. This is a best-effort
+safety net; callers should still pass already-sanitised context. See
+``_scrub_message`` for the recognised patterns.
 """
 
 from __future__ import annotations
 
 import hashlib
+import re
 import time
 from dataclasses import dataclass, field
 from typing import Any
@@ -41,6 +48,36 @@ _SENSITIVE_CONTEXT_KEYS: frozenset[str] = frozenset(
         "set_cookie",
     }
 )
+
+# Upper bound on the persisted message length. Defends against
+# log-bombing via pathological exceptions and bounds memory/storage cost.
+_MAX_MESSAGE_LENGTH: int = 1024
+
+# Credential-shaped patterns we redact from free-form exception messages.
+# Each pattern replaces the matched value with ``[REDACTED]``. Patterns
+# are intentionally case-insensitive and overlap-friendly; ordering does
+# not matter because each match is replaced individually.
+_CREDENTIAL_PATTERNS: tuple[re.Pattern[str], ...] = (
+    # GitHub tokens: ghp_, gho_, ghs_, ghu_, ghr_ followed by 36+ alnum chars
+    re.compile(r"\bgh[pousr]_[A-Za-z0-9]{20,}\b", re.IGNORECASE),
+    # GitLab personal access tokens
+    re.compile(r"\bglpat-[A-Za-z0-9_\-]{16,}\b", re.IGNORECASE),
+    # AWS access key IDs and STS session tokens
+    re.compile(r"\b(?:AKIA|ASIA)[A-Z0-9]{12,}\b"),
+    # JWT-shaped header.payload.signature triples
+    re.compile(r"\beyJ[A-Za-z0-9_\-]+\.[A-Za-z0-9_\-]+\.[A-Za-z0-9_\-]+\b"),
+    # Bearer tokens (consume the value but leave the literal "Bearer " marker)
+    re.compile(r"(?i)\bBearer\s+[A-Za-z0-9._\-]{8,}"),
+    # Generic key=value credentials: token=, api_key=, password=, secret=
+    re.compile(
+        r"(?i)\b(?:token|api_key|apikey|access_token|refresh_token|password|passwd|secret)\s*=\s*"
+        r"[^\s,;'\"&<>]{4,}"
+    ),
+    # basic-auth user:password@ in URLs
+    re.compile(r"(?i)\b[a-z][a-z0-9+.\-]*://[^\s/:@]+:[^\s@]+@"),
+)
+
+_REDACTED = "[REDACTED]"
 
 
 @dataclass(frozen=True)
@@ -89,19 +126,27 @@ def extract_rule(
         operation: stable operation name (e.g. ``"git_push"``).
         exception: the underlying failure. ``type(exception).__name__``
             becomes ``error_type``; ``str(exception)`` becomes ``message``.
+            The message is scrubbed defensively before persistence and
+            before being mixed into the ``rule_id`` hash so credential
+            leaks in exception text cannot reach the audit log.
         context: optional structured context. Sensitive keys (tokens,
-            passwords) are scrubbed defensively before persistence.
+            passwords) are scrubbed defensively before persistence,
+            including nested dict/list values whose key matches the
+            sensitive set.
         created_at: optional timestamp (seconds). Defaults to
             ``time.time()``; explicit override exists so tests are
             deterministic.
 
     Returns:
         A ``RuleRecord`` whose ``rule_id`` is a stable hash of
-        ``(operation, error_type, message)``. Duplicate failures dedupe.
+        ``(operation, error_type, scrubbed_message)``. Duplicate
+        failures dedupe.
     """
     scrubbed = _scrub_context(context or {})
     error_type = type(exception).__name__
-    message = str(exception)
+    raw_message = str(exception)
+    message = _scrub_message(raw_message)
+    message = _cap_message(message)
     rule_id = _compute_rule_id(operation, error_type, message)
     return RuleRecord(
         rule_id=rule_id,
@@ -144,8 +189,56 @@ def apply_rule(store: RuleStore, operation: str) -> RuleRecord | None:
 
 
 def _scrub_context(context: dict[str, Any]) -> dict[str, Any]:
-    """Drop sensitive keys; preserve everything else verbatim."""
-    return {k: v for k, v in context.items() if k.lower() not in _SENSITIVE_CONTEXT_KEYS}
+    """Drop sensitive keys at every nesting level.
+
+    Walks the structure recursively. At each mapping, keys whose
+    lower-cased form is in ``_SENSITIVE_CONTEXT_KEYS`` are replaced with
+    ``[REDACTED]`` (so the structure survives for debugging while the
+    value never reaches storage). For lists/tuples each element is
+    walked in turn.
+    """
+    return _scrub_value(context)
+
+
+def _scrub_value(value: Any) -> Any:
+    """Recursively scrub sensitive keys from mappings / sequences."""
+    if isinstance(value, dict):
+        scrubbed: dict[str, Any] = {}
+        for k, v in value.items():
+            if isinstance(k, str) and k.lower() in _SENSITIVE_CONTEXT_KEYS:
+                scrubbed[k] = _REDACTED
+            else:
+                scrubbed[k] = _scrub_value(v)
+        return scrubbed
+    if isinstance(value, (list, tuple)):
+        return [_scrub_value(item) for item in value]
+    return value
+
+
+def _scrub_message(message: str) -> str:
+    """Redact credential-shaped patterns from a free-form string.
+
+    Best-effort safety net. Recognises:
+
+    - GitHub tokens (ghp_, gho_, ghs_, ghu_, ghr_)
+    - GitLab personal access tokens (glpat-...)
+    - AWS access key IDs (AKIA / ASIA prefixes)
+    - JWT-shaped ``header.payload.signature`` triples
+    - ``Bearer <token>``
+    - ``key=value`` for token / api_key / password / secret
+    - basic-auth ``user:password@host`` in URLs
+    """
+    scrubbed = message
+    for pattern in _CREDENTIAL_PATTERNS:
+        scrubbed = pattern.sub(_REDACTED, scrubbed)
+    return scrubbed
+
+
+def _cap_message(message: str) -> str:
+    """Bound the persisted message length to defend against log-bombing."""
+    if len(message) <= _MAX_MESSAGE_LENGTH:
+        return message
+    return message[: _MAX_MESSAGE_LENGTH - 3] + "..."
 
 
 def _compute_rule_id(operation: str, error_type: str, message: str) -> str:

@@ -211,10 +211,16 @@ class TestExtractRule:
                 "password": "hunter2",
             },
         )
-        # Sensitive keys are scrubbed from the persisted context.
-        assert "authorization" not in rule.context
-        assert "password" not in rule.context
+        # Sensitive keys are scrubbed from the persisted context: the
+        # raw value is replaced with ``[REDACTED]`` so reviewers can
+        # still see the key was present (helpful for debugging) while
+        # the secret never reaches storage.
+        assert rule.context["authorization"] == "[REDACTED]"
+        assert rule.context["password"] == "[REDACTED]"
         assert rule.context["url"] == "https://api.example.com/v1"
+        # The original secrets never appear anywhere in the rule.
+        assert "SECRET-TOKEN-VALUE" not in str(rule.context)
+        assert "hunter2" not in str(rule.context)
 
     def test_rule_id_is_deterministic_for_same_failure(self) -> None:
         a = extract_rule(
@@ -228,6 +234,83 @@ class TestExtractRule:
             context={"branch": "main"},
         )
         assert a.rule_id == b.rule_id
+
+    def test_extract_rule_scrubs_credentials_from_message(self) -> None:
+        """Credentials embedded in an exception message must never be
+        persisted in the rule's ``message`` or in the deterministic
+        ``rule_id`` hash (audit H-H4)."""
+        secret = "ghp_secret1234567890abcdef"
+        bad_exc = RuntimeError(f"Auth failed: token={secret}")
+        rule = extract_rule("git_push", bad_exc)
+        assert secret not in rule.message
+        assert secret not in rule.rule_id
+
+    def test_extract_rule_scrubs_various_credential_patterns(self) -> None:
+        """All known credential patterns are redacted from the message."""
+        cases = [
+            ("github PAT", RuntimeError("token=ghp_abcdef0123456789abcdef0123456789ABCD")),
+            ("github oauth", RuntimeError("got gho_abcdef0123456789abcdef0123456789ABCD")),
+            ("github server", RuntimeError("got ghs_abcdef0123456789abcdef0123456789ABCD")),
+            ("github user", RuntimeError("got ghu_abcdef0123456789abcdef0123456789ABCD")),
+            ("github refresh", RuntimeError("got ghr_abcdef0123456789abcdef0123456789ABCD")),
+            ("gitlab", RuntimeError("header glpat-AbCdEfGhIjKlMnOpQrSt")),
+            ("aws access key", RuntimeError("using AKIAIOSFODNN7EXAMPLE")),
+            ("aws session", RuntimeError("using ASIAIOSFODNN7EXAMPLE")),
+            ("bearer", RuntimeError("Authorization: Bearer abcdefghijklmnopqrstuvwxyz")),
+            ("jwt-like", RuntimeError("eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJ1c2VyIn0.signature")),
+            ("password kv", RuntimeError("password=hunter2-secret")),
+            ("api_key kv", RuntimeError("api_key=AKIAABCDEFGHIJKLMNOP")),
+            ("token kv", RuntimeError("token=verysecrettokenvalue")),
+            ("secret kv", RuntimeError("secret=topsecretvalue123")),
+            ("basic auth", RuntimeError("https://alice:hunter2@example.com/repo.git")),
+        ]
+        for label, exc in cases:
+            rule = extract_rule("git_push", exc)
+            assert "ghp_" not in rule.message, f"{label}: github PAT leaked"
+            assert "gho_" not in rule.message, f"{label}: github oauth leaked"
+            assert "ghs_" not in rule.message, f"{label}: github server leaked"
+            assert "ghu_" not in rule.message, f"{label}: github user leaked"
+            assert "ghr_" not in rule.message, f"{label}: github refresh leaked"
+            assert "glpat-" not in rule.message, f"{label}: gitlab leaked"
+            assert "AKIA" not in rule.message, f"{label}: aws access leaked"
+            assert "ASIA" not in rule.message, f"{label}: aws session leaked"
+            assert "Bearer abcdef" not in rule.message, f"{label}: bearer leaked"
+            assert "hunter2" not in rule.message, f"{label}: password leaked"
+            assert "alice:" not in rule.message, f"{label}: basic-auth user leaked"
+
+    def test_extract_rule_scrubs_nested_dict_values_for_sensitive_keys(self) -> None:
+        """Sensitive values nested in dict/list context values must also be
+        scrubbed (not just top-level keys)."""
+        rule = extract_rule(
+            operation="http_call",
+            exception=RuntimeError("401"),
+            context={
+                "request": {
+                    "headers": {
+                        "Authorization": "Bearer SECRET-NESTED-TOKEN",
+                        "X-Trace": "trace-id",
+                    },
+                    "body": {"token": "value123", "name": "ok"},
+                },
+                "list_field": [{"password": "nested-pass", "ok": "yes"}],
+            },
+        )
+        # None of the nested sensitive key/value pairs leak.
+        flat = str(rule.context)
+        assert "SECRET-NESTED-TOKEN" not in flat
+        assert "value123" not in flat
+        assert "nested-pass" not in flat
+        # Non-sensitive nested content survives.
+        assert "trace-id" in flat
+        assert "ok" in flat
+
+    def test_extract_rule_caps_message_length(self) -> None:
+        """Excessively long messages are truncated to bound log bloat."""
+        huge = "x" * 5000
+        rule = extract_rule("git_push", RuntimeError(huge))
+        # Capped well below the input length (default cap is 1024 chars).
+        assert len(rule.message) <= 1024
+        assert rule.message.endswith("...") or rule.message == huge[:1024]
 
 
 class TestRuleStore:
