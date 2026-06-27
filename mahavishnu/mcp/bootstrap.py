@@ -216,6 +216,15 @@ async def _register_optional_tools(server: FastMCPServer, methods_set: set[str])
         except ImportError as exc:
             logger.warning("PyCharm tools not available: %s", exc)
 
+    if "_register_primitive_tools" in methods_set:
+        try:
+            from ..mcp.tools.primitive_tools import register_primitive_tools
+
+            register_primitive_tools(server.server)
+            logger.info("Registered 2 primitive introspection tools (list_primitives, show_primitive) with MCP server")
+        except ImportError as exc:
+            logger.warning("Primitive tools not available: %s", exc)
+
     if "_register_openhands_tools" in methods_set:
         try:
             from ..mcp.tools.openhands_tools import mcp as openhands_mcp
