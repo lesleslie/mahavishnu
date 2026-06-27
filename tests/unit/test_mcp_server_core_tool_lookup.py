@@ -11,22 +11,8 @@ tools, so a regression to the private poke fails fast.
 from __future__ import annotations
 
 from pathlib import Path
-import sys
 
 import pytest
-
-
-def _ensure_source_mcp_common_on_path() -> None:
-    """Force the source-tree copy of mcp-common onto sys.path."""
-    src = Path("/Users/les/Projects/mcp-common")
-    if not src.is_dir():
-        return
-    src_str = str(src)
-    if sys.path[0] != src_str:
-        sys.path.insert(0, src_str)
-    for name in list(sys.modules):
-        if name == "mcp_common" or name.startswith("mcp_common."):
-            del sys.modules[name]
 
 
 def test_server_core_does_not_poke_private_tool_manager() -> None:
@@ -37,7 +23,6 @@ def test_server_core_does_not_poke_private_tool_manager() -> None:
     ``await server.get_tools()`` API; a regression to the private poke
     breaks against FastMCP 3.x and must fail loudly.
     """
-    _ensure_source_mcp_common_on_path()
     server_core_path = (
         Path(__file__).resolve().parents[2]
         / "mahavishnu"
@@ -76,7 +61,6 @@ async def test_discover_tools_returns_registered_tools() -> None:
     ``await server.list_tools()``. If the private ``_tool_manager`` poke
     regresses, this test catches the silent-empty-set failure.
     """
-    _ensure_source_mcp_common_on_path()
     from mcp_common.fastmcp import FastMCP
 
     server = FastMCP(name="test-discover-tools")

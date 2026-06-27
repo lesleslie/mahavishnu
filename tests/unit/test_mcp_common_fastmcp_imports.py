@@ -25,21 +25,6 @@ import pytest
 PROD_ROOT = Path(__file__).resolve().parents[2] / "mahavishnu"
 
 
-def _ensure_source_mcp_common_on_path() -> None:
-    """Force the source-tree copy of mcp-common to win over any stale
-    site-packages copy so newly-added submodules like ``mcp_common.fastmcp``
-    are importable from xdist worker subprocesses."""
-    src = Path("/Users/les/Projects/mcp-common")
-    if not src.is_dir():
-        return
-    src_str = str(src)
-    if sys.path[0] != src_str:
-        sys.path.insert(0, src_str)
-    for name in list(sys.modules):
-        if name == "mcp_common" or name.startswith("mcp_common."):
-            del sys.modules[name]
-
-
 def _python_files(root: Path) -> list[Path]:
     """Yield every .py file under root, excluding __pycache__."""
     return sorted(p for p in root.rglob("*.py") if "__pycache__" not in p.parts)
@@ -91,7 +76,6 @@ def test_tool_modules_import_cleanly(module_name: str) -> None:
     catches lazy-import regressions like ``from fastmcp import FastMCP``
     inside a function body.
     """
-    _ensure_source_mcp_common_on_path()
     if module_name in sys.modules:
         # Idempotent: don't re-import; just confirm it's loadable.
         assert sys.modules[module_name] is not None
