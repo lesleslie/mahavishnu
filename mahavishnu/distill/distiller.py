@@ -3,11 +3,14 @@ from __future__ import annotations
 
 import json
 import logging
-from typing import Any, Protocol
+from typing import TYPE_CHECKING, Any, Protocol
 
 from ulid import ULID
 
-from mahavishnu.distill.reviewer import ReviewerIdentity
+from mahavishnu.distill.provenance import check_source_purity
+
+if TYPE_CHECKING:
+    from mahavishnu.distill.reviewer import ReviewerIdentity
 
 logger = logging.getLogger(__name__)
 
@@ -67,6 +70,40 @@ def _find_candidate_sessions(
 
     columns = ["session_id", "tool_call_count", "successful_workflow_runs", "project"]
     return [dict(zip(columns, row, strict=False)) for row in rows]
+
+
+def _find_session_run_record(conn: _ConnLike, session_id: str) -> dict[str, Any]:
+    """Return the originating run record for ``session_id``.
+
+    Plan 5 audit H4 needs to know whether the run came from a trusted
+    Mahavishnu workflow execution (and who the reviewer is) before the
+    session's evidence is fed to the synthesizer. This pulls the row
+    from ``mahavishnu_workflow_runs`` keyed on session_id — the schema
+    already records source_type and reviewer_id.
+    """
+    rows = conn.execute(
+        """
+        SELECT
+            workflow_id AS run_id,
+            session_id AS session_id,
+            source_type AS source_type,
+            reviewer_id AS reviewer_id
+        FROM mahavishnu_workflow_runs
+        WHERE session_id = ?
+        ORDER BY started_at DESC
+        LIMIT 1
+        """,
+        [session_id],
+    ).fetchall()
+    if not rows:
+        return {
+            "run_id": None,
+            "session_id": session_id,
+            "source_type": None,
+            "reviewer_id": None,
+        }
+    columns = ["run_id", "session_id", "source_type", "reviewer_id"]
+    return dict(zip(columns, rows[0], strict=False))
 
 
 def _synthesize_candidate(conn: _ConnLike, session_id: str) -> dict[str, Any]:
@@ -134,15 +171,29 @@ def distill_workflows(
     evidence_threshold: int = DEFAULT_EVIDENCE_THRESHOLD,
     model: str = HEURISTIC_MODEL,
     reviewer: ReviewerIdentity | None = None,
+    reviewer_allowlist: frozenset[str] | None = None,
 ) -> list[str]:
     """Run a single distillation pass.
 
-    Pre-distill gate (Plan 5 audit H6): when a ``reviewer`` is supplied
-    we enforce the trust root BEFORE any SQL runs. If the gate is
-    omitted the call still works — ``reviewer=None`` is the v0 default
-    for back-compat with the test suite — but production callers MUST
-    pass a real :class:`ReviewerIdentity` (typically via
-    ``ReviewerIdentity.from_env()``).
+    Two layered gates run BEFORE any synthesis:
+
+    1. **Reviewer identity gate (Plan 5 audit H6)** — when ``reviewer``
+       is supplied we enforce the trust root. If the gate is omitted
+       the call still works — ``reviewer=None`` is the v0 default for
+       back-compat with the test suite — but production callers MUST
+       pass a real :class:`ReviewerIdentity` (typically via
+       ``ReviewerIdentity.from_env()``).
+    2. **Source provenance gate (Plan 5 audit H4)** — for each candidate
+       session we look up the originating run record and reject it
+       unless ``check_source_purity`` clears it. ``reviewer_allowlist``
+       is forwarded to the gate; ``None`` enables bootstrap mode (any
+       reviewer identity is accepted for trusted-source records).
+
+    The provenance gate's verdict is logged at WARNING level for any
+    rejected record so operators have forensic visibility. A failure of
+    the provenance gate does NOT abort the pass — it skips just that
+    candidate. This matches the per-candidate isolation contract the
+    synthesizer relies on (Phase B.2).
     """
     if reviewer is not None:
         decision = reviewer.enforce()
@@ -158,6 +209,35 @@ def distill_workflows(
 
     for cand in candidates:
         session_id = cand["session_id"]
+
+        # H4 source provenance gate — runs per candidate.
+        try:
+            run_record = _find_session_run_record(conn, session_id)
+        except Exception as exc:
+            logger.warning(
+                "distill_workflows: H4 provenance lookup failed; skipping",
+                extra={"session_id": session_id, "error": str(exc)},
+            )
+            continue
+
+        provenance = check_source_purity(
+            run_record,
+            allowlist=reviewer_allowlist,
+        )
+        if not provenance.allowed:
+            logger.warning(
+                "distill_workflows: H4 provenance gate rejected candidate",
+                extra={
+                    "session_id": session_id,
+                    "purity": provenance.purity.value,
+                    "reason": provenance.reason,
+                    "reviewer_id": provenance.reviewer_id,
+                    "source_type": provenance.source_type,
+                    "audit": True,
+                },
+            )
+            continue
+
         try:
             payload = _synthesize_candidate(conn, session_id)
         except Exception as exc:
