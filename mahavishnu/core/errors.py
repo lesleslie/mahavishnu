@@ -125,6 +125,9 @@ class ErrorCode(StrEnum):
     LEARNING_STATE_ERROR = "MHV-481"
     LEARNING_ADAPTATION_ERROR = "MHV-482"
 
+    # Distill reviewer trust root (480-489 reserved for Learning System)
+    REVIEWER_NOT_TRUSTED = "MHV-483"
+
 
 class MahavishnuError(Exception):
     """
@@ -994,6 +997,32 @@ class LearningSystemError(MahavishnuError):
         details: dict | None = None,
     ) -> None:
         super().__init__(message, error_code, details=details)
+
+
+class ReviewerNotTrusted(MahavishnuError):
+    """Reviewer identity from shell env has no trust root.
+
+    Plan 5 audit finding H6. Raised when MAHAVISHNU_USER_ID is not in the
+    configured MAHAVISHNU_PUBLISHER_ALLOWLIST, when neither env var is
+    set, or when only a CLI flag was supplied (env wins).
+    """
+
+    def __init__(
+        self,
+        message: str,
+        *,
+        reviewer_id: str | None = None,
+        details: dict | None = None,
+    ) -> None:
+        details = dict(details or {})
+        if reviewer_id is not None:
+            details.setdefault("reviewer_id", reviewer_id)
+        super().__init__(
+            message,
+            ErrorCode.REVIEWER_NOT_TRUSTED,
+            details=details,
+        )
+        self.reviewer_id = reviewer_id
 
 
 class ContextNotInitializedError(MahavishnuError):

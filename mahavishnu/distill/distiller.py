@@ -7,6 +7,8 @@ from typing import Any, Protocol
 
 from ulid import ULID
 
+from mahavishnu.distill.reviewer import ReviewerIdentity
+
 logger = logging.getLogger(__name__)
 
 
@@ -131,7 +133,21 @@ def distill_workflows(
     *,
     evidence_threshold: int = DEFAULT_EVIDENCE_THRESHOLD,
     model: str = HEURISTIC_MODEL,
+    reviewer: ReviewerIdentity | None = None,
 ) -> list[str]:
+    """Run a single distillation pass.
+
+    Pre-distill gate (Plan 5 audit H6): when a ``reviewer`` is supplied
+    we enforce the trust root BEFORE any SQL runs. If the gate is
+    omitted the call still works — ``reviewer=None`` is the v0 default
+    for back-compat with the test suite — but production callers MUST
+    pass a real :class:`ReviewerIdentity` (typically via
+    ``ReviewerIdentity.from_env()``).
+    """
+    if reviewer is not None:
+        decision = reviewer.enforce()
+        reviewer.emit_audit_log(decision)
+
     candidates = _find_candidate_sessions(conn, evidence_threshold=int(evidence_threshold))
     if not candidates:
         return []
