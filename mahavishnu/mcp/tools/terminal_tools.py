@@ -7,7 +7,7 @@ capture output from terminal sessions.
 
 from typing import Annotated, Any
 
-from fastmcp import FastMCP
+from mcp_common.fastmcp import FastMCP
 from pydantic import Field, StringConstraints
 
 from ...terminal.adapters.iterm2 import ITERM2_AVAILABLE, ITerm2Adapter

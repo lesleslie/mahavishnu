@@ -15,7 +15,7 @@ import logging
 import time
 from typing import Any
 
-from fastmcp import FastMCP  # noqa: TC002
+from mcp_common.fastmcp import FastMCP  # noqa: TC002
 
 from mahavishnu.core import team_learning
 from mahavishnu.core.context import (

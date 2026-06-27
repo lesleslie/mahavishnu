@@ -12,7 +12,7 @@ from datetime import datetime
 from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
-from fastmcp import FastMCP
+from mcp_common.fastmcp import FastMCP
 import pytest
 
 from mahavishnu.core.coordination.models import (

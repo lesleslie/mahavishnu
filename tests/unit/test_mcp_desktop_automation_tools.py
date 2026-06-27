@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from unittest.mock import AsyncMock, MagicMock
 
-from fastmcp import FastMCP
+from mcp_common.fastmcp import FastMCP
 import pytest
 
 from mahavishnu.mcp.tools.desktop_automation_tools import (

@@ -4,7 +4,7 @@ import logging
 import os
 from typing import Any
 
-from fastmcp import FastMCP
+from mcp_common.fastmcp import FastMCP
 
 try:
     from mahavishnu.pools.memory_aggregator import MemoryAggregator

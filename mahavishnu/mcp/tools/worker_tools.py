@@ -1,6 +1,6 @@
 """MCP tools for worker orchestration."""
 
-from fastmcp import FastMCP
+from mcp_common.fastmcp import FastMCP
 
 from ...workers.manager import WorkerManager
 

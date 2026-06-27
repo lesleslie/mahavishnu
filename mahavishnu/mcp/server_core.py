@@ -9,7 +9,7 @@ from logging import getLogger
 import time
 from typing import Any
 
-from fastmcp import FastMCP
+from mcp_common.fastmcp import FastMCP
 from mcp_common.server.telemetry import FastMCPOpenTelemetryMiddleware
 
 from monitoring.metrics import (
@@ -1187,15 +1187,11 @@ class FastMCPServer:
             profile = get_active_profile()
 
             # Collect names of currently registered tools from the FastMCP
-            # server's internal tool registry.
+            # server via the public 3.x introspection API. The previous
+            # private-attribute poke (``_tool_manager``, ``_tools``) was
+            # broken by FastMCP 3.x and returned stale data.
             try:
-                registered_names: set[str] = set()
-                # FastMCP >= 3.0 exposes ._tool_manager or similar
-                if hasattr(server, "_tool_manager"):
-                    tm = server._tool_manager
-                    registered_names = {t.name for t in tm.list_tools()}
-                elif hasattr(server, "_tools"):
-                    registered_names = set(server._tools.keys())
+                registered_names = {t.name for t in await server.list_tools()}
             except Exception:
                 registered_names = set()
 
