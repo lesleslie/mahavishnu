@@ -51,6 +51,9 @@ from .production_cli import add_production_commands
 # Import quality evaluation CLI
 from .quality_cli import add_quality_commands
 
+# Import rollback CLI (audit H8: SLOs/rollback for Plan 1 + Plan 5)
+from .cli.rollback_cli import add_rollback_commands
+
 # Import adaptive routing CLI
 from .routing_cli import add_routing_commands
 
@@ -1001,6 +1004,9 @@ add_team_commands(app)
 add_events_commands(app)
 # Add code indexing commands
 add_index_commands(app)
+
+# Add rollback commands (audit H8: bodai-crow + distilled-workflow)
+add_rollback_commands(app)
 
 # Add scaffold CLI
 app.add_typer(scaffold_app, name="scaffold")
