@@ -31,6 +31,7 @@ class ErrorCode(StrEnum):
     - MHV-450 to MHV-479: Agno/Multi-agent errors
     - MHV-460 to MHV-469: Goal-Driven Team errors
     - MHV-480 to MHV-499: Learning System errors
+    - MHV-500 to MHV-509: Precommitment hypothesis lock errors (Spec #2)
 
     Each error code has:
     - A descriptive name
@@ -124,6 +125,9 @@ class ErrorCode(StrEnum):
     LEARNING_FEEDBACK_FAILED = "MHV-480"
     LEARNING_STATE_ERROR = "MHV-481"
     LEARNING_ADAPTATION_ERROR = "MHV-482"
+    # Precommitment hypothesis lock (Spec #2)
+    PRECOMMITMENT_VIOLATION = "MHV-500"
+    PRECOMMITMENT_SIGNATURE_MISMATCH = "MHV-501"
 
     # Distill reviewer trust root (480-489 reserved for Learning System)
     REVIEWER_NOT_TRUSTED = "MHV-483"
@@ -551,6 +555,19 @@ class MahavishnuError(Exception):
             "Check learning data quality",
             "Verify adaptation parameters are valid",
             "Review agent capability constraints",
+        ],
+        # Precommitment hypothesis lock (Spec #2)
+        ErrorCode.PRECOMMITMENT_VIOLATION: [
+            "Iteration claim drifted from the locked hypothesis",
+            "Lock the hypothesis before iteration 0 with 'mahavishnu precommit lock'",
+            "Do not modify the claim field after signing",
+            "See docs/superpowers/specs/2026-06-22-precommitment-hypothesis-lock-design.md",
+        ],
+        ErrorCode.PRECOMMITMENT_SIGNATURE_MISMATCH: [
+            "Stored lock hypothesis has been altered since signing",
+            "Verify the LockStore backend has not been tampered with",
+            "Re-lock the hypothesis with 'mahavishnu precommit lock' if needed",
+            "Investigate the storage layer for unintended writes",
         ],
     }
 
