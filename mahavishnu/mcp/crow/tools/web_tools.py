@@ -220,4 +220,45 @@ async def web_fetch_batch(
     return list(await asyncio.gather(*(fetch_one(u) for u in urls)))
 
 
-__all__ = ["web_fetch", "web_fetch_batch", "WebFetchResult", "BatchItem"]
+def _tool_decorator(server):
+    return server.fastmcp.tool if hasattr(server, "fastmcp") else server.tool
+
+
+def register(server, settings: CrowSettings) -> None:
+    """Register web_fetch and web_fetch_batch on ``server``."""
+    deco = _tool_decorator(server)
+
+    @deco()
+    async def web_fetch(
+        url: str,
+        max_length: int = 5000,
+        start_index: int = 0,
+        raw: bool = False,
+    ) -> WebFetchResult:
+        """(HTTP, for pool workers and CLI) - Fetch URL with SSRF guard."""
+        return await _web_fetch_impl(url, settings, max_length, start_index, raw)
+
+    @deco()
+    async def web_fetch_batch(
+        urls: list[str],
+        max_length: int = 5000,
+        max_concurrent: int = 5,
+        raw: bool = False,
+    ) -> list[BatchItem]:
+        """(HTTP, for pool workers and CLI) - Bounded-concurrent batch fetch."""
+        return await _web_fetch_batch_impl(
+            urls, settings, max_length, max_concurrent, raw
+        )
+
+
+_web_fetch_impl = web_fetch
+_web_fetch_batch_impl = web_fetch_batch
+
+
+__all__ = [
+    "web_fetch",
+    "web_fetch_batch",
+    "WebFetchResult",
+    "BatchItem",
+    "register",
+]

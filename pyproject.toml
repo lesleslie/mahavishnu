@@ -67,6 +67,10 @@ dependencies = [
     "pypdf>=6.12.2",
     "httpx[http2]>=0.28.1",
     "ebooklib>=0.20",
+    # Web extract escalation (Plan 1 Tasks 7-9)
+    "trafilatura~=2.1",
+    "selectolax~=0.3",
+    "rapidfuzz~=3.9",
     # AI integrations
     "pydantic-ai-slim[mcp,openai,anthropic,google,groq]>=1.106.0",
     "llama-cpp-python>=0.3.26",
