@@ -1,4 +1,3 @@
-
 from __future__ import annotations
 
 import json
@@ -7,6 +6,7 @@ from typing import Any, Protocol
 
 from ulid import ULID
 
+from mahavishnu.distill.llm_usage import CostCeilingExceeded, UsageTracker
 from mahavishnu.distill.reviewer import ReviewerIdentity
 
 logger = logging.getLogger(__name__)
@@ -193,9 +193,11 @@ def distill_workflows(
 
 
 __all__ = [
+    "CostCeilingExceeded",
     "DEFAULT_EVIDENCE_THRESHOLD",
     "HEURISTIC_MODEL",
     "IMPORTANCE_FLOOR",
+    "UsageTracker",
     "_importance_from_evidence_workflows",
     "distill_workflows",
 ]
