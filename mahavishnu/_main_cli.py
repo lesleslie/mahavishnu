@@ -24,6 +24,9 @@ from .cli.index_cli import add_index_commands
 # Import scaffold CLI
 from .cli.scaffold_cli import app as scaffold_app
 
+# Import precommitment CLI (Spec #2)
+from .cli.precommit_cli import precommit_app as precommit_app_obj
+
 # Import team CLI
 from .cli.team_cli import add_team_commands
 
@@ -1004,6 +1007,9 @@ add_index_commands(app)
 
 # Add scaffold CLI
 app.add_typer(scaffold_app, name="scaffold")
+
+# Add precommit CLI (Spec #2)
+app.add_typer(precommit_app_obj, name="precommit")
 
 # Worker management
 workers_app = typer.Typer(help="Worker orchestration and management")
