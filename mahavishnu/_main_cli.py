@@ -24,7 +24,6 @@ from .cli.index_cli import add_index_commands
 # Import scaffold CLI
 from .cli.scaffold_cli import app as scaffold_app
 
-<<<<<<< HEAD
 # Import precommitment CLI (Spec #2)
 from .cli.precommit_cli import precommit_app as precommit_app_obj
 
@@ -1018,7 +1017,6 @@ add_rollback_commands(app)
 # Add scaffold CLI
 app.add_typer(scaffold_app, name="scaffold")
 
-<<<<<<< HEAD
 # Repo diff / PR create (Plan 3 Tier 1)
 from .repo_cli import repo_app
 
@@ -1026,10 +1024,9 @@ app.add_typer(repo_app, name="repo")
 
 # Add precommit CLI (Spec #2)
 app.add_typer(precommit_app_obj, name="precommit")
-=======
+
 # Add SOP evolution CLI (Spec #7)
 add_sop_commands(app)
->>>>>>> feat/spec-7-sop-evolution
 
 # Worker management
 workers_app = typer.Typer(help="Worker orchestration and management")
