@@ -70,6 +70,11 @@ __all__ = [
     "SkillRollback",
     "SkillReview",
     "SkillReviewDecision",
+    # Completion report (Spec #1 Phase 1: completion-report-schema-v1)
+    "CompletionReport",
+    "CompletionStatus",
+    "ReportArtifact",
+    "LocalFileCompletionPersister",
 ]
 
 # Mapping of export name -> (relative_module, attribute_name)
@@ -111,6 +116,14 @@ _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
     "SkillRollback": (".skill_governance", "SkillRollback"),
     "SkillReview": (".skill_governance", "SkillReview"),
     "SkillReviewDecision": (".skill_governance", "SkillReviewDecision"),
+    # Completion report (Spec #1 Phase 1: completion-report-schema-v1)
+    "CompletionReport": (".completion_report", "CompletionReport"),
+    "CompletionStatus": (".completion_report", "CompletionStatus"),
+    "ReportArtifact": (".completion_report", "ReportArtifact"),
+    "LocalFileCompletionPersister": (
+        ".completion_persister",
+        "LocalFileCompletionPersister",
+    ),
     # Metrics collector
     "ExecutionTracker": (".metrics_collector", "ExecutionTracker"),
     "get_execution_tracker": (".metrics_collector", "get_execution_tracker"),
