@@ -8,7 +8,7 @@ resolution-markers = [
 
 [[package]]
 name = "agno"
-version = "2.6.19"
+version = "2.6.20"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "docstring-parser" },
@@ -25,9 +25,9 @@ dependencies = [
     { name = "typer" },
     { name = "typing-extensions" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/a5/9f/f48cdef57f01e3f3b5403fdfcb3716af70604b10af320656b6cbeb0da241/agno-2.6.19.tar.gz", hash = "sha256:4d4b26820cb23d719bfc86aafa14e6e5cd0c7088b8401d1b1ca6d39ab1f8bc5e", size = 2201850, upload-time = "2026-06-23T13:54:44.325Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/b7/9c/62228cd9e004a53f148c077806b44fd677ed0f1f81607663eca56196c0f7/agno-2.6.20.tar.gz", hash = "sha256:fac25ff5efcec3cc0d04d50191cd9649568794446bba4a649e1a8b5e2226d35d", size = 2223135, upload-time = "2026-06-26T14:05:28.966Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/07/59/069166a65393b71ea09b967fb0f0ad02095f120fbf878e2580c70a824623/agno-2.6.19-py3-none-any.whl", hash = "sha256:8a8a5a061e692cf9aa275a77f4bf09580b13505a4e04fe7371d238611016ef82", size = 2592310, upload-time = "2026-06-23T13:54:42.003Z" },
+    { url = "https://files.pythonhosted.org/packages/d3/11/6322861b241232d91fa2a459c1e3a2c4ab7b806ad9930794c3d4701035d9/agno-2.6.20-py3-none-any.whl", hash = "sha256:10371a56bc387080c415a548e471aa05924458b654b60aaff0a9035256e49088", size = 2618062, upload-time = "2026-06-26T14:05:26.346Z" },
 ]
 
 [[package]]
@@ -533,7 +533,7 @@ wheels = [
 
 [[package]]
 name = "banks"
-version = "2.4.3"
+version = "2.4.4"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "deprecated" },
@@ -543,9 +543,9 @@ dependencies = [
     { name = "platformdirs" },
     { name = "pydantic" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/04/3a/99a41a17cd3bfafa4cf1e479e678e4a7f4357546b7e2f0ec10be591ce07a/banks-2.4.3.tar.gz", hash = "sha256:07ae40dd08577857830428ba77ead477fe62fbb13e26d567635b880c88f50e81", size = 189081, upload-time = "2026-06-18T14:41:36.416Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/ae/7d/f60364ed2b04310f21a031ff104e0ca221894707fb7b295e0aa56d992259/banks-2.4.4.tar.gz", hash = "sha256:b3628ac72356396693068fdc6ff8bb5fa63290fad65b9544a06f72cf7fab1d99", size = 190133, upload-time = "2026-06-26T14:46:38.642Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/3e/21/01c8b9f30a4502a19b39395668f857f9cda694fdc3b18e8dde41a10a72eb/banks-2.4.3-py3-none-any.whl", hash = "sha256:b79830628db08550d8b9c2d9ad0ffd9437cee1105040dcb8fe0241cc50ac55f4", size = 35283, upload-time = "2026-06-18T14:41:34.999Z" },
+    { url = "https://files.pythonhosted.org/packages/62/3b/93afe96adf058b4dc9d46fcf03dbdee4565c6a84515bc6ff52297b4e670e/banks-2.4.4-py3-none-any.whl", hash = "sha256:643109e26eef65c044c64362e9ff91efbd88f9d8454d61f1633db217ff5c9742", size = 35894, upload-time = "2026-06-26T14:46:39.74Z" },
 ]
 
 [[package]]
@@ -2299,7 +2299,7 @@ wheels = [
 
 [[package]]
 name = "hatchet-sdk"
-version = "1.33.12"
+version = "1.33.13"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "aiohttp" },
@@ -2314,9 +2314,9 @@ dependencies = [
     { name = "typing-inspection" },
     { name = "urllib3" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/a0/39/64ba6479cc7c8fd860fd1c970615b8bdf49543b844244fd27cd5120a49b8/hatchet_sdk-1.33.12.tar.gz", hash = "sha256:d7c8ef5ca81e8cd645c7c7d53fb283e0ca189c460e1f0af6efe5d97f52073519", size = 4600, upload-time = "2026-06-20T22:02:34.489Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/04/49/6d331c23a3d7d95affa6979529027d800efe90bed66ec9978d2f6b41f38a/hatchet_sdk-1.33.13.tar.gz", hash = "sha256:978c474fafb89480323eb9031de5f5e65031a194a42a103e71a5a12a624071e9", size = 4596, upload-time = "2026-06-26T14:52:12.696Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/1c/40/25e78ab225f7ababfb43c62ac0991531c618f1bd7eac3064559b429609b1/hatchet_sdk-1.33.12-py3-none-any.whl", hash = "sha256:0dbfb9812055a15c4ebbc56943093e24762956866c78712b63fc8383947d7df1", size = 631085, upload-time = "2026-06-20T22:02:36.067Z" },
+    { url = "https://files.pythonhosted.org/packages/cb/61/9d49aeaaf3b94ce34a20f7fb1ef2b5bbce673953bc3b784110d869d07927/hatchet_sdk-1.33.13-py3-none-any.whl", hash = "sha256:324aabdf10aeae78c0374ed7a569fbfc468e081476fae057446b679be9d1172f", size = 631343, upload-time = "2026-06-26T14:52:14.304Z" },
 ]
 
 [[package]]
@@ -2592,7 +2592,7 @@ wheels = [
 
 [[package]]
 name = "ipython"
-version = "9.14.1"
+version = "9.15.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "colorama", marker = "sys_platform == 'win32'" },
@@ -2602,14 +2602,14 @@ dependencies = [
     { name = "matplotlib-inline" },
     { name = "pexpect", marker = "sys_platform != 'emscripten' and sys_platform != 'win32'" },
     { name = "prompt-toolkit" },
-    { name = "psutil", marker = "sys_platform != 'emscripten'" },
+    { name = "psutil", marker = "sys_platform != 'cygwin' and sys_platform != 'emscripten'" },
     { name = "pygments" },
     { name = "stack-data" },
     { name = "traitlets" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/e2/23/3a27530575643c8bb7bfc757a28e2e7ef80092afbf59a2bc5716320b6602/ipython-9.14.1.tar.gz", hash = "sha256:f913bf74df06d458e46ced84ca506c23797590d594b236fe60b14df213291e7b", size = 4433457, upload-time = "2026-06-05T08:12:34.921Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/53/59/165d3b4d75cc34add3122c4417ecb229085140ac573103c223cd01dde96f/ipython-9.15.0.tar.gz", hash = "sha256:da2819ce2aa83135257df830660b1176d986c3d2876db24df01974fa955b2756", size = 4442580, upload-time = "2026-06-26T11:03:35.913Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/9d/22/58818a63eaf8982b67632b1bc20585c811611b15a8da19d6012323dc76a5/ipython-9.14.1-py3-none-any.whl", hash = "sha256:5d4a9ecaa3b10e6e5f269dd0948bdb58ca9cb851899cd23e07c320d3eb11613c", size = 627770, upload-time = "2026-06-05T08:12:33.045Z" },
+    { url = "https://files.pythonhosted.org/packages/40/3a/948263ca3b9d65bb2b1b0c521b3a49fad5d59ada58724bd87d2bd5ff3f36/ipython-9.15.0-py3-none-any.whl", hash = "sha256:515ad9c3cdf0c932a5a9f6245419e8aba706b7bd03c3e1d3a1c83d9351d6aa6e", size = 630895, upload-time = "2026-06-26T11:03:33.809Z" },
 ]
 
 [[package]]
@@ -3610,7 +3610,7 @@ wheels = [
 
 [[package]]
 name = "mcp"
-version = "1.28.0"
+version = "1.28.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "anyio" },
@@ -3628,17 +3628,18 @@ dependencies = [
     { name = "typing-inspection" },
     { name = "uvicorn", marker = "sys_platform != 'emscripten'" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/c1/ee/94c6c50ffc5b5cf4737052275d11b57367f32d1a8516e31dcd60591b3916/mcp-1.28.0.tar.gz", hash = "sha256:559d3f9943674cafbe5744c5d3794f3237e8b47f9bbc58e20c0fad680d8487c2", size = 636040, upload-time = "2026-06-16T21:37:17.996Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/6e/77/9450b8f251a13affb6281997d0523c4615f8a8b35d0b21ff30db3a5aac9d/mcp-1.28.1.tar.gz", hash = "sha256:d51e36a5f5644faea4f85ea649bfffa6bc6c26770d42798ad6a3de3d2ba69683", size = 638501, upload-time = "2026-06-26T12:57:29.093Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/2e/e1/4c1dc1fbb688641a712d34650c3d58bbbdcb314ddb75bc5817bbf33515a4/mcp-1.28.0-py3-none-any.whl", hash = "sha256:9c1e7cf3a9125557e418ecd4fed8e9adddce81b0dfdae4d6601d700f5beb71a4", size = 221959, upload-time = "2026-06-16T21:37:16.579Z" },
+    { url = "https://files.pythonhosted.org/packages/e2/5e/d118fce19f87a2e7d8101c35c8ae0ec289098a4df0ff244cec23e415aca0/mcp-1.28.1-py3-none-any.whl", hash = "sha256:2726bca5e7193f61c5dde8b12500a6de2d9acf6d1a1c0be9e8c2e706437991df", size = 222620, upload-time = "2026-06-26T12:57:27.218Z" },
 ]
 
 [[package]]
 name = "mcp-common"
-version = "0.16.4"
-source = { registry = "https://pypi.org/simple" }
+version = "0.17.0"
+source = { editable = "../mcp-common" }
 dependencies = [
     { name = "cryptography" },
+    { name = "fastmcp" },
     { name = "oneiric" },
     { name = "psutil" },
     { name = "pydantic" },
@@ -3648,10 +3649,6 @@ dependencies = [
     { name = "rich" },
     { name = "typer" },
     { name = "websockets" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/52/b6/5853d33beb4d162d4a522c58ace83383ce9f63502606cfa15f68d254e5ca/mcp_common-0.16.4.tar.gz", hash = "sha256:b228467bb245218d790201d8d0513643affc622da1d19a6ee0560d23e1cb55db", size = 883345, upload-time = "2026-06-12T10:52:22.141Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/ab/05/e09ff926d7aed5bb5ec53038e0315034c6608455141c7f3dd529d7363d3f/mcp_common-0.16.4-py3-none-any.whl", hash = "sha256:40935b1acebb8f233e9028ae0821fa39046390c5bf2abc9a164313ea6c476600", size = 377231, upload-time = "2026-06-12T10:52:20.626Z" },
 ]
 
 [package.optional-dependencies]
@@ -3663,6 +3660,37 @@ treesitter = [
     { name = "tree-sitter-go" },
     { name = "tree-sitter-python" },
 ]
+
+[package.metadata]
+requires-dist = [
+    { name = "crackerjack", marker = "extra == 'dev'", specifier = ">=0.65.3" },
+    { name = "cryptography", specifier = ">=48.0.0" },
+    { name = "fastmcp", specifier = ">=3.4.0,<4" },
+    { name = "mcp-common", extras = ["all-prompts", "dev", "treesitter", "llm"], marker = "extra == 'all'" },
+    { name = "mcp-common", extras = ["macos-prompts", "terminal-prompts"], marker = "extra == 'all-prompts'" },
+    { name = "oneiric", specifier = ">=0.13.1" },
+    { name = "openai", marker = "extra == 'llm'", specifier = ">=2.41.0" },
+    { name = "prompt-toolkit", marker = "extra == 'terminal-prompts'", specifier = ">=3.0.52" },
+    { name = "psutil", specifier = ">=7.2.2" },
+    { name = "pydantic", specifier = ">=2.13.4" },
+    { name = "pydantic-settings", specifier = ">=2.14.1" },
+    { name = "pyjwt", specifier = ">=2.8.0" },
+    { name = "pyobjc-core", marker = "extra == 'macos-prompts'", specifier = ">=12.2" },
+    { name = "pyobjc-framework-cocoa", marker = "extra == 'macos-prompts'", specifier = ">=10.0" },
+    { name = "pytest-benchmark", marker = "extra == 'dev'", specifier = ">=5.2.3" },
+    { name = "pyyaml", specifier = ">=6.0.3" },
+    { name = "rich", specifier = ">=15.0.0" },
+    { name = "tree-sitter", marker = "extra == 'treesitter'", specifier = ">=0.25.2" },
+    { name = "tree-sitter-go", marker = "extra == 'treesitter'", specifier = ">=0.25.0" },
+    { name = "tree-sitter-python", marker = "extra == 'treesitter'", specifier = ">=0.25.0" },
+    { name = "typer", specifier = ">=0.26.7" },
+    { name = "uv-bump", marker = "extra == 'dev'", specifier = ">=0.5.0" },
+    { name = "websockets", specifier = ">=16.0" },
+]
+provides-extras = ["macos-prompts", "terminal-prompts", "all-prompts", "treesitter", "llm", "dev", "all"]
+
+[package.metadata.requires-dev]
+dev = [{ name = "crackerjack", specifier = ">=0.65.3" }]
 
 [[package]]
 name = "mdformat"
@@ -6610,10 +6638,10 @@ requires-dist = [
     { name = "crackerjack", specifier = ">=0.62.0" },
     { name = "dhara", specifier = ">=0.9.7" },
     { name = "duckdb", specifier = ">=1.5.3" },
-    { name = "fastmcp", specifier = ">=3.3.1" },
+    { name = "fastmcp", specifier = ">=3.4.0,<4" },
     { name = "hatchling", specifier = ">=1.30.1" },
     { name = "httpx", specifier = ">=0.28.1" },
-    { name = "mcp-common", extras = ["treesitter", "llm"], specifier = ">=0.16.1" },
+    { name = "mcp-common", extras = ["treesitter", "llm"], editable = "../mcp-common" },
     { name = "numpy", specifier = ">=2.4.6" },
     { name = "prometheus-client", specifier = ">=0.25.0" },
     { name = "pydantic", specifier = ">=2.13.4" },
@@ -7349,7 +7377,7 @@ wheels = [
 
 [[package]]
 name = "typer"
-version = "0.26.7"
+version = "0.26.8"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "annotated-doc" },
@@ -7357,9 +7385,9 @@ dependencies = [
     { name = "rich" },
     { name = "shellingham" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/5e/ed/ef06584ccdd5c410df0837951ecd7e15d9a6144ea1bd4c73cecab1a89891/typer-0.26.7.tar.gz", hash = "sha256:e314a34c617e419c091b2830dda3ea1f257134ff593061a8f5b9717ab8dddb3a", size = 201709, upload-time = "2026-06-03T07:18:06.843Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/7c/f7/68adc395201b20b872d68e975386832e8005ffeacedd43a1d837a32815be/typer-0.26.8.tar.gz", hash = "sha256:c244a6bd558886fe3f8780efb6bdd28bb9aff005a94eedebaa5cb32926fe2f7e", size = 202097, upload-time = "2026-06-26T09:22:45.705Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/24/25/2201973529af2c954de0bb725323c3aaed6d7f0ceee8f550dec9185df013/typer-0.26.7-py3-none-any.whl", hash = "sha256:5c87cfbc5d34491c5346ebf49c23e18d56ccb863268d3a8d592b26087c2f5e58", size = 122456, upload-time = "2026-06-03T07:18:05.732Z" },
+    { url = "https://files.pythonhosted.org/packages/80/87/b9fd69c92c6102a066e1b86a35243f53e70bd4c709f2a26d9f4fee4f4dc0/typer-0.26.8-py3-none-any.whl", hash = "sha256:3512ca79ac5c11113414b36e80281b872884477722440691c89d1112e321a49c", size = 122564, upload-time = "2026-06-26T09:22:44.72Z" },
 ]
 
 [[package]]
