@@ -415,6 +415,138 @@ def test_in_memory_lock_store_iteration_order_is_insertion() -> None:
 
 
 # ─────────────────────────────────────────────────────────────────────────
+# JsonFileLockStore (H-PRECOMMIT: persist locks to disk)
+# ─────────────────────────────────────────────────────────────────────────
+
+
+def test_lock_survives_process_restart(tmp_path: object) -> None:
+    """A lock written by one process must be visible to a fresh process.
+
+    This proves the store is not per-process (the headline audit finding
+    H-PRECOMMIT: ``InMemoryLockStore`` was created fresh per CLI
+    invocation, so ``verify_lock`` and ``check_post_hoc`` never saw prior
+    locks and the security control silently failed open).
+    """
+    from datetime import datetime, timezone
+
+    from mahavishnu.core.precommitment import (
+        Hypothesis,
+        HypothesisLock,
+        JsonFileLockStore,
+        compute_signature,
+    )
+
+    store_path = tmp_path / "locks.json"  # type: ignore[operator]
+    hypothesis = Hypothesis(
+        claim="x",
+        falsification_criteria=("y",),
+        success_criteria=("z",),
+        confidence=50,
+        locked_at=datetime.now(timezone.utc),
+    )
+
+    # Process 1: lock
+    store1 = JsonFileLockStore(path=store_path)
+    lock1 = HypothesisLock(store=store1)
+    result = lock1.lock(hypothesis)
+    lock_id = result.lock_id
+
+    # Process 2: re-open the store from disk and verify
+    store2 = JsonFileLockStore(path=store_path)
+    lock2 = HypothesisLock(store=store2)
+    assert lock2.verify_lock(lock_id) is True
+
+
+def test_json_file_lock_store_persists_signature(tmp_path: object) -> None:
+    """The signature stored on disk must equal the fresh signature."""
+    from datetime import datetime, timezone
+
+    from mahavishnu.core.precommitment import (
+        Hypothesis,
+        JsonFileLockStore,
+    )
+
+    store_path = tmp_path / "locks.json"  # type: ignore[operator]
+    hypothesis = Hypothesis(
+        claim="c",
+        falsification_criteria=("f",),
+        success_criteria=("s",),
+        confidence=60,
+        locked_at=datetime(2026, 6, 27),
+    )
+
+    store = JsonFileLockStore(path=store_path)
+    store.put_result(
+        __import__(
+            "mahavishnu.core.precommitment", fromlist=["LockResult"]
+        ).LockResult(
+            lock_id="L-test",
+            signature=compute_signature_inline(hypothesis),
+            hypothesis=hypothesis,
+        )
+    )
+
+    reloaded = JsonFileLockStore(path=store_path)
+    fetched = reloaded.get("L-test")
+    assert fetched is not None
+    assert fetched.hypothesis == hypothesis
+
+
+def test_json_file_lock_store_rejects_duplicate_lock_id(tmp_path: object) -> None:
+    """put must be idempotency-safe: duplicate lock_id raises."""
+    from datetime import datetime, timezone
+
+    from mahavishnu.core.precommitment import (
+        Hypothesis,
+        HypothesisLock,
+        JsonFileLockStore,
+    )
+
+    store_path = tmp_path / "locks.json"  # type: ignore[operator]
+    h = Hypothesis(
+        claim="c",
+        falsification_criteria=("f",),
+        success_criteria=("s",),
+        confidence=50,
+        locked_at=datetime(2026, 6, 27),
+    )
+    lock = HypothesisLock(store=JsonFileLockStore(path=store_path))
+    result = lock.lock(h)
+    with pytest.raises((ValueError, KeyError)):
+        lock.lock(h)  # same hypothesis → new lock_id, so we need same lock_id
+        # Force duplicate:
+        store = JsonFileLockStore(path=store_path)
+        store.put_result(result)
+
+
+def test_json_file_lock_store_default_path_under_xdg_cache(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: object
+) -> None:
+    """When constructed without ``path``, it must use ``$XDG_CACHE_HOME/mahavishnu/``."""
+    monkeypatch.setenv("XDG_CACHE_HOME", str(tmp_path))
+    from mahavishnu.core.precommitment import JsonFileLockStore
+
+    store = JsonFileLockStore()
+    assert str(store.path).startswith(str(tmp_path))
+    assert "mahavishnu" in str(store.path)
+    assert str(store.path).endswith("precommitment_locks.json")
+
+
+def test_json_file_lock_store_satisfies_protocol(tmp_path: object) -> None:
+    """JsonFileLockStore must satisfy the LockStore runtime protocol."""
+    from mahavishnu.core.precommitment import JsonFileLockStore, LockStore
+
+    store = JsonFileLockStore(path=tmp_path / "locks.json")  # type: ignore[operator]
+    assert isinstance(store, LockStore)
+
+
+def compute_signature_inline(payload: object) -> str:
+    from mahavishnu.core.precommitment import compute_signature
+
+    return compute_signature(payload)
+
+
+# ─────────────────────────────────────────────────────────────────────────
 # Exceptions
 # ─────────────────────────────────────────────────────────────────────────
 

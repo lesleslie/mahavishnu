@@ -17,13 +17,14 @@ from __future__ import annotations
 
 import json
 from datetime import datetime, timezone
+from pathlib import Path
 
 import typer
 
 from mahavishnu.core.precommitment import (
     Hypothesis,
     HypothesisLock,
-    InMemoryLockStore,
+    JsonFileLockStore,
     compute_signature,
 )
 
@@ -66,6 +67,16 @@ def precommit_lock(
             "post-hoc verifiers know which downstream tool will be used."
         ),
     ),
+    store_path: Path | None = typer.Option(
+        None,
+        "--store-path",
+        help=(
+            "Override the lock-store file path. Default: "
+            "$XDG_CACHE_HOME/mahavishnu/precommitment_locks.json "
+            "(falls back to ~/.cache/mahavishnu/precommitment_locks.json). "
+            "Use this for tests or to keep per-project lock files."
+        ),
+    ),
     json_output: bool = typer.Option(
         False,
         "--json",
@@ -81,7 +92,8 @@ def precommit_lock(
         locked_at=datetime.now(timezone.utc),
     )
     signature = compute_signature(hypothesis)
-    lock = HypothesisLock(store=InMemoryLockStore())
+    store = JsonFileLockStore(path=store_path) if store_path else JsonFileLockStore()
+    lock = HypothesisLock(store=store)
     result = lock.lock(hypothesis)
 
     payload = {
@@ -94,6 +106,7 @@ def precommit_lock(
         "success_criteria": list(success),
         "verify_with": verify_with,
         "stored_signature": result.signature,
+        "store_path": str(store.path),
     }
 
     if json_output:
@@ -105,6 +118,7 @@ def precommit_lock(
     typer.echo(f"  Confidence: {confidence}")
     typer.echo(f"  Signature:  {result.signature}")
     typer.echo(f"  Locked at:  {hypothesis.locked_at.isoformat()}")
+    typer.echo(f"  Store:      {store.path}")
     if verify_with:
         typer.echo(f"  Verify-with: {verify_with}")
 

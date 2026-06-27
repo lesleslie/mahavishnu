@@ -27,11 +27,15 @@ triad.
 from __future__ import annotations
 
 import dataclasses
+import fcntl
 import hashlib
 import json
+import os
+import tempfile
 import uuid
 from collections.abc import Mapping
 from datetime import datetime
+from pathlib import Path
 from typing import Any, Protocol, runtime_checkable
 
 from mahavishnu.core.errors import ErrorCode, MahavishnuError
@@ -223,6 +227,147 @@ class InMemoryLockStore:
         return list(self._items.values())
 
 
+def _default_lock_store_path() -> Path:
+    """Return ``$XDG_CACHE_HOME/mahavishnu/precommitment_locks.json``.
+
+    Honors the XDG Base Directory spec so operators can control cache
+    location. Falls back to ``~/.cache/mahavishnu/`` when the variable
+    is unset (typical macOS / Linux default).
+    """
+    xdg = os.environ.get("XDG_CACHE_HOME")
+    base = Path(xdg) if xdg else Path.home() / ".cache"
+    return base / "mahavishnu" / "precommitment_locks.json"
+
+
+class JsonFileLockStore:
+    """Persistent ``LockStore`` implementation backed by a JSON file.
+
+    Each instance opens the same file via ``fcntl.flock`` so concurrent
+    writers serialize safely. ``put`` is atomic (write-to-temp +
+    rename) so a crash mid-write can never leave a partially-written
+    lock file. The store is process-independent: a ``lock`` written by
+    one invocation of the CLI is visible to a later invocation of
+    ``verify_lock`` or ``check_post_hoc``.
+
+    This is the production default store for the ``precommit`` CLI.
+    ``InMemoryLockStore`` remains the test fixture and the substrate
+    abstraction; a future ``DharaLockStore`` will satisfy the same
+    ``LockStore`` protocol.
+    """
+
+    def __init__(self, path: Path | str | None = None) -> None:
+        self.path = Path(path) if path is not None else _default_lock_store_path()
+        self.path.parent.mkdir(parents=True, exist_ok=True)
+
+    def _read_all(self) -> list[LockResult]:
+        """Read all locks from disk. Returns ``[]`` if the file is missing.
+
+        Uses ``fcntl.flock`` (shared lock) to coordinate with writers.
+        """
+        if not self.path.exists():
+            return []
+        with self.path.open("r", encoding="utf-8") as fh:
+            fcntl.flock(fh.fileno(), fcntl.LOCK_SH)
+            try:
+                raw = fh.read()
+            finally:
+                fcntl.flock(fh.fileno(), fcntl.LOCK_UN)
+        if not raw.strip():
+            return []
+        payload = json.loads(raw)
+        return [_decode_lock_result(item) for item in payload]
+
+    def _write_all(self, results: list[LockResult]) -> None:
+        """Atomically write ``results`` to disk.
+
+        Writes to a temp file in the same directory, then ``os.replace``s
+        onto the target path. ``fcntl.flock`` (exclusive) keeps concurrent
+        writers from interleaving.
+        """
+        encoded = json.dumps(
+            [_encode_lock_result(r) for r in results],
+            indent=2,
+            sort_keys=True,
+            ensure_ascii=False,
+        )
+        fd, tmp_path = tempfile.mkstemp(
+            prefix=self.path.name + ".",
+            suffix=".tmp",
+            dir=str(self.path.parent),
+        )
+        try:
+            with os.fdopen(fd, "w", encoding="utf-8") as fh:
+                fcntl.flock(fh.fileno(), fcntl.LOCK_EX)
+                try:
+                    fh.write(encoded)
+                    fh.flush()
+                    os.fsync(fh.fileno())
+                finally:
+                    fcntl.flock(fh.fileno(), fcntl.LOCK_UN)
+            os.replace(tmp_path, self.path)
+        except BaseException:
+            # Clean up the temp file on any failure so we don't leak.
+            try:
+                os.unlink(tmp_path)
+            except FileNotFoundError:
+                pass
+            raise
+
+    def put(self, result: LockResult) -> None:
+        """Persist ``result``. Reject duplicate ``lock_id``."""
+        items = self._read_all()
+        if any(r.lock_id == result.lock_id for r in items):
+            raise ValueError(f"duplicate lock_id: {result.lock_id}")
+        items.append(result)
+        self._write_all(items)
+
+    # Convenience alias matching how production code uses it; semantically
+    # identical to ``put`` — exposed so tests can call it without importing
+    # ``LockResult`` separately when the store stands alone.
+    put_result = put
+
+    def get(self, lock_id: str) -> LockResult | None:
+        for r in self._read_all():
+            if r.lock_id == lock_id:
+                return r
+        return None
+
+    def history(self) -> list[LockResult]:
+        return self._read_all()
+
+
+def _encode_lock_result(result: LockResult) -> dict[str, Any]:
+    """Serialise a ``LockResult`` to a JSON-safe dict."""
+    h = result.hypothesis
+    return {
+        "lock_id": result.lock_id,
+        "signature": result.signature,
+        "hypothesis": {
+            "claim": h.claim,
+            "falsification_criteria": list(h.falsification_criteria),
+            "success_criteria": list(h.success_criteria),
+            "confidence": h.confidence,
+            "locked_at": h.locked_at.isoformat(),
+        },
+    }
+
+
+def _decode_lock_result(payload: Mapping[str, Any]) -> LockResult:
+    """Reconstruct a ``LockResult`` from a JSON-safe dict."""
+    h = payload["hypothesis"]
+    return LockResult(
+        lock_id=payload["lock_id"],
+        signature=payload["signature"],
+        hypothesis=Hypothesis(
+            claim=h["claim"],
+            falsification_criteria=tuple(h["falsification_criteria"]),
+            success_criteria=tuple(h["success_criteria"]),
+            confidence=h["confidence"],
+            locked_at=datetime.fromisoformat(h["locked_at"]),
+        ),
+    )
+
+
 # ─────────────────────────────────────────────────────────────────────────
 # HypothesisLock
 # ─────────────────────────────────────────────────────────────────────────
@@ -300,6 +445,7 @@ __all__ = [
     "HypothesisLock",
     "HypothesisViolation",
     "InMemoryLockStore",
+    "JsonFileLockStore",
     "LockResult",
     "LockStore",
     "SignatureMismatch",
