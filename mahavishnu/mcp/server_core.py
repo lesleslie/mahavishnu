@@ -247,7 +247,11 @@ class FastMCPServer:
                 mcp_tool_duration_seconds.labels(tool_name=tool_name).observe(duration)
 
         if asyncio.iscoroutinefunction(func):
+            async_wrapper.__wrapped__ = func
+            async_wrapper.__annotations__ = dict(func.__annotations__)
             return async_wrapper
+        sync_wrapper.__wrapped__ = func
+        sync_wrapper.__annotations__ = dict(func.__annotations__)
         return sync_wrapper
 
     def _classify_tool_result(self, result: Any) -> str:

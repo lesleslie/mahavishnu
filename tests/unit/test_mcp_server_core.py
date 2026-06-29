@@ -563,6 +563,57 @@ class TestToolHandlerWrapping:
         assert server._classify_tool_result("plain string") == "success"
         assert server._classify_tool_result(None) == "success"
 
+    def test_async_wrapper_preserves_original_annotations_and_wrapped(
+        self, server: FastMCPServer
+    ) -> None:
+        """Async wrapper must keep __wrapped__ and __annotations__ from the original.
+
+        Regression for get_health: FastMCP builds the output_schema from the wrapper's
+        signature, so losing the return annotation causes 'outputSchema defined but
+        no structured output returned' validation errors downstream.
+        """
+        import inspect
+
+        async def get_health() -> dict[str, Any]:
+            return {"status": "healthy"}
+
+        wrapped = server._wrap_tool_handler(get_health)
+
+        # __wrapped__ points back to the original function so inspect.unwrap can
+        # follow it to recover the real signature.
+        assert wrapped.__wrapped__ is get_health
+
+        # __annotations__ must be the original annotations (return type is
+        # ``dict[str, Any]``), NOT the wrapper's ``-> Any``.
+        assert wrapped.__annotations__ == get_health.__annotations__
+        # The wrapper's own annotation was ``-> Any``; that MUST NOT leak into
+        # the preserved annotations.
+        assert wrapped.__annotations__["return"] != "Any"
+
+        # inspect.signature on the wrapper should report the original return type
+        # because inspect.unwrap follows __wrapped__ (and PEP 563 keeps annotations
+        # as strings under ``from __future__ import annotations``).
+        sig = inspect.signature(wrapped)
+        assert sig.return_annotation == "dict[str, Any]"
+
+    def test_sync_wrapper_preserves_original_annotations_and_wrapped(
+        self, server: FastMCPServer
+    ) -> None:
+        """Sync wrapper must keep __wrapped__ and __annotations__ from the original."""
+        import inspect
+
+        def get_info() -> dict[str, str]:
+            return {"k": "v"}
+
+        wrapped = server._wrap_tool_handler(get_info)
+
+        assert wrapped.__wrapped__ is get_info
+        assert wrapped.__annotations__ == get_info.__annotations__
+        assert wrapped.__annotations__["return"] != "Any"
+
+        sig = inspect.signature(wrapped)
+        assert sig.return_annotation == "dict[str, str]"
+
 
 # =============================================================================
 # Server identity and version
