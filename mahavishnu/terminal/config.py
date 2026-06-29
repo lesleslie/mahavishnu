@@ -55,6 +55,30 @@ class TerminalSettings(BaseModel):
         default=False,
         description="Fall back to mock adapter if probe fails; True = fallback, False = fail startup",
     )
+    # Crow adapter (bundled bodai-crow HTTP server). Defaults to disabled because
+    # the default settings/mahavishnu.yaml sets adapter_preference="crow" but the
+    # CLI callers don't yet construct an mcp_client. Operators opt in by setting
+    # crow_enabled=true (and providing an mcp_client at the CLI layer).
+    # See: docs/followups/2026-06-29-crow-mcp-client-wiring.md
+    crow_enabled: bool = Field(
+        default=False,
+        description=(
+            "Enable the bundled crow terminal adapter. When false and "
+            "adapter_preference='crow', the manager falls through to the mock "
+            "adapter rather than crashing with ConfigurationError. Requires "
+            "mcp_client construction at the CLI layer when set to true."
+        ),
+    )
+    crow_http_host: str = Field(
+        default="127.0.0.1",
+        description="Hostname for the bundled crow HTTP server (used when crow_enabled is true)",
+    )
+    crow_http_port: int = Field(
+        default=8675,
+        ge=1,
+        le=65535,
+        description="Port for the bundled crow HTTP server (used when crow_enabled is true)",
+    )
     # Connection pooling settings (for iTerm2)
     iterm2_pooling_enabled: bool = Field(
         default=True,

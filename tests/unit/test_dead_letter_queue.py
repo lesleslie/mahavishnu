@@ -19,13 +19,13 @@ from unittest.mock import AsyncMock, Mock
 
 import pytest
 
-import mahavishnu.core.dead_letter_queue as dlq_module
 from mahavishnu.core.dead_letter_queue import (
     DeadLetterQueue,
     DeadLetterStatus,
     FailedTask,
     RetryPolicy,
 )
+import mahavishnu.core.opensearch_constants as osc
 
 
 class TestFailedTask:
@@ -97,13 +97,12 @@ def test_opensearch_import_success_branch(monkeypatch: pytest.MonkeyPatch) -> No
     fake = types.ModuleType("opensearchpy")
     fake.AsyncOpenSearch = object
     monkeypatch.setitem(sys.modules, "opensearchpy", fake)
-    reloaded = importlib.reload(dlq_module)
-    assert reloaded.OPENSEARCH_AVAILABLE is True
+    reloaded_osc = importlib.reload(osc)
+    assert reloaded_osc.OPENSEARCH_AVAILABLE is True
 
 
 def test_opensearch_import_failure_branch(monkeypatch: pytest.MonkeyPatch) -> None:
-    original_available = dlq_module.OPENSEARCH_AVAILABLE
-    original_async_opensearch = getattr(dlq_module, "_AsyncOpenSearch", None)
+    original_available = osc.OPENSEARCH_AVAILABLE
     original_import = builtins.__import__
 
     def fake_import(name, globals=None, locals=None, fromlist=(), level=0):  # type: ignore[no-untyped-def]
@@ -114,11 +113,10 @@ def test_opensearch_import_failure_branch(monkeypatch: pytest.MonkeyPatch) -> No
     monkeypatch.delitem(sys.modules, "opensearchpy", raising=False)
     monkeypatch.setattr(builtins, "__import__", fake_import)
 
-    reloaded = importlib.reload(dlq_module)
+    reloaded_osc = importlib.reload(osc)
 
-    assert reloaded.OPENSEARCH_AVAILABLE is False
-    monkeypatch.setattr(dlq_module, "OPENSEARCH_AVAILABLE", original_available, raising=False)
-    monkeypatch.setattr(dlq_module, "_AsyncOpenSearch", original_async_opensearch, raising=False)
+    assert reloaded_osc.OPENSEARCH_AVAILABLE is False
+    monkeypatch.setattr(osc, "OPENSEARCH_AVAILABLE", original_available, raising=False)
 
 
 class TestRetryPolicyCalculations:
@@ -598,7 +596,7 @@ class TestPersistence:
         # Mock OpenSearch client
         mock_client = AsyncMock()
         monkeypatch = pytest.MonkeyPatch()
-        monkeypatch.setattr(dlq_module, "OPENSEARCH_AVAILABLE", True)
+        monkeypatch.setattr(osc, "OPENSEARCH_AVAILABLE", True)
         mock_obs = SimpleNamespace(log_info=Mock())
 
         dlq = DeadLetterQueue(
@@ -629,7 +627,7 @@ class TestPersistence:
         # Mock OpenSearch client
         mock_client = AsyncMock()
         monkeypatch = pytest.MonkeyPatch()
-        monkeypatch.setattr(dlq_module, "OPENSEARCH_AVAILABLE", True)
+        monkeypatch.setattr(osc, "OPENSEARCH_AVAILABLE", True)
 
         dlq = DeadLetterQueue(max_size=100, opensearch_client=mock_client)
 
@@ -658,7 +656,7 @@ class TestPersistence:
     async def test_update_and_persist_error_branches(self):
         """Test persistence error branches."""
         monkeypatch = pytest.MonkeyPatch()
-        monkeypatch.setattr(dlq_module, "OPENSEARCH_AVAILABLE", True)
+        monkeypatch.setattr(osc, "OPENSEARCH_AVAILABLE", True)
         mock_client = AsyncMock()
         mock_client.index.side_effect = Exception("index failed")
         mock_client.update.side_effect = Exception("update failed")
@@ -688,7 +686,7 @@ class TestPersistence:
         # Mock OpenSearch client
         mock_client = AsyncMock()
         monkeypatch = pytest.MonkeyPatch()
-        monkeypatch.setattr(dlq_module, "OPENSEARCH_AVAILABLE", True)
+        monkeypatch.setattr(osc, "OPENSEARCH_AVAILABLE", True)
 
         dlq = DeadLetterQueue(max_size=100, opensearch_client=mock_client)
 

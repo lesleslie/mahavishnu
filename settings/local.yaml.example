@@ -15,3 +15,63 @@ auth:
 observability:
   metrics_enabled: false
   tracing_enabled: false
+
+# --- Agno Adapter ---
+# Master switch `adapters.agno_enabled` defaults true at settings/mahavishnu.yaml:30.
+# The nested block below configures LLM provider, memory backend, and tools.
+# Detection: get_health shows adapter="agno" with agents_cached=0, mcp_tools_initialized=false
+# Required env vars: MAHAVISHNU_AGNO__LLM__API_KEY, MAHAVISHNU_AGNO__LLM__PROVIDER
+# See: docs/runbooks/agno-adapter-initialization.md
+# adapters:
+#   agno_enabled: true
+#
+# agno:
+#   llm:
+#     provider: minimax  # anthropic, openai, minimax, ollama
+#     model_id: MiniMax-M3
+#     # api_key read from MAHAVISHNU_AGNO__LLM__API_KEY
+#     base_url: "http://localhost:11434"  # for ollama/llama_server
+#   memory:
+#     backend: sqlite  # sqlite, postgres, none
+#     # connection_string required if backend=postgres, set via MAHAVISHNU_AGNO__MEMORY__CONNECTION_STRING
+#   telemetry_enabled: false
+
+# --- Crow Terminal Adapter (MHV-001) ---
+# terminal.adapter_preference defaults to "crow" in settings/mahavishnu.yaml:188.
+# The crow_enabled toggle (added in this PR per docs/followups/2026-06-29-crow-mcp-client-wiring.md
+# option C) defaults to false, so a stock install with adapter_preference="crow" falls
+# through to the mock adapter rather than crashing. The CLI call sites
+# (_main_cli.py: ~1073, 1156, 1381) now construct an mcp_client automatically when
+# crow_enabled=true, so flipping the toggle to true is enough to enable crow
+# end-to-end — no separate call-site fix needed.
+# Env-var overrides for the endpoint: MAHAVISHNU_CROW_HTTP_HOST, MAHAVISHNU_CROW_HTTP_PORT.
+# See: docs/runbooks/crow-adapter-mcp-client.md
+# terminal:
+#   adapter_preference: "crow"  # default in mahavishnu.yaml
+#   crow_enabled: true   # OPT IN to enable the crow adapter (CLI wires mcp_client)
+#   crow_http_host: "127.0.0.1"
+#   crow_http_port: 8675
+
+# --- OpenSearch Observability Backend ---
+# Auto-detected: the integration tries to connect at startup and falls back to
+# in-memory storage if OpenSearch is unreachable. No dev/prod decision needed —
+# set the endpoint and the system handles the rest.
+#
+# Homebrew install (macOS):
+#   brew install opensearch
+#   brew services start opensearch
+# Default endpoint is https://localhost:9200 with a self-signed cert, so for dev
+# either disable cert verification OR trust the Homebrew root CA:
+#   export MAHAVISHNU_OPENSEARCH__VERIFY_CERTS=false
+#   # OR
+#   export MAHAVISHNU_OPENSEARCH__CA_CERTS=/opt/homebrew/etc/opensearch/root-ca.pem
+# NEVER disable verify_certs in production.
+# Detection: get_health shows opensearch_healthy=false, opensearch_info.status="unhealthy"
+# See: docs/runbooks/opensearch-fallback.md
+# opensearch:
+#   endpoint: "https://localhost:9200"
+#   use_ssl: true
+#   verify_certs: false  # dev-only; set true with ca_certs in production
+#   ssl_assert_hostname: false
+#   opensearch_log_index: "mahavishnu-logs"
+#   opensearch_workflow_index: "mahavishnu-workflows"

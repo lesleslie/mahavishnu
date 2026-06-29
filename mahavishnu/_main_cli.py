@@ -2,7 +2,7 @@
 
 import asyncio
 import json
-from typing import NoReturn
+from typing import Any, NoReturn
 
 import typer
 
@@ -73,6 +73,33 @@ from .worktree_cli import worktree_app
 app = typer.Typer(name="mahavishnu")
 DEFAULT_MCP_HOST = "127.0.0.1"
 DEFAULT_MCP_PORT = 8680
+
+
+def _resolve_crow_mcp_client(config: Any) -> Any:
+    """Build a crow MCP client when ``terminal.crow_enabled`` is true.
+
+    Returns ``None`` when crow is disabled so the terminal factory falls
+    through to the mock adapter (the documented default behavior). When
+    crow is enabled, constructs a client pointing at the bundled
+    ``bodai-crow`` HTTP server using ``terminal.crow_http_host`` /
+    ``terminal.crow_http_port`` (or the ``MAHAVISHNU_CROW_HTTP_HOST`` /
+    ``MAHAVISHNU_CROW_HTTP_PORT`` env overrides).
+
+    Symmetric across all three ``TerminalManager.create(...)`` call sites
+    in this module. See ``docs/followups/2026-06-29-crow-mcp-client-wiring.md``.
+    """
+    terminal_config = getattr(config, "terminal", None)
+    if terminal_config is None:
+        return None
+    if not getattr(terminal_config, "crow_enabled", False):
+        return None
+    from .mcp.crow_server import create_crow_mcp_client
+
+    return create_crow_mcp_client(
+        host=getattr(terminal_config, "crow_http_host", None),
+        port=getattr(terminal_config, "crow_http_port", None),
+    )
+
 
 # Add worktree sub-app
 app.add_typer(worktree_app, name="worktree")
@@ -1070,7 +1097,7 @@ def workers_spawn(
         # Create terminal manager (reusing existing infrastructure)
         terminal_mgr = await TerminalManager.create(
             maha_app.config,
-            mcp_client=None,  # Will be set if needed
+            mcp_client=_resolve_crow_mcp_client(maha_app.config),
         )
 
         # Create worker manager
@@ -1153,7 +1180,7 @@ def workers_execute(
         # Create managers
         terminal_mgr = await TerminalManager.create(
             maha_app.config,
-            mcp_client=None,
+            mcp_client=_resolve_crow_mcp_client(maha_app.config),
         )
 
         worker_mgr = WorkerManager(
@@ -1378,7 +1405,7 @@ def pool_spawn(
         # Create terminal manager
         terminal_mgr = await TerminalManager.create(
             maha_app.config,
-            mcp_client=None,
+            mcp_client=_resolve_crow_mcp_client(maha_app.config),
         )
 
         # Create pool manager

@@ -446,13 +446,38 @@ class TerminalManager:
             adapter = MockTerminalAdapter()
             return cls(adapter, terminal_config)
 
-        # crow adapter (requires MCP client pointing at Bodai crow HTTP server)
+        # crow adapter (requires crow_enabled + MCP client pointing at Bodai crow HTTP server)
         if preference == "crow":
+            crow_enabled = getattr(terminal_config, "crow_enabled", False)
+            if not crow_enabled:
+                # Crow preference requested but the adapter is disabled in settings.
+                # Fall through to the mock adapter (the documented default behavior).
+                # This addresses MHV-001: stock installs with adapter_preference="crow"
+                # no longer crash on missing mcp_client — operators opt in by setting
+                # terminal.crow_enabled=true once the CLI call sites are wired.
+                # See: docs/followups/2026-06-29-crow-mcp-client-wiring.md
+                logger.info(
+                    "Crow adapter preference set but crow_enabled=false; "
+                    "using mock adapter. Set terminal.crow_enabled=true to enable "
+                    "the bundled crow adapter."
+                )
+                adapter = MockTerminalAdapter()
+                return cls(adapter, terminal_config)
             if mcp_client is None:
                 raise ConfigurationError(
-                    message="crow adapter requires mcp_client pointing at the "
-                    "Bodai crow HTTP server",
-                    details={"adapter_preference": "crow"},
+                    message=(
+                        "crow adapter is enabled (crow_enabled=true) but no "
+                        "mcp_client was provided to TerminalManager.create(). "
+                        "Either provide an mcp_client pointing at the Bodai crow "
+                        "HTTP server, or set terminal.crow_enabled=false to use "
+                        "the mock adapter."
+                    ),
+                    details={
+                        "adapter_preference": "crow",
+                        "crow_enabled": True,
+                        "crow_http_endpoint": f"{getattr(terminal_config, 'crow_http_host', '127.0.0.1')}:"
+                        f"{getattr(terminal_config, 'crow_http_port', 8675)}",
+                    },
                 )
             from .adapters.crow import CrowTerminalAdapter
 

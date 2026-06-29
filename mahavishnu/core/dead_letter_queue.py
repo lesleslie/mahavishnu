@@ -43,6 +43,10 @@ from enum import StrEnum
 import logging
 from typing import TYPE_CHECKING, Any
 
+# Imported here for the fail-closed helper. See followup
+# ``docs/followups/2026-06-29-dlq-silent-fallback.md`` for the opt-in flag.
+from mahavishnu.core.errors import ExternalServiceError
+from mahavishnu.core.opensearch_constants import OPENSEARCH_AVAILABLE
 from mahavishnu.core.status import DeadLetterStatus
 
 if TYPE_CHECKING:
@@ -52,15 +56,6 @@ if TYPE_CHECKING:
         from opensearchpy import AsyncOpenSearch
     except ImportError:
         AsyncOpenSearch = Any  # type: ignore
-
-# Try to import OpenSearch at runtime, with fallback if not available
-try:
-    from opensearchpy import AsyncOpenSearch as _AsyncOpenSearch
-
-    OPENSEARCH_AVAILABLE = True
-except ImportError:
-    _AsyncOpenSearch = None  # type: ignore[assignment]
-    OPENSEARCH_AVAILABLE = False
 
 
 class RetryPolicy(StrEnum):
@@ -204,6 +199,8 @@ class DeadLetterQueue:
         max_size: int = 10000,
         opensearch_client: AsyncOpenSearch | None = None,
         observability_manager: Any = None,
+        *,
+        fail_on_opensearch_unavailable: bool = False,
     ):
         """Initialize the Dead Letter Queue.
 
@@ -211,10 +208,18 @@ class DeadLetterQueue:
             max_size: Maximum number of tasks to keep in queue
             opensearch_client: Optional OpenSearch client for persistent storage
             observability_manager: Optional observability manager for metrics
+            fail_on_opensearch_unavailable: When True, ``enqueue`` raises
+                :class:`ExternalServiceError` instead of silently dropping the
+                task to the per-process in-memory fallback when OpenSearch is
+                unavailable. Default ``False`` preserves the original silent
+                fallback (back-compat). Mirrors the
+                ``dlq.fail_on_opensearch_unavailable`` setting in
+                ``MahavishnuSettings``.
         """
         self._max_size = max_size
         self._opensearch: Any = opensearch_client
         self._observability = observability_manager
+        self._fail_on_opensearch_unavailable = fail_on_opensearch_unavailable
         """Initialize the Dead Letter Queue.
 
         Args:
@@ -311,6 +316,13 @@ class DeadLetterQueue:
                     f"Please manually process or archive tasks before adding more."
                 )
 
+            # Fail-closed opt-in: when the operator has set
+            # ``dlq.fail_on_opensearch_unavailable`` to True, refuse to enqueue
+            # if no usable OpenSearch client is configured. This trades the
+            # original silent in-memory fallback for an explicit error so that
+            # multi-node deployments do not silently drop failed tasks.
+            self._assert_opensearch_or_fail_closed(task_id)
+
             # Create failed task
             failed_task = FailedTask(
                 task_id=task_id,
@@ -356,6 +368,42 @@ class DeadLetterQueue:
                 )
 
             return failed_task
+
+    def _assert_opensearch_or_fail_closed(self, task_id: str) -> None:
+        """Raise when fail-closed is enabled and OpenSearch is unavailable.
+
+        When ``self._fail_on_opensearch_unavailable`` is ``False`` (the default),
+        this is a no-op and the original silent in-memory fallback is preserved.
+        When ``True`` and no working OpenSearch backend is configured, raise
+        :class:`ExternalServiceError` so callers can decide to retry, fail the
+        upstream task, or surface an ops alert instead of silently dropping the
+        failed task.
+
+        See ``docs/followups/2026-06-29-dlq-silent-fallback.md`` for context.
+        """
+        if not self._fail_on_opensearch_unavailable:
+            return  # opt-in flag off — preserve legacy silent-fallback behavior
+        if self._opensearch is not None and OPENSEARCH_AVAILABLE:
+            return  # OpenSearch client is configured and the library is importable
+        self._logger.error(
+            "DLQ fail-closed: refusing to enqueue task %s because OpenSearch "
+            "is unavailable and dlq.fail_on_opensearch_unavailable=True",
+            task_id,
+        )
+        raise ExternalServiceError(
+            service="opensearch",
+            message=(
+                "Dead-letter queue cannot accept task: OpenSearch is unavailable "
+                "and fail_on_opensearch_unavailable=True. The orchestrator refuses "
+                "the silent in-memory fallback to prevent data loss in multi-node "
+                "deployments."
+            ),
+            details={
+                "task_id": task_id,
+                "opensearch_available": OPENSEARCH_AVAILABLE,
+                "opensearch_client_configured": self._opensearch is not None,
+            },
+        )
 
     async def _persist_task(self, failed_task: FailedTask) -> None:
         """Persist task to OpenSearch if available.

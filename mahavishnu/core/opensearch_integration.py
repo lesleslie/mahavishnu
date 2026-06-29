@@ -6,6 +6,8 @@ UTC = UTC
 import logging
 from typing import Any
 
+from mahavishnu.core.opensearch_constants import OPENSEARCH_AVAILABLE
+
 
 class MockIndicesClient:
     async def __call__(self):
@@ -35,13 +37,10 @@ class MockAsyncOpenSearch:
         return None
 
 
-try:
+if OPENSEARCH_AVAILABLE:
     from opensearchpy import AsyncOpenSearch
-
-    OPENSEARCH_AVAILABLE = True
-except ImportError:
-    OPENSEARCH_AVAILABLE = False
-    AsyncOpenSearch = MockAsyncOpenSearch  # type: ignore[assignment]
+else:
+    AsyncOpenSearch = MockAsyncOpenSearch  # type: ignore[assignment,misc]
 
 
 class OpenSearchLogAnalytics:

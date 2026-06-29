@@ -270,6 +270,81 @@ class TestTerminalManagerFactory:
 
         assert manager.current_adapter() == "mcpretentious"
 
+    @pytest.mark.asyncio
+    async def test_create_with_crow_preference_and_disabled_uses_mock(self):
+        """MHV-001 regression: crow preference + crow_enabled=false -> mock, no crash.
+
+        With the default settings/mahavishnu.yaml setting adapter_preference="crow",
+        a stock install must NOT crash with ConfigurationError when the CLI callers
+        pass mcp_client=None. The crow_enabled toggle (default false) gates the
+        crow adapter and falls through to the mock adapter.
+        """
+        config = MagicMock()
+        config.terminal = TerminalSettings(
+            adapter_preference="crow",
+            crow_enabled=False,
+        )
+
+        manager = await TerminalManager.create(config, mcp_client=None)
+
+        assert manager.current_adapter() == "mock"
+
+    @pytest.mark.asyncio
+    async def test_create_with_crow_enabled_and_mcp_client_uses_crow(self):
+        """crow preference + crow_enabled=true + mcp_client -> CrowTerminalAdapter."""
+        config = MagicMock()
+        config.terminal = TerminalSettings(
+            adapter_preference="crow",
+            crow_enabled=True,
+            crow_http_host="127.0.0.1",
+            crow_http_port=8675,
+        )
+
+        mock_client = MagicMock()
+
+        with patch("mahavishnu.terminal.adapters.iterm2.ITERM2_AVAILABLE", False):
+            from mahavishnu.terminal.adapters.crow import CrowTerminalAdapter
+
+            with patch.object(CrowTerminalAdapter, "__init__", lambda self, mcp: None):
+                manager = await TerminalManager.create(config, mcp_client=mock_client)
+
+        assert manager.current_adapter() == "crow"
+
+    @pytest.mark.asyncio
+    async def test_create_with_crow_enabled_no_mcp_client_raises(self):
+        """crow_enabled=true but mcp_client=None -> ConfigurationError with clear msg.
+
+        Once the operator opts in (crow_enabled=true), the wiring failure surfaces
+        with an actionable error message instead of the misleading original wording
+        "requires mcp_client pointing at the Bodai crow HTTP server".
+        """
+        from mahavishnu.core.errors import ConfigurationError
+
+        config = MagicMock()
+        config.terminal = TerminalSettings(
+            adapter_preference="crow",
+            crow_enabled=True,
+            crow_http_host="127.0.0.1",
+            crow_http_port=8675,
+        )
+
+        with pytest.raises(ConfigurationError) as exc_info:
+            await TerminalManager.create(config, mcp_client=None)
+
+        message = exc_info.value.message
+        assert "crow_enabled=true" in message
+        assert "mcp_client" in message
+        # Endpoint hint should appear in details
+        assert exc_info.value.details.get("crow_http_endpoint") == "127.0.0.1:8675"
+
+    def test_terminal_settings_crow_defaults(self):
+        """TerminalSettings.crow_* default to disabled, sensible host/port."""
+        settings = TerminalSettings()
+
+        assert settings.crow_enabled is False
+        assert settings.crow_http_host == "127.0.0.1"
+        assert settings.crow_http_port == 8675
+
 
 # ============================================================================
 # TerminalSettings Tests

@@ -17,6 +17,7 @@ from enum import StrEnum
 from pathlib import Path
 
 from pydantic import BaseModel, Field, field_validator, model_validator
+from pydantic._internal._utils import deep_update
 from pydantic_settings import BaseSettings, SettingsConfigDict, YamlConfigSettingsSource
 
 from ..terminal.config import TerminalSettings
@@ -709,6 +710,26 @@ class OpenSearchConfig(BaseModel):
     model_config = {"extra": "forbid"}
 
 
+class DLQConfig(BaseModel):
+    """Dead Letter Queue configuration.
+
+    Controls fail-closed behavior for the DLQ when OpenSearch is unreachable.
+    By default, the DLQ silently falls back to a per-process in-memory queue
+    (preserves the original back-compat behavior).
+    """
+
+    fail_on_opensearch_unavailable: bool = Field(
+        default=False,
+        description=(
+            "When True, the DLQ raises instead of silently dropping tasks "
+            "to in-memory storage when OpenSearch is unreachable. Recommended "
+            "for multi-node production deployments."
+        ),
+    )
+
+    model_config = {"extra": "forbid"}
+
+
 class AuthConfig(BaseModel):
     """Authentication configuration for JWT tokens."""
 
@@ -995,9 +1016,7 @@ class A2AAgentEntry(BaseModel):
 
         scheme = urlparse(v).scheme
         if scheme not in ("http", "https"):
-            raise ValueError(
-                f"A2A agent URL must use http or https, got scheme {scheme!r}"
-            )
+            raise ValueError(f"A2A agent URL must use http or https, got scheme {scheme!r}")
         return v
 
 
@@ -1943,6 +1962,12 @@ class MahavishnuSettings(BaseSettings):
         description="OpenSearch configuration",
     )
 
+    # Dead Letter Queue
+    dlq: DLQConfig = Field(
+        default_factory=DLQConfig,
+        description="Dead Letter Queue configuration",
+    )
+
     # Authentication
     auth: AuthConfig = Field(
         default_factory=AuthConfig,
@@ -2113,6 +2138,83 @@ class MahavishnuSettings(BaseSettings):
             file_secret_settings,
         )
 
+    @classmethod
+    def _settings_build_values(cls, sources, init_kwargs):
+        """Override pydantic-settings merge order so later sources win.
+
+        pydantic-settings' default ``_settings_build_values`` calls
+        ``state = deep_update(source_state, state)`` on every iteration.
+        ``deep_update(mapping, *updating)`` copies ``mapping`` and overlays
+        the ``updating`` dicts onto it, so the *older* accumulated state
+        wins over the newer ``source_state``. That makes earlier sources
+        (init_settings) override later sources (env), which is the opposite
+        of the documented precedence: defaults -> YAML -> env -> init.
+
+        For nested subtrees that appear in ``settings/mahavishnu.yaml``
+        (e.g. ``opensearch``) the bug masked env var and
+        ``settings/local.yaml`` overrides. For subtrees absent from
+        ``mahavishnu.yaml`` (e.g. ``agno``) the bug was invisible because
+        the upstream YAML state was empty for that subtree.
+
+        We fix this by:
+        1. Reordering sources so ``init_settings`` is processed LAST
+           (init kwargs are documented as the highest-precedence source).
+        2. Merging with the correct direction: ``deep_update(state, source_state)``
+           so the *newer* source overlays the older accumulated state.
+
+        Net result: init_settings > env_settings > dotenv_settings >
+        file_secret_settings > local.yaml > mahavishnu.yaml > defaults.
+        See docs/followups/2026-06-29-pydantic-settings-source-resolution.md.
+        """
+        if not sources:
+            return {}
+
+        from pydantic_settings.sources import (
+            DefaultSettingsSource,
+            InitSettingsSource,
+            PydanticBaseSettingsSource,
+        )
+
+        # Reorder so init_settings is last (highest precedence). Other
+        # sources keep their relative order from the customiser.
+        # NOTE: YamlConfigSettingsSource subclasses InitSettingsSource, so
+        # we use type() to avoid misidentifying YAML sources as init.
+        init_source = None
+        ordered = []
+        for source in sources:
+            if type(source) is InitSettingsSource:
+                init_source = source
+            else:
+                ordered.append(source)
+        if init_source is not None:
+            ordered.append(init_source)
+
+        state: dict = {}
+        defaults: dict = {}
+        for source in ordered:
+            if isinstance(source, PydanticBaseSettingsSource):
+                source._set_current_state(state)
+                # _set_settings_sources_data accepts a states dict; some
+                # pydantic-settings versions track sibling source state
+                # for alias resolution. Provide the running state so any
+                # lookup inside the source sees the accumulated values.
+                source._set_settings_sources_data({"__running__": state})
+            source_state = source()
+            if isinstance(source, DefaultSettingsSource):
+                defaults = source_state
+            # Later sources must win: keep `state` as the base and apply
+            # the new source_state on top. This is the inverse of
+            # pydantic-settings' default `deep_update(source_state, state)`.
+            state = deep_update(state, source_state)
+
+        # Strip defaults that ended up matching the field default — they
+        # are not "set" by any source.
+        state = {
+            key: val for key, val in state.items() if key not in defaults or defaults[key] != val
+        }
+        cls._settings_restore_init_kwarg_names(cls, init_kwargs, state)
+        return state
+
 
 # ============================================================================
 # Settings factory
@@ -2176,6 +2278,7 @@ __all__ = [
     "OTelStorageConfig",
     "OTelIngesterConfig",
     "OpenSearchConfig",
+    "DLQConfig",
     "AuthConfig",
     "SubscriptionAuthConfig",
     "SessionBuddyPollingConfig",

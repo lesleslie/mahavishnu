@@ -6,6 +6,7 @@ from types import SimpleNamespace
 
 import pytest
 
+import mahavishnu.core.opensearch_constants as osc
 import mahavishnu.core.opensearch_integration as osi
 
 
@@ -67,7 +68,7 @@ def _config() -> SimpleNamespace:
 
 @pytest.fixture(autouse=True)
 def _force_fallback(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(osi, "OPENSEARCH_AVAILABLE", False)
+    monkeypatch.setattr(osc, "OPENSEARCH_AVAILABLE", False)
 
 
 @pytest.mark.asyncio
@@ -114,7 +115,7 @@ async def test_create_indices_handles_exceptions(caplog: pytest.LogCaptureFixtur
 def test_init_with_opensearch_available_success_and_fallback(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    monkeypatch.setattr(osi, "OPENSEARCH_AVAILABLE", True)
+    monkeypatch.setattr(osc, "OPENSEARCH_AVAILABLE", True)
 
     class _CtorClient:
         def __init__(self, **kwargs) -> None:  # noqa: ANN003
@@ -149,13 +150,15 @@ def test_import_success_branch_uses_real_async_client_symbol(
 
     fake_pkg.AsyncOpenSearch = _CtorClient
     monkeypatch.setitem(sys.modules, "opensearchpy", fake_pkg)
+    # Force the shared flag to True so the freshly-loaded module imports AsyncOpenSearch
+    # from the stubbed opensearchpy rather than falling back to MockAsyncOpenSearch.
+    monkeypatch.setattr(osc, "OPENSEARCH_AVAILABLE", True)
 
     spec = importlib.util.spec_from_file_location("opensearch_integration_success", osi.__file__)
     assert spec and spec.loader
     module = importlib.util.module_from_spec(spec)
     sys.modules[spec.name] = module
     spec.loader.exec_module(module)
-    assert module.OPENSEARCH_AVAILABLE is True
     assert module.AsyncOpenSearch is _CtorClient
     sys.modules.pop(spec.name, None)
 
