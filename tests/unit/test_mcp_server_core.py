@@ -274,6 +274,64 @@ class TestRegisterTools:
         gauge_value = mcp_tools_registered.labels(server="mahavishnu")
         assert gauge_value._value.get() == srv._registered_tool_count
 
+    @pytest.mark.asyncio
+    async def test_get_health_returns_structured_content_when_app_is_healthy_async(
+        self, mock_app: MagicMock
+    ) -> None:
+        """Regression: ``get_health`` must await ``app.is_healthy()``.
+
+        Real ``MahavishnuApp.is_healthy`` is async, so the handler must await
+        it.  Previously the call was unawaited, which placed a coroutine object
+        into the response dict; FastMCP's ``pydantic_core.to_jsonable_python``
+        then raised ``PydanticSerializationError`` and ``convert_result``
+        dropped ``structured_content``.  With ``outputSchema`` still set on the
+        tool, the MCP SDK normalizer raised
+        ``Output validation error: outputSchema defined but no structured
+        output returned``.
+
+        This fixture mirrors the real async signature so the bug is caught.
+        """
+        # Mirror the real async signature: is_healthy is a coroutine function.
+        async def fake_is_healthy() -> bool:
+            return True
+
+        async def fake_opensearch_health() -> dict[str, Any]:
+            return {"status": "healthy"}
+
+        async def fake_list_workflows(limit: int = 1) -> list[Any]:
+            return []
+
+        mock_app.is_healthy = fake_is_healthy
+        mock_app.opensearch_integration.health_check = fake_opensearch_health
+        mock_app.workflow_state_manager.list_workflows = fake_list_workflows
+        mock_app.rbac_manager.roles = {"admin": MagicMock()}
+
+        with patch("mahavishnu.mcp.server_core.get_auth_from_config"):
+            srv = FastMCPServer(app=mock_app)
+
+        # Use the FastMCP in-memory client to drive through the same
+        # FastMCP + MCP SDK normalizer path that the live HTTP transport uses.
+        from fastmcp import Client
+
+        async with Client(srv.server) as client:
+            tools = await client.list_tools()
+            gh_tool = next(t for t in tools if t.name == "get_health")
+            # Sanity: outputSchema is generated (the previous fix ensured this).
+            assert gh_tool.outputSchema is not None
+
+            result = await client.call_tool("get_health", {})
+
+        # If is_healthy() was unawaited, structured_content would be missing
+        # AND is_error would be True with the "outputSchema defined but no
+        # structured output returned" message.  With the await in place, the
+        # dict serializes cleanly.
+        assert result.is_error is False, (
+            f"get_health returned an error result: "
+            f"{[c.text for c in result.content if hasattr(c, 'text')]}"
+        )
+        assert result.structured_content is not None
+        assert result.structured_content.get("status") in {"healthy", "degraded"}
+
 
 # =============================================================================
 # HTTP health endpoint registration

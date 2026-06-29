@@ -1070,7 +1070,7 @@ class FastMCPServer:
         async def get_health() -> dict[str, Any]:
             """Get overall health status of the system."""
             try:
-                app_healthy = self.app.is_healthy()
+                app_healthy = await self.app.is_healthy()
 
                 # Check individual adapter health
                 adapter_health = {}
