@@ -40,6 +40,22 @@ from ..core.errors import (
     TimeoutError as MahavishnuTimeoutError,
 )
 
+# Canonical Agno config schema — imported from core.config.
+# The previous duplicates of LLMProvider, MemoryBackend, AgnoLLMConfig,
+# AgnoMemoryConfig, AgnoToolsConfig, AgnoAdapterConfig lived in this module
+# and caused `isinstance(config.agno, AgnoAdapterConfig)` to fail silently
+# because the two classes were distinct objects. That made `_get_agno_config`
+# return the engine's defaults (provider=ollama) instead of the user-configured
+# values (provider=minimax).
+from ..core.config import (
+    AgnoAdapterConfig,
+    AgnoLLMConfig,
+    AgnoMemoryConfig,
+    AgnoToolsConfig,
+    LLMProvider,
+    MemoryBackend,
+)
+
 if TYPE_CHECKING:
     from agno.agent import Agent
     from agno.run.agent import RunOutput
@@ -50,187 +66,6 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger(__name__)
 
-
-# ============================================================================
-# Configuration Models
-# ============================================================================
-
-
-class LLMProvider(StrEnum):
-    """Supported LLM providers for Agno agents."""
-
-    ANTHROPIC = "anthropic"
-    OPENAI = "openai"
-    OLLAMA = "ollama"
-    MINIMAX = "minimax"
-
-
-class MemoryBackend(StrEnum):
-    """Memory backend storage types."""
-
-    SQLITE = "sqlite"
-    POSTGRES = "postgres"
-    NONE = "none"
-
-
-class AgnoLLMConfig(BaseModel):
-    """LLM provider configuration for Agno."""
-
-    provider: LLMProvider = Field(
-        default=LLMProvider.OLLAMA,
-        description="LLM provider (anthropic, openai, ollama, minimax)",
-    )
-    model_id: str = Field(
-        default="qwen2.5:7b",
-        description="Model identifier (e.g., claude-sonnet-4-6, gpt-4o, qwen2.5:7b)",
-    )
-    api_key_env: str | None = Field(
-        default=None,
-        description="Environment variable name for API key",
-    )
-    base_url: str | None = Field(
-        default="http://localhost:11434",
-        description="Base URL for Ollama or custom endpoints",
-    )
-    temperature: float = Field(
-        default=0.7,
-        ge=0.0,
-        le=2.0,
-        description="Sampling temperature",
-    )
-    max_tokens: int = Field(
-        default=4096,
-        ge=1,
-        le=128000,
-        description="Maximum tokens per response",
-    )
-
-    model_config = {"extra": "forbid"}
-
-
-class AgnoMemoryConfig(BaseModel):
-    """Memory and storage configuration for Agno agents."""
-
-    enabled: bool = Field(default=False, description="Enable agent memory")
-    backend: MemoryBackend = Field(
-        default=MemoryBackend.NONE,
-        description="Memory backend storage type",
-    )
-    db_path: str = Field(
-        default="data/agno.db",
-        description="SQLite database path (for sqlite backend)",
-    )
-    connection_string: str | None = Field(
-        default=None,
-        description="PostgreSQL connection string (set via env)",
-    )
-    num_history_runs: int = Field(
-        default=10,
-        ge=0,
-        le=100,
-        description="Number of historical runs to retain",
-    )
-
-    model_config = {"extra": "forbid"}
-
-    @field_validator("connection_string")
-    @classmethod
-    def validate_connection_string(cls, v: str | None, info) -> str | None:
-        """Validate PostgreSQL connection string when using postgres backend."""
-        backend = info.data.get("backend")
-        if backend == MemoryBackend.POSTGRES and not v:
-            raise ValueError(
-                "connection_string must be set via MAHAVISHNU_AGNO__MEMORY__CONNECTION_STRING "
-                "when using postgres backend"
-            )
-        return v
-
-
-class AgnoToolsConfig(BaseModel):
-    """Tool integration configuration for Agno agents."""
-
-    mcp_server_url: str = Field(
-        default="http://localhost:8677/mcp",
-        description="Mahavishnu MCP server URL for native tool integration",
-    )
-    mcp_transport: str = Field(
-        default="sse",
-        description="MCP transport protocol (sse, stdio)",
-    )
-    enabled_tools: list[str] = Field(
-        default_factory=lambda: [
-            "search_code",
-            "read_file",
-            "write_file",
-            "list_repos",
-            "get_repo_info",
-            "run_command",
-        ],
-        description="List of enabled MCP tools",
-    )
-    tool_timeout_seconds: int = Field(
-        default=60,
-        ge=5,
-        le=600,
-        description="Tool execution timeout in seconds",
-    )
-    enable_native_tools: bool = Field(
-        default=True,
-        description="Enable native Agno tools (file operations, code analysis)",
-    )
-
-    model_config = {"extra": "forbid"}
-
-
-class AgnoAdapterConfig(BaseModel):
-    """Complete Agno adapter configuration.
-
-    This configuration is nested under the 'agno' key in MahavishnuSettings.
-    Environment variable override format: MAHAVISHNU_AGNO__{FIELD}
-    """
-
-    enabled: bool = Field(default=True, description="Enable Agno adapter")
-
-    llm: AgnoLLMConfig = Field(
-        default_factory=AgnoLLMConfig,
-        description="LLM provider configuration",
-    )
-
-    memory: AgnoMemoryConfig = Field(
-        default_factory=AgnoMemoryConfig,
-        description="Memory and storage configuration",
-    )
-
-    tools: AgnoToolsConfig = Field(
-        default_factory=AgnoToolsConfig,
-        description="Tool integration configuration",
-    )
-
-    teams_config_path: str = Field(
-        default="settings/agno_teams",
-        description="Path to team configuration files",
-    )
-
-    default_timeout_seconds: int = Field(
-        default=300,
-        ge=30,
-        le=3600,
-        description="Default agent execution timeout",
-    )
-
-    max_concurrent_agents: int = Field(
-        default=5,
-        ge=1,
-        le=50,
-        description="Maximum concurrent agent executions",
-    )
-
-    telemetry_enabled: bool = Field(
-        default=True,
-        description="Enable OpenTelemetry instrumentation",
-    )
-
-    model_config = {"extra": "forbid"}
 
 
 # ============================================================================

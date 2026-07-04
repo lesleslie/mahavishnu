@@ -471,7 +471,7 @@ class TestAgnoAdapter:
         adapter = AgnoAdapter(EmptyConfig())
         # Check that default config is created with expected values
         assert adapter.agno_config.enabled is True
-        assert adapter.agno_config.memory.enabled is False
+        assert adapter.agno_config.memory.enabled is True
         assert adapter.agno_config.memory.backend == MemoryBackend.NONE
         assert adapter.agno_config.llm.provider == LLMProvider.OLLAMA
         assert adapter.agno_config.default_timeout_seconds == 300

@@ -183,6 +183,10 @@ class AgnoToolsConfig(BaseModel):
         le=600,
         description="Tool execution timeout in seconds",
     )
+    enable_native_tools: bool = Field(
+        default=True,
+        description="Enable native Agno tools (file operations, code analysis)",
+    )
 
     model_config = {"extra": "forbid"}
 
