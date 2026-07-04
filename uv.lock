@@ -3420,7 +3420,7 @@ dependencies = [
     { name = "llama-index-embeddings-ollama" },
     { name = "llama-index-llms-ollama" },
     { name = "llama-index-vector-stores-opensearch" },
-    { name = "mcp-common", extra = ["llm", "treesitter"] },
+    { name = "mcp-common" },
     { name = "oneiric" },
     { name = "opentelemetry-api" },
     { name = "opentelemetry-exporter-otlp-proto-grpc" },
@@ -3494,6 +3494,14 @@ hatchet = [
 iterm2 = [
     { name = "iterm2" },
 ]
+llm-providers = [
+    { name = "openai" },
+]
+treesitter = [
+    { name = "tree-sitter" },
+    { name = "tree-sitter-go" },
+    { name = "tree-sitter-python" },
+]
 tui = [
     { name = "textual" },
 ]
@@ -3520,7 +3528,7 @@ requires-dist = [
     { name = "llama-index-embeddings-ollama", specifier = ">=0.8.6,<0.9.0" },
     { name = "llama-index-llms-ollama", specifier = ">=0.8.0,<0.9.0" },
     { name = "llama-index-vector-stores-opensearch", specifier = ">=0.6.3,<0.7.0" },
-    { name = "mcp-common", extras = ["treesitter", "llm"], specifier = ">=0.17.0" },
+    { name = "mcp-common", specifier = ">=0.17.0" },
     { name = "oneiric", specifier = ">=0.13.0" },
     { name = "opentelemetry-api", specifier = ">=1.42.1" },
     { name = "opentelemetry-exporter-otlp-proto-grpc", specifier = ">=1.42.1" },
@@ -3588,6 +3596,12 @@ ecosystem = [
 ]
 hatchet = [{ name = "hatchet-sdk", specifier = ">=1.33.6,<2" }]
 iterm2 = [{ name = "iterm2", specifier = ">=2.20" }]
+llm-providers = [{ name = "openai", specifier = ">=2.41.0" }]
+treesitter = [
+    { name = "tree-sitter", specifier = ">=0.25.2" },
+    { name = "tree-sitter-go", specifier = ">=0.25.0" },
+    { name = "tree-sitter-python", specifier = ">=0.25.0" },
+]
 tui = [{ name = "textual", specifier = ">=8.2.7" }]
 vector = [{ name = "turbovec", extras = ["llama-index"], specifier = "~=0.1" }]
 
@@ -6787,7 +6801,7 @@ dependencies = [
     { name = "fastmcp" },
     { name = "hatchling" },
     { name = "httpx" },
-    { name = "mcp-common", extra = ["llm", "treesitter"] },
+    { name = "mcp-common" },
     { name = "numpy" },
     { name = "prometheus-client" },
     { name = "pydantic" },
@@ -6809,7 +6823,7 @@ requires-dist = [
     { name = "fastmcp", specifier = ">=3.4.0,<4" },
     { name = "hatchling", specifier = ">=1.30.1" },
     { name = "httpx", specifier = ">=0.28.1" },
-    { name = "mcp-common", extras = ["treesitter", "llm"], specifier = ">=0.17.0" },
+    { name = "mcp-common", specifier = ">=0.17.0" },
     { name = "numpy", specifier = ">=2.4.6" },
     { name = "prometheus-client", specifier = ">=0.25.0" },
     { name = "pydantic", specifier = ">=2.13.4" },
@@ -6828,6 +6842,26 @@ dev = [
     { name = "deadcode", specifier = ">=2.4.1" },
     { name = "factory-boy", specifier = ">=3.3.3" },
     { name = "faker", specifier = ">=40.20.0" },
+]
+llm = [
+    { name = "anthropic", specifier = ">=0.39.0" },
+    { name = "tiktoken", specifier = ">=0.7.0" },
+]
+llm-providers = [{ name = "openai", specifier = ">=2.41.0" }]
+storage = [
+    { name = "boto3", specifier = ">=1.34.0" },
+    { name = "redis", specifier = ">=5.0.0" },
+]
+telemetry = [
+    { name = "opentelemetry-api", specifier = ">=1.20.0" },
+    { name = "opentelemetry-exporter-otlp-proto-grpc", specifier = ">=1.20.0" },
+    { name = "opentelemetry-exporter-otlp-proto-http", specifier = ">=1.20.0" },
+    { name = "opentelemetry-sdk", specifier = ">=1.20.0" },
+]
+treesitter = [
+    { name = "tree-sitter", specifier = ">=0.25.2" },
+    { name = "tree-sitter-go", specifier = ">=0.25.0" },
+    { name = "tree-sitter-python", specifier = ">=0.25.0" },
 ]
 
 [[package]]
