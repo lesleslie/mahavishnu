@@ -147,15 +147,33 @@ class TestVerifyMessage:
         assert cross_project_auth.verify_message({}, sig) is True
 
     def test_timing_safe_comparison(self, cross_project_auth: CrossProjectAuth) -> None:
-        """Verify that the implementation uses hmac.compare_digest."""
+        """Verify that verify_message uses hmac.compare_digest (constant-time).
+
+        Timing-safe comparison is the only thing standing between auth code
+        and a side-channel attack: ``==`` short-circuits at the first
+        mismatched byte, leaking the signature byte-by-byte through response
+        times. ``hmac.compare_digest`` runs in constant time regardless of
+        where the mismatch occurs.
+
+        The production code at ``mahavishnu/session_buddy/auth.py:52`` uses
+        ``hmac.compare_digest``. This test pins that fact so a refactor
+        back to ``==`` fails CI.
+        """
         msg = {"x": 1}
         sig = cross_project_auth.sign_message(msg)
-        # This should not raise and should use constant-time comparison
-        with patch("mahavishnu.session_buddy.auth.hmac"):
-            # The real call goes through - we just check it returns True
-            pass
-        # Direct call to verify the actual behavior
-        assert cross_project_auth.verify_message(msg, sig) is True
+
+        with patch(
+            "mahavishnu.session_buddy.auth.hmac.compare_digest",
+            return_value=True,
+        ) as mock_compare:
+            assert cross_project_auth.verify_message(msg, sig) is True
+
+        mock_compare.assert_called_once()
+        # Both arguments should be the strings being compared, not the
+        # raw bytes; compare_digest handles encoding internally.
+        call_args = mock_compare.call_args.args
+        assert len(call_args) == 2
+        assert all(isinstance(a, str) for a in call_args)
 
 
 # ---------------------------------------------------------------------------

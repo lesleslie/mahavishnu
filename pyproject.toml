@@ -486,33 +486,6 @@ ignore = [
     "FURB184",
 ]
 
-[tool.pip-audit]
-ignore-vuln = [
-    "CVE-2025-69872",
-    "PYSEC-2024-277",
-    "PYSEC-2026-89",
-    "PYSEC-2026-97",
-    "PYSEC-2025-144",
-    "PYSEC-2025-145",
-    "PYSEC-2025-146",
-    "PYSEC-2025-147",
-    "PYSEC-2026-101",
-    "PYSEC-2026-102",
-    "PYSEC-2025-183",
-    "PYSEC-2025-211",
-    "PYSEC-2025-212",
-    "PYSEC-2025-213",
-    "PYSEC-2025-214",
-    "PYSEC-2025-215",
-    "PYSEC-2025-216",
-    "PYSEC-2025-217",
-    "PYSEC-2025-218",
-    "CVE-2026-54293",
-    "GHSA-p4gq-832x-fm9v",
-    "CVE-2026-12243",
-    "PYSEC-2026-597",
-]
-
 [tool.codespell]
 ignore-words-list = ["assertIn", "import", "ttest", "ned"]
 skip = '.git,*.egg-info,*cache,.venv,build,dist,htmlcov,*.lock'
