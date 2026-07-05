@@ -203,7 +203,7 @@ def health() -> dict[str, Any]:
 
     try:
         # Test database connection
-        result = db_connection.execute("SELECT 1").fetchone()
+        db_connection.execute("SELECT 1").fetchone()
         return jsonify(
             {
                 "status": "ok",

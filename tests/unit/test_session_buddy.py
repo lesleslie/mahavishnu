@@ -313,6 +313,6 @@ async def test_get_enhanced_context(mock_app):
     assert result["repo_path"] == "/test/repo"
 
     # Verify that the context includes the requested elements
-    context = result["enhanced_context"]
+    result["enhanced_context"]
     # Note: The actual results may be empty if the requested elements don't exist
     # but the structure should be present

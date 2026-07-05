@@ -7,14 +7,11 @@ the initial URL. This closes the DNS-rebinding / open-redirect SSRF gap.
 """
 from __future__ import annotations
 
-from pathlib import Path
-
 import httpx
 import pytest
 
-from tests.unit.mcp.crow.conftest import mock_settings
-from mahavishnu.mcp.crow import client as crow_client
 from mahavishnu.mcp.crow.tools.web_tools import web_fetch, web_fetch_batch
+from tests.unit.mcp.crow.conftest import mock_settings
 
 
 @pytest.fixture
@@ -171,7 +168,6 @@ async def test_web_fetch_dns_failure_raises_value_error(tmp_path, monkeypatch):
 @pytest.mark.unit
 async def test_web_fetch_validates_every_redirect_hop(mock_http_client, tmp_path):
     """Public URL -> public URL -> private IP. Must block at the private hop."""
-    import socket as _socket
 
     # First two hops resolve to public, third resolves to private.
     addrs_by_call = iter(

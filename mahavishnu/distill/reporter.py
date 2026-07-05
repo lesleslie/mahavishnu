@@ -1,4 +1,3 @@
-
 from __future__ import annotations
 
 from dataclasses import dataclass, field
@@ -19,7 +18,6 @@ class _ConnLike(Protocol):
 
 @dataclass(frozen=True)
 class WorkflowRun:
-
     workflow_id: str
     repo_path: str
     adapter: str
@@ -39,7 +37,6 @@ class WorkflowRun:
 
 
 def report_run(conn: _ConnLike, run: WorkflowRun) -> bool:
-
 
     started_at_str = _isoformat(run.started_at)
     completed_at_str = _isoformat(run.completed_at) if run.completed_at is not None else None
@@ -77,7 +74,7 @@ def report_run(conn: _ConnLike, run: WorkflowRun) -> bool:
 def safe_report_run(conn: _ConnLike, run: WorkflowRun) -> bool:
     try:
         return report_run(conn, run)
-    except Exception as exc: # noqa: BLE001 — telemetry is best-effort
+    except Exception as exc:  # noqa: BLE001 — telemetry is best-effort
         logger.warning(
             "mahavishnu.distill.reporter: telemetry failed; workflow run NOT blocked",
             extra={

@@ -215,13 +215,13 @@ class TestWorkerRegistry:
         assert "terminal-ollama" not in WORKER_REGISTRY
 
     def test_application_workers_have_mcp_server_or_command(self) -> None:
-        for key, cfg in WORKER_REGISTRY.items():
+        for _key, cfg in WORKER_REGISTRY.items():
             if cfg.category is WorkerCategory.APPLICATION:
                 # Application workers are either MCP-driven or shell-driven
                 assert cfg.mcp_server is not None or cfg.command != ""
 
     def test_ai_assistants_have_completion_or_json_marker(self) -> None:
-        for key, cfg in WORKER_REGISTRY.items():
+        for _key, cfg in WORKER_REGISTRY.items():
             if cfg.category is WorkerCategory.AI_ASSISTANT:
                 # Either a completion marker is set, or it signals via JSON
                 assert (

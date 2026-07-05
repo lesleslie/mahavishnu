@@ -721,22 +721,18 @@ async def main():
     print("=" * 70)
 
     # Check dependencies
-    print("\nChecking dependencies...")
-    try:
-        import duckdb
+    import importlib.util as _importlib_util
 
-        print("  ✅ duckdb")
-    except ImportError:
+    print("\nChecking dependencies...")
+    if _importlib_util.find_spec("duckdb") is None:
         print("  ❌ duckdb (install with: pip install duckdb)")
         return
+    print("  ✅ duckdb")
 
-    try:
-        import sentence_transformers
-
-        print("  ✅ sentence-transformers")
-    except ImportError:
+    if _importlib_util.find_spec("sentence_transformers") is None:
         print("  ❌ sentence-transformers (install with: pip install sentence-transformers)")
         return
+    print("  ✅ sentence-transformers")
 
     # Run examples
     examples = [

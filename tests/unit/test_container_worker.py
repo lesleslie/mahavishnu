@@ -324,7 +324,7 @@ class TestExecute:
         with patch(
             "mahavishnu.workers.container.asyncio.create_subprocess_exec", return_value=proc
         ):
-            result = await worker.execute({"command": "echo hello"})
+            await worker.execute({"command": "echo hello"})
         client.call_tool.assert_called_once()
         positional_args, call_kwargs = client.call_tool.call_args
         assert positional_args[0] == "store_memory"

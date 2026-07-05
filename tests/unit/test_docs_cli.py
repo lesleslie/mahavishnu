@@ -17,15 +17,18 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 import json
-from pathlib import Path
 import sys
 import types
+from typing import TYPE_CHECKING
 
 import pytest
 import typer
 from typer.testing import CliRunner
 
 from mahavishnu.cli.docs_cli import add_docs_commands
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 # ---------------------------------------------------------------------------
 # Stubs for audit_ecosystem_docs dataclasses

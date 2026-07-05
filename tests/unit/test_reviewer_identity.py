@@ -17,17 +17,19 @@ A CLI flag must never override the missing env var (env wins).
 from __future__ import annotations
 
 import logging
-from pathlib import Path
+from typing import TYPE_CHECKING
 
 import pytest
 
-from mahavishnu.core.errors import ReviewerNotTrusted
+from mahavishnu.core.errors import ReviewerNotTrustedError
 from mahavishnu.distill.reviewer import (
     ReviewerDecision,
     ReviewerIdentity,
     ReviewerSource,
 )
 
+if TYPE_CHECKING:
+    from pathlib import Path
 
 # ---------------------------------------------------------------------------
 # Test helpers
@@ -113,13 +115,13 @@ class TestEnvUserNotInAllowlistRejected:
         monkeypatch: pytest.MonkeyPatch,
         allowlist_file: Path,
     ) -> None:
-        """User from env + NOT in allowlist -> ReviewerNotTrusted."""
+        """User from env + NOT in allowlist -> ReviewerNotTrustedError."""
         monkeypatch.setenv("MAHAVISHNU_USER_ID", "mallory")
         monkeypatch.setenv("MAHAVISHNU_PUBLISHER_ALLOWLIST", str(allowlist_file))
 
         identity = ReviewerIdentity.from_env()
 
-        with pytest.raises(ReviewerNotTrusted) as excinfo:
+        with pytest.raises(ReviewerNotTrustedError) as excinfo:
             identity.enforce()
 
         assert "mallory" in str(excinfo.value)
@@ -223,12 +225,12 @@ class TestMissingEnvRejected:
         self,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        """No env + no CLI flag -> ReviewerNotTrusted."""
+        """No env + no CLI flag -> ReviewerNotTrustedError."""
         monkeypatch.delenv("MAHAVISHNU_USER_ID", raising=False)
 
         identity = ReviewerIdentity.from_env(cli_reviewer=None)
 
-        with pytest.raises(ReviewerNotTrusted) as excinfo:
+        with pytest.raises(ReviewerNotTrustedError) as excinfo:
             identity.enforce()
 
         assert "MAHAVISHNU_USER_ID" in str(excinfo.value)
@@ -242,7 +244,7 @@ class TestMissingEnvRejected:
 
         identity = ReviewerIdentity.from_env(cli_reviewer="alice")
 
-        with pytest.raises(ReviewerNotTrusted):
+        with pytest.raises(ReviewerNotTrustedError):
             identity.enforce()
 
         decision = identity.check()

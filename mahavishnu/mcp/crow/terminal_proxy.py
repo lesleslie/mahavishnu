@@ -20,16 +20,19 @@ The dataclass + atomic-publish pattern is the "heavy lifting" from
 Plan Task 9 — implemented here in Task 4 because the tests for this
 task depend on ``_state`` being a single assignable object.
 """
+
 from __future__ import annotations
 
 import asyncio
 from contextlib import AsyncExitStack
 from dataclasses import dataclass
+from typing import TYPE_CHECKING
 
 from mcp import ClientSession, StdioServerParameters
 from mcp.client.stdio import stdio_client
 
-from mahavishnu.mcp.crow.settings import CrowSettings
+if TYPE_CHECKING:
+    from mahavishnu.mcp.crow.settings import CrowSettings
 
 
 @dataclass
@@ -55,18 +58,13 @@ async def init_crow_stdio_client(settings: CrowSettings) -> None:
     async with _crow_lock:
         if _state is not None:
             raise RuntimeError(
-                "crow stdio client already initialized; "
-                "call close_crow_stdio_client first"
+                "crow stdio client already initialized; call close_crow_stdio_client first"
             )
         stack = AsyncExitStack()
         try:
-            params = StdioServerParameters(
-                command=settings.crow_mcp_command, args=[]
-            )
+            params = StdioServerParameters(command=settings.crow_mcp_command, args=[])
             _read, _write = await stack.enter_async_context(stdio_client(params))
-            session = await stack.enter_async_context(
-                ClientSession(_read, _write)
-            )
+            session = await stack.enter_async_context(ClientSession(_read, _write))
             await session.initialize()
         except BaseException:
             # Any failure during init: roll back the partially-entered
@@ -89,9 +87,7 @@ async def close_crow_stdio_client() -> None:
 def get_crow_session() -> ClientSession:
     """Return the live crow ClientSession. Raises if not initialized."""
     if _state is None:
-        raise RuntimeError(
-            "crow stdio client not initialized — server lifespan not running"
-        )
+        raise RuntimeError("crow stdio client not initialized — server lifespan not running")
     return _state.session
 
 

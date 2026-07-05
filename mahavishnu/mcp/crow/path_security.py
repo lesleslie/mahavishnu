@@ -13,11 +13,12 @@ Two helpers:
 
 Used by every tool that touches the filesystem or the network.
 """
+
 from __future__ import annotations
 
 import ipaddress
-import socket
 from pathlib import Path
+import socket
 from urllib.parse import urlparse
 
 # v2 expansion: CGNAT (RFC 6598), this-network, multicast, reserved,
@@ -66,9 +67,7 @@ def resolve_workspace_path(path: str, workspace_root: Path) -> Path:
     try:
         resolved.relative_to(root)
     except ValueError as exc:
-        raise PermissionError(
-            f"Path '{resolved}' is outside workspace root '{root}'"
-        ) from exc
+        raise PermissionError(f"Path '{resolved}' is outside workspace root '{root}'") from exc
     return resolved
 
 
@@ -93,9 +92,7 @@ def validate_url(url: str) -> None:
     """
     parsed = urlparse(url)
     if parsed.scheme not in ("http", "https"):
-        raise ValueError(
-            f"Only http/https URLs are allowed, got: {parsed.scheme!r}"
-        )
+        raise ValueError(f"Only http/https URLs are allowed, got: {parsed.scheme!r}")
     hostname = parsed.hostname or ""
     try:
         addrs = socket.getaddrinfo(hostname, None)
@@ -104,6 +101,4 @@ def validate_url(url: str) -> None:
     for _, _, _, _, sockaddr in addrs:
         ip = ipaddress.ip_address(sockaddr[0])
         if _is_blocked(ip):
-            raise PermissionError(
-                f"URL resolves to private/reserved address {ip} — blocked (SSRF)"
-            )
+            raise PermissionError(f"URL resolves to private/reserved address {ip} — blocked (SSRF)")

@@ -17,7 +17,6 @@ third conformant implementation and require no caller changes.
 
 from __future__ import annotations
 
-import uuid
 from datetime import UTC, datetime
 from typing import Protocol, runtime_checkable
 
@@ -87,9 +86,7 @@ class InMemorySOPPersister:
         return self._suggestions.get(suggestion_id)
 
     def list_suggestions(self, project_id: str) -> list[SOPSuggestion]:
-        return [
-            s for s in self._suggestions.values() if s.project_id == project_id
-        ]
+        return [s for s in self._suggestions.values() if s.project_id == project_id]
 
     # --- FailureModeCatalog ---------------------------------------------
     def record_failure_mode(
@@ -127,9 +124,7 @@ class InMemorySOPPersister:
         self._failure_modes[key] = entry
 
     def list_failure_modes(self, project_id: str) -> list[FailureModeCatalogEntry]:
-        return [
-            e for (pid, _), e in self._failure_modes.items() if pid == project_id
-        ]
+        return [e for (pid, _), e in self._failure_modes.items() if pid == project_id]
 
 
 class HttpSOPPersister:

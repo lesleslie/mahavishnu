@@ -300,7 +300,7 @@ class TestConnectionManagement:
 
         with patch.object(
             broadcaster, "_attempt_reconnect", new_callable=AsyncMock
-        ) as mock_reconnect:
+        ):
             await broadcaster.broadcast_pool_spawned("pool_123", {})
             # Should have tried to reconnect
             # Note: reconnect only triggers on connection errors
@@ -530,7 +530,7 @@ class TestReconnection:
 
         initial_attempts = broadcaster._reconnect_attempts
 
-        with patch("asyncio.sleep", new_callable=AsyncMock) as mock_sleep:
+        with patch("asyncio.sleep", new_callable=AsyncMock):
             await broadcaster._attempt_reconnect()
 
         assert broadcaster._reconnect_attempts == initial_attempts + 1
@@ -541,7 +541,7 @@ class TestReconnection:
         broadcaster = WebSocketBroadcaster(websocket_server=MagicMock())
         broadcaster._reconnect_attempts = broadcaster._max_reconnect_attempts
 
-        with patch("asyncio.sleep", new_callable=AsyncMock) as mock_sleep:
+        with patch("asyncio.sleep", new_callable=AsyncMock):
             await broadcaster._attempt_reconnect()
 
         # Should not increment beyond max

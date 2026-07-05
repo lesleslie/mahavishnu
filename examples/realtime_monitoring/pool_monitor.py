@@ -208,7 +208,7 @@ class PoolMonitor:
                 try:
                     dt = datetime.fromisoformat(timestamp.replace("Z", "+00:00"))
                     time_str = dt.strftime("%H:%M:%S")
-                except:
+                except Exception:
                     time_str = timestamp[:8]
             else:
                 time_str = "???"
@@ -452,7 +452,7 @@ class PoolMonitor:
                 console=self.console,
                 refresh_per_second=10,
                 screen=False,
-            ) as live:
+            ):
                 while self.running:
                     try:
                         message = await asyncio.wait_for(

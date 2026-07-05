@@ -26,19 +26,22 @@ for forensic visibility but never authorizes publication.
 
 from __future__ import annotations
 
+from dataclasses import dataclass, field
+from enum import StrEnum
 import logging
 import os
-from collections.abc import Mapping
-from dataclasses import dataclass, field
-from enum import Enum
 from pathlib import Path
+from typing import TYPE_CHECKING
 
-from mahavishnu.core.errors import ReviewerNotTrusted
+from mahavishnu.core.errors import ReviewerNotTrustedError
+
+if TYPE_CHECKING:
+    from collections.abc import Mapping
 
 logger = logging.getLogger(__name__)
 
 
-class ReviewerSource(str, Enum):
+class ReviewerSource(StrEnum):
     """How a :class:`ReviewerDecision` resolved trust.
 
     ``ENV_ALLOWLIST`` — env var present and listed in allowlist (HAPPY).
@@ -176,25 +179,24 @@ class ReviewerIdentity:
             reviewer_id=env_user_id,
             cli_reviewer=cli_reviewer,
             reason=(
-                f"Reviewer {env_user_id!r} is not in the configured "
-                f"MAHAVISHNU_PUBLISHER_ALLOWLIST."
+                f"Reviewer {env_user_id!r} is not in the configured MAHAVISHNU_PUBLISHER_ALLOWLIST."
             ),
         )
 
     # ------------------------------------------------------------ enforce
 
     def enforce(self) -> ReviewerDecision:
-        """Evaluate trust, raising :class:`ReviewerNotTrusted` if denied.
+        """Evaluate trust, raising :class:`ReviewerNotTrustedError` if denied.
 
         Returns the decision when allowed, so callers can chain
         ``enforce()`` then proceed with publication.
 
         Raises:
-            ReviewerNotTrusted: when ``check().allowed`` is False.
+            ReviewerNotTrustedError: when ``check().allowed`` is False.
         """
         decision = self.check()
         if not decision.allowed:
-            raise ReviewerNotTrusted(
+            raise ReviewerNotTrustedError(
                 decision.reason,
                 reviewer_id=decision.reviewer_id or self.env_user_id,
             )
@@ -212,8 +214,7 @@ class ReviewerIdentity:
         level = logging.INFO if decision.allowed else logging.WARNING
         logger.log(
             level,
-            "reviewer_identity.decision reviewer=%s allowed=%s source=%s "
-            "cli_reviewer=%s reason=%s",
+            "reviewer_identity.decision reviewer=%s allowed=%s source=%s cli_reviewer=%s reason=%s",
             decision.reviewer_id,
             decision.allowed,
             decision.source.value,

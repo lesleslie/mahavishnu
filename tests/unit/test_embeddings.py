@@ -50,7 +50,7 @@ class TestOllamaProvider:
 
     @pytest.mark.asyncio
     @pytest.mark.skipif(
-        not __import__("socket").socket().connect_ex(("localhost", 11434)) == 0,
+        __import__("socket").socket().connect_ex(("localhost", 11434)) != 0,
         reason="Ollama not running",
     )
     async def test_ollama_available(self):
@@ -62,7 +62,7 @@ class TestOllamaProvider:
 
     @pytest.mark.asyncio
     @pytest.mark.skipif(
-        not __import__("socket").socket().connect_ex(("localhost", 11434)) == 0,
+        __import__("socket").socket().connect_ex(("localhost", 11434)) != 0,
         reason="Ollama not running",
     )
     async def test_ollama_generate_embeddings(self):

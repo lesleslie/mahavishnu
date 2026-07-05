@@ -9,8 +9,8 @@ Dhara implementation can be swapped in without breaking callers.
 
 from __future__ import annotations
 
-import hashlib
 from datetime import UTC, datetime
+import hashlib
 
 import pytest
 
@@ -21,7 +21,6 @@ from mahavishnu.distill.skill_pipeline import (
     SkillTransition,
     SkillZone,
 )
-
 
 # ---------------------------------------------------------------------------
 # SkillZone enum

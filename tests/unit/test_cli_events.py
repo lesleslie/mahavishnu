@@ -470,7 +470,7 @@ class TestValidateIntegration:
         schemas = registry.list_schemas()
 
         for schema in schemas:
-            envelope = EventEnvelope(
+            EventEnvelope(
                 event_type=schema.event_type,
                 version=schema.version,
                 source="test",

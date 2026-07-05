@@ -724,7 +724,7 @@ class TestRunValidation:
         mock_settings = MagicMock()
         mock_settings.repos_path = str(Path(__file__).parent)
 
-        real_settings_path = Path("settings").resolve()
+        Path("settings").resolve()
 
         with (
             patch("mahavishnu.cli.config_validator.validate_config", return_value=mock_report),

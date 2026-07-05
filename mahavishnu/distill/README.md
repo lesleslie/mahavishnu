@@ -28,7 +28,7 @@ The distiller runs two layered gates BEFORE any synthesis:
    it is `enforce()`'d at function entry. Only an allowlisted
    reviewer (or bootstrap mode) can publish.
 
-2. **H4 — Source provenance** (`mahavishnu.distill.provenance`). For
+1. **H4 — Source provenance** (`mahavishnu.distill.provenance`). For
    each candidate session the distiller looks up the originating run
    record (`mahavishnu_workflow_runs`) and feeds it through
    `check_source_purity(run_record, allowlist=...)`. Records with an

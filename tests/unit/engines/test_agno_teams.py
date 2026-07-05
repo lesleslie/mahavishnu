@@ -10,7 +10,7 @@ These tests verify the team management functionality:
 
 from __future__ import annotations
 
-from pathlib import Path
+from typing import TYPE_CHECKING
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -32,6 +32,9 @@ from mahavishnu.engines.agno_teams.manager import (
     AgentTeamManager,
     TeamRunResult,
 )
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 # ============================================================================
 # Fixtures

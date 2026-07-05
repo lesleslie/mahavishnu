@@ -1142,7 +1142,7 @@ class TestAgnoAdapterAgentManagement:
             mock_agent_cls.return_value = mock_agent
 
             # Call with just name (task_type only)
-            agent = await adapter._create_agent("code_sweep")
+            await adapter._create_agent("code_sweep")
 
             call_kwargs = mock_agent_cls.call_args[1]
             assert "instructions" in call_kwargs

@@ -4,10 +4,8 @@ from __future__ import annotations
 
 from datetime import UTC
 import os
-from pathlib import Path
 import time
-
-import pytest
+from typing import TYPE_CHECKING
 
 from mahavishnu.core.code_index.indexer import (
     QUEUE_DIR,
@@ -15,6 +13,11 @@ from mahavishnu.core.code_index.indexer import (
     index_repo,
     set_last_indexed_commit,
 )
+
+if TYPE_CHECKING:
+    from pathlib import Path
+
+    import pytest
 
 
 def test_set_and_get_last_indexed_commit(tmp_path: Path) -> None:

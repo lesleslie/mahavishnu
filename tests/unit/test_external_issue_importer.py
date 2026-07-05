@@ -360,7 +360,7 @@ class TestExternalIssueImporter:
         importer = ExternalIssueImporter(mock_task_store)
         external = importer.parse_github_issue(sample_github_issue)
 
-        task_id = await importer.import_issue(external)
+        await importer.import_issue(external)
 
         # Verify create was called with tags from labels
         call_args = mock_task_store.create.call_args

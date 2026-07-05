@@ -293,7 +293,7 @@ class TestSanitizeAndValidate:
     def test_clean_body_passes_validation(self):
         body = "def hello():\n    print('Hello, World!')"
         draft = make_draft(name="hello-skill", body=body)
-        sanitized = sanitize_skill_body(body)
+        sanitize_skill_body(body)
 
         # Re-validate after sanitize
         issues = validate_draft_isolation(draft)

@@ -16,13 +16,11 @@ The test suite focuses on:
 """
 from __future__ import annotations
 
-from pathlib import Path
-
 import httpx
 import pytest
 
-from tests.unit.mcp.crow.conftest import mock_settings
 from mahavishnu.mcp.crow.tools.web_extract import web_extract
+from tests.unit.mcp.crow.conftest import mock_settings
 
 
 @pytest.fixture

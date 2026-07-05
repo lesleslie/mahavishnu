@@ -115,7 +115,7 @@ class TestBackupManager:
             backup_dir = Path(tmpdir) / "backups"
             mock_app.config.backup_directory = str(backup_dir)
 
-            manager = BackupManager(mock_app)
+            BackupManager(mock_app)
             assert backup_dir.exists()
             assert backup_dir.is_dir()
 
@@ -320,7 +320,7 @@ class TestBackupManager:
         # We'll just verify the method is called
         with patch.object(
             backup_manager, "_cleanup_old_backups", new_callable=AsyncMock
-        ) as mock_cleanup:
+        ):
             await backup_manager.create_backup()
             # Give some time for async cleanup
             import asyncio
@@ -328,7 +328,7 @@ class TestBackupManager:
             await asyncio.sleep(0.1)
 
             # Cleanup should have been called
-            assert mock_cleanup.called or True  # May be called in background
+            assert True  # May be called in background
 
     @pytest.mark.asyncio
     async def test_calculate_checksum_generates_sha256(self, backup_manager):

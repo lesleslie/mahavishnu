@@ -16,11 +16,10 @@ covered by an import-time smoke check on every tool module.
 from __future__ import annotations
 
 import importlib
-import sys
 from pathlib import Path
+import sys
 
 import pytest
-
 
 PROD_ROOT = Path(__file__).resolve().parents[2] / "mahavishnu"
 
@@ -42,7 +41,7 @@ def test_no_top_level_from_fastmcp_imports_in_production() -> None:
     for path in _python_files(PROD_ROOT):
         text = path.read_text(encoding="utf-8")
         for line in text.splitlines():
-            stripped = line.lstrip()
+            line.lstrip()
             # Match only top-level imports (no leading whitespace)
             # for the bare ``from fastmcp import`` / ``from fastmcp.server``
             # forms. Lazy function-local imports are tested separately

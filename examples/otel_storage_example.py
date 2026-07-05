@@ -42,7 +42,7 @@ async def example_basic_usage():
     )
 
     # Initialize adapter
-    adapter = OTelStorageAdapter(otel_settings)
+    OTelStorageAdapter(otel_settings)
 
     print("Adapter initialized with:")
     print(f"  - Connection: {otel_settings.connection_string[:30]}...")

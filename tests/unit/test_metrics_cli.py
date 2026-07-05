@@ -9,7 +9,7 @@ Covers:
 from __future__ import annotations
 
 import os
-from pathlib import Path
+from typing import TYPE_CHECKING
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -21,6 +21,9 @@ from mahavishnu.metrics_cli import (
     add_metrics_commands,
     metrics_app,
 )
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 # ---------------------------------------------------------------------------
 # Helpers

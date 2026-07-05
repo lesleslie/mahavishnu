@@ -144,7 +144,7 @@ class TestAdapterHealthState:
         cfg = HealthIntegrationConfig()
         state = AdapterHealthState(adapter_name="a")
         state.consecutive_failures = 5
-        changed = state.update({"status": "healthy"}, cfg)
+        state.update({"status": "healthy"}, cfg)
         assert state.consecutive_failures == 0
         assert state.consecutive_successes == 1
 
@@ -247,7 +247,7 @@ class TestCheckAdapterHealth:
         adapter = AsyncMock()
         adapter.get_health = AsyncMock(return_value={"status": "unhealthy", "error": "down"})
         monitor = AdapterHealthMonitor(registry={"a": adapter}, config=cfg)
-        result = await monitor.check_adapter_health("a")
+        await monitor.check_adapter_health("a")
         assert monitor.health_states["a"].is_healthy is False
 
 

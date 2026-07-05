@@ -13,8 +13,8 @@ Contract summary (from the spec):
 - ``HypothesisLock.lock(hypothesis)`` returns an immutable ``LockResult``
   carrying ``lock_id`` and ``signature``.
 - ``HypothesisLock.verify_lock(...)`` returns True/False; raises
-  ``SignatureMismatch`` on tamper.
-- ``HypothesisLock.check_post_hoc(...)`` raises ``HypothesisViolation``
+  ``SignatureMismatchError`` on tamper.
+- ``HypothesisLock.check_post_hoc(...)`` raises ``HypothesisViolationError``
   on claim drift.
 - ``LockStore`` Protocol + ``InMemoryLockStore`` v0 reference impl
   (swappable for Dhara later).
@@ -23,13 +23,15 @@ Contract summary (from the spec):
 from __future__ import annotations
 
 import dataclasses
+from datetime import UTC, datetime
 import hashlib
 import json
-from datetime import datetime
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import pytest
 
+if TYPE_CHECKING:
+    from mahavishnu.core.precommitment import LockResult
 
 # ─────────────────────────────────────────────────────────────────────────
 # Hypothesis dataclass
@@ -260,11 +262,11 @@ def test_verify_lock_returns_true_for_unmodified() -> None:
 
 
 def test_verify_lock_raises_signature_mismatch_on_tamper() -> None:
-    """Tampering with the stored hypothesis must raise SignatureMismatch."""
+    """Tampering with the stored hypothesis must raise SignatureMismatchError."""
     from mahavishnu.core.precommitment import (
         Hypothesis,
         HypothesisLock,
-        SignatureMismatch,
+        SignatureMismatchError,
     )
 
     h = Hypothesis(
@@ -281,7 +283,7 @@ def test_verify_lock_raises_signature_mismatch_on_tamper() -> None:
     # Tamper: rewrite the stored claim to something else.
     store._tamper(result.lock_id, dataclasses.replace(h, claim="TAMPERED"))
 
-    with pytest.raises(SignatureMismatch):
+    with pytest.raises(SignatureMismatchError):
         lock.verify_lock(result.lock_id)
 
 
@@ -319,11 +321,11 @@ def test_check_post_hoc_passes_when_claim_unchanged() -> None:
 
 
 def test_check_post_hoc_raises_on_claim_drift() -> None:
-    """If the observed claim disagrees, raise HypothesisViolation."""
+    """If the observed claim disagrees, raise HypothesisViolationError."""
     from mahavishnu.core.precommitment import (
         Hypothesis,
         HypothesisLock,
-        HypothesisViolation,
+        HypothesisViolationError,
     )
 
     h = Hypothesis(
@@ -335,7 +337,7 @@ def test_check_post_hoc_raises_on_claim_drift() -> None:
     )
     lock = HypothesisLock(store=InMemoryLockStoreProbe())
     result = lock.lock(h)
-    with pytest.raises(HypothesisViolation):
+    with pytest.raises(HypothesisViolationError):
         lock.check_post_hoc(result.lock_id, observed_claim="actually throughput flat")
 
 
@@ -348,9 +350,7 @@ def test_lock_store_protocol_is_runtime_checkable() -> None:
     """The LockStore protocol must be runtime_checkable for duck typing."""
     from mahavishnu.core.precommitment import LockStore
 
-    assert getattr(LockStore, "_is_runtime_protocol", False) or hasattr(
-        LockStore, "__call__"
-    )  # loose check; runtime_checkable attaches __call__
+    assert getattr(LockStore, "_is_runtime_protocol", False) or callable(LockStore)  # loose check; runtime_checkable attaches __call__
 
 
 def test_in_memory_lock_store_satisfies_protocol() -> None:
@@ -362,7 +362,7 @@ def test_in_memory_lock_store_satisfies_protocol() -> None:
 
 
 def test_in_memory_lock_store_rejects_duplicate_lock_id() -> None:
-    """Append-only: re-using the same lock_id must raise."""
+    """Append-only: reusing the same lock_id must raise."""
     from mahavishnu.core.precommitment import (
         Hypothesis,
         InMemoryLockStore,
@@ -427,13 +427,12 @@ def test_lock_survives_process_restart(tmp_path: object) -> None:
     invocation, so ``verify_lock`` and ``check_post_hoc`` never saw prior
     locks and the security control silently failed open).
     """
-    from datetime import datetime, timezone
+    from datetime import datetime
 
     from mahavishnu.core.precommitment import (
         Hypothesis,
         HypothesisLock,
         JsonFileLockStore,
-        compute_signature,
     )
 
     store_path = tmp_path / "locks.json"  # type: ignore[operator]
@@ -442,7 +441,7 @@ def test_lock_survives_process_restart(tmp_path: object) -> None:
         falsification_criteria=("y",),
         success_criteria=("z",),
         confidence=50,
-        locked_at=datetime.now(timezone.utc),
+        locked_at=datetime.now(UTC),
     )
 
     # Process 1: lock
@@ -459,7 +458,7 @@ def test_lock_survives_process_restart(tmp_path: object) -> None:
 
 def test_json_file_lock_store_persists_signature(tmp_path: object) -> None:
     """The signature stored on disk must equal the fresh signature."""
-    from datetime import datetime, timezone
+    from datetime import datetime
 
     from mahavishnu.core.precommitment import (
         Hypothesis,
@@ -494,7 +493,7 @@ def test_json_file_lock_store_persists_signature(tmp_path: object) -> None:
 
 def test_json_file_lock_store_rejects_duplicate_lock_id(tmp_path: object) -> None:
     """put must be idempotency-safe: duplicate lock_id raises."""
-    from datetime import datetime, timezone
+    from datetime import datetime
 
     from mahavishnu.core.precommitment import (
         Hypothesis,
@@ -552,19 +551,19 @@ def compute_signature_inline(payload: object) -> str:
 
 
 def test_hypothesis_violation_subclasses_mahavishnu_error() -> None:
-    """HypothesisViolation must subclass MahavishnuError so callers catch both."""
+    """HypothesisViolationError must subclass MahavishnuError so callers catch both."""
     from mahavishnu.core.errors import MahavishnuError
-    from mahavishnu.core.precommitment import HypothesisViolation
+    from mahavishnu.core.precommitment import HypothesisViolationError
 
-    assert issubclass(HypothesisViolation, MahavishnuError)
+    assert issubclass(HypothesisViolationError, MahavishnuError)
 
 
 def test_signature_mismatch_subclasses_mahavishnu_error() -> None:
-    """SignatureMismatch must subclass MahavishnuError."""
+    """SignatureMismatchError must subclass MahavishnuError."""
     from mahavishnu.core.errors import MahavishnuError
-    from mahavishnu.core.precommitment import SignatureMismatch
+    from mahavishnu.core.precommitment import SignatureMismatchError
 
-    assert issubclass(SignatureMismatch, MahavishnuError)
+    assert issubclass(SignatureMismatchError, MahavishnuError)
 
 
 # ─────────────────────────────────────────────────────────────────────────
@@ -582,7 +581,6 @@ class InMemoryLockStoreProbe:
     """
 
     def __init__(self) -> None:
-        from mahavishnu.core.precommitment import LockResult
 
         self._items: dict[str, LockResult] = {}
 

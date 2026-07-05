@@ -2,11 +2,11 @@
 
 from __future__ import annotations
 
-import subprocess
 from pathlib import Path
+import subprocess
 
-import typer
 from oneiric.core.logging import get_logger
+import typer
 
 logger = get_logger(__name__)
 quality_app = typer.Typer(help="Quality management commands")

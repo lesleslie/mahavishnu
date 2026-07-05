@@ -224,7 +224,7 @@ async def benchmark_single_embeddings(
         iter_start = time.perf_counter()
 
         try:
-            result = await client.generate_embedding(text, use_cache=False)
+            await client.generate_embedding(text, use_cache=False)
             iter_end = time.perf_counter()
             latencies_ms.append((iter_end - iter_start) * 1000)
         except Exception as e:

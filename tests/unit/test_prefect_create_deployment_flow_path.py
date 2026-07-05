@@ -23,10 +23,9 @@ Behavior:
 
 from __future__ import annotations
 
-import importlib
 import sys
 import textwrap
-from pathlib import Path
+from typing import TYPE_CHECKING
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
@@ -34,6 +33,8 @@ import pytest
 from mahavishnu.core.config import PrefectConfig
 from mahavishnu.engines.prefect_adapter_impl import PrefectAdapter
 
+if TYPE_CHECKING:
+    from pathlib import Path
 
 # ---------------------------------------------------------------------------
 # Fixtures
@@ -70,7 +71,7 @@ def mock_client() -> MagicMock:
 
 def _make_mock_deployment() -> MagicMock:
     """Build a mock deployment with all Pydantic-validated fields populated."""
-    from datetime import datetime, UTC
+    from datetime import UTC, datetime
     import uuid
 
     deploy = MagicMock()

@@ -344,7 +344,7 @@ class TestPoolConfigProperties:
     @settings(max_examples=30, deadline=None)
     def test_memory_sync_interval_bounds(self, sync_interval):
         """Memory sync interval respects configured bounds."""
-        pool_config = PoolConfig()
+        PoolConfig()
         # Note: memory_sync_interval is in PoolConfig
         # Just test that the value can be set
         assert isinstance(sync_interval, int)

@@ -24,13 +24,12 @@ schema migration; v0 is in-memory). Dhara wiring is a follow-up.
 
 from __future__ import annotations
 
-import asyncio
 import time
 
 import pytest
 
 from mahavishnu.core.self_heal import (
-    L1RetryExhausted,
+    L1RetryExhaustedError,
     L2Noop,
     RuleRecord,
     RuleStore,
@@ -39,7 +38,6 @@ from mahavishnu.core.self_heal import (
     l1_retry,
     record_rule,
 )
-
 
 # ---------------------------------------------------------------------------
 # L1 - transient retry with exponential backoff
@@ -86,7 +84,7 @@ class TestL1Retry:
             calls += 1
             raise RuntimeError(f"always-fail-{calls}")
 
-        with pytest.raises(L1RetryExhausted) as exc_info:
+        with pytest.raises(L1RetryExhaustedError) as exc_info:
             await l1_retry(op, max_attempts=3, base_backoff=0.001)
         # Last exception is the final attempt's failure.
         assert "always-fail-3" in str(exc_info.value)
@@ -417,7 +415,7 @@ class TestLayerComposition:
 
         try:
             await l1_retry(op, max_attempts=3, base_backoff=0.001)
-        except L1RetryExhausted as exc:
+        except L1RetryExhaustedError as exc:
             # The wrapped exception is the final attempt's failure.
             rule = extract_rule(
                 operation="test_op",

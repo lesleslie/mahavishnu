@@ -5,10 +5,11 @@ provides `server_name`, `description`, `log_level`, `enable_debug_mode`,
 `enable_resources`. CrowSettings adds Crow-specific transport, workspace,
 SSRF, and SearXNG knobs.
 """
+
 from __future__ import annotations
 
-import shutil
 from pathlib import Path
+import shutil
 
 from mcp_common.profiles.standard import StandardServerSettings
 from pydantic import Field, model_validator
@@ -46,7 +47,7 @@ class CrowSettings(StandardServerSettings):
     crow_mcp_command: str = "crow-mcp"
 
     @model_validator(mode="after")
-    def _resolve_rg(self) -> "CrowSettings":
+    def _resolve_rg(self) -> CrowSettings:
         if self.rg_path is None:
             found = shutil.which("rg")
             self.rg_path = Path(found) if found else None

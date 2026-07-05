@@ -159,7 +159,7 @@ def main():
     print("Step 2: Generating migration plan...")
     print("-" * 60)
 
-    plan = generate_migration_plan(args.db)
+    generate_migration_plan(args.db)
 
     if not args.dry_run:
         print("✅ Migration analysis complete.")

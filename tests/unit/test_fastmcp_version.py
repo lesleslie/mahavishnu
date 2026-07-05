@@ -11,9 +11,9 @@ runtime version; both must report ``>= 3.4``.
 
 from __future__ import annotations
 
-import re
 from importlib.metadata import version
 from pathlib import Path
+import re
 
 import pytest
 
@@ -82,8 +82,8 @@ class TestFastMCPVersion:
         # Force the source-tree copy of mcp-common to win over any
         # stale site-packages copy. The Phase 1 re-export module
         # ``mcp_common.fastmcp`` is new and may be shadowed otherwise.
-        import sys
         from pathlib import Path
+        import sys
 
         src = Path("/Users/les/Projects/mcp-common")
         assert src.is_dir(), f"mcp-common source tree not found at {src}"
@@ -95,6 +95,8 @@ class TestFastMCPVersion:
             if name == "mcp_common" or name.startswith("mcp_common."):
                 del sys.modules[name]
 
+        # All imports succeeded; assert FastMCP class is the upstream class.
+        import fastmcp
         from mcp_common.fastmcp import (  # noqa: F401
             Context,
             FastMCP,
@@ -103,8 +105,6 @@ class TestFastMCPVersion:
             OneiricMCPConfig,
             RateLimitingMiddleware,
         )
-        # All imports succeeded; assert FastMCP class is the upstream class.
-        import fastmcp
 
         assert FastMCP is fastmcp.FastMCP
         assert Context is fastmcp.Context

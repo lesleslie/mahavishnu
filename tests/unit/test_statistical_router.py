@@ -270,7 +270,7 @@ class TestCalculateAdapterScore:
         # Mock executions with specific latencies
         latencies = [100, 500, 1000, 5000, 10000] * 2  # ms
 
-        for i, latency in enumerate(latencies):
+        for _i, latency in enumerate(latencies):
             execution_id = await tracker.record_execution_start(
                 adapter=AdapterType.LLAMAINDEX,
                 task_type=TaskType.RAG_QUERY,

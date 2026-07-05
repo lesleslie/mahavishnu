@@ -160,7 +160,7 @@ class TestTerminalSessionWithMockAdapter:
     @pytest.mark.asyncio
     async def test_session_close_with_mock_adapter(self, mock_terminal_adapter):
         """Test closing session with mock adapter."""
-        session = TerminalSession("mock_id", "initial", mock_terminal_adapter)
+        TerminalSession("mock_id", "initial", mock_terminal_adapter)
         session_id = await mock_terminal_adapter.launch_session("test")
 
         # Create session wrapper

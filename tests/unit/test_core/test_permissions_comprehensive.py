@@ -449,7 +449,7 @@ class TestEdgeCases:
         from unittest.mock import MagicMock
 
         config = MagicMock()
-        manager = RBACManager(config)
+        RBACManager(config)
 
         user = User(user_id="noroles_user", roles=[])
 

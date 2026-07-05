@@ -46,7 +46,7 @@ class TestMultiPoolExecution:
                 )
 
                 # Mock the actual pool creation
-                with patch("mahavishnu.pools.manager.MahavishnuPool") as MockPool:
+                with patch("mahavishnu.pools.manager.MahavishnuPool"):
                     mock_pool = MagicMock()
                     mock_pool.pool_id = f"pool{i}"
                     mock_pool.config = config
@@ -101,10 +101,10 @@ class TestMultiPoolExecution:
                 mock_pool.config = PoolConfig(name=f"pool{i}", pool_type="mahavishnu")
                 mock_pool._workers = {f"w{j}": f"w{j}" for j in range(3)}
 
-                async def mock_batch(tasks):
+                async def mock_batch(tasks, _pool=mock_pool):
                     return {
                         str(idx): {
-                            "pool_id": mock_pool.pool_id,
+                            "pool_id": _pool.pool_id,
                             "status": "completed",
                         }
                         for idx in range(len(tasks))
@@ -371,7 +371,7 @@ class TestSessionBuddyDelegation:
             )
 
             pool = SessionBuddyPool(config)
-            pool_id = await pool.start()
+            await pool.start()
 
             assert pool._status.value in ["running", "initializing"]
             assert len(pool._workers) == 3

@@ -354,8 +354,8 @@ async def test_connection_pool_max_size(temp_dir, encryption_key):
     pool = EncryptedSQLitePool(db_path, encryption_key=encryption_key, pool_size=2)
 
     # Acquire max connections
-    conn1 = await pool.acquire()
-    conn2 = await pool.acquire()
+    await pool.acquire()
+    await pool.acquire()
 
     # Release connection beyond pool size (should close, not pool)
     conn3 = await pool.acquire()

@@ -43,7 +43,8 @@ class TestCommand:
 
     def test_full_command(self) -> None:
         """Test command with all fields."""
-        action = lambda: "result"
+        def action():
+            return "result"
         cmd = Command(
             id="test.cmd",
             name="Test Command",

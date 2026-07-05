@@ -1,8 +1,8 @@
 """Shared fixtures for the crow-server unit tests."""
 from __future__ import annotations
 
-import shutil
 from pathlib import Path
+import shutil
 
 import pytest
 

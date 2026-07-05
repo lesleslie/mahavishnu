@@ -8,8 +8,7 @@ is calibration, not a rule violation.
 from __future__ import annotations
 
 import os
-
-import pytest
+from typing import TYPE_CHECKING
 
 from mahavishnu.core.events.confidence_ceiling import (
     OPEN_QUESTION_PENALTY,
@@ -18,6 +17,9 @@ from mahavishnu.core.events.confidence_ceiling import (
     compute_confidence_cap,
     get_confidence_ceiling_cap,
 )
+
+if TYPE_CHECKING:
+    import pytest
 
 
 def _report(confidence: int = 0, open_q: int = 0, unchecked: int = 0) -> dict:

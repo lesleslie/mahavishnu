@@ -192,7 +192,7 @@ class TestSloThresholds:
         assert "event_delivery" in SLO_THRESHOLDS
 
     def test_thresholds_have_warning_and_critical(self):
-        for slo_type, thresholds in SLO_THRESHOLDS.items():
+        for _slo_type, thresholds in SLO_THRESHOLDS.items():
             assert "warning" in thresholds
             assert "critical" in thresholds
             assert thresholds["warning"] > thresholds["critical"]

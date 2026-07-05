@@ -125,7 +125,7 @@ print("-" * 60)
 try:
     conn.execute("DROP INDEX IF EXISTS hnsw_embeddings")
     print("Dropped existing HNSW index")
-except:
+except Exception:
     pass
 
 times = []

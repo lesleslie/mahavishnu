@@ -3,9 +3,12 @@
 from __future__ import annotations
 
 import os
-from pathlib import Path
+from typing import TYPE_CHECKING
 
 from mahavishnu.core.code_index.lock import RepoIndexLock
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 
 def test_acquire_and_release(tmp_path: Path) -> None:

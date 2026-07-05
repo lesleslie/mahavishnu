@@ -322,7 +322,7 @@ class TestTaskStore:
             }
         )
 
-        task = await store.update("task-123", update_data, actor="user@example.com")
+        await store.update("task-123", update_data, actor="user@example.com")
 
         mock_db.execute.assert_called()
         store.event_store.append.assert_called()

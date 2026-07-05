@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from pathlib import Path
+from typing import TYPE_CHECKING
 
 import pytest
 
@@ -13,6 +13,9 @@ from mahavishnu.core.code_index.git_hooks import (
     install_hooks,
     uninstall_hooks,
 )
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 
 class TestInstallHooks:

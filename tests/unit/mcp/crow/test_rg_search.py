@@ -6,9 +6,7 @@ from __future__ import annotations
 
 import pytest
 
-from tests.unit.mcp.crow.conftest import mock_settings
 from mahavishnu.mcp.crow.tools.rg_search import rg_search
-
 
 # ---- happy path -------------------------------------------------------------
 

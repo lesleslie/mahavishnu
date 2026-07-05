@@ -392,7 +392,7 @@ class TestCrossRepoFilter:
 
         filter = CrossRepoFilter(mock_task_store, mock_repo_manager)
         criteria = FilterCriteria(repo_tags=["orchestrator"])
-        result = await filter.filter(criteria)
+        await filter.filter(criteria)
 
         mock_repo_manager.get_repos_by_tag.assert_called_with("orchestrator")
 

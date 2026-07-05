@@ -694,7 +694,7 @@ class TestWorkflowExecution:
             task = {"type": "code_sweep", "id": "test-123"}
             repos = ["/repo1"]
 
-            result = await prefect_adapter.execute(task, repos)
+            await prefect_adapter.execute(task, repos)
 
             assert prefect_adapter._initialized is True
 
@@ -1395,7 +1395,7 @@ class TestErrorHandling:
 
             await prefect_adapter.initialize()
 
-            with pytest.raises(PrefectError) as exc_info:
+            with pytest.raises(PrefectError):
                 await prefect_adapter.create_deployment(
                     flow_name="nonexistent-flow",
                     deployment_name="test-deployment",
@@ -1422,7 +1422,7 @@ class TestErrorHandling:
 
             await prefect_adapter.initialize()
 
-            with pytest.raises(PrefectError) as exc_info:
+            with pytest.raises(PrefectError):
                 await prefect_adapter.get_deployment(str(uuid.uuid4()))
 
             # Error code varies based on exception wrapping
@@ -1452,7 +1452,7 @@ class TestErrorHandling:
 
             await prefect_adapter.initialize()
 
-            with pytest.raises(PrefectError) as exc_info:
+            with pytest.raises(PrefectError):
                 await prefect_adapter.trigger_flow_run(str(uuid.uuid4()))
 
             # Error code may vary based on exception wrapping

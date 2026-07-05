@@ -334,7 +334,7 @@ class TestRateLimitDecorator:
     @pytest.mark.asyncio
     async def test_rate_limit_decorator_allows_requests(self):
         """Decorator should allow requests within limits."""
-        limiter = RateLimiter(per_minute=10, burst_size=5)
+        RateLimiter(per_minute=10, burst_size=5)
 
         @rate_limit(
             requests_per_minute=10,
@@ -345,7 +345,7 @@ class TestRateLimitDecorator:
             return "success"
 
         # Call function multiple times within limit
-        for i in range(5):
+        for _i in range(5):
             result = await test_function()
             assert result == "success"
 
@@ -490,7 +490,7 @@ class TestRateLimitToolDecorator:
             return {"result": f"processed: {param}"}
 
         # Call tool multiple times within limit
-        for i in range(5):
+        for _i in range(5):
             result = await test_tool("test")
             assert result["result"] == "processed: test"
 
@@ -526,7 +526,7 @@ class TestRateLimitToolDecorator:
             return {"result": f"processed: {param}"}
 
         # Different users should have independent limits
-        for i in range(3):
+        for _i in range(3):
             result = await test_tool("user1", "test")
             assert result["result"] == "processed: test"
 
@@ -721,7 +721,7 @@ class TestRateLimitIntegration:
         key = "cleanup_test"
 
         # Make requests
-        for i in range(5):
+        for _i in range(5):
             await limiter.is_allowed(key)
 
         # Wait for cleanup
@@ -872,7 +872,7 @@ class TestRateLimitMiddleware:
         call_next = AsyncMock(return_value=MagicMock(headers={}))
         mock_request.scope = {"type": "http", "method": "GET", "path": "/test"}
 
-        response = await middleware.dispatch(mock_request, call_next)
+        await middleware.dispatch(mock_request, call_next)
         call_next.assert_called_once()
 
     @pytest.mark.asyncio
@@ -927,7 +927,7 @@ class TestRateLimitMiddleware:
         mock_response.headers = {}
         call_next = AsyncMock(return_value=mock_response)
 
-        response = await middleware.dispatch(mock_request, call_next)
+        await middleware.dispatch(mock_request, call_next)
         assert "X-RateLimit-Limit" in mock_response.headers
         assert "X-RateLimit-Remaining" in mock_response.headers
 

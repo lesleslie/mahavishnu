@@ -155,7 +155,7 @@ class TestBaseRepository:
     def test_handle_error_wraps_exception(self):
         from mahavishnu.core.repositories.base import RepositoryError
 
-        repo = MagicMock()  # Not a real subclass, just for utility testing
+        MagicMock()  # Not a real subclass, just for utility testing
         from mahavishnu.core.repositories.base import BaseRepository
 
         # Use a concrete-like instance to test _handle_error

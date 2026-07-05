@@ -19,14 +19,16 @@ Usage:
 from __future__ import annotations
 
 import asyncio
-from collections.abc import Callable
 from datetime import UTC, datetime
 import json
 import logging
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import websockets
 from websockets.exceptions import ConnectionClosed
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
 
 # Configure logging
 logging.basicConfig(

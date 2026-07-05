@@ -86,7 +86,7 @@ async def test_broadcaster_helper():
     # Test workflow started broadcast
     result = await broadcaster.workflow_started("test123", {"prompt": "Test"})
 
-    assert result == True
+    assert result
     print("✓ WebSocketBroadcaster works correctly")
 
 

@@ -64,7 +64,7 @@ class TestToolVersionsRegistry:
         """DEPRECATED_TOOLS is a dict of name -> optional replacement string."""
         assert isinstance(DEPRECATED_TOOLS, dict)
         # Each value should be either a string (replacement) or None
-        for name, replacement in DEPRECATED_TOOLS.items():
+        for _name, replacement in DEPRECATED_TOOLS.items():
             assert replacement is None or isinstance(replacement, str)
 
 

@@ -22,7 +22,6 @@ from mahavishnu.tenancy.context_packs import (
     get_default_tenant_id,
 )
 
-
 # ---------------------------------------------------------------------------
 # TenantContextPack dataclass
 # ---------------------------------------------------------------------------

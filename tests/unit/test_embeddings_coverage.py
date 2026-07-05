@@ -280,7 +280,7 @@ class TestFastEmbedProvider:
         assert r.dimension == 0
 
     async def test_fallback_embed_when_fastembed_missing(self):
-        p = FastEmbedProvider()
+        FastEmbedProvider()
         # Force fallback by raising ImportError on from fastembed import TextEmbedding
         with (
             patch.dict("sys.modules", {"fastembed": None}),

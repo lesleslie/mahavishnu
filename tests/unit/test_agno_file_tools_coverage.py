@@ -559,7 +559,7 @@ def test_search_files_impl_skips_outside_allowed_match(
     """
     ok = tmp_workspace / "ok.py"
     ok.write_text("x")
-    resolved_root = tmp_workspace.resolve()
+    tmp_workspace.resolve()
     real_ok = ok.resolve()
 
     # Build the match ahead of time and patch its resolve to escape.

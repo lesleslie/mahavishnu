@@ -10,9 +10,9 @@ from __future__ import annotations
 
 from datetime import datetime
 from types import SimpleNamespace
+from typing import TYPE_CHECKING
 from unittest.mock import MagicMock, patch
 
-from mcp_common.fastmcp import FastMCP
 import pytest
 
 from mahavishnu.core.coordination.models import (
@@ -23,6 +23,9 @@ from mahavishnu.core.coordination.models import (
     TodoStatus,
 )
 from mahavishnu.mcp.tools import coordination_tools as ct
+
+if TYPE_CHECKING:
+    from mcp_common.fastmcp import FastMCP
 
 pytestmark = pytest.mark.unit
 
@@ -75,46 +78,46 @@ def fake_manager():
 
 def _make_issue(issue_id: str = "ISSUE-001", **overrides) -> CrossRepoIssue:
     now = datetime.now().isoformat()
-    defaults = dict(
-        id=issue_id,
-        title="Test",
-        description="desc",
-        status=IssueStatus.PENDING,
-        priority=Priority.MEDIUM,
-        severity="normal",
-        repos=["repo-a"],
-        created=now,
-        updated=now,
-        target=None,
-        dependencies=[],
-        blocking=[],
-        assignee=None,
-        labels=[],
-        metadata={},
-    )
+    defaults = {
+        "id": issue_id,
+        "title": "Test",
+        "description": "desc",
+        "status": IssueStatus.PENDING,
+        "priority": Priority.MEDIUM,
+        "severity": "normal",
+        "repos": ["repo-a"],
+        "created": now,
+        "updated": now,
+        "target": None,
+        "dependencies": [],
+        "blocking": [],
+        "assignee": None,
+        "labels": [],
+        "metadata": {},
+    }
     defaults.update(overrides)
     return CrossRepoIssue(**defaults)
 
 
 def _make_todo(todo_id: str = "TODO-001", **overrides) -> CrossRepoTodo:
     now = datetime.now().isoformat()
-    defaults = dict(
-        id=todo_id,
-        task="Test task",
-        description="desc",
-        repo="repo-a",
-        status=TodoStatus.PENDING,
-        priority=Priority.MEDIUM,
-        created=now,
-        updated=now,
-        estimated_hours=1.0,
-        actual_hours=None,
-        blocked_by=[],
-        blocking=[],
-        assignee=None,
-        labels=[],
-        acceptance_criteria=[],
-    )
+    defaults = {
+        "id": todo_id,
+        "task": "Test task",
+        "description": "desc",
+        "repo": "repo-a",
+        "status": TodoStatus.PENDING,
+        "priority": Priority.MEDIUM,
+        "created": now,
+        "updated": now,
+        "estimated_hours": 1.0,
+        "actual_hours": None,
+        "blocked_by": [],
+        "blocking": [],
+        "assignee": None,
+        "labels": [],
+        "acceptance_criteria": [],
+    }
     defaults.update(overrides)
     return CrossRepoTodo(**defaults)
 

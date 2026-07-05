@@ -801,13 +801,13 @@ class TestRepositoryMetadata:
 
 def _make_repo(**overrides):
     """Create a valid Repository with sensible defaults."""
-    defaults = dict(
-        name="test-repo",
-        package="test_repo",
-        path="/tmp/test-repo",
-        tags=["python"],
-        description="A test repository",
-    )
+    defaults = {
+        "name": "test-repo",
+        "package": "test_repo",
+        "path": "/tmp/test-repo",
+        "tags": ["python"],
+        "description": "A test repository",
+    }
     defaults.update(overrides)
     return Repository(**defaults)
 

@@ -6,12 +6,10 @@ until path_security.py is implemented.
 from __future__ import annotations
 
 import os
-from pathlib import Path
 
 import pytest
 
 from mahavishnu.mcp.crow.path_security import resolve_workspace_path, validate_url
-
 
 # ---- workspace containment ---------------------------------------------------
 

@@ -60,7 +60,7 @@ def test_validate_path_with_dotdot():
 
 def test_validate_path_with_encoded_dotdot():
     """Test that paths with encoded '..' are rejected."""
-    with tempfile.TemporaryDirectory() as tmp_dir:
+    with tempfile.TemporaryDirectory():
         # Test various ways '..' might be encoded
         malicious_paths = [
             "../",
@@ -81,7 +81,7 @@ def test_validate_path_with_encoded_dotdot():
 def test_validate_path_absolute_outside_cwd():
     """Test that absolute paths outside current working directory are rejected."""
     # Create a temporary directory that's outside our current working directory
-    with tempfile.TemporaryDirectory() as tmp_dir:
+    with tempfile.TemporaryDirectory():
         # Get a path that's definitely outside our current working directory
         outside_path = "/"
 

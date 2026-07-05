@@ -2,11 +2,14 @@
 
 from __future__ import annotations
 
-from pathlib import Path
+from typing import TYPE_CHECKING
 
 import pytest
 
 from mahavishnu.quality.anti_ai_flavor_check import run_anti_ai_flavor_check
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 
 @pytest.fixture

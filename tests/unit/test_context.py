@@ -28,14 +28,14 @@ def teardown_function() -> None:
 def test_getters_raise_for_required_context_when_unset() -> None:
     try:
         get_llm_factory()
-        assert False, "expected ContextNotInitializedError"
+        raise AssertionError("expected ContextNotInitializedError")
     except ContextNotInitializedError as exc:
         assert "llm_factory" in str(exc)
         assert "suggestion" in exc.details
 
     try:
         get_agno_adapter()
-        assert False, "expected ContextNotInitializedError"
+        raise AssertionError("expected ContextNotInitializedError")
     except ContextNotInitializedError as exc:
         assert "agno_adapter" in str(exc)
         assert "suggestion" in exc.details

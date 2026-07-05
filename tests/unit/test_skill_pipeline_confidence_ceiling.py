@@ -11,13 +11,16 @@ This file is the wiring test; the gate itself is fully exercised in
 
 from __future__ import annotations
 
-import pytest
+from typing import TYPE_CHECKING
 
 from mahavishnu.core.events.confidence_ceiling import (
     apply_confidence_ceiling,
     get_confidence_ceiling_cap,
 )
 from mahavishnu.distill.consumer import cap_distiller_output
+
+if TYPE_CHECKING:
+    import pytest
 
 
 def _record(confidence: int, open_q: int = 0, unchecked: int = 0) -> dict:

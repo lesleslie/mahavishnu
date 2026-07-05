@@ -307,7 +307,7 @@ class TestFastMCPServerInitialization:
             MockApp.return_value = mock_app_instance
 
             with patch("mahavishnu.mcp.server_core.get_auth_from_config"):
-                server = FastMCPServer(app=None, config=mock_settings)
+                FastMCPServer(app=None, config=mock_settings)
 
                 MockApp.assert_called_once_with(mock_settings)
 

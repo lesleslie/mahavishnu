@@ -10,7 +10,7 @@ stub that exercises the call site at import time.
 
 The substrate swap-in mirrors Spec #5 (three-zone skill pipeline) and
 Substrate WS-A (dhara_client): the Dhara-backed implementations land with
-Workstream C and re-use the same Protocol/abstract surface so callers do
+Workstream C and reuse the same Protocol/abstract surface so callers do
 not break.
 """
 
@@ -31,7 +31,6 @@ from mahavishnu.sop.persisters import (
     InMemorySOPPersister,
     SOPPersister,
 )
-
 
 # ---------------------------------------------------------------------------
 # ProjectSOP model

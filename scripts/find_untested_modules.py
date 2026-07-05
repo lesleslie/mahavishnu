@@ -113,11 +113,7 @@ def _file_imports(path: Path, names: frozenset[str]) -> bool:
         text = path.read_text(encoding="utf-8", errors="ignore")
     except OSError:
         return False
-    for name in names:
-        # Word-boundary match on bare name and dotted variants
-        if re.search(rf"\b{re.escape(name)}\b", text):
-            return True
-    return False
+    return any(re.search(rf"\b{re.escape(name)}\b", text) for name in names)
 
 
 # ---------------------------------------------------------------------------

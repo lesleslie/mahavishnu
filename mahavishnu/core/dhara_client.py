@@ -162,9 +162,7 @@ class DharaThinClient:
                     tool_name,
                     exc,
                 )
-                raise DharaSQLProxyError(
-                    f"{tool_name} failed via adapter: {exc}"
-                ) from exc
+                raise DharaSQLProxyError(f"{tool_name} failed via adapter: {exc}") from exc
 
         if self._client is None:
             # Defensive: someone called after aclose(). Re-open on demand.
@@ -178,14 +176,10 @@ class DharaThinClient:
             payload = response.json()
         except httpx.HTTPError as exc:
             logger.warning("dhara sql_proxy transport failure: %s", exc)
-            raise DharaSQLProxyError(
-                f"{tool_name} transport failure: {exc}"
-            ) from exc
+            raise DharaSQLProxyError(f"{tool_name} transport failure: {exc}") from exc
         except Exception as exc:  # noqa: BLE001 — surface anything unexpected
             logger.exception("dhara sql_proxy unexpected failure")
-            raise DharaSQLProxyError(
-                f"{tool_name} unexpected failure: {exc}"
-            ) from exc
+            raise DharaSQLProxyError(f"{tool_name} unexpected failure: {exc}") from exc
 
         if isinstance(payload, dict) and "result" in payload:
             return payload["result"]

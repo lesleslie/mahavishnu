@@ -9,7 +9,7 @@ Tests cover:
 
 from __future__ import annotations
 
-from pathlib import Path
+from typing import TYPE_CHECKING
 
 import pytest
 import yaml
@@ -21,6 +21,9 @@ from mahavishnu.core.config_validator import (
     ValidationResult,
     validate_config,
 )
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 
 class TestValidationResult:

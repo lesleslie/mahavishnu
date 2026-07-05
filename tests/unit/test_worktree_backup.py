@@ -450,7 +450,7 @@ class TestWorktreeBackupManager:
 
         # Restore to location with non-existent parent directories
         restore_location = tmp_path / "deep" / "nested" / "restore"
-        result = await manager.restore_from_backup(
+        await manager.restore_from_backup(
             backup_path=backup_path,
             restore_location=restore_location,
         )

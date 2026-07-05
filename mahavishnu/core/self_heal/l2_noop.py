@@ -14,8 +14,10 @@ reflected in tests/unit/test_self_heal.py::TestL2Noop::test_marker_is_canonical_
 
 from __future__ import annotations
 
-from collections.abc import Awaitable, Callable
-from typing import Any, TypeVar
+from typing import TYPE_CHECKING, Any, TypeVar
+
+if TYPE_CHECKING:
+    from collections.abc import Awaitable, Callable
 
 T = TypeVar("T")
 

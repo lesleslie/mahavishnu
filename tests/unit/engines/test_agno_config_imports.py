@@ -23,7 +23,6 @@ from pathlib import Path
 
 import pytest
 
-
 REPO_ROOT = Path(__file__).resolve().parents[3]
 ENGINE_FILE = REPO_ROOT / "mahavishnu" / "engines" / "agno_adapter_impl.py"
 CONFIG_FILE = REPO_ROOT / "mahavishnu" / "core" / "config.py"

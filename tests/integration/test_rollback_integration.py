@@ -204,7 +204,7 @@ class TestFeatureFlagDisabledUsesLegacy:
                 mock_dhara.return_value = []
 
                 # Discover adapters
-                adapters = await registry.discovery.discover_all()
+                await registry.discovery.discover_all()
 
                 # Entry points should be called
                 mock_ep.assert_called_once()

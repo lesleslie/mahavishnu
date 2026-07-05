@@ -5,11 +5,15 @@ on shutdown. ``follow_redirects=False`` is mandatory — the server validates
 redirect targets through ``validate_url()`` manually so DNS-rebinding /
 open-redirect SSRF attempts are blocked hop-by-hop.
 """
+
 from __future__ import annotations
+
+from typing import TYPE_CHECKING
 
 import httpx2
 
-from mahavishnu.mcp.crow.settings import CrowSettings
+if TYPE_CHECKING:
+    from mahavishnu.mcp.crow.settings import CrowSettings
 
 _http_client: httpx2.AsyncClient | None = None
 
@@ -36,7 +40,5 @@ async def close_http_client() -> None:
 def get_http_client() -> httpx2.AsyncClient:
     """Return the shared client. Raises if init has not run."""
     if _http_client is None:
-        raise RuntimeError(
-            "HTTP client not initialized — call init_http_client first"
-        )
+        raise RuntimeError("HTTP client not initialized — call init_http_client first")
     return _http_client

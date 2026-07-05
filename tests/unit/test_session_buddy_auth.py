@@ -151,7 +151,7 @@ class TestVerifyMessage:
         msg = {"x": 1}
         sig = cross_project_auth.sign_message(msg)
         # This should not raise and should use constant-time comparison
-        with patch("mahavishnu.session_buddy.auth.hmac") as mock_hmac:
+        with patch("mahavishnu.session_buddy.auth.hmac"):
             # The real call goes through - we just check it returns True
             pass
         # Direct call to verify the actual behavior

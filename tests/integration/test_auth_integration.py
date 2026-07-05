@@ -33,7 +33,7 @@ def test_claude_subscription_auth():
     auth_handler = MultiAuthHandler(config)
 
     # Test that Claude Code subscription is recognized as available
-    assert auth_handler.is_claude_subscribed() == True, (
+    assert auth_handler.is_claude_subscribed(), (
         "Claude Code subscription should be available"
     )
     print("✅ Claude Code subscription is properly configured")
@@ -155,7 +155,7 @@ def test_codex_subscription_auth():
     auth_handler = MultiAuthHandler(config)
 
     # Test that Codex subscription is available (same underlying mechanism as Claude)
-    assert auth_handler.is_codex_subscribed() == True, "Codex subscription should be available"
+    assert auth_handler.is_codex_subscribed(), "Codex subscription should be available"
     print("✅ Codex subscription is properly configured")
 
     # Test Codex token creation

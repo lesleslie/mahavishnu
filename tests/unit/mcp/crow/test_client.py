@@ -1,8 +1,6 @@
 """Tests for the shared httpx2 client lifecycle."""
 from __future__ import annotations
 
-from pathlib import Path
-
 import pytest
 
 from mahavishnu.mcp.crow import client as crow_client

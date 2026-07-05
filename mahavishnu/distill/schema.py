@@ -1,4 +1,3 @@
-
 from __future__ import annotations
 
 if False:
@@ -69,7 +68,7 @@ _ALL_DDL: tuple[str, ...] = (
 
 def apply_distill_schema(conn: object) -> None:
     for ddl in _ALL_DDL:
-        conn.execute(ddl) # type: ignore[attr-defined]
+        conn.execute(ddl)  # type: ignore[attr-defined]
 
 
 __all__ = [

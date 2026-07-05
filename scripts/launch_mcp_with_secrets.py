@@ -16,9 +16,8 @@ and similar downstream consumers).
 from __future__ import annotations
 
 import os
-import subprocess
-import sys
 from pathlib import Path
+import sys
 
 ONIRIC_LOCAL_YAML = Path.home() / ".config" / "oneiric" / "local.yaml"
 MCP_PROGRAM = "/Users/les/Projects/mahavishnu/.venv/bin/python"

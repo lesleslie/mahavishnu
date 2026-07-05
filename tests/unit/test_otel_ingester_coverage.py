@@ -592,11 +592,11 @@ class TestInitialize:
             patch(
                 "mahavishnu.adapters.pgvector_adapter.PgvectorAdapter",
                 return_value=fake_adapter,
-            ) as AdapterCls,
+            ),
             patch(
                 "mahavishnu.adapters.pgvector_adapter.PgvectorSettings",
                 return_value=MagicMock(),
-            ) as SettingsCls,
+            ),
         ):
             await ingester.initialize()
         assert ingester._pgvector_adapter is fake_adapter

@@ -28,8 +28,8 @@ Side effects (best-effort, never raise):
 
 from __future__ import annotations
 
-import os
 from copy import deepcopy
+import os
 
 from oneiric.core.logging import get_logger
 
@@ -167,9 +167,7 @@ def apply_confidence_ceiling(report: dict) -> dict:
             "reported_confidence": reported,
             "computed_cap": cap,
             "open_questions_count": len(report.get("open_questions", []) or []),
-            "unchecked_sources_count": len(
-                report.get("unchecked_sources", []) or []
-            ),
+            "unchecked_sources_count": len(report.get("unchecked_sources", []) or []),
         },
     )
     _try_emit_anomaly(report=report, reported=reported, cap=cap)

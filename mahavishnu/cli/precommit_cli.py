@@ -15,9 +15,9 @@ Example::
 
 from __future__ import annotations
 
+from datetime import UTC, datetime
 import json
-from datetime import datetime, timezone
-from pathlib import Path
+from typing import TYPE_CHECKING
 
 import typer
 
@@ -28,6 +28,8 @@ from mahavishnu.core.precommitment import (
     compute_signature,
 )
 
+if TYPE_CHECKING:
+    from pathlib import Path
 
 precommit_app = typer.Typer(help="Precommitment hypothesis lock (Spec #2)")
 
@@ -89,7 +91,7 @@ def precommit_lock(
         falsification_criteria=tuple(falsify),
         success_criteria=tuple(success),
         confidence=confidence,
-        locked_at=datetime.now(timezone.utc),
+        locked_at=datetime.now(UTC),
     )
     signature = compute_signature(hypothesis)
     store = JsonFileLockStore(path=store_path) if store_path else JsonFileLockStore()

@@ -1,4 +1,3 @@
-
 from __future__ import annotations
 
 from datetime import UTC, datetime, timedelta
@@ -40,7 +39,6 @@ def distilled_workflow_health(
     now: datetime | None = None,
 ) -> list[dict[str, Any]]:
     current = now or datetime.now(tz=UTC)
-
 
     try:
         present = conn.execute(
@@ -103,7 +101,6 @@ def distilled_workflow_health(
                 "status": status,
             }
         )
-
 
     bucket_order = {"stale": 0, "under_utilized": 1, "fresh": 2, "cold": 3}
     results.sort(key=lambda r: (bucket_order.get(r["status"], 99), -float(r["importance_score"])))

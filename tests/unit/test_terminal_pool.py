@@ -101,8 +101,8 @@ class TestITerm2SessionPoolAcquireRelease:
     async def test_acquire_session_reuses_idle_when_full(self, pool_small):
         """Idle sessions are only reused when pool is at capacity."""
         s1 = await pool_small.acquire_session("cmd1")
-        s2 = await pool_small.acquire_session("cmd2")
-        s3 = await pool_small.acquire_session("cmd3")
+        await pool_small.acquire_session("cmd2")
+        await pool_small.acquire_session("cmd3")
 
         # Release one — pool is still at max_size
         await pool_small.release_session(s1)
@@ -121,8 +121,8 @@ class TestITerm2SessionPoolAcquireRelease:
 
     async def test_acquire_session_exhausted_after_release(self, pool_small):
         s1 = await pool_small.acquire_session("cmd1")
-        s2 = await pool_small.acquire_session("cmd2")
-        s3 = await pool_small.acquire_session("cmd3")
+        await pool_small.acquire_session("cmd2")
+        await pool_small.acquire_session("cmd3")
 
         await pool_small.release_session(s1)
 
@@ -288,7 +288,7 @@ class TestITerm2SessionPoolStats:
 
     async def test_stats_partial_use(self, pool):
         s1 = await pool.acquire_session("cmd1")
-        s2 = await pool.acquire_session("cmd2")
+        await pool.acquire_session("cmd2")
         await pool.release_session(s1)
 
         stats = pool.stats()
@@ -449,7 +449,6 @@ class TestIntegrationScenarios:
         session_ids = ["s1", "s2", "s3"]
         call_count = 0
 
-        original_create = pool_small._create_session
 
         async def counting_create(command, columns, rows, profile):
             nonlocal call_count

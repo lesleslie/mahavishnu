@@ -324,7 +324,7 @@ class TestProgressTracker:
         """Track an async operation with progress."""
 
         async def operation(update: Any) -> str:
-            for i in range(5):
+            for _i in range(5):
                 update(advance=20)
             return "done"
 

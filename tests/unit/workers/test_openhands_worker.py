@@ -1,12 +1,17 @@
 from __future__ import annotations
 
-from pathlib import Path
+from typing import TYPE_CHECKING
 from unittest.mock import AsyncMock, patch
 
 import pytest
 
 from mahavishnu.core.errors import ErrorCode
 from mahavishnu.core.status import WorkerStatus
+
+if TYPE_CHECKING:
+    from pathlib import Path
+
+    from mahavishnu.workers.openhands import OpenHandsConfig
 
 
 def make_config(tmp_path: Path) -> "OpenHandsConfig":  # noqa: UP037

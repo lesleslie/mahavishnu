@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from datetime import UTC, datetime, timedelta
 import json
-from pathlib import Path
+from typing import TYPE_CHECKING
 from unittest.mock import AsyncMock, patch
 
 import pytest
@@ -22,6 +22,9 @@ from mahavishnu.core.adapter_persistence import (
     HealthRecordError,
     PersistenceError,
 )
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 # =============================================================================
 # Custom Exceptions

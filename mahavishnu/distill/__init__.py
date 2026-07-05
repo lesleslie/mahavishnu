@@ -30,4 +30,3 @@ __all__ = [
     "UsageTracker",
     "cap_distiller_output",
 ]
-from mahavishnu.distill.consumer import cap_distiller_output

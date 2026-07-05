@@ -1,4 +1,3 @@
-
 from __future__ import annotations
 
 import json
@@ -7,7 +6,6 @@ from typing import TYPE_CHECKING, Any, Protocol
 
 from ulid import ULID
 
-from mahavishnu.distill.llm_usage import CostCeilingExceeded, UsageTracker
 from mahavishnu.distill.provenance import check_source_purity
 
 if TYPE_CHECKING:
@@ -28,9 +26,7 @@ HEURISTIC_MODEL: str = "heuristic"
 def _importance_from_evidence_workflows(evidence_count: int, project_count: int) -> float:
     import math
 
-
     score = math.log2(1 + max(0, int(evidence_count))) / 4.0
-
 
     project_count = max(0, int(project_count))
     if project_count == 1:
@@ -117,7 +113,6 @@ def _synthesize_candidate(conn: _ConnLike, session_id: str) -> dict[str, Any]:
         [session_id],
     ).fetchall()
     if not rows:
-
         raise ValueError(f"no conversations_v2 rows for session_id={session_id!r}")
     n = int(rows[0][0])
     project = rows[0][1] or "unknown"
@@ -204,7 +199,6 @@ def distill_workflows(
     if not candidates:
         return []
 
-
     distill_run_id = str(ULID())
     inserted_ids: list[str] = []
 
@@ -242,8 +236,6 @@ def distill_workflows(
         try:
             payload = _synthesize_candidate(conn, session_id)
         except Exception as exc:
-
-
             logger.warning(
                 "distill_workflows: skipping candidate due to error",
                 extra={"session_id": session_id, "error": str(exc)},
@@ -262,8 +254,6 @@ def distill_workflows(
             )
             inserted_ids.append(workflow_id)
         except Exception as exc:
-
-
             logger.warning(
                 "distill_workflows: INSERT failed for candidate",
                 extra={"session_id": session_id, "error": str(exc)},

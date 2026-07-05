@@ -513,7 +513,7 @@ class TestSLOThresholds:
         assert set(SLO_THRESHOLDS.keys()) == expected
 
     def test_thresholds_have_warning_and_critical(self):
-        for category, thresholds in SLO_THRESHOLDS.items():
+        for _category, thresholds in SLO_THRESHOLDS.items():
             assert "warning" in thresholds
             assert "critical" in thresholds
             assert thresholds["warning"] > thresholds["critical"]

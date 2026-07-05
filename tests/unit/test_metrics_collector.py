@@ -319,7 +319,7 @@ class TestBatchWrites:
         tracker.batch_size = 3  # Set small threshold
 
         # Record 3 executions
-        for i in range(3):
+        for _i in range(3):
             execution_id = await tracker.record_execution_start(
                 adapter=AdapterType.PREFECT,
                 task_type=TaskType.WORKFLOW,
@@ -334,7 +334,7 @@ class TestBatchWrites:
     async def test_flush_batch_writes_records(self, tracker):
         """Flush should write pending records to storage."""
         # Add some records
-        for i in range(5):
+        for _i in range(5):
             execution_id = await tracker.record_execution_start(
                 adapter=AdapterType.AGNO,
                 task_type=TaskType.AI_TASK,

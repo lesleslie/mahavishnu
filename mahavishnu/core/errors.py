@@ -1016,7 +1016,7 @@ class LearningSystemError(MahavishnuError):
         super().__init__(message, error_code, details=details)
 
 
-class ReviewerNotTrusted(MahavishnuError):
+class ReviewerNotTrustedError(MahavishnuError):
     """Reviewer identity from shell env has no trust root.
 
     Plan 5 audit finding H6. Raised when MAHAVISHNU_USER_ID is not in the

@@ -20,8 +20,8 @@ cancelled to prevent a half-migrated ecosystem state (M-NEW-7).
 from __future__ import annotations
 
 import asyncio
-import logging
 from dataclasses import dataclass, field
+import logging
 from typing import Any
 
 logger = logging.getLogger(__name__)
@@ -158,9 +158,7 @@ async def wait_for_merge(
         await asyncio.sleep(poll_interval)
         elapsed += poll_interval
 
-    raise RuntimeError(
-        f"wait_for_merge: timed out after {timeout}s waiting for {pr.pr_url}"
-    )
+    raise RuntimeError(f"wait_for_merge: timed out after {timeout}s waiting for {pr.pr_url}")
 
 
 async def create_consuming_pr(
@@ -299,7 +297,7 @@ async def run_clone_refactor_dag(
     ]
     consuming_results = await asyncio.gather(*consuming_tasks, return_exceptions=True)
 
-    for repo, pr_or_exc in zip(consumer_repos, consuming_results):
+    for repo, pr_or_exc in zip(consumer_repos, consuming_results, strict=False):
         if isinstance(pr_or_exc, Exception):
             logger.warning(
                 "run_clone_refactor_dag: consuming PR failed for %s: %s", repo, pr_or_exc

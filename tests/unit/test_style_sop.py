@@ -2,14 +2,17 @@
 
 from __future__ import annotations
 
-from pathlib import Path
-
-import pytest
+from typing import TYPE_CHECKING
 
 from mahavishnu.core.style_sop import (
     discover_style_sop,
     load_style_sop,
 )
+
+if TYPE_CHECKING:
+    from pathlib import Path
+
+    import pytest
 
 
 def test_discover_returns_none_when_no_sop(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):

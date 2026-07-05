@@ -19,12 +19,14 @@ Example usage:
 from __future__ import annotations
 
 import asyncio
-from collections.abc import Callable
 from enum import Enum
 import functools
 from logging import getLogger
 import time
-from typing import Any, ParamSpec, TypeVar
+from typing import TYPE_CHECKING, Any, ParamSpec, TypeVar
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
 
 # Type aliases
 P = ParamSpec("P")
@@ -557,7 +559,7 @@ def resilient(
 # ============================================================================
 
 
-def with_fallback(
+def with_fallback[**P, R](
     fallback_func: Callable[P, R],
     on_exception: type[Exception] | tuple[type[Exception], ...] = Exception,
 ) -> Callable[[Callable[P, R]], Callable[P, R]]:

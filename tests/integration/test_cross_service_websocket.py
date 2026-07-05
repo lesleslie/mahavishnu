@@ -20,14 +20,16 @@ Services Tested:
 from __future__ import annotations
 
 import asyncio
-from collections.abc import AsyncGenerator
 import time
-from typing import Any
+from typing import TYPE_CHECKING, Any
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
 from mahavishnu.websocket.server import MahavishnuWebSocketServer
+
+if TYPE_CHECKING:
+    from collections.abc import AsyncGenerator
 
 # =============================================================================
 # WebSocket Server Configuration
@@ -220,7 +222,7 @@ class TestServiceDiscovery:
 
         # Act & Assert
         assert len(other_services) == 6
-        for service_name, config in other_services.items():
+        for _service_name, config in other_services.items():
             assert "port" in config
             assert "module_path" in config
             assert "class_name" in config
@@ -690,7 +692,7 @@ class TestServiceMesh:
         servers = []
 
         # Create mock servers for all 7 services
-        for service_name, config in WEBSOCKET_SERVERS.items():
+        for _service_name, config in WEBSOCKET_SERVERS.items():
             mock_pool_mgr = MagicMock()
             mock_pool_mgr.pools = {}
 
@@ -904,10 +906,10 @@ class TestFailureScenarios:
             f"conn0 has {conn0_client.send.call_count} calls, expected 1"
         )
         assert conn1_client.send.call_count == 2, (
-            f"conn2 has {clients[1].send.call_count} calls, expected 2"
+            f"conn1 has {conn1_client.send.call_count} calls, expected 2"
         )
         assert conn2_client.send.call_count == 2, (
-            f"conn3 has {clients[2].send.call_count} calls, expected 2"
+            f"conn2 has {conn2_client.send.call_count} calls, expected 2"
         )
 
         # Cleanup
@@ -1060,9 +1062,8 @@ class TestPerformance:
         # Act - Measure latency for 10 messages
         from mcp_common.websocket import WebSocketProtocol
 
-        latencies = []
         for _ in range(10):
-            send_time = time.time()
+            time.time()
             event = WebSocketProtocol.create_event("test.event", {"data": "test"})
             await server.broadcast_to_room("test", event)
             await asyncio.sleep(0.001)  # Small delay

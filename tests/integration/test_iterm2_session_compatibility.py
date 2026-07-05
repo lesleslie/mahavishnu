@@ -322,10 +322,6 @@ class TestPatternConflictVerification:
         # - grid_[0-9a-f]{8} (Mahavishnu grid)
 
         # Test edge cases that might seem like conflicts
-        edge_cases = [
-            "session_00000000",  # digits only (Swift valid)
-            "grid_12345678",  # hex chars (Mahavishnu valid)
-        ]
 
         # session_00000000 is valid Swift, not valid Mahavishnu grid
         assert SWIFT_SESSION_PATTERN.match("session_00000000")

@@ -10,16 +10,20 @@ All searches run inside the workspace — paths are validated through
 is unavailable (no ``rg`` on PATH), this module raises ``RuntimeError`` so
 the orchestrator can route to a Python fallback (out of scope here).
 """
+
 from __future__ import annotations
 
 import asyncio
 import json
 import subprocess
-from pathlib import Path
-from typing import Literal, TypedDict
+from typing import TYPE_CHECKING, Literal, TypedDict
 
 from mahavishnu.mcp.crow.path_security import resolve_workspace_path
-from mahavishnu.mcp.crow.settings import CrowSettings
+
+if TYPE_CHECKING:
+    from pathlib import Path
+
+    from mahavishnu.mcp.crow.settings import CrowSettings
 
 Format = Literal["content", "files_with_matches", "json"]
 
@@ -90,9 +94,7 @@ async def rg_search(
     if settings.rg_path is None:
         raise RuntimeError("ripgrep (rg) is not available on PATH")
     root = resolve_workspace_path(path, settings.workspace_root)
-    limit = (
-        max_matches if max_matches is not None else settings.max_grep_matches
-    )
+    limit = max_matches if max_matches is not None else settings.max_grep_matches
     args = _build_args(
         pattern=pattern,
         root=root,
@@ -103,9 +105,7 @@ async def rg_search(
         rg_path=settings.rg_path,
         line_numbers=line_numbers,
     )
-    proc = await asyncio.to_thread(
-        subprocess.run, args, capture_output=True, timeout=30.0
-    )
+    proc = await asyncio.to_thread(subprocess.run, args, capture_output=True, timeout=30.0)
     # Exit codes: 0 = matches, 1 = no matches, 2 = real error.
     if proc.returncode not in (0, 1):
         stderr = proc.stderr.decode(errors="replace")[:500]
@@ -157,9 +157,7 @@ async def rg_search(
         except ValueError:
             continue
         match_text = parts[3] if len(parts) >= 4 else parts[-1]
-        matches_list.append(
-            RgMatch(file=parts[0], line_number=ln, column=col, match=match_text)
-        )
+        matches_list.append(RgMatch(file=parts[0], line_number=ln, column=col, match=match_text))
     truncated = len(matches_list) > limit
     capped = matches_list[:limit]
     return RgResult(

@@ -63,7 +63,7 @@ class TestTimeoutContext:
     @pytest.mark.asyncio
     async def test_completes_within_timeout(self):
         async with timeout_context(5.0, "test_op"):
-            result = await asyncio.sleep(0.01)
+            await asyncio.sleep(0.01)
         # Should complete without error
 
     @pytest.mark.asyncio
@@ -152,7 +152,7 @@ class TestAsyncTaskManager:
         async def simple():
             return "done"
 
-        task = manager.create_task(simple(), name="t1")
+        manager.create_task(simple(), name="t1")
         results = await manager.wait_all()
 
         assert len(results) == 1
@@ -167,7 +167,7 @@ class TestAsyncTaskManager:
             return 1
 
         # After create_task, count may already be 0 due to done_callback
-        task = manager.create_task(slow())
+        manager.create_task(slow())
         # Task may complete quickly, but initial count should be >= 0
         assert manager.active_count >= 0
 

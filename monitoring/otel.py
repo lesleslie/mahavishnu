@@ -237,11 +237,11 @@ def set_span_status(status: str, description: str | None = None) -> None:
 
 
 # Convenience context manager for tracing
-class trace_operation:
+class TraceOperation:
     """Context manager for tracing operations.
 
     Example:
-        >>> with trace_operation("database_query", {"table": "users"}):
+        >>> with TraceOperation("database_query", {"table": "users"}):
         ...     results = await db.fetch_users()
     """
 

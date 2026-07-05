@@ -257,7 +257,7 @@ class TestQueryConsistency:
             await db.store_executions_batch(execution_records)
 
             # Get unique repos
-            repos = set(r.repo for r in execution_records)
+            repos = {r.repo for r in execution_records}
             assume(len(repos) > 0)
 
             # Test filtering by first repo
@@ -456,7 +456,7 @@ class TestCleanupOperations:
             await db.store_executions_batch(execution_records)
 
             # Cleanup records older than 0 days (should delete all)
-            result = await db.cleanup_old_executions(days_to_keep=0)
+            await db.cleanup_old_executions(days_to_keep=0)
 
             # Verify cleanup happened
             conn = await db._pool.get_connection()
@@ -522,7 +522,7 @@ class TestCleanupOperations:
             await db.store_executions_batch(execution_records)
 
             # Cleanup records older than 365 days (should delete none)
-            result = await db.cleanup_old_executions(days_to_keep=365)
+            await db.cleanup_old_executions(days_to_keep=365)
 
             # All records should still exist
             conn = await db._pool.get_connection()

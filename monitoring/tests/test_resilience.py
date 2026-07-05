@@ -222,7 +222,6 @@ class TestCircuitBreaker:
             expected_exception=ConnectionError,  # Only count ConnectionError
         )
 
-        call_count = 0
 
         async def raise_connection_errors():
             """Only raises ConnectionError."""
@@ -599,7 +598,7 @@ class TestResilienceIntegration:
 
         # First 2 top-level calls will be retried (circuit stays closed)
         # Each retries once, so 4 total failures
-        for i in range(2):
+        for _i in range(2):
             with pytest.raises(MaxRetriesExceededError):
                 await external_api_call()
 

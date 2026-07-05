@@ -624,7 +624,15 @@ If the gate is passing but this table disagrees, trust the gate. A sync test (an
 
 - **Active**: `I`, `N`, `UP`, `B`, `C4`, `SIM`, `TCH`, plus the `P` pylint subset for hard limits.
 - **Ignored (gate won't catch)**: `B904`, `N806`, `E402`, `SIM102`, `SIM105`, `SIM108`. You may still fix these in new code; do not churn existing code to address them.
-- **Per-file-ignore**: B008 in `mahavishnu/**/*cli*.py` AND `mahavishnu/cli/**/*.py` (the two patterns overlap; both are intentional). Don't add new per-file-ignores without updating this section.
+- **Per-file-ignore** (configured in `pyproject.toml` `[tool.ruff.lint.per-file-ignores]`):
+  - `B008` in `mahavishnu/**/*cli*.py` AND `mahavishnu/cli/**/*.py` (two patterns overlap; both are intentional). Typer idiom: `typer.Option(...)` in default args.
+  - `.claude/skills/tools/**/*.py` → `B008` only. Skill scripts use Typer defaults.
+  - `tests/property/**/*.py` → `ALL`. Reference planned-but-never-implemented modules (`mahavishnu.learning.database.*` etc.). Pure noise until the tests are completed or removed.
+  - `tests/unit/test_core/test_validators_comprehensive.py`, `tests/unit/test_session_buddy.py` → `ALL`. Both self-skip at module load via `pytest.skip(..., allow_module_level=True)`.
+  - `tests/conftest.py` → `F401`. Uses `try/except ImportError` to re-export fixture symbols for global pytest availability.
+  - `tests/**/*.py` → `B017, B007, E741, N801, N802, N803, N814, N818, SIM116, SIM117`. Stylistic test smells (capitalized fixtures, broad-blind `pytest.raises(Exception)`, nested `with`, etc.); enforced for `mahavishnu/` production code.
+  - `scripts/**`, `monitoring/**`, `examples/**`, `migrations/**` → stylistic rules (`B007, B008, E741, F401, F841, I001, SIM108, SIM116, SIM117, TC003`, with rule selection tailored per path). Tooling/admin paths — not production.
+  - Update this section whenever a new per-file-ignore is added.
 
 ### Type checker configuration
 

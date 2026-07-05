@@ -22,19 +22,22 @@ article's text content. Reuses ``validate_url`` for SSRF protection.
 ``web_extract_batch(urls, settings, max_length)`` — bounded-concurrency
 fan-out, per-URL failure capture in-band.
 """
+
 from __future__ import annotations
 
 import asyncio
-import re
 from html.parser import HTMLParser
-from typing import TypedDict
+import re
+from typing import TYPE_CHECKING, TypedDict
 
 from rapidfuzz import fuzz, process
 from selectolax.parser import HTMLParser as _SelectolaxParser
 
 from mahavishnu.mcp.crow.client import get_http_client
 from mahavishnu.mcp.crow.path_security import validate_url
-from mahavishnu.mcp.crow.settings import CrowSettings
+
+if TYPE_CHECKING:
+    from mahavishnu.mcp.crow.settings import CrowSettings
 
 
 class ExtractResult(TypedDict):
@@ -54,9 +57,7 @@ _BLOCK_TAGS = frozenset(
     {"p", "div", "li", "h1", "h2", "h3", "h4", "h5", "h6", "br", "article", "section"}
 )
 # Tags that mark regions we want to exclude from extraction.
-_SKIP_REGIONS = frozenset(
-    {"nav", "aside", "footer", "header", "form", "button"}
-)
+_SKIP_REGIONS = frozenset({"nav", "aside", "footer", "header", "form", "button"})
 
 _WS_RE = re.compile(r"[ \t\f\v]+")
 _NL_RE = re.compile(r"\n{2,}")
@@ -86,9 +87,7 @@ def _selectolax_extract(html: str, selector: str) -> str:
     return "\n\n".join(chunk for chunk in chunks if chunk)
 
 
-def _find_near_duplicates(
-    paragraphs: list[str], threshold: float = 85.0
-) -> list[tuple[int, int]]:
+def _find_near_duplicates(paragraphs: list[str], threshold: float = 85.0) -> list[tuple[int, int]]:
     """Find near-duplicate paragraph pairs using rapidfuzz.
 
     For each paragraph, compare against all others via ``fuzz.ratio``;
@@ -282,11 +281,7 @@ async def web_extract_batch(
     max_concurrent: int | None = None,
 ) -> list[ExtractResult]:
     """Fetch and extract multiple URLs concurrently."""
-    concurrency = (
-        max_concurrent
-        if max_concurrent is not None
-        else settings.max_concurrent_fetches
-    )
+    concurrency = max_concurrent if max_concurrent is not None else settings.max_concurrent_fetches
     sem = asyncio.Semaphore(concurrency)
 
     async def extract_one(u: str) -> ExtractResult:
@@ -305,9 +300,7 @@ def register(server, settings: CrowSettings) -> None:
     deco = _tool_decorator(server)
 
     @deco()
-    async def web_extract(
-        url: str, max_length: int = 5000
-    ) -> ExtractResult:
+    async def web_extract(url: str, max_length: int = 5000) -> ExtractResult:
         """(HTTP, for pool workers and CLI) - Fetch and extract article."""
         return await _web_extract_impl(url, settings, max_length)
 
@@ -318,9 +311,7 @@ def register(server, settings: CrowSettings) -> None:
         max_concurrent: int | None = None,
     ) -> list[ExtractResult]:
         """(HTTP, for pool workers and CLI) - Bounded-concurrent extract."""
-        return await _web_extract_batch_impl(
-            urls, settings, max_length, max_concurrent
-        )
+        return await _web_extract_batch_impl(urls, settings, max_length, max_concurrent)
 
 
 _web_extract_impl = web_extract

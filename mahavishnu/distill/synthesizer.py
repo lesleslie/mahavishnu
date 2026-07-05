@@ -1,4 +1,3 @@
-
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -16,8 +15,7 @@ DEFAULT_WEEKLY_CAP: int = 100
 ENV_VAR: str = "MAHAVISHNU_DISTILL_LLM_WEEKLY_CAP"
 
 
-class CostCeilingExceeded(Exception): # noqa: N818 — plan-locked name
-
+class CostCeilingExceeded(Exception):  # noqa: N818 — plan-locked name
     def __init__(self, *, calls_made: int, ceiling: int) -> None:
         self.calls_made = int(calls_made)
         self.ceiling = int(ceiling)
@@ -28,7 +26,6 @@ class CostCeilingExceeded(Exception): # noqa: N818 — plan-locked name
 
 @dataclass(frozen=True)
 class _StubCandidate:
-
     session_id: str
     evidence_count: int = 0
 
@@ -39,12 +36,11 @@ class _LlmLike(Protocol):
 
 @dataclass
 class _LlmSynthesizer:
-
     llm: _LlmLike
     cap: int | None = None
     ceiling: int = DEFAULT_WEEKLY_CAP
     calls_made: int = 0
-    last_reset: datetime = None # type: ignore[assignment]
+    last_reset: datetime = None  # type: ignore[assignment]
 
     def __post_init__(self) -> None:
 

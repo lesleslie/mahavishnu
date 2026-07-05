@@ -13,12 +13,13 @@ these tests MUST fail loudly.
 
 from __future__ import annotations
 
-import importlib.util
-import sys
 import textwrap
-from pathlib import Path
+from typing import TYPE_CHECKING
 
 import pytest
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 
 @pytest.fixture
@@ -117,7 +118,6 @@ class TestDiscoverWorkflowsDecorator:
         self, fake_repo_root: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         """A module with a decorated function yields one workflow entry."""
-        from mahavishnu.distill.decorator import mahavishnu_workflow
         from mahavishnu.distill.discovery import discover_workflows
 
         _make_module(

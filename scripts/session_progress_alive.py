@@ -5,7 +5,7 @@ Shows an animated progress bar for the 5-hour session limit
 """
 
 from contextlib import redirect_stdout
-from datetime import datetime
+from datetime import datetime, timedelta
 import io
 import json
 from pathlib import Path

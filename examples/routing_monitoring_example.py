@@ -122,11 +122,6 @@ async def simulate_routing_operations(
 
     # Simulate 1: Normal routing to LlamaIndex
     logger.info("\n1. Normal routing decision (WORKFLOW → LlamaIndex)")
-    task_spec = {
-        "task_type": TaskType.WORKFLOW,
-        "prompt": "Analyze sales data",
-        "repos": ["/path/to/repo"],
-    }
 
     # Record routing decision in metrics
     metrics.record_routing_decision(

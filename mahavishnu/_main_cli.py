@@ -21,11 +21,14 @@ from .cli.events import add_events_commands
 # Import code indexing CLI
 from .cli.index_cli import add_index_commands
 
-# Import scaffold CLI
-from .cli.scaffold_cli import app as scaffold_app
-
 # Import precommitment CLI (Spec #2)
 from .cli.precommit_cli import precommit_app as precommit_app_obj
+
+# Import rollback CLI (audit H8: SLOs/rollback for Plan 1 + Plan 5)
+from .cli.rollback_cli import add_rollback_commands
+
+# Import scaffold CLI
+from .cli.scaffold_cli import app as scaffold_app
 
 # Import SOP evolution CLI (Spec #7)
 from .cli.sop_cli import add_sop_commands
@@ -56,9 +59,6 @@ from .production_cli import add_production_commands
 
 # Import quality evaluation CLI
 from .quality_cli import add_quality_commands
-
-# Import rollback CLI (audit H8: SLOs/rollback for Plan 1 + Plan 5)
-from .cli.rollback_cli import add_rollback_commands
 
 # Import adaptive routing CLI
 from .routing_cli import add_routing_commands

@@ -21,7 +21,6 @@ from mahavishnu.mcp.crow.tools.web_extract import (
     _trafilatura_extract,
 )
 
-
 # ---------------------------------------------------------------------------
 # Task 7 - trafilatura primary extraction
 # ---------------------------------------------------------------------------

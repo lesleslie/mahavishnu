@@ -8,14 +8,14 @@ package.
 from __future__ import annotations
 
 from datetime import datetime
-from enum import Enum
+from enum import StrEnum
 from typing import Any
 from uuid import uuid4
 
 from pydantic import BaseModel, Field
 
 
-class Priority(str, Enum):
+class Priority(StrEnum):
     """Message priority levels."""
 
     LOW = "low"
@@ -24,7 +24,7 @@ class Priority(str, Enum):
     URGENT = "urgent"
 
 
-class MessageType(str, Enum):
+class MessageType(StrEnum):
     """Message types used for inter-project communication."""
 
     REQUEST = "request"
@@ -33,7 +33,7 @@ class MessageType(str, Enum):
     UPDATE = "update"
 
 
-class MessageStatus(str, Enum):
+class MessageStatus(StrEnum):
     """Message lifecycle states."""
 
     UNREAD = "unread"

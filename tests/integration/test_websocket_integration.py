@@ -902,7 +902,7 @@ class TestMultiServerConfiguration:
     def test_all_descriptions_present(self):
         """Test that all servers have descriptions."""
         # Assert
-        for server_name, config in WEBSOCKET_SERVERS.items():
+        for _server_name, config in WEBSOCKET_SERVERS.items():
             assert "description" in config
             assert "port" in config
             assert "module_path" in config

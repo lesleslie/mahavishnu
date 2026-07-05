@@ -403,8 +403,8 @@ def benchmark_search(db_path: str) -> dict[str, Any]:
                 logger.info(f"Speedup: {speedup:.2f}x")
 
             # Compare results
-            exact_ids = set(r[0] for r in exact_results)
-            approx_ids = set(r[0] for r in approx_results)
+            exact_ids = {r[0] for r in exact_results}
+            approx_ids = {r[0] for r in approx_results}
             overlap = len(exact_ids & approx_ids)
             recall = overlap / len(exact_ids) if exact_ids else 0
             logger.info(f"Recall@10: {recall:.2%} ({overlap}/{len(exact_results)} common)")

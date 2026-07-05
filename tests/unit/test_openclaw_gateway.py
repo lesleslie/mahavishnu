@@ -399,7 +399,7 @@ class TestOpenClawGatewayWorker:
 
         with patch("asyncio.get_event_loop") as mock_loop:
             mock_loop.return_value.time.return_value = 0.0
-            wid = await worker.start()
+            await worker.start()
 
         assert worker._status == WorkerStatus.RUNNING
 

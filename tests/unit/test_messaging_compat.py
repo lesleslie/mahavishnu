@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from messaging.types import MessageStatus, MessageType, Priority, ProjectMessage
+
 from mahavishnu.mcp.tools.repository_messaging_tools import (
     _coerce_message_type as coerce_repository_message_type,
 )
@@ -15,7 +17,6 @@ from mahavishnu.messaging.repository_messenger import (
 from mahavishnu.messaging.repository_messenger import (
     MessageType as RepositoryMessageType,
 )
-from messaging.types import MessageStatus, MessageType, Priority, ProjectMessage
 
 
 def test_messaging_types_module_exports_shared_enums() -> None:

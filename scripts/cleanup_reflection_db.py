@@ -90,7 +90,6 @@ __all__ = [
     "CleanupResult",
     "LockProbe",
     "ALLOWED_HEALTH_SCHEMES",
-    "detect_lock_holder",
     "force_release_lock",
     "is_process_alive",
     "probe_lock",

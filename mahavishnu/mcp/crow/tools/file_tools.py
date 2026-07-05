@@ -13,17 +13,20 @@ syscall. Binary detection uses an 8 KiB header sniff (any NUL byte marks
 the file as binary). Writes use ``tempfile.mkstemp`` + ``os.replace`` for
 crash-safety; the original file is left untouched if anything raises.
 """
+
 from __future__ import annotations
 
 import os
-import tempfile
 from pathlib import Path
-from typing import TypedDict
+import tempfile
+from typing import TYPE_CHECKING, TypedDict
 
 import aiofiles
 
 from mahavishnu.mcp.crow.path_security import resolve_workspace_path
-from mahavishnu.mcp.crow.settings import CrowSettings
+
+if TYPE_CHECKING:
+    from mahavishnu.mcp.crow.settings import CrowSettings
 
 _ALWAYS_SKIP = frozenset(
     {".git", "__pycache__", ".venv", "node_modules", ".mypy_cache", ".ruff_cache"}
@@ -118,9 +121,7 @@ async def write_file(
     lines = content.count("\n") + (0 if content.endswith("\n") else 1)
     byte_count = len(content.encode("utf-8"))
     if dry_run:
-        return WriteResult(
-            written=False, path=str(path), bytes=byte_count, lines=lines
-        )
+        return WriteResult(written=False, path=str(path), bytes=byte_count, lines=lines)
     path.parent.mkdir(parents=True, exist_ok=True)
     existing_mode = path.stat().st_mode if path.exists() else None
     fd, tmp_name = tempfile.mkstemp(dir=path.parent, prefix=".crow.", suffix=".tmp")
@@ -135,9 +136,7 @@ async def write_file(
     except BaseException:
         tmp_path.unlink(missing_ok=True)
         raise
-    return WriteResult(
-        written=True, path=str(path), bytes=byte_count, lines=lines
-    )
+    return WriteResult(written=True, path=str(path), bytes=byte_count, lines=lines)
 
 
 async def list_directory(
@@ -213,9 +212,7 @@ async def delete_file(
     if not path.exists():
         return DeleteResult(deleted=False, path=str(path))
     if path.is_dir() and not recursive:
-        raise ValueError(
-            f"refusing to delete directory without recursive=True: {path}"
-        )
+        raise ValueError(f"refusing to delete directory without recursive=True: {path}")
     if path.is_dir() and recursive:
         import shutil as _shutil
 
@@ -244,9 +241,7 @@ def register(server, settings: CrowSettings) -> None:
         return await _read_impl(file_path, settings, offset, limit, encoding)
 
     @deco()
-    async def write_file(
-        file_path: str, content: str, dry_run: bool = False
-    ) -> WriteResult:
+    async def write_file(file_path: str, content: str, dry_run: bool = False) -> WriteResult:
         """(HTTP, for pool workers and CLI) - Atomic write preserving mode."""
         return await _write_impl(file_path, content, settings, dry_run)
 
@@ -257,9 +252,7 @@ def register(server, settings: CrowSettings) -> None:
         max_entries: int | None = None,
     ) -> ListDirectoryResult:
         """(HTTP, for pool workers and CLI) - List directory contents."""
-        return await _list_directory_impl(
-            path, settings, include_hidden, max_entries
-        )
+        return await _list_directory_impl(path, settings, include_hidden, max_entries)
 
     @deco()
     async def stat(file_path: str) -> StatResult:
@@ -267,9 +260,7 @@ def register(server, settings: CrowSettings) -> None:
         return await _stat_impl(file_path, settings)
 
     @deco()
-    async def delete_file(
-        file_path: str, recursive: bool = False
-    ) -> DeleteResult:
+    async def delete_file(file_path: str, recursive: bool = False) -> DeleteResult:
         """(HTTP, for pool workers and CLI) - Delete file or directory."""
         return await _delete_file_impl(file_path, settings, recursive)
 

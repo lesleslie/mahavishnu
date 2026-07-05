@@ -42,7 +42,6 @@ class TestRollbackCLIRegistration:
         """add_rollback_commands attaches the rollback sub-app under 'rollback'."""
         import typer
 
-        from mahavishnu.cli.rollback_cli import rollback_app
 
         test_app = typer.Typer()
         add_rollback_commands(test_app)

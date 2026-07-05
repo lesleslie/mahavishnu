@@ -183,7 +183,7 @@ class TestCheckHappyPath:
 
     def test_refill_caps_at_burst(self, fake_time: _FakeTime) -> None:
         limiter = TokenBucketRateLimiter(rate=10.0, burst_size=5.0)
-        r1 = limiter.check("c")  # tokens: 5 - 1 = 4
+        limiter.check("c")  # tokens: 5 - 1 = 4
         fake_time.advance(100.0)  # many seconds pass
         r2 = limiter.check("c")
         # Capped at burst_size - 1

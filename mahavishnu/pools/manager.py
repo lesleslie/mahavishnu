@@ -207,9 +207,7 @@ class PoolManager:
             if pool is not None:
                 worker_counts.setdefault(pool.config.pool_type, 0)
 
-        known_types = {"mahavishnu", "session-buddy", "runpod"} | set(
-            worker_counts.keys()
-        )
+        known_types = {"mahavishnu", "session-buddy", "runpod"} | set(worker_counts.keys())
         for pool_type in known_types:
             pool_workers_active.labels(pool_type=pool_type).set(worker_counts.get(pool_type, 0))
 

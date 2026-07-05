@@ -264,7 +264,7 @@ class TestResolveReposPath:
         """Raises ConfigurationError when neither primary nor fallback exists."""
         monkeypatch.chdir(tmp_path)
         primary = tmp_path / "ecosystem.yaml"  # does not exist
-        fallback = tmp_path / "settings" / "repos.yaml"  # does not exist
+        tmp_path / "settings" / "repos.yaml"  # does not exist
 
         mock_config = type("Config", (), {"repos_path": str(primary)})()
         mock_app = type("App", (), {"config": mock_config})()

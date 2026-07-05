@@ -494,7 +494,7 @@ class TestPoolScaleTool:
     @pytest.mark.asyncio
     async def test_pool_scale_success(self, mock_mcp, mock_pool_manager):
         """Test scaling pool successfully."""
-        pool = mock_pool_manager._pools["pool_1"]
+        mock_pool_manager._pools["pool_1"]
 
         @mock_mcp.tool()
         async def pool_scale(pool_id: str, target_workers: int):

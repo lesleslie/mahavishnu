@@ -355,7 +355,7 @@ class TestStatsAndDicts:
     def test_to_dict_values_are_sorted(self, security):
         result = security.to_dict()
         # Each list should be sorted
-        for blocked in result["blocked_apps"]:
+        for _blocked in result["blocked_apps"]:
             pass  # just ensure iteration works
         assert result["blocked_apps"] == sorted(result["blocked_apps"])
 
@@ -481,7 +481,7 @@ class TestSecurityCheckDecorator:
 class TestModuleLevelHelpers:
     @pytest.mark.unit
     def test_configure_security_replaces_global(self):
-        original = get_security()
+        get_security()
         try:
             new_cfg = AutomationConfig(max_operations_per_second=1)
             configure_security(new_cfg)

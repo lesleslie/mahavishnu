@@ -23,7 +23,7 @@ class TestErrorCodeRegistration:
     def test_no_duplicate_error_code_values(self) -> None:
         """Verify no two ErrorCode members share the same value."""
         error_codes = {member.value for member in ErrorCode}
-        all_members = [member for member in ErrorCode]
+        all_members = list(ErrorCode)
         assert len(error_codes) == len(all_members), (
             f"Duplicate error code values detected. "
             f"Found {len(all_members)} members but only {len(error_codes)} unique values."

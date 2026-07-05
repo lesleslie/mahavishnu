@@ -9,7 +9,6 @@ This module provides Prometheus instrumentation for tracking:
 
 from __future__ import annotations
 
-from collections.abc import Callable
 from functools import wraps
 import logging
 import time
@@ -27,6 +26,8 @@ from prometheus_client import (
 )
 
 if TYPE_CHECKING:
+    from collections.abc import Callable
+
     from prometheus_client.metrics import MetricWrapperBase
 
 logger = logging.getLogger(__name__)

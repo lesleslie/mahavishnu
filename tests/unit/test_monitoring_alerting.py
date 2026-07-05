@@ -468,7 +468,7 @@ class TestAlertManagerGetActive:
     async def test_active_excludes_acknowledged(self):
         mgr = AlertManager()
         a1 = await mgr.trigger_alert(AlertSeverity.HIGH, AlertType.WORKFLOW_FAILURE, "a1", "d1")
-        a2 = await mgr.trigger_alert(AlertSeverity.HIGH, AlertType.WORKFLOW_FAILURE, "a2", "d2")
+        await mgr.trigger_alert(AlertSeverity.HIGH, AlertType.WORKFLOW_FAILURE, "a2", "d2")
         await mgr.acknowledge_alert(a1.id, "alice")
         active = await mgr.get_active_alerts()
         assert len(active) == 1
@@ -734,8 +734,8 @@ class TestMonitoringDashboard:
         dash = MonitoringDashboard(app)
         mgr = AlertManager()
         dash.set_alert_manager(mgr)
-        a1 = await mgr.trigger_alert(AlertSeverity.LOW, AlertType.SYSTEM_HEALTH, "first", "d1")
-        a2 = await mgr.trigger_alert(AlertSeverity.HIGH, AlertType.SYSTEM_HEALTH, "second", "d2")
+        await mgr.trigger_alert(AlertSeverity.LOW, AlertType.SYSTEM_HEALTH, "first", "d1")
+        await mgr.trigger_alert(AlertSeverity.HIGH, AlertType.SYSTEM_HEALTH, "second", "d2")
         alerts = await dash.get_recent_alerts(limit=10)
         assert len(alerts) == 2
         # Most recent first

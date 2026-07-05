@@ -143,7 +143,7 @@ def main():
     try:
         conn.execute("DROP INDEX IF EXISTS hnsw_embeddings")
         print("Dropped existing HNSW index for fair comparison")
-    except:
+    except Exception:
         pass
 
     # Run exact search 10 times

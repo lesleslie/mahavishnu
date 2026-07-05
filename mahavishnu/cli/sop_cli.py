@@ -40,9 +40,7 @@ def _persister():
 @sop_app.command("list")
 def sop_list(
     project: str = typer.Option(..., "--project", "-p", help="Project ID"),
-    json_output: bool = typer.Option(
-        False, "--json", help="Emit structured JSON output"
-    ),
+    json_output: bool = typer.Option(False, "--json", help="Emit structured JSON output"),
 ) -> None:
     """List SOPs and pending suggestions for a project."""
     persister = _persister()
@@ -61,9 +59,7 @@ def sop_list(
                             "version": s.version,
                             "last_failure_id": s.last_failure_id,
                             "last_evolved_at": (
-                                s.last_evolved_at.isoformat()
-                                if s.last_evolved_at
-                                else None
+                                s.last_evolved_at.isoformat() if s.last_evolved_at else None
                             ),
                         }
                         for s in sops
@@ -106,9 +102,7 @@ def sop_list(
 
     typer.echo(f"\nFailure-mode catalog: {len(failure_modes)} entries")
     for fm in failure_modes:
-        typer.echo(
-            f"  - {fm.fingerprint} ({fm.sop_name}): {fm.occurrences} occurrences"
-        )
+        typer.echo(f"  - {fm.fingerprint} ({fm.sop_name}): {fm.occurrences} occurrences")
 
 
 @sop_app.command("show")
@@ -140,9 +134,7 @@ def sop_propose(
     threshold: int = typer.Option(
         3, "--threshold", "-t", help="Occurrence threshold to trigger a proposal"
     ),
-    json_output: bool = typer.Option(
-        False, "--json", help="Emit structured JSON output"
-    ),
+    json_output: bool = typer.Option(False, "--json", help="Emit structured JSON output"),
 ) -> None:
     """Run the EvolutionTrigger over the project's failure-mode catalog."""
     from mahavishnu.sop.evolution import EvolutionTrigger

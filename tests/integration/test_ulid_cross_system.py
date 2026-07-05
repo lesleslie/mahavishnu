@@ -37,7 +37,8 @@ except ImportError:
         randomness = os.urandom(10)
         ulid_bytes = timestamp_bytes + randomness
         alphabet = "0123456789abcdefghjkmnpqrstvwxyz"
-        b32_encode = lambda data: "".join([alphabet[(b >> 35) & 31] for b in data])
+        def b32_encode(data):
+            return "".join([alphabet[(b >> 35) & 31] for b in data])
         return b32_encode(ulid_bytes)
 
     def is_config_ulid(value: str) -> bool:

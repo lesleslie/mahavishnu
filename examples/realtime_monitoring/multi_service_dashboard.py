@@ -95,7 +95,7 @@ class ServiceClient:
 
             # Receive welcome message
             welcome = await self.websocket.recv()
-            data = json.loads(welcome)
+            json.loads(welcome)
 
             return True
 
@@ -436,7 +436,7 @@ class MultiServiceDashboard:
                 try:
                     dt = datetime.fromisoformat(timestamp.replace("Z", "+00:00"))
                     time_str = dt.strftime("%H:%M:%S")
-                except:
+                except Exception:
                     time_str = timestamp[:8]
             else:
                 time_str = "???"
@@ -478,7 +478,7 @@ class MultiServiceDashboard:
                 try:
                     dt = datetime.fromisoformat(timestamp.replace("Z", "+00:00"))
                     time_str = dt.strftime("%H:%M:%S")
-                except:
+                except Exception:
                     time_str = timestamp[:8]
             else:
                 time_str = "???"
@@ -520,7 +520,7 @@ class MultiServiceDashboard:
                 try:
                     dt = datetime.fromisoformat(timestamp.replace("Z", "+00:00"))
                     time_str = dt.strftime("%H:%M:%S")
-                except:
+                except Exception:
                     time_str = timestamp[:8]
             else:
                 time_str = "???"

@@ -530,7 +530,7 @@ class TestCircuitBreakerEdgeCases:
         """Circuit can reopen after closing (multiple cycles)."""
         cb = CircuitBreaker(threshold=threshold, timeout=timeout)
 
-        for cycle in range(num_cycles):
+        for _cycle in range(num_cycles):
             # Open the circuit
             for _ in range(threshold):
                 cb.record_failure()

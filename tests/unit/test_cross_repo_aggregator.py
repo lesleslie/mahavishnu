@@ -596,8 +596,8 @@ class TestRepoTaskStats:
         assert stats.completion_rate == 0.0
 
 
-class TestAggregationFilter:
-    """Tests for AggregationFilter."""
+class TestAggregationFilterBehavior:
+    """Tests for AggregationFilter behavior (empty defaults, specific values)."""
 
     def test_empty_filter(self) -> None:
         """Create empty filter."""

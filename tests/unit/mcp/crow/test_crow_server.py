@@ -7,7 +7,6 @@ from __future__ import annotations
 
 import pytest
 
-
 # ---------------------------------------------------------------------------
 # Task 10 - CrowServer is a StandardServer subclass with FastMCP-owned lifespan
 # ---------------------------------------------------------------------------
@@ -16,6 +15,7 @@ import pytest
 @pytest.mark.unit
 def test_crow_server_is_standard_server_subclass():
     from mcp_common.profiles.standard import StandardServer
+
     from mahavishnu.mcp.crow_server import CrowServer
 
     assert issubclass(CrowServer, StandardServer)
@@ -37,6 +37,7 @@ def test_crow_server_exposes_fastmcp_attribute():
     expose that attribute.
     """
     from fastmcp import FastMCP
+
     from mahavishnu.mcp.crow.settings import CrowSettings
     from mahavishnu.mcp.crow_server import create_crow_server
 
@@ -73,7 +74,6 @@ def test_dns_rebinding_toctou_re_validates_per_hop(monkeypatch):
     redirect, validate_url must be called on the new URL too. The shipped
     manual redirect loop guarantees this.
     """
-    import socket as _socket
 
     from mahavishnu.mcp.crow.path_security import validate_url
 

@@ -154,7 +154,7 @@ def test_promote_draft_rejects_active_state() -> None:
         rationale="ok",
     )
     # Activate first so draft.state becomes ACTIVE
-    activation = policy.promote_draft(draft, review, activated_by="ci")
+    policy.promote_draft(draft, review, activated_by="ci")
     draft.state = SkillPromotionState.ACTIVE  # simulate already-active
 
     with pytest.raises(ValueError, match="DRAFT or REVIEW"):

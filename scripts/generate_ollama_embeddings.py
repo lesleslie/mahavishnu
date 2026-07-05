@@ -257,7 +257,7 @@ async def generate_embeddings(
                     embeddings = await generate_batch_embeddings(texts, model, host)
 
                     # Update records
-                    for task_id, embedding in zip(task_ids, embeddings):
+                    for task_id, embedding in zip(task_ids, embeddings, strict=False):
                         if embedding is None:
                             logger.warning(f"Failed to generate embedding for {task_id}")
                             metrics["errors"] += 1
@@ -375,7 +375,7 @@ async def test_semantic_search(
                 logger.warning("Cannot determine embedding dimension")
                 return results
 
-            embedding_dim = len(sample_embedding[0])
+            len(sample_embedding[0])
 
             # Generate query embedding
             embed_start = time.time()

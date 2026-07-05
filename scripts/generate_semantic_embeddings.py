@@ -244,7 +244,7 @@ def generate_embeddings(
                     embeddings = generate_batch_embeddings(texts, model_name)
 
                     # Update records
-                    for task_id, embedding in zip(task_ids, embeddings):
+                    for task_id, embedding in zip(task_ids, embeddings, strict=False):
                         conn.execute(
                             """
                             UPDATE executions

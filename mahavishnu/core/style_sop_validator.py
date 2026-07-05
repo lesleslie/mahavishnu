@@ -4,10 +4,12 @@ from __future__ import annotations
 
 import logging
 import re
-from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from mahavishnu.core.style_sop import load_style_sop
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 logger = logging.getLogger(__name__)
 
@@ -24,11 +26,13 @@ def check_content(content: str, start_path: Path | None = None) -> list[dict[str
         message = ban.get("message", "Banned pattern")
         try:
             if re.search(pattern, content, re.MULTILINE):
-                violations.append({
-                    "pattern": pattern,
-                    "message": message,
-                    "source_sop": str(sop["source_path"]),
-                })
+                violations.append(
+                    {
+                        "pattern": pattern,
+                        "message": message,
+                        "source_sop": str(sop["source_path"]),
+                    }
+                )
         except re.error as exc:
             logger.warning(
                 "skipping invalid regex pattern in SOP",

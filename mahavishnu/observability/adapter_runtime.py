@@ -185,9 +185,7 @@ class InMemorySettingsActivationPersister:
     def save(self, record: SettingsActivationRecord) -> None:
         key = (record.adapter_id, record.version)
         if key in self._seen_keys:
-            raise ValueError(
-                f"duplicate (adapter_id, version): {key!r}"
-            )
+            raise ValueError(f"duplicate (adapter_id, version): {key!r}")
         self._seen_keys.add(key)
         self._records.append(record)
         logger.debug(
@@ -244,14 +242,12 @@ class DharaSettingsActivationPersister:
 
     def history(self) -> list[SettingsActivationRecord]:
         raise NotImplementedError(
-            "DharaSettingsActivationPersister.history() pending "
-            "Workstream C substrate."
+            "DharaSettingsActivationPersister.history() pending Workstream C substrate."
         )
 
     def history_for(self, adapter_id: str) -> list[SettingsActivationRecord]:
         raise NotImplementedError(
-            "DharaSettingsActivationPersister.history_for() pending "
-            "Workstream C substrate."
+            "DharaSettingsActivationPersister.history_for() pending Workstream C substrate."
         )
 
 

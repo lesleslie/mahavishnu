@@ -221,7 +221,9 @@ async def _register_optional_tools(server: FastMCPServer, methods_set: set[str])
             from ..mcp.tools.primitive_tools import register_primitive_tools
 
             register_primitive_tools(server.server)
-            logger.info("Registered 2 primitive introspection tools (list_primitives, show_primitive) with MCP server")
+            logger.info(
+                "Registered 2 primitive introspection tools (list_primitives, show_primitive) with MCP server"
+            )
         except ImportError as exc:
             logger.warning("Primitive tools not available: %s", exc)
 

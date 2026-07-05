@@ -248,7 +248,7 @@ class TestGetWorkersByCategory:
 
     def test_all_values_are_lists_of_worker_config(self):
         result = get_workers_by_category()
-        for cat, configs in result.items():
+        for _cat, configs in result.items():
             assert isinstance(configs, list)
             for cfg in configs:
                 assert isinstance(cfg, WorkerConfig)
@@ -303,7 +303,7 @@ class TestValidateWorkerDependencies:
     @patch("shutil.which", return_value=None)
     def test_shutil_which_called_with_correct_tool_name(self, mock_which):
         validate_worker_dependencies()
-        for key, cfg in WORKER_REGISTRY.items():
+        for _key, cfg in WORKER_REGISTRY.items():
             if cfg.requires_tool:
                 mock_which.assert_any_call(cfg.requires_tool)
 

@@ -142,7 +142,7 @@ class TestAllHelp:
         captured = capsys.readouterr()
         output = captured.out
 
-        for category, info in COMMAND_CATEGORIES.items():
+        for _category, info in COMMAND_CATEGORIES.items():
             for cmd_name in info["commands"]:
                 assert cmd_name in output
 
@@ -273,20 +273,20 @@ class TestCommandCategories:
 
     def test_all_categories_have_description(self) -> None:
         """Test all categories have descriptions."""
-        for category, info in COMMAND_CATEGORIES.items():
+        for _category, info in COMMAND_CATEGORIES.items():
             assert "description" in info
             assert info["description"]
 
     def test_all_commands_have_usage(self) -> None:
         """Test all commands have usage information."""
-        for category, info in COMMAND_CATEGORIES.items():
+        for _category, info in COMMAND_CATEGORIES.items():
             for cmd_name, cmd_info in info["commands"].items():
                 assert "usage" in cmd_info, f"{cmd_name} missing usage"
                 assert "description" in cmd_info, f"{cmd_name} missing description"
 
     def test_all_commands_have_examples(self) -> None:
         """Test all commands have examples."""
-        for category, info in COMMAND_CATEGORIES.items():
+        for _category, info in COMMAND_CATEGORIES.items():
             for cmd_name, cmd_info in info["commands"].items():
                 assert "examples" in cmd_info, f"{cmd_name} missing examples"
                 assert len(cmd_info["examples"]) > 0, f"{cmd_name} has no examples"

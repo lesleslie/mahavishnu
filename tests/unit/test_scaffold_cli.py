@@ -11,7 +11,7 @@ Covers:
 
 from __future__ import annotations
 
-from pathlib import Path
+from typing import TYPE_CHECKING
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -20,6 +20,9 @@ import yaml
 
 from mahavishnu.cli.scaffold_cli import app
 from mahavishnu.scaffolding.library import PatternLibrary
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 pytestmark = pytest.mark.unit
 

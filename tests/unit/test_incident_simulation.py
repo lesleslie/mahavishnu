@@ -327,7 +327,7 @@ class TestIncidentSimulator:
         simulator = IncidentSimulator()
         report = await simulator.run_simulation("database_outage", interactive=False)
 
-        phases_seen = set(r.phase for r in report.results)
+        phases_seen = {r.phase for r in report.results}
         assert "detection" in phases_seen
         assert "triage" in phases_seen
         assert "investigation" in phases_seen

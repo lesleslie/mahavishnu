@@ -33,7 +33,7 @@ from __future__ import annotations
 import asyncio
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
-from enum import Enum
+from enum import StrEnum
 import json
 from pathlib import Path
 import socket
@@ -116,7 +116,7 @@ SERVICE_DEPENDENCIES: dict[ServerName, list[ServerName]] = {
 # =============================================================================
 
 
-class HealthStatus(str, Enum):
+class HealthStatus(StrEnum):
     """Health status enumeration.
 
     Attributes:
@@ -272,7 +272,7 @@ async def check_websocket_server(
 
     try:
         # Step 1: Basic TCP connection check
-        sock_future = asyncio.get_event_loop().create_future()
+        asyncio.get_event_loop().create_future()
 
         def connect_tcp():
             """Synchronous TCP connection for socket check."""

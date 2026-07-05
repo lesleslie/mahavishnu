@@ -273,7 +273,7 @@ class TestParetoFrontier:
         choices = []
         for adapter in [AdapterType.PREFECT, AdapterType.AGNO]:
             # Mock recent executions for latency
-            for i in range(10):
+            for _i in range(10):
                 execution_id = await tracker.record_execution_start(
                     adapter=adapter,
                     task_type=TaskType.WORKFLOW,
@@ -328,7 +328,7 @@ class TestParetoFrontier:
 
         # Add latency data
         for adapter in [AdapterType.PREFECT, AdapterType.AGNO]:
-            for i in range(10):
+            for _i in range(10):
                 execution_id = await tracker.record_execution_start(
                     adapter=adapter,
                     task_type=TaskType.WORKFLOW,
@@ -481,8 +481,8 @@ class TestCostAwareChoice:
         tracker._metrics.adapter_attempts["prefect"]["success"] = 80
         tracker._metrics.adapter_attempts["prefect"]["failure"] = 20
 
-        stats = await tracker.get_adapter_stats(AdapterType.PREFECT)
-        cost = await optimizer.track_execution_cost(
+        await tracker.get_adapter_stats(AdapterType.PREFECT)
+        await optimizer.track_execution_cost(
             adapter=AdapterType.PREFECT,
             task_type=TaskType.WORKFLOW,
             execution_id="estimate",
@@ -513,7 +513,7 @@ class TestConstraintChecking:
     async def test_budget_constraint_satisfied(self, optimizer):
         """Should pass when budget not violated."""
         # Add a budget
-        budget = await optimizer.add_budget(
+        await optimizer.add_budget(
             budget_type=BudgetType.DAILY,
             limit_usd=100.00,
             task_type=TaskType.WORKFLOW,
@@ -533,7 +533,7 @@ class TestConstraintChecking:
     async def test_budget_constraint_violated(self, optimizer):
         """Should fail when over budget."""
         # Add budget
-        budget = await optimizer.add_budget(
+        await optimizer.add_budget(
             budget_type=BudgetType.WEEKLY,
             limit_usd=0.005,
             task_type=TaskType.AI_TASK,
@@ -578,7 +578,7 @@ class TestConstraintChecking:
         )
 
         # Create valid choice
-        choices = [
+        [
             CostAwareChoice(
                 adapter=AdapterType.PREFECT,
                 task_type=TaskType.WORKFLOW,
@@ -617,7 +617,7 @@ class TestConstraintChecking:
             latency_ms=8000,  # Over SLA
         )
 
-        choices = [
+        [
             CostAwareChoice(
                 adapter=AdapterType.AGNO,
                 task_type=TaskType.WORKFLOW,
@@ -659,14 +659,14 @@ class TestConstraintChecking:
         )
 
         # Add budget that will be exceeded
-        budget = await optimizer.add_budget(
+        await optimizer.add_budget(
             budget_type=BudgetType.DAILY,
             limit_usd=Decimal("0.0001"),
             adapter=AdapterType.LLAMAINDEX,
             task_type=TaskType.WORKFLOW,
         )
 
-        choices = [
+        [
             CostAwareChoice(
                 adapter=AdapterType.LLAMAINDEX,
                 task_type=TaskType.WORKFLOW,
@@ -755,8 +755,8 @@ class TestOptimalAdapterSelection:
         tracker._metrics.adapter_attempts["prefect"]["success"] = 75
         tracker._metrics.adapter_attempts["prefect"]["failure"] = 25
 
-        stats = await tracker.get_adapter_stats(AdapterType.PREFECT)
-        cost = await optimizer.track_execution_cost(
+        await tracker.get_adapter_stats(AdapterType.PREFECT)
+        await optimizer.track_execution_cost(
             adapter=AdapterType.PREFECT,
             task_type=TaskType.WORKFLOW,
             execution_id="estimate",
@@ -782,7 +782,7 @@ class TestBudgetManagement:
     @pytest.mark.asyncio
     async def test_add_budget(self, optimizer):
         """Should add budget configuration."""
-        budget = await optimizer.add_budget(
+        await optimizer.add_budget(
             budget_type=BudgetType.WEEKLY,
             limit_usd=100.00,
         )

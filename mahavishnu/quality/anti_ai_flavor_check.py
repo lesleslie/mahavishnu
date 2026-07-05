@@ -6,11 +6,13 @@ against the active style SOP. Returns violations with source SOP path.
 
 from __future__ import annotations
 
-from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from mahavishnu.core.style_sop import load_style_sop
 from mahavishnu.core.style_sop_validator import check_content
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 
 def run_anti_ai_flavor_check(content: str, file_path: Path) -> dict[str, Any]:

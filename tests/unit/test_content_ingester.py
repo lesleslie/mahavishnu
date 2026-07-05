@@ -1669,7 +1669,7 @@ class TestBatchIngestUrls:
             "mahavishnu.ingesters.content_ingester.get_embedding_service",
             return_value=mock_service,
         ):
-            results = await ingester.batch_ingest_urls([])
+            await ingester.batch_ingest_urls([])
 
         assert ingester._initialized is True
 

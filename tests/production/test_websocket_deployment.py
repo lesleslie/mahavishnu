@@ -13,11 +13,10 @@ from __future__ import annotations
 import asyncio
 from datetime import UTC, datetime, timedelta
 import json
-from pathlib import Path
 import socket
 import ssl
 import time
-from typing import Any
+from typing import TYPE_CHECKING, Any
 import uuid
 
 from cryptography import x509
@@ -29,6 +28,9 @@ from mcp_common.websocket import MessageType, WebSocketMessage, WebSocketProtoco
 from mcp_common.websocket.auth import WebSocketAuthenticator
 import pytest
 import websockets
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 
 def _can_bind_localhost() -> bool:
@@ -616,7 +618,7 @@ class TestTLSConnections:
         ssl_context.verify_mode = ssl.CERT_NONE
 
         with pytest.raises(Exception):  # Connection refused or timeout
-            async with websockets.connect(uri, ssl=ssl_context, timeout=1.0) as ws:
+            async with websockets.connect(uri, ssl=ssl_context, timeout=1.0):
                 pass
 
     async def test_certificate_validation(
@@ -751,7 +753,7 @@ class TestServiceLifecycle:
 
         # Create multiple connections
         connections = []
-        for i in range(10):
+        for _i in range(10):
             ws = await websockets.connect(uri, ssl=ssl_context)
             connections.append(ws)
             await asyncio.sleep(0.01)
@@ -802,7 +804,7 @@ class TestCrossServiceCommunication:
             async def on_message(self, ws, msg):
                 self.received_messages.append(msg)
 
-        for i in range(2):
+        for _i in range(2):
             cert_path, key_path = temp_certificate
             server = TestServer(
                 host="localhost",
@@ -894,7 +896,7 @@ class TestCrossServiceCommunication:
                             await ws.send(WebSocketProtocol.encode(response))
 
         servers = []
-        for i in range(2):
+        for _i in range(2):
             cert_path, key_path = temp_certificate
             server = TestServer(
                 host="localhost",
@@ -1052,7 +1054,7 @@ class TestGracefulDegradation:
 
         # Create multiple connections
         connections = []
-        for i in range(5):
+        for _i in range(5):
             ws = await websockets.connect(uri, ssl=ssl_context)
             connections.append(ws)
 
@@ -1101,7 +1103,7 @@ class TestPerformance:
 
         # Create 100 concurrent connections
         tasks = []
-        for i in range(100):
+        for _i in range(100):
             task = asyncio.create_task(websockets.connect(uri, ssl=ssl_context))
             tasks.append(task)
 
@@ -1184,7 +1186,7 @@ class TestPerformance:
 
         # Create 10 connections
         connections = []
-        for i in range(10):
+        for _i in range(10):
             ws = await websockets.connect(uri, ssl=ssl_context)
             connections.append(ws)
 
@@ -1222,7 +1224,7 @@ class TestPerformance:
 
         # Create 20 connections
         connections = []
-        for i in range(20):
+        for _i in range(20):
             ws = await websockets.connect(uri, ssl=ssl_context)
             connections.append(ws)
 
@@ -1233,7 +1235,7 @@ class TestPerformance:
             start = time.time()
             msg = {"type": "ping", "timestamp": start}
             await ws.send(json.dumps(msg))
-            response = await asyncio.wait_for(ws.recv(), timeout=1.0)
+            await asyncio.wait_for(ws.recv(), timeout=1.0)
             end = time.time()
             latencies.append((end - start) * 1000)  # Convert to ms
 

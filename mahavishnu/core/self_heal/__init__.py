@@ -3,7 +3,7 @@
 Public surface:
 
 - L1 (transient retry): ``l1_retry`` decorator-like async function with
-  bounded attempts and exponential backoff. Raises ``L1RetryExhausted``
+  bounded attempts and exponential backoff. Raises ``L1RetryExhaustedError``
   when the budget is spent.
 - L2 (no-op): ``L2Noop`` is a deterministic pass-through. The marker
   string is the regression pin that downstream callers depend on.
@@ -17,7 +17,7 @@ Substrate status: ``sql_blocked``. v0 is in-memory only.
 from __future__ import annotations
 
 from mahavishnu.core.self_heal.l1_retry import (
-    L1RetryExhausted,
+    L1RetryExhaustedError,
     l1_retry,
 )
 from mahavishnu.core.self_heal.l2_noop import L2Noop
@@ -30,7 +30,7 @@ from mahavishnu.core.self_heal.l3_rule_store import (
 )
 
 __all__ = [
-    "L1RetryExhausted",
+    "L1RetryExhaustedError",
     "L2Noop",
     "RuleRecord",
     "RuleStore",

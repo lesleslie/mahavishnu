@@ -33,7 +33,7 @@ def _parse_sop(path: Path) -> dict[str, Any]:
         end = text.find("\n---\n", 4)
         if end > 0:
             frontmatter = yaml.safe_load(text[4:end]) or {}
-            body = text[end + 5:]
+            body = text[end + 5 :]
         else:
             frontmatter = {}
             body = text

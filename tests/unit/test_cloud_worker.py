@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import os
 import time
+from typing import TYPE_CHECKING
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -11,6 +12,9 @@ import pytest
 from mahavishnu.core.status import WorkerStatus
 from mahavishnu.workers.cloud_worker import CloudWorker, CloudWorkerConfig, _build_fallback_chain
 from mahavishnu.workers.task_router import TaskCategory
+
+if TYPE_CHECKING:
+    from mcp_common.llm import LLMSettings
 
 
 def _make_mock_chain(content: str = "result", provider: str = "minimax") -> MagicMock:
@@ -102,7 +106,6 @@ class TestCloudWorkerConfig:
 
 class TestBuildFallbackChain:
     def test_chain_includes_three_providers(self):
-        from mcp_common.llm import LLMSettings
 
         captured: list[LLMSettings] = []
 
@@ -124,7 +127,6 @@ class TestBuildFallbackChain:
         assert settings.fallback_chain == ["minimax", "llama_server", "ollama"]
 
     def test_minimax_url_in_settings(self):
-        from mcp_common.llm import LLMSettings
 
         captured: list[LLMSettings] = []
 
@@ -141,7 +143,6 @@ class TestBuildFallbackChain:
         assert captured[0].providers["minimax"]["base_url"] == "https://custom.minimax/v1"
 
     def test_llama_server_url_in_settings(self):
-        from mcp_common.llm import LLMSettings
 
         captured: list[LLMSettings] = []
 

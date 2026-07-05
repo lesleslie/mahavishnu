@@ -13,7 +13,7 @@ Design notes:
   subsequent retry doubles the previous delay (``base_backoff * 2 ** n``).
   The default is 0.1s so the worst-case total backoff for 3 attempts is
   0.1 + 0.2 = 0.3s, well under the 1-second budget the spec calls out.
-- ``L1RetryExhausted`` wraps the final attempt's underlying exception so
+- ``L1RetryExhaustedError`` wraps the final attempt's underlying exception so
   callers can introspect the cause without losing stack context.
 """
 
@@ -30,7 +30,7 @@ T = TypeVar("T")
 Sleeper = Callable[[float], Awaitable[None]]
 
 
-class L1RetryExhausted(Exception):
+class L1RetryExhaustedError(Exception):
     """Raised when the retry budget is exhausted.
 
     ``cause`` carries the underlying exception from the final attempt
@@ -42,7 +42,7 @@ class L1RetryExhausted(Exception):
         self.cause = cause
 
 
-async def l1_retry(
+async def l1_retry[T](
     operation: Callable[..., Awaitable[T]],
     *args: Any,
     max_attempts: int = 3,
@@ -66,7 +66,7 @@ async def l1_retry(
 
     Raises:
         ValueError: if ``max_attempts`` is non-positive.
-        L1RetryExhausted: when all attempts raise. ``__cause__`` points
+        L1RetryExhaustedError: when all attempts raise. ``__cause__`` points
             at the final attempt's exception.
     """
     if max_attempts < 1:
@@ -89,7 +89,7 @@ async def l1_retry(
             await sleep(delay)
 
     assert last_exc is not None  # loop only exits via break after a failed attempt
-    raise L1RetryExhausted(
+    raise L1RetryExhaustedError(
         f"L1 retry exhausted after {max_attempts} attempt(s): {last_exc!s}",
         cause=last_exc,
     ) from last_exc

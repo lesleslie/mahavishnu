@@ -14,8 +14,8 @@ Public surface:
 - ``HypothesisLock(store)``   — main entry point; lock / verify / check_post_hoc
 - ``LockStore``               — Protocol (runtime_checkable)
 - ``InMemoryLockStore``       — v0 reference implementation (swappable for Dhara)
-- ``HypothesisViolation``     — raised on claim drift
-- ``SignatureMismatch``       — raised on lock tamper
+- ``HypothesisViolationError``     — raised on claim drift
+- ``SignatureMismatchError``       — raised on lock tamper
 
 Why no Dhara dependency in Phase 1? Spec #2 is explicitly substrate-ready
 with no substrate dependency. The ``LockStore`` Protocol keeps the seam
@@ -26,27 +26,26 @@ triad.
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 import dataclasses
+from datetime import datetime
 import fcntl
 import hashlib
 import json
 import os
-import tempfile
-import uuid
-from collections.abc import Mapping
-from datetime import datetime
 from pathlib import Path
+import tempfile
 from typing import Any, Protocol, runtime_checkable
+import uuid
 
 from mahavishnu.core.errors import ErrorCode, MahavishnuError
-
 
 # ─────────────────────────────────────────────────────────────────────────
 # Exceptions
 # ─────────────────────────────────────────────────────────────────────────
 
 
-class HypothesisViolation(MahavishnuError):
+class HypothesisViolationError(MahavishnuError):
     """Raised when a downstream iteration's claim drifts from the locked
     hypothesis.
 
@@ -63,7 +62,7 @@ class HypothesisViolation(MahavishnuError):
         )
 
 
-class SignatureMismatch(MahavishnuError):
+class SignatureMismatchError(MahavishnuError):
     """Raised when a lock's stored hypothesis has been tampered with.
 
     A ``verify_lock`` call computes a fresh signature over the currently
@@ -102,13 +101,9 @@ class Hypothesis:
 
     def __post_init__(self) -> None:
         if not isinstance(self.confidence, int) or isinstance(self.confidence, bool):
-            raise TypeError(
-                f"confidence must be int (got {type(self.confidence).__name__})"
-            )
+            raise TypeError(f"confidence must be int (got {type(self.confidence).__name__})")
         if not 0 <= self.confidence <= 100:
-            raise ValueError(
-                f"confidence must be in [0, 100] (got {self.confidence})"
-            )
+            raise ValueError(f"confidence must be in [0, 100] (got {self.confidence})")
 
 
 @dataclasses.dataclass(frozen=True)
@@ -406,7 +401,7 @@ class HypothesisLock:
     def verify_lock(self, lock_id: str) -> bool:
         """Return True iff the stored lock matches its recorded signature.
 
-        Raises ``SignatureMismatch`` if the stored hypothesis has been
+        Raises ``SignatureMismatchError`` if the stored hypothesis has been
         tampered with (signature does not match). Returns False if the
         ``lock_id`` is unknown.
         """
@@ -415,7 +410,7 @@ class HypothesisLock:
             return False
         fresh = compute_signature(stored.hypothesis)
         if fresh != stored.signature:
-            raise SignatureMismatch(
+            raise SignatureMismatchError(
                 f"lock_id={lock_id} hypothesis has been altered since signing"
             )
         return True
@@ -423,17 +418,17 @@ class HypothesisLock:
     def check_post_hoc(self, lock_id: str, *, observed_claim: str) -> None:
         """Verify that ``observed_claim`` matches the locked claim.
 
-        Raises ``SignatureMismatch`` if the lock itself is broken.
-        Raises ``HypothesisViolation`` if ``observed_claim`` disagrees
+        Raises ``SignatureMismatchError`` if the lock itself is broken.
+        Raises ``HypothesisViolationError`` if ``observed_claim`` disagrees
         with the locked claim.
         """
         # First verify the lock itself.
         if not self.verify_lock(lock_id):
-            raise SignatureMismatch(f"lock_id={lock_id} not found")
+            raise SignatureMismatchError(f"lock_id={lock_id} not found")
         stored = self._store.get(lock_id)
         assert stored is not None  # verify_lock just confirmed it exists
         if stored.hypothesis.claim != observed_claim:
-            raise HypothesisViolation(
+            raise HypothesisViolationError(
                 f"claim drift for lock_id={lock_id}: "
                 f"locked={stored.hypothesis.claim!r} "
                 f"observed={observed_claim!r}"
@@ -443,11 +438,11 @@ class HypothesisLock:
 __all__ = [
     "Hypothesis",
     "HypothesisLock",
-    "HypothesisViolation",
+    "HypothesisViolationError",
     "InMemoryLockStore",
     "JsonFileLockStore",
     "LockResult",
     "LockStore",
-    "SignatureMismatch",
+    "SignatureMismatchError",
     "compute_signature",
 ]

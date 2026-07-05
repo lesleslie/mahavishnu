@@ -428,7 +428,7 @@ class TestVectorSearch:
         )
 
         query = SearchQuery(query="test", search_type=SearchType.HYBRID)
-        results = await search.search(query)
+        await search.search(query)
 
         # Should have executed FTS search
         assert mock_db.fetch.called

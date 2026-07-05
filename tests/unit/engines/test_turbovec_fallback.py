@@ -1,8 +1,12 @@
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
 from unittest.mock import MagicMock, patch
 
 import pytest
+
+if TYPE_CHECKING:
+    from mahavishnu.engines.llamaindex_adapter_impl import LlamaIndexAdapter
 
 
 def _make_adapter() -> "LlamaIndexAdapter":  # noqa: UP037

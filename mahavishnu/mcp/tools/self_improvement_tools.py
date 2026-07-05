@@ -476,9 +476,7 @@ class SelfImprovementTools:
         Returns:
             Dictionary with improvement_job_id and status, or error.
         """
-        logger.info(
-            "self_improvement_generate: fingerprint=%s", fingerprint[:16]
-        )
+        logger.info("self_improvement_generate: fingerprint=%s", fingerprint[:16])
         try:
             dhara_url = getattr(
                 getattr(self.app, "settings", None), "dhara_url", "http://localhost:8683"

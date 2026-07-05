@@ -233,10 +233,6 @@ class TestKeyboardNavigation:
         # - Standard terminal navigation
 
         # Verify that interactive commands document exit methods
-        interactive_hints = [
-            "Press Ctrl+C to cancel",
-            "Ctrl+D to exit",
-        ]
 
         # In a full implementation, check interactive prompts for exit hints
         # For now, verify the CLI documentation mentions Ctrl+C

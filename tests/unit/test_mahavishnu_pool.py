@@ -218,7 +218,7 @@ class TestMahavishnuPool:
             await pool.start()
 
             tasks = [{"prompt": "task1"}, {"prompt": "task2"}]
-            results = await pool.execute_batch(tasks)
+            await pool.execute_batch(tasks)
 
             # Verify execute_batch was called
             assert mock_wm.execute_batch.called

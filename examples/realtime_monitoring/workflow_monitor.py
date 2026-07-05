@@ -233,7 +233,7 @@ class WorkflowMonitor:
                 try:
                     dt = datetime.fromisoformat(timestamp.replace("Z", "+00:00"))
                     time_str = dt.strftime("%H:%M:%S")
-                except:
+                except Exception:
                     time_str = timestamp[:8]
             else:
                 time_str = "???"
@@ -273,7 +273,7 @@ class WorkflowMonitor:
                 try:
                     dt = datetime.fromisoformat(timestamp.replace("Z", "+00:00"))
                     time_str = dt.strftime("%H:%M:%S")
-                except:
+                except Exception:
                     time_str = timestamp[:8]
             else:
                 time_str = "???"
@@ -518,7 +518,7 @@ class WorkflowMonitor:
                 console=self.console,
                 refresh_per_second=10,
                 screen=False,
-            ) as live:
+            ):
                 while self.running:
                     try:
                         message = await asyncio.wait_for(

@@ -398,7 +398,7 @@ class TestDefaultModelRouting:
             assert cat in DEFAULT_MODEL_ROUTING, f"Missing routing for {cat}"
 
     def test_routing_values_are_strings(self):
-        for cat, model in DEFAULT_MODEL_ROUTING.items():
+        for _cat, model in DEFAULT_MODEL_ROUTING.items():
             assert isinstance(model, str)
 
 
@@ -513,7 +513,7 @@ class TestOllamaWorkerStart:
         mock_client.aclose = AsyncMock()
 
         with patch("mahavishnu.workers.ollama.httpx.AsyncClient", return_value=mock_client):
-            worker_id = await worker.start()
+            await worker.start()
             assert worker._status == WorkerStatus.RUNNING
 
     @pytest.mark.asyncio
@@ -769,7 +769,7 @@ class TestOllamaWorkerExecute:
         self._mock_post_chat(mock_client, self._make_chat_response("Stored result"))
         self._mock_get_models(mock_client, [{"name": "qwen2.5-coder:7b"}])
 
-        result = await worker.execute({"prompt": "test"})
+        await worker.execute({"prompt": "test"})
 
         sb_client.call_tool.assert_called_once()
         call_args = sb_client.call_tool.call_args
@@ -831,7 +831,7 @@ class TestOllamaWorkerExecute:
         self._mock_get_models(mock_client, [{"name": "qwen2.5-coder:7b"}])
 
         task = {"prompt": "hello"}
-        result = await worker.execute(task)
+        await worker.execute(task)
 
         call_args = mock_client.post.call_args
         messages = call_args[1]["json"]["messages"]

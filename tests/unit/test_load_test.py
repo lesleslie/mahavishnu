@@ -319,7 +319,7 @@ class TestMockTaskClient:
         client = MockTaskClient(config)
 
         # Create a task first
-        create_result = await client.create_task("Test Task", "test-repo")
+        await client.create_task("Test Task", "test-repo")
         task_id = client._task_counter
 
         # Get the task
@@ -431,7 +431,7 @@ class TestLoadTestRunner:
 
         await runner.run()
 
-        for name, metrics in runner.metrics.items():
+        for _name, metrics in runner.metrics.items():
             assert isinstance(metrics, LoadTestMetrics)
             assert metrics.total_requests > 0
 
@@ -698,7 +698,7 @@ class TestMain:
         sys.stdout = captured
         try:
             try:
-                result = await main()
+                await main()
             finally:
                 sys.argv = old_argv
         finally:
@@ -720,7 +720,7 @@ class TestMain:
         sys.stdout = captured
         try:
             try:
-                result = await main()
+                await main()
             finally:
                 sys.argv = old_argv
         finally:

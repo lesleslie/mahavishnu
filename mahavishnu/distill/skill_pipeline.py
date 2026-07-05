@@ -27,11 +27,11 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
-from enum import Enum
+from enum import StrEnum
 from typing import Protocol, runtime_checkable
 
 
-class SkillZone(str, Enum):
+class SkillZone(StrEnum):
     """The three zones in the skill pipeline.
 
     Mirrors the Spec #5 architectural contract:
@@ -104,9 +104,7 @@ class InMemorySkillPipeline:
 
     def record_transition(self, transition: SkillTransition) -> None:
         if transition.transition_id in self._seen_ids:
-            raise ValueError(
-                f"duplicate transition_id: {transition.transition_id}"
-            )
+            raise ValueError(f"duplicate transition_id: {transition.transition_id}")
         self._seen_ids.add(transition.transition_id)
         self._transitions.append(transition)
 
@@ -147,9 +145,7 @@ class DharaSkillPipeline:
         )
 
     def history(self) -> list[SkillTransition]:
-        raise NotImplementedError(
-            "DharaSkillPipeline.history() pending Workstream B substrate."
-        )
+        raise NotImplementedError("DharaSkillPipeline.history() pending Workstream B substrate.")
 
     def history_for(self, skill_name: str) -> list[SkillTransition]:
         raise NotImplementedError(

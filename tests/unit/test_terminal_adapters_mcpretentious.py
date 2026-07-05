@@ -264,7 +264,7 @@ class TestCloseSession:
 
     async def test_close_known_session(
         self,
-        adapter: McpertentiousAdapter if False else McpretentiousAdapter,
+        adapter: McpretentiousAdapter if False else McpretentiousAdapter,
         mcp_client: AsyncMock,
     ):
         mcp_client.call_tool.return_value = {"terminal_id": "t1"}

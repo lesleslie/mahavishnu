@@ -169,12 +169,16 @@ def _tasks_send_subscribe_handler(execute_fn: Any, timeout: float = 600.0):  # t
             try:
                 result = await asyncio.wait_for(execute_fn({"prompt": prompt}), timeout=timeout)
                 await queue.put(_sse_event(task_id, "completed", final=True, result=result))
-            except asyncio.TimeoutError:
+            except TimeoutError:
                 logger.warning("A2A task timed out (%.0fs) for task_id=%s", timeout, task_id)
-                await queue.put(_sse_event(task_id, "failed", final=True, error="Task execution timed out"))
+                await queue.put(
+                    _sse_event(task_id, "failed", final=True, error="Task execution timed out")
+                )
             except Exception:  # noqa: BLE001
                 logger.exception("A2A /tasks/sendSubscribe handler error")
-                await queue.put(_sse_event(task_id, "failed", final=True, error="Task execution failed"))
+                await queue.put(
+                    _sse_event(task_id, "failed", final=True, error="Task execution failed")
+                )
             finally:
                 await queue.put(None)
 

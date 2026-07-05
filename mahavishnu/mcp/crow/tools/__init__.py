@@ -13,12 +13,17 @@ This dual-target pattern lets the same ``register`` functions work
 against a plain ``StandardServer`` (e.g. in a test fixture) and the
 production ``CrowServer`` (with FastMCP-owned lifespan).
 """
+
 from __future__ import annotations
 
-from mcp_common.profiles.standard import StandardServer
+from typing import TYPE_CHECKING
 
-from mahavishnu.mcp.crow.settings import CrowSettings
 from . import file_tools, rg_search, web_extract, web_tools
+
+if TYPE_CHECKING:
+    from mcp_common.profiles.standard import StandardServer
+
+    from mahavishnu.mcp.crow.settings import CrowSettings
 
 
 def _tool_decorator(server: StandardServer):

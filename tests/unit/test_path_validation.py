@@ -53,7 +53,6 @@ def test_get_registered_repos_empty_file(tmp_path, monkeypatch):
     # Also patch the function directly to avoid module-level import issues
     import mahavishnu.core.code_index.path_validation as pv
 
-    original_get_registered_repos = pv.get_registered_repos
 
     def mock_get_registered_repos():
         from pathlib import Path

@@ -193,7 +193,7 @@ class TestDetermineRetryPolicy:
         mock_app.error_recovery_manager.classify_error = AsyncMock(
             return_value=ErrorCategory.NETWORK
         )
-        policy = await integration.determine_retry_policy(RuntimeError("err"))
+        await integration.determine_retry_policy(RuntimeError("err"))
         mock_app.error_recovery_manager.classify_error.assert_called_once()
 
 

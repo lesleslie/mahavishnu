@@ -384,7 +384,7 @@ class TestWorktreeAuditLogger:
         """Test that audit logging falls back to app logger if audit log fails."""
         mock_app_logger = mocker.patch("mahavishnu.core.worktree_audit.logger")
         # Mock the import inside _log_to_audit_trail
-        mock_audit_getter = mocker.patch(
+        mocker.patch(
             "mahavishnu.mcp.auth.get_audit_logger",
             side_effect=Exception("Audit log unavailable"),
         )
@@ -402,7 +402,7 @@ class TestWorktreeAuditLogger:
 
     def test_log_to_audit_trail_success(self, mocker):
         """Test successful audit trail logging."""
-        mock_audit_logger = mocker.patch("mahavishnu.mcp.auth.get_audit_logger")
+        mocker.patch("mahavishnu.mcp.auth.get_audit_logger")
         mock_audit = mocker.patch.object(
             WorktreeAuditLogger, "_log_to_audit_trail", return_value=None
         )
@@ -500,7 +500,7 @@ class TestWorktreeAuditLogger:
             ("list", lambda: logger.log_list_operation(user_id="user-123", repo_nickname="test")),
         ]
 
-        for event_name, event_func in events_to_test:
+        for _event_name, event_func in events_to_test:
             event_func()
 
             # Verify _log_to_audit_trail was called with required fields

@@ -310,7 +310,7 @@ class TestSanitizeFilename:
         """Test sanitization handles Windows reserved filenames."""
         for reserved in ["CON", "PRN", "AUX", "NUL"]:
             result = PathValidator.sanitize_filename(reserved)
-            assert not result.upper() == reserved
+            assert result.upper() != reserved
             assert result.startswith("_")
 
     def test_sanitize_windows_reserved_names_with_extension(self):

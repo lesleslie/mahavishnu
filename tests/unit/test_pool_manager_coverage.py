@@ -371,7 +371,7 @@ async def test_spawn_pool_mahavishnu_success() -> None:
     config = PoolConfig(name="local", pool_type="mahavishnu", min_workers=2, max_workers=5)
     pool = _make_pool("local", n_workers=2)
 
-    with patch("mahavishnu.pools.manager.MahavishnuPool", return_value=pool) as mcls:
+    with patch("mahavishnu.pools.manager.MahavishnuPool", return_value=pool):
         pool_id = await mgr.spawn_pool("mahavishnu", config)
     assert pool_id == "local"
     assert pool_id in mgr._pools
@@ -1154,7 +1154,7 @@ async def test_aggregate_results_all_pools(pool_mgr_with_pools: PoolManager) -> 
     """Default aggregates every pool."""
     out = await pool_mgr_with_pools.aggregate_results()
     assert set(out.keys()) == {"pool_a", "pool_b", "pool_c"}
-    for pid, data in out.items():
+    for _pid, data in out.items():
         assert data["status"] == "running"
         assert "memory_count" in data
 

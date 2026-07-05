@@ -508,7 +508,7 @@ class TestAgnoMemoryConfig:
         """
         # This test documents the intended behavior - may not actually raise
         try:
-            config = AgnoMemoryConfig(backend=MemoryBackend.POSTGRES)
+            AgnoMemoryConfig(backend=MemoryBackend.POSTGRES)
             # If no error, that's the current (possibly buggy) behavior
             # The connection_string validator check doesn't work due to field ordering
         except ValidationError as e:

@@ -1,21 +1,24 @@
----
+______________________________________________________________________
+
 bans:
-  - pattern: 'Co-Authored-By:\s*Claude'
-    message: 'No AI attribution in commit messages'
-  - pattern: 'Generated with Claude Code'
-    message: 'No AI tooling attribution'
-  - pattern: '\[bot\]\s*$'
-    message: 'No bot suffix in commit messages'
-  - pattern: '^##\s*(What this MR does|Why we need it)\s*$'
-    message: 'No fill-in-the-blank headings; use descriptive titles'
-  - pattern: '\*\*(Root cause|Fix|Risk|What changes):\*\*'
-    message: 'No bold-tag structure in prose; integrate naturally'
-  - pattern: 'verified locally'
-    message: 'Proof of work must be command-reproducible'
-required_disclosures:
-  - 'MR description: include Changes: bullet list'
-  - 'Commit message: include reproducible test command if applicable'
----
+
+- pattern: 'Co-Authored-By:\\s\*Claude'
+  message: 'No AI attribution in commit messages'
+- pattern: 'Generated with Claude Code'
+  message: 'No AI tooling attribution'
+- pattern: '[bot]\\s\*$'
+  message: 'No bot suffix in commit messages'
+- pattern: '^##\\s\*(What this MR does|Why we need it)\\s\*$'
+  message: 'No fill-in-the-blank headings; use descriptive titles'
+- pattern: '\*\*(Root cause|Fix|Risk|What changes):\*\*'
+  message: 'No bold-tag structure in prose; integrate naturally'
+- pattern: 'verified locally'
+  message: 'Proof of work must be command-reproducible'
+  required_disclosures:
+- 'MR description: include Changes: bullet list'
+- 'Commit message: include reproducible test command if applicable'
+
+______________________________________________________________________
 
 # Style SOP — Mahavishnu default
 

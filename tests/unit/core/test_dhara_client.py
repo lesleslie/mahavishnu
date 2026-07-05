@@ -18,7 +18,6 @@ import pytest
 
 from mahavishnu.core.dhara_client import DharaSQLProxyError, DharaThinClient
 
-
 # ---------------------------------------------------------------------------
 # Init
 # ---------------------------------------------------------------------------

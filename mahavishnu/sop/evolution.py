@@ -16,8 +16,8 @@ SOP mutation. Operators review via ``mahavishnu sop show`` / ``propose``.
 
 from __future__ import annotations
 
-import uuid
 from dataclasses import dataclass
+import uuid
 
 from .models import FailureModeCatalogEntry, SOPSuggestion
 
@@ -56,18 +56,13 @@ class EvolutionTrigger:
         if entry.occurrences < self.threshold:
             return EvolutionTriggerDecision(
                 propose=False,
-                reason=(
-                    f"occurrences={entry.occurrences} below threshold="
-                    f"{self.threshold}"
-                ),
+                reason=(f"occurrences={entry.occurrences} below threshold={self.threshold}"),
             )
         suggestion = self._build_suggestion(entry)
         return EvolutionTriggerDecision(
             propose=True,
             suggestion=suggestion,
-            reason=(
-                f"occurrences={entry.occurrences} >= threshold={self.threshold}"
-            ),
+            reason=(f"occurrences={entry.occurrences} >= threshold={self.threshold}"),
         )
 
     def evaluate_batch(

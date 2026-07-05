@@ -25,10 +25,10 @@ safety net; callers should still pass already-sanitised context. See
 
 from __future__ import annotations
 
+from dataclasses import dataclass, field
 import hashlib
 import re
 import time
-from dataclasses import dataclass, field
 from typing import Any
 
 # Keys that must never be persisted in a rule's context. Defensive
@@ -243,5 +243,5 @@ def _cap_message(message: str) -> str:
 
 def _compute_rule_id(operation: str, error_type: str, message: str) -> str:
     """Stable 16-hex-char id derived from the failure signature."""
-    payload = f"{operation}\x00{error_type}\x00{message}".encode("utf-8")
+    payload = f"{operation}\x00{error_type}\x00{message}".encode()
     return hashlib.sha256(payload).hexdigest()[:16]
