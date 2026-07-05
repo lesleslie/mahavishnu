@@ -8,7 +8,7 @@
 
 **Note on scope:** Per spec, this defines the protocol AND applies it to git operations as the canonical implementation. Worker recovery, MCP tool failures, and persistence errors adopt the same protocol in follow-up specs.
 
----
+______________________________________________________________________
 
 ## Overview
 
@@ -22,7 +22,7 @@ This spec applies the protocol to three git operations: `git push`, `git rebase`
 
 **Architectural property:** L1/L2/L3 are about **per-operation recovery**, distinct from `heal_workflows` (per-workflow recovery). They compose: `heal_workflows` is the outer loop (workflow failed → retry the whole workflow); L1/L2/L3 is the inner loop (one operation failed → recover this step without escalating to the outer loop).
 
----
+______________________________________________________________________
 
 ## Goals
 
@@ -39,7 +39,7 @@ This spec applies the protocol to three git operations: `git push`, `git rebase`
 - **N3.** A new event type for heal attempts. Activity surfaces via logs + metrics; the protocol is invisible to Spec #1's report pipeline at the API surface (L2's Claude sessions still emit reports via Spec #1's publisher, but the L2 retry logic itself is opaque).
 - **N4.** Auto-recovery from failures with security implications (force-push to protected branches, dropping unpushed commits). L2 has hard red lines that prevent these regardless of operator approval.
 
----
+______________________________________________________________________
 
 ## Architecture & Data Flow
 
@@ -48,7 +48,7 @@ Operation (e.g., git push):
   L1: deterministic_guard(operation)
     ├─ Rule passes (clean rebase) → operation() → return result
     └─ Rule fails (conflict) → raise L1Aborted(context)
-  
+
   L2: bounded_agentic_heal(operation, l1_context)
     ├─ for attempt in 1..3:
     │    ├─ claude_turn(prompt_with_failure_context)  ← 4-min timeout
@@ -59,7 +59,7 @@ Operation (e.g., git push):
     │         └─ non-zero → continue
     ├─ attempts exhausted → raise L2Exhausted(trail)
     └─ Claude confidence < 70 → raise L2Bailed(trail)
-  
+
   L3: escalate_to_operator(operation, l1_context, l2_trail)
     └─ request_approval(
          summary=f"L2 unable to recover {operation}",
@@ -72,12 +72,12 @@ Operation (e.g., git push):
 **Key properties:**
 
 1. **L1 is synchronous and free.** Runs on every operation; no token cost; catches the common case.
-2. **L2 is bounded.** 3 attempts × 4 min = 12 min max per operation. No surprise costs.
-3. **L2 trusts the wire, not Claude.** Each attempt's success is determined by `git push exit 0`, not by Claude saying "fixed it."
-4. **L3 reuses existing infrastructure.** `request_approval` already does operator escalation; L3 just calls it with structured context.
-5. **L2 attempts emit reports.** L2's constrained Claude session runs through Spec #1's publisher, so Akosha sees L2 attempt activity in the same observability stream as regular work.
+1. **L2 is bounded.** 3 attempts × 4 min = 12 min max per operation. No surprise costs.
+1. **L2 trusts the wire, not Claude.** Each attempt's success is determined by `git push exit 0`, not by Claude saying "fixed it."
+1. **L3 reuses existing infrastructure.** `request_approval` already does operator escalation; L3 just calls it with structured context.
+1. **L2 attempts emit reports.** L2's constrained Claude session runs through Spec #1's publisher, so Akosha sees L2 attempt activity in the same observability stream as regular work.
 
----
+______________________________________________________________________
 
 ## Protocol Types
 
@@ -95,7 +95,7 @@ OpOutput = TypeVar("OpOutput")
 
 class L1Aborted(Exception):
     """Raised by L1 when the deterministic rule fails.
-    
+
     Carries context for L2 to consume.
     """
 
@@ -141,7 +141,7 @@ class HealAttempt:
     duration_ms: int
 ```
 
----
+______________________________________________________________________
 
 ## L1 — Deterministic Guard
 
@@ -162,7 +162,7 @@ async def run_with_l1(
     l1_guard: Callable[[OpInput], Awaitable[None]],
 ) -> OpOutput:
     """Run operation with L1 deterministic guard.
-    
+
     1. Run l1_guard synchronously. If it raises L1Aborted, propagate to caller (L2 handler).
     2. If l1_guard returns normally, run operation and return result.
     """
@@ -172,7 +172,7 @@ async def run_with_l1(
 
 L1 is intentionally minimal — a guard function plus a runner. The guard raises `L1Aborted` on failure; the runner propagates the exception.
 
----
+______________________________________________________________________
 
 ## L2 — Bounded Agentic Heal
 
@@ -222,7 +222,7 @@ async def run_with_l2(
     red_line_check: Callable[[str], None],
 ) -> OpOutput:
     """Run operation with bounded agentic heal on L1 failure.
-    
+
     Args:
         operation_name: for metrics labels.
         operation: the actual operation to run.
@@ -232,7 +232,7 @@ async def run_with_l2(
         claude_turn: async (input, context, attempt_index) -> (action_description, confidence).
             Must respect red_line_check before returning action.
         red_line_check: callable that raises if action violates red lines.
-    
+
     Raises:
         L2Bailed: if Claude confidence < floor or Claude declines.
         L2Exhausted: if all attempts fail.
@@ -343,7 +343,7 @@ async def run_with_l2(
     )
 ```
 
----
+______________________________________________________________________
 
 ## L3 — Operator Escalation
 
@@ -365,7 +365,7 @@ async def escalate_to_operator(
     l2_exception: L2Bailed | L2Exhausted,
 ) -> str:
     """Escalate to operator via request_approval.
-    
+
     Returns the operator's chosen action: "retry" | "abort" | "skip".
     """
     from mahavishnu.mcp.tools.approval_tools import request_approval
@@ -388,7 +388,7 @@ async def escalate_to_operator(
     )
 ```
 
----
+______________________________________________________________________
 
 ## Git Operations: Three Canonical Implementations
 
@@ -537,7 +537,7 @@ async def merge_with_heal(repo_path: str, branch: str) -> None:
     ...
 ```
 
----
+______________________________________________________________________
 
 ## Adoption & Migration
 
@@ -549,18 +549,19 @@ async def merge_with_heal(repo_path: str, branch: str) -> None:
 
 **CLI aid:** A new `mahavishnu heal --check-coverage` command scans the codebase for direct `asyncio.create_subprocess_exec("git", ...)` calls and flags those that aren't routed through the heal-wrapped helpers.
 
----
+______________________________________________________________________
 
 ## Storage & Retrieval
 
 No schema change. Activity surfaces via:
+
 - **Prometheus counters** (already exposed by Mahavishnu's metrics endpoint): `mahavishnu_heal_l2_attempts_total{operation, outcome}`, `mahavishnu_heal_l2_failures_total{operation, reason}`.
 - **Structured logs** at INFO/WARNING/ERROR levels with operation name, attempt index, confidence, wire exit code.
 - **L2's Claude session reports** via Spec #1's pipeline (the Claude session itself runs through the publisher).
 
 **No Dhara tables.** Heal activity is ephemeral; consumers needing history use Prometheus + logs.
 
----
+______________________________________________________________________
 
 ## Error Handling
 
@@ -574,7 +575,7 @@ No schema change. Activity surfaces via:
 | Wire re-run times out (git hangs) | Subprocess timeout | Treated as wire failure; counts as L2 attempt failure. |
 | L2 turn exceeds 4-minute timeout | `claude_turn` returns timeout error | Treated as turn_error; counts as L2 attempt failure. |
 
----
+______________________________________________________________________
 
 ## Testing Strategy
 
@@ -591,7 +592,7 @@ No schema change. Activity surfaces via:
 
 **Coverage target:** `tests/unit/test_heal_protocol.py`, `tests/unit/test_heal_l2.py` ≥ 95% line coverage.
 
----
+______________________________________________________________________
 
 ## Implementation Module Paths
 
@@ -609,7 +610,7 @@ No schema change. Activity surfaces via:
 | Git integration tests | `tests/integration/test_git_heal.py` |
 | L4 regression tests | `tests/integration/test_heal_regression.py` |
 
----
+______________________________________________________________________
 
 ## Trade-offs & Alternatives Considered
 
@@ -624,7 +625,7 @@ No schema change. Activity surfaces via:
 | Three git operations in v1.0 | Article-faithful scope; demonstrates the pattern | All operations (git + worker + MCP + persistence) — too large for one spec |
 | No new event schema | Reuse existing observability | New event type for heal attempts — couples protocol to schema |
 
----
+______________________________________________________________________
 
 ## Open Questions / Future Work
 
@@ -634,7 +635,7 @@ No schema change. Activity surfaces via:
 - **OQ4.** Apply the protocol to MCP tool failures (rate limits, transient errors). Follow-up spec.
 - **OQ5.** L2 Claude session's `metadata.heal_attempt_index` field on its emitted IterationReports. Convention; not enforced. Documented as guidance.
 
----
+______________________________________________________________________
 
 ## Success Criteria
 

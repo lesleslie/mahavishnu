@@ -53,7 +53,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - terminal: Use oneiric.core.logging; hoist uuid import; update __init__ docstrings
 - tui: Use oneiric logger in command_palette
 - workers: Add from __future__ to debug_monitor + manager; remove dead code after raise
-- workers: Close httpx client unconditionally; remove _get_json anti-pattern; rename test class
+- workers: Close httpx client unconditionally; remove \_get_json anti-pattern; rename test class
 - workers: Stop() try/finally; from_dict error_code roundtrip; remove unused MagicMock import
 
 ### Documentation

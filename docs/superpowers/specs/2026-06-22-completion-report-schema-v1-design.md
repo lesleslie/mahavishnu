@@ -3,11 +3,12 @@
 **Status:** Draft (brainstormed 2026-06-22)
 **Phase:** 1 (Foundational)
 **Source:** Synthesis of three articles —
-1. *Rebuilt Hermes / MAOS* (levelup.gitconnected, 2026) — agent self-validation failure mode
-2. *The Method That Replaces Spec-Driven Development — IDSD* (Medium, 2026) — ICE framework, "the agent fills the gaps"
-3. *Building a Production Agent Harness* — completion_report JSON contract, 19 quality gates, mechanical confidence ceilings
 
----
+1. *Rebuilt Hermes / MAOS* (levelup.gitconnected, 2026) — agent self-validation failure mode
+1. *The Method That Replaces Spec-Driven Development — IDSD* (Medium, 2026) — ICE framework, "the agent fills the gaps"
+1. *Building a Production Agent Harness* — completion_report JSON contract, 19 quality gates, mechanical confidence ceilings
+
+______________________________________________________________________
 
 ## Overview
 
@@ -17,7 +18,7 @@ Reports are **events, not return values**: a worker publishes an `EventEnvelope`
 
 The v1 schema captures only what downstream Phase 1 specs need. Token counts, cost, tool-call breakdown, and other operational metadata are deliberately deferred to v1.1+ to avoid scope creep and premature standardization.
 
----
+______________________________________________________________________
 
 ## Goals
 
@@ -33,7 +34,7 @@ The v1 schema captures only what downstream Phase 1 specs need. Token counts, co
 - **N3.** Defining the report content for non-Claude-emitter workers (e.g. container workers running deterministic code). Those workers continue using their existing return path.
 - **N4.** Replacing `get_workflow_status` in v1. The legacy field is preserved; reports are additive.
 
----
+______________________________________________________________________
 
 ## Architecture & Data Flow
 
@@ -83,11 +84,11 @@ The v1 schema captures only what downstream Phase 1 specs need. Token counts, co
 **Architectural properties:**
 
 1. **Reports are events, not return values.** The worker doesn't return a report to its caller — it publishes to the EventBus. Decouples producer from gates from storage.
-2. **The worker is the sole producer of `workflow.iteration.completed` and `workflow.completed`.** Orchestrator, gates, storage are all consumers.
-3. **Two event types** share one envelope pattern; their payloads (`IterationReport` vs `WorkflowReport`) differ.
-4. **Validation happens at publish**, not at consume. A worker that produces an invalid report cannot advance its iteration loop. This mirrors the source article's "the agent cannot bypass the reply gate" principle.
+1. **The worker is the sole producer of `workflow.iteration.completed` and `workflow.completed`.** Orchestrator, gates, storage are all consumers.
+1. **Two event types** share one envelope pattern; their payloads (`IterationReport` vs `WorkflowReport`) differ.
+1. **Validation happens at publish**, not at consume. A worker that produces an invalid report cannot advance its iteration loop. This mirrors the source article's "the agent cannot bypass the reply gate" principle.
 
----
+______________________________________________________________________
 
 ## Schema Definition
 
@@ -107,7 +108,7 @@ Published as `EventEnvelope.payload` with `event_type = "workflow.iteration.comp
 | `started_at` | string (date-time) | yes | ISO 8601, UTC |
 | `completed_at` | string (date-time) | yes | ISO 8601, UTC |
 | `duration_ms` | integer | yes | ≥ 0 |
-| `status` | string (enum) | yes | `IN_PROGRESS` \| `BLOCKED` \| `COMPLETE` |
+| `status` | string (enum) | yes | `IN_PROGRESS` | `BLOCKED` | `COMPLETE` |
 | `confidence` | integer | yes | 0–100. Subject to mechanical ceiling by `confidence-ceiling-gate` (separate spec). |
 | `open_questions` | array<string> | yes | may be empty |
 | `unchecked_sources` | array<source> | yes | see below; may be empty |
@@ -121,14 +122,14 @@ Published as `EventEnvelope.payload` with `event_type = "workflow.iteration.comp
 | Field | Type | Required | Constraints |
 |---|---|---|---|
 | `name` | string | yes | — |
-| `access_status` | string (enum) | yes | `accessible` \| `permission_denied` \| `not_found` \| `rate_limited` \| `skipped_inferred` |
+| `access_status` | string (enum) | yes | `accessible` | `permission_denied` | `not_found` | `rate_limited` | `skipped_inferred` |
 
 **Problem object (`adjacent_problems[*]`):**
 
 | Field | Type | Required | Constraints |
 |---|---|---|---|
 | `summary` | string | yes | — |
-| `status` | string (enum) | yes | `open` \| `investigating` \| `resolved` \| `wont_fix` |
+| `status` | string (enum) | yes | `open` | `investigating` | `resolved` | `wont_fix` |
 | `blocker` | string | no | — |
 
 ### `WorkflowReport` (per workflow completion)
@@ -146,16 +147,16 @@ Published as `EventEnvelope.payload` with `event_type = "workflow.completed"`.
 | `started_at` | string (date-time) | yes | ISO 8601, UTC |
 | `completed_at` | string (date-time) | yes | ISO 8601, UTC |
 | `duration_ms` | integer | yes | ≥ 0 |
-| `exit_reason` | string (enum) | yes | `complete` \| `blocked` \| `stalled` \| `degrading` \| `timeout` \| `budget_exhausted` \| `force_continued` |
+| `exit_reason` | string (enum) | yes | `complete` | `blocked` | `stalled` | `degrading` | `timeout` | `budget_exhausted` | `force_continued` |
 | `iteration_count` | integer | yes | ≥ 0 |
-| `final_status` | string (enum) | yes | `IN_PROGRESS` \| `BLOCKED` \| `COMPLETE` |
+| `final_status` | string (enum) | yes | `IN_PROGRESS` | `BLOCKED` | `COMPLETE` |
 | `confidence_trajectory` | array<integer> | no | per-iteration confidence, ordered; useful for diagnosing drift |
 
 ### Strictness policy
 
 **Both reports use `additionalProperties: false` in v1.** This is intentional: it forces schema evolution to be explicit (MAJOR bump) rather than accidental. v1.1 may relax this to `true` once token/cost/tool-call extension fields are standardized. Consumers wanting forward-compat with v1.1+ should not rely on `additionalProperties: false` to reject unknown keys — they should check `schema_version` first.
 
----
+______________________________________________________________________
 
 ## Event Envelope Integration
 
@@ -171,7 +172,7 @@ Reports are published inside the existing `EventEnvelope` (per `docs/specs/event
 
 The `event_type` is the discriminator; consumers subscribe by event type. The `metadata.report_kind` field provides a redundant check for consumers that need to filter reports across event types.
 
----
+______________________________________________________________________
 
 ## Validation
 
@@ -180,16 +181,16 @@ The `event_type` is the discriminator; consumers subscribe by event type. The `m
 **Validation failure is a hard error.** The worker:
 
 1. Catches `MahavishnuReportValidationError` from publish.
-2. Logs the failure with the full offending payload (sanitized of secrets by existing logger).
-3. Increments a `mahavishnu_report_validation_failure_total` counter (Prometheus).
-4. Emits an anomaly event to Akosha.
-5. **Does NOT advance to the next iteration.** The worker loop terminates with `exit_reason = "blocked"` and the iteration's `open_questions` augmented with a validation diagnostic.
+1. Logs the failure with the full offending payload (sanitized of secrets by existing logger).
+1. Increments a `mahavishnu_report_validation_failure_total` counter (Prometheus).
+1. Emits an anomaly event to Akosha.
+1. **Does NOT advance to the next iteration.** The worker loop terminates with `exit_reason = "blocked"` and the iteration's `open_questions` augmented with a validation diagnostic.
 
 This mirrors the source article's principle: *"Whatever Claude believes about its work, validation re-runs the real operation. ... The agent's self-report is never the ground truth — the harness re-checks against the wire."*
 
 **Dhara stores only validated reports.** The persister subscriber runs *after* validation; an invalid report never reaches storage.
 
----
+______________________________________________________________________
 
 ## Versioning Policy
 
@@ -204,7 +205,7 @@ The `schema_version` field inside the payload is the version discriminator. Cons
 - **Unknown future version** → consumer's policy (default: log + skip + alert via Akosha).
 - **Older known version** → consumer may either parse (forward compat) or reject (strict mode).
 
----
+______________________________________________________________________
 
 ## Adoption & Migration
 
@@ -216,7 +217,7 @@ The `schema_version` field inside the payload is the version discriminator. Cons
 
 **Migration aid:** `mahavishnu migrate --check-reports` CLI command audits the codebase for new workers created since the cutoff that don't emit reports. Exits non-zero if violations found; suitable for CI gating after v2.0.
 
----
+______________________________________________________________________
 
 ## Storage & Retrieval
 
@@ -243,7 +244,7 @@ The `schema_version` field inside the payload is the version discriminator. Cons
 - **Session-Buddy**: stores workflow reports as conversation context (operator-controlled opt-in).
 - **Crackerjack**: precommitment and confidence-ceiling gates consume iteration reports (separate specs).
 
----
+______________________________________________________________________
 
 ## Error Handling
 
@@ -267,7 +268,7 @@ class MahavishnuReportValidationError(MahavishnuError):
     """
 ```
 
----
+______________________________________________________________________
 
 ## Testing Strategy
 
@@ -286,7 +287,7 @@ Aligned with Bodai's existing L0–L4 framework (per the Production Harness arti
 
 **Fixtures:** Reusable valid/invalid report generators in `tests/fixtures/reports.py`. Generated via property-based testing (Hypothesis) to cover edge cases (empty arrays, max enum values, boundary integers).
 
----
+______________________________________________________________________
 
 ## Implementation Module Paths
 
@@ -304,7 +305,7 @@ Aligned with Bodai's existing L0–L4 framework (per the Production Harness arti
 | Test fixtures | `tests/fixtures/reports.py` |
 | Exception class | `mahavishnu/core/errors.py` (additive: `MahavishnuReportValidationError`) |
 
----
+______________________________________________________________________
 
 ## Trade-offs & Alternatives Considered
 
@@ -317,7 +318,7 @@ Aligned with Bodai's existing L0–L4 framework (per the Production Harness arti
 | Coexist adoption in v1.0/v1.1; required in v2.0 | Ship value immediately; migrate incrementally | Required in v1.0 — breaks every existing worker; high churn. |
 | `schema_version` as payload field, not envelope `version` | Schema and envelope can evolve independently | Reuse envelope `version` — couples schema and envelope semantics. |
 
----
+______________________________________________________________________
 
 ## Open Questions / Future Work
 
@@ -326,7 +327,7 @@ Aligned with Bodai's existing L0–L4 framework (per the Production Harness arti
 - **OQ3.** PII redaction: hook into the persister subscriber so the worker doesn't have to remember. Deferred to v2; tracked separately.
 - **OQ4.** Schema documentation generation: do we ship a published HTML doc via `Redoc` or similar? Likely yes, before v1.0 GA. Not blocking v1.0-alpha.
 
----
+______________________________________________________________________
 
 ## Success Criteria
 

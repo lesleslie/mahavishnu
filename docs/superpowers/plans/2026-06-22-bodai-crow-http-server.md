@@ -19,10 +19,10 @@
 Applied 5 blocking fixes from 3-agent parallel review (crackerjack compliance, integration/architecture, test coverage):
 
 1. **`_PRIVATE_NETS` expanded** (Task 1) — added CGNAT (`100.64.0.0/10`), `0.0.0.0/8`, multicast (`224.0.0.0/4`), reserved (`240.0.0.0/4`), IPv6 unspecified (`::/128`), and `::ffff:0:0/96` (IPv4-mapped). Added `_is_blocked()` coercion so `::ffff:127.0.0.1` cannot bypass `127.0.0.0/8`. Test parametrization covers 14 reserved ranges.
-2. **Manual redirect loop** (Task 7) — `_web_fetch` now follows 3xx manually with `validate_url()` called on every hop, including the initial URL. Closes the DNS-rebinding / open-redirect SSRF gap. `max_redirect_hops=5` added to `CrowSettings`.
-3. **Atomic crow stdio state** (Task 9) — replaced two separate module globals (`_crow_session`, `_crow_exit_stack`) with a single `_CrowState` dataclass assigned atomically. If `session.initialize()` raises, the partially-entered `AsyncExitStack` is rolled back via `await stack.aclose()` before re-raising — no leaked subprocess. Added a re-init guard.
-4. **`CrowServer` subclass** (Task 10) — replaced the broken `server.set_lifespan(_lifespan)` call (method does not exist on `StandardServer`) with a `CrowServer(StandardServer)` subclass that owns a `FastMCP` instance with `lifespan=_lifespan` in its constructor, and overrides `run()` to delegate. Tool registration gets a dual-target decorator pattern (`server.fastmcp.tool()` vs `server.tool()`).
-5. **Integration tests implemented** (Task 11) — replaced three `pass`-body placeholders with real assertions against the FastMCP `_tool_manager._tools` registry and the lifespan-bound tool functions. SearXNG test gated behind `--run-network` flag.
+1. **Manual redirect loop** (Task 7) — `_web_fetch` now follows 3xx manually with `validate_url()` called on every hop, including the initial URL. Closes the DNS-rebinding / open-redirect SSRF gap. `max_redirect_hops=5` added to `CrowSettings`.
+1. **Atomic crow stdio state** (Task 9) — replaced two separate module globals (`_crow_session`, `_crow_exit_stack`) with a single `_CrowState` dataclass assigned atomically. If `session.initialize()` raises, the partially-entered `AsyncExitStack` is rolled back via `await stack.aclose()` before re-raising — no leaked subprocess. Added a re-init guard.
+1. **`CrowServer` subclass** (Task 10) — replaced the broken `server.set_lifespan(_lifespan)` call (method does not exist on `StandardServer`) with a `CrowServer(StandardServer)` subclass that owns a `FastMCP` instance with `lifespan=_lifespan` in its constructor, and overrides `run()` to delegate. Tool registration gets a dual-target decorator pattern (`server.fastmcp.tool()` vs `server.tool()`).
+1. **Integration tests implemented** (Task 11) — replaced three `pass`-body placeholders with real assertions against the FastMCP `_tool_manager._tools` registry and the lifespan-bound tool functions. SearXNG test gated behind `--run-network` flag.
 
 ## Global Constraints
 
@@ -38,11 +38,12 @@ Applied 5 blocking fixes from 3-agent parallel review (crackerjack compliance, i
 - Import `httpx2` not `httpx` in production code; tests may use `httpx` via respx fixtures
 - All tool internal implementations prefixed `_` (e.g. `_read`); `register(server, settings)` wraps them as MCP tools via closures
 
----
+______________________________________________________________________
 
 ## File Structure
 
 **New files:**
+
 ```
 mahavishnu/mcp/
   crow_server.py                  # StandardServer factory + _lifespan
@@ -85,6 +86,7 @@ docs/runbooks/bodai-crow-server.md
 ```
 
 **Modified files:**
+
 ```
 mahavishnu/terminal/manager.py          # add crow case to create()
 mahavishnu/mcp/tools/terminal_tools.py # add crow case to terminal_switch_adapter
@@ -95,11 +97,12 @@ docs/runbooks/crow-mcp-server.md        # add note pointing to bodai-crow-server
 
 **Note:** `mahavishnu/terminal/adapters/crow.py` already exists and is complete — do NOT modify it.
 
----
+______________________________________________________________________
 
 ### Task 1: Foundation — CrowSettings, path security, shared HTTP client, conftest
 
 **Files:**
+
 - Create: `mahavishnu/mcp/crow/__init__.py`
 - Create: `mahavishnu/mcp/crow/settings.py`
 - Create: `mahavishnu/mcp/crow/path_security.py`
@@ -109,6 +112,7 @@ docs/runbooks/crow-mcp-server.md        # add note pointing to bodai-crow-server
 - Create: `tests/unit/mcp/crow/test_path_security.py`
 
 **Interfaces:**
+
 - Produces: `CrowSettings`, `resolve_workspace_path(path, workspace_root)`, `validate_url(url)`, `get_http_client()`, `init_http_client(settings)`, `close_http_client()`, `mock_settings(workspace_root, **overrides)` factory
 
 - [ ] **Step 1: Write the failing tests for path security**
@@ -212,6 +216,7 @@ def test_resolve_rejects_symlink_escaping_workspace(tmp_path):
 ```bash
 pytest tests/unit/mcp/crow/test_path_security.py -v
 ```
+
 Expected: collection error — `mahavishnu.mcp.crow.path_security` does not exist.
 
 - [ ] **Step 3: Create package markers and implement all four foundation modules**
@@ -414,6 +419,7 @@ def mock_http_client(monkeypatch):
 ```bash
 pytest tests/unit/mcp/crow/test_path_security.py -v
 ```
+
 Expected: 7 PASSED
 
 - [ ] **Step 5: Commit**
@@ -423,17 +429,19 @@ git add mahavishnu/mcp/crow/ tests/unit/mcp/crow/
 git commit -m "feat(crow): Task 1 — settings, path_security, client, conftest"
 ```
 
----
+______________________________________________________________________
 
 ### Task 2: vendor/editor.py — crow-mcp cascade with rapidfuzz
 
 Copy the crow-mcp edit cascade from the installed package, replace the pure Python Levenshtein function with rapidfuzz.
 
 **Files:**
+
 - Create: `mahavishnu/mcp/crow/vendor/__init__.py`
 - Create: `mahavishnu/mcp/crow/vendor/editor.py`
 
 **Interfaces:**
+
 - Produces: `replace(content: str, old_string: str, new_string: str) -> str` — returns modified content string, or raises `ValueError` if old_string not found after exhausting all cascade levels.
 
 - [ ] **Step 1: Locate and copy the cascade source**
@@ -456,6 +464,7 @@ Copy the output path's contents to `mahavishnu/mcp/crow/vendor/editor.py`. Then 
 ```
 
 Also create the empty `__init__.py`:
+
 ```python
 # mahavishnu/mcp/crow/vendor/__init__.py  (empty)
 ```
@@ -517,6 +526,7 @@ def test_replace_raises_when_not_found():
 ```bash
 pytest tests/unit/mcp/crow/test_vendor_editor.py -v
 ```
+
 Expected: 3 PASSED
 
 - [ ] **Step 5: Commit**
@@ -526,17 +536,20 @@ git add mahavishnu/mcp/crow/vendor/
 git commit -m "feat(crow): Task 2 — vendor editor cascade with rapidfuzz levenshtein"
 ```
 
----
+______________________________________________________________________
 
 ### Task 3: read + write tools
 
 **Files:**
+
 - Create: `mahavishnu/mcp/crow/tools/__init__.py` (stub — full `register_all` in Task 10)
 - Create: `mahavishnu/mcp/crow/tools/file_tools.py` (read + write only; edit/glob added in Tasks 4–5)
 - Modify: `tests/unit/mcp/crow/test_file_tools.py` (create with read+write tests)
 
 **Interfaces:**
+
 - Consumes: `resolve_workspace_path`, `CrowSettings`
+
 - Produces: `_read(file_path, settings, offset, limit, encoding) -> ReadResult`, `_write(file_path, content, settings, dry_run) -> WriteResult`
 
 - [ ] **Step 1: Write failing tests**
@@ -741,6 +754,7 @@ async def _write(
 ```bash
 pytest tests/unit/mcp/crow/test_file_tools.py -v -k "read or write"
 ```
+
 Expected: 10 PASSED
 
 - [ ] **Step 5: Commit**
@@ -750,16 +764,19 @@ git add mahavishnu/mcp/crow/tools/ tests/unit/mcp/crow/test_file_tools.py
 git commit -m "feat(crow): Task 3 — read + write tools with atomic write"
 ```
 
----
+______________________________________________________________________
 
 ### Task 4: edit tool
 
 **Files:**
+
 - Modify: `mahavishnu/mcp/crow/tools/file_tools.py` (add `EditResult`, `_edit`)
 - Modify: `tests/unit/mcp/crow/test_file_tools.py` (add edit tests)
 
 **Interfaces:**
+
 - Consumes: `mahavishnu.mcp.crow.vendor.editor.replace`
+
 - Produces: `_edit(file_path, old_string, new_string, settings, replace_all, dry_run) -> EditResult`
 
 - [ ] **Step 1: Add failing edit tests**
@@ -877,6 +894,7 @@ async def _edit(
 ```bash
 pytest tests/unit/mcp/crow/test_file_tools.py -v -k "edit"
 ```
+
 Expected: 5 PASSED
 
 - [ ] **Step 5: Commit**
@@ -886,15 +904,17 @@ git add mahavishnu/mcp/crow/tools/file_tools.py tests/unit/mcp/crow/test_file_to
 git commit -m "feat(crow): Task 4 — edit tool with vendored rapidfuzz cascade"
 ```
 
----
+______________________________________________________________________
 
 ### Task 5: glob tool
 
 **Files:**
+
 - Modify: `mahavishnu/mcp/crow/tools/file_tools.py` (add `GlobResult`, `_glob`)
 - Modify: `tests/unit/mcp/crow/test_file_tools.py` (add glob tests)
 
 **Interfaces:**
+
 - Produces: `_glob(pattern, settings, path, include_hidden, file_info, max_results) -> GlobResult`
 
 - [ ] **Step 1: Add failing glob tests**
@@ -1010,6 +1030,7 @@ async def _glob(
 ```bash
 pytest tests/unit/mcp/crow/test_file_tools.py -v -k "glob"
 ```
+
 Expected: 5 PASSED
 
 - [ ] **Step 4: Commit**
@@ -1019,15 +1040,17 @@ git add mahavishnu/mcp/crow/tools/file_tools.py tests/unit/mcp/crow/test_file_to
 git commit -m "feat(crow): Task 5 — glob tool with hidden-file and _ALWAYS_SKIP filtering"
 ```
 
----
+______________________________________________________________________
 
 ### Task 6: grep tool
 
 **Files:**
+
 - Create: `mahavishnu/mcp/crow/tools/grep_tool.py`
 - Create: `tests/unit/mcp/crow/test_grep_tool.py`
 
 **Interfaces:**
+
 - Produces: `_grep(pattern, settings, path, include, max_matches, case_sensitive, fixed_string) -> GrepResult`
 
 - [ ] **Step 1: Write failing tests**
@@ -1247,6 +1270,7 @@ def register(server, settings: CrowSettings) -> None:
 ```bash
 pytest tests/unit/mcp/crow/test_grep_tool.py -v
 ```
+
 Expected: 6 PASSED
 
 - [ ] **Step 4: Commit**
@@ -1256,16 +1280,19 @@ git add mahavishnu/mcp/crow/tools/grep_tool.py tests/unit/mcp/crow/test_grep_too
 git commit -m "feat(crow): Task 6 — grep tool with ripgrep primary and Python fallback"
 ```
 
----
+______________________________________________________________________
 
 ### Task 7: web_fetch + web_fetch_batch
 
 **Files:**
+
 - Create: `mahavishnu/mcp/crow/tools/web_tools.py`
 - Create: `tests/unit/mcp/crow/test_web_tools.py`
 
 **Interfaces:**
+
 - Consumes: `get_http_client()`, `validate_url()`
+
 - Produces: `_web_fetch(url, settings, max_length, start_index, raw) -> WebFetchResult`, `_web_fetch_batch(urls, settings, max_length, max_concurrent) -> list[BatchItem]`
 
 - [ ] **Step 1: Write failing tests**
@@ -1476,6 +1503,7 @@ def register(server, settings: CrowSettings) -> None:
 ```bash
 pytest tests/unit/mcp/crow/test_web_tools.py -v
 ```
+
 Expected: 5 PASSED
 
 - [ ] **Step 4: Commit**
@@ -1485,18 +1513,21 @@ git add mahavishnu/mcp/crow/tools/web_tools.py tests/unit/mcp/crow/test_web_tool
 git commit -m "feat(crow): Task 7 — web_fetch + web_fetch_batch with SSRF guard"
 ```
 
----
+______________________________________________________________________
 
 ### Task 8: web_search + SearXNG deployment config
 
 **Files:**
+
 - Create: `mahavishnu/mcp/crow/tools/search_tools.py`
 - Create: `tests/unit/mcp/crow/test_search_tools.py`
 - Create: `docker-compose.crow.yml`
 - Create: `settings/searxng/settings.yml`
 
 **Interfaces:**
+
 - Consumes: `get_http_client()`
+
 - Produces: `_web_search(queries, settings, max_results) -> list[SearchQueryResult]`
 
 - [ ] **Step 1: Write failing tests**
@@ -1681,6 +1712,7 @@ ui:
 ```bash
 pytest tests/unit/mcp/crow/test_search_tools.py -v
 ```
+
 Expected: 3 PASSED
 
 - [ ] **Step 5: Commit**
@@ -1691,11 +1723,12 @@ git add mahavishnu/mcp/crow/tools/search_tools.py tests/unit/mcp/crow/test_searc
 git commit -m "feat(crow): Task 8 — web_search + SearXNG Docker config"
 ```
 
----
+______________________________________________________________________
 
 ### Task 9: Terminal proxy + TerminalManager gap fix
 
 **Files:**
+
 - Create: `mahavishnu/mcp/crow/tools/terminal_proxy_tool.py`
 - Create: `mahavishnu/mcp/crow/terminal_proxy.py`
 - Modify: `mahavishnu/terminal/manager.py` (lines 449–484 — add crow case)
@@ -1704,6 +1737,7 @@ git commit -m "feat(crow): Task 8 — web_search + SearXNG Docker config"
 **Note:** `mahavishnu/terminal/adapters/crow.py` is **already complete**. Do not modify it.
 
 **Interfaces:**
+
 - Produces: `get_crow_session() -> ClientSession`, `init_crow_stdio_client(settings)`, `close_crow_stdio_client()`
 
 - [ ] **Step 1: Write failing tests**
@@ -1894,6 +1928,7 @@ Also update the error message on the final `else` branch to include `'crow'`:
 ```bash
 pytest tests/unit/mcp/crow/test_terminal_proxy.py -v
 ```
+
 Expected: 3 PASSED
 
 - [ ] **Step 7: Commit**
@@ -1907,31 +1942,38 @@ git add mahavishnu/mcp/crow/terminal_proxy.py \
 git commit -m "feat(crow): Task 9 — terminal proxy + TerminalManager crow gap fix"
 ```
 
----
+______________________________________________________________________
 
 ### Task 10: Server wiring + register_all + pyproject.toml deps
 
 **Files:**
+
 - Create: `mahavishnu/mcp/crow_server.py`
 - Modify: `mahavishnu/mcp/crow/tools/__init__.py` (add `register_all`)
 - Modify: `pyproject.toml` (swap httpx → httpx2, add new deps)
 
 **Interfaces:**
+
 - Consumes: all `register()` functions from tool modules
+
 - Produces: `create_crow_server(settings: CrowSettings) -> StandardServer`
 
 - [ ] **Step 1: Update `pyproject.toml`**
 
 Replace:
+
 ```toml
 "httpx[http2]>=0.28.1",
 ```
+
 With:
+
 ```toml
 "httpx2[zstd]~=0.1",
 ```
 
 Add to `[project.dependencies]`:
+
 ```toml
 "trafilatura~=2.1",
 "selectolax~=0.3",
@@ -2133,6 +2175,7 @@ def register(server, settings: CrowSettings) -> None:
 uv pip install -e ".[dev]"
 python -c "from mahavishnu.mcp.crow_server import create_crow_server; print('ok')"
 ```
+
 Expected: `ok`
 
 - [ ] **Step 5: Run full unit test suite**
@@ -2140,6 +2183,7 @@ Expected: `ok`
 ```bash
 pytest tests/unit/mcp/crow/ -v
 ```
+
 Expected: all tests PASSED
 
 - [ ] **Step 6: Commit**
@@ -2150,17 +2194,24 @@ git add mahavishnu/mcp/crow_server.py mahavishnu/mcp/crow/tools/__init__.py \
 git commit -m "feat(crow): Task 10 — server wiring, register_all, dep updates"
 ```
 
----
+______________________________________________________________________
 
 ### Task 11: Integration tests, .mcp.json, runbooks
 
 **Files:**
+
 - Create: `tests/integration/mcp/__init__.py`
+
 - Create: `tests/integration/mcp/crow/__init__.py`
+
 - Create: `tests/integration/mcp/crow/conftest.py`
+
 - Create: `tests/integration/mcp/crow/test_crow_server.py`
+
 - Modify: `.mcp.json` (add `bodai-crow` HTTP entry)
+
 - Create: `docs/runbooks/bodai-crow-server.md`
+
 - Modify: `docs/runbooks/crow-mcp-server.md` (add cross-reference note)
 
 - [ ] **Step 1: Create integration test scaffolding**
@@ -2270,11 +2321,12 @@ The existing `"crow": {"command": "crow-mcp"}` entry is **retained** — Claude 
 - [ ] **Step 3: Create `docs/runbooks/bodai-crow-server.md`**
 
 Create the file with at minimum these sections:
+
 ```markdown
 # Bodai Crow HTTP MCP Server Runbook
 
-**Port:** 8675  
-**Transport:** HTTP MCP (SSE/StreamableHTTP)  
+**Port:** 8675
+**Transport:** HTTP MCP (SSE/StreamableHTTP)
 **Namespace:** `mcp__bodai-crow__*`
 
 ## Starting the server
@@ -2321,6 +2373,7 @@ Add at the top of `docs/runbooks/crow-mcp-server.md`:
 ```bash
 pytest tests/integration/mcp/crow/ -v -m "integration and mcp"
 ```
+
 Expected: tests that have `pass` bodies pass trivially; `requires_network` tests skip if SearXNG is not running.
 
 - [ ] **Step 6: Run full test suite, verify no regressions**
@@ -2328,6 +2381,7 @@ Expected: tests that have `pass` bodies pass trivially; `requires_network` tests
 ```bash
 pytest tests/unit/ -v --tb=short
 ```
+
 Expected: all unit tests PASSED, no regressions in existing tests.
 
 - [ ] **Step 7: Commit**
@@ -2339,7 +2393,7 @@ git add tests/integration/mcp/ .mcp.json \
 git commit -m "feat(crow): Task 11 — integration tests, .mcp.json, runbooks"
 ```
 
----
+______________________________________________________________________
 
 ## Self-Review
 
@@ -2375,6 +2429,7 @@ git commit -m "feat(crow): Task 11 — integration tests, .mcp.json, runbooks"
 | §13 Q7 symlink semantics | Documented in `_write`: `os.replace` on a symlink path replaces the link, not the target |
 
 **Gaps / confirmations needed before Task 10:**
+
 1. Confirm `StandardServer.set_lifespan()` exists in the installed `mcp-common` version. If it doesn't, replace with the `lifespan=` constructor parameter: `StandardServer(..., lifespan=_lifespan)`.
-2. Check whether the vendored `replace()` in Task 2 returns `str` or `tuple[str, str]` (content, level_name). Update `_edit` accordingly.
-3. Confirm `StandardServer.run_context()` API for integration test fixture in Task 11. Check `mcp_common` source.
+1. Check whether the vendored `replace()` in Task 2 returns `str` or `tuple[str, str]` (content, level_name). Update `_edit` accordingly.
+1. Confirm `StandardServer.run_context()` API for integration test fixture in Task 11. Check `mcp_common` source.

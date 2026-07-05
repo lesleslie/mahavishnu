@@ -8,7 +8,9 @@
 The stock `mahavishnu mcp start` command crashes immediately on default configuration. The trigger is a wiring gap in the crow adapter, not a missing config field:
 
 - `settings/mahavishnu.yaml:188` ships with `terminal.adapter_preference: "crow"` as the default.
+
 - Three callers in `mahavishnu/_main_cli.py` (lines **1073**, **1156**, and **1381**) construct the terminal manager with `mcp_client=None`.
+
 - The factory at `mahavishnu/terminal/manager.py:451-456` checks for `mcp_client is None` when `adapter_preference == "crow"` and raises:
 
   ```
@@ -44,13 +46,13 @@ Two options, in order of preference. **The recommended option is to introduce a 
      http_port: 8675
    ```
 
-2. **Update `mahavishnu/terminal/manager.py:451-456`** to skip the `mcp_client is None` check when `settings.crow.enabled` is `false`. When disabled, fall through to the next preference (`mock` → `iterm2` → `mcpretentious`) per the existing cascade. No `ConfigurationError` raised.
+1. **Update `mahavishnu/terminal/manager.py:451-456`** to skip the `mcp_client is None` check when `settings.crow.enabled` is `false`. When disabled, fall through to the next preference (`mock` → `iterm2` → `mcpretentious`) per the existing cascade. No `ConfigurationError` raised.
 
-3. **Update `mahavishnu/_main_cli.py:1073,1156,1381`** to pass `mcp_client=None` only when `settings.crow.enabled` is false; otherwise, construct a client from `MAHAVISHNU_CROW_HTTP_HOST` / `MAHAVISHNU_CROW_HTTP_PORT` (or the corresponding `settings.crow.*` values).
+1. **Update `mahavishnu/_main_cli.py:1073,1156,1381`** to pass `mcp_client=None` only when `settings.crow.enabled` is false; otherwise, construct a client from `MAHAVISHNU_CROW_HTTP_HOST` / `MAHAVISHNU_CROW_HTTP_PORT` (or the corresponding `settings.crow.*` values).
 
-4. **Backward compatible.** Operators who want today's behavior (fail-fast when crow is unreachable) set `crow.enabled: true` explicitly. The default change is opt-in: users who add `enabled: true` to their `local.yaml` get exactly the existing crash, just with a clearer message.
+1. **Backward compatible.** Operators who want today's behavior (fail-fast when crow is unreachable) set `crow.enabled: true` explicitly. The default change is opt-in: users who add `enabled: true` to their `local.yaml` get exactly the existing crash, just with a clearer message.
 
-5. **Regression test** at `tests/unit/terminal/test_manager_crow_toggle.py`:
+1. **Regression test** at `tests/unit/terminal/test_manager_crow_toggle.py`:
 
    - `test_crow_disabled_skips_mcp_client_check` — `crow.enabled: false`, `adapter_preference: "crow"` → falls through to mock, no `ConfigurationError`.
    - `test_crow_enabled_constructs_client_from_env` — sets `MAHAVISHNU_CROW_HTTP_HOST`/`PORT`, asserts the constructed client targets them.
@@ -68,8 +70,8 @@ Two options, in order of preference. **The recommended option is to introduce a 
 Once the `crow.enabled` toggle is in place, follow up with proper wiring:
 
 1. `mahavishnu/_main_cli.py:1073,1156,1381` constructs the `mcp_client` from settings, not from `None`.
-2. `mahavishnu/terminal/manager.py:451-456` assumes the client is always valid when `adapter_preference == "crow"`; the MHV-307 error path moves to the client construction site (where it actually checks reachability).
-3. The "Bodai crow HTTP server" wording in the original error message is replaced with a one-line checklist pointing at the runbook.
+1. `mahavishnu/terminal/manager.py:451-456` assumes the client is always valid when `adapter_preference == "crow"`; the MHV-307 error path moves to the client construction site (where it actually checks reachability).
+1. The "Bodai crow HTTP server" wording in the original error message is replaced with a one-line checklist pointing at the runbook.
 
 This is the cleanest end state but requires more invasive changes. Sequence: `crow.enabled` toggle first (this PR), proper wiring later (separate PR).
 

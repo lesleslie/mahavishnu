@@ -6,7 +6,7 @@
 
 **Depends on:** `completion-report-schema-v1` (report contract), `precommitment-hypothesis-lock` (sister Phase 1 gate).
 
----
+______________________________________________________________________
 
 ## Overview
 
@@ -16,7 +16,7 @@ The gate **caps and continues** — it does not block iteration. Over-confidence
 
 This spec introduces **no schema change**. The cap is observable from persisted history: anyone reading a report can recompute the ceiling from `len(open_questions)` and `len(unchecked_sources)` and verify the stored confidence respects it.
 
----
+______________________________________________________________________
 
 ## Goals
 
@@ -31,7 +31,7 @@ This spec introduces **no schema change**. The cap is observable from persisted 
 - **N2.** Per-worker configurable penalty constants. v1.1 uses module-level defaults; per-worker override is v1.1.1.
 - **N3.** Mandatory Akosha anomaly emission. v1.1 is best-effort; v2.0 makes it mandatory once Akosha is always configured.
 
----
+______________________________________________________________________
 
 ## Architecture & Data Flow
 
@@ -49,7 +49,7 @@ Worker loop, iteration N:
 
 **Key property:** The cap is a *calibration correction*, not a *rule*. Iteration continues with the capped value; consumers downstream may interpret the gap between reported and capped as a confidence-calibration signal.
 
----
+______________________________________________________________________
 
 ## Formula Specification
 
@@ -80,7 +80,7 @@ cap = max(FLOOR, 100 - (len(open_questions) × OPEN_QUESTION_PENALTY)
 
 The formula is *enumerable*: given any persisted report, the cap is computable from `len(open_questions) + len(unchecked_sources)` alone. No hidden state.
 
----
+______________________________________________________________________
 
 ## Function Signature
 
@@ -122,7 +122,7 @@ def apply_confidence_ceiling(report: dict) -> dict:
     """
 ```
 
----
+______________________________________________________________________
 
 ## Integration with Publisher
 
@@ -168,7 +168,7 @@ async def publish_iteration_report(
 
 **Why `metadata.confidence_was_capped` rather than a payload field:** Persister (Spec #1) writes the payload column as-is; metadata is queryable separately and doesn't require a schema change. Observability is preserved without polluting the report's content with calibration internals.
 
----
+______________________________________________________________________
 
 ## Akosha Anomaly Emission
 
@@ -192,7 +192,7 @@ except Exception:
 
 **v2.0 upgrade path:** When Akosha is always configured, drop the `ImportError` exception and treat Akosha unavailability as a hard error.
 
----
+______________________________________________________________________
 
 ## Adoption & Migration
 
@@ -204,7 +204,7 @@ except Exception:
 
 **CLI extension:** Extend Spec #2's `mahavishnu migrate --check-reports` to also flag workers without `enable_confidence_ceiling=True`.
 
----
+______________________________________________________________________
 
 ## Storage & Retrieval
 
@@ -212,7 +212,7 @@ except Exception:
 
 **Query:** A future `get_workflow_calibration(workflow_id)` helper may return `(reported_trajectory, capped_trajectory)` by reading each iteration's stored `confidence` and recomputing the cap. Out of scope for v1.1.
 
----
+______________________________________________________________________
 
 ## Error Handling
 
@@ -225,7 +225,7 @@ except Exception:
 | Akosha call raises | Catch-all `Exception` | Log exception; do not propagate. |
 | Cap computation produces negative | `max(FLOOR, raw)` clamps to 0 | Floor; reported > 0 capped to 0. |
 
----
+______________________________________________________________________
 
 ## Testing Strategy
 
@@ -239,7 +239,7 @@ except Exception:
 
 **Coverage target:** `tests/unit/test_confidence_ceiling.py` ≥ 95% line coverage.
 
----
+______________________________________________________________________
 
 ## Implementation Module Paths
 
@@ -253,7 +253,7 @@ except Exception:
 | L3 tests | `tests/integration/test_confidence_persister.py` |
 | L4 tests | `tests/integration/test_confidence_cross_spec.py` |
 
----
+______________________________________________________________________
 
 ## Trade-offs & Alternatives Considered
 
@@ -266,7 +266,7 @@ except Exception:
 | Metadata flag, not payload field | Observability without polluting report content | New payload field — explicit but bloats the report |
 | Best-effort Akosha anomaly | Works whether Akosha is configured or not | Mandatory Akosha — premature coupling |
 
----
+______________________________________________________________________
 
 ## Open Questions / Future Work
 
@@ -275,7 +275,7 @@ except Exception:
 - **OQ3.** Akosha anomaly emission becomes mandatory in v2.0 when Akosha is always configured.
 - **OQ4.** Per-worker calibration drift report (Akosha aggregation): how often does this worker over-report? v1.2+ candidate.
 
----
+______________________________________________________________________
 
 ## Success Criteria
 

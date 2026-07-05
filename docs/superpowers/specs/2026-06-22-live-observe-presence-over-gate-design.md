@@ -6,7 +6,7 @@
 
 **Pivot from original spec name `live-observe-presence-over-gate`:** The original framing assumed long-lived streaming connections. Serverless constraints (Cloud Run instances are ephemeral) rule out persistent SSE/WebSocket for workflows of any length. The semantic shift: "presence" = *queryable progress* — the operator can ask "what is this workflow doing right now?" at any time and get a structured answer.
 
----
+______________________________________________________________________
 
 ## Overview
 
@@ -19,7 +19,7 @@ Workers emit snapshots alongside Spec #1 reports (no extra round-trip). Operator
 
 **Architectural property:** Operators get near-real-time visibility (5-30s polling cadence is configurable) without the server holding connection state. Works on Cloud Run; survives instance replacement.
 
----
+______________________________________________________________________
 
 ## Goals
 
@@ -36,7 +36,7 @@ Workers emit snapshots alongside Spec #1 reports (no extra round-trip). Operator
 - **N3.** Auto-suggested actions based on workflow state. v1.0 read-only.
 - **N4.** Web dashboard. v2.0 candidate; v1.0 CLI only.
 
----
+______________________________________________________________________
 
 ## Architecture & Data Flow
 
@@ -64,7 +64,7 @@ Operator (on demand):
   └──────────────────────────────────────────────────────────────┘
 ```
 
----
+______________________________________________________________________
 
 ## Storage Schema (Dhara)
 
@@ -114,7 +114,7 @@ CREATE INDEX IF NOT EXISTS idx_workflow_events_workflow_time
 - **Snapshots**: periodic state. Query "current state" is `SELECT * FROM snapshots WHERE workflow_id = ? ORDER BY snapshot_at DESC LIMIT 1`. Cheap.
 - **Events**: facts. Query "what happened" is `SELECT * FROM events WHERE workflow_id = ? AND timestamp > ?`. Used for diff printing in `workflow watch`.
 
----
+______________________________________________________________________
 
 ## Python API
 
@@ -203,7 +203,7 @@ async def list_workflow_events(
     return resp.json()
 ```
 
----
+______________________________________________________________________
 
 ## CLI Commands
 
@@ -299,7 +299,7 @@ from mahavishnu.cli.workflow_cli import workflow_app
 main_app.add_typer(workflow_app, name="workflow")
 ```
 
----
+______________________________________________________________________
 
 ## Worker Integration
 
@@ -334,7 +334,7 @@ async def on_iteration_complete(report: dict, source: str, correlation_id: str) 
     )
 ```
 
----
+______________________________________________________________________
 
 ## MCP Tools
 
@@ -358,7 +358,7 @@ async def record_workflow_event_mcp(
     """Append a workflow event."""
 ```
 
----
+______________________________________________________________________
 
 ## Adoption & Migration
 
@@ -368,7 +368,7 @@ async def record_workflow_event_mcp(
 | **v1.1** | Per-tenant access control on workflow queries (Spec #9 integration). Snapshot cadence configurable per workflow type. |
 | **v2.0** | Web dashboard for fleet view; webhook subscriptions for events. |
 
----
+______________________________________________________________________
 
 ## Storage & Retrieval
 
@@ -378,7 +378,7 @@ async def record_workflow_event_mcp(
 
 **MCP tools** for query and write.
 
----
+______________________________________________________________________
 
 ## Error Handling
 
@@ -389,7 +389,7 @@ async def record_workflow_event_mcp(
 | Concurrent snapshot writes | Idempotent on snapshot_id (UUID) | Duplicate inserts rejected by primary key. |
 | Workflow has no snapshots yet | Query returns None | CLI prints "no data"; operator waits or queries history (Spec #1). |
 
----
+______________________________________________________________________
 
 ## Testing Strategy
 
@@ -403,7 +403,7 @@ async def record_workflow_event_mcp(
 
 **Coverage target:** `tests/unit/test_workflow_progress.py` ≥ 95% line coverage.
 
----
+______________________________________________________________________
 
 ## Implementation Module Paths
 
@@ -418,7 +418,7 @@ async def record_workflow_event_mcp(
 | L3 tests | `tests/integration/test_workflow_progress_dhara.py` |
 | L4 tests | `tests/integration/test_workflow_progress_cli.py` |
 
----
+______________________________________________________________________
 
 ## Trade-offs & Alternatives Considered
 
@@ -431,7 +431,7 @@ async def record_workflow_event_mcp(
 | Polling cadence default 5s (configurable) | Operator controls; can be tighter for fast workflows, looser for slow ones | Fixed cadence — wastes tokens for slow workflows, lags for fast ones |
 | Substrate reuse with Spec #8 | Same Dhara pattern; same query API shape; same HTTP client | New custom substrate — duplication |
 
----
+______________________________________________________________________
 
 ## Open Questions / Future Work
 
@@ -441,7 +441,7 @@ async def record_workflow_event_mcp(
 - **OQ4.** Webhook subscriptions for events: v2.0 candidate. v1.0 poll-only.
 - **OQ5.** Mid-iteration progress (e.g., "Claude is generating tool call X"): out of scope. v1.0 iteration-level only.
 
----
+______________________________________________________________________
 
 ## Success Criteria
 

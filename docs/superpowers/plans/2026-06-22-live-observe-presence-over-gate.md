@@ -8,7 +8,7 @@
 
 **Tech Stack:** Python 3.13, `httpx` async, Dhara (existing HTTP API), typer, pytest with `asyncio_mode = "auto"`.
 
----
+______________________________________________________________________
 
 ## Global Constraints
 
@@ -18,7 +18,7 @@ Inherited from Spec #1's plan. New constraints:
 - **Substrate reuse** with Spec #8 (adapter-runtime-observability): same Dhara pattern, same query API shape.
 - **No server-side streaming**; CLI polls client-side.
 
----
+______________________________________________________________________
 
 ## File Structure
 
@@ -42,11 +42,12 @@ Inherited from Spec #1's plan. New constraints:
 | `mahavishnu/mcp/tools/__init__.py` | Register workflow_progress_tools. |
 | `mahavishnu/cli/__init__.py` | Register workflow_app. |
 
----
+______________________________________________________________________
 
 ## Task 1: Dhara migrations
 
 **Files:**
+
 - Create: `mahavishnu/core/dhara_migrations/workflow_progress.sql`
 
 - [ ] **Step 1: Write the DDL**
@@ -112,12 +113,14 @@ git add mahavishnu/core/dhara_migrations/workflow_progress.sql
 git commit -m "feat(workflow-progress): add Dhara migration for snapshots and events tables"
 ```
 
----
+______________________________________________________________________
 
 ## Task 2: Async Python API
 
 **Files:**
+
 - Create: `mahavishnu/core/workflow_progress.py`
+
 - Test: `tests/unit/test_workflow_progress.py`
 
 - [ ] **Step 1: Write the failing tests**
@@ -328,11 +331,12 @@ git add mahavishnu/core/workflow_progress.py tests/unit/test_workflow_progress.p
 git commit -m "feat(workflow-progress): add async API for snapshots and events"
 ```
 
----
+______________________________________________________________________
 
 ## Task 3: Worker integration (snapshot emit on iteration complete)
 
 **Files:**
+
 - Modify: `mahavishnu/core/events/report_publishers.py`
 
 - [ ] **Step 1: Locate the publish_iteration_report function**
@@ -396,12 +400,14 @@ git add mahavishnu/core/events/report_publishers.py
 git commit -m "feat(workflow-progress): emit snapshot and event from publish_iteration_report"
 ```
 
----
+______________________________________________________________________
 
 ## Task 4: CLI commands
 
 **Files:**
+
 - Create: `mahavishnu/cli/workflow_cli.py`
+
 - Modify: `mahavishnu/cli/__init__.py`
 
 - [ ] **Step 1: Write the failing tests**
@@ -585,12 +591,14 @@ git add mahavishnu/cli/workflow_cli.py mahavishnu/cli/__init__.py tests/integrat
 git commit -m "feat(workflow-progress): add CLI for status, list, watch"
 ```
 
----
+______________________________________________________________________
 
 ## Task 5: MCP tools
 
 **Files:**
+
 - Create: `mahavishnu/mcp/tools/workflow_progress_tools.py`
+
 - Modify: `mahavishnu/mcp/tools/__init__.py`
 
 - [ ] **Step 1: Implement the tools**
@@ -648,7 +656,7 @@ git add mahavishnu/mcp/tools/workflow_progress_tools.py mahavishnu/mcp/tools/__i
 git commit -m "feat(workflow-progress): add MCP tools for status, list, event"
 ```
 
----
+______________________________________________________________________
 
 ## Self-Review
 

@@ -8,7 +8,7 @@
 
 **Tech Stack:** Python 3.13, `pyyaml`, `pathlib`, Crackerjack (existing), pytest with `asyncio_mode = "auto"`.
 
----
+______________________________________________________________________
 
 ## Global Constraints
 
@@ -19,7 +19,7 @@ Inherited from Spec #1's plan. New constraints:
 - **Bans are regex patterns**; operator's voice lives in the markdown body.
 - **Advisory in v1.1, gate in v2.0** — no CI enforcement in v1.0.
 
----
+______________________________________________________________________
 
 ## File Structure
 
@@ -41,11 +41,12 @@ Inherited from Spec #1's plan. New constraints:
 |---|---|
 | `mahavishnu/quality/__init__.py` | Register `anti-ai-flavor-check` skill (if registry pattern exists). |
 
----
+______________________________________________________________________
 
 ## Task 1: Ship the default SOP
 
 **Files:**
+
 - Create: `mahavishnu/style-sop.md`
 
 - [ ] **Step 1: Create the default SOP file**
@@ -115,6 +116,7 @@ frontmatter's `bans` list with a regex pattern and a message.
 - [ ] **Step 2: Verify file loads as YAML + markdown**
 
 Run a quick REPL check:
+
 ```bash
 python -c "
 import yaml, re
@@ -126,6 +128,7 @@ assert 'bans' in fm and len(fm['bans']) >= 1, 'no bans'
 print('OK:', len(fm['bans']), 'bans')
 "
 ```
+
 Expected: `OK: 6 bans`
 
 - [ ] **Step 3: Commit**
@@ -135,12 +138,14 @@ git add mahavishnu/style-sop.md
 git commit -m "feat(style-sop): add default SOP package resource"
 ```
 
----
+______________________________________________________________________
 
 ## Task 2: Implement discovery + parser
 
 **Files:**
+
 - Create: `mahavishnu/core/style_sop.py`
+
 - Test: `tests/unit/test_style_sop.py`
 
 - [ ] **Step 1: Write the failing tests**
@@ -311,12 +316,14 @@ git add mahavishnu/core/style_sop.py tests/unit/test_style_sop.py
 git commit -m "feat(style-sop): add discovery and parser for .bodai/style-sop.md"
 ```
 
----
+______________________________________________________________________
 
 ## Task 3: Implement validator
 
 **Files:**
+
 - Create: `mahavishnu/core/style_sop_validator.py`
+
 - Test: `tests/unit/test_style_sop_validator.py`
 
 - [ ] **Step 1: Write the failing tests**
@@ -443,12 +450,14 @@ git add mahavishnu/core/style_sop_validator.py tests/unit/test_style_sop_validat
 git commit -m "feat(style-sop): add check_content validator with regex bans"
 ```
 
----
+______________________________________________________________________
 
 ## Task 4: Implement Crackerjack skill
 
 **Files:**
+
 - Create: `mahavishnu/quality/anti_ai_flavor_check.py`
+
 - Test: `tests/integration/test_anti_ai_flavor_skill.py`
 
 - [ ] **Step 1: Write the failing test**
@@ -560,7 +569,7 @@ git add mahavishnu/quality/anti_ai_flavor_check.py tests/integration/test_anti_a
 git commit -m "feat(style-sop): add Crackerjack skill anti-ai-flavor-check"
 ```
 
----
+______________________________________________________________________
 
 ## Self-Review
 

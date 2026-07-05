@@ -4,7 +4,7 @@
 **Plan:** [`2026-06-26-fastmcp-3-upgrade.md`](./2026-06-26-fastmcp-3-upgrade.md)
 **Status:** Read-only audit complete. Bodai core inventory complete; standalone `*-mcp` summary appended 2026-06-26 (no detailed site-level audit yet).
 
----
+______________________________________________________________________
 
 ## Standalone `*-mcp` summary (15 repos, added 2026-06-26)
 
@@ -38,17 +38,17 @@ High-level audit (no per-site file:line walkthrough — those are deferred to pe
 
 **Trivial (2 repos):** excalidraw-mcp (just bump to `<4`), mailgun-mcp (just pin).
 
----
+______________________________________________________________________
 
 *(Bodai core inventory below — produced 2026-06-26 by Plan 7 Phase 0 subagent)*
 
----
+______________________________________________________________________
 
 ## Scope
 
 Inventory of FastMCP usage across all 7 Bodai repos under `/Users/les/Projects/`. Read-only grep + file reads. All 7 repos share the `/Users/les/Projects/mahavishnu/.venv` (uv workspace), so `uv pip show fastmcp` reports `3.4.2` everywhere.
 
----
+______________________________________________________________________
 
 ## Repo: mcp-common
 
@@ -77,7 +77,7 @@ Inventory of FastMCP usage across all 7 Bodai repos under `/Users/les/Projects/`
   - `tests/test_contracts.py:8,17,25` — re-exports + identity checks
 - Risk assessment: **LOW** — mcp-common only *exposes* `FastMCPOpenTelemetryMiddleware` + `register_health_tools`; it never constructs `FastMCP(...)`. The middleware uses the 3.x `on_message` hook already, so the only concrete change needed is a hard pin in `pyproject.toml`.
 
----
+______________________________________________________________________
 
 ## Repo: mahavishnu
 
@@ -114,7 +114,7 @@ Inventory of FastMCP usage across all 7 Bodai repos under `/Users/les/Projects/`
   - `tests/integration/test_mcp_external.py:32-58` — file-scanning test that *parses* `@server.tool()` decorators (string match); should keep working.
 - Risk assessment: **MEDIUM** — already on 3.x, but `_tool_manager` private poke at `server_core.py:1194` will need to switch to `await server.get_tools()` once 3.x is fully canonical. Cosmetic risk only.
 
----
+______________________________________________________________________
 
 ## Repo: session-buddy
 
@@ -141,7 +141,7 @@ Inventory of FastMCP usage across all 7 Bodai repos under `/Users/les/Projects/`
   - `tests/unit/test_ide.py:1139`, `tests/integration/test_mcp_crackerjack_tools.py:12,93,140,314,415`, `tests/integration/test_session_tools.py:9,22,157,427` — many `FastMCP("test-...")` instances
 - Risk assessment: **MEDIUM** — `_tools` private poke at `session_tools.py:1168` is the lone concrete fix needed; `lifespan=` is already kwarg-form and `server.run(transport=...)` is already 3.x-style.
 
----
+______________________________________________________________________
 
 ## Repo: akosha
 
@@ -173,7 +173,7 @@ Inventory of FastMCP usage across all 7 Bodai repos under `/Users/les/Projects/`
   - `akosha/tests/test_security_coverage.py:17,940-1062` — extensive `AuthenticationMiddleware` tests (16 tests)
 - Risk assessment: **HIGH (but already partly mitigated)** — the pin says 2.x but the code already runs on 3.x and the most breaking change (the lifespan private poke) has already been fixed. Remaining work: bump the pin to `>=3.4.0,<4`, verify `AuthenticationMiddleware` doesn't need a FastMCP `Middleware` parent class (currently it's a function decorator helper, not a class-based middleware), and run the test suite.
 
----
+______________________________________________________________________
 
 ## Repo: dhara
 
@@ -200,7 +200,7 @@ Inventory of FastMCP usage across all 7 Bodai repos under `/Users/les/Projects/`
   - `dhara/dhara/tests/test_cli.py:617, 629, 668` — asserts `mock_server.run.assert_called_once_with(host="127.0.0.1", port=8683)`
 - Risk assessment: **LOW** — pin and code both on 3.x. Auth is the 3.x-native `TokenVerifier` pattern. `server.run()` calls use 3.x signatures. The only nit: `__main__.py:16` calls `server.run()` with no `transport=` kwarg (relies on default; should be explicit per the plan's breaking-change table).
 
----
+______________________________________________________________________
 
 ## Repo: oneiric
 
@@ -216,7 +216,7 @@ Inventory of FastMCP usage across all 7 Bodai repos under `/Users/les/Projects/`
 - Test sites: **0**
 - Risk assessment: **NONE** — oneiric has no FastMCP surface. Only inherits via `mcp_common` transitive dep. No Phase 3 work needed beyond verifying the resolved version after `mcp-common` ships its pin.
 
----
+______________________________________________________________________
 
 ## Repo: crackerjack
 
@@ -248,7 +248,7 @@ Inventory of FastMCP usage across all 7 Bodai repos under `/Users/les/Projects/`
   - `crackerjack/tests/unit/mcp/test_otel_tools_query_local_traces.py:224` — docstring reference to `@mcp_app.tool()`
 - Risk assessment: **LOW** — fully on 3.x, public API only, no private pokes. Just pin bump and a `transport=` clarification at `server_core.py:400`.
 
----
+______________________________________________________________________
 
 ## Cross-repo summary
 
@@ -277,23 +277,23 @@ Inventory of FastMCP usage across all 7 Bodai repos under `/Users/les/Projects/`
 ### Top 5 migration-risk sites
 
 1. **`mahavishnu/mahavishnu/mcp/server_core.py:1194`** — `server._tool_manager` private poke. The plan explicitly lists this as a broken-in-3.x API. Has a `hasattr` guard and a `_tools` fallback at line 1197, but both will likely return stale/empty data under 3.4.2.
-2. **`session-buddy/session_buddy/mcp/tools/session/session_tools.py:1168`** — `mcp_server._tools = compat_tools` direct assignment. Most concrete private-API mutation in the ecosystem; definitely needs the public-API replacement (`await server.get_tools()` is read-only, so this site may need a full redesign of whatever feature is mutating tools at runtime).
-3. **`akosha/akosha/pyproject.toml:30`** — pin `fastmcp>=2.14.0`. Must bump to `>=3.4.0,<4`. The code already runs on 3.x (recent lifespan-fix landed), but the pin is a contract violation and CI guards may flag it.
-4. **`akosha/akosha/security.py:446`** — `AuthenticationMiddleware` is a function decorator helper, *not* a FastMCP `Middleware` subclass. If the plan calls for it to participate in the middleware chain (e.g., for cross-cutting rate-limit + auth + tracing), it needs to either subclass `Middleware` (preferred 3.x pattern) or be re-implemented as a tool decorator that hooks into the existing `@requires_auth` factory.
-5. **`crackerjack/crackerjack/mcp/server_core.py:400`** and **`dhara/dhara/mcp/__main__.py:16`** — `mcp_app.run()` / `server.run()` with no `transport=` kwarg. Plan's breaking-change table calls out that transport selection is now via `transport=` kwarg in 3.x. Cosmetic but should be made explicit.
+1. **`session-buddy/session_buddy/mcp/tools/session/session_tools.py:1168`** — `mcp_server._tools = compat_tools` direct assignment. Most concrete private-API mutation in the ecosystem; definitely needs the public-API replacement (`await server.get_tools()` is read-only, so this site may need a full redesign of whatever feature is mutating tools at runtime).
+1. **`akosha/akosha/pyproject.toml:30`** — pin `fastmcp>=2.14.0`. Must bump to `>=3.4.0,<4`. The code already runs on 3.x (recent lifespan-fix landed), but the pin is a contract violation and CI guards may flag it.
+1. **`akosha/akosha/security.py:446`** — `AuthenticationMiddleware` is a function decorator helper, *not* a FastMCP `Middleware` subclass. If the plan calls for it to participate in the middleware chain (e.g., for cross-cutting rate-limit + auth + tracing), it needs to either subclass `Middleware` (preferred 3.x pattern) or be re-implemented as a tool decorator that hooks into the existing `@requires_auth` factory.
+1. **`crackerjack/crackerjack/mcp/server_core.py:400`** and **`dhara/dhara/mcp/__main__.py:16`** — `mcp_app.run()` / `server.run()` with no `transport=` kwarg. Plan's breaking-change table calls out that transport selection is now via `transport=` kwarg in 3.x. Cosmetic but should be made explicit.
 
----
+______________________________________________________________________
 
 ## Recommended Phase 1 (mcp-common) start point
 
 ### Files to read FIRST (in this order)
 
 1. **`/Users/les/Projects/mcp-common/pyproject.toml`** — confirm current absence of a `fastmcp` pin; the new pin `fastmcp>=3.4.0,<4` goes here.
-2. **`/Users/les/Projects/mcp-common/mcp_common/server/telemetry.py`** — the only production import site; the `FastMCPOpenTelemetryMiddleware` class is already 3.x-compatible (`on_message` signature, uses `context.method` / `context.type` / `context.message`). No code changes needed here, just confirm.
-3. **`/Users/les/Projects/mcp-common/mcp_common/health.py`** (lines 518-820) — `register_health_tools(mcp, ...)` is the canonical public surface for consumers. Confirm it accepts `mcp: FastMCP` only and emits no private-API calls.
-4. **`/Users/les/Projects/mcp-common/mcp_common/server/__init__.py`** and **`mcp_common/contracts.py`** — both re-export `FastMCPOpenTelemetryMiddleware`. Verify the re-export surface, then add `mcp_common/fastmcp/__init__.py` (per the plan's "centralized re-export surface" open question).
-5. **`/Users/les/Projects/mcp-common/mcp_common/server/availability.py:62-73`** — the only docstring reference to `RateLimitingMiddleware`. Verify the import path is still valid against FastMCP 3.4 (it is — confirmed via `crackerjack/server_core.py:44` which uses the same import).
-6. **`/Users/les/Projects/mcp-common/tests/unit/test_server_telemetry.py`** — existing middleware test. Add the plan's version-assertion regression test here.
+1. **`/Users/les/Projects/mcp-common/mcp_common/server/telemetry.py`** — the only production import site; the `FastMCPOpenTelemetryMiddleware` class is already 3.x-compatible (`on_message` signature, uses `context.method` / `context.type` / `context.message`). No code changes needed here, just confirm.
+1. **`/Users/les/Projects/mcp-common/mcp_common/health.py`** (lines 518-820) — `register_health_tools(mcp, ...)` is the canonical public surface for consumers. Confirm it accepts `mcp: FastMCP` only and emits no private-API calls.
+1. **`/Users/les/Projects/mcp-common/mcp_common/server/__init__.py`** and **`mcp_common/contracts.py`** — both re-export `FastMCPOpenTelemetryMiddleware`. Verify the re-export surface, then add `mcp_common/fastmcp/__init__.py` (per the plan's "centralized re-export surface" open question).
+1. **`/Users/les/Projects/mcp-common/mcp_common/server/availability.py:62-73`** — the only docstring reference to `RateLimitingMiddleware`. Verify the import path is still valid against FastMCP 3.4 (it is — confirmed via `crackerjack/server_core.py:44` which uses the same import).
+1. **`/Users/les/Projects/mcp-common/tests/unit/test_server_telemetry.py`** — existing middleware test. Add the plan's version-assertion regression test here.
 
 ### Files likely to need fixes (mcp-common only)
 

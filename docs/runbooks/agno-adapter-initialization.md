@@ -90,28 +90,28 @@ Numbered steps. Apply in order; each step is independently reversible.
    export MAHAVISHNU_AGNO__LLM__API_KEY="sk-..."   # load from your secrets manager
    ```
 
-2. **Pick a supported provider.** `MAHAVISHNU_AGNO__LLM__PROVIDER` must be one of `anthropic`, `openai`, `minimax`, `ollama`. Typos (`antropic`, `minimaxio`) and unsupported names (`bedrock`, `vertex`) silently fail inside `initialize()`. Local fallbacks (`ollama` at `http://localhost:11434`, `llama_server` at `http://localhost:8081`) work without a cloud key.
+1. **Pick a supported provider.** `MAHAVISHNU_AGNO__LLM__PROVIDER` must be one of `anthropic`, `openai`, `minimax`, `ollama`. Typos (`antropic`, `minimaxio`) and unsupported names (`bedrock`, `vertex`) silently fail inside `initialize()`. Local fallbacks (`ollama` at `http://localhost:11434`, `llama_server` at `http://localhost:8081`) work without a cloud key.
 
    ```bash
    export MAHAVISHNU_AGNO__LLM__PROVIDER="anthropic"
    export MAHAVISHNU_AGNO__LLM__MODEL_ID="claude-sonnet-4-5"
    ```
 
-3. **Confirm `BASE_URL` is reachable.** The `curl` above must return `2xx`. For Anthropic, the expected base is `https://api.anthropic.com`. For OpenAI-compatible providers, append `/v1/models` to whatever your proxy publishes.
+1. **Confirm `BASE_URL` is reachable.** The `curl` above must return `2xx`. For Anthropic, the expected base is `https://api.anthropic.com`. For OpenAI-compatible providers, append `/v1/models` to whatever your proxy publishes.
 
    ```bash
    export MAHAVISHNU_AGNO__LLM__BASE_URL="https://api.anthropic.com"
    curl -fsS --max-time 5 "$MAHAVISHNU_AGNO__LLM__BASE_URL/v1/models"
    ```
 
-4. **If using Postgres memory, set the connection string.** `MAHAVISHNU_AGNO__MEMORY__BACKEND=postgres` requires `MAHAVISHNU_AGNO__MEMORY__CONNECTION_STRING` in standard DSN form. A missing string with `backend=postgres` raises during init, while `backend=sqlite` (the default if unset) needs nothing.
+1. **If using Postgres memory, set the connection string.** `MAHAVISHNU_AGNO__MEMORY__BACKEND=postgres` requires `MAHAVISHNU_AGNO__MEMORY__CONNECTION_STRING` in standard DSN form. A missing string with `backend=postgres` raises during init, while `backend=sqlite` (the default if unset) needs nothing.
 
    ```bash
    export MAHAVISHNU_AGNO__MEMORY__BACKEND="postgres"
    export MAHAVISHNU_AGNO__MEMORY__CONNECTION_STRING="postgresql://user:pass@host:5432/agno"
    ```
 
-5. **Persist in `settings/local.yaml`** if these values are environment-specific. Follow the inline `# comment` style already used in `settings/local.yaml.example`:
+1. **Persist in `settings/local.yaml`** if these values are environment-specific. Follow the inline `# comment` style already used in `settings/local.yaml.example`:
 
    ```yaml
    adapters:
@@ -129,7 +129,7 @@ Numbered steps. Apply in order; each step is independently reversible.
      telemetry_enabled: false
    ```
 
-6. **Restart the MCP server.** Configuration loaded at startup; an in-process reload won't pick up env changes.
+1. **Restart the MCP server.** Configuration loaded at startup; an in-process reload won't pick up env changes.
 
    ```bash
    mahavishnu mcp restart

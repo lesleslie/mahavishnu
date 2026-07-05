@@ -103,12 +103,12 @@ in a Terminal session:
 This bypasses launchd entirely. The script:
 
 1. Kills any orphan listener on 8471.
-2. Runs `scripts/bifrost-gateway.py` (using the project's venv python) in this
+1. Runs `scripts/bifrost-gateway.py` (using the project's venv python) in this
    shell as a background process.
-3. Waits up to 60 s for the ready file. If it appears, flips Claude Code's
+1. Waits up to 60 s for the ready file. If it appears, flips Claude Code's
    `ANTHROPIC_BASE_URL` onto Bifrost (saving the prior URL).
-4. Waits for the wrapper to exit (press Ctrl-C to stop Bifrost).
-5. On any exit (Ctrl-C, error, normal completion), an `EXIT` trap restores
+1. Waits for the wrapper to exit (press Ctrl-C to stop Bifrost).
+1. On any exit (Ctrl-C, error, normal completion), an `EXIT` trap restores
    Claude Code's prior URL and removes the ready file.
 
 The downside: the gateway only runs as long as your Terminal session does.
@@ -185,8 +185,7 @@ deliberate policy choice (the wrapper should not silently bypass Gatekeeper).
 
 ### v1.6.0 binary can't be ad-hoc signed (structural Mach-O issue)
 
-If `codesign --force --sign -` returns `main executable failed strict
-validation`, the binary has Mach-O metadata that Apple's strict validator
+If `codesign --force --sign -` returns `main executable failed strict validation`, the binary has Mach-O metadata that Apple's strict validator
 rejects. Inspect the load commands:
 
 ```zsh
@@ -214,13 +213,13 @@ In order from least to most invasive:
    launchd; survives only as long as your Terminal session. Tested on
    2026-06-26: still hit the same Gatekeeper `-88` from a foreground shell
    on macOS Sonoma+, so this is necessary but not sufficient.
-2. **Disable Gatekeeper globally**: `sudo spctl --master-disable`. Heavy
+1. **Disable Gatekeeper globally**: `sudo spctl --master-disable`. Heavy
    hammer; reduces system-wide quarantine protection. Reversible with
    `sudo spctl --master-enable`.
-3. **Wait for upstream**: file an issue at <https://github.com/maximhq/bifrost>
+1. **Wait for upstream**: file an issue at <https://github.com/maximhq/bifrost>
    asking the maintainers to ship a properly-signed, modern-Mach-O
    binary. The fix must come from the build pipeline, not locally.
-4. **Switch gateways**: LiteLLM, OpenRouter, or a direct provider all
+1. **Switch gateways**: LiteLLM, OpenRouter, or a direct provider all
    sidestep `@maximhq/bifrost` entirely.
 
 ### Upstream streaming timeouts (transient)
@@ -229,8 +228,7 @@ When Bifrost was active, you may have seen Claude Code surface an
 `API Error: The operation timed out.` after a response streamed through.
 The `bifrost.log`/`bifrost.err` entries for these requests show
 `failed to execute HTTP request to provider API` after ~50 s on the
-`/anthropic/v1/messages?beta=true` path, and occasional `unknown error,
-999 (1000)` from upstream.
+`/anthropic/v1/messages?beta=true` path, and occasional `unknown error, 999 (1000)` from upstream.
 
 This is a MiniMax streaming-completion issue: the upstream connection
 delivers some tokens then never closes cleanly, so Bifrost's read deadline

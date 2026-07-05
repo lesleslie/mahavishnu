@@ -23,7 +23,7 @@ return AgnoAdapterConfig()   # engine's local class, with ollama defaults
 ### Fix applied
 
 1. **Deleted 181 lines** of duplicate class definitions from `mahavishnu/engines/agno_adapter_impl.py` (lines 54–234 of the previous version).
-2. **Added canonical import** from `mahavishnu.core.config`:
+1. **Added canonical import** from `mahavishnu.core.config`:
    ```python
    from ..core.config import (
        AgnoAdapterConfig,
@@ -34,12 +34,13 @@ return AgnoAdapterConfig()   # engine's local class, with ollama defaults
        MemoryBackend,
    )
    ```
-3. **Added missing `enable_native_tools: bool = Field(default=True)` to `AgnoToolsConfig` in `mahavishnu/core/config.py`** — this field existed in the engine's duplicate but not in the canonical schema; bringing them into sync required adding it.
-4. **Updated one existing test assertion** in `tests/unit/engines/test_agno_adapter.py::test_config_fallback` from `memory.enabled is False` to `True` to match the unified `AgnoMemoryConfig` default.
+1. **Added missing `enable_native_tools: bool = Field(default=True)` to `AgnoToolsConfig` in `mahavishnu/core/config.py`** — this field existed in the engine's duplicate but not in the canonical schema; bringing them into sync required adding it.
+1. **Updated one existing test assertion** in `tests/unit/engines/test_agno_adapter.py::test_config_fallback` from `memory.enabled is False` to `True` to match the unified `AgnoMemoryConfig` default.
 
 ### Test coverage added
 
 `tests/unit/engines/test_agno_config_imports.py` (new file, 8 tests):
+
 - `test_engine_does_not_duplicate_canonical_agno_classes` — AST-scans the engine file and fails if any of the 6 canonical classes are re-defined locally.
 - `test_canonical_class_is_identity_equal_across_modules` — parametrized over all 6 classes; verifies that the class loaded from `mahavishnu.engines.agno_adapter_impl` is `is`-identical to the one loaded from `mahavishnu.core.config`. Catches any future drift.
 - `test_agno_adapter_sees_user_configured_provider` — end-to-end: instantiates `AgnoAdapter(MahavishnuSettings())` from the project root and asserts `adapter.agno_config.llm.provider.value == "minimax"` (the value set in `settings/local.yaml`). Reproduces the original user-visible bug.
@@ -77,6 +78,7 @@ agno:
 ```
 
 This is parsed by pydantic-settings correctly. Verified:
+
 ```
 $ uv run python -c "from mahavishnu.core.config import MahavishnuSettings; \
                      s = MahavishnuSettings(); \
@@ -87,6 +89,7 @@ minimax MiniMax-M3
 ### What the adapter reads
 
 `mahavishnu/engines/agno_adapter_impl.py:1088-1123`:
+
 ```python
 provider_value = getattr(self.config, "llm_provider", None)              # top-level, doesn't exist on MahavishnuSettings
 if provider_value is None and llm_config is not None:
@@ -103,6 +106,7 @@ provider = (
 ```
 
 `LLMConfig` at `mahavishnu/core/config.py:1153` is for **LlamaIndex**, not Agno:
+
 - Fields: `model`, `ollama_base_url`, `temperature`, `max_tokens`, etc.
 - **No `provider` field**. `extra="forbid"` rejects `MAHAVISHNU_LLM__PROVIDER` with `ValidationError: Extra inputs are not permitted`.
 
@@ -122,6 +126,7 @@ agno:
 Plus `MAHAVISHNU_AGNO__LLM__API_KEY=<key>` (or `MINIMAX_API_KEY=<key>`) in env.
 
 `get_health` returns:
+
 ```json
 "agno": {
   "status": "unhealthy",
@@ -135,6 +140,7 @@ Plus `MAHAVISHNU_AGNO__LLM__API_KEY=<key>` (or `MINIMAX_API_KEY=<key>`) in env.
 ```
 
 Expected after the fix:
+
 ```json
 "agno": {
   "status": "healthy",
@@ -151,6 +157,7 @@ Expected after the fix:
 This is a pre-existing bug in the Agno adapter's config extraction. It was not introduced by any of the recent fixes (Crow MHV-001, pydantic-settings source resolution, DLQ fail-closed, opensearch-flags consolidation). It's surfaced now because the user's `.zshrc` (via Oneiric) finally has the `MINIMAX_API_KEY` exposed to the launchd-managed process — a precondition for Agno to even attempt initialization.
 
 Risks of fixing inline:
+
 - `_get_agno_config` is at the heart of how the adapter constructs its model factory. Touching it requires running the full adapter test suite, which currently has 4 tests covering the Crow toggle path but nothing directly exercising AgnoLLMConfig extraction.
 - The fix likely needs to add `self.config.agno.llm` as the canonical source and remove the `self.config.llm` fallback (or keep the fallback for backward compat with the LlamaIndex shape).
 - Coupling this debug to the current PR dilutes review surface — better as its own change.
@@ -158,12 +165,15 @@ Risks of fixing inline:
 ## Proposed remediation
 
 1. **Primary fix.** In `_get_agno_config`, change the provider resolution chain from:
+
    ```python
    provider_value = getattr(self.config, "llm_provider", None)
    if provider_value is None and llm_config is not None:
        provider_value = getattr(llm_config, "provider", None)
    ```
+
    to read from the nested path:
+
    ```python
    agno_llm = getattr(self.config, "agno", None)
    if agno_llm is not None:
@@ -172,16 +182,17 @@ Risks of fixing inline:
            provider_value = getattr(llm_cfg, "provider", None)
    ```
 
-2. **Same fix for `model_id`, `base_url`, `api_key_env`, `temperature`, `max_tokens`** — replace top-level `llm_config` reads with the nested `agno.llm` path.
+1. **Same fix for `model_id`, `base_url`, `api_key_env`, `temperature`, `max_tokens`** — replace top-level `llm_config` reads with the nested `agno.llm` path.
 
-3. **Remove the dead `LLMConfig.provider` lookup.** Either add `provider: str | None = None` to `LLMConfig` (with `extra="allow"` on the parent) OR remove the lookup entirely. Adding to `LLMConfig` is the smaller change but conflates LlamaIndex and Agno config; removing is cleaner.
+1. **Remove the dead `LLMConfig.provider` lookup.** Either add `provider: str | None = None` to `LLMConfig` (with `extra="allow"` on the parent) OR remove the lookup entirely. Adding to `LLMConfig` is the smaller change but conflates LlamaIndex and Agno config; removing is cleaner.
 
-4. **Regression tests** at `tests/unit/engines/test_agno_adapter_config.py`:
+1. **Regression tests** at `tests/unit/engines/test_agno_adapter_config.py`:
+
    - `test_get_agno_config_reads_agno_llm_provider` — `MahavishnuSettings(agno=AgnoAdapterConfig(llm=AgnoLLMConfig(provider=...)))` → adapter sees the right provider
    - `test_get_agno_config_falls_back_when_agno_missing` — backwards-compat path with old-style config
    - `test_get_agno_config_handles_llmconfig_provider_for_backcompat` — if step 3 chose "add provider to LLMConfig", confirm the fallback still works
 
-5. **Update `docs/runbooks/agno-adapter-initialization.md`** with the corrected field path so operators don't keep setting `agno.llm.provider` and wondering why it's ignored.
+1. **Update `docs/runbooks/agno-adapter-initialization.md`** with the corrected field path so operators don't keep setting `agno.llm.provider` and wondering why it's ignored.
 
 ## References
 

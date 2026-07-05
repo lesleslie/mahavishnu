@@ -15,10 +15,10 @@ Establish `OneiricMCPConfig` (from `oneiric.core.config`) as the canonical setti
 Every `*-mcp` server should:
 
 1. **Pin `oneiric>=0.13.3` (or current stable) and `mcp-common>=0.16.4`** in `[project].dependencies`
-2. **Import settings from `oneiric.core.config`** via `OneiricMCPConfig` (or a subclass)
-3. **Use `from mcp_common.fastmcp import FastMCP`** for the FastMCP surface (per Plan 7 Phase 1)
-4. **Use `from mcp_common.server import StandardServer`** for the server lifecycle wrapper
-5. **Use `from mcp_common.server.telemetry import FastMCPOpenTelemetryMiddleware`** for OTel tracing
+1. **Import settings from `oneiric.core.config`** via `OneiricMCPConfig` (or a subclass)
+1. **Use `from mcp_common.fastmcp import FastMCP`** for the FastMCP surface (per Plan 7 Phase 1)
+1. **Use `from mcp_common.server import StandardServer`** for the server lifecycle wrapper
+1. **Use `from mcp_common.server.telemetry import FastMCPOpenTelemetryMiddleware`** for OTel tracing
 
 ### Example bootstrap
 
@@ -151,6 +151,7 @@ Dispatch 7 subagents in parallel.
 ### Phase 4 — Oneiric-camp repos verify + extend (1 day)
 
 7 already-on-Oneiric repos verify they match the convention exactly:
+
 - OneiricMCPConfig via `mcp_common.fastmcp` re-export (not direct `oneiric.core.config`)
 - `StandardServer` lifecycle (not raw `FastMCP`)
 - OTel middleware attached
@@ -165,24 +166,25 @@ Per-repo: read existing config, identify gaps, fix.
 ## Acceptance criteria
 
 1. Every `*-mcp` repo imports `OneiricMCPConfig` from `mcp_common.fastmcp` (or directly from `oneiric.core.config` if it's the heavy-camp pattern)
-2. No `from pydantic_settings import BaseSettings` (or equivalent) survives in any `*-mcp` `config.py`
-3. Every `*-mcp` server uses `StandardServer` (or equivalent mcp-common lifecycle)
-4. CI guard catches future regressions
-5. All existing tests pass after migration
+1. No `from pydantic_settings import BaseSettings` (or equivalent) survives in any `*-mcp` `config.py`
+1. Every `*-mcp` server uses `StandardServer` (or equivalent mcp-common lifecycle)
+1. CI guard catches future regressions
+1. All existing tests pass after migration
 
 ## Open questions
 
 1. **Should `MCPBaseSettings` be deprecated or removed?** Recommend deprecation + 1-version warning, then removal in mcp-common 0.18+.
-2. **Should the convention also apply to Bodai core repos** (mahavishnu, akosha, dhara, session-buddy, crackerjack, oneiric)? Most of them have their own custom settings — out of scope for this plan, but worth a follow-up.
-3. **Should mcp-common's `StandardServerSettings` inherit from `OneiricMCPConfig`?** Currently it inherits from `MCPBaseSettings`. If yes, the `Settings.load("server-name")` calls would route through oneiric's loader instead of mcp-common's. Verify backward compat before merging.
+1. **Should the convention also apply to Bodai core repos** (mahavishnu, akosha, dhara, session-buddy, crackerjack, oneiric)? Most of them have their own custom settings — out of scope for this plan, but worth a follow-up.
+1. **Should mcp-common's `StandardServerSettings` inherit from `OneiricMCPConfig`?** Currently it inherits from `MCPBaseSettings`. If yes, the `Settings.load("server-name")` calls would route through oneiric's loader instead of mcp-common's. Verify backward compat before merging.
 
 ## Execution mode
 
 Recommended: `superpowers:subagent-driven-development`. Order:
+
 1. (Task A) spline-mcp showcase migration (~1 day)
-2. (Task B) Plan 7 Phase 1 (mcp-common foundation) — BLOCKING for Task C
-3. (Task C) Light-camp migrations (7 parallel subagents)
-4. (Task D) Oneiric-camp verification (7 subagents, parallel)
-5. (Task E) CI guard + docs
+1. (Task B) Plan 7 Phase 1 (mcp-common foundation) — BLOCKING for Task C
+1. (Task C) Light-camp migrations (7 parallel subagents)
+1. (Task D) Oneiric-camp verification (7 subagents, parallel)
+1. (Task E) CI guard + docs
 
 Total: ~5 days.

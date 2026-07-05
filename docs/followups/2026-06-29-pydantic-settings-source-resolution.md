@@ -41,7 +41,7 @@ override. Two changes:
    (init kwargs remain the documented highest-precedence source).
    Uses `type(source) is InitSettingsSource` (exact type) because
    `YamlConfigSettingsSource` subclasses `InitSettingsSource`.
-2. **Swap `deep_update` arguments** from `deep_update(source_state, state)`
+1. **Swap `deep_update` arguments** from `deep_update(source_state, state)`
    to `deep_update(state, source_state)` so the newer source overlays
    the accumulated state.
 
@@ -94,7 +94,6 @@ $ MAHAVISHNU_AGNO__LLM__PROVIDER=minimax \
 minimax http://localhost:9200 False
 ```
 
-
 ## Background
 
 A reproducible bug in how `MahavishnuSettings` resolves values from layered sources (init kwargs, YAML files, env vars). Env vars and `local.yaml` overrides work for the `agno` subtree but are **silently ignored** for the `opensearch` subtree.
@@ -102,6 +101,7 @@ A reproducible bug in how `MahavishnuSettings` resolves values from layered sour
 ### Reproduction (from `uv run python -c "..."` against the live codebase)
 
 Set env vars on the command line and instantiate `MahavishnuSettings`:
+
 ```bash
 MAHAVISHNU_AGNO__LLM__PROVIDER=minimax \
 MAHAVISHNU_OPENSEARCH__ENDPOINT=http://localhost:9200 \
@@ -112,11 +112,13 @@ MAHAVISHNU_OPENSEARCH__USE_SSL=false \
 ```
 
 Actual output:
+
 ```
 minimax https://localhost:9200 True
 ```
 
 Expected output:
+
 ```
 minimax http://localhost:9200 False
 ```
@@ -148,6 +150,7 @@ The Agno env var applies; the OpenSearch env vars are silently overridden by the
 This is a debug task that requires focused time on pydantic-settings source resolution semantics — likely a 1-2 hour investigation, possibly involving a minimal repro outside the Mahavishnu codebase. Out of scope for the current runbook + Crow fix + dev-config PRs. Also requires auditing **every other nested config** for the same silent-ignore failure mode, which is broader than a single-file fix.
 
 Risks of inlining into the current PR:
+
 - Couples a debug session to documentation/config changes
 - The fix might span `config.py` (`SettingsConfigDict` params) AND `settings_customise_sources` AND per-config-class `model_config` choices — not a one-line change as originally hypothesized
 - Other configs that today look "fine" (because YAML defaults match production) might be silently broken too — better to audit holistically than patch one
@@ -156,18 +159,21 @@ Risks of inlining into the current PR:
 
 1. **Minimal repro outside the codebase.** Build a 30-line standalone pydantic-settings script that mirrors `MahavishnuSettings`'s `model_config` (`yaml_files`, `env_prefix`, `env_nested_delimiter`, `extra`) and a `settings_customise_sources` that adds both YAML files. Reproduce the asymmetry between two nested `BaseModel` subtrees (one nested, one flat, or with different `extra` settings) and bisect.
 
-2. **Audit all nested configs.** Once the root cause is known, scan every nested `BaseModel` field on `MahavishnuSettings` and verify env-var + local.yaml overrides apply. At minimum:
+1. **Audit all nested configs.** Once the root cause is known, scan every nested `BaseModel` field on `MahavishnuSettings` and verify env-var + local.yaml overrides apply. At minimum:
+
    - `agno` (works)
    - `opensearch` (broken)
    - `auth` (works in tests, but only when `enabled=True` — partial)
    - `prefect`, `otel_storage`, `otel_ingester`, `adapters`, `llm`, `terminal`, `pools`, `workflow_state`, `health` — all need the same probe
 
-3. **Likely fix locations** (in order of probability):
+1. **Likely fix locations** (in order of probability):
+
    - The `yaml_files` field in `SettingsConfigDict` is **not a real pydantic-settings field** — pydantic-settings uses `yaml_file` (singular). The plural `yaml_files` in `model_config` is being silently ignored, while `settings_customise_sources` adds the YAML sources manually. The customizer's source ordering may interact badly with `case_sensitive=False` or `nested_model_default_partial_update`.
    - Move from custom `settings_customise_sources` to pydantic-settings' native `yaml_file` config (single path) plus `init_kwargs` precedence.
    - Or remove `extra="forbid"` from the nested models and rely on `extra="ignore"` with explicit field whitelisting at the parent.
 
-4. **Add a regression test** at `tests/unit/test_config_source_resolution.py` that:
+1. **Add a regression test** at `tests/unit/test_config_source_resolution.py` that:
+
    - For each nested config field, sets an env var and asserts the value is applied
    - For each nested config field, writes a `local.yaml` override and asserts the value is applied
    - Fails fast if any nested subtree goes back to silent-ignore mode

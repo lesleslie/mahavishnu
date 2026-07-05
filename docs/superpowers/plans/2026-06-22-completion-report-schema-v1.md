@@ -8,7 +8,7 @@
 
 **Tech Stack:** Python 3.13, Pydantic v2, `datamodel-code-generator`, `jsonschema` for validation, typer for CLI, FastMCP for MCP tools, pytest with `asyncio_mode = "auto"`, Dhara (existing) for persistence, Prometheus client (existing) for metrics.
 
----
+______________________________________________________________________
 
 ## Global Constraints
 
@@ -32,7 +32,7 @@ These apply to every task. Copied verbatim from `pyproject.toml`, `CLAUDE.md`, a
 - **Coverage target for new modules:** ≥ 95% line coverage on `tests/unit/test_completion_report.py`.
 - **Schema strictness:** `additionalProperties: false` in v1; evolution requires explicit schema bump.
 
----
+______________________________________________________________________
 
 ## File Structure
 
@@ -72,18 +72,21 @@ These apply to every task. Copied verbatim from `pyproject.toml`, `CLAUDE.md`, a
 | `mahavishnu/cli/__init__.py` | Register `migrate_app` under the main CLI app. |
 | `settings/mahavishnu.yaml` | Add `report: { retention_days: 90 }` under top-level config. |
 
----
+______________________________________________________________________
 
 ## Task 1: Add `MahavishnuReportValidationError` and `ReportSettings`
 
 **Files:**
+
 - Modify: `mahavishnu/core/errors.py` (add new exception after `ValidationError`)
 - Modify: `mahavishnu/core/config.py` (add `ReportSettings` sub-model)
 - Modify: `settings/mahavishnu.yaml` (add `report:` section)
 - Test: `tests/unit/test_errors_report.py`
 
 **Interfaces:**
+
 - Consumes: existing `MahavishnuError` base class
+
 - Produces: `MahavishnuReportValidationError(payload: dict, errors: list[str])`; `MahavishnuSettings.report: ReportSettings`
 
 - [ ] **Step 1: Write the failing test for the new exception**
@@ -217,16 +220,19 @@ git add mahavishnu/core/errors.py mahavishnu/core/config.py settings/mahavishnu.
 git commit -m "feat(reports): add MahavishnuReportValidationError + ReportSettings"
 ```
 
----
+______________________________________________________________________
 
 ## Task 2: JSON Schema (canonical) for `IterationReport` and `WorkflowReport`
 
 **Files:**
+
 - Create: `mahavishnu/core/schemas/completion_report/v1.json`
 - Test: `tests/unit/test_completion_report.py`
 
 **Interfaces:**
+
 - Consumes: nothing (standalone JSON Schema)
+
 - Produces: a JSON Schema document containing two top-level definitions (`iteration_report`, `workflow_report`); both with `additionalProperties: false`.
 
 - [ ] **Step 1: Write the failing test for schema file presence and structure**
@@ -400,18 +406,21 @@ git add mahavishnu/core/schemas/completion_report/v1.json tests/unit/test_comple
 git commit -m "feat(reports): add canonical JSON Schema for iteration + workflow reports"
 ```
 
----
+______________________________________________________________________
 
 ## Task 3: Generated Pydantic models + codegen script
 
 **Files:**
+
 - Create: `scripts/generate_completion_report_model.py`
 - Create: `mahavishnu/core/completion_report.py` (generated; checked in for reviewers without codegen tooling)
 - Modify: `pyproject.toml` (add `datamodel-code-generator` to `[project.optional-dependencies.dev]` if not present)
 - Test: `tests/unit/test_completion_report.py` (append Pydantic round-trip tests)
 
 **Interfaces:**
+
 - Consumes: JSON Schema from Task 2
+
 - Produces: `IterationReport`, `WorkflowReport` Pydantic models with `model_validate(dict)` and `model_dump()` working in both directions
 
 - [ ] **Step 1: Add `datamodel-code-generator` to dev dependencies**
@@ -582,18 +591,22 @@ git add scripts/generate_completion_report_model.py mahavishnu/core/completion_r
 git commit -m "feat(reports): generate Pydantic v2 models from completion report JSON Schema"
 ```
 
----
+______________________________________________________________________
 
 ## Task 4: Validation module (pure functions over JSON Schema)
 
 **Files:**
+
 - Create: `mahavishnu/core/events/report_validation.py`
 - Create: `tests/fixtures/reports.py`
 - Test: `tests/unit/test_report_validation.py`
 
 **Interfaces:**
+
 - Consumes: the JSON Schema from Task 2
+
 - Produces:
+
   - `validate_iteration_report(report: dict) -> None` — raises `MahavishnuReportValidationError` on invalid
   - `validate_workflow_report(report: dict) -> None` — same
 
@@ -818,17 +831,21 @@ git add mahavishnu/core/events/report_validation.py tests/unit/test_report_valid
 git commit -m "feat(reports): add JSON Schema validators for iteration + workflow reports"
 ```
 
----
+______________________________________________________________________
 
 ## Task 5: EventBus publisher helpers
 
 **Files:**
+
 - Create: `mahavishnu/core/events/report_publishers.py`
 - Test: `tests/unit/test_report_publishers.py`
 
 **Interfaces:**
+
 - Consumes: `EventBus`, `EventEnvelope`, `validate_iteration_report`, `validate_workflow_report`
+
 - Produces:
+
   - `async publish_iteration_report(report: dict, *, source: str, correlation_id: str) -> None`
   - `async publish_workflow_report(report: dict, *, source: str, correlation_id: str) -> None`
 
@@ -1013,18 +1030,21 @@ git add mahavishnu/core/events/report_publishers.py tests/unit/test_report_publi
 git commit -m "feat(reports): add EventBus publishers with schema validation at publish"
 ```
 
----
+______________________________________________________________________
 
 ## Task 6: Persister subscriber + Dhara tables
 
 **Files:**
+
 - Create: `mahavishnu/core/events/subscribers/report_persister.py`
 - Create: `mahavishnu/core/events/subscribers/__init__.py` (if not present)
 - Modify: `mahavishnu/core/events/subscribers/__init__.py` (register persister)
 - Test: `tests/integration/test_report_persister.py`
 
 **Interfaces:**
+
 - Consumes: `EventEnvelope` published by `publish_iteration_report` / `publish_workflow_report`
+
 - Produces: rows in Dhara `iteration_reports` and `workflow_reports` tables
 
 - [ ] **Step 1: Write the failing integration test**
@@ -1098,6 +1118,7 @@ Expected: FAIL with `ModuleNotFoundError` on subscribers/report_persister
 - [ ] **Step 3: Survey Dhara's existing DB API**
 
 Run: `grep -rn "def execute\|def query\|def insert" mahavishnu/core/ dhara/` (or wherever Dhara lives — see `settings/mahavishnu.yaml` for the `dhara_url` and follow the imports). Identify:
+
 - How to execute DDL (CREATE TABLE IF NOT EXISTS)
 - How to execute parameterized inserts
 - How to query rows
@@ -1246,17 +1267,20 @@ git add mahavishnu/core/events/subscribers/ tests/integration/test_report_persis
 git commit -m "feat(reports): add Dhara-backed persister subscriber for iteration + workflow reports"
 ```
 
----
+______________________________________________________________________
 
 ## Task 7: MCP retrieval tools
 
 **Files:**
+
 - Create: `mahavishnu/mcp/tools/report_query_tools.py`
 - Modify: `mahavishnu/mcp/tools/__init__.py` (register in `full` profile)
 - Test: `tests/integration/test_report_query_tools.py`
 
 **Interfaces:**
+
 - Produces:
+
   - `get_iteration_history(workflow_id: str) -> list[dict]`
   - `get_workflow_status(workflow_id: str, include_reports: bool = False) -> dict` (extends existing)
 
@@ -1406,16 +1430,18 @@ git add mahavishnu/mcp/tools/report_query_tools.py mahavishnu/mcp/tools/__init__
 git commit -m "feat(reports): add MCP tool for retrieving iteration history"
 ```
 
----
+______________________________________________________________________
 
 ## Task 8: Migration CLI command (`check-reports`)
 
 **Files:**
+
 - Create: `mahavishnu/cli/report_migration_cli.py`
 - Modify: `mahavishnu/cli/__init__.py` (register under main CLI app)
 - Test: `tests/integration/test_report_cli.py`
 
 **Interfaces:**
+
 - Produces: Typer command `mahavishnu migrate --check-reports` that walks the codebase, finds worker classes created since the v1.0 cutoff date, and exits non-zero if any iterative worker does not emit reports.
 
 - [ ] **Step 1: Write the failing test**
@@ -1545,15 +1571,17 @@ git add mahavishnu/cli/report_migration_cli.py mahavishnu/cli/__init__.py tests/
 git commit -m "feat(reports): add migrate --check-reports CLI for worker audit"
 ```
 
----
+______________________________________________________________________
 
 ## Task 9: Sample iterative worker (end-to-end demo)
 
 **Files:**
+
 - Create: `mahavishnu/workers/iterative_researcher.py`
 - Test: `tests/integration/test_iterative_researcher.py`
 
 **Interfaces:**
+
 - Produces: `IterativeResearcher.run(prompt: str) -> dict` that iterates up to N times, publishing one `IterationReport` per iteration and one `WorkflowReport` at the end. Pure stub for the Claude call (returns deterministic responses); integration is the schema + EventBus + persister path, not the LLM call.
 
 - [ ] **Step 1: Write the failing test**
@@ -1728,14 +1756,16 @@ git add mahavishnu/workers/iterative_researcher.py tests/integration/test_iterat
 git commit -m "feat(reports): add IterativeResearcher sample worker demonstrating report emission"
 ```
 
----
+______________________________________________________________________
 
 ## Task 10: Cross-version compatibility tests
 
 **Files:**
+
 - Test: `tests/integration/test_cross_version_compat.py`
 
 **Interfaces:**
+
 - Validates that v1.0 producers and consumers interoperate, and that v1.1-style additions (when present in test fixtures) are correctly rejected by v1.0 strict-mode validators and accepted by v1.0 forward-compat consumers.
 
 - [ ] **Step 1: Write the test**
@@ -1790,7 +1820,7 @@ git add tests/integration/test_cross_version_compat.py
 git commit -m "test(reports): add cross-version compatibility tests"
 ```
 
----
+______________________________________________________________________
 
 ## Self-Review
 
@@ -1811,6 +1841,7 @@ After writing, check the plan against the spec.
 | Testing strategy | Tasks 4, 5, 6, 7, 8, 9, 10 |
 
 **Gaps:**
+
 - `mahavishnu.report.retention_days` config is defined in Task 1 but not enforced by the persister (Task 6). Add a retention enforcement check in Task 6 before final commit if the persister has access to a periodic cleanup hook; otherwise record as v1.1 work.
 - The `ExitReason` enum value `force_continued` is in the schema (Task 2) but not exercised by the sample worker (Task 9). Documented in spec; no test required for v1.
 
@@ -1818,7 +1849,7 @@ After writing, check the plan against the spec.
 
 **3. Type consistency:** Cross-checked — `publish_iteration_report(report: dict, *, source: str, correlation_id: str) -> None` in Task 5 matches the signature used by the sample worker in Task 9. `validate_iteration_report(report: dict) -> None` matches the publisher call. `IterationReport` and `WorkflowReport` are Pydantic models in Task 3 and used as raw dicts at the JSON Schema validation layer (Task 4) — consistent because the publisher receives raw dicts from workers and validates before constructing the Pydantic representation.
 
----
+______________________________________________________________________
 
 ## Execution Handoff
 

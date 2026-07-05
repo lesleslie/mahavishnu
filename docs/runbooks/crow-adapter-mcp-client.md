@@ -5,10 +5,10 @@ sites now construct an `mcp_client` from settings when `terminal.crow_enabled=tr
 and fall through to the mock adapter when the toggle is left at its `false` default.
 Operators opt in to crow by setting `crow_enabled: true` in `settings/local.yaml`
 — no separate call-site fix is needed. Ticket ID `MHV-001` does not appear in recent
-commits; the related error code in `mahavishnu/core/errors.py:84` is `MHV-307
-CROW_MCP_UNAVAILABLE`.
+commits; the related error code in `mahavishnu/core/errors.py:84` is `MHV-307 CROW_MCP_UNAVAILABLE`.
 
 **Refs:**
+
 - `settings/mahavishnu.yaml:188` — `terminal.adapter_preference: "crow"` is the **default**.
 - `mahavishnu/terminal/config.py:63-71` — `crow_enabled` toggle (defaults to `false`).
 - `mahavishnu/_main_cli.py:78-103` — `_resolve_crow_mcp_client` helper.
@@ -139,12 +139,12 @@ The long-term proper fix is in place:
    `false`. The terminal factory (`mahavishnu/terminal/manager.py:451-486`)
    falls through to the mock adapter when the toggle is `false`, so a stock
    install no longer crashes.
-2. All three CLI call sites in `mahavishnu/_main_cli.py` (~1073, 1156, 1381)
+1. All three CLI call sites in `mahavishnu/_main_cli.py` (~1073, 1156, 1381)
    now construct the `mcp_client` from settings via the
    `_resolve_crow_mcp_client` helper. Operators opt in by setting
    `crow_enabled: true` in `settings/local.yaml` — no separate call-site fix
    is needed.
-3. The bundled `bodai-crow` HTTP client is built via
+1. The bundled `bodai-crow` HTTP client is built via
    `mahavishnu.mcp.crow_server.create_crow_mcp_client`, which wraps the
    existing `BodaiComponentMCPClient` and reads
    `MAHAVISHNU_CROW_HTTP_HOST` / `MAHAVISHNU_CROW_HTTP_PORT` env overrides
@@ -154,7 +154,7 @@ The historical options below are kept as a record of the decisions made
 along the way. Pick **Option A** only as a stopgap if the toggle is not
 appropriate for your environment.
 
----
+______________________________________________________________________
 
 Three legitimate paths were considered. Pick **one**. Do **not** combine them.
 
@@ -176,7 +176,7 @@ Safest for greenfield installs that do not yet need the crow HTTP server. One YA
 
    Or override per-environment in `settings/local.yaml` (gitignored) — preferred if you want to keep the bundled default pointing at `"crow"` for installations that *do* run the bundled crow server.
 
-2. Restart: `mahavishnu mcp restart`.
+1. Restart: `mahavishnu mcp restart`.
 
 **Trade-offs.** Smallest change. Eliminates the crash immediately. Disables the bundled crow HTTP server's terminal dispatch; pool workers fall back to the in-process `mock` adapter (no real terminal I/O). The crow HTTP server itself still runs on `127.0.0.1:8675` for its other consumers (file, web). Acceptable when you plan to enable crow properly later.
 
@@ -203,14 +203,14 @@ Modify `mahavishnu/_main_cli.py:1073, 1156, 1381` so each constructs a `mcp_clie
 
    (The exact helper name and import path live in `mahavishnu/mcp/crow_server.py:59-100`. Use whatever client helper is defined there — do **not** roll a fresh HTTP client inline at the three call sites.)
 
-2. Ensure the bundled `bodai-crow` server is running before the CLI starts:
+1. Ensure the bundled `bodai-crow` server is running before the CLI starts:
 
    ```bash
    mahavishnu mcp start crow
    mahavishnu mcp start     # then the main MCP server
    ```
 
-3. Verify the env-var overrides are respected: `MAHAVISHNU_CROW_HTTP_HOST`, `MAHAVISHNU_CROW_HTTP_PORT`, `MAHAVISHNU_CROW_CROW_MCP_COMMAND`.
+1. Verify the env-var overrides are respected: `MAHAVISHNU_CROW_HTTP_HOST`, `MAHAVISHNU_CROW_HTTP_PORT`, `MAHAVISHNU_CROW_CROW_MCP_COMMAND`.
 
 **Trade-offs.** The proper fix. Touches three call sites and adds a client-helper dependency at each. Risk is medium because the three sites have slightly different surrounding construction logic and may need different argument lists. Pair with a regression test that exercises the terminal-manager construction path against each call site.
 
@@ -229,7 +229,7 @@ Smallest code change that keeps the bundled default intent intact. Adds one conf
      http_port: 8675
    ```
 
-2. Modify the guard at `mahavishnu/terminal/manager.py:451-456`:
+1. Modify the guard at `mahavishnu/terminal/manager.py:451-456`:
 
    ```python
    if (
@@ -244,7 +244,7 @@ Smallest code change that keeps the bundled default intent intact. Adds one conf
 
    When `crow.enabled` is `False`, the factory falls through to the default mock/iTerm2 branch without raising, and a stock `mahavishnu mcp start` succeeds even though `adapter_preference == "crow"` and `mcp_client is None`.
 
-3. Operators opt in to the strict check by setting `crow.enabled: true` in `settings/local.yaml` once Option B is in place.
+1. Operators opt in to the strict check by setting `crow.enabled: true` in `settings/local.yaml` once Option B is in place.
 
 **Trade-offs.** Backward-compatible. Honors the bundled default intent (the system *wants* crow enabled) while not crashing stock installs. Smallest code surface — one YAML key, one ternary clause. Pairs naturally with Option B: ship C today, complete B later.
 
@@ -255,13 +255,13 @@ Smallest code change that keeps the bundled default intent intact. Adds one conf
 If you need crow eventually:
 
 1. Land **Option C** to stop the crash today.
-2. Track **Option B** as follow-up tech debt.
-3. Once **Option B** is in place, flip `crow.enabled: true` in `settings/local.yaml` to enable the strict check.
+1. Track **Option B** as follow-up tech debt.
+1. Once **Option B** is in place, flip `crow.enabled: true` in `settings/local.yaml` to enable the strict check.
 
 If you do **not** need crow:
 
 1. Land **Option A** (change the default).
-2. Re-evaluate later if crow becomes a dependency.
+1. Re-evaluate later if crow becomes a dependency.
 
 ## Verification
 
@@ -274,7 +274,7 @@ After applying **any** of A/B/C:
    # expected: server binds, no ConfigurationError, log line "started on 127.0.0.1:8680"
    ```
 
-2. **Health check.** Expect `overall: healthy` (or `degraded` without terminal in the failing state):
+1. **Health check.** Expect `overall: healthy` (or `degraded` without terminal in the failing state):
 
    ```bash
    curl -fsS http://localhost:8680/mcp -H 'content-type: application/json' \
@@ -299,7 +299,7 @@ After applying **any** of A/B/C:
 
    If `terminal.status` is still `unhealthy` and the `error` field contains the `ConfigurationError` text, the remediation did not take — re-check that the YAML edit landed or the code guard is wired correctly.
 
-3. **Pool dispatch smoke test** (only after Option B lands — Options A and C with `crow.enabled: false` skip the crow path):
+1. **Pool dispatch smoke test** (only after Option B lands — Options A and C with `crow.enabled: false` skip the crow path):
 
    ```bash
    uv run mahavishnu pool route --prompt "echo hello" --selector least_loaded

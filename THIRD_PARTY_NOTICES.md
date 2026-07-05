@@ -45,17 +45,17 @@ This file lists third-party projects adopted by Mahavishnu, with version, licens
 ## Legal posture summary
 
 1. **No source linking**: Bodai code does NOT import AGPL libraries directly. All AGPL-touching integrations are via unmodified external subprocess / OTLP / HTTP.
-2. **No source distribution**: Bodai repos do NOT bundle AGPL source. Distributed binaries contain only Bodai code.
-3. **Attribution**: This file + `session-buddy/THIRD_PARTY_NOTICES.md` provide attribution per project.
-4. **Loki/Grafana precedent**: Existing Grafana Loki integration (also AGPL-3.0) demonstrates the established Bodai posture — unmodified external subprocess pattern.
-5. **Phase 3 promotion gate**: Before any Tier 2 AGPL project promotes to full implementation, formal legal sign-off recommended.
+1. **No source distribution**: Bodai repos do NOT bundle AGPL source. Distributed binaries contain only Bodai code.
+1. **Attribution**: This file + `session-buddy/THIRD_PARTY_NOTICES.md` provide attribution per project.
+1. **Loki/Grafana precedent**: Existing Grafana Loki integration (also AGPL-3.0) demonstrates the established Bodai posture — unmodified external subprocess pattern.
+1. **Phase 3 promotion gate**: Before any Tier 2 AGPL project promotes to full implementation, formal legal sign-off recommended.
 
 ## How to update
 
 When adopting a new third-party project:
 
 1. Add a row to the appropriate table.
-2. Document version, license, URL, copyright (look up upstream `LICENSE` file).
-3. Specify integration mode.
-4. If AGPL/SSPL: add legal posture note.
-5. Commit with PR title `chore: add <project> to THIRD_PARTY_NOTICES.md`.
+1. Document version, license, URL, copyright (look up upstream `LICENSE` file).
+1. Specify integration mode.
+1. If AGPL/SSPL: add legal posture note.
+1. Commit with PR title `chore: add <project> to THIRD_PARTY_NOTICES.md`.

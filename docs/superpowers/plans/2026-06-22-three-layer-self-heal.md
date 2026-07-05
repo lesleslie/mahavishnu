@@ -8,7 +8,7 @@
 
 **Tech Stack:** Python 3.13, `asyncio.subprocess`, `prometheus_client`, pytest with `asyncio_mode = "auto"`.
 
----
+______________________________________________________________________
 
 ## Global Constraints
 
@@ -19,7 +19,7 @@ Inherited from Spec #1's plan. New constraints:
 - **Red lines enforced in code** (defense in depth); prompt-only enforcement is insufficient.
 - **No new event schema**; observability via Prometheus + logs.
 
----
+______________________________________________________________________
 
 ## File Structure
 
@@ -48,13 +48,16 @@ Inherited from Spec #1's plan. New constraints:
 | `mahavishnu/mcp/tools/worktree_tools.py` | Routes push through `push_with_heal`. |
 | `mahavishnu/cli/__init__.py` | Register `heal_app`. |
 
----
+______________________________________________________________________
 
 ## Task 1: Protocol types
 
 **Files:**
+
 - Create: `mahavishnu/core/heal/protocol.py`
+
 - Create: `mahavishnu/core/heal/__init__.py`
+
 - Test: `tests/unit/test_heal_protocol.py`
 
 - [ ] **Step 1: Write the failing test**
@@ -215,12 +218,14 @@ git add mahavishnu/core/heal/protocol.py mahavishnu/core/heal/__init__.py tests/
 git commit -m "feat(heal): add three-layer self-heal protocol types"
 ```
 
----
+______________________________________________________________________
 
 ## Task 2: Prometheus metrics module
 
 **Files:**
+
 - Create: `mahavishnu/core/heal/metrics.py`
+
 - Test: `tests/unit/test_heal_metrics.py`
 
 - [ ] **Step 1: Write the failing test**
@@ -296,12 +301,14 @@ git add mahavishnu/core/heal/metrics.py tests/unit/test_heal_metrics.py
 git commit -m "feat(heal): add Prometheus counters for L2 attempts and failures"
 ```
 
----
+______________________________________________________________________
 
 ## Task 3: L1 runner
 
 **Files:**
+
 - Create: `mahavishnu/core/heal/l1.py`
+
 - Test: `tests/unit/test_heal_l1.py`
 
 - [ ] **Step 1: Write the failing tests**
@@ -395,12 +402,14 @@ git add mahavishnu/core/heal/l1.py tests/unit/test_heal_l1.py
 git commit -m "feat(heal): add L1 deterministic guard runner"
 ```
 
----
+______________________________________________________________________
 
 ## Task 4: L2 bounded agentic runner
 
 **Files:**
+
 - Create: `mahavishnu/core/heal/l2.py`
+
 - Test: `tests/unit/test_heal_l2.py`
 
 - [ ] **Step 1: Write the failing tests**
@@ -748,12 +757,14 @@ git add mahavishnu/core/heal/l2.py tests/unit/test_heal_l2.py
 git commit -m "feat(heal): add L2 bounded agentic runner with wire truth"
 ```
 
----
+______________________________________________________________________
 
 ## Task 5: L3 operator escalation
 
 **Files:**
+
 - Create: `mahavishnu/core/heal/l3.py`
+
 - Test: `tests/unit/test_heal_l3.py`
 
 - [ ] **Step 1: Write the failing tests**
@@ -856,12 +867,14 @@ git add mahavishnu/core/heal/l3.py tests/unit/test_heal_l3.py
 git commit -m "feat(heal): add L3 operator escalation via request_approval"
 ```
 
----
+______________________________________________________________________
 
 ## Task 6: Git operations — push with heal
 
 **Files:**
+
 - Create: `mahavishnu/core/git_heal.py`
+
 - Test: `tests/integration/test_git_heal.py`
 
 - [ ] **Step 1: Write the integration test**
@@ -1094,12 +1107,14 @@ git add mahavishnu/core/git_heal.py tests/integration/test_git_heal.py
 git commit -m "feat(heal): add git push/rebase/merge with three-layer self-heal"
 ```
 
----
+______________________________________________________________________
 
 ## Task 7: Migrate worktree.py to use heal-wrapped push
 
 **Files:**
+
 - Modify: `mahavishnu/core/worktree.py` (locate existing git push call; replace with `push_with_heal`)
+
 - Test: existing worktree tests
 
 - [ ] **Step 1: Locate existing direct git push calls**
@@ -1131,13 +1146,16 @@ git add mahavishnu/core/worktree.py mahavishnu/mcp/tools/worktree_tools.py
 git commit -m "refactor(worktree): route git push through push_with_heal"
 ```
 
----
+______________________________________________________________________
 
 ## Task 8: Heal coverage CLI
 
 **Files:**
+
 - Create: `mahavishnu/cli/heal_coverage_cli.py`
+
 - Modify: `mahavishnu/cli/__init__.py`
+
 - Test: `tests/integration/test_heal_coverage_cli.py`
 
 - [ ] **Step 1: Write the failing test**
@@ -1244,7 +1262,7 @@ git add mahavishnu/cli/heal_coverage_cli.py mahavishnu/cli/__init__.py tests/int
 git commit -m "feat(heal): add heal --check-coverage CLI for direct git push audit"
 ```
 
----
+______________________________________________________________________
 
 ## Self-Review
 

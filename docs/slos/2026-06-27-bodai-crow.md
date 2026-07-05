@@ -54,8 +54,8 @@ proxy layer.
 - **Window**: rolling 30 days
 - **Actions when exhausted**:
   1. Freeze non-critical deploys to bodai-crow until budget recovers.
-  2. File an incident in `docs/incident-response/` if breach is security-related.
-  3. Re-baseline SLOs only after a documented post-mortem.
+  1. File an incident in `docs/incident-response/` if breach is security-related.
+  1. Re-baseline SLOs only after a documented post-mortem.
 
 ## Change log
 

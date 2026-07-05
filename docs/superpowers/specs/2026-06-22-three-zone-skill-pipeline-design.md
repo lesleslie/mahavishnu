@@ -4,7 +4,7 @@
 **Phase:** 2 (Workflow Evolution)
 **Source:** `Rebuilt Hermes / MAOS` — Part 4 ("Self-Learning — Fixed, Not Removed"). The MAOS three-zone pipeline (staging → systems → promoted) plus audit log is the structural fix for autonomous self-learning silently overwriting manually-tuned skills.
 
----
+______________________________________________________________________
 
 ## Overview
 
@@ -18,7 +18,7 @@ This spec introduces a three-zone filesystem layout for skills, an append-only D
 
 **Architectural property:** The agent proposes; the human disposes; history is preserved. Mirrors the article's "the agent cannot promote its own work" principle.
 
----
+______________________________________________________________________
 
 ## Goals
 
@@ -34,7 +34,7 @@ This spec introduces a three-zone filesystem layout for skills, an append-only D
 - **N2.** Skill content validation (linting, schema enforcement). Staging accepts any well-formed markdown.
 - **N3.** Skill dependency resolution. Skills remain independent files; no `requires:` metadata in v1.0.
 
----
+______________________________________________________________________
 
 ## Architecture & Data Flow
 
@@ -61,7 +61,7 @@ Skill lifecycle:
          └─> CLI moves systems/<name>.md → promoted/<name>-<YYYY-MM-DD>.md; audit
 ```
 
----
+______________________________________________________________________
 
 ## Filesystem Layout
 
@@ -81,7 +81,7 @@ Each skill is a single markdown file (existing convention). Filename (without `.
 
 **Migration:** v1.0 ships with all existing `commands/tools/*.md` and `commands/workflows/*.md` content moved into `commands/{kind}/systems/`. No semantic change to skill content.
 
----
+______________________________________________________________________
 
 ## Audit Log Schema (Dhara)
 
@@ -96,13 +96,13 @@ Table `skill_transitions`:
 | `to_zone` | enum (`none`, `staging`, `systems`, `promoted`) | — |
 | `actor` | string | user_id, `system:cli`, or `system:agent:<id>` |
 | `reason` | string | operator-supplied note |
-| `confidence` | int \| null | agent confidence if staging; null on human transitions |
+| `confidence` | int | null | agent confidence if staging; null on human transitions |
 | `content_hash` | string | SHA-256 of file content at transition time |
 | `transition_at` | timestamp | UTC |
 
 Indexes: `(skill_name, transition_at DESC)`, `(actor, transition_at DESC)`.
 
----
+______________________________________________________________________
 
 ## CLI Commands
 
@@ -263,7 +263,7 @@ def list_skills(
                 typer.echo(f"{kind}/{z}/: {', '.join(skills)}")
 ```
 
----
+______________________________________________________________________
 
 ## Auto-Learning Helper
 
@@ -285,7 +285,7 @@ async def stage_skill(
     confidence: int | None = None,
 ) -> Path:
     """Write a skill to staging/ and audit the staging action.
-    
+
     Workers call this when they identify a repeatable pattern.
     Code-level enforcement: the helper writes ONLY to staging/.
     Direct writes to systems/ are detected by `mahavishnu skill --audit-coverage`.
@@ -309,7 +309,7 @@ async def stage_skill(
     return staging_path
 ```
 
----
+______________________________________________________________________
 
 ## Adoption & Migration
 
@@ -328,7 +328,7 @@ git mv commands/tools/*.md commands/tools/systems/   # if not already in systems
 git mv commands/workflows/*.md commands/workflows/systems/
 ```
 
----
+______________________________________________________________________
 
 ## Storage & Retrieval
 
@@ -356,7 +356,7 @@ async def get_active_skills(kind: str | None = None) -> list[str]:
     return result
 ```
 
----
+______________________________________________________________________
 
 ## Error Handling
 
@@ -369,7 +369,7 @@ async def get_active_skills(kind: str | None = None) -> list[str]:
 | Staging skill written but never promoted | Periodic operator review (out of scope for spec) | Operator decides: promote, edit, reject, hold. |
 | Two operators promote same skill concurrently | Race on file move | Last write wins; audit log records both attempts. v1.1: add file locking. |
 
----
+______________________________________________________________________
 
 ## Testing Strategy
 
@@ -383,7 +383,7 @@ async def get_active_skills(kind: str | None = None) -> list[str]:
 
 **Coverage target:** `tests/unit/test_skill_cli.py`, `tests/unit/test_skill_staging.py`, `tests/integration/test_skill_pipeline.py` ≥ 95% line coverage.
 
----
+______________________________________________________________________
 
 ## Implementation Module Paths
 
@@ -397,7 +397,7 @@ async def get_active_skills(kind: str | None = None) -> list[str]:
 | L3 tests | `tests/integration/test_skill_pipeline.py` |
 | Coverage scan | `mahavishnu/cli/skill_cli.py` (`audit-coverage` command) |
 
----
+______________________________________________________________________
 
 ## Trade-offs & Alternatives Considered
 
@@ -410,7 +410,7 @@ async def get_active_skills(kind: str | None = None) -> list[str]:
 | Retirement date in filename (`promoted/<name>-<YYYY-MM-DD>.md`) | Same skill name can be archived multiple times without collision | Single promoted/<name>.md — overwrites on re-archive |
 | Confidence column in audit row | Useful for filtering "high-confidence proposals"; supports v1.1 query helpers | Skip confidence — simpler schema; loses observability |
 
----
+______________________________________________________________________
 
 ## Open Questions / Future Work
 
@@ -420,7 +420,7 @@ async def get_active_skills(kind: str | None = None) -> list[str]:
 - **OQ4.** Skill dependency resolution. v1.1+ work; `requires:` metadata in skill frontmatter.
 - **OQ5.** Bulk promotion (multiple skills in one approval). Out of scope for v1.0; documented for v1.1.
 
----
+______________________________________________________________________
 
 ## Success Criteria
 

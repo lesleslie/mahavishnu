@@ -8,7 +8,7 @@
 
 **Tech Stack:** Python 3.13, Pydantic v2, `jsonschema` (Spec #1's dependency), `datamodel-code-generator` (Spec #1's dependency), pytest with `asyncio_mode = "auto"`.
 
----
+______________________________________________________________________
 
 ## Global Constraints
 
@@ -19,7 +19,7 @@ Inherited from Spec #1's plan; not repeated here. New constraints from this spec
 - **Schema version bump**: `completion_report/v1.json` carries `schema_version` `1.0.0` until workers upgrade; v1.1 schema_version is `1.1.0`.
 - **Validation relaxation**: `report_validation.py` accepts-and-warns on unknown fields (OQ1 resolution from spec self-review).
 
----
+______________________________________________________________________
 
 ## File Structure
 
@@ -46,15 +46,17 @@ Inherited from Spec #1's plan; not repeated here. New constraints from this spec
 | `mahavishnu/core/events/report_validation.py` | Relax strict unknown-field rejection to accept-and-warn. |
 | `mahavishnu/cli/report_migration_cli.py` | Extend `check-reports` to also flag workers without `enable_precommitment=True`. |
 
----
+______________________________________________________________________
 
 ## Task 1: Add `MahavishnuPrecommitmentViolation` exception
 
 **Files:**
+
 - Modify: `mahavishnu/core/errors.py` (add after `MahavishnuReportValidationError`)
 - Test: `tests/unit/test_errors_report.py` (append)
 
 **Interfaces:**
+
 - Produces: `MahavishnuPrecommitmentViolation(message: str)`
 
 - [ ] **Step 1: Write the failing test**
@@ -112,12 +114,14 @@ git add mahavishnu/core/errors.py tests/unit/test_errors_report.py
 git commit -m "feat(precommitment): add MahavishnuPrecommitmentViolation exception"
 ```
 
----
+______________________________________________________________________
 
 ## Task 2: Slate JSON Schema
 
 **Files:**
+
 - Create: `mahavishnu/core/schemas/completion_report/precommitment_slate.v1.json`
+
 - Test: `tests/unit/test_precommitment_gate.py` (initial fixture: file existence)
 
 - [ ] **Step 1: Write the failing test for slate schema existence**
@@ -220,12 +224,14 @@ git add mahavishnu/core/schemas/completion_report/precommitment_slate.v1.json te
 git commit -m "feat(precommitment): add slate JSON Schema"
 ```
 
----
+______________________________________________________________________
 
 ## Task 3: Update IterationReport schema (v1.0 → v1.1)
 
 **Files:**
+
 - Modify: `mahavishnu/core/schemas/completion_report/v1.json`
+
 - Test: `tests/unit/test_completion_report.py` (extend)
 
 - [ ] **Step 1: Write the failing test**
@@ -280,11 +286,12 @@ git add mahavishnu/core/schemas/completion_report/v1.json tests/unit/test_comple
 git commit -m "feat(precommitment): extend IterationReport schema to v1.1 with slate field"
 ```
 
----
+______________________________________________________________________
 
 ## Task 4: Regenerate Pydantic models
 
 **Files:**
+
 - Regenerate: `mahavishnu/core/completion_report.py`
 
 - [ ] **Step 1: Run codegen**
@@ -346,12 +353,14 @@ git add mahavishnu/core/completion_report.py tests/unit/test_completion_report.p
 git commit -m "feat(precommitment): regenerate Pydantic models with slate field"
 ```
 
----
+______________________________________________________________________
 
 ## Task 5: `validate_precommitment()` gate function
 
 **Files:**
+
 - Create: `mahavishnu/core/events/precommitment_gate.py`
+
 - Test: `tests/unit/test_precommitment_gate.py` (extend with rule tests)
 
 - [ ] **Step 1: Write the failing tests for gate rules**
@@ -507,12 +516,14 @@ git add mahavishnu/core/events/precommitment_gate.py tests/unit/test_precommitme
 git commit -m "feat(precommitment): add validate_precommitment gate function"
 ```
 
----
+______________________________________________________________________
 
 ## Task 6: Integrate gate into `publish_iteration_report()`
 
 **Files:**
+
 - Modify: `mahavishnu/core/events/report_publishers.py`
+
 - Test: `tests/unit/test_report_publishers.py` (extend)
 
 - [ ] **Step 1: Write the failing test**
@@ -612,12 +623,14 @@ git add mahavishnu/core/events/report_publishers.py tests/unit/test_report_publi
 git commit -m "feat(precommitment): integrate validate_precommitment into publisher"
 ```
 
----
+______________________________________________________________________
 
 ## Task 7: Relax `report_validation.py` to accept-and-warn on unknown fields
 
 **Files:**
+
 - Modify: `mahavishnu/core/events/report_validation.py`
+
 - Test: `tests/unit/test_report_validation.py` (extend)
 
 - [ ] **Step 1: Write the failing test**
@@ -708,12 +721,14 @@ git add mahavishnu/core/events/report_validation.py tests/unit/test_report_valid
 git commit -m "feat(reports): accept-and-warn on unknown fields (OQ1 forward-compat)"
 ```
 
----
+______________________________________________________________________
 
 ## Task 8: Extend migration CLI to flag missing `enable_precommitment`
 
 **Files:**
+
 - Modify: `mahavishnu/cli/report_migration_cli.py`
+
 - Test: `tests/integration/test_report_cli.py` (extend)
 
 - [ ] **Step 1: Write the failing test**
@@ -797,11 +812,12 @@ git add mahavishnu/cli/report_migration_cli.py tests/integration/test_report_cli
 git commit -m "feat(precommitment): extend migrate --check-reports to flag missing enable_precommitment"
 ```
 
----
+______________________________________________________________________
 
 ## Task 9: End-to-end integration test
 
 **Files:**
+
 - Test: `tests/integration/test_precommitment_persister.py`
 
 - [ ] **Step 1: Write the test**
@@ -887,11 +903,12 @@ git add tests/integration/test_precommitment_persister.py tests/fixtures/slates.
 git commit -m "test(precommitment): add end-to-end persister integration tests"
 ```
 
----
+______________________________________________________________________
 
 ## Task 10: Cross-version compatibility tests
 
 **Files:**
+
 - Test: `tests/integration/test_precommitment_cross_version.py`
 
 - [ ] **Step 1: Write the test**
@@ -918,7 +935,7 @@ def test_v1_1_iteration_0_with_slate_passes():
 
 def test_v1_0_iteration_0_without_slate_passes_v1_gate_strictly():
     """v1.0 reports have no slate field; v1.1 gate still passes (gate allows absence at iter 0 if gate is disabled... actually no — gate requires slate at iter 0 regardless of schema_version).
-    
+
     Decision: gate is strict — slate required at iter 0 regardless of schema_version. v1.0 workers must upgrade to v1.1 to use the gate. This is the conservative choice; matches 'opt-in v1.1, required v2.0' adoption.
     """
     report = valid_iteration_report(schema_version="1.0.0", iteration_index=0)
@@ -946,7 +963,7 @@ git add tests/integration/test_precommitment_cross_version.py
 git commit -m "test(precommitment): add cross-version compatibility tests"
 ```
 
----
+______________________________________________________________________
 
 ## Self-Review
 
@@ -971,7 +988,7 @@ After writing, check the plan against the spec.
 
 **Gaps:** None. The plan covers the full spec scope.
 
----
+______________________________________________________________________
 
 Plan complete and saved to `docs/superpowers/plans/2026-06-22-precommitment-hypothesis-lock.md`.
 

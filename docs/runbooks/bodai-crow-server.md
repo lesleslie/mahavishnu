@@ -70,6 +70,7 @@ while True:
 `max_redirect_hops` defaults to `5` (`CrowSettings.max_redirect_hops`). A chain exceeding the cap raises `RuntimeError`.
 
 Regression coverage (in `tests/unit/mcp/crow/test_web_tools.py`):
+
 - `test_web_fetch_validates_every_redirect_hop` — public→public→private chain blocks at the private hop.
 - `test_web_fetch_redirect_to_suspicious_scheme_blocked` — redirect to `file://` blocked.
 - `test_web_fetch_redirect_to_relative_url_resolves_against_current` — relative `Location` header resolved against the current URL.
@@ -133,9 +134,9 @@ There are **no embedded secrets** in the crow server itself. If `crow_mcp_comman
 ### False-positive triage (`_PRIVATE_NETS` blocks a legitimate URL)
 
 1. Confirm the block: tool raises `PermissionError` matching `SSRF`. The resolved address is in the message.
-2. If the target genuinely resolves to a public IP that is misclassified (rare — `_PRIVATE_NETS` is conservative), check the hostname's DNS records with `dig +short <host>`.
-3. **Do not** widen `_PRIVATE_NETS` to suppress a single host. The right path is to expose the host via a public proxy or update the URL.
-4. If the consumer is internal-only and you accept the SSRF risk, set `workspace_root` and `crow:` configuration per-env in `settings/local.yaml` rather than relaxing network policy.
+1. If the target genuinely resolves to a public IP that is misclassified (rare — `_PRIVATE_NETS` is conservative), check the hostname's DNS records with `dig +short <host>`.
+1. **Do not** widen `_PRIVATE_NETS` to suppress a single host. The right path is to expose the host via a public proxy or update the URL.
+1. If the consumer is internal-only and you accept the SSRF risk, set `workspace_root` and `crow:` configuration per-env in `settings/local.yaml` rather than relaxing network policy.
 
 ## 7. Failure Modes & Mitigations
 

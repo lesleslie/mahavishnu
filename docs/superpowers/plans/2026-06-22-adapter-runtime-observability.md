@@ -8,7 +8,7 @@
 
 **Tech Stack:** Python 3.13, `httpx` async, Dhara (existing HTTP API), pytest with `asyncio_mode = "auto"`.
 
----
+______________________________________________________________________
 
 ## Global Constraints
 
@@ -19,7 +19,7 @@ Inherited from Spec #1's plan. New constraints:
 - **Metrics cadence**: 60s default; configurable.
 - **No local state** in Cloud Run instances.
 
----
+______________________________________________________________________
 
 ## File Structure
 
@@ -44,11 +44,12 @@ Inherited from Spec #1's plan. New constraints:
 | `mahavishnu/mcp/tools/__init__.py` | Register adapter_runtime_tools. |
 | `mahavishnu/mcp/tools/profiles.py` | Add adapter_runtime_tools to `full` profile. |
 
----
+______________________________________________________________________
 
 ## Task 1: Dhara migrations
 
 **Files:**
+
 - Create: `mahavishnu/core/dhara_migrations/adapter_runtime.sql`
 
 - [ ] **Step 1: Write the DDL**
@@ -131,12 +132,14 @@ git add mahavishnu/core/dhara_migrations/adapter_runtime.sql
 git commit -m "feat(adapter-runtime): add Dhara migration for settings/lifecycle/metrics tables"
 ```
 
----
+______________________________________________________________________
 
 ## Task 2: Async Python API
 
 **Files:**
+
 - Create: `mahavishnu/core/adapter_runtime.py`
+
 - Test: `tests/unit/test_adapter_runtime.py`
 
 - [ ] **Step 1: Write the failing tests (with mocked HTTP client)**
@@ -346,11 +349,12 @@ git add mahavishnu/core/adapter_runtime.py tests/unit/test_adapter_runtime.py
 git commit -m "feat(adapter-runtime): add async API for settings/lifecycle/metrics"
 ```
 
----
+______________________________________________________________________
 
 ## Task 3: Cold-start hook in MCP server
 
 **Files:**
+
 - Modify: `mahavishnu/mcp/server.py`
 
 - [ ] **Step 1: Locate the server init section**
@@ -419,12 +423,14 @@ git add mahavishnu/mcp/server.py
 git commit -m "feat(adapter-runtime): cold-start hook loads settings + emits start event"
 ```
 
----
+______________________________________________________________________
 
 ## Task 4: Metrics emitter background task
 
 **Files:**
+
 - Create: `mahavishnu/background/metrics_emitter.py`
+
 - Test: `tests/unit/test_metrics_emitter.py`
 
 - [ ] **Step 1: Write the failing test**
@@ -541,13 +547,16 @@ git add mahavishnu/background/metrics_emitter.py tests/unit/test_metrics_emitter
 git commit -m "feat(adapter-runtime): add background metrics emitter"
 ```
 
----
+______________________________________________________________________
 
 ## Task 5: MCP tools
 
 **Files:**
+
 - Create: `mahavishnu/mcp/tools/adapter_runtime_tools.py`
+
 - Modify: `mahavishnu/mcp/tools/__init__.py` (register in `full` profile)
+
 - Test: `tests/integration/test_adapter_runtime_tools.py`
 
 - [ ] **Step 1: Write the failing tests**
@@ -737,11 +746,12 @@ git add mahavishnu/mcp/tools/adapter_runtime_tools.py mahavishnu/mcp/tools/__ini
 git commit -m "feat(adapter-runtime): add MCP tools for query and write surfaces"
 ```
 
----
+______________________________________________________________________
 
 ## Task 6: End-to-end cold-start integration test
 
 **Files:**
+
 - Test: `tests/integration/test_adapter_runtime_cold_start.py`
 
 - [ ] **Step 1: Write the test**
@@ -816,7 +826,7 @@ git add tests/integration/test_adapter_runtime_cold_start.py
 git commit -m "test(adapter-runtime): add cold-start integration test"
 ```
 
----
+______________________________________________________________________
 
 ## Self-Review
 

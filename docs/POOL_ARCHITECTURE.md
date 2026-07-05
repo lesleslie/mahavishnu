@@ -175,11 +175,12 @@ project now relies on managed serverless (Cloud Run) and RunPod for
 cloud GPU workloads. K8s manifests remain in `mahavishnu/core/k8s_manifests.py`
 for deployment documentation only; the pool implementation is gone.
 ├───────────────────────┤
-│  Namespace: mahavishnu│
-│  • Jobs               │
-│  • Pods               │
+│ Namespace: mahavishnu│
+│ • Jobs │
+│ • Pods │
 └───────────────────────┘
-```
+
+````
 
 ## Pool Routing Strategies
 
@@ -201,7 +202,7 @@ result = await pool_mgr.route_task(
     pool_selector=PoolSelector.ROUND_ROBIN,
 )
 # Routes: pool0 → pool1 → pool2 → pool0 → ...
-```
+````
 
 ### LEAST_LOADED
 

@@ -33,12 +33,14 @@ ______________________________________________________________________
 ### 1.2 Component responsibilities
 
 **`mahavishnu/core/dhara_client.py` (MOD)**
+
 - Add `execute(sql: str, params: Sequence | None = None) -> list[dict[str, Any]]`
 - Add `query(sql: str, params: Sequence | None = None) -> list[dict[str, Any]]`
 - Both methods POST to the Dhara MCP `sql_proxy/execute` (or `sql_proxy/query`) tool endpoint using the existing `MCPClient` already used elsewhere in the file; one `_request(tool_name, payload)` private helper.
 - Keep existing adapter-discovery methods untouched. `execute` and `query` are additive.
 
 **`dhara/mcp/tools/sql_proxy.py` (NEW)**
+
 - Module-level `@mcp.tool()` decorated functions: `sql_proxy_execute`, `sql_proxy_query`, `sql_proxy_health`.
 - Wraps a storage-agnostic `SQLBackend` protocol. Default backend: `PostgresBackend(asyncpg pool)`. Test/dev backend: `DuckDBBackend(":memory:")`.
 - Backend selected via `DHARA__SQL__BACKEND` env var (`postgres` | `duckdb`). DuckDB mode is the in-memory test target — keeps pytest fast without a Postgres dependency.
@@ -47,6 +49,7 @@ ______________________________________________________________________
 - Hard cap: refuse any statement whose SQL doesn't start with `SELECT`/`WITH` for `query`; `execute` allows `INSERT`/`UPDATE`/`DELETE`/`CREATE` but not `DROP DATABASE`/`DROP SCHEMA`.
 
 **`dhara/mcp/server.py` (MOD)**
+
 - Add three HTTP CRUD route registrations alongside existing routes:
   - `POST /adapters`, `GET /adapters/{id}`, `PUT /adapters/{id}`, `DELETE /adapters/{id}`
   - `POST /tenants`, `GET /tenants/{id}`, `PUT /tenants/{id}`, `DELETE /tenants/{id}`
@@ -56,6 +59,7 @@ ______________________________________________________________________
 - Auth: reuse the existing `dhara/mcp/auth.py` middleware; new routes go through it automatically because they're registered on the same FastMCP app. **Do not** add a new unauthenticated bypass.
 
 **`dhara/migrations/runner.py` (NEW)**
+
 - `MigrationRunner(asyncpg_pool)` discovers files in `dhara/migrations/sql/` matching `^\d{4}_.*\.sql$`, sorts lexicographically, tracks applied set in a `schema_migrations(version TEXT PRIMARY KEY, applied_at TIMESTAMPTZ)` table.
 - `apply_pending()` returns list of `(version, applied_at)` rows. Idempotent.
 - `status()` returns `(current_version, pending_count)`.
@@ -63,22 +67,27 @@ ______________________________________________________________________
 - No DOWN migrations — only forward. Reversibility is via a new migration.
 
 **`dhara/migrations/sql/0001_initial.sql` (NEW)**
+
 - Creates the tables Dhara's existing modules already assume: `adapters`, `tenants`, `workflows`, `workflow_runs`, `events_outbox`, plus `schema_migrations` bookkeeping table.
 - Keep IDs as `TEXT` (ULIDs), not `BIGINT` — matches existing adapter metadata layer.
 
 **`dhara/events/subscribers/base.py` (NEW)**
+
 - `class Subscriber(Protocol): async def handle(self, event: Event) -> None`
 - `class SubscriberBase(ABC): async def handle(self, event: Event) -> None` — abstract; subclasses override.
 - `Event` is a `pydantic.BaseModel` with `event_type: str`, `payload: dict[str, Any]`, `tenant_id: str | None`, `occurred_at: datetime`.
 
 **`dhara/events/subscribers/audit_log.py` (NEW)**
+
 - `class AuditLogSubscriber(SubscriberBase)` writes each event to `events_audit` table (added in 0001 migration). Demonstrates the pattern; kept under 80 lines.
 
 **`dhara/events/subscribers/registry.py` (NEW)**
+
 - `class SubscriberRegistry`: `register(name, subscriber)`, `dispatch(event)` fans out to all subscribers concurrently via `asyncio.gather`, returns when all complete or raises `ExceptionGroup` on any failure (Python 3.11+).
 - Loaded at Dhara startup from `DHARA__EVENTS__SUBSCRIBERS` (comma-separated names of entry-points registered under `dhara.events.subscribers` group).
 
 **`dhara/storage/postgres.py` (VERIFY)**
+
 - Already exists from `2026-05-25-dhara-serverless-implementation-plan.md`. Reuse as-is for the SQL proxy `PostgresBackend`.
 - **Verification step in Section 2** confirms the public surface (`acquire()`, `execute()`, `fetch()`) is sufficient.
 
@@ -145,6 +154,7 @@ ______________________________________________________________________
 Use `git worktree add` per `superpowers:using-git-worktrees`. Each workstream is one branch in one repo. **Branch names follow `feat/dhara-substrate-<workstream>-<short-slug>`** so they merge cleanly into the parent branch in dependency order.
 
 ### Workstream A — Mahavishnu thin client
+
 - **Repo:** `/Users/les/Projects/mahavishnu`
 - **Branch:** `feat/dhara-substrate-A-thin-client`
 - **Base:** `main`
@@ -154,6 +164,7 @@ Use `git worktree add` per `superpowers:using-git-worktrees`. Each workstream is
 - **Parallelizable with B/C/D:** Yes (touches a different repo).
 
 ### Workstream B — Dhara SQL proxy + `dhara_client` bridge
+
 - **Repo:** `/Users/les/Projects/dhara`
 - **Branch:** `feat/dhara-substrate-B-sql-proxy`
 - **Base:** `main`
@@ -163,6 +174,7 @@ Use `git worktree add` per `superpowers:using-git-worktrees`. Each workstream is
 - **Parallelizable with A/C/D:** Yes (independent file paths inside dhara).
 
 ### Workstream C — Dhara HTTP CRUD routes
+
 - **Repo:** `/Users/les/Projects/dhara`
 - **Branch:** `feat/dhara-substrate-C-http-crud`
 - **Base:** `main`
@@ -172,6 +184,7 @@ Use `git worktree add` per `superpowers:using-git-worktrees`. Each workstream is
 - **Parallelizable with A/B/D:** Yes (different file region in `dhara/mcp/server.py` than B — coordinate merge order to avoid conflicts on the same server.py file: **C merges first, then B**, because C adds routes and B adds tool registrations to the same file).
 
 ### Workstream D — Dhara migration runner + events/subscribers
+
 - **Repo:** `/Users/les/Projects/dhara`
 - **Branch:** `feat/dhara-substrate-D-migrations-events`
 - **Base:** `main`
@@ -230,6 +243,7 @@ ______________________________________________________________________
 **Likelihood:** High — these APIs are genuinely different and the test surface for parameter translation is exactly the kind of thing that passes locally and breaks in CI with a different Python or asyncpg version.
 
 **Mitigation in plan:**
+
 - The SQL proxy defines a `SQLBackend` Protocol with `execute(query, params)` and `fetch(query, params)`. Translators are isolated to backend implementations; tests cover **both backends** with the same fixture data.
 - A cross-backend property test (`pytest.mark.property`) runs the same INSERT/SELECT against both backends and asserts identical row outputs.
 - Crackerjack `crackerjack run` includes the new tests; if the property test is flaky, pin to specific asyncpg/DuckDB versions in `pyproject.toml`.
@@ -241,6 +255,7 @@ ______________________________________________________________________
 **Likelihood:** Medium — registration order is exactly the kind of thing a code reviewer misses on a fast PR.
 
 **Mitigation in plan:**
+
 - One of the 12 integration tests for Workstream C is parametrized over every new route + a missing/expired/invalid token. All three cases must return 401.
 - Add a smoke test that boots the full FastMCP app and asserts every registered route (collectible from the app's router) is wrapped by the auth middleware.
 - The integration test fixture spins up the real FastMCP app — no mocked middleware.
@@ -252,6 +267,7 @@ ______________________________________________________________________
 **Likelihood:** Medium — migration tooling is famously where teams lose weekends.
 
 **Mitigation in plan:**
+
 - The runner wraps each migration in a single transaction (`BEGIN ... COMMIT`); on error, `ROLLBACK` and the `schema_migrations` row is never written. Tests cover the partial-failure case with a deliberately failing 0002 migration.
 - The runner refuses to apply a migration whose `version` already exists with a different checksum (defends against rename-after-apply). Test exists.
 - File naming is enforced by the discovery regex (`^\d{4}_.*\.sql$`); files outside that pattern are ignored with a warning. Test exists for `README.sql` being ignored.
@@ -268,12 +284,12 @@ ______________________________________________________________________
 ## Section 6 — Execution Order & Dispatch
 
 1. **Day 0:** Create the 4 worktree branches from `main`. Verify all 4 trees build cleanly.
-2. **Day 1–2:** Dispatch Workstreams A, C, D in parallel (no shared files). Workstream B starts after A's contract for `dhara_client.execute/query` is settled (Day 0.5) so B's mock-server fixture matches A's real request shape.
-3. **Day 2:** Merge C (HTTP CRUD) into `main` first to free up `dhara/mcp/server.py` for B's edits.
-4. **Day 3:** Merge B (SQL proxy) into `main`. A's integration test fixture swaps from mock → live Dhara.
-5. **Day 3:** Merge D (migrations + events) — independent file paths, no ordering constraint with A/B/C.
-6. **Day 4:** Merge A (thin client) into `main`. Now all 10 specs are unblocked.
-7. **Day 4–6:** Spec authors pick up the 10 unblocked specs. Each spec is its own worktree; dispatch as parallel agents per `superpowers:dispatching-parallel-agents`.
+1. **Day 1–2:** Dispatch Workstreams A, C, D in parallel (no shared files). Workstream B starts after A's contract for `dhara_client.execute/query` is settled (Day 0.5) so B's mock-server fixture matches A's real request shape.
+1. **Day 2:** Merge C (HTTP CRUD) into `main` first to free up `dhara/mcp/server.py` for B's edits.
+1. **Day 3:** Merge B (SQL proxy) into `main`. A's integration test fixture swaps from mock → live Dhara.
+1. **Day 3:** Merge D (migrations + events) — independent file paths, no ordering constraint with A/B/C.
+1. **Day 4:** Merge A (thin client) into `main`. Now all 10 specs are unblocked.
+1. **Day 4–6:** Spec authors pick up the 10 unblocked specs. Each spec is its own worktree; dispatch as parallel agents per `superpowers:dispatching-parallel-agents`.
 
 ### Recommended dispatch order (one string array)
 
@@ -303,6 +319,7 @@ The 10 blocked spec IDs (`SPEC-01` through `SPEC-10`) are placeholders. Before d
 ## Appendix C — Crackerjack gate expectations
 
 Each workstream's exit criteria include `crackerjack run` passing locally. This means:
+
 - Ruff passes (max-args 10, max-branches 15, max-returns 6, line-length 100).
 - Mypy strict passes (no `Any` in tool inputs, no `Optional[X]`).
 - Pyright strict passes.

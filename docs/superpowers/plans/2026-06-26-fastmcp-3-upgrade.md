@@ -3,9 +3,10 @@
 **Status:** Drafted 2026-06-26, post-Plan 1 Phase 0 subagent observation
 **Owner:** TBD (mcp-common first, then propagate outward)
 **Trigger:** Plan 1 Phase 0 subagent surfaced two breaking-change callouts while scaffolding `mahavishnu/mcp/crow/`:
+
 1. `lifespan=` parameter became a kwarg in FastMCP 3.x (no longer positional).
-2. `_tool_manager._tools` private API moved; tooling-introspection code that poked at it will break.
-3. `fastmcp~=2.5` pins referenced in Plan 1 are stale — actual installed version is 3.4.2.
+1. `_tool_manager._tools` private API moved; tooling-introspection code that poked at it will break.
+1. `fastmcp~=2.5` pins referenced in Plan 1 are stale — actual installed version is 3.4.2.
 
 The fix-the-Plan-1-task-10 approach is to bump the foundation package (mcp-common) first, then propagate the FastMCP 3.4+ floor to every consumer. akosha is the lone outlier — still pinned to `fastmcp>=2.14.0` in pyproject while every other repo already requires 3.x.
 
@@ -80,9 +81,9 @@ Bring the entire FastMCP-using repo set (Bodai core + `*-mcp` standalone servers
 mcp-common first, because every other repo depends on it. The order is:
 
 1. **mcp-common** — set the new baseline (3.4+), refactor exports, fix internal uses
-2. **akosha** — full migration off 2.x (the largest delta)
-3. **mahavishnu / session-buddy / dhara / crackerjack** — bump pins to 3.4+ (already on 3.x; mostly mechanical)
-4. **oneiric** — only inherits via mcp-common; confirm no direct imports
+1. **akosha** — full migration off 2.x (the largest delta)
+1. **mahavishnu / session-buddy / dhara / crackerjack** — bump pins to 3.4+ (already on 3.x; mostly mechanical)
+1. **oneiric** — only inherits via mcp-common; confirm no direct imports
 
 Doing mcp-common last would force every consumer to deal with two breaking-change waves. Doing it first means each consumer hits one wave.
 
@@ -103,6 +104,7 @@ Doing mcp-common last would force every consumer to deal with two breaking-chang
 ### Phase 0 — Inventory (1 day, single engineer)
 
 Grep every repo (Bodai core + `*-mcp` standalone) for FastMCP usage patterns. Catalog:
+
 - `from fastmcp import FastMCP` sites
 - `FastMCP(...)` constructor calls (capture full signature usage)
 - `@server.tool` / `@mcp.tool` decorators (capture param types)
@@ -116,6 +118,7 @@ Output: a per-repo inventory document listing every site that needs review. (Bod
 ### Phase 1 — mcp-common foundation (1 day)
 
 Goals:
+
 - Pin `fastmcp>=3.4.0,<4` in `mcp-common/pyproject.toml`
 - Re-export `FastMCP`, `Context`, `Middleware`, settings classes from a single module (`mcp_common.fastmcp`)
 - Fix any internal uses of `lifespan=` positional or private APIs
@@ -123,6 +126,7 @@ Goals:
 - Pin a major version range so consumers don't get surprise 4.0 breakages
 
 **Acceptance:**
+
 - `mcp-common/pyproject.toml` has `fastmcp>=3.4.0,<4`
 - All `from fastmcp import ...` inside mcp-common still work
 - mcp-common's own test suite passes under FastMCP 3.4.2
@@ -130,6 +134,7 @@ Goals:
 ### Phase 2 — Bodai consumer bumps (1 day, mechanical)
 
 Mechanical bumps for Bodai core repos already on 3.x:
+
 - mahavishnu: pin → `>=3.4.0,<4`, refresh lifespan usage if any, fix `_tool_manager` private poke at `server_core.py:1194`
 - session-buddy: pin → `>=3.4.0,<4`, fix `_tools = compat_tools` private poke at `session_tools.py:1168`
 - dhara: pin → `>=3.4.0,<4`, add explicit `transport=` to `__main__.py:16`
@@ -139,6 +144,7 @@ Mechanical bumps for Bodai core repos already on 3.x:
 For each: run the repo's test suite, fix any breakage from pin tightening. Likely 0-2 fixes per repo.
 
 **Acceptance:**
+
 - All 5 Bodai consumer repos have `fastmcp>=3.4.0,<4`
 - Each repo's test suite passes
 - `_tool_manager` and `_tools` private pokes removed or replaced with public API
@@ -146,6 +152,7 @@ For each: run the repo's test suite, fix any breakage from pin tightening. Likel
 ### Phase 3 — akosha migration (2-3 days, the biggest Bodai delta)
 
 Specifically:
+
 - Bump `fastmcp>=2.14.0` → `fastmcp>=3.4.0,<4` in akosha pyproject
 - Audit `akosha/security.py:435-449` (auth middleware) against 3.x `Middleware` API (decide: subclass `Middleware` or keep decorator-helper pattern)
 - Audit `akosha/mcp/server.py:22-158` (server creation + lifespan) against 3.x — already partly migrated
@@ -155,6 +162,7 @@ Specifically:
 - Add a regression test that asserts `fastmcp.__version__ >= "3.4"` at akosha server startup
 
 **Acceptance:**
+
 - `akosha/pyproject.toml` has `fastmcp>=3.4.0,<4`
 - akosha test suite passes under 3.4.2 (target: zero new failures vs. 2.x baseline)
 - Auth middleware works (manual integration test if no auto-test exists)
@@ -163,6 +171,7 @@ Specifically:
 ### Phase 4 — pre-1.0 holdouts (css-mcp, langsmith-mcp, mailgun-mcp)
 
 The three repos pinned to FastMCP 0.x or unpinned:
+
 - **css-mcp**: `fastmcp>=0.6.0` → migrate to 3.4.0 (likely significant rewrite — 0.x API is very different from 3.x)
 - **langsmith-mcp**: `fastmcp>=0.6.0` → migrate to 3.4.0
 - **mailgun-mcp**: unpinned → pin to `>=3.4.0,<4`
@@ -170,6 +179,7 @@ The three repos pinned to FastMCP 0.x or unpinned:
 **Risk: HIGH.** Pre-1.0 to 3.x is a multi-major-version jump. The migration is closer to "rewrite the FastMCP integration" than "bump a pin."
 
 **Recommendation:** Phase 4 should be a separate sub-plan per repo, not bundled into Plan 7. Open a follow-up plan for each:
+
 - `2026-06-26-css-mcp-fastmcp-rewrite.md`
 - `2026-06-26-langsmith-mcp-fastmcp-rewrite.md`
 - `2026-06-26-mailgun-mcp-fastmcp-pin.md`
@@ -177,20 +187,24 @@ The three repos pinned to FastMCP 0.x or unpinned:
 ### Phase 5 — 2.x-to-3.x standalone `*-mcp` migrations (parallel)
 
 10 standalone repos currently pinned to FastMCP 2.12.x:
+
 - graphics-mcp, neo4j-mcp, opera-cloud-mcp, penpot-api-mcp, porkbun-dns-mcp, porkbun-domain-mcp, raindropio-mcp, spline-mcp, synxis-crs-mcp, synxis-pms-mcp, unifi-mcp
 
 **All should consume `from mcp_common.fastmcp import FastMCP, Context, Middleware`** (per user directive 2026-06-26). 14 of 15 already declare mcp-common as a dep; `spline-mcp` is the lone outlier and needs `mcp-common>=0.16.4` added. Phase 1's centralized re-export surface in mcp-common is what enables the standardized import path — Phase 5 then becomes a mostly mechanical "switch the import path, fix breakage from 2.x → 3.x."
 
 Each is independent. Strategy:
+
 - **opera-cloud-mcp** has 45 import sites — likely needs its own sub-plan (similar to Phases 1-3 above but per-repo)
 - **Other 9 repos** have 1-15 import sites each — manageable in a single dispatch per repo, or batched
 
 **Recommendation:** Group by complexity:
+
 - **Easy batch** (1-5 import sites, 8 repos): graphics-mcp, neo4j-mcp, penpot-api-mcp, porkbun-dns-mcp, porkbun-domain-mcp, synxis-crs-mcp, synxis-pms-mcp, unifi-mcp — single subagent dispatch per repo, can parallelize
 - **Medium batch** (15 import sites, 2 repos): raindropio-mcp, spline-mcp — slightly more involved but still per-repo dispatch. **spline-mcp also needs mcp-common added as a new direct dep.**
 - **Hard batch** (45 import sites, 1 repo): opera-cloud-mcp — dedicated sub-plan
 
 **Per-repo deliverable for Phase 5:**
+
 - pyproject bump (`fastmcp>=3.4.0,<4` and bump `mcp-common` lower-bound to `>=0.16.4`)
 - For spline-mcp only: add `mcp-common>=0.16.4` as a new direct dep
 - Import-path switch: `from fastmcp import FastMCP` → `from mcp_common.fastmcp import FastMCP` (and same for `Context`, `Middleware`)
@@ -210,19 +224,23 @@ Each is independent. Strategy:
 ### Bodai core
 
 **mcp-common:**
+
 - `pyproject.toml` — bump pin
 - `mcp_common/fastmcp/__init__.py` (new) — re-export surface
 - `tests/unit/test_standard_server.py` — add FastMCP version assertion
 
 **mahavishnu:**
+
 - `pyproject.toml` — bump pin
 - `mcp/server_core.py:1194` — replace `_tool_manager` private poke with public API
 
 **session-buddy:**
+
 - `pyproject.toml` — bump pin
 - `mcp/tools/session/session_tools.py:1168` — replace `_tools = compat_tools` private poke
 
 **akosha:**
+
 - `pyproject.toml` — bump pin (biggest single change)
 - `akosha/mcp/server.py` — server creation + lifespan
 - `akosha/security.py:435-449` — auth middleware
@@ -255,14 +273,14 @@ Phase 1 (mcp-common foundation) can dispatch first since it's the dependency blo
 ## Acceptance criteria for closing this plan
 
 1. All 7 affected repos (mcp-common + 6 consumers) have `fastmcp>=3.4.0,<4` in pyproject
-2. mcp-common test suite passes under 3.4.2
-3. akosha test suite passes under 3.4.2 with zero regressions vs. 2.x baseline
-4. Each consumer's test suite passes after the pin bump
-5. No `fastmcp~=2` or `fastmcp>=2` anywhere in Bodai pyproject.toml files
-6. CI guard test in mcp-common catches a downgrade attempt
+1. mcp-common test suite passes under 3.4.2
+1. akosha test suite passes under 3.4.2 with zero regressions vs. 2.x baseline
+1. Each consumer's test suite passes after the pin bump
+1. No `fastmcp~=2` or `fastmcp>=2` anywhere in Bodai pyproject.toml files
+1. CI guard test in mcp-common catches a downgrade attempt
 
 ## Open questions
 
 1. **Pin upper bound**: should it be `<4` (semver-major-bound) or `<3.5` (next-minor-bound)? `<4` is the conservative answer for ecosystem stability. Document the decision.
-2. **akosha middleware**: does FastMCP 3 require a specific middleware class shape, or is `BaseMiddleware` still the parent? Verify against FastMCP 3.4 changelog before Phase 2 dispatch.
-3. **mcp-common re-export**: do consumers prefer `from mcp_common.fastmcp import FastMCP` (centralized) or do they want to keep `from fastmcp import FastMCP` (direct)? Centralized = single place to swap versions. Direct = less indirection. Decide before Phase 1 ships.
+1. **akosha middleware**: does FastMCP 3 require a specific middleware class shape, or is `BaseMiddleware` still the parent? Verify against FastMCP 3.4 changelog before Phase 2 dispatch.
+1. **mcp-common re-export**: do consumers prefer `from mcp_common.fastmcp import FastMCP` (centralized) or do they want to keep `from fastmcp import FastMCP` (direct)? Centralized = single place to swap versions. Direct = less indirection. Decide before Phase 1 ships.

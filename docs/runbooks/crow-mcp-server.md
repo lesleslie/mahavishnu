@@ -56,6 +56,7 @@ uv tool install --force "crow-mcp @ git+https://github.com/crow-cli/crow-cli.git
 ## Logs
 
 crow-mcp writes terminal session logs to:
+
 ```
 ~/.cache/crow-mcp/logs/terminal_YYYYMMDD_HHMMSS.log
 ```

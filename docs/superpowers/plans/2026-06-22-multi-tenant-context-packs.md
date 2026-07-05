@@ -8,7 +8,7 @@
 
 **Tech Stack:** Python 3.13, `httpx` async, Dhara (existing HTTP API), typer, pytest with `asyncio_mode = "auto"`.
 
----
+______________________________________________________________________
 
 ## Global Constraints
 
@@ -19,7 +19,7 @@ Inherited from Spec #1's plan. New constraints:
 - **Atomic update** = deactivate current + insert new with updated file; other 3 files inherited.
 - **No local cache** in Cloud Run instances; per-request fetch from Dhara.
 
----
+______________________________________________________________________
 
 ## File Structure
 
@@ -44,11 +44,12 @@ Inherited from Spec #1's plan. New constraints:
 | `mahavishnu/mcp/tools/__init__.py` | Register tenant_context_tools. |
 | `mahavishnu/cli/__init__.py` | Register tenant_app. |
 
----
+______________________________________________________________________
 
 ## Task 1: Dhara migrations
 
 **Files:**
+
 - Create: `mahavishnu/core/dhara_migrations/tenant_context.sql`
 
 - [ ] **Step 1: Write the DDL**
@@ -109,12 +110,14 @@ git add mahavishnu/core/dhara_migrations/tenant_context.sql
 git commit -m "feat(tenant-context): add Dhara migration for tenant_context tables"
 ```
 
----
+______________________________________________________________________
 
 ## Task 2: Async Python API
 
 **Files:**
+
 - Create: `mahavishnu/core/tenant_context.py`
+
 - Test: `tests/unit/test_tenant_context.py`
 
 - [ ] **Step 1: Write the failing tests**
@@ -291,12 +294,14 @@ git add mahavishnu/core/tenant_context.py tests/unit/test_tenant_context.py
 git commit -m "feat(tenant-context): add async API for load and update context files"
 ```
 
----
+______________________________________________________________________
 
 ## Task 3: Per-request middleware
 
 **Files:**
+
 - Create: `mahavishnu/mcp/middleware/tenant_context.py`
+
 - Test: `tests/integration/test_tenant_context_middleware.py`
 
 - [ ] **Step 1: Write the failing test**
@@ -412,11 +417,12 @@ git add mahavishnu/mcp/middleware/tenant_context.py tests/integration/test_tenan
 git commit -m "feat(tenant-context): add per-request middleware for tenant context bundle"
 ```
 
----
+______________________________________________________________________
 
 ## Task 4: Wire middleware into MCP server system prompt
 
 **Files:**
+
 - Modify: `mahavishnu/mcp/server.py`
 
 - [ ] **Step 1: Locate the system prompt assembly**
@@ -455,12 +461,14 @@ git add mahavishnu/mcp/server.py
 git commit -m "feat(tenant-context): wire per-request middleware into MCP system prompt"
 ```
 
----
+______________________________________________________________________
 
 ## Task 5: MCP tools
 
 **Files:**
+
 - Create: `mahavishnu/mcp/tools/tenant_context_tools.py`
+
 - Modify: `mahavishnu/mcp/tools/__init__.py`
 
 - [ ] **Step 1: Write the tools module**
@@ -536,12 +544,14 @@ git add mahavishnu/mcp/tools/tenant_context_tools.py mahavishnu/mcp/tools/__init
 git commit -m "feat(tenant-context): add MCP tools for read and update"
 ```
 
----
+______________________________________________________________________
 
 ## Task 6: CLI
 
 **Files:**
+
 - Create: `mahavishnu/cli/tenant_cli.py`
+
 - Modify: `mahavishnu/cli/__init__.py`
 
 - [ ] **Step 1: Implement the CLI**
@@ -619,7 +629,7 @@ git add mahavishnu/cli/tenant_cli.py mahavishnu/cli/__init__.py
 git commit -m "feat(tenant-context): add CLI for show and update"
 ```
 
----
+______________________________________________________________________
 
 ## Self-Review
 

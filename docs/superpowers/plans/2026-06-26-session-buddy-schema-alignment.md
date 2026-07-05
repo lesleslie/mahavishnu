@@ -63,8 +63,7 @@ choice becomes clear once the legacy/v2 column gap is quantified.
 
 ### Task 1: Add v2 columns to legacy CREATE TABLE (Bug D)
 
-**Symptom (red):** `BinderException: Table "reflections_v2" does not have
-a column named "timestamp"` at
+**Symptom (red):** `BinderException: Table "reflections_v2" does not have a column named "timestamp"` at
 `test_reflection_adapter_oneiric.py:580` (and several others).
 
 **Root cause:** The legacy CREATE TABLE block at
@@ -85,8 +84,7 @@ BinderException.
 
 ### Task 2: Fix `_reset_database` table-drop order (Bug E)
 
-**Symptom (red):** `CatalogException: Could not drop the table because
-this table is main key table of the table "memory_entities"` at
+**Symptom (red):** `CatalogException: Could not drop the table because this table is main key table of the table "memory_entities"` at
 `test_reflection_adapter.py:454` and `test_reflection_adapter_oneiric.py:639,648`.
 
 **Root cause:** `_reset_database` drops `conversations_v2` before
@@ -132,11 +130,10 @@ assert site + `MemoryGuardBlockedError` UnboundLocalError).
 
 1. `test_worktree_manager.py:433,488,897,962,998` — `tmp_git_repo` mock
    ignored; real `git worktree list` returns the main worktree.
-2. `test_health_checks.py:562,696,716` and
+1. `test_health_checks.py:562,696,716` and
    `test_health_checks_core.py:312` — dependency-health message format
    changed (added "1 features available, 3 unavailable" format).
-3. `test_memory_tools.py:380` — `'validation' not in 'testop failed: bad
-   input'` (message was lower-cased at production site but assert uses
+1. `test_memory_tools.py:380` — `'validation' not in 'testop failed: bad input'` (message was lower-cased at production site but assert uses
    `'validation'`). `:1340` — `MemoryGuardBlockedError` is imported
    inside an `except` block that's never triggered, so the name is
    unbound at the second `except`.
@@ -151,8 +148,7 @@ internal-error formats that are allowed to drift.
 
 ### Task 5: Final test sweep + coverage
 
-**Action:** Run `uv run pytest tests/unit/ -m unit --tb=short -q 2>&1 |
-grep -E '(passed|failed)'`. Expect 0 failed.
+**Action:** Run `uv run pytest tests/unit/ -m unit --tb=short -q 2>&1 | grep -E '(passed|failed)'`. Expect 0 failed.
 
 If coverage gate (`tests/unit/ -m unit --cov=session_buddy`) is part
 of CI, confirm coverage stays >= 80%. The schema fixes should not
@@ -203,7 +199,7 @@ focused subagent session.
 ## Acceptance criteria for closing this plan
 
 1. All 5 tasks completed with passing tests
-2. Session-buddy unit test sweep: 0 failed, coverage >= 80%
-3. PR(s) merged (or stacked commits ready for review)
-4. HANDOFF.md updated: this plan file is referenced in the
+1. Session-buddy unit test sweep: 0 failed, coverage >= 80%
+1. PR(s) merged (or stacked commits ready for review)
+1. HANDOFF.md updated: this plan file is referenced in the
    "2026-06-26 follow-up" section with a completion note

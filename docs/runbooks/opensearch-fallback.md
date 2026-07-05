@@ -33,19 +33,23 @@ In multi-node setups, scrape `opensearch_healthy` from every node — divergence
 Three concrete steps, in order:
 
 1. **Can the node reach OpenSearch at all?**
+
    ```bash
    curl -k https://localhost:9200
    ```
+
    Run this from each Mahavishnu node. A connection refused / timeout confirms OpenSearch is not running on that host. The `-k` flag accepts the self-signed cert that OpenSearch via Homebrew ships with — without it, the curl error masks the real connectivity question.
 
-2. **Is cert trust in the way?**
+1. **Is cert trust in the way?**
    Check the operator's env var configuration:
+
    ```bash
    env | grep MAHAVISHNU_OPENSEARCH
    ```
+
    Default config (`settings/mahavishnu.yaml:48-55`) ships with `verify_certs: true` and `ssl_assert_hostname: true`. The Homebrew install of OpenSearch uses a self-signed cert, so the TLS handshake fails before any HTTP request is made. Two valid remediations — see below.
 
-3. **Consistency check across nodes (multi-node only):**
+1. **Consistency check across nodes (multi-node only):**
    Compare `opensearch_healthy` across all nodes. If `node-a` reports `true` and `node-b` reports `false`, the integration is diverging per-process. That is the expected behavior of fallback, but it is also how silent data-loss starts in DLQ paths. Cross-reference the DLQ followup below.
 
 ## Remediation
@@ -64,6 +68,7 @@ brew services start opensearch
 Then point Mahavishnu at it. For the self-signed cert (which is what Homebrew ships), pick **one** of:
 
 **Option A — disable cert verification (dev only, fastest):**
+
 ```bash
 export MAHAVISHNU_OPENSEARCH__ENDPOINT=https://localhost:9200
 export MAHAVISHNU_OPENSEARCH__VERIFY_CERTS=false
@@ -71,6 +76,7 @@ export MAHAVISHNU_OPENSEARCH__SSL_ASSERT_HOSTNAME=false
 ```
 
 **Option B — point at the Homebrew-installed CA (preferred, keeps `verify_certs` on):**
+
 ```bash
 export MAHAVISHNU_OPENSEARCH__ENDPOINT=https://localhost:9200
 export MAHAVISHNU_OPENSEARCH__CA_CERTS=/opt/homebrew/etc/opensearch/root-ca.pem
@@ -78,10 +84,12 @@ export MAHAVISHNU_OPENSEARCH__CA_CERTS=/opt/homebrew/etc/opensearch/root-ca.pem
 
 **Option C — HTTP, no TLS (Homebrew default install, simplest dev path):**
 Homebrew's default install does NOT enable TLS on the REST API. The cluster is listening on plain HTTP at `http://localhost:9200`. If you didn't explicitly configure SSL on the OpenSearch side, this is your case:
+
 ```bash
 export MAHAVISHNU_OPENSEARCH__ENDPOINT=http://localhost:9200
 export MAHAVISHNU_OPENSEARCH__USE_SSL=false
 ```
+
 **Detection cue**: `curl http://localhost:9200` returns 200 but `curl -k https://localhost:9200` hangs or refuses — that's the Homebrew-no-TLS signature. Pick Option C.
 
 ### Prod / multi-node
@@ -116,7 +124,7 @@ Two acceptable outcomes:
 
 1. **`opensearch_healthy: true`** — OpenSearch is reachable, writes are going through. This is the prod posture.
 
-2. **`opensearch_healthy: false`, `opensearch_info.status: "unhealthy"`** — auto-fallback active. The integration is writing to its in-memory mock. **This is by design**, not a failure mode, when OpenSearch is not running.
+1. **`opensearch_healthy: false`, `opensearch_info.status: "unhealthy"`** — auto-fallback active. The integration is writing to its in-memory mock. **This is by design**, not a failure mode, when OpenSearch is not running.
 
 Outcome #2 is fine for dev. It is a sign of misconfiguration in prod — do not accept it as the steady-state on a production node. If you see `opensearch_healthy: false` in prod but `true` in staging, the divergence is the bug, not the value.
 

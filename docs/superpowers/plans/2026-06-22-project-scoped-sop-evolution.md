@@ -8,7 +8,7 @@
 
 **Tech Stack:** Python 3.13, Dhara (existing), `pathlib`, typer, pytest with `asyncio_mode = "auto"`.
 
----
+______________________________________________________________________
 
 ## Global Constraints
 
@@ -19,7 +19,7 @@ Inherited from Spec #1's plan. New constraints:
 - **Cron cadence**: weekly (configurable in v1.1).
 - **No autonomous SOP mutation** — operator reviews before changes apply.
 
----
+______________________________________________________________________
 
 ## File Structure
 
@@ -42,11 +42,12 @@ Inherited from Spec #1's plan. New constraints:
 |---|---|
 | `mahavishnu/cli/__init__.py` | Register `sop_app`. |
 
----
+______________________________________________________________________
 
 ## Task 1: Dhara migration for `case_retrospectives` table
 
 **Files:**
+
 - Create: `mahavishnu/core/dhara_migrations/case_retrospectives.sql`
 
 - [ ] **Step 1: Write the DDL**
@@ -88,12 +89,14 @@ git add mahavishnu/core/dhara_migrations/case_retrospectives.sql
 git commit -m "feat(sop): add case_retrospectives audit table migration"
 ```
 
----
+______________________________________________________________________
 
 ## Task 2: Implement retrospective module
 
 **Files:**
+
 - Create: `mahavishnu/core/retrospective.py`
+
 - Test: `tests/unit/test_retrospective.py`
 
 - [ ] **Step 1: Write the failing tests**
@@ -291,12 +294,14 @@ git add mahavishnu/core/retrospective.py tests/unit/test_retrospective.py
 git commit -m "feat(sop): add per-case retrospective recording fired failure modes"
 ```
 
----
+______________________________________________________________________
 
 ## Task 3: Implement SOP synthesizer
 
 **Files:**
+
 - Create: `mahavishnu/core/sop_synthesizer.py`
+
 - Test: `tests/unit/test_sop_synthesizer.py`
 
 - [ ] **Step 1: Write the failing tests**
@@ -498,13 +503,16 @@ git add mahavishnu/core/sop_synthesizer.py tests/unit/test_sop_synthesizer.py
 git commit -m "feat(sop): add SOP synthesizer with threshold-based suggestion generation"
 ```
 
----
+______________________________________________________________________
 
 ## Task 4: CLI commands
 
 **Files:**
+
 - Create: `mahavishnu/cli/sop_synthesizer_cli.py`
+
 - Modify: `mahavishnu/cli/__init__.py`
+
 - Test: `tests/integration/test_sop_evolution.py`
 
 - [ ] **Step 1: Write the failing test**
@@ -633,11 +641,12 @@ git add mahavishnu/cli/sop_synthesizer_cli.py mahavishnu/cli/__init__.py tests/i
 git commit -m "feat(sop): add CLI for SOP evolution (show-suggestions, review-suggestion, record-retrospective)"
 ```
 
----
+______________________________________________________________________
 
 ## Task 5: Default SOP template
 
 **Files:**
+
 - Create: `mahavishnu/templates/sop.md`
 
 - [ ] **Step 1: Create the template**
@@ -706,7 +715,7 @@ git add mahavishnu/templates/sop.md
 git commit -m "feat(sop): add default SOP template"
 ```
 
----
+______________________________________________________________________
 
 ## Self-Review
 

@@ -6,7 +6,7 @@
 
 **Depends on:** `completion-report-schema-v1` (the report contract this gate consumes).
 
----
+______________________________________________________________________
 
 ## Overview
 
@@ -16,7 +16,7 @@ The slate carries **at least 6 candidate hypotheses** and **at least 4 evaluatio
 
 This spec does **not** include the adversarial reviewer; that is a separate concern. The gate is structural enforcement at publish; review is a downstream consumption pattern.
 
----
+______________________________________________________________________
 
 ## Goals
 
@@ -32,7 +32,7 @@ This spec does **not** include the adversarial reviewer; that is a separate conc
 - **N3.** Multi-slate workflows (one slate per sub-investigation within a single workflow). v1.1 supports one slate per workflow.
 - **N4.** Slate versioning. The slate is v1.1; bumps require a new schema file.
 
----
+______________________________________________________________________
 
 ## Architecture & Data Flow
 
@@ -58,10 +58,10 @@ Worker loop, iteration_index > 0:
 **Key properties:**
 
 1. **Single check at iteration 0, single check at iteration >0.** The gate is O(1) at every iteration; cost is slate validation, not new infrastructure.
-2. **Immutability is structural, not procedural.** The gate enforces that no later iteration includes the slate field. Combined with Spec #1's persister (which writes each iteration to Dhara), this means the slate at iteration 0 is physically never updated.
-3. **Composition with Spec #1.** The gate runs *between* `validate_iteration_report` (Spec #1) and `publish_iteration_report` (Spec #1). Failure propagates the same way as Spec #1's validation failures.
+1. **Immutability is structural, not procedural.** The gate enforces that no later iteration includes the slate field. Combined with Spec #1's persister (which writes each iteration to Dhara), this means the slate at iteration 0 is physically never updated.
+1. **Composition with Spec #1.** The gate runs *between* `validate_iteration_report` (Spec #1) and `publish_iteration_report` (Spec #1). Failure propagates the same way as Spec #1's validation failures.
 
----
+______________________________________________________________________
 
 ## Schema Definition (v1.1)
 
@@ -138,7 +138,7 @@ The `schema_version` field inside IterationReport's payload is bumped from `"1.0
 - v1.0 consumer reading v1.1 report with `precommitment_slate` field — **accepts with warning** (relaxation of strict mode; see OQ1 resolution below).
 - v1.1 consumer reading v1.0 report — accepts (slate is optional in the v1.1 schema).
 
----
+______________________________________________________________________
 
 ## OQ1 Resolution: Cross-Version Reader Behavior
 
@@ -147,14 +147,14 @@ The `schema_version` field inside IterationReport's payload is bumped from `"1.0
 This is a breaking change to Spec #1's strict `additionalProperties: false` policy. Justification:
 
 1. Without this relaxation, a v1.0 worker that hasn't upgraded to v1.1 cannot read v1.1 reports. The whole point of additive evolution is that consumers don't need to coordinate.
-2. The relaxation is **accept-and-warn**, not **accept-silently**. Akosha records unknown fields as warnings; operators can audit drift.
-3. The strict policy still applies for *forward* evolution: a v1.1 worker emitting a v1.2 field would be rejected by v1.1's strict validation, surfacing the upgrade clearly.
+1. The relaxation is **accept-and-warn**, not **accept-silently**. Akosha records unknown fields as warnings; operators can audit drift.
+1. The strict policy still applies for *forward* evolution: a v1.1 worker emitting a v1.2 field would be rejected by v1.1's strict validation, surfacing the upgrade clearly.
 
 Implementation: in `mahavishnu/core/events/report_validation.py`, when the validator encounters an unknown field, log a warning and accept. The strict rejection is reserved for malformed *known* fields.
 
 Spec #1's spec file is **not amended**. This decision is recorded here as a v1.1 implementation detail that supersedes v1.0's "strict unknown-field rejection" policy for forward-compat purposes.
 
----
+______________________________________________________________________
 
 ## Gate Function
 
@@ -251,7 +251,7 @@ async def publish_iteration_report(report: dict, *, source: str, correlation_id:
 
 Failure path is identical to Spec #1: `MahavishnuPrecommitmentViolation` propagates, worker loop terminates with `exit_reason="blocked"`, Akosha anomaly recorded.
 
----
+______________________________________________________________________
 
 ## Adoption & Migration
 
@@ -263,7 +263,7 @@ Failure path is identical to Spec #1: `MahavishnuPrecommitmentViolation` propaga
 
 **Migration aid:** Extend Spec #1's `mahavishnu migrate --check-reports` CLI to also check for `enable_precommitment=True` in worker entrypoints.
 
----
+______________________________________________________________________
 
 ## Storage & Retrieval
 
@@ -271,7 +271,7 @@ No schema change to Spec #1's `iteration_reports` table. The `payload` column al
 
 A future query helper (out of scope for v1.1) may add `get_precommitment_slate(workflow_id) -> dict | None` that reads iteration 0's slate directly. Not needed for the gate or any in-scope consumer.
 
----
+______________________________________________________________________
 
 ## Error Handling
 
@@ -283,7 +283,7 @@ A future query helper (out of scope for v1.1) may add `get_precommitment_slate(w
 | Slate validator unavailable (file missing) | `SLATE_SCHEMA_PATH.read_text()` raises `FileNotFoundError` | Worker fails loudly on startup; gate never runs. Treat as deployment error. |
 | Duplicate slate across iterations (race condition) | Out of v1.1 scope; rely on Spec #1's persister primary key `(workflow_id, iteration_index)` to detect. | Duplicate publish raises existing persister error. |
 
----
+______________________________________________________________________
 
 ## Testing Strategy
 
@@ -301,7 +301,7 @@ Aligned with Bodai's L0–L4 framework.
 
 **Fixtures:** `tests/fixtures/slates.py` with reusable valid/invalid slate generators.
 
----
+______________________________________________________________________
 
 ## Implementation Module Paths
 
@@ -321,7 +321,7 @@ Aligned with Bodai's L0–L4 framework.
 | L4 tests | `tests/integration/test_precommitment_cross_version.py` |
 | Test fixtures | `tests/fixtures/slates.py` |
 
----
+______________________________________________________________________
 
 ## Trade-offs & Alternatives Considered
 
@@ -334,7 +334,7 @@ Aligned with Bodai's L0–L4 framework.
 | 6 hypotheses + 4 criteria (article defaults) | Article-faithful; meaningful minimum that prevents shallow enumeration | Lower minimums (e.g. 3+2) — easier to game; loses forcing function. Higher minimums (e.g. 10+6) — narrow problems struggle to enumerate. |
 | Slate scope: this spec only; adversarial review deferred | Focused spec; review is its own design conversation | Bundle review into this spec — 30+ page document; harder to review. |
 
----
+______________________________________________________________________
 
 ## Open Questions / Future Work
 
@@ -343,7 +343,7 @@ Aligned with Bodai's L0–L4 framework.
 - **OQ3.** When v1.1 reports are read by an Akosha consumer that doesn't know about precommitment, does the unknown field trigger an anomaly? Decision: yes, but downgraded to `info` level (not `warning`). Operator-tunable.
 - **OQ4.** Future v1.2+ may add `precommitment_extends` for sub-investigations within a workflow. Deferred; v1.1 supports one slate per workflow.
 
----
+______________________________________________________________________
 
 ## Success Criteria
 

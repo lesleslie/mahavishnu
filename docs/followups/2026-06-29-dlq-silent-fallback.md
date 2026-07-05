@@ -10,8 +10,8 @@
 When OpenSearch is unreachable, the DLQ stores failed tasks in an in-memory `collections.deque`. Three concrete consequences follow:
 
 1. **Per-process state.** The deque lives in the Python process that observed the failure. In a multi-node deployment, each Mahavishnu instance accumulates a *divergent* queue that no other node can see.
-2. **Lost on restart.** A SIGTERM, OOM, or rolling deploy drops every queued task on the floor. There is no persistence, no journal, no replay.
-3. **Silent.** Nothing is logged at WARN or higher when the fallback activates. Operators learn the DLQ is dropping only after a postmortem compares "expected N retries" against "got 0 retries in OpenSearch".
+1. **Lost on restart.** A SIGTERM, OOM, or rolling deploy drops every queued task on the floor. There is no persistence, no journal, no replay.
+1. **Silent.** Nothing is logged at WARN or higher when the fallback activates. Operators learn the DLQ is dropping only after a postmortem compares "expected N retries" against "got 0 retries in OpenSearch".
 
 The relevant fallback sites inside `dead_letter_queue.py`:
 
@@ -37,16 +37,19 @@ Three options, in increasing order of invasiveness. **Option A is recommended** 
 ### Option A — Redis-backed shared DLQ (recommended)
 
 1. Add `dlq.backend: "redis"` (default) and `dlq.redis_url: "${MAHAVISHNU_REDIS_URL}"` to `settings/mahavishnu.yaml`.
-2. Replace the in-memory `collections.deque` in `dead_letter_queue.py` with a thin Redis client wrapper:
+
+1. Replace the in-memory `collections.deque` in `dead_letter_queue.py` with a thin Redis client wrapper:
 
    ```python
    await redis_client.lpush(f"mahavishnu:dlq:{node_id}", json.dumps(payload))
    await redis_client.ltrim(f"mahavishnu:dlq:{node_id}", 0, max_len - 1)
    ```
 
-3. Add per-node uniqueness to the DLQ ID space (`f"mahavishnu:dlq:{socket.gethostname()}:{pid}"`) so debugging can identify which node dropped which task.
-4. On Redis failure, escalate to ERROR log and raise `DLQUnavailable` rather than silently swallowing — but keep the *write* path non-blocking so a Redis blip doesn't stall workflow execution.
-5. Replay tooling: add `mahavishnu dlq replay --node <name> --limit 100` to push entries back through the retry queue.
+1. Add per-node uniqueness to the DLQ ID space (`f"mahavishnu:dlq:{socket.gethostname()}:{pid}"`) so debugging can identify which node dropped which task.
+
+1. On Redis failure, escalate to ERROR log and raise `DLQUnavailable` rather than silently swallowing — but keep the *write* path non-blocking so a Redis blip doesn't stall workflow execution.
+
+1. Replay tooling: add `mahavishnu dlq replay --node <name> --limit 100` to push entries back through the retry queue.
 
 ### Option B — Postgres-backed DLQ
 

@@ -4,7 +4,7 @@
 **Phase:** 3 (Adjacent)
 **Source:** `Building a Production Agent Harness` — "Loop 2 — Cross-case behavioral reinforcement." Per-project SOP that evolves based on the team's specific failure-mode frequencies. Each project's SOP teaches the next case what the previous cases failed at.
 
----
+______________________________________________________________________
 
 ## Overview
 
@@ -12,7 +12,7 @@ This spec defines a per-deployment SOP file (`~/.mahavishnu/sop.md`) that is **a
 
 **Architectural property:** Each Mahavishnu deployment learns its own patterns. Team A's failures teach Team A's SOP; they don't contaminate Team B's. The SOP is the *cumulative memory* of failure patterns.
 
----
+______________________________________________________________________
 
 ## Goals
 
@@ -29,7 +29,7 @@ This spec defines a per-deployment SOP file (`~/.mahavishnu/sop.md`) that is **a
 - **N3.** Real-time SOP updates. v1.0 weekly cron cadence.
 - **N4.** Cross-deployment SOP sharing. Each deployment independent.
 
----
+______________________________________________________________________
 
 ## Architecture & Data Flow
 
@@ -72,7 +72,7 @@ Operator workflow:
   4. On accept: spec #5 three-zone pipeline promotes the change
 ```
 
----
+______________________________________________________________________
 
 ## Failure-Mode Taxonomy
 
@@ -107,7 +107,7 @@ failure_modes:
 
 Categories come from the article (data_gathering, quality_gate, analysis_completeness). Specific failure modes within each category are detected via Spec #1-3 gate outputs.
 
----
+______________________________________________________________________
 
 ## Per-Case Retrospective
 
@@ -164,7 +164,7 @@ def record_retrospective(workflow_id: str, *, operator: str = "system:cron") -> 
     )
 ```
 
----
+______________________________________________________________________
 
 ## Weekly Cron (knowledge-updater)
 
@@ -257,7 +257,7 @@ def synthesize_sop_suggestions() -> list[dict]:
     return suggestions
 ```
 
----
+______________________________________________________________________
 
 ## CLI Commands
 
@@ -317,7 +317,7 @@ from mahavishnu.cli.sop_synthesizer_cli import sop_app
 main_app.add_typer(sop_app, name="sop")
 ```
 
----
+______________________________________________________________________
 
 ## Adoption & Migration
 
@@ -327,7 +327,7 @@ main_app.add_typer(sop_app, name="sop")
 | **v1.1** | Auto-application of accepted suggestions via Spec #5 three-zone pipeline. Suggestion text generation may use LLM (template fallback). |
 | **v2.0** | Per-tenant SOP scoping; multi-deployment rollouts. |
 
----
+______________________________________________________________________
 
 ## Storage & Retrieval
 
@@ -350,7 +350,7 @@ Indexes: `(recorded_at DESC)`, `(workflow_id)`.
 
 **No new event schema.** Retrospective is internal; only the SOP file is operator-facing.
 
----
+______________________________________________________________________
 
 ## Error Handling
 
@@ -362,7 +362,7 @@ Indexes: `(recorded_at DESC)`, `(workflow_id)`.
 | SOP file missing | `SOP_PATH.exists()` returns False | Cron creates with default content from packaged template. |
 | Staging SOP file corrupt | YAML parse fails | Cron logs error; writes to a separate file (`sop.staging.errors.log`). |
 
----
+______________________________________________________________________
 
 ## Testing Strategy
 
@@ -376,7 +376,7 @@ Indexes: `(recorded_at DESC)`, `(workflow_id)`.
 
 **Coverage target:** `tests/unit/test_retrospective.py`, `tests/unit/test_sop_synthesizer.py` ≥ 95% line coverage.
 
----
+______________________________________________________________________
 
 ## Implementation Module Paths
 
@@ -391,7 +391,7 @@ Indexes: `(recorded_at DESC)`, `(workflow_id)`.
 | L0 tests | `tests/unit/test_sop_synthesizer.py` |
 | L3 tests | `tests/integration/test_sop_evolution.py` |
 
----
+______________________________________________________________________
 
 ## Trade-offs & Alternatives Considered
 
@@ -404,7 +404,7 @@ Indexes: `(recorded_at DESC)`, `(workflow_id)`.
 | SOP file at `~/.mahavishnu/sop.md` (filesystem) | Easy to read/edit; operator-friendly | Dhara only — requires tool to view |
 | Template-based suggestion text | Deterministic; fast | LLM-based — slower; non-deterministic |
 
----
+______________________________________________________________________
 
 ## Open Questions / Future Work
 
@@ -414,7 +414,7 @@ Indexes: `(recorded_at DESC)`, `(workflow_id)`.
 - **OQ4.** Rollback: when SOP change is rejected, log for analysis. v1.0 logs to Dhara; v1.1 may add explicit rollback audit.
 - **OQ5.** Integration with Spec #5 (three-zone skill pipeline): treat SOP mutations like skill promotions. v1.1 work.
 
----
+______________________________________________________________________
 
 ## Success Criteria
 

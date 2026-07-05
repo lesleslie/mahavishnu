@@ -4,7 +4,7 @@
 **Phase:** 2 (Workflow Evolution)
 **Source:** `Building a Production Agent Harness` — "The Anti-AI-Flavor Style Guide." Operator-curated style constraints prevent MR descriptions from "smelling AI," which would erode operator trust in the automated MR pipeline.
 
----
+______________________________________________________________________
 
 ## Overview
 
@@ -12,7 +12,7 @@ This spec defines per-repo style SOPs (`.bodai/style-sop.md`) with machine-check
 
 **Architectural property:** The SOP is **operator-curated, not code-curated**. Operators edit the file at any time; the next MR picks up the new rules. No daemon restart, no code change.
 
----
+______________________________________________________________________
 
 ## Goals
 
@@ -28,7 +28,7 @@ This spec defines per-repo style SOPs (`.bodai/style-sop.md`) with machine-check
 - **N2.** Style transfer or rewriting. The validator flags violations; it doesn't auto-rewrite.
 - **N3.** Enforcement in v1.0. The skill is advisory; CI gates come in v2.0.
 
----
+______________________________________________________________________
 
 ## Architecture & Data Flow
 
@@ -56,7 +56,7 @@ Generation flow:
      - v2.0: violation is CI gate (fails build)
 ```
 
----
+______________________________________________________________________
 
 ## Default SOP (ships in package)
 
@@ -122,7 +122,7 @@ No daemon restart, no code change. To ban something new, add to the YAML
 frontmatter's `bans` list with a regex pattern and a message.
 ```
 
----
+______________________________________________________________________
 
 ## Discovery & Fallback
 
@@ -184,7 +184,7 @@ def _parse_sop(path: Path) -> dict:
 
 **Discovery rule:** nearest ancestor wins. A subdir SOP overrides parent. v1.0 doesn't chain inheritance — subdir SOP fully replaces.
 
----
+______________________________________________________________________
 
 ## Validator
 
@@ -213,7 +213,7 @@ def check_content(content: str, start_path: Path | None = None) -> list[dict]:
     return violations
 ```
 
----
+______________________________________________________________________
 
 ## Crackerjack Skill
 
@@ -245,7 +245,7 @@ def run_anti_ai_flavor_check(content: str, file_path: Path) -> dict:
     }
 ```
 
----
+______________________________________________________________________
 
 ## Adoption & Migration
 
@@ -255,13 +255,13 @@ def run_anti_ai_flavor_check(content: str, file_path: Path) -> dict:
 | **v1.1** | Workers producing MR descriptions, commit messages, and PR descriptions MUST inject the SOP into their prompts. Crackerjack skill runs in CI as advisory check (warns, doesn't fail). |
 | **v2.0** | Crackerjack skill runs in CI as gate (fails build on violations). Operators can override per-PR via `<!-- bodai:sop-override -->` comment. |
 
----
+______________________________________________________________________
 
 ## Storage & Retrieval
 
 No new persistence. SOP files are markdown on disk. Crackerjack reads them on each invocation. The `body` is read by agents (prompt injection); the `frontmatter` is read by validators.
 
----
+______________________________________________________________________
 
 ## Error Handling
 
@@ -273,7 +273,7 @@ No new persistence. SOP files are markdown on disk. Crackerjack reads them on ea
 | Default SOP missing | File not found | Validator returns empty list (no bans). |
 | `.bodai/` directory missing | `discover_style_sop` walks to root | Falls back to default. |
 
----
+______________________________________________________________________
 
 ## Testing Strategy
 
@@ -287,7 +287,7 @@ No new persistence. SOP files are markdown on disk. Crackerjack reads them on ea
 
 **Coverage target:** `tests/unit/test_style_sop.py`, `tests/unit/test_style_sop_validator.py` ≥ 95% line coverage.
 
----
+______________________________________________________________________
 
 ## Implementation Module Paths
 
@@ -301,7 +301,7 @@ No new persistence. SOP files are markdown on disk. Crackerjack reads them on ea
 | L1 tests | `tests/unit/test_style_sop_validator.py` |
 | L3 tests | `tests/integration/test_anti_ai_flavor_skill.py` |
 
----
+______________________________________________________________________
 
 ## Trade-offs & Alternatives Considered
 
@@ -314,7 +314,7 @@ No new persistence. SOP files are markdown on disk. Crackerjack reads them on ea
 | Crackerjack validator, advisory in v1.1, gate in v2.0 | Gradual rollout; lets operators adjust before enforcement | Immediate gate — too aggressive for adoption |
 | Regex-based bans (not LLM-based) | Deterministic; cheap; fast | LLM-based — slow; expensive; non-deterministic |
 
----
+______________________________________________________________________
 
 ## Open Questions / Future Work
 
@@ -324,7 +324,7 @@ No new persistence. SOP files are markdown on disk. Crackerjack reads them on ea
 - **OQ4.** Required disclosures enforcement: advisory vs gate. v1.0 advisory; v1.1+ gate.
 - **OQ5.** LLM-based AI-flavor detection (semantic, not just regex). Future spec.
 
----
+______________________________________________________________________
 
 ## Success Criteria
 

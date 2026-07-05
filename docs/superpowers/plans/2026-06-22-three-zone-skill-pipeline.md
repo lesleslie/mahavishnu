@@ -8,7 +8,7 @@
 
 **Tech Stack:** Python 3.13, typer, Dhara (existing), `request_approval` MCP tool (existing), pytest with `asyncio_mode = "auto"`, `hashlib`.
 
----
+______________________________________________________________________
 
 ## Global Constraints
 
@@ -19,7 +19,7 @@ Inherited from Spec #1's plan. New constraints:
 - **Promotion routes through `request_approval`** with options `[promote, edit, reject, hold]`.
 - **Audit log is append-only**; no edits, no deletes.
 
----
+______________________________________________________________________
 
 ## File Structure
 
@@ -42,17 +42,20 @@ Inherited from Spec #1's plan. New constraints:
 | `commands/tools/` (filesystem) | Create `staging/`, `systems/`, `promoted/` subdirs; migrate existing skills to `systems/`. |
 | `commands/workflows/` (filesystem) | Same as above. |
 
----
+______________________________________________________________________
 
 ## Task 1: Migrate existing skills to three-zone layout
 
 **Files:**
+
 - Filesystem: create `commands/{tools,workflows}/{staging,systems,promoted}/`
+
 - Filesystem: move existing `*.md` into `systems/`
 
 - [ ] **Step 1: Create the directory structure**
 
 Run:
+
 ```bash
 mkdir -p commands/tools/{staging,systems,promoted}
 mkdir -p commands/workflows/{staging,systems,promoted}
@@ -77,11 +80,12 @@ git add commands/
 git commit -m "refactor(skills): migrate to three-zone filesystem layout (staging/systems/promoted)"
 ```
 
----
+______________________________________________________________________
 
 ## Task 2: Dhara migration for `skill_transitions` table
 
 **Files:**
+
 - Create: `mahavishnu/core/dhara_migrations/skill_transitions.sql`
 
 - [ ] **Step 1: Write the DDL**
@@ -133,12 +137,14 @@ git add mahavishnu/core/dhara_migrations/skill_transitions.sql
 git commit -m "feat(skills): add skill_transitions audit table migration"
 ```
 
----
+______________________________________________________________________
 
 ## Task 3: Implement CLI commands
 
 **Files:**
+
 - Create: `mahavishnu/cli/skill_cli.py`
+
 - Modify: `mahavishnu/cli/__init__.py`
 
 - [ ] **Step 1: Write the failing tests**
@@ -411,12 +417,14 @@ git add mahavishnu/cli/skill_cli.py mahavishnu/cli/__init__.py tests/unit/test_s
 git commit -m "feat(skills): add CLI for three-zone skill pipeline (promote, archive, list)"
 ```
 
----
+______________________________________________________________________
 
 ## Task 4: Implement `stage_skill()` helper
 
 **Files:**
+
 - Create: `mahavishnu/core/skill_staging.py`
+
 - Test: `tests/unit/test_skill_staging.py`
 
 - [ ] **Step 1: Write the failing tests**
@@ -555,12 +563,14 @@ git add mahavishnu/core/skill_staging.py tests/unit/test_skill_staging.py
 git commit -m "feat(skills): add stage_skill helper enforcing staging-only writes"
 ```
 
----
+______________________________________________________________________
 
 ## Task 5: Add `audit-coverage` CLI command
 
 **Files:**
+
 - Modify: `mahavishnu/cli/skill_cli.py`
+
 - Test: `tests/unit/test_skill_cli.py` (extend)
 
 - [ ] **Step 1: Write the failing test**
@@ -622,11 +632,12 @@ git add mahavishnu/cli/skill_cli.py tests/unit/test_skill_cli.py
 git commit -m "feat(skills): add audit-coverage CLI for zone integrity check"
 ```
 
----
+______________________________________________________________________
 
 ## Task 6: End-to-end integration test
 
 **Files:**
+
 - Test: `tests/integration/test_skill_pipeline.py`
 
 - [ ] **Step 1: Write the test**
@@ -696,7 +707,7 @@ git add tests/integration/test_skill_pipeline.py
 git commit -m "test(skills): add end-to-end pipeline lifecycle test"
 ```
 
----
+______________________________________________________________________
 
 ## Self-Review
 

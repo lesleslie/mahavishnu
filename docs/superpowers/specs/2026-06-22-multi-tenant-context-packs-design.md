@@ -6,7 +6,7 @@
 
 **Pivot from earlier draft of this spec:** Original was about "multi-client" in a single-org sense. Reframed as multi-tenant MCP deployment: each tenant (operator/customer) of a shared Bodai MCP server gets its own context bundle.
 
----
+______________________________________________________________________
 
 ## Overview
 
@@ -16,7 +16,7 @@ This spec defines **per-tenant context bundles** for multi-tenant MCP deployment
 
 **Shared skills** (`commands/`, `agents/`) are tenant-agnostic. Only the context bundle changes between tenants.
 
----
+______________________________________________________________________
 
 ## Goals
 
@@ -33,7 +33,7 @@ This spec defines **per-tenant context bundles** for multi-tenant MCP deployment
 - **N3.** Multi-region context replication. v1.0 single Dhara region; v2.0 may extend.
 - **N4.** Bulk tenant onboarding. v1.0 one-at-a-time via CLI; v2.0 may add import/export.
 
----
+______________________________________________________________________
 
 ## Architecture & Data Flow
 
@@ -74,7 +74,7 @@ Operator workflow:
     → New context version; old deactivated; new active.
 ```
 
----
+______________________________________________________________________
 
 ## Storage Schema (Dhara)
 
@@ -114,7 +114,7 @@ CREATE INDEX IF NOT EXISTS idx_tenant_context_files_version
     ON tenant_context_files (version_id);
 ```
 
----
+______________________________________________________________________
 
 ## Python API
 
@@ -183,7 +183,7 @@ async def update_context_file(
     return resp.json()
 ```
 
----
+______________________________________________________________________
 
 ## Per-Request Middleware
 
@@ -234,7 +234,7 @@ async def assemble_system_prompt(ctx: Context, base_prompt: str) -> str:
     return f"{base_prompt}\n\n{block}"
 ```
 
----
+______________________________________________________________________
 
 ## MCP Tools
 
@@ -255,7 +255,7 @@ async def update_tenant_context_file(
     """Update one file in the tenant context. Creates a new version."""
 ```
 
----
+______________________________________________________________________
 
 ## CLI Commands
 
@@ -311,7 +311,7 @@ from mahavishnu.cli.tenant_cli import tenant_app
 main_app.add_typer(tenant_app, name="tenant")
 ```
 
----
+______________________________________________________________________
 
 ## Adoption & Migration
 
@@ -321,7 +321,7 @@ main_app.add_typer(tenant_app, name="tenant")
 | **v1.1** | Per-tenant in-memory cache with TTL. Reduced Dhara load for high-traffic tenants. |
 | **v2.0** | Multi-region context replication; bulk tenant onboarding via import/export. |
 
----
+______________________________________________________________________
 
 ## Storage & Retrieval
 
@@ -331,7 +331,7 @@ main_app.add_typer(tenant_app, name="tenant")
 
 **MCP tools** for query/update. CLI for operator convenience.
 
----
+______________________________________________________________________
 
 ## Error Handling
 
@@ -343,7 +343,7 @@ main_app.add_typer(tenant_app, name="tenant")
 | Dhara HTTP timeout | `httpx.TimeoutException` | Returns None; logs error. Caller retries on next request. |
 | Concurrent context update | Dhara's partial unique index rejects second active version | Second call retries with exponential backoff; if persistent, surfaces 409 to operator. |
 
----
+______________________________________________________________________
 
 ## Testing Strategy
 
@@ -357,7 +357,7 @@ main_app.add_typer(tenant_app, name="tenant")
 
 **Coverage target:** `tests/unit/test_tenant_context.py` ≥ 95% line coverage.
 
----
+______________________________________________________________________
 
 ## Implementation Module Paths
 
@@ -372,7 +372,7 @@ main_app.add_typer(tenant_app, name="tenant")
 | L3 tests | `tests/integration/test_tenant_context_dhara.py` |
 | L4 tests | `tests/integration/test_tenant_context_middleware.py` |
 
----
+______________________________________________________________________
 
 ## Trade-offs & Alternatives Considered
 
@@ -386,7 +386,7 @@ main_app.add_typer(tenant_app, name="tenant")
 | Partial unique index on active version | DB-enforced single-active-version; no race conditions | App-level enforcement — possible inconsistency |
 | HTTP header tenant identification | Standard HTTP mechanism; easy to debug | Auth-token-based — couples to auth scheme |
 
----
+______________________________________________________________________
 
 ## Open Questions / Future Work
 
@@ -396,7 +396,7 @@ main_app.add_typer(tenant_app, name="tenant")
 - **OQ4.** Bundle inheritance: can a tenant inherit from a parent (org → sub-tenant)? v1.0 flat; v1.1 may add.
 - **OQ5.** Bundle schema migration: when `CONTEXT_FILES` gains a 5th file, existing tenants need migration. v1.0 doesn't address; v1.1 may add migration tooling.
 
----
+______________________________________________________________________
 
 ## Success Criteria
 

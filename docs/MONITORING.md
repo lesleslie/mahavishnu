@@ -149,10 +149,10 @@ When OpenObserve ships to production, register it as a Prometheus datasource in 
 When adding a new service or health surface:
 
 1. Add a row to the **Service inventory** table.
-2. Add cross-service dependency arrows if the service is on the critical path.
-3. Add a **Per-service health check recipes** entry with concrete commands.
-4. Add an **Alerting rules** entry with severity and condition.
-5. Commit with PR title `docs(monitoring): add <service>`.
+1. Add cross-service dependency arrows if the service is on the critical path.
+1. Add a **Per-service health check recipes** entry with concrete commands.
+1. Add an **Alerting rules** entry with severity and condition.
+1. Commit with PR title `docs(monitoring): add <service>`.
 
 ## Cross-references
 

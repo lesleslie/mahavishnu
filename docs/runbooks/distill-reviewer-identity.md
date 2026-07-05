@@ -25,15 +25,15 @@ The distiller resolves a reviewer through two environment variables:
 
 Resolution order:
 
-1. **No `MAHAVISHNU_USER_ID`** → `ReviewerNotTrusted`. A CLI flag
+1. **No `MAHAVISHNU_USER_ID`** → `ReviewerNotTrustedError`. A CLI flag
    (`--reviewer`) is recorded for forensic visibility but NEVER
    authorizes publication. Env wins.
-2. **`MAHAVISHNU_USER_ID` + allowlist present + user listed** → ALLOWED.
-3. **`MAHAVISHNU_USER_ID` + allowlist present + user NOT listed** →
-   `ReviewerNotTrusted` (MHV-483).
-4. **`MAHAVISHNU_USER_ID` + allowlist missing or empty** →
+1. **`MAHAVISHNU_USER_ID` + allowlist present + user listed** → ALLOWED.
+1. **`MAHAVISHNU_USER_ID` + allowlist present + user NOT listed** →
+   `ReviewerNotTrustedError` (MHV-483).
+1. **`MAHAVISHNU_USER_ID` + allowlist missing or empty** →
    **bootstrap mode**: ALLOWED with WARNING + audit log entry.
-5. Reserved for future RBAC: signed tokens from a configured trust
+1. Reserved for future RBAC: signed tokens from a configured trust
    root (placeholder).
 
 ## Allowlist file format
@@ -70,15 +70,15 @@ allowlist before promoting distillers to multi-tenant use.
 
 ## Diagnostic steps
 
-### "ReviewerNotTrusted" on a known-good reviewer
+### "ReviewerNotTrustedError" on a known-good reviewer
 
 1. Confirm the operator's shell has `MAHAVISHNU_USER_ID` set:
    ```bash
    echo "$MAHAVISHNU_USER_ID"
    ```
-2. Confirm `MAHAVISHNU_PUBLISHER_ALLOWLIST` resolves to a readable file
+1. Confirm `MAHAVISHNU_PUBLISHER_ALLOWLIST` resolves to a readable file
    or a valid inline CSV.
-3. Compare the resolved user (trimmed) against the allowlist contents.
+1. Compare the resolved user (trimmed) against the allowlist contents.
    Comparison is exact (case-sensitive, no normalization).
 
 ### Bootstrap warnings flooding the logs
@@ -100,8 +100,7 @@ export MAHAVISHNU_PUBLISHER_ALLOWLIST=/etc/mahavishnu/publisher_allowlist.txt
 ### Audit log ingestion
 
 The audit log entries emitted by `emit_audit_log` carry
-`extra={"audit": True, "reviewer_id": ..., "decision_source": ...,
-"decision_allowed": ...}`. The Dhara `audit_log` subscriber ingests
+`extra={"audit": True, "reviewer_id": ..., "decision_source": ..., "decision_allowed": ...}`. The Dhara `audit_log` subscriber ingests
 these into the event bus; downstream consumers (Akosha anomaly
 detection) can flag unexpected bootstrap-mode publication spikes.
 

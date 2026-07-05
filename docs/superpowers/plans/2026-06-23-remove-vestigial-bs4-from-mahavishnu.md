@@ -15,7 +15,7 @@
 - **One commit, scoped to Mahavishnu only.** Other bodai components (fastblocks, splashstand, akosha, dhara, crackerjack, session-buddy, oneiric, fastblocks-ui, fastblocks-htmy) already have zero bs4 references — nothing to do there.
 - **Verify before commit:** `uv lock --check`, `uv pip check`, `pytest tests/unit -x`, `mahavishnu --help` all succeed after the change.
 
----
+______________________________________________________________________
 
 ## Findings That Justify This Plan
 
@@ -34,11 +34,12 @@ Verified on 2026-06-23 against `/Users/les/Projects/mahavishnu`:
 
 bs4 is a **vestigial dependency** — declared but never imported.
 
----
+______________________________________________________________________
 
 ## Task 1: Verify bs4 Is Not Transitively Required
 
 **Files:**
+
 - Read: `pyproject.toml` (entire file)
 
 **Why first:** If any *other* listed dep pulls bs4 in transitively, removing it from this repo's `pyproject.toml` won't actually shrink the install (uv will still install it for the dep). Better to know now than at the commit gate.
@@ -78,15 +79,20 @@ grep -rn "bs4\|BeautifulSoup" /Users/les/Projects/mahavishnu/tests /Users/les/Pr
 
 Expected: zero matches. (Already verified 2026-06-23; re-confirm in case of new tests since then.)
 
----
+______________________________________________________________________
 
 ## Task 2: Remove bs4 from `pyproject.toml` and Fix Stale Docs (single commit)
 
 **Files:**
+
 - Modify: `pyproject.toml:68` (runtime deps)
+
 - Modify: `pyproject.toml:345` (dev/test group)
+
 - Modify: `CLAUDE.md:401`
+
 - Modify: `docs/DATA_INGESTION.md:11`
+
 - Modify: `docs/CONTENT_INGESTION_GUIDE.md:25`
 
 - [ ] **Step 1: Edit `pyproject.toml` runtime dependencies — remove bs4**
@@ -139,7 +145,7 @@ Context (lines 399–403) confirms this is the "Supported Content Types" list un
 
 - [ ] **Step 4: Fix `docs/DATA_INGESTION.md:11` — same wording fix**
 
-In `/Users/les/Projects/mahavishnu/docs/DATA_INGESTION.md`, change line 11 from `- Webpages (via BeautifulSoup HTTP fetching)` to `- Webpages (delegated to \`web_reader\` MCP server on port 8699)`.
+In `/Users/les/Projects/mahavishnu/docs/DATA_INGESTION.md`, change line 11 from `- Webpages (via BeautifulSoup HTTP fetching)` to `- Webpages (delegated to \`web_reader\` MCP server on port 8699)\`.
 
 - [ ] **Step 5: Fix `docs/CONTENT_INGESTION_GUIDE.md:25` — drop bs4 from install command**
 
@@ -197,7 +203,7 @@ tests/unit -x passes.
 Co-Authored-By: Claude <noreply@anthropic.com>"
 ```
 
----
+______________________________________________________________________
 
 ## Task 3: Ecosystem-wide Audit (informational, no commit)
 
@@ -235,6 +241,7 @@ Expected result (verified 2026-06-23):
 **Notes on two adjacent repos:**
 
 - **splashstand** — uses `nh3` (Rust-backed ammonia) for HTML *sanitization* in `splashstand/security/html_sanitizer.py`. nh3 is the right tool for that job and is not a substitute for a parser. Not touched by this plan.
+
 - **css-mcp** — uses `tinycss2~=1.5.1` for CSS parsing in its analyzer and `httpx + re` for HTML extraction in `css_mcp/mdn_fetcher.py` (parses MDN doc pages with regex). If css-mcp ever upgrades from regex to a proper HTML parser for MDN page extraction, **`selectolax` is the better fit than `bs4`** — same reasoning as the bodai-crow-server spec. Not action now; flagged for future consideration.
 
 - [ ] **Step 2: Note the bodai-crow-server precedent**
@@ -245,7 +252,7 @@ Expected result (verified 2026-06-23):
 
 After Task 2's commit is pushed and the PR is open, paste the output of Step 1 into a comment so reviewers see this cleanup was ecosystem-scoped, not Mahavishnu-scoped.
 
----
+______________________________________________________________________
 
 ## Out of Scope (Explicitly)
 
@@ -255,7 +262,7 @@ After Task 2's commit is pushed and the PR is open, paste the output of Step 1 i
 - **Touching `httpx[http2]`.** That backs the `_web_reader_client`, `_akosha_client`, etc. — actively used.
 - **Cross-repo PR.** This is a Mahavishnu-only change. The other nine bodai repos don't have bs4 to remove.
 
----
+______________________________________________________________________
 
 ## Self-Review
 
@@ -267,7 +274,7 @@ After Task 2's commit is pushed and the PR is open, paste the output of Step 1 i
 
 **Gaps found during review:** None. The plan is small on purpose: removal of dead code, plus doc corrections, plus an audit record. No new architecture, no new APIs.
 
----
+______________________________________________________________________
 
 ## Why `selectolax` Over `bs4` For Future Use (Reference, Not Action)
 

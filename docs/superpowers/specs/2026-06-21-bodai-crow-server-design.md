@@ -5,7 +5,7 @@
 **Port:** 8675 *(add to CLAUDE.md port table)*
 **Transport:** HTTP (SSE/StreamableHTTP via mcp-common `StandardServer`)
 
----
+______________________________________________________________________
 
 ## 1. Context and Motivation
 
@@ -35,7 +35,7 @@ handles `mock`, `auto`, `mcpretentious`, and `iterm2` but has no `crow` case, ca
 `ConfigurationError` even though `settings/mahavishnu.yaml` specifies
 `adapter_preference: "crow"`. This design fixes that gap as part of server wiring.
 
----
+______________________________________________________________________
 
 ## 2. Architecture: A-Hybrid
 
@@ -67,7 +67,7 @@ require `asyncio`-compatible PTY management — a significant and risky effort f
 All file and web tools have concrete improvements over crow-mcp's implementations (see §5).
 The `glob`, `grep`, and `web_fetch_batch` tools don't exist in crow-mcp at all.
 
----
+______________________________________________________________________
 
 ## 3. Server Foundation
 
@@ -220,7 +220,7 @@ state.
 named `terminal` with a single `command` parameter and reads `result.content[0].text`. The proxy
 tool must preserve this exact contract.
 
----
+______________________________________________________________________
 
 ## 4. TerminalManager Gap Fix
 
@@ -248,7 +248,7 @@ client.
 `terminal_switch_adapter` in `mahavishnu/mcp/tools/terminal_tools.py:148–193` needs the same
 `"crow"` case added.
 
----
+______________________________________________________________________
 
 ## 5. Native Tool Implementations
 
@@ -292,6 +292,7 @@ Returns: {written: bool, path: str, lines: int, bytes: int}
 ```
 
 **Atomic write pattern:**
+
 ```python
 import shutil, tempfile, os
 
@@ -344,6 +345,7 @@ Returns: {success: bool, path: str, level_used: str, changes: int}
 Mozilla Readability.js via Node.js subprocess) for HTML extraction; `markdownify` for HTML→MD.
 
 **Bodai behavior:**
+
 - Shared `httpx2.AsyncClient` singleton with `http2=True` and zstd support
 - `trafilatura.extract()` via `asyncio.to_thread()` (pure Python, F1=0.937, no Node.js)
 - `selectolax` CSS selector fallback when trafilatura fails (30× faster than bs4)
@@ -363,6 +365,7 @@ Raises:  PermissionError (SSRF-blocked URL), ValueError (non-http scheme)
 `os.getenv("SEARXNG_URL", "http://localhost:2946")`; runs multiple queries sequentially.
 
 **Bodai behavior:**
+
 - Shared `httpx2.AsyncClient` singleton
 - `asyncio.gather()` for parallel multi-query search
 - SearXNG URL from `CrowSettings.searxng_url` (Oneiric config, not env var)
@@ -430,8 +433,7 @@ Returns: {engine: "ripgrep"|"python", pattern: str, matches: list[{file, line_nu
 
 **crow-mcp:** does not exist.
 
-**Bodai behavior:** `asyncio.Semaphore(max_concurrent)` + `asyncio.gather(*tasks,
-return_exceptions=True)`. Each URL validated by `_validate_url()` (SSRF filter) before fetch;
+**Bodai behavior:** `asyncio.Semaphore(max_concurrent)` + `asyncio.gather(*tasks, return_exceptions=True)`. Each URL validated by `_validate_url()` (SSRF filter) before fetch;
 trafilatura extraction in `asyncio.to_thread()`; selectolax fallback; partial failure isolated
 per URL.
 
@@ -441,7 +443,7 @@ Returns: list[{url: str, content: str | None, truncated: bool, error: str | None
                duration_ms: int}]
 ```
 
----
+______________________________________________________________________
 
 ## 6. Shared Infrastructure
 
@@ -503,7 +505,7 @@ _PRIVATE_NETS = [
     ipaddress.ip_network("fc00::/7"),
     # IPv6 link-local
     ipaddress.ip_network("fe80::/10"),
-    # IPv4-mapped IPv6 (::ffff:0:0/96) — covert IPv4-in-IPv6 bypass
+    # IPv4-mapped IPv6 (::ffff:0:0/96) — cover the IPv4-in-IPv6 bypass
     ipaddress.ip_network("::ffff:0:0/96"),
 ]
 
@@ -601,13 +603,14 @@ def register_all(server: StandardServer, settings: CrowSettings) -> None:
 Return types should use `TypedDict` subclasses (not bare `dict`) so FastMCP generates a
 structured JSON schema for each tool. This lets MCP clients discover the response shape.
 
----
+______________________________________________________________________
 
 ## 7. SearXNG Deployment
 
 `web_search` depends on a running SearXNG instance.
 
 **Docker Compose** (`docker-compose.crow.yml`):
+
 ```yaml
 services:
   searxng:
@@ -626,6 +629,7 @@ services:
 ```
 
 **Minimum `settings/searxng/settings.yml`** (required — SearXNG will not start without it):
+
 ```yaml
 use_default_settings: true
 
@@ -651,6 +655,7 @@ ui:
 or via env var — do not commit a real key.
 
 **launchd plist** (`~/Library/LaunchAgents/com.bodai.searxng.plist`):
+
 ```xml
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN"
@@ -698,6 +703,7 @@ or via env var — do not commit a real key.
 the plist only needs to run `docker compose up` once at login.
 
 **SearXNG health-check with retry** (in `search_tools.py`):
+
 ```python
 _searxng_ready: bool = False
 
@@ -721,7 +727,7 @@ async def _wait_for_searxng(client: httpx2.AsyncClient, url: str) -> bool:
 The correct SearXNG health endpoint is `GET /` — not `/healthz` (that endpoint does not exist
 in the `searxng/searxng` image).
 
----
+______________________________________________________________________
 
 ## 8. .mcp.json Changes
 
@@ -749,7 +755,7 @@ collision. However, tool descriptions should make the distinction explicit:
 Consider gating `bodai-crow` behind a tool profile (see §3 of CLAUDE.md tool profiles) so it
 doesn't appear in Claude Code's own session alongside `crow`.
 
----
+______________________________________________________________________
 
 ## 9. httpx2 Migration Plan
 
@@ -770,6 +776,7 @@ foundation first means downstream repos pick up the change on their next Oneiric
 crackerjack.
 
 **Oneiric-specific changes:**
+
 - `oneiric/adapters/http/httpx.py`: delete `_AsyncClientShim` (was wrapping sync `httpx.Client`
   in `asyncio.to_thread`); `HTTPClientAdapter.init()` creates `httpx2.AsyncClient` directly with
   `http2=True`
@@ -789,6 +796,7 @@ migrating:
 **Tier 1 — Long-lived service clients** *(migrate to `HTTPXClientMixin` or `HTTPClientAdapter`)*
 
 Classes that own a persistent `httpx.AsyncClient` across many requests. These should use:
+
 - `HTTPXClientMixin` for lifecycle management (`_init_client`, `_cleanup_client`) when OTel
   tracing is not needed
 - `HTTPClientAdapter` when the client makes Bodai-internal service calls (Akosha, Dhara,
@@ -838,10 +846,10 @@ The OTel adapter migration (§9.1 Tier 1) is a **separate refactor** from the de
 independently:
 
 1. **Dep swap first** (Phase 0–5 above): mechanical, low-risk, no behavior change
-2. **OTel adapter migration second**: per-class refactor, adds tracing — higher cognitive load,
+1. **OTel adapter migration second**: per-class refactor, adds tracing — higher cognitive load,
    done after dep swap is stable across all repos
 
----
+______________________________________________________________________
 
 ## 10. New Dependencies
 
@@ -863,6 +871,7 @@ Add to `mahavishnu/pyproject.toml`:
 ```
 
 Add to dev/test dependencies:
+
 ```toml
 "respx~=0.21"       # httpx/httpx2 mock transport for tests
 ```
@@ -870,7 +879,7 @@ Add to dev/test dependencies:
 `aiofiles>=25.1.0` is already declared. `ripgrep` is a system binary, not a Python dep — document
 in runbook and Dockerfile; detect via `shutil.which("rg")` at runtime.
 
----
+______________________________________________________________________
 
 ## 11. File Layout
 
@@ -917,7 +926,7 @@ docs/
   settings/searxng/settings.yml
 ```
 
----
+______________________________________________________________________
 
 ## 12. Testing Strategy (TDD)
 
@@ -1234,42 +1243,42 @@ async def test_web_search_with_real_searxng(crow_server):
     ...
 ```
 
----
+______________________________________________________________________
 
 ## 13. Open Questions
 
 1. **Runbook split** *(resolved)*: Keep `crow-mcp-server.md` for Claude Code stdio usage. Add
    `bodai-crow-server.md` for the HTTP server. Both are needed.
 
-2. **crow-mcp `edit` import stability** *(resolved)*: Vendor the 466-line cascade into
+1. **crow-mcp `edit` import stability** *(resolved)*: Vendor the 466-line cascade into
    `vendor/editor.py` (see §5.4). rapidfuzz replaces the pure Python `levenshtein()` in levels
    3–9. crow-mcp is no longer imported at runtime — no SHA pinning required.
 
-3. **SearXNG as hard dependency** *(resolved)*: Return structured error when SearXNG is down.
+1. **SearXNG as hard dependency** *(resolved)*: Return structured error when SearXNG is down.
    See §7 retry policy.
 
-4. **httpx2 stability** *(watch)*: If httpx2 proves unstable before 1.0, fall back to
+1. **httpx2 stability** *(watch)*: If httpx2 proves unstable before 1.0, fall back to
    `httpx[http2]` with the same singleton pattern. No code change needed beyond the import.
 
-5. **Lifespan API**: Confirm `StandardServer.set_lifespan()` (or equivalent) exists in
+1. **Lifespan API**: Confirm `StandardServer.set_lifespan()` (or equivalent) exists in
    mcp-common. If not, lifespan can be implemented via FastMCP's `lifespan=` parameter passed
    during server construction.
 
-6. **Tool profile gating**: Decide whether `bodai-crow` appears in Claude Code's own session
+1. **Tool profile gating**: Decide whether `bodai-crow` appears in Claude Code's own session
    (where `crow` already provides the same tools). Recommendation: add `bodai-crow` to the
    `standard` profile only, not `full`/`minimal`, so it loads for pool workers but not the
    Claude Code developer session.
 
-7. **`write` symlink semantics**: `os.replace` on a symlink path replaces the link itself, not
+1. **`write` symlink semantics**: `os.replace` on a symlink path replaces the link itself, not
    the target. Decide intended behavior: follow the symlink (open target directly) or replace
    the link (current behavior). Document the decision in code.
 
-8. **niquests** *(deferred)*: Evaluated but not adopted. niquests offers HTTP/3 (QUIC) but
+1. **niquests** *(deferred)*: Evaluated but not adopted. niquests offers HTTP/3 (QUIC) but
    requires a full API rewrite across all 6 repos (requests-style, not httpx-style). httpx2
    covers HTTP/2 + zstd, which is the gap. Revisit niquests when HTTP/3 becomes relevant for
    Bodai network paths (internal traffic today; latency advantage is marginal).
 
-9. **crawl4ai** *(deferred)*: Evaluated 2026-06-22 for `web_fetch` JS-rendering support.
+1. **crawl4ai** *(deferred)*: Evaluated 2026-06-22 for `web_fetch` JS-rendering support.
    Not adopted. crawl4ai requires Playwright + Chromium (~150MB binary, post-install
    `crawl4ai-setup` step), is pre-1.0 (0.9.x with frequent breaking changes), and has no
    lightweight static-HTML mode — every call pays browser-launch cost. Static article

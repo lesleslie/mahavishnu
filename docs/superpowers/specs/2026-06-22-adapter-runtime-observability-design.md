@@ -6,7 +6,7 @@
 
 **Source:** Synthesis of the original article analysis (git-as-state-store) inverted for cloud-native constraints. The spec maintains the article's *immutable history* and *join-by-id* principles, applies them to adapter settings + lifecycle + metrics, and stores them in Dhara rather than git.
 
----
+______________________________________________________________________
 
 ## Overview
 
@@ -21,7 +21,7 @@ This spec defines the **operational telemetry substrate** for adapters deployed 
 
 **Akosha consumes** the metrics stream for anomaly detection. Session-Buddy is not involved (these aren't human-memory events).
 
----
+______________________________________________________________________
 
 ## Goals
 
@@ -38,7 +38,7 @@ This spec defines the **operational telemetry substrate** for adapters deployed 
 - **N3.** Per-tenant settings scoping. v1.0 single deployment; v2.0 may extend.
 - **N4.** Per-request metric sampling. v1.0 per-instance periodic (60s); v1.1 may add per-request samples.
 
----
+______________________________________________________________________
 
 ## Architecture & Data Flow
 
@@ -77,7 +77,7 @@ Akosha consumer (continuous):
   Subscribes to metrics table; flags anomalies (latency drift, error-rate spikes).
 ```
 
----
+______________________________________________________________________
 
 ## Storage Schema (Dhara)
 
@@ -106,8 +106,9 @@ CREATE INDEX idx_settings_versions_adapter_time
 ```
 
 **Activation semantics:** "Activate version V" is a single transaction:
+
 1. `UPDATE adapter_settings_versions SET deactivated_at = now() WHERE adapter_id = ? AND deactivated_at IS NULL`
-2. `INSERT INTO adapter_settings_versions (version_id, adapter_id, version_number, config, activated_at, deactivated_at, activated_by, notes) VALUES (...)` with `deactivated_at = NULL`
+1. `INSERT INTO adapter_settings_versions (version_id, adapter_id, version_number, config, activated_at, deactivated_at, activated_by, notes) VALUES (...)` with `deactivated_at = NULL`
 
 Dhara's ACID + partial unique index guarantees no two active versions exist concurrently.
 
@@ -149,7 +150,7 @@ CREATE INDEX idx_metrics_settings_version
     ON adapter_performance_metrics (settings_version_id, metric_name);
 ```
 
----
+______________________________________________________________________
 
 ## Python API (`mahavishnu/core/adapter_runtime.py`)
 
@@ -234,7 +235,7 @@ async def record_performance_metric(
     )
 ```
 
----
+______________________________________________________________________
 
 ## Cold-Start Sequence
 
@@ -272,7 +273,7 @@ async def start_metrics_emitter(adapter_id: str, settings_version_id: str) -> No
             await record_performance_metric(adapter_id, name, value, settings_version_id)
 ```
 
----
+______________________________________________________________________
 
 ## MCP Tools
 
@@ -312,7 +313,7 @@ async def query_adapter_history(
     """Forensic query: settings versions + lifecycle events + metrics."""
 ```
 
----
+______________________________________________________________________
 
 ## Adoption & Migration
 
@@ -324,7 +325,7 @@ async def query_adapter_history(
 
 **Migration from original spec:** The original `cross-machine-session-continuity` design is superseded by this spec. The git-as-state-store mechanism is **not** retained — serverless constraints rule it out. If cross-machine Claude transcript sync becomes a separate need, it can be a future spec using a different mechanism (Dhara-backed, not git).
 
----
+______________________________________________________________________
 
 ## Storage & Retrieval
 
@@ -334,7 +335,7 @@ async def query_adapter_history(
 
 **No local state.** Cloud Run instances are stateless; all state lives in Dhara.
 
----
+______________________________________________________________________
 
 ## Error Handling
 
@@ -346,7 +347,7 @@ async def query_adapter_history(
 | Metrics emit fails (network blip) | `httpx` exception | Logged; metrics emit skipped for this tick; next tick retries. |
 | Cold start finds no active settings | `get_active_settings_version` returns None | Adapter skipped at startup; operator must activate settings manually. |
 
----
+______________________________________________________________________
 
 ## Testing Strategy
 
@@ -360,7 +361,7 @@ async def query_adapter_history(
 
 **Coverage target:** `tests/unit/test_adapter_runtime.py` ≥ 95% line coverage.
 
----
+______________________________________________________________________
 
 ## Implementation Module Paths
 
@@ -376,7 +377,7 @@ async def query_adapter_history(
 | L3 tests | `tests/integration/test_adapter_runtime_dhara.py` |
 | L4 tests | `tests/integration/test_adapter_runtime_cold_start.py` |
 
----
+______________________________________________________________________
 
 ## Trade-offs & Alternatives Considered
 
@@ -390,7 +391,7 @@ async def query_adapter_history(
 | Settings_version_id as the join key | Single FK ties lifecycle, metrics, and forensics together | Composite keys — more complex queries; harder to reason about |
 | HTTP API to Dhara from Cloud Run instance | Stateless instance; no local DB connection needed | Persistent local DB connection — incompatible with Cloud Run lifecycle |
 
----
+______________________________________________________________________
 
 ## Open Questions / Future Work
 
@@ -400,7 +401,7 @@ async def query_adapter_history(
 - **OQ4.** Multi-tenancy: per-tenant adapter settings. v1.0 single deployment; v2.0 may extend.
 - **OQ5.** Original `cross-machine-session-continuity` was about Claude transcript sync. If that need resurfaces (e.g. operators want to resume Claude sessions across machines), it's a future spec using Dhara-backed state, not git.
 
----
+______________________________________________________________________
 
 ## Success Criteria
 

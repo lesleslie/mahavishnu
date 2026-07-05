@@ -8,7 +8,7 @@
 
 **Tech Stack:** Python 3.13, pytest with `asyncio_mode = "auto"`, Oneiric logger.
 
----
+______________________________________________________________________
 
 ## Global Constraints
 
@@ -19,7 +19,7 @@ Inherited from Spec #1's plan. New constraints from this spec:
 - **Order of gates**: cap → precommitment → schema validation → publish.
 - **No raises** from the gate; over-confidence is calibration, not rule violation.
 
----
+______________________________________________________________________
 
 ## File Structure
 
@@ -39,16 +39,19 @@ Inherited from Spec #1's plan. New constraints from this spec:
 | `mahavishnu/core/events/report_publishers.py` | Call `apply_confidence_ceiling` before precommitment gate. Set `metadata.confidence_was_capped`. |
 | `mahavishnu/cli/report_migration_cli.py` | Extend `check-reports` to flag workers without `enable_confidence_ceiling=True`. |
 
----
+______________________________________________________________________
 
 ## Task 1: Implement `confidence_ceiling.py`
 
 **Files:**
+
 - Create: `mahavishnu/core/events/confidence_ceiling.py`
 - Test: `tests/unit/test_confidence_ceiling.py`
 
 **Interfaces:**
+
 - Produces:
+
   - `compute_confidence_cap(report: dict) -> int` (pure)
   - `apply_confidence_ceiling(report: dict) -> dict` (pure modulo log)
 
@@ -236,12 +239,14 @@ git add mahavishnu/core/events/confidence_ceiling.py tests/unit/test_confidence_
 git commit -m "feat(reports): add apply_confidence_ceiling gate with arithmetic cap"
 ```
 
----
+______________________________________________________________________
 
 ## Task 2: Integrate gate into publisher
 
 **Files:**
+
 - Modify: `mahavishnu/core/events/report_publishers.py`
+
 - Test: `tests/unit/test_report_publishers.py` (extend)
 
 - [ ] **Step 1: Write the failing test**
@@ -344,12 +349,14 @@ git add mahavishnu/core/events/report_publishers.py tests/unit/test_report_publi
 git commit -m "feat(reports): integrate apply_confidence_ceiling into publisher"
 ```
 
----
+______________________________________________________________________
 
 ## Task 3: Extend migration CLI
 
 **Files:**
+
 - Modify: `mahavishnu/cli/report_migration_cli.py`
+
 - Test: `tests/integration/test_report_cli.py` (extend)
 
 - [ ] **Step 1: Write the failing test**
@@ -443,11 +450,12 @@ git add mahavishnu/cli/report_migration_cli.py tests/integration/test_report_cli
 git commit -m "feat(reports): extend migrate --check-reports for enable_confidence_ceiling"
 ```
 
----
+______________________________________________________________________
 
 ## Task 4: End-to-end persister integration test
 
 **Files:**
+
 - Test: `tests/integration/test_confidence_persister.py`
 
 - [ ] **Step 1: Write the test**
@@ -524,7 +532,7 @@ git add tests/integration/test_confidence_persister.py
 git commit -m "test(reports): add persister integration tests for confidence capping"
 ```
 
----
+______________________________________________________________________
 
 ## Self-Review
 

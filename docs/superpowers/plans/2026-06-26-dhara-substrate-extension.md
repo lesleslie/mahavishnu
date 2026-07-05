@@ -93,23 +93,24 @@ Total: **12 new tables, ~20 indexes** (counting partial uniques).
 ### Phase S1 — SQL proxy + migration runner (3–5 days)
 
 1. **Day 1** — Add `dhara_migrations_applied` table + `dhara_apply_migration` MCP tool. Idempotency tests; partial-migration rollback on failure.
-2. **Day 2** — Add `dhara_sql_execute` and `dhara_sql_query` MCP tools. Auth gates (`read`/`write`). Error class `DharaSQLError` that does **NOT** echo the DSN. Stress test: 1000 sequential execute() calls.
-3. **Day 3** — Add `mahavishnu/core/dhara_client.py` thin wrapper that calls the new MCP tools. Mirrors what the specs import (`execute`, `query`). Add unit tests.
-4. **Day 4** — Add `mahavishnu/core/dhara_migrations/` directory + first 4 migrations (`iteration_reports`, `workflow_reports`, `skill_transitions`, `case_retrospectives`). Each migration runs idempotently.
-5. **Day 5** — Integration tests against real Postgres (Neon or local). Verify Spec #1, #5, #7 import paths work end-to-end.
+1. **Day 2** — Add `dhara_sql_execute` and `dhara_sql_query` MCP tools. Auth gates (`read`/`write`). Error class `DharaSQLError` that does **NOT** echo the DSN. Stress test: 1000 sequential execute() calls.
+1. **Day 3** — Add `mahavishnu/core/dhara_client.py` thin wrapper that calls the new MCP tools. Mirrors what the specs import (`execute`, `query`). Add unit tests.
+1. **Day 4** — Add `mahavishnu/core/dhara_migrations/` directory + first 4 migrations (`iteration_reports`, `workflow_reports`, `skill_transitions`, `case_retrospectives`). Each migration runs idempotently.
+1. **Day 5** — Integration tests against real Postgres (Neon or local). Verify Spec #1, #5, #7 import paths work end-to-end.
 
 ### Phase S2 — HTTP CRUD server (3–4 days)
 
 1. **Day 6** — Add 3 adapter routes (`/adapters/<id>/active-settings-version`, `/lifecycle-events`, `/metrics`). Partial unique index on `adapter_settings_versions (adapter_id) WHERE active=true`. Auth gate per route.
-2. **Day 7** — Add 3 tenant routes (`/tenants/<id>/active-context-version`, `/context-versions`, `/context-versions/<vid>/files`). Partial unique index.
-3. **Day 8** — Add 3 workflow routes (`/workflows/<id>/progress-snapshots`, `/workflows?status=running`, `/workflows/<id>/events`). Pagination + filter support.
-4. **Day 9** — Migration DDL for 6 tables (`adapter_settings_versions`, `adapter_lifecycle_events`, `adapter_performance_metrics`, `tenant_context_versions`, `tenant_context_files`, `workflow_progress_snapshots`, `workflow_events`). Integration tests for Specs #8, #9, #10 import paths.
+1. **Day 7** — Add 3 tenant routes (`/tenants/<id>/active-context-version`, `/context-versions`, `/context-versions/<vid>/files`). Partial unique index.
+1. **Day 8** — Add 3 workflow routes (`/workflows/<id>/progress-snapshots`, `/workflows?status=running`, `/workflows/<id>/events`). Pagination + filter support.
+1. **Day 9** — Migration DDL for 6 tables (`adapter_settings_versions`, `adapter_lifecycle_events`, `adapter_performance_metrics`, `tenant_context_versions`, `tenant_context_files`, `workflow_progress_snapshots`, `workflow_events`). Integration tests for Specs #8, #9, #10 import paths.
 
 **Total: ~9 days.**
 
 ## Critical files
 
 **New:**
+
 - `mahavishnu/core/dhara_client.py` — thin wrapper exposing `execute`, `query`
 - `mahavishnu/core/dhara_migrations/` — SQL migration directory
 - `mahavishnu/core/dhara_migrations/0001_dhara_migrations_applied.sql`
@@ -124,6 +125,7 @@ Total: **12 new tables, ~20 indexes** (counting partial uniques).
 - `mahavishnu/core/events/subscribers/report_persister.py` — Spec #1 subscriber
 
 **Modified:**
+
 - `dhara/mcp/server_core.py` — add `dhara_sql_execute`, `dhara_sql_query`, `dhara_apply_migration` MCP tools + HTTP CRUD route handlers
 - `dhara/storage/postgres.py` — expose asyncpg pool to the SQL proxy layer
 - `mahavishnu/core/app.py` — bootstrap the migration runner at startup
@@ -149,9 +151,9 @@ Total: **12 new tables, ~20 indexes** (counting partial uniques).
 ## Open questions
 
 1. **Where to put SQL proxy code:** option (a) inside `dhara/mcp/server_core.py`, option (b) new module `dhara/mcp/sql_proxy.py`. Plan 1's Bodai Crow server splits server wiring into a separate module — should we follow that pattern? **Recommend (a) for now**; refactor later if it grows.
-2. **HTTP CRUD auth model:** same as existing Dhara HTTP MCP server (which today has no auth — out of scope here). **Recommend adding auth in a follow-up plan.**
-3. **Migration rollback strategy:** spec assumes forward-only migrations. **Recommend:** add `dhara_rollback_migration` for emergencies, gated to operator-only.
-4. **Where to host HTTP CRUD routes:** Dhara's main HTTP MCP server (port 8683) or new server (e.g. 8684)? **Recommend main server for now** to avoid splitting Dhara into two services.
+1. **HTTP CRUD auth model:** same as existing Dhara HTTP MCP server (which today has no auth — out of scope here). **Recommend adding auth in a follow-up plan.**
+1. **Migration rollback strategy:** spec assumes forward-only migrations. **Recommend:** add `dhara_rollback_migration` for emergencies, gated to operator-only.
+1. **Where to host HTTP CRUD routes:** Dhara's main HTTP MCP server (port 8683) or new server (e.g. 8684)? **Recommend main server for now** to avoid splitting Dhara into two services.
 
 ## Estimated effort
 
@@ -160,6 +162,7 @@ Total: **12 new tables, ~20 indexes** (counting partial uniques).
 - **Total: 6–9 days**, not the 1–2 days the prior HANDOFF estimated.
 
 This estimate was revised upward by the 2026-06-26 audit (substrate feasibility dimension) from the original 1–2 days. The original estimate did not account for:
+
 - (a) MCP tool registration with auth/profile gates
 - (b) Migration runner DDL + idempotency tests
 - (c) Integration tests against real Postgres
