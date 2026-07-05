@@ -52,12 +52,13 @@ Example:
 """
 
 import asyncio
-from collections.abc import Callable
-from contextlib import asynccontextmanager
+from collections.abc import Callable, Iterator
+from contextlib import asynccontextmanager, contextmanager
 from datetime import datetime
 import importlib
 import inspect
 import logging
+import os
 from pathlib import Path
 from typing import Any
 from unittest.mock import Mock
@@ -694,29 +695,38 @@ class PrefectAdapter(OrchestratorAdapter):
             return
 
         if self.config.api_key:
-            import os
-
-            old_api_key = os.environ.get("PREFECT_API_KEY")
-            old_api_url = os.environ.get("PREFECT_API_URL")
-            try:
-                os.environ["PREFECT_API_KEY"] = self.config.api_key
-                if self.config.api_url:
-                    os.environ["PREFECT_API_URL"] = self.config.api_url
-                async with client_factory as client:
-                    yield client
-            finally:
-                if old_api_key is not None:
-                    os.environ["PREFECT_API_KEY"] = old_api_key
-                elif "PREFECT_API_KEY" in os.environ:
-                    del os.environ["PREFECT_API_KEY"]
-                if old_api_url is not None:
-                    os.environ["PREFECT_API_URL"] = old_api_url
-                elif "PREFECT_API_URL" in os.environ:
-                    del os.environ["PREFECT_API_URL"]
-        else:
-            # Use default client for local Prefect server
-            async with client_factory as client:
+            async with self._api_key_env(), client_factory as client:
                 yield client
+            return
+
+        # Use default client for local Prefect server
+        async with client_factory as client:
+            yield client
+
+    @contextmanager
+    def _api_key_env(self) -> Iterator[None]:
+        """Swap ``PREFECT_API_KEY`` / ``PREFECT_API_URL`` env vars for the wrapped scope.
+
+        Restores prior values (or deletes them) on exit, even if the wrapped
+        block raises. Keeping the swap-and-restore lifecycle in its own helper
+        keeps ``_get_client_context`` flat.
+        """
+        saved_api_key = os.environ.get("PREFECT_API_KEY")
+        saved_api_url = os.environ.get("PREFECT_API_URL")
+        try:
+            os.environ["PREFECT_API_KEY"] = self.config.api_key
+            if self.config.api_url:
+                os.environ["PREFECT_API_URL"] = self.config.api_url
+            yield
+        finally:
+            if saved_api_key is not None:
+                os.environ["PREFECT_API_KEY"] = saved_api_key
+            elif "PREFECT_API_KEY" in os.environ:
+                del os.environ["PREFECT_API_KEY"]
+            if saved_api_url is not None:
+                os.environ["PREFECT_API_URL"] = saved_api_url
+            elif "PREFECT_API_URL" in os.environ:
+                del os.environ["PREFECT_API_URL"]
 
     # =========================================================================
     # OrchestratorAdapter Interface Methods
@@ -987,18 +997,7 @@ class PrefectAdapter(OrchestratorAdapter):
             )
             ```
         """
-        if not flow_name and not flow_path:
-            raise PrefectError(
-                message="create_deployment: either 'flow_name' or 'flow_path' is required",
-                error_code=ErrorCode.PREFECT_API_ERROR,
-                details={"operation": "create_deployment"},
-            )
-        if not deployment_name:
-            raise PrefectError(
-                message="create_deployment: 'deployment_name' is required",
-                error_code=ErrorCode.PREFECT_API_ERROR,
-                details={"operation": "create_deployment"},
-            )
+        self._validate_create_deployment_args(flow_name, deployment_name, flow_path)
 
         # Plan 5 Phase A.0.3: resolve flow_path to flow_name before the
         # legacy path runs.
@@ -1014,31 +1013,19 @@ class PrefectAdapter(OrchestratorAdapter):
 
         try:
             async with self._get_client_context() as client:
-                # Resolve the flow to get its ID
                 flow = await client.read_flow_by_name(flow_name)
-
-                # Build deployment configuration
-                deployment_config: dict[str, Any] = {
-                    "flow_id": flow.id,
-                    "name": deployment_name,
-                    "parameters": parameters or {},
-                    "tags": resolved_tags or [],
-                }
-
-                # Add optional fields
-                if schedule:
-                    deployment_config["schedule"] = schedule_to_prefect_dict(schedule)
-                if work_pool_name:
-                    deployment_config["work_pool_name"] = work_pool_name
-                elif self.config.work_pool:
-                    deployment_config["work_pool_name"] = self.config.work_pool
-                if description:
-                    deployment_config["description"] = description
-                if version:
-                    deployment_config["version"] = version
-
-                # Create the deployment
+                deployment_config = self._build_deployment_config(
+                    flow=flow,
+                    deployment_name=deployment_name,
+                    schedule=schedule,
+                    parameters=parameters,
+                    work_pool_name=work_pool_name,
+                    tags=resolved_tags,
+                    description=description,
+                    version=version,
+                )
                 deployment = await client.create_deployment(**deployment_config)
+                via = "flow_path" if flow_path else "flow_name"
 
                 logger.info(
                     "Created Prefect deployment",
@@ -1046,7 +1033,7 @@ class PrefectAdapter(OrchestratorAdapter):
                         "deployment_id": str(deployment.id),
                         "deployment_name": deployment_name,
                         "flow_name": flow_name,
-                        "via": "flow_path" if flow_path else "flow_name",
+                        "via": via,
                     },
                 )
 
@@ -1067,6 +1054,61 @@ class PrefectAdapter(OrchestratorAdapter):
                 },
             )
             raise error from exc
+
+    def _validate_create_deployment_args(
+        self,
+        flow_name: str | None,
+        deployment_name: str | None,
+        flow_path: str | None,
+    ) -> None:
+        """Reject calls missing the arguments needed to identify a flow/deployment.
+
+        Both ``flow_name`` and ``flow_path`` may be omitted individually; one
+        of them MUST be present. ``deployment_name`` is always required.
+        """
+        if not flow_name and not flow_path:
+            raise PrefectError(
+                message="create_deployment: either 'flow_name' or 'flow_path' is required",
+                error_code=ErrorCode.PREFECT_API_ERROR,
+                details={"operation": "create_deployment"},
+            )
+        if not deployment_name:
+            raise PrefectError(
+                message="create_deployment: 'deployment_name' is required",
+                error_code=ErrorCode.PREFECT_API_ERROR,
+                details={"operation": "create_deployment"},
+            )
+
+    def _build_deployment_config(
+        self,
+        *,
+        flow: Any,
+        deployment_name: str,
+        schedule: ScheduleConfig | None,
+        parameters: dict[str, Any] | None,
+        work_pool_name: str | None,
+        tags: list[str] | None,
+        description: str | None,
+        version: str | None,
+    ) -> dict[str, Any]:
+        """Assemble the Prefect deployment-config payload from caller arguments."""
+        config: dict[str, Any] = {
+            "flow_id": flow.id,
+            "name": deployment_name,
+            "parameters": parameters or {},
+            "tags": tags or [],
+        }
+        if schedule:
+            config["schedule"] = schedule_to_prefect_dict(schedule)
+        if work_pool_name:
+            config["work_pool_name"] = work_pool_name
+        elif self.config.work_pool:
+            config["work_pool_name"] = self.config.work_pool
+        if description:
+            config["description"] = description
+        if version:
+            config["version"] = version
+        return config
 
     def _resolve_flow_path(
         self, flow_path: str, supplied_tags: list[str] | None

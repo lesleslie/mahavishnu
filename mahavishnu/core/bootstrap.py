@@ -296,46 +296,32 @@ def init_health_endpoint(app: Any):
 
 
 def initialize_runtime_services(app: Any) -> None:
-    """Initialize the remaining runtime services on the application."""
+    """Initialize the remaining runtime services on the application.
+
+    Composition: this dispatcher stays flat (C901) because each
+    failure-isolated or config-gated subsystem has its own helper below.
+    Order of calls matches the original initialization sequence so any
+    cross-dependencies (e.g. ``ApprovalManager`` reading ``app._dhara_state``)
+    remain satisfied.
+    """
     from collections import deque
-    from contextlib import suppress
 
     from ..qc.checker import QualityControl
     from ..session.checkpoint import SessionBuddy
     from .approval_manager import ApprovalManager
-    from .backup_recovery import BackupManager, DisasterRecoveryManager
-    from .coordination.manager import CoordinationManager
-    from .coordination.memory import CoordinationMemory, SessionBuddyMemoryClient
     from .monitoring import MonitoringService
     from .opensearch_integration import OpenSearchIntegration
     from .permissions import RBACManager
-    from .repo_manager import RepositoryManager
     from .resilience import ErrorRecoveryManager, ResiliencePatterns
     from .skill_registry import SkillRegistry
-    from .state_backends.dhara import DharaStateBackend, DharaStateConfig
     from .task_router import StateManager
 
-    logger = logging.getLogger(__name__)
-
     app.qc = QualityControl(app.config)
-
     app.session_buddy = SessionBuddy(app.config)
     app.session_buddy_integration = app.session_buddy
-    app.coordination_memory = None
-    try:
-        app.coordination_memory = CoordinationMemory(
-            SessionBuddyMemoryClient(app.config.pools.session_buddy_url),
-            akosha_url=app.config.pools.akosha_url,
-        )
-    except Exception:
-        app.coordination_memory = None
 
-    try:
-        from ..messaging.repository_messenger import RepositoryMessenger
-
-        app.repository_messenger = RepositoryMessenger(app)
-    except Exception:
-        app.repository_messenger = None
+    app.coordination_memory = _init_coordination_memory(app)
+    app.repository_messenger = _init_repository_messenger(app)
 
     app.terminal_manager = None
     if app.config.terminal.enabled:
@@ -348,41 +334,86 @@ def initialize_runtime_services(app: Any) -> None:
 
     app.pool_manager = None
     app.memory_aggregator = None
-    app._learning_pipeline = None
     if app.config.pools.enabled:
         app.pool_manager = app._init_pool_manager()
         if app.config.pools.memory_aggregation_enabled:
             app.memory_aggregator = app._init_memory_aggregator()
 
+    app._learning_pipeline = None
     if app.config.learning.enabled:
         app._learning_pipeline = app._init_learning_pipeline()
 
     app.rbac_manager = RBACManager(app.config)
     app.opensearch_integration = OpenSearchIntegration(app.config)
 
-    app._dhara_state = None
-    if app.config.dhara_state.enabled and app.dhara_url:
-        with suppress(Exception):
-            app._dhara_state = DharaStateBackend(
-                base_url=app.dhara_url,
-                config=DharaStateConfig(
-                    enabled=app.config.dhara_state.enabled,
-                    flush_interval_seconds=app.config.dhara_state.flush_interval_seconds,
-                    max_routing_buffer_age_seconds=app.config.dhara_state.max_routing_buffer_age_seconds,
-                ),
-            )
-            # Phase 0: register this component's MCP endpoint to Dhara
-            _register_component_endpoint(
-                app._dhara_state, "mahavishnu", app.config.tools.mcp_server_url
-            )
-
+    app._dhara_state = _init_dhara_state(app)
     app.approval_manager = ApprovalManager(dhara_state=app._dhara_state)
     app.resilience_manager = ResiliencePatterns(app)
     app.error_recovery_manager = ErrorRecoveryManager(app)
     app._resilience_monitoring_task = None
     app.monitoring_service = MonitoringService(app)
 
-    app.routing_metrics_server = None
+    app.routing_metrics_server = _init_routing_metrics(app)
+
+    _init_backup_recovery(app)
+    _init_worktree_coordinator(app)
+
+    app.session_buddy_poller = None
+    if app.config.session_buddy_polling.enabled:
+        app.session_buddy_poller = _init_session_buddy_poller(app)
+
+
+def _init_coordination_memory(app: Any) -> Any:
+    """Build the cross-system coordination memory; ``None`` on failure."""
+    from .coordination.memory import CoordinationMemory, SessionBuddyMemoryClient
+
+    try:
+        return CoordinationMemory(
+            SessionBuddyMemoryClient(app.config.pools.session_buddy_url),
+            akosha_url=app.config.pools.akosha_url,
+        )
+    except Exception:
+        return None
+
+
+def _init_repository_messenger(app: Any) -> Any:
+    """Build the inter-repo messenger; ``None`` on failure."""
+    try:
+        from ..messaging.repository_messenger import RepositoryMessenger
+
+        return RepositoryMessenger(app)
+    except Exception:
+        return None
+
+
+def _init_dhara_state(app: Any) -> Any:
+    """Build the Dhara state backend if both ``enabled`` and ``dhara_url`` are set."""
+    from contextlib import suppress
+
+    from .state_backends.dhara import DharaStateBackend, DharaStateConfig
+
+    if not (app.config.dhara_state.enabled and app.dhara_url):
+        return None
+    with suppress(Exception):
+        backend = DharaStateBackend(
+            base_url=app.dhara_url,
+            config=DharaStateConfig(
+                enabled=app.config.dhara_state.enabled,
+                flush_interval_seconds=app.config.dhara_state.flush_interval_seconds,
+                max_routing_buffer_age_seconds=app.config.dhara_state.max_routing_buffer_age_seconds,
+            ),
+        )
+        # Phase 0: register this component's MCP endpoint to Dhara
+        _register_component_endpoint(
+            backend, "mahavishnu", app.config.tools.mcp_server_url
+        )
+        return backend
+    return None
+
+
+def _init_routing_metrics(app: Any) -> None:
+    """Attach the routing-metrics exporter if the module and feature flag allow."""
+    logger = logging.getLogger(__name__)
     try:
         from .routing_metrics import get_routing_metrics
 
@@ -396,35 +427,50 @@ def initialize_runtime_services(app: Any) -> None:
     except Exception as exc:
         logger.error("Failed to initialize routing metrics: %s", exc)
 
+
+def _init_backup_recovery(app: Any) -> None:
+    """Wire up the backup and disaster-recovery managers."""
+    from .backup_recovery import BackupManager, DisasterRecoveryManager
+
     app.backup_manager = BackupManager(app)
     app.recovery_manager = DisasterRecoveryManager(app)
 
+
+def _init_worktree_coordinator(app: Any) -> None:
+    """Initialize the repo/worktree coordinator subsystem (best-effort)."""
+    from .coordination.manager import CoordinationManager
+    from .repo_manager import RepositoryManager
+
+    logger = logging.getLogger(__name__)
     app.worktree_coordinator = None
     try:
         repos_path = _validate_path(app.config.repos_path).expanduser()
         app.repository_manager = RepositoryManager(repos_path)
         app.coordination_manager = CoordinationManager(str(repos_path))
-        app.worktree_coordinator = None
         logger.info("WorktreeCoordinator components initialized")
     except Exception as exc:
         logger.warning("Failed to initialize WorktreeCoordinator: %s", exc)
 
-    app.session_buddy_poller = None
-    if app.config.session_buddy_polling.enabled:
-        try:
-            from ..integrations.session_buddy_poller import SessionBuddyPoller
 
-            app.session_buddy_poller = SessionBuddyPoller(
-                config=app.config,
-                observability_manager=app.observability,
-            )
-            logger.info(
-                "Session-Buddy poller initialized: endpoint=%s, interval=%ss",
-                app.config.session_buddy_polling.endpoint,
-                app.config.session_buddy_polling.interval_seconds,
-            )
-        except Exception as exc:
-            logger.warning("Failed to initialize Session-Buddy poller: %s", exc)
+def _init_session_buddy_poller(app: Any) -> Any:
+    """Build the Session-Buddy poller when polling is enabled."""
+    from ..integrations.session_buddy_poller import SessionBuddyPoller
+
+    logger = logging.getLogger(__name__)
+    try:
+        poller = SessionBuddyPoller(
+            config=app.config,
+            observability_manager=app.observability,
+        )
+        logger.info(
+            "Session-Buddy poller initialized: endpoint=%s, interval=%ss",
+            app.config.session_buddy_polling.endpoint,
+            app.config.session_buddy_polling.interval_seconds,
+        )
+        return poller
+    except Exception as exc:
+        logger.warning("Failed to initialize Session-Buddy poller: %s", exc)
+        return None
 
 
 def set_app_context(app: Any) -> None:
