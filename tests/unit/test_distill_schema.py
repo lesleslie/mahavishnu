@@ -73,9 +73,7 @@ class TestDistilledWorkflowsTable:
         ):
             assert col in cols, f"missing column: {col}"
 
-    def test_workflow_specific_columns_present(
-        self, conn: duckdb.DuckDBPyConnection
-    ) -> None:
+    def test_workflow_specific_columns_present(self, conn: duckdb.DuckDBPyConnection) -> None:
         cols = {
             row[0]
             for row in conn.execute(
@@ -108,9 +106,7 @@ class TestDistilledWorkflowsTable:
         assert rows
         assert rows[0][0].upper() in {"VARCHAR", "TEXT"}
 
-    def test_importance_score_has_check_constraint(
-        self, conn: duckdb.DuckDBPyConnection
-    ) -> None:
+    def test_importance_score_has_check_constraint(self, conn: duckdb.DuckDBPyConnection) -> None:
         # Insert a below-floor row and expect the CHECK constraint to reject.
         with pytest.raises(duckdb.Error):
             conn.execute(
@@ -168,9 +164,7 @@ class TestMahavishnuWorkflowRunsTable:
         ):
             assert col in cols, f"missing column: {col}"
 
-    def test_status_check_constraint_rejects_invalid(
-        self, conn: duckdb.DuckDBPyConnection
-    ) -> None:
+    def test_status_check_constraint_rejects_invalid(self, conn: duckdb.DuckDBPyConnection) -> None:
         with pytest.raises(duckdb.Error):
             conn.execute(
                 """

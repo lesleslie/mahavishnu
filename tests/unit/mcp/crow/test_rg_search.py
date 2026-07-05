@@ -2,6 +2,7 @@
 
 RED phase: tests written before implementation.
 """
+
 from __future__ import annotations
 
 import pytest
@@ -52,9 +53,7 @@ async def test_rg_search_returns_files_with_matches_format(tmp_path, settings_wi
 @pytest.mark.unit
 async def test_rg_search_returns_json_format(tmp_path, settings_with_rg):
     (tmp_path / "a.py").write_text("def hello(): pass\n")
-    result = await rg_search(
-        "hello", settings_with_rg, path=str(tmp_path), format="json"
-    )
+    result = await rg_search("hello", settings_with_rg, path=str(tmp_path), format="json")
     assert result["format"] == "json"
     assert result["total_found"] >= 1
     # JSON entries must include a "type"=="match" field
@@ -64,9 +63,7 @@ async def test_rg_search_returns_json_format(tmp_path, settings_with_rg):
 @pytest.mark.unit
 async def test_rg_search_case_insensitive(tmp_path, settings_with_rg):
     (tmp_path / "a.py").write_text("Hello World\n")
-    result = await rg_search(
-        "hello", settings_with_rg, path=str(tmp_path), case_sensitive=False
-    )
+    result = await rg_search("hello", settings_with_rg, path=str(tmp_path), case_sensitive=False)
     assert result["total_found"] == 1
 
 
@@ -87,9 +84,7 @@ async def test_rg_search_fixed_string_no_regex(tmp_path, settings_with_rg):
 async def test_rg_search_truncates_at_max(tmp_path, settings_with_rg):
     for i in range(10):
         (tmp_path / f"f{i}.py").write_text(f"hello line in file {i}\n")
-    result = await rg_search(
-        "hello", settings_with_rg, path=str(tmp_path), max_matches=3
-    )
+    result = await rg_search("hello", settings_with_rg, path=str(tmp_path), max_matches=3)
     assert result["truncated"] is True
     assert result["total_found"] == 3
 
@@ -98,9 +93,7 @@ async def test_rg_search_truncates_at_max(tmp_path, settings_with_rg):
 async def test_rg_search_include_glob(tmp_path, settings_with_rg):
     (tmp_path / "a.py").write_text("hello\n")
     (tmp_path / "b.txt").write_text("hello\n")
-    result = await rg_search(
-        "hello", settings_with_rg, path=str(tmp_path), include="*.py"
-    )
+    result = await rg_search("hello", settings_with_rg, path=str(tmp_path), include="*.py")
     assert result["total_found"] == 1
     assert result["matches"][0]["file"].endswith("a.py")
 

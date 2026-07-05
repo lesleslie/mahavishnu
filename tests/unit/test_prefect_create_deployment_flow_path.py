@@ -227,9 +227,7 @@ class TestCreateDeploymentFlowPath:
         patched_get_client.create_deployment.assert_awaited_once()
         assert result is not None
 
-    async def test_flow_path_invalid_format_raises(
-        self, adapter: PrefectAdapter
-    ) -> None:
+    async def test_flow_path_invalid_format_raises(self, adapter: PrefectAdapter) -> None:
         """flow_path without ':' separator raises PrefectError."""
         from mahavishnu.core.errors import PrefectError
 
@@ -239,9 +237,7 @@ class TestCreateDeploymentFlowPath:
                 deployment_name="oops",
             )
 
-    async def test_flow_path_module_not_found_raises(
-        self, adapter: PrefectAdapter
-    ) -> None:
+    async def test_flow_path_module_not_found_raises(self, adapter: PrefectAdapter) -> None:
         """flow_path where the module doesn't import raises PrefectError."""
         from mahavishnu.core.errors import PrefectError
 
@@ -282,9 +278,7 @@ class TestCreateDeploymentFlowPath:
                 deployment_name="oops",
             )
 
-    async def test_neither_flow_name_nor_flow_path_raises(
-        self, adapter: PrefectAdapter
-    ) -> None:
+    async def test_neither_flow_name_nor_flow_path_raises(self, adapter: PrefectAdapter) -> None:
         """If both are None, PrefectError."""
         from mahavishnu.core.errors import PrefectError
 

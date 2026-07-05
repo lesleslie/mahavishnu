@@ -45,9 +45,7 @@ class TestCreateExtractionPr:
 
     async def test_real_client_calls_create_pr(self):
         gh = AsyncMock()
-        gh.create_pr = AsyncMock(
-            return_value={"html_url": "https://github.com/oneiric/pulls/1"}
-        )
+        gh.create_pr = AsyncMock(return_value={"html_url": "https://github.com/oneiric/pulls/1"})
         pr = await create_extraction_pr(
             cluster_id=CLUSTER_ID,
             target_repo=TARGET_REPO,
@@ -171,9 +169,7 @@ class TestRunCloneRefactorDag:
     async def test_dag_cancels_consuming_prs_when_extraction_pr_closed(self):
         """If the extraction PR is closed, consuming PRs must NOT be opened (M-NEW-7)."""
         gh = AsyncMock()
-        gh.create_pr = AsyncMock(
-            return_value={"html_url": "https://github.com/oneiric/pulls/1"}
-        )
+        gh.create_pr = AsyncMock(return_value={"html_url": "https://github.com/oneiric/pulls/1"})
         gh.get_pr_status = AsyncMock(return_value="closed")
 
         result = await run_clone_refactor_dag(

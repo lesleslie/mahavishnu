@@ -291,6 +291,7 @@ class TestRegisterTools:
 
         This fixture mirrors the real async signature so the bug is caught.
         """
+
         # Mirror the real async signature: is_healthy is a coroutine function.
         async def fake_is_healthy() -> bool:
             return True

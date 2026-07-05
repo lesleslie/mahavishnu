@@ -3,6 +3,7 @@
 RED phase: these tests are written first. They will fail with ImportError
 until path_security.py is implemented.
 """
+
 from __future__ import annotations
 
 import os
@@ -83,19 +84,19 @@ def test_validate_url_blocks_loopback(monkeypatch):
 @pytest.mark.parametrize(
     "blocked_ip",
     [
-        "10.0.0.1",          # RFC 1918
-        "172.16.0.1",        # RFC 1918
-        "192.168.1.1",       # RFC 1918
-        "127.0.0.1",         # loopback
-        "169.254.169.254",   # AWS metadata
-        "100.64.0.1",        # CGNAT (RFC 6598)
-        "0.0.0.0",           # this-network
-        "224.0.0.1",         # multicast
-        "240.0.0.1",         # reserved
-        "::1",               # IPv6 loopback
-        "fe80::1",           # IPv6 link-local
-        "fc00::1",           # IPv6 unique-local
-        "::",                # IPv6 unspecified
+        "10.0.0.1",  # RFC 1918
+        "172.16.0.1",  # RFC 1918
+        "192.168.1.1",  # RFC 1918
+        "127.0.0.1",  # loopback
+        "169.254.169.254",  # AWS metadata
+        "100.64.0.1",  # CGNAT (RFC 6598)
+        "0.0.0.0",  # this-network
+        "224.0.0.1",  # multicast
+        "240.0.0.1",  # reserved
+        "::1",  # IPv6 loopback
+        "fe80::1",  # IPv6 link-local
+        "fc00::1",  # IPv6 unique-local
+        "::",  # IPv6 unspecified
         "::ffff:127.0.0.1",  # IPv4-mapped IPv6 — must NOT slip past
     ],
 )

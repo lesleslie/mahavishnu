@@ -61,9 +61,7 @@ class TestCostCeilingDefaults:
     def test_default_cap_is_100(self) -> None:
         assert DEFAULT_WEEKLY_CAP == 100
 
-    def test_cap_reads_from_env(
-        self, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
+    def test_cap_reads_from_env(self, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setenv("MAHAVISHNU_DISTILL_LLM_WEEKLY_CAP", "5")
         synth = _LlmSynthesizer(_StubLlm())
         assert synth.ceiling == 5
@@ -75,9 +73,7 @@ class TestCostCeilingDefaults:
         synth = _LlmSynthesizer(_StubLlm())
         assert synth.ceiling == DEFAULT_WEEKLY_CAP
 
-    def test_explicit_cap_overrides_env(
-        self, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
+    def test_explicit_cap_overrides_env(self, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setenv("MAHAVISHNU_DISTILL_LLM_WEEKLY_CAP", "200")
         synth = _LlmSynthesizer(_StubLlm(), cap=10)
         assert synth.ceiling == 10
@@ -116,9 +112,7 @@ class TestCostCeilingGate:
 
 
 class TestCostCeilingMessage:
-    def test_exception_message_includes_counter(
-        self, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
+    def test_exception_message_includes_counter(self, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setenv("MAHAVISHNU_DISTILL_LLM_WEEKLY_CAP", "2")
         synth = _LlmSynthesizer(_StubLlm())
         cand = _StubCandidate(session_id="s1", evidence_count=5)

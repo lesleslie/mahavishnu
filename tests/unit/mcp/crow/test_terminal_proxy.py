@@ -14,6 +14,7 @@ Task 9 in the plan. For Task 4 we test only the basic guard rails:
 4. TerminalManager.create wires the crow adapter when adapter_preference
    is "crow" and an mcp_client is supplied.
 """
+
 from __future__ import annotations
 
 from pathlib import Path

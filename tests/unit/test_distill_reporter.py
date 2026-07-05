@@ -124,9 +124,7 @@ class TestReportRunInsert:
             error_summary="boom",
         )
         assert report_run(conn, run) is True
-        rows = conn.execute(
-            "SELECT status, error_summary FROM mahavishnu_workflow_runs"
-        ).fetchall()
+        rows = conn.execute("SELECT status, error_summary FROM mahavishnu_workflow_runs").fetchall()
         assert rows == [("failed", "boom")]
 
     def test_cancelled_run_inserts(self, conn: duckdb.DuckDBPyConnection) -> None:
@@ -139,14 +137,10 @@ class TestReportRunInsert:
             status="cancelled",
         )
         assert report_run(conn, run) is True
-        rows = conn.execute(
-            "SELECT status FROM mahavishnu_workflow_runs"
-        ).fetchall()
+        rows = conn.execute("SELECT status FROM mahavishnu_workflow_runs").fetchall()
         assert rows == [("cancelled",)]
 
-    def test_invalid_status_rejected_by_schema(
-        self, conn: duckdb.DuckDBPyConnection
-    ) -> None:
+    def test_invalid_status_rejected_by_schema(self, conn: duckdb.DuckDBPyConnection) -> None:
         # Defense in depth: the dataclass also validates, but here we
         # bypass it to confirm the SCHEMA CHECK rejects bad statuses.
         # The contract is "this never lands in the table" — verified
@@ -231,7 +225,9 @@ class TestSafeReportRun:
         # No exception bubbles up.
         assert result is False
         # Logged a warning so operators see the failure.
-        assert any("reporter" in rec.name or "reporter" in str(rec.message) for rec in caplog.records) or any(
+        assert any(
+            "reporter" in rec.name or "reporter" in str(rec.message) for rec in caplog.records
+        ) or any(
             "telemetry" in rec.message.lower() or "report" in rec.message.lower()
             for rec in caplog.records
         )

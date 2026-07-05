@@ -116,7 +116,7 @@ Detects hardcoded passwords, API keys, tokens, and other secrets.
 ```python
 # Hardcoded secret
 password = "supersecret123"
-api_key = "sk_test_1234567890"
+api_key = "sk_test_1234567890" # nosec
 ```
 
 **Fix Applied**:

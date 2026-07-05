@@ -30,13 +30,9 @@ HOST: str = os.environ.get("BIFROST_HOST", "127.0.0.1")
 PORT: int = int(os.environ.get("BIFROST_PORT", "8471"))
 LOG_LEVEL: str = os.environ.get("BIFROST_LOG_LEVEL", "info")
 LOG_STYLE: str = os.environ.get("BIFROST_LOG_STYLE", "json")
-APP_DIR: Path = Path(
-    os.environ.get("BIFROST_APP_DIR", f"{Path.home()}/.config/bifrost")
-)
+APP_DIR: Path = Path(os.environ.get("BIFROST_APP_DIR", f"{Path.home()}/.config/bifrost"))
 READY_FILE: Path = Path(
-    os.environ.get(
-        "BIFROST_READY_FILE", f"{Path.home()}/.local/state/mcp/ready/bifrost.ready"
-    )
+    os.environ.get("BIFROST_READY_FILE", f"{Path.home()}/.local/state/mcp/ready/bifrost.ready")
 )
 LOG_DIR: Path = Path.home() / ".local/state/mcp/logs"
 

@@ -13,6 +13,7 @@ The wrapper reads secrets with key names normalized to upper-case (matching the
 env-var convention expected by the Agno adapter's _get_api_key("MINIMAX_API_KEY")
 and similar downstream consumers).
 """
+
 from __future__ import annotations
 
 import os

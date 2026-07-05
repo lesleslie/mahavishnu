@@ -46,27 +46,26 @@ def test_no_top_level_from_fastmcp_imports_in_production() -> None:
             # for the bare ``from fastmcp import`` / ``from fastmcp.server``
             # forms. Lazy function-local imports are tested separately
             # via the import-time smoke test below.
-            if (
-                line.startswith("from fastmcp import")
-                or line.startswith("from fastmcp.server")
-            ):
+            if line.startswith("from fastmcp import") or line.startswith("from fastmcp.server"):
                 offenders.append(f"{path.relative_to(PROD_ROOT.parent)}:{line}")
     assert not offenders, (
         "Found production imports of upstream fastmcp; "
-        "switch to ``from mcp_common.fastmcp import ...``:\n"
-        + "\n".join(offenders)
+        "switch to ``from mcp_common.fastmcp import ...``:\n" + "\n".join(offenders)
     )
 
 
-@pytest.mark.parametrize("module_name", [
-    "mahavishnu.mcp.server_core",
-    "mahavishnu.mcp.tools.coordination_tools",
-    "mahavishnu.mcp.tools.pool_tools",
-    "mahavishnu.mcp.tools.terminal_tools",
-    "mahavishnu.mcp.tools.worker_tools",
-    "mahavishnu.mcp.tools.goal_team_tools",
-    "mahavishnu.mcp.tools.openhands_tools",
-])
+@pytest.mark.parametrize(
+    "module_name",
+    [
+        "mahavishnu.mcp.server_core",
+        "mahavishnu.mcp.tools.coordination_tools",
+        "mahavishnu.mcp.tools.pool_tools",
+        "mahavishnu.mcp.tools.terminal_tools",
+        "mahavishnu.mcp.tools.worker_tools",
+        "mahavishnu.mcp.tools.goal_team_tools",
+        "mahavishnu.mcp.tools.openhands_tools",
+    ],
+)
 def test_tool_modules_import_cleanly(module_name: str) -> None:
     """Every MCP tool module must import without raising.
 

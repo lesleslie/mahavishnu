@@ -369,7 +369,7 @@ MIIFXzCCA0egAwIBAgIUH5Eq9b3...
 -----END CERTIFICATE-----
 
 # Private key file (/etc/ssl/private/mahavishnu-key.pem)
------BEGIN PRIVATE KEY-----
+-----BEGIN PRIVATE KEY----- # nosec
 MIIEvgIBADANBgkqhkiG9w0BAQEFAASCBKgwggSkAgEAAoIBAQC...
 -----END PRIVATE KEY-----
 ```

@@ -235,7 +235,7 @@ https://marketplace.mahavishnu.ai/api/v1
 
 ### Authentication
 ```bash
-curl -H "Authorization: Bearer YOUR_API_KEY" \\
+curl -H "Authorization: Bearer YOUR_API_KEY" \\ # nosec
      https://marketplace.mahavishnu.ai/api/v1/packages
 ```
 

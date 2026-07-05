@@ -350,7 +350,9 @@ def test_lock_store_protocol_is_runtime_checkable() -> None:
     """The LockStore protocol must be runtime_checkable for duck typing."""
     from mahavishnu.core.precommitment import LockStore
 
-    assert getattr(LockStore, "_is_runtime_protocol", False) or callable(LockStore)  # loose check; runtime_checkable attaches __call__
+    assert getattr(LockStore, "_is_runtime_protocol", False) or callable(
+        LockStore
+    )  # loose check; runtime_checkable attaches __call__
 
 
 def test_in_memory_lock_store_satisfies_protocol() -> None:
@@ -476,9 +478,7 @@ def test_json_file_lock_store_persists_signature(tmp_path: object) -> None:
 
     store = JsonFileLockStore(path=store_path)
     store.put_result(
-        __import__(
-            "mahavishnu.core.precommitment", fromlist=["LockResult"]
-        ).LockResult(
+        __import__("mahavishnu.core.precommitment", fromlist=["LockResult"]).LockResult(
             lock_id="L-test",
             signature=compute_signature_inline(hypothesis),
             hypothesis=hypothesis,
@@ -596,6 +596,4 @@ class InMemoryLockStoreProbe:
         return list(self._items.values())
 
     def _tamper(self, lock_id: str, new_hypothesis: Any) -> None:
-        self._items[lock_id] = dataclasses.replace(
-            self._items[lock_id], hypothesis=new_hypothesis
-        )
+        self._items[lock_id] = dataclasses.replace(self._items[lock_id], hypothesis=new_hypothesis)

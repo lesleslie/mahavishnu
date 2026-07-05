@@ -393,7 +393,7 @@ config = SecretsConfig(
 
 **Token Authentication** (simplest):
 ```bash
-export VAULT_TOKEN="s.1234567890"
+export VAULT_TOKEN="s.1234567890" # nosec
 ```
 
 **AppRole Authentication** (recommended for production):

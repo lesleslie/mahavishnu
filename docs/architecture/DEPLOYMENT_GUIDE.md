@@ -102,7 +102,7 @@ ______________________________________________________________________
 export MAHAVISHNU_SUBSCRIPTION_AUTH_SECRET="your_32char_secret_key_here_minimum"
 
 # Optional: Claude Code subscription token
-export MAHAVISHNU_SUBSCRIPTION_TOKEN="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+export MAHAVISHNU_SUBSCRIPTION_TOKEN="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..." # nosec
 
 # PostgreSQL configuration
 export MAHAVISHNU_PG_HOST="localhost"

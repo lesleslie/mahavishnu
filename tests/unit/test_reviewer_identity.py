@@ -193,8 +193,7 @@ class TestBootstrapMode:
         assert "bootstrap" in decision.reason.lower() or "allowlist" in decision.reason.lower()
 
         assert any(
-            record.levelno == logging.WARNING
-            and "allowlist" in record.getMessage().lower()
+            record.levelno == logging.WARNING and "allowlist" in record.getMessage().lower()
             for record in caplog.records
         )
 
@@ -290,9 +289,7 @@ class TestAuditLog:
             decision = identity.check()
             identity.emit_audit_log(decision)
 
-        audit_records = [
-            r for r in caplog.records if getattr(r, "audit", False)
-        ]
+        audit_records = [r for r in caplog.records if getattr(r, "audit", False)]
         assert len(audit_records) >= 1
         msg = audit_records[0].getMessage().lower()
         assert "alice" in msg

@@ -16,6 +16,7 @@ See docs/followups/2026-06-29-agno-adapter-config-field-path.md for full context
 
 This test fails fast if anyone re-introduces a duplicate.
 """
+
 from __future__ import annotations
 
 import ast
@@ -40,11 +41,7 @@ CANONICAL_CLASSES = (
 def _class_names_defined_in(path: Path) -> set[str]:
     """Return names of top-level classes defined in a Python file."""
     tree = ast.parse(path.read_text())
-    return {
-        node.name
-        for node in ast.walk(tree)
-        if isinstance(node, ast.ClassDef)
-    }
+    return {node.name for node in ast.walk(tree) if isinstance(node, ast.ClassDef)}
 
 
 def test_engine_does_not_duplicate_canonical_agno_classes() -> None:
@@ -77,9 +74,7 @@ def test_canonical_class_is_identity_equal_across_modules(cls_name: str) -> None
     config_cls = getattr(config_module, cls_name, None)
     engine_cls = getattr(engine_module, cls_name, None)
 
-    assert config_cls is not None, (
-        f"{cls_name} not found in mahavishnu.core.config"
-    )
+    assert config_cls is not None, f"{cls_name} not found in mahavishnu.core.config"
     assert engine_cls is not None, (
         f"{cls_name} not importable from mahavishnu.engines.agno_adapter_impl. "
         f"Did the import statement get removed?"

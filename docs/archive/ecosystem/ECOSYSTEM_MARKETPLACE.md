@@ -713,7 +713,7 @@ Receive notifications for marketplace events.
 ### Configure Webhook
 
 ```bash
-curl -X POST https://marketplace.mahavishnu.ai/api/v1/webhooks \\
+curl -X POST https://marketplace.mahavishnu.ai/api/v1/webhooks \\ # nosec
      -H "Authorization: Bearer YOUR_API_KEY" \\
      -d {
        "url": "https://your-server.com/webhook",

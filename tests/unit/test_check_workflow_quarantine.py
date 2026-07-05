@@ -104,8 +104,7 @@ class TestCheckRepo:
         )
         result = check_repo(fake_repo)
         assert result.passed, (
-            f"Quarantined file should NOT trigger header violations: "
-            f"{result.violations}"
+            f"Quarantined file should NOT trigger header violations: {result.violations}"
         )
 
     def test_missing_workflows_dir_passes(self, tmp_path: Path) -> None:
@@ -177,10 +176,14 @@ class TestCheckRepo:
         """Headers beyond line 50 are NOT seen — guard fails fast on early line."""
         check_repo = _GUARD.check_repo
 
-        body_lines = ["async def buried():\n"] + ["    # filler\n"] * 49 + [
-            "# Approved by: les\n",
-            "# Workflow-ID: 01J0000000000000000000000X\n",
-        ]
+        body_lines = (
+            ["async def buried():\n"]
+            + ["    # filler\n"] * 49
+            + [
+                "# Approved by: les\n",
+                "# Workflow-ID: 01J0000000000000000000000X\n",
+            ]
+        )
         path = fake_repo / "mahavishnu" / "workflows" / "buried.py"
         path.write_text("".join(body_lines))
         result = check_repo(fake_repo)
@@ -208,9 +211,7 @@ class TestCheckRepoCLI:
             check=False,
             cwd=Path("/Users/les/Projects/mahavishnu"),
         )
-        assert result.returncode == 0, (
-            f"stdout={result.stdout!r} stderr={result.stderr!r}"
-        )
+        assert result.returncode == 0, f"stdout={result.stdout!r} stderr={result.stderr!r}"
 
     def test_cli_fail_exits_nonzero(self, fake_repo: Path) -> None:
         """Repo with bad file: exit code 1."""

@@ -5,6 +5,7 @@ RED phase: tests written before implementation.
 Critical security: validate_url is called on EVERY redirect hop, including
 the initial URL. This closes the DNS-rebinding / open-redirect SSRF gap.
 """
+
 from __future__ import annotations
 
 import httpx
@@ -29,9 +30,7 @@ def mock_http_client(monkeypatch):
     )
     with respx.mock(assert_all_called=False, assert_all_mocked=False) as router:
         fake = httpx.AsyncClient()
-        monkeypatch.setattr(
-            "mahavishnu.mcp.crow.tools.web_tools.get_http_client", lambda: fake
-        )
+        monkeypatch.setattr("mahavishnu.mcp.crow.tools.web_tools.get_http_client", lambda: fake)
         try:
             yield router
         finally:
@@ -55,9 +54,7 @@ async def test_web_fetch_returns_raw_content(mock_http_client, tmp_path):
             headers={"content-type": "text/html"},
         )
     )
-    result = await web_fetch(
-        "https://example.com/page", mock_settings(tmp_path), raw=True
-    )
+    result = await web_fetch("https://example.com/page", mock_settings(tmp_path), raw=True)
     assert result["url"] == "https://example.com/page"
     assert "Hello world" in result["content"]
     assert result["status_code"] == 200
@@ -73,9 +70,7 @@ async def test_web_fetch_extracts_text_from_html(mock_http_client, tmp_path):
             headers={"content-type": "text/html"},
         )
     )
-    result = await web_fetch(
-        "https://example.com/", mock_settings(tmp_path)
-    )
+    result = await web_fetch("https://example.com/", mock_settings(tmp_path))
     # Tags stripped, text preserved
     assert "Hello" in result["content"]
     assert "world" in result["content"]
@@ -87,9 +82,7 @@ async def test_web_fetch_extracts_text_from_html(mock_http_client, tmp_path):
 async def test_web_fetch_returns_truncated_flag(mock_http_client, tmp_path):
     long_text = "x" * 1000
     mock_http_client.get("https://example.com/").mock(
-        return_value=httpx.Response(
-            200, text=long_text, headers={"content-type": "text/plain"}
-        )
+        return_value=httpx.Response(200, text=long_text, headers={"content-type": "text/plain"})
     )
     result = await web_fetch(
         "https://example.com/", mock_settings(tmp_path), max_length=100, raw=True
@@ -184,6 +177,7 @@ async def test_web_fetch_validates_every_redirect_hop(mock_http_client, tmp_path
         return next(addrs_by_call)
 
     import socket as _s
+
     _s.getaddrinfo = fake_getaddrinfo  # type: ignore[assignment]
 
     mock_http_client.get("https://a.example/").mock(
@@ -216,13 +210,10 @@ async def test_web_fetch_redirect_chain_within_max_hops(mock_http_client, tmp_pa
     )
     mock_http_client.get("https://d.example/").mock(
         return_value=httpx.Response(
-            200, text="<html><body>final</body></html>",
-            headers={"content-type": "text/html"}
+            200, text="<html><body>final</body></html>", headers={"content-type": "text/html"}
         )
     )
-    result = await web_fetch(
-        "https://a.example/", mock_settings(tmp_path), raw=True
-    )
+    result = await web_fetch("https://a.example/", mock_settings(tmp_path), raw=True)
     assert result["status_code"] == 200
     assert "final" in result["content"]
 
@@ -237,7 +228,7 @@ async def test_web_fetch_redirect_chain_exceeds_max_hops(mock_http_client, tmp_p
     ]
     # Create a redirect loop that exceeds max_redirect_hops=5
     for i in range(7):
-        nxt = f"https://r{i+1}.example/"
+        nxt = f"https://r{i + 1}.example/"
         mock_http_client.get(f"https://r{i}.example/").mock(
             return_value=httpx.Response(302, headers={"location": nxt})
         )
@@ -263,13 +254,10 @@ async def test_web_fetch_redirect_to_relative_url_resolves_against_current(
     )
     mock_http_client.get("https://example.com/b").mock(
         return_value=httpx.Response(
-            200, text="<html><body>ok</body></html>",
-            headers={"content-type": "text/html"}
+            200, text="<html><body>ok</body></html>", headers={"content-type": "text/html"}
         )
     )
-    result = await web_fetch(
-        "https://example.com/a", mock_settings(tmp_path), raw=True
-    )
+    result = await web_fetch("https://example.com/a", mock_settings(tmp_path), raw=True)
     assert result["status_code"] == 200
     assert result["final_url"] == "https://example.com/b"
 
@@ -300,7 +288,8 @@ async def test_web_fetch_batch_partial_failure(mock_http_client, tmp_path):
     )
     mock_http_client.get("https://good.example.com").mock(
         return_value=httpx.Response(
-            200, text="<html><body>ok</body></html>",
+            200,
+            text="<html><body>ok</body></html>",
             headers={"content-type": "text/html"},
         )
     )
@@ -331,7 +320,5 @@ async def test_web_fetch_reports_duration(mock_http_client, tmp_path):
     mock_http_client.get("https://e.example/").mock(
         return_value=httpx.Response(200, text="ok", headers={"content-type": "text/plain"})
     )
-    result = await web_fetch(
-        "https://e.example/", mock_settings(tmp_path), raw=True
-    )
+    result = await web_fetch("https://e.example/", mock_settings(tmp_path), raw=True)
     assert result["duration_ms"] >= 0

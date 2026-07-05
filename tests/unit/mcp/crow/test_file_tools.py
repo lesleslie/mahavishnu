@@ -2,6 +2,7 @@
 
 RED phase: tests written before implementation.
 """
+
 from __future__ import annotations
 
 import os
@@ -102,8 +103,10 @@ async def test_write_file_atomic_on_failure(tmp_path, monkeypatch):
     """If os.replace fails, original file must remain intact."""
     f = tmp_path / "x.py"
     f.write_text("original")
+
     def boom(*_a, **_k):
         raise OSError("disk full")
+
     monkeypatch.setattr("mahavishnu.mcp.crow.tools.file_tools.os.replace", boom)
     with pytest.raises(OSError):
         await write_file(str(f), "new content", mock_settings(tmp_path))
@@ -152,9 +155,7 @@ async def test_list_directory_excludes_hidden_by_default(tmp_path):
 @pytest.mark.unit
 async def test_list_directory_include_hidden(tmp_path):
     (tmp_path / ".hidden.py").write_text("x")
-    result = await list_directory(
-        str(tmp_path), mock_settings(tmp_path), include_hidden=True
-    )
+    result = await list_directory(str(tmp_path), mock_settings(tmp_path), include_hidden=True)
     names = {e["name"] for e in result["entries"]}
     assert ".hidden.py" in names
 

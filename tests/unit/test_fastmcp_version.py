@@ -48,8 +48,7 @@ class TestFastMCPVersion:
         pin = _read_pyproject_pin()
         major, minor = _parse_minimum(pin)
         assert (major, minor) >= (3, 4), (
-            f"fastmcp pin '{pin}' resolves to {major}.{minor}; "
-            "Plan 7 requires >= 3.4.0,<4"
+            f"fastmcp pin '{pin}' resolves to {major}.{minor}; Plan 7 requires >= 3.4.0,<4"
         )
 
     def test_pyproject_pin_has_upper_bound(self) -> None:
@@ -73,9 +72,7 @@ class TestFastMCPVersion:
             pytest.fail(f"Unparsable fastmcp.__version__: {installed!r}")
         major = int(match.group(1))
         minor = int(match.group(2))
-        assert (major, minor) >= (3, 4), (
-            f"Installed fastmcp is {installed}; Plan 7 requires >= 3.4"
-        )
+        assert (major, minor) >= (3, 4), f"Installed fastmcp is {installed}; Plan 7 requires >= 3.4"
 
     def test_mcp_common_reexports_fastmcp_symbols(self) -> None:
         """mcp_common.fastmcp must re-export FastMCP, Context, Middleware."""

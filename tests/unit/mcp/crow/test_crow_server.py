@@ -3,6 +3,7 @@
 (``mahavishnu.mcp.crow_server``) that the stdlib fallback / missing
 implementation cannot satisfy.
 """
+
 from __future__ import annotations
 
 import pytest
@@ -147,8 +148,9 @@ async def test_registered_tool_callable_returns_content(tmp_path):
     tools = await server.fastmcp.list_tools()
     by_name = {t.name: t for t in tools}
     tool = by_name["read_file"]
-    result = await tool.run({"file_path": str(target), "offset": 0,
-                              "limit": 100, "encoding": "utf-8"})
+    result = await tool.run(
+        {"file_path": str(target), "offset": 0, "limit": 100, "encoding": "utf-8"}
+    )
     assert result.is_error is False
     text = result.content[0].text
     # FastMCP serializes TypedDict returns to JSON in content[0].text.

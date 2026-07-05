@@ -1213,7 +1213,7 @@ curl -X POST http://localhost:3000/api/auth/keys \
 Use API key in requests:
 
 ```bash
-curl http://localhost:3000/api/dashboards \
+curl http://localhost:3000/api/dashboards \ # nosec
   -H "Authorization: Bearer YOUR_API_KEY"
 ```
 

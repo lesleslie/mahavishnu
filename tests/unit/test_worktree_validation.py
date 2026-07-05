@@ -1,5 +1,7 @@
 """Unit tests for WorktreePathValidator.
 
+from __future__ import annotations
+import operator
 Tests security validation of worktree paths with comprehensive coverage of:
 - Null byte prevention (CWE-170)
 - Path traversal prevention (CWE-22)
@@ -20,7 +22,7 @@ from mahavishnu.core.worktree_validation import WorktreePathValidator
 class TestWorktreePathValidator:
     """Test suite for WorktreePathValidator security checks."""
 
-    def test_initialization(self, tmp_path):
+    def test_initialization(self, tmp_path) -> None:
         """Test validator initialization with allowed roots."""
         allowed_roots = [tmp_path / "worktrees", tmp_path / "safe"]
         validator = WorktreePathValidator(allowed_roots=allowed_roots)
@@ -28,7 +30,7 @@ class TestWorktreePathValidator:
         assert validator.allowed_roots == allowed_roots
         assert validator.strict_mode is True
 
-    def test_initialization_with_strict_mode_disabled(self, tmp_path):
+    def test_initialization_with_strict_mode_disabled(self, tmp_path) -> None:
         """Test validator initialization with strict mode disabled."""
         validator = WorktreePathValidator(
             allowed_roots=[tmp_path / "worktrees"],
@@ -41,7 +43,7 @@ class TestWorktreePathValidator:
     # Null Byte Prevention Tests (CWE-170)
     # =========================================================================
 
-    def test_reject_null_bytes_in_path(self, tmp_path):
+    def test_reject_null_bytes_in_path(self, tmp_path) -> None:
         """Test that paths with null bytes are rejected (CWE-170)."""
         validator = WorktreePathValidator(allowed_roots=[tmp_path / "worktrees"])
 
@@ -53,7 +55,7 @@ class TestWorktreePathValidator:
         assert "null bytes" in error.lower()
         assert "CWE-170" in error
 
-    def test_null_bytes_audit_logging(self, tmp_path, mocker):
+    def test_null_bytes_audit_logging(self, tmp_path, mocker) -> None:
         """Test that null byte rejection is written to the audit logger."""
         validator = WorktreePathValidator(allowed_roots=[tmp_path / "worktrees"])
 
@@ -77,7 +79,7 @@ class TestWorktreePathValidator:
     # Shell Metacharacter Detection Tests (CWE-114)
     # =========================================================================
 
-    def test_reject_shell_metacharacters(self, tmp_path):
+    def test_reject_shell_metacharacters(self, tmp_path) -> None:
         """Test that paths with shell metacharacters are rejected (CWE-114)."""
         validator = WorktreePathValidator(allowed_roots=[tmp_path / "worktrees"])
 
@@ -97,7 +99,7 @@ class TestWorktreePathValidator:
             assert "shell metacharacters" in error.lower()
             assert "CWE-114" in error
 
-    def test_reject_newline_carriage_return(self, tmp_path):
+    def test_reject_newline_carriage_return(self, tmp_path) -> None:
         """Test that paths with newline/carriage return are rejected."""
         validator = WorktreePathValidator(allowed_roots=[tmp_path / "worktrees"])
 
@@ -119,7 +121,7 @@ class TestWorktreePathValidator:
     # Path Traversal Prevention Tests (CWE-22)
     # =========================================================================
 
-    def test_reject_parent_directory_traversal(self, tmp_path):
+    def test_reject_parent_directory_traversal(self, tmp_path) -> None:
         """Test that paths with parent directory traversal are rejected (CWE-22)."""
         validator = WorktreePathValidator(allowed_roots=[tmp_path / "worktrees"])
 
@@ -131,7 +133,7 @@ class TestWorktreePathValidator:
         assert "dangerous component" in error.lower()
         assert "CWE-22" in error
 
-    def test_reject_tilde_expansion(self, tmp_path):
+    def test_reject_tilde_expansion(self, tmp_path) -> None:
         """Test that paths with tilde are rejected."""
         validator = WorktreePathValidator(allowed_roots=[tmp_path / "worktrees"])
 
@@ -140,7 +142,7 @@ class TestWorktreePathValidator:
         assert not is_valid
         assert "outside allowed directories" in error.lower()
 
-    def test_reject_git_directory(self, tmp_path):
+    def test_reject_git_directory(self, tmp_path) -> None:
         """Test that paths with .git component are rejected."""
         validator = WorktreePathValidator(allowed_roots=[tmp_path / "worktrees"])
 
@@ -151,7 +153,7 @@ class TestWorktreePathValidator:
         assert not is_valid
         assert "dangerous component" in error.lower()
 
-    def test_reject_svn_directory(self, tmp_path):
+    def test_reject_svn_directory(self, tmp_path) -> None:
         """Test that paths with .svn component are rejected."""
         validator = WorktreePathValidator(allowed_roots=[tmp_path / "worktrees"])
 
@@ -162,7 +164,7 @@ class TestWorktreePathValidator:
         assert not is_valid
         assert "dangerous component" in error.lower()
 
-    def test_reject_hg_directory(self, tmp_path):
+    def test_reject_hg_directory(self, tmp_path) -> None:
         """Test that paths with .hg component are rejected."""
         validator = WorktreePathValidator(allowed_roots=[tmp_path / "worktrees"])
 
@@ -177,7 +179,7 @@ class TestWorktreePathValidator:
     # Allowed Root Verification Tests
     # =========================================================================
 
-    def test_reject_path_outside_allowed_roots_in_strict_mode(self, tmp_path):
+    def test_reject_path_outside_allowed_roots_in_strict_mode(self, tmp_path) -> None:
         """Test that paths outside allowed roots are rejected in strict mode."""
         allowed_roots = [tmp_path / "worktrees"]
         validator = WorktreePathValidator(allowed_roots=allowed_roots, strict_mode=True)
@@ -191,7 +193,7 @@ class TestWorktreePathValidator:
         assert "outside allowed directories" in error.lower()
         assert "CWE-22" in error
 
-    def test_accept_path_outside_allowed_roots_in_non_strict_mode(self, tmp_path):
+    def test_accept_path_outside_allowed_roots_in_non_strict_mode(self, tmp_path) -> None:
         """Test that paths outside allowed roots are accepted in non-strict mode."""
         validator = WorktreePathValidator(allowed_roots=[tmp_path / "worktrees"], strict_mode=False)
 
@@ -206,7 +208,7 @@ class TestWorktreePathValidator:
         assert isinstance(is_valid, bool)
         assert isinstance(error, (str, type(None)))
 
-    def test_accept_path_inside_allowed_roots(self, tmp_path):
+    def test_accept_path_inside_allowed_roots(self, tmp_path) -> None:
         """Test that paths inside allowed roots are accepted."""
         allowed_roots = [tmp_path / "worktrees"]
         validator = WorktreePathValidator(allowed_roots=allowed_roots)
@@ -219,7 +221,7 @@ class TestWorktreePathValidator:
         assert is_valid
         assert error is None
 
-    def test_accept_absolute_path_matching_allowed_root(self, tmp_path):
+    def test_accept_absolute_path_matching_allowed_root(self, tmp_path) -> None:
         """Test that absolute paths matching allowed roots are accepted."""
         allowed_roots = [tmp_path / "worktrees"]
         validator = WorktreePathValidator(allowed_roots=allowed_roots)
@@ -236,7 +238,7 @@ class TestWorktreePathValidator:
     # Path Normalization Tests
     # =========================================================================
 
-    def test_reject_normalized_path_with_escape_sequences(self, tmp_path):
+    def test_reject_normalized_path_with_escape_sequences(self, tmp_path) -> None:
         """Test that normalized paths with escape sequences are rejected."""
         allowed_roots = [tmp_path / "worktrees"]
         validator = WorktreePathValidator(allowed_roots=allowed_roots)
@@ -250,7 +252,7 @@ class TestWorktreePathValidator:
         assert "dangerous component" in error.lower()
         assert "CWE-22" in error
 
-    def test_reject_path_with_tilde_after_normalization(self, tmp_path):
+    def test_reject_path_with_tilde_after_normalization(self, tmp_path) -> None:
         """Test that paths with ~ after normalization are rejected."""
         allowed_roots = [tmp_path / "worktrees"]
         validator = WorktreePathValidator(allowed_roots=allowed_roots)
@@ -267,7 +269,7 @@ class TestWorktreePathValidator:
     # Repository Path Validation Tests
     # =========================================================================
 
-    def test_validate_repository_path_with_null_bytes(self, tmp_path):
+    def test_validate_repository_path_with_null_bytes(self, tmp_path) -> None:
         """Test repository path validation rejects null bytes."""
         validator = WorktreePathValidator(allowed_roots=[tmp_path / "repos"])
 
@@ -278,7 +280,7 @@ class TestWorktreePathValidator:
         assert not is_valid
         assert "null bytes" in error.lower()
 
-    def test_validate_repository_path_with_shell_metacharacters(self, tmp_path):
+    def test_validate_repository_path_with_shell_metacharacters(self, tmp_path) -> None:
         """Test repository path validation rejects shell metacharacters."""
         validator = WorktreePathValidator(allowed_roots=[tmp_path / "repos"])
 
@@ -289,7 +291,7 @@ class TestWorktreePathValidator:
         assert not is_valid
         assert "shell metacharacters" in error.lower()
 
-    def test_validate_repository_path_with_path_traversal(self, tmp_path):
+    def test_validate_repository_path_with_path_traversal(self, tmp_path) -> None:
         """Test repository path validation accepts parent traversal (repos can be anywhere)."""
         validator = WorktreePathValidator(allowed_roots=[tmp_path / "worktrees"])
 
@@ -307,7 +309,7 @@ class TestWorktreePathValidator:
     # Safe Worktree Path Generation Tests
     # =========================================================================
 
-    def test_get_safe_worktree_path_with_custom_base(self, tmp_path):
+    def test_get_safe_worktree_path_with_custom_base(self, tmp_path) -> None:
         """Test safe worktree path generation with custom base directory."""
         validator = WorktreePathValidator(allowed_roots=[tmp_path / "worktrees"])
 
@@ -318,7 +320,7 @@ class TestWorktreePathValidator:
         expected = tmp_path / "custom" / "mahavishnu" / "feature-auth"
         assert worktree_path == expected
 
-    def test_get_safe_worktree_path_sanitizes_branch_name(self, tmp_path):
+    def test_get_safe_worktree_path_sanitizes_branch_name(self, tmp_path) -> None:
         """Test that branch names are sanitized for filesystem safety."""
         validator = WorktreePathValidator(allowed_roots=[tmp_path / "worktrees"])
 
@@ -333,7 +335,7 @@ class TestWorktreePathValidator:
         assert ".." not in str(worktree_path)
         assert worktree_path == tmp_path / "worktrees" / "repo" / "_feature-auth"
 
-    def test_get_safe_worktree_path_sanitizes_slashes(self, tmp_path):
+    def test_get_safe_worktree_path_sanitizes_slashes(self, tmp_path) -> None:
         """Test that slashes in branch names are sanitized."""
         validator = WorktreePathValidator(allowed_roots=[tmp_path / "worktrees"])
 
@@ -348,7 +350,7 @@ class TestWorktreePathValidator:
         assert worktree_path.name == "feature-auth-api"
         assert worktree_path == tmp_path / "worktrees" / "repo" / "feature-auth-api"
 
-    def test_get_safe_worktree_path_default_base(self, tmp_path):
+    def test_get_safe_worktree_path_default_base(self, tmp_path) -> None:
         """Test safe worktree path generation with default base directory."""
         validator = WorktreePathValidator(allowed_roots=[tmp_path / "worktrees"])
 
@@ -360,7 +362,7 @@ class TestWorktreePathValidator:
 
         assert worktree_path == pathlib.Path.home() / "worktrees" / "mahavishnu" / "main"
 
-    def test_get_safe_worktree_path_empty_branch(self, tmp_path):
+    def test_get_safe_worktree_path_empty_branch(self, tmp_path) -> None:
         """Test that empty branch names are sanitized to 'unnamed'."""
         validator = WorktreePathValidator(allowed_roots=[tmp_path / "worktrees"])
 
@@ -378,7 +380,7 @@ class TestWorktreePathValidator:
 
     @pytest.mark.property
     @given(st.text(max_size=50).map(lambda value: f"{value}\x00{value}"))
-    def test_property_reject_paths_with_null_bytes(self, path):
+    def test_property_reject_paths_with_null_bytes(self, path) -> None:
         """Property-based test: All paths with null bytes are rejected."""
         validator = WorktreePathValidator(allowed_roots=[Path("/worktrees")])
 
@@ -386,7 +388,9 @@ class TestWorktreePathValidator:
         assert not is_valid
         assert "null bytes" in error.lower()
 
-    def test_validate_worktree_path_escape_sequence_after_resolution(self, tmp_path, mocker):
+    def test_validate_worktree_path_escape_sequence_after_resolution(
+        self, tmp_path, mocker
+    ) -> None:
         """Test that escape sequences detected after resolution are rejected."""
         validator = WorktreePathValidator(allowed_roots=[tmp_path / "worktrees"])
         mocker.patch(
@@ -402,7 +406,7 @@ class TestWorktreePathValidator:
         assert "escape sequences" in error.lower()
         assert "CWE-22" in error
 
-    def test_validate_worktree_path_type_error_returns_invalid(self, tmp_path):
+    def test_validate_worktree_path_type_error_returns_invalid(self, tmp_path) -> None:
         """Test that unexpected path types are handled as invalid input."""
         validator = WorktreePathValidator(allowed_roots=[tmp_path / "worktrees"])
 
@@ -411,7 +415,7 @@ class TestWorktreePathValidator:
         assert not is_valid
         assert "not iterable" in error.lower()
 
-    def test_validate_repository_path_accepts_git_repo(self, tmp_path):
+    def test_validate_repository_path_accepts_git_repo(self, tmp_path) -> None:
         """Test that a valid git repository path is accepted."""
         validator = WorktreePathValidator(allowed_roots=[tmp_path / "repos"])
 
@@ -423,7 +427,7 @@ class TestWorktreePathValidator:
         assert is_valid
         assert error is None
 
-    def test_validate_repository_path_exception_is_handled(self, tmp_path, mocker):
+    def test_validate_repository_path_exception_is_handled(self, tmp_path, mocker) -> None:
         """Test that repository validation exceptions are handled cleanly."""
         validator = WorktreePathValidator(allowed_roots=[tmp_path / "repos"])
         mocker.patch.object(validator, "_is_git_repository", side_effect=RuntimeError("repo boom"))
@@ -435,7 +439,7 @@ class TestWorktreePathValidator:
         assert not is_valid
         assert "repo boom" in error
 
-    def test_validate_worktree_path_resolve_failure(self, tmp_path, mocker):
+    def test_validate_worktree_path_resolve_failure(self, tmp_path, mocker) -> None:
         """Test that path resolution failures are handled cleanly."""
         validator = WorktreePathValidator(allowed_roots=[tmp_path / "worktrees"])
         mocker.patch(
@@ -450,7 +454,7 @@ class TestWorktreePathValidator:
         assert "path resolution failed" in error.lower()
         assert "boom" in error
 
-    def test_validate_repository_path_resolve_failure(self, tmp_path, mocker):
+    def test_validate_repository_path_resolve_failure(self, tmp_path, mocker) -> None:
         """Test that repository path resolution failures are handled cleanly."""
         validator = WorktreePathValidator(allowed_roots=[tmp_path / "repos"])
         mocker.patch(
@@ -465,7 +469,7 @@ class TestWorktreePathValidator:
         assert "repository path resolution failed" in error.lower()
         assert "boom" in error
 
-    def test_log_security_rejection_audit_failure_is_ignored(self, tmp_path, mocker):
+    def test_log_security_rejection_audit_failure_is_ignored(self, tmp_path, mocker) -> None:
         """Test that audit logger failures do not break validation logging."""
         validator = WorktreePathValidator(allowed_roots=[tmp_path / "worktrees"])
         mock_logger = mocker.Mock()
@@ -483,7 +487,7 @@ class TestWorktreePathValidator:
     # Edge Cases
     # =========================================================================
 
-    def test_validate_empty_path(self, tmp_path):
+    def test_validate_empty_path(self, tmp_path) -> None:
         """Test validation of empty path string."""
         validator = WorktreePathValidator(allowed_roots=[tmp_path / "worktrees"])
 
@@ -493,7 +497,7 @@ class TestWorktreePathValidator:
         assert isinstance(is_valid, bool)  # May be False or raise exception
         assert isinstance(error, (str, type(None)))
 
-    def test_validate_relative_path(self, tmp_path):
+    def test_validate_relative_path(self, tmp_path) -> None:
         """Test validation of relative path."""
         validator = WorktreePathValidator(allowed_roots=[tmp_path / "worktrees"])
 
@@ -503,7 +507,7 @@ class TestWorktreePathValidator:
         assert not is_valid
         assert "outside allowed directories" in error.lower()
 
-    def test_validate_very_long_path(self, tmp_path):
+    def test_validate_very_long_path(self, tmp_path) -> None:
         """Test validation of excessively long path."""
         validator = WorktreePathValidator(allowed_roots=[tmp_path / "worktrees"])
 

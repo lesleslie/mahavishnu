@@ -162,9 +162,7 @@ class TestDefaultTenant:
         monkeypatch.delenv(DEFAULT_TENANT_ENV_VAR, raising=False)
         assert get_default_tenant_id() == "default"
 
-    def test_get_default_tenant_id_reads_env(
-        self, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
+    def test_get_default_tenant_id_reads_env(self, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setenv(DEFAULT_TENANT_ENV_VAR, "acme")
         assert get_default_tenant_id() == "acme"
 

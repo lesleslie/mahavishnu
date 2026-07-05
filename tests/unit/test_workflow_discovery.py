@@ -44,9 +44,7 @@ def _make_module(path: Path, body: str) -> None:
 class TestIterWorkflowModulesQuarantine:
     """The quarantine invariant: distilled/*.py is NEVER yielded."""
 
-    def test_does_not_yield_files_under_distilled_subdir(
-        self, fake_repo_root: Path
-    ) -> None:
+    def test_does_not_yield_files_under_distilled_subdir(self, fake_repo_root: Path) -> None:
         """Files under workflows/distilled/ MUST NOT be yielded even if pattern drifts."""
         from mahavishnu.distill.discovery import iter_workflow_modules
 
@@ -58,10 +56,7 @@ class TestIterWorkflowModulesQuarantine:
         )
 
         yielded = list(iter_workflow_modules(fake_repo_root))
-        assert yielded == [], (
-            f"Quarantined file leaked into discovery: "
-            f"{[p.name for p in yielded]}"
-        )
+        assert yielded == [], f"Quarantined file leaked into discovery: {[p.name for p in yielded]}"
 
     def test_yields_files_at_workflows_root(self, fake_repo_root: Path) -> None:
         """Top-level workflows/*.py files MUST be yielded."""
@@ -142,9 +137,7 @@ class TestDiscoverWorkflowsDecorator:
         assert entry["workflow_id"] == "wf_a"
         assert entry["intent"] == "run a"
 
-    def test_quarantined_decorated_function_not_discovered(
-        self, fake_repo_root: Path
-    ) -> None:
+    def test_quarantined_decorated_function_not_discovered(self, fake_repo_root: Path) -> None:
         """A decorated function under distilled/ MUST NOT appear in results."""
         from mahavishnu.distill.discovery import discover_workflows
 
@@ -199,9 +192,7 @@ class TestWorkflowSpec:
         with pytest.raises((AttributeError, Exception)) as exc_info:
             spec.intent = "y"  # type: ignore[misc]
         # Frozen dataclasses raise FrozenInstanceError (a subclass of AttributeError).
-        assert "frozen" in str(exc_info.value).lower() or isinstance(
-            exc_info.value, AttributeError
-        )
+        assert "frozen" in str(exc_info.value).lower() or isinstance(exc_info.value, AttributeError)
 
     def test_spec_default_values(self) -> None:
         """Defaults: work_pool='default', tags=(), schedule=None, etc."""
@@ -253,9 +244,7 @@ class TestMahavishnuWorkflowDecorator:
         assert add(2, 3) == 5
         assert getattr(add, "__mahavishnu_workflow_spec__", None) is not None
 
-    def test_multiple_decorated_functions_in_one_module(
-        self, fake_repo_root: Path
-    ) -> None:
+    def test_multiple_decorated_functions_in_one_module(self, fake_repo_root: Path) -> None:
         """Two decorated functions in the same module: both discovered."""
         from mahavishnu.distill.discovery import discover_workflows
 

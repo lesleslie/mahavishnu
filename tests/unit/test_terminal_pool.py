@@ -449,7 +449,6 @@ class TestIntegrationScenarios:
         session_ids = ["s1", "s2", "s3"]
         call_count = 0
 
-
         async def counting_create(command, columns, rows, profile):
             nonlocal call_count
             call_count += 1

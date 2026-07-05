@@ -1,4 +1,5 @@
 """Shared fixtures for the crow-server unit tests."""
+
 from __future__ import annotations
 
 from pathlib import Path

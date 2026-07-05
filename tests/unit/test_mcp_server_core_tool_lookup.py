@@ -23,12 +23,7 @@ def test_server_core_does_not_poke_private_tool_manager() -> None:
     ``await server.get_tools()`` API; a regression to the private poke
     breaks against FastMCP 3.x and must fail loudly.
     """
-    server_core_path = (
-        Path(__file__).resolve().parents[2]
-        / "mahavishnu"
-        / "mcp"
-        / "server_core.py"
-    )
+    server_core_path = Path(__file__).resolve().parents[2] / "mahavishnu" / "mcp" / "server_core.py"
     text = server_core_path.read_text(encoding="utf-8")
     # Strip comments and string literals before scanning — we want to
     # catch actual code references, not comments referencing the old API.

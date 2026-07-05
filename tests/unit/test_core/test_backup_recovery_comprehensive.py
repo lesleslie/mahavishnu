@@ -318,9 +318,7 @@ class TestBackupManager:
         """Test that cleanup respects retention policy."""
         # This is a difficult test to implement without creating actual old backups
         # We'll just verify the method is called
-        with patch.object(
-            backup_manager, "_cleanup_old_backups", new_callable=AsyncMock
-        ):
+        with patch.object(backup_manager, "_cleanup_old_backups", new_callable=AsyncMock):
             await backup_manager.create_backup()
             # Give some time for async cleanup
             import asyncio

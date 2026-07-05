@@ -10,6 +10,7 @@ Each test asserts an observable property of the production module
 current stdlib-HTMLParser implementation and PASS once the new
 libraries are wired in.
 """
+
 from __future__ import annotations
 
 import pytest

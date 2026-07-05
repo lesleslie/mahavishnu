@@ -35,7 +35,9 @@ def test_discover_finds_repo_sop(tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     assert result == sop_file
 
 
-def test_load_style_sop_returns_frontmatter_and_body(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
+def test_load_style_sop_returns_frontmatter_and_body(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+):
     (tmp_path / ".bodai").mkdir()
     sop_text = (
         "---\n"
@@ -58,7 +60,9 @@ def test_load_style_sop_returns_frontmatter_and_body(tmp_path: Path, monkeypatch
     assert "This is the prose" in sop["body"]
 
 
-def test_load_style_sop_handles_missing_frontmatter(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
+def test_load_style_sop_handles_missing_frontmatter(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+):
     (tmp_path / ".bodai").mkdir()
     (tmp_path / ".bodai" / "style-sop.md").write_text("# Just markdown\n\nNo frontmatter.")
     monkeypatch.chdir(tmp_path)

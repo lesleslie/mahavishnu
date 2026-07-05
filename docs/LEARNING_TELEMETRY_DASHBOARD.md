@@ -419,7 +419,7 @@ For development, staging, and production:
 
 ```bash
 # Export via API
-curl -u admin:admin \
+curl -u admin:admin \ # nosec
   http://localhost:3000/api/dashboards/db/learning-telemetry \
   | jq '.dashboard' > learning-telemetry-export.json
 

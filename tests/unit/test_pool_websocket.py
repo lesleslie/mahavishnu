@@ -298,9 +298,7 @@ class TestConnectionManagement:
         mock_server.broadcast_to_room.side_effect = Exception("Connection reset by peer")
         broadcaster = WebSocketBroadcaster(websocket_server=mock_server)
 
-        with patch.object(
-            broadcaster, "_attempt_reconnect", new_callable=AsyncMock
-        ):
+        with patch.object(broadcaster, "_attempt_reconnect", new_callable=AsyncMock):
             await broadcaster.broadcast_pool_spawned("pool_123", {})
             # Should have tried to reconnect
             # Note: reconnect only triggers on connection errors

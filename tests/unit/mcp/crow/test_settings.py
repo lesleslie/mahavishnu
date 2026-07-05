@@ -1,4 +1,5 @@
 """Tests for CrowSettings — config schema + ripgrep auto-resolution."""
+
 from __future__ import annotations
 
 from pathlib import Path

@@ -14,6 +14,7 @@ The test suite focuses on:
 - Max-length truncation
 - Failure isolation (network errors return structured error, not raise)
 """
+
 from __future__ import annotations
 
 import httpx
@@ -109,9 +110,7 @@ async def test_web_extract_max_length_truncates(mock_http_client, tmp_path):
     mock_http_client.get("https://example.com/").mock(
         return_value=httpx.Response(200, text=text, headers={"content-type": "text/html"})
     )
-    result = await web_extract(
-        "https://example.com/", mock_settings(tmp_path), max_length=50
-    )
+    result = await web_extract("https://example.com/", mock_settings(tmp_path), max_length=50)
     assert len(result["content"]) <= 50
     assert result["truncated"] is True
 
@@ -163,9 +162,7 @@ async def test_web_extract_returns_error_on_404(mock_http_client, tmp_path):
 
 @pytest.mark.unit
 async def test_web_extract_returns_error_on_timeout(mock_http_client, tmp_path):
-    mock_http_client.get("https://e.example/").mock(
-        side_effect=httpx.TimeoutException("timeout")
-    )
+    mock_http_client.get("https://e.example/").mock(side_effect=httpx.TimeoutException("timeout"))
     result = await web_extract("https://e.example/", mock_settings(tmp_path))
     assert result["error"] is not None
     assert result["content"] == ""
@@ -178,22 +175,22 @@ async def test_web_extract_returns_error_on_timeout(mock_http_client, tmp_path):
 async def test_web_extract_batch_returns_list(mock_http_client, tmp_path):
     mock_http_client.get("https://a.example/").mock(
         return_value=httpx.Response(
-            200, text="<html><body><p>A</p></body></html>",
+            200,
+            text="<html><body><p>A</p></body></html>",
             headers={"content-type": "text/html"},
         )
     )
     mock_http_client.get("https://b.example/").mock(
         return_value=httpx.Response(
-            200, text="<html><body><p>B</p></body></html>",
+            200,
+            text="<html><body><p>B</p></body></html>",
             headers={"content-type": "text/html"},
         )
     )
     results = await __import__(
         "mahavishnu.mcp.crow.tools.web_extract",
         fromlist=["web_extract_batch"],
-    ).web_extract_batch(
-        ["https://a.example/", "https://b.example/"], mock_settings(tmp_path)
-    )
+    ).web_extract_batch(["https://a.example/", "https://b.example/"], mock_settings(tmp_path))
     assert len(results) == 2
     assert "A" in results[0]["content"]
     assert "B" in results[1]["content"]

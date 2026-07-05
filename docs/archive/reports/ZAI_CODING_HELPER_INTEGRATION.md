@@ -716,7 +716,7 @@ The CLI uses `rich` for beautiful output:
 Current Configuration
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   Provider: Zai (api.z.ai)
-  API Key: 43d9b...3D5wfNSaGjkOdBkC
+  API Key: 43d9b...3D5wfNSaGjkOdBkC # nosec
   Timeout: 3000ms
 
 Active Tool

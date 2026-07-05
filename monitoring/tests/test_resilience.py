@@ -222,7 +222,6 @@ class TestCircuitBreaker:
             expected_exception=ConnectionError,  # Only count ConnectionError
         )
 
-
         async def raise_connection_errors():
             """Only raises ConnectionError."""
             raise ConnectionError("Connection failed")

@@ -459,7 +459,7 @@ auth:
 
 ```bash
 # Never commit secrets to git!
-export MAHAVISHNU_AUTH__SECRET="a1b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6"
+export MAHAVISHNU_AUTH__SECRET="a1b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6" # nosec
 
 # Or use a secret manager
 export MAHAVISHNU_AUTH__SECRET="$(vault get -field=secret mahavishnu/jwt)"

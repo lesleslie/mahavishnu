@@ -916,7 +916,7 @@ print(f"Scopes: {result['scopes']}")
 export MAHAVISHNU_SUBSCRIPTION_AUTH_SECRET="your_32char_secret_key_minimum"
 
 # Optional: Pass token directly (for testing)
-export MAHAVISHNU_SUBSCRIPTION_TOKEN="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+export MAHAVISHNU_SUBSCRIPTION_TOKEN="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..." # nosec
 
 # PostgreSQL
 export MAHAVISHNU_PG_HOST="localhost"

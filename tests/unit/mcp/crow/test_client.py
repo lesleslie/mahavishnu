@@ -1,4 +1,5 @@
 """Tests for the shared httpx2 client lifecycle."""
+
 from __future__ import annotations
 
 import pytest

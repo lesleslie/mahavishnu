@@ -143,7 +143,9 @@ class TestExecute:
         with pytest.raises(DharaSQLProxyError) as exc_info:
             await client.execute("INSERT INTO foo (id) VALUES ($1)", {"id": "x"})
 
-        assert "connect" in str(exc_info.value).lower() or "sql_proxy" in str(exc_info.value).lower()
+        assert (
+            "connect" in str(exc_info.value).lower() or "sql_proxy" in str(exc_info.value).lower()
+        )
 
     async def test_execute_aclose_closes_underlying_client(self):
         client = DharaThinClient("http://localhost")

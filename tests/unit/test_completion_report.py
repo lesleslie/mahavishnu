@@ -312,9 +312,7 @@ class TestLocalFileCompletionPersister:
         with pytest.raises(FileNotFoundError):
             persister.load("does-not-exist")
 
-    def test_save_overwrites_existing_report_with_same_id(
-        self, tmp_path: Path
-    ) -> None:
+    def test_save_overwrites_existing_report_with_same_id(self, tmp_path: Path) -> None:
         persister = LocalFileCompletionPersister(reports_dir=tmp_path)
         rid = "fixed-id-1234"
         r1 = CompletionReport(**_valid_kwargs(report_id=rid, summary="first"))

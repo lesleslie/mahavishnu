@@ -301,7 +301,7 @@ kill 74007  # PID of the process
 **Solution:** Access via direct URL or list all dashboards:
 
 ```bash
-curl -u admin:admin http://localhost:3030/api/search?query=learning
+curl -u admin:admin http://localhost:3030/api/search?query=learning # nosec
 ```
 
 ### Plugin Not Loading

@@ -42,12 +42,13 @@ class TestRollbackCLIRegistration:
         """add_rollback_commands attaches the rollback sub-app under 'rollback'."""
         import typer
 
-
         test_app = typer.Typer()
         add_rollback_commands(test_app)
         # Typer sub-apps are stored in `registered_groups` keyed by name
         group_names = {
-            getattr(g, "name", None) or getattr(g, "typer_instance", None) and g.typer_instance.info.name
+            getattr(g, "name", None)
+            or getattr(g, "typer_instance", None)
+            and g.typer_instance.info.name
             for g in test_app.registered_groups
         }
         assert "rollback" in group_names
@@ -80,9 +81,7 @@ class TestBodaiCrowRollback:
     def test_bodai_crow_handler_called_with_sha(self) -> None:
         """`--to-version <sha>` is forwarded to rollback_bodai_crow."""
         runner = CliRunner()
-        with patch(
-            "mahavishnu.cli.rollback_cli.rollback_bodai_crow"
-        ) as mock_handler:
+        with patch("mahavishnu.cli.rollback_cli.rollback_bodai_crow") as mock_handler:
             result = runner.invoke(
                 app,
                 ["rollback", "bodai-crow", "--to-version", "abc1234"],
@@ -92,8 +91,7 @@ class TestBodaiCrowRollback:
         # The handler should have received the sha
         _, kwargs = mock_handler.call_args
         assert kwargs.get("to_version") == "abc1234" or (
-            len(mock_handler.call_args.args) > 0
-            and mock_handler.call_args.args[0] == "abc1234"
+            len(mock_handler.call_args.args) > 0 and mock_handler.call_args.args[0] == "abc1234"
         )
 
     def test_bodai_crow_subcommand_help_describes_to_version(self) -> None:
@@ -123,9 +121,7 @@ class TestDistilledWorkflowRollback:
     def test_distilled_workflow_handler_called_with_ulid(self) -> None:
         """`--id <ulid>` is forwarded to rollback_distilled_workflow."""
         runner = CliRunner()
-        with patch(
-            "mahavishnu.cli.rollback_cli.rollback_distilled_workflow"
-        ) as mock_handler:
+        with patch("mahavishnu.cli.rollback_cli.rollback_distilled_workflow") as mock_handler:
             result = runner.invoke(
                 app,
                 [

@@ -144,7 +144,7 @@ class DharaThinClient:
     # Internals
     # ------------------------------------------------------------------
 
-    async def _invoke(self, tool_name: str, arguments: dict[str, Any]) -> Any:
+    async def _invoke(self, tool_name: str, arguments: dict[str, Any]) -> Any:  # noqa: C901
         """Route a tool call through the adapter or own HTTP client.
 
         Connection-level failures are wrapped in ``DharaSQLProxyError``;

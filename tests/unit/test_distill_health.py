@@ -47,9 +47,7 @@ def _insert_workflow(
     last_reinforced_offset_days: int,
     approved: bool = False,
 ) -> None:
-    last = datetime(2026, 6, 26, tzinfo=UTC) - timedelta(
-        days=last_reinforced_offset_days
-    )
+    last = datetime(2026, 6, 26, tzinfo=UTC) - timedelta(days=last_reinforced_offset_days)
     created = last - timedelta(days=1)
     conn.execute(
         """
@@ -87,16 +85,40 @@ def seeded_conn() -> Callable[..., duckdb.DuckDBPyConnection]:
             return c
         if scenario == "mixed":
             # 1 fresh, 1 stale, 1 under_utilized (high importance, never approved)
-            _insert_workflow(c, id="01J_FRESH", importance=0.8, evidence=3,
-                             last_reinforced_offset_days=10, approved=True)
-            _insert_workflow(c, id="01J_STALE", importance=0.8, evidence=3,
-                             last_reinforced_offset_days=120, approved=True)
-            _insert_workflow(c, id="01J_UNDER", importance=0.95, evidence=3,
-                             last_reinforced_offset_days=10, approved=False)
+            _insert_workflow(
+                c,
+                id="01J_FRESH",
+                importance=0.8,
+                evidence=3,
+                last_reinforced_offset_days=10,
+                approved=True,
+            )
+            _insert_workflow(
+                c,
+                id="01J_STALE",
+                importance=0.8,
+                evidence=3,
+                last_reinforced_offset_days=120,
+                approved=True,
+            )
+            _insert_workflow(
+                c,
+                id="01J_UNDER",
+                importance=0.95,
+                evidence=3,
+                last_reinforced_offset_days=10,
+                approved=False,
+            )
             return c
         if scenario == "cold":
-            _insert_workflow(c, id="01J_COLD", importance=0.75, evidence=0,
-                             last_reinforced_offset_days=5, approved=False)
+            _insert_workflow(
+                c,
+                id="01J_COLD",
+                importance=0.75,
+                evidence=0,
+                last_reinforced_offset_days=5,
+                approved=False,
+            )
             return c
         raise ValueError(f"unknown scenario: {scenario}")
 
