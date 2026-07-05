@@ -4,15 +4,12 @@ from __future__ import annotations
 
 import asyncio
 import json
-from typing import TYPE_CHECKING
+from pathlib import Path  # noqa: TC003 - needed at runtime: typer eval's string annotations
 
 import typer
 
 from ..core.app import MahavishnuApp
 from ..tui import TUI_AVAILABLE, FallbackRichFormatter, get_console
-
-if TYPE_CHECKING:
-    from pathlib import Path
 
 app = typer.Typer(help="Monitoring and alerting commands for Mahavishnu")
 

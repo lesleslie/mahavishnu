@@ -17,7 +17,7 @@ from __future__ import annotations
 
 from datetime import UTC, datetime
 import json
-from typing import TYPE_CHECKING
+from pathlib import Path  # noqa: TC003 - needed at runtime: typer eval's string annotations
 
 import typer
 
@@ -27,9 +27,6 @@ from mahavishnu.core.precommitment import (
     JsonFileLockStore,
     compute_signature,
 )
-
-if TYPE_CHECKING:
-    from pathlib import Path
 
 precommit_app = typer.Typer(help="Precommitment hypothesis lock (Spec #2)")
 
