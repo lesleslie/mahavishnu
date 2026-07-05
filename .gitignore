@@ -239,3 +239,9 @@ cron/jobs.json
 # Backup Files (added by gitignore audit)
 # ============================================================================
 *.backup
+# Backup-artifact suffixes produced by tool file modifiers
+# (e.g. session-buddy checkpoint, file_modifier writes `foo.md.backup.json`
+# next to every edit). `*.backup` alone misses `.backup.json` because
+# the filename ends in `.json`; these two rules cover all observed variants.
+*.backup.*
+*.backup.json
