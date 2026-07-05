@@ -171,15 +171,11 @@ def _get_mermaid_color(system: str) -> str:
 
 def _get_mermaid_edge_style(rel_type: str) -> str:
     """Get Mermaid edge style based on relationship type."""
-    rel_upper = rel_type.upper()
-    if rel_upper == "REQUIRED":
-        return "==>"
-    elif rel_upper == "RELATED":
-        return "-->"
-    elif rel_upper == "OPTIONAL":
-        return "-.->"
-    else:
-        return "-->"
+    return {
+        "REQUIRED": "==>",
+        "RELATED": "-->",
+        "OPTIONAL": "-.->",
+    }.get(rel_type.upper(), "-->")
 
 
 def _get_graphviz_color(system: str) -> str:
@@ -198,15 +194,11 @@ def _get_graphviz_color(system: str) -> str:
 
 def _get_graphviz_edge_style(rel_type: str) -> str:
     """Get Graphviz edge style based on relationship type."""
-    rel_upper = rel_type.upper()
-    if rel_upper == "REQUIRED":
-        return 'style="bold", color="#333"'
-    elif rel_upper == "RELATED":
-        return 'style="solid", color="#666"'
-    elif rel_upper == "OPTIONAL":
-        return 'style="dashed", color="#999"'
-    else:
-        return 'style="solid", color="#666"'
+    return {
+        "REQUIRED": 'style="bold", color="#333"',
+        "RELATED": 'style="solid", color="#666"',
+        "OPTIONAL": 'style="dashed", color="#999"',
+    }.get(rel_type.upper(), 'style="solid", color="#666"')
 
 
 def _get_hex_color(system: str) -> str:

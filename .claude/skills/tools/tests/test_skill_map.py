@@ -168,7 +168,7 @@ class TestAnalyzeCentrality:
         assert len(centrality) == 4
 
         # All scores should be positive
-        for skill, score in centrality.items():
+        for _skill, score in centrality.items():
             assert score > 0
 
     def test_centrality_ordering(self, sample_graph: SkillGraph):

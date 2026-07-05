@@ -75,7 +75,6 @@ def find_all_paths(
         return [[start_skill]]
 
     paths = []
-    visited_global = set()
 
     def dfs(current: str, path: list[str], visited: set[str]):
         nonlocal paths
@@ -141,7 +140,7 @@ def get_prerequisite_skills(graph: SkillGraph, skill_name: str) -> dict[str, lis
     # Remove direct prerequisites from transitive
     transitive -= set(direct_reqs)
 
-    return {"direct": direct_reqs, "transitive": sorted(list(transitive))}
+    return {"direct": direct_reqs, "transitive": sorted(transitive)}
 
 
 def suggest_learning_order(graph: SkillGraph, skill_names: list[str]) -> list[str]:
@@ -221,4 +220,4 @@ def find_dependencies(graph: SkillGraph, skill_name: str) -> dict[str, list[str]
                 except nx.NetworkXError:
                     pass
 
-    return {"direct": direct_dependents, "transitive": sorted(list(transitive))}
+    return {"direct": direct_dependents, "transitive": sorted(transitive)}

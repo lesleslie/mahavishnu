@@ -248,7 +248,7 @@ def export_system_matrix(graph: SkillGraph) -> str:
     """
     connections = get_skill_system_graph(graph)
     systems = sorted(
-        set(connections.keys()) | set(sys for subs in connections.values() for sys in subs.keys())
+        set(connections.keys()) | {sys for subs in connections.values() for sys in subs}
     )
 
     # Build matrix

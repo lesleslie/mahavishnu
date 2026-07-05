@@ -100,7 +100,7 @@ def find_orphan_skills(graph: SkillGraph) -> list[str]:
     """
     orphans = []
 
-    for skill_name in graph.skills.keys():
+    for skill_name in graph.skills:
         # Check for no incoming edges (not referenced by anyone)
         in_degree = graph.graph.in_degree(skill_name)
         # Check for no outgoing edges (doesn't reference anyone)

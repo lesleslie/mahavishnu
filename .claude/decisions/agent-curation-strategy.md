@@ -4,6 +4,7 @@ The Claude Code agent catalog has a **15,000-token hard limit** on aggregated ag
 loaded into context at session start. Exceeding it produces a warning and degrades context budget.
 
 The Bodai ecosystem uses two complementary agent sources:
+
 - **`mycelium-core` plugin** (120 agents): broad generalist coverage — languages, frameworks, cloud, data
 - **`~/.claude/agents/` + `mahavishnu/.claude/agents/`**: curated Bodai-specific and stack-specific agents
 
@@ -16,13 +17,13 @@ Before adding an agent to the curated catalog, apply this test in order:
    `find ~/.claude/plugins/cache/mycelium -name "*.md" -path "*/agents/*" | xargs -I{} basename {} .md | sed 's/^[0-9]*-[a-z]*-//'`
    If yes → **do not add**; the mycelium version will be available automatically.
 
-2. **Is it Bodai-stack relevant?**
+1. **Is it Bodai-stack relevant?**
    Bodai primary stack: Python 3.13, FastMCP, Oneiric, Starlette, FastBlocks, HTMX, HTMY,
    Jinja2, PostgreSQL, Redis, Rust/PyO3, pytest/Hypothesis, Rich/Textual.
    Bodai components: Mahavishnu, Akosha, Dhara, Session-Buddy, Crackerjack, Oneiric.
    If the agent serves none of these directly → **archive or skip**.
 
-3. **Does it serve non-Bodai repos that Bodai maintains?**
+1. **Does it serve non-Bodai repos that Bodai maintains?**
    Accepted exceptions: `pwa-specialist`, `pycharm-plugin-creator`, `vitest-specialist`,
    `web-components-specialist`, `css-architect`, `accessibility-auditor`.
    If a new agent fits this category, document it here.
@@ -38,6 +39,7 @@ scan path). The mahavishnu project repo simply deletes them from `.claude/agents
 are preserved in the global archive if recovery is needed).
 
 Archived agents can be restored with:
+
 ```
 mv ~/.claude/.archive/agents-removed/<batch>/<name>.md ~/.claude/agents/
 cp ~/.claude/agents/<name>.md mahavishnu/.claude/agents/

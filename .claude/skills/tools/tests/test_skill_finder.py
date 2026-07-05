@@ -120,8 +120,8 @@ class TestSearchIndex:
     def test_keyword_index(self, sample_index: SearchIndex):
         """Test keyword index lookup."""
         # Should have keywords from descriptions
-        assert any("workflow" in kw.lower() for kw in sample_index.keyword_index.keys())
-        assert any("error" in kw.lower() for kw in sample_index.keyword_index.keys())
+        assert any("workflow" in kw.lower() for kw in sample_index.keyword_index)
+        assert any("error" in kw.lower() for kw in sample_index.keyword_index)
 
     def test_system_index(self, sample_index: SearchIndex):
         """Test system index lookup."""
@@ -391,9 +391,9 @@ class TestRealSkillsData:
     def test_keyword_coverage(self, real_index: SearchIndex):
         """Test that keyword index has good coverage."""
         # Should have keywords from common domains
-        assert any("workflow" in kw.lower() for kw in real_index.keyword_index.keys())
-        assert any("testing" in kw.lower() for kw in real_index.keyword_index.keys())
-        assert any("error" in kw.lower() for kw in real_index.keyword_index.keys())
+        assert any("workflow" in kw.lower() for kw in real_index.keyword_index)
+        assert any("testing" in kw.lower() for kw in real_index.keyword_index)
+        assert any("error" in kw.lower() for kw in real_index.keyword_index)
 
     def test_symptom_coverage(self, real_index: SearchIndex):
         """Test that symptom index captures symptoms."""
