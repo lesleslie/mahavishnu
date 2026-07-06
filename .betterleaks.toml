@@ -1,0 +1,29 @@
+# Betterleaks configuration for mahavishnu.
+# Mirrors .gitleaks.toml conventions.
+#
+# Why this file exists:
+# Crackerjack's betterleaks hook runs against the working tree (not just git
+# history). The .backups/ directory is gitignored but contains historical
+# content with `curl -H "Authorization: Bearer ..."` examples that trigger
+# curl-auth-header findings. Excluding the directory keeps the scan scoped to
+# current source.
+
+title = "Mahavishnu Betterleaks Configuration"
+
+[allowlist]
+description = "Project-specific allowlist"
+paths = [
+    # Historical backup directories (gitignored)
+    '''\.backups/''',
+    '''\.backup/''',
+
+    # Documentation and example content
+    '''\.claude/''',
+    '''docs/''',
+    '''examples/''',
+
+    # Build and cache directories
+    '''__pycache__/''',
+    '''\.venv/''',
+    '''\.crackerjack/''',
+]
