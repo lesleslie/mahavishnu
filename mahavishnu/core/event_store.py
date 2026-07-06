@@ -180,6 +180,82 @@ class TaskState:
     is_deleted: bool = False
     version: int = 0
 
+    def _apply_created(self, event: TaskEvent) -> None:
+        """Handle CREATED event: initialise task fields from event data."""
+        self.title = event.data.get("title", "")
+        self.description = event.data.get("description")
+        self.repository = event.data.get("repository", "")
+        self.status = event.data.get("status", "pending")
+        self.priority = event.data.get("priority", "medium")
+        self.tags = event.data.get("tags", [])
+        self.created_at = event.occurred_at
+        self.updated_at = event.occurred_at
+
+    def _apply_updated(self, event: TaskEvent) -> None:
+        """Handle UPDATED event: copy any of title/description/metadata if present."""
+        if "title" in event.data:
+            self.title = event.data["title"]
+        if "description" in event.data:
+            self.description = event.data["description"]
+        if "metadata" in event.data:
+            self.metadata.update(event.data["metadata"])
+        self.updated_at = event.occurred_at
+
+    def _apply_status_changed(self, event: TaskEvent) -> None:
+        """Handle STATUS_CHANGED event: update status if new_status provided."""
+        self.status = event.data.get("new_status", self.status)
+        self.updated_at = event.occurred_at
+
+    def _apply_priority_changed(self, event: TaskEvent) -> None:
+        """Handle PRIORITY_CHANGED event: update priority if new_priority provided."""
+        self.priority = event.data.get("new_priority", self.priority)
+        self.updated_at = event.occurred_at
+
+    def _apply_assigned(self, event: TaskEvent) -> None:
+        """Handle ASSIGNED event: set assignee."""
+        self.assignee = event.data.get("assignee")
+        self.updated_at = event.occurred_at
+
+    def _apply_unassigned(self, event: TaskEvent) -> None:
+        """Handle UNASSIGNED event: clear assignee."""
+        self.assignee = None
+        self.updated_at = event.occurred_at
+
+    def _apply_completed(self, event: TaskEvent) -> None:
+        """Handle COMPLETED event: mark status completed and stamp completed_at."""
+        self.status = "completed"
+        self.completed_at = event.occurred_at
+        self.updated_at = event.occurred_at
+
+    def _apply_failed(self, event: TaskEvent) -> None:
+        """Handle FAILED event: mark status failed."""
+        self.status = "failed"
+        self.updated_at = event.occurred_at
+
+    def _apply_cancelled(self, event: TaskEvent) -> None:
+        """Handle CANCELLED event: mark status cancelled."""
+        self.status = "cancelled"
+        self.updated_at = event.occurred_at
+
+    def _apply_tag_added(self, event: TaskEvent) -> None:
+        """Handle TAG_ADDED event: append tag if not already present."""
+        tag = event.data.get("tag")
+        if tag and tag not in self.tags:
+            self.tags.append(tag)
+        self.updated_at = event.occurred_at
+
+    def _apply_tag_removed(self, event: TaskEvent) -> None:
+        """Handle TAG_REMOVED event: drop tag if present."""
+        tag = event.data.get("tag")
+        if tag in self.tags:
+            self.tags.remove(tag)
+        self.updated_at = event.occurred_at
+
+    def _apply_deleted(self, event: TaskEvent) -> None:
+        """Handle DELETED event: mark task as soft-deleted."""
+        self.is_deleted = True
+        self.updated_at = event.occurred_at
+
     def apply_event(self, event: TaskEvent) -> None:
         """Apply an event to update state.
 
@@ -187,70 +263,10 @@ class TaskState:
             event: Event to apply
         """
         self.version += 1
-
-        if event.event_type == TaskEventType.CREATED:
-            self.title = event.data.get("title", "")
-            self.description = event.data.get("description")
-            self.repository = event.data.get("repository", "")
-            self.status = event.data.get("status", "pending")
-            self.priority = event.data.get("priority", "medium")
-            self.tags = event.data.get("tags", [])
-            self.created_at = event.occurred_at
-            self.updated_at = event.occurred_at
-
-        elif event.event_type == TaskEventType.UPDATED:
-            if "title" in event.data:
-                self.title = event.data["title"]
-            if "description" in event.data:
-                self.description = event.data["description"]
-            if "metadata" in event.data:
-                self.metadata.update(event.data["metadata"])
-            self.updated_at = event.occurred_at
-
-        elif event.event_type == TaskEventType.STATUS_CHANGED:
-            self.status = event.data.get("new_status", self.status)
-            self.updated_at = event.occurred_at
-
-        elif event.event_type == TaskEventType.PRIORITY_CHANGED:
-            self.priority = event.data.get("new_priority", self.priority)
-            self.updated_at = event.occurred_at
-
-        elif event.event_type == TaskEventType.ASSIGNED:
-            self.assignee = event.data.get("assignee")
-            self.updated_at = event.occurred_at
-
-        elif event.event_type == TaskEventType.UNASSIGNED:
-            self.assignee = None
-            self.updated_at = event.occurred_at
-
-        elif event.event_type == TaskEventType.COMPLETED:
-            self.status = "completed"
-            self.completed_at = event.occurred_at
-            self.updated_at = event.occurred_at
-
-        elif event.event_type == TaskEventType.FAILED:
-            self.status = "failed"
-            self.updated_at = event.occurred_at
-
-        elif event.event_type == TaskEventType.CANCELLED:
-            self.status = "cancelled"
-            self.updated_at = event.occurred_at
-
-        elif event.event_type == TaskEventType.TAG_ADDED:
-            tag = event.data.get("tag")
-            if tag and tag not in self.tags:
-                self.tags.append(tag)
-            self.updated_at = event.occurred_at
-
-        elif event.event_type == TaskEventType.TAG_REMOVED:
-            tag = event.data.get("tag")
-            if tag in self.tags:
-                self.tags.remove(tag)
-            self.updated_at = event.occurred_at
-
-        elif event.event_type == TaskEventType.DELETED:
-            self.is_deleted = True
-            self.updated_at = event.occurred_at
+        handler = _TASK_EVENT_HANDLERS.get(event.event_type)
+        if handler is not None:
+            handler(self, event)
+        self.updated_at = event.occurred_at
 
     def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
@@ -270,6 +286,25 @@ class TaskState:
             "is_deleted": self.is_deleted,
             "version": self.version,
         }
+
+
+# Dispatch table mapping TaskEventType → TaskState handler method.
+# Defined at module level so apply_event stays a thin dispatcher and
+# each handler has its own (small) complexity count.
+_TASK_EVENT_HANDLERS: dict[TaskEventType, Any] = {
+    TaskEventType.CREATED: TaskState._apply_created,
+    TaskEventType.UPDATED: TaskState._apply_updated,
+    TaskEventType.STATUS_CHANGED: TaskState._apply_status_changed,
+    TaskEventType.PRIORITY_CHANGED: TaskState._apply_priority_changed,
+    TaskEventType.ASSIGNED: TaskState._apply_assigned,
+    TaskEventType.UNASSIGNED: TaskState._apply_unassigned,
+    TaskEventType.COMPLETED: TaskState._apply_completed,
+    TaskEventType.FAILED: TaskState._apply_failed,
+    TaskEventType.CANCELLED: TaskState._apply_cancelled,
+    TaskEventType.TAG_ADDED: TaskState._apply_tag_added,
+    TaskEventType.TAG_REMOVED: TaskState._apply_tag_removed,
+    TaskEventType.DELETED: TaskState._apply_deleted,
+}
 
 
 class EventStore:

@@ -40,6 +40,148 @@ def _get_python_files(repo_path: Path) -> list[Path]:
     return python_files
 
 
+def _count_loc(lines: list[str]) -> int:
+    """Count lines of code (excluding blank lines and comments)."""
+    loc = 0
+    for line in lines:
+        stripped = line.strip()
+        if stripped and not stripped.startswith("#"):
+            loc += 1
+    return loc
+
+
+def _extract_imports(node: ast.Import | ast.ImportFrom, result: dict[str, Any]) -> None:
+    """Append imported module names to ``result['imports']`` and bump the count."""
+    if isinstance(node, ast.ImportFrom) and node.module:
+        result["imports"].append(node.module)
+    elif isinstance(node, ast.Import):
+        for alias in node.names:
+            result["imports"].append(alias.name)
+    result["complexity"]["imports"] += 1
+
+
+def _cyclomatic_complexity(node: ast.AST) -> int:
+    """Compute a cyclomatic complexity estimate for an AST node."""
+    complexity = 1
+    for child in ast.walk(node):
+        if isinstance(child, ast.If | ast.For | ast.While | ast.ExceptHandler):
+            complexity += 1
+        elif isinstance(child, ast.BoolOp):
+            complexity += len(child.values) - 1
+        elif isinstance(child, ast.comprehension):
+            complexity += 1
+            if child.ifs:
+                complexity += len(child.ifs)
+    return complexity
+
+
+def _extract_function(
+    node: ast.FunctionDef | ast.AsyncFunctionDef, result: dict[str, Any]
+) -> None:
+    """Extract one function definition into ``result`` and flag high complexity."""
+    func_info = {
+        "name": node.name,
+        "line": node.lineno,
+        "args": [arg.arg for arg in node.args.args],
+        "decorators": [
+            d.id if isinstance(d, ast.Name) else str(d) for d in node.decorator_list
+        ],
+        "is_async": isinstance(node, ast.AsyncFunctionDef),
+        "docstring": ast.get_docstring(node) or "",
+    }
+
+    complexity = _cyclomatic_complexity(node)
+    func_info["complexity"] = complexity
+
+    if complexity > 10:
+        result["issues"].append(
+            {
+                "type": "high_complexity",
+                "location": f"{node.name}:{node.lineno}",
+                "message": (
+                    f"Function '{node.name}' has high cyclomatic "
+                    f"complexity ({complexity})"
+                ),
+                "severity": "warning",
+            }
+        )
+
+    result["functions"].append(func_info)
+    result["complexity"]["functions"] += 1
+
+
+def _extract_class(node: ast.ClassDef, result: dict[str, Any]) -> None:
+    """Extract one class definition into ``result`` (including method names)."""
+    class_info = {
+        "name": node.name,
+        "line": node.lineno,
+        "bases": [
+            base.id if isinstance(base, ast.Name) else str(base) for base in node.bases
+        ],
+        "methods": [],
+        "docstring": ast.get_docstring(node) or "",
+    }
+
+    for item in node.body:
+        if isinstance(item, ast.FunctionDef | ast.AsyncFunctionDef):
+            class_info["methods"].append(item.name)  # type: ignore[attr-defined]
+
+    result["classes"].append(class_info)
+    result["complexity"]["classes"] += 1
+
+
+def _record_syntax_error(
+    file_path: Path, error: SyntaxError, result: dict[str, Any]
+) -> None:
+    """Append a SyntaxError issue to ``result``."""
+    result["issues"].append(
+        {
+            "type": "syntax_error",
+            "location": f"{file_path}:{error.lineno}",
+            "message": str(error.msg),
+            "severity": "error",
+        }
+    )
+
+
+def _record_parse_error(
+    file_path: Path, error: Exception, result: dict[str, Any]
+) -> None:
+    """Append a generic parse-error issue to ``result``."""
+    result["issues"].append(
+        {
+            "type": "parse_error",
+            "location": str(file_path),
+            "message": str(error),
+            "severity": "error",
+        }
+    )
+
+
+def _walk_and_extract(tree: ast.AST, result: dict[str, Any]) -> None:
+    """Walk ``tree`` and dispatch each node to the right extractor."""
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Import | ast.ImportFrom):
+            _extract_imports(node, result)
+        elif isinstance(node, ast.FunctionDef | ast.AsyncFunctionDef):
+            _extract_function(node, result)
+        elif isinstance(node, ast.ClassDef):
+            _extract_class(node, result)
+
+
+def _flag_large_file(file_path: Path, result: dict[str, Any]) -> None:
+    """Add a large_file info issue when LOC exceeds 500."""
+    if result["complexity"]["loc"] > 500:
+        result["issues"].append(
+            {
+                "type": "large_file",
+                "location": str(file_path),
+                "message": f"File is large ({result['complexity']['loc']} LOC)",
+                "severity": "info",
+            }
+        )
+
+
 def _analyze_python_file(file_path: Path) -> dict[str, Any]:
     """Analyze a single Python file.
 
@@ -68,118 +210,16 @@ def _analyze_python_file(file_path: Path) -> dict[str, Any]:
         content = file_path.read_text(encoding="utf-8")
         lines = content.splitlines()
         result["complexity"]["lines"] = len(lines)
+        result["complexity"]["loc"] = _count_loc(lines)
 
-        # Count non-empty, non-comment lines
-        loc = 0
-        for line in lines:
-            stripped = line.strip()
-            if stripped and not stripped.startswith("#"):
-                loc += 1
-        result["complexity"]["loc"] = loc
-
-        # Parse AST
         tree = ast.parse(content)
-
-        for node in ast.walk(tree):
-            # Extract imports
-            if isinstance(node, ast.Import | ast.ImportFrom):
-                if isinstance(node, ast.ImportFrom) and node.module:
-                    result["imports"].append(node.module)
-                elif isinstance(node, ast.Import):
-                    for alias in node.names:
-                        result["imports"].append(alias.name)
-                result["complexity"]["imports"] += 1
-
-            # Extract functions
-            elif isinstance(node, ast.FunctionDef | ast.AsyncFunctionDef):
-                func_info = {
-                    "name": node.name,
-                    "line": node.lineno,
-                    "args": [arg.arg for arg in node.args.args],
-                    "decorators": [
-                        d.id if isinstance(d, ast.Name) else str(d) for d in node.decorator_list
-                    ],
-                    "is_async": isinstance(node, ast.AsyncFunctionDef),
-                    "docstring": ast.get_docstring(node) or "",
-                }
-
-                # Calculate cyclomatic complexity
-                complexity = 1
-                for child in ast.walk(node):
-                    if isinstance(child, ast.If | ast.For | ast.While | ast.ExceptHandler):
-                        complexity += 1
-                    elif isinstance(child, ast.BoolOp):
-                        complexity += len(child.values) - 1
-                    elif isinstance(child, ast.comprehension):
-                        complexity += 1
-                        if child.ifs:
-                            complexity += len(child.ifs)
-
-                func_info["complexity"] = complexity
-
-                # Flag high complexity
-                if complexity > 10:
-                    result["issues"].append(
-                        {
-                            "type": "high_complexity",
-                            "location": f"{node.name}:{node.lineno}",
-                            "message": f"Function '{node.name}' has high cyclomatic complexity ({complexity})",
-                            "severity": "warning",
-                        }
-                    )
-
-                result["functions"].append(func_info)
-                result["complexity"]["functions"] += 1
-
-            # Extract classes
-            elif isinstance(node, ast.ClassDef):
-                class_info = {
-                    "name": node.name,
-                    "line": node.lineno,
-                    "bases": [
-                        base.id if isinstance(base, ast.Name) else str(base) for base in node.bases
-                    ],
-                    "methods": [],
-                    "docstring": ast.get_docstring(node) or "",
-                }
-
-                # Extract methods
-                for item in node.body:
-                    if isinstance(item, ast.FunctionDef | ast.AsyncFunctionDef):
-                        class_info["methods"].append(item.name)  # type: ignore[attr-defined]
-
-                result["classes"].append(class_info)
-                result["complexity"]["classes"] += 1
-
-        # Check for common issues
-        if result["complexity"]["loc"] > 500:
-            result["issues"].append(
-                {
-                    "type": "large_file",
-                    "location": str(file_path),
-                    "message": f"File is large ({result['complexity']['loc']} LOC)",
-                    "severity": "info",
-                }
-            )
+        _walk_and_extract(tree, result)
+        _flag_large_file(file_path, result)
 
     except SyntaxError as e:
-        result["issues"].append(
-            {
-                "type": "syntax_error",
-                "location": f"{file_path}:{e.lineno}",
-                "message": str(e.msg),
-                "severity": "error",
-            }
-        )
+        _record_syntax_error(file_path, e, result)
     except Exception as e:
-        result["issues"].append(
-            {
-                "type": "parse_error",
-                "location": str(file_path),
-                "message": str(e),
-                "severity": "error",
-            }
-        )
+        _record_parse_error(file_path, e, result)
 
     return result
 

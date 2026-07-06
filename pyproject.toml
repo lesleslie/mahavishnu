@@ -394,6 +394,12 @@ disable = [
 [tool.pylint.format]
 max-line-length = 100
 
+[tool.ruff.lint.mccabe]
+# Align ruff C901 with [tool.ruff.lint.pylint] max-branches = 15.
+# Both rules express the same idea (cyclomatic complexity). Keeping
+# them in sync means ruff local + crackerjack CI report the same limit.
+max-complexity = 15
+
 [tool.creosote]
 paths = ["mahavishnu"]
 sections = ["project.dependencies", "dependency-groups"]

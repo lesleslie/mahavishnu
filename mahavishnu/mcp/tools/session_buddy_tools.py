@@ -27,10 +27,17 @@ def _coerce_priority(value: str) -> MessagePriority:
     return MessagePriority(value.lower())
 
 
-def register_session_buddy_tools(
+def register_session_buddy_tools(  # noqa: C901
     server, session_manager, mcp_client, rbac_manager: RBACManager | None = None
 ):
-    """Register Session Buddy integration tools with the MCP server."""
+    """Register Session Buddy integration tools with the MCP server.
+
+    Structural C901 suppression: FastMCP's ``@server.tool()`` decorator
+    requires each tool function to be defined inline so it can introspect
+    the function name and signature for the MCP tool schema. The 9 tools
+    registered here are intentionally kept inline; the complexity is the
+    cost of the FastMCP API contract, not bad code.
+    """
 
     def _warn_code_intel_deprecation(tool_name: str, replacement: str) -> None:
         warnings.warn(

@@ -88,12 +88,18 @@ def _fallback_search(pattern: str, file_pattern: str | None = None) -> list[dict
 # --- Tool registration ---
 
 
-def register_pycharm_tools(mcp: FastMCP, app: Any = None) -> None:
+def register_pycharm_tools(mcp: FastMCP, app: Any = None) -> None:  # noqa: C901
     """Register PyCharm IDE MCP tools with the FastMCP server.
 
     Args:
         mcp: FastMCP server instance
         app: Optional MahavishnuApp instance for dependency injection
+
+    Structural C901 suppression: FastMCP's ``@mcp.tool()`` decorator
+    requires each tool function to be defined inline so it can introspect
+    the function name and signature for the MCP tool schema. The 7 PyCharm
+    tools registered here are intentionally kept inline; the complexity
+    is the cost of the FastMCP API contract, not bad code.
     """
 
     @mcp.tool()

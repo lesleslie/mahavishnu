@@ -131,74 +131,135 @@ async def _load_engine_metrics_from_postgres(
     return metrics
 
 
-def _load_engine_metrics_from_prometheus(
-    metrics_url: str,
-) -> dict[str, dict[str, int]]:
-    """Load engine metrics by parsing Prometheus exposition text."""
+_PROM_LINE_RE = re.compile(
+    r"^([a-zA-Z_:][a-zA-Z0-9_:]*)\{([^}]*)\}\s+([0-9eE+.\-]+)$"
+)
+
+_SUCCESS_STATUSES = frozenset({"success", "completed"})
+_FAILURE_STATUSES = frozenset({"failure", "failed", "timeout", "cancelled"})
+_EXPECTED_ADAPTERS = ("prefect", "agno", "llamaindex")
+
+
+def _fetch_prometheus_body(metrics_url: str) -> str:
+    """Fetch the raw Prometheus exposition text body from ``metrics_url``.
+
+    Raises:
+        RuntimeError: If the URL cannot be reached (URLError).
+    """
     try:
         with urllib_request.urlopen(  # nosec  # nosemgrep: dynamic-urllib-use-detected
             metrics_url, timeout=2.0
         ) as response:
-            body = response.read().decode("utf-8", errors="replace")
+            return response.read().decode("utf-8", errors="replace")
     except urllib_error.URLError as exc:
-        raise RuntimeError(f"failed to fetch Prometheus metrics from {metrics_url}: {exc}") from exc
+        raise RuntimeError(
+            f"failed to fetch Prometheus metrics from {metrics_url}: {exc}"
+        ) from exc
+
+
+def _parse_labels(raw: str) -> dict[str, str]:
+    """Parse a Prometheus label set like ``a="1",b="2"`` into a dict."""
+    labels: dict[str, str] = {}
+    for chunk in raw.split(","):
+        if "=" not in chunk:
+            continue
+        key, value = chunk.split("=", 1)
+        labels[key.strip()] = value.strip().strip('"')
+    return labels
+
+
+def _apply_status_counts(
+    metrics: dict[str, dict[str, int]],
+    adapter: str,
+    status: str,
+    value: int,
+) -> None:
+    """Increment ``metrics[adapter]`` counters based on the status label.
+
+    Always bumps ``executions``; additionally bumps ``success`` or
+    ``failure`` when the status matches one of the known sets.
+    """
+    metrics[adapter]["executions"] += value
+    if status in _SUCCESS_STATUSES:
+        metrics[adapter]["success"] += value
+    elif status in _FAILURE_STATUSES:
+        metrics[adapter]["failure"] += value
+
+
+def _record_metric(
+    metrics: dict[str, dict[str, int]],
+    metric_name: str,
+    adapter: str,
+    labels: dict[str, str],
+    value: int,
+) -> None:
+    """Increment the correct per-adapter counter for a single parsed line."""
+    status = labels.get("status", "")
+    if metric_name == "mahavishnu_routing_decisions_total":
+        metrics[adapter]["selected"] += value
+    elif metric_name in (
+        "mahavishnu_adapter_executions_total",
+        "mahavishnu_workflows_total",
+    ):
+        # workflows_total is a fallback when adapter_executions_total
+        # is not populated by the engine.
+        _apply_status_counts(metrics, adapter, status, value)
+
+
+def _process_prometheus_line(
+    line: str,
+    metrics: dict[str, dict[str, int]],
+) -> None:
+    """Parse one Prometheus line and update ``metrics`` in place.
+
+    Skips blank lines, comments, malformed lines, non-adapter metrics,
+    and non-integer values. All failure modes are silent because
+    Prometheus text format tolerates garbage gracefully.
+    """
+    line = line.strip()
+    if not line or line.startswith("#"):
+        return
+    match = _PROM_LINE_RE.match(line)
+    if not match:
+        return
+
+    metric_name, raw_labels, raw_value = match.groups()
+    labels = _parse_labels(raw_labels)
+    adapter = labels.get("adapter")
+    if not adapter:
+        return
+
+    try:
+        value = int(float(raw_value))
+    except ValueError:
+        return
+
+    _record_metric(metrics, metric_name, adapter, labels, value)
+
+
+def _ensure_expected_adapters(metrics: dict[str, dict[str, int]]) -> None:
+    """Guarantee every expected adapter row exists with zeroed counters."""
+    for adapter in _EXPECTED_ADAPTERS:
+        metrics.setdefault(
+            adapter,
+            {"selected": 0, "executions": 0, "success": 0, "failure": 0},
+        )
+
+
+def _load_engine_metrics_from_prometheus(
+    metrics_url: str,
+) -> dict[str, dict[str, int]]:
+    """Load engine metrics by parsing Prometheus exposition text."""
+    body = _fetch_prometheus_body(metrics_url)
 
     metrics: dict[str, dict[str, int]] = defaultdict(
         lambda: {"selected": 0, "executions": 0, "success": 0, "failure": 0}
     )
 
-    line_re = re.compile(r"^([a-zA-Z_:][a-zA-Z0-9_:]*)\{([^}]*)\}\s+([0-9eE+.\-]+)$")
-
-    def parse_labels(raw: str) -> dict[str, str]:
-        labels: dict[str, str] = {}
-        for chunk in raw.split(","):
-            if "=" not in chunk:
-                continue
-            key, value = chunk.split("=", 1)
-            labels[key.strip()] = value.strip().strip('"')
-        return labels
-
     for line in body.splitlines():
-        line = line.strip()
-        if not line or line.startswith("#"):
-            continue
-        match = line_re.match(line)
-        if not match:
-            continue
+        _process_prometheus_line(line, metrics)
 
-        metric_name, raw_labels, raw_value = match.groups()
-        labels = parse_labels(raw_labels)
-        adapter = labels.get("adapter")
-        if not adapter:
-            continue
-
-        try:
-            value = int(float(raw_value))
-        except ValueError:
-            continue
-
-        if metric_name == "mahavishnu_routing_decisions_total":
-            metrics[adapter]["selected"] += value
-        elif metric_name == "mahavishnu_adapter_executions_total":
-            status = labels.get("status", "")
-            metrics[adapter]["executions"] += value
-            if status in {"success", "completed"}:
-                metrics[adapter]["success"] += value
-            elif status in {"failure", "failed", "timeout", "cancelled"}:
-                metrics[adapter]["failure"] += value
-        elif metric_name == "mahavishnu_workflows_total":
-            # Fallback if adapter execution counter is not populated.
-            status = labels.get("status", "")
-            metrics[adapter]["executions"] += value
-            if status in {"success", "completed"}:
-                metrics[adapter]["success"] += value
-            elif status in {"failure", "failed", "timeout", "cancelled"}:
-                metrics[adapter]["failure"] += value
-
-    # Ensure expected adapters are present
-    for adapter in ("prefect", "agno", "llamaindex"):
-        metrics.setdefault(adapter, {"selected": 0, "executions": 0, "success": 0, "failure": 0})
-
+    _ensure_expected_adapters(metrics)
     return dict(metrics)
 
 
