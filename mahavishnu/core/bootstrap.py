@@ -404,9 +404,7 @@ def _init_dhara_state(app: Any) -> Any:
             ),
         )
         # Phase 0: register this component's MCP endpoint to Dhara
-        _register_component_endpoint(
-            backend, "mahavishnu", app.config.tools.mcp_server_url
-        )
+        _register_component_endpoint(backend, "mahavishnu", app.config.tools.mcp_server_url)
         return backend
     return None
 

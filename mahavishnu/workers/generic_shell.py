@@ -4,6 +4,8 @@ This worker can handle bash, zsh, python, ipython, node, ssh, and AI assistants
 by using the worker registry for configuration.
 """
 
+from __future__ import annotations
+
 import asyncio
 import contextlib
 import json
@@ -154,11 +156,11 @@ class GenericShellWorker(BaseWorker):
             WorkerResult with execution results
         """
         prompt = task.get("prompt", "")
-        timeout = task.get("timeout", self.config.default_timeout)  # type: ignore[union-attr]
+        timeout = task.get("timeout", self.config.default_timeout)  # type: ignore
         wait_for_completion = task.get("wait_for_completion", True)
 
         if not self.session_id:
-            if "{prompt}" in self.config.command:  # type: ignore[union-attr]
+            if "{prompt}" in self.config.command:  # type: ignore
                 await self.start(launch_command=self._format_command(prompt))
             else:
                 await self.start()
@@ -397,7 +399,7 @@ class GenericShellWorker(BaseWorker):
                         "worker_id": result.worker_id,
                         "worker_type": self.worker_type,
                         "worker_name": self.config.name,  # type: ignore[union-attr]
-                        "category": self.config.category.value,  # type: ignore[union-attr]
+                        "category": self.config.category.value,  # type: ignore
                         "task_prompt": task.get("prompt", ""),
                         "status": result.status.value,
                         "duration_seconds": result.duration_seconds,

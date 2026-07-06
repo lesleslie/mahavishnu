@@ -304,8 +304,7 @@ def _register_a2a_routes_block(server: FastMCPServer) -> None:
 
         server.server.http_app = _a2a_patched_http_app  # type: ignore[assignment]
         logger.info(
-            "Mounted A2A server routes "
-            "(/.well-known/agent.json, /tasks/send, /tasks/sendSubscribe)"
+            "Mounted A2A server routes (/.well-known/agent.json, /tasks/send, /tasks/sendSubscribe)"
         )
     except Exception as exc:  # noqa: BLE001 - defensive: A2A may be unavailable
         logger.warning("A2A server routes not mounted: %s", exc)
