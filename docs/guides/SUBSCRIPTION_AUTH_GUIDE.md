@@ -109,7 +109,7 @@ ______________________________________________________________________
 **Encoded JWT Token:**
 
 ```
-eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJjbGF1ZGVfdXNlcl8xMjMiLCJ1c2VyX2lkIjoic3Vic2NyaXB0aW9uX3R5cGUiOiJjbGF1ZGVfY29kZSIsInNjb3BlcyI6WyJyZWFkIiwiZXhlY3V0ZSIsIndvcmtmbG93X21hbmFnZSJdLCJleHAiOjE3MDYxNDA4MDAsImlhdCI6MTcwNjEyMDAwMH0.some_signature
+eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJjbGF1ZGVfdXNlcl8xMjMiLCJ1c2VyX2lkIjoic3Vic2NyaXB0aW9uX3R5cGUiOiJjbGF1ZGVfY29kZSIsInNjb3BlcyI6WyJyZWFkIiwiZXhlY3V0ZSIsIndvcmtmbG93X21hbmFnZSJdLCJleHAiOjE3MDYxNDA4MDAsImlhdCI6MTcwNjEyMDAwMH0.some_signature # nosec
 ```
 
 **Decoded Payload:**
@@ -256,7 +256,7 @@ mahavishnu auth create-token \
 **Endpoint:** `POST /api/v1/auth/token`
 
 ```bash
-curl -X POST http://localhost:3035/api/v1/auth/token \
+curl -X POST http://localhost:3035/api/v1/auth/token \ # nosec
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer admin_token" \
   -d '{

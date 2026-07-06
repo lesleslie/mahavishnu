@@ -403,7 +403,7 @@ To add custom queries to the dashboard:
 1. Save dashboard
 1. Export updated JSON:
    ```bash
-   curl -u admin:admin http://localhost:3000/api/dashboards/db/learning-telemetry > learning-telemetry-updated.json
+   curl -u admin:admin http://localhost:3000/api/dashboards/db/learning-telemetry > learning-telemetry-updated.json # nosec
    ```
 
 ### Multiple Environments

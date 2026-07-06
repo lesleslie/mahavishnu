@@ -1204,7 +1204,7 @@ Generate API key for programmatic access:
 
 ```bash
 # Grafana UI → Configuration → API Keys → Add API Key
-curl -X POST http://localhost:3000/api/auth/keys \
+curl -X POST http://localhost:3000/api/auth/keys \ # nosec
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer YOUR_ADMIN_API_KEY" \
   -d '{"name": "dashboard-key", "role": "Viewer", "secondsToLive": 86400}'
