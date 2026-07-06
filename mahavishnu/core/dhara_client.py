@@ -144,7 +144,7 @@ class DharaThinClient:
     # Internals
     # ------------------------------------------------------------------
 
-    async def _invoke(self, tool_name: str, arguments: dict[str, Any]) -> Any:  # noqa: C901
+    async def _invoke(self, tool_name: str, arguments: dict[str, Any]) -> Any:
         """Route a tool call through the adapter or own HTTP client.
 
         Connection-level failures are wrapped in ``DharaSQLProxyError``;
@@ -152,18 +152,29 @@ class DharaThinClient:
         via ``raise ... from`` so callers can inspect the original.
         """
         if self._adapter is not None:
-            try:
-                return await self._adapter.call_tool(tool_name, arguments)
-            except DharaSQLProxyError:
-                raise
-            except Exception as exc:  # noqa: BLE001 — surface transport failures
-                logger.warning(
-                    "dhara adapter call_tool failed for %s: %s",
-                    tool_name,
-                    exc,
-                )
-                raise DharaSQLProxyError(f"{tool_name} failed via adapter: {exc}") from exc
+            return await self._invoke_via_adapter(tool_name, arguments)
+        return await self._invoke_via_http(tool_name, arguments)
 
+    async def _invoke_via_adapter(
+        self, tool_name: str, arguments: dict[str, Any]
+    ) -> Any:
+        """Call the tool through the registered adapter."""
+        try:
+            return await self._adapter.call_tool(tool_name, arguments)
+        except DharaSQLProxyError:
+            raise
+        except Exception as exc:  # noqa: BLE001 — surface transport failures
+            logger.warning(
+                "dhara adapter call_tool failed for %s: %s",
+                tool_name,
+                exc,
+            )
+            raise DharaSQLProxyError(f"{tool_name} failed via adapter: {exc}") from exc
+
+    async def _invoke_via_http(
+        self, tool_name: str, arguments: dict[str, Any]
+    ) -> Any:
+        """Call the tool through the direct HTTP client."""
         if self._client is None:
             # Defensive: someone called after aclose(). Re-open on demand.
             self._client = httpx.AsyncClient(timeout=self.timeout)
