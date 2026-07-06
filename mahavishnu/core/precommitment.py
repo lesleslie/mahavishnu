@@ -303,7 +303,7 @@ class JsonFileLockStore:
         except BaseException:
             # Clean up the temp file on any failure so we don't leak.
             try:
-                os.unlink(tmp_path)
+                Path(tmp_path).unlink()
             except FileNotFoundError:
                 pass
             raise
