@@ -155,9 +155,7 @@ class DharaThinClient:
             return await self._invoke_via_adapter(tool_name, arguments)
         return await self._invoke_via_http(tool_name, arguments)
 
-    async def _invoke_via_adapter(
-        self, tool_name: str, arguments: dict[str, Any]
-    ) -> Any:
+    async def _invoke_via_adapter(self, tool_name: str, arguments: dict[str, Any]) -> Any:
         """Call the tool through the registered adapter."""
         try:
             return await self._adapter.call_tool(tool_name, arguments)
@@ -171,9 +169,7 @@ class DharaThinClient:
             )
             raise DharaSQLProxyError(f"{tool_name} failed via adapter: {exc}") from exc
 
-    async def _invoke_via_http(
-        self, tool_name: str, arguments: dict[str, Any]
-    ) -> Any:
+    async def _invoke_via_http(self, tool_name: str, arguments: dict[str, Any]) -> Any:
         """Call the tool through the direct HTTP client."""
         if self._client is None:
             # Defensive: someone called after aclose(). Re-open on demand.
