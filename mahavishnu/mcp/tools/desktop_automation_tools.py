@@ -31,8 +31,14 @@ def get_manager() -> AutomationManager:
     return _manager
 
 
-def register_desktop_automation_tools(mcp: Any) -> None:
+def register_desktop_automation_tools(mcp: Any) -> None:  # noqa: C901
     """Register all desktop automation tools with the MCP server.
+
+    Structural C901 suppression: FastMCP's ``@mcp.tool()`` decorator
+    requires each tool function to be defined inline so it can introspect
+    the function name and signature for the MCP tool schema. The tools
+    registered here are intentionally kept inline; the complexity is the
+    cost of the FastMCP API contract, not bad code.
 
     Args:
         mcp: FastMCP server instance.

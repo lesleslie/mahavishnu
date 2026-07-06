@@ -18,8 +18,15 @@ def _coerce_priority(value: str) -> MessagePriority:
     return MessagePriority(value.lower())
 
 
-def register_repository_messaging_tools(server, app, mcp_client):
-    """Register repository messaging tools with the MCP server."""
+def register_repository_messaging_tools(server, app, mcp_client):  # noqa: C901
+    """Register repository messaging tools with the MCP server.
+
+    Structural C901 suppression: FastMCP's ``@server.tool()`` decorator
+    requires each tool function to be defined inline so it can introspect
+    the function name and signature for the MCP tool schema. The tools
+    registered here are intentionally kept inline; the complexity is the
+    cost of the FastMCP API contract, not bad code.
+    """
 
     # Initialize the repository messenger manager
     messenger_manager = RepositoryMessengerManager(app)

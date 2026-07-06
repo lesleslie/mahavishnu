@@ -45,11 +45,17 @@ def _resolve_peer_affinity_allowlist_from_env() -> set[str] | None:
     return {item.strip() for item in raw.split(",") if item.strip()}
 
 
-def register_pool_tools(
+def register_pool_tools(  # noqa: C901
     mcp: FastMCP,
     pool_manager,
 ) -> None:
     """Register pool management tools.
+
+    Structural C901 suppression: FastMCP's ``@mcp.tool()`` decorator
+    requires each tool function to be defined inline so it can introspect
+    the function name and signature for the MCP tool schema. The tools
+    registered here are intentionally kept inline; the complexity is the
+    cost of the FastMCP API contract, not bad code.
 
     Args:
         mcp: FastMCP instance

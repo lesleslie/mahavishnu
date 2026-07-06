@@ -14,8 +14,14 @@ import logging
 logger = logging.getLogger(__name__)
 
 
-def register_websocket_tools(server, websocket_server):
+def register_websocket_tools(server, websocket_server):  # noqa: C901
     """Register WebSocket-related MCP tools.
+
+    Structural C901 suppression: FastMCP's ``@server.tool()`` decorator
+    requires each tool function to be defined inline so it can introspect
+    the function name and signature for the MCP tool schema. The tools
+    registered here are intentionally kept inline; the complexity is the
+    cost of the FastMCP API contract, not bad code.
 
     Args:
         server: FastMCP server instance

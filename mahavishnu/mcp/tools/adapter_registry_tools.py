@@ -21,8 +21,14 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
-def register_adapter_registry_tools(mcp: FastMCP) -> None:
+def register_adapter_registry_tools(mcp: FastMCP) -> None:  # noqa: C901
     """Register adapter registry MCP tools.
+
+    Structural C901 suppression: FastMCP's ``@mcp.tool()`` decorator
+    requires each tool function to be defined inline so it can introspect
+    the function name and signature for the MCP tool schema. The tools
+    registered here are intentionally kept inline; the complexity is the
+    cost of the FastMCP API contract, not bad code.
 
     Args:
         mcp: FastMCP server instance

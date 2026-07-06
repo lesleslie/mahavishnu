@@ -65,12 +65,18 @@ def validate_command_safety(command: str) -> None:
             )
 
 
-def register_terminal_tools(
+def register_terminal_tools(  # noqa: C901
     mcp: FastMCP,
     terminal_manager: TerminalManager,
     mcp_client: Any = None,
 ) -> None:
     """Register terminal management tools with MCP server.
+
+    Structural C901 suppression: FastMCP's ``@mcp.tool()`` decorator
+    requires each tool function to be defined inline so it can introspect
+    the function name and signature for the MCP tool schema. The tools
+    registered here are intentionally kept inline; the complexity is the
+    cost of the FastMCP API contract, not bad code.
 
     Args:
         mcp: FastMCP server instance

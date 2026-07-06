@@ -12,8 +12,16 @@ from ...core.permissions import Permission, RBACManager
 from ...mcp.auth import require_mcp_auth
 
 
-def register_git_analytics_tools(server, mcp_client, rbac_manager: RBACManager | None = None):
+def register_git_analytics_tools(  # noqa: C901
+    server, mcp_client, rbac_manager: RBACManager | None = None
+):
     """Register Git analytics tools with MCP server.
+
+    Structural C901 suppression: FastMCP's ``@server.tool()`` decorator
+    requires each tool function to be defined inline so it can introspect
+    the function name and signature for the MCP tool schema. The tools
+    registered here are intentionally kept inline; the complexity is the
+    cost of the FastMCP API contract, not bad code.
 
     Args:
         server: FastMCP server instance
