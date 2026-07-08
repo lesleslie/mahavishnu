@@ -41,6 +41,7 @@ from mahavishnu.core.repositories.embeddings import (
 )
 from mahavishnu.core.repositories.events import (
     TaskEventCreate,
+    TaskEventFilter,
     TaskEventRead,
     TaskEventRepository,
 )
@@ -52,6 +53,7 @@ from mahavishnu.core.repositories.runs import (
 )
 from mahavishnu.core.repositories.tasks import (
     TaskCreate,
+    TaskFilter,
     TaskRead,
     TaskRepository,
     TaskUpdate,
@@ -63,6 +65,7 @@ __all__ = [
     "RepositoryError",
     # Tasks
     "TaskCreate",
+    "TaskFilter",
     "TaskRead",
     "TaskUpdate",
     "TaskRepository",
@@ -73,6 +76,7 @@ __all__ = [
     "TaskRunRepository",
     # Events
     "TaskEventCreate",
+    "TaskEventFilter",
     "TaskEventRead",
     "TaskEventRepository",
     # Documents
