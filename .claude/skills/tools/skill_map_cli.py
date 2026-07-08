@@ -1,5 +1,6 @@
 """Command-line interface for skill map visualization."""
 
+import json
 from pathlib import Path
 
 from rich.console import Console
@@ -9,6 +10,7 @@ from skill_map import (
     analyze_centrality,
     build_graph,
     detect_clusters,
+    export_cytoscape,
     export_graphviz,
     export_json,
     export_mermaid,
@@ -16,10 +18,13 @@ from skill_map import (
     find_all_paths,
     find_bridge_skills,
     find_central_topics,
+    find_dependencies,
     find_learning_path,
     find_orphan_skills,
+    find_related_skills_by_similarity,
     get_prerequisite_skills,
     get_statistics_summary,
+    suggest_learning_order,
 )
 from skill_parser import build_reverse_references, parse_all_skills
 import typer
@@ -42,7 +47,7 @@ def get_graph(skills_dir: Path = None) -> SkillGraph:
 def graph(
     skills_dir: Path = typer.Option(None, "--skills-dir", "-s", help="Path to skills directory"),
     format: str = typer.Option(
-        "mermaid", "--format", "-f", help="Export format (mermaid, graphviz, json)"
+        "mermaid", "--format", "-f", help="Export format (mermaid, graphviz, json, cytoscape)"
     ),
     output: Path = typer.Option(None, "--output", "-o", help="Output file path"),
 ):
@@ -53,6 +58,7 @@ def graph(
         skill-map graph --format mermaid
         skill-map graph --format graphviz --output skills.dot
         skill-map graph --format json --output skills.json
+        skill-map graph --format cytoscape --output skills.cyjs
     """
     graph = get_graph(skills_dir)
 
@@ -65,6 +71,9 @@ def graph(
     elif format == "json":
         content = export_json(graph)
         ext = ".json"
+    elif format == "cytoscape":
+        content = json.dumps(export_cytoscape(graph), indent=2)
+        ext = ".cyjs"
     else:
         console.print(f"[red]Unknown format: {format}[/red]")
         raise typer.Exit(1)
@@ -243,6 +252,68 @@ def prerequisites(
 
 
 @app.command()
+def dependents(
+    skill_name: str = typer.Argument(..., help="Skill name"),
+    skills_dir: Path = typer.Option(None, "--skills-dir", "-s", help="Path to skills directory"),
+):
+    """
+    Show skills that depend on a given skill.
+
+    Examples:
+        skill-map dependents python-pro
+    """
+    graph = get_graph(skills_dir)
+
+    if skill_name not in graph.skills:
+        console.print(f"[red]Skill '{skill_name}' not found[/red]")
+        raise typer.Exit(1)
+
+    deps = find_dependencies(graph, skill_name)
+
+    console.print(f"[cyan]Dependents of: {skill_name}[/cyan]\n")
+
+    if deps["direct"]:
+        console.print("[bold yellow]Direct Dependents:[/bold yellow]")
+        for skill in deps["direct"]:
+            console.print(f"  • {skill}")
+
+    if deps["transitive"]:
+        console.print("\n[bold yellow]Transitive Dependents:[/bold yellow]")
+        for skill in deps["transitive"]:
+            console.print(f"  • {skill}")
+
+    if not deps["direct"] and not deps["transitive"]:
+        console.print("[dim]No dependents found[/dim]")
+
+
+@app.command()
+def learn_order(
+    skill_names: list[str] = typer.Argument(..., help="One or more skill names"),
+    skills_dir: Path = typer.Option(None, "--skills-dir", "-s", help="Path to skills directory"),
+):
+    """
+    Order the given skills with prerequisites first.
+
+    Examples:
+        skill-map learn-order python-pro pytest testing-strategies
+    """
+    graph = get_graph(skills_dir)
+    ordered = suggest_learning_order(graph, skill_names)
+
+    if not ordered:
+        console.print("[red]None of the specified skills were found[/red]")
+        raise typer.Exit(1)
+
+    missing = [s for s in skill_names if s not in graph.skills]
+    if missing:
+        console.print(f"[yellow]Ignored unknown skills: {', '.join(missing)}[/yellow]")
+
+    console.print(f"[cyan]Recommended Learning Order:[/cyan]\n")
+    for i, skill in enumerate(ordered, 1):
+        console.print(f"  {i}. {skill}")
+
+
+@app.command()
 def stats(
     skills_dir: Path = typer.Option(None, "--skills-dir", "-s", help="Path to skills directory"),
 ):
@@ -312,6 +383,36 @@ def topics(
         table.add_row(str(i), skill_name, f"{score:.4f}")
 
     console.print(table)
+
+
+@app.command()
+def similar(
+    skill_name: str = typer.Argument(..., help="Skill name"),
+    limit: int = typer.Option(5, "--limit", "-l", help="Maximum number of similar skills"),
+    skills_dir: Path = typer.Option(None, "--skills-dir", "-s", help="Path to skills directory"),
+):
+    """
+    Find skills similar to a given skill by keyword overlap (Jaccard similarity).
+
+    Examples:
+        skill-map similar testing-strategies
+        skill-map similar testing-strategies --limit 10
+    """
+    graph = get_graph(skills_dir)
+
+    if skill_name not in graph.skills:
+        console.print(f"[red]Skill '{skill_name}' not found[/red]")
+        raise typer.Exit(1)
+
+    similar_skills = find_related_skills_by_similarity(graph, skill_name, limit=limit)
+
+    if not similar_skills:
+        console.print(f"[dim]No similar skills found for '{skill_name}'[/dim]")
+        return
+
+    console.print(f"[cyan]Skills similar to: {skill_name}[/cyan]\n")
+    for name, score in similar_skills:
+        console.print(f"  • {name} [dim]({score:.3f})[/dim]")
 
 
 @app.command()
