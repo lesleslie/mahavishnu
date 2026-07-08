@@ -5,7 +5,9 @@ This module provides CLI commands for managing cross-repository issues,
 plans, todos, and dependencies.
 """
 
+import asyncio
 from datetime import datetime
+from uuid import UUID
 
 from rich.console import Console
 from rich.table import Table
@@ -19,14 +21,29 @@ from mahavishnu.core.coordination.models import (
     Priority,
     TodoStatus,
 )
+from mahavishnu.core.repositories import (
+    TaskEventCreate,
+    TaskEventFilter,
+    TaskEventRepository,
+    TaskFilter,
+    TaskRepository,
+    TaskRunRepository,
+)
+from mahavishnu.core.status import TaskStatus
 
 console = Console()
 coord_app = typer.Typer(help="Cross-repository coordination and tracking")
+repo_app = typer.Typer(help="Repository data layer commands (tasks, runs, events)")
 
 
 def add_coordination_commands(app: typer.Typer) -> None:
     """Add coordination commands to the main CLI app."""
     app.add_typer(coord_app, name="coord")
+
+
+def add_repo_commands(app: typer.Typer) -> None:
+    """Add repository data layer commands to the main CLI app."""
+    app.add_typer(repo_app, name="repo")
 
 
 # ============================================================================
@@ -670,3 +687,187 @@ def roadmap(
                     m.due[:10],
                 )
             console.print(table)
+
+
+# ============================================================================
+# Repository Data Layer Commands
+# (TaskRepository, TaskRunRepository, TaskEventRepository)
+# ============================================================================
+
+
+@repo_app.command("list-tasks")
+def repo_list_tasks(
+    status: str | None = typer.Option(None, "--status", "-s", help="Filter by status"),
+    repository: str | None = typer.Option(None, "--repo", "-r", help="Filter by repository"),
+    limit: int = typer.Option(20, "--limit", "-l", help="Maximum results"),
+):
+    """List tasks from the orchestration database via TaskRepository.list_tasks()."""
+
+    async def _list() -> None:
+        status_enum = TaskStatus(status) if status else None
+        repo = TaskRepository()
+        async with repo:
+            tasks = await repo.list_tasks(
+                TaskFilter(status=status_enum, repository=repository, limit=limit)
+            )
+
+        if not tasks:
+            console.print("No tasks found.")
+            return
+
+        table = Table(title=f"Tasks (showing {len(tasks)})")
+        table.add_column("ID", style="cyan", no_wrap=True)
+        table.add_column("Title", style="white")
+        table.add_column("Repository", style="blue")
+        table.add_column("Status", style="green")
+        table.add_column("Priority", style="yellow")
+
+        for t in tasks:
+            table.add_row(
+                str(t.id)[:8],
+                (t.title[:50] + "...") if len(t.title) > 50 else t.title,
+                t.repository or "-",
+                t.status.value,
+                t.priority.value,
+            )
+
+        console.print(table)
+
+    asyncio.run(_list())
+
+
+@repo_app.command("show-task")
+def repo_show_task(
+    task_id: str = typer.Argument(..., help="Task UUID"),
+):
+    """Show a single task by ID via TaskRepository.get_task()."""
+
+    async def _show() -> None:
+        repo = TaskRepository()
+        async with repo:
+            task = await repo.get_task(UUID(task_id))
+
+        if not task:
+            console.print(f"[red]Task {task_id} not found[/red]")
+            raise typer.Exit(code=1)
+
+        console.print(f"[cyan bold]Task:[/cyan bold] {task.id}")
+        console.print(f"[bold]Title:[/bold] {task.title}")
+        console.print(f"[bold]Status:[/bold] {task.status.value}")
+        console.print(f"[bold]Priority:[/bold] {task.priority.value}")
+        console.print(f"[bold]Repository:[/bold] {task.repository or '-'}")
+        console.print(f"[bold]Created:[/bold] {task.created_at.isoformat()[:19]}")
+        if task.description:
+            console.print(f"\n[bold]Description:[/bold]\n{task.description}")
+
+    asyncio.run(_show())
+
+
+@repo_app.command("list-runs")
+def repo_list_runs(
+    task_id: str = typer.Argument(..., help="Parent task UUID"),
+):
+    """List runs for a task via TaskRunRepository.list_runs_for_task()."""
+
+    async def _list() -> None:
+        repo = TaskRunRepository()
+        async with repo:
+            runs = await repo.list_runs_for_task(UUID(task_id))
+
+        if not runs:
+            console.print(f"No runs found for task {task_id}.")
+            return
+
+        table = Table(title=f"Runs for task {task_id[:8]} ({len(runs)})")
+        table.add_column("ID", style="cyan", no_wrap=True)
+        table.add_column("Run #")
+        table.add_column("Status", style="green")
+        table.add_column("Engine")
+        table.add_column("Worker", style="blue")
+
+        for r in runs:
+            table.add_row(
+                str(r.id)[:8],
+                str(r.run_number),
+                r.status,
+                r.engine or "-",
+                r.worker_id or "-",
+            )
+
+        console.print(table)
+
+    asyncio.run(_list())
+
+
+@repo_app.command("list-events")
+def repo_list_events(
+    task_id: str | None = typer.Option(None, "--task", "-t", help="Filter by task UUID"),
+    actor: str | None = typer.Option(None, "--actor", "-a", help="Filter by actor"),
+    limit: int = typer.Option(20, "--limit", "-l", help="Maximum results"),
+):
+    """List task events via TaskEventRepository.list_events()."""
+
+    async def _list() -> None:
+        repo = TaskEventRepository()
+        async with repo:
+            events = await repo.list_events(
+                TaskEventFilter(
+                    task_id=UUID(task_id) if task_id else None,
+                    actor=actor,
+                    limit=limit,
+                )
+            )
+
+        if not events:
+            console.print("No events found.")
+            return
+
+        table = Table(title=f"Task Events (showing {len(events)})")
+        table.add_column("ID", style="cyan", no_wrap=True)
+        table.add_column("Task", style="blue")
+        table.add_column("Event Type", style="yellow")
+        table.add_column("Actor", style="green")
+        table.add_column("Time")
+
+        for e in events:
+            table.add_row(
+                str(e.id)[:8],
+                str(e.task_id)[:8],
+                e.event_type,
+                e.actor or "-",
+                e.event_time.isoformat()[:19],
+            )
+
+        console.print(table)
+
+    asyncio.run(_list())
+
+
+@repo_app.command("create-event")
+def repo_create_event(
+    task_id: str = typer.Option(..., "--task", "-t", help="Task UUID"),
+    event_type: str = typer.Option(..., "--type", "-e", help="Event type (e.g. started, completed)"),
+    actor: str | None = typer.Option(None, "--actor", "-a", help="Actor identifier"),
+    run_id: str | None = typer.Option(None, "--run", "-r", help="Optional run UUID"),
+):
+    """Record a task event via TaskEventRepository.record_event()."""
+
+    async def _create() -> None:
+        repo = TaskEventRepository()
+        async with repo:
+            event = await repo.record_event(
+                TaskEventCreate(
+                    task_id=UUID(task_id),
+                    run_id=UUID(run_id) if run_id else None,
+                    event_type=event_type,
+                    actor=actor,
+                )
+            )
+
+        console.print(f"[green]Recorded event {event.id}[/green]")
+        console.print(f"Task: {event.task_id}")
+        console.print(f"Type: {event.event_type}")
+        if event.actor:
+            console.print(f"Actor: {event.actor}")
+
+    asyncio.run(_create())

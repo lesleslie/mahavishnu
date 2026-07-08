@@ -37,7 +37,7 @@ from .cli.sop_cli import add_sop_commands
 from .cli.team_cli import add_team_commands
 
 # Import coordination CLI
-from .coordination_cli import add_coordination_commands
+from .coordination_cli import add_coordination_commands, add_repo_commands
 from .core.app import MahavishnuApp
 from .core.health import HealthStatus
 from .core.subscription_auth import MultiAuthHandler
@@ -199,6 +199,107 @@ def workflow_review(
 ):
     """Run automated code review with optional auto-fix."""
     result = asyncio.run(_async_review_and_fix(scope, auto_fix, dry_run))
+    typer.echo(json.dumps(result, indent=2, default=str))
+
+
+@workflows_app.command("prefect-list-deployments")
+def workflow_prefect_list_deployments(
+    flow_name: str | None = typer.Option(
+        None, "--flow", "-f", help="Filter by flow name"
+    ),
+    tags: list[str] | None = typer.Option(
+        None, "--tag", "-t", help="Filter by tags (ALL must match)"
+    ),
+    limit: int = typer.Option(100, "--limit", "-n", help="Maximum deployments to return"),
+    offset: int = typer.Option(0, "--offset", help="Number of deployments to skip"),
+):
+    """List Prefect deployments with optional filters via PrefectAdapter.
+
+    Examples:
+        mahavishnu workflow prefect-list-deployments
+        mahavishnu workflow prefect-list-deployments --flow my-etl-flow
+        mahavishnu workflow prefect-list-deployments --tag production --limit 10
+    """
+    result = asyncio.run(
+        _async_prefect_list_deployments(flow_name, tags, limit, offset)
+    )
+    typer.echo(json.dumps(result, indent=2, default=str))
+
+
+@workflows_app.command("prefect-get-deployment")
+def workflow_prefect_get_deployment(
+    deployment_id: str = typer.Argument(..., help="Prefect deployment UUID"),
+):
+    """Fetch a single Prefect deployment by ID.
+
+    Examples:
+        mahavishnu workflow prefect-get-deployment dep-123
+    """
+    result = asyncio.run(_async_prefect_get_deployment(deployment_id))
+    typer.echo(json.dumps(result, indent=2, default=str))
+
+
+@workflows_app.command("prefect-list-flow-runs")
+def workflow_prefect_list_flow_runs(
+    deployment_id: str | None = typer.Option(
+        None, "--deployment", "-d", help="Filter by deployment ID"
+    ),
+    state: list[str] | None = typer.Option(
+        None,
+        "--state",
+        "-s",
+        help="Filter by state types (COMPLETED, FAILED, RUNNING, etc.)",
+    ),
+    limit: int = typer.Option(100, "--limit", "-n", help="Maximum flow runs to return"),
+    offset: int = typer.Option(0, "--offset", help="Number of flow runs to skip"),
+):
+    """List Prefect flow runs with optional filters.
+
+    Examples:
+        mahavishnu workflow prefect-list-flow-runs
+        mahavishnu workflow prefect-list-flow-runs --state FAILED --limit 10
+        mahavishnu workflow prefect-list-flow-runs --deployment dep-123
+    """
+    result = asyncio.run(
+        _async_prefect_list_flow_runs(deployment_id, state, limit, offset)
+    )
+    typer.echo(json.dumps(result, indent=2, default=str))
+
+
+@workflows_app.command("prefect-cancel-flow-run")
+def workflow_prefect_cancel_flow_run(
+    flow_run_id: str = typer.Argument(..., help="Prefect flow run UUID to cancel"),
+):
+    """Cancel a running Prefect flow run.
+
+    Examples:
+        mahavishnu workflow prefect-cancel-flow-run run-123
+    """
+    result = asyncio.run(_async_prefect_cancel_flow_run(flow_run_id))
+    typer.echo(json.dumps({"flow_run_id": flow_run_id, "cancelled": result}, indent=2))
+
+
+@workflows_app.command("prefect-list-work-pools")
+def workflow_prefect_list_work_pools():
+    """List all Prefect work pools.
+
+    Examples:
+        mahavishnu workflow prefect-list-work-pools
+    """
+    result = asyncio.run(_async_prefect_list_work_pools())
+    typer.echo(json.dumps(result, indent=2, default=str))
+
+
+@workflows_app.command("prefect-clear-schedule")
+def workflow_prefect_clear_schedule(
+    deployment_id: str = typer.Argument(..., help="Prefect deployment UUID"),
+):
+    """Remove the schedule from a deployment (manual-trigger only).
+
+    Examples:
+        mahavishnu workflow prefect-clear-schedule dep-123
+    """
+    result = asyncio.run(_async_prefect_clear_schedule(deployment_id))
     typer.echo(json.dumps(result, indent=2, default=str))
 
 
@@ -391,6 +492,104 @@ async def _async_adapter_health(name: str | None) -> dict:
             return {"adapter": name, **results[name]}
         return {"adapter": name, "status": "not_found", "error": f"Adapter '{name}' not registered"}
     return {"count": len(results), "adapters": results}
+
+
+# ── Internal async helpers for PrefectAdapter commands ───────────────────
+
+
+async def _build_prefect_adapter() -> Any:
+    """Construct and initialize a PrefectAdapter for CLI use."""
+    from .core.config import PrefectConfig
+    from .engines.prefect_adapter_impl import PrefectAdapter
+
+    adapter = PrefectAdapter(PrefectConfig())
+    await adapter.initialize()
+    return adapter
+
+
+async def _async_prefect_list_deployments(
+    flow_name: str | None,
+    tags: list[str] | None,
+    limit: int,
+    offset: int,
+) -> dict:
+    """List Prefect deployments via PrefectAdapter."""
+    adapter = await _build_prefect_adapter()
+    try:
+        deployments = await adapter.list_deployments(
+            flow_name=flow_name, tags=tags, limit=limit, offset=offset
+        )
+        return {
+            "count": len(deployments),
+            "deployments": [d.model_dump(mode="json") for d in deployments],
+        }
+    finally:
+        await adapter.shutdown()
+
+
+async def _async_prefect_get_deployment(deployment_id: str) -> dict:
+    """Fetch a single Prefect deployment via PrefectAdapter."""
+    adapter = await _build_prefect_adapter()
+    try:
+        deployment = await adapter.get_deployment(deployment_id)
+        return deployment.model_dump(mode="json")
+    finally:
+        await adapter.shutdown()
+
+
+async def _async_prefect_list_flow_runs(
+    deployment_id: str | None,
+    state: list[str] | None,
+    limit: int,
+    offset: int,
+) -> dict:
+    """List Prefect flow runs via PrefectAdapter."""
+    adapter = await _build_prefect_adapter()
+    try:
+        flow_runs = await adapter.list_flow_runs(
+            deployment_id=deployment_id,
+            state=state,
+            limit=limit,
+            offset=offset,
+        )
+        return {
+            "count": len(flow_runs),
+            "flow_runs": [fr.model_dump(mode="json") for fr in flow_runs],
+        }
+    finally:
+        await adapter.shutdown()
+
+
+async def _async_prefect_cancel_flow_run(flow_run_id: str) -> bool:
+    """Cancel a Prefect flow run via PrefectAdapter."""
+    adapter = await _build_prefect_adapter()
+    try:
+        return await adapter.cancel_flow_run(flow_run_id)
+    finally:
+        await adapter.shutdown()
+
+
+async def _async_prefect_list_work_pools() -> dict:
+    """List Prefect work pools via PrefectAdapter."""
+    adapter = await _build_prefect_adapter()
+    try:
+        pools = await adapter.list_work_pools()
+        return {
+            "count": len(pools),
+            "work_pools": [p.model_dump(mode="json") for p in pools],
+        }
+    finally:
+        await adapter.shutdown()
+
+
+async def _async_prefect_clear_schedule(deployment_id: str) -> dict:
+    """Clear a deployment's schedule via PrefectAdapter."""
+    adapter = await _build_prefect_adapter()
+    try:
+        deployment = await adapter.clear_deployment_schedule(deployment_id)
+        return deployment.model_dump(mode="json")
+    finally:
+        await adapter.shutdown()
 
 
 # ── Legacy sweep command (delegates to workflow sweep) ───────────────────
@@ -1023,6 +1222,9 @@ add_monitoring_commands(app)
 
 # Add cross-repository coordination commands
 add_coordination_commands(app)
+
+# Add repository data layer commands
+add_repo_commands(app)
 
 # Add metrics commands
 add_metrics_commands(app)
