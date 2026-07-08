@@ -200,6 +200,11 @@ def parse_args() -> argparse.Namespace:
             "node_modules",
             ".eggs",
             "*.egg-info",
+            # Standalone admin/tooling scripts (audit, benchmarks, migrations,
+            # embeddings generators, etc.). Invoked as scripts, not imported
+            # as modules — every public symbol would otherwise read as an
+            # orphan. Including this audit's own entry point.
+            "scripts",
         ],
         help="Directory or path-component patterns to skip during walk.",
     )

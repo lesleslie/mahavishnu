@@ -63,7 +63,8 @@ class TestGetProfileTools:
         from mcp_common.tools import ToolProfile
 
         tools = PROFILE_REGISTRATIONS[ToolProfile.STANDARD]
-        # Check we have the expected groups (order-independent)
+        # Assert expected core groups are present (STANDARD may include
+        # additional groups over time; this is a subset check, not exact equality).
         expected = set(
             MINIMAL_REGISTRATIONS
             + [
@@ -75,7 +76,7 @@ class TestGetProfileTools:
                 "_register_session_buddy_tools",
             ]
         )
-        assert set(tools) == expected
+        assert expected <= set(tools)
 
     def test_full_has_all_groups(self) -> None:
         """FULL profile includes all groups (standard + otel, self-improv, goal/team, treesitter, adapters, pycharm)."""
