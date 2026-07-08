@@ -240,6 +240,11 @@ class WorkflowMonitorClient:
 
         Returns:
             True if unsubscription successful
+
+        Note:
+            Currently no demo exercises the unsubscribe path. Kept as the
+            symmetric counterpart of ``subscribe_to_workflow``; if you add a
+            long-lived multi-channel demo, this is the entry point.
         """
         if not self.connected:
             raise ConnectionError("Not connected to WebSocket server")

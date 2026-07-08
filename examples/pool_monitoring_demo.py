@@ -89,9 +89,6 @@ class PoolMonitorClient:
         self._reconnect_attempts = 0
         self._should_stop = False
 
-        # Track worker states
-        self._worker_states: dict[str, dict[str, Any]] = {}
-
     # Connection management
 
     async def connect(self) -> bool:
@@ -246,6 +243,11 @@ class PoolMonitorClient:
 
         Returns:
             True if unsubscription successful
+
+        Note:
+            Currently no demo exercises the unsubscribe path. Kept as the
+            symmetric counterpart of ``subscribe_to_pool``; if you add a
+            long-lived multi-channel demo, this is the entry point.
         """
         if not self.connected:
             raise ConnectionError("Not connected to WebSocket server")
@@ -375,51 +377,6 @@ class PoolMonitorClient:
             logger.error(f"❌ Error querying pool status: {e}")
             return {}
 
-    async def get_worker_status(self, worker_id: str) -> dict[str, Any]:
-        """Query current status of a worker.
-
-        Args:
-            worker_id: Worker identifier
-
-        Returns:
-            Worker status dictionary
-
-        Raises:
-            ConnectionError: If not connected to server
-        """
-        if not self.connected:
-            raise ConnectionError("Not connected to WebSocket server")
-
-        try:
-            message = {
-                "type": "request",
-                "event": "get_worker_status",
-                "data": {"worker_id": worker_id},
-                "id": f"worker_status_{worker_id}_{asyncio.get_event_loop().time()}",
-            }
-
-            await self.websocket.send(json.dumps(message))
-
-            response = await asyncio.wait_for(self.websocket.recv(), timeout=5.0)
-            data = json.loads(response)
-
-            if data.get("type") == "response":
-                return data.get("data", {})
-            else:
-                return {}
-
-        except Exception as e:
-            logger.error(f"❌ Error querying worker status: {e}")
-            return {}
-
-    def get_all_workers(self) -> dict[str, dict[str, Any]]:
-        """Get all tracked worker states.
-
-        Returns:
-            Dictionary mapping worker_id to worker state
-        """
-        return self._worker_states.copy()
-
     # Event listening
 
     async def listen(self, timeout: float = 60.0) -> None:
@@ -483,12 +440,6 @@ class PoolMonitorClient:
         payload = data.get("data", {})
 
         if msg_type == "event":
-            # Track worker state changes
-            if event == "worker.status_changed":
-                worker_id = payload.get("worker_id")
-                if worker_id:
-                    self._worker_states[worker_id] = payload
-
             # Handle event
             await self._handle_event(event, payload)
             await self._log_event(event, payload)

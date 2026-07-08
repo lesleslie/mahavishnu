@@ -92,6 +92,11 @@ class MahavishnuWebSocketClient:
 
         Args:
             channel: Channel name
+
+        Note:
+            Currently no demo exercises the unsubscribe path. Kept as the
+            symmetric counterpart of ``subscribe_to_channel``; if you add a
+            long-lived multi-channel demo, this is the entry point.
         """
         if not self.connected:
             raise ConnectionError("Not connected to WebSocket server")

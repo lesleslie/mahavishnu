@@ -45,21 +45,6 @@ class ConnectionStatus(Enum):
         self.indicator = indicator
 
 
-class PoolEventTypes(Enum):
-    """Pool event types for categorization."""
-
-    POOL_SPAWNED = "pool.spawned"
-    POOL_CLOSED = "pool.closed"
-    POOL_SCALED = "pool.scaling"
-    WORKER_ADDED = "worker_added"
-    WORKER_REMOVED = "worker_removed"
-    WORKER_STATUS = "worker.status_changed"
-    TASK_ASSIGNED = "task.assigned"
-    TASK_COMPLETED = "task.completed"
-    POOL_STATUS = "pool.status_changed"
-    UNKNOWN = "unknown"
-
-
 class PoolMonitor:
     """Real-time pool monitor with rich terminal UI.
 
