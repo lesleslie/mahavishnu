@@ -486,6 +486,28 @@ The `examples/` directory contains runnable examples for key features:
 
 1. **iTerm2 adapter limitation** - The iTerm2 Python API is designed for standalone scripts, not embedding in existing async apps. Use mcpretentious or mock adapters for pool management.
 
+## Process Discipline
+
+Features have been built but not wired into apps and workflows. To prevent
+that, every plan and every feature delivery must answer the wiring
+question explicitly before the work is considered done.
+
+- Use `docs/plans/TEMPLATE.md` for any new plan. Every phase deliverable
+  must include an **Integration Contract** block (Triggered from, Returns
+  to / updates, Demonstrable by, Rollback signal, Observability added).
+- Run `python scripts/audit_orphans.py` before marking a feature
+  complete. If the audit reports recently-added symbols with zero
+  callers, the feature is not done — either wire it or remove it.
+- Track `{built, wired, adopted}` state for every feature using
+  `docs/feature-tracking/TEMPLATE.md`. A feature stays in `built` state
+  only while the wiring work is open and dated.
+- The `feature-delivery-lifecycle` workflow (`workflows:feature:feature-delivery-lifecycle`)
+  contains a dedicated **Wiring** phase between Design and Validate —
+  follow it for every non-trivial delivery.
+
+The full policy lives in `.claude/decisions/wire-up-contract.md`. The
+canonical template lives in `docs/plans/TEMPLATE.md`.
+
 ## Key File Locations
 
 ### Core Application
