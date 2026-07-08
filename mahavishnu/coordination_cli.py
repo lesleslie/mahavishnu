@@ -706,10 +706,9 @@ def repo_list_tasks(
     async def _list() -> None:
         status_enum = TaskStatus(status) if status else None
         repo = TaskRepository()
-        async with repo:
-            tasks = await repo.list_tasks(
-                TaskFilter(status=status_enum, repository=repository, limit=limit)
-            )
+        tasks = await repo.list_tasks(
+            TaskFilter(status=status_enum, repository=repository, limit=limit)
+        )
 
         if not tasks:
             console.print("No tasks found.")
@@ -744,8 +743,7 @@ def repo_show_task(
 
     async def _show() -> None:
         repo = TaskRepository()
-        async with repo:
-            task = await repo.get_task(UUID(task_id))
+        task = await repo.get_task(UUID(task_id))
 
         if not task:
             console.print(f"[red]Task {task_id} not found[/red]")
@@ -771,8 +769,7 @@ def repo_list_runs(
 
     async def _list() -> None:
         repo = TaskRunRepository()
-        async with repo:
-            runs = await repo.list_runs_for_task(UUID(task_id))
+        runs = await repo.list_runs_for_task(UUID(task_id))
 
         if not runs:
             console.print(f"No runs found for task {task_id}.")
@@ -809,14 +806,13 @@ def repo_list_events(
 
     async def _list() -> None:
         repo = TaskEventRepository()
-        async with repo:
-            events = await repo.list_events(
-                TaskEventFilter(
-                    task_id=UUID(task_id) if task_id else None,
-                    actor=actor,
-                    limit=limit,
-                )
+        events = await repo.list_events(
+            TaskEventFilter(
+                task_id=UUID(task_id) if task_id else None,
+                actor=actor,
+                limit=limit,
             )
+        )
 
         if not events:
             console.print("No events found.")
@@ -854,15 +850,14 @@ def repo_create_event(
 
     async def _create() -> None:
         repo = TaskEventRepository()
-        async with repo:
-            event = await repo.record_event(
-                TaskEventCreate(
-                    task_id=UUID(task_id),
-                    run_id=UUID(run_id) if run_id else None,
-                    event_type=event_type,
-                    actor=actor,
-                )
+        event = await repo.record_event(
+            TaskEventCreate(
+                task_id=UUID(task_id),
+                run_id=UUID(run_id) if run_id else None,
+                event_type=event_type,
+                actor=actor,
             )
+        )
 
         console.print(f"[green]Recorded event {event.id}[/green]")
         console.print(f"Task: {event.task_id}")
