@@ -27,18 +27,84 @@ SHORT_NAME_MAX = 3
 
 # Decorator patterns that mark a symbol as a registered entry point
 # (Typer CLI command, FastMCP tool, generic tool registration).
-# Best-effort: catches @app.command, @cli.command, @mcp.tool, @tool,
-# @register_tool, and similar shapes.
+# Best-effort: catches app.command, cli.command, mcp.tool, tool,
+# register_tool, and similar shapes.
 #
 # The trailing (?:\([^)]*\))? accepts decorators with arguments —
-# @app.command("health"), @mcp.tool(name="foo"), etc. — which Typer
+# app.command("health"), mcp.tool(name="foo"), etc. — which Typer
 # and FastMCP commonly use. Without this, decorated functions whose
 # command name is given as an argument are incorrectly flagged as
-# orphans. (`re.match` anchors at start; the `$` here means the whole
-# string must match, so the parens group is required to be optional.)
+# orphans.
+#
+# NOTE: `ast.unparse(decorator)` returns the expression WITHOUT the
+# leading `@` (the `@` is Python syntax, not part of the AST node's
+# value), so the pattern is anchored on the function-call form
+# (`app.command(...)`) rather than `@app.command(...)`.
 DECORATOR_REGISTRATION_PATTERN = re.compile(
-    r"^@(?P<target>(?:[\w]+\.)*(?:tool|command|register_tool|app\.command|cli\.command))(?:\([^)]*\))?$"
+    r"^(?P<target>(?:[\w]+\.)*(?:tool|command|register_tool|app\.command|cli\.command))(?:\([^)]*\))?$"
 )
+
+# Framework decorator *names* that mark a symbol as wired. These are matched
+# against the final segment of the decorator expression (the function name
+# for ``@thing``, or the last attribute for ``@thing.foo``). The pattern
+# is anchored at the end of the unparsed expression so it accepts both
+# bare forms (``@field_validator``) and qualified/parameterised forms
+# (``@pydantic.field_validator("foo")``, ``@app.on("Button.Pressed")``).
+#
+# Decorators covered:
+#   Pydantic v2: field_validator, model_validator, computed_field
+#   Pydantic v1: validator, root_validator
+#   Textual:     on, on_mount, on_unmount, watch, work, compose
+#   Builtins:    property, cached_property
+#
+# ``property`` and ``cached_property`` are technically readable via
+# ``instance.attr``, which the audit's reference scan would not see; we
+# treat them as wired by default to avoid flooding the orphan list with
+# every getter in the codebase. Callers can still see them by enabling
+# ``--include-stub-check`` (best-effort) if they want tighter analysis.
+FRAMEWORK_DECORATORS: frozenset[str] = frozenset(
+    {
+        "field_validator",
+        "model_validator",
+        "computed_field",
+        "validator",
+        "root_validator",
+        "on",
+        "on_mount",
+        "on_unmount",
+        "watch",
+        "work",
+        "compose",
+        "property",
+        "cached_property",
+    }
+)
+
+# Pattern that pulls the trailing decorator name from an unparsed expression.
+# ``ast.unparse(app.on("Button.Pressed"))`` -> ``'app.on("Button.Pressed")'``;
+# we want the ``on`` segment, not the call arg.
+_FRAMEWORK_DECORATOR_TAIL = re.compile(r"(?:^|\.)([A-Za-z_]\w*)\s*(?:\(.*\))?$")
+
+# Textual lifecycle / event / action methods are discovered by *name*, not
+# decorator. Exact names (``compose``, ``on_mount``) plus a few prefix-based
+# conventions (``on_<Event>``, ``watch_<reactive>``, ``action_<verb>``).
+# These methods are framework entry points even when no caller references
+# them, so excluding them from the orphan list keeps the report actionable.
+TEXTUAL_LIFECYCLE_NAMES: frozenset[str] = frozenset({"compose"})
+_TEXTUAL_PREFIX_PATTERNS: tuple[re.Pattern[str], ...] = (
+    re.compile(r"^on_mount$"),
+    re.compile(r"^on_unmount$"),
+    re.compile(r"^on_[A-Z]\w*$"),       # on_<Event>: on_button_pressed
+    re.compile(r"^watch_[A-Za-z_]\w*$"),  # watch_<reactive>: watch__status
+    re.compile(r"^action_[A-Za-z_]\w*$"),  # action_<verb>: action_switch_tab
+)
+
+
+def _is_textual_lifecycle(name: str) -> bool:
+    """Return True if ``name`` is a Textual framework hook by convention."""
+    if name in TEXTUAL_LIFECYCLE_NAMES:
+        return True
+    return any(pat.match(name) for pat in _TEXTUAL_PREFIX_PATTERNS)
 
 
 @dataclass(frozen=True)
@@ -108,6 +174,15 @@ def parse_args() -> argparse.Namespace:
         "--include-tests",
         action="store_true",
         help="Include symbols defined in tests/ (off by default).",
+    )
+    parser.add_argument(
+        "--include-stub-check",
+        action="store_true",
+        help=(
+            "Best-effort: exclude classes that appear as a Literal member "
+            "or Field(discriminator=...) reference (Pydantic discriminated "
+            "union stubs). Off by default."
+        ),
     )
     parser.add_argument(
         "--exclude",
@@ -308,6 +383,14 @@ def find_registrations(path: Path) -> set[str]:
     chain matches ``@tool``/``@mcp.tool``/``@app.command(...)``/etc. is
     considered wired (entry point exists) and excluded from the orphan
     list.
+
+    Also recognises:
+    - Framework decorators (Pydantic validators, Textual ``@on(...)``
+      message handlers, ``@property``) that the static analyzer can't
+      trace to a call site. See ``FRAMEWORK_DECORATORS``.
+    - Textual lifecycle methods discovered by name (``compose``,
+      ``on_mount``, ``watch_*``, ``action_*``, ``on_<Event>``). See
+      ``_is_textual_lifecycle``.
     """
     tree = _parse_file(path)
     if tree is None:
@@ -319,12 +402,151 @@ def find_registrations(path: Path) -> set[str]:
             node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)
         ):
             continue
+        # Textual lifecycle methods are name-based (no decorator required).
+        if (
+            isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef))
+            and _is_textual_lifecycle(node.name)
+        ):
+            registered.add(node.name)
+            continue
         for decorator in node.decorator_list:
             decorator_text = ast.unparse(decorator)
             if DECORATOR_REGISTRATION_PATTERN.match(decorator_text):
                 registered.add(node.name)
                 break
+            tail_match = _FRAMEWORK_DECORATOR_TAIL.search(decorator_text)
+            if tail_match and tail_match.group(1) in FRAMEWORK_DECORATORS:
+                registered.add(node.name)
+                break
     return registered
+
+
+def _class_names_from_literal(node: ast.AST) -> set[str]:
+    """Return class names referenced inside a ``Literal[...]`` annotation."""
+    names: set[str] = set()
+    if not isinstance(node, (ast.Subscript, ast.Attribute)):
+        return names
+    # Subscript form: Literal[A, B] or Union[Literal[A], B]
+    if isinstance(node, ast.Subscript):
+        slc = node.slice
+        if isinstance(slc, ast.Tuple):
+            for elt in slc.elts:
+                if isinstance(elt, ast.Name):
+                    names.add(elt.id)
+                elif isinstance(elt, ast.Attribute):
+                    names.add(elt.attr)
+        elif isinstance(slc, ast.Name):
+            names.add(slc.id)
+        elif isinstance(slc, ast.Attribute):
+            names.add(slc.attr)
+    return names
+
+
+def _collect_discriminated_union_members(
+    root: Path, excludes: list[str], include_tests: bool
+) -> set[str]:
+    """Return class names that participate in a Pydantic discriminated union.
+
+    Best-effort: scans every ``.py`` file under ``root`` for two patterns:
+
+    1. ``Literal[X, Y, ...]`` annotations (Pydantic v2 discriminated unions
+       where each member sets a literal ``operation_type`` field).
+    2. ``Field(discriminator="kind")`` references.
+    3. Same-file inheritance: a class whose base is another class defined
+       in the same file AND the base class declares an Enum-typed
+       discriminator field. This catches the Pydantic v2 polymorphic
+       pattern used in ``mahavishnu/automation/models.py`` (sibling
+       classes overriding a shared ``operation_type: SomeEnum`` field).
+
+    Returns a set of class names that look like polymorphic stubs and
+    should be excluded from the orphan list.
+    """
+    members: set[str] = set()
+    for path in root.rglob("*.py"):
+        if should_skip(path, root, excludes):
+            continue
+        if not include_tests and "tests" in path.relative_to(root).parts:
+            continue
+        tree = _parse_file(path)
+        if tree is None:
+            continue
+
+        # Pass 1: collect top-level class names defined in this file so
+        # we can recognise ``same-file inheritance`` later.
+        file_class_names: set[str] = set()
+        file_classes: dict[str, ast.ClassDef] = {}
+        for node in tree.body:
+            if isinstance(node, ast.ClassDef):
+                file_class_names.add(node.name)
+                file_classes[node.name] = node
+
+        # Pass 1b: for each top-level class, record whether it declares an
+        # Enum-typed attribute (used as a discriminator signal).
+        class_has_enum_field: dict[str, set[str]] = {}
+        for class_name, class_node in file_classes.items():
+            enum_attrs: set[str] = set()
+            for child in class_node.body:
+                if isinstance(child, ast.AnnAssign) and isinstance(
+                    child.target, ast.Name
+                ):
+                    ann = child.annotation
+                    if isinstance(ann, ast.Name) and ann.id.endswith(
+                        ("Type", "Enum", "Status", "Kind", "Mode")
+                    ):
+                        enum_attrs.add(child.target.id)
+            class_has_enum_field[class_name] = enum_attrs
+
+        for node in ast.walk(tree):
+            # Pattern: Literal[Foo, Bar, Baz]
+            if isinstance(node, ast.Subscript):
+                value = node.value
+                is_literal = (
+                    (isinstance(value, ast.Name) and value.id == "Literal")
+                    or (
+                        isinstance(value, ast.Attribute)
+                        and value.attr == "Literal"
+                    )
+                )
+                if is_literal:
+                    members.update(_class_names_from_literal(node))
+                continue
+
+            # Pattern: Field(discriminator="kind"). The discriminator name
+            # is a kwarg on a Call; we don't resolve which class is the
+            # stub from this alone, but we can pick up class names that
+            # appear as Name nodes inside the same Call argument list.
+            if isinstance(node, ast.Call):
+                has_discriminator = False
+                for kw in node.keywords:
+                    if kw.arg == "discriminator":
+                        has_discriminator = True
+                        break
+                if has_discriminator:
+                    for arg in node.args:
+                        if isinstance(arg, ast.Name):
+                            members.add(arg.id)
+
+            # Pattern: same-file inheritance with Enum discriminator on
+            # the parent. Catches the models.py polymorphic operation
+            # classes. We look for ClassDef nodes whose base is another
+            # top-level class declared in the same file, where that
+            # parent declares an Enum-typed attribute.
+            if isinstance(node, ast.ClassDef):
+                for base in node.bases:
+                    base_name: str | None = None
+                    if isinstance(base, ast.Name):
+                        base_name = base.id
+                    elif isinstance(base, ast.Attribute):
+                        base_name = base.attr
+                    if (
+                        base_name is not None
+                        and base_name in file_class_names
+                        and class_has_enum_field.get(base_name)
+                    ):
+                        members.add(node.name)
+                        break
+
+    return members
 
 
 def collect_references(
@@ -367,9 +589,15 @@ def classify_orphans(
     root: Path,
     excludes: list[str],
     include_tests: bool,
+    include_stub_check: bool = False,
 ) -> list[FileResult]:
     """For each recently-changed file, decide which candidates are orphans."""
     references = collect_references(root, excludes, include_tests)
+    stub_members: set[str] = set()
+    if include_stub_check:
+        stub_members = _collect_discriminated_union_members(
+            root, excludes, include_tests
+        )
 
     results: list[FileResult] = []
     for path in sorted(recent_files):
@@ -393,6 +621,8 @@ def classify_orphans(
 
         for sym in symbols:
             if sym.name in registered:
+                continue
+            if include_stub_check and sym.kind == "class" and sym.name in stub_members:
                 continue
             ref_files = references.get(sym.name, set())
             other_files = {f for f in ref_files if f != path}
@@ -504,6 +734,7 @@ def main() -> int:
         root,
         args.exclude,
         args.include_tests,
+        include_stub_check=args.include_stub_check,
     )
 
     if args.json:
