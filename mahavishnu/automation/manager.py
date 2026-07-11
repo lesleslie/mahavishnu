@@ -42,6 +42,8 @@ from mahavishnu.automation.permissions import PermissionChecker
 from mahavishnu.automation.security import AutomationSecurity, get_security
 
 if TYPE_CHECKING:
+    from collections.abc import Awaitable, Callable
+
     from mahavishnu.automation.backends.base import DesktopAutomationBackend
 
 logger = getLogger(__name__)
@@ -224,12 +226,18 @@ class AutomationManager:
         else:
             self._stats.operations_failed += 1
 
+    def _require_backend(self) -> DesktopAutomationBackend:
+        """Return the active backend, raising if uninitialized."""
+        if self._backend is None:
+            raise NoBackendAvailableError()
+        return self._backend
+
     async def _execute(
         self,
         operation_type: OperationType,
-        operation: callable,  # type: ignore[valid-type]
-        *args,
-        **kwargs,
+        operation: Callable[..., Awaitable[Any]],
+        *args: Any,
+        **kwargs: Any,
     ) -> AutomationResult:
         """Execute an operation with security checks and statistics."""
         start_time = time.time()
@@ -301,26 +309,29 @@ class AutomationManager:
         if self._security:
             self._security.validate_app(bundle_id)
 
+        backend = self._require_backend()
         return await self._execute(
             OperationType.LAUNCH_APP,
-            self._backend.launch_application,  # type: ignore[union-attr]
+            backend.launch_application,
             bundle_id,
             dry_run=dry_run,
         )
 
     async def get_application(self, bundle_id: str) -> AutomationResult:
         """Get information about a running application."""
+        backend = self._require_backend()
         return await self._execute(
             OperationType.GET_ACTIVE_APP,
-            self._backend.get_application,  # type: ignore[union-attr]
+            backend.get_application,
             bundle_id,
         )
 
     async def list_applications(self) -> AutomationResult:
         """List all running applications."""
+        backend = self._require_backend()
         return await self._execute(
             OperationType.LIST_APPS,
-            self._backend.list_applications,  # type: ignore[union-attr]
+            backend.list_applications,
         )
 
     async def quit_application(
@@ -340,9 +351,10 @@ class AutomationManager:
         if self._security:
             self._security.validate_app(bundle_id)
 
+        backend = self._require_backend()
         return await self._execute(
             OperationType.QUIT_APP,
-            self._backend.quit_application,  # type: ignore[union-attr]
+            backend.quit_application,
             bundle_id,
             force=force,
             dry_run=dry_run,
@@ -353,17 +365,19 @@ class AutomationManager:
         if self._security:
             self._security.validate_app(bundle_id)
 
+        backend = self._require_backend()
         return await self._execute(
             OperationType.ACTIVATE_APP,
-            self._backend.activate_application,  # type: ignore[union-attr]
+            backend.activate_application,
             bundle_id,
         )
 
     async def get_active_application(self) -> AutomationResult:
         """Get the currently active application."""
+        backend = self._require_backend()
         return await self._execute(
             OperationType.GET_ACTIVE_APP,
-            self._backend.get_active_application,  # type: ignore[union-attr]
+            backend.get_active_application,
         )
 
     # =========================================================================
@@ -372,17 +386,19 @@ class AutomationManager:
 
     async def get_windows(self, bundle_id: str) -> AutomationResult:
         """Get all windows for an application."""
+        backend = self._require_backend()
         return await self._execute(
             OperationType.LIST_WINDOWS,
-            self._backend.get_windows,  # type: ignore[union-attr]
+            backend.get_windows,
             bundle_id,
         )
 
     async def activate_window(self, window_id: str) -> AutomationResult:
         """Activate (bring to front) a window."""
+        backend = self._require_backend()
         return await self._execute(
             OperationType.ACTIVATE_WINDOW,
-            self._backend.activate_window,  # type: ignore[union-attr]
+            backend.activate_window,
             window_id,
         )
 
@@ -393,9 +409,10 @@ class AutomationManager:
         height: int,
     ) -> AutomationResult:
         """Resize a window."""
+        backend = self._require_backend()
         return await self._execute(
             OperationType.RESIZE_WINDOW,
-            self._backend.resize_window,  # type: ignore[union-attr]
+            backend.resize_window,
             window_id,
             width,
             height,
@@ -408,9 +425,10 @@ class AutomationManager:
         y: int,
     ) -> AutomationResult:
         """Move a window to a new position."""
+        backend = self._require_backend()
         return await self._execute(
             OperationType.MOVE_WINDOW,
-            self._backend.move_window,  # type: ignore[union-attr]
+            backend.move_window,
             window_id,
             x,
             y,
@@ -418,9 +436,10 @@ class AutomationManager:
 
     async def close_window(self, window_id: str) -> AutomationResult:
         """Close a window."""
+        backend = self._require_backend()
         return await self._execute(
             OperationType.CLOSE_WINDOW,
-            self._backend.close_window,  # type: ignore[union-attr]
+            backend.close_window,
             window_id,
         )
 
@@ -442,18 +461,20 @@ class AutomationManager:
         if self._security:
             self._security.validate_app(bundle_id)
 
+        backend = self._require_backend()
         return await self._execute(
             OperationType.CLICK_MENU,
-            self._backend.click_menu_item,  # type: ignore[union-attr]
+            backend.click_menu_item,
             bundle_id,
             menu_path,
         )
 
     async def list_menus(self, bundle_id: str) -> AutomationResult:
         """List all menus for an application."""
+        backend = self._require_backend()
         return await self._execute(
             OperationType.LIST_MENUS,
-            self._backend.list_menus,  # type: ignore[union-attr]
+            backend.list_menus,
             bundle_id,
         )
 
@@ -478,9 +499,10 @@ class AutomationManager:
         if self._security:
             self._security.validate_text(text)
 
+        backend = self._require_backend()
         return await self._execute(
             OperationType.TYPE_TEXT,
-            self._backend.type_text,  # type: ignore[union-attr]
+            backend.type_text,
             text,
             interval=interval,
             dry_run=dry_run,
@@ -497,9 +519,10 @@ class AutomationManager:
             key: Key to press (e.g., "return", "a", "f1").
             modifiers: List of modifiers (e.g., ["cmd", "shift"]).
         """
+        backend = self._require_backend()
         return await self._execute(
             OperationType.PRESS_KEY,
-            self._backend.press_key,  # type: ignore[union-attr]
+            backend.press_key,
             key,
             modifiers=modifiers,
         )
@@ -519,9 +542,10 @@ class AutomationManager:
             button: Mouse button ("left", "right", "middle").
             clicks: Number of clicks.
         """
+        backend = self._require_backend()
         return await self._execute(
             OperationType.CLICK,
-            self._backend.click,  # type: ignore[union-attr]
+            backend.click,
             x,
             y,
             button=button,
@@ -538,9 +562,10 @@ class AutomationManager:
         button: str = "left",
     ) -> AutomationResult:
         """Drag from one point to another."""
+        backend = self._require_backend()
         return await self._execute(
             OperationType.DRAG,
-            self._backend.drag,  # type: ignore[union-attr]
+            backend.drag,
             start_x,
             start_y,
             end_x,
@@ -557,9 +582,10 @@ class AutomationManager:
         dy: int,
     ) -> AutomationResult:
         """Scroll at coordinates."""
+        backend = self._require_backend()
         return await self._execute(
             OperationType.SCROLL,
-            self._backend.scroll,  # type: ignore[union-attr]
+            backend.scroll,
             x,
             y,
             dx,
@@ -579,9 +605,10 @@ class AutomationManager:
         Args:
             region: Optional region as (x, y, width, height).
         """
+        backend = self._require_backend()
         return await self._execute(
             OperationType.SCREENSHOT,
-            self._backend.screenshot,  # type: ignore[union-attr]
+            backend.screenshot,
             region=region,
         )
 
@@ -591,9 +618,10 @@ class AutomationManager:
 
     async def list_screens(self) -> AutomationResult:
         """List all connected displays."""
+        backend = self._require_backend()
         return await self._execute(
             OperationType.LIST_WINDOWS,
-            self._backend.list_screens,  # type: ignore[union-attr]
+            backend.list_screens,
         )
 
     # =========================================================================
@@ -606,9 +634,10 @@ class AutomationManager:
         window_id: str | None = None,
     ) -> AutomationResult:
         """Get UI elements for an application."""
+        backend = self._require_backend()
         return await self._execute(
             OperationType.LIST_WINDOWS,
-            self._backend.get_ui_elements,  # type: ignore[union-attr]
+            backend.get_ui_elements,
             bundle_id,
             window_id=window_id,
         )
@@ -646,7 +675,7 @@ class AutomationManager:
             return set()
 
         status = self._capability_detector.get_backend_status(
-            self._backend.backend_name if self._backend else ""
+            self._backend.backend_name if self._backend else "",
         )
         if status.capabilities:
             return status.capabilities.capabilities

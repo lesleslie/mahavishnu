@@ -61,9 +61,12 @@ class MahavishnuShell(AdminShell):
     def _register_magics(self) -> None:
         """Register Mahavishnu-specific magic commands."""
         super()._register_magics()
-        magics = MahavishnuMagics(self.shell)
+        if self.shell is None:
+            raise RuntimeError("InteractiveShellEmbed was not initialized by start()")
+        shell = self.shell
+        magics = MahavishnuMagics(shell)
         magics.set_app(self.app)
-        self.shell.register_magics(magics)
+        shell.register_magics(magics)
 
     def _get_banner(self) -> str:
         """Get Mahavishnu-specific banner."""

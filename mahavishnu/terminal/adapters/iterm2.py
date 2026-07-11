@@ -202,7 +202,7 @@ class ITerm2Adapter(TerminalAdapter):
                 result = await self._run_applescript(script)
                 # Parse window_id,tab_id from result
                 parts = result.strip().split(",")
-                window_id = parts[0] if len(parts) > 0 else None  # type: ignore
+                window_id = parts[0] if len(parts) > 0 else None
                 tab_id = parts[1] if len(parts) > 1 else None
 
             # Store session metadata with captured identity

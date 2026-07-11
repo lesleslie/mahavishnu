@@ -6,9 +6,11 @@ and providing cross-project intelligence.
 """
 
 from datetime import datetime, timedelta
-from typing import Any
+from typing import Any, cast
 
-from ...core.permissions import Permission, RBACManager
+from mcp_common.auth.permissions import Permission
+
+from ...core.permissions import RBACManager
 from ...mcp.auth import require_mcp_auth
 
 
@@ -32,7 +34,7 @@ def register_git_analytics_tools(  # noqa: C901
     @server.tool()
     @require_mcp_auth(
         rbac_manager=rbac_manager,
-        required_permission=Permission.READ_REPO,  # type: ignore[arg-type]
+        required_permission=Permission.READ,
         require_repo_param="repo_path",
     )
     async def get_git_velocity_dashboard(
@@ -109,7 +111,7 @@ def register_git_analytics_tools(  # noqa: C901
     @server.tool()
     @require_mcp_auth(
         rbac_manager=rbac_manager,
-        required_permission=Permission.READ_REPO,  # type: ignore[arg-type]
+        required_permission=Permission.READ,
         require_repo_param="repo_path",
     )
     async def get_repository_health(
@@ -172,14 +174,31 @@ def register_git_analytics_tools(  # noqa: C901
     @server.tool()
     @require_mcp_auth(
         rbac_manager=rbac_manager,
-        required_permission=Permission.READ_REPO,  # type: ignore[arg-type]
+        required_permission=Permission.READ,
     )
     async def get_cross_project_patterns(
         days_back: int = 90,
         min_occurrences: int = 3,
+        detect_until_dry: bool = False,
+        k_empty_rounds: int = 2,
+        max_iterations: int = 5,
         user_id: str | None = None,
     ) -> dict[str, Any]:
-        """Detect patterns across all repositories in the ecosystem."""
+        """Detect patterns across all repositories in the ecosystem.
+
+        Phase 2 (Task 2.3 of
+        docs/plans/2026-07-11-ultracode-integration-wiring.md): when
+        ``detect_until_dry`` is True, the underlying scan is wrapped with
+        :func:`mahavishnu.core.loop_helpers.detect_until_dry` and re-runs
+        until ``k_empty_rounds`` consecutive iterations surface no new
+        findings (deduplicated by ``(source, type, name, repository,
+        severity)``) or ``max_iterations`` is reached. The response carries
+        a ``run_metadata`` field with ``iterations``, ``empty_rounds``,
+        ``stopped_reason`` (``"converged" | "max_iterations" | "error"``),
+        and any captured ``error`` string. When the flag is False (the
+        default), behavior is unchanged: a single scan and a single
+        correlated result set, with no ``run_metadata`` field.
+        """
         try:
             from ...core.dhara_adapter import DharaAdapter
 
@@ -192,33 +211,101 @@ def register_git_analytics_tools(  # noqa: C901
             # Query all metrics for the analysis period
             threshold_date = (datetime.now() - timedelta(days=days_back)).isoformat()
 
-            # Get git metrics patterns
-            git_patterns = await dhara.aggregate_patterns(
-                start_date=threshold_date,
-                min_occurrences=min_occurrences,
-            )
+            async def _single_scan() -> tuple[list[dict[str, Any]], list[dict[str, Any]], list[dict[str, Any]]]:
+                """One pass over the three pattern sources.
 
-            # Get workflow patterns from Session-Buddy
-            workflow_patterns = await _query_session_buddy_patterns(app, days_back)
+                Returns the git / workflow / quality pattern lists in a
+                fixed-shape tuple so both the single-pass and loop-until-dry
+                paths can analyze the same data after dedup/merge.
+                """
+                git_patterns = await dhara.aggregate_patterns(
+                    start_date=threshold_date,
+                    min_occurrences=min_occurrences,
+                )
+                workflow_patterns = await _query_session_buddy_patterns(app, days_back)
+                quality_patterns = await _query_quality_patterns(app, days_back)
+                return (
+                    list(git_patterns),
+                    list(workflow_patterns),
+                    list(quality_patterns),
+                )
 
-            # Get quality patterns from Session-Buddy
-            quality_patterns = await _query_quality_patterns(app, days_back)
+            run_metadata: dict[str, Any] | None = None
 
-            # Analyze correlations
+            if detect_until_dry:
+                from ...core.loop_helpers import detect_until_dry as _run_detect_until_dry
+
+                def _pattern_dedup_key(finding: Any) -> tuple[str, str, str, str, str]:
+                    """Stable dedup key for a cross-source pattern tuple.
+
+                    Each entry is ``(source, pattern_dict)``. The pattern
+                    dict keys are read defensively so a missing field never
+                    raises — that would abort the loop with
+                    ``stopped_reason="error"`` per the helper contract.
+                    """
+                    if not isinstance(finding, tuple) or len(finding) != 2:
+                        return ("__other__", "", "", "", str(id(finding)))
+                    source, pattern = finding
+                    if not isinstance(pattern, dict):
+                        return (
+                            str(source),
+                            "",
+                            "",
+                            "",
+                            f"{type(pattern).__name__}:{id(pattern)}",
+                        )
+                    return (
+                        str(source),
+                        str(pattern.get("type") or pattern.get("kind") or ""),
+                        str(pattern.get("name") or ""),
+                        str(pattern.get("repository") or ""),
+                        str(pattern.get("severity") or ""),
+                    )
+
+                async def _dry_run_scan() -> list[tuple[str, dict[str, Any]]]:
+                    """One tagged pass: each finding is ``(source, pattern)``."""
+                    git_p, workflow_p, quality_p = await _single_scan()
+                    return (
+                        [("git", p) for p in git_p]
+                        + [("workflow", p) for p in workflow_p]
+                        + [("quality", p) for p in quality_p]
+                    )
+
+                merged_tagged, raw_metadata = await _run_detect_until_dry(
+                    _dry_run_scan,
+                    k_empty_rounds=k_empty_rounds,
+                    max_iterations=max_iterations,
+                    dedup_key=_pattern_dedup_key,
+                )
+                git_patterns = [p for src, p in merged_tagged if src == "git"]
+                workflow_patterns = [p for src, p in merged_tagged if src == "workflow"]
+                quality_patterns = [p for src, p in merged_tagged if src == "quality"]
+                # ``exception`` is a BaseException instance — non-JSON-serializable.
+                # Strip it from the wire payload; it remains in logs via the helper.
+                run_metadata = {
+                    key: value
+                    for key, value in raw_metadata.items()
+                    if key != "exception"
+                }
+            else:
+                git_patterns, workflow_patterns, quality_patterns = await _single_scan()
+
+            # Analyze correlations on the (possibly merged) patterns
             correlations = _analyze_correlations(git_patterns, workflow_patterns, quality_patterns)
 
-            return {
-                "status": "success",
-                "result": {
-                    "analysis_period": f"P{days_back} days",
-                    "git_patterns": git_patterns,
-                    "workflow_patterns": workflow_patterns,
-                    "quality_patterns": quality_patterns,
-                    "correlations": correlations,
-                    "insights": _generate_insights(git_patterns, workflow_patterns, correlations),  # type: ignore[arg-type]
-                    "generated_at": datetime.now().isoformat(),
-                },
+            result: dict[str, Any] = {
+                "analysis_period": f"P{days_back} days",
+                "git_patterns": git_patterns,
+                "workflow_patterns": workflow_patterns,
+                "quality_patterns": quality_patterns,
+                "correlations": correlations,
+                "insights": _generate_insights(git_patterns, workflow_patterns, correlations),
+                "generated_at": datetime.now().isoformat(),
             }
+            if run_metadata is not None:
+                result["run_metadata"] = run_metadata
+
+            return {"status": "success", "result": result}
 
         except Exception as e:
             return {"status": "error", "error": f"Failed to get cross-project patterns: {str(e)}"}
@@ -237,7 +324,10 @@ def register_git_analytics_tools(  # noqa: C901
             from ...session_buddy.integration import SessionBuddyIntegration
 
             integration = SessionBuddyIntegration(app)
-            return await integration.get_workflow_metrics(repo_path)  # type: ignore[no-any-return, attr-defined]
+            return cast(
+                "dict[str, Any]",
+                await cast("Any", integration).get_workflow_metrics(repo_path),
+            )
         except Exception:
             # Session-Buddy might not be available or configured
             return {"status": "unavailable", "metrics": {}}
@@ -256,7 +346,10 @@ def register_git_analytics_tools(  # noqa: C901
             from ...session_buddy.integration import SessionBuddyIntegration
 
             integration = SessionBuddyIntegration(app)
-            return await integration.detect_patterns(days_back)  # type: ignore[no-any-return, attr-defined]
+            return cast(
+                "list[dict[str, Any]]",
+                await cast("Any", integration).detect_patterns(days_back),
+            )
         except Exception:
             return []
 
@@ -274,7 +367,10 @@ def register_git_analytics_tools(  # noqa: C901
             from ...session_buddy.integration import SessionBuddyIntegration
 
             integration = SessionBuddyIntegration(app)
-            return await integration.get_quality_patterns(days_back)  # type: ignore[no-any-return, attr-defined]
+            return cast(
+                "list[dict[str, Any]]",
+                await cast("Any", integration).get_quality_patterns(days_back),
+            )
         except Exception:
             return []
 
@@ -333,7 +429,7 @@ def register_git_analytics_tools(  # noqa: C901
         git_patterns: list[dict],
         workflow_patterns: list[dict],
         quality_patterns: list[dict],
-    ) -> dict[str, Any]:
+    ) -> list[dict[str, Any]]:
         """Analyze correlations between different pattern types.
 
         Args:
@@ -380,7 +476,7 @@ def register_git_analytics_tools(  # noqa: C901
                 }
             )
 
-        return correlations  # type: ignore[return-value]
+        return correlations
 
     def _generate_insights(
         git_patterns: list[dict],

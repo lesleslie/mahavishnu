@@ -16,7 +16,9 @@ try:
     from opentelemetry import metrics, trace
     from opentelemetry.exporter.otlp.proto.grpc.metric_exporter import OTLPMetricExporter
     from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExporter
-    from opentelemetry.instrumentation.system_metrics import SystemMetricsInstrumentor
+    from opentelemetry.instrumentation.system_metrics import (  # ty: ignore[unresolved-import]  # noqa: F401
+        SystemMetricsInstrumentor,
+    )
     from opentelemetry.sdk.metrics import MeterProvider
     from opentelemetry.sdk.metrics.export import PeriodicExportingMetricReader
     from opentelemetry.sdk.resources import Resource
@@ -167,8 +169,8 @@ class ObservabilityManager:
 
     def _init_fallback_components(self):
         """Initialize fallback components when OpenTelemetry is not available."""
-        self.tracer = MockTracer() if OTEL_AVAILABLE else MockTracer()  # type: ignore[assignment]
-        self.meter = MockMeter()  # type: ignore[assignment]
+        self.tracer = MockTracer() if OTEL_AVAILABLE else MockTracer()
+        self.meter = MockMeter()
 
         # Create fallback instruments
         self.workflow_counter = self.meter.create_counter("mahavishnu.workflows.executed")
@@ -338,12 +340,12 @@ class ObservabilityManager:
                 # Force flush metrics
                 from opentelemetry.metrics import get_meter_provider
 
-                get_meter_provider().force_flush()  # type: ignore[attr-defined]
+                get_meter_provider().force_flush()  # ty: ignore[unresolved-attribute]
 
                 # Force flush traces
                 from opentelemetry.trace import get_tracer_provider
 
-                get_tracer_provider().force_flush()  # type: ignore[attr-defined]
+                get_tracer_provider().force_flush()  # ty: ignore[unresolved-attribute]
             except Exception as e:
                 self.logger.warning(f"Failed to flush metrics: {e}")
 
@@ -355,8 +357,8 @@ class ObservabilityManager:
                 from opentelemetry.metrics import get_meter_provider
                 from opentelemetry.trace import get_tracer_provider
 
-                get_meter_provider().shutdown()  # type: ignore[attr-defined]
-                get_tracer_provider().shutdown()  # type: ignore[attr-defined]
+                get_meter_provider().shutdown()  # ty: ignore[unresolved-attribute]
+                get_tracer_provider().shutdown()  # ty: ignore[unresolved-attribute]
             except Exception as e:
                 self.logger.warning(f"Error during observability shutdown: {e}")
 

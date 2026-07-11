@@ -149,8 +149,8 @@ class LogFormatter(BaseLogFormatter):
         self,
         logs: list[dict[str, Any]],
         level: str | None = None,
-        workflow_id: str | None = None,
         tail: int = 50,
+        workflow_id: str | None = None,
     ) -> None:
         """Display log entries with filtering.
 
@@ -186,6 +186,9 @@ class LogFormatter(BaseLogFormatter):
         Args:
             logs: List of log entries
         """
+        console = self.console
+        if console is None:
+            return
         for log in logs:
             timestamp = log.get("timestamp", "")[:19]
             level_str = log.get("level", "INFO")
@@ -196,7 +199,7 @@ class LogFormatter(BaseLogFormatter):
                 "INFO": "blue",
             }.get(level_str, "")
 
-            self.console.print(f"[{timestamp}] [{level_str}] {message}", style=style)
+            console.print(f"[{timestamp}] [{level_str}] {message}", style=style)
 
     def _format_logs_fallback(self, logs: list[dict[str, Any]]) -> None:
         """Format logs without Rich.

@@ -52,7 +52,7 @@ except ImportError:
     HAS_SLOWAPI = False
     RateLimitExceeded = type(
         "RateLimitExceeded", (Exception,), {}
-    )  # Placeholder for type hints  # type: ignore[assignment]
+    )  # Placeholder for type hints  # ty: ignore[invalid-assignment]
     logger.warning("slowapi not installed, rate limiting will be disabled")
 
 
@@ -100,7 +100,7 @@ def setup_rate_limiting(app: FastAPI) -> None:
         return
 
     app.state.limiter = limiter
-    app.add_exception_handler(RateLimitExceeded, rate_limit_exceeded_handler)  # type: ignore[arg-type]
+    app.add_exception_handler(RateLimitExceeded, rate_limit_exceeded_handler)  # ty: ignore[invalid-argument-type]
     logger.info("Rate limiting configured successfully")
 
 

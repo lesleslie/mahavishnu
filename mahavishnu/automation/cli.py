@@ -451,7 +451,7 @@ def screenshot(
 
     async def _run():
         async with manager:
-            return await manager.screenshot(region=region_tuple)  # type: ignore[arg-type]
+            return await manager.screenshot(region=region_tuple)  # ty: ignore[invalid-argument-type]
 
     try:
         result = asyncio.run(_run())
@@ -467,7 +467,7 @@ def screenshot(
                 elif "result" in image_data:
                     image_bytes = image_data["result"]
                 else:
-                    image_bytes = image_data  # type: ignore[assignment]
+                    image_bytes = image_data
             else:
                 image_bytes = image_data
 

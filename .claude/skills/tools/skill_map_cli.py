@@ -308,7 +308,7 @@ def learn_order(
     if missing:
         console.print(f"[yellow]Ignored unknown skills: {', '.join(missing)}[/yellow]")
 
-    console.print(f"[cyan]Recommended Learning Order:[/cyan]\n")
+    console.print("[cyan]Recommended Learning Order:[/cyan]\n")
     for i, skill in enumerate(ordered, 1):
         console.print(f"  {i}. {skill}")
 

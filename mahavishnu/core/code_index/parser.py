@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Iterable
 from datetime import UTC, datetime
 import logging
 from pathlib import Path
@@ -109,7 +110,9 @@ def parse_file(
     for node in result_nodes:
         if node.node_type == "function" and hasattr(node, "calls"):
             source_id = f"{repo_path}|||{file_path}|||function|||{node.name}"
-            for callee in node.calls:
+            calls_obj = getattr(node, "calls", ())
+            calls_iterable: Iterable[str] = calls_obj if isinstance(calls_obj, Iterable) else ()
+            for callee in calls_iterable:
                 target_id = f"{repo_path}|||{file_path}|||function|||{callee}"
                 edge = CodeGraphEdge(
                     source=source_id,

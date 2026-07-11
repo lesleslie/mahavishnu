@@ -157,6 +157,10 @@ class DharaThinClient:
 
     async def _invoke_via_adapter(self, tool_name: str, arguments: dict[str, Any]) -> Any:
         """Call the tool through the registered adapter."""
+        if self._adapter is None:
+            raise DharaSQLProxyError(
+                f"{tool_name} requested via adapter path but no adapter is registered"
+            )
         try:
             return await self._adapter.call_tool(tool_name, arguments)
         except DharaSQLProxyError:

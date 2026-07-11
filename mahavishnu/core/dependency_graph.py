@@ -11,7 +11,7 @@ from __future__ import annotations
 
 from collections import defaultdict, deque
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import UTC, datetime
 from enum import StrEnum
 import logging
 from typing import TYPE_CHECKING, Any
@@ -74,7 +74,7 @@ class DependencyEdge:
     dependent_id: str  # ID of the task that depends
     dependency_type: DependencyType = DependencyType.BLOCKS
     status: DependencyStatus = DependencyStatus.PENDING
-    created_at: datetime = field(default_factory=datetime.utcnow)
+    created_at: datetime = field(default_factory=lambda: datetime.now(UTC))
     metadata: dict[str, Any] = field(default_factory=dict)
 
     def to_dict(self) -> dict[str, Any]:
@@ -97,8 +97,8 @@ class Dependency(BaseModel):
     dependent_id: str
     dependency_type: DependencyType = DependencyType.BLOCKS
     status: DependencyStatus = DependencyStatus.PENDING
-    created_at: datetime = Field(default_factory=datetime.utcnow)
-    updated_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
     metadata: dict[str, Any] = Field(default_factory=dict)
 
     def to_dict(self) -> dict[str, Any]:

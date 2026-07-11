@@ -376,7 +376,7 @@ class EmbeddingCache:
                 ssl_cert_reqs="required" if self._config.l2_tls_verify else "none",
             )
             # Test connection
-            await self._l2_client.ping()  # type: ignore[attr-defined]
+            await self._l2_client.ping()
             self._l2_available = True
             logger.info("L2 Redis cache connected")
             return self._l2_client

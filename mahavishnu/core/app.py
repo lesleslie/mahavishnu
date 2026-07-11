@@ -121,7 +121,7 @@ if TYPE_CHECKING:
 try:
     from ..terminal.manager import TerminalManager
 except Exception:  # pragma: no cover - optional runtime dependency
-    TerminalManager = None  # type: ignore[assignment]
+    TerminalManager = None  # ty: ignore[invalid-assignment]
 
 
 class MahavishnuApp:

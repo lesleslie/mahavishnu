@@ -152,7 +152,7 @@ class RepositoryManager:
 
         # Filter by tags (O(1) with index)
         if tags_list:
-            results = self._filter_by_tags(results, tags_list)
+            results = [r for r in self._filter_by_tags(results, tags_list) if r is not None]
 
         # Filter by MCP type (O(1) with index)
         if mcp_type:
@@ -164,14 +164,16 @@ class RepositoryManager:
 
         return results.copy()
 
-    def _filter_by_tags(self, results: list[Repository], tags_list: list[str]) -> list[Repository]:
+    def _filter_by_tags(
+        self, results: list[Repository], tags_list: list[str]
+    ) -> list[Repository | None]:
         """Filter repositories by tags."""
         # Get repos that match ALL tags (AND logic)
         # For each tag, get matching repos, then intersect
         if len(tags_list) == 1:
             # Single tag - use index directly
             return [
-                self.get_by_package(pkg)  # type: ignore[misc]
+                self.get_by_package(pkg)
                 for pkg in self.get_by_tag(tags_list[0])
                 if self.get_by_package(pkg)
             ]

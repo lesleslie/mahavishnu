@@ -265,7 +265,7 @@ class SessionBuddyPoller:
                     source_tool=tool_name,
                 ).inc(len(otel_metrics))
 
-                results["metrics_collected"].append(tool_name)  # type: ignore[attr-defined]
+                results["metrics_collected"].append(tool_name)
 
                 # Reset consecutive failures on success
                 self._consecutive_failures = 0
@@ -273,7 +273,7 @@ class SessionBuddyPoller:
             except Exception as e:
                 error_msg = f"Failed to poll {tool_name}: {e}"
                 self.logger.warning(error_msg)
-                results["errors"].append(error_msg)  # type: ignore[attr-defined]
+                results["errors"].append(error_msg)
                 self._record_error(error_msg)
 
         # Check circuit breaker threshold
@@ -295,8 +295,8 @@ class SessionBuddyPoller:
 
         self.logger.debug(
             f"Poll cycle #{self._poll_cycles} completed: "
-            f"{len(results['metrics_collected'])} metrics, "  # type: ignore[arg-type]
-            f"{len(results['errors'])} errors"  # type: ignore[arg-type]
+            f"{len(results['metrics_collected'])} metrics, "
+            f"{len(results['errors'])} errors"
         )
 
         return results
@@ -338,7 +338,7 @@ class SessionBuddyPoller:
         )
 
         async def _post_tool() -> dict[str, Any]:
-            response = await self._http_client.post(url, json=payload)  # type: ignore[union-attr]
+            response = await self._http_client.post(url, json=payload)  # ty: ignore[unresolved-attribute]
             response.raise_for_status()
 
             result = response.json()

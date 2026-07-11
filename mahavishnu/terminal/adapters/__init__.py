@@ -21,7 +21,7 @@ from mahavishnu.terminal.adapters.mock import MockTerminalAdapter
 try:
     from mahavishnu.terminal.adapters.iterm2 import ITERM2_AVAILABLE, ITerm2Adapter
 except ImportError:
-    ITerm2Adapter = None  # type: ignore[misc,assignment]
+    ITerm2Adapter: type[TerminalAdapter] | None = None
     ITERM2_AVAILABLE = False
 
 try:
@@ -31,14 +31,14 @@ try:
         TerminalError,
     )
 except ImportError:
-    McpretentiousAdapter = None  # type: ignore[misc,assignment]
-    SessionNotFoundError = None  # type: ignore[misc,assignment]
-    TerminalError = None  # type: ignore[misc,assignment]
+    McpretentiousAdapter: type[TerminalAdapter] | None = None
+    SessionNotFoundError: type[BaseException] | None = None
+    TerminalError: type[BaseException] | None = None
 
 try:
     from mahavishnu.terminal.adapters.crow import CrowTerminalAdapter
 except ImportError:
-    CrowTerminalAdapter = None  # type: ignore[misc,assignment]
+    CrowTerminalAdapter: type[TerminalAdapter] | None = None
 
 
 def get_available_adapters() -> list[str]:

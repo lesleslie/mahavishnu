@@ -14,7 +14,7 @@ from __future__ import annotations
 
 import inspect
 import logging
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, cast
 import uuid
 
 from mcp_common.websocket import (
@@ -33,7 +33,7 @@ from mahavishnu.core.events.transport import WebSocketEventHandler
 from mahavishnu.websocket.auth import get_authenticator
 
 # Import metrics
-from mahavishnu.websocket.metrics import get_metrics
+from mahavishnu.websocket.metrics import WebSocketMetrics, get_metrics
 
 # Import rate limiting
 from mahavishnu.websocket.rate_limiter import RateLimitResult, TokenBucketRateLimiter
@@ -182,7 +182,9 @@ class MahavishnuWebSocketServer(WebSocketServer):
         )
 
         # Initialize metrics
-        self.metrics = get_metrics("mahavishnu")  # type: ignore[assignment]
+        # Annotated assignment overrides the parent Optional annotation;
+        # get_metrics() always returns a concrete WebSocketMetrics.
+        self.metrics: WebSocketMetrics = get_metrics("mahavishnu")
 
         # Initialize rate limiter with configured rate
         # Burst size is 1.5x the rate to allow small bursts
@@ -237,7 +239,9 @@ class MahavishnuWebSocketServer(WebSocketServer):
         logger.info(f"Client connected: {connection_id} (user: {user_id})")
 
         # Track connection metrics
-        self.metrics.adjust_connections(1)  # type: ignore[union-attr]
+        metrics = self.metrics
+        if metrics is not None:
+            metrics.adjust_connections(1)
 
         # Send welcome message
         welcome = WebSocketProtocol.create_event(
@@ -267,7 +271,9 @@ class MahavishnuWebSocketServer(WebSocketServer):
         logger.info(f"Client disconnected: {connection_id}")
 
         # Track connection metrics
-        self.metrics.adjust_connections(-1)  # type: ignore[union-attr]
+        metrics = self.metrics
+        if metrics is not None:
+            metrics.adjust_connections(-1)
 
         # Clean up rate limiter bucket for this connection
         self.rate_limiter.remove_connection(connection_id)
@@ -332,7 +338,9 @@ class MahavishnuWebSocketServer(WebSocketServer):
             rate_result: Rate limit check result
         """
         # Track rate limit error in metrics
-        self.metrics.inc_error("rate_limit")  # type: ignore[union-attr]
+        metrics = self.metrics
+        if metrics is not None:
+            metrics.inc_error("rate_limit")
 
         # Create and send error response
         error = WebSocketProtocol.create_error(
@@ -362,14 +370,17 @@ class MahavishnuWebSocketServer(WebSocketServer):
             channel = message.data.get("channel")
 
             # Check authorization for this channel
-            if user and not self._can_subscribe_to_channel(user, channel):  # type: ignore[arg-type]
-                error = WebSocketProtocol.create_error(
-                    error_code="FORBIDDEN",
-                    error_message=f"Not authorized to subscribe to {channel}",
-                    correlation_id=message.correlation_id,
-                )
-                await websocket.send(WebSocketProtocol.encode(error))
-                return
+            if user and isinstance(user, dict) and isinstance(channel, str):
+                user_dict = cast("dict[str, Any]", user)
+                channel_str = cast("str", channel)
+                if not self._can_subscribe_to_channel(user_dict, channel_str):
+                    error = WebSocketProtocol.create_error(
+                        error_code="FORBIDDEN",
+                        error_message=f"Not authorized to subscribe to {channel}",
+                        correlation_id=message.correlation_id,
+                    )
+                    await websocket.send(WebSocketProtocol.encode(error))
+                    return
 
             if channel:
                 connection_id = self._connection_ids.get(websocket, str(uuid.uuid4()))

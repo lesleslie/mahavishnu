@@ -156,14 +156,14 @@ def _display_team_config_yaml(config: TeamConfig) -> None:
         config: The team configuration to display
     """
     # Convert to dict for YAML display
-    config_dict: dict[str, Any] = {
-        "team": {
-            "name": config.name,
-            "description": config.description,
-            "mode": config.mode.value,
-            "members": [],
-        }
+    members_data: list[dict[str, Any]] = []
+    team_data: dict[str, Any] = {
+        "name": config.name,
+        "description": config.description,
+        "mode": config.mode.value,
+        "members": members_data,
     }
+    config_dict: dict[str, Any] = {"team": team_data}
 
     if config.leader:
         config_dict["team"]["leader"] = {
@@ -174,7 +174,7 @@ def _display_team_config_yaml(config: TeamConfig) -> None:
         }
 
     for member in config.members:
-        config_dict["team"]["members"].append(
+        members_data.append(
             {
                 "name": member.name,
                 "role": member.role,

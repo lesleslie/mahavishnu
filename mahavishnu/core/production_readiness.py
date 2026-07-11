@@ -368,7 +368,7 @@ class IntegrationTestSuite:
         }
 
         logger.info(f"\n📊 Test Score: {score}% ({passed_tests}/{total_tests} tests passed)")
-        logger.info(f"Status: {summary['summary']['status']}")  # type: ignore[index]
+        logger.info(f"Status: {summary['summary']['status']}")  # type: ignore[invalid-index]
 
         return summary
 
@@ -407,7 +407,7 @@ class IntegrationTestSuite:
                 }
             )
 
-            return success  # type: ignore[return-value]
+            return success  # ty: ignore[invalid-return-type]
         except Exception as e:
             self.test_results.append(
                 {

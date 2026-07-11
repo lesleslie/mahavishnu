@@ -14,7 +14,7 @@ from datetime import UTC, datetime
 from enum import StrEnum
 import logging
 import re
-from typing import Any, TypeVar
+from typing import Any, TypeVar, cast
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
@@ -845,17 +845,20 @@ class PydanticAIAdapter[OutputT: BaseModel](OrchestratorAdapter):
         if not self.settings.mcp_tools:
             return
 
-        from pydantic_ai.mcp import MCPServerStdio
+        from fastmcp.client.transports import StdioTransport
+        from pydantic_ai.mcp import MCPToolset
 
         for tool_config in self.settings.mcp_tools:
             if not tool_config.enabled:
                 continue
 
             try:
-                server = MCPServerStdio(
-                    command=tool_config.command,
-                    args=tool_config.args,
-                    env=tool_config.env if tool_config.env else None,
+                server = MCPToolset(
+                    StdioTransport(
+                        command=tool_config.command,
+                        args=tool_config.args,
+                        env=tool_config.env if tool_config.env else None,
+                    ),
                 )
 
                 self._mcp_servers[tool_config.name] = server
@@ -944,11 +947,11 @@ class PydanticAIAdapter[OutputT: BaseModel](OrchestratorAdapter):
 
         for i, model_config in enumerate(models):
             try:
-                agent = Agent(  # type: ignore[call-overload]
+                agent = Agent(
                     model=model_config.to_model_string(),
-                    system_prompt=system_prompt,
+                    system_prompt=cast("Any", system_prompt),
                     output_type=output_type,
-                    toolsets=tools if tools else None,
+                    toolsets=cast("Any", tools) if tools else None,
                 )
 
                 # Build context with repos

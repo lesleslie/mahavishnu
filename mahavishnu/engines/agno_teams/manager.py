@@ -552,9 +552,12 @@ class AgentTeamManager:
         results: list[AgentRunResult] = []
 
         # Try different response structures
-        if hasattr(response, "responses") and response.responses:
+        member_responses = getattr(response, "member_responses", None) or getattr(
+            response, "responses", None
+        )
+        if member_responses:
             # Multiple agent responses
-            for agent_response in response.responses:
+            for agent_response in member_responses:
                 results.append(
                     AgentRunResult(
                         agent_name=getattr(agent_response, "agent_name", "unknown"),

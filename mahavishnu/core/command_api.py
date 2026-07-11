@@ -25,7 +25,7 @@ from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from enum import StrEnum
 import logging
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, cast
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Coroutine
@@ -104,7 +104,7 @@ class CommandResult:
             Success CommandResult
         """
         return cls(
-            success=True,
+            success=True,  # ty: ignore[unknown-argument]
             data=data,
             message=message,
         )
@@ -123,7 +123,7 @@ class CommandResult:
             Failure CommandResult
         """
         return cls(
-            success=False,
+            success=False,  # ty: ignore[unknown-argument]
             error=error,
             message=error.message,
         )
@@ -183,7 +183,7 @@ class CommandHandler:
             # Handle different return types
             if isinstance(result, CommandResult):
                 return result
-            return CommandResult.success(data=result)  # type: ignore[no-any-return, operator]
+            return CommandResult.success(data=result)
 
         except Exception as e:
             # Handle validation errors
@@ -258,7 +258,7 @@ class CommandRegistry:
         """
 
         def decorator(func: Callable[[Any], Coroutine[Any, Any, Any]]) -> Callable:
-            command_name = name or func.__name__
+            command_name = name or cast("Any", func).__name__
             handler = CommandHandler(
                 name=command_name,
                 handler=func,

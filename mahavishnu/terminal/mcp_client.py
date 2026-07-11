@@ -79,12 +79,14 @@ class StdioMCPClient:
 
     async def _read_stdout(self) -> None:
         """Read stdout from MCP server process."""
-        if not self.process:
+        process = self.process
+        if process is None or process.stdout is None:
             return
 
+        stdout = process.stdout
         try:
             while True:
-                line = await self.process.stdout.readline()  # type: ignore[union-attr]
+                line = await stdout.readline()
                 if not line:
                     break
 
@@ -156,10 +158,17 @@ class StdioMCPClient:
         Raises:
             RuntimeError: On transport, timeout, or protocol-level failures.
         """
+        process = self.process
+        if process is None:
+            raise RuntimeError("MCP server process is not running")
+        if process.stdin is None:
+            raise RuntimeError("MCP server stdin is not available")
+
+        stdin = process.stdin
         try:
             message = json.dumps(request) + "\n"
-            self.process.stdin.write(message.encode())  # type: ignore[union-attr]
-            await self.process.stdin.drain()  # type: ignore[union-attr]
+            stdin.write(message.encode())
+            await stdin.drain()
 
             response = await asyncio.wait_for(future, timeout=30.0)
             return self._extract_result(response)

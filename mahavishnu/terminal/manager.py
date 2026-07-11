@@ -481,14 +481,14 @@ class TerminalManager:
                 )
             from .adapters.crow import CrowTerminalAdapter
 
-            adapter = CrowTerminalAdapter(mcp_client)  # type: ignore[assignment]
+            adapter = CrowTerminalAdapter(mcp_client)
             logger.info("Using crow terminal adapter")
             return cls(adapter, terminal_config)
 
         # mcpretentious (requires MCP client)
         if preference == "mcpretentious" and mcp_client is not None:
             try:
-                adapter = McpretentiousAdapter(mcp_client)  # type: ignore[assignment]
+                adapter = McpretentiousAdapter(mcp_client)
                 logger.info("Using mcpretentious adapter")
                 return cls(adapter, terminal_config)
             except Exception as e:
@@ -503,7 +503,7 @@ class TerminalManager:
             try:
                 from .adapters.iterm2 import ITerm2Adapter
 
-                adapter = ITerm2Adapter()  # type: ignore[assignment]
+                adapter = ITerm2Adapter()
                 logger.info("Using iTerm2 adapter")
                 return cls(adapter, terminal_config)
             except Exception as e:

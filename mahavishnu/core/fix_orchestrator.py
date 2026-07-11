@@ -515,7 +515,7 @@ class FixOrchestrator:
                     )
                 )
             else:
-                final_results.append(result)  # type: ignore[arg-type]
+                final_results.append(result)  # ty: ignore[invalid-argument-type]
 
         return final_results
 

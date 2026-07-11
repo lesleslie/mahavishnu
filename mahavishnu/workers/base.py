@@ -56,7 +56,7 @@ class WorkerResult:
 
         return cls(
             worker_id=data["worker_id"],
-            status=status,  # type: ignore[arg-type]
+            status=status,  # ty: ignore[invalid-argument-type]
             output=data.get("output"),
             error=data.get("error"),
             exit_code=data.get("exit_code"),

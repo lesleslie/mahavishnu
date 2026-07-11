@@ -229,11 +229,11 @@ class TaskRouter:
 
         # Return highest scoring task type
         if scores:
-            best_type = max(scores, key=scores.get)  # type: ignore[call-overload]
+            best_type = max(scores, key=lambda t: scores[t], default=TaskType.WORKFLOW)
             logger.debug(
                 f"Intent classified: '{intent[:50]}...' -> {best_type.value} (scores: {scores})"
             )
-            return best_type  # type: ignore[no-any-return]
+            return best_type
 
         # Default to WORKFLOW for unrecognized intents
         logger.debug(f"Intent defaulted to WORKFLOW: '{intent[:50]}...'")
@@ -454,7 +454,9 @@ class TaskRouter:
         # BALANCED: use scores as-is
 
         # Select highest scoring adapter
-        selected = max(scores, key=scores.get)  # type: ignore[call-overload]
+        if not scores:
+            return AdapterType.PREFECT  # safe fallback when no scores available
+        selected = max(scores, key=lambda a: scores[a], default=AdapterType.PREFECT)
 
         logger.info(
             f"Adapter selected: {selected.value} for {task_type.value} "

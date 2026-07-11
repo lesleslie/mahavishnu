@@ -146,7 +146,7 @@ async def coord_update_issue(
     mgr.save()
 
     issue = mgr.get_issue(issue_id)
-    return issue.model_dump(mode="json")  # type: ignore[union-attr]
+    return issue.model_dump(mode="json")  # ty: ignore[unresolved-attribute]
 
 
 @mcp.tool()
@@ -157,7 +157,7 @@ async def coord_close_issue(issue_id: str) -> dict[str, Any]:
     mgr.save()
 
     issue = mgr.get_issue(issue_id)
-    return issue.model_dump(mode="json")  # type: ignore[union-attr]
+    return issue.model_dump(mode="json")  # ty: ignore[unresolved-attribute]
 
 
 @mcp.tool()

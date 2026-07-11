@@ -453,7 +453,7 @@ class WorkerManager:
 
             for handler in logger_instance.handlers:
                 if hasattr(handler, "baseFilename"):
-                    log_path = Path(handler.baseFilename)
+                    log_path = Path(str(handler.baseFilename))
                     break
 
             if not log_path:

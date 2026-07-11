@@ -10,16 +10,26 @@ This adapter provides:
 - Structured error handling with MahavishnuError
 """
 
+from __future__ import annotations
+
 from pathlib import Path
 import time
 from types import SimpleNamespace
-from typing import Any
+from typing import TYPE_CHECKING, Any, cast
 import uuid
 
 from oneiric.core.logging import get_logger
 from tenacity import retry, stop_after_attempt, wait_exponential
 
 logger = get_logger(__name__)
+
+# Type-only imports for the type checker. The runtime try/except below provides
+# real or MagicMock fallbacks; these aliases (underscore-prefixed) ensure ty
+# uses real types for annotations without conflicting with the runtime bindings.
+if TYPE_CHECKING:
+    from llama_index.core import Document as _DocumentT
+    from llama_index.core import VectorStoreIndex as _VectorStoreIndexT
+    from opentelemetry.trace import StatusCode as _StatusCodeT
 
 try:
     from llama_index.core import Document, SimpleDirectoryReader, VectorStoreIndex
@@ -35,15 +45,15 @@ except ImportError:
     LLAMAINDEX_AVAILABLE = False
     from unittest.mock import MagicMock
 
-    Document = MagicMock(name="Document")  # type: ignore[assignment]
-    OllamaEmbedding = MagicMock(name="OllamaEmbedding")  # type: ignore[assignment]
-    Ollama = MagicMock(name="Ollama")  # type: ignore[assignment]
-    OpensearchVectorStore = MagicMock(name="OpensearchVectorStore")  # type: ignore[assignment]
+    Document = MagicMock(name="Document")
+    OllamaEmbedding = MagicMock(name="OllamaEmbedding")
+    Ollama = MagicMock(name="Ollama")
+    OpensearchVectorStore = MagicMock(name="OpensearchVectorStore")
     Settings = MagicMock(name="Settings")
-    SimpleDirectoryReader = MagicMock(name="SimpleDirectoryReader")  # type: ignore[assignment]
-    StorageContext = MagicMock(name="StorageContext")  # type: ignore[assignment]
-    SentenceSplitter = MagicMock(name="SentenceSplitter")  # type: ignore[assignment]
-    VectorStoreIndex = MagicMock(name="VectorStoreIndex")  # type: ignore[assignment]
+    SimpleDirectoryReader = MagicMock(name="SimpleDirectoryReader")
+    StorageContext = MagicMock(name="StorageContext")
+    SentenceSplitter = MagicMock(name="SentenceSplitter")
+    VectorStoreIndex = MagicMock(name="VectorStoreIndex")
 
 # Import code graph analyzer
 from mcp_common.code_graph import CodeGraphAnalyzer
@@ -327,8 +337,8 @@ class LlamaIndexAdapter(OrchestratorAdapter):
         self.config = config
         self.api_url = getattr(self.config, "ollama_base_url", api_url or "http://localhost:11434")
         self._client = None
-        self.indices: dict[str, VectorStoreIndex] = {}
-        self.documents: dict[str, list[Document]] = {}
+        self.indices: dict[str, _VectorStoreIndexT] = {}
+        self.documents: dict[str, list[_DocumentT]] = {}
 
         # Configure Ollama embedding model
         ollama_model = getattr(config, "llm_model", "nomic-embed-text")
@@ -382,7 +392,9 @@ class LlamaIndexAdapter(OrchestratorAdapter):
         except Exception as e:
             logger.debug("OpenSearch vector store unavailable: %s", e)
             try:
-                from turbovec.integrations.llamaindex import TurboVec  # noqa: PLC0415
+                from turbovec.integrations.llamaindex import (  # noqa: PLC0415  # ty: ignore[unresolved-import]
+                    TurboVec,
+                )
 
                 self.vector_store = TurboVec()
                 self._vector_backend = "turbovec"
@@ -391,7 +403,7 @@ class LlamaIndexAdapter(OrchestratorAdapter):
                     "(install turbovec[llama-index] for explicit in-memory store)"
                 )
             except ImportError:
-                self.vector_store = None  # type: ignore[assignment]
+                self.vector_store = None
                 self._vector_backend = "memory-implicit"
                 logger.info(
                     "Using LlamaIndex implicit SimpleVectorStore "
@@ -461,8 +473,8 @@ class LlamaIndexAdapter(OrchestratorAdapter):
 
     def _init_fallback_instrumentation(self) -> None:
         """Initialize fallback no-op instrumentation when OTel is unavailable."""
-        self.tracer = MockTracer()  # type: ignore[assignment]
-        self.meter = MockMeter()  # type: ignore[assignment]
+        self.tracer = MockTracer()
+        self.meter = MockMeter()
 
         # Create fallback metric instruments
         self.ingest_duration_histogram = self.meter.create_histogram("llamaindex.ingest.duration")
@@ -582,7 +594,7 @@ class LlamaIndexAdapter(OrchestratorAdapter):
                 if not repo.exists():
                     error_msg = f"Repository path does not exist: {repo_path}"
                     span.set_attribute("error.message", error_msg)
-                    span.set_status("ERROR")  # type: ignore[arg-type]
+                    span.set_status(cast("_StatusCodeT", "ERROR"))
                     self.error_counter.add(
                         1,
                         attributes={
@@ -653,7 +665,8 @@ class LlamaIndexAdapter(OrchestratorAdapter):
 
                 # Enhance documents with code graph context
                 with self.tracer.start_as_current_span(
-                    "llamaindex.enhance_documents", attributes={"doc.count": len(documents)}
+                    "llamaindex.enhance_documents",
+                    attributes={"doc.count": str(len(documents))},
                 ):
                     for doc in documents:
                         file_path = Path(doc.metadata.get("file_path", ""))
@@ -760,7 +773,7 @@ class LlamaIndexAdapter(OrchestratorAdapter):
                 # Record error in span
                 span.set_attribute("error.message", error_msg)
                 span.set_attribute("error.type", type(e).__name__)
-                span.set_status("ERROR")  # type: ignore[arg-type]
+                span.set_status(cast("_StatusCodeT", "ERROR"))
                 span.record_exception(e)
 
                 # Record error metric
@@ -891,7 +904,7 @@ class LlamaIndexAdapter(OrchestratorAdapter):
                 if not query_text:
                     error_msg = "Query text not provided in task_params"
                     span.set_attribute("error.message", error_msg)
-                    span.set_status("ERROR")  # type: ignore[arg-type]
+                    span.set_status(cast("_StatusCodeT", "ERROR"))
                     self.error_counter.add(
                         1,
                         attributes={
@@ -922,7 +935,7 @@ class LlamaIndexAdapter(OrchestratorAdapter):
                             error_msg = f"No index found for repository: {repo_path}"
                             find_span.set_attribute("index.found", False)
                             find_span.set_attribute("error.message", error_msg)
-                            span.set_status("ERROR")  # type: ignore[arg-type]
+                            span.set_status(cast("_StatusCodeT", "ERROR"))
                             self.error_counter.add(
                                 1,
                                 attributes={
@@ -1021,7 +1034,7 @@ class LlamaIndexAdapter(OrchestratorAdapter):
                 # Record error in span
                 span.set_attribute("error.message", error_msg)
                 span.set_attribute("error.type", type(e).__name__)
-                span.set_status("ERROR")  # type: ignore[arg-type]
+                span.set_status(cast("_StatusCodeT", "ERROR"))
                 span.record_exception(e)
 
                 # Record error metric
@@ -1080,7 +1093,7 @@ class LlamaIndexAdapter(OrchestratorAdapter):
             attributes={
                 "task.type": task_type,
                 "task.id": task_params.get("id", "unknown"),
-                "repos.count": len(repos),
+                "repos.count": str(len(repos)),
                 "llamaindex.operation": "execute",
             },
         ) as span:

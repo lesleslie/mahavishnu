@@ -8,7 +8,7 @@ from datetime import UTC, datetime
 from enum import StrEnum
 import logging
 import time
-from typing import Any, Protocol, runtime_checkable
+from typing import Any, Protocol, cast, runtime_checkable
 import uuid
 
 from pydantic import BaseModel, Field
@@ -489,17 +489,17 @@ class EcosystemStatusService:
                     )
                 )
             elif name == "services":
-                services = result  # type: ignore[assignment]
+                services = cast("dict[str, ServiceStatus]", result)
             elif name == "adapters":
-                adapters = result  # type: ignore[assignment]
+                adapters = cast("dict[str, AdapterStatus]", result)
             elif name == "workflows":
-                workflows = result  # type: ignore[assignment]
+                workflows = cast("WorkflowSummary", result)
             elif name == "recovery":
-                recovery = result  # type: ignore[assignment]
+                recovery = cast("RecoverySummary", result)
             elif name == "alerts":
-                alerts = result  # type: ignore[assignment]
+                alerts = cast("AlertSummary", result)
             elif name == "capabilities":
-                capabilities = result  # type: ignore[assignment]
+                capabilities = cast("dict[str, CapabilityStatus]", result)
 
         # Compute overall status
         all_statuses = list(services.values()) if services else []
@@ -510,8 +510,8 @@ class EcosystemStatusService:
         )
 
         # Apply staleness detection
-        services = self._detect_staleness(services)  # type: ignore[assignment]
-        adapters = self._detect_staleness(adapters)  # type: ignore[assignment]
+        services = cast("dict[str, ServiceStatus]", self._detect_staleness(services))
+        adapters = cast("dict[str, AdapterStatus]", self._detect_staleness(adapters))
 
         # Generate deterministic recommendations (Phase 7)
         recommendations = self._generate_recommendations(services, adapters, alerts)
@@ -808,11 +808,12 @@ class EcosystemStatusService:
         now = datetime.now()
         threshold = self.staleness_threshold_seconds
         updated: dict[str, ServiceStatus | AdapterStatus] = {}
+
         for key, item in items.items():
             if item.last_check and (now - item.last_check).total_seconds() > threshold:
                 item = item.model_copy(update={"status": CanonicalStatus.UNKNOWN})
             updated[key] = item
-        return updated  # type: ignore[return-value]
+        return cast("dict[str, ServiceStatus] | dict[str, AdapterStatus]", updated)
 
 
 __all__ = [

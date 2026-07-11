@@ -38,7 +38,7 @@ async def get_recovery_summary(app: Any) -> dict[str, Any]:
                 "recovered_pools": len(pools),
                 "recovered_routing_decisions": len(routing),
                 "dhara_available": bool(app._dhara_state.available),
-                "last_recovered_at": datetime.now().isoformat(),  # type: ignore[dict-item]
+                "last_recovered_at": datetime.now().isoformat(),
             }
         )
     except Exception as exc:
@@ -158,7 +158,7 @@ def request_approval(
 ) -> dict[str, Any]:
     """Forward an approval request through the durable approval manager."""
     request = app.approval_manager.create_request(
-        approval_type=approval_type,  # type: ignore[arg-type]
+        approval_type=approval_type,
         context=context,
         options=options,
         timeout_minutes=timeout_minutes,

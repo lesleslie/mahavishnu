@@ -131,9 +131,7 @@ async def _load_engine_metrics_from_postgres(
     return metrics
 
 
-_PROM_LINE_RE = re.compile(
-    r"^([a-zA-Z_:][a-zA-Z0-9_:]*)\{([^}]*)\}\s+([0-9eE+.\-]+)$"
-)
+_PROM_LINE_RE = re.compile(r"^([a-zA-Z_:][a-zA-Z0-9_:]*)\{([^}]*)\}\s+([0-9eE+.\-]+)$")
 
 _SUCCESS_STATUSES = frozenset({"success", "completed"})
 _FAILURE_STATUSES = frozenset({"failure", "failed", "timeout", "cancelled"})
@@ -152,9 +150,7 @@ def _fetch_prometheus_body(metrics_url: str) -> str:
         ) as response:
             return response.read().decode("utf-8", errors="replace")
     except urllib_error.URLError as exc:
-        raise RuntimeError(
-            f"failed to fetch Prometheus metrics from {metrics_url}: {exc}"
-        ) from exc
+        raise RuntimeError(f"failed to fetch Prometheus metrics from {metrics_url}: {exc}") from exc
 
 
 def _parse_labels(raw: str) -> dict[str, str]:
@@ -294,8 +290,11 @@ def collect_metrics(
     Example:
         mahavishnu metrics collect --create-issues --min-coverage 80
     """
-    # Import here to avoid circular dependency
-    from scripts.collect_metrics import main as collect_main
+    # Import here to avoid circular dependency. Resolved at runtime via sys.path;
+    # static analysis cannot see the empty-file script stubs at scripts/*.py.
+    from scripts.collect_metrics import (
+        main as collect_main,  # ty: ignore[unresolved-import]  # type: ignore[misc]  # noqa: E402
+    )
 
     # Set up sys.argv to pass arguments to the collect script
     sys.argv = [
@@ -347,7 +346,9 @@ def generate_report(
 
     # For now, delegate to collect_metrics
     # TODO: Generate more comprehensive reports with historical data
-    from scripts.collect_metrics import main as collect_main
+    from scripts.collect_metrics import (
+        main as collect_main,  # ty: ignore[unresolved-import]  # type: ignore[misc]  # noqa: E402
+    )
 
     sys.argv = ["collect_metrics", f"--output={format}"]
 
@@ -415,8 +416,11 @@ def show_status(
     table.add_column("Files", style="blue")
     table.add_column("Status", style="yellow")
 
-    # Collect coverage data
-    from scripts.collect_metrics import get_coverage_from_file
+    # Collect coverage data. Resolved at runtime via sys.path; static analysis
+    # cannot see the empty-file script stub at scripts/collect_metrics.py.
+    from scripts.collect_metrics import (
+        get_coverage_from_file,  # ty: ignore[unresolved-import]  # type: ignore[misc]  # noqa: E402
+    )
 
     for repo_data in repos:
         repo_name = repo_data.get("name", "unknown")
@@ -567,8 +571,11 @@ def generate_dashboard(
 
     console.print("[cyan]📊 Generating Metrics Dashboard[/cyan]\n")
 
-    # Import dashboard generator
-    from scripts.generate_metrics_dashboard import main as dashboard_main
+    # Import dashboard generator. Resolved at runtime via sys.path; static analysis
+    # cannot see the empty-file script stub at scripts/generate_metrics_dashboard.py.
+    from scripts.generate_metrics_dashboard import (
+        main as dashboard_main,  # ty: ignore[unresolved-import]  # type: ignore[misc]  # noqa: E402
+    )
 
     # Set up sys.argv
     sys.argv = ["generate_metrics_dashboard", f"--output={output}"]

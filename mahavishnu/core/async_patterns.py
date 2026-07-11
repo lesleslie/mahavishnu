@@ -249,11 +249,11 @@ async def with_retry[**P, T](
     )
     try:
         result, _attempts = await retry_async(
-            func,  # type: ignore[arg-type]
+            func,  # ty: ignore[invalid-argument-type]
             *args,  # type: ignore[misc]
             policy=policy,
             operation="async_patterns.with_retry",
-            **kwargs,  # type: ignore[arg-type]
+            **kwargs,  # ty: ignore[invalid-argument-type]
         )
         return result  # type: ignore[no-any-return]
     except RetryExhaustedError as exc:

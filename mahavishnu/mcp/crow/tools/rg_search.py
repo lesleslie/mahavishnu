@@ -16,7 +16,7 @@ from __future__ import annotations
 import asyncio
 import json
 import subprocess
-from typing import TYPE_CHECKING, Literal, TypedDict
+from typing import TYPE_CHECKING, Literal, TypedDict, cast
 
 from mahavishnu.mcp.crow.path_security import resolve_workspace_path
 
@@ -108,9 +108,9 @@ async def rg_search(
     proc = await asyncio.to_thread(subprocess.run, args, capture_output=True, timeout=30.0)
     # Exit codes: 0 = matches, 1 = no matches, 2 = real error.
     if proc.returncode not in (0, 1):
-        stderr = proc.stderr.decode(errors="replace")[:500]
+        stderr = cast("bytes", proc.stderr).decode(errors="replace")[:500]
         raise RuntimeError(f"ripgrep failed (rc={proc.returncode}): {stderr}")
-    stdout = proc.stdout.decode(errors="replace")
+    stdout = cast("bytes", proc.stdout).decode(errors="replace")
     if format == "files_with_matches":
         files = [line for line in stdout.splitlines() if line]
         truncated = len(files) > limit
@@ -196,7 +196,7 @@ def register(server, settings: CrowSettings) -> None:
             settings,
             path,
             include,
-            format,
+            cast("Format", format),
             max_matches,
             case_sensitive,
             fixed_string,

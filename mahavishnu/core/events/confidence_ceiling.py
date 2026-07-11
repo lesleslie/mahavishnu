@@ -116,7 +116,12 @@ def _try_emit_anomaly(
     itself; never propagates.
     """
     try:
-        from mahavishnu.akosha_client import emit_anomaly
+        import importlib
+
+        akosha_client = importlib.import_module("mahavishnu.akosha_client")
+        emit_anomaly = getattr(akosha_client, "emit_anomaly", None)
+        if emit_anomaly is None:
+            return
     except ImportError:
         return
     except Exception:

@@ -10,10 +10,24 @@ from pathlib import Path
 import subprocess
 from typing import TYPE_CHECKING, Any
 
+from mahavishnu.core.verification import (
+    Consensus,
+    Proposal,
+    VerificationStore,
+    build_default_store,
+    is_verification_enabled,
+    verify_proposal,
+)
+
 if TYPE_CHECKING:
     from mahavishnu.core.app import MahavishnuApp
 
 logger = logging.getLogger(__name__)
+
+
+# Verification helpers (`is_verification_enabled`, `build_default_store`) live in
+# mahavishnu.core.verification and are imported below where used; see Phase 1
+# review issue 3+4 (lift duplicated helpers).
 
 
 class ReviewScope(StrEnum):
@@ -31,15 +45,36 @@ class SelfImprovementTools:
 
     Provides tools for running review agents, managing approvals,
     and coordinating self-improvement workflows across the ecosystem.
+
+    Phase 1 (per docs/plans/2026-07-11-ultracode-integration-wiring.md §5
+    Task 1.4): ``self_improvement_generate`` runs a diverse-refuter
+    ``verify_proposal`` AFTER the threshold check (count >= 3) and BEFORE
+    generating the job-id. The serialized ``VerificationResult`` is returned
+    in the ``verification`` field so reviewers see refuter disagreement.
+    When ``verification_enabled=True`` AND consensus=REJECT, the ``status``
+    field flips to ``"blocked_by_verification"`` and no job-id is generated.
     """
 
-    def __init__(self, app: MahavishnuApp) -> None:
+    def __init__(
+        self,
+        app: MahavishnuApp,
+        store: VerificationStore | None = None,
+    ) -> None:
         """Initialize self-improvement tools.
 
         Args:
             app: MahavishnuApp instance with coordination and approval managers.
+            store: Optional ``VerificationStore`` to inject (tests inject a
+                fake; production passes nothing and gets the default
+                Dhara-backed store built from ``app.settings``).
         """
         self.app = app
+        # Lazily construct a store wired to the configured Dhara backend if
+        # the caller didn't inject one (tests inject a fake; production passes
+        # nothing and gets the default-Dhara-backed store).
+        self._store: VerificationStore | None = store
+        if self._store is None and getattr(app, "settings", None) is not None:
+            self._store = build_default_store(app)
 
     def _collect_ruff_targets(self, findings: list[dict[str, Any]]) -> list[str]:
         """Collect unique Python files that Ruff can fix from review findings."""
@@ -218,7 +253,7 @@ class SelfImprovementTools:
 
         try:
             request = self.app.approval_manager.create_request(
-                approval_type=approval_type,  # type: ignore[arg-type]
+                approval_type=approval_type,
                 context=context,
             )
 
@@ -469,12 +504,22 @@ class SelfImprovementTools:
 
         Returns a job-id immediately (async generation per C-NEW-5).
 
+        Phase 1 (Task 1.4): runs ``verify_proposal`` AFTER the threshold
+        check (count >= 3) and BEFORE generating the job-id. The serialized
+        ``VerificationResult`` is included as the ``verification`` field of
+        the response so reviewers can see refuter disagreement. When
+        ``verification_enabled=True`` AND consensus=REJECT, the ``status``
+        field flips from ``"generating"`` to ``"blocked_by_verification"``
+        and no job-id is generated.
+
         Args:
             fingerprint: Issue fingerprint from FailureRecorder.
             pattern_description: Human-readable pattern description for context.
 
         Returns:
-            Dictionary with improvement_job_id and status, or error.
+            Dictionary with improvement_job_id, status, verification, or error.
+            Possible statuses: "skipped", "generating", "blocked_by_verification",
+            or "failed".
         """
         logger.info("self_improvement_generate: fingerprint=%s", fingerprint[:16])
         try:
@@ -497,6 +542,43 @@ class SelfImprovementTools:
                     "fingerprint": fingerprint,
                 }
 
+            # Phase 1 Task 1.4: verify before generating the job-id.
+            # proposal_id uses the FULL fingerprint (not truncated) so
+            # verification records are deduped by exact issue. A 16-char
+            # truncation could collide across distinct fingerprints with
+            # the same first 16 hex chars (Phase 1 review issue 5).
+            proposal = Proposal(
+                proposal_id=f"self_improvement:{fingerprint}",
+                proposal_type="self_improvement",
+                subject=pattern_description or fingerprint,
+                details={
+                    "fingerprint": fingerprint,
+                    "failure_count": count,
+                    "min_threshold": min_threshold,
+                },
+            )
+            verification_result = await verify_proposal(proposal)
+            if self._store is not None:
+                verification_result = await self._store.persist(verification_result)
+            verification_payload = verification_result.model_dump(mode="json")
+
+            blocked = (
+                is_verification_enabled(self.app)
+                and verification_result.consensus == Consensus.REJECT
+            )
+            if blocked:
+                logger.info(
+                    "self_improvement_generate: blocked_by_verification "
+                    "fingerprint=%s consensus=%s",
+                    fingerprint[:16],
+                    verification_result.consensus.value,
+                )
+                return {
+                    "status": "blocked_by_verification",
+                    "fingerprint": fingerprint,
+                    "verification": verification_payload,
+                }
+
             from uuid import uuid4
 
             job_id = str(uuid4())
@@ -505,7 +587,12 @@ class SelfImprovementTools:
                 job_id,
                 fingerprint[:16],
             )
-            return {"improvement_job_id": job_id, "status": "generating"}
+            return {
+                "improvement_job_id": job_id,
+                "status": "generating",
+                "fingerprint": fingerprint,
+                "verification": verification_payload,
+            }
         except Exception as exc:
             logger.exception("self_improvement_generate failed")
             return {"error": str(exc), "status": "failed"}

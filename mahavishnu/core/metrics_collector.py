@@ -360,7 +360,7 @@ class ExecutionTracker:
                         for adapter_name, stats in aggregates["adapter_stats"].items():
                             from mahavishnu.core.metrics_schema import AdapterStats
 
-                            adapter_stats = AdapterStats(  # type: ignore[call-arg]
+                            adapter_stats = AdapterStats(
                                 adapter=AdapterType(adapter_name),
                                 date=stats.get("date", datetime.now(UTC).strftime("%Y-%m-%d")),
                                 success_rate=stats["success_rate"],
@@ -398,7 +398,7 @@ class ExecutionTracker:
             success_rate = self._metrics.get_success_rate(adapter)
             if success_rate is not None:
                 attempts = self._metrics.adapter_attempts.get(adapter.value, {})
-                aggregates["adapter_stats"][adapter.value] = {  # type: ignore[index]
+                aggregates["adapter_stats"][adapter.value] = {  # type: ignore[invalid-index]
                     "success_rate": success_rate,
                     "total_executions": attempts.get("success", 0) + attempts.get("failure", 0),
                     "last_updated": datetime.now(UTC).isoformat(),
@@ -407,7 +407,7 @@ class ExecutionTracker:
         # Calculate per-task-type statistics
         for task_type in TaskType:
             count = self._metrics.task_type_counts.get(task_type.value, 0)
-            aggregates["task_type_stats"][task_type.value] = {  # type: ignore[index]
+            aggregates["task_type_stats"][task_type.value] = {  # type: ignore[invalid-index]
                 "execution_count": count,
                 "last_updated": datetime.now(UTC).isoformat(),
             }

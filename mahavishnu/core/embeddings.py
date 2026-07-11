@@ -41,7 +41,7 @@ import hashlib
 import logging
 import re
 import time
-from typing import Any
+from typing import Any, cast
 import unicodedata
 import warnings
 
@@ -291,14 +291,14 @@ class FastEmbedProvider(EmbeddingProviderInterface):
     async def _load_client(self):
         """Lazy load the FastEmbed client."""
         try:
-            from fastembed import TextEmbedding
+            from fastembed import TextEmbedding  # ty: ignore[unresolved-import]
 
             self._client = TextEmbedding(model_name=self.model)
         except ImportError as e:
             logger.warning(
                 "FastEmbed unavailable, using deterministic fallback", extra={"error": str(e)}
             )
-            self._client = self._FallbackTextEmbedding(self.model)  # type: ignore[assignment]
+            self._client = self._FallbackTextEmbedding(self.model)
 
     async def embed(self, texts: list[str]) -> EmbeddingResult:
         """Generate embeddings using FastEmbed."""
@@ -309,9 +309,13 @@ class FastEmbedProvider(EmbeddingProviderInterface):
             await self._load_client()
 
         # FastEmbed's embed method returns a generator, collect results in thread pool
+        client = self._client
+        if client is None:
+            raise EmbeddingProviderError("FastEmbed client not initialized")
+
         def _collect_embeddings():
             collected = []
-            for emb in self._client.embed(texts):  # type: ignore[attr-defined]
+            for emb in client.embed(texts):
                 if hasattr(emb, "tolist"):
                     collected.append(emb.tolist())
                 else:
@@ -592,7 +596,7 @@ class EmbeddingService:
 
         return self._providers[provider]
 
-    async def embed(self, texts: list[str]) -> EmbeddingResult:  # type: ignore[return]
+    async def embed(self, texts: list[str]) -> EmbeddingResult:  # type: ignore[invalid-return]
         """Generate embeddings for texts.
 
         Uses circuit breaker pattern to prevent cascading failures.
@@ -619,6 +623,11 @@ class EmbeddingService:
         # Auto-select provider based on availability
         if self._auto_fallback:
             return await self._embed_with_fallback(texts)
+
+        # No provider selected and auto-fallback disabled — nothing to do.
+        raise EmbeddingProviderError(
+            "No embedding provider available: set provider or enable auto_fallback"
+        )
 
     async def _embed_with_circuit_breaker(
         self,
@@ -759,8 +768,13 @@ class EmbeddingService:
                 return await self.embed(batch)
 
         tasks = [_embed_with_limit(batch) for batch in text_batches]
-        # Return exceptions for graceful error handling
-        return await asyncio.gather(*tasks, return_exceptions=True)  # type: ignore[return-value]
+        # Return exceptions for graceful error handling.
+        # asyncio.gather(..., return_exceptions=True) types the result as
+        # EmbeddingResult | BaseException, but in practice only Exception subclasses
+        # (not BaseException) are ever returned here. Cast to satisfy the
+        # declared list[EmbeddingResult | Exception] return type.
+        results = await asyncio.gather(*tasks, return_exceptions=True)
+        return cast("list[EmbeddingResult | Exception]", results)
 
     def get_available_providers(self) -> list[EmbeddingProvider]:
         """Get list of available providers.

@@ -282,7 +282,9 @@ class ThompsonSamplingRouter:
             samples[strategy] = max(0, sample)  # Ensure non-negative
 
         # Select strategy with highest sample
-        selected = max(samples, key=samples.get)  # type: ignore[call-overload]
+        if not samples:
+            return RAGStrategy.NAIVE  # safe fallback when no samples available
+        selected = max(samples, key=lambda s: samples[s], default=RAGStrategy.NAIVE)
 
         # Record selection
         self._record_selection(selected, complexity_score, samples, query)

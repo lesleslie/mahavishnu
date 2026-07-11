@@ -11,9 +11,24 @@ Usage:
 from __future__ import annotations
 
 import base64
-from typing import Annotated, Any
+from typing import Annotated, Any, cast
 
-from mcp_common.types import Field
+try:
+    from mcp_common.types import Field  # ty: ignore[unresolved-import]
+except ImportError:
+
+    class _FieldFallback:
+        """Stub Field used when mcp_common.types cannot be resolved.
+
+        Accepts any kwargs so Annotated[..., Field(description=...)] call sites
+        keep type-checking cleanly. Intentionally permissive — this is a
+        pre-existing broken import; the real Field lives in mcp_common.types.
+        """
+
+        def __new__(cls, *_args: object, **_kwargs: object) -> object:
+            return object.__new__(cls)
+
+    Field = _FieldFallback  # type: ignore[assignment,misc]
 
 from mahavishnu.automation import AutomationManager
 from mahavishnu.automation.models import AutomationConfig
@@ -55,7 +70,7 @@ def register_desktop_automation_tools(mcp: Any) -> None:  # noqa: C901
         await manager.initialize()
 
         result = await manager.check_permissions()
-        return result.to_dict()  # type: ignore[no-any-return, attr-defined]
+        return result.model_dump()
 
     @mcp.tool()
     async def automation_status() -> dict:
@@ -85,7 +100,7 @@ def register_desktop_automation_tools(mcp: Any) -> None:  # noqa: C901
         await manager.initialize()
 
         result = await manager.launch_application(bundle_id, dry_run=dry_run)
-        return result.to_dict()  # type: ignore[no-any-return, attr-defined]
+        return result.model_dump()
 
     @mcp.tool()
     async def automation_quit_app(
@@ -97,7 +112,7 @@ def register_desktop_automation_tools(mcp: Any) -> None:  # noqa: C901
         await manager.initialize()
 
         result = await manager.quit_application(bundle_id, force=force)
-        return result.to_dict()  # type: ignore[no-any-return, attr-defined]
+        return result.model_dump()
 
     @mcp.tool()
     async def automation_activate_app(
@@ -108,7 +123,7 @@ def register_desktop_automation_tools(mcp: Any) -> None:  # noqa: C901
         await manager.initialize()
 
         result = await manager.activate_application(bundle_id)
-        return result.to_dict()  # type: ignore[no-any-return, attr-defined]
+        return result.model_dump()
 
     @mcp.tool()
     async def automation_list_apps() -> dict:
@@ -117,7 +132,7 @@ def register_desktop_automation_tools(mcp: Any) -> None:  # noqa: C901
         await manager.initialize()
 
         result = await manager.list_applications()
-        return result.to_dict()  # type: ignore[no-any-return, attr-defined]
+        return result.model_dump()
 
     @mcp.tool()
     async def automation_get_active_app() -> dict:
@@ -126,7 +141,7 @@ def register_desktop_automation_tools(mcp: Any) -> None:  # noqa: C901
         await manager.initialize()
 
         result = await manager.get_active_application()
-        return result.to_dict()  # type: ignore[no-any-return, attr-defined]
+        return result.model_dump()
 
     # =========================================================================
     # Window Tools
@@ -141,7 +156,7 @@ def register_desktop_automation_tools(mcp: Any) -> None:  # noqa: C901
         await manager.initialize()
 
         result = await manager.get_windows(bundle_id)
-        return result.to_dict()  # type: ignore[no-any-return, attr-defined]
+        return result.model_dump()
 
     @mcp.tool()
     async def automation_resize_window(
@@ -154,7 +169,7 @@ def register_desktop_automation_tools(mcp: Any) -> None:  # noqa: C901
         await manager.initialize()
 
         result = await manager.resize_window(window_id, width, height)
-        return result.to_dict()  # type: ignore[no-any-return, attr-defined]
+        return result.model_dump()
 
     @mcp.tool()
     async def automation_move_window(
@@ -167,7 +182,7 @@ def register_desktop_automation_tools(mcp: Any) -> None:  # noqa: C901
         await manager.initialize()
 
         result = await manager.move_window(window_id, x, y)
-        return result.to_dict()  # type: ignore[no-any-return, attr-defined]
+        return result.model_dump()
 
     @mcp.tool()
     async def automation_close_window(
@@ -178,7 +193,7 @@ def register_desktop_automation_tools(mcp: Any) -> None:  # noqa: C901
         await manager.initialize()
 
         result = await manager.close_window(window_id)
-        return result.to_dict()  # type: ignore[no-any-return, attr-defined]
+        return result.model_dump()
 
     # =========================================================================
     # Menu Tools
@@ -194,7 +209,7 @@ def register_desktop_automation_tools(mcp: Any) -> None:  # noqa: C901
         await manager.initialize()
 
         result = await manager.click_menu_item(bundle_id, menu_path)
-        return result.to_dict()  # type: ignore[no-any-return, attr-defined]
+        return result.model_dump()
 
     @mcp.tool()
     async def automation_list_menus(
@@ -205,7 +220,7 @@ def register_desktop_automation_tools(mcp: Any) -> None:  # noqa: C901
         await manager.initialize()
 
         result = await manager.list_menus(bundle_id)
-        return result.to_dict()  # type: ignore[no-any-return, attr-defined]
+        return result.model_dump()
 
     # =========================================================================
     # Input Tools
@@ -222,7 +237,7 @@ def register_desktop_automation_tools(mcp: Any) -> None:  # noqa: C901
         await manager.initialize()
 
         result = await manager.type_text(text, interval=interval, dry_run=dry_run)
-        return result.to_dict()  # type: ignore[no-any-return, attr-defined]
+        return result.model_dump()
 
     @mcp.tool()
     async def automation_press_key(
@@ -236,7 +251,7 @@ def register_desktop_automation_tools(mcp: Any) -> None:  # noqa: C901
         await manager.initialize()
 
         result = await manager.press_key(key, modifiers=modifiers)
-        return result.to_dict()  # type: ignore[no-any-return, attr-defined]
+        return result.model_dump()
 
     @mcp.tool()
     async def automation_click(
@@ -250,7 +265,7 @@ def register_desktop_automation_tools(mcp: Any) -> None:  # noqa: C901
         await manager.initialize()
 
         result = await manager.click(x, y, button=button, clicks=clicks)
-        return result.to_dict()  # type: ignore[no-any-return, attr-defined]
+        return result.model_dump()
 
     @mcp.tool()
     async def automation_drag(
@@ -265,7 +280,7 @@ def register_desktop_automation_tools(mcp: Any) -> None:  # noqa: C901
         await manager.initialize()
 
         result = await manager.drag(start_x, start_y, end_x, end_y, duration=duration)
-        return result.to_dict()  # type: ignore[no-any-return, attr-defined]
+        return result.model_dump()
 
     @mcp.tool()
     async def automation_scroll(
@@ -279,7 +294,7 @@ def register_desktop_automation_tools(mcp: Any) -> None:  # noqa: C901
         await manager.initialize()
 
         result = await manager.scroll(x, y, dx, dy)
-        return result.to_dict()  # type: ignore[no-any-return, attr-defined]
+        return result.model_dump()
 
     # =========================================================================
     # Screenshot Tools
@@ -296,8 +311,8 @@ def register_desktop_automation_tools(mcp: Any) -> None:  # noqa: C901
         manager = get_manager()
         await manager.initialize()
 
-        region_tuple = tuple(region) if region else None
-        result = await manager.screenshot(region=region_tuple)  # type: ignore[arg-type]
+        region_tuple = cast("tuple[int, int, int, int] | None", tuple(region) if region else None)
+        result = await manager.screenshot(region=region_tuple)
 
         if result.status == "success" and result.data:
             # Encode image data as base64
@@ -315,7 +330,7 @@ def register_desktop_automation_tools(mcp: Any) -> None:  # noqa: C901
                 "image_base64": image_base64,
             }
 
-        return result.to_dict()  # type: ignore[no-any-return, attr-defined]
+        return result.model_dump()
 
     @mcp.tool()
     async def automation_list_screens() -> dict:
@@ -324,7 +339,7 @@ def register_desktop_automation_tools(mcp: Any) -> None:  # noqa: C901
         await manager.initialize()
 
         result = await manager.list_screens()
-        return result.to_dict()  # type: ignore[no-any-return, attr-defined]
+        return result.model_dump()
 
     # =========================================================================
     # UI Element Tools
@@ -342,7 +357,7 @@ def register_desktop_automation_tools(mcp: Any) -> None:  # noqa: C901
         await manager.initialize()
 
         result = await manager.get_ui_elements(bundle_id, window_id=window_id)
-        return result.to_dict()  # type: ignore[no-any-return, attr-defined]
+        return result.model_dump()
 
     # =========================================================================
     # Utility Tools

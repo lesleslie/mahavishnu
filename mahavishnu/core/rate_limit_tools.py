@@ -7,7 +7,7 @@ Designed to work with FastMCP's tool-based architecture.
 from collections.abc import Callable
 from functools import wraps
 from logging import getLogger
-from typing import Any
+from typing import Any, cast
 
 from ..core.rate_limit import RateLimitConfig, RateLimiter
 
@@ -79,7 +79,7 @@ def rate_limit_tool(
     """
 
     def decorator(func: Callable) -> Callable:
-        tool_name = func.__name__
+        tool_name = cast("Any", func).__name__
 
         # Initialize stats for this tool
         if tool_name not in _tool_stats:

@@ -481,3 +481,68 @@ class TestSelfImprovementToolsIntegration:
         )
 
         assert response_result["approved"] is True
+
+
+class TestSelfImprovementGenerateVerification:
+    """Phase 1 Task 1.6 exit criteria — verification gate after threshold check."""
+
+    @pytest.mark.asyncio
+    async def test_self_improvement_generate_runs_verification_after_threshold(
+        self,
+    ) -> None:
+        """Once failure count >= 3, ``self_improvement_generate`` runs verification.
+
+        Phase 1 Task 1.4 wiring smoke test: the response must carry a
+        ``verification`` field with a serialized ``VerificationResult``
+        payload (including ``persisted``), and ``status`` must be either
+        ``"generating"`` (consensus != reject) or
+        ``"blocked_by_verification"`` (consensus == reject under
+        ``verification_enabled=True``).
+        """
+        mock_app = MagicMock()
+        mock_app.coordination_manager = MagicMock()
+        mock_app.approval_manager = MagicMock()
+        tools = SelfImprovementTools(mock_app)
+
+        # Three or more records so the count >= 3 threshold is met.
+        dhara_records = [{"id": f"rec-{i}"} for i in range(4)]
+        dhara_client = MagicMock()
+        dhara_client.query_time_series = AsyncMock(return_value=dhara_records)
+
+        # verification_enabled stays False (default); consensus != REJECT
+        # means status="generating" with a job-id and verification payload.
+        mock_app.settings = MagicMock()
+        mock_app.settings.dhara_url = "http://localhost:8683"
+        mock_app.settings.verification_enabled = False
+
+        with patch(
+            "mahavishnu.core.dhara_adapter.DharaAdapter",
+            return_value=dhara_client,
+        ):
+            result = await tools.self_improvement_generate(
+                fingerprint="deadbeef" * 4,  # 32 hex chars
+                pattern_description="consistent timeout failures",
+            )
+
+        # Threshold met → proceed past the count check.
+        assert "status" in result
+        assert result["status"] != "skipped"
+
+        # Verification payload is present and well-formed.
+        assert "verification" in result, (
+            "self_improvement_generate must surface a verification field "
+            "after the threshold check (Phase 1 Task 1.4)"
+        )
+        verification = result["verification"]
+        for key in (
+            "proposal_id",
+            "verdicts",
+            "consensus",
+            "concerns_aggregated",
+            "persisted",
+        ):
+            assert key in verification, f"verification missing {key!r}"
+
+        # On the non-blocked path, a job-id must be returned.
+        if result["status"] == "generating":
+            assert "improvement_job_id" in result

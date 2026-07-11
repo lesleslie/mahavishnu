@@ -10,7 +10,7 @@ from dataclasses import dataclass, field
 from functools import wraps
 from logging import getLogger
 import time
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, cast
 
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
@@ -512,7 +512,7 @@ def rate_limit(
                 limiter.record_violation(key)
 
                 raise RateLimitError(
-                    f"Rate limit exceeded for {func.__name__}",
+                    f"Rate limit exceeded for {cast('Any', func).__name__}",
                     retry_after=rate_limit_info.retry_after,
                 )
 

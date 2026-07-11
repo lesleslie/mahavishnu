@@ -402,13 +402,13 @@ class PgvectorAdapter:
                     )
                 )
             else:  # IVFFlat
-                config = self._settings.ivfflat_config  # type: ignore[assignment]
+                config = self._settings.ivfflat_config
                 await conn.execute(
                     self._sql_create_ivfflat_index(
                         table_name,
                         qualified,
                         operator_class,
-                        config.lists,  # type: ignore[attr-defined]
+                        config.lists,
                     )
                 )
 

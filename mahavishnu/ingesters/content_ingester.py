@@ -29,7 +29,7 @@ from functools import lru_cache
 import ipaddress
 from pathlib import Path
 import socket
-from typing import Any, TypedDict
+from typing import Any, TypedDict, cast
 import urllib.parse
 
 import httpx
@@ -971,7 +971,7 @@ class ContentIngester:
                     )
                 )
             else:
-                final_results.append(result)
+                final_results.append(cast("IngestionResult", result))
 
         success_count = sum(1 for r in final_results if r.success)
         self._log.info("batch_ingest_complete", success=success_count, total=len(urls))

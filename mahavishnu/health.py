@@ -9,6 +9,7 @@ Endpoints:
 - GET /metrics - Prometheus metrics endpoint
 """
 
+import asyncio
 from datetime import UTC, datetime
 
 from fastapi import FastAPI, Response
@@ -120,17 +121,17 @@ def create_health_app(
 
 
 def _check_database() -> bool:
-    """Check if database connection is healthy."""
+    """Check if database module is importable and constructible.
+
+    EncryptedSQLite.connect()/close() are async coroutines, so this sync
+    smoke test only verifies the import path and class instantiation.
+    Use the canonical storage health check for connection-level probes.
+    """
     try:
-        # Try to import and check database
-        from ..storage.encrypted_sqlite import EncryptedSQLite  # type: ignore[misc]
+        from .storage.encrypted_sqlite import EncryptedSQLite
 
-        # Try to connect to a test database
         test_db = EncryptedSQLite(":memory:")
-        test_db.connect()
-        test_db.close()
-
-        return True
+        return test_db is not None
     except Exception:
         return False
 
@@ -157,9 +158,9 @@ def _check_adapters() -> bool:
         # Check if at least one adapter is configured
         has_adapter = any(
             [
-                config.adapters_prefect,  # type: ignore[attr-defined]
-                config.adapters_llamaindex,  # type: ignore[attr-defined]
-                config.adapters_agno,  # type: ignore[attr-defined]
+                config.adapters.prefect_enabled,
+                config.adapters.llamaindex_enabled,
+                config.adapters.agno_enabled,
             ]
         )
 
@@ -196,7 +197,8 @@ async def run_health_server(
 
     logger.info(f"Starting health check server on {host}:{port}")
 
-    await uvicorn.run(  # type: ignore[func-returns-value, misc]
+    await asyncio.to_thread(
+        uvicorn.run,
         app,
         host=host,
         port=port,
@@ -205,6 +207,4 @@ async def run_health_server(
 
 
 if __name__ == "__main__":
-    import asyncio
-
     asyncio.run(run_health_server())

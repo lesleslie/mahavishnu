@@ -45,6 +45,8 @@ from mahavishnu.core.errors import DatabaseError, ValidationError
 from mahavishnu.core.event_store import EventStore, TaskEventType
 
 if TYPE_CHECKING:
+    import builtins
+
     from mahavishnu.core.database import Database
 
 logger = logging.getLogger(__name__)
@@ -566,7 +568,9 @@ class TaskStore:
                 details={"task_id": task_id},
             ) from e
 
-    async def list(self, filters: TaskListFilter | None = None, **kwargs: Any) -> list[Task]:
+    async def list(
+        self, filters: TaskListFilter | None = None, **kwargs: Any
+    ) -> builtins.list[Task]:
         """List tasks with optional filters.
 
         Args:
@@ -682,7 +686,9 @@ class TaskStore:
 
     # Batch operations
 
-    async def create_batch(self, tasks: list[TaskCreate], actor: str = "system") -> list[Task]:  # type: ignore[valid-type]
+    async def create_batch(
+        self, tasks: builtins.list[TaskCreate], actor: str = "system"
+    ) -> builtins.list[Task]:
         """Create multiple tasks in a batch.
 
         Args:
@@ -704,7 +710,7 @@ class TaskStore:
 
     async def update_status_batch(
         self,
-        task_ids: list[str],  # type: ignore[valid-type]
+        task_ids: builtins.list[str],
         status: TaskStatus,
         actor: str = "system",
     ) -> int:
@@ -852,7 +858,7 @@ class TaskStore:
             actor=actor,
         )
 
-    async def get_dependencies(self, task_id: str) -> list[TaskDependency]:  # type: ignore[valid-type]
+    async def get_dependencies(self, task_id: str) -> builtins.list[TaskDependency]:
         """Get all dependencies for a task.
 
         Args:
@@ -869,7 +875,7 @@ class TaskStore:
         )
         return [TaskDependency.from_row(row) for row in rows]
 
-    async def get_dependents(self, task_id: str) -> list[TaskDependency]:  # type: ignore[valid-type]
+    async def get_dependents(self, task_id: str) -> builtins.list[TaskDependency]:
         """Get all tasks that depend on a task.
 
         Args:

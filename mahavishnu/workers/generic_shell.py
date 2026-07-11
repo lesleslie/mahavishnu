@@ -11,12 +11,14 @@ import contextlib
 import json
 import logging
 import shlex
-from typing import Any
+from typing import TYPE_CHECKING, Any, cast
 
-from ..terminal.manager import TerminalManager
 from .base import BaseWorker, WorkerResult, WorkerStatus
-from .protocol import ProgressSnapshot
 from .registry import WorkerCategory, WorkerConfig, get_worker_config
+
+if TYPE_CHECKING:
+    from ..terminal.manager import TerminalManager
+    from .protocol import ProgressSnapshot
 
 logger = logging.getLogger(__name__)
 
@@ -66,9 +68,10 @@ class GenericShellWorker(BaseWorker):
             **kwargs: Additional parameters (e.g., host for SSH)
         """
         # Load config from registry if not provided
-        self.config = config or get_worker_config(worker_type)
-        if self.config is None:
+        cfg = config or get_worker_config(worker_type)
+        if cfg is None:
             raise ValueError(f"Unknown worker type: {worker_type}")
+        self.config: WorkerConfig = cfg
 
         super().__init__(worker_type=worker_type)
         self.terminal_manager = terminal_manager
@@ -98,7 +101,7 @@ class GenericShellWorker(BaseWorker):
 
     def _format_command(self, prompt: str | None = None) -> str:
         """Format command template with worker kwargs and optional task prompt."""
-        command = self.config.command  # type: ignore[union-attr]
+        command = self.config.command
         format_kwargs = dict(self._kwargs)
         if "{prompt}" in command:
             if prompt is None:
@@ -156,25 +159,28 @@ class GenericShellWorker(BaseWorker):
             WorkerResult with execution results
         """
         prompt = task.get("prompt", "")
-        timeout = task.get("timeout", self.config.default_timeout)  # type: ignore
+        timeout = task.get("timeout", self.config.default_timeout)
         wait_for_completion = task.get("wait_for_completion", True)
 
         if not self.session_id:
-            if "{prompt}" in self.config.command:  # type: ignore
+            if "{prompt}" in self.config.command:
                 await self.start(launch_command=self._format_command(prompt))
             else:
                 await self.start()
 
-        if "{prompt}" not in self.config.command:  # type: ignore[union-attr]
+        if self.session_id is None:
+            raise RuntimeError("session_id not set; worker not started")
+
+        if "{prompt}" not in self.config.command:
             # Interactive workers start a long-lived process and receive prompts over stdin.
-            await self.terminal_manager.send_command(self.session_id, prompt)  # type: ignore[arg-type]
+            await self.terminal_manager.send_command(self.session_id, prompt)
 
         if wait_for_completion:
             # Monitor for completion
             result = await self._monitor_completion(task, timeout)
         else:
             # Just capture current output
-            output = await self.terminal_manager.capture_output(self.session_id, lines=50)  # type: ignore[arg-type]
+            output = await self.terminal_manager.capture_output(self.session_id, lines=50)
             result = self._build_result(output, "", timeout)
 
         # Store result in Session-Buddy
@@ -197,6 +203,9 @@ class GenericShellWorker(BaseWorker):
         Returns:
             WorkerResult when completion detected or timeout
         """
+        if self.session_id is None:
+            raise RuntimeError("session_id not set; worker not started")
+
         output_lines: list[str] = []
         last_output = ""
         start_time = asyncio.get_event_loop().time()
@@ -204,13 +213,13 @@ class GenericShellWorker(BaseWorker):
         while True:
             # Capture latest output
             try:
-                output = await self.terminal_manager.capture_output(self.session_id, lines=100)  # type: ignore[arg-type]
+                output = await self.terminal_manager.capture_output(self.session_id, lines=100)
             except Exception as e:
                 logger.error(f"Failed to capture output: {e}")
                 output = ""
 
             # Check for completion based on stream format
-            if self.config.stream_format == "json":  # type: ignore[union-attr]
+            if self.config.stream_format == "json":
                 completed, content = self._check_json_completion(output)
                 if content:
                     output_lines.append(content)
@@ -254,7 +263,7 @@ class GenericShellWorker(BaseWorker):
         if not stripped_output:
             return False, None
 
-        if self.config.complete_on_valid_json:  # type: ignore[union-attr]
+        if self.config.complete_on_valid_json:
             try:
                 data = json.loads(stripped_output)
                 return True, self._extract_json_content(data)
@@ -268,11 +277,11 @@ class GenericShellWorker(BaseWorker):
                 data = json.loads(line)
                 serialized = json.dumps(data)
                 # Check completion markers
-                for marker in self.config.completion_markers:  # type: ignore[union-attr]
+                for marker in self.config.completion_markers:
                     if marker in data or marker in serialized:
                         return True, self._extract_json_content(data)
                 # Check error markers
-                for marker in self.config.error_markers:  # type: ignore[union-attr]
+                for marker in self.config.error_markers:
                     if marker.lower() in serialized.lower():
                         return True, self._extract_json_content(data)
             except json.JSONDecodeError:
@@ -325,14 +334,14 @@ class GenericShellWorker(BaseWorker):
         last_line = lines[-1].strip()
 
         # Check for prompt indicators (shell ready)
-        for marker in self.config.completion_markers:  # type: ignore[union-attr]
+        for marker in self.config.completion_markers:
             if marker in last_line:
                 # Shell is ready at prompt - extract content before prompt
                 content = "\n".join(lines[:-1]) if len(lines) > 1 else ""
                 return True, content
 
         # Check for error markers
-        for marker in self.config.error_markers:  # type: ignore[union-attr]
+        for marker in self.config.error_markers:
             if marker.lower() in output.lower():
                 return True, output
 
@@ -357,7 +366,7 @@ class GenericShellWorker(BaseWorker):
         duration = asyncio.get_event_loop().time() - self._start_time if self._start_time else 0
 
         # Detect errors in output
-        has_error = any(marker.lower() in output.lower() for marker in self.config.error_markers)  # type: ignore[union-attr]
+        has_error = any(marker.lower() in output.lower() for marker in self.config.error_markers)
         status = WorkerStatus.FAILED if has_error else WorkerStatus.COMPLETED
 
         return WorkerResult(
@@ -370,7 +379,7 @@ class GenericShellWorker(BaseWorker):
             metadata={
                 "last_output": last_output[:200] if last_output else "",
                 "worker_type": self.worker_type,
-                "category": self.config.category.value,  # type: ignore[union-attr]
+                "category": self.config.category.value,
                 "timeout": timeout,
             },
         )
@@ -398,8 +407,8 @@ class GenericShellWorker(BaseWorker):
                         "type": "worker_execution",
                         "worker_id": result.worker_id,
                         "worker_type": self.worker_type,
-                        "worker_name": self.config.name,  # type: ignore[union-attr]
-                        "category": self.config.category.value,  # type: ignore
+                        "worker_name": self.config.name,
+                        "category": self.config.category.value,
                         "task_prompt": task.get("prompt", ""),
                         "status": result.status.value,
                         "duration_seconds": result.duration_seconds,
@@ -445,11 +454,11 @@ class GenericShellWorker(BaseWorker):
 
         return self._status
 
-    async def get_progress(self) -> ProgressSnapshot:  # type: ignore[override]
+    async def get_progress(self) -> dict[str, Any]:
         """Get worker progress information.
 
         Returns:
-            ProgressSnapshot with typed progress details
+            ProgressSnapshot with typed progress details (cast to dict for LSP compliance)
         """
         output = ""
         if self.session_id:
@@ -458,15 +467,16 @@ class GenericShellWorker(BaseWorker):
 
         duration = asyncio.get_event_loop().time() - self._start_time if self._start_time else 0
 
-        return {
+        snapshot: ProgressSnapshot = {
             "status": self._status.value,
             "session_id": self.session_id,
             "output_preview": output[:200] if output else "",
             "duration_seconds": duration,
             "worker_type": self.worker_type,
-            "worker_name": self.config.name,  # type: ignore[union-attr]
-            "category": self.config.category.value,  # type: ignore[union-attr]
+            "worker_name": self.config.name,
+            "category": self.config.category.value,
         }
+        return cast("dict[str, Any]", snapshot)
 
 
 __all__ = ["GenericShellWorker"]

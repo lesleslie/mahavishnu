@@ -25,7 +25,7 @@ class PatternLibrary:
     def load_all(self) -> list[Pattern]:
         """Load all patterns from the YAML files under root."""
         self._cache.clear()
-        self._file_paths = {}  # type: ignore[assignment]
+        self._file_paths = {}
         if not self.root.is_dir():
             return []
         for yaml_file in sorted(self.root.rglob("*.yaml")):

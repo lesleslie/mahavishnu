@@ -1,6 +1,6 @@
-"""
-OpenSearch prototype for Mahavishnu
-This script validates that OpenSearch can be integrated properly
+"""OpenSearch prototype for Mahavishnu.
+
+This script validates that OpenSearch can be integrated properly.
 """
 
 import asyncio
@@ -8,20 +8,24 @@ import time
 
 from llama_index.core import Document, VectorStoreIndex
 from llama_index.core.storage.storage_context import StorageContext
-from llama_index.vector_stores.opensearch import OpensearchVectorStore
+from llama_index.vector_stores.opensearch import (
+    OpensearchVectorClient,
+    OpensearchVectorStore,
+)
 
 
 async def test_opensearch_connection():
-    """Test basic OpenSearch connection and document ingestion"""
+    """Test basic OpenSearch connection and document ingestion."""
 
     # Create a simple vector store instance
     # Note: This assumes OpenSearch is running at http://localhost:9200
     try:
-        vector_store = OpensearchVectorStore(  # type: ignore[call-arg]
+        client = OpensearchVectorClient(
             endpoint="http://localhost:9200",
-            index_name="test-index",
+            index="test-index",
             dim=1536,  # Standard for text-embedding-ada-002
         )
+        vector_store = OpensearchVectorStore(client=client)
 
         print("✓ Successfully connected to OpenSearch")
 

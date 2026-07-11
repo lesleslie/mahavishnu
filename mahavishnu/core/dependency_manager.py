@@ -11,7 +11,7 @@ from __future__ import annotations
 
 from collections import defaultdict
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import UTC, datetime
 from enum import StrEnum
 import logging
 from typing import TYPE_CHECKING, Any
@@ -59,7 +59,7 @@ class DependencyEventData:
     event_type: DependencyEvent
     task_id: str
     related_task_id: str | None = None
-    timestamp: datetime = field(default_factory=datetime.utcnow)
+    timestamp: datetime = field(default_factory=lambda: datetime.now(UTC))
     details: dict[str, Any] = field(default_factory=dict)
 
     def to_dict(self) -> dict[str, Any]:

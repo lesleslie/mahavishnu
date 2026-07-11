@@ -484,7 +484,7 @@ class ConfigurationWizard:
             "role": role,
         }
         if tags:
-            repo["tags"] = tags  # type: ignore[assignment]
+            repo["tags"] = tags
         if description:
             repo["description"] = description
         self.repos.append(repo)

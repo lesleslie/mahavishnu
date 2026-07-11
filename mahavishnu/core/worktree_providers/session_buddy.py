@@ -50,10 +50,10 @@ class SessionBuddyWorktreeProvider(WorktreeProvider):
         if self._mcp_client is None:
             # Import MCP client lazily (only when needed)
             try:
-                from mcp_client import MCPClient
+                from fastmcp.client import Client as MCPClient
 
                 self._mcp_client = MCPClient(self.session_buddy_url)
-                await self._mcp_client.__aenter__()  # type: ignore[attr-defined]
+                await self._mcp_client.__aenter__()
 
                 logger.info(f"Connected to Session-Buddy MCP: {self.session_buddy_url}")
 

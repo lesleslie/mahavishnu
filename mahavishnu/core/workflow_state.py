@@ -20,7 +20,7 @@ try:
     OPENSEARCH_AVAILABLE = True
 except ImportError:
     OPENSEARCH_AVAILABLE = False
-    AsyncOpenSearch = None  # type: ignore[assignment]
+    AsyncOpenSearch = None  # ty: ignore[invalid-assignment]
 
 
 class WorkflowState:

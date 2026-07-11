@@ -25,7 +25,7 @@ from mahavishnu.core.database import Database, get_database
 from mahavishnu.core.errors import ErrorCode, MahavishnuError
 
 if TYPE_CHECKING:
-    from collections.abc import AsyncIterator
+    from collections.abc import AsyncIterator, Sequence
 
     from asyncpg import Connection, Pool
 
@@ -181,7 +181,7 @@ class BaseRepository[CreateModel, ReadModel, UpdateModel](ABC):
         limit: int = 50,
         offset: int = 0,
         **filters: Any,
-    ) -> list[ReadModel]:
+    ) -> Sequence[ReadModel]:
         """List records with optional filters.
 
         Raises:

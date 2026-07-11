@@ -27,7 +27,7 @@ import json
 import logging
 from pathlib import Path
 import sqlite3
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, cast
 
 _HEALTH_DB = Path(__file__).parent.parent.parent / "data" / "health.db"
 
@@ -257,10 +257,10 @@ class AdapterHealthMonitor:
         """
         if hasattr(self.registry, "adapters"):
             # HybridAdapterRegistry or similar
-            return self.registry.adapters  # type: ignore[no-any-return]
+            return cast("dict[str, OrchestratorAdapter]", self.registry.adapters)
         elif isinstance(self.registry, dict):
             # Direct dictionary of adapters
-            return self.registry
+            return cast("dict[str, OrchestratorAdapter]", self.registry)
         else:
             logger.warning(f"Unknown registry type: {type(self.registry)}")
             return {}

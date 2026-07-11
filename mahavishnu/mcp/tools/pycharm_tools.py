@@ -186,7 +186,7 @@ def register_pycharm_tools(mcp: FastMCP, app: Any = None) -> None:  # noqa: C901
         }
 
     @mcp.tool()
-    async def pycharm_open_file(file_path: str, line: int | None = None) -> dict[str, Any]:  # type: ignore[return]
+    async def pycharm_open_file(file_path: str, line: int | None = None) -> dict[str, Any]:
         """Open a file in PyCharm editor, optionally at a specific line."""
         try:
             if app and hasattr(app, "worker_manager") and app.worker_manager:
@@ -208,6 +208,12 @@ def register_pycharm_tools(mcp: FastMCP, app: Any = None) -> None:  # noqa: C901
                 "error": str(e),
                 "fallback_active": True,
             }
+        return {
+            "source": "fallback",
+            "opened": False,
+            "error": "PyCharm MCP unavailable",
+            "fallback_active": True,
+        }
 
     @mcp.tool()
     async def pycharm_search_in_project(
@@ -238,7 +244,7 @@ def register_pycharm_tools(mcp: FastMCP, app: Any = None) -> None:  # noqa: C901
         }
 
     @mcp.tool()
-    async def pycharm_replace_in_file(  # type: ignore[return]
+    async def pycharm_replace_in_file(
         file_path: str,
         search_text: str,
         replace_text: str,
@@ -268,9 +274,15 @@ def register_pycharm_tools(mcp: FastMCP, app: Any = None) -> None:  # noqa: C901
                 "error": str(e),
                 "fallback_active": True,
             }
+        return {
+            "source": "fallback",
+            "replaced": False,
+            "error": "PyCharm MCP unavailable",
+            "fallback_active": True,
+        }
 
     @mcp.tool()
-    async def pycharm_reformat_file(file_path: str) -> dict[str, Any]:  # type: ignore[return]
+    async def pycharm_reformat_file(file_path: str) -> dict[str, Any]:
         """Reformat a file using PyCharm's code formatter."""
         try:
             if app and hasattr(app, "worker_manager") and app.worker_manager:
@@ -289,9 +301,15 @@ def register_pycharm_tools(mcp: FastMCP, app: Any = None) -> None:  # noqa: C901
                 "error": str(e),
                 "fallback_active": True,
             }
+        return {
+            "source": "fallback",
+            "reformatted": False,
+            "error": "PyCharm MCP unavailable",
+            "fallback_active": True,
+        }
 
     @mcp.tool()
-    async def pycharm_refactor_symbol(  # type: ignore[return]
+    async def pycharm_refactor_symbol(
         symbol_name: str,
         new_name: str,
         scope: str = "project",
@@ -324,6 +342,12 @@ def register_pycharm_tools(mcp: FastMCP, app: Any = None) -> None:  # noqa: C901
                 "error": str(e),
                 "fallback_active": True,
             }
+        return {
+            "source": "fallback",
+            "refactored": False,
+            "error": "PyCharm MCP unavailable",
+            "fallback_active": True,
+        }
 
     @mcp.tool()
     async def pycharm_list_problems(

@@ -40,7 +40,7 @@ class MockAsyncOpenSearch:
 if OPENSEARCH_AVAILABLE:
     from opensearchpy import AsyncOpenSearch
 else:
-    AsyncOpenSearch = MockAsyncOpenSearch  # type: ignore[assignment,misc]
+    AsyncOpenSearch = MockAsyncOpenSearch  # type: ignore[misc]
 
 
 class OpenSearchLogAnalytics:
@@ -71,9 +71,9 @@ class OpenSearchLogAnalytics:
                 self._indices_initialized = False
             except Exception as e:
                 logging.warning(f"Failed to initialize OpenSearch client: {e}")
-                self.client = MockAsyncOpenSearch()  # type: ignore[assignment]
+                self.client = MockAsyncOpenSearch()
         else:
-            self.client = MockAsyncOpenSearch()  # type: ignore[assignment]
+            self.client = MockAsyncOpenSearch()
 
         # Track whether indices have been initialized
         self._indices_initialized = False
@@ -218,18 +218,18 @@ class OpenSearchLogAnalytics:
             search_body = {"query": {"bool": {"must": []}}, "size": size}
 
             if query:
-                search_body["query"]["bool"]["must"].append(  # type: ignore[index]
+                search_body["query"]["bool"]["must"].append(  # type: ignore[invalid-index]
                     {"simple_query_string": {"query": query}}
                 )
 
             if level:
-                search_body["query"]["bool"]["must"].append({"term": {"level": level}})  # type: ignore[index]
+                search_body["query"]["bool"]["must"].append({"term": {"level": level}})  # type: ignore[invalid-index]
 
             if workflow_id:
-                search_body["query"]["bool"]["must"].append({"term": {"workflow_id": workflow_id}})  # type: ignore[index]
+                search_body["query"]["bool"]["must"].append({"term": {"workflow_id": workflow_id}})  # type: ignore[invalid-index]
 
             if repo_path:
-                search_body["query"]["bool"]["must"].append({"term": {"repo_path": repo_path}})  # type: ignore[index]
+                search_body["query"]["bool"]["must"].append({"term": {"repo_path": repo_path}})  # type: ignore[invalid-index]
 
             if start_time or end_time:
                 date_range = {}
@@ -237,10 +237,10 @@ class OpenSearchLogAnalytics:
                     date_range["gte"] = start_time
                 if end_time:
                     date_range["lte"] = end_time
-                search_body["query"]["bool"]["must"].append({"range": {"timestamp": date_range}})  # type: ignore[index]
+                search_body["query"]["bool"]["must"].append({"range": {"timestamp": date_range}})  # type: ignore[invalid-index]
 
             # If no filters, match all
-            if not search_body["query"]["bool"]["must"]:  # type: ignore[index]
+            if not search_body["query"]["bool"]["must"]:  # type: ignore[invalid-index]
                 search_body["query"] = {"match_all": {}}
 
             response = await self.client.search(index=self.log_index, body=search_body)
@@ -268,16 +268,16 @@ class OpenSearchLogAnalytics:
             search_body = {"query": {"bool": {"must": []}}, "size": size}
 
             if workflow_id:
-                search_body["query"]["bool"]["must"].append({"term": {"workflow_id": workflow_id}})  # type: ignore[index]
+                search_body["query"]["bool"]["must"].append({"term": {"workflow_id": workflow_id}})  # type: ignore[invalid-index]
 
             if adapter:
-                search_body["query"]["bool"]["must"].append({"term": {"adapter": adapter}})  # type: ignore[index]
+                search_body["query"]["bool"]["must"].append({"term": {"adapter": adapter}})  # type: ignore[invalid-index]
 
             if task_type:
-                search_body["query"]["bool"]["must"].append({"term": {"task_type": task_type}})  # type: ignore[index]
+                search_body["query"]["bool"]["must"].append({"term": {"task_type": task_type}})  # type: ignore[invalid-index]
 
             if status:
-                search_body["query"]["bool"]["must"].append({"term": {"status": status}})  # type: ignore[index]
+                search_body["query"]["bool"]["must"].append({"term": {"status": status}})  # type: ignore[invalid-index]
 
             if start_time or end_time:
                 date_range = {}
@@ -285,10 +285,10 @@ class OpenSearchLogAnalytics:
                     date_range["gte"] = start_time
                 if end_time:
                     date_range["lte"] = end_time
-                search_body["query"]["bool"]["must"].append({"range": {"timestamp": date_range}})  # type: ignore[index]
+                search_body["query"]["bool"]["must"].append({"range": {"timestamp": date_range}})  # type: ignore[invalid-index]
 
             # If no filters, match all
-            if not search_body["query"]["bool"]["must"]:  # type: ignore[index]
+            if not search_body["query"]["bool"]["must"]:  # type: ignore[invalid-index]
                 search_body["query"] = {"match_all": {}}
 
             response = await self.client.search(index=self.workflow_index, body=search_body)

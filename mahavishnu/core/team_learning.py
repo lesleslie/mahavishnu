@@ -503,7 +503,7 @@ class TeamLearningEngine:
                     }
                 )
 
-        skill_scores.sort(key=lambda x: x["success_rate"], reverse=True)  # type: ignore[arg-type]
+        skill_scores.sort(key=lambda x: x["success_rate"], reverse=True)
         return skill_scores[:limit]
 
     def _get_mode_performance(self) -> dict[str, dict[str, Any]]:

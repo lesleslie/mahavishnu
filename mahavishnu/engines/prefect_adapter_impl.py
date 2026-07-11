@@ -60,11 +60,11 @@ import inspect
 import logging
 import os
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any, cast
 from unittest.mock import Mock
 
 import httpx
-from mcp_common.code_graph import CodeGraphAnalyzer
+from mcp_common.code_graph import CodeGraphAnalyzer, FunctionNode
 from prefect import flow, task
 from prefect.client.orchestration import get_client
 from prefect.exceptions import (
@@ -83,7 +83,7 @@ from ..core.adapters.base import (
     AdapterType,
     OrchestratorAdapter,
 )
-from ..core.config import PrefectConfig
+from ..core.config import PrefectConfig, get_settings
 from ..core.errors import (
     ErrorCode,
     ErrorTemplates,
@@ -105,10 +105,13 @@ from .prefect_schedules import (
 
 logger = logging.getLogger(__name__)
 
-try:
+if TYPE_CHECKING:
     from ..qc.checker import QualityControl
+
+try:
+    from ..qc.checker import QualityControl as _QualityControlImpl
 except ImportError:  # pragma: no cover - optional dependency path
-    QualityControl = None  # type: ignore[assignment]
+    _QualityControlImpl: "type[QualityControl] | None" = None
 
 
 # =============================================================================
@@ -139,33 +142,38 @@ async def process_repository(repo_path: str, task_spec: dict[str, Any]) -> dict[
             analysis_result = await graph_analyzer.analyze_repository(repo_path)
 
             # Find complex functions (more than 10 lines or with many calls)
-            complex_funcs = []
+            complex_funcs: list[dict[str, Any]] = []
+            func_lengths: list[int] = []
+            call_counts: list[int] = []
             for _node_id, node in graph_analyzer.nodes.items():
-                if hasattr(node, "end_line") and hasattr(node, "start_line"):
+                if isinstance(node, FunctionNode):
                     func_length = node.end_line - node.start_line
-                    if func_length > 10 or len(node.calls) > 5:  # type: ignore[attr-defined]
+                    calls_count = len(node.calls)
+                    if func_length > 10 or calls_count > 5:
+                        func_lengths.append(func_length)
+                        call_counts.append(calls_count)
                         complex_funcs.append(
                             {
                                 "name": node.name,
                                 "file": node.file_id,
                                 "length": func_length,
-                                "calls_count": len(node.calls),  # type: ignore[attr-defined]
-                                "is_export": node.is_export,  # type: ignore[attr-defined]
+                                "calls_count": calls_count,
+                                "is_export": node.is_export,
                             }
                         )
 
             # Calculate dynamic quality score based on actual analysis
-            quality_factors = {
+            quality_factors: dict[str, float] = {
                 "total_functions": analysis_result.get("functions_indexed", 0),
                 "complex_functions_count": len(complex_funcs),
-                "avg_function_length": sum(f["length"] for f in complex_funcs) / len(complex_funcs)
-                if complex_funcs
+                "avg_function_length": (sum(func_lengths) / len(func_lengths))
+                if func_lengths
                 else 0,
-                "max_complexity": max((f["calls_count"] for f in complex_funcs), default=0),
+                "max_complexity": max(call_counts, default=0),
             }
 
             # Calculate quality score (0-100)
-            quality_score = 100
+            quality_score = 100.0
             quality_score -= min(quality_factors["complex_functions_count"] * 2, 20)
             quality_score -= min(quality_factors["avg_function_length"] / 2, 15)
             quality_score -= min(quality_factors["max_complexity"], 10)
@@ -183,11 +191,11 @@ async def process_repository(repo_path: str, task_spec: dict[str, Any]) -> dict[
 
         elif task_type == "quality_check":
             # Use Crackerjack integration
-            if QualityControl is None:
+            if _QualityControlImpl is None:
                 raise ImportError("QualityControl is unavailable")
 
-            qc = QualityControl()  # type: ignore[call-arg]
-            result = await qc.check_repository(repo_path)  # type: ignore[attr-defined]
+            qc = _QualityControlImpl(get_settings())
+            result = await qc.run_pre_checks([repo_path])
 
         else:
             # Default operation
@@ -695,8 +703,9 @@ class PrefectAdapter(OrchestratorAdapter):
             return
 
         if self.config.api_key:
-            async with self._api_key_env(), client_factory as client:
-                yield client
+            with self._api_key_env():
+                async with client_factory as client:
+                    yield client
             return
 
         # Use default client for local Prefect server
@@ -713,8 +722,10 @@ class PrefectAdapter(OrchestratorAdapter):
         """
         saved_api_key = os.environ.get("PREFECT_API_KEY")
         saved_api_url = os.environ.get("PREFECT_API_URL")
+        api_key = self.config.api_key
         try:
-            os.environ["PREFECT_API_KEY"] = self.config.api_key
+            if api_key is not None:
+                os.environ["PREFECT_API_KEY"] = api_key
             if self.config.api_url:
                 os.environ["PREFECT_API_URL"] = self.config.api_url
             yield
@@ -1016,7 +1027,7 @@ class PrefectAdapter(OrchestratorAdapter):
                 flow = await client.read_flow_by_name(flow_name)
                 deployment_config = self._build_deployment_config(
                     flow=flow,
-                    deployment_name=deployment_name,
+                    deployment_name=cast("str", deployment_name),
                     schedule=schedule,
                     parameters=parameters,
                     work_pool_name=work_pool_name,

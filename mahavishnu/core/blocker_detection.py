@@ -32,7 +32,7 @@ class BlockerAlert(BaseModel):
     message: str
     affected_repositories: list[str] = Field(default_factory=list)
     suggested_actions: list[str] = Field(default_factory=list)
-    created_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
 
     def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""

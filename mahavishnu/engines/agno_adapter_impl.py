@@ -18,12 +18,13 @@ from __future__ import annotations
 
 import asyncio
 from collections import deque
+from contextlib import asynccontextmanager
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 import logging
 import os
 from types import SimpleNamespace
-from typing import TYPE_CHECKING, Any, ClassVar
+from typing import TYPE_CHECKING, Any, ClassVar, Literal, cast
 
 import httpx
 from tenacity import retry, stop_after_attempt, wait_exponential
@@ -55,12 +56,16 @@ from ..core.errors import (
 )
 
 if TYPE_CHECKING:
+    from collections.abc import AsyncIterator
+
     from agno.agent import Agent
     from agno.run.agent import RunOutput
     from agno.team import Team
 
     from .agno_teams.config import TeamConfig
-    from .agno_teams.manager import AgentTeamManager
+    from .agno_teams.manager import AgentTeamManager, TeamRunResult
+else:
+    from .agno_teams.manager import TeamRunResult
 
 logger = logging.getLogger(__name__)
 
@@ -80,21 +85,6 @@ class AgentRunResult:
     success: bool = True
     error: str | None = None
     tokens_used: int = 0
-    latency_ms: float = 0.0
-    metadata: dict[str, Any] = field(default_factory=dict)
-
-
-@dataclass
-class TeamRunResult:
-    """Result from a team run with multiple agents."""
-
-    team_name: str
-    mode: str
-    responses: list[AgentRunResult]
-    run_id: str
-    success: bool = True
-    error: str | None = None
-    total_tokens: int = 0
     latency_ms: float = 0.0
     metadata: dict[str, Any] = field(default_factory=dict)
 
@@ -323,9 +313,12 @@ class MCPToolsRegistry:
         try:
             from agno.tools.mcp import MCPTools
 
+            transport: str = self.config.mcp_transport
+            if transport not in ("stdio", "sse", "streamable-http"):
+                transport = "sse"
             self._mcp_tools = MCPTools(
                 url=self.config.mcp_server_url,
-                transport=self.config.mcp_transport,  # type: ignore[arg-type]
+                transport=cast("Literal['stdio', 'sse', 'streamable-http']", transport),
             )
 
             self._initialized = True
@@ -787,7 +780,7 @@ class AgnoAdapter(OrchestratorAdapter):
                 "timestamp": datetime.now(UTC).isoformat(),
             }
         )
-        return result  # type: ignore[return-value]
+        return result
 
     async def get_team(self, team_id: str) -> Team | None:
         """Get a team instance by ID.
@@ -972,7 +965,7 @@ class AgnoAdapter(OrchestratorAdapter):
             api_key_env=api_key_env or self.agno_config.llm.api_key_env,
             base_url=base_url or self.agno_config.llm.base_url,
             temperature=temperature,
-            max_tokens=max_tokens,  # type: ignore[arg-type]
+            max_tokens=int(max_tokens),
         )
 
     def _get_llm(self) -> Any:
@@ -1026,7 +1019,7 @@ class AgnoAdapter(OrchestratorAdapter):
             content = self._extract_content(response)
 
             return AgentRunResult(
-                agent_name=agent.name,  # type: ignore[arg-type]
+                agent_name=agent.name or "unknown_agent",
                 content=content,
                 run_id=getattr(response, "run_id", "unknown"),
                 success=True,
@@ -1077,6 +1070,17 @@ class AgnoAdapter(OrchestratorAdapter):
         # Fallback to string representation
         return str(response)
 
+    @asynccontextmanager
+    async def _require_semaphore(self) -> AsyncIterator[asyncio.Semaphore]:
+        """Yield the concurrency semaphore or raise if not initialized."""
+        sem = self._semaphore
+        if sem is None:
+            raise AgnoError(
+                "AgnoAdapter semaphore not initialized",
+                error_code=ErrorCode.CONFIGURATION_ERROR,
+            )
+        yield sem
+
     @retry(
         stop=stop_after_attempt(3),
         wait=wait_exponential(multiplier=1, min=4, max=10),
@@ -1095,7 +1099,7 @@ class AgnoAdapter(OrchestratorAdapter):
         Returns:
             Processing result dictionary
         """
-        async with self._semaphore:  # type: ignore[union-attr]
+        async with self._require_semaphore():
             task_type = task.get("type", "default")
 
             try:
@@ -1307,7 +1311,7 @@ Use available tools to complete the task and provide a summary."""
             )
 
             # Convert exceptions to error results
-            processed_results = []
+            processed_results: list[dict[str, Any]] = []
             for i, result in enumerate(results):
                 if isinstance(result, Exception):
                     processed_results.append(
@@ -1319,7 +1323,7 @@ Use available tools to complete the task and provide a summary."""
                         }
                     )
                 else:
-                    processed_results.append(result)  # type: ignore[arg-type]
+                    processed_results.append(cast("dict[str, Any]", result))
 
             # Calculate success/failure counts
             success_count = sum(1 for r in processed_results if r.get("status") == "completed")

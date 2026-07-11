@@ -37,6 +37,8 @@ if TYPE_CHECKING:
     # Type-check-only imports. Runtime stays lazy via the _LAZY_IMPORTERS
     # table below — these imports let the type-checker see the real classes
     # so each lazy helper and __getattr__ can declare a precise return type.
+    from collections.abc import Callable
+
     from .base import BasePool, PoolConfig, PoolMetrics, PoolStatus
     from .gpu_handler_pool import GpuHandlerPool
     from .manager import PoolManager, PoolSelector
@@ -121,13 +123,13 @@ def _lazy_websocket_broadcaster() -> type[WebSocketBroadcaster]:
     return WebSocketBroadcaster
 
 
-def _lazy_create_broadcaster() -> create_broadcaster:  # type: ignore[valid-type]
+def _lazy_create_broadcaster() -> Callable[..., Any]:
     from .websocket import create_broadcaster
 
     return create_broadcaster
 
 
-_LAZY_IMPORTERS: dict[str, object] = {
+_LAZY_IMPORTERS: dict[str, Callable[[], Any]] = {
     "BasePool": _lazy_base_pool,
     "PoolConfig": _lazy_pool_config,
     "PoolMetrics": _lazy_pool_metrics,
@@ -145,5 +147,5 @@ _LAZY_IMPORTERS: dict[str, object] = {
 def __getattr__(name: str) -> Any:
     """Lazy import to avoid heavy initialization on package import."""
     if importer := _LAZY_IMPORTERS.get(name):
-        return importer()  # type: ignore[operator]
+        return importer()
     raise AttributeError(f"module {__name__!r} has no attribute {name!r}")

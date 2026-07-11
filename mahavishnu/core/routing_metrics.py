@@ -339,7 +339,14 @@ class RoutingMetrics:
             preference_order: Position in preference order (1=first choice)
         """
         self._ensure_enabled()
-        self._routing_decision_counter.labels(  # type: ignore[union-attr]
+        counter = self._routing_decision_counter
+        if counter is None:
+            raise RuntimeError(
+                f"Routing decision counter not initialized. "
+                f"_ensure_enabled() should have created it. "
+                f"Server: {self.server_name}"
+            )
+        counter.labels(
             server=self.server_name, adapter=adapter.value, task_type=task_type.value
         ).inc()
         logger.debug(
@@ -362,9 +369,14 @@ class RoutingMetrics:
         """
         self._ensure_enabled()
         status = "success" if success else "failure"
-        self._adapter_execution_counter.labels(  # type: ignore[union-attr]
-            server=self.server_name, adapter=adapter.value, status=status
-        ).inc()
+        counter = self._adapter_execution_counter
+        if counter is None:
+            raise RuntimeError(
+                f"Adapter execution counter not initialized. "
+                f"_ensure_enabled() should have created it. "
+                f"Server: {self.server_name}"
+            )
+        counter.labels(server=self.server_name, adapter=adapter.value, status=status).inc()
 
         # Record latency
         histogram = self._get_adapter_latency_histogram()
@@ -386,7 +398,14 @@ class RoutingMetrics:
             fallback_adapter: Adapter chosen as fallback
         """
         self._ensure_enabled()
-        self._fallback_counter.labels(  # type: ignore[union-attr]
+        counter = self._fallback_counter
+        if counter is None:
+            raise RuntimeError(
+                f"Fallback counter not initialized. "
+                f"_ensure_enabled() should have created it. "
+                f"Server: {self.server_name}"
+            )
+        counter.labels(
             server=self.server_name,
             original_adapter=original_adapter,
             fallback_adapter=fallback_adapter.value,
@@ -418,7 +437,14 @@ class RoutingMetrics:
             cost_usd: Cost in USD
         """
         self._ensure_enabled()
-        self._cost_counter.labels(  # type: ignore[union-attr]
+        counter = self._cost_counter
+        if counter is None:
+            raise RuntimeError(
+                f"Cost counter not initialized. "
+                f"_ensure_enabled() should have created it. "
+                f"Server: {self.server_name}"
+            )
+        counter.labels(
             server=self.server_name, adapter=adapter.value, task_type=task_type.value
         ).inc(cost_usd)
 

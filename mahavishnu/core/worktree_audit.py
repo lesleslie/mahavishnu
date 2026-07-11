@@ -140,7 +140,7 @@ class WorktreeAuditLogger:
         try:
             from ..mcp.auth import get_audit_logger
 
-            get_audit_logger().log(  # type: ignore[attr-defined]
+            get_audit_logger().log(  # ty: ignore[unresolved-attribute]
                 event_type=event_type,
                 user_id=user_id,
                 tool_name=tool_name,

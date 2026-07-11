@@ -26,8 +26,8 @@ else:
     try:
         from runpod_flash import Endpoint, GpuType
     except ImportError:
-        Endpoint = None  # type: ignore[misc,assignment]
-        GpuType = None  # type: ignore[misc,assignment]
+        Endpoint = None  # type: ignore[misc]
+        GpuType = None  # type: ignore[misc]
 
 
 class RunPodPool(BasePool):

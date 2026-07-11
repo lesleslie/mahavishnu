@@ -85,7 +85,7 @@ def mahavishnu_workflow(
         )
         # Attribute assignment on a function is the standard Python hook
         # pattern (used by functools.wraps, pytest fixtures, etc.).
-        fn.__mahavishnu_workflow_spec__ = spec  # type: ignore[attr-defined]
+        fn.__mahavishnu_workflow_spec__ = spec  # ty: ignore[unresolved-attribute]
         return fn
 
     return decorator

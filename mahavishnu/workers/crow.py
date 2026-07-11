@@ -46,7 +46,9 @@ class CrowWorker(BaseWorker):
         self._session_id = resp.json()["session_id"]
         self._status = WorkerStatus.RUNNING
         logger.info(f"CrowWorker ACP session started: {self._session_id}")
-        return self._session_id  # type: ignore[return-value]  # BaseWorker.start() returns str | None; always str here after assignment
+        return (
+            self._session_id
+        )  # BaseWorker.start() returns str | None; always str here after assignment
 
     async def execute(self, task: dict[str, Any]) -> WorkerResult:
         """Send prompt to crow-cli ACP and poll for result."""

@@ -53,7 +53,7 @@ def register_otel_tools(server, app, mcp_client):  # noqa: C901
 
             # Initialize ingester — OtelIngester creates HotStore internally
             # using storage_type from config (duckdb or postgresql)
-            ingester = OtelIngester(  # type: ignore[call-arg]
+            ingester = OtelIngester(
                 embedding_model=app.config.otel_ingester.embedding_model,
                 cache_size=app.config.otel_ingester.cache_size,
                 turboquant_bits=app.config.otel_ingester.turboquant_bits,
@@ -167,9 +167,8 @@ def register_otel_tools(server, app, mcp_client):  # noqa: C901
             from mahavishnu.ingesters.otel_ingester import OtelIngester
 
             # Initialize ingester
-            ingester = OtelIngester(  # type: ignore[call-arg]
+            ingester = OtelIngester(
                 embedding_model=app.config.otel_ingester.embedding_model,
-                similarity_threshold=threshold or app.config.otel_ingester.similarity_threshold,
                 turboquant_bits=app.config.otel_ingester.turboquant_bits,
             )
             await ingester.initialize()
@@ -179,6 +178,7 @@ def register_otel_tools(server, app, mcp_client):  # noqa: C901
                 query=query,
                 system_id=system_id,
                 limit=limit,
+                threshold=threshold or app.config.otel_ingester.similarity_threshold,
             )
 
             await ingester.close()
@@ -204,7 +204,7 @@ def register_otel_tools(server, app, mcp_client):  # noqa: C901
             from mahavishnu.ingesters.otel_ingester import OtelIngester
 
             # Initialize ingester
-            ingester = OtelIngester(  # type: ignore[call-arg]
+            ingester = OtelIngester(
                 turboquant_bits=app.config.otel_ingester.turboquant_bits,
             )
             await ingester.initialize()

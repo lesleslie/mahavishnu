@@ -455,7 +455,7 @@ async def handle_workflow_execution_error(
     ) from error
 
 
-async def execute_workflow_parallel(  # type: ignore[return]
+async def execute_workflow_parallel(  # type: ignore[invalid-return]
     app: Any,
     task: dict[str, Any],
     adapter_name: str,
@@ -499,6 +499,9 @@ async def execute_workflow_parallel(  # type: ignore[return]
             error=exc,
             checkpoint_id=checkpoint_id,
         )
+        # handle_workflow_execution_error always raises; this satisfies
+        # the type checker that control never reaches here.
+        raise RuntimeError("unreachable: handle_workflow_execution_error always raises") from exc
 
 
 async def execute_workflow_with_fallback(

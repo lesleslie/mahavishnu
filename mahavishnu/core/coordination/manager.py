@@ -642,19 +642,19 @@ class CoordinationManager:
 
             # Attempt validation if validation method is specified
             if dep.validation:
-                dep_info["validation"] = self._validate_dependency(dep)  # type: ignore[assignment]
+                dep_info["validation"] = self._validate_dependency(dep)
 
             # Count by status
             if dep.status.value == "satisfied":
-                results["satisfied"] += 1  # type: ignore[operator]
+                results["satisfied"] += 1
             elif dep.status.value == "unsatisfied":
-                results["unsatisfied"] += 1  # type: ignore[operator]
+                results["unsatisfied"] += 1
             elif dep.status.value == "unknown":
-                results["unknown"] += 1  # type: ignore[operator]
+                results["unknown"] += 1
             elif dep.status.value == "deprecated":
-                results["deprecated"] += 1  # type: ignore[operator]
+                results["deprecated"] += 1
 
-            results["dependencies"].append(dep_info)  # type: ignore[attr-defined]
+            results["dependencies"].append(dep_info)
 
         return results
 
@@ -671,22 +671,22 @@ class CoordinationManager:
         result = {"method": None, "passed": False, "details": None}
 
         if dep.validation and dep.validation.command:
-            result["method"] = "command"  # type: ignore[assignment]
+            result["method"] = "command"
             try:
                 output = _run_command_safe(dep.validation.command)
                 if dep.validation.expected_pattern:
                     pattern = re.compile(dep.validation.expected_pattern)
                     result["passed"] = bool(pattern.search(output))
-                    result["details"] = output.strip()  # type: ignore[assignment]
+                    result["details"] = output.strip()
                 else:
                     result["passed"] = True
-                    result["details"] = output.strip()  # type: ignore[assignment]
+                    result["details"] = output.strip()
             except subprocess.CalledProcessError as e:
                 result["passed"] = False
-                result["details"] = getattr(e, "output", str(e))  # type: ignore[arg-type]
+                result["details"] = getattr(e, "output", str(e))
             except Exception as e:
                 result["passed"] = False
-                result["details"] = str(e)  # type: ignore[assignment]
+                result["details"] = str(e)
 
         return result
 

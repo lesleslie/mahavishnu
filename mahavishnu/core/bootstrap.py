@@ -172,7 +172,7 @@ def _register_component_endpoint(
         # No running event loop — sync fallback using client directly
         from .dhara_adapter import DharaClient
 
-        client = DharaClient(base_url=dhara_state._client._base_url)  # type: ignore[attr-defined]
+        client = DharaClient(base_url=dhara_state._client._base_url)  # ty: ignore[unresolved-attribute]
         try:
             asyncio.run(client.put(key, {"url": mcp_url, "registered_by": component_name}))
             logger.info(
@@ -491,18 +491,28 @@ def set_app_context(app: Any) -> None:
             def create_llm(
                 self, provider: str | None = None, model_id: str | None = None, **kwargs
             ):
-                from agno.llm import LLM
+                try:
+                    from agno.models.base import (
+                        Model as _AgnoModel,  # pyright: ignore[reportMissingImports]
+                    )
+                except ImportError:
+                    try:
+                        from agno.llm import (  # ty: ignore[unresolved-import]  # noqa: N811  # upstream `LLM` is a class, not a constant
+                            LLM as _AgnoModel,
+                        )
+                    except ImportError as exc:
+                        raise ImportError("agno does not expose a usable Model/LLM class") from exc
 
                 actual_provider = provider or self._config.agno.llm.provider.value
                 actual_model = model_id or self._config.agno.llm.model_id
-                llm_kwargs = {
+                llm_kwargs: dict[str, Any] = {
                     "provider": actual_provider,
-                    "model": actual_model,
+                    "id": actual_model,
                 }
                 if actual_provider == "ollama":
                     llm_kwargs["base_url"] = self._config.agno.llm.base_url
                 llm_kwargs.update(kwargs)
-                return LLM(**llm_kwargs)
+                return _AgnoModel(**llm_kwargs)
 
             def get_default_provider(self) -> str:
                 return self._config.agno.llm.provider.value  # type: ignore[no-any-return]
@@ -512,7 +522,7 @@ def set_app_context(app: Any) -> None:
 
         llm_factory = DefaultLLMFactory(app.config)
 
-    set_context(llm_factory=llm_factory, agno_adapter=agno_adapter, app=app)  # type: ignore[arg-type]
+    set_context(llm_factory=llm_factory, agno_adapter=agno_adapter, app=app)  # ty: ignore[invalid-argument-type]
 
     logger = logging.getLogger(__name__)
     if llm_factory or agno_adapter:

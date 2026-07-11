@@ -13,7 +13,7 @@ import json
 import logging
 import smtplib
 import time
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, cast
 
 import requests
 
@@ -402,7 +402,11 @@ class AlertManager:
             if workflow_id:
                 try:
                     # Attempt to heal the workflow
-                    await self.app.error_recovery_manager.monitor_and_heal_workflows()
+                    app = self.app
+                    if app is None:
+                        msg = "Cannot heal workflows: app not initialized"
+                        raise RuntimeError(msg)
+                    await app.error_recovery_manager.monitor_and_heal_workflows()
                 except Exception as e:
                     self.logger.error(f"Failed to auto-heal workflow: {e}")
 
@@ -471,7 +475,11 @@ class AlertManager:
         try:
             # Check if all adapters are healthy
             unhealthy_adapters = []
-            for name, adapter in self.app.adapters.items():
+            app = self.app
+            if app is None:
+                msg = "Cannot check system health: app not initialized"
+                raise RuntimeError(msg)
+            for name, adapter in app.adapters.items():
                 health = await adapter.get_health()
                 if health.get("status") != "healthy":
                     unhealthy_adapters.append(name)
@@ -493,7 +501,11 @@ class AlertManager:
             # Check for workflows that have been stuck for too long
             from ..core.workflow_state import WorkflowStatus
 
-            running_workflows = await self.app.workflow_state_manager.list_workflows(
+            app = self.app
+            if app is None:
+                msg = "Cannot check workflow health: app not initialized"
+                raise RuntimeError(msg)
+            running_workflows = await app.workflow_state_manager.list_workflows(
                 status=WorkflowStatus.RUNNING, limit=100
             )
 
@@ -601,6 +613,7 @@ class NotificationChannel:
 
     def __init__(self, name: str) -> None:
         self.name = name
+        self.logger = logging.getLogger(__name__)
 
     async def send_notification(self, alert: Alert):
         """Send a notification about an alert."""
@@ -649,9 +662,9 @@ This is an automated message from the Mahavishnu monitoring system.
             server.sendmail(self.username, self.recipients, text)
             server.quit()
 
-            self.logger.info(f"Email notification sent for alert {alert.id}")  # type: ignore[attr-defined]
+            self.logger.info(f"Email notification sent for alert {alert.id}")
         except Exception as e:
-            self.logger.error(f"Failed to send email notification: {e}")  # type: ignore[attr-defined]
+            self.logger.error(f"Failed to send email notification: {e}")
 
 
 class SlackNotificationChannel(NotificationChannel):
@@ -689,13 +702,13 @@ class SlackNotificationChannel(NotificationChannel):
                 ],
             }
 
-            response = requests.post(self.webhook_url, json=message)  # type: ignore[arg-type]
+            response = requests.post(self.webhook_url, json=message)
             if response.status_code != 200:
-                self.logger.warning(f"Failed to send Slack notification: {response.text}")  # type: ignore[attr-defined]
+                self.logger.warning(f"Failed to send Slack notification: {response.text}")
             else:
-                self.logger.info(f"Slack notification sent for alert {alert.id}")  # type: ignore[attr-defined]
+                self.logger.info(f"Slack notification sent for alert {alert.id}")
         except Exception as e:
-            self.logger.error(f"Failed to send Slack notification: {e}")  # type: ignore[attr-defined]
+            self.logger.error(f"Failed to send Slack notification: {e}")
 
 
 class PagerDutyNotificationChannel(NotificationChannel):
@@ -738,16 +751,16 @@ class PagerDutyNotificationChannel(NotificationChannel):
 
             response = requests.post(
                 "https://events.pagerduty.com/v2/enqueue",
-                json=payload,  # type: ignore[arg-type]
+                json=payload,
                 headers=headers,
             )
 
             if response.status_code != 202:
-                self.logger.warning(f"Failed to send PagerDuty notification: {response.text}")  # type: ignore[attr-defined]
+                self.logger.warning(f"Failed to send PagerDuty notification: {response.text}")
             else:
-                self.logger.info(f"PagerDuty notification sent for alert {alert.id}")  # type: ignore[attr-defined]
+                self.logger.info(f"PagerDuty notification sent for alert {alert.id}")
         except Exception as e:
-            self.logger.error(f"Failed to send PagerDuty notification: {e}")  # type: ignore[attr-defined]
+            self.logger.error(f"Failed to send PagerDuty notification: {e}")
 
 
 # ---------------------------------------------------------------------------
@@ -901,7 +914,8 @@ class ComponentHealthChecker:
         try:
             result = check_func()
             if asyncio.iscoroutine(result):
-                result = await result
+                coro = cast("Coroutine[Any, Any, ComponentHealthResult]", result)
+                result = await coro
             return result
         except Exception as e:
             return ComponentHealthResult(

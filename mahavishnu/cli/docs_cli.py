@@ -45,7 +45,7 @@ def add_docs_commands(app: typer.Typer) -> None:
         """Audit docs directories across active Bodai ecosystem repos."""
         # Import from scripts/ (added to pythonpath in pyproject.toml)
         try:
-            from audit_ecosystem_docs import (  # type: ignore[import]
+            from audit_ecosystem_docs import (  # ty: ignore[unresolved-import]
                 build_audit_report,
                 render_markdown,
                 render_text,

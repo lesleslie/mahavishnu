@@ -8,7 +8,7 @@ Provides predictive insights including:
 
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import UTC, datetime
 import logging
 import math
 from typing import TYPE_CHECKING, Any
@@ -33,7 +33,7 @@ class BlockerPrediction(BaseModel):
     potential_blockers: list[str] = Field(default_factory=list)
     risk_factors: list[str] = Field(default_factory=list)
     mitigation_suggestions: list[str] = Field(default_factory=list)
-    predicted_at: datetime = Field(default_factory=datetime.utcnow)
+    predicted_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
 
     def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
@@ -57,7 +57,7 @@ class DurationPrediction(BaseModel):
     confidence: float = Field(default=0.5, ge=0.0, le=1.0)
     based_on_tasks: int = Field(default=0, ge=0)
     factors: dict[str, Any] = Field(default_factory=dict)
-    predicted_at: datetime = Field(default_factory=datetime.utcnow)
+    predicted_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
 
     def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
@@ -186,9 +186,7 @@ class BlockerPredictor:
 
             # Tag match
             task_tags = set(task.get("tags", []))
-            pattern_tags = (  # type: ignore
-                set()
-            )  # Would be populated from pattern metadata  # type: ignore[var-annotated]
+            pattern_tags = set()  # Would be populated from pattern metadata
             if task_tags & pattern_tags:
                 match_score += 0.2
 

@@ -137,7 +137,7 @@ def register_adapter_registry_tools(mcp: FastMCP) -> None:  # noqa: C901
 
             if adapter_name:
                 # Check single adapter
-                health = await registry.check_adapter_health(adapter_name)  # type: ignore[attr-defined]
+                health = await registry.check_adapter_health(adapter_name)  # ty: ignore[unresolved-attribute]
                 if health is None:
                     return {
                         "success": False,

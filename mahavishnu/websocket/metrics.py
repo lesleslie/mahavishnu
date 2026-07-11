@@ -18,7 +18,7 @@ Example:
 from __future__ import annotations
 
 import logging
-from typing import Any
+from typing import Any, cast
 
 # Lazy import - only import if actually used
 try:
@@ -139,7 +139,7 @@ class WebSocketMetrics:
         for collector in REGISTRY._names_to_collectors.values():
             if hasattr(collector, "_name") and collector._name == name:
                 return collector
-            if hasattr(collector, "_names") and name in collector._names:
+            if hasattr(collector, "_names") and name in cast("list[str]", collector._names):
                 return collector
         return None
 
@@ -198,12 +198,16 @@ class WebSocketMetrics:
     def _get_message_counter(self) -> Counter:
         """Get message counter (initializes if needed)."""
         self._ensure_enabled()
-        return self._message_counter  # type: ignore[return-value]
+        if self._message_counter is None:
+            raise RuntimeError("Message counter not initialized")
+        return self._message_counter
 
     def _get_connection_gauge(self) -> Gauge:
         """Get connection gauge (initializes if needed)."""
         self._ensure_enabled()
-        return self._connection_gauge  # type: ignore[return-value]
+        if self._connection_gauge is None:
+            raise RuntimeError("Connection gauge not initialized")
+        return self._connection_gauge
 
     def _get_broadcast_histogram(self, channel: str) -> Histogram:
         """Get or create broadcast histogram for channel."""
@@ -230,7 +234,9 @@ class WebSocketMetrics:
     def _get_subscription_gauge(self) -> Gauge:
         """Get subscription gauge (initializes if needed)."""
         self._ensure_enabled()
-        return self._subscription_gauge  # type: ignore[return-value]
+        if self._subscription_gauge is None:
+            raise RuntimeError("Subscription gauge not initialized")
+        return self._subscription_gauge
 
     def _get_error_counter(self, error_type: str) -> Counter:
         """Get or create error counter for specific error type."""
@@ -368,9 +374,9 @@ class WebSocketMetrics:
             "enabled": self._enabled,
             "initialized": self._metrics_initialized,
             "connection_tracking": self._connection_gauge is not None,
-            "broadcast_tracking": len(self._broadcast_histograms) > 0,  # type: ignore[attr-defined]
+            "broadcast_tracking": len(self._broadcast_histograms) > 0,
             "subscription_tracking": self._subscription_gauge is not None,
-            "error_types_tracked": list(self._error_counters.keys()) if self._enabled else [],  # type: ignore[attr-defined]
+            "error_types_tracked": list(self._error_counters.keys()) if self._enabled else [],
         }
 
 

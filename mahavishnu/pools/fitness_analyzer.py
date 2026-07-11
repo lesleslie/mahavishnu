@@ -242,7 +242,7 @@ class FitnessAnalyzer:
 
             try:
                 if self._circuit_breaker is not None:
-                    await self._circuit_breaker.call(self._dhara_state.put(key, value, ttl=7200))  # type: ignore[union-attr]
+                    await self._circuit_breaker.call(self._dhara_state.put(key, value, ttl=7200))  # ty: ignore[unresolved-attribute]
                 elif self._dhara_state is not None:
                     await self._dhara_state.put(key, value, ttl=7200)
                 # Success: clear DLQ counter

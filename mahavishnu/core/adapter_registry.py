@@ -40,7 +40,7 @@ import importlib
 import logging
 import threading
 import time
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, cast
 
 from mahavishnu.core.adapter_discovery import (
     AdapterDiscoveryEngine,
@@ -57,6 +57,8 @@ from mahavishnu.core.task_requirements import (
 )
 
 if TYPE_CHECKING:
+    from collections.abc import Callable
+
     from mahavishnu.core.adapters.base import OrchestratorAdapter
     from mahavishnu.core.routing_metrics import RoutingMetrics
     from mahavishnu.websocket.server import MahavishnuWebSocketServer
@@ -287,14 +289,16 @@ class HybridAdapterRegistry:
             module = importlib.import_module(module_path)
 
             # Get class/function
-            factory = getattr(module, class_name) if class_name else module
+            factory: Callable[..., Any] | Any = (
+                getattr(module, class_name) if class_name else module
+            )
 
             # Instantiate adapter
             if callable(factory):
                 # Check if it's a class or factory function
-                adapter = factory(config=self.config)
+                adapter = cast("OrchestratorAdapter", factory(config=self.config))
             else:
-                adapter = factory
+                adapter = cast("OrchestratorAdapter", factory)
 
             # Store in registry
             with self._lock:

@@ -75,6 +75,8 @@ __all__ = [
     "CompletionStatus",
     "ReportArtifact",
     "LocalFileCompletionPersister",
+    # Loop helpers (Phase 2: detect_until_dry for ultracode integration wiring)
+    "detect_until_dry",
 ]
 
 # Mapping of export name -> (relative_module, attribute_name)
@@ -152,6 +154,8 @@ _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
     "StatisticalRouter": (".statistical_router", "StatisticalRouter"),
     # Task router
     "TaskRouter": (".task_router", "TaskRouter"),
+    # Loop helpers (Phase 2: detect_until_dry for ultracode integration wiring)
+    "detect_until_dry": (".loop_helpers", "detect_until_dry"),
     # Approval manager
     "ApprovalManager": (".approval_manager", "ApprovalManager"),
     "ApprovalOption": (".approval_manager", "ApprovalOption"),

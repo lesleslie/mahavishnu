@@ -5,11 +5,15 @@ from __future__ import annotations
 import asyncio
 import json
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 import typer
 
 from mahavishnu.core.ecosystem import get_ecosystem_loader
 from mahavishnu.core.errors import ConfigurationError
+
+if TYPE_CHECKING:
+    from mahavishnu.core.ecosystem_status import EcosystemStatusReport
 
 
 def _print_config_error(error: ConfigurationError) -> None:
@@ -75,9 +79,7 @@ def _do_list(category: str | None, status: str | None) -> None:
             for server in sorted(cat_servers, key=lambda s: s.name):
                 status_icon = "✅" if server.status == "enabled" else "❌"
                 port_info = f":{server.port}" if server.port else "stdio"
-                typer.echo(
-                    f"  {status_icon} {server.name:20} {port_info:10} - {server.function}"
-                )
+                typer.echo(f"  {status_icon} {server.name:20} {port_info:10} - {server.function}")
     except ConfigurationError as e:
         _print_config_error(e)
 
@@ -261,9 +263,7 @@ def _print_lsp_server_details(server: dict) -> None:
     typer.echo(f"Language:      {server.get('language')}")
     typer.echo(f"Type:          {server.get('type')}")
     typer.echo(f"Status:        {'enabled' if server.get('enabled') else 'disabled'}")
-    typer.echo(
-        f"Command:       {server.get('command')} {' '.join(server.get('args', []))}"
-    )
+    typer.echo(f"Command:       {server.get('command')} {' '.join(server.get('args', []))}")
     typer.echo(f"Config File:   {server.get('config_file') or 'N/A'}")
     typer.echo(f"Config Section: {server.get('config_section') or 'N/A'}")
 
@@ -356,7 +356,7 @@ def _do_list_ports(type_filter: str | None, status: str | None) -> None:
         _print_config_error(e)
 
 
-async def _generate_status_report() -> object:
+async def _generate_status_report() -> EcosystemStatusReport:
     """Async helper: generate the ecosystem status report."""
     from mahavishnu.core.ecosystem_status import EcosystemStatusService
 
@@ -364,7 +364,7 @@ async def _generate_status_report() -> object:
     return await service.generate_report()
 
 
-def _print_status_table(report: object) -> None:
+def _print_status_table(report: EcosystemStatusReport) -> None:
     """Render the ecosystem status report as a human-readable table."""
     typer.echo(f"Ecosystem Status: {report.status.value}")
     typer.echo(f"Generated at: {report.generated_at}")
@@ -387,9 +387,7 @@ def _print_status_table(report: object) -> None:
         )
     if report.alerts:
         a = report.alerts
-        typer.echo(
-            f"\nAlerts: total={a.total_active} critical={a.by_severity.get('critical', 0)}"
-        )
+        typer.echo(f"\nAlerts: total={a.total_active} critical={a.by_severity.get('critical', 0)}")
     if report.recommendations:
         typer.echo(f"\nRecommendations ({len(report.recommendations)}):")
         for rec in report.recommendations:

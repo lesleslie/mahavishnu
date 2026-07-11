@@ -204,9 +204,7 @@ def workflow_review(
 
 @workflows_app.command("prefect-list-deployments")
 def workflow_prefect_list_deployments(
-    flow_name: str | None = typer.Option(
-        None, "--flow", "-f", help="Filter by flow name"
-    ),
+    flow_name: str | None = typer.Option(None, "--flow", "-f", help="Filter by flow name"),
     tags: list[str] | None = typer.Option(
         None, "--tag", "-t", help="Filter by tags (ALL must match)"
     ),
@@ -220,9 +218,7 @@ def workflow_prefect_list_deployments(
         mahavishnu workflow prefect-list-deployments --flow my-etl-flow
         mahavishnu workflow prefect-list-deployments --tag production --limit 10
     """
-    result = asyncio.run(
-        _async_prefect_list_deployments(flow_name, tags, limit, offset)
-    )
+    result = asyncio.run(_async_prefect_list_deployments(flow_name, tags, limit, offset))
     typer.echo(json.dumps(result, indent=2, default=str))
 
 
@@ -260,9 +256,7 @@ def workflow_prefect_list_flow_runs(
         mahavishnu workflow prefect-list-flow-runs --state FAILED --limit 10
         mahavishnu workflow prefect-list-flow-runs --deployment dep-123
     """
-    result = asyncio.run(
-        _async_prefect_list_flow_runs(deployment_id, state, limit, offset)
-    )
+    result = asyncio.run(_async_prefect_list_flow_runs(deployment_id, state, limit, offset))
     typer.echo(json.dumps(result, indent=2, default=str))
 
 
@@ -367,10 +361,11 @@ async def _async_trigger_workflow(
 async def _async_heal_workflows() -> dict:
     """Trigger workflow healing from the dead letter queue."""
     from .core.dead_letter_queue import DeadLetterQueue
+    from .core.status import DeadLetterStatus
 
     dlq = DeadLetterQueue()
 
-    failed_tasks = await dlq.list_tasks(status="pending")  # type: ignore[arg-type]
+    failed_tasks = await dlq.list_tasks(status=DeadLetterStatus.PENDING)
     if not failed_tasks:
         return {"status": "no_failed_workflows", "message": "DLQ is empty"}
 
@@ -419,7 +414,16 @@ async def _async_fix_orchestrate(
     orchestrator = FixOrchestrator()
     typer.echo(f"Executing fix for {issue_id} on pool {pool_id}...")
     result = await orchestrator.execute_fix(pool_id=pool_id, task=task)
-    return result  # type: ignore[return-value]
+    return {
+        "success": result.success,
+        "stage": result.stage,
+        "quality_gates": result.quality_gates,
+        "error_message": result.error_message,
+        "changes": result.changes,
+        "worker_id": result.worker_id,
+        "correlation_id": result.correlation_id,
+        "checkpoint_id": result.checkpoint_id,
+    }
 
 
 async def _async_review_and_fix(scope: str, auto_fix: bool, dry_run: bool) -> dict:
@@ -442,17 +446,18 @@ async def _async_review_and_fix(scope: str, auto_fix: bool, dry_run: bool) -> di
 async def _async_adapter_list(domain: str | None, healthy_only: bool) -> dict:
     """List adapters via the canonical adapter registry path."""
     from .core.adapter_registry import HybridAdapterRegistry
+    from .core.config import get_settings
 
-    registry = HybridAdapterRegistry()  # type: ignore[call-arg]
+    registry = HybridAdapterRegistry(get_settings())
     adapters = registry.list_adapters(domain=domain, healthy_only=healthy_only)
     return {
         "count": len(adapters),
         "adapters": [
             {
-                "name": a.name,  # type: ignore[attr-defined]
-                "domain": a.domain,  # type: ignore[attr-defined]
-                "status": a.status,  # type: ignore[attr-defined]
-                "capabilities": a.capabilities,  # type: ignore[attr-defined]
+                "name": a.get("name"),
+                "domain": a.get("domain"),
+                "status": a.get("healthy"),
+                "capabilities": a.get("capabilities"),
             }
             for a in adapters
         ],
@@ -473,7 +478,13 @@ async def _async_adapter_resolve(task_type: str, capabilities: list[str], domain
         )
         raise typer.Exit(code=1)
 
-    result = await router.route(task_type=task, additional_capabilities=capabilities, domain=domain)  # type: ignore[call-arg]
+    result = await router.route(
+        {
+            "task_type": task,
+            "additional_capabilities": capabilities,
+            "domain": domain,
+        }
+    )
     return {
         "task_type": task_type,
         "selected_adapter": result.get("adapter") if isinstance(result, dict) else str(result),
@@ -484,8 +495,9 @@ async def _async_adapter_resolve(task_type: str, capabilities: list[str], domain
 async def _async_adapter_health(name: str | None) -> dict:
     """Check adapter health via the canonical path."""
     from .core.adapter_registry import HybridAdapterRegistry
+    from .core.config import get_settings
 
-    registry = HybridAdapterRegistry()  # type: ignore[call-arg]
+    registry = HybridAdapterRegistry(get_settings())
     results = await registry.check_all_health()
     if name:
         if name in results:
@@ -833,7 +845,7 @@ def health_command(
             "status": overall_status.value,
             "liveness": liveness.model_dump(),
             "readiness": readiness.model_dump(),
-            "dependencies": dependency_details,  # type: ignore[dict-item]
+            "dependencies": dependency_details,
         }
 
         if json_output:
@@ -915,7 +927,10 @@ def list_roles() -> None:
 
     typer.echo(f"Available roles ({len(roles)}):")
     for role in roles:
-        typer.echo(f"\n  {role.get('name').upper()}")  # type: ignore[union-attr]
+        role_name = role.get("name")
+        if not isinstance(role_name, str):
+            continue
+        typer.echo(f"\n  {role_name.upper()}")
         typer.echo(f"  Description: {role.get('description')}")
         if tags := role.get("tags"):
             typer.echo(f"  Tags: {', '.join(tags)}")
@@ -940,8 +955,12 @@ def show_role(role_name: str = typer.Argument(..., help="Name of the role to dis
         raise typer.Exit(code=1)
 
     # Display role details
-    typer.echo(f"\n{role.get('name').upper()}")  # type: ignore[union-attr]
-    typer.echo("=" * len(role.get("name")))  # type: ignore[arg-type]
+    name_value = role.get("name")
+    if not isinstance(name_value, str):
+        typer.echo(f"Error: Role '{role_name}' has no name")
+        raise typer.Exit(code=1)
+    typer.echo(f"\n{name_value.upper()}")
+    typer.echo("=" * len(name_value))
     typer.echo(f"\nDescription: {role.get('description')}")
 
     if tags := role.get("tags"):
@@ -1432,9 +1451,9 @@ def workers_execute(
             typer.echo(f"   Status: {result.status.value}")
             typer.echo(f"   Duration: {result.duration_seconds:.2f}s")
 
-            if result.has_output():
+            if result.has_output() and result.output:
                 output_preview = (
-                    result.output[:150] + "..." if len(result.output) > 150 else result.output  # type: ignore[arg-type, index]
+                    result.output[:150] + "..." if len(result.output) > 150 else result.output
                 )
                 typer.echo(f"   Output: {output_preview}")
 

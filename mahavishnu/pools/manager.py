@@ -1,15 +1,17 @@
 """Multi-pool orchestration and management."""
 
 import asyncio
+from dataclasses import dataclass
 from datetime import UTC, datetime
-from enum import Enum
+from enum import Enum, StrEnum
 import heapq
 import logging
 import random
-from typing import Any
+from typing import Any, cast
 
 from monitoring.metrics import pool_workers_active
 
+from ..core.errors import RateLimitError
 from ..mcp.protocols.message_bus import MessageBus
 from .base import BasePool, PoolConfig
 from .mahavishnu_pool import MahavishnuPool
@@ -47,6 +49,59 @@ class PoolSelector(Enum):
     RANDOM = "random"
     AFFINITY = "affinity"
     PEER_AFFINITY = "peer_affinity"
+
+
+class CallerKind(StrEnum):
+    ULTRA_CODE = 'ultracode'
+    CLAUDE_CODE = 'claude_code'
+    WORKFLOW = 'workflow'
+    CLI = 'cli'
+    UNKNOWN = 'unknown'  # Coerced target for any unrecognized value at the MCP wire boundary
+
+
+def coerce_caller_kind(value: Any) -> CallerKind:
+    """Coerce an arbitrary stringy caller-kind value to a canonical ``CallerKind``.
+
+    Quota-bypass fix: any unrecognized string maps to
+    ``CallerKind.UNKNOWN`` (not a fresh bucket) so callers cannot
+    inflate quota by sending novel strings at the MCP wire
+    boundary. ``None`` and ``CallerKind`` instances pass through
+    unchanged (None -> UNKNOWN, CallerKind -> identity).
+    """
+    if isinstance(value, CallerKind):
+        return value
+    if value is None:
+        return CallerKind.UNKNOWN
+    try:
+        return CallerKind(value)
+    except ValueError:
+        return CallerKind.UNKNOWN
+
+
+@dataclass(slots=True)
+class _QuotaState:
+    """Per-caller_kind fixed-window quota state.
+
+    Fixed window: counter resets at the boundary of each window_start +
+    window_size_seconds period, not based on the time of the most recent
+    request. Simpler and more predictable than a sliding window at the
+    cost of burst-allowed-at-boundary behavior.
+
+    Mutable counter state - do NOT make this Pydantic.
+
+    Attributes:
+        window_start: UTC datetime marking the start of the current
+            fixed-window measurement period.
+        request_count: Number of requests admitted in the current
+            window (mutated in place by ``PoolManager._enforce_caller_quota``).
+        window_size_seconds: Length of the fixed window in seconds.
+        max_per_window: Maximum requests admitted per window.
+    """
+
+    window_start: datetime
+    request_count: int = 0
+    window_size_seconds: int = 60
+    max_per_window: int = 60
 
 
 class PoolManager:
@@ -143,6 +198,14 @@ class PoolManager:
         # Thread-safe access to heap and worker counts
         self._heap_lock = asyncio.Lock()
 
+        # Phase 3 Task 3.2: per-caller_kind fixed-window quota state.
+        # Populated lazily on first request for each ``CallerKind`` to
+        # avoid paying for buckets callers never touch. Defaults (60
+        # requests per 60-second window) match the plan's recommended
+        # baseline; T3.4 wires operator-configurable overrides from
+        # ``settings/mahavishnu.yaml``.
+        self._caller_quota: dict[CallerKind, _QuotaState] = {}
+
         logger.info("PoolManager initialized with O(log n) heap routing and concurrent collection")
 
     async def _persist_pool_state(self, pool_id: str, pool: BasePool, status: str) -> None:
@@ -172,6 +235,8 @@ class PoolManager:
         selector: PoolSelector,
         pool_affinity: str | None,
         reason: str,
+        caller_kind: CallerKind = CallerKind.UNKNOWN,
+        parent_session_id: str | None = None,
     ) -> None:
         if self._dhara_state is None:
             return
@@ -187,6 +252,8 @@ class PoolManager:
                     "pool_affinity": pool_affinity,
                     "reason": reason,
                     "task_category": task.get("category"),
+                    "caller_kind": caller_kind.value,
+                    "parent_session_id": parent_session_id,
                     "updated_at": datetime.now(UTC).isoformat(),
                 },
                 timestamp=datetime.now(UTC),
@@ -203,7 +270,7 @@ class PoolManager:
 
         active_pool_types = set(self._pool_worker_counts.keys())
         for pool_id in active_pool_types:
-            pool = self._pools.get(pool_id)  # type: ignore[assignment]
+            pool = self._pools.get(pool_id)
             if pool is not None:
                 worker_counts.setdefault(pool.config.pool_type, 0)
 
@@ -250,12 +317,12 @@ class PoolManager:
                     session_buddy_client=self.session_buddy_client,
                 )
             elif pool_type == "session-buddy":
-                pool = SessionBuddyPool(  # type: ignore[assignment]
+                pool = SessionBuddyPool(
                     config=config,
                     session_buddy_url=config.get("session_buddy_url", "http://localhost:8678/mcp"),
                 )
             elif pool_type == "runpod":
-                pool = RunPodPool(config=config)  # type: ignore[assignment]
+                pool = RunPodPool(config=config)
             else:
                 raise ValueError(f"Unknown pool type: {pool_type}")
 
@@ -463,6 +530,8 @@ class PoolManager:
         pool_selector: PoolSelector | None = None,
         pool_affinity: str | None = None,
         caller_pool_allowlist: set[str] | None = None,
+        caller_kind: CallerKind | str = CallerKind.UNKNOWN,
+        parent_session_id: str | None = None,
     ) -> dict[str, Any]:
         """Route task to best pool based on selector strategy.
 
@@ -483,6 +552,14 @@ class PoolManager:
                 is empty, the router falls back to LEAST_LOADED
                 within the allowlist (or raises if no allowlist
                 pools are registered).
+            caller_kind: Who is calling (used for quota + audit).
+                Accepts a ``CallerKind`` enum or the underlying
+                string value. Any unrecognized string is coerced to
+                ``CallerKind.UNKNOWN`` so callers cannot inflate
+                quota buckets by sending novel strings.
+            parent_session_id: Optional Session-Buddy session ID
+                that originated this routing request. Forwarded to
+                ``_persist_routing_decision`` for audit trails.
 
         Returns:
             Execution result
@@ -495,23 +572,23 @@ class PoolManager:
 
         Example:
             ```python
-            # Route to least loaded pool (O(log n) heap-based)
+            # ultracode call (declared kind, parent session for audit)
             result = await pool_mgr.route_task(
-                {"prompt": "Hello"},
-                pool_selector=PoolSelector.LEAST_LOADED
-            )
-
-            # Route to specific pool (affinity), declared allowlist
-            result = await pool_mgr.route_task(
-                {"prompt": "Hello"},
-                pool_selector=PoolSelector.AFFINITY,
-                pool_affinity="pool_abc",
-                caller_pool_allowlist={"pool_abc", "pool_def"},
+                {"prompt": "Refactor module"},
+                caller_kind=CallerKind.ULTRA_CODE,
+                parent_session_id="sb_session_xyz",
             )
             ```
         """
         if not self._pools:
             raise RuntimeError("No pools available for routing")
+
+        caller_kind = coerce_caller_kind(caller_kind)
+        logger.debug(
+            "route_task: caller_kind=%s parent_session_id=%s",
+            caller_kind,
+            parent_session_id,
+        )
 
         selector = pool_selector or self._pool_selector
         task_class = task.get("task_class") or task.get("category", "")
@@ -522,7 +599,7 @@ class PoolManager:
         elif selector == PoolSelector.PEER_AFFINITY:
             pool_id, reason = await self._route_by_peer_affinity(task, caller_pool_allowlist)
         elif selector == PoolSelector.LEAST_LOADED:
-            pool_id = await self._get_least_loaded_pool()  # type: ignore[assignment]
+            pool_id = await self._get_least_loaded_pool()
             if pool_id is None:
                 raise RuntimeError("No pools available for routing")
             logger.debug(f"Least loaded pool: {pool_id}")
@@ -539,7 +616,15 @@ class PoolManager:
             reason = "random"
 
         pool_id, reason = self._apply_gpu_category_override(pool_id, reason, task)
-        await self._persist_routing_decision(task, pool_id, selector, pool_affinity, reason)
+        await self._persist_routing_decision(
+            task,
+            pool_id,
+            selector,
+            pool_affinity,
+            reason,
+            caller_kind=caller_kind,
+            parent_session_id=parent_session_id,
+        )
         return await self.execute_on_pool(pool_id, task)
 
     async def _apply_fitness_aware_routing(
@@ -712,6 +797,79 @@ class PoolManager:
             return runpod_pool_id, "gpu_override"
         return pool_id, reason
 
+    def _enforce_caller_quota(
+        self,
+        caller_kind: CallerKind,
+        *,
+        now: datetime | None = None,
+    ) -> None:
+        """Enforce the per-``CallerKind`` fixed-window quota.
+
+        Fixed window: counter resets at the boundary of each
+        ``window_start + window_size_seconds`` period, not based on the
+        time of the most recent request. This is simpler and more
+        predictable than a sliding window, at the cost of allowing bursts
+        at window boundaries.
+
+        Behavior:
+            - Lazy-allocates a ``_QuotaState`` for unknown ``caller_kind``
+              buckets on first request, anchored at ``now``.
+            - Resets ``window_start`` and ``request_count`` when the
+              current window has elapsed.
+            - Raises the existing ``RateLimitError`` (MHV-006) from
+              ``mahavishnu/core/errors.py`` when the bucket is saturated.
+              The wait time is surfaced via
+              ``exc.details["retry_after_seconds"]`` (computed as
+              ``max(0, window_size_seconds - elapsed)``); MCP callers
+              consume that value to back off. ``RateLimitError`` is the
+              one canonical quota error per project convention — do not
+              introduce a parallel exception class.
+
+        Args:
+            caller_kind: Bucket identifier (already coerced through
+                ``coerce_caller_kind`` so unrecognized strings land in
+                ``CallerKind.UNKNOWN`` rather than spawning novel buckets).
+            now: Override for the current time. Defaults to
+                ``datetime.now(UTC)``. Useful for tests that need to
+                simulate window expiry deterministically.
+
+        Raises:
+            RateLimitError: When ``request_count >= max_per_window`` for
+                ``caller_kind``. ``exc.details["limit"]`` carries
+                ``"caller_kind=<kind>"`` and ``exc.details["retry_after_seconds"]``
+                carries the seconds until the next window opens.
+        """
+        if now is None:
+            now = datetime.now(UTC)
+        state = self._caller_quota.get(caller_kind)
+        if state is None:
+            state = _QuotaState(window_start=now)
+            self._caller_quota[caller_kind] = state
+
+        elapsed = (now - state.window_start).total_seconds()
+        if elapsed >= state.window_size_seconds:
+            state.window_start = now
+            state.request_count = 0
+
+        if state.request_count >= state.max_per_window:
+            retry_after = max(0, int(state.window_size_seconds - elapsed))
+            logger.debug(
+                "caller_quota_exceeded: caller_kind=%s request_count=%s "
+                "max_per_window=%s retry_after_seconds=%s",
+                caller_kind,
+                state.request_count,
+                state.max_per_window,
+                retry_after,
+            )
+            from ..core.errors import RateLimitError
+
+            raise RateLimitError(
+                limit=f"caller_kind={caller_kind.value}",
+                retry_after=retry_after,
+            )
+
+        state.request_count += 1
+
     async def aggregate_results(
         self,
         pool_ids: list[str] | None = None,
@@ -765,7 +923,7 @@ class PoolManager:
                 logger.warning(f"Pool aggregation failed: {result}")
                 continue
 
-            pool_id, data = result  # type: ignore[misc]
+            pool_id, data = cast("tuple[str, dict[str, Any]]", result)
             aggregated[pool_id] = data
 
         return aggregated
@@ -860,7 +1018,7 @@ class PoolManager:
         pools_info = await asyncio.gather(*tasks, return_exceptions=True)
 
         # Filter out exceptions and return valid results
-        return [p for p in pools_info if not isinstance(p, Exception)]  # type: ignore[misc]
+        return [cast("dict[str, Any]", p) for p in pools_info if not isinstance(p, Exception)]
 
     async def health_check(self) -> dict[str, Any]:
         """Get health status of all pools.

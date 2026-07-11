@@ -42,7 +42,7 @@ from enum import StrEnum
 import json
 import logging
 from pathlib import Path
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, cast
 
 from mahavishnu.core.adapters.base import (
     AdapterType,
@@ -69,11 +69,11 @@ try:
     CAPABILITY_ROUTING_AVAILABLE = True
 except ImportError:
     CAPABILITY_ROUTING_AVAILABLE = False
-    TaskRequirements = None  # type: ignore[misc,assignment]
-    RoutingDecision = None  # type: ignore[misc,assignment]
-    AdapterResolutionResult = None  # type: ignore[misc,assignment]
-    ResolutionCache = None  # type: ignore[misc,assignment]
-    TASK_CAPABILITY_REQUIREMENTS = {}  # type: ignore[misc]
+    TaskRequirements: type[Any] | None = None
+    RoutingDecision: type[Any] | None = None
+    AdapterResolutionResult: type[Any] | None = None
+    ResolutionCache: type[Any] | None = None
+    TASK_CAPABILITY_REQUIREMENTS: dict[Any, Any] = {}
 
 logger = logging.getLogger(__name__)
 
@@ -428,7 +428,7 @@ class CapabilityRouter:
             cache_ttl_seconds: TTL for resolution cache
         """
         self.registry = registry
-        self._cache: ResolutionCache | None = None
+        self._cache: Any = None
 
         if CAPABILITY_ROUTING_AVAILABLE and ResolutionCache is not None:
             self._cache = ResolutionCache(ttl_seconds=cache_ttl_seconds)
@@ -717,7 +717,8 @@ class TaskRouter:
         selected_adapter: AdapterType | None = None
         for adapter_type in candidates:
             adapter = self.adapter_registry.get_adapter(adapter_type)
-            if adapter is not None and await adapter.is_available():  # type: ignore[attr-defined]
+            is_available = getattr(adapter, "is_available", None)
+            if adapter is not None and is_available is not None and await is_available():
                 selected_adapter = adapter_type
                 break
 
@@ -729,8 +730,8 @@ class TaskRouter:
             }
 
         self.metrics.record_routing_decision(
-            adapter=selected_adapter,  # type: ignore[arg-type]
-            task_type=task_type,  # type: ignore[arg-type]
+            adapter=cast("Any", selected_adapter),
+            task_type=cast("Any", task_type),
             preference_order=1,
         )
 
@@ -811,7 +812,7 @@ class TaskRouter:
                 latency_ms = result.get("latency_ms", 0) if isinstance(result, dict) else 0
                 self.adapter_registry.record_execution(adapter_type, success=True)
                 self.metrics.record_adapter_execution(
-                    adapter=adapter_type,  # type: ignore[arg-type]
+                    adapter=cast("Any", adapter_type),
                     success=True,
                     latency_ms=latency_ms,
                 )
@@ -835,7 +836,7 @@ class TaskRouter:
 
             self.adapter_registry.record_execution(adapter_type, success=False)
             self.metrics.record_adapter_execution(
-                adapter=adapter_type,  # type: ignore[arg-type]
+                adapter=cast("Any", adapter_type),
                 success=False,
                 latency_ms=0,
             )

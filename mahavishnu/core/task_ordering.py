@@ -122,7 +122,7 @@ class TaskOrderingResult(BaseModel):
     ready_tasks: int
     critical_path: list[str] = Field(default_factory=list)
     estimated_completion_time: float = 0.0  # hours
-    generated_at: datetime = Field(default_factory=datetime.utcnow)
+    generated_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
 
     def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""

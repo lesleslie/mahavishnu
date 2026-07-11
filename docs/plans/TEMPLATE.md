@@ -13,9 +13,9 @@
 
 ## 1. Outcome
 
-<prompt: what user-observable change will exist when this plan ships?>
+\<prompt: what user-observable change will exist when this plan ships?>
 
-<prompt: how will we know it succeeded — concrete metric, signal, or artifact?>
+\<prompt: how will we know it succeeded — concrete metric, signal, or artifact?>
 
 ## 2. Goals
 
@@ -23,11 +23,11 @@
 
 ## 3. Non-Goals
 
-<numbered list of explicitly-out-of-scope items — pre-empts feature creep>
+\<numbered list of explicitly-out-of-scope items — preempts feature creep>
 
 ## 4. Current Findings
 
-<prompt: what did we discover? citations to files, issues, metrics>
+\<prompt: what did we discover? citations to files, issues, metrics>
 
 ## 5. Implementation Phases
 
@@ -37,18 +37,18 @@
 **Tasks:**
 **Exit criteria:**
 
-#### Integration Contract  ←  REQUIRED for every deliverable in this phase
+#### Integration Contract ← REQUIRED for every deliverable in this phase
 
-- **Triggered from**: <prompt: what user action, schedule, or upstream
+- **Triggered from**: \<prompt: what user action, schedule, or upstream
   event calls this? include exact entry-point symbol/path>
-- **Returns to / updates**: <prompt: what state, store, or downstream
+- **Returns to / updates**: \<prompt: what state, store, or downstream
   artifact does this mutate? include destination path>
-- **Demonstrable by**: <prompt: one concrete check (CLI command, HTTP
+- **Demonstrable by**: \<prompt: one concrete check (CLI command, HTTP
   request, log line, screenshot, test name) that proves the wiring
   works end-to-end>
-- **Rollback signal**: <prompt: what log line, metric, or alert tells
+- **Rollback signal**: \<prompt: what log line, metric, or alert tells
   us to revert? include threshold if applicable>
-- **Observability added**: <prompt: which OTel/metric/log signal was
+- **Observability added**: \<prompt: which OTel/metric/log signal was
   added so this wiring is visible in production>
 
 ## 6. Required Code Changes
@@ -57,18 +57,18 @@
 
 ## 7. Validation Matrix
 
-<table: tool/command | expected outcome | evidence location>
+\<table: tool/command | expected outcome | evidence location>
 
 ## 8. Risks
 
-<table: risk | likelihood | mitigation>
+\<table: risk | likelihood | mitigation>
 
 ## 9. Decision Rule
 
-<prompt: the rule that decides when this plan is "done enough" — used
+\<prompt: the rule that decides when this plan is "done enough" — used
 when scope pressure forces a cut>
 
----
+______________________________________________________________________
 
 ## Section-by-section guidance
 
@@ -118,7 +118,7 @@ log line, and the destination (e.g. `mahavishnu.workflow.duration`, span
 `adapter.execute`, log key `workflow.completed`). Observability added
 during design is cheaper than observability bolted on after the fact.
 
----
+______________________________________________________________________
 
 ## Conventions
 

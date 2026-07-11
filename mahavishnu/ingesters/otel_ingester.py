@@ -15,12 +15,12 @@ from datetime import UTC, datetime
 from enum import StrEnum
 import logging
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Protocol, runtime_checkable
+from typing import TYPE_CHECKING, Any, Protocol, cast, runtime_checkable
 
 # Feature detection for embedding backends
 # Try sentence-transformers first (best quality), then fastembed (cross-platform)
 try:
-    from sentence_transformers import SentenceTransformer
+    from sentence_transformers import SentenceTransformer  # ty: ignore[unresolved-import]
 
     SENTENCE_TRANSFORMERS_AVAILABLE = True
 except ImportError:
@@ -28,7 +28,7 @@ except ImportError:
     SentenceTransformer: type[Any] | None = None  # type: ignore[no-redef]
 
 try:
-    from fastembed import TextEmbedding
+    from fastembed import TextEmbedding  # ty: ignore[unresolved-import]
 
     FASTEMBED_AVAILABLE = True
 except ImportError:
@@ -269,7 +269,7 @@ class AkoshaEmbedder:
 
             with concurrent.futures.ThreadPoolExecutor() as executor:
                 future = executor.submit(asyncio.run, self._encode_async(text))
-                return future.result()
+                return cast("list[float]", future.result())
         except RuntimeError:
             # No running loop, we can use asyncio.run
             return asyncio.run(self._encode_async(text))
@@ -994,9 +994,13 @@ class OtelIngester:
         if not self._hot_store:
             raise RuntimeError("HotStore not initialized. Call initialize() first.")
 
+        conn = self._hot_store.conn
+        if conn is None:
+            raise RuntimeError("HotStore connection not initialized")
+
         try:
             # Direct SQL query by conversation_id (avoids zero-vector similarity issues)
-            rows = self._hot_store.conn.execute(
+            rows = conn.execute(
                 """
                 SELECT system_id, conversation_id, content, timestamp, metadata
                 FROM conversations
@@ -1115,7 +1119,7 @@ class OtelIngester:
                     )
                     del self._embedding_cache[content]
             else:
-                return cached  # type: ignore[return-value]
+                return cached
 
         if not self._embedder:
             raise RuntimeError("Embedding model not loaded")

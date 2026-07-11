@@ -9,7 +9,7 @@ from typing import Any
 
 import httpx
 
-from .base import BasePool, PoolConfig, PoolStatus
+from .base import BasePool, PoolConfig, PoolMetrics, PoolStatus
 
 logger = logging.getLogger(__name__)
 
@@ -309,14 +309,12 @@ class SessionBuddyPool(BasePool):
                 "error": str(e),
             }
 
-    async def get_metrics(self) -> dict[str, Any]:  # type: ignore[override]
+    async def get_metrics(self) -> PoolMetrics:
         """Get metrics from Session-Buddy.
 
         Returns:
             PoolMetrics with current stats
         """
-        from .base import PoolMetrics
-
         await self.health_check()
 
         # Calculate average task duration
@@ -324,7 +322,7 @@ class SessionBuddyPool(BasePool):
             sum(self._task_durations) / len(self._task_durations) if self._task_durations else 0.0
         )
 
-        return PoolMetrics(  # type: ignore[return-value]
+        return PoolMetrics(
             pool_id=self.pool_id,
             status=self._status,
             active_workers=len(self._workers),

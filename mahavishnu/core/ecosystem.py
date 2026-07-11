@@ -261,7 +261,7 @@ class EcosystemLoader:
             else:  # stdio
                 mcp_config[server.name] = {
                     "type": "stdio",
-                    "command": server.command,  # type: ignore[dict-item]
+                    "command": server.command,
                 }
 
         return mcp_config
@@ -376,7 +376,7 @@ class EcosystemLoader:
                 cmd = server.get_rendered_command()
                 commands.append((server.name, str(server.port), cmd))
 
-        return commands  # type: ignore[return-value]
+        return commands  # ty: ignore[invalid-return-type]
 
     def update_audit_timestamp(
         self,
@@ -413,7 +413,7 @@ class EcosystemLoader:
         """
         try:
             with self.config_path.open("w") as f:
-                yaml.dump(self._config.model_dump(mode="yaml"), f, default_flow_style=False)  # type: ignore[union-attr]
+                yaml.dump(self._config.model_dump(mode="yaml"), f, default_flow_style=False)  # ty: ignore[unresolved-attribute]
         except Exception as e:
             raise ConfigurationError(
                 message=f"Failed to save ecosystem configuration: {e}",

@@ -604,14 +604,14 @@
 - `quality/anti_ai_flavor_check.py` — 8 lines, 0% covered
 - `quality/__init__.py` — 1 lines, 0% covered
 
----
+______________________________________________________________________
 
 ## How to use this backlog
 
 1. Pick one `untested` file from a high-priority directory (`core/`, `mcp/`, `pools/`).
-2. Write tests targeting its public functions/classes.
-3. Re-run `pytest --cov=mahavishnu --cov-report=xml`.
-4. Verify the file's tier moved from `untested` → at least `partial`.
-5. Commit and repeat.
+1. Write tests targeting its public functions/classes.
+1. Re-run `pytest --cov=mahavishnu --cov-report=xml`.
+1. Verify the file's tier moved from `untested` → at least `partial`.
+1. Commit and repeat.
 
 Use `--cov-report=term-missing:skip-covered` to see *which* lines are uncovered without drowning in the 80%+ files.

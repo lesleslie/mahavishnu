@@ -3,7 +3,7 @@ from __future__ import annotations
 from datetime import UTC, datetime
 from functools import wraps
 import logging
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, cast
 
 from mcp_common.auth.audit import AuditLogger, AuthAuditEvent
 from mcp_common.auth.config import AuthConfig
@@ -39,8 +39,8 @@ def require_mcp_auth(
     rbac_manager: Any | None = None,
     required_permission: Permission | None = None,
     require_repo_param: str | None = None,
-) -> Callable:
-    def decorator(func: Callable) -> Callable:
+) -> Callable[..., Any]:
+    def decorator(func: Callable[..., Any]) -> Callable[..., Any]:
         @wraps(func)
         async def wrapper(*args: Any, **kwargs: Any) -> Any:
             user_id = kwargs.get("user_id")
@@ -52,7 +52,7 @@ def require_mcp_auth(
                         service="mahavishnu",
                         caller_service="unknown",
                         caller_id="unknown",
-                        action=func.__name__,
+                        action=cast("Any", func).__name__,
                         permission=perm,
                         result="denied",
                         reason="No user_id provided",
@@ -71,7 +71,7 @@ def require_mcp_auth(
                     service="mahavishnu",
                     caller_service="unknown",
                     caller_id=user_id,
-                    action=func.__name__,
+                    action=cast("Any", func).__name__,
                     permission=perm,
                     result="allowed",
                     reason=None,

@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, cast
 
 from oneiric.core.logging import get_logger
 from starlette.responses import JSONResponse
@@ -13,9 +13,17 @@ from ..terminal.manager import TerminalManager
 
 if TYPE_CHECKING:
     from collections.abc import Callable
-    from typing import Any
+    from typing import Any, Literal
+
+    from fastmcp.server.event_store import EventStore
+    from fastmcp.server.http import StarletteWithLifespan
+    from starlette.middleware import Middleware as ASGIMiddleware
 
     from .server_core import FastMCPServer
+
+    # Bound-method signature for FastMCP.TransportMixin.http_app.
+    _HttpAppCallable = Callable[..., StarletteWithLifespan]
+
 
 logger = get_logger(__name__)
 
@@ -43,7 +51,7 @@ def init_terminal_manager(server: FastMCPServer) -> TerminalManager | None:
                 adapter = McpretentiousAdapter(server.mcp_client)
             else:
                 try:
-                    adapter = ITerm2Adapter()  # type: ignore[assignment]
+                    adapter = ITerm2Adapter()
                     logger.info("Initialized iTerm2 adapter")
                 except Exception as exc:
                     logger.warning("Failed to initialize iTerm2 adapter: %s", exc)
@@ -68,16 +76,16 @@ def init_terminal_manager(server: FastMCPServer) -> TerminalManager | None:
 def register_health_endpoint(server: FastMCPServer, version: str) -> None:
     """Register HTTP health endpoints on the FastMCP server."""
 
-    @server.server.custom_route("/health", methods=["GET"])  # type: ignore[arg-type]
+    @server.server.custom_route("/health", methods=["GET"])
     async def health_check(request=None) -> JSONResponse:
         return JSONResponse({"status": "ok", "service": "mahavishnu", "version": version})
 
-    @server.server.custom_route("/healthz", methods=["GET"])  # type: ignore[arg-type]
+    @server.server.custom_route("/healthz", methods=["GET"])
     async def healthz_check(request=None) -> JSONResponse:
         return JSONResponse({"status": "ok"})
 
-    @server.server.custom_route("/metrics", methods=["GET"])  # type: ignore[arg-type]
-    async def metrics_endpoint():
+    @server.server.custom_route("/metrics", methods=["GET"])
+    async def metrics_endpoint(request=None):
         from monitoring.metrics import metrics_endpoint as prometheus_metrics_endpoint
 
         return await prometheus_metrics_endpoint()
@@ -297,12 +305,46 @@ def _register_a2a_routes_block(server: FastMCPServer) -> None:
 
         _orig_http_app = server.server.http_app
 
-        def _a2a_patched_http_app(*args: object, **kwargs: object) -> object:
-            app = _orig_http_app(*args, **kwargs)  # type: ignore[arg-type]
+        # Wrapper that matches FastMCP.TransportMixin.http_app signature
+        # so it can be assigned to ``server.server.http_app`` while letting
+        # us mount the A2A sub-app onto the resulting Starlette instance.
+        def _a2a_patched_http_app(
+            path: str | None = None,
+            middleware: list[ASGIMiddleware] | None = None,
+            json_response: bool | None = None,
+            stateless_http: bool | None = None,
+            transport: Literal["http", "streamable-http", "sse"] = "http",
+            event_store: EventStore | None = None,
+            retry_interval: int | None = None,
+            host_origin_protection: bool | None = None,
+            allowed_hosts: list[str] | None = None,
+            allowed_origins: list[str] | None = None,
+        ) -> StarletteWithLifespan:
+            app = _orig_http_app(
+                path=path,
+                middleware=middleware,
+                json_response=json_response,
+                stateless_http=stateless_http,
+                transport=transport,
+                event_store=event_store,
+                retry_interval=retry_interval,
+                host_origin_protection=host_origin_protection,
+                allowed_hosts=allowed_hosts,
+                allowed_origins=allowed_origins,
+            )
             app.mount("/", a2a_app)
             return app
 
-        server.server.http_app = _a2a_patched_http_app  # type: ignore[assignment]
+        # The bound method's ``self`` parameter is implicit; binding is
+        # handled by Python's descriptor protocol when callers access
+        # ``server.server.http_app`` after this assignment.
+        # Monkey-patching a bound-method slot is intrinsically type-hostile:
+        # the LHS is typed as the bound method's signature (with `self`),
+        # the RHS is a standalone callable. Cast to Any to escape; runtime is
+        # unchanged because Python does not enforce signature compatibility
+        # on attribute assignment. See CLAUDE.md "no Any in tool inputs"
+        # — this is a framework seam, not a tool input.
+        server.server.http_app = cast("Any", _a2a_patched_http_app)
         logger.info(
             "Mounted A2A server routes (/.well-known/agent.json, /tasks/send, /tasks/sendSubscribe)"
         )

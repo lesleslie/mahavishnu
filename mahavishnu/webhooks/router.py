@@ -317,7 +317,7 @@ async def workflow_endpoint(
     summary="Health check for webhook endpoints",
     description="Returns health status of the webhook subsystem",
 )
-async def webhook_health() -> dict[str, str]:
+async def webhook_health() -> dict[str, str | list[str]]:
     """Health check endpoint for webhook router.
 
     Returns:
@@ -326,7 +326,7 @@ async def webhook_health() -> dict[str, str]:
     return {
         "status": "healthy",
         "service": "mahavishnu-webhooks",
-        "endpoints": ["/openclaw/sweep", "/openclaw/workflow"],  # type: ignore[dict-item]
+        "endpoints": ["/openclaw/sweep", "/openclaw/workflow"],
     }
 
 

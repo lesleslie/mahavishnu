@@ -135,6 +135,7 @@ class RoutingInfoResult(BaseModel):
     fallback_chain: list[str] = Field(default_factory=list)
     primary_adapter: str | None = None
     adapter_scores: dict[str, float] = Field(default_factory=dict)
+    error: str | None = None
 
 
 # ---------------------------------------------------------------------------
@@ -382,7 +383,7 @@ class MahavishnuAgent:
 
         except Exception as e:
             logger.warning("get_routing_info failed: %s", e)
-            return RoutingInfoResult(  # type: ignore[call-arg]
+            return RoutingInfoResult(
                 task_type=task_type,
                 strategy=strategy,
                 error=str(e),

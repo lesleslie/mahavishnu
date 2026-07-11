@@ -28,7 +28,7 @@ from dataclasses import dataclass
 from enum import Enum
 import json
 import logging
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, cast
 
 if TYPE_CHECKING:
     import asyncio
@@ -81,7 +81,7 @@ class JSONRPCError(Exception):
     def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary for JSON serialization."""
         result: dict[str, Any] = {
-            "code": self.code if isinstance(self.code, int) else self.code.value,  # type: ignore[union-attr]
+            "code": self.code if isinstance(self.code, int) else self.code.value,
             "message": self.message,
         }
         if self.data is not None:
@@ -270,7 +270,7 @@ class JSONRPCServer:
         """
 
         def decorator(func: Callable[[Any], Coroutine[Any, Any, Any]]) -> Callable:
-            method_name = name or func.__name__
+            method_name = name or cast("Any", func).__name__
             handler = MethodHandler(
                 name=method_name,
                 handler=func,
@@ -354,9 +354,9 @@ class JSONRPCServer:
 
         # Check for batch request
         if isinstance(parsed, list):
-            return await self.handle_batch(parsed)  # type: ignore[return-value]
+            return await self.handle_batch(parsed)  # ty: ignore[invalid-return-type]
 
-        return await self.handle_request(parsed)  # type: ignore[return-value]
+        return await self.handle_request(parsed)  # ty: ignore[invalid-return-type]
 
     async def handle_request(
         self,

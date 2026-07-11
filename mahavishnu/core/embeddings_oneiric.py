@@ -21,6 +21,7 @@ Usage:
 from __future__ import annotations
 
 import os
+from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -177,12 +178,12 @@ class EmbeddingConfig(BaseModel):
             "settings/local.yaml",
         ]:
             try:
-                config = config.load_from_file(yaml_file)  # type: ignore[assignment]
+                config = config.load_from_file(yaml_file)
             except Exception:
                 pass  # File doesn't exist or has errors
 
         # Override with environment variables
-        config = config.load_from_env()  # type: ignore[assignment]
+        config = config.load_from_env()
 
         return config
 
@@ -319,7 +320,7 @@ async def mcp_tool_get_embeddings(
     texts: list[str],
     provider: str | None = None,
     model: str | None = None,
-) -> dict[str, list[list[float]]]:
+) -> dict[str, Any]:
     """MCP tool for generating embeddings.
 
     Args:
@@ -360,7 +361,7 @@ async def mcp_tool_get_embeddings(
 
     return {
         "embeddings": embeddings,
-        "model": config.model,  # type: ignore[dict-item]
-        "provider": config.provider.value,  # type: ignore[dict-item]
-        "dimension": len(embeddings[0]) if embeddings else 0,  # type: ignore[dict-item]
+        "model": config.model,
+        "provider": config.provider.value,
+        "dimension": len(embeddings[0]) if embeddings else 0,
     }

@@ -40,7 +40,7 @@ except ImportError:  # pragma: no cover - optional dependency
     # call sites can stay unconditional. mypy classifies this reassignment
     # of imported names as both `[misc]` and `[assignment]` violations; the
     # runtime is correct.
-    Counter = Gauge = _NoopMetric  # type: ignore[misc, assignment]
+    Counter = Gauge = _NoopMetric  # ty: ignore[invalid-assignment] # type: ignore[misc]
 
 
 logger = logging.getLogger(__name__)
@@ -338,7 +338,7 @@ async def retry_async(
         except asyncio.CancelledError:
             raise
         except retry_policy.retryable_exceptions as exc:  # type: ignore[misc]
-            last_exception = exc  # type: ignore[assignment]
+            last_exception = exc  # ty: ignore[invalid-assignment]
             metrics_collector.record_retry_attempt(dependency, operation, "failure")
             if attempt >= retry_policy.max_attempts:
                 break

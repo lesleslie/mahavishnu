@@ -5,7 +5,9 @@ from typing import Any
 import uuid
 import warnings
 
-from ...core.permissions import Permission, RBACManager
+from mcp_common.auth.permissions import Permission as MCPPermission
+
+from ...core.permissions import RBACManager
 from ...mcp.auth import require_mcp_auth
 from ...messaging import MessagePriority
 
@@ -49,7 +51,7 @@ def register_session_buddy_tools(  # noqa: C901
     @server.tool()
     @require_mcp_auth(
         rbac_manager=rbac_manager,
-        required_permission=Permission.READ_REPO,  # type: ignore[arg-type]
+        required_permission=MCPPermission.READ,
         require_repo_param="project_path",
     )
     async def index_code_graph(
@@ -76,7 +78,7 @@ def register_session_buddy_tools(  # noqa: C901
     @server.tool()
     @require_mcp_auth(
         rbac_manager=rbac_manager,
-        required_permission=Permission.READ_REPO,  # type: ignore[arg-type]
+        required_permission=MCPPermission.READ,
         require_repo_param="project_path",
     )
     async def get_function_context(
@@ -100,7 +102,7 @@ def register_session_buddy_tools(  # noqa: C901
     @server.tool()
     @require_mcp_auth(
         rbac_manager=rbac_manager,
-        required_permission=Permission.READ_REPO,  # type: ignore[arg-type]
+        required_permission=MCPPermission.READ,
         require_repo_param="project_path",
     )
     async def find_related_code(
@@ -109,7 +111,7 @@ def register_session_buddy_tools(  # noqa: C901
         """Find code related by imports/calls for Session Buddy."""
         _warn_code_intel_deprecation("find_related_code", "treesitter_tools")
         try:
-            from ..session_buddy.integration import SessionBuddyIntegration
+            from ...session_buddy.integration import SessionBuddyIntegration
 
             app = getattr(server, "app", None)
             if not app:
@@ -125,14 +127,14 @@ def register_session_buddy_tools(  # noqa: C901
     @server.tool()
     @require_mcp_auth(
         rbac_manager=rbac_manager,
-        required_permission=Permission.READ_REPO,  # type: ignore[arg-type]
+        required_permission=MCPPermission.READ,
         require_repo_param="project_path",
     )
     async def index_documentation(project_path: str, user_id: str | None = None) -> dict[str, Any]:
         """Extract docstrings and index for semantic search in Session Buddy."""
         _warn_code_intel_deprecation("index_documentation", "code_index.index_repo")
         try:
-            from ..session_buddy.integration import SessionBuddyIntegration
+            from ...session_buddy.integration import SessionBuddyIntegration
 
             app = getattr(server, "app", None)
             if not app:
@@ -151,7 +153,7 @@ def register_session_buddy_tools(  # noqa: C901
         """Search through indexed documentation in Session Buddy."""
         _warn_code_intel_deprecation("search_documentation", "search_tools.hybrid_search")
         try:
-            from ..session_buddy.integration import SessionBuddyIntegration
+            from ...session_buddy.integration import SessionBuddyIntegration
 
             app = getattr(server, "app", None)
             if not app:
@@ -176,7 +178,7 @@ def register_session_buddy_tools(  # noqa: C901
     ) -> dict[str, Any]:
         """Send message between projects for Session Buddy."""
         try:
-            from ..session_buddy.integration import SessionBuddyIntegration
+            from ...session_buddy.integration import SessionBuddyIntegration
 
             app = getattr(server, "app", None)
             if not app:
@@ -205,7 +207,7 @@ def register_session_buddy_tools(  # noqa: C901
     async def list_project_messages(project: str, user_id: str | None = None) -> dict[str, Any]:
         """List messages for a project in Session Buddy."""
         try:
-            from ..session_buddy.integration import SessionBuddyIntegration
+            from ...session_buddy.integration import SessionBuddyIntegration
 
             app = getattr(server, "app", None)
             if not app:

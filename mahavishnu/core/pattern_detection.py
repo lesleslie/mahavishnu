@@ -10,7 +10,7 @@ from collections import Counter, defaultdict
 from datetime import datetime
 import logging
 import math
-from typing import Any
+from typing import Any, cast
 
 from pydantic import BaseModel, Field
 
@@ -199,8 +199,9 @@ class PatternDetector:
                     blocker_category=self._categorize_blocker(keyword),
                     occurrence_count=len(blocked_tasks),
                     affected_task_ids=[t["id"] for t in blocked_tasks[:20]],
-                    affected_repositories=list(
-                        {t.get("repository") for t in blocked_tasks if t.get("repository")}  # type: ignore[misc]
+                    affected_repositories=cast(
+                        "list[str]",
+                        list({t.get("repository") for t in blocked_tasks if t.get("repository")}),
                     ),
                     resolution_suggestions=self._get_resolution_suggestions(keyword),
                     avg_resolution_time_hours=avg_resolution,
@@ -239,7 +240,7 @@ class PatternDetector:
 
         # Create patterns for common sequences
         total_tasks = len(tasks)
-        for sequence, count in transitions.most_common(10):  # type: ignore[attr-defined]
+        for sequence, count in transitions.most_common(10):
             if count >= self.config.min_samples:
                 completion_prob = self._calculate_sequence_completion_prob(sequence, tasks)
 

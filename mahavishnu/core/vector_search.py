@@ -216,7 +216,7 @@ class VectorStore:
                     "No embedding service configured",
                     query=text,
                 )
-            result = await self.embedding_service.embed(text)  # type: ignore[arg-type]
+            result = await self.embedding_service.embed(text)  # ty: ignore[invalid-argument-type]
             embedding = result.embeddings[0]
 
         # Upsert embedding
@@ -237,7 +237,12 @@ class VectorStore:
             metadata or {},
         )
 
-        return row["id"]  # type: ignore[index, no-any-return]
+        if row is None:
+            raise VectorSearchError(
+                "Insert did not return a row id",
+                query=task_id,
+            )
+        return row["id"]
 
     async def get_embedding(self, task_id: str) -> list[float] | None:
         """Get embedding for a task."""

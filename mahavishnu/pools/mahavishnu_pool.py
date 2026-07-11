@@ -9,7 +9,7 @@ from typing import Any
 
 from ..terminal.manager import TerminalManager
 from ..workers.manager import WorkerManager
-from .base import BasePool, PoolConfig, PoolStatus
+from .base import BasePool, PoolConfig, PoolMetrics, PoolStatus
 
 logger = logging.getLogger(__name__)
 
@@ -145,7 +145,7 @@ class MahavishnuPool(BasePool):
             "duration": duration,
         }
 
-    async def execute_batch(self, tasks: list[dict[str, Any]]) -> dict[str, Any]:
+    async def execute_batch(self, tasks: list[dict[str, Any]]) -> dict[str, dict[str, Any]]:
         """Execute tasks across all workers.
 
         Args:
@@ -178,9 +178,9 @@ class MahavishnuPool(BasePool):
             self._task_durations.append(result.duration_seconds)
 
         # Map task IDs to results
-        task_results = {}
+        task_results: dict[str, dict[str, Any]] = {}
         for task_id, (_, result) in enumerate(zip(tasks, results.values(), strict=False)):
-            task_results[task_id] = {
+            task_results[str(task_id)] = {
                 "pool_id": self.pool_id,
                 "worker_id": result.worker_id,
                 "status": result.status.value,
@@ -191,7 +191,7 @@ class MahavishnuPool(BasePool):
             f"MahavishnuPool {self.pool_id} executed {len(tasks)} tasks in {total_duration:.2f}s"
         )
 
-        return task_results  # type: ignore[return-value]
+        return task_results
 
     async def scale(self, target_worker_count: int) -> None:
         """Scale pool to target worker count.
@@ -263,14 +263,12 @@ class MahavishnuPool(BasePool):
             "tasks_failed": self._tasks_failed,
         }
 
-    async def get_metrics(self) -> dict[str, Any]:  # type: ignore[override]
+    async def get_metrics(self) -> PoolMetrics:
         """Get real-time pool metrics.
 
         Returns:
             PoolMetrics with current stats
         """
-        from .base import PoolMetrics
-
         await self.health_check()
 
         # Calculate average task duration
@@ -278,7 +276,7 @@ class MahavishnuPool(BasePool):
             sum(self._task_durations) / len(self._task_durations) if self._task_durations else 0.0
         )
 
-        return PoolMetrics(  # type: ignore[return-value]
+        return PoolMetrics(
             pool_id=self.pool_id,
             status=self._status,
             active_workers=len(self._workers),

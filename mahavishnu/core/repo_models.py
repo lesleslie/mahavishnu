@@ -1,6 +1,6 @@
 """Repository validation models."""
 
-from datetime import datetime
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Literal
 
@@ -17,7 +17,7 @@ class RepositoryMetadata(BaseModel):
     min_python: str | None = Field(None, description="Minimum Python version")
     dependencies: int = Field(default=0, ge=0, description="Number of dependencies")
     last_validated: datetime = Field(
-        default_factory=datetime.utcnow, description="Last validation timestamp"
+        default_factory=lambda: datetime.now(UTC), description="Last validation timestamp"
     )
 
 
@@ -96,7 +96,7 @@ class RepositoryManifest(BaseModel):
 
     version: str = "1.0"
     schema_version: str = "1.0"
-    last_updated: datetime = Field(default_factory=datetime.utcnow)
+    last_updated: datetime = Field(default_factory=lambda: datetime.now(UTC))
     repos: list[Repository] = Field(min_length=1)
 
     @field_validator("repos")

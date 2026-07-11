@@ -397,7 +397,7 @@ class DisasterRecoveryManager:
 
         # Check backup availability
         backups = await self.backup_manager.list_backups()
-        results["checks"]["backups_available"] = {  # type: ignore[index]
+        results["checks"]["backups_available"] = {  # type: ignore[invalid-index]
             "status": "pass" if backups else "fail",
             "count": len(backups),
             "latest_backup": backups[0].timestamp.isoformat() if backups else None,
@@ -412,15 +412,15 @@ class DisasterRecoveryManager:
                 # Try to read backup info to verify integrity
                 info = await self.backup_manager.get_backup_info(backup.backup_id)
                 if info:
-                    integrity_check["checked"] += 1  # type: ignore[operator]
+                    integrity_check["checked"] += 1
                 else:
-                    integrity_check["failed"] += 1  # type: ignore[operator]
+                    integrity_check["failed"] += 1
                     integrity_check["status"] = "fail"
             except Exception:
-                integrity_check["failed"] += 1  # type: ignore[operator]
+                integrity_check["failed"] += 1
                 integrity_check["status"] = "fail"
 
-        results["checks"]["backup_integrity"] = integrity_check  # type: ignore[index]
+        results["checks"]["backup_integrity"] = integrity_check  # type: ignore[invalid-index]
 
         # Check if we have recent backups (within last 24 hours)
         if backups:
@@ -429,7 +429,7 @@ class DisasterRecoveryManager:
         else:
             recent_backup_ok = False
 
-        results["checks"]["recent_backup"] = {  # type: ignore[index]
+        results["checks"]["recent_backup"] = {  # type: ignore[invalid-index]
             "status": "pass" if recent_backup_ok else "fail",
             "latest_backup_age_hours": latest_backup_age.total_seconds() / 3600
             if backups
@@ -437,7 +437,7 @@ class DisasterRecoveryManager:
         }
 
         # Overall status
-        if any(check.get("status") == "fail" for check in results["checks"].values()):  # type: ignore[attr-defined]
+        if any(check.get("status") == "fail" for check in results["checks"].values()):
             results["status"] = "needs_attention"
 
         return results

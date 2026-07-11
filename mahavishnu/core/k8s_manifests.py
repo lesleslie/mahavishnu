@@ -476,12 +476,12 @@ class K8sManifestGenerator:
 
         # Add TLS
         if config.tls_enabled and config.tls_secret:
-            manifest["spec"]["tls"] = [
-                {
-                    "hosts": [config.host],
-                    "secretName": config.tls_secret,
-                },
-            ]
+            spec: dict[str, Any] = manifest["spec"]
+            tls_entry: dict[str, Any] = {
+                "hosts": [config.host],
+                "secretName": config.tls_secret,
+            }
+            spec["tls"] = [tls_entry]  # noqa: E501
 
         self.manifests.append(manifest)
         return manifest

@@ -40,6 +40,7 @@ import warnings
 from mahavishnu.core.health import (
     DependencyWaiter,
     HealthChecker,
+    HealthCheckResult,
     HealthEndpoint,
     HealthStatus,
     ServiceInfo,
@@ -142,7 +143,7 @@ def register_health_tools(mcp: FastMCP, app: Any = None) -> None:  # noqa: C901
             response["error"] = result.error
 
         if result.response_data:
-            response["response"] = result.response_data  # type: ignore[assignment]
+            response["response"] = result.response_data
 
         return response
 
@@ -260,18 +261,18 @@ def register_health_tools(mcp: FastMCP, app: Any = None) -> None:  # noqa: C901
         if tasks:
             gathered = await asyncio.gather(*tasks.values(), return_exceptions=True)
             for (name, _), result in zip(tasks.items(), gathered, strict=True):
-                if isinstance(result, Exception):
+                if isinstance(result, HealthCheckResult):
+                    results[name] = {
+                        "status": result.status.value,
+                        "latency_ms": result.latency_ms,
+                    }
+                    if result.error:
+                        results[name]["error"] = result.error
+                else:
                     results[name] = {
                         "status": HealthStatus.UNHEALTHY.value,
                         "error": str(result),
                     }
-                else:
-                    results[name] = {
-                        "status": result.status.value,  # type: ignore[union-attr]
-                        "latency_ms": result.latency_ms,  # type: ignore[dict-item, union-attr]
-                    }
-                    if result.error:  # type: ignore[union-attr]
-                        results[name]["error"] = result.error
 
         # Determine overall status
         all_ok = all(

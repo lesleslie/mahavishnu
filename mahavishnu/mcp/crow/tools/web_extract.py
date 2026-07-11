@@ -205,7 +205,7 @@ def _extract_article(html: str) -> str:
 # during a partial install (e.g. dependency resolution failure).
 def _ensure_trafilatura() -> None:
     """Raise ImportError with a clear message if trafilatura is missing."""
-    import importlib
+    import importlib.util
 
     if importlib.util.find_spec("trafilatura") is None:
         raise ImportError(
@@ -214,12 +214,13 @@ def _ensure_trafilatura() -> None:
         )
 
 
-# Module-level alias to keep test imports stable.
-def trafilatura_extract_lib(html: str, **kwargs: object) -> str | None:
+# Module-level alias to keep test imports stable. Mirrors the subset of
+# trafilatura.extract() we actually use; only ``output_format`` is forwarded.
+def trafilatura_extract_lib(html: str, output_format: str = "txt") -> str | None:
     _ensure_trafilatura()
     import trafilatura as _t
 
-    return _t.extract(html, **kwargs)
+    return _t.extract(html, output_format=output_format)
 
 
 async def web_extract(

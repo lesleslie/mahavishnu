@@ -20,7 +20,7 @@ import subprocess
 import sys
 from collections import defaultdict
 from dataclasses import dataclass, field
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timedelta, timezone, UTC
 from pathlib import Path
 
 SHORT_NAME_MAX = 3
@@ -239,7 +239,7 @@ def run_git_log(
     """
     files: set[Path] = set()
     last_modified: dict[Path, datetime] = {}
-    cutoff = datetime.now(timezone.utc) - timedelta(days=days)
+    cutoff = datetime.now(UTC) - timedelta(days=days)
 
     git_available = True
     try:
@@ -275,7 +275,7 @@ def run_git_log(
         )
         for path in root.rglob("*.py"):
             try:
-                mtime = datetime.fromtimestamp(path.stat().st_mtime, tz=timezone.utc)
+                mtime = datetime.fromtimestamp(path.stat().st_mtime, tz=UTC)
             except OSError:
                 continue
             if mtime >= cutoff:
@@ -311,7 +311,7 @@ def run_git_log(
                 pass
         try:
             last_modified[path] = datetime.fromtimestamp(
-                path.stat().st_mtime, tz=timezone.utc
+                path.stat().st_mtime, tz=UTC
             )
         except OSError:
             pass

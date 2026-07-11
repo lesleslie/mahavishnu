@@ -71,7 +71,7 @@ def register_repository_messaging_tools(server, app, mcp_client):  # noqa: C901
             return {
                 "status": "success",
                 "message_id": message.id,
-                "sent_at": message.timestamp.isoformat(),  # type: ignore[union-attr]
+                "sent_at": message.timestamp.isoformat(),  # ty: ignore[unresolved-attribute]
                 "priority": message.priority.value,
             }
         except Exception as e:
@@ -169,7 +169,7 @@ def register_repository_messaging_tools(server, app, mcp_client):  # noqa: C901
                         "message_type": msg.message_type.value,
                         "content": msg.content,
                         "priority": msg.priority.value,
-                        "timestamp": msg.timestamp.isoformat(),  # type: ignore[union-attr]
+                        "timestamp": msg.timestamp.isoformat(),  # ty: ignore[unresolved-attribute]
                         "correlation_id": msg.correlation_id,
                     }
                     for msg in messages

@@ -40,7 +40,7 @@ class _LlmSynthesizer:
     cap: int | None = None
     ceiling: int = DEFAULT_WEEKLY_CAP
     calls_made: int = 0
-    last_reset: datetime = None  # type: ignore[assignment]
+    last_reset: datetime = None  # ty: ignore[invalid-assignment]
 
     def __post_init__(self) -> None:
 

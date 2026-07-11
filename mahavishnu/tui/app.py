@@ -71,8 +71,8 @@ async def _get_report() -> EcosystemStatusReport | None:
         settings = MahavishnuSettings()
         service_configs: dict[str, dict[str, Any]] = {}
         for name, url in {
-            "session-buddy": settings.session_buddy_url,  # type: ignore[attr-defined]
-            "akosha": settings.akosha_url,  # type: ignore[attr-defined]
+            "session-buddy": settings.session_buddy_url,  # ty: ignore[unresolved-attribute]
+            "akosha": settings.akosha_url,  # ty: ignore[unresolved-attribute]
         }.items():
             if url:
                 service_configs[name] = {"url": url, "required": False, "timeout_s": 3}
@@ -1365,7 +1365,7 @@ class DashboardApp(App):
             BodaiComponentScreen,
         ):
             for widget in self.query(screen_cls):
-                widget.refresh_data()  # type: ignore[attr-defined]
+                widget.refresh_data()
 
     def action_approve_selected_approval(self) -> None:
         for widget in self.query(ApprovalsScreen):

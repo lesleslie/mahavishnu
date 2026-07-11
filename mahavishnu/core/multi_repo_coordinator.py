@@ -36,7 +36,7 @@ from mahavishnu.core.cross_repo_dependency import (
     DependencyStatus,
     DependencyType,
 )
-from mahavishnu.core.task_store import TaskStatus, TaskStore
+from mahavishnu.core.task_store import TaskStatus, TaskStore, TaskUpdate
 
 logger = logging.getLogger(__name__)
 
@@ -355,7 +355,10 @@ class MultiRepoCoordinator:
 
             # Update task status to completed
             task.status = TaskStatus.COMPLETED
-            await self.task_store.update(task)  # type: ignore[arg-type, call-arg]
+            await self.task_store.update(
+                task.id,
+                TaskUpdate(status=TaskStatus.COMPLETED),
+            )
 
             # Update dependency status
             self.dependency_linker.update_all_statuses(
@@ -422,10 +425,13 @@ class MultiRepoCoordinator:
                     task = await self.task_store.get(step.task_id)
                     if task:
                         task.status = TaskStatus.PENDING
-                        await self.task_store.update(task)  # type: ignore[arg-type, call-arg]
+                        await self.task_store.update(
+                            task.id,
+                            TaskUpdate(status=TaskStatus.PENDING),
+                        )
                         step.status = CoordinationStatus.ROLLED_BACK
                         rollback_count += 1
-                        logger.info(f"Rolled back step {step.step_id}")
+                        logger.info(f"Rolled back step {step.task_id}")
                 except Exception as e:
                     logger.error(f"Failed to rollback step {step.step_id}: {e}")
 

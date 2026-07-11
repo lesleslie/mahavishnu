@@ -7,7 +7,7 @@ from functools import wraps
 from importlib.metadata import version
 from logging import getLogger
 import time
-from typing import Any
+from typing import Any, cast
 
 from mcp_common.fastmcp import FastMCP
 from mcp_common.server.telemetry import FastMCPOpenTelemetryMiddleware
@@ -196,7 +196,7 @@ class FastMCPServer:
 
             return decorator
 
-        self.server.tool = instrumented_tool  # type: ignore[method-assign]
+        self.server.tool = cast("Any", instrumented_tool)
 
     def _wrap_tool_handler(self, func: Any) -> Any:
         """Wrap a tool handler with Prometheus instrumentation."""

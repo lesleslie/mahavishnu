@@ -453,7 +453,7 @@ class TaskRepository(BaseRepository[TaskCreate, TaskRead, TaskUpdate]):
         # Handle metadata merge
         if data.metadata is not None:
             updates.append(f"metadata = metadata || $${param_idx}::jsonb")
-            params.append(data.metadata)  # type: ignore[arg-type]
+            params.append(data.metadata)
             param_idx += 1
 
         if not updates:
@@ -462,7 +462,7 @@ class TaskRepository(BaseRepository[TaskCreate, TaskRead, TaskUpdate]):
 
         now = datetime.now(UTC)
         updates.append(f"updated_at = ${param_idx}")
-        params.append(now)  # type: ignore[arg-type]
+        params.append(now)
 
         query = f"""
             UPDATE {self._table}
@@ -525,12 +525,12 @@ class TaskRepository(BaseRepository[TaskCreate, TaskRead, TaskUpdate]):
 
         if filters.created_after:
             conditions.append(f"created_at >= ${param_idx}")
-            params.append(filters.created_after)  # type: ignore[arg-type]
+            params.append(filters.created_after)
             param_idx += 1
 
         if filters.created_before:
             conditions.append(f"created_at <= ${param_idx}")
-            params.append(filters.created_before)  # type: ignore[arg-type]
+            params.append(filters.created_before)
             param_idx += 1
 
         where_clause = f"WHERE {' AND '.join(conditions)}" if conditions else ""

@@ -247,7 +247,7 @@ class NlpParser:
         if not scores or max(scores.values()) == 0:
             return Intent.UNKNOWN, 0.0
 
-        best_intent = max(scores, key=scores.get)  # type: ignore[call-overload]
+        best_intent = max(scores, key=lambda k: scores[k])
         return best_intent, scores[best_intent]
 
     async def _extract_entities(self, text: str, intent: Intent) -> dict[str, ParsedEntity]:
@@ -273,9 +273,9 @@ class NlpParser:
             entities["query"] = self._extract_search_query(text)
 
         # Remove None values
-        entities = {k: v for k, v in entities.items() if v is not None}  # type: ignore[assignment]
+        entities = {k: v for k, v in entities.items() if v is not None}
 
-        return entities  # type: ignore[return-value]
+        return entities  # ty: ignore[invalid-return-type]
 
     def _extract_title(self, text: str, intent: Intent) -> ParsedEntity | None:
         """Extract task title from text."""

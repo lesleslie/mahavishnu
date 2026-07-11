@@ -13,7 +13,7 @@ from __future__ import annotations
 import contextlib
 import logging
 import time
-from typing import Any
+from typing import Any, cast
 
 from mcp_common.fastmcp import FastMCP  # noqa: TC002
 
@@ -220,9 +220,11 @@ def register_goal_team_tools(mcp: FastMCP) -> None:  # noqa: C901
             final_mode = team_mode if team_mode else parsed.intent
 
             # Create team configuration with timing
-            with metrics.team_creation_duration(
-                mode=final_mode.value if hasattr(final_mode, "value") else str(final_mode)
-            ):
+            mode_str = cast(
+                "str",
+                final_mode.value if hasattr(final_mode, "value") else str(final_mode),
+            )
+            with metrics.team_creation_duration(mode=mode_str):
                 team_config = await factory.create_team_from_goal(
                     goal=goal,
                     name=name,

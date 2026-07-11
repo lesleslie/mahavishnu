@@ -16,7 +16,7 @@ production ``CrowServer`` (with FastMCP-owned lifespan).
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any, cast
 
 from . import file_tools, rg_search, web_extract, web_tools
 
@@ -28,7 +28,10 @@ if TYPE_CHECKING:
 
 def _tool_decorator(server: StandardServer):
     """Return the tool decorator appropriate for this server."""
-    return server.fastmcp.tool if hasattr(server, "fastmcp") else server.tool
+    fastmcp = getattr(server, "fastmcp", None)
+    if fastmcp is not None:
+        return cast("Any", fastmcp).tool
+    return server.tool
 
 
 def register_all(server: StandardServer, settings: CrowSettings) -> None:

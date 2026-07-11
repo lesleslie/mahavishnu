@@ -380,9 +380,9 @@ class DependencyVisualizer:
                     cell = self._colorize(" · ", ColorCode.DIM)
                 elif graph.get_edge(col_task, row_task):
                     edge = graph.get_edge(col_task, row_task)
-                    if edge.status == DependencyStatus.SATISFIED:  # type: ignore[union-attr]
+                    if edge.status == DependencyStatus.SATISFIED:  # ty: ignore[unresolved-attribute]
                         cell = self._colorize(" ✓ ", ColorCode.GREEN)
-                    elif edge.status == DependencyStatus.FAILED:  # type: ignore[union-attr]
+                    elif edge.status == DependencyStatus.FAILED:  # ty: ignore[unresolved-attribute]
                         cell = self._colorize(" ✗ ", ColorCode.RED)
                     else:
                         cell = self._colorize(" → ", ColorCode.BLUE)

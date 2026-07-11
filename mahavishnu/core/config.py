@@ -1869,8 +1869,8 @@ class MahavishnuSettings(BaseSettings):
         MAHAVISHNU_AGNO__LLM__PROVIDER=anthropic
     """
 
-    model_config = SettingsConfigDict(  # type: ignore[typeddict-unknown-key]
-        yaml_files=["settings/mahavishnu.yaml", "settings/local.yaml"],
+    model_config = SettingsConfigDict(
+        yaml_file=["settings/mahavishnu.yaml", "settings/local.yaml"],
         env_prefix="MAHAVISHNU_",
         env_nested_delimiter="__",
         extra="allow",

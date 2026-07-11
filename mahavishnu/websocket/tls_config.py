@@ -7,7 +7,7 @@ and helper functions for secure WebSocket connections.
 from __future__ import annotations
 
 import logging
-from typing import Any
+from typing import Any, cast
 
 from mcp_common.websocket.tls import (
     create_ssl_context,
@@ -66,10 +66,10 @@ def load_ssl_context(
     if not cert_file and not key_file:
         config = get_websocket_tls_config()
         if config["tls_enabled"]:
-            cert_file = config["cert_file"]  # type: ignore[assignment]
-            key_file = config["key_file"]  # type: ignore[assignment]
-            ca_file = config["ca_file"]  # type: ignore[assignment]
-            verify_client = config.get("verify_client", False)  # type: ignore[assignment]
+            cert_file = cast("str | None", config["cert_file"])
+            key_file = cast("str | None", config["key_file"])
+            ca_file = cast("str | None", config["ca_file"])
+            verify_client = cast("bool", config.get("verify_client", False))
 
     # Create SSL context if files provided
     ssl_context = None

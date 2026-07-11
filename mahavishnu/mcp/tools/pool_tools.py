@@ -9,7 +9,7 @@ from mcp_common.fastmcp import FastMCP
 try:
     from mahavishnu.pools.memory_aggregator import MemoryAggregator
 except Exception:  # pragma: no cover - optional import for test patching
-    MemoryAggregator = None  # type: ignore[assignment]
+    MemoryAggregator = None  # ty: ignore[invalid-assignment]
 
 logger = logging.getLogger(__name__)
 

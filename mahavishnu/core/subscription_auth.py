@@ -116,8 +116,8 @@ class SubscriptionAuth:
 
     def _validate_subscription_payload(self, payload: dict) -> SubscriptionTokenData:
         """Validate the subscription token payload and extract token data."""
-        user_id: str = payload.get("user_id")  # type: ignore[assignment]
-        subscription_type: str = payload.get("subscription_type")  # type: ignore[assignment]
+        user_id: str = payload.get("user_id")  # ty: ignore[invalid-assignment]
+        subscription_type: str = payload.get("subscription_type")  # ty: ignore[invalid-assignment]
 
         if not user_id or not subscription_type:
             raise AuthenticationError(
@@ -128,7 +128,7 @@ class SubscriptionAuth:
         return SubscriptionTokenData(
             user_id=user_id,
             subscription_type=subscription_type,
-            exp=payload.get("exp"),  # type: ignore[arg-type]
+            exp=payload.get("exp"),  # ty: ignore[invalid-argument-type]
             scopes=payload.get("scopes", []),
         )
 
@@ -240,7 +240,7 @@ class MultiAuthHandler:
         # Try JWT auth (with full signature validation)
         if self.jwt_auth:
             try:
-                token_data = self.jwt_auth.verify_token(token)  # type: ignore[assignment]
+                token_data = self.jwt_auth.verify_token(token)
                 if isinstance(token_data, dict):
                     user = token_data.get("user_id") or token_data.get("sub")
                 else:

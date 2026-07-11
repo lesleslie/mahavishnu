@@ -86,7 +86,7 @@ class SearchMatch:
     field: str
     snippet: str
     score: float
-    positions: list[tuple[int, int]] = field(default_factory=list)  # type: ignore[operator]
+    positions: list[tuple[int, int]] = field(default_factory=list)
 
     def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary for serialization."""

@@ -14,7 +14,7 @@ import yaml
 
 from ..core.config import MahavishnuSettings
 from ..core.config_validator import ConfigValidationReport, ValidationResult, validate_config
-from ..core.health import HealthChecker, HealthStatus
+from ..core.health import HealthChecker, HealthCheckResult, HealthStatus
 from ..core.skill_mcp_validator import validate_agent_dir, validate_skill_dir
 
 
@@ -201,7 +201,7 @@ async def _validate_runtime_connectivity(
     checks: list[RuntimeValidationCheck] = []
     checker = HealthChecker(config=settings.health)
 
-    dependency_tasks: list[tuple[str, str, bool, asyncio.Task[Any]]] = []
+    dependency_tasks: list[tuple[str, str, bool, asyncio.Task[HealthCheckResult]]] = []
     for name, dependency in settings.health.dependencies.items():
         url = _dependency_health_url(name, dependency)
         dependency_tasks.append(
@@ -246,7 +246,7 @@ async def _validate_runtime_connectivity(
         *(task for _, _, _, task in dependency_tasks), return_exceptions=True
     )
     for (name, url, required, _), result in zip(dependency_tasks, gathered, strict=True):
-        if isinstance(result, Exception):
+        if isinstance(result, BaseException):
             checks.append(
                 RuntimeValidationCheck(
                     name=name,
@@ -594,7 +594,9 @@ def add_config_inventory_commands(app: typer.Typer) -> None:
         import sys
 
         sys.path.insert(0, str(_PROJECT_ROOT / "scripts"))
-        from migrate_config_to_project import MigrationRunner  # noqa: PLC0415
+        from migrate_config_to_project import (  # ty: ignore[unresolved-import]
+            MigrationRunner,
+        )
 
         home = Path.home()
         runner = MigrationRunner(
@@ -614,7 +616,9 @@ def add_config_inventory_commands(app: typer.Typer) -> None:
         import sys
 
         sys.path.insert(0, str(_PROJECT_ROOT / "scripts"))
-        from migrate_config_to_project import rollback  # noqa: PLC0415
+        from migrate_config_to_project import (  # noqa: PLC0415  # ty: ignore[unresolved-import]
+            rollback,
+        )
 
         rollback(_get_project_root(), timestamp)
 

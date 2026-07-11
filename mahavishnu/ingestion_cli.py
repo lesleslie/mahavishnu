@@ -34,24 +34,24 @@ def _format_result(result: dict) -> None:
         result: Result dictionary from ingestion
     """
     if result["success"]:
-        typer.echo(  # type: ignore[call-arg]
+        typer.secho(
             f"✅ Successfully ingested: {result['title'] or result['source']}",
             fg=typer.colors.GREEN,
         )
-        typer.echo(f"   Type: {result['content_type']}", fg=typer.colors.BLUE)  # type: ignore[call-arg]
-        typer.echo(f"   Chunks: {result['chunk_count']}", fg=typer.colors.BLUE)  # type: ignore[call-arg]
-        typer.echo(f"   Embedding dim: {result['embedding_dimension']}", fg=typer.colors.BLUE)  # type: ignore[call-arg]
-        typer.echo(  # type: ignore[call-arg]
+        typer.secho(f"   Type: {result['content_type']}", fg=typer.colors.BLUE)
+        typer.secho(f"   Chunks: {result['chunk_count']}", fg=typer.colors.BLUE)
+        typer.secho(f"   Embedding dim: {result['embedding_dimension']}", fg=typer.colors.BLUE)
+        typer.secho(
             f"   Akosha: {'✓' if result['stored_in_akosha'] else '✗'}",
             fg=typer.colors.GREEN if result["stored_in_akosha"] else typer.colors.RED,
         )
-        typer.echo(  # type: ignore[call-arg]
+        typer.secho(
             f"   Crackerjack: {'✓' if result['indexed_in_crackerjack'] else '✗'}",
             fg=typer.colors.GREEN if result["indexed_in_crackerjack"] else typer.colors.RED,
         )
     else:
-        typer.echo(f"❌ Failed to ingest: {result['source']}", fg=typer.colors.RED)  # type: ignore[call-arg]
-        typer.echo(f"   Error: {result['error']}", fg=typer.colors.RED)  # type: ignore[call-arg]
+        typer.secho(f"❌ Failed to ingest: {result['source']}", fg=typer.colors.RED)
+        typer.secho(f"   Error: {result['error']}", fg=typer.colors.RED)
 
 
 @ingestion_app.command("url")
@@ -130,7 +130,7 @@ def ingest_file(
     # Validate file exists
     path = Path(file_path)
     if not path.exists():
-        typer.echo(f"❌ File not found: {file_path}", fg=typer.colors.RED)  # type: ignore[call-arg]
+        typer.secho(f"❌ File not found: {file_path}", fg=typer.colors.RED)
         raise typer.Exit(code=1)
 
     async def _ingest():
@@ -182,17 +182,17 @@ def ingest_batch(
     # Validate file exists
     path = Path(input_file)
     if not path.exists():
-        typer.echo(f"❌ File not found: {input_file}", fg=typer.colors.RED)  # type: ignore[call-arg]
+        typer.secho(f"❌ File not found: {input_file}", fg=typer.colors.RED)
         raise typer.Exit(code=1)
 
     # Read URLs
     urls = [line.strip() for line in path.read_text(encoding="utf-8").splitlines() if line.strip()]
 
     if not urls:
-        typer.echo(f"❌ No URLs found in: {input_file}", fg=typer.colors.RED)  # type: ignore[call-arg]
+        typer.secho(f"❌ No URLs found in: {input_file}", fg=typer.colors.RED)
         raise typer.Exit(code=1)
 
-    typer.echo(f"📋 Found {len(urls)} URLs to ingest", fg=typer.colors.BLUE)  # type: ignore[call-arg]
+    typer.secho(f"📋 Found {len(urls)} URLs to ingest", fg=typer.colors.BLUE)
 
     async def _ingest():
         # Map provider string to enum
@@ -215,7 +215,7 @@ def ingest_batch(
             results = []
             for i in range(0, len(urls), parallel):
                 batch = urls[i : i + parallel]
-                typer.echo(  # type: ignore[call-arg]
+                typer.secho(
                     f"Processing batch {i // parallel + 1} ({len(batch)} URLs)...",
                     fg=typer.colors.BLUE,
                 )
@@ -230,19 +230,19 @@ def ingest_batch(
     success_count = sum(1 for r in results if r["success"])
     fail_count = len(results) - success_count
 
-    typer.echo("\n📊 Batch ingestion complete:", fg=typer.colors.BLUE)  # type: ignore[call-arg]
-    typer.echo(f"   Total: {len(results)}", fg=typer.colors.BLUE)  # type: ignore[call-arg]
-    typer.echo(f"   Success: {success_count}", fg=typer.colors.GREEN)  # type: ignore[call-arg]
-    typer.echo(  # type: ignore[call-arg]
+    typer.secho("\n📊 Batch ingestion complete:", fg=typer.colors.BLUE)
+    typer.secho(f"   Total: {len(results)}", fg=typer.colors.BLUE)
+    typer.secho(f"   Success: {success_count}", fg=typer.colors.GREEN)
+    typer.secho(
         f"   Failed: {fail_count}", fg=typer.colors.RED if fail_count > 0 else typer.colors.GREEN
     )
 
     # Show failed items
     if fail_count > 0:
-        typer.echo("\n❌ Failed URLs:", fg=typer.colors.RED)  # type: ignore[call-arg]
+        typer.secho("\n❌ Failed URLs:", fg=typer.colors.RED)
         for result in results:
             if not result["success"]:
-                typer.echo(f"   - {result['source']}: {result['error']}", fg=typer.colors.RED)  # type: ignore[call-arg]
+                typer.secho(f"   - {result['source']}: {result['error']}", fg=typer.colors.RED)
 
     raise typer.Exit(code=0 if fail_count == 0 else 1)
 
@@ -292,19 +292,19 @@ def ingestion_stats(
 
     stats = asyncio.run(_stats())
 
-    typer.echo("📊 Content Ingestion Status:", fg=typer.colors.BLUE)  # type: ignore[call-arg]
-    typer.echo(f"   Output directory: {stats['output_dir']}", fg=typer.colors.BLUE)  # type: ignore[call-arg]
-    typer.echo(f"   Chunk size: {stats['chunk_size']}", fg=typer.colors.BLUE)  # type: ignore[call-arg]
-    typer.echo(f"   Chunk overlap: {stats['chunk_overlap']}", fg=typer.colors.BLUE)  # type: ignore[call-arg]
-    typer.echo(f"   Embedding provider: {stats['embedding_provider']}", fg=typer.colors.BLUE)  # type: ignore[call-arg]
+    typer.secho("📊 Content Ingestion Status:", fg=typer.colors.BLUE)
+    typer.secho(f"   Output directory: {stats['output_dir']}", fg=typer.colors.BLUE)
+    typer.secho(f"   Chunk size: {stats['chunk_size']}", fg=typer.colors.BLUE)
+    typer.secho(f"   Chunk overlap: {stats['chunk_overlap']}", fg=typer.colors.BLUE)
+    typer.secho(f"   Embedding provider: {stats['embedding_provider']}", fg=typer.colors.BLUE)
 
     # Check output directory exists
     output_path = Path(stats["output_dir"])
     if output_path.exists():
         file_count = len(list(output_path.glob("*")))
-        typer.echo(f"   Ingested files: {file_count}", fg=typer.colors.GREEN)  # type: ignore[call-arg]
+        typer.secho(f"   Ingested files: {file_count}", fg=typer.colors.GREEN)
     else:
-        typer.echo("   Output directory: does not exist", fg=typer.colors.YELLOW)  # type: ignore[call-arg]
+        typer.secho("   Output directory: does not exist", fg=typer.colors.YELLOW)
 
 
 def add_ingestion_commands() -> None:

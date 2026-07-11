@@ -842,7 +842,9 @@ def repo_list_events(
 @repo_app.command("create-event")
 def repo_create_event(
     task_id: str = typer.Option(..., "--task", "-t", help="Task UUID"),
-    event_type: str = typer.Option(..., "--type", "-e", help="Event type (e.g. started, completed)"),
+    event_type: str = typer.Option(
+        ..., "--type", "-e", help="Event type (e.g. started, completed)"
+    ),
     actor: str | None = typer.Option(None, "--actor", "-a", help="Actor identifier"),
     run_id: str | None = typer.Option(None, "--run", "-r", help="Optional run UUID"),
 ):

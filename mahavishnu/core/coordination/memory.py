@@ -145,7 +145,7 @@ class CoordinationMemory:
         }
 
         if changes:
-            metadata["changes"] = changes  # type: ignore[assignment]
+            metadata["changes"] = changes
 
         await self._store_memory(content, metadata)
 
@@ -181,7 +181,7 @@ class CoordinationMemory:
         }
 
         if changes:
-            metadata["changes"] = changes  # type: ignore[assignment]
+            metadata["changes"] = changes
 
         await self._store_memory(content, metadata)
 
@@ -219,7 +219,7 @@ class CoordinationMemory:
         }
 
         if validation_result:
-            metadata["validation"] = validation_result  # type: ignore[assignment]
+            metadata["validation"] = validation_result
 
         await self._store_memory(content, metadata)
 
@@ -335,7 +335,7 @@ class CoordinationMemory:
             metadata: Metadata dictionary
         """
         try:
-            await self.session_buddy.store_memory(  # type: ignore[union-attr]
+            await self.session_buddy.store_memory(  # ty: ignore[unresolved-attribute]
                 collection=self.collection,
                 content=content,
                 metadata=metadata,

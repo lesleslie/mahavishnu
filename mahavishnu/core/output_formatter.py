@@ -374,7 +374,7 @@ class OutputFormatter:
         """Format as Markdown."""
         if isinstance(data, list) and data and isinstance(data[0], dict):
             # Format as table
-            headers = list(data[0].keys())
+            headers: list[str] = [str(k) for k in data[0]]
             lines = [
                 "| " + " | ".join(headers) + " |",
                 "| " + " | ".join(["---"] * len(headers)) + " |",
@@ -496,7 +496,7 @@ class OutputFormatter:
                 table.add_column(
                     col.name,
                     width=col.width,
-                    justify=col.align,  # type: ignore[arg-type]
+                    justify=col.align,  # ty: ignore[invalid-argument-type]
                 )
 
             # Add rows

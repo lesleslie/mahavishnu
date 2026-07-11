@@ -85,7 +85,7 @@ def is_terminal_worker(obj: object) -> TypeGuard[TerminalWorkerProtocol]:
     """
     return (
         hasattr(obj, "worker_type")
-        and isinstance(obj.worker_type, str)  # type: ignore[union-attr]
+        and isinstance(obj.worker_type, str)
         and hasattr(obj, "session_id")
         and hasattr(obj, "start")
         and hasattr(obj, "execute")

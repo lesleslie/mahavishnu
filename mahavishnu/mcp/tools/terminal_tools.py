@@ -179,7 +179,7 @@ def register_terminal_tools(  # noqa: C901
         elif adapter_name == "mcpretentious":
             if mcp_client is None:
                 return {"status": "error", "message": "mcpretentious adapter requires MCP client"}
-            new_adapter = McpretentiousAdapter(mcp_client)  # type: ignore[assignment]
+            new_adapter = McpretentiousAdapter(mcp_client)
         else:
             return {
                 "status": "error",
@@ -256,7 +256,7 @@ def register_terminal_tools(  # noqa: C901
             # Import iterm2 and fetch profiles
             import iterm2
 
-            profiles = await iterm2.Profile.async_get_all(adapter._connection)  # type: ignore[attr-defined]
+            profiles = await iterm2.Profile.async_get_all(adapter._connection)  # ty: ignore[unresolved-attribute]
             profile_names = [p.name for p in profiles]
 
             return {
@@ -285,10 +285,10 @@ def register_terminal_tools(  # noqa: C901
                 f"Profile selection requires iTerm2 adapter. Current: {terminal_manager.current_adapter()}"
             )
 
-        return await terminal_manager.launch_sessions(  # type: ignore[call-arg]
+        return await terminal_manager.launch_sessions(
             command,
             count,
             columns,
             rows,
-            profile_name=profile_name,
+            profile_name=profile_name,  # ty: ignore[unknown-argument]
         )

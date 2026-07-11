@@ -117,6 +117,7 @@ class RepositoryMessenger:
 
             # Add authentication signature if authenticator is available
             if self.authenticator:
+                signature_timestamp = message.timestamp or datetime.now()
                 message.signature = self.authenticator.sign_message(
                     {
                         "id": message.id,
@@ -124,7 +125,7 @@ class RepositoryMessenger:
                         "receiver_repo": message.receiver_repo,
                         "message_type": message.message_type.value,
                         "content": message.content,
-                        "timestamp": message.timestamp.isoformat(),  # type: ignore[union-attr]
+                        "timestamp": signature_timestamp.isoformat(),
                         "correlation_id": message.correlation_id,
                     }
                 )
@@ -207,11 +208,11 @@ class RepositoryMessenger:
                 for msg in self.messages
                 if msg.receiver_repo == repo_name
                 and (message_type is None or msg.message_type == message_type)
-                and (since is None or msg.timestamp >= since)  # type: ignore[operator]
+                and (since is None or (msg.timestamp is not None and msg.timestamp >= since))
             ]
 
             # Sort by timestamp (newest first)
-            repo_messages.sort(key=lambda x: x.timestamp, reverse=True)  # type: ignore[arg-type]
+            repo_messages.sort(key=lambda x: x.timestamp, reverse=True)
 
             # Return limited results
             return repo_messages[:limit]
@@ -299,13 +300,14 @@ class RepositoryMessenger:
             return True
 
         # Create the message payload to verify
+        verify_timestamp = message.timestamp or datetime.now()
         payload = {
             "id": message.id,
             "sender_repo": message.sender_repo,
             "receiver_repo": message.receiver_repo,
             "message_type": message.message_type.value,
             "content": message.content,
-            "timestamp": message.timestamp.isoformat(),  # type: ignore[union-attr]
+            "timestamp": verify_timestamp.isoformat(),
             "correlation_id": message.correlation_id,
         }
 

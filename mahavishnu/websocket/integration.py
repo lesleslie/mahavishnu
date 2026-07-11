@@ -7,7 +7,7 @@ with main Mahavishnu application and MCP server.
 from __future__ import annotations
 
 import logging
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any, cast
 
 from mahavishnu.core.events.transport import (
     CompositeEventEnvelopeHandler,
@@ -76,11 +76,23 @@ async def start_websocket_server(
     # Get TLS configuration from environment if not explicitly provided
     if tls_enabled is None:
         env_tls = get_websocket_tls_config()
-        tls_enabled = env_tls["tls_enabled"]  # type: ignore[assignment]
-        cert_file = cert_file or env_tls["cert_file"]  # type: ignore[assignment]
-        key_file = key_file or env_tls["key_file"]  # type: ignore[assignment]
-        ca_file = ca_file or env_tls["ca_file"]  # type: ignore[assignment]
-        verify_client = verify_client or env_tls.get("verify_client", False)  # type: ignore[assignment]
+        _raw_tls_enabled = env_tls["tls_enabled"]
+        if isinstance(_raw_tls_enabled, bool):
+            tls_enabled = _raw_tls_enabled
+        elif isinstance(_raw_tls_enabled, str):
+            tls_enabled = _raw_tls_enabled.lower() in ("true", "1", "yes", "on")
+        else:
+            tls_enabled = None
+        cert_file = env_tls["cert_file"] if isinstance(env_tls["cert_file"], str) else cert_file
+        key_file = env_tls["key_file"] if isinstance(env_tls["key_file"], str) else key_file
+        ca_file = env_tls["ca_file"] if isinstance(env_tls["ca_file"], str) else ca_file
+        _raw_verify = env_tls.get("verify_client", False)
+        if isinstance(_raw_verify, bool):
+            verify_client = bool(verify_client or _raw_verify)
+        elif isinstance(_raw_verify, str):
+            verify_client = bool(verify_client or _raw_verify.lower() in ("true", "1", "yes", "on"))
+        else:
+            verify_client = bool(verify_client)
 
     try:
         # Create WebSocket server
@@ -93,7 +105,7 @@ async def start_websocket_server(
             cert_file=cert_file,
             key_file=key_file,
             ca_file=ca_file,
-            tls_enabled=tls_enabled,  # type: ignore[arg-type]
+            tls_enabled=tls_enabled if tls_enabled is not None else False,
             verify_client=verify_client,
             auto_cert=auto_cert,
         )
@@ -117,7 +129,7 @@ async def start_websocket_server(
                     handler_name="notification",
                     dead_letter_handler=dlq_handler,
                 )
-                handler = CompositeEventEnvelopeHandler(  # type: ignore[assignment]
+                handler = CompositeEventEnvelopeHandler(
                     (
                         websocket_handler,
                         notification_handler,
@@ -128,7 +140,7 @@ async def start_websocket_server(
                 handler=handler,
             )
             await event_consumer.start()
-            server.event_consumer = event_consumer  # type: ignore[attr-defined]
+            cast("Any", server).event_consumer = event_consumer
 
         scheme = "wss" if server.ssl_context else "ws"
         logger.info(f"WebSocket server started on {scheme}://{host}:{port}")

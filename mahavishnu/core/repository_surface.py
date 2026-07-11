@@ -10,7 +10,7 @@ import asyncio
 import concurrent.futures
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 from monitoring.metrics import (
     mahavishnu_active_workflows,
@@ -166,10 +166,13 @@ def check_user_repo_permission(app: Any, user_id: str, repo_path: str) -> bool:
                     asyncio.run,
                     app.rbac_manager.check_permission(user_id, repo_path, Permission.READ_REPO),
                 )
-                return future.result(timeout=5.0)  # type: ignore[no-any-return]
+                return cast("bool", future.result(timeout=5.0))
         except RuntimeError:
-            return asyncio.run(  # type: ignore[no-any-return]
-                app.rbac_manager.check_permission(user_id, repo_path, Permission.READ_REPO)
+            return cast(
+                "bool",
+                asyncio.run(
+                    app.rbac_manager.check_permission(user_id, repo_path, Permission.READ_REPO)
+                ),
             )
     except Exception:
         return True

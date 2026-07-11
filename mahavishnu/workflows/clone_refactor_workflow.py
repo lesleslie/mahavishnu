@@ -298,7 +298,7 @@ async def run_clone_refactor_dag(
     consuming_results = await asyncio.gather(*consuming_tasks, return_exceptions=True)
 
     for repo, pr_or_exc in zip(consumer_repos, consuming_results, strict=False):
-        if isinstance(pr_or_exc, Exception):
+        if isinstance(pr_or_exc, BaseException):
             logger.warning(
                 "run_clone_refactor_dag: consuming PR failed for %s: %s", repo, pr_or_exc
             )

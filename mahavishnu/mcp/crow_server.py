@@ -24,7 +24,7 @@ from __future__ import annotations
 
 from contextlib import asynccontextmanager
 import os
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, cast
 
 from fastmcp import FastMCP
 from mcp_common.profiles.standard import StandardServer
@@ -101,7 +101,7 @@ async def _lifespan(server: FastMCP) -> AsyncGenerator[None]:
     (FastMCP has no public "dependencies" hook). The lifespan closure
     reads them back here without coupling to FastMCP internals.
     """
-    settings: CrowSettings = server._crow_settings
+    settings: CrowSettings = cast("Any", server)._crow_settings
     await init_http_client(settings)
     await init_crow_stdio_client(settings)
     try:
@@ -133,7 +133,7 @@ class CrowServer(StandardServer):
             lifespan=_lifespan,
         )
         # Stash settings so the lifespan can reach them.
-        self._mcp._crow_settings = settings
+        cast("Any", self._mcp)._crow_settings = settings
         tools.register_all(self, settings)
 
     @property

@@ -12,7 +12,7 @@ Architecture:
 from __future__ import annotations
 
 from datetime import UTC, datetime
-from typing import Any
+from typing import Any, cast
 
 import structlog
 
@@ -214,7 +214,8 @@ class UnifiedOrchestrator:
             try:
                 adapter = self.task_router.adapter_manager.get_adapter(adapter_name)
                 if adapter and hasattr(adapter, "cancel_workflow"):
-                    await adapter.cancel_workflow(workflow_id)
+                    canceller = cast("Any", adapter)
+                    await canceller.cancel_workflow(workflow_id)
                     logger.info(f"Cancelled {adapter_name} workflow: {workflow_id}")
             except Exception as e:
                 logger.error(f"Failed to cancel with {adapter_name}: {e}")

@@ -89,15 +89,22 @@ CONTRACT_MATRIX: tuple[dict[str, Any], ...] = (
 
 def build_contract_app() -> Any:
     """Build a lightweight app fixture for MCP contract evaluation."""
-    from .config import MahavishnuSettings
+    from .config import (
+        MahavishnuSettings,
+        ObservabilityConfig,
+        OTelStorageConfig,
+        PoolConfig,
+        TerminalSettings,
+        WorkerConfig,
+    )
 
-    settings = MahavishnuSettings(  # type: ignore[call-arg]
+    settings = MahavishnuSettings(
         server_name="Contract Test Server",
-        observability_enabled=False,
-        terminal_enabled=False,
-        pools={"enabled": False},  # type: ignore[arg-type]
-        workers={"enabled": False},  # type: ignore[arg-type]
-        otel_storage={"enabled": False},  # type: ignore[arg-type]
+        observability=ObservabilityConfig(metrics_enabled=False, tracing_enabled=False),
+        terminal=TerminalSettings(enabled=False),
+        pools=PoolConfig(enabled=False),
+        workers=WorkerConfig(enabled=False),
+        otel_storage=OTelStorageConfig(enabled=False),
     )
 
     app = Mock()

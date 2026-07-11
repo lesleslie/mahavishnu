@@ -1,8 +1,16 @@
 from __future__ import annotations
 
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from mahavishnu.tui import TUI_AVAILABLE
+
+if TYPE_CHECKING:
+    # Provide a consistent Widget-compatible base to type-checkers in BOTH the
+    # TUI and non-TUI branches below. At runtime, ``_WidgetBase`` falls back
+    # to ``object`` so the non-TUI branch can safely inherit from it.
+    from textual.widgets import Static as _WidgetBase
+else:
+    _WidgetBase = object
 
 if TUI_AVAILABLE:
     from textual.widgets import Static
@@ -53,10 +61,10 @@ if TUI_AVAILABLE:
 
 else:
 
-    class PoolStatusWidget:  # type: ignore[no-redef]
+    class PoolStatusWidget(_WidgetBase):  # type: ignore[misc,valid-type]
         def __init__(self, pool_data: dict[str, Any]) -> None:
             self._data = pool_data
 
-    class WorkerStatusWidget:  # type: ignore[no-redef]
+    class WorkerStatusWidget(_WidgetBase):  # type: ignore[misc,valid-type]
         def __init__(self, worker_data: dict[str, Any]) -> None:
             self._data = worker_data

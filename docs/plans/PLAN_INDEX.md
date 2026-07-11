@@ -1,8 +1,8 @@
 # Plan Index
 
 **Date:** 2026-05-07
-**Last structural update:** 2026-05-14
-**Last priority verification:** 2026-05-14
+**Last structural update:** 2026-07-11
+**Last priority verification:** 2026-07-11
 **Purpose:** Navigation map for finding and reviewing active Mahavishnu/Bodai plans.
 
 Use this file as the first stop before reviewing plan work. Older plans remain useful as source material, but the authority matrix below defines which document owns each kind of decision.
@@ -277,6 +277,14 @@ The master backlog is retained as delivered/historical source material. New conv
 - OpenWebUI is a self-hosted web UI for LLMs; `mcpo` bridges Mahavishnu's MCP server (stdio/SSE) to Streamable HTTP for OpenWebUI consumption.
 - Use for: P9 tasks are inline in the backlog. Output doc: `docs/integrations/openwebui.md`.
 
+### Ultracode Integration Wiring
+
+- Plan: [2026-07-11-ultracode-integration-wiring.md](./2026-07-11-ultracode-integration-wiring.md)
+- Status: `draft`, `implementation`
+- Use for: hardening the boundary between Mahavishnu's control-plane primitives and ultracode's reasoning-plane primitives. Three phases: (1) diverse-refuter adversarial verification gate at the cross-repo / self-improvement proposal entry points, (2) opt-in loop-until-dry for `clone_detect_ecosystem` and `get_cross_project_patterns`, (3) MCP bridge completion — `dispatch_to_pool` MCP tool with `caller_kind`, `parent_session_id`, async-callback, and per-caller quota enforcement.
+- Feature tracking: [verification-gate](../feature-tracking/2026-07-11-verification-gate.md), [loop-until-dry](../feature-tracking/2026-07-11-loop-until-dry.md), [dispatch-to-pool](../feature-tracking/2026-07-11-dispatch-to-pool.md). Tier 2 deferred ideas: [ultracode-tier2-parking-lot](../feature-tracking/2026-07-11-ultracode-tier2-parking-lot.md).
+- Current implementation note: plan is `draft`; not yet accepted for implementation. Companion to the Bodai Routing Feedback Loop plan (Phase 4 in that plan establishes `RoutingFitnessReader`, which this plan extends with per-caller routing telemetry).
+
 ## Execution Board and Initiative Plans
 
 - Board: [2026-04-04-ecosystem-execution-board.md](./2026-04-04-ecosystem-execution-board.md)
@@ -302,6 +310,7 @@ Important reconciliation notes:
 
 - OpenWebUI P9 manual UI steps (tool registration in OpenWebUI Admin, model arena run) — no code changes
 - Bodai Agent Platform I4 optional extensions — gated on product justification document
+- Ultracode integration wiring (draft) — three phases, see [2026-07-11-ultracode-integration-wiring.md](./2026-07-11-ultracode-integration-wiring.md)
 
 **Historical priorities (open as of 2026-05-07, delivered by 2026-05-08 unless noted in the backlog):**
 

@@ -25,7 +25,7 @@ import fcntl
 import json
 import os
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, TextIO, cast
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
@@ -146,7 +146,7 @@ class UsageTracker:
     # ------------------------------------------------------------------
 
     @contextmanager
-    def _locked_file(self, mode: str) -> Iterator[tuple[int, object]]:
+    def _locked_file(self, mode: str) -> Iterator[tuple[int, TextIO]]:
         """Open the file with ``fcntl.flock(LOCK_EX)`` for the duration.
 
         Yields ``(fd, fp)`` so callers can use ``fp`` for JSON I/O. The
@@ -156,10 +156,10 @@ class UsageTracker:
         """
         self.path.parent.mkdir(parents=True, exist_ok=True)
         fd = os.open(self.path, os.O_RDWR | os.O_CREAT, 0o600)
-        fp: object | None = None
+        fp: TextIO | None = None
         try:
             fcntl.flock(fd, fcntl.LOCK_EX)
-            fp = os.fdopen(fd, mode, closefd=False)
+            fp = cast("TextIO", os.fdopen(fd, mode, closefd=False))
             yield fd, fp
         finally:
             if fp is not None:
@@ -254,7 +254,7 @@ class UsageTracker:
         with self._locked_file("r+") as (_fd, fp):
             payload = self._read_payload()
             self._prune(payload, cutoff)
-            calls = payload.get("calls", [])
+            calls: list[str] = cast("list[str]", payload.get("calls", []))
             if not isinstance(calls, list):
                 calls = []
             if len(calls) >= self.weekly_cap:

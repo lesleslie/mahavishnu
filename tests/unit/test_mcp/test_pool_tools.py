@@ -15,7 +15,6 @@ mocked dependencies. This avoids re-implementing the tools in test bodies.
 
 from __future__ import annotations
 
-import os
 from typing import Any
 from unittest.mock import AsyncMock, MagicMock, patch
 

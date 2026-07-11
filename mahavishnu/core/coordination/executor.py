@@ -277,7 +277,7 @@ class CoordinationExecutor:
             from mahavishnu.pools import PoolSelector
 
             selector = PoolSelector(pool_selector)
-            result = await self.pool_manager.route_task(  # type: ignore[union-attr]
+            result = await self.pool_manager.route_task(  # ty: ignore[unresolved-attribute]
                 task_data,
                 pool_selector=selector,
             )

@@ -144,7 +144,7 @@ class WorktreeCoordinator:
             raise ConfigurationError(f"Repository not found: {repo_nickname}")
 
         # Check dependencies
-        blocking_deps = self.coordination_manager.get_blocking_dependencies(repo_nickname)  # type: ignore[attr-defined]
+        blocking_deps = self.coordination_manager._get_blocking_dependencies(repo_nickname)
         if blocking_deps:
             logger.warning(
                 "Repo %s has %d blocking dependencies: %s",
@@ -167,7 +167,7 @@ class WorktreeCoordinator:
             self.audit_logger.log_security_rejection(
                 user_id=user_id,
                 operation="create_worktree",
-                rejection_reason=error,  # type: ignore[arg-type]
+                rejection_reason=error or "Path validation failed",
                 params={
                     "repo_nickname": repo_nickname,
                     "branch": branch,
@@ -255,7 +255,7 @@ class WorktreeCoordinator:
             self.audit_logger.log_security_rejection(
                 user_id=user_id,
                 operation="remove_worktree",
-                rejection_reason=error,  # type: ignore[arg-type]
+                rejection_reason=error or "Path validation failed",
                 params={
                     "repo_nickname": repo_nickname,
                     "worktree_path": worktree_path,
@@ -405,7 +405,7 @@ class WorktreeCoordinator:
             else:
                 # Aggregate across all repos
                 all_worktrees = []
-                repos = self.repo_manager.list_repos()  # type: ignore[attr-defined]
+                repos = self.repo_manager.filter()
 
                 for repo in repos:
                     try:
@@ -530,7 +530,7 @@ class WorktreeCoordinator:
         Args:
             interval: Check interval in seconds
         """
-        await self.provider_registry.start_health_check_loop(interval=interval)  # type: ignore[attr-defined]
+        await self.provider_registry.health_check_loop(interval_seconds=interval)
 
     # ========================================================================
     # Safety check methods

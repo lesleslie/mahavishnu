@@ -75,17 +75,13 @@ def _cyclomatic_complexity(node: ast.AST) -> int:
     return complexity
 
 
-def _extract_function(
-    node: ast.FunctionDef | ast.AsyncFunctionDef, result: dict[str, Any]
-) -> None:
+def _extract_function(node: ast.FunctionDef | ast.AsyncFunctionDef, result: dict[str, Any]) -> None:
     """Extract one function definition into ``result`` and flag high complexity."""
     func_info = {
         "name": node.name,
         "line": node.lineno,
         "args": [arg.arg for arg in node.args.args],
-        "decorators": [
-            d.id if isinstance(d, ast.Name) else str(d) for d in node.decorator_list
-        ],
+        "decorators": [d.id if isinstance(d, ast.Name) else str(d) for d in node.decorator_list],
         "is_async": isinstance(node, ast.AsyncFunctionDef),
         "docstring": ast.get_docstring(node) or "",
     }
@@ -99,8 +95,7 @@ def _extract_function(
                 "type": "high_complexity",
                 "location": f"{node.name}:{node.lineno}",
                 "message": (
-                    f"Function '{node.name}' has high cyclomatic "
-                    f"complexity ({complexity})"
+                    f"Function '{node.name}' has high cyclomatic complexity ({complexity})"
                 ),
                 "severity": "warning",
             }
@@ -115,24 +110,20 @@ def _extract_class(node: ast.ClassDef, result: dict[str, Any]) -> None:
     class_info = {
         "name": node.name,
         "line": node.lineno,
-        "bases": [
-            base.id if isinstance(base, ast.Name) else str(base) for base in node.bases
-        ],
+        "bases": [base.id if isinstance(base, ast.Name) else str(base) for base in node.bases],
         "methods": [],
         "docstring": ast.get_docstring(node) or "",
     }
 
     for item in node.body:
         if isinstance(item, ast.FunctionDef | ast.AsyncFunctionDef):
-            class_info["methods"].append(item.name)  # type: ignore[attr-defined]
+            class_info["methods"].append(item.name)
 
     result["classes"].append(class_info)
     result["complexity"]["classes"] += 1
 
 
-def _record_syntax_error(
-    file_path: Path, error: SyntaxError, result: dict[str, Any]
-) -> None:
+def _record_syntax_error(file_path: Path, error: SyntaxError, result: dict[str, Any]) -> None:
     """Append a SyntaxError issue to ``result``."""
     result["issues"].append(
         {
@@ -144,9 +135,7 @@ def _record_syntax_error(
     )
 
 
-def _record_parse_error(
-    file_path: Path, error: Exception, result: dict[str, Any]
-) -> None:
+def _record_parse_error(file_path: Path, error: Exception, result: dict[str, Any]) -> None:
     """Append a generic parse-error issue to ``result``."""
     result["issues"].append(
         {

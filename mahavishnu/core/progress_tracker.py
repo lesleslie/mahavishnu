@@ -207,7 +207,7 @@ class ProgressBar:
         Returns:
             Rendered progress bar string
         """
-        percentage = 100 if self.total == 0 else min(100, completed / self.total * 100)  # type: ignore[arg-type]
+        percentage = 100 if self.total == 0 else min(100, completed / self.total * 100)
 
         filled_width = int(self.width * percentage / 100)
         empty_width = self.width - filled_width

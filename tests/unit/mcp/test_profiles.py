@@ -15,8 +15,8 @@ from __future__ import annotations
 import os
 from unittest.mock import patch
 
-import pytest
 from mcp_common.tools import ToolProfile
+import pytest
 
 from mahavishnu.mcp.tools.profiles import (
     FULL_REGISTRATIONS,

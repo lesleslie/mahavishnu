@@ -419,7 +419,7 @@ class AdapterDiscoveryEngine:
             except TypeError:
                 # Python 3.9 style (returns SelectableGroups)
                 all_eps = metadata.entry_points()
-                eps = all_eps.select(group=ENTRY_POINT_GROUP)  # type: ignore[union-attr]
+                eps = all_eps.select(group=ENTRY_POINT_GROUP)
 
             for ep in eps:
                 try:

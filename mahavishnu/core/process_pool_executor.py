@@ -17,7 +17,7 @@ from concurrent.futures import ProcessPoolExecutor, ThreadPoolExecutor
 from functools import partial
 import logging
 import multiprocessing
-from typing import Any, TypeVar
+from typing import Any, TypeVar, cast
 
 logger = logging.getLogger(__name__)
 
@@ -97,7 +97,7 @@ class ProcessPoolTaskExecutor:
                 "Falling back to ThreadPoolExecutor for process pool startup: %s",
                 exc,
             )
-            self._executor = ThreadPoolExecutor(max_workers=self._max_workers)  # type: ignore[assignment]
+            self._executor = ThreadPoolExecutor(max_workers=self._max_workers)  # ty: ignore[invalid-assignment]
 
         # Defer event-loop capture until submit() runs inside an active loop.
         self._loop = None
@@ -169,7 +169,7 @@ class ProcessPoolTaskExecutor:
             return result
 
         except Exception as e:
-            logger.error(f"Task execution failed: {func.__name__}: {e}")
+            logger.error(f"Task execution failed: {cast('Any', func).__name__}: {e}")
             raise
 
     def get_stats(self) -> dict[str, Any]:

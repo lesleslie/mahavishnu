@@ -35,6 +35,7 @@ from mahavishnu.core.cross_repo_dependency import (
     CrossRepoDependencyLinker,
     DependencyStatus,
     DependencyType,
+    TaskStatus,
 )
 
 logger = logging.getLogger(__name__)
@@ -343,7 +344,7 @@ class CrossRepoBlockerTracker:
         # Update dependency statuses through the linker
         updated = self.dependency_linker.update_all_statuses(
             {
-                blocker_task_id: DependencyStatus.SATISFIED,  # type: ignore[dict-item]
+                blocker_task_id: TaskStatus.COMPLETED,
             }
         )
 
@@ -358,7 +359,7 @@ class CrossRepoBlockerTracker:
             keys_to_remove = [
                 k
                 for k in self._chain_cache
-                if blocker_task_id in self._chain_cache[k].chain_path  # type: ignore[attr-defined]
+                if blocker_task_id in self._chain_cache[k].chain_path  # ty: ignore[unresolved-attribute]
             ]
             for key in keys_to_remove:
                 del self._chain_cache[key]

@@ -47,6 +47,16 @@
       "type": "http",
       "url": "http://localhost:3033/mcp"
     },
+    "minimax-coding-plan": {
+      "args": [
+        "minimax-coding-plan-mcp",
+        "-y"
+      ],
+      "command": "uvx",
+      "env": {
+        "MINIMAX_API_HOST": "https://api.minimax.io"
+      }
+    },
     "neo4j": {
       "type": "http",
       "url": "http://localhost:3045/mcp"
