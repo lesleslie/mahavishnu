@@ -263,13 +263,28 @@ class TestPoolExecute:
     async def test_returns_manager_result(
         self, registered_mcp: _StubMCP, mock_pool_manager: AsyncMock
     ) -> None:
+        from mahavishnu.pools.manager import CallerKind
+
         fn = registered_mcp.tools["pool_execute"]
         result = await fn(pool_id="pool_1", prompt="Write tests", timeout=300)
         assert result == {"status": "completed", "output": "test output"}
         mock_pool_manager.execute_on_pool.assert_awaited_once()
         _pool_id, task = mock_pool_manager.execute_on_pool.call_args.args
         assert _pool_id == "pool_1"
-        assert task == {"prompt": "Write tests", "timeout": 300}
+        # pool_execute enriches the task with caller_kind + parent_session_id
+        # so downstream code reading the task can see who dispatched it. The
+        # baseline prompt/timeout must still be present.
+        assert task["prompt"] == "Write tests"
+        assert task["timeout"] == 300
+        assert task["caller_kind"] == "unknown"  # default coerced to UNKNOWN
+        assert task["parent_session_id"] is None
+        # The kwarg path also forwarded caller_kind so the manager can
+        # enforce quota (Phase 3 security fix: pool_execute gates the same
+        # as pool_route_execute).
+        assert (
+            mock_pool_manager.execute_on_pool.call_args.kwargs["caller_kind"]
+            == CallerKind.UNKNOWN
+        )
 
     async def test_uses_default_timeout(
         self, registered_mcp: _StubMCP, mock_pool_manager: AsyncMock

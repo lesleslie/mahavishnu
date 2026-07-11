@@ -278,6 +278,8 @@ def register_pool_tools(  # noqa: C901
         pool_id: str,
         prompt: str,
         timeout: int = 300,
+        caller_kind: str = "unknown",
+        parent_session_id: str | None = None,
     ) -> dict[str, Any]:
         """Execute a task on a specific Mahavishnu pool by ID.
 
@@ -293,15 +295,26 @@ def register_pool_tools(  # noqa: C901
         picks the best pool automatically. Use ``pool_execute`` only when you
         have a specific reason to bypass auto-routing.
 
+        Like ``pool_route_execute``, this tool enforces the per-``caller_kind``
+        fixed-window quota (60 req / 60s by default). The caller MUST
+        declare ``caller_kind`` so the rate limit is attributed correctly;
+        unrecognized values are normalized to ``CallerKind.UNKNOWN`` via
+        ``coerce_caller_kind``.
+
         Use ``pool_list`` to discover available pool IDs.
 
         Args:
             pool_id: The pool to dispatch to (from ``pool_list``).
             prompt: Clear task description.
             timeout: Max seconds to wait. Default 300.
+            caller_kind: Identity of the caller for observability/quota
+                enforcement. Default ``unknown``; resolved via
+                ``coerce_caller_kind`` before reaching the manager.
+            parent_session_id: Optional session ID for cross-system
+                correlation. Forwarded to ``execute_on_pool``.
 
         Returns:
-            Execution result, or error dict on failure.
+            Execution result, rate-limit dict, or error dict.
 
         Example:
             ```
@@ -309,17 +322,39 @@ def register_pool_tools(  # noqa: C901
                 pool_id="runpod-gpu-pool",
                 prompt="Run inference on the embeddings model for this batch.",
                 timeout=600,
+                caller_kind="ultracode",
+                parent_session_id="ses_abc123",
             )
             ```
         """
+        from mahavishnu.core.errors import RateLimitError
+        from mahavishnu.pools.manager import coerce_caller_kind
+
+        coerced_kind = coerce_caller_kind(caller_kind)
         task = {
             "prompt": prompt,
             "timeout": timeout,
+            "parent_session_id": parent_session_id,
+            "caller_kind": coerced_kind.value,
         }
 
         try:
-            result = await pool_manager.execute_on_pool(pool_id, task)
+            result = await pool_manager.execute_on_pool(
+                pool_id,
+                task,
+                caller_kind=coerced_kind,
+                parent_session_id=parent_session_id,
+            )
             return result  # type: ignore[no-any-return]
+        except RateLimitError as exc:
+            logger.exception("pool_execute rate-limited")
+            return {
+                "pool_id": pool_id,
+                "status": "rate_limited",
+                "caller_kind": coerced_kind.value,
+                "retry_after_seconds": exc.details.get("retry_after_seconds"),
+                "error": str(exc),
+            }
         except Exception as e:
             logger.error(f"Failed to execute task: {e}")
             return {
@@ -465,7 +500,7 @@ def register_pool_tools(  # noqa: C901
     async def dispatch_to_pool(
         prompt: str,
         pool_selector: str = "least_loaded",
-        caller_kind: str = "ultracode",
+        caller_kind: str = "unknown",
         parent_session_id: str | None = None,
         timeout: int = 300,
         async_callback: bool = False,

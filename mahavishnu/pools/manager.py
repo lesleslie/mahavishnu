@@ -474,12 +474,19 @@ class PoolManager:
         self,
         pool_id: str,
         task: dict[str, Any],
+        *,
+        caller_kind: CallerKind | str = CallerKind.UNKNOWN,
+        parent_session_id: str | None = None,
     ) -> dict[str, Any]:
         """Execute task on specific pool.
 
         Args:
             pool_id: Target pool ID
             task: Task specification
+            caller_kind: Caller identity for quota attribution. Coerced via
+                :func:`coerce_caller_kind` so any unrecognized string maps
+                to ``CallerKind.UNKNOWN`` (quota-bypass fix).
+            parent_session_id: Optional session ID for cross-system correlation.
 
         Returns:
             Execution result
@@ -495,6 +502,13 @@ class PoolManager:
             )
             ```
         """
+        # Quota enforcement is the first gate — same rule as route_task
+        # so a caller cannot bypass it by switching from pool_route_execute
+        # to pool_execute. Coercion happens here so any wire-string input
+        # lands in the canonical bucket before _enforce_caller_quota runs.
+        caller_kind = coerce_caller_kind(caller_kind)
+        self._enforce_caller_quota(caller_kind)
+
         pool = self._pools.get(pool_id)
         if not pool:
             raise ValueError(f"Pool not found: {pool_id}")
