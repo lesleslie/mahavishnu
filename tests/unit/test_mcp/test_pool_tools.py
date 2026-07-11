@@ -1,9 +1,10 @@
 """Unit tests for mahavishnu.mcp.tools.pool_tools.
 
-The module exposes ``register_pool_tools`` which attaches 10 FastMCP tools
-(``pool_spawn``, ``pool_execute``, ``pool_route_execute``, ``pool_list``,
-``pool_monitor``, ``pool_scale``, ``pool_close``, ``pool_close_all``,
-``pool_health``, ``pool_search_memory``) plus the module-level
+The module exposes ``register_pool_tools`` which attaches 11 FastMCP tools
+(``pool_spawn``, ``pool_execute``, ``pool_route_execute``,
+``dispatch_to_pool``, ``pool_list``, ``pool_monitor``, ``pool_scale``,
+``pool_close``, ``pool_close_all``, ``pool_health``,
+``pool_search_memory``) plus the module-level
 ``_resolve_peer_affinity_allowlist_from_env`` helper.
 
 The FastMCP API requires each tool function to be defined inline so the
@@ -103,6 +104,7 @@ EXPECTED_TOOL_NAMES = {
     "pool_spawn",
     "pool_execute",
     "pool_route_execute",
+    "dispatch_to_pool",
     "pool_list",
     "pool_monitor",
     "pool_scale",
@@ -121,7 +123,7 @@ EXPECTED_TOOL_NAMES = {
 class TestRegistration:
     """register_pool_tools attaches every documented tool to the FastMCP."""
 
-    def test_all_ten_tools_registered(self, registered_mcp: _StubMCP) -> None:
+    def test_all_eleven_tools_registered(self, registered_mcp: _StubMCP) -> None:
         assert EXPECTED_TOOL_NAMES.issubset(set(registered_mcp.tools))
 
     def test_registers_exactly_expected_tools(self, registered_mcp: _StubMCP) -> None:

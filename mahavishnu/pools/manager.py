@@ -1,5 +1,7 @@
 """Multi-pool orchestration and management."""
 
+from __future__ import annotations
+
 import asyncio
 from dataclasses import dataclass
 from datetime import UTC, datetime
@@ -584,6 +586,16 @@ class PoolManager:
             raise RuntimeError("No pools available for routing")
 
         caller_kind = coerce_caller_kind(caller_kind)
+
+        # Phase 3 Task 3.2: per-caller_kind fixed-window quota. This
+        # is the FIRST gate inside route_task — it must run before any
+        # routing work so a saturated bucket short-circuits cheaply
+        # rather than spending cycles on pool selection only to
+        # reject the call later. ``RateLimitError`` propagates
+        # through the MCP boundary as
+        # ``{"status": "rate_limited", "retry_after_seconds": ...}``.
+        self._enforce_caller_quota(caller_kind)
+
         logger.debug(
             "route_task: caller_kind=%s parent_session_id=%s",
             caller_kind,
@@ -629,9 +641,9 @@ class PoolManager:
 
     async def _apply_fitness_aware_routing(
         self,
-        selector: "PoolSelector",
+        selector: PoolSelector,
         task_class: str,
-    ) -> "PoolSelector":
+    ) -> PoolSelector:
         """Phase 4: override selector from Dhara fitness signals when available."""
         if not task_class:
             return selector
@@ -861,8 +873,6 @@ class PoolManager:
                 state.max_per_window,
                 retry_after,
             )
-            from ..core.errors import RateLimitError
-
             raise RateLimitError(
                 limit=f"caller_kind={caller_kind.value}",
                 retry_after=retry_after,
