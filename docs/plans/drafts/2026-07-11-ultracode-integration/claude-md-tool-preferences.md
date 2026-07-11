@@ -82,3 +82,15 @@ This policy harmonizes with the `mahavishnu-orchestrator` subagent's "fail-loud,
 ### Cost and latency note
 
 Mahavishnu adds ~200-500ms of pool routing overhead vs. local `Bash`. For trivial operations this is wasted time; reserve Mahavishnu for tasks where the overhead is amortized across meaningful work.
+
+### Worker activity visibility
+
+When you dispatch a task to a Mahavishnu worker, the run continues out-of-band — you do not see it inline. Use these surfaces to observe activity while the run is in progress, instead of waiting blindly for the result.
+
+Three external surfaces:
+
+- `/vishnu-status` slash command — prints the pool list, per-pool health, and recent metrics.
+- MCP log file at `~/.mahavishnu/logs/mcp.log` — tail it for structured events from every worker call.
+- WebSocket subscriber on port `8690` — channels `workflow:{workflow_id}`, `pool:{pool_id}`, `worker:{worker_id}`, and `global` (see [WebSocket Real-Time Architecture](#websocket-real-time-architecture) for the broadcast methods).
+
+For inline visibility from inside this Claude session, the `.claude/hooks/mahavishnu-activity-stream.py` hook (added by T5.4) surfaces a compact stream of worker events directly in the conversation so you can correlate them with the work you dispatched.

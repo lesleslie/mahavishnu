@@ -16,5 +16,38 @@
       "Read(./.claude/commands/**/*.backup)",
       "Read(./.claude/commands/**/*.backup.json)"
     ]
-  }
+  },
+  "SessionStart": [
+    {
+      "matcher": "startup",
+      "hooks": [
+        {
+          "type": "command",
+          "command": "python3 .claude/hooks/mahavishnu-activity-stream.py session-start"
+        }
+      ]
+    }
+  ],
+  "PostToolUse": [
+    {
+      "matcher": "mcp__mahavishnu__*",
+      "hooks": [
+        {
+          "type": "command",
+          "command": "python3 .claude/hooks/mahavishnu-activity-stream.py post-tool-use"
+        }
+      ]
+    }
+  ],
+  "SessionEnd": [
+    {
+      "matcher": "end",
+      "hooks": [
+        {
+          "type": "command",
+          "command": "python3 .claude/hooks/mahavishnu-activity-stream.py session-end"
+        }
+      ]
+    }
+  ]
 }
