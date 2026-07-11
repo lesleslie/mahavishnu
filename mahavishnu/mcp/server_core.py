@@ -330,7 +330,52 @@ class FastMCPServer:
             timeout: int | None = None,
             user_id: str | None = None,
         ) -> dict[str, Any]:
-            """Trigger workflow execution."""
+            """Trigger a durable workflow execution through a named adapter
+            (prefect, llamaindex, agno). Use for multi-step orchestrations that
+            span repos or need durable state across hours or days.
+
+            Workflows run as durable Prefect flows, Agno agent loops, or
+            LlamaIndex RAG pipelines depending on `adapter`.
+
+            For ad-hoc single-task dispatch, prefer `pool_route_execute` instead —
+            it's lighter weight and goes through the pool manager. Use
+            `trigger_workflow` when you need durable orchestration, scheduled
+            execution, or cross-adapter composition.
+
+            **Adapter selection:**
+            - `prefect` — durable flows with retries, scheduling, observability
+              (best for production workflows)
+            - `llamaindex` — RAG pipelines, document ingestion, semantic search
+            - `agno` — agent loops, multi-step reasoning, tool use
+
+            Returns a `workflow_id` immediately (C-NEW-5: fire-and-forget).
+            Poll `get_workflow_status(workflow_id=...)` for results.
+
+            Args:
+                adapter: One of `prefect`, `llamaindex`, `agno`.
+                task_type: Workflow task type (e.g., `code_review`, `ingest`,
+                    `deploy`). Adapter-specific.
+                params: Optional workflow parameters.
+                tag: Optional tag to filter target repos (from `repos.yaml`).
+                repos: Optional list of repo paths to scope the workflow to.
+                timeout: Optional max seconds for the workflow to run.
+                user_id: Optional user ID for quota / attribution.
+
+            Returns:
+                `{"workflow_id": "...", "status": "queued", "adapter": "..."}`.
+                The workflow runs asynchronously; poll for completion.
+
+            Example:
+                ```
+                result = await trigger_workflow(
+                    adapter="prefect",
+                    task_type="code_review",
+                    repos=["/path/to/mahavishnu", "/path/to/akosha"],
+                    params={"scope": "security"},
+                )
+                workflow_id = result["workflow_id"]
+                ```
+            """
             if params is None:
                 params = {}
             try:
