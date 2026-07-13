@@ -137,8 +137,78 @@ def get_websocket_server(
                 cert_file=cert_file,
                 key_file=key_file,
             )
+            _wire_eventbridge_publisher(_websocket_server)
 
     return _websocket_server
+
+
+def _wire_eventbridge_publisher(server: MahavishnuWebSocketServer) -> None:
+    """Construct an EventBridgePublisher (when opted in) and inject it.
+
+    Called by ``get_websocket_server`` after the singleton is created.
+    Production callers can supply a bridge via the
+    ``MAHAVISHNU_EVENTBRIDGE_BRIDGE`` env var or by setting the
+    ``eventbridge.endpoint`` field. When neither is provided the
+    resolver returns None and the existing publisher (if any) is
+    cleared so a previously-wired bridge stops emitting.
+
+    Failure modes are caught and logged at WARNING -- wiring must
+    never fail WebSocketServer construction.
+    """
+    import logging
+
+    logger = logging.getLogger(__name__)
+    try:
+        from mahavishnu.core.config import MahavishnuSettings
+        from mahavishnu.core.events.eventbridge_resolver import (
+            resolve_event_publisher,
+        )
+
+        settings = MahavishnuSettings()
+        bridge = _resolve_bridge_from_env(settings)
+        publisher = resolve_event_publisher(
+            settings, server=server, bridge=bridge
+        )
+        if publisher is not None:
+            logger.info(
+                "EventBridge publisher wired (endpoint=%s)",
+                settings.eventbridge.endpoint or "default",
+            )
+        else:
+            logger.debug(
+                "EventBridge publisher not wired (opt-out or runtime unavailable)"
+            )
+    except Exception as exc:  # noqa: BLE001 -- opt-in path, never fail server start
+        logger.warning(
+            "EventBridge wiring failed (%s); continuing without publisher",
+            exc,
+        )
+
+
+def _resolve_bridge_from_env(settings: Any) -> Any | None:
+    """Optional bridge resolver hook.
+
+    Operators can wire a Oneiric EventBridge by setting
+    ``MAHAVISHNU_EVENTBRIDGE_BRIDGE`` to a fully-qualified factory
+    callable. This function reads that env var (if any) and invokes
+    the factory. Returns None when no factory is configured.
+
+    The actual Oneiric runtime initialization is deferred -- this is
+    the seam where production code will pass a real ``EventBridge``.
+    """
+    import os
+
+    factory_path = os.getenv("MAHAVISHNU_EVENTBRIDGE_BRIDGE")
+    if not factory_path:
+        return None
+    try:
+        module_name, attr = factory_path.rsplit(".", 1)
+        import importlib
+
+        factory = getattr(importlib.import_module(module_name), attr)
+        return factory(settings)
+    except Exception:  # noqa: BLE001 -- opt-in path
+        return None
 
 
 def get_terminal_manager(
