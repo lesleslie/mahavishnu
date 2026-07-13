@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Migrate all remaining MCPBaseSettings/MCPServerSettings usages across the mycelium-core MCP server family to OneiricMCPConfig, completing the cross-ecosystem deprecation migration started in the 2026-07-13 Bodai session.
+**Goal:** Migrate all remaining MCPBaseSettings/MCPServerSettings usages across the standalone Bodai MCP servers (css-mcp, graphics-mcp, splashstand, etc.) to OneiricMCPConfig, completing the cross-ecosystem deprecation migration started in the 2026-07-13 Bodai session.
 
 **Architecture:** Per-repo `class <Name>Settings(OneiricMCPConfig)` swap + (where applicable) `.load()` classmethod rewrite using `oneiric.core.config.load_settings` plus a flat-YAML merge to preserve MCPBaseSettings's flat-key schema compatibility.
 
@@ -159,7 +159,7 @@ done
 ## Out of scope
 
 - **`mcp-common` package itself.** It emits the deprecation by intent ("silencing is left to the consumer"). Editing it would change the contract — separate, larger plan.
-- **The mycelium-core plugin / agent definitions** beyond the MCP servers themselves. If mycelium-core has its own MCPBaseSettings usages, those are a separate scope.
+- **The mycelium-core plugin / agent definitions.** Those have their own MCPBaseSettings usages and are managed separately from these standalone Bodai MCP servers.
 
 ## Estimated effort
 
