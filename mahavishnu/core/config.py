@@ -1376,6 +1376,44 @@ class GoalTeamsLimitsConfig(BaseModel):
     model_config = {"extra": "forbid"}
 
 
+class EventBridgeConfig(BaseModel):
+    """Operator toggle for the Oneiric EventBridge publisher.
+
+    The publisher module (``mahavishnu.core.events.mahavishnu_publisher``)
+    accepts an injected ``publisher``. This settings class controls
+    whether a publisher is constructed at app startup and wired into
+    the WebSocketServer's ``_event_publisher`` slot.
+
+    Mirrors ``akosha.config.EventBridgeConfig`` and
+    ``crackerjack.config.EventBridgeSettings``. Defaults are conservative
+    (enabled=False, dry_run=True) so existing installs see no behavior
+    change until operators opt in.
+
+    Production wiring is opt-in: the publisher is constructed only when
+    ``enabled=True``. With ``dry_run=True``, the envelope is logged but
+    not transmitted; set ``dry_run=False`` to actually emit events.
+    """
+
+    enabled: bool = Field(
+        default=False,
+        description="Master toggle for the Mahavishnu-side EventBridge publisher.",
+    )
+    endpoint: str = Field(
+        default="",
+        description=(
+            "Optional: external EventBridge ingestion URL. Empty means use "
+            "the in-process Oneiric EventBridge default transport."
+        ),
+    )
+    dry_run: bool = Field(
+        default=True,
+        description=(
+            "When True, envelopes are logged but not transmitted. Operators "
+            "must explicitly set dry_run=False to actually emit events."
+        ),
+    )
+
+
 class GoalTeamsFeatureFlags(BaseModel):
     """Feature flags for Goal-Driven Teams.
 
@@ -1419,6 +1457,14 @@ class GoalTeamsFeatureFlags(BaseModel):
     websocket_broadcasts_enabled: bool = Field(
         default=True,
         description="Enable WebSocket broadcasts for team events",
+    )
+    eventbridge: EventBridgeConfig = Field(
+        default_factory=EventBridgeConfig,
+        description=(
+            "Oneiric EventBridge publisher settings. When enabled=True "
+            "and dry_run=False, an EventBridgePublisher is constructed "
+            "at app startup and wired into the workflow broadcast path."
+        ),
     )
     prometheus_metrics_enabled: bool = Field(
         default=True,
@@ -1890,6 +1936,14 @@ class MahavishnuSettings(BaseSettings):
     log_level: str = Field(
         default="INFO",
         description="Logging level (DEBUG, INFO, WARNING, ERROR, CRITICAL)",
+    )
+    eventbridge: EventBridgeConfig = Field(
+        default_factory=EventBridgeConfig,
+        description=(
+            "Oneiric EventBridge publisher settings. When enabled=True "
+            "and dry_run=False, an EventBridgePublisher is constructed "
+            "at app startup and wired into the workflow broadcast path."
+        ),
     )
 
     # Repository configuration
