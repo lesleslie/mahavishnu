@@ -79,11 +79,11 @@ Convergence Plan §4 ownership rules.
 
 | Component | Port | Raw surface | Phase 6 verdict |
 |---|---|---|---|
-| **Mahavishnu** | 8680 | `ws://localhost:8690` — workflow/pool/worker/global channels | Already covered by Phase 5's `mahavishnu-activity-stream.py` (transition state). Replaced by Bodai subscriber in Phase 6. |
-| **Akosha** | 8682 | `akosha/websocket/server.py:431` — metrics channel | **Needs EventBridge handler.** Phase 6 publishes Akosha events through EventBridge. |
-| **Crackerjack** | 8676 | `crackerjack/websocket/server.py:266-281` — test_started/completed | **Needs EventBridge handler.** Phase 6 publishes Crackerjack events through EventBridge. |
-| **Dhara** | 8683 | REST/pull-only (no WebSocket) | **Intentional per Convergence Plan §4 — do not duplicate.** Query via REST when needed. |
-| **Session-Buddy** | 8678 | Slack/Signal/terminal events via `event_models.py` | **Intentional per Convergence Plan §4 — no general surface exists.** Use the channel-event MCP tools for queries. |
+| **Mahavishnu** | 8680 | `ws://localhost:8690` — workflow/pool/worker/global channels | Phase 6A subscriber + 6.2c publisher shipped (commit b7072f6 + Phase 6 close). |
+| **Akosha** | 8682 | `akosha/websocket/server.py:431` — metrics channel | Phase 6B slash command reads queue; publisher is cross-repo work (6.2a, not started). |
+| **Crackerjack** | 8676 | `crackerjack/websocket/server.py:266-281` — test_started/completed | Phase 6B slash command reads queue; publisher is cross-repo work (6.2b, not started). |
+| **Dhara** | 8683 | REST/pull-only (no WebSocket) | Intentional per Convergence Plan §4 — do not duplicate. (unchanged) |
+| **Session-Buddy** | 8678 | Slack/Signal/terminal events via `event_models.py` | Intentional per Convergence Plan §4 — no general surface exists. (unchanged) |
 
 **Pre-Phase 6 transition state (today):** Claude Code subscribes to
 Mahavishnu's WebSocket directly. This is acceptable because

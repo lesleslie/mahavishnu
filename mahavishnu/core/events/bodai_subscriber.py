@@ -341,6 +341,12 @@ async def subscribe_to_bodai_events(
             backoff = DEFAULT_RECONNECT_BACKOFF_SECONDS
 
             if not response:
+                # Yield to the event loop so cancellation_token and other tasks
+                # can progress when the transport returns immediately (mock or
+                # idle stream). The Redis BLOCK timeout provides the natural
+                # yield in production; this explicit sleep covers the
+                # always-empty-response case (tests, idle streams).
+                await asyncio.sleep(0)
                 continue
 
             for _stream_key, entries in response:

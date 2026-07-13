@@ -550,6 +550,10 @@ class MahavishnuWebSocketServer(WebSocketServer):
             room=f"workflow:{workflow_id}",
         )
         await self.broadcast_to_room(f"workflow:{workflow_id}", event)
+        # Also publish to the Bodai EventBridge queue (Phase 6.2c) so
+        # /bodai-status and the PostToolUse hook see workflow lifecycle
+        # events. No-op when no publisher is wired.
+        await self._publish_workflow_started_via_eventbridge(workflow_id, metadata)
 
     async def broadcast_workflow_stage_completed(
         self, workflow_id: str, stage_name: str, result: dict
@@ -590,6 +594,8 @@ class MahavishnuWebSocketServer(WebSocketServer):
             room=f"workflow:{workflow_id}",
         )
         await self.broadcast_to_room(f"workflow:{workflow_id}", event)
+        # Also publish to the Bodai EventBridge queue (Phase 6.2c).
+        await self._publish_workflow_completed_via_eventbridge(workflow_id, final_result)
 
     async def broadcast_workflow_failed(self, workflow_id: str, error: str) -> None:
         """Broadcast workflow failed event.
@@ -608,6 +614,62 @@ class MahavishnuWebSocketServer(WebSocketServer):
             room=f"workflow:{workflow_id}",
         )
         await self.broadcast_to_room(f"workflow:{workflow_id}", event)
+        # Also publish to the Bodai EventBridge queue (Phase 6.2c).
+        await self._publish_workflow_failed_via_eventbridge(workflow_id, error)
+
+    # ------------------------------------------------------------------
+    # Bodai EventBridge wiring (Phase 6.2c). Kept as helpers so the
+    # broadcast methods above stay readable. Each helper is a no-op when
+    # no ``_event_publisher`` is wired; the publish functions themselves
+    # swallow exceptions so a misbehaving transport never aborts the
+    # WebSocket broadcast path.
+    # ------------------------------------------------------------------
+
+    def _get_eventbridge_publisher(self) -> Any:
+        """Return the configured EventBridge publisher, or ``None``.
+
+        The publisher is intentionally optional; the WebSocket broadcast
+        path remains the source of truth for non-Claude consumers.
+        """
+        return getattr(self, "_event_publisher", None)
+
+    async def _publish_workflow_started_via_eventbridge(
+        self, workflow_id: str, metadata: dict[str, Any]
+    ) -> None:
+        from ..core.events.mahavishnu_publisher import publish_workflow_started
+
+        publisher = self._get_eventbridge_publisher()
+        if publisher is None:
+            return
+        await publish_workflow_started(workflow_id, metadata, publisher=publisher)
+
+    async def _publish_workflow_completed_via_eventbridge(
+        self, workflow_id: str, result: dict[str, Any]
+    ) -> None:
+        from ..core.events.mahavishnu_publisher import publish_workflow_completed
+
+        publisher = self._get_eventbridge_publisher()
+        if publisher is None:
+            return
+        await publish_workflow_completed(workflow_id, result, publisher=publisher)
+
+    async def _publish_workflow_failed_via_eventbridge(
+        self, workflow_id: str, error: str
+    ) -> None:
+        from ..core.events.mahavishnu_publisher import publish_workflow_failed
+
+        publisher = self._get_eventbridge_publisher()
+        if publisher is None:
+            return
+        await publish_workflow_failed(workflow_id, error, publisher=publisher)
+
+    def set_eventbridge_publisher(self, publisher: Any) -> None:
+        """Wire (or replace) the Bodai EventBridge publisher used by this server.
+
+        ``None`` clears the wiring. The WebSocket broadcast path is
+        unchanged regardless of whether a publisher is configured.
+        """
+        self._event_publisher = publisher
 
     async def broadcast_worker_status_changed(
         self, worker_id: str, status: str, pool_id: str

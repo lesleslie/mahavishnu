@@ -23,18 +23,18 @@
       "hooks": [
         {
           "type": "command",
-          "command": "python3 .claude/hooks/mahavishnu-activity-stream.py session-start"
+          "command": "python3 .claude/hooks/bodai-activity-subscriber.py session-start"
         }
       ]
     }
   ],
   "PostToolUse": [
     {
-      "matcher": "mcp__mahavishnu__*",
+      "matcher": "mcp__*",
       "hooks": [
         {
           "type": "command",
-          "command": "python3 .claude/hooks/mahavishnu-activity-stream.py post-tool-use"
+          "command": "python3 .claude/hooks/bodai-activity-post-tool-use.py"
         }
       ]
     }
@@ -45,7 +45,7 @@
       "hooks": [
         {
           "type": "command",
-          "command": "python3 .claude/hooks/mahavishnu-activity-stream.py session-end"
+          "command": "python3 .claude/hooks/bodai-activity-subscriber.py session-end"
         }
       ]
     }

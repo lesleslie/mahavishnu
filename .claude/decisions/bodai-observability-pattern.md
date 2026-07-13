@@ -33,8 +33,14 @@ The Claude Code observability surface for Bodai reads from
 **Oneiric EventBridge** exclusively. Specifically:
 
 1. Components publish activity events to EventBridge using the
-   canonical envelope (TBD in Convergence Plan C2; Phase 6 adopts
-   whatever shape lands there).
+   canonical envelope from Oneiric `EventEnvelope`
+   (`oneiric.runtime.events.EventEnvelope`):
+   - `topic: str` — event type (e.g., `workflow.completed`,
+     `aggregation.completed`, `test_run.completed`)
+   - `payload: dict[str, Any]` — domain-specific event body
+   - `headers: dict[str, Any]` — carries `source` (component name),
+     `event_id` (ULID), `version` (semver), `timestamp` (ISO-8601),
+     and optional `correlation_id` / `causation_id` for causal tracing
 2. A single subscriber — the Bodai activity subscriber — reads from
    EventBridge and surfaces events to Claude Code via the
    `.claude/hooks/` PostToolUse pattern.
@@ -103,12 +109,32 @@ activity to Claude Code:
 3. **Do not add a per-component subscriber in `.claude/hooks/`.**
    The single Bodai activity subscriber is the consumer.
 
+### Concrete envelope examples (from `format_bodai_summary`)
+
+The Mahavishnu-side subscriber (`mahavishnu.core.events.bodai_subscriber`)
+produces one-line summaries of the canonical envelope. Operators see
+these inline after a tool invocation; the same format is what
+`mahavishnu metrics bodai` aggregates.
+
+```
+[mahavishnu] workflow.completed workflow_id=wid_abc
+[akosha] aggregation.completed suite=quality
+[crackerjack] test_run.completed passed=42 failed=0
+```
+
+Each line is built from `headers["source"]` (the component prefix),
+`envelope.topic` (the event type), and `key=value` pairs sorted out
+of `envelope.payload`. Missing fields fall back to `[unknown]
+unknown` so a malformed envelope never aborts the consumer loop.
+
 ## Status
 
-Active. Phase 6 of the ultracode integration wiring plan is the
-implementation of this pattern. It is blocked on Convergence Plan
-C2's activity-event handler landing in EventBridge. Until then,
-Phase 5's Mahavishnu-only hook is the operational fallback.
+In progress (Mahavishnu side complete). Phase 6A landed the
+Mahavishnu-side subscriber at `mahavishnu/core/events/bodai_subscriber.py`
+and Phase 6 close shipped the `mahavishnu metrics bodai` CLI. Akosha
+and Crackerjack publisher work (Phase 6.2a / 6.2b) is cross-repo and
+not started. Phase 5's Mahavishnu-only hook remains as the
+operational fallback until all three publishers land.
 
 ## References
 

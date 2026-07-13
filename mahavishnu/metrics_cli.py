@@ -5,6 +5,8 @@ Provides commands for collecting and reporting on test coverage
 and other quality metrics across the Mahavishnu ecosystem.
 """
 
+from __future__ import annotations
+
 import asyncio
 from collections import defaultdict
 from datetime import UTC, datetime, timedelta
@@ -13,6 +15,7 @@ import os
 from pathlib import Path
 import re
 import sys
+from typing import Any
 from urllib import error as urllib_error
 from urllib import request as urllib_request
 
@@ -811,6 +814,384 @@ def engine_metrics(
     )
     rows = _build_engine_rows(metrics)
     _render_engine_output(rows, output_format, selected_source, metrics_url, days, errors)
+
+
+# ---------------------------------------------------------------------------
+# `mahavishnu metrics bodai` — Bodai EventBridge subscriber health
+# ---------------------------------------------------------------------------
+
+
+DEFAULT_BODAI_STATE_PATH = Path("~/.mahavishnu/bodai-subscriber-state.json").expanduser()
+DEFAULT_BODAI_QUEUE_CAP = 100
+STALE_THRESHOLD_SECONDS = 5 * 60  # 5 minutes
+_KNOWN_BODAI_COMPONENTS = ("mahavishnu", "akosha", "crackerjack")
+
+
+def _resolve_bodai_queue_path(explicit: str | None) -> Path:
+    """Resolve the queue path with explicit > env > default precedence.
+
+    Mirrors :func:`mahavishnu.core.events.bodai_subscriber._default_queue_path`
+    so the CLI reads exactly what the subscriber writes.
+    """
+    if explicit:
+        return Path(explicit).expanduser()
+    env_override = os.environ.get("MAHAVISHNU_BODAI_QUEUE_PATH")
+    if env_override:
+        return Path(env_override).expanduser()
+    return Path.home() / ".mahavishnu" / "bodai-event-queue.json"
+
+
+def _resolve_bodai_state_path(explicit: str | None) -> Path:
+    """Resolve the subscriber state-file path."""
+    if explicit:
+        return Path(explicit).expanduser()
+    env_override = os.environ.get("MAHAVISHNU_BODAI_STATE_PATH")
+    if env_override:
+        return Path(env_override).expanduser()
+    return Path.home() / ".mahavishnu" / "bodai-subscriber-state.json"
+
+
+def _load_bodai_queue(path: Path) -> list[dict[str, Any]]:
+    """Read and JSON-parse the queue file. Returns ``[]`` on any failure."""
+    if not path.exists():
+        return []
+    try:
+        with path.open("r", encoding="utf-8") as fh:
+            data = json.load(fh)
+    except (OSError, json.JSONDecodeError):
+        return []
+    return data if isinstance(data, list) else []
+
+
+def _load_bodai_state(path: Path) -> dict[str, Any] | None:
+    """Read the subscriber state file. Returns ``None`` when missing or unreadable."""
+    if not path.exists():
+        return None
+    try:
+        with path.open("r", encoding="utf-8") as fh:
+            data = json.load(fh)
+    except (OSError, json.JSONDecodeError):
+        return None
+    return data if isinstance(data, dict) else None
+
+
+def _parse_bodai_timestamp(value: Any) -> datetime | None:
+    """Parse a timestamp from an envelope header or queue field.
+
+    Accepts ISO-8601 strings and Unix epoch floats/ints. Returns ``None`` for
+    unparseable or missing values.
+    """
+    if value is None:
+        return None
+    if isinstance(value, (int, float)):
+        try:
+            return datetime.fromtimestamp(float(value), tz=UTC)
+        except (OverflowError, OSError, ValueError):
+            return None
+    if isinstance(value, str):
+        try:
+            parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
+        except ValueError:
+            return None
+        if parsed.tzinfo is None:
+            parsed = parsed.replace(tzinfo=UTC)
+        return parsed
+    return None
+
+
+def _filter_bodai_events(
+    events: list[dict[str, Any]],
+    *,
+    scope_days: int | None,
+    component: str | None,
+) -> list[dict[str, Any]]:
+    """Apply ``--scope`` (drop events older than N days) and ``--component`` filters."""
+    filtered = events
+    if component:
+        target = component.strip().lower()
+        filtered = [
+            ev
+            for ev in filtered
+            if str(
+                (ev.get("headers") or {}).get("source") if isinstance(ev.get("headers"), dict) else ""
+            ).lower()
+            == target
+        ]
+    if scope_days is not None:
+        cutoff = datetime.now(UTC) - timedelta(days=scope_days)
+        filtered = [
+            ev
+            for ev in filtered
+            if (_event_timestamp(ev) or cutoff) >= cutoff
+        ]
+    return filtered
+
+
+def _event_timestamp(event: dict[str, Any]) -> datetime | None:
+    """Return the most useful timestamp for *event* (header first, received_at fallback)."""
+    headers = event.get("headers") if isinstance(event.get("headers"), dict) else {}
+    parsed = _parse_bodai_timestamp(headers.get("timestamp"))
+    if parsed is not None:
+        return parsed
+    return _parse_bodai_timestamp(event.get("received_at"))
+
+
+def _component_counts(events: list[dict[str, Any]]) -> dict[str, int]:
+    """Tally events per component (source header)."""
+    counts: dict[str, int] = dict.fromkeys(_KNOWN_BODAI_COMPONENTS, 0)
+    for event in events:
+        headers = event.get("headers") if isinstance(event.get("headers"), dict) else {}
+        source = headers.get("source") if isinstance(headers, dict) else None
+        if not isinstance(source, str) or not source:
+            continue
+        counts[source] = counts.get(source, 0) + 1
+    return counts
+
+
+def _component_last_seen(events: list[dict[str, Any]]) -> dict[str, datetime | None]:
+    """Return the most recent event timestamp per component (None if no events)."""
+    last_seen: dict[str, datetime | None] = dict.fromkeys(_KNOWN_BODAI_COMPONENTS)
+    for event in events:
+        headers = event.get("headers") if isinstance(event.get("headers"), dict) else {}
+        source = headers.get("source") if isinstance(headers, dict) else None
+        if not isinstance(source, str) or not source:
+            continue
+        ts = _event_timestamp(event)
+        if ts is None:
+            continue
+        existing = last_seen.get(source)
+        if existing is None or ts > existing:
+            last_seen[source] = ts
+    return last_seen
+
+
+def _format_bodai_timestamp(value: datetime | None) -> str:
+    """Render a timestamp as ISO-8601 (UTC) or 'n/a' when missing."""
+    if value is None:
+        return "n/a"
+    return value.astimezone(UTC).isoformat()
+
+
+def _render_bodai_output(
+    *,
+    queue_path: Path,
+    state_path: Path,
+    state: dict[str, Any] | None,
+    events: list[dict[str, Any]],
+    queue_cap: int,
+    component_filter: str | None,
+    scope_days: int | None,
+    now: datetime,
+) -> None:
+    """Render the `mahavishnu metrics bodai` markdown-table output."""
+    console.print("[cyan]Bodai EventBridge Subscriber Status[/cyan]\n")
+
+    # --- 1. Subscriber state -------------------------------------------------
+    state_table = Table(title="Subscriber State", show_header=True, header_style="bold magenta")
+    state_table.add_column("Field", style="cyan")
+    state_table.add_column("Value", style="white")
+    if state is None:
+        state_table.add_row("State file", f"[yellow]missing[/yellow] ({state_path})")
+        state_table.add_row("Running", "[red]no[/red]")
+        state_table.add_row("PID", "n/a")
+        state_table.add_row("Last seen", "n/a")
+    else:
+        pid = state.get("pid")
+        pid_str = str(pid) if pid is not None else "n/a"
+        last_seen_raw = state.get("last_seen") or state.get("started_at")
+        last_seen_dt = _parse_bodai_timestamp(last_seen_raw)
+        last_seen_str = _format_bodai_timestamp(last_seen_dt)
+        uptime_raw = state.get("uptime_seconds")
+        uptime_str = (
+            f"{uptime_raw:.1f}s"
+            if isinstance(uptime_raw, (int, float))
+            else (str(uptime_raw) if uptime_raw is not None else "n/a")
+        )
+        state_table.add_row("State file", str(state_path))
+        state_table.add_row("Running", "[green]yes[/green]")
+        state_table.add_row("PID", pid_str)
+        state_table.add_row("Last seen", last_seen_str)
+        state_table.add_row("Uptime (s)", uptime_str)
+    console.print(state_table)
+
+    # --- 2. Queue state -------------------------------------------------------
+    queue_size = len(events)
+    drop_count = max(0, queue_cap - queue_size) if queue_cap <= queue_size else 0
+    oldest = min(
+        (_event_timestamp(ev) for ev in events if _event_timestamp(ev) is not None),
+        default=None,
+    )
+    newest = max(
+        (_event_timestamp(ev) for ev in events if _event_timestamp(ev) is not None),
+        default=None,
+    )
+    queue_table = Table(title="Queue State", show_header=True, header_style="bold magenta")
+    queue_table.add_column("Field", style="cyan")
+    queue_table.add_column("Value", style="white")
+    queue_table.add_row("Queue file", str(queue_path))
+    queue_table.add_row("Queue size", str(queue_size))
+    queue_table.add_row("Queue cap", str(queue_cap))
+    queue_table.add_row("Drop count (over cap)", str(drop_count))
+    queue_table.add_row("Oldest event", _format_bodai_timestamp(oldest))
+    queue_table.add_row("Newest event", _format_bodai_timestamp(newest))
+    console.print(queue_table)
+
+    # --- 3. Per-component counts + 4. Per-component health --------------------
+    counts = _component_counts(events)
+    last_seen_map = _component_last_seen(events)
+
+    components = list(_KNOWN_BODAI_COMPONENTS)
+    if component_filter:
+        components = [c for c in components if c == component_filter]
+
+    detail_table = Table(title="Per-Component Health", show_header=True, header_style="bold magenta")
+    detail_table.add_column("Component", style="cyan")
+    detail_table.add_column("Events", justify="right")
+    detail_table.add_column("Last Event", style="white")
+    detail_table.add_column("Status", style="white")
+
+    if not events:
+        console.print(
+            "[yellow]No events in queue.[/yellow] "
+            "[dim]Check subscriber state and MAHAVISHNU_BODAI_QUEUE_PATH.[/dim]"
+        )
+    else:
+        for component in components:
+            count = counts.get(component, 0)
+            last_event_dt = last_seen_map.get(component)
+            age_seconds: float | None = None
+            if last_event_dt is not None:
+                age_seconds = (now - last_event_dt).total_seconds()
+            status = "fresh"
+            if count == 0 or last_event_dt is None or age_seconds is not None and age_seconds > STALE_THRESHOLD_SECONDS:
+                status = "stale"
+
+            age_str = (
+                f" (age {age_seconds:.0f}s)"
+                if age_seconds is not None
+                else ""
+            )
+            last_str = _format_bodai_timestamp(last_event_dt)
+            if status == "stale":
+                detail_table.add_row(
+                    component,
+                    str(count),
+                    f"{last_str}{age_str}",
+                    "[red]stale[/red]",
+                )
+            else:
+                detail_table.add_row(
+                    component,
+                    str(count),
+                    f"{last_str}{age_str}",
+                    "[green]fresh[/green]",
+                )
+
+    console.print(detail_table)
+
+    filter_note_parts: list[str] = []
+    if scope_days is not None:
+        filter_note_parts.append(f"scope={scope_days}d")
+    if component_filter:
+        filter_note_parts.append(f"component={component_filter}")
+    if filter_note_parts:
+        console.print(f"\n[dim]Filters: {', '.join(filter_note_parts)}[/dim]")
+
+
+@metrics_app.command("bodai")
+def bodai_metrics(
+    scope: str = typer.Option(
+        "24h",
+        "--scope",
+        help="Time scope filter: e.g. '24h', '7d', or 'all' (no time filter).",
+    ),
+    component: str | None = typer.Option(
+        None,
+        "--component",
+        "-c",
+        help="Filter to a single component source (e.g. mahavishnu, akosha, crackerjack).",
+    ),
+    queue_path: str | None = typer.Option(
+        None,
+        "--queue-path",
+        help="Override the Bodai queue file path (default: ~/.mahavishnu/bodai-event-queue.json).",
+    ),
+    state_path: str | None = typer.Option(
+        None,
+        "--state-path",
+        help="Override the Bodai subscriber state file path.",
+    ),
+    queue_cap: int = typer.Option(
+        DEFAULT_BODAI_QUEUE_CAP,
+        "--queue-cap",
+        help="Maximum queue capacity (used to compute drop count).",
+    ),
+) -> None:
+    """Show Bodai EventBridge subscriber health, queue state, and per-component health.
+
+    Reads the local Bodai queue file (``~/.mahavishnu/bodai-event-queue.json``,
+    overridable via ``MAHAVISHNU_BODAI_QUEUE_PATH``) and the subscriber state
+    file (``~/.mahavishnu/bodai-subscriber-state.json``) and renders a
+    multi-section markdown table covering:
+
+    1. Subscriber state (running/stopped, pid, last seen)
+    2. Event counts per component for events currently in the queue
+    3. Queue state (current size, drop count, oldest/newest timestamps)
+    4. Per-component health (last event timestamp; stale if >5min old)
+
+    Examples:
+        mahavishnu metrics bodai
+        mahavishnu metrics bodai --scope 7d --component akosha
+        mahavishnu metrics bodai --scope all --component crackerjack
+    """
+    effective_queue_path = _resolve_bodai_queue_path(queue_path)
+    effective_state_path = _resolve_bodai_state_path(state_path)
+
+    state = _load_bodai_state(effective_state_path)
+    events = _load_bodai_queue(effective_queue_path)
+
+    scope_normalized = scope.strip().lower() if scope else "24h"
+    scope_days: int | None
+    if scope_normalized in {"all", "none", "0"}:
+        scope_days = None
+    else:
+        match = re.match(r"^(\d+)\s*([hd])$", scope_normalized)
+        if match is None:
+            console.print(
+                f"[red]Invalid --scope {scope!r}. Use '24h', '7d', or 'all'.[/red]"
+            )
+            raise typer.Exit(2)
+        magnitude = int(match.group(1))
+        unit = match.group(2)
+        scope_days = magnitude if unit == "d" else max(1, magnitude // 24)
+
+    component_normalized = component.strip().lower() if component else None
+    if (
+        component_normalized
+        and component_normalized not in _KNOWN_BODAI_COMPONENTS
+    ):
+        console.print(
+            "[red]Unknown --component "
+            f"{component!r}. Known: {', '.join(_KNOWN_BODAI_COMPONENTS)}.[/red]"
+        )
+        raise typer.Exit(2)
+
+    filtered = _filter_bodai_events(
+        events,
+        scope_days=scope_days,
+        component=component_normalized,
+    )
+
+    _render_bodai_output(
+        queue_path=effective_queue_path,
+        state_path=effective_state_path,
+        state=state,
+        events=filtered,
+        queue_cap=queue_cap,
+        component_filter=component_normalized,
+        scope_days=scope_days,
+        now=datetime.now(UTC),
+    )
 
 
 def add_metrics_commands(app: typer.Typer) -> None:
