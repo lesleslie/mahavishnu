@@ -143,6 +143,29 @@ class TestFastMCPServerInit:
 
         mock_client.assert_called_once_with(backend_name="pty_mcp_python")
 
+    @pytest.mark.parametrize("non_pty_preference", ["auto", "mock", "iterm2", "crow"])
+    def test_init_spawns_mcpretentious_for_non_pty_preference(
+        self, mock_app: MagicMock, non_pty_preference: str
+    ) -> None:
+        """Non-PTY adapter preferences still spawn the mcpretentious subprocess.
+
+        The boot path wraps `McpretentiousMCPClient` with the default
+        ``backend_name='mcpretentious'`` even when the operator selected a
+        non-PTY adapter (`auto` / `mock` / `iterm2` / `crow`). This preserves
+        the contract that auxiliary MCP tool registrars can dereference
+        ``server.mcp_client`` regardless of the operator's preference. See
+        ``docs/terminal/backends.md`` for the full rationale.
+        """
+        mock_app.config.terminal.adapter_preference = non_pty_preference
+
+        with (
+            patch("mahavishnu.mcp.server_core.get_auth_from_config"),
+            patch("mahavishnu.mcp.server_core.McpretentiousClient") as mock_client,
+        ):
+            FastMCPServer(app=mock_app)
+
+        mock_client.assert_called_once_with(backend_name="mcpretentious")
+
     def test_init_rejects_unknown_terminal_backend(self, mock_app: MagicMock) -> None:
         """Unknown adapter/backend names must fail instead of selecting a default."""
         mock_app.config.terminal.adapter_preference = "unknown_pty_backend"

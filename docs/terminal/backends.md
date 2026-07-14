@@ -12,6 +12,29 @@ settings.
 | `mcpretentious` | `npx mcpretentious` | `node` (>=18) | Full-featured. iTerm2 backend (macOS, needs iTerm2 Python API enabled) or tmux backend (cross-platform). |
 | `pty_mcp_python` | `uvx --from luqm4nx-pty-mcp-server-python pty-mcp-server-python` | `uvx` | Pure-Python alternative. Same tool shape. |
 
+## Boot-time subprocess behavior
+
+`FastMCPServer.__init__` always constructs a `McpretentiousMCPClient`,
+even when `adapter_preference` is `auto`, `mock`, `iterm2`, or `crow`.
+The wrapper preserves the default `"mcpretentious"` backend in those
+cases so auxiliary MCP tools registered later in the boot path
+(`register_terminal_tools`, `register_session_buddy_tools`, etc.) can
+still call into `server.mcp_client.call_tool(...)` for any caller that
+expects a working client. This is intentional — switching the client to
+`None` for non-PTY preferences would break tool-registration paths that
+blindly dereference `server.mcp_client`. The cost is one extra
+`npx mcpretentious` subprocess at startup on hosts where `node` is
+installed.
+
+If you don't need any of the auxiliary PTY-backed tools and want to
+skip the spawn entirely, run with `MAHAVISHNU_TOOL_PROFILE=minimal` —
+that profile omits the terminal tool groups, so the subprocess is
+still created but no downstream caller will dereference it. There is
+no operator-level switch to suppress the spawn without also removing
+the tool profile; the cost-benefit tipped toward "always spawn, document
+the rationale" when the alternative would couple client construction
+to tool-profile gating.
+
 ## Choosing a backend
 
 ```yaml
