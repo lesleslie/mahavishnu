@@ -421,13 +421,17 @@ class TestStdioMCPClientRequestCorrelation:
 class TestMcpretentiousClient:
     """The high-level client delegates and shapes parameters correctly."""
 
-    def test_default_construction_uses_uvx_mcpretentious(self) -> None:
-        """The default ctor wires up the documented uvx command."""
+    def test_default_construction_uses_npx_mcpretentious(self) -> None:
+        """The default ctor wires up the npx command (mcpretentious is an npm package).
+
+        This is a regression fix — the previous default used ``uvx`` which is
+        wrong because mcpretentious is an npm package, not a PyPI package.
+        """
         client = McpretentiousClient()
         inner = client._client  # type: ignore[attr-defined]
         assert isinstance(inner, StdioMCPClient)
-        assert inner.command == "uvx"
-        assert inner.args == ["--from", "mcpretentious", "mcpretentious"]
+        assert inner.command == "npx"
+        assert inner.args == ["mcpretentious"]
 
     @pytest.mark.asyncio
     async def test_start_and_stop_delegate_to_inner_client(self) -> None:

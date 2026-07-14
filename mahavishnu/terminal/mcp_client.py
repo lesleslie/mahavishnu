@@ -5,17 +5,35 @@ import json
 from logging import getLogger
 from typing import Any
 
+from .backends import BUILTIN_BACKENDS, check_prerequisites
+
 logger = getLogger(__name__)
+
+
+def _install_hint(missing: list[str]) -> str:
+    """Return a one-line install hint for the given missing prerequisites.
+
+    Best-effort: covers the binaries we currently use. If a new requirement
+    is added, fall back to a generic message.
+    """
+    hints = {
+        "node": "brew install node  (or visit https://nodejs.org)",
+        "uvx": "pip install uv  (https://docs.astral.sh/uv/)",
+    }
+    parts = [hints.get(req, f"install {req}") for req in missing]
+    return "; ".join(parts)
 
 
 class StdioMCPClient:
     """MCP client that communicates with stdio-based MCP servers.
 
     This client can communicate with MCP servers that use stdio transport,
-    such as mcpretentious when configured to run via uvx.
+    such as mcpretentious. ``McpretentiousClient`` is the high-level wrapper
+    that knows how to launch a specific backend — call this class directly
+    only when you need to talk to an MCP server that isn't in the registry.
 
     Example:
-        >>> client = StdioMCPClient("uvx", ["--from", "mcpretentious", "mcpretentious"])
+        >>> client = StdioMCPClient("npx", ["mcpretentious"])
         >>> await client.start()
         >>> result = await client.call_tool("mcpretentious-open", {"columns": 80, "rows": 24})
         >>> await client.stop()
@@ -243,9 +261,42 @@ class McpretentiousClient:
         >>> await client.close()
     """
 
-    def __init__(self):
-        """Initialize mcpretentious client."""
-        self._client = StdioMCPClient("uvx", ["--from", "mcpretentious", "mcpretentious"])
+    def __init__(
+        self,
+        backend_name: str = "mcpretentious",
+    ) -> None:
+        """Construct a McpretentiousClient.
+
+        Args:
+            backend_name: Key into BUILTIN_BACKENDS. Defaults to "mcpretentious".
+
+        Raises:
+            KeyError: If backend_name is not in BUILTIN_BACKENDS.
+            ConfigurationError: If a required prerequisite is missing.
+        """
+        from ..core.errors import ConfigurationError
+
+        if backend_name not in BUILTIN_BACKENDS:
+            raise KeyError(
+                f"Unknown PTY backend {backend_name!r}. "
+                f"Available: {sorted(BUILTIN_BACKENDS.keys())}"
+            )
+        backend = BUILTIN_BACKENDS[backend_name]
+
+        missing = check_prerequisites(backend)
+        if missing:
+            raise ConfigurationError(
+                message=(
+                    f"PTY backend {backend_name!r} requires {missing!r} on PATH "
+                    f"but {'it was' if len(missing) == 1 else 'they were'} not found. "
+                    f"Install: {_install_hint(missing)}"
+                ),
+                details={"backend": backend_name, "missing": missing},
+            )
+
+        self._client = StdioMCPClient(backend.command, list(backend.args))
+        # Carry the backend for later reference (e.g., error messages, future tool_map use).
+        self._backend = backend
 
     async def start(self) -> None:
         """Start the mcpretentious server."""
