@@ -53,3 +53,52 @@ class TestManagerPassesPreferenceToClient:
             "so any registered backend (not just the hardcoded default) can "
             "be selected via settings."
         )
+
+
+class TestManagerAcceptsAllBuiltinBackends:
+    """Any name in BUILTIN_BACKENDS must route through McpretentiousAdapter.
+
+    The MCP boot path (mcp/server_core.py) accepts every BUILTIN_BACKENDS
+    name. The shared factory here must mirror that contract so the same
+    ``terminal.adapter_preference`` string works via both code paths.
+    """
+
+    @pytest.mark.parametrize(
+        "preference",
+        ["mcpretentious", "pty_mcp_python"],
+    )
+    @pytest.mark.asyncio
+    async def test_builtin_backend_preference_routes_to_mcpretentious(
+        self,
+        preference: str,
+    ) -> None:
+        """When preference is any BUILTIN_BACKENDS name, the manager must
+        construct ``McpretentiousAdapter`` with ``backend_name=<preference>``."""
+        config = MagicMock()
+        config.terminal = TerminalSettings(adapter_preference=preference)
+
+        mock_client = MagicMock()
+
+        # Block ITERM2_AVAILABLE so the manager falls through to the
+        # mcpretentious branch instead of the iTerm2 branch (test ordering
+        # could otherwise let iTerm2 be picked on dev laptops).
+        with patch(
+            "mahavishnu.terminal.adapters.iterm2.ITERM2_AVAILABLE",
+            False,
+        ):
+            with patch(
+                "mahavishnu.terminal.manager.McpretentiousAdapter",
+            ) as mock_adapter_cls:
+                adapter_instance = MagicMock()
+                adapter_instance.adapter_name = preference
+                mock_adapter_cls.return_value = adapter_instance
+
+                await TerminalManager.create(config, mcp_client=mock_client)
+
+        mock_adapter_cls.assert_called_once()
+        call_kwargs = mock_adapter_cls.call_args.kwargs
+        assert call_kwargs.get("backend_name") == preference, (
+            f"Expected backend_name={preference!r} in {call_kwargs!r}. "
+            "Any BUILTIN_BACKENDS name must route through McpretentiousAdapter "
+            "with the operator's preference threaded into backend_name."
+        )

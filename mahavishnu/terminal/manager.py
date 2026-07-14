@@ -1,5 +1,7 @@
 """Terminal manager for multi-session orchestration."""
 
+from __future__ import annotations
+
 import asyncio
 from collections.abc import Callable
 from datetime import datetime
@@ -8,6 +10,7 @@ from typing import Any
 
 from .adapters.base import TerminalAdapter
 from .adapters.mcpretentious import McpretentiousAdapter
+from .backends import BUILTIN_BACKENDS
 from .config import TerminalSettings
 
 logger = getLogger(__name__)
@@ -485,16 +488,20 @@ class TerminalManager:
             logger.info("Using crow terminal adapter")
             return cls(adapter, terminal_config)
 
-        # mcpretentious (requires MCP client)
-        if preference == "mcpretentious" and mcp_client is not None:
+        # Any BUILTIN_BACKENDS name routes through McpretentiousAdapter
+        # (mcpretentious, pty_mcp_python, etc. — see terminal/backends.py).
+        # The boot path in mcp/server_core.py honors the same set; this
+        # factory must too so the same preference string works via both
+        # the MCP boot path and TerminalManager.create().
+        if preference in BUILTIN_BACKENDS and mcp_client is not None:
             try:
                 adapter = McpretentiousAdapter(mcp_client, backend_name=preference)
-                logger.info("Using mcpretentious adapter")
+                logger.info(f"Using {preference} adapter")
                 return cls(adapter, terminal_config)
             except Exception as e:
-                logger.error(f"mcpretentious adapter failed: {e}")
+                logger.error(f"{preference} adapter failed: {e}")
                 raise ConfigurationError(
-                    message="mcpretentious adapter failed",
+                    message=f"{preference} adapter failed",
                     details={"error": str(e)},
                 ) from e
 
