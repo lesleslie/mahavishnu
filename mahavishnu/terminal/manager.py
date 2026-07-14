@@ -493,7 +493,26 @@ class TerminalManager:
         # The boot path in mcp/server_core.py honors the same set; this
         # factory must too so the same preference string works via both
         # the MCP boot path and TerminalManager.create().
-        if preference in BUILTIN_BACKENDS and mcp_client is not None:
+        if preference in BUILTIN_BACKENDS:
+            # Contract: both the MCP boot path and this factory require an
+            # mcp_client when the operator picked a BUILTIN_BACKENDS entry.
+            # The boot path always constructs one, but a direct caller that
+            # passes mcp_client=None would otherwise fall through to the
+            # misleading "No suitable terminal adapter found" error at the
+            # bottom of this method. Raise an actionable ConfigurationError
+            # here so the cause is unambiguous.
+            if mcp_client is None:
+                raise ConfigurationError(
+                    message=(
+                        f"Terminal adapter preference {preference!r} requires an mcp_client. "
+                        f"Either provide one via the MCP boot path, or use a non-PTY "
+                        f"adapter such as 'mock' / 'iterm2' / 'crow' / 'auto'."
+                    ),
+                    details={
+                        "adapter_preference": preference,
+                        "available_pty_backends": sorted(BUILTIN_BACKENDS),
+                    },
+                )
             try:
                 adapter = McpretentiousAdapter(mcp_client, backend_name=preference)
                 logger.info(f"Using {preference} adapter")

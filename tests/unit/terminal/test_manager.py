@@ -102,3 +102,56 @@ class TestManagerAcceptsAllBuiltinBackends:
             "Any BUILTIN_BACKENDS name must route through McpretentiousAdapter "
             "with the operator's preference threaded into backend_name."
         )
+
+
+class TestManagerBuiltinBackendRequiresMcpClient:
+    """Both code paths must agree on the mcp_client contract.
+
+    The MCP boot path (mcp/server_core.py) always constructs an
+    ``McpretentiousMCPClient`` before any adapter selection happens, so a
+    BUILTIN_BACKENDS preference implicitly gets a working client. The direct
+    ``TerminalManager.create(config, mcp_client=None)`` path historically fell
+    through to the misleading ``"No suitable terminal adapter found"``
+    ConfigurationError, masking the real cause. The two paths must agree:
+    both succeed when an mcp_client is supplied, both refuse (with an
+    actionable message) when one is not.
+    """
+
+    @pytest.mark.parametrize(
+        "preference",
+        ["mcpretentious", "pty_mcp_python"],
+    )
+    @pytest.mark.asyncio
+    async def test_create_without_mcp_client_raises_actionable_error(
+        self,
+        preference: str,
+    ) -> None:
+        """Direct Manager.create with mcp_client=None must raise a clear error.
+
+        Previously this fell through to the misleading
+        ``"No suitable terminal adapter found"`` ConfigurationError. The fix
+        raises an early ConfigurationError that names the preference and
+        points the operator at non-PTY adapters (``mock`` / ``iterm2`` /
+        ``crow`` / ``auto``).
+        """
+        from mahavishnu.core.errors import ConfigurationError
+
+        config = MagicMock()
+        config.terminal = TerminalSettings(adapter_preference=preference)
+
+        with patch(
+            "mahavishnu.terminal.adapters.iterm2.ITERM2_AVAILABLE",
+            False,
+        ):
+            with pytest.raises(ConfigurationError) as exc_info:
+                await TerminalManager.create(config, mcp_client=None)
+
+        message = exc_info.value.message
+        assert preference in message
+        assert "mcp_client" in message
+        # Operator guidance should mention the non-PTY fallbacks.
+        assert "mock" in message
+        # The error details should name the preference and the available PTY set
+        # so downstream tooling can introspect the rejection.
+        assert exc_info.value.details.get("adapter_preference") == preference
+        assert "mcpretentious" in exc_info.value.details.get("available_pty_backends", [])
