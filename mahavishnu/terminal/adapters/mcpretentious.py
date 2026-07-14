@@ -7,7 +7,6 @@ from typing import Any
 
 from ...core.errors import ErrorCode, MahavishnuError
 from ..adapters.base import TerminalAdapter
-from ..backends import BUILTIN_BACKENDS
 
 
 class TerminalError(MahavishnuError):
@@ -37,7 +36,7 @@ class McpretentiousAdapter(TerminalAdapter):
 
     Example:
         >>> from mahavishnu.terminal.adapters import McpretentiousAdapter
-        >>> adapter = McpretentiousAdapter(mcp_client, backend_name="mcpretentious")
+        >>> adapter = McpretentiousAdapter(mcp_client)
         >>> session_id = await adapter.launch_session("qwen", 120, 40)
         >>> await adapter.send_command(session_id, "hello")
         >>> output = await adapter.capture_output(session_id)
@@ -48,39 +47,13 @@ class McpretentiousAdapter(TerminalAdapter):
 
         Args:
             mcp_client: MCP client with call_tool method
-            backend_name: Optional name of the PTY backend the operator
-                selected via ``terminal.adapter_preference``. Stored for
-                downstream consumption (e.g., tool-name resolution once a
-                future task wires ``BUILTIN_BACKENDS`` into the adapter's
-                ``call_tool`` dispatch). Defaults to ``None`` for backward
-                compatibility with callers that pre-date the multi-backend
-                wiring.
+            backend_name: Accepted for backward compatibility with the
+                shared ``TerminalManager.create`` factory but unused —
+                mcpretentious is the only built-in backend and its MCP
+                tool names are hardcoded below.
         """
         self.mcp = mcp_client
-        self._backend_name = backend_name
         self._sessions: dict[str, dict[str, Any]] = {}
-
-    def _tool_for(self, operation: str) -> str:
-        """Resolve the MCP tool name for a generic PTY operation.
-
-        Looks up ``BUILTIN_BACKENDS[self._backend_name].tool_map`` first
-        (the contract for backend-specific tool names — e.g.,
-        ``{"open": "custom_open"}``); falls back to the literal
-        ``mcpretentious-{operation}`` for backends whose tool surface
-        matches the built-in mcpretentious package.
-
-        Args:
-            operation: One of ``"open"``, ``"type"``, ``"read"``,
-                ``"close"``, ``"list"``.
-
-        Returns:
-            The actual MCP tool name to call on the backend.
-        """
-        if self._backend_name and self._backend_name in BUILTIN_BACKENDS:
-            mapped = BUILTIN_BACKENDS[self._backend_name].tool_map.get(operation)
-            if mapped:
-                return mapped
-        return f"mcpretentious-{operation}"
 
     @property
     def adapter_name(self) -> str:
@@ -111,7 +84,7 @@ class McpretentiousAdapter(TerminalAdapter):
         try:
             # Open terminal window
             result = await self.mcp.call_tool(
-                self._tool_for("open"),
+                "mcpretentious-open",
                 {
                     "columns": columns,
                     "rows": rows,
@@ -161,7 +134,7 @@ class McpretentiousAdapter(TerminalAdapter):
 
         try:
             await self.mcp.call_tool(
-                self._tool_for("type"),
+                "mcpretentious-type",
                 {
                     "terminal_id": session_id,
                     "input": [command, "enter"],
@@ -202,7 +175,7 @@ class McpretentiousAdapter(TerminalAdapter):
             if lines is not None:
                 kwargs["limit_lines"] = lines
 
-            result = await self.mcp.call_tool(self._tool_for("read"), kwargs)
+            result = await self.mcp.call_tool("mcpretentious-read", kwargs)
             return result["output"]  # type: ignore[no-any-return]
 
         except Exception as e:
@@ -222,7 +195,7 @@ class McpretentiousAdapter(TerminalAdapter):
         """
         try:
             await self.mcp.call_tool(
-                self._tool_for("close"),
+                "mcpretentious-close",
                 {
                     "terminal_id": session_id,
                 },
@@ -247,7 +220,7 @@ class McpretentiousAdapter(TerminalAdapter):
             TerminalError: If listing fails
         """
         try:
-            result = await self.mcp.call_tool(self._tool_for("list"), {})
+            result = await self.mcp.call_tool("mcpretentious-list", {})
             return result.get("terminals", [])  # type: ignore[no-any-return]
 
         except Exception as e:

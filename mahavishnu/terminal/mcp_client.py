@@ -18,7 +18,6 @@ def _install_hint(missing: list[str]) -> str:
     """
     hints = {
         "node": "brew install node  (or visit https://nodejs.org)",
-        "uvx": "pip install uv  (https://docs.astral.sh/uv/)",
     }
     parts = [hints.get(req, f"install {req}") for req in missing]
     return "; ".join(parts)
@@ -295,7 +294,7 @@ class McpretentiousClient:
             )
 
         self._client = StdioMCPClient(backend.command, list(backend.args))
-        # Carry the backend for later reference (e.g., error messages, future tool_map use).
+        # Carry the backend for later reference (e.g., error messages).
         self._backend = backend
 
     async def start(self) -> None:

@@ -23,10 +23,6 @@ class TestPtyBackend:
         with pytest.raises(dataclasses.FrozenInstanceError):
             backend.name = "mutated"  # type: ignore[misc]
 
-    def test_default_tool_map_is_empty_dict(self) -> None:
-        backend = PtyBackend(name="x", command="y", args=("z",))
-        assert backend.tool_map == {}
-
     def test_default_requires_is_empty_tuple(self) -> None:
         backend = PtyBackend(name="x", command="y", args=("z",))
         assert backend.requires == ()
@@ -55,16 +51,13 @@ class TestBuiltinBackends:
         # MCPretentious is an npm package, so it needs Node.js on PATH.
         assert "node" in BUILTIN_BACKENDS["mcpretentious"].requires
 
-    def test_has_pty_mcp_python(self) -> None:
-        # The second built-in backend, using uvx.
-        assert "pty_mcp_python" in BUILTIN_BACKENDS
-
-    def test_pty_mcp_python_uses_uvx(self) -> None:
-        backend = BUILTIN_BACKENDS["pty_mcp_python"]
-        assert backend.command == "uvx"
-        # Verify it has the --from flag pointing at the package.
-        assert "--from" in backend.args
-        assert "luqm4nx-pty-mcp-server-python" in backend.args
+    def test_no_other_backends_registered(self) -> None:
+        # mcpretentious is the only built-in backend. The previous second
+        # backend (pty_mcp_python) was dropped because the upstream package
+        # has 0 stars, no recent activity, and is not on PyPI. If you add a
+        # new entry here, also update docs/terminal/backends.md and add
+        # backends-specific tests for it.
+        assert list(BUILTIN_BACKENDS) == ["mcpretentious"]
 
     def test_all_backends_have_command_args_name(self) -> None:
         # Defensive: every registered backend must be launchable.

@@ -55,27 +55,23 @@ class TestManagerPassesPreferenceToClient:
         )
 
 
-class TestManagerAcceptsAllBuiltinBackends:
-    """Any name in BUILTIN_BACKENDS must route through McpretentiousAdapter.
+class TestManagerAcceptsBuiltinBackend:
+    """``mcpretentious`` is the sole BUILTIN_BACKENDS entry — the manager must
+    route it through ``McpretentiousAdapter`` (and pass the name through).
 
-    The MCP boot path (mcp/server_core.py) accepts every BUILTIN_BACKENDS
-    name. The shared factory here must mirror that contract so the same
-    ``terminal.adapter_preference`` string works via both code paths.
+    When the second backend (``pty_mcp_python``) was dropped (commit
+    dropping it) the parametrize lists collapsed to a single value. If
+    another built-in is added later, restore the parametrize here.
     """
 
-    @pytest.mark.parametrize(
-        "preference",
-        ["mcpretentious", "pty_mcp_python"],
-    )
+    preference: str = "mcpretentious"
+
     @pytest.mark.asyncio
-    async def test_builtin_backend_preference_routes_to_mcpretentious(
-        self,
-        preference: str,
-    ) -> None:
+    async def test_builtin_backend_preference_routes_to_mcpretentious(self) -> None:
         """When preference is any BUILTIN_BACKENDS name, the manager must
         construct ``McpretentiousAdapter`` with ``backend_name=<preference>``."""
         config = MagicMock()
-        config.terminal = TerminalSettings(adapter_preference=preference)
+        config.terminal = TerminalSettings(adapter_preference=self.preference)
 
         mock_client = MagicMock()
 
@@ -90,16 +86,16 @@ class TestManagerAcceptsAllBuiltinBackends:
                 "mahavishnu.terminal.manager.McpretentiousAdapter",
             ) as mock_adapter_cls:
                 adapter_instance = MagicMock()
-                adapter_instance.adapter_name = preference
+                adapter_instance.adapter_name = self.preference
                 mock_adapter_cls.return_value = adapter_instance
 
                 await TerminalManager.create(config, mcp_client=mock_client)
 
         mock_adapter_cls.assert_called_once()
         call_kwargs = mock_adapter_cls.call_args.kwargs
-        assert call_kwargs.get("backend_name") == preference, (
-            f"Expected backend_name={preference!r} in {call_kwargs!r}. "
-            "Any BUILTIN_BACKENDS name must route through McpretentiousAdapter "
+        assert call_kwargs.get("backend_name") == self.preference, (
+            f"Expected backend_name={self.preference!r} in {call_kwargs!r}. "
+            "The BUILTIN_BACKENDS name must route through McpretentiousAdapter "
             "with the operator's preference threaded into backend_name."
         )
 
@@ -117,15 +113,8 @@ class TestManagerBuiltinBackendRequiresMcpClient:
     actionable message) when one is not.
     """
 
-    @pytest.mark.parametrize(
-        "preference",
-        ["mcpretentious", "pty_mcp_python"],
-    )
     @pytest.mark.asyncio
-    async def test_create_without_mcp_client_raises_actionable_error(
-        self,
-        preference: str,
-    ) -> None:
+    async def test_create_without_mcp_client_raises_actionable_error(self) -> None:
         """Direct Manager.create with mcp_client=None must raise a clear error.
 
         Previously this fell through to the misleading
@@ -136,6 +125,7 @@ class TestManagerBuiltinBackendRequiresMcpClient:
         """
         from mahavishnu.core.errors import ConfigurationError
 
+        preference = "mcpretentious"
         config = MagicMock()
         config.terminal = TerminalSettings(adapter_preference=preference)
 

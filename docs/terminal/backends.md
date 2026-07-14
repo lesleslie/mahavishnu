@@ -10,7 +10,12 @@ settings.
 | Name | Command | Prerequisites | Notes |
 |------|---------|---------------|-------|
 | `mcpretentious` | `npx mcpretentious` | `node` (>=18) | Full-featured. iTerm2 backend (macOS, needs iTerm2 Python API enabled) or tmux backend (cross-platform). |
-| `pty_mcp_python` | `uvx --from luqm4nx-pty-mcp-server-python pty-mcp-server-python` | `uvx` | Pure-Python alternative. Same tool shape. |
+
+> **Why only one backend?** The previous second entry (`pty_mcp_python`,
+> `luqm4nx/pty-mcp-server-python`) was dropped because the upstream package
+> had 0 stars, no recent activity, and was not on PyPI. Maintenance burden
+> outweighed the value of an alternative implementation. See the commit
+> that removed it for the full rationale.
 
 ## Boot-time subprocess behavior
 
@@ -40,7 +45,7 @@ to tool-profile gating.
 ```yaml
 # settings/mahavishnu.yaml (or settings/local.yaml)
 terminal:
-  adapter_preference: "mcpretentious"   # or "pty_mcp_python" or "iterm2" or "crow" or "mock"
+  adapter_preference: "mcpretentious"   # or "iterm2" or "crow" or "mock"
 ```
 
 If the requested backend's prerequisites are missing, Mahavishnu fails
@@ -64,15 +69,15 @@ another, append a `PtyBackend` entry to `BUILTIN_BACKENDS`:
     name="my_backend",
     command="my-launcher",
     args=("arg1", "arg2"),
-    tool_map={},            # if tool names match, leave empty; otherwise alias them
     requires=("dep1",),     # binaries that must be on PATH
 )
 ```
 
 If your backend's MCP tools don't match `mcpretentious-open` / `-type` /
 `-read` / `-close` / `-list` (the names `McpretentiousAdapter` calls),
-either write a thin adapter shim, or populate `tool_map` with
-`{"mcpretentious_open": "your_open_tool_name", ...}`.
+write a thin adapter shim — `McpretentiousAdapter` does not currently
+support tool-name remapping (the `tool_map` field was removed when
+`pty_mcp_python` was dropped because no remaining backend needs it).
 
 This is a code change (one entry in a dict) — not a config change.
 We don't expose per-backend config in settings to keep the test

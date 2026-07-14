@@ -131,18 +131,6 @@ class TestFastMCPServerInit:
         assert server.mcp_client is not None
         assert isinstance(server.mcp_client, McpretentiousMCPClient)
 
-    def test_init_threads_terminal_backend_to_client(self, mock_app: MagicMock) -> None:
-        """The configured PTY backend must reach the subprocess client constructor."""
-        mock_app.config.terminal.adapter_preference = "pty_mcp_python"
-
-        with (
-            patch("mahavishnu.mcp.server_core.get_auth_from_config"),
-            patch("mahavishnu.mcp.server_core.McpretentiousClient") as mock_client,
-        ):
-            FastMCPServer(app=mock_app)
-
-        mock_client.assert_called_once_with(backend_name="pty_mcp_python")
-
     @pytest.mark.parametrize("non_pty_preference", ["auto", "mock", "iterm2", "crow"])
     def test_init_spawns_mcpretentious_for_non_pty_preference(
         self, mock_app: MagicMock, non_pty_preference: str
@@ -157,6 +145,25 @@ class TestFastMCPServerInit:
         ``docs/terminal/backends.md`` for the full rationale.
         """
         mock_app.config.terminal.adapter_preference = non_pty_preference
+
+        with (
+            patch("mahavishnu.mcp.server_core.get_auth_from_config"),
+            patch("mahavishnu.mcp.server_core.McpretentiousClient") as mock_client,
+        ):
+            FastMCPServer(app=mock_app)
+
+        mock_client.assert_called_once_with(backend_name="mcpretentious")
+
+    def test_init_threads_mcpretentious_preference_to_client(
+        self, mock_app: MagicMock
+    ) -> None:
+        """When the operator picks the BUILTIN_BACKENDS 'mcpretentious' entry,
+        the configured preference must reach the subprocess client constructor.
+
+        (The previous second backend ``pty_mcp_python`` was dropped. If you
+        re-add a built-in, restore the parametrize for this test.)
+        """
+        mock_app.config.terminal.adapter_preference = "mcpretentious"
 
         with (
             patch("mahavishnu.mcp.server_core.get_auth_from_config"),

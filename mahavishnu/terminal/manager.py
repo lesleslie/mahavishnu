@@ -489,7 +489,7 @@ class TerminalManager:
             return cls(adapter, terminal_config)
 
         # Any BUILTIN_BACKENDS name routes through McpretentiousAdapter
-        # (mcpretentious, pty_mcp_python, etc. — see terminal/backends.py).
+        # (currently just ``mcpretentious`` — see terminal/backends.py).
         # The boot path in mcp/server_core.py honors the same set; this
         # factory must too so the same preference string works via both
         # the MCP boot path and TerminalManager.create().
