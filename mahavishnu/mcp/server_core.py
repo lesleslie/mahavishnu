@@ -1,5 +1,7 @@
 """FastMCP server implementation for Mahavishnu."""
 
+from __future__ import annotations
+
 import asyncio
 from contextlib import suppress
 from datetime import datetime
@@ -20,7 +22,9 @@ from monitoring.metrics import (
 
 from ..core.app import MahavishnuApp
 from ..core.auth import get_auth_from_config
+from ..core.errors import ConfigurationError
 from ..core.permissions import Permission
+from ..terminal.backends import BUILTIN_BACKENDS
 from ..terminal.mcp_client import McpretentiousClient
 from .bootstrap import init_terminal_manager as _init_terminal_manager_helper
 from .bootstrap import register_health_endpoint as _register_health_endpoint_helper
@@ -29,6 +33,8 @@ from .lifecycle import start_server as _start_server_helper
 from .lifecycle import stop_server as _stop_server_helper
 
 logger = getLogger(__name__)
+
+_NON_PTY_TERMINAL_ADAPTERS = frozenset({"auto", "crow", "iterm2", "mock"})
 
 # Get version from package metadata
 try:
@@ -44,9 +50,9 @@ class McpretentiousMCPClient:
     expected by the McpretentiousAdapter.
     """
 
-    def __init__(self):
-        """Initialize mcpretentious MCP client wrapper."""
-        self._client = McpretentiousClient()
+    def __init__(self, backend_name: str = "mcpretentious") -> None:
+        """Initialize the wrapper for the selected PTY backend."""
+        self._client = McpretentiousClient(backend_name=backend_name)
         self._started = False
 
     async def _ensure_started(self) -> None:
@@ -132,8 +138,23 @@ class FastMCPServer:
         self._instrument_server_tool_registration()
         self._register_telemetry_middleware()
 
-        # Initialize MCP client wrapper
-        self.mcp_client = McpretentiousMCPClient()
+        # Initialize the PTY MCP wrapper with the operator-selected built-in.
+        # Other recognized terminal adapters do not select a PTY subprocess,
+        # so the wrapper retains its backward-compatible default for auxiliary users.
+        preference = self.app.config.terminal.adapter_preference.lower()
+        if preference in BUILTIN_BACKENDS:
+            backend_name = preference
+        elif preference in _NON_PTY_TERMINAL_ADAPTERS:
+            backend_name = "mcpretentious"
+        else:
+            raise ConfigurationError(
+                message=f"Unknown terminal adapter or PTY backend {preference!r}",
+                details={
+                    "adapter_preference": preference,
+                    "available_pty_backends": sorted(BUILTIN_BACKENDS),
+                },
+            )
+        self.mcp_client = McpretentiousMCPClient(backend_name=backend_name)
 
         # Initialize terminal manager if enabled
         self.terminal_manager = None

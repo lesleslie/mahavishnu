@@ -15,6 +15,7 @@ import pytest
 
 from mahavishnu.core.app import MahavishnuApp
 from mahavishnu.core.config import MahavishnuSettings
+from mahavishnu.core.errors import ConfigurationError
 from mahavishnu.mcp.server_core import (
     FastMCPServer,
     McpretentiousMCPClient,
@@ -129,6 +130,28 @@ class TestFastMCPServerInit:
         """Server should initialize a McpretentiousMCPClient wrapper."""
         assert server.mcp_client is not None
         assert isinstance(server.mcp_client, McpretentiousMCPClient)
+
+    def test_init_threads_terminal_backend_to_client(self, mock_app: MagicMock) -> None:
+        """The configured PTY backend must reach the subprocess client constructor."""
+        mock_app.config.terminal.adapter_preference = "pty_mcp_python"
+
+        with (
+            patch("mahavishnu.mcp.server_core.get_auth_from_config"),
+            patch("mahavishnu.mcp.server_core.McpretentiousClient") as mock_client,
+        ):
+            FastMCPServer(app=mock_app)
+
+        mock_client.assert_called_once_with(backend_name="pty_mcp_python")
+
+    def test_init_rejects_unknown_terminal_backend(self, mock_app: MagicMock) -> None:
+        """Unknown adapter/backend names must fail instead of selecting a default."""
+        mock_app.config.terminal.adapter_preference = "unknown_pty_backend"
+
+        with (
+            patch("mahavishnu.mcp.server_core.get_auth_from_config"),
+            pytest.raises(ConfigurationError, match="unknown_pty_backend"),
+        ):
+            FastMCPServer(app=mock_app)
 
     def test_init_with_tracing_disabled_skips_middleware(self, mock_app: MagicMock) -> None:
         """Telemetry middleware should NOT be added when tracing is disabled."""
