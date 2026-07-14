@@ -36,19 +36,27 @@ class McpretentiousAdapter(TerminalAdapter):
 
     Example:
         >>> from mahavishnu.terminal.adapters import McpretentiousAdapter
-        >>> adapter = McpretentiousAdapter(mcp_client)
+        >>> adapter = McpretentiousAdapter(mcp_client, backend_name="mcpretentious")
         >>> session_id = await adapter.launch_session("qwen", 120, 40)
         >>> await adapter.send_command(session_id, "hello")
         >>> output = await adapter.capture_output(session_id)
     """
 
-    def __init__(self, mcp_client: Any):
+    def __init__(self, mcp_client: Any, backend_name: str | None = None):
         """Initialize mcpretentious adapter.
 
         Args:
             mcp_client: MCP client with call_tool method
+            backend_name: Optional name of the PTY backend the operator
+                selected via ``terminal.adapter_preference``. Stored for
+                downstream consumption (e.g., tool-name resolution once a
+                future task wires ``BUILTIN_BACKENDS`` into the adapter's
+                ``call_tool`` dispatch). Defaults to ``None`` for backward
+                compatibility with callers that pre-date the multi-backend
+                wiring.
         """
         self.mcp = mcp_client
+        self._backend_name = backend_name
         self._sessions: dict[str, dict[str, Any]] = {}
 
     @property

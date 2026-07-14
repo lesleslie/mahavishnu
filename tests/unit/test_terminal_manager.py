@@ -265,7 +265,11 @@ class TestTerminalManagerFactory:
         with patch("mahavishnu.terminal.adapters.iterm2.ITERM2_AVAILABLE", False):
             from mahavishnu.terminal.adapters.mcpretentious import McpretentiousAdapter
 
-            with patch.object(McpretentiousAdapter, "__init__", lambda self, mcp: None):
+            with patch.object(
+                McpretentiousAdapter,
+                "__init__",
+                lambda self, mcp, backend_name=None: None,
+            ):
                 manager = await TerminalManager.create(config, mcp_client=mock_client)
 
         assert manager.current_adapter() == "mcpretentious"

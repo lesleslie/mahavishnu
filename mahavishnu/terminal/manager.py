@@ -488,7 +488,7 @@ class TerminalManager:
         # mcpretentious (requires MCP client)
         if preference == "mcpretentious" and mcp_client is not None:
             try:
-                adapter = McpretentiousAdapter(mcp_client)
+                adapter = McpretentiousAdapter(mcp_client, backend_name=preference)
                 logger.info("Using mcpretentious adapter")
                 return cls(adapter, terminal_config)
             except Exception as e:
