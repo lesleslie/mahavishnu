@@ -7,6 +7,7 @@ from typing import Any
 
 from ...core.errors import ErrorCode, MahavishnuError
 from ..adapters.base import TerminalAdapter
+from ..backends import BUILTIN_BACKENDS
 
 
 class TerminalError(MahavishnuError):
@@ -59,6 +60,28 @@ class McpretentiousAdapter(TerminalAdapter):
         self._backend_name = backend_name
         self._sessions: dict[str, dict[str, Any]] = {}
 
+    def _tool_for(self, operation: str) -> str:
+        """Resolve the MCP tool name for a generic PTY operation.
+
+        Looks up ``BUILTIN_BACKENDS[self._backend_name].tool_map`` first
+        (the contract for backend-specific tool names — e.g.,
+        ``{"open": "custom_open"}``); falls back to the literal
+        ``mcpretentious-{operation}`` for backends whose tool surface
+        matches the built-in mcpretentious package.
+
+        Args:
+            operation: One of ``"open"``, ``"type"``, ``"read"``,
+                ``"close"``, ``"list"``.
+
+        Returns:
+            The actual MCP tool name to call on the backend.
+        """
+        if self._backend_name and self._backend_name in BUILTIN_BACKENDS:
+            mapped = BUILTIN_BACKENDS[self._backend_name].tool_map.get(operation)
+            if mapped:
+                return mapped
+        return f"mcpretentious-{operation}"
+
     @property
     def adapter_name(self) -> str:
         """Return adapter name."""
@@ -88,7 +111,7 @@ class McpretentiousAdapter(TerminalAdapter):
         try:
             # Open terminal window
             result = await self.mcp.call_tool(
-                "mcpretentious-open",
+                self._tool_for("open"),
                 {
                     "columns": columns,
                     "rows": rows,
@@ -138,7 +161,7 @@ class McpretentiousAdapter(TerminalAdapter):
 
         try:
             await self.mcp.call_tool(
-                "mcpretentious-type",
+                self._tool_for("type"),
                 {
                     "terminal_id": session_id,
                     "input": [command, "enter"],
@@ -179,7 +202,7 @@ class McpretentiousAdapter(TerminalAdapter):
             if lines is not None:
                 kwargs["limit_lines"] = lines
 
-            result = await self.mcp.call_tool("mcpretentious-read", kwargs)
+            result = await self.mcp.call_tool(self._tool_for("read"), kwargs)
             return result["output"]  # type: ignore[no-any-return]
 
         except Exception as e:
@@ -199,7 +222,7 @@ class McpretentiousAdapter(TerminalAdapter):
         """
         try:
             await self.mcp.call_tool(
-                "mcpretentious-close",
+                self._tool_for("close"),
                 {
                     "terminal_id": session_id,
                 },
@@ -224,7 +247,7 @@ class McpretentiousAdapter(TerminalAdapter):
             TerminalError: If listing fails
         """
         try:
-            result = await self.mcp.call_tool("mcpretentious-list", {})
+            result = await self.mcp.call_tool(self._tool_for("list"), {})
             return result.get("terminals", [])  # type: ignore[no-any-return]
 
         except Exception as e:

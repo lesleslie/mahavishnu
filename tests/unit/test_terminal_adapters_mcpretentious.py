@@ -16,6 +16,7 @@ from mahavishnu.terminal.adapters.mcpretentious import (
     SessionNotFoundError,
     TerminalError,
 )
+from mahavishnu.terminal.backends import BUILTIN_BACKENDS, PtyBackend
 
 # =============================================================================
 # Fixtures
@@ -365,3 +366,102 @@ class TestExceptionClasses:
         e = TerminalError("boom", details={"k": "v"})
         assert "boom" in str(e)
         assert e.details == {"k": "v"}
+
+
+# =============================================================================
+# Tool-name resolution (BUILTIN_BACKENDS.tool_map contract)
+# =============================================================================
+
+
+class TestToolForResolution:
+    """Tests for ``_tool_for`` — backend-specific MCP tool name resolution.
+
+    The contract: when a backend has a ``tool_map`` populated in
+    ``BUILTIN_BACKENDS``, every generic operation (``open`` / ``type`` /
+    ``read`` / ``close`` / ``list``) must resolve to the mapped name.
+    Backends without a ``tool_map`` keep the literal ``mcpretentious-{op}``
+    name (back-compat for the default surface).
+    """
+
+    def test_default_backend_uses_mcpretentious_prefix(self, mcp_client: AsyncMock) -> None:
+        """``backend_name='mcpretentious'`` (empty tool_map) keeps the literal names."""
+        adapter = McpretentiousAdapter(mcp_client=mcp_client, backend_name="mcpretentious")
+
+        assert adapter._tool_for("open") == "mcpretentious-open"
+        assert adapter._tool_for("type") == "mcpretentious-type"
+        assert adapter._tool_for("read") == "mcpretentious-read"
+        assert adapter._tool_for("close") == "mcpretentious-close"
+        assert adapter._tool_for("list") == "mcpretentious-list"
+
+    def test_no_backend_name_uses_mcpretentious_prefix(
+        self, mcp_client: AsyncMock
+    ) -> None:
+        """``backend_name=None`` falls back to the literal ``mcpretentious-{op}`` names."""
+        adapter = McpretentiousAdapter(mcp_client=mcp_client, backend_name=None)
+
+        assert adapter._tool_for("open") == "mcpretentious-open"
+
+    def test_unknown_backend_name_uses_mcpretentious_prefix(
+        self, mcp_client: AsyncMock
+    ) -> None:
+        """A backend name not in ``BUILTIN_BACKENDS`` falls back to the literal names."""
+        adapter = McpretentiousAdapter(
+            mcp_client=mcp_client, backend_name="not_a_registered_backend"
+        )
+
+        assert adapter._tool_for("open") == "mcpretentious-open"
+
+    def test_tool_map_overrides_open(
+        self, mcp_client: AsyncMock, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """A ``tool_map={"open": "custom_open"}`` redirects the open call."""
+        monkeypatch.setitem(
+            BUILTIN_BACKENDS,
+            "custom_backend",
+            PtyBackend(
+                name="custom_backend",
+                command="custom-launcher",
+                args=(),
+                tool_map={"open": "custom_open"},
+                requires=(),
+            ),
+        )
+        try:
+            adapter = McpretentiousAdapter(
+                mcp_client=mcp_client, backend_name="custom_backend"
+            )
+            assert adapter._tool_for("open") == "custom_open"
+        finally:
+            monkeypatch.delitem(BUILTIN_BACKENDS, "custom_backend")
+
+    async def test_launch_session_uses_mapped_tool_name(
+        self, mcp_client: AsyncMock, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """End-to-end: ``launch_session`` must call the mapped ``open`` tool,
+        not ``mcpretentious-open``, when the backend's ``tool_map`` aliases it.
+        """
+        monkeypatch.setitem(
+            BUILTIN_BACKENDS,
+            "custom_backend",
+            PtyBackend(
+                name="custom_backend",
+                command="custom-launcher",
+                args=(),
+                tool_map={"open": "custom_open", "type": "custom_type"},
+                requires=(),
+            ),
+        )
+        try:
+            mcp_client.call_tool.return_value = {"terminal_id": "abc"}
+            adapter = McpretentiousAdapter(
+                mcp_client=mcp_client, backend_name="custom_backend"
+            )
+            await adapter.launch_session("qwen", columns=80, rows=24)
+            # First call must use the mapped "open" tool name.
+            first_call = mcp_client.call_tool.await_args_list[0]
+            assert first_call.args[0] == "custom_open"
+            # Second call (the initial "qwen" + enter via send_command) uses the mapped "type" tool.
+            second_call = mcp_client.call_tool.await_args_list[1]
+            assert second_call.args[0] == "custom_type"
+        finally:
+            monkeypatch.delitem(BUILTIN_BACKENDS, "custom_backend")
