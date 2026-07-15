@@ -28,7 +28,7 @@ async def test_terminal_tool_is_registered_on_server() -> None:
     """
     server = FastMCP("test")
     settings = CrowSettings()
-    terminal_proxy_tool.register(server, settings)  # type: ignore[arg-type]
+    terminal_proxy_tool.register(server, settings)  # ty: ignore[arg-type]
 
     tools = await server.list_tools()
     tool_names = {t.name for t in tools}

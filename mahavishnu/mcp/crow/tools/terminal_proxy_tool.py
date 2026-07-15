@@ -14,8 +14,6 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any, cast
 
-from fastmcp import FastMCP
-
 from ..terminal_proxy import get_crow_session
 
 if TYPE_CHECKING:
