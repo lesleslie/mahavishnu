@@ -153,7 +153,10 @@ def test_agno_memory_defaults_to_none() -> None:
     from mahavishnu.engines.agno_adapter_impl import AgnoMemoryConfig, MemoryBackend
 
     config = AgnoMemoryConfig()
-    assert config.enabled is False
+    # Source default is True (per Field(default=True) at
+    # mahavishnu/core/config.py:110, the class docstring, and settings/local.yaml).
+    # This regression test pins the documented design intent.
+    assert config.enabled is True
     assert config.backend == MemoryBackend.NONE
 
 

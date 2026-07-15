@@ -7,7 +7,7 @@ packages = ["mahavishnu"]
 
 [project]
 name = "mahavishnu"
-version = "0.8.0"
+version = "0.9.0"
 description = "Global orchestrator package for development workflows"
 authors = [
     {name = "Les Leslie", email = "les@wedgwoodwebworks.com"},
@@ -49,7 +49,6 @@ dependencies = [
     "slowapi>=0.1.9",
     # OpenTelemetry trace storage
     "asyncpg>=0.31.0",
-    "pgvector>=0.4.2",
     # Embeddings: Use Ollama (local) or OpenAI API instead.
     # See: mahavishnu/core/embeddings.py for the OllamaProvider and OpenAIProvider.
     # Resilience
@@ -57,7 +56,7 @@ dependencies = [
     "starlette-context>=0.5.1",
     # Prefect: High-level orchestration
     "prefect>=3.7.3",
-    "croniter>=6.2.2",
+    "croniter>=6.2.2",  # Prefect cron schedule validation (lazy + try/except fallback in prefect_schedules.py:91)
     # Agno: Fast, scalable single/multi-agents
     "agno>=2.6.11",
     # LlamaIndex: RAG pipelines
@@ -66,18 +65,16 @@ dependencies = [
     "llama-index-llms-ollama>=0.8.0,<0.9.0",
     "llama-index-vector-stores-opensearch>=0.6.3,<0.7.0",
     # Content ingestion
-    "pypdf>=6.12.2",
     "httpx[http2]>=0.28.1",
-    "ebooklib>=0.20",
     # Web extract escalation (Plan 1 Tasks 7-9)
-    "trafilatura~=2.1",
+    # trafilatura moved to optional "content-ingest" group (PEP 735).
     "selectolax~=0.3",
     "rapidfuzz~=3.9",
     # AI integrations
-    "pydantic-ai-slim[mcp,openai,anthropic,google,groq]>=1.106.0",
+    # pydantic-ai-slim moved to optional "ai" group (PEP 735).
     "llama-cpp-python>=0.3.26",
     # Serverless GPU
-    "runpod-flash>=1.17.0",
+    # runpod-flash moved to optional "gpu" group (PEP 735).
     # Security
     "defusedxml>=0.7.1",
     "ty>=0.0.44",
@@ -101,6 +98,9 @@ worker = "mahavishnu.core.adapters.worker:worker_adapter_entries"
 
 [dependency-groups]
 # Core development and testing
+# Includes the lazy-imported runtime groups so the test suite can exercise
+# the wrapper modules that lazy-load pydantic_ai, runpod, trafilatura/pypdf,
+# ebooklib, and pgvector.
 dev = [
     "pytest>=9.0.3",
     "pytest-asyncio>=1.4.0",
@@ -120,6 +120,10 @@ dev = [
     "refurb>=2.3.1",
     "complexipy>=5.5.0",
     "zensical>=0.0.44",
+    {include-group = "ai"},
+    {include-group = "gpu"},
+    {include-group = "content-ingest"},
+    {include-group = "storage-pg"},
 ]
 
 # Bodai ecosystem integrations
@@ -181,6 +185,34 @@ automation-vision = [
 # Optional: Explicit in-memory vector store (TurboVec)
 vector = [
     "turbovec[llama-index]~=0.1",
+]
+
+# Optional: Pydantic AI agent runtime (mahavishnu.adapters.ai.pydantic_ai_adapter).
+# Lazy-imported at runtime; install only when the pydantic_ai adapter is used.
+ai = [
+    "pydantic-ai-slim[mcp,openai,anthropic,google,groq]>=1.106.0",
+]
+
+# Optional: Serverless GPU execution via RunPod Flash
+# (mahavishnu.pools.runpod_pool). Lazy-imported; install only when the
+# RunPod pool is deployed.
+gpu = [
+    "runpod-flash>=1.17.0",
+]
+
+# Optional: Content ingestion — PDF, EPUB, and trafilatura readability
+# extractor. The base content ingester (mahavishnu/ingesters/content_ingester.py)
+# lazy-imports pypdf/ebooklib; trafilatura powers the web_extract escalation path.
+content-ingest = [
+    "pypdf>=6.12.2",
+    "ebooklib>=0.20",
+    "trafilatura~=2.1",
+]
+
+# Optional: PostgreSQL pgvector adapter for HNSW-backed vector search
+# (mahavishnu.adapters.pgvector_adapter). Lazy-imported at runtime.
+storage-pg = [
+    "pgvector>=0.4.2",
 ]
 
 [tool.hatch.metadata]
@@ -405,13 +437,30 @@ max-complexity = 15
 paths = ["mahavishnu"]
 sections = ["project.dependencies", "dependency-groups"]
 exclude_deps = [
-    "starlette-context",
-    "ty",
-    "tomli",
-    "gitpython",
-    "opencv-python",
-    "pytesseract",
-    "llama-cpp-python",
+    # Residuals: runtime deps kept in [project].dependencies but never imported
+    # directly. Creosote would otherwise flag them as unreferenced.
+    "starlette-context",  # lifecycle hook injection; FastMCP/Starlette transitive
+    "ty",  # used as an external CLI, not imported
+    "tomli",  # py3.13 stdlib tomllib replacement; transitive on older resolvers
+    "gitpython",  # used via `subprocess`-style wrappers and git CLI fallback
+    "opencv-python",  # desktop automation-vision group only
+    "pytesseract",  # desktop automation-vision group only
+    "llama-cpp-python",  # local LLM provider; lazy-loaded by LLM router
+    # uvicorn: FastMCP lazy-imports as ASGI server; never imported directly.
+    "uvicorn",
+    # prometheus-client: metrics are exported via OTel; prometheus_client only
+    # appears in the /metrics handler registered at app startup.
+    "prometheus-client",
+    # slowapi: rate-limit middleware registered on the FastMCP app; not imported
+    # from application code.
+    "slowapi",
+    # defusedxml: used by XML parsing utilities; transitive via feedparser/ebooklib.
+    "defusedxml",
+    # croniter: lazy-imported inside prefect_schedules.py:91 with a structural
+    # fallback (5-field length check). Re-declared as a runtime dep so ty can
+    # resolve the static import and the venv has croniter available for proper
+    # Prefect cron-schedule validation.
+    "croniter",
     "bandit",
     "complexipy",
     "creosote",
@@ -432,6 +481,21 @@ exclude_deps = [
     "pytest-timeout",
     "pytest-xdist",
     "respx",
+    "akosha",              # group=ecosystem
+    "crackerjack",         # group=ecosystem
+    "hatchet-sdk",         # group=hatchet
+    "openai",              # group=llm-providers
+    "Pillow",              # group=automation
+    "mss",                 # group=automation
+    "tree-sitter",         # group=treesitter (top-level; python/go already excluded above)
+    "turboquant-pro",      # group=compression
+    "turbovec",            # group=vector
+    "pydantic-ai-slim",    # group=ai - lazy in pydantic_ai_adapter.py:301,603
+    "runpod-flash",        # group=gpu - lazy in runpod_pool.py:21-30
+    "pypdf",               # group=content-ingest - lazy in content_ingester.py:898
+    "ebooklib",            # group=content-ingest - lazy in content_ingester.py:917
+    "trafilatura",         # group=content-ingest - lazy in web_extract.py:224
+    "pgvector",            # group=storage-pg - lazy in pgvector_adapter.py:477
 ]
 
 [tool.refurb]

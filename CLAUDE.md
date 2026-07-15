@@ -517,6 +517,26 @@ mahavishnu ingest blog --url "https://blog.example.com/post"
 mahavishnu ingest book --path ~/Documents/book.pdf
 ```
 
+### Optional Dependency Groups (PEP 735)
+
+Several runtime integrations are **not** in `[project].dependencies` because their
+backing libraries are large, narrow in scope, or only meaningful on specific
+deployments. They live in optional `dependency-groups` so a lean install
+(`uv sync`) does not pull them in. Install per-group with `uv sync --group <name>`
+or include them in `dev` via `{include-group = "<name>"}` (already wired for `dev`).
+
+| Group | Use it for | Install |
+|-------|-----------|---------|
+| `ai` | The Pydantic AI agent runtime (`mahavishnu.adapters.ai.pydantic_ai_adapter`). Lazy-imported at runtime; only needed when that adapter is enabled. | `uv sync --group ai` |
+| `gpu` | Serverless GPU execution via RunPod Flash (`mahavishnu.pools.runpod_pool`). Pulls the RunPod SDK; only deploy when using GPU pools. | `uv sync --group gpu` |
+| `content-ingest` | PDF, EPUB, and trafilatura readability extraction. The base `content_ingester.py` lazy-imports `pypdf`/`ebooklib`; `trafilatura` powers the web-extract escalation path. | `uv sync --group content-ingest` |
+| `storage-pg` | PostgreSQL pgvector adapter with HNSW (`mahavishnu.adapters.pgvector_adapter`). Lazy-imported; only needed for the PostgreSQL OTel storage backend. | `uv sync --group storage-pg` |
+
+All four groups are already pulled in by `dev` so the test suite exercises the
+wrapper modules. Production deployments that do not need a given integration
+can omit the group; the wrapper code raises a clear `RuntimeError` pointing to
+the missing install (e.g. `"pypdf not installed. Install with: uv pip install pypdf"`).
+
 ### OpenTelemetry Trace Ingestion
 
 Mahavishnu can ingest and semantically search OpenTelemetry traces:

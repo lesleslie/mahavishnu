@@ -242,7 +242,7 @@ async def test_process_repository_code_sweep_complexity_analysis(
 async def test_process_repository_quality_check(sample_repo_path, mock_qc_checker):
     """Test processing repository for quality check."""
     with patch(
-        "mahavishnu.engines.prefect_adapter_impl.QualityControl", return_value=mock_qc_checker
+        "mahavishnu.engines.prefect_adapter_impl._QualityControlImpl", return_value=mock_qc_checker
     ):
         result = await process_repository.fn(
             repo_path=sample_repo_path, task_spec={"type": "quality_check", "id": "test_qc"}

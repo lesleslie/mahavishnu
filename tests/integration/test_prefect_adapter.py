@@ -81,7 +81,7 @@ async def test_process_repository_quality_check_integration():
     task_spec = {"type": "quality_check", "id": "qc_task"}
     repo_path = "/fake/repo"
 
-    with patch("mahavishnu.engines.prefect_adapter_impl.QualityControl") as mock_qc_class:
+    with patch("mahavishnu.engines.prefect_adapter_impl._QualityControlImpl") as mock_qc_class:
         # Setup mock QC
         mock_qc = MagicMock()
         mock_qc_class.return_value = mock_qc

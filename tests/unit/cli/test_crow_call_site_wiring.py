@@ -105,7 +105,7 @@ def test_resolve_crow_mcp_client_uses_defaults_when_no_settings() -> None:
 @pytest.mark.unit
 @pytest.mark.parametrize(
     "call_site_line",
-    [1100, 1183, 1408],
+    [1321, 1404, 1629],
     ids=["workers_spawn", "workers_resolved_dispatch", "pool_spawn"],
 )
 def test_three_call_sites_route_through_helper(reload_main_cli, call_site_line) -> None:

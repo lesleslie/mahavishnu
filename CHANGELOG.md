@@ -5,6 +5,174 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.9.0] - 2026-07-15
+
+### Added
+
+- **BREAKING:** terminal: Drop pty_mcp_python backend
+- activity: Surface Mahavishnu worker events to the Claude session
+- Add 131 unit tests for mahavishnu/mcp/ + resolve collection collision
+- audit-H8: Add SLOs + rollback CLI for Plan 1 (bodai-crow) and Plan 5 (distilled-workflows)
+- audit: Recognize framework decorators and lifecycle methods
+- bodai: Close Phase 6 — Mahavishnu publisher, hook replacement, CLI+docs
+- bridge: Wire CallerKind quotas and dispatch_to_pool for ultracode subagents
+- cli: Wire 11 orphan methods across 2 subsystems
+- core: Add DharaThinClient SQL proxy execute/query
+- crow: Plan 1 Tasks 7-11 - web extract escalation + server wiring + integration tests
+- crow: Wire terminal tool (single PTY, no concurrency)
+- CrowTerminalAdapter uses session-aware tools
+- distill: Three-zone skill pipeline interface + InMemory impl
+- eventbridge: Add Mahavishnu settings field + adapter
+- events: Oneiric wire standardization (canonical boundary, decoder, observability)
+- mahavishnu: Plan 3 Tier 1 — repo diff + repo pr create CLI
+- mahavishnu: Plan 3 Tier 1 — show_primitive + list_primitives MCP tools
+- mahavishnu: Plan 7 Phase 2 — FastMCP 3.4 consumer bump
+- mcp: Add Mahavishnu eventbridge publish_to_eventbridge tool
+- observability: Add adapter_runtime substrate (Spec #8 Phase 3)
+- Oneiric EventBridge subscriber + /bodai-status surface (Phase 6A+6B)
+- Per-session subprocess pool + crow_terminal_* tools
+- Plan 1 Tasks 1-6 — bodai-crow HTTP MCP scaffold + tools
+- Plan 5 Phase A.0 foundational substrate for distilled workflows
+- Plan 5 Phase A.0 foundational substrate for distilled workflows
+- Plan 5 Phase A.1 — distilled workflows storage substrate
+- Plan 5 Phase A.1 — distilled workflows storage substrate
+- precommitment: Hypothesis lock dataclass + signature + LockStore + CLI
+- quality: Add scripts/audit_orphans.py to detect unwired code
+- quality: Add wire-up discipline to prevent built-but-not-wired features
+- reports: Add apply_confidence_ceiling gate with arithmetic cap
+- reports: Add CompletionReport Pydantic v2 model + thin file-backed persister
+- self-heal: Add L1 retry, L2 noop pin, L3 rule extraction (Spec #4)
+- Ship project-scoped SOP evolution v0 (Spec #7, Phase 3)
+- skill-tools: Wire 4 skill_map functions as CLI commands
+- skill: Add ty type checker guidance to crackerjack-compliant-code
+- style-sop: Add check_content validator with regex bans
+- style-sop: Add Crackerjack skill anti-ai-flavor-check
+- style-sop: Add default SOP package resource, discovery, and parser
+- Task 13 Phase B — Mahavishnu MCP clone tools + ecosystem DAG workflow
+- tenancy: Add TenantContextPack model + publisher interface (Spec #9)
+- terminal: Add PTY backend registry
+- terminal: Thread adapter_preference to McpretentiousAdapter
+- tool-prefs: Wire CLAUDE.md Tool Preferences and mahavishnu-orchestrator delegation
+- Wire apply_confidence_ceiling into distiller output consumer
+- Wire Mahavishnu EventBridgePublisher at server startup
+- workflows: Add Spec #10 progress snapshots with CLI watch stub
+
+### Changed
+
+- backup_cli: Extract command bodies to reduce C901
+- dhara: Extract _invoke helpers, drop C901 noqa
+- Fix `from __future__ import annotations` placement + ruff line-join
+- Mahavishnu (quality: 69/100) - 2026-06-22 19:47:42
+- Mahavishnu (quality: 69/100) - 2026-06-26 08:09:06
+- Mahavishnu (quality: 70/100) - 2026-06-23 02:08:47
+- Mahavishnu (quality: 70/100) - 2026-06-23 04:26:48
+- Mahavishnu (quality: 71/100) - 2026-06-27 00:03:32
+- Mahavishnu (quality: 71/100) - 2026-06-27 05:00:07
+- Mahavishnu (quality: 73/100) - 2026-06-29 15:55:23
+- Mahavishnu (quality: 73/100) - 2026-07-04 03:38:39
+- Mahavishnu (quality: 73/100) - 2026-07-05 10:41:34
+- Mahavishnu (quality: 73/100) - 2026-07-06 04:33:13
+- Mahavishnu (quality: 73/100) - 2026-07-11 11:08:55
+- Mahavishnu (quality: 73/100) - 2026-07-15 11:15:13
+- Mahavishnu (quality: 77/100) - 2026-07-06 11:08:00
+- mcp: Extract C901 OOM helpers across 5 functions
+- Multi-backend PTY implementation
+- Multi-backend PTY toolservers design
+- pools: Remove KubernetesPool (immediate removal)
+- precommitment: Use Path.unlink instead of os.unlink
+- quality: Bring all 98 C901 offenders in mahavishnu/ under 15
+- Session-buddy (quality: 72/100) - 2026-07-15 10:38:28
+
+### Fixed
+
+- cli: Unblock post-commit hook by surfacing Path runtime imports
+- coordination-cli: Repair two security findings in repo commands
+- crow: Drop unused FastMCP import + correct ty ignore prefix in test
+- crow: Implement eviction grace sequence + propagate cancellation + silence B110
+- crow: Replace asserts with RuntimeError, log tracebacks, drop unused imports, fix isort
+- crow: Retype new-tool returns, harden test stubs, set-comparison assertion
+- crow: Type register() with Union[FastMCP, StandardServer]
+- crow: Wire shutdown_all_sessions into FastMCP lifespan
+- distill: H4 — source provenance gate (audit remediation)
+- distill: H5 — file-backed weekly LLM cap with fcntl locking
+- H6 — gate distiller on MAHAVISHNU_USER_ID + PUBLISHER_ALLOWLIST
+- H6 — gate distiller on MAHAVISHNU_USER_ID + PUBLISHER_ALLOWLIST
+- mahavishnu: Raise mcp-common floor + drop PYTHONPATH workaround in tests
+- mcp: Await app.is_healthy() in get_health
+- mcp: Preserve wrapper signature in _wrap_tool_handler
+- plan: Spec #4 three-layer-self-heal C4 — L2 stub + double-invocation
+- precommitment: Persist locks to disk so verify/check_post_hoc work across processes (audit H-PRECOMMIT)
+- quality: Clean creosote exclusions + add betterleaks config
+- quality: Noqa C901 on FastMCP register_X_tools functions
+- repositories: Re-export TaskFilter and TaskEventFilter
+- ruff: Gate fast-hook failures from 912 → 0 errors
+- security: Close caller-identity-default and admission-control-bypass in pool_execute
+- security: Restore timing-safe control test + drop redundant pip-audit fanout
+- self-heal: Scrub credentials from L3 rule message and rule_id (audit H-H4)
+- terminal: Honor BUILTIN_BACKENDS.tool_map when resolving tool names
+- terminal: Manager.create raises actionable error when mcp_client is None for BUILTIN_BACKENDS preference
+- terminal: Route all BUILTIN_BACKENDS names through McpretentiousAdapter
+- terminal: Use BUILTIN_BACKENDS for mcpretentious launch
+- Thread adapter_preference to McpretentiousMCPClient
+
+### Documentation
+
+- 2026-06 docs batch update across runbooks, followups, plans, specs
+- Add bandit # nosec annotations to example curl lines
+- Add Bodai crow MCP server design spec
+- Apply 4-agent review audit to crow server design spec
+- Batch of 10 implementation plans (2026-06-22)
+- Bodai crow HTTP MCP server implementation plan
+- Bodai ecosystem candidate evaluation — 20 triaged, 5 deep-dived
+- crow: Document concurrent sessions + known limitations
+- mahavishnu: Plan 1 SSRF runbook for bodai-crow-server
+- MCP server family MCPBaseSettings migration plan
+- plan: Correct attribution -- these are standalone Bodai MCP servers, not mycelium-core
+- plan: V2 — apply 5 blocking review fixes
+- quality: Add coverage backlog report identifying untested modules
+- Record Bodai observability pattern + draft Phase 6 plan
+- Revert "docs(sdd): task-4 report for gated mcpretentious integration smoke"
+- sdd: Task-4 report for gated mcpretentious integration smoke
+- spec: Adapter-runtime-observability v1.0 — Phase 3 (pivot)
+- spec: Anti-ai-flavor-style-sop v1.0 — Phase 2
+- spec: Completion-report-schema-v1 design — Phase 1 foundational
+- spec: Confidence-ceiling-gate v1.1 — Phase 1
+- spec: Defer crawl4ai — Playwright dep + 0.x version not worth it
+- spec: Live-observe-presence-over-gate v1.0 — Phase 3
+- spec: Multi-tenant-context-packs v1.0 — Phase 3
+- spec: Precommitment-hypothesis-lock v1.1 — Phase 1
+- spec: Project-scoped-sop-evolution v1.0 — Phase 3
+- spec: Three-layer-self-heal v1.0 — Phase 2
+- spec: Three-zone-skill-pipeline v1.0 — Phase 2
+- spec: V3 bodai-crow — rapidfuzz vendor strategy, oneiric httpx2 scope
+- spec: V4 bodai-crow — httpx2 tier taxonomy in §9
+- spec: V5 bodai-crow — review-pass fixes
+- terminal: Add trailing newline to backends.md
+- terminal: Document built-in PTY backends
+- terminal: Document dual-spawn mcpretentious at boot
+
+### Testing
+
+- crow: Update 3 pre-existing assertions for current port + opt-in design
+- eventbridge: Real Oneiric transport round-trip integration tests
+- Fix stale imports + field names in test_messaging_compat
+- terminal: Gated integration smoke for mcpretentious
+
+### Internal
+
+- deps: Remove unused beautifulsoup4 dependency
+- drafts: Persist Workflow-tool scripts for Phases 3-5
+- examples: Remove 3 dead-code orphans, document 3 symmetric-API methods
+- gitignore: Add *.backup.* and *.backup.json patterns
+- mahavishnu: Migrate mcp-common[treesitter,llm] → dep-groups
+- mcp: Switch crow from HTTP to stdio transport
+- Remove generic agents covered by mycelium-core plugin
+- Remove nanobot/opencode artifacts and clean up root directory
+- repo: Untrack 23 .backup.json artifacts and tighten gitignore
+- sdd: Smoke test multi-backend PTY
+- Skill_map curation + bifrost config template
+- Update uv.lock (astroid typo fix, coverage bump)
+
 ## [0.8.0] - 2026-06-20
 
 ### Added
