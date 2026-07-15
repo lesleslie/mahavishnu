@@ -98,7 +98,7 @@ def register(server: "FastMCP | StandardServer", settings: CrowSettings) -> None
         state_proxy = _locks[session_id]
         async with state_proxy:
             session = get_crow_session_by_handle(session_id)
-            return await session.call_tool(  # ty: ignore[invalid-return-type]
+            return await session.call_tool(  # type: ignore[no-any-return]
                 "terminal", {"command": command},
             )
 

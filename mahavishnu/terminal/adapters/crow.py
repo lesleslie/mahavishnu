@@ -39,7 +39,7 @@ def _extract_output(result: Any) -> str:
     either shape so the adapter works against both.
     """
     if isinstance(result, dict):
-        return str(result.get("output", ""))
+        return result.get("output") or ""
     content = getattr(result, "content", None)
     if content:
         first = content[0]
