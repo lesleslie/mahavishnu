@@ -60,8 +60,7 @@ from typing import TYPE_CHECKING
 import anyio
 from anyio import create_task_group, open_process
 from anyio.streams.text import TextReceiveStream
-from mcp import ClientSession, StdioServerParameters, types
-from mcp.client.stdio import stdio_client
+from mcp import ClientSession, types
 from mcp.shared.session import SessionMessage
 
 from mahavishnu.core.errors import ErrorCode, MahavishnuError
@@ -187,7 +186,8 @@ async def _safe_stdio_client(command: str):
     ws, wsr = anyio.create_memory_object_stream(0)
 
     async def stdout_reader() -> None:
-        assert process.stdout is not None
+        if process.stdout is None:
+            raise RuntimeError("crow subprocess stdout is unexpectedly None")
         async with rsw:
             buf = ""
             async for chunk in TextReceiveStream(process.stdout, encoding="utf-8"):
@@ -200,7 +200,8 @@ async def _safe_stdio_client(command: str):
                     await rsw.send(SessionMessage(msg))
 
     async def stdin_writer() -> None:
-        assert process.stdin is not None
+        if process.stdin is None:
+            raise RuntimeError("crow subprocess stdin is unexpectedly None")
         async with wsr:
             async for msg in wsr:
                 payload = msg.message.model_dump_json(by_alias=True, exclude_none=True)
@@ -301,7 +302,7 @@ async def _close_session(handle: str) -> None:
         try:
             await state.exit_stack.aclose()
         except BaseException as exc:
-            logger.warning(
+            logger.exception(
                 "Error closing crow session %s (subprocess reap is best-effort): %s",
                 handle,
                 exc,
