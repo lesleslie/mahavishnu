@@ -18,7 +18,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any, cast
 
-from . import file_tools, rg_search, web_extract, web_tools
+from . import file_tools, rg_search, terminal_proxy_tool, web_extract, web_tools
 
 if TYPE_CHECKING:
     from mcp_common.profiles.standard import StandardServer
@@ -40,6 +40,7 @@ def register_all(server: StandardServer, settings: CrowSettings) -> None:
     rg_search.register(server, settings)
     web_tools.register(server, settings)
     web_extract.register(server, settings)
+    terminal_proxy_tool.register(server, settings)
 
 
 __all__ = ["register_all", "_tool_decorator"]
