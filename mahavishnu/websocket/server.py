@@ -44,6 +44,7 @@ from mahavishnu.websocket.tls_config import get_websocket_tls_config, load_ssl_c
 logger = logging.getLogger(__name__)
 
 if TYPE_CHECKING:
+    from mahavishnu.core.events.canonical import OneiricEventPublisherProtocol
     from mahavishnu.core.events.envelope import EventEnvelope
 
 
@@ -625,7 +626,7 @@ class MahavishnuWebSocketServer(WebSocketServer):
     # WebSocket broadcast path.
     # ------------------------------------------------------------------
 
-    def _get_eventbridge_publisher(self) -> Any:
+    def _get_eventbridge_publisher(self) -> OneiricEventPublisherProtocol | None:
         """Return the configured EventBridge publisher, or ``None``.
 
         The publisher is intentionally optional; the WebSocket broadcast
@@ -663,7 +664,10 @@ class MahavishnuWebSocketServer(WebSocketServer):
             return
         await publish_workflow_failed(workflow_id, error, publisher=publisher)
 
-    def set_eventbridge_publisher(self, publisher: Any) -> None:
+    def set_eventbridge_publisher(
+        self,
+        publisher: OneiricEventPublisherProtocol | None,
+    ) -> None:
         """Wire (or replace) the Bodai EventBridge publisher used by this server.
 
         ``None`` clears the wiring. The WebSocket broadcast path is

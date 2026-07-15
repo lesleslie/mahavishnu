@@ -1,6 +1,33 @@
 """Typed event envelope and event-contract utilities."""
 
 from mahavishnu.core.errors import MahavishnuError as MahavishnuError
+from mahavishnu.core.events.canonical import (
+    OPTIONAL_EVENT_HEADERS as OPTIONAL_EVENT_HEADERS,
+)
+from mahavishnu.core.events.canonical import (
+    REQUIRED_EVENT_HEADERS as REQUIRED_EVENT_HEADERS,
+)
+from mahavishnu.core.events.canonical import (
+    RESERVED_EVENT_HEADERS as RESERVED_EVENT_HEADERS,
+)
+from mahavishnu.core.events.canonical import (
+    OneiricEventPublisherProtocol as OneiricEventPublisherProtocol,
+)
+from mahavishnu.core.events.canonical import (
+    create_oneiric_envelope as create_oneiric_envelope,
+)
+from mahavishnu.core.events.canonical import (
+    decode_oneiric_envelope as decode_oneiric_envelope,
+)
+from mahavishnu.core.events.canonical import (
+    encode_oneiric_envelope as encode_oneiric_envelope,
+)
+from mahavishnu.core.events.canonical import (
+    to_mahavishnu_envelope as to_mahavishnu_envelope,
+)
+from mahavishnu.core.events.canonical import (
+    to_oneiric_envelope as to_oneiric_envelope,
+)
 from mahavishnu.core.events.compatibility import (
     CompatibilityLevel as CompatibilityLevel,
 )

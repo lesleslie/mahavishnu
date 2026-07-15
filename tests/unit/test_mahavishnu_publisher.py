@@ -1,7 +1,8 @@
 """Unit tests for ``mahavishnu.core.events.mahavishnu_publisher``.
 
 Mirrors the InMemoryEventTransport test pattern from
-``mahavishnu/core/events/contract.py``.
+``mahavishnu/core/events/contract.py`` and verifies the canonical
+Oneiric envelope contract.
 """
 
 from __future__ import annotations
@@ -14,6 +15,7 @@ from unittest.mock import AsyncMock
 from oneiric.runtime.events import EventEnvelope
 import pytest
 
+from mahavishnu.core.events.canonical import RESERVED_EVENT_HEADERS
 from mahavishnu.core.events.contract import InMemoryEventTransport
 from mahavishnu.core.events.mahavishnu_publisher import (
     EVENT_VERSION,
@@ -27,6 +29,23 @@ from mahavishnu.core.events.mahavishnu_publisher import (
 )
 
 pytestmark = pytest.mark.unit
+
+
+class _RecordingPublisher:
+    """In-process fake that captures every published Oneiric envelope.
+
+    Satisfies the canonical :class:`OneiricEventPublisherProtocol`
+    because the protocol accepts either a coroutine return or a
+    plain object. The recording implementation is intentionally
+    synchronous — the lifecycle functions only need to consume the
+    awaitable or non-awaitable result uniformly.
+    """
+
+    def __init__(self) -> None:
+        self.envelopes: list[EventEnvelope] = []
+
+    async def publish(self, envelope: EventEnvelope) -> None:
+        self.envelopes.append(envelope)
 
 
 def _headers_of(envelope: EventEnvelope) -> dict[str, Any]:
@@ -74,54 +93,56 @@ def test_publish_workflow_started_builds_canonical_envelope() -> None:
 
 
 @pytest.mark.asyncio
-async def test_publish_workflow_started_invokes_injected_publisher() -> None:
-    """publish_workflow_started calls publisher.publish with the right envelope."""
-    publisher = AsyncMock()
-    publisher.publish.return_value = None
+async def test_publish_workflow_started_invokes_recording_publisher() -> None:
+    """publish_workflow_started forwards a recorded Oneiric envelope to the publisher."""
+    publisher = _RecordingPublisher()
     metadata = {"prompt": "x"}
 
     await publish_workflow_started("wf_xyz", metadata, publisher=publisher)
 
-    publisher.publish.assert_awaited_once()
-    envelope = publisher.publish.await_args.args[0]
+    assert len(publisher.envelopes) == 1
+    envelope = publisher.envelopes[0]
     assert isinstance(envelope, EventEnvelope)
     assert envelope.topic == "workflow.started"
     payload = _payload_of(envelope)
     assert payload.get("workflow_id") == "wf_xyz"
     assert payload.get("prompt") == "x"
-    assert _headers_of(envelope).get("source") == "mahavishnu"
+    headers = _headers_of(envelope)
+    assert headers.get("source") == "mahavishnu"
+    # Reserved headers must appear exactly once each
+    for reserved in RESERVED_EVENT_HEADERS & {"event_id", "source", "version", "timestamp"}:
+        assert headers.get(reserved), f"missing reserved header {reserved}"
 
 
 @pytest.mark.asyncio
 async def test_publish_workflow_completed_builds_canonical_envelope() -> None:
-    """publish_workflow_completed emits an envelope with topic=workflow.completed."""
-    publisher = AsyncMock()
-    publisher.publish.return_value = None
+    """publish_workflow_completed emits a workflow.completed envelope with reserved headers set."""
+    publisher = _RecordingPublisher()
     result = {"status": "success", "duration_seconds": 12.5}
 
     await publish_workflow_completed("wf_done", result, publisher=publisher)
 
-    publisher.publish.assert_awaited_once()
-    envelope = publisher.publish.await_args.args[0]
+    assert len(publisher.envelopes) == 1
+    envelope = publisher.envelopes[0]
     assert envelope.topic == "workflow.completed"
     payload = _payload_of(envelope)
     assert payload.get("workflow_id") == "wf_done"
     assert payload.get("status") == "success"
     assert payload.get("duration_seconds") == 12.5
-    assert _headers_of(envelope).get("source") == "mahavishnu"
-    assert _headers_of(envelope).get("version") == EVENT_VERSION
+    headers = _headers_of(envelope)
+    assert headers.get("source") == "mahavishnu"
+    assert headers.get("version") == EVENT_VERSION
 
 
 @pytest.mark.asyncio
 async def test_publish_workflow_failed_builds_canonical_envelope() -> None:
-    """publish_workflow_failed emits an envelope with topic=workflow.failed."""
-    publisher = AsyncMock()
-    publisher.publish.return_value = None
+    """publish_workflow_failed emits a workflow.failed envelope."""
+    publisher = _RecordingPublisher()
 
     await publish_workflow_failed("wf_boom", "boom!", publisher=publisher)
 
-    publisher.publish.assert_awaited_once()
-    envelope = publisher.publish.await_args.args[0]
+    assert len(publisher.envelopes) == 1
+    envelope = publisher.envelopes[0]
     assert envelope.topic == "workflow.failed"
     payload = _payload_of(envelope)
     assert payload.get("workflow_id") == "wf_boom"
@@ -175,11 +196,70 @@ async def test_publisher_swallows_exceptions(
 
 @pytest.mark.asyncio
 async def test_publisher_with_none_is_a_noop() -> None:
-    """publisher=None is silently accepted."""
+    """publisher=None is silently accepted (a sibling recorder sees zero envelopes)."""
+    # A sibling recording publisher confirms no global state was written when
+    # we passed publisher=None to each lifecycle call.
+    sibling = _RecordingPublisher()
     # Must not raise
-    await publish_workflow_started("wf_n", {"k": "v"})
-    await publish_workflow_completed("wf_n", {"status": "ok"})
-    await publish_workflow_failed("wf_n", "e")
+    await publish_workflow_started("wf_n", {"k": "v"}, publisher=None)
+    await publish_workflow_completed("wf_n", {"status": "ok"}, publisher=None)
+    await publish_workflow_failed("wf_n", "e", publisher=None)
+
+    # And the default (no publisher arg) path stays clean too.
+    await publish_workflow_started("wf_default", {"k": "v"})
+    await publish_workflow_completed("wf_default", {"status": "ok"})
+    await publish_workflow_failed("wf_default", "e")
+
+    # The sibling recorder saw nothing.
+    assert sibling.envelopes == []
+
+
+@pytest.mark.asyncio
+async def test_recording_publisher_receives_three_envelopes() -> None:
+    """A recording publisher captures the start/complete/failed envelopes in order."""
+    publisher = _RecordingPublisher()
+
+    await publish_workflow_started("wf_seq", {"prompt": "p"}, publisher=publisher)
+    await publish_workflow_completed("wf_seq", {"status": "ok"}, publisher=publisher)
+    await publish_workflow_failed("wf_seq", "boom", publisher=publisher)
+
+    assert [e.topic for e in publisher.envelopes] == [
+        "workflow.started",
+        "workflow.completed",
+        "workflow.failed",
+    ]
+
+
+@pytest.mark.asyncio
+async def test_publisher_preserves_payload_identity() -> None:
+    """The lifecycle functions pass a payload containing the original kwargs unchanged."""
+    publisher = _RecordingPublisher()
+    metadata = {"prompt": "Refactor", "tags": ["x", "y"]}
+
+    await publish_workflow_started("wf_payload", metadata, publisher=publisher)
+
+    [envelope] = publisher.envelopes
+    payload = envelope.payload
+    assert payload["workflow_id"] == "wf_payload"
+    assert payload["prompt"] == "Refactor"
+    assert payload["tags"] == ["x", "y"]
+
+
+@pytest.mark.asyncio
+async def test_publisher_records_reserved_headers_exactly_once() -> None:
+    """Required reserved headers (event_id/source/version/timestamp) appear exactly once."""
+    publisher = _RecordingPublisher()
+
+    await publish_workflow_started("wf_unique", {"k": "v"}, publisher=publisher)
+
+    [envelope] = publisher.envelopes
+    headers = envelope.headers
+    for reserved in ("event_id", "source", "version", "timestamp"):
+        # Exactly one occurrence of each reserved header (defensive vs. duplicate-header collisions).
+        occurrences = sum(1 for key in headers if key == reserved)
+        assert occurrences == 1, f"reserved header {reserved} appeared {occurrences} times"
+    assert headers["source"] == SOURCE
+    assert headers["version"] == EVENT_VERSION
 
 
 def test_envelope_uuid_is_unique_across_calls() -> None:
