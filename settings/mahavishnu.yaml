@@ -326,6 +326,23 @@ dhara_state:
   flush_interval_seconds: 60
   max_routing_buffer_age_seconds: 3600
 
+# Ultracode Phase 1 — adversarial diverse-refuter verification gate.
+# See: docs/plans/2026-07-11-ultracode-integration-wiring.md §Phase 1
+# Persists verdict records to Dhara under `verification/{proposal_id}/`.
+verification:
+  enabled: true  # Run diverse-refuter verification on PROPOSE_APPROVE flows
+  alert_threshold: 0.5  # Reject-rate (consensus=reject / total) that triggers an alert
+  block_on_reject: false  # When true, reject outcomes block human approval (opt-in)
+  timeout_seconds: 30  # Per-refuter wall-clock budget (1-300)
+
+# Ultracode Phase 3 — caller-kind quota for `pool_route_execute`.
+# See: docs/plans/2026-07-11-ultracode-integration-wiring.md §Phase 3
+# Caps how often each caller_kind can dispatch within the window.
+caller_quota:
+  enabled: true  # Enforce caller-kind quotas on dispatch
+  default: 100  # Default quota per caller_kind per window (1-10000)
+  window_seconds: 3600  # Rolling quota window in seconds (60-86400)
+
 # A2A (Agent-to-Agent) protocol — Google A2A spec
 # Set enabled: true and add agent entries to activate
 a2a:
