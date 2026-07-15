@@ -26,15 +26,21 @@ Per-session subprocess pool (Task 2):
 - ``shutdown_all_sessions()`` — walk every live session and close
   it. Called from the FastMCP lifespan shutdown.
 
-Process lifecycle invariants (documented but not yet enforced via
-``os.killpg``; ``start_new_session=True`` is already set by
-``mcp.client.stdio._create_platform_compatible_process``):
+Process lifecycle invariants (``start_new_session=True`` is already
+set by ``mcp.client.stdio._create_platform_compatible_process``):
 
 - Each spawned subprocess is in its own process group so
   ``os.killpg()`` can signal the whole tree during eviction.
-- Eviction grace sequence: send ``{"command": "exit"}`` to the PTY,
-  wait 1 s; if still alive, ``os.killpg(SIGTERM)``; after another
-  1 s, ``os.killpg(SIGKILL)``.
+- Eviction grace sequence (implemented in ``_graceful_evict_task``,
+  fired before ``exit_stack.aclose()`` from ``_close_session``):
+  send ``{"command": "exit"}`` to the PTY, wait 1 s; if the
+  process group is still alive, ``os.killpg(SIGTERM)``; after another
+  1 s, ``os.killpg(SIGKILL)``. The grace task runs in its own
+  ``asyncio.Task`` and is awaited with ``asyncio.shield()`` so the
+  caller's cancel scope cannot propagate into the killpg waits
+  (same pattern as ``_safe_stdio_client``). The unconditional
+  ``SIGKILL`` in ``_safe_stdio_client``'s ``finally`` block remains
+  as the final backstop.
 
 Concurrency model:
 
@@ -53,6 +59,8 @@ import asyncio
 from contextlib import AsyncExitStack, asynccontextmanager
 from dataclasses import dataclass, field
 import logging
+import os
+import signal
 import sys
 import time
 from typing import TYPE_CHECKING
@@ -78,8 +86,8 @@ class _CrowState:
     Dataclass fields prevent the partial-publish race where a reader
     would see a session whose AsyncExitStack has not yet been assigned.
     ``last_used_at`` powers LRU eviction. ``pgid`` is the process-group
-    id captured at spawn for ``os.killpg`` based eviction (currently
-    unused; tracked for follow-up hardening).
+    id captured at spawn and used by ``_graceful_evict_task`` to signal
+    the whole subtree via ``os.killpg`` during eviction.
     """
 
     session: ClientSession
@@ -242,8 +250,8 @@ async def _safe_stdio_client(command: str):
         for stream in (rs, ws):
             try:
                 await stream.aclose()
-            except Exception:
-                pass
+            except Exception as exc:
+                logger.warning("stream.aclose() failed during cleanup: %s", exc)
         # Step 3: SIGKILL the OS process and reap it. SIGKILL is the
         # unconditional exit hatch — it does not require the
         # subprocess to cooperate, and ``process.wait()`` on a
@@ -289,24 +297,119 @@ async def _close_session(handle: str) -> None:
 
     Internal: called by ``release_session`` (which adds the creation
     lock) and by ``shutdown_all_sessions`` (which already snapshots
-    keys so no concurrent inserts are pending). Suppresses teardown
-    errors because callers are in cleanup paths: ``anyio`` raises
-    ``RuntimeError`` when a nested cancel scope is exited from a
-    different task than the one that entered it (common in tests
-    that run with pytest-asyncio's auto mode), and asyncio may
-    surface a ``CancelledError`` during host-loop teardown.
-    Either way, the OS subprocess gets a SIGKILL before we return.
+    keys so no concurrent inserts are pending).
+
+    Before tearing down the AsyncExitStack we fire the eviction grace
+    sequence (``_graceful_evict_task``) in its own ``asyncio.Task`` and
+    await it with ``asyncio.shield()`` so the caller's cancel scope
+    cannot propagate into the killpg waits — the same pattern
+    ``_safe_stdio_client`` uses for its task-group task. After the
+    grace sequence completes, ``exit_stack.aclose()`` runs; its
+    unconditional ``SIGKILL`` is the final backstop if the subprocess
+    is still alive.
     """
     state = _sessions.pop(handle, None)
-    if state is not None:
+    if state is None:
+        return
+
+    # Fire the grace sequence in a separate task. We shield the await
+    # so caller's cancellation cannot abort the killpg waits.
+    grace_task = asyncio.create_task(
+        _graceful_evict_task(state, handle),
+        name=f"crow-grace-evict-{handle}",
+    )
+    try:
+        # Bound the wait at 3s — well past the worst-case 2.5s grace
+        # sequence (0.5s exit attempt + 1s + 1s). The unconditional
+        # SIGKILL in _safe_stdio_client is the final backstop.
+        await asyncio.wait_for(asyncio.shield(grace_task), timeout=3.0)
+    except BaseException as exc:
+        logger.debug(
+            "Grace sequence for %s did not complete cleanly (continuing): %s",
+            handle,
+            exc,
+        )
+
+    try:
+        await state.exit_stack.aclose()
+    except BaseException as exc:
+        logger.exception(
+            "Error closing crow session %s (subprocess reap is best-effort): %s",
+            handle,
+            exc,
+        )
+        raise  # T2-M2: preserve cancellation/error propagation
+
+
+async def _graceful_evict_task(state: _CrowState, handle: str) -> None:
+    """Run the eviction grace sequence per the brief.
+
+    Steps (all inside this single task so the caller's cancel scope
+    cannot propagate into the killpg waits — see ``_close_session``):
+
+    1. Send ``{"command": "exit"}`` to the PTY (bounded 0.5 s).
+    2. Wait 1 s for the PTY to honour the exit.
+    3. If the process group is still alive, ``os.killpg(SIGTERM)``.
+    4. Wait 1 s for SIGTERM to be honoured.
+    5. If the process group is still alive, ``os.killpg(SIGKILL)``.
+
+    All subprocess interactions are best-effort: a failure in step 1
+    (session gone, call timed out) just falls through to step 3; a
+    missing pgid skips the killpg steps entirely; ``ProcessLookupError``
+    / ``PermissionError`` from the killpg calls are swallowed. The
+    unconditional SIGKILL in ``_safe_stdio_client``'s ``finally`` is
+    the final backstop.
+    """
+    # Step 1: politely ask the PTY to exit.
+    try:
+        await asyncio.wait_for(
+            state.session.call_tool("terminal", {"command": "exit"}),
+            timeout=0.5,
+        )
+    except BaseException as exc:
+        logger.debug("Grace exit request failed for %s: %s", handle, exc)
+
+    # Step 2: wait 1s for the PTY to honour the exit.
+    await asyncio.sleep(1.0)
+
+    pgid = state.pgid
+    if pgid is None:
+        return
+
+    # Step 3: SIGTERM the process group if still alive.
+    if _pgid_alive(pgid):
         try:
-            await state.exit_stack.aclose()
-        except BaseException as exc:
-            logger.exception(
-                "Error closing crow session %s (subprocess reap is best-effort): %s",
-                handle,
-                exc,
-            )
+            os.killpg(pgid, signal.SIGTERM)
+        except (ProcessLookupError, PermissionError) as exc:
+            logger.debug("killpg SIGTERM for %s failed: %s", handle, exc)
+
+    # Step 4: wait 1s for SIGTERM to be honoured.
+    await asyncio.sleep(1.0)
+
+    # Step 5: SIGKILL the process group if still alive.
+    if _pgid_alive(pgid):
+        try:
+            os.killpg(pgid, signal.SIGKILL)
+        except (ProcessLookupError, PermissionError) as exc:
+            logger.warning("killpg SIGKILL for %s failed: %s", handle, exc)
+
+
+def _pgid_alive(pgid: int) -> bool:
+    """Return True if a process with PGID ``pgid`` exists.
+
+    Uses ``os.kill(pgid, 0)``, the standard POSIX process-existence
+    check (no actual signal sent). ``ProcessLookupError`` means the
+    pgid is gone; ``PermissionError`` means it exists but we cannot
+    signal it (caller still treats it as alive so the actual
+    ``killpg`` attempt can decide).
+    """
+    try:
+        os.kill(pgid, 0)
+        return True
+    except ProcessLookupError:
+        return False
+    except PermissionError:
+        return True
 
 
 async def acquire_session(handle: str, settings: CrowSettings) -> _CrowState:
@@ -341,6 +444,10 @@ async def acquire_session(handle: str, settings: CrowSettings) -> _CrowState:
         # intentionally NOT used here because we already hold the
         # current handle's creation lock; bypassing it skips a
         # double-acquire and keeps eviction tail-latency bounded.
+        # ``_close_session`` now propagates exceptions (T2-M2); we
+        # swallow them here so one eviction failure doesn't abort the
+        # entire pool — the kernel still reaps the subprocess via the
+        # unconditional SIGKILL in _safe_stdio_client's finally.
         while len(_sessions) > cap:
             oldest = min(_sessions, key=lambda h: _sessions[h].last_used_at)
             if oldest == handle:
@@ -349,10 +456,15 @@ async def acquire_session(handle: str, settings: CrowSettings) -> _CrowState:
                 # slot rather than deleting ourselves, which would
                 # break the contract that acquire returns a live state.
                 break
-            logger.info(
-                "LRU-evicting crow session handle=%s (cap=%d)", oldest, cap
-            )
-            await _close_session(oldest)
+            logger.info("LRU-evicting crow session handle=%s (cap=%d)", oldest, cap)
+            try:
+                await _close_session(oldest)
+            except BaseException as exc:
+                logger.debug(
+                    "LRU eviction of %s swallowed (continuing): %s",
+                    oldest,
+                    exc,
+                )
 
         return state
 
@@ -384,10 +496,21 @@ async def shutdown_all_sessions() -> None:
     Called from the FastMCP lifespan shutdown to reap any pool sessions
     that were spawned during the lifetime of the server. Order is
     irrelevant: each ``_close_session`` is independent.
+
+    Per-handle exceptions are swallowed (T2-M2 raised the propagation
+    inside ``_close_session``; the lifespan teardown path needs every
+    session closed, not first-failure-wins).
     """
     handles = list(_sessions)
     for handle in handles:
-        await _close_session(handle)
+        try:
+            await _close_session(handle)
+        except BaseException as exc:
+            logger.debug(
+                "Shutdown close of %s swallowed (continuing): %s",
+                handle,
+                exc,
+            )
 
 
 __all__ = [
