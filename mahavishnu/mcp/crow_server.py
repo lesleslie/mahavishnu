@@ -36,6 +36,7 @@ from mahavishnu.mcp.crow.settings import CrowSettings
 from mahavishnu.mcp.crow.terminal_proxy import (
     close_crow_stdio_client,
     init_crow_stdio_client,
+    shutdown_all_sessions,
 )
 
 if TYPE_CHECKING:
@@ -107,8 +108,8 @@ async def _lifespan(server: FastMCP) -> AsyncGenerator[None]:
     try:
         yield
     finally:
-        # Reverse order: stdio first (subprocess teardown is best-effort),
-        # HTTP client last.
+        # Reverse order: per-session pool first, then singleton, then HTTP client.
+        await shutdown_all_sessions()
         await close_crow_stdio_client()
         await close_http_client()
 
