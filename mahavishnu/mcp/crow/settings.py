@@ -20,7 +20,7 @@ class CrowSettings(StandardServerSettings):
 
     # ---- transport ---------------------------------------------------------
     http_host: str = "127.0.0.1"
-    http_port: int = 8675
+    http_port: int = 8693
 
     # ---- workspace containment --------------------------------------------
     workspace_root: Path = Field(default_factory=Path.cwd)
@@ -45,6 +45,25 @@ class CrowSettings(StandardServerSettings):
 
     # ---- terminal proxy ----------------------------------------------------
     crow_mcp_command: str = "crow-mcp"
+
+    # ---- session pool ---------------------------------------------------------
+    max_concurrent_sessions: int = Field(
+        default=32,
+        ge=1,
+        le=256,
+        description=(
+            "Maximum concurrent crow-mcp PTY subprocesses. Older idle "
+            "sessions are LRU-evicted when this cap is reached."
+        ),
+    )
+    session_idle_timeout_seconds: int = Field(
+        default=600,
+        ge=1,
+        description=(
+            "Seconds an unused session sits in the pool before becoming "
+            "LRU-evictable. (Idle != evict; cap-based eviction ignores this.)"
+        ),
+    )
 
     @model_validator(mode="after")
     def _resolve_rg(self) -> CrowSettings:
