@@ -19,13 +19,16 @@ from __future__ import annotations
 import os
 from pathlib import Path
 import tempfile
-from typing import TYPE_CHECKING, TypedDict
+from typing import TYPE_CHECKING, Any, TypedDict
 
 import aiofiles
 
 from mahavishnu.mcp.crow.path_security import resolve_workspace_path
 
 if TYPE_CHECKING:
+    from fastmcp import FastMCP
+    from mcp_common.profiles.standard import StandardServer
+
     from mahavishnu.mcp.crow.settings import CrowSettings
 
 _ALWAYS_SKIP = frozenset(
@@ -222,11 +225,15 @@ async def delete_file(
     return DeleteResult(deleted=True, path=str(path))
 
 
-def _tool_decorator(server):
-    return server.fastmcp.tool if hasattr(server, "fastmcp") else server.tool
+def _tool_decorator(server: "FastMCP | StandardServer") -> Any:
+    """Return the tool decorator appropriate for this server."""
+    fastmcp = getattr(server, "fastmcp", None)
+    if fastmcp is not None:
+        return fastmcp.tool
+    return server.tool
 
 
-def register(server, settings: CrowSettings) -> None:
+def register(server: "FastMCP | StandardServer", settings: CrowSettings) -> None:
     """Register the five file tools on ``server``."""
     deco = _tool_decorator(server)
 

@@ -16,7 +16,7 @@ to prevent JSON-RPC frame interleaving.
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, cast
+from typing import TYPE_CHECKING, Any
 
 from ..terminal_proxy import (
     _locks,
@@ -27,10 +27,13 @@ from ..terminal_proxy import (
 )
 
 if TYPE_CHECKING:
+    from fastmcp import FastMCP
+    from mcp_common.profiles.standard import StandardServer
+
     from ..settings import CrowSettings
 
 
-def _tool_decorator(server: Any) -> Any:
+def _tool_decorator(server: "FastMCP | StandardServer") -> Any:
     """Pick the tool decorator that routes through FastMCP when available.
 
     Mirrors the dual-target pattern used by ``file_tools``, ``rg_search``
@@ -41,11 +44,11 @@ def _tool_decorator(server: Any) -> Any:
     """
     fastmcp = getattr(server, "fastmcp", None)
     if fastmcp is not None:
-        return cast("Any", fastmcp).tool
+        return fastmcp.tool
     return server.tool
 
 
-def register(server: Any, settings: CrowSettings) -> None:
+def register(server: "FastMCP | StandardServer", settings: CrowSettings) -> None:
     """Register the ``terminal`` and ``crow_terminal_*`` tools.
 
     The legacy ``terminal`` tool is preserved unchanged. The four new
@@ -71,7 +74,7 @@ def register(server: Any, settings: CrowSettings) -> None:
         # crow-mcp returns an mcp.types.CallToolResult; the FastMCP tool
         # contract here treats that as an opaque dict-shaped payload so
         # downstream MCP clients can serialize it themselves.
-        return await session.call_tool("terminal", {"command": command})  # ty: ignore[invalid-return-type]
+        return await session.call_tool("terminal", {"command": command})  # type: ignore[no-any-return]
 
     @deco()
     async def crow_terminal_open(handle: str) -> dict[str, str]:

@@ -16,25 +16,26 @@ production ``CrowServer`` (with FastMCP-owned lifespan).
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, cast
+from typing import TYPE_CHECKING, Any
 
 from . import file_tools, rg_search, terminal_proxy_tool, web_extract, web_tools
 
 if TYPE_CHECKING:
+    from fastmcp import FastMCP
     from mcp_common.profiles.standard import StandardServer
 
     from mahavishnu.mcp.crow.settings import CrowSettings
 
 
-def _tool_decorator(server: StandardServer):
+def _tool_decorator(server: "FastMCP | StandardServer") -> Any:
     """Return the tool decorator appropriate for this server."""
     fastmcp = getattr(server, "fastmcp", None)
     if fastmcp is not None:
-        return cast("Any", fastmcp).tool
+        return fastmcp.tool
     return server.tool
 
 
-def register_all(server: StandardServer, settings: CrowSettings) -> None:
+def register_all(server: "FastMCP | StandardServer", settings: CrowSettings) -> None:
     """Register all crow tools onto ``server``."""
     file_tools.register(server, settings)
     rg_search.register(server, settings)

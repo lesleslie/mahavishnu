@@ -24,13 +24,16 @@ import asyncio
 from html.parser import HTMLParser
 import re
 import time
-from typing import TYPE_CHECKING, TypedDict
+from typing import TYPE_CHECKING, Any, TypedDict
 from urllib.parse import urljoin
 
 from mahavishnu.mcp.crow.client import get_http_client
 from mahavishnu.mcp.crow.path_security import validate_url
 
 if TYPE_CHECKING:
+    from fastmcp import FastMCP
+    from mcp_common.profiles.standard import StandardServer
+
     from mahavishnu.mcp.crow.settings import CrowSettings
 
 
@@ -215,11 +218,15 @@ async def web_fetch_batch(
     return list(await asyncio.gather(*(fetch_one(u) for u in urls)))
 
 
-def _tool_decorator(server):
-    return server.fastmcp.tool if hasattr(server, "fastmcp") else server.tool
+def _tool_decorator(server: "FastMCP | StandardServer") -> Any:
+    """Return the tool decorator appropriate for this server."""
+    fastmcp = getattr(server, "fastmcp", None)
+    if fastmcp is not None:
+        return fastmcp.tool
+    return server.tool
 
 
-def register(server, settings: CrowSettings) -> None:
+def register(server: "FastMCP | StandardServer", settings: CrowSettings) -> None:
     """Register web_fetch and web_fetch_batch on ``server``."""
     deco = _tool_decorator(server)
 
