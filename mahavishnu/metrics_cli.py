@@ -967,21 +967,8 @@ def _format_bodai_timestamp(value: datetime | None) -> str:
     return value.astimezone(UTC).isoformat()
 
 
-def _render_bodai_output(
-    *,
-    queue_path: Path,
-    state_path: Path,
-    state: dict[str, Any] | None,
-    events: list[dict[str, Any]],
-    queue_cap: int,
-    component_filter: str | None,
-    scope_days: int | None,
-    now: datetime,
-) -> None:
-    """Render the `mahavishnu metrics bodai` markdown-table output."""
-    console.print("[cyan]Bodai EventBridge Subscriber Status[/cyan]\n")
-
-    # --- 1. Subscriber state -------------------------------------------------
+def _render_subscriber_state(state_path: Path, state: dict[str, Any] | None) -> None:
+    """Render the Subscriber State table for the bodai metrics command."""
     state_table = Table(title="Subscriber State", show_header=True, header_style="bold magenta")
     state_table.add_column("Field", style="cyan")
     state_table.add_column("Value", style="white")
@@ -1009,7 +996,11 @@ def _render_bodai_output(
         state_table.add_row("Uptime (s)", uptime_str)
     console.print(state_table)
 
-    # --- 2. Queue state -------------------------------------------------------
+
+def _render_queue_state(
+    queue_path: Path, events: list[dict[str, Any]], queue_cap: int
+) -> None:
+    """Render the Queue State table for the bodai metrics command."""
     queue_size = len(events)
     drop_count = max(0, queue_cap - queue_size) if queue_cap <= queue_size else 0
     oldest = min(
@@ -1031,14 +1022,16 @@ def _render_bodai_output(
     queue_table.add_row("Newest event", _format_bodai_timestamp(newest))
     console.print(queue_table)
 
-    # --- 3. Per-component counts + 4. Per-component health --------------------
-    counts = _component_counts(events)
-    last_seen_map = _component_last_seen(events)
 
-    components = list(_KNOWN_BODAI_COMPONENTS)
-    if component_filter:
-        components = [c for c in components if c == component_filter]
-
+def _render_component_health(
+    *,
+    events: list[dict[str, Any]],
+    components: list[str],
+    counts: dict[str, int],
+    last_seen_map: dict[str, datetime | None],
+    now: datetime,
+) -> None:
+    """Render the Per-Component Health table for the bodai metrics command."""
     detail_table = Table(
         title="Per-Component Health", show_header=True, header_style="bold magenta"
     )
@@ -1059,7 +1052,6 @@ def _render_bodai_output(
             age_seconds: float | None = None
             if last_event_dt is not None:
                 age_seconds = (now - last_event_dt).total_seconds()
-            status = "fresh"
             if (
                 count == 0
                 or last_event_dt is None
@@ -1067,6 +1059,8 @@ def _render_bodai_output(
                 and age_seconds > STALE_THRESHOLD_SECONDS
             ):
                 status = "stale"
+            else:
+                status = "fresh"
 
             age_str = f" (age {age_seconds:.0f}s)" if age_seconds is not None else ""
             last_str = _format_bodai_timestamp(last_event_dt)
@@ -1087,63 +1081,72 @@ def _render_bodai_output(
 
     console.print(detail_table)
 
-    # --- 4b. Most Recent Event (queue-derived identifiers) ------------------
-    # Render topic + payload-derived identifiers (e.g. workflow_id) from the
-    # most recent event so callers can confirm payload contents reached the
-    # queue end-to-end. This is the "queue-derived identifiers" surface the
-    # Oneiric EventEnvelope wire-standardization plan's e2e proof asserts.
-    if events:
-        recent_table = Table(
-            title="Most Recent Event (queue-derived)",
-            show_header=True,
-            header_style="bold magenta",
-        )
-        recent_table.add_column("Field", style="cyan")
-        recent_table.add_column("Value", style="white")
 
-        dated_pairs: list[tuple[datetime, dict[str, Any]]] = [
-            (ts, ev) for ev in events for ts in [_event_timestamp(ev)] if ts is not None
-        ]
-        if dated_pairs:
-            recent: dict[str, Any] = max(dated_pairs, key=lambda pair: pair[0])[1]
+def _render_recent_event(events: list[dict[str, Any]]) -> None:
+    """Render the Most Recent Event table for the bodai metrics command.
+
+    Surfaces topic + payload-derived identifiers (e.g. workflow_id) from the
+    most recent event so callers can confirm payload contents reached the
+    queue end-to-end. This is the "queue-derived identifiers" surface the
+    Oneiric EventEnvelope wire-standardization plan's e2e proof asserts.
+    """
+    if not events:
+        return
+
+    recent_table = Table(
+        title="Most Recent Event (queue-derived)",
+        show_header=True,
+        header_style="bold magenta",
+    )
+    recent_table.add_column("Field", style="cyan")
+    recent_table.add_column("Value", style="white")
+
+    dated_pairs: list[tuple[datetime, dict[str, Any]]] = [
+        (ts, ev) for ev in events for ts in [_event_timestamp(ev)] if ts is not None
+    ]
+    if dated_pairs:
+        recent: dict[str, Any] = max(dated_pairs, key=lambda pair: pair[0])[1]
+    else:
+        recent = events[-1]
+    recent_topic = recent.get("topic") or ""
+    recent_payload_raw = recent.get("payload")
+    recent_payload: dict[str, Any] = (
+        recent_payload_raw if isinstance(recent_payload_raw, dict) else {}
+    )
+    recent_headers_raw = recent.get("headers")
+    recent_headers: dict[str, Any] = (
+        recent_headers_raw if isinstance(recent_headers_raw, dict) else {}
+    )
+
+    recent_table.add_row("topic", str(recent_topic))
+
+    recent_wire_format = recent_headers.get("wire_format") or recent.get("wire_format")
+    if recent_wire_format is not None:
+        recent_table.add_row("wire_format", str(recent_wire_format))
+
+    # Surface every payload field whose key contains "id" — these are the
+    # "queue-derived identifiers" the e2e proof expects to see.
+    rendered_identifier_rows = False
+    for key, value in recent_payload.items():
+        key_str = str(key)
+        if "id" not in key_str.lower():
+            continue
+        recent_table.add_row(f"payload.{key_str}", str(value))
+        rendered_identifier_rows = True
+
+    # Fallback: if no id-shaped key was found, surface the topic so the
+    # table is never empty.
+    if not rendered_identifier_rows:
+        if recent_payload:
+            recent_table.add_row("payload", str(recent_payload))
         else:
-            recent = events[-1]
-        recent_topic = recent.get("topic") or ""
-        recent_payload_raw = recent.get("payload")
-        recent_payload: dict[str, Any] = (
-            recent_payload_raw if isinstance(recent_payload_raw, dict) else {}
-        )
-        recent_headers_raw = recent.get("headers")
-        recent_headers: dict[str, Any] = (
-            recent_headers_raw if isinstance(recent_headers_raw, dict) else {}
-        )
+            recent_table.add_row("payload", "(empty)")
 
-        recent_table.add_row("topic", str(recent_topic))
+    console.print(recent_table)
 
-        recent_wire_format = recent_headers.get("wire_format") or recent.get("wire_format")
-        if recent_wire_format is not None:
-            recent_table.add_row("wire_format", str(recent_wire_format))
 
-        # Surface every payload field whose key contains "id" — these are the
-        # "queue-derived identifiers" the e2e proof expects to see.
-        rendered_identifier_rows = False
-        for key, value in recent_payload.items():
-            key_str = str(key)
-            if "id" not in key_str.lower():
-                continue
-            recent_table.add_row(f"payload.{key_str}", str(value))
-            rendered_identifier_rows = True
-
-        # Fallback: if no id-shaped key was found, surface the topic so the
-        # table is never empty.
-        if not rendered_identifier_rows:
-            if recent_payload:
-                recent_table.add_row("payload", str(recent_payload))
-            else:
-                recent_table.add_row("payload", "(empty)")
-
-        console.print(recent_table)
-
+def _render_filter_note(scope_days: int | None, component_filter: str | None) -> None:
+    """Render the trailing filter-note line for the bodai metrics command."""
     filter_note_parts: list[str] = []
     if scope_days is not None:
         filter_note_parts.append(f"scope={scope_days}d")
@@ -1151,6 +1154,41 @@ def _render_bodai_output(
         filter_note_parts.append(f"component={component_filter}")
     if filter_note_parts:
         console.print(f"\n[dim]Filters: {', '.join(filter_note_parts)}[/dim]")
+
+
+def _render_bodai_output(
+    *,
+    queue_path: Path,
+    state_path: Path,
+    state: dict[str, Any] | None,
+    events: list[dict[str, Any]],
+    queue_cap: int,
+    component_filter: str | None,
+    scope_days: int | None,
+    now: datetime,
+) -> None:
+    """Render the `mahavishnu metrics bodai` markdown-table output."""
+    console.print("[cyan]Bodai EventBridge Subscriber Status[/cyan]\n")
+
+    _render_subscriber_state(state_path, state)
+    _render_queue_state(queue_path, events, queue_cap)
+
+    counts = _component_counts(events)
+    last_seen_map = _component_last_seen(events)
+
+    components = list(_KNOWN_BODAI_COMPONENTS)
+    if component_filter:
+        components = [c for c in components if c == component_filter]
+
+    _render_component_health(
+        events=events,
+        components=components,
+        counts=counts,
+        last_seen_map=last_seen_map,
+        now=now,
+    )
+    _render_recent_event(events)
+    _render_filter_note(scope_days, component_filter)
 
 
 @metrics_app.command("bodai")

@@ -48,6 +48,24 @@ def _tool_decorator(server: FastMCP | StandardServer) -> Any:
     return server.tool
 
 
+def _extract_terminal_output(result: Any) -> dict[str, Any]:
+    """Coerce a crow-mcp terminal result into a serializable dict.
+
+    crow-mcp returns either an ``mcp.types.CallToolResult`` whose
+    ``content`` is a list of TextContent, or a plain mapping. Best-effort
+    shape extraction; any failure degrades to an empty string rather than
+    raising, because callers rely on ``output`` being a str.
+    """
+    if hasattr(result, "content") and result.content:
+        first = result.content[0]
+        text = getattr(first, "text", None)
+        if text:
+            return {"output": text}
+    if isinstance(result, dict):
+        return {"output": str(result.get("output", ""))}
+    return {"output": ""}
+
+
 def register(server: FastMCP | StandardServer, settings: CrowSettings) -> None:
     """Register the ``terminal`` and ``crow_terminal_*`` tools.
 
@@ -71,10 +89,10 @@ def register(server: FastMCP | StandardServer, settings: CrowSettings) -> None:
             MCP tool result (typically ``{"output": ...}`` or similar).
         """
         session = get_crow_session()
-        # crow-mcp returns an mcp.types.CallToolResult; the FastMCP tool
-        # contract here treats that as an opaque dict-shaped payload so
-        # downstream MCP clients can serialize it themselves.
-        return await session.call_tool("terminal", {"command": command})  # type: ignore[no-any-return]
+        # crow-mcp returns an mcp.types.CallToolResult; normalize it into a
+        # serializable dict so downstream MCP clients get a stable shape.
+        result = await session.call_tool("terminal", {"command": command})
+        return _extract_terminal_output(result)
 
     @deco()
     async def crow_terminal_open(handle: str) -> dict[str, str]:
@@ -98,10 +116,11 @@ def register(server: FastMCP | StandardServer, settings: CrowSettings) -> None:
         state_proxy = _locks[session_id]
         async with state_proxy:
             session = get_crow_session_by_handle(session_id)
-            return await session.call_tool(  # type: ignore[no-any-return]
+            result = await session.call_tool(
                 "terminal",
                 {"command": command},
             )
+            return _extract_terminal_output(result)
 
     @deco()
     async def crow_terminal_read(session_id: str, limit_lines: int | None = None) -> dict[str, Any]:
@@ -123,19 +142,7 @@ def register(server: FastMCP | StandardServer, settings: CrowSettings) -> None:
                 "terminal",
                 params,
             )
-            # The crow-mcp terminal tool returns either an
-            # ``mcp.types.CallToolResult`` with a TextContent ``content``
-            # list, or a plain mapping. Best-effort shape extraction;
-            # any failure degrades to an empty string rather than
-            # raising, because callers rely on ``output`` being a str.
-            if hasattr(result, "content") and result.content:
-                first = result.content[0]
-                text = getattr(first, "text", None)
-                if text:
-                    return {"output": text}
-            if isinstance(result, dict):
-                return {"output": str(result.get("output", ""))}
-            return {"output": ""}
+            return _extract_terminal_output(result)
 
     @deco()
     async def crow_terminal_close(session_id: str) -> dict[str, bool]:

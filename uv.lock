@@ -3651,7 +3651,6 @@ compression = [
 ]
 dev = [
     { name = "bandit" },
-    { name = "codespell" },
     { name = "complexipy" },
     { name = "creosote" },
     { name = "detect-secrets" },
@@ -3758,7 +3757,6 @@ automation-vision = [
 compression = [{ name = "turboquant-pro", specifier = ">=1.0.0" }]
 dev = [
     { name = "bandit", specifier = ">=1.9.4" },
-    { name = "codespell", specifier = ">=2.4.2" },
     { name = "complexipy", specifier = ">=5.5.0" },
     { name = "creosote", specifier = ">=5.2.0" },
     { name = "detect-secrets", specifier = ">=1.5.0" },
