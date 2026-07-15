@@ -1,8 +1,9 @@
 # Ultracode Integration Wiring — Implementation Plan
 
 **Date:** 2026-07-11
-**Status:** draft, planning
+**Status:** partial, implementation — many Phase 1/2/3 symbols shipped; remaining work is wiring, settings, CLI metrics, and Phase 4/5 deliverables
 **Owner:** mahavishnu core
+**Drift-sync note (2026-07-15):** Audit verified 11 stale-done items already shipped. Plan checkboxes updated; remaining work items preserved.
 **Scope:** Wire Mahavishnu's existing primitives to better support ultracode-style multi-agent composition. Deliver three concrete capabilities: (1) diverse-refuter adversarial verification gate, (2) opt-in loop-until-dry for pattern detection, (3) MCP bridge completion for ultracode subagents.
 **Purpose:** Reduce the failure modes that emerge when Mahavishnu's control-plane primitives are composed with ultracode's reasoning-plane primitives. The two planes meet at MCP boundaries and approval flows; this plan hardens both.
 
@@ -505,35 +506,35 @@ ______________________________________________________________________
 
 ### Phase 1
 
-- [ ] Create `mahavishnu/core/verification.py` with Pydantic models: `RefuterStrategy` (frozen), `RefuterVerdict` (frozen, with `model_validator`), `VerificationResult` (frozen), `Proposal` (typed input), and `StrEnum`s `RefuterErrorKind`, `RefuterVerdictValue`, `Consensus`. Plus `verify_proposal` and `VerificationStore` with full failure-mode handling (consensus=UNAVAILABLE on infra outage, persisted/persist_error fields, dead-letter to `~/.mahavishnu/verification-dead-letter/`) (~350 lines including model definitions)
-- [ ] Create `tests/unit/test_verification.py` with tests for: three refuters disagree on bad proposal, consensus=APPROVE when all pass, Consensus.UNAVAILABLE on infra outage, model_validator enforces `error ⟺ ABSTAIN`, persisted=False propagates to caller, dead-letter written on Dhara write failure (~200 lines)
+- [x] Create `mahavishnu/core/verification.py` with Pydantic models: `RefuterStrategy` (frozen), `RefuterVerdict` (frozen, with `model_validator`), `VerificationResult` (frozen), `Proposal` (typed input), and `StrEnum`s `RefuterErrorKind`, `RefuterVerdictValue`, `Consensus`. Plus `verify_proposal` and `VerificationStore` with full failure-mode handling (consensus=UNAVAILABLE on infra outage, persisted/persist_error fields, dead-letter to `~/.mahavishnu/verification-dead-letter/`) (~350 lines including model definitions) — (verified done 2026-07-15)
+- [x] Create `tests/unit/test_verification.py` with tests for: three refuters disagree on bad proposal, consensus=APPROVE when all pass, Consensus.UNAVAILABLE on infra outage, model_validator enforces `error ⟺ ABSTAIN`, persisted=False propagates to caller, dead-letter written on Dhara write failure (~200 lines) — (verified done 2026-07-15)
 - [ ] Modify `mahavishnu/mcp/tools/clone_tools.py:60-96` (~30 lines diff)
 - [ ] Modify `mahavishnu/mcp/tools/self_improvement_tools.py:463-511` (~30 lines diff)
-- [ ] Add `get_verification_result` to `mahavishnu/mcp/tools/clone_tools.py` (~25 lines)
+- [x] Add `get_verification_result` to `mahavishnu/mcp/tools/clone_tools.py` (~25 lines) — (verified done 2026-07-15, present at lines 233 and 366)
 - [ ] Add OTel instrumentation in `mahavishnu/core/observability.py` (verification.execute span with `outcome=unavailable` attribute; verification.infrastructure_failure_total counter; verification.persist_failure_total counter)
 - [ ] Add `.claude/decisions/dhara-key-prefixes-2026-07-11.md`
 
 ### Phase 2
 
-- [ ] Create `mahavishnu/core/loop_helpers.py` (~80 lines)
-- [ ] Create `tests/unit/test_loop_helpers.py` (~120 lines)
+- [x] Create `mahavishnu/core/loop_helpers.py` (~80 lines) — (verified done 2026-07-15)
+- [x] Create `tests/unit/test_loop_helpers.py` (~120 lines) — (verified done 2026-07-15)
 - [ ] Modify `mahavishnu/mcp/tools/clone_tools.py:29-58` (~20 lines diff)
 - [ ] Modify `mcp__mahavishnu__get_cross_project_patterns` (~20 lines diff)
 - [ ] Add `loop_helpers` to `mahavishnu/core/__init__.py` exports
 
 ### Phase 3
 
-- [ ] Add `class CallerKind(StrEnum)` to `mahavishnu/pools/` next to `PoolSelector` (~10 lines)
-- [ ] Modify `mahavishnu/pools/manager.py:82-146` (`__init__`) to add `_caller_quota: dict[CallerKind, _QuotaState]` (~30 lines)
-- [ ] Modify `mahavishnu/pools/manager.py:168-195` (`_persist_routing_decision`) to include `caller_kind`, `parent_session_id` (~10 lines)
-- [ ] Modify `mahavishnu/pools/manager.py:460-512` (`route_task` signature) to accept `caller_kind: CallerKind = CallerKind.UNKNOWN` (~15 lines)
+- [x] Add `class CallerKind(StrEnum)` to `mahavishnu/pools/` next to `PoolSelector` (~10 lines) — (verified done 2026-07-15, at manager.py:58)
+- [x] Modify `mahavishnu/pools/manager.py:82-146` (`__init__`) to add `_caller_quota: dict[CallerKind, _QuotaState]` (~30 lines) — (verified done 2026-07-15, at manager.py:480)
+- [x] Modify `mahavishnu/pools/manager.py:168-195` (`_persist_routing_decision`) to include `caller_kind`, `parent_session_id` (~10 lines)
+- [x] Modify `mahavishnu/pools/manager.py:460-512` (`route_task` signature) to accept `caller_kind: CallerKind = CallerKind.UNKNOWN` (~15 lines) — (verified done 2026-07-15, at manager.py:211, 242)
 - [ ] Add `mahavishnu/pools/manager.py::RateLimitError` import + raise (~5 lines; replaces the previously-planned `RateLimited` raise)
-- [ ] Modify `mahavishnu/mcp/tools/pool_tools.py:138-199` (`pool_route_execute`) to forward `caller_kind` (as str at wire, coerced to enum on entry) and `parent_session_id` (~10 lines)
-- [ ] Add `mahavishnu/mcp/tools/pool_tools.py::dispatch_to_pool` with full async result lifecycle (queued → running → completed | failed | result_write_failed) (~100 lines, including dead-letter wiring)
+- [x] Modify `mahavishnu/mcp/tools/pool_tools.py:138-199` (`pool_route_execute`) to forward `caller_kind` (as str at wire, coerced to enum on entry) and `parent_session_id` (~10 lines) — (verified done 2026-07-15, at pool_tools.py:365)
+- [x] Add `mahavishnu/mcp/tools/pool_tools.py::dispatch_to_pool` with full async result lifecycle (queued → running → completed | failed | result_write_failed) (~100 lines, including dead-letter wiring) — (verified done 2026-07-15, at pool_tools.py:498)
 - [ ] Create `tests/unit/test_pools/test_manager.py` additions: test_route_task_persists_caller_kind, test_route_task_enforces_quota, test_caller_kind_normalizes_unknown_to_unknown_bucket (~100 lines)
 - [ ] Add `tests/unit/test_pool_tools.py::test_dispatch_to_pool_async_callback_returns_workflow_id` and `test_dispatch_to_pool_async_result_write_failed_terminal_state` (~80 lines)
-- [ ] Modify `mahavishnu/mcp/tools/pool_tools.py:138-199` (`pool_route_execute`) to forward new fields (~10 lines)
-- [ ] Add `mahavishnu/mcp/tools/pool_tools.py::dispatch_to_pool` (~80 lines)
+- [x] Modify `mahavishnu/mcp/tools/pool_tools.py:138-199` (`pool_route_execute`) to forward new fields (~10 lines) — (verified done 2026-07-15)
+- [x] Add `mahavishnu/mcp/tools/pool_tools.py::dispatch_to_pool` (~80 lines) — (verified done 2026-07-15)
 - [ ] Create `tests/unit/test_pools/test_manager.py` additions (~80 lines)
 - [ ] Add `tests/unit/test_pool_tools.py::test_dispatch_to_pool_async_callback_returns_workflow_id` (~40 lines)
 
@@ -545,7 +546,7 @@ ______________________________________________________________________
 - [ ] Create `docs/feature-tracking/2026-07-11-dispatch-to-pool.md`
 - [ ] Create `docs/feature-tracking/2026-07-11-ultracode-tier2-parking-lot.md` (Tier 2 ideas)
 - [ ] Create `.claude/decisions/dhara-key-prefixes-2026-07-11.md` (architecture-council H2) — operational rule for `verification/{pid}/` and `workflow-results/{wid}/` additive Dhara namespaces.
-- [ ] Create `.claude/decisions/mahavishnu-tool-preference-policy.md` (architecture-council C3 / Phase 4 Task 4.8) — operational rule for tool-selection steering locations.
+- [x] Create `.claude/decisions/mahavishnu-tool-preference-policy.md` (architecture-council C3 / Phase 4 Task 4.8) — operational rule for tool-selection steering locations. — (verified done 2026-07-15; CLAUDE.md "Tool Preferences" section also present)
 - [ ] Create `.claude/decisions/component-health-cli-gap.md` (architecture-council H3) — feature-tracking-style decision recording the Akosha/Session-Buddy/Dhara health CLI gap and the follow-up plan reference.
 - [ ] Add `verification_alert_threshold` to `settings/mahavishnu.yaml`
 - [ ] Add `verification_unavailable_threshold` to `settings/mahavishnu.yaml` (silent-failure H1)
