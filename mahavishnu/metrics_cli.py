@@ -1282,6 +1282,316 @@ def bodai_metrics(
     )
 
 
+# ---------------------------------------------------------------------------
+# `mahavishnu metrics verification` — Ultracode Phase 1 verification verdicts
+# ---------------------------------------------------------------------------
+
+VERIFICATION_KEY_PREFIX = "verification/"
+ROUTING_DECISIONS_KEY_PREFIX = "routing-decisions/"
+
+
+def _resolve_dhara_url(explicit_url: str | None) -> str:
+    """Resolve the Dhara HTTP URL with explicit > env > config precedence.
+
+    Mirrors :func:`mahavishnu.core.bootstrap.resolve_dhara_url` but uses the
+    *health.dependencies.dhara* host:port pair rather than the legacy MCP URL.
+    Falls back to ``http://localhost:8683`` when no configuration is present.
+    """
+    if explicit_url:
+        return explicit_url.rstrip("/")
+
+    env_url = os.environ.get("MAHAVISHNU_DHARA_URL")
+    if env_url:
+        return env_url.rstrip("/")
+
+    settings_path = Path("settings/mahavishnu.yaml")
+    if settings_path.exists():
+        try:
+            import yaml
+
+            with settings_path.open() as f:
+                data = yaml.safe_load(f) or {}  # type: ignore[var-annotated]
+            health = data.get("health", {}) if isinstance(data, dict) else {}  # type: ignore[var-annotated]
+            deps = health.get("dependencies", {}) if isinstance(health, dict) else {}  # type: ignore[var-annotated]
+            dhara = deps.get("dhara") if isinstance(deps, dict) else None  # type: ignore[var-annotated]
+            if isinstance(dhara, dict):
+                host = dhara.get("host", "localhost")
+                port = dhara.get("port", 8683)
+                scheme = "https" if dhara.get("use_tls") else "http"
+                return f"{scheme}://{host}:{port}".rstrip("/")
+        except Exception:
+            pass
+
+    return "http://localhost:8683"
+
+
+async def _fetch_dhara_entries(
+    dhara_url: str,
+    prefix: str,
+) -> list[dict[str, Any]]:
+    """Fetch all key/value entries under *prefix* via Dhara's MCP HTTP API.
+
+    Returns an empty list when Dhara is unreachable so the CLI degrades
+    gracefully (mirrors :class:`DharaStateBackend` semantics).
+    """
+    try:
+        from mahavishnu.core.dhara_adapter import DharaClient
+    except ImportError as exc:
+        raise RuntimeError("DharaClient not importable; cannot query Dhara") from exc
+
+    client = DharaClient(base_url=dhara_url, timeout=10.0)
+    try:
+        result = await client.call_tool("list_prefix", {"prefix": prefix})
+    except Exception as exc:
+        console.print(f"[red]Dhara unreachable at {dhara_url}:[/red] {exc}")
+        raise typer.Exit(1) from exc
+    finally:
+        await client.aclose()
+
+    entries: list[dict[str, Any]] = []
+    if isinstance(result, list):
+        for item in result:
+            if not isinstance(item, dict) or "key" not in item:
+                continue
+            value_raw = item.get("value", {})
+            entries.append({"key": str(item["key"]), "value": value_raw if isinstance(value_raw, dict) else {}})
+    return entries
+
+
+def _parse_since(value: str) -> datetime | None:
+    """Parse a `--since` window string into a UTC cutoff datetime.
+
+    Accepted formats: ``24h``, ``7d``, ``30m``. ``all`` / empty -> ``None``
+    (no time filter applied).
+    """
+    if not value:
+        return None
+    normalized = value.strip().lower()
+    if normalized in {"all", "none", "0"}:
+        return None
+    match = re.match(r"^(\d+)\s*([mhd])$", normalized)
+    if match is None:
+        console.print(f"[red]Invalid --since {value!r}. Use '24h', '7d', '30m', or 'all'.[/red]")
+        raise typer.Exit(2)
+    magnitude = int(match.group(1))
+    unit = match.group(2)
+    if unit == "m":
+        delta = timedelta(minutes=magnitude)
+    elif unit == "h":
+        delta = timedelta(hours=magnitude)
+    else:
+        delta = timedelta(days=magnitude)
+    return datetime.now(UTC) - delta
+
+
+def _entry_timestamp(entry: dict[str, Any]) -> datetime | None:
+    """Return the most useful timestamp for a Dhara entry value."""
+    value = entry.get("value", {})
+    if not isinstance(value, dict):
+        return None
+    for key in ("timestamp", "created_at", "ts"):
+        raw = value.get(key)
+        if not isinstance(raw, str):
+            continue
+        try:
+            parsed = datetime.fromisoformat(raw.replace("Z", "+00:00"))
+        except ValueError:
+            continue
+        if parsed.tzinfo is None:
+            parsed = parsed.replace(tzinfo=UTC)
+        return parsed
+    return None
+
+
+def _filter_by_window(
+    entries: list[dict[str, Any]],
+    cutoff: datetime | None,
+) -> list[dict[str, Any]]:
+    """Drop entries whose value-timestamp predates *cutoff*."""
+    if cutoff is None:
+        return entries
+    return [e for e in entries if (ts := _entry_timestamp(e)) is None or ts >= cutoff]
+
+
+def _verification_consensus(value: dict[str, Any]) -> str:
+    """Extract the consensus verdict from a verification entry value."""
+    for key in ("consensus", "verdict", "decision"):
+        raw = value.get(key)
+        if isinstance(raw, str) and raw:
+            return raw
+    return "unknown"
+
+
+def _verification_persisted(value: dict[str, Any]) -> bool:
+    """Was the proposal persisted to its target after verification?"""
+    raw = value.get("persisted", value.get("persisted_to_target"))
+    return isinstance(raw, bool) and raw
+
+
+def _routing_caller_kind(value: dict[str, Any]) -> str:
+    """Extract caller_kind from a routing-decision entry value."""
+    raw = value.get("caller_kind", value.get("source"))
+    return raw if isinstance(raw, str) and raw else "unknown"
+
+
+def _routing_async_callback(value: dict[str, Any]) -> bool:
+    """Was the dispatch invoked with async_callback=True?"""
+    raw = value.get("async_callback")
+    return isinstance(raw, bool) and raw
+
+
+def _render_verification_output(
+    entries: list[dict[str, Any]],
+    *,
+    cutoff: datetime | None,
+    output_format: str,
+    dhara_url: str,
+) -> None:
+    """Render the `mahavishnu metrics verification` output."""
+    filtered = _filter_by_window(entries, cutoff)
+
+    consensus_counts: dict[str, int] = defaultdict(int)
+    persist_failures = 0
+    total = len(filtered)
+    recent: list[dict[str, Any]] = []
+
+    for entry in filtered[-20:]:
+        value = entry["value"]
+        recent.append(
+            {
+                "key": entry["key"],
+                "consensus": _verification_consensus(value),
+                "persisted": _verification_persisted(value),
+                "timestamp": _entry_timestamp(entry).isoformat()
+                if _entry_timestamp(entry)
+                else None,
+            }
+        )
+
+    for entry in filtered:
+        value = entry["value"]
+        consensus_counts[_verification_consensus(value)] += 1
+        if not _verification_persisted(value):
+            persist_failures += 1
+
+    persist_failure_rate = (persist_failures / total) if total > 0 else 0.0
+    reject_rate = (consensus_counts.get("reject", 0) / total) if total > 0 else 0.0
+
+    if output_format == "json":
+        console.print_json(
+            json.dumps(
+                {
+                    "source": "dhara",
+                    "dhara_url": dhara_url,
+                    "prefix": VERIFICATION_KEY_PREFIX,
+                    "since": cutoff.isoformat() if cutoff else None,
+                    "total": total,
+                    "consensus_distribution": dict(consensus_counts),
+                    "reject_rate": round(reject_rate, 4),
+                    "persist_failure_rate": round(persist_failure_rate, 4),
+                    "recent": recent,
+                },
+                default=str,
+            )
+        )
+        return
+
+    if output_format != "table":
+        console.print("[red]Invalid --output. Use: table or json[/red]")
+        raise typer.Exit(2)
+
+    console.print("[cyan]Ultracode Phase 1 — Verification Verdicts[/cyan]\n")
+    console.print(f"[dim]Dhara URL: {dhara_url}[/dim]")
+    console.print(f"[dim]Key prefix: {VERIFICATION_KEY_PREFIX}[/dim]")
+    console.print(f"[dim]Window: since {cutoff.isoformat() if cutoff else 'all'}[/dim]\n")
+
+    summary = Table(title="Summary", show_header=True, header_style="bold magenta")
+    summary.add_column("Metric", style="cyan")
+    summary.add_column("Value", style="white")
+    summary.add_row("Total verdicts", str(total))
+    summary.add_row(
+        "Reject rate",
+        f"{reject_rate * 100:.1f}%",
+    )
+    summary.add_row(
+        "Persist-failure rate",
+        f"{persist_failure_rate * 100:.1f}%",
+    )
+    for consensus_name in sorted(consensus_counts.keys()):
+        summary.add_row(f"Consensus={consensus_name}", str(consensus_counts[consensus_name]))
+    console.print(summary)
+
+    if recent:
+        console.print()
+        recent_table = Table(
+            title="Most Recent Verdicts (last 20)",
+            show_header=True,
+            header_style="bold magenta",
+        )
+        recent_table.add_column("Timestamp", style="dim", width=19)
+        recent_table.add_column("Consensus", style="cyan")
+        recent_table.add_column("Persisted", style="white")
+        recent_table.add_column("Proposal Key", style="dim")
+        for row in recent:
+            ts_display = row["timestamp"] or "n/a"
+            if ts_display != "n/a":
+                ts_display = ts_display[:19]
+            persisted_display = "[green]yes[/green]" if row["persisted"] else "[red]no[/red]"
+            recent_table.add_row(ts_display, row["consensus"], persisted_display, row["key"])
+        console.print(recent_table)
+    else:
+        console.print("\n[yellow]No verification records in window.[/yellow]")
+
+
+@metrics_app.command("verification")
+def verification_metrics(
+    since: str = typer.Option(
+        "24h",
+        "--since",
+        help="Time window filter: '24h', '7d', '30m', or 'all' (no filter).",
+    ),
+    dhara_url: str | None = typer.Option(
+        None,
+        "--dhara-url",
+        help="Override Dhara HTTP URL (also: MAHAVISHNU_DHARA_URL).",
+    ),
+    output_format: str = typer.Option(
+        "table",
+        "--output",
+        help="Output format: table or json",
+    ),
+) -> None:
+    """Show ultracode Phase 1 verification verdicts from Dhara.
+
+    Reads Dhara under the ``verification/`` key prefix and renders a summary
+    of consensus distribution, reject rate, persist-failure rate, and the
+    most recent 20 verdicts.
+
+    Precedence for the Dhara URL: ``--dhara-url`` > ``MAHAVISHNU_DHARA_URL`` >
+    ``settings/mahavishnu.yaml -> health.dependencies.dhara`` > ``localhost:8683``.
+
+    Examples:
+        mahavishnu metrics verification
+        mahavishnu metrics verification --since 7d --output json
+        mahavishnu metrics verification --dhara-url http://dhara.internal:8683
+    """
+    effective_url = _resolve_dhara_url(dhara_url)
+    cutoff = _parse_since(since)
+    entries = asyncio.run(_fetch_dhara_entries(effective_url, VERIFICATION_KEY_PREFIX))
+    _render_verification_output(
+        entries,
+        cutoff=cutoff,
+        output_format=output_format,
+        dhara_url=effective_url,
+    )
+
+
+# ---------------------------------------------------------------------------
+# `mahavishnu metrics dispatch` — Ultracode Phase 3 routing-decision metrics
+# ---------------------------------------------------------------------------
+# (Lands in a follow-up commit.)
+
+
 def add_metrics_commands(app: typer.Typer) -> None:
     """Add metrics commands to the Mahavishnu CLI app.
 
