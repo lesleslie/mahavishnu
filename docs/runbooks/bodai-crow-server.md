@@ -109,7 +109,39 @@ crow:
 
 Per HANDOFF Audit Finding #10, the `web_extract` content filter (regex/keyword strippers in `mahavishnu/mcp/crow/tools/web_extract.py`) has known false-negative gaps around homoglyph attacks and base64-encoded payloads. **Future work.** Do not rely on these filters as a security boundary today; the SSRF defenses above are the actual safety layer. If you need prompt-injection defense in front of LLM consumers, plan for an allowlist-based `trafilatura`-backed extractor (Task 10 in the plan) and a dedicated OWASP guard module.
 
-## 6. Operational Runbook
+## 6. Concurrent Sessions
+
+bodai-crow-server now supports multiple concurrent PTY sessions. Each
+`crow_terminal_open(handle=<id>)` call spawns a dedicated `crow-mcp`
+subprocess; `crow_terminal_exec` / `_read` / `_close` route to that
+subprocess. The pool is capped at `CrowSettings.max_concurrent_sessions`
+(default 32); older idle sessions are LRU-evicted when the cap is reached.
+
+Pool semantics:
+
+- Each session has a per-handle `asyncio.Lock`. Two callers addressing
+  the same handle serialize; different handles never block each other.
+- `start_new_session=True` on the subprocess Popen means `os.killpg()`
+  can signal the whole process group (relevant for grandchildren of
+  crow-mcp).
+- Eviction grace sequence: send `{"command": "exit"}` to the PTY →
+  wait 1s → `killpg(SIGTERM)` → wait 1s → `killpg(SIGKILL)`.
+
+## 7. Known Limitations
+
+- `crow-mcp`'s underlying PTY has no resize propagation (`TIOCSWINSZ`
+  ioctl). Full-screen apps like `vim` won't resize correctly. Tracked
+  upstream at `crow-cli/crow-cli`.
+- No `start_new_session=True` graceful exit handshake from crow-mcp —
+  eviction sends `exit` and waits, but the subprocess may exit before
+  the command is read. Eviction is at-least-once; a transient extra
+  subprocess spawn during peak load is expected and bounded.
+- `Context.set_state(...)` from fastmcp is NOT used (we maintain our own
+  session registry keyed by handle). This is the standard pattern until
+  fastmcp per-session state lands (tracked in fastmcp issues `#166`,
+  `#1894`, `#3277`).
+
+## 8. Operational Runbook
 
 ### Start the server
 
@@ -138,7 +170,7 @@ There are **no embedded secrets** in the crow server itself. If `crow_mcp_comman
 1. **Do not** widen `_PRIVATE_NETS` to suppress a single host. The right path is to expose the host via a public proxy or update the URL.
 1. If the consumer is internal-only and you accept the SSRF risk, set `workspace_root` and `crow:` configuration per-env in `settings/local.yaml` rather than relaxing network policy.
 
-## 7. Failure Modes & Mitigations
+## 9. Failure Modes & Mitigations
 
 | Failure | Symptom | Mitigation |
 |---------|---------|------------|
@@ -148,7 +180,7 @@ There are **no embedded secrets** in the crow server itself. If `crow_mcp_comman
 | Malformed tool output (bad UTF-8, broken HTML) | `charset-normalizer` fallback in `read`; `_TextExtractor` falls back to stripped raw string | Degrade gracefully — text is returned, never raised. |
 | `crow-mcp` stdio subprocess dies | `terminal` tool calls raise on `get_crow_session()` | Restart the server (`mahavishnu mcp restart crow`); the subprocess is respawned by the lifespan context. |
 
-## 8. Testing the Defenses
+## 10. Testing the Defenses
 
 | Concern | Regression test | File |
 |---------|-----------------|------|
