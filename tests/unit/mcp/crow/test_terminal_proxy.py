@@ -79,13 +79,21 @@ def test_get_crow_session_returns_session_after_init(reset_crow_state):
 
 
 def test_terminal_manager_crow_requires_mcp_client(tmp_path):
-    """Without mcp_client, TerminalManager.create must refuse crow."""
+    """Without mcp_client, TerminalManager.create must refuse crow.
+
+    The crow adapter path is opt-in: requires both
+    `adapter_preference = "crow"` AND `crow_enabled = True`. With
+    crow_enabled=False, the manager falls through to the mock adapter
+    (no error). The "refuse without mcp_client" check only fires
+    when crow_enabled=True.
+    """
     from mahavishnu.core.config import MahavishnuSettings
     from mahavishnu.core.errors import ConfigurationError
     from mahavishnu.terminal.manager import TerminalManager
 
     config = MahavishnuSettings()
     config.terminal.adapter_preference = "crow"
+    config.terminal.crow_enabled = True
     with pytest.raises(ConfigurationError, match="crow"):
         # use asyncio.run since create is async
         import asyncio
@@ -94,13 +102,15 @@ def test_terminal_manager_crow_requires_mcp_client(tmp_path):
 
 
 def test_terminal_manager_crow_creates_crow_adapter(tmp_path):
-    """With mcp_client supplied, TerminalManager.create wires CrowTerminalAdapter."""
+    """With mcp_client supplied AND crow_enabled=True,
+    TerminalManager.create wires CrowTerminalAdapter."""
     from mahavishnu.core.config import MahavishnuSettings
     from mahavishnu.terminal.adapters.crow import CrowTerminalAdapter
     from mahavishnu.terminal.manager import TerminalManager
 
     config = MahavishnuSettings()
     config.terminal.adapter_preference = "crow"
+    config.terminal.crow_enabled = True
     mock_client = MagicMock()
     import asyncio
 

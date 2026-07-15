@@ -10,7 +10,7 @@ from mahavishnu.mcp.crow.settings import CrowSettings
 def test_settings_defaults_to_cwd_workspace_root():
     s = CrowSettings()
     assert s.workspace_root == Path.cwd()
-    assert s.http_port == 8675
+    assert s.http_port == 8693
     assert s.max_redirect_hops == 5
     assert s.max_batch_urls == 20
 
