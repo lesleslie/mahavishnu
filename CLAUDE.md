@@ -373,7 +373,7 @@ mcp__mahavishnu__dispatch_to_pool(
 Use the built-in tools **only** when:
 
 - You need **direct file inspection** before deciding what to do (read-only exploration)
-- The task is **trivially small** (<5 lines changed, single file)
+- The task is **trivially small** (\<5 lines changed, single file)
 - You're **discovering or explaining** the codebase
 - The task is **conversation-local** (e.g., updating this file, fixing a typo, drafting docs)
 - Mahavishnu pools are **unavailable** (use `mcp__mahavishnu__pool_health` to check; if down, surface the unavailability to the user — do not silently fall back to local tools, since local fallback breaks the audit trail. See "Degraded mode" below.)
@@ -403,9 +403,9 @@ If Mahavishnu pools are unhealthy or unreachable, **surface the unavailability t
 Recommended behavior when Mahavishnu is down:
 
 1. Run `mcp__mahavishnu__pool_health` to confirm the failure mode (degraded vs. unreachable).
-2. Tell the user: "Mahavishnu is unavailable; doing this locally without observability. Proceed?"
-3. If the user agrees, proceed locally but emit a structured note in the conversation: `[vishnu] local fallback — no observability for {task}`.
-4. Queue the task for replay: write a marker to `~/.mahavishnu/fallback-queue/{task-id}.json` so an operator can replay it through Mahavishnu later.
+1. Tell the user: "Mahavishnu is unavailable; doing this locally without observability. Proceed?"
+1. If the user agrees, proceed locally but emit a structured note in the conversation: `[vishnu] local fallback — no observability for {task}`.
+1. Queue the task for replay: write a marker to `~/.mahavishnu/fallback-queue/{task-id}.json` so an operator can replay it through Mahavishnu later.
 
 This policy harmonizes with the `mahavishnu-orchestrator` subagent's "fail-loud, no silent fallback" rule and the `/vishnu` skill's "ask the user" rule. One consistent posture across all surfaces.
 

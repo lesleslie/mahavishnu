@@ -211,7 +211,9 @@ def register_git_analytics_tools(  # noqa: C901
             # Query all metrics for the analysis period
             threshold_date = (datetime.now() - timedelta(days=days_back)).isoformat()
 
-            async def _single_scan() -> tuple[list[dict[str, Any]], list[dict[str, Any]], list[dict[str, Any]]]:
+            async def _single_scan() -> tuple[
+                list[dict[str, Any]], list[dict[str, Any]], list[dict[str, Any]]
+            ]:
                 """One pass over the three pattern sources.
 
                 Returns the git / workflow / quality pattern lists in a
@@ -283,9 +285,7 @@ def register_git_analytics_tools(  # noqa: C901
                 # ``exception`` is a BaseException instance — non-JSON-serializable.
                 # Strip it from the wire payload; it remains in logs via the helper.
                 run_metadata = {
-                    key: value
-                    for key, value in raw_metadata.items()
-                    if key != "exception"
+                    key: value for key, value in raw_metadata.items() if key != "exception"
                 }
             else:
                 git_patterns, workflow_patterns, quality_patterns = await _single_scan()

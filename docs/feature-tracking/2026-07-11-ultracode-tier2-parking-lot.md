@@ -11,30 +11,38 @@
 This file captures the five Tier 2 ultracode-integration ideas that were considered during the planning conversation on 2026-07-11 and **deferred** in favor of the three Tier 1 items in the source plan. Each entry below records the idea, the probability it would meaningfully improve Mahavishnu, the trigger condition that should prompt reconsideration, and the rough effort estimate. When a trigger condition is met, promote the relevant entry into its own feature-tracking file.
 
 ## State — pick one
+
 - [ ] **parked** (deferred; not built; revisit when trigger condition met)
 
 ## Built (yes/no)
+
 no
 
 ## Wired (yes/no)
+
 no
 
 ## Trigger path
+
 Each entry's "Reconsider when" field describes its trigger path.
 
 ## Integration point
+
 Each entry's "Where it would live" field describes its integration point.
 
 ## End-to-end check
+
 Not applicable — these are deferred ideas, not built features.
 
 ## Blocker
+
 None — these are deliberately deferred, not blocked.
 
 ## Next action
+
 When the trigger condition is met for any entry, copy that entry's content into a new feature-tracking file at `docs/feature-tracking/<slug>.md` and reference this parking lot in its "Related" section.
 
----
+______________________________________________________________________
 
 ## Tier 2 entries
 
@@ -112,7 +120,7 @@ When the trigger condition is met for any entry, copy that entry's content into 
 
 **Effort estimate:** ~250 lines + 100 lines of tests. One to two days. Likely tracked under a separate plan once the precondition is met.
 
----
+______________________________________________________________________
 
 ## Related
 
@@ -127,9 +135,9 @@ When the trigger condition is met for any entry, copy that entry's content into 
 When a trigger condition is met:
 
 1. Copy the entry's "What it is" / "Where it would live" / "Effort estimate" sections into a new file at `docs/feature-tracking/<slug>.md`, populating the standard feature-tracking template fields.
-2. Update this parking lot file: set state to **promoted** with a date, link to the new file in this entry, and decrement the entry count above.
-3. Create a focused plan in `docs/plans/` for the promoted feature, OR add it as a phase to an existing plan if it's a small enough delta.
-4. Update `docs/plans/PLAN_INDEX.md`.
+1. Update this parking lot file: set state to **promoted** with a date, link to the new file in this entry, and decrement the entry count above.
+1. Create a focused plan in `docs/plans/` for the promoted feature, OR add it as a phase to an existing plan if it's a small enough delta.
+1. Update `docs/plans/PLAN_INDEX.md`.
 
 ## Session-Buddy
 
@@ -148,4 +156,4 @@ mcp__session-buddy__store_reflection(
 ```
 
 - Reflection ID: <to be filled after running store_reflection>
-- Saved at: <ISO timestamp from the call's response>
+- Saved at: \<ISO timestamp from the call's response>

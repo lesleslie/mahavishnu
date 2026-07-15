@@ -9,18 +9,20 @@ from enum import Enum, StrEnum
 import heapq
 import logging
 import random
-from typing import Any, cast
+from typing import TYPE_CHECKING, Any, cast
 
 from monitoring.metrics import pool_workers_active
 
 from ..core.errors import RateLimitError
 from ..mcp.protocols.message_bus import MessageBus
-from .base import BasePool, PoolConfig
 from .mahavishnu_pool import MahavishnuPool
 from .peer_routing import DEFAULT_ACL_PROVIDER, PeerRouteResolver
 from .routing_fitness import RoutingFitnessReader
 from .runpod_pool import RunPodPool
 from .session_buddy_pool import SessionBuddyPool
+
+if TYPE_CHECKING:
+    from .base import BasePool, PoolConfig
 
 logger = logging.getLogger(__name__)
 
@@ -54,11 +56,11 @@ class PoolSelector(Enum):
 
 
 class CallerKind(StrEnum):
-    ULTRA_CODE = 'ultracode'
-    CLAUDE_CODE = 'claude_code'
-    WORKFLOW = 'workflow'
-    CLI = 'cli'
-    UNKNOWN = 'unknown'  # Coerced target for any unrecognized value at the MCP wire boundary
+    ULTRA_CODE = "ultracode"
+    CLAUDE_CODE = "claude_code"
+    WORKFLOW = "workflow"
+    CLI = "cli"
+    UNKNOWN = "unknown"  # Coerced target for any unrecognized value at the MCP wire boundary
 
 
 def coerce_caller_kind(value: Any) -> CallerKind:

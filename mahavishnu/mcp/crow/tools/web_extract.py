@@ -295,7 +295,7 @@ async def web_extract_batch(
     return list(await asyncio.gather(*(extract_one(u) for u in urls)))
 
 
-def _tool_decorator(server: "FastMCP | StandardServer") -> Any:
+def _tool_decorator(server: FastMCP | StandardServer) -> Any:
     """Return the tool decorator appropriate for this server."""
     fastmcp = getattr(server, "fastmcp", None)
     if fastmcp is not None:
@@ -303,7 +303,7 @@ def _tool_decorator(server: "FastMCP | StandardServer") -> Any:
     return server.tool
 
 
-def register(server: "FastMCP | StandardServer", settings: CrowSettings) -> None:
+def register(server: FastMCP | StandardServer, settings: CrowSettings) -> None:
     """Register web_extract and web_extract_batch on ``server``."""
     deco = _tool_decorator(server)
 

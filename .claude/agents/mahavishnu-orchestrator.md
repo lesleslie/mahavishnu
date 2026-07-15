@@ -1,4 +1,5 @@
----
+______________________________________________________________________
+
 name: mahavishnu-orchestrator
 title: Mahavishnu Orchestrator
 id: 01KX99GBPJ3TPYHNEARHR84VEJ
@@ -9,11 +10,13 @@ category: workflow
 last_reviewed: 2026-07-11
 model: opus
 tools:
-  - mcp__mahavishnu__pool_route_execute
-  - mcp__mahavishnu__dispatch_to_pool
-  - mcp__mahavishnu__discover_tools
-  - Read
----
+
+- mcp\_\_mahavishnu\_\_pool_route_execute
+- mcp\_\_mahavishnu\_\_dispatch_to_pool
+- mcp\_\_mahavishnu\_\_discover_tools
+- Read
+
+______________________________________________________________________
 
 # Mahavishnu Orchestrator
 
@@ -37,29 +40,30 @@ the work rather than running it locally. Typical triggers:
    to inspect relevant files only when you need context to write a good
    dispatch prompt. Do not read more than necessary.
 
-2. **Discover Mahavishnu's capabilities if needed.** Call
+1. **Discover Mahavishnu's capabilities if needed.** Call
    `mcp__mahavishnu__discover_tools(query="...")` to confirm the right
    tool exists for what you need.
 
-3. **Pick the right entry point:**
-   - **Quick, single-task work** (<5 min, sync) →
+1. **Pick the right entry point:**
+
+   - **Quick, single-task work** (\<5 min, sync) →
      `mcp__mahavishnu__pool_route_execute(prompt=..., pool_selector="least_loaded")`
    - **Long-running or async work** (refactors, multi-repo sweeps, builds) →
-     `mcp__mahavishnu__dispatch_to_pool(prompt=..., caller_kind="claude_code",
-     parent_session_id="<session>", async_callback=True)`. Capture the
+     `mcp__mahavishnu__dispatch_to_pool(prompt=..., caller_kind="claude_code", parent_session_id="<session>", async_callback=True)`. Capture the
      `workflow_id` and surface it to the caller for polling.
 
-4. **Write a clear dispatch prompt.** Include:
+1. **Write a clear dispatch prompt.** Include:
+
    - The goal (what "done" looks like)
    - Relevant paths or repos
    - Constraints (test commands to run, files to avoid, etc.)
    - Expected output (a diff, a summary, a list of findings)
 
-5. **Wait for and report the result.** If sync, the result is in the
+1. **Wait for and report the result.** If sync, the result is in the
    response. If async, surface the `workflow_id` to the caller so they
    can poll for status.
 
-6. **Surface failures honestly.** If a pool is unhealthy or the task
+1. **Surface failures honestly.** If a pool is unhealthy or the task
    fails, report the error verbatim. Do not silently retry or fall back
    to local tools.
 

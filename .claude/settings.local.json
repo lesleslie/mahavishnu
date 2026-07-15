@@ -1,4 +1,26 @@
 {
+  "additionalDirectories": [],
+  "enableAllProjectMcpServers": true,
+  "enabledMcpjsonServers": [
+    "akosha",
+    "chart-antv",
+    "crackerjack",
+    "css",
+    "dhara",
+    "excalidraw",
+    "grafana",
+    "graphics",
+    "langsmith",
+    "mahavishnu",
+    "mermaid",
+    "neo4j",
+    "penpot",
+    "penpot-api",
+    "pycharm",
+    "session-buddy",
+    "crow"
+  ],
+  "outputStyle": "Explanatory",
   "permissions": {
     "allow": [
       "Bash(/Users/les/Projects/mahavishnu/tests/security/test_validation.py:*)",
@@ -492,27 +514,5 @@
       "WebFetch(domain:platform.minimaxi.com)",
       "WebFetch(domain:api.minimaxi.com)"
     ]
-  },
-  "enableAllProjectMcpServers": true,
-  "enabledMcpjsonServers": [
-    "akosha",
-    "chart-antv",
-    "crackerjack",
-    "css",
-    "dhara",
-    "excalidraw",
-    "grafana",
-    "graphics",
-    "langsmith",
-    "mahavishnu",
-    "mermaid",
-    "neo4j",
-    "penpot",
-    "penpot-api",
-    "pycharm",
-    "session-buddy",
-    "crow"
-  ],
-  "outputStyle": "Explanatory",
-  "additionalDirectories": []
+  }
 }

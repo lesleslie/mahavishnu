@@ -17,7 +17,7 @@
 - Tests pass at every step; commit only on GREEN.
 - The `mcp-common` package itself emits the deprecation by intent (per its own comment: "silencing is left to the consumer") and is **not** in this plan's scope.
 
----
+______________________________________________________________________
 
 ## Audit summary
 
@@ -39,34 +39,37 @@ Audit at session end (2026-07-13):
 **Total: 6 repos, 21 usages to migrate.**
 
 Already-migrated repos (NOT in this plan's scope; reference for pattern):
+
 - crackerjack (37 classes, commit `25e230e7`)
 - akosha (12 usages, commit `18fda25`)
 - session-buddy (~15 usages across 4 files, commit `05bc2622`)
 - dhara (3 usages, commit `300e021`)
 - mahavishnu uses Pydantic v2 `BaseSettings` directly (no MCPBaseSettings)
 
----
+______________________________________________________________________
 
 ## Per-repo migration pattern (proven on session-buddy, dhara, akosha)
 
 For each repo:
 
 1. **Replace import** — `from mcp_common import MCPBaseSettings` → `from oneiric.core.config import OneiricMCPConfig` (and `MCPServerSettings` → `OneiricMCPConfig`).
-2. **Replace inheritance** — `class <X>Settings(MCPBaseSettings):` → `class <X>Settings(OneiricMCPConfig):` (use `Edit` with `replace_all=true` for the `(MCPBaseSettings)` → `(OneiricMCPConfig)` swap).
-3. **Rewrite `.load()` classmethod** — preserve the legacy `(server_name, config_path=...)` signature but route through `oneiric.core.config.load_settings(project_name=server_name, path=config_path)` + a `yaml.safe_load()` flat-YAML merge for backward compat.
-4. **Add `get_api_key` / `get_api_key_secure` instance methods** where tests patch them.
-5. **Verify tests pass** — `uv run pytest tests/ --no-cov` for the touched paths.
-6. **Single-repo commit** with the standard message format.
+1. **Replace inheritance** — `class <X>Settings(MCPBaseSettings):` → `class <X>Settings(OneiricMCPConfig):` (use `Edit` with `replace_all=true` for the `(MCPBaseSettings)` → `(OneiricMCPConfig)` swap).
+1. **Rewrite `.load()` classmethod** — preserve the legacy `(server_name, config_path=...)` signature but route through `oneiric.core.config.load_settings(project_name=server_name, path=config_path)` + a `yaml.safe_load()` flat-YAML merge for backward compat.
+1. **Add `get_api_key` / `get_api_key_secure` instance methods** where tests patch them.
+1. **Verify tests pass** — `uv run pytest tests/ --no-cov` for the touched paths.
+1. **Single-repo commit** with the standard message format.
 
----
+______________________________________________________________________
 
 ## Task 1: splashstand migration (9 usages — largest scope)
 
 **Files:**
+
 - Modify: `splashstand/splashstand/config/*.py` (likely several files; verify with `grep -rln`)
 - Test: existing tests in `splashstand/tests/` should pass without modification.
 
 **Steps:**
+
 - [ ] `grep -rn "MCPBaseSettings\|MCPServerSettings" splashstand/splashstand` to enumerate exact files.
 - [ ] For each file: replace import + inheritance + `.load()` method (use session-buddy commit `05bc2622` as the reference implementation).
 - [ ] Add `get_api_key` / `get_api_key_secure` instance methods if `grep` shows tests patching them.
@@ -76,10 +79,12 @@ For each repo:
 ## Task 2: css-mcp migration (3 usages)
 
 **Files:**
+
 - Modify: `css-mcp/css_mcp/config.py` (or wherever the 3 usages live; verify with grep)
 - Test: existing tests should pass.
 
 **Steps:**
+
 - [ ] `grep -rn "MCPBaseSettings\|MCPServerSettings" css-mcp/css_mcp` to enumerate exact files.
 - [ ] Apply the per-repo migration pattern.
 - [ ] `uv run pytest tests/ --no-cov -q` — must be all GREEN.
@@ -88,10 +93,12 @@ For each repo:
 ## Task 3: graphics-mcp migration (3 usages)
 
 **Files:**
+
 - Modify: `graphics-mcp/graphics_mcp/config.py`
 - Test: existing tests should pass.
 
 **Steps:**
+
 - [ ] `grep -rn "MCPBaseSettings\|MCPServerSettings" graphics-mcp/graphics_mcp`.
 - [ ] Apply the per-repo migration pattern.
 - [ ] `uv run pytest tests/ --no-cov -q` — must be all GREEN.
@@ -100,10 +107,12 @@ For each repo:
 ## Task 4: porkbun-domain-mcp migration (3 usages)
 
 **Files:**
+
 - Modify: `porkbun-domain-mcp/porkbun_domain_mcp/config.py`
 - Test: existing tests should pass.
 
 **Steps:**
+
 - [ ] `grep -rn "MCPBaseSettings\|MCPServerSettings" porkbun-domain-mcp/porkbun_domain_mcp`.
 - [ ] Apply the per-repo migration pattern.
 - [ ] `uv run pytest tests/ --no-cov -q` — must be all GREEN.
@@ -112,10 +121,12 @@ For each repo:
 ## Task 5: langsmith-mcp migration (2 usages)
 
 **Files:**
+
 - Modify: `langsmith-mcp/langsmith_mcp/config.py`
 - Test: existing tests should pass.
 
 **Steps:**
+
 - [ ] `grep -rn "MCPBaseSettings\|MCPServerSettings" langsmith-mcp/langsmith_mcp`.
 - [ ] Apply the per-repo migration pattern.
 - [ ] `uv run pytest tests/ --no-cov -q` — must be all GREEN.
@@ -124,10 +135,12 @@ For each repo:
 ## Task 6: opera-cloud-mcp migration (1 usage)
 
 **Files:**
+
 - Modify: `opera-cloud-mcp/opera_cloud_mcp/config.py`
 - Test: existing tests should pass.
 
 **Steps:**
+
 - [ ] `grep -rn "MCPBaseSettings\|MCPServerSettings" opera-cloud-mcp/opera_cloud_mcp`.
 - [ ] Apply the per-repo migration pattern.
 - [ ] `uv run pytest tests/ --no-cov -q` — must be all GREEN.
@@ -136,6 +149,7 @@ For each repo:
 ## Task 7: Final audit
 
 **Steps:**
+
 - [ ] Run the audit script across ALL /Users/les/Projects repos:
 
 ```bash
@@ -168,7 +182,8 @@ done
 ## Reference: established migration pattern
 
 See session-buddy commit `05bc2622` for the canonical `.load()` rewrite that preserves both:
+
 1. The legacy `(server_name, config_path=...)` MCPBaseSettings signature
-2. The flat-YAML schema that MCPBaseSettings used (read via `yaml.safe_load` and merged on top of oneiric's nested defaults)
+1. The flat-YAML schema that MCPBaseSettings used (read via `yaml.safe_load` and merged on top of oneiric's nested defaults)
 
 The crackerjack commit `25e230e7` shows the simple bulk-replace variant when `.load()` isn't used (just inheritance swap).

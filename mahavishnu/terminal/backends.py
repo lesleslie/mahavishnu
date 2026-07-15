@@ -7,6 +7,7 @@ Built-in backends. Each entry defines:
 Operators pick by name via ``terminal.adapter_preference``. Adding a new
 backend = one entry here + (if tool surface differs) a thin adapter shim.
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -29,9 +30,9 @@ class PtyBackend:
 BUILTIN_BACKENDS: dict[str, PtyBackend] = {
     "mcpretentious": PtyBackend(
         name="mcpretentious",
-        command="npx",                              # was: "uvx" — BUG
+        command="npx",  # was: "uvx" — BUG
         args=("mcpretentious",),
-        requires=("node",),                         # npm package
+        requires=("node",),  # npm package
     ),
 }
 

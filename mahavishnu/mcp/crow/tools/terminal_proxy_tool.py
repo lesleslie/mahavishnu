@@ -33,7 +33,7 @@ if TYPE_CHECKING:
     from ..settings import CrowSettings
 
 
-def _tool_decorator(server: "FastMCP | StandardServer") -> Any:
+def _tool_decorator(server: FastMCP | StandardServer) -> Any:
     """Pick the tool decorator that routes through FastMCP when available.
 
     Mirrors the dual-target pattern used by ``file_tools``, ``rg_search``
@@ -48,7 +48,7 @@ def _tool_decorator(server: "FastMCP | StandardServer") -> Any:
     return server.tool
 
 
-def register(server: "FastMCP | StandardServer", settings: CrowSettings) -> None:
+def register(server: FastMCP | StandardServer, settings: CrowSettings) -> None:
     """Register the ``terminal`` and ``crow_terminal_*`` tools.
 
     The legacy ``terminal`` tool is preserved unchanged. The four new
@@ -99,13 +99,12 @@ def register(server: "FastMCP | StandardServer", settings: CrowSettings) -> None
         async with state_proxy:
             session = get_crow_session_by_handle(session_id)
             return await session.call_tool(  # type: ignore[no-any-return]
-                "terminal", {"command": command},
+                "terminal",
+                {"command": command},
             )
 
     @deco()
-    async def crow_terminal_read(
-        session_id: str, limit_lines: int | None = None
-    ) -> dict[str, Any]:
+    async def crow_terminal_read(session_id: str, limit_lines: int | None = None) -> dict[str, Any]:
         """Read recent output from the session's PTY.
 
         Acquires the session (idempotent) and serialises the call with
@@ -121,7 +120,8 @@ def register(server: "FastMCP | StandardServer", settings: CrowSettings) -> None
             if limit_lines is not None:
                 params["limit_lines"] = limit_lines
             result = await session.call_tool(
-                "terminal", params,
+                "terminal",
+                params,
             )
             # The crow-mcp terminal tool returns either an
             # ``mcp.types.CallToolResult`` with a TextContent ``content``

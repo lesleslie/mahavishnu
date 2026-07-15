@@ -3,15 +3,18 @@
 from __future__ import annotations
 
 import asyncio
-from collections.abc import Callable
 from datetime import datetime
 from logging import getLogger
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
-from .adapters.base import TerminalAdapter
 from .adapters.mcpretentious import McpretentiousAdapter
 from .backends import BUILTIN_BACKENDS
 from .config import TerminalSettings
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
+
+    from .adapters.base import TerminalAdapter
 
 logger = getLogger(__name__)
 
@@ -415,7 +418,7 @@ class TerminalManager:
         cls,
         config: Any,
         mcp_client: Any,
-    ) -> "TerminalManager":
+    ) -> TerminalManager:
         """Create terminal manager with appropriate adapter.
 
         Factory method that selects the best available adapter based

@@ -218,7 +218,7 @@ async def web_fetch_batch(
     return list(await asyncio.gather(*(fetch_one(u) for u in urls)))
 
 
-def _tool_decorator(server: "FastMCP | StandardServer") -> Any:
+def _tool_decorator(server: FastMCP | StandardServer) -> Any:
     """Return the tool decorator appropriate for this server."""
     fastmcp = getattr(server, "fastmcp", None)
     if fastmcp is not None:
@@ -226,7 +226,7 @@ def _tool_decorator(server: "FastMCP | StandardServer") -> Any:
     return server.tool
 
 
-def register(server: "FastMCP | StandardServer", settings: CrowSettings) -> None:
+def register(server: FastMCP | StandardServer, settings: CrowSettings) -> None:
     """Register web_fetch and web_fetch_batch on ``server``."""
     deco = _tool_decorator(server)
 

@@ -6,15 +6,15 @@
 **Scope:** Wire Mahavishnu's existing primitives to better support ultracode-style multi-agent composition. Deliver three concrete capabilities: (1) diverse-refuter adversarial verification gate, (2) opt-in loop-until-dry for pattern detection, (3) MCP bridge completion for ultracode subagents.
 **Purpose:** Reduce the failure modes that emerge when Mahavishnu's control-plane primitives are composed with ultracode's reasoning-plane primitives. The two planes meet at MCP boundaries and approval flows; this plan hardens both.
 
----
+______________________________________________________________________
 
 ## 1. Outcome
 
 When this plan ships:
 
 1. **High-stakes Mahavishnu proposals** (cross-repo extractions, self-improvement generations) carry **diverse-refuter verification rationales** before reaching human approval. The reviewer sees disagreement, not just a verdict.
-2. **Pattern detection scans** can opt into a **loop-until-dry** mode that re-scans until K consecutive rounds return no new findings (max 5 rounds).
-3. **ultracode subagents** can call a new `dispatch_to_pool` MCP tool that records `caller_kind` and `parent_session_id`, enforces per-caller rate limits, and returns a `workflow_id` for async callback.
+1. **Pattern detection scans** can opt into a **loop-until-dry** mode that re-scans until K consecutive rounds return no new findings (max 5 rounds).
+1. **ultracode subagents** can call a new `dispatch_to_pool` MCP tool that records `caller_kind` and `parent_session_id`, enforces per-caller rate limits, and returns a `workflow_id` for async callback.
 
 User-observable change: an ultracode workflow that triggers a cross-repo refactor through Mahavishnu will, on completion, leave an audit trail in Dhara linking the ultracode `session_id` to the Mahavishnu `workflow_id` to the refuter rationales.
 
@@ -23,22 +23,22 @@ Concrete success signal: `mahavishnu metrics verification --scope 30d` shows ≥
 ## 2. Goals
 
 1. Add adversarial verification as a first-class primitive in `mahavishnu/core/verification.py` with **diverse** refuter strategies (different prompts, temperatures, model families when available).
-2. Wire verification into `clone_refactor_group` and `self_improvement_generate` so it runs **before** `request_approval`.
-3. Add a `detect_until_dry(scan_fn, k_empty_rounds=2, max_iterations=5)` helper that wraps `PatternDetector.analyze_tasks` and the underlying scanner for `clone_detect_ecosystem` / `get_cross_project_patterns`.
-4. Add a `dispatch_to_pool` MCP tool with `caller_kind`, `parent_session_id`, and per-caller quota enforcement.
-5. Extend `PoolManager.route_task` to accept `caller_kind` and `parent_session_id` and persist both to Dhara under `routing-decisions/`.
-6. Wire Claude Code's tool-selection toward Mahavishnu workers via (a) a `## Tool Preferences` section in `CLAUDE.md`, (b) revised MCP tool descriptions that explicitly name use cases, (c) a `mahavishnu-orchestrator` subagent and `/vishnu` skill for explicit delegation.
+1. Wire verification into `clone_refactor_group` and `self_improvement_generate` so it runs **before** `request_approval`.
+1. Add a `detect_until_dry(scan_fn, k_empty_rounds=2, max_iterations=5)` helper that wraps `PatternDetector.analyze_tasks` and the underlying scanner for `clone_detect_ecosystem` / `get_cross_project_patterns`.
+1. Add a `dispatch_to_pool` MCP tool with `caller_kind`, `parent_session_id`, and per-caller quota enforcement.
+1. Extend `PoolManager.route_task` to accept `caller_kind` and `parent_session_id` and persist both to Dhara under `routing-decisions/`.
+1. Wire Claude Code's tool-selection toward Mahavishnu workers via (a) a `## Tool Preferences` section in `CLAUDE.md`, (b) revised MCP tool descriptions that explicitly name use cases, (c) a `mahavishnu-orchestrator` subagent and `/vishnu` skill for explicit delegation.
 
 ## 3. Non-Goals
 
 1. **Not implementing the actual clone-scan / self-improvement-generation logic.** The MCP wrappers `clone_detect_ecosystem`, `clone_refactor_group`, `self_improvement_generate` are stubs that return job-ids without doing the work. This plan adds verification infrastructure; the real scan/generation is a separate plan.
-2. **Not adding a hosted/cloud Mahavishnu.** Out of scope per the prior conversation.
-3. **Not building a token-budget gate** on `self_improvement_generate`. Listed in the Tier 2 parking lot.
-4. **Not changing the Oneiric DAG/workflow model** for sub-workflow composition. Listed in Tier 2.
-5. **Not adding Mahavishnu-specific Claude Code skills** (e.g., `/verify-proposal`). Listed in Tier 2.
-6. **Not changing approval semantics.** PROPOSE_APPROVE stays PROPOSE_APPROVE; we add pre-gate verification, not a new approval path.
-7. **Not implementing Phase 6 (Bodai-wide observability surfacing) in this plan.** Phase 6 originally proposed a multi-WebSocket subscriber that duplicates the unified event spine shipped in Convergence Plan C1b (Oneiric EventBridge). Defer Phase 6 to a follow-up plan that consumes EventBridge handlers. Phase 5 (Mahavishnu-only) lands now. Add Phase 6 to the Tier 2 parking lot as item 2.6 with a precondition: "block until an EventBridge handler for activity events exists."
-8. **Not introducing a new exception class `RateLimited`.** The existing `RateLimitError` (MHV-006) at `mahavishnu/core/errors.py:662` is the canonical rate-limit exception; reuse it.
+1. **Not adding a hosted/cloud Mahavishnu.** Out of scope per the prior conversation.
+1. **Not building a token-budget gate** on `self_improvement_generate`. Listed in the Tier 2 parking lot.
+1. **Not changing the Oneiric DAG/workflow model** for sub-workflow composition. Listed in Tier 2.
+1. **Not adding Mahavishnu-specific Claude Code skills** (e.g., `/verify-proposal`). Listed in Tier 2.
+1. **Not changing approval semantics.** PROPOSE_APPROVE stays PROPOSE_APPROVE; we add pre-gate verification, not a new approval path.
+1. **Not implementing Phase 6 (Bodai-wide observability surfacing) in this plan.** Phase 6 originally proposed a multi-WebSocket subscriber that duplicates the unified event spine shipped in Convergence Plan C1b (Oneiric EventBridge). Defer Phase 6 to a follow-up plan that consumes EventBridge handlers. Phase 5 (Mahavishnu-only) lands now. Add Phase 6 to the Tier 2 parking lot as item 2.6 with a precondition: "block until an EventBridge handler for activity events exists."
+1. **Not introducing a new exception class `RateLimited`.** The existing `RateLimitError` (MHV-006) at `mahavishnu/core/errors.py:662` is the canonical rate-limit exception; reuse it.
 
 ## 4. Current Findings
 
@@ -69,6 +69,7 @@ Findings from codebase exploration on 2026-07-11:
 **Tasks:**
 
 - **Task 1.1:** Create `mahavishnu/core/verification.py` exporting:
+
   - `class RefuterErrorKind(StrEnum)` — `TIMEOUT`, `MALFORMED_RESPONSE`, `LLM_ERROR`, `RATE_LIMITED`, `INTERNAL`
   - `class RefuterVerdictValue(StrEnum)` — `APPROVE`, `REJECT`, `ABSTAIN`
   - `class Consensus(StrEnum)` — `APPROVE`, `REJECT`, `SPLIT`, `UNAVAILABLE`
@@ -79,17 +80,24 @@ Findings from codebase exploration on 2026-07-11:
   - `async def verify_proposal(proposal: Proposal, strategies: list[RefuterStrategy]) -> VerificationResult`
 
   **Failure-mode handling** (mandatory, distinct signals for distinct conditions):
+
   - Per-refuter timeout (default 30s, configurable per-strategy). On timeout: `verdict=ABSTAIN`, `error=RefuterErrorKind.TIMEOUT`, `rationale="refuter timed out after {n}s"`.
+
   - Refuter LLM call failure (network error, rate limit, 5xx): `verdict=ABSTAIN`, `error=RefuterErrorKind.LLM_ERROR` (or `RATE_LIMITED` for 429s), rationale populated.
+
   - Malformed JSON response from refuter: `verdict=ABSTAIN`, `error=RefuterErrorKind.MALFORMED_RESPONSE`. Do not raise.
+
   - **All refuters fail (LLM provider outage)**: `consensus=Consensus.UNAVAILABLE` (NOT `"split"`). Emit `mahavishnu.verification.infrastructure_failure_total` (counter). The rollback signal in §Phase 1 Integration Contract must watch BOTH `consensus=reject` rate AND `consensus=unavailable` rate.
+
   - **Empty proposal** (no fields after Proposal parsing): short-circuit with `consensus=Consensus.APPROVE` and `concerns_aggregated=["empty proposal — refuters skipped"]`. Don't waste 3 LLM calls on a stub.
+
   - **No abort path**: `verify_proposal` never raises. Failures are encoded in the result; proposals proceed.
 
   - `DEFAULT_STRATEGIES: tuple[RefuterStrategy, ...]` — three diverse refuters (typed as immutable tuple):
+
     1. *"checklist"* (temp 0.2, prompt: "Evaluate against the safety checklist…")
-    2. *"devils_advocate"* (temp 0.7, prompt: "Argue against this proposal…")
-    3. *"scope_audit"* (temp 0.3, prompt: "Audit whether the proposal's blast radius matches its description…")
+    1. *"devils_advocate"* (temp 0.7, prompt: "Argue against this proposal…")
+    1. *"scope_audit"* (temp 0.3, prompt: "Audit whether the proposal's blast radius matches its description…")
 
 - **Task 1.2:** Add `VerificationStore` (a thin wrapper over `DharaStateBackend` writes to `verification/{proposal_id}/`). Persists `VerificationResult` with timestamp. **Failure-mode handling**: if Dhara write fails (after per-Dhara retry policy retries once on transient errors), log at `WARNING` with `proposal_id` and the exception, set `VerificationResult.persisted=False` and `VerificationResult.persist_error=<exception summary>`, and **dead-letter** the result to a local fallback file at `~/.mahavishnu/verification-dead-letter/{proposal_id}.json` for later reconciliation. The result is still returned to the caller with `persisted=False` so they know the audit trail is incomplete. Emit `mahavishnu.verification.persist_failure_total` (counter) and alert on rate.
 
@@ -119,11 +127,11 @@ Findings from codebase exploration on 2026-07-11:
 - **Demonstrable by**: `mahavishnu mcp call clone_refactor_group cluster_id=test-cluster` — the response JSON contains `"verification": {"consensus": "...", "verdicts": [...], "persisted": true|false}`.
 - **Rollback signal**: Two signals, watched independently:
   1. `mahavishnu metrics verification --consensus reject` shows >80% reject rate within 24h of a release → refuter prompts are too strict; recalibrate.
-  2. `mahavishnu metrics verification --consensus unavailable` shows >5% unavailable rate within 1h → verification infrastructure is failing; alert.
-  Thresholds tuned via `verification_alert_threshold` and `verification_unavailable_threshold` in `settings/mahavishnu.yaml`.
+  1. `mahavishnu metrics verification --consensus unavailable` shows >5% unavailable rate within 1h → verification infrastructure is failing; alert.
+     Thresholds tuned via `verification_alert_threshold` and `verification_unavailable_threshold` in `settings/mahavishnu.yaml`.
 - **Observability added**: OTel span `verification.execute` with attributes `proposal_id`, `consensus`, `refuter_count`, `model_family`, `persisted`. New metrics: `mahavishnu.verification.duration_seconds` (histogram), `mahavishnu.verification.infrastructure_failure_total` (counter), `mahavishnu.verification.persist_failure_total` (counter). Structured log lines: `verification.completed proposal_id=... consensus=... persisted=...` and `verification.persist_dead_lettered proposal_id=...`.
 
----
+______________________________________________________________________
 
 ### Phase 2: Opt-In Loop-Until-Dry for Pattern Detection
 
@@ -132,6 +140,7 @@ Findings from codebase exploration on 2026-07-11:
 **Tasks:**
 
 - **Task 2.1:** Create `mahavishnu/core/loop_helpers.py` exporting:
+
   - `async def detect_until_dry(scan_fn: Callable, *, k_empty_rounds: int = 2, max_iterations: int = 5, dedup_key: Callable = lambda r: r["id"], per_iteration_timeout_seconds: float = 60.0) -> tuple[list, dict]`
   - Returns `(all_findings, run_metadata)` where `run_metadata = {"iterations": int, "empty_rounds": int, "stopped_reason": "converged" | "max_iterations" | "error", "error": str | None, "exception": BaseException | None}`.
   - **Error-path handling** (added per silent-failure M1): if `scan_fn` raises on iteration N (or `dedup_key(access)` raises KeyError on a finding missing `id`), capture the exception and partial findings, set `stopped_reason="error"`, populate `error`/`exception`, and return. Do NOT propagate — callers should see the partial results with `stopped_reason="error"` so they can decide whether to use them. Per-iteration timeout (`per_iteration_timeout_seconds=60.0`) bounds total wall-clock for a single iteration.
@@ -156,7 +165,7 @@ Findings from codebase exploration on 2026-07-11:
 - **Rollback signal**: `mahavishnu metrics scan --duration-p95` exceeds 30 minutes in production → operators can revert to single-pass by setting `detect_until_dry=False` (the default).
 - **Observability added**: OTel span `scan.dry_run` with `iteration`, `findings_new_count`, `findings_total`. Metric `mahavishnu.scan.dry_run.iterations` (histogram).
 
----
+______________________________________________________________________
 
 ### Phase 3: MCP Bridge Completion for ultracode Subagents
 
@@ -165,6 +174,7 @@ Findings from codebase exploration on 2026-07-11:
 **Tasks:**
 
 - **Task 3.1:** Add `class CallerKind(StrEnum)` to `mahavishnu/pools/` (next to `PoolSelector`):
+
   ```python
   class CallerKind(StrEnum):
       ULTRA_CODE = "ultracode"
@@ -173,7 +183,9 @@ Findings from codebase exploration on 2026-07-11:
       CLI = "cli"
       UNKNOWN = "unknown"  # Coerced target for any unrecognized value
   ```
+
   Extend `mahavishnu/pools/manager.py:460-466` `PoolManager.route_task` signature:
+
   ```python
   async def route_task(
       self,
@@ -185,6 +197,7 @@ Findings from codebase exploration on 2026-07-11:
       parent_session_id: str | None = None,             # NEW: ultracode session id for correlation
   ) -> dict[str, Any]:
   ```
+
   At the MCP wire boundary (`dispatch_to_pool`, `pool_route_execute`), `caller_kind: str` is accepted (FastMCP marshals JSON) and coerced to `CallerKind` on entry: any unrecognized string maps to `CallerKind.UNKNOWN`. This prevents the bucket-per-string quota bypass the bare-`str` design enabled.
 
   Persist both new fields to Dhara under `routing-decisions/` via `_persist_routing_decision` (line 168-195).
@@ -192,6 +205,7 @@ Findings from codebase exploration on 2026-07-11:
 - **Task 3.2:** Add per-caller quota tracking in `PoolManager.__init__`: `self._caller_quota: dict[CallerKind, _QuotaState]` where `_QuotaState` is a `@dataclass(slots=True)` with `window_start: datetime` and `request_count: int` (plain mutable dataclass — internal counter state, per `PoolMetrics` precedent; do NOT make it Pydantic). Default quota: 60 requests per 60-second **fixed** window per `caller_kind` (configurable via `settings/mahavishnu.yaml`). Note: fixed window, not sliding — naming and docstring should reflect this accurately.
 
 - **Task 3.3:** Add `mahavishnu/mcp/tools/pool_tools.py:dispatch_to_pool` (new MCP tool):
+
   ```python
   @mcp.tool()
   async def dispatch_to_pool(
@@ -203,15 +217,20 @@ Findings from codebase exploration on 2026-07-11:
       async_callback: bool = False,
   ) -> dict[str, Any]:
   ```
+
   Behavior:
+
   - `async_callback=False` (default): returns the result dict synchronously (current `pool_route_execute` semantics).
   - `async_callback=True`: returns `{"workflow_id": "...", "status": "queued"}` immediately. The result is written to Dhara under `workflow-results/{workflow_id}/` when complete, with `parent_session_id` stored alongside so ultracode can poll.
 
   **Async result lifecycle** (mandatory — fixes the silent-result-loss failure mode):
+
   ```
   queued → running → {completed | failed | result_write_failed}
   ```
+
   Every transition is persisted. On `result_write_failed` (Dhara unreachable when the worker finishes):
+
   - Retry once per Dhara retry policy on transient errors.
   - If retry fails: dead-letter to `~/.mahavishnu/async-dead-letter/{workflow_id}.json`.
   - Set the persisted terminal state to `result_write_failed` so pollers can distinguish "still running" from "completed but result lost."
@@ -223,6 +242,7 @@ Findings from codebase exploration on 2026-07-11:
 - **Task 3.5:** Update `mahavishnu/pools/manager.py:460-466` docstring with the new fields and an example for ultracode.
 
 - **Task 3.6:** Add tests:
+
   - `tests/unit/test_pools/test_manager.py::test_route_task_persists_caller_kind`
   - `tests/unit/test_pools/test_manager.py::test_route_task_enforces_quota`
   - `tests/unit/test_pools/test_manager.py::test_caller_kind_normalizes_unknown_to_unknown_bucket` (the bucket-bypass fix)
@@ -230,6 +250,7 @@ Findings from codebase exploration on 2026-07-11:
   - `tests/unit/test_pool_tools.py::test_dispatch_to_pool_async_callback_returns_workflow_id`
   - `tests/unit/test_pool_tools.py::test_dispatch_to_pool_async_result_write_failed_terminal_state` (the result-loss fix)
   - `tests/integration/test_dispatch_to_pool_flow.py` (Phase 3 B3 — full MCP tool → manager → Dhara flow)
+
 - **Task 3.7:** `python scripts/audit_orphans.py` reports **zero new orphans** for Phase 3 symbols (`CallerKind`, `_QuotaState`, modified `PoolManager.route_task`).
 
 **Exit criteria:**
@@ -246,11 +267,11 @@ Findings from codebase exploration on 2026-07-11:
 - **Demonstrable by**: Test `test_route_task_persists_caller_kind` — invokes `route_task` with `caller_kind="ultracode"`, asserts the persisted Dhara record contains `caller_kind: "ultracode"`. Test `test_caller_kind_normalizes_unknown_to_unknown_bucket` — passes `"ultracode-rogue-1"`, asserts it lands in the `UNKNOWN` bucket, not a fresh one.
 - **Rollback signal**: Two signals, watched independently:
   1. `mahavishnu metrics dispatch --quota-rejected-rate` exceeds 10% for any `CallerKind` → operators can raise the quota via `settings/mahavishnu.yaml`.
-  2. `mahavishnu metrics dispatch --result-write-failure-rate` exceeds 1% within 1h → alert; dead-letter reconciliation likely needed.
-  Soft fail (returns `retry_after_seconds` for quota; `result_write_failed` status for async results) — no crash, so rollback is config-only.
+  1. `mahavishnu metrics dispatch --result-write-failure-rate` exceeds 1% within 1h → alert; dead-letter reconciliation likely needed.
+     Soft fail (returns `retry_after_seconds` for quota; `result_write_failed` status for async results) — no crash, so rollback is config-only.
 - **Observability added**: OTel span `pool.dispatch` with `caller_kind`, `parent_session_id`, `pool_id`, `quota_state`, `async_terminal_state`. Metrics: `mahavishnu.dispatch.quota_rejected_total{caller_kind}` (counter), `mahavishnu.dispatch.result_write_failure_total` (counter), `mahavishnu.dispatch.unknown_caller_kind_total` (counter — tracks coercion to `UNKNOWN`). Structured log `dispatch.received caller_kind=... parent_session_id=... workflow_id=... async_terminal_state=...`.
 
----
+______________________________________________________________________
 
 ### Phase 4: Claude Code Tool-Preference Wiring
 
@@ -294,7 +315,7 @@ Findings from codebase exploration on 2026-07-11:
 - **Rollback signal**: Operators can revert by removing the `## Tool Preferences` section from `CLAUDE.md` and restoring prior docstrings via `git revert`. No production-data risk.
 - **Observability added**: No new metrics. The existing `mahavishnu.dispatch.*` and `mahavishnu.pool.*` metrics surface the increased Mahavishnu usage that this phase is designed to drive.
 
----
+______________________________________________________________________
 
 ### Phase 5: Worker Activity Surfacing
 
@@ -309,6 +330,7 @@ Findings from codebase exploration on 2026-07-11:
 - **Task 5.3:** Update `docs/plans/drafts/2026-07-11-ultracode-integration/claude-md-tool-preferences.md` to add a "Worker activity visibility" subsection naming the log file path (`~/.mahavishnu/logs/mcp.log`), the `/vishnu-status` command, and the WebSocket port (8690). Re-apply the section to `CLAUDE.md`.
 
 - **Task 5.4:** Implement a WebSocket subscriber as a `PostToolUse` hook at `.claude/hooks/mahavishnu-activity-stream.py`. The hook:
+
   - Connects to `ws://localhost:8690/global` and `ws://localhost:8690/pool:*` on session start.
   - Maintains an in-memory queue of recent events (cap at 100).
   - On every subsequent `mcp__mahavishnu__*` invocation, the hook checks the queue for matching events and emits a one-line summary to the conversation: `[vishnu] workflow wid_abc completed at stage=test_run`.
@@ -317,6 +339,7 @@ Findings from codebase exploration on 2026-07-11:
 - **Task 5.5:** Tests for the WebSocket subscriber: a mock WebSocket server, a fake session, and assertions that events surface correctly. Marked with the `integration` pytest marker per `CLAUDE.md` Test conventions.
 
 - **Task 5.6:** Add the new hook to `.claude/settings.json` so it actually fires. The hook needs:
+
   - A `PostToolUse` matcher for `mcp__mahavishnu__*` invocations
   - A `SessionStart` hook to connect to the WebSocket
   - A `SessionEnd` hook to clean up
@@ -336,7 +359,7 @@ Findings from codebase exploration on 2026-07-11:
 - **Rollback signal**: If users complain about noisy event messages in conversation (the `events_emitted_total` rate is high but users are dismissing them), the hook can be disabled via `.claude/settings.json`. Soft fail — no production-data risk.
 - **Observability added**: OTel span `activity.event_emitted` with `event_type`, `workflow_id`. Metric `mahavishnu.activity.events_emitted_total{event_type}` (counter). Structured log `activity.received event_type=... workflow_id=...`.
 
----
+______________________________________________________________________
 
 ### Phase 6: Bodai-Wide Observability Surfacing — **DEFERRED**
 
@@ -347,14 +370,14 @@ Findings from codebase exploration on 2026-07-11:
 **What remains.** Phase 5 (Mahavishnu-only) lands in this plan. The Bodai-wide `/bodai-status` slash command and the cross-component activity surfacing are deferred to a follow-up plan that:
 
 1. Lands or consumes an EventBridge handler that publishes activity events from Akosha, Crackerjack, and Mahavishnu into the unified bus.
-2. Implements a Bodai-side subscriber that reads from the bus (not from raw WebSockets).
-3. Documents the pattern as the canonical "Claude Code observes Bodai" path.
+1. Implements a Bodai-side subscriber that reads from the bus (not from raw WebSockets).
+1. Documents the pattern as the canonical "Claude Code observes Bodai" path.
 
 **Survey of existing observability surfaces** (preserved from the original draft for reference):
 
 | Component | Port | WebSocket | CLI health | Pattern |
 |---|---|---|---|---|
-| Mahavishnu | 8680 | `ws://localhost:8690` (workflow/pool/worker/global channels, broadcast_workflow_* methods) | `mahavishnu mcp status\|health`, `mahavishnu pool list\|health\|monitor`, `mahavishnu metrics` | Push (WebSocket) + Pull (CLI) |
+| Mahavishnu | 8680 | `ws://localhost:8690` (workflow/pool/worker/global channels, broadcast_workflow\_\* methods) | `mahavishnu mcp status\|health`, `mahavishnu pool list\|health\|monitor`, `mahavishnu metrics` | Push (WebSocket) + Pull (CLI) |
 | Akosha | 8682 | `akosha/websocket/server.py:431` (broadcast_aggregation_completed, `metrics` channel) | `akosha migrate status` | Push + minimal Pull |
 | Dhara | 8683 | None — REST/pull-only | None in `dhara/cli/` | Pull (REST) |
 | Session-Buddy | 8678 | Channel session tracking via `event_models.py` (slack/signal/terminal events) | None in this search | Event-driven but no general surface |
@@ -362,7 +385,7 @@ Findings from codebase exploration on 2026-07-11:
 
 The follow-up plan should classify Dhara and Session-Buddy as "intentional per Convergence Plan §4 ownership rules — do not duplicate" rather than as gaps to fix.
 
----
+______________________________________________________________________
 
 ### 5.1 Phase Ordering and Dependencies
 
@@ -476,11 +499,12 @@ flowchart LR
 - Arrows labeled "high-stakes" indicate Phase 1's verification gate. Arrows labeled "quota check" indicate Phase 3's per-caller rate limiting.
 - Dashed arrows indicate observation (surfacing, status) rather than request flow.
 
----
+______________________________________________________________________
 
 ## 6. Required Code Changes
 
 ### Phase 1
+
 - [ ] Create `mahavishnu/core/verification.py` with Pydantic models: `RefuterStrategy` (frozen), `RefuterVerdict` (frozen, with `model_validator`), `VerificationResult` (frozen), `Proposal` (typed input), and `StrEnum`s `RefuterErrorKind`, `RefuterVerdictValue`, `Consensus`. Plus `verify_proposal` and `VerificationStore` with full failure-mode handling (consensus=UNAVAILABLE on infra outage, persisted/persist_error fields, dead-letter to `~/.mahavishnu/verification-dead-letter/`) (~350 lines including model definitions)
 - [ ] Create `tests/unit/test_verification.py` with tests for: three refuters disagree on bad proposal, consensus=APPROVE when all pass, Consensus.UNAVAILABLE on infra outage, model_validator enforces `error ⟺ ABSTAIN`, persisted=False propagates to caller, dead-letter written on Dhara write failure (~200 lines)
 - [ ] Modify `mahavishnu/mcp/tools/clone_tools.py:60-96` (~30 lines diff)
@@ -490,6 +514,7 @@ flowchart LR
 - [ ] Add `.claude/decisions/dhara-key-prefixes-2026-07-11.md`
 
 ### Phase 2
+
 - [ ] Create `mahavishnu/core/loop_helpers.py` (~80 lines)
 - [ ] Create `tests/unit/test_loop_helpers.py` (~120 lines)
 - [ ] Modify `mahavishnu/mcp/tools/clone_tools.py:29-58` (~20 lines diff)
@@ -497,6 +522,7 @@ flowchart LR
 - [ ] Add `loop_helpers` to `mahavishnu/core/__init__.py` exports
 
 ### Phase 3
+
 - [ ] Add `class CallerKind(StrEnum)` to `mahavishnu/pools/` next to `PoolSelector` (~10 lines)
 - [ ] Modify `mahavishnu/pools/manager.py:82-146` (`__init__`) to add `_caller_quota: dict[CallerKind, _QuotaState]` (~30 lines)
 - [ ] Modify `mahavishnu/pools/manager.py:168-195` (`_persist_routing_decision`) to include `caller_kind`, `parent_session_id` (~10 lines)
@@ -512,6 +538,7 @@ flowchart LR
 - [ ] Add `tests/unit/test_pool_tools.py::test_dispatch_to_pool_async_callback_returns_workflow_id` (~40 lines)
 
 ### Cross-cutting
+
 - [ ] Update `docs/plans/PLAN_INDEX.md` (this plan)
 - [ ] Create `docs/feature-tracking/2026-07-11-verification-gate.md`
 - [ ] Create `docs/feature-tracking/2026-07-11-loop-until-dry.md`
@@ -537,6 +564,7 @@ flowchart LR
 - [ ] Create `docs/plans/drafts/2026-07-11-ultracode-integration/architecture-diagram.md` (Mermaid source for the data-flow diagram) — already created
 
 ### Phase 4
+
 - [ ] Apply `## Tool Preferences` section from `docs/plans/drafts/2026-07-11-ultracode-integration/claude-md-tool-preferences.md` to `CLAUDE.md` (~60 lines added)
 - [ ] Replace `pool_route_execute` docstring in `mahavishnu/mcp/tools/pool_tools.py:144` (~50 lines)
 - [ ] Replace `pool_execute` docstring in `mahavishnu/mcp/tools/pool_tools.py:119` (~30 lines)
@@ -547,6 +575,7 @@ flowchart LR
 - [ ] Update `python scripts/audit_orphans.py` to recognize `mahavishnu-orchestrator.md` and `vishnu/SKILL.md`
 
 ### Phase 5
+
 - [ ] Create `.claude/commands/vishnu-status.md` slash command (~50 lines)
 - [ ] Create `.claude/skills/vishnu-status/SKILL.md` (~80 lines)
 - [ ] Add "Worker activity visibility" subsection to CLAUDE.md Tool Preferences section
@@ -560,6 +589,7 @@ flowchart LR
 - [ ] Update PLAN_INDEX.md with new entry under "Canonical And Active Plan Registry"
 
 ### Phase 6 — **DEFERRED to follow-up plan**
+
 - All Phase 6 work moves to a new plan: `docs/plans/2026-07-XX-bodai-event-bridge-surfacing.md` (placeholder name).
 - Precondition: an EventBridge handler for activity events exists in the Convergence Plan's C1b work.
 - Add to Tier 2 parking lot as item 2.6.
@@ -623,17 +653,17 @@ flowchart LR
 This plan is "done enough" when:
 
 1. All **five** Phase Integration Contracts have a passing test that exercises `trigger → integration → observable result`. (Phase 6 is deferred to a follow-up plan; its contract lives there.)
-2. `python scripts/audit_orphans.py` reports zero new orphans.
-3. The Tier 2 parking lot file exists and lists the deferred items (now five + new item 2.6 for the Bodai-wide surfacing) with probability + trigger condition.
-4. `mahavishnu mcp call clone_refactor_group ...` from a Claude Code session produces a response that *the human reviewer can act on* — i.e., they can see refuter disagreement (including `Consensus.UNAVAILABLE` when infra fails), not just a yes/no verdict.
-5. `CLAUDE.md`, `MCP_TOOLS_SPECIFICATION.md`, `CLI_REFERENCE.md`, `ROUTING_GUIDE.md`, `CONFIGURATION.md` (or Oneiric equivalent), and the release notes are updated to reflect the new tools, settings, and behavior.
-6. The architecture diagram renders correctly via Mermaid (visual artifact available for review). `verify_proposal` is drawn in its own subgraph outside the MCP layer.
-7. `.claude/decisions/dhara-key-prefixes-2026-07-11.md`, `mahavishnu-tool-preference-policy.md`, and `component-health-cli-gap.md` exist and are referenced from CLAUDE.md / the plan.
-8. `/vishnu-status` slash command and the Mahavishnu-only WebSocket subscriber are wired and tested end-to-end (Phase 6 deferred).
+1. `python scripts/audit_orphans.py` reports zero new orphans.
+1. The Tier 2 parking lot file exists and lists the deferred items (now five + new item 2.6 for the Bodai-wide surfacing) with probability + trigger condition.
+1. `mahavishnu mcp call clone_refactor_group ...` from a Claude Code session produces a response that *the human reviewer can act on* — i.e., they can see refuter disagreement (including `Consensus.UNAVAILABLE` when infra fails), not just a yes/no verdict.
+1. `CLAUDE.md`, `MCP_TOOLS_SPECIFICATION.md`, `CLI_REFERENCE.md`, `ROUTING_GUIDE.md`, `CONFIGURATION.md` (or Oneiric equivalent), and the release notes are updated to reflect the new tools, settings, and behavior.
+1. The architecture diagram renders correctly via Mermaid (visual artifact available for review). `verify_proposal` is drawn in its own subgraph outside the MCP layer.
+1. `.claude/decisions/dhara-key-prefixes-2026-07-11.md`, `mahavishnu-tool-preference-policy.md`, and `component-health-cli-gap.md` exist and are referenced from CLAUDE.md / the plan.
+1. `/vishnu-status` slash command and the Mahavishnu-only WebSocket subscriber are wired and tested end-to-end (Phase 6 deferred).
 
 If scope pressure forces a cut, drop Phase 2 first (lowest ROI). Phase 4 is high-leverage but cheap (mostly docstring edits + one subagent/skill definition); keep it. Phase 1 and Phase 3 are higher leverage and lower risk. The architecture diagram and doc updates are cheap; cut them last.
 
----
+______________________________________________________________________
 
 ## References
 

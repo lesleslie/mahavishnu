@@ -27,7 +27,7 @@ if TYPE_CHECKING:
     from mahavishnu.mcp.crow.settings import CrowSettings
 
 
-def _tool_decorator(server: "FastMCP | StandardServer") -> Any:
+def _tool_decorator(server: FastMCP | StandardServer) -> Any:
     """Return the tool decorator appropriate for this server."""
     fastmcp = getattr(server, "fastmcp", None)
     if fastmcp is not None:
@@ -35,7 +35,7 @@ def _tool_decorator(server: "FastMCP | StandardServer") -> Any:
     return server.tool
 
 
-def register_all(server: "FastMCP | StandardServer", settings: CrowSettings) -> None:
+def register_all(server: FastMCP | StandardServer, settings: CrowSettings) -> None:
     """Register all crow tools onto ``server``."""
     file_tools.register(server, settings)
     rg_search.register(server, settings)

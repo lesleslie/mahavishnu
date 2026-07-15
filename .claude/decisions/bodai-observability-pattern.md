@@ -41,10 +41,10 @@ The Claude Code observability surface for Bodai reads from
    - `headers: dict[str, Any]` — carries `source` (component name),
      `event_id` (ULID), `version` (semver), `timestamp` (ISO-8601),
      and optional `correlation_id` / `causation_id` for causal tracing
-2. A single subscriber — the Bodai activity subscriber — reads from
+1. A single subscriber — the Bodai activity subscriber — reads from
    EventBridge and surfaces events to Claude Code via the
    `.claude/hooks/` PostToolUse pattern.
-3. No component-level WebSocket subscriber exists in `.claude/hooks/`
+1. No component-level WebSocket subscriber exists in `.claude/hooks/`
    for the purpose of Bodai-wide observation. Phase 5's
    Mahavishnu-only hook is the *transition state*, not the pattern
    to copy.
@@ -101,12 +101,12 @@ activity to Claude Code:
    it. The EventBridge publisher is an additional adapter, not a
    replacement.
 
-2. **Use the canonical envelope from Convergence Plan C2.** The
+1. **Use the canonical envelope from Convergence Plan C2.** The
    Phase 6 subscriber assumes the envelope shape agreed there. If
    C2 lands a different shape, the Phase 6 subscriber must be
    updated to match (single source of truth: EventBridge).
 
-3. **Do not add a per-component subscriber in `.claude/hooks/`.**
+1. **Do not add a per-component subscriber in `.claude/hooks/`.**
    The single Bodai activity subscriber is the consumer.
 
 ### Concrete envelope examples (from `format_bodai_summary`)
@@ -124,8 +124,7 @@ these inline after a tool invocation; the same format is what
 
 Each line is built from `headers["source"]` (the component prefix),
 `envelope.topic` (the event type), and `key=value` pairs sorted out
-of `envelope.payload`. Missing fields fall back to `[unknown]
-unknown` so a malformed envelope never aborts the consumer loop.
+of `envelope.payload`. Missing fields fall back to `[unknown] unknown` so a malformed envelope never aborts the consumer loop.
 
 ## Status
 

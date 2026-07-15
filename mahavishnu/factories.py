@@ -166,18 +166,14 @@ def _wire_eventbridge_publisher(server: MahavishnuWebSocketServer) -> None:
 
         settings = MahavishnuSettings()
         bridge = _resolve_bridge_from_env(settings)
-        publisher = resolve_event_publisher(
-            settings, server=server, bridge=bridge
-        )
+        publisher = resolve_event_publisher(settings, server=server, bridge=bridge)
         if publisher is not None:
             logger.info(
                 "EventBridge publisher wired (endpoint=%s)",
                 settings.eventbridge.endpoint or "default",
             )
         else:
-            logger.debug(
-                "EventBridge publisher not wired (opt-out or runtime unavailable)"
-            )
+            logger.debug("EventBridge publisher not wired (opt-out or runtime unavailable)")
     except Exception as exc:  # noqa: BLE001 -- opt-in path, never fail server start
         logger.warning(
             "EventBridge wiring failed (%s); continuing without publisher",

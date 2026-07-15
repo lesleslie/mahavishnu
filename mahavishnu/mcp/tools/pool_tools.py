@@ -167,8 +167,7 @@ async def _run_async_dispatch(
                     )
                 except Exception:
                     logger.exception(
-                        "dispatch_to_pool: dead-letter write FAILED "
-                        "workflow_id=%s path=%s",
+                        "dispatch_to_pool: dead-letter write FAILED workflow_id=%s path=%s",
                         workflow_id,
                         dead_letter_path,
                     )
@@ -192,8 +191,7 @@ async def _run_async_dispatch(
                     )
             except Exception:
                 logger.exception(
-                    "dispatch_to_pool: dead-letter recovery FAILED "
-                    "workflow_id=%s",
+                    "dispatch_to_pool: dead-letter recovery FAILED workflow_id=%s",
                     workflow_id,
                 )
         return
@@ -632,8 +630,7 @@ def register_pool_tools(  # noqa: C901
 
         workflow_id = str(uuid4())
         logger.info(
-            "dispatch_to_pool: queued async workflow_id=%s caller_kind=%s "
-            "parent_session_id=%s",
+            "dispatch_to_pool: queued async workflow_id=%s caller_kind=%s parent_session_id=%s",
             workflow_id,
             coerced_kind.value,
             parent_session_id,
@@ -654,8 +651,7 @@ def register_pool_tools(  # noqa: C901
                 )
             except Exception as exc:
                 logger.warning(
-                    "dispatch_to_pool: initial queued state write failed "
-                    "workflow_id=%s error=%s",
+                    "dispatch_to_pool: initial queued state write failed workflow_id=%s error=%s",
                     workflow_id,
                     exc,
                 )

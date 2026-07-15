@@ -654,9 +654,7 @@ class MahavishnuWebSocketServer(WebSocketServer):
             return
         await publish_workflow_completed(workflow_id, result, publisher=publisher)
 
-    async def _publish_workflow_failed_via_eventbridge(
-        self, workflow_id: str, error: str
-    ) -> None:
+    async def _publish_workflow_failed_via_eventbridge(self, workflow_id: str, error: str) -> None:
         from ..core.events.mahavishnu_publisher import publish_workflow_failed
 
         publisher = self._get_eventbridge_publisher()

@@ -1,4 +1,37 @@
 {
+  "PostToolUse": [
+    {
+      "hooks": [
+        {
+          "command": "python3 .claude/hooks/bodai-activity-post-tool-use.py",
+          "type": "command"
+        }
+      ],
+      "matcher": "mcp__*"
+    }
+  ],
+  "SessionEnd": [
+    {
+      "hooks": [
+        {
+          "command": "python3 .claude/hooks/bodai-activity-subscriber.py session-end",
+          "type": "command"
+        }
+      ],
+      "matcher": "end"
+    }
+  ],
+  "SessionStart": [
+    {
+      "hooks": [
+        {
+          "command": "python3 .claude/hooks/bodai-activity-subscriber.py session-start",
+          "type": "command"
+        }
+      ],
+      "matcher": "startup"
+    }
+  ],
   "permissions": {
     "deny": [
       "Read(./.backups/**)",
@@ -16,38 +49,5 @@
       "Read(./.claude/commands/**/*.backup)",
       "Read(./.claude/commands/**/*.backup.json)"
     ]
-  },
-  "SessionStart": [
-    {
-      "matcher": "startup",
-      "hooks": [
-        {
-          "type": "command",
-          "command": "python3 .claude/hooks/bodai-activity-subscriber.py session-start"
-        }
-      ]
-    }
-  ],
-  "PostToolUse": [
-    {
-      "matcher": "mcp__*",
-      "hooks": [
-        {
-          "type": "command",
-          "command": "python3 .claude/hooks/bodai-activity-post-tool-use.py"
-        }
-      ]
-    }
-  ],
-  "SessionEnd": [
-    {
-      "matcher": "end",
-      "hooks": [
-        {
-          "type": "command",
-          "command": "python3 .claude/hooks/bodai-activity-subscriber.py session-end"
-        }
-      ]
-    }
-  ]
+  }
 }

@@ -245,3 +245,14 @@ cron/jobs.json
 # the filename ends in `.json`; these two rules cover all observed variants.
 *.backup.*
 *.backup.json
+
+# ============================================================================
+# Superpowers Skill Artifacts (local-only, per-project runtime)
+# ============================================================================
+# Plan/spec/review artifacts produced by superpowers skills live under
+# `.superpowers/`. Most are intentionally committed (plans, specs, final
+# reviews) so future contributors see the design history. Only the
+# scratch and merge-conflict-resolution subdirs are local-only.
+.superpowers/sdd/preserve/
+.superpowers/sdd/*.diff
+.superpowers/sdd/progress.md

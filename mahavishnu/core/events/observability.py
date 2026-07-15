@@ -8,15 +8,9 @@ from opentelemetry import metrics
 _logger = get_logger("mahavishnu.event_wire")
 _meter = metrics.get_meter(__name__)
 _wire_converted = _meter.create_counter("mahavishnu.event.wire.converted_total")
-_wire_conversion_failed = _meter.create_counter(
-    "mahavishnu.event.wire.conversion_failed_total"
-)
-_legacy_decoded = _meter.create_counter(
-    "mahavishnu.event.wire.legacy_decoded_total"
-)
-_wire_decode_failed = _meter.create_counter(
-    "mahavishnu.event.wire.decode_failed_total"
-)
+_wire_conversion_failed = _meter.create_counter("mahavishnu.event.wire.conversion_failed_total")
+_legacy_decoded = _meter.create_counter("mahavishnu.event.wire.legacy_decoded_total")
+_wire_decode_failed = _meter.create_counter("mahavishnu.event.wire.decode_failed_total")
 
 
 def record_wire_converted(*, direction: str, source: str) -> None:

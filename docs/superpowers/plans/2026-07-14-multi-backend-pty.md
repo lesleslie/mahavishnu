@@ -20,18 +20,23 @@
 - **Crackerjack code style** per `/Users/les/Projects/mahavishnu/CLAUDE.md`: `from __future__ import annotations` first, `X | None = None` (not `Optional`), no `Any` in tool inputs, `logger.exception(...)` not `logger.error(exc_info=)`, no `assert` in production code.
 - **Public API check**: `mahavishnu/terminal/__init__.py` exposes `McpretentiousAdapter`. The new `backends.py` should NOT be in the public init — it's an internal implementation detail of the `mcp_client.py` module.
 
----
+______________________________________________________________________
 
 ## Task 1: Add `backends.py` registry module (TDD)
 
 **Files:**
+
 - Create: `mahavishnu/terminal/backends.py`
 - Create: `tests/unit/terminal/test_backends.py`
 
 **Interfaces this task produces:**
+
 - `from mahavishnu.terminal.backends import PtyBackend, BUILTIN_BACKENDS, check_prerequisites`
+
 - `PtyBackend(name: str, command: str, args: tuple[str, ...], tool_map: dict[str, str] = {}, requires: tuple[str, ...] = ())` — frozen dataclass
+
 - `BUILTIN_BACKENDS: dict[str, PtyBackend]` — keyed by name
+
 - `check_prerequisites(backend: PtyBackend) -> list[str]` — returns missing prerequisite names (empty = all present)
 
 - [ ] **Step 1: Write the failing tests**
@@ -144,6 +149,7 @@ class TestCheckPrerequisites:
 - [ ] **Step 2: Run tests to verify they fail**
 
 Run:
+
 ```bash
 cd /Users/les/Projects/mahavishnu
 .venv/bin/python -m pytest tests/unit/terminal/test_backends.py -v
@@ -216,6 +222,7 @@ def check_prerequisites(backend: PtyBackend) -> list[str]:
 - [ ] **Step 4: Run tests to verify they pass**
 
 Run:
+
 ```bash
 cd /Users/les/Projects/mahavishnu
 .venv/bin/python -m pytest tests/unit/terminal/test_backends.py -v
@@ -237,21 +244,24 @@ Module is internal to mcp_client.py — not re-exported from terminal/__init__.
 Co-Authored-By: Claude <noreply@anthropic.com>"
 ```
 
----
+______________________________________________________________________
 
 ## Task 2: Wire registry into `mcp_client.py` (fix the original bug)
 
 **Files:**
+
 - Modify: `mahavishnu/terminal/mcp_client.py:248` (the hardcoded `StdioMCPClient(...)` call)
 - Modify: `tests/unit/terminal/mcp_client.py` (add regression tests)
 
 **Interfaces this task consumes from Task 1:**
+
 - `from mahavishnu.terminal.backends import BUILTIN_BACKENDS, PtyBackend, check_prerequisites`
 - `PtyBackend.command: str`, `PtyBackend.args: tuple[str, ...]`, `PtyBackend.requires: tuple[str, ...]`
 - `BUILTIN_BACKENDS: dict[str, PtyBackend]`
 - `check_prerequisites(backend) -> list[str]`
 
 **New signature this task introduces:**
+
 - `class McpretentiousClient: __init__(self, backend_name: str = "mcpretentious")` — replaces the no-arg constructor
 
 - [ ] **Step 1: Read the current `mcp_client.py:248` to know what you're changing**
@@ -347,6 +357,7 @@ class TestMcpretentiousClientLaunchesViaRegistry:
 - [ ] **Step 3: Run tests to verify they fail**
 
 Run:
+
 ```bash
 cd /Users/les/Projects/mahavishnu
 .venv/bin/python -m pytest tests/unit/terminal/mcp_client.py -v
@@ -424,6 +435,7 @@ def _install_hint(missing: list[str]) -> str:
 - [ ] **Step 5: Run tests to verify they pass**
 
 Run:
+
 ```bash
 cd /Users/les/Projects/mahavishnu
 .venv/bin/python -m pytest tests/unit/terminal/mcp_client.py -v
@@ -449,11 +461,12 @@ Regression tests pin the launch command so this can't break silently.
 Co-Authored-By: Claude <noreply@anthropic.com>"
 ```
 
----
+______________________________________________________________________
 
 ## Task 3: Pass `backend_name` from `manager.py` to `McpretentiousClient`
 
 **Files:**
+
 - Modify: `mahavishnu/terminal/manager.py` (the call site that constructs `McpretentiousClient`)
 
 **Background:** In Task 2 we changed `McpretentiousClient.__init__` to take a `backend_name`. The default value `"mcpretentious"` preserves old behavior, but we want the manager to pass the user's `preference` through explicitly so the chain is: `settings.adapter_preference` → `manager` → `client`. This is the wiring task.
@@ -508,6 +521,7 @@ class TestManagerPassesPreferenceToClient:
 - [ ] **Step 3: Run the test to verify it fails**
 
 Run:
+
 ```bash
 cd /Users/les/Projects/mahavishnu
 .venv/bin/python -m pytest tests/unit/terminal/test_manager.py::TestManagerPassesPreferenceToClient -v
@@ -532,6 +546,7 @@ mcp_client = McpretentiousClient(backend_name=preference)
 - [ ] **Step 5: Run the test to verify it passes**
 
 Run:
+
 ```bash
 cd /Users/les/Projects/mahavishnu
 .venv/bin/python -m pytest tests/unit/terminal/test_manager.py::TestManagerPassesPreferenceToClient -v
@@ -553,11 +568,12 @@ can be selected via terminal.adapter_preference.
 Co-Authored-By: Claude <noreply@anthropic.com>"
 ```
 
----
+______________________________________________________________________
 
 ## Task 4: Add gated integration smoke test
 
 **Files:**
+
 - Create: `tests/integration/terminal/test_mcpretentious_smoke.py`
 
 **Purpose:** Real coverage when `MCPRETENTIOUS_INTEGRATION=1` is set (and npm + iTerm2 are present). Skipped silently otherwise. CI stays fast.
@@ -648,6 +664,7 @@ class TestMcpretentiousSmoke(unittest.IsolatedAsyncioTestCase):
 - [ ] **Step 2: Run the test to verify it SKIPS (not fails) by default**
 
 Run:
+
 ```bash
 cd /Users/les/Projects/mahavishnu
 .venv/bin/python -m pytest tests/integration/terminal/test_mcpretentious_smoke.py -v
@@ -658,6 +675,7 @@ Expected: `SKIPPED` (with reason "Set MCPRETENTIOUS_INTEGRATION=1 with node and 
 - [ ] **Step 3: Run with the gate open (on a machine with MCPretentious installed)**
 
 Run:
+
 ```bash
 cd /Users/les/Projects/mahavishnu
 MCPRETENTIOUS_INTEGRATION=1 .venv/bin/python -m pytest tests/integration/terminal/test_mcpretentious_smoke.py -v
@@ -678,11 +696,12 @@ CI stays fast. Operators who want real coverage can run with the gate open.
 Co-Authored-By: Claude <noreply@anthropic.com>"
 ```
 
----
+______________________________________________________________________
 
 ## Task 5: Operator documentation
 
 **Files:**
+
 - Create: `docs/terminal/backends.md`
 
 **Purpose:** Operators need to know what backends are available, what their prerequisites are, and how to switch. The spec says these belong in `docs/terminal/backends.md`; this task writes that file.
@@ -782,7 +801,7 @@ and how to add a new backend by editing backends.py.
 Co-Authored-By: Claude <noreply@anthropic.com>"
 ```
 
----
+______________________________________________________________________
 
 ## Task 6: End-to-end manual smoke test (checklist, no code)
 
@@ -800,19 +819,23 @@ Expected: all unit tests pass, integration test is skipped.
 - [ ] **Step 2: Start Mahavishnu with each backend, confirm it boots**
 
 For `mcpretentious`:
+
 ```bash
 # In a settings/local.yaml or via override:
 #   terminal:
 #     adapter_preference: "mcpretentious"
 mahavishnu mcp start --verbose 2>&1 | head -20
 ```
+
 Expected: starts, logs include something about mcpretentious, no `ConfigurationError`.
 
 For `pty_mcp_python` (if you have `uvx`):
+
 ```bash
 # Switch terminal.adapter_preference to "pty_mcp_python", restart
 mahavishnu mcp start --verbose 2>&1 | head -20
 ```
+
 Expected: starts, no `ConfigurationError`.
 
 - [ ] **Step 3: Run a pool task to confirm end-to-end works**
@@ -821,6 +844,7 @@ Expected: starts, no `ConfigurationError`.
 # In a Mahavishnu-using project:
 python -m crackerjack run -v -p patch
 ```
+
 Expected: completes without "Keyring token format appears invalid" or other auth errors. (The publish itself may succeed or fail based on the actual package state — that's fine. The point is no auth-bootstrap error.)
 
 - [ ] **Step 4: Verify the prerequisite failure path is loud**
@@ -829,6 +853,7 @@ Expected: completes without "Keyring token format appears invalid" or other auth
 # Temporarily hide 'node' from PATH and try to start with mcpretentious:
 PATH=/usr/bin:/bin mahavishnu mcp start --verbose 2>&1 | head -10
 ```
+
 Expected: `ConfigurationError: PTY backend 'mcpretentious' requires 'node' on PATH but it was not found. Install: brew install node...`
 
 - [ ] **Step 5: Commit a smoke-test summary**
@@ -849,7 +874,7 @@ Verified by hand on 2026-07-14:
 Co-Authored-By: Claude <noreply@anthropic.com>"
 ```
 
----
+______________________________________________________________________
 
 ## Self-review
 

@@ -4,7 +4,7 @@
 
 **Purpose:** A subagent that the main Claude Code session (or any ultracode subagent) can dispatch to *force* a task through Mahavishnu workers. This is the explicit delegation path — when the user wants Mahavishnu handling regardless of tool-selection heuristics.
 
----
+______________________________________________________________________
 
 ```markdown
 ---
@@ -91,16 +91,23 @@ the work rather than running it locally. Typical triggers:
 When you return to the caller, structure your response as:
 
 ```
-## Dispatched via: <tool_name>
-## Workflow ID: <workflow_id or N/A>
+
+## Dispatched via: \<tool_name>
+
+## Workflow ID: \<workflow_id or N/A>
+
 ## Result:
-<the result, summarized>
-## Status: <completed | failed | queued | rate_limited>
+
+\<the result, summarized>
+
+## Status: \<completed | failed | queued | rate_limited>
+
 ## Next steps: <if any>
+
 ```
 ```
 
----
+______________________________________________________________________
 
 ## Why this subagent exists
 
@@ -123,10 +130,10 @@ concerns: it coordinates, the workers execute.
 The subagent definition is accepted when:
 
 1. The file exists at the path above.
-2. `python scripts/agent_metadata_audit.py` passes (the project's agent
+1. `python scripts/agent_metadata_audit.py` passes (the project's agent
    frontmatter validator — see `CLAUDE.md` Validation section).
-3. `python scripts/tool_frontmatter_validator.py` passes.
-4. A test dispatch from Claude Code:
+1. `python scripts/tool_frontmatter_validator.py` passes.
+1. A test dispatch from Claude Code:
    "Use mahavishnu-orchestrator to refactor X" → the subagent is invoked
    and dispatches `pool_route_execute` rather than editing files directly.
 
@@ -139,7 +146,8 @@ The subagent definition is accepted when:
   subagent's system prompt explicitly states it does not decide whether
   work is "too small" — that's the caller's choice. Misuse is the
   caller's responsibility.
-```
+
+````
 
 ---
 
@@ -199,11 +207,13 @@ worker pool manager rather than running it locally.
 
 ## Examples
 
-```
+````
+
 /vishnu run the test suite
 /vishnu refactor the auth module to use Pydantic v2
 /vishnu deploy this branch to staging
 /vishnu audit this repo for security issues
+
 ```
 
 ## When to use this skill vs. just letting Claude pick
@@ -219,7 +229,7 @@ Let Claude pick tools normally when:
 - The user did not indicate a preference for observability
 ```
 
----
+______________________________________________________________________
 
 ## Why both a subagent and a skill?
 
@@ -238,9 +248,9 @@ Together they cover the two main "force Mahavishnu" use cases.
 The skill definition is accepted when:
 
 1. The file exists at the path above.
-2. `python scripts/skill_frontmatter_validator.py` (if present; otherwise
+1. `python scripts/skill_frontmatter_validator.py` (if present; otherwise
    `python scripts/agent_metadata_audit.py`) passes.
-3. A test invocation: `/vishnu run the test suite` → the session dispatches
+1. A test invocation: `/vishnu run the test suite` → the session dispatches
    via `pool_route_execute` rather than running `pytest` locally.
 
 ## Risks

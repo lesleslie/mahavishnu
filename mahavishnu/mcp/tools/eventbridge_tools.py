@@ -13,12 +13,13 @@ The tool is gated by an explicit ``enabled`` parameter -- calling
 expose it. The MCP server wiring must pass
 ``enabled=cfg.eventbridge.enabled`` from the loaded MahavishnuSettings.
 """
+
 from __future__ import annotations
 
 import asyncio
 import logging
+from typing import TYPE_CHECKING, Any
 import uuid
-from typing import TYPE_CHECKING, Any, Callable
 
 from mahavishnu.core.events.mahavishnu_publisher import (
     publish_workflow_completed,
@@ -27,6 +28,8 @@ from mahavishnu.core.events.mahavishnu_publisher import (
 )
 
 if TYPE_CHECKING:
+    from collections.abc import Callable
+
     from fastmcp import FastMCP
 
 logger = logging.getLogger(__name__)
@@ -50,9 +53,7 @@ async def _dispatch_topic(topic: str, payload: dict[str, Any]) -> None:
             error=payload.get("error", ""),
         )
     else:
-        logger.warning(
-            "mahavishnu.eventbridge_tools: unknown topic=%s; ignoring", topic
-        )
+        logger.warning("mahavishnu.eventbridge_tools: unknown topic=%s; ignoring", topic)
 
 
 def register_eventbridge_tools(
@@ -72,7 +73,9 @@ def register_eventbridge_tools(
             the MCP server by changing the source the callable reads.
     """
     if enabled_fn is None:
-        _resolved_enabled_fn: Callable[[], bool] = lambda: enabled
+
+        def _resolved_enabled_fn() -> bool:
+            return enabled
     else:
         _resolved_enabled_fn = enabled_fn
 
@@ -97,8 +100,7 @@ def register_eventbridge_tools(
             return {
                 "status": "no_publisher",
                 "warning": (
-                    "eventbridge enabled but publisher not wired; "
-                    "no envelope will be emitted"
+                    "eventbridge enabled but publisher not wired; no envelope will be emitted"
                 ),
             }
 
@@ -122,9 +124,7 @@ def register_eventbridge_tools(
                     publisher=publisher,
                 )
             else:
-                logger.warning(
-                    "mahavishnu.eventbridge_tools: unknown topic=%s; ignoring", topic
-                )
+                logger.warning("mahavishnu.eventbridge_tools: unknown topic=%s; ignoring", topic)
 
         if async_callback:
             workflow_id = f"pub_{uuid.uuid4().hex[:12]}"

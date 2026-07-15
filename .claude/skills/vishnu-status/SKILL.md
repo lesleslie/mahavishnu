@@ -1,13 +1,6 @@
----
-name: vishnu-status
-title: Vishnu Status
-id: 01KX99DC1JV6SSMB688RV193BK
-description: 'Auto-trigger skill that surfaces Mahavishnu pool, verification, and dispatch status when the user asks "are workers running?", "what is the pool status?", or similar phrasings. Use this for visibility into Mahavishnu without leaving the current session.'
-owner: mahavishnu-core
-status: active
-category: observability
-last_reviewed: 2026-07-11
----
+______________________________________________________________________
+
+## name: vishnu-status title: Vishnu Status id: 01KX99DC1JV6SSMB688RV193BK description: 'Auto-trigger skill that surfaces Mahavishnu pool, verification, and dispatch status when the user asks "are workers running?", "what is the pool status?", or similar phrasings. Use this for visibility into Mahavishnu without leaving the current session.' owner: mahavishnu-core status: active category: observability last_reviewed: 2026-07-11
 
 # Vishnu Status (auto-trigger)
 
@@ -53,10 +46,10 @@ canonical fallback wording.
 
 ## Distinction from `/vishnu`
 
-| Surface              | Purpose                               | Effect                          |
+| Surface | Purpose | Effect |
 |----------------------|---------------------------------------|---------------------------------|
-| `/vishnu`            | Dispatch / *do work* through Mahavishnu | Routes a task to worker pools |
-| `/vishnu-status`     | Observe / *show state* of Mahavishnu  | Surfaces pool, workflow, dispatch metrics |
+| `/vishnu` | Dispatch / *do work* through Mahavishnu | Routes a task to worker pools |
+| `/vishnu-status` | Observe / *show state* of Mahavishnu | Surfaces pool, workflow, dispatch metrics |
 | `mahavishnu-orchestrator` (subagent) | Forced delegation with tool isolation | Same as `/vishnu` but with strict `tools:` frontmatter |
 
 If the user says "run X on Mahavishnu" → `/vishnu`.

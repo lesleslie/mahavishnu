@@ -879,7 +879,7 @@ def _parse_bodai_timestamp(value: Any) -> datetime | None:
     """Parse a timestamp from an envelope header or queue field.
 
     Accepts ISO-8601 strings and Unix epoch floats/ints. Returns ``None`` for
-    unparseable or missing values.
+    unparsable or missing values.
     """
     if value is None:
         return None
@@ -916,17 +916,11 @@ def _filter_bodai_events(
     if component:
         target = component.strip().lower()
         filtered = [
-            ev
-            for ev in filtered
-            if str(_headers_of(ev).get("source") or "").lower() == target
+            ev for ev in filtered if str(_headers_of(ev).get("source") or "").lower() == target
         ]
     if scope_days is not None:
         cutoff = datetime.now(UTC) - timedelta(days=scope_days)
-        filtered = [
-            ev
-            for ev in filtered
-            if (_event_timestamp(ev) or cutoff) >= cutoff
-        ]
+        filtered = [ev for ev in filtered if (_event_timestamp(ev) or cutoff) >= cutoff]
     return filtered
 
 
@@ -1045,7 +1039,9 @@ def _render_bodai_output(
     if component_filter:
         components = [c for c in components if c == component_filter]
 
-    detail_table = Table(title="Per-Component Health", show_header=True, header_style="bold magenta")
+    detail_table = Table(
+        title="Per-Component Health", show_header=True, header_style="bold magenta"
+    )
     detail_table.add_column("Component", style="cyan")
     detail_table.add_column("Events", justify="right")
     detail_table.add_column("Last Event", style="white")
@@ -1064,14 +1060,15 @@ def _render_bodai_output(
             if last_event_dt is not None:
                 age_seconds = (now - last_event_dt).total_seconds()
             status = "fresh"
-            if count == 0 or last_event_dt is None or age_seconds is not None and age_seconds > STALE_THRESHOLD_SECONDS:
+            if (
+                count == 0
+                or last_event_dt is None
+                or age_seconds is not None
+                and age_seconds > STALE_THRESHOLD_SECONDS
+            ):
                 status = "stale"
 
-            age_str = (
-                f" (age {age_seconds:.0f}s)"
-                if age_seconds is not None
-                else ""
-            )
+            age_str = f" (age {age_seconds:.0f}s)" if age_seconds is not None else ""
             last_str = _format_bodai_timestamp(last_event_dt)
             if status == "stale":
                 detail_table.add_row(
@@ -1105,10 +1102,7 @@ def _render_bodai_output(
         recent_table.add_column("Value", style="white")
 
         dated_pairs: list[tuple[datetime, dict[str, Any]]] = [
-            (ts, ev)
-            for ev in events
-            for ts in [_event_timestamp(ev)]
-            if ts is not None
+            (ts, ev) for ev in events for ts in [_event_timestamp(ev)] if ts is not None
         ]
         if dated_pairs:
             recent: dict[str, Any] = max(dated_pairs, key=lambda pair: pair[0])[1]
@@ -1126,9 +1120,7 @@ def _render_bodai_output(
 
         recent_table.add_row("topic", str(recent_topic))
 
-        recent_wire_format = (
-            recent_headers.get("wire_format") or recent.get("wire_format")
-        )
+        recent_wire_format = recent_headers.get("wire_format") or recent.get("wire_format")
         if recent_wire_format is not None:
             recent_table.add_row("wire_format", str(recent_wire_format))
 
@@ -1220,19 +1212,14 @@ def bodai_metrics(
     else:
         match = re.match(r"^(\d+)\s*([hd])$", scope_normalized)
         if match is None:
-            console.print(
-                f"[red]Invalid --scope {scope!r}. Use '24h', '7d', or 'all'.[/red]"
-            )
+            console.print(f"[red]Invalid --scope {scope!r}. Use '24h', '7d', or 'all'.[/red]")
             raise typer.Exit(2)
         magnitude = int(match.group(1))
         unit = match.group(2)
         scope_days = magnitude if unit == "d" else max(1, magnitude // 24)
 
     component_normalized = component.strip().lower() if component else None
-    if (
-        component_normalized
-        and component_normalized not in _KNOWN_BODAI_COMPONENTS
-    ):
+    if component_normalized and component_normalized not in _KNOWN_BODAI_COMPONENTS:
         console.print(
             "[red]Unknown --component "
             f"{component!r}. Known: {', '.join(_KNOWN_BODAI_COMPONENTS)}.[/red]"

@@ -37,12 +37,8 @@ from mahavishnu.core.events.observability import (
 if TYPE_CHECKING:
     from collections.abc import Awaitable
 
-REQUIRED_EVENT_HEADERS = frozenset(
-    {"event_id", "source", "version", "timestamp"}
-)
-OPTIONAL_EVENT_HEADERS = frozenset(
-    {"correlation_id", "causation_id", "metadata"}
-)
+REQUIRED_EVENT_HEADERS = frozenset({"event_id", "source", "version", "timestamp"})
+OPTIONAL_EVENT_HEADERS = frozenset({"correlation_id", "causation_id", "metadata"})
 RESERVED_EVENT_HEADERS = REQUIRED_EVENT_HEADERS | OPTIONAL_EVENT_HEADERS
 
 

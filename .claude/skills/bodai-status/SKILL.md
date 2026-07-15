@@ -1,13 +1,6 @@
----
-name: bodai-status
-title: Bodai Status
-id: 01KX9EG7N9EEBKW0NA8ZAAD8CH
-description: 'Auto-trigger skill that surfaces cross-component Bodai activity (Mahavishnu, Akosha, Crackerjack) when the user asks "what is Bodai doing?", "show me activity", or similar phrasings. Reads from ~/.mahavishnu/bodai-event-queue.json which Phase 6A populates from Oneiric EventBridge. Use this for the cross-component view; use /vishnu-status for Mahavishnu-only.'
-owner: mahavishnu-core
-status: active
-category: observability
-last_reviewed: 2026-07-11
----
+______________________________________________________________________
+
+## name: bodai-status title: Bodai Status id: 01KX9EG7N9EEBKW0NA8ZAAD8CH description: 'Auto-trigger skill that surfaces cross-component Bodai activity (Mahavishnu, Akosha, Crackerjack) when the user asks "what is Bodai doing?", "show me activity", or similar phrasings. Reads from ~/.mahavishnu/bodai-event-queue.json which Phase 6A populates from Oneiric EventBridge. Use this for the cross-component view; use /vishnu-status for Mahavishnu-only.' owner: mahavishnu-core status: active category: observability last_reviewed: 2026-07-11
 
 # Bodai Status (auto-trigger)
 
@@ -42,10 +35,10 @@ skill is safe to fire at any time.
 
 ## Distinction from `/vishnu-status`
 
-| Surface           | Purpose                                  | Effect                                                        |
+| Surface | Purpose | Effect |
 |-------------------|------------------------------------------|---------------------------------------------------------------|
-| `/vishnu-status`  | Observe / *show state* of Mahavishnu only | Surfaces pool health, workflow metrics, dispatch status (Mahavishnu-only) |
-| `/bodai-status`   | Observe / *show state* across Bodai      | Surfaces merged events from Mahavishnu + Akosha + Crackerjack via the unified EventBridge queue |
+| `/vishnu-status` | Observe / *show state* of Mahavishnu only | Surfaces pool health, workflow metrics, dispatch status (Mahavishnu-only) |
+| `/bodai-status` | Observe / *show state* across Bodai | Surfaces merged events from Mahavishnu + Akosha + Crackerjack via the unified EventBridge queue |
 
 Use `/vishnu-status` for "is Mahavishnu healthy" or "what's running on
 Mahavishnu" (Mahavishnu-only view). Use `/bodai-status` for "what has anyone

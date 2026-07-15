@@ -10,16 +10,16 @@
 
 **Precondition (BLOCKING):** Convergence Plan C2 lands an "activity" event category in Oneiric EventBridge. Phase 6 cannot start until C2's envelope schema is published. If C2 has not landed, see the "Pre-C2 Path" section at the bottom.
 
----
+______________________________________________________________________
 
 ## 1. Outcome
 
 When this plan ships:
 
 1. **Single Bodai activity subscriber** at `.claude/hooks/bodai-activity-subscriber.py` reads from Oneiric EventBridge (Redis Streams transport) and persists events to a queue that the existing `.claude/hooks/` PostToolUse pattern consumes.
-2. **Mahavishnu WebSocket subscriber removed.** The Phase 5 hook is deleted; only the Bodai hook fires.
-3. **`/bodai-status` slash command** surfaces the same shape as `/vishnu-status` but aggregated across Mahavishnu, Akosha, and Crackerjack activity.
-4. **Cross-component observability is canonical.** Akosha and Crackerjack each gain an EventBridge publisher that adapts their existing WebSocket broadcasts into the canonical envelope.
+1. **Mahavishnu WebSocket subscriber removed.** The Phase 5 hook is deleted; only the Bodai hook fires.
+1. **`/bodai-status` slash command** surfaces the same shape as `/vishnu-status` but aggregated across Mahavishnu, Akosha, and Crackerjack activity.
+1. **Cross-component observability is canonical.** Akosha and Crackerjack each gain an EventBridge publisher that adapts their existing WebSocket broadcasts into the canonical envelope.
 
 User-observable change: a Claude Code session sees `[akosha] aggregation_completed suite=quality` and `[crackerjack] test_run_completed passed=42 failed=0` style summaries alongside `[mahavishnu] workflow wid_abc completed`, all from one subscriber.
 
@@ -28,18 +28,18 @@ Concrete success signal: `mahavishnu metrics bodai --scope 7d` shows ≥1 cross-
 ## 2. Goals
 
 1. Replace the Mahavishnu WebSocket hook with a Bodai activity subscriber that reads from EventBridge.
-2. Land EventBridge publishers for Akosha and Crackerjack activity events (one adapter per component, adapting existing WebSocket broadcasts).
-3. Add `/bodai-status` slash command + `bodai-status` auto-trigger skill + companion to `/vishnu-status`.
-4. Add a `mahavishnu metrics bodai` CLI that surfaces event-bridge health, subscriber state, and per-component event rates.
-5. Document the canonical envelope in `.claude/decisions/` (refine the existing `bodai-observability-pattern.md` with the actual schema once C2 lands).
+1. Land EventBridge publishers for Akosha and Crackerjack activity events (one adapter per component, adapting existing WebSocket broadcasts).
+1. Add `/bodai-status` slash command + `bodai-status` auto-trigger skill + companion to `/vishnu-status`.
+1. Add a `mahavishnu metrics bodai` CLI that surfaces event-bridge health, subscriber state, and per-component event rates.
+1. Document the canonical envelope in `.claude/decisions/` (refine the existing `bodai-observability-pattern.md` with the actual schema once C2 lands).
 
 ## 3. Non-Goals
 
 1. **Not implementing the EventBridge envelope itself.** Convergence Plan C2 owns that. Phase 6 reads whatever C2 publishes; if C2's envelope changes, this plan is amended.
-2. **Not adding per-component WebSocket subscribers for Bodai observation.** Explicitly forbidden by `.claude/decisions/bodai-observability-pattern.md`.
-3. **Not changing Dhara or Session-Buddy's observability surfaces.** Both are REST-only / event-driven per Convergence Plan §4 ownership rules. Dhara/Session-Buddy visibility in `/bodai-status` is via query-side adapters, not subscriptions.
-4. **Not changing the Phase 5 transition hook's protocol.** The Mahavishnu-only hook is *removed*, not refactored — its deletion is a sign of Phase 6's success.
-5. **Not implementing Grafana dashboards for activity events.** Grafana already has dashboards for Mahavishnu routing (per `docs/ROUTING_GUIDE.md`); adding Grafana views for Akosha/Crackerjack activity is a follow-on.
+1. **Not adding per-component WebSocket subscribers for Bodai observation.** Explicitly forbidden by `.claude/decisions/bodai-observability-pattern.md`.
+1. **Not changing Dhara or Session-Buddy's observability surfaces.** Both are REST-only / event-driven per Convergence Plan §4 ownership rules. Dhara/Session-Buddy visibility in `/bodai-status` is via query-side adapters, not subscriptions.
+1. **Not changing the Phase 5 transition hook's protocol.** The Mahavishnu-only hook is *removed*, not refactored — its deletion is a sign of Phase 6's success.
+1. **Not implementing Grafana dashboards for activity events.** Grafana already has dashboards for Mahavishnu routing (per `docs/ROUTING_GUIDE.md`); adding Grafana views for Akosha/Crackerjack activity is a follow-on.
 
 ## 4. Current Findings
 
@@ -89,6 +89,7 @@ Concrete success signal: `mahavishnu metrics bodai --scope 7d` shows ≥1 cross-
 - **Task 6.1.3:** Tests for the subscriber in `tests/unit/test_bodai_subscriber.py`. Use a fake `redis.asyncio.Redis` (returns canned `xreadgroup` payloads). Cover: (1) callback fires with decoded `BodaiEvent`, (2) callback exception logged + subscription continues, (3) reconnection on transient Redis error (mocked), (4) `start_from="earliest"` reads backlog, (5) cancellation token breaks the loop. Marked `pytest.mark.unit`.
 
 **Exit criteria:**
+
 - `pytest tests/unit/test_bodai_subscriber.py -v` — all tests pass
 - `BodaiEvent` round-trips through `model_dump_json()` → `model_validate_json()` without loss (covered in tests)
 
@@ -100,7 +101,7 @@ Concrete success signal: `mahavishnu metrics bodai --scope 7d` shows ≥1 cross-
 - **Rollback signal:** None — the subscriber is non-destructive. Disable by removing the SessionStart hook entry from `.claude/settings.json`.
 - **Observability added:** OTel span `bodai.subscribe` with `consumer_group`, `events_received`, `events_decoded_failed`. Metric `mahavishnu.bodai.events_received_total{component}` (counter). Structured log `bodai.event_received event_id=... component=... event_type=...`.
 
----
+______________________________________________________________________
 
 ### Phase 6.2: Akosha + Crackerjack EventBridge Publishers
 
@@ -117,6 +118,7 @@ Concrete success signal: `mahavishnu metrics bodai --scope 7d` shows ≥1 cross-
 > **Important:** Phase 6.2 work happens in the **Akosha and Crackerjack repos**, not Mahavishnu. The Mahavishnu-side publisher (6.2.3) is a thin compatibility layer for the transition window. Once Phase 6 is fully landed, Phase 6.2.3 can be removed (Mahavishnu publishes directly to EventBridge without the WebSocket intermediary).
 
 **Exit criteria:**
+
 - Each publisher has ≥3 unit tests in its own repo covering: payload-shape mapping (Akosha `aggregation_completed` → BodaiEvent `event_type=aggregation_completed`, `component=akosha`), Redis-transient-error retry, parallel-publish resilience (WebSocket failure does not abort the EventBridge write, and vice versa).
 - A `mahavishnu metrics bodai` CLI shows ≥1 event received from each component within a 60-second seeded test.
 
@@ -128,7 +130,7 @@ Concrete success signal: `mahavishnu metrics bodai --scope 7d` shows ≥1 cross-
 - **Rollback signal:** Disable each publisher via its own feature flag (`akosha.publish_to_eventbridge: bool = False` in settings). Per-component rollback is config-only.
 - **Observability added:** Each publisher emits its own OTel spans and metrics (`akosha.eventbridge.publish`, `crackerjack.eventbridge.publish`, `mahavishnu.eventbridge.publish`) so an operator can detect publish-side regressions independently of the subscriber.
 
----
+______________________________________________________________________
 
 ### Phase 6.3: `/bodai-status` Slash Command + Skill
 
@@ -143,6 +145,7 @@ Concrete success signal: `mahavishnu metrics bodai --scope 7d` shows ≥1 cross-
 - **Task 6.3.3:** Validate both via `uv run python scripts/tool_frontmatter_validator.py validate <path>` (both pass with zero critical issues).
 
 **Exit criteria:**
+
 - `/bodai-status` from Claude Code prints a per-component activity table without leaving the session
 - `grep -rn 'ws://localhost:869[026]' .claude/hooks/` returns zero hits — all per-component WebSocket subscribers are gone (the rule from `.claude/decisions/bodai-observability-pattern.md`)
 - Tool frontmatter validator passes for both new files
@@ -155,7 +158,7 @@ Concrete success signal: `mahavishnu metrics bodai --scope 7d` shows ≥1 cross-
 - **Rollback signal:** `/bodai-status` shows empty sections for ≥1 hour during business hours → EventBridge is broken; alert.
 - **Observability added:** Skill fires are visible in Claude Code's own metrics (no Mahavishnu-side metric needed). Slash command itself emits `mahavishnu.bodai.status_command_invocations_total` counter for usage tracking.
 
----
+______________________________________________________________________
 
 ### Phase 6.4: Replace Phase 5 Hook + Settings Wiring
 
@@ -168,6 +171,7 @@ Concrete success signal: `mahavishnu metrics bodai --scope 7d` shows ≥1 cross-
 - **Task 6.4.2:** Create `.claude/hooks/bodai-activity-post-tool-use.py`. PostToolUse-only mode. Reads `~/.mahavishnu/bodai-event-queue.json` and emits `[mahavishnu] workflow wid_abc completed at stage=test_run` or `[akosha] aggregation_completed suite=quality` or `[crackerjack] test_run_completed passed=42 failed=0` style one-line summaries for events that match the recent tool invocation's correlation key (e.g., a Mahavishnu dispatch → events with `component=mahavishnu` and matching `workflow_id`).
 
 - **Task 6.4.3:** Update `.claude/settings.json` to:
+
   - Add SessionStart hook entry for `bodai-activity-subscriber.py`
   - Add PostToolUse hook entry for `bodai-activity-post-tool-use.py` (matcher: `mcp__*`)
   - Add SessionEnd hook entry for cleanup (same script's session-end mode)
@@ -178,6 +182,7 @@ Concrete success signal: `mahavishnu metrics bodai --scope 7d` shows ≥1 cross-
 - **Task 6.4.5:** Tests for the new hooks at `tests/integration/test_bodai_activity_subscriber.py`. Cover: SessionStart spawns the detached task and writes state file; PostToolUse reads queue and emits summaries; SessionEnd cleans up; EventBridge transient-error reconnects.
 
 **Exit criteria:**
+
 - `pytest tests/integration/test_bodai_activity_subscriber.py -v -m integration` — all tests pass
 - `pytest tests/integration/test_websocket_subscriber.py -v -m integration` — SKIPPED (Phase 5 file removed; tests need migration or removal)
 - `grep -rn 'mahavishnu-activity-stream' .claude/ .claude/settings.json 2>/dev/null` returns zero hits
@@ -190,7 +195,7 @@ Concrete success signal: `mahavishnu metrics bodai --scope 7d` shows ≥1 cross-
 - **Rollback signal:** Hook emits no events for ≥1 hour during business hours → EventBridge subscriber is broken; alert
 - **Observability added:** `mahavishnu.bodai.events_emitted_total{component, event_type}` (counter), `mahavishnu.bodai.queue_overflow_total` (counter, fires when queue cap drops oldest events), `mahavishnu.bodai.subscriber_restarts_total` (counter)
 
----
+______________________________________________________________________
 
 ### Phase 6.5: `mahavishnu metrics bodai` CLI + Documentation
 
@@ -199,6 +204,7 @@ Concrete success signal: `mahavishnu metrics bodai --scope 7d` shows ≥1 cross-
 **Tasks:**
 
 - **Task 6.5.1:** Add `mahavishnu metrics bodai` command. Output:
+
   - Subscriber state (running/stopped, pid, uptime)
   - Event counts per component for last 1h, 24h, 7d
   - EventBridge publish-rate (events/min) per component
@@ -212,6 +218,7 @@ Concrete success signal: `mahavishnu metrics bodai --scope 7d` shows ≥1 cross-
 - **Task 6.5.4:** Add `mahavishnu metrics bodai --scope 7d --component akosha` filter so operators can drill into one component.
 
 **Exit criteria:**
+
 - `mahavishnu metrics bodai` outputs the structured table
 - `mahavishnu metrics bodai --scope 7d --component akosha` filters correctly
 - Documentation updated
@@ -224,7 +231,7 @@ Concrete success signal: `mahavishnu metrics bodai --scope 7d` shows ≥1 cross-
 - **Rollback signal:** Component marked stale > 5min during business hours → publisher side broken
 - **Observability added:** `mahavishnu.metrics.bodai.command_invocations_total` (counter)
 
----
+______________________________________________________________________
 
 ### 5.1 Phase Ordering and Dependencies
 
@@ -237,6 +244,7 @@ Phase 6.5 (CLI + docs)                       ─── depends on 6.4 (commands 
 ```
 
 **Implications:**
+
 - Phases 6.1, 6.2, 6.3 can land in parallel branches.
 - Phase 6.4 is the integration point — it consumes everything.
 - Phase 6.5 is doc + CLI polish; can land alongside 6.4.
@@ -248,7 +256,7 @@ canonical diagram and the single-source-of-truth rules. The pattern
 is: components publish to EventBridge → single subscriber reads →
 PostToolUse drains → conversation sees `[component] summary`.
 
----
+______________________________________________________________________
 
 ## 6. Validation Matrix
 
@@ -278,11 +286,11 @@ the time Phase 6 starts:
 1. **Define the canonical envelope in Phase 6.1** as a forward
    reference. The shape is documented as "to be reconciled with C2"
    and `BodaiEvent` is shipped with a working schema anyway.
-2. **Skip Phase 6.2 publisher work** until C2 lands. The single
+1. **Skip Phase 6.2 publisher work** until C2 lands. The single
    Mahavishnu-side publisher (6.2.3) is the only one that's safe to
    ship pre-C2, and it provides Mahavishnu-only coverage (no
    cross-component gains).
-3. **Phase 6.4 hook replacement is conditional**: only land if
+1. **Phase 6.4 hook replacement is conditional**: only land if
    Phase 6.2 is also landing. Otherwise, leave Phase 5 in place.
 
 The decision rule: **if C2 has not landed by the time Phase 6.1

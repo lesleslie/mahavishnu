@@ -31,6 +31,7 @@ Decoding priority per Redis-stream message:
    ``mahavishnu.core.events.envelope.EventEnvelope.from_json`` and hand
    the Pydantic envelope to the callback unchanged.
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -41,8 +42,7 @@ from pathlib import Path
 import socket
 from typing import TYPE_CHECKING, Any
 
-from oneiric.runtime.events import EventEnvelope
-
+from mahavishnu.core.errors import EventEnvelopeConversionError
 from mahavishnu.core.events.canonical import (
     create_oneiric_envelope,
     decode_oneiric_envelope,
@@ -54,10 +54,11 @@ from mahavishnu.core.events.observability import (
     record_legacy_decoded,
     record_wire_decode_failed,
 )
-from mahavishnu.core.errors import EventEnvelopeConversionError
 
 if TYPE_CHECKING:
     from collections.abc import Awaitable, Callable
+
+    from oneiric.runtime.events import EventEnvelope
 
 DEFAULT_QUEUE_CAP = 100
 DEFAULT_PER_EVENT_TIMEOUT_SECONDS = 30.0
@@ -278,11 +279,7 @@ def _decode_direct_triplet(
         topic=str(topic),
         payload=payload_obj,
         source=str(source),
-        extra_headers={
-            k: v
-            for k, v in headers_obj.items()
-            if k != "source"
-        },
+        extra_headers={k: v for k, v in headers_obj.items() if k != "source"},
     )
 
 
@@ -523,7 +520,7 @@ async def _invoke_callback(
         await asyncio.wait_for(callback(envelope), timeout=timeout_seconds)
     except asyncio.CancelledError:
         raise
-    except asyncio.TimeoutError:
+    except TimeoutError:
         return False
     except Exception:
         _logger.exception(
@@ -597,8 +594,7 @@ async def _process_stream_entry(
         envelope = _decode_envelope(payload)
     except Exception as exc:
         _logger.warning(
-            "bodai.subscriber: failed to decode envelope "
-            "(message not acked for retry): %s",
+            "bodai.subscriber: failed to decode envelope (message not acked for retry): %s",
             exc,
             exc_info=True,
             extra={"message_id": message_id},
@@ -612,8 +608,7 @@ async def _process_stream_entry(
     )
     if not callback_ran:
         _logger.warning(
-            "bodai.subscriber: callback timed out after %.1fs; "
-            "not acking message_id=%s",
+            "bodai.subscriber: callback timed out after %.1fs; not acking message_id=%s",
             per_event_timeout_seconds,
             message_id,
         )
@@ -621,7 +616,9 @@ async def _process_stream_entry(
 
     try:
         await _append_envelope_to_queue(
-            envelope, queue_path=queue_path, queue_cap=queue_cap,
+            envelope,
+            queue_path=queue_path,
+            queue_cap=queue_cap,
         )
     except Exception:
         _logger.exception(
@@ -709,7 +706,8 @@ async def _run_subscription_loop(
                 exc_info=True,
             )
             cancelled = await _wait_for_retry_or_cancellation(
-                cancellation_token, delay=backoff,
+                cancellation_token,
+                delay=backoff,
             )
             if cancelled:
                 break

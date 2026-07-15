@@ -21,6 +21,7 @@ The terminal adapter system is also currently single-backend. `terminal/config.p
 Make the PTY toolservers **pluggable via a hardcoded built-in list** in a new `mahavishnu/terminal/backends.py` module. The list contains one or more named entries, each defining a launch command and tool-name mapping. Operators select a backend by setting `terminal.adapter_preference` (no new config surface). The pluggability is internal — operators can choose between built-ins but cannot add custom backends through config. New backends = one entry in the registry.
 
 This is the smallest change that:
+
 - Fixes the immediate bug (npm-vs-uvx)
 - Adds a second built-in backend (`luqm4nx/pty-mcp-server-python`) for cross-implementation coverage
 - Sets up the architecture for future backends without committing to a config-driven plugin system
@@ -115,6 +116,7 @@ BUILTIN_BACKENDS: dict[str, PtyBackend] = {
 Two changes:
 
 1. **Line 248** — replace hardcoded subprocess invocation with registry lookup:
+
    ```python
    # BEFORE (broken):
    self._client = StdioMCPClient("uvx", ["--from", "mcpretentious", "mcpretentious"])
@@ -124,7 +126,8 @@ Two changes:
    self._client = StdioMCPClient(backend.command, list(backend.args))
    ```
 
-2. **New helper function** `check_prerequisites()`:
+1. **New helper function** `check_prerequisites()`:
+
    ```python
    def check_prerequisites(backend: PtyBackend) -> list[str]:
        """Return a list of missing prerequisites (empty = all good)."""
@@ -150,7 +153,7 @@ Two changes:
 Tracing one end-to-end call: operator runs `mahavishnu mcp start` with `adapter_preference: "mcpretentious"`.
 
 1. `main_cli.py` constructs `MahavishnuSettings` → `config.terminal.adapter_preference = "mcpretentious"`
-2. `main_cli.py` calls `TerminalManager.create(config, mcp_client=None)`
+1. `main_cli.py` calls `TerminalManager.create(config, mcp_client=None)`
    - `preference = "mcpretentious"`
    - manager calls `McpretentiousClient(backend_name="mcpretentious")` (NEW)
      - `check_prerequisites(BUILTIN_BACKENDS["mcpretentious"])` → `[]` (node is on PATH)
@@ -160,12 +163,12 @@ Tracing one end-to-end call: operator runs `mahavishnu mcp start` with `adapter_
      - MCPretentious subprocess listens on stdin/stdout for JSON-RPC
    - `adapter = McpretentiousAdapter(mcp_client)`
    - `return TerminalManager(adapter, config)`
-3. `pool_route_execute` dispatches a task
+1. `pool_route_execute` dispatches a task
    - `TerminalManager.launch_sessions(command=...)`
      - `adapter.launch_session(command)`
        - `self.mcp.call_tool("mcpretentious-open", {columns, rows})`
          - `StdioMCPClient.call_tool(...)` writes JSON-RPC to MCPretentious stdin, reads response from stdout, returns session_id
-4. Session is now alive in MCPretentious (and its iTerm2/tmux backend). Pool worker sends commands via the same pipe, captures output, etc.
+1. Session is now alive in MCPretentious (and its iTerm2/tmux backend). Pool worker sends commands via the same pipe, captures output, etc.
 
 The minimal-change property holds: step 2 is where the new code lives. Steps 1, 3, 4 are unchanged.
 
@@ -229,12 +232,12 @@ Gated by `MCPRETENTIOUS_INTEGRATION=1` env var. Skipped in fast CI.
 ## Implementation order
 
 1. Add `mahavishnu/terminal/backends.py` with `BUILTIN_BACKENDS` and `check_prerequisites()` — pure code, no side effects
-2. Modify `mcp_client.py:248` to use the registry — fixes the original bug
-3. Add `check_prerequisites()` call in `McpretentiousClient.__init__` — fail-loud behavior
-4. Add `tests/unit/terminal/test_backends.py`
-5. Update `tests/unit/terminal/mcp_client.py` to add the regression test
-6. Add `tests/integration/terminal/test_mcpretentious_smoke.py` (gated)
-7. Update `docs/terminal/backends.md` with both backends documented
-8. Manual smoke test on a real machine
+1. Modify `mcp_client.py:248` to use the registry — fixes the original bug
+1. Add `check_prerequisites()` call in `McpretentiousClient.__init__` — fail-loud behavior
+1. Add `tests/unit/terminal/test_backends.py`
+1. Update `tests/unit/terminal/mcp_client.py` to add the regression test
+1. Add `tests/integration/terminal/test_mcpretentious_smoke.py` (gated)
+1. Update `docs/terminal/backends.md` with both backends documented
+1. Manual smoke test on a real machine
 
 Each step is independently mergeable. Steps 1-3 are the core fix; steps 4-8 are quality and documentation.

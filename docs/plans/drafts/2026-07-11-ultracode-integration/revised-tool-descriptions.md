@@ -3,14 +3,15 @@
 **Purpose:** Replace existing MCP tool docstrings with versions that explicitly name use cases. Claude picks tools based on descriptions; if the description says "PREFER THIS FOR multi-file refactors," Claude picks it for refactor tasks. This is the silent but powerful lever.
 
 **Where to apply:**
+
 - `mahavishnu/mcp/tools/pool_tools.py` — `pool_route_execute` (line ~144), `pool_execute` (line ~119), and the new `dispatch_to_pool` (Phase 3, Task 3.3)
 - `mahavishnu/mcp/server_core.py:324` — `trigger_workflow`
 
----
+______________________________________________________________________
 
 ## 1. `pool_route_execute` (replaces lines 138-164 of `pool_tools.py`)
 
-```python
+````python
 @mcp.tool()
 async def pool_route_execute(
     prompt: str,
@@ -72,13 +73,13 @@ async def pool_route_execute(
         ```
     """
     # ... existing implementation ...
-```
+````
 
----
+______________________________________________________________________
 
 ## 2. `pool_execute` (replaces lines 114-122 of `pool_tools.py`)
 
-```python
+````python
 @mcp.tool()
 async def pool_execute(
     pool_id: str,
@@ -117,15 +118,15 @@ async def pool_execute(
         ```
     """
     # ... existing implementation ...
-```
+````
 
----
+______________________________________________________________________
 
 ## 3. `dispatch_to_pool` (NEW — Phase 3, Task 3.3 of the integration plan)
 
 Add to `mahavishnu/mcp/tools/pool_tools.py`:
 
-```python
+````python
 @mcp.tool()
 async def dispatch_to_pool(
     prompt: str,
@@ -194,13 +195,13 @@ async def dispatch_to_pool(
         ```
     """
     # ... implementation from Phase 3, Task 3.3 ...
-```
+````
 
----
+______________________________________________________________________
 
 ## 4. `trigger_workflow` (replaces the docstring at `mahavishnu/mcp/server_core.py:324`)
 
-```python
+````python
 @mcp.tool()
 async def trigger_workflow(
     adapter: str,
@@ -259,19 +260,19 @@ async def trigger_workflow(
         ```
     """
     # ... existing implementation ...
-```
+````
 
----
+______________________________________________________________________
 
 ## Why these descriptions work
 
 Each description follows the same pattern:
 
 1. **"PREFER THIS TOOL FOR ..."** — explicit positive signal for Claude's tool selector
-2. **Named use cases** — concrete phrases Claude can match to user requests ("multi-file refactor," "test runs," "long-running work")
-3. **"DO NOT use this for ..."** — explicit negative signal to prevent overuse on trivial cases
-4. **Selector / adapter / kind parameters** — embedded context Claude needs to call the tool correctly
-5. **Example** — concrete invocation pattern
+1. **Named use cases** — concrete phrases Claude can match to user requests ("multi-file refactor," "test runs," "long-running work")
+1. **"DO NOT use this for ..."** — explicit negative signal to prevent overuse on trivial cases
+1. **Selector / adapter / kind parameters** — embedded context Claude needs to call the tool correctly
+1. **Example** — concrete invocation pattern
 
 The pattern is the same shape as a good agent description: scope, capabilities, anti-capabilities, parameters, example. By aligning descriptions across tools (`pool_route_execute`, `pool_execute`, `dispatch_to_pool`, `trigger_workflow`), Claude's tool selection becomes *consistent* — when one tool is the wrong fit, the description points to the right alternative.
 
@@ -280,8 +281,8 @@ The pattern is the same shape as a good agent description: scope, capabilities, 
 These description changes land when:
 
 1. `grep -n "PREFER THIS TOOL" mahavishnu/mcp/tools/pool_tools.py mahavishnu/mcp/server_core.py` returns 4 hits.
-2. `crackerjack run` passes (no docstring lint regressions).
-3. A test invocation from Claude Code: "refactor X across the repo" — Claude picks `pool_route_execute` without explicit instruction (verifiable by adding a log line and running the test prompt).
+1. `crackerjack run` passes (no docstring lint regressions).
+1. A test invocation from Claude Code: "refactor X across the repo" — Claude picks `pool_route_execute` without explicit instruction (verifiable by adding a log line and running the test prompt).
 
 ## Risks
 

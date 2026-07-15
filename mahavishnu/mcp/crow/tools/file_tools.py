@@ -225,7 +225,7 @@ async def delete_file(
     return DeleteResult(deleted=True, path=str(path))
 
 
-def _tool_decorator(server: "FastMCP | StandardServer") -> Any:
+def _tool_decorator(server: FastMCP | StandardServer) -> Any:
     """Return the tool decorator appropriate for this server."""
     fastmcp = getattr(server, "fastmcp", None)
     if fastmcp is not None:
@@ -233,7 +233,7 @@ def _tool_decorator(server: "FastMCP | StandardServer") -> Any:
     return server.tool
 
 
-def register(server: "FastMCP | StandardServer", settings: CrowSettings) -> None:
+def register(server: FastMCP | StandardServer, settings: CrowSettings) -> None:
     """Register the five file tools on ``server``."""
     deco = _tool_decorator(server)
 

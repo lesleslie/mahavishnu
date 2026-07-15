@@ -94,9 +94,7 @@ def build_default_store(app: Any) -> VerificationStore | None:
     ``verification`` field is still populated from the in-memory result.
     """
     try:
-        dhara_url = getattr(
-            getattr(app, "settings", None), "dhara_url", "http://localhost:8683"
-        )
+        dhara_url = getattr(getattr(app, "settings", None), "dhara_url", "http://localhost:8683")
         from mahavishnu.core.state_backends.dhara import DharaStateBackend
 
         backend = DharaStateBackend(base_url=dhara_url)

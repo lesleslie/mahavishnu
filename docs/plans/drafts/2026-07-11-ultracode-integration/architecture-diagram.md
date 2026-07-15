@@ -4,7 +4,7 @@
 
 **When to update:** When a new phase is added or a significant data flow changes, regenerate this diagram and update the inlined version in the plan.
 
----
+______________________________________________________________________
 
 ```mermaid
 flowchart LR
@@ -82,7 +82,7 @@ flowchart LR
 
 ## How to render
 
-- **GitHub markdown**: The fenced ` ```mermaid ` block renders automatically on GitHub.
+- **GitHub markdown**: The fenced ```` ```mermaid ```` block renders automatically on GitHub.
 - **VS Code**: Install the "Markdown Preview Mermaid Support" extension.
 - **mermaid-cli**: `npx -p @mermaid-js/mermaid-cli mmdc -i architecture-diagram.md -o architecture-diagram.svg`.
 - **mermaid.live**: Paste the fenced block content into the editor at https://mermaid.live.
