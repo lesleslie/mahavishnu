@@ -3,8 +3,10 @@
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Date:** 2026-07-14
-**Status:** draft, planning
+**Status:** shipped, historical
 **Owner:** Mahavishnu core
+
+**Promoted 2026-07-15 after drift-sync verified all Tasks 0–9 shipped via commit f103bcc4 (merge bcc7affa).**
 **Scope:** Phase 1 wire standardization plus the originally reported checker fixes.
 **Purpose:** Standardize Mahavishnu’s cross-process EventBridge and optional Redis event records on Oneiric’s `EventEnvelope`, preserve the existing in-process Pydantic event contract, clear the reported pyscn and ty findings, and produce an end-to-end wire proof plus truthful feature state.
 
