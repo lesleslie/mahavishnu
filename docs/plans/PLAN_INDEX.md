@@ -24,6 +24,8 @@ Use this file as the first stop before reviewing plan work. Older plans remain u
 | Legacy backlog item details | `2026-05-07-mahavishnu-master-backlog.md` |
 | Scheduling priority after 2026-05-10 | Convergence plan C0-C7, once C0 is accepted |
 | Current open work (2026-05-14) | `2026-05-14-doc-sync-and-channel-phase2.md` |
+| Bodai agent platform implementation (I0–I4) | `2026-05-10-bodai-control-plane-convergence-plan.md` (operator cockpit C3a/C3b) and `2026-07-11-phase-6-bodai-observability.md` (cross-component observability). The 2026-04-16 master implementation plan is superseded. |
+| Bodai-wide observability surfacing | `2026-07-11-phase-6-bodai-observability.md` |
 
 The master backlog is retained as delivered/historical source material. New convergence implementation should not use the 2026-05-07 active-priority table as scheduling authority unless it is reverified and explicitly promoted.
 
@@ -132,15 +134,15 @@ The master backlog is retained as delivered/historical source material. New conv
 
 - Spec: [2026-04-16-bodai-agent-platform-master-spec.md](./2026-04-16-bodai-agent-platform-master-spec.md)
 - Implementation plan: [2026-04-16-bodai-master-implementation-plan.md](./2026-04-16-bodai-master-implementation-plan.md)
-- Status: `partial`, `canonical`
-- Use for: Agno-backed interactive agent runtime, Textual TUI boundaries, engine ownership, learning pipeline boundaries, and implementation order.
+- Status: `superseded`, `historical` — superseded 2026-07-15 by [2026-05-10-bodai-control-plane-convergence-plan.md](./2026-05-10-bodai-control-plane-convergence-plan.md) and [2026-07-11-phase-6-bodai-observability.md](./2026-07-11-phase-6-bodai-observability.md)
+- Use for: reference only. The convergence plan owns operator-cockpit convergence implementation (C3a/C3b) and Phase 6 owns the Bodai activity subscriber surface. The master implementation plan's remaining area-local work was either delivered through convergence or superseded by event-bridge-driven observability.
 - Current implementation note: Phase 0/Phase 1 governance and the read-only operator cockpit surfaces are implemented via the convergence plan (C3a/C3b). The remaining area-local plan work is broader platform/runtime ownership beyond the cockpit slice, not the live read-only panes.
-- Convergence relationship: area-local design remains canonical here; operator-cockpit convergence implementation status is tracked under C3a/C3b in [2026-05-10-bodai-control-plane-convergence-plan.md](./2026-05-10-bodai-control-plane-convergence-plan.md).
+- Supersession relationship: the [2026-05-10-bodai-control-plane-convergence-plan.md](./2026-05-10-bodai-control-plane-convergence-plan.md) convergence plan owns C3a/C3b cockpit implementation; [2026-07-11-phase-6-bodai-observability.md](./2026-07-11-phase-6-bodai-observability.md) owns the cross-component observability surface. Future work in this domain should start from those documents, not the master implementation plan.
 
 ### Mahavishnu Ecosystem Control Plane
 
 - Plan: [2026-04-25-mahavishnu-ecosystem-control-plane-update-plan.md](./2026-04-25-mahavishnu-ecosystem-control-plane-update-plan.md)
-- Status: `shipped`, `canonical` — all CP0–CP7 phases complete as of 2026-04-30
+- Status: `shipped`, `historical` — all CP0–CP7 phases complete as of 2026-04-30. Promoted 2026-07-15 after drift-sync verified all items complete.
 - Use for: canonical ecosystem status report, health contract cleanup, capability discovery, routing observability, and wiring the TUI to live read-only data.
 - Delivered: `CanonicalStatus`, `EcosystemStatusService`, `EcosystemStatusReport`, `RoutingDecision` observability model, `RoutingDecisionBuffer`, `_collect_capabilities`, `_generate_recommendations`, `experiment_id` cardinality fix, `AdapterResolutionResult` rename. CLI (`mahavishnu ecosystem status/capabilities`), MCP tools (`ecosystem_status`, `ecosystem_capabilities`, `ecosystem_routing_readiness`), and TUI all wired to the canonical report.
 
@@ -280,10 +282,34 @@ The master backlog is retained as delivered/historical source material. New conv
 ### Ultracode Integration Wiring
 
 - Plan: [2026-07-11-ultracode-integration-wiring.md](./2026-07-11-ultracode-integration-wiring.md)
-- Status: `draft`, `implementation`
+- Status: `partial`, `implementation` — many Phase 1/2/3 symbols shipped; remaining work is wiring, settings, CLI metrics, and Phase 4/5 deliverables
 - Use for: hardening the boundary between Mahavishnu's control-plane primitives and ultracode's reasoning-plane primitives. Three phases: (1) diverse-refuter adversarial verification gate at the cross-repo / self-improvement proposal entry points, (2) opt-in loop-until-dry for `clone_detect_ecosystem` and `get_cross_project_patterns`, (3) MCP bridge completion — `dispatch_to_pool` MCP tool with `caller_kind`, `parent_session_id`, async-callback, and per-caller quota enforcement.
 - Feature tracking: [verification-gate](../feature-tracking/2026-07-11-verification-gate.md), [loop-until-dry](../feature-tracking/2026-07-11-loop-until-dry.md), [dispatch-to-pool](../feature-tracking/2026-07-11-dispatch-to-pool.md). Tier 2 deferred ideas: [ultracode-tier2-parking-lot](../feature-tracking/2026-07-11-ultracode-tier2-parking-lot.md).
-- Current implementation note: plan is `draft`; not yet accepted for implementation. Companion to the Bodai Routing Feedback Loop plan (Phase 4 in that plan establishes `RoutingFitnessReader`, which this plan extends with per-caller routing telemetry).
+- Current implementation note: drift-sync on 2026-07-15 marked 11 stale-done items shipped (verification core + tests + get_verification_result, loop_helpers + tests, CallerKind + _caller_quota + caller_kind + parent_session_id in manager.py, dispatch_to_pool + pool_route_execute forwarding, mahavishnu-tool-preference-policy.md). Remaining work: settings (verification_*, caller_quota_*), CLI metrics (`mahavishnu metrics verification` / `dispatch`), decision docs (`dhara-key-prefixes-2026-07-11.md`), Phase 4 docstring/subagent/skill work, Phase 5 hook work. Companion to the Bodai Routing Feedback Loop plan.
+
+### Shared Foundation Adoption Matrix
+
+- Plan: [2026-05-11-shared-foundation-adoption-matrix.md](./2026-05-11-shared-foundation-adoption-matrix.md)
+- Status: `shipped`, `historical` — C6a companion matrix; all rows populated. Promoted 2026-07-15 after drift-sync verified all items complete.
+- Use for: reference only. Defines event adoption roles, WebSocket boundaries, and migration-task framing for the active repos in scope before C6a deletion batches could start.
+
+### Bodai Deletion and Adoption Ledger
+
+- Plan: [2026-05-11-bodai-deletion-adoption-ledger.md](./2026-05-11-bodai-deletion-adoption-ledger.md)
+- Status: `shipped`, `historical` — C6a seed ledger; all rows have status. Promoted 2026-07-15 after drift-sync verified 0 unchecked items.
+- Use for: reference only. Tracks cross-repo deletion/adoption candidates and their audit, parity, rollback, and release-note prerequisites.
+
+### Phase 6 — Bodai-Wide Observability Surfacing
+
+- Plan: [2026-07-11-phase-6-bodai-observability.md](./2026-07-11-phase-6-bodai-observability.md)
+- Status: `shipped`, `historical` — all Phase 6 items checked off in the plan. Promoted 2026-07-15 after drift-sync verified all items complete.
+- Use for: reference only. Defines the Bodai activity subscriber pattern that replaces Mahavishnu's per-component activity hook with a single canonical EventBridge subscriber.
+
+### Oneiric EventEnvelope Wire Standardization
+
+- Plan: [2026-07-14-oneiric-event-envelope-wire-standardization.md](./2026-07-14-oneiric-event-envelope-wire-standardization.md)
+- Status: `shipped`, `historical` — all Tasks 0–9 shipped via commit f103bcc4 (merge bcc7affa). Promoted 2026-07-15 after drift-sync verified the merge commit on main.
+- Use for: reference only. Standardizes Mahavishnu's cross-process EventBridge and Redis event records on Oneiric's `EventEnvelope` while preserving the in-process Pydantic contract. Includes the canonical boundary, decoder, and observability counters/logs.
 
 ## Execution Board and Initiative Plans
 
@@ -370,6 +396,13 @@ Important reconciliation notes:
 
 - Superseded: [../superpowers/specs/2026-04-09-tui-design.md](../superpowers/specs/2026-04-09-tui-design.md)
 - Canonical replacement: [2026-04-16-bodai-agent-platform-master-spec.md](./2026-04-16-bodai-agent-platform-master-spec.md)
+
+### Bodai Master Implementation Plan
+
+- Superseded: [2026-04-16-bodai-master-implementation-plan.md](./2026-04-16-bodai-master-implementation-plan.md)
+- Reason: Phase 0/Phase 1 governance and the read-only operator cockpit surfaces were implemented under the convergence plan's C3a/C3b, and the cross-component observability surface lives in the Phase 6 plan. The master implementation plan's remaining area-local work has either been delivered through convergence or superseded by event-bridge-driven observability.
+- Canonical replacements: [2026-05-10-bodai-control-plane-convergence-plan.md](./2026-05-10-bodai-control-plane-convergence-plan.md) and [2026-07-11-phase-6-bodai-observability.md](./2026-07-11-phase-6-bodai-observability.md)
+- Closed: 2026-07-15
 
 ### Dashboard / Ecosystem Health
 
