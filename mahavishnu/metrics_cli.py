@@ -1589,7 +1589,152 @@ def verification_metrics(
 # ---------------------------------------------------------------------------
 # `mahavishnu metrics dispatch` — Ultracode Phase 3 routing-decision metrics
 # ---------------------------------------------------------------------------
-# (Lands in a follow-up commit.)
+
+
+def _render_dispatch_output(
+    entries: list[dict[str, Any]],
+    *,
+    cutoff: datetime | None,
+    output_format: str,
+    dhara_url: str,
+) -> None:
+    """Render the `mahavishnu metrics dispatch` output."""
+    filtered = _filter_by_window(entries, cutoff)
+
+    caller_counts: dict[str, int] = defaultdict(int)
+    async_callback_count = 0
+    total = len(filtered)
+    recent: list[dict[str, Any]] = []
+
+    for entry in filtered[-20:]:
+        value = entry["value"]
+        caller_kind = _routing_caller_kind(value)
+        is_async = _routing_async_callback(value)
+        recent.append(
+            {
+                "key": entry["key"],
+                "caller_kind": caller_kind,
+                "async_callback": is_async,
+                "timestamp": _entry_timestamp(entry).isoformat()
+                if _entry_timestamp(entry)
+                else None,
+            }
+        )
+
+    for entry in filtered:
+        value = entry["value"]
+        caller_counts[_routing_caller_kind(value)] += 1
+        if _routing_async_callback(value):
+            async_callback_count += 1
+
+    async_rate = (async_callback_count / total) if total > 0 else 0.0
+
+    if output_format == "json":
+        console.print_json(
+            json.dumps(
+                {
+                    "source": "dhara",
+                    "dhara_url": dhara_url,
+                    "prefix": ROUTING_DECISIONS_KEY_PREFIX,
+                    "since": cutoff.isoformat() if cutoff else None,
+                    "total": total,
+                    "per_caller_kind": dict(caller_counts),
+                    "async_callback_count": async_callback_count,
+                    "async_callback_rate": round(async_rate, 4),
+                    "recent": recent,
+                },
+                default=str,
+            )
+        )
+        return
+
+    if output_format != "table":
+        console.print("[red]Invalid --output. Use: table or json[/red]")
+        raise typer.Exit(2)
+
+    console.print("[cyan]Ultracode Phase 3 — Routing Dispatch Metrics[/cyan]\n")
+    console.print(f"[dim]Dhara URL: {dhara_url}[/dim]")
+    console.print(f"[dim]Key prefix: {ROUTING_DECISIONS_KEY_PREFIX}[/dim]")
+    console.print(f"[dim]Window: since {cutoff.isoformat() if cutoff else 'all'}[/dim]\n")
+
+    summary = Table(title="Per-Caller-Kind Quota Usage", show_header=True, header_style="bold magenta")
+    summary.add_column("caller_kind", style="cyan")
+    summary.add_column("Dispatches", justify="right")
+    for caller_kind in sorted(caller_counts.keys()):
+        summary.add_row(caller_kind, str(caller_counts[caller_kind]))
+    summary.add_row("[bold]Total[/bold]", str(total))
+    console.print(summary)
+
+    stats = Table(title="Async Callback Stats", show_header=True, header_style="bold magenta")
+    stats.add_column("Metric", style="cyan")
+    stats.add_column("Value", style="white")
+    stats.add_row("Async callback count", str(async_callback_count))
+    stats.add_row("Async callback rate", f"{async_rate * 100:.1f}%")
+    console.print(stats)
+
+    if recent:
+        console.print()
+        recent_table = Table(
+            title="Most Recent Dispatches (last 20)",
+            show_header=True,
+            header_style="bold magenta",
+        )
+        recent_table.add_column("Timestamp", style="dim", width=19)
+        recent_table.add_column("caller_kind", style="cyan")
+        recent_table.add_column("async_callback", style="white")
+        recent_table.add_column("Decision Key", style="dim")
+        for row in recent:
+            ts_display = row["timestamp"] or "n/a"
+            if ts_display != "n/a":
+                ts_display = ts_display[:19]
+            async_display = "[green]yes[/green]" if row["async_callback"] else "[dim]no[/dim]"
+            recent_table.add_row(ts_display, row["caller_kind"], async_display, row["key"])
+        console.print(recent_table)
+    else:
+        console.print("\n[yellow]No dispatch records in window.[/yellow]")
+
+
+@metrics_app.command("dispatch")
+def dispatch_metrics(
+    since: str = typer.Option(
+        "24h",
+        "--since",
+        help="Time window filter: '24h', '7d', '30m', or 'all' (no filter).",
+    ),
+    dhara_url: str | None = typer.Option(
+        None,
+        "--dhara-url",
+        help="Override Dhara HTTP URL (also: MAHAVISHNU_DHARA_URL).",
+    ),
+    output_format: str = typer.Option(
+        "table",
+        "--output",
+        help="Output format: table or json",
+    ),
+) -> None:
+    """Show ultracode Phase 3 routing-dispatch metrics from Dhara.
+
+    Reads Dhara under the ``routing-decisions/`` key prefix and renders
+    per-caller-kind quota usage, async-callback stats, and the most recent
+    20 dispatches.
+
+    Precedence for the Dhara URL: ``--dhara-url`` > ``MAHAVISHNU_DHARA_URL`` >
+    ``settings/mahavishnu.yaml -> health.dependencies.dhara`` > ``localhost:8683``.
+
+    Examples:
+        mahavishnu metrics dispatch
+        mahavishnu metrics dispatch --since 7d --output json
+        mahavishnu metrics dispatch --dhara-url http://dhara.internal:8683
+    """
+    effective_url = _resolve_dhara_url(dhara_url)
+    cutoff = _parse_since(since)
+    entries = asyncio.run(_fetch_dhara_entries(effective_url, ROUTING_DECISIONS_KEY_PREFIX))
+    _render_dispatch_output(
+        entries,
+        cutoff=cutoff,
+        output_format=output_format,
+        dhara_url=effective_url,
+    )
 
 
 def add_metrics_commands(app: typer.Typer) -> None:
