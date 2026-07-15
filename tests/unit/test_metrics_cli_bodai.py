@@ -20,7 +20,7 @@ from typing import Any
 import pytest
 from typer.testing import CliRunner
 
-from mahavishnu.metrics_cli import metrics_app
+from mahavishnu.metrics_cli import metrics_app, _event_timestamp
 
 runner = CliRunner()
 
@@ -36,6 +36,25 @@ def _write_json(path: Path, payload: Any) -> None:
     """Write *payload* as JSON to *path*, creating parent dirs as needed."""
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(payload), encoding="utf-8")
+
+
+def test_event_timestamp_handles_missing_headers() -> None:
+    assert _event_timestamp({"received_at": None}) is None
+
+
+def test_event_timestamp_handles_non_dict_headers() -> None:
+    event = {"headers": None, "received_at": "2026-07-14T12:00:00Z"}
+    parsed = _event_timestamp(event)
+    assert parsed == datetime(2026, 7, 14, 12, 0, tzinfo=UTC)
+
+
+def test_event_timestamp_prefers_canonical_header_timestamp() -> None:
+    event = {
+        "headers": {"timestamp": "2026-07-14T13:00:00Z"},
+        "received_at": "2026-07-14T12:00:00Z",
+    }
+    parsed = _event_timestamp(event)
+    assert parsed == datetime(2026, 7, 14, 13, 0, tzinfo=UTC)
 
 
 def _envelope(

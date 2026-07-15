@@ -899,6 +899,12 @@ def _parse_bodai_timestamp(value: Any) -> datetime | None:
     return None
 
 
+def _headers_of(event: dict[str, Any]) -> dict[str, Any]:
+    """Return event headers when they are a dictionary."""
+    headers = event.get("headers")
+    return headers if isinstance(headers, dict) else {}
+
+
 def _filter_bodai_events(
     events: list[dict[str, Any]],
     *,
@@ -912,10 +918,7 @@ def _filter_bodai_events(
         filtered = [
             ev
             for ev in filtered
-            if str(
-                (ev.get("headers") or {}).get("source") if isinstance(ev.get("headers"), dict) else ""
-            ).lower()
-            == target
+            if str(_headers_of(ev).get("source") or "").lower() == target
         ]
     if scope_days is not None:
         cutoff = datetime.now(UTC) - timedelta(days=scope_days)
@@ -929,7 +932,7 @@ def _filter_bodai_events(
 
 def _event_timestamp(event: dict[str, Any]) -> datetime | None:
     """Return the most useful timestamp for *event* (header first, received_at fallback)."""
-    headers = event.get("headers") if isinstance(event.get("headers"), dict) else {}
+    headers = _headers_of(event)
     parsed = _parse_bodai_timestamp(headers.get("timestamp"))
     if parsed is not None:
         return parsed
@@ -940,8 +943,7 @@ def _component_counts(events: list[dict[str, Any]]) -> dict[str, int]:
     """Tally events per component (source header)."""
     counts: dict[str, int] = dict.fromkeys(_KNOWN_BODAI_COMPONENTS, 0)
     for event in events:
-        headers = event.get("headers") if isinstance(event.get("headers"), dict) else {}
-        source = headers.get("source") if isinstance(headers, dict) else None
+        source = _headers_of(event).get("source")
         if not isinstance(source, str) or not source:
             continue
         counts[source] = counts.get(source, 0) + 1
@@ -952,8 +954,7 @@ def _component_last_seen(events: list[dict[str, Any]]) -> dict[str, datetime | N
     """Return the most recent event timestamp per component (None if no events)."""
     last_seen: dict[str, datetime | None] = dict.fromkeys(_KNOWN_BODAI_COMPONENTS)
     for event in events:
-        headers = event.get("headers") if isinstance(event.get("headers"), dict) else {}
-        source = headers.get("source") if isinstance(headers, dict) else None
+        source = _headers_of(event).get("source")
         if not isinstance(source, str) or not source:
             continue
         ts = _event_timestamp(event)
@@ -1088,6 +1089,68 @@ def _render_bodai_output(
                 )
 
     console.print(detail_table)
+
+    # --- 4b. Most Recent Event (queue-derived identifiers) ------------------
+    # Render topic + payload-derived identifiers (e.g. workflow_id) from the
+    # most recent event so callers can confirm payload contents reached the
+    # queue end-to-end. This is the "queue-derived identifiers" surface the
+    # Oneiric EventEnvelope wire-standardization plan's e2e proof asserts.
+    if events:
+        recent_table = Table(
+            title="Most Recent Event (queue-derived)",
+            show_header=True,
+            header_style="bold magenta",
+        )
+        recent_table.add_column("Field", style="cyan")
+        recent_table.add_column("Value", style="white")
+
+        dated_pairs: list[tuple[datetime, dict[str, Any]]] = [
+            (ts, ev)
+            for ev in events
+            for ts in [_event_timestamp(ev)]
+            if ts is not None
+        ]
+        if dated_pairs:
+            recent: dict[str, Any] = max(dated_pairs, key=lambda pair: pair[0])[1]
+        else:
+            recent = events[-1]
+        recent_topic = recent.get("topic") or ""
+        recent_payload_raw = recent.get("payload")
+        recent_payload: dict[str, Any] = (
+            recent_payload_raw if isinstance(recent_payload_raw, dict) else {}
+        )
+        recent_headers_raw = recent.get("headers")
+        recent_headers: dict[str, Any] = (
+            recent_headers_raw if isinstance(recent_headers_raw, dict) else {}
+        )
+
+        recent_table.add_row("topic", str(recent_topic))
+
+        recent_wire_format = (
+            recent_headers.get("wire_format") or recent.get("wire_format")
+        )
+        if recent_wire_format is not None:
+            recent_table.add_row("wire_format", str(recent_wire_format))
+
+        # Surface every payload field whose key contains "id" — these are the
+        # "queue-derived identifiers" the e2e proof expects to see.
+        rendered_identifier_rows = False
+        for key, value in recent_payload.items():
+            key_str = str(key)
+            if "id" not in key_str.lower():
+                continue
+            recent_table.add_row(f"payload.{key_str}", str(value))
+            rendered_identifier_rows = True
+
+        # Fallback: if no id-shaped key was found, surface the topic so the
+        # table is never empty.
+        if not rendered_identifier_rows:
+            if recent_payload:
+                recent_table.add_row("payload", str(recent_payload))
+            else:
+                recent_table.add_row("payload", "(empty)")
+
+        console.print(recent_table)
 
     filter_note_parts: list[str] = []
     if scope_days is not None:

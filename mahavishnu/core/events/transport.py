@@ -4,13 +4,24 @@ from __future__ import annotations
 
 import asyncio
 from dataclasses import dataclass, field
-import json
-from typing import TYPE_CHECKING, Any, Protocol, runtime_checkable
+from typing import TYPE_CHECKING, Any, Literal, Protocol, runtime_checkable
 
+from oneiric.core.logging import get_logger
 from oneiric.runtime.notifications import NotificationRoute, NotificationRouter
 
 from mahavishnu.core.dead_letter_queue import DeadLetterQueue, RetryPolicy
+from mahavishnu.core.errors import EventEnvelopeConversionError
+from mahavishnu.core.events.canonical import (
+    decode_oneiric_envelope,
+    encode_oneiric_envelope,
+    to_mahavishnu_envelope,
+    to_oneiric_envelope,
+)
 from mahavishnu.core.events.envelope import EventEnvelope
+from mahavishnu.core.events.observability import (
+    record_legacy_decoded,
+    record_wire_decode_failed,
+)
 
 if TYPE_CHECKING:
     from collections.abc import Awaitable, Callable
@@ -18,6 +29,8 @@ if TYPE_CHECKING:
     PubSubCallback = Callable[[str, bytes], Awaitable[None] | None]
 else:
     PubSubCallback = Any
+
+_logger = get_logger("mahavishnu.event_transport")
 
 
 @runtime_checkable
@@ -194,6 +207,90 @@ class RetryingEventEnvelopeHandler:
         return None
 
 
+def _build_legacy_record(envelope: EventEnvelope) -> dict[str, str]:
+    return {
+        "event_type": envelope.event_type,
+        "envelope": envelope.to_json(),
+    }
+
+
+def _text_payload(raw: object) -> str:
+    """Normalize a stream/pubsub payload to a UTF-8 string for legacy decode."""
+    if isinstance(raw, bytes):
+        return raw.decode("utf-8")
+    if isinstance(raw, str):
+        return raw
+    raise EventEnvelopeConversionError(
+        direction="decode_eventbus",
+        reason="invalid_payload_type",
+        details={"type": type(raw).__name__},
+    )
+
+
+def _decode_canonical_for_handler(
+    raw: object,
+    *,
+    consumer: str,
+) -> EventEnvelope | None:
+    try:
+        envelope = decode_oneiric_envelope(_text_payload(raw))
+        return to_mahavishnu_envelope(envelope)
+    except (EventEnvelopeConversionError, KeyError, TypeError, ValueError) as exc:
+        reason = (
+            str(exc.details.get("reason", "decode_error"))
+            if isinstance(exc, EventEnvelopeConversionError)
+            else "canonical_conversion_error"
+        )
+        record_wire_decode_failed(
+            consumer=consumer,
+            reason=reason,
+        )
+        _logger.exception("eventbus canonical decode failed")
+        return None
+
+
+def _decode_eventbus_record(
+    record: dict[str, Any],
+    *,
+    accept_legacy_wire: bool,
+    consumer: str,
+) -> EventEnvelope | None:
+    wire_format = record.get("wire_format")
+    raw = record.get("envelope")
+
+    if wire_format == "oneiric-v1":
+        return _decode_canonical_for_handler(raw, consumer=consumer)
+    if wire_format is not None:
+        record_wire_decode_failed(
+            consumer=consumer,
+            reason="unknown_wire_format",
+        )
+        return None
+    if not accept_legacy_wire or raw is None:
+        record_wire_decode_failed(
+            consumer=consumer,
+            reason="legacy_wire_disabled",
+        )
+        return None
+
+    try:
+        envelope = EventEnvelope.from_json(_text_payload(raw))
+    except (EventEnvelopeConversionError, TypeError, ValueError) as exc:
+        reason = (
+            str(exc.details.get("reason", "invalid_legacy_envelope"))
+            if isinstance(exc, EventEnvelopeConversionError)
+            else "invalid_legacy_envelope"
+        )
+        record_wire_decode_failed(
+            consumer=consumer,
+            reason=reason,
+        )
+        _logger.exception("eventbus legacy decode failed")
+        return None
+    record_legacy_decoded(consumer=consumer)
+    return envelope
+
+
 @dataclass
 class RedisEventTransport:
     """Thin wrapper around a queue adapter with Redis stream + pub/sub support."""
@@ -201,27 +298,41 @@ class RedisEventTransport:
     adapter: Any
     channel_prefix: str = "bodai:events:"
     stream_name: str = "bodai:events"
+    wire_format: Literal["legacy", "oneiric-v1"] = "oneiric-v1"
+    accept_legacy_wire: bool = True
+
+    def __post_init__(self) -> None:
+        if self.wire_format not in {"legacy", "oneiric-v1"}:
+            raise EventEnvelopeConversionError(
+                direction="redis_publish",
+                reason="invalid_wire_format",
+                details={"wire_format": str(self.wire_format)},
+            )
 
     async def publish(self, envelope: EventEnvelope) -> EventEnvelope:
-        """Persist and fan out an event envelope."""
-        payload = envelope.to_dict()
-        await self.adapter.enqueue(
-            {
-                "event_id": payload["event_id"],
-                "event_type": payload["event_type"],
-                "version": payload["version"],
-                "timestamp": payload["timestamp"],
-                "source": payload["source"],
-                "correlation_id": payload["correlation_id"] or "",
-                "causation_id": payload["causation_id"] or "",
-                "payload": json.dumps(payload["payload"], sort_keys=True),
-                "metadata": json.dumps(payload["metadata"], sort_keys=True),
-                "envelope": envelope.to_json(),
+        """Publish *envelope* to the Redis stream and the topic pub/sub channel.
+
+        The canonical record is ``{"wire_format": "oneiric-v1", "envelope":
+        msgspec_json}``. The legacy record preserves the previous flat shape
+        and the Pydantic JSON payload.
+        """
+        if self.wire_format == "legacy":
+            record = _build_legacy_record(envelope)
+            topic = envelope.event_type
+            encoded = envelope.to_json()
+        else:
+            canonical = to_oneiric_envelope(envelope)
+            encoded = encode_oneiric_envelope(canonical)
+            record = {
+                "wire_format": "oneiric-v1",
+                "envelope": encoded,
             }
-        )
+            topic = canonical.topic
+
+        await self.adapter.enqueue(record)
         await self.adapter.pubsub_publish(
-            f"{self.channel_prefix}{envelope.event_type}",
-            envelope.to_json(),
+            f"{self.channel_prefix}{topic}",
+            encoded,
         )
         return envelope
 
@@ -271,13 +382,15 @@ class EventBusConsumer:
             message_id = entry.get("message_id")
             if message_id and message_id in self._replayed_message_ids:
                 continue
-            payload = entry.get("payload") or {}  # type: ignore[var-annotated]
-            envelope_data = payload.get("envelope") if isinstance(payload, dict) else None
-            if not envelope_data:
+            payload = entry.get("payload") or {}
+            record = payload if isinstance(payload, dict) else {}
+            envelope = _decode_eventbus_record(
+                record,
+                accept_legacy_wire=self.transport.accept_legacy_wire,
+                consumer="event_bus_consumer",
+            )
+            if envelope is None:
                 continue
-            if isinstance(envelope_data, bytes):
-                envelope_data = envelope_data.decode("utf-8")
-            envelope = EventEnvelope.from_json(str(envelope_data))
             envelopes.append(envelope)
             self._replayed_message_ids.add(message_id or str(envelope.event_id))
             await self.handler.handle(envelope)
@@ -286,8 +399,18 @@ class EventBusConsumer:
     async def _on_pubsub_message(self, channel: str, raw: bytes) -> None:
         if not self._running:
             return
-        envelope = EventEnvelope.from_json(raw.decode("utf-8"))
-        await self.handler.handle(envelope)
+        envelope = _decode_canonical_for_handler(
+            raw,
+            consumer="event_bus_consumer",
+        )
+        if envelope is None:
+            envelope = _decode_eventbus_record(
+                {"envelope": raw},
+                accept_legacy_wire=self.transport.accept_legacy_wire,
+                consumer="event_bus_consumer",
+            )
+        if envelope is not None:
+            await self.handler.handle(envelope)
 
 
 @dataclass

@@ -27,7 +27,7 @@ def test_resolve_returns_none_when_disabled() -> None:
     bridge = MagicMock()
     settings = _settings_with_eventbridge(enabled=False)
     assert resolve_event_publisher(settings, server=server, bridge=bridge) is None
-    server.set_event_publisher.assert_not_called()
+    server.set_eventbridge_publisher.assert_not_called()
 
 
 def test_resolve_returns_none_when_dry_run() -> None:
@@ -35,6 +35,7 @@ def test_resolve_returns_none_when_dry_run() -> None:
     bridge = MagicMock()
     settings = _settings_with_eventbridge(enabled=True, dry_run=True)
     assert resolve_event_publisher(settings, server=server, bridge=bridge) is None
+    server.set_eventbridge_publisher.assert_not_called()
 
 
 def test_resolve_sets_publisher_when_enabled_and_live() -> None:
@@ -43,7 +44,7 @@ def test_resolve_sets_publisher_when_enabled_and_live() -> None:
     settings = _settings_with_eventbridge(enabled=True, dry_run=False)
     publisher = resolve_event_publisher(settings, server=server, bridge=bridge)
     assert isinstance(publisher, EventBridgePublisher)
-    server.set_event_publisher.assert_called_once_with(publisher)
+    server.set_eventbridge_publisher.assert_called_once_with(publisher)
 
 
 def test_resolve_returns_none_when_enabled_but_no_bridge() -> None:
@@ -51,4 +52,4 @@ def test_resolve_returns_none_when_enabled_but_no_bridge() -> None:
     server = MagicMock()
     settings = _settings_with_eventbridge(enabled=True, dry_run=False)
     assert resolve_event_publisher(settings, server=server, bridge=None) is None
-    server.set_event_publisher.assert_not_called()
+    server.set_eventbridge_publisher.assert_not_called()

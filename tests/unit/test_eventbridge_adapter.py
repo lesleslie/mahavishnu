@@ -35,3 +35,22 @@ def test_adaptor_publish_calls_emit_with_envelope_fields() -> None:
         {"workflow_id": "wf-1", "metadata": {"adapter": "prefect"}},
         {"source": "mahavishnu", "event_id": "abc-123"},
     )
+
+
+def test_adapter_does_not_mutate_envelope() -> None:
+    """EventBridgePublisher.publish does not mutate the caller's envelope."""
+    bridge = MagicMock()
+    bridge.emit = AsyncMock()
+    adapter = EventBridgePublisher(bridge)
+    envelope = EventEnvelope(
+        topic="workflow.started",
+        payload={"workflow_id": "wf-1"},
+        headers={"source": "mahavishnu", "event_id": "event-1"},
+    )
+    original_payload = dict(envelope.payload)
+    original_headers = dict(envelope.headers)
+
+    asyncio.run(adapter.publish(envelope))
+
+    assert envelope.payload == original_payload
+    assert envelope.headers == original_headers

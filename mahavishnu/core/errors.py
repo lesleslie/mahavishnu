@@ -611,6 +611,28 @@ class MahavishnuError(Exception):
 # Convenience exception classes for common errors
 
 
+class EventEnvelopeConversionError(MahavishnuError):
+    """Canonical event-envelope conversion or encoding failed."""
+
+    def __init__(
+        self,
+        *,
+        direction: str,
+        reason: str,
+        details: dict[str, object] | None = None,
+    ) -> None:
+        structured_details = {
+            **(details or {}),
+            "direction": direction,
+            "reason": reason,
+        }
+        super().__init__(
+            f"Event envelope conversion failed: {reason}",
+            ErrorCode.VALIDATION_ERROR,
+            details=structured_details,
+        )
+
+
 class ConfigurationError(MahavishnuError):
     """Configuration-related error."""
 

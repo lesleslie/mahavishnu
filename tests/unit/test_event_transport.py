@@ -6,6 +6,12 @@ from typing import Any
 
 import pytest
 
+from mahavishnu.core.errors import EventEnvelopeConversionError
+from mahavishnu.core.events.canonical import (
+    decode_oneiric_envelope,
+    encode_oneiric_envelope,
+    to_oneiric_envelope,
+)
 from mahavishnu.core.events.contract import create_event_envelope
 from mahavishnu.core.events.envelope import EventEnvelope
 from mahavishnu.core.events.transport import (
@@ -75,7 +81,7 @@ class _FakeDeadLetterQueue:
 @pytest.mark.asyncio
 async def test_redis_event_transport_publishes_to_stream_and_pubsub():
     adapter = _FakeAdapter()
-    transport = RedisEventTransport(adapter)
+    transport = RedisEventTransport(adapter, wire_format="legacy")
     envelope = create_event_envelope(
         "workflow.started",
         "test_service",
@@ -92,6 +98,615 @@ async def test_redis_event_transport_publishes_to_stream_and_pubsub():
     assert adapter.published == [
         ("bodai:events:workflow.started", envelope.to_json()),
     ]
+
+
+@pytest.mark.asyncio
+async def test_redis_transport_defaults_to_oneiric_v1() -> None:
+    adapter = _FakeAdapter()
+    transport = RedisEventTransport(adapter)
+    envelope = create_event_envelope(
+        "workflow.started",
+        "test_service",
+        payload={"workflow_id": "wf-1"},
+    )
+
+    returned = await transport.publish(envelope)
+
+    assert returned is envelope
+    assert set(adapter.enqueued[0]) == {"wire_format", "envelope"}
+    assert adapter.enqueued[0]["wire_format"] == "oneiric-v1"
+    canonical = decode_oneiric_envelope(adapter.enqueued[0]["envelope"])
+    assert canonical.topic == envelope.event_type
+    assert canonical.headers["event_id"] == str(envelope.event_id)
+    assert adapter.published == [
+        (
+            "bodai:events:workflow.started",
+            adapter.enqueued[0]["envelope"],
+        )
+    ]
+
+
+@pytest.mark.asyncio
+async def test_redis_transport_rejects_unknown_wire_format() -> None:
+    envelope = create_event_envelope(
+        "workflow.started",
+        "test_service",
+        payload={"workflow_id": "wf-1"},
+    )
+
+    with pytest.raises(EventEnvelopeConversionError):
+        transport = RedisEventTransport(_FakeAdapter(), wire_format="garbage")  # type: ignore[arg-type]
+        await transport.publish(envelope)
+
+
+@pytest.mark.asyncio
+async def test_conversion_failure_publishes_nothing(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    adapter = _FakeAdapter()
+    transport = RedisEventTransport(adapter)
+
+    def _raise(*args: Any, **kwargs: Any) -> Any:
+        raise EventEnvelopeConversionError(
+            direction="mahavishnu_to_oneiric",
+            reason="test_forced_failure",
+        )
+
+    monkeypatch.setattr(
+        "mahavishnu.core.events.transport.to_oneiric_envelope", _raise
+    )
+    envelope = create_event_envelope(
+        "workflow.started",
+        "test_service",
+        payload={"workflow_id": "wf-1"},
+    )
+
+    with pytest.raises(EventEnvelopeConversionError):
+        await transport.publish(envelope)
+
+    assert adapter.enqueued == []
+    assert adapter.published == []
+
+
+@pytest.mark.asyncio
+async def test_legacy_write_mode_preserves_previous_shape() -> None:
+    adapter = _FakeAdapter()
+    transport = RedisEventTransport(adapter, wire_format="legacy")
+    envelope = create_event_envelope(
+        "workflow.started",
+        "test_service",
+        payload={"workflow_id": "wf-1"},
+    )
+
+    await transport.publish(envelope)
+
+    assert adapter.enqueued[0]["event_type"] == "workflow.started"
+    assert adapter.enqueued[0]["envelope"] == envelope.to_json()
+    assert adapter.published == [
+        ("bodai:events:workflow.started", envelope.to_json())
+    ]
+
+
+@pytest.mark.asyncio
+async def test_replay_decodes_canonical_record_to_internal_envelope() -> None:
+    adapter = _FakeAdapter()
+    internal = create_event_envelope(
+        "pool.spawned",
+        "test_service",
+        payload={"pool_id": "pool-1"},
+    )
+    canonical = to_oneiric_envelope(internal)
+    adapter.read_payloads = [
+        {
+            "message_id": "1-0",
+            "payload": {
+                "wire_format": "oneiric-v1",
+                "envelope": encode_oneiric_envelope(canonical),
+            },
+        }
+    ]
+    transport = RedisEventTransport(adapter)
+    seen: list[EventEnvelope] = []
+
+    class Handler:
+        async def handle(self, envelope: EventEnvelope) -> None:
+            seen.append(envelope)
+
+    replayed = await EventBusConsumer(
+        transport=transport,
+        handler=Handler(),
+    ).replay_pending()
+
+    assert replayed == [internal]
+    assert seen == [internal]
+
+
+@pytest.mark.asyncio
+async def test_consumer_continues_after_malformed_record() -> None:
+    adapter = _FakeAdapter()
+    internal = create_event_envelope(
+        "pool.spawned",
+        "test_service",
+        payload={"pool_id": "pool-1"},
+    )
+    canonical = to_oneiric_envelope(internal)
+    adapter.read_payloads = [
+        {
+            "message_id": "bad-0",
+            "payload": {"wire_format": "oneiric-v1", "envelope": "{not-json"},
+        },
+        {
+            "message_id": "1-0",
+            "payload": {
+                "wire_format": "oneiric-v1",
+                "envelope": encode_oneiric_envelope(canonical),
+            },
+        },
+    ]
+    transport = RedisEventTransport(adapter)
+    seen: list[EventEnvelope] = []
+
+    class Handler:
+        async def handle(self, envelope: EventEnvelope) -> None:
+            seen.append(envelope)
+
+    replayed = await EventBusConsumer(
+        transport=transport,
+        handler=Handler(),
+    ).replay_pending()
+
+    assert replayed == [internal]
+    assert seen == [internal]
+
+
+@pytest.mark.asyncio
+async def test_consumer_continues_after_invalid_legacy_payload_type() -> None:
+    adapter = _FakeAdapter()
+    internal = create_event_envelope(
+        "pool.spawned",
+        "test_service",
+        payload={"pool_id": "pool-1"},
+    )
+    adapter.read_payloads = [
+        {
+            "message_id": "bad-0",
+            "payload": {"envelope": {"not": "text"}},
+        },
+        {
+            "message_id": "1-0",
+            "payload": {
+                "wire_format": "oneiric-v1",
+                "envelope": encode_oneiric_envelope(to_oneiric_envelope(internal)),
+            },
+        },
+    ]
+    seen: list[EventEnvelope] = []
+
+    class Handler:
+        async def handle(self, envelope: EventEnvelope) -> None:
+            seen.append(envelope)
+
+    replayed = await EventBusConsumer(
+        transport=RedisEventTransport(adapter),
+        handler=Handler(),
+    ).replay_pending()
+
+    assert replayed == [internal]
+    assert seen == [internal]
+
+
+@pytest.mark.asyncio
+async def test_consumer_continues_after_invalid_canonical_uuid() -> None:
+    adapter = _FakeAdapter()
+    internal = create_event_envelope(
+        "pool.spawned",
+        "test_service",
+        payload={"pool_id": "pool-1"},
+    )
+    invalid = to_oneiric_envelope(internal)
+    invalid.headers["event_id"] = "not-a-uuid"
+    adapter.read_payloads = [
+        {
+            "message_id": "bad-0",
+            "payload": {
+                "wire_format": "oneiric-v1",
+                "envelope": encode_oneiric_envelope(invalid),
+            },
+        },
+        {
+            "message_id": "1-0",
+            "payload": {
+                "wire_format": "oneiric-v1",
+                "envelope": encode_oneiric_envelope(to_oneiric_envelope(internal)),
+            },
+        },
+    ]
+    seen: list[EventEnvelope] = []
+
+    class Handler:
+        async def handle(self, envelope: EventEnvelope) -> None:
+            seen.append(envelope)
+
+    replayed = await EventBusConsumer(
+        transport=RedisEventTransport(adapter),
+        handler=Handler(),
+    ).replay_pending()
+
+    assert replayed == [internal]
+    assert seen == [internal]
+
+
+@pytest.mark.asyncio
+async def test_canonical_reverse_conversion_failure_records_telemetry(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    adapter = _FakeAdapter()
+    internal = create_event_envelope(
+        "pool.spawned",
+        "test_service",
+        payload={"pool_id": "pool-1"},
+    )
+    adapter.read_payloads = [
+        {
+            "message_id": "bad-0",
+            "payload": {
+                "wire_format": "oneiric-v1",
+                "envelope": encode_oneiric_envelope(to_oneiric_envelope(internal)),
+            },
+        }
+    ]
+    failures: list[tuple[str, str]] = []
+    seen: list[EventEnvelope] = []
+
+    def _raise_reverse_conversion_error(*args: Any, **kwargs: Any) -> EventEnvelope:
+        raise EventEnvelopeConversionError(
+            direction="oneiric_to_mahavishnu",
+            reason="reverse_conversion_failed",
+        )
+
+    monkeypatch.setattr(
+        "mahavishnu.core.events.transport.to_mahavishnu_envelope",
+        _raise_reverse_conversion_error,
+    )
+    monkeypatch.setattr(
+        "mahavishnu.core.events.transport.record_wire_decode_failed",
+        lambda *, consumer, reason: failures.append((consumer, reason)),
+    )
+
+    class Handler:
+        async def handle(self, envelope: EventEnvelope) -> None:
+            seen.append(envelope)
+
+    replayed = await EventBusConsumer(
+        transport=RedisEventTransport(adapter),
+        handler=Handler(),
+    ).replay_pending()
+
+    assert replayed == []
+    assert seen == []
+    assert failures == [("event_bus_consumer", "reverse_conversion_failed")]
+
+
+@pytest.mark.asyncio
+async def test_pubsub_skips_invalid_utf8_canonical_bytes(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    failures: list[tuple[str, str]] = []
+    seen: list[EventEnvelope] = []
+    monkeypatch.setattr(
+        "mahavishnu.core.events.transport.record_wire_decode_failed",
+        lambda *, consumer, reason: failures.append((consumer, reason)),
+    )
+
+    class Handler:
+        async def handle(self, envelope: EventEnvelope) -> None:
+            seen.append(envelope)
+
+    consumer = EventBusConsumer(
+        transport=RedisEventTransport(_FakeAdapter()),
+        handler=Handler(),
+    )
+    await consumer.start()
+    try:
+        await consumer._on_pubsub_message("bodai:events:pool.spawned", b"\xff")
+    finally:
+        await consumer.stop()
+
+    assert seen == []
+    assert ("event_bus_consumer", "canonical_conversion_error") in failures
+
+
+@pytest.mark.asyncio
+async def test_pubsub_skips_canonical_envelope_with_invalid_uuid() -> None:
+    adapter = _FakeAdapter()
+    internal = create_event_envelope(
+        "workflow.completed",
+        "test_service",
+        payload={"workflow_id": "wf-invalid"},
+    )
+    invalid = to_oneiric_envelope(internal)
+    invalid.headers["event_id"] = "not-a-uuid"
+    raw = encode_oneiric_envelope(invalid).encode("utf-8")
+    seen: list[EventEnvelope] = []
+
+    class Handler:
+        async def handle(self, envelope: EventEnvelope) -> None:
+            seen.append(envelope)
+
+    consumer = EventBusConsumer(
+        transport=RedisEventTransport(adapter),
+        handler=Handler(),
+    )
+    await consumer.start()
+    try:
+        await consumer._on_pubsub_message("bodai:events:workflow.completed", raw)
+    finally:
+        await consumer.stop()
+
+    assert seen == []
+
+
+@pytest.mark.asyncio
+async def test_pubsub_decodes_canonical_envelope() -> None:
+    adapter = _FakeAdapter()
+    transport = RedisEventTransport(adapter)
+    internal = create_event_envelope(
+        "workflow.completed",
+        "test_service",
+        payload={"workflow_id": "wf-canonical"},
+    )
+    raw = encode_oneiric_envelope(to_oneiric_envelope(internal)).encode("utf-8")
+    seen: list[EventEnvelope] = []
+
+    class Handler:
+        async def handle(self, envelope: EventEnvelope) -> None:
+            seen.append(envelope)
+
+    consumer = EventBusConsumer(transport=transport, handler=Handler())
+    await consumer.start()
+    await consumer._on_pubsub_message("bodai:events:workflow.completed", raw)
+    await consumer.stop()
+
+    assert seen == [internal]
+
+
+@pytest.mark.asyncio
+async def test_canonical_marker_never_falls_back_to_legacy() -> None:
+    adapter = _FakeAdapter()
+    internal = create_event_envelope(
+        "pool.spawned",
+        "test_service",
+        payload={"pool_id": "pool-1"},
+    )
+    adapter.read_payloads = [
+        {
+            "message_id": "1-0",
+            "payload": {
+                "wire_format": "oneiric-v1",
+                "envelope": internal.to_json(),
+            },
+        }
+    ]
+    seen: list[EventEnvelope] = []
+
+    class Handler:
+        async def handle(self, envelope: EventEnvelope) -> None:
+            seen.append(envelope)
+
+    replayed = await EventBusConsumer(
+        transport=RedisEventTransport(adapter, accept_legacy_wire=True),
+        handler=Handler(),
+    ).replay_pending()
+
+    assert replayed == []
+    assert seen == []
+
+
+@pytest.mark.asyncio
+async def test_replay_accepts_legacy_record_when_enabled() -> None:
+    adapter = _FakeAdapter()
+    internal = create_event_envelope(
+        "pool.spawned",
+        "test_service",
+        payload={"pool_id": "pool-1"},
+    )
+    adapter.read_payloads = [
+        {
+            "message_id": "1-0",
+            "payload": {"envelope": internal.to_json()},
+        }
+    ]
+    seen: list[EventEnvelope] = []
+
+    class Handler:
+        async def handle(self, envelope: EventEnvelope) -> None:
+            seen.append(envelope)
+
+    replayed = await EventBusConsumer(
+        transport=RedisEventTransport(adapter, accept_legacy_wire=True),
+        handler=Handler(),
+    ).replay_pending()
+
+    assert replayed == [internal]
+    assert seen == [internal]
+
+
+@pytest.mark.asyncio
+async def test_replay_rejects_legacy_record_when_disabled() -> None:
+    adapter = _FakeAdapter()
+    internal = create_event_envelope(
+        "pool.spawned",
+        "test_service",
+        payload={"pool_id": "pool-1"},
+    )
+    adapter.read_payloads = [
+        {
+            "message_id": "1-0",
+            "payload": {"envelope": internal.to_json()},
+        }
+    ]
+    seen: list[EventEnvelope] = []
+
+    class Handler:
+        async def handle(self, envelope: EventEnvelope) -> None:
+            seen.append(envelope)
+
+    replayed = await EventBusConsumer(
+        transport=RedisEventTransport(adapter, accept_legacy_wire=False),
+        handler=Handler(),
+    ).replay_pending()
+
+    assert replayed == []
+    assert seen == []
+
+
+@pytest.mark.asyncio
+async def test_replay_accepts_canonical_record_when_legacy_disabled() -> None:
+    adapter = _FakeAdapter()
+    internal = create_event_envelope(
+        "pool.spawned",
+        "test_service",
+        payload={"pool_id": "pool-1"},
+    )
+    adapter.read_payloads = [
+        {
+            "message_id": "1-0",
+            "payload": {
+                "wire_format": "oneiric-v1",
+                "envelope": encode_oneiric_envelope(to_oneiric_envelope(internal)),
+            },
+        }
+    ]
+    seen: list[EventEnvelope] = []
+
+    class Handler:
+        async def handle(self, envelope: EventEnvelope) -> None:
+            seen.append(envelope)
+
+    replayed = await EventBusConsumer(
+        transport=RedisEventTransport(adapter, accept_legacy_wire=False),
+        handler=Handler(),
+    ).replay_pending()
+
+    assert replayed == [internal]
+    assert seen == [internal]
+
+
+@pytest.mark.asyncio
+async def test_replay_rejects_unknown_wire_format_marker() -> None:
+    adapter = _FakeAdapter()
+    internal = create_event_envelope(
+        "pool.spawned",
+        "test_service",
+        payload={"pool_id": "pool-1"},
+    )
+    adapter.read_payloads = [
+        {
+            "message_id": "1-0",
+            "payload": {
+                "wire_format": "oneiric-v2",
+                "envelope": encode_oneiric_envelope(to_oneiric_envelope(internal)),
+            },
+        }
+    ]
+    seen: list[EventEnvelope] = []
+
+    class Handler:
+        async def handle(self, envelope: EventEnvelope) -> None:
+            seen.append(envelope)
+
+    replayed = await EventBusConsumer(
+        transport=RedisEventTransport(adapter),
+        handler=Handler(),
+    ).replay_pending()
+
+    assert replayed == []
+    assert seen == []
+
+
+@pytest.mark.asyncio
+async def test_malformed_pubsub_payload_is_skipped() -> None:
+    adapter = _FakeAdapter()
+    seen: list[EventEnvelope] = []
+
+    class Handler:
+        async def handle(self, envelope: EventEnvelope) -> None:
+            seen.append(envelope)
+
+    consumer = EventBusConsumer(
+        transport=RedisEventTransport(adapter),
+        handler=Handler(),
+    )
+    await consumer.start()
+    await consumer._on_pubsub_message("bodai:events:pool.spawned", b"{not-json")
+    await consumer.stop()
+
+    assert seen == []
+
+
+@pytest.mark.asyncio
+async def test_legacy_decode_records_telemetry(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    adapter = _FakeAdapter()
+    internal = create_event_envelope(
+        "pool.spawned",
+        "test_service",
+        payload={"pool_id": "pool-1"},
+    )
+    adapter.read_payloads = [
+        {
+            "message_id": "1-0",
+            "payload": {"envelope": internal.to_json()},
+        }
+    ]
+    consumers: list[str] = []
+    monkeypatch.setattr(
+        "mahavishnu.core.events.transport.record_legacy_decoded",
+        lambda *, consumer: consumers.append(consumer),
+    )
+
+    class Handler:
+        async def handle(self, envelope: EventEnvelope) -> None:
+            return None
+
+    replayed = await EventBusConsumer(
+        transport=RedisEventTransport(adapter),
+        handler=Handler(),
+    ).replay_pending()
+
+    assert replayed == [internal]
+    assert consumers == ["event_bus_consumer"]
+
+
+@pytest.mark.asyncio
+async def test_canonical_decode_failure_records_telemetry(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    adapter = _FakeAdapter()
+    adapter.read_payloads = [
+        {
+            "message_id": "bad-0",
+            "payload": {"wire_format": "oneiric-v1", "envelope": "{not-json"},
+        }
+    ]
+    failures: list[tuple[str, str]] = []
+    monkeypatch.setattr(
+        "mahavishnu.core.events.transport.record_wire_decode_failed",
+        lambda *, consumer, reason: failures.append((consumer, reason)),
+    )
+
+    class Handler:
+        async def handle(self, envelope: EventEnvelope) -> None:
+            return None
+
+    replayed = await EventBusConsumer(
+        transport=RedisEventTransport(adapter),
+        handler=Handler(),
+    ).replay_pending()
+
+    assert replayed == []
+    assert failures == [("event_bus_consumer", "malformed_json")]
 
 
 @pytest.mark.asyncio

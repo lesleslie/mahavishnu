@@ -3,7 +3,8 @@
 Wraps existing ``broadcast_workflow_started`` / ``broadcast_workflow_completed``
 / ``broadcast_workflow_failed`` broadcasts into the canonical
 :class:`oneiric.runtime.events.EventEnvelope` and publishes them via the
-Mahavishnu event publisher (an :class:`EventPublisherProtocol` implementation).
+Mahavishnu event publisher (an
+:class:`OneiricEventPublisherProtocol` implementation).
 
 The result: events appear in the unified Bodai queue
 (``~/.mahavishnu/bodai-event-queue.json``) for consumption by ``/bodai-status``
@@ -23,16 +24,17 @@ matching what :mod:`mahavishnu.core.events.bodai_subscriber` consumes.
 
 from __future__ import annotations
 
-from datetime import UTC, datetime
 import inspect
 import logging
 from typing import TYPE_CHECKING, Any
-import uuid
-
-from oneiric.runtime.events import EventEnvelope, create_event_envelope
 
 if TYPE_CHECKING:
-    from mahavishnu.core.events.contract import EventPublisherProtocol
+    from oneiric.runtime.events import EventEnvelope as OneiricEventEnvelope
+
+from mahavishnu.core.events.canonical import (
+    OneiricEventPublisherProtocol,
+    create_oneiric_envelope,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -44,7 +46,11 @@ TOPIC_WORKFLOW_COMPLETED = "workflow.completed"
 TOPIC_WORKFLOW_FAILED = "workflow.failed"
 
 
-def _make_envelope(topic: str, source: str, payload: dict[str, Any]) -> EventEnvelope:
+def _make_envelope(
+    topic: str,
+    source: str,
+    payload: dict[str, Any],
+) -> OneiricEventEnvelope:
     """Build the canonical Oneiric ``EventEnvelope`` for a workflow event.
 
     Args:
@@ -54,35 +60,29 @@ def _make_envelope(topic: str, source: str, payload: dict[str, Any]) -> EventEnv
 
     Returns:
         A canonical :class:`oneiric.runtime.events.EventEnvelope` with
-        ``source``, ``event_id``, ``timestamp``, and ``version`` set in the
-        ``headers`` dict.
+        the canonical Oneiric reserved headers set by the
+        :func:`create_oneiric_envelope` factory (so duplicate-header
+        collisions and reserved-header misuse are guarded upstream of
+        the publisher).
     """
-    event_id = uuid.uuid4()
-    timestamp = datetime.now(UTC).isoformat()
-    return create_event_envelope(
+    return create_oneiric_envelope(
         topic=topic,
         payload=payload,
         source=source,
         version=EVENT_VERSION,
-        headers={
-            "source": source,
-            "event_id": str(event_id),
-            "timestamp": timestamp,
-            "version": EVENT_VERSION,
-        },
     )
 
 
 async def _publish(
-    envelope: EventEnvelope,
-    publisher: EventPublisherProtocol | None,
+    envelope: OneiricEventEnvelope,
+    publisher: OneiricEventPublisherProtocol | None,
 ) -> None:
     """Publish an envelope via the injected publisher.
 
     Swallows any exception (logs at WARNING) so that a misbehaving publisher
     can never abort a workflow broadcast path. Handles both sync and async
     ``publish`` results -- the protocol permits both, since some
-    implementations (e.g. :class:`InMemoryEventTransport`) are coroutine-only
+    implementations (e.g. ``InMemoryEventTransport``) are coroutine-only
     while others may return a future-like object.
     """
     if publisher is None:
@@ -103,7 +103,7 @@ async def publish_workflow_started(
     workflow_id: str,
     metadata: dict[str, Any],
     *,
-    publisher: EventPublisherProtocol | None = None,
+    publisher: OneiricEventPublisherProtocol | None = None,
 ) -> None:
     """Publish a ``workflow.started`` event to the Bodai queue.
 
@@ -122,7 +122,7 @@ async def publish_workflow_completed(
     workflow_id: str,
     result: dict[str, Any],
     *,
-    publisher: EventPublisherProtocol | None = None,
+    publisher: OneiricEventPublisherProtocol | None = None,
 ) -> None:
     """Publish a ``workflow.completed`` event to the Bodai queue.
 
@@ -140,7 +140,7 @@ async def publish_workflow_failed(
     workflow_id: str,
     error: str,
     *,
-    publisher: EventPublisherProtocol | None = None,
+    publisher: OneiricEventPublisherProtocol | None = None,
 ) -> None:
     """Publish a ``workflow.failed`` event to the Bodai queue.
 

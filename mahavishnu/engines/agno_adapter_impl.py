@@ -313,12 +313,18 @@ class MCPToolsRegistry:
         try:
             from agno.tools.mcp import MCPTools
 
-            transport: str = self.config.mcp_transport
-            if transport not in ("stdio", "sse", "streamable-http"):
-                transport = "sse"
+            configured = self.config.mcp_transport
+            if configured == "stdio":
+                transport: Literal["stdio", "sse", "streamable-http"] = "stdio"
+            elif configured == "sse":
+                transport: Literal["stdio", "sse", "streamable-http"] = "sse"
+            elif configured == "streamable-http":
+                transport: Literal["stdio", "sse", "streamable-http"] = "streamable-http"
+            else:
+                transport: Literal["stdio", "sse", "streamable-http"] = "sse"
             self._mcp_tools = MCPTools(
                 url=self.config.mcp_server_url,
-                transport=cast("Literal['stdio', 'sse', 'streamable-http']", transport),
+                transport=transport,
             )
 
             self._initialized = True

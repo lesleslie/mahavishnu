@@ -26,6 +26,11 @@ Configuration via environment variables (defaults shown):
 * ``MAHAVISHNU_BODAI_STATE_PATH``      — ``~/.mahavishnu/bodai-subscriber-state.json``
 * ``MAHAVISHNU_BODAI_QUEUE_PATH``      — ``~/.mahavishnu/bodai-event-queue.json``
 * ``MAHAVISHNU_BODAI_CONSUMER_GROUP``  — ``mahavishnu-claude-observers``
+* ``MAHAVISHNU_BODAI_ACCEPT_LEGACY_WIRE`` — ``true`` (1/true/yes/on enable;
+  0/false/no/off disable). Read by
+  ``mahavishnu.core.events.bodai_subscriber._accept_legacy_wire`` to gate
+  fallback decoding to the Pydantic ``EventEnvelope`` wire format when
+  canonical decoding fails.
 
 The script exits 0 on all paths. Failures are logged to stderr so they
 are visible to Claude Code but never block tool execution.
