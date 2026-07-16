@@ -211,7 +211,7 @@ The master backlog is retained as delivered/historical source material. New conv
 - Plan: [../superpowers/plans/2026-07-15-constellation-tui.md](../superpowers/plans/2026-07-15-constellation-tui.md)
 - Status: `draft`, `implementation` — spec approved 2026-07-15; 10-task plan written, not yet executed
 - Use for: surfacing Bodai ecosystem activity (pools, workers, workflows, lifecycle events) inside Claude Code via three extension surfaces — extended `statusLine`, new `subagentStatusLine`, and OSC 777 native toasts. New `mahavishnu/constellation/` subpackage + `mahavishnu constellation install` CLI. Wired to the existing EventBridge (channel `bodai:events`); no transport changes.
-- Current implementation note: deferred per user direction (2026-07-15). Plan indexed for future pickup.
+- Current implementation note: deferred per user direction (2026-07-15). Plan indexed for future pickup. Companion spec for the Toad/ACP track is at [2026-07-15-mahavishnu-acp-server-design.md](../superpowers/specs/2026-07-15-mahavishnu-acp-server-design.md) — also deferred.
 
 #### Mahavishnu ACP Server (Toad/Editor Integration)
 
