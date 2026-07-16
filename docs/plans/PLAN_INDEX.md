@@ -327,6 +327,24 @@ The master backlog is retained as delivered/historical source material. New conv
 - Status: `shipped`, `historical` — all Tasks 0–9 shipped via commit f103bcc4 (merge bcc7affa). Promoted 2026-07-15 after drift-sync verified the merge commit on main.
 - Use for: reference only. Standardizes Mahavishnu's cross-process EventBridge and Redis event records on Oneiric's `EventEnvelope` while preserving the in-process Pydantic contract. Includes the canonical boundary, decoder, and observability counters/logs.
 
+### Cross-Repo Plans: Dhara Cache-Adapter Consolidation
+
+The cache-adapter consolidation is a cross-cutting change between Dhara (the consumer) and Oneiric (the canonical cache-adapter owner). It was originally a single plan and has been split into two files in `dhara/docs/superpowers/{specs,plans}/`. Both are referenced here for navigation; the canonical design doc is the spec, the implementation is in the two plans.
+
+#### Oneiric-side companion plan (executable now, independent of async-migration)
+
+- Plan: [../../../dhara/docs/superpowers/plans/2026-07-15-oneiric-cache-factory-and-settings-plan.md](../../../dhara/docs/superpowers/plans/2026-07-15-oneiric-cache-factory-and-settings-plan.md)
+- Spec: [../../../dhara/docs/superpowers/specs/2026-07-15-dhara-cache-adapter-oneiric-consolidation-design.md](../../../dhara/docs/superpowers/specs/2026-07-15-dhara-cache-adapter-oneiric-consolidation-design.md)
+- Status: `active`, `implementation` — ready to execute now. Lives in the Oneiric repo; lands four commits (factory-string fix in `redis.py`/`memory.py`, two new `RedisCacheSettings` fields, `set`/`get` consumer code, companion tests) and direct-merges to Oneiric `main` per Bodai pre-1.0 policy.
+- Use for: stripping the leading space from `AdapterMetadata.factory`; adding `ttl_seconds` and `stampede_jitter_ms` (with consumer code) to `RedisCacheSettings`; documenting the existing `enable_client_cache=True` default per spec D7. Stronger regression-guard tests parse the raw factory string and exercise `getattr(module, attr)` directly.
+
+#### Dhara-side main plan (blocked on async-migration + companion)
+
+- Plan: [../../../dhara/docs/superpowers/plans/2026-07-15-dhara-cache-adapter-oneiric-consolidation-plan.md](../../../dhara/docs/superpowers/plans/2026-07-15-dhara-cache-adapter-oneiric-consolidation-plan.md)
+- Spec: [../../../dhara/docs/superpowers/specs/2026-07-15-dhara-cache-adapter-oneiric-consolidation-design.md](../../../dhara/docs/superpowers/specs/2026-07-15-dhara-cache-adapter-oneiric-consolidation-design.md)
+- Status: `draft`, `implementation` — **blocked on external sequencing**. Cannot start until (a) `dhara/docs/2026-07-15-async-migration-cleanup.md` lands on Dhara `main`, AND (b) the Oneiric-side companion above has shipped. Both are preconditions verified explicitly by Phase 0 and Phase 1 of this plan.
+- Use for: introducing `dhara/mcp/adapter_lookup.py:resolve_cache_adapter` (registry-mediated lookup reading `entry["factory_path"]` from `AsyncAdapterRegistry.get_adapter_async`); moving `_async_adapter_registry` initialization ahead of the cache block in `server_core.py`; deleting deprecated config fields; deleting `dhara/storage/redis_cache.py` only — `dhara/storage/memory.py` (`AsyncMemoryStorage`) is explicitly preserved. `Connection.Cache` (`dhara/core/connection.py:841`) remains out of scope per spec D8.
+
 ## Execution Board and Initiative Plans
 
 - Board: [2026-04-04-ecosystem-execution-board.md](./2026-04-04-ecosystem-execution-board.md)
