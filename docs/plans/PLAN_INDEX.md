@@ -1,8 +1,8 @@
 # Plan Index
 
 **Date:** 2026-05-07
-**Last structural update:** 2026-07-11
-**Last priority verification:** 2026-07-11
+**Last structural update:** 2026-07-15
+**Last priority verification:** 2026-07-15
 **Purpose:** Navigation map for finding and reviewing active Mahavishnu/Bodai plans.
 
 Use this file as the first stop before reviewing plan work. Older plans remain useful as source material, but the authority matrix below defines which document owns each kind of decision.
@@ -204,6 +204,14 @@ The master backlog is retained as delivered/historical source material. New conv
 - Use for: reference only.
 
 ### Superpowers Implementation Plans
+
+#### Constellation TUI (Bodai Activity in Claude Code)
+
+- Spec: [../superpowers/specs/2026-07-15-constellation-tui-design.md](../superpowers/specs/2026-07-15-constellation-tui-design.md)
+- Plan: [../superpowers/plans/2026-07-15-constellation-tui.md](../superpowers/plans/2026-07-15-constellation-tui.md)
+- Status: `draft`, `implementation` — spec approved 2026-07-15; 10-task plan written, not yet executed
+- Use for: surfacing Bodai ecosystem activity (pools, workers, workflows, lifecycle events) inside Claude Code via three extension surfaces — extended `statusLine`, new `subagentStatusLine`, and OSC 777 native toasts. New `mahavishnu/constellation/` subpackage + `mahavishnu constellation install` CLI. Wired to the existing EventBridge (channel `bodai:events`); no transport changes.
+- Current implementation note: deferred per user direction (2026-07-15). Plan indexed for future pickup. Track 2 (Toad/ACP integration) is a separate brainstorm/spec.
 
 #### Akosha Skills
 
