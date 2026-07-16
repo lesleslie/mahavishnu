@@ -211,7 +211,15 @@ The master backlog is retained as delivered/historical source material. New conv
 - Plan: [../superpowers/plans/2026-07-15-constellation-tui.md](../superpowers/plans/2026-07-15-constellation-tui.md)
 - Status: `draft`, `implementation` — spec approved 2026-07-15; 10-task plan written, not yet executed
 - Use for: surfacing Bodai ecosystem activity (pools, workers, workflows, lifecycle events) inside Claude Code via three extension surfaces — extended `statusLine`, new `subagentStatusLine`, and OSC 777 native toasts. New `mahavishnu/constellation/` subpackage + `mahavishnu constellation install` CLI. Wired to the existing EventBridge (channel `bodai:events`); no transport changes.
-- Current implementation note: deferred per user direction (2026-07-15). Plan indexed for future pickup. Track 2 (Toad/ACP integration) is a separate brainstorm/spec.
+- Current implementation note: deferred per user direction (2026-07-15). Plan indexed for future pickup.
+
+#### Mahavishnu ACP Server (Toad/Editor Integration)
+
+- Spec: [../superpowers/specs/2026-07-15-mahavishnu-acp-server-design.md](../superpowers/specs/2026-07-15-mahavishnu-acp-server-design.md)
+- Status: `draft`, `implementation` — spec approved 2026-07-15; implementation plan not yet written
+- Use for: exposing Mahavishnu as an **ACP (Agent Client Protocol) server** so ACP clients (Toad, Zed, JetBrains, VS Code, future ACP tooling) can drive Mahavishnu directly via stdio JSON-RPC 2.0, alongside the existing A2A HTTP+SSE server. New `mahavishnu/acp/` subpackage with `mahavishnu acp serve` CLI command. EventBridge envelopes synthesize into ACP `session/update` notifications. `session/cancel` maps to Mahavishnu-side `asyncio.CancelledError`.
+- Current implementation note: deferred per user direction (2026-07-15). Indexed for future pickup. Toad has no public A2A roadmap; ACP is the integration path. A2A server unchanged. MCP-over-ACP RFD follow-on when upstream lands.
+- Relationship: complements the existing A2A server (`mahavishnu/a2a/server.py`) — second protocol, not replacement.
 
 #### Akosha Skills
 
