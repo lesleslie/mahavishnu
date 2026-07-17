@@ -1,7 +1,17 @@
+---
+status: complete
+role: historical
+date: 2026-07-16
+last_reviewed: 2026-07-16
+superseded_by: null
+blocks_on: []
+topic: routing-composition
+---
+
 # LLM Provider Reconfiguration Plan v2 (Reviewed)
 
 **Date**: 2026-04-13
-**Status**: Reviewed — ready for implementation
+**Status**: Reviewed — ready for implementation  <!-- legacy status — see YAML frontmatter -->
 **Replaces**: `peppy-cooking-graham.md` plan (superseded)
 
 ______________________________________________________________________

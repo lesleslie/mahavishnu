@@ -1,3 +1,13 @@
+---
+status: complete
+role: historical
+date: 2026-07-16
+last_reviewed: 2026-07-16
+superseded_by: null
+blocks_on: []
+topic: convergence-control-plane
+---
+
 # Implementation Feasibility Review: Bodai Routing Feedback Loop
 
 **Reviewer**: Implementation Reviewer (General Agent)
@@ -16,7 +26,7 @@ ______________________________________________________________________
 
 **File**: `oneiric/adapters/observability/otel.py`
 
-**Status**: No code changes needed. Plan's description has one non-blocking documentation inaccuracy.
+**Status**: No code changes needed. Plan's description has one non-blocking documentation inaccuracy.  <!-- legacy status — see YAML frontmatter -->
 
 **Verified capabilities**:
 

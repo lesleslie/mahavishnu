@@ -1,10 +1,20 @@
+---
+status: complete
+role: historical
+date: 2026-07-16
+last_reviewed: 2026-07-16
+superseded_by: null
+blocks_on: []
+topic: adapter-architecture
+---
+
 # Prefect Adapter Completion Plan
 
 > **Update (2026-04-02):** This plan remains valid but is reprioritized behind `docs/plans/2026-04-02-storage-consolidation-and-akosha-role.md`.
 > Continue Prefect work after core storage ownership, PostgreSQL cutover, and search persistence consolidation are underway.
 
 **Created:** 2026-02-20
-**Status:** COMPLETE — `mahavishnu/engines/prefect_adapter_impl.py` (1974 lines) fully implements `PrefectAdapter` with deployment CRUD, all schedule types, flow run management, and state sync. Checklist below is stale. Reference only.
+**Status:** COMPLETE — `mahavishnu/engines/prefect_adapter_impl.py` (1974 lines) fully implements `PrefectAdapter` with deployment CRUD, all schedule types, flow run management, and state sync. Checklist below is stale. Reference only.  <!-- legacy status — see YAML frontmatter -->
 **Priority:** High
 **Estimated Duration:** 4-6 weeks
 

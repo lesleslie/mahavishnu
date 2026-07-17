@@ -1,7 +1,17 @@
+---
+status: complete
+role: historical
+date: 2026-07-16
+last_reviewed: 2026-07-16
+superseded_by: null
+blocks_on: []
+topic: mcp-design
+---
+
 # MCP Server Connection Stability Plan
 
 **Date:** 2026-06-01
-**Status:** Reviewed by multi-agent panel (3 reviewers)
+**Status:** Reviewed by multi-agent panel (3 reviewers)  <!-- legacy status — see YAML frontmatter -->
 **Author:** Claude
 
 ## Executive Summary

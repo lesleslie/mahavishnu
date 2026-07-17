@@ -1,3 +1,13 @@
+---
+status: complete
+role: historical
+date: 2026-07-16
+last_reviewed: 2026-07-16
+superseded_by: null
+blocks_on: []
+topic: convergence-control-plane
+---
+
 # Ecosystem Review: Bodai Routing Feedback Loop Plan
 
 **Reviewer**: ecosystem-review (general agent)

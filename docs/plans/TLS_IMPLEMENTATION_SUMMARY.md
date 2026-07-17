@@ -1,3 +1,13 @@
+---
+status: complete
+role: historical
+date: 2026-07-16
+last_reviewed: 2026-07-16
+superseded_by: null
+blocks_on: []
+topic: mcp-design
+---
+
 # TLS/WSS Implementation Summary
 
 > **Update (2026-04-02):** This is a historical implementation summary with remaining ecosystem hardening tasks.

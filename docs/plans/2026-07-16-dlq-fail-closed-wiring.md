@@ -1,7 +1,17 @@
+---
+status: shipped
+role: implementation
+date: 2026-07-16
+last_reviewed: 2026-07-16
+superseded_by: null
+blocks_on: []
+topic: persistence
+---
+
 # DLQ Fail-Closed Wiring + Observability (Full #3)
 
 **Date:** 2026-07-16
-**Status:** shipped, implementation — all three phases complete (2026-07-16)
+**Status:** shipped, implementation — all three phases complete (2026-07-16)  <!-- legacy status — see YAML frontmatter -->
 **Owner:** Claude Code (session 854beabd)
 **Scope:** Make the opt-in DLQ fail-closed policy actually work in production, close the runtime OpenSearch-write data-loss window, and add the observability the original followup requested.
 **Purpose:** The `2026-06-29-dlq-silent-fallback.md` followup self-declared "Resolved," but a 2026-07-16 audit found the shipped flag is inert in production and a runtime write failure still silently drops failed tasks to a per-process in-memory deque. This plan closes that gap.
