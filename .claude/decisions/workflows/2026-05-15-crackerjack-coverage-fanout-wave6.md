@@ -2,7 +2,7 @@
 
 ## Status
 
-Active
+Superseded
 
 ## Context
 
@@ -15,3 +15,4 @@ Re-run this workflow as the final-mile pass when crackerjack has a handful of lo
 ## Status history
 
 - 2026-05-15 — Created.
+- 2026-05-22 — Superseded by crackerjack-cleanup-wave7.js (this workflow is now in `.archive/`).

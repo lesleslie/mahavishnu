@@ -2,7 +2,7 @@
 
 ## Status
 
-Active
+Superseded
 
 ## Context
 
@@ -15,3 +15,4 @@ Re-run this workflow when crackerjack total coverage drops below 70% or when a n
 ## Status history
 
 - 2026-04-26 — Created.
+- 2026-04-30 — Superseded by crackerjack-coverage-fanout-wave5.js (this workflow is now in `.archive/`).

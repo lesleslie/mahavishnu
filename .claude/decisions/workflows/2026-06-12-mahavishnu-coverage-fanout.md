@@ -2,7 +2,7 @@
 
 ## Status
 
-Active
+Superseded
 
 ## Context
 
@@ -15,3 +15,4 @@ Re-run this workflow (or its part-2 sibling) when mahavishnu overall coverage dr
 ## Status history
 
 - 2026-06-12 — Created.
+- 2026-06-12 — Superseded by mahavishnu-coverage-fanout-wave-2026-06-12-part2.js (this workflow is now in `.archive/`).

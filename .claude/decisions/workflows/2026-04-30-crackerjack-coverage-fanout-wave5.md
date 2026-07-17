@@ -2,7 +2,7 @@
 
 ## Status
 
-Active
+Superseded
 
 ## Context
 
@@ -15,3 +15,4 @@ Re-run this workflow when crackerjack has 4 or fewer small zero-coverage files l
 ## Status history
 
 - 2026-04-30 — Created.
+- 2026-05-15 — Superseded by crackerjack-coverage-fanout-wave6.js (this workflow is now in `.archive/`).
