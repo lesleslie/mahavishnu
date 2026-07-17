@@ -23,6 +23,7 @@ Sorted newest-first. **Verified state** is the state confirmed against the
 
 | File | Topic | Verified state (2026-07-16) |
 |------|-------|------------------------------|
+| `2026-07-16-multi-session-mcp-contention.md` | Multi-Claude-session MCP contention: 4 concurrent Stop hooks fire `sb_checkpoint.py` simultaneously; `session-buddy` singleton `threading.Lock` blocks uvicorn event loop → `-32000 transport dropped`. | 🔴 **Open** — root cause located in `session-buddy/crackerjack_integration.py:143` (external repo). Reproduction script provided (6/6 client timeouts at 30s under N=6 parallel). Mahavishnu-side mitigations documented (debounce + non-blocking hook). |
 | `2026-07-15-sb-checkpoint-stash-clobber.md` | Recurring: auto-checkpoint hook re-applies a `git stash` over in-flight subagent edits. | 🔴 **Open** — second observation; fix only *proposed* (Options A/B/C). Culprit lives in external `session-buddy` repo. |
 | `2026-06-29-crow-mcp-client-wiring.md` | `mahavishnu mcp start` crash — crow adapter constructed with `mcp_client=None`. | ✅ **Addressed** for stated scope (helper + 3 call sites + tests). Adjacent gaps: no end-to-end env-precedence test; `core/adapters/worker.py:72-75` non-CLI caller still passes `None`. |
 | `2026-06-29-dlq-silent-fallback.md` | DLQ silently falls back to a per-process in-memory deque when OpenSearch is down (data loss). | *archived* — see `.archive/` row. |
