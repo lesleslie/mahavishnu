@@ -104,6 +104,26 @@ Topics are slug strings applied to the `topic` field. The controlled list lives 
 
 The validator runs in **hybrid mode**: known topics pass without warning; unknown topics pass with a `--strict` warning so the maintainer can decide whether to expand the vocabulary or normalize the value. Editing the vocabulary file is a normal doc change requiring no plan amendment.
 
+## Regeneration
+
+`docs/plans/PLAN_INDEX.md` is **mechanically regenerated** from the frontmatter defined by this schema. Run:
+
+```bash
+uv run python scripts/regenerate_plan_index.py          # write to docs/plans/PLAN_INDEX.md
+uv run python scripts/regenerate_plan_index.py --dry-run # print to stdout, do not write
+uv run python scripts/regenerate_plan_index.py --out path/to/other.md
+uv run python scripts/regenerate_plan_index.py --json-summary # emit per-store counts on stderr
+```
+
+Discovery rules (mirrors the validator's exclusion list):
+
+- Default stores: `docs/adr/`, `docs/plans/`, `docs/superpowers/specs/`, `docs/superpowers/plans/`, `.claude/decisions/`, `docs/followups/`.
+- Always excluded: `docs/plans/PLAN_INDEX.md` (self-skip), `docs/plans/drafts/`, any `*.archive*` or `*.backup*` subdirectory or suffix.
+- Output is rendered with a fixed frontmatter block, the Status Legend, an Authority Matrix, a Review Entry Points block, one registry table per store (sorted by `date` DESC), and a Lifecycle × Role distribution table at the bottom.
+- Files without valid frontmatter are silently skipped — they are the validator's job, not the indexer's.
+
+Because the index is regenerated, the file is **not hand-edited**; do not edit by hand. If the index needs to change, change this schema (or the regenerator script) and re-run it. The output file's `Last regenerated:` line records the date of the last successful regeneration.
+
 ## Approved Adjustments
 
 Two open questions were resolved before migration began. Both are binding for Phases P0–P6.
