@@ -23,11 +23,9 @@ Sorted newest-first. **Verified state** is the state confirmed against the
 
 | File | Topic | Verified state (2026-07-16) |
 |------|-------|------------------------------|
-| `2026-07-15-pickup-bodai-hooks-and-sb-debug.md` | Pickup prompt: debug Session-Buddy MCP transport drops (`-32000`) + audit Bodai Claude Code hook firing. | 🔴 **Open** — resolution doc never written; hook coverage gaps confirmed in `.claude/settings.json`. Root cause in external `session-buddy` repo. |
 | `2026-07-15-sb-checkpoint-stash-clobber.md` | Recurring: auto-checkpoint hook re-applies a `git stash` over in-flight subagent edits. | 🔴 **Open** — second observation; fix only *proposed* (Options A/B/C). Culprit lives in external `session-buddy` repo. |
 | `2026-06-29-crow-mcp-client-wiring.md` | `mahavishnu mcp start` crash — crow adapter constructed with `mcp_client=None`. | ✅ **Addressed** for stated scope (helper + 3 call sites + tests). Adjacent gaps: no end-to-end env-precedence test; `core/adapters/worker.py:72-75` non-CLI caller still passes `None`. |
 | `2026-06-29-dlq-silent-fallback.md` | DLQ silently falls back to a per-process in-memory deque when OpenSearch is down (data loss). | *archived* — see `.archive/` row. |
-| `2026-06-29-opensearch-diverged-flags.md` | Duplicate `OPENSEARCH_AVAILABLE` flags can diverge and silently swallow tasks. | ✅ **Resolved for live paths** — `opensearch_integration.py` + `dead_letter_queue.py` share `opensearch_constants.py` (guard test enforces it). Residual: the **deprecated, test-only** `workflow_state.py:17-23` keeps its own flag, but its OpenSearch path is retired — no live divergence risk. |
 | `2026-06-29-opensearch-diverged-flags.md` | Duplicate `OPENSEARCH_AVAILABLE` flags can diverge and silently swallow tasks. | ✅ **Resolved for live paths** — `opensearch_integration.py` + `dead_letter_queue.py` share `opensearch_constants.py` (guard test enforces it). Residual: the **deprecated, test-only** `workflow_state.py:17-23` keeps its own flag, but its OpenSearch path is retired — no live divergence risk. |
 
 ## Archived (`.archive/`)
@@ -39,6 +37,8 @@ repo-wide `.archive/` ignore.
 | File | Topic | Why archived |
 |------|-------|--------------|
 | `.archive/2026-07-15-comprehensive-hooks-cleanup-checkpoint.md` | Session checkpoint: 3-wave comprehensive-hooks cleanup (complexity refactor, ty/DRY fix, PEP 735 manifest reshuffle). | ✅ All described changes present in `HEAD` (audit-verified). |
+| `.archive/2026-07-15-bodai-hooks-sb-debug.md` | Pickup prompt: debug Session-Buddy MCP transport drops (`-32000`) + audit Bodai Claude Code hook firing. | ✅ **Resolved** — root cause is `.claude/settings.json` flat-layout (silently ignored) + multi-session MCP contention, not a server bug. Failing test pinned at `tests/unit/test_claude_settings_hooks_format.py`; fix documented in paired `.archive/2026-07-15-bodai-hooks-sb-debug-resolution.md` (not auto-applied per multi-session safety policy). |
+| `.archive/2026-07-15-bodai-hooks-sb-debug-resolution.md` | Paired resolution doc: root-cause + failing test + proposed fix for the flat-layout bug. | ✅ Resolution written and archived together with its pickup note (per lifecycle rule's "2026-07-15 style"). Open follow-up: multi-session MCP contention architectural fix tracked under new followup entry. |
 | `.archive/2026-06-29-agno-adapter-config-field-path.md` | Agno adapter rejected user config via duplicated config classes and silently fell back to Ollama. | ✅ Canonical shared classes + 3 regression tests verified in current code. |
 | `.archive/2026-06-29-pydantic-settings-source-resolution.md` | pydantic-settings merge order let YAML mask env/`local.yaml` overrides for nested settings. | ✅ Source-order fix + 36-test regression suite + original reproduction all pass. |
 
