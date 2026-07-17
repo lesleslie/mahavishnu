@@ -5,11 +5,17 @@
 > A plan is not "done" until every deliverable has an Integration Contract
 > block, even if that block says "no wiring required (rationale: …)".
 
-**Date:** YYYY-MM-DD
-**Status:** draft, planning
-**Owner:** <role or name>
-**Scope:** <one-line description of what this plan delivers>
-**Purpose:** <why we are doing this work>
+---
+status: draft
+role: implementation
+date: 2026-07-16
+last_reviewed: 2026-07-16
+superseded_by: null
+blocks_on: []
+topic: routing-composition
+---
+
+_See `docs/schemas/document-frontmatter-v1.md` for the schema definition._
 
 ## 1. Outcome
 
