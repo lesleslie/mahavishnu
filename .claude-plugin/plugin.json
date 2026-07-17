@@ -5,5 +5,5 @@
   "description": "Bodai plugin for the Mahavishnu orchestrator MCP server.",
   "author": {"name": "Bodai"},
   "keywords": ["bodai", "mcp", "mahavishnu", "orchestrator"],
-  "mcpServers": ".mcp.json"
+  "mcpServers": "./.mcp.json"
 }
