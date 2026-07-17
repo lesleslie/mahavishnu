@@ -11,8 +11,19 @@ hook:
   (default policy; never auto-removes the git worktree).
 
 When the env var is **unset** (the default), the hook returns 0 in
-``<2ms`` with zero side effects. This preserves the "default off,
-opt in" contract per the 4-lens plan review.
+``<2s`` with the following possible side effect:
+
+- **Discovery hint** (SessionStart only): when ``cwd`` is a git repo,
+  is not already a worktree, and the configured worktree root
+  (``MAHAVISHNU_AUTO_WORKTREE_ROOT``, default ``~/worktrees``) does
+  not yet exist, prints a one-line stderr message pointing the user
+  at the opt-in env var. No filesystem mutation, no mahavishnu
+  import. Silenced by setting ``MAHAVISHNU_AUTO_WORKTREE`` to any
+  value (truthy to enable, falsy to disable without seeing the hint).
+
+This preserves the "default off, opt in" contract per the 4-lens
+plan review, while addressing the discoverability gap noted after
+the rollout.
 
 Module load is stdlib-only. The ``mahavishnu.core.worktree_coordination``
 import is gated behind the env-var check, so default-off sessions
@@ -26,11 +37,10 @@ Reference: plan ``/Users/les/.claude/plans/cheerful-marinating-fountain.md``
 """
 from __future__ import annotations
 
-import asyncio
 import os
+from pathlib import Path
 import subprocess  # nosec B404 — argv-list only, no shell
 import sys
-from pathlib import Path
 
 # Shared helper lives in the same .claude/hooks directory.
 sys.path.insert(0, str(Path(__file__).resolve().parent))
@@ -303,6 +313,44 @@ def _run_session_end(session_id_full: str) -> int:
     return 0
 
 
+def _maybe_print_discovery_hint(cwd: str, mode: str) -> None:
+    """One-line stderr hint when ``MAHAVISHNU_AUTO_WORKTREE`` is unset.
+
+    Fires ONLY on SessionStart when ALL conditions are met:
+
+    - ``MAHAVISHNU_AUTO_WORKTREE`` is unset (user has not touched the
+      env var — they may not know the feature exists)
+    - cwd is a git repo (not already a worktree)
+    - ``MAHAVISHNU_AUTO_WORKTREE_ROOT`` doesn't exist yet (default
+      ``~/worktrees``)
+
+    The hint is purely informational: stderr write only, no filesystem
+    mutation, no mahavishnu import. Silenced by setting
+    ``MAHAVISHNU_AUTO_WORKTREE`` to any value (truthy to enable, falsy
+    to disable without seeing the hint).
+
+    Reference: ``.claude/decisions/session-worktree-defaults.md``.
+    """
+    if mode != "session-start":
+        return
+    if OPT_IN_ENV in os.environ:
+        return  # user has touched the env var — they're informed
+    if not cwd:
+        return
+    if _cwd_is_inside_worktree(cwd):
+        return  # already in a worktree — they know
+    if _detect_repo_nickname(cwd) is None:
+        return  # not a git repo — feature not applicable
+    root_env = os.environ.get(ROOT_ENV, "~/worktrees")
+    root = Path(root_env).expanduser()
+    if root.exists():
+        return  # already configured — they've set something up
+    _log(
+        "MAHAVISHNU_AUTO_WORKTREE=1 enables per-session worktrees; "
+        "see docs/CONFIGURATION.md"
+    )
+
+
 def main() -> int:
     """Dispatch on argv[1]: ``--mode session-start`` or ``--mode session-end``.
 
@@ -320,13 +368,15 @@ def main() -> int:
     session_id_full = payload.session_id
     cwd = payload.cwd
 
-    # Default-off fast path: no env var → no mahavishnu import → return 0.
-    if not _is_truthy(os.environ.get(OPT_IN_ENV)):
-        return 0
-
+    # Resolve mode (used for both hint gating and dispatch below)
     if mode is None:
-        # Auto-detect: SessionEnd has no cwd/tool_name typically.
         mode = "session-end" if not cwd else "session-start"
+
+    # Default-off fast path: no env var → no mahavishnu import → return 0.
+    # BUT: discovery hint may fire here if conditions are met.
+    if not _is_truthy(os.environ.get(OPT_IN_ENV)):
+        _maybe_print_discovery_hint(cwd, mode)
+        return 0
 
     if mode == "session-start":
         return _run_session_start(session_id_full, cwd)

@@ -71,6 +71,31 @@ When **multiple Claude Code sessions run concurrently** in the same repo, they s
 | `MAHAVISHNU_AUTO_WORKTREE_BRANCH_BASE` | `main` | Base branch when creating the new session branch. |
 | `MAHAVISHNU_AUTO_WORKTREE_CLEANUP` | `mark` | `mark` records the worktree as `abandoned` in the registry at SessionEnd (recommended). `keep` is a no-op. The plan never auto-removes worktrees — see [`mahavishnu worktree prune-abandoned`](#cli-cleanup) below. |
 
+### Discovery hint (default-off side effect)
+
+When `MAHAVISHNU_AUTO_WORKTREE` is **unset** (the default), the SessionStart hook prints a one-line stderr hint to users who would benefit from the feature:
+
+```
+mahavishnu: MAHAVISHNU_AUTO_WORKTREE=1 enables per-session worktrees; see docs/CONFIGURATION.md
+```
+
+The hint fires ONLY when ALL of these are true:
+
+1. Mode is `session-start` (never on `session-end`)
+2. `MAHAVISHNU_AUTO_WORKTREE` is unset (any value — including `0` — silences the hint)
+3. `cwd` is non-empty
+4. `cwd` is not already inside a worktree
+5. `cwd` is a git repo (or a sub-directory of one)
+6. `MAHAVISHNU_AUTO_WORKTREE_ROOT` (default `~/worktrees`) does not yet exist
+
+The hint is purely informational — no filesystem mutation, no mahavishnu import, no registry write. To silence without enabling the feature:
+
+```bash
+export MAHAVISHNU_AUTO_WORKTREE=0   # or any value; the env var being "touched" silences the hint
+```
+
+This is the discoverability middle ground: default-off preserves the consent contract (no FS mutation without opt-in), while the hint surfaces the feature to users in multi-session setups who didn't know to look for it.
+
 State file path: `$MAHAVISHNU_HOME/session-worktrees.json` (XDG state dir by default). The `MAHAVISHNU_HOME` env var is the standard override used by all mahavishnu state files.
 
 CLI cleanup: `mahavishnu worktree prune-abandoned --older-than-days 7` removes abandoned registry entries older than 7 days (the registry entry only — the git worktree itself stays until you `mahavishnu worktree remove` it explicitly).

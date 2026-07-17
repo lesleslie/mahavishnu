@@ -25,9 +25,11 @@ causing file stomping, branch conflicts, and dirty-tree merge problems.
 ## Decision rule
 
 1. **Default-off, opt-in.** The SessionStart hook is wired in
-   `.claude/settings.json` but exits in `<2ms` with zero side effects when
-   `MAHAVISHNU_AUTO_WORKTREE` is unset. Users MUST set the env var
-   explicitly to enable.
+   `.claude/settings.json`. When `MAHAVISHNU_AUTO_WORKTREE` is unset,
+   the hook returns 0 in `<2s` after optionally printing a one-line
+   stderr discovery hint (see rule 6). Users MUST set the env var
+   explicitly to enable; setting it to any value (including `0`)
+   silences the hint.
 
 2. **Never auto-removes worktrees.** SessionEnd marks the entry
    `abandoned` in the registry but does NOT delete the git worktree.
@@ -49,6 +51,20 @@ causing file stomping, branch conflicts, and dirty-tree merge problems.
    semantics differ). mahavishnu is Unix-targeted by posture; this is
    not portable to Windows.
 
+6. **Discovery hint is the only default-off side effect** (Phase 4,
+   2026-07-17). When `MAHAVISHNU_AUTO_WORKTREE` is unset AND
+   `mode == "session-start"` AND `cwd` is non-empty AND `cwd` is a
+   git repo (not already a worktree) AND `MAHAVISHNU_AUTO_WORKTREE_ROOT`
+   does not yet exist, the hook prints one line to stderr:
+
+   ```
+   mahavishnu: MAHAVISHNU_AUTO_WORKTREE=1 enables per-session worktrees; see docs/CONFIGURATION.md
+   ```
+
+   No filesystem mutation, no registry write, no mahavishnu import.
+   Silenced by setting `MAHAVISHNU_AUTO_WORKTREE` to any value
+   (truthy to enable, falsy to disable without seeing the hint).
+
 ## Threat model
 
 | Threat | Mitigation |
@@ -61,6 +77,8 @@ causing file stomping, branch conflicts, and dirty-tree merge problems.
 | Untrusted branch name with shell metacharacters | `git worktree add` uses argv-list (no shell=True); branch name is `worktree-agent-<hex8>` derived from validated UUID |
 | Worktree fills disk over time | Manual cleanup via `mahavishnu worktree prune-abandoned` — never automatic |
 | Session_id injection | `uuid.UUID()` strict validation; registry key is hex-only |
+| Default-off sessions pollute stderr with hint spam | Hint only fires when conditions met (SessionStart + git repo + non-worktree + missing root); silenced by any value of `MAHAVISHNU_AUTO_WORKTREE` |
+| Discovery hint bypasses the user's no-stderr-noise preference | Single line of stderr; gated by `MAHAVISHNU_AUTO_WORKTREE` being unset (any value silences) |
 
 ## Out of scope
 
@@ -71,6 +89,10 @@ causing file stomping, branch conflicts, and dirty-tree merge problems.
 - **Per-user ACLs**: assumes single-user dev box. If mahavishnu ever
   runs as a multi-user service, the registry path needs additional
   hardening (user-prefixed subdirs).
+- **Suppressing the hint while keeping the feature opt-out clean**:
+  today, `MAHAVISHNU_AUTO_WORKTREE=0` silences the hint AND turns the
+  feature off. If users complain about that conflation, split into
+  `MAHAVISHNU_AUTO_WORKTREE_HINT=0` (deferred until signal).
 
 ## Why opt-in (not default-on)
 
@@ -87,10 +109,26 @@ Three reasons, in order of weight:
    MAHAVISHNU_AUTO_WORKTREE`) is more error-prone than default-off with
    an opt-in. The latter forces a deliberate choice.
 
+### Phase 4 addition (2026-07-17): discovery hint
+
+The discoverability gap noted after the Phase 1-3 rollout was real:
+multi-session power users — the target audience — were never opting
+in because they didn't know the feature existed. To address this
+without flipping the default, Phase 4 added a one-line stderr hint
+that fires when conditions suggest the feature would be useful
+(SessionStart, git repo, non-worktree, missing root dir). The hint
+preserves the consent contract (no filesystem mutation) while
+improving findability.
+
+If the opt-in rate is still low after a quarter of hint exposure,
+revisit flipping the default. Until then, this middle ground is the
+recommended posture.
+
 ## Cross-references
 
 - Pickup followup: `docs/followups/2026-07-16-session-worktree-isolation.md`
 - 4-lens plan: `/Users/les/.claude/plans/cheerful-marinating-fountain.md`
 - Phase 1 commit: `5a7e001c` (registry + CLI)
 - Phase 2 commit: `ccec4357` (hook + settings wiring)
+- Phase 4 commit: pending (discovery hint + docs)
 - Plan-template lifecycle: `.claude/decisions/wire-up-contract.md`

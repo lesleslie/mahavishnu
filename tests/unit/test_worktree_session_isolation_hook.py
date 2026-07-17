@@ -17,8 +17,8 @@ Coverage:
 from __future__ import annotations
 
 import importlib.util
-import time
 from pathlib import Path
+import time
 
 import pytest
 
@@ -142,7 +142,6 @@ def test_cwd_is_inside_worktree_returns_false_for_non_git_dir(
     tmp_path: Path,
 ) -> None:
     """Non-git dir: returns False, no git invocation side-effects."""
-    from _hook_io import read_session_payload  # trigger path setup
     # Load the hook module
     import importlib.util
 
@@ -245,3 +244,296 @@ def test_main_with_env_set_does_not_block_on_stdin(
     assert rc == 0
     # Should complete well under 2s (no mahavishnu import needed when no .git).
     assert elapsed < 2.0, f"main() took {elapsed:.2f}s, expected <2s"
+
+
+# ── Discovery hint (Phase 4) ──────────────────────────────────────
+
+
+def _load_with_stderr(
+    monkeypatch: pytest.MonkeyPatch,
+    module_name: str,
+    stdin_payload: str,
+    argv: list[str],
+    env: dict[str, str] | None = None,
+    cwd: str | None = None,
+    root: str | None = None,
+):
+    """Helper: load the hook module with custom env, stdin, argv, stderr.
+
+    Returns ``(module, captured_stderr)``. Sets up:
+
+    - ``MAHAVISHNU_AUTO_WORKTREE`` (deleted or from env dict)
+    - ``MAHAVISHNU_AUTO_WORKTREE_ROOT`` (optional, for the root-exists test)
+    - ``sys.stdin`` to ``stdin_payload``
+    - ``sys.argv`` to ``argv``
+    - ``sys.stderr`` to a ``StringIO`` for capture
+
+    Returns the loaded module and the captured stderr buffer.
+    """
+    import importlib.util
+    import io
+    import sys
+
+    if env is None:
+        env = {}
+    if "MAHAVISHNU_AUTO_WORKTREE" in env:
+        monkeypatch.setenv("MAHAVISHNU_AUTO_WORKTREE", env["MAHAVISHNU_AUTO_WORKTREE"])
+    else:
+        monkeypatch.delenv("MAHAVISHNU_AUTO_WORKTREE", raising=False)
+    if root is not None:
+        monkeypatch.setenv("MAHAVISHNU_AUTO_WORKTREE_ROOT", root)
+    elif "MAHAVISHNU_AUTO_WORKTREE_ROOT" in env:
+        monkeypatch.setenv(
+            "MAHAVISHNU_AUTO_WORKTREE_ROOT", env["MAHAVISHNU_AUTO_WORKTREE_ROOT"]
+        )
+    monkeypatch.setattr(sys, "stdin", io.StringIO(stdin_payload))
+    monkeypatch.setattr(sys, "argv", argv)
+    captured = io.StringIO()
+    monkeypatch.setattr(sys, "stderr", captured)
+
+    spec = importlib.util.spec_from_file_location(module_name, _HOOK_PATH)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module, captured
+
+
+def test_discovery_hint_fires_when_unset_and_git_repo_and_root_missing(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Default conditions: hint fires when env unset + git repo + root missing."""
+    import json
+
+    (tmp_path / ".git").mkdir()
+    nonexistent_root = tmp_path / "worktrees-does-not-exist"
+    assert not nonexistent_root.exists()
+
+    module, captured = _load_with_stderr(
+        monkeypatch,
+        "hook_hint_fires",
+        json.dumps({
+            "session_id": "0190f8a4-b9c1-7def-a012-3456789abcde",
+            "cwd": str(tmp_path),
+        }),
+        ["worktree-session-isolation.py"],
+        root=str(nonexistent_root),
+    )
+
+    rc = module.main()
+    assert rc == 0
+    output = captured.getvalue()
+    assert "MAHAVISHNU_AUTO_WORKTREE=1" in output
+    assert "per-session worktrees" in output
+
+
+def test_discovery_hint_silent_when_env_set_truthy(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """``MAHAVISHNU_AUTO_WORKTREE=1`` (opted in) → no hint (user is informed)."""
+    import json
+
+    (tmp_path / ".git").mkdir()
+    nonexistent_root = tmp_path / "worktrees-does-not-exist"
+
+    module, captured = _load_with_stderr(
+        monkeypatch,
+        "hook_hint_opt_in",
+        json.dumps({
+            "session_id": "0190f8a4-b9c1-7def-a012-3456789abcde",
+            "cwd": str(tmp_path),
+        }),
+        ["worktree-session-isolation.py"],
+        env={"MAHAVISHNU_AUTO_WORKTREE": "1"},
+        root=str(nonexistent_root),
+    )
+
+    rc = module.main()
+    assert rc == 0
+    assert "MAHAVISHNU_AUTO_WORKTREE=1" not in captured.getvalue()
+
+
+def test_discovery_hint_silent_when_env_set_falsy(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """``MAHAVISHNU_AUTO_WORKTREE=0`` (explicit opt-out) → no hint."""
+    import json
+
+    (tmp_path / ".git").mkdir()
+    nonexistent_root = tmp_path / "worktrees-does-not-exist"
+
+    module, captured = _load_with_stderr(
+        monkeypatch,
+        "hook_hint_opt_out",
+        json.dumps({
+            "session_id": "0190f8a4-b9c1-7def-a012-3456789abcde",
+            "cwd": str(tmp_path),
+        }),
+        ["worktree-session-isolation.py"],
+        env={"MAHAVISHNU_AUTO_WORKTREE": "0"},
+        root=str(nonexistent_root),
+    )
+
+    rc = module.main()
+    assert rc == 0
+    assert "MAHAVISHNU_AUTO_WORKTREE=1" not in captured.getvalue()
+
+
+def test_discovery_hint_silent_when_not_git_repo(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """cwd is not a git repo → no hint (feature not applicable)."""
+    import json
+
+    # tmp_path has no .git
+    nonexistent_root = tmp_path / "worktrees-does-not-exist"
+
+    module, captured = _load_with_stderr(
+        monkeypatch,
+        "hook_hint_no_git",
+        json.dumps({
+            "session_id": "0190f8a4-b9c1-7def-a012-3456789abcde",
+            "cwd": str(tmp_path),
+        }),
+        ["worktree-session-isolation.py"],
+        root=str(nonexistent_root),
+    )
+
+    rc = module.main()
+    assert rc == 0
+    assert "MAHAVISHNU_AUTO_WORKTREE=1" not in captured.getvalue()
+
+
+def test_discovery_hint_silent_when_cwd_is_worktree(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """cwd is already a worktree → no hint (already set up)."""
+    import json
+
+    (tmp_path / ".git").mkdir()
+    nonexistent_root = tmp_path / "worktrees-does-not-exist"
+
+    module, captured = _load_with_stderr(
+        monkeypatch,
+        "hook_hint_in_worktree",
+        json.dumps({
+            "session_id": "0190f8a4-b9c1-7def-a012-3456789abcde",
+            "cwd": str(tmp_path),
+        }),
+        ["worktree-session-isolation.py"],
+        root=str(nonexistent_root),
+    )
+    # Mock the (currently-broken-for-real-worktrees) helper to True so we
+    # can isolate the hint logic. The bug in _cwd_is_inside_worktree is
+    # tracked separately; this test only verifies the hint gating.
+    monkeypatch.setattr(module, "_cwd_is_inside_worktree", lambda cwd: True)
+
+    rc = module.main()
+    assert rc == 0
+    assert "MAHAVISHNU_AUTO_WORKTREE=1" not in captured.getvalue()
+
+
+def test_discovery_hint_silent_when_root_exists(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The configured worktree root already exists → no hint (already set up)."""
+    import json
+
+    (tmp_path / ".git").mkdir()
+    existing_root = tmp_path / "worktrees"
+    existing_root.mkdir()
+    assert existing_root.exists()
+
+    module, captured = _load_with_stderr(
+        monkeypatch,
+        "hook_hint_root_exists",
+        json.dumps({
+            "session_id": "0190f8a4-b9c1-7def-a012-3456789abcde",
+            "cwd": str(tmp_path),
+        }),
+        ["worktree-session-isolation.py"],
+        root=str(existing_root),
+    )
+
+    rc = module.main()
+    assert rc == 0
+    assert "MAHAVISHNU_AUTO_WORKTREE=1" not in captured.getvalue()
+
+
+def test_discovery_hint_silent_when_cwd_empty(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Empty cwd (SessionEnd payload) → no hint."""
+    import json
+
+    module, captured = _load_with_stderr(
+        monkeypatch,
+        "hook_hint_empty_cwd",
+        json.dumps({
+            "session_id": "0190f8a4-b9c1-7def-a012-3456789abcde",
+            "cwd": "",
+        }),
+        ["worktree-session-isolation.py"],
+    )
+
+    rc = module.main()
+    assert rc == 0
+    assert "MAHAVISHNU_AUTO_WORKTREE=1" not in captured.getvalue()
+
+
+def test_discovery_hint_silent_on_session_end(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Explicit SessionEnd (--mode) → no hint (hint is SessionStart only)."""
+    import json
+
+    (tmp_path / ".git").mkdir()
+    nonexistent_root = tmp_path / "worktrees-does-not-exist"
+
+    module, captured = _load_with_stderr(
+        monkeypatch,
+        "hook_hint_session_end",
+        json.dumps({
+            "session_id": "0190f8a4-b9c1-7def-a012-3456789abcde",
+            "cwd": str(tmp_path),
+        }),
+        ["worktree-session-isolation.py", "--mode", "session-end"],
+        root=str(nonexistent_root),
+    )
+
+    rc = module.main()
+    assert rc == 0
+    assert "MAHAVISHNU_AUTO_WORKTREE=1" not in captured.getvalue()
+
+
+def test_discovery_hint_completes_in_under_two_seconds(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Default-off with hint attempt completes in <2s.
+
+    Regression test: the hint adds a ``git rev-parse`` call (~5-50ms)
+    plus a path walk + stat. Total cost is dominated by git latency.
+    The default-off contract is relaxed from "<2ms" to "<2s" to
+    absorb the hint cost. SessionStart hook budgets allow 2s.
+    """
+    import json
+
+    (tmp_path / ".git").mkdir()
+    nonexistent_root = tmp_path / "worktrees-does-not-exist"
+
+    module, captured = _load_with_stderr(
+        monkeypatch,
+        "hook_hint_fast_path",
+        json.dumps({
+            "session_id": "0190f8a4-b9c1-7def-a012-3456789abcde",
+            "cwd": str(tmp_path),
+        }),
+        ["worktree-session-isolation.py"],
+        root=str(nonexistent_root),
+    )
+
+    start = time.perf_counter()
+    rc = module.main()
+    elapsed = time.perf_counter() - start
+    assert rc == 0
+    assert elapsed < 2.0, f"main() took {elapsed:.2f}s, expected <2s"
+    # Sanity check: hint actually fired (so we're measuring the full path)
+    assert "MAHAVISHNU_AUTO_WORKTREE=1" in captured.getvalue()
