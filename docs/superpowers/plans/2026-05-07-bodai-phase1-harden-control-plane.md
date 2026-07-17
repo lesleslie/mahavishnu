@@ -1,7 +1,16 @@
+---
+status: shipped
+role: implementation
+date: 2026-07-16
+last_reviewed: 2026-07-16
+superseded_by: null
+topic: convergence-control-plane
+---
+
 # Phase 1: Harden the Control Plane
 
 **Date**: 2026-05-07
-**Status**: COMPLETE — shipped 2026-05-07
+**Status**: COMPLETE — shipped 2026-05-07 <!-- legacy status: COMPLETE — see YAML frontmatter -->
 **Scope**: Replace simulated integrations in `checkpoint.py` and `qc/checker.py` with real service-backed HTTP MCP calls
 
 ## Context

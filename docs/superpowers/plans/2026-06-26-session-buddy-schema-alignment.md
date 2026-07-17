@@ -1,6 +1,15 @@
+---
+status: draft
+role: implementation
+date: 2026-07-16
+last_reviewed: 2026-07-16
+superseded_by: null
+topic: session-buddy-schema-alignment
+---
+
 # Session-Buddy v2/Legacy Schema Alignment Plan
 
-**Status:** Drafted 2026-06-26, post-Plan-2 work
+**Status:** Drafted 2026-06-26, post-Plan-2 work <!-- legacy status: Drafted — see YAML frontmatter -->
 **Owner:** TBD (subagent-driven-development recommended)
 **Trigger:** HANDOFF.md "2026-06-26 follow-up — Session-Buddy v2/legacy schema alignment" section; surfaced while closing Plan 2 quality-gate items.
 

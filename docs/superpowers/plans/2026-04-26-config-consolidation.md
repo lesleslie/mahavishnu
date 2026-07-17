@@ -1,3 +1,12 @@
+---
+status: shipped
+role: implementation
+date: 2026-07-16
+last_reviewed: 2026-07-16
+superseded_by: null
+topic: config-consolidation
+---
+
 # Config Consolidation: Mahavishnu as Self-Contained Dev Environment — Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
@@ -8,7 +17,7 @@
 
 **Tech Stack:** Python stdlib (`pathlib`, `json`, `shutil`, `yaml`), Typer (existing in Mahavishnu CLI), pytest.
 
-**Status:** `delivered 2026-05-14 (verified)` — `scripts/migrate_config_to_project.py` (241 lines), `tests/unit/test_migration_script.py` (8 tests), `.claude/` directory populated, CLI commands `list-agents`/`list-skills`/`list-mcp-servers`/`sync-from-global`/`rollback` all implemented.
+**Status:** `delivered 2026-05-14 (verified)` — `scripts/migrate_config_to_project.py` (241 lines), `tests/unit/test_migration_script.py` (8 tests), `.claude/` directory populated, CLI commands `list-agents`/`list-skills`/`list-mcp-servers`/`sync-from-global`/`rollback` all implemented. <!-- legacy status: delivered — see YAML frontmatter -->
 
 ______________________________________________________________________
 

@@ -1,8 +1,17 @@
+---
+status: shipped
+role: implementation
+date: 2026-07-16
+last_reviewed: 2026-07-16
+superseded_by: null
+topic: pattern-learning-scaffolding
+---
+
 # Pattern Learning & Scaffolding Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Status:** COMPLETE — all tasks checked [x]. `PatternLibrary`, `ScaffoldingEngine`, and YAML pattern templates shipped in `mahavishnu/scaffolding/` and `mahavishnu/models/pattern.py`. Reference only.
+**Status:** COMPLETE — all tasks checked [x]. `PatternLibrary`, `ScaffoldingEngine`, and YAML pattern templates shipped in `mahavishnu/scaffolding/` and `mahavishnu/models/pattern.py`. Reference only. <!-- legacy status: COMPLETE — see YAML frontmatter -->
 
 **Goal:** Build a pattern learning and scaffolding system that learns Fastblocks/Oneiric architectural patterns from existing projects and generates new web applications from composed patterns — "Lovable for Fastblocks."
 

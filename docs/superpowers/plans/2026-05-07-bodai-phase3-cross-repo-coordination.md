@@ -1,7 +1,16 @@
+---
+status: shipped
+role: implementation
+date: 2026-07-16
+last_reviewed: 2026-07-16
+superseded_by: null
+topic: convergence-control-plane
+---
+
 # Phase 3: Cross-Repo Coordination — Gap Closure
 
 **Date**: 2026-05-07
-**Status**: COMPLETE — shipped 2026-05-07
+**Status**: COMPLETE — shipped 2026-05-07 <!-- legacy status: COMPLETE — see YAML frontmatter -->
 **Scope**: Close the three remaining gaps in the coordination layer
 
 ## What's Already Done

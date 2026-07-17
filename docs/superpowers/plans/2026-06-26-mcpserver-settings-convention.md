@@ -1,6 +1,15 @@
+---
+status: draft
+role: implementation
+date: 2026-07-16
+last_reviewed: 2026-07-16
+superseded_by: null
+topic: mcpserver-settings-convention
+---
+
 # MCP Server Settings Convention — `OneiricMCPConfig` + `mcp-common`
 
-**Status:** Drafted 2026-06-26, post-fleet audit
+**Status:** Drafted 2026-06-26, post-fleet audit <!-- legacy status: Drafted — see YAML frontmatter -->
 **Owner:** TBD
 **Trigger:** 2026-06-26 fleet audit (`*-mcp` repos) revealed a real convention exists in 7 of 15 repos but 8 are lighter; spline-mcp is the lone outlier that uses neither oneiric-config nor mcp-common-config.
 

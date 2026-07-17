@@ -1,6 +1,15 @@
+---
+status: draft
+role: implementation
+date: 2026-07-16
+last_reviewed: 2026-07-16
+superseded_by: null
+topic: fastmcp-3-upgrade
+---
+
 # FastMCP 3.x Ecosystem Upgrade Plan
 
-**Status:** Drafted 2026-06-26, post-Plan 1 Phase 0 subagent observation
+**Status:** Drafted 2026-06-26, post-Plan 1 Phase 0 subagent observation <!-- legacy status: Drafted — see YAML frontmatter -->
 **Owner:** TBD (mcp-common first, then propagate outward)
 **Trigger:** Plan 1 Phase 0 subagent surfaced two breaking-change callouts while scaffolding `mahavishnu/mcp/crow/`:
 

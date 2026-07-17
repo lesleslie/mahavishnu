@@ -1,8 +1,17 @@
+---
+status: shipped
+role: implementation
+date: 2026-07-16
+last_reviewed: 2026-07-16
+superseded_by: null
+topic: code-indexing-integration
+---
+
 # Code Indexing Integration Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Status:** COMPLETE — all 42 tasks shipped 2026-04-30 per Phase 4 annotation. Call chain, impact analysis, and incremental re-indexing live in `session_buddy/subscribers/code_graph_subscriber.py`. Reference only.
+**Status:** COMPLETE — all 42 tasks shipped 2026-04-30 per Phase 4 annotation. Call chain, impact analysis, and incremental re-indexing live in `session_buddy/subscribers/code_graph_subscriber.py`. Reference only. <!-- legacy status: COMPLETE — see YAML frontmatter -->
 
 **Goal:** Add call chain resolution, change impact analysis, and incremental re-indexing to the Bodai ecosystem by extending Session-Buddy's DuckPGQ property graph and adding Mahavishnu CLI commands.
 

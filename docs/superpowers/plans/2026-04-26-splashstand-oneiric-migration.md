@@ -1,8 +1,17 @@
+---
+status: shipped
+role: implementation
+date: 2026-07-16
+last_reviewed: 2026-07-16
+superseded_by: null
+topic: splashstand-oneiric
+---
+
 # Splashstand ACB → Oneiric Migration Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Status:** COMPLETE — all tasks checked [x]. Splashstand uses `from oneiric...` imports throughout; pyproject.toml restored. Verified via `MIGRATION-3.1.0.md`. Reference only.
+**Status:** COMPLETE — all tasks checked [x]. Splashstand uses `from oneiric...` imports throughout; pyproject.toml restored. Verified via `MIGRATION-3.1.0.md`. Reference only. <!-- legacy status: COMPLETE — see YAML frontmatter -->
 
 **Goal:** Replace all ACB imports with Oneiric equivalents across 17 Splashstand source files, restoring pyproject.toml and adding a `resolve_dep()` helper.
 
