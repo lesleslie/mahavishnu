@@ -1,32 +1,48 @@
 #!/usr/bin/env uv run python
 """Regenerate docs/plans/PLAN_INDEX.md from per-store frontmatter.
 
-Walks the six Bodai documentation stores, parses YAML frontmatter on each
-``.md`` file, and emits a deterministic index grouped by store and sorted
-by date DESC within each store. The output mirrors the structure of the
-previous hand-edited PLAN_INDEX.md (status legend, authority matrix, review
-entry points, registry tables, lifecycle-by-role distribution) but every
-registry entry is mechanically derived from `status:` / `role:` / `topic:`
-on the source files, so the index cannot drift from the corpus.
+Walks the repository's documentation stores, parses YAML frontmatter on
+each ``.md`` file, and emits a deterministic index grouped by store and
+sorted by date DESC within each store. The output mirrors the structure
+of the previous hand-edited PLAN_INDEX.md (status legend, authority
+matrix, review entry points, registry tables, lifecycle-by-role
+distribution) but every registry entry is mechanically derived from
+`status:` / `role:` / `topic:` on the source files, so the index cannot
+drift from the corpus.
 
-Usage:
-    uv run python scripts/regenerate_plan_index.py [--dry-run] [--out PATH]
+Store discovery
+---------------
 
-Default --out: docs/plans/PLAN_INDEX.md. Pass --dry-run to print the
-generated markdown to stdout and skip writing.
+Stores are **auto-discovered**: every directory under the repo root that
+contains at least two ``.md`` files with valid YAML frontmatter is treated
+as a store. The following system directories are skipped (anywhere in the
+tree): ``.git``, ``.venv``, ``venv``, ``__pycache__``, ``node_modules``,
+``htmlcov``, ``dist``, ``.pytest_cache``, ``.archive``, ``archive``,
+``backups``, ``coverage_report``, ``assets``. The script's own output
+(``docs/plans/PLAN_INDEX.md``) and the ``docs/plans/drafts/`` working tree
+are also self-excluded. A small static override map (``STORE_LABELS``)
+gives descriptive headings to well-known stores (e.g. ``docs/adr/`` →
+"Architecture Decision Records"); other stores use a label derived from
+the directory name.
 
-Default stores scanned (POSIX, relative to repo root):
-    docs/adr/
-    docs/plans/                    (excluding drafts/ subdirectory)
-    docs/superpowers/specs/
-    docs/superpowers/plans/
-    .claude/decisions/
-    docs/followups/
+CLI overrides
+-------------
 
-Always excluded:
-    docs/plans/PLAN_INDEX.md (this script's own output — self-skip)
-    Any *.archive* or *.backup* / *.backup.json subdirectory anywhere
-    under the six stores.
+- ``--stores <comma-separated-paths>``    REPLACES auto-discovery.
+- ``--extra-stores <comma-separated-paths>``    ADDS to auto-discovery.
+- ``--dry-run``    prints to stdout instead of writing.
+- ``--out PATH``    output path (default ``docs/plans/PLAN_INDEX.md``).
+- ``--json-summary``    emit counts on stderr.
+
+Authority matrix
+----------------
+
+When the repo contains a Mahavishnu-style layout (detected by the
+presence of both ``docs/adr/`` and ``docs/superpowers/``), the matrix
+section preserves the original Mahavishnu/Bodai authority rows. On
+non-Mahavishnu repos the matrix is generated dynamically from the
+discovered stores, listing each store's path and per-status document
+counts.
 
 Exit codes:
     0 = success (file written or --dry-run)
@@ -63,18 +79,42 @@ ROLE_VALUES: tuple[str, ...] = (
     "superseded",
 )
 
-# The six stores scanned, relative to the repo root. Order in this list is
-# the order they appear in the registry section.
-DEFAULT_STORES: tuple[str, ...] = (
-    "docs/adr/",
-    "docs/plans/",
-    "docs/superpowers/specs/",
-    "docs/superpowers/plans/",
-    ".claude/decisions/",
-    "docs/followups/",
+# Directories skipped wholesale during auto-discovery. Compared against any
+# path segment so a nested ``node_modules`` is still skipped. ``archive`` /
+# ``.archive`` are also rejected later as a per-file PATH-segment guard, so
+# auto-discovery need not be exhaustive on its own.
+SYSTEM_DIR_PARTS: frozenset[str] = frozenset(
+    {
+        ".git",
+        ".venv",
+        "venv",
+        "__pycache__",
+        "node_modules",
+        "htmlcov",
+        "dist",
+        ".pytest_cache",
+        ".archive",
+        "archive",
+        "backups",
+        ".backups",
+        "coverage_report",
+        "assets",
+        ".vscode",
+        ".idea",
+        "cache",
+        ".cache",
+        ".playwright-mcp",
+    }
 )
 
-# Display labels per store (used as section headers).
+# Minimum number of .md files (with valid frontmatter) required in a
+# directory before it is promoted to a "store". Two is conservative — a
+# single README.md hanging at the repo root should not become a store.
+MIN_STORE_DOCS: int = 2
+
+# Optional display-label overrides for well-known stores. Keys are POSIX
+# relative paths terminated with a trailing slash. Stores without an entry
+# fall back to a label derived from the directory name.
 STORE_LABELS: dict[str, str] = {
     "docs/adr/": "Architecture Decision Records (`docs/adr/`)",
     "docs/plans/": "Plans & Specifications (`docs/plans/`)",
@@ -84,7 +124,8 @@ STORE_LABELS: dict[str, str] = {
     "docs/followups/": "Follow-up Notes (`docs/followups/`)",
 }
 
-# Always-excluded entries.
+# Always-excluded entries (per-file, after auto-discovery has nominated a
+# directory as a store).
 SELF_SKIP_REL = "docs/plans/PLAN_INDEX.md"
 DRAFTS_PREFIX = "docs/plans/drafts/"
 ARCHIVE_PARTS = ("archive", ".archive")
@@ -190,9 +231,21 @@ def _is_excluded(rel: str) -> bool:
     return False
 
 
-def discover_files(repo_root: Path, store_rel: str) -> list[tuple[Path, str]]:
+def discover_files(
+    repo_root: Path,
+    store_rel: str,
+    *,
+    skip_deeper_stores: frozenset[str] = frozenset(),
+) -> list[tuple[Path, str]]:
     """Return [(absolute_path, repo_relative_posix_path)] for every .md
-    file under the given store, after applying exclusion rules."""
+    file under the given store, after applying exclusion rules.
+
+    When ``skip_deeper_stores`` is provided, files that live inside any
+    of the listed deeper store directories are omitted. This keeps a
+    "parent" store (e.g. ``docs/``) from duplicating entries that the
+    matching "child" store (e.g. ``docs/schemas/``) will own. The
+    keyword-only argument avoids duplicating the existing single-store
+    call sites that don't care about overlap."""
     root = repo_root / store_rel.rstrip("/")
     if not root.is_dir():
         return []
@@ -201,8 +254,104 @@ def discover_files(repo_root: Path, store_rel: str) -> list[tuple[Path, str]]:
         rel = path.relative_to(repo_root).as_posix()
         if _is_excluded(rel):
             continue
+        if any(
+            ds != store_rel and rel.startswith(ds.rstrip("/") + "/")
+            for ds in skip_deeper_stores
+        ):
+            continue
         out.append((path, rel))
     return out
+
+
+def _has_frontmatter(path: Path, yaml_module: Any) -> bool:
+    """Cheap check that the leading bytes of `path` look like a YAML
+    frontmatter block. Used during store discovery — a directory only
+    counts as a store if enough of its .md children actually carry
+    frontmatter (>= MIN_STORE_DOCS)."""
+    try:
+        with path.open("rb") as fh:
+            head = fh.read(4096)
+    except OSError:
+        return False
+    if not head.startswith(b"---"):
+        return False
+    rest = head[3:]
+    # Trim optional leading whitespace / blank lines after the opener.
+    rest = rest.lstrip(b"\r\n").lstrip()
+    if not rest:
+        return False
+    # Reject the unlikely-but-legal case of a single `---` file with no
+    # closing fence within the first 4 KiB.
+    if b"\n---" not in rest and b"\r---" not in rest:
+        return False
+    try:
+        text = head.decode("utf-8", errors="replace")
+    except UnicodeDecodeError:
+        return False
+    return extract_frontmatter(text, yaml_module) is not None
+
+
+def discover_stores(repo_root: Path, yaml_module: Any) -> list[str]:
+    """Walk `repo_root` and return POSIX-relative store paths, ordered
+    deterministically. A directory is a "store" iff it is not a system
+    directory, is not the repo root itself, contains no system-segment in
+    any parent path, and contains at least ``MIN_STORE_DOCS`` .md files
+    with valid frontmatter.
+
+    Returned paths are POSIX-style with a trailing slash, matching the
+    conventions the rest of the module uses (e.g. ``"docs/adr/"``)."""
+    seen: dict[str, int] = {}
+
+    # Walk every directory under repo root but stop descending into
+    # SYSTEM_DIR_PARTS. Use os.walk with pruning for efficiency on big
+    # repos (skipping node_modules/.git/etc.).
+    import os
+
+    repo_root_str = str(repo_root.resolve())
+    for dirpath, dirnames, filenames in os.walk(repo_root_str, followlinks=False):
+        # Prune system directories in-place so the walker skips them.
+        dirnames[:] = [d for d in dirnames if d not in SYSTEM_DIR_PARTS]
+        # Only consider directories that actually contain .md files.
+        md_files = [f for f in filenames if f.endswith(".md")]
+        if not md_files:
+            continue
+        # Map the absolute dirpath back to a POSIX relative path.
+        abs_dir = Path(dirpath)
+        rel_dir = abs_dir.resolve().relative_to(repo_root.resolve()).as_posix()
+        # The repo root itself is never a store — a flat README.md does
+        # not constitute a documentation store.
+        if rel_dir == ".":
+            continue
+        store_rel = rel_dir + "/"
+        # Count how many .md children actually have frontmatter.
+        frontmatter_count = 0
+        for fname in md_files:
+            if _has_frontmatter(abs_dir / fname, yaml_module):
+                frontmatter_count += 1
+                if frontmatter_count >= MIN_STORE_DOCS:
+                    break
+        if frontmatter_count >= MIN_STORE_DOCS:
+            seen[store_rel] = max(seen.get(store_rel, 0), frontmatter_count)
+
+    # Deterministic order: alphabetical by relative path. Putting docs/
+    # directories before .claude/ etc. falls out of natural sort.
+    return sorted(seen)
+
+
+def _label_for_store(store_rel: str) -> str:
+    """Return a heading-friendly label for `store_rel`, falling back to a
+    derived title-case phrase based on the directory name when no
+    override entry exists."""
+    if store_rel in STORE_LABELS:
+        return STORE_LABELS[store_rel]
+    name = store_rel.rstrip("/").rsplit("/", 1)[-1]
+    # Title-case the leaf segment for display ("implementation-plans" ->
+    # "Implementation Plans"), but keep dotted names verbatim so
+    # `.claude/decisions/` renders as "Claude Decisions" not ".Claude
+    # Decisions".
+    display = name.lstrip(".")
+    titled = display.replace("-", " ").replace("_", " ").title()
+    return f"{titled} (`{store_rel}`)"
 
 
 # ---------------------------------------------------------------------------
@@ -274,11 +423,30 @@ and reproduced here for index readability.
 """
 
 
-def _authority_matrix() -> str:
-    """Small table mapping concerns to authorities. Mirrors the original
-    PLAN_INDEX.md authority matrix and is intentionally narrow — the
-    bulk of navigation now lives in the registry below."""
-    return """\
+def _is_mahavishnu_layout(repo_root: Path) -> bool:
+    """True iff the repo looks like Mahavishnu's own docs layout (both
+    ``docs/adr/`` and ``docs/superpowers/`` present). Used to switch the
+    Authority Matrix between the rich Mahavishnu-specific table and the
+    generic dynamic one."""
+    return (repo_root / "docs" / "adr").is_dir() and (
+        repo_root / "docs" / "superpowers"
+    ).is_dir()
+
+
+def _authority_matrix(
+    repo_root: Path,
+    stores: list[str],
+    entries_by_store: dict[str, list[Entry]],
+) -> str:
+    """Render the Authority Matrix section.
+
+    On Mahavishnu-shaped repos the hardcoded PLAN_INDEX-style matrix is
+    preserved for human navigability. On every other repo a generic
+    dynamic matrix lists every discovered store with its relative path
+    and a per-status document count, so the section is meaningful without
+    Mahavishnu-specific plan references."""
+    if _is_mahavishnu_layout(repo_root):
+        return """\
 ## Authority Matrix
 
 | Concern | Authority |
@@ -294,17 +462,82 @@ def _authority_matrix() -> str:
 | Source plan defining this index | `docs/superpowers/plans/2026-07-16-plan-lifecycle-unification.md` |
 """
 
+    # Generic matrix — list every discovered store with status breakdown.
+    rows: list[str] = []
+    rows.append("## Authority Matrix")
+    rows.append("")
+    rows.append(
+        "The table below is auto-generated from the stores discovered in this "
+        "repository. `Plan navigation` row points at this file (and its "
+        "`scripts/regenerate_plan_index.py`); `Frontmatter vocabulary` rows "
+        "point at the canonical schema if it exists, otherwise the local "
+        "frontmatter contract lives in `scripts/validate_document_frontmatter.py`."
+    )
+    rows.append("")
+    rows.append("| Concern | Authority |")
+    rows.append("|---|---|")
+    rows.append(
+        "| Plan navigation and current ownership "
+        "| `docs/plans/PLAN_INDEX.md` (this file, regenerated from frontmatter) |"
+    )
+    canonical_schema = repo_root / "docs" / "schemas" / "document-frontmatter-v1.md"
+    if canonical_schema.is_file():
+        rows.append(
+            "| Frontmatter vocabulary and migration contract "
+            "| `docs/schemas/document-frontmatter-v1.md` |"
+        )
+    else:
+        rows.append(
+            "| Frontmatter vocabulary and migration contract "
+            "| `scripts/validate_document_frontmatter.py` |"
+        )
+    rows.append("| Discovered stores | "
+                 + " ".join(f"`{s}`" for s in stores)
+                 + " |")
+    rows.append("")
 
-def _review_entry_points(generated_at: str) -> str:
+    # Per-store status breakdown table.
+    rows.append("### Discovered stores by lifecycle status")
+    rows.append("")
+    rows.append(
+        "| Store | Path | Total | `draft` | `active` | `partial` | `shipped` | `complete` | `unknown` |"
+    )
+    rows.append("|---|---|---|---|---|---|---|---|---|")
+    for store in stores:
+        entries = entries_by_store.get(store, [])
+        total = len(entries)
+        by_status: Counter[str] = Counter()
+        for entry in entries:
+            by_status[entry.status or "unknown"] += 1
+        cells = [
+            str(by_status.get("draft", 0)),
+            str(by_status.get("active", 0)),
+            str(by_status.get("partial", 0)),
+            str(by_status.get("shipped", 0)),
+            str(by_status.get("complete", 0)),
+            str(by_status.get("unknown", 0)),
+        ]
+        rows.append(
+            f"| {_label_for_store(store).split(' (')[0]} "
+            f"| `{store}` "
+            f"| {total} | "
+            + " | ".join(cells)
+            + " |"
+        )
+    rows.append("")
+    return "\n".join(rows)
+
+
+def _review_entry_points(generated_at: str, store_count: int) -> str:
     return f"""\
 ## Review Entry Points
 
 This file is regenerated mechanically from the per-file YAML frontmatter
-across the six stores. The registry tables below are sorted by `date`
-DESC within each store and group entries by store. The lifecycle × role
-distribution at the bottom is a quick consistency check — it should
-match the counts of the registry rows modulo files in skipped
-directories (see exclusion rules in the script header).
+across the {store_count} auto-discovered stores. The registry tables below
+are sorted by `date` DESC within each store and group entries by store.
+The lifecycle × role distribution at the bottom is a quick consistency
+check — it should match the counts of the registry rows modulo files in
+skipped directories (see exclusion rules in the script header).
 
 Before implementing from any entry:
 
@@ -341,7 +574,7 @@ def _entry_link(rel: str, store: str) -> str:
 
 
 def _render_store_table(store: str, entries: list[Entry]) -> str:
-    label = STORE_LABELS.get(store, store.rstrip("/"))
+    label = _label_for_store(store)
     rows: list[str] = []
     rows.append(f"### {label}")
     rows.append("")
@@ -389,7 +622,7 @@ def _date_sort_key(value: str) -> int:
 # ---------------------------------------------------------------------------
 
 
-def _render_distribution(entries: list[Entry]) -> str:
+def _render_distribution(entries: list[Entry], store_count: int) -> str:
     counts: Counter[tuple[str, str]] = Counter()
     for e in entries:
         # Skip "unknown" rows so they don't pollute the matrix.
@@ -400,7 +633,7 @@ def _render_distribution(entries: list[Entry]) -> str:
     rows: list[str] = []
     rows.append("## Lifecycle × Role Distribution")
     rows.append("")
-    rows.append("Counts of entries per (lifecycle, role) cell across all six stores. "
+    rows.append(f"Counts of entries per (lifecycle, role) cell across all {store_count} stores. "
                  "Useful as a sanity check that the registry above is internally consistent.")
     rows.append("")
     # Build a header: blank corner + each lifecycle.
@@ -440,29 +673,48 @@ def _render_distribution(entries: list[Entry]) -> str:
 # ---------------------------------------------------------------------------
 
 
-def _render_index(entries_by_store: dict[str, list[Entry]], generated_at: str) -> str:
-    sections: list[str] = []
-    sections.append(
-        "---\n"
-        "status: active\n"
-        "role: canonical\n"
-        "date: 2026-07-16\n"
-        "last_reviewed: 2026-07-16\n"
-        "superseded_by: null\n"
-        "blocks_on:\n"
-        "  - docs/schemas/document-frontmatter-v1.md\n"
-        "topic: convergence-control-plane\n"
-        "---"
+def _render_index(
+    repo_root: Path,
+    stores: list[str],
+    entries_by_store: dict[str, list[Entry]],
+    generated_at: str,
+) -> str:
+    repo_name = repo_root.name or "this repository"
+    is_mahavishnu = _is_mahavishnu_layout(repo_root)
+    frontmatter_date = generated_at if is_mahavishnu else generated_at
+
+    purpose_subject = "Mahavishnu/Bodai plans" if is_mahavishnu else f"{repo_name} plans"
+    topic_value = (
+        "convergence-control-plane" if is_mahavishnu else "plan-registry"
     )
+    blocks_on_value: str | None = (
+        "docs/schemas/document-frontmatter-v1.md" if is_mahavishnu else None
+    )
+
+    sections: list[str] = []
+    fm_lines: list[str] = [
+        "---",
+        "status: active",
+        "role: canonical",
+        f"date: {frontmatter_date}",
+        f"last_reviewed: {frontmatter_date}",
+        "superseded_by: null",
+    ]
+    if blocks_on_value is not None:
+        fm_lines.extend(["blocks_on:", f"  - {blocks_on_value}"])
+    else:
+        fm_lines.extend(["blocks_on: []"])
+    fm_lines.append(f"topic: {topic_value}")
+    fm_lines.append("---")
+    sections.append("\n".join(fm_lines))
     sections.append("")
     sections.append("# Plan Index")
     sections.append("")
-    sections.append(f"**Date:** 2026-07-16")
+    sections.append(f"**Date:** {frontmatter_date}")
     sections.append(f"**Last regenerated:** {generated_at}")
     sections.append(
-        "**Purpose:** Navigation map for finding and reviewing active "
-        "Mahavishnu/Bodai plans. Generated by `scripts/regenerate_plan_index.py`. "
-        "Do not edit by hand."
+        f"**Purpose:** Navigation map for finding and reviewing active {purpose_subject}. "
+        "Generated by `scripts/regenerate_plan_index.py`. Do not edit by hand."
     )
     sections.append("")
     sections.append(
@@ -473,9 +725,13 @@ def _render_index(entries_by_store: dict[str, list[Entry]], generated_at: str) -
     sections.append("")
     sections.append(STATUS_LEGEND.rstrip())
     sections.append("")
-    sections.append(_authority_matrix().rstrip())
+    sections.append(
+        _authority_matrix(repo_root, stores, entries_by_store).rstrip()
+    )
     sections.append("")
-    sections.append(_review_entry_points(generated_at).rstrip())
+    sections.append(
+        _review_entry_points(generated_at, store_count=len(stores)).rstrip()
+    )
     sections.append("")
 
     sections.append("## Canonical and Active Plan Registry")
@@ -489,13 +745,13 @@ def _render_index(entries_by_store: dict[str, list[Entry]], generated_at: str) -
     sections.append("")
 
     all_entries: list[Entry] = []
-    for store in DEFAULT_STORES:
+    for store in stores:
         store_entries = entries_by_store.get(store, [])
         all_entries.extend(store_entries)
         sections.append(_render_store_table(store, store_entries).rstrip())
         sections.append("")
 
-    sections.append(_render_distribution(all_entries).rstrip())
+    sections.append(_render_distribution(all_entries, store_count=len(stores)).rstrip())
 
     return "\n".join(sections) + "\n"
 
@@ -505,12 +761,35 @@ def _render_index(entries_by_store: dict[str, list[Entry]], generated_at: str) -
 # ---------------------------------------------------------------------------
 
 
+def _csv_list(value: str) -> list[str]:
+    """Normalize a comma-separated CLI argument into a clean list of
+    POSIX-style trailing-slash store paths (deduped, ordered by first
+    appearance)."""
+    out: list[str] = []
+    seen: set[str] = set()
+    for raw in value.split(","):
+        item = raw.strip()
+        if not item:
+            continue
+        # Normalize: strip surrounding slashes, re-add a single trailing slash.
+        item = item.strip("/")
+        if not item:
+            continue
+        item = item + "/"
+        if item in seen:
+            continue
+        seen.add(item)
+        out.append(item)
+    return out
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="regenerate_plan_index",
         description=(
             "Regenerate docs/plans/PLAN_INDEX.md from the YAML frontmatter "
-            "of all .md files in the six Bodai doc stores."
+            "of every .md file under each auto-discovered documentation "
+            "store in the repo."
         ),
     )
     parser.add_argument(
@@ -525,11 +804,42 @@ def build_parser() -> argparse.ArgumentParser:
         help="Output path (default: docs/plans/PLAN_INDEX.md).",
     )
     parser.add_argument(
+        "--stores",
+        type=_csv_list,
+        default=[],
+        metavar="PATH,PATH,...",
+        help=(
+            "Comma-separated POSIX-relative store paths that REPLACE "
+            "auto-discovery entirely. Example: --stores 'docs/plans/,docs/adr/'"
+        ),
+    )
+    parser.add_argument(
+        "--extra-stores",
+        type=_csv_list,
+        default=[],
+        metavar="PATH,PATH,...",
+        help=(
+            "Comma-separated POSIX-relative store paths that are ADDED to "
+            "the auto-discovered list. Use for directories that fall below "
+            "the auto-discovery threshold (e.g. single-doc drafts)."
+        ),
+    )
+    parser.add_argument(
         "--json-summary",
         action="store_true",
         help=(
             "Emit a JSON summary of counts (per store + total) on stderr. "
             "Useful for CI assertions."
+        ),
+    )
+    parser.add_argument(
+        "--repo-root",
+        type=Path,
+        default=None,
+        help=(
+            "Override the repository root for store discovery (default: "
+            "the parent directory of this script). Useful when running "
+            "the script against a different repo from outside it."
         ),
     )
     return parser
@@ -542,14 +852,43 @@ def main(argv: list[str] | None = None) -> int:
     except SystemExit as exc:
         return 2 if exc.code != 0 else 0
 
-    repo_root = Path(__file__).resolve().parent.parent
+    if args.repo_root is not None:
+        repo_root = args.repo_root.resolve()
+    else:
+        # Default: scan the caller's current working directory rather than
+        # the script's own parent. This lets operators invoke the script
+        # against a sibling repo by `cd`ing in and running it from there.
+        # Pass --repo-root to override.
+        repo_root = Path.cwd().resolve()
     yaml_module = _load_yaml_module()
+
+    # Resolve the final list of stores. --stores replaces auto-discovery;
+    # --extra-stores is additive on top of whatever the selected path produced.
+    if args.stores:
+        stores: list[str] = list(args.stores)
+    else:
+        stores = discover_stores(repo_root, yaml_module)
+    if args.extra_stores:
+        for extra in args.extra_stores:
+            if extra not in stores:
+                stores.append(extra)
+    # Final deterministic ordering.
+    stores = sorted(set(stores))
 
     entries_by_store: dict[str, list[Entry]] = {}
     total_with_frontmatter = 0
     total_discovered = 0
-    for store in DEFAULT_STORES:
-        files = discover_files(repo_root, store)
+
+    # Pre-compute the set of "deeper" stores for each store so we can
+    # avoid duplicating entries in nested stores (e.g. docs/ and
+    # docs/schemas/ both qualify — but files inside docs/schemas/ should
+    # belong only to that deeper store in the registry).
+    stores_set = set(stores)
+    for store in stores:
+        skip: frozenset[str] = frozenset(
+            s for s in stores_set if s != store and s.startswith(store)
+        )
+        files = discover_files(repo_root, store, skip_deeper_stores=skip)
         store_entries: list[Entry] = []
         for abs_path, rel in files:
             total_discovered += 1
@@ -561,10 +900,16 @@ def main(argv: list[str] | None = None) -> int:
         total_with_frontmatter += len(store_entries)
 
     generated_at = datetime.date.today().isoformat()
-    rendered = _render_index(entries_by_store, generated_at=generated_at)
+    rendered = _render_index(
+        repo_root,
+        stores,
+        entries_by_store,
+        generated_at=generated_at,
+    )
 
     if args.dry_run:
         sys.stdout.write(rendered)
+        sys.stdout.flush()
     else:
         out_path = args.out
         if not out_path.is_absolute():
@@ -593,9 +938,10 @@ def main(argv: list[str] | None = None) -> int:
             "generated_at": generated_at,
             "discovered": total_discovered,
             "with_frontmatter": total_with_frontmatter,
+            "stores": stores,
             "per_store": {
                 store: len(entries_by_store.get(store, []))
-                for store in DEFAULT_STORES
+                for store in stores
             },
         }
         sys.stderr.write(json.dumps(summary, indent=2) + "\n")
