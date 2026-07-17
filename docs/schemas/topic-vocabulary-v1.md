@@ -38,6 +38,9 @@ contribution workflow below.
 | `auth` | Auth standardization (Bodai auth spec), JWT, multi-provider. |
 | `convergence-control-plane` | Convergence program C0-C7, umbrella plans. |
 | `worktree-management` | Worktree MCP dispatcher, isolation, planning. |
+| `persistence` | State persistence across checkpoints, session restarts, and subagent dispatch windows (covers git stash/rebase cycles, auto-checkpoint hooks, durable storage paths). |
+| `lifecycle` | Wiring lifecycle for components, plans, and followups — drafted/active/partial/shipped/complete transitions, completion reports, plan-to-followup handoffs. |
+| `plugin-standardization` | Claude Code plugin manifest, marketplace layout, slash command namespace, plugin validation scaffold (introduced for Bodai plugin rollout 2026-07-16). |
 
 ## Contribution Workflow
 
