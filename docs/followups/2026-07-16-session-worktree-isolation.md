@@ -169,4 +169,4 @@ mahavishnu worktree remove mahavishnu ~/worktrees/agent-XXXXXXXX
 - Pickup context: `docs/followups/.archive/2026-07-16-multi-session-mcp-contention.md`
 - Phase 1 commit: `5a7e001c`
 - Phase 2 commit: `ccec4357`
-- Phase 4 commit: `3f89c71` (discovery hint + docs)
+- Phase 4 commit: `5bc29b3e` (discovery hint + docs)

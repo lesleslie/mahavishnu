@@ -130,5 +130,5 @@ recommended posture.
 - 4-lens plan: `/Users/les/.claude/plans/cheerful-marinating-fountain.md`
 - Phase 1 commit: `5a7e001c` (registry + CLI)
 - Phase 2 commit: `ccec4357` (hook + settings wiring)
-- Phase 4 commit: pending (discovery hint + docs)
+- Phase 4 commit: `5bc29b3e` (discovery hint + docs)
 - Plan-template lifecycle: `.claude/decisions/wire-up-contract.md`
