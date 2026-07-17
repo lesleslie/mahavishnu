@@ -1,8 +1,17 @@
+---
+status: complete
+role: implementation
+date: 2026-07-16
+last_reviewed: 2026-07-16
+superseded_by: null
+topic: error-handling
+---
+
 # Unified Exception Logging Across Bodai — Design Doc
 
 ## Status
 
-**COMPLETED** (2026-05-23) — All tasks done: Oneiric LoggingConfig updated, Crackerjack migrated (3 call sites + dead-code cleanup), Session-Buddy + Akosha startup calls added, Dhara fully swapped to structlog via Oneiric (preserving public API: `get_logger`, `log_operation`, `log_context`), all 26 Crackerjack logging tests passing.
+**COMPLETED** (2026-05-23) — All tasks done: Oneiric LoggingConfig updated, Crackerjack migrated (3 call sites + dead-code cleanup), Session-Buddy + Akosha startup calls added, Dhara fully swapped to structlog via Oneiric (preserving public API: `get_logger`, `log_operation`, `log_context`), all 26 Crackerjack logging tests passing.  <!-- legacy status: COMPLETED — see YAML frontmatter -->
 
 **Location:** `mahavishnu/docs/plans/2026-05-23-unified-exception-logging.md`
 

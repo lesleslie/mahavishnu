@@ -1,8 +1,18 @@
+---
+status: complete
+role: historical
+date: 2026-07-16
+last_reviewed: 2026-07-16
+superseded_by: null
+blocks_on: []
+topic: observability
+---
+
 # Initiative 1: Health/Readiness/Metrics Contract + `mahavishnu health`
 
 ## Metadata
 
-- Status: `completed`
+- Status: `completed` <!-- legacy status: completed — see YAML frontmatter -->
 - Owner Role: `Platform Eng + SRE`
 - Target Window: `2026-04-06` to `2026-04-17`
 

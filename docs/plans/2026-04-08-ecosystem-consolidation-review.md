@@ -1,3 +1,12 @@
+---
+status: draft
+role: historical
+date: 2026-04-08
+last_reviewed: 2026-07-16
+superseded_by: null
+topic: convergence-control-plane
+---
+
 # Ecosystem Consolidation Review
 
 Date: 2026-04-08

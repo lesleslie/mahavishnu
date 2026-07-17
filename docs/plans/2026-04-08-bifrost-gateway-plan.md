@@ -1,6 +1,15 @@
+---
+status: shipped
+role: historical
+date: 2026-04-08
+last_reviewed: 2026-07-16
+superseded_by: null
+topic: routing-composition
+---
+
 # Bifrost Gateway Plan
 
-**Status:** In progress
+**Status:** In progress  <!-- legacy status: In progress — see YAML frontmatter -->
 **Date:** 2026-04-08
 **Target port:** 8471
 **Scope:** Replace LiteLLM and CCR with a single self-hosted Bifrost-based gateway where practical

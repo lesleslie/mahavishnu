@@ -1,0 +1,19 @@
+<h2>Bodai command-center layouts</h2>
+<p class="subtitle">Each mockup renders at full width. The server serves the newest file in the content directory, so opening one URL at a time only shows one mockup. Use the buttons below to open all three at once in separate tabs (each opens the latest content you have queued). After viewing all three, return here and tell me which you prefer (or which bits to mix).</p>
+
+<style>
+  .toc { display: flex; gap: 14px; margin-top: 14px; flex-wrap: wrap; }
+  .toc a { display: inline-flex; align-items: center; gap: 10px; padding: 10px 18px; border: 1px solid #d1d1d6; border-radius: 999px; color: #1d1d1f; text-decoration: none; font-size: 13.5px; background: #fff; }
+  .toc a:hover { border-color: #0071e3; }
+  .toc .letter { background: #e5e5e7; color: #444; width: 22px; height: 22px; border-radius: 6px; display: flex; align-items: center; justify-content: center; font-weight: 600; font-size: 12px; }
+  .note { color: #86868b; font-size: 13px; margin-top: 18px; line-height: 1.6; }
+  .option { display: block; }
+</style>
+
+<div class="toc" data-multiselect>
+  <a class="option" data-choice="orbit" onclick="toggleSelect(this)" href="orbit.html"><span class="letter">A</span> Open Orbit HUD</a>
+  <a class="option" data-choice="constellation" onclick="toggleSelect(this)" href="constellation.html"><span class="letter">B</span> Open Constellation</a>
+  <a class="option" data-choice="deck" onclick="toggleSelect(this)" href="deck.html"><span class="letter">C</span> Open Command Deck</a>
+</div>
+
+<p class="note"><strong>How the click works:</strong> the visual companion serves the single newest content file on the URL — there's no in-server URL routing between mockups. Each button reloads the server with that file as newest. To see all three side by side, open each in a separate tab (you'll need three companion sessions, one per file). For now the buttons let you mark your preferred direction.</p>

@@ -1,0 +1,101 @@
+<h2>C · Command Deck</h2>
+<p class="subtitle">An operator-first dashboard. One large workflow panel drives the layout, with a health rail and a notifications feed tuned for lifecycle alerts. Single-select to mark as the preferred direction.</p>
+
+<style>
+  .deck-wrap { margin-top: 18px; }
+  .deck-screen { background: linear-gradient(180deg,#0a1424 0%, #050912 60%, #020610 100%); color: #d8e6ff; border: 1px solid #24334b; border-radius: 14px; padding: 22px 26px; box-shadow: 0 18px 40px rgba(0,0,0,.45); font: 13px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace; }
+  .deck-top { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 18px; padding-bottom: 14px; border-bottom: 1px solid #1b2b43; }
+  .deck-mission { display: flex; flex-direction: column; gap: 6px; }
+  .deck-mission .label { color: #70d7ff; font-size: 10.5px; letter-spacing: .16em; text-transform: uppercase; }
+  .deck-mission .name { color: #f4f8ff; font-size: 22px; font-weight: 600; letter-spacing: .02em; }
+  .deck-mission .stage { color: #c0d4ee; font-size: 12.5px; }
+  .deck-mission .bar { height: 10px; background: #1b2b43; border-radius: 99px; margin-top: 6px; overflow: hidden; }
+  .deck-mission .bar > span { display: block; height: 100%; width: 80%; background: linear-gradient(90deg,#27ae75,#78e3a1); border-radius: inherit; }
+  .deck-summary { display: flex; gap: 22px; align-items: center; color: #c0d4ee; font-size: 12.5px; }
+  .deck-summary .stat { display: flex; flex-direction: column; gap: 2px; }
+  .deck-summary .stat .num { color: #f4f8ff; font-weight: 600; font-size: 18px; }
+  .deck-summary .stat .lbl { color: #7890af; font-size: 10.5px; letter-spacing: .12em; text-transform: uppercase; }
+  .pulse { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: #78e3a1; box-shadow: 0 0 12px #78e3a1; margin-right: 6px; vertical-align: 1px; }
+  .pulse.amber { background: #ffd166; box-shadow: 0 0 10px #ffd166; }
+  .pulse.cyan { background: #70d7ff; box-shadow: 0 0 10px #70d7ff; }
+  .pulse.pink { background: #ff8fb3; box-shadow: 0 0 10px #ff8fb3; }
+  .deck-body { display: grid; grid-template-columns: 1.4fr 1fr; gap: 22px; padding-top: 16px; }
+  .lane-title { color: #9eb1ca; font-size: 10.5px; letter-spacing: .16em; text-transform: uppercase; margin-bottom: 8px; }
+  .stages { display: grid; gap: 6px; }
+  .stage-row { display: grid; grid-template-columns: 18px 1fr 70px; gap: 12px; align-items: center; padding: 5px 10px; border-radius: 8px; background: rgba(20,32,52,.55); border: 1px solid rgba(70,96,140,.4); }
+  .stage-row .name { color: #d8e6ff; }
+  .stage-row .meta { color: #7890af; font-size: 12px; }
+  .stage-row .pill { text-align: right; font-size: 11.5px; color: #c0d4ee; }
+  .deck-rail { display: grid; gap: 6px; }
+  .rail-row { display: grid; grid-template-columns: 110px 1fr 70px; gap: 10px; align-items: center; padding: 5px 10px; border-radius: 8px; background: rgba(20,32,52,.55); border: 1px solid rgba(70,96,140,.4); }
+  .rail-row .name { color: #f4f8ff; }
+  .rail-row .meta { color: #8da6c7; font-size: 12px; }
+  .deck-feed { grid-column: 1 / -1; padding-top: 14px; border-top: 1px solid #1b2b43; margin-top: 6px; }
+  .deck-feed .row { display: grid; grid-template-columns: 70px 18px 1fr; gap: 10px; align-items: center; padding: 4px 0; font-size: 12.5px; }
+  .deck-feed .row .ts { color: #6d829d; }
+  .deck-feed .row .msg { color: #d8e6ff; }
+  .deck-foot { grid-column: 1 / -1; padding-top: 10px; border-top: 1px solid #1b2b43; margin-top: 6px; display: flex; gap: 18px; color: #7890af; font-size: 12px; }
+  .deck-foot .pill { display: inline-flex; align-items: center; gap: 6px; padding: 3px 10px; border: 1px solid #28405f; border-radius: 99px; color: #c0d4ee; }
+  .deck-foot .dot { width: 6px; height: 6px; border-radius: 50%; background: #78e3a1; box-shadow: 0 0 8px #78e3a1; }
+  .deck-foot .dot.dim { background: #3d516d; box-shadow: none; }
+</style>
+
+<div class="deck-wrap">
+  <div class="mockup">
+    <div class="mockup-header">Preview · Claude Code status area · Command Deck</div>
+    <div class="mockup-body">
+      <div class="deck-screen option" data-choice="deck" onclick="toggleSelect(this)">
+        <div class="deck-top">
+          <div class="deck-mission">
+            <span class="label">Active mission</span>
+            <span class="name">deploy-v4</span>
+            <span class="stage">stage 4 / 5 · quality verification</span>
+            <div class="bar"><span></span></div>
+          </div>
+          <div class="deck-summary">
+            <div class="stat"><span class="num">3</span><span class="lbl">pools</span></div>
+            <div class="stat"><span class="num">7</span><span class="lbl">workers</span></div>
+            <div class="stat"><span class="num">12</span><span class="lbl">events/min</span></div>
+          </div>
+        </div>
+
+        <div class="deck-body">
+          <div>
+            <div class="lane-title">Stages</div>
+            <div class="stages">
+              <div class="stage-row"><span class="pulse"></span><span class="name">build · image promote</span><span class="meta">done 02:14</span><span class="pill"><span class="pulse"></span>OK</span></div>
+              <div class="stage-row"><span class="pulse"></span><span class="name">test · crackerjack sweep</span><span class="meta">94 / 100 · 3 left</span><span class="pill"><span class="pulse amber"></span>RUN</span></div>
+              <div class="stage-row"><span class="pulse"></span><span class="name">scan · akosha regression</span><span class="meta">correlated 0.91 conf</span><span class="pill"><span class="pulse"></span>OK</span></div>
+              <div class="stage-row"><span class="pulse"></span><span class="name">review · dhara commit</span><span class="meta">awaiting w-02 result</span><span class="pill"><span class="pulse amber"></span>WAIT</span></div>
+              <div class="stage-row"><span class="pulse cyan"></span><span class="name">publish · prod roll</span><span class="meta">queued</span><span class="pill"><span class="pulse cyan"></span>QUEUED</span></div>
+            </div>
+          </div>
+          <div>
+            <div class="lane-title">Health rail</div>
+            <div class="deck-rail">
+              <div class="rail-row"><span class="name">local pool</span><span class="meta">4 workers · last probe 11ms</span><span class="pill"><span class="pulse"></span>READY</span></div>
+              <div class="rail-row"><span class="name">session pool</span><span class="meta">3 workers · writing memory</span><span class="pill"><span class="pulse amber"></span>RUN</span></div>
+              <div class="rail-row"><span class="name">runpod pool</span><span class="meta">2 workers · warming GPU</span><span class="pill"><span class="pulse amber"></span>WARM</span></div>
+              <div class="rail-row"><span class="name">akosha</span><span class="meta">0.91 confidence</span><span class="pill"><span class="pulse"></span>READY</span></div>
+              <div class="rail-row"><span class="name">crackerjack</span><span class="meta">94 / 100 score</span><span class="pill"><span class="pulse"></span>OK</span></div>
+              <div class="rail-row"><span class="name">dhara</span><span class="meta">commit 9f31 pending</span><span class="pill"><span class="pulse"></span>READY</span></div>
+            </div>
+          </div>
+          <div class="deck-feed">
+            <div class="lane-title">Lifecycle notifications</div>
+            <div class="row"><span class="ts">12:04:18</span><span class="pulse"></span><span class="msg">worker w-02 completed stage=tests</span></div>
+            <div class="row"><span class="ts">12:04:09</span><span class="pulse"></span><span class="msg">pool local scaled 3 → 4</span></div>
+            <div class="row"><span class="ts">12:03:51</span><span class="pulse cyan"></span><span class="msg">workflow stage completed · test</span></div>
+            <div class="row"><span class="ts">12:03:22</span><span class="pulse pink"></span><span class="msg">crackerjack gate raised warning: flaky test #218</span></div>
+          </div>
+          <div class="deck-foot">
+            <span class="pill"><span class="dot"></span>SOUND OFF</span>
+            <span class="pill"><span class="dot dim"></span>QUIET HOURS 22:00–07:00</span>
+            <span class="pill">ATTENTION REQUIRED: none</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <p class="pickbar"><strong>Click the dark dashboard to pick this direction.</strong></p>
+</div>

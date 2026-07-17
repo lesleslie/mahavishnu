@@ -1,7 +1,16 @@
+---
+status: complete
+role: umbrella
+date: 2026-07-16
+last_reviewed: 2026-07-16
+superseded_by: null
+topic: convergence-control-plane
+---
+
 # Bodai Control Plane Convergence Plan
 
 **Date:** 2026-05-10
-**Status:** `complete`, `historical`
+**Status:** `complete`, `historical`  <!-- legacy status: complete, historical — see YAML frontmatter -->
 **Owner:** Core Eng
 **Purpose:** Convert remaining Bodai control-plane gaps into one trackable implementation program without duplicating existing plans.
 

@@ -1,3 +1,12 @@
+---
+status: draft
+role: historical
+date: 2026-02-10
+last_reviewed: 2026-07-16
+superseded_by: null
+topic: observability
+---
+
 # Pool WebSocket Integration & Production Hardening Plan
 
 > **For Claude:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task.

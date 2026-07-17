@@ -1,0 +1,437 @@
+<style>
+  /* ---- v8: multi-surface Constellation ---- */
+  .v8-page {
+    background: #0d1117;
+    color: #c9d1d9;
+    font-family: 'JetBrains Mono', 'SF Mono', Menlo, Consolas, ui-monospace, monospace;
+    padding: 24px;
+    max-width: 1500px;
+    margin: 0 auto;
+  }
+  .v8-title {
+    font-size: 11px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: #8b949e;
+    margin: 0 0 6px;
+  }
+  .v8-title b { color: #58a6ff; font-weight: 600; }
+  .v8-sub {
+    color: #6e7681;
+    font-size: 12px;
+    margin: 0 0 18px;
+    line-height: 1.55;
+  }
+  .v8-section {
+    border: 1px solid #30363d;
+    border-radius: 12px;
+    background: #010409;
+    padding: 16px 18px;
+    margin-bottom: 22px;
+  }
+  .v8-h {
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+    margin: 0 0 4px;
+  }
+  .v8-h-tag {
+    font-size: 9px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: #58a6ff;
+    border: 1px solid rgba(88,166,255,0.45);
+    background: rgba(88,166,255,0.10);
+    padding: 2px 7px;
+    border-radius: 4px;
+  }
+  .v8-h-name {
+    font-size: 13px;
+    color: #f4f8ff;
+    letter-spacing: 0.02em;
+  }
+  .v8-h-config {
+    font-size: 10px;
+    color: #6e7681;
+    letter-spacing: 0.04em;
+  }
+  .v8-caption {
+    color: #6e7681;
+    font-size: 11px;
+    margin: 0 0 12px;
+    line-height: 1.55;
+  }
+  .v8-caption code {
+    color: #d29922;
+    background: rgba(210,153,34,0.08);
+    padding: 1px 5px;
+    border-radius: 3px;
+    font-size: 10.5px;
+  }
+
+  /* ---- Section 1: Main statusline (always-on strip) ---- */
+  .v8-strip {
+    border: 1px solid #21262d;
+    border-radius: 10px;
+    background: #0d1117;
+    padding: 12px 14px;
+  }
+  .v8-line {
+    display: grid;
+    grid-template-columns: 92px 14ch 14ch 1fr 14ch;
+    column-gap: 12px;
+    align-items: center;
+    font-size: 12.5px;
+    letter-spacing: 0.02em;
+    padding: 3px 0;
+  }
+  .v8-line.eco { grid-template-columns: 30px 1fr; column-gap: 10px; }
+  .v8-line.evt { grid-template-columns: 80px 24px 1fr; column-gap: 8px; color: #8b949e; font-size: 11.5px; }
+
+  .v8-status {
+    font-weight: 700;
+    letter-spacing: 0.14em;
+    text-align: right;
+  }
+  .v8-status.ok   { color: #2ea043; }
+  .v8-status.med  { color: #d29922; }
+  .v8-status.high { color: #f778ba; }
+  .v8-status.lim  { color: #f85149; }
+
+  .v8-bar {
+    height: 8px;
+    border-radius: 999px;
+    background: #21262d;
+    overflow: hidden;
+    position: relative;
+  }
+  .v8-bar > span { display: block; height: 100%; border-radius: inherit; }
+  .v8-bar.ok   > span { background: linear-gradient(90deg, #1f6feb, #39c5cf); }
+  .v8-bar.med  > span { background: linear-gradient(90deg, #b98000, #d29922); }
+  .v8-bar.high > span { background: linear-gradient(90deg, #db61a2, #f778ba); }
+
+  .v8-meta { color: #8b949e; font-size: 11px; }
+  .v8-name { color: #c9d1d9; }
+
+  /* OSC 8 clickable link styling — rendered as underlined cyan */
+  .v8-link {
+    color: #58a6ff;
+    text-decoration: underline;
+    text-decoration-color: rgba(88,166,255,0.4);
+    text-underline-offset: 2px;
+    cursor: pointer;
+  }
+  .v8-link.P { color: #39c5cf; text-decoration-color: rgba(57,197,207,0.4); }
+  .v8-link.A { color: #a371f7; text-decoration-color: rgba(163,113,247,0.4); }
+  .v8-link.D { color: #3fb950; text-decoration-color: rgba(63,185,80,0.4); }
+  .v8-link.C { color: #d29922; text-decoration-color: rgba(210,153,34,0.4); }
+  .v8-link.S { color: #58a6ff; text-decoration-color: rgba(88,166,255,0.4); }
+
+  .v8-glyph {
+    display: inline-block;
+    width: 22px;
+    height: 22px;
+    border-radius: 5px;
+    text-align: center;
+    line-height: 22px;
+    font-weight: 700;
+    font-size: 11px;
+    color: #0d1117;
+    margin-right: 6px;
+    text-decoration: none;
+  }
+  .v8-glyph.P { background: #39c5cf; }
+  .v8-glyph.A { background: #a371f7; }
+  .v8-glyph.D { background: #3fb950; }
+  .v8-glyph.C { background: #d29922; }
+  .v8-glyph.S { background: #58a6ff; }
+
+  .v8-pulse {
+    display: inline-block;
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: #2ea043;
+    box-shadow: 0 0 8px #2ea043;
+    margin-right: 5px;
+    vertical-align: 1px;
+  }
+  .v8-pulse.med { background: #d29922; box-shadow: 0 0 8px #d29922; }
+  .v8-pulse.cy  { background: #58a6ff; box-shadow: 0 0 8px #58a6ff; }
+
+  /* ---- Section 2: Subagent statusline (JSON rows, one per task) ---- */
+  .v8-tasklist {
+    border: 1px solid #21262d;
+    border-radius: 10px;
+    background: #0d1117;
+    padding: 8px 10px;
+  }
+  .v8-taskrow {
+    display: grid;
+    grid-template-columns: 110px 1fr 90px;
+    column-gap: 10px;
+    align-items: center;
+    font-size: 12px;
+    padding: 4px 0;
+    border-bottom: 1px solid #161b22;
+  }
+  .v8-taskrow:last-child { border-bottom: 0; }
+  .v8-taskid {
+    color: #58a6ff;
+    letter-spacing: 0.04em;
+    font-family: ui-monospace, 'SF Mono', Menlo, monospace;
+  }
+  .v8-taskid .pulse { margin-right: 6px; }
+  .v8-taskbody { color: #c9d1d9; letter-spacing: 0.02em; }
+  .v8-taskbody .meta { color: #8b949e; font-size: 11px; margin-left: 8px; }
+  .v8-taskstat { text-align: right; color: #8b949e; font-size: 11px; letter-spacing: 0.02em; }
+
+  .v8-code {
+    background: #010409;
+    border: 1px solid #21262d;
+    border-radius: 6px;
+    padding: 10px 12px;
+    margin-top: 12px;
+    font-size: 11px;
+    color: #c9d1d9;
+    overflow-x: auto;
+    white-space: pre;
+  }
+  .v8-code .k { color: #ff7b72; }       /* JSON key */
+  .v8-code .s { color: #a5d6ff; }       /* string */
+  .v8-code .p { color: #8b949e; }       /* punctuation */
+  .v8-code .c { color: #6e7681; font-style: italic; } /* comment */
+
+  /* ---- Section 3: OSC 777 toasts (transient notifications) ---- */
+  .v8-toasts {
+    display: grid;
+    gap: 10px;
+  }
+  .v8-toast {
+    border: 1px solid #21262d;
+    border-radius: 8px;
+    background: #0d1117;
+    padding: 10px 12px;
+    display: grid;
+    grid-template-columns: 18px 1fr 80px;
+    column-gap: 10px;
+    align-items: center;
+    font-size: 12px;
+  }
+  .v8-toast .sev {
+    width: 10px; height: 10px; border-radius: 50%;
+    justify-self: center;
+  }
+  .v8-toast .sev.ok   { background: #2ea043; box-shadow: 0 0 8px #2ea043; }
+  .v8-toast .sev.info { background: #58a6ff; box-shadow: 0 0 8px #58a6ff; }
+  .v8-toast .sev.warn { background: #d29922; box-shadow: 0 0 8px #d29922; }
+  .v8-toast .sev.err  { background: #f85149; box-shadow: 0 0 8px #f85149; }
+  .v8-toast .title { color: #f4f8ff; letter-spacing: 0.02em; }
+  .v8-toast .body  { color: #c9d1d9; font-size: 11.5px; margin-top: 2px; }
+  .v8-toast .when  { text-align: right; color: #6e7681; font-size: 10.5px; }
+
+  /* OSC 777 annotation strip — what the actual emitted sequence looks like */
+  .v8-osc {
+    border: 1px dashed #30363d;
+    border-radius: 8px;
+    padding: 8px 12px;
+    color: #6e7681;
+    font-size: 11px;
+    margin-top: 10px;
+  }
+  .v8-osc b { color: #d29922; font-family: ui-monospace, 'SF Mono', Menlo, monospace; }
+</style>
+
+<div class="v8-page">
+
+  <h2 class="v8-title"><b>Constellation</b> · v8 · three-surface split</h2>
+  <p class="v8-sub">
+    v8 splits the Constellation dashboard across three Claude Code extension surfaces, each rendering in the right place.
+    The columns from v7 no longer live in one giant mockup — they live where Claude Code actually has room for them.
+  </p>
+
+  <!-- ========================================================== -->
+  <!-- SECTION 1: MAIN STATUSLINE                                  -->
+  <!-- ========================================================== -->
+  <div class="v8-section">
+    <div class="v8-h">
+      <span class="v8-h-tag">surface 1</span>
+      <span class="v8-h-name">main statusline · always-on strip</span>
+      <span class="v8-h-config">~/.claude/settings.json → statusLine.command</span>
+    </div>
+    <p class="v8-caption">
+      Replaces your existing <code>session_progress_real.py</code> with a 5-line strip: three progress bars
+      (context window first, then 5-hour block, then weekly all-model cap), a one-line ecosystem summary with
+      <b>OSC 8 clickable links</b> to each component's MCP surface, and one most-recent event. Renders on idle
+      (~every few hundred ms); adapts to <code>COLUMNS</code>/<code>LINES</code> env vars (added in Claude Code 2.1.153).
+    </p>
+
+    <div class="v8-strip">
+
+      <!-- Bar 1: context window -->
+      <div class="v8-line">
+        <span class="v8-status med">MED</span>
+        <div class="v8-bar med"><span style="width:78%"></span></div>
+        <span class="v8-meta">186k / 200k</span>
+        <span class="v8-name">context window</span>
+        <span class="v8-meta">93% used</span>
+      </div>
+
+      <!-- Bar 2: 5-hour rolling block -->
+      <div class="v8-line">
+        <span class="v8-status ok">OK</span>
+        <div class="v8-bar ok"><span style="width:44%"></span></div>
+        <span class="v8-meta">442k / 1m</span>
+        <span class="v8-name">5-hour rolling block</span>
+        <span class="v8-meta">resets 7pm</span>
+      </div>
+
+      <!-- Bar 3: weekly all-model cap -->
+      <div class="v8-line">
+        <span class="v8-status high">HIGH</span>
+        <div class="v8-bar high"><span style="width:92%"></span></div>
+        <span class="v8-meta">9.2m / 10m</span>
+        <span class="v8-name">weekly all-model cap</span>
+        <span class="v8-meta">resets Sun</span>
+      </div>
+
+      <!-- Ecosystem summary with OSC 8 hyperlinks -->
+      <div class="v8-line eco">
+        <span style="color:#6e7681;letter-spacing:.16em;text-transform:uppercase;font-size:10px">Ecosystem</span>
+        <span>
+          <a class="v8-link P" href="http://localhost:8680/mcp"><span class="v8-glyph P">M</span></a>
+          <a class="v8-link"   href="http://localhost:8680/mcp" style="margin-right:10px">mahavishnu</a>
+          <a class="v8-link P" href="http://localhost:8680/mcp"><span class="v8-glyph P">P</span>pools</a>
+          <span class="v8-meta" style="margin:0 6px">·</span>
+          <a class="v8-link A" href="http://localhost:8682/mcp"><span class="v8-glyph A">A</span>akosha</a>
+          <span class="v8-meta" style="margin:0 6px">·</span>
+          <a class="v8-link D" href="http://localhost:8683/mcp"><span class="v8-glyph D">D</span>dhara</a>
+          <span class="v8-meta" style="margin:0 6px">·</span>
+          <a class="v8-link C" href="http://localhost:8676/mcp"><span class="v8-glyph C">C</span>crackerjack</a>
+          <span class="v8-meta" style="margin:0 6px">·</span>
+          <a class="v8-link S" href="http://localhost:8678/mcp"><span class="v8-glyph S">S</span>session-buddy</a>
+        </span>
+      </div>
+
+      <!-- Most-recent event -->
+      <div class="v8-line evt">
+        <span>07:42:11</span>
+        <span style="color:#58a6ff">⚡</span>
+        <span><span style="color:#58a6ff">[info]</span> pools.spin_up mahavishnu complete &middot; <span style="color:#6e7681">cmd+click for mahavishnu mcp health</span></span>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ========================================================== -->
+  <!-- SECTION 2: SUBAGENT STATUSLINE                              -->
+  <!-- ========================================================== -->
+  <div class="v8-section">
+    <div class="v8-h">
+      <span class="v8-h-tag">surface 2</span>
+      <span class="v8-h-name">subagent statusline · per-task rows</span>
+      <span class="v8-h-config">~/.claude/settings.json → subagentStatusLine.command</span>
+    </div>
+    <p class="v8-caption">
+      Receives a <code>tasks</code> array (each task: <code>id</code>, <code>name</code>, <code>type</code>, <code>status</code>,
+      <code>tokenCount</code>, <code>startTime</code>, <code>cwd</code>, <code>label</code>). Output one JSON row per task:
+      <code>{"id": "&lt;task id&gt;", "content": "&lt;row body&gt;"}</code>. Renders one row per active
+      Mahavishnu worker / Claude Code subagent. This is where the workflow chain lives — one row per stage.
+    </p>
+
+    <div class="v8-tasklist">
+      <div class="v8-taskrow">
+        <span class="v8-taskid"><span class="v8-pulse"></span>w-01</span>
+        <span class="v8-taskbody">scout &middot; <span class="meta">akosha diffing</span></span>
+        <span class="v8-taskstat">12.4k tok &middot; 00:41</span>
+      </div>
+      <div class="v8-taskrow">
+        <span class="v8-taskid"><span class="v8-pulse"></span>w-02</span>
+        <span class="v8-taskbody">plan &middot; <span class="meta">crackerjack running</span></span>
+        <span class="v8-taskstat">08.1k tok &middot; 00:28</span>
+      </div>
+      <div class="v8-taskrow">
+        <span class="v8-taskid"><span class="v8-pulse med"></span>w-03</span>
+        <span class="v8-taskbody" style="color:#58a6ff">patch &middot; <span class="meta">waiting on session-buddy memory</span></span>
+        <span class="v8-taskstat">04.7k tok &middot; 00:12</span>
+      </div>
+      <div class="v8-taskrow" style="opacity:.55">
+        <span class="v8-taskid"><span class="v8-pulse cy"></span>w-04</span>
+        <span class="v8-taskbody">verify &middot; <span class="meta">queued</span></span>
+        <span class="v8-taskstat">— &middot; —</span>
+      </div>
+      <div class="v8-taskrow" style="opacity:.55">
+        <span class="v8-taskid"><span class="v8-pulse cy"></span>w-05</span>
+        <span class="v8-taskbody">land &middot; <span class="meta">queued</span></span>
+        <span class="v8-taskstat">— &middot; —</span>
+      </div>
+    </div>
+
+    <div class="v8-code"><span class="c"># stdout from subagentStatusLine script — one JSON row per active task</span>
+<span class="p">{</span><span class="k">"id"</span><span class="p">:</span> <span class="s">"w-01"</span><span class="p">,</span> <span class="k">"content"</span><span class="p">:</span> <span class="s">"🟢 scout · akosha diffing · 12.4k tok · 00:41"</span><span class="p">}</span>
+<span class="p">{</span><span class="k">"id"</span><span class="p">:</span> <span class="s">"w-02"</span><span class="p">,</span> <span class="k">"content"</span><span class="p">:</span> <span class="s">"🟢 plan · crackerjack running · 08.1k tok · 00:28"</span><span class="p">}</span>
+<span class="p">{</span><span class="k">"id"</span><span class="p">:</span> <span class="s">"w-03"</span><span class="p">,</span> <span class="k">"content"</span><span class="p">:</span> <span class="s">"🟡 patch · waiting on session-buddy · 04.7k tok · 00:12"</span><span class="p">}</span>
+<span class="p">{</span><span class="k">"id"</span><span class="p">:</span> <span class="s">"w-04"</span><span class="p">,</span> <span class="k">"content"</span><span class="p">:</span> <span class="s">"🔵 verify · queued"</span><span class="p">}</span>
+<span class="p">{</span><span class="k">"id"</span><span class="p">:</span> <span class="s">"w-05"</span><span class="p">,</span> <span class="k">"content"</span><span class="p">:</span> <span class="s">"🔵 land · queued"</span><span class="p">}</span></div>
+  </div>
+
+  <!-- ========================================================== -->
+  <!-- SECTION 3: OSC 777 TOASTS (native transient notifications)  -->
+  <!-- ========================================================== -->
+  <div class="v8-section">
+    <div class="v8-h">
+      <span class="v8-h-tag">surface 3</span>
+      <span class="v8-h-name">OSC 777 toasts · native transient notifications</span>
+      <span class="v8-h-config">PostToolUse hook → EventBridge subscriber → OSC 777 emit</span>
+    </div>
+    <p class="v8-caption">
+      Lifecycle events from the Mahavishnu EventBridge (workflow_started, stage_completed, completed, failed,
+      pool_scaled, worker.completed, crackerjack.gate_raised) emitted via <b>OSC 777</b> as native terminal
+      notifications. They appear briefly in the corner of the terminal (iTerm2, WezTerm, Kitty, Ghostty),
+      don't displace the statusline, and auto-dismiss. Use <code>mahavishnu-activity-stream.py</code> as the
+      PostToolUse hook that drains the queue and emits toasts.
+    </p>
+
+    <div class="v8-toasts">
+      <div class="v8-toast">
+        <span class="sev ok"></span>
+        <div>
+          <div class="title">worker w-02 completed</div>
+          <div class="body">refactor-auth stage=plan · 8.1k tokens · 28s</div>
+        </div>
+        <span class="when">07:42:08</span>
+      </div>
+      <div class="v8-toast">
+        <span class="sev info"></span>
+        <div>
+          <div class="title">workflow stage started</div>
+          <div class="body">refactor-auth · stage=patch · routed to local pool</div>
+        </div>
+        <span class="when">07:40:42</span>
+      </div>
+      <div class="v8-toast">
+        <span class="sev warn"></span>
+        <div>
+          <div class="title">crackerjack gate raised warning</div>
+          <div class="body">flaky test #218 — known issue, retry queued</div>
+        </div>
+        <span class="when">07:40:11</span>
+      </div>
+      <div class="v8-toast">
+        <span class="sev err"></span>
+        <div>
+          <div class="title">workflow failed</div>
+          <div class="body">release-v4 · stage=verify · crackerjack score 71 &lt; 80 min</div>
+        </div>
+        <span class="when">07:38:02</span>
+      </div>
+    </div>
+
+    <div class="v8-osc">
+      <b>OSC 777</b> sequence per toast:
+      <code>\033]777;notify;title=worker w-02 completed;body=refactor-auth stage=plan · 8.1k tokens · 28s\a</code>
+      <br><span style="color:#6e7681;font-style:italic">Terminal renders the toast as a native notification (iTerm2: banner · WezTerm/Ghostty: overlay · GNOME Terminal: silent). No screen real estate consumed.</span>
+    </div>
+  </div>
+
+</div>

@@ -1,8 +1,17 @@
+---
+status: shipped
+role: implementation
+date: 2026-07-16
+last_reviewed: 2026-07-16
+superseded_by: null
+topic: observability
+---
+
 # Mahavishnu Ecosystem Control Plane Update Plan
 
 **Date:** 2026-04-25
 **Last reviewed:** 2026-04-30
-**Status:** SHIPPED — all CP0–CP7 phases complete as of 2026-04-30
+**Status:** SHIPPED — all CP0–CP7 phases complete as of 2026-04-30  <!-- legacy status: SHIPPED — see YAML frontmatter -->
 **Scope:** Mahavishnu health, readiness, capability discovery, routing observability, and TUI/dashboard integration across the Bodai ecosystem.
 
 **Companion documents:**

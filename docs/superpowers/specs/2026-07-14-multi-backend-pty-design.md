@@ -1,6 +1,16 @@
+---
+status: active
+role: implementation
+date: 2026-07-16
+last_reviewed: 2026-07-16
+superseded_by: null
+blocks_on: []
+topic: terminal
+---
+
 # Multi-Backend PTY Toolservers for Mahavishnu
 
-**Status:** Approved (design phase complete, awaiting plan)
+**Status:** Approved (design phase complete, awaiting plan)  <!-- legacy status: Approved (awaiting plan) — see YAML frontmatter -->
 **Date:** 2026-07-14
 **Scope:** Mahavishnu terminal adapter system (`mahavishnu/terminal/`)
 

@@ -1,7 +1,16 @@
+---
+status: complete
+role: implementation
+date: 2026-07-16
+last_reviewed: 2026-07-16
+superseded_by: null
+topic: convergence-control-plane
+---
+
 # Mahavishnu Master Backlog
 
 **Created**: 2026-05-07
-**Status**: `canonical` — single authoritative list of confirmed open work
+**Status**: `canonical` — single authoritative list of confirmed open work  <!-- legacy status: canonical, Final Gate — see YAML frontmatter -->
 **Authority**: Verified against codebase 2026-05-07. Items here were confirmed missing by code inspection; closed/superseded items were removed.
 **Last updated**: 2026-05-08 — All priorities delivered; Final Gate complete.
 

@@ -1,6 +1,16 @@
+---
+status: draft
+role: implementation
+date: 2026-07-16
+last_reviewed: 2026-07-16
+superseded_by: null
+blocks_on: []
+topic: convergence-control-plane
+---
+
 # Confidence Ceiling Gate v1.1 — Design
 
-**Status:** Draft (brainstormed 2026-06-22)
+**Status:** Draft (brainstormed 2026-06-22)  <!-- legacy status: Draft (brainstormed 2026-06-22) — see YAML frontmatter -->
 **Phase:** 1 (Foundational)
 **Source:** `Building a Production Agent Harness` — the article's A1 gate computes a hard confidence ceiling as `1.0 − (open_questions × 0.08) − (unchecked_sources × 0.05)`. Whatever the agent self-reports, the gate caps it arithmetically. This prevents "confident but wrong" failures without blocking iteration progress.
 

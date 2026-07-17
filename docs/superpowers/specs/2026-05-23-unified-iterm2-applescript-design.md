@@ -1,7 +1,17 @@
+---
+status: draft
+role: implementation
+date: 2026-07-16
+last_reviewed: 2026-07-16
+superseded_by: null
+blocks_on: []
+topic: terminal
+---
+
 # Unified iTerm2 AppleScript Integration — Design Spec
 
 **Date:** 2026-05-23
-**Status:** Draft for review
+**Status:** Draft for review  <!-- legacy status: Draft for review — see YAML frontmatter -->
 **Goal:** Unify AppleScript/iTerm2 integration across mdinject (Swift) and Mahavishnu (Python) for shared session identity schema, compatible string escaping, and common AppleScript patterns.
 
 ______________________________________________________________________

@@ -1,7 +1,16 @@
+---
+status: active
+role: canonical
+date: 2026-07-16
+last_reviewed: 2026-07-16
+superseded_by: null
+topic: storage-consolidation
+---
+
 # Storage Consolidation And Akosha Role Plan
 
 **Date**: 2026-04-02
-**Status**: Proposed
+**Status**: Proposed  <!-- legacy status: Proposed — see YAML frontmatter -->
 **Scope**: `mahavishnu`, `akosha`, `session-buddy`, `bodai`
 
 ## Plan Workflow Integration (2026-04-02)

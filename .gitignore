@@ -138,6 +138,11 @@ oneiric.yaml
 # ============================================================================
 .archive/
 tests/archived/
+# Exception: docs/followups/.archive/ is intentionally version-controlled.
+# Resolved follow-up notes are archived there (never deleted) and must
+# survive a clean checkout. See docs/followups/README.md for the lifecycle.
+!docs/followups/.archive/
+!docs/followups/.archive/**
 
 # ============================================================================
 # Project-Specific

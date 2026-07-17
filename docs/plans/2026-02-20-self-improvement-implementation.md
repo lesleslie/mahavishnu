@@ -1,3 +1,12 @@
+---
+status: draft
+role: historical
+date: 2026-02-20
+last_reviewed: 2026-07-16
+superseded_by: null
+topic: learning-pipeline
+---
+
 # Self-Improvement System Implementation Plan
 
 > **Update (2026-04-02):** This plan remains active for review/fix orchestration, approval gates, and tooling.

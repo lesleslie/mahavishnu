@@ -1,6 +1,16 @@
+---
+status: active
+role: implementation
+date: 2026-07-16
+last_reviewed: 2026-07-16
+superseded_by: null
+blocks_on: []
+topic: terminal
+---
+
 # Constellation TUI: Three-Surface Dashboard for Claude Code
 
-**Status:** Approved (design phase complete, awaiting plan)
+**Status:** Approved (design phase complete, awaiting plan)  <!-- legacy status: Approved — see YAML frontmatter -->
 **Date:** 2026-07-15
 **Scope:** Claude Code extension surfaces (statusLine, subagentStatusLine, OSC 777) wired to the Mahavishnu EventBridge
 **Track:** Track 1 of 2 (Track 2 — Toad/ACP integration — deferred per design)

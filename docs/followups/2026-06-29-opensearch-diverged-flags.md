@@ -1,6 +1,6 @@
 # Diverged `OPENSEARCH_AVAILABLE` Flags — Architecture Followup
 
-**Status:** Resolved. Discovered during the bodai-crow-server runbook + `local.yaml.example` PR audit.
+**Status:** Resolved for all live paths (re-verified 2026-07-16). `opensearch_integration.py` and `dead_letter_queue.py` both import the single flag from `mahavishnu/core/opensearch_constants.py`, enforced by `tests/unit/core/test_opensearch_constants.py::test_no_duplicate_flag_declarations`. **Residual (accepted, not a live risk):** the DEPRECATED, test-only `mahavishnu/core/workflow_state.py:17-23` still declares its own `OPENSEARCH_AVAILABLE`, but that module's OpenSearch persistence path is retired and no live code imports it, so no divergence can occur. Discovered during the bodai-crow-server runbook + `local.yaml.example` PR audit. See `docs/followups/README.md`.
 **Refs:** None — pre-PR analysis gap, not in scope for current changes.
 
 ## Background

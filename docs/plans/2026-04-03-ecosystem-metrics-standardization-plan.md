@@ -1,7 +1,16 @@
+---
+status: draft
+role: historical
+date: 2026-04-03
+last_reviewed: 2026-07-16
+superseded_by: null
+topic: observability
+---
+
 # Ecosystem Metrics Standardization Plan
 
 **Date:** 2026-04-03
-**Status:** Ready for implementation
+**Status:** Ready for implementation  <!-- legacy status: Ready for implementation — see YAML frontmatter -->
 
 ## Goal
 

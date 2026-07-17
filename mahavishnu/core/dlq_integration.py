@@ -384,8 +384,14 @@ async def create_dlq_integration(app) -> DLQIntegration:
     if not hasattr(app, "dlq") or app.dlq is None:
         from .dead_letter_queue import DeadLetterQueue
 
+        # ``app.config`` is MahavishnuSettings; ``dlq`` is a DLQConfig (see
+        # mahavishnu/core/config.py:DLQConfig). Mirrors the
+        # ``dlq.fail_on_opensearch_unavailable`` opt-in policy — see
+        # docs/followups/2026-06-29-dlq-silent-fallback.md and
+        # docs/plans/2026-07-16-dlq-fail-closed-wiring.md.
         app.dlq = DeadLetterQueue(
-            max_size=getattr(app.config, "dlq_max_size", 10000),
+            max_size=app.config.dlq.max_size,
+            fail_on_opensearch_unavailable=app.config.dlq.fail_on_opensearch_unavailable,
             opensearch_client=app.opensearch_integration.client
             if app.opensearch_integration
             else None,

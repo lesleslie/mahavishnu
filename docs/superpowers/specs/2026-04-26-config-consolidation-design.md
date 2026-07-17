@@ -1,7 +1,17 @@
+---
+status: draft
+role: implementation
+date: 2026-07-16
+last_reviewed: 2026-07-16
+superseded_by: null
+blocks_on: []
+topic: oneiric-config
+---
+
 # Config Consolidation: Mahavishnu as Self-Contained Dev Environment
 
 **Date:** 2026-04-26
-**Status:** Draft
+**Status:** Draft  <!-- legacy status: Draft — see YAML frontmatter -->
 **Approach:** Native project config (Approach A)
 
 ## 1. Problem Statement

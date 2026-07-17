@@ -1,3 +1,12 @@
+---
+status: draft
+role: historical
+date: 2026-02-27
+last_reviewed: 2026-07-16
+superseded_by: null
+topic: observability
+---
+
 # Health Check System Implementation Plan
 
 > **Update (2026-04-02):** Keep this implementation plan, but apply dependency criticality from `docs/plans/2026-04-02-storage-consolidation-and-akosha-role.md`.

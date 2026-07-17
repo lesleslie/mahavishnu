@@ -731,6 +731,15 @@ class DLQConfig(BaseModel):
         ),
     )
 
+    max_size: int = Field(
+        default=10000,
+        description=(
+            "Maximum number of failed tasks the DLQ holds in memory. When the "
+            "queue is full, ``enqueue`` raises ``ValueError``. Per-process; "
+            "the canonical durable copy lives in OpenSearch."
+        ),
+    )
+
     model_config = {"extra": "forbid"}
 
 

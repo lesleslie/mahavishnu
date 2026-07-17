@@ -1,8 +1,18 @@
+---
+status: complete
+role: historical
+date: 2026-07-16
+last_reviewed: 2026-07-16
+superseded_by: null
+blocks_on: []
+topic: convergence-control-plane
+---
+
 # Initiative 0: Phase 0 Cleanup
 
 ## Metadata
 
-- Status: `completed`
+- Status: `completed` <!-- legacy status: completed — see YAML frontmatter -->
 - Owner Role: `Platform Eng`
 - Target Window: `2026-04-06` to `2026-04-10`
 - Parent Plan: `docs/plans/2026-04-04-ecosystem-execution-board.md`

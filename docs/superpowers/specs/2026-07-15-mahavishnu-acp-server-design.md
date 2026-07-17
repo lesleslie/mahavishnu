@@ -1,6 +1,16 @@
+---
+status: active
+role: implementation
+date: 2026-07-16
+last_reviewed: 2026-07-16
+superseded_by: null
+blocks_on: []
+topic: mcp-design
+---
+
 # Mahavishnu ACP Server — Design Spec
 
-**Status:** Approved (design phase complete, awaiting plan)
+**Status:** Approved (design phase complete, awaiting plan)  <!-- legacy status: Approved — see YAML frontmatter -->
 **Date:** 2026-07-15
 **Scope:** New `mahavishnu/acp/` subpackage exposing Mahavishnu as an **ACP server** (stdio JSON-RPC 2.0), alongside the existing A2A HTTP+SSE server.
 **Track:** Toad/ACP integration (deferred per user direction; spec committed for future implementation).

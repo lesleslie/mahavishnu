@@ -1,7 +1,16 @@
+---
+status: complete
+role: implementation
+date: 2026-07-16
+last_reviewed: 2026-07-16
+superseded_by: null
+topic: terminal
+---
+
 # Terminal Worker Unification Plan
 
 **Date:** 2026-05-10
-**Status:** `completed`
+**Status:** `completed`  <!-- legacy status: completed — see YAML frontmatter -->
 **Owner:** Core Eng
 **Scope:** Mahavishnu terminal workers, registry, adapter selection, CLI/help docs, and tests. This plan does not change provider-default migration scope.
 **Purpose:** Reduce terminal-worker branching and normalize all terminal-based AI execution behind a provider-neutral interface so `terminal-*` workers share the same execution protocol and only differ by registry configuration and CLI launcher details.

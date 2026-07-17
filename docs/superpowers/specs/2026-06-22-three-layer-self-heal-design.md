@@ -1,6 +1,16 @@
+---
+status: draft
+role: implementation
+date: 2026-07-16
+last_reviewed: 2026-07-16
+superseded_by: null
+blocks_on: []
+topic: convergence-control-plane
+---
+
 # Three-Layer Self-Heal v1.0 — Design
 
-**Status:** Draft (brainstormed 2026-06-22)
+**Status:** Draft (brainstormed 2026-06-22)  <!-- legacy status: Draft (brainstormed 2026-06-22) — see YAML frontmatter -->
 **Phase:** 2 (Workflow Evolution)
 **Source:** `Building a Production Agent Harness` — Layer 4 ("Self-Healing Loops"). The article's L1/L2/L3 pattern is a partial-function recovery: deterministic fast path → bounded agentic retry → operator escalation. Designed to recover from *known* failures without pages.
 

@@ -1,8 +1,17 @@
+---
+status: draft
+role: historical
+date: 2025-01-25
+last_reviewed: 2026-07-16
+superseded_by: null
+topic: memory-architecture
+---
+
 # Category Evolution Enhancements - Design Document
 
 **Date**: 2025-01-25
 **Author**: Claude Sonnet + User Collaboration
-**Status**: Ready for Implementation
+**Status**: Ready for Implementation  <!-- legacy status: Ready for Implementation — see YAML frontmatter -->
 **Estimated Time**: 3 hours
 
 ______________________________________________________________________

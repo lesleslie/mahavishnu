@@ -1,0 +1,110 @@
+<h2>Choose the Bodai command-center layout</h2>
+<p class="subtitle">All three are compact, live dashboards for Claude Code. Imagine active workers, pool state, workflow progress, Akosha intelligence, Crackerjack quality, Dhara state, and lifecycle notifications flowing through them.</p>
+
+<style>
+  .layout-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 18px; margin-top: 20px; }
+  .layout-card { background: #0b1220; border: 1px solid #24334b; border-radius: 12px; padding: 14px; color: #d8e6ff; min-height: 420px; box-shadow: 0 0 0 1px rgba(87, 166, 255, .04), 0 12px 30px rgba(0,0,0,.22); }
+  .layout-card:hover { border-color: #65b8ff; }
+  .layout-card h3 { color: #f4f8ff; margin: 8px 0 4px; }
+  .layout-card p { color: #9eb1ca; font-size: .9rem; }
+  .terminal { margin-top: 12px; border: 1px solid #304766; border-radius: 8px; background: #050912; overflow: hidden; font: 12px/1.45 ui-monospace, SFMono-Regular, Menlo, monospace; }
+  .terminal-bar { background: #111c2e; color: #7890af; padding: 5px 8px; }
+  .terminal-body { padding: 10px; }
+  .dim { color: #6d829d; }
+  .cyan { color: #70d7ff; }
+  .green { color: #78e3a1; }
+  .amber { color: #ffd166; }
+  .pink { color: #ff8fb3; }
+  .purple { color: #caa8ff; }
+  .line { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .bar { height: 7px; background: #1b2b43; border-radius: 99px; margin: 4px 0 8px; overflow: hidden; }
+  .fill-cyan { height: 100%; width: 72%; background: linear-gradient(90deg,#3b86ff,#70d7ff); }
+  .fill-green { height: 100%; width: 88%; background: linear-gradient(90deg,#27ae75,#78e3a1); }
+  .pulse { display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: #78e3a1; box-shadow: 0 0 10px #78e3a1; margin-right: 5px; }
+  .pulse.am { background:#ffd166; box-shadow:0 0 10px #ffd166; }
+  .pulse.pk { background:#ff8fb3; box-shadow:0 0 10px #ff8fb3; }
+  .tag { color:#86a0c1; border:1px solid #28405f; border-radius:4px; padding:1px 4px; }
+  .layout-label { letter-spacing: .12em; text-transform: uppercase; font-size: .72rem; color: #70d7ff; }
+  @media (max-width: 1050px) { .layout-grid { grid-template-columns: 1fr; } .layout-card { min-height: auto; } }
+</style>
+
+<div class="layout-grid" data-multiselect>
+  <div class="layout-card option" data-choice="orbit" onclick="toggleSelect(this)">
+    <div class="layout-label">A · Mission Control</div>
+    <h3>Orbit HUD</h3>
+    <p>Dense, glanceable command center. The top row answers “is Bodai alive?” and the lower lanes show what is moving now.</p>
+    <div class="terminal">
+      <div class="terminal-bar">● ● ●  claude · bodai://orbit</div>
+      <div class="terminal-body">
+        <div class="line"><span class="cyan">BODAI</span> <span class="green">● LIVE</span>  pools 3/3  workers 07  events 42</div>
+        <div class="line dim">──────────────────────────────────────</div>
+        <div class="line"><span class="purple">WORKFLOW</span> release-governance <span class="amber">72%</span></div>
+        <div class="bar"><div class="fill-cyan"></div></div>
+        <div class="line"><span class="green">●</span> w-01 code-review     12.4k tok   00:41</div>
+        <div class="line"><span class="green">●</span> w-02 test-sweep       08.1k tok   00:28</div>
+        <div class="line"><span class="amber">●</span> w-03 akosha-correlate  waiting     00:12</div>
+        <div class="line"><span class="cyan">●</span> w-04 dhara-sync       88%         00:09</div>
+        <div class="line dim">──────────────────────────────────────</div>
+        <div class="line"><span class="pink">✦</span> crackerjack quality gate passed</div>
+        <div class="line"><span class="cyan">↯</span> session-buddy memory synced</div>
+        <div class="line"><span class="amber">!</span> pool/runpod scaled 2 → 4</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="layout-card option" data-choice="constellation" onclick="toggleSelect(this)">
+    <div class="layout-label">B · Ecosystem Map</div>
+    <h3>Constellation</h3>
+    <p>More expressive and futuristic. Components become living nodes; the event ticker explains the connections without requiring a full graph.</p>
+    <div class="terminal">
+      <div class="terminal-bar">● ● ●  claude · bodai://constellation</div>
+      <div class="terminal-body">
+        <div class="line"><span class="cyan">◈</span> MAHAVISHNU <span class="dim">─────</span> <span class="green">ACTIVE</span></div>
+        <div class="line">  <span class="cyan">◉</span> pools       <span class="green">●●●</span> 3 healthy</div>
+        <div class="line">  <span class="purple">◉</span> akosha      <span class="green">●</span> seer online</div>
+        <div class="line">  <span class="amber">◉</span> dhara       <span class="green">●</span> state synced</div>
+        <div class="line">  <span class="pink">◉</span> crackerjack <span class="amber">●</span> inspecting</div>
+        <div class="line">  <span class="cyan">◉</span> session-buddy <span class="green">●</span> building</div>
+        <div class="line dim">──────────────────────────────────────</div>
+        <div class="line"><span class="amber">TASK</span> refactor-auth</div>
+        <div class="line">  ├─ <span class="green">✓</span> route → local pool</div>
+        <div class="line">  ├─ <span class="green">✓</span> 3 workers dispatched</div>
+        <div class="line">  ├─ <span class="amber">◌</span> quality scan running</div>
+        <div class="line">  └─ <span class="dim">·</span> artifact persistence queued</div>
+        <div class="line dim">──────────────────────────────────────</div>
+        <div class="line"><span class="tag">EVENT TICKER</span> 12:04:18</div>
+        <div class="line"><span class="green">▲</span> worker.completed  w-02</div>
+        <div class="line"><span class="cyan">◆</span> akosha.pattern  0.91</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="layout-card option" data-choice="deck" onclick="toggleSelect(this)">
+    <div class="layout-label">C · Operator Deck</div>
+    <h3>Command Deck</h3>
+    <p>Prioritizes actionability. One large workflow panel, one health rail, and a recent-events feed designed for lifecycle notifications.</p>
+    <div class="terminal">
+      <div class="terminal-bar">● ● ●  claude · bodai://deck</div>
+      <div class="terminal-body">
+        <div class="line"><span class="cyan">ACTIVE MISSION</span>  deploy-v4</div>
+        <div class="line"><span class="green">████████████████</span><span class="dim">████</span>  80%</div>
+        <div class="line dim">stage 4/5 · quality verification</div>
+        <div class="line dim">──────────────────────────────────────</div>
+        <div class="line"><span class="green">●</span> LOCAL       4 workers   <span class="green">READY</span></div>
+        <div class="line"><span class="green">●</span> SESSION      3 workers   <span class="green">READY</span></div>
+        <div class="line"><span class="amber">●</span> RUNPOD       2 workers   <span class="amber">WARMING</span></div>
+        <div class="line"><span class="green">●</span> AKOSHA       latency 84ms</div>
+        <div class="line"><span class="green">●</span> DHARA        commit 9f31</div>
+        <div class="line"><span class="green">●</span> CRACKERJACK  score 94/100</div>
+        <div class="line dim">──────────────────────────────────────</div>
+        <div class="line"><span class="pink">NOTIFICATIONS</span></div>
+        <div class="line"><span class="green">✓</span> worker w-02 completed</div>
+        <div class="line"><span class="green">✓</span> pool local scaled</div>
+        <div class="line"><span class="green">✓</span> workflow stage completed</div>
+        <div class="line dim">next attention: none · sound: off</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<p class="subtitle" style="margin-top:18px">Click one or more directions to explore them. We can combine the information architecture of one with the visual language of another.</p>

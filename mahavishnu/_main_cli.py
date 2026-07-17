@@ -363,6 +363,8 @@ async def _async_heal_workflows() -> dict:
     from .core.dead_letter_queue import DeadLetterQueue
     from .core.status import DeadLetterStatus
 
+    # Heal path only ever calls list_tasks; the fail-closed flag is inert here
+    # because this DLQ instance never enqueues. Use a fresh local queue.
     dlq = DeadLetterQueue()
 
     failed_tasks = await dlq.list_tasks(status=DeadLetterStatus.PENDING)

@@ -1,6 +1,16 @@
+---
+status: active
+role: implementation
+date: 2026-07-16
+last_reviewed: 2026-07-16
+superseded_by: null
+blocks_on: []
+topic: auth
+---
+
 # Bodai Inter-Service Authentication Standardization
 
-**Status:** Approved
+**Status:** Approved  <!-- legacy status: Approved — see YAML frontmatter -->
 **Date:** 2026-04-27
 **Author:** Claude Code + les
 **Unblocks:** Phase 2 engine surface expansion

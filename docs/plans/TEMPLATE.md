@@ -1,19 +1,18 @@
+---
+status: active
+role: canonical
+date: 2026-07-16
+last_reviewed: 2026-07-16
+superseded_by: null
+topic: routing-composition
+---
+
 # Plan Template — Integration-Contract Required
 
 > **Why this template exists**: features are being built but not wired into
 > apps and workflows. This template makes wiring a first-class plan section.
 > A plan is not "done" until every deliverable has an Integration Contract
 > block, even if that block says "no wiring required (rationale: …)".
-
----
-status: draft
-role: implementation
-date: 2026-07-16
-last_reviewed: 2026-07-16
-superseded_by: null
-blocks_on: []
-topic: routing-composition
----
 
 _See `docs/schemas/document-frontmatter-v1.md` for the schema definition._
 

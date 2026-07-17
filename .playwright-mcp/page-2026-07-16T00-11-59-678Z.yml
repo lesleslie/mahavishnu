@@ -1,0 +1,74 @@
+- generic [active] [ref=f1e1]:
+  - generic [ref=f1e2]:
+    - link "Prime Radiant Superpowers v6.1.1" [ref=f1e4] [cursor=pointer]:
+      - /url: https://github.com/obra/superpowers
+    - generic [ref=f1e6]: Connected
+  - generic [ref=f1e8]:
+    - heading "Choose the Bodai command-center layout" [level=2] [ref=f1e9]
+    - paragraph [ref=f1e10]: All three are compact, live dashboards for Claude Code. Imagine active workers, pool state, workflow progress, Akosha intelligence, Crackerjack quality, Dhara state, and lifecycle notifications flowing through them.
+    - generic [ref=f1e11]:
+      - generic [ref=f1e12] [cursor=pointer]:
+        - generic [ref=f1e13]: A · Mission Control
+        - heading "Orbit HUD" [level=3] [ref=f1e14]
+        - paragraph [ref=f1e15]: Dense, glanceable command center. The top row answers “is Bodai alive?” and the lower lanes show what is moving now.
+        - generic [ref=f1e16]:
+          - generic [ref=f1e17]: ● ● ● claude · bodai://orbit
+          - generic [ref=f1e18]:
+            - generic [ref=f1e19]: BODAI ● LIVE pools 3/3 workers 07 events 42
+            - generic [ref=f1e20]: ──────────────────────────────────────
+            - generic [ref=f1e21]: WORKFLOW release-governance 72%
+            - generic [ref=f1e24]: ● w-01 code-review 12.4k tok 00:41
+            - generic [ref=f1e25]: ● w-02 test-sweep 08.1k tok 00:28
+            - generic [ref=f1e26]: ● w-03 akosha-correlate waiting 00:12
+            - generic [ref=f1e27]: ● w-04 dhara-sync 88% 00:09
+            - generic [ref=f1e28]: ──────────────────────────────────────
+            - generic [ref=f1e29]: ✦ crackerjack quality gate passed
+            - generic [ref=f1e30]: ↯ session-buddy memory synced
+            - generic [ref=f1e31]: "! pool/runpod scaled 2 → 4"
+      - generic [ref=f1e32] [cursor=pointer]:
+        - generic [ref=f1e33]: B · Ecosystem Map
+        - heading "Constellation" [level=3] [ref=f1e34]
+        - paragraph [ref=f1e35]: More expressive and futuristic. Components become living nodes; the event ticker explains the connections without requiring a full graph.
+        - generic [ref=f1e36]:
+          - generic [ref=f1e37]: ● ● ● claude · bodai://constellation
+          - generic [ref=f1e38]:
+            - generic [ref=f1e39]: ◈ MAHAVISHNU ───── ACTIVE
+            - generic [ref=f1e40]: ◉ pools ●●● 3 healthy
+            - generic [ref=f1e41]: ◉ akosha ● seer online
+            - generic [ref=f1e42]: ◉ dhara ● state synced
+            - generic [ref=f1e43]: ◉ crackerjack ● inspecting
+            - generic [ref=f1e44]: ◉ session-buddy ● building
+            - generic [ref=f1e45]: ──────────────────────────────────────
+            - generic [ref=f1e46]: TASK refactor-auth
+            - generic [ref=f1e47]: ├─ ✓ route → local pool
+            - generic [ref=f1e48]: ├─ ✓ 3 workers dispatched
+            - generic [ref=f1e49]: ├─ ◌ quality scan running
+            - generic [ref=f1e50]: └─ · artifact persistence queued
+            - generic [ref=f1e51]: ──────────────────────────────────────
+            - generic [ref=f1e52]: EVENT TICKER 12:04:18
+            - generic [ref=f1e53]: ▲ worker.completed w-02
+            - generic [ref=f1e54]: ◆ akosha.pattern 0.91
+      - generic [ref=f1e55] [cursor=pointer]:
+        - generic [ref=f1e56]: C · Operator Deck
+        - heading "Command Deck" [level=3] [ref=f1e57]
+        - paragraph [ref=f1e58]: Prioritizes actionability. One large workflow panel, one health rail, and a recent-events feed designed for lifecycle notifications.
+        - generic [ref=f1e59]:
+          - generic [ref=f1e60]: ● ● ● claude · bodai://deck
+          - generic [ref=f1e61]:
+            - generic [ref=f1e62]: ACTIVE MISSION deploy-v4
+            - generic [ref=f1e63]: ████████████████████ 80%
+            - generic [ref=f1e64]: stage 4/5 · quality verification
+            - generic [ref=f1e65]: ──────────────────────────────────────
+            - generic [ref=f1e66]: ● LOCAL 4 workers READY
+            - generic [ref=f1e67]: ● SESSION 3 workers READY
+            - generic [ref=f1e68]: ● RUNPOD 2 workers WARMING
+            - generic [ref=f1e69]: ● AKOSHA latency 84ms
+            - generic [ref=f1e70]: ● DHARA commit 9f31
+            - generic [ref=f1e71]: ● CRACKERJACK score 94/100
+            - generic [ref=f1e72]: ──────────────────────────────────────
+            - generic [ref=f1e73]: NOTIFICATIONS
+            - generic [ref=f1e74]: ✓ worker w-02 completed
+            - generic [ref=f1e75]: ✓ pool local scaled
+            - generic [ref=f1e76]: ✓ workflow stage completed
+            - generic [ref=f1e77]: "next attention: none · sound: off"
+    - paragraph [ref=f1e78]: Click one or more directions to explore them. We can combine the information architecture of one with the visual language of another.

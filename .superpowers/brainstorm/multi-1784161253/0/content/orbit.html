@@ -1,0 +1,78 @@
+<h2>A · Orbit HUD</h2>
+<p class="subtitle">Compact, glanceable command center. The status area in Claude Code shows whether Bodai is alive at a glance, plus the workers and pools that are currently doing real work. Single-select to mark as the preferred direction.</p>
+
+<style>
+  .hud-wrap { margin-top: 18px; }
+  .hud-screen { background: #050912; color: #d8e6ff; border: 1px solid #24334b; border-radius: 14px; padding: 18px 22px; box-shadow: 0 18px 40px rgba(0,0,0,.45); font: 13px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace; }
+  .hud-top { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 18px; padding-bottom: 14px; border-bottom: 1px solid #1b2b43; }
+  .metric { display: flex; flex-direction: column; gap: 4px; }
+  .metric .label { color: #7890af; font-size: 10.5px; letter-spacing: .14em; text-transform: uppercase; }
+  .metric .value { color: #f4f8ff; font-size: 22px; font-weight: 600; }
+  .metric .sub { color: #8da6c7; font-size: 11.5px; }
+  .pulse { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: #78e3a1; box-shadow: 0 0 12px #78e3a1; margin-right: 6px; vertical-align: 1px; }
+  .pulse.amber { background: #ffd166; box-shadow: 0 0 10px #ffd166; }
+  .pulse.cyan { background: #70d7ff; box-shadow: 0 0 10px #70d7ff; }
+  .pulse.pink { background: #ff8fb3; box-shadow: 0 0 10px #ff8fb3; }
+  .hud-body { display: grid; grid-template-columns: 1.4fr 1fr; gap: 22px; padding-top: 14px; }
+  .lane-title { color: #9eb1ca; font-size: 10.5px; letter-spacing: .16em; text-transform: uppercase; margin-bottom: 8px; display: flex; align-items: center; gap: 8px; }
+  .bar { height: 8px; background: #1b2b43; border-radius: 99px; margin: 4px 0 14px; overflow: hidden; }
+  .bar > span { display: block; height: 100%; background: linear-gradient(90deg,#3b86ff,#70d7ff); border-radius: inherit; }
+  .workers { font-size: 12.5px; }
+  .worker { display: grid; grid-template-columns: 14px 90px 1fr 70px; gap: 10px; padding: 4px 0; align-items: center; }
+  .worker .name { color: #d8e6ff; }
+  .worker .meta { color: #7890af; }
+  .health { display: grid; gap: 6px; font-size: 12px; }
+  .health .row { display: grid; grid-template-columns: 110px 1fr 60px; gap: 10px; align-items: center; }
+  .health .row .name { color: #c0d4ee; }
+  .feed { grid-column: 1 / -1; padding-top: 14px; border-top: 1px solid #1b2b43; margin-top: 8px; font-size: 12.5px; display: grid; gap: 4px; }
+  .feed .row { display: grid; grid-template-columns: 60px 1fr; gap: 12px; }
+  .feed .row .ts { color: #6d829d; }
+  .feed .row .msg { color: #d8e6ff; }
+  .pickbar { margin-top: 18px; display: flex; align-items: center; gap: 12px; }
+  .pickbar .hint { color: #6d829d; font-size: 12px; }
+</style>
+
+<div class="hud-wrap">
+  <div class="mockup">
+    <div class="mockup-header">Preview · Claude Code status area · Orbit HUD</div>
+    <div class="mockup-body">
+      <div class="hud-screen option" data-choice="orbit" onclick="toggleSelect(this)">
+        <div class="hud-top">
+          <div class="metric"><span class="label">Bodai</span><span class="value"><span class="pulse"></span>Live</span><span class="sub">eventbridge connected · 42 events / 5 min</span></div>
+          <div class="metric"><span class="label">Pools</span><span class="value">3 / 3</span><span class="sub">local · session-buddy · runpod</span></div>
+          <div class="metric"><span class="label">Workers</span><span class="value">7</span><span class="sub">5 active · 2 warming</span></div>
+        </div>
+        <div class="hud-body">
+          <div>
+            <div class="lane-title"><span class="pulse cyan"></span>Workflow · release-governance</div>
+            <div class="bar"><span style="width:72%"></span></div>
+            <div class="workers">
+              <div class="worker"><span class="pulse"></span><span class="name">w-01 code-review</span><span class="meta">12.4k tok · akosha diffing</span><span class="meta">00:41</span></div>
+              <div class="worker"><span class="pulse"></span><span class="name">w-02 test-sweep</span><span class="meta">08.1k tok · crackerjack running</span><span class="meta">00:28</span></div>
+              <div class="worker"><span class="pulse amber"></span><span class="name">w-03 correlate</span><span class="meta">waiting on session-buddy memory</span><span class="meta">00:12</span></div>
+              <div class="worker"><span class="pulse cyan"></span><span class="name">w-04 dhara-sync</span><span class="meta">88% · committing to adapter ledger</span><span class="meta">00:09</span></div>
+            </div>
+          </div>
+          <div>
+            <div class="lane-title">Ecosystem health</div>
+            <div class="health">
+              <div class="row"><span class="name">mahavishnu</span><span class="meta">3 pools · websocket port 8690</span><span class="meta"><span class="pulse"></span>READY</span></div>
+              <div class="row"><span class="name">akosha</span><span class="meta">seer online · 0.91 conf</span><span class="meta"><span class="pulse"></span>READY</span></div>
+              <div class="row"><span class="name">crackerjack</span><span class="meta">inspecting w-02</span><span class="meta"><span class="pulse amber"></span>RUN</span></div>
+              <div class="row"><span class="name">dhara</span><span class="meta">commit 9f31 pending</span><span class="meta"><span class="pulse"></span>READY</span></div>
+              <div class="row"><span class="name">session-buddy</span><span class="meta">building memory for w-03</span><span class="meta"><span class="pulse amber"></span>RUN</span></div>
+            </div>
+          </div>
+          <div class="feed">
+            <div class="lane-title">Recent · last 60s</div>
+            <div class="row"><span class="ts">12:04:18</span><span class="msg"><span class="pulse pink"></span>worker.completed · w-02 stage=tests</span></div>
+            <div class="row"><span class="ts">12:04:09</span><span class="msg"><span class="pulse cyan"></span>session-buddy memory wrote 14 KB</span></div>
+            <div class="row"><span class="ts">12:03:51</span><span class="msg"><span class="pulse amber"></span>pool/runpod scaled 2 → 4</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <p class="pickbar"><strong>Click the dark dashboard to pick this direction.</strong> <span class="hint">Selecting it will produce a clear blue border + check-mark badge.</span></p>
+</div>

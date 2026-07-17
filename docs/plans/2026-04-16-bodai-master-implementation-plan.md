@@ -1,6 +1,17 @@
+---
+status: complete
+role: superseded
+date: 2026-04-16
+last_reviewed: 2026-07-16
+superseded_by:
+  - docs/plans/2026-05-10-bodai-control-plane-convergence-plan.md
+  - docs/plans/2026-07-11-phase-6-bodai-observability.md
+topic: convergence-control-plane
+---
+
 # Bodai Master Implementation Plan
 
-**Status:** Phase 0 complete (10/10); Phase 1A complete (6/6 acceptance criteria); Phase 1B complete (37 tests passing); CP0–CP7 all shipped (2026-04-30) — I0–I3 fully satisfied by control plane delivery
+**Status:** Phase 0 complete (10/10); Phase 1A complete (6/6 acceptance criteria); Phase 1B complete (37 tests passing); CP0–CP7 all shipped (2026-04-30) — I0–I3 fully satisfied by control plane delivery  <!-- legacy status: Phase 0..CP7 shipped — see YAML frontmatter -->
 **Date:** 2026-04-16
 **Last reviewed:** 2026-04-30
 **Source:** [Bodai Agent Platform Master Spec](./2026-04-16-bodai-agent-platform-master-spec.md)

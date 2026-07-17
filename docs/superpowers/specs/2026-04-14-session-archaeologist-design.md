@@ -1,3 +1,13 @@
+---
+status: draft
+role: implementation
+date: 2026-07-16
+last_reviewed: 2026-07-16
+superseded_by: null
+blocks_on: []
+topic: learning-pipeline
+---
+
 # Session Archaeologist Design
 
 **Goal:** A Claude Code skill that recovers lost context from past sessions — decisions, solutions, and conversation history — by searching across all Session-Buddy instances via Akosha and synthesizing results into coherent narratives.

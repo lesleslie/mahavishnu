@@ -1,7 +1,16 @@
+---
+status: complete
+role: implementation
+date: 2026-07-16
+last_reviewed: 2026-07-16
+superseded_by: null
+topic: convergence-control-plane
+---
+
 # Remaining Work Execution Order
 
 **Date:** 2026-05-11
-**Status:** `completed`
+**Status:** `completed`  <!-- legacy status: completed — see YAML frontmatter -->
 **Owner:** Core Eng
 **Purpose:** Ordered queue for the remaining implementation and cleanup work after plan reconciliation. This tracker only includes tasks that are still genuinely open.
 

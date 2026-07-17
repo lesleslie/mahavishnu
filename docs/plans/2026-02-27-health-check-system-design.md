@@ -4,8 +4,17 @@
 > Dependency criticality should follow `docs/plans/2026-04-02-storage-consolidation-and-akosha-role.md`.
 > In the consolidated storage architecture, Akosha is optional for core Mahavishnu startup.
 
+---
+status: active
+role: historical
+date: 2026-02-27
+last_reviewed: 2026-07-16
+superseded_by: null
+topic: observability
+---
+
 **Date:** 2026-02-27
-**Status:** Approved
+**Status:** Approved  <!-- legacy status: Approved — see YAML frontmatter -->
 **Authors:** Claude + User collaboration
 **Related:** Expert audit of mDNS/Zeroconf and Device Discovery features
 

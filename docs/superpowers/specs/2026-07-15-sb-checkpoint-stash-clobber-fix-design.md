@@ -1,15 +1,12 @@
 ---
-title: Session-Buddy Checkpoint Stash-Clobber Fix Design
-date: 2026-07-15
-status: approved (pending code work)
-origin_session: 2026-07-15 comprehensive-hooks-cleanup wave
-related:
-  - docs/followups/2026-07-15-sb-checkpoint-stash-clobber.md
-  - docs/followups/2026-07-15-pickup-bodai-hooks-and-sb-debug.md
-  - docs/followups/2026-07-15-comprehensive-hooks-cleanup-checkpoint.md
-  - memory: session-buddy-checkpoint-hooks-fire-during-subagent-sessions
+status: active
+role: implementation
+date: 2026-07-16
+last_reviewed: 2026-07-16
+superseded_by: null
+blocks_on: []
+topic: convergence-control-plane
 ---
-
 # Session-Buddy Checkpoint Stash-Clobber Fix Design
 
 ## Context

@@ -1,6 +1,16 @@
+---
+status: complete
+role: superseded
+date: 2026-07-16
+last_reviewed: 2026-07-16
+superseded_by: docs/superpowers/plans/2026-05-16-llm-routing-plan1-mcp-common.md
+blocks_on: []
+topic: routing-composition
+---
+
 # TensorZero Gateway — Final Implementation Plan
 
-**Status**: SUPERSEDED — 2026-05-07. Mahavishnu already has a complete multi-provider LLM routing stack: `cloud_worker.py` (ZAI primary), `openclaw_gateway.py` (Bifrost/OpenRouter), mcp-common `llm/` module (`LLMSettings`), and `task_router.py` (TaskCategory-to-model routing). A separate TensorZero gateway duplicates this without adding value.
+**Status**: SUPERSEDED <!-- legacy status: SUPERSEDED — see YAML frontmatter -->
 **Version**: 3.0 (with Postgres auth)
 **Created**: 2026-04-06
 **Updated**: 2026-04-06 06:27

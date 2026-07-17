@@ -8,9 +8,11 @@ pickup list for future work.
 
 ## Why this file lives here
 
-The repo has no dedicated follow-up directory (no `docs/todos/`, no
-`docs/follow-ups/`, no `.claude/decisions/pending/`, no root `TODO.md`).
-`.claude/decisions/` is the closest existing convention: it is the
+The repo has a dated code/architecture follow-up directory at
+`docs/followups/` (with its own `README.md` index and `.archive/` rule), but
+no lightweight tracker for deferred *review* findings like these (no
+`docs/todos/`, no `.claude/decisions/pending/`, no root `TODO.md`).
+`.claude/decisions/` is the closest existing convention for those: it is the
 repo-local store for decisions and policy, and `removed-scripts.md`
 already lives there. We use the same directory rather than introduce a
 new one, with a filename that makes the file's role as a *follow-up

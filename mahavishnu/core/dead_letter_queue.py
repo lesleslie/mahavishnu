@@ -50,6 +50,9 @@ from mahavishnu.core.opensearch_constants import OPENSEARCH_AVAILABLE
 from mahavishnu.core.status import DeadLetterStatus
 
 if TYPE_CHECKING:
+    from mahavishnu.core.dlq_metrics import DLQMetrics
+
+if TYPE_CHECKING:
     from collections.abc import Callable
 
     try:
@@ -220,17 +223,8 @@ class DeadLetterQueue:
         self._opensearch: Any = opensearch_client
         self._observability = observability_manager
         self._fail_on_opensearch_unavailable = fail_on_opensearch_unavailable
-        """Initialize the Dead Letter Queue.
-
-        Args:
-            max_size: Maximum number of tasks to keep in queue
-            opensearch_client: Optional OpenSearch client for persistent storage
-            observability_manager: Optional observability manager for metrics
-        """
-        self._max_size = max_size
-        self._opensearch = opensearch_client
-        self._observability = observability_manager
         self._queue: list[FailedTask] = []
+        self._metrics: DLQMetrics | None = None  # lazy: get_dlq_metrics() on first use
         self._lock = asyncio.Lock()
         self._retry_task: asyncio.Task | None = None
         self._is_running = False
@@ -247,6 +241,19 @@ class DeadLetterQueue:
             "manually_retried": 0,
             "archived": 0,
         }
+
+    def _get_metrics(self) -> DLQMetrics:
+        """Lazy accessor for the DLQ metrics singleton.
+
+        Imports the module locally to avoid a top-level import cycle
+        (dlq_metrics imports prometheus_client at init time, which
+        dead_letter_queue must not block on during normal startup).
+        """
+        if self._metrics is None:
+            from .dlq_metrics import get_dlq_metrics
+
+            self._metrics = get_dlq_metrics()
+        return self._metrics
 
     def _calculate_next_retry(self, policy: RetryPolicy, retry_count: int) -> datetime | None:
         """Calculate the next retry timestamp based on policy.
@@ -305,7 +312,14 @@ class DeadLetterQueue:
             The created FailedTask object
 
         Raises:
-            ValueError: If queue is at maximum capacity
+            ValueError: If queue is at maximum capacity.
+            ExternalServiceError: If ``fail_on_opensearch_unavailable=True`` and
+                either (a) no usable OpenSearch backend is configured
+                (raised by :meth:`_assert_opensearch_or_fail_closed`), or
+                (b) the OpenSearch write itself fails (raised by
+                :meth:`_persist_task` in strict mode). In both cases, the
+                task is **not** appended to the in-memory queue and
+                ``stats["enqueued_total"]`` is not incremented.
         """
         async with self._lock:
             # Check queue size
@@ -341,12 +355,40 @@ class DeadLetterQueue:
                 total_attempts=1,
             )
 
-            # Add to queue
-            self._queue.append(failed_task)
-            self._stats["enqueued_total"] += 1
-
-            # Persist to OpenSearch if available
-            await self._persist_task(failed_task)
+            # Persist FIRST when fail-closed: a runtime OpenSearch write
+            # failure must NOT leave a memory-only phantom. With
+            # fail_on_opensearch_unavailable=False, the legacy order is
+            # preserved exactly (append-then-best-effort-persist) so the
+            # silent in-memory fallback still works for the back-compat
+            # default. See docs/plans/2026-07-16-dlq-fail-closed-wiring.md.
+            if self._fail_on_opensearch_unavailable:
+                # Strict persist: any write failure re-raises
+                # ExternalServiceError. We do NOT append in that case, so
+                # the task survives only if OpenSearch accepted it.
+                try:
+                    persist_outcome = await self._persist_task(
+                        failed_task, strict=True
+                    )
+                except ExternalServiceError:
+                    self._get_metrics().record_rejected()
+                    raise
+                # If we reach here, the strict persist returned cleanly,
+                # which (given strict=True) means "persisted".
+                self._queue.append(failed_task)
+                self._stats["enqueued_total"] += 1
+                if persist_outcome == "persisted":
+                    self._get_metrics().record_persisted()
+                # (strict=True can't return the in_memory_* outcomes — it
+                # would have raised ExternalServiceError instead.)
+            else:
+                # Legacy silent-fallback path (byte-for-byte unchanged).
+                self._queue.append(failed_task)
+                self._stats["enqueued_total"] += 1
+                persist_outcome = await self._persist_task(failed_task)
+                if persist_outcome == "persisted":
+                    self._get_metrics().record_persisted()
+                else:
+                    self._get_metrics().record_in_memory_fallback()
 
             # Log enqueue event
             self._logger.warning(
@@ -405,21 +447,65 @@ class DeadLetterQueue:
             },
         )
 
-    async def _persist_task(self, failed_task: FailedTask) -> None:
+    async def _persist_task(
+        self, failed_task: FailedTask, *, strict: bool = False
+    ) -> str:
         """Persist task to OpenSearch if available.
 
         Args:
             failed_task: Task to persist
+            strict: When True, re-raise any write failure (used by the
+                fail-closed path in ``enqueue`` so a runtime write failure
+                surfaces as ``ExternalServiceError`` rather than leaving a
+                memory-only phantom). When False (default), the legacy
+                silent-and-log behavior is preserved exactly.
+
+        Returns:
+            One of three outcome strings (used by the enqueue path to
+            drive ``mahavishnu_dlq_fallback_total``):
+              - ``"persisted"``: OpenSearch accepted the write.
+              - ``"in_memory_no_client"``: no client configured; the
+                task survives only in the in-memory queue.
+              - ``"in_memory_write_failed"``: a write was attempted and
+                failed; the task is now only in the in-memory queue
+                (legacy silent-fallback path).
+
+        Raises:
+            ExternalServiceError: only when ``strict`` is True and the
+                OpenSearch ``index`` call raises. The exception's
+                ``__cause__`` preserves the underlying driver exception.
         """
-        if self._opensearch and OPENSEARCH_AVAILABLE:
-            try:
-                await self._opensearch.index(
-                    index="mahavishnu_dlq",
-                    id=failed_task.task_id,
-                    body=failed_task.to_dict(),
+        if not (self._opensearch and OPENSEARCH_AVAILABLE):
+            # No client / library not installed → in-memory only.
+            return "in_memory_no_client"
+
+        try:
+            await self._opensearch.index(
+                index="mahavishnu_dlq",
+                id=failed_task.task_id,
+                body=failed_task.to_dict(),
+            )
+        except Exception as e:
+            if strict:
+                self._logger.error(
+                    f"DLQ fail-closed: OpenSearch write failed for {failed_task.task_id}: {e}"
                 )
-            except Exception as e:
-                self._logger.error(f"Failed to persist task to OpenSearch: {e}")
+                raise ExternalServiceError(
+                    service="opensearch",
+                    message=(
+                        "Dead-letter queue cannot persist task: OpenSearch "
+                        "write failed and fail_on_opensearch_unavailable=True. "
+                        "The orchestrator refuses to leave a memory-only phantom "
+                        "that would be lost on process restart."
+                    ),
+                    details={
+                        "task_id": failed_task.task_id,
+                        "underlying_error": type(e).__name__,
+                    },
+                ) from e
+            self._logger.error(f"Failed to persist task to OpenSearch: {e}")
+            return "in_memory_write_failed"
+        return "persisted"
         # In-memory storage is already handled by _queue list
 
     async def _update_task_persistence(self, failed_task: FailedTask) -> None:

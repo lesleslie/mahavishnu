@@ -1,0 +1,96 @@
+<h2>B · Constellation</h2>
+<p class="subtitle">An expressive ecosystem map. Bodai components are living nodes; an event ticker explains the connections without requiring a full graph. Single-select to mark as the preferred direction.</p>
+
+<style>
+  .con-wrap { margin-top: 18px; }
+  .con-screen { background: radial-gradient(ellipse at 25% 18%, #11233f 0%, #050912 60%, #020610 100%); color: #d8e6ff; border: 1px solid #24334b; border-radius: 14px; padding: 22px 26px; box-shadow: 0 18px 40px rgba(0,0,0,.45); font: 13px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace; position: relative; overflow: hidden; }
+  .con-screen::before { content: ''; position: absolute; inset: 0; background: radial-gradient(circle at 22% 24%, rgba(112,215,255,.08), transparent 35%), radial-gradient(circle at 78% 68%, rgba(202,168,255,.08), transparent 35%); pointer-events: none; }
+  .con-header { display: flex; align-items: center; justify-content: space-between; padding-bottom: 14px; border-bottom: 1px solid #1b2b43; position: relative; z-index: 1; }
+  .con-brand { display: flex; align-items: center; gap: 10px; }
+  .con-brand .glyph { font-size: 18px; color: #70d7ff; text-shadow: 0 0 12px rgba(112,215,255,.55); }
+  .con-brand .name { color: #f4f8ff; font-weight: 600; letter-spacing: .04em; }
+  .con-brand .sub { color: #7890af; font-size: 12px; }
+  .con-state { display: flex; align-items: center; gap: 8px; color: #78e3a1; font-size: 12px; }
+  .pulse { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: #78e3a1; box-shadow: 0 0 12px #78e3a1; margin-right: 6px; vertical-align: 1px; }
+  .pulse.amber { background: #ffd166; box-shadow: 0 0 10px #ffd166; }
+  .pulse.cyan { background: #70d7ff; box-shadow: 0 0 10px #70d7ff; }
+  .pulse.pink { background: #ff8fb3; box-shadow: 0 0 10px #ff8fb3; }
+  .pulse.purple { background: #caa8ff; box-shadow: 0 0 10px #caa8ff; }
+  .con-body { display: grid; grid-template-columns: 1.2fr 1fr; gap: 28px; padding-top: 16px; position: relative; z-index: 1; }
+  .nodes-title, .chain-title { color: #9eb1ca; font-size: 10.5px; letter-spacing: .16em; text-transform: uppercase; margin-bottom: 10px; }
+  .nodes { display: grid; gap: 8px; }
+  .node { display: grid; grid-template-columns: 22px 110px 1fr 60px; gap: 10px; align-items: center; padding: 6px 10px; border-radius: 8px; background: rgba(20,32,52,.55); border: 1px solid rgba(70,96,140,.45); }
+  .node .glyph { font-size: 16px; text-align: center; }
+  .node .name { color: #f4f8ff; font-weight: 600; }
+  .node .meta { color: #8da6c7; font-size: 12px; }
+  .node .stat { text-align: right; font-size: 11.5px; color: #c0d4ee; }
+  .g-cyan { color: #70d7ff; text-shadow: 0 0 10px rgba(112,215,255,.6); }
+  .g-purple { color: #caa8ff; text-shadow: 0 0 10px rgba(202,168,255,.6); }
+  .g-amber { color: #ffd166; text-shadow: 0 0 10px rgba(255,209,102,.6); }
+  .g-pink { color: #ff8fb3; text-shadow: 0 0 10px rgba(255,143,179,.6); }
+  .g-green { color: #78e3a1; text-shadow: 0 0 10px rgba(120,227,161,.6); }
+  .chain { background: rgba(20,32,52,.55); border: 1px solid rgba(70,96,140,.45); border-radius: 10px; padding: 14px 16px; }
+  .chain-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
+  .chain-head .task { color: #f4f8ff; font-weight: 600; }
+  .chain-head .phase { color: #78e3a1; font-size: 11.5px; letter-spacing: .14em; text-transform: uppercase; }
+  .chain ol { list-style: none; padding: 0; margin: 0; font-size: 12.5px; color: #c0d4ee; }
+  .chain li { padding: 3px 0; display: flex; gap: 10px; align-items: center; }
+  .chain li .mark { color: #7890af; }
+  .chain li .mark.done { color: #78e3a1; }
+  .chain li .mark.now { color: #ffd166; }
+  .feed { grid-column: 1 / -1; padding-top: 14px; border-top: 1px solid #1b2b43; margin-top: 8px; position: relative; z-index: 1; }
+  .feed .row { display: grid; grid-template-columns: 70px 1fr; gap: 12px; padding: 3px 0; font-size: 12.5px; }
+  .feed .row .ts { color: #6d829d; }
+  .feed .row .msg { color: #d8e6ff; }
+</style>
+
+<div class="con-wrap">
+  <div class="mockup">
+    <div class="mockup-header">Preview · Claude Code status area · Constellation</div>
+    <div class="mockup-body">
+      <div class="con-screen option" data-choice="constellation" onclick="toggleSelect(this)">
+        <div class="con-header">
+          <div class="con-brand">
+            <span class="glyph">◈</span>
+            <div>
+              <div class="name">mahavishnu · bodai ecosystem</div>
+              <div class="sub">all systems online · session &lt;idle · 2m&gt;</div>
+            </div>
+          </div>
+          <div class="con-state"><span class="pulse"></span>ACTIVE</div>
+        </div>
+
+        <div class="con-body">
+          <div>
+            <div class="nodes-title">Ecosystem nodes</div>
+            <div class="nodes">
+              <div class="node"><span class="glyph g-cyan">◉</span><span class="name">pools</span><span class="meta">local · session-buddy · runpod</span><span class="stat">3 healthy</span></div>
+              <div class="node"><span class="glyph g-purple">◉</span><span class="name">akosha</span><span class="meta">seer online · correlation latency 84ms</span><span class="stat">0.91 conf</span></div>
+              <div class="node"><span class="glyph g-amber">◉</span><span class="name">dhara</span><span class="meta">commit 9f31 · 14KB memory queued</span><span class="stat">synced</span></div>
+              <div class="node"><span class="glyph g-pink">◉</span><span class="name">crackerjack</span><span class="meta">inspecting w-02 results</span><span class="stat">RUN</span></div>
+              <div class="node"><span class="glyph g-green">◉</span><span class="name">session-buddy</span><span class="meta">building memory for w-03</span><span class="stat">RUN</span></div>
+            </div>
+          </div>
+          <div class="chain">
+            <div class="chain-head"><span class="task">refactor-auth</span><span class="phase"><span class="pulse amber"></span>STAGE 3 / 5</span></div>
+            <ol>
+              <li><span class="mark done">✓</span><span>route task to local pool</span></li>
+              <li><span class="mark done">✓</span><span>3 workers dispatched (code-review, test-sweep, correlate)</span></li>
+              <li><span class="mark now">◌</span><span>quality scan running on w-02</span></li>
+              <li><span class="mark">·</span><span>akosha will correlate findings</span></li>
+              <li><span class="mark">·</span><span>artifact persistence to dhara + session-buddy</span></li>
+            </ol>
+          </div>
+          <div class="feed">
+            <div class="nodes-title">Event ticker</div>
+            <div class="row"><span class="ts">12:04:18</span><span class="msg"><span class="pulse pink"></span>worker.completed · w-02 stage=tests</span></div>
+            <div class="row"><span class="ts">12:04:09</span><span class="msg"><span class="pulse cyan"></span>session-buddy memory write 14 KB</span></div>
+            <div class="row"><span class="ts">12:03:51</span><span class="msg"><span class="pulse amber"></span>pool/runpod scaled 2 → 4</span></div>
+            <div class="row"><span class="ts">12:03:22</span><span class="msg"><span class="pulse green"></span>workflow release-governance · 72%</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <p class="pickbar"><strong>Click the dark dashboard to pick this direction.</strong></p>
+</div>

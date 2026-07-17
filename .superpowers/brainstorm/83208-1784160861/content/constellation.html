@@ -1,0 +1,411 @@
+<style>
+  /* ---- Constellation panel: outer 3-row grid, no absolute header/footer ---- */
+  .con-panel {
+    background: #0d1117;
+    color: #c9d1d9;
+    font-family: 'JetBrains Mono', 'SF Mono', Menlo, Consolas, ui-monospace, monospace;
+    border: 1px solid #30363d;
+    border-radius: 14px;
+    padding: 18px;
+    max-width: 1500px;
+    width: 100%;
+    box-sizing: border-box;
+    margin: 0 auto;
+  }
+  .con-panel *,
+  .con-panel *::before,
+  .con-panel *::after { box-sizing: border-box; }
+
+  /* 3-row outer grid; columns differ per row (handled via row-local grids) */
+  .con-outer {
+    display: grid;
+    grid-template-rows: auto auto auto;
+    row-gap: 14px;
+    min-width: 0;
+  }
+
+  /* Row 1 (header) & Row 3 (footer): 2-zone flex, full-width */
+  .con-band {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 6px 4px;
+    min-width: 0;
+  }
+  .con-band.head { border-bottom: 1px solid #21262d; padding-bottom: 10px; }
+  .con-band.foot { border-top: 1px solid #21262d; padding-top: 10px; }
+
+  .con-title {
+    font-size: 11px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: #8b949e;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .con-title b { color: #58a6ff; font-weight: 600; }
+  .con-title em { color: #6e7681; font-style: normal; padding: 0 4px; }
+
+  .con-pills {
+    display: inline-flex;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+  .con-pill {
+    font-size: 10px;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    padding: 3px 9px;
+    border-radius: 999px;
+    border: 1px solid #30363d;
+    background: #161b22;
+    color: #8b949e;
+    line-height: 1.4;
+  }
+  .con-pill.live    { color: #2ea043; border-color: rgba(46,160,67,0.45);  background: rgba(46,160,67,0.08); }
+  .con-pill.attn    { color: #d29922; border-color: rgba(210,153,34,0.45); background: rgba(210,153,34,0.08); }
+  .con-pill.quiet   { color: #58a6ff; border-color: rgba(88,166,255,0.45); background: rgba(88,166,255,0.08); }
+
+  /* Row 2: the required 3-column layout, single 1fr 1fr 1fr declaration */
+  .con-cols {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    column-gap: 14px;
+    min-width: 0;
+  }
+  .con-cols > * { min-width: 0; }
+
+  .con-col { min-width: 0; display: flex; flex-direction: column; gap: 10px; }
+  .con-col-title {
+    font-size: 10px;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: #6e7681;
+    margin: 0 0 2px;
+  }
+
+  /* Card primitive */
+  .con-card {
+    background: #161b22;
+    border: 1px solid #21262d;
+    border-radius: 10px;
+    padding: 10px 12px;
+    min-width: 0;
+  }
+  .con-stack { display: flex; flex-direction: column; gap: 8px; }
+
+  /* ---- Status bars (col 1) ---- */
+  .con-bar-card {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    column-gap: 10px;
+    row-gap: 4px;
+    align-items: center;
+  }
+  .con-bar-name {
+    font-size: 12px;
+    color: #c9d1d9;
+    letter-spacing: 0.04em;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .con-bar-badge {
+    font-size: 9px;
+    letter-spacing: 0.18em;
+    font-weight: 700;
+    padding: 2px 6px;
+    border-radius: 4px;
+    line-height: 1.4;
+    justify-self: end;
+  }
+  .con-bar-badge.ok    { color: #2ea043; background: rgba(46,160,67,0.12);  border: 1px solid rgba(46,160,67,0.40); }
+  .con-bar-badge.med   { color: #d29922; background: rgba(210,153,34,0.12); border: 1px solid rgba(210,153,34,0.40); }
+  .con-bar-badge.high  { color: #f778ba; background: rgba(247,120,186,0.12); border: 1px solid rgba(247,120,186,0.40); }
+  .con-bar-badge.limit { color: #f85149; background: rgba(248,81,73,0.14);  border: 1px solid rgba(248,81,73,0.45); }
+
+  .con-bar-meta {
+    grid-column: 1 / -1;
+    font-size: 10px;
+    color: #8b949e;
+    letter-spacing: 0.04em;
+  }
+  .con-bar-track {
+    grid-column: 1 / -1;
+    height: 8px;
+    border-radius: 999px;
+    background: #21262d;
+    overflow: hidden;
+  }
+  .con-bar-fill { height: 100%; border-radius: 999px; display: block; }
+  .con-bar-fill.ok    { background: linear-gradient(90deg, #1f6feb, #39c5cf); }
+  .con-bar-fill.med   { background: linear-gradient(90deg, #b98000, #d29922); }
+  .con-bar-fill.high  { background: linear-gradient(90deg, #db61a2, #f778ba); }
+  .con-bar-fill.limit { background: linear-gradient(90deg, #b62324, #f85149); }
+
+  /* Bodai state pills (inside col 1) */
+  .con-state-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+
+  /* ---- Ecosystem nodes (col 2) ---- */
+  .con-node {
+    display: grid;
+    grid-template-columns: 26px 1fr auto;
+    column-gap: 10px;
+    align-items: center;
+    padding: 6px 0;
+    border-bottom: 1px solid #21262d;
+    min-width: 0;
+  }
+  .con-node:last-child { border-bottom: 0; }
+  .con-node-glyph {
+    width: 26px;
+    height: 26px;
+    border-radius: 6px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    font-weight: 700;
+    color: #0d1117;
+    letter-spacing: 0;
+  }
+  .con-node-body { min-width: 0; }
+  .con-node-name {
+    font-size: 12px;
+    color: #c9d1d9;
+    letter-spacing: 0.04em;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .con-node-meta {
+    font-size: 10px;
+    color: #8b949e;
+    letter-spacing: 0.04em;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .con-node-stat {
+    font-size: 10px;
+    color: #58a6ff;
+    letter-spacing: 0.04em;
+    text-align: right;
+    min-width: 70px;
+  }
+
+  /* ---- Workflow chain (col 2 below nodes) ---- */
+  .con-chain {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 0;
+    margin-top: 4px;
+    min-width: 0;
+  }
+  .con-stage {
+    text-align: center;
+    padding: 7px 4px;
+    font-size: 10px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: #8b949e;
+    background: #161b22;
+    border: 1px solid #30363d;
+    border-right: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .con-stage:first-child { border-radius: 6px 0 0 6px; }
+  .con-stage:last-child  { border-radius: 0 6px 6px 0; border-right: 1px solid #30363d; }
+  .con-stage.done   { color: #2ea043; background: rgba(46,160,67,0.10);  border-color: rgba(46,160,67,0.45); }
+  .con-stage.active { color: #58a6ff; background: rgba(88,166,255,0.10); border-color: rgba(88,166,255,0.45); }
+
+  /* ---- Event ticker (col 3) ---- */
+  .con-ticker {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    font-size: 11px;
+  }
+  .con-ticker li {
+    display: grid;
+    grid-template-columns: 64px 1fr;
+    column-gap: 8px;
+    padding: 5px 0;
+    border-bottom: 1px solid #21262d;
+    letter-spacing: 0.02em;
+    min-width: 0;
+  }
+  .con-ticker li:last-child { border-bottom: 0; }
+  .con-ts   { color: #6e7681; }
+  .con-msg  { color: #c9d1d9; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .con-sev-ok   { color: #2ea043; }
+  .con-sev-warn { color: #d29922; }
+  .con-sev-err  { color: #f85149; }
+  .con-sev-info { color: #58a6ff; }
+</style>
+
+<div class="con-panel">
+  <div class="con-outer">
+
+    <!-- ROW 1: full-width header band (text + pills) -->
+    <div class="con-band head">
+      <div class="con-title">
+        <b>mahavishnu</b><em>·</em>bodai<em>·</em>ecosystem
+      </div>
+      <div class="con-pills">
+        <span class="con-pill live">BODAI LIVE</span>
+        <span class="con-pill attn">ATTENTION</span>
+        <span class="con-pill quiet">QUIET HOURS</span>
+      </div>
+    </div>
+
+    <!-- ROW 2: strict 3-column body (single grid-template-columns: 1fr 1fr 1fr) -->
+    <div class="con-cols">
+
+      <!-- COLUMN 1: status bars + Bodai state pills -->
+      <div class="con-col">
+        <h3 class="con-col-title">Limits &amp; Windows</h3>
+        <div class="con-stack">
+
+          <div class="con-card con-bar-card">
+            <div class="con-bar-name">5-hour rolling block</div>
+            <span class="con-bar-badge ok">OK</span>
+            <div class="con-bar-meta">442k / 1m &middot; resets 7pm</div>
+            <div class="con-bar-track"><span class="con-bar-fill ok" style="width:44%"></span></div>
+          </div>
+
+          <div class="con-card con-bar-card">
+            <div class="con-bar-name">context window</div>
+            <span class="con-bar-badge med">MED</span>
+            <div class="con-bar-meta">186k / 200k &middot; 93% used</div>
+            <div class="con-bar-track"><span class="con-bar-fill med" style="width:78%"></span></div>
+          </div>
+
+          <div class="con-card con-bar-card">
+            <div class="con-bar-name">weekly all-model cap</div>
+            <span class="con-bar-badge high">HIGH</span>
+            <div class="con-bar-meta">9.2m / 10m &middot; resets Sun 00:00</div>
+            <div class="con-bar-track"><span class="con-bar-fill high" style="width:92%"></span></div>
+          </div>
+
+          <div class="con-card con-bar-card">
+            <div class="con-bar-name">opus weekly limit</div>
+            <span class="con-bar-badge limit">LIMIT</span>
+            <div class="con-bar-meta">2.1m / 2m &middot; throttled</div>
+            <div class="con-bar-track"><span class="con-bar-fill limit" style="width:100%"></span></div>
+          </div>
+
+          <div class="con-card">
+            <h3 class="con-col-title" style="margin:0 0 8px">Bodai state</h3>
+            <div class="con-state-row">
+              <span class="con-pill live">LIVE</span>
+              <span class="con-pill attn">ATTENTION</span>
+              <span class="con-pill quiet">QUIET HOURS</span>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- COLUMN 2: ecosystem nodes + refactor-auth workflow chain -->
+      <div class="con-col">
+        <h3 class="con-col-title">Ecosystem nodes</h3>
+        <div class="con-card">
+          <div class="con-node">
+            <span class="con-node-glyph" style="background:#39c5cf">P</span>
+            <div class="con-node-body">
+              <div class="con-node-name">pools</div>
+              <div class="con-node-meta">orchestrator &middot; 3 repos in flight</div>
+            </div>
+            <div class="con-node-stat">12 workers</div>
+          </div>
+          <div class="con-node">
+            <span class="con-node-glyph" style="background:#a371f7">A</span>
+            <div class="con-node-body">
+              <div class="con-node-name">akosha</div>
+              <div class="con-node-meta">memory index &middot; index lag 4s</div>
+            </div>
+            <div class="con-node-stat">42.1k vecs</div>
+          </div>
+          <div class="con-node">
+            <span class="con-node-glyph" style="background:#3fb950">D</span>
+            <div class="con-node-body">
+              <div class="con-node-name">dhara</div>
+              <div class="con-node-meta">stream router &middot; 8 channels</div>
+            </div>
+            <div class="con-node-stat">28 msg/s</div>
+          </div>
+          <div class="con-node">
+            <span class="con-node-glyph" style="background:#d29922">C</span>
+            <div class="con-node-body">
+              <div class="con-node-name">crackerjack</div>
+              <div class="con-node-meta">quality gates &middot; fanout wave 7</div>
+            </div>
+            <div class="con-node-stat">96.4% pass</div>
+          </div>
+          <div class="con-node">
+            <span class="con-node-glyph" style="background:#58a6ff">S</span>
+            <div class="con-node-body">
+              <div class="con-node-name">session-buddy</div>
+              <div class="con-node-meta">session store &middot; idle 2m</div>
+            </div>
+            <div class="con-node-stat">2.4k rows</div>
+          </div>
+        </div>
+
+        <h3 class="con-col-title" style="margin-top:6px">Workflow chain &middot; refactor-auth</h3>
+        <div class="con-chain">
+          <div class="con-stage done">scout</div>
+          <div class="con-stage done">plan</div>
+          <div class="con-stage active">patch</div>
+          <div class="con-stage">verify</div>
+          <div class="con-stage">land</div>
+        </div>
+      </div>
+
+      <!-- COLUMN 3: event ticker (10 rows) -->
+      <div class="con-col">
+        <h3 class="con-col-title">Event ticker</h3>
+        <div class="con-card">
+          <ul class="con-ticker">
+            <li><span class="con-ts">07:42:11</span><span class="con-msg"><span class="con-sev-info">[info]</span> pools.spin_up mahavishnu complete</span></li>
+            <li><span class="con-ts">07:42:08</span><span class="con-msg"><span class="con-sev-ok">[ok]</span> akosha.index idle stable</span></li>
+            <li><span class="con-ts">07:41:55</span><span class="con-msg"><span class="con-sev-warn">[warn]</span> weekly opus 92% of cap</span></li>
+            <li><span class="con-ts">07:41:42</span><span class="con-msg"><span class="con-sev-ok">[ok]</span> dhara.stream healthcheck ok</span></li>
+            <li><span class="con-ts">07:41:30</span><span class="con-msg"><span class="con-sev-info">[info]</span> crackerjack.wave7 fanout 4/12</span></li>
+            <li><span class="con-ts">07:41:14</span><span class="con-msg"><span class="con-sev-ok">[ok]</span> session-buddy.gc swept 84 rows</span></li>
+            <li><span class="con-ts">07:40:58</span><span class="con-msg"><span class="con-sev-warn">[warn]</span> context window 93%</span></li>
+            <li><span class="con-ts">07:40:42</span><span class="con-msg"><span class="con-sev-info">[info]</span> refactor-auth stage patch started</span></li>
+            <li><span class="con-ts">07:40:27</span><span class="con-msg"><span class="con-sev-err">[err]</span> akosha cache miss 12 in 1m</span></li>
+            <li><span class="con-ts">07:40:11</span><span class="con-msg"><span class="con-sev-ok">[ok]</span> bodai heartbeat emitted</span></li>
+          </ul>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- ROW 3: full-width footer band (text + pills) -->
+    <div class="con-band foot">
+      <div class="con-title">
+        <b>mahavishnu</b><em>·</em>bodai<em>·</em>ecosystem
+      </div>
+      <div class="con-pills">
+        <span class="con-pill live">BODAI LIVE</span>
+        <span class="con-pill attn">ATTENTION</span>
+        <span class="con-pill quiet">QUIET HOURS</span>
+      </div>
+    </div>
+
+  </div>
+</div>

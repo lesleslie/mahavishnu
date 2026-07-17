@@ -1,3 +1,12 @@
+---
+status: active
+role: canonical
+date: 2026-07-16
+last_reviewed: 2026-07-16
+superseded_by: null
+topic: convergence-control-plane
+---
+
 # Plans README
 
 This directory contains active and historical planning documents for Mahavishnu and the Bodai ecosystem.

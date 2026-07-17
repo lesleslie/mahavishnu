@@ -1,6 +1,16 @@
+---
+status: draft
+role: implementation
+date: 2026-07-16
+last_reviewed: 2026-07-16
+superseded_by: null
+blocks_on: []
+topic: storage-consolidation
+---
+
 # Code Knowledge Graph Integration Design
 
-**Status:** Draft
+**Status:** Draft  <!-- legacy status: Draft — see YAML frontmatter -->
 **Date:** 2026-04-26
 **Source:** Multi-agent review of GitNexus integration alternatives
 

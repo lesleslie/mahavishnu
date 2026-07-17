@@ -1,8 +1,17 @@
+---
+status: active
+role: implementation
+date: 2026-07-16
+last_reviewed: 2026-07-16
+superseded_by: null
+topic: routing-composition
+---
+
 # Bodai Ecosystem Feedback Loop — Routing Intelligence via OTel
 
 ## Status
 
-**v4 — serverless issues fixed, env var naming corrected, Dhara story clarified**
+**v4 — serverless issues fixed, env var naming corrected, Dhara story clarified**  <!-- legacy status: v4 (active) — see YAML frontmatter -->
 **Changes since v3**: Fixed env var naming to Oneiric `__` convention; removed "Dhara already serverless-compatible" claim (has fcntl locks + hardcoded FileStorage); clarified pgvector_hot_store.py needs a non-trivial interface adapter; added coherence analysis per phase; separated OTelStorageAdapter (Oneiric) from OtelIngester (Mahavishnu)
 
 ______________________________________________________________________

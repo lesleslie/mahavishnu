@@ -1,7 +1,17 @@
+---
+status: draft
+role: implementation
+date: 2026-07-16
+last_reviewed: 2026-07-16
+superseded_by: null
+blocks_on: []
+topic: adapter-architecture
+---
+
 # Agent & Skill Modernization: Ecosystem Tool Integration
 
 **Date:** 2026-04-26
-**Status:** Draft
+**Status:** Draft  <!-- legacy status: Draft — see YAML frontmatter -->
 **Approach:** Layered context enrichment (Approach A)
 **Prerequisite:** Config Consolidation spec (2026-04-26-config-consolidation-design.md)
 

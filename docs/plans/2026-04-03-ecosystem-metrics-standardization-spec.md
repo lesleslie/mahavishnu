@@ -1,7 +1,16 @@
+---
+status: draft
+role: canonical
+date: 2026-04-03
+last_reviewed: 2026-07-16
+superseded_by: null
+topic: observability
+---
+
 # Ecosystem Metrics Standardization Spec
 
 **Date:** 2026-04-03
-**Status:** Proposed standard
+**Status:** Proposed standard  <!-- legacy status: Proposed standard — see YAML frontmatter -->
 **Scope:** Mahavishnu, Session-Buddy, Akosha, Dhara, Crackerjack, and future Bodai services
 
 ## Purpose

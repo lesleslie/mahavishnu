@@ -1,7 +1,17 @@
+---
+status: draft
+role: implementation
+date: 2026-07-16
+last_reviewed: 2026-07-16
+superseded_by: null
+blocks_on: []
+topic: mcp-design
+---
+
 # Bodai Crow MCP Server — Design Spec
 
 **Date:** 2026-06-21
-**Status:** Draft — pending user review (v4: httpx2 tier taxonomy; v5: review-pass fixes)
+**Status:** Draft — pending user review (v4: httpx2 tier taxonomy; v5: review-pass fixes)  <!-- legacy status: Draft (v5) — see YAML frontmatter -->
 **Port:** 8675 *(add to CLAUDE.md port table)*
 **Transport:** HTTP (SSE/StreamableHTTP via mcp-common `StandardServer`)
 

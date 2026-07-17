@@ -1,7 +1,17 @@
+---
+status: draft
+role: implementation
+date: 2026-07-16
+last_reviewed: 2026-07-16
+superseded_by: null
+blocks_on: []
+topic: storage-consolidation
+---
+
 # Dhara Serverless Architecture — Design Specification
 
 **Date**: 2026-05-24
-**Status**: `draft`
+**Status**: `draft`  <!-- legacy status: draft — see YAML frontmatter -->
 **Scope**: Make Dhara runnable in serverless environments by replacing fcntl file locks and in-memory LRU cache with Postgres + Redis equivalents
 
 ______________________________________________________________________

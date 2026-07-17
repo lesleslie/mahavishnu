@@ -1,7 +1,16 @@
+---
+status: draft
+role: historical
+date: 2026-04-13
+last_reviewed: 2026-07-16
+superseded_by: null
+topic: mcp-design
+---
+
 # MCP Context Optimization Plan
 
 **Date**: 2026-04-13
-**Status**: Draft - Reviews Complete, Ready for Revision
+**Status**: Draft - Reviews Complete, Ready for Revision  <!-- legacy status: Draft — see YAML frontmatter -->
 **Scope**: session-buddy, mahavishnu, crackerjack, akosha, dhara, mcp-common
 **Goal**: Reduce MCP tool definition context from ~70k to ~20-25k tokens
 

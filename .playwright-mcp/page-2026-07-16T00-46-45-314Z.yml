@@ -1,0 +1,125 @@
+- generic [active] [ref=f4e1]:
+  - generic [ref=f4e2]:
+    - link "Prime Radiant Superpowers v6.1.1" [ref=f4e4] [cursor=pointer]:
+      - /url: https://github.com/obra/superpowers
+    - generic [ref=f4e6]: Connected
+  - generic [ref=f4e8]:
+    - heading "B · Constellation · v4 · three columns + bars" [level=2] [ref=f4e9]
+    - paragraph [ref=f4e10]: Strict three-column layout. Column 1 now combines the ecosystem nodes, workflow chain, and the three status-line bars (5-hour, context, weekly) — the bars sit at the bottom of column 1, each with name, badge, and percentage. Column 2 is the event ticker.
+    - generic [ref=f4e11]:
+      - generic [ref=f4e12]:
+        - generic [ref=f4e13]: Preview · Claude Code status area · Constellation · three columns
+        - generic [ref=f4e15] [cursor=pointer]:
+          - generic [ref=f4e16]:
+            - generic [ref=f4e17]:
+              - generic [ref=f4e18]: ◈
+              - generic [ref=f4e19]:
+                - generic [ref=f4e20]: mahavishnu · bodai ecosystem
+                - generic [ref=f4e21]: all systems online · session <idle · 2m> · workflow release-governance 72%
+            - generic [ref=f4e22]: ACTIVE
+          - generic [ref=f4e24]:
+            - generic [ref=f4e25]:
+              - generic [ref=f4e26]:
+                - generic [ref=f4e27]: Ecosystem
+                - generic [ref=f4e28]:
+                  - generic [ref=f4e29]:
+                    - generic [ref=f4e30]: ◉
+                    - generic [ref=f4e31]: pools
+                    - generic: local · session-buddy · runpod
+                    - generic [ref=f4e32]: 3 healthy
+                  - generic [ref=f4e33]:
+                    - generic [ref=f4e34]: ◉
+                    - generic [ref=f4e35]: akosha
+                    - generic: seer online · 0.91 conf
+                    - generic [ref=f4e36]: READY
+                  - generic [ref=f4e37]:
+                    - generic [ref=f4e38]: ◉
+                    - generic [ref=f4e39]: dhara
+                    - generic: commit 9f31 pending
+                    - generic [ref=f4e40]: READY
+                  - generic [ref=f4e41]:
+                    - generic [ref=f4e42]: ◉
+                    - generic [ref=f4e43]: crackerjack
+                    - generic: inspecting w-02
+                    - generic [ref=f4e44]: RUN
+                  - generic [ref=f4e45]:
+                    - generic [ref=f4e46]: ◉
+                    - generic [ref=f4e47]: session-buddy
+                    - generic: building memory for w-03
+                    - generic [ref=f4e48]: RUN
+              - generic [ref=f4e49]:
+                - generic [ref=f4e50]:
+                  - generic [ref=f4e51]: refactor-auth
+                  - generic [ref=f4e52]: STAGE 3 / 5
+                - list [ref=f4e54]:
+                  - listitem [ref=f4e55]:
+                    - generic [ref=f4e56]: ✓
+                    - generic [ref=f4e57]: route task to local pool
+                  - listitem [ref=f4e58]:
+                    - generic [ref=f4e59]: ✓
+                    - generic [ref=f4e60]: 3 workers dispatched
+                  - listitem [ref=f4e61]:
+                    - generic [ref=f4e62]: ◌
+                    - generic [ref=f4e63]: quality scan running on w-02
+                  - listitem [ref=f4e64]:
+                    - generic [ref=f4e65]: ·
+                    - generic [ref=f4e66]: akosha will correlate findings
+                  - listitem [ref=f4e67]:
+                    - generic [ref=f4e68]: ·
+                    - generic [ref=f4e69]: artifact persistence queued
+              - generic [ref=f4e70]:
+                - generic [ref=f4e71]: Status line · lifted from session_progress_real.py
+                - generic [ref=f4e72]:
+                  - generic [ref=f4e74]:
+                    - generic [ref=f4e75]: 5-hour
+                    - generic [ref=f4e76]: 442k / 1m · resets 7pm
+                    - generic [ref=f4e77]: OK
+                  - generic [ref=f4e81]:
+                    - generic [ref=f4e82]: Context
+                    - generic [ref=f4e83]: 134k / 200k
+                    - generic [ref=f4e84]: OK
+                  - generic [ref=f4e88]:
+                    - generic [ref=f4e89]: Weekly
+                    - generic [ref=f4e90]: 3.8m / 5m · resets Mon 00:00
+                    - generic [ref=f4e91]: MED
+            - generic [ref=f4e94]:
+              - generic [ref=f4e95]:
+                - generic [ref=f4e96]: "2"
+                - text: Event ticker · last 90s
+              - generic [ref=f4e97]:
+                - generic [ref=f4e98]:
+                  - generic [ref=f4e99]: 12:04:18
+                  - generic [ref=f4e100]: worker.completed · w-02 stage=tests
+                - generic [ref=f4e102]:
+                  - generic [ref=f4e103]: 12:04:09
+                  - generic [ref=f4e104]: session-buddy memory write 14 KB
+                - generic [ref=f4e106]:
+                  - generic [ref=f4e107]: 12:03:51
+                  - generic [ref=f4e108]: pool/runpod scaled 2 → 4
+                - generic [ref=f4e110]:
+                  - generic [ref=f4e111]: 12:03:22
+                  - generic [ref=f4e112]: workflow release-governance · 72%
+                - generic [ref=f4e114]:
+                  - generic [ref=f4e115]: 12:03:08
+                  - generic [ref=f4e116]: akosha pattern matched · 0.91
+                - generic [ref=f4e118]:
+                  - generic [ref=f4e119]: 12:02:55
+                  - generic [ref=f4e120]: "crackerjack flagged flaky test #218"
+                - generic [ref=f4e122]:
+                  - generic [ref=f4e123]: 12:02:30
+                  - generic [ref=f4e124]: dhara commit 9f31 staged
+                - generic [ref=f4e126]:
+                  - generic [ref=f4e127]: 12:02:11
+                  - generic [ref=f4e128]: local pool warm-up 3 → 4 workers
+                - generic [ref=f4e130]:
+                  - generic [ref=f4e131]: 12:01:48
+                  - generic [ref=f4e132]: workflow stage advance · tests
+                - generic [ref=f4e134]:
+                  - generic [ref=f4e135]: 12:01:30
+                  - generic [ref=f4e136]: worker.started · w-04 dhara-sync
+          - generic [ref=f4e138]:
+            - generic [ref=f4e139]: BODAI LIVE
+            - generic [ref=f4e141]: 1 ATTENTION
+            - generic [ref=f4e143]: SOUND OFF · QUIET HOURS 22:00–07:00
+      - paragraph [ref=f4e144]:
+        - strong [ref=f4e145]: Click the dark dashboard to pick this direction.

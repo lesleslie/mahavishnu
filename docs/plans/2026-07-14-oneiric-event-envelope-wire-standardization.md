@@ -1,9 +1,18 @@
+---
+status: shipped
+role: implementation
+date: 2026-07-16
+last_reviewed: 2026-07-16
+superseded_by: null
+topic: oneiric-config
+---
+
 # Oneiric EventEnvelope Wire Standardization Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Date:** 2026-07-14
-**Status:** shipped, historical
+**Status:** shipped, historical  <!-- legacy status: shipped, historical — see YAML frontmatter -->
 **Owner:** Mahavishnu core
 
 **Promoted 2026-07-15 after drift-sync verified all Tasks 0–9 shipped via commit f103bcc4 (merge bcc7affa).**

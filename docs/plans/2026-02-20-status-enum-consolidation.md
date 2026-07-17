@@ -1,3 +1,12 @@
+---
+status: draft
+role: historical
+date: 2026-02-20
+last_reviewed: 2026-07-16
+superseded_by: null
+topic: adapter-architecture
+---
+
 # Status Enum Consolidation Plan for Mahavishnu (MHV-008)
 
 > **Update (2026-04-02):** This plan is not superseded. It is now a prerequisite refactor for the storage consolidation workflow in `docs/plans/2026-04-02-storage-consolidation-and-akosha-role.md`.

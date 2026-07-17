@@ -1,8 +1,17 @@
+---
+status: complete
+role: superseded
+date: 2026-07-16
+last_reviewed: 2026-07-16
+superseded_by: docs/plans/2026-05-23-bodai-routing-feedback-loop-v4.md
+topic: routing-composition
+---
+
 # Bodai Ecosystem Feedback Loop — Routing Intelligence via OTel
 
 ## Status
 
-**v3 — updated with serverless deployment support and hot store storage backend options**
+**v3 — updated with serverless deployment support and hot store storage backend options**  <!-- legacy status: v3 superseded — see YAML frontmatter -->
 **Changes since v2**: Added hot store storage backend strategy, serverless deployment defaults, environment detection via Oneiric layered config
 
 ______________________________________________________________________

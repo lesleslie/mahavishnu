@@ -1,3 +1,13 @@
+---
+status: draft
+role: implementation
+date: 2026-07-16
+last_reviewed: 2026-07-16
+superseded_by: null
+blocks_on: []
+topic: observability
+---
+
 # Bodai Radar Design
 
 **Goal:** A Claude Code skill that provides a unified health dashboard across all 5 Bodai components in a single command. Fire once, get a traffic-light summary in thirty seconds.

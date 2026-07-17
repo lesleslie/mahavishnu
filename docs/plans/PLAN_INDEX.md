@@ -1,3 +1,14 @@
+---
+status: shipped
+role: canonical
+date: 2026-07-16
+last_reviewed: 2026-07-16
+superseded_by: null
+blocks_on:
+  - docs/schemas/document-frontmatter-v1.md
+topic: convergence-control-plane
+---
+
 # Plan Index
 
 **Date:** 2026-05-07
