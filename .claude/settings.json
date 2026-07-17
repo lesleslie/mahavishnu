@@ -35,6 +35,10 @@
           {
             "command": "python3 .claude/hooks/bodai-activity-subscriber.py session-end",
             "type": "command"
+          },
+          {
+            "command": "python3 .claude/hooks/worktree-session-isolation.py session-end",
+            "type": "command"
           }
         ],
         "matcher": "end"
@@ -45,6 +49,10 @@
         "hooks": [
           {
             "command": "python3 .claude/hooks/bodai-activity-subscriber.py session-start",
+            "type": "command"
+          },
+          {
+            "command": "python3 .claude/hooks/worktree-session-isolation.py session-start",
             "type": "command"
           }
         ],

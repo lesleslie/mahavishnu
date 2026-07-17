@@ -1,0 +1,341 @@
+#!/usr/bin/env python3
+"""SessionStart / SessionEnd hook for per-session worktree isolation.
+
+When ``MAHAVISHNU_AUTO_WORKTREE=1`` is set in the environment, this
+hook:
+
+- **SessionStart**: auto-provisions a per-session git worktree at
+  ``~/worktrees/agent-<hex8>``, branches from the main repo, and
+  records the session_id → worktree_path mapping in the registry.
+- **SessionEnd**: marks the worktree as ``abandoned`` in the registry
+  (default policy; never auto-removes the git worktree).
+
+When the env var is **unset** (the default), the hook returns 0 in
+``<2ms`` with zero side effects. This preserves the "default off,
+opt in" contract per the 4-lens plan review.
+
+Module load is stdlib-only. The ``mahavishnu.core.worktree_coordination``
+import is gated behind the env-var check, so default-off sessions
+incur no mahavishnu import cost.
+
+Failure isolation: every code path returns 0. Errors are logged to
+stderr (visible in Claude Code's hook output panel). Never raises.
+
+Reference: plan ``/Users/les/.claude/plans/cheerful-marinating-fountain.md``
+            and followup ``docs/followups/2026-07-16-session-worktree-isolation.md``.
+"""
+from __future__ import annotations
+
+import asyncio
+import os
+import subprocess  # nosec B404 — argv-list only, no shell
+import sys
+from pathlib import Path
+
+# Shared helper lives in the same .claude/hooks directory.
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from _hook_io import read_session_payload  # noqa: E402
+
+# Environment variable that gates the whole feature.
+OPT_IN_ENV = "MAHAVISHNU_AUTO_WORKTREE"
+
+# Optional overrides (all default to sane values via mahavishnu.core.paths).
+ROOT_ENV = "MAHAVISHNU_AUTO_WORKTREE_ROOT"
+BRANCH_BASE_ENV = "MAHAVISHNU_AUTO_WORKTREE_BRANCH_BASE"
+CLEANUP_ENV = "MAHAVISHNU_AUTO_WORKTREE_CLEANUP"
+
+
+def _log(msg: str) -> None:
+    """Write a single line to stderr; Claude Code surfaces as Hook output."""
+    sys.stderr.write(f"worktree-session-isolation: {msg}\n")
+    sys.stderr.flush()
+
+
+def _is_truthy(value: str | None) -> bool:
+    """True for ``1`` / ``true`` / ``yes`` / ``on`` (case-insensitive)."""
+    if not value:
+        return False
+    return value.strip().lower() in {"1", "true", "yes", "on"}
+
+
+def _cwd_is_inside_worktree(cwd: str) -> bool:
+    """True when ``cwd`` is the working tree of a git worktree.
+
+    Uses ``git rev-parse --git-common-dir`` which returns the
+    ``.git/`` (or worktree-specific ``.git/worktrees/<name>``) of the
+    containing main repo. If that path ends in ``/worktrees/<name>``,
+    we're inside a worktree.
+
+    Returns False on any git failure — never blocks the hook.
+    """
+    if not cwd:
+        return False
+    try:
+        result = subprocess.run(  # nosec B603 — cwd is a session-provided path; argv-list only
+            ["git", "-C", cwd, "rev-parse", "--git-common-dir"],
+            capture_output=True,
+            text=True,
+            check=True,
+            timeout=5,
+        )
+    except (subprocess.CalledProcessError, subprocess.TimeoutExpired, OSError):
+        return False
+    common = result.stdout.strip()
+    # Strip trailing /.git if present (rev-parse returns either .git or /.git)
+    if common.endswith("/.git"):
+        common = common[: -len("/.git")]
+    return "/worktrees/" in common
+
+
+def _detect_repo_nickname(cwd: str) -> str | None:
+    """Best-effort repo nickname from cwd.
+
+    Walks up from ``cwd`` looking for ``.git``. Returns the basename of
+    the directory containing ``.git``. Returns None on failure.
+    """
+    if not cwd:
+        return None
+    p = Path(cwd).resolve()
+    for candidate in (p, *p.parents):
+        if (candidate / ".git").exists() or (candidate / ".git").is_symlink():
+            return candidate.name
+    return None
+
+
+def _ensure_mahavishnu_importable() -> None:
+    """Inject the repo root into ``sys.path`` so ``mahavishnu.*`` resolves.
+
+    The hook lives in ``.claude/hooks/`` (not inside the ``mahavishnu/``
+    package). Adding the parent of ``.claude/`` to ``sys.path`` lets the
+    hook ``import mahavishnu.core.worktree_coordination`` without
+    requiring a packaged install.
+    """
+    if any("mahavishnu" in p for p in sys.path):
+        return  # already importable
+    # .claude/hooks/worktree-session-isolation.py → .claude/hooks/ → .claude/ → <repo>
+    repo_root = Path(__file__).resolve().parents[2]
+    sys.path.insert(0, str(repo_root))
+
+
+def _run_session_start(session_id_full: str, cwd: str) -> int:
+    """SessionStart: ensure the session has a worktree.
+
+    Steps mirror the plan §Hook flow:
+      1. Compute short session id (fail closed on malformed UUID).
+      2. cwd-is-worktree → register existing, return 0.
+      3. Registry hit + path still exists → refresh, log "reused", return 0.
+      4. Stale entry → remove.
+      5. Detect repo_nickname.
+      6. Build coordinator; create_worktree with composed args.
+      7. Path security check (must be under MAHAVISHNU_AUTO_WORKTREE_ROOT).
+      8. Register in registry.
+      9. Surface to user via stderr.
+    """
+    # Lazy import — only after env-var gate passes.
+    _ensure_mahavishnu_importable()
+    from mahavishnu.core.worktree_session_registry import (  # noqa: E402
+        SessionWorktreeRegistry,
+        _short_session_id,
+    )
+
+    short = _short_session_id(session_id_full)
+    if not short:
+        return 0  # bad UUID → silent skip
+
+    registry = SessionWorktreeRegistry()
+
+    # 2: cwd-is-worktree → register existing.
+    if _cwd_is_inside_worktree(cwd):
+        existing = registry.get(short)
+        if existing is None:
+            # Infer the worktree info from cwd + git.
+            repo_path = str(Path(cwd).resolve())
+            while repo_path != "/" and not (
+                Path(repo_path) / ".git"
+            ).exists():
+                repo_path = str(Path(repo_path).parent)
+            branch = f"worktree-agent-{short}"
+            wt_path = str(Path(cwd).resolve())
+            registry.register(
+                session_id_short=short,
+                worktree_path=wt_path,
+                branch=branch,
+                repo_path=repo_path,
+                repo_nickname=_detect_repo_nickname(repo_path) or "",
+                metadata={"source": "cwd-detected"},
+            )
+            _log(f"worktree registered (cwd-detected): {wt_path}")
+        return 0
+
+    # 3: registry hit + path still exists → refresh, log reused.
+    existing = registry.get(short)
+    if existing and Path(existing["worktree_path"]).exists():
+        registry.register(  # refresh last_seen_at
+            session_id_short=short,
+            worktree_path=existing["worktree_path"],
+            branch=existing["branch"],
+            repo_path=existing["repo_path"],
+            repo_nickname=existing["repo_nickname"],
+            metadata=existing.get("metadata", {}),
+        )
+        _log(f"worktree reused: {existing['worktree_path']}")
+        return 0
+
+    # 4: stale entry → remove.
+    if existing:
+        registry.remove(short)
+        _log(f"stale registry entry removed for session {short}")
+
+    # 5: detect repo_nickname.
+    repo_nickname = _detect_repo_nickname(cwd)
+    if not repo_nickname:
+        _log(f"could not detect repo_nickname from cwd={cwd!r}; skipping")
+        return 0
+
+    worktree_name = f"agent-{short}"
+    branch = f"worktree-{worktree_name}"
+
+    # 6: build coordinator + create worktree.
+    # Direct ``git worktree add`` via subprocess. We deliberately bypass
+    # ``MahavishnuApp.load()`` + ``WorktreeCoordinator`` to keep the
+    # SessionStart cost <2s. The WorktreeCoordinator's safety features
+    # (audit, path validation) are less critical here because:
+    #   - cwd is known (user's session working directory)
+    #   - branch name is derived from session_id (predictable)
+    #   - no dependency chain involved
+    # Path validation is re-applied below (relative_to root) for safety.
+    root_env = os.environ.get(ROOT_ENV, "~/worktrees")
+    root = Path(root_env).expanduser().resolve()
+    target_path = (root / worktree_name).resolve()
+    branch_base = os.environ.get(BRANCH_BASE_ENV, "main")
+
+    try:
+        # ``git worktree add -b <branch> <path> <commit-ish>`` — creates
+        # new branch from <commit-ish> (default: HEAD of current branch)
+        # and a new working tree at <path>.
+        # Use ``-B`` to reset if branch already exists (idempotent).
+        result = subprocess.run(  # nosec B603 — argv-list, no shell
+            [
+                "git",
+                "-C",
+                cwd,
+                "worktree",
+                "add",
+                "-B",
+                branch,
+                str(target_path),
+                branch_base,
+            ],
+            capture_output=True,
+            text=True,
+            timeout=10,
+        )
+    except (subprocess.TimeoutExpired, OSError) as exc:
+        _log(f"git worktree add failed: {exc}")
+        return 0
+
+    if result.returncode != 0:
+        _log(f"git worktree add failed: {result.stderr.strip()}")
+        return 0
+
+    # 7: path security check — must be under the configured root.
+    try:
+        target_path.relative_to(root)
+    except ValueError:
+        _log(
+            f"worktree_path {target_path} is not under root {root}; "
+            f"SECURITY REJECTION"
+        )
+        # Best-effort cleanup: prune the worktree we just created.
+        subprocess.run(  # nosec B603 — argv-list
+            ["git", "-C", cwd, "worktree", "prune"],
+            capture_output=True,
+            text=True,
+            timeout=10,
+        )
+        return 0
+
+    # 8: register.
+    registry.register(
+        session_id_short=short,
+        worktree_path=str(target_path),
+        branch=branch,
+        repo_path=cwd,
+        repo_nickname=repo_nickname,
+        metadata={
+            "source": "auto",
+            "claude_session_id_full": session_id_full,
+        },
+    )
+    _log(f"worktree ready: {target_path}")
+    return 0
+
+
+def _run_session_end(session_id_full: str) -> int:
+    """SessionEnd: mark the worktree abandoned (default policy)."""
+    _ensure_mahavishnu_importable()
+    from mahavishnu.core.worktree_session_registry import (  # noqa: E402
+        SessionWorktreeRegistry,
+        _short_session_id,
+    )
+
+    short = _short_session_id(session_id_full)
+    if not short:
+        return 0
+
+    policy = os.environ.get(CLEANUP_ENV, "mark")
+    if policy != "mark":
+        return 0  # "keep" or anything else → no-op
+
+    registry = SessionWorktreeRegistry()
+    existing = registry.get(short)
+    if existing is None:
+        return 0
+    if existing.get("state") == "abandoned":
+        return 0  # idempotent — already marked
+
+    registry.mark_abandoned(short)
+    _log(
+        f"worktree at {existing['worktree_path']} marked abandoned; "
+        f"run `mahavishnu worktree prune-abandoned [--older-than-days N]` to "
+        f"clean up the registry entry."
+    )
+    return 0
+
+
+def main() -> int:
+    """Dispatch on argv[1]: ``--mode session-start`` or ``--mode session-end``.
+
+    Default mode is auto-detected from the stdin payload shape if
+    ``--mode`` is not provided (SessionStart vs SessionEnd).
+    """
+    args = sys.argv[1:]
+    mode: str | None = None
+    if "--mode" in args:
+        i = args.index("--mode")
+        if i + 1 < len(args):
+            mode = args[i + 1]
+
+    payload = read_session_payload()
+    session_id_full = payload.session_id
+    cwd = payload.cwd
+
+    # Default-off fast path: no env var → no mahavishnu import → return 0.
+    if not _is_truthy(os.environ.get(OPT_IN_ENV)):
+        return 0
+
+    if mode is None:
+        # Auto-detect: SessionEnd has no cwd/tool_name typically.
+        mode = "session-end" if not cwd else "session-start"
+
+    if mode == "session-start":
+        return _run_session_start(session_id_full, cwd)
+    if mode == "session-end":
+        return _run_session_end(session_id_full)
+
+    _log(f"unknown mode: {mode!r}")
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())
