@@ -1,6 +1,18 @@
+---
+status: active
+role: canonical
+date: 2026-07-16
+last_reviewed: 2026-07-16
+superseded_by: null
+blocks_on: []
+topic: learning-pipeline
+decision_date: 2026-04-27
+---
+
 # ADR 012: Learning Pipeline Runtime Owner
 
 **Status:** Accepted
+<!-- legacy status: **Status:** Accepted — see YAML frontmatter -->
 **Date:** 2026-04-27
 **Supersedes:** None
 

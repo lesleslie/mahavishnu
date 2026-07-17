@@ -1,7 +1,19 @@
+---
+status: active
+role: canonical
+date: 2026-07-16
+last_reviewed: 2026-07-16
+superseded_by: null
+blocks_on: []
+topic: mcp-design
+decision_date: 2026-01-29
+---
+
 # ADR 002: MCP-First Design with FastMCP + mcp-common
 
 ## Status
 
+<!-- legacy status: **Accepted** — see YAML frontmatter -->
 **Accepted**
 
 ## Context

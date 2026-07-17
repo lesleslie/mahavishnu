@@ -1,7 +1,19 @@
+---
+status: active
+role: canonical
+date: 2026-07-16
+last_reviewed: 2026-07-16
+superseded_by: null
+blocks_on: []
+topic: adapter-registry
+decision_date: 2026-05-13
+---
+
 # ADR 009: Hybrid Adapter Registry with Dynamic Discovery
 
 ## Status
 
+<!-- legacy status: **Accepted** — see YAML frontmatter -->
 **Accepted**
 
 ## Context

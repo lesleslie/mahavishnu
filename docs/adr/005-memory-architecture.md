@@ -1,6 +1,18 @@
+---
+status: active
+role: canonical
+date: 2026-07-16
+last_reviewed: 2026-07-16
+superseded_by: null
+blocks_on: []
+topic: memory-architecture
+decision_date: 2025-01-24
+---
+
 # ADR 005: Unified Memory Architecture
 
 **Status:** Accepted
+<!-- legacy status: **Status:** Accepted — see YAML frontmatter -->
 **Date:** 2025-01-24
 **Deciders:** @les
 **Technical Story:** [Link to issue/discussion]

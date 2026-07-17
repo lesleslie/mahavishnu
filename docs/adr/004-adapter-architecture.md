@@ -1,7 +1,19 @@
+---
+status: active
+role: canonical
+date: 2026-07-16
+last_reviewed: 2026-07-16
+superseded_by: null
+blocks_on: []
+topic: adapter-architecture
+decision_date: 2026-01-29
+---
+
 # ADR 004: Adapter Architecture and Engine Integration
 
 ## Status
 
+<!-- legacy status: **Accepted** — see YAML frontmatter -->
 **Accepted**
 
 ## Context
