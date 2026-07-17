@@ -419,7 +419,7 @@ When you dispatch a task to a Mahavishnu worker, the run continues out-of-band �
 
 Three external surfaces:
 
-- `/vishnu-status` slash command — prints the pool list, per-pool health, and recent metrics.
+- `/mahavishnu:status` slash command — prints the pool list, per-pool health, and recent metrics.
 - MCP log file at `~/.mahavishnu/logs/mcp.log` — tail it for structured events from every worker call.
 - WebSocket subscriber on port `8690` — channels `workflow:{workflow_id}`, `pool:{pool_id}`, `worker:{worker_id}`, and `global` (see [WebSocket Real-Time Architecture](#websocket-real-time-architecture) for the broadcast methods).
 
