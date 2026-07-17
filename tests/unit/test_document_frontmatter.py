@@ -151,6 +151,21 @@ def test_legacy_lifecycle_rejected(repo: Path) -> None:
     assert any(i.rule == "status_invalid" for i in result.errors)
 
 
+def test_legacy_resolved_coerced_to_complete(repo: Path) -> None:
+    """BUG 3 fix: legacy 'Resolved' (case-insensitive, optional trailing '.')
+    is coerced to canonical 'complete' before validation, so no
+    status_invalid error is emitted.
+    """
+    for legacy in ("Resolved", "resolved", "RESOLVED", "Resolved.", "resolved."):
+        rel = f"docs/followups/{legacy.replace('.', '_')}.md"
+        body = MINIMAL_VALID_FULL.replace("status: active", f"status: {legacy}")
+        f = _write(repo, rel, body)
+        result = _validate(repo, f, rel)
+        assert not any(
+            i.rule == "status_invalid" for i in result.errors
+        ), f"{legacy!r} should coerce to 'complete' but produced status_invalid"
+
+
 def test_invalid_role_rejected(repo: Path) -> None:
     """role: authoritative is not in the role vocabulary."""
     rel = "docs/adr/bad-role.md"
@@ -269,6 +284,46 @@ def test_blocks_on_accepts_ext_identifier(repo: Path) -> None:
     assert not any(i.rule == "blocks_on_unresolved" for i in result.errors)
 
 
+def test_superseded_by_accepts_list_form(repo: Path) -> None:
+    """BUG 2 fix: superseded_by accepts a YAML list of paths/ext:<id>.
+
+    Each list entry must resolve to a known file or ext:<id>; broken entries
+    produce superseded_by_unresolved errors.
+    """
+    rel = "docs/adr/multi-supersede.md"
+    body = MINIMAL_VALID_FULL.replace(
+        "topic: mcp-design\n",
+        "topic: mcp-design\nsuperseded_by:\n"
+        "  - ext:dhara-async-migration\n"
+        "  - docs/adr/does-not-exist.md\n",
+    )
+    f = _write(repo, rel, body)
+
+    # ext: entries pass; the broken path entry produces an error.
+    result = _validate(
+        repo,
+        f,
+        rel,
+        validate_links=True,
+        known_files={"docs/adr/other.md"},
+    )
+    assert not any(
+        i.rule == "superseded_by_invalid" for i in result.errors
+    )
+    # The known ext:<id> does not produce an unresolved error.
+    assert not any(
+        i.rule == "superseded_by_unresolved"
+        and "ext:dhara-async-migration" in i.message
+        for i in result.errors
+    )
+    # The bogus path does produce an unresolved error.
+    assert any(
+        i.rule == "superseded_by_unresolved"
+        and "does-not-exist.md" in i.message
+        for i in result.errors
+    )
+
+
 # ---------------------------------------------------------------------------
 # 14-16: File discovery exclusions
 # ---------------------------------------------------------------------------
@@ -292,6 +347,24 @@ def test_drafts_directory_excluded(repo: Path) -> None:
     files = discover_files(repo, [repo / "docs/plans/"], [])
     rels = [r for _, r in files]
     assert not any(r.startswith("docs/plans/drafts/") for r in rels)
+
+
+def test_archive_subdirectory_excluded(repo: Path) -> None:
+    """BUG 1 fix: any path with an 'archive' or '.archive' segment is excluded.
+
+    Mirrors the docs/plans/drafts/ exclusion but applies to every store
+    (e.g. docs/followups/.archive/*, docs/adr/.archive/*).
+    """
+    _write(repo, "docs/followups/.archive/old.md", MINIMAL_VALID_FULL)
+    _write(repo, "docs/followups/archive/old2.md", MINIMAL_VALID_FULL)
+    _write(repo, "docs/followups/nested/.archive/deep.md", MINIMAL_VALID_FULL)
+    _write(repo, "docs/followups/keep.md", MINIMAL_VALID_FULL)
+
+    files = discover_files(repo, [repo / "docs/followups/"], [])
+    rels = [r for _, r in files]
+    assert "docs/followups/keep.md" in rels
+    assert not any(".archive" in r.split("/") for r in rels)
+    assert not any("archive" in r.split("/") for r in rels)
 
 
 def test_backup_files_excluded(repo: Path) -> None:

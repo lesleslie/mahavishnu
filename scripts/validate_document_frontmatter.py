@@ -249,26 +249,42 @@ def _validate_superseded_by(
 ) -> None:
     if value is None:
         return  # superseded_by is only required when role == superseded
-    if not isinstance(value, str):
+    # BUG 2 fix: accept either a scalar string or a list of strings.
+    if isinstance(value, str):
+        items: list[Any] = [value]
+    elif isinstance(value, list):
+        items = value
+    else:
         result.add(
             Issue(
                 "ERROR",
                 "superseded_by_invalid",
-                f"superseded_by must be a string path or ext:<id>; got {type(value).__name__}",
+                f"superseded_by must be a string path/ext:<id> or list thereof; "
+                f"got {type(value).__name__}",
             )
         )
         return
-    if EXT_LINK_RE.match(value):
-        return
-    if value in known_files or (repo_root / value).is_file():
-        return
-    result.add(
-        Issue(
-            "ERROR",
-            "superseded_by_unresolved",
-            f"superseded_by {value!r} does not resolve to a known file or ext:<id>",
+    for entry in items:
+        if not isinstance(entry, str):
+            result.add(
+                Issue(
+                    "ERROR",
+                    "superseded_by_invalid",
+                    f"superseded_by entries must be strings; got {type(entry).__name__}",
+                )
+            )
+            continue
+        if EXT_LINK_RE.match(entry):
+            continue
+        if entry in known_files or (repo_root / entry).is_file():
+            continue
+        result.add(
+            Issue(
+                "ERROR",
+                "superseded_by_unresolved",
+                f"superseded_by entry {entry!r} does not resolve to a known file or ext:<id>",
+            )
         )
-    )
 
 
 def _validate_blocks_on(
@@ -389,6 +405,15 @@ def validate_file(
 
     # status enum
     status = front.get("status")
+    # BUG 3 fix: coerce legacy "Resolved" / "Resolved." (case-insensitive,
+    # optional trailing punctuation) to the canonical "complete" value before
+    # running the vocabulary check. Source: legacy mapping table in
+    # docs/schemas/document-frontmatter-v1.md ("Resolved -> complete").
+    if isinstance(status, str):
+        normalized = status.strip().rstrip(".").lower()
+        if normalized == "resolved":
+            front["status"] = "complete"
+            status = front["status"]
     if "status" in front and status not in LIFECYCLE_VALUES:
         result.add(
             Issue(
@@ -484,6 +509,11 @@ def _is_excluded(rel: str) -> bool:
     for prefix in ALWAYS_EXCLUDE_DIRS_REL:
         if rel.startswith(prefix):
             return True
+    # BUG 1 fix: skip any archive or .archive subdirectory in any path.
+    # Mirrors docs/plans/drafts/ exclusion but applies recursively.
+    parts = rel.split("/")
+    if "archive" in parts or ".archive" in parts:
+        return True
     for suffix in ALWAYS_EXCLUDE_SUFFIXES:
         if rel.endswith(suffix):
             return True
