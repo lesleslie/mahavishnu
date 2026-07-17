@@ -1,3 +1,11 @@
+---
+status: active
+role: canonical
+date: 2026-07-16
+last_reviewed: 2026-07-16
+topic: bodai-observability
+---
+
 # Bodai Observability Pattern — One Subscriber, One Bus
 
 One-line summary: Claude Code's "observe Bodai" path reads from
@@ -126,7 +134,7 @@ Each line is built from `headers["source"]` (the component prefix),
 `envelope.topic` (the event type), and `key=value` pairs sorted out
 of `envelope.payload`. Missing fields fall back to `[unknown] unknown` so a malformed envelope never aborts the consumer loop.
 
-## Status
+## Status  <!-- legacy status: In progress — see YAML frontmatter -->
 
 In progress (Mahavishnu side complete). Phase 6A landed the
 Mahavishnu-side subscriber at `mahavishnu/core/events/bodai_subscriber.py`

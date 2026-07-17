@@ -1,3 +1,11 @@
+---
+status: active
+role: canonical
+date: 2026-07-16
+last_reviewed: 2026-07-16
+topic: decision-index
+---
+
 # `.claude/decisions/` index
 
 One-line summary: the directory holds repo-local decisions and

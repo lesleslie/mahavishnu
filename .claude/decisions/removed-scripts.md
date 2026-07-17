@@ -1,3 +1,11 @@
+---
+status: active
+role: canonical
+date: 2026-07-16
+last_reviewed: 2026-07-16
+topic: removed-scripts
+---
+
 # Removed Scripts — `required_scripts:` policy
 
 One-line summary: documents the policy for handling `required_scripts:`

@@ -1,3 +1,11 @@
+---
+status: active
+role: canonical
+date: 2026-07-16
+last_reviewed: 2026-07-16
+topic: tool-preference
+---
+
 # Mahavishnu Tool Preference Policy
 
 One-line summary: tool-selection steering lives in two canonical
@@ -58,7 +66,7 @@ sources win. Reviewers should treat docstring steering copy as a
 regression and ask the contributor to delete it or move the
 underlying fact to `MAHAVISHNU_TOOL_PROFILE` / `## Tool Preferences`.
 
-## Status
+## Status  <!-- legacy status: Active — see YAML frontmatter -->
 
 Active. The rule applies to all new tool registrations and to any
 existing tool touched after this date. Existing docstring marketing

@@ -1,3 +1,11 @@
+---
+status: active
+role: canonical
+date: 2026-07-16
+last_reviewed: 2026-07-16
+topic: component-health
+---
+
 # Component-Health CLI Gap
 
 ## Context
@@ -68,7 +76,7 @@ exist for human operators. Both surfaces need to keep working.
   single dependency is missing. They cannot be the canonical surface
   because every CLI caller has a different degradation tolerance.
 
-## Status
+## Status  <!-- legacy status: Active — see YAML frontmatter -->
 
 Active. The 2026-07-15 metrics CLI additions (`verification`,
 `dispatch`) follow this rule: they read Dhara and render summary

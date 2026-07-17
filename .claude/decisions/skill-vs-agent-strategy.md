@@ -1,3 +1,11 @@
+---
+status: active
+role: canonical
+date: 2026-07-16
+last_reviewed: 2026-07-16
+topic: skill-vs-agent
+---
+
 ## Context
 
 Both skills and agents extend Claude's capabilities, but they solve different problems.
@@ -66,6 +74,6 @@ Do not collapse them into one. The skill automates; the agent advises.
 - **Agents**: description loaded every session — subject to 15k aggregate limit
   See `agent-curation-strategy.md` for curation rules
 
-## Status
+## Status  <!-- legacy status: Active — see YAML frontmatter -->
 
 Established 2026-06-22 alongside `agent-curation-strategy.md`.

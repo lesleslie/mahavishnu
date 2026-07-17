@@ -1,3 +1,11 @@
+---
+status: active
+role: canonical
+date: 2026-07-16
+last_reviewed: 2026-07-16
+topic: followups-lifecycle
+---
+
 # `docs/followups/` lifecycle
 
 ## Context
@@ -32,7 +40,7 @@ consistent.
 1. Move the note's row from the Active table to the Archived table in the
    README at the same time.
 
-## Status
+## Status  <!-- legacy status: Active — see YAML frontmatter -->
 
 Active. Adopted 2026-07-16. Initial backfill moved the three
 audit-verified-complete notes (agno config-field-path, pydantic-settings

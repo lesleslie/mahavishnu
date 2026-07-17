@@ -1,3 +1,11 @@
+---
+status: active
+role: canonical
+date: 2026-07-16
+last_reviewed: 2026-07-16
+topic: dhara-key-prefixes
+---
+
 # Dhara Key Prefixes for Ultracode Integration
 
 ## Context
@@ -54,7 +62,7 @@ Implementation rules:
    TTL default). Document any change to these defaults next to the
    prefix constant in `metrics_cli.py` so producers stay in sync.
 
-## Status
+## Status  <!-- legacy status: Active — see YAML frontmatter -->
 
 Active. The two CLI subcommands added 2026-07-15
 (`mahavishnu metrics verification`, `mahavishnu metrics dispatch`)

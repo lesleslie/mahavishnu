@@ -1,3 +1,11 @@
+---
+status: active
+role: canonical
+date: 2026-07-16
+last_reviewed: 2026-07-16
+topic: agent-curation
+---
+
 ## Context
 
 The Claude Code agent catalog has a **15,000-token hard limit** on aggregated agent descriptions
@@ -56,7 +64,7 @@ cp ~/.claude/agents/<name>.md mahavishnu/.claude/agents/
 
 Total unique agents in catalog: ~207. Token budget: comfortably under 15k.
 
-## Status
+## Status  <!-- legacy status: Active — see YAML frontmatter -->
 
 Established 2026-06-21 after hitting the 15k limit following `understand-anything` install.
 Archive pattern corrected 2026-06-22: subdirectory archives inside agents/ don't work.

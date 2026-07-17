@@ -1,3 +1,11 @@
+---
+status: active
+role: canonical
+date: 2026-07-16
+last_reviewed: 2026-07-16
+topic: wire-up-contract
+---
+
 # Wire-up contract
 
 ## Context
@@ -88,7 +96,7 @@ def run_experiment(config_path: Path) -> None:
   workflow with Wiring phase
 - `CLAUDE.md` § Process Discipline — user-facing summary
 
-## Status
+## Status  <!-- legacy status: Active — see YAML frontmatter -->
 
 Established 2026-07-07. Supersedes the absence of any prior rule on
 this topic.
