@@ -1,6 +1,16 @@
+---
+status: complete
+role: historical
+date: 2026-07-16
+last_reviewed: 2026-07-16
+superseded_by: null
+blocks_on: []
+topic: crow-mcp-client
+---
+
 # Crow Adapter `mcp_client=None` Wiring — Bootstrap Followup
 
-**Status:** Resolved (2026-06-29). The long-term proper fix is in place: all three CLI call sites in `mahavishnu/_main_cli.py` (~1073, 1156, 1381) now construct the `mcp_client` from settings via the `_resolve_crow_mcp_client` helper, which delegates to `mahavishnu.mcp.crow_server.create_crow_mcp_client`. When `terminal.crow_enabled=true`, the call sites pass a configured `BodaiComponentMCPClient` to `TerminalManager.create()`; when the toggle is left at its `false` default, the call sites pass `None` and the factory falls through to the mock adapter. No separate call-site PR is needed; operators opt in by setting `crow_enabled: true` in `settings/local.yaml`. Regression coverage lives at `tests/unit/cli/test_crow_call_site_wiring.py`.
+**Status:** Resolved (2026-06-29) <!-- legacy status: Resolved — see YAML frontmatter -->. The long-term proper fix is in place: all three CLI call sites in `mahavishnu/_main_cli.py` (~1073, 1156, 1381) now construct the `mcp_client` from settings via the `_resolve_crow_mcp_client` helper, which delegates to `mahavishnu.mcp.crow_server.create_crow_mcp_client`. When `terminal.crow_enabled=true`, the call sites pass a configured `BodaiComponentMCPClient` to `TerminalManager.create()`; when the toggle is left at its `false` default, the call sites pass `None` and the factory falls through to the mock adapter. No separate call-site PR is needed; operators opt in by setting `crow_enabled: true` in `settings/local.yaml`. Regression coverage lives at `tests/unit/cli/test_crow_call_site_wiring.py`.
 **Refs:** bodai-crow-server runbook (`docs/runbooks/bodai-crow-server.md`) §6; MHV-307 error code; `docs/runbooks/crow-adapter-mcp-client.md`.
 
 ## Background
