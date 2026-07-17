@@ -92,6 +92,14 @@ The master backlog is retained as delivered/historical source material. New conv
 
 ## Canonical And Active Plan Registry
 
+### DLQ Fail-Closed Wiring (2026-07-16)
+
+- Plan: [2026-07-16-dlq-fail-closed-wiring.md](./2026-07-16-dlq-fail-closed-wiring.md)
+- Status: `shipped`, `implementation` — all three phases complete as of 2026-07-16.
+- Use for: the opt-in `dlq.fail_on_opensearch_unavailable` policy is now real in production (the shipped flag is no longer inert); runtime OpenSearch write failures under fail-closed raise `ExternalServiceError` with no memory-only phantom; the `mahavishnu_dlq_fallback_total` counter is the operator's source of truth; the DLQ runbook (`docs/runbooks/dead-letter-queue.md`) documents diagnosis and the fail-closed opt-in.
+- Delivered: `DLQConfig.max_size` (fixes the `dlq_max_size` misread); `create_dlq_integration` propagates `app.config.dlq.{fail_on_opensearch_unavailable,max_size}`; `DeadLetterQueue.enqueue` reorders to persist-then-append when fail-closed; `_persist_task(strict=True)` re-raises wrapped in `ExternalServiceError`; `mahavishnu/core/dlq_metrics.py` registers the counter with lazy prometheus + no-op fallback; tests in `tests/unit/core/test_dlq_integration.py`, `test_dead_letter_queue_fail_closed.py`, `test_dlq_metrics.py`, and `tests/integration/core/test_dead_letter_queue_failover.py` (16 tests total). Re-verified the 2026-06-29 opensearch-diverged-flags note as resolved for live paths (residual in deprecated `workflow_state.py` is out of scope).
+- Executed in degraded mode (MHV-007: Mahavishnu worker backend unavailable in this environment). Replay marker at `~/.mahavishnu/fallback-queue/dlq-fail-closed-2026-07-16.json` so an operator can re-run the work through a real pool to regenerate the ecosystem audit trail.
+
 ### Doc Status Sync and Session-Buddy Channel Phase 2
 
 - Plan: [../superpowers/plans/2026-05-14-doc-sync-and-channel-phase2.md](../superpowers/plans/2026-05-14-doc-sync-and-channel-phase2.md)
