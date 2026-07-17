@@ -1,10 +1,12 @@
 """CLI commands for worktree management."""
 
 import asyncio
+from datetime import datetime, timedelta, timezone
 
 import typer
 
 from .core.app import MahavishnuApp
+from .core.worktree_session_registry import SessionWorktreeRegistry
 
 worktree_app = typer.Typer(help="Manage git worktrees across the ecosystem")
 
@@ -253,3 +255,121 @@ def provider_health():
                     typer.echo(f"     Error: {status['error']}")
 
     _run_async(_health())
+
+
+# ── Session worktree registry subcommands ────────────────────────
+
+
+@worktree_app.command("list-sessions")
+def list_sessions(
+    state: str = typer.Option(
+        "active",
+        "--state",
+        help="Filter by state: active|abandoned (or 'all' for no filter)",
+    ),
+    older_than_days: int = typer.Option(
+        None,
+        "--older-than-days",
+        help="Only show entries older than N days (by last_seen_at or abandoned_at)",
+    ),
+    registry_path: str = typer.Option(
+        None,
+        "--registry-path",
+        help="Override the registry file location (default: XDG state path)",
+    ),
+):
+    """List Claude sessions with their associated worktrees.
+
+    Reads the SessionWorktreeRegistry (the ``session_id → worktree_path``
+    map populated by ``.claude/hooks/worktree-session-isolation.py``).
+
+    Useful for cleaning up orphaned worktrees after long sessions
+    accumulate; pair with ``worktree prune-abandoned`` to actually
+    remove the on-disk worktrees (always explicit, never automatic).
+    """
+    from pathlib import Path
+
+    path = Path(registry_path) if registry_path else None
+    registry = SessionWorktreeRegistry(path=path)
+
+    state_filter: str | None = None if state == "all" else state
+    entries = registry.list_active(
+        state=state_filter,
+        older_than_days=older_than_days,
+    )
+    if not entries:
+        typer.echo(f"No sessions found (state={state}, older_than_days={older_than_days})")
+        return
+
+    typer.echo(f"📋 Sessions ({len(entries)}):")
+    for entry in entries:
+        sid = entry["session_id_short"]
+        wt = entry["worktree_path"]
+        branch = entry["branch"]
+        st = entry["state"]
+        last_seen = entry.get("last_seen_at", "?")
+        abandoned_at = entry.get("abandoned_at") or "—"
+        icon = "✅" if st == "active" else "💤"
+        typer.echo(f"  {icon} {sid}  {wt}  branch={branch}  state={st}")
+        typer.echo(f"      last_seen={last_seen}  abandoned_at={abandoned_at}")
+
+
+@worktree_app.command("prune-abandoned")
+def prune_abandoned(
+    older_than_days: int = typer.Option(
+        7,
+        "--older-than-days",
+        help="Only prune entries abandoned at least N days ago",
+    ),
+    dry_run: bool = typer.Option(
+        False,
+        "--dry-run",
+        help="Show what would be pruned without removing anything",
+    ),
+    registry_path: str = typer.Option(
+        None,
+        "--registry-path",
+        help="Override the registry file location",
+    ),
+):
+    """Remove abandoned worktree entries from the registry.
+
+    SAFETY: This command NEVER removes the actual git worktree on disk.
+    It only removes the registry entry that tracks the worktree. To
+    delete the worktree itself, run::
+
+        mahavishnu worktree remove <repo_nickname> <worktree_path>
+
+    Use ``--dry-run`` to preview.
+
+    Required by the never-auto-remove safety policy (4-lens plan,
+    2026-07-16) — abandoned worktrees must be explicitly cleaned up.
+    """
+    from pathlib import Path
+
+    path = Path(registry_path) if registry_path else None
+    registry = SessionWorktreeRegistry(path=path)
+
+    abandoned = registry.list_active(state="abandoned", older_than_days=older_than_days)
+    if not abandoned:
+        typer.echo(f"No abandoned sessions older than {older_than_days} days")
+        return
+
+    typer.echo(f"🧹 Found {len(abandoned)} abandoned session(s):")
+    for entry in abandoned:
+        sid = entry["session_id_short"]
+        wt = entry["worktree_path"]
+        abandoned_at = entry.get("abandoned_at", "?")
+        typer.echo(f"  - {sid}  {wt}  abandoned_at={abandoned_at}")
+
+    if dry_run:
+        typer.echo("🔍 Dry run: no changes made. Re-run without --dry-run to apply.")
+        return
+
+    for entry in abandoned:
+        registry.remove(entry["session_id_short"])
+    typer.echo(f"✅ Removed {len(abandoned)} abandoned session(s) from the registry.")
+    typer.echo(
+        "⚠️  The git worktrees themselves are still on disk. To remove them, run:\n"
+        "    mahavishnu worktree remove <repo_nickname> <worktree_path>"
+    )

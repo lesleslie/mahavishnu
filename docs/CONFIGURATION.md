@@ -60,6 +60,23 @@ Override any settings for local development without affecting committed config.
 - `MAHAVISHNU_AUTH_SECRET` — JWT secret (minimum 32 characters)
 - `RUNPOD_API_KEY` — Required for RunPodPool (set before spawning)
 
+## Per-Session Worktree Isolation
+
+When **multiple Claude Code sessions run concurrently** in the same repo, they share the same working directory and conflict on file writes, branch state, and dirty-tree merges. The per-session worktree feature provisions a per-session git worktree at SessionStart so each session edits its own tree.
+
+| Variable | Default | Effect |
+|----------|---------|--------|
+| `MAHAVISHNU_AUTO_WORKTREE` | unset | Set to `1` / `true` / `yes` / `on` to enable SessionStart auto-provisioning of a per-session worktree. Default off — sessions are unaffected until you opt in. |
+| `MAHAVISHNU_AUTO_WORKTREE_ROOT` | `~/worktrees` | Parent directory for auto-provisioned worktrees. Matches `WorktreePathValidator`'s default. |
+| `MAHAVISHNU_AUTO_WORKTREE_BRANCH_BASE` | `main` | Base branch when creating the new session branch. |
+| `MAHAVISHNU_AUTO_WORKTREE_CLEANUP` | `mark` | `mark` records the worktree as `abandoned` in the registry at SessionEnd (recommended). `keep` is a no-op. The plan never auto-removes worktrees — see [`mahavishnu worktree prune-abandoned`](#cli-cleanup) below. |
+
+State file path: `$MAHAVISHNU_HOME/session-worktrees.json` (XDG state dir by default). The `MAHAVISHNU_HOME` env var is the standard override used by all mahavishnu state files.
+
+CLI cleanup: `mahavishnu worktree prune-abandoned --older-than-days 7` removes abandoned registry entries older than 7 days (the registry entry only — the git worktree itself stays until you `mahavishnu worktree remove` it explicitly).
+
+For the full design rationale and tradeoffs, see `docs/followups/2026-07-16-session-worktree-isolation.md` and `.claude/decisions/session-worktree-defaults.md`.
+
 ## Other Configuration Files
 
 - `settings/repos.yaml` — Repository manifest with tags and metadata
@@ -76,6 +93,10 @@ export MAHAVISHNU_AUTH_SECRET="your-secret-minimum-32-characters"
 export MAHAVISHNU_POOLS_ENABLED=true
 export MAHAVISHNU_DEFAULT_POOL_TYPE=mahavishnu
 export MAHAVISHNU_TOOL_PROFILE=full  # full, standard, minimal
+
+# Optional: per-session worktree isolation (multi-session setups)
+export MAHAVISHNU_AUTO_WORKTREE=1          # opt-in gate
+export MAHAVISHNU_AUTO_WORKTREE_ROOT=~/worktrees  # default
 ```
 
 ## LLM Provider Configuration

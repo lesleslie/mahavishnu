@@ -69,6 +69,41 @@ mahavishnu pool close-all
 mahavishnu sweep --tag python --adapter prefect
 ```
 
+## Worktree Management
+
+```bash
+mahavishnu worktree create <repo_nickname> <branch> [--name <name>] [--create-branch]
+mahavishnu worktree remove <repo_nickname> <worktree_path> [--force] [--force-reason <text>]
+mahavishnu worktree list [--repo <repo_nickname>]
+mahavishnu worktree prune <repo_nickname>
+mahavishnu worktree safety-status <repo_nickname> <worktree_path>
+mahavishnu worktree provider-health
+```
+
+### Per-session worktree isolation (multi-Claude-session safety)
+
+When multiple Claude Code sessions run concurrently in the same repo, each session can use its own worktree via `MAHAVISHNU_AUTO_WORKTREE=1` (see [Configuration Reference](CONFIGURATION.md#per-session-worktree-isolation)). The CLI commands below manage the registry that maps session_ids to worktrees.
+
+```bash
+# Inspect which sessions are using which worktrees
+mahavishnu worktree list-sessions
+mahavishnu worktree list-sessions --state abandoned
+mahavishnu worktree list-sessions --state all --older-than-days 7
+
+# Preview cleanup of abandoned entries
+mahavishnu worktree prune-abandoned --older-than-days 7 --dry-run
+
+# Remove abandoned registry entries older than 7 days
+# (the git worktrees themselves stay on disk; remove explicitly with
+#  `mahavishnu worktree remove <repo_nickname> <path>`)
+mahavishnu worktree prune-abandoned --older-than-days 7
+
+# Override the registry file location (default: XDG state dir)
+mahavishnu worktree list-sessions --registry-path /tmp/registry.json
+```
+
+The registry never auto-removes worktrees — manual cleanup is the only path to disk reclamation. Use `list-sessions` regularly to monitor growth; run `prune-abandoned` periodically to drop stale entries.
+
 ## Testing & Quality
 
 ```bash
