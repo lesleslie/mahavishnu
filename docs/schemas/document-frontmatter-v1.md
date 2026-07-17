@@ -141,3 +141,19 @@ Two open questions were resolved before migration began. Both are binding for Ph
 ## Change History
 
 - **2026-07-16** — v1. Initial schema covering the 178 in-scope files across six stores; full and lite variants; legacy mapping table.
+
+## Crackerjack Surface
+
+The validator is wrapped by Crackerjack so the same checks run during
+`crackerjack run` (in the `documentation_cleanup` phase), via the CLI
+(`crackerjack docs validate [--strict] [--store] [--validate-links] [--json]`),
+and via the MCP tool `mcp__crackerjack__crackerjack_doc_frontmatter_validate`.
+
+The wrapper invokes the validator as a subprocess (one-directional
+dependency: Crackerjack → Mahavishnu). The validator remains the single
+source of truth in this repo; Crackerjack imports it via
+`mahavishnu.scripts.validate_document_frontmatter`.
+
+See the design doc
+`docs/superpowers/specs/2026-07-16-frontmatter-validator-wiring-design.md`
+for full integration details.
