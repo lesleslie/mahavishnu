@@ -1,3 +1,13 @@
+---
+status: active
+role: implementation
+date: 2026-07-16
+last_reviewed: 2026-07-16
+superseded_by: null
+blocks_on: []
+topic: lifecycle
+---
+
 # Checkpoint — DLQ Fail-Closed Wiring (2026-07-16)
 
 **Date**: 2026-07-16
