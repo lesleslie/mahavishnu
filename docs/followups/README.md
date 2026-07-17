@@ -23,7 +23,6 @@ Sorted newest-first. **Verified state** is the state confirmed against the
 
 | File | Topic | Verified state (2026-07-16) |
 |------|-------|------------------------------|
-| `2026-07-16-multi-session-mcp-contention.md` | Multi-Claude-session MCP contention: 4 concurrent Stop hooks fire `sb_checkpoint.py` simultaneously; `session-buddy` singleton `threading.Lock` blocks uvicorn event loop → `-32000 transport dropped`. | 🔴 **Open** — root cause located in `session-buddy/crackerjack_integration.py:143` (external repo). Reproduction script provided (6/6 client timeouts at 30s under N=6 parallel). Mahavishnu-side mitigations documented (debounce + non-blocking hook). |
 | `2026-07-15-sb-checkpoint-stash-clobber.md` | Recurring: auto-checkpoint hook re-applies a `git stash` over in-flight subagent edits. | 🔴 **Open** — second observation; fix only *proposed* (Options A/B/C). Culprit lives in external `session-buddy` repo. |
 | `2026-06-29-crow-mcp-client-wiring.md` | `mahavishnu mcp start` crash — crow adapter constructed with `mcp_client=None`. | ✅ **Addressed** for stated scope (helper + 3 call sites + tests). Adjacent gaps: no end-to-end env-precedence test; `core/adapters/worker.py:72-75` non-CLI caller still passes `None`. |
 | `2026-06-29-dlq-silent-fallback.md` | DLQ silently falls back to a per-process in-memory deque when OpenSearch is down (data loss). | *archived* — see `.archive/` row. |
@@ -42,6 +41,7 @@ repo-wide `.archive/` ignore.
 | `.archive/2026-07-15-bodai-hooks-sb-debug-resolution.md` | Paired resolution doc: root-cause + failing test + proposed fix for the flat-layout bug. | ✅ Resolution written and archived together with its pickup note (per lifecycle rule's "2026-07-15 style"). Open follow-up: multi-session MCP contention architectural fix tracked under new followup entry. |
 | `.archive/2026-06-29-agno-adapter-config-field-path.md` | Agno adapter rejected user config via duplicated config classes and silently fell back to Ollama. | ✅ Canonical shared classes + 3 regression tests verified in current code. |
 | `.archive/2026-06-29-pydantic-settings-source-resolution.md` | pydantic-settings merge order let YAML mask env/`local.yaml` overrides for nested settings. | ✅ Source-order fix + 36-test regression suite + original reproduction all pass. |
+| `.archive/2026-07-16-multi-session-mcp-contention.md` | Multi-Claude-session MCP contention: 4 concurrent Stop hooks fire `sb_checkpoint.py` simultaneously; `session-buddy` singleton `threading.Lock` blocks uvicorn event loop → `-32000 transport dropped`. | ✅ **Resolved** — single-flight coalescing + `asyncio.to_thread` wrappers landed in session-buddy commits `b86fbcbf`/`3c83f33d`/`d67a531c`/`4e661221`/`8b168816`/`1043ffec`. Integration test `tests/integration/test_concurrent_checkpoint_load.py` flips RED → GREEN (~41s for 6 parallel calls, within 1.5× single-call budget). Plan: `docs/plans/2026-07-16-checkpoint-async-refactor.md`. |
 
 ## Lifecycle
 

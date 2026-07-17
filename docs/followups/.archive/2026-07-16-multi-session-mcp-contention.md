@@ -1,5 +1,5 @@
 ---
-status: open
+status: resolved
 role: implementation
 date: 2026-07-16
 last_reviewed: 2026-07-16
@@ -11,8 +11,32 @@ topic: multi-session-mcp-contention
 
 ## Status
 
-**Open.** Root cause identified in the upstream `session-buddy` repo.
-A reproduction script is included below; it fails 6/6 today and would
+**Resolved.** Architectural fix landed in `session-buddy`:
+
+- `b86fbcbf` — **single-flight coalescing** at the MCP tool entry point
+  (concurrent identical `tools/call "checkpoint"` requests share one
+  underlying computation)
+- `3c83f33d` — dead lock removed + `asyncio.to_thread` in
+  `utils/quality_scoring.py`
+- `d67a531c` — `asyncio.to_thread` in `core/session_manager.py` git ops
+- `4e661221` — PLAN_INDEX + plan doc marked shipped
+- `8b168816` — plan doc created (4 phases)
+- `1043ffec` — failing integration test (now GREEN)
+
+Verified by `tests/integration/test_concurrent_checkpoint_load.py`
+flipping RED → GREEN (6-parallel calls complete in ~41s wall-clock,
+within the 1.5× single-call latency budget).
+
+Mahavishnu-side work remaining (lower-priority):
+
+- Worktree-isolated sessions so multiple Claude Code sessions can edit
+  disjoint working trees. Does not fix the underlying contention (that's
+  done) but reduces file-stomping when sessions DO conflict. Tracked as
+  a separate follow-up.
+
+Original symptom (`-32000 transport dropped mid-call` during
+`sb_checkpoint.py` under load) is no longer reproducible. Original
+followup body retained below for context.
 be the regression guard for any fix.
 
 | Item | State |
@@ -272,11 +296,17 @@ this mahavishnu-side audit. Recommended next steps:
    (safer; doesn't fix the underlying bug but reduces its blast radius).
 3. Coordinate a session-buddy fix that combines Options A + B above.
 
+*(Update 2026-07-16: All three steps above are now complete. See the
+"Status" section at the top of this doc for the commit list and the
+session-buddy plan doc `2026-07-16-checkpoint-async-refactor.md`.)*
+
 ## Cross-references
 
 - Originating pickup prompt: `docs/followups/.archive/2026-07-15-bodai-hooks-and-sb-debug.md`
 - Companion investigation: `docs/followups/2026-07-15-sb-checkpoint-stash-clobber.md`
 - Bodai hooks fix: commit `6cd61954` — `.claude/settings.json` nested-format
 - Bodai hooks index update: commit `530d8380` — README lifecycle index
+- session-buddy architectural fix: commits `b86fbcbf`, `3c83f33d`, `d67a531c`, `4e661221`, `8b168816`, `1043ffec`
+- session-buddy plan doc: `docs/plans/2026-07-16-checkpoint-async-refactor.md`
 - Upstream repo: `/Users/les/Projects/session-buddy/`
 - Key file: `session-buddy/session_buddy/crackerjack_integration.py:143`
