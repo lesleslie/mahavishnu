@@ -1,7 +1,16 @@
+---
+status: shipped
+role: historical
+date: 2026-04-25
+last_reviewed: 2026-07-16
+superseded_by: null
+topic: adapter-architecture
+---
+
 # Type Adapter Migration Plan
 
 **Date**: 2026-04-25
-**Status**: active, Phase 3 (canary/promotion)
+**Status**: active, Phase 3 (canary/promotion)  <!-- legacy status: active, Phase 3 — see YAML frontmatter -->
 **Scope**: Crackerjack `ty`, `pyrefly`, and `zuban` adapters plus AI-fix routing
 
 ## Summary

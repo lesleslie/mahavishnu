@@ -1,5 +1,3 @@
-# Metrics Implementation Strategy
-
 ---
 status: draft
 role: historical
@@ -8,6 +6,8 @@ last_reviewed: 2026-07-16
 superseded_by: null
 topic: observability
 ---
+
+# Metrics Implementation Strategy
 
 Date: 2026-04-03
 Status: Proposed  <!-- legacy status: Proposed — see YAML frontmatter -->

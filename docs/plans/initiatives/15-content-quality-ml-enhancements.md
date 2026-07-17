@@ -1,8 +1,18 @@
+---
+status: complete
+role: historical
+date: 2026-07-16
+last_reviewed: 2026-07-16
+superseded_by: null
+blocks_on: []
+topic: observability
+---
+
 # Initiative 15: Content Quality ML Enhancements
 
 ## Metadata
 
-- Status: `complete`
+- Status: `complete` <!-- legacy status: complete — see YAML frontmatter -->
 - Owner Role: `ML Eng + Ingestion`
 - Target Window: `2026-06-15` to `2026-07-03`
 

@@ -1,3 +1,12 @@
+---
+status: draft
+role: implementation
+date: 2026-05-09
+last_reviewed: 2026-07-16
+superseded_by: null
+topic: observability
+---
+
 # Bodai Unified Event Bus — Standardization Plan
 
 ## Metadata

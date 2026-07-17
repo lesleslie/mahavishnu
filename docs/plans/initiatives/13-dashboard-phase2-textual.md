@@ -1,8 +1,18 @@
+---
+status: complete
+role: historical
+date: 2026-07-16
+last_reviewed: 2026-07-16
+superseded_by: null
+blocks_on: []
+topic: observability
+---
+
 # Initiative 13: Dashboard Phase 2 (Textual, Conditional)
 
 ## Metadata
 
-- Status: `complete`
+- Status: `complete` <!-- legacy status: complete — see YAML frontmatter -->
 - Owner Role: `Platform UI`
 - Target Window: `2026-06-08` to `2026-06-26`
 

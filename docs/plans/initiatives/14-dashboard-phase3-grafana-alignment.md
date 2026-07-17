@@ -1,8 +1,18 @@
+---
+status: complete
+role: historical
+date: 2026-07-16
+last_reviewed: 2026-07-16
+superseded_by: null
+blocks_on: []
+topic: observability
+---
+
 # Initiative 14: Dashboard Phase 3 (Grafana Alignment)
 
 ## Metadata
 
-- Status: `complete`
+- Status: `complete` <!-- legacy status: complete — see YAML frontmatter -->
 - Owner Role: `SRE + Platform UI`
 - Target Window: `2026-06-15` to `2026-06-26`
 

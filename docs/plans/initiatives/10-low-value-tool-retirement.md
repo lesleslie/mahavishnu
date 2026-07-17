@@ -1,8 +1,18 @@
+---
+status: complete
+role: historical
+date: 2026-07-16
+last_reviewed: 2026-07-16
+superseded_by: null
+blocks_on: []
+topic: convergence-control-plane
+---
+
 # Initiative 10: Low-Value Tool Retirement
 
 ## Metadata
 
-- Status: `not_started`
+- Status: `not_started` <!-- legacy status: not_started — see YAML frontmatter -->
 - Owner Role: `Product + Platform`
 - Target Window: `2026-05-25` to `2026-06-19`
 

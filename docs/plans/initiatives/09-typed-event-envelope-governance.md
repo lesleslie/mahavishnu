@@ -1,8 +1,18 @@
+---
+status: complete
+role: historical
+date: 2026-07-16
+last_reviewed: 2026-07-16
+superseded_by: null
+blocks_on: []
+topic: adapter-tool-boundary
+---
+
 # Initiative 9: Typed Event Envelope + Governance
 
 ## Metadata
 
-- Status: `complete`
+- Status: `complete` <!-- legacy status: complete — see YAML frontmatter -->
 - Owner Role: `Core Eng`
 - Target Window: `2026-05-18` to `2026-06-12`
 

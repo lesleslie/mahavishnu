@@ -1,3 +1,13 @@
+---
+status: shipped
+role: canonical
+date: 2026-07-16
+last_reviewed: 2026-07-16
+superseded_by: null
+blocks_on: []
+topic: convergence-control-plane
+---
+
 # Initiative Plans Index
 
 These files are the executable plan set for `docs/plans/2026-04-04-ecosystem-execution-board.md`.

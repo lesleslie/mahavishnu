@@ -1,8 +1,18 @@
+---
+status: complete
+role: historical
+date: 2026-07-16
+last_reviewed: 2026-07-16
+superseded_by: null
+blocks_on: []
+topic: oneiric-config
+---
+
 # Initiative 2: Config Unification + Validation CLI
 
 ## Metadata
 
-- Status: `complete`
+- Status: `complete` <!-- legacy status: complete — see YAML frontmatter -->
 - Owner Role: `Core Eng`
 - Target Window: `2026-04-13` to `2026-04-24`
 

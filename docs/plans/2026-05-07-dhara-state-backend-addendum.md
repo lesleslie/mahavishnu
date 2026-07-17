@@ -1,8 +1,17 @@
+---
+status: active
+role: canonical
+date: 2026-05-07
+last_reviewed: 2026-07-16
+superseded_by: null
+topic: storage-consolidation
+---
+
 # P2 Addendum — DharaStateBackend Interface
 
 **Created**: 2026-05-07
 **Amends**: `docs/plans/2026-04-02-storage-consolidation-and-akosha-role.md`
-**Status**: approved — written to unblock P2 implementation
+**Status**: approved — written to unblock P2 implementation  <!-- legacy status: approved — see YAML frontmatter -->
 
 ______________________________________________________________________
 

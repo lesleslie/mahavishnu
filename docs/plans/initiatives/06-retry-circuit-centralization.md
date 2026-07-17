@@ -1,8 +1,18 @@
+---
+status: complete
+role: historical
+date: 2026-07-16
+last_reviewed: 2026-07-16
+superseded_by: null
+blocks_on: []
+topic: error-handling
+---
+
 # Initiative 6: Retry/Circuit-Breaker Centralization
 
 ## Metadata
 
-- Status: `complete`
+- Status: `complete` <!-- legacy status: complete — see YAML frontmatter -->
 - Owner Role: `SRE + Core Eng`
 - Target Window: `2026-04-27` to `2026-05-15`
 

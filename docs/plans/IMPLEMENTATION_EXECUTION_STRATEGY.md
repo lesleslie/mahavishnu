@@ -1,3 +1,12 @@
+---
+status: draft
+role: canonical
+date: 2026-04-02
+last_reviewed: 2026-07-16
+superseded_by: null
+topic: convergence-control-plane
+---
+
 # Implementation Execution Strategy
 
 **Date**: 2026-04-02

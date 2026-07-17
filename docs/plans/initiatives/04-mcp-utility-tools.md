@@ -1,8 +1,18 @@
+---
+status: complete
+role: historical
+date: 2026-07-16
+last_reviewed: 2026-07-16
+superseded_by: null
+blocks_on: []
+topic: mcp-design
+---
+
 # Initiative 4: MCP Utility Tools
 
 ## Metadata
 
-- Status: `completed`
+- Status: `completed` <!-- legacy status: completed — see YAML frontmatter -->
 - Owner Role: `MCP Eng`
 - Target Window: `2026-04-20` to `2026-04-24`
 
