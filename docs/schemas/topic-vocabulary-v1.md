@@ -19,11 +19,20 @@ contribution workflow below.
 
 | Slug | Definition |
 |------|------------|
+| `oneiric-config` | Oneiric layered configuration (defaults, settings/*.yaml, MAHAVISHNU_* env vars). |
 | `mcp-design` | MCP-first architecture, tool registration, server design. |
+| `error-handling` | Exception hierarchy, retry, circuit breaker, dead-letter queue (ADR 003). |
 | `storage-consolidation` | Akosha/Dhara/Session-Buddy storage ownership. |
+| `memory-architecture` | Unified memory layer across Bodai components (ADR 005). |
 | `adapter-architecture` | Engine adapter (Prefect/LlamaIndex/Agno/Pydantic-AI) patterns. |
+| `adapter-registry` | Hybrid adapter registry with dynamic discovery (ADR 009). |
+| `adapter-security` | Adapter security specification (ADR 010). |
+| `adapter-tool-boundary` | Mahavishnu ↔ Dhara adapter-tool boundary (ADR 013). |
+| `saga-pattern` | Saga coordinator for distributed transactions (ADR 007). |
+| `zero-downtime-migration` | Zero-downtime SQLite-to-PostgreSQL migration (ADR 008). |
 | `terminal` | iTerm2, MockTerminal, CrowTerminal, GenericShellWorker, workers/protocol.py. |
 | `routing-composition` | Two-router composition, fitness feedback loop, peer affinity (ADR 011 / ADR 014). |
+| `honcho-routing` | Honcho peer-model routing precedence (ADR 014). |
 | `learning-pipeline` | Skill distillation, conscious agent, pattern library (ADR 012). |
 | `observability` | Bodai observability surface, EventBridge subscriber pattern, Phase 6. |
 | `auth` | Auth standardization (Bodai auth spec), JWT, multi-provider. |
