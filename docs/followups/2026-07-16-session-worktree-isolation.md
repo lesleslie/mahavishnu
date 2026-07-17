@@ -1,6 +1,6 @@
 ---
-status: resolved
-role: implementation
+status: complete
+role: historical
 date: 2026-07-17
 last_reviewed: 2026-07-17
 superseded_by: null
@@ -11,7 +11,7 @@ topic: session-worktree-isolation
 
 ## Status
 
-**Resolved.** Implementation landed across three commits:
+**Complete.** Implementation landed across three commits:
 
 - `5a7e001c` — Phase 1: registry + CLI (`mahavishnu worktree list-sessions`,
   `mahavishnu worktree prune-abandoned`)
