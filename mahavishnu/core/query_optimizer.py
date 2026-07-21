@@ -571,7 +571,11 @@ class QueryAnalyzer:
         normalized = re.sub(r"\b\d+\b", "?", normalized)
         normalized = re.sub(r"\s+", " ", normalized)
 
-        fingerprint = hashlib.md5(normalized.encode()).hexdigest()[:16]
+        # Non-security fingerprint for query caching; not used for authentication
+        # or any cryptographic purpose, so usedforsecurity=False is safe.
+        fingerprint = hashlib.md5(
+            normalized.encode(), usedforsecurity=False
+        ).hexdigest()[:16]
         self._fingerprint_cache[query] = fingerprint
         return fingerprint
 

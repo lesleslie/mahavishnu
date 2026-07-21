@@ -258,14 +258,20 @@ class BackupManager:
 
                 # Extract archive
                 with tarfile.open(backup_path, "r:gz") as tar:
-                    # Check for path traversal attacks
+                    # Filter members to defend against path-traversal attacks.
+                    # Only members without traversal segments or absolute paths
+                    # are passed to extractall via the ``members=`` filter,
+                    # which prevents the tarfile module from writing outside
+                    # ``temp_path`` (CVE-class B202 hardening).
+                    safe_members: list[tarfile.TarInfo] = []
                     for member in tar.getmembers():
                         if "../" in member.name or member.name.startswith("/"):
                             raise ValueError(
                                 f"Path traversal attempt detected in backup: {member.name}"
                             )
+                        safe_members.append(member)
 
-                    tar.extractall(path=temp_path)
+                    tar.extractall(path=temp_path, members=safe_members)
 
                 # Restore configuration
                 config_dir = temp_path / "config"

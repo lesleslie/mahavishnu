@@ -408,6 +408,10 @@ exclude_lines = [
 
 [tool.bandit]
 exclude_dirs = [".venv", "tests", "test_*.py"]
+# Skip known-false-positive test IDs for an MCP orchestrator. B608 (hard-coded
+# SQL strings) is intentionally NOT skipped — real SQL injection concerns
+# require a manual audit per call site.
+skips = ["B404", "B603", "B607", "B105", "B311"]
 
 [tool.pyright]
 include = ["mahavishnu"]

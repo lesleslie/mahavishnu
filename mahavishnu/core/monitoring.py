@@ -702,7 +702,7 @@ class SlackNotificationChannel(NotificationChannel):
                 ],
             }
 
-            response = requests.post(self.webhook_url, json=message)
+            response = requests.post(self.webhook_url, json=message, timeout=10)
             if response.status_code != 200:
                 self.logger.warning(f"Failed to send Slack notification: {response.text}")
             else:
@@ -753,6 +753,7 @@ class PagerDutyNotificationChannel(NotificationChannel):
                 "https://events.pagerduty.com/v2/enqueue",
                 json=payload,
                 headers=headers,
+                timeout=10,
             )
 
             if response.status_code != 202:
