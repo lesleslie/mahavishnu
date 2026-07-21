@@ -180,6 +180,234 @@ def test_remove_unknown_is_noop(registry: SessionWorktreeRegistry) -> None:
     registry.remove("never-existed")  # does not raise
 
 
+# ── Phase B: edge cases (Test review #7, #8, #9) ────────────────────
+
+
+def test_corrupt_json_quarantine_end_to_end(
+    registry: SessionWorktreeRegistry, tmp_path: Path
+) -> None:
+    """End-to-end recovery: corrupt JSON → quarantine → fresh read.
+
+    Per Test review #7 (2026-07-20): the existing tests only proved
+    that corrupt JSON raises JSONDecodeError and that quarantine
+    renames a file. The integrated path (catch → quarantine → fresh
+    read succeeds) was not pinned.
+    """
+    import json
+
+    import pytest as _pytest
+
+    # Write corrupt JSON
+    registry.path.write_text("{this is not json")
+
+    # Read raises JSONDecodeError
+    with _pytest.raises(json.JSONDecodeError):
+        registry.get("anything")
+
+    # Caller quarantines, then reads fresh (empty)
+    backup = registry.quarantine_corrupt_file()
+    assert backup is not None
+    assert backup.exists()
+    assert not registry.path.exists()
+    assert registry.get("anything") is None
+
+    # Now register a new entry succeeds against the fresh empty registry.
+    _register_sample(registry, "fresh")
+    assert registry.get("fresh") is not None
+
+
+def test_quarantine_corrupt_file_missing_path(
+    tmp_path: Path,
+) -> None:
+    """quarantine_corrupt_file on a missing path → None (no error).
+
+    Per Test review #7 (2026-07-20): missing-file branch was
+    untested.
+    """
+    registry = SessionWorktreeRegistry(path=tmp_path / "nope.json")
+    assert registry.quarantine_corrupt_file() is None
+
+
+def test_older_schema_version_is_read_only(
+    registry: SessionWorktreeRegistry,
+) -> None:
+    """schema_version < SUPPORTED → empty read-only registry.
+
+    Per Test review #8 (2026-07-20): the older-version branch was
+    untested. Mirrors the future-version branch: refuse to write.
+    """
+    import json
+
+    registry.path.parent.mkdir(parents=True, exist_ok=True)
+    registry.path.write_text(json.dumps({
+        "schema_version": SUPPORTED_SCHEMA_VERSION - 1,  # hypothetical v0
+        "updated_at": "2026-07-01T00:00:00.000Z",
+        "sessions": {"legacy": {"state": "active"}},
+    }))
+
+    assert registry.get("legacy") is None  # read returns empty
+
+    # Write attempt is a no-op
+    _register_sample(registry, "new")
+    # File is NOT modified
+    data = json.loads(registry.path.read_text())
+    assert data["schema_version"] == SUPPORTED_SCHEMA_VERSION - 1
+
+
+def test_missing_schema_version_is_writable(
+    registry: SessionWorktreeRegistry,
+) -> None:
+    """Missing schema_version → legacy file, treated as writable.
+
+    Per Test review #8 (2026-07-20): missing-version branch was
+    untested.
+    """
+    import json
+
+    registry.path.parent.mkdir(parents=True, exist_ok=True)
+    registry.path.write_text(json.dumps({
+        "updated_at": "2026-07-01T00:00:00.000Z",
+        "sessions": {},
+    }))
+
+    # Write should normalize schema_version
+    _register_sample(registry, "x")
+    data = json.loads(registry.path.read_text())
+    assert data["schema_version"] == SUPPORTED_SCHEMA_VERSION
+
+
+def test_non_dict_sessions_treated_as_empty(
+    registry: SessionWorktreeRegistry,
+) -> None:
+    """``sessions`` field is a list (not dict) → empty registry, writable.
+
+    Per Test review #8 (2026-07-20): wrong-shape branch was untested.
+    """
+    import json
+
+    registry.path.parent.mkdir(parents=True, exist_ok=True)
+    registry.path.write_text(json.dumps({
+        "schema_version": SUPPORTED_SCHEMA_VERSION,
+        "updated_at": "2026-07-01T00:00:00.000Z",
+        "sessions": ["not", "a", "dict"],
+    }))
+
+    assert registry.get("anything") is None  # empty
+    _register_sample(registry, "x")  # writable
+    assert registry.get("x") is not None
+
+
+def test_string_schema_version_is_read_only(
+    registry: SessionWorktreeRegistry,
+) -> None:
+    """``schema_version`` is a string instead of int → refuse to write.
+
+    Per Test review #8 (2026-07-20): wrong-type branch was untested.
+    Previously this could raise TypeError on comparison; we now treat
+    it as unknown-version → read-only.
+    """
+    import json
+
+    registry.path.parent.mkdir(parents=True, exist_ok=True)
+    registry.path.write_text(json.dumps({
+        "schema_version": "one",  # string instead of int
+        "updated_at": "2026-07-01T00:00:00.000Z",
+        "sessions": {},
+    }))
+
+    # Read returns empty (no crash)
+    assert registry.get("anything") is None
+
+    # Write is a no-op (no crash)
+    _register_sample(registry, "x")
+    # File should be unchanged
+    data = json.loads(registry.path.read_text())
+    assert data["schema_version"] == "one"
+
+
+def test_age_filter_older_than_days_active(
+    registry: SessionWorktreeRegistry,
+) -> None:
+    """older_than_days filters active entries by last_seen_at.
+
+    Per Test review #9 (2026-07-20): age filter behavior was
+    untested. Uses monkeypatched utcnow_iso for determinism.
+    """
+
+
+    _register_sample(registry, "old")
+    # Backdate last_seen_at via direct manipulation
+    data = json.loads(registry.path.read_text())
+    data["sessions"]["old"]["last_seen_at"] = "2020-01-01T00:00:00.000Z"
+    registry.path.write_text(json.dumps(data))
+
+    _register_sample(registry, "new")  # last_seen_at = now
+
+    # older_than_days=30 days, only "old" qualifies (year 2020 vs now)
+    old_entries = registry.list_active(
+        state="active", older_than_days=30
+    )
+    assert {e["session_id_short"] for e in old_entries} == {"old"}
+
+
+def test_age_filter_older_than_days_abandoned(
+    registry: SessionWorktreeRegistry,
+) -> None:
+    """older_than_days filters abandoned entries by abandoned_at."""
+
+    # Register and abandon with a backdated timestamp
+    _register_sample(registry, "x")
+    registry.mark_abandoned("x", abandoned_at="2020-01-01T00:00:00.000Z")
+
+    old_entries = registry.list_active(
+        state="abandoned", older_than_days=30
+    )
+    assert {e["session_id_short"] for e in old_entries} == {"x"}
+
+
+def test_age_filter_older_than_days_zero(
+    registry: SessionWorktreeRegistry,
+) -> None:
+    """older_than_days=0 → all entries older than now qualify (i.e., all)."""
+
+    _register_sample(registry, "a")
+    _register_sample(registry, "b")
+    registry.mark_abandoned("a", abandoned_at="2020-01-01T00:00:00.000Z")
+    registry.mark_abandoned("b", abandoned_at="2020-01-01T00:00:00.000Z")
+
+    pruned = registry.list_active(state="abandoned", older_than_days=0)
+    assert {e["session_id_short"] for e in pruned} == {"a", "b"}
+
+
+def test_age_filter_negative_treated_as_no_filter(
+    registry: SessionWorktreeRegistry,
+) -> None:
+    """older_than_days=-1 → treated as no filter (matches all)."""
+    _register_sample(registry, "a")
+    registry.mark_abandoned("a")
+
+    all_entries = registry.list_active(
+        state="abandoned", older_than_days=-1
+    )
+    assert {e["session_id_short"] for e in all_entries} == {"a"}
+
+
+def test_age_filter_invalid_timestamp_returns_false(
+    registry: SessionWorktreeRegistry,
+) -> None:
+    """Malformed timestamp on an entry → entry is excluded, no crash."""
+    import json
+
+    _register_sample(registry, "broken")
+    data = json.loads(registry.path.read_text())
+    data["sessions"]["broken"]["last_seen_at"] = "not-an-iso-timestamp"
+    registry.path.write_text(json.dumps(data))
+
+    # No exception; broken entry excluded from older-than-1-days filter.
+    old_entries = registry.list_active(state="active", older_than_days=1)
+    assert {e["session_id_short"] for e in old_entries} == set()
+
+
 # ── list_active ─────────────────────────────────────────────────
 
 

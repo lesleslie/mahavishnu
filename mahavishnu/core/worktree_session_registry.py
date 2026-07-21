@@ -159,6 +159,33 @@ class SessionWorktreeRegistry:
             "sessions": {},
         }
 
+    @staticmethod
+    def _normalize_sessions(data: dict[str, Any]) -> None:
+        """Ensure ``data["sessions"]`` is a dict (in-place normalization).
+
+        Files written by older versions or with corrupt shapes may
+        have ``sessions`` as a list, None, or another non-dict type.
+        Per Test review #8 (2026-07-20): the modifier path assumed
+        ``sessions`` is always a dict and would ``AttributeError`` on
+        non-dict shapes. Normalizing to ``{}`` makes writes idempotent
+        and self-healing for these corrupt-but-recoverable cases.
+        """
+        sessions = data.get("sessions")
+        if not isinstance(sessions, dict):
+            data["sessions"] = {}
+
+    @staticmethod
+    def _finalize_envelope(data: dict[str, Any]) -> dict[str, Any]:
+        """Stamp ``schema_version`` and ``updated_at`` on the top-level envelope.
+
+        In-place normalization. Called from each modifier before
+        returning so the written file always has the current schema
+        version and timestamp, regardless of what was on disk.
+        """
+        data["schema_version"] = SUPPORTED_SCHEMA_VERSION
+        data["updated_at"] = utcnow_iso()
+        return data
+
     # ── Public CRUD API ─────────────────────────────────────────────
 
     def register(
@@ -186,6 +213,7 @@ class SessionWorktreeRegistry:
             if version is not None and version != SUPPORTED_SCHEMA_VERSION:
                 self._read_only = True
                 return SKIP_WRITE
+            self._normalize_sessions(data)
             now = utcnow_iso()
             existing = data["sessions"].get(session_id_short, {})
             merged = {
@@ -202,6 +230,7 @@ class SessionWorktreeRegistry:
                 "metadata": metadata or {},
             }
             data["sessions"][session_id_short] = merged
+            self._finalize_envelope(data)
             return data
 
         locked_json_modify(self._path, modifier, default_factory=self._empty)
@@ -219,12 +248,14 @@ class SessionWorktreeRegistry:
             if version is not None and version != SUPPORTED_SCHEMA_VERSION:
                 self._read_only = True
                 return SKIP_WRITE
+            self._normalize_sessions(data)
             record = data["sessions"].get(session_id_short)
             if record is None:
                 return SKIP_WRITE  # nothing to update; skip write
             record["state"] = "abandoned"
             record["abandoned_at"] = abandoned_at or utcnow_iso()
             data["sessions"][session_id_short] = record
+            self._finalize_envelope(data)
             return data
 
         locked_json_modify(self._path, modifier, default_factory=self._empty)
@@ -236,9 +267,11 @@ class SessionWorktreeRegistry:
             if version is not None and version != SUPPORTED_SCHEMA_VERSION:
                 self._read_only = True
                 return SKIP_WRITE
+            self._normalize_sessions(data)
             if session_id_short not in data["sessions"]:
                 return SKIP_WRITE  # nothing to update; skip write
             del data["sessions"][session_id_short]
+            self._finalize_envelope(data)
             return data
 
         locked_json_modify(self._path, modifier, default_factory=self._empty)

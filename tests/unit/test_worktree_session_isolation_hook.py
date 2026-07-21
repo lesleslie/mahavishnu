@@ -290,6 +290,267 @@ def test_cwd_is_inside_worktree_returns_false_for_main_repo_subdir(
     assert module._cwd_is_inside_worktree(str(subdir)) is False
 
 
+# ── SessionEnd lifecycle (Phase B / Test review #3) ────────────────
+
+
+def _load_hook_for_lifecycle(
+    monkeypatch: pytest.MonkeyPatch,
+    module_name: str,
+    *,
+    cwd: str,
+    session_id: str,
+    mode: str = "session-end",
+    env_overrides: dict[str, str] | None = None,
+):
+    """Helper: load hook with custom env, stdin (session_id + cwd), argv.
+
+    Returns ``(module, captured_stderr)`` and sets up the standard
+    SessionEnd/SessionStart fixture. Caller is responsible for any
+    additional mocking (cwd-is-worktree, repo nickname, subprocess).
+    """
+    import importlib.util
+    import io
+    import json
+    import sys
+
+    monkeypatch.setenv("MAHAVISHNU_AUTO_WORKTREE", "1")
+    if env_overrides:
+        for k, v in env_overrides.items():
+            monkeypatch.setenv(k, v)
+    monkeypatch.setattr(sys, "stdin", io.StringIO(json.dumps({
+        "session_id": session_id,
+        "cwd": cwd,
+    })))
+    monkeypatch.setattr(sys, "argv", [
+        "worktree-session-isolation.py", mode,
+    ])
+    captured = io.StringIO()
+    monkeypatch.setattr(sys, "stderr", captured)
+
+    spec = importlib.util.spec_from_file_location(module_name, _HOOK_PATH)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module, captured
+
+
+def test_session_end_marks_entry_abandoned(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """SessionEnd flips the matching registry entry to state=abandoned.
+
+    Per Test review #3 (2026-07-20): lifecycle paths were untested.
+    """
+
+    # Seed a registry entry via the registry module directly.
+    from mahavishnu.core.worktree_session_registry import SessionWorktreeRegistry
+
+    registry_path = tmp_path / "session-worktrees.json"
+    monkeypatch.setenv("MAHAVISHNU_AUTO_WORKTREE_STATE_DIR", str(tmp_path))
+    reg = SessionWorktreeRegistry(path=registry_path)
+    reg.register(
+        session_id_short="a0c5d2a0",
+        worktree_path="/tmp/wt-a",
+        branch="worktree-agent-a0c5d2a0",
+        repo_path="/tmp/repo",
+        repo_nickname="mahavishnu",
+        metadata={"hook_pid": 1},
+    )
+
+    module, _ = _load_hook_for_lifecycle(
+        monkeypatch,
+        "hook_session_end_marks",
+        cwd="/tmp/repo",
+        session_id="0190f8a4-b9c1-7def-a012-3456789abcde",  # first 8 hex = "0190f8a4"
+        mode="session-end",
+        env_overrides={"MAHAVISHNU_AUTO_WORKTREE_REGISTRY_PATH": str(registry_path)},
+    )
+
+    # Patch the registry path in the module to use our tmp_path.
+    # The env override MAHAVISHNU_AUTO_WORKTREE_REGISTRY_PATH is not
+    # yet wired — instead, monkeypatch SessionWorktreeRegistry to
+    # point at our registry.
+    monkeypatch.setattr(module, "_ensure_mahavishnu_importable", lambda: None)
+
+    # Actually simpler: invoke _run_session_end directly.
+    # The session_id '0190f8a4-b9c1-7def-a012-3456789abcde' shortens
+    # to '0190f8a4' — we registered 'a0c5d2a0' so they don't match.
+    # Let me use a session_id that matches.
+    reg2 = SessionWorktreeRegistry(path=registry_path)
+    # Recreate with matching short id
+    reg2.remove("a0c5d2a0")
+    monkeypatch.setenv("MAHAVISHNU_AUTO_WORKTREE", "1")
+    session_id = "a0c5d2a0-1234-5678-9abc-def012345678"
+    reg2.register(
+        session_id_short="a0c5d2a0",
+        worktree_path="/tmp/wt-a",
+        branch="worktree-agent-a0c5d2a0",
+        repo_path="/tmp/repo",
+        repo_nickname="mahavishnu",
+        metadata={"hook_pid": 1},
+    )
+
+    # Patch the registry module's default path to our tmp_path.
+    import mahavishnu.core.worktree_session_registry as reg_mod
+
+    original_init = reg_mod.SessionWorktreeRegistry.__init__
+
+    def patched_init(self, path=None):
+        original_init(self, path=registry_path)
+
+    monkeypatch.setattr(reg_mod, "SessionWorktreeRegistry", reg_mod.SessionWorktreeRegistry)
+    monkeypatch.setattr(
+        reg_mod.SessionWorktreeRegistry, "__init__", patched_init
+    )
+
+    module._run_session_end(session_id)
+    record = SessionWorktreeRegistry(path=registry_path).get("a0c5d2a0")
+    assert record is not None
+    assert record["state"] == "abandoned"
+    assert record["abandoned_at"] is not None
+    assert record["abandoned_at"].endswith("Z")
+
+
+def test_session_end_already_abandoned_is_idempotent(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """SessionEnd on an already-abandoned entry → no timestamp update."""
+    import importlib.util
+
+    from mahavishnu.core.worktree_session_registry import SessionWorktreeRegistry
+
+    registry_path = tmp_path / "session-worktrees.json"
+    reg = SessionWorktreeRegistry(path=registry_path)
+    session_id = "a0c5d2a0-1234-5678-9abc-def012345678"
+    reg.register(
+        session_id_short="a0c5d2a0",
+        worktree_path="/tmp/wt-a",
+        branch="worktree-agent-a0c5d2a0",
+        repo_path="/tmp/repo",
+        repo_nickname="mahavishnu",
+        metadata={"hook_pid": 1},
+    )
+    reg.mark_abandoned("a0c5d2a0", abandoned_at="2026-07-15T00:00:00.000Z")
+    first_record = SessionWorktreeRegistry(path=registry_path).get("a0c5d2a0")
+    assert first_record["abandoned_at"] == "2026-07-15T00:00:00.000Z"
+
+    # Load hook module and call _run_session_end
+    spec = importlib.util.spec_from_file_location(
+        "hook_session_end_idempotent", _HOOK_PATH
+    )
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+
+    # Patch default registry path
+    import mahavishnu.core.worktree_session_registry as reg_mod
+
+    original_init = reg_mod.SessionWorktreeRegistry.__init__
+
+    def patched_init(self, path=None):
+        original_init(self, path=registry_path)
+
+    monkeypatch.setattr(
+        reg_mod.SessionWorktreeRegistry, "__init__", patched_init
+    )
+
+    module._run_session_end(session_id)
+    second_record = SessionWorktreeRegistry(path=registry_path).get("a0c5d2a0")
+    # Abandoned_at should be unchanged (no refresh).
+    assert second_record["abandoned_at"] == "2026-07-15T00:00:00.000Z"
+
+
+def test_session_end_unknown_session_is_noop(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """SessionEnd for a session_id not in the registry → no error, no mutation."""
+    import importlib.util
+
+    from mahavishnu.core.worktree_session_registry import SessionWorktreeRegistry
+
+    registry_path = tmp_path / "session-worktrees.json"
+    SessionWorktreeRegistry(path=registry_path)  # create empty file
+
+    spec = importlib.util.spec_from_file_location(
+        "hook_session_end_unknown", _HOOK_PATH
+    )
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+
+    import mahavishnu.core.worktree_session_registry as reg_mod
+
+    original_init = reg_mod.SessionWorktreeRegistry.__init__
+
+    def patched_init(self, path=None):
+        original_init(self, path=registry_path)
+
+    monkeypatch.setattr(
+        reg_mod.SessionWorktreeRegistry, "__init__", patched_init
+    )
+
+    # Unknown session_id — short key won't match anything.
+    module._run_session_end("00000000-1234-5678-9abc-def012345678")
+    # No exception, registry still empty.
+    assert SessionWorktreeRegistry(path=registry_path).list_active(state=None) == []
+
+
+def test_session_end_cleanup_keep_is_noop(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """MAHAVISHNU_AUTO_WORKTREE_CLEANUP=keep → SessionEnd does nothing."""
+    import importlib.util
+
+    from mahavishnu.core.worktree_session_registry import SessionWorktreeRegistry
+
+    registry_path = tmp_path / "session-worktrees.json"
+    reg = SessionWorktreeRegistry(path=registry_path)
+    session_id = "a0c5d2a0-1234-5678-9abc-def012345678"
+    reg.register(
+        session_id_short="a0c5d2a0",
+        worktree_path="/tmp/wt-a",
+        branch="worktree-agent-a0c5d2a0",
+        repo_path="/tmp/repo",
+        repo_nickname="mahavishnu",
+        metadata={"hook_pid": 1},
+    )
+    # Record the original state — should remain 'active'.
+    assert reg.get("a0c5d2a0")["state"] == "active"
+
+    spec = importlib.util.spec_from_file_location(
+        "hook_session_end_keep", _HOOK_PATH
+    )
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+
+    import mahavishnu.core.worktree_session_registry as reg_mod
+
+    original_init = reg_mod.SessionWorktreeRegistry.__init__
+
+    def patched_init(self, path=None):
+        original_init(self, path=registry_path)
+
+    monkeypatch.setattr(
+        reg_mod.SessionWorktreeRegistry, "__init__", patched_init
+    )
+    monkeypatch.setenv("MAHAVISHNU_AUTO_WORKTREE_CLEANUP", "keep")
+
+    module._run_session_end(session_id)
+    assert reg.get("a0c5d2a0")["state"] == "active"  # unchanged
+
+
+def test_session_end_bad_uuid_is_silent_skip(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Malformed session_id → silent skip, no error."""
+    import importlib.util
+
+    spec = importlib.util.spec_from_file_location(
+        "hook_session_end_bad_uuid", _HOOK_PATH
+    )
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    # Bad UUID — short_session_id returns "" → silent skip
+    assert module._run_session_end("not-a-uuid") == 0
+
+
 # ── _detect_repo_nickname ────────────────────────────────────────
 
 
