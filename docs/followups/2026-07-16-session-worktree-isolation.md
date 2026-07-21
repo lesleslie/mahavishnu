@@ -191,3 +191,5 @@ mahavishnu worktree remove mahavishnu ~/worktrees/agent-XXXXXXXX
 - Phase 5d commit: `3ee593d` (CLI tests)
 - Phase 5e commit: `ffe4397` (registry edge cases + corrupt-shape fix)
 - Phase 6 commit: `2a6082f` (json_state_store SoT consolidation)
+- Phase 8 commit: `206f23d` (gate inversion: default-on for internal-team
+  Bodai usage; hint repurposed for opt-out education)
