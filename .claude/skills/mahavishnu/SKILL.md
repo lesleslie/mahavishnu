@@ -1,6 +1,7 @@
-______________________________________________________________________
-
-## name: mahavishnu title: Mahavishnu id: 01KXB2MJHQZ5K7VD9P0XCRWA1G description: Route a coding task through Mahavishnu worker pools for observability and cross-server delegation. Use this when the user wants the work to appear in ecosystem observability (Dhara, Akosha) or run on a specific pool. owner: mahavishnu-core status: active category: workflow last_reviewed: 2026-07-20
+---
+name: mahavishnu
+description: Route a coding task through Mahavishnu worker pools for observability and cross-server delegation. Use this when the user wants the work to appear in ecosystem observability (Dhara, Akosha) or run on a specific pool.
+---
 
 # Mahavishnu Orchestration (auto-trigger)
 

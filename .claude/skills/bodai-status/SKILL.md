@@ -1,6 +1,7 @@
-______________________________________________________________________
-
-## name: bodai-status title: Bodai Status id: 01KX9EG7N9EEBKW0NA8ZAAD8CH description: 'Auto-trigger skill that surfaces cross-component Bodai activity (Mahavishnu, Akosha, Crackerjack) when the user asks "what is Bodai doing?", "show me activity", or similar phrasings. Reads from ~/.mahavishnu/bodai-event-queue.json which Phase 6A populates from Oneiric EventBridge. Use this for the cross-component view; use /mahavishnu:status for Mahavishnu-only.' owner: mahavishnu-core status: active category: observability last_reviewed: 2026-07-11
+---
+name: bodai-status
+description: "Auto-trigger skill that surfaces cross-component Bodai activity (Mahavishnu, Akosha, Crackerjack) when the user asks \"what is Bodai doing?\", \"show me activity\", or similar phrasings. Reads from ~/.mahavishnu/bodai-event-queue.json which Phase 6A populates from Oneiric EventBridge. Use this for the cross-component view; use /mahavishnu:status for Mahavishnu-only."
+---
 
 # Bodai Status (auto-trigger)
 

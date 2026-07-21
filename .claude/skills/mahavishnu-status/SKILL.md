@@ -1,6 +1,7 @@
-______________________________________________________________________
-
-## name: mahavishnu-status title: Mahavishnu Status id: 01KXB2MJHQZ5K7VD9P0XCRWA1F description: 'Auto-trigger skill that surfaces Mahavishnu pool, verification, and dispatch status when the user asks "are workers running?", "what is the pool status?", or similar phrasings. Use this for visibility into Mahavishnu without leaving the current session.' owner: mahavishnu-core status: active category: observability last_reviewed: 2026-07-20
+---
+name: mahavishnu-status
+description: "Auto-trigger skill that surfaces Mahavishnu pool, verification, and dispatch status when the user asks \"are workers running?\", \"what is the pool status?\", or similar phrasings. Use this for visibility into Mahavishnu without leaving the current session."
+---
 
 # Mahavishnu Status (auto-trigger)
 
