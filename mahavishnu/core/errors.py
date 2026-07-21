@@ -86,6 +86,9 @@ class ErrorCode(StrEnum):
     OPENHANDS_TASK_FAILED = "MHV-309"
     A2A_AGENT_NOT_FOUND = "MHV-310"  # agent name not in registry
     A2A_AGENT_ERROR = "MHV-311"  # remote agent returned error or stream failed
+    # NOTE: brief specified "MHV-310" but that value is owned by A2A_AGENT_NOT_FOUND;
+    # the next free slot in the external-integration range is MHV-312.
+    WORKER_UNAVAILABLE = "MHV-312"
 
     # Prefect/Orchestration errors (400-449)
     PREFECT_CONNECTION_ERROR = "MHV-400"
@@ -913,6 +916,50 @@ class ExternalServiceError(MahavishnuError):
             f"External service '{service}' error: {message}",
             ErrorCode.EXTERNAL_SERVICE_UNAVAILABLE,
             details={"service": service, **(details or {})},
+        )
+
+
+class WorkerUnavailableError(MahavishnuError):
+    """Raised when a worker cannot be spawned because capability checks fail.
+
+    Carries only requirement names; secret values must never be present.
+    """
+
+    def __init__(
+        self,
+        *,
+        worker_type: str,
+        state: str,
+        missing_requirements: list[str],
+        message: str,
+    ) -> None:
+        requirements = list(missing_requirements)
+        super().__init__(
+            f"Worker {worker_type} unavailable ({state}): {message}",
+            ErrorCode.WORKER_UNAVAILABLE,
+            details={
+                "worker_type": worker_type,
+                "state": state,
+                "missing_requirements": requirements,
+            },
+        )
+
+    def __str__(self) -> str:
+        base = super().__str__()
+        requirements: list[str] = self.details.get("missing_requirements", [])
+        if not requirements:
+            return base
+        return base + f"Missing requirements: {', '.join(requirements)}\n"
+
+
+class ContainerDaemonUnavailable(MahavishnuError):  # noqa: N818
+    """Raised when a container runtime binary or daemon probe fails."""
+
+    def __init__(self, *, runtime: str, error: str) -> None:
+        super().__init__(
+            f"Container runtime {runtime!r} unavailable: {error}",
+            ErrorCode.WORKER_UNAVAILABLE,
+            details={"runtime": runtime},
         )
 
 
