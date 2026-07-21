@@ -142,6 +142,11 @@ class WorkerManager:
             for wid in worker_ids:
                 await self.close_worker(wid)
             invalidate_capability(worker_type)
+            # Capability transition broadcast for the failure is handled by the
+            # next _require_ready call, which re-evaluates and emits a
+            # transition event if the state changes. We deliberately avoid
+            # importing emit_transition here to keep this rollback free of
+            # new top-level dependencies.
             raise
         return worker_ids
 

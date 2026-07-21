@@ -358,8 +358,6 @@ class TestCreateWorker:
             assert worker is not None
 
 
-
-
 def test_submit_workers_runs_one_shot_lifecycle(monkeypatch) -> None:
     """Submit a prompt to a one-shot worker and retain its session ID."""
     monkeypatch.setattr(
@@ -381,6 +379,7 @@ def test_submit_workers_runs_one_shot_lifecycle(monkeypatch) -> None:
 
 
 class TestSpawnWorkers:
+    """Tests for the spawn_workers method."""
 
     @pytest.mark.asyncio
     async def test_spawn_single_worker(self):

@@ -323,46 +323,46 @@ class TestResolveWorkerType:
     def test_no_task_or_prompt_returns_same_type(self):
         assert resolve_worker_type("terminal-qwen") == "terminal-qwen"
 
-    def test_communication_task_with_qwen_resolves_to_openclaw(self):
+    def test_communication_task_with_qwen_passes_through(self):
         with patch.dict(os.environ, {}, clear=False):
             os.environ.pop("OPENCLAW_GATEWAY_URL", None)
             result = resolve_worker_type("terminal-qwen", "messaging", "notify the team")
-            assert result == "terminal-openclaw"
+            assert result == "terminal-qwen"
 
-    def test_communication_prompt_with_qwen_resolves_to_openclaw(self):
+    def test_communication_prompt_with_qwen_passes_through(self):
         with patch.dict(os.environ, {}, clear=False):
             os.environ.pop("OPENCLAW_GATEWAY_URL", None)
             result = resolve_worker_type("terminal-qwen", None, "send a slack message")
-            assert result == "terminal-openclaw"
+            assert result == "terminal-qwen"
 
-    def test_communication_task_with_claude_resolves_to_openclaw(self):
+    def test_communication_task_with_claude_passes_through(self):
         with patch.dict(os.environ, {}, clear=False):
             os.environ.pop("OPENCLAW_GATEWAY_URL", None)
             result = resolve_worker_type("terminal-claude", "notification", "alert user")
-            assert result == "terminal-openclaw"
+            assert result == "terminal-claude"
 
-    def test_communication_task_with_codex_resolves_to_openclaw(self):
+    def test_communication_task_with_codex_passes_through(self):
         with patch.dict(os.environ, {}, clear=False):
             os.environ.pop("OPENCLAW_GATEWAY_URL", None)
             result = resolve_worker_type("terminal-codex", "communication", "dm user")
-            assert result == "terminal-openclaw"
+            assert result == "terminal-codex"
 
     @patch.dict(os.environ, {"OPENCLAW_GATEWAY_URL": "http://localhost:9090"})
-    def test_gateway_url_set_resolves_to_gateway(self):
+    def test_gateway_url_set_does_not_infer_gateway(self):
         result = resolve_worker_type("terminal-qwen", "messaging", "notify team")
-        assert result == "gateway-openclaw"
+        assert result == "terminal-qwen"
 
-    def test_case_insensitive_task_type(self):
+    def test_case_insensitive_task_type_passes_through(self):
         with patch.dict(os.environ, {}, clear=False):
             os.environ.pop("OPENCLAW_GATEWAY_URL", None)
             result = resolve_worker_type("terminal-qwen", "  MESSAGING  ", "do work")
-            assert result == "terminal-openclaw"
+            assert result == "terminal-qwen"
 
-    def test_case_insensitive_prompt(self):
+    def test_case_insensitive_prompt_passes_through(self):
         with patch.dict(os.environ, {}, clear=False):
             os.environ.pop("OPENCLAW_GATEWAY_URL", None)
             result = resolve_worker_type("terminal-qwen", None, "SEND a Notification")
-            assert result == "terminal-openclaw"
+            assert result == "terminal-qwen"
 
     def test_various_communication_markers(self):
         markers = [
@@ -395,7 +395,7 @@ class TestResolveWorkerType:
             result = resolve_worker_type("terminal-shell", "messaging", "send message")
             assert result == "terminal-shell"
 
-    def test_communication_task_types_set(self):
+    def test_communication_task_types_set_passes_through(self):
         with patch.dict(os.environ, {}, clear=False):
             os.environ.pop("OPENCLAW_GATEWAY_URL", None)
             task_types = [
@@ -409,4 +409,4 @@ class TestResolveWorkerType:
             ]
             for tt in task_types:
                 result = resolve_worker_type("terminal-qwen", tt, "do something")
-                assert result == "terminal-openclaw", f"Failed for task_type: {tt}"
+                assert result == "terminal-qwen", f"Failed for task_type: {tt}"
