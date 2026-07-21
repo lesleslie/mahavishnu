@@ -19,16 +19,13 @@ the ``_now`` class attribute so tests can freeze time deterministically.
 
 from __future__ import annotations
 
-from contextlib import contextmanager
 from datetime import UTC, datetime, timedelta
-import fcntl
 import json
 import os
 from pathlib import Path
-from typing import TYPE_CHECKING, TextIO, cast
+from typing import cast
 
-if TYPE_CHECKING:
-    from collections.abc import Iterator
+from mahavishnu.core.json_state_store import locked_json_modify
 
 # Default cap and rolling window — exported as constants so the runbook
 # and tests reference the same numbers as the implementation.
@@ -142,56 +139,8 @@ class UsageTracker:
         return cls(weekly_cap=cap, window_days=window, path=path)
 
     # ------------------------------------------------------------------
-    # Locking primitive
-    # ------------------------------------------------------------------
-
-    @contextmanager
-    def _locked_file(self, mode: str) -> Iterator[tuple[int, TextIO]]:
-        """Open the file with ``fcntl.flock(LOCK_EX)`` for the duration.
-
-        Yields ``(fd, fp)`` so callers can use ``fp`` for JSON I/O. The
-        file is created on demand so first-time runs do not fail. The
-        fd is duplicated before ``os.fdopen`` so closing the fp does not
-        invalidate the fd we still need to release the flock.
-        """
-        self.path.parent.mkdir(parents=True, exist_ok=True)
-        fd = os.open(self.path, os.O_RDWR | os.O_CREAT, 0o600)
-        fp: TextIO | None = None
-        try:
-            fcntl.flock(fd, fcntl.LOCK_EX)
-            fp = cast("TextIO", os.fdopen(fd, mode, closefd=False))
-            yield fd, fp
-        finally:
-            if fp is not None:
-                fp.close()
-            try:
-                fcntl.flock(fd, fcntl.LOCK_UN)
-            finally:
-                os.close(fd)
-
-    # ------------------------------------------------------------------
     # Persistence helpers
     # ------------------------------------------------------------------
-
-    def _read_payload(self) -> dict[str, object]:
-        """Read the JSON payload, treating a missing/corrupt file as empty.
-
-        Corrupt JSON is the most likely failure mode (process killed mid
-        write, manual editing, etc.) — silently rewriting from zero is
-        safer than crashing the distiller. Operators who care about
-        integrity can inspect the file directly.
-        """
-        try:
-            raw = self.path.read_text()
-        except FileNotFoundError:
-            return {"calls": []}
-        try:
-            data = json.loads(raw)
-        except json.JSONDecodeError:
-            return {"calls": []}
-        if not isinstance(data, dict) or "calls" not in data:
-            return {"calls": []}
-        return data
 
     def _prune(self, payload: dict[str, object], cutoff: datetime) -> None:
         """Drop call timestamps strictly older than ``cutoff`` in place."""
@@ -213,30 +162,36 @@ class UsageTracker:
                 kept.append(entry)
         payload["calls"] = kept
 
-    def _write_payload(self, payload: dict[str, object]) -> None:
-        """Atomic-ish write: write to a sibling tmp file, then rename."""
-        tmp_path = self.path.with_suffix(self.path.suffix + ".tmp")
-        tmp_path.write_text(json.dumps(payload))
-        os.replace(tmp_path, self.path)
-
     # ------------------------------------------------------------------
     # Public API
     # ------------------------------------------------------------------
 
     def current_count(self) -> int:
-        """Return the number of calls within the rolling window."""
+        """Return the number of calls within the rolling window.
+
+        Persists the prune back to disk so the on-disk file reflects
+        the active window even if no new call is recorded.
+
+        Corrupt JSON is treated as empty (legacy behaviour — the
+        distiller shouldn't crash on a process-killed-mid-write file).
+        """
         cutoff = self._now() - timedelta(days=self.window_days)
-        with self._locked_file("r+") as (_fd, fp):
-            payload = self._read_payload()
+
+        def modifier(data):
+            payload: dict[str, object] = (
+                data if data is not None else {"calls": []}
+            )
             self._prune(payload, cutoff)
-            # Persist the prune immediately so the on-disk file reflects
-            # the active window even if no new call is recorded.
-            fp.seek(0)
-            fp.truncate()
-            fp.write(json.dumps(payload))
-            fp.flush()
-            calls = payload.get("calls", [])
-            return len(calls) if isinstance(calls, list) else 0
+            return payload
+
+        try:
+            new_data = locked_json_modify(
+                self.path, modifier, default_factory=lambda: {"calls": []}
+            )
+        except json.JSONDecodeError:
+            return 0
+        calls = new_data.get("calls", [])
+        return len(calls) if isinstance(calls, list) else 0
 
     def remaining(self) -> int:
         """Return ``cap - current_count``, clamped at zero."""
@@ -248,15 +203,26 @@ class UsageTracker:
         Raises ``CostCeilingExceeded`` when the call would push the count
         above ``weekly_cap``. The check happens BEFORE the append so a
         failed call does not consume budget.
+
+        Corrupt JSON is treated as empty: the file is unlinked and the
+        call is recorded against a fresh empty state. This preserves
+        the legacy behaviour where a process-killed-mid-write file
+        would not crash subsequent operations.
         """
         now = self._now()
         cutoff = now - timedelta(days=self.window_days)
-        with self._locked_file("r+") as (_fd, fp):
-            payload = self._read_payload()
+
+        def modifier(data):
+            payload: dict[str, object] = (
+                data if data is not None else {"calls": []}
+            )
             self._prune(payload, cutoff)
-            calls: list[str] = cast("list[str]", payload.get("calls", []))
-            if not isinstance(calls, list):
-                calls = []
+            calls_raw = payload.get("calls", [])
+            calls: list[str] = (
+                cast("list[str]", calls_raw)
+                if isinstance(calls_raw, list)
+                else []
+            )
             if len(calls) >= self.weekly_cap:
                 raise CostCeilingExceeded(
                     current=len(calls),
@@ -265,7 +231,19 @@ class UsageTracker:
                 )
             calls.append(now.isoformat())
             payload["calls"] = calls
-            fp.seek(0)
-            fp.truncate()
-            fp.write(json.dumps(payload))
-            fp.flush()
+            return payload
+
+        try:
+            locked_json_modify(
+                self.path, modifier, default_factory=lambda: {"calls": []}
+            )
+        except json.JSONDecodeError:
+            # Quarantine the corrupt file and retry — the modifier
+            # will see default_factory's empty payload.
+            try:
+                self.path.unlink()
+            except FileNotFoundError:
+                pass
+            locked_json_modify(
+                self.path, modifier, default_factory=lambda: {"calls": []}
+            )

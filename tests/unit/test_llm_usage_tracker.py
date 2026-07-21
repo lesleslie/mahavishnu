@@ -165,7 +165,13 @@ def test_corrupt_file_is_treated_as_empty(
 def test_concurrent_processes_serialise_via_flock(
     usage_path: Path,
 ) -> None:
-    """``record_call`` must take ``fcntl.flock`` to serialise writers."""
+    """``record_call`` must take ``fcntl.flock`` to serialise writers.
+
+    After the json_state_store refactor (Phase C, 2026-07-20),
+    flock is acquired inside ``locked_json_modify``, so the patch
+    target moved from ``mahavishnu.distill.llm_usage.fcntl`` to
+    ``mahavishnu.core.json_state_store.fcntl``.
+    """
     import fcntl as _fcntl
     from unittest.mock import patch
 
@@ -182,7 +188,7 @@ def test_concurrent_processes_serialise_via_flock(
 
     tracker = UsageTracker(weekly_cap=5)
 
-    with patch("mahavishnu.distill.llm_usage.fcntl.flock", side_effect=spy_flock):
+    with patch("mahavishnu.core.json_state_store.fcntl.flock", side_effect=spy_flock):
         tracker.record_call()
 
     ops = [op for _fd, op in captured]

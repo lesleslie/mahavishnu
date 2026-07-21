@@ -29,16 +29,19 @@ from __future__ import annotations
 from collections.abc import Mapping
 import dataclasses
 from datetime import datetime
-import fcntl
 import hashlib
 import json
 import os
 from pathlib import Path
-import tempfile
 from typing import Any, Protocol, runtime_checkable
 import uuid
 
 from mahavishnu.core.errors import ErrorCode, MahavishnuError
+from mahavishnu.core.json_state_store import (
+    atomic_json_write,
+    locked_json_modify,
+    locked_json_read,
+)
 
 # ─────────────────────────────────────────────────────────────────────────
 # Exceptions
@@ -248,6 +251,13 @@ class JsonFileLockStore:
     ``InMemoryLockStore`` remains the test fixture and the substrate
     abstraction; a future ``DharaLockStore`` will satisfy the same
     ``LockStore`` protocol.
+
+    Implementation note: this class delegates all flock + atomic-write
+    mechanics to ``mahavishnu.core.json_state_store``. ``put`` uses
+    ``locked_json_modify`` to atomically read-modify-write; reads
+    (``get``/``history``) use ``locked_json_read``. This is the single
+    source of truth for the flock + atomic-rename pattern (was
+    triplicated pre-2026-07-20 per multi-agent review Architecture #1).
     """
 
     def __init__(self, path: Path | str | None = None) -> None:
@@ -255,66 +265,46 @@ class JsonFileLockStore:
         self.path.parent.mkdir(parents=True, exist_ok=True)
 
     def _read_all(self) -> list[LockResult]:
-        """Read all locks from disk. Returns ``[]`` if the file is missing.
+        """Read all locks from disk. Returns ``[]`` if missing or corrupt.
 
-        Uses ``fcntl.flock`` (shared lock) to coordinate with writers.
+        Delegates to ``locked_json_read`` (which uses ``O_NOFOLLOW`` +
+        ``flock``) from ``mahavishnu.core.json_state_store``.
         """
-        if not self.path.exists():
+        try:
+            data = locked_json_read(self.path)
+        except (json.JSONDecodeError, ValueError):
             return []
-        with self.path.open("r", encoding="utf-8") as fh:
-            fcntl.flock(fh.fileno(), fcntl.LOCK_SH)
-            try:
-                raw = fh.read()
-            finally:
-                fcntl.flock(fh.fileno(), fcntl.LOCK_UN)
-        if not raw.strip():
+        if not isinstance(data, list):
             return []
-        payload = json.loads(raw)
-        return [_decode_lock_result(item) for item in payload]
+        return [
+            _decode_lock_result(item)
+            for item in data
+            if isinstance(item, dict)
+        ]
 
     def _write_all(self, results: list[LockResult]) -> None:
-        """Atomically write ``results`` to disk.
-
-        Writes to a temp file in the same directory, then ``os.replace``s
-        onto the target path. ``fcntl.flock`` (exclusive) keeps concurrent
-        writers from interleaving.
-        """
-        encoded = json.dumps(
-            [_encode_lock_result(r) for r in results],
-            indent=2,
-            sort_keys=True,
-            ensure_ascii=False,
-        )
-        fd, tmp_path = tempfile.mkstemp(
-            prefix=self.path.name + ".",
-            suffix=".tmp",
-            dir=str(self.path.parent),
-        )
-        try:
-            with os.fdopen(fd, "w", encoding="utf-8") as fh:
-                fcntl.flock(fh.fileno(), fcntl.LOCK_EX)
-                try:
-                    fh.write(encoded)
-                    fh.flush()
-                    os.fsync(fh.fileno())
-                finally:
-                    fcntl.flock(fh.fileno(), fcntl.LOCK_UN)
-            os.replace(tmp_path, self.path)
-        except BaseException:
-            # Clean up the temp file on any failure so we don't leak.
-            try:
-                Path(tmp_path).unlink()
-            except FileNotFoundError:
-                pass
-            raise
+        """Atomically write ``results`` to disk via ``atomic_json_write``."""
+        encoded = [_encode_lock_result(r) for r in results]
+        atomic_json_write(self.path, encoded)
 
     def put(self, result: LockResult) -> None:
-        """Persist ``result``. Reject duplicate ``lock_id``."""
-        items = self._read_all()
-        if any(r.lock_id == result.lock_id for r in items):
-            raise ValueError(f"duplicate lock_id: {result.lock_id}")
-        items.append(result)
-        self._write_all(items)
+        """Persist ``result``. Reject duplicate ``lock_id``.
+
+        Read-modify-write via ``locked_json_modify`` so concurrent
+        writers serialize under a single ``LOCK_EX`` on the lockfile
+        across the entire read and write (closes the lost-update race
+        pattern that the prior ``_read_all`` + ``_write_all`` had).
+        """
+        new_entry = _encode_lock_result(result)
+
+        def modifier(data):
+            items: list[dict[str, Any]] = list(data) if data is not None else []
+            if any(r.get("lock_id") == new_entry["lock_id"] for r in items):
+                raise ValueError(f"duplicate lock_id: {result.lock_id}")
+            items.append(new_entry)
+            return items
+
+        locked_json_modify(self.path, modifier)
 
     # Convenience alias matching how production code uses it; semantically
     # identical to ``put`` — exposed so tests can call it without importing
