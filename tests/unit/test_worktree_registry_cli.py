@@ -8,7 +8,7 @@ backed by ``tmp_path``.
 from __future__ import annotations
 
 import json
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 import pytest
@@ -16,7 +16,6 @@ from typer.testing import CliRunner
 
 from mahavishnu.core.worktree_session_registry import SessionWorktreeRegistry
 from mahavishnu.worktree_cli import worktree_app
-
 
 runner = CliRunner()
 
@@ -56,11 +55,13 @@ def _seed(
             for key, offset in mark_abandoned_after.items():
                 # Abandon with a backdated timestamp.
                 fake_now = (
-                    datetime.now(timezone.utc) - offset
+                    datetime.now(UTC) - offset
                 ).isoformat(timespec="milliseconds").replace(
                     "+00:00", "Z"
                 )
-                reg_mod.utcnow_iso = lambda: fake_now
+                # Bind fake_now as a default arg to capture the
+                # current iteration's value (B023).
+                reg_mod.utcnow_iso = lambda value=fake_now: value
                 registry.mark_abandoned(key, abandoned_at=fake_now)
         finally:
             reg_mod.utcnow_iso = original_now
@@ -323,3 +324,80 @@ def test_prune_abandoned_never_removes_worktrees_on_disk(
     assert registry.get("x") is None
     # ...but the worktree directory still exists.
     assert wt_dir.exists()
+
+
+# ── --json output (Phase E polish) ──────────────────────────────────
+
+
+def test_list_sessions_json_emits_valid_json(
+    registry_path: Path,
+) -> None:
+    """``--json`` emits machine-readable JSON (one parseable object)."""
+    _seed(registry_path, "a0c5d2a0")
+    result = runner.invoke(
+        worktree_app,
+        ["list-sessions", "--json", "--registry-path", str(registry_path)],
+    )
+    assert result.exit_code == 0
+    payload = json.loads(result.stdout)
+    assert payload["count"] == 1
+    assert payload["entries"][0]["session_id_short"] == "a0c5d2a0"
+    assert payload["filter"]["state"] == "active"
+
+
+def test_list_sessions_json_empty_registry(
+    registry_path: Path,
+) -> None:
+    """``--json`` with empty registry → count=0, empty entries list."""
+    result = runner.invoke(
+        worktree_app,
+        ["list-sessions", "--json", "--registry-path", str(registry_path)],
+    )
+    assert result.exit_code == 0
+    payload = json.loads(result.stdout)
+    assert payload == {
+        "filter": {"state": "active", "older_than_days": None},
+        "count": 0,
+        "entries": [],
+    }
+
+
+def test_prune_abandoned_json_dry_run_reports_would_remove(
+    registry_path: Path,
+) -> None:
+    """``--json --dry-run`` reports what would be removed (count > 0) and removes nothing."""
+    _seed(registry_path, "x")
+    SessionWorktreeRegistry(path=registry_path).mark_abandoned("x")
+
+    result = runner.invoke(
+        worktree_app,
+        ["prune-abandoned", "--older-than-days", "0", "--dry-run", "--json",
+         "--registry-path", str(registry_path)],
+    )
+    assert result.exit_code == 0
+    payload = json.loads(result.stdout)
+    assert payload["would_remove_count"] == 1
+    assert payload["removed_count"] == 0
+    assert payload["removed_sessions"] == []
+
+    # Entry should still exist (dry run).
+    assert SessionWorktreeRegistry(path=registry_path).get("x") is not None
+
+
+def test_prune_abandoned_json_applies_when_not_dry_run(
+    registry_path: Path,
+) -> None:
+    """``--json`` without ``--dry-run`` actually removes."""
+    _seed(registry_path, "x")
+    SessionWorktreeRegistry(path=registry_path).mark_abandoned("x")
+
+    result = runner.invoke(
+        worktree_app,
+        ["prune-abandoned", "--older-than-days", "0", "--json",
+         "--registry-path", str(registry_path)],
+    )
+    assert result.exit_code == 0
+    payload = json.loads(result.stdout)
+    assert payload["removed_count"] == 1
+    assert payload["removed_sessions"] == ["x"]
+    assert SessionWorktreeRegistry(path=registry_path).get("x") is None

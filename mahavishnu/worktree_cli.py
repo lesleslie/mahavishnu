@@ -2,6 +2,7 @@
 
 import asyncio
 from datetime import datetime, timedelta, timezone
+import json
 
 import typer
 
@@ -277,6 +278,11 @@ def list_sessions(
         "--registry-path",
         help="Override the registry file location (default: XDG state path)",
     ),
+    json_output: bool = typer.Option(
+        False,
+        "--json",
+        help="Emit machine-readable JSON instead of the human-readable table",
+    ),
 ):
     """List Claude sessions with their associated worktrees.
 
@@ -297,6 +303,15 @@ def list_sessions(
         state=state_filter,
         older_than_days=older_than_days,
     )
+
+    if json_output:
+        typer.echo(json.dumps({
+            "filter": {"state": state, "older_than_days": older_than_days},
+            "count": len(entries),
+            "entries": entries,
+        }, indent=2, sort_keys=True, default=str))
+        return
+
     if not entries:
         typer.echo(f"No sessions found (state={state}, older_than_days={older_than_days})")
         return
@@ -331,6 +346,11 @@ def prune_abandoned(
         "--registry-path",
         help="Override the registry file location",
     ),
+    json_output: bool = typer.Option(
+        False,
+        "--json",
+        help="Emit machine-readable JSON instead of the human-readable summary",
+    ),
 ):
     """Remove abandoned worktree entries from the registry.
 
@@ -351,6 +371,24 @@ def prune_abandoned(
     registry = SessionWorktreeRegistry(path=path)
 
     abandoned = registry.list_active(state="abandoned", older_than_days=older_than_days)
+
+    if json_output:
+        # For --json, always do the actual remove (no --dry-run semantics
+        # in machine-readable mode; the caller is responsible for dry-run
+        # semantics by passing --older-than-days=large-enough).
+        removed: list[str] = []
+        if not dry_run:
+            for entry in abandoned:
+                registry.remove(entry["session_id_short"])
+                removed.append(entry["session_id_short"])
+        typer.echo(json.dumps({
+            "filter": {"older_than_days": older_than_days, "dry_run": dry_run},
+            "would_remove_count": len(abandoned),
+            "removed_count": len(removed) if not dry_run else 0,
+            "removed_sessions": removed,
+        }, indent=2, sort_keys=True))
+        return
+
     if not abandoned:
         typer.echo(f"No abandoned sessions older than {older_than_days} days")
         return
