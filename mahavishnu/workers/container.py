@@ -75,7 +75,7 @@ class ContainerWorker(BaseWorker):
 
     def __init__(
         self,
-        runtime: str = "docker",
+        runtime: str | None = None,
         image: str = "python:3.13-slim",
         session_buddy_client: Any = None,
         *,
@@ -84,7 +84,9 @@ class ContainerWorker(BaseWorker):
         """Initialize container worker.
 
         Args:
-            runtime: Container runtime ("docker" or "podman")
+            runtime: Container runtime ("docker" or "podman"). When ``None`` the
+                resolver picks the first available binary on PATH (docker, then
+                podman), falling back to ``"docker"`` if neither is found.
             image: Container image to use
             session_buddy_client: Session-Buddy MCP client
             socket_path_override: Force a specific daemon socket path. When set,
@@ -211,6 +213,27 @@ class ContainerWorker(BaseWorker):
         # This prevents shell metacharacter injection
         return shlex.quote(command)
 
+    def _subprocess_env(self) -> dict[str, str] | None:
+        """Build the subprocess env, injecting ``DOCKER_HOST`` when needed.
+
+        Returns ``None`` when ``socket_path`` is unset so the subprocess
+        inherits the parent environment unchanged. Otherwise returns the
+        parent env merged with ``DOCKER_HOST`` so a discovered OrbStack
+        socket (or an explicit ``socket_path_override``) actually takes
+        effect for the runtime CLI.
+
+        Strips a leading ``unix://`` scheme because ``DOCKER_HOST`` accepts
+        the bare path for ``unix://`` URLs (matching the docker and podman
+        CLIs' own behavior).
+        """
+        if not self.socket_path:
+            return None
+        host = self.socket_path
+        prefix = "unix://"
+        if host.startswith(prefix):
+            host = host[len(prefix):]
+        return {**os.environ, "DOCKER_HOST": host}
+
     async def _probe_daemon(self) -> None:
         """Verify the container daemon is reachable before launching.
 
@@ -227,6 +250,7 @@ class ContainerWorker(BaseWorker):
             proc = await asyncio.create_subprocess_exec(
                 self.runtime, "version", "--format", "{{.Server.Version}}",
                 stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE,
+                env=self._subprocess_env(),
             )
             stdout, stderr = await asyncio.wait_for(proc.communicate(), timeout=5.0)
         except (TimeoutError, OSError) as exc:
@@ -266,6 +290,7 @@ class ContainerWorker(BaseWorker):
                 "infinity",
                 stdout=asyncio.subprocess.PIPE,
                 stderr=asyncio.subprocess.PIPE,
+                env=self._subprocess_env(),
             )
 
             stdout, stderr = await proc.communicate()

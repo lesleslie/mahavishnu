@@ -711,6 +711,38 @@ class TestRuntimeDiscovery:
         worker = ContainerWorker(runtime="docker")
         assert worker.runtime == "docker"
 
+    def test_container_worker_auto_discovers_podman_when_docker_missing(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """When ``runtime`` is unset and docker is not on PATH, the resolver
+        should fall through to podman rather than defaulting to docker.
+
+        Exercises the discovery path that ``runtime='docker'``-style tests
+        cannot reach.
+        """
+        fake_podman = tmp_path / "podman"
+        fake_podman.write_text("#!/bin/sh\nexit 0\n")
+        fake_podman.chmod(0o755)
+        monkeypatch.setenv("PATH", f"{tmp_path}:")
+        # Force non-darwin so the OrbStack shortcut can't shadow discovery
+        # even on a developer machine that happens to have OrbStack installed.
+        monkeypatch.setattr(
+            "mahavishnu.workers.container.sys.platform", "linux",
+        )
+
+        def fake_which(name: str) -> str | None:
+            if name == "docker":
+                return None
+            if name == "podman":
+                return "/usr/bin/podman"
+            return None
+
+        monkeypatch.setattr(
+            "mahavishnu.workers.container.shutil.which", fake_which,
+        )
+        worker = ContainerWorker()
+        assert worker.runtime == "podman"
+
     def test_container_worker_uses_orbstack_socket_when_present(
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
     ) -> None:
