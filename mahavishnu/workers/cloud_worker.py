@@ -17,7 +17,6 @@ import time
 from typing import Any
 
 import httpx
-
 from mcp_common.llm import FallbackChain, LLMSettings
 
 from mahavishnu.core.status import WorkerStatus
@@ -218,6 +217,13 @@ class CloudWorker(BaseWorker):
         Returns:
             WorkerResult with execution results
         """
+        if self._status is WorkerStatus.DEGRADED:
+            return WorkerResult(
+                worker_id=self._worker_id,
+                status=WorkerStatus.DEGRADED,
+                error="worker not ready: missing credentials",
+                exit_code=1,
+            )
         if self._status != WorkerStatus.RUNNING:
             try:
                 await self.start()
@@ -230,7 +236,12 @@ class CloudWorker(BaseWorker):
                 )
 
         if self._chain is None:
-            raise RuntimeError("invariant violated: _chain must be set after worker initialization")
+            return WorkerResult(
+                worker_id=self._worker_id,
+                status=WorkerStatus.FAILED,
+                error="worker not ready: missing credentials",
+                exit_code=1,
+            )
 
         prompt = task.get("prompt", "")
         if not prompt:

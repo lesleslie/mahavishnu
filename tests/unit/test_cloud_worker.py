@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import logging
 import os
 import time
 from typing import TYPE_CHECKING
@@ -470,14 +469,40 @@ class TestCloudWorkerStatusAndProgress:
 class TestCloudWorkerCredentialGating:
     """Task 11: gate CloudWorker.start() on credentials; no secret logging."""
 
-    def test_cloud_worker_marks_degraded_when_minimax_key_missing(self, monkeypatch) -> None:
+    @pytest.mark.asyncio
+    async def test_cloud_worker_marks_degraded_when_minimax_key_missing(
+        self, monkeypatch
+    ) -> None:
         monkeypatch.delenv("MINIMAX_API_KEY", raising=False)
+        # Force the local-fallback probe to miss so DEGRADED is deterministic
+        # regardless of whether ollama/llama-server happens to be reachable
+        # in the host running the tests.
+        monkeypatch.setattr(
+            "mahavishnu.workers.cloud_worker.shutil.which", lambda _: None
+        )
         worker = CloudWorker()
         assert worker.metadata.get("missing_credentials") == ["MINIMAX_API_KEY"]
-        assert worker._status is not WorkerStatus.RUNNING
+        assert worker._status is WorkerStatus.DEGRADED
+        await worker.start()
+        assert worker._status is WorkerStatus.DEGRADED
 
-    def test_cloud_worker_logs_do_not_contain_key(self, monkeypatch, caplog) -> None:
+    @pytest.mark.asyncio
+    async def test_cloud_worker_logs_do_not_contain_key(
+        self, monkeypatch, mock_chain
+    ) -> None:
         monkeypatch.setenv("MINIMAX_API_KEY", "sk-fake-do-not-leak")
-        with caplog.at_level(logging.DEBUG, logger="mahavishnu.workers.cloud_worker"):
+        logger = MagicMock()
+        monkeypatch.setattr("mahavishnu.workers.cloud_worker.logger", logger)
+        with patch(
+            "mahavishnu.workers.cloud_worker.FallbackChain.from_settings",
+            return_value=mock_chain,
+        ):
             worker = CloudWorker()
-        assert "sk-fake-do-not-leak" not in caplog.text
+            await worker.start()
+        secret = "sk-fake-do-not-leak"
+        for method in (logger.info, logger.warning, logger.error, logger.debug):
+            for call in method.call_args_list:
+                for arg in call.args:
+                    assert secret not in str(arg)
+                for value in call.kwargs.values():
+                    assert secret not in str(value)
