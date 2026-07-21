@@ -932,6 +932,82 @@ def test_discovery_hint_completes_in_under_two_seconds(
     assert "MAHAVISHNU_AUTO_WORKTREE=1" in captured.getvalue()
 
 
+# ── Phase E polish env vars ──────────────────────────────────────────
+
+
+def test_git_current_branch_returns_branch_name(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """``_git_current_branch`` returns the current branch in a real repo."""
+    import importlib.util
+
+    main = _init_main_repo_with_commit(tmp_path)
+
+    spec = importlib.util.spec_from_file_location(
+        "hook_current_branch", _HOOK_PATH
+    )
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+
+    assert module._git_current_branch(str(main)) == "main"
+
+
+def test_git_current_branch_returns_none_for_non_git(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Non-git dir → None (no crash)."""
+    import importlib.util
+
+    spec = importlib.util.spec_from_file_location(
+        "hook_current_branch_none", _HOOK_PATH
+    )
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+
+    assert module._git_current_branch(str(tmp_path)) is None
+
+
+def test_log_debug_writes_only_when_debug_env_set(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """``_log_debug`` is silent when ``MAHAVISHNU_AUTO_WORKTREE_DEBUG`` is unset."""
+    import importlib.util
+    import io
+    import sys
+
+    spec = importlib.util.spec_from_file_location(
+        "hook_log_debug_silent", _HOOK_PATH
+    )
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+
+    captured = io.StringIO()
+    monkeypatch.setattr(sys, "stderr", captured)
+    module._log_debug("test message")
+    assert captured.getvalue() == ""
+
+
+def test_log_debug_writes_when_debug_env_set(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """``_log_debug`` writes to stderr when debug env is truthy."""
+    import importlib.util
+    import io
+    import sys
+
+    spec = importlib.util.spec_from_file_location(
+        "hook_log_debug_verbose", _HOOK_PATH
+    )
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+
+    monkeypatch.setenv("MAHAVISHNU_AUTO_WORKTREE_DEBUG", "1")
+    captured = io.StringIO()
+    monkeypatch.setattr(sys, "stderr", captured)
+    module._log_debug("test message")
+    assert "[debug] test message" in captured.getvalue()
+
+
 # ── Mode dispatch (Phase A2) ──────────────────────────────────────
 
 

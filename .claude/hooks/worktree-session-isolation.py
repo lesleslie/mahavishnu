@@ -53,6 +53,8 @@ OPT_IN_ENV = "MAHAVISHNU_AUTO_WORKTREE"
 ROOT_ENV = "MAHAVISHNU_AUTO_WORKTREE_ROOT"
 BRANCH_BASE_ENV = "MAHAVISHNU_AUTO_WORKTREE_BRANCH_BASE"
 CLEANUP_ENV = "MAHAVISHNU_AUTO_WORKTREE_CLEANUP"
+DEBUG_ENV = "MAHAVISHNU_AUTO_WORKTREE_DEBUG"
+TIMEOUT_ENV = "MAHAVISHNU_AUTO_WORKTREE_TIMEOUT"
 
 
 def _log(msg: str) -> None:
@@ -163,6 +165,41 @@ def _git_worktree_add_argv(
     ]
 
 
+def _git_current_branch(cwd: str) -> str | None:
+    """Return the current branch name in ``cwd``, or None on failure.
+
+    Used by ``_run_session_start`` to default ``MAHAVISHNU_AUTO_WORKTREE_BRANCH_BASE``
+    to the current branch instead of hardcoded ``main`` (which fails
+    on repos that default to ``master`` or any other name).
+    """
+    try:
+        result = subprocess.run(  # nosec B603 — argv-list, no shell
+            ["git", "-C", cwd, "rev-parse", "--abbrev-ref", "HEAD"],
+            capture_output=True,
+            text=True,
+            check=True,
+            timeout=5,
+        )
+    except (subprocess.CalledProcessError, subprocess.TimeoutExpired, OSError):
+        return None
+    branch = result.stdout.strip()
+    if not branch or branch == "HEAD":
+        return None  # detached HEAD
+    return branch
+
+
+def _log_debug(msg: str) -> None:
+    """Conditional stderr write, gated by ``MAHAVISHNU_AUTO_WORKTREE_DEBUG``.
+
+    No-op when the env var is unset. When set to truthy, prints
+    one line per call (prefixed with ``[debug]``) so operators can
+    introspect hook behavior without enabling the feature.
+    """
+    if _is_truthy(os.environ.get(DEBUG_ENV)):
+        sys.stderr.write(f"[debug] {msg}\n")
+        sys.stderr.flush()
+
+
 def _run_session_start(session_id_full: str, cwd: str) -> int:
     """SessionStart: ensure the session has a worktree.
 
@@ -253,7 +290,29 @@ def _run_session_start(session_id_full: str, cwd: str) -> int:
     root_env = os.environ.get(ROOT_ENV, "~/worktrees")
     root = Path(root_env).expanduser().resolve()
     target_path = (root / worktree_name).resolve()
-    branch_base = os.environ.get(BRANCH_BASE_ENV, "main")
+    branch_base = os.environ.get(BRANCH_BASE_ENV)
+    if not branch_base:
+        # Default to the current branch in cwd so ``master``/other
+        # default-branch repos aren't surprised by a hardcoded ``main``.
+        # Falls back to ``main`` only when discovery fails.
+        branch_base = _git_current_branch(cwd) or "main"
+
+    # E5: configurable timeout (default 10s, capped at 60s).
+    try:
+        timeout = int(os.environ.get(TIMEOUT_ENV, "10"))
+    except ValueError:
+        timeout = 10
+    timeout = max(1, min(timeout, 60))
+
+    _log_debug(
+        f"git worktree add: cwd={cwd!r} branch={branch!r} "
+        f"target={target_path!r} branch_base={branch_base!r} timeout={timeout}"
+    )
+
+    # E2: GIT_TERMINAL_PROMPT=0 prevents the subprocess from blocking on
+    # a credential prompt (e.g. when branch_base is a remote ref).
+    subprocess_env = os.environ.copy()
+    subprocess_env["GIT_TERMINAL_PROMPT"] = "0"
 
     try:
         # ``--`` ends option parsing before the positional
@@ -263,7 +322,8 @@ def _run_session_start(session_id_full: str, cwd: str) -> int:
             _git_worktree_add_argv(cwd, branch, str(target_path), branch_base),
             capture_output=True,
             text=True,
-            timeout=10,
+            timeout=timeout,
+            env=subprocess_env,
         )
     except (subprocess.TimeoutExpired, OSError) as exc:
         _log(f"git worktree add failed: {exc}")
