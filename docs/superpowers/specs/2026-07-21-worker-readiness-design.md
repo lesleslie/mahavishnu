@@ -79,9 +79,9 @@ Owns the state machine, probes, and reporting. Public surface:
   `checked_at`.
 - `WorkerCapabilityReport` dataclass: `worker_type`, `state`, `checks: list[WorkerCheck]`,
   `missing_requirements: list[str]`, `probe_at`, `cache_ttl_s`.
-- `evaluate_worker_capabilities(worker_type, *, force_live=False) -> WorkerCapabilityReport`.
-- `evaluate_all_capabilities() -> dict[str, WorkerCapabilityReport]`.
-- `select_routable_workers(candidates=None, *, require_available=False) -> list[str]`.
+- `evaluate_worker_capabilities(worker_type, *, settings, force_live=False) -> WorkerCapabilityReport`.
+- `evaluate_all_capabilities(*, settings, force_live=False) -> dict[str, WorkerCapabilityReport]`.
+- `select_routable_workers(candidates=None, *, settings, require_available=False) -> list[str]`.
 
 Static checks are pure functions; live checks live in `_probes/` as `async def` and
 return a tri-state result. Probe results are cached for a short TTL (default 30s) and
