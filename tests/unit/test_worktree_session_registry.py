@@ -10,15 +10,15 @@ Pins the contract for the SessionWorktreeRegistry class:
 from __future__ import annotations
 
 import json
+from pathlib import Path  # noqa: TC003 — type-only with __future__ annotations
 import uuid
-from pathlib import Path
 
 import pytest
 
 from mahavishnu.core.worktree_session_registry import (
     SUPPORTED_SCHEMA_VERSION,
     SessionWorktreeRegistry,
-    _short_session_id,
+    short_session_id,
 )
 
 
@@ -43,19 +43,19 @@ def _register_sample(registry: SessionWorktreeRegistry, key: str) -> None:
     )
 
 
-# ── _short_session_id ────────────────────────────────────────────
+# ── short_session_id ────────────────────────────────────────────
 
 
 def test_short_session_id_first_8_hex_of_valid_uuid() -> None:
     """Valid UUID: returns the first 8 hex chars."""
     full = "0190f8a4-b9c1-7def-a012-3456789abcde"
-    assert _short_session_id(full) == "0190f8a4"
+    assert short_session_id(full) == "0190f8a4"
 
 
 def test_short_session_id_returns_empty_for_invalid_uuid() -> None:
     """Malformed input returns empty string (fail-closed)."""
     for bad in ("", "not-a-uuid", "12345", None, "abc-def"):
-        assert _short_session_id(bad) == ""
+        assert short_session_id(bad) == ""
 
 
 # ── register ─────────────────────────────────────────────────────
@@ -259,15 +259,15 @@ def test_quarantine_corrupt_file_renames_and_returns_backup(
     assert ".corrupt-" in backup.name
 
 
-# ── _short_session_id ────────────────────────────────────────────
+# ── short_session_id ────────────────────────────────────────────
 
 
-def test_short_session_id_distinct_across_uuids() -> None:
+def testshort_session_id_distinct_across_uuids() -> None:
     """Different UUIDs produce different short ids (collision check)."""
     seen = set()
     for i in range(100):
         u = uuid.uuid4()
-        short = _short_session_id(str(u))
+        short = short_session_id(str(u))
         assert short not in seen, f"collision on {u} -> {short}"
         seen.add(short)
         assert len(short) == 8

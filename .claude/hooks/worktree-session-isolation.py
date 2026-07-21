@@ -145,10 +145,10 @@ def _run_session_start(session_id_full: str, cwd: str) -> int:
     _ensure_mahavishnu_importable()
     from mahavishnu.core.worktree_session_registry import (  # noqa: E402
         SessionWorktreeRegistry,
-        _short_session_id,
+        short_session_id,
     )
 
-    short = _short_session_id(session_id_full)
+    short = short_session_id(session_id_full)
     if not short:
         return 0  # bad UUID → silent skip
 
@@ -286,10 +286,10 @@ def _run_session_end(session_id_full: str) -> int:
     _ensure_mahavishnu_importable()
     from mahavishnu.core.worktree_session_registry import (  # noqa: E402
         SessionWorktreeRegistry,
-        _short_session_id,
+        short_session_id,
     )
 
-    short = _short_session_id(session_id_full)
+    short = short_session_id(session_id_full)
     if not short:
         return 0
 

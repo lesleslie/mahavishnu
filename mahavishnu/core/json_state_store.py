@@ -7,14 +7,18 @@ need concurrent-safe read/write across processes. Used by:
   producer; uses list-of-LockResult shape)
 - ``mahavishnu.core.worktree_session_registry.SessionWorktreeRegistry``
   (uses dict-of-session shape)
+- ``mahavishnu.distill.llm_usage.LLMUsageStore`` (uses list shape)
 
-Both callers share the same flock + temp-write + os.replace pattern.
+All callers share the same flock + temp-write + os.replace pattern.
 This module is the single source of truth for those primitives so we
-don't triplicate them (reviewer feedback, 4-lens plan, 2026-07-16).
+don't triplicate them (reviewer feedback, multi-agent review, 2026-07-20).
 
-Security hardening (per reviewer feedback, 4-lens plan, 2026-07-16):
+Security hardening (per reviewer feedback, multi-agent review, 2026-07-20):
 
-- **O_NOFOLLOW** on open refuses pre-planted symlinks (CWE-59).
+- **O_NOFOLLOW** on open refuses pre-planted symlinks (CWE-59). The
+  write path uses ``O_NOFOLLOW`` to canonicalize the destination
+  inode before ``os.replace`` (closes the TOCTOU window that the
+  prior ``lstat``-then-``os.replace`` pattern had).
 - **chmod 0o600** on the file + **chmod 0o700** on the parent at first
   write (default-deny on world-read).
 
@@ -23,29 +27,46 @@ flock semantics; this code assumes local FS.
 """
 from __future__ import annotations
 
+from collections.abc import Callable  # noqa: TC003 — type-only with __future__ annotations
+from datetime import UTC, datetime
 import errno
 import fcntl
 import json
 import os
+from pathlib import Path  # noqa: TC003 — type-only with __future__ annotations
 import tempfile
-from datetime import datetime, timezone
-from pathlib import Path
 from typing import Any
 
 
-def _check_not_symlink(path: Path) -> None:
-    """Reject symlink targets (CWE-59).
+def _refuse_symlink_target(path: Path) -> None:
+    """Refuse to write to a symlink at ``path`` (CWE-59).
 
-    Refuses to write to a path whose final component is a symlink. The
-    caller should pass the target path before any symlink substitution
-    can occur. The atomic_write below uses ``os.replace`` which follows
-    symlinks at the target — this pre-check is the actual defense.
+    Uses ``O_NOFOLLOW`` open instead of ``lstat`` to close the TOCTOU
+    window between the check and subsequent ``os.replace``. After
+    this check, the destination inode is verified non-symlink;
+    ``os.replace`` will follow a planted symlink if the attacker
+    wins a microsecond race between this check and the replace.
+
+    We accept that residual risk because the true mitigation
+    (parent-directory locking) is not portable across all POSIX
+    variants. See threat model in
+    ``.claude/decisions/session-worktree-defaults.md``.
     """
-    if path.is_symlink():
-        raise OSError(
-            errno.ELOOP,
-            f"refusing to write to symlink target: {path}",
-        )
+    flags = os.O_RDONLY
+    if hasattr(os, "O_NOFOLLOW"):
+        flags |= os.O_NOFOLLOW
+    try:
+        fd = os.open(path, flags)
+    except FileNotFoundError:
+        return  # first write — no inode to verify yet
+    except OSError as exc:
+        if exc.errno == errno.ELOOP:
+            raise OSError(
+                errno.ELOOP,
+                f"refusing to write to symlink target: {path}",
+            ) from exc
+        raise
+    os.close(fd)
 
 
 def locked_json_read(path: Path) -> dict[str, Any] | list[Any] | None:
@@ -86,15 +107,15 @@ def locked_json_read(path: Path) -> dict[str, Any] | list[Any] | None:
 
 
 def atomic_json_write(path: Path, data: dict[str, Any] | list[Any]) -> None:
-    """Atomically write ``data`` to ``path`` as JSON, under an exclusive flock.
+    """Atomically write ``data`` to ``path`` as JSON.
 
     Writes to a temp file in the same directory, then ``os.replace``s
-    onto the target. ``fcntl.flock`` (exclusive) coordinates with
-    concurrent readers and writers. The temp file is cleaned up on
-    any failure. After successful write, applies ``chmod 0o600`` on
-    the file and ``chmod 0o700`` on the parent.
+    onto the target. Symlinks at the destination are refused via
+    ``_refuse_symlink_target`` (``O_NOFOLLOW`` open). After successful
+    write, applies ``chmod 0o600`` on the file and ``chmod 0o700`` on
+    the parent.
     """
-    _check_not_symlink(path)
+    _refuse_symlink_target(path)
     path.parent.mkdir(parents=True, exist_ok=True)
     # Harden parent dir before writing.
     path.parent.chmod(0o700)
@@ -137,11 +158,91 @@ def atomic_json_write(path: Path, data: dict[str, Any] | list[Any]) -> None:
     path.chmod(0o600)
 
 
+def locked_json_modify(
+    path: Path,
+    modifier: Callable[
+        [dict[str, Any] | list[Any] | None], dict[str, Any] | list[Any]
+    ],
+    *,
+    default_factory: Callable[[], dict[str, Any] | list[Any]] | None = None,
+) -> dict[str, Any] | list[Any]:
+    """Atomically read-modify-write ``path`` under LOCK_EX on a sidecar lockfile.
+
+    Acquires ``LOCK_EX`` on ``<path>.lock`` (a sidecar file in the same
+    directory, created on first use with mode 0o600). All concurrent
+    processes targeting the same ``path`` serialize on this lock,
+    preventing lost-update races — see
+    ``tests/integration/test_worktree_session_registry_concurrent.py``.
+
+    Within the lock:
+    1. Reads current content via ``locked_json_read`` (``O_NOFOLLOW``).
+    2. If ``current`` is ``None`` and ``default_factory`` is provided,
+       uses the factory's output as the initial value.
+    3. Calls ``modifier(current)`` to compute new content.
+    4. If ``modifier`` returns ``SKIP_WRITE``, no write happens.
+    5. Otherwise atomically writes new content via ``atomic_json_write``.
+    6. Releases lock.
+
+    Returns the data that was written (or the unmodified current data
+    if ``modifier`` returned ``SKIP_WRITE``).
+
+    Args:
+        path: target file path.
+        modifier: callable ``(current_data) -> new_data``. May return
+            ``SKIP_WRITE`` to indicate no write is needed (e.g., the
+            on-disk schema version is unrecognized).
+        default_factory: optional factory for the initial data when the
+            file doesn't exist yet.
+    """
+    path = Path(path)
+    lock_path = path.with_name(path.name + ".lock")
+
+    # Ensure lockfile exists with restrictive mode. O_CREAT + O_NOFOLLOW
+    # means we fail if the lockfile has been replaced with a symlink
+    # (a planted symlink at the lockfile target would let an attacker
+    # bypass the lock by flocking a different inode).
+    flags = os.O_RDWR | os.O_CREAT
+    if hasattr(os, "O_NOFOLLOW"):
+        flags |= os.O_NOFOLLOW
+    lock_fd = os.open(lock_path, flags, 0o600)
+    try:
+        fcntl.flock(lock_fd, fcntl.LOCK_EX)
+        try:
+            current = locked_json_read(path)
+            if current is None and default_factory is not None:
+                current = default_factory()
+            new_data = modifier(current)
+            if new_data is SKIP_WRITE:
+                return current if current is not None else (
+                    default_factory() if default_factory else {}
+                )
+            atomic_json_write(path, new_data)
+            return new_data
+        finally:
+            fcntl.flock(lock_fd, fcntl.LOCK_UN)
+    finally:
+        os.close(lock_fd)
+
+
 def utcnow_iso() -> str:
     """Return the current UTC time as ISO-8601 with ``Z`` suffix."""
-    return datetime.now(timezone.utc).isoformat(timespec="milliseconds").replace(
+    return datetime.now(UTC).isoformat(timespec="milliseconds").replace(
         "+00:00", "Z"
     )
 
 
-__all__ = ["locked_json_read", "atomic_json_write", "utcnow_iso"]
+SKIP_WRITE = object()
+"""Sentinel for ``locked_json_modify`` modifiers to indicate no write.
+
+The modifier receives the current data and returns either the new data
+to write, or ``SKIP_WRITE`` to indicate the operation should be a no-op
+(e.g., refusing to write to a future-version file)."""
+
+
+__all__ = [
+    "SKIP_WRITE",
+    "locked_json_read",
+    "atomic_json_write",
+    "locked_json_modify",
+    "utcnow_iso",
+]

@@ -2,31 +2,33 @@
 
 Spawns N processes, each registering a unique session, then verifies
 that all N entries land in the registry intact. Without proper flock
-serialization, two writers can clobber each other's entries (last-write
-wins per file replace, partial JSON on race).
+serialization across the read-modify-write, two writers can clobber
+each other's entries (last-write wins per file replace).
+
+This test uses a ``multiprocessing.Barrier`` to force all children to
+start their RMW simultaneously — without the barrier, the natural
+process startup stagger produces only intermittent failures (~33% per
+prior observation), which masked the bug as flakiness.
 """
 from __future__ import annotations
 
 import multiprocessing
-import sys
-import tempfile
-import time
-from pathlib import Path
+from pathlib import Path  # noqa: TC003 — type-only with __future__ annotations
 
 import pytest
 
 from mahavishnu.core.worktree_session_registry import SessionWorktreeRegistry
 
 
-def _child_register(args: tuple[str, str, int, float]) -> None:
-    """Child-process worker: register a session, then exit."""
-    path_str, key, pid, sleep_before = args
+def _child_register(args: tuple) -> None:
+    """Child-process worker: wait at barrier, then register and exit."""
+    path_str, key, pid, barrier = args
     path = Path(path_str)
-    # Spawn a fresh registry per child — each process should hit the same file.
     registry = SessionWorktreeRegistry(path=path)
-    # Small stagger so processes don't all flock at the same instant.
-    if sleep_before > 0:
-        time.sleep(sleep_before)
+    # Synchronize all children at this point — release simultaneously to
+    # maximize lock contention. Without this, the race window between
+    # ``_read`` and ``_save_sessions`` is hit only ~33% of runs.
+    barrier.wait(timeout=30)
     registry.register(
         session_id_short=key,
         worktree_path=f"/tmp/wt-{key}",
@@ -39,26 +41,36 @@ def _child_register(args: tuple[str, str, int, float]) -> None:
 
 @pytest.mark.integration
 def test_register_atomic_under_concurrent_writes(tmp_path: Path) -> None:
-    """8 parallel processes each register a unique session — all 8 survive."""
+    """8 parallel processes each register a unique session — all 8 survive.
+
+    Uses ``multiprocessing.Barrier`` to force all children to start
+    their RMW at the same instant, deterministically reproducing the
+    lost-update race when ``register`` does not hold a single lock
+    across the read and the write.
+    """
     path = tmp_path / "session-worktrees.json"
     n = 8
 
-    # Each child needs a unique key. Use a stagger so writes don't all
-    # happen at the exact same instant (more realistic contention).
+    barrier = multiprocessing.Barrier(n)
     args = [
-        (str(path), f"child{i:02d}", 1000 + i, 0.0)
+        (str(path), f"child{i:02d}", 1000 + i, barrier)
         for i in range(n)
     ]
 
-    # Use spawn to avoid macOS fork issues with flusing state.
+    # Use spawn to avoid macOS fork issues with file descriptor state.
     ctx = multiprocessing.get_context("spawn")
     procs = [ctx.Process(target=_child_register, args=(a,)) for a in args]
     for p in procs:
         p.start()
     for p in procs:
-        p.join(timeout=30)
-        assert not p.is_alive(), "child hung"
-        assert p.exitcode == 0, f"child failed: {p.exitcode}"
+        try:
+            p.join(timeout=30)
+            assert not p.is_alive(), "child hung"
+            assert p.exitcode == 0, f"child failed: {p.exitcode}"
+        finally:
+            if p.is_alive():
+                p.terminate()
+                p.join()
 
     # Verify all N entries made it.
     registry = SessionWorktreeRegistry(path=path)
