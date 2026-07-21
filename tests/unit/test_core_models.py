@@ -671,7 +671,16 @@ class TestStatusEnums:
         assert "rolled_back" in MigrationStatus
 
     def test_worker_status_values(self):
-        expected = {"pending", "starting", "running", "completed", "failed", "timeout", "cancelled"}
+        expected = {
+            "pending",
+            "starting",
+            "running",
+            "completed",
+            "failed",
+            "timeout",
+            "cancelled",
+            "degraded",
+        }
         assert set(WorkerStatus) == expected
 
     def test_workflow_status_values(self):

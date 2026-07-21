@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 import os
 import time
 from typing import TYPE_CHECKING
@@ -464,3 +465,19 @@ class TestCloudWorkerStatusAndProgress:
         assert progress["worker_type"] == "terminal-cloud"
         assert progress["model"] == "MiniMax-M2.7"
         assert progress["duration_seconds"] >= 0
+
+
+class TestCloudWorkerCredentialGating:
+    """Task 11: gate CloudWorker.start() on credentials; no secret logging."""
+
+    def test_cloud_worker_marks_degraded_when_minimax_key_missing(self, monkeypatch) -> None:
+        monkeypatch.delenv("MINIMAX_API_KEY", raising=False)
+        worker = CloudWorker()
+        assert worker.metadata.get("missing_credentials") == ["MINIMAX_API_KEY"]
+        assert worker._status is not WorkerStatus.RUNNING
+
+    def test_cloud_worker_logs_do_not_contain_key(self, monkeypatch, caplog) -> None:
+        monkeypatch.setenv("MINIMAX_API_KEY", "sk-fake-do-not-leak")
+        with caplog.at_level(logging.DEBUG, logger="mahavishnu.workers.cloud_worker"):
+            worker = CloudWorker()
+        assert "sk-fake-do-not-leak" not in caplog.text

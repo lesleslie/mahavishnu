@@ -110,7 +110,10 @@ class TestWorkerStatus:
         assert WorkerStatus.TIMEOUT == "timeout"
 
     def test_member_count(self):
-        assert len(WorkerStatus) == 7
+        assert len(WorkerStatus) == 8
+
+    def test_has_degraded(self):
+        assert WorkerStatus.DEGRADED == "degraded"
 
 
 # ============================================================================

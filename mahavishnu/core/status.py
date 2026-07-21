@@ -107,6 +107,7 @@ class WorkerStatus(StrEnum):
     FAILED = "failed"
     TIMEOUT = "timeout"
     CANCELLED = "cancelled"
+    DEGRADED = "degraded"
 
 
 # =============================================================================
