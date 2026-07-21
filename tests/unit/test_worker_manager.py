@@ -378,6 +378,13 @@ def test_factory_dispatches_a2a(terminal_manager) -> None:
     assert worker.__class__.__name__ == "A2AWorker"
 
 
+def test_factory_dispatches_openhands(terminal_manager) -> None:
+    """Factory should route openhands to OpenHandsWorker (GATEWAY branch)."""
+    mgr = WorkerManager(terminal_manager=terminal_manager, settings=object())
+    worker = mgr._create_worker("openhands")
+    assert worker.__class__.__name__ == "OpenHandsWorker"
+
+
 def test_factory_dispatches_terminal_crow(terminal_manager) -> None:
     """Factory should route terminal-crow to CrowWorker (AI_ASSISTANT branch)."""
     mgr = WorkerManager(terminal_manager=terminal_manager, settings=object())

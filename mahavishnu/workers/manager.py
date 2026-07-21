@@ -311,17 +311,33 @@ class WorkerManager:
                 return OpenHandsWorker()
 
             if worker_type == "a2a":
-                from .a2a import A2AWorker
+                from .a2a import A2AAgentConfig, A2AWorker
 
-                # A2AWorker's constructor requires a non-empty agent_configs
-                # mapping (name → A2AAgentConfig). The factory has no source
-                # for that here; callers populate the registry via settings
-                # resolution and pass it via kwargs in the long term. For
-                # factory dispatch we accept an empty mapping so the worker
-                # can be instantiated; runtime dispatch will surface
-                # "unknown agent" errors via the existing execute() path.
-                agent_configs = kwargs.get("agent_configs", {})
-                return A2AWorker(agent_configs=agent_configs)
+                agent_configs = kwargs.get("agent_configs")
+                if agent_configs is None and self.settings is not None:
+                    a2a_settings = getattr(self.settings, "a2a", None)
+                    settings_agents = (
+                        getattr(a2a_settings, "agents", None)
+                        if a2a_settings is not None
+                        else None
+                    )
+                    if isinstance(settings_agents, dict):
+                        agent_configs = settings_agents
+                    elif settings_agents:
+                        agent_configs = {
+                            entry.name: A2AAgentConfig(
+                                name=entry.name,
+                                url=entry.url,
+                                description=entry.description,
+                                api_key=(
+                                    os.getenv(entry.api_key_env)
+                                    if entry.api_key_env
+                                    else None
+                                ),
+                            )
+                            for entry in settings_agents
+                        }
+                return A2AWorker(agent_configs=agent_configs or {})
 
             raise ValueError(f"Unknown gateway worker type: {worker_type}")
 
