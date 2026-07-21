@@ -96,7 +96,7 @@ export MAHAVISHNU_AUTO_WORKTREE=0   # or any value; the env var being "touched" 
 
 This is the discoverability middle ground: default-off preserves the consent contract (no FS mutation without opt-in), while the hint surfaces the feature to users in multi-session setups who didn't know to look for it.
 
-State file path: `$MAHAVISHNU_HOME/session-worktrees.json` (XDG state dir by default). The `MAHAVISHNU_HOME` env var is the standard override used by all mahavishnu state files.
+State file path: XDG state dir (default `~/.local/state/mahavishnu/session-worktrees.json` on Linux, `~/Library/Application Support/mahavishnu/...` on macOS). The path is resolved by `mahavishnu.core.paths.get_state_path("session-worktrees.json")` and honors `XDG_STATE_HOME`. The standard `MAHAVISHNU_HOME` env override applies if `get_state_path` is configured for it.
 
 CLI cleanup: `mahavishnu worktree prune-abandoned --older-than-days 7` removes abandoned registry entries older than 7 days (the registry entry only — the git worktree itself stays until you `mahavishnu worktree remove` it explicitly).
 

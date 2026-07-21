@@ -57,7 +57,7 @@ CLEANUP_ENV = "MAHAVISHNU_AUTO_WORKTREE_CLEANUP"
 
 def _log(msg: str) -> None:
     """Write a single line to stderr; Claude Code surfaces as Hook output."""
-    sys.stderr.write(f"worktree-session-isolation: {msg}\n")
+    sys.stderr.write(f"mahavishnu: {msg}\n")
     sys.stderr.flush()
 
 

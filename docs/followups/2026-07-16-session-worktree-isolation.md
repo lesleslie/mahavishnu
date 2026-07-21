@@ -11,17 +11,29 @@ topic: session-worktree-isolation
 
 ## Status
 
-**Complete.** Implementation landed across three commits:
+**Complete.** Implementation landed across three original commits
+plus a multi-agent review followup (Phases 5-7, 2026-07-20):
 
 - `5a7e001c` — Phase 1: registry + CLI (`mahavishnu worktree list-sessions`,
   `mahavishnu worktree prune-abandoned`)
 - `ccec4357` — Phase 2: hook wiring (`.claude/hooks/worktree-session-isolation.py`
   + `.claude/settings.json` registration)
-- Phase 4 (2026-07-17): discovery hint in SessionStart hook — addresses
-  the discoverability gap noted after the rollout. One-line stderr
-  message when `MAHAVISHNU_AUTO_WORKTREE` is unset and conditions
-  suggest the user would benefit. Silenced by setting
-  `MAHAVISHNU_AUTO_WORKTREE` to any value.
+- `177acc76` — Phase 3: rollout docs
+- `5bc29b3e` — Phase 4: discovery hint in SessionStart hook
+- `e8ea440` — Phase 5a: lost-update race fix (`locked_json_modify` +
+  `SKIP_WRITE`; `_check_not_symlink` → `_refuse_symlink_target`;
+  `_short_session_id` → `short_session_id`)
+- `054df70` — Phase 5b: hook dispatch hardening (positional argv[1]
+  accepted; payload type validation in `_hook_io`; `--` separator in
+  git worktree add argv)
+- `1a0d39a` — Phase 5c: real git worktree detection
+  (`--git-common-dir` → `--git-dir`)
+- `3ee593d` — Phase 5d: CLI tests for list-sessions/prune-abandoned
+- `ffe4397` — Phase 5e: registry edge-case tests + corrupt-shape
+  normalization + envelope finalization
+- `2a6082f` — Phase 6: refactor `JsonFileLockStore` and
+  `UsageTracker` to delegate to `json_state_store` (closes the
+  misleading "single source of truth" claim; the SoT is now real)
 
 Opt-in via `MAHAVISHNU_AUTO_WORKTREE=1`. Default-off — no filesystem
 mutation without the env var. The only default-off side effect is the
@@ -167,6 +179,15 @@ mahavishnu worktree remove mahavishnu ~/worktrees/agent-XXXXXXXX
 - 4-lens plan: `/Users/les/.claude/plans/cheerful-marinating-fountain.md`
 - Decision record: `.claude/decisions/session-worktree-defaults.md`
 - Pickup context: `docs/followups/.archive/2026-07-16-multi-session-mcp-contention.md`
+- Multi-agent review: 4 parallel reviews (architecture, security,
+  Claude Code integration, test quality), 2026-07-20
 - Phase 1 commit: `5a7e001c`
 - Phase 2 commit: `ccec4357`
+- Phase 3 commit: `177acc76`
 - Phase 4 commit: `5bc29b3e` (discovery hint + docs)
+- Phase 5a commit: `e8ea440` (lost-update race + write-path TOCTOU)
+- Phase 5b commit: `054df70` (hook dispatch + payload + option-injection)
+- Phase 5c commit: `1a0d39a` (real-git worktree detection)
+- Phase 5d commit: `3ee593d` (CLI tests)
+- Phase 5e commit: `ffe4397` (registry edge cases + corrupt-shape fix)
+- Phase 6 commit: `2a6082f` (json_state_store SoT consolidation)

@@ -131,4 +131,10 @@ recommended posture.
 - Phase 1 commit: `5a7e001c` (registry + CLI)
 - Phase 2 commit: `ccec4357` (hook + settings wiring)
 - Phase 4 commit: `5bc29b3e` (discovery hint + docs)
+- Phase 5a commit: `e8ea440` (lost-update race + write-path TOCTOU)
+- Phase 5b commit: `054df70` (hook dispatch + payload + option-injection)
+- Phase 5c commit: `1a0d39a` (real-git worktree detection)
+- Phase 5d commit: `3ee593d` (CLI tests)
+- Phase 5e commit: `ffe4397` (registry edge cases + corrupt-shape fix)
+- Phase 6 commit: `2a6082f` (json_state_store SoT consolidation)
 - Plan-template lifecycle: `.claude/decisions/wire-up-contract.md`
