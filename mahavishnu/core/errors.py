@@ -15,7 +15,18 @@ from __future__ import annotations
 
 from datetime import UTC, datetime
 from enum import StrEnum
+import re
 from typing import ClassVar
+
+_REDACT_PATTERN = re.compile(
+    r"(?i)(?:sk-[a-z0-9-]{8,}|ghp_[a-z0-9]{8,}|xox[ab]-[a-z0-9-]{8,}|"
+    r"ya29\.[a-z0-9_-]{4,}|bearer\s+[a-z0-9._-]{8,})"
+)
+
+
+def _redact_message(text: str) -> str:
+    """Replace credential-shaped substrings with *** for safe str(err) output."""
+    return _REDACT_PATTERN.sub("***", text)
 
 
 class ErrorCode(StrEnum):
@@ -935,7 +946,7 @@ class WorkerUnavailableError(MahavishnuError):
     ) -> None:
         requirements = list(missing_requirements)
         super().__init__(
-            f"Worker {worker_type} unavailable ({state}): {message}",
+            f"Worker {worker_type} unavailable ({state}): {_redact_message(message)}",
             ErrorCode.WORKER_UNAVAILABLE,
             details={
                 "worker_type": worker_type,
@@ -957,7 +968,7 @@ class ContainerDaemonUnavailable(MahavishnuError):  # noqa: N818
 
     def __init__(self, *, runtime: str, error: str) -> None:
         super().__init__(
-            f"Container runtime {runtime!r} unavailable: {error}",
+            f"Container runtime {runtime!r} unavailable: {_redact_message(error)}",
             ErrorCode.WORKER_UNAVAILABLE,
             details={"runtime": runtime},
         )
