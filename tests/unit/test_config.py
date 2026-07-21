@@ -10,6 +10,7 @@ from mahavishnu.core.config import (
     AgnoMemoryConfig,
     AuthConfig,
     DependencyConfig,
+    EventBridgeConfig,
     GoalParsingConfig,
     GoalTeamsConfig,
     GoalTeamsFeatureFlags,
@@ -61,6 +62,24 @@ def test_default_config_values():
     assert config.health.dependencies["akosha"].required is False
     # SECURITY: Empty connection string by default, not default credentials
     assert config.otel_storage.connection_string == ""
+
+
+def test_eventbridge_default_factory_resolves() -> None:
+    """Regression: EventBridgeConfig default_factory must resolve at module-import time.
+
+    Pydantic evaluates ``default_factory=EventBridgeConfig`` when constructing
+    ``MahavishnuSettings()`` and the nested ``GoalTeamsFeatureFlags.eventbridge``
+    field. If ``EventBridgeConfig`` is declared *after* either consumer class
+    in ``mahavishnu/core/config.py``, pydantic raises ``NameError: name
+    'EventBridgeConfig' is not defined`` at import time. This test would have
+    caught the 2026-07-13 launchd crash where class reordering broke the
+    EventBridge publisher wiring.
+    """
+    settings = MahavishnuSettings()
+    flags = settings.goal_teams.feature_flags
+
+    assert isinstance(settings.eventbridge, EventBridgeConfig)
+    assert isinstance(flags.eventbridge, EventBridgeConfig)
 
 
 def test_config_custom_values():
