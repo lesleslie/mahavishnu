@@ -1313,8 +1313,8 @@ def workers_spawn(
         maha_app = MahavishnuApp()
 
         # Check if workers are enabled
-        if not getattr(maha_app.config, "workers_enabled", True):
-            typer.echo("ERROR: Worker orchestration is disabled")
+        if not getattr(maha_app.config.workers, "enabled", True):
+            typer.echo("ERROR: Worker orchestration is disabled", err=True)
             raise typer.Exit(code=1)
 
         # Create terminal manager (reusing existing infrastructure)
@@ -1396,8 +1396,8 @@ def workers_execute(
         maha_app = MahavishnuApp()
 
         # Check if workers are enabled
-        if not getattr(maha_app.config, "workers_enabled", True):
-            typer.echo("ERROR: Worker orchestration is disabled")
+        if not getattr(maha_app.config.workers, "enabled", True):
+            typer.echo("ERROR: Worker orchestration is disabled", err=True)
             raise typer.Exit(code=1)
 
         # Create managers
