@@ -127,8 +127,12 @@ class SessionWorktreeRegistry:
         Honors schema_version: if the file declares a version different
         from ``SUPPORTED_SCHEMA_VERSION``, sets ``self._read_only = True``
         so subsequent writes are rejected (no overwriting of an
-        unknown-version file).
+        unknown-version file) and emits a one-line stderr diagnostic
+        so the operator can see why writes are being refused (rather
+        than a silent DoS — per Security audit finding #4, 2026-07-20).
         """
+        import sys
+
         data = locked_json_read(self._path)
         if data is None:
             self._read_only = False
@@ -141,7 +145,21 @@ class SessionWorktreeRegistry:
             self._read_only = False
             return self._empty()
         if version != SUPPORTED_SCHEMA_VERSION:
-            # Future or legacy version — refuse to write until migrated.
+            if isinstance(version, int):
+                direction = "newer" if version > SUPPORTED_SCHEMA_VERSION else "older"
+            else:
+                # Non-integer schema_version (e.g. string, list) — can't
+                # meaningfully compare; treat as "unknown" version.
+                direction = "unknown"
+            sys.stderr.write(
+                f"mahavishnu: refusing to write — registry file declares "
+                f"schema_version={version!r}, this build supports "
+                f"v{SUPPORTED_SCHEMA_VERSION} ({direction}). "
+                f"See docs/CONFIGURATION.md or upgrade.\n"
+            )
+            sys.stderr.flush()
+            # Future, legacy, or malformed version — refuse to write until
+            # the file is migrated or removed.
             self._read_only = True
             return self._empty()
         sessions = data.get("sessions", {})

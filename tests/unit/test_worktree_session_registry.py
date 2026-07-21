@@ -325,6 +325,31 @@ def test_string_schema_version_is_read_only(
     assert data["schema_version"] == "one"
 
 
+def test_unsupported_schema_version_logs_stderr_diagnostic(
+    registry: SessionWorktreeRegistry, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """Unknown schema_version → refuse to write + emit one-line stderr.
+
+    Per Security audit finding #4 (2026-07-20): the silent read-only
+    behavior is a DoS-with-no-diagnostic. Operators should see WHY
+    writes are being refused.
+    """
+    import json
+
+    registry.path.parent.mkdir(parents=True, exist_ok=True)
+    registry.path.write_text(json.dumps({
+        "schema_version": 999,  # way newer than supported
+        "updated_at": "2026-07-01T00:00:00.000Z",
+        "sessions": {},
+    }))
+
+    # Read triggers the diagnostic
+    registry.get("anything")
+    err = capsys.readouterr().err
+    assert "refusing to write" in err
+    assert "schema_version=999" in err
+
+
 def test_age_filter_older_than_days_active(
     registry: SessionWorktreeRegistry,
 ) -> None:
