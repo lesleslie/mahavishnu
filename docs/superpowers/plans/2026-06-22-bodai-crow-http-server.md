@@ -10,21 +10,15 @@ topic: bodai-crow-http-server
 # Bodai Crow HTTP MCP Server — Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
-
-**Goal:** Build a Bodai-native HTTP MCP server at port 8675 that exposes file, web, and terminal tools to all Bodai consumers (pool workers, CLI, ACP agents) — not just Claude Code.
-
-**Architecture:** A-hybrid: `terminal` proxies to a persistent crow-mcp stdio subprocess via `AsyncExitStack`-managed `ClientSession`; all other tools (`read`, `write`, `edit`, `glob`, `grep`, `web_fetch`, `web_fetch_batch`, `web_search`) are natively implemented with async-first I/O, ripgrep, trafilatura, and a vendored rapidfuzz-accelerated edit cascade. Server uses mcp-common `StandardServer` at `mcp_common.profiles.standard`.
-
-**Tech Stack:** Python 3.13, FastMCP / mcp-common `StandardServer`, httpx2[zstd], aiofiles, rapidfuzz, trafilatura, selectolax, ripgrep (system binary), SearXNG (Docker), respx (tests)
-
-**Spec:** `docs/superpowers/specs/2026-06-21-bodai-crow-server-design.md`
-
-**Out of scope:** httpx2 migration across repos (spec §9) — separate plan.
+> **Goal:** Build a Bodai-native HTTP MCP server at port 8675 that exposes file, web, and terminal tools to all Bodai consumers (pool workers, CLI, ACP agents) — not just Claude Code.
+> **Architecture:** A-hybrid: `terminal` proxies to a persistent crow-mcp stdio subprocess via `AsyncExitStack`-managed `ClientSession`; all other tools (`read`, `write`, `edit`, `glob`, `grep`, `web_fetch`, `web_fetch_batch`, `web_search`) are natively implemented with async-first I/O, ripgrep, trafilatura, and a vendored rapidfuzz-accelerated edit cascade. Server uses mcp-common `StandardServer` at `mcp_common.profiles.standard`.
+> **Tech Stack:** Python 3.13, FastMCP / mcp-common `StandardServer`, httpx2[zstd], aiofiles, rapidfuzz, trafilatura, selectolax, ripgrep (system binary), SearXNG (Docker), respx (tests)
+> **Spec:** `docs/superpowers/specs/2026-06-21-bodai-crow-server-design.md`
+> **Out of scope:** httpx2 migration across repos (spec §9) — separate plan.
 
 ## Revision Notes
 
 **v2 — 2026-06-22 (post-review fixes)**
-
 Applied 5 blocking fixes from 3-agent parallel review (crackerjack compliance, integration/architecture, test coverage):
 
 1. **`_PRIVATE_NETS` expanded** (Task 1) — added CGNAT (`100.64.0.0/10`), `0.0.0.0/8`, multicast (`224.0.0.0/4`), reserved (`240.0.0.0/4`), IPv6 unspecified (`::/128`), and `::ffff:0:0/96` (IPv4-mapped). Added `_is_blocked()` coercion so `::ffff:127.0.0.1` cannot bypass `127.0.0.0/8`. Test parametrization covers 14 reserved ranges.

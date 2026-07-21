@@ -12,11 +12,10 @@ topic: observability
 > **Update (2026-04-02):** Health-check architecture remains valid.
 > Dependency criticality should follow `docs/plans/2026-04-02-storage-consolidation-and-akosha-role.md`.
 > In the consolidated storage architecture, Akosha is optional for core Mahavishnu startup.
-
-**Date:** 2026-02-27
-**Status:** Approved  <!-- legacy status: Approved — see YAML frontmatter -->
-**Authors:** Claude + User collaboration
-**Related:** Expert audit of mDNS/Zeroconf and Device Discovery features
+> **Date:** 2026-02-27
+> **Status:** Approved <!-- legacy status: Approved — see YAML frontmatter -->
+> **Authors:** Claude + User collaboration
+> **Related:** Expert audit of mDNS/Zeroconf and Device Discovery features
 
 ______________________________________________________________________
 

@@ -9,11 +9,7 @@ topic: learning-pipeline
 
 # Mahavishnu Self-Improvement System Design
 
-**Date:** 2026-02-20
-**Status:** Approved  <!-- legacy status: Approved — see YAML frontmatter -->
-**Author:** Claude + Les
-
-______________________________________________________________________
+## **Date:** 2026-02-20 **Status:** Approved <!-- legacy status: Approved — see YAML frontmatter --> **Author:** Claude + Les
 
 ## Overview
 

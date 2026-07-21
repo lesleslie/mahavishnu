@@ -1,11 +1,11 @@
 ---
 status: complete
 role: historical
+topic: observability
 date: 2026-07-16
 last_reviewed: 2026-07-16
 superseded_by: null
 blocks_on: []
-topic: observability
 ---
 
 # Initiative 14: Dashboard Phase 3 (Grafana Alignment)

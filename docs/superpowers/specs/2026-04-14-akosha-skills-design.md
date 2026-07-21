@@ -1,22 +1,19 @@
 ---
 status: draft
 role: implementation
+topic: learning-pipeline
 date: 2026-07-16
 last_reviewed: 2026-07-16
 superseded_by: null
 blocks_on: []
-topic: learning-pipeline
 ---
 
 # Akosha Skills Design: Code Archaeologist & Quality Pulse
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
-
-**Goal:** Two standalone Claude Code skills that make Akosha's cross-system intelligence discoverable and actionable from developer workflows.
-
-**Architecture:** Pure SKILL.md prompt files — no Python code, no new MCP tools. Each skill composes existing Akosha MCP tools into focused workflows with smart defaults and structured output. Falls back to Mahavishnu's repo resolution chain when Akosha is unavailable.
-
-**Tech Stack:** Claude Code skills (SKILL.md), Akosha MCP tools, Mahavishnu ecosystem.yaml/repos.yaml
+> **Goal:** Two standalone Claude Code skills that make Akosha's cross-system intelligence discoverable and actionable from developer workflows.
+> **Architecture:** Pure SKILL.md prompt files — no Python code, no new MCP tools. Each skill composes existing Akosha MCP tools into focused workflows with smart defaults and structured output. Falls back to Mahavishnu's repo resolution chain when Akosha is unavailable.
+> **Tech Stack:** Claude Code skills (SKILL.md), Akosha MCP tools, Mahavishnu ecosystem.yaml/repos.yaml
 
 ______________________________________________________________________
 

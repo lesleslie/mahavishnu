@@ -11,8 +11,7 @@ topic: error-handling
 
 ## Status
 
-**COMPLETED** (2026-05-23) — All tasks done: Oneiric LoggingConfig updated, Crackerjack migrated (3 call sites + dead-code cleanup), Session-Buddy + Akosha startup calls added, Dhara fully swapped to structlog via Oneiric (preserving public API: `get_logger`, `log_operation`, `log_context`), all 26 Crackerjack logging tests passing.  <!-- legacy status: COMPLETED — see YAML frontmatter -->
-
+**COMPLETED** (2026-05-23) — All tasks done: Oneiric LoggingConfig updated, Crackerjack migrated (3 call sites + dead-code cleanup), Session-Buddy + Akosha startup calls added, Dhara fully swapped to structlog via Oneiric (preserving public API: `get_logger`, `log_operation`, `log_context`), all 26 Crackerjack logging tests passing. <!-- legacy status: COMPLETED — see YAML frontmatter -->
 **Location:** `mahavishnu/docs/plans/2026-05-23-unified-exception-logging.md`
 
 ## Background
@@ -22,8 +21,7 @@ The Bodai ecosystem has three separate structlog configurations that don't handl
 - **Oneiric** (`core/logging.py`): canonical library config; uses `format_exc_info` → plain multiline **string** in `exception` field
 - **Crackerjack** (`services/logging.py`): independent CLI config; has correlation IDs and a `LoggingContext` helper, but **no exception processor at all** — exception info goes straight to stdlib
 - **Session-Buddy / Akosha**: no central config — raw `structlog.get_logger()` per-file
-
-The result: AI agents consuming logs can't parse exception data structurally. `format_exc_info` dumps the traceback as a raw string blob; `dict_tracebacks` (structlog built-in since v22.1.0) emits it as a machine-readable list of frame dicts.
+  The result: AI agents consuming logs can't parse exception data structurally. `format_exc_info` dumps the traceback as a raw string blob; `dict_tracebacks` (structlog built-in since v22.1.0) emits it as a machine-readable list of frame dicts.
 
 ______________________________________________________________________
 

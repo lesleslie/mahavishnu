@@ -10,12 +10,9 @@ topic: bodai-auth
 # Bodai Inter-Service Authentication Standardization — Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [x]`) syntax for tracking.
-
-**Goal:** Add a canonical `mcp_common/auth/` package that provides standardized JWT primitives, RBAC, audit logging, and Oneiric secrets integration, then migrate all five Bodai services from their divergent auth implementations to thin wrappers around this shared core.
-
-**Architecture:** Core + extension pattern. `mcp-common` owns all JWT logic, Permission enum, `@require_auth()` decorator, audit events, and `AuthConfig`. Each service replaces its auth module internals with mcp-common delegates while keeping its public API identical. Auth defaults to disabled (no env var = no auth), so all existing integrations keep working unchanged.
-
-**Tech Stack:** PyJWT (already in mcp-common deps), Oneiric `SecretValueCache` for TTL caching, Python `logging` for structured audit output, Pydantic for `AuthConfig` validation.
+> **Goal:** Add a canonical `mcp_common/auth/` package that provides standardized JWT primitives, RBAC, audit logging, and Oneiric secrets integration, then migrate all five Bodai services from their divergent auth implementations to thin wrappers around this shared core.
+> **Architecture:** Core + extension pattern. `mcp-common` owns all JWT logic, Permission enum, `@require_auth()` decorator, audit events, and `AuthConfig`. Each service replaces its auth module internals with mcp-common delegates while keeping its public API identical. Auth defaults to disabled (no env var = no auth), so all existing integrations keep working unchanged.
+> **Tech Stack:** PyJWT (already in mcp-common deps), Oneiric `SecretValueCache` for TTL caching, Python `logging` for structured audit output, Pydantic for `AuthConfig` validation.
 
 ______________________________________________________________________
 

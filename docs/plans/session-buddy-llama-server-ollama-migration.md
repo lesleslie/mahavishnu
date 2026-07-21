@@ -1,11 +1,11 @@
 ---
 status: complete
 role: historical
+topic: routing-composition
 date: 2026-07-16
 last_reviewed: 2026-07-16
 superseded_by: null
 blocks_on: []
-topic: routing-composition
 ---
 
 # Plan: Replace ONNX + Transformers with llama-server + Ollama in Bodai Ecosystem
@@ -15,7 +15,6 @@ topic: routing-composition
 ## Context
 
 The Bodai ecosystem has accumulated heavy ML dependencies (`onnxruntime`, `transformers`, `sentence-transformers`) that create version conflicts across components. The goal is to eliminate these by routing all embedding requests through the Bodai-standard HTTP embedding services: **llama-server** (preferred) → **Ollama** (fallback) → graceful degradation.
-
 **Ecosystem status:**
 
 - Mahavishnu: FastEmbed removed (previously caused conflicts)
@@ -23,8 +22,7 @@ The Bodai ecosystem has accumulated heavy ML dependencies (`onnxruntime`, `trans
 - Dhara: `onnxruntime` removed (Linux-only, declared but unused)
 - Session-Buddy: ✅ `onnxruntime` + `transformers` **removed** — HTTP chain (llama-server → Ollama) in place
 - Crackerjack: ✅ `sentence-transformers` + `transformers` **removed** — FallbackIssueEmbedder (TF-IDF) active
-
-Both session-buddy and Crackerjack already have fallback chains that degrade gracefully when these libs are unavailable — no new code patterns needed, just dependency removal.
+  Both session-buddy and Crackerjack already have fallback chains that degrade gracefully when these libs are unavailable — no new code patterns needed, just dependency removal.
 
 ______________________________________________________________________
 

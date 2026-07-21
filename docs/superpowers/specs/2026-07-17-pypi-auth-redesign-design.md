@@ -1,11 +1,11 @@
 ---
 status: draft
 role: canonical
+topic: crackerjack-publish-auth
 date: 2026-07-17
 last_reviewed: 2026-07-17
 superseded_by: null
 blocks_on: []
-topic: crackerjack-publish-auth
 ---
 
 # PyPI Auth Redesign in Crackerjack — Design (2026-07-17)
@@ -22,8 +22,8 @@ mangled between discovery (`keyring get`, env-var read) and use
 Three sources must be supported:
 
 1. Trusted Publishing (OIDC) — preferred, tokenless
-2. `UV_PUBLISH_TOKEN` environment variable
-3. `keyring` CLI storage
+1. `UV_PUBLISH_TOKEN` environment variable
+1. `keyring` CLI storage
 
 ## Context (current state)
 
@@ -327,12 +327,16 @@ def test_publish_injects_unmodified_token(
 ## Rollout
 
 1. Land this spec (no version bump of crackerjack — same public CLI).
-2. Land the implementation in one PR.
-3. dhara's `pyproject.toml` line 8 says `"crackerjack"` (no pin) —
+
+1. Land the implementation in one PR.
+
+1. dhara's `pyproject.toml` line 8 says `"crackerjack"` (no pin) —
    no bump required; uv will resolve the next released version.
-4. If any other Bodai repo pins crackerjack to a specific version,
+
+1. If any other Bodai repo pins crackerjack to a specific version,
    bump that pin in a follow-up commit.
-5. Add a CHANGELOG entry in crackerjack:
+
+1. Add a CHANGELOG entry in crackerjack:
 
    > Refactor publish auth: new `PyPIAuth` abstraction prevents the
    > token-corruption class of bugs that affected earlier 0.68.x
@@ -343,6 +347,7 @@ def test_publish_injects_unmodified_token(
 ## Files touched
 
 **New (5):**
+
 - `crackerjack/services/pypi_auth/__init__.py`
 - `crackerjack/services/pypi_auth/_auth.py`
 - `crackerjack/services/pypi_auth/_providers.py`
@@ -350,15 +355,18 @@ def test_publish_injects_unmodified_token(
 - `crackerjack/services/pypi_auth/_trusted_publishing.py`
 
 **New tests (4):**
+
 - `tests/unit/services/test_pypi_auth.py`
 - `tests/unit/services/test_pypi_auth_providers.py`
 - `tests/unit/services/test_keyring_raw.py`
 - `tests/unit/managers/test_publish_manager_pyi_auth.py`
 
 **Modified (1):**
+
 - `crackerjack/managers/publish_manager.py` — replace the auth flow
 
 **Unchanged:**
+
 - `crackerjack/services/security.py`
 - `crackerjack/cli/*` — no CLI surface change
 - Public Python API (CLI exit codes, banner strings, env-var names)

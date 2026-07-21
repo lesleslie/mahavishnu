@@ -10,12 +10,9 @@ topic: track2-openhands
 # Track 2 — OpenHands Integration Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
-
-**Goal:** Integrate OpenHands autonomous dev agent (v1.7.0) into Mahavishnu via a thin HTTP+WebSocket client, producing an `openhands_run` MCP tool with an integrated Crackerjack quality gate.
-
-**Architecture:** `OpenHandsClient` (httpx + websockets) wraps the OpenHands REST API. `OpenHandsWorker` extends `BaseWorker` and is registered under `WorkerCategory.GATEWAY` — it routes through HTTP, not PTY. The `openhands_run` MCP tool (registered in `openhands_tools.py`) owns the Crackerjack quality loop: this keeps workers decoupled from quality tools. `workspace_dir` is config-only, path-validated at startup.
-
-**Tech Stack:** httpx[http2], websockets, FastMCP, Pydantic v2, oneiric logger, Python 3.13, OpenHands REST API (port 3000).
+> **Goal:** Integrate OpenHands autonomous dev agent (v1.7.0) into Mahavishnu via a thin HTTP+WebSocket client, producing an `openhands_run` MCP tool with an integrated Crackerjack quality gate.
+> **Architecture:** `OpenHandsClient` (httpx + websockets) wraps the OpenHands REST API. `OpenHandsWorker` extends `BaseWorker` and is registered under `WorkerCategory.GATEWAY` — it routes through HTTP, not PTY. The `openhands_run` MCP tool (registered in `openhands_tools.py`) owns the Crackerjack quality loop: this keeps workers decoupled from quality tools. `workspace_dir` is config-only, path-validated at startup.
+> **Tech Stack:** httpx[http2], websockets, FastMCP, Pydantic v2, oneiric logger, Python 3.13, OpenHands REST API (port 3000).
 
 ## Global Constraints
 

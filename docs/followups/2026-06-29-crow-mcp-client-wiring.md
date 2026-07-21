@@ -1,11 +1,11 @@
 ---
 status: complete
 role: historical
+topic: crow-mcp-client
 date: 2026-07-16
 last_reviewed: 2026-07-16
 superseded_by: null
 blocks_on: []
-topic: crow-mcp-client
 ---
 
 # Crow Adapter `mcp_client=None` Wiring — Bootstrap Followup

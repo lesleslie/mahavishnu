@@ -1,30 +1,28 @@
 ---
 status: draft
 role: implementation
+topic: adapter-architecture
 date: 2026-07-16
 last_reviewed: 2026-07-16
 superseded_by: null
 blocks_on: []
-topic: adapter-architecture
 ---
 
 # Agent & Skill Modernization: Ecosystem Tool Integration
 
 **Date:** 2026-04-26
-**Status:** Draft  <!-- legacy status: Draft — see YAML frontmatter -->
+**Status:** Draft <!-- legacy status: Draft — see YAML frontmatter -->
 **Approach:** Layered context enrichment (Approach A)
 **Prerequisite:** Config Consolidation spec (2026-04-26-config-consolidation-design.md)
 
 ## 1. Problem Statement
 
 After consolidating all Claude Code configuration into the Mahavishnu project directory, the content of agents and skills needs to be modernized to take full advantage of the ecosystem's MCP servers and tools.
-
 **Current state:**
 
 - **101 agents**: Only 5 (5%) reference any ecosystem component. The remaining 97 are generic stubs with no awareness of Mahavishnu, Akosha, Session-Buddy, Crackerjack, or Dhara.
 - **27 skills** (22 native + 5 symlinked from `~/.agents/`): Of the 22 native skills, 18 (82%) already reference ecosystem tools, but many have stale references (wrong tool names, outdated ports, missing new tools).
-
-**Impact:** When Claude dispatches to a subagent or invokes a skill, it doesn't know what ecosystem MCP tools are available, leading to redundant work, missed optimization opportunities, and inconsistent tool usage patterns.
+  **Impact:** When Claude dispatches to a subagent or invokes a skill, it doesn't know what ecosystem MCP tools are available, leading to redundant work, missed optimization opportunities, and inconsistent tool usage patterns.
 
 ## 2. Goals
 
@@ -49,7 +47,6 @@ After consolidating all Claude Code configuration into the Mahavishnu project di
 |----------|-------|------------|
 | Reference ecosystem components | 5 | 5% |
 | No ecosystem references | 96 | 95% |
-
 **Ecosystem-aware agents (5):**
 
 - `mahavishnu-specialist.md` — references Mahavishnu
@@ -61,13 +58,11 @@ After consolidating all Claude Code configuration into the Mahavishnu project di
 ### 4.2 Skill MCP Integration
 
 Auditing the 22 native skills (the 5 symlinked from `~/.agents/` are not in scope for this spec):
-
 | Category | Count | Percentage |
 |----------|-------|------------|
 | Reference ecosystem MCP tools | 18 | 82% |
 | Missing ecosystem MCP refs | 2 | 9% (swiftui-ipc-client, testing-strategies) |
 | Have stale references (estimated) | ~10 | ~45% |
-
 **Most-used skills (by usage count):**
 
 1. `session-buddy:checkpoint` — 323 invocations
@@ -99,21 +94,19 @@ Auditing the 22 native skills (the 5 symlinked from `~/.agents/` are not in scop
 1. `oneiric-specialist` — update with current Oneiric/Dhara MCP tools
 1. `mcp-integration-expert` — update with full MCP tool inventory
 1. `refactoring-specialist` — update with Akosha pattern search tools
-
-**10 generic agents** (add ecosystem awareness):
-
-| Agent | Ecosystem MCP Tools to Reference |
-|-------|----------------------------------|
-| `code-reviewer` | crackerjack (quality gates), akosha (cross-repo patterns) |
-| `security-auditor` | crackerjack (security scans), mahavishnu (auth), session-buddy (error logs) |
-| `python-pro` | crackerjack (pytest), akosha (code patterns), mahavishnu (pools) |
-| `architecture-council` | akosha (cross-repo patterns), dhara (adapter patterns) |
-| `devops-troubleshooter` | mahavishnu (health checks), akosha (metrics), session-buddy (logs) |
-| `pytest-hypothesis-specialist` | crackerjack (test runner), akosha (error patterns) |
-| `database-operations-specialist` | dhara (persistence), akosha (trend analysis) |
-| `frontend-developer` | mahavishnu (workflow routing), session-buddy (component search) |
-| `documentation-specialist` | akosha (semantic search), session-buddy (conversation context) |
-| `incident-responder` | akosha (anomaly detection), mahavishnu (workflow status), session-buddy (error logs) |
+   **10 generic agents** (add ecosystem awareness):
+   | Agent | Ecosystem MCP Tools to Reference |
+   |-------|----------------------------------|
+   | `code-reviewer` | crackerjack (quality gates), akosha (cross-repo patterns) |
+   | `security-auditor` | crackerjack (security scans), mahavishnu (auth), session-buddy (error logs) |
+   | `python-pro` | crackerjack (pytest), akosha (code patterns), mahavishnu (pools) |
+   | `architecture-council` | akosha (cross-repo patterns), dhara (adapter patterns) |
+   | `devops-troubleshooter` | mahavishnu (health checks), akosha (metrics), session-buddy (logs) |
+   | `pytest-hypothesis-specialist` | crackerjack (test runner), akosha (error patterns) |
+   | `database-operations-specialist` | dhara (persistence), akosha (trend analysis) |
+   | `frontend-developer` | mahavishnu (workflow routing), session-buddy (component search) |
+   | `documentation-specialist` | akosha (semantic search), session-buddy (conversation context) |
+   | `incident-responder` | akosha (anomaly detection), mahavishnu (workflow status), session-buddy (error logs) |
 
 ### 5.2 Enrichment Format
 
@@ -121,6 +114,7 @@ Auditing the 22 native skills (the 5 symlinked from `~/.agents/` are not in scop
 
 ```yaml
 ---
+
 name: python-pro
 description: Write idiomatic Python code advanced features like decorators, generators, async/await. Optimizes performance, implements design patterns, ens...
 model: sonnet

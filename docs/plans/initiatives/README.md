@@ -1,11 +1,11 @@
 ---
 status: shipped
 role: canonical
+topic: convergence-control-plane
 date: 2026-07-16
 last_reviewed: 2026-07-16
 superseded_by: null
 blocks_on: []
-topic: convergence-control-plane
 ---
 
 # Initiative Plans Index

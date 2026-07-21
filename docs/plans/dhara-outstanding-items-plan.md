@@ -1,11 +1,11 @@
 ---
 status: active
 role: implementation
+topic: storage-consolidation
 date: 2026-07-16
 last_reviewed: 2026-07-16
 superseded_by: null
 blocks_on: []
-topic: storage-consolidation
 ---
 
 # Dhara AsyncStorage Bug Fix + Outstanding Items Plan
@@ -15,9 +15,7 @@ topic: storage-consolidation
 
 ## Context
 
-After completing the MCP connection stability plan (per `mcp-connection-stability-plan.md`), we deferred Dhara's `TypeError: Expected AsyncStorage` initialization bug and four outstanding review items. This plan addresses all of them.
-
-______________________________________________________________________
+## After completing the MCP connection stability plan (per `mcp-connection-stability-plan.md`), we deferred Dhara's `TypeError: Expected AsyncStorage` initialization bug and four outstanding review items. This plan addresses all of them.
 
 ## Part 1: Dhara Initialization Bug — Root Cause
 

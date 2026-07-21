@@ -10,12 +10,9 @@ topic: observability
 # WebSocket Phase 3 Implementation Plan
 
 > **For Claude:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task.
-
-**Goal:** Implement WebSocket servers for enhanced collaboration services (dhara, excalidraw, fastblocks) with real-time event broadcasting and MCP integration.
-
-**Architecture:** Room-based WebSocket broadcasting using mcp-common abstraction layer. Each service extends WebSocketServer base class with domain-specific broadcast methods and MCP monitoring tools.
-
-**Tech Stack:** mcp-common.websocket, FastMCP, Python 3.11+, async/await, Pydantic validation
+> **Goal:** Implement WebSocket servers for enhanced collaboration services (dhara, excalidraw, fastblocks) with real-time event broadcasting and MCP integration.
+> **Architecture:** Room-based WebSocket broadcasting using mcp-common abstraction layer. Each service extends WebSocketServer base class with domain-specific broadcast methods and MCP monitoring tools.
+> **Tech Stack:** mcp-common.websocket, FastMCP, Python 3.11+, async/await, Pydantic validation
 
 ______________________________________________________________________
 

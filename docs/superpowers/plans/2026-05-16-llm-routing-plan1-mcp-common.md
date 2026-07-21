@@ -10,14 +10,10 @@ topic: llm-routing-plan1
 # LLM Routing Standardization — Plan 1: mcp-common LLM Module
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
-
-**Goal:** Extend the existing `mcp_common/llm/` module to support a three-tier provider chain (MiniMax → llama-server:8081 → ollama:11434) with per-tier retry/backoff, security hooks, multimodal TaskType categories, and a HailuoAdapter for video generation.
-
-**Architecture:** This plan works entirely within `mcp-common`. The existing `FallbackChain`, `CircuitBreaker`, and `OpenAICompatibleProvider` classes are extended in-place — no new package needed. Plan 2 (downstream migration) depends on this plan shipping as mcp-common ≥0.14.0.
-
-**Tech Stack:** Python 3.13+, pydantic v2, openai SDK (async), aiohttp (for HailuoAdapter), pytest, pytest-asyncio, hypothesis
-
-**Working directory:** `/Users/les/Projects/mcp-common`
+> **Goal:** Extend the existing `mcp_common/llm/` module to support a three-tier provider chain (MiniMax → llama-server:8081 → ollama:11434) with per-tier retry/backoff, security hooks, multimodal TaskType categories, and a HailuoAdapter for video generation.
+> **Architecture:** This plan works entirely within `mcp-common`. The existing `FallbackChain`, `CircuitBreaker`, and `OpenAICompatibleProvider` classes are extended in-place — no new package needed. Plan 2 (downstream migration) depends on this plan shipping as mcp-common ≥0.14.0.
+> **Tech Stack:** Python 3.13+, pydantic v2, openai SDK (async), aiohttp (for HailuoAdapter), pytest, pytest-asyncio, hypothesis
+> **Working directory:** `/Users/les/Projects/mcp-common`
 
 ______________________________________________________________________
 

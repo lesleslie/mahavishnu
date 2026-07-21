@@ -1,17 +1,17 @@
 ---
 status: shipped
 role: implementation
+topic: persistence
 date: 2026-07-16
 last_reviewed: 2026-07-16
 superseded_by: null
 blocks_on: []
-topic: persistence
 ---
 
 # DLQ Fail-Closed Wiring + Observability (Full #3)
 
 **Date:** 2026-07-16
-**Status:** shipped, implementation — all three phases complete (2026-07-16)  <!-- legacy status — see YAML frontmatter -->
+**Status:** shipped, implementation — all three phases complete (2026-07-16) <!-- legacy status — see YAML frontmatter -->
 **Owner:** Claude Code (session 854beabd)
 **Scope:** Make the opt-in DLQ fail-closed policy actually work in production, close the runtime OpenSearch-write data-loss window, and add the observability the original followup requested.
 **Purpose:** The `2026-06-29-dlq-silent-fallback.md` followup self-declared "Resolved," but a 2026-07-16 audit found the shipped flag is inert in production and a runtime write failure still silently drops failed tasks to a per-process in-memory deque. This plan closes that gap.
@@ -52,6 +52,7 @@ topic: persistence
 
 **Goal:** The config value reaches every production DLQ constructor.
 **Tasks:**
+
 - `mahavishnu/core/dlq_integration.py:387` — pass `fail_on_opensearch_unavailable=app.config.dlq.fail_on_opensearch_unavailable`.
 - `mahavishnu/_main_cli.py:366` — construct the heal-path DLQ with the flag from settings for consistency (note: this path only `list_tasks`, never `enqueue`, so the flag is inert here — add a comment saying so).
 - Remove the duplicated docstring block in `DeadLetterQueue.__init__` (`:223-229`).
@@ -72,6 +73,7 @@ topic: persistence
 
 **Goal:** With fail-closed on, a failed OpenSearch write raises rather than leaving a memory-only phantom.
 **Tasks:**
+
 - In `enqueue`, when `self._fail_on_opensearch_unavailable` is on: attempt persist first and only append to `_queue` on success; on persist failure raise `ExternalServiceError` (do not append). When off: preserve current order/best-effort behavior exactly.
 - Give `_persist_task` a strict variant (or a `strict: bool` param) that re-raises instead of swallowing, used only on the fail-closed path.
 - Extend `tests/unit/core/test_dead_letter_queue_fail_closed.py`: configured client whose `.index` raises → `enqueue` raises `ExternalServiceError` and the task is **not** in `_queue`; and the flag-off path is unchanged.
@@ -90,6 +92,7 @@ topic: persistence
 
 **Goal:** Fallback/rejection is visible and diagnosable.
 **Tasks:**
+
 - Add `mahavishnu_dlq_fallback_total` Counter (labels: `outcome=persisted|in_memory|rejected`), registered on the same Prometheus registry the `metrics_cli` / observability surface exports; increment in the enqueue/persist branches.
 - Add `tests/integration/core/test_dead_letter_queue_failover.py`: OpenSearch-down + flag off → task in memory + `outcome="in_memory"` increment; flag on → raises + `outcome="rejected"` increment.
 - Add `docs/runbooks/dead-letter-queue.md`: what the metric means, how to enable fail-closed, how to diagnose an activated fallback.

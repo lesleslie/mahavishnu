@@ -5,8 +5,8 @@ date: 2026-07-16
 last_reviewed: 2026-07-16
 superseded_by: null
 blocks_on: []
-topic: oneiric-config
 decision_date: 2026-01-29
+topic: oneiric-config
 ---
 
 # ADR 001: Use Oneiric for Configuration and Logging
@@ -14,6 +14,7 @@ decision_date: 2026-01-29
 ## Status
 
 <!-- legacy status: **Accepted** — see YAML frontmatter -->
+
 **Accepted**
 
 ## Context

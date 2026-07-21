@@ -1,18 +1,12 @@
----
-status: resolved
-role: implementation
-date: 2026-07-16
-last_reviewed: 2026-07-16
-superseded_by: null
-topic: bodai-hooks-sb-debug
----
+______________________________________________________________________
+
+## status: resolved role: implementation date: 2026-07-16 last_reviewed: 2026-07-16 superseded_by: null topic: bodai-hooks-sb-debug
 
 # Resolution — Bodai Hooks + Session-Buddy MCP Debug (2026-07-15)
 
 ## Status
 
-**Resolved (partial).** The pickup prompt's headline symptom (`-32000
-transport dropped` during `mcp__session-buddy__checkpoint`) is now
+**Resolved (partial).** The pickup prompt's headline symptom (`-32000 transport dropped` during `mcp__session-buddy__checkpoint`) is now
 explained as **multi-session MCP contention**, not a single-session
 transport bug. A failing validator test is in place to catch the
 underlying config-format regression so the silent failure mode can't
@@ -98,8 +92,8 @@ universally adopted.
 
 | Question | Answer | Evidence |
 |----------|--------|----------|
-| Are bodai-activity-* hooks firing? | **NO** | Missing `~/.mahavishnu/bodai-*.json` artifacts |
-| Are sb_* hooks firing? | YES | Local `~/.claude/settings.local.json` uses nested format |
+| Are bodai-activity-\* hooks firing? | **NO** | Missing `~/.mahavishnu/bodai-*.json` artifacts |
+| Are sb\_\* hooks firing? | YES | Local `~/.claude/settings.local.json` uses nested format |
 | Do any hooks do `git stash` / `git stash pop`? | NO | Read both hook scripts; only HTTP/Redis ops |
 | Is the stash-clobber fix plan relevant here? | Indirectly | Plan covers a different defect; this bug is unrelated |
 
@@ -134,21 +128,21 @@ top level (Claude Code docs put `permissions` and `hooks` as siblings).
 
 1. Four Claude Code sessions are actively running; a hot config change
    could re-trigger hook firing mid-session.
-2. The working tree has 47 dirty `docs/superpowers/plans/*.md` files
+1. The working tree has 47 dirty `docs/superpowers/plans/*.md` files
    from another session's normalization wave. Bundling this fix with
    those changes risks the drift-bundling pattern flagged in the
    project memory.
-3. Per project CLAUDE.md: "Settings are intended to stay local and
+1. Per project CLAUDE.md: "Settings are intended to stay local and
    configuration-driven, not hard-coded." The user may prefer to move
    bodai hooks to a project-local `.claude/settings.local.json` instead.
 
 ## Recommended steps after applying the fix
 
 1. Apply the fix above manually.
-2. Run the validator: `.venv/bin/python3 -m pytest tests/unit/test_claude_settings_hooks_format.py -v` — expect 4 passed.
-3. Restart Claude Code for this project (or run `/exit` then re-open) so the SessionStart hook fires.
-4. Verify `~/.mahavishnu/bodai-subscriber-state.json` exists after restart.
-5. Call any `mcp__*` tool and verify `~/.mahavishnu/bodai-post-tool-use-state.json` appears.
+1. Run the validator: `.venv/bin/python3 -m pytest tests/unit/test_claude_settings_hooks_format.py -v` — expect 4 passed.
+1. Restart Claude Code for this project (or run `/exit` then re-open) so the SessionStart hook fires.
+1. Verify `~/.mahavishnu/bodai-subscriber-state.json` exists after restart.
+1. Call any `mcp__*` tool and verify `~/.mahavishnu/bodai-post-tool-use-state.json` appears.
 
 ## Cross-references
 

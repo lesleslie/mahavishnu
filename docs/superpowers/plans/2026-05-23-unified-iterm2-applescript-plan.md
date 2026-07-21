@@ -10,12 +10,9 @@ topic: unified-iterm2-applescript
 # Unified iTerm2 AppleScript Integration — Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
-
-**Goal:** Unify AppleScript/iTerm2 integration across mdinject (Swift) and Mahavishnu (Python) using Approach C: Specification-First with Native Implementations.
-
-**Architecture:** Define canonical ITerm2 session schema, escaping rules, and AppleScript patterns in a shared spec document. Both languages implement to spec, conformance-tested independently. No runtime dependency between Swift and Python.
-
-**Tech Stack:** Python (asyncio, mcp-common), Swift (NSAppleScript), macOS iTerm2
+> **Goal:** Unify AppleScript/iTerm2 integration across mdinject (Swift) and Mahavishnu (Python) using Approach C: Specification-First with Native Implementations.
+> **Architecture:** Define canonical ITerm2 session schema, escaping rules, and AppleScript patterns in a shared spec document. Both languages implement to spec, conformance-tested independently. No runtime dependency between Swift and Python.
+> **Tech Stack:** Python (asyncio, mcp-common), Swift (NSAppleScript), macOS iTerm2
 
 ______________________________________________________________________
 

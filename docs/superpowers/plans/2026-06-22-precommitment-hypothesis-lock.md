@@ -10,12 +10,9 @@ topic: precommitment-hypothesis-lock
 # Precommitment Hypothesis Lock v1.1 Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
-
-**Goal:** Ship the v1.1 precommitment hypothesis lock — a structural gate that forces every iterative Claude worker to enumerate a hypothesis slate (≥6 candidates, ≥4 evaluation criteria) before iteration 0 and forbids slate presence on later iterations. Consumes Spec #1's `IterationReport` contract.
-
-**Architecture:** Extend Spec #1's JSON Schema with a new optional field `precommitment_slate` (referenced from a separate `precommitment_slate.v1.json`). A pure-function gate `validate_precommitment()` enforces presence/absence and structural validity. The publisher `publish_iteration_report()` runs the gate between Spec #1's schema validation and EventEnvelope creation. Failure propagates as `MahavishnuPrecommitmentViolation`, terminating the worker loop with `exit_reason="blocked"`.
-
-**Tech Stack:** Python 3.13, Pydantic v2, `jsonschema` (Spec #1's dependency), `datamodel-code-generator` (Spec #1's dependency), pytest with `asyncio_mode = "auto"`.
+> **Goal:** Ship the v1.1 precommitment hypothesis lock — a structural gate that forces every iterative Claude worker to enumerate a hypothesis slate (≥6 candidates, ≥4 evaluation criteria) before iteration 0 and forbids slate presence on later iterations. Consumes Spec #1's `IterationReport` contract.
+> **Architecture:** Extend Spec #1's JSON Schema with a new optional field `precommitment_slate` (referenced from a separate `precommitment_slate.v1.json`). A pure-function gate `validate_precommitment()` enforces presence/absence and structural validity. The publisher `publish_iteration_report()` runs the gate between Spec #1's schema validation and EventEnvelope creation. Failure propagates as `MahavishnuPrecommitmentViolation`, terminating the worker loop with `exit_reason="blocked"`.
+> **Tech Stack:** Python 3.13, Pydantic v2, `jsonschema` (Spec #1's dependency), `datamodel-code-generator` (Spec #1's dependency), pytest with `asyncio_mode = "auto"`.
 
 ______________________________________________________________________
 

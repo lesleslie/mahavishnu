@@ -10,12 +10,9 @@ topic: track4-turbovec
 # Track 4 — TurboVec Integration Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
-
-**Goal:** Add TurboVec as an explicit in-memory vector store fallback in the LlamaIndex adapter, replacing the implicit `SimpleVectorStore` path when OpenSearch is unavailable. Only the `except` block in `llamaindex_adapter_impl.py` and `pyproject.toml` are touched.
-
-**Architecture:** Three-value `_vector_backend` string: `"opensearch"` (OpenSearch available), `"turbovec"` (turbovec installed), `"memory-implicit"` (neither). The `except` block tries `from turbovec.integrations.llamaindex import TurboVec` and falls into `"memory-implicit"` on `ImportError`. No new files created.
-
-**Tech Stack:** `turbovec[llama-index]~=0.1` (new `[vector]` dep group), lazy/guarded import inside `except`, Python 3.13.
+> **Goal:** Add TurboVec as an explicit in-memory vector store fallback in the LlamaIndex adapter, replacing the implicit `SimpleVectorStore` path when OpenSearch is unavailable. Only the `except` block in `llamaindex_adapter_impl.py` and `pyproject.toml` are touched.
+> **Architecture:** Three-value `_vector_backend` string: `"opensearch"` (OpenSearch available), `"turbovec"` (turbovec installed), `"memory-implicit"` (neither). The `except` block tries `from turbovec.integrations.llamaindex import TurboVec` and falls into `"memory-implicit"` on `ImportError`. No new files created.
+> **Tech Stack:** `turbovec[llama-index]~=0.1` (new `[vector]` dep group), lazy/guarded import inside `except`, Python 3.13.
 
 ## Global Constraints
 

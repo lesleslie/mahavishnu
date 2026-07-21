@@ -134,7 +134,7 @@ Each line is built from `headers["source"]` (the component prefix),
 `envelope.topic` (the event type), and `key=value` pairs sorted out
 of `envelope.payload`. Missing fields fall back to `[unknown] unknown` so a malformed envelope never aborts the consumer loop.
 
-## Status  <!-- legacy status: In progress — see YAML frontmatter -->
+## Status <!-- legacy status: In progress — see YAML frontmatter -->
 
 In progress (Mahavishnu side complete). Phase 6A landed the
 Mahavishnu-side subscriber at `mahavishnu/core/events/bodai_subscriber.py`

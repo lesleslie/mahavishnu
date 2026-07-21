@@ -10,7 +10,7 @@ topic: convergence-control-plane
 # Bodai Deletion And Adoption Ledger
 
 **Date:** 2026-05-11
-**Status:** `draft`, `ledger`  <!-- legacy status: draft, ledger — see YAML frontmatter -->
+**Status:** `draft`, `ledger` <!-- legacy status: draft, ledger — see YAML frontmatter -->
 **Owner:** Core Eng
 **Purpose:** Track the first cross-repo deletion/adoption candidates that should only be removed after a canonical replacement, import audit, parity tests, and a Crackerjack validation artifact exist.
 

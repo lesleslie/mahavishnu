@@ -10,7 +10,7 @@ topic: convergence-control-plane
 # Shared Foundation Adoption Matrix
 
 **Date:** 2026-05-11
-**Status:** `draft`, `matrix`  <!-- legacy status: draft, matrix — see YAML frontmatter -->
+**Status:** `draft`, `matrix` <!-- legacy status: draft, matrix — see YAML frontmatter -->
 **Owner:** Core Eng
 **Purpose:** Define the adoption boundaries needed before C6a deletion batches can start.
 

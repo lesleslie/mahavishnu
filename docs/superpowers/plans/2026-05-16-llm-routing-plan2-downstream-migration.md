@@ -10,14 +10,10 @@ topic: llm-routing-plan2
 # LLM Routing Standardization — Plan 2: Downstream Migration
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
-
-**Goal:** Migrate crackerjack, session-buddy, akosha, and mahavishnu from their per-repo LLM provider implementations to the three-tier `FallbackChain` shipped in Plan 1 (mcp-common ≥0.14.0). Subscription-based usage (`claude -p`, Anthropic subscription) is removed entirely.
-
-**Architecture:** Each repo that had its own provider stack (crackerjack's `ProviderChain`, session-buddy's anthropic/gemini providers, mahavishnu's per-cloud workers) is migrated to import and configure `FallbackChain` from `mcp_common.llm`. `settings/models.yaml` in mahavishnu is the canonical source of provider configuration; crackerjack and session-buddy read their own Oneiric/MCPServerSettings config. The `TaskCategory` enum in `mahavishnu/workers/task_router.py` is extended with multimodal variants so routing decisions align with the chain's modality support.
-
-**Prerequisite:** mcp-common `0.14.0` must be published (Plan 1 complete) before any task in this plan begins.
-
-**Tech Stack:** Python 3.13+, pydantic v2, mcp-common ≥0.14.0, pytest, pytest-asyncio
+> **Goal:** Migrate crackerjack, session-buddy, akosha, and mahavishnu from their per-repo LLM provider implementations to the three-tier `FallbackChain` shipped in Plan 1 (mcp-common ≥0.14.0). Subscription-based usage (`claude -p`, Anthropic subscription) is removed entirely.
+> **Architecture:** Each repo that had its own provider stack (crackerjack's `ProviderChain`, session-buddy's anthropic/gemini providers, mahavishnu's per-cloud workers) is migrated to import and configure `FallbackChain` from `mcp_common.llm`. `settings/models.yaml` in mahavishnu is the canonical source of provider configuration; crackerjack and session-buddy read their own Oneiric/MCPServerSettings config. The `TaskCategory` enum in `mahavishnu/workers/task_router.py` is extended with multimodal variants so routing decisions align with the chain's modality support.
+> **Prerequisite:** mcp-common `0.14.0` must be published (Plan 1 complete) before any task in this plan begins.
+> **Tech Stack:** Python 3.13+, pydantic v2, mcp-common ≥0.14.0, pytest, pytest-asyncio
 
 ______________________________________________________________________
 

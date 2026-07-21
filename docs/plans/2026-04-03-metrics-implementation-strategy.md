@@ -10,7 +10,7 @@ topic: observability
 # Metrics Implementation Strategy
 
 Date: 2026-04-03
-Status: Proposed  <!-- legacy status: Proposed — see YAML frontmatter -->
+Status: Proposed <!-- legacy status: Proposed — see YAML frontmatter -->
 Owner: Mahavishnu
 Scope: Mahavishnu runtime metrics, Bodai ecosystem metrics interoperability, collector and scrape topology, dashboard and alert readiness
 

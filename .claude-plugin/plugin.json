@@ -1,9 +1,16 @@
 {
-  "schema_version": "1.0.0",
-  "name": "mahavishnu",
-  "version": "0.1.0",
+  "author": {
+    "name": "Bodai"
+  },
   "description": "Bodai plugin for the Mahavishnu orchestrator MCP server.",
-  "author": {"name": "Bodai"},
-  "keywords": ["bodai", "mcp", "mahavishnu", "orchestrator"],
-  "mcpServers": "./.mcp.json"
+  "keywords": [
+    "bodai",
+    "mcp",
+    "mahavishnu",
+    "orchestrator"
+  ],
+  "mcpServers": "./.mcp.json",
+  "name": "mahavishnu",
+  "schema_version": "1.0.0",
+  "version": "0.1.0"
 }

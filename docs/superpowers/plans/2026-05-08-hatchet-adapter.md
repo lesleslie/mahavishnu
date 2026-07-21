@@ -10,12 +10,9 @@ topic: hatchet-adapter
 # HatchetAdapter (P10) Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
-
-**Goal:** Implement `HatchetAdapterImpl` as a first-class `OrchestratorAdapter` so Mahavishnu can dispatch durable, event-driven agent loops to Hatchet workflows, with `WaitForEvent` wired to the existing approval primitives and `TaskCategory.AGENT_LOOP` routing them by default.
-
-**Architecture:** `HatchetAdapterImpl` lives in `mahavishnu/engines/hatchet_adapter_impl.py` and implements the `OrchestratorAdapter` ABC. It uses the `hatchet-sdk` Python client to push tasks to a Hatchet server and polls for completion. `WaitForEvent` steps are exposed as the approval-primitive hook, enabling human-in-the-loop pauses inside running workflows. Gated behind `adapters.hatchet_enabled: false` in YAML (opt-in) and `HATCHET_CLIENT_TOKEN` env var.
-
-**Tech Stack:** `hatchet-sdk~=0.x`, Pydantic v2, `asyncio`, existing `OrchestratorAdapter` / `AdapterType` / `AdapterCapabilities` from `mahavishnu/core/adapters/base.py`, `TaskCategory` from `mahavishnu/workers/task_router.py`.
+> **Goal:** Implement `HatchetAdapterImpl` as a first-class `OrchestratorAdapter` so Mahavishnu can dispatch durable, event-driven agent loops to Hatchet workflows, with `WaitForEvent` wired to the existing approval primitives and `TaskCategory.AGENT_LOOP` routing them by default.
+> **Architecture:** `HatchetAdapterImpl` lives in `mahavishnu/engines/hatchet_adapter_impl.py` and implements the `OrchestratorAdapter` ABC. It uses the `hatchet-sdk` Python client to push tasks to a Hatchet server and polls for completion. `WaitForEvent` steps are exposed as the approval-primitive hook, enabling human-in-the-loop pauses inside running workflows. Gated behind `adapters.hatchet_enabled: false` in YAML (opt-in) and `HATCHET_CLIENT_TOKEN` env var.
+> **Tech Stack:** `hatchet-sdk~=0.x`, Pydantic v2, `asyncio`, existing `OrchestratorAdapter` / `AdapterType` / `AdapterCapabilities` from `mahavishnu/core/adapters/base.py`, `TaskCategory` from `mahavishnu/workers/task_router.py`.
 
 ______________________________________________________________________
 

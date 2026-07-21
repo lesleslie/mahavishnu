@@ -10,12 +10,9 @@ topic: dhara-serverless
 # Dhara Serverless Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
-
-**Goal:** Make Dhara runnable in serverless environments by replacing fcntl file locks and in-memory LRU cache with Postgres + Redis equivalents, switchable via environment variables.
-
-**Architecture:** Two swappable backends — `PostgresStorageAdapter` implementing Dhara's `Storage` interface via asyncpg, and `RedisCacheAdapter` replacing the in-process `LRUCache`. Both are selected via `DHARA__STORAGE__BACKEND` and `DHARA__CACHE__BACKEND` env vars. Local dev uses Homebrew PostgreSQL; deployment uses Neon.
-
-**Tech Stack:** asyncpg (Postgres), coredis (Redis), Oneiric config conventions (`__` delimiter)
+> **Goal:** Make Dhara runnable in serverless environments by replacing fcntl file locks and in-memory LRU cache with Postgres + Redis equivalents, switchable via environment variables.
+> **Architecture:** Two swappable backends — `PostgresStorageAdapter` implementing Dhara's `Storage` interface via asyncpg, and `RedisCacheAdapter` replacing the in-process `LRUCache`. Both are selected via `DHARA__STORAGE__BACKEND` and `DHARA__CACHE__BACKEND` env vars. Local dev uses Homebrew PostgreSQL; deployment uses Neon.
+> **Tech Stack:** asyncpg (Postgres), coredis (Redis), Oneiric config conventions (`__` delimiter)
 
 ______________________________________________________________________
 

@@ -1,24 +1,16 @@
 ---
 status: draft
 role: implementation
+topic: convergence-control-plane
 date: 2026-07-16
 last_reviewed: 2026-07-16
 superseded_by: null
 blocks_on: []
-topic: convergence-control-plane
 ---
 
 # Three-Layer Self-Heal v1.0 — Design
 
-**Status:** Draft (brainstormed 2026-06-22)  <!-- legacy status: Draft (brainstormed 2026-06-22) — see YAML frontmatter -->
-**Phase:** 2 (Workflow Evolution)
-**Source:** `Building a Production Agent Harness` — Layer 4 ("Self-Healing Loops"). The article's L1/L2/L3 pattern is a partial-function recovery: deterministic fast path → bounded agentic retry → operator escalation. Designed to recover from *known* failures without pages.
-
-**Depends on:** `completion-report-schema-v1` (L2's Claude sessions emit reports via Spec #1's publisher), `precommitment-hypothesis-lock` and `confidence-ceiling-gate` (L2's Claude sessions run through both gates).
-
-**Note on scope:** Per spec, this defines the protocol AND applies it to git operations as the canonical implementation. Worker recovery, MCP tool failures, and persistence errors adopt the same protocol in follow-up specs.
-
-______________________________________________________________________
+## **Status:** Draft (brainstormed 2026-06-22) <!-- legacy status: Draft (brainstormed 2026-06-22) — see YAML frontmatter --> **Phase:** 2 (Workflow Evolution) **Source:** `Building a Production Agent Harness` — Layer 4 ("Self-Healing Loops"). The article's L1/L2/L3 pattern is a partial-function recovery: deterministic fast path → bounded agentic retry → operator escalation. Designed to recover from *known* failures without pages. **Depends on:** `completion-report-schema-v1` (L2's Claude sessions emit reports via Spec #1's publisher), `precommitment-hypothesis-lock` and `confidence-ceiling-gate` (L2's Claude sessions run through both gates). **Note on scope:** Per spec, this defines the protocol AND applies it to git operations as the canonical implementation. Worker recovery, MCP tool failures, and persistence errors adopt the same protocol in follow-up specs.
 
 ## Overview
 

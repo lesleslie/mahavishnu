@@ -10,12 +10,9 @@ topic: completion-report-schema
 # Completion Report Schema v1 Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
-
-**Goal:** Ship the v1.0 contract that Claude-emitter workers publish to the EventBus after each reasoning iteration and at workflow completion — enabling downstream Phase 1 specs (precommitment-hypothesis-lock, confidence-ceiling-gate) and Phase 2 (three-layer-self-heal) to consume a typed, validated report.
-
-**Architecture:** JSON Schema is canonical at `mahavishnu/core/schemas/completion_report/v1.json`. Pydantic models are generated from the JSON Schema via `datamodel-code-generator`. Workers publish `EventEnvelope(payload=IterationReport|WorkflowReport)` via two new EventBus publisher helpers; a Dhara-backed subscriber auto-persists every validated report. MCP retrieval tools expose iteration history. Migration CLI flags workers that don't emit reports.
-
-**Tech Stack:** Python 3.13, Pydantic v2, `datamodel-code-generator`, `jsonschema` for validation, typer for CLI, FastMCP for MCP tools, pytest with `asyncio_mode = "auto"`, Dhara (existing) for persistence, Prometheus client (existing) for metrics.
+> **Goal:** Ship the v1.0 contract that Claude-emitter workers publish to the EventBus after each reasoning iteration and at workflow completion — enabling downstream Phase 1 specs (precommitment-hypothesis-lock, confidence-ceiling-gate) and Phase 2 (three-layer-self-heal) to consume a typed, validated report.
+> **Architecture:** JSON Schema is canonical at `mahavishnu/core/schemas/completion_report/v1.json`. Pydantic models are generated from the JSON Schema via `datamodel-code-generator`. Workers publish `EventEnvelope(payload=IterationReport|WorkflowReport)` via two new EventBus publisher helpers; a Dhara-backed subscriber auto-persists every validated report. MCP retrieval tools expose iteration history. Migration CLI flags workers that don't emit reports.
+> **Tech Stack:** Python 3.13, Pydantic v2, `datamodel-code-generator`, `jsonschema` for validation, typer for CLI, FastMCP for MCP tools, pytest with `asyncio_mode = "auto"`, Dhara (existing) for persistence, Prometheus client (existing) for metrics.
 
 ______________________________________________________________________
 

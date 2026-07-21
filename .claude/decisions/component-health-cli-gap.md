@@ -18,7 +18,7 @@ health of component X right now":
    `ecosystem_status` aggregator; produces a single schema-validated
    envelope with `services`, `adapters`, `capabilities`, `workflows`,
    `alerts`, and (optionally) `recommendations` sections.
-2. **Per-component CLI tools** — `mahavishnu mcp status`,
+1. **Per-component CLI tools** — `mahavishnu mcp status`,
    `mahavishnu mcp health`, `mahavishnu metrics bodai`, and a handful of
    `scripts/probe_*.py` scripts. These each hit one specific service or
    one specific data source and render a smaller, component-shaped view.
@@ -76,7 +76,7 @@ exist for human operators. Both surfaces need to keep working.
   single dependency is missing. They cannot be the canonical surface
   because every CLI caller has a different degradation tolerance.
 
-## Status  <!-- legacy status: Active — see YAML frontmatter -->
+## Status <!-- legacy status: Active — see YAML frontmatter -->
 
 Active. The 2026-07-15 metrics CLI additions (`verification`,
 `dispatch`) follow this rule: they read Dhara and render summary

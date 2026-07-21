@@ -1,26 +1,22 @@
 ---
 status: complete
 role: historical
+topic: mcp-design
 date: 2026-07-16
 last_reviewed: 2026-07-16
 superseded_by: null
 blocks_on: []
-topic: mcp-design
 ---
 
 # MCP Server Connection Stability Plan
 
 **Date:** 2026-06-01
-**Status:** Reviewed by multi-agent panel (3 reviewers)  <!-- legacy status — see YAML frontmatter -->
+**Status:** Reviewed by multi-agent panel (3 reviewers) <!-- legacy status — see YAML frontmatter -->
 **Author:** Claude
 
 ## Executive Summary
 
-MCP servers in the Bodai ecosystem experience frequent disconnections requiring manual reconnection. Root cause analysis + multi-agent review identified three distinct issues with updated severity based on agent findings.
-
-**Key Finding:** The session persistence in `BodaiComponentMCPClient` works correctly — same session ID is reused across calls. The asyncio transport error only occurs during `aclose()` and asyncio shutdown. The real disconnection issue is likely server-side session timeout or improper reconnection logic when a session IS lost.
-
-______________________________________________________________________
+## MCP servers in the Bodai ecosystem experience frequent disconnections requiring manual reconnection. Root cause analysis + multi-agent review identified three distinct issues with updated severity based on agent findings. **Key Finding:** The session persistence in `BodaiComponentMCPClient` works correctly — same session ID is reused across calls. The asyncio transport error only occurs during `aclose()` and asyncio shutdown. The real disconnection issue is likely server-side session timeout or improper reconnection logic when a session IS lost.
 
 ## Issue 1: BodaiComponentMCPClient — Asyncio Transport Shutdown
 

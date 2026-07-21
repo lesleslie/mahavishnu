@@ -10,12 +10,9 @@ topic: convergence-control-plane
 # Doc Status Sync and Session-Buddy Channel Phase 2 Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
-
-**Goal:** Synchronize all plan documents to match actual codebase state (most "deferred" items are already implemented), then implement the one genuinely missing feature: Session-Buddy Channel Phase 2 Dhara time-series publishing.
-
-**Architecture:** Two independent work tracks. Track A is pure documentation: PLAN_INDEX entries, stale checkboxes, and an ARCHITECTURE.md update — no code changes. Track B adds a `DharaChannelPublisher` (thin `httpx` wrapper) to `channel_tracking_tools.py` and wires it through the session-buddy MCP server startup.
-
-**Tech Stack:** Track A — markdown edits only. Track B — `httpx` (already in session-buddy), `asyncio.create_task` for fire-and-forget, `pytest-asyncio`, `unittest.mock`.
+> **Goal:** Synchronize all plan documents to match actual codebase state (most "deferred" items are already implemented), then implement the one genuinely missing feature: Session-Buddy Channel Phase 2 Dhara time-series publishing.
+> **Architecture:** Two independent work tracks. Track A is pure documentation: PLAN_INDEX entries, stale checkboxes, and an ARCHITECTURE.md update — no code changes. Track B adds a `DharaChannelPublisher` (thin `httpx` wrapper) to `channel_tracking_tools.py` and wires it through the session-buddy MCP server startup.
+> **Tech Stack:** Track A — markdown edits only. Track B — `httpx` (already in session-buddy), `asyncio.create_task` for fire-and-forget, `pytest-asyncio`, `unittest.mock`.
 
 ______________________________________________________________________
 

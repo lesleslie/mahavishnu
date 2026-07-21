@@ -24,7 +24,7 @@ mahavishnu_dlq_fallback_total{outcome="persisted|in_memory|rejected"}
   holds it. Either OpenSearch was unavailable at enqueue time, or a
   configured client's write failed and the legacy silent-fallback
   path kept the task alive. **Lost on restart.**
-- **`rejected`** — ``fail_on_opensearch_unavailable=true`` and the
+- **`rejected`** — `fail_on_opensearch_unavailable=true` and the
   task could not be confirmed in OpenSearch. No phantom was created;
   the caller (workflow layer) is expected to surface the error and
   decide whether to retry or fail loudly.
@@ -51,14 +51,14 @@ When the metric shows non-zero `outcome="in_memory"` or
 1. **Check OpenSearch health.** `curl -s $MAHAVISHNU_OPENSEARCH_HOST/_cluster/health`
    should return `status: green` or `yellow`. If `red`, the cluster is
    the problem, not the orchestrator.
-2. **Check the orchestrator's OpenSearch wiring.**
+1. **Check the orchestrator's OpenSearch wiring.**
    `mahavishnu/engines/prefect_schedules.py` and `opensearch_integration.py`
    import `OPENSEARCH_AVAILABLE` from `mahavishnu/core/opensearch_constants.py`.
    A mismatch there means the library is installed in one place but not
    importable in another — rare, but the `test_no_duplicate_flag_declarations`
    guard in `tests/unit/core/test_opensearch_constants.py` is the check.
-3. **Check the workflow-layer response.** When `outcome="rejected"`,
-   the workflow that called ``enqueue`` receives ``ExternalServiceError``;
+1. **Check the workflow-layer response.** When `outcome="rejected"`,
+   the workflow that called `enqueue` receives `ExternalServiceError`;
    the workflow itself decides whether to retry, fail, or alert. The
    DLQ does not retry on the user's behalf.
 

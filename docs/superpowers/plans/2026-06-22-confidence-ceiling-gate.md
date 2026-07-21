@@ -10,12 +10,9 @@ topic: confidence-ceiling-gate
 # Confidence Ceiling Gate v1.1 Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
-
-**Goal:** Ship the `apply_confidence_ceiling` gate — a pure function that caps self-reported confidence based on enumerable doubt (open questions + unchecked sources), preventing "confident but wrong" failures. No schema change; cap observable from persisted fields.
-
-**Architecture:** `mahavishnu/core/events/confidence_ceiling.py` exposes `compute_confidence_cap(report)` (pure) and `apply_confidence_ceiling(report)` (pure modulo log + best-effort Akosha emission). Publisher `publish_iteration_report` calls `apply_confidence_ceiling` first, before Spec #2's precommitment gate and Spec #1's schema validation.
-
-**Tech Stack:** Python 3.13, pytest with `asyncio_mode = "auto"`, Oneiric logger.
+> **Goal:** Ship the `apply_confidence_ceiling` gate — a pure function that caps self-reported confidence based on enumerable doubt (open questions + unchecked sources), preventing "confident but wrong" failures. No schema change; cap observable from persisted fields.
+> **Architecture:** `mahavishnu/core/events/confidence_ceiling.py` exposes `compute_confidence_cap(report)` (pure) and `apply_confidence_ceiling(report)` (pure modulo log + best-effort Akosha emission). Publisher `publish_iteration_report` calls `apply_confidence_ceiling` first, before Spec #2's precommitment gate and Spec #1's schema validation.
+> **Tech Stack:** Python 3.13, pytest with `asyncio_mode = "auto"`, Oneiric logger.
 
 ______________________________________________________________________
 

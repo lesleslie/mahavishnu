@@ -1,11 +1,6 @@
----
-status: resolved
-role: implementation
-date: 2026-07-16
-last_reviewed: 2026-07-16
-superseded_by: null
-topic: multi-session-mcp-contention
----
+______________________________________________________________________
+
+## status: resolved role: implementation date: 2026-07-16 last_reviewed: 2026-07-16 superseded_by: null topic: multi-session-mcp-contention
 
 # Multi-Session MCP Contention — Session-Buddy Singleton Lock
 
@@ -197,11 +192,11 @@ Per systematic-debugging Phase 4.5: "If 3+ fixes failed → question
 architecture." This is the architecture:
 
 1. **Sync lock in async server** — `threading.Lock` blocks the event loop
-2. **Singleton scope** — every request shares the same lock
-3. **Heavy work inside the lock** — full crackerjack subprocess run
-4. **No request coalescing** — 4 sessions asking for the same project's
+1. **Singleton scope** — every request shares the same lock
+1. **Heavy work inside the lock** — full crackerjack subprocess run
+1. **No request coalescing** — 4 sessions asking for the same project's
    checkpoint each launch a separate (redundant) subprocess
-5. **No per-project isolation** — different `working_directory` values
+1. **No per-project isolation** — different `working_directory` values
    would NOT avoid the lock, since the lock is the singleton's,
    not keyed to anything
 
@@ -292,9 +287,9 @@ this mahavishnu-side audit. Recommended next steps:
 
 1. File a session-buddy issue with this root-cause analysis (link
    to this doc).
-2. Decide whether to implement Mitigations 1 + 2 here as defense-in-depth
+1. Decide whether to implement Mitigations 1 + 2 here as defense-in-depth
    (safer; doesn't fix the underlying bug but reduces its blast radius).
-3. Coordinate a session-buddy fix that combines Options A + B above.
+1. Coordinate a session-buddy fix that combines Options A + B above.
 
 *(Update 2026-07-16: All three steps above are now complete. See the
 "Status" section at the top of this doc for the commit list and the

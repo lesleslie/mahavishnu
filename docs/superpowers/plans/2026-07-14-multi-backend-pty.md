@@ -10,14 +10,10 @@ topic: multi-backend-pty
 # Multi-Backend PTY Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
-
-**Goal:** Fix the broken `uvx` launch in `mcp_client.py:248` and make Mahavishnu's PTY toolservers pluggable across multiple backends (MCPretentious on npm, luqm4nx/pty-mcp-server-python on PyPI), via a hardcoded built-in registry.
-
-**Architecture:** A new `mahavishnu/terminal/backends.py` module holds a frozen `PtyBackend` dataclass and a `BUILTIN_BACKENDS` dict. `McpretentiousClient` takes a `backend_name`, resolves it through the registry, and uses the result to spawn the MCP subprocess. A `check_prerequisites()` helper validates that the required executables (`node`, `uvx`, etc.) are on `PATH` before spawn, so failures surface as clear `ConfigurationError`s at construction time instead of generic 30s timeouts at first tool call.
-
-**Tech Stack:** Python 3.13, asyncio, `dataclasses(frozen=True)`, `shutil.which`, `pytest` (asyncio_mode=auto per `pyproject.toml`), npm for MCPretentious at install time, `uvx` for pty-mcp-server-python at install time.
-
-**Spec:** `docs/superpowers/specs/2026-07-14-multi-backend-pty-design.md`
+> **Goal:** Fix the broken `uvx` launch in `mcp_client.py:248` and make Mahavishnu's PTY toolservers pluggable across multiple backends (MCPretentious on npm, luqm4nx/pty-mcp-server-python on PyPI), via a hardcoded built-in registry.
+> **Architecture:** A new `mahavishnu/terminal/backends.py` module holds a frozen `PtyBackend` dataclass and a `BUILTIN_BACKENDS` dict. `McpretentiousClient` takes a `backend_name`, resolves it through the registry, and uses the result to spawn the MCP subprocess. A `check_prerequisites()` helper validates that the required executables (`node`, `uvx`, etc.) are on `PATH` before spawn, so failures surface as clear `ConfigurationError`s at construction time instead of generic 30s timeouts at first tool call.
+> **Tech Stack:** Python 3.13, asyncio, `dataclasses(frozen=True)`, `shutil.which`, `pytest` (asyncio_mode=auto per `pyproject.toml`), npm for MCPretentious at install time, `uvx` for pty-mcp-server-python at install time.
+> **Spec:** `docs/superpowers/specs/2026-07-14-multi-backend-pty-design.md`
 
 ## Global Constraints
 

@@ -1,20 +1,16 @@
 ---
 status: active
 role: implementation
+topic: routing-composition
 date: 2026-07-16
 last_reviewed: 2026-07-16
 superseded_by: null
 blocks_on: []
-topic: routing-composition
 ---
 
 # Wave 2b: A2A Worker & Server Design
 
-**Date:** 2026-06-19
-**Status:** Approved  <!-- legacy status: Approved — see YAML frontmatter -->
-**Scope:** Google A2A protocol — outbound A2AWorker (SSE client) + inbound A2A server routes
-
-______________________________________________________________________
+## **Date:** 2026-06-19 **Status:** Approved <!-- legacy status: Approved — see YAML frontmatter --> **Scope:** Google A2A protocol — outbound A2AWorker (SSE client) + inbound A2A server routes
 
 ## Context
 

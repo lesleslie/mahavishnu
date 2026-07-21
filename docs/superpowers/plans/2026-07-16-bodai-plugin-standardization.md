@@ -10,12 +10,9 @@ topic: mcp-design
 # Bodai Plugin Standardization Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
-
-**Goal:** Convert 5 Bodai MCP servers (`mahavishnu`, `session-buddy`, `crackerjack`, `akosha`, `dhara`) to Claude Code plugins, distributed via a new `bodai-plugins` marketplace repo. Replace existing slash commands with namespaced `<server>:<command>` form. Give workflows a documented lifecycle.
-
-**Architecture:** Five self-contained plugins (one per MCP server) + `bodai-plugins` marketplace repo with a Typer CLI scaffold tool (`init`, `validate --fix`) + paired decision files in `.claude/decisions/workflows/` for lifecycle tracking. Two-phase migration per repo: **Phase A** adds plugin manifest + namespaced commands alongside old flat commands (safe, additive); **Phase B** deletes old commands + updates `.mcp.json` to point at plugin's MCP server entry (destructive).
-
-**Tech Stack:** Python 3.13, Typer, Claude Code plugin format (`plugin.json` + `commands/`), Claude Code marketplace format (`marketplace.json`).
+> **Goal:** Convert 5 Bodai MCP servers (`mahavishnu`, `session-buddy`, `crackerjack`, `akosha`, `dhara`) to Claude Code plugins, distributed via a new `bodai-plugins` marketplace repo. Replace existing slash commands with namespaced `<server>:<command>` form. Give workflows a documented lifecycle.
+> **Architecture:** Five self-contained plugins (one per MCP server) + `bodai-plugins` marketplace repo with a Typer CLI scaffold tool (`init`, `validate --fix`) + paired decision files in `.claude/decisions/workflows/` for lifecycle tracking. Two-phase migration per repo: **Phase A** adds plugin manifest + namespaced commands alongside old flat commands (safe, additive); **Phase B** deletes old commands + updates `.mcp.json` to point at plugin's MCP server entry (destructive).
+> **Tech Stack:** Python 3.13, Typer, Claude Code plugin format (`plugin.json` + `commands/`), Claude Code marketplace format (`marketplace.json`).
 
 ## Global Constraints
 
@@ -31,13 +28,14 @@ topic: mcp-design
 - **Frequent commits**: one commit per task minimum, atomic diff per commit.
 - **No `assert` in production code** (`bodai-plugins/**` is a published tool). Use explicit `raise` or `typer.Exit(code=...)`.
 
----
+______________________________________________________________________
 
 ## Phase 1: Build bodai-plugins marketplace repo
 
 ### Task 1: Initialize bodai-plugins repo skeleton
 
 **Files:**
+
 - Create: `bodai-plugins/pyproject.toml`
 - Create: `bodai-plugins/.gitignore`
 - Create: `bodai-plugins/README.md`
@@ -104,7 +102,7 @@ htmlcov/
 
 **Step 4: Write minimal `README.md`**
 
-```markdown
+````markdown
 # bodai-plugins
 
 Marketplace scaffolding CLI for the [Bodai ecosystem](https://github.com/lesleslie/bodai) Claude Code plugins.
@@ -113,7 +111,7 @@ Marketplace scaffolding CLI for the [Bodai ecosystem](https://github.com/leslesl
 
 ```bash
 uv tool install bodai-plugins
-```
+````
 
 ## Use
 
@@ -137,7 +135,8 @@ claude plugin marketplace add https://github.com/lesleslie/bodai-plugins
 ## Plugins distributed
 
 See `.claude-plugin/marketplace.json` for the canonical list.
-```
+
+````
 
 **Step 5: Initial commit**
 
@@ -145,13 +144,14 @@ See `.claude-plugin/marketplace.json` for the canonical list.
 git add pyproject.toml .gitignore README.md CHANGELOG.md LICENSE
 git commit -m "chore: bootstrap bodai-plugins marketplace repo"
 git push -u origin main
-```
+````
 
----
+______________________________________________________________________
 
 ### Task 2: Implement Typer CLI skeleton
 
 **Files:**
+
 - Create: `bodai-plugins/bodai_plugins/__init__.py`
 - Create: `bodai-plugins/bodai_plugins/cli.py`
 - Create: `bodai-plugins/tests/__init__.py`
@@ -326,11 +326,12 @@ git add bodai_plugins/ tests/
 git commit -m "feat(cli): add typer skeleton with init and validate stubs"
 ```
 
----
+______________________________________________________________________
 
 ### Task 3: Implement `init_bodai_plugin.py` scaffold writer
 
 **Files:**
+
 - Create: `bodai-plugins/bodai_plugins/scripts/__init__.py`
 - Create: `bodai-plugins/bodai_plugins/scripts/init_bodai_plugin.py`
 - Create: `bodai-plugins/tests/test_init_bodai_plugin.py`
@@ -399,7 +400,7 @@ Expected: `ModuleNotFoundError: No module named 'bodai_plugins.scripts.init_boda
 
 `bodai-plugins/bodai_plugins/scripts/init_bodai_plugin.py`:
 
-```python
+````python
 """Scaffold a Bodai MCP-server plugin directory."""
 
 from __future__ import annotations
@@ -482,7 +483,7 @@ def scaffold_plugin(
             print(f"wrote {path}")
 
     return plugin_dir
-```
+````
 
 **Step 4: Wire the CLI to the script**
 
@@ -532,11 +533,12 @@ git add bodai_plugins/ tests/
 git commit -m "feat(init): scaffold plugin manifest, mcp.json, commands dir"
 ```
 
----
+______________________________________________________________________
 
 ### Task 4: Implement `validate_bodai_plugin.py`
 
 **Files:**
+
 - Create: `bodai-plugins/bodai_plugins/scripts/validate_bodai_plugin.py`
 - Create: `bodai-plugins/tests/test_validate_bodai_plugin.py`
 - Modify: `bodai-plugins/bodai_plugins/cli.py` (wire `validate` to the script)
@@ -822,11 +824,12 @@ git add bodai_plugins/ tests/
 git commit -m "feat(validate): plugin structure validator with --fix support"
 ```
 
----
+______________________________________________________________________
 
 ### Task 5: Marketplace manifest + extension command
 
 **Files:**
+
 - Create: `bodai-plugins/bodai_plugins/scripts/manage_marketplace.py`
 - Create: `bodai-plugins/tests/test_manage_marketplace.py`
 - Modify: `bodai-plugins/bodai_plugins/cli.py` (add `marketplace` subcommand group)
@@ -987,11 +990,12 @@ git add bodai_plugins/ tests/
 git commit -m "feat(marketplace): add plugin registry helpers and CLI"
 ```
 
----
+______________________________________________________________________
 
 ### Task 6: Initialize the marketplace manifest with empty plugins array
 
 **Files:**
+
 - Create: `bodai-plugins/.claude-plugin/marketplace.json`
 
 **Step 1: Write the initial manifest**
@@ -1014,11 +1018,12 @@ git add .claude-plugin/marketplace.json
 git commit -m "chore(marketplace): initialize empty plugin registry"
 ```
 
----
+______________________________________________________________________
 
 ### Task 7: Add a CI guard test for the marketplace schema
 
 **Files:**
+
 - Create: `bodai-plugins/tests/test_marketplace_schema.py`
 
 **Step 1: Write the test**
@@ -1090,13 +1095,14 @@ git add tests/test_marketplace_schema.py
 git commit -m "test(marketplace): guard test for manifest schema and uniqueness"
 ```
 
----
+______________________________________________________________________
 
 ## Phase 2: Pilot migrate mahavishnu to a plugin
 
 ### Task 8: Phase A — Add plugin manifest + namespaced commands (additive)
 
 **Files:**
+
 - Create: `/Users/les/Projects/mahavishnu/.claude-plugin/plugin.json`
 - Create: `/Users/les/Projects/mahavishnu/.mcp.json` (new, plugin-local)
 - Create: `/Users/les/Projects/mahavishnu/commands/mahavishnu-status.md`
@@ -1168,9 +1174,10 @@ uv tool run --from bodai-plugins bodai-plugins validate --path . --fix
 **Step 6: Smoke test manually**
 
 Layer 4 manual smoke (per design):
+
 1. Open a fresh Claude Code session.
-2. Confirm `/mahavishnu:status` is offered as a slash command.
-3. Run `/mahavishnu:status` and verify output matches the old `/vishnu-status` output.
+1. Confirm `/mahavishnu:status` is offered as a slash command.
+1. Run `/mahavishnu:status` and verify output matches the old `/vishnu-status` output.
 
 **Step 7: Commit (additive, safe)**
 
@@ -1181,11 +1188,12 @@ git commit -m "feat(plugin): add mahavishnu plugin manifest + namespaced command
 git push origin main
 ```
 
----
+______________________________________________________________________
 
 ### Task 9: Phase B — Remove old flat commands (destructive cutover)
 
 **Files:**
+
 - Delete: `/Users/les/Projects/mahavishnu/.claude/commands/vishnu-status.md`
 - Delete: `/Users/les/Projects/mahavishnu/.claude/commands/checkpoint.md` (replaced by `mahavishnu:checkpoint` — but see note below)
 - Modify: `/Users/les/Projects/mahavishnu/.mcp.json` (revert to the original 16-server config)
@@ -1232,8 +1240,8 @@ Expected: `OK`.
 **Step 5: Smoke test manually**
 
 1. Restart Claude Code to drop any cached slash commands.
-2. `/mahavishnu:status` should still work (Phase A command).
-3. `/vishnu-status` should NOT appear (old command removed).
+1. `/mahavishnu:status` should still work (Phase A command).
+1. `/vishnu-status` should NOT appear (old command removed).
 
 **Step 6: Commit (destructive cutover)**
 
@@ -1244,11 +1252,12 @@ git commit -m "feat(plugin): remove old flat slash commands; mahavishnu plugin i
 git push origin main
 ```
 
----
+______________________________________________________________________
 
 ### Task 10: Register mahavishnu plugin in bodai-plugins marketplace
 
 **Files:**
+
 - Modify: `/Users/les/Projects/bodai-plugins/.claude-plugin/marketplace.json`
 
 **Step 1: Use the CLI to register**
@@ -1292,7 +1301,7 @@ git commit -m "chore(marketplace): register mahavishnu plugin"
 git push origin main
 ```
 
----
+______________________________________________________________________
 
 ## Phase 3: Migrate the remaining four MCP servers
 
@@ -1343,7 +1352,7 @@ uv run bodai-plugins marketplace add --name session-buddy --source ../session-bu
 git add -A && git commit -m "chore(marketplace): register session-buddy plugin"
 ```
 
----
+______________________________________________________________________
 
 ### Task 12: Migrate crackerjack (two-phase)
 
@@ -1378,7 +1387,7 @@ uv run bodai-plugins marketplace add --name crackerjack --source ../crackerjack 
 git add -A && git commit -m "chore(marketplace): register crackerjack plugin"
 ```
 
----
+______________________________________________________________________
 
 ### Task 13: Migrate akosha (two-phase)
 
@@ -1407,7 +1416,7 @@ uv run bodai-plugins marketplace add --name akosha --source ../akosha --ref main
 git add -A && git commit -m "chore(marketplace): register akosha plugin"
 ```
 
----
+______________________________________________________________________
 
 ### Task 14: Migrate dhara (two-phase)
 
@@ -1436,13 +1445,14 @@ uv run bodai-plugins marketplace add --name dhara --source ../dhara --ref main
 git add -A && git commit -m "chore(marketplace): register dhara plugin"
 ```
 
----
+______________________________________________________________________
 
 ## Phase 4: Workflow lifecycle (decisions + archive)
 
 ### Task 15: Add workflow decision lifecycle template + README
 
 **Files:**
+
 - Create: `/Users/les/Projects/mahavishnu/.claude/decisions/workflows/README.md`
 - Create: `/Users/les/Projects/mahavishnu/.claude/decisions/workflows/TEMPLATE.md`
 
@@ -1498,7 +1508,7 @@ git add .claude/decisions/workflows/
 git commit -m "docs(decisions): add workflow decision README and template"
 ```
 
----
+______________________________________________________________________
 
 ### Task 16: Pair existing wave workflows with decision files (Active)
 
@@ -1507,7 +1517,7 @@ git commit -m "docs(decisions): add workflow decision README and template"
 For each `.js` file in `/Users/les/Projects/mahavishnu/.claude/workflows/`:
 
 1. Note the wave's purpose from the header comment.
-2. Create `.claude/decisions/workflows/YYYY-MM-DD-<wave-name>.md` with `## Status: Active` and a 1-paragraph decision rule explaining when to re-run it.
+1. Create `.claude/decisions/workflows/YYYY-MM-DD-<wave-name>.md` with `## Status: Active` and a 1-paragraph decision rule explaining when to re-run it.
 
 Reference for the wave workflows to pair (created in earlier work):
 
@@ -1550,15 +1560,15 @@ git add .claude/decisions/workflows/
 git commit -m "docs(workflows): pair existing wave workflows with decision files"
 ```
 
----
+______________________________________________________________________
 
 ### Task 17: Move executed/replaced waves to `.archive/` + flip Status
 
 For each wave that has been **executed and superseded** by a later wave:
 
 1. Move the `.js` to `.claude/workflows/.archive/`.
-2. Flip the matching decision file's Status to `Superseded`.
-3. Add a `## Status history` entry with the supersession date and pointer to the replacement wave.
+1. Flip the matching decision file's Status to `Superseded`.
+1. Add a `## Status history` entry with the supersession date and pointer to the replacement wave.
 
 Determine "executed and superseded" from the wave numbers (4 → 5 → 6 → 7 → 2026-06-12). Each previous wave was a step toward the next, so waves 4-6 and the 2026-06-12 part1 are now `Superseded` by their successor. Wave 7 and 2026-06-12 part2 are `Active` unless an even newer wave exists.
 
@@ -1584,11 +1594,12 @@ git mv .claude/workflows/mahavishnu-coverage-fanout-wave-2026-06-12.js .claude/w
 git commit -am "docs(workflows): archive superseded waves and update their decision Status"
 ```
 
----
+______________________________________________________________________
 
 ### Task 18: Add `scripts/audit_workflow_lifecycle.py`
 
 **Files:**
+
 - Create: `/Users/les/Projects/mahavishnu/scripts/audit_workflow_lifecycle.py`
 - Create: `/Users/les/Projects/mahavishnu/tests/test_audit_workflow_lifecycle.py`
 
@@ -1718,11 +1729,12 @@ git add scripts/audit_workflow_lifecycle.py tests/test_audit_workflow_lifecycle.
 git commit -m "feat(audit): workflow lifecycle audit script"
 ```
 
----
+______________________________________________________________________
 
 ### Task 19: Add `followups/` lifecycle parity (parallel feature)
 
 **Files:**
+
 - Create: `/Users/les/Projects/mahavishnu/docs/followups/README.md`
 - Create: `/Users/les/Projects/mahavishnu/docs/followups/TEMPLATE.md`
 
@@ -1768,7 +1780,7 @@ git commit -m "docs(followups): add lifecycle README and template"
 
 (Existing followup files keep their shape; only new files use the template.)
 
----
+______________________________________________________________________
 
 ## Phase 5: Publish + announce
 
@@ -1803,18 +1815,19 @@ git tag -a v1.0.0 -m "bodai-plugins v1.0.0 — initial 5-plugin marketplace"
 git push origin main --tags
 ```
 
----
+______________________________________________________________________
 
 ### Task 21: Document the marketplace in bodai umbrella README
 
 **Files:**
+
 - Modify: `/Users/les/Projects/bodai/README.md` (if it exists; otherwise create one)
 
 **Step 1: Add a "Marketplace" section**
 
 Append to `bodai/README.md`:
 
-```markdown
+````markdown
 ## Claude Code marketplace
 
 The five Bodai MCP-server plugins are distributed via the `bodai-plugins` marketplace:
@@ -1826,10 +1839,11 @@ claude plugin install session-buddy
 claude plugin install crackerjack
 claude plugin install akosha
 claude plugin install dhara
-```
+````
 
 Each plugin ships its own slash commands under the `<server>:<command>` namespace (e.g. `/mahavishnu:status`, `/session-buddy:checkpoint`).
-```
+
+````
 
 **Step 2: Commit**
 
@@ -1837,9 +1851,9 @@ Each plugin ships its own slash commands under the `<server>:<command>` namespac
 cd /Users/les/Projects/bodai
 git add README.md
 git commit -m "docs: link bodai-plugins marketplace from umbrella README"
-```
+````
 
----
+______________________________________________________________________
 
 ### Task 22: Final smoke test of the whole flow
 
@@ -1908,7 +1922,7 @@ git commit -m "docs(changelog): v1.0.0 release notes"
 git push origin main
 ```
 
----
+______________________________________________________________________
 
 ## Self-review checklist (run before handoff)
 
@@ -1926,7 +1940,7 @@ git push origin main
 - [ ] **No regressions**: every deleted file (Tasks 9, 11, 12, 17) has a replacement in the new layout.
 - [ ] **CI guard test**: `tests/test_marketplace_schema.py` (Task 7) and `scripts/audit_workflow_lifecycle.py` (Task 18) catch the regressions the design promises.
 
----
+______________________________________________________________________
 
 ## Handoff
 
@@ -1935,4 +1949,4 @@ Plan complete and saved to `docs/superpowers/plans/2026-07-16-bodai-plugin-stand
 Two execution options:
 
 1. **Subagent-Driven (recommended)** — dispatch a fresh subagent per task, review between tasks, fast iteration.
-2. **Inline Execution** — execute tasks in this session using executing-plans, batch execution with checkpoints.
+1. **Inline Execution** — execute tasks in this session using executing-plans, batch execution with checkpoints.

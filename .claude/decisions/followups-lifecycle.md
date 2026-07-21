@@ -40,7 +40,7 @@ consistent.
 1. Move the note's row from the Active table to the Archived table in the
    README at the same time.
 
-## Status  <!-- legacy status: Active — see YAML frontmatter -->
+## Status <!-- legacy status: Active — see YAML frontmatter -->
 
 Active. Adopted 2026-07-16. Initial backfill moved the three
 audit-verified-complete notes (agno config-field-path, pydantic-settings

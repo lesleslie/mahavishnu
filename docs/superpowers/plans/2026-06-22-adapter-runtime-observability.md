@@ -1,12 +1,11 @@
 ---
 status: draft
 role: implementation
+topic: adapter-runtime-observability
 date: 2026-07-16
 last_reviewed: 2026-07-16
 superseded_by: null
-blocks_on:
-  - ext:dhara-http-api-surface
-topic: adapter-runtime-observability
+blocks_on: []
 ---
 
 # Adapter Runtime Observability v1.0 Implementation Plan

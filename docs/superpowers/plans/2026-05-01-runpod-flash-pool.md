@@ -10,12 +10,9 @@ topic: runpod-flash-pool
 # RunPod Flash Pool Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
-
-**Goal:** Add a `RunPodPool` as a 4th pool type in Mahavishnu's multi-pool orchestration system, backed by the `runpod-flash` SDK to execute GPU-heavy tasks (VISION, REASONING) on RunPod serverless infrastructure.
-
-**Architecture:** `RunPodPool` implements `BasePool` using `runpod-flash`'s `@Endpoint` decorator for remote GPU function dispatch. Each `execute_task()` call invokes a pre-registered Flash endpoint (keyed by task category), with Flash handling auto-scaling and worker provisioning transparently. Pool registration follows the existing `elif` factory in `PoolManager.spawn_pool()` — zero changes to other pool types.
-
-**Tech Stack:** `runpod-flash` (≥0.1.0), `runpod` API key via env var `RUNPOD_API_KEY`, Python 3.10+, async/await, `TaskCategory` from `mahavishnu/workers/task_router.py`
+> **Goal:** Add a `RunPodPool` as a 4th pool type in Mahavishnu's multi-pool orchestration system, backed by the `runpod-flash` SDK to execute GPU-heavy tasks (VISION, REASONING) on RunPod serverless infrastructure.
+> **Architecture:** `RunPodPool` implements `BasePool` using `runpod-flash`'s `@Endpoint` decorator for remote GPU function dispatch. Each `execute_task()` call invokes a pre-registered Flash endpoint (keyed by task category), with Flash handling auto-scaling and worker provisioning transparently. Pool registration follows the existing `elif` factory in `PoolManager.spawn_pool()` — zero changes to other pool types.
+> **Tech Stack:** `runpod-flash` (≥0.1.0), `runpod` API key via env var `RUNPOD_API_KEY`, Python 3.10+, async/await, `TaskCategory` from `mahavishnu/workers/task_router.py`
 
 ______________________________________________________________________
 

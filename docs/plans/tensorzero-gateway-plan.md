@@ -1,11 +1,11 @@
 ---
 status: complete
 role: superseded
+topic: routing-composition
 date: 2026-07-16
 last_reviewed: 2026-07-16
 superseded_by: docs/superpowers/plans/2026-05-16-llm-routing-plan1-mcp-common.md
 blocks_on: []
-topic: routing-composition
 ---
 
 # TensorZero Gateway — Final Implementation Plan

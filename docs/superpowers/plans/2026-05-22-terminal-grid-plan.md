@@ -10,12 +10,9 @@ topic: terminal-grid
 # Terminal Grid Orchestration Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
-
-**Goal:** Implement terminal grid orchestration via pure AppleScript + iTerm2 window bounds, deploying worker sessions across macOS Desktops/Spaces in a 2×2 quadrant layout per desktop.
-
-**Architecture:** Three-level identity hierarchy (Grid → Desktop → Window → Tab → Session). ITerm2Adapter refactored to use shared async AppleScript bridge in mcp-common. TerminalGridManager orchestrates multi-desktop deployment with single-desktop fallback. mcpretentious adapter handles output capture (AppleScript cannot read terminal buffer).
-
-**Tech Stack:** Python 3.13+, asyncio, AppleScript/osascript, iTerm2, standard library only.
+> **Goal:** Implement terminal grid orchestration via pure AppleScript + iTerm2 window bounds, deploying worker sessions across macOS Desktops/Spaces in a 2×2 quadrant layout per desktop.
+> **Architecture:** Three-level identity hierarchy (Grid → Desktop → Window → Tab → Session). ITerm2Adapter refactored to use shared async AppleScript bridge in mcp-common. TerminalGridManager orchestrates multi-desktop deployment with single-desktop fallback. mcpretentious adapter handles output capture (AppleScript cannot read terminal buffer).
+> **Tech Stack:** Python 3.13+, asyncio, AppleScript/osascript, iTerm2, standard library only.
 
 ______________________________________________________________________
 

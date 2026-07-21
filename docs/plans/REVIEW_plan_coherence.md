@@ -1,20 +1,16 @@
 ---
 status: complete
 role: historical
+topic: convergence-control-plane
 date: 2026-07-16
 last_reviewed: 2026-07-16
 superseded_by: null
 blocks_on: []
-topic: convergence-control-plane
 ---
 
 # Plan Coherence Review
 
-**Plan**: `docs/plans/2026-05-23-bodai-routing-feedback-loop-v3.md`
-**Reviewer**: general | plan-coherence-review
-**Date**: 2026-05-23
-
-______________________________________________________________________
+## **Plan**: `docs/plans/2026-05-23-bodai-routing-feedback-loop-v3.md` **Reviewer**: general | plan-coherence-review **Date**: 2026-05-23
 
 ## Summary
 

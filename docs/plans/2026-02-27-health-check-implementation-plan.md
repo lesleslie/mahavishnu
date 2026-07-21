@@ -11,14 +11,10 @@ topic: observability
 
 > **Update (2026-04-02):** Keep this implementation plan, but apply dependency criticality from `docs/plans/2026-04-02-storage-consolidation-and-akosha-role.md`.
 > Akosha should be configured as optional for core startup in the consolidated storage architecture.
-
 > **For Claude:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task.
-
-**Goal:** Implement lightweight health check system with `/health` and `/ready` endpoints plus dependency waiting logic.
-
-**Architecture:** On-demand HTTP health queries (no heartbeats, no registry). Each MCP server exposes health endpoints. Mahavishnu waits for dependencies on startup using exponential backoff. Production uses platform-native DNS discovery.
-
-**Tech Stack:** Python 3.13+, Pydantic v2, httpx for async HTTP, asyncio for concurrency
+> **Goal:** Implement lightweight health check system with `/health` and `/ready` endpoints plus dependency waiting logic.
+> **Architecture:** On-demand HTTP health queries (no heartbeats, no registry). Each MCP server exposes health endpoints. Mahavishnu waits for dependencies on startup using exponential backoff. Production uses platform-native DNS discovery.
+> **Tech Stack:** Python 3.13+, Pydantic v2, httpx for async HTTP, asyncio for concurrency
 
 ______________________________________________________________________
 

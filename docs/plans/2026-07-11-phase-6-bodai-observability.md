@@ -10,14 +10,12 @@ topic: observability
 # Phase 6 — Bodai-Wide Observability Surfacing
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
-
-**Date:** 2026-07-11
-**Status:** draft, planning  <!-- legacy status: draft, planning — see YAML frontmatter -->
-**Owner:** mahavishnu core
-**Scope:** Replace Mahavishnu's per-component activity hook with a Bodai-wide observability surface that reads from Oneiric EventBridge (the unified event spine from Convergence Plan C1b/C2).
-**Purpose:** Make Claude Code's "observe Bodai" path go through a single canonical subscriber rather than per-component WebSocket hooks. Phase 5's transition state (Mahavishnu-only hook at `.claude/hooks/mahavishnu-activity-stream.py`) is replaced by the steady state here.
-
-**Precondition (BLOCKING):** Convergence Plan C2 lands an "activity" event category in Oneiric EventBridge. Phase 6 cannot start until C2's envelope schema is published. If C2 has not landed, see the "Pre-C2 Path" section at the bottom.
+> **Date:** 2026-07-11
+> **Status:** draft, planning <!-- legacy status: draft, planning — see YAML frontmatter -->
+> **Owner:** mahavishnu core
+> **Scope:** Replace Mahavishnu's per-component activity hook with a Bodai-wide observability surface that reads from Oneiric EventBridge (the unified event spine from Convergence Plan C1b/C2).
+> **Purpose:** Make Claude Code's "observe Bodai" path go through a single canonical subscriber rather than per-component WebSocket hooks. Phase 5's transition state (Mahavishnu-only hook at `.claude/hooks/mahavishnu-activity-stream.py`) is replaced by the steady state here.
+> **Precondition (BLOCKING):** Convergence Plan C2 lands an "activity" event category in Oneiric EventBridge. Phase 6 cannot start until C2's envelope schema is published. If C2 has not landed, see the "Pre-C2 Path" section at the bottom.
 
 ______________________________________________________________________
 

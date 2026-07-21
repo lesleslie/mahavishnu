@@ -96,7 +96,7 @@ def run_experiment(config_path: Path) -> None:
   workflow with Wiring phase
 - `CLAUDE.md` § Process Discipline — user-facing summary
 
-## Status  <!-- legacy status: Active — see YAML frontmatter -->
+## Status <!-- legacy status: Active — see YAML frontmatter -->
 
 Established 2026-07-07. Supersedes the absence of any prior rule on
 this topic.

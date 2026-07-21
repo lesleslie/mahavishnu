@@ -1,11 +1,11 @@
 ---
 status: complete
 role: superseded
+topic: routing-composition
 date: 2026-07-16
 last_reviewed: 2026-07-16
 superseded_by: docs/plans/2026-04-25-mahavishnu-ecosystem-control-plane-update-plan.md
 blocks_on: []
-topic: routing-composition
 ---
 
 # Claw-Inspired Orchestration Enhancements for Mahavishnu
@@ -56,14 +56,12 @@ class VerificationConfig:
     feedback_builder: FeedbackBuilder       # formats failures for re-prompt
     on_pass: str = "complete"               # "complete" | "notify" | "continue"
     on_exhaust: str = "fail"                # "fail" | "notify" | "escalate"
-
 @dataclass
 class QualityGate:
     name: str               # "pytest", "ruff", "mypy"
     command: str            # shell command to run
     parser: GateParser      # extracts pass/fail + failure details
     required: bool = True   # False = warning only
-
 @dataclass
 class VerificationResult:
     passed: bool

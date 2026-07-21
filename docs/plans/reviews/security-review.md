@@ -1,21 +1,16 @@
 ---
 status: complete
 role: historical
+topic: convergence-control-plane
 date: 2026-07-16
 last_reviewed: 2026-07-16
 superseded_by: null
 blocks_on: []
-topic: convergence-control-plane
 ---
 
 # Security Review — TensorZero Gateway Plan
 
-**Reviewer**: Security subagent
-**Date**: 2026-04-06
-**Document reviewed**: `docs/plans/tensorzero-gateway-plan.md`
-**Related files inspected**: `docker-compose.yml`, `~/.claude-code-router/config.json`, environment variables
-
-______________________________________________________________________
+## **Reviewer**: Security subagent **Date**: 2026-04-06 **Document reviewed**: `docs/plans/tensorzero-gateway-plan.md` **Related files inspected**: `docker-compose.yml`, `~/.claude-code-router/config.json`, environment variables
 
 ## 🔴 Critical Issues (Must Fix Before Deployment)
 

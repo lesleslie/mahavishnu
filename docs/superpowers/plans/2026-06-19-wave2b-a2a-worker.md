@@ -10,12 +10,9 @@ topic: wave2b-a2a-worker
 # Wave 2b: A2A Worker & Server Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
-
-**Goal:** Add Google A2A protocol support — an outbound `A2AWorker` that routes tasks to external agents by name, and inbound Starlette routes that accept A2A tasks from external callers.
-
-**Architecture:** `mahavishnu/a2a/card.py` holds the shared `AgentCard` Pydantic model. `mahavishnu/workers/a2a.py` contains `A2AClient` (httpx + SSE) and `A2AWorker(BaseWorker)`. `mahavishnu/a2a/server.py` builds a Starlette sub-app with three routes (`/.well-known/agent.json`, `/tasks/send`, `/tasks/sendSubscribe`) mounted on FastMCP's `http_app`. Agent URLs come exclusively from `settings/mahavishnu.yaml` — never from task input (SSRF prevention).
-
-**Tech Stack:** Python 3.13, httpx (already a dep), Starlette (already a dep), respx (test dep), Pydantic v2, FastMCP, `asyncio.Queue` + `StreamingResponse` for SSE.
+> **Goal:** Add Google A2A protocol support — an outbound `A2AWorker` that routes tasks to external agents by name, and inbound Starlette routes that accept A2A tasks from external callers.
+> **Architecture:** `mahavishnu/a2a/card.py` holds the shared `AgentCard` Pydantic model. `mahavishnu/workers/a2a.py` contains `A2AClient` (httpx + SSE) and `A2AWorker(BaseWorker)`. `mahavishnu/a2a/server.py` builds a Starlette sub-app with three routes (`/.well-known/agent.json`, `/tasks/send`, `/tasks/sendSubscribe`) mounted on FastMCP's `http_app`. Agent URLs come exclusively from `settings/mahavishnu.yaml` — never from task input (SSRF prevention).
+> **Tech Stack:** Python 3.13, httpx (already a dep), Starlette (already a dep), respx (test dep), Pydantic v2, FastMCP, `asyncio.Queue` + `StreamingResponse` for SSE.
 
 ## Global Constraints
 

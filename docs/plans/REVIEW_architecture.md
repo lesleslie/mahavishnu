@@ -1,20 +1,16 @@
 ---
 status: complete
 role: historical
+topic: convergence-control-plane
 date: 2026-07-16
 last_reviewed: 2026-07-16
 superseded_by: null
 blocks_on: []
-topic: convergence-control-plane
 ---
 
 # Architecture & Design Review: Bodai Routing Feedback Loop
 
-**Reviewer**: Architecture Reviewer
-**Date**: 2026-05-23
-**Plan**: `docs/plans/2026-05-23-bodai-routing-feedback-loop.md`
-
-______________________________________________________________________
+## **Reviewer**: Architecture Reviewer **Date**: 2026-05-23 **Plan**: `docs/plans/2026-05-23-bodai-routing-feedback-loop.md`
 
 ## 1. Correctness — Data Flow Analysis
 

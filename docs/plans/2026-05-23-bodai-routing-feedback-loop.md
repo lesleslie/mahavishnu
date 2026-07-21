@@ -17,9 +17,8 @@ instrumented with OpenTelemetry (OTel). This plan implements a feedback loop tha
 1. Collects trace data from all components
 1. Akosha analyzes routing outcomes to compute per-selector fitness signals
 1. Mahavishnu's pool manager uses those signals to pick the best routing strategy
-
-**Constraint**: Every Bodai component must run standalone without requiring any other Bodai component.
-The feedback loop is a pure optional overlay — each component functions normally without it.
+   **Constraint**: Every Bodai component must run standalone without requiring any other Bodai component.
+   The feedback loop is a pure optional overlay — each component functions normally without it.
 
 ______________________________________________________________________
 

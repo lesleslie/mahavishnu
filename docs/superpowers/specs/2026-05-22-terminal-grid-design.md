@@ -1,20 +1,16 @@
 ---
 status: active
 role: implementation
+topic: terminal
 date: 2026-07-16
 last_reviewed: 2026-07-16
 superseded_by: null
 blocks_on: []
-topic: terminal
 ---
 
 # Terminal Grid Orchestration — Design Spec
 
-**Date:** 2026-05-22
-**Approach:** Pure AppleScript + iTerm2 window bounds (zero external dependencies)
-**Status:** Approved for implementation  <!-- legacy status: Approved for implementation — see YAML frontmatter -->
-
-______________________________________________________________________
+## **Date:** 2026-05-22 **Approach:** Pure AppleScript + iTerm2 window bounds (zero external dependencies) **Status:** Approved for implementation <!-- legacy status: Approved for implementation — see YAML frontmatter -->
 
 ## 1. Overview
 

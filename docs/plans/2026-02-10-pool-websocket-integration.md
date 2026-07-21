@@ -10,12 +10,9 @@ topic: observability
 # Pool WebSocket Integration & Production Hardening Plan
 
 > **For Claude:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task.
-
-**Goal:** Integrate Mahavishnu pool management with WebSocket broadcasting and add production-hardening features (authentication, TLS, monitoring)
-
-**Architecture:** Pool manager broadcasts real-time events (worker status, task assignments, scaling) via WebSocket to subscribed clients. Production features include JWT authentication, TLS encryption, Prometheus metrics, and Grafana dashboards.
-
-**Tech Stack:** mcp-common.websocket, FastMCP, PyJWT, python-socketio, Prometheus client, Grafana, Python 3.11+
+> **Goal:** Integrate Mahavishnu pool management with WebSocket broadcasting and add production-hardening features (authentication, TLS, monitoring)
+> **Architecture:** Pool manager broadcasts real-time events (worker status, task assignments, scaling) via WebSocket to subscribed clients. Production features include JWT authentication, TLS encryption, Prometheus metrics, and Grafana dashboards.
+> **Tech Stack:** mcp-common.websocket, FastMCP, PyJWT, python-socketio, Prometheus client, Grafana, Python 3.11+
 
 ______________________________________________________________________
 

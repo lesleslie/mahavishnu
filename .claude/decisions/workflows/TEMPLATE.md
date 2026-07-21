@@ -1,3 +1,11 @@
+---
+status: active
+role: canonical
+date: 2026-07-21
+last_reviewed: 2026-07-21
+topic: lifecycle
+---
+
 # YYYY-MM-DD-<name> — workflow decision
 
 ## Status

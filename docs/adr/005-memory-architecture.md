@@ -5,14 +5,16 @@ date: 2026-07-16
 last_reviewed: 2026-07-16
 superseded_by: null
 blocks_on: []
-topic: memory-architecture
 decision_date: 2025-01-24
+topic: memory-architecture
 ---
 
 # ADR 005: Unified Memory Architecture
 
 **Status:** Accepted
+
 <!-- legacy status: **Status:** Accepted — see YAML frontmatter -->
+
 **Date:** 2025-01-24
 **Deciders:** @les
 **Technical Story:** [Link to issue/discussion]
@@ -26,8 +28,7 @@ Mahavishnu is a global orchestrator package that manages workflows across multip
 1. **Workflow History**: Execution logs and orchestration patterns
 1. **Cross-Project Learning**: Share insights across related projects
 1. **Session Context**: Maintain context across development sessions
-
-The existing implementation had basic session checkpoint integration but lacked:
+   The existing implementation had basic session checkpoint integration but lacked:
 
 - Unified search across memory systems
 - Persistent agent memory storage
@@ -45,23 +46,19 @@ We will implement a **unified memory architecture** that integrates three specia
 - Use Session-Buddy's Reflection Database (DuckDB-based)
 - Create dedicated collections for Mahavishnu
 - Leverage Session-Buddy's cross-project intelligence features
-
-**Why:**
-
+  **Why:**
 - **Already integrated**: Session-Buddy MCP server is available and configured
 - **Proven architecture**: Reflection Database with ONNX embeddings works well
 - **Cross-project features**: Automatic dependency-aware search and knowledge sharing
 - **Automatic insights capture**: Extracts learnings from `★ Insight ─────` patterns
 - **Privacy-first**: 100% local processing, no external APIs
-
-**Collections:**
+  **Collections:**
 
 ```python
 collection_name="mahavishnu_project"
   - Workflow executions
   - Orchestration patterns
   - Adapter health metrics
-
 collection_name="mahavishnu_global"
   - Cross-project orchestration insights
   - Best practices
@@ -75,17 +72,13 @@ collection_name="mahavishnu_global"
 - Use AgentDB with PostgreSQL backend for agent-specific memory
 - Store high-volume agent data (conversations, tool usage, reasoning traces)
 - Provide PostgreSQL-backed persistent storage with replication support
-
-**Why:**
-
+  **Why:**
 - **Scalability**: AgentDB optimized for agent workloads, handles high-frequency operations
 - **Persistence**: PostgreSQL provides durable, scalable storage with replication
 - **Vector operations**: Built-in similarity search for agent memory
 - **Separation of concerns**: Agent-specific data separated from project memory
 - **Performance**: PostgreSQL connection pooling for concurrent access
-
-**Use Cases:**
-
+  **Use Cases:**
 - Agent conversation tracking (Agno adapter)
 - Tool usage history and results
 - Reasoning traces and decision processes
@@ -98,17 +91,13 @@ collection_name="mahavishnu_global"
 - Use LlamaIndex for RAG pipelines with AgentDB as vector store backend
 - Ingest repositories and documents with Ollama embeddings
 - Provide large-scale semantic search capabilities
-
-**Why:**
-
+  **Why:**
 - **Purpose-built**: LlamaIndex optimized for RAG and vector operations
 - **Ollama integration**: Local embeddings (nomic-embed-text), no external APIs
 - **AgentDB backend**: Persistent vector storage in PostgreSQL
 - **Advanced retrieval**: Hybrid search, re-ranking, filters
 - **Large-scale**: Handles millions of documents efficiently
-
-**Use Cases:**
-
+  **Use Cases:**
 - Repository/document ingestion
 - Code chunking and embeddings
 - Semantic search for knowledge retrieval
@@ -122,9 +111,7 @@ collection_name="mahavishnu_global"
 - Provide unified search across all memory systems
 - Implement bidirectional memory sharing protocols
 - Automatic deduplication and result merging
-
-**Why:**
-
+  **Why:**
 - **Developer experience**: Single API for all memory operations
 - **Transparency**: Developers don't need to know where data is stored
 - **Optimization**: Intelligent result merging and ranking
@@ -140,32 +127,26 @@ graph TB
         APP[Orchestrators & Agents]
         SERVICE[Memory Integration Service]
     end
-
     subgraph "Memory Storage Backends"
         AGENTDB[AgentDB + PostgreSQL<br/>🤖 Agent Memory]
         RAG[LlamaIndex + AgentDB<br/>📚 RAG Knowledge Base]
         BUDDY[Session-Buddy<br/>🧠 Reflection DB]
     end
-
     subgraph "Data Flow"
         QUERY[Unified Query]
         DEDUP[Deduplication & Merging]
         RESULTS[Merged Results]
     end
-
     APP --> SERVICE
     SERVICE --> QUERY
     QUERY --> AGENTDB
     QUERY --> RAG
     QUERY --> BUDDY
-
     AGENTDB --> DEDUP
     RAG --> DEDUP
     BUDDY --> DEDUP
-
     DEDUP --> RESULTS
     RESULTS --> APP
-
     style SERVICE fill:#FFD700,stroke:#333,stroke-width:3px
     style AGENTDB fill:#90EE90
     style RAG fill:#87CEEB
@@ -183,33 +164,27 @@ graph LR
         SYNC[Memory Sync Service]
         DEDUP[Deduplication Engine]
     end
-
     subgraph "AgentDB + PostgreSQL"
         AGENT1[Agent Conversations]
         AGENT2[Tool Usage]
         AGENT3[Reasoning Traces]
     end
-
     subgraph "LlamaIndex + AgentDB"
         RAG1[Vector Embeddings]
         RAG2[Document Chunks]
         RAG3[Semantic Search]
     end
-
     subgraph "Session-Buddy"
         BUDDY1[Project Memory]
         BUDDY2[Global Intelligence]
         BUDDY3[Cross-Project Insights]
     end
-
     API --> SEARCH
     API --> SYNC
     SEARCH --> DEDUP
-
     SEARCH --> AGENT1
     SEARCH --> RAG1
     SEARCH --> BUDDY1
-
     style API fill:#FFD700
     style SEARCH fill:#FFA500
     style SYNC fill:#FFA500
@@ -272,55 +247,43 @@ graph LR
 ### Alternative 1: Session-Buddy Only
 
 **Approach:** Use Session-Buddy's Reflection Database for all memory storage
-
 **Pros:**
 
 - Simpler architecture (single system)
 - Already integrated and proven
 - Cross-project features built-in
-
-**Cons:**
-
+  **Cons:**
 - Not optimized for high-volume agent operations
 - LlamaIndex would need custom vector store adapter
 - No AgentDB agent-specific features
-
-**Decision:** Rejected because Session-Buddy's DuckDB may not scale for high-frequency agent operations and large-scale RAG workloads.
+  **Decision:** Rejected because Session-Buddy's DuckDB may not scale for high-frequency agent operations and large-scale RAG workloads.
 
 ### Alternative 2: AgentDB Only
 
 **Approach:** Use AgentDB for all memory storage
-
 **Pros:**
 
 - Single system to manage
 - PostgreSQL backend provides persistence and scalability
 - AgentDB optimized for agent workloads
-
-**Cons:**
-
+  **Cons:**
 - Loses Session-Buddy's cross-project intelligence features
 - Loses automatic insights capture
 - Would need to reimplement Session-Buddy features
-
-**Decision:** Rejected because losing Session-Buddy's unique cross-project capabilities would be a significant regression.
+  **Decision:** Rejected because losing Session-Buddy's unique cross-project capabilities would be a significant regression.
 
 ### Alternative 3: Custom Memory System
 
 **Approach:** Build custom memory system from scratch
-
 **Pros:**
 
 - Complete control over architecture
 - Can optimize for Mahavishnu-specific needs
-
-**Cons:**
-
+  **Cons:**
 - Reinventing the wheel (Session-Buddy and AgentDB already exist)
 - High development and maintenance cost
 - Risk of building inferior solution
-
-**Decision:** Rejected because existing solutions (Session-Buddy, AgentDB) are well-designed and proven.
+  **Decision:** Rejected because existing solutions (Session-Buddy, AgentDB) are well-designed and proven.
 
 ## Implementation Plan
 
@@ -336,22 +299,18 @@ gantt
     Set up Session-Buddy collections   :a3, after a1, 2d
     Add AgentDB + PostgreSQL          :a4, after a1, 3d
     Basic unified search              :a5, after a4, 2d
-
     section RAG Integration
     LlamaIndex + AgentDB backend      :b1, after a5, 4d
     RAG ingestion workflows           :b2, after b1, 3d
     Unified RAG search                :b3, after b2, 2d
-
     section Cross-Project
     Session-Buddy project registration :c1, after b3, 2d
     Define dependencies from repos    :c2, after c1, 1d
     Enable cross-project search        :c3, after c2, 2d
-
     section Advanced
     Memory sharing protocols           :d1, after c3, 3d
     Knowledge graph visualization     :d2, after d1, 3d
     Memory sync service               :d3, after d2, 2d
-
     section Quality
     Comprehensive test suite          :e1, after d3, 3d
     Performance benchmarks            :e2, after e1, 2d
@@ -390,8 +349,7 @@ gantt
 - Performance benchmarks
 - Complete documentation
 - Usage examples
-
-**Estimated Timeline:** 10-14 days total
+  **Estimated Timeline:** 10-14 days total
 
 ## Configuration
 
@@ -406,13 +364,11 @@ memory_service:
   enable_reflection_search: true
   enable_cross_system_sharing: true
   sync_interval_minutes: 5
-
 agentdb:
   enabled: true
   postgres_url: "postgresql://localhost:5432/agentdb"
   embedding_dimension: 1536
   connection_pool_size: 10
-
 llamaindex:
   enabled: true
   ollama_base_url: "http://localhost:11434"

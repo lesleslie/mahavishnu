@@ -519,7 +519,7 @@ issues found" is the new output for METADATA ISSUES section.
 The pre-existing `tool_frontmatter_validator.py` ZeroDivisionError on
 "Total Tools: 0" is unrelated to Group 3.
 
-## Status  <!-- legacy status: all groups RESOLVED — see YAML frontmatter -->
+## Status <!-- legacy status: all groups RESOLVED — see YAML frontmatter -->
 
 - **Group 1**: RESOLVED (10/10 items). Smoke test added. See the
   "Group 1 resolution notes" table inserted at the end of the

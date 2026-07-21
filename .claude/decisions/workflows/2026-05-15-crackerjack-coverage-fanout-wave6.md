@@ -1,3 +1,11 @@
+---
+status: active
+role: canonical
+date: 2026-07-21
+last_reviewed: 2026-07-21
+topic: workflows
+---
+
 # 2026-05-15-crackerjack-coverage-fanout-wave6 — workflow decision
 
 ## Status

@@ -1,11 +1,11 @@
 ---
 status: draft
 role: canonical
+topic: lifecycle
 date: 2026-07-16
 last_reviewed: 2026-07-16
 superseded_by: null
 blocks_on: []
-topic: lifecycle
 ---
 
 # Frontmatter Validator Wiring — Design (2026-07-16)
@@ -16,8 +16,8 @@ Wire Mahavishnu's `scripts/validate_document_frontmatter.py` into the
 Crackerjack ecosystem so the validator:
 
 1. Exposes a `crackerjack docs validate` CLI subcommand.
-2. Exposes an MCP tool on the existing Crackerjack MCP server.
-3. Runs during `crackerjack run`'s `run_documentation_cleanup_phase`.
+1. Exposes an MCP tool on the existing Crackerjack MCP server.
+1. Runs during `crackerjack run`'s `run_documentation_cleanup_phase`.
 
 No pre-commit hook. Single source of truth: the validator remains
 in Mahavishnu (`scripts/validate_document_frontmatter.py`); Crackerjack
@@ -111,7 +111,7 @@ validator discovers the right stores.
 - `FrontmatterValidationResult` dataclass (above).
 - `FrontmatterValidator` class with `validate()` and `validate_or_raise()`.
 - `FrontmatterValidationError(Exception)` with `.result` attribute.
-- Re-uses `crackerjack.services.secure_subprocess.run`.
+- Reuses `crackerjack.services.secure_subprocess.run`.
 
 ### 2. `crackerjack/cli/docs_cli.py` (extend)
 
@@ -242,11 +242,11 @@ Three layers of tests, all in `crackerjack/tests/`:
    - Mock `secure_subprocess.run` to return canned JSON.
    - Cover: success, errors-only, warnings-only, timeout, crash,
      `--strict` exit code, `--store` flag pass-through.
-2. **`test_doc_cli.py`** (CLI, ~100 lines)
+1. **`test_doc_cli.py`** (CLI, ~100 lines)
    - Use `typer.testing.CliRunner` against `crackerjack docs validate`.
    - Cover: default flags, `--json`, `--strict`, `--store`, missing
      repo path.
-3. **`test_phase_coordinator_integration.py`** (integration, ~120 lines)
+1. **`test_phase_coordinator_integration.py`** (integration, ~120 lines)
    - Use a fixture that synthesizes a tmp repo with one valid and one
      invalid frontmatter file.
    - Verify `run_documentation_cleanup_phase` fails when validator
@@ -265,8 +265,7 @@ a subprocess to keep the dependency direction one-way
 (`crackerjack` → `mahavishnu`); Mahavishnu never imports from Crackerjack.
 
 If the validator script is not installed as a module, the wrapper
-falls back to running the raw script via `python
-/Users/les/Projects/mahavishnu/scripts/validate_document_frontmatter.py`
+falls back to running the raw script via `python /Users/les/Projects/mahavishnu/scripts/validate_document_frontmatter.py`
 (discovered via `crackerjack.services.tool_filter` or a hard-coded
 fallback path). Document the fallback in the service docstring.
 
@@ -274,13 +273,13 @@ fallback path). Document the fallback in the service docstring.
 
 1. Implement wrapper + CLI + MCP + phase hook in Crackerjack
    (single PR, ~3 commits: service, CLI/MCP, phase hook + tests).
-2. Run `crackerjack docs validate` against the Crackerjack repo itself
+1. Run `crackerjack docs validate` against the Crackerjack repo itself
    (currently has no frontmatter on docs — expect ~N warnings as legacy
    docs are surfaced for triage). Decision: gate rollout on
    Crackerjack docs being clean, OR ship without gating and fix
    warnings in a follow-up.
-3. Tag a Crackerjack release (current: 0.68.4 → 0.69.0 minor bump).
-4. Update `mahavishnu/docs/schemas/document-frontmatter-v1.md` to
+1. Tag a Crackerjack release (current: 0.68.4 → 0.69.0 minor bump).
+1. Update `mahavishnu/docs/schemas/document-frontmatter-v1.md` to
    reference the new Crackerjack surface (1-line addition).
 
 ## Out of scope

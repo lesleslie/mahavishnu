@@ -10,7 +10,7 @@ topic: mcp-design
 # MCP Context Optimization Plan
 
 **Date**: 2026-04-13
-**Status**: Draft - Reviews Complete, Ready for Revision  <!-- legacy status: Draft — see YAML frontmatter -->
+**Status**: Draft - Reviews Complete, Ready for Revision <!-- legacy status: Draft — see YAML frontmatter -->
 **Scope**: session-buddy, mahavishnu, crackerjack, akosha, dhara, mcp-common
 **Goal**: Reduce MCP tool definition context from ~70k to ~20-25k tokens
 
@@ -20,7 +20,6 @@ Every Claude Code conversation starts with ~120-140k tokens of system context.
 MCP tool definitions account for ~70k tokens (53%) of that, with 393 tools
 registered across 12 servers. Session-Buddy (171 tools) and Mahavishnu (109
 tools) are the worst offenders, together consuming ~54k tokens.
-
 This leaves very little room for actual conversation before hitting context
 limits, forcing premature compaction and degrading conversation quality.
 
@@ -45,8 +44,7 @@ Two complementary approaches, executed in order:
 
 1. **Phase 1 - Description Trimming**: Reduce per-tool token cost by ~60%
 1. **Phase 2 - Tool Registration Profiles**: Reduce tool count by ~50-70% per profile
-
-Combined target: ~20-25k tokens (from ~70k), a 65-70% reduction.
+   Combined target: ~20-25k tokens (from ~70k), a 65-70% reduction.
 
 ______________________________________________________________________
 

@@ -5,6 +5,7 @@ intent (e.g. opt-in feature flags). Extracted from the inline patterns in
 ``mahavishnu.core.events.bodai_subscriber._accept_legacy_wire`` and
 ``.claude.hooks.bodai-activity-post-tool-use._debug_enabled``.
 """
+
 from __future__ import annotations
 
 import os

@@ -142,7 +142,7 @@ def load_seed_topics(repo_root: Path) -> set[str]:
 
 
 _FRONTMATTER_RE = re.compile(
-    r"\A---\s*\n(.*?)\n---\s*(?:\n|$)", re.DOTALL
+    r"\A(?:---|_{3,})\s*\n(.*?)\n(?:---|_{3,})\s*(?:\n|$)", re.DOTALL
 )
 
 

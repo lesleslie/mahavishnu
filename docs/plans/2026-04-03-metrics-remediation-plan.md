@@ -10,7 +10,7 @@ topic: observability
 # Metrics Remediation Plan
 
 Date: 2026-04-03
-Status: Proposed  <!-- legacy status: Proposed — see YAML frontmatter -->
+Status: Proposed <!-- legacy status: Proposed — see YAML frontmatter -->
 Scope: Mahavishnu observability cleanup, Bodai ecosystem metrics rollout, active Dhara naming cleanup
 
 ## Goals

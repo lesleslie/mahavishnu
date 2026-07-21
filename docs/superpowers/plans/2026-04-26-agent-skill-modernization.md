@@ -10,14 +10,10 @@ topic: agent-skill-modernization
 # Agent & Skill Modernization Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
-
-**Goal:** Enrich 15 agent descriptions with ecosystem MCP tool references, add "Available MCP Servers" sections to all 22 native skills, and add automated stale-reference validation to `mahavishnu config validate`.
-
-**Architecture:** TDD-first: write the validator (`mahavishnu/core/skill_mcp_validator.py`) and tests first, then edit agent/skill content files until all tests pass. Static content edits (agents, skills) are verified by running the validator, not by unit tests per file.
-
-**Prerequisite:** Config Consolidation plan (`2026-04-26-config-consolidation.md`) must be complete. Agent files live at `mahavishnu/.claude/agents/`, skill files at `mahavishnu/.claude/skills/`. If consolidation hasn't run, substitute `~/.claude/agents/` and `~/.claude/skills/` accordingly.
-
-**Tech Stack:** Python 3.13, `re` (stdlib), `pathlib`, `yaml` (PyYAML), `typer`, pytest, `mahavishnu/cli/config_validator.py` (existing).
+> **Goal:** Enrich 15 agent descriptions with ecosystem MCP tool references, add "Available MCP Servers" sections to all 22 native skills, and add automated stale-reference validation to `mahavishnu config validate`.
+> **Architecture:** TDD-first: write the validator (`mahavishnu/core/skill_mcp_validator.py`) and tests first, then edit agent/skill content files until all tests pass. Static content edits (agents, skills) are verified by running the validator, not by unit tests per file.
+> **Prerequisite:** Config Consolidation plan (`2026-04-26-config-consolidation.md`) must be complete. Agent files live at `mahavishnu/.claude/agents/`, skill files at `mahavishnu/.claude/skills/`. If consolidation hasn't run, substitute `~/.claude/agents/` and `~/.claude/skills/` accordingly.
+> **Tech Stack:** Python 3.13, `re` (stdlib), `pathlib`, `yaml` (PyYAML), `typer`, pytest, `mahavishnu/cli/config_validator.py` (existing).
 
 ______________________________________________________________________
 

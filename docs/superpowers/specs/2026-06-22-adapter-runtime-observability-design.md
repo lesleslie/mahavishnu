@@ -1,17 +1,16 @@
 ---
 status: draft
 role: implementation
+topic: observability
 date: 2026-07-16
 last_reviewed: 2026-07-16
 superseded_by: null
-blocks_on:
-  - ext:dhara-http-api-surface
-topic: observability
+blocks_on: []
 ---
 
 # Adapter Runtime Observability v1.0 — Design
 
-**Status:** **DEFERRED** — blocked on Dhara HTTP API surface for `/adapters/<id>/active-settings-version`, `/adapters/<id>/lifecycle-events`, `/adapters/<id>/metrics` (NOT blocked on the in-process SQL `execute()` / `query()` surface; uses HTTP CRUD instead). Reused by Spec #10 (live-observe) for the same Dhara HTTP API + partial-unique-index + append-only-history pattern.  <!-- legacy status: DEFERRED — see YAML frontmatter -->
+**Status:** **DEFERRED** — blocked on Dhara HTTP API surface for `/adapters/<id>/active-settings-version`, `/adapters/<id>/lifecycle-events`, `/adapters/<id>/metrics` (NOT blocked on the in-process SQL `execute()` / `query()` surface; uses HTTP CRUD instead). Reused by Spec #10 (live-observe) for the same Dhara HTTP API + partial-unique-index + append-only-history pattern. <!-- legacy status: DEFERRED — see YAML frontmatter -->
 **Phase:** 3 (Adjacent)
 **Pivot:** This spec supersedes the original `cross-machine-session-continuity` design. The git-as-state-store pattern was solving the wrong problem (Claude Code transcript sync) for the wrong deployment model (stateful multi-machine). The actual need is operational telemetry for adapters deployed on stateless serverless infrastructure.
 

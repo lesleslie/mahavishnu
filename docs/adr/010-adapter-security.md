@@ -5,8 +5,8 @@ date: 2026-07-16
 last_reviewed: 2026-07-16
 superseded_by: null
 blocks_on: []
-topic: adapter-security
 decision_date: 2026-06-18
+topic: adapter-security
 ---
 
 # ADR 010: Adapter Security Specification
@@ -14,6 +14,7 @@ decision_date: 2026-06-18
 ## Status
 
 <!-- legacy status: **Accepted** — see YAML frontmatter -->
+
 **Accepted**
 
 ## Context

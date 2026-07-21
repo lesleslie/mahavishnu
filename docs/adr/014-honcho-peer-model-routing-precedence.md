@@ -5,8 +5,8 @@ date: 2026-07-16
 last_reviewed: 2026-07-16
 superseded_by: null
 blocks_on: []
-topic: honcho-routing
 decision_date: 2026-06-08
+topic: honcho-routing
 ---
 
 # ADR 014: Honcho Peer-Model Routing Precedence
@@ -14,6 +14,7 @@ decision_date: 2026-06-08
 ## Status
 
 <!-- legacy status: **Accepted** — see YAML frontmatter -->
+
 **Accepted**
 
 **Date:** 2026-06-08

@@ -17,7 +17,7 @@ plus a multi-agent review followup (Phases 5-7, 2026-07-20):
 - `5a7e001c` — Phase 1: registry + CLI (`mahavishnu worktree list-sessions`,
   `mahavishnu worktree prune-abandoned`)
 - `ccec4357` — Phase 2: hook wiring (`.claude/hooks/worktree-session-isolation.py`
-  + `.claude/settings.json` registration)
+  - `.claude/settings.json` registration)
 - `177acc76` — Phase 3: rollout docs
 - `5bc29b3e` — Phase 4: discovery hint in SessionStart hook
 - `e8ea440` — Phase 5a: lost-update race fix (`locked_json_modify` +
@@ -48,8 +48,7 @@ contention fix landed.
 ### Registry (`mahavishnu/core/worktree_session_registry.py`)
 
 Single-source-of-truth map from Claude session UUID → git worktree path.
-Schema-versioned JSON file at the XDG state path. Hardened with `chmod
-0o600` + parent `chmod 0o700`, `O_NOFOLLOW` on open (CWE-59),
+Schema-versioned JSON file at the XDG state path. Hardened with `chmod 0o600` + parent `chmod 0o700`, `O_NOFOLLOW` on open (CWE-59),
 `fcntl.flock` for concurrent-safe writes.
 
 CRUD API: `register`, `get`, `mark_abandoned`, `remove`, `list_active`.
@@ -57,8 +56,7 @@ CRUD API: `register`, `get`, `mark_abandoned`, `remove`, `list_active`.
 
 ### CLI subcommands (`mahavishnu/worktree_cli.py`)
 
-- `mahavishnu worktree list-sessions [--state active|abandoned|all]
-  [--older-than-days N]` — table view of the registry.
+- `mahavishnu worktree list-sessions [--state active|abandoned|all] [--older-than-days N]` — table view of the registry.
 - `mahavishnu worktree prune-abandoned [--older-than-days N] [--dry-run]`
   — removes abandoned registry entries older than N days. **NEVER
   removes the actual git worktree** — user must run
@@ -75,7 +73,7 @@ running alongside the existing `bodai-activity-subscriber` hook.
   if cwd is already a worktree, looks up the registry, then runs
   `git -C cwd worktree add -B <branch> <path> <base>` via direct
   subprocess (bypasses `MahavishnuApp.load()` to keep SessionStart
-  cost <2s — reviewer explicitly flagged the full mahavishnu stack
+  cost \<2s — reviewer explicitly flagged the full mahavishnu stack
   as too heavy for a hook).
 - **SessionEnd**: marks the worktree `abandoned` in the registry.
   No auto-removal.
@@ -132,9 +130,9 @@ Three reasons, in order of weight:
 
 1. **User agency.** A Claude session that auto-creates a worktree on
    its own changes the user's filesystem without explicit consent.
-2. **Optics.** First-time users seeing `~/worktrees/agent-a0c5d2a0`
+1. **Optics.** First-time users seeing `~/worktrees/agent-a0c5d2a0`
    appear unbidden may not realize what created it.
-3. **Escape hatch.** Default-on with a kill-switch is more error-prone
+1. **Escape hatch.** Default-on with a kill-switch is more error-prone
    than default-off with an explicit opt-in.
 
 Full threat model: see `.claude/decisions/session-worktree-defaults.md`.

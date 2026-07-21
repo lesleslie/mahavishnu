@@ -1,17 +1,16 @@
 ---
 status: draft
 role: implementation
+topic: observability
 date: 2026-07-16
 last_reviewed: 2026-07-16
 superseded_by: null
-blocks_on:
-  - ext:dhara-http-api-surface
-topic: observability
+blocks_on: []
 ---
 
 # Live Observe (Presence Over Gate) v1.0 — Design
 
-**Status:** **DEFERRED** — blocked on Dhara HTTP API surface for `/workflows/<id>/progress-snapshots` (NOT blocked on in-process SQL `execute()` / `query()`; uses HTTP CRUD instead). Substrate reuse with Spec #8 (adapter-runtime-observability); Spec #9 integration for per-tenant access control on workflow queries.  <!-- legacy status: DEFERRED — see YAML frontmatter -->
+**Status:** **DEFERRED** — blocked on Dhara HTTP API surface for `/workflows/<id>/progress-snapshots` (NOT blocked on in-process SQL `execute()` / `query()`; uses HTTP CRUD instead). Substrate reuse with Spec #8 (adapter-runtime-observability); Spec #9 integration for per-tenant access control on workflow queries. <!-- legacy status: DEFERRED — see YAML frontmatter -->
 **Phase:** 3 (Adjacent)
 **Source:** `Building a Production Agent Harness` — "presence in the loop, not approval at the gate." The article's pattern was streaming updates; in our serverless context, this reframes to queryable progress (operator polls when curious; server stays stateless).
 

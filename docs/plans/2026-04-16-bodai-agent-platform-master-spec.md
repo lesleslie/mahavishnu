@@ -9,7 +9,7 @@ topic: mcp-design
 
 # Bodai Agent Platform Master Spec
 
-**Status:** Draft (reviewed 2026-04-24; findings from 6-agent cross-review applied)  <!-- legacy status: Draft — see YAML frontmatter -->
+**Status:** Draft (reviewed 2026-04-24; findings from 6-agent cross-review applied) <!-- legacy status: Draft — see YAML frontmatter -->
 **Date:** 2026-04-16
 **Last reviewed:** 2026-04-24
 **Scope:** Consolidated plan for Hermes-inspired TUI work, Mahavishnu adapter strategy, and Bodai ecosystem integration

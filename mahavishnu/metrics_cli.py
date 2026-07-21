@@ -997,9 +997,7 @@ def _render_subscriber_state(state_path: Path, state: dict[str, Any] | None) -> 
     console.print(state_table)
 
 
-def _render_queue_state(
-    queue_path: Path, events: list[dict[str, Any]], queue_cap: int
-) -> None:
+def _render_queue_state(queue_path: Path, events: list[dict[str, Any]], queue_cap: int) -> None:
     """Render the Queue State table for the bodai metrics command."""
     queue_size = len(events)
     drop_count = max(0, queue_cap - queue_size) if queue_cap <= queue_size else 0
@@ -1354,7 +1352,9 @@ async def _fetch_dhara_entries(
             if not isinstance(item, dict) or "key" not in item:
                 continue
             value_raw = item.get("value", {})
-            entries.append({"key": str(item["key"]), "value": value_raw if isinstance(value_raw, dict) else {}})
+            entries.append(
+                {"key": str(item["key"]), "value": value_raw if isinstance(value_raw, dict) else {}}
+            )
     return entries
 
 
@@ -1657,7 +1657,9 @@ def _render_dispatch_output(
     console.print(f"[dim]Key prefix: {ROUTING_DECISIONS_KEY_PREFIX}[/dim]")
     console.print(f"[dim]Window: since {cutoff.isoformat() if cutoff else 'all'}[/dim]\n")
 
-    summary = Table(title="Per-Caller-Kind Quota Usage", show_header=True, header_style="bold magenta")
+    summary = Table(
+        title="Per-Caller-Kind Quota Usage", show_header=True, header_style="bold magenta"
+    )
     summary.add_column("caller_kind", style="cyan")
     summary.add_column("Dispatches", justify="right")
     for caller_kind in sorted(caller_counts.keys()):

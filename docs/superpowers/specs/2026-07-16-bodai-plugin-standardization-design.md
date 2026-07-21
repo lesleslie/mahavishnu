@@ -1,11 +1,11 @@
 ---
 status: draft
 role: canonical
+topic: plugin-standardization
 date: 2026-07-16
 last_reviewed: 2026-07-16
 superseded_by: null
 blocks_on: []
-topic: plugin-standardization
 ---
 
 # Bodai Plugin Standardization — Design Spec
@@ -22,13 +22,12 @@ The Bodai ecosystem ships five MCP servers — `mahavishnu`, `akosha`, `crackerj
 - **Slash commands are inconsistently named.** Mahavishnu exposes unprefixed `/vishnu-status` and `/bodai-status`; crackerjack's would be `/crackerjack:status` if the slash_commands directory were ever picked up; session-buddy's commands live in mahavishnu's `.claude/commands/` and call `mcp__session-buddy__*` tools but have no `session-buddy:` prefix.
 - **Nine wave `.js` workflow scripts** sit at `mahavishnu/.claude/workflows/` with no lifecycle policy. They are auto-registered as slash commands and remain runnable indefinitely even after their referenced state is gone.
 - **`.claude/decisions/` has a documented lifecycle** (Active / Superseded / Archived tracked in the README index), but `.claude/workflows/` does not. `docs/followups/` is being migrated to match `.claude/decisions/`.
-
-The user's stated goals:
+  The user's stated goals:
 
 1. All five Bodai MCP servers ship as Claude Code plugins for consistency and (eventual) cross-harness distribution.
-2. Slash commands are namespaced: `/mahavishnu:status`, `/akosha:search`, `/dhara:adapter-list`, `/session-buddy:checkpoint`, `/crackerjack:status`. Exception: cross-component commands keep the `bodai:` namespace.
-3. Workflows follow the same lifecycle as `.claude/decisions/`.
-4. Hard cutover: no aliases, no dual registration.
+1. Slash commands are namespaced: `/mahavishnu:status`, `/akosha:search`, `/dhara:adapter-list`, `/session-buddy:checkpoint`, `/crackerjack:status`. Exception: cross-component commands keep the `bodai:` namespace.
+1. Workflows follow the same lifecycle as `.claude/decisions/`.
+1. Hard cutover: no aliases, no dual registration.
 
 ## Approach (chosen)
 
@@ -39,8 +38,7 @@ The user's stated goals:
 - A scaffold tool — `bodai-plugins` Typer CLI wrapping `scripts/init_bodai_plugin.py` — generates the canonical plugin layout in any target directory. The same tool's `validate` subcommand enforces schema and consistency.
 - Pilot migration on `mahavishnu` first, then the other four in priority order.
 - Wave workflows move to `.claude/workflows/.archive/` (Superseded) or stay in `.claude/workflows/` (Active), with paired `.claude/decisions/workflows/YYYY-MM-DD-<name>.md` lifecycle files.
-
-This approach encodes consistency in code (the scaffold), avoids the Anthropic review gate (self-hosted marketplace), and survives future plugin additions (fastblocks, splashstand, etc. drop in trivially).
+  This approach encodes consistency in code (the scaffold), avoids the Anthropic review gate (self-hosted marketplace), and survives future plugin additions (fastblocks, splashstand, etc. drop in trivially).
 
 ## Repository Layout
 
@@ -122,7 +120,6 @@ Wave `.js` naming post-archive: only `.claude/workflows/*.js` files (not `.archi
 ```
 
 Field semantics:
-
 | Field | Source of truth | Bump policy |
 |---|---|---|
 | `name` | matches MCP server name in `.mcp.json` | never changes |
@@ -130,7 +127,6 @@ Field semantics:
 | `description` | mirrors the repo README lead paragraph | bumps when role changes |
 | `commands`/`agents`/`skills`/`hooks` | path relative to plugin root | optional; omit if absent |
 | `mcpServers` | path to the plugin's own `.mcp.json` | required |
-
 Plugin `.mcp.json` follows the standard MCP config schema:
 
 ```json
@@ -182,10 +178,10 @@ The MCP server key (`"mahavishnu"`) **must** match `plugin.name` and the slash-c
 Validation rules enforced by `tests/test_marketplace_schema.py`:
 
 1. Every `plugin.name` is unique within `plugins[]`.
-2. Every `plugin.name` matches `[a-z][a-z0-9-]*`.
-3. Every `plugin.source.repo` is reachable via `gh repo view <repo>` (skipped if `gh` unavailable; CI-required).
-4. `metadata.version` is semver.
-5. `plugins[]` is non-empty.
+1. Every `plugin.name` matches `[a-z][a-z0-9-]*`.
+1. Every `plugin.source.repo` is reachable via `gh repo view <repo>` (skipped if `gh` unavailable; CI-required).
+1. `metadata.version` is semver.
+1. `plugins[]` is non-empty.
 
 ## Scaffold Script Behavior
 
@@ -199,7 +195,6 @@ bodai-plugins validate <path-to-plugin>   # check existing plugin
 ### `init <name>`
 
 **Arguments:**
-
 | Flag | Default | Purpose |
 |---|---|---|
 | `name` (positional) | required | Plugin name, e.g. `mahavishnu` |
@@ -214,43 +209,37 @@ bodai-plugins validate <path-to-plugin>   # check existing plugin
 | `--author-email` | `git config user.email` | Plugin author email |
 | `--license` | `BSD-3-CLAUSE` | SPDX license identifier |
 | `--force` | `False` | Overwrite existing `.claude-plugin/` if present |
-
 **Pre-flight checks (refuses to run if any fail):**
 
 1. `name` matches `[a-z][a-z0-9-]*`.
-2. `<target-dir>/.claude-plugin/plugin.json` does not already exist (unless `--force`).
-3. `<name>` is not already in `bodai-plugins/.claude-plugin/marketplace.json` (warns, proceeds).
-4. MCP server config is plausible (port is int in 1–65535, or command exists on PATH).
-
-**What it generates:** the per-plugin-repo layout (see above) populated from the flags.
-
-**Post-flight actions:** runs `validate <target-dir>` and prints next steps.
+1. `<target-dir>/.claude-plugin/plugin.json` does not already exist (unless `--force`).
+1. `<name>` is not already in `bodai-plugins/.claude-plugin/marketplace.json` (warns, proceeds).
+1. MCP server config is plausible (port is int in 1–65535, or command exists on PATH).
+   **What it generates:** the per-plugin-repo layout (see above) populated from the flags.
+   **Post-flight actions:** runs `validate <target-dir>` and prints next steps.
 
 ### `validate <path>`
 
 Runs all of:
 
 1. `.claude-plugin/plugin.json` is valid JSON, has all required fields.
-2. `plugin.name` matches the MCP server key in `.mcp.json`.
-3. `plugin.name` matches `[a-z][a-z0-9-]*`.
-4. `plugin.version` is semver.
-5. Each `commands/*.md` file has valid frontmatter (`name`, `description`, both non-empty).
-6. `commands/`, `agents/`, `skills/`, `hooks/` paths declared in the manifest exist as directories (or are absent if not declared).
-7. `.mcp.json` is valid and has at least one server.
-
-Exit codes: `0` on success, `1` on any failure. All failures printed to stderr with `file:line` references. A `--verbose` flag shows every check (passed + failed). A `--json` flag outputs a JSON report.
+1. `plugin.name` matches the MCP server key in `.mcp.json`.
+1. `plugin.name` matches `[a-z][a-z0-9-]*`.
+1. `plugin.version` is semver.
+1. Each `commands/*.md` file has valid frontmatter (`name`, `description`, both non-empty).
+1. `commands/`, `agents/`, `skills/`, `hooks/` paths declared in the manifest exist as directories (or are absent if not declared).
+1. `.mcp.json` is valid and has at least one server.
+   Exit codes: `0` on success, `1` on any failure. All failures printed to stderr with `file:line` references. A `--verbose` flag shows every check (passed + failed). A `--json` flag outputs a JSON report.
 
 ### `validate --fix`
 
 Auto-corrects simple cases; refuses to touch anything unsafe:
-
 | Auto-fixable | Action |
 |---|---|
 | Missing `---` frontmatter in `commands/*.md` | Add a frontmatter block with placeholder `name` (filename) and `description` (empty, requires manual edit) |
 | Missing `name` or `description` in frontmatter | Add placeholder, mark as `// TODO: edit` |
 | Orphan path declared in `plugin.json` but directory missing | Create empty directory with a `README.md` explaining its purpose |
 | `plugin.name` ≠ MCP server key | Sync `.mcp.json` server key to match `plugin.name` (one-way; never renames the plugin) |
-
 | NOT auto-fixable | Why |
 |---|---|
 | Invalid name format (e.g., uppercase) | Renaming could break callers; require manual |
@@ -258,7 +247,6 @@ Auto-corrects simple cases; refuses to touch anything unsafe:
 | Malformed JSON | Can't safely repair |
 | Name collisions with existing marketplace entry | Cross-repo decision |
 | Missing required fields beyond name/description | Require deliberate values |
-
 `--fix` prints each fix it applied and exits `0` after running. Run `validate` again after `--fix` to confirm clean state.
 
 ## Naming Conventions
@@ -271,17 +259,15 @@ Auto-corrects simple cases; refuses to touch anything unsafe:
 | Workflow name | `<descriptive-name>-wave<N>` or `<descriptive-name>-<YYYY-MM-DD>` | `crackerjack-coverage-fanout-wave4` |
 | Workflow decision file | `YYYY-MM-DD-<workflow-name>.md` | `2026-07-16-crackerjack-coverage-fanout-wave4.md` |
 | Marketplace name | `bodai-plugins` | — |
-
 Exception: cross-component commands keep the `bodai:` namespace (`/bodai:status`).
 
 ## Workflow Lifecycle
 
 Each wave `.js` file gets a paired `.md` decision file under `.claude/decisions/workflows/`. The decision file is the canonical lifecycle record; the `.js` is the executable artifact.
-
 **Decision file schema:**
 
 ```markdown
-______________________________________________________________________
+---
 
 ## Workflow: <workflow-name>
 ## Created: YYYY-MM-DD
@@ -315,8 +301,8 @@ ______________________________________________________________________
 `.claude/decisions/README.md` gets a new section `## Workflows` listing every decision file with its Status. CI guard lives at `mahavishnu/scripts/audit_workflow_lifecycle.py` (since mahavishnu currently owns all wave workflows; if other plugin repos later gain waves, they each get their own audit script), run from `mahavishnu/.github/workflows/audit-workflows.yml`. It checks:
 
 1. Every `.claude/workflows/*.js` (excluding `.archive/`) has a paired `.md` in `.claude/decisions/workflows/` with `Status: Active`.
-2. Every `.claude/workflows/.archive/*.js` has a paired `.md` with `Status: Superseded` or `Archived`.
-3. The decisions README's `## Workflows` table is in sync with the actual files.
+1. Every `.claude/workflows/.archive/*.js` has a paired `.md` with `Status: Superseded` or `Archived`.
+1. The decisions README's `## Workflows` table is in sync with the actual files.
 
 ## Migration Plan
 

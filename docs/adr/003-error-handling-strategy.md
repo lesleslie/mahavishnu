@@ -5,8 +5,8 @@ date: 2026-07-16
 last_reviewed: 2026-07-16
 superseded_by: null
 blocks_on: []
-topic: error-handling
 decision_date: 2026-06-18
+topic: error-handling
 ---
 
 # ADR 003: Error Handling and Resilience Strategy
@@ -14,6 +14,7 @@ decision_date: 2026-06-18
 ## Status
 
 <!-- legacy status: **Accepted** — see YAML frontmatter -->
+
 **Accepted**
 
 ## Context

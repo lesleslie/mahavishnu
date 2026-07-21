@@ -1,21 +1,16 @@
 ---
 status: complete
 role: historical
+topic: convergence-control-plane
 date: 2026-07-16
 last_reviewed: 2026-07-16
 superseded_by: null
 blocks_on: []
-topic: convergence-control-plane
 ---
 
 # Ops/Infrastructure Review: TensorZero Gateway Plan
 
-**Reviewer:** Infrastructure
-**Date:** 2026-04-06
-**Subject:** [TensorZero Gateway Plan](../tensorzero-gateway-plan.md)
-**Verdict:** Proceed with conditions — several items need resolution before production wiring.
-
-______________________________________________________________________
+## **Reviewer:** Infrastructure **Date:** 2026-04-06 **Subject:** [TensorZero Gateway Plan](../tensorzero-gateway-plan.md) **Verdict:** Proceed with conditions — several items need resolution before production wiring.
 
 ## 1. Port 8471 — Reasonable? Conflicts?
 

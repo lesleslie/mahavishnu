@@ -9,11 +9,7 @@ topic: convergence-control-plane
 
 # Bodai Deployment Guide: Local vs Serverless
 
-**Plan**: `2026-05-23-bodai-routing-feedback-loop-v4.md` — Phase 5.3
-**Status**: `complete, implementation`  <!-- legacy status: complete, implementation — see YAML frontmatter -->
-**Purpose**: Document local vs serverless deployment patterns for the Bodai feedback loop
-
-______________________________________________________________________
+## **Plan**: `2026-05-23-bodai-routing-feedback-loop-v4.md` — Phase 5.3 **Status**: `complete, implementation` <!-- legacy status: complete, implementation — see YAML frontmatter --> **Purpose**: Document local vs serverless deployment patterns for the Bodai feedback loop
 
 ## Overview
 

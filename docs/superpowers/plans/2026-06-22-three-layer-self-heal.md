@@ -10,12 +10,9 @@ topic: three-layer-self-heal
 # Three-Layer Self-Heal v1.0 Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
-
-**Goal:** Ship a per-operation recovery protocol (L1 deterministic guard, L2 bounded agentic heal, L3 operator escalation) applied to git push, rebase, and merge — letting the system recover from known failures without operator pages in the common case.
-
-**Architecture:** Generic protocol in `mahavishnu/core/heal/` (L1Aborted/L2Bailed/L2Exhausted types, `run_with_l1`/`run_with_l2`/`escalate_to_operator` runners). Git-specific implementations in `mahavishnu/core/git_heal.py` using the protocol. Existing `heal_workflows` (per-workflow) is the outer loop; this is the inner loop.
-
-**Tech Stack:** Python 3.13, `asyncio.subprocess`, `prometheus_client`, pytest with `asyncio_mode = "auto"`.
+> **Goal:** Ship a per-operation recovery protocol (L1 deterministic guard, L2 bounded agentic heal, L3 operator escalation) applied to git push, rebase, and merge — letting the system recover from known failures without operator pages in the common case.
+> **Architecture:** Generic protocol in `mahavishnu/core/heal/` (L1Aborted/L2Bailed/L2Exhausted types, `run_with_l1`/`run_with_l2`/`escalate_to_operator` runners). Git-specific implementations in `mahavishnu/core/git_heal.py` using the protocol. Existing `heal_workflows` (per-workflow) is the outer loop; this is the inner loop.
+> **Tech Stack:** Python 3.13, `asyncio.subprocess`, `prometheus_client`, pytest with `asyncio_mode = "auto"`.
 
 ______________________________________________________________________
 

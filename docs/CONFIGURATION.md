@@ -92,11 +92,11 @@ mahavishnu: per-session worktree isolation is on (set MAHAVISHNU_AUTO_WORKTREE=0
 The hint fires ONLY when ALL of these are true:
 
 1. Mode is `session-start` (never on `session-end`)
-2. `MAHAVISHNU_AUTO_WORKTREE` is explicitly set to a falsy value
-3. `cwd` is non-empty
-4. `cwd` is not already inside a worktree
-5. `cwd` is a git repo (or a sub-directory of one)
-6. `MAHAVISHNU_AUTO_WORKTREE_ROOT` (default `~/worktrees`) does not yet exist
+1. `MAHAVISHNU_AUTO_WORKTREE` is explicitly set to a falsy value
+1. `cwd` is non-empty
+1. `cwd` is not already inside a worktree
+1. `cwd` is a git repo (or a sub-directory of one)
+1. `MAHAVISHNU_AUTO_WORKTREE_ROOT` (default `~/worktrees`) does not yet exist
 
 The hint is purely informational — no filesystem mutation, no mahavishnu import, no registry write.
 

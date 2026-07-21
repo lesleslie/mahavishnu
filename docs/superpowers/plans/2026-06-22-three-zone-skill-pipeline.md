@@ -10,12 +10,9 @@ topic: three-zone-skill-pipeline
 # Three-Zone Skill Pipeline v1.0 Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
-
-**Goal:** Ship the three-zone skill pipeline (staging → systems → promoted) with Dhara-backed audit log, CLI for human promotion via `request_approval`, and a `stage_skill()` helper that enforces staging-only at the code level.
-
-**Architecture:** Filesystem zones under `commands/{tools,workflows}/{staging,systems,promoted}/`. CLI routes promotion through the existing `request_approval` MCP tool. Workers auto-learn via `stage_skill()` which writes only to `staging/`. Every transition recorded in the append-only `skill_transitions` Dhara table.
-
-**Tech Stack:** Python 3.13, typer, Dhara (existing), `request_approval` MCP tool (existing), pytest with `asyncio_mode = "auto"`, `hashlib`.
+> **Goal:** Ship the three-zone skill pipeline (staging → systems → promoted) with Dhara-backed audit log, CLI for human promotion via `request_approval`, and a `stage_skill()` helper that enforces staging-only at the code level.
+> **Architecture:** Filesystem zones under `commands/{tools,workflows}/{staging,systems,promoted}/`. CLI routes promotion through the existing `request_approval` MCP tool. Workers auto-learn via `stage_skill()` which writes only to `staging/`. Every transition recorded in the append-only `skill_transitions` Dhara table.
+> **Tech Stack:** Python 3.13, typer, Dhara (existing), `request_approval` MCP tool (existing), pytest with `asyncio_mode = "auto"`, `hashlib`.
 
 ______________________________________________________________________
 

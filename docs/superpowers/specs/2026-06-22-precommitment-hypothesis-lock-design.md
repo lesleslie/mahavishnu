@@ -1,22 +1,16 @@
 ---
 status: draft
 role: implementation
+topic: convergence-control-plane
 date: 2026-07-16
 last_reviewed: 2026-07-16
 superseded_by: null
 blocks_on: []
-topic: convergence-control-plane
 ---
 
 # Precommitment Hypothesis Lock v1.1 — Design
 
-**Status:** Draft (brainstormed 2026-06-22)  <!-- legacy status: Draft (brainstormed 2026-06-22) — see YAML frontmatter -->
-**Phase:** 1 (Foundational; extends Spec #1)
-**Source:** Synthesis of three articles — `Rebuilt Hermes / MAOS`, `IDSD`, `Building a Production Agent Harness`. The precommitment pattern is the most distinctive technique in the Production Harness article: a hypothesis slate frozen at iteration 0 prevents LLM reasoning loops from converging on early-evidence-supported hypotheses and retrospectively framing subsequent evidence to confirm them.
-
-**Depends on:** `completion-report-schema-v1` (the report contract this gate consumes).
-
-______________________________________________________________________
+## **Status:** Draft (brainstormed 2026-06-22) <!-- legacy status: Draft (brainstormed 2026-06-22) — see YAML frontmatter --> **Phase:** 1 (Foundational; extends Spec #1) **Source:** Synthesis of three articles — `Rebuilt Hermes / MAOS`, `IDSD`, `Building a Production Agent Harness`. The precommitment pattern is the most distinctive technique in the Production Harness article: a hypothesis slate frozen at iteration 0 prevents LLM reasoning loops from converging on early-evidence-supported hypotheses and retrospectively framing subsequent evidence to confirm them. **Depends on:** `completion-report-schema-v1` (the report contract this gate consumes).
 
 ## Overview
 

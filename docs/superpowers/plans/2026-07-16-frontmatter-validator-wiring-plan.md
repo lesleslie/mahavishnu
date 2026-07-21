@@ -1,22 +1,19 @@
 ---
 status: draft
 role: implementation
+topic: lifecycle
 date: 2026-07-16
 last_reviewed: 2026-07-17
 superseded_by: null
 blocks_on: []
-topic: lifecycle
 ---
 
 # Frontmatter Validator Wiring + P7 Cross-Repo Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
-
-**Goal:** Wire Mahavishnu's frontmatter validator into Crackerjack as a CLI subcommand, MCP tool, and pre-cleanup phase step, then run P7 cross-repo expansion (session-buddy template, then 4-repo fan-out).
-
-**Architecture:** Crackerjack invokes the Mahavishnu validator as a subprocess (one-directional dependency: Crackerjack → Mahavishnu). Wrapper service parses JSON output into a result dataclass; surfaces (CLI, MCP, phase hook) consume the dataclass. P7 follows the same Wave A-C pattern used for Mahavishnu's own normalization.
-
-**Tech Stack:** Python 3.13, Typer (CLI), FastMCP (MCP server), pytest, secure_subprocess (existing Crackerjack utility).
+> **Goal:** Wire Mahavishnu's frontmatter validator into Crackerjack as a CLI subcommand, MCP tool, and pre-cleanup phase step, then run P7 cross-repo expansion (session-buddy template, then 4-repo fan-out).
+> **Architecture:** Crackerjack invokes the Mahavishnu validator as a subprocess (one-directional dependency: Crackerjack → Mahavishnu). Wrapper service parses JSON output into a result dataclass; surfaces (CLI, MCP, phase hook) consume the dataclass. P7 follows the same Wave A-C pattern used for Mahavishnu's own normalization.
+> **Tech Stack:** Python 3.13, Typer (CLI), FastMCP (MCP server), pytest, secure_subprocess (existing Crackerjack utility).
 
 ## Global Constraints
 
@@ -31,7 +28,7 @@ topic: lifecycle
 - Crackerjack Python entry point: `crackerjack` (configured in `pyproject.toml`). Repo root: `/Users/les/Projects/crackerjack`.
 - Mahavishnu repo root: `/Users/les/Projects/mahavishnu`.
 
----
+______________________________________________________________________
 
 ## File Structure
 
@@ -67,18 +64,21 @@ topic: lifecycle
 | All session-buddy docs (6 stores) | extend | Prepend YAML frontmatter |
 | dhara / crackerjack / akosha / oneiric equivalents of above | new | Per-repo P7.B fan-out |
 
----
+______________________________________________________________________
 
 # Phase 1: Crackerjack Integration
 
 ## Task 1: FrontmatterValidator service (wrapper)
 
 **Files:**
+
 - Create: `crackerjack/services/frontmatter_validator.py`
 - Test: `crackerjack/tests/unit/test_frontmatter_validator.py`
 
 **Interfaces:**
+
 - Consumes: `crackerjack.services.secure_subprocess.run` (existing utility)
+
 - Produces: `FrontmatterValidator` class with `.validate(...)` returning `FrontmatterValidationResult`; `FrontmatterValidationError` exception
 
 - [ ] **Step 1: Write the failing test**
@@ -337,15 +337,18 @@ git add crackerjack/services/frontmatter_validator.py crackerjack/tests/unit/tes
 git -c user.email=les@wedgwoodwebworks.com -c user.name=lesleslie commit -m "feat(crackerjack): add FrontmatterValidator service wrapping mahavishnu validator"
 ```
 
----
+______________________________________________________________________
 
 ## Task 2: docs validate CLI subcommand
 
 **Files:**
+
 - Modify: `crackerjack/cli/docs_cli.py:1-30` (extend existing `docs` Typer group)
 
 **Interfaces:**
+
 - Consumes: `FrontmatterValidator.validate(...)` from Task 1
+
 - Produces: `crackerjack docs validate [--strict] [--store] [--validate-links] [--json] [--path]`
 
 - [ ] **Step 1: Write the failing test**
@@ -522,16 +525,19 @@ git add crackerjack/cli/docs_cli.py crackerjack/tests/unit/test_doc_cli.py
 git -c user.email=les@wedgwoodwebworks.com -c user.name=lesleslie commit -m "feat(crackerjack): add docs validate CLI subcommand"
 ```
 
----
+______________________________________________________________________
 
 ## Task 3: MCP tool — `crackerjack_doc_frontmatter_validate`
 
 **Files:**
+
 - Create: `crackerjack/mcp/tools/doc_tools.py`
 - Modify: `crackerjack/mcp/tools/__init__.py:1-30`
 
 **Interfaces:**
+
 - Consumes: `FrontmatterValidator` from Task 1
+
 - Produces: `register_doc_tools(mcp_app)` registered alongside sibling modules
 
 - [ ] **Step 1: Write the doc_tools module**
@@ -623,26 +629,25 @@ Expected: `OK`
 
 - [ ] **Step 4: Smoke-test the MCP tool**
 
-Run: `cd /Users/les/Projects/crackerjack && uv run python -c "
+Run: \`cd /Users/les/Projects/crackerjack && uv run python -c "
 import asyncio
 from crackerjack.services.frontmatter_validator import FrontmatterValidator, FrontmatterValidationResult
 from unittest.mock import patch, MagicMock
 import json
 
 async def main():
-    payload = json.dumps({'files_scanned': 1, 'errors': [], 'warnings': [], 'duration_ms': 1})
-    m = MagicMock()
-    m.returncode = 0
-    m.stdout = payload
-    m.stderr = ''
-    with patch('crackerjack.services.frontmatter_validator.secure_subprocess.run', return_value=m):
-        from crackerjack.mcp.tools.doc_tools import crackerjack_doc_frontmatter_validate
-        out = await crackerjack_doc_frontmatter_validate()
-        print(out)
+payload = json.dumps({'files_scanned': 1, 'errors': [], 'warnings': [], 'duration_ms': 1})
+m = MagicMock()
+m.returncode = 0
+m.stdout = payload
+m.stderr = ''
+with patch('crackerjack.services.frontmatter_validator.secure_subprocess.run', return_value=m):
+from crackerjack.mcp.tools.doc_tools import crackerjack_doc_frontmatter_validate
+out = await crackerjack_doc_frontmatter_validate()
+print(out)
 
 asyncio.run(main())
-"`
-Expected: JSON with `"success": true`.
+"`Expected: JSON with`"success": true\`.
 
 - [ ] **Step 5: Commit**
 
@@ -652,16 +657,19 @@ git add crackerjack/mcp/tools/doc_tools.py crackerjack/mcp/tools/__init__.py
 git -c user.email=les@wedgwoodwebworks.com -c user.name=lesleslie commit -m "feat(crackerjack): add doc_frontmatter_validate MCP tool"
 ```
 
----
+______________________________________________________________________
 
 ## Task 4: phase_coordinator hook
 
 **Files:**
+
 - Modify: `crackerjack/core/phase_coordinator.py:1152-1185` (`run_documentation_cleanup_phase`)
 - Test: `crackerjack/tests/integration/test_phase_coordinator_integration.py`
 
 **Interfaces:**
+
 - Consumes: `FrontmatterValidator.validate()` from Task 1
+
 - Produces: `run_documentation_cleanup_phase` runs validator before cleanup
 
 - [ ] **Step 1: Write the integration test**
@@ -791,11 +799,12 @@ git add crackerjack/core/phase_coordinator.py crackerjack/tests/integration/test
 git -c user.email=les@wedgwoodwebworks.com -c user.name=lesleslie commit -m "feat(crackerjack): validate frontmatter in doc cleanup phase"
 ```
 
----
+______________________________________________________________________
 
 ## Task 5: Update Mahavishnu schema doc to reference Crackerjack surface
 
 **Files:**
+
 - Modify: `mahavishnu/docs/schemas/document-frontmatter-v1.md` (append "Crackerjack surface" subsection)
 
 - [ ] **Step 1: Read current schema doc**
@@ -838,7 +847,7 @@ git add docs/schemas/document-frontmatter-v1.md
 git -c user.email=les@wedgwoodwebworks.com -c user.name=lesleslie commit -m "docs(schemas): reference crackerjack integration surface"
 ```
 
----
+______________________________________________________________________
 
 ## Task 6: Phase 1 final smoke + Crackerjack release bump
 
@@ -852,7 +861,7 @@ Expected: all green.
 - [ ] **Step 2: Verify CLI works on a real repo**
 
 Run: `cd /Users/les/Projects/mahavishnu && uv run /Users/les/Projects/crackerjack/.venv/bin/crackerjack docs validate --json --path /Users/les/Projects/mahavishnu 2>&1 | head -30`
-Expected: JSON with files_scanned ~ 200, error_count 0, warning_count <= 5 (legacy warnings acceptable).
+Expected: JSON with files_scanned ~ 200, error_count 0, warning_count \<= 5 (legacy warnings acceptable).
 
 - [ ] **Step 3: Verify MCP tool imports cleanly**
 
@@ -871,7 +880,7 @@ git add pyproject.toml
 git -c user.email=les@wedgwoodwebworks.com -c user.name=lesleslie commit -m "chore(crackerjack): bump version to 0.69.0 (frontmatter validator wiring)"
 ```
 
----
+______________________________________________________________________
 
 # Phase 2: P7 Cross-Repo Expansion (Gated)
 
@@ -882,6 +891,7 @@ Phase 2 has two waves: **P7.A** (session-buddy template) and
 ## Task 7 (P7.A): Build session-buddy template + playbook
 
 **Files:**
+
 - Copy into `session-buddy/`:
   - `mahavishnu/scripts/validate_document_frontmatter.py` → `session-buddy/scripts/`
   - `mahavishnu/scripts/regenerate_plan_index.py` → `session-buddy/scripts/`
@@ -892,7 +902,9 @@ Phase 2 has two waves: **P7.A** (session-buddy template) and
 - Generated: `session-buddy/docs/plans/PLAN_INDEX.md`
 
 **Interfaces:**
+
 - Consumes: Phase 1 artifacts (validator, regenerator, schemas)
+
 - Produces: session-buddy has its own frontmatter reality + the playbook that the 4-repo fan-out reads
 
 - [ ] **Step 1: Inventory session-buddy docs**
@@ -968,13 +980,14 @@ git add scripts/ docs/schemas/ docs/plans/PLAN_INDEX.md docs/plans/2026-07-16-p7
 git -c user.email=les@wedgwoodwebworks.com -c user.name=lesleslie commit -m "docs(session-buddy): apply plan-lifecycle-unification playbook (P7.A template)"
 ```
 
----
+______________________________________________________________________
 
 ## Task 8 (P7.B): 4-repo parallel fan-out
 
 **Files:** per-repo copies of validator/regenerator/schemas + normalized docs + per-repo PLAN_INDEX.md + per-repo commits. Targets: dhara, crackerjack, akosha, oneiric.
 
 **Interfaces:**
+
 - Consumes: `session-buddy/docs/plans/2026-07-16-p7-cross-repo-playbook.md` from Task 7
 - Produces: each repo has its own frontmatter reality, generated PLAN_INDEX.md, per-repo commits
 
@@ -1024,11 +1037,12 @@ git add docs/followups/2026-07-16-p7-cross-repo-completion.md
 git -c user.email=les@wedgwoodwebworks.com -c user.name=lesleslie commit -m "docs(followups): record P7 cross-repo completion"
 ```
 
----
+______________________________________________________________________
 
 ## Self-Review
 
 1. **Spec coverage**:
+
    - Wrapper service: Task 1 ✓
    - CLI subcommand: Task 2 ✓
    - MCP tool: Task 3 ✓
@@ -1038,11 +1052,12 @@ git -c user.email=les@wedgwoodwebworks.com -c user.name=lesleslie commit -m "doc
    - P7.A (session-buddy template + playbook): Task 7 ✓
    - P7.B (4-repo fan-out): Task 8 ✓
 
-2. **Placeholder scan**: No TBDs/TODOs. All code blocks are complete. Each commit command is concrete.
+1. **Placeholder scan**: No TBDs/TODOs. All code blocks are complete. Each commit command is concrete.
 
-3. **Type consistency**:
+1. **Type consistency**:
+
    - `FrontmatterValidationResult` (Task 1) used consistently in Tasks 1, 2, 3, 4.
    - `FrontmatterValidationError.reason` ∈ `{"timeout", "crash", "errors"}` consistent.
    - `FrontmatterValidator.validate(...)` signature matches all 4 call sites (CLI, MCP, phase, tests).
 
-4. **Scope**: Two phases (Crackerjack wiring, P7 cross-repo) produce working software per phase. P7 is gated on P7.A producing the playbook.
+1. **Scope**: Two phases (Crackerjack wiring, P7 cross-repo) produce working software per phase. P7 is gated on P7.A producing the playbook.

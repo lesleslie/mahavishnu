@@ -10,12 +10,9 @@ topic: dhara-crackerjack-bug-fixes
 # Dhara-Crackerjack Critical Bug Fixes Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
-
-**Goal:** Fix 5 critical bugs (3 in Dhara, 2 in Crackerjack) that prevent reliable production use of the Dhara async storage layer and its Crackerjack integration.
-
-**Architecture:** Fix bugs in isolation using TDD — each fix is a self-contained task. Dhara bugs are fixed first (底层 dependency), then Crackerjack bugs (depends on Dhara). No architectural changes — only bug fixes to existing code paths.
-
-**Tech Stack:** Python 3.13+, aiosqlite, asyncio.Lock, pytest
+> **Goal:** Fix 5 critical bugs (3 in Dhara, 2 in Crackerjack) that prevent reliable production use of the Dhara async storage layer and its Crackerjack integration.
+> **Architecture:** Fix bugs in isolation using TDD — each fix is a self-contained task. Dhara bugs are fixed first (底层 dependency), then Crackerjack bugs (depends on Dhara). No architectural changes — only bug fixes to existing code paths.
+> **Tech Stack:** Python 3.13+, aiosqlite, asyncio.Lock, pytest
 
 ______________________________________________________________________
 

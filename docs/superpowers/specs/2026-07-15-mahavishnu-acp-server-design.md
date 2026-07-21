@@ -1,16 +1,16 @@
 ---
 status: active
 role: implementation
+topic: mcp-design
 date: 2026-07-16
 last_reviewed: 2026-07-16
 superseded_by: null
 blocks_on: []
-topic: mcp-design
 ---
 
 # Mahavishnu ACP Server — Design Spec
 
-**Status:** Approved (design phase complete, awaiting plan)  <!-- legacy status: Approved — see YAML frontmatter -->
+**Status:** Approved (design phase complete, awaiting plan) <!-- legacy status: Approved — see YAML frontmatter -->
 **Date:** 2026-07-15
 **Scope:** New `mahavishnu/acp/` subpackage exposing Mahavishnu as an **ACP server** (stdio JSON-RPC 2.0), alongside the existing A2A HTTP+SSE server.
 **Track:** Toad/ACP integration (deferred per user direction; spec committed for future implementation).
@@ -27,7 +27,7 @@ Path A (this spec) is the user's chosen direction: **add an ACP server transport
 Two recent developments make this path more attractive than it was a year ago:
 
 1. **MCP-over-ACP RFD** ([agentclientprotocol.com/rfds/mcp-over-acp](https://agentclientprotocol.com/rfds/mcp-over-acp)) — agents will be able to advertise `mcpCapabilities.acp: true`, letting ACP sessions tunnel MCP tool calls. Mahavishnu's existing 174 MCP tools could ride on ACP sessions without re-implementation.
-2. **A2A v1.0 GA** (January 15, 2026, [Linux Foundation announcement](https://linuxfoundation.org/announcing-a2a-v1-0)) — proves the A2A surface is canonical and stable; we are not replacing it, just adding a second protocol.
+1. **A2A v1.0 GA** (January 15, 2026, [Linux Foundation announcement](https://linuxfoundation.org/announcing-a2a-v1-0)) — proves the A2A surface is canonical and stable; we are not replacing it, just adding a second protocol.
 
 ## Decision
 
@@ -192,11 +192,11 @@ Reuses the existing A2A handler's `execute_fn` construction pattern from `mahavi
 End-to-end: Toad sends `session/prompt` with a prompt; Mahavishnu executes it; ACP client sees streamed updates.
 
 1. ACP client writes JSON-RPC line to Mahavishnu's stdin: `{"jsonrpc":"2.0","id":1,"method":"session/prompt","params":{"sessionId":"...","content":"..."}}`.
-2. `mahavishnu/acp/server.py` reads the line, dispatches to `session_prompt_handler`.
-3. Handler spawns `asyncio.create_task(execute_fn({"prompt": content}))`. The task body emits chunks (lines of stdout, EventBridge envelopes) via the in-process bridge in `mahavishnu/acp/events.py`.
-4. Each chunk is serialized as a `session/update` JSON-RPC notification (no `id`, just `method`) and written to Mahavishnu's stdout.
-5. When `execute_fn` finishes, handler emits a final `session/update` with `{type: "status", status: "completed"}` (or `failed`) and returns `{"stopReason": "end_turn"}` as the JSON-RPC response to the original `id`.
-6. If the ACP client sends `session/cancel` mid-flight: handler sets `cancellation_token.set()`, the running `execute_fn` raises `asyncio.CancelledError`, handler returns ack.
+1. `mahavishnu/acp/server.py` reads the line, dispatches to `session_prompt_handler`.
+1. Handler spawns `asyncio.create_task(execute_fn({"prompt": content}))`. The task body emits chunks (lines of stdout, EventBridge envelopes) via the in-process bridge in `mahavishnu/acp/events.py`.
+1. Each chunk is serialized as a `session/update` JSON-RPC notification (no `id`, just `method`) and written to Mahavishnu's stdout.
+1. When `execute_fn` finishes, handler emits a final `session/update` with `{type: "status", status: "completed"}` (or `failed`) and returns `{"stopReason": "end_turn"}` as the JSON-RPC response to the original `id`.
+1. If the ACP client sends `session/cancel` mid-flight: handler sets `cancellation_token.set()`, the running `execute_fn` raises `asyncio.CancelledError`, handler returns ack.
 
 ## Error handling
 
@@ -298,11 +298,11 @@ Gated by `MAHAVISHNU_ACP_INTEGRATION=1`. Skipped in fast CI.
 ## Implementation order
 
 1. **`mahavishnu/acp/protocol.py`** — Pydantic models. Pure data, no I/O. Independent of everything else. Fastest to land and unlocks typed dispatch.
-2. **`mahavishnu/acp/events.py`** — EventBridge → ACP synthesizer. Independent of the dispatcher; depends on `protocol.py`.
-3. **`mahavishnu/acp/server.py`** — JSON-RPC dispatcher. Depends on `protocol.py`; uses `events.py` for streaming.
-4. **`mahavishnu/cli/acp_cli.py` + `_main_cli.py` registration** — wires the entry point. Depends on `server.py`.
-5. **Tests** — Layers 1-4 in order; Layer 5 (manual) deferred to last.
-6. **`docs/acp/USAGE.md`** — operator doc with Toad config example.
+1. **`mahavishnu/acp/events.py`** — EventBridge → ACP synthesizer. Independent of the dispatcher; depends on `protocol.py`.
+1. **`mahavishnu/acp/server.py`** — JSON-RPC dispatcher. Depends on `protocol.py`; uses `events.py` for streaming.
+1. **`mahavishnu/cli/acp_cli.py` + `_main_cli.py` registration** — wires the entry point. Depends on `server.py`.
+1. **Tests** — Layers 1-4 in order; Layer 5 (manual) deferred to last.
+1. **`docs/acp/USAGE.md`** — operator doc with Toad config example.
 
 Each step is independently mergeable. Steps 1-3 can be developed in parallel (they share `protocol.py` as a contract); step 4 is the wiring; step 5 is the quality gate.
 

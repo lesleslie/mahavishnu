@@ -66,7 +66,7 @@ sources win. Reviewers should treat docstring steering copy as a
 regression and ask the contributor to delete it or move the
 underlying fact to `MAHAVISHNU_TOOL_PROFILE` / `## Tool Preferences`.
 
-## Status  <!-- legacy status: Active — see YAML frontmatter -->
+## Status <!-- legacy status: Active — see YAML frontmatter -->
 
 Active. The rule applies to all new tool registrations and to any
 existing tool touched after this date. Existing docstring marketing

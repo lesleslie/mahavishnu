@@ -10,14 +10,10 @@ topic: track3-toad-tui
 # Track 3 — Toad TUI (Textual + Rich) Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
-
-**Goal:** Replace the stub `quality_check` CLI command and plain-text `monitoring_cli.py` output with Rich-formatted tables and a live Textual monitor dashboard, gated behind `TUI_AVAILABLE`.
-
-**Architecture:** `mahavishnu/tui/__init__.py` exports a `TUI_AVAILABLE: bool` constant (evaluated at module load by checking `textual` availability) and a `FallbackRichFormatter` for non-TUI environments. A `MonitorApp(App)` Textual widget provides the live `mahavishnu monitor watch` dashboard. The `quality_cli.py` stub becomes a real Rich-formatted summary. Toad (the TUI framework) is Python 3.14+ only — this wave uses **Textual + Rich** only. `TUI_AVAILABLE` is the feature flag for both.
-
-**Scope:** No modifications to pool/worker orchestration. Only CLI output and the new `watch` subcommand.
-
-**Tech Stack:** `textual>=8.2.7` (already in `[tui]` dep group), `rich` (already a transitive dep), Python 3.13.
+> **Goal:** Replace the stub `quality_check` CLI command and plain-text `monitoring_cli.py` output with Rich-formatted tables and a live Textual monitor dashboard, gated behind `TUI_AVAILABLE`.
+> **Architecture:** `mahavishnu/tui/__init__.py` exports a `TUI_AVAILABLE: bool` constant (evaluated at module load by checking `textual` availability) and a `FallbackRichFormatter` for non-TUI environments. A `MonitorApp(App)` Textual widget provides the live `mahavishnu monitor watch` dashboard. The `quality_cli.py` stub becomes a real Rich-formatted summary. Toad (the TUI framework) is Python 3.14+ only — this wave uses **Textual + Rich** only. `TUI_AVAILABLE` is the feature flag for both.
+> **Scope:** No modifications to pool/worker orchestration. Only CLI output and the new `watch` subcommand.
+> **Tech Stack:** `textual>=8.2.7` (already in `[tui]` dep group), `rich` (already a transitive dep), Python 3.13.
 
 ## Global Constraints
 

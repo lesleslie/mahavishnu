@@ -1,7 +1,6 @@
 """CLI commands for worktree management."""
 
 import asyncio
-from datetime import datetime, timedelta, timezone
 import json
 
 import typer
@@ -305,11 +304,18 @@ def list_sessions(
     )
 
     if json_output:
-        typer.echo(json.dumps({
-            "filter": {"state": state, "older_than_days": older_than_days},
-            "count": len(entries),
-            "entries": entries,
-        }, indent=2, sort_keys=True, default=str))
+        typer.echo(
+            json.dumps(
+                {
+                    "filter": {"state": state, "older_than_days": older_than_days},
+                    "count": len(entries),
+                    "entries": entries,
+                },
+                indent=2,
+                sort_keys=True,
+                default=str,
+            )
+        )
         return
 
     if not entries:
@@ -381,12 +387,18 @@ def prune_abandoned(
             for entry in abandoned:
                 registry.remove(entry["session_id_short"])
                 removed.append(entry["session_id_short"])
-        typer.echo(json.dumps({
-            "filter": {"older_than_days": older_than_days, "dry_run": dry_run},
-            "would_remove_count": len(abandoned),
-            "removed_count": len(removed) if not dry_run else 0,
-            "removed_sessions": removed,
-        }, indent=2, sort_keys=True))
+        typer.echo(
+            json.dumps(
+                {
+                    "filter": {"older_than_days": older_than_days, "dry_run": dry_run},
+                    "would_remove_count": len(abandoned),
+                    "removed_count": len(removed) if not dry_run else 0,
+                    "removed_sessions": removed,
+                },
+                indent=2,
+                sort_keys=True,
+            )
+        )
         return
 
     if not abandoned:

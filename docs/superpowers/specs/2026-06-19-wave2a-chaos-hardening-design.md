@@ -1,20 +1,16 @@
 ---
 status: active
 role: implementation
+topic: observability
 date: 2026-07-16
 last_reviewed: 2026-07-16
 superseded_by: null
 blocks_on: []
-topic: observability
 ---
 
 # Wave 2a: Chaos Hardening Design
 
-**Date:** 2026-06-19
-**Status:** Approved  <!-- legacy status: Approved — see YAML frontmatter -->
-**Scope:** Unit-level chaos tests for OpenHandsWorker and CrowTerminalAdapter
-
-______________________________________________________________________
+## **Date:** 2026-06-19 **Status:** Approved <!-- legacy status: Approved — see YAML frontmatter --> **Scope:** Unit-level chaos tests for OpenHandsWorker and CrowTerminalAdapter
 
 ## Context
 

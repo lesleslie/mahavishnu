@@ -25,6 +25,7 @@ Security hardening (per reviewer feedback, multi-agent review, 2026-07-20):
 POSIX-only — mahavishnu is Unix-targeted by posture. NFS has subtle
 flock semantics; this code assumes local FS.
 """
+
 from __future__ import annotations
 
 from collections.abc import Callable  # noqa: TC003 — type-only with __future__ annotations
@@ -94,9 +95,7 @@ def locked_json_read(path: Path) -> dict[str, Any] | list[Any] | None:
                     break
                 raw += chunk
                 if len(raw) > 10 * 1024 * 1024:  # 10 MB safety cap
-                    raise ValueError(
-                        f"state file {path} exceeds 10 MB safety cap"
-                    )
+                    raise ValueError(f"state file {path} exceeds 10 MB safety cap")
         finally:
             fcntl.flock(fd, fcntl.LOCK_UN)
     finally:
@@ -160,9 +159,7 @@ def atomic_json_write(path: Path, data: dict[str, Any] | list[Any]) -> None:
 
 def locked_json_modify(
     path: Path,
-    modifier: Callable[
-        [dict[str, Any] | list[Any] | None], dict[str, Any] | list[Any]
-    ],
+    modifier: Callable[[dict[str, Any] | list[Any] | None], dict[str, Any] | list[Any]],
     *,
     default_factory: Callable[[], dict[str, Any] | list[Any]] | None = None,
 ) -> dict[str, Any] | list[Any]:
@@ -213,8 +210,10 @@ def locked_json_modify(
                 current = default_factory()
             new_data = modifier(current)
             if new_data is SKIP_WRITE:
-                return current if current is not None else (
-                    default_factory() if default_factory else {}
+                return (
+                    current
+                    if current is not None
+                    else (default_factory() if default_factory else {})
                 )
             atomic_json_write(path, new_data)
             return new_data
@@ -226,9 +225,7 @@ def locked_json_modify(
 
 def utcnow_iso() -> str:
     """Return the current UTC time as ISO-8601 with ``Z`` suffix."""
-    return datetime.now(UTC).isoformat(timespec="milliseconds").replace(
-        "+00:00", "Z"
-    )
+    return datetime.now(UTC).isoformat(timespec="milliseconds").replace("+00:00", "Z")
 
 
 SKIP_WRITE = object()

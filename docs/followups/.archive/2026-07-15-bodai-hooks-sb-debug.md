@@ -1,12 +1,6 @@
----
-status: active
-role: implementation
-date: 2026-07-16
-last_reviewed: 2026-07-16
-superseded_by: null
-blocks_on: []
-topic: bodai-hooks-sb-debug
----
+______________________________________________________________________
+
+## status: active role: implementation date: 2026-07-16 last_reviewed: 2026-07-16 superseded_by: null blocks_on: [] topic: bodai-hooks-sb-debug
 
 # Pickup Prompt — Bodai Claude Code Hook Health + Session-Buddy MCP Debug
 
@@ -23,7 +17,7 @@ The MCP transport dropped twice during that session when invoking
 signatures: `-32000` connection-closed → transport dropped mid-call →
 "is not connected").
 
----
+______________________________________________________________________
 
 ## Step 0 — Load skills (RUN THESE FIRST, in order)
 
@@ -35,16 +29,16 @@ reorder. They establish the procedural discipline for everything that follows.
    transport-layer symptom; this skill is mandatory before proposing fixes
    to transport, connection, or hook wiring problems.
 
-2. **`superpowers:test-driven-development`** — for any code change that
+1. **`superpowers:test-driven-development`** — for any code change that
    surfaces while investigating (e.g. a hook handler added, an MCP retry
    path inserted). The Bodai ecosystem enforces TDD on production code;
    see `crackerjack-compliant-code` skill for the local conventions.
 
-3. **`superpowers:writing-skills`** — only if investigation surfaces a
+1. **`superpowers:writing-skills`** — only if investigation surfaces a
    missing skill that should exist (e.g. an MCP-retry playbook that the
    team has converged on but isn't yet codified). Don't load speculatively.
 
-4. **`crackerjack-compliant-code`** — load before making any code change
+1. **`crackerjack-compliant-code`** — load before making any code change
    inside `mahavishnu/`. The full procedural reference for repo conventions
    (line length, function-arg ceiling 10, branch ceiling 15, return ceiling 6,
    statement ceiling 55 with practical target 30, coverage floor 80%, type
@@ -61,7 +55,7 @@ assuming the four skills above cover all required disciplines.
 After loading, **confirm in your first message which skills successfully
 loaded** so it's auditable which discipline applies to subsequent steps.
 
----
+______________________________________________________________________
 
 ## Step 1 — Establish MCP baseline before debugging
 
@@ -100,7 +94,7 @@ claude mcp list 2>&1
 
 Record the output verbatim in the conversation transcript before proceeding.
 
----
+______________________________________________________________________
 
 ## Step 2 — Systematic-debug Phase 1: root-cause the transport drop
 
@@ -117,14 +111,14 @@ The escalation pattern (closed → dropped → not connected) suggests the
 server process is dying, not the transport being slow. Use this checklist:
 
 1. **Server health**: `ps aux | grep -i 'session.buddy\|akosha\|mcp' | grep -v grep`
-2. **Server log tail**: `tail -50 ~/.session-buddy/logs/*.log 2>/dev/null || tail -50 /tmp/session-buddy*.log 2>/dev/null`
-3. **Connection establishment cost**: how long does `mcp__session-buddy__*` take from idle → first call (measure).
-4. **Concurrent callers**: count how many `mcp__session-buddy__*` invocations
+1. **Server log tail**: `tail -50 ~/.session-buddy/logs/*.log 2>/dev/null || tail -50 /tmp/session-buddy*.log 2>/dev/null`
+1. **Connection establishment cost**: how long does `mcp__session-buddy__*` take from idle → first call (measure).
+1. **Concurrent callers**: count how many `mcp__session-buddy__*` invocations
    happen during a Claude Code session; the originating session had at
    least one heavy user (this comprehensive-hooks session with ~10
    workflow subagents). Repeated invocations during heavy load may exceed
    the server's connection-handling capacity.
-5. **MCP config in `.mcp.json`**: confirm the `session-buddy` server entry
+1. **MCP config in `.mcp.json`**: confirm the `session-buddy` server entry
    has timeout/retry settings. If it has a `timeout` < 30s, increase it.
 
 Per the systematic-debugging skill's "Phase 4 step 5 — architectural
@@ -133,7 +127,7 @@ the architecture (single-tenant MCP server sharing a Claude Code process,
 session lifecycle, etc.). **Don't propose architectural rewrites without
 discussion.**
 
----
+______________________________________________________________________
 
 ## Step 3 — Verify Bodai Claude Code hooks are firing
 
@@ -192,6 +186,7 @@ re-wiring.
 
 If session-buddy checkpoints have been firing correctly during the current
 project's other sessions, you should see them in:
+
 - `~/.session-buddy/checkpoints/<project-hash>/` (file-based checkpoints)
 - The Claude Code transcript at hand-off
 - The Session-Buddy database (HTTP API: `curl http://localhost:8678/...`)
@@ -212,10 +207,10 @@ To verify this isn't happening in any active hook:
 1. While a subagent is dispatched (e.g. via Task tool), tail the relevant
    log for checkpoint invocations. Note any `git stash` / `git stash pop`
    / `git stash apply` calls.
-2. During subagent execution, check that no stash operations occur
+1. During subagent execution, check that no stash operations occur
    against the working tree. If they do, record the hook name and the
    parent commit the stash was anchored to.
-3. After subagent completion, verify the agent's work is intact in the
+1. After subagent completion, verify the agent's work is intact in the
    working tree: `git status` should show the agent's expected files
    as modified, not clobbered by stash re-application.
 
@@ -253,7 +248,7 @@ Coordination notes for the future session that picks this up:
   (`docs/followups/2026-07-15-bodai-hooks-sb-debug-resolution.md`) should
   cross-reference the plan's commit hashes, not re-derive them.
 
----
+______________________________________________________________________
 
 ## Step 4 — Iterative fix loop (only after Phase 1 root cause is identified)
 
@@ -262,9 +257,9 @@ Apply systematic-debugging discipline:
 1. Form one hypothesis at a time. Example: "the session-buddy server dies
    after handling N concurrent MCP calls because its connection pool has
    a leak."
-2. Test minimally — change one variable (timeout, env var, max-connections).
-3. Verify before continuing — re-run the reproduction probe from Step 1.
-4. If 3 fixes fail → STOP and question the architecture.
+1. Test minimally — change one variable (timeout, env var, max-connections).
+1. Verify before continuing — re-run the reproduction probe from Step 1.
+1. If 3 fixes fail → STOP and question the architecture.
 
 Document each attempt with:
 
@@ -273,7 +268,7 @@ Document each attempt with:
 - Result (pass/fail with exit code)
 - Reproduction probe retried: yes/no
 
----
+______________________________________________________________________
 
 ## Step 5 — Acceptance criteria
 
@@ -282,21 +277,21 @@ The pickup is **done** when ALL of:
 1. ✅ `mcp__session-buddy__checkpoint` runs to completion (or its
    alternative — direct DB/file write if MCP is intentionally avoided —
    succeeds) for THIS repo (`/Users/les/Projects/mahavishnu`)
-2. ✅ All Bodai Claude Code hooks listed in `settings.json` are confirmed
+1. ✅ All Bodai Claude Code hooks listed in `settings.json` are confirmed
    firing (each: logfile row exists, transcript shows hook output)
-3. ✅ Any missing/firing-incorrectly hook has a recommendation recorded
+1. ✅ Any missing/firing-incorrectly hook has a recommendation recorded
    in `docs/followups/<date>-<topic>.md`
-4. ✅ No regression in the comprehensive-hooks-cleanup gates
+1. ✅ No regression in the comprehensive-hooks-cleanup gates
    (`pyscn`, `ty`, `creosote` all green; the 5 originally-failing pytests
    still pass).
-5. ✅ The four skills loaded in Step 0 are referenced in the future
+1. ✅ The four skills loaded in Step 0 are referenced in the future
    session's first response so it's clear which discipline applied.
-6. ✅ During at least one subagent dispatch observed in this session, no
+1. ✅ During at least one subagent dispatch observed in this session, no
    `git stash pop` / `git stash apply` occurred mid-task against the
    working tree (or, if it did occur, the trigger hook is recorded as a
    finding in `docs/followups/<date>-<topic>.md`)
 
----
+______________________________________________________________________
 
 ## Step 6 — Report back
 
@@ -312,7 +307,7 @@ Then post a brief summary in the conversation: what was fixed, what
 remains. Use the explanatory output style insight format for any
 non-trivial decisions.
 
----
+______________________________________________________________________
 
 ## Quick-reference for the next session
 

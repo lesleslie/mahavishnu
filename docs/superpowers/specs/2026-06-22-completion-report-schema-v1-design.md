@@ -1,16 +1,16 @@
 ---
 status: draft
 role: implementation
+topic: convergence-control-plane
 date: 2026-07-16
 last_reviewed: 2026-07-16
 superseded_by: null
 blocks_on: []
-topic: convergence-control-plane
 ---
 
 # Completion Report Schema v1 — Design
 
-**Status:** Draft (brainstormed 2026-06-22)  <!-- legacy status: Draft (brainstormed 2026-06-22) — see YAML frontmatter -->
+**Status:** Draft (brainstormed 2026-06-22) <!-- legacy status: Draft (brainstormed 2026-06-22) — see YAML frontmatter -->
 **Phase:** 1 (Foundational)
 **Source:** Synthesis of three articles —
 

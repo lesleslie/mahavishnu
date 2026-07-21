@@ -1,12 +1,11 @@
 ---
 status: draft
 role: implementation
+topic: multi-tenant-context-packs
 date: 2026-07-16
 last_reviewed: 2026-07-16
 superseded_by: null
-blocks_on:
-  - ext:dhara-http-api-surface
-topic: multi-tenant-context-packs
+blocks_on: []
 ---
 
 # Multi-Tenant Context Packs v1.0 Implementation Plan

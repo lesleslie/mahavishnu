@@ -11,13 +11,10 @@ topic: routing-composition
 
 > **Update (2026-04-02):** This plan remains active for routing and learning logic, but storage assumptions are partially superseded by `docs/plans/2026-04-02-storage-consolidation-and-akosha-role.md`.
 > Metrics persistence and aggregates should target Mahavishnu-owned PostgreSQL schemas (with `pgvector` where applicable), not Dhara-specific metrics persistence as the default path.
-
-**Goal**: Build adaptive routing system with metrics collection, statistical learning, and cost-aware optimization for Mahavishnu's multi-adapter orchestration.
-
-**Strategy**: Foundation-first approach - complete foundational adapters and metrics infrastructure (Phase D), then build intelligent routing layers (Phases A + C in parallel).
-
-**Timeline**: 2-3 weeks
-**Status**: 🎯 Phase D Complete | Phase A+C Ready to Start  <!-- legacy status: Phase D Complete — see YAML frontmatter -->
+> **Goal**: Build adaptive routing system with metrics collection, statistical learning, and cost-aware optimization for Mahavishnu's multi-adapter orchestration.
+> **Strategy**: Foundation-first approach - complete foundational adapters and metrics infrastructure (Phase D), then build intelligent routing layers (Phases A + C in parallel).
+> **Timeline**: 2-3 weeks
+> **Status**: 🎯 Phase D Complete | Phase A+C Ready to Start <!-- legacy status: Phase D Complete — see YAML frontmatter -->
 
 ______________________________________________________________________
 

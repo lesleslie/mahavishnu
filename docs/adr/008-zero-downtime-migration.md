@@ -5,19 +5,17 @@ date: 2026-07-16
 last_reviewed: 2026-07-16
 superseded_by: null
 blocks_on: []
-topic: zero-downtime-migration
 decision_date: 2026-02-18
+topic: zero-downtime-migration
 ---
 
 # ADR 008: Zero-Downtime SQLite to PostgreSQL Migration
 
 **Status**: Accepted
-<!-- legacy status: **Status**: Accepted — see YAML frontmatter -->
-**Date**: 2026-02-18
-**Context**: Task Orchestration Master Plan v3.0
-**Related**: ADR-006 (Storage Simplification), ADR-007 (Saga Coordinator)
 
-______________________________________________________________________
+<!-- legacy status: **Status**: Accepted — see YAML frontmatter -->
+
+## **Date**: 2026-02-18 **Context**: Task Orchestration Master Plan v3.0 **Related**: ADR-006 (Storage Simplification), ADR-007 (Saga Coordinator)
 
 ## Context
 

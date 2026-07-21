@@ -1,12 +1,11 @@
 ---
 status: draft
 role: implementation
+topic: live-observe-presence
 date: 2026-07-16
 last_reviewed: 2026-07-16
 superseded_by: null
-blocks_on:
-  - ext:dhara-http-api-surface
-topic: live-observe-presence
+blocks_on: []
 ---
 
 # Live Observe (Presence Over Gate) v1.0 Implementation Plan

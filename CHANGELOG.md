@@ -30,7 +30,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - mcp: Add Mahavishnu eventbridge publish_to_eventbridge tool
 - observability: Add adapter_runtime substrate (Spec #8 Phase 3)
 - Oneiric EventBridge subscriber + /bodai-status surface (Phase 6A+6B)
-- Per-session subprocess pool + crow_terminal_* tools
+- Per-session subprocess pool + crow_terminal\_\* tools
 - Plan 1 Tasks 1-6 — bodai-crow HTTP MCP scaffold + tools
 - Plan 5 Phase A.0 foundational substrate for distilled workflows
 - Plan 5 Phase A.0 foundational substrate for distilled workflows
@@ -60,7 +60,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - backup_cli: Extract command bodies to reduce C901
-- dhara: Extract _invoke helpers, drop C901 noqa
+- dhara: Extract \_invoke helpers, drop C901 noqa
 - Fix `from __future__ import annotations` placement + ruff line-join
 - Mahavishnu (quality: 69/100) - 2026-06-22 19:47:42
 - Mahavishnu (quality: 69/100) - 2026-06-26 08:09:06
@@ -99,7 +99,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - H6 — gate distiller on MAHAVISHNU_USER_ID + PUBLISHER_ALLOWLIST
 - mahavishnu: Raise mcp-common floor + drop PYTHONPATH workaround in tests
 - mcp: Await app.is_healthy() in get_health
-- mcp: Preserve wrapper signature in _wrap_tool_handler
+- mcp: Preserve wrapper signature in \_wrap_tool_handler
 - plan: Spec #4 three-layer-self-heal C4 — L2 stub + double-invocation
 - precommitment: Persist locks to disk so verify/check_post_hoc work across processes (audit H-PRECOMMIT)
 - quality: Clean creosote exclusions + add betterleaks config
@@ -163,7 +163,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - deps: Remove unused beautifulsoup4 dependency
 - drafts: Persist Workflow-tool scripts for Phases 3-5
 - examples: Remove 3 dead-code orphans, document 3 symmetric-API methods
-- gitignore: Add *.backup.* and *.backup.json patterns
+- gitignore: Add *.backup.* and \*.backup.json patterns
 - mahavishnu: Migrate mcp-common[treesitter,llm] → dep-groups
 - mcp: Switch crow from HTTP to stdio transport
 - Remove generic agents covered by mycelium-core plugin
@@ -171,7 +171,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - repo: Untrack 23 .backup.json artifacts and tighten gitignore
 - sdd: Smoke test multi-backend PTY
 - Skill_map curation + bifrost config template
-- Update uv.lock (astroid typo fix, coverage bump)
+- Update uv.lock (asteroid typo fix, coverage bump)
 
 ## [0.8.0] - 2026-06-20
 

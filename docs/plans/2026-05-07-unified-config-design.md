@@ -1,20 +1,16 @@
 ---
 status: active
 role: canonical
+topic: mcp-design
 date: 2026-07-16
 last_reviewed: 2026-07-16
 superseded_by: null
 blocks_on: []
-topic: mcp-design
 ---
 
 # P3 Design Note — UnifiedConfig and Startup Validation
 
-**Created**: 2026-05-07
-**Supplements**: `docs/superpowers/plans/2026-04-26-config-consolidation.md`
-**Status**: approved — written to unblock P3 implementation  <!-- legacy status — see YAML frontmatter -->
-
-______________________________________________________________________
+## **Created**: 2026-05-07 **Supplements**: `docs/superpowers/plans/2026-04-26-config-consolidation.md` **Status**: approved — written to unblock P3 implementation <!-- legacy status — see YAML frontmatter -->
 
 ## Gap addressed
 

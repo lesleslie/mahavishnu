@@ -12,14 +12,10 @@ topic: learning-pipeline
 > **Update (2026-04-02):** This plan remains active for review/fix orchestration, approval gates, and tooling.
 > Persistence and critical-path dependency assumptions are partially superseded by `docs/plans/2026-04-02-storage-consolidation-and-akosha-role.md`.
 > Findings, approvals, and fix execution records should persist in Mahavishnu PostgreSQL schemas; Akosha is optional and not a required write-path dependency.
-
 > **For Claude:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task.
-
-**Goal:** Build Mahavishnu's self-improvement system with parallel fix pools, dual tracking, and triggered review workflow.
-
-**Architecture:** Three-phase approach - fix pools with quality gates, ecosystem.yaml + Session-Buddy tracking, and MCP-triggered review_and_fix workflow with manual approval gates.
-
-**Tech Stack:** FastMCP, asyncio pools, Pydantic models, Crackerjack quality gates, WebSocket broadcasting
+> **Goal:** Build Mahavishnu's self-improvement system with parallel fix pools, dual tracking, and triggered review workflow.
+> **Architecture:** Three-phase approach - fix pools with quality gates, ecosystem.yaml + Session-Buddy tracking, and MCP-triggered review_and_fix workflow with manual approval gates.
+> **Tech Stack:** FastMCP, asyncio pools, Pydantic models, Crackerjack quality gates, WebSocket broadcasting
 
 ______________________________________________________________________
 

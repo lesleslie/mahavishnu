@@ -1,16 +1,16 @@
 ---
 status: draft
 role: implementation
+topic: storage-consolidation
 date: 2026-07-16
 last_reviewed: 2026-07-16
 superseded_by: null
 blocks_on: []
-topic: storage-consolidation
 ---
 
 # Code Knowledge Graph Integration Design
 
-**Status:** Draft  <!-- legacy status: Draft — see YAML frontmatter -->
+**Status:** Draft <!-- legacy status: Draft — see YAML frontmatter -->
 **Date:** 2026-04-26
 **Source:** Multi-agent review of GitNexus integration alternatives
 
@@ -21,8 +21,7 @@ Add three missing code intelligence capabilities to the Bodai ecosystem by exten
 1. **Call chain resolution** — "find all transitive callers/callees of function X"
 1. **Change impact analysis** — "if function X changes, what files and functions are affected?"
 1. **Incremental re-indexing** — re-parse only changed files on git events
-
-This design was shaped by a four-agent review (Architecture Council, Plan Agent, Delivery Lead, Explore Agent) that evaluated GitNexus (PolyForm Noncommercial license — blocked), LlamaIndex PropertyGraphIndex (wrong tool for code graphs — blocked), and multiple open-source alternatives before converging on extending existing infrastructure.
+   This design was shaped by a four-agent review (Architecture Council, Plan Agent, Delivery Lead, Explore Agent) that evaluated GitNexus (PolyForm Noncommercial license — blocked), LlamaIndex PropertyGraphIndex (wrong tool for code graphs — blocked), and multiple open-source alternatives before converging on extending existing infrastructure.
 
 ## 2. Background
 
@@ -143,7 +142,6 @@ This design was shaped by a four-agent review (Architecture Council, Plan Agent,
 ### 4.1 Call chain resolution (Session-Buddy MCP tool)
 
 **Tool name:** `code_call_chain`
-
 **Input (Pydantic model):**
 
 ```python
@@ -165,7 +163,6 @@ class CallChainResult(BaseModel):
     truncated: bool
     stale: bool = False        # True if index is > 24 hours old
     last_indexed_at: datetime | None = None
-
 class CallChain(BaseModel):
     path: list[str]            # qualified symbol names in traversal order
     depth: int
@@ -178,7 +175,6 @@ class CallChain(BaseModel):
 ### 4.2 Change impact analysis (Session-Buddy MCP tool)
 
 **Tool name:** `code_impact_analysis`
-
 **Input (Pydantic model):**
 
 ```python
@@ -201,7 +197,6 @@ class ImpactAnalysisResult(BaseModel):
     blast_radius: int  # total transitive reach (all depths)
     stale: bool = False
     last_indexed_at: datetime | None = None
-
 class SymbolImpact(BaseModel):
     symbol_name: str           # qualified symbol ID
     symbol_type: Literal["function", "class", "module"]
@@ -215,14 +210,12 @@ class SymbolImpact(BaseModel):
 ### 4.3 Incremental re-indexing workflow (Mahavishnu Prefect flow)
 
 **Flow name:** `index-code-graph`
-
 **Trigger mechanisms (priority order):**
 
 1. **Git hook** — `.git/hooks/post-commit` calls `mahavishnu index --trigger git-event --repo <path>`
 1. **Scheduled sweep** — Prefect schedule (default: every 15 minutes) calls `mahavishnu index --all-repos`
 1. **Manual CLI** — `mahavishnu index --repo <path>` for on-demand full re-index
-
-**Workflow steps:**
+   **Workflow steps:**
 
 ```
 1. Detect changes
@@ -235,14 +228,12 @@ class SymbolImpact(BaseModel):
    - Branch deletion: on branch prune events, mark all symbols from
      the deleted branch's files as candidates for cleanup sweep
      (soft delete, not hard delete — retained for code evolution in Phase 4)
-
 2. Filter files
    - Skip non-code files (binary, generated, vendored)
    - Skip languages without parser support (currently Python via ast;
      tree-sitter MCP tools available for multi-lang but not yet wired)
    - Deduplicate across repos
    - Validate all paths against repos.yaml (reject unregistered repos)
-
 3. Parse changed files
    - Use mcp-common CodeGraphAnalyzer for Python files
    - Fall back to tree-sitter MCP tools for non-Python files when available
@@ -254,13 +245,11 @@ class SymbolImpact(BaseModel):
      - Increment a parse_failure_count metric
      - If parse_failure_count / total_files > 0.25, emit a warning
        and continue (do not silently skip majority failures)
-
 4. Compute deletions
    - For removed/renamed symbols: mark as deleted in graph (soft delete)
    - Retain historical edges for code evolution (Phase 4)
    - Soft delete mechanism: set is_deleted=True, update last_indexed_at
      (no hard DELETE — historical edges remain traversable in Phase 4)
-
 5. Upsert to Session-Buddy
    - Call Session-Buddy's code graph ingest MCP tools
    - Build ON CONFLICT DO UPDATE logic (upsert) — not currently
@@ -277,11 +266,9 @@ class SymbolImpact(BaseModel):
      (d) If step (c) fails, the temp table is auto-cleaned by DuckDB on disconnect.
      On startup, scan for and drop any orphaned temp tables older than 1 hour.
    - Record last-indexed commit hash per repo
-
 6. Notify Akosha
    - Call Akosha's code graph refresh MCP tool to invalidate cached data
    - Akosha pulls updated graph on its next polling cycle (existing behavior)
-
 7. Concurrent indexing safety
    - Use a per-repo PID-based lock file: `.git/mahavishnu-index.lock`
    - Lock file format: `{pid}\n{timestamp}\n{repo_path}`
@@ -292,7 +279,6 @@ class SymbolImpact(BaseModel):
      with a log message (does not queue or retry)
    - Git hook fires asynchronously: `mahavishnu index --trigger git-event --repo <path> &`
      to avoid blocking the commit
-
 8. Indexing audit trail
    - Log events using the existing TaskAuditLogger infrastructure:
      - `index_started` (repo, trigger type, commit hash)
@@ -308,13 +294,10 @@ class SymbolImpact(BaseModel):
 ```bash
 # Triggered by git hook
 mahavishnu index --trigger git-event --repo /path/to/repo
-
 # Scheduled sweep
 mahavishnu index --all-repos --schedule "*/15 * * * *"
-
 # Manual full re-index
 mahavishnu index --repo /path/to/repo --full
-
 # Check indexing status
 mahavishnu index --status
 ```
@@ -324,10 +307,8 @@ mahavishnu index --status
 ```bash
 # One-time setup per repo
 mahavishnu index --install-hooks --repo /path/to/repo
-
 # Uninstall hooks
 mahavishnu index --uninstall-hooks --repo /path/to/repo
-
 # Force reinstall (overwrites existing hooks — requires confirmation)
 mahavishnu index --install-hooks --repo /path/to/repo --force
 ```
@@ -346,25 +327,20 @@ mahavishnu index --install-hooks --repo /path/to/repo --force
 1. If a hook file already exists and lacks the mahavishnu header comment, refuses to overwrite unless `--force` is passed
 1. Sets file permissions to 0755 (owner read/write/execute, group/other read/execute)
 1. Verifies hook file owner matches the repo directory owner (refuses if mismatch)
-
-**What `--uninstall-hooks` does:**
-
+   **What `--uninstall-hooks` does:**
 1. Removes only hooks that contain the mahavishnu header comment
 1. Leaves non-mahavishnu hooks untouched
 
 ### 4.5 Repo skill generation (--skills)
 
 When `mahavishnu index --skills --repo <path>` is run, the system detects functional areas of the codebase and generates a `SKILL.md` file for each area. These skills give AI agents targeted context for the exact area of code being worked on.
-
 **CLI interface:**
 
 ```bash
 # Generate skills for a single repo
 mahavishnu index --skills --repo /path/to/repo
-
 # Generate skills for all repos
 mahavishnu index --skills --all-repos
-
 # Regenerate skills as part of scheduled sweep
 mahavishnu index --all-repos --schedule "*/15 * * * *" --with-skills
 ```
@@ -372,45 +348,36 @@ mahavishnu index --all-repos --schedule "*/15 * * * *" --with-skills
 **What `--skills` does:**
 
 1. **Run community detection on the code graph**
-
    - Query all code nodes and edges from Session-Buddy for the target repo
    - Build an undirected NetworkX graph: nodes = symbols (functions, classes, modules), edges = calls + imports (weighted by frequency)
    - Run Leiden community detection (`leidenalg` package) to partition the graph into functional areas
    - Each community represents a cohesive functional area (e.g., "authentication", "content ingestion", "pool management")
-
 1. **Analyze each community**
-
    - Identify entry points: symbols with high betweenness centrality (called by other communities)
    - Identify internal execution flows: topological ordering within the community
    - Identify cross-area connections: edges that cross community boundaries
    - Compute community metrics: size (symbol count), cohesion (edge density), coupling (cross-community edge ratio)
-
 1. **Generate SKILL.md per community**
-
    - Output directory: `.claude/skills/generated/{community_name}/SKILL.md`
    - Follow the existing skill format (frontmatter + sections)
    - Include: key files, entry points, execution flows, cross-area connections, related communities
-
 1. **Regeneration semantics**
-
    - Skills are regenerated on each `--skills` run (no incremental update — full regeneration)
    - Previous generated skills are overwritten
    - A `generated/` directory prefix distinguishes auto-generated skills from hand-written ones
    - If a community is too small (< 3 symbols), it is merged into the nearest neighboring community
-
-**Community detection algorithm:**
-
-| Parameter | Value | Rationale |
-|-----------|-------|-----------|
-| Algorithm | Leiden (via `leidenalg`) | Guarantees well-connected communities; fixes Louvain's bad-connectivity defect where nodes can have zero intra-community edges |
-| Resolution | 1.0 (default) | Higher resolution = more, smaller communities |
-| Minimum community size | 3 symbols | Prevents trivial single-function "communities" |
-| Edge weights | Call frequency + import indicator | Calls weighted higher than imports |
-
-**SKILL.md template:**
+     **Community detection algorithm:**
+     | Parameter | Value | Rationale |
+     |-----------|-------|-----------|
+     | Algorithm | Leiden (via `leidenalg`) | Guarantees well-connected communities; fixes Louvain's bad-connectivity defect where nodes can have zero intra-community edges |
+     | Resolution | 1.0 (default) | Higher resolution = more, smaller communities |
+     | Minimum community size | 3 symbols | Prevents trivial single-function "communities" |
+     | Edge weights | Call frequency + import indicator | Calls weighted higher than imports |
+     **SKILL.md template:**
 
 ```markdown
 ---
+
 name: {community_name}
 description: Auto-generated skill for the {community_name} functional area in {repo_name}. Covers {N} symbols across {M} files. Generated by mahavishnu index --skills.
 ---

@@ -62,7 +62,7 @@ Implementation rules:
    TTL default). Document any change to these defaults next to the
    prefix constant in `metrics_cli.py` so producers stay in sync.
 
-## Status  <!-- legacy status: Active — see YAML frontmatter -->
+## Status <!-- legacy status: Active — see YAML frontmatter -->
 
 Active. The two CLI subcommands added 2026-07-15
 (`mahavishnu metrics verification`, `mahavishnu metrics dispatch`)

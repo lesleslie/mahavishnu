@@ -5,14 +5,16 @@ date: 2026-07-16
 last_reviewed: 2026-07-16
 superseded_by: null
 blocks_on: []
-topic: routing-composition
 decision_date: 2026-04-26
+topic: routing-composition
 ---
 
 # ADR 011: Two-Router Composition
 
 **Status:** accepted
+
 <!-- legacy status: **Status:** accepted — see YAML frontmatter -->
+
 **Date:** 2026-04-26
 **Context:** Bodai I0 boundary hardening
 

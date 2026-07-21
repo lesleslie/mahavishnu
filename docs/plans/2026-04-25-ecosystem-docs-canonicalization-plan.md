@@ -10,7 +10,7 @@ topic: convergence-control-plane
 # Ecosystem Docs Canonicalization Plan
 
 **Date:** 2026-04-25
-**Status:** Complete (all phases shipped 2026-04-30)  <!-- legacy status: Complete — see YAML frontmatter -->
+**Status:** Complete (all phases shipped 2026-04-30) <!-- legacy status: Complete — see YAML frontmatter -->
 **Scope:** Clean up `docs/` directories across active Bodai ecosystem repositories while preserving accurate current documentation, reviewable historical context, and implementation-critical specs/plans.
 
 ## 1. Objective

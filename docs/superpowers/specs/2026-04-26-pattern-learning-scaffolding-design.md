@@ -1,17 +1,17 @@
 ---
 status: draft
 role: implementation
+topic: learning-pipeline
 date: 2026-07-16
 last_reviewed: 2026-07-16
 superseded_by: null
 blocks_on: []
-topic: learning-pipeline
 ---
 
 # Pattern Learning & Scaffolding Design
 
 **Date:** 2026-04-26
-**Status:** Draft  <!-- legacy status: Draft — see YAML frontmatter -->
+**Status:** Draft <!-- legacy status: Draft — see YAML frontmatter -->
 **Approach:** Pattern Library Service (Approach B)
 **Prerequisites:** Config Consolidation (2026-04-26-config-consolidation-design.md), Agent & Skill Modernization (2026-04-26-agent-skill-modernization-design.md), Code Indexing Integration (2026-04-26-code-indexing-integration-design.md)
 

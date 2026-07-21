@@ -5,8 +5,8 @@ date: 2026-07-16
 last_reviewed: 2026-07-16
 superseded_by: null
 blocks_on: []
-topic: adapter-tool-boundary
 decision_date: 2026-06-03
+topic: adapter-tool-boundary
 ---
 
 # ADR 013: Adapter Tool Boundary Between Mahavishnu and Dhara
@@ -14,6 +14,7 @@ decision_date: 2026-06-03
 ## Status
 
 <!-- legacy status: **Proposed** — see YAML frontmatter -->
+
 **Proposed**
 
 **Date:** 2026-06-03

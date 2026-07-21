@@ -1,12 +1,13 @@
 ---
 status: active
 role: implementation
+topic: convergence-control-plane
 date: 2026-07-16
 last_reviewed: 2026-07-16
 superseded_by: null
 blocks_on: []
-topic: convergence-control-plane
 ---
+
 # Session-Buddy Checkpoint Stash-Clobber Fix Design
 
 ## Context
@@ -33,14 +34,14 @@ not satisfy this design.
 
 1. **End-of-task checkpoint is mandatory.** Every subagent session
    ends with a checkpoint, period.
-2. **Midpoint checkpoint is conditional.** It fires only when it adds
+1. **Midpoint checkpoint is conditional.** It fires only when it adds
    value to the current worker's decision-making *or* session/worker
    analytics. Otherwise, it is silent.
-3. **Working tree is never mutated by a checkpoint.** Snapshot capture
+1. **Working tree is never mutated by a checkpoint.** Snapshot capture
    is read-only; restore is a separate explicit user action.
-4. **Failures fail closed.** Mechanism error → skip checkpoint, log
+1. **Failures fail closed.** Mechanism error → skip checkpoint, log
    loudly. No silent fallback to the old stash-based behavior.
-5. **Hybrid approach is welcome.** Combining elements of multiple
+1. **Hybrid approach is welcome.** Combining elements of multiple
    strategies is preferred over a pure single-strategy choice.
 
 ## Design summary
@@ -80,11 +81,12 @@ would leave the underlying mechanism unchanged for other callers and
 is a band-aid.
 
 **Verification probe required before locking location**:
-1. `grep -rn "stash\|subprocess.*git" /Users/les/Projects/session-buddy/session_buddy/mcp/ --include="*.py"`
-2. `find /Users/les/Projects/crackerjack -maxdepth 6 -name "*.py" -path "*quality*" -exec grep -l "stash\|git commit" {} \;`
-3. Trace one auto-checkpoint commit message back to its commit-creating function.
 
-Probe runs in <2 minutes and either confirms or refutes the location
+1. `grep -rn "stash\|subprocess.*git" /Users/les/Projects/session-buddy/session_buddy/mcp/ --include="*.py"`
+1. `find /Users/les/Projects/crackerjack -maxdepth 6 -name "*.py" -path "*quality*" -exec grep -l "stash\|git commit" {} \;`
+1. Trace one auto-checkpoint commit message back to its commit-creating function.
+
+Probe runs in \<2 minutes and either confirms or refutes the location
 hypothesis before the implementation begins.
 
 ### High-level flow
@@ -126,6 +128,7 @@ testable. Composition root wires them.
 **Purpose**: Signal whether a subagent is currently in flight.
 
 **Interface**:
+
 ```python
 class SubagentDetector:
     def __init__(self, working_dir: Path, signal_source: SignalSource):
@@ -153,6 +156,7 @@ MCP probe. Concrete implementations plug in here.
 **Purpose**: Capture working-tree state as a read-only snapshot.
 
 **Interface**:
+
 ```python
 class SnapshotMechanism:
     def __init__(self, working_dir: Path, snapshot_dir: Path):
@@ -186,6 +190,7 @@ working tree. Restoring is a separate explicit step.
 **Purpose**: Decide whether a checkpoint should fire, given current state.
 
 **Interface**:
+
 ```python
 @dataclass
 class PolicyDecision:
@@ -268,6 +273,7 @@ class CheckpointPhase(str, Enum):
 **Purpose**: Compose policy + mechanism + subagent-detector + fallback.
 
 **Interface**:
+
 ```python
 class CheckpointOrchestrator:
     def __init__(
@@ -322,16 +328,16 @@ Re-exports from `session_buddy/checkpoint/__init__.py` for callers.
 
 1. **Midpoint fires (happy path)**: trigger → policy.decide → detector
    not active + criteria met → capture → forward_to → result.
-2. **End-of-task fires (always)**: trigger → policy.decide (always
+1. **End-of-task fires (always)**: trigger → policy.decide (always
    true for END_OF_TASK) → wait_until_idle if detector active →
    capture → forward_to → result.
-3. **Midpoint deferred (subagent active)**: trigger → policy.decide →
+1. **Midpoint deferred (subagent active)**: trigger → policy.decide →
    detector active → return fired=False with reason. End-of-task will
    fire when subagent commits (Sequence 2).
-4. **Fallback (snapshot unavailable)**: policy.decide says yes →
+1. **Fallback (snapshot unavailable)**: policy.decide says yes →
    capture() raises → orchestrator catches → fail closed (skip +
    log). No retry against the old stash-based behavior.
-5. **Subagent starts mid-snapshot**: capture in progress, subagent
+1. **Subagent starts mid-snapshot**: capture in progress, subagent
    writes files concurrently → capture completes (may be slightly
    inconsistent diff) → forward_to → subagent continues. Working
    tree is never mutated, so the agent's edits are safe.
@@ -339,11 +345,11 @@ Re-exports from `session_buddy/checkpoint/__init__.py` for callers.
 ### Invariants (the contract the design must preserve)
 
 1. The working tree is never mutated by a checkpoint.
-2. `PolicyDecision.reason` is always non-empty.
-3. Every `CheckpointResult` includes `decision_reason`.
-4. Snapshot files are immutable after `capture()` returns.
-5. Failures fail closed.
-6. Subagent active → midpoint checkpoint deferred (no exceptions).
+1. `PolicyDecision.reason` is always non-empty.
+1. Every `CheckpointResult` includes `decision_reason`.
+1. Snapshot files are immutable after `capture()` returns.
+1. Failures fail closed.
+1. Subagent active → midpoint checkpoint deferred (no exceptions).
    End-of-task may `wait_until_idle()` instead.
 
 ## Error handling
@@ -395,10 +401,11 @@ semantics:
 ### Operator-visible signals
 
 Each error path emits:
+
 1. Structured log at WARNING or ERROR with consistent fields.
-2. Metric increment: `checkpoint_failures_total{reason="..."}` (one
+1. Metric increment: `checkpoint_failures_total{reason="..."}` (one
    per failure reason).
-3. Optional alert hook (out of scope; leaves the hook point).
+1. Optional alert hook (out of scope; leaves the hook point).
 
 ## Testing
 
@@ -493,7 +500,7 @@ by this design. Implementation should make them configurable.
 - **Defect record**: `docs/followups/2026-07-15-sb-checkpoint-stash-clobber.md`
 - **Pickup prompt** (future-session verification):
   `docs/followups/2026-07-15-pickup-bodai-hooks-and-sb-debug.md` (Step 3e
-  + acceptance criterion #6)
+  - acceptance criterion #6)
 - **Parent memory**:
   `~/.claude/projects/-Users-les-Projects-mahavishnu/memory/session-buddy-checkpoint-hooks-fire-during-subagent-sessions.md`
 - **Recovery procedure** (sibling memory): `drift-bundling-recovery`

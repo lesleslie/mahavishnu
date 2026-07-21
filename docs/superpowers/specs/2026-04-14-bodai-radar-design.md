@@ -1,22 +1,16 @@
 ---
 status: draft
 role: implementation
+topic: observability
 date: 2026-07-16
 last_reviewed: 2026-07-16
 superseded_by: null
 blocks_on: []
-topic: observability
 ---
 
 # Bodai Radar Design
 
-**Goal:** A Claude Code skill that provides a unified health dashboard across all 5 Bodai components in a single command. Fire once, get a traffic-light summary in thirty seconds.
-
-**Architecture:** Pure SKILL.md prompt file in `~/.claude/skills/`. No Python code, no new MCP tools. Composes one "best signal" tool from each Bodai component into a parallel fan-out sweep with graceful degradation.
-
-**Tech Stack:** Claude Code skills (SKILL.md with YAML frontmatter), MCP tools from Crackerjack, Mahavishnu, Akosha, Dhara, and Session-Buddy.
-
-______________________________________________________________________
+## **Goal:** A Claude Code skill that provides a unified health dashboard across all 5 Bodai components in a single command. Fire once, get a traffic-light summary in thirty seconds. **Architecture:** Pure SKILL.md prompt file in `~/.claude/skills/`. No Python code, no new MCP tools. Composes one "best signal" tool from each Bodai component into a parallel fan-out sweep with graceful degradation. **Tech Stack:** Claude Code skills (SKILL.md with YAML frontmatter), MCP tools from Crackerjack, Mahavishnu, Akosha, Dhara, and Session-Buddy.
 
 ## Skill Definition
 

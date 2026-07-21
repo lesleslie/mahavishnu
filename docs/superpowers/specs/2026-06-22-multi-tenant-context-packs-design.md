@@ -1,17 +1,16 @@
 ---
 status: draft
 role: implementation
+topic: convergence-control-plane
 date: 2026-07-16
 last_reviewed: 2026-07-16
 superseded_by: null
-blocks_on:
-  - ext:dhara-http-api-surface
-topic: convergence-control-plane
+blocks_on: []
 ---
 
 # Multi-Tenant Context Packs v1.0 — Design
 
-**Status:** **DEFERRED** — blocked on Dhara HTTP API surface for `/tenants/<tenant_id>/context-versions` (NOT blocked on in-process SQL `execute()` / `query()`; uses HTTP CRUD instead).  <!-- legacy status: DEFERRED — see YAML frontmatter -->
+**Status:** **DEFERRED** — blocked on Dhara HTTP API surface for `/tenants/<tenant_id>/context-versions` (NOT blocked on in-process SQL `execute()` / `query()`; uses HTTP CRUD instead). <!-- legacy status: DEFERRED — see YAML frontmatter -->
 **Phase:** 3 (Adjacent)
 **Source:** `Rebuilt Hermes / MAOS` Part 3 — "The Identity Layer — Multi-Client Without Multiple Installs." Per-client context bundles (voice, ICP, positioning, visual-identity) loaded at runtime and injected into agent prompts.
 

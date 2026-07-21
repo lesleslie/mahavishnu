@@ -10,12 +10,9 @@ topic: style-sop
 # Anti-AI-Flavor Style SOP v1.0 Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
-
-**Goal:** Ship per-repo style SOPs (`.bodai/style-sop.md`) with machine-checkable bans, packaged default SOP, discovery + parser, validator, and Crackerjack skill integration.
-
-**Architecture:** Markdown + YAML frontmatter format. Discovery walks up from CWD looking for `.bodai/style-sop.md`. Falls back to packaged default at `mahavishnu/style-sop.md`. Validator scans content against the frontmatter `bans` list (regex). Crackerjack skill `anti-ai-flavor-check` exposes the validator.
-
-**Tech Stack:** Python 3.13, `pyyaml`, `pathlib`, Crackerjack (existing), pytest with `asyncio_mode = "auto"`.
+> **Goal:** Ship per-repo style SOPs (`.bodai/style-sop.md`) with machine-checkable bans, packaged default SOP, discovery + parser, validator, and Crackerjack skill integration.
+> **Architecture:** Markdown + YAML frontmatter format. Discovery walks up from CWD looking for `.bodai/style-sop.md`. Falls back to packaged default at `mahavishnu/style-sop.md`. Validator scans content against the frontmatter `bans` list (regex). Crackerjack skill `anti-ai-flavor-check` exposes the validator.
+> **Tech Stack:** Python 3.13, `pyyaml`, `pathlib`, Crackerjack (existing), pytest with `asyncio_mode = "auto"`.
 
 ______________________________________________________________________
 

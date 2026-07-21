@@ -11,10 +11,7 @@ topic: routing-composition
 
 ## Status
 
-**v3 — updated with serverless deployment support and hot store storage backend options**  <!-- legacy status: v3 superseded — see YAML frontmatter -->
-**Changes since v2**: Added hot store storage backend strategy, serverless deployment defaults, environment detection via Oneiric layered config
-
-______________________________________________________________________
+## **v3 — updated with serverless deployment support and hot store storage backend options** <!-- legacy status: v3 superseded — see YAML frontmatter --> **Changes since v2**: Added hot store storage backend strategy, serverless deployment defaults, environment detection via Oneiric layered config
 
 ## What Changed After Review
 

@@ -10,12 +10,9 @@ topic: project-scoped-sop-evolution
 # Project-Scoped SOP Evolution v1.0 Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
-
-**Goal:** Ship per-deployment SOP evolution — per-case retrospectives record fired failure modes; weekly cron aggregates, surfaces SOP suggestions when threshold crossed; operators review via CLI.
-
-**Architecture:** `mahavishnu/core/retrospective.py` catalogs fired modes from Spec #1 reports. `mahavishnu/core/sop_synthesizer.py` aggregates retrospectives and generates suggestion text. CLI surfaces suggestions. SOP file at `~/.mahavishnu/sop.md` is read by agents (Spec #1-3 prompt injection) and Spec #6 fallback.
-
-**Tech Stack:** Python 3.13, Dhara (existing), `pathlib`, typer, pytest with `asyncio_mode = "auto"`.
+> **Goal:** Ship per-deployment SOP evolution — per-case retrospectives record fired failure modes; weekly cron aggregates, surfaces SOP suggestions when threshold crossed; operators review via CLI.
+> **Architecture:** `mahavishnu/core/retrospective.py` catalogs fired modes from Spec #1 reports. `mahavishnu/core/sop_synthesizer.py` aggregates retrospectives and generates suggestion text. CLI surfaces suggestions. SOP file at `~/.mahavishnu/sop.md` is read by agents (Spec #1-3 prompt injection) and Spec #6 fallback.
+> **Tech Stack:** Python 3.13, Dhara (existing), `pathlib`, typer, pytest with `asyncio_mode = "auto"`.
 
 ______________________________________________________________________
 

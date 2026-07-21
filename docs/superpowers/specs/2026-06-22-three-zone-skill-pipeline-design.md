@@ -1,20 +1,16 @@
 ---
 status: draft
 role: implementation
+topic: convergence-control-plane
 date: 2026-07-16
 last_reviewed: 2026-07-16
 superseded_by: null
 blocks_on: []
-topic: convergence-control-plane
 ---
 
 # Three-Zone Skill Pipeline v1.0 — Design
 
-**Status:** Draft (brainstormed 2026-06-22)  <!-- legacy status: Draft (brainstormed 2026-06-22) — see YAML frontmatter -->
-**Phase:** 2 (Workflow Evolution)
-**Source:** `Rebuilt Hermes / MAOS` — Part 4 ("Self-Learning — Fixed, Not Removed"). The MAOS three-zone pipeline (staging → systems → promoted) plus audit log is the structural fix for autonomous self-learning silently overwriting manually-tuned skills.
-
-______________________________________________________________________
+## **Status:** Draft (brainstormed 2026-06-22) <!-- legacy status: Draft (brainstormed 2026-06-22) — see YAML frontmatter --> **Phase:** 2 (Workflow Evolution) **Source:** `Rebuilt Hermes / MAOS` — Part 4 ("Self-Learning — Fixed, Not Removed"). The MAOS three-zone pipeline (staging → systems → promoted) plus audit log is the structural fix for autonomous self-learning silently overwriting manually-tuned skills.
 
 ## Overview
 

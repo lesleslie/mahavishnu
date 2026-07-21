@@ -1,21 +1,16 @@
 ---
 status: complete
 role: historical
+topic: convergence-control-plane
 date: 2026-07-16
 last_reviewed: 2026-07-16
 superseded_by: null
 blocks_on: []
-topic: convergence-control-plane
 ---
 
 # Ecosystem Review: Bodai Routing Feedback Loop Plan
 
-**Reviewer**: ecosystem-review (general agent)
-**Date**: 2026-05-23
-**Plan**: `docs/plans/2026-05-23-bodai-routing-feedback-loop.md`
-**Verdict**: **REVISIONS NEEDED** — 5 issues found (1 critical, 2 moderate, 2 informational)
-
-______________________________________________________________________
+## **Reviewer**: ecosystem-review (general agent) **Date**: 2026-05-23 **Plan**: `docs/plans/2026-05-23-bodai-routing-feedback-loop.md` **Verdict**: **REVISIONS NEEDED** — 5 issues found (1 critical, 2 moderate, 2 informational)
 
 ## 1. Standalone Constraint Validation
 

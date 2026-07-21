@@ -10,12 +10,9 @@ topic: vestigial-bs4-removal
 # Remove Vestigial beautifulsoup4 from Mahavishnu Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
-
-**Goal:** Remove the unused `beautifulsoup4` dependency from Mahavishnu's `pyproject.toml` and fix three stale doc references that claim BeautifulSoup is used for webpage ingestion.
-
-**Architecture:** Pure cleanup. No code changes — bs4 has zero imports across `mahavishnu/`, `tests/`, and `examples/`. The actual webpage ingestion in `ContentIngester` delegates to a `web_reader` MCP server on port 8699; nothing in this repo parses HTML locally. A future `bodai-crow-server` (per `docs/superpowers/specs/2026-06-21-bodai-crow-server-design.md`) will use `trafilatura` + `selectolax` for the actual parsing work — in *that* component, not this one.
-
-**Tech Stack:** Python 3.13, uv, pyproject.toml (PEP 621), pytest.
+> **Goal:** Remove the unused `beautifulsoup4` dependency from Mahavishnu's `pyproject.toml` and fix three stale doc references that claim BeautifulSoup is used for webpage ingestion.
+> **Architecture:** Pure cleanup. No code changes — bs4 has zero imports across `mahavishnu/`, `tests/`, and `examples/`. The actual webpage ingestion in `ContentIngester` delegates to a `web_reader` MCP server on port 8699; nothing in this repo parses HTML locally. A future `bodai-crow-server` (per `docs/superpowers/specs/2026-06-21-bodai-crow-server-design.md`) will use `trafilatura` + `selectolax` for the actual parsing work — in *that* component, not this one.
+> **Tech Stack:** Python 3.13, uv, pyproject.toml (PEP 621), pytest.
 
 ## Global Constraints
 

@@ -10,41 +10,38 @@ topic: sb-checkpoint-stash-clobber-fix
 # Session-Buddy Checkpoint Stash-Clobber Fix Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
-
-**Goal:** Eliminate the `git stash` race condition in the session-buddy auto-checkpoint cycle that clobbers subagent working-tree edits mid-task, while preserving the analytic value of midpoint checkpoints.
-
-**Architecture:** A new `session_buddy/checkpoint/` package with four pluggable components (`SubagentDetector`, `SnapshotMechanism`, `CheckpointPolicy`, `CheckpointOrchestrator`) composes a thin wrapper around the existing `store_conversation_checkpoint` tool. The wrapper replaces any stash-based working-tree capture with a read-only `git diff > /tmp/snap-<uuid>.patch` snapshot, defers when a subagent is in flight, and emits structured decisions for observability.
-
-**Tech Stack:** Python 3.13, asyncio, pytest + pytest-asyncio + hypothesis, `subprocess` for git invocations, no new third-party dependencies.
-
-**Reference spec:** `docs/superpowers/specs/2026-07-15-sb-checkpoint-stash-clobber-fix-design.md`
+> **Goal:** Eliminate the `git stash` race condition in the session-buddy auto-checkpoint cycle that clobbers subagent working-tree edits mid-task, while preserving the analytic value of midpoint checkpoints.
+> **Architecture:** A new `session_buddy/checkpoint/` package with four pluggable components (`SubagentDetector`, `SnapshotMechanism`, `CheckpointPolicy`, `CheckpointOrchestrator`) composes a thin wrapper around the existing `store_conversation_checkpoint` tool. The wrapper replaces any stash-based working-tree capture with a read-only `git diff > /tmp/snap-<uuid>.patch` snapshot, defers when a subagent is in flight, and emits structured decisions for observability.
+> **Tech Stack:** Python 3.13, asyncio, pytest + pytest-asyncio + hypothesis, `subprocess` for git invocations, no new third-party dependencies.
+> **Reference spec:** `docs/superpowers/specs/2026-07-15-sb-checkpoint-stash-clobber-fix-design.md`
 
 ## Global Constraints
 
 These apply to every task. Tasks may add task-specific constraints.
 
 1. Python 3.13+. Use `from __future__ import annotations` as the first non-comment line of every source file.
-2. Use modern syntax: `X | None` (not `Optional[X]`), `list[str]` (not `List[str]`), `pathlib.Path` for filesystem paths.
-3. Function arguments with default `None` must be typed `X | None = None` (mypy `no_implicit_optional = true`).
-4. No `assert` in production code under `session_buddy/checkpoint/`. Use specific exception classes.
-5. No `Any` in public interfaces. Use `TYPE_CHECKING` and protocols to escape.
-6. In `except` blocks, use `logger.exception(...)`, never `logger.error(..., exc_info=True)`.
-7. Use the Oneiric logger (`oneiric.logging`) — not stdlib `logging` directly. If unavailable in this context, use `logging.getLogger(__name__)` consistently and document the deviation.
-8. Async I/O only inside async functions. Subprocess invocations use `asyncio.create_subprocess_exec`, not `subprocess.run`.
-9. Line length: 100 chars (Ruff default).
-10. Coverage target: 90%+ on `session_buddy/checkpoint/` module (higher than project default 80%).
-11. Test markers: use existing project markers — `unit`, `integration`, `property`, `slow`. No new markers.
-12. Every `PolicyDecision.reason` and `CheckpointResult.decision_reason` is non-empty (empty string is a bug).
-13. Snapshot files at `/tmp/snap-<uuid>.patch` are immutable after `capture()` returns.
-14. The working tree is never mutated by checkpoint operations. This is the keystone invariant.
+1. Use modern syntax: `X | None` (not `Optional[X]`), `list[str]` (not `List[str]`), `pathlib.Path` for filesystem paths.
+1. Function arguments with default `None` must be typed `X | None = None` (mypy `no_implicit_optional = true`).
+1. No `assert` in production code under `session_buddy/checkpoint/`. Use specific exception classes.
+1. No `Any` in public interfaces. Use `TYPE_CHECKING` and protocols to escape.
+1. In `except` blocks, use `logger.exception(...)`, never `logger.error(..., exc_info=True)`.
+1. Use the Oneiric logger (`oneiric.logging`) — not stdlib `logging` directly. If unavailable in this context, use `logging.getLogger(__name__)` consistently and document the deviation.
+1. Async I/O only inside async functions. Subprocess invocations use `asyncio.create_subprocess_exec`, not `subprocess.run`.
+1. Line length: 100 chars (Ruff default).
+1. Coverage target: 90%+ on `session_buddy/checkpoint/` module (higher than project default 80%).
+1. Test markers: use existing project markers — `unit`, `integration`, `property`, `slow`. No new markers.
+1. Every `PolicyDecision.reason` and `CheckpointResult.decision_reason` is non-empty (empty string is a bug).
+1. Snapshot files at `/tmp/snap-<uuid>.patch` are immutable after `capture()` returns.
+1. The working tree is never mutated by checkpoint operations. This is the keystone invariant.
 
----
+______________________________________________________________________
 
 ## File Structure
 
 Files to be created or modified by this plan:
 
 **New files (session-buddy side, primary location):**
+
 - `session_buddy/checkpoint/__init__.py` — package init, re-exports public API
 - `session_buddy/checkpoint/subagent_detector.py` — `SubagentDetector` + `SignalSource` protocol + `LockfileSignalSource` concrete impl
 - `session_buddy/checkpoint/snapshot.py` — `SnapshotMechanism` + `Snapshot` dataclass + `GitNotAvailableError` + `RestoreConflict`
@@ -53,6 +50,7 @@ Files to be created or modified by this plan:
 - `session_buddy/checkpoint/working_tree.py` — `WorkingTreeInspector` (used by policy)
 
 **New test files:**
+
 - `tests/unit/checkpoint/test_subagent_detector.py`
 - `tests/unit/checkpoint/test_snapshot.py`
 - `tests/unit/checkpoint/test_policy.py`
@@ -62,13 +60,15 @@ Files to be created or modified by this plan:
 - `tests/unit/checkpoint/test_stash_clobber_regression.py` — regression test for the 2026-07-15 bug
 
 **Modified files (integration):**
+
 - `session_buddy/mcp/tools/session/session_tools.py` — wire orchestrator into `_checkpoint_impl` (ONLY if probe confirms session-buddy location)
 
 **Documentation files (final task):**
+
 - `docs/followups/2026-07-15-sb-checkpoint-stash-clobber.md` — add resolution note
 - `docs/followups/2026-07-15-pickup-bodai-hooks-and-sb-debug.md` — reference this plan
 
----
+______________________________________________________________________
 
 ## ⚠️ REWORK NOTES — Multi-Agent Review Findings (2026-07-15)
 
@@ -113,6 +113,7 @@ in `session_buddy/utils/git_worktrees.py`. That function
 **Override**: When executing, treat Task 7 as:
 
 **Files:**
+
 - Modify: `session_buddy/utils/git_worktrees.py` — wrap `create_checkpoint_commit` (line 469) with the orchestrator's safety check
 - Modify (optional): `session_buddy/mcp/tools/session/session_tools.py` — keep existing behavior of `_checkpoint_impl`; the orchestrator wraps at the lower layer
 
@@ -138,6 +139,7 @@ the actual buggy code from the originating session, the regression
 test is unverifiable.
 
 **Override**:
+
 - Fix the spy: same as R3
 - Reproduce the actual buggy code in Step 9.3 by reading the parent commit (`docs/followups/2026-07-15-comprehensive-hooks-cleanup-checkpoint.md`) and `git show`ing the originating checkpoint commit. The bug lives at the actual mutator (per R2), not in `SnapshotMechanism.capture()`.
 
@@ -154,11 +156,13 @@ wired but inert.
 ### Task 13: Wire Lockfile Writer into Mahavishnu Worker Dispatch
 
 **Files:**
+
 - Modify: `mahavishnu/pools/manager.py` — write `.mahavishnu-subagent-active` in the working_dir when a subagent is dispatched
 - Modify: `mahavishnu/workers/manager.py` — write lockfile on worker spawn, remove on worker exit (try/finally)
 - Test: `tests/unit/pools/test_lockfile_writer.py`
 
 **Interfaces:**
+
 - Consumes: `working_dir: Path`, `dispatch_id: str`
 - Produces: writes `<working_dir>/.mahavishnu-subagent-active` with metadata; removes on completion
 
@@ -196,10 +200,12 @@ flagged this as reviewer-specific. Engineers cloning the repos to
 different paths will fail all commands.
 
 **Override**: Cut one worktree per repo before executing:
+
 ```bash
 git worktree add -b fix/sb-checkpoint-stash-clobber-session-buddy /tmp/fix-sb-session-buddy
 git worktree add -b fix/sb-checkpoint-stash-clobber-mahavishnu /tmp/fix-sb-mahavishnu
 ```
+
 Replace all `cd /Users/les/Projects/session-buddy` and
 `cd /Users/les/Projects/mahavishnu` in the plan with `cd` to the
 corresponding worktree. Use environment variables
@@ -216,6 +222,7 @@ tracking entry for every feature in `docs/feature-tracking/`.
 ### Task 0: Create Feature-Tracking Entry
 
 **Files:**
+
 - Create: `docs/feature-tracking/2026-07-15-sb-checkpoint-orchestrator.md` (in mahavishnu repo)
 
 **Step 0.1**: Copy `docs/feature-tracking/TEMPLATE.md` to the target path
@@ -235,11 +242,12 @@ block at the end. The `crackerjack-cleanup-wave7` skill scaffold has
 a template; copy from there. This is non-negotiable per the project's
 process discipline.
 
----
+______________________________________________________________________
 
 ## Task 1: Architecture Probe
 
 **Files:**
+
 - Create: `/tmp/sb-stash-probe-findings.md` (temporary scratch file; deleted after Task 1)
 
 **Step 1.1: Run the location probe**
@@ -304,15 +312,17 @@ git add docs/superpowers/plans/2026-07-15-sb-checkpoint-stash-clobber-fix.md
 git commit --allow-empty -m "docs(superpowers): confirm fix location via architecture probe"
 ```
 
----
+______________________________________________________________________
 
 ## Task 2: WorkingTreeInspector
 
 **Files:**
+
 - Create: `session_buddy/checkpoint/working_tree.py`
 - Test: `tests/unit/checkpoint/test_working_tree.py`
 
 **Interfaces:**
+
 - Consumes: a `Path` (working directory)
 - Produces:
   - `class WorkingTreeInspector`
@@ -574,15 +584,17 @@ git add session_buddy/checkpoint/working_tree.py tests/unit/checkpoint/test_work
 git commit -m "feat(checkpoint): add WorkingTreeInspector with git read-only wrappers"
 ```
 
----
+______________________________________________________________________
 
 ## Task 3: SubagentDetector + SignalSource
 
 **Files:**
+
 - Create: `session_buddy/checkpoint/subagent_detector.py`
 - Test: `tests/unit/checkpoint/test_subagent_detector.py`
 
 **Interfaces:**
+
 - Consumes: `working_dir: Path`, `signal_source: SignalSource`
 - Produces:
   - `class SignalSource` (protocol with `read() -> bool` and `write(active: bool) -> None`)
@@ -802,15 +814,17 @@ git add session_buddy/checkpoint/subagent_detector.py tests/unit/checkpoint/test
 git commit -m "feat(checkpoint): add SubagentDetector with pluggable SignalSource"
 ```
 
----
+______________________________________________________________________
 
 ## Task 4: SnapshotMechanism
 
 **Files:**
+
 - Create: `session_buddy/checkpoint/snapshot.py`
 - Test: `tests/unit/checkpoint/test_snapshot.py`
 
 **Interfaces:**
+
 - Consumes: `working_dir: Path`, `snapshot_dir: Path`
 - Produces:
   - `class SnapshotMechanism` with `capture(label: str) -> Snapshot` (async) and `restore(snapshot: Snapshot) -> RestoreResult` (async)
@@ -1120,15 +1134,17 @@ git add session_buddy/checkpoint/snapshot.py tests/unit/checkpoint/test_snapshot
 git commit -m "feat(checkpoint): add stash-free SnapshotMechanism with restore support"
 ```
 
----
+______________________________________________________________________
 
 ## Task 5: CheckpointPolicy
 
 **Files:**
+
 - Create: `session_buddy/checkpoint/policy.py`
 - Test: `tests/unit/checkpoint/test_policy.py`
 
 **Interfaces:**
+
 - Consumes: `always_end`, `midpoint_enabled`, `midpoint_criteria: MidpointCriteria`, `subagent_detector: SubagentDetector`, `working_tree: WorkingTreeInspector`
 - Produces:
   - `class CheckpointPhase(str, Enum)` with `END_OF_TASK`, `MIDPOINT_TIME`, `MIDPOINT_DIRTINESS`, `HOOK_REQUESTED`
@@ -1467,16 +1483,18 @@ git add session_buddy/checkpoint/policy.py tests/unit/checkpoint/test_policy.py
 git commit -m "feat(checkpoint): add CheckpointPolicy with value-add signals and OR semantics"
 ```
 
----
+______________________________________________________________________
 
 ## Task 6: CheckpointOrchestrator
 
 **Files:**
+
 - Create: `session_buddy/checkpoint/orchestrator.py`
 - Create: `session_buddy/checkpoint/__init__.py`
 - Test: `tests/unit/checkpoint/test_orchestrator.py`
 
 **Interfaces:**
+
 - Consumes: `policy: CheckpointPolicy`, `snapshot: SnapshotMechanism`, `subagent_detector: SubagentDetector`, `forward_to: Callable[[CheckpointResult], Awaitable[None]]`
 - Produces:
   - `class CheckpointOrchestrator` with `async run_checkpoint(*, phase, hook_request=False) -> CheckpointResult`
@@ -1857,17 +1875,19 @@ git add session_buddy/checkpoint/orchestrator.py session_buddy/checkpoint/__init
 git commit -m "feat(checkpoint): add CheckpointOrchestrator composition root with fail-closed semantics"
 ```
 
----
+______________________________________________________________________
 
 ## Task 7: Wire Orchestrator into Existing Checkpoint Tool
 
 **Files:**
+
 - Modify: `session_buddy/mcp/tools/session/session_tools.py` — change `_checkpoint_impl` to construct an orchestrator and route the call through it
 - Test: `tests/integration/checkpoint/test_session_tools_integration.py` — verify the wire-up
 
 **Note**: ONLY execute this task if Task 1's probe confirmed `session-buddy` is the location. If the probe showed crackerjack, SKIP this task and modify the crackerjack code instead.
 
 **Interfaces:**
+
 - Consumes: existing `_checkpoint_impl(working_directory: str | None)` function signature
 - Produces: same signature, but the body constructs a `CheckpointOrchestrator` and delegates to it
 
@@ -2010,11 +2030,12 @@ git add session_buddy/mcp/tools/session/session_tools.py tests/integration/check
 git commit -m "feat(checkpoint): wire CheckpointOrchestrator into _checkpoint_impl"
 ```
 
----
+______________________________________________________________________
 
 ## Task 8: Property-Based Invariant Test
 
 **Files:**
+
 - Create: `tests/unit/checkpoint/test_property_invariants.py`
 
 **Step 8.1: Write the property-based test**
@@ -2187,11 +2208,12 @@ git add tests/unit/checkpoint/test_property_invariants.py
 git commit -m "test(checkpoint): add property-based tests for working-tree invariant"
 ```
 
----
+______________________________________________________________________
 
 ## Task 9: Regression Test for the Stash-Clobber Bug
 
 **Files:**
+
 - Create: `tests/unit/checkpoint/test_stash_clobber_regression.py`
 
 **Context**: This test would have FAILED against the pre-fix code (because `git stash` would have been called). With the new code, it passes by construction. Adding it ensures future regressions that re-introduce stash operations are caught immediately.
@@ -2332,7 +2354,7 @@ git add tests/unit/checkpoint/test_stash_clobber_regression.py
 git commit -m "test(checkpoint): add regression test for 2026-07-15 stash-clobber bug"
 ```
 
----
+______________________________________________________________________
 
 ## Task 10: Manual Claude Code Hook Verification
 
@@ -2363,9 +2385,13 @@ When the subagent completes, verify the end-of-task checkpoint fires (look for "
 - [ ] **Step 10.5: Document findings**
 
 Append to `docs/followups/2026-07-15-sb-checkpoint-stash-clobber.md` a "Resolution" section with:
+
 - Commit hashes that implemented the fix
+
 - Test results (all green)
+
 - Manual verification observations
+
 - Any deviations from the plan
 
 - [ ] **Step 10.6: Commit (if hook wiring changed)**
@@ -2376,12 +2402,14 @@ git add .claude/hooks/mcp-hooks.json
 git commit -m "chore(hooks): update pre_checkpoint path to use new orchestrator"
 ```
 
----
+______________________________________________________________________
 
 ## Task 11: Update Follow-ups Documentation
 
 **Files:**
+
 - Modify: `docs/followups/2026-07-15-sb-checkpoint-stash-clobber.md` — add Resolution section
+
 - Modify: `docs/followups/2026-07-15-pickup-bodai-hooks-and-sb-debug.md` — reference the plan
 
 - [ ] **Step 11.1: Add Resolution section to stash-clobber follow-up**
@@ -2419,6 +2447,7 @@ grep -n "^### 3f" /Users/les/Projects/mahavishnu/docs/followups/2026-07-15-picku
 ```
 
 Then update Step 3f in-place with:
+
 - The final commit hashes from Tasks 1-12 (replace the placeholder list)
 - A one-line note: "Plan reworked 2026-07-15 — see REWORK NOTES section at top of plan for critical-blocker fixes that override the original tasks."
 
@@ -2454,7 +2483,8 @@ HTTP client caller surface.
 The plan's Task 10 (Manual Claude Code Hook Verification) overlaps
 with this pickup prompt's Step 3 (Verify Bodai Claude Code hooks are
 firing) — coordinate to avoid duplicate work.
-```
+
+````
 
 - [ ] **Step 11.3: Commit documentation updates**
 
@@ -2462,9 +2492,9 @@ firing) — coordinate to avoid duplicate work.
 cd /Users/les/Projects/mahavishnu
 git add docs/followups/2026-07-15-sb-checkpoint-stash-clobber.md docs/followups/2026-07-15-pickup-bodai-hooks-and-sb-debug.md
 git commit -m "docs(followups): reference stash-clobber fix plan in pickup prompt"
-```
+````
 
----
+______________________________________________________________________
 
 ## Self-Review
 
@@ -2490,6 +2520,7 @@ After writing the complete plan, run this checklist:
 **2. Placeholder scan** — no "TBD", "TODO", "implement later" in the plan body. (The TBD in the deferred-decisions table of the spec is intentional; the plan does not duplicate it.)
 
 **3. Type consistency** — function signatures match across tasks. Verified:
+
 - `WorkingTreeInspector.dirty_file_count() -> int` (sync, in test) but **async in implementation** — Task 2 step 2.4 corrects this
 - `SubagentDetector.is_active() -> bool` (sync) and `wait_until_idle() -> bool` (async) — consistent
 - `SnapshotMechanism.capture(label) -> Snapshot` (async) — consistent
@@ -2497,16 +2528,18 @@ After writing the complete plan, run this checklist:
 - `CheckpointOrchestrator.run_checkpoint(*, phase, hook_request) -> CheckpointResult` (async) — consistent
 
 **4. Gaps found** — two:
+
 - Cleanup contract from spec section "Error Handling" → "Cleanup contract" not covered. Add Task 11.5 (or new Task 12).
 - Operator-visible signals (structured logs, metrics) are scattered in error handling but no dedicated task adds the metrics counter.
 
 These are added as Task 12 below.
 
----
+______________________________________________________________________
 
 ## Task 12: Add Cleanup and Metrics (from self-review gaps)
 
 **Files:**
+
 - Create: `session_buddy/checkpoint/cleanup.py`
 - Create: `session_buddy/checkpoint/metrics.py`
 - Test: `tests/unit/checkpoint/test_cleanup.py`
@@ -2694,6 +2727,7 @@ class CheckpointMetrics:
 **Step 12.6: Wire metrics into orchestrator**
 
 Modify `session_buddy/checkpoint/orchestrator.py`:
+
 - Add `metrics: CheckpointMetrics | None = None` parameter to `__init__`
 - Call `metrics.record_success()` after successful forward_to
 - Call `metrics.record_failure("snapshot_capture_failed")` on snapshot error
@@ -2716,7 +2750,7 @@ git add session_buddy/checkpoint/cleanup.py session_buddy/checkpoint/metrics.py 
 git commit -m "feat(checkpoint): add snapshot TTL cleanup and metrics tracking"
 ```
 
----
+______________________________________________________________________
 
 ## Execution Handoff
 
@@ -2725,7 +2759,7 @@ Plan complete and saved to `docs/superpowers/plans/2026-07-15-sb-checkpoint-stas
 **Two execution options** (for the future session that will execute this):
 
 1. **Subagent-Driven (recommended)** — dispatch a fresh subagent per task, review between tasks, fast iteration
-2. **Inline Execution** — execute tasks in this session using executing-plans, batch execution with checkpoints
+1. **Inline Execution** — execute tasks in this session using executing-plans, batch execution with checkpoints
 
 Per the user's instruction, this plan is NOT executed now. It is referenced in the pickup prompt at `docs/followups/2026-07-15-pickup-bodai-hooks-and-sb-debug.md` (Task 11.2 above) for future execution.
 

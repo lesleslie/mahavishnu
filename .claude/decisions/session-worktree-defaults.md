@@ -31,27 +31,26 @@ causing file stomping, branch conflicts, and dirty-tree merge problems.
    explicitly to enable; setting it to any value (including `0`)
    silences the hint.
 
-2. **Never auto-removes worktrees.** SessionEnd marks the entry
+1. **Never auto-removes worktrees.** SessionEnd marks the entry
    `abandoned` in the registry but does NOT delete the git worktree.
    The `mahavishnu worktree prune-abandoned` CLI removes registry
-   entries; the user MUST run `mahavishnu worktree remove <repo>
-   <path>` to actually delete the on-disk worktree.
+   entries; the user MUST run `mahavishnu worktree remove <repo> <path>` to actually delete the on-disk worktree.
 
-3. **Session_id is validated.** Hook calls `uuid.UUID(session_id)`
+1. **Session_id is validated.** Hook calls `uuid.UUID(session_id)`
    up front and fails closed on malformed input. First-segment 8 hex
    chars are the registry key (uniform distribution, no UUIDv4 time-low
    collision risk).
 
-4. **State file is hardened.** `chmod 0o600` on the file, `chmod 0o700`
+1. **State file is hardened.** `chmod 0o600` on the file, `chmod 0o700`
    on the parent dir. Open with `O_NOFOLLOW` to refuse pre-planted
    symlinks (CWE-59). Schema-version-gated: refuses to overwrite
    files declaring a future `schema_version`.
 
-5. **POSIX-only.** Uses `fcntl.flock` which is local-FS only (NFS
+1. **POSIX-only.** Uses `fcntl.flock` which is local-FS only (NFS
    semantics differ). mahavishnu is Unix-targeted by posture; this is
    not portable to Windows.
 
-6. **Discovery hint is the only default-off side effect** (Phase 4,
+1. **Discovery hint is the only default-off side effect** (Phase 4,
    2026-07-17). When `MAHAVISHNU_AUTO_WORKTREE` is unset AND
    `mode == "session-start"` AND `cwd` is non-empty AND `cwd` is a
    git repo (not already a worktree) AND `MAHAVISHNU_AUTO_WORKTREE_ROOT`
@@ -102,11 +101,10 @@ Three reasons, in order of weight:
    its own changes the user's filesystem without explicit consent. The
    user may be running Claude in an environment where worktrees are
    unexpected (CI, container, ephemeral sandbox).
-2. **Optics.** The first time a user sees `~/worktrees/agent-a0c5d2a0`
+1. **Optics.** The first time a user sees `~/worktrees/agent-a0c5d2a0`
    appear unbidden, they may not realize what created it. Default-off
    means the user MUST see the env-var doc and decide.
-3. **Escape hatch.** Default-on with a kill-switch (`unset
-   MAHAVISHNU_AUTO_WORKTREE`) is more error-prone than default-off with
+1. **Escape hatch.** Default-on with a kill-switch (`unset MAHAVISHNU_AUTO_WORKTREE`) is more error-prone than default-off with
    an opt-in. The latter forces a deliberate choice.
 
 ### Phase 4 addition (2026-07-17): discovery hint

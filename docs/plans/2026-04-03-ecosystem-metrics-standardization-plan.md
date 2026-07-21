@@ -10,7 +10,7 @@ topic: observability
 # Ecosystem Metrics Standardization Plan
 
 **Date:** 2026-04-03
-**Status:** Ready for implementation  <!-- legacy status: Ready for implementation — see YAML frontmatter -->
+**Status:** Ready for implementation <!-- legacy status: Ready for implementation — see YAML frontmatter -->
 
 ## Goal
 

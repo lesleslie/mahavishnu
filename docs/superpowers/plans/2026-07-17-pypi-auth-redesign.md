@@ -1,3 +1,11 @@
+---
+status: draft
+role: implementation
+date: 2026-07-21
+last_reviewed: 2026-07-21
+topic: lifecycle
+---
+
 # PyPI Auth Redesign Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
@@ -29,43 +37,45 @@ From `crackerjack/CLAUDE.md`, `crackerjack/pyproject.toml`, and the spec:
 - All CLI surface unchanged: no version bump of crackerjack; no pyproject bump
 - Imports sorted within sections (stdlib → third-party → first-party `crackerjack`)
 
----
+______________________________________________________________________
 
-## File Structure
+______________________________________________________________________
 
 **New module (crackerjack/services/pypi_auth/):**
+
 - `__init__.py` — re-exports public API
 - `_auth.py` — `PyPIAuth` class + `PyPIAuthProvider` Protocol + `discover_auth()`
 - `_providers.py` — `EnvVarAuthProvider`, `KeyringAuthProvider`
 - `_trusted_publishing.py` — `TrustedPublishingProvider`
 - `_keyring.py` — `_keyring_get_raw()` private helper
-
-**New tests:**
+  **New tests:**
 - `tests/unit/services/test_pypi_auth.py` — unit tests for `PyPIAuth`, Protocol, `discover_auth()`
 - `tests/unit/services/test_pypi_auth_providers.py` — unit tests for all 3 providers
 - `tests/unit/services/test_keyring_raw.py` — unit tests for `_keyring_get_raw()`
 - `tests/unit/managers/test_publish_manager_pyi_auth.py` — integration + regression tests
-
-**Modified:**
+  **Modified:**
 - `crackerjack/managers/publish_manager.py` — replace `_check_*_auth`, `_collect_auth_methods`, `_report_auth_status`, `AuthResult` with `_resolve_pypi_auth()` + new `_execute_publish()`
 - `crackerjack/CHANGELOG.md` — add entry
-
-**Removed (deleted code):**
+  **Removed (deleted code):**
 - `AuthResult` dataclass (lines 29-32 of publish_manager.py)
 - `_collect_auth_methods`, `_check_env_token_auth`, `_check_keyring_auth`, `_report_auth_status`, `_display_auth_setup_instructions` (lines 448-517 of publish_manager.py)
 
----
+______________________________________________________________________
 
 ## Task 1: Create PyPIAuth opaque wrapper
 
 **Files:**
+
 - Create: `crackerjack/services/pypi_auth/__init__.py`
 - Create: `crackerjack/services/pypi_auth/_auth.py`
 - Test: `tests/unit/services/test_pypi_auth.py`
 
 **Interfaces:**
+
 - Consumes: nothing (zero dependencies)
+
 - Produces:
+
   - `class PyPIAuth` with constructor `__init__(self, value: str) -> None`
   - Raises `ValueError` if `value` is empty, doesn't start with `"pypi-"`, or `len(value) < 16`
   - Stores the validated value privately
@@ -320,17 +330,21 @@ Expected: All 11 tests pass. The `discover_auth` function references providers t
 cd /Users/les/Projects/crackerjack && git add crackerjack/services/pypi_auth/ tests/unit/services/test_pypi_auth.py && git commit -m "feat(pypi_auth): PyPIAuth opaque wrapper + Protocol + discover_auth()"
 ```
 
----
+______________________________________________________________________
 
 ## Task 2: Create `_keyring_get_raw()` private helper
 
 **Files:**
+
 - Create: `crackerjack/services/pypi_auth/_keyring.py`
 - Test: `tests/unit/services/test_keyring_raw.py`
 
 **Interfaces:**
+
 - Consumes: nothing
+
 - Produces:
+
   - Function `_keyring_get_raw(url: str, username: str, timeout: int = 10) -> str | None`
   - Returns the raw stdout of `keyring get <url> <username>`, stripped.
   - Returns `None` on `FileNotFoundError`, `subprocess.TimeoutExpired`, non-zero exit code, or empty stdout.
@@ -507,17 +521,21 @@ Expected: All 7 tests pass.
 cd /Users/les/Projects/crackerjack && git add crackerjack/services/pypi_auth/_keyring.py tests/unit/services/test_keyring_raw.py && git commit -m "feat(pypi_auth): _keyring_get_raw() — unmasked keyring subprocess helper"
 ```
 
----
+______________________________________________________________________
 
 ## Task 3: Create EnvVarAuthProvider and KeyringAuthProvider
 
 **Files:**
+
 - Create: `crackerjack/services/pypi_auth/_providers.py`
 - Test: `tests/unit/services/test_pypi_auth_providers.py`
 
 **Interfaces:**
+
 - Consumes: `PyPIAuth` (from Task 1), `_keyring_get_raw` (from Task 2)
+
 - Produces:
+
   - `class EnvVarAuthProvider`:
     - `name = "UV_PUBLISH_TOKEN env var"`
     - `is_available() -> bool` returns `True` iff `os.getenv("UV_PUBLISH_TOKEN")` is non-empty
@@ -705,18 +723,22 @@ Expected: All 8 tests pass.
 cd /Users/les/Projects/crackerjack && git add crackerjack/services/pypi_auth/_providers.py tests/unit/services/test_pypi_auth_providers.py && git commit -m "feat(pypi_auth): EnvVarAuthProvider and KeyringAuthProvider"
 ```
 
----
+______________________________________________________________________
 
 ## Task 4: Create TrustedPublishingProvider
 
 **Files:**
+
 - Create: `crackerjack/services/pypi_auth/_trusted_publishing.py`
 - Modify: `crackerjack/services/pypi_auth/_auth.py` (extend `PyPIAuth` with `is_trusted_publishing=True` variant)
 - Test: extend `tests/unit/services/test_pypi_auth_providers.py`
 
 **Interfaces:**
+
 - Consumes: `PyPIAuth` (from Task 1)
+
 - Produces:
+
   - `class TrustedPublishingProvider`:
     - `name = "Trusted Publishing (OIDC)"`
     - `is_available() -> bool`:
@@ -883,17 +905,21 @@ Expected: All 13 tests pass (8 existing + 5 new).
 cd /Users/les/Projects/crackerjack && git add crackerjack/services/pypi_auth/_auth.py crackerjack/services/pypi_auth/_trusted_publishing.py tests/unit/services/test_pypi_auth_providers.py && git commit -m "feat(pypi_auth): TrustedPublishingProvider for OIDC-based auth"
 ```
 
----
+______________________________________________________________________
 
 ## Task 5: Wire publish_manager.py to use the new abstraction
 
 **Files:**
+
 - Modify: `crackerjack/managers/publish_manager.py`
 - Test: `tests/unit/managers/test_publish_manager_pyi_auth.py` (new)
 
 **Interfaces:**
+
 - Consumes: `PyPIAuth`, `discover_auth`, `PyPIAuthProvider` (from Tasks 1-4)
+
 - Produces:
+
   - `PublishManagerImpl._resolve_pypi_auth() -> PyPIAuth | None`:
     - Returns the result of `discover_auth()`'s first element
     - Prints the same banner pattern as the existing `_report_auth_status`
@@ -1015,8 +1041,8 @@ Expected: Tests fail because `_resolve_pypi_auth` doesn't exist on `PublishManag
 In `crackerjack/managers/publish_manager.py`:
 
 1. Remove the `AuthResult` dataclass (lines 29-32, including its leading blank line).
-2. Replace the existing `_collect_auth_methods`, `_check_env_token_auth`, `_check_keyring_auth`, `_report_auth_status`, `_display_auth_setup_instructions` methods (lines 448-517) with the new `_resolve_pypi_auth` method below.
-3. Update the import line near the top:
+1. Replace the existing `_collect_auth_methods`, `_check_env_token_auth`, `_check_keyring_auth`, `_report_auth_status`, `_display_auth_setup_instructions` methods (lines 448-517) with the new `_resolve_pypi_auth` method below.
+1. Update the import line near the top:
    - Find the existing import section.
    - Add `from crackerjack.services.pypi_auth._auth import PyPIAuth, discover_auth`
      (it does NOT need to import providers directly — `discover_auth` does that).
@@ -1122,18 +1148,21 @@ Note the test names that fail; you'll need to update or delete them in the next 
 cd /Users/les/Projects/crackerjack && git add crackerjack/managers/publish_manager.py tests/unit/managers/test_publish_manager_pyi_auth.py && git commit -m "refactor(publish): use PyPIAuth abstraction; remove old auth pipeline"
 ```
 
----
+______________________________________________________________________
 
 ## Task 6: Update or delete existing tests that reference removed APIs
 
 **Files:**
+
 - Modify: `tests/unit/managers/test_publish_manager.py`
 - Modify: `tests/unit/managers/test_publish_manager_extended.py`
 - Modify: `tests/unit/managers/test_publish_manager_gaps.py`
 - Modify: `tests/test_publish_manager_coverage.py`
 
 The goal: every existing test that referenced `AuthResult`, `_check_env_token_auth`, `_check_keyring_auth`, `_collect_auth_methods`, `_report_auth_status`, `_display_auth_setup_instructions` is either:
+
 - (a) deleted (if it tests behavior we no longer have), OR
+
 - (b) rewritten to test the equivalent through the new `_resolve_pypi_auth` / `_execute_publish` interface.
 
 - [ ] **Step 1: Find every reference to the removed symbols**
@@ -1147,9 +1176,13 @@ Expected: A list of file:line references. Note each one.
 For each test function found in step 1, read its body. If the body only exercises a removed symbol (e.g. `test_collect_auth_methods_returns_env_first`), delete the entire test function. Do not delete tests that exercise other behavior.
 
 Concrete guidance (this list is illustrative — verify against actual output of step 1):
+
 - `test_validate_auth_returns_true_when_env_token_set` → delete (tested removed `_check_env_token_auth`)
+
 - `test_validate_auth_returns_true_when_keyring_token_set` → delete (tested removed `_check_keyring_auth`)
+
 - `test_report_auth_with_methods` → delete (tested removed `_report_auth_status`)
+
 - `test_collect_auth_methods_returns_keyring_when_no_env` → delete
 
 - [ ] **Step 3: Rewrite tests that test preserved behavior**
@@ -1182,11 +1215,12 @@ Expected: All tests pass. If some still fail, examine the failure carefully — 
 cd /Users/les/Projects/crackerjack && git add tests/unit/managers/ tests/test_publish_manager_coverage.py && git commit -m "test(publish): migrate tests to PyPIAuth interface; drop tests for removed symbols"
 ```
 
----
+______________________________________________________________________
 
 ## Task 7: Add the critical regression test (parameterized masking)
 
 **Files:**
+
 - Modify: `tests/unit/managers/test_publish_manager_pyi_auth.py`
 
 This test is the single most important deliverable. It MUST pass on the new code, and MUST be possible to verify it would have failed on the old code. The point: prove that masking can never again corrupt a PyPI token between discovery and use.
@@ -1293,11 +1327,12 @@ Expected: All tests pass.
 cd /Users/les/Projects/crackerjack && git add tests/unit/managers/test_publish_manager_pyi_auth.py && git commit -m "test(publish): regression — token body survives masking for all three providers"
 ```
 
----
+______________________________________________________________________
 
 ## Task 8: Run crackerjack's full test suite and update CHANGELOG
 
 **Files:**
+
 - Modify: `crackerjack/CHANGELOG.md`
 
 - [ ] **Step 1: Run the full crackerjack test suite**
@@ -1342,7 +1377,7 @@ In `crackerjack/CHANGELOG.md`, prepend (under "Unreleased" if it exists, otherwi
 cd /Users/les/Projects/crackerjack && git add CHANGELOG.md && git commit -m "docs(changelog): publish auth redesigned; PyPIAuth abstraction replaces fragile pipeline"
 ```
 
----
+______________________________________________________________________
 
 ## Self-Review
 
@@ -1376,6 +1411,7 @@ cd /Users/les/Projects/crackerjack && git add CHANGELOG.md && git commit -m "doc
 **Placeholder scan:** No "TBD", "TODO", "implement later", "fill in details". Every code step shows the actual code. Every command shows the actual command.
 
 **Type consistency:**
+
 - `PyPIAuth.__init__(self, value: str, source: str = "unknown")` (Task 1) — used as `PyPIAuth(value, source="env:UV_PUBLISH_TOKEN")` (Task 3), `PyPIAuth(raw, source="keyring")` (Task 3), `_TrustedPublishingSentinel()` internally (Task 4). Consistent.
 - `_keyring_get_raw(url: str, username: str, timeout: int = 10) -> str | None` (Task 2) — used as `_keyring_get_raw(PYPI_KEYRING_URL, PYPI_KEYRING_USER)` (Task 3). Consistent.
 - `discover_auth(providers: Sequence[PyPIAuthProvider] | None = None) -> tuple[PyPIAuth | None, list[PyPIAuthProvider]]` (Task 1) — used as `auth, providers = discover_auth()` (Task 5). Consistent.
@@ -1386,20 +1422,24 @@ cd /Users/les/Projects/crackerjack && git add CHANGELOG.md && git commit -m "doc
 Spec says: "Raises ValueError on empty, missing pypi- prefix, or length < 16. Matches validate_token_format(..., 'pypi') so the two stay in sync."
 
 Implementation in Task 1:
+
 ```python
 if len(value) < 16:
     msg = f"PyPI token must be at least 16 characters (got {len(value)})"
     raise ValueError(msg)
 ```
+
 ✓ Matches.
 
 **Spec requirement check: pickling should raise.**
 
 Test in Task 1:
+
 ```python
 with pytest.raises((TypeError, AttributeError, pickle.PicklingError)):
     pickle.dumps(auth)
 ```
+
 ✓ Matches.
 
 **Spec requirement check: `__reduce__` should not be defined.**
@@ -1411,13 +1451,14 @@ with pytest.raises((TypeError, AttributeError, pickle.PicklingError)):
 ```python
 return auth, list(providers)
 ```
+
 ✓ Banner code can iterate over `providers` to show what was checked.
 
 **Spec requirement check: PyPIAuth opaque; no public attribute access.**
 
 `PyPIAuth` uses `__slots__` with private `_value` and `_source`. Public access goes through `as_uv_publish_token()` and `source()`. ✓
 
----
+______________________________________________________________________
 
 **Plan complete and saved to `docs/superpowers/plans/2026-07-17-pypi-auth-redesign.md`.**
 
@@ -1425,6 +1466,6 @@ Two execution options:
 
 1. **Subagent-Driven (recommended)** — I dispatch a fresh subagent per task, review between tasks, fast iteration with two-stage review gates.
 
-2. **Inline Execution** — Execute tasks in this session using executing-plans, batch execution with checkpoints for review.
+1. **Inline Execution** — Execute tasks in this session using executing-plans, batch execution with checkpoints for review.
 
 Which approach?

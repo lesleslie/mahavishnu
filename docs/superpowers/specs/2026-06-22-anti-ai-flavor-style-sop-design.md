@@ -1,20 +1,16 @@
 ---
 status: draft
 role: implementation
+topic: convergence-control-plane
 date: 2026-07-16
 last_reviewed: 2026-07-16
 superseded_by: null
 blocks_on: []
-topic: convergence-control-plane
 ---
 
 # Anti-AI-Flavor Style SOP v1.0 — Design
 
-**Status:** Draft (brainstormed 2026-06-22)  <!-- legacy status: Draft (brainstormed 2026-06-22) — see YAML frontmatter -->
-**Phase:** 2 (Workflow Evolution)
-**Source:** `Building a Production Agent Harness` — "The Anti-AI-Flavor Style Guide." Operator-curated style constraints prevent MR descriptions from "smelling AI," which would erode operator trust in the automated MR pipeline.
-
-______________________________________________________________________
+## **Status:** Draft (brainstormed 2026-06-22) <!-- legacy status: Draft (brainstormed 2026-06-22) — see YAML frontmatter --> **Phase:** 2 (Workflow Evolution) **Source:** `Building a Production Agent Harness` — "The Anti-AI-Flavor Style Guide." Operator-curated style constraints prevent MR descriptions from "smelling AI," which would erode operator trust in the automated MR pipeline.
 
 ## Overview
 

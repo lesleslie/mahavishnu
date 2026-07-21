@@ -11,10 +11,7 @@ topic: routing-composition
 
 ## Status
 
-**v4 — serverless issues fixed, env var naming corrected, Dhara story clarified**  <!-- legacy status: v4 (active) — see YAML frontmatter -->
-**Changes since v3**: Fixed env var naming to Oneiric `__` convention; removed "Dhara already serverless-compatible" claim (has fcntl locks + hardcoded FileStorage); clarified pgvector_hot_store.py needs a non-trivial interface adapter; added coherence analysis per phase; separated OTelStorageAdapter (Oneiric) from OtelIngester (Mahavishnu)
-
-______________________________________________________________________
+## **v4 — serverless issues fixed, env var naming corrected, Dhara story clarified** <!-- legacy status: v4 (active) — see YAML frontmatter --> **Changes since v3**: Fixed env var naming to Oneiric `__` convention; removed "Dhara already serverless-compatible" claim (has fcntl locks + hardcoded FileStorage); clarified pgvector_hot_store.py needs a non-trivial interface adapter; added coherence analysis per phase; separated OTelStorageAdapter (Oneiric) from OtelIngester (Mahavishnu)
 
 ## What Changed After Review
 

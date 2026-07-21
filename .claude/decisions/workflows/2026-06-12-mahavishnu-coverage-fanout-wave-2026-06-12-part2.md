@@ -1,3 +1,11 @@
+---
+status: active
+role: canonical
+date: 2026-07-21
+last_reviewed: 2026-07-21
+topic: workflows
+---
+
 # 2026-06-12-mahavishnu-coverage-fanout-part2 — workflow decision
 
 ## Status

@@ -1,3 +1,11 @@
+---
+status: active
+role: canonical
+date: 2026-07-21
+last_reviewed: 2026-07-21
+topic: workflows
+---
+
 # 2026-05-22-crackerjack-cleanup-wave7 — workflow decision
 
 ## Status
@@ -6,7 +14,7 @@ Active
 
 ## Context
 
-Wave-7 of the crackerjack coverage fan-out (cleanup wave). Executed the 7 user actions recommended by the wave-6 verify report: deleted dead handlers.py, removed 15-18 orphan .bak/.bak2/.backup files, added .gitignore lines, fixed the LSPAwareHookExecutor TYPE_CHECKING import (5 XPASSes), fixed _apply_style_fix_for_rule (12 XFAILs), fixed _create_backup json.dumps default, and added CliRunner tests for coverage_cli.py.
+Wave-7 of the crackerjack coverage fan-out (cleanup wave). Executed the 7 user actions recommended by the wave-6 verify report: deleted dead handlers.py, removed 15-18 orphan .bak/.bak2/.backup files, added .gitignore lines, fixed the LSPAwareHookExecutor TYPE_CHECKING import (5 XPASSes), fixed \_apply_style_fix_for_rule (12 XFAILs), fixed \_create_backup json.dumps default, and added CliRunner tests for coverage_cli.py.
 
 ## Decision rule
 

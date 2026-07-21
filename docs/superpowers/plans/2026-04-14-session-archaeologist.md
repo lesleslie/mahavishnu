@@ -10,14 +10,10 @@ topic: session-archaeologist
 # Session Archaeologist Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
-
-**Goal:** Create a standalone Claude Code skill (SKILL.md file) that recovers past decisions, solutions, and session context from across all Session-Buddy instances via Akosha.
-
-**Architecture:** Pure SKILL.md prompt file in `~/.claude/skills/`. No Python code, no new MCP tools. Composes existing Akosha MCP tools (`search_all_systems`, `query_knowledge_graph`) with a narrative-synthesis workflow that differentiates it from the generic `search-insights` skill.
-
-**Tech Stack:** Claude Code skills (SKILL.md with YAML frontmatter), Akosha MCP tools, Session-Buddy MCP tools (fallback)
-
-**Spec:** `docs/superpowers/specs/2026-04-14-session-archaeologist-design.md`
+> **Goal:** Create a standalone Claude Code skill (SKILL.md file) that recovers past decisions, solutions, and session context from across all Session-Buddy instances via Akosha.
+> **Architecture:** Pure SKILL.md prompt file in `~/.claude/skills/`. No Python code, no new MCP tools. Composes existing Akosha MCP tools (`search_all_systems`, `query_knowledge_graph`) with a narrative-synthesis workflow that differentiates it from the generic `search-insights` skill.
+> **Tech Stack:** Claude Code skills (SKILL.md with YAML frontmatter), Akosha MCP tools, Session-Buddy MCP tools (fallback)
+> **Spec:** `docs/superpowers/specs/2026-04-14-session-archaeologist-design.md`
 
 ______________________________________________________________________
 

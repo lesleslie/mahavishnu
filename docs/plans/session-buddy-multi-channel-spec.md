@@ -1,20 +1,16 @@
 ---
 status: shipped
 role: implementation
+topic: memory-architecture
 date: 2026-07-16
 last_reviewed: 2026-07-16
 superseded_by: null
 blocks_on: []
-topic: memory-architecture
 ---
 
 # Session-Buddy Multi-Channel Tracking — Concrete Spec
 
-**Status**: Delivered <!-- legacy status: Delivered — see YAML frontmatter -->
-**Date**: 2026-04-07 (original spec); Phase 1 delivered 2026-05-08; Phase 2 delivered 2026-05-14
-**Based on**: nanobot v0.1.4.post6 (installed) + v0.1.5 (latest, not yet installed)
-
-______________________________________________________________________
+## **Status**: Delivered <!-- legacy status: Delivered — see YAML frontmatter --> **Date**: 2026-04-07 (original spec); Phase 1 delivered 2026-05-08; Phase 2 delivered 2026-05-14 **Based on**: nanobot v0.1.4.post6 (installed) + v0.1.5 (latest, not yet installed)
 
 ## 1. Context & Research Findings
 

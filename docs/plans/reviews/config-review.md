@@ -1,20 +1,16 @@
 ---
 status: complete
 role: historical
+topic: convergence-control-plane
 date: 2026-07-16
 last_reviewed: 2026-07-16
 superseded_by: null
 blocks_on: []
-topic: convergence-control-plane
 ---
 
 # Configuration & API Compatibility Review — TensorZero Gateway Plan
 
-**Reviewer**: nanobot (inline)
-**Date**: 2026-04-06
-**Document reviewed**: `docs/plans/tensorzero-gateway-plan.md`
-
-______________________________________________________________________
+## **Reviewer**: nanobot (inline) **Date**: 2026-04-06 **Document reviewed**: `docs/plans/tensorzero-gateway-plan.md`
 
 ## 🔴 Critical Issues
 

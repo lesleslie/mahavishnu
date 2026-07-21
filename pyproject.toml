@@ -461,7 +461,7 @@ exclude_deps = [
     # defusedxml: used by XML parsing utilities; transitive via feedparser/ebooklib.
     "defusedxml",
     # croniter: lazy-imported inside prefect_schedules.py:91 with a structural
-    # fallback (5-field length check). Re-declared as a runtime dep so ty can
+    # fallback (5-field length check). Redeclared as a runtime dep so ty can
     # resolve the static import and the venv has croniter available for proper
     # Prefect cron-schedule validation.
     "croniter",

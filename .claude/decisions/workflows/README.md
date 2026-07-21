@@ -1,3 +1,11 @@
+---
+status: active
+role: canonical
+date: 2026-07-21
+last_reviewed: 2026-07-21
+topic: lifecycle
+---
+
 # Workflow decisions
 
 Pair every workflow in `.claude/workflows/` with a decision file here.

@@ -1,11 +1,11 @@
 ---
 status: active
 role: implementation
+topic: lifecycle
 date: 2026-07-16
 last_reviewed: 2026-07-16
 superseded_by: null
 blocks_on: []
-topic: lifecycle
 ---
 
 # Checkpoint — DLQ Fail-Closed Wiring (2026-07-16)
@@ -61,9 +61,9 @@ losing this thread's context.
     - `mahavishnu/core/config.py.backup` — stray backup; confirmed removed
 - **Tests passing**: 16/16 across `test_dlq_integration.py` (3) +
   `test_dead_letter_queue_fail_closed.py` (6) + `test_dlq_metrics.py` (5)
-  + `test_dead_letter_queue_failover.py` (2). `ruff check` clean on all
-  touched files. No regressions in the broader
-  `tests/unit/core/test_dead_letter_queue.py` suite.
+  - `test_dead_letter_queue_failover.py` (2). `ruff check` clean on all
+    touched files. No regressions in the broader
+    `tests/unit/core/test_dead_letter_queue.py` suite.
 - **Next step**: Commit the work (none done — per project policy) +
   promote `docs/plans/2026-07-16-dlq-fail-closed-wiring.md` from `draft`
   to `shipped` in `PLAN_INDEX.md`. Optional: address the unrelated

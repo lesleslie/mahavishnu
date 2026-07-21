@@ -10,12 +10,9 @@ topic: mcpbase-migration
 # MCP Server Family: MCPBaseSettings → OneiricMCPConfig Migration
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
-
-**Goal:** Migrate all remaining MCPBaseSettings/MCPServerSettings usages across the standalone Bodai MCP servers (css-mcp, graphics-mcp, splashstand, etc.) to OneiricMCPConfig, completing the cross-ecosystem deprecation migration started in the 2026-07-13 Bodai session.
-
-**Architecture:** Per-repo `class <Name>Settings(OneiricMCPConfig)` swap + (where applicable) `.load()` classmethod rewrite using `oneiric.core.config.load_settings` plus a flat-YAML merge to preserve MCPBaseSettings's flat-key schema compatibility.
-
-**Tech Stack:** Pydantic v2, oneiric.core.config, mcp_common (consumer side), pytest, ruff.
+> **Goal:** Migrate all remaining MCPBaseSettings/MCPServerSettings usages across the standalone Bodai MCP servers (css-mcp, graphics-mcp, splashstand, etc.) to OneiricMCPConfig, completing the cross-ecosystem deprecation migration started in the 2026-07-13 Bodai session.
+> **Architecture:** Per-repo `class <Name>Settings(OneiricMCPConfig)` swap + (where applicable) `.load()` classmethod rewrite using `oneiric.core.config.load_settings` plus a flat-YAML merge to preserve MCPBaseSettings's flat-key schema compatibility.
+> **Tech Stack:** Pydantic v2, oneiric.core.config, mcp_common (consumer side), pytest, ruff.
 
 ## Global Constraints
 

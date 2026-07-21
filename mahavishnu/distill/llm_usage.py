@@ -178,9 +178,7 @@ class UsageTracker:
         cutoff = self._now() - timedelta(days=self.window_days)
 
         def modifier(data):
-            payload: dict[str, object] = (
-                data if data is not None else {"calls": []}
-            )
+            payload: dict[str, object] = data if data is not None else {"calls": []}
             self._prune(payload, cutoff)
             return payload
 
@@ -213,16 +211,10 @@ class UsageTracker:
         cutoff = now - timedelta(days=self.window_days)
 
         def modifier(data):
-            payload: dict[str, object] = (
-                data if data is not None else {"calls": []}
-            )
+            payload: dict[str, object] = data if data is not None else {"calls": []}
             self._prune(payload, cutoff)
             calls_raw = payload.get("calls", [])
-            calls: list[str] = (
-                cast("list[str]", calls_raw)
-                if isinstance(calls_raw, list)
-                else []
-            )
+            calls: list[str] = cast("list[str]", calls_raw) if isinstance(calls_raw, list) else []
             if len(calls) >= self.weekly_cap:
                 raise CostCeilingExceeded(
                     current=len(calls),
@@ -234,9 +226,7 @@ class UsageTracker:
             return payload
 
         try:
-            locked_json_modify(
-                self.path, modifier, default_factory=lambda: {"calls": []}
-            )
+            locked_json_modify(self.path, modifier, default_factory=lambda: {"calls": []})
         except json.JSONDecodeError:
             # Quarantine the corrupt file and retry — the modifier
             # will see default_factory's empty payload.
@@ -244,6 +234,4 @@ class UsageTracker:
                 self.path.unlink()
             except FileNotFoundError:
                 pass
-            locked_json_modify(
-                self.path, modifier, default_factory=lambda: {"calls": []}
-            )
+            locked_json_modify(self.path, modifier, default_factory=lambda: {"calls": []})

@@ -10,18 +10,15 @@ topic: constellation-tui
 # Constellation TUI Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
-
-**Goal:** Surface Bodai ecosystem activity (pools, workers, workflows, lifecycle events) in Claude Code via three extension surfaces — extended `statusLine`, new `subagentStatusLine`, and OSC 777 native toasts — wired to the existing Mahavishnu EventBridge (channel `bodai:events`).
-
-**Architecture:** A new `mahavishnu/constellation/` subpackage provides the library code (OSC emit, ecosystem health probe, statusline extensions, EventBridge subscriber, subagent row renderer). A new CLI command `mahavishnu constellation install` copies the bridge script and subagent statusline script into `~/.claude/scripts/` and `~/.claude/hooks/`, registers the `PostToolUse` hook and `subagentStatusLine` config in `~/.claude/settings.json`, and patches the user's existing `session_progress_real.py` to import the statusline extensions library. All three surfaces consume shared runtime state in `~/.mahavishnu/` (last-event.json, worker-status/, ecosystem-health-cache.json) written by the bridge.
-
-**Tech Stack:** Python 3.13, `httpx` (async HTTP for ecosystem health probes), `redis` asyncio client (EventBridge `xread` subscription), `pytest` + `pytest-asyncio` (auto mode), `typer` (CLI), existing `mahavishnu` package patterns, Oneiric logger.
+> **Goal:** Surface Bodai ecosystem activity (pools, workers, workflows, lifecycle events) in Claude Code via three extension surfaces — extended `statusLine`, new `subagentStatusLine`, and OSC 777 native toasts — wired to the existing Mahavishnu EventBridge (channel `bodai:events`).
+> **Architecture:** A new `mahavishnu/constellation/` subpackage provides the library code (OSC emit, ecosystem health probe, statusline extensions, EventBridge subscriber, subagent row renderer). A new CLI command `mahavishnu constellation install` copies the bridge script and subagent statusline script into `~/.claude/scripts/` and `~/.claude/hooks/`, registers the `PostToolUse` hook and `subagentStatusLine` config in `~/.claude/settings.json`, and patches the user's existing `session_progress_real.py` to import the statusline extensions library. All three surfaces consume shared runtime state in `~/.mahavishnu/` (last-event.json, worker-status/, ecosystem-health-cache.json) written by the bridge.
+> **Tech Stack:** Python 3.13, `httpx` (async HTTP for ecosystem health probes), `redis` asyncio client (EventBridge `xread` subscription), `pytest` + `pytest-asyncio` (auto mode), `typer` (CLI), existing `mahavishnu` package patterns, Oneiric logger.
 
 ## Global Constraints
 
 **Spec source:** `docs/superpowers/specs/2026-07-15-constellation-tui-design.md` (committed `a143d5c`).
-
 **Code conventions** (per project `CLAUDE.md` § Crackerjack-Compliant Code):
+
 - Every source file: `from __future__ import annotations` as first non-comment line (after module docstring).
 - Imports sorted within each section (stdlib → third-party → first-party); `force-sort-within-sections = true`; `known-first-party = ["mahavishnu"]`.
 - Modern syntax only: `X | None` (never `Optional[X]`), `list[str]`, `pathlib.Path`.
@@ -35,44 +32,38 @@ topic: constellation-tui
 - Function args ≤ 10 (excludes `self`, `cls`, `*args`, `**kwargs`).
 - Branches ≤ 15, returns ≤ 6, statements ≤ 55 (practical target 30).
 - Coverage ≥ 80%.
-
-**Test conventions:**
+  **Test conventions:**
 - Pytest markers: `unit`, `integration`, `slow`, `timeout`, `requires_network`.
 - Async tests: no `@pytest.mark.asyncio` needed (`asyncio_mode = "auto"`).
 - Per-test timeout: 300s ceiling. Tests >10s are `@pytest.mark.slow`.
 - Integration tests against a real Redis use `MAHAVISHNU_EVENTBRIDGE_INTEGRATION=1` env gate.
 - Tests live in `tests/unit/constellation/` (mirrors `mahavishnu/constellation/`).
-
-**Required skills (loaded before each task or step as indicated):**
-
-| Skill | When to load | Purpose |
-|---|---|---|
-| `superpowers:test-driven-development` | First step of every task that adds code | Write the failing test, watch it fail, then implement |
-| `superpowers:subagent-driven-development` | Plan execution phase (after this plan is approved) | Fresh subagent per task + two-stage review between tasks |
-| `crackerjack-compliant-code` | Before every commit (final step of every task) | Run `crackerjack run` to enforce Ruff/mypy/pyright/bandit/pytest; gate on pass |
-| `tui-designer` | Tasks 1, 4, 5, 6 (visual decisions, terminal output aesthetics) | Validate ANSI colors, glyph choices, bar widths, OSC 8 syntax |
-| `superpowers:writing-plans` (already loaded) | This plan authoring | — |
-| `superpowers:brainstorming` (already loaded) | Spec phase (already complete) | — |
-| `superpowers:using-git-worktrees` | First task (before any code) | Isolate implementation work from main branch |
-
-**Environment variables the bridge script reads:**
+  **Required skills (loaded before each task or step as indicated):**
+  | Skill | When to load | Purpose |
+  |---|---|---|
+  | `superpowers:test-driven-development` | First step of every task that adds code | Write the failing test, watch it fail, then implement |
+  | `superpowers:subagent-driven-development` | Plan execution phase (after this plan is approved) | Fresh subagent per task + two-stage review between tasks |
+  | `crackerjack-compliant-code` | Before every commit (final step of every task) | Run `crackerjack run` to enforce Ruff/mypy/pyright/bandit/pytest; gate on pass |
+  | `tui-designer` | Tasks 1, 4, 5, 6 (visual decisions, terminal output aesthetics) | Validate ANSI colors, glyph choices, bar widths, OSC 8 syntax |
+  | `superpowers:writing-plans` (already loaded) | This plan authoring | — |
+  | `superpowers:brainstorming` (already loaded) | Spec phase (already complete) | — |
+  | `superpowers:using-git-worktrees` | First task (before any code) | Isolate implementation work from main branch |
+  **Environment variables the bridge script reads:**
 - `MAHAVISHNU_EVENTBRIDGE_URL` (default: `redis://localhost:6379/0`) — Redis URL for the EventBridge.
 - `MAHAVISHNU_EVENTBRIDGE_CHANNEL` (default: `bodai:events`) — Redis Streams channel name.
 - `MAHAVISHNU_OSC_PROBE_DISABLE` (default: unset) — set to `1` to skip the OSC 777 capability probe.
-
-**Runtime state files (created under `~/.mahavishnu/`):**
+  **Runtime state files (created under `~/.mahavishnu/`):**
 - `last-event.json` — atomic JSON write of the most-recent event (consumed by statusline).
 - `worker-status/<task_id>.json` — per-worker cache (consumed by subagent statusline).
 - `ecosystem-health-cache.json` — 30s TTL cache of component health probes.
 - `logs/mcp.log` — existing structured log destination (appended).
-
-**Out of scope for this plan (deferred):**
+  **Out of scope for this plan (deferred):**
 - Track 2 — Toad/ACP integration (separate spec).
 - Replacing `session_progress_real.py` outright (we patch it to import from the library).
 - Any change to Mahavishnu core, MCP server ports, or EventBridge transport.
 - Production hardening of OSC 777 (probe + capability detection are basic; tmux/screen stripping is a known limitation we document but don't work around).
 
----
+______________________________________________________________________
 
 ## File Structure
 
@@ -108,24 +99,30 @@ docs/constellation/
 ```
 
 Files modified:
+
 - `~/.claude/scripts/session_progress_real.py` — patch (one-time, by installer) to import `mahavishnu.constellation.statusline_extensions`
 - `~/.claude/settings.json` — patch (by installer) to add `subagentStatusLine` and `PostToolUse` hook
 
----
+______________________________________________________________________
 
 ## Task 1: Set up worktree and package skeleton
 
 **Files:**
+
 - Create: `mahavishnu/constellation/__init__.py`
 - Create: `tests/unit/constellation/__init__.py`
 
 **Interfaces:**
+
 - Consumes: nothing (skeleton)
 - Produces: empty `mahavishnu.constellation` and `tests.unit.constellation` packages, importable
 
 **Required skills:**
+
 - `superpowers:using-git-worktrees` — before any code: create worktree `constellation-tui-impl` off main.
+
 - `superpowers:test-driven-development` — N/A (no test this task).
+
 - `crackerjack-compliant-code` — final step: `crackerjack run` passes on the empty packages.
 
 - [ ] **Step 1: Load worktree skill and create worktree**
@@ -153,6 +150,7 @@ Files modified:
   ```
 
   `tests/unit/constellation/__init__.py`:
+
   ```python
   """Unit tests for mahavishnu.constellation."""
   ```
@@ -175,23 +173,28 @@ Files modified:
   git commit -m "feat(constellation): scaffold package skeleton"
   ```
 
----
+______________________________________________________________________
 
 ## Task 2: OSC 777 emit + capability probe
 
 **Files:**
+
 - Create: `mahavishnu/constellation/osc.py`
 - Create: `tests/unit/constellation/test_osc.py`
 
 **Interfaces:**
+
 - Consumes: nothing
 - Produces:
   - `emit_osc777_toast(title: str, body: str, *, stream: TextIO = sys.stderr) -> bool` — returns True on success, False on emit failure. Writes the OSC 777 sequence followed by a `\a` (BEL) terminator.
   - `probe_osc_support(*, stream: TextIO = sys.stderr) -> bool` — returns True if the terminal claims to support OSC 777. Honors `MAHAVISHNU_OSC_PROBE_DISABLE=1`.
 
 **Required skills:**
+
 - `tui-designer` — validate the OSC 777 sequence format and the probe approach (write a non-destructive sequence, check for terminal echo).
+
 - `superpowers:test-driven-development` — write tests first.
+
 - `crackerjack-compliant-code` — final step.
 
 - [ ] **Step 1: Load skills and write the failing tests**
@@ -199,6 +202,7 @@ Files modified:
   Load: `superpowers:test-driven-development`, `tui-designer`.
 
   `tests/unit/constellation/test_osc.py`:
+
   ```python
   from __future__ import annotations
 
@@ -321,15 +325,17 @@ Files modified:
   git commit -m "feat(constellation): OSC 777 emit + capability probe"
   ```
 
----
+______________________________________________________________________
 
 ## Task 3: Ecosystem health probe cache
 
 **Files:**
+
 - Create: `mahavishnu/constellation/ecosystem_health.py`
 - Create: `tests/unit/constellation/test_ecosystem_health.py`
 
 **Interfaces:**
+
 - Consumes: `MAHAVISHNU_COMPONENT_PORTS` (a dict literal in the module; default values: `{"mahavishnu": 8680, "akosha": 8682, "dhara": 8683, "crackerjack": 8676, "session-buddy": 8678}`).
 - Produces:
   - `class ComponentHealth(NamedTuple): name: str; port: int; status: Literal["up", "down", "stale"]; latency_ms: int | None`
@@ -337,7 +343,9 @@ Files modified:
   - `async def cached_probe_components(cache_path: Path = Path.home() / ".mahavishnu" / "ecosystem-health-cache.json", ttl_s: float = 30.0) -> list[ComponentHealth]` — wraps `probe_components` with a 30s TTL cache file. Returns cached results if fresh, else probes and writes.
 
 **Required skills:**
+
 - `superpowers:test-driven-development`.
+
 - `crackerjack-compliant-code`.
 
 - [ ] **Step 1: Load TDD skill and write the failing tests**
@@ -345,6 +353,7 @@ Files modified:
   Load: `superpowers:test-driven-development`.
 
   `tests/unit/constellation/test_ecosystem_health.py`:
+
   ```python
   from __future__ import annotations
 
@@ -561,22 +570,27 @@ Files modified:
   git commit -m "feat(constellation): ecosystem health probe + 30s cache"
   ```
 
----
+______________________________________________________________________
 
 ## Task 4: Statusline extensions library (third bar)
 
 **Files:**
+
 - Create: `mahavishnu/constellation/statusline_extensions.py`
 - Create: `tests/unit/constellation/test_statusline_extensions.py`
 
 **Interfaces:**
+
 - Consumes: `platform` (string: `"anthropic"`, `"minimax"`, `"zai"`, `"zhipu"`).
 - Produces:
   - `def format_weekly_cap(platform: str, *, jsonl_dir: Path | None = None, mini_max_url: str | None = None) -> str | None` — returns the formatted third-bar line (status badge + progress bar + meta) or `None` if backend fails. Reuses the user's existing `create_progress_bar`, `get_status_indicator`, `format_tokens`, `format_time` style from `session_progress_real.py`.
 
 **Required skills:**
+
 - `tui-designer` — validate bar widths and tier colors match the existing script's aesthetic.
+
 - `superpowers:test-driven-development`.
+
 - `crackerjack-compliant-code`.
 
 - [ ] **Step 1: Load TDD and tui-designer skills; write failing tests**
@@ -584,6 +598,7 @@ Files modified:
   Load: `superpowers:test-driven-development`, `tui-designer`.
 
   `tests/unit/constellation/test_statusline_extensions.py`:
+
   ```python
   from __future__ import annotations
 
@@ -850,23 +865,28 @@ Files modified:
   git commit -m "feat(constellation): weekly all-model cap bar"
   ```
 
----
+______________________________________________________________________
 
 ## Task 5: Statusline extensions — ecosystem summary + event tail + adaptive line count
 
 **Files:**
+
 - Modify: `mahavishnu/constellation/statusline_extensions.py`
 - Modify: `tests/unit/constellation/test_statusline_extensions.py`
 
 **Interfaces:**
+
 - Adds to `statusline_extensions`:
   - `def format_ecosystem_summary(components: list[ComponentHealth]) -> str` — one line of OSC 8 clickable glyphs.
   - `def format_event_tail(event: dict[str, object] | None) -> str` — one line, tail of last-event.json.
   - `def render_constellation_lines(platform: str, *, columns: int = 120, jsonl_dir: Path | None = None, last_event_path: Path | None = None) -> list[str]` — top-level orchestrator: returns 3, 4, or 5 lines based on `columns`.
 
 **Required skills:**
+
 - `tui-designer` — OSC 8 syntax validation; glyph choices; terminal-width adaptation breakpoints.
+
 - `superpowers:test-driven-development`.
+
 - `crackerjack-compliant-code`.
 
 - [ ] **Step 1: Load TDD skill; add failing tests**
@@ -874,6 +894,7 @@ Files modified:
   Load: `superpowers:test-driven-development`, `tui-designer`.
 
   Append to `tests/unit/constellation/test_statusline_extensions.py`:
+
   ```python
   from mahavishnu.constellation.ecosystem_health import ComponentHealth
   from mahavishnu.constellation.statusline_extensions import (
@@ -1068,15 +1089,17 @@ Files modified:
   git commit -m "feat(constellation): ecosystem summary, event tail, adaptive layout"
   ```
 
----
+______________________________________________________________________
 
 ## Task 6: Activity stream bridge — EventBridge subscriber + cache writers + OSC emit
 
 **Files:**
+
 - Create: `mahavishnu/constellation/activity_stream.py`
 - Create: `tests/unit/constellation/test_activity_stream.py`
 
 **Interfaces:**
+
 - Consumes: `MAHAVISHNU_EVENTBRIDGE_URL`, `MAHAVISHNU_EVENTBRIDGE_CHANNEL` env vars.
 - Produces:
   - `class EventEnvelope(NamedTuple): type: str; ts: str; severity: str; task_id: str | None; workflow_id: str | None; stage: str | None; message: str`
@@ -1085,8 +1108,11 @@ Files modified:
   - `def write_worker_status(envelope: EventEnvelope, worker_status_dir: Path) -> None` — atomic per-worker JSON write.
 
 **Required skills:**
+
 - `tui-designer` — validate OSC 777 invocation paths and severity-to-color mapping.
+
 - `superpowers:test-driven-development`.
+
 - `crackerjack-compliant-code`.
 
 - [ ] **Step 1: Load TDD and tui-designer skills; write failing tests**
@@ -1094,6 +1120,7 @@ Files modified:
   Load: `superpowers:test-driven-development`, `tui-designer`.
 
   `tests/unit/constellation/test_activity_stream.py`:
+
   ```python
   from __future__ import annotations
 
@@ -1409,23 +1436,28 @@ Files modified:
   git commit -m "feat(constellation): EventBridge subscriber + cache writers + OSC emit"
   ```
 
----
+______________________________________________________________________
 
 ## Task 7: Subagent statusline script (per-task JSON rows)
 
 **Files:**
+
 - Create: `mahavishnu/constellation/subagent_status.py`
 - Create: `tests/unit/constellation/test_subagent_status.py`
 
 **Interfaces:**
+
 - Consumes: stdin JSON with `session_id` and `tasks[]` (per Claude Code spec).
 - Produces:
   - `def render_task_row(task: dict[str, object], worker_status: dict[str, object] | None) -> dict[str, str]` — returns `{"id": "<task_id>", "content": "<rendered line>"}`.
   - `def main() -> None` — reads stdin, iterates tasks, emits one JSON line per row to stdout. Empty task list → zero lines.
 
 **Required skills:**
+
 - `tui-designer` — validate row format and Unicode glyph selection.
+
 - `superpowers:test-driven-development`.
+
 - `crackerjack-compliant-code`.
 
 - [ ] **Step 1: Load TDD and tui-designer; write failing tests**
@@ -1433,6 +1465,7 @@ Files modified:
   Load: `superpowers:test-driven-development`, `tui-designer`.
 
   `tests/unit/constellation/test_subagent_status.py`:
+
   ```python
   from __future__ import annotations
 
@@ -1653,16 +1686,18 @@ Files modified:
   git commit -m "feat(constellation): subagent statusline per-task rows"
   ```
 
----
+______________________________________________________________________
 
 ## Task 8: Installer — copy scripts to ~/.claude/, modify settings.json, patch existing statusline
 
 **Files:**
+
 - Create: `mahavishnu/constellation/install.py`
 - Create: `mahavishnu/cli/constellation_cli.py`
 - Create: `tests/unit/constellation/test_install.py`
 
 **Interfaces:**
+
 - Consumes: nothing (operates on filesystem and JSON files).
 - Produces:
   - `class InstallResult(NamedTuple): scripts_installed: list[Path]; settings_modified: bool; statusline_patched: bool`
@@ -1670,7 +1705,9 @@ Files modified:
   - `def uninstall(*, claude_dir: Path = Path.home() / ".claude", settings_path: Path | None = None, dry_run: bool = False) -> InstallResult` — reverses install.
 
 **Required skills:**
+
 - `superpowers:test-driven-development`.
+
 - `crackerjack-compliant-code`.
 
 - [ ] **Step 1: Load TDD skill; write failing tests**
@@ -1678,6 +1715,7 @@ Files modified:
   Load: `superpowers:test-driven-development`.
 
   `tests/unit/constellation/test_install.py`:
+
   ```python
   from __future__ import annotations
 
@@ -2007,6 +2045,7 @@ Files modified:
   ```
 
   Copy the bridge module's CLI entry point as the script:
+
   ```bash
   cat > mahavishnu/constellation/scripts/mahavishnu-activity-stream.py <<'EOF'
   #!/usr/bin/env python3
@@ -2020,12 +2059,14 @@ Files modified:
   ```
 
   Same content under `hooks/` (same script, two install locations):
+
   ```bash
   cp mahavishnu/constellation/scripts/mahavishnu-activity-stream.py \
      mahavishnu/constellation/hooks/mahavishnu-activity-stream.py
   ```
 
   And the subagent statusline script:
+
   ```bash
   cat > mahavishnu/constellation/scripts/mahavishnu-subagent-status.py <<'EOF'
   #!/usr/bin/env python3
@@ -2065,19 +2106,23 @@ Files modified:
   git commit -m "feat(constellation): installer + CLI (install/uninstall/status)"
   ```
 
----
+______________________________________________________________________
 
 ## Task 9: Integration test (gated by `MAHAVISHNU_EVENTBRIDGE_INTEGRATION=1`)
 
 **Files:**
+
 - Create: `tests/integration/constellation/test_activity_stream_integration.py`
 
 **Interfaces:**
+
 - Consumes: a local Redis instance (started by the test or assumed available on `localhost:6379`).
 - Produces: a passing integration test that publishes an event via `redis-cli xadd` and asserts the bridge writes `last-event.json` and emits OSC 777.
 
 **Required skills:**
+
 - `superpowers:test-driven-development`.
+
 - `crackerjack-compliant-code`.
 
 - [ ] **Step 1: Write the gated integration test**
@@ -2085,11 +2130,13 @@ Files modified:
   Load: `superpowers:test-driven-development`.
 
   `tests/integration/constellation/__init__.py`:
+
   ```python
   """Integration tests for mahavishnu.constellation (gated by env var)."""
   ```
 
   `tests/integration/constellation/test_activity_stream_integration.py`:
+
   ```python
   from __future__ import annotations
 
@@ -2196,20 +2243,22 @@ Files modified:
   git commit -m "test(constellation): gated integration test for EventBridge bridge"
   ```
 
----
+______________________________________________________________________
 
 ## Task 10: Operator-facing install doc + final wiring check
 
 **Files:**
+
 - Create: `docs/constellation/INSTALL.md`
 - Modify: `docs/superpowers/specs/2026-07-15-constellation-tui-design.md` (add a "Status: implementation complete" note)
 
 **Required skills:**
+
 - `crackerjack-compliant-code` — final gate.
 
 - [ ] **Step 1: Write `docs/constellation/INSTALL.md`**
 
-  ```markdown
+  ````markdown
   # Constellation TUI — Install
 
   Surfaces Bodai ecosystem activity in Claude Code via three extension surfaces.
@@ -2218,7 +2267,7 @@ Files modified:
 
   ```bash
   uv run mahavishnu constellation install
-  ```
+  ````
 
   This:
 
@@ -2258,6 +2307,9 @@ Files modified:
 
   Set `MAHAVISHNU_OSC_PROBE_DISABLE=1` in the shell where Claude Code runs to skip
   the OSC capability probe.
+
+  ```
+
   ```
 
 - [ ] **Step 2: Run the full test suite as a final gate**
@@ -2297,11 +2349,12 @@ Files modified:
   git commit -m "docs(constellation): operator install guide + spec status"
   ```
 
----
+______________________________________________________________________
 
 ## Self-Review (against spec)
 
 **Spec coverage:**
+
 - Surface 1 (statusLine extension) → Tasks 4, 5, 8 (patch in installer)
 - Surface 2 (subagentStatusLine) → Task 7
 - Surface 3 (OSC 777 toasts) → Task 2 (osc.py) + Task 6 (activity_stream.py emits via osc.py)
@@ -2323,7 +2376,7 @@ Files modified:
 
 **Skill loading:** TDD/tui-designer/cj-compliant-code are required at the steps indicated in each task. Subagent-driven-development is the recommended execution mode (offered at handoff).
 
----
+______________________________________________________________________
 
 ## Execution Handoff
 

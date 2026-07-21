@@ -366,9 +366,7 @@ class DeadLetterQueue:
                 # ExternalServiceError. We do NOT append in that case, so
                 # the task survives only if OpenSearch accepted it.
                 try:
-                    persist_outcome = await self._persist_task(
-                        failed_task, strict=True
-                    )
+                    persist_outcome = await self._persist_task(failed_task, strict=True)
                 except ExternalServiceError:
                     self._get_metrics().record_rejected()
                     raise
@@ -447,9 +445,7 @@ class DeadLetterQueue:
             },
         )
 
-    async def _persist_task(
-        self, failed_task: FailedTask, *, strict: bool = False
-    ) -> str:
+    async def _persist_task(self, failed_task: FailedTask, *, strict: bool = False) -> str:
         """Persist task to OpenSearch if available.
 
         Args:

@@ -12,14 +12,10 @@ topic: dhara-substrate-implementation
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 >
 > **TDD discipline is non-negotiable.** Every new module gets a failing test first, the smallest implementation that turns it green, then refactor. Use `pytest` markers `unit` and `integration` already configured in `pyproject.toml`.
-
-**Goal:** Stand up the missing Dhara persistence/event substrate so the 10 blocked specs (6 SQL-blocked, 3 HTTP-blocked, plus migration-dependent) can run their test suites against a real (or in-memory) Dhara instance.
-
-**Architecture:** Dhara gains two new MCP-exposed capabilities — a generic SQL proxy backed by asyncpg (or DuckDB in tests) and three HTTP CRUD routes for adapters/tenants/workflows. Migrations become first-class and runnable. Events gain a pluggable subscriber base. Mahavishnu gains a thin `dhara_client.py` proxy with `execute`/`query` that talks to the new MCP surface.
-
-**Tech Stack:** FastMCP (Dhara), asyncpg + DuckDB (SQL proxy), Oneiric config (`DHARA__*`), Pydantic v2 models, `pytest-asyncio` (already configured), Mahavishnu thin client uses `httpx` async.
-
-**Estimated effort:** 6–9 working days across 4 workstreams running in parallel after Workstream A unblocks B.
+> **Goal:** Stand up the missing Dhara persistence/event substrate so the 10 blocked specs (6 SQL-blocked, 3 HTTP-blocked, plus migration-dependent) can run their test suites against a real (or in-memory) Dhara instance.
+> **Architecture:** Dhara gains two new MCP-exposed capabilities — a generic SQL proxy backed by asyncpg (or DuckDB in tests) and three HTTP CRUD routes for adapters/tenants/workflows. Migrations become first-class and runnable. Events gain a pluggable subscriber base. Mahavishnu gains a thin `dhara_client.py` proxy with `execute`/`query` that talks to the new MCP surface.
+> **Tech Stack:** FastMCP (Dhara), asyncpg + DuckDB (SQL proxy), Oneiric config (`DHARA__*`), Pydantic v2 models, `pytest-asyncio` (already configured), Mahavishnu thin client uses `httpx` async.
+> **Estimated effort:** 6–9 working days across 4 workstreams running in parallel after Workstream A unblocks B.
 
 ______________________________________________________________________
 

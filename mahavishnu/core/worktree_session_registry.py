@@ -39,6 +39,7 @@ is missing or schema is unrecognized; the caller decides whether to
 proceed. Crashes during write are cleaned up (the temp file is removed
 on exception).
 """
+
 from __future__ import annotations
 
 from pathlib import Path  # noqa: TC003 — type-only with __future__ annotations
@@ -257,10 +258,9 @@ class SessionWorktreeRegistry:
         """Return the entry for ``session_id_short`` or ``None``."""
         return self._read()["sessions"].get(session_id_short)
 
-    def mark_abandoned(
-        self, session_id_short: str, abandoned_at: str | None = None
-    ) -> None:
+    def mark_abandoned(self, session_id_short: str, abandoned_at: str | None = None) -> None:
         """Flip an entry's state to ``"abandoned"``. No-op if missing or read-only."""
+
         def modifier(data: dict[str, Any]) -> dict[str, Any] | object:
             version = data.get("schema_version")
             if version is not None and version != SUPPORTED_SCHEMA_VERSION:
@@ -280,6 +280,7 @@ class SessionWorktreeRegistry:
 
     def remove(self, session_id_short: str) -> None:
         """Delete an entry. No-op if missing or read-only."""
+
         def modifier(data: dict[str, Any]) -> dict[str, Any] | object:
             version = data.get("schema_version")
             if version is not None and version != SUPPORTED_SCHEMA_VERSION:
@@ -316,11 +317,7 @@ class SessionWorktreeRegistry:
             cutoff = datetime.now(UTC) - timedelta(days=older_than_days)
 
             def _older_than(entry: dict[str, Any]) -> bool:
-                ts_field = (
-                    "abandoned_at"
-                    if entry.get("state") == "abandoned"
-                    else "last_seen_at"
-                )
+                ts_field = "abandoned_at" if entry.get("state") == "abandoned" else "last_seen_at"
                 ts_str = entry.get(ts_field)
                 if not ts_str:
                     return False

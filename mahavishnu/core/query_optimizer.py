@@ -573,9 +573,7 @@ class QueryAnalyzer:
 
         # Non-security fingerprint for query caching; not used for authentication
         # or any cryptographic purpose, so usedforsecurity=False is safe.
-        fingerprint = hashlib.md5(
-            normalized.encode(), usedforsecurity=False
-        ).hexdigest()[:16]
+        fingerprint = hashlib.md5(normalized.encode(), usedforsecurity=False).hexdigest()[:16]
         self._fingerprint_cache[query] = fingerprint
         return fingerprint
 

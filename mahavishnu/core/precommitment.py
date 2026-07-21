@@ -276,11 +276,7 @@ class JsonFileLockStore:
             return []
         if not isinstance(data, list):
             return []
-        return [
-            _decode_lock_result(item)
-            for item in data
-            if isinstance(item, dict)
-        ]
+        return [_decode_lock_result(item) for item in data if isinstance(item, dict)]
 
     def _write_all(self, results: list[LockResult]) -> None:
         """Atomically write ``results`` to disk via ``atomic_json_write``."""

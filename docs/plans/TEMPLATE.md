@@ -13,37 +13,26 @@ topic: routing-composition
 > apps and workflows. This template makes wiring a first-class plan section.
 > A plan is not "done" until every deliverable has an Integration Contract
 > block, even if that block says "no wiring required (rationale: …)".
-
-_See `docs/schemas/document-frontmatter-v1.md` for the schema definition._
+> _See `docs/schemas/document-frontmatter-v1.md` for the schema definition._
 
 ## 1. Outcome
 
 \<prompt: what user-observable change will exist when this plan ships?>
-
 \<prompt: how will we know it succeeded — concrete metric, signal, or artifact?>
 
 ## 2. Goals
 
 <numbered list of outcome-bearing goals>
-
 ## 3. Non-Goals
-
 \<numbered list of explicitly-out-of-scope items — preempts feature creep>
-
 ## 4. Current Findings
-
 \<prompt: what did we discover? citations to files, issues, metrics>
-
 ## 5. Implementation Phases
-
 ### Phase N: <name>
-
 **Goal:**
 **Tasks:**
 **Exit criteria:**
-
 #### Integration Contract ← REQUIRED for every deliverable in this phase
-
 - **Triggered from**: \<prompt: what user action, schedule, or upstream
   event calls this? include exact entry-point symbol/path>
 - **Returns to / updates**: \<prompt: what state, store, or downstream
@@ -55,25 +44,16 @@ _See `docs/schemas/document-frontmatter-v1.md` for the schema definition._
   us to revert? include threshold if applicable>
 - **Observability added**: \<prompt: which OTel/metric/log signal was
   added so this wiring is visible in production>
-
 ## 6. Required Code Changes
-
 <checkbox list of file paths grouped by package>
-
 ## 7. Validation Matrix
-
 \<table: tool/command | expected outcome | evidence location>
-
 ## 8. Risks
-
 \<table: risk | likelihood | mitigation>
-
 ## 9. Decision Rule
-
 \<prompt: the rule that decides when this plan is "done enough" — used
 when scope pressure forces a cut>
-
-______________________________________________________________________
+---
 
 ## Section-by-section guidance
 

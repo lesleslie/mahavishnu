@@ -19,7 +19,7 @@ contribution workflow below.
 
 | Slug | Definition |
 |------|------------|
-| `oneiric-config` | Oneiric layered configuration (defaults, settings/*.yaml, MAHAVISHNU_* env vars). |
+| `oneiric-config` | Oneiric layered configuration (defaults, settings/*.yaml, MAHAVISHNU\_* env vars). |
 | `mcp-design` | MCP-first architecture, tool registration, server design. |
 | `error-handling` | Exception hierarchy, retry, circuit breaker, dead-letter queue (ADR 003). |
 | `storage-consolidation` | Akosha/Dhara/Session-Buddy storage ownership. |

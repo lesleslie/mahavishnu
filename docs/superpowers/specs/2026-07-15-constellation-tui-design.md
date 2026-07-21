@@ -1,16 +1,16 @@
 ---
 status: active
 role: implementation
+topic: terminal
 date: 2026-07-16
 last_reviewed: 2026-07-16
 superseded_by: null
 blocks_on: []
-topic: terminal
 ---
 
 # Constellation TUI: Three-Surface Dashboard for Claude Code
 
-**Status:** Approved (design phase complete, awaiting plan)  <!-- legacy status: Approved — see YAML frontmatter -->
+**Status:** Approved (design phase complete, awaiting plan) <!-- legacy status: Approved — see YAML frontmatter -->
 **Date:** 2026-07-15
 **Scope:** Claude Code extension surfaces (statusLine, subagentStatusLine, OSC 777) wired to the Mahavishnu EventBridge
 **Track:** Track 1 of 2 (Track 2 — Toad/ACP integration — deferred per design)
@@ -28,8 +28,8 @@ The locked design (v8, three-surface split) was selected after iterating through
 Render the Constellation dashboard across **three Claude Code extension surfaces**, each owning the slice it can render cleanly:
 
 1. **`statusLine`** — always-on 5-line strip: three progress bars (context window, 5-hour block, weekly all-model cap), a one-line ecosystem summary with OSC 8 clickable links to each component's MCP surface, and a one-line most-recent-event. Replaces/extends the user's existing `session_progress_real.py`.
-2. **`subagentStatusLine`** — per-task JSON rows, one row per active Mahavishnu worker / Claude Code subagent. Owns the workflow chain (scout/plan/patch/verify/land stages render as 5 keyed rows).
-3. **OSC 777 toasts** — transient native terminal notifications for lifecycle events (workflow_started, stage_completed, completed, failed, pool_scaled, worker.completed, crackerjack_gate_raised). Drained by a `PostToolUse` hook subscribing to the Mahavishnu EventBridge.
+1. **`subagentStatusLine`** — per-task JSON rows, one row per active Mahavishnu worker / Claude Code subagent. Owns the workflow chain (scout/plan/patch/verify/land stages render as 5 keyed rows).
+1. **OSC 777 toasts** — transient native terminal notifications for lifecycle events (workflow_started, stage_completed, completed, failed, pool_scaled, worker.completed, crackerjack_gate_raised). Drained by a `PostToolUse` hook subscribing to the Mahavishnu EventBridge.
 
 This is the smallest change that:
 
@@ -111,12 +111,13 @@ This is the smallest change that:
 Five lines rendered top-to-bottom:
 
 1. **Context window** bar (already exists, keep as Line 2 of current script, move to Line 1 of new layout)
-2. **5-hour rolling block** bar (already exists, keep as Line 1, move to Line 2)
-3. **Weekly all-model cap** bar (NEW — third bar; source: MiniMax `model_remains` for MiniMax provider, ZAI/ZHIPU `limits` array for those providers, Anthropic's `/usage` JSONL aggregation for native)
-4. **Ecosystem summary** (NEW — one line; OSC 8 clickable links to each component's MCP surface: `M` → `http://localhost:8680/mcp`, `P` → `http://localhost:8680/mcp`, `A` → `http://localhost:8682/mcp`, `D` → `http://localhost:8683/mcp`, `C` → `http://localhost:8676/mcp`, `S` → `http://localhost:8678/mcp`)
-5. **Most-recent event** (NEW — tail of `~/.mahavishnu/last-event.json` written by `mahavishnu-activity-stream.py`; one line: timestamp, severity, message)
+1. **5-hour rolling block** bar (already exists, keep as Line 1, move to Line 2)
+1. **Weekly all-model cap** bar (NEW — third bar; source: MiniMax `model_remains` for MiniMax provider, ZAI/ZHIPU `limits` array for those providers, Anthropic's `/usage` JSONL aggregation for native)
+1. **Ecosystem summary** (NEW — one line; OSC 8 clickable links to each component's MCP surface: `M` → `http://localhost:8680/mcp`, `P` → `http://localhost:8680/mcp`, `A` → `http://localhost:8682/mcp`, `D` → `http://localhost:8683/mcp`, `C` → `http://localhost:8676/mcp`, `S` → `http://localhost:8678/mcp`)
+1. **Most-recent event** (NEW — tail of `~/.mahavishnu/last-event.json` written by `mahavishnu-activity-stream.py`; one line: timestamp, severity, message)
 
 The script reads `COLUMNS` and `LINES` env vars (Claude Code 2.1.153+) and adapts:
+
 - If `COLUMNS < 100`: drop the ecosystem summary, keep 4 lines
 - If `COLUMNS < 80`: drop the event tail, keep 3 lines (bars only)
 - If `LINES < 8`: emit only 2 lines (the existing two-bar behavior, fully backward-compatible)
@@ -135,6 +136,7 @@ def format_weekly_cap(provider: Platform) -> str | None:
 ```
 
 **Source of data:**
+
 - Three bars: existing backends (`calculate_block_usage`, `calculate_context_usage`, `MiniMaxBackend`, `GLMBackend`) + new `format_weekly_cap` for Anthropic
 - Ecosystem summary: lightweight health probe to each component's MCP `/health` endpoint, cached 30s in `~/.mahavishnu/ecosystem-health-cache.json`
 - Event tail: read `~/.mahavishnu/last-event.json` (written by `mahavishnu-activity-stream.py` on every EventBridge event)
@@ -144,6 +146,7 @@ def format_weekly_cap(provider: Platform) -> str | None:
 **File:** `~/.claude/scripts/mahavishnu-subagent-status.py` (NEW)
 
 Receives a JSON blob on stdin:
+
 ```json
 {
   "session_id": "...",
@@ -156,6 +159,7 @@ Receives a JSON blob on stdin:
 ```
 
 Per Claude Code spec, output is **one JSON line per row**, keyed by task id:
+
 ```
 {"id": "w-01", "content": "🟢 scout · akosha diffing · 12.4k tok · 00:41"}
 {"id": "w-02", "content": "🟢 plan · crackerjack running · 08.1k tok · 00:28"}
@@ -175,14 +179,15 @@ This is the **single bridge** between the Mahavishnu EventBridge and the two new
 **Two responsibilities:**
 
 1. **Update `~/.mahavishnu/last-event.json`** — atomic write of the most recent event (consumed by Surface 1's event tail).
-2. **Update `~/.mahavishnu/worker-status/<task_id>.json`** — one file per active worker/subagent (consumed by Surface 2's row renderer).
-3. **Emit OSC 777 toast for `stage_completed`, `completed`, `failed`, `pool.scaled`, `crackerjack.gate_raised`, `worker.completed`** — sequence:
+1. **Update `~/.mahavishnu/worker-status/<task_id>.json`** — one file per active worker/subagent (consumed by Surface 2's row renderer).
+1. **Emit OSC 777 toast for `stage_completed`, `completed`, `failed`, `pool.scaled`, `crackerjack.gate_raised`, `worker.completed`** — sequence:
    ```
    \033]777;notify;title=worker w-02 completed;body=refactor-auth stage=plan · 8.1k tokens · 28s\a
    ```
    Written to stderr (which Claude Code pipes back to the terminal in print mode but doesn't capture for the transcript, keeping toast output off the chat scroll).
 
 The hook is registered in `~/.claude/settings.json` as:
+
 ```json
 {
   "hooks": {
@@ -203,13 +208,13 @@ The hook is registered in `~/.claude/settings.json` as:
 End-to-end: a Mahavishnu worker completes a stage.
 
 1. Worker process in `mahavishnu/workers/manager.py` finishes a stage.
-2. Worker emits `stage_completed` event on EventBridge channel `bodai:events` (existing transport — no change).
-3. `mahavishnu-activity-stream.py` (running as a background subscriber) consumes the event via `xread`.
-4. The script:
+1. Worker emits `stage_completed` event on EventBridge channel `bodai:events` (existing transport — no change).
+1. `mahavishnu-activity-stream.py` (running as a background subscriber) consumes the event via `xread`.
+1. The script:
    - Writes `~/.mahavishnu/last-event.json` (Surface 1 picks this up on next statusline render)
    - Writes `~/.mahavishnu/worker-status/w-NN.json` (Surface 2 picks this up on next subagent statusline render)
    - Emits OSC 777 toast to stderr (terminal renders as native notification)
-5. On next statusline render (~few hundred ms later, triggered by user keystroke or tool completion):
+1. On next statusline render (~few hundred ms later, triggered by user keystroke or tool completion):
    - Surface 1 reads `last-event.json` and shows it on line 5
    - Surface 2 reads `worker-status/*.json` and shows updated token counts and statuses
 
@@ -235,7 +240,7 @@ No silent fallbacks anywhere. A loud failure with a clear message is better than
 |---|---|---|
 | `~/.claude/scripts/session_progress_real.py` | EXTEND | Surface 1: 5-line statusline (3 bars + ecosystem + event tail) |
 | `~/.claude/scripts/mahavishnu-subagent-status.py` | NEW | Surface 2: per-task JSON rows for subagent statusline |
-| `~/.claude/hooks/mahavishnu-activity-stream.py` | NEW | Bridge: EventBridge → last-event.json + worker-status/*.json + OSC 777 |
+| `~/.claude/hooks/mahavishnu-activity-stream.py` | NEW | Bridge: EventBridge → last-event.json + worker-status/\*.json + OSC 777 |
 | `~/.claude/settings.json` | MODIFY | Add `subagentStatusLine` config + `PostToolUse` hook for activity-stream |
 | `~/.mahavishnu/last-event.json` | NEW (created at runtime) | Tail cache for Surface 1 |
 | `~/.mahavishnu/worker-status/*.json` | NEW (created at runtime) | Per-worker cache for Surface 2 |
@@ -267,7 +272,7 @@ Per `.claude/decisions/wire-up-contract.md`, every deliverable carries an Integr
 
 ### Deliverable 3: Surface 3 — `mahavishnu-activity-stream.py` bridge (NEW)
 
-- **Triggered from**: Two paths: (a) Claude Code `PostToolUse` hook (fires after every tool call — drains queue and writes last-event.json + worker-status/*.json); (b) a persistent background subscriber process (started at login or first Claude Code launch) that consumes the EventBridge via `xread` and emits OSC 777 toasts to stderr.
+- **Triggered from**: Two paths: (a) Claude Code `PostToolUse` hook (fires after every tool call — drains queue and writes last-event.json + worker-status/\*.json); (b) a persistent background subscriber process (started at login or first Claude Code launch) that consumes the EventBridge via `xread` and emits OSC 777 toasts to stderr.
 - **Returns to / updates**: Writes `~/.mahavishnu/last-event.json` (atomic), `~/.mahavishnu/worker-status/<task_id>.json` (atomic), and `~/.mahavishnu/logs/mcp.log` (appended). Emits OSC 777 to stderr.
 - **Demonstrable by**: With EventBridge running and a test event published on `bodai:events` (e.g., via `redis-cli xadd bodai:events '*' type stage_completed workflow_id wf_1 stage plan task_id w-02`), within 2s: `cat ~/.mahavishnu/last-event.json` shows the event; `cat ~/.mahavishnu/worker-status/w-02.json` shows the task status update; OSC 777 sequence appears in stderr (verified by capturing stderr to file and `grep`ing for `\033]777;notify`).
 - **Rollback signal**: If the EventBridge subscriber loses connection 3x in 60s, it backs off to 30s retry and logs `level=warning`. If `~/.mahavishnu/` is unwritable, the hook exits 0 (success — don't block Claude Code) and logs the failure to stderr. The user's chat is never blocked.
@@ -315,11 +320,11 @@ Gated by `MAHAVISHNU_EVENTBRIDGE_INTEGRATION=1`. Skipped in fast CI.
 ## Implementation order
 
 1. **Add `~/.claude/scripts/mahavishnu-activity-stream.py`** (Deliverable 3) — pure new code, no integration with anything else. Subscribes to EventBridge, writes the two cache files, emits OSC 777. Independently testable.
-2. **Extend `~/.claude/scripts/session_progress_real.py`** (Deliverable 1) — add `format_ecosystem_summary`, `format_event_tail`, `format_weekly_cap` helpers. Wire them into the main render loop with `COLUMNS`-aware adaptation. Backward-compatible: existing two-bar tests still pass.
-3. **Add `~/.claude/scripts/mahavishnu-subagent-status.py`** (Deliverable 2) — pure new code, reads from `worker-status/*.json` and emits JSON rows. Independently testable.
-4. **Modify `~/.claude/settings.json`** — register `subagentStatusLine` and the `PostToolUse` hook. One file, two new keys.
-5. **Tests** — Layer 1 modifications, Layer 2 new, Layer 3 new gated.
-6. **Manual smoke test** on a real machine with the full stack running.
+1. **Extend `~/.claude/scripts/session_progress_real.py`** (Deliverable 1) — add `format_ecosystem_summary`, `format_event_tail`, `format_weekly_cap` helpers. Wire them into the main render loop with `COLUMNS`-aware adaptation. Backward-compatible: existing two-bar tests still pass.
+1. **Add `~/.claude/scripts/mahavishnu-subagent-status.py`** (Deliverable 2) — pure new code, reads from `worker-status/*.json` and emits JSON rows. Independently testable.
+1. **Modify `~/.claude/settings.json`** — register `subagentStatusLine` and the `PostToolUse` hook. One file, two new keys.
+1. **Tests** — Layer 1 modifications, Layer 2 new, Layer 3 new gated.
+1. **Manual smoke test** on a real machine with the full stack running.
 
 Each step is independently mergeable. Steps 1, 2, 3 are independent scripts that can be developed and tested in parallel. Step 4 wires them into Claude Code. Steps 5–6 are quality gates.
 

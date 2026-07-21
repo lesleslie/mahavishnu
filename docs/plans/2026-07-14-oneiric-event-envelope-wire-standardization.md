@@ -12,7 +12,7 @@ topic: oneiric-config
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Date:** 2026-07-14
-**Status:** shipped, historical  <!-- legacy status: shipped, historical — see YAML frontmatter -->
+**Status:** shipped, historical <!-- legacy status: shipped, historical — see YAML frontmatter -->
 **Owner:** Mahavishnu core
 
 **Promoted 2026-07-15 after drift-sync verified all Tasks 0–9 shipped via commit f103bcc4 (merge bcc7affa).**
@@ -24,35 +24,35 @@ topic: oneiric-config
 When this plan ships:
 
 1. The active EventBridge lifecycle path uses Oneiric envelopes with one canonical identity/timestamp pair and the concrete WebSocket server is wired through `set_eventbridge_publisher`.
-2. The optional `RedisEventTransport` writes one canonical `{"wire_format": "oneiric-v1", "envelope": ...}` record by default and a legacy rollback record on operator opt-in.
-3. The Bodai subscriber decodes the canonical record, decodes a legacy record only when `MAHAVISHNU_BODAI_ACCEPT_LEGACY_WIRE` is enabled, and the public entry point pyscn cyclomatic complexity is at most 10.
-4. `mahavishnu metrics bodai` renders canonical source and timestamp data and shows that the queue was populated.
-5. `pyscn` and `ty` no longer report the original failures.
+1. The optional `RedisEventTransport` writes one canonical `{"wire_format": "oneiric-v1", "envelope": ...}` record by default and a legacy rollback record on operator opt-in.
+1. The Bodai subscriber decodes the canonical record, decodes a legacy record only when `MAHAVISHNU_BODAI_ACCEPT_LEGACY_WIRE` is enabled, and the public entry point pyscn cyclomatic complexity is at most 10.
+1. `mahavishnu metrics bodai` renders canonical source and timestamp data and shows that the queue was populated.
+1. `pyscn` and `ty` no longer report the original failures.
 
 **Concrete success signal:** `uv run pytest --no-cov tests/integration/test_event_wire_e2e.py -v` exits 0 and the test proves the canonical record before any consumer, the subscriber acks exactly once, and the CLI renders the canonical source.
 
 ## 2. Goals
 
 1. Convert at one explicit boundary: `mahavishnu.core.events.canonical`.
-2. Move the active lifecycle publisher to the canonical Oneiric protocol.
-3. Repair the real EventBridge wiring by calling the concrete server setter.
-4. Provide canonical and legacy modes for the optional Redis transport.
-5. Refactor the Bodai subscriber to ten single-responsibility helpers and at most pyscn cyclomatic complexity 10.
-6. Centralize Bodai metrics CLI header narrowing.
-7. Remove the redundant Agno MCP transport cast and the unused `Literal` import.
-8. Record truthful `built`/`wired` state and dated Phase 1 follow-ups.
+1. Move the active lifecycle publisher to the canonical Oneiric protocol.
+1. Repair the real EventBridge wiring by calling the concrete server setter.
+1. Provide canonical and legacy modes for the optional Redis transport.
+1. Refactor the Bodai subscriber to ten single-responsibility helpers and at most pyscn cyclomatic complexity 10.
+1. Centralize Bodai metrics CLI header narrowing.
+1. Remove the redundant Agno MCP transport cast and the unused `Literal` import.
+1. Record truthful `built`/`wired` state and dated Phase 1 follow-ups.
 
 ## 3. Non-Goals
 
 1. Replacing every in-process `EventPublisherProtocol` reference.
-2. Removing `mahavishnu/core/events/envelope.py`.
-3. Promoting Mahavishnu’s schema registry and compatibility policy into Oneiric.
-4. Changing Oneiric’s runtime dispatcher API.
-5. Migrating Oneiric shell `SessionStartEvent` / `SessionEndEvent` models.
-6. Cross-repository changes in Akosha, Crackerjack, or Session-Buddy.
-7. Adding `fakeredis` as a dev dependency.
-8. Claiming OTLP collector delivery or p99 latency from unit tests.
-9. Modifying `MessageBus.set_event_publisher`; it remains on the Pydantic protocol in Phase 1.
+1. Removing `mahavishnu/core/events/envelope.py`.
+1. Promoting Mahavishnu’s schema registry and compatibility policy into Oneiric.
+1. Changing Oneiric’s runtime dispatcher API.
+1. Migrating Oneiric shell `SessionStartEvent` / `SessionEndEvent` models.
+1. Cross-repository changes in Akosha, Crackerjack, or Session-Buddy.
+1. Adding `fakeredis` as a dev dependency.
+1. Claiming OTLP collector delivery or p99 latency from unit tests.
+1. Modifying `MessageBus.set_event_publisher`; it remains on the Pydantic protocol in Phase 1.
 
 ## 4. Current Findings
 

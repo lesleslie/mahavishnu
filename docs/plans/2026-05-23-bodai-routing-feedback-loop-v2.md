@@ -11,10 +11,7 @@ topic: routing-composition
 
 ## Status
 
-**v2 — revised after 3-agent review (architecture, implementation, ecosystem)**  <!-- legacy status: v2 superseded — see YAML frontmatter -->
-**Original**: `docs/plans/2026-05-23-bodai-routing-feedback-loop.md`
-
-______________________________________________________________________
+## **v2 — revised after 3-agent review (architecture, implementation, ecosystem)** <!-- legacy status: v2 superseded — see YAML frontmatter --> **Original**: `docs/plans/2026-05-23-bodai-routing-feedback-loop.md`
 
 ## What Changed After Review
 

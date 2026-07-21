@@ -10,12 +10,9 @@ topic: track1-terminal-gap
 # Track 1 — Terminal Gap Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
-
-**Goal:** Replace MockTerminalAdapter as the default with CrowTerminalAdapter backed by crow-mcp, activating GenericShellWorker for real PTY execution across all terminal-based AI workers.
-
-**Architecture:** `CrowTerminalAdapter` implements the 5-method `TerminalAdapter` protocol by calling crow-mcp's PTY tools via MCP client, exactly mirroring `McpretentiousAdapter`. `CrowWorker` is an independent sibling that speaks crow-cli's ACP protocol for autonomous reasoning tasks. The config key `adapter_preference: "crow"` with `fallback_on_probe_failure: false` activates the adapter and fails hard when crow-mcp is unreachable.
-
-**Tech Stack:** FastMCP (MCP client), httpx (probe), Python 3.13, existing `TerminalAdapter` protocol, `MahavishnuError` error hierarchy.
+> **Goal:** Replace MockTerminalAdapter as the default with CrowTerminalAdapter backed by crow-mcp, activating GenericShellWorker for real PTY execution across all terminal-based AI workers.
+> **Architecture:** `CrowTerminalAdapter` implements the 5-method `TerminalAdapter` protocol by calling crow-mcp's PTY tools via MCP client, exactly mirroring `McpretentiousAdapter`. `CrowWorker` is an independent sibling that speaks crow-cli's ACP protocol for autonomous reasoning tasks. The config key `adapter_preference: "crow"` with `fallback_on_probe_failure: false` activates the adapter and fails hard when crow-mcp is unreachable.
+> **Tech Stack:** FastMCP (MCP client), httpx (probe), Python 3.13, existing `TerminalAdapter` protocol, `MahavishnuError` error hierarchy.
 
 ## Global Constraints
 

@@ -10,7 +10,7 @@ topic: convergence-control-plane
 # MiniMax 2.7 Provider Migration Plan
 
 **Date:** 2026-05-10
-**Status:** `complete`, `historical`  <!-- legacy status: complete, historical — see YAML frontmatter -->
+**Status:** `complete`, `historical` <!-- legacy status: complete, historical — see YAML frontmatter -->
 **Owner:** Core Eng
 **Scope:** Mahavishnu, Bifrost text setup, Crackerjack, and Session-Buddy. Oneiric and mcp-common are referenced only for non-blocking terminal-worker guardrails.
 **Purpose:** Replace ZAI/GLM as the default cloud LLM API path with MiniMax M2.7 while preserving local Ollama fallback and documenting modality routing limits.

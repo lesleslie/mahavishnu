@@ -257,7 +257,7 @@ This sequence:
   `test_matrix.py` lint-clean, TD-3 made the validator usable).
 - Leaves the long-tail coverage work as a separate, paced effort.
 
-## Status  <!-- legacy status: 4/5 RESOLVED — see YAML frontmatter -->
+## Status <!-- legacy status: 4/5 RESOLVED — see YAML frontmatter -->
 
 - **TD-1**: RESOLVED (13 files, 67 occurrences; line-3-only fix to
   preserve any `\_` in body content)
