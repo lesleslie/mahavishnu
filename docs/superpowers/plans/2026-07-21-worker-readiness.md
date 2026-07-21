@@ -111,11 +111,14 @@ import sys
 from pathlib import Path
 
 
-def test_workers_enabled_false_blocks_spawn(tmp_path: Path) -> None:
-    settings = tmp_path / "settings.yaml"
-    settings.write_text("workers:\n  enabled: false\n")
+def test_workers_enabled_false_blocks_spawn() -> None:
     env = os.environ.copy()
-    env["MAHAVISHNU_SETTINGS_PATH"] = str(settings)
+    # Pydantic-settings nested-delimiter override: honors
+    # `workers.enabled = false` in MahavishnuSettings without touching
+    # `settings_customise_sources`. The original `MAHAVISHNU_SETTINGS_PATH`
+    # approach is not honored by the current settings loader, so the
+    # pydantic-settings env var is the contract for this test.
+    env["MAHAVISHNU_WORKERS__ENABLED"] = "false"
     result = subprocess.run(
         [sys.executable, "-m", "mahavishnu", "workers", "spawn",
          "--type", "terminal-shell", "--count", "1"],
