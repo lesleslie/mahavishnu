@@ -33,9 +33,12 @@ contribution workflow below.
 | `terminal` | iTerm2, MockTerminal, CrowTerminal, GenericShellWorker, workers/protocol.py. |
 | `routing-composition` | Two-router composition, fitness feedback loop, peer affinity (ADR 011 / ADR 014). |
 | `honcho-routing` | Honcho peer-model routing precedence (ADR 014). |
+| `akosha-skills` | Akosha skill distillation system — pattern detection, conscious-agent skill library, skill embedding storage. |
 | `learning-pipeline` | Skill distillation, conscious agent, pattern library (ADR 012). |
+| `bodai-radar` | Bodai radar — cross-repo anomaly detection, OTel trace correlation, fitness feedback signals across the ecosystem. |
 | `observability` | Bodai observability surface, EventBridge subscriber pattern, Phase 6. |
 | `auth` | Auth standardization (Bodai auth spec), JWT, multi-provider. |
+| `crackerjack-publish-auth` | PyPI publishing authentication layer for crackerjack — TrustedPublishingProvider (OIDC), EnvVarAuthProvider, KeyringAuthProvider. Part of the PyPIAuth abstraction. |
 | `convergence-control-plane` | Convergence program C0-C7, umbrella plans. |
 | `followups-index` | Index or summary of the docs/followups/ store — readme/README pages that aggregate session-buddy followup topics. |
 | `worktree-management` | Worktree MCP dispatcher, isolation, planning. |
