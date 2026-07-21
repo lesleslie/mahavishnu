@@ -127,6 +127,36 @@ def _ensure_mahavishnu_importable() -> None:
     sys.path.insert(0, str(repo_root))
 
 
+def _git_worktree_add_argv(
+    cwd: str,
+    branch: str,
+    target_path: str,
+    branch_base: str,
+) -> list[str]:
+    """Build argv for ``git worktree add -B <branch> <path> <commit-ish>``.
+
+    Includes ``--`` before the positional ``<path> <commit-ish>`` args
+    to defend against ``branch_base`` (from the
+    ``MAHAVISHNU_AUTO_WORKTREE_BRANCH_BASE`` env var) starting with
+    ``-`` and being re-parsed by git as an option flag. Per the
+    security audit (2026-07-20, finding #2): argv-list closes shell
+    injection but not git's own option parser; ``--`` closes both.
+
+    Returned argv is a plain list (never ``shell=True``) so the
+    caller can pass it directly to ``subprocess.run``.
+    """
+    return [
+        "git",
+        "-C", cwd,
+        "worktree",
+        "add",
+        "-B", branch,
+        "--",
+        target_path,
+        branch_base,
+    ]
+
+
 def _run_session_start(session_id_full: str, cwd: str) -> int:
     """SessionStart: ensure the session has a worktree.
 
@@ -136,7 +166,7 @@ def _run_session_start(session_id_full: str, cwd: str) -> int:
       3. Registry hit + path still exists → refresh, log "reused", return 0.
       4. Stale entry → remove.
       5. Detect repo_nickname.
-      6. Build coordinator; create_worktree with composed args.
+      6. git worktree add (via _git_worktree_add_argv).
       7. Path security check (must be under MAHAVISHNU_AUTO_WORKTREE_ROOT).
       8. Register in registry.
       9. Surface to user via stderr.
@@ -205,7 +235,7 @@ def _run_session_start(session_id_full: str, cwd: str) -> int:
     worktree_name = f"agent-{short}"
     branch = f"worktree-{worktree_name}"
 
-    # 6: build coordinator + create worktree.
+    # 6: build argv + create worktree.
     # Direct ``git worktree add`` via subprocess. We deliberately bypass
     # ``MahavishnuApp.load()`` + ``WorktreeCoordinator`` to keep the
     # SessionStart cost <2s. The WorktreeCoordinator's safety features
@@ -220,22 +250,11 @@ def _run_session_start(session_id_full: str, cwd: str) -> int:
     branch_base = os.environ.get(BRANCH_BASE_ENV, "main")
 
     try:
-        # ``git worktree add -b <branch> <path> <commit-ish>`` — creates
-        # new branch from <commit-ish> (default: HEAD of current branch)
-        # and a new working tree at <path>.
-        # Use ``-B`` to reset if branch already exists (idempotent).
+        # ``--`` ends option parsing before the positional
+        # ``<path> <commit-ish>`` (defense against branch_base
+        # starting with ``-``).
         result = subprocess.run(  # nosec B603 — argv-list, no shell
-            [
-                "git",
-                "-C",
-                cwd,
-                "worktree",
-                "add",
-                "-B",
-                branch,
-                str(target_path),
-                branch_base,
-            ],
+            _git_worktree_add_argv(cwd, branch, str(target_path), branch_base),
             capture_output=True,
             text=True,
             timeout=10,
@@ -352,14 +371,25 @@ def _maybe_print_discovery_hint(cwd: str, mode: str) -> None:
 
 
 def main() -> int:
-    """Dispatch on argv[1]: ``--mode session-start`` or ``--mode session-end``.
+    """Dispatch on mode (positional argv[1] OR ``--mode`` flag).
 
-    Default mode is auto-detected from the stdin payload shape if
-    ``--mode`` is not provided (SessionStart vs SessionEnd).
+    Accepts both forms because Claude Code's wire format passes
+    positional ``session-start`` / ``session-end`` (per ``.claude/settings.json``),
+    but downstream tooling may invoke with ``--mode``. Both are
+    treated as authoritative.
+
+    If neither form is provided, log a diagnostic and return 0 —
+    fail-closed rather than inferring from the stdin payload shape
+    (the prior cwd-based heuristic broke when SessionEnd payloads
+    also carried a ``cwd`` field, per the multi-agent review).
     """
     args = sys.argv[1:]
     mode: str | None = None
-    if "--mode" in args:
+    # Positional first (Claude Code's wire format).
+    if args and not args[0].startswith("-"):
+        mode = args[0]
+    # --mode flag (back-compat + downstream tooling).
+    elif "--mode" in args:
         i = args.index("--mode")
         if i + 1 < len(args):
             mode = args[i + 1]
@@ -368,9 +398,13 @@ def main() -> int:
     session_id_full = payload.session_id
     cwd = payload.cwd
 
-    # Resolve mode (used for both hint gating and dispatch below)
     if mode is None:
-        mode = "session-end" if not cwd else "session-start"
+        _log("no mode provided (neither positional argv[1] nor --mode); skipping")
+        return 0
+
+    if mode not in ("session-start", "session-end"):
+        _log(f"unknown mode: {mode!r}")
+        return 0
 
     # Default-off fast path: no env var → no mahavishnu import → return 0.
     # BUT: discovery hint may fire here if conditions are met.
@@ -380,11 +414,7 @@ def main() -> int:
 
     if mode == "session-start":
         return _run_session_start(session_id_full, cwd)
-    if mode == "session-end":
-        return _run_session_end(session_id_full)
-
-    _log(f"unknown mode: {mode!r}")
-    return 0
+    return _run_session_end(session_id_full)
 
 
 if __name__ == "__main__":

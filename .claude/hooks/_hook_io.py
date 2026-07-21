@@ -35,12 +35,32 @@ class HookPayload:
     raw: dict[str, Any]
 
 
+def _coerce_str(value: object) -> str:
+    """Return ``value`` if it's a string, else empty string.
+
+    Defends downstream code paths that pass these values to
+    ``subprocess.run`` (which would ``TypeError`` on non-strings)
+    or to ``Path(...)`` (which would accept them but produce
+    surprising paths). Fail-closed: anything that isn't a plain
+    ``str`` becomes ``""`` so the hook can take its empty-cwd /
+    empty-session_id fast path.
+    """
+    return value if isinstance(value, str) else ""
+
+
 def read_session_payload() -> HookPayload:
     """Read and parse the hook stdin JSON payload.
 
     Tolerates missing or non-JSON input by returning empty defaults
     rather than raising — hooks must never block Claude startup on a
     malformed payload (per the exit-0-always contract).
+
+    Both ``session_id`` and ``cwd`` are type-validated as ``str``;
+    any other JSON type (``int``, ``list``, ``dict``, ``bool``,
+    ``float``, ``None``) is normalized to empty string. This is the
+    fail-closed contract for the hook — malformed payloads must not
+    reach ``subprocess.run`` and trigger a TypeError that violates
+    the never-raises contract.
     """
     try:
         raw_str = sys.stdin.read()
@@ -58,8 +78,8 @@ def read_session_payload() -> HookPayload:
     if not isinstance(raw, dict):
         return HookPayload(session_id="", cwd="", raw={})
 
-    session_id = raw.get("session_id") or ""
-    cwd = raw.get("cwd") or ""
+    session_id = _coerce_str(raw.get("session_id"))
+    cwd = _coerce_str(raw.get("cwd"))
     return HookPayload(session_id=session_id, cwd=cwd, raw=raw)
 
 

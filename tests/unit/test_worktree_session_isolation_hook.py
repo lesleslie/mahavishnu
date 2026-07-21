@@ -314,7 +314,7 @@ def test_discovery_hint_fires_when_unset_and_git_repo_and_root_missing(
             "session_id": "0190f8a4-b9c1-7def-a012-3456789abcde",
             "cwd": str(tmp_path),
         }),
-        ["worktree-session-isolation.py"],
+        ["worktree-session-isolation.py", "session-start"],
         root=str(nonexistent_root),
     )
 
@@ -526,7 +526,7 @@ def test_discovery_hint_completes_in_under_two_seconds(
             "session_id": "0190f8a4-b9c1-7def-a012-3456789abcde",
             "cwd": str(tmp_path),
         }),
-        ["worktree-session-isolation.py"],
+        ["worktree-session-isolation.py", "session-start"],
         root=str(nonexistent_root),
     )
 
@@ -537,3 +537,222 @@ def test_discovery_hint_completes_in_under_two_seconds(
     assert elapsed < 2.0, f"main() took {elapsed:.2f}s, expected <2s"
     # Sanity check: hint actually fired (so we're measuring the full path)
     assert "MAHAVISHNU_AUTO_WORKTREE=1" in captured.getvalue()
+
+
+# ── Mode dispatch (Phase A2) ──────────────────────────────────────
+
+
+def test_main_dispatches_on_positional_session_start(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Positional argv[1]='session-start' (Claude Code's wire format) → mode=session-start."""
+    import io
+    import json
+    import sys
+
+    monkeypatch.delenv("MAHAVISHNU_AUTO_WORKTREE", raising=False)
+    monkeypatch.setattr(sys, "stdin", io.StringIO(json.dumps({
+        "session_id": "0190f8a4-b9c1-7def-a012-3456789abcde",
+        "cwd": str(tmp_path),
+    })))
+    monkeypatch.setattr(sys, "argv", ["worktree-session-isolation.py", "session-start"])
+
+    captured = io.StringIO()
+    monkeypatch.setattr(sys, "stderr", captured)
+
+    import importlib.util
+
+    spec = importlib.util.spec_from_file_location(
+        "hook_pos_start", _HOOK_PATH
+    )
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    assert module.main() == 0
+    stderr = captured.getvalue()
+    assert "unknown mode" not in stderr
+    assert "no mode" not in stderr.lower()
+
+
+def test_main_dispatches_on_positional_session_end(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Positional argv[1]='session-end' → mode=session-end."""
+    import io
+    import sys
+
+    monkeypatch.delenv("MAHAVISHNU_AUTO_WORKTREE", raising=False)
+    monkeypatch.setattr(sys, "stdin", io.StringIO(""))
+    monkeypatch.setattr(sys, "argv", ["worktree-session-isolation.py", "session-end"])
+
+    captured = io.StringIO()
+    monkeypatch.setattr(sys, "stderr", captured)
+
+    import importlib.util
+
+    spec = importlib.util.spec_from_file_location(
+        "hook_pos_end", _HOOK_PATH
+    )
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    assert module.main() == 0
+    assert "unknown mode" not in captured.getvalue()
+
+
+def test_main_dispatches_on_dash_mode_flag(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """``--mode session-start`` flag still works (back-compat)."""
+    import io
+    import sys
+
+    monkeypatch.delenv("MAHAVISHNU_AUTO_WORKTREE", raising=False)
+    monkeypatch.setattr(sys, "stdin", io.StringIO(""))
+    monkeypatch.setattr(sys, "argv", [
+        "worktree-session-isolation.py", "--mode", "session-start",
+    ])
+
+    captured = io.StringIO()
+    monkeypatch.setattr(sys, "stderr", captured)
+
+    import importlib.util
+
+    spec = importlib.util.spec_from_file_location(
+        "hook_dash_mode", _HOOK_PATH
+    )
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    assert module.main() == 0
+    assert "unknown mode" not in captured.getvalue()
+
+
+def test_main_refuses_when_no_mode_provided(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """No positional nor --mode → log diagnostic, return 0 (fail-closed)."""
+    import io
+    import sys
+
+    monkeypatch.delenv("MAHAVISHNU_AUTO_WORKTREE", raising=False)
+    monkeypatch.setattr(sys, "stdin", io.StringIO(""))
+    monkeypatch.setattr(sys, "argv", ["worktree-session-isolation.py"])
+
+    captured = io.StringIO()
+    monkeypatch.setattr(sys, "stderr", captured)
+
+    import importlib.util
+
+    spec = importlib.util.spec_from_file_location(
+        "hook_no_mode", _HOOK_PATH
+    )
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    assert module.main() == 0
+    stderr = captured.getvalue().lower()
+    assert "no mode" in stderr or "mode" in stderr
+
+
+# ── Payload type validation (Phase A2) ─────────────────────────────
+
+
+def test_read_session_payload_rejects_non_string_session_id(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Non-string session_id (int, list, dict, bool, float) → empty string.
+
+    Defense against malformed payloads reaching subprocess calls.
+    Per multi-agent review Test #10 (2026-07-20).
+    """
+    import io
+    import json
+    import sys
+
+    from _hook_io import read_session_payload
+
+    for bad in (42, [1, 2], {"a": 1}, True, 3.14, None):
+        monkeypatch.setattr(sys, "stdin", io.StringIO(json.dumps({
+            "session_id": bad,
+            "cwd": "/tmp",
+        })))
+        payload = read_session_payload()
+        assert payload.session_id == "", (
+            f"non-string session_id {bad!r} should normalize to empty"
+        )
+
+
+def test_read_session_payload_rejects_non_string_cwd(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Non-string cwd → empty string (fail-closed)."""
+    import io
+    import json
+    import sys
+
+    from _hook_io import read_session_payload
+
+    for bad in (42, ["/tmp"], {"a": 1}, True, 3.14, None):
+        monkeypatch.setattr(sys, "stdin", io.StringIO(json.dumps({
+            "session_id": "0190f8a4-b9c1-7def-a012-3456789abcde",
+            "cwd": bad,
+        })))
+        payload = read_session_payload()
+        assert payload.cwd == "", (
+            f"non-string cwd {bad!r} should normalize to empty"
+        )
+
+
+def test_read_session_payload_preserves_string_values(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """String session_id and cwd pass through unchanged."""
+    import io
+    import json
+    import sys
+
+    from _hook_io import read_session_payload
+
+    monkeypatch.setattr(sys, "stdin", io.StringIO(json.dumps({
+        "session_id": "abc-123",
+        "cwd": "/tmp/work",
+    })))
+    payload = read_session_payload()
+    assert payload.session_id == "abc-123"
+    assert payload.cwd == "/tmp/work"
+
+
+# ── Git argv -- separator (Phase A2) ──────────────────────────────
+
+
+def test_git_worktree_add_argv_includes_double_dash_separator(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """``--`` must precede ``branch_base`` to defend against option-injection.
+
+    Per Security audit #2 (2026-07-20): if ``MAHAVISHNU_AUTO_WORKTREE_BRANCH_BASE``
+    starts with ``-``, git's option parser might re-parse it as a flag.
+    Inserting ``--`` ends option parsing.
+    """
+    import importlib.util
+
+    spec = importlib.util.spec_from_file_location(
+        "hook_argv_test", _HOOK_PATH
+    )
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+
+    argv = module._git_worktree_add_argv(
+        cwd="/tmp/repo",
+        branch="worktree-agent-abc12345",
+        target_path="/tmp/worktrees/agent-abc12345",
+        branch_base="--upload-pack=evil",
+    )
+
+    # Find positions
+    dash_idx = argv.index("--")
+    branch_base_idx = argv.index("--upload-pack=evil")
+    target_idx = argv.index("/tmp/worktrees/agent-abc12345")
+    assert dash_idx < branch_base_idx, (
+        f"'--' (at {dash_idx}) must come before branch_base (at {branch_base_idx})"
+    )
+    assert dash_idx < target_idx, (
+        f"'--' (at {dash_idx}) must come before target_path (at {target_idx})"
+    )
