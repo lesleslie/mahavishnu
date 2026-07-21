@@ -418,8 +418,6 @@ def _maybe_print_discovery_hint(cwd: str, mode: str) -> None:
     """
     if mode != "session-start":
         return
-    if OPT_IN_ENV in os.environ:
-        return  # user has touched the env var — they're informed
     if not cwd:
         return
     if _cwd_is_inside_worktree(cwd):
@@ -431,7 +429,8 @@ def _maybe_print_discovery_hint(cwd: str, mode: str) -> None:
     if root.exists():
         return  # already configured — they've set something up
     _log(
-        "MAHAVISHNU_AUTO_WORKTREE=1 enables per-session worktrees; "
+        "per-session worktree isolation is on "
+        "(set MAHAVISHNU_AUTO_WORKTREE=0 to disable); "
         "see docs/CONFIGURATION.md"
     )
 
@@ -472,9 +471,16 @@ def main() -> int:
         _log(f"unknown mode: {mode!r}")
         return 0
 
-    # Default-off fast path: no env var → no mahavishnu import → return 0.
-    # BUT: discovery hint may fire here if conditions are met.
-    if not _is_truthy(os.environ.get(OPT_IN_ENV)):
+    # Default-ON gate (Phase 8, 2026-07-20). The Bodai ecosystem is
+    # internal-team only; opt-in friction is a productivity tax.
+    # Semantics:
+    #   - env unset → proceed (default-on)
+    #   - env truthy → proceed (explicit opt-in, same as default)
+    #   - env falsy (=0, =false, etc.) → opt-out, hint fires
+    # The opt-out path still emits the hint so users know how to
+    # disable without reading docs.
+    opt_in = os.environ.get(OPT_IN_ENV)
+    if opt_in is not None and not _is_truthy(opt_in):
         _maybe_print_discovery_hint(cwd, mode)
         return 0
 

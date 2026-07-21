@@ -66,35 +66,48 @@ When **multiple Claude Code sessions run concurrently** in the same repo, they s
 
 | Variable | Default | Effect |
 |----------|---------|--------|
-| `MAHAVISHNU_AUTO_WORKTREE` | unset | Set to `1` / `true` / `yes` / `on` to enable SessionStart auto-provisioning of a per-session worktree. Default off — sessions are unaffected until you opt in. |
+| `MAHAVISHNU_AUTO_WORKTREE` | unset = **enabled** | Unset or truthy (`1`/`true`/`yes`/`on`) → per-session worktree isolation is on. Falsy (`0`/`false`/`no`/`off`) → opt out and emit a stderr hint. |
 | `MAHAVISHNU_AUTO_WORKTREE_ROOT` | `~/worktrees` | Parent directory for auto-provisioned worktrees. Matches `WorktreePathValidator`'s default. |
-| `MAHAVISHNU_AUTO_WORKTREE_BRANCH_BASE` | `main` | Base branch when creating the new session branch. |
+| `MAHAVISHNU_AUTO_WORKTREE_BRANCH_BASE` | current branch in cwd | Base branch when creating the new session branch. Falls back to `main` when discovery fails (detached HEAD, non-git dir). |
 | `MAHAVISHNU_AUTO_WORKTREE_CLEANUP` | `mark` | `mark` records the worktree as `abandoned` in the registry at SessionEnd (recommended). `keep` is a no-op. The plan never auto-removes worktrees — see [`mahavishnu worktree prune-abandoned`](#cli-cleanup) below. |
+| `MAHAVISHNU_AUTO_WORKTREE_DEBUG` | unset | Set truthy to emit `[debug]`-prefixed lines to stderr (cwd, branch, target path, branch_base, timeout). Useful for operators debugging without enabling the full feature. |
+| `MAHAVISHNU_AUTO_WORKTREE_TIMEOUT` | `10` (max 60) | Seconds to wait for `git worktree add`. |
 
-### Discovery hint (default-off side effect)
+### Opt-out (kill-switch)
 
-When `MAHAVISHNU_AUTO_WORKTREE` is **unset** (the default), the SessionStart hook prints a one-line stderr hint to users who would benefit from the feature:
+The feature is on by default. To disable per-session worktree isolation, set the env var to any falsy value:
+
+```bash
+export MAHAVISHNU_AUTO_WORKTREE=0   # explicit opt-out
+export MAHAVISHNU_AUTO_WORKTREE=false  # also works
+unset MAHAVISHNU_AUTO_WORKTREE   # re-enable (back to default)
+```
+
+When the opt-out fires, the SessionStart hook prints a one-line stderr hint so the user knows the feature is normally on:
 
 ```
-mahavishnu: MAHAVISHNU_AUTO_WORKTREE=1 enables per-session worktrees; see docs/CONFIGURATION.md
+mahavishnu: per-session worktree isolation is on (set MAHAVISHNU_AUTO_WORKTREE=0 to disable); see docs/CONFIGURATION.md
 ```
 
 The hint fires ONLY when ALL of these are true:
 
 1. Mode is `session-start` (never on `session-end`)
-2. `MAHAVISHNU_AUTO_WORKTREE` is unset (any value — including `0` — silences the hint)
+2. `MAHAVISHNU_AUTO_WORKTREE` is explicitly set to a falsy value
 3. `cwd` is non-empty
 4. `cwd` is not already inside a worktree
 5. `cwd` is a git repo (or a sub-directory of one)
 6. `MAHAVISHNU_AUTO_WORKTREE_ROOT` (default `~/worktrees`) does not yet exist
 
-The hint is purely informational — no filesystem mutation, no mahavishnu import, no registry write. To silence without enabling the feature:
+The hint is purely informational — no filesystem mutation, no mahavishnu import, no registry write.
 
-```bash
-export MAHAVISHNU_AUTO_WORKTREE=0   # or any value; the env var being "touched" silences the hint
-```
+### Internal-team default-on context
 
-This is the discoverability middle ground: default-off preserves the consent contract (no FS mutation without opt-in), while the hint surfaces the feature to users in multi-session setups who didn't know to look for it.
+This feature defaults to on because the Bodai ecosystem is currently
+used only by the internal team that wrote and reviewed this code. Per
+the decision record, this posture should be revisited at v1.0 / external
+adoption: the trade-off is "discoverability for new external users" vs.
+"productivity tax for the existing internal team", and the answer
+flips when the audience flips.
 
 State file path: XDG state dir (default `~/.local/state/mahavishnu/session-worktrees.json` on Linux, `~/Library/Application Support/mahavishnu/...` on macOS). The path is resolved by `mahavishnu.core.paths.get_state_path("session-worktrees.json")` and honors `XDG_STATE_HOME`. The standard `MAHAVISHNU_HOME` env override applies if `get_state_path` is configured for it.
 

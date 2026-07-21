@@ -690,34 +690,6 @@ def _load_with_stderr(
     return module, captured
 
 
-def test_discovery_hint_fires_when_unset_and_git_repo_and_root_missing(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    """Default conditions: hint fires when env unset + git repo + root missing."""
-    import json
-
-    (tmp_path / ".git").mkdir()
-    nonexistent_root = tmp_path / "worktrees-does-not-exist"
-    assert not nonexistent_root.exists()
-
-    module, captured = _load_with_stderr(
-        monkeypatch,
-        "hook_hint_fires",
-        json.dumps({
-            "session_id": "0190f8a4-b9c1-7def-a012-3456789abcde",
-            "cwd": str(tmp_path),
-        }),
-        ["worktree-session-isolation.py", "session-start"],
-        root=str(nonexistent_root),
-    )
-
-    rc = module.main()
-    assert rc == 0
-    output = captured.getvalue()
-    assert "MAHAVISHNU_AUTO_WORKTREE=1" in output
-    assert "per-session worktrees" in output
-
-
 def test_discovery_hint_silent_when_env_set_truthy(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -744,10 +716,16 @@ def test_discovery_hint_silent_when_env_set_truthy(
     assert "MAHAVISHNU_AUTO_WORKTREE=1" not in captured.getvalue()
 
 
-def test_discovery_hint_silent_when_env_set_falsy(
+def test_discovery_hint_fires_on_explicit_opt_out(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """``MAHAVISHNU_AUTO_WORKTREE=0`` (explicit opt-out) → no hint."""
+    """After Phase 8 gate inversion (default-on): ``=0`` triggers hint.
+
+    Pre-Phase-8: unset and ``=0`` were the same (both falsy). Hint
+    only fired on env unset, which was the same path.
+    Post-Phase-8: unset is default-on (no hint). ``=0`` is explicit
+    opt-out → hint fires to tell the user how to disable.
+    """
     import json
 
     (tmp_path / ".git").mkdir()
@@ -760,14 +738,16 @@ def test_discovery_hint_silent_when_env_set_falsy(
             "session_id": "0190f8a4-b9c1-7def-a012-3456789abcde",
             "cwd": str(tmp_path),
         }),
-        ["worktree-session-isolation.py"],
+        ["worktree-session-isolation.py", "session-start"],
         env={"MAHAVISHNU_AUTO_WORKTREE": "0"},
         root=str(nonexistent_root),
     )
 
     rc = module.main()
     assert rc == 0
-    assert "MAHAVISHNU_AUTO_WORKTREE=1" not in captured.getvalue()
+    output = captured.getvalue()
+    assert "per-session worktree isolation is on" in output
+    assert "MAHAVISHNU_AUTO_WORKTREE=0" in output
 
 
 def test_discovery_hint_silent_when_not_git_repo(
@@ -897,30 +877,35 @@ def test_discovery_hint_silent_on_session_end(
     assert "MAHAVISHNU_AUTO_WORKTREE=1" not in captured.getvalue()
 
 
-def test_discovery_hint_completes_in_under_two_seconds(
+def test_default_on_completes_in_under_two_seconds(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """Default-off with hint attempt completes in <2s.
+    """Default-on path (env unset) reaches ``_run_session_start`` in <2s.
 
-    Regression test: the hint adds a ``git rev-parse`` call (~5-50ms)
-    plus a path walk + stat. Total cost is dominated by git latency.
-    The default-off contract is relaxed from "<2ms" to "<2s" to
-    absorb the hint cost. SessionStart hook budgets allow 2s.
+    Post-Phase-8: env unset = default-on. The hook proceeds to
+    ``_run_session_start``, which calls ``git rev-parse --git-dir``
+    (~5-50ms) and walks the path tree. With a fake ``.git`` dir
+    but no real worktree setup, the run fails at the
+    ``_detect_repo_nickname`` step and returns 0 — but we exercised
+    the full hook path. SessionStart hook budgets allow 2s.
+
+    Pre-Phase-8 (default-off): this test was repurposed for the
+    discovery hint path. The hint still fires on explicit opt-out
+    but the env-unset default-off path is gone.
     """
     import json
 
     (tmp_path / ".git").mkdir()
-    nonexistent_root = tmp_path / "worktrees-does-not-exist"
 
     module, captured = _load_with_stderr(
         monkeypatch,
-        "hook_hint_fast_path",
+        "hook_default_on_fast_path",
         json.dumps({
             "session_id": "0190f8a4-b9c1-7def-a012-3456789abcde",
             "cwd": str(tmp_path),
         }),
         ["worktree-session-isolation.py", "session-start"],
-        root=str(nonexistent_root),
+        # env defaults to unset → default-on post-Phase-8
     )
 
     start = time.perf_counter()
@@ -928,8 +913,10 @@ def test_discovery_hint_completes_in_under_two_seconds(
     elapsed = time.perf_counter() - start
     assert rc == 0
     assert elapsed < 2.0, f"main() took {elapsed:.2f}s, expected <2s"
-    # Sanity check: hint actually fired (so we're measuring the full path)
-    assert "MAHAVISHNU_AUTO_WORKTREE=1" in captured.getvalue()
+    # Sanity check: gate was bypassed (no hint, no early return)
+    stderr = captured.getvalue()
+    assert "per-session worktree isolation is on" not in stderr
+    assert "no mode provided" not in stderr
 
 
 # ── Phase E polish env vars ──────────────────────────────────────────
