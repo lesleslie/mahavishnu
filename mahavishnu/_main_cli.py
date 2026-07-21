@@ -63,6 +63,14 @@ from .quality_cli import add_quality_commands
 # Import adaptive routing CLI
 from .routing_cli import add_routing_commands
 
+# Import worker capability diagnostics (Task 10)
+from .workers.capabilities import (
+    WorkerCapabilityReport,
+    WorkerCapabilityState,
+    evaluate_worker_capabilities,
+)
+from .workers.registry import WORKER_REGISTRY
+
 # Import worktree management CLI
 from .worktree_cli import worktree_app
 
@@ -1500,12 +1508,6 @@ def workers_list_types(
         $ mahavishnu workers list-types --ready --explain
     """
     from .core.config import MahavishnuSettings
-    from .workers.capabilities import (
-        WorkerCapabilityReport,
-        WorkerCapabilityState,
-        evaluate_worker_capabilities,
-    )
-    from .workers.registry import WORKER_REGISTRY
 
     settings = MahavishnuSettings()
     rows: list[tuple[str, str, str]] = []

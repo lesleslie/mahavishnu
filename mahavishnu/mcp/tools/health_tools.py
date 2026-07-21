@@ -33,6 +33,7 @@ Reference: docs/plans/2026-04-25-mahavishnu-ecosystem-control-plane-update-plan.
 from __future__ import annotations
 
 import asyncio
+import logging
 import time
 from typing import TYPE_CHECKING, Any
 import warnings
@@ -49,6 +50,9 @@ from monitoring.metrics import expose_metrics, get_metrics_registry
 
 if TYPE_CHECKING:
     from mcp_common.fastmcp import FastMCP
+
+
+logger = logging.getLogger(__name__)
 
 
 def register_health_tools(mcp: FastMCP, app: Any = None) -> None:  # noqa: C901
@@ -427,8 +431,9 @@ def register_health_tools(mcp: FastMCP, app: Any = None) -> None:  # noqa: C901
         # Fold the worker capability component into the response so the
         # MCP surface matches the ``/ready`` HTTP endpoint.
         try:
-            payload["workers"] = worker_get_readiness()
+            payload["workers"] = await worker_get_readiness()
         except Exception:
+            logger.exception("readiness worker aggregation failed")
             payload["workers"] = {"status": "unhealthy"}
         return payload
 

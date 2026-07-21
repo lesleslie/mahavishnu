@@ -92,7 +92,7 @@ def create_health_app(
         # swallow any settings-resolution error here because readiness
         # probes must never raise — they degrade to ``unhealthy``.
         try:
-            worker_summary = get_readiness()
+            worker_summary = await get_readiness()
             worker_status = worker_summary.get("status", "unhealthy")
             checks["workers"] = (
                 "ok"
@@ -106,6 +106,7 @@ def create_health_app(
                 f"{default_worker}:{worker_status}"
             )
         except Exception:
+            logger.exception("readiness worker aggregation failed")
             checks["workers"] = "unhealthy"
             checks["workers_default"] = "unresolved"
 
@@ -199,7 +200,7 @@ def _check_adapters() -> bool:
 # =============================================================================
 
 
-def get_readiness() -> dict[str, Any]:
+async def get_readiness() -> dict[str, Any]:
     """Aggregate readiness including worker capability reports.
 
     Wraps :func:`mahavishnu.core.health.readiness` so the MCP ``get_readiness``
@@ -215,7 +216,7 @@ def get_readiness() -> dict[str, Any]:
     from .core.health import readiness as _readiness_async
 
     settings = MahavishnuSettings()
-    return asyncio.run(_readiness_async(settings=settings))
+    return await _readiness_async(settings=settings)
 
 
 async def run_health_server(
