@@ -6,11 +6,9 @@ import sys
 from pathlib import Path
 
 
-def test_workers_enabled_false_blocks_spawn(tmp_path: Path) -> None:
-    settings = tmp_path / "settings.yaml"
-    settings.write_text("workers:\n  enabled: false\n")
+def test_workers_enabled_false_blocks_spawn() -> None:
     env = os.environ.copy()
-    env["MAHAVISHNU_SETTINGS_PATH"] = str(settings)
+    env["MAHAVISHNU_WORKERS__ENABLED"] = "false"
     result = subprocess.run(
         [sys.executable, "-m", "mahavishnu", "workers", "spawn",
          "--type", "terminal-shell", "--count", "1"],
