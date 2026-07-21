@@ -16,7 +16,7 @@ from typing import Any
 #   bearer\s+[a-z0-9._-]{8,} Authorization: Bearer <token>
 _SECRET_PATTERN = re.compile(
     r"(?i)(?:sk-[a-z0-9_-]{8,}|ghp_[a-z0-9]{8,}|xox[ab]-[a-z0-9-]{8,}|"
-    r"ya29\.[a-z0-9_-]{4,}|eyj[a-z0-9_-]{16,}|akia[0-9a-z]{16}|"
+    r"ya29\.[a-z0-9_-]{4,}|eyj[a-z0-9_-]{16,}|akia[0-9A-Z]{16}|"
     r"glpat-[a-z0-9_-]{16,}|bearer\s+[a-z0-9._-]{8,})"
 )
 
