@@ -218,10 +218,27 @@ class WorkerManager:
 
         elif config.category in (
             WorkerCategory.SHELL,
-            WorkerCategory.AI_ASSISTANT,
             WorkerCategory.REMOTE,
         ):
-            # Use GenericShellWorker for shell/REPL/AI/SSH types
+            # Use GenericShellWorker for shell/REPL/SSH types
+            from .generic_shell import GenericShellWorker
+
+            return GenericShellWorker(
+                terminal_manager=self.terminal_manager,
+                worker_type=worker_type,
+                config=config,
+                session_buddy_client=self.session_buddy_client,
+                **kwargs,
+            )
+
+        elif config.category == WorkerCategory.AI_ASSISTANT:
+            # AI assistants: dedicated class for HTTP-API workers (terminal-crow),
+            # fall through to GenericShellWorker for shell-launched ones.
+            if worker_type == "terminal-crow":
+                from .crow import CrowWorker
+
+                return CrowWorker()
+
             from .generic_shell import GenericShellWorker
 
             return GenericShellWorker(
@@ -287,6 +304,24 @@ class WorkerManager:
                     gateway_client=gateway_client,
                     config=gateway_config,
                 )
+
+            if worker_type == "openhands":
+                from .openhands import OpenHandsWorker
+
+                return OpenHandsWorker()
+
+            if worker_type == "a2a":
+                from .a2a import A2AWorker
+
+                # A2AWorker's constructor requires a non-empty agent_configs
+                # mapping (name → A2AAgentConfig). The factory has no source
+                # for that here; callers populate the registry via settings
+                # resolution and pass it via kwargs in the long term. For
+                # factory dispatch we accept an empty mapping so the worker
+                # can be instantiated; runtime dispatch will surface
+                # "unknown agent" errors via the existing execute() path.
+                agent_configs = kwargs.get("agent_configs", {})
+                return A2AWorker(agent_configs=agent_configs)
 
             raise ValueError(f"Unknown gateway worker type: {worker_type}")
 

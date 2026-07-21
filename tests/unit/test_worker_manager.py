@@ -29,6 +29,16 @@ def _make_terminal_manager():
     return tm
 
 
+@pytest.fixture
+def terminal_manager() -> MagicMock:
+    """Reusable MagicMock TerminalManager for factory dispatch tests.
+
+    Mirrors ``_make_terminal_manager`` so callers can opt into either a
+    positional fixture or an explicit helper depending on style.
+    """
+    return _make_terminal_manager()
+
+
 def _make_worker(
     worker_id: str = "worker-1",
     worker_type: str = "terminal-claude",
@@ -356,6 +366,23 @@ class TestCreateWorker:
             worker = mgr._create_worker("custom-type")
             MockGSH.assert_called_once()
             assert worker is not None
+
+
+# --- Step 1 factory dispatch tests (Task 8 brief) ---
+
+
+def test_factory_dispatches_a2a(terminal_manager) -> None:
+    """Factory should route a2a to A2AWorker (GATEWAY branch)."""
+    mgr = WorkerManager(terminal_manager=terminal_manager, settings=object())
+    worker = mgr._create_worker("a2a")
+    assert worker.__class__.__name__ == "A2AWorker"
+
+
+def test_factory_dispatches_terminal_crow(terminal_manager) -> None:
+    """Factory should route terminal-crow to CrowWorker (AI_ASSISTANT branch)."""
+    mgr = WorkerManager(terminal_manager=terminal_manager, settings=object())
+    worker = mgr._create_worker("terminal-crow")
+    assert worker.__class__.__name__ == "CrowWorker"
 
 
 def test_submit_workers_runs_one_shot_lifecycle(monkeypatch) -> None:
