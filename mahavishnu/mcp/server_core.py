@@ -1254,14 +1254,34 @@ class FastMCPServer:
             }
 
         @server.tool()
-        async def discover_tools(query: str | None = None) -> dict[str, Any]:
-            """Search for available MCP tools by name or capability."""
+        async def discover_tools(
+            query: str | None = None,
+            capability: str | None = None,
+        ) -> dict[str, Any]:
+            """Search for available MCP tools by name or capability.
+
+            Args:
+                query: Optional substring filter applied to tool names.
+                capability: Optional capability gate. When ``"ready"``,
+                    include the current routable-worker snapshot in the
+                    response so callers can correlate tool availability
+                    with the worker capability layer.
+
+            Returns:
+                Dict summarizing loaded + not-loaded tools, plus profile
+                metadata. When ``capability="ready"`` is supplied, the
+                response also includes ``routable_workers`` — the same
+                list the pool router uses — so downstream code can decide
+                whether tool listings should respect it.
+            """
+            from mahavishnu.core.config import MahavishnuSettings
             from mahavishnu.mcp.tool_versions import TOOL_VERSIONS
             from mahavishnu.mcp.tools.profiles import (
                 FULL_REGISTRATIONS,
                 PROFILE_REGISTRATIONS,
                 get_active_profile,
             )
+            from mahavishnu.workers.capabilities import select_routable_workers
 
             profile = get_active_profile()
 
@@ -1289,10 +1309,11 @@ class FastMCPServer:
             # Profile information
             profile_methods = PROFILE_REGISTRATIONS.get(profile, FULL_REGISTRATIONS)
 
-            return {
+            response: dict[str, Any] = {
                 "status": "success",
                 "profile": profile.value,
                 "query": query,
+                "capability": capability,
                 "loaded_tools": loaded,
                 "loaded_count": len(loaded),
                 "not_loaded_tools": not_loaded,
@@ -1304,6 +1325,18 @@ class FastMCPServer:
                     "or switch to 'standard' for daily development."
                 ),
             }
+
+            # Surface routable workers when the caller asked for a
+            # capability snapshot. The pool router consults the same
+            # list, so emitting it here lets downstream tools opt in to
+            # worker-aware filtering without duplicating the capability
+            # evaluation.
+            if capability == "ready":
+                settings = MahavishnuSettings()
+                response["routable_workers"] = select_routable_workers(
+                    settings=settings,
+                )
+            return response
 
     async def start(self, host: str = "127.0.0.1", port: int = 3000):
         """Start the MCP server."""

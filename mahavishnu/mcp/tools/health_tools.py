@@ -410,6 +410,7 @@ def register_health_tools(mcp: FastMCP, app: Any = None) -> None:  # noqa: C901
         """Get readiness status for this service."""
         _warn_deprecated_tool("get_readiness", "ecosystem_status")
         from mahavishnu.core.config import MahavishnuSettings
+        from mahavishnu.health import get_readiness as worker_get_readiness
 
         settings = MahavishnuSettings()
         config = settings.health
@@ -421,7 +422,15 @@ def register_health_tools(mcp: FastMCP, app: Any = None) -> None:  # noqa: C901
         endpoint = HealthEndpoint(service_info=service_info, config=config)
 
         response = await endpoint.readiness(config.dependencies)
-        return response.model_dump()
+        payload = response.model_dump()
+
+        # Fold the worker capability component into the response so the
+        # MCP surface matches the ``/ready`` HTTP endpoint.
+        try:
+            payload["workers"] = worker_get_readiness()
+        except Exception:
+            payload["workers"] = {"status": "unhealthy"}
+        return payload
 
 
 __all__ = ["register_health_tools"]

@@ -443,8 +443,10 @@ def register_pool_tools(  # noqa: C901
             )
             ```
         """
+        from mahavishnu.core.config import MahavishnuSettings
         from mahavishnu.core.errors import RateLimitError
         from mahavishnu.pools.manager import PoolSelector, coerce_caller_kind
+        from mahavishnu.workers.capabilities import select_routable_workers
 
         coerced_kind = coerce_caller_kind(caller_kind)
 
@@ -468,6 +470,20 @@ def register_pool_tools(  # noqa: C901
             "parent_session_id": parent_session_id,
             "caller_kind": coerced_kind.value,
         }
+
+        # Surface the capability-aware worker snapshot alongside the
+        # task. The pool router still picks a pool by selector, but
+        # having routable workers in the task payload lets the
+        # downstream adapter (and observability) honor the same
+        # gating as the CLI and MCP discover_tools surfaces.
+        try:
+            task["routable_workers"] = select_routable_workers(
+                settings=MahavishnuSettings(),
+            )
+        except Exception:
+            # Settings may be unavailable in test environments; we
+            # never want capability resolution to block routing.
+            pass
 
         try:
             selector = PoolSelector(pool_selector)
