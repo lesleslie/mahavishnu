@@ -22,7 +22,7 @@
       {
         "hooks": [
           {
-            "command": "python3 .claude/hooks/bodai-activity-post-tool-use.py",
+            "command": "python3 ${CLAUDE_PROJECT_DIR}/.claude/hooks/bodai-activity-post-tool-use.py",
             "type": "command"
           }
         ],
@@ -33,11 +33,11 @@
       {
         "hooks": [
           {
-            "command": "python3 .claude/hooks/bodai-activity-subscriber.py session-end",
+            "command": "python3 ${CLAUDE_PROJECT_DIR}/.claude/hooks/bodai-activity-subscriber.py session-end",
             "type": "command"
           },
           {
-            "command": "python3 .claude/hooks/worktree-session-isolation.py session-end",
+            "command": "python3 ${CLAUDE_PROJECT_DIR}/.claude/hooks/worktree-session-isolation.py session-end",
             "type": "command"
           }
         ],
@@ -48,11 +48,11 @@
       {
         "hooks": [
           {
-            "command": "python3 .claude/hooks/bodai-activity-subscriber.py session-start",
+            "command": "python3 ${CLAUDE_PROJECT_DIR}/.claude/hooks/bodai-activity-subscriber.py session-start",
             "type": "command"
           },
           {
-            "command": "python3 .claude/hooks/worktree-session-isolation.py session-start",
+            "command": "python3 ${CLAUDE_PROJECT_DIR}/.claude/hooks/worktree-session-isolation.py session-start",
             "type": "command"
           }
         ],
