@@ -1,13 +1,54 @@
 """Container worker for Docker/Podman task execution."""
 
+from __future__ import annotations
+
 import asyncio
+from dataclasses import dataclass
 import json
 import logging
+import os
+import shutil
+import sys
 from typing import Any
 
+from ..core.errors import ContainerDaemonUnavailable
 from .base import BaseWorker, WorkerResult, WorkerStatus
 
 logger = logging.getLogger(__name__)
+
+
+@dataclass
+class _RuntimeResolver:
+    """Resolve the concrete container runtime and socket path.
+
+    Order of precedence:
+        1. Explicit ``socket_path`` (e.g. ``DOCKER_HOST``-style override)
+        2. OrbStack default socket on macOS
+        3. ``DOCKER_HOST`` environment variable
+        4. First available binary in PATH (``docker`` then ``podman``)
+    """
+
+    runtime: str
+    socket_path: str | None
+
+    @classmethod
+    def from_settings(
+        cls, *, runtime: str | None, socket_path: str | None,
+    ) -> _RuntimeResolver:
+        """Pick a runtime and optional socket path from settings."""
+        if socket_path:
+            return cls(runtime=runtime or "docker", socket_path=socket_path)
+        if sys.platform == "darwin":
+            orbstack = os.path.expanduser("~/.orbstack/docker/docker.sock")
+            if os.path.exists(orbstack):
+                return cls(runtime=runtime or "docker", socket_path=orbstack)
+        env_socket = os.environ.get("DOCKER_HOST")
+        if env_socket:
+            return cls(runtime=runtime or "docker", socket_path=env_socket)
+        for candidate in ("docker", "podman"):
+            if shutil.which(candidate):
+                return cls(runtime=runtime or candidate, socket_path=None)
+        return cls(runtime=runtime or "docker", socket_path=None)
 
 
 class ContainerWorker(BaseWorker):
@@ -37,6 +78,8 @@ class ContainerWorker(BaseWorker):
         runtime: str = "docker",
         image: str = "python:3.13-slim",
         session_buddy_client: Any = None,
+        *,
+        socket_path_override: str | None = None,
     ) -> None:
         """Initialize container worker.
 
@@ -44,11 +87,19 @@ class ContainerWorker(BaseWorker):
             runtime: Container runtime ("docker" or "podman")
             image: Container image to use
             session_buddy_client: Session-Buddy MCP client
+            socket_path_override: Force a specific daemon socket path. When set,
+                takes precedence over the OrbStack and ``DOCKER_HOST`` discovery
+                paths.
         """
         super().__init__(worker_type="container-executor")
-        self.runtime = runtime
-        self.image = image
         self.session_buddy_client = session_buddy_client
+        self.image = image
+        resolver = _RuntimeResolver.from_settings(
+            runtime=runtime,
+            socket_path=socket_path_override,
+        )
+        self.runtime = resolver.runtime
+        self.socket_path = resolver.socket_path
         self.container_id: str | None = None
         self._running = False
 
@@ -160,6 +211,34 @@ class ContainerWorker(BaseWorker):
         # This prevents shell metacharacter injection
         return shlex.quote(command)
 
+    async def _probe_daemon(self) -> None:
+        """Verify the container daemon is reachable before launching.
+
+        Raises:
+            ContainerDaemonUnavailable: If the runtime binary is missing,
+                the socket path does not exist, the daemon probe times out,
+                or the daemon returns a non-zero exit code.
+        """
+        if self.socket_path and not os.path.exists(self.socket_path):
+            raise ContainerDaemonUnavailable(
+                runtime=self.runtime, error="socket_missing",
+            )
+        try:
+            proc = await asyncio.create_subprocess_exec(
+                self.runtime, "version", "--format", "{{.Server.Version}}",
+                stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE,
+            )
+            stdout, stderr = await asyncio.wait_for(proc.communicate(), timeout=5.0)
+        except (TimeoutError, OSError) as exc:
+            raise ContainerDaemonUnavailable(
+                runtime=self.runtime, error=type(exc).__name__,
+            ) from exc
+        if proc.returncode != 0:
+            error_output = stderr.decode() if stderr else "daemon_unreachable"
+            raise ContainerDaemonUnavailable(
+                runtime=self.runtime, error=error_output,
+            )
+
     async def start(self) -> str:
         """Launch container with persistent shell.
 
@@ -167,8 +246,14 @@ class ContainerWorker(BaseWorker):
             Container ID
 
         Raises:
-            RuntimeError: If container fails to start
+            ContainerDaemonUnavailable: If the container daemon is unreachable.
+            RuntimeError: If the container fails to launch after the daemon probe.
         """
+        await self._probe_daemon()
+        # Existing docker run / podman run invocation from
+        # mahavishnu/workers/container.py:163-210 is preserved unchanged
+        # after the probe. The container launch logic and `asyncio.sleep(1)`
+        # stub are replaced with the real readiness probe above.
         try:
             # Launch container with sleep infinity to keep it running
             proc = await asyncio.create_subprocess_exec(

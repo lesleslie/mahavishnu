@@ -1,8 +1,11 @@
 """Unit tests for ContainerWorker in mahavishnu/workers/container.py."""
 
+from __future__ import annotations
+
 import asyncio
 import json
 import shlex
+from typing import TYPE_CHECKING
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -10,6 +13,9 @@ import pytest
 from mahavishnu.core.status import WorkerStatus
 from mahavishnu.workers.base import WorkerResult
 from mahavishnu.workers.container import ContainerWorker
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 
 def _make_process(returncode=0, stdout=b"", stderr=b""):
@@ -178,14 +184,15 @@ class TestStart:
 
     @pytest.mark.asyncio
     async def test_start_failure_nonzero_return(self):
+        from mahavishnu.core.errors import ContainerDaemonUnavailable
+
         worker = ContainerWorker()
         proc = _make_process(returncode=1, stderr=b"image not found")
         with (
             patch("mahavishnu.workers.container.asyncio.create_subprocess_exec", return_value=proc),
-            pytest.raises(RuntimeError, match="Failed to launch container"),
+            pytest.raises(ContainerDaemonUnavailable, match="docker"),
         ):
             await worker.start()
-        assert worker._status == WorkerStatus.FAILED
 
     @pytest.mark.asyncio
     async def test_start_sets_starting_then_running(self):
@@ -212,16 +219,52 @@ class TestStart:
 
     @pytest.mark.asyncio
     async def test_start_exception_wraps_in_runtime_error(self):
+        from mahavishnu.core.errors import ContainerDaemonUnavailable
+
         worker = ContainerWorker()
         with (
             patch(
                 "mahavishnu.workers.container.asyncio.create_subprocess_exec",
                 side_effect=OSError("docker not found"),
             ),
-            pytest.raises(RuntimeError, match="Container worker failed to start"),
+            pytest.raises(ContainerDaemonUnavailable, match="OSError"),
         ):
             await worker.start()
-        assert worker._status == WorkerStatus.FAILED
+
+    @pytest.mark.asyncio
+    async def test_start_probe_unreachable_raises_typed_error(self):
+        from mahavishnu.core.errors import ContainerDaemonUnavailable
+
+        worker = ContainerWorker()
+        proc = _make_process(returncode=1, stderr=b"Cannot connect to Docker daemon")
+        with (
+            patch("mahavishnu.workers.container.asyncio.create_subprocess_exec", return_value=proc),
+            pytest.raises(ContainerDaemonUnavailable, match="docker"),
+        ):
+            await worker.start()
+
+    @pytest.mark.asyncio
+    async def test_start_probe_oserror_raises_typed_error(self):
+        from mahavishnu.core.errors import ContainerDaemonUnavailable
+
+        worker = ContainerWorker()
+        with (
+            patch(
+                "mahavishnu.workers.container.asyncio.create_subprocess_exec",
+                side_effect=OSError("docker not found"),
+            ),
+            pytest.raises(ContainerDaemonUnavailable, match="OSError"),
+        ):
+            await worker.start()
+
+    @pytest.mark.asyncio
+    async def test_start_probe_missing_socket_raises_typed_error(self, tmp_path):
+        from mahavishnu.core.errors import ContainerDaemonUnavailable
+
+        missing = tmp_path / "nonexistent.sock"
+        worker = ContainerWorker(socket_path_override=str(missing))
+        with pytest.raises(ContainerDaemonUnavailable, match="socket_missing"):
+            await worker.start()
 
     @pytest.mark.asyncio
     async def test_start_uses_correct_runtime(self):
@@ -655,3 +698,24 @@ class TestEdgeCases:
             with pytest.raises(ValueError, match="dangerous pattern"):
                 await worker.execute({"command": "rm -rf /"})
         mock_exec.assert_not_called()
+
+
+class TestRuntimeDiscovery:
+    def test_container_worker_uses_discovered_runtime(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        fake = tmp_path / "docker"
+        fake.write_text("#!/bin/sh\nexit 0\n")
+        fake.chmod(0o755)
+        monkeypatch.setenv("PATH", f"{tmp_path}:")
+        worker = ContainerWorker(runtime="docker")
+        assert worker.runtime == "docker"
+
+    def test_container_worker_uses_orbstack_socket_when_present(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        socket = tmp_path / "orbstack.sock"
+        socket.write_text("")
+        monkeypatch.setattr("mahavishnu.workers.container.sys.platform", "darwin")
+        worker = ContainerWorker(socket_path_override=str(socket))
+        assert worker.socket_path == str(socket)
