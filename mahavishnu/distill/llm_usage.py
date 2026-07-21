@@ -188,6 +188,8 @@ class UsageTracker:
             )
         except json.JSONDecodeError:
             return 0
+        if not isinstance(new_data, dict):
+            return 0
         calls = new_data.get("calls", [])
         return len(calls) if isinstance(calls, list) else 0
 

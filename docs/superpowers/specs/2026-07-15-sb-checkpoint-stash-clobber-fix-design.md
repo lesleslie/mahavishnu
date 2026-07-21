@@ -386,7 +386,7 @@ semantics:
   expired snapshots.
 - **Session-end hook**: Lists all snapshots for the working dir in
   the session-end log; operator can run cleanup command.
-- **Manual**: `session-buddy checkpoint cleanup-snapshots [--older-than=Nd]`.
+- **Manual**: `session-buddy checkpoint cleanup-snapshots [--older-than=<N> days]`.
 - **On success or failure**: snapshot files are *kept* for at least
   the TTL window. The failure case is the most likely time the user
   wants to inspect.

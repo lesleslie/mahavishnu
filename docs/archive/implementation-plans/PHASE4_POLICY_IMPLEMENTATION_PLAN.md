@@ -216,7 +216,7 @@ class ExperimentMetrics:
     # Statistical calculations
     async def calculate_confidence_interval(self, data: list[float], confidence: float = 0.95) -> tuple[float, float]
     async def calculate_effect_size(self, control: list[float], treatment: list[float]) -> float  # Cohen's d
-    async def calculate_p_value(self, control: list[float], treatment: list[float], test: str = "ttest") -> float
+    async def calculate_p_value(self, control: list[float], treatment: list[float], test: str = "t-test") -> float
     async def calculate_statistical_power(self, effect_size: float, sample_size: int, alpha: float = 0.05) -> float
 
     # Bayesian metrics

@@ -133,4 +133,10 @@ class RoutingFitnessReader:
         if not signals:
             return None
 
-        return max(signals, key=lambda s: signals[s].score, default=None)
+        best_selector: str | None = None
+        best_score = float("-inf")
+        for selector, signal in signals.items():
+            if signal.score > best_score:
+                best_score = signal.score
+                best_selector = selector
+        return best_selector

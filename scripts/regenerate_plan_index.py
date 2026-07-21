@@ -559,18 +559,22 @@ Last regenerated: {generated_at}.
 
 
 def _entry_link(rel: str, store: str) -> str:
-    """POSIX link to the file from the index's home at docs/plans/.
-    Files outside docs/plans/ need an explicit relative prefix."""
+    """POSIX link to the file from the index's home at docs/plans/PLAN_INDEX.md.
+
+    The index is TWO levels below the repo root (docs/plans/PLAN_INDEX.md),
+    so anything under docs/ or .claude/ at repo root needs ``../../``.
+
+    - docs/plans/<x>          → same dir, target is just <x>
+    - docs/<y>/<x>            → up past plans/, up past docs/ → ../../docs/<y>/<x>
+    - .claude/<x>             → up past plans/, up past docs/ → ../../.claude/<x>
+    """
     if rel.startswith("docs/plans/"):
-        depth = 1  # file lives in same directory as the index
-    elif rel.startswith("docs/"):
-        depth = 2  # up one (docs/), then down into the actual path
-    elif rel.startswith(".claude/"):
-        depth = 2  # up one to repo root, then into .claude/
+        target = rel[len("docs/plans/"):]
+    elif rel.startswith("docs/") or rel.startswith(".claude/"):
+        target = "../../" + rel
     else:
-        depth = 2
-    prefix = "../" * (depth - 1)
-    return f"[`{rel}`]({prefix}{rel})"
+        target = "../../" + rel
+    return f"[`{rel}`]({target})"
 
 
 def _render_store_table(store: str, entries: list[Entry]) -> str:

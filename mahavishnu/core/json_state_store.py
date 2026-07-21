@@ -36,7 +36,7 @@ import json
 import os
 from pathlib import Path  # noqa: TC003 — type-only with __future__ annotations
 import tempfile
-from typing import Any
+from typing import Any, cast
 
 
 def _refuse_symlink_target(path: Path) -> None:
@@ -159,7 +159,9 @@ def atomic_json_write(path: Path, data: dict[str, Any] | list[Any]) -> None:
 
 def locked_json_modify(
     path: Path,
-    modifier: Callable[[dict[str, Any] | list[Any] | None], dict[str, Any] | list[Any]],
+    modifier: Callable[
+        [dict[str, Any] | list[Any] | None], dict[str, Any] | list[Any] | object
+    ],
     *,
     default_factory: Callable[[], dict[str, Any] | list[Any]] | None = None,
 ) -> dict[str, Any] | list[Any]:
@@ -215,6 +217,15 @@ def locked_json_modify(
                     if current is not None
                     else (default_factory() if default_factory else {})
                 )
+            if not isinstance(new_data, (dict, list)):
+                # Defensive: a modifier that returned neither SKIP_WRITE nor
+                # valid data is a contract violation; bail out safely.
+                return (
+                    current
+                    if current is not None
+                    else (default_factory() if default_factory else {})
+                )
+            new_data = cast("dict[str, Any] | list[Any]", new_data)
             atomic_json_write(path, new_data)
             return new_data
         finally:

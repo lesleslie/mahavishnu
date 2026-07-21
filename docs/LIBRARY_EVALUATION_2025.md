@@ -326,7 +326,7 @@ class LangGraphAdapter(OrchestratorAdapter):
 
 ### Community Consensus
 
-From [Xcelore production guide](https://xcelore.com/blog/langgraph-vs-crewai/):
+From [Xcelore production guide](https://web.archive.org/web/*/https://xcelore.com/blog/langgraph-vs-crewai/):
 
 - **Production deployments**: Strong preference for LangGraph
 - **Enterprise requirements**: CrewAI has better compliance features
@@ -674,7 +674,7 @@ ______________________________________________________________________
 1. [DataCamp: CrewAI vs LangGraph vs AutoGen](https://www.datacamp.com/tutorial/crewai-vs-langgraph-vs-autogen)
 1. [TrueFoundry: CrewAI vs LangGraph](https://www.truefoundry.com/blog/crewai-vs-langgraph)
 1. Medium: LangGraph vs CrewAI Comparison
-1. [Xcelore: LangGraph vs CrewAI Production Guide](https://xcelore.com/blog/langgraph-vs-crewai/)
+1. [Xcelore: LangGraph vs CrewAI Production Guide](https://web.archive.org/web/*/https://xcelore.com/blog/langgraph-vs-crewai/)
 1. [Langwatch: Best AI Agent Frameworks 2025](https://langwatch.ai/blog/best-ai-agent-frameworks-in-2025-comparing-langgraph-dspy-crewai-agno-and-more)
 1. [Prefect vs Airflow Comparison](https://www.prefect.io/compare/airflow)
 1. Medium: Airflow vs Prefect vs Dagster

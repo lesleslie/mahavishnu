@@ -211,8 +211,11 @@ class RepositoryMessenger:
                 and (since is None or (msg.timestamp is not None and msg.timestamp >= since))
             ]
 
-            # Sort by timestamp (newest first)
-            repo_messages.sort(key=lambda x: x.timestamp, reverse=True)
+            # Sort by timestamp (newest first); entries without a timestamp sort last
+            repo_messages.sort(
+                key=lambda x: x.timestamp or datetime.min,
+                reverse=True,
+            )
 
             # Return limited results
             return repo_messages[:limit]

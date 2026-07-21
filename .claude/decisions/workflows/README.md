@@ -27,4 +27,4 @@ Index:
 | [2026-05-15-crackerjack-coverage-fanout-wave6](2026-05-15-crackerjack-coverage-fanout-wave6.md) | `crackerjack-coverage-fanout-wave6.js` | Active | Wave-6 crackerjack final-mile + stop-condition |
 | [2026-05-22-crackerjack-cleanup-wave7](2026-05-22-crackerjack-cleanup-wave7.md) | `crackerjack-cleanup-wave7.js` | Active | Wave-7 crackerjack cleanup (7 user actions) |
 | [2026-06-12-mahavishnu-coverage-fanout](2026-06-12-mahavishnu-coverage-fanout.md) | `mahavishnu-coverage-fanout-wave-2026-06-12.js` | Active | Mahavishnu wave-1, 8 modules at ~94.7% |
-| [2026-06-12-mahavishnu-coverage-fanout-part2](2026-06-12-mahavishnu-coverage-fanout-part2.md) | `mahavishnu-coverage-fanout-wave-2026-06-12-part2.js` | Active | Mahavishnu wave-2, next 8 modules |
+| [2026-06-12-mahavishnu-coverage-fanout-wave-2026-06-12-part2](2026-06-12-mahavishnu-coverage-fanout-wave-2026-06-12-part2.md) | `mahavishnu-coverage-fanout-wave-2026-06-12-part2.js` | Active | Mahavishnu wave-2, next 8 modules |

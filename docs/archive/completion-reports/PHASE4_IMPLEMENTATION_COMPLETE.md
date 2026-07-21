@@ -336,7 +336,7 @@ success_rate = await metrics.calculate_success_rate(variant_data)
 ci_low, ci_high = await metrics.calculate_confidence_interval(data)
 
 # Statistical tests
-p_value = await metrics.calculate_p_value(control_data, treatment_data, test="ttest")
+p_value = await metrics.calculate_p_value(control_data, treatment_data, test="t-test")
 effect_size = await metrics.calculate_effect_size(control_data, treatment_data)
 
 # Power analysis

@@ -5,6 +5,108 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.10.0] - 2026-07-21
+
+### Added
+
+- Add mahavishnu metrics dispatch subcommand
+- Add mahavishnu metrics verification subcommand
+- Add mahavishnu plugin manifest + namespaced commands (additive)
+- Add ultracode Phase 1/3 settings
+- cli: Add --json output for list-sessions and prune-abandoned
+- docs: Frontmatter v1 schema, validator, topic vocabulary (plan-lifecycle-unification P0)
+- docs: PLAN_INDEX regenerator + first regeneration (plan-lifecycle-unification P6)
+- frontmatter: Migrate 217 docs to v1 schema
+- hooks: Add discovery hint for opt-in worktree isolation (Phase 4)
+- hooks: Discover current branch, debug mode, credential safety, configurable timeout
+- hooks: Flip default-on for internal-team Bodai usage (Phase 8)
+- hooks: Wire worktree-session-isolation into SessionStart/SessionEnd
+- Per-session worktree registry + CLI (Phase 1)
+- plugin: Remove old flat session-buddy commands (now session-buddy:<cmd>)
+- regenerator: Auto-discover stores + per-repo Authority Matrix
+- Remove old flat slash commands; mahavishnu plugin is canonical
+- Workflow lifecycle audit script
+
+### Changed
+
+- Consolidate flock+atomic-write into json_state_store
+- Mahavishnu (quality: 0/100) - 2026-07-16 19:44:17
+- Mahavishnu (quality: 72/100) - 2026-07-16 18:33:29
+- Mahavishnu (quality: 72/100) - 2026-07-16 18:50:08
+- Mahavishnu (quality: 72/100) - 2026-07-20 22:55:11
+- Wire fail-closed end-to-end + adopt followups lifecycle
+
+### Fixed
+
+- claude: Enable bodai-activity-* hooks by nesting under 'hooks' key
+- followups: Map legacy status 'resolved' to canonical 'complete'
+- frontmatter: Populate superseded_by for 2026-04-09-tui-design.md
+- frontmatter: Re-convert 2026-04-09-tui-design.md
+- hooks: Detect real git worktrees via --git-dir
+- hooks: Harden mode dispatch, payload validation, and option-injection
+- registry: Log diagnostic on unsupported schema_version
+- security: Bandit skips + 3 real vulnerability fixes
+- validator: Exclude .archive/, accept list-form superseded_by/blocks_on, coerce Resolved->complete (C1.1)
+- worktree-registry: Close lost-update race + write-path TOCTOU
+
+### Documentation
+
+- Align hint prefix with brand convention + reference XDG state path
+- Bodai plugin standardization implementation plan
+- Close out per-session worktree isolation rollout (Phase 3)
+- Constellation tui implementation plan (10 tasks, deferred)
+- Cross-reference Phase 8 commit hash in followup
+- decisions: Add component-health-cli-gap decision
+- decisions: Add dhara-key-prefixes decision
+- decisions: Add workflow decision README and template
+- Fix Phase 4 commit hash reference (post-amend)
+- followups: Add lifecycle template
+- followups: Close multi-session-mcp-contention — fix landed in session-buddy
+- followups: Open multi-session-mcp-contention followup
+- followups: Update index for bodai-hooks-sb-debug resolution
+- Normalize .claude/decisions to lite frontmatter (P5 Pass 1)
+- Normalize 14 ADRs to unified frontmatter (plan-lifecycle-unification P1)
+- Normalize 18 orphan docs/plans files (C1.2)
+- Normalize docs/plans to unified frontmatter (P2 Pass 1)
+- Normalize docs/superpowers/plans to unified frontmatter (P4 Pass 1)
+- Pair existing wave workflows with decision files
+- Pair remaining unpaired workflows with decision files; rename part2 to match filename
+- plan-index: Link constellation tui to companion ACP spec
+- plan-index: Track cross-repo Dhara cache-adapter consolidation plans
+- plans: Add frontmatter to validator-wiring plan
+- plans: Implementation plan for validator wiring + P7 cross-repo expansion
+- plans: Mark oneiric wire standardization shipped
+- plans: Promote 2026-07-16-dlq-fail-closed-wiring to shipped
+- plans: PyPI auth redesign implementation plan
+- plans: Reconcile PLAN_INDEX drift-sync 2026-07-15
+- plans: Tick stale-done ultracode Phase 1-3 items
+- schema: Expand topic vocabulary seed list 10 -> 19 to cover P1 ADRs
+- schemas: Add 3 ecosystem topics to vocabulary (crackerjack-publish-auth, akosha-skills, bodai-radar)
+- schemas: Add followups-index topic to vocabulary
+- schemas: Add session-worktree-isolation topic to vocabulary
+- schemas: Reference crackerjack integration surface
+- skills: Migrate SKILL.md frontmatter to YAML
+- skills: Rename vishnu to mahavishnu
+- skills: Rename vishnu-status to mahavishnu-status
+- specs+followups: Normalize 4 orphan files (C1.3)
+- specs: Bodai plugin standardization design
+- specs: Constellation tui three-surface design
+- specs: Design for wiring validator into crackerjack + P7 cross-repo expansion
+- specs: Mahavishnu acp server design (path A, deferred)
+- specs: PyPI auth redesign — replaces recurring publish auth bug class
+- Stash-clobber fix plan + rework (R1-R10 critical-blocker fixes)
+- Update stale /vishnu-status reference to /mahavishnu:status
+- workflows: Archive superseded waves and update their decision Status
+
+### Testing
+
+- cli: Add direct tests for list-sessions and prune-abandoned
+- registry: Add edge case coverage + fix corrupt-shape bug
+
+### Internal
+
+- plugin: Normalize mcpServers path to use ./ prefix
+
 ## [0.9.0] - 2026-07-15
 
 ### Added

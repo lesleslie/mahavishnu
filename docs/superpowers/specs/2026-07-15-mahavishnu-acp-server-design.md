@@ -18,7 +18,7 @@ blocks_on: []
 
 ## Context
 
-Toad ([batrachianai/toad](https://github.com/batrachianai/toad)) is a Textual-based TUI that drives coding agents via the **Agent Client Protocol (ACP)** — a JSON-RPC 2.0 protocol jointly governed by [Zed and JetBrains](https://agentclientprotocol.com/community/governance). As of 2026-07-15 the [ACP adopters list](https://agentclientprotocol.com/ecosystem) includes **Claude Code**, plus 14+ IDE clients (Zed, JetBrains, VS Code, Neovim, Vim, etc.). Toad has **no public roadmap item** for A2A support (4 open issues, 0 GitHub hits for "A2A").
+Toad ([batrachianai/toad](https://github.com/batrachianai/toad)) is a Textual-based TUI that drives coding agents via the **Agent Client Protocol (ACP)** — a JSON-RPC 2.0 protocol jointly governed by [Zed and JetBrains](https://agentclientprotocol.com/community/governance). As of 2026-07-15 the [ACP adopters list](https://web.archive.org/web/*/https://agentclientprotocol.com/ecosystem) includes **Claude Code**, plus 14+ IDE clients (Zed, JetBrains, VS Code, Neovim, Vim, etc.). Toad has **no public roadmap item** for A2A support (4 open issues, 0 GitHub hits for "A2A").
 
 Mahavishnu today exposes itself as an **A2A server** (HTTP+SSE, well-known agent card, task lifecycle) at `mahavishnu/a2a/server.py` (242 lines). It does **not** implement ACP. To use Toad directly against Mahavishnu — without the Claude Code layer between — Mahavishnu must speak ACP.
 
@@ -27,7 +27,7 @@ Path A (this spec) is the user's chosen direction: **add an ACP server transport
 Two recent developments make this path more attractive than it was a year ago:
 
 1. **MCP-over-ACP RFD** ([agentclientprotocol.com/rfds/mcp-over-acp](https://agentclientprotocol.com/rfds/mcp-over-acp)) — agents will be able to advertise `mcpCapabilities.acp: true`, letting ACP sessions tunnel MCP tool calls. Mahavishnu's existing 174 MCP tools could ride on ACP sessions without re-implementation.
-1. **A2A v1.0 GA** (January 15, 2026, [Linux Foundation announcement](https://linuxfoundation.org/announcing-a2a-v1-0)) — proves the A2A surface is canonical and stable; we are not replacing it, just adding a second protocol.
+1. **A2A v1.0 GA** (January 15, 2026, [Linux Foundation announcement](https://web.archive.org/web/*/https://linuxfoundation.org/announcing-a2a-v1-0)) — proves the A2A surface is canonical and stable; we are not replacing it, just adding a second protocol.
 
 ## Decision
 
@@ -315,11 +315,11 @@ Each step is independently mergeable. Steps 1-3 can be developed in parallel (th
 
 ## References
 
-- [.claude/decisions/wire-up-contract.md](../../.claude/decisions/wire-up-contract.md) — Integration Contract policy
+- [.claude/decisions/wire-up-contract.md](../../../.claude/decisions/wire-up-contract.md) — Integration Contract policy
 - [docs/plans/TEMPLATE.md](../../plans/TEMPLATE.md) — implementation plan template (next phase)
 - [docs/feature-tracking/TEMPLATE.md](../../feature-tracking/TEMPLATE.md) — feature-state tracker (`built → wired → adopted`)
-- ACP official: [agentclientprotocol.com](https://agentclientprotocol.com/) (governance: [Zed + JetBrains](https://agentclientprotocol.com/community/governance); ecosystem: [clients + agents](https://agentclientprotocol.com/ecosystem); MCP-over-ACP RFD: [rfds/mcp-over-acp](https://agentclientprotocol.com/rfds/mcp-over-acp))
-- A2A v1.0 (existing Mahavishnu protocol, unchanged): [Linux Foundation announcement](https://linuxfoundation.org/announcing-a2a-v1-0); [Google blog](https://blog.google/technology/ai/a2a-linux-foundation); [a2a-protocol.org](https://a2a-protocol.org/)
+- ACP official: [agentclientprotocol.com](https://agentclientprotocol.com/) (governance: [Zed + JetBrains](https://agentclientprotocol.com/community/governance); ecosystem: [clients + agents](https://web.archive.org/web/*/https://agentclientprotocol.com/ecosystem); MCP-over-ACP RFD: [rfds/mcp-over-acp](https://agentclientprotocol.com/rfds/mcp-over-acp))
+- A2A v1.0 (existing Mahavishnu protocol, unchanged): [Linux Foundation announcement](https://web.archive.org/web/*/https://linuxfoundation.org/announcing-a2a-v1-0); [Google blog](https://web.archive.org/web/*/https://blog.google/technology/ai/a2a-linux-foundation); [a2a-protocol.org](https://a2a-protocol.org/)
 - Toad: [github.com/batrachianai/toad](https://github.com/batrachianai/toad) (ACP-only; no A2A on roadmap)
 - Existing Mahavishnu A2A server (unchanged): `mahavishnu/a2a/server.py`
 - Existing Mahavishnu EventBridge subscriber (consumed): `mahavishnu/core/events/bodai_subscriber.py`

@@ -1457,14 +1457,13 @@ def _render_verification_output(
 
     for entry in filtered[-20:]:
         value = entry["value"]
+        ts = _entry_timestamp(entry)
         recent.append(
             {
                 "key": entry["key"],
                 "consensus": _verification_consensus(value),
                 "persisted": _verification_persisted(value),
-                "timestamp": _entry_timestamp(entry).isoformat()
-                if _entry_timestamp(entry)
-                else None,
+                "timestamp": ts.isoformat() if ts is not None else None,
             }
         )
 
@@ -1610,14 +1609,13 @@ def _render_dispatch_output(
         value = entry["value"]
         caller_kind = _routing_caller_kind(value)
         is_async = _routing_async_callback(value)
+        ts = _entry_timestamp(entry)
         recent.append(
             {
                 "key": entry["key"],
                 "caller_kind": caller_kind,
                 "async_callback": is_async,
-                "timestamp": _entry_timestamp(entry).isoformat()
-                if _entry_timestamp(entry)
-                else None,
+                "timestamp": ts.isoformat() if ts is not None else None,
             }
         )
 

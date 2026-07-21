@@ -227,7 +227,11 @@ class SessionWorktreeRegistry:
         if not session_id_short:
             raise ValueError("session_id_short must be non-empty")
 
-        def modifier(data: dict[str, Any]) -> dict[str, Any] | object:
+        def modifier(
+            data: dict[str, Any] | list[Any] | None,
+        ) -> dict[str, Any] | list[Any] | object:
+            if not isinstance(data, dict):
+                return SKIP_WRITE
             version = data.get("schema_version")
             if version is not None and version != SUPPORTED_SCHEMA_VERSION:
                 self._read_only = True
@@ -261,7 +265,11 @@ class SessionWorktreeRegistry:
     def mark_abandoned(self, session_id_short: str, abandoned_at: str | None = None) -> None:
         """Flip an entry's state to ``"abandoned"``. No-op if missing or read-only."""
 
-        def modifier(data: dict[str, Any]) -> dict[str, Any] | object:
+        def modifier(
+            data: dict[str, Any] | list[Any] | None,
+        ) -> dict[str, Any] | list[Any] | object:
+            if not isinstance(data, dict):
+                return SKIP_WRITE
             version = data.get("schema_version")
             if version is not None and version != SUPPORTED_SCHEMA_VERSION:
                 self._read_only = True
@@ -281,7 +289,11 @@ class SessionWorktreeRegistry:
     def remove(self, session_id_short: str) -> None:
         """Delete an entry. No-op if missing or read-only."""
 
-        def modifier(data: dict[str, Any]) -> dict[str, Any] | object:
+        def modifier(
+            data: dict[str, Any] | list[Any] | None,
+        ) -> dict[str, Any] | list[Any] | object:
+            if not isinstance(data, dict):
+                return SKIP_WRITE
             version = data.get("schema_version")
             if version is not None and version != SUPPORTED_SCHEMA_VERSION:
                 self._read_only = True
