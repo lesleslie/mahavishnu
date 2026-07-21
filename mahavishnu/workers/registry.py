@@ -9,6 +9,27 @@ from enum import Enum
 import os
 
 
+class AuthKind(Enum):
+    """Authentication mechanism required by a worker."""
+
+    NONE = "none"
+    API_KEY = "api_key"
+    CLI_SUBSCRIPTION = "cli_subscription"
+    MCP_CREDENTIAL = "mcp_credential"
+    BEARER_TOKEN = "bearer_token"
+    OAUTH = "oauth"
+
+
+class RuntimeKind(Enum):
+    """Runtime that hosts a worker process."""
+
+    NONE = "none"
+    SHELL = "shell"
+    DOCKER = "docker"
+    PODMAN = "podman"
+    ORBSTACK = "orbstack"
+
+
 class WorkerCategory(Enum):
     """Categories of workers for organization."""
 
@@ -38,6 +59,13 @@ class WorkerConfig:
         env_vars: Environment variables to set
         requires_tool: External tool that must be installed
         mcp_server: Optional MCP server name for application workers
+        complete_on_valid_json: Stop when the stream yields valid JSON
+        required_env: Environment variable names the worker depends on
+        required_settings: Mahavishnu settings keys the worker depends on
+        auth_kind: Authentication mechanism required to use this worker
+        runtime_kind: Runtime that hosts the worker process
+        one_shot: Whether the worker runs a single task and exits
+        endpoint: Static base URL if the worker is a remote HTTP/RPC service
     """
 
     name: str
@@ -56,6 +84,12 @@ class WorkerConfig:
     requires_tool: str | None = None
     mcp_server: str | None = None
     complete_on_valid_json: bool = False
+    required_env: list[str] = field(default_factory=list)
+    required_settings: list[str] = field(default_factory=list)
+    auth_kind: AuthKind = AuthKind.NONE
+    runtime_kind: RuntimeKind = RuntimeKind.NONE
+    one_shot: bool = False
+    endpoint: str | None = None
 
 
 # Worker type registry - all available workers
@@ -70,6 +104,11 @@ WORKER_REGISTRY: dict[str, WorkerConfig] = {
         completion_markers=["finish_reason", '"done"', '"type": "done"'],
         stream_format="json",
         requires_tool="qwen",
+        required_env=[],
+        auth_kind=AuthKind.CLI_SUBSCRIPTION,
+        runtime_kind=RuntimeKind.SHELL,
+        one_shot=False,
+        endpoint=None,
     ),
     "terminal-claude": WorkerConfig(
         name="Claude Code",
@@ -80,6 +119,11 @@ WORKER_REGISTRY: dict[str, WorkerConfig] = {
         completion_markers=["finish_reason", '"done"', '"type": "done"'],
         stream_format="json",
         requires_tool="claude",
+        required_env=[],
+        auth_kind=AuthKind.CLI_SUBSCRIPTION,
+        runtime_kind=RuntimeKind.SHELL,
+        one_shot=False,
+        endpoint=None,
     ),
     "terminal-codex": WorkerConfig(
         name="Codex CLI",
@@ -92,6 +136,11 @@ WORKER_REGISTRY: dict[str, WorkerConfig] = {
         completion_markers=["__MAHAVISHNU_DONE__"],
         stream_format="text",
         requires_tool="codex",
+        required_env=[],
+        auth_kind=AuthKind.CLI_SUBSCRIPTION,
+        runtime_kind=RuntimeKind.SHELL,
+        one_shot=True,
+        endpoint=None,
     ),
     "terminal-openclaw": WorkerConfig(
         name="OpenClaw",
@@ -103,6 +152,11 @@ WORKER_REGISTRY: dict[str, WorkerConfig] = {
         stream_format="json",
         requires_tool="openclaw",
         complete_on_valid_json=True,
+        required_env=[],
+        auth_kind=AuthKind.CLI_SUBSCRIPTION,
+        runtime_kind=RuntimeKind.SHELL,
+        one_shot=True,
+        endpoint=None,
     ),
     "terminal-deepagents": WorkerConfig(
         name="DeepAgents CLI",
@@ -116,6 +170,11 @@ WORKER_REGISTRY: dict[str, WorkerConfig] = {
         completion_markers=["__MAHAVISHNU_DONE__"],
         stream_format="text",
         requires_tool="deepagents-cli",
+        required_env=[],
+        auth_kind=AuthKind.CLI_SUBSCRIPTION,
+        runtime_kind=RuntimeKind.SHELL,
+        one_shot=True,
+        endpoint=None,
     ),
     "terminal-clai": WorkerConfig(
         name="CLAI",
@@ -126,6 +185,11 @@ WORKER_REGISTRY: dict[str, WorkerConfig] = {
         completion_markers=["__MAHAVISHNU_DONE__"],
         stream_format="text",
         requires_tool="clai",
+        required_env=[],
+        auth_kind=AuthKind.CLI_SUBSCRIPTION,
+        runtime_kind=RuntimeKind.SHELL,
+        one_shot=True,
+        endpoint=None,
     ),
     "terminal-crow": WorkerConfig(
         name="crow-cli ACP",
@@ -140,6 +204,11 @@ WORKER_REGISTRY: dict[str, WorkerConfig] = {
         complete_on_valid_json=True,  # ACP protocol returns structured JSON responses
         default_timeout=300,
         requires_tool="crow",
+        required_env=[],
+        auth_kind=AuthKind.MCP_CREDENTIAL,
+        runtime_kind=RuntimeKind.NONE,
+        one_shot=False,
+        endpoint=None,
     ),
     "terminal-aider": WorkerConfig(
         name="Aider",
@@ -150,6 +219,11 @@ WORKER_REGISTRY: dict[str, WorkerConfig] = {
         completion_markers=[">"],
         default_timeout=300,
         requires_tool="aider",
+        required_env=[],
+        auth_kind=AuthKind.CLI_SUBSCRIPTION,
+        runtime_kind=RuntimeKind.SHELL,
+        one_shot=False,
+        endpoint=None,
     ),
     "terminal-goose": WorkerConfig(
         name="Block Goose",
@@ -160,6 +234,11 @@ WORKER_REGISTRY: dict[str, WorkerConfig] = {
         completion_markers=["Goose: "],
         default_timeout=300,
         requires_tool="goose",
+        required_env=[],
+        auth_kind=AuthKind.CLI_SUBSCRIPTION,
+        runtime_kind=RuntimeKind.SHELL,
+        one_shot=False,
+        endpoint=None,
     ),
     "terminal-gemini": WorkerConfig(
         name="Gemini CLI",
@@ -170,6 +249,11 @@ WORKER_REGISTRY: dict[str, WorkerConfig] = {
         completion_markers=["> "],
         default_timeout=300,
         requires_tool="gemini",
+        required_env=[],
+        auth_kind=AuthKind.CLI_SUBSCRIPTION,
+        runtime_kind=RuntimeKind.SHELL,
+        one_shot=False,
+        endpoint=None,
     ),
     "terminal-amp": WorkerConfig(
         name="Amp",
@@ -180,6 +264,11 @@ WORKER_REGISTRY: dict[str, WorkerConfig] = {
         completion_markers=["> "],
         default_timeout=300,
         requires_tool="amp",
+        required_env=[],
+        auth_kind=AuthKind.CLI_SUBSCRIPTION,
+        runtime_kind=RuntimeKind.SHELL,
+        one_shot=False,
+        endpoint=None,
     ),
     "gateway-openclaw": WorkerConfig(
         name="OpenClaw Gateway",
@@ -189,6 +278,11 @@ WORKER_REGISTRY: dict[str, WorkerConfig] = {
         description="OpenClaw gateway worker via HTTP JSON-RPC",
         supports_interactive=False,
         default_timeout=300,
+        required_env=["OPENCLAW_GATEWAY_URL"],
+        auth_kind=AuthKind.BEARER_TOKEN,
+        runtime_kind=RuntimeKind.NONE,
+        one_shot=True,
+        endpoint=None,  # read from env (OPENCLAW_GATEWAY_URL) at runtime
     ),
     # terminal-ollama intentionally absent: Ollama uses HTTP API, not a CLI
     # session.  Use OllamaWorker directly instead of routing through
@@ -203,6 +297,11 @@ WORKER_REGISTRY: dict[str, WorkerConfig] = {
         completion_markers=["$"],  # Prompt indicates ready
         stream_format="text",
         default_timeout=60,
+        required_env=[],
+        auth_kind=AuthKind.NONE,
+        runtime_kind=RuntimeKind.SHELL,
+        one_shot=False,
+        endpoint=None,
     ),
     "terminal-zsh": WorkerConfig(
         name="Zsh Shell",
@@ -213,6 +312,11 @@ WORKER_REGISTRY: dict[str, WorkerConfig] = {
         completion_markers=["%", "#"],  # Zsh prompts
         stream_format="text",
         default_timeout=60,
+        required_env=[],
+        auth_kind=AuthKind.NONE,
+        runtime_kind=RuntimeKind.SHELL,
+        one_shot=False,
+        endpoint=None,
     ),
     "terminal-python": WorkerConfig(
         name="Python REPL",
@@ -223,6 +327,11 @@ WORKER_REGISTRY: dict[str, WorkerConfig] = {
         completion_markers=[">>>", "..."],
         stream_format="text",
         requires_tool="python3",
+        required_env=[],
+        auth_kind=AuthKind.NONE,
+        runtime_kind=RuntimeKind.SHELL,
+        one_shot=False,
+        endpoint=None,
     ),
     "terminal-ipython": WorkerConfig(
         name="IPython",
@@ -233,6 +342,11 @@ WORKER_REGISTRY: dict[str, WorkerConfig] = {
         completion_markers=["In [", "Out ["],
         stream_format="text",
         requires_tool="ipython",
+        required_env=[],
+        auth_kind=AuthKind.NONE,
+        runtime_kind=RuntimeKind.SHELL,
+        one_shot=False,
+        endpoint=None,
     ),
     "terminal-node": WorkerConfig(
         name="Node.js REPL",
@@ -243,6 +357,11 @@ WORKER_REGISTRY: dict[str, WorkerConfig] = {
         completion_markers=[">"],
         stream_format="text",
         requires_tool="node",
+        required_env=[],
+        auth_kind=AuthKind.NONE,
+        runtime_kind=RuntimeKind.SHELL,
+        one_shot=False,
+        endpoint=None,
     ),
     # Remote Execution
     "terminal-ssh": WorkerConfig(
@@ -255,6 +374,12 @@ WORKER_REGISTRY: dict[str, WorkerConfig] = {
         stream_format="text",
         requires_tool="ssh",
         default_timeout=600,
+        required_env=[],
+        required_settings=["workers.remote.hosts"],
+        auth_kind=AuthKind.BEARER_TOKEN,
+        runtime_kind=RuntimeKind.SHELL,
+        one_shot=False,
+        endpoint=None,
     ),
     # Database Workers
     "terminal-mysql": WorkerConfig(
@@ -267,6 +392,11 @@ WORKER_REGISTRY: dict[str, WorkerConfig] = {
         stream_format="text",
         requires_tool="mysql",
         default_timeout=300,
+        required_env=["MYSQL_PASSWORD"],
+        auth_kind=AuthKind.BEARER_TOKEN,
+        runtime_kind=RuntimeKind.SHELL,
+        one_shot=False,
+        endpoint=None,
     ),
     "terminal-psql": WorkerConfig(
         name="PostgreSQL CLI",
@@ -278,6 +408,11 @@ WORKER_REGISTRY: dict[str, WorkerConfig] = {
         stream_format="text",
         requires_tool="psql",
         default_timeout=300,
+        required_env=["PGPASSWORD"],
+        auth_kind=AuthKind.BEARER_TOKEN,
+        runtime_kind=RuntimeKind.SHELL,
+        one_shot=False,
+        endpoint=None,
     ),
     "terminal-turso": WorkerConfig(
         name="Turso CLI",
@@ -289,6 +424,11 @@ WORKER_REGISTRY: dict[str, WorkerConfig] = {
         stream_format="text",
         requires_tool="turso",
         default_timeout=300,
+        required_env=["TURSO_AUTH_TOKEN"],
+        auth_kind=AuthKind.BEARER_TOKEN,
+        runtime_kind=RuntimeKind.SHELL,
+        one_shot=False,
+        endpoint=None,
     ),
     "terminal-redis": WorkerConfig(
         name="Redis CLI",
@@ -300,6 +440,11 @@ WORKER_REGISTRY: dict[str, WorkerConfig] = {
         stream_format="text",
         requires_tool="redis-cli",
         default_timeout=120,
+        required_env=[],
+        auth_kind=AuthKind.BEARER_TOKEN,
+        runtime_kind=RuntimeKind.SHELL,
+        one_shot=False,
+        endpoint=None,
     ),
     # WebAssembly Workers
     "terminal-wasmtime": WorkerConfig(
@@ -311,6 +456,11 @@ WORKER_REGISTRY: dict[str, WorkerConfig] = {
         completion_markers=[">", "$"],
         stream_format="text",
         requires_tool="wasmtime",
+        required_env=[],
+        auth_kind=AuthKind.NONE,
+        runtime_kind=RuntimeKind.SHELL,
+        one_shot=False,
+        endpoint=None,
     ),
     "terminal-wasmer": WorkerConfig(
         name="Wasmer Runtime",
@@ -321,6 +471,11 @@ WORKER_REGISTRY: dict[str, WorkerConfig] = {
         completion_markers=[">", "$"],
         stream_format="text",
         requires_tool="wasmer",
+        required_env=[],
+        auth_kind=AuthKind.NONE,
+        runtime_kind=RuntimeKind.SHELL,
+        one_shot=False,
+        endpoint=None,
     ),
     # Container (existing)
     "container": WorkerConfig(
@@ -330,6 +485,11 @@ WORKER_REGISTRY: dict[str, WorkerConfig] = {
         category=WorkerCategory.CONTAINER,
         description="Docker container for isolated task execution",
         supports_interactive=False,
+        required_env=[],
+        auth_kind=AuthKind.NONE,
+        runtime_kind=RuntimeKind.DOCKER,
+        one_shot=True,
+        endpoint=None,
     ),
     "container-executor": WorkerConfig(
         name="Container Executor",
@@ -338,6 +498,11 @@ WORKER_REGISTRY: dict[str, WorkerConfig] = {
         category=WorkerCategory.CONTAINER,
         description="Docker/Podman container for isolated execution",
         supports_interactive=False,
+        required_env=[],
+        auth_kind=AuthKind.NONE,
+        runtime_kind=RuntimeKind.DOCKER,
+        one_shot=True,
+        endpoint=None,
     ),
     # Application Workers (via MCP)
     "application-gimp": WorkerConfig(
@@ -348,6 +513,11 @@ WORKER_REGISTRY: dict[str, WorkerConfig] = {
         description="GIMP image editing via MCP server",
         mcp_server="gimp-mcp",
         supports_interactive=False,
+        required_env=[],
+        auth_kind=AuthKind.MCP_CREDENTIAL,
+        runtime_kind=RuntimeKind.NONE,
+        one_shot=False,
+        endpoint=None,
     ),
     "application-inkscape": WorkerConfig(
         name="Inkscape Vector Graphics",
@@ -358,6 +528,11 @@ WORKER_REGISTRY: dict[str, WorkerConfig] = {
         completion_markers=[">"],
         stream_format="text",
         requires_tool="inkscape",
+        required_env=[],
+        auth_kind=AuthKind.NONE,
+        runtime_kind=RuntimeKind.SHELL,
+        one_shot=False,
+        endpoint=None,
     ),
     "application-blender": WorkerConfig(
         name="Blender 3D",
@@ -367,6 +542,11 @@ WORKER_REGISTRY: dict[str, WorkerConfig] = {
         description="Blender 3D modeling and rendering via MCP server",
         mcp_server="blender-mcp",
         supports_interactive=False,
+        required_env=[],
+        auth_kind=AuthKind.MCP_CREDENTIAL,
+        runtime_kind=RuntimeKind.NONE,
+        one_shot=False,
+        endpoint=None,
     ),
     "application-mdinject": WorkerConfig(
         name="MDInject",
@@ -376,6 +556,11 @@ WORKER_REGISTRY: dict[str, WorkerConfig] = {
         description="Markdown prompt injection and management via MCP server",
         mcp_server="mdinject",
         supports_interactive=False,
+        required_env=[],
+        auth_kind=AuthKind.MCP_CREDENTIAL,
+        runtime_kind=RuntimeKind.NONE,
+        one_shot=False,
+        endpoint=None,
     ),
     "application-vscode": WorkerConfig(
         name="VS Code",
@@ -385,6 +570,11 @@ WORKER_REGISTRY: dict[str, WorkerConfig] = {
         description="VS Code IDE automation via MCP server",
         mcp_server="vscode-mcp",
         supports_interactive=False,
+        required_env=[],
+        auth_kind=AuthKind.MCP_CREDENTIAL,
+        runtime_kind=RuntimeKind.NONE,
+        one_shot=False,
+        endpoint=None,
     ),
     "application-penpot": WorkerConfig(
         name="Penpot Design",
@@ -394,6 +584,11 @@ WORKER_REGISTRY: dict[str, WorkerConfig] = {
         description="Penpot design and prototyping via MCP server",
         mcp_server="penpot",
         supports_interactive=False,
+        required_env=[],
+        auth_kind=AuthKind.MCP_CREDENTIAL,
+        runtime_kind=RuntimeKind.NONE,
+        one_shot=False,
+        endpoint=None,
     ),
     "application-grafana": WorkerConfig(
         name="Grafana",
@@ -403,6 +598,11 @@ WORKER_REGISTRY: dict[str, WorkerConfig] = {
         description="Grafana dashboards and monitoring via MCP server",
         mcp_server="grafana",
         supports_interactive=False,
+        required_env=[],
+        auth_kind=AuthKind.MCP_CREDENTIAL,
+        runtime_kind=RuntimeKind.NONE,
+        one_shot=False,
+        endpoint=None,
     ),
     # New MCP Server Workers
     "application-porkbun-dns": WorkerConfig(
@@ -413,6 +613,11 @@ WORKER_REGISTRY: dict[str, WorkerConfig] = {
         description="Porkbun DNS record management via MCP server",
         mcp_server="porkbun-dns-mcp",
         supports_interactive=False,
+        required_env=[],
+        auth_kind=AuthKind.MCP_CREDENTIAL,
+        runtime_kind=RuntimeKind.NONE,
+        one_shot=False,
+        endpoint=None,
     ),
     "application-porkbun-domain": WorkerConfig(
         name="Porkbun Domain",
@@ -422,6 +627,11 @@ WORKER_REGISTRY: dict[str, WorkerConfig] = {
         description="Porkbun domain management via MCP server",
         mcp_server="porkbun-domain-mcp",
         supports_interactive=False,
+        required_env=[],
+        auth_kind=AuthKind.MCP_CREDENTIAL,
+        runtime_kind=RuntimeKind.NONE,
+        one_shot=False,
+        endpoint=None,
     ),
     "application-synxis-crs": WorkerConfig(
         name="SynXis CRS",
@@ -431,6 +641,11 @@ WORKER_REGISTRY: dict[str, WorkerConfig] = {
         description="SynXis Central Reservation System via MCP server",
         mcp_server="synxis-crs-mcp",
         supports_interactive=False,
+        required_env=[],
+        auth_kind=AuthKind.MCP_CREDENTIAL,
+        runtime_kind=RuntimeKind.NONE,
+        one_shot=False,
+        endpoint=None,
     ),
     "application-synxis-pms": WorkerConfig(
         name="SynXis PMS",
@@ -440,6 +655,11 @@ WORKER_REGISTRY: dict[str, WorkerConfig] = {
         description="SynXis Property Management System via MCP server",
         mcp_server="synxis-pms-mcp",
         supports_interactive=False,
+        required_env=[],
+        auth_kind=AuthKind.MCP_CREDENTIAL,
+        runtime_kind=RuntimeKind.NONE,
+        one_shot=False,
+        endpoint=None,
     ),
     "application-graphics": WorkerConfig(
         name="Graphics",
@@ -449,6 +669,11 @@ WORKER_REGISTRY: dict[str, WorkerConfig] = {
         description="Image manipulation via Pillow/pilkit MCP server",
         mcp_server="graphics-mcp",
         supports_interactive=False,
+        required_env=[],
+        auth_kind=AuthKind.MCP_CREDENTIAL,
+        runtime_kind=RuntimeKind.NONE,
+        one_shot=False,
+        endpoint=None,
     ),
     "application-neo4j": WorkerConfig(
         name="Neo4j Graph",
@@ -458,6 +683,11 @@ WORKER_REGISTRY: dict[str, WorkerConfig] = {
         description="Neo4j graph database via MCP server",
         mcp_server="neo4j-mcp",
         supports_interactive=False,
+        required_env=[],
+        auth_kind=AuthKind.MCP_CREDENTIAL,
+        runtime_kind=RuntimeKind.NONE,
+        one_shot=False,
+        endpoint=None,
     ),
     # IDE Workers (via MCP)
     "application-pycharm": WorkerConfig(
@@ -469,6 +699,11 @@ WORKER_REGISTRY: dict[str, WorkerConfig] = {
         mcp_server="jetbrains",
         supports_interactive=False,
         default_timeout=60,
+        required_env=[],
+        auth_kind=AuthKind.MCP_CREDENTIAL,
+        runtime_kind=RuntimeKind.NONE,
+        one_shot=False,
+        endpoint=None,
     ),
     # DevOps/Infrastructure Workers
     "terminal-sqlite": WorkerConfig(
@@ -481,6 +716,11 @@ WORKER_REGISTRY: dict[str, WorkerConfig] = {
         stream_format="text",
         requires_tool="sqlite3",
         default_timeout=120,
+        required_env=[],
+        auth_kind=AuthKind.NONE,
+        runtime_kind=RuntimeKind.SHELL,
+        one_shot=False,
+        endpoint=None,
     ),
     "terminal-mongo": WorkerConfig(
         name="MongoDB Shell",
@@ -492,6 +732,11 @@ WORKER_REGISTRY: dict[str, WorkerConfig] = {
         stream_format="text",
         requires_tool="mongosh",
         default_timeout=300,
+        required_env=[],
+        auth_kind=AuthKind.BEARER_TOKEN,
+        runtime_kind=RuntimeKind.SHELL,
+        one_shot=False,
+        endpoint=None,
     ),
     "terminal-kubectl": WorkerConfig(
         name="Kubernetes CLI",
@@ -503,6 +748,11 @@ WORKER_REGISTRY: dict[str, WorkerConfig] = {
         stream_format="text",
         requires_tool="kubectl",
         default_timeout=300,
+        required_env=[],
+        auth_kind=AuthKind.CLI_SUBSCRIPTION,
+        runtime_kind=RuntimeKind.SHELL,
+        one_shot=False,
+        endpoint=None,
     ),
     "terminal-terraform": WorkerConfig(
         name="Terraform CLI",
@@ -514,6 +764,11 @@ WORKER_REGISTRY: dict[str, WorkerConfig] = {
         stream_format="text",
         requires_tool="terraform",
         default_timeout=600,
+        required_env=[],
+        auth_kind=AuthKind.CLI_SUBSCRIPTION,
+        runtime_kind=RuntimeKind.SHELL,
+        one_shot=False,
+        endpoint=None,
     ),
     "openhands": WorkerConfig(
         name="OpenHands",
@@ -524,6 +779,11 @@ WORKER_REGISTRY: dict[str, WorkerConfig] = {
         completion_markers=[],
         default_timeout=600,
         requires_tool="openhands",
+        required_env=["OPENHANDS_API_KEY"],
+        auth_kind=AuthKind.API_KEY,
+        runtime_kind=RuntimeKind.NONE,
+        one_shot=True,
+        endpoint=None,  # resolved from settings at runtime
     ),
     "a2a": WorkerConfig(
         name="A2A Gateway",
@@ -535,6 +795,11 @@ WORKER_REGISTRY: dict[str, WorkerConfig] = {
             "Agent URLs resolved from settings only (SSRF-safe)."
         ),
         requires_tool=None,
+        required_env=[],
+        auth_kind=AuthKind.API_KEY,
+        runtime_kind=RuntimeKind.NONE,
+        one_shot=True,
+        endpoint=None,  # credential resolved from a2a.agents[*].api_key settings
     ),
 }
 
@@ -656,6 +921,8 @@ def validate_worker_dependencies() -> dict[str, bool]:
 
 
 __all__ = [
+    "AuthKind",
+    "RuntimeKind",
     "WorkerCategory",
     "WorkerConfig",
     "WORKER_REGISTRY",
