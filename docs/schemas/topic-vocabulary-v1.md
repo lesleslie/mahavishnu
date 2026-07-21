@@ -39,6 +39,7 @@ contribution workflow below.
 | `convergence-control-plane` | Convergence program C0-C7, umbrella plans. |
 | `followups-index` | Index or summary of the docs/followups/ store — readme/README pages that aggregate session-buddy followup topics. |
 | `worktree-management` | Worktree MCP dispatcher, isolation, planning. |
+| `session-worktree-isolation` | Worktree-based session isolation pattern — concurrent Claude Code sessions running in separate git worktrees with bounded blast radius. |
 | `persistence` | State persistence across checkpoints, session restarts, and subagent dispatch windows (covers git stash/rebase cycles, auto-checkpoint hooks, durable storage paths). |
 | `lifecycle` | Wiring lifecycle for components, plans, and followups — drafted/active/partial/shipped/complete transitions, completion reports, plan-to-followup handoffs. |
 | `plugin-standardization` | Claude Code plugin manifest, marketplace layout, slash command namespace, plugin validation scaffold (introduced for Bodai plugin rollout 2026-07-16). |
