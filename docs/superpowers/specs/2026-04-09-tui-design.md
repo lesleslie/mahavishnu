@@ -4,11 +4,8 @@ role: superseded
 topic: terminal
 date: 2026-07-16
 last_reviewed: 2026-07-16
-superseded_by:
----
-
-- docs/plans/2026-04-16-bodai-agent-platform-master-spec.md
-  blocks_on: []
+superseded_by: docs/plans/2026-04-16-bodai-agent-platform-master-spec.md
+blocks_on: []
 
 ______________________________________________________________________
 
