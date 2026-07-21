@@ -158,6 +158,138 @@ def test_cwd_is_inside_worktree_returns_false_for_empty_cwd(hook_module) -> None
     assert hook_module._cwd_is_inside_worktree("") is False
 
 
+# ── Real-git-worktree detection (Phase A3) ──────────────────────────
+
+
+def _init_main_repo_with_commit(tmp_path: Path) -> Path:
+    """Create a real git repo with one commit. Returns the repo path."""
+    import subprocess
+
+    main = tmp_path / "main"
+    main.mkdir()
+    subprocess.run(
+        ["git", "init", "-b", "main", str(main)],
+        check=True,
+        capture_output=True,
+        timeout=10,
+    )
+    subprocess.run(
+        ["git", "-C", str(main), "config", "user.email", "t@t.com"],
+        check=True,
+        capture_output=True,
+        timeout=10,
+    )
+    subprocess.run(
+        ["git", "-C", str(main), "config", "user.name", "Test"],
+        check=True,
+        capture_output=True,
+        timeout=10,
+    )
+    subprocess.run(
+        ["git", "-C", str(main), "commit", "--allow-empty", "-m", "init"],
+        check=True,
+        capture_output=True,
+        timeout=10,
+    )
+    return main
+
+
+def test_cwd_is_inside_worktree_returns_false_for_main_repo(
+    tmp_path: Path,
+) -> None:
+    """A normal repo (not a worktree) → False.
+
+    Regression test for the broken ``--git-common-dir`` check (Phase A3):
+    that command returns the main repo's ``.git`` regardless of whether
+    we're in a worktree, so the function used to return False for
+    everything. This test passes for both broken and fixed implementations
+    (the broken one was always returning False); the worktree test
+    below is what proves the fix.
+    """
+    import importlib.util
+
+    main = _init_main_repo_with_commit(tmp_path)
+
+    spec = importlib.util.spec_from_file_location(
+        "hook_cwd_main", _HOOK_PATH
+    )
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    assert module._cwd_is_inside_worktree(str(main)) is False
+
+
+def test_cwd_is_inside_worktree_returns_true_for_real_worktree(
+    tmp_path: Path,
+) -> None:
+    """A real git worktree → True.
+
+    Pre-fix (using ``--git-common-dir``): False (broken).
+    Post-fix (using ``--git-dir``): True (correct).
+    """
+    import importlib.util
+    import subprocess
+
+    main = _init_main_repo_with_commit(tmp_path)
+    wt_path = tmp_path / "wt"
+    subprocess.run(
+        ["git", "-C", str(main), "worktree", "add", "-b", "wt-branch", str(wt_path)],
+        check=True,
+        capture_output=True,
+        timeout=10,
+    )
+
+    spec = importlib.util.spec_from_file_location(
+        "hook_cwd_wt", _HOOK_PATH
+    )
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    assert module._cwd_is_inside_worktree(str(wt_path)) is True
+
+
+def test_cwd_is_inside_worktree_returns_true_for_worktree_subdir(
+    tmp_path: Path,
+) -> None:
+    """A subdirectory of a real worktree → True (still inside the worktree)."""
+    import importlib.util
+    import subprocess
+
+    main = _init_main_repo_with_commit(tmp_path)
+    wt_path = tmp_path / "wt"
+    subprocess.run(
+        ["git", "-C", str(main), "worktree", "add", "-b", "wt-branch", str(wt_path)],
+        check=True,
+        capture_output=True,
+        timeout=10,
+    )
+    subdir = wt_path / "src" / "lib"
+    subdir.mkdir(parents=True)
+
+    spec = importlib.util.spec_from_file_location(
+        "hook_cwd_wt_subdir", _HOOK_PATH
+    )
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    assert module._cwd_is_inside_worktree(str(subdir)) is True
+
+
+def test_cwd_is_inside_worktree_returns_false_for_main_repo_subdir(
+    tmp_path: Path,
+) -> None:
+    """A subdirectory of a normal repo (not a worktree) → False."""
+    import importlib.util
+
+    main = _init_main_repo_with_commit(tmp_path)
+    subdir = main / "src" / "lib"
+    subdir.mkdir(parents=True)
+
+    spec = importlib.util.spec_from_file_location(
+        "hook_cwd_main_subdir", _HOOK_PATH
+    )
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    assert module._cwd_is_inside_worktree(str(subdir)) is False
+
+
 # ── _detect_repo_nickname ────────────────────────────────────────
 
 

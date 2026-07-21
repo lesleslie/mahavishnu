@@ -71,10 +71,17 @@ def _is_truthy(value: str | None) -> bool:
 def _cwd_is_inside_worktree(cwd: str) -> bool:
     """True when ``cwd`` is the working tree of a git worktree.
 
-    Uses ``git rev-parse --git-common-dir`` which returns the
-    ``.git/`` (or worktree-specific ``.git/worktrees/<name>``) of the
-    containing main repo. If that path ends in ``/worktrees/<name>``,
-    we're inside a worktree.
+    Uses ``git rev-parse --git-dir`` which returns the worktree-specific
+    git directory:
+
+    - Main repo: ``.git`` (relative to the repo root)
+    - Worktree: ``.git/worktrees/<wt-name>`` (relative to the worktree root)
+
+    The prior implementation used ``--git-common-dir`` which returns
+    the SHARED git dir (the main repo's ``.git``) regardless of whether
+    we're in a worktree — so the helper was always returning False.
+    Per multi-agent review Test #4 (2026-07-20): real worktrees were
+    not detected.
 
     Returns False on any git failure — never blocks the hook.
     """
@@ -82,7 +89,7 @@ def _cwd_is_inside_worktree(cwd: str) -> bool:
         return False
     try:
         result = subprocess.run(  # nosec B603 — cwd is a session-provided path; argv-list only
-            ["git", "-C", cwd, "rev-parse", "--git-common-dir"],
+            ["git", "-C", cwd, "rev-parse", "--git-dir"],
             capture_output=True,
             text=True,
             check=True,
@@ -90,11 +97,10 @@ def _cwd_is_inside_worktree(cwd: str) -> bool:
         )
     except (subprocess.CalledProcessError, subprocess.TimeoutExpired, OSError):
         return False
-    common = result.stdout.strip()
-    # Strip trailing /.git if present (rev-parse returns either .git or /.git)
-    if common.endswith("/.git"):
-        common = common[: -len("/.git")]
-    return "/worktrees/" in common
+    git_dir = result.stdout.strip()
+    # For a main repo, ``--git-dir`` returns ``.git`` (no ``/worktrees/``);
+    # for a worktree, it returns ``.git/worktrees/<name>``.
+    return "/worktrees/" in git_dir
 
 
 def _detect_repo_nickname(cwd: str) -> str | None:
