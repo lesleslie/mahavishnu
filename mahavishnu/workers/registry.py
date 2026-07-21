@@ -6,7 +6,6 @@ making it easy to add new worker types without modifying core code.
 
 from dataclasses import dataclass, field
 from enum import Enum
-import os
 
 
 class AuthKind(Enum):
@@ -821,59 +820,12 @@ def resolve_worker_type(
     task_type: str | None = None,
     prompt: str = "",
 ) -> str:
-    """Resolve a logical worker type to a concrete profile.
+    """Pure intent-routing helper.
 
-    This keeps communication-style work on OpenClaw when the prompt intent
-    is messaging or channel delivery.
+    Returns the worker type unchanged. Historical env-var inference that
+    swapped terminal-* workers into gateway-openclaw is removed; callers
+    pick the gateway explicitly when they want it.
     """
-    normalized_task = (task_type or "").strip().lower()
-    normalized_prompt = prompt.lower()
-    combined = f"{normalized_task} {normalized_prompt}"
-
-    communication_markers = (
-        "notify",
-        "notification",
-        "reply",
-        "respond",
-        "deliver",
-        "send",
-        "message",
-        "dm ",
-        "slack",
-        "telegram",
-        "whatsapp",
-        "discord",
-        "google chat",
-        "signal",
-        "imessage",
-        "inbox",
-        "handoff",
-        "follow up",
-        "follow-up",
-        "status update",
-        "summarize for",
-    )
-    communication_task_types = {
-        "communication",
-        "notification",
-        "messaging",
-        "handoff",
-        "delivery",
-        "outreach",
-        "chatops",
-    }
-
-    if worker_type in {
-        "terminal-qwen",
-        "terminal-claude",
-        "terminal-codex",
-        "terminal-openclaw",
-    } and (
-        normalized_task in communication_task_types
-        or any(marker in combined for marker in communication_markers)
-    ):
-        return "gateway-openclaw" if os.getenv("OPENCLAW_GATEWAY_URL") else "terminal-openclaw"
-
     return worker_type
 
 

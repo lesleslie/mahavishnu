@@ -1391,7 +1391,7 @@ def workers_execute(
     async def _execute():
         from .terminal.manager import TerminalManager
         from .workers import WorkerManager
-        from .workers.registry import resolve_worker_type
+        from .workers.registry import get_worker_config, resolve_worker_type
 
         maha_app = MahavishnuApp()
 
@@ -1411,6 +1411,7 @@ def workers_execute(
             max_concurrent=getattr(maha_app.config, "max_concurrent_workers", 10),
             debug_mode=False,
             session_buddy_client=None,
+            settings=maha_app.config,
         )
 
         resolved_worker_type = resolve_worker_type(
@@ -1419,12 +1420,20 @@ def workers_execute(
             prompt=prompt,
         )
 
-        # Spawn workers
-        typer.echo(f"🚀 Spawning {count} {resolved_worker_type} workers...")
-        worker_ids = await worker_mgr.spawn_workers(
-            worker_type=resolved_worker_type,
-            count=count,
-        )
+        config = get_worker_config(resolved_worker_type)
+        if config is not None and config.one_shot:
+            typer.echo(f"🚀 Submitting one-shot prompt to {resolved_worker_type}...")
+            worker_ids = await worker_mgr.submit_workers(
+                resolved_worker_type,
+                [prompt],
+            )
+        else:
+            # Spawn workers
+            typer.echo(f"🚀 Spawning {count} {resolved_worker_type} workers...")
+            worker_ids = await worker_mgr.spawn_workers(
+                worker_type=resolved_worker_type,
+                count=count,
+            )
         typer.echo(f"✅ Workers spawned: {', '.join(worker_ids)}")
         if resolved_worker_type != worker_type:
             typer.echo(f"   Routed from {worker_type} to {resolved_worker_type}")

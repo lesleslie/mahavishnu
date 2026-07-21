@@ -5,6 +5,8 @@ batch execution, monitoring, result collection, lifecycle management,
 debug monitor launching, and health checks.
 """
 
+from __future__ import annotations
+
 import asyncio
 import logging
 from unittest.mock import AsyncMock, MagicMock, patch
@@ -13,6 +15,10 @@ import pytest
 
 from mahavishnu.core.status import WorkerStatus
 from mahavishnu.workers.base import BaseWorker, WorkerResult
+from mahavishnu.workers.capabilities import (
+    WorkerCapabilityReport,
+    WorkerCapabilityState,
+)
 from mahavishnu.workers.manager import WorkerManager
 from mahavishnu.workers.registry import WorkerCategory, WorkerConfig
 
@@ -352,8 +358,29 @@ class TestCreateWorker:
             assert worker is not None
 
 
+
+
+def test_submit_workers_runs_one_shot_lifecycle(monkeypatch) -> None:
+    """Submit a prompt to a one-shot worker and retain its session ID."""
+    monkeypatch.setattr(
+        "mahavishnu.workers.manager.evaluate_worker_capabilities",
+        lambda wt, *, settings, force_live=False: WorkerCapabilityReport(
+            worker_type=wt,
+            state=WorkerCapabilityState.READY,
+        ),
+    )
+    mgr = WorkerManager(terminal_manager=_make_terminal_manager(), settings=object())
+    worker = _make_worker(worker_id="submitted-worker")
+
+    with patch.object(mgr, "_create_worker", return_value=worker):
+        worker_ids = asyncio.run(mgr.submit_workers("terminal-codex", ["echo PONG"]))
+
+    assert worker_ids == ["submitted-worker"]
+    worker.start.assert_called_once_with(prompt="echo PONG")
+    assert mgr._workers["submitted-worker"] is worker
+
+
 class TestSpawnWorkers:
-    """Tests for the spawn_workers method."""
 
     @pytest.mark.asyncio
     async def test_spawn_single_worker(self):
