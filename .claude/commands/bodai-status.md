@@ -8,7 +8,7 @@ This command reads from `~/.mahavishnu/bodai-event-queue.json` (a JSON file popu
 
 Output format: a markdown table per component (Mahavishnu, Akosha, Crackerjack), each row showing topic + key payload fields. If the queue file is empty or does not exist, print a single 'no events yet' line — not an error.
 
-Phase 5's `/vishnu-status` shows only Mahavishnu activity; this command shows the same plus Akosha and Crackerjack. Use `/vishnu-status` when you want Mahavishnu-only; use `/bodai-status` for the cross-component view.
+Phase 5's `/mahavishnu:status` shows only Mahavishnu activity; this command shows the same plus Akosha and Crackerjack. Use `/mahavishnu:status` when you want Mahavishnu-only; use `/bodai-status` for the cross-component view.
 
 Run the following Python via the Bash tool (tool ID `Bash`) to read the queue and group by source:
 
@@ -51,7 +51,7 @@ for source in sorted(by_source):
 
 Notes:
 
-- Mirror the vishnu-status.md format (underscore frontmatter delimiter, descriptive paragraph, fenced code block).
+- Mirror the mahavishnu-status.md format (underscore frontmatter delimiter, descriptive paragraph, fenced code block).
 - The command MUST gracefully handle the empty-queue case ('No events yet' — not an error). Both "queue file does not exist" and "queue file exists but is empty" produce a single friendly line and exit 0.
 - The command is queue-file based, NOT CLI based. Do NOT invoke Mahavishnu / Akosha / Crackerjack CLIs here — those components do not yet expose CLI health surfaces for activity.
 - The command does not modify any state; it is read-only and safe to invoke at any time.

@@ -1,8 +1,8 @@
 ______________________________________________________________________
 
-## name: vishnu-status title: Vishnu Status id: 01KX99DC1JV6SSMB688RV193BK description: 'Auto-trigger skill that surfaces Mahavishnu pool, verification, and dispatch status when the user asks "are workers running?", "what is the pool status?", or similar phrasings. Use this for visibility into Mahavishnu without leaving the current session.' owner: mahavishnu-core status: active category: observability last_reviewed: 2026-07-11
+## name: mahavishnu-status title: Mahavishnu Status id: 01KXB2MJHQZ5K7VD9P0XCRWA1F description: 'Auto-trigger skill that surfaces Mahavishnu pool, verification, and dispatch status when the user asks "are workers running?", "what is the pool status?", or similar phrasings. Use this for visibility into Mahavishnu without leaving the current session.' owner: mahavishnu-core status: active category: observability last_reviewed: 2026-07-20
 
-# Vishnu Status (auto-trigger)
+# Mahavishnu Status (auto-trigger)
 
 Visibility surface for Mahavishnu worker activity. Fires when the user asks
 "what is happening in Mahavishnu?" rather than "do something in Mahavishnu."
@@ -20,13 +20,13 @@ visibility, e.g.:
 - "Surface pool / worker / dispatch metrics."
 
 The skill is *not* for requests like "dispatch this to Mahavishnu" or "run
-the workers on X" — those route to `/vishnu` (or the `mahavishnu-orchestrator`
-subagent for forced delegation).
+the workers on X" — those use `mcp__mahavishnu__*` tools directly (or the
+`mahavishnu-orchestrator` subagent for forced delegation).
 
 ## Behavior
 
 When this skill fires, surface Mahavishnu status by invoking the
-`/vishnu-status` slash command. The slash command runs:
+`/mahavishnu:status` slash command. The slash command runs:
 
 ```bash
 mahavishnu pool list
@@ -44,20 +44,20 @@ If the Mahavishnu server is unreachable or no pools are registered, surface
 that explicitly — do not invent status. The slash command body has the
 canonical fallback wording.
 
-## Distinction from `/vishnu`
+## Distinction from the Mahavishnu orchestration skill
 
 | Surface | Purpose | Effect |
 |----------------------|---------------------------------------|---------------------------------|
-| `/vishnu` | Dispatch / *do work* through Mahavishnu | Routes a task to worker pools |
-| `/vishnu-status` | Observe / *show state* of Mahavishnu | Surfaces pool, workflow, dispatch metrics |
-| `mahavishnu-orchestrator` (subagent) | Forced delegation with tool isolation | Same as `/vishnu` but with strict `tools:` frontmatter |
+| `mcp__mahavishnu__pool_route_execute` / `dispatch_to_pool` | Dispatch / *do work* through Mahavishnu | Routes a task to worker pools |
+| `/mahavishnu:status` | Observe / *show state* of Mahavishnu | Surfaces pool, workflow, dispatch metrics |
+| `mahavishnu-orchestrator` (subagent) | Forced delegation with tool isolation | Same as the dispatch tools but with strict `tools:` frontmatter |
 
-If the user says "run X on Mahavishnu" → `/vishnu`.
-If the user says "what's running on Mahavishnu" → this skill → `/vishnu-status`.
+If the user says "run X on Mahavishnu" → use the `mcp__mahavishnu__*` dispatch tools.
+If the user says "what's running on Mahavishnu" → this skill → `/mahavishnu:status`.
 
 ## Where to find more
 
-- Slash command body: `.claude/commands/vishnu-status.md` (Phase 5 Task 5.1).
+- Slash command body: `.claude/commands/mahavishnu-status.md` (Phase 5 Task 5.1).
 - Activity surfacing hook: `.claude/hooks/mahavishnu-activity-stream.py`
   (Phase 5 Task 5.4) — surfaces per-event summaries streamed from
   `ws://localhost:8690`.

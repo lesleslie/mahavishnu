@@ -66,5 +66,5 @@ Notes:
 
 - Mirror the verbose-status.md format (heading + descriptive paragraph + fenced code blocks), but use `bash` fenced blocks here instead of `python` since this command shells out rather than reading local state.
 - Do **not** add WebSocket subscriber logic here — that lives in `.claude/hooks/mahavishnu-activity-stream.py` (Task 5.4).
-- Do **not** add the auto-trigger phrasing — that lives in `.claude/skills/vishnu-status/SKILL.md` (Task 5.2).
+- Do **not** add the auto-trigger phrasing — that lives in `.claude/skills/mahavishnu-status/SKILL.md` (Task 5.2).
 - The command does not modify any state; it is read-only and safe to invoke at any time.
