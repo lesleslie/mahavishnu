@@ -12,9 +12,11 @@ import asyncio
 from dataclasses import dataclass, field
 import logging
 import os
+import shutil
 import time
 from typing import Any
 
+import httpx
 from mcp_common.llm import FallbackChain, LLMSettings
 
 from mahavishnu.core.status import WorkerStatus
@@ -135,13 +137,36 @@ class CloudWorker(BaseWorker):
         self.session_buddy_client = session_buddy_client
         self._chain: FallbackChain | None = None
         self._start_time: float | None = None
+        self.metadata: dict[str, Any] = {}
+        self.required_env: list[str] = ["MINIMAX_API_KEY"]
+        # Synchronous credential probe populates metadata and seeds status so
+        # callers see a degraded state immediately after construction.
+        missing = [n for n in self.required_env if not os.environ.get(n)]
+        self.metadata["missing_credentials"] = missing
+        if missing:
+            self._status = WorkerStatus.DEGRADED
 
     async def start(self) -> str:
-        """Initialize the cloud worker by building the FallbackChain.
+        """Initialize the cloud worker.
+
+        Re-checks credentials at start time (env vars may have changed since
+        construction) and probes for a local fallback before reporting
+        RUNNING. When credentials are missing AND no local fallback is
+        reachable, the worker transitions to DEGRADED rather than RUNNING so
+        downstream routing can avoid handing it jobs.
 
         Returns:
             Worker ID string
         """
+        missing = [n for n in self.required_env if not os.environ.get(n)]
+        self.metadata["missing_credentials"] = missing
+        if missing and not await self._has_local_fallback():
+            self._status = WorkerStatus.DEGRADED
+            logger.warning(
+                "Cloud worker started degraded: missing=%s and no local fallback reachable",
+                missing,
+            )
+            return self._worker_id
         self._status = WorkerStatus.STARTING
         self._start_time = time.time()
         self._chain = _build_fallback_chain(self.config)
@@ -153,6 +178,28 @@ class CloudWorker(BaseWorker):
             self.config.model,
         )
         return self._worker_id
+
+    async def _has_local_fallback(self) -> bool:
+        """Return True when a local ollama or llama-server endpoint is reachable.
+
+        Used by ``start()`` to decide whether to mark the worker DEGRADED or
+        RUNNING when a required credential is missing. The probe is best-effort:
+        it requires the corresponding binary to be on PATH and at least one
+        local HTTP endpoint to respond with a non-5xx status. 5xx responses
+        and connection errors are treated as "not available" and the next URL
+        is tried. We never log the env var values here.
+        """
+        if not shutil.which("ollama") and not shutil.which("llama-server"):
+            return False
+        for url in ("http://localhost:11434", "http://localhost:8081"):
+            try:
+                async with httpx.AsyncClient(timeout=1.0) as client:
+                    response = await client.get(url)
+                    if response.status_code < 500:
+                        return True
+            except httpx.HTTPError:
+                continue
+        return False
 
     async def execute(self, task: dict[str, Any]) -> WorkerResult:
         """Execute a task via the three-tier FallbackChain.
@@ -170,6 +217,13 @@ class CloudWorker(BaseWorker):
         Returns:
             WorkerResult with execution results
         """
+        if self._status is WorkerStatus.DEGRADED:
+            return WorkerResult(
+                worker_id=self._worker_id,
+                status=WorkerStatus.DEGRADED,
+                error="worker not ready: missing credentials",
+                exit_code=1,
+            )
         if self._status != WorkerStatus.RUNNING:
             try:
                 await self.start()
@@ -182,7 +236,12 @@ class CloudWorker(BaseWorker):
                 )
 
         if self._chain is None:
-            raise RuntimeError("invariant violated: _chain must be set after worker initialization")
+            return WorkerResult(
+                worker_id=self._worker_id,
+                status=WorkerStatus.FAILED,
+                error="worker not ready: missing credentials",
+                exit_code=1,
+            )
 
         prompt = task.get("prompt", "")
         if not prompt:

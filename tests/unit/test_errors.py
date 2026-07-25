@@ -19,6 +19,7 @@ from mahavishnu.core.errors import (
     AuthenticationError,
     AuthorizationError,
     ConfigurationError,
+    ContainerDaemonUnavailable,
     ContextNotInitializedError,
     DatabaseError,
     ErrorCode,
@@ -37,6 +38,7 @@ from mahavishnu.core.errors import (
     TimeoutError,
     ValidationError,
     WebhookAuthError,
+    WorkerUnavailableError,
     WorkflowError,
     WorkflowExecutionError,
     create_error_from_exception,
@@ -1471,3 +1473,41 @@ class TestErrorTemplatesExtended:
             assert isinstance(err, MahavishnuError), (
                 f"{type(err).__name__} is not a MahavishnuError"
             )
+
+
+# ============================================================================
+# Worker Readiness Capability Errors (Task 2)
+# ============================================================================
+
+
+def test_worker_unavailable_error_omits_secret() -> None:
+    err = WorkerUnavailableError(
+        worker_type="terminal-claude",
+        state="CONFIGURED",
+        missing_requirements=["MINIMAX_API_KEY"],
+        message="credential missing",
+    )
+    rendered = str(err)
+    assert "MINIMAX_API_KEY" in rendered
+    assert "sk-" not in rendered
+
+
+def test_worker_unavailable_error_carries_error_code() -> None:
+    err = WorkerUnavailableError(
+        worker_type="gateway-openclaw",
+        state="CONFIGURED",
+        missing_requirements=["OPENCLAW_GATEWAY_URL"],
+        message="no gateway url",
+    )
+    assert err.error_code is ErrorCode.WORKER_UNAVAILABLE
+    assert err.details["worker_type"] == "gateway-openclaw"
+    assert err.details["state"] == "CONFIGURED"
+    assert err.details["missing_requirements"] == ["OPENCLAW_GATEWAY_URL"]
+
+
+def test_container_daemon_unavailable_keeps_runtime_name() -> None:
+    err = ContainerDaemonUnavailable(runtime="docker", error="connect refused")
+    assert err.error_code is ErrorCode.WORKER_UNAVAILABLE
+    assert err.details["runtime"] == "docker"
+    assert "docker" in str(err)
+    assert "sk-" not in str(err)

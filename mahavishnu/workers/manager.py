@@ -15,9 +15,16 @@ from monitoring.metrics import (
 )
 
 from .base import BaseWorker, WorkerResult, WorkerStatus
+from .capabilities import (
+    WorkerCapabilityState,
+    evaluate_worker_capabilities,
+    invalidate_capability,
+)
 from .container import ContainerWorker
+from .registry import get_worker_config
 
 if TYPE_CHECKING:
+    from ..core.config import MahavishnuSettings
     from ..terminal.manager import TerminalManager
 
 logger = logging.getLogger(__name__)
@@ -28,6 +35,7 @@ class WorkerManager:
 
     Features:
     - Spawn multiple workers of different types
+    - Submit one-shot prompts to single-task workers
     - Monitor worker progress
     - Collect results with aggregation
     - Handle failures with retries
@@ -40,6 +48,7 @@ class WorkerManager:
         debug_mode: Enable debug monitor auto-launch
         session_buddy_client: Optional Session-Buddy MCP client
         mcp_client: Optional MCP client for application workers
+        settings: Optional MahavishnuSettings used for capability evaluation
     """
 
     def __init__(
@@ -49,6 +58,8 @@ class WorkerManager:
         debug_mode: bool = False,
         session_buddy_client: Any = None,
         mcp_client: Any = None,
+        *,
+        settings: MahavishnuSettings | None = None,
     ) -> None:
         """Initialize worker manager.
 
@@ -58,12 +69,14 @@ class WorkerManager:
             debug_mode: Enable debug monitor
             session_buddy_client: Session-Buddy MCP client
             mcp_client: MCP client for application workers
+            settings: Optional MahavishnuSettings for capability evaluation
         """
         self.terminal_manager = terminal_manager
         self.max_concurrent = max(1, min(max_concurrent, 100))
         self.debug_mode = debug_mode
         self.session_buddy_client = session_buddy_client
         self.mcp_client = mcp_client
+        self.settings = settings
         self._workers: dict[str, BaseWorker] = {}
         self._semaphore = asyncio.Semaphore(self.max_concurrent)
         self._debug_monitor_worker: BaseWorker | None = None
@@ -75,6 +88,67 @@ class WorkerManager:
     def list_worker_ids(self) -> list[str]:
         """Return IDs of all currently registered workers."""
         return list(self._workers.keys())
+
+    def _require_ready(self, worker_type: str) -> None:
+        """Evaluate capabilities and raise if the worker is not READY.
+
+        Imports lazily to avoid a circular import through core.errors.
+        """
+        report = evaluate_worker_capabilities(worker_type, settings=self.settings)
+        if report.state is not WorkerCapabilityState.READY:
+            from ..core.errors import WorkerUnavailableError
+
+            raise WorkerUnavailableError(
+                worker_type=worker_type,
+                state=report.state.value,
+                missing_requirements=report.missing_requirements,
+                message=report.safe_reason or "static prerequisites missing",
+            )
+
+    async def submit_workers(
+        self,
+        worker_type: str,
+        prompts: list[str],
+        *,
+        runtime_kwargs: dict[str, Any] | None = None,
+    ) -> list[str]:
+        """Submit prompts to a one-shot worker, launching one session per prompt.
+
+        Args:
+            worker_type: Worker type to use (must be registered and one_shot).
+            prompts: One prompt per session to launch.
+            runtime_kwargs: Optional kwargs forwarded to the worker factory.
+
+        Returns:
+            List of newly-created worker session IDs in the same order as ``prompts``.
+
+        Raises:
+            ValueError: If ``worker_type`` is not registered as one_shot.
+            WorkerUnavailableError: If capability evaluation rejects the worker.
+        """
+        cfg = get_worker_config(worker_type)
+        if cfg is None or not cfg.one_shot:
+            raise ValueError(f"Worker {worker_type!r} is not a one-shot worker")
+        self._require_ready(worker_type)
+
+        worker_ids: list[str] = []
+        try:
+            for prompt in prompts:
+                worker = self._create_worker(worker_type, **(runtime_kwargs or {}))
+                worker_id = await worker.start(prompt=prompt)
+                self._workers[worker_id] = worker
+                worker_ids.append(worker_id)
+        except Exception:
+            for wid in worker_ids:
+                await self.close_worker(wid)
+            invalidate_capability(worker_type)
+            # Capability transition broadcast for the failure is handled by the
+            # next _require_ready call, which re-evaluates and emits a
+            # transition event if the state changes. We deliberately avoid
+            # importing emit_transition here to keep this rollback free of
+            # new top-level dependencies.
+            raise
+        return worker_ids
 
     async def spawn_workers(
         self,
@@ -144,10 +218,27 @@ class WorkerManager:
 
         elif config.category in (
             WorkerCategory.SHELL,
-            WorkerCategory.AI_ASSISTANT,
             WorkerCategory.REMOTE,
         ):
-            # Use GenericShellWorker for shell/REPL/AI/SSH types
+            # Use GenericShellWorker for shell/REPL/SSH types
+            from .generic_shell import GenericShellWorker
+
+            return GenericShellWorker(
+                terminal_manager=self.terminal_manager,
+                worker_type=worker_type,
+                config=config,
+                session_buddy_client=self.session_buddy_client,
+                **kwargs,
+            )
+
+        elif config.category == WorkerCategory.AI_ASSISTANT:
+            # AI assistants: dedicated class for HTTP-API workers (terminal-crow),
+            # fall through to GenericShellWorker for shell-launched ones.
+            if worker_type == "terminal-crow":
+                from .crow import CrowWorker
+
+                return CrowWorker()
+
             from .generic_shell import GenericShellWorker
 
             return GenericShellWorker(
@@ -213,6 +304,40 @@ class WorkerManager:
                     gateway_client=gateway_client,
                     config=gateway_config,
                 )
+
+            if worker_type == "openhands":
+                from .openhands import OpenHandsWorker
+
+                return OpenHandsWorker()
+
+            if worker_type == "a2a":
+                from .a2a import A2AAgentConfig, A2AWorker
+
+                agent_configs = kwargs.get("agent_configs")
+                if agent_configs is None and self.settings is not None:
+                    a2a_settings = getattr(self.settings, "a2a", None)
+                    settings_agents = (
+                        getattr(a2a_settings, "agents", None)
+                        if a2a_settings is not None
+                        else None
+                    )
+                    if isinstance(settings_agents, dict):
+                        agent_configs = settings_agents
+                    elif settings_agents:
+                        agent_configs = {
+                            entry.name: A2AAgentConfig(
+                                name=entry.name,
+                                url=entry.url,
+                                description=entry.description,
+                                api_key=(
+                                    os.getenv(entry.api_key_env)
+                                    if entry.api_key_env
+                                    else None
+                                ),
+                            )
+                            for entry in settings_agents
+                        }
+                return A2AWorker(agent_configs=agent_configs or {})
 
             raise ValueError(f"Unknown gateway worker type: {worker_type}")
 

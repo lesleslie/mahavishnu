@@ -116,7 +116,12 @@ class GenericShellWorker(BaseWorker):
 
         return command
 
-    async def start(self, launch_command: str | None = None) -> str:
+    async def start(
+        self,
+        launch_command: str | None = None,
+        *,
+        prompt: str | None = None,
+    ) -> str:
         """Launch terminal session with configured command.
 
         Returns:
@@ -132,7 +137,7 @@ class GenericShellWorker(BaseWorker):
                 "Ensure terminal management is enabled."
             )
 
-        command = launch_command or self._format_command()
+        command = launch_command or self._format_command(prompt)
 
         # Launch terminal session
         session_ids = await self.terminal_manager.launch_sessions(

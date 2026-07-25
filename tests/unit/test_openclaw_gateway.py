@@ -18,6 +18,11 @@ from mahavishnu.workers.openclaw_gateway import (
 )
 
 
+def _client_stub():
+    """Build a minimal OpenClawGatewayClient mock for tests."""
+    return AsyncMock(spec=OpenClawGatewayClient)
+
+
 class TestOpenClawGatewayConfig:
     """Test OpenClawGatewayConfig dataclass."""
 
@@ -331,6 +336,23 @@ class TestOpenClawGatewayWorker:
     def _make_worker(self, gateway_client=None, config=None):
         client = gateway_client or AsyncMock(spec=OpenClawGatewayClient)
         return OpenClawGatewayWorker(gateway_client=client, config=config)
+
+    @pytest.mark.asyncio
+    async def test_execute_does_not_infinite_restart_when_gateway_unreachable(
+        self,
+        monkeypatch,
+    ) -> None:
+        calls = {"n": 0}
+
+        async def fake_start(self) -> str:
+            calls["n"] += 1
+            raise RuntimeError("gateway_unreachable")
+
+        monkeypatch.setattr(OpenClawGatewayWorker, "start", fake_start)
+        worker = OpenClawGatewayWorker(_client_stub())
+        result = await worker.execute({})
+        assert result.status is WorkerStatus.FAILED
+        assert calls["n"] <= 1
 
     def test_inherits_from_base_worker(self):
         worker = self._make_worker()

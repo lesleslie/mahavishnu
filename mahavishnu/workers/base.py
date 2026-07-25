@@ -150,8 +150,14 @@ class BaseWorker(ABC):
         self._status = WorkerStatus.PENDING
 
     @abstractmethod
-    async def start(self) -> str:
+    async def start(self, *, prompt: str | None = None) -> str:
         """Start the worker and return worker_id.
+
+        Args:
+            prompt: Optional one-shot prompt forwarded by the worker's caller
+                (e.g. ``WorkerManager.submit_workers``). Concrete workers may
+                ignore it for long-lived sessions; one-shot workers use it as
+                the initial input. Default ``None`` for backward compatibility.
 
         Returns:
             Unique identifier for this worker instance

@@ -754,22 +754,22 @@ class TestRegistryIntegration:
         assert config is not None
         assert "claude --output-format stream-json" in config.command
 
-    def test_resolve_worker_type_routes_communication(self) -> None:
+    def test_resolve_worker_type_passes_through(self) -> None:
         resolved = resolve_worker_type(
             "terminal-qwen",
             task_type="notification",
             prompt="Notify Slack with status update",
         )
-        assert resolved == "terminal-openclaw"
+        assert resolved == "terminal-qwen"
 
-    def test_resolve_worker_type_gateway_when_configured(self, monkeypatch) -> None:
+    def test_resolve_worker_type_gateway_url_does_not_route(self, monkeypatch) -> None:
         monkeypatch.setenv("OPENCLAW_GATEWAY_URL", "http://localhost:8787")
         resolved = resolve_worker_type(
             "terminal-claude",
             task_type="notification",
             prompt="Send Slack handoff",
         )
-        assert resolved == "gateway-openclaw"
+        assert resolved == "terminal-claude"
 
     def test_resolve_worker_type_keeps_coding(self) -> None:
         resolved = resolve_worker_type(
@@ -779,10 +779,10 @@ class TestRegistryIntegration:
         )
         assert resolved == "terminal-qwen"
 
-    def test_resolve_worker_type_codex_communication(self) -> None:
+    def test_resolve_worker_type_codex_communication_passes_through(self) -> None:
         resolved = resolve_worker_type(
             "terminal-codex",
             task_type="notification",
             prompt="Notify Slack",
         )
-        assert resolved == "terminal-openclaw"
+        assert resolved == "terminal-codex"

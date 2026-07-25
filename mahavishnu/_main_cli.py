@@ -63,6 +63,14 @@ from .quality_cli import add_quality_commands
 # Import adaptive routing CLI
 from .routing_cli import add_routing_commands
 
+# Import worker capability diagnostics (Task 10)
+from .workers.capabilities import (
+    WorkerCapabilityReport,
+    WorkerCapabilityState,
+    evaluate_worker_capabilities,
+)
+from .workers.registry import WORKER_REGISTRY
+
 # Import worktree management CLI
 from .worktree_cli import worktree_app
 
@@ -1313,8 +1321,8 @@ def workers_spawn(
         maha_app = MahavishnuApp()
 
         # Check if workers are enabled
-        if not getattr(maha_app.config, "workers_enabled", True):
-            typer.echo("ERROR: Worker orchestration is disabled")
+        if not getattr(maha_app.config.workers, "enabled", True):
+            typer.echo("ERROR: Worker orchestration is disabled", err=True)
             raise typer.Exit(code=1)
 
         # Create terminal manager (reusing existing infrastructure)
@@ -1391,13 +1399,13 @@ def workers_execute(
     async def _execute():
         from .terminal.manager import TerminalManager
         from .workers import WorkerManager
-        from .workers.registry import resolve_worker_type
+        from .workers.registry import get_worker_config, resolve_worker_type
 
         maha_app = MahavishnuApp()
 
         # Check if workers are enabled
-        if not getattr(maha_app.config, "workers_enabled", True):
-            typer.echo("ERROR: Worker orchestration is disabled")
+        if not getattr(maha_app.config.workers, "enabled", True):
+            typer.echo("ERROR: Worker orchestration is disabled", err=True)
             raise typer.Exit(code=1)
 
         # Create managers
@@ -1411,6 +1419,7 @@ def workers_execute(
             max_concurrent=getattr(maha_app.config, "max_concurrent_workers", 10),
             debug_mode=False,
             session_buddy_client=None,
+            settings=maha_app.config,
         )
 
         resolved_worker_type = resolve_worker_type(
@@ -1419,12 +1428,20 @@ def workers_execute(
             prompt=prompt,
         )
 
-        # Spawn workers
-        typer.echo(f"🚀 Spawning {count} {resolved_worker_type} workers...")
-        worker_ids = await worker_mgr.spawn_workers(
-            worker_type=resolved_worker_type,
-            count=count,
-        )
+        config = get_worker_config(resolved_worker_type)
+        if config is not None and config.one_shot:
+            typer.echo(f"🚀 Submitting one-shot prompt to {resolved_worker_type}...")
+            worker_ids = await worker_mgr.submit_workers(
+                resolved_worker_type,
+                [prompt],
+            )
+        else:
+            # Spawn workers
+            typer.echo(f"🚀 Spawning {count} {resolved_worker_type} workers...")
+            worker_ids = await worker_mgr.spawn_workers(
+                worker_type=resolved_worker_type,
+                count=count,
+            )
         typer.echo(f"✅ Workers spawned: {', '.join(worker_ids)}")
         if resolved_worker_type != worker_type:
             typer.echo(f"   Routed from {worker_type} to {resolved_worker_type}")
@@ -1476,107 +1493,43 @@ def workers_execute(
         typer.echo("✅ All workers closed")
 
     asyncio.run(_execute())
-
-
-_WORKER_CATEGORY_ICONS: dict = {}
-
-
-def _get_worker_category_icons() -> dict:
-    from .workers.registry import WorkerCategory
-
-    return {
-        WorkerCategory.AI_ASSISTANT: "🤖",
-        WorkerCategory.SHELL: "💻",
-        WorkerCategory.CONTAINER: "🐳",
-        WorkerCategory.REMOTE: "🌐",
-        WorkerCategory.APPLICATION: "🖥️",
-    }
-
-
-def _display_worker_category(cat, workers, check_available: bool, availability: dict) -> None:
-    icons = _get_worker_category_icons()
-    icon = icons.get(cat, "📦")
-    typer.echo(f"{icon} {cat.value.upper().replace('_', ' ')}")
-    typer.echo("─" * 40)
-    for config in workers:
-        if check_available:
-            is_available = availability.get(config.worker_type, True)
-            status = "✅" if is_available else "❌"
-        else:
-            is_available = True
-            status = "○"
-        typer.echo(f"  {status} {config.worker_type}")
-        typer.echo(f"      {config.name}")
-        if config.description:
-            typer.echo(f"      {config.description}")
-        if config.requires_tool and check_available and not is_available:
-            typer.echo(f"      ⚠️  Requires: {config.requires_tool}")
-        typer.echo("")
-
-
-def _display_availability_summary(availability: dict, get_worker_config) -> None:
-    available_count = sum(1 for v in availability.values() if v)
-    typer.echo(f"📊 {available_count}/{len(availability)} worker types available")
-    unavailable = [k for k, v in availability.items() if not v]
-    if unavailable:
-        typer.echo("\n⚠️  Unavailable workers (missing dependencies):")
-        for worker_type in unavailable:
-            config = get_worker_config(worker_type)
-            if config:
-                typer.echo(f"   - {worker_type}: install {config.requires_tool}")
-
-
 @workers_app.command("list-types")
 def workers_list_types(
-    category: str | None = typer.Option(
-        None,
-        "--category",
-        "-c",
-        help="Filter by category (ai_assistant, shell, remote, container, application)",
-    ),
-    check_available: bool = typer.Option(
-        True,
-        "--check/--no-check",
-        help="Check if required tools are installed",
-    ),
+    ready: bool = typer.Option(False, "--ready", help="Only routable types"),
+    all_types: bool = typer.Option(False, "--all", help="All registered types"),
+    explain: bool = typer.Option(False, "--explain", help="Include safe reasons"),
+    probe: bool = typer.Option(False, "--probe", help="Force live probe"),
 ) -> None:
-    """List available worker types.
+    """List worker types with optional capability filtering.
 
-    Shows all worker types organized by category with descriptions
-    and availability status.
-
-    Example:
-        $ mahavishnu workers list-types
-        $ mahavishnu workers list-types --category ai_assistant
-        $ mahavishnu workers list-types --no-check
+    Examples:
+        $ mahavishnu workers list-types --all
+        $ mahavishnu workers list-types --ready
+        $ mahavishnu workers list-types --ready --explain
     """
-    from .workers.registry import (
-        WorkerCategory,
-        get_worker_config,
-        get_workers_by_category,
-        validate_worker_dependencies,
-    )
+    from .core.config import MahavishnuSettings
 
-    category_enum = None
-    if category:
-        try:
-            category_enum = WorkerCategory(category.lower())
-        except ValueError:
-            typer.echo(f"Invalid category: {category}")
-            typer.echo(f"Valid categories: {', '.join(c.value for c in WorkerCategory)}")
-            raise typer.Exit(code=1)
-
-    workers_by_category = get_workers_by_category()
-    availability = validate_worker_dependencies() if check_available else {}
-
-    typer.echo("\n📋 Available Worker Types\n")
-    for cat, workers in workers_by_category.items():
-        if category_enum and cat != category_enum:
+    settings = MahavishnuSettings()
+    rows: list[tuple[str, str, str]] = []
+    for worker_type in WORKER_REGISTRY:
+        report: WorkerCapabilityReport = evaluate_worker_capabilities(
+            worker_type, settings=settings, force_live=probe,
+        )
+        if ready and report.state not in {
+            WorkerCapabilityState.READY,
+            WorkerCapabilityState.AVAILABLE,
+        }:
             continue
-        _display_worker_category(cat, workers, check_available, availability)
+        reason = report.safe_reason if explain and report.safe_reason else "-"
+        rows.append((worker_type, report.state.value, reason))
 
-    if check_available:
-        _display_availability_summary(availability, get_worker_config)
+    headers = ("WORKER", "STATE", "REASON")
+    widths = [max(len(headers[i]), *(len(row[i]) for row in rows)) for i in range(3)]
+    fmt = "  ".join(f"{{:<{w}}}" for w in widths)
+    typer.echo(fmt.format(*headers))
+    typer.echo()
+    for row in rows:
+        typer.echo(fmt.format(*row))
 
 
 # Pool management

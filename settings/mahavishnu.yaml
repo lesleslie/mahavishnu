@@ -106,6 +106,9 @@ workers:
   default_type: "terminal-claude"  # Default worker type (terminal-claude, terminal-qwen, terminal-codex, container-executor)
   timeout_seconds: 300  # Default worker timeout in seconds (30-3600)
   session_buddy_integration: true  # Enable Session-Buddy result storage for workers
+  container:
+    runtime: null  # auto-detect (orbstack > docker > podman)
+    socket_path: null  # override socket path
 
 # Storage Consolidation feature flags
 # See: docs/plans/2026-04-02-storage-consolidation-and-akosha-role.md

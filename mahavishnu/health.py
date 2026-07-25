@@ -11,6 +11,7 @@ Endpoints:
 
 import asyncio
 from datetime import UTC, datetime
+from typing import Any
 
 from fastapi import FastAPI, Response
 
@@ -74,15 +75,40 @@ def create_health_app(
         Use this for readiness probes (can the server handle requests?).
 
         Returns:
-            ReadinessResponse with readiness status and component checks
+            ReadinessResponse with readiness status and component checks.
+            The ``checks`` mapping now also carries the aggregated worker
+            capability component from :func:`mahavishnu.core.health.readiness`.
         """
         # Perform readiness checks
-        checks = {
+        checks: dict[str, str] = {
             "server": "ok",  # Server is running
             "database": "ok" if _check_database() else "unhealthy",
             "message_bus": "ok" if _check_message_bus() else "unhealthy",
             "adapters": "ok" if _check_adapters() else "unhealthy",
         }
+
+        # Aggregate worker capability reports so observability sees the
+        # worker component alongside the other readiness probes. We
+        # swallow any settings-resolution error here because readiness
+        # probes must never raise — they degrade to ``unhealthy``.
+        try:
+            worker_summary = await get_readiness()
+            worker_status = worker_summary.get("status", "unhealthy")
+            checks["workers"] = (
+                "ok"
+                if worker_status == HealthStatus.OK.value
+                else "degraded"
+                if worker_status == HealthStatus.DEGRADED.value
+                else "unhealthy"
+            )
+            default_worker = worker_summary.get("default_worker", "unknown")
+            checks["workers_default"] = (
+                f"{default_worker}:{worker_status}"
+            )
+        except Exception:
+            logger.exception("readiness worker aggregation failed")
+            checks["workers"] = "unhealthy"
+            checks["workers_default"] = "unresolved"
 
         all_ready = all(status == "ok" for status in checks.values())
 
@@ -172,6 +198,25 @@ def _check_adapters() -> bool:
 # =============================================================================
 # CONVENIENCE FUNCTIONS
 # =============================================================================
+
+
+async def get_readiness() -> dict[str, Any]:
+    """Aggregate readiness including worker capability reports.
+
+    Wraps :func:`mahavishnu.core.health.readiness` so the MCP ``get_readiness``
+    tool and the ``/ready`` HTTP endpoint can share a single source of truth
+    for the worker component. Settings are resolved up-front because the
+    readiness aggregator expects a fully-built :class:`MahavishnuSettings`.
+
+    Returns:
+        Dict from :func:`mahavishnu.core.health.readiness` describing
+        status, default worker type, and per-worker capability states.
+    """
+    from .core.config import MahavishnuSettings
+    from .core.health import readiness as _readiness_async
+
+    settings = MahavishnuSettings()
+    return await _readiness_async(settings=settings)
 
 
 async def run_health_server(

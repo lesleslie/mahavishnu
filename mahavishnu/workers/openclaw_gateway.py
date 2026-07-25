@@ -14,6 +14,7 @@ import uuid
 import httpx
 
 from .base import BaseWorker, WorkerResult, WorkerStatus
+from .capabilities._safe import safe_error_for_user
 
 
 @dataclass
@@ -150,8 +151,17 @@ class OpenClawGatewayWorker(BaseWorker):
 
     async def execute(self, task: dict[str, Any]) -> WorkerResult:
         """Execute a task through the configured OpenClaw gateway client."""
-        if self._status != WorkerStatus.RUNNING:
-            await self.start()
+        if self._status is not WorkerStatus.RUNNING:
+            try:
+                await self.start()
+            except Exception as exc:
+                self._status = WorkerStatus.FAILED
+                return WorkerResult(
+                    worker_id=self.worker_id,
+                    status=WorkerStatus.FAILED,
+                    error=safe_error_for_user(str(exc)),
+                    duration_seconds=self._duration(),
+                )
 
         request = self._normalize_task(task)
 
@@ -182,13 +192,13 @@ class OpenClawGatewayWorker(BaseWorker):
                 duration_seconds=self._duration(),
                 metadata={"method": request.method},
             )
-        except Exception as e:
+        except Exception as exc:
             return WorkerResult(
                 worker_id=self.worker_id,
                 status=WorkerStatus.FAILED,
-                error=str(e),
+                error=safe_error_for_user(str(exc)),
                 duration_seconds=self._duration(),
-                metadata={"method": request.method, "exception": type(e).__name__},
+                metadata={"method": request.method, "exception": type(exc).__name__},
             )
 
     async def stop(self) -> None:

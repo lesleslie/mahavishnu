@@ -294,10 +294,10 @@ class TestResolveWorkerType:
             "chatops",
         ],
     )
-    def test_communication_task_types_for_claude_routes_to_openclaw(self, task_type: str) -> None:
+    def test_communication_task_types_for_claude_pass_through(self, task_type: str) -> None:
         with patch.dict(os.environ, {}, clear=True):
             assert (
-                resolve_worker_type("terminal-claude", task_type=task_type) == "terminal-openclaw"
+                resolve_worker_type("terminal-claude", task_type=task_type) == "terminal-claude"
             )
 
     @pytest.mark.parametrize(
@@ -312,9 +312,9 @@ class TestResolveWorkerType:
             "chatops",
         ],
     )
-    def test_communication_task_types_for_qwen_routes_to_openclaw(self, task_type: str) -> None:
+    def test_communication_task_types_for_qwen_pass_through(self, task_type: str) -> None:
         with patch.dict(os.environ, {}, clear=True):
-            assert resolve_worker_type("terminal-qwen", task_type=task_type) == "terminal-openclaw"
+            assert resolve_worker_type("terminal-qwen", task_type=task_type) == "terminal-qwen"
 
     @pytest.mark.parametrize(
         "task_type",
@@ -328,9 +328,9 @@ class TestResolveWorkerType:
             "chatops",
         ],
     )
-    def test_communication_task_types_for_codex_routes_to_openclaw(self, task_type: str) -> None:
+    def test_communication_task_types_for_codex_pass_through(self, task_type: str) -> None:
         with patch.dict(os.environ, {}, clear=True):
-            assert resolve_worker_type("terminal-codex", task_type=task_type) == "terminal-openclaw"
+            assert resolve_worker_type("terminal-codex", task_type=task_type) == "terminal-codex"
 
     @pytest.mark.parametrize(
         "task_type",
@@ -353,18 +353,18 @@ class TestResolveWorkerType:
 
     # --- gateway routing ---
 
-    def test_gateway_routing_when_env_set(self) -> None:
+    def test_gateway_env_var_does_not_infer_gateway(self) -> None:
         with patch.dict(os.environ, {"OPENCLAW_GATEWAY_URL": "http://gw:9000"}):
             assert (
                 resolve_worker_type("terminal-claude", task_type="communication")
-                == "gateway-openclaw"
+                == "terminal-claude"
             )
 
-    def test_gateway_routing_via_prompt_marker(self) -> None:
+    def test_gateway_env_var_does_not_infer_gateway_via_prompt(self) -> None:
         with patch.dict(os.environ, {"OPENCLAW_GATEWAY_URL": "http://gw:9000"}):
             assert (
                 resolve_worker_type("terminal-claude", prompt="please send slack message")
-                == "gateway-openclaw"
+                == "terminal-claude"
             )
 
     # --- prompt markers ---
@@ -395,44 +395,44 @@ class TestResolveWorkerType:
             "summarize for",
         ],
     )
-    def test_prompt_marker_routes_to_openclaw(self, marker: str) -> None:
+    def test_prompt_marker_does_not_route_to_openclaw(self, marker: str) -> None:
         with patch.dict(os.environ, {}, clear=True):
             prompt = f"please {marker} to the team"
-            assert resolve_worker_type("terminal-claude", prompt=prompt) == "terminal-openclaw"
+            assert resolve_worker_type("terminal-claude", prompt=prompt) == "terminal-claude"
 
-    def test_prompt_marker_case_insensitive(self) -> None:
+    def test_prompt_marker_case_insensitive_passes_through(self) -> None:
         with patch.dict(os.environ, {}, clear=True):
             assert (
                 resolve_worker_type("terminal-claude", prompt="PLEASE NOTIFY the team")
-                == "terminal-openclaw"
+                == "terminal-claude"
             )
 
-    def test_task_type_case_insensitive(self) -> None:
+    def test_task_type_case_insensitive_passes_through(self) -> None:
         with patch.dict(os.environ, {}, clear=True):
             assert (
                 resolve_worker_type("terminal-claude", task_type="COMMUNICATION")
-                == "terminal-openclaw"
+                == "terminal-claude"
             )
 
-    def test_task_type_with_whitespace_stripped(self) -> None:
+    def test_task_type_with_whitespace_passes_through(self) -> None:
         with patch.dict(os.environ, {}, clear=True):
             assert (
                 resolve_worker_type("terminal-claude", task_type="  communication  ")
-                == "terminal-openclaw"
+                == "terminal-claude"
             )
 
-    def test_prompt_marker_via_qwen(self) -> None:
+    def test_prompt_marker_via_qwen_passes_through(self) -> None:
         with patch.dict(os.environ, {}, clear=True):
             assert (
                 resolve_worker_type("terminal-qwen", prompt="send a slack message")
-                == "terminal-openclaw"
+                == "terminal-qwen"
             )
 
-    def test_prompt_marker_via_codex(self) -> None:
+    def test_prompt_marker_via_codex_passes_through(self) -> None:
         with patch.dict(os.environ, {}, clear=True):
             assert (
                 resolve_worker_type("terminal-codex", prompt="send a slack message")
-                == "terminal-openclaw"
+                == "terminal-codex"
             )
 
     def test_prompt_marker_via_openclaw(self) -> None:
@@ -468,10 +468,10 @@ class TestResolveWorkerType:
 
     def test_empty_env_for_gateway_check(self) -> None:
         with patch.dict(os.environ, {}, clear=True):
-            # OPENCLAW_GATEWAY_URL not set -> terminal-openclaw
+            # OPENCLAW_GATEWAY_URL not set -> identity passthrough
             assert (
                 resolve_worker_type("terminal-claude", task_type="communication")
-                == "terminal-openclaw"
+                == "terminal-claude"
             )
 
     def test_empty_string_task_type(self) -> None:
@@ -484,7 +484,7 @@ class TestResolveWorkerType:
         with patch.dict(os.environ, {}, clear=True):
             assert (
                 resolve_worker_type("terminal-claude", task_type=None, prompt="send a message")
-                == "terminal-openclaw"
+                == "terminal-claude"
             )
 
 

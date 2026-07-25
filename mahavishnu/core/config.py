@@ -1081,6 +1081,19 @@ class OpenHandsSettings(BaseModel):
         return self
 
 
+class ContainerSettings(BaseModel):
+    """Runtime discovery and socket settings for the container worker."""
+
+    runtime: str | None = Field(
+        default=None,
+        description="Container runtime to use; null = auto-detect (orbstack > docker > podman)",
+    )
+    socket_path: str | None = Field(
+        default=None,
+        description="Override path to the container daemon socket (e.g. OrbStack)",
+    )
+
+
 class WorkerConfig(BaseModel):
     """Worker orchestration configuration for headless AI execution."""
 
@@ -1107,6 +1120,10 @@ class WorkerConfig(BaseModel):
     session_buddy_integration: bool = Field(
         default=True,
         description="Enable Session-Buddy result storage for workers",
+    )
+    container: ContainerSettings = Field(
+        default_factory=ContainerSettings,
+        description="Container worker runtime discovery and socket settings",
     )
 
     model_config = {"extra": "forbid"}

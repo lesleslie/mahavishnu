@@ -15,7 +15,7 @@ from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from enum import StrEnum
 import time
-from typing import TYPE_CHECKING, Any
+from typing import Any
 
 import httpx
 from oneiric.actions.http import HttpActionSettings, HttpFetchAction
@@ -23,15 +23,17 @@ from oneiric.adapters.httpx_base import HTTPXClientMixin
 from oneiric.core.logging import get_logger
 from pydantic import BaseModel, Field
 
+from mahavishnu.core.config import DependencyConfig, HealthConfig, MahavishnuSettings
 from mahavishnu.core.errors import ErrorCode, MahavishnuError
+from mahavishnu.workers.capabilities import (
+    WorkerCapabilityState,
+    evaluate_all_capabilities,
+)
 from monitoring.metrics import (
     mahavishnu_dependency_health_status,
     mahavishnu_dependency_request_duration_seconds,
     mahavishnu_dependency_requests_total,
 )
-
-if TYPE_CHECKING:
-    from mahavishnu.core.config import DependencyConfig, HealthConfig
 
 logger = get_logger("mahavishnu.health")
 
@@ -657,3 +659,65 @@ class HealthEndpoint(HTTPXClientMixin):
             dependencies=dep_status,
             checks=checks,
         )
+
+
+# ---------------------------------------------------------------------------
+# Capability-aware readiness aggregator (Task 10)
+# ---------------------------------------------------------------------------
+
+
+async def readiness(
+    *,
+    settings: MahavishnuSettings | None = None,
+) -> dict[str, Any]:
+    """Aggregate worker capability reports into a readiness payload.
+
+    Used by the MCP ``get_readiness`` tool and the ``/ready`` HTTP
+    endpoint to surface the worker component alongside the existing
+    dependency probes. The default worker type from
+    ``settings.workers.default_type`` drives the overall status:
+    REGISTERED is UNHEALTHY (no declaration),
+    CONFIGURED/READY is DEGRADED (declared but not live),
+    AVAILABLE is OK (live).
+
+    Args:
+        settings: Optional pre-built :class:`MahavishnuSettings`
+            instance. When ``None`` the settings are resolved lazily so
+            test fixtures can pass partial mocks.
+
+    Returns:
+        Dict with ``status`` (str), ``worker_reports`` (mapping of
+        worker type to capability state value), and the resolved
+        ``default_worker`` type.
+    """
+    if settings is None:
+        settings = MahavishnuSettings()
+
+    reports = evaluate_all_capabilities(settings=settings, force_live=False)
+    default_type = getattr(
+        getattr(settings, "workers", None),
+        "default_type",
+        "terminal-claude",
+    )
+    default_report = reports.get(default_type)
+    state = (
+        default_report.state
+        if default_report is not None
+        else WorkerCapabilityState.REGISTERED
+    )
+
+    if state is WorkerCapabilityState.REGISTERED:
+        status = HealthStatus.UNHEALTHY
+    elif state in {
+        WorkerCapabilityState.CONFIGURED,
+        WorkerCapabilityState.READY,
+    }:
+        status = HealthStatus.DEGRADED
+    else:
+        status = HealthStatus.OK
+
+    return {
+        "status": status.value,
+        "default_worker": default_type,
+        "worker_reports": {k: v.state.value for k, v in reports.items()},
+    }
