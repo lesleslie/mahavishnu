@@ -1,63 +1,79 @@
 #!/usr/bin/env python3
-"""Launch wrapper: reads ~/.config/oneiric/local.yaml `secrets:` block into os.environ,
-then exec's the Mahavishnu MCP server.
+"""Launch wrapper: sources ~/.config/secrets.env into os.environ, then exec's
+the Mahavishnu MCP server.
 
 Why this exists:
-    launchd-managed processes don't inherit shell init files (no .zshrc sourcing)
-    AND user secrets have been migrated out of .zshrc into Oneiric's XDG-local YAML
-    (see ~/.zshrc line 213: "OPENAI_API_KEY, MINIMAX_API_KEY, POSTMAN_API_KEY
-    moved to ~/.config/oneiric/local.yaml (2026-06-23)").
-    This wrapper bridges that gap.
+    launchd-managed processes don't inherit shell init files (no .zshrc / .zshenv
+    sourcing), so the consolidated secrets file must be read explicitly. This
+    wrapper bridges that gap by parsing secrets.env and merging its values
+    into os.environ before exec'ing the MCP server.
 
-The wrapper reads secrets with key names normalized to upper-case (matching the
-env-var convention expected by the Agno adapter's _get_api_key("MINIMAX_API_KEY")
-and similar downstream consumers).
+Source format (one per line, comments allowed with leading `#`):
+    export KEY='value'
+    export KEY="value"
+    export KEY=value  # no quotes, simple unquoted value
+    KEY='value'       # bare assignment also accepted
+
+Key names are upper-cased to match the env-var convention expected by
+downstream consumers (e.g. Agno adapter's _get_api_key("MINIMAX_API_KEY")).
 """
 
 from __future__ import annotations
 
 import os
+import re
 from pathlib import Path
 import sys
 
-ONIRIC_LOCAL_YAML = Path.home() / ".config" / "oneiric" / "local.yaml"
+SECRETS_ENV = Path.home() / ".config" / "secrets.env"
 MCP_PROGRAM = "/Users/les/Projects/mahavishnu/.venv/bin/python"
 MCP_ARGS = ("-m", "mahavishnu", "mcp", "start")
 
+# Matches: optional `export `, KEY, =, then a quoted or unquoted value.
+# Captures: (1) key, (2) quote char or empty, (3) value
+_LINE_RE = re.compile(
+    r"""^\s*(?:export\s+)?([A-Z0-9_]+)\s*=\s*(['"]?)(.*?)\2\s*$"""
+)
+
+
+def _strip_comment(value: str) -> str:
+    """Strip an inline `# comment` from a value, but not from inside quotes.
+
+    We assume the regex already removed the surrounding quotes, so a `#` here
+    is only safe to strip if it doesn't appear before an unescaped quote
+    (we never have one at this point). For secrets.env values that contain
+    `#` (e.g. JWTs with `#` in the header), the quotes in the source file
+    protect them — so this only fires for unquoted values.
+    """
+    idx = value.find(" #")
+    return value if idx < 0 else value[:idx].rstrip()
+
 
 def load_secrets() -> dict[str, str]:
-    """Load secret env vars from Oneiric XDG-local YAML.
+    """Parse ~/.config/secrets.env into a {KEY: value} dict.
 
-    Schema (one level of grouping under `secrets:`, currently `inline:`):
-        secrets:
-          inline:
-            MINIMAX_API_KEY: <value>
-            OPENAI_API_KEY: <value>
-            ...
-
-    The `inline` group is intended for env vars that go directly into process
-    env. Returns upper-cased keys so they can be merged into os.environ.
-
-    Falls back to flat `secrets: {KEY: ...}` if no `inline:` subgroup exists,
-    so older / simpler configs keep working.
+    Returns upper-cased keys so they can be merged into os.environ unchanged.
+    Returns {} if the file is missing or unreadable.
     """
-    if not ONIRIC_LOCAL_YAML.exists():
+    if not SECRETS_ENV.exists():
         return {}
+    result: dict[str, str] = {}
     try:
-        import yaml
-    except ImportError:
+        with SECRETS_ENV.open() as f:
+            for raw in f:
+                line = raw.rstrip("\n")
+                # Skip blank lines and full-line comments
+                stripped = line.strip()
+                if not stripped or stripped.startswith("#"):
+                    continue
+                m = _LINE_RE.match(line)
+                if not m:
+                    continue
+                key, _quote, value = m.group(1), m.group(2), m.group(3)
+                result[key.upper()] = _strip_comment(value)
+    except OSError:
         return {}
-
-    with ONIRIC_LOCAL_YAML.open() as f:
-        data = yaml.safe_load(f) or {}
-
-    secrets = data.get("secrets")
-    if not isinstance(secrets, dict):
-        return {}
-
-    # Prefer `secrets.inline:` subgroup; fall back to flat `secrets:` mapping
-    source = secrets.get("inline", secrets) if isinstance(secrets.get("inline"), dict) else secrets
-    return {str(k).upper(): str(v) for k, v in source.items()}
+    return result
 
 
 def main() -> int:
