@@ -220,11 +220,12 @@ def register_pool_tools(  # noqa: C901
         mcp: FastMCP instance
         pool_manager: PoolManager instance
 
-    This registers 11 pool management tools:
+    This registers 12 pool management tools:
     - pool_spawn: Create a new pool
     - pool_execute: Execute task on specific pool
     - pool_route_execute: Execute task with automatic routing
     - dispatch_to_pool: Dispatch with caller_kind + parent_session_id audit trail
+    - workflow_result: Retrieve the persisted state of an async dispatch
     - pool_list: List all active pools
     - pool_monitor: Monitor pool metrics
     - pool_scale: Scale pool worker count
@@ -692,6 +693,45 @@ def register_pool_tools(  # noqa: C901
         }
 
     @mcp.tool()
+    async def workflow_result(
+        workflow_id: str,
+    ) -> dict[str, Any]:
+        """Retrieve the result of an async dispatch_to_pool workflow.
+
+        Reads the persisted state from Dhara at
+        ``workflow-results/{workflow_id}/`` and returns the current
+        status and result. Returns ``status: "not_found"`` if the
+        workflow id is unknown or if Dhara is not configured on the
+        pool manager.
+
+        Args:
+            workflow_id: The id returned by
+                ``dispatch_to_pool(async_callback=True)``.
+
+        Returns:
+            Mapping with ``workflow_id``, ``status``, ``result``,
+            ``error``, ``rate_limited``, and ``retry_after_seconds``
+            when the record exists. ``result`` and ``error`` are
+            ``None`` when the corresponding key was not persisted.
+            When the workflow is missing or Dhara is unavailable, the
+            response is ``{"workflow_id": ..., "status": "not_found"}``.
+        """
+        dhara = getattr(pool_manager, "_dhara_state", None)
+        if dhara is None:
+            return {"workflow_id": workflow_id, "status": "not_found"}
+        record = await dhara.get(workflow_id)
+        if not record:
+            return {"workflow_id": workflow_id, "status": "not_found"}
+        return {
+            "workflow_id": workflow_id,
+            "status": record.get("status", "unknown"),
+            "result": record.get("result"),
+            "error": record.get("error"),
+            "rate_limited": bool(record.get("rate_limited", False)),
+            "retry_after_seconds": record.get("retry_after_seconds"),
+        }
+
+    @mcp.tool()
     async def pool_list() -> list[dict[str, Any]]:
         """List all active pools."""
         try:
@@ -824,4 +864,4 @@ def register_pool_tools(  # noqa: C901
             logger.error(f"Failed to search memory: {e}")
             return []
 
-    logger.info("Registered 11 pool management tools")
+    logger.info("Registered 12 pool management tools")

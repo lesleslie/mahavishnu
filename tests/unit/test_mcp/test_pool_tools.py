@@ -1,9 +1,9 @@
 """Unit tests for mahavishnu.mcp.tools.pool_tools.
 
-The module exposes ``register_pool_tools`` which attaches 11 FastMCP tools
+The module exposes ``register_pool_tools`` which attaches 12 FastMCP tools
 (``pool_spawn``, ``pool_execute``, ``pool_route_execute``,
-``dispatch_to_pool``, ``pool_list``, ``pool_monitor``, ``pool_scale``,
-``pool_close``, ``pool_close_all``, ``pool_health``,
+``dispatch_to_pool``, ``workflow_result``, ``pool_list``, ``pool_monitor``,
+``pool_scale``, ``pool_close``, ``pool_close_all``, ``pool_health``,
 ``pool_search_memory``) plus the module-level
 ``_resolve_peer_affinity_allowlist_from_env`` helper.
 
@@ -61,9 +61,7 @@ def mock_pool_manager() -> AsyncMock:
     manager.execute_on_pool = AsyncMock(
         return_value={"status": "completed", "output": "test output"}
     )
-    manager.route_task = AsyncMock(
-        return_value={"pool_id": "pool_test_id", "status": "completed"}
-    )
+    manager.route_task = AsyncMock(return_value={"pool_id": "pool_test_id", "status": "completed"})
     manager.list_pools = AsyncMock(
         return_value=[
             {"pool_id": "pool_1", "pool_type": "mahavishnu", "status": "active"},
@@ -76,9 +74,7 @@ def mock_pool_manager() -> AsyncMock:
             "pool_2": {"status": "healthy", "workers": 3},
         }
     )
-    manager.health_check = AsyncMock(
-        return_value={"status": "healthy", "pools_active": 2}
-    )
+    manager.health_check = AsyncMock(return_value={"status": "healthy", "pools_active": 2})
     manager.close_pool = AsyncMock(return_value=None)
     manager.close_all = AsyncMock(return_value=None)
     # ``pool_scale`` reaches into ``pool_manager._pools`` to look up the
@@ -105,6 +101,7 @@ EXPECTED_TOOL_NAMES = {
     "pool_execute",
     "pool_route_execute",
     "dispatch_to_pool",
+    "workflow_result",
     "pool_list",
     "pool_monitor",
     "pool_scale",
@@ -138,9 +135,7 @@ class TestRegistration:
 class TestResolvePeerAffinityAllowlistFromEnv:
     """``_resolve_peer_affinity_allowlist_from_env`` reads the env var."""
 
-    def test_unset_returns_none(
-        self, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
+    def test_unset_returns_none(self, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.delenv("MAHAVISHNU_PEER_AFFINITY_ALLOWLIST", raising=False)
         assert _resolve_peer_affinity_allowlist_from_env() is None
 
@@ -148,36 +143,24 @@ class TestResolvePeerAffinityAllowlistFromEnv:
         monkeypatch.setenv("MAHAVISHNU_PEER_AFFINITY_ALLOWLIST", "")
         assert _resolve_peer_affinity_allowlist_from_env() is None
 
-    def test_whitespace_only_returns_none(
-        self, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
+    def test_whitespace_only_returns_none(self, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setenv("MAHAVISHNU_PEER_AFFINITY_ALLOWLIST", "   ")
         assert _resolve_peer_affinity_allowlist_from_env() is None
 
-    def test_wildcard_returns_singleton_set(
-        self, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
+    def test_wildcard_returns_singleton_set(self, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setenv("MAHAVISHNU_PEER_AFFINITY_ALLOWLIST", "*")
         assert _resolve_peer_affinity_allowlist_from_env() == {"*"}
 
-    def test_comma_separated_returns_set(
-        self, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
-        monkeypatch.setenv(
-            "MAHAVISHNU_PEER_AFFINITY_ALLOWLIST", "pool_abc, pool_xyz , pool_q"
-        )
+    def test_comma_separated_returns_set(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        monkeypatch.setenv("MAHAVISHNU_PEER_AFFINITY_ALLOWLIST", "pool_abc, pool_xyz , pool_q")
         assert _resolve_peer_affinity_allowlist_from_env() == {
             "pool_abc",
             "pool_xyz",
             "pool_q",
         }
 
-    def test_skips_empty_segments(
-        self, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
-        monkeypatch.setenv(
-            "MAHAVISHNU_PEER_AFFINITY_ALLOWLIST", "pool_abc,, pool_xyz,"
-        )
+    def test_skips_empty_segments(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        monkeypatch.setenv("MAHAVISHNU_PEER_AFFINITY_ALLOWLIST", "pool_abc,, pool_xyz,")
         assert _resolve_peer_affinity_allowlist_from_env() == {
             "pool_abc",
             "pool_xyz",
@@ -244,9 +227,7 @@ class TestPoolSpawn:
     async def test_returns_failure_dict_on_exception(
         self, registered_mcp: _StubMCP, mock_pool_manager: AsyncMock
     ) -> None:
-        mock_pool_manager.spawn_pool = AsyncMock(
-            side_effect=RuntimeError("Spawn failed")
-        )
+        mock_pool_manager.spawn_pool = AsyncMock(side_effect=RuntimeError("Spawn failed"))
         fn = registered_mcp.tools["pool_spawn"]
         result = await fn(pool_type="mahavishnu", name="test")
         assert result == {"status": "failed", "error": "Spawn failed"}
@@ -282,8 +263,7 @@ class TestPoolExecute:
         # enforce quota (Phase 3 security fix: pool_execute gates the same
         # as pool_route_execute).
         assert (
-            mock_pool_manager.execute_on_pool.call_args.kwargs["caller_kind"]
-            == CallerKind.UNKNOWN
+            mock_pool_manager.execute_on_pool.call_args.kwargs["caller_kind"] == CallerKind.UNKNOWN
         )
 
     async def test_uses_default_timeout(
@@ -297,9 +277,7 @@ class TestPoolExecute:
     async def test_returns_failure_dict_on_exception(
         self, registered_mcp: _StubMCP, mock_pool_manager: AsyncMock
     ) -> None:
-        mock_pool_manager.execute_on_pool = AsyncMock(
-            side_effect=RuntimeError("Task failed")
-        )
+        mock_pool_manager.execute_on_pool = AsyncMock(side_effect=RuntimeError("Task failed"))
         fn = registered_mcp.tools["pool_execute"]
         result = await fn(pool_id="pool_1", prompt="x")
         assert result["status"] == "failed"
@@ -336,9 +314,7 @@ class TestPoolRouteExecute:
     async def test_returns_failure_dict_on_exception(
         self, registered_mcp: _StubMCP, mock_pool_manager: AsyncMock
     ) -> None:
-        mock_pool_manager.route_task = AsyncMock(
-            side_effect=RuntimeError("Routing failed")
-        )
+        mock_pool_manager.route_task = AsyncMock(side_effect=RuntimeError("Routing failed"))
         fn = registered_mcp.tools["pool_route_execute"]
         result = await fn(prompt="x")
         assert result == {"status": "failed", "error": "Routing failed"}
@@ -363,9 +339,7 @@ class TestPoolRouteExecute:
         mock_pool_manager: AsyncMock,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        monkeypatch.setenv(
-            "MAHAVISHNU_PEER_AFFINITY_ALLOWLIST", "pool_env_a,pool_env_b"
-        )
+        monkeypatch.setenv("MAHAVISHNU_PEER_AFFINITY_ALLOWLIST", "pool_env_a,pool_env_b")
         fn = registered_mcp.tools["pool_route_execute"]
         await fn(prompt="x", pool_selector="peer_affinity")
         _, kwargs = mock_pool_manager.route_task.call_args
@@ -380,9 +354,7 @@ class TestPoolRouteExecute:
         mock_pool_manager: AsyncMock,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        monkeypatch.setenv(
-            "MAHAVISHNU_PEER_AFFINITY_ALLOWLIST", "pool_env_only"
-        )
+        monkeypatch.setenv("MAHAVISHNU_PEER_AFFINITY_ALLOWLIST", "pool_env_only")
         fn = registered_mcp.tools["pool_route_execute"]
         await fn(
             prompt="x",
@@ -423,9 +395,7 @@ class TestPoolList:
             {"pool_id": "pool_2", "pool_type": "session-buddy", "status": "active"},
         ]
 
-    async def test_empty_list(
-        self, registered_mcp: _StubMCP, mock_pool_manager: AsyncMock
-    ) -> None:
+    async def test_empty_list(self, registered_mcp: _StubMCP, mock_pool_manager: AsyncMock) -> None:
         mock_pool_manager.list_pools = AsyncMock(return_value=[])
         fn = registered_mcp.tools["pool_list"]
         assert await fn() == []
@@ -433,9 +403,7 @@ class TestPoolList:
     async def test_exception_returns_empty_list(
         self, registered_mcp: _StubMCP, mock_pool_manager: AsyncMock
     ) -> None:
-        mock_pool_manager.list_pools = AsyncMock(
-            side_effect=RuntimeError("list failed")
-        )
+        mock_pool_manager.list_pools = AsyncMock(side_effect=RuntimeError("list failed"))
         fn = registered_mcp.tools["pool_list"]
         assert await fn() == []
 
@@ -468,9 +436,7 @@ class TestPoolMonitor:
     async def test_exception_returns_empty_dict(
         self, registered_mcp: _StubMCP, mock_pool_manager: AsyncMock
     ) -> None:
-        mock_pool_manager.aggregate_results = AsyncMock(
-            side_effect=RuntimeError("monitor failed")
-        )
+        mock_pool_manager.aggregate_results = AsyncMock(side_effect=RuntimeError("monitor failed"))
         fn = registered_mcp.tools["pool_monitor"]
         assert await fn() == {}
 
@@ -545,9 +511,7 @@ class TestPoolClose:
     async def test_close_failure(
         self, registered_mcp: _StubMCP, mock_pool_manager: AsyncMock
     ) -> None:
-        mock_pool_manager.close_pool = AsyncMock(
-            side_effect=RuntimeError("close failed")
-        )
+        mock_pool_manager.close_pool = AsyncMock(side_effect=RuntimeError("close failed"))
         fn = registered_mcp.tools["pool_close"]
         result = await fn(pool_id="pool_1")
         assert result["status"] == "failed"
@@ -582,9 +546,7 @@ class TestPoolCloseAll:
     async def test_close_all_failure(
         self, registered_mcp: _StubMCP, mock_pool_manager: AsyncMock
     ) -> None:
-        mock_pool_manager.close_all = AsyncMock(
-            side_effect=RuntimeError("close all failed")
-        )
+        mock_pool_manager.close_all = AsyncMock(side_effect=RuntimeError("close all failed"))
         fn = registered_mcp.tools["pool_close_all"]
         result = await fn()
         assert result["status"] == "failed"
@@ -610,9 +572,7 @@ class TestPoolHealth:
     async def test_health_failure(
         self, registered_mcp: _StubMCP, mock_pool_manager: AsyncMock
     ) -> None:
-        mock_pool_manager.health_check = AsyncMock(
-            side_effect=RuntimeError("health failed")
-        )
+        mock_pool_manager.health_check = AsyncMock(side_effect=RuntimeError("health failed"))
         fn = registered_mcp.tools["pool_health"]
         result = await fn()
         assert result["status"] == "unhealthy"
@@ -657,9 +617,7 @@ class TestPoolSearchMemory:
         self, registered_mcp: _StubMCP, mock_pool_manager: AsyncMock
     ) -> None:
         mock_aggregator = MagicMock()
-        mock_aggregator.cross_pool_search = AsyncMock(
-            side_effect=RuntimeError("search failed")
-        )
+        mock_aggregator.cross_pool_search = AsyncMock(side_effect=RuntimeError("search failed"))
         with patch(
             "mahavishnu.mcp.tools.pool_tools.MemoryAggregator",
             return_value=mock_aggregator,
