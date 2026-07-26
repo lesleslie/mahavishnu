@@ -44,7 +44,12 @@ def register_worker_tools(  # noqa: C901
         prompt: str,
         timeout: int = 300,
     ) -> dict:
-        """Execute task on specific worker."""
+        """Execute task on specific worker.
+
+        Returns the full structured result without silent truncation;
+        callers that need a summary should pass the result through
+        their own formatter.
+        """
         if timeout < 30 or timeout > 3600:
             raise ValueError("timeout must be between 30 and 3600")
 
@@ -58,12 +63,11 @@ def register_worker_tools(  # noqa: C901
         return {
             "worker_id": result.worker_id,
             "status": result.status.value,
-            "output": result.output[:500] + "..."
-            if result.output and len(result.output) > 500
-            else result.output,
+            "output": result.output,
             "error": result.error,
-            "duration": result.duration_seconds,
-            "has_output": result.has_output(),
+            "exit_code": result.exit_code,
+            "duration_seconds": result.duration_seconds,
+            "metadata": result.metadata or {},
         }
 
     @mcp.tool()
@@ -71,8 +75,12 @@ def register_worker_tools(  # noqa: C901
         worker_ids: list[str],
         prompts: list[str],
         timeout: int = 300,
-    ) -> dict:
-        """Execute tasks on multiple workers concurrently."""
+    ) -> list[dict]:
+        """Execute tasks on multiple workers concurrently.
+
+        Returns a list of structured results, one per input, in the
+        same order as the input worker_ids / prompts.
+        """
         if len(worker_ids) != len(prompts):
             raise ValueError("worker_ids and prompts must have same length")
 
@@ -80,16 +88,20 @@ def register_worker_tools(  # noqa: C901
 
         results = await worker_manager.execute_batch(worker_ids, tasks)
 
-        return {
-            wid: {
-                "status": result.status.value,
-                "output": result.output[:200] + "..."
-                if result.output and len(result.output) > 200
-                else result.output,
-                "duration": result.duration_seconds,
-            }
-            for wid, result in results.items()
-        }
+        out: list[dict] = []
+        for wid, result in results.items():
+            out.append(
+                {
+                    "worker_id": wid,
+                    "status": result.status.value,
+                    "output": result.output,
+                    "error": result.error,
+                    "exit_code": result.exit_code,
+                    "duration_seconds": result.duration_seconds,
+                    "metadata": result.metadata or {},
+                }
+            )
+        return out
 
     @mcp.tool()
     async def worker_list() -> list[dict]:

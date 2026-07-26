@@ -60,6 +60,8 @@ def _make_result(
     output: str | None = "ok",
     error: str | None = None,
     duration: float = 1.5,
+    exit_code: int | None = 0,
+    metadata: dict | None = None,
 ) -> MagicMock:
     """Build a TaskResult-shaped MagicMock with the documented attributes."""
 
@@ -69,7 +71,8 @@ def _make_result(
     result.output = output
     result.error = error
     result.duration_seconds = duration
-    result.has_output = MagicMock(return_value=output is not None and output != "")
+    result.exit_code = exit_code
+    result.metadata = metadata if metadata is not None else {}
     return result
 
 
@@ -237,8 +240,9 @@ class TestWorkerExecute:
         assert result["status"] == "completed"
         assert result["output"] == "task completed successfully"
         assert result["error"] is None
-        assert result["duration"] == 2.0
-        assert result["has_output"] is True
+        assert result["duration_seconds"] == 2.0
+        assert result["exit_code"] == 0
+        assert result["metadata"] == {}
 
     async def test_passes_task_dict_to_manager(
         self, registered_mcp: _StubMCP, mock_worker_manager: AsyncMock
@@ -257,10 +261,10 @@ class TestWorkerExecute:
         _, task = mock_worker_manager.execute_task.call_args.args
         assert task["timeout"] == 300
 
-    async def test_truncates_long_output(
+    async def test_does_not_truncate_long_output(
         self, registered_mcp: _StubMCP, mock_worker_manager: AsyncMock
     ) -> None:
-        long_output = "x" * 1000
+        long_output = "x" * 5000
         mock_worker_manager.execute_task = AsyncMock(
             return_value=_make_result(
                 worker_id="w_1",
@@ -270,9 +274,9 @@ class TestWorkerExecute:
         )
         fn = registered_mcp.tools["worker_execute"]
         result = await fn(worker_id="w_1", prompt="x")
-        assert result["output"].endswith("...")
-        # 500 chars + ellipsis
-        assert len(result["output"]) == 503
+        # No truncation: full 5000-char output is returned verbatim.
+        assert result["output"] == long_output
+        assert len(result["output"]) == 5000
 
     async def test_preserves_short_output(
         self, registered_mcp: _StubMCP, mock_worker_manager: AsyncMock
@@ -301,7 +305,7 @@ class TestWorkerExecute:
         fn = registered_mcp.tools["worker_execute"]
         result = await fn(worker_id="w_1", prompt="x")
         assert result["output"] is None
-        assert result["has_output"] is False
+        assert result["error"] is None
 
     async def test_timeout_below_minimum_raises_value_error(
         self, registered_mcp: _StubMCP, mock_worker_manager: AsyncMock
@@ -328,18 +332,21 @@ class TestWorkerExecute:
 class TestWorkerExecuteBatch:
     """``worker_execute_batch`` runs tasks on multiple workers concurrently."""
 
-    async def test_returns_dict_per_worker(
+    async def test_returns_one_dict_per_input(
         self, registered_mcp: _StubMCP, mock_worker_manager: AsyncMock
     ) -> None:
         fn = registered_mcp.tools["worker_execute_batch"]
         result = await fn(
             worker_ids=["w_1", "w_2"], prompts=["a", "b"], timeout=300
         )
-        assert set(result) == {"w_1", "w_2"}
-        assert result["w_1"]["status"] == "completed"
-        assert result["w_1"]["output"] == "result-1"
-        assert result["w_2"]["status"] == "completed"
-        assert result["w_2"]["output"] == "result-2"
+        assert isinstance(result, list)
+        assert len(result) == 2
+        assert result[0]["worker_id"] == "w_1"
+        assert result[0]["status"] == "completed"
+        assert result[0]["output"] == "result-1"
+        assert result[1]["worker_id"] == "w_2"
+        assert result[1]["status"] == "completed"
+        assert result[1]["output"] == "result-2"
 
     async def test_passes_worker_ids_and_tasks(
         self, registered_mcp: _StubMCP, mock_worker_manager: AsyncMock
@@ -353,10 +360,10 @@ class TestWorkerExecuteBatch:
             {"prompt": "b", "timeout": 300},
         ]
 
-    async def test_truncates_long_output(
+    async def test_does_not_truncate_long_output(
         self, registered_mcp: _StubMCP, mock_worker_manager: AsyncMock
     ) -> None:
-        long_output = "y" * 500
+        long_output = "y" * 5000
         mock_worker_manager.execute_batch = AsyncMock(
             return_value={
                 "w_1": _make_result(
@@ -368,9 +375,9 @@ class TestWorkerExecuteBatch:
         )
         fn = registered_mcp.tools["worker_execute_batch"]
         result = await fn(worker_ids=["w_1"], prompts=["x"], timeout=300)
-        assert result["w_1"]["output"].endswith("...")
-        # 200 chars + ellipsis
-        assert len(result["w_1"]["output"]) == 203
+        # No truncation: full 5000-char output is returned verbatim.
+        assert result[0]["output"] == long_output
+        assert len(result[0]["output"]) == 5000
 
     async def test_length_mismatch_raises_value_error(
         self, registered_mcp: _StubMCP, mock_worker_manager: AsyncMock
