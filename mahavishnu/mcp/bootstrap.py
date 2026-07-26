@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import datetime as dt
 from typing import TYPE_CHECKING, cast
 
 from oneiric.core.logging import get_logger
@@ -126,6 +127,8 @@ async def _register_worker_pool_tools(server: FastMCPServer, methods_set: set[st
     """
     if "_register_worker_tools" in methods_set:
         _register_worker_block(server)
+    if "_register_worker_contract_tools" in methods_set:
+        _register_worker_contract_block(server)
     if "_register_pool_tools" in methods_set:
         _register_pool_block(server)
     if "_register_otel_tools" in methods_set:
@@ -160,6 +163,86 @@ def _register_pool_block(server: FastMCPServer) -> None:
 
     register_pool_tools(server.server, pool_manager)
     logger.info("Registered 10 pool management tools with MCP server")
+
+
+def _register_worker_contract_block(server: FastMCPServer) -> None:
+    """Register the durable-worker contract tool group.
+
+    The block is intentionally defensive: if the contract package, the
+    required persistence backends, or the eventbus producer is unavailable
+    at boot, it falls back to a no-op manager so the MCP server can still
+    start with the rest of the tool profile intact. Tools exposed by this
+    group surface ``state="manager_unconfigured"`` in that mode.
+    """
+    from ..mcp.tools.worker_contract_tools import register_worker_contract_tools
+
+    durable_worker_manager = getattr(server.app, "_durable_worker_manager", None)
+    if durable_worker_manager is None:
+        durable_worker_manager = _build_noop_worker_manager()
+    register_worker_contract_tools(server.server, durable_worker_manager)
+    logger.info("Registered 7 worker-contract tools with MCP server")
+
+
+def _build_noop_worker_manager() -> Any:
+    """Return a no-op stand-in when real durable-worker infra is unavailable.
+
+    The shim satisfies the protocol surface that
+    :func:`register_worker_contract_tools` touches (``spawn``, ``status``,
+    ``capture_output``, ``send_input``, ``cancel``, ``reap``, optional
+    ``pane_command``) without making tmux or the EventBus hard requirements
+    at boot.
+    """
+    from ..workers.contract.state import WorkerLifecycleState
+
+    class _NoopResult:
+        text = ""
+        next_offset = 0
+        truncated = False
+        pane_alive = False
+
+    class _NoopRecord:
+        """Stand-in record with the durable-record attribute surface."""
+
+        worker_id = "noop"
+        worker_type = "noop"
+        backend = "noop"
+        tmux = None
+        state = WorkerLifecycleState.REAPED
+        created_at = dt.datetime.now(dt.UTC)
+        last_seen_at = dt.datetime.now(dt.UTC)
+        last_output_offset = 0
+        claude_session = None
+        last_exit_code = None
+        metadata: dict = {}
+
+        def model_dump(self) -> dict:
+            return {}
+
+    class _NoopSpawnResult:
+        worker_id = "noop"
+        record = _NoopRecord()
+        pane = ""
+
+    class _NoopManager:
+        def spawn(self, **_kwargs: Any) -> Any:
+            return _NoopSpawnResult()
+
+        def status(self, worker_id: str) -> Any:
+            return None
+
+        def capture_output(self, worker_id: str, **_kw: Any) -> Any:
+            return _NoopResult()
+
+        def send_input(self, worker_id: str, text: str, **_kw: Any) -> bool:
+            return False
+
+        def cancel(self, worker_id: str, **_kw: Any) -> bool:
+            return False
+
+        def reap(self, worker_id: str) -> None:
+            return None
+
+    return _NoopManager()
 
 
 def _register_otel_block(server: FastMCPServer) -> None:

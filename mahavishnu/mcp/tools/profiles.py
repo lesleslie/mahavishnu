@@ -44,6 +44,7 @@ STANDARD_REGISTRATIONS: list[str] = MINIMAL_REGISTRATIONS + [
     "_register_terminal_tools",
     "_register_pool_tools",
     "_register_worker_tools",
+    "_register_worker_contract_tools",
     "_register_repository_messaging_tools",
     "_register_git_analytics_tools",
     "_register_session_buddy_tools",
