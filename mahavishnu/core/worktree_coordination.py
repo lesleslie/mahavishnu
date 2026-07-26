@@ -40,7 +40,7 @@ logger = logging.getLogger(__name__)
 # settings/mahavishnu.yaml) once session-buddy exposes those tools.
 # Tracking: docs/superpowers/plans/2026-07-26-session-buddy-worktree-tools.md
 _SESSION_BUDDY_ENABLED = os.environ.get(
-    "MAHAVISHNU_WORKTREE_SESSION_BUDDY_ENABLED", "false"
+    "MAHAVISHNU_WORKTREE_SESSION_BUDDY_ENABLED", "true"
 ).lower() in ("1", "true", "yes", "on")
 
 

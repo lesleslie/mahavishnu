@@ -1,5 +1,6 @@
 """Session-Buddy MCP worktree provider (primary)."""
 
+import json
 import logging
 from pathlib import Path
 from typing import Any
@@ -8,6 +9,35 @@ from .base import WorktreeProvider
 from .errors import WorktreeCreationError, WorktreeRemovalError, WorktreeValidationError
 
 logger = logging.getLogger(__name__)
+
+
+def _extract_tool_payload(result: Any) -> dict[str, Any]:
+    """Parse the JSON-string payload returned by Session-Buddy's tools.
+
+    FastMCP's ``client.call_tool()`` returns a ``CallToolResult`` whose
+    ``.content`` is a list of ``TextContent`` objects. Session-Buddy's
+    worktree tools serialize their response via ``json.dumps``, so the
+    raw text is a JSON document we parse back to a dict.
+
+    Returns an empty dict when the response cannot be parsed — callers
+    then see ``success=False`` and skip the provider gracefully.
+    """
+    try:
+        content = getattr(result, "content", None)
+        if content is None and isinstance(result, list):
+            # Some FastMCP versions return a list directly
+            content = result
+        if not content:
+            return {}
+        first = content[0]
+        text = getattr(first, "text", None) or (first if isinstance(first, str) else None)
+        if not text:
+            return {}
+        parsed = json.loads(text)
+        return parsed if isinstance(parsed, dict) else {}
+    except (json.JSONDecodeError, AttributeError, IndexError, TypeError) as exc:
+        logger.warning("Failed to extract Session-Buddy tool payload: %s", exc)
+        return {}
 
 
 class SessionBuddyWorktreeProvider(WorktreeProvider):
@@ -100,22 +130,31 @@ class SessionBuddyWorktreeProvider(WorktreeProvider):
             )
 
             # Call Session-Buddy's create_worktree tool
-            await client.call_tool(
+            result = await client.call_tool(
                 "create_worktree",
                 arguments={
                     "repository_path": str(repository_path),
                     "branch": branch,
-                    "new_path": str(worktree_path),
+                    "worktree_path": str(worktree_path),
                     "create_branch": create_branch,
                 },
             )
+            payload = _extract_tool_payload(result)
+            if payload.get("success") is False:
+                return {
+                    "success": False,
+                    "error": payload.get("error", "unknown error"),
+                    "error_code": payload.get("error_code"),
+                    "provider": "session-buddy",
+                }
 
             logger.info(f"Worktree created successfully: {worktree_path}")
 
             return {
                 "success": True,
-                "worktree_path": str(worktree_path),
-                "branch": branch,
+                "worktree_path": payload.get("worktree_path", str(worktree_path)),
+                "head": payload.get("head"),
+                "branch": payload.get("branch", branch),
                 "repository_path": str(repository_path),
                 "provider": "session-buddy",
             }
@@ -158,7 +197,7 @@ class SessionBuddyWorktreeProvider(WorktreeProvider):
             )
 
             # Call Session-Buddy's remove_worktree tool
-            await client.call_tool(
+            result = await client.call_tool(
                 "remove_worktree",
                 arguments={
                     "repository_path": str(repository_path),
@@ -166,12 +205,22 @@ class SessionBuddyWorktreeProvider(WorktreeProvider):
                     "force": force,
                 },
             )
+            payload = _extract_tool_payload(result)
+            if payload.get("success") is False:
+                return {
+                    "success": False,
+                    "error": payload.get("error", "unknown error"),
+                    "error_code": payload.get("error_code"),
+                    "force_required": payload.get("force_required", False),
+                    "safety_check": payload.get("safety_check"),
+                    "provider": "session-buddy",
+                }
 
             logger.info(f"Worktree removed successfully: {worktree_path}")
 
             return {
                 "success": True,
-                "removed_path": str(worktree_path),
+                "removed_path": payload.get("worktree_path", str(worktree_path)),
                 "repository_path": str(repository_path),
                 "provider": "session-buddy",
             }
@@ -210,13 +259,16 @@ class SessionBuddyWorktreeProvider(WorktreeProvider):
                 "list_worktrees",
                 arguments={"repository_path": str(repository_path)},
             )
+            payload = _extract_tool_payload(result)
 
-            logger.debug(f"Found {len(result.get('worktrees', []))} worktrees")
+            worktrees = payload.get("worktrees", []) if payload else []
+            logger.debug(f"Found {len(worktrees)} worktrees")
 
             return {
-                "success": True,
-                "worktrees": result.get("worktrees", []),
+                "success": payload.get("success", False) if payload else False,
+                "worktrees": worktrees,
                 "repository_path": str(repository_path),
+                "error": payload.get("error") if payload else "Session-Buddy did not respond",
                 "provider": "session-buddy",
             }
 
