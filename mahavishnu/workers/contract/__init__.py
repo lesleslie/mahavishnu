@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from .state import (
     ALLOWED_TRANSITIONS,
     WorkerLifecycleState,

@@ -30,3 +30,7 @@ def test_cannot_transition_completed_to_running():
 
 def test_detached_can_return_to_running():
     assert can_transition(WorkerLifecycleState.DETACHED, WorkerLifecycleState.RUNNING)
+
+
+def test_every_state_has_transition_table():
+    assert set(ALLOWED_TRANSITIONS.keys()) == set(WorkerLifecycleState)
