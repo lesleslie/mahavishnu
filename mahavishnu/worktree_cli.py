@@ -1,12 +1,28 @@
 """CLI commands for worktree management."""
 
 import asyncio
+import inspect
 import json
+from pathlib import Path
 
 import typer
 
 from .core.app import MahavishnuApp
+from .core.worktree_prune_merged import (
+    WorktreePruner,
+    WorktreePruneResult,
+    classify_merge_status,
+    find_merged_worktrees,
+)
 from .core.worktree_session_registry import SessionWorktreeRegistry
+
+__all__ = [
+    "WorktreePruneResult",
+    "WorktreePruner",
+    "classify_merge_status",
+    "find_merged_worktrees",
+    "worktree_app",
+]
 
 worktree_app = typer.Typer(help="Manage git worktrees across the ecosystem")
 
@@ -257,10 +273,156 @@ def provider_health():
     _run_async(_health())
 
 
-# ── Session worktree registry subcommands ────────────────────────
 
 
-@worktree_app.command("list-sessions")
+def _worktree_repo_manager(app):
+    """Resolve the repository manager across app compatibility surfaces."""
+    direct = getattr(app, "repo_manager", None)
+    if direct is not None:
+        return direct
+    coordinator = getattr(app, "worktree_coordinator", None)
+    return getattr(coordinator, "repo_manager", None)
+
+
+def _configured_repos(repo_manager):
+    """List configured repositories across manager API versions."""
+    list_repos = getattr(repo_manager, "list_repos", None)
+    if callable(list_repos):
+        return list_repos()
+    filter_repos = getattr(repo_manager, "filter", None)
+    if callable(filter_repos):
+        return filter_repos()
+    return []
+
+
+@worktree_app.command("prune-merged")
+def prune_merged_worktrees(
+    repo: str | None = typer.Option(
+        None, "--repo", "-r", help="Limit to one repo nickname (default: all configured repos)"
+    ),
+    ttl_days: int = typer.Option(
+        0, "--ttl-days", min=0, help="Only consider worktrees last touched > N days ago"
+    ),
+    include_dirty: bool = typer.Option(
+        False, "--include-dirty", help="Also remove merged worktrees with working-tree noise"
+    ),
+    force_reason: str | None = typer.Option(
+        None, "--force-reason", help="Required when --include-dirty is set; logged to audit trail"
+    ),
+    dry_run: bool = typer.Option(False, "--dry-run", help="List candidates without removing anything"),
+    json_output: bool = typer.Option(False, "--json", help="Emit machine-readable JSON"),
+    trigger: str = typer.Option("cli", "--trigger", hidden=True),
+) -> None:
+    """Prune worktrees whose branch is fully merged into main."""
+
+    async def _run() -> None:
+        app = MahavishnuApp.load()
+        await app.initialize_worktree_coordinator()
+        coordinator = app.worktree_coordinator
+        if coordinator is None:
+            typer.echo("WorktreeCoordinator not available", err=True)
+            raise typer.Exit(code=1)
+
+        repo_manager = _worktree_repo_manager(app)
+        if repo_manager is None:
+            typer.echo("Repository manager not available", err=True)
+            raise typer.Exit(code=1)
+        if include_dirty and not force_reason:
+            typer.echo("force_reason is required when --include-dirty is set", err=True)
+            raise typer.Exit(code=1)
+
+        if repo is not None:
+            resolved = repo_manager.get_repo(repo)
+            if resolved is None:
+                typer.echo(f"Repo not found: {repo}", err=True)
+                raise typer.Exit(code=1)
+            repos = [resolved]
+        else:
+            repos = list(_configured_repos(repo_manager))
+
+        registry = SessionWorktreeRegistry()
+
+        def registry_lookup(worktree_path: str) -> str | None:
+            for entry in registry.list_active(state=None):
+                if entry.get("worktree_path") == worktree_path:
+                    return entry.get("last_seen_at") or entry.get("abandoned_at")
+            return None
+
+        candidates = []
+        for repo_info in repos:
+            if not getattr(repo_info, "nickname", None):
+                typer.echo(f"Repo has no canonical nickname: {repo_info.name}", err=True)
+                raise typer.Exit(code=1)
+            try:
+                found = find_merged_worktrees(
+                    Path(repo_info.path),
+                    repo_nickname=repo_info.nickname,
+                    coordinator=coordinator,
+                    include_dirty=include_dirty,
+                    ttl_days=ttl_days,
+                    registry_lookup=registry_lookup,
+                )
+                candidates.extend(await found if inspect.isawaitable(found) else found)
+            except Exception as exc:
+                if not json_output:
+                    typer.echo(f"Error scanning {repo_info.nickname}: {exc}", err=True)
+
+        if not candidates:
+            typer.echo(json.dumps({"candidates": [], "would_remove": 0}) if json_output else "No merged worktrees to remove.")
+            return
+        if dry_run:
+            payload = {
+                "candidates": [
+                    {
+                        "branch": c.branch,
+                        "repo_nickname": c.repo_nickname,
+                        "worktree_path": str(c.worktree_path),
+                        "behind": c.behind,
+                        "merge_status": c.merge_status,
+                        "dirty_status": c.dirty_status,
+                        "last_touched_at": c.last_touched_at,
+                    }
+                    for c in candidates
+                ],
+                "would_remove": len(candidates),
+            }
+            if json_output:
+                typer.echo(json.dumps(payload, indent=2))
+            else:
+                typer.echo(f"Would remove {len(candidates)} merged worktree(s):")
+                for candidate in candidates:
+                    typer.echo(f"  {'✅' if candidate.is_clean else '⚠️'} {candidate.branch}  {candidate.worktree_path}  behind={candidate.behind}")
+            return
+
+        results = await WorktreePruner(coordinator=coordinator).remove(
+            candidates, force_reason=force_reason, trigger=trigger, ttl_days=ttl_days,
+            include_dirty=include_dirty,
+        )
+        if json_output:
+            typer.echo(json.dumps({
+                "removed_count": sum(result.success for result in results),
+                "failed_count": sum(not result.success for result in results),
+                "results": [
+                    {"branch": result.candidate.branch, "worktree_path": str(result.candidate.worktree_path),
+                     "success": result.success, "backup_path": result.backup_path, "error": result.error,
+                     "escalated": result.escalated}
+                    for result in results
+                ],
+            }, indent=2))
+        else:
+            for result in results:
+                typer.echo(f"{'✅' if result.success else '❌'} {result.candidate.branch}  {result.candidate.worktree_path}")
+                if result.backup_path:
+                    typer.echo(f"   Backup: {result.backup_path}")
+                if result.error:
+                    typer.echo(f"   Error: {result.error}")
+            typer.echo(f"Removed {sum(result.success for result in results)}/{len(results)} worktree(s).")
+        if any(not result.success for result in results):
+            raise typer.Exit(code=1)
+
+    _run_async(_run())
+
+
 def list_sessions(
     state: str = typer.Option(
         "active",

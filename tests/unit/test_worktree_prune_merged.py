@@ -231,3 +231,132 @@ async def test_worktree_pruner_remove_writes_partial_event_when_some_fail(
     )
     assert [result.success for result in results] == [True, False]
     assert len(audit.partial_calls) == 1
+
+
+class CliRepo:
+    def __init__(self, path: Path, nickname: str) -> None:
+        self.path = path
+        self.nickname = nickname
+        self.name = nickname
+
+
+class CliRepoManager:
+    def __init__(self, repos: list[CliRepo]) -> None:
+        self.repos = repos
+
+    def get_repo(self, key: str) -> CliRepo | None:
+        return next((repo for repo in self.repos if key in (repo.name, repo.nickname)), None)
+
+    def list_repos(self) -> list[CliRepo]:
+        return self.repos
+
+
+class CliApp:
+    def __init__(self, repos: list[CliRepo]) -> None:
+        self.repo_manager = CliRepoManager(repos)
+        self.worktree_coordinator = object()
+
+    async def initialize_worktree_coordinator(self) -> None:
+        pass
+
+
+def cli_candidate(path: Path, nickname: str = "fake") -> WorktreePruneCandidate:
+    return WorktreePruneCandidate(
+        repo_path=path.parent,
+        repo_nickname=nickname,
+        worktree_path=path,
+        branch="feat/x",
+        head_sha="abc123",
+        merge_status="merged",
+        dirty_status="clean",
+        behind=5,
+    )
+
+
+def patch_cli_app(monkeypatch: pytest.MonkeyPatch, app: CliApp) -> None:
+    monkeypatch.setattr(
+        "mahavishnu.worktree_cli.MahavishnuApp.load",
+        classmethod(lambda cls: app),
+    )
+    monkeypatch.setattr(
+        "mahavishnu.worktree_cli.SessionWorktreeRegistry",
+        lambda: type("Registry", (), {"list_active": lambda self, state=None: []})(),
+    )
+
+
+def test_cli_prune_merged_lists_candidates(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    from typer.testing import CliRunner
+
+    from mahavishnu.worktree_cli import worktree_app
+
+    repo = CliRepo(tmp_path / "repo", "fake")
+    repo.path.mkdir()
+    patch_cli_app(monkeypatch, CliApp([repo]))
+    monkeypatch.setattr("mahavishnu.worktree_cli.find_merged_worktrees", lambda *a, **kw: [cli_candidate(tmp_path / "wt")])
+    result = CliRunner().invoke(worktree_app, ["prune-merged", "--repo", "fake", "--dry-run"])
+    assert result.exit_code == 0
+    assert "feat/x" in result.stdout
+
+
+def test_cli_prune_merged_threads_resolved_nickname(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    from typer.testing import CliRunner
+
+    from mahavishnu.worktree_cli import worktree_app
+
+    repo = CliRepo(tmp_path / "repo", "alias")
+    repo.path.mkdir()
+    patch_cli_app(monkeypatch, CliApp([repo]))
+    calls: list[str] = []
+    monkeypatch.setattr("mahavishnu.worktree_cli.find_merged_worktrees", lambda *a, **kw: (calls.append(kw["repo_nickname"]) or []))
+    result = CliRunner().invoke(worktree_app, ["prune-merged", "--repo", "alias", "--dry-run"])
+    assert result.exit_code == 0
+    assert calls == ["alias"]
+
+
+def test_cli_prune_merged_without_repo_iterates_all_nicknames(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    from typer.testing import CliRunner
+
+    from mahavishnu.worktree_cli import worktree_app
+
+    repos = [CliRepo(tmp_path / "one", "one"), CliRepo(tmp_path / "two", "two")]
+    for repo in repos:
+        repo.path.mkdir()
+    patch_cli_app(monkeypatch, CliApp(repos))
+    calls: list[str] = []
+    monkeypatch.setattr("mahavishnu.worktree_cli.find_merged_worktrees", lambda *a, **kw: (calls.append(kw["repo_nickname"]) or []))
+    result = CliRunner().invoke(worktree_app, ["prune-merged", "--dry-run"])
+    assert result.exit_code == 0
+    assert calls == ["one", "two"]
+
+
+def test_cli_prune_merged_json_is_single_document(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    import json
+
+    from typer.testing import CliRunner
+
+    from mahavishnu.worktree_cli import worktree_app
+
+    repo = CliRepo(tmp_path / "repo", "fake")
+    repo.path.mkdir()
+    patch_cli_app(monkeypatch, CliApp([repo]))
+    monkeypatch.setattr("mahavishnu.worktree_cli.find_merged_worktrees", lambda *a, **kw: [cli_candidate(tmp_path / "wt")])
+    payload = json.loads(CliRunner().invoke(worktree_app, ["prune-merged", "--dry-run", "--json"]).stdout)
+    assert payload["candidates"][0]["dirty_status"] == "clean"
+
+
+def test_cli_prune_merged_partial_failure_exits_one(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    from typer.testing import CliRunner
+
+    from mahavishnu.core.worktree_prune_merged import WorktreePruneResult
+    from mahavishnu.worktree_cli import worktree_app
+
+    repo = CliRepo(tmp_path / "repo", "fake")
+    repo.path.mkdir()
+    patch_cli_app(monkeypatch, CliApp([repo]))
+    candidates = [cli_candidate(tmp_path / "one"), cli_candidate(tmp_path / "two")]
+    monkeypatch.setattr("mahavishnu.worktree_cli.find_merged_worktrees", lambda *a, **kw: candidates)
+    monkeypatch.setattr("mahavishnu.worktree_cli.WorktreePruner.remove", lambda self, cs, **kw: __import__("asyncio").sleep(0, result=[WorktreePruneResult(cs[0], True, None, None), WorktreePruneResult(cs[1], False, None, "provider failed")]))
+    result = CliRunner().invoke(worktree_app, ["prune-merged"])
+    assert result.exit_code == 1
+    assert "feat/x" in result.stdout
+    assert "provider failed" in result.stdout
