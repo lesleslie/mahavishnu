@@ -34,6 +34,12 @@ BUILTIN_BACKENDS: dict[str, PtyBackend] = {
         args=("mcpretentious",),
         requires=("node",),  # npm package
     ),
+    "tmux": PtyBackend(
+        name="tmux",
+        command="tmux",
+        args=(),
+        requires=("tmux",),
+    ),
 }
 
 

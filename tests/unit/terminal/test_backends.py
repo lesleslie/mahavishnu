@@ -52,19 +52,29 @@ class TestBuiltinBackends:
         assert "node" in BUILTIN_BACKENDS["mcpretentious"].requires
 
     def test_no_other_backends_registered(self) -> None:
-        # mcpretentious is the only built-in backend. The previous second
-        # backend (pty_mcp_python) was dropped because the upstream package
-        # has 0 stars, no recent activity, and is not on PyPI. If you add a
-        # new entry here, also update docs/terminal/backends.md and add
-        # backends-specific tests for it.
-        assert list(BUILTIN_BACKENDS) == ["mcpretentious"]
+        # Backends are added one at a time. The previous second entry
+        # (pty_mcp_python) was dropped because the upstream package had 0
+        # stars, no recent activity, and is not on PyPI. The `tmux` entry
+        # was added by Task 11 of the durable-local-workers plan
+        # (docs/superpowers/plans/2026-07-26-durable-local-workers.md);
+        # the actual wiring is in Task 12. If you add a new entry here,
+        # also update docs/terminal/backends.md and add backends-specific
+        # tests for it.
+        assert list(BUILTIN_BACKENDS) == ["mcpretentious", "tmux"]
 
     def test_all_backends_have_command_args_name(self) -> None:
-        # Defensive: every registered backend must be launchable.
+        # Defensive: every registered backend must be launchable. The
+        # `command` field is the spawn target and must be non-empty; the
+        # `args` field may be empty when `command` alone is the full
+        # invocation (e.g., `tmux` with no subcommand opens the default
+        # session). The `PtyBackend` dataclass already enforces `args` to
+        # be a tuple, so a tuple of any length (including 0) is valid.
         for name, backend in BUILTIN_BACKENDS.items():
             assert backend.name == name
             assert backend.command, f"backend {name!r} has empty command"
-            assert backend.args, f"backend {name!r} has empty args"
+            assert isinstance(backend.args, tuple), (
+                f"backend {name!r} has non-tuple args: {backend.args!r}"
+            )
 
 
 @pytest.mark.unit
