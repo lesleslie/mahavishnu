@@ -3,9 +3,9 @@
 from __future__ import annotations
 
 import asyncio
-import pathlib
 from datetime import datetime
 from logging import getLogger
+import pathlib
 from typing import TYPE_CHECKING, Any
 
 from .adapters.mcpretentious import McpretentiousAdapter
@@ -543,9 +543,9 @@ class TerminalManager:
             # and record store; the manager wires it as the terminal
             # adapter so that existing pool/worker call sites get the
             # new behavior with no additional plumbing.
-            from .adapters.tmux import TmuxTerminalAdapter
-            from ..workers.contract.store import WorkerRecordStore
             from ..workers.contract.manager import DurableWorkerManager
+            from ..workers.contract.store import WorkerRecordStore
+            from .adapters.tmux import TmuxTerminalAdapter
 
             store = WorkerRecordStore(
                 pathlib.Path.home() / ".mahavishnu" / "worker-sessions"
