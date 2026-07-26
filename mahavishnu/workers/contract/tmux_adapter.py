@@ -227,15 +227,17 @@ def pane_alive(socket: str, pane: str) -> bool:
 def send_keys(socket: str, pane: str, keys: Sequence[str]) -> None:
     if not keys:
         return
-    parts = list(keys)
+    parts = [str(k) for k in keys]
     # `-l` sends the key as a literal string. `-H` (hex) silently drops
-    # non-hex input, which the brief's verbatim code did; this version
-    # uses `-l` to actually type text.
-    proc = _run(socket, "send-keys", "-t", pane, "-l", *parts, check=False)
+    # non-hex input. We space-join the parts so
+    # `send_keys(s, p, ["echo", "hi"])` types `echo hi` rather than
+    # `echohi`.
+    literal = " ".join(parts)
+    proc = _run(socket, "send-keys", "-t", pane, "-l", literal, check=False)
     if proc.returncode != 0:
         raise TmuxAdapterError(
             f"tmux send-keys failed: rc={proc.returncode} "
-            f"stderr={proc.stderr.strip()}"
+            f"stderr={_safe_stderr(proc.stderr)}"
         )
     # Always press Enter unless the caller appended a literal "\n" already.
     if not (len(parts) == 1 and parts[0].endswith("\n")):
