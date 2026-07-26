@@ -296,11 +296,14 @@ class DurableWorkerManager:
         Returns the number of records transitioned.
         """
         transitioned = 0
+        # Only include states whose ALLOWED_TRANSITIONS table permits
+        # a transition to DETACHED. STARTING -> DETACHED is not allowed
+        # (STARTING has only STARTING->READY/REAPED/FAILED/DEGRADED),
+        # and DRAINING -> DETACHED is not allowed either. Including them
+        # here would raise ValueError from _transition.
         in_flight = {
-            WorkerLifecycleState.STARTING,
             WorkerLifecycleState.READY,
             WorkerLifecycleState.RUNNING,
-            WorkerLifecycleState.DRAINING,
         }
         for record in self.store.list_all():
             if record.state in in_flight:
