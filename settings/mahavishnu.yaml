@@ -367,12 +367,11 @@ a2a:
   #     api_key_env: "CODEGEN_API_KEY"
 
 # Worktree provider configuration
-# When `worktree_providers.session_buddy_enabled: false` (default),
-# the WorktreeCoordinator does NOT register the SessionBuddyWorktreeProvider.
-# This is a workaround for the missing `list_worktrees` / `create_worktree` /
-# `remove_worktree` tools on the Session-Buddy MCP server. Set to true once
-# session-buddy's MCP server exposes those tools (tracked in
-# docs/superpowers/plans/2026-07-26-session-buddy-worktree-tools.md).
+# When `worktree_providers.session_buddy_enabled: true` (default),
+# the WorktreeCoordinator registers both the SessionBuddyWorktreeProvider
+# (primary) and the DirectGitWorktreeProvider (fallback). The three
+# tools (`list_worktrees`, `create_worktree`, `remove_worktree`) were
+# added to session-buddy on 2026-07-26 (commit 6fc9595f) —
+# see docs/superpowers/plans/2026-07-26-session-buddy-worktree-tools.md.
 worktree_providers:
-  session_buddy_enabled: false
-
+  session_buddy_enabled: true
