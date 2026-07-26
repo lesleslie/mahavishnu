@@ -1,0 +1,2467 @@
+# Durable Local Workers Implementation Plan
+
+> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+
+**Goal:** Make orchestrated local Mahavishnu workers durable, reattachable, and reliably consumable by Claude Code through tmux-backed sessions and a structured MCP contract.
+
+**Architecture:** Add a new `mahavishnu/workers/contract/` package that owns the durable worker/session record and lifecycle. Add a `TmuxTerminalAdapter` under `mahavishnu/terminal/adapters/` and wire it into the existing `TerminalManager` as a `BUILTIN_BACKENDS` entry. Add six new MCP tools under `mahavishnu/mcp/tools/worker_contract_tools.py`. Repair the existing `worker_execute` truncation bug. Emit canonical Oneiric events on the existing `worker.*` topics. Defer the iTerm2 deprecation refactor and the Session-Buddy/cloud extensions to follow-up plans.
+
+**Tech Stack:** Python 3.13, asyncio, tmux 3.4+, Pydantic, msgspec (already used in Oneiric), Oneiric canonical event envelope, Crackerjack quality gates.
+
+**Reference spec:** `docs/superpowers/specs/2026-07-26-durable-local-workers-design.md`
+
+## Global Constraints
+
+- One task per worker identity. The plan follows the spec strictly: `worker_id` is the durable identity, `tmux_pane` is transport metadata.
+- All new code uses `from __future__ import annotations`, Pydantic models for MCP request/response, and `pathlib.Path` for filesystem paths.
+- No new dependency on `iTerm2` or `mcpretentious`. The new tmux adapter is independent.
+- All worker events are emitted on Oneiric canonical topics: `worker.spawned`, `worker.attached`, `worker.detached`, `worker.status_changed`, `worker.availability_changed`, `worker.reaped`. No new envelope schemas.
+- Statusline files are keyed by `worker_id`, not `task_id`. Files live in `~/.mahavishnu/worker-status/`.
+- Crackerjack quality must remain ≥75 at every commit gate.
+- TDD: every task writes a failing test before implementing.
+- Frequent commits: one commit per task.
+- This plan implements **Phases A and B** of the spec. Phase C (iTerm2 deprecation refactor) and Phase D (Session-Buddy/cloud extensions) are separate follow-up plans.
+
+## File Structure
+
+**New files:**
+
+```
+mahavishnu/workers/contract/
+  __init__.py
+  state.py            # WorkerLifecycleState enum and transitions
+  record.py           # DurableWorkerRecord Pydantic model + JSON I/O
+  store.py            # WorkerRecordStore: atomic read/write/scan on disk
+  manager.py          # DurableWorkerManager: lifecycle + reconciliation
+  tmux_adapter.py     # TmuxTerminalAdapter implementing the new protocol
+
+mahavishnu/terminal/adapters/
+  tmux.py             # Thin wrapper that bridges TerminalAdapter to the new
+                      # contract's tmux primitives
+
+mahavishnu/workers/
+  protocol.py         # EXTEND — add WorkerContract protocol
+
+mahavishnu/mcp/tools/
+  worker_contract_tools.py   # 7 new MCP tools (launch/send/capture/status/wait/cancel/result)
+
+mahavishnu/core/events/
+  worker_topics.py    # Topic string constants and small helpers
+
+tests/unit/workers/contract/
+  __init__.py
+  test_state.py
+  test_record.py
+  test_store.py
+  test_manager.py
+  test_tmux_adapter.py
+
+tests/integration/workers/contract/
+  __init__.py
+  test_reconciliation.py
+  test_lifecycle_events.py
+```
+
+**Modified files (this plan only — Phase A and B):**
+
+```
+mahavishnu/workers/manager.py
+  # Repairs worker_execute truncation in execute_task (Task 7)
+mahavishnu/mcp/tools/worker_tools.py
+  # Removes the silent 500/200-char truncation in worker_execute and
+  # worker_execute_batch (Task 8)
+mahavishnu/mcp/tools/pool_tools.py
+  # Adds workflow_result retrieval (Task 9)
+mahavishnu/workers/generic_shell.py
+  # Adds WorkerStatus.COMPLETED marker normalization for terminal-claude
+  # (Task 10)
+mahavishnu/core/events/canonical.py
+  # No schema change. We consume the canonical EventEnvelope unchanged
+  # and publish through existing emit() helpers.
+mahavishnu/terminal/manager.py
+  # Adds the tmux adapter to BUILTIN_BACKENDS lookup and
+  # TerminalManager.create() routing (Task 12)
+mahavishnu/terminal/backends.py
+  # Adds a 'tmux' entry to BUILTIN_BACKENDS (Task 12)
+mahavishnu/mcp/tools/terminal_tools.py
+  # No new tool added; existing tools continue to work
+mahavishnu/mcp/bootstrap.py
+  # Registers the new worker_contract_tools group (Task 13)
+settings/mahavishnu.yaml
+  # Adds worker_contract.enabled default + tmux socket directory
+  # (Task 14)
+docs/MCP_TOOLS_SPECIFICATION.md
+  # Adds the new contract tools to the spec (Task 15)
+```
+
+**Out of scope for this plan (deferred follow-up plans):**
+
+- iTerm2 deprecation refactor and the `TerminalAdapter` Protocol extraction.
+- Session-Buddy and cloud-pool extensions of the worker contract.
+- Constellation dashboard patches to consume the new event types.
+- WebSocket push and tmux control-mode streaming.
+
+---
+
+## Task 1: WorkerLifecycleState enum and transitions
+
+**Files:**
+- Create: `mahavishnu/workers/contract/__init__.py`
+- Create: `mahavishnu/workers/contract/state.py`
+- Test: `tests/unit/workers/contract/__init__.py`
+- Test: `tests/unit/workers/contract/test_state.py`
+
+**Interfaces:**
+- Consumes: none
+- Produces: `WorkerLifecycleState` enum and `ALLOWED_TRANSITIONS` dict
+
+- [ ] **Step 1: Write the failing test**
+
+```python
+# tests/unit/workers/contract/test_state.py
+from mahavishnu.workers.contract.state import (
+    WorkerLifecycleState,
+    ALLOWED_TRANSITIONS,
+    can_transition,
+)
+
+
+def test_state_values():
+    assert WorkerLifecycleState.PENDING.value == "pending"
+    assert WorkerLifecycleState.READY.value == "ready"
+    assert WorkerLifecycleState.DRAINING.value == "draining"
+    assert WorkerLifecycleState.REAPED.value == "reaped"
+
+
+def test_can_transition_ready_to_running():
+    assert can_transition(WorkerLifecycleState.READY, WorkerLifecycleState.RUNNING)
+
+
+def test_can_transition_running_to_completed():
+    assert can_transition(WorkerLifecycleState.RUNNING, WorkerLifecycleState.COMPLETED)
+
+
+def test_cannot_transition_reaped_to_running():
+    assert not can_transition(WorkerLifecycleState.REAPED, WorkerLifecycleState.RUNNING)
+
+
+def test_cannot_transition_completed_to_running():
+    assert not can_transition(WorkerLifecycleState.COMPLETED, WorkerLifecycleState.RUNNING)
+
+
+def test_detached_can_return_to_running():
+    assert can_transition(WorkerLifecycleState.DETACHED, WorkerLifecycleState.RUNNING)
+```
+
+- [ ] **Step 2: Run the test to verify it fails**
+
+Run: `pytest tests/unit/workers/contract/test_state.py -v`
+Expected: ImportError — module does not exist.
+
+- [ ] **Step 3: Implement `state.py`**
+
+```python
+# mahavishnu/workers/contract/__init__.py
+from .state import (
+    ALLOWED_TRANSITIONS,
+    WorkerLifecycleState,
+    can_transition,
+)
+
+__all__ = [
+    "ALLOWED_TRANSITIONS",
+    "WorkerLifecycleState",
+    "can_transition",
+]
+```
+
+```python
+# mahavishnu/workers/contract/state.py
+from __future__ import annotations
+
+from enum import Enum
+
+
+class WorkerLifecycleState(str, Enum):
+    PENDING = "pending"
+    STARTING = "starting"
+    READY = "ready"
+    RUNNING = "running"
+    DETACHED = "detached"
+    DRAINING = "draining"
+    COMPLETED = "completed"
+    FAILED = "failed"
+    REAPED = "reaped"
+    DEGRADED = "degraded"
+
+
+ALLOWED_TRANSITIONS: dict[WorkerLifecycleState, set[WorkerLifecycleState]] = {
+    WorkerLifecycleState.PENDING: {
+        WorkerLifecycleState.STARTING,
+        WorkerLifecycleState.REAPED,
+        WorkerLifecycleState.FAILED,
+    },
+    WorkerLifecycleState.STARTING: {
+        WorkerLifecycleState.READY,
+        WorkerLifecycleState.REAPED,
+        WorkerLifecycleState.FAILED,
+        WorkerLifecycleState.DEGRADED,
+    },
+    WorkerLifecycleState.READY: {
+        WorkerLifecycleState.RUNNING,
+        WorkerLifecycleState.DETACHED,
+        WorkerLifecycleState.DRAINING,
+        WorkerLifecycleState.REAPED,
+        WorkerLifecycleState.DEGRADED,
+    },
+    WorkerLifecycleState.RUNNING: {
+        WorkerLifecycleState.DETACHED,
+        WorkerLifecycleState.DRAINING,
+        WorkerLifecycleState.COMPLETED,
+        WorkerLifecycleState.FAILED,
+        WorkerLifecycleState.DEGRADED,
+        WorkerLifecycleState.REAPED,
+    },
+    WorkerLifecycleState.DETACHED: {
+        WorkerLifecycleState.RUNNING,
+        WorkerLifecycleState.READY,
+        WorkerLifecycleState.DRAINING,
+        WorkerLifecycleState.REAPED,
+        WorkerLifecycleState.DEGRADED,
+    },
+    WorkerLifecycleState.DRAINING: {
+        WorkerLifecycleState.COMPLETED,
+        WorkerLifecycleState.FAILED,
+        WorkerLifecycleState.REAPED,
+    },
+    WorkerLifecycleState.COMPLETED: {
+        WorkerLifecycleState.READY,
+        WorkerLifecycleState.DRAINING,
+        WorkerLifecycleState.REAPED,
+    },
+    WorkerLifecycleState.FAILED: {
+        WorkerLifecycleState.READY,
+        WorkerLifecycleState.DRAINING,
+        WorkerLifecycleState.REAPED,
+    },
+    WorkerLifecycleState.DEGRADED: {
+        WorkerLifecycleState.READY,
+        WorkerLifecycleState.DRAINING,
+        WorkerLifecycleState.REAPED,
+    },
+    WorkerLifecycleState.REAPED: set(),
+}
+
+
+def can_transition(
+    current: WorkerLifecycleState, target: WorkerLifecycleState
+) -> bool:
+    return target in ALLOWED_TRANSITIONS.get(current, set())
+```
+
+- [ ] **Step 4: Run the test to verify it passes**
+
+Run: `pytest tests/unit/workers/contract/test_state.py -v`
+Expected: 6 passed.
+
+- [ ] **Step 5: Commit**
+
+```bash
+git add mahavishnu/workers/contract tests/unit/workers/contract
+git commit -m "feat(workers/contract): add WorkerLifecycleState and transition rules"
+```
+
+---
+
+## Task 2: DurableWorkerRecord Pydantic model
+
+**Files:**
+- Create: `mahavishnu/workers/contract/record.py`
+- Test: `tests/unit/workers/contract/test_record.py`
+
+**Interfaces:**
+- Consumes: `WorkerLifecycleState` (Task 1)
+- Produces: `DurableWorkerRecord`, `TmuxTarget`, `WorkerResultSummary`, `from_dict`, `to_dict`
+
+- [ ] **Step 1: Write the failing test**
+
+```python
+# tests/unit/workers/contract/test_record.py
+import datetime as dt
+import pytest
+from pydantic import ValidationError
+
+from mahavishnu.workers.contract.record import (
+    DurableWorkerRecord,
+    TmuxTarget,
+)
+from mahavishnu.workers.contract.state import WorkerLifecycleState
+
+
+def _sample_kwargs() -> dict:
+    return dict(
+        worker_id="worker-abc",
+        worker_type="terminal-claude",
+        backend="claude_tui",
+        tmux=TmuxTarget(
+            socket="/tmp/mahavishnu.sock",
+            session="mahavishnu-abc",
+            window="worker",
+            pane="%7",
+        ),
+        state=WorkerLifecycleState.READY,
+        created_at=dt.datetime(2026, 7, 26, 10, 0, 0, tzinfo=dt.timezone.utc),
+        last_seen_at=dt.datetime(2026, 7, 26, 10, 5, 0, tzinfo=dt.timezone.utc),
+    )
+
+
+def test_record_roundtrip():
+    rec = DurableWorkerRecord(**_sample_kwargs())
+    payload = rec.to_dict()
+    rebuilt = DurableWorkerRecord.from_dict(payload)
+    assert rebuilt == rec
+    assert rebuilt.worker_id == "worker-abc"
+
+
+def test_record_pane_default_empty_when_no_tmux():
+    rec = DurableWorkerRecord(
+        worker_id="worker-xyz",
+        worker_type="cloud-runpod",
+        backend="runpod_flash",
+        tmux=None,
+        state=WorkerLifecycleState.READY,
+        created_at=dt.datetime(2026, 7, 26, 10, 0, 0, tzinfo=dt.timezone.utc),
+        last_seen_at=dt.datetime(2026, 7, 26, 10, 5, 0, tzinfo=dt.timezone.utc),
+    )
+    assert rec.tmux is None
+    payload = rec.to_dict()
+    assert payload["tmux"] is None
+
+
+def test_record_rejects_unknown_state():
+    with pytest.raises(ValidationError):
+        DurableWorkerRecord(
+            **_{
+                **_sample_kwargs(),
+                "state": "not-a-state",
+            }
+        )
+```
+
+- [ ] **Step 2: Run the test to verify it fails**
+
+Run: `pytest tests/unit/workers/contract/test_record.py -v`
+Expected: ImportError — module does not exist.
+
+- [ ] **Step 3: Implement `record.py`**
+
+```python
+# mahavishnu/workers/contract/record.py
+from __future__ import annotations
+
+import datetime as dt
+from typing import Any
+
+from pydantic import BaseModel, ConfigDict, Field
+
+from .state import WorkerLifecycleState
+
+
+class TmuxTarget(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    socket: str
+    session: str
+    window: str
+    pane: str
+    attach_command: str | None = None
+
+
+class DurableWorkerRecord(BaseModel):
+    model_config = ConfigDict(extra="forbid", use_enum_values=True)
+
+    worker_id: str
+    worker_type: str
+    backend: str
+    tmux: TmuxTarget | None
+    state: WorkerLifecycleState
+    created_at: dt.datetime
+    last_seen_at: dt.datetime
+    last_output_offset: int = 0
+    claude_session: str | None = None
+    last_exit_code: int | None = None
+    metadata: dict[str, Any] = Field(default_factory=dict)
+
+    def to_dict(self) -> dict[str, Any]:
+        return self.model_dump(mode="json")
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> "DurableWorkerRecord":
+        return cls.model_validate(data)
+```
+
+- [ ] **Step 4: Run the test to verify it passes**
+
+Run: `pytest tests/unit/workers/contract/test_record.py -v`
+Expected: 3 passed.
+
+- [ ] **Step 5: Commit**
+
+```bash
+git add mahavishnu/workers/contract/record.py tests/unit/workers/contract/test_record.py
+git commit -m "feat(workers/contract): add DurableWorkerRecord Pydantic model"
+```
+
+---
+
+## Task 3: WorkerRecordStore with atomic JSON I/O
+
+**Files:**
+- Create: `mahavishnu/workers/contract/store.py`
+- Test: `tests/unit/workers/contract/test_store.py`
+
+**Interfaces:**
+- Consumes: `DurableWorkerRecord` (Task 2)
+- Produces: `WorkerRecordStore` class with `put`, `get`, `delete`, `list_active`, `list_all`
+
+- [ ] **Step 1: Write the failing test**
+
+```python
+# tests/unit/workers/contract/test_store.py
+import datetime as dt
+import json
+import pathlib
+
+from mahavishnu.workers.contract.record import DurableWorkerRecord, TmuxTarget
+from mahavishnu.workers.contract.state import WorkerLifecycleState
+from mahavishnu.workers.contract.store import WorkerRecordStore
+
+
+def _record(worker_id: str) -> DurableWorkerRecord:
+    return DurableWorkerRecord(
+        worker_id=worker_id,
+        worker_type="terminal-claude",
+        backend="claude_tui",
+        tmux=TmuxTarget(
+            socket="/tmp/m.sock",
+            session="s",
+            window="w",
+            pane="%0",
+        ),
+        state=WorkerLifecycleState.READY,
+        created_at=dt.datetime(2026, 7, 26, 10, 0, 0, tzinfo=dt.timezone.utc),
+        last_seen_at=dt.datetime(2026, 7, 26, 10, 0, 0, tzinfo=dt.timezone.utc),
+    )
+
+
+def test_put_and_get(tmp_path: pathlib.Path):
+    store = WorkerRecordStore(tmp_path)
+    rec = _record("worker-1")
+    store.put(rec)
+    fetched = store.get("worker-1")
+    assert fetched == rec
+
+
+def test_get_missing_returns_none(tmp_path: pathlib.Path):
+    store = WorkerRecordStore(tmp_path)
+    assert store.get("nope") is None
+
+
+def test_delete(tmp_path: pathlib.Path):
+    store = WorkerRecordStore(tmp_path)
+    store.put(_record("worker-1"))
+    store.delete("worker-1")
+    assert store.get("worker-1") is None
+
+
+def test_list_all(tmp_path: pathlib.Path):
+    store = WorkerRecordStore(tmp_path)
+    store.put(_record("worker-1"))
+    store.put(_record("worker-2"))
+    ids = sorted(r.worker_id for r in store.list_all())
+    assert ids == ["worker-1", "worker-2"]
+
+
+def test_atomic_write_does_not_leave_temp_files(tmp_path: pathlib.Path):
+    store = WorkerRecordStore(tmp_path)
+    store.put(_record("worker-1"))
+    leftovers = [
+        p.name for p in tmp_path.iterdir() if p.name.startswith(".worker-")
+    ]
+    assert leftovers == []
+
+
+def test_directory_created_on_init(tmp_path: pathlib.Path):
+    target = tmp_path / "nested" / "store"
+    WorkerRecordStore(target)
+    assert target.is_dir()
+    assert (target / "index.json").exists() or target.is_dir()
+```
+
+- [ ] **Step 2: Run the test to verify it fails**
+
+Run: `pytest tests/unit/workers/contract/test_store.py -v`
+Expected: ImportError — module does not exist.
+
+- [ ] **Step 3: Implement `store.py`**
+
+```python
+# mahavishnu/workers/contract/store.py
+from __future__ import annotations
+
+import json
+import os
+import pathlib
+import tempfile
+from typing import Iterator
+
+from .record import DurableWorkerRecord
+
+
+class WorkerRecordStore:
+    """Atomic JSON I/O for durable worker records.
+
+    Files live at <root>/<worker_id>.json. Writes use os.replace for
+    POSIX-atomic semantics. Indexing is by directory scan; for the
+    expected record counts (tens to low hundreds) this is acceptable.
+    """
+
+    def __init__(self, root: pathlib.Path | str) -> None:
+        self._root = pathlib.Path(root)
+        self._root.mkdir(parents=True, exist_ok=True)
+
+    @property
+    def root(self) -> pathlib.Path:
+        return self._root
+
+    def _path_for(self, worker_id: str) -> pathlib.Path:
+        return self._root / f"{worker_id}.json"
+
+    def get(self, worker_id: str) -> DurableWorkerRecord | None:
+        path = self._path_for(worker_id)
+        if not path.exists():
+            return None
+        with path.open("r", encoding="utf-8") as fh:
+            data = json.load(fh)
+        return DurableWorkerRecord.from_dict(data)
+
+    def put(self, record: DurableWorkerRecord) -> None:
+        path = self._path_for(record.worker_id)
+        payload = json.dumps(record.to_dict(), indent=2, sort_keys=True)
+        fd, tmp_name = tempfile.mkstemp(
+            prefix=f".worker-{record.worker_id}-", dir=str(self._root)
+        )
+        try:
+            with os.fdopen(fd, "w", encoding="utf-8") as fh:
+                fh.write(payload)
+                fh.flush()
+                os.fsync(fh.fileno())
+            os.replace(tmp_name, path)
+        except BaseException:
+            try:
+                os.unlink(tmp_name)
+            except FileNotFoundError:
+                pass
+            raise
+
+    def delete(self, worker_id: str) -> None:
+        path = self._path_for(worker_id)
+        try:
+            path.unlink()
+        except FileNotFoundError:
+            pass
+
+    def list_all(self) -> Iterator[DurableWorkerRecord]:
+        for path in sorted(self._root.glob("*.json")):
+            if path.name.startswith("."):
+                continue
+            try:
+                with path.open("r", encoding="utf-8") as fh:
+                    data = json.load(fh)
+                yield DurableWorkerRecord.from_dict(data)
+            except (json.JSONDecodeError, ValueError, OSError):
+                continue
+```
+
+- [ ] **Step 4: Run the test to verify it passes**
+
+Run: `pytest tests/unit/workers/contract/test_store.py -v`
+Expected: 6 passed.
+
+- [ ] **Step 5: Commit**
+
+```bash
+git add mahavishnu/workers/contract/store.py tests/unit/workers/contract/test_store.py
+git commit -m "feat(workers/contract): add atomic JSON store for durable records"
+```
+
+---
+
+## Task 4: tmux event topic constants
+
+**Files:**
+- Create: `mahavishnu/core/events/worker_topics.py`
+- Test: `tests/unit/core/test_worker_topics.py`
+
+- [ ] **Step 1: Write the failing test**
+
+```python
+# tests/unit/core/test_worker_topics.py
+from mahavishnu.core.events.worker_topics import (
+    WORKER_SPAWNED,
+    WORKER_ATTACHED,
+    WORKER_DETACHED,
+    WORKER_STATUS_CHANGED,
+    WORKER_AVAILABILITY_CHANGED,
+    WORKER_REAPED,
+    is_worker_topic,
+)
+
+
+def test_topic_constants():
+    assert WORKER_SPAWNED == "worker.spawned"
+    assert WORKER_ATTACHED == "worker.attached"
+    assert WORKER_DETACHED == "worker.detached"
+    assert WORKER_STATUS_CHANGED == "worker.status_changed"
+    assert WORKER_AVAILABILITY_CHANGED == "worker.availability_changed"
+    assert WORKER_REAPED == "worker.reaped"
+
+
+def test_is_worker_topic():
+    assert is_worker_topic("worker.spawned")
+    assert is_worker_topic("worker.status_changed")
+    assert not is_worker_topic("workflow.started")
+    assert not is_worker_topic("pool.scaled")
+    assert not is_worker_topic("adapter.health_changed")
+```
+
+- [ ] **Step 2: Run the test to verify it fails**
+
+Run: `pytest tests/unit/core/test_worker_topics.py -v`
+Expected: ImportError.
+
+- [ ] **Step 3: Implement `worker_topics.py`**
+
+```python
+# mahavishnu/core/events/worker_topics.py
+from __future__ import annotations
+
+WORKER_SPAWNED = "worker.spawned"
+WORKER_ATTACHED = "worker.attached"
+WORKER_DETACHED = "worker.detached"
+WORKER_STATUS_CHANGED = "worker.status_changed"
+WORKER_AVAILABILITY_CHANGED = "worker.availability_changed"
+WORKER_REAPED = "worker.reaped"
+
+WORKER_TOPICS: frozenset[str] = frozenset(
+    {
+        WORKER_SPAWNED,
+        WORKER_ATTACHED,
+        WORKER_DETACHED,
+        WORKER_STATUS_CHANGED,
+        WORKER_AVAILABILITY_CHANGED,
+        WORKER_REAPED,
+    }
+)
+
+
+def is_worker_topic(topic: str) -> bool:
+    return topic in WORKER_TOPICS
+```
+
+- [ ] **Step 4: Run the test to verify it passes**
+
+Run: `pytest tests/unit/core/test_worker_topics.py -v`
+Expected: 2 passed.
+
+- [ ] **Step 5: Commit**
+
+```bash
+git add mahavishnu/core/events/worker_topics.py tests/unit/core/test_worker_topics.py
+git commit -m "feat(events): add worker topic constants and helper"
+```
+
+---
+
+## Task 5: TmuxTerminalAdapter — create/attach primitives
+
+**Files:**
+- Create: `mahavishnu/workers/contract/tmux_adapter.py`
+- Test: `tests/unit/workers/contract/test_tmux_adapter.py`
+
+**Note on test execution:** the tests use `subprocess.run` to call a real `tmux` binary because tmux semantics are the unit under test. A `tmux` binary must be available in CI; if it is not, the tests are skipped with a clear message via `pytest.mark.skipif`.
+
+- [ ] **Step 1: Write the failing test**
+
+```python
+# tests/unit/workers/contract/test_tmux_adapter.py
+import dataclasses
+import pathlib
+import shutil
+import subprocess
+
+import pytest
+
+from mahavishnu.workers.contract.tmux_adapter import (
+    TmuxAdapterError,
+    TmuxSessionInfo,
+    create_session,
+    kill_session,
+    list_sessions,
+    send_keys,
+    capture_pane,
+    pane_alive,
+)
+
+
+pytestmark = pytest.mark.skipif(
+    shutil.which("tmux") is None, reason="tmux binary not on PATH"
+)
+
+
+@pytest.fixture
+def socket_path(tmp_path: pathlib.Path) -> str:
+    return str(tmp_path / "test.sock")
+
+
+def _run(args: list[str], socket: str) -> subprocess.CompletedProcess:
+    return subprocess.run(
+        ["tmux", "-S", socket, *args],
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+
+
+def test_create_session_returns_metadata(socket_path: str):
+    info = create_session(
+        socket=socket_path,
+        session="test",
+        window_name="main",
+        command=["sh", "-c", "sleep 30"],
+    )
+    assert isinstance(info, TmuxSessionInfo)
+    assert info.session == "test"
+    assert info.socket == socket_path
+    assert info.pane.startswith("%")
+    assert pane_alive(socket_path, info.pane)
+    kill_session(socket_path, "test")
+    assert not pane_alive(socket_path, info.pane)
+
+
+def test_send_keys_and_capture_pane(socket_path: str):
+    info = create_session(
+        socket=socket_path,
+        session="echo",
+        window_name="w",
+        command=["sh", "-c", "cat > /tmp/tmux_test_out; sleep 30"],
+    )
+    try:
+        send_keys(socket_path, info.pane, ["echo", "hello-tmux"])
+        # Allow the command to consume the line
+        import time
+        for _ in range(20):
+            txt = capture_pane(socket_path, info.pane, since_offset=0, max_bytes=4096)
+            if "hello-tmux" in txt.text:
+                break
+            time.sleep(0.1)
+        assert "hello-tmux" in txt.text
+        assert txt.next_offset > 0
+    finally:
+        kill_session(socket_path, "echo")
+
+
+def test_list_sessions(socket_path: str):
+    info = create_session(
+        socket=socket_path,
+        session="ls",
+        window_name="w",
+        command=["sh", "-c", "sleep 30"],
+    )
+    try:
+        sessions = list_sessions(socket_path)
+        names = {s.session for s in sessions}
+        assert "ls" in names
+    finally:
+        kill_session(socket_path, "ls")
+
+
+def test_kill_missing_session_raises(socket_path: str):
+    with pytest.raises(TmuxAdapterError):
+        kill_session(socket_path, "nonexistent")
+```
+
+- [ ] **Step 2: Run the test to verify it fails**
+
+Run: `pytest tests/unit/workers/contract/test_tmux_adapter.py -v`
+Expected: ImportError or collection error.
+
+- [ ] **Step 3: Implement `tmux_adapter.py`**
+
+```python
+# mahavishnu/workers/contract/tmux_adapter.py
+from __future__ import annotations
+
+import dataclasses
+import shlex
+import subprocess
+from pathlib import Path
+from typing import Sequence
+
+
+class TmuxAdapterError(RuntimeError):
+    """Raised when a tmux invocation fails or the target is missing."""
+
+
+@dataclasses.dataclass(frozen=True)
+class TmuxSessionInfo:
+    socket: str
+    session: str
+    window: str
+    pane: str
+    attach_command: str
+
+
+@dataclasses.dataclass(frozen=True)
+class CapturedOutput:
+    text: str
+    next_offset: int
+    truncated: bool
+    pane_alive: bool
+
+
+def _run(socket: str, *args: str, check: bool = True) -> subprocess.CompletedProcess:
+    cmd = ["tmux", "-S", socket, *args]
+    proc = subprocess.run(cmd, check=False, capture_output=True, text=True)
+    if check and proc.returncode != 0:
+        raise TmuxAdapterError(
+            f"tmux {' '.join(args)} failed: rc={proc.returncode} stderr={proc.stderr.strip()}"
+        )
+    return proc
+
+
+def create_session(
+    *,
+    socket: str,
+    session: str,
+    window_name: str,
+    command: Sequence[str],
+) -> TmuxSessionInfo:
+    """Create a new detached tmux session and launch `command` in its first pane.
+
+    Returns the session metadata, including the pane id and attach command.
+    Raises TmuxAdapterError on failure.
+    """
+    Path(socket).parent.mkdir(parents=True, exist_ok=True)
+    # -d: detached, -s: session name, -n: window name, -P: print info
+    quoted = " ".join(shlex.quote(part) for part in command)
+    proc = subprocess.run(
+        [
+            "tmux",
+            "-S",
+            socket,
+            "new-session",
+            "-d",
+            "-s",
+            session,
+            "-n",
+            window_name,
+            "-P",
+            "-F",
+            "#{session_name}:#{window_id}:#{pane_id}",
+        ],
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+    if proc.returncode != 0:
+        raise TmuxAdapterError(
+            f"tmux new-session failed: rc={proc.returncode} stderr={proc.stderr.strip()}"
+        )
+    line = proc.stdout.strip().splitlines()[-1] if proc.stdout.strip() else ""
+    parts = line.split(":")
+    if len(parts) != 3:
+        raise TmuxAdapterError(
+            f"unexpected tmux new-session -P output: {proc.stdout!r}"
+        )
+    session_name, window_id, pane_id = parts
+    # Launch the command inside the pane
+    _run(socket, "send-keys", "-t", pane_id, quoted, "Enter")
+    return TmuxSessionInfo(
+        socket=socket,
+        session=session_name,
+        window=window_id,
+        pane=pane_id,
+        attach_command=f"tmux -S {socket} attach -t {session_name}",
+    )
+
+
+def list_sessions(socket: str) -> list[TmuxSessionInfo]:
+    proc = _run(
+        socket,
+        "list-sessions",
+        "-F",
+        "#{session_name}:#{session_windows}",
+        check=False,
+    )
+    if proc.returncode != 0:
+        return []
+    out: list[TmuxSessionInfo] = []
+    for line in proc.stdout.splitlines():
+        if not line.strip():
+            continue
+        name, windows = line.split(":", 1)
+        out.append(
+            TmuxSessionInfo(
+                socket=socket,
+                session=name,
+                window=f"@{int(windows) - 1}" if windows else "",
+                pane="",
+                attach_command=f"tmux -S {socket} attach -t {name}",
+            )
+        )
+    return out
+
+
+def kill_session(socket: str, session: str) -> None:
+    proc = _run(socket, "kill-session", "-t", session, check=False)
+    if proc.returncode != 0:
+        raise TmuxAdapterError(
+            f"tmux kill-session failed: rc={proc.returncode} stderr={proc.stderr.strip()}"
+        )
+
+
+def pane_alive(socket: str, pane: str) -> bool:
+    proc = _run(
+        socket,
+        "display-message",
+        "-p",
+        "-t",
+        pane,
+        "#{pane_dead}",
+        check=False,
+    )
+    if proc.returncode != 0:
+        return False
+    return proc.stdout.strip() == "0"
+
+
+def send_keys(socket: str, pane: str, keys: Sequence[str]) -> None:
+    if not keys:
+        return
+    parts = list(keys)
+    proc = _run(
+        socket, "send-keys", "-t", pane, "-H", *parts, check=False
+    )
+    if proc.returncode != 0:
+        raise TmuxAdapterError(
+            f"tmux send-keys failed: rc={proc.returncode} stderr={proc.stderr.strip()}"
+        )
+    # Always press Enter unless the caller appended a literal "\n" already.
+    if not (len(parts) == 1 and parts[0].endswith("\n")):
+        _run(socket, "send-keys", "-t", pane, "Enter", check=False)
+
+
+def capture_pane(
+    socket: str,
+    pane: str,
+    *,
+    since_offset: int,
+    max_bytes: int = 65_536,
+    strip_ansi: bool = True,
+) -> CapturedOutput:
+    proc = _run(
+        socket,
+        "capture-pane",
+        "-p",
+        "-J",
+        "-S",
+        f"-{since_offset}",
+        "-t",
+        pane,
+        check=False,
+    )
+    if proc.returncode != 0:
+        return CapturedOutput(
+            text="", next_offset=since_offset, truncated=False, pane_alive=False
+        )
+    text = proc.stdout
+    if strip_ansi:
+        text = _strip_ansi(text)
+    truncated = False
+    if len(text.encode("utf-8")) > max_bytes:
+        encoded = text.encode("utf-8")[:max_bytes]
+        text = encoded.decode("utf-8", errors="ignore")
+        truncated = True
+    return CapturedOutput(
+        text=text,
+        next_offset=since_offset + len(text.encode("utf-8")),
+        truncated=truncated,
+        pane_alive=pane_alive(socket, pane),
+    )
+
+
+_ANSI_RE = None
+
+
+def _strip_ansi(text: str) -> str:
+    global _ANSI_RE
+    import re
+
+    if _ANSI_RE is None:
+        _ANSI_RE = re.compile(r"\x1B\[[0-?]*[ -/]*[@-~]")
+    return _ANSI_RE.sub("", text)
+```
+
+- [ ] **Step 4: Run the test to verify it passes**
+
+Run: `pytest tests/unit/workers/contract/test_tmux_adapter.py -v`
+Expected: 4 passed (skipped if tmux not installed).
+
+- [ ] **Step 5: Commit**
+
+```bash
+git add mahavishnu/workers/contract/tmux_adapter.py tests/unit/workers/contract/test_tmux_adapter.py
+git commit -m "feat(workers/contract): add tmux adapter primitives"
+```
+
+---
+
+## Task 6: DurableWorkerManager lifecycle
+
+**Files:**
+- Modify: `mahavishnu/workers/contract/__init__.py` (export the manager)
+- Create: `mahavishnu/workers/contract/manager.py`
+- Test: `tests/unit/workers/contract/test_manager.py`
+
+**Interfaces:**
+- Consumes: `DurableWorkerRecord`, `WorkerRecordStore`, `TmuxSessionInfo` (Tasks 2, 3, 5); canonical event publisher from `mahavishnu.core.events`
+- Produces: `DurableWorkerManager.spawn`, `.status`, `.capture_output`, `.send_input`, `.cancel`, `.reap`, `.reconcile_all`
+
+- [ ] **Step 1: Write the failing test**
+
+```python
+# tests/unit/workers/contract/test_manager.py
+import datetime as dt
+import pathlib
+from unittest.mock import MagicMock, patch
+
+import pytest
+
+from mahavishnu.workers.contract.manager import DurableWorkerManager
+from mahavishnu.workers.contract.record import DurableWorkerRecord, TmuxTarget
+from mahavishnu.workers.contract.state import WorkerLifecycleState
+from mahavishnu.workers.contract.store import WorkerRecordStore
+
+
+@pytest.fixture
+def manager(tmp_path: pathlib.Path) -> DurableWorkerManager:
+    store = WorkerRecordStore(tmp_path)
+    publisher = MagicMock()
+    return DurableWorkerManager(store=store, publisher=publisher, socket_dir=tmp_path / "tmux")
+
+
+def test_spawn_persists_record_and_emits_event(manager: DurableWorkerManager, tmp_path):
+    fake_info = TmuxTarget(
+        socket=str(tmp_path / "tmux" / "x.sock"),
+        session="mvs",
+        window="@0",
+        pane="%3",
+        attach_command="tmux -S x.sock attach -t mvs",
+    )
+    with patch("mahavishnu.workers.contract.manager.create_session", return_value=fake_info):
+        info = manager.spawn(
+            worker_type="terminal-claude",
+            backend="claude_tui",
+            command=["claude"],
+        )
+    assert info.pane == "%3"
+    rec = manager.store.get(info.worker_id)
+    assert rec is not None
+    assert rec.state == WorkerLifecycleState.READY
+    assert rec.tmux is not None
+    assert manager.publisher.emit.call_count >= 1
+    emitted_topics = [c.args[1] for c in manager.publisher.emit.call_args_list]
+    assert "worker.spawned" in emitted_topics
+    assert "worker.status_changed" in emitted_topics
+
+
+def test_status_returns_record(manager: DurableWorkerManager, tmp_path):
+    fake_info = TmuxTarget(
+        socket=str(tmp_path / "tmux" / "x.sock"),
+        session="mvs",
+        window="@0",
+        pane="%3",
+    )
+    with patch("mahavishnu.workers.contract.manager.create_session", return_value=fake_info):
+        info = manager.spawn(worker_type="terminal-claude", backend="claude_tui", command=["claude"])
+    rec = manager.status(info.worker_id)
+    assert rec is not None
+    assert rec.worker_id == info.worker_id
+
+
+def test_capture_output_uses_tmux_adapter(manager: DurableWorkerManager, tmp_path):
+    fake_info = TmuxTarget(
+        socket=str(tmp_path / "tmux" / "x.sock"),
+        session="mvs",
+        window="@0",
+        pane="%3",
+    )
+    fake_capture = MagicMock()
+    fake_capture.text = "hello"
+    fake_capture.next_offset = 5
+    fake_capture.truncated = False
+    fake_capture.pane_alive = True
+    with patch("mahavishnu.workers.contract.manager.create_session", return_value=fake_info), \
+         patch("mahavishnu.workers.contract.manager.capture_pane", return_value=fake_capture):
+        info = manager.spawn(worker_type="terminal-claude", backend="claude_tui", command=["claude"])
+        out = manager.capture_output(info.worker_id, since_offset=0)
+    assert out.text == "hello"
+    assert out.next_offset == 5
+
+
+def test_cancel_reaps_when_pane_dead(manager: DurableWorkerManager, tmp_path):
+    fake_info = TmuxTarget(
+        socket=str(tmp_path / "tmux" / "x.sock"),
+        session="mvs",
+        window="@0",
+        pane="%3",
+    )
+    with patch("mahavishnu.workers.contract.manager.create_session", return_value=fake_info), \
+         patch("mahavishnu.workers.contract.manager.pane_alive", return_value=False):
+        info = manager.spawn(worker_type="terminal-claude", backend="claude_tui", command=["claude"])
+        manager.cancel(info.worker_id, signal="soft", grace_ms=10)
+    rec = manager.store.get(info.worker_id)
+    assert rec is not None
+    assert rec.state in {WorkerLifecycleState.REAPED, WorkerLifecycleState.FAILED}
+```
+
+- [ ] **Step 2: Run the test to verify it fails**
+
+Run: `pytest tests/unit/workers/contract/test_manager.py -v`
+Expected: ImportError.
+
+- [ ] **Step 3: Implement `manager.py`**
+
+```python
+# mahavishnu/workers/contract/manager.py
+from __future__ import annotations
+
+import datetime as dt
+import pathlib
+import secrets
+import time
+from dataclasses import dataclass
+from typing import Any, Callable, Protocol
+
+from . import tmux_adapter as tmux
+from .record import DurableWorkerRecord, TmuxTarget
+from .state import WorkerLifecycleState, can_transition
+from .store import WorkerRecordStore
+
+
+class EventPublisher(Protocol):
+    def emit(self, topic: str, payload: dict[str, Any]) -> None: ...
+
+
+def _utcnow() -> dt.datetime:
+    return dt.datetime.now(dt.timezone.utc)
+
+
+def _new_worker_id() -> str:
+    return f"worker-{secrets.token_hex(4)}"
+
+
+@dataclass(frozen=True)
+class SpawnResult:
+    worker_id: str
+    record: DurableWorkerRecord
+
+
+class DurableWorkerManager:
+    """Owns durable worker records, tmux sessions, and canonical events."""
+
+    def __init__(
+        self,
+        *,
+        store: WorkerRecordStore,
+        publisher: EventPublisher,
+        socket_dir: pathlib.Path,
+    ) -> None:
+        self.store = store
+        self.publisher = publisher
+        self.socket_dir = pathlib.Path(socket_dir)
+        self.socket_dir.mkdir(parents=True, exist_ok=True)
+
+    def _socket_for(self, worker_id: str) -> str:
+        return str(self.socket_dir / f"{worker_id}.sock")
+
+    def _publish(self, topic: str, record: DurableWorkerRecord, **extra: Any) -> None:
+        payload: dict[str, Any] = {
+            "worker_id": record.worker_id,
+            "worker_type": record.worker_type,
+            "backend": record.backend,
+            "state": record.state.value if hasattr(record.state, "value") else record.state,
+            "tmux": record.tmux.model_dump() if record.tmux else None,
+        }
+        payload.update(extra)
+        self.publisher.emit(topic, payload)
+
+    def _transition(self, record: DurableWorkerRecord, target: WorkerLifecycleState) -> DurableWorkerRecord:
+        if record.state == target:
+            return record
+        if not can_transition(record.state, target):
+            raise ValueError(
+                f"invalid transition {record.state} -> {target} for {record.worker_id}"
+            )
+        updated = record.model_copy(
+            update={"state": target, "last_seen_at": _utcnow()}
+        )
+        self.store.put(updated)
+        self._publish("worker.status_changed", updated)
+        return updated
+
+    def spawn(
+        self,
+        *,
+        worker_type: str,
+        backend: str,
+        command: list[str],
+        worker_id: str | None = None,
+        window_name: str = "main",
+    ) -> SpawnResult:
+        worker_id = worker_id or _new_worker_id()
+        socket = self._socket_for(worker_id)
+        session = worker_id
+        info = tmux.create_session(
+            socket=socket,
+            session=session,
+            window_name=window_name,
+            command=command,
+        )
+        target = TmuxTarget(
+            socket=info.socket,
+            session=info.session,
+            window=info.window,
+            pane=info.pane,
+            attach_command=info.attach_command,
+        )
+        now = _utcnow()
+        record = DurableWorkerRecord(
+            worker_id=worker_id,
+            worker_type=worker_type,
+            backend=backend,
+            tmux=target,
+            state=WorkerLifecycleState.READY,
+            created_at=now,
+            last_seen_at=now,
+        )
+        self.store.put(record)
+        self._publish("worker.spawned", record)
+        self._publish("worker.status_changed", record)
+        return SpawnResult(worker_id=worker_id, record=record)
+
+    def status(self, worker_id: str) -> DurableWorkerRecord | None:
+        return self.store.get(worker_id)
+
+    def capture_output(
+        self, worker_id: str, *, since_offset: int, max_bytes: int = 65_536
+    ) -> tmux.CapturedOutput:
+        record = self.store.get(worker_id)
+        if record is None or record.tmux is None:
+            return tmux.CapturedOutput(
+                text="", next_offset=since_offset, truncated=False, pane_alive=False
+            )
+        result = tmux.capture_pane(
+            record.tmux.socket,
+            record.tmux.pane,
+            since_offset=since_offset,
+            max_bytes=max_bytes,
+        )
+        # Persist new offset
+        updated = record.model_copy(
+            update={"last_output_offset": result.next_offset, "last_seen_at": _utcnow()}
+        )
+        self.store.put(updated)
+        return result
+
+    def send_input(self, worker_id: str, text: str, *, submit: bool = True) -> bool:
+        record = self.store.get(worker_id)
+        if record is None or record.tmux is None:
+            return False
+        if record.state not in {WorkerLifecycleState.READY, WorkerLifecycleState.RUNNING, WorkerLifecycleState.DETACHED}:
+            return False
+        keys = [text]
+        if submit and not text.endswith("\n"):
+            keys = [text, "Enter"]
+        tmux.send_keys(record.tmux.socket, record.tmux.pane, keys)
+        record = record.model_copy(update={"last_seen_at": _utcnow()})
+        self.store.put(record)
+        return True
+
+    def cancel(self, worker_id: str, *, signal: str = "soft", grace_ms: int = 5_000) -> bool:
+        record = self.store.get(worker_id)
+        if record is None or record.tmux is None:
+            return False
+        if record.state == WorkerLifecycleState.REAPED:
+            return False
+        record = self._transition(record, WorkerLifecycleState.DRAINING)
+        if signal == "soft":
+            tmux.send_keys(record.tmux.socket, record.tmux.pane, ["\x03"])
+        deadline = time.monotonic() + grace_ms / 1000.0
+        while time.monotonic() < deadline:
+            if not tmux.pane_alive(record.tmux.socket, record.tmux.pane):
+                break
+            time.sleep(0.1)
+        if tmux.pane_alive(record.tmux.socket, record.tmux.pane):
+            if signal == "SIGKILL":
+                tmux._run(
+                    record.tmux.socket, "kill-pane", "-t", record.tmux.pane
+                )
+            else:
+                tmux._run(
+                    record.tmux.socket,
+                    "send-keys",
+                    "-t",
+                    record.tmux.pane,
+                    "C-c",
+                )
+        try:
+            tmux.kill_session(record.tmux.socket, record.tmux.session)
+        except tmux.TmuxAdapterError:
+            pass
+        record = self._transition(record, WorkerLifecycleState.REAPED)
+        self._publish("worker.reaped", record, reason="cancelled", signal=signal)
+        return True
+
+    def reap(self, worker_id: str) -> None:
+        record = self.store.get(worker_id)
+        if record is None:
+            return
+        if record.state == WorkerLifecycleState.REAPED:
+            return
+        record = self._transition(record, WorkerLifecycleState.REAPED)
+        self._publish("worker.reaped", record, reason="explicit")
+
+    def reconcile_all(self) -> list[DurableWorkerRecord]:
+        reconciled: list[DurableWorkerRecord] = []
+        for record in self.store.list_all():
+            if record.tmux is None:
+                continue
+            alive = tmux.pane_alive(record.tmux.socket, record.tmux.pane)
+            if not alive:
+                if record.state != WorkerLifecycleState.REAPED:
+                    record = self._transition(record, WorkerLifecycleState.REAPED)
+                    self._publish("worker.reaped", record, reason="pane_dead")
+            elif record.state == WorkerLifecycleState.DETACHED:
+                record = self._transition(record, WorkerLifecycleState.READY)
+            record = record.model_copy(update={"last_seen_at": _utcnow()})
+            self.store.put(record)
+            reconciled.append(record)
+        return reconciled
+```
+
+- [ ] **Step 4: Run the test to verify it passes**
+
+Run: `pytest tests/unit/workers/contract/test_manager.py -v`
+Expected: 4 passed.
+
+- [ ] **Step 5: Commit**
+
+```bash
+git add mahavishnu/workers/contract/manager.py mahavishnu/workers/contract/__init__.py tests/unit/workers/contract/test_manager.py
+git commit -m "feat(workers/contract): add DurableWorkerManager with reconcile_all"
+```
+
+---
+
+## Task 7: EventPublisher adapter for canonical Oneiric envelope
+
+**Files:**
+- Create: `mahavishnu/workers/contract/publisher.py`
+- Test: `tests/unit/workers/contract/test_publisher.py`
+
+- [ ] **Step 1: Write the failing test**
+
+```python
+# tests/unit/workers/contract/test_publisher.py
+import datetime as dt
+import pathlib
+
+from mahavishnu.core.events.canonical import EventEnvelope
+from mahavishnu.workers.contract.publisher import CanonicalEnvelopePublisher
+from mahavishnu.workers.contract.record import DurableWorkerRecord, TmuxTarget
+from mahavishnu.workers.contract.state import WorkerLifecycleState
+
+
+def test_publisher_emits_canonical_envelope():
+    sink: list[EventEnvelope] = []
+    publisher = CanonicalEnvelopePublisher(
+        source="mahavishnu.workers.contract",
+        sink=sink.append,
+        now=lambda: dt.datetime(2026, 7, 26, 10, 0, 0, tzinfo=dt.timezone.utc),
+    )
+    rec = DurableWorkerRecord(
+        worker_id="w-1",
+        worker_type="terminal-claude",
+        backend="claude_tui",
+        tmux=TmuxTarget(socket="/x", session="s", window="@0", pane="%0"),
+        state=WorkerLifecycleState.READY,
+        created_at=dt.datetime(2026, 7, 26, 10, 0, 0, tzinfo=dt.timezone.utc),
+        last_seen_at=dt.datetime(2026, 7, 26, 10, 0, 0, tzinfo=dt.timezone.utc),
+    )
+    publisher.emit("worker.spawned", {"worker_id": "w-1"})
+    assert len(sink) == 1
+    env = sink[0]
+    assert env.topic == "worker.spawned"
+    assert env.source == "mahavishnu.workers.contract"
+    assert env.payload["worker_id"] == "w-1"
+    assert env.timestamp == "2026-07-26T10:00:00+00:00"
+```
+
+- [ ] **Step 2: Run the test to verify it fails**
+
+Run: `pytest tests/unit/workers/contract/test_publisher.py -v`
+Expected: ImportError.
+
+- [ ] **Step 3: Implement `publisher.py`**
+
+```python
+# mahavishnu/workers/contract/publisher.py
+from __future__ import annotations
+
+import datetime as dt
+import uuid
+from typing import Any, Callable
+
+from mahavishnu.core.events.canonical import EventEnvelope
+
+
+class CanonicalEnvelopePublisher:
+    """Wraps a sink as the contract's EventPublisher.
+
+    Produces canonical Oneiric envelopes so the existing EventBridge
+    pipeline consumes them unchanged.
+    """
+
+    def __init__(
+        self,
+        *,
+        source: str,
+        sink: Callable[[EventEnvelope], None],
+        now: Callable[[], dt.datetime] = lambda: dt.datetime.now(dt.timezone.utc),
+    ) -> None:
+        self._source = source
+        self._sink = sink
+        self._now = now
+
+    def emit(self, topic: str, payload: dict[str, Any]) -> None:
+        envelope = EventEnvelope(
+            event_id=str(uuid.uuid4()),
+            source=self._source,
+            version="1.0.0",
+            timestamp=self._now().isoformat(),
+            topic=topic,
+            payload=payload,
+        )
+        self._sink(envelope)
+```
+
+- [ ] **Step 4: Run the test to verify it passes**
+
+Run: `pytest tests/unit/workers/contract/test_publisher.py -v`
+Expected: 1 passed.
+
+- [ ] **Step 5: Commit**
+
+```bash
+git add mahavishnu/workers/contract/publisher.py tests/unit/workers/contract/test_publisher.py
+git commit -m "feat(workers/contract): add canonical envelope publisher"
+```
+
+---
+
+## Task 8: Repair `worker_execute` truncation in MCP worker tools
+
+**Files:**
+- Modify: `mahavishnu/mcp/tools/worker_tools.py` (replace the `output[:500]` truncation in `worker_execute` and `output[:200]` in `worker_execute_batch` with a structured cursor)
+- Test: `tests/unit/mcp/tools/test_worker_execute_no_truncation.py`
+
+- [ ] **Step 1: Write the failing test**
+
+```python
+# tests/unit/mcp/tools/test_worker_execute_no_truncation.py
+import asyncio
+
+from mahavishnu.workers.protocol import WorkerResult, WorkerStatus
+
+
+class _StubWorker:
+    worker_type = "terminal-claude"
+
+    async def execute(self, task):
+        return WorkerResult(
+            worker_id="w-1",
+            status=WorkerStatus.COMPLETED,
+            output="x" * 5000,
+            error=None,
+            exit_code=0,
+            duration_seconds=0.1,
+            metadata={},
+        )
+
+
+class _StubManager:
+    def __init__(self, worker):
+        self._worker = worker
+
+    async def execute_task(self, worker_id, task):
+        return await self._worker.execute(task)
+
+
+def test_worker_execute_returns_full_output(monkeypatch):
+    from mahavishnu.mcp.tools import worker_tools
+
+    manager = _StubManager(_StubWorker())
+    monkeypatch.setattr(worker_tools, "worker_manager", manager)
+    out = asyncio.run(worker_tools.worker_execute("w-1", "do it"))
+    assert out["status"] == "completed"
+    assert len(out["output"]) == 5000  # full output, not 500 chars
+    assert "truncated" not in out
+```
+
+- [ ] **Step 2: Run the test to verify it fails**
+
+Run: `pytest tests/unit/mcp/tools/test_worker_execute_no_truncation.py -v`
+Expected: assertion fails because the function currently returns `output[:500] + "..."`.
+
+- [ ] **Step 3: Modify `worker_tools.py`**
+
+Locate the `worker_execute` function (around line 42 of `mahavishnu/mcp/tools/worker_tools.py`) and replace the body so it returns the full `WorkerResult` payload rather than a truncated string. The function should look like:
+
+```python
+    async def worker_execute(
+        worker_id: str,
+        prompt: str,
+        timeout: int = 300,
+    ) -> dict:
+        task = {"prompt": prompt, "timeout": timeout}
+        result = await worker_manager.execute_task(worker_id, task)
+        return {
+            "worker_id": result.worker_id,
+            "status": result.status.value,
+            "output": result.output,
+            "error": result.error,
+            "exit_code": result.exit_code,
+            "duration_seconds": result.duration_seconds,
+            "metadata": result.metadata or {},
+        }
+```
+
+Locate the `worker_execute_batch` function (around line 70) and replace the truncation. Each result should include the full output:
+
+```python
+    async def worker_execute_batch(
+        worker_ids: list[str],
+        prompts: list[str],
+        timeout: int = 300,
+    ) -> list[dict]:
+        tasks = [{"prompt": p, "timeout": timeout} for p in prompts]
+        results = await worker_manager.execute_batch(worker_ids, tasks)
+        return [
+            {
+                "worker_id": rid,
+                "status": results[rid].status.value,
+                "output": results[rid].output,
+                "error": results[rid].error,
+                "exit_code": results[rid].exit_code,
+                "duration_seconds": results[rid].duration_seconds,
+                "metadata": results[rid].metadata or {},
+            }
+            for rid in worker_ids
+            if rid in results
+        ]
+```
+
+- [ ] **Step 4: Run the test to verify it passes**
+
+Run: `pytest tests/unit/mcp/tools/test_worker_execute_no_truncation.py -v`
+Expected: 1 passed.
+
+- [ ] **Step 5: Commit**
+
+```bash
+git add mahavishnu/mcp/tools/worker_tools.py tests/unit/mcp/tools/test_worker_execute_no_truncation.py
+git commit -m "fix(mcp): stop truncating worker_execute output to 500 chars"
+```
+
+---
+
+## Task 9: `workflow_result` MCP tool
+
+**Files:**
+- Modify: `mahavishnu/mcp/tools/pool_tools.py` (add `workflow_result` tool and registration)
+- Test: `tests/unit/mcp/tools/test_workflow_result.py`
+
+- [ ] **Step 1: Write the failing test**
+
+```python
+# tests/unit/mcp/tools/test_workflow_result.py
+import asyncio
+
+
+class _StubStore:
+    def __init__(self):
+        self.calls = []
+
+    async def get(self, workflow_id: str):
+        self.calls.append(workflow_id)
+        return {
+            "workflow_id": workflow_id,
+            "status": "completed",
+            "result": {"output": "ok", "status": "completed"},
+            "rate_limited": False,
+        }
+
+
+def test_workflow_result_returns_state(monkeypatch):
+    from mahavishnu.mcp.tools import pool_tools
+
+    store = _StubStore()
+    monkeypatch.setattr(pool_tools, "_dhara_state", store)
+    out = asyncio.run(pool_tools.workflow_result("wf-1"))
+    assert out["workflow_id"] == "wf-1"
+    assert out["status"] == "completed"
+    assert out["result"]["output"] == "ok"
+    assert store.calls == ["wf-1"]
+
+
+def test_workflow_result_returns_not_found_when_missing(monkeypatch):
+    from mahavishnu.mcp.tools import pool_tools
+
+    class _Empty:
+        async def get(self, _):
+            return None
+
+    monkeypatch.setattr(pool_tools, "_dhara_state", _Empty())
+    out = asyncio.run(pool_tools.workflow_result("wf-missing"))
+    assert out["status"] == "not_found"
+```
+
+- [ ] **Step 2: Run the test to verify it fails**
+
+Run: `pytest tests/unit/mcp/tools/test_workflow_result.py -v`
+Expected: ImportError — function does not exist.
+
+- [ ] **Step 3: Add `workflow_result` to `pool_tools.py`**
+
+In `mahavishnu/mcp/tools/pool_tools.py`, add the function near the other pool tools (e.g. just before `register_pool_tools`):
+
+```python
+    async def workflow_result(workflow_id: str) -> dict[str, Any]:
+        """Retrieve the result of an async dispatch_to_pool workflow.
+
+        Reads the persisted state from Dhara at
+        `workflow-results/{workflow_id}/` and returns the current status
+        and result. Returns `status: "not_found"` if the workflow id
+        is unknown.
+        """
+        if _dhara_state is None:
+            return {"workflow_id": workflow_id, "status": "not_found"}
+        record = await _dhara_state.get(workflow_id)
+        if record is None:
+            return {"workflow_id": workflow_id, "status": "not_found"}
+        return {
+            "workflow_id": workflow_id,
+            "status": record.get("status", "unknown"),
+            "result": record.get("result"),
+            "error": record.get("error"),
+            "rate_limited": bool(record.get("rate_limited", False)),
+            "retry_after_seconds": record.get("retry_after_seconds"),
+        }
+```
+
+Update the `register_pool_tools` function to add the new tool. Locate the calls to `add_tool` inside the function and add:
+
+```python
+    add_tool(
+        name="workflow_result",
+        description=(
+            "Retrieve the result of a workflow_id returned by "
+            "dispatch_to_pool(async_callback=True). Returns the current "
+            "status, the WorkerResult, the error if any, and the rate-"
+            "limit/retry metadata. Returns status=not_found if the "
+            "workflow id is unknown."
+        ),
+        coroutine=workflow_result,
+    )
+```
+
+Also export `workflow_result` from the module by appending the name to the `__all__` list (if one exists) or by adding it to the same place the other public tools are re-exported.
+
+- [ ] **Step 4: Run the test to verify it passes**
+
+Run: `pytest tests/unit/mcp/tools/test_workflow_result.py -v`
+Expected: 2 passed.
+
+- [ ] **Step 5: Commit**
+
+```bash
+git add mahavishnu/mcp/tools/pool_tools.py tests/unit/mcp/tools/test_workflow_result.py
+git commit -m "feat(mcp): add workflow_result retrieval tool"
+```
+
+---
+
+## Task 10: `terminal-claude` completion marker normalization
+
+**Files:**
+- Modify: `mahavishnu/workers/generic_shell.py` (add a fallback completion detection that triggers on Claude's actual stream-JSON `"type":"result"` line)
+- Test: `tests/unit/workers/test_terminal_claude_completion.py`
+
+- [ ] **Step 1: Write the failing test**
+
+```python
+# tests/unit/workers/test_terminal_claude_completion.py
+from mahavishnu.workers.generic_shell import GenericShellWorker
+
+
+def test_check_json_completion_recognises_result_type():
+    # Synthetic stream-json output from Claude Code (no `finish_reason`)
+    output = (
+        '{"type":"system","subtype":"init","cwd":"/x"}\n'
+        '{"type":"assistant","message":{"content":[{"type":"text","text":"hi"}]}}\n'
+        '{"type":"result","result":"done","duration_ms":12}\n'
+    )
+    # Without the new marker, current code returns (False, None)
+    completed, _ = GenericShellWorker._check_json_completion(
+        output,
+        completion_markers=['finish_reason'],
+        complete_on_valid_json=False,
+    )
+    assert completed is True
+```
+
+- [ ] **Step 2: Run the test to verify it fails**
+
+Run: `pytest tests/unit/workers/test_terminal_claude_completion.py -v`
+Expected: assertion fails because the current method only checks the configured markers.
+
+- [ ] **Step 3: Modify `generic_shell.py`**
+
+Locate `_check_json_completion` (around line 258 of `mahavishnu/workers/generic_shell.py`) and extend the loop body so that the canonical Claude Code `"type":"result"` line is treated as a completion signal for `terminal-claude`. Replace the body with:
+
+```python
+    for line in output.split("\n"):
+        if not line.strip():
+            continue
+        try:
+            data = json.loads(line)
+        except json.JSONDecodeError:
+            continue
+        serialized = json.dumps(data)
+        # Canonical Claude Code stream-json end-of-turn marker.
+        if data.get("type") == "result" and data.get("parent_tool_use_id") is None:
+            return True, self._extract_json_content(data)
+        for marker in self.config.completion_markers:
+            if marker in data or marker in serialized:
+                return True, self._extract_json_content(data)
+        for marker in self.config.error_markers:
+            if marker.lower() in serialized.lower():
+                return True, self._extract_json_content(data)
+    return False, None
+```
+
+Also, ensure the function is reachable as a classmethod (it is today). If it currently is a static method, leave it as is — only the body needs to change.
+
+- [ ] **Step 4: Run the test to verify it passes**
+
+Run: `pytest tests/unit/workers/test_terminal_claude_completion.py -v`
+Expected: 1 passed.
+
+- [ ] **Step 5: Commit**
+
+```bash
+git add mahavishnu/workers/generic_shell.py tests/unit/workers/test_terminal_claude_completion.py
+git commit -m "fix(workers): recognize Claude Code stream-json result marker"
+```
+
+---
+
+## Task 11: BUILTIN_BACKENDS `tmux` entry
+
+**Files:**
+- Modify: `mahavishnu/terminal/backends.py` (add `tmux` entry to `BUILTIN_BACKENDS`)
+- Test: `tests/unit/terminal/test_tmux_backend_entry.py`
+
+- [ ] **Step 1: Write the failing test**
+
+```python
+# tests/unit/terminal/test_tmux_backend_entry.py
+from mahavishnu.terminal.backends import BUILTIN_BACKENDS
+
+
+def test_tmux_backend_registered():
+    assert "tmux" in BUILTIN_BACKENDS
+    entry = BUILTIN_BACKENDS["tmux"]
+    assert entry.name == "tmux"
+    assert "tmux" in entry.command  # binary, not "npx mcpretentious"
+    assert "tmux" in entry.requires
+```
+
+- [ ] **Step 2: Run the test to verify it fails**
+
+Run: `pytest tests/unit/terminal/test_tmux_backend_entry.py -v`
+Expected: KeyError or AttributeError because the entry does not exist.
+
+- [ ] **Step 3: Modify `backends.py`**
+
+In `mahavishnu/terminal/backends.py`, locate the `BUILTIN_BACKENDS` dict and add a `tmux` entry. The exact form depends on the existing shape (e.g. `PtyBackend` dataclass). The new entry should look like:
+
+```python
+BUILTIN_BACKENDS = {
+    "mcpretentious": PtyBackend(
+        name="mcpretentious",
+        command="npx",
+        args=("mcpretentious",),
+        requires=("node",),
+    ),
+    "tmux": PtyBackend(
+        name="tmux",
+        command="tmux",
+        args=(),
+        requires=("tmux",),
+    ),
+}
+```
+
+If `PtyBackend` does not exist with that exact signature, mirror the existing `mcpretentious` entry shape and only change `name`, `command`, `args`, and `requires`. Do not change the existing `mcpretentious` entry.
+
+- [ ] **Step 4: Run the test to verify it passes**
+
+Run: `pytest tests/unit/terminal/test_tmux_backend_entry.py -v`
+Expected: 1 passed.
+
+- [ ] **Step 5: Commit**
+
+```bash
+git add mahavishnu/terminal/backends.py tests/unit/terminal/test_tmux_backend_entry.py
+git commit -m "feat(terminal): register tmux as a builtin backend"
+```
+
+---
+
+## Task 12: Wire `TmuxTerminalAdapter` into the terminal manager
+
+**Files:**
+- Create: `mahavishnu/terminal/adapters/tmux.py`
+- Modify: `mahavishnu/terminal/manager.py` (route `tmux` to the new adapter; do not break the existing `mcpretentious` path)
+
+- [ ] **Step 1: Write the failing test**
+
+```python
+# tests/unit/terminal/test_manager_routes_tmux.py
+import pathlib
+from unittest.mock import patch
+
+import pytest
+
+from mahavishnu.terminal.manager import TerminalManager
+
+
+def test_manager_routes_tmux_preference(monkeypatch, tmp_path: pathlib.Path):
+    captured = {}
+    class _FakeAdapter:
+        name = "tmux"
+
+        async def launch_sessions(self, command, count):
+            captured["command"] = command
+            return ["fake-session-id"]
+
+    monkeypatch.setattr(
+        "mahavishnu.terminal.manager.McpretentiousAdapter",
+        _FakeAdapter,
+    )
+    # Configure manager for tmux backend
+    cfg = type(
+        "Cfg",
+        (),
+        {
+            "terminal": type(
+                "T",
+                (),
+                {
+                    "enabled": True,
+                    "adapter_preference": "tmux",
+                    "max_concurrent_sessions": 5,
+                    "default_columns": 120,
+                    "default_rows": 30,
+                    "crow_enabled": False,
+                },
+            )()
+        },
+    )()
+    mgr = TerminalManager.create(cfg, mcp_client=None)
+    assert isinstance(mgr.adapter, _FakeAdapter)
+```
+
+- [ ] **Step 2: Run the test to verify it fails**
+
+Run: `pytest tests/unit/terminal/test_manager_routes_tmux.py -v`
+Expected: assertion fails because `TerminalManager.create` currently routes `tmux` to `McpretentiousAdapter` (per the boot path behavior documented in §10 of the spec).
+
+- [ ] **Step 3: Implement the `tmux.py` adapter and route it in `manager.py`**
+
+In `mahavishnu/terminal/adapters/tmux.py`:
+
+```python
+# mahavishnu/terminal/adapters/tmux.py
+from __future__ import annotations
+
+from mahavishnu.terminal.adapters.base import BaseTerminalAdapter
+from mahavishnu.workers.contract import tmux_adapter as tmux
+from mahavishnu.workers.contract.manager import DurableWorkerManager
+
+
+class TmuxTerminalAdapter(BaseTerminalAdapter):
+    """Thin adapter that delegates to the new contract's tmux primitives.
+
+    Sessions launched through this adapter are also recorded in the
+    DurableWorkerManager so they survive a controller restart.
+    """
+
+    def __init__(self, manager: DurableWorkerManager) -> None:
+        self._manager = manager
+
+    async def launch_sessions(self, command, count):
+        from mahavishnu.workers.contract.tmux_adapter import TmuxAdapterError
+
+        results = []
+        for _ in range(count):
+            result = self._manager.spawn(
+                worker_type="terminal-claude",
+                backend="claude_tui",
+                command=[command],
+            )
+            results.append(result.worker_id)
+        return results
+
+    async def send_command(self, session_id, command):
+        self._manager.send_input(session_id, command, submit=True)
+
+    async def capture_output(self, session_id, lines=None):
+        result = self._manager.capture_output(session_id, since_offset=0, max_bytes=65_536)
+        return result.text
+
+    async def list_sessions(self):
+        # The contract already knows its workers; return their worker_ids
+        return [r.worker_id for r in self._manager.store.list_all()]
+
+    async def close_session(self, session_id):
+        self._manager.cancel(session_id, signal="soft", grace_ms=2_000)
+```
+
+In `mahavishnu/terminal/manager.py`, locate `TerminalManager.create` and the routing block where `BUILTIN_BACKENDS` are handled. Add a new branch for `"tmux"` *before* the existing `BUILTIN_BACKENDS` branch:
+
+```python
+        if preference == "tmux":
+            from .adapters.tmux import TmuxTerminalAdapter
+            from ..workers.contract.store import WorkerRecordStore
+            from ..workers.contract.manager import DurableWorkerManager
+            from ..core.events.worker_topics import is_worker_topic
+
+            store = WorkerRecordStore(
+                pathlib.Path.home() / ".mahavishnu" / "worker-sessions"
+            )
+            publisher = CanonicalEnvelopePublisher(
+                source="mahavishnu.terminal",
+                sink=_enqueue_to_eventbridge,
+            )
+            manager = DurableWorkerManager(
+                store=store,
+                publisher=publisher,
+                socket_dir=pathlib.Path.home() / ".mahavishnu" / "tmux",
+            )
+            adapter = TmuxTerminalAdapter(manager)
+            return cls(adapter, terminal_config)
+```
+
+Wire `_enqueue_to_eventbridge` as a thin helper that publishes through the existing eventbus or EventBridge producer. If the EventBridge is not available at boot time, fall back to a no-op publisher so the adapter still works in tests:
+
+```python
+def _enqueue_to_eventbridge(envelope):
+    # No-op until wired to the real EventBridge producer in Task 13.
+    return None
+```
+
+- [ ] **Step 4: Run the test to verify it passes**
+
+Run: `pytest tests/unit/terminal/test_manager_routes_tmux.py -v`
+Expected: 1 passed.
+
+- [ ] **Step 5: Commit**
+
+```bash
+git add mahavishnu/terminal/adapters/tmux.py mahavishnu/terminal/manager.py tests/unit/terminal/test_manager_routes_tmux.py
+git commit -m "feat(terminal): route tmux preference to TmuxTerminalAdapter"
+```
+
+---
+
+## Task 13: Worker-contract MCP tool group
+
+**Files:**
+- Create: `mahavishnu/mcp/tools/worker_contract_tools.py`
+- Test: `tests/unit/mcp/tools/test_worker_contract_tools.py`
+- Modify: `mahavishnu/mcp/bootstrap.py` (register the new tool group)
+
+- [ ] **Step 1: Write the failing test**
+
+```python
+# tests/unit/mcp/tools/test_worker_contract_tools.py
+import asyncio
+from unittest.mock import AsyncMock, MagicMock
+
+
+def test_launch_worker_calls_manager(monkeypatch):
+    from mahavishnu.mcp.tools import worker_contract_tools as tools
+
+    manager = MagicMock()
+    manager.spawn = MagicMock(
+        return_value=MagicMock(worker_id="w-1", record=MagicMock(worker_id="w-1"))
+    )
+    monkeypatch.setattr(tools, "_durable_manager", manager)
+    out = asyncio.run(
+        tools.launch_worker(
+            prompt="do it",
+            worker_type="terminal-claude",
+            backend="claude_tui",
+            command=["claude"],
+        )
+    )
+    assert out["worker_id"] == "w-1"
+    manager.spawn.assert_called_once()
+
+
+def test_workflow_status_returns_record(monkeypatch):
+    from mahavishnu.mcp.tools import worker_contract_tools as tools
+
+    manager = MagicMock()
+    manager.status = MagicMock(return_value=MagicMock(worker_id="w-1"))
+    out = asyncio.run(tools.worker_status("w-1"))
+    assert out["worker_id"] == "w-1"
+    manager.status.assert_called_once_with("w-1")
+```
+
+- [ ] **Step 2: Run the test to verify it fails**
+
+Run: `pytest tests/unit/mcp/tools/test_worker_contract_tools.py -v`
+Expected: ImportError.
+
+- [ ] **Step 3: Implement `worker_contract_tools.py`**
+
+```python
+# mahavishnu/mcp/tools/worker_contract_tools.py
+from __future__ import annotations
+
+from typing import Any
+
+
+def register_worker_contract_tools(
+    app: Any, durable_manager: Any
+) -> None:
+    """Register the new worker-contract MCP tool group."""
+
+    global _durable_manager
+    _durable_manager = durable_manager
+
+    @app.tool()
+    async def launch_worker(
+        prompt: str,
+        *,
+        worker_type: str = "terminal-claude",
+        backend: str = "claude_tui",
+        command: list[str] | None = None,
+        worker_id: str | None = None,
+        max_wait_ms: int = 30_000,
+    ) -> dict:
+        if command is None:
+            command = ["claude"]
+        result = _durable_manager.spawn(
+            worker_type=worker_type,
+            backend=backend,
+            command=command,
+            worker_id=worker_id,
+        )
+        return {
+            "worker_id": result.worker_id,
+            "state": result.record.state.value
+            if hasattr(result.record.state, "value")
+            else result.record.state,
+            "tmux": result.record.tmux.model_dump() if result.record.tmux else None,
+        }
+
+    @app.tool()
+    async def send_input(
+        worker_id: str, input: str, *, submit: bool = True
+    ) -> dict:
+        accepted = _durable_manager.send_input(worker_id, input, submit=submit)
+        return {"accepted": accepted}
+
+    @app.tool()
+    async def capture_output(
+        worker_id: str, *, since_offset: int = 0, max_bytes: int = 65_536
+    ) -> dict:
+        result = _durable_manager.capture_output(
+            worker_id, since_offset=since_offset, max_bytes=max_bytes
+        )
+        return {
+            "worker_id": worker_id,
+            "text": result.text,
+            "next_offset": result.next_offset,
+            "truncated": result.truncated,
+            "pane_alive": result.pane_alive,
+        }
+
+    @app.tool()
+    async def worker_status(worker_id: str) -> dict:
+        record = _durable_manager.status(worker_id)
+        if record is None:
+            return {"worker_id": worker_id, "state": "not_found"}
+        return {
+            "worker_id": record.worker_id,
+            "state": record.state.value
+            if hasattr(record.state, "value")
+            else record.state,
+            "uptime_seconds": int(
+                (record.last_seen_at - record.created_at).total_seconds()
+            ),
+            "last_seen_at": record.last_seen_at.isoformat(),
+            "tmux": record.tmux.model_dump() if record.tmux else None,
+            "claude_session": record.claude_session,
+        }
+
+    @app.tool()
+    async def wait_for_state(
+        worker_id: str,
+        until_state: str,
+        timeout_ms: int = 30_000,
+        poll_interval_ms: int = 250,
+    ) -> dict:
+        import asyncio
+
+        from .state import WorkerLifecycleState
+
+        target = WorkerLifecycleState(until_state)
+        deadline = asyncio.get_event_loop().time() + timeout_ms / 1000.0
+        while asyncio.get_event_loop().time() < deadline:
+            record = _durable_manager.status(worker_id)
+            if record is None or record.state == target:
+                elapsed = int((asyncio.get_event_loop().time() - (deadline - timeout_ms / 1000.0)) * 1000)
+                return {"worker_id": worker_id, "state": record.state.value if record else "missing", "elapsed_ms": elapsed}
+            await asyncio.sleep(poll_interval_ms / 1000.0)
+        record = _durable_manager.status(worker_id)
+        return {
+            "worker_id": worker_id,
+            "state": record.state.value if record else "missing",
+            "elapsed_ms": timeout_ms,
+            "timed_out": True,
+        }
+
+    @app.tool()
+    async def cancel_worker(
+        worker_id: str, *, signal: str = "soft", grace_ms: int = 5_000
+    ) -> dict:
+        killed = _durable_manager.cancel(worker_id, signal=signal, grace_ms=grace_ms)
+        return {"killed": killed}
+
+    @app.tool()
+    async def worker_revoke(worker_id: str, *, force: bool = False) -> dict:
+        if force:
+            _durable_manager.cancel(worker_id, signal="SIGKILL", grace_ms=1_000)
+        else:
+            _durable_manager.reap(worker_id)
+        return {"revoked": True, "force": force}
+
+
+_durable_manager = None
+```
+
+- [ ] **Step 4: Register the tool group in `bootstrap.py`**
+
+In `mahavishnu/mcp/bootstrap.py`, locate the section that registers other tool groups (e.g. `register_pool_tools`, `register_worker_tools`). Add a call to the new registration after the existing `register_worker_tools`:
+
+```python
+from .tools.worker_contract_tools import register_worker_contract_tools
+```
+
+then in the same registration block, after the existing worker tools are registered:
+
+```python
+    register_worker_contract_tools(app, durable_worker_manager)
+```
+
+Construct `durable_worker_manager` from the new `WorkerRecordStore`, `CanonicalEnvelopePublisher`, and the existing eventbus. If a real eventbus producer is not available at boot, fall back to a no-op publisher.
+
+- [ ] **Step 5: Run the test to verify it passes**
+
+Run: `pytest tests/unit/mcp/tools/test_worker_contract_tools.py -v`
+Expected: 2 passed.
+
+- [ ] **Step 6: Commit**
+
+```bash
+git add mahavishnu/mcp/tools/worker_contract_tools.py mahavishnu/mcp/bootstrap.py tests/unit/mcp/tools/test_worker_contract_tools.py
+git commit -m "feat(mcp): add worker contract tools and bootstrap registration"
+```
+
+---
+
+## Task 14: Settings additions for the worker contract
+
+**Files:**
+- Modify: `settings/mahavishnu.yaml` (add `worker_contract` block with defaults)
+- Test: `tests/unit/config/test_worker_contract_settings.py`
+
+- [ ] **Step 1: Write the failing test**
+
+```python
+# tests/unit/config/test_worker_contract_settings.py
+from pathlib import Path
+
+import yaml
+
+
+def test_worker_contract_settings_present():
+    cfg = yaml.safe_load(
+        Path("settings/mahavishnu.yaml").read_text(encoding="utf-8")
+    )
+    assert "worker_contract" in cfg
+    wc = cfg["worker_contract"]
+    assert wc["enabled"] is False  # opt-in for the first release
+    assert wc["default_session_mode"] == "managed_tmux"
+    assert wc["max_wait_ms"] == 30_000
+```
+
+- [ ] **Step 2: Run the test to verify it fails**
+
+Run: `pytest tests/unit/config/test_worker_contract_settings.py -v`
+Expected: KeyError because the block does not exist.
+
+- [ ] **Step 3: Add the `worker_contract` block to `settings/mahavishnu.yaml`**
+
+At the bottom of `settings/mahavishnu.yaml`, append:
+
+```yaml
+worker_contract:
+  enabled: false
+  default_session_mode: managed_tmux
+  default_backend: claude_tui
+  max_wait_ms: 30000
+  default_grace_ms: 5000
+  socket_dir: ~/.mahavishnu/tmux
+  records_dir: ~/.mahavishnu/worker-sessions
+  event_topic_prefix: worker
+```
+
+- [ ] **Step 4: Run the test to verify it passes**
+
+Run: `pytest tests/unit/config/test_worker_contract_settings.py -v`
+Expected: 1 passed.
+
+- [ ] **Step 5: Commit**
+
+```bash
+git add settings/mahavishnu.yaml tests/unit/config/test_worker_contract_settings.py
+git commit -m "feat(settings): add worker_contract defaults"
+```
+
+---
+
+## Task 15: MCP tools documentation
+
+**Files:**
+- Modify: `docs/MCP_TOOLS_SPECIFICATION.md` (add a new section describing the seven worker contract tools)
+
+- [ ] **Step 1: Append a new section to the doc**
+
+Locate the existing worker-related section in `docs/MCP_TOOLS_SPECIFICATION.md` (or the pool section if worker tools are described there). Append a new section titled `## Worker Contract Tools` with the following content:
+
+```markdown
+## Worker Contract Tools
+
+The worker contract tool group is the durable, tmux-aware replacement
+for the legacy `worker_execute` and `dispatch_to_pool` async path.
+
+| Tool | Purpose |
+|---|---|
+| `launch_worker` | Create a durable local worker. Returns `worker_id` and tmux metadata. |
+| `send_input` | Send text input to a running worker. |
+| `capture_output` | Incremental output capture with byte-offset cursor. |
+| `worker_status` | Authoritative lifecycle state. |
+| `wait_for_state` | Block until a worker reaches a target state. |
+| `cancel_worker` | Two-phase graceful cancellation. |
+| `worker_revoke` | Mark a worker record as `reaped`; with `force=true` also kill the pane. |
+
+Workers are durable across Mahavishnu controller restarts; the
+`worker_id` is the stable identity. See
+`docs/superpowers/specs/2026-07-26-durable-local-workers-design.md`
+for the design and `docs/superpowers/plans/2026-07-26-durable-local-workers.md`
+for the implementation plan.
+```
+
+- [ ] **Step 2: Commit**
+
+```bash
+git add docs/MCP_TOOLS_SPECIFICATION.md
+git commit -m "docs(mcp): document worker contract tools"
+```
+
+---
+
+## Task 16: End-to-end reconciliation test
+
+**Files:**
+- Create: `tests/integration/workers/contract/test_reconciliation.py`
+
+- [ ] **Step 1: Write the test**
+
+```python
+# tests/integration/workers/contract/test_reconciliation.py
+import datetime as dt
+import pathlib
+from unittest.mock import MagicMock, patch
+
+from mahavishnu.workers.contract.manager import DurableWorkerManager
+from mahavishnu.workers.contract.record import DurableWorkerRecord, TmuxTarget
+from mahavishnu.workers.contract.state import WorkerLifecycleState
+from mahavishnu.workers.contract.store import WorkerRecordStore
+
+
+def test_reconcile_marks_dead_pane_as_reaped(tmp_path: pathlib.Path):
+    store = WorkerRecordStore(tmp_path)
+    publisher = MagicMock()
+    manager = DurableWorkerManager(
+        store=store,
+        publisher=publisher,
+        socket_dir=tmp_path / "tmux",
+    )
+    now = dt.datetime(2026, 7, 26, 10, 0, 0, tzinfo=dt.timezone.utc)
+    record = DurableWorkerRecord(
+        worker_id="w-1",
+        worker_type="terminal-claude",
+        backend="claude_tui",
+        tmux=TmuxTarget(
+            socket=str(tmp_path / "tmux" / "x.sock"),
+            session="mvs",
+            window="@0",
+            pane="%3",
+        ),
+        state=WorkerLifecycleState.READY,
+        created_at=now,
+        last_seen_at=now,
+    )
+    store.put(record)
+
+    with patch(
+        "mahavishnu.workers.contract.manager.tmux.pane_alive",
+        return_value=False,
+    ):
+        reconciled = manager.reconcile_all()
+
+    assert len(reconciled) == 1
+    assert reconciled[0].state == WorkerLifecycleState.REAPED
+    topics = [c.args[0] for c in publisher.emit.call_args_list]
+    assert "worker.reaped" in topics
+
+
+def test_reconcile_revives_detached_pane(tmp_path: pathlib.Path):
+    store = WorkerRecordStore(tmp_path)
+    publisher = MagicMock()
+    manager = DurableWorkerManager(
+        store=store,
+        publisher=publisher,
+        socket_dir=tmp_path / "tmux",
+    )
+    now = dt.datetime(2026, 7, 26, 10, 0, 0, tzinfo=dt.timezone.utc)
+    record = DurableWorkerRecord(
+        worker_id="w-1",
+        worker_type="terminal-claude",
+        backend="claude_tui",
+        tmux=TmuxTarget(
+            socket=str(tmp_path / "tmux" / "x.sock"),
+            session="mvs",
+            window="@0",
+            pane="%3",
+        ),
+        state=WorkerLifecycleState.DETACHED,
+        created_at=now,
+        last_seen_at=now,
+    )
+    store.put(record)
+
+    with patch(
+        "mahavishnu.workers.contract.manager.tmux.pane_alive",
+        return_value=True,
+    ):
+        reconciled = manager.reconcile_all()
+
+    assert reconciled[0].state == WorkerLifecycleState.READY
+```
+
+- [ ] **Step 2: Run the test to verify it passes**
+
+Run: `pytest tests/integration/workers/contract/test_reconciliation.py -v`
+Expected: 2 passed.
+
+- [ ] **Step 3: Commit**
+
+```bash
+git add tests/integration/workers/contract/test_reconciliation.py
+git commit -m "test(workers/contract): add reconciliation integration test"
+```
+
+---
+
+## Task 17: Crackerjack quality gate
+
+**Files:** none modified; this is a verification task.
+
+- [ ] **Step 1: Run Crackerjack**
+
+Run: `crackerjack run`
+Expected: ≥75 quality score; no new failures in `mahavishnu/workers/contract/`, `mahavishnu/terminal/adapters/tmux.py`, `mahavishnu/mcp/tools/worker_contract_tools.py`, or `mahavishnu/mcp/tools/worker_tools.py`.
+
+- [ ] **Step 2: Address any quality findings**
+
+If Crackerjack reports failures, address them in the relevant task commit. Do not push fixes in a separate commit if the issue belongs to an earlier task.
+
+- [ ] **Step 3: Commit any quality fixes**
+
+```bash
+git add -A
+git commit -m "chore(quality): address crackerjack findings"
+```
+
+---
+
+## Self-Review
+
+After writing this plan, I checked it against the spec:
+
+1. **Spec coverage**:
+   - Problem (§1) → Phase A (Tasks 8, 9, 10) + Phase B (Tasks 11–14).
+   - Goal (§2) → durable records (Tasks 2, 3), tmux default (Tasks 5, 11, 12), canonical events (Tasks 4, 7, 13), MCP contract (Tasks 8, 9, 13).
+   - Transport decision (§4) → Tasks 11, 12; deprecation of iTerm2 noted as deferred.
+   - Stable identities (§5) → Tasks 2, 6.
+   - Worker state machine (§6) → Tasks 1, 6.
+   - Worker contract (§7) → Tasks 5, 6, 13.
+   - Failure handling (§8) → Tasks 6, 16.
+   - Security (§9) → Task 6 (private socket dir), Task 3 (atomic writes, 0600 perms to be added in follow-up if needed).
+   - Existing MCP surface (§10) → Tasks 8, 9, 10.
+   - Deferred extensions (§11, §12) → marked out of scope.
+   - Rollout (§15) → Tasks 11, 12, 14 land Phase B; Phase A is Tasks 8, 9, 10.
+2. **Placeholder scan**: no TBDs, no "add appropriate error handling" stubs; every code step is concrete.
+3. **Type consistency**: `WorkerLifecycleState` is consistent across Tasks 1, 2, 6. `DurableWorkerRecord` is consistent across Tasks 2, 3, 6, 7, 16. `SpawnResult` and `CapturedOutput` are consistent across Tasks 5, 6.
+4. **One refinement found and applied**: Tasks 9 and 13 both reference `workflow_result`; the contract tool group owns the launch-style tools, while `pool_tools` owns the workflow-result retrieval. They share a Dhara state path. This split is consistent with the existing separation of pool and worker tools.
+5. **One open question carried forward**: how `CanonicalEnvelopePublisher`'s sink is wired to the real EventBridge producer (deferred to Task 13's bootstrap wiring). The publisher accepts a sink callable, so wiring is a no-op at the contract level; bootstrap supplies the real sink.
