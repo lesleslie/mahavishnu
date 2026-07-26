@@ -389,6 +389,92 @@ class WorktreeAuditLogger:
             result="success",
         )
 
+    def log_prune_merged_attempt(
+        self,
+        user_id: str | None,
+        candidate_count: int,
+        ttl_days: int,
+        include_dirty: bool,
+        trigger: str,
+        exclude_session: str | None = None,
+    ) -> None:
+        """Log a prune-merged sweep attempt."""
+        self._log_to_audit_trail(
+            event_type="worktree_prune_merged_attempt",
+            user_id=user_id,
+            tool_name="prune_merged_worktrees",
+            params={
+                "candidate_count": candidate_count,
+                "ttl_days": ttl_days,
+                "include_dirty": include_dirty,
+                "trigger": trigger,
+                "exclude_session": exclude_session,
+            },
+            result="pending",
+        )
+
+    def log_prune_merged_success(
+        self,
+        user_id: str | None,
+        removed_count: int,
+        backup_paths: list[str],
+        trigger: str,
+        failed_paths: list[str] | None = None,
+    ) -> None:
+        """Log a prune-merged sweep success."""
+        self._log_to_audit_trail(
+            event_type="worktree_prune_merged_success",
+            user_id=user_id,
+            tool_name="prune_merged_worktrees",
+            params={
+                "removed_count": removed_count,
+                "backup_paths": backup_paths,
+                "failed_paths": failed_paths or [],
+                "trigger": trigger,
+            },
+            result="success",
+        )
+
+    def log_prune_merged_partial(
+        self,
+        user_id: str | None,
+        removed_count: int,
+        failed_count: int,
+        failed_paths: list[str],
+        backup_paths: list[str],
+        trigger: str,
+    ) -> None:
+        """Log a partial-success sweep (some candidates failed)."""
+        self._log_to_audit_trail(
+            event_type="worktree_prune_merged_partial",
+            user_id=user_id,
+            tool_name="prune_merged_worktrees",
+            params={
+                "removed_count": removed_count,
+                "failed_count": failed_count,
+                "failed_paths": failed_paths,
+                "backup_paths": backup_paths,
+                "trigger": trigger,
+            },
+            result="partial",
+        )
+
+    def log_prune_merged_failure(
+        self,
+        user_id: str | None,
+        error: str,
+        trigger: str,
+    ) -> None:
+        """Log a prune-merged sweep failure."""
+        self._log_to_audit_trail(
+            event_type="worktree_prune_merged_failure",
+            user_id=user_id,
+            tool_name="prune_merged_worktrees",
+            params={"trigger": trigger},
+            result="failure",
+            error=error,
+        )
+
     def log_list_operation(
         self,
         user_id: str | None,
