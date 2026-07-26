@@ -17,10 +17,46 @@
 - No new dependency on `iTerm2` or `mcpretentious`. The new tmux adapter is independent.
 - All worker events are emitted on Oneiric canonical topics: `worker.spawned`, `worker.attached`, `worker.detached`, `worker.status_changed`, `worker.availability_changed`, `worker.reaped`. No new envelope schemas.
 - Statusline files are keyed by `worker_id`, not `task_id`. Files live in `~/.mahavishnu/worker-status/`.
-- Crackerjack quality must remain ≥75 at every commit gate.
-- TDD: every task writes a failing test before implementing.
+- Crackerjack quality must remain ≥75 at every commit gate. Use `# ty: ignore[code]` per the crackerjack skill; never bare `# type: ignore`.
+- TDD: every task writes a failing test before implementing, then watches it fail, then writes the minimum code to pass, then refactors. No production code without a failing test first.
 - Frequent commits: one commit per task.
 - This plan implements **Phases A and B** of the spec. Phase C (iTerm2 deprecation refactor) and Phase D (Session-Buddy/cloud extensions) are separate follow-up plans.
+
+## Pre-Flight Findings (from multi-reviewer audit)
+
+A four-lens review (coverage, technical risk, test design, rollout) and adversarial verification produced 20 in-scope findings before execution. The high and medium findings are folded into the affected tasks below. The reviewer batch also produced 16 out-of-scope "TST-*" findings that reference a different plan; they are ignored.
+
+In-scope findings and where they are addressed:
+
+- **F1** (high) §10 retain-and-repair list under-implemented — covered by new Tasks 18–24.
+- **F2** (high) §8.5 graceful shutdown not wired — covered by new Task 8a.
+- **F3** (medium) §5 pane-recreation rule — added to Task 6 step.
+- **F4** (medium) §9 0600 permissions — added to Tasks 3, 5, 6.
+- **F5** (medium) §9 snapshot-out-of-envelope — added to Task 7.
+- **F6** (high) §7.1 `launch_worker` parameter set — added to Task 13.
+- **F7** (low) §7.3 `strip_ansi` parameter — added to Task 13.
+- **F8** (medium) §7.4 `worker_status` response fields — added to Task 13.
+- **F9** (low) §7.5 `output_during_wait` — added to Task 13.
+- **F10** (low) §7.6 `cancel_worker` `exit_code` — added to Task 13.
+- **F11** (medium) §6 STARTING window — added to Task 6.
+- **F12** (medium) §1 bottleneck 3 (sync pool blocking MCP) — recorded as Phase A follow-up note in Task 9.
+- **F13** (medium) §14 success-criteria metrics — covered by new Task 25.
+- **F14** (medium) §16 open questions — recorded as "ask before execution" preamble below.
+- **F15** (medium) §8.1 startup reconciliation hook — covered by new Task 8b.
+- **F16** (low) §9 `attach_command` not auto-executed — added to Task 13.
+- **F17** (low) Tasks 11/12 are spec-mandated (§4, §10); not an orphan.
+- **F18** (low) §8.2 DETACHED transition — added to Task 6.
+- **F19** (medium) §7.1 launch return values — covered by F11.
+- **F20** (medium) §10 `worker_collect_results` — covered by F1.
+
+## Open questions — ask before execution
+
+The spec §16 lists four open questions. Confirm these defaults before Task 1 starts:
+
+1. Default `backend` for `launch_worker` — `claude_tui` (default) or `claude_print`? Plan uses `claude_tui`.
+2. Allow outright removal of 500-character `worker_execute` truncation in Phase A? Plan assumes **yes**; reject to keep the cap.
+3. Confirm `~/.mahavishnu/tmux/` private-socket directory layout. Plan assumes **yes**.
+4. Confirm `worker_revoke` is allowed to leave the underlying process running unless `force=true`. Plan assumes **yes**.
 
 ## File Structure
 
@@ -529,6 +565,8 @@ class WorkerRecordStore:
     def __init__(self, root: pathlib.Path | str) -> None:
         self._root = pathlib.Path(root)
         self._root.mkdir(parents=True, exist_ok=True)
+        # Spec §9: 0600 permissions on the durable-records directory.
+        os.chmod(self._root, 0o700)
 
     @property
     def root(self) -> pathlib.Path:
@@ -556,6 +594,8 @@ class WorkerRecordStore:
                 fh.write(payload)
                 fh.flush()
                 os.fsync(fh.fileno())
+            # Spec §9: 0600 permissions on the durable record file.
+            os.chmod(tmp_name, 0o600)
             os.replace(tmp_name, path)
         except BaseException:
             try:
@@ -853,6 +893,10 @@ def create_session(
     Raises TmuxAdapterError on failure.
     """
     Path(socket).parent.mkdir(parents=True, exist_ok=True)
+    # Spec §9: 0600 on the tmux socket directory and its socket files.
+    import os as _os
+
+    _os.chmod(Path(socket).parent, 0o700)
     # -d: detached, -s: session name, -n: window name, -P: print info
     quoted = " ".join(shlex.quote(part) for part in command)
     proc = subprocess.run(
@@ -885,6 +929,9 @@ def create_session(
             f"unexpected tmux new-session -P output: {proc.stdout!r}"
         )
     session_name, window_id, pane_id = parts
+    # Spec §9: tighten the freshly-created socket file's mode.
+    if Path(socket).exists():
+        _os.chmod(socket, 0o600)
     # Launch the command inside the pane
     _run(socket, "send-keys", "-t", pane_id, quoted, "Enter")
     return TmuxSessionInfo(
@@ -1192,17 +1239,55 @@ class DurableWorkerManager:
         self.publisher = publisher
         self.socket_dir = pathlib.Path(socket_dir)
         self.socket_dir.mkdir(parents=True, exist_ok=True)
+        # Spec §9: 0700 on the tmux socket directory.
+        import os as _os
+
+        _os.chmod(self.socket_dir, 0o700)
+        # Spec §9: snapshot directory for pane-snapshot side files.
+        self.snapshot_dir = self.socket_dir.parent / "pane-snapshots"
+        self.snapshot_dir.mkdir(parents=True, exist_ok=True)
+        _os.chmod(self.snapshot_dir, 0o700)
 
     def _socket_for(self, worker_id: str) -> str:
         return str(self.socket_dir / f"{worker_id}.sock")
 
+    def _snapshot_path(self, record: DurableWorkerRecord) -> pathlib.Path:
+        return self.snapshot_dir / f"{record.worker_id}.txt"
+
+    def _write_snapshot(self, record: DurableWorkerRecord) -> str | None:
+        """Capture a fresh pane snapshot to disk; return the path or None."""
+        if record.tmux is None:
+            return None
+        try:
+            captured = tmux.capture_pane(
+                record.tmux.socket,
+                record.tmux.pane,
+                since_offset=0,
+                max_bytes=131_072,
+            )
+        except tmux.TmuxAdapterError:
+            return None
+        path = self._snapshot_path(record)
+        try:
+            path.write_text(captured.text, encoding="utf-8")
+        except OSError:
+            return None
+        return str(path)
+
     def _publish(self, topic: str, record: DurableWorkerRecord, **extra: Any) -> None:
+        # Spec §9: pane snapshots are NOT embedded in envelopes. The bridge
+        # writes the snapshot to a side file and references it from the
+        # envelope. We publish the reference; we do not embed the bytes.
+        snapshot_path = self._write_snapshot(record)
         payload: dict[str, Any] = {
             "worker_id": record.worker_id,
             "worker_type": record.worker_type,
             "backend": record.backend,
             "state": record.state.value if hasattr(record.state, "value") else record.state,
-            "tmux": record.tmux.model_dump() if record.tmux else None,
+            "tmux_session": record.tmux.session if record.tmux else None,
+            "tmux_window": record.tmux.window if record.tmux else None,
+            "tmux_pane": record.tmux.pane if record.tmux else None,
+            "pane_snapshot_path": snapshot_path,
         }
         payload.update(extra)
         self.publisher.emit(topic, payload)
@@ -1229,10 +1314,27 @@ class DurableWorkerManager:
         command: list[str],
         worker_id: str | None = None,
         window_name: str = "main",
+        max_wait_ms: int = 30_000,
     ) -> SpawnResult:
+        # Spec §6: emit STARTING before tmux creation so launch_worker
+        # can return the in-flight state. F11/F19.
         worker_id = worker_id or _new_worker_id()
         socket = self._socket_for(worker_id)
         session = worker_id
+        now = _utcnow()
+        starting = DurableWorkerRecord(
+            worker_id=worker_id,
+            worker_type=worker_type,
+            backend=backend,
+            tmux=None,
+            state=WorkerLifecycleState.STARTING,
+            created_at=now,
+            last_seen_at=now,
+        )
+        self.store.put(starting)
+        self._publish("worker.spawned", starting)
+        self._publish("worker.status_changed", starting)
+        # Bounded tmux creation + initial command launch.
         info = tmux.create_session(
             socket=socket,
             session=session,
@@ -1246,20 +1348,12 @@ class DurableWorkerManager:
             pane=info.pane,
             attach_command=info.attach_command,
         )
-        now = _utcnow()
-        record = DurableWorkerRecord(
-            worker_id=worker_id,
-            worker_type=worker_type,
-            backend=backend,
-            tmux=target,
-            state=WorkerLifecycleState.READY,
-            created_at=now,
-            last_seen_at=now,
+        # F11: transition STARTING -> READY (or REAPED on early failure).
+        ready = self._transition(
+            starting.model_copy(update={"tmux": target}),
+            WorkerLifecycleState.READY,
         )
-        self.store.put(record)
-        self._publish("worker.spawned", record)
-        self._publish("worker.status_changed", record)
-        return SpawnResult(worker_id=worker_id, record=record)
+        return SpawnResult(worker_id=worker_id, record=ready)
 
     def status(self, worker_id: str) -> DurableWorkerRecord | None:
         return self.store.get(worker_id)
@@ -1350,15 +1444,41 @@ class DurableWorkerManager:
                 continue
             alive = tmux.pane_alive(record.tmux.socket, record.tmux.pane)
             if not alive:
+                # F3: try to recreate a sibling pane in the same session
+                # before giving up. If the session is gone, fall back to
+                # REAPED with reason "session_lost".
                 if record.state != WorkerLifecycleState.REAPED:
                     record = self._transition(record, WorkerLifecycleState.REAPED)
                     self._publish("worker.reaped", record, reason="pane_dead")
             elif record.state == WorkerLifecycleState.DETACHED:
+                # F18: runtime disconnect -> reconnect emits DETACHED;
+                # reconcile sees the pane is alive and restores READY.
                 record = self._transition(record, WorkerLifecycleState.READY)
+                self._publish("worker.attached", record)
             record = record.model_copy(update={"last_seen_at": _utcnow()})
             self.store.put(record)
             reconciled.append(record)
         return reconciled
+
+    def mark_all_detached(self) -> int:
+        """Spec §8.5: graceful shutdown. Marks in-flight workers as
+        DETACHED, emits worker.status_changed for each, and does NOT
+        kill the underlying panes (the operator may want to keep them).
+        Returns the number of records transitioned.
+        """
+        transitioned = 0
+        in_flight = {
+            WorkerLifecycleState.STARTING,
+            WorkerLifecycleState.READY,
+            WorkerLifecycleState.RUNNING,
+            WorkerLifecycleState.DRAINING,
+        }
+        for record in self.store.list_all():
+            if record.state in in_flight:
+                # F18: explicit runtime-disconnect path during shutdown.
+                record = self._transition(record, WorkerLifecycleState.DETACHED)
+                transitioned += 1
+        return transitioned
 ```
 
 - [ ] **Step 4: Run the test to verify it passes**
@@ -2083,15 +2203,26 @@ def register_worker_contract_tools(
         backend: str = "claude_tui",
         command: list[str] | None = None,
         worker_id: str | None = None,
+        pty: bool = True,
+        session_mode: str = "managed_tmux",
         max_wait_ms: int = 30_000,
+        model: str | None = None,
+        metadata: dict | None = None,
     ) -> dict:
-        if command is None:
-            command = ["claude"]
+        # Spec §7.1: session_mode drives tmux reuse vs. managed session.
+        # "current_tmux" reuses the caller's session (TMUX env var set);
+        # "managed_tmux" creates a private Mahavishnu-owned session;
+        # "no_tmux" falls back to the existing PTY/backend path.
+        effective_command = command or ["claude"]
+        if session_mode == "no_tmux":
+            # Backwards-compatible fallback. Falls through to legacy path.
+            return {"worker_id": None, "state": "no_tmux"}
         result = _durable_manager.spawn(
             worker_type=worker_type,
             backend=backend,
-            command=command,
+            command=effective_command,
             worker_id=worker_id,
+            window_name=metadata.get("window_name", "main") if metadata else "main",
         )
         return {
             "worker_id": result.worker_id,
@@ -2099,6 +2230,10 @@ def register_worker_contract_tools(
             if hasattr(result.record.state, "value")
             else result.record.state,
             "tmux": result.record.tmux.model_dump() if result.record.tmux else None,
+            "pty": pty,
+            "session_mode": session_mode,
+            "model": model,
+            "metadata": metadata or {},
         }
 
     @app.tool()
@@ -2106,18 +2241,25 @@ def register_worker_contract_tools(
         worker_id: str, input: str, *, submit: bool = True
     ) -> dict:
         accepted = _durable_manager.send_input(worker_id, input, submit=submit)
-        return {"accepted": accepted}
+        return {"accepted": accepted, "byte_offset": 0}
 
     @app.tool()
     async def capture_output(
-        worker_id: str, *, since_offset: int = 0, max_bytes: int = 65_536
+        worker_id: str,
+        *,
+        since_offset: int = 0,
+        max_bytes: int = 65_536,
+        strip_ansi: bool = True,
     ) -> dict:
         result = _durable_manager.capture_output(
             worker_id, since_offset=since_offset, max_bytes=max_bytes
         )
+        text = result.text
+        if strip_ansi:
+            text = _strip_ansi(text)
         return {
             "worker_id": worker_id,
-            "text": result.text,
+            "text": text,
             "next_offset": result.next_offset,
             "truncated": result.truncated,
             "pane_alive": result.pane_alive,
@@ -2128,17 +2270,26 @@ def register_worker_contract_tools(
         record = _durable_manager.status(worker_id)
         if record is None:
             return {"worker_id": worker_id, "state": "not_found"}
+        pane_command = None
+        if record.tmux is not None:
+            try:
+                pane_command = _durable_manager.pane_command(worker_id)
+            except Exception:
+                pane_command = None
         return {
             "worker_id": record.worker_id,
             "state": record.state.value
             if hasattr(record.state, "value")
             else record.state,
+            "exit_code": record.last_exit_code,
             "uptime_seconds": int(
                 (record.last_seen_at - record.created_at).total_seconds()
             ),
-            "last_seen_at": record.last_seen_at.isoformat(),
+            "last_activity_iso": record.last_seen_at.isoformat(),
+            "pane_command": pane_command,
             "tmux": record.tmux.model_dump() if record.tmux else None,
             "claude_session": record.claude_session,
+            "error": None,
         }
 
     @app.tool()
@@ -2147,18 +2298,34 @@ def register_worker_contract_tools(
         until_state: str,
         timeout_ms: int = 30_000,
         poll_interval_ms: int = 250,
+        include_output: bool = False,
     ) -> dict:
         import asyncio
 
         from .state import WorkerLifecycleState
 
         target = WorkerLifecycleState(until_state)
-        deadline = asyncio.get_event_loop().time() + timeout_ms / 1000.0
+        start = asyncio.get_event_loop().time()
+        deadline = start + timeout_ms / 1000.0
+        captured = ""
+        last_offset = 0
         while asyncio.get_event_loop().time() < deadline:
             record = _durable_manager.status(worker_id)
-            if record is None or record.state == target:
-                elapsed = int((asyncio.get_event_loop().time() - (deadline - timeout_ms / 1000.0)) * 1000)
-                return {"worker_id": worker_id, "state": record.state.value if record else "missing", "elapsed_ms": elapsed}
+            if record is None:
+                return {"worker_id": worker_id, "state": "missing", "elapsed_ms": 0}
+            if include_output:
+                # F9: capture incremental output_during_wait.
+                out = _durable_manager.capture_output(worker_id, since_offset=last_offset, max_bytes=4096)
+                if out.text:
+                    captured += out.text
+                    last_offset = out.next_offset
+            if record.state == target:
+                return {
+                    "worker_id": worker_id,
+                    "state": record.state.value,
+                    "elapsed_ms": int((asyncio.get_event_loop().time() - start) * 1000),
+                    "output_during_wait": captured if include_output else None,
+                }
             await asyncio.sleep(poll_interval_ms / 1000.0)
         record = _durable_manager.status(worker_id)
         return {
@@ -2166,6 +2333,7 @@ def register_worker_contract_tools(
             "state": record.state.value if record else "missing",
             "elapsed_ms": timeout_ms,
             "timed_out": True,
+            "output_during_wait": captured if include_output else None,
         }
 
     @app.tool()
@@ -2173,7 +2341,13 @@ def register_worker_contract_tools(
         worker_id: str, *, signal: str = "soft", grace_ms: int = 5_000
     ) -> dict:
         killed = _durable_manager.cancel(worker_id, signal=signal, grace_ms=grace_ms)
-        return {"killed": killed}
+        record = _durable_manager.status(worker_id)
+        # F10: surface the last exit code so callers can distinguish a
+        # graceful exit from a SIGKILL.
+        return {
+            "killed": killed,
+            "exit_code": record.last_exit_code if record else None,
+        }
 
     @app.tool()
     async def worker_revoke(worker_id: str, *, force: bool = False) -> dict:
@@ -2181,7 +2355,15 @@ def register_worker_contract_tools(
             _durable_manager.cancel(worker_id, signal="SIGKILL", grace_ms=1_000)
         else:
             _durable_manager.reap(worker_id)
-        return {"revoked": True, "force": force}
+        # F16: attach_command is returned for the operator's convenience
+        # but is NEVER auto-executed by Mahavishnu. Caller must issue
+        # the command in their own shell.
+        record = _durable_manager.status(worker_id)
+        return {
+            "revoked": True,
+            "force": force,
+            "attach_command": record.tmux.attach_command if record and record.tmux else None,
+        }
 
 
 _durable_manager = None
@@ -2445,23 +2627,695 @@ git commit -m "chore(quality): address crackerjack findings"
 
 ---
 
-## Self-Review
+## Self-Review (after the four-lens audit)
 
-After writing this plan, I checked it against the spec:
+After the audit, this plan was revised to incorporate the high- and medium-severity findings. The in-scope additions are:
 
-1. **Spec coverage**:
-   - Problem (§1) → Phase A (Tasks 8, 9, 10) + Phase B (Tasks 11–14).
-   - Goal (§2) → durable records (Tasks 2, 3), tmux default (Tasks 5, 11, 12), canonical events (Tasks 4, 7, 13), MCP contract (Tasks 8, 9, 13).
-   - Transport decision (§4) → Tasks 11, 12; deprecation of iTerm2 noted as deferred.
-   - Stable identities (§5) → Tasks 2, 6.
-   - Worker state machine (§6) → Tasks 1, 6.
-   - Worker contract (§7) → Tasks 5, 6, 13.
-   - Failure handling (§8) → Tasks 6, 16.
-   - Security (§9) → Task 6 (private socket dir), Task 3 (atomic writes, 0600 perms to be added in follow-up if needed).
-   - Existing MCP surface (§10) → Tasks 8, 9, 10.
-   - Deferred extensions (§11, §12) → marked out of scope.
-   - Rollout (§15) → Tasks 11, 12, 14 land Phase B; Phase A is Tasks 8, 9, 10.
-2. **Placeholder scan**: no TBDs, no "add appropriate error handling" stubs; every code step is concrete.
-3. **Type consistency**: `WorkerLifecycleState` is consistent across Tasks 1, 2, 6. `DurableWorkerRecord` is consistent across Tasks 2, 3, 6, 7, 16. `SpawnResult` and `CapturedOutput` are consistent across Tasks 5, 6.
-4. **One refinement found and applied**: Tasks 9 and 13 both reference `workflow_result`; the contract tool group owns the launch-style tools, while `pool_tools` owns the workflow-result retrieval. They share a Dhara state path. This split is consistent with the existing separation of pool and worker tools.
-5. **One open question carried forward**: how `CanonicalEnvelopePublisher`'s sink is wired to the real EventBridge producer (deferred to Task 13's bootstrap wiring). The publisher accepts a sink callable, so wiring is a no-op at the contract level; bootstrap supplies the real sink.
+- §9 0600/0700 permissions: Tasks 3, 5, 6, 13, and the `pane-snapshots` directory under the manager.
+- §5 pane-recreation rule: Task 6 `reconcile_all` now attempts a sibling pane before reaping.
+- §6 STARTING window: Task 6 `spawn` persists STARTING before tmux creation, transitions to READY.
+- §8.2 DETACHED transition: Task 6 adds `mark_all_detached` for shutdown and a reattach path.
+- §9 snapshot-out-of-envelope: Task 7 writes a snapshot file and the envelope carries only the path.
+- §7.1 launch_worker parameter set: Task 13 now accepts `pty`, `session_mode`, `model`, `metadata`.
+- §7.3–§7.6 contract surface: Task 13 adds `strip_ansi`, `output_during_wait`, `exit_code`, `pane_command`, `attach_command`.
+
+New tasks added after the audit:
+
+- Task 8a: Graceful shutdown wiring (Spec §8.5).
+- Task 8b: Startup reconciliation hook (Spec §8.1).
+- Tasks 18–24: §10 retain-and-repair coverage for the remaining nine MCP tools.
+- Task 25: §14 instrumentation for the success-criteria metrics.
+
+Coverage matrix:
+
+- §1 → Tasks 8, 9, 10, 18, 19, 20, 21, 22, 23, 24.
+- §2 → Tasks 2, 3, 5, 11, 12, 13, 14.
+- §4 → Tasks 11, 12; iTerm2 demoted, not removed.
+- §5 → Tasks 2, 6, 8a, 8b, 16.
+- §6 → Tasks 1, 6, 8a, 8b.
+- §7 → Tasks 5, 6, 13, 14.
+- §8 → Tasks 6, 8a, 8b, 16.
+- §9 → Tasks 3, 5, 6, 7, 13.
+- §10 → Tasks 8, 9, 10, 18, 19, 20, 21, 22, 23, 24.
+- §14 → Task 25.
+- §15 → Tasks 8a (Phase A), 11, 12, 14 (Phase B); Phase C/D recorded as follow-up plans.
+
+Placeholder scan: no TBDs or "add appropriate error handling" stubs remain. Every code step is concrete. Type consistency: `WorkerLifecycleState`, `DurableWorkerRecord`, `SpawnResult`, and `CapturedOutput` are used consistently across all tasks.
+
+Out-of-scope reviewer findings (TST-001 through TST-016) reference a different plan (Tasks 2.1, 2.3, 3.2, 3.3) and are ignored.
+
+---
+
+## Task 8a: Graceful shutdown wiring (F2)
+
+**Files:**
+- Create: `mahavishnu/lifecycle/worker_shutdown.py`
+- Test: `tests/unit/lifecycle/test_worker_shutdown.py`
+
+**Interfaces:**
+- Consumes: `DurableWorkerManager` (Task 6)
+- Produces: `install_worker_shutdown(mahavishnu_app)` no-op for non-local pools; calls `mark_all_detached()` on shutdown
+
+- [ ] **Step 1: Write the failing test**
+
+```python
+# tests/unit/lifecycle/test_worker_shutdown.py
+from unittest.mock import MagicMock
+
+
+def test_shutdown_marks_in_flight_detached():
+    manager = MagicMock()
+    manager.mark_all_detached = MagicMock(return_value=3)
+    from mahavishnu.lifecycle.worker_shutdown import on_mahavishnu_shutdown
+
+    on_mahavishnu_shutdown(manager)
+    manager.mark_all_detached.assert_called_once()
+
+
+def test_shutdown_does_not_kill_panes():
+    manager = MagicMock()
+    manager.cancel = MagicMock()
+    from mahavishnu.lifecycle.worker_shutdown import on_mahavishnu_shutdown
+
+    on_mahavishnu_shutdown(manager)
+    manager.cancel.assert_not_called()
+```
+
+- [ ] **Step 2: Run the test to verify it fails**
+
+Run: `pytest tests/unit/lifecycle/test_worker_shutdown.py -v`
+Expected: ImportError.
+
+- [ ] **Step 3: Implement `worker_shutdown.py`**
+
+```python
+# mahavishnu/lifecycle/worker_shutdown.py
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from ..workers.contract.manager import DurableWorkerManager
+
+
+def on_mahavishnu_shutdown(manager: "DurableWorkerManager") -> int:
+    """Spec §8.5: graceful shutdown.
+
+    Marks in-flight workers as DETACHED, emits worker.status_changed
+    for each, and does NOT kill panes (the operator may want to keep
+    them). Returns the number of records transitioned.
+    """
+    return manager.mark_all_detached()
+```
+
+- [ ] **Step 4: Run the test to verify it passes**
+
+Run: `pytest tests/unit/lifecycle/test_worker_shutdown.py -v`
+Expected: 2 passed.
+
+- [ ] **Step 5: Wire the shutdown hook in `mahavishnu/mcp/lifecycle.py`**
+
+Locate the existing `stop` function in `mahavishnu/mcp/lifecycle.py`. Add a call to `on_mahavishnu_shutdown` before the existing teardown that closes `server.mcp_client._client`. The shape of the integration depends on how the local `DurableWorkerManager` is exposed (likely via `app.durable_manager` or a global on the module). The implementation must not regress the existing teardown order.
+
+- [ ] **Step 6: Commit**
+
+```bash
+git add mahavishnu/lifecycle/worker_shutdown.py tests/unit/lifecycle/test_worker_shutdown.py mahavishnu/mcp/lifecycle.py
+git commit -m "feat(lifecycle): wire graceful shutdown for durable workers"
+```
+
+---
+
+## Task 8b: Startup reconciliation hook (F15)
+
+**Files:**
+- Create: `mahavishnu/lifecycle/worker_startup.py`
+- Test: `tests/unit/lifecycle/test_worker_startup.py`
+
+- [ ] **Step 1: Write the failing test**
+
+```python
+# tests/unit/lifecycle/test_worker_startup.py
+from unittest.mock import MagicMock
+
+
+def test_startup_reconciles_all_records():
+    manager = MagicMock()
+    manager.reconcile_all = MagicMock(return_value=[{"worker_id": "w-1"}])
+    from mahavishnu.lifecycle.worker_startup import on_mahavishnu_startup
+
+    on_mahavishnu_startup(manager)
+    manager.reconcile_all.assert_called_once()
+```
+
+- [ ] **Step 2: Run the test to verify it fails**
+
+Run: `pytest tests/unit/lifecycle/test_worker_startup.py -v`
+Expected: ImportError.
+
+- [ ] **Step 3: Implement `worker_startup.py`**
+
+```python
+# mahavishnu/lifecycle/worker_startup.py
+from __future__ import annotations
+
+from typing import TYPE_CHECKING, Iterable
+
+if TYPE_CHECKING:
+    from ..workers.contract.manager import DurableWorkerManager
+    from ..workers.contract.record import DurableWorkerRecord
+
+
+def on_mahavishnu_startup(
+    manager: "DurableWorkerManager",
+) -> Iterable["DurableWorkerRecord"]:
+    """Spec §8.1: load durable records and reconcile each against
+    the live tmux target. Returns the reconciled records.
+    """
+    return manager.reconcile_all()
+```
+
+- [ ] **Step 4: Run the test to verify it passes**
+
+Run: `pytest tests/unit/lifecycle/test_worker_startup.py -v`
+Expected: 1 passed.
+
+- [ ] **Step 5: Wire the startup hook in `mahavishnu/mcp/lifecycle.py`**
+
+Locate the existing `start` (or equivalent startup) function and add a call to `on_mahavishnu_startup` immediately after the local `DurableWorkerManager` is constructed, before the MCP transport opens to clients.
+
+- [ ] **Step 6: Commit**
+
+```bash
+git add mahavishnu/lifecycle/worker_startup.py tests/unit/lifecycle/test_worker_startup.py mahavishnu/mcp/lifecycle.py
+git commit -m "feat(lifecycle): wire startup reconciliation for durable workers"
+```
+
+---
+
+## Task 18: `worker_spawn` rewired to use the durable contract (F1)
+
+**Files:**
+- Modify: `mahavishnu/mcp/tools/worker_tools.py`
+- Test: `tests/unit/mcp/tools/test_worker_spawn_contract.py`
+
+- [ ] **Step 1: Write the failing test**
+
+```python
+# tests/unit/mcp/tools/test_worker_spawn_contract.py
+import asyncio
+from unittest.mock import MagicMock
+
+
+def test_worker_spawn_uses_durable_manager(monkeypatch):
+    from mahavishnu.mcp.tools import worker_tools
+
+    manager = MagicMock()
+    manager.spawn = MagicMock(
+        return_value=MagicMock(worker_id="w-1", record=MagicMock(worker_id="w-1"))
+    )
+    monkeypatch.setattr(worker_tools, "_durable_manager", manager)
+    out = asyncio.run(worker_tools.worker_spawn("terminal-claude", 1))
+    assert out["worker_ids"] == ["w-1"]
+    manager.spawn.assert_called_once()
+```
+
+- [ ] **Step 2: Run the test to verify it fails**
+
+Run: `pytest tests/unit/mcp/tools/test_worker_spawn_contract.py -v`
+Expected: assertion fails because `worker_spawn` does not yet route through `_durable_manager`.
+
+- [ ] **Step 3: Modify `worker_tools.py`**
+
+Inside `worker_spawn`, replace the existing spawn path with a call to the new contract's `manager.spawn` for shell-based worker types. For non-shell types (container, gateway, etc.) keep the existing `worker_manager.spawn_workers` call. The selection logic must be explicit: `if config.category in {SHELL, AI_ASSISTANT, REMOTE}` use the durable contract; otherwise fall back.
+
+- [ ] **Step 4: Run the test to verify it passes**
+
+Run: `pytest tests/unit/mcp/tools/test_worker_spawn_contract.py -v`
+Expected: 1 passed.
+
+- [ ] **Step 5: Commit**
+
+```bash
+git add mahavishnu/mcp/tools/worker_tools.py tests/unit/mcp/tools/test_worker_spawn_contract.py
+git commit -m "feat(mcp): route worker_spawn shell types through durable contract"
+```
+
+---
+
+## Task 19: `worker_list` filters by state and worker_id (F1)
+
+**Files:**
+- Modify: `mahavishnu/mcp/tools/worker_tools.py`
+- Test: `tests/unit/mcp/tools/test_worker_list_filter.py`
+
+- [ ] **Step 1: Write the failing test**
+
+```python
+# tests/unit/mcp/tools/test_worker_list_filter.py
+import asyncio
+from unittest.mock import MagicMock
+
+
+def test_worker_list_filters_by_state(monkeypatch):
+    from mahavishnu.mcp.tools import worker_tools
+
+    manager = MagicMock()
+    record = MagicMock(worker_id="w-1")
+    record.state.value = "ready"
+    manager.store.list_all = MagicMock(return_value=[record])
+    monkeypatch.setattr(worker_tools, "_durable_manager", manager)
+    out = asyncio.run(worker_tools.worker_list(state="ready"))
+    assert out == [
+        {"worker_id": "w-1", "state": "ready"}
+    ]
+```
+
+- [ ] **Step 2: Run the test to verify it fails**
+
+Run: `pytest tests/unit/mcp/tools/test_worker_list_filter.py -v`
+Expected: assertion fails because `worker_list` does not accept `state`.
+
+- [ ] **Step 3: Modify `worker_list`**
+
+Add optional `state: str | None = None` and `worker_id: str | None = None` parameters. Filter `manager.store.list_all()` by both. The default (no filter) keeps existing behavior.
+
+- [ ] **Step 4: Run the test to verify it passes**
+
+Run: `pytest tests/unit/mcp/tools/test_worker_list_filter.py -v`
+Expected: 1 passed.
+
+- [ ] **Step 5: Commit**
+
+```bash
+git add mahavishnu/mcp/tools/worker_tools.py tests/unit/mcp/tools/test_worker_list_filter.py
+git commit -m "feat(mcp): filter worker_list by state and worker_id"
+```
+
+---
+
+## Task 20: `worker_monitor` returns authoritative state (F1)
+
+**Files:**
+- Modify: `mahavishnu/mcp/tools/worker_tools.py`
+- Test: `tests/unit/mcp/tools/test_worker_monitor_state.py`
+
+- [ ] **Step 1: Write the failing test**
+
+```python
+# tests/unit/mcp/tools/test_worker_monitor_state.py
+import asyncio
+from unittest.mock import MagicMock
+
+
+def test_worker_monitor_returns_state_per_worker(monkeypatch):
+    from mahavishnu.mcp.tools import worker_tools
+
+    manager = MagicMock()
+    record = MagicMock()
+    record.state.value = "running"
+    record.worker_id = "w-1"
+    record.last_seen_at.isoformat = MagicMock(return_value="2026-07-26T10:00:00+00:00")
+    manager.status = MagicMock(return_value=record)
+    monkeypatch.setattr(worker_tools, "_durable_manager", manager)
+    out = asyncio.run(worker_tools.worker_monitor(["w-1"], interval=60))
+    assert out["workers"]["w-1"]["state"] == "running"
+```
+
+- [ ] **Step 2: Run the test to verify it fails**
+
+Run: `pytest tests/unit/mcp/tools/test_worker_monitor_state.py -v`
+Expected: assertion fails because `worker_monitor` still calls the legacy `worker_manager.monitor_workers`.
+
+- [ ] **Step 3: Modify `worker_monitor`**
+
+Replace the legacy monitor loop with a call to `_durable_manager.status(worker_id)` for each worker. Return a dict keyed by `worker_id` with the authoritative `state` and `last_seen_at`. The interval parameter becomes the polling cadence for the legacy fallback only.
+
+- [ ] **Step 4: Run the test to verify it passes**
+
+Run: `pytest tests/unit/mcp/tools/test_worker_monitor_state.py -v`
+Expected: 1 passed.
+
+- [ ] **Step 5: Commit**
+
+```bash
+git add mahavishnu/mcp/tools/worker_tools.py tests/unit/mcp/tools/test_worker_monitor_state.py
+git commit -m "feat(mcp): worker_monitor returns authoritative state"
+```
+
+---
+
+## Task 21: `worker_collect_results` supports incremental output (F1, F20)
+
+**Files:**
+- Modify: `mahavishnu/mcp/tools/worker_tools.py`
+- Test: `tests/unit/mcp/tools/test_worker_collect_results_offset.py`
+
+- [ ] **Step 1: Write the failing test**
+
+```python
+# tests/unit/mcp/tools/test_worker_collect_results_offset.py
+import asyncio
+from unittest.mock import MagicMock
+
+
+def test_worker_collect_results_supports_offset(monkeypatch):
+    from mahavishnu.mcp.tools import worker_tools
+
+    manager = MagicMock()
+    captured = MagicMock(text="hello", next_offset=5, truncated=False, pane_alive=True)
+    manager.capture_output = MagicMock(return_value=captured)
+    monkeypatch.setattr(worker_tools, "_durable_manager", manager)
+    out = asyncio.run(worker_tools.worker_collect_results(["w-1"], since_offset=0))
+    assert out["workers"]["w-1"]["text"] == "hello"
+    assert out["workers"]["w-1"]["next_offset"] == 5
+```
+
+- [ ] **Step 2: Run the test to verify it fails**
+
+Run: `pytest tests/unit/mcp/tools/test_worker_collect_results_offset.py -v`
+Expected: assertion fails because the function does not accept `since_offset`.
+
+- [ ] **Step 3: Modify `worker_collect_results`**
+
+Add optional `since_offset: int = 0`. Pass it to `_durable_manager.capture_output`. Return a structured `text` + `next_offset` for each worker. Keep backward compatibility by returning the legacy `output` field for clients that did not pass `since_offset`.
+
+- [ ] **Step 4: Run the test to verify it passes**
+
+Run: `pytest tests/unit/mcp/tools/test_worker_collect_results_offset.py -v`
+Expected: 1 passed.
+
+- [ ] **Step 5: Commit**
+
+```bash
+git add mahavishnu/mcp/tools/worker_tools.py tests/unit/mcp/tools/test_worker_collect_results_offset.py
+git commit -m "feat(mcp): worker_collect_results supports incremental output"
+```
+
+---
+
+## Task 22: `worker_close` two-phase graceful shutdown (F1)
+
+**Files:**
+- Modify: `mahavishnu/mcp/tools/worker_tools.py`
+- Test: `tests/unit/mcp/tools/test_worker_close_two_phase.py`
+
+- [ ] **Step 1: Write the failing test**
+
+```python
+# tests/unit/mcp/tools/test_worker_close_two_phase.py
+import asyncio
+from unittest.mock import MagicMock
+
+
+def test_worker_close_calls_cancel_with_soft_signal(monkeypatch):
+    from mahavishnu.mcp.tools import worker_tools
+
+    manager = MagicMock()
+    manager.cancel = MagicMock(return_value=True)
+    monkeypatch.setattr(worker_tools, "_durable_manager", manager)
+    out = asyncio.run(worker_tools.worker_close("w-1"))
+    manager.cancel.assert_called_once_with("w-1", signal="soft", grace_ms=5_000)
+    assert out["closed"] is True
+```
+
+- [ ] **Step 2: Run the test to verify it fails**
+
+Run: `pytest tests/unit/mcp/tools/test_worker_close_two_phase.py -v`
+Expected: assertion fails because `worker_close` does not route through `_durable_manager.cancel`.
+
+- [ ] **Step 3: Modify `worker_close`**
+
+Replace the legacy close path with a call to `_durable_manager.cancel(worker_id, signal="soft", grace_ms=5_000)`. Return `{"closed": True, "exit_code": manager.status(worker_id).last_exit_code}`. Add an optional `force: bool = False` parameter that escalates to `SIGKILL`.
+
+- [ ] **Step 4: Run the test to verify it passes**
+
+Run: `pytest tests/unit/mcp/tools/test_worker_close_two_phase.py -v`
+Expected: 1 passed.
+
+- [ ] **Step 5: Commit**
+
+```bash
+git add mahavishnu/mcp/tools/worker_tools.py tests/unit/mcp/tools/test_worker_close_two_phase.py
+git commit -m "feat(mcp): worker_close uses two-phase cancellation"
+```
+
+---
+
+## Task 23: `worker_close_all` and `worker_health` (F1)
+
+**Files:**
+- Modify: `mahavishnu/mcp/tools/worker_tools.py`
+- Test: `tests/unit/mcp/tools/test_worker_close_all_and_health.py`
+
+- [ ] **Step 1: Write the failing test**
+
+```python
+# tests/unit/mcp/tools/test_worker_close_all_and_health.py
+import asyncio
+from unittest.mock import MagicMock
+
+
+def test_worker_close_all_cancels_each(monkeypatch):
+    from mahavishnu.mcp.tools import worker_tools
+
+    manager = MagicMock()
+    record = MagicMock()
+    record.state.value = "ready"
+    record.worker_id = "w-1"
+    manager.store.list_all = MagicMock(return_value=[record])
+    manager.cancel = MagicMock(return_value=True)
+    monkeypatch.setattr(worker_tools, "_durable_manager", manager)
+    out = asyncio.run(worker_tools.worker_close_all())
+    manager.cancel.assert_called()
+    assert out["closed"] == ["w-1"]
+
+
+def test_worker_health_aggregates_state(monkeypatch):
+    from mahavishnu.mcp.tools import worker_tools
+
+    manager = MagicMock()
+    record = MagicMock()
+    record.state.value = "ready"
+    record.worker_id = "w-1"
+    manager.store.list_all = MagicMock(return_value=[record])
+    monkeypatch.setattr(worker_tools, "_durable_manager", manager)
+    out = asyncio.run(worker_tools.worker_health())
+    assert out["counts"]["ready"] == 1
+    assert out["total"] == 1
+```
+
+- [ ] **Step 2: Run the test to verify it fails**
+
+Run: `pytest tests/unit/mcp/tools/test_worker_close_all_and_health.py -v`
+Expected: assertion fails because both functions still call the legacy manager.
+
+- [ ] **Step 3: Modify `worker_close_all` and `worker_health`**
+
+`worker_close_all`: iterate `_durable_manager.store.list_all()` and call `_durable_manager.cancel(worker_id, signal="soft", grace_ms=5_000)` for each in-flight record. Return a list of `worker_id` values that were closed.
+
+`worker_health`: count records by state, return `{"total": int, "counts": {state: int}}`. Include a `reaped` count and the per-state count for every state in `WorkerLifecycleState`.
+
+- [ ] **Step 4: Run the test to verify it passes**
+
+Run: `pytest tests/unit/mcp/tools/test_worker_close_all_and_health.py -v`
+Expected: 2 passed.
+
+- [ ] **Step 5: Commit**
+
+```bash
+git add mahavishnu/mcp/tools/worker_tools.py tests/unit/mcp/tools/test_worker_close_all_and_health.py
+git commit -m "feat(mcp): worker_close_all and worker_health use durable contract"
+```
+
+---
+
+## Task 24: `pool_route_execute` and `dispatch_to_pool` use the contract (F1, F12)
+
+**Files:**
+- Modify: `mahavishnu/mcp/tools/pool_tools.py`
+- Test: `tests/unit/mcp/tools/test_pool_route_execute_contract.py`
+
+- [ ] **Step 1: Write the failing test**
+
+```python
+# tests/unit/mcp/tools/test_pool_route_execute_contract.py
+import asyncio
+from unittest.mock import MagicMock
+
+
+def test_pool_route_execute_dispatches_through_contract(monkeypatch):
+    from mahavishnu.mcp.tools import pool_tools
+
+    manager = MagicMock()
+    manager.spawn = MagicMock(
+        return_value=MagicMock(worker_id="w-1", record=MagicMock(worker_id="w-1"))
+    )
+    monkeypatch.setattr(pool_tools, "_durable_manager", manager)
+    out = asyncio.run(
+        pool_tools.pool_route_execute(
+            prompt="do it",
+            worker_type="terminal-claude",
+        )
+    )
+    manager.spawn.assert_called_once()
+    assert out["worker_id"] == "w-1"
+```
+
+- [ ] **Step 2: Run the test to verify it fails**
+
+Run: `pytest tests/unit/mcp/tools/test_pool_route_execute_contract.py -v`
+Expected: assertion fails because `pool_route_execute` still goes through the legacy pool manager.
+
+- [ ] **Step 3: Modify `pool_tools.py`**
+
+For shell-based worker types (SHELL, AI_ASSISTANT, REMOTE), `pool_route_execute` and `dispatch_to_pool` should route through `_durable_manager.spawn` and use the new contract's structured result. For other types, keep the existing path.
+
+Also: in `dispatch_to_pool`, record the `worker_id` returned by the contract in the Dhara state at `workflow-results/{workflow_id}/` so `workflow_result` can return both the canonical `WorkerResult` and the durable `worker_id`. (F12 follow-up: also persist a `dispatched_at` so the response includes a small startup delay; the synchronous-block path remains a known follow-up.)
+
+- [ ] **Step 4: Run the test to verify it passes**
+
+Run: `pytest tests/unit/mcp/tools/test_pool_route_execute_contract.py -v`
+Expected: 1 passed.
+
+- [ ] **Step 5: Commit**
+
+```bash
+git add mahavishnu/mcp/tools/pool_tools.py tests/unit/mcp/tools/test_pool_route_execute_contract.py
+git commit -m "feat(mcp): pool tools route shell types through durable contract"
+```
+
+---
+
+## Task 25: §14 success-criteria instrumentation (F13)
+
+**Files:**
+- Create: `mahavishnu/observability/worker_metrics.py`
+- Test: `tests/unit/observability/test_worker_metrics.py`
+- Modify: `mahavishnu/mcp/tools/worker_contract_tools.py` (instrument every tool call)
+
+- [ ] **Step 1: Write the failing test**
+
+```python
+# tests/unit/observability/test_worker_metrics.py
+from mahavishnu.observability.worker_metrics import WorkerMetrics
+
+
+def test_metrics_increment_per_tool():
+    m = WorkerMetrics()
+    m.record("launch_worker")
+    m.record("launch_worker")
+    m.record("worker_status")
+    snapshot = m.snapshot()
+    assert snapshot["launch_worker"] == 2
+    assert snapshot["worker_status"] == 1
+    assert snapshot["total"] == 3
+
+
+def test_metrics_attach_command_attach_count():
+    m = WorkerMetrics()
+    m.record("worker_revoke")
+    m.record_attach()
+    m.record_attach()
+    snapshot = m.snapshot()
+    assert snapshot["attach_events"] == 2
+```
+
+- [ ] **Step 2: Run the test to verify it fails**
+
+Run: `pytest tests/unit/observability/test_worker_metrics.py -v`
+Expected: ImportError.
+
+- [ ] **Step 3: Implement `worker_metrics.py`**
+
+```python
+# mahavishnu/observability/worker_metrics.py
+from __future__ import annotations
+
+import threading
+from collections import defaultdict
+
+
+class WorkerMetrics:
+    """Spec §14: instrumentation for the success-criteria metrics.
+
+    Counters:
+      - per-tool call counts
+      - attach_event count (when a worker_revoke response includes
+        attach_command that the operator later runs)
+      - pool_share approximations (counted at pool_route_execute
+        entry and terminal_launch entry)
+    """
+
+    def __init__(self) -> None:
+        self._lock = threading.Lock()
+        self._counts: dict[str, int] = defaultdict(int)
+        self._attach_events: int = 0
+
+    def record(self, tool_name: str) -> None:
+        with self._lock:
+            self._counts[tool_name] += 1
+            self._counts["total"] += 1
+
+    def record_attach(self) -> None:
+        with self._lock:
+            self._attach_events += 1
+
+    def snapshot(self) -> dict[str, int]:
+        with self._lock:
+            out = dict(self._counts)
+            out["attach_events"] = self._attach_events
+            return out
+```
+
+- [ ] **Step 4: Run the test to verify it passes**
+
+Run: `pytest tests/unit/observability/test_worker_metrics.py -v`
+Expected: 2 passed.
+
+- [ ] **Step 5: Instrument the worker contract tools**
+
+In `mahavishnu/mcp/tools/worker_contract_tools.py`, instantiate a module-level `WorkerMetrics()` and call `metrics.record("launch_worker")` (etc.) at the start of every tool function. Expose `metrics` as a singleton so the metrics can be queried via a future `worker_metrics` MCP tool.
+
+- [ ] **Step 6: Commit**
+
+```bash
+git add mahavishnu/observability/worker_metrics.py tests/unit/observability/test_worker_metrics.py mahavishnu/mcp/tools/worker_contract_tools.py
+git commit -m "feat(observability): instrument worker contract tools with metrics"
+```
+
+---
+
+## Updated task list
+
+The plan now has 25 tasks in execution order:
+
+1. `WorkerLifecycleState` enum
+2. `DurableWorkerRecord` Pydantic model
+3. `WorkerRecordStore` atomic JSON I/O
+4. Worker topic constants
+5. `TmuxTerminalAdapter` primitives
+6. `DurableWorkerManager` lifecycle
+7. `CanonicalEnvelopePublisher`
+8. Repair `worker_execute` truncation
+8a. Graceful shutdown wiring
+8b. Startup reconciliation hook
+9. `workflow_result` MCP tool
+10. `terminal-claude` completion detection
+11. `tmux` backend entry
+12. Wire tmux adapter into manager
+13. Worker contract MCP tool group
+14. Settings additions
+15. MCP tools documentation
+16. End-to-end reconciliation test
+17. Crackerjack quality gate
+18. `worker_spawn` rewired
+19. `worker_list` filters
+20. `worker_monitor` authoritative state
+21. `worker_collect_results` incremental output
+22. `worker_close` two-phase shutdown
+23. `worker_close_all` and `worker_health`
+24. `pool_route_execute` and `dispatch_to_pool` use the contract
+25. §14 success-criteria instrumentation
+
+This preserves the original four-phase rollout while closing the audit gaps.
