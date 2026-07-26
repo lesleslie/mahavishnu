@@ -480,8 +480,9 @@ class TestWorkerCollectResults:
         assert set(result) == {"w_1"}
         assert result["w_1"]["status"] == "completed"
         assert result["w_1"]["output"] == "collected output"
-        assert result["w_1"]["duration"] == 3.5
-        assert result["w_1"]["has_output"] is True
+        assert result["w_1"]["duration_seconds"] == 3.5
+        assert result["w_1"]["exit_code"] == 0
+        assert result["w_1"]["metadata"] == {}
 
     async def test_passes_worker_ids(
         self, registered_mcp: _StubMCP, mock_worker_manager: AsyncMock

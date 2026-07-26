@@ -133,8 +133,9 @@ def register_worker_tools(  # noqa: C901
                 "status": result.status.value,
                 "output": result.output,
                 "error": result.error,
-                "duration": result.duration_seconds,
-                "has_output": result.has_output(),
+                "exit_code": result.exit_code,
+                "duration_seconds": result.duration_seconds,
+                "metadata": result.metadata or {},
             }
             for wid, result in results.items()
         }
