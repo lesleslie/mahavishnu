@@ -122,6 +122,40 @@ annotation, `cast`, an overload, or a typed adapter.
    widen the annotation. A suppression turned every one of these into a silent
    contract drift; the right fix is the import plus the annotation.
 
+7. **`invalid-return-type` is the legitimate narrow case.** Some patterns
+   legitimately need the suppression when the narrow type is intentional and
+   the widening would mislead callers — for example, decorator factories
+   that return `Callable[..., T]` while their inner closure returns
+   `Awaitable[T]`. Cite a real example before adding it:
+   `excalidraw-mcp/excalidraw_mcp/retry_utils.py:245`. Default to fixing the
+   annotation (Rule #6) over suppressing with this code.
+
+   ```python
+   def async_wrapper(...) -> Callable[..., T]:  # ty: ignore[invalid-return-type]
+       ...
+   ```
+
+8. **`invalid-await` flags `await <sync-call>`.** The fix is to drop the
+   `await`; the function being awaited is sync. Examples fixed in the fleet:
+   `excalidraw-mcp/excalidraw_mcp/cli.py:141` (was `await None`),
+   `opera-cloud-mcp/opera_cloud_mcp/main.py:572` (was `await app.run()`),
+   `opera-cloud-mcp/opera_cloud_mcp/server.py:81` (same `asyncio.run(app.run())`
+   shape). Suppress only when awaitability is dynamic and undecidable.
+
+   ```python
+   result = sync_or_async_fn(...)  # ty: ignore[invalid-await]
+   ```
+
+9. **`unused-type-ignore-comment` is a meta-code** — ty emits it on a dead
+   suppression, not a code you write. Treat its appearance as a signal:
+   remove the dead suppression rather than adding the code. The crackerjack
+   hook accepts this code so it does not reject ty's own diagnostic.
+
+   ```python
+   # ty reports this on a dead suppression; remove the suppression instead:
+   foo()  # ty: ignore[unused-type-ignore-comment]
+   ```
+
 ## Status
 
 Active. This decision applies to all Bodai `*-mcp` repositories. It is a
@@ -152,6 +186,12 @@ must be checked with ty rather than mechanically translated from mypy syntax.
 - Suppressing a diagnostic that can be removed with a narrow check, explicit
   type, `cast`, overload, dependency configuration, or a small API refactor.
 
+**Meta-code note.** `unused-type-ignore-comment` is not a suppression you write
+— it is what ty emits when a suppression is suppressing nothing (a dead
+suppression). Treat its appearance as a signal: remove the dead suppression
+rather than adding the code to your code. The crackerjack hook recognises this
+code so it doesn't reject ty's own diagnostic.
+
 ## Audit cadence
 
 Before each crackerjack pass on the `*-mcp` fleet, search primary source and test
@@ -161,3 +201,7 @@ adding or removing a directive and remove `unused-ignore-comment` warnings.
 Repeat the audit after a ty/Crackerjack upgrade or when a new diagnostic code
 appears in more than one repository; update this decision when the established
 code mapping changes.
+
+The crackerjack hook's `KNOWN_TY_CODES` set and this file's Decision Rule
+codes are kept in sync by `tests/unit/tools/test_ty_ignore_syntax.py`. When
+adding or removing a code in either place, run the sync test before committing.
