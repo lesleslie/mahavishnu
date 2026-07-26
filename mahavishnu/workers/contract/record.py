@@ -1,11 +1,19 @@
+# Pydantic v2 does not auto-resolve string annotations. We use a
+# TYPE_CHECKING block to keep `from __future__ import annotations`
+# on (crackerjack convention) while making the enum symbol available
+# at class-definition time.
+
 from __future__ import annotations
 
 import datetime as dt
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from .state import WorkerLifecycleState
+if TYPE_CHECKING:
+    from .state import WorkerLifecycleState
+else:
+    from .state import WorkerLifecycleState
 
 
 class TmuxTarget(BaseModel):
