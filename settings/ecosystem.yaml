@@ -44,9 +44,9 @@ repos:
 - name: oneiric
   package: oneiric
   path: /Users/les/Projects/oneiric
-  nickname: on
+  nickname: "on"
   nicknames:
-  - on
+  - "on"
   role: resolver
   tags:
   - configuration
