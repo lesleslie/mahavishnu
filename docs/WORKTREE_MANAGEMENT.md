@@ -40,6 +40,30 @@ mahavishnu worktree prune mahavishnu
 mahavishnu worktree provider-health
 ```
 
+## Prune-Merged Workflow
+
+For cleaning up worktrees whose branch has been merged into main:
+
+```bash
+# Preview
+mahavishnu worktree prune-merged --dry-run
+
+# Apply
+mahavishnu worktree prune-merged
+
+# Apply to one repo
+mahavishnu worktree prune-merged --repo=dhara
+
+# Apply with TTL gate (only worktrees last touched > N days ago)
+mahavishnu worktree prune-merged --ttl-days=7
+
+# Apply to merged-dirty worktrees (requires --force-reason)
+mahavishnu worktree prune-merged --include-dirty --force-reason "batch cleanup"
+```
+
+See `docs/WORKTREE_AUTOREMOVE.md` for the full guide, semantics, and restore
+flow.
+
 ## Architecture
 
 ### Multi-Layer Safety System
