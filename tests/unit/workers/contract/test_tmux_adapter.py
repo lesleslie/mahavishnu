@@ -23,8 +23,14 @@ pytestmark = pytest.mark.skipif(
 
 
 @pytest.fixture
-def socket_path(tmp_path: pathlib.Path) -> str:
-    return str(tmp_path / "test.sock")
+def socket_path(tmp_path_factory: pytest.TempPathFactory) -> str:
+    # Use /tmp on macOS/Linux so the socket path stays under the
+    # `sun_path` limit (104 bytes on macOS, 108 on Linux). The
+    # default pytest tmp_path on macOS resolves under
+    # /private/var/folders/.../T/pytest-of-.../ which exceeds it.
+    base = pathlib.Path("/tmp") / "mhv-tmux-test"
+    base.mkdir(parents=True, exist_ok=True)
+    return str(base / "test.sock")
 
 
 def _run(args: list[str], socket: str) -> subprocess.CompletedProcess[str]:

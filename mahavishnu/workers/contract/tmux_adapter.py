@@ -2,10 +2,47 @@ from __future__ import annotations
 
 import dataclasses
 import os
+import re
 import shlex
 import subprocess
 from collections.abc import Sequence
 from pathlib import Path
+
+# Session and socket identifiers must be path-safe. tmux names that
+# contain whitespace, `:`, shell metacharacters, or newlines can be
+# used to inject arguments into the constructed attach_command or to
+# confuse tmux's own parser. Restrict to a conservative subset.
+_SAFE_NAME_RE = re.compile(r"^[A-Za-z0-9._-]{1,128}$")
+_SAFE_SOCKET_RE = re.compile(r"^[A-Za-z0-9._/:-]{1,256}$")
+_ANSI_RE = re.compile(r"\x1B\[[0-?]*[ -/]*[@-~]")
+
+
+def _validate_session_name(name: str) -> None:
+    if not _SAFE_NAME_RE.match(name):
+        raise TmuxAdapterError(f"unsafe tmux session name: {name!r}")
+
+
+def _validate_socket_path(socket: str) -> None:
+    if not _SAFE_SOCKET_RE.match(socket):
+        raise TmuxAdapterError(f"unsafe tmux socket path: {socket!r}")
+
+
+def _attach_command(socket: str, session: str) -> str:
+    """Build an attach command. Both fields are already validated by
+    ``_validate_*`` before this is called, so plain concatenation is safe.
+    """
+    return f"tmux -S {socket} attach -t {session}"
+
+
+def _safe_stderr(stderr: str) -> str:
+    """Strip control characters and ANSI escapes from tmux stderr to
+    prevent log injection. Truncate to 2 KiB.
+    """
+    if not stderr:
+        return ""
+    stripped = _ANSI_RE.sub("", stderr)
+    safe = re.sub(r"[^\x20-\x7e\n]", "?", stripped)
+    return safe[:2048]
 
 
 class TmuxAdapterError(RuntimeError):
@@ -32,12 +69,15 @@ class CapturedOutput:
 def _run(
     socket: str, *args: str, check: bool = True
 ) -> subprocess.CompletedProcess[str]:
+    _validate_socket_path(socket)
     cmd = ["tmux", "-S", socket, *args]
     proc = subprocess.run(cmd, check=False, capture_output=True, text=True)
     if check and proc.returncode != 0:
+        # Use repr() for `args` and the sanitized stderr to prevent log
+        # injection through crafted names.
         raise TmuxAdapterError(
-            f"tmux {' '.join(args)} failed: rc={proc.returncode} "
-            f"stderr={proc.stderr.strip()}"
+            f"tmux {args!r} failed: rc={proc.returncode} "
+            f"stderr={_safe_stderr(proc.stderr)}"
         )
     return proc
 
@@ -54,10 +94,20 @@ def create_session(
     Returns the session metadata, including the pane id and attach command.
     Raises :class:`TmuxAdapterError` on failure.
     """
+    _validate_socket_path(socket)
+    _validate_session_name(session)
+    _validate_session_name(window_name)
     socket_path = Path(socket)
     socket_path.parent.mkdir(parents=True, exist_ok=True)
-    # Spec §9: 0600 on the tmux socket parent directory.
-    os.chmod(socket_path.parent, 0o700)
+    # Spec §9: 0700 on the tmux socket parent directory. Wrapped in
+    # try/except because the parent may be a system path we don't own
+    # (e.g. /tmp on multi-user hosts).
+    try:
+        os.chmod(socket_path.parent, 0o700)
+    except PermissionError as e:
+        raise TmuxAdapterError(
+            f"cannot chmod socket parent {socket_path.parent!s} to 0700: {e}"
+        ) from e
     # -d: detached, -s: session name, -n: window name, -P: print info
     quoted = " ".join(shlex.quote(part) for part in command)
     proc = subprocess.run(
@@ -82,7 +132,7 @@ def create_session(
     if proc.returncode != 0:
         raise TmuxAdapterError(
             f"tmux new-session failed: rc={proc.returncode} "
-            f"stderr={proc.stderr.strip()}"
+            f"stderr={_safe_stderr(proc.stderr)}"
         )
     stdout = proc.stdout.strip()
     line = stdout.splitlines()[-1] if stdout else ""
@@ -92,9 +142,17 @@ def create_session(
             f"unexpected tmux new-session -P output: {proc.stdout!r}"
         )
     session_name, window_id, pane_id = parts
+    # Validate the parsed session name too (the -F template is fixed
+    # but we should still reject anything malformed).
+    _validate_session_name(session_name)
     # Spec §9: tighten the freshly-created socket file's mode.
     if socket_path.exists():
-        os.chmod(socket, 0o600)
+        try:
+            os.chmod(socket, 0o600)
+        except PermissionError as e:
+            raise TmuxAdapterError(
+                f"cannot chmod socket {socket} to 0600: {e}"
+            ) from e
     # Launch the command inside the pane.
     _run(socket, "send-keys", "-t", pane_id, quoted, "Enter")
     return TmuxSessionInfo(
@@ -102,11 +160,12 @@ def create_session(
         session=session_name,
         window=window_id,
         pane=pane_id,
-        attach_command=f"tmux -S {socket} attach -t {session_name}",
+        attach_command=_attach_command(socket, session_name),
     )
 
 
 def list_sessions(socket: str) -> list[TmuxSessionInfo]:
+    _validate_socket_path(socket)
     proc = _run(
         socket,
         "list-sessions",
@@ -121,24 +180,32 @@ def list_sessions(socket: str) -> list[TmuxSessionInfo]:
         if not line.strip():
             continue
         name, windows = line.split(":", 1)
+        # Reject anything that does not match our safe-name policy
+        # before echoing it into attach_command.
+        try:
+            _validate_session_name(name)
+        except TmuxAdapterError:
+            continue
         out.append(
             TmuxSessionInfo(
                 socket=socket,
                 session=name,
                 window=f"@{int(windows) - 1}" if windows else "",
                 pane="",
-                attach_command=f"tmux -S {socket} attach -t {name}",
+                attach_command=_attach_command(socket, name),
             )
         )
     return out
 
 
 def kill_session(socket: str, session: str) -> None:
+    _validate_socket_path(socket)
+    _validate_session_name(session)
     proc = _run(socket, "kill-session", "-t", session, check=False)
     if proc.returncode != 0:
         raise TmuxAdapterError(
             f"tmux kill-session failed: rc={proc.returncode} "
-            f"stderr={proc.stderr.strip()}"
+            f"stderr={_safe_stderr(proc.stderr)}"
         )
 
 
@@ -161,7 +228,10 @@ def send_keys(socket: str, pane: str, keys: Sequence[str]) -> None:
     if not keys:
         return
     parts = list(keys)
-    proc = _run(socket, "send-keys", "-t", pane, "-H", *parts, check=False)
+    # `-l` sends the key as a literal string. `-H` (hex) silently drops
+    # non-hex input, which the brief's verbatim code did; this version
+    # uses `-l` to actually type text.
+    proc = _run(socket, "send-keys", "-t", pane, "-l", *parts, check=False)
     if proc.returncode != 0:
         raise TmuxAdapterError(
             f"tmux send-keys failed: rc={proc.returncode} "
@@ -215,17 +285,6 @@ def capture_pane(
     )
 
 
-_ANSI_RE = None
-
-
 def _strip_ansi(text: str) -> str:
-    """Strip ANSI CSI escape sequences from ``text``.
-
-    The regex is compiled lazily on first use so module import stays cheap.
-    """
-    global _ANSI_RE
-    import re
-
-    if _ANSI_RE is None:
-        _ANSI_RE = re.compile(r"\x1B\[[0-?]*[ -/]*[@-~]")
+    """Strip ANSI CSI escape sequences from ``text``."""
     return _ANSI_RE.sub("", text)
