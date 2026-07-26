@@ -281,6 +281,8 @@ class GenericShellWorker(BaseWorker):
             try:
                 data = json.loads(line)
                 serialized = json.dumps(data)
+                if data.get("type") == "result" and data.get("parent_tool_use_id") is None:
+                    return True, self._extract_json_content(data)
                 # Check completion markers
                 for marker in self.config.completion_markers:
                     if marker in data or marker in serialized:
