@@ -6,8 +6,9 @@ repos:
 - name: mahavishnu
   package: mahavishnu
   path: /Users/les/Projects/mahavishnu
-  nickname: vishnu
+  nickname: mh
   nicknames:
+  - mh
   - vishnu
   - vish
   role: orchestrator
@@ -19,6 +20,9 @@ repos:
 - name: crackerjack
   package: crackerjack
   path: /Users/les/Projects/crackerjack
+  nickname: cj
+  nicknames:
+  - cj
   role: inspector
   tags:
   - quality
@@ -28,6 +32,9 @@ repos:
 - name: session-buddy
   package: session_buddy
   path: /Users/les/Projects/session-buddy
+  nickname: sb
+  nicknames:
+  - sb
   role: manager
   tags:
   - session-management
@@ -68,6 +75,9 @@ repos:
 - name: akosha
   package: akosha
   path: /Users/les/Projects/akosha
+  nickname: ak
+  nicknames:
+  - ak
   role: seer
   tags:
   - semantic
@@ -79,6 +89,9 @@ repos:
 - name: dhara
   package: dhara
   path: /Users/les/Projects/dhara
+  nickname: dh
+  nicknames:
+  - dh
   role: curator
   tags:
   - workflow
