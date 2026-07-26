@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import pathlib
 from datetime import datetime
 from logging import getLogger
 from typing import TYPE_CHECKING, Any
@@ -17,6 +18,51 @@ if TYPE_CHECKING:
     from .adapters.base import TerminalAdapter
 
 logger = getLogger(__name__)
+
+
+# Spec §9.4 (Phase B): the durable-worker contract emits canonical
+# Oneiric envelopes on worker.* topics. Task 13 will replace the
+# no-op `_enqueue_to_eventbridge` sink with a real EventBridge
+# producer; for now the bridge is a thin shim that hands the
+# envelope to the existing eventbus (or drops it if no bus is wired).
+def _enqueue_to_eventbridge(envelope: Any) -> None:
+    """Forward a canonical envelope to the EventBridge.
+
+    No-op until Task 13 wires the real producer.
+    """
+    logger.debug(
+        "tmux worker envelope queued (no-op bridge): topic=%s source=%s",
+        getattr(envelope, "topic", "?"),
+        getattr(envelope, "source", "?"),
+    )
+
+
+class _ManagerEventPublisher:
+    """Adapt the contract's EventPublisher Protocol to a sink callable.
+
+    The contract's ``EventPublisher.emit(payload, topic)`` signature
+    (per Task 5 / Task 6) is the inverse of the canonical
+    ``CanonicalEnvelopePublisher.emit(topic, payload)``. The
+    manager's internal calls all go through this bridge so the
+    argument-order mismatch is contained to one place.
+    """
+
+    def __init__(self, sink: Callable[[Any], None]) -> None:
+        self._sink = sink
+
+    def emit(self, payload: dict[str, Any], topic: str) -> None:
+        from ..core.events.envelope import EventEnvelope
+        from ..core.events.worker_topics import is_worker_topic
+
+        if not is_worker_topic(topic):
+            # Non-worker topics are out of scope for Phase B; pass through.
+            return
+        envelope = EventEnvelope(
+            event_type=topic,
+            source="mahavishnu.terminal",
+            payload=payload,
+        )
+        self._sink(envelope)
 
 
 class TerminalManager:
@@ -489,6 +535,28 @@ class TerminalManager:
 
             adapter = CrowTerminalAdapter(mcp_client)
             logger.info("Using crow terminal adapter")
+            return cls(adapter, terminal_config)
+
+        if preference == "tmux":
+            # The tmux backend lives in the new durable-worker contract
+            # (mahavishnu/workers/contract/). It owns its own socket dir
+            # and record store; the manager wires it as the terminal
+            # adapter so that existing pool/worker call sites get the
+            # new behavior with no additional plumbing.
+            from .adapters.tmux import TmuxTerminalAdapter
+            from ..workers.contract.store import WorkerRecordStore
+            from ..workers.contract.manager import DurableWorkerManager
+
+            store = WorkerRecordStore(
+                pathlib.Path.home() / ".mahavishnu" / "worker-sessions"
+            )
+            publisher = _ManagerEventPublisher(_enqueue_to_eventbridge)
+            manager = DurableWorkerManager(
+                store=store,
+                publisher=publisher,
+                socket_dir=pathlib.Path.home() / ".mahavishnu" / "tmux",
+            )
+            adapter = TmuxTerminalAdapter(manager)
             return cls(adapter, terminal_config)
 
         # Any BUILTIN_BACKENDS name routes through McpretentiousAdapter
