@@ -375,3 +375,13 @@ a2a:
 # see docs/superpowers/plans/2026-07-26-session-buddy-worktree-tools.md.
 worktree_providers:
   session_buddy_enabled: true
+
+worker_contract:
+  enabled: false
+  default_session_mode: managed_tmux
+  default_backend: claude_tui
+  max_wait_ms: 30000
+  default_grace_ms: 5000
+  socket_dir: ~/.mahavishnu/tmux
+  records_dir: ~/.mahavishnu/worker-sessions
+  event_topic_prefix: worker
