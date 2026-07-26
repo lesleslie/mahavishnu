@@ -1,8 +1,8 @@
 ---
 status: active
 role: canonical
-date: 2026-07-16
-last_reviewed: 2026-07-16
+date: 2026-07-26
+last_reviewed: 2026-07-26
 topic: decision-index
 ---
 
@@ -20,6 +20,7 @@ the topic, the third is the most recent state.
 | File | Topic | Status |
 |------|-------|--------|
 | `README.md` | This file — index of repo-local decisions and follow-up trackers. | Active. |
+| `ty-ignore-codes.md` | Canonical ty diagnostic codes for `# ty: ignore[...]`; rules for which code fits which boundary; crackerjack hook's `KNOWN_TY_CODES` is kept in sync via `tests/unit/tools/test_ty_ignore_syntax.py`. | Active. |
 | `worktree-autoremove-policy.md` | Narrow Rule 2 amendment permitting explicitly invoked `worktree prune-merged`; hook and cron remain prohibited. | Active. |
 | `agent-curation-strategy.md` | Rules for adding/archiving agents: mycelium-core deduplication, Bodai-stack relevance, 15k token limit. | Active. |
 | `skill-vs-agent-strategy.md` | When to write a skill vs. an agent: trigger-driven procedures → skill, domain persona → agent. | Active. |
