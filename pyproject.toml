@@ -22,7 +22,7 @@ dependencies = [
     # CLI
     "typer>=0.26.7",
     # Oneiric ecosystem
-    "oneiric>=0.13.0",
+    "oneiric>=0.16.0",
     # Shared infrastructure (mcp-common)
     "mcp-common>=0.17.0",
     # Fast JSON serialization for the canonical event wire
