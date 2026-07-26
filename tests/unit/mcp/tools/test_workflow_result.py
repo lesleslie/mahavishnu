@@ -89,7 +89,10 @@ class TestWorkflowResult:
         mock_pool_manager: AsyncMock,
     ) -> None:
         store: _StubStore = mock_pool_manager._dhara_state  # type: ignore[assignment]
-        store.records["wf-1"] = {
+        # dispatch_to_pool writes under the full Dhara key
+        # `workflow-results/{id}/`; the trailing slash is part of the
+        # key, not a directory hint.
+        store.records["workflow-results/wf-1/"] = {
             "workflow_id": "wf-1",
             "status": "completed",
             "result": {"output": "ok", "status": "completed"},
@@ -102,7 +105,9 @@ class TestWorkflowResult:
         assert out["workflow_id"] == "wf-1"
         assert out["status"] == "completed"
         assert out["result"]["output"] == "ok"
-        assert store.calls == ["wf-1"]
+        # The tool must use the production Dhara key prefix, not the
+        # bare workflow_id.
+        assert store.calls == ["workflow-results/wf-1/"]
 
     async def test_returns_not_found_when_missing(
         self,
@@ -110,13 +115,16 @@ class TestWorkflowResult:
         mock_pool_manager: AsyncMock,
     ) -> None:
         store: _StubStore = mock_pool_manager._dhara_state  # type: ignore[assignment]
-        assert "wf-missing" not in store.records
+        # Pre-condition: no record under the production key.
+        assert "workflow-results/wf-missing/" not in store.records
 
         fn = registered_mcp.tools["workflow_result"]
         out = await fn("wf-missing")
 
         assert out["status"] == "not_found"
         assert out["workflow_id"] == "wf-missing"
+        # The lookup must have used the full key.
+        assert store.calls == ["workflow-results/wf-missing/"]
 
     async def test_returns_not_found_when_dhara_state_unset(
         self,

@@ -719,7 +719,9 @@ def register_pool_tools(  # noqa: C901
         dhara = getattr(pool_manager, "_dhara_state", None)
         if dhara is None:
             return {"workflow_id": workflow_id, "status": "not_found"}
-        record = await dhara.get(workflow_id)
+        # dispatch_to_pool writes under `workflow-results/{id}/`; the
+        # trailing slash is part of the key, not a directory hint.
+        record = await dhara.get(f"workflow-results/{workflow_id}/")
         if not record:
             return {"workflow_id": workflow_id, "status": "not_found"}
         return {
