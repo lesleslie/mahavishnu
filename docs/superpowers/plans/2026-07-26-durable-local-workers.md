@@ -3288,7 +3288,7 @@ git commit -m "feat(observability): instrument worker contract tools with metric
 
 ## Updated task list
 
-The plan now has 25 tasks in execution order:
+The plan now has 26 tasks in execution order:
 
 1. `WorkerLifecycleState` enum
 2. `DurableWorkerRecord` Pydantic model
@@ -3317,5 +3317,146 @@ The plan now has 25 tasks in execution order:
 23. `worker_close_all` and `worker_health`
 24. `pool_route_execute` and `dispatch_to_pool` use the contract
 25. §14 success-criteria instrumentation
+26. iTerm2 adapter deprecation and removal
 
 This preserves the original four-phase rollout while closing the audit gaps.
+
+## Open-question confirmations
+
+Confirmed before execution:
+
+1. Default `backend` for `launch_worker`: `claude_tui`.
+2. Remove 500-character `worker_execute` truncation: yes.
+3. Private-socket directory: `~/.mahavishnu/tmux/`.
+4. `worker_revoke` may leave the underlying process running unless `force=true`.
+
+---
+
+## Task 26: iTerm2 adapter deprecation and removal
+
+**Files:**
+- Modify: `mahavishnu/terminal/manager.py` (replace the iTerm2 branch in `TerminalManager.create` with a one-release deprecation warning that falls back to the mock adapter; do not block the boot path)
+- Modify: `mahavishnu/mcp/tools/terminal_tools.py` (remove `terminal_switch_adapter("iterm2")` and the iTerm2 profile launch MCP tool; raise `NotImplementedError` if called with `iterm2`)
+- Modify: `mahavishnu/terminal/adapters/iterm2.py` (delete the file or convert it to a stub that raises a clear `DeprecationWarning` then re-raises)
+- Modify: `mahavishnu/terminal/grid/models.py` and any iTerm2-type-coupled files (replace `ITerm2Adapter` with a generic `TerminalAdapter` Protocol so the grid manager compiles after the class is removed)
+- Modify: `mahavishnu/terminal/manager.py` `ITerm2_AVAILABLE` references (remove import paths; replace with `True` only at the iTerm2 deprecation warning site)
+- Modify: `mahavishnu/mcp/bootstrap.py` (remove the iTerm2-specific boot-path branch; `adapter_preference: "iTerm2"` now triggers the same deprecation warning)
+- Modify: `pyproject.toml` (remove the `iterm2 = ["iterm2>=2.20"]` extra; the dead-pin comment in the spec is now actionable)
+- Modify: `settings/mahavishnu.yaml` and `settings/mahavishnu.yaml.example` (remove the iTerm2-specific configuration block; add a one-time deprecation note in CHANGELOG)
+- Delete: iTerm2-specific tests under `tests/unit/terminal/` and `tests/accessibility/`
+- Test: `tests/unit/terminal/test_iterm2_deprecation.py`
+
+- [ ] **Step 1: Write the failing test**
+
+```python
+# tests/unit/terminal/test_iterm2_deprecation.py
+import warnings
+from unittest.mock import patch
+
+
+def test_terminal_manager_iterm2_preference_warns_and_falls_back():
+    from mahavishnu.terminal.manager import TerminalManager
+
+    cfg = type(
+        "Cfg",
+        (),
+        {
+            "terminal": type(
+                "T",
+                (),
+                {
+                    "enabled": True,
+                    "adapter_preference": "iterm2",
+                    "max_concurrent_sessions": 5,
+                    "default_columns": 120,
+                    "default_rows": 30,
+                    "crow_enabled": False,
+                },
+            )()
+        },
+    )()
+    with warnings.catch_warnings(record=True) as caught:
+        warnings.simplefilter("always")
+        mgr = TerminalManager.create(cfg, mcp_client=None)
+    assert any(issubclass(w.category, DeprecationWarning) for w in caught)
+    assert mgr.adapter is not None
+```
+
+- [ ] **Step 2: Run the test to verify it fails**
+
+Run: `pytest tests/unit/terminal/test_iterm2_deprecation.py -v`
+Expected: ImportError or assertion fails because the iTerm2 branch does not yet emit `DeprecationWarning`.
+
+- [ ] **Step 3: Modify `TerminalManager.create`**
+
+In `mahavishnu/terminal/manager.py`, locate the iTerm2 branch (the one currently instantiating `ITerm2Adapter` or calling iTerm2-specific code). Replace it with:
+
+```python
+        if preference == "iterm2":
+            warnings.warn(
+                "adapter_preference='iterm2' is deprecated and will be "
+                "removed in the next release. Use 'tmux' or 'mcpretentious' "
+                "instead.",
+                DeprecationWarning,
+                stacklevel=2,
+            )
+            # Fall back to the mock adapter so callers still get a working
+            # manager; the warning is the only signal of the change.
+            from .adapters.mock import MockTerminalAdapter
+
+            adapter = MockTerminalAdapter()
+            return cls(adapter, terminal_config)
+```
+
+Also remove the now-unused `ITERM2_AVAILABLE` import and any iTerm2-specific dead branches.
+
+- [ ] **Step 4: Run the test to verify it passes**
+
+Run: `pytest tests/unit/terminal/test_iterm2_deprecation.py -v`
+Expected: 1 passed.
+
+- [ ] **Step 5: Remove the iTerm2 MCP tool branches**
+
+In `mahavishnu/mcp/tools/terminal_tools.py`:
+
+- Locate `terminal_switch_adapter` and the iTerm2 branch inside it. Replace the iTerm2 branch with a `NotImplementedError` raising the deprecation message.
+- Locate `terminal_launch_with_profile` and the iTerm2 branch. Remove it entirely.
+- Locate `terminal_list_profiles` and any iTerm2-only filtering. Remove the iTerm2 filter.
+
+Then update `mahavishnu/mcp/bootstrap.py` to drop the iTerm2-specific boot-path branch. The remaining branches should fall through to the mock adapter with the same deprecation warning.
+
+- [ ] **Step 6: Run all terminal tests to verify nothing else broke**
+
+Run: `pytest tests/unit/terminal tests/accessibility -v`
+Expected: all previously-passing tests still pass; the iTerm2-only tests are deleted (not skipped).
+
+- [ ] **Step 7: Delete the iTerm2-specific files**
+
+- Delete `mahavishnu/terminal/adapters/iterm2.py`.
+- Delete `mahavishnu/terminal/pool.py` if its only purpose was iTerm2.
+- Delete `tests/unit/terminal/test_iterm2*.py` and any iTerm2-only tests under `tests/accessibility/`.
+
+- [ ] **Step 8: Refactor the grid manager to a generic adapter protocol**
+
+In `mahavishnu/terminal/grid/manager.py`, replace the explicit `ITerm2Adapter` constructor argument with a generic `TerminalAdapter` Protocol (defined in `mahavishnu/terminal/adapters/base.py`). The Protocol needs `launch_sessions`, `send_command`, `capture_output`, `close_session`, `list_sessions`. The current `ITerm2Adapter` and `MockTerminalAdapter` already satisfy it.
+
+- [ ] **Step 9: Run the full test suite**
+
+Run: `pytest -m "not slow" -q`
+Expected: all tests pass.
+
+- [ ] **Step 10: Remove the `iterm2` extra from `pyproject.toml`**
+
+Locate the `iterm2 = ["iterm2>=2.20"]` extra in `pyproject.toml`. Delete the line.
+
+- [ ] **Step 11: Run Crackerjack**
+
+Run: `crackerjack run`
+Expected: ≥75 quality score; no new failures.
+
+- [ ] **Step 12: Commit**
+
+```bash
+git add mahavishnu/terminal mahavishnu/mcp/tools/terminal_tools.py mahavishnu/mcp/bootstrap.py pyproject.toml tests
+git commit -m "feat(terminal): deprecate iTerm2 adapter and remove public surface"
+```
