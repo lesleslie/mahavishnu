@@ -17,7 +17,7 @@ topic: shared-frontmatter-validator
 
 - Crackerjack is **already a declared dependency** in `dhara`, `session-buddy`, `akosha`, `oneiric`, and `mahavishnu`. No new dep additions.
 - All consumer repos require `crackerjack>=0.69.5` after the canonical release.
-- The `FrontmatterValidator` Python wrapper's PUBLIC API stays unchanged: `FrontmatterValidator(repo_root=Path).validate(strict=False, allow_nonstandard=True, ...)` returns `FrontmatterValidationResult`. The `from_payload` classmethod is preserved. The constructor parameter name `pkg_path` is renamed to `repo_root` (breaking change to internal API; same release as the `--path` → `--repo-root` CLI rename).
+- The `FrontmatterValidator` Python wrapper's PUBLIC API stays unchanged: `FrontmatterValidator(pkg_path=Path).validate(strict=False, allow_nonstandard=True, ...)` returns `FrontmatterValidationResult`. The `from_payload` classmethod is preserved. The constructor parameter name `pkg_path` stays as `pkg_path` (existing crackerjack convention — `pkg_path` IS the project root across 19+ internal uses). The CLI flag `--repo-root` is renamed at the user-facing surface only; the CLI passes it as `pkg_path=repo_root` to the wrapper.
 - The `crackerjack docs validate` CLI surface changes `--path` → `--repo-root` AND adds `--allow-nonstandard/--strict-frontmatter` flag. No external consumer of the CLI is known.
 - Each commit is single-purpose; tests pass at every commit; commit only on GREEN.
 - Cross-repo changes release in order: crackerjack first, then consumers in the same session (minimize the inconsistent-state window).
@@ -329,7 +329,7 @@ git commit -m "refactor(services): move validate_document_frontmatter.py into cr
 
 **Interfaces:**
 - Consumes: `from crackerjack.services import frontmatter as _validator`
-- Produces: `FrontmatterValidator(repo_root=Path)` (renamed from `pkg_path`). `from_payload` classmethod is preserved. All other public API stays the same.
+- Produces: `FrontmatterValidator(pkg_path=Path)` (parameter name stays as `pkg_path` per crackerjack convention; `pkg_path` IS the project root). `from_payload` classmethod is preserved. All other public API stays the same.
 
 - [ ] **Step 1: Write the failing test**
 
@@ -344,7 +344,7 @@ def test_validate_does_not_spawn_subprocess() -> None:
     """
     from unittest.mock import patch
 
-    v = FrontmatterValidator(repo_root=Path("/tmp/repo"))
+    v = FrontmatterValidator(pkg_path=Path("/tmp/repo"))
     with patch(
         "crackerjack.services.frontmatter_validator.secure_subprocess.run"
     ) as mock_secure_run:
@@ -361,11 +361,11 @@ def test_validate_does_not_spawn_subprocess() -> None:
 - [ ] **Step 2: Run test to verify it fails**
 
 Run: `cd /Users/les/Projects/crackerjack && ./.venv/bin/python -m pytest tests/unit/test_frontmatter_validator.py::test_validate_does_not_spawn_subprocess -v --no-cov`
-Expected: FAIL — the wrapper currently uses `secure_subprocess.run`; the constructor receives `pkg_path=` (not `repo_root=`).
+Expected: FAIL — the wrapper currently uses `secure_subprocess.run`; the test asserts the call does NOT happen.
 
 - [ ] **Step 3: Refactor the wrapper**
 
-Open `crackerjack/services/frontmatter_validator.py` and rewrite it. The public API changes: `pkg_path` → `repo_root` (constructor param + attribute); `from_payload` is preserved.
+Open `crackerjack/services/frontmatter_validator.py` and rewrite it. The wrapper's PUBLIC API (constructor signature, attribute name, public methods) stays the same: `pkg_path` is the parameter name. The internal calls change to invoke the new module in-process.
 
 ```python
 from __future__ import annotations
@@ -496,10 +496,10 @@ class FrontmatterValidator:
 
     def __init__(
         self,
-        repo_root: Path | None = None,
+        pkg_path: Path | None = None,
         timeout_seconds: int = DEFAULT_TIMEOUT,
     ) -> None:
-        self.repo_root = (repo_root or Path.cwd()).resolve()
+        self.pkg_path = (pkg_path or Path.cwd()).resolve()
         self.timeout_seconds = timeout_seconds  # unused; kept for API compat
 
     def validate(
@@ -511,8 +511,8 @@ class FrontmatterValidator:
     ) -> FrontmatterValidationResult:
         """Run the validator in-process and return the aggregate result."""
         try:
-            stores = _resolve_stores(self.repo_root, store)
-            files = _validator.discover_files(self.repo_root, stores, [])
+            stores = _resolve_stores(self.pkg_path, store)
+            files = _validator.discover_files(self.pkg_path, stores, [])
         except Exception as exc:
             raise FrontmatterValidationError(
                 f"validator crashed during file discovery: {exc}",
@@ -520,7 +520,7 @@ class FrontmatterValidator:
             ) from exc
 
         known_files = {rel for _, rel in files}
-        known_topics = _validator.load_seed_topics(self.repo_root)
+        known_topics = _validator.load_seed_topics(self.pkg_path)
 
         results: list[t.Any] = []
         for abs_path, rel in files:
@@ -529,7 +529,7 @@ class FrontmatterValidator:
                     _validator.validate_file(
                         abs_path,
                         rel,
-                        repo_root=self.repo_root,
+                        repo_root=self.pkg_path,
                         known_files=known_files,
                         known_topics=known_topics,
                         strict=strict,
@@ -575,14 +575,14 @@ class FrontmatterValidator:
 
 
 def _resolve_stores(
-    repo_root: Path,
+    pkg_path: Path,
     store: str | None,
 ) -> list[Path]:
     """Translate the optional --store flag into a list of Path stores."""
     if store:
         rel = _validator.STORE_LOOKUP[store]
-        return [repo_root / rel]
-    return [repo_root / s for s in _validator.DEFAULT_STORES]
+        return [pkg_path / rel]
+    return [pkg_path / s for s in _validator.DEFAULT_STORES]
 ```
 
 - [ ] **Step 4: Update existing tests**
@@ -590,7 +590,7 @@ def _resolve_stores(
 Open `tests/unit/test_frontmatter_validator.py`. Apply all of these changes:
 
 1. Replace `pkg_path` with `repo_root` in every test:
-   - `FrontmatterValidator(pkg_path=...)` → `FrontmatterValidator(repo_root=...)` (4 occurrences minimum)
+   - `FrontmatterValidator(pkg_path=...)` → `FrontmatterValidator(pkg_path=...)` (no rename — wrapper keeps `pkg_path`)
 
 2. Replace `test_validate_parses_clean_json` to use a real in-process run:
 
@@ -598,7 +598,7 @@ Open `tests/unit/test_frontmatter_validator.py`. Apply all of these changes:
 def test_validate_parses_clean_json(tmp_path: Path) -> None:
     """Clean validator run returns success with zero errors."""
     (tmp_path / "docs" / "plans").mkdir(parents=True)
-    v = FrontmatterValidator(repo_root=tmp_path)
+    v = FrontmatterValidator(pkg_path=tmp_path)
     result = v.validate()
     assert isinstance(result, FrontmatterValidationResult)
     assert result.success is True
@@ -618,7 +618,7 @@ def test_validate_raises_on_errors(tmp_path: Path) -> None:
         "---\nstatus: bogus\n---\n# Hi\n",
         encoding="utf-8",
     )
-    v = FrontmatterValidator(repo_root=tmp_path)
+    v = FrontmatterValidator(pkg_path=tmp_path)
     with pytest.raises(FrontmatterValidationError) as exc_info:
         v.validate_or_raise()
     assert exc_info.value.result.error_count >= 1
@@ -631,7 +631,7 @@ def test_validate_crash_raises() -> None:
     """A crash during validator execution becomes FrontmatterValidationError(reason='crash')."""
     from unittest.mock import patch
 
-    v = FrontmatterValidator(repo_root=Path("/tmp/repo"))
+    v = FrontmatterValidator(pkg_path=Path("/tmp/repo"))
     with patch(
         "crackerjack.services.frontmatter.discover_files",
         side_effect=RuntimeError("boom"),
@@ -653,7 +653,7 @@ def test_validate_passes_store_flag(tmp_path: Path) -> None:
     (plans / "a.md").write_text("# No frontmatter\n", encoding="utf-8")
     (decisions / "b.md").write_text("# Missing here too\n", encoding="utf-8")
 
-    v = FrontmatterValidator(repo_root=tmp_path)
+    v = FrontmatterValidator(pkg_path=tmp_path)
     plans_only = v.validate(store="plans")
     assert plans_only.files_scanned == 1
     decisions_only = v.validate(store="decisions")
@@ -671,7 +671,7 @@ def test_validate_strict_promotes_warnings_to_failure(tmp_path: Path) -> None:
         "---\nstatus: draft\n---\n# Hi\n",
         encoding="utf-8",
     )
-    v = FrontmatterValidator(repo_root=tmp_path)
+    v = FrontmatterValidator(pkg_path=tmp_path)
     lenient = v.validate(strict=False)
     strict = v.validate(strict=True)
     if lenient.warning_count > 0:
@@ -688,7 +688,7 @@ def test_validate_allow_nonstandard_false_emits_missing_frontmatter(
     plans = tmp_path / "docs" / "plans"
     plans.mkdir(parents=True)
     (plans / "legacy.md").write_text("# No frontmatter\n", encoding="utf-8")
-    v = FrontmatterValidator(repo_root=tmp_path)
+    v = FrontmatterValidator(pkg_path=tmp_path)
     result = v.validate(allow_nonstandard=False)
     assert result.success is False
     assert result.error_count >= 1
@@ -704,7 +704,7 @@ def test_validate_in_process_real_file_with_status_field(tmp_path: Path) -> None
         "---\nstatus: draft\n---\n# Hi\n",
         encoding="utf-8",
     )
-    v = FrontmatterValidator(repo_root=tmp_path)
+    v = FrontmatterValidator(pkg_path=tmp_path)
     result = v.validate()
     assert result.success is True
     assert result.files_scanned == 1
@@ -1128,7 +1128,7 @@ def validate(
     if repo_root and not repo_root.is_dir():
         raise typer.BadParameter(f"{repo_root} is not a directory")
 
-    validator = FrontmatterValidator(repo_root=repo_root)
+    validator = FrontmatterValidator(pkg_path=repo_root)
     try:
         result = validator.validate(
             strict=strict,
@@ -1642,7 +1642,7 @@ cd /Users/les/Projects/dhara && ./.venv/bin/python -c "
 from crackerjack.core.phase_coordinator import PhaseCoordinator
 from pathlib import Path
 from unittest.mock import MagicMock
-coord = PhaseCoordinator(repo_root=Path('.'))
+coord = PhaseCoordinator(pkg_path=Path('.'))
 opts = MagicMock()
 opts.cleanup_docs = True
 opts.docs_dry_run = True
@@ -1719,7 +1719,7 @@ cd /Users/les/Projects/session-buddy && ./.venv/bin/python -c "
 from crackerjack.core.phase_coordinator import PhaseCoordinator
 from pathlib import Path
 from unittest.mock import MagicMock
-coord = PhaseCoordinator(repo_root=Path('.'))
+coord = PhaseCoordinator(pkg_path=Path('.'))
 opts = MagicMock()
 opts.cleanup_docs = True
 opts.docs_dry_run = True
@@ -1857,7 +1857,7 @@ cd /Users/les/Projects/mahavishnu && ./.venv/bin/python -c "
 from crackerjack.core.phase_coordinator import PhaseCoordinator
 from pathlib import Path
 from unittest.mock import MagicMock
-coord = PhaseCoordinator(repo_root=Path('.'))
+coord = PhaseCoordinator(pkg_path=Path('.'))
 opts = MagicMock()
 opts.cleanup_docs = True
 opts.docs_dry_run = True
