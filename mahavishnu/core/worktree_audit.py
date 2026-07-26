@@ -6,10 +6,18 @@ operations with complete context for forensic analysis.
 """
 
 from datetime import UTC, datetime
+import json
 import logging
 from typing import Any
 
 logger = logging.getLogger(__name__)
+
+# Dedicated audit-channel logger. Operators can attach a structured
+# JSON-line FileHandler for SOC 2 forensics without coupling worktree
+# events to mcp_common's auth-only AuditLogger (which only exposes
+# emit(AuthAuditEvent) and has no place for branch / worktree_path /
+# force_reason fields).
+_audit_logger = logging.getLogger("mahavishnu.audit.worktree")
 
 
 class WorktreeAuditLogger:
@@ -138,15 +146,19 @@ class WorktreeAuditLogger:
 
         # Log to persistent audit log (for forensic analysis)
         try:
-            from ..mcp.auth import get_audit_logger
-
-            get_audit_logger().log(  # ty: ignore[unresolved-attribute]
-                event_type=event_type,
-                user_id=user_id,
-                tool_name=tool_name,
-                params=safe_params,
-                result=result,
-                error=error,
+            _audit_logger.info(
+                json.dumps(
+                    {
+                        "timestamp": datetime.now(UTC).isoformat(),
+                        "event_type": event_type,
+                        "user_id": user_id,
+                        "tool_name": tool_name,
+                        "params": safe_params,
+                        "result": result,
+                        "error": error,
+                    },
+                    default=str,
+                )
             )
         except Exception as e:
             # Don't fail if audit logging fails
