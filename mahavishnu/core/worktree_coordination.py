@@ -14,6 +14,7 @@ Architecture (Phase 0 enhancements):
 
 import asyncio
 import logging
+import os
 from pathlib import Path
 from typing import Any
 
@@ -30,6 +31,17 @@ from .worktree_providers.session_buddy import SessionBuddyWorktreeProvider
 from .worktree_validation import WorktreePathValidator
 
 logger = logging.getLogger(__name__)
+
+# Workaround for missing `list_worktrees` / `create_worktree` /
+# `remove_worktree` tools on the Session-Buddy MCP server. The provider's
+# health_check() only verifies TCP reachability, so a healthy MCP server
+# still fails the actual worktree tool calls. Set the env var to "true"
+# (or set `worktree_providers.session_buddy_enabled: true` in
+# settings/mahavishnu.yaml) once session-buddy exposes those tools.
+# Tracking: docs/superpowers/plans/2026-07-26-session-buddy-worktree-tools.md
+_SESSION_BUDDY_ENABLED = os.environ.get(
+    "MAHAVISHNU_WORKTREE_SESSION_BUDDY_ENABLED", "false"
+).lower() in ("1", "true", "yes", "on")
 
 
 class WorktreeCoordinator:
@@ -85,9 +97,16 @@ class WorktreeCoordinator:
         # Initialize provider registry with fallback chain
         if providers is None:
             providers = [
-                SessionBuddyWorktreeProvider(),  # Primary
                 DirectGitWorktreeProvider(),  # Fallback
             ]
+            # Re-enable SessionBuddyWorktreeProvider when its MCP server
+            # exposes the worktree tools (worktree-list / worktree-add /
+            # worktree-remove). Until then, the provider's health_check()
+            # only verifies TCP reachability and the actual tool calls
+            # fail with "Unknown tool". See
+            # docs/superpowers/plans/2026-07-26-session-buddy-worktree-tools.md.
+            if _SESSION_BUDDY_ENABLED:
+                providers.insert(0, SessionBuddyWorktreeProvider())  # Primary
 
         self.provider_registry = WorktreeProviderRegistry(providers)
 
