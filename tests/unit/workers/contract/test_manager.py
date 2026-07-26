@@ -91,3 +91,29 @@ def test_cancel_reaps_when_pane_dead(manager: DurableWorkerManager, tmp_path):
     rec = manager.store.get(info.worker_id)
     assert rec is not None
     assert rec.state in {WorkerLifecycleState.REAPED, WorkerLifecycleState.FAILED}
+
+
+def test_cancel_on_reaped_record_is_idempotent(
+    manager: DurableWorkerManager, tmp_path
+) -> None:
+    """Second cancel on a REAPED record must return False without raising.
+
+    Catches regressions where the idempotency check is removed and
+    the lifecycle state machine raises ValueError on REAPED -> REAPED.
+    """
+    fake_info = TmuxTarget(
+        socket=str(tmp_path / "tmux" / "x.sock"),
+        session="mvs",
+        window="@0",
+        pane="%3",
+    )
+    with patch("mahavishnu.workers.contract.manager.create_session", return_value=fake_info), \
+         patch("mahavishnu.workers.contract.manager.pane_alive", return_value=False):
+        info = manager.spawn(worker_type="terminal-claude", backend="claude_tui", command=["claude"])
+        first = manager.cancel(info.worker_id, signal="soft", grace_ms=10)
+        second = manager.cancel(info.worker_id, signal="SIGKILL", grace_ms=10)
+    assert first is True
+    assert second is False
+    rec = manager.store.get(info.worker_id)
+    assert rec is not None
+    assert rec.state == WorkerLifecycleState.REAPED

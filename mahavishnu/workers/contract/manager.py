@@ -273,9 +273,10 @@ class DurableWorkerManager:
                 continue
             alive = pane_alive(record.tmux.socket, record.tmux.pane)
             if not alive:
-                # F3: try to recreate a sibling pane in the same session
-                # before giving up. If the session is gone, fall back to
-                # REAPED with reason "session_lost".
+                # Pane is dead. v1: reap the record. Sibling-pane
+                # recreation (spec §5 F3) is deferred to a follow-up
+                # because it requires a non-trivial tmux window-layout
+                # query; document the gap in the next-plan task.
                 if record.state != WorkerLifecycleState.REAPED:
                     record = self._transition(record, WorkerLifecycleState.REAPED)
                     self._publish("worker.reaped", record, reason="pane_dead")
