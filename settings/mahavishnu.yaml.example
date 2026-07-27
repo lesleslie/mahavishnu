@@ -34,6 +34,5 @@ terminal:
   capture_lines: 100
   poll_interval: 0.5
   max_concurrent_sessions: 20
-  # Adapter preference: "auto" (detect iTerm2, fallback to mcpretentious),
-  # "iterm2" (native iTerm2 Python API), or "mcpretentious" (PTY-based)
+  # Adapter preference: "auto", "mock", "crow", "tmux", or "mcpretentious".
   adapter_preference: "auto"

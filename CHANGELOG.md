@@ -29,6 +29,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Deprecate and remove the iTerm2 terminal adapter; use tmux or mcpretentious instead
 - Consolidate flock+atomic-write into json_state_store
 - Mahavishnu (quality: 0/100) - 2026-07-16 19:44:17
 - Mahavishnu (quality: 72/100) - 2026-07-16 18:33:29
