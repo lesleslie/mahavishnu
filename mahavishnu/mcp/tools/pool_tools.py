@@ -207,6 +207,9 @@ async def _run_async_dispatch(
 def register_pool_tools(  # noqa: C901
     mcp: FastMCP,
     pool_manager,
+    *,
+    durable_manager=None,
+    dhara=None,
 ) -> None:
     """Register pool management tools.
 
@@ -219,6 +222,13 @@ def register_pool_tools(  # noqa: C901
     Args:
         mcp: FastMCP instance
         pool_manager: PoolManager instance
+        durable_manager: Optional DurableWorkerManager; when provided,
+            ``pool_route_execute`` and ``dispatch_to_pool`` route
+            shell-based ``worker_type`` overrides through
+            ``durable_manager.spawn`` (F1/F12 contract).
+        dhara: Optional Dhara client used by ``dispatch_to_pool`` to
+            persist ``worker_id`` at ``workflow-results/{workflow_id}/``
+            on the durable path.
 
     This registers 12 pool management tools:
     - pool_spawn: Create a new pool
@@ -234,6 +244,12 @@ def register_pool_tools(  # noqa: C901
     - pool_health: Get health status
     - pool_search_memory: Search memory across pools
     """
+    # Globals for the nested @mcp.tool() functions to read on the
+    # durable-routing fast path. Default ``None`` preserves legacy
+    # behavior — the nested tools skip the durable branch when these
+    # are unset.
+    _durable_manager = durable_manager
+    _dhara = dhara
 
     @mcp.tool()
     async def pool_spawn(
@@ -370,6 +386,7 @@ def register_pool_tools(  # noqa: C901
         caller_pool_allowlist: list[str] | None = None,
         caller_kind: str = "unknown",
         parent_session_id: str | None = None,
+        worker_type: str | None = None,
     ) -> dict[str, Any]:
         """Route a prompt to the best Mahavishnu worker pool automatically.
 
@@ -444,6 +461,32 @@ def register_pool_tools(  # noqa: C901
             )
             ```
         """
+        # Durable-routing fast path: when the caller pins a shell-based
+        # ``worker_type`` and a DurableWorkerManager is configured, spawn
+        # via the contract directly and return the worker_id/pane pair
+        # without going through the legacy pool router.
+        if worker_type is not None and _durable_manager is not None:
+            from mahavishnu.workers.registry import WORKER_REGISTRY, WorkerCategory
+
+            _DURABLE_CATS: frozenset[WorkerCategory] = frozenset(
+                {
+                    WorkerCategory.SHELL,
+                    WorkerCategory.AI_ASSISTANT,
+                    WorkerCategory.REMOTE,
+                }
+            )
+            config = WORKER_REGISTRY.get(worker_type)
+            if config is not None and config.category in _DURABLE_CATS:
+                spawn_result = _durable_manager.spawn(
+                    worker_type=worker_type,
+                    backend="claude_tui",
+                    command=[worker_type],
+                )
+                return {
+                    "worker_id": spawn_result.worker_id,
+                    "pane": spawn_result.pane,
+                }
+
         from mahavishnu.core.config import MahavishnuSettings
         from mahavishnu.core.errors import RateLimitError
         from mahavishnu.pools.manager import PoolSelector, coerce_caller_kind
@@ -519,6 +562,8 @@ def register_pool_tools(  # noqa: C901
         parent_session_id: str | None = None,
         timeout: int = 300,
         async_callback: bool = False,
+        worker_type: str | None = None,
+        workflow_id: str | None = None,
     ) -> dict[str, Any]:
         """Async-callback sibling of pool_route_execute for long-running or multi-step work.
 
@@ -613,6 +658,41 @@ def register_pool_tools(  # noqa: C901
             # Poll workflow-results/{workflow_id}/ later
             ```
         """
+        # Durable-routing fast path: when the caller pins a shell-based
+        # ``worker_type`` and supplies a ``workflow_id``, spawn via the
+        # contract directly and persist worker_id under
+        # ``workflow-results/{workflow_id}/`` so downstream pollers can
+        # observe the durable assignment.
+        if worker_type is not None and _durable_manager is not None and workflow_id is not None:
+            from mahavishnu.workers.registry import WORKER_REGISTRY, WorkerCategory
+
+            _DURABLE_CATS: frozenset[WorkerCategory] = frozenset(
+                {
+                    WorkerCategory.SHELL,
+                    WorkerCategory.AI_ASSISTANT,
+                    WorkerCategory.REMOTE,
+                }
+            )
+            config = WORKER_REGISTRY.get(worker_type)
+            if config is not None and config.category in _DURABLE_CATS:
+                spawn_result = _durable_manager.spawn(
+                    worker_type=worker_type,
+                    backend="claude_tui",
+                    command=[worker_type],
+                )
+                if _dhara is not None:
+                    _dhara.put(
+                        f"workflow-results/{workflow_id}/",
+                        {
+                            "worker_id": spawn_result.worker_id,
+                            "status": "started",
+                        },
+                    )
+                return {
+                    "worker_id": spawn_result.worker_id,
+                    "workflow_id": workflow_id,
+                }
+
         from mahavishnu.pools.manager import PoolSelector, coerce_caller_kind
 
         coerced_kind = coerce_caller_kind(caller_kind)
