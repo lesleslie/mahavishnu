@@ -18,7 +18,7 @@ from .exceptions import (
 from .models import DesktopSession, GridSession, GridStatus, WindowSession
 
 if TYPE_CHECKING:
-    from mahavishnu.terminal.adapters.iterm2 import ITerm2Adapter
+    from mahavishnu.terminal.adapters.base import TerminalAdapter
 
 logger = getLogger(__name__)
 
@@ -28,8 +28,8 @@ APPLE_SCRIPT_TIMEOUT = 30
 
 
 class TerminalGridManager:
-    def __init__(self, iterm2_adapter: ITerm2Adapter) -> None:
-        self._adapter = iterm2_adapter
+    def __init__(self, adapter: TerminalAdapter) -> None:
+        self._adapter = adapter
         self._grids: dict[str, GridSession] = {}
         self._quadrant_bounds: dict[str, dict[str, int]] = {
             "tl": {"x": 0, "y": 0},
