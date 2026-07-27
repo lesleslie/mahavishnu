@@ -8,8 +8,8 @@ from typing import TYPE_CHECKING, cast
 from oneiric.core.logging import get_logger
 from starlette.responses import JSONResponse
 
-from ..terminal.adapters.iterm2 import ITERM2_AVAILABLE, ITerm2Adapter
 from ..terminal.adapters.mcpretentious import McpretentiousAdapter
+from ..terminal.adapters.mock import MockTerminalAdapter
 from ..terminal.manager import TerminalManager
 
 if TYPE_CHECKING:
@@ -35,29 +35,17 @@ def init_terminal_manager(server: FastMCPServer) -> TerminalManager | None:
         config = server.app.config.terminal
         preference = config.adapter_preference.lower()
 
-        if preference == "auto":
-            if ITERM2_AVAILABLE:
-                preference = "iterm2"
-                logger.info("Auto-detected iTerm2 availability, using iTerm2 adapter")
-            else:
-                preference = "mcpretentious"
-                logger.info("iTerm2 not available, using mcpretentious adapter")
-
         if preference == "iterm2":
-            if not ITERM2_AVAILABLE:
-                logger.warning(
-                    "iTerm2 adapter requested but not available. Install with: pip install iterm2"
-                )
-                logger.info("Falling back to mcpretentious adapter")
-                adapter = McpretentiousAdapter(server.mcp_client)
-            else:
-                try:
-                    adapter = ITerm2Adapter()
-                    logger.info("Initialized iTerm2 adapter")
-                except Exception as exc:
-                    logger.warning("Failed to initialize iTerm2 adapter: %s", exc)
-                    logger.info("Falling back to mcpretentious adapter")
-                    adapter = McpretentiousAdapter(server.mcp_client)
+            import warnings
+
+            warnings.warn(
+                "adapter_preference='iterm2' is deprecated and has been removed. "
+                "Use 'tmux' or 'mcpretentious' instead.",
+                DeprecationWarning,
+                stacklevel=2,
+            )
+            adapter = MockTerminalAdapter()
+            logger.info("iTerm2 adapter removed; initialized mock adapter")
         else:
             adapter = McpretentiousAdapter(server.mcp_client)
             logger.info("Initialized mcpretentious adapter")
