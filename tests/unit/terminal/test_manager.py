@@ -104,8 +104,8 @@ class TestManagerBuiltinBackendRequiresMcpClient:
         Previously this fell through to the misleading
         ``"No suitable terminal adapter found"`` ConfigurationError. The fix
         raises an early ConfigurationError that names the preference and
-        points the operator at non-PTY adapters (``mock`` / ``iterm2`` /
-        ``crow`` / ``auto``).
+        points the operator at non-PTY adapters (``mock`` / ``crow`` /
+        ``auto``).
         """
         from mahavishnu.core.errors import ConfigurationError
 
@@ -113,8 +113,8 @@ class TestManagerBuiltinBackendRequiresMcpClient:
         config = MagicMock()
         config.terminal = TerminalSettings(adapter_preference=preference)
 
-                    with pytest.raises(ConfigurationError) as exc_info:
-                await TerminalManager.create(config, mcp_client=None)
+        with pytest.raises(ConfigurationError) as exc_info:
+            await TerminalManager.create(config, mcp_client=None)
 
         message = exc_info.value.message
         assert preference in message
