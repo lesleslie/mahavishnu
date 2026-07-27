@@ -14,6 +14,12 @@
 
 Mahavishnu is maintained first as ecosystem infrastructure for Bodai-owned repos. Some parts are reusable and may have future commercial value, but the current product posture is internal orchestration rather than a polished general-purpose external platform.
 
+## Bodai Ecosystem Role
+
+Mahavishnu is the **orchestrator** of the [Bodai ecosystem](https://github.com/lesleslie/bodai) — it coordinates work across the other components: routing tasks through worker pools, sweeping workflows across multiple Bodai repos, and managing the lifecycle of ecosystem services (Akosha, Dhara, Session-Buddy, Crackerjack, Oneiric).
+
+Standalone, Mahavishnu is a general-purpose multi-repo orchestration system — useful for any team that needs to coordinate workflows, tools, and AI-capable backends across many repositories. See [bodai/docs](https://github.com/lesleslie/bodai) for the full integration story.
+
 ## Quality & CI
 
 Crackerjack is the standard quality-control and CI/CD gate across Mahavishnu and the broader Bodai ecosystem. Prefer Crackerjack-aligned local validation before relying on narrower repo-only checks.
