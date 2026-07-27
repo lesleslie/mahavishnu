@@ -154,6 +154,40 @@ async def worker_collect_results(
     }
 
 
+async def worker_close(
+    worker_id: str,
+    force: bool = False,
+) -> dict:
+    """Close a worker using two-phase graceful shutdown.
+
+    Soft (default): SIGTERM with 5 s grace window; if the pane is still
+    alive after the grace window the controller escalates to SIGKILL
+    automatically. ``force=True`` skips the soft phase and sends SIGKILL
+    immediately.
+
+    Returns ``{"closed": bool, "exit_code": int | None}`` on the
+    durable path. Returns ``{"success": bool, "worker_id": str, "error": str}``
+    on the legacy fallback path.
+    """
+    if _durable_manager is not None:
+        cancelled = _durable_manager.cancel(
+            worker_id,
+            signal="sigkill" if force else "soft",
+            grace_ms=0 if force else 5_000,
+        )
+        record = _durable_manager.status(worker_id)
+        return {
+            "closed": cancelled,
+            "exit_code": getattr(record, "last_exit_code", None),
+        }
+    # Legacy fallback (unchanged shape)
+    try:
+        await _worker_manager.close_worker(worker_id)
+        return {"success": True, "worker_id": worker_id}
+    except Exception as e:
+        return {"success": False, "worker_id": worker_id, "error": str(e)}
+
+
 def register_worker_tools(  # noqa: C901
     mcp: FastMCP,
     worker_manager: WorkerManager,
@@ -181,6 +215,7 @@ def register_worker_tools(  # noqa: C901
     mcp.tool()(worker_spawn)
     mcp.tool()(worker_monitor)
     mcp.tool()(worker_collect_results)
+    mcp.tool()(worker_close)
 
     @mcp.tool()
     async def worker_execute(
@@ -279,19 +314,6 @@ def register_worker_tools(  # noqa: C901
         if worker_id is not None:
             records = [r for r in records if r.worker_id == worker_id]
         return [{"worker_id": r.worker_id, "state": r.state} for r in records]
-
-    @mcp.tool()
-    async def worker_close(worker_id: str) -> dict:
-        """Close a specific worker."""
-        try:
-            await worker_manager.close_worker(worker_id)
-            return {"success": True, "worker_id": worker_id}
-        except Exception as e:
-            return {
-                "success": False,
-                "worker_id": worker_id,
-                "error": str(e),
-            }
 
     @mcp.tool()
     async def worker_close_all() -> dict:
