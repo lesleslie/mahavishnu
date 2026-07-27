@@ -116,9 +116,7 @@ class DurableWorkerManager:
             raise ValueError(
                 f"invalid transition {record.state} -> {target} for {record.worker_id}"
             )
-        updated = record.model_copy(
-            update={"state": target, "last_seen_at": _utcnow()}
-        )
+        updated = record.model_copy(update={"state": target, "last_seen_at": _utcnow()})
         self.store.put(updated)
         self._publish("worker.status_changed", updated)
         return updated
@@ -215,42 +213,39 @@ class DurableWorkerManager:
         self.store.put(record)
         return True
 
-    def cancel(
-        self, worker_id: str, *, signal: str = "soft", grace_ms: int = 5_000
-    ) -> bool:
+    def cancel(self, worker_id: str, *, signal: str = "soft", grace_ms: int = 5_000) -> bool:
         record = self.store.get(worker_id)
         if record is None or record.tmux is None:
             return False
         if record.state == WorkerLifecycleState.REAPED:
             return False
+        target = record.tmux
         record = self._transition(record, WorkerLifecycleState.DRAINING)
         if signal == "soft":
             # The soft signal targets a live pane; if the socket is gone the
             # adapter raises and we simply fall through to the grace loop.
             try:
-                send_keys(record.tmux.socket, record.tmux.pane, ["\x03"])
+                send_keys(target.socket, target.pane, ["\x03"])
             except TmuxAdapterError:
                 pass
         deadline = time.monotonic() + grace_ms / 1000.0
         while time.monotonic() < deadline:
-            if not pane_alive(record.tmux.socket, record.tmux.pane):
+            if not pane_alive(target.socket, target.pane):
                 break
             time.sleep(0.1)
-        if pane_alive(record.tmux.socket, record.tmux.pane):
+        if pane_alive(target.socket, target.pane):
             if signal == "SIGKILL":
-                tmux._run(
-                    record.tmux.socket, "kill-pane", "-t", record.tmux.pane
-                )
+                tmux._run(target.socket, "kill-pane", "-t", target.pane)
             else:
                 tmux._run(
-                    record.tmux.socket,
+                    target.socket,
                     "send-keys",
                     "-t",
-                    record.tmux.pane,
+                    target.pane,
                     "C-c",
                 )
         try:
-            kill_session(record.tmux.socket, record.tmux.session)
+            kill_session(target.socket, target.session)
         except TmuxAdapterError:
             pass
         record = self._transition(record, WorkerLifecycleState.REAPED)

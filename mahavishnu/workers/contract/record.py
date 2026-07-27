@@ -1,19 +1,19 @@
-# Pydantic v2 does not auto-resolve string annotations. We use a
-# TYPE_CHECKING block to keep `from __future__ import annotations`
-# on (crackerjack convention) while making the enum symbol available
-# at class-definition time.
+# Pydantic v2 does not auto-resolve string annotations. We import
+# `WorkerLifecycleState` at runtime so Pydantic can resolve the
+# `state: WorkerLifecycleState` field annotation when validating the
+# model. `dt.datetime` is annotation-only, but ruff TC003 insists on
+# moving it under TYPE_CHECKING; since we still need `dt.datetime` at
+# runtime for Pydantic's field typing, we keep the import at top-level
+# with a noqa.
 
 from __future__ import annotations
 
-import datetime as dt
-from typing import TYPE_CHECKING, Any
+import datetime as dt  # noqa: TC003  (needed at runtime by Pydantic v2)
+from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field
 
-if TYPE_CHECKING:
-    from .state import WorkerLifecycleState
-else:
-    from .state import WorkerLifecycleState
+from .state import WorkerLifecycleState  # noqa: TC001  (needed at runtime by Pydantic v2)
 
 
 class TmuxTarget(BaseModel):
