@@ -15,6 +15,12 @@ from uuid import uuid4
 from mcp_common.fastmcp import FastMCP  # noqa: TC002
 
 from mahavishnu.core.errors import RateLimitError
+from mahavishnu.observability.worker_metrics import WorkerMetrics
+
+# Spec §14 success-criteria instrumentation. Singleton per module; thread-safe.
+# Used by ``pool_route_execute``'s durable branch to feed the pool_share
+# success criterion (numerator pool_calls / denominator pool_calls + terminal_calls).
+_metrics = WorkerMetrics()
 
 # Explicit per-worker_type allowlist for the durable fast path.
 # NOT a category-level gate — each worker here has its durable spawn
@@ -26,11 +32,11 @@ from mahavishnu.core.errors import RateLimitError
 _DURABLE_WORKER_TYPES: frozenset[str] = frozenset(
     {
         "terminal-claude",  # AI_ASSISTANT — explicit allow (template verified)
-        "terminal-shell",   # SHELL
-        "terminal-zsh",     # SHELL
+        "terminal-shell",  # SHELL
+        "terminal-zsh",  # SHELL
         "terminal-python",  # SHELL
-        "terminal-ipython", # SHELL
-        "terminal-node",    # SHELL
+        "terminal-ipython",  # SHELL
+        "terminal-node",  # SHELL
     }
 )
 
@@ -41,6 +47,21 @@ _DURABLE_WORKER_TYPES: frozenset[str] = frozenset(
 # otherwise a caller can read or write ``workflow-results/../../etc/...``
 # on the persist layer.
 _WORKFLOW_ID_PATTERN: re.Pattern[str] = re.compile(r"^[A-Za-z0-9._-]{1,128}$")
+
+
+def _validate_workflow_id(workflow_id: str) -> bool:
+    """Return True iff ``workflow_id`` is a safe Dhara key fragment.
+
+    Caller-provided ``workflow_id`` is spliced into
+    ``f"workflow-results/{workflow_id}/"`` for both ``dispatch_to_pool``
+    and ``workflow_result``, so it MUST match a conservative identifier
+    pattern before touching Dhara. On mismatch, callers should return
+    ``{"workflow_id": workflow_id, "status": "invalid_workflow_id"}`` so
+    MCP callers see a consistent error shape and Dhara is never touched
+    with a tainted key.
+    """
+    return bool(_WORKFLOW_ID_PATTERN.match(workflow_id))
+
 
 try:
     from mahavishnu.pools.memory_aggregator import MemoryAggregator
@@ -576,6 +597,8 @@ def register_pool_tools(  # noqa: C901
             and _durable_manager is not None
             and worker_type in _DURABLE_WORKER_TYPES
         ):
+            _metrics.record("pool_route_execute")
+            _metrics.record_pool_share(pool_calls=1, terminal_calls=0)
             spawn_result = _durable_manager.spawn(
                 worker_type=worker_type,
                 backend="claude_tui",
@@ -790,12 +813,8 @@ def register_pool_tools(  # noqa: C901
         ):
             # Path-traversal guard: refuse workflow_ids that don't match
             # the conservative regex BEFORE splicing into the Dhara key.
-            if not _WORKFLOW_ID_PATTERN.match(workflow_id):
-                return {
-                    "status": "failed",
-                    "error": "invalid_workflow_id",
-                    "workflow_id": workflow_id,
-                }
+            if not _validate_workflow_id(workflow_id):
+                return {"workflow_id": workflow_id, "status": "invalid_workflow_id"}
             spawn_result = _durable_manager.spawn(
                 worker_type=worker_type,
                 backend="claude_tui",
@@ -916,7 +935,15 @@ def register_pool_tools(  # noqa: C901
             ``None`` when the corresponding key was not persisted.
             When the workflow is missing or Dhara is unavailable, the
             response is ``{"workflow_id": ..., "status": "not_found"}``.
+            When ``workflow_id`` is rejected by the path-traversal guard,
+            the response is ``{"workflow_id": ..., "status": "invalid_workflow_id"}``
+            and Dhara is never queried.
         """
+        # Path-traversal guard: caller-supplied workflow_id is spliced
+        # into ``f"workflow-results/{workflow_id}/"`` below, so reject
+        # anything outside the conservative regex BEFORE the Dhara read.
+        if not _validate_workflow_id(workflow_id):
+            return {"workflow_id": workflow_id, "status": "invalid_workflow_id"}
         dhara = getattr(pool_manager, "_dhara_state", None)
         if dhara is None:
             return {"workflow_id": workflow_id, "status": "not_found"}

@@ -9,11 +9,12 @@ from __future__ import annotations
 
 from typing import Annotated, Any
 
-from mcp_common.fastmcp import FastMCP
+from mcp_common.fastmcp import FastMCP  # noqa: TC002
 from pydantic import Field, StringConstraints
 
+from ...observability.worker_metrics import WorkerMetrics
 from ...terminal.adapters.mcpretentious import McpretentiousAdapter
-from ...terminal.manager import TerminalManager
+from ...terminal.manager import TerminalManager  # noqa: TC001
 
 # SECURITY: Define validation constraints for MCP tool inputs
 SessionID = Annotated[
@@ -21,6 +22,12 @@ SessionID = Annotated[
 ]
 
 Command = Annotated[str, StringConstraints(min_length=1, max_length=10000)]
+
+# Spec §14 success-criteria instrumentation. Singleton per module; thread-safe.
+# Used by ``terminal_launch`` to feed the pool_share success criterion
+# (terminal_calls increments the denominator alongside pool_route_execute's
+# pool_calls numerator).
+_metrics = WorkerMetrics()
 
 # SECURITY: Dangerous command patterns to block in MCP tools
 DANGEROUS_COMMAND_PATTERNS = [
@@ -93,6 +100,8 @@ def register_terminal_tools(  # noqa: C901
         rows: int = Field(default=40, ge=10, le=200),
     ) -> list[str]:
         """Launch terminal sessions running a command."""
+        _metrics.record("terminal_launch")
+        _metrics.record_pool_share(pool_calls=0, terminal_calls=1)
         # SECURITY: Validate command safety
         validate_command_safety(command)
 
@@ -168,9 +177,7 @@ def register_terminal_tools(  # noqa: C901
 
         # Create new adapter instance
         if adapter_name == "iterm2":
-            raise NotImplementedError(
-                "iTerm2 adapter is deprecated; use tmux or mcpretentious"
-            )
+            raise NotImplementedError("iTerm2 adapter is deprecated; use tmux or mcpretentious")
         if adapter_name == "mcpretentious":
             if mcp_client is None:
                 return {"status": "error", "message": "mcpretentious adapter requires MCP client"}
@@ -210,7 +217,6 @@ def register_terminal_tools(  # noqa: C901
                 "description": "PTY-based terminal management (universal)",
             }
         }
-
 
         return {
             "adapters": adapters,
