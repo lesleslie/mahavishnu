@@ -1,13 +1,81 @@
 """MCP tools for worker orchestration."""
 
-from mcp_common.fastmcp import FastMCP
+from __future__ import annotations
 
-from ...workers.manager import WorkerManager
+from typing import TYPE_CHECKING
+
+from ...workers.registry import WORKER_REGISTRY, WorkerCategory
+
+if TYPE_CHECKING:
+    from mcp_common.fastmcp import FastMCP
+
+    from ...workers.contract.manager import DurableWorkerManager
+    from ...workers.manager import WorkerManager
+
+
+# Module-level references set by ``register_worker_tools``. The pattern
+# mirrors ``worker_contract_tools.py``: module-level tool functions read
+# from these globals so tests can monkeypatch without going through the
+# FastMCP app.
+_durable_manager: DurableWorkerManager | None = None
+_worker_manager: WorkerManager | None = None
+
+
+# Categories that must go through the durable-worker contract per the
+# durable-local-workers plan. Container/Gateway/Application workers
+# continue to use the legacy ``WorkerManager.spawn_workers`` path.
+_DURABLE_CATEGORIES: frozenset[WorkerCategory] = frozenset(
+    {WorkerCategory.SHELL, WorkerCategory.AI_ASSISTANT, WorkerCategory.REMOTE}
+)
+
+
+async def worker_spawn(
+    worker_type: str = "terminal-claude",
+    count: int = 1,
+) -> dict:
+    """Spawn worker instances for task execution.
+
+    Shell-based worker types (``SHELL``, ``AI_ASSISTANT``, ``REMOTE``)
+    are routed through the durable-worker contract
+    (``_durable_manager.spawn``) so they get tmux-backed lifecycle
+    tracking. Non-shell workers (container, gateway, application)
+    continue to use the legacy ``WorkerManager.spawn_workers`` path.
+    When the durable manager is not configured, shell workers fall back
+    to the legacy path so existing callers stay green.
+    """
+    if count < 1 or count > 50:
+        raise ValueError("count must be between 1 and 50")
+
+    config = WORKER_REGISTRY.get(worker_type)
+    if (
+        config is not None
+        and config.category in _DURABLE_CATEGORIES
+        and _durable_manager is not None
+    ):
+        results = [
+            _durable_manager.spawn(
+                worker_type=worker_type,
+                backend="claude_tui",
+                command=[worker_type],
+            )
+            for _ in range(count)
+        ]
+        return {"worker_ids": [r.worker_id for r in results]}
+
+    if _worker_manager is None:
+        raise RuntimeError("worker_manager not configured")
+
+    worker_ids = await _worker_manager.spawn_workers(
+        worker_type=worker_type,
+        count=count,
+    )
+    return {"worker_ids": worker_ids}
 
 
 def register_worker_tools(  # noqa: C901
     mcp: FastMCP,
     worker_manager: WorkerManager,
+    durable_manager: DurableWorkerManager | None = None,
 ) -> None:
     """Register worker orchestration tools with MCP server.
 
@@ -20,23 +88,15 @@ def register_worker_tools(  # noqa: C901
     Args:
         mcp: FastMCP server instance
         worker_manager: WorkerManager instance for backend operations
+        durable_manager: Optional DurableWorkerManager for shell worker
+            routing. When ``None`` (default), shell workers fall back to
+            the legacy ``WorkerManager.spawn_workers`` path.
     """
+    global _durable_manager, _worker_manager
+    _durable_manager = durable_manager
+    _worker_manager = worker_manager
 
-    @mcp.tool()
-    async def worker_spawn(
-        worker_type: str = "terminal-claude",
-        count: int = 1,
-    ) -> list[str]:
-        """Spawn worker instances for task execution."""
-        if count < 1 or count > 50:
-            raise ValueError("count must be between 1 and 50")
-
-        worker_ids = await worker_manager.spawn_workers(
-            worker_type=worker_type,
-            count=count,
-        )
-
-        return worker_ids
+    mcp.tool()(worker_spawn)
 
     @mcp.tool()
     async def worker_execute(

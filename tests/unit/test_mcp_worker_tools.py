@@ -108,9 +108,9 @@ class TestWorkerSpawn:
     """Tests for the worker_spawn tool."""
 
     async def test_spawn_returns_worker_ids(self, registered_mcp, mock_worker_manager):
-        """Should return list of worker IDs from worker_manager."""
+        """Should return ``{"worker_ids": [...]}`` from worker_manager."""
         result = await registered_mcp._tools["worker_spawn"]()
-        assert result == ["w-1", "w-2"]
+        assert result == {"worker_ids": ["w-1", "w-2"]}
         mock_worker_manager.spawn_workers.assert_awaited_once()
 
     async def test_spawn_passes_type_and_count(self, registered_mcp, mock_worker_manager):

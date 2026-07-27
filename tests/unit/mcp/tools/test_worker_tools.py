@@ -183,16 +183,26 @@ class TestRegistration:
 
 
 class TestWorkerSpawn:
-    """``worker_spawn`` creates workers via WorkerManager.spawn_workers."""
+    """``worker_spawn`` creates workers.
+
+    Non-shell worker types fall back to the legacy
+    ``WorkerManager.spawn_workers`` path. Shell-based worker types
+    (SHELL, AI_ASSISTANT, REMOTE) are routed through
+    ``_durable_manager.spawn`` when the durable manager is configured;
+    see ``tests/unit/mcp/tools/test_worker_spawn_contract.py`` for the
+    durable path coverage. With no durable manager configured, shell
+    workers fall back to the legacy path so callers without durable
+    plumbing stay green.
+    """
 
     async def test_returns_worker_ids(
         self, registered_mcp: _StubMCP, mock_worker_manager: AsyncMock
     ) -> None:
         fn = registered_mcp.tools["worker_spawn"]
-        result = await fn(worker_type="terminal-claude", count=2)
-        assert result == ["w_1", "w_2"]
+        result = await fn(worker_type="container", count=2)
+        assert result == {"worker_ids": ["w_1", "w_2"]}
         mock_worker_manager.spawn_workers.assert_awaited_once_with(
-            worker_type="terminal-claude",
+            worker_type="container",
             count=2,
         )
 
@@ -201,7 +211,7 @@ class TestWorkerSpawn:
     ) -> None:
         fn = registered_mcp.tools["worker_spawn"]
         result = await fn()
-        assert result == ["w_1", "w_2"]
+        assert result == {"worker_ids": ["w_1", "w_2"]}
         _, kwargs = mock_worker_manager.spawn_workers.call_args
         assert kwargs["worker_type"] == "terminal-claude"
         assert kwargs["count"] == 1
