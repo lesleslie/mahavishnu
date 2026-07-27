@@ -19,7 +19,19 @@ if TYPE_CHECKING:
 from rich.console import Console
 from rich.table import Table
 
-from mahavishnu.tui.command_palette import Command, CommandCategory, CommandPalette
+try:
+    from mahavishnu.tui.command_palette import (  # noqa: F401
+        Command,
+        CommandCategory,
+        CommandPalette,
+    )
+except ImportError:
+    # textual is optional — when it's missing, the command palette symbols
+    # become None and consumers should fall back to FallbackRichFormatter.
+    # FallbackRichFormatter and get_console below still work.
+    Command = None  # type: ignore[assignment,misc]
+    CommandCategory = None  # type: ignore[assignment,misc]
+    CommandPalette = None  # type: ignore[assignment,misc]
 
 logger = get_logger(__name__)
 
