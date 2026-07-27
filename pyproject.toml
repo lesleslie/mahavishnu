@@ -146,11 +146,6 @@ llm-providers = [
     "openai>=2.41.0",
 ]
 
-# Optional: iTerm2 terminal integration (macOS only)
-iterm2 = [
-    "iterm2>=2.20",
-]
-
 # Optional: TUI interface
 tui = [
     "textual>=8.2.7",
