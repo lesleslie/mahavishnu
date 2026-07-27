@@ -24,7 +24,6 @@ from mahavishnu.workers.apple_container import AppleContainerWorker
 from mahavishnu.workers.application import ApplicationWorker
 from mahavishnu.workers.base import BaseWorker, WorkerResult, WorkerStatus
 from mahavishnu.workers.crow import CrowWorker
-from mahavishnu.workers.debug_monitor import DebugMonitorWorker
 from mahavishnu.workers.e2b_sandbox import E2BSandboxWorker
 from mahavishnu.workers.generic_shell import GenericShellWorker
 from mahavishnu.workers.manager import WorkerManager
@@ -65,7 +64,6 @@ __all__ = [
     "CrowWorker",
     "E2BSandboxWorker",
     "OpenHandsWorker",
-    "DebugMonitorWorker",
     "GenericShellWorker",
     "ApplicationWorker",
     "OllamaWorker",

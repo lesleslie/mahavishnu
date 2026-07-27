@@ -2,13 +2,12 @@
 
 Covers initialization, worker creation, spawning, task execution,
 batch execution, monitoring, result collection, lifecycle management,
-debug monitor launching, and health checks.
+and health checks.
 """
 
 from __future__ import annotations
 
 import asyncio
-import logging
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -82,11 +81,9 @@ class TestWorkerManagerInit:
 
         assert mgr.terminal_manager is tm
         assert mgr.max_concurrent == 10
-        assert mgr.debug_mode is False
         assert mgr.session_buddy_client is None
         assert mgr.mcp_client is None
         assert mgr._workers == {}
-        assert mgr._debug_monitor_worker is None
 
     def test_custom_max_concurrent(self):
         """Test max_concurrent is set correctly."""
@@ -114,12 +111,6 @@ class TestWorkerManagerInit:
 
         mgr2 = WorkerManager(terminal_manager=tm, max_concurrent=100)
         assert mgr2.max_concurrent == 100
-
-    def test_debug_mode_enabled(self):
-        """Test debug_mode is stored correctly."""
-        tm = _make_terminal_manager()
-        mgr = WorkerManager(terminal_manager=tm, debug_mode=True)
-        assert mgr.debug_mode is True
 
     def test_optional_clients_stored(self):
         """Test optional session_buddy_client and mcp_client are stored."""
@@ -454,41 +445,10 @@ class TestSpawnWorkers:
         mgr = WorkerManager(terminal_manager=tm)
         workers = [_make_worker(worker_id=f"w-{i}") for i in range(3)]
 
-        with (
-            patch.object(mgr, "_create_worker", side_effect=workers),
-            patch.object(mgr, "_launch_debug_monitor", new_callable=AsyncMock),
-        ):
+        with patch.object(mgr, "_create_worker", side_effect=workers):
             ids = await mgr.spawn_workers("terminal-qwen", 3)
             assert ids == ["w-0", "w-1", "w-2"]
             assert len(mgr._workers) == 3
-
-    @pytest.mark.asyncio
-    async def test_spawn_workers_with_debug_mode(self):
-        """Test that debug monitor is launched when debug_mode is True."""
-        tm = _make_terminal_manager()
-        mgr = WorkerManager(terminal_manager=tm, debug_mode=True)
-        worker = _make_worker()
-
-        with (
-            patch.object(mgr, "_create_worker", return_value=worker),
-            patch.object(mgr, "_launch_debug_monitor", new_callable=AsyncMock) as mock_debug,
-        ):
-            await mgr.spawn_workers("terminal-qwen", 1)
-            mock_debug.assert_called_once()
-
-    @pytest.mark.asyncio
-    async def test_spawn_workers_without_debug_mode(self):
-        """Test that debug monitor is not launched when debug_mode is False."""
-        tm = _make_terminal_manager()
-        mgr = WorkerManager(terminal_manager=tm, debug_mode=False)
-        worker = _make_worker()
-
-        with (
-            patch.object(mgr, "_create_worker", return_value=worker),
-            patch.object(mgr, "_launch_debug_monitor", new_callable=AsyncMock) as mock_debug,
-        ):
-            await mgr.spawn_workers("terminal-qwen", 1)
-            mock_debug.assert_not_called()
 
     @pytest.mark.asyncio
     async def test_spawn_zero_workers(self):
@@ -859,132 +819,6 @@ class TestCloseAll:
         await mgr.close_all()
         assert len(mgr._workers) == 0
 
-    @pytest.mark.asyncio
-    async def test_close_all_with_debug_monitor(self):
-        """Test that close_all also closes the debug monitor worker."""
-        tm = _make_terminal_manager()
-        mgr = WorkerManager(terminal_manager=tm)
-        debug_worker = _make_worker("debug-monitor")
-        mgr._debug_monitor_worker = debug_worker
-
-        await mgr.close_all()
-        debug_worker.stop.assert_called_once()
-        assert mgr._debug_monitor_worker is None
-
-    @pytest.mark.asyncio
-    async def test_close_all_debug_monitor_exception_ignored(self):
-        """Test that exceptions from debug monitor stop are silently caught."""
-        tm = _make_terminal_manager()
-        mgr = WorkerManager(terminal_manager=tm)
-        debug_worker = _make_worker("debug-monitor")
-        debug_worker.stop = AsyncMock(side_effect=RuntimeError("debug stop fail"))
-        mgr._debug_monitor_worker = debug_worker
-
-        await mgr.close_all()
-        assert mgr._debug_monitor_worker is None
-
-
-class TestLaunchDebugMonitor:
-    """Tests for the _launch_debug_monitor method."""
-
-    @pytest.mark.asyncio
-    async def test_launch_debug_monitor_already_running(self):
-        """Test that launching a debug monitor when one exists is a no-op."""
-        tm = _make_terminal_manager()
-        mgr = WorkerManager(terminal_manager=tm)
-        mgr._debug_monitor_worker = MagicMock()
-
-        await mgr._launch_debug_monitor()
-        assert mgr._debug_monitor_worker is not None
-
-    @pytest.mark.asyncio
-    async def test_launch_debug_monitor_no_log_path(self):
-        """Test that the debug monitor is not launched when no log path is found."""
-        tm = _make_terminal_manager()
-        mgr = WorkerManager(terminal_manager=tm)
-
-        root_logger = logging.getLogger()
-        original_handlers = root_logger.handlers[:]
-        root_logger.handlers.clear()
-        root_logger.addHandler(logging.NullHandler())
-
-        try:
-            await mgr._launch_debug_monitor()
-            assert mgr._debug_monitor_worker is None
-        finally:
-            root_logger.handlers = original_handlers
-
-    @pytest.mark.asyncio
-    async def test_launch_debug_monitor_success(self):
-        """Test successful debug monitor launch."""
-        tm = _make_terminal_manager()
-        mgr = WorkerManager(terminal_manager=tm)
-
-        mock_handler = MagicMock(spec=logging.FileHandler)
-        mock_handler.baseFilename = "/tmp/test.log"
-        mock_handler.level = logging.DEBUG
-        root_logger = logging.getLogger()
-        original_handlers = root_logger.handlers[:]
-        root_logger.handlers.clear()
-        root_logger.addHandler(mock_handler)
-
-        mock_debug_worker = MagicMock()
-        mock_debug_worker.start = AsyncMock(return_value="debug-1")
-
-        try:
-            with patch(
-                "mahavishnu.workers.debug_monitor.DebugMonitorWorker",
-                return_value=mock_debug_worker,
-            ):
-                await mgr._launch_debug_monitor()
-                assert mgr._debug_monitor_worker is mock_debug_worker
-                mock_debug_worker.start.assert_called_once()
-        finally:
-            root_logger.handlers = original_handlers
-
-    @pytest.mark.asyncio
-    async def test_launch_debug_monitor_import_error(self):
-        """Test that ImportError for DebugMonitorWorker is handled gracefully."""
-        tm = _make_terminal_manager()
-        mgr = WorkerManager(terminal_manager=tm)
-
-        mock_handler = MagicMock(spec=logging.FileHandler)
-        mock_handler.baseFilename = "/tmp/test.log"
-        mock_handler.level = logging.DEBUG
-        root_logger = logging.getLogger()
-        original_handlers = root_logger.handlers[:]
-        root_logger.handlers.clear()
-        root_logger.addHandler(mock_handler)
-
-        try:
-            with patch(
-                "mahavishnu.workers.debug_monitor.DebugMonitorWorker",
-                side_effect=ImportError("not implemented"),
-            ):
-                await mgr._launch_debug_monitor()
-                assert mgr._debug_monitor_worker is None
-        finally:
-            root_logger.handlers = original_handlers
-
-    @pytest.mark.asyncio
-    async def test_launch_debug_monitor_handler_without_base_filename(self):
-        """Test that handlers without baseFilename attribute are skipped."""
-        tm = _make_terminal_manager()
-        mgr = WorkerManager(terminal_manager=tm)
-
-        mock_handler = MagicMock(spec=logging.StreamHandler)
-        mock_handler.level = logging.WARNING
-        root_logger = logging.getLogger()
-        original_handlers = root_logger.handlers[:]
-        root_logger.handlers.clear()
-        root_logger.addHandler(mock_handler)
-
-        try:
-            await mgr._launch_debug_monitor()
-            assert mgr._debug_monitor_worker is None
-        finally:
-            root_logger.handlers = original_handlers
-
 
 class TestListWorkers:
     """Tests for the list_workers method."""
@@ -1040,14 +874,12 @@ class TestHealthCheck:
     async def test_health_check_basic(self):
         """Test health_check returns expected structure."""
         tm = _make_terminal_manager()
-        mgr = WorkerManager(terminal_manager=tm, max_concurrent=5, debug_mode=True)
+        mgr = WorkerManager(terminal_manager=tm, max_concurrent=5)
 
         health = await mgr.health_check()
         assert health["status"] == "healthy"
         assert health["workers_active"] == 0
         assert health["max_concurrent"] == 5
-        assert health["debug_mode"] is True
-        assert health["debug_monitor_active"] is False
         assert health["workers"] == []
 
     @pytest.mark.asyncio
@@ -1063,13 +895,3 @@ class TestHealthCheck:
         assert health["workers_active"] == 1
         assert len(health["workers"]) == 1
         assert health["workers"][0]["worker_id"] == "w-0"
-
-    @pytest.mark.asyncio
-    async def test_health_check_debug_monitor_active(self):
-        """Test health_check reflects active debug monitor."""
-        tm = _make_terminal_manager()
-        mgr = WorkerManager(terminal_manager=tm)
-        mgr._debug_monitor_worker = MagicMock()
-
-        health = await mgr.health_check()
-        assert health["debug_monitor_active"] is True

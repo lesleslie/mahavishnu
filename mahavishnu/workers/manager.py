@@ -5,7 +5,6 @@ from __future__ import annotations
 import asyncio
 import logging
 import os
-from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 from monitoring.metrics import (
@@ -74,13 +73,11 @@ class WorkerManager:
     - Monitor worker progress
     - Collect results with aggregation
     - Handle failures with retries
-    - Debug monitor auto-launch
     - Support for terminal, container, and application workers
 
     Args:
         terminal_manager: TerminalManager for terminal session control
         max_concurrent: Maximum number of concurrent workers
-        debug_mode: Enable debug monitor auto-launch
         session_buddy_client: Optional Session-Buddy MCP client
         mcp_client: Optional MCP client for application workers
         settings: Optional MahavishnuSettings used for capability evaluation
@@ -90,7 +87,6 @@ class WorkerManager:
         self,
         terminal_manager: TerminalManager,
         max_concurrent: int = 10,
-        debug_mode: bool = False,
         session_buddy_client: Any = None,
         mcp_client: Any = None,
         *,
@@ -101,24 +97,19 @@ class WorkerManager:
         Args:
             terminal_manager: TerminalManager instance
             max_concurrent: Maximum concurrent workers (1-100)
-            debug_mode: Enable debug monitor
             session_buddy_client: Session-Buddy MCP client
             mcp_client: MCP client for application workers
             settings: Optional MahavishnuSettings for capability evaluation
         """
         self.terminal_manager = terminal_manager
         self.max_concurrent = max(1, min(max_concurrent, 100))
-        self.debug_mode = debug_mode
         self.session_buddy_client = session_buddy_client
         self.mcp_client = mcp_client
         self.settings = settings
         self._workers: dict[str, BaseWorker] = {}
         self._semaphore = asyncio.Semaphore(self.max_concurrent)
-        self._debug_monitor_worker: BaseWorker | None = None
 
-        logger.info(
-            f"Initialized WorkerManager (max_concurrent={self.max_concurrent}, debug={debug_mode})"
-        )
+        logger.info(f"Initialized WorkerManager (max_concurrent={self.max_concurrent})")
 
     def list_worker_ids(self) -> list[str]:
         """Return IDs of all currently registered workers."""
@@ -213,10 +204,6 @@ class WorkerManager:
             worker_ids.append(worker_id)
 
         logger.info(f"Spawned {len(worker_ids)} {worker_type} workers")
-
-        # Launch debug monitor if debug mode enabled
-        if self.debug_mode:
-            await self._launch_debug_monitor()
 
         return worker_ids
 
@@ -587,53 +574,6 @@ class WorkerManager:
             tasks = [self.close_worker(wid) for wid in worker_ids]
             await asyncio.gather(*tasks, return_exceptions=True)
 
-        # Close debug monitor
-        if self._debug_monitor_worker:
-            try:
-                await self._debug_monitor_worker.stop()
-            except Exception:
-                pass
-            finally:
-                self._debug_monitor_worker = None
-
-    async def _launch_debug_monitor(self) -> None:
-        """Launch iTerm2 debug log monitor."""
-        if self._debug_monitor_worker:
-            return  # Already launched
-
-        try:
-            # Get debug log path from logging config
-            logger_instance = logging.getLogger()
-            log_path = None
-
-            for handler in logger_instance.handlers:
-                if hasattr(handler, "baseFilename"):
-                    log_path = Path(str(handler.baseFilename))
-                    break
-
-            if not log_path:
-                logger.warning("Could not determine debug log path")
-                return
-
-            # Import debug monitor worker (if available)
-            try:
-                from .debug_monitor import DebugMonitorWorker
-
-                self._debug_monitor_worker = DebugMonitorWorker(
-                    log_path=log_path,
-                    terminal_manager=self.terminal_manager,
-                    session_buddy_client=self.session_buddy_client,
-                )
-
-                monitor_id = await self._debug_monitor_worker.start()
-                logger.info(f"Launched debug monitor: {monitor_id}")
-
-            except (ImportError, NotImplementedError):
-                logger.warning("DebugMonitorWorker deprecated/unavailable; skipping debug monitor")
-
-        except Exception as e:
-            logger.error(f"Failed to launch debug monitor: {e}")
-
     async def list_workers(self) -> list[dict[str, Any]]:
         """List all active workers.
 
@@ -675,7 +615,5 @@ class WorkerManager:
             "status": "healthy",
             "workers_active": len(workers_list),
             "max_concurrent": self.max_concurrent,
-            "debug_mode": self.debug_mode,
-            "debug_monitor_active": self._debug_monitor_worker is not None,
             "workers": workers_list,
         }

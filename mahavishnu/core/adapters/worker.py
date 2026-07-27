@@ -79,7 +79,6 @@ class WorkerOrchestratorAdapter(OrchestratorAdapter):
         return WorkerManager(
             terminal_manager=terminal_mgr,
             max_concurrent=max_concurrent,
-            debug_mode=False,
             session_buddy_client=None,
         )
 
@@ -272,7 +271,6 @@ class WorkerOrchestratorAdapter(OrchestratorAdapter):
             "adapter_type": "worker",
             "workers_active": workers_active,
             "max_concurrent": max_concurrent,
-            "debug_mode": health.get("debug_mode", False),
             "details": health,
         }
 

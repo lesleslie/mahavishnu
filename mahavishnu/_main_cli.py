@@ -1335,7 +1335,6 @@ def workers_spawn(
         worker_mgr = WorkerManager(
             terminal_manager=terminal_mgr,
             max_concurrent=getattr(maha_app.config, "max_concurrent_workers", 10),
-            debug_mode=False,  # Use --debug flag for debug mode
             session_buddy_client=None,  # Will integrate in Phase 2.5
         )
 
@@ -1417,7 +1416,6 @@ def workers_execute(
         worker_mgr = WorkerManager(
             terminal_manager=terminal_mgr,
             max_concurrent=getattr(maha_app.config, "max_concurrent_workers", 10),
-            debug_mode=False,
             session_buddy_client=None,
             settings=maha_app.config,
         )

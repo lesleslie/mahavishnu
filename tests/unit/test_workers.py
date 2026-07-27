@@ -1,13 +1,11 @@
 """Unit tests for Mahavishnu worker system."""
 
 import asyncio
-from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
 from mahavishnu.workers.base import BaseWorker, WorkerResult, WorkerStatus
-from mahavishnu.workers.debug_monitor import DebugMonitorWorker
 from mahavishnu.workers.generic_shell import GenericShellWorker
 from mahavishnu.workers.manager import WorkerManager
 from monitoring.metrics import agent_tasks_in_progress, agent_tasks_total
@@ -239,96 +237,6 @@ class TestGenericShellWorkerTerminal:
 
         mock_terminal_manager.close_session.assert_called_once_with("session_123")
         assert terminal_qwen_worker._status == WorkerStatus.COMPLETED
-# ============================================================================
-# Debug Monitor Worker Tests
-# ============================================================================
-
-
-@pytest.fixture
-def mock_terminal_manager_for_debug():
-    """Create a mock TerminalManager for debug monitor."""
-    manager = MagicMock()
-    manager.launch_sessions = AsyncMock(return_value=["debug_session_123"])
-    manager.close_session = AsyncMock()
-    manager.list_sessions = AsyncMock(
-        return_value=[{"id": "debug_session_123", "status": "running"}]
-    )
-    manager.current_adapter.return_value = "iterm2"
-    return manager
-
-
-@pytest.fixture
-def debug_monitor_worker(mock_terminal_manager_for_debug):
-    """Create a DebugMonitorWorker."""
-    return DebugMonitorWorker(
-        log_path=Path("/tmp/test-debug.log"),
-        terminal_manager=mock_terminal_manager_for_debug,
-        session_buddy_client=None,
-    )
-
-
-class TestDebugMonitorWorker:
-    """Test DebugMonitorWorker class."""
-
-    def test_initialization(self, debug_monitor_worker):
-        """Test debug monitor initialization."""
-        assert debug_monitor_worker.worker_type == "debug-monitor"
-        assert str(debug_monitor_worker.log_path) == "/tmp/test-debug.log"
-        assert debug_monitor_worker.session_id is None
-        assert debug_monitor_worker._running is False
-
-    @pytest.mark.asyncio
-    async def test_start_iterm2_monitor(
-        self, debug_monitor_worker, mock_terminal_manager_for_debug
-    ):
-        """Test starting iTerm2 debug monitor."""
-        session_id = await debug_monitor_worker._start_iterm2_monitor()
-
-        assert session_id == "debug_session_123"
-        mock_terminal_manager_for_debug.launch_sessions.assert_called_once()
-
-    @pytest.mark.asyncio
-    async def test_start_without_session_buddy(self, debug_monitor_worker):
-        """Test starting monitor without Session-Buddy."""
-        debug_monitor_worker.session_buddy_client = None
-
-        session_id = await debug_monitor_worker.start()
-
-        assert session_id == "debug_session_123"
-        # Streaming task should not be created
-        assert debug_monitor_worker._streaming_task is None
-
-    @pytest.mark.asyncio
-    async def test_status_running(self, debug_monitor_worker):
-        """Test status when running."""
-        debug_monitor_worker.session_id = "debug_session_123"
-        debug_monitor_worker._running = True
-        debug_monitor_worker._streaming_task = AsyncMock()
-        debug_monitor_worker._streaming_task.done = MagicMock(return_value=False)
-
-        status = await debug_monitor_worker.status()
-
-        assert status == WorkerStatus.RUNNING
-
-    @pytest.mark.asyncio
-    async def test_stop(self, debug_monitor_worker, mock_terminal_manager_for_debug):
-        """Test stopping debug monitor."""
-        debug_monitor_worker.session_id = "debug_session_123"
-        debug_monitor_worker._running = True
-        # Don't set a mock streaming task - the code handles None correctly
-        debug_monitor_worker._streaming_task = None
-
-        await debug_monitor_worker.stop()
-
-        assert debug_monitor_worker._running is False
-        assert debug_monitor_worker.session_id is None
-        mock_terminal_manager_for_debug.close_session.assert_called_once_with("debug_session_123")
-
-    @pytest.mark.asyncio
-    async def test_execute_not_implemented(self, debug_monitor_worker):
-        """Test that execute raises NotImplementedError."""
-        with pytest.raises(NotImplementedError, match="does not execute tasks"):
-            await debug_monitor_worker.execute({})
 
 
 # ============================================================================
@@ -352,7 +260,6 @@ def worker_manager(mock_worker_manager_deps):
     return WorkerManager(
         terminal_manager=terminal_manager,
         max_concurrent=5,
-        debug_mode=False,
         session_buddy_client=session_buddy_client,
     )
 
@@ -363,7 +270,6 @@ class TestWorkerManager:
     def test_initialization(self, worker_manager):
         """Test WorkerManager initialization."""
         assert worker_manager.max_concurrent == 5
-        assert worker_manager.debug_mode is False
         assert len(worker_manager._workers) == 0
 
     def test_initialization_max_concurrent_clamping(self, mock_worker_manager_deps):
@@ -595,6 +501,7 @@ class TestSessionBuddyIntegration:
         assert call_args[0][0] == "store_memory"
         assert "metadata" in call_args[1]["arguments"]
 
+
 # ============================================================================
 # Stream-JSON Parsing Tests
 # ============================================================================
@@ -690,7 +597,6 @@ class TestConcurrentExecution:
         manager = WorkerManager(
             terminal_manager=terminal_manager,
             max_concurrent=2,
-            debug_mode=False,
             session_buddy_client=None,
         )
 
@@ -896,6 +802,7 @@ class TestWorkerLifecycle:
         await worker.stop()
         assert worker._status == WorkerStatus.COMPLETED
 
+
 # ============================================================================
 # Worker Pool Management Tests
 # ============================================================================
@@ -1087,6 +994,7 @@ class TestSessionBuddyStorage:
         assert result.status == WorkerStatus.COMPLETED
         # Session-Buddy was attempted but failed
         mock_sb_client.call_tool.assert_called()
+
 
 # ============================================================================
 # ============================================================================
