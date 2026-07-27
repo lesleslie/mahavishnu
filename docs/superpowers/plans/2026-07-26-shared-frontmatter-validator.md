@@ -2,6 +2,7 @@
 status: draft
 role: implementation
 date: 2026-07-26
+last_reviewed: 2026-07-27
 spec: ../specs/2026-07-26-shared-frontmatter-validator-design.md
 topic: shared-frontmatter-validator
 ---

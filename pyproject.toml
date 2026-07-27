@@ -130,7 +130,7 @@ dev = [
 # Bodai ecosystem integrations
 ecosystem = [
     "akosha>=0.8.2",
-    "crackerjack>=0.65.0",
+    "crackerjack>=0.70.0",
     "dhara>=0.11.1",
     "session-buddy>=0.19.10",
 ]

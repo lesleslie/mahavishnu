@@ -1,7 +1,10 @@
 ---
 title: Shared Frontmatter Validator (crackerjack docs validate)
 date: 2026-07-26
-status: approved
+last_reviewed: 2026-07-27
+status: complete
+role: canonical
+topic: shared-frontmatter-validator
 spec-for: crackerjack v0.69.5+
 ---
 

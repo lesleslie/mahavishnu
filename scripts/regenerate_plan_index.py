@@ -61,7 +61,7 @@ from pathlib import Path
 from typing import Any
 
 # ---------------------------------------------------------------------------
-# Constants — mirrors validate_document_frontmatter.py
+# Constants — mirrors `crackerjack docs validate --allow-nonstandard`
 # ---------------------------------------------------------------------------
 
 LIFECYCLE_VALUES: tuple[str, ...] = (
@@ -471,7 +471,7 @@ def _authority_matrix(
         "repository. `Plan navigation` row points at this file (and its "
         "`scripts/regenerate_plan_index.py`); `Frontmatter vocabulary` rows "
         "point at the canonical schema if it exists, otherwise the local "
-        "frontmatter contract lives in `scripts/validate_document_frontmatter.py`."
+        "frontmatter contract lives in `crackerjack docs validate --allow-nonstandard`."
     )
     rows.append("")
     rows.append("| Concern | Authority |")
@@ -489,7 +489,7 @@ def _authority_matrix(
     else:
         rows.append(
             "| Frontmatter vocabulary and migration contract "
-            "| `scripts/validate_document_frontmatter.py` |"
+            "| `crackerjack docs validate --allow-nonstandard` |"
         )
     rows.append("| Discovered stores | "
                  + " ".join(f"`{s}`" for s in stores)
@@ -743,7 +743,7 @@ def _render_index(
     sections.append(
         "One table per store. Entries are sorted by `date` DESC, with ties broken "
         "by path ASC. Files without valid frontmatter are excluded; run "
-        "`uv run python scripts/validate_document_frontmatter.py --allow-nonstandard` "
+        "`uv run crackerjack docs validate --allow-nonstandard` "
         "to surface them."
     )
     sections.append("")
