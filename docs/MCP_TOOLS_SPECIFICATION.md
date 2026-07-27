@@ -2077,3 +2077,26 @@ tool.tag: "backend"
 tool.status: "success"
 tool.duration_ms: 45
 ```
+
+______________________________________________________________________
+
+## Worker Contract Tools
+
+The worker contract tool group is the durable, tmux-aware replacement
+for the legacy `worker_execute` and `dispatch_to_pool` async path.
+
+| Tool | Purpose |
+|---|---|
+| `launch_worker` | Create a durable local worker. Returns `worker_id` and tmux metadata. |
+| `send_input` | Send text input to a running worker. |
+| `capture_output` | Incremental output capture with byte-offset cursor. |
+| `worker_status` | Authoritative lifecycle state. |
+| `wait_for_state` | Block until a worker reaches a target state. |
+| `cancel_worker` | Two-phase graceful cancellation. |
+| `worker_revoke` | Mark a worker record as `reaped`; with `force=true` also kill the pane. |
+
+Workers are durable across Mahavishnu controller restarts; the
+`worker_id` is the stable identity. See
+`docs/superpowers/specs/2026-07-26-durable-local-workers-design.md`
+for the design and `docs/superpowers/plans/2026-07-26-durable-local-workers.md`
+for the implementation plan.
