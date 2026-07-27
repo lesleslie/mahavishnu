@@ -2,8 +2,9 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, NotRequired, TypedDict
 
+from ...workers.contract.state import WorkerLifecycleState
 from ...workers.registry import WORKER_REGISTRY, WorkerCategory
 
 if TYPE_CHECKING:
@@ -28,6 +29,25 @@ _worker_manager: WorkerManager | None = None
 _DURABLE_CATEGORIES: frozenset[WorkerCategory] = frozenset(
     {WorkerCategory.SHELL, WorkerCategory.AI_ASSISTANT, WorkerCategory.REMOTE}
 )
+
+
+class _DurableCloseResult(TypedDict):
+    """Return shape of ``worker_close`` on the durable-manager path."""
+
+    closed: bool
+    exit_code: int | None
+
+
+class _LegacyCloseResult(TypedDict):
+    """Return shape of ``worker_close`` on the legacy fallback path.
+
+    ``error`` is populated only when the underlying ``close_worker``
+    raises; the success branch intentionally omits it.
+    """
+
+    success: bool
+    worker_id: str
+    error: NotRequired[str]
 
 
 async def worker_spawn(
@@ -157,7 +177,7 @@ async def worker_collect_results(
 async def worker_close(
     worker_id: str,
     force: bool = False,
-) -> dict:
+) -> _DurableCloseResult | _LegacyCloseResult:
     """Close a worker using two-phase graceful shutdown.
 
     Soft (default): SIGTERM with 5 s grace window; if the pane is still
@@ -172,7 +192,7 @@ async def worker_close(
     if _durable_manager is not None:
         cancelled = _durable_manager.cancel(
             worker_id,
-            signal="sigkill" if force else "soft",
+            signal="SIGKILL" if force else "soft",
             grace_ms=0 if force else 5_000,
         )
         record = _durable_manager.status(worker_id)
@@ -186,6 +206,48 @@ async def worker_close(
         return {"success": True, "worker_id": worker_id}
     except Exception as e:
         return {"success": False, "worker_id": worker_id, "error": str(e)}
+
+
+async def worker_close_all() -> dict:
+    """Cancel every in-flight durable worker.
+
+    Wire-format note (durable path): returns ``{"closed": [wid, ...]}`` —
+    this is a deliberate break from the legacy ``{"closed_count": int}``
+    shape so callers can address the closed workers individually. The
+    legacy fallback preserves the original ``{"closed_count": int}`` shape
+    so existing callers stay green.
+    """
+    if _durable_manager is not None:
+        closed: list[str] = []
+        for record in _durable_manager.store.list_all():
+            # Cancel only in-flight states; skip terminal ones.
+            if record.state in {WorkerLifecycleState.RUNNING, WorkerLifecycleState.READY}:
+                _durable_manager.cancel(record.worker_id, signal="soft", grace_ms=5_000)
+                closed.append(record.worker_id)
+        return {"closed": closed}
+    # Legacy fallback (preserves original shape)
+    workers_list = await _worker_manager.list_workers()
+    worker_ids = [w["worker_id"] for w in workers_list]
+    for wid in worker_ids:
+        await _worker_manager.close_worker(wid)
+    return {"closed_count": len(worker_ids)}
+
+
+async def worker_health() -> dict:
+    """Aggregate durable-record counts by lifecycle state.
+
+    Durable path returns ``{"total": int, "counts": {state: int}}`` with
+    every ``WorkerLifecycleState`` value present in ``counts`` (zero
+    default). Legacy fallback returns whatever
+    ``worker_manager.health_check()`` returns.
+    """
+    if _durable_manager is not None:
+        records = list(_durable_manager.store.list_all())
+        counts: dict[str, int] = {state.value: 0 for state in WorkerLifecycleState}
+        for record in records:
+            counts[record.state] = counts.get(record.state, 0) + 1
+        return {"total": len(records), "counts": counts}
+    return await _worker_manager.health_check()
 
 
 def register_worker_tools(  # noqa: C901
@@ -216,6 +278,8 @@ def register_worker_tools(  # noqa: C901
     mcp.tool()(worker_monitor)
     mcp.tool()(worker_collect_results)
     mcp.tool()(worker_close)
+    mcp.tool()(worker_close_all)
+    mcp.tool()(worker_health)
 
     @mcp.tool()
     async def worker_execute(
@@ -314,19 +378,3 @@ def register_worker_tools(  # noqa: C901
         if worker_id is not None:
             records = [r for r in records if r.worker_id == worker_id]
         return [{"worker_id": r.worker_id, "state": r.state} for r in records]
-
-    @mcp.tool()
-    async def worker_close_all() -> dict:
-        """Close all active workers."""
-        workers_list = await worker_manager.list_workers()
-        worker_ids = [w["worker_id"] for w in workers_list]
-
-        for wid in worker_ids:
-            await worker_manager.close_worker(wid)
-
-        return {"closed_count": len(worker_ids)}
-
-    @mcp.tool()
-    async def worker_health() -> dict:
-        """Get worker system health."""
-        return await worker_manager.health_check()
