@@ -28,14 +28,6 @@ class TestManagerPassesPreferenceToClient:
         config.terminal = TerminalSettings(adapter_preference="mcpretentious")
 
         mock_client = MagicMock()
-
-        # Block ITERM2_AVAILABLE so the manager falls through to the
-        # mcpretentious branch instead of the iTerm2 branch (test ordering
-        # could otherwise let iTerm2 be picked on dev laptops).
-        with patch(
-            "mahavishnu.terminal.adapters.iterm2.ITERM2_AVAILABLE",
-            False,
-        ):
             with patch(
                 "mahavishnu.terminal.manager.McpretentiousAdapter",
             ) as mock_adapter_cls:
@@ -74,14 +66,6 @@ class TestManagerAcceptsBuiltinBackend:
         config.terminal = TerminalSettings(adapter_preference=self.preference)
 
         mock_client = MagicMock()
-
-        # Block ITERM2_AVAILABLE so the manager falls through to the
-        # mcpretentious branch instead of the iTerm2 branch (test ordering
-        # could otherwise let iTerm2 be picked on dev laptops).
-        with patch(
-            "mahavishnu.terminal.adapters.iterm2.ITERM2_AVAILABLE",
-            False,
-        ):
             with patch(
                 "mahavishnu.terminal.manager.McpretentiousAdapter",
             ) as mock_adapter_cls:
@@ -129,11 +113,7 @@ class TestManagerBuiltinBackendRequiresMcpClient:
         config = MagicMock()
         config.terminal = TerminalSettings(adapter_preference=preference)
 
-        with patch(
-            "mahavishnu.terminal.adapters.iterm2.ITERM2_AVAILABLE",
-            False,
-        ):
-            with pytest.raises(ConfigurationError) as exc_info:
+                    with pytest.raises(ConfigurationError) as exc_info:
                 await TerminalManager.create(config, mcp_client=None)
 
         message = exc_info.value.message

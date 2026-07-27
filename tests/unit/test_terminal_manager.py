@@ -262,8 +262,7 @@ class TestTerminalManagerFactory:
 
         mock_client = MagicMock()
 
-        with patch("mahavishnu.terminal.adapters.iterm2.ITERM2_AVAILABLE", False):
-            from mahavishnu.terminal.adapters.mcpretentious import McpretentiousAdapter
+                    from mahavishnu.terminal.adapters.mcpretentious import McpretentiousAdapter
 
             with patch.object(
                 McpretentiousAdapter,
@@ -306,8 +305,7 @@ class TestTerminalManagerFactory:
 
         mock_client = MagicMock()
 
-        with patch("mahavishnu.terminal.adapters.iterm2.ITERM2_AVAILABLE", False):
-            from mahavishnu.terminal.adapters.crow import CrowTerminalAdapter
+                    from mahavishnu.terminal.adapters.crow import CrowTerminalAdapter
 
             with patch.object(CrowTerminalAdapter, "__init__", lambda self, mcp: None):
                 manager = await TerminalManager.create(config, mcp_client=mock_client)

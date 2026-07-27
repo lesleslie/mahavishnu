@@ -19,7 +19,7 @@ from mahavishnu.terminal.grid.exceptions import (
 
 @pytest.fixture
 def mock_adapter():
-    """Mock ITerm2Adapter for testing."""
+    """Mock TerminalAdapter for testing."""
     adapter = MagicMock()
     adapter._run_applescript = AsyncMock(return_value="tab_123")
     return adapter
