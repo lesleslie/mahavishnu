@@ -1,7 +1,7 @@
 """Terminal management module for Mahavishnu.
 
 This module provides multi-terminal session management with support for
-different terminal backends (mcpretentious, iTerm2, etc.).
+different terminal backends (mcpretentious, crow, mock, and tmux).
 
 Example:
     >>> from mahavishnu.terminal import TerminalManager
@@ -16,15 +16,11 @@ __all__ = [
     "TerminalSession",
     "TerminalAdapter",
     "McpretentiousAdapter",
-    "ITerm2Adapter",
-    "ITERM2_AVAILABLE",
 ]
 
 # Mapping of export name -> (module_path, attribute_name)
 _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
     "TerminalAdapter": ("mahavishnu.terminal.adapters.base", "TerminalAdapter"),
-    "ITerm2Adapter": ("mahavishnu.terminal.adapters.iterm2", "ITerm2Adapter"),
-    "ITERM2_AVAILABLE": ("mahavishnu.terminal.adapters.iterm2", "ITERM2_AVAILABLE"),
     "McpretentiousAdapter": ("mahavishnu.terminal.adapters.mcpretentious", "McpretentiousAdapter"),
     "TerminalManager": ("mahavishnu.terminal.manager", "TerminalManager"),
     "TerminalSession": ("mahavishnu.terminal.session", "TerminalSession"),
