@@ -152,50 +152,70 @@ class TestCreateWorker:
         with pytest.raises(ValueError, match="Unknown worker type"):
             mgr._create_worker("nonexistent-type")
 
-    def test_container_worker_created(self):
-        """Test that a container category creates a ContainerWorker."""
-        tm = _make_terminal_manager()
-        mgr = WorkerManager(terminal_manager=tm)
-        config = WorkerConfig(
+    def _container_config(self, worker_type: str = "container-executor") -> WorkerConfig:
+        return WorkerConfig(
             name="Test Container",
-            worker_type="container",
+            worker_type=worker_type,
             command="",
             category=WorkerCategory.CONTAINER,
         )
 
-        with (
-            patch("mahavishnu.workers.registry.get_worker_config", return_value=config),
-            patch("mahavishnu.workers.manager.ContainerWorker") as MockCW,
-        ):
-            worker = mgr._create_worker("container")
-            MockCW.assert_called_once_with(
-                runtime="docker",
-                image="python:3.13-slim",
-                session_buddy_client=None,
-            )
-            assert worker is not None
-
-    def test_container_worker_with_custom_kwargs(self):
-        """Test container worker with custom runtime and image kwargs."""
+    def test_container_category_uses_apple_tier_when_supported(self):
+        """Container category creates an AppleContainerWorker on Apple silicon."""
         tm = _make_terminal_manager()
         mgr = WorkerManager(terminal_manager=tm)
-        config = WorkerConfig(
-            name="Test Container",
-            worker_type="container-executor",
-            command="",
-            category=WorkerCategory.CONTAINER,
-        )
 
         with (
-            patch("mahavishnu.workers.registry.get_worker_config", return_value=config),
-            patch("mahavishnu.workers.manager.ContainerWorker") as MockCW,
+            patch(
+                "mahavishnu.workers.registry.get_worker_config",
+                return_value=self._container_config(),
+            ),
+            patch(
+                "mahavishnu.workers.apple_container.is_apple_container_supported",
+                return_value=True,
+            ),
         ):
-            mgr._create_worker("container-executor", runtime="podman", image="alpine")
-            MockCW.assert_called_once_with(
-                runtime="podman",
-                image="alpine",
-                session_buddy_client=None,
-            )
+            worker = mgr._create_worker("container-executor", image="alpine", cpus=2)
+            assert worker.worker_type == "apple-container"
+            assert worker.image == "alpine"
+            assert worker.cpus == 2
+
+    def test_container_category_falls_back_to_e2b_tier(self):
+        """Hosts that cannot run Apple container skip to the E2B sandbox tier."""
+        tm = _make_terminal_manager()
+        mgr = WorkerManager(terminal_manager=tm)
+
+        with (
+            patch(
+                "mahavishnu.workers.registry.get_worker_config",
+                return_value=self._container_config(),
+            ),
+            patch(
+                "mahavishnu.workers.apple_container.is_apple_container_supported",
+                return_value=False,
+            ),
+        ):
+            worker = mgr._create_worker("container-executor", template="base")
+            assert worker.worker_type == "e2b-sandbox"
+            assert worker.template == "base"
+
+    def test_explicit_e2b_sandbox_skips_apple_tier(self):
+        """An explicit e2b-sandbox worker type never tries the Apple tier."""
+        tm = _make_terminal_manager()
+        mgr = WorkerManager(terminal_manager=tm)
+
+        with (
+            patch(
+                "mahavishnu.workers.registry.get_worker_config",
+                return_value=self._container_config("e2b-sandbox"),
+            ),
+            patch(
+                "mahavishnu.workers.apple_container.is_apple_container_supported",
+                return_value=True,
+            ),
+        ):
+            worker = mgr._create_worker("e2b-sandbox")
+            assert worker.worker_type == "e2b-sandbox"
 
     def test_shell_worker_created(self):
         """Test that a shell category creates a GenericShellWorker."""

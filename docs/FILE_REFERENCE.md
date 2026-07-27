@@ -33,7 +33,8 @@
 
 - `mahavishnu/workers/manager.py` — Worker lifecycle
 - `mahavishnu/workers/base.py` — Abstract worker interface
-- `mahavishnu/workers/container.py` — Containerized execution
+- `mahavishnu/workers/apple_container.py` — Apple `container` microVM execution (Apple silicon)
+- `mahavishnu/workers/e2b_sandbox.py` — E2B cloud sandbox execution (fallback tier)
 - `mahavishnu/workers/cloud_worker.py` — OpenAI-compatible cloud worker (MiniMax defaults)
 - `mahavishnu/workers/task_router.py` — Task classification + model selection
 - `mahavishnu/terminal/manager.py` — Terminal session management

@@ -20,7 +20,6 @@ from .capabilities import (
     evaluate_worker_capabilities,
     invalidate_capability,
 )
-from .container import ContainerWorker
 from .registry import get_worker_config
 
 if TYPE_CHECKING:
@@ -28,6 +27,42 @@ if TYPE_CHECKING:
     from ..terminal.manager import TerminalManager
 
 logger = logging.getLogger(__name__)
+
+
+def _create_isolated_worker(
+    worker_type: str,
+    session_buddy_client: Any,
+    kwargs: dict[str, Any],
+) -> BaseWorker:
+    """Create an isolated-execution worker using tiered microVM isolation.
+
+    Tier 1 is the local Apple ``container`` runtime (Apple silicon only);
+    when the host cannot run it, fall through to the E2B cloud sandbox
+    tier. An explicit ``e2b-sandbox`` worker type skips tier 1 entirely.
+    """
+    from ..core.errors import AppleContainerUnsupported
+    from .e2b_sandbox import E2BSandboxWorker
+
+    if worker_type != "e2b-sandbox":
+        try:
+            from .apple_container import AppleContainerWorker
+
+            return AppleContainerWorker(
+                image=kwargs.get("image", "python:3.13-slim"),
+                session_buddy_client=session_buddy_client,
+                cpus=kwargs.get("cpus"),
+                memory=kwargs.get("memory"),
+            )
+        except AppleContainerUnsupported as exc:
+            logger.info(
+                "Apple container tier unavailable (%s); using E2B sandbox tier",
+                exc.details.get("reason", "unsupported host"),
+            )
+    return E2BSandboxWorker(
+        template=kwargs.get("template", "base"),
+        timeout=kwargs.get("timeout", 300),
+        session_buddy_client=session_buddy_client,
+    )
 
 
 class WorkerManager:
@@ -209,11 +244,10 @@ class WorkerManager:
 
         # Create worker based on category
         if config.category == WorkerCategory.CONTAINER:
-            # Container workers
-            return ContainerWorker(
-                runtime=kwargs.get("runtime", "docker"),
-                image=kwargs.get("image", "python:3.13-slim"),
-                session_buddy_client=self.session_buddy_client,
+            return _create_isolated_worker(
+                config.worker_type,
+                self.session_buddy_client,
+                kwargs,
             )
 
         elif config.category in (
@@ -317,9 +351,7 @@ class WorkerManager:
                 if agent_configs is None and self.settings is not None:
                     a2a_settings = getattr(self.settings, "a2a", None)
                     settings_agents = (
-                        getattr(a2a_settings, "agents", None)
-                        if a2a_settings is not None
-                        else None
+                        getattr(a2a_settings, "agents", None) if a2a_settings is not None else None
                     )
                     if isinstance(settings_agents, dict):
                         agent_configs = settings_agents
@@ -330,9 +362,7 @@ class WorkerManager:
                                 url=entry.url,
                                 description=entry.description,
                                 api_key=(
-                                    os.getenv(entry.api_key_env)
-                                    if entry.api_key_env
-                                    else None
+                                    os.getenv(entry.api_key_env) if entry.api_key_env else None
                                 ),
                             )
                             for entry in settings_agents

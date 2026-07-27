@@ -60,7 +60,7 @@ graph TB
     subgraph "Worker Layer"
         WorkerMgr[WorkerManager]
         Terminal[TerminalManager<br/>iTerm2/MCPretentious]
-        Container[ContainerWorker<br/>Docker/Podman]
+        Container[AppleContainerWorker / E2BSandboxWorker<br/>microVM isolation]
         Subprocess[SubprocessWorker<br/>Local Execution]
     end
 

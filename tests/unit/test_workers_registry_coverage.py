@@ -231,7 +231,7 @@ class TestWorkerRegistry:
                 )
 
     def test_registry_size(self) -> None:
-        assert len(WORKER_REGISTRY) == 46
+        assert len(WORKER_REGISTRY) == 48
 
 
 # ---------------------------------------------------------------------------

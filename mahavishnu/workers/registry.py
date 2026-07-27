@@ -24,9 +24,8 @@ class RuntimeKind(Enum):
 
     NONE = "none"
     SHELL = "shell"
-    DOCKER = "docker"
-    PODMAN = "podman"
-    ORBSTACK = "orbstack"
+    APPLE_CONTAINER = "apple-container"
+    E2B = "e2b"
 
 
 class WorkerCategory(Enum):
@@ -476,30 +475,58 @@ WORKER_REGISTRY: dict[str, WorkerConfig] = {
         one_shot=False,
         endpoint=None,
     ),
-    # Container (existing)
+    # Isolated execution (auto-tiered microVMs; Docker/Podman removed 2026-07)
     "container": WorkerConfig(
-        name="Docker Container",
+        name="Isolated Executor (legacy alias)",
         worker_type="container",
-        command="",  # Handled by ContainerWorker
+        command="",  # Handled by WorkerManager._create_isolated_worker
         category=WorkerCategory.CONTAINER,
-        description="Docker container for isolated task execution",
+        description="Legacy alias for container-executor (auto-tiered microVM isolation)",
         supports_interactive=False,
         required_env=[],
         auth_kind=AuthKind.NONE,
-        runtime_kind=RuntimeKind.DOCKER,
+        runtime_kind=RuntimeKind.NONE,
         one_shot=True,
         endpoint=None,
     ),
     "container-executor": WorkerConfig(
-        name="Container Executor",
+        name="Isolated Executor (auto-tier)",
         worker_type="container-executor",
-        command="",  # Handled by ContainerWorker
+        command="",  # Handled by WorkerManager._create_isolated_worker
         category=WorkerCategory.CONTAINER,
-        description="Docker/Podman container for isolated execution",
+        description="Auto-tiered microVM isolation: Apple container locally, E2B sandbox fallback",
         supports_interactive=False,
         required_env=[],
         auth_kind=AuthKind.NONE,
-        runtime_kind=RuntimeKind.DOCKER,
+        # Tier resolved at worker creation time, not statically known here
+        runtime_kind=RuntimeKind.NONE,
+        one_shot=True,
+        endpoint=None,
+    ),
+    "apple-container": WorkerConfig(
+        name="Apple Container (microVM)",
+        worker_type="apple-container",
+        command="",  # Handled by AppleContainerWorker
+        category=WorkerCategory.CONTAINER,
+        description="Apple `container` microVM per task (Apple silicon; E2B fallback otherwise)",
+        supports_interactive=False,
+        requires_tool="container",
+        required_env=[],
+        auth_kind=AuthKind.NONE,
+        runtime_kind=RuntimeKind.APPLE_CONTAINER,
+        one_shot=True,
+        endpoint=None,
+    ),
+    "e2b-sandbox": WorkerConfig(
+        name="E2B Cloud Sandbox",
+        worker_type="e2b-sandbox",
+        command="",  # Handled by E2BSandboxWorker
+        category=WorkerCategory.CONTAINER,
+        description="E2B Firecracker cloud sandbox for isolated execution",
+        supports_interactive=False,
+        required_env=["E2B_API_KEY"],
+        auth_kind=AuthKind.NONE,
+        runtime_kind=RuntimeKind.E2B,
         one_shot=True,
         endpoint=None,
     ),

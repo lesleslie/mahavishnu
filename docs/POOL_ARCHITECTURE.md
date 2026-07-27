@@ -113,7 +113,7 @@ result = await pool_mgr.execute_on_pool(pool_id, {"prompt": "Write code"})
 │  │      Local Workers            │  │
 │  │  • TerminalAIWorker (Qwen)    │  │
 │  │  • TerminalAIWorker (Claude)  │  │
-│  │  • ContainerWorker (Docker)   │  │
+│  │  • AppleContainer/E2B microVM │  │
 │  └───────────────────────────────┘  │
 └─────────────────────────────────────┘
 ```

@@ -7,7 +7,6 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 
 from mahavishnu.workers.base import BaseWorker, WorkerResult, WorkerStatus
-from mahavishnu.workers.container import ContainerWorker
 from mahavishnu.workers.debug_monitor import DebugMonitorWorker
 from mahavishnu.workers.generic_shell import GenericShellWorker
 from mahavishnu.workers.manager import WorkerManager
@@ -240,139 +239,6 @@ class TestGenericShellWorkerTerminal:
 
         mock_terminal_manager.close_session.assert_called_once_with("session_123")
         assert terminal_qwen_worker._status == WorkerStatus.COMPLETED
-
-
-# ============================================================================
-# Container Worker Tests
-# ============================================================================
-
-
-class TestContainerWorker:
-    """Test ContainerWorker class."""
-
-    def test_initialization(self):
-        """Test container worker initialization."""
-        worker = ContainerWorker(
-            runtime="docker",
-            image="python:3.13-slim",
-            session_buddy_client=None,
-        )
-
-        assert worker.runtime == "docker"
-        assert worker.image == "python:3.13-slim"
-        assert worker.worker_type == "container-executor"
-        assert worker.container_id is None
-
-    @pytest.mark.asyncio
-    async def test_start_container_success(self):
-        """Test starting a container successfully."""
-        worker = ContainerWorker(runtime="docker", image="python:3.13-slim")
-
-        with patch("asyncio.create_subprocess_exec") as mock_subprocess:
-            # Mock successful container launch
-            mock_proc = AsyncMock()
-            mock_proc.returncode = 0
-            mock_proc.communicate = AsyncMock(return_value=(b"container_123\n", b""))
-
-            mock_subprocess.return_value = mock_proc
-
-            container_id = await worker.start()
-
-            assert container_id == "container_123"
-            assert worker._status == WorkerStatus.RUNNING
-            assert worker._running is True
-
-    @pytest.mark.asyncio
-    async def test_start_container_failure(self):
-        """Test container start failure."""
-        worker = ContainerWorker(runtime="docker", image="python:3.13-slim")
-
-        with patch("asyncio.create_subprocess_exec") as mock_subprocess:
-            # Mock failed container launch
-            mock_proc = AsyncMock()
-            mock_proc.returncode = 1
-            mock_proc.communicate = AsyncMock(return_value=(b"", b"Error: image not found"))
-
-            mock_subprocess.return_value = mock_proc
-
-            with pytest.raises(RuntimeError, match="Failed to launch container"):
-                await worker.start()
-
-            assert worker._status == WorkerStatus.FAILED
-
-    @pytest.mark.asyncio
-    async def test_execute_command_success(self):
-        """Test executing command in container."""
-        worker = ContainerWorker(runtime="docker", image="python:3.13-slim")
-        worker.container_id = "container_123"
-        worker._running = True
-
-        with patch("asyncio.create_subprocess_exec") as mock_subprocess:
-            # Mock successful command execution
-            mock_proc = AsyncMock()
-            mock_proc.returncode = 0
-            mock_proc.communicate = AsyncMock(return_value=(b"42\n", b""))
-
-            mock_subprocess.return_value = mock_proc
-
-            result = await worker.execute({"command": "echo 42"})
-
-            assert result.status == WorkerStatus.COMPLETED
-            assert result.output == "42\n"
-            assert result.exit_code == 0
-
-    @pytest.mark.asyncio
-    async def test_execute_command_failure(self):
-        """Test command execution failure."""
-        worker = ContainerWorker(runtime="docker", image="python:3.13-slim")
-        worker.container_id = "container_123"
-        worker._running = True
-
-        with patch("asyncio.create_subprocess_exec") as mock_subprocess:
-            # Mock failed command execution
-            mock_proc = AsyncMock()
-            mock_proc.returncode = 1
-            mock_proc.communicate = AsyncMock(return_value=(b"", b"Error: command not found"))
-
-            mock_subprocess.return_value = mock_proc
-
-            # Skip command validation to test execution error handling
-            worker._validate_command = MagicMock()
-
-            result = await worker.execute({"command": "invalid_command"})
-
-            assert result.status == WorkerStatus.FAILED
-            assert "Error: command not found" in result.error
-            assert result.exit_code == 1
-
-    @pytest.mark.asyncio
-    async def test_execute_without_command(self):
-        """Test executing without command raises error."""
-        worker = ContainerWorker(runtime="docker", image="python:3.13-slim")
-        worker.container_id = "container_123"
-
-        with pytest.raises(ValueError, match="must specify 'command'"):
-            await worker.execute({})
-
-    @pytest.mark.asyncio
-    async def test_stop_container(self):
-        """Test stopping container."""
-        worker = ContainerWorker(runtime="docker", image="python:3.13-slim")
-        worker.container_id = "container_123"
-        worker._running = True
-
-        with patch("asyncio.create_subprocess_exec") as mock_subprocess:
-            mock_proc = AsyncMock()
-            mock_proc.communicate = AsyncMock(return_value=(b"", b""))
-            mock_subprocess.return_value = mock_proc
-
-            await worker.stop()
-
-            assert worker._running is False
-            assert worker.container_id is None
-            assert worker._status == WorkerStatus.COMPLETED
-
-
 # ============================================================================
 # Debug Monitor Worker Tests
 # ============================================================================
@@ -729,37 +595,6 @@ class TestSessionBuddyIntegration:
         assert call_args[0][0] == "store_memory"
         assert "metadata" in call_args[1]["arguments"]
 
-    @pytest.mark.asyncio
-    async def test_container_worker_stores_result(self):
-        """Test that ContainerWorker stores results in Session-Buddy."""
-        mock_sb_client = MagicMock()
-        mock_sb_client.call_tool = AsyncMock()
-
-        worker = ContainerWorker(
-            runtime="docker",
-            image="python:3.13-slim",
-            session_buddy_client=mock_sb_client,
-        )
-        worker.container_id = "container_123"
-        worker._running = True
-
-        with patch("asyncio.create_subprocess_exec") as mock_subprocess:
-            mock_proc = AsyncMock()
-            mock_proc.returncode = 0
-            mock_proc.communicate = AsyncMock(return_value=(b"Output\n", b""))
-            mock_subprocess.return_value = mock_proc
-
-            with patch("time.time", return_value=1234567890.0):
-                await worker.execute({"command": "echo test"})
-
-                # Verify Session-Buddy was called
-                mock_sb_client.call_tool.assert_called()
-                call_args = mock_sb_client.call_tool.call_args
-                assert call_args[0][0] == "store_memory"
-                metadata = call_args[1]["arguments"]["metadata"]
-                assert metadata["worker_type"] == "container-executor"
-
-
 # ============================================================================
 # Stream-JSON Parsing Tests
 # ============================================================================
@@ -999,18 +834,6 @@ class TestErrorHandling:
         # Good worker should be RUNNING
         assert statuses["good_worker"] == WorkerStatus.RUNNING
 
-    @pytest.mark.asyncio
-    async def test_container_worker_execute_not_started(self):
-        """Test execute before starting container raises error."""
-        worker = ContainerWorker(
-            runtime="docker",
-            image="python:3.13-slim",
-            session_buddy_client=None,
-        )
-
-        with pytest.raises(RuntimeError, match="Container not started"):
-            await worker.execute({"command": "echo test"})
-
     def test_terminal_worker_invalid_ai_type(self, mock_terminal_manager):
         """Test that an unknown worker_type raises at construction time."""
         with pytest.raises(ValueError, match="Unknown worker type: terminal-invalid"):
@@ -1072,44 +895,6 @@ class TestWorkerLifecycle:
         # Stop worker
         await worker.stop()
         assert worker._status == WorkerStatus.COMPLETED
-
-    @pytest.mark.asyncio
-    async def test_container_worker_lifecycle(self):
-        """Test complete container worker lifecycle."""
-        worker = ContainerWorker(
-            runtime="docker",
-            image="python:3.13-slim",
-            session_buddy_client=None,
-        )
-
-        with patch("asyncio.create_subprocess_exec") as mock_subprocess:
-            # Mock start
-            mock_proc = AsyncMock()
-            mock_proc.returncode = 0
-            mock_proc.communicate = AsyncMock(return_value=(b"container_123\n", b""))
-            mock_subprocess.return_value = mock_proc
-
-            # Start
-            container_id = await worker.start()
-            assert container_id == "container_123"
-            assert worker._running is True
-
-            # Execute
-            mock_proc.communicate = AsyncMock(return_value=(b"output\n", b""))
-            result = await worker.execute({"command": "echo test"})
-            assert result.status == WorkerStatus.COMPLETED
-
-            # Status
-            mock_proc.communicate = AsyncMock(return_value=(b"running\n", b""))
-            status = await worker.status()
-            assert status == WorkerStatus.RUNNING
-
-            # Stop
-            mock_proc.communicate = AsyncMock(return_value=(b"", b""))
-            await worker.stop()
-            assert worker._running is False
-            assert worker.container_id is None
-
 
 # ============================================================================
 # Worker Pool Management Tests
@@ -1302,37 +1087,6 @@ class TestSessionBuddyStorage:
         assert result.status == WorkerStatus.COMPLETED
         # Session-Buddy was attempted but failed
         mock_sb_client.call_tool.assert_called()
-
-    @pytest.mark.asyncio
-    async def test_container_worker_session_buddy_metadata(self):
-        """Test that ContainerWorker stores correct metadata in Session-Buddy."""
-        mock_sb_client = MagicMock()
-        mock_sb_client.call_tool = AsyncMock()
-
-        worker = ContainerWorker(
-            runtime="docker",
-            image="python:3.13-slim",
-            session_buddy_client=mock_sb_client,
-        )
-        worker.container_id = "container_123"
-        worker._running = True
-
-        with patch("asyncio.create_subprocess_exec") as mock_subprocess:
-            mock_proc = AsyncMock()
-            mock_proc.returncode = 0
-            mock_proc.communicate = AsyncMock(return_value=(b"Output\n", b""))
-            mock_subprocess.return_value = mock_proc
-
-            await worker.execute({"command": "echo test"})
-
-            # Verify Session-Buddy metadata
-            call_args = mock_sb_client.call_tool.call_args
-            metadata = call_args[1]["arguments"]["metadata"]
-            assert metadata["worker_type"] == "container-executor"
-            assert metadata["runtime"] == "docker"
-            assert metadata["image"] == "python:3.13-slim"
-            assert metadata["type"] == "worker_result"
-
 
 # ============================================================================
 # ============================================================================

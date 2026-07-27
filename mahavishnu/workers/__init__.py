@@ -11,7 +11,7 @@ Available Worker Types:
     Database: terminal-mysql, terminal-psql, terminal-redis
     WebAssembly: terminal-wasmtime, terminal-wasmer
     Remote: terminal-ssh
-    Container: container, container-executor
+    Isolated: container-executor (auto-tier), apple-container, e2b-sandbox
     Application: application-gimp, application-inkscape, application-blender, application-mdinject,
         application-pycharm
 
@@ -20,11 +20,12 @@ Routing notes:
       is configured, and otherwise fall back to terminal-openclaw.
 """
 
+from mahavishnu.workers.apple_container import AppleContainerWorker
 from mahavishnu.workers.application import ApplicationWorker
 from mahavishnu.workers.base import BaseWorker, WorkerResult, WorkerStatus
-from mahavishnu.workers.container import ContainerWorker
 from mahavishnu.workers.crow import CrowWorker
 from mahavishnu.workers.debug_monitor import DebugMonitorWorker
+from mahavishnu.workers.e2b_sandbox import E2BSandboxWorker
 from mahavishnu.workers.generic_shell import GenericShellWorker
 from mahavishnu.workers.manager import WorkerManager
 from mahavishnu.workers.ollama import OllamaConfig, OllamaWorker
@@ -60,9 +61,10 @@ __all__ = [
     "TerminalWorkerProtocol",
     "is_terminal_worker",
     # Workers
+    "AppleContainerWorker",
     "CrowWorker",
+    "E2BSandboxWorker",
     "OpenHandsWorker",
-    "ContainerWorker",
     "DebugMonitorWorker",
     "GenericShellWorker",
     "ApplicationWorker",

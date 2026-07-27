@@ -660,7 +660,7 @@ canonical template lives in `docs/plans/TEMPLATE.md`.
 
 - **Worker manager**: `mahavishnu/workers/manager.py` - Worker lifecycle
 - **Worker base**: `mahavishnu/workers/base.py` - Abstract worker interface
-- **Container worker**: `mahavishnu/workers/container.py` - Containerized execution
+- **Isolated workers**: `mahavishnu/workers/apple_container.py` (Apple silicon microVMs) and `mahavishnu/workers/e2b_sandbox.py` (E2B cloud sandboxes) - Docker/OrbStack removed 2026-07
 - **Cloud worker**: `mahavishnu/workers/cloud_worker.py` - OpenAI-compatible cloud worker with MiniMax primary defaults
 - **Task router**: `mahavishnu/workers/task_router.py` - Task classification + model selection
 - **Terminal manager**: `mahavishnu/terminal/manager.py` - Terminal session management

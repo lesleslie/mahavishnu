@@ -42,7 +42,7 @@ class MahavishnuPool(BasePool):
     │  │      Local Workers            │  │
     │  │  • GenericShellWorker (Qwen)   │  │
     │  │  • GenericShellWorker (Claude) │  │
-    │  │  • ContainerWorker (Docker)   │  │
+    │  │  • AppleContainer/E2B microVM │  │
     │  └───────────────────────────────┘  │
     └─────────────────────────────────────┘
     """
