@@ -55,7 +55,7 @@ def get_adapter_class(name: str) -> type[TerminalAdapter] | None:
     """Get adapter class by name.
 
     Args:
-        name: Adapter name ('mock', 'iterm2', 'mcpretentious', 'crow')
+        name: Adapter name ('mock', 'mcpretentious', 'crow')
 
     Returns:
         Adapter class or None if not available

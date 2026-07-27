@@ -75,7 +75,6 @@ class TerminalManager:
 
     Features:
     - Hot-swappable adapters (switch adapters without restart)
-    - Connection pooling for iTerm2
     - Session migration between adapters
 
     Example:
@@ -171,9 +170,7 @@ class TerminalManager:
         """Migrate sessions from old adapter to new adapter.
 
         This is experimental and may not work for all adapter combinations.
-        iTerm2 → mcpretentious: Possible (recreate sessions)
-        mcpretentious → iTerm2: Possible (create new tabs)
-
+        
         Args:
             old_adapter: Adapter to migrate from
             new_adapter: Adapter to migrate to
@@ -199,15 +196,7 @@ class TerminalManager:
             command = session_info.get("command", "")
 
             try:
-                # For iTerm2 adapters, we can't easily migrate sessions
-                # because session_ids are iTerm2-specific
-                if "iterm2" in (old_adapter.adapter_name, new_adapter.adapter_name):
-                    logger.warning(
-                        f"Session migration involving iTerm2 is not supported. "
-                        f"Session {session_id} will be orphaned."
-                    )
-                    continue
-
+        
                 # For mcpretentious → mcpretentious (different instances)
                 # We can recreate sessions with the same command
                 new_session_id = await new_adapter.launch_session(
@@ -474,7 +463,7 @@ class TerminalManager:
         Priority order:
         1. mock - Always works, no dependencies (default)
         2. mcpretentious - Requires MCP client
-        3. iterm2 - Requires iTerm2 app with Python API
+        3. tmux - Default durable-worker terminal (Spec §9.4)
 
         Args:
             config: MahavishnuSettings with terminal config
@@ -575,7 +564,7 @@ class TerminalManager:
                     message=(
                         f"Terminal adapter preference {preference!r} requires an mcp_client. "
                         f"Either provide one via the MCP boot path, or use a non-PTY "
-                        f"adapter such as 'mock' / 'iterm2' / 'crow' / 'auto'."
+                        f"adapter such as 'mock' / 'crow' / 'auto'."
                     ),
                     details={
                         "adapter_preference": preference,
