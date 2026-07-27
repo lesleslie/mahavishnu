@@ -16,7 +16,7 @@ topic: shared-frontmatter-validator
 ## Global Constraints
 
 - Crackerjack is **already a declared dependency** in `dhara`, `session-buddy`, `akosha`, `oneiric`, and `mahavishnu`. No new dep additions.
-- All consumer repos require `crackerjack>=0.69.5` after the canonical release.
+- All consumer repos require `crackerjack>=0.70.0` after the canonical release.
 - The `FrontmatterValidator` Python wrapper's PUBLIC API stays unchanged: `FrontmatterValidator(pkg_path=Path).validate(strict=False, allow_nonstandard=True, ...)` returns `FrontmatterValidationResult`. The `from_payload` classmethod is preserved. The constructor parameter name `pkg_path` stays as `pkg_path` (existing crackerjack convention — `pkg_path` IS the project root across 19+ internal uses). The CLI flag `--repo-root` is renamed at the user-facing surface only; the CLI passes it as `pkg_path=repo_root` to the wrapper.
 - The `crackerjack docs validate` CLI surface changes `--path` → `--repo-root` AND adds `--allow-nonstandard/--strict-frontmatter` flag. No external consumer of the CLI is known.
 - Each commit is single-purpose; tests pass at every commit; commit only on GREEN.
@@ -1525,16 +1525,16 @@ git commit -m "docs(regenerator): point to crackerjack docs validate CLI"
 
 - [ ] **Step 1: Bump version**
 
-Edit `pyproject.toml` line `version = "0.69.4"` → `version = "0.69.5"`.
+Edit `pyproject.toml` line `version = "0.69.4"` → `version = "0.70.0"`.
 
 - [ ] **Step 2: Update CHANGELOG**
 
-In `CHANGELOG.md`, find the `## Unreleased` header (line 3 according to the existing format). Replace the line `## Unreleased` with `## [0.69.5] - 2026-07-26` (move its content under the new header). Add a new `## Unreleased` block below if there are post-0.69.5 changes.
+In `CHANGELOG.md`, find the `## Unreleased` header (line 3 according to the existing format). Replace the line `## Unreleased` with `## [0.70.0] - 2026-07-26` (move its content under the new header). Add a new `## Unreleased` block below if there are post-0.70.0 changes.
 
 The new entry follows the existing `## [version] - date` format (with brackets and dash separator, matching line 23 of the existing CHANGELOG). Replace the existing `## [0.69.4] - 2026-07-26` block with:
 
 ```markdown
-## [0.69.5] - 2026-07-26
+## [0.70.0] - 2026-07-26
 
 ### Refactor
 
@@ -1546,7 +1546,7 @@ The new entry follows the existing `## [version] - date` format (with brackets a
 
 ### Migration
 
-- Consumer repos (dhara, session-buddy, akosha, oneiric, mahavishnu) must delete `scripts/validate_document_frontmatter.py` and bump `crackerjack>=0.69.5`.
+- Consumer repos (dhara, session-buddy, akosha, oneiric, mahavishnu) must delete `scripts/validate_document_frontmatter.py` and bump `crackerjack>=0.70.0`.
 - `crackerjack docs validate --repo-root PATH [--allow-nonstandard/--strict-frontmatter]` replaces `python scripts/validate_document_frontmatter.py`.
 ```
 
@@ -1564,17 +1564,17 @@ Expected: All tests pass.
 
 ```bash
 git add pyproject.toml CHANGELOG.md
-git commit -m "chore: bump version to 0.69.5"
+git commit -m "chore: bump version to 0.70.0"
 ```
 
 - [ ] **Step 6: Tag the release**
 
 ```bash
-git tag v0.69.5
+git tag v0.70.0
 git push origin main --tags
 ```
 
-The crackerjack release is now available. Consumers can bump their `crackerjack>=0.69.5` dependency.
+The crackerjack release is now available. Consumers can bump their `crackerjack>=0.70.0` dependency.
 
 ---
 
@@ -1596,14 +1596,14 @@ Expected: See the line `"crackerjack"` (unversioned) in `[project] dependencies`
 
 - [ ] **Step 2: Bump the dep version**
 
-`dhara`'s crackerjack dep is currently unversioned (`"crackerjack"`). Bump it to `"crackerjack>=0.69.5"`:
+`dhara`'s crackerjack dep is currently unversioned (`"crackerjack"`). Bump it to `"crackerjack>=0.70.0"`:
 
 ```toml
 # OLD:
 "crackerjack",
 
 # NEW:
-"crackerjack>=0.69.5",
+"crackerjack>=0.70.0",
 ```
 
 - [ ] **Step 3: Delete the script**
@@ -1663,7 +1663,7 @@ Expected: All tests pass.
 ```bash
 cd /Users/les/Projects/dhara
 git add pyproject.toml scripts/regenerate_plan_index.py
-git commit -m "chore(deps): bump crackerjack>=0.69.5; remove duplicated validator script"
+git commit -m "chore(deps): bump crackerjack>=0.70.0; remove duplicated validator script"
 ```
 
 ---
@@ -1683,8 +1683,8 @@ Expected: Two lines — line 35 (`"crackerjack>=0.62.0"` in main deps) and line 
 - [ ] **Step 2: Bump both dep versions**
 
 In `pyproject.toml`:
-- Line 35: change `"crackerjack>=0.62.0"` → `"crackerjack>=0.69.5"`
-- Line 231: change `"crackerjack"` → `"crackerjack>=0.69.5"` (consistency)
+- Line 35: change `"crackerjack>=0.62.0"` → `"crackerjack>=0.70.0"`
+- Line 231: change `"crackerjack"` → `"crackerjack>=0.70.0"` (consistency)
 
 - [ ] **Step 3: Delete the script**
 
@@ -1740,7 +1740,7 @@ Expected: All tests pass.
 ```bash
 cd /Users/les/Projects/session-buddy
 git add pyproject.toml scripts/regenerate_plan_index.py
-git commit -m "chore(deps): bump crackerjack>=0.69.5; remove duplicated validator script"
+git commit -m "chore(deps): bump crackerjack>=0.70.0; remove duplicated validator script"
 ```
 
 ---
@@ -1754,7 +1754,7 @@ git commit -m "chore(deps): bump crackerjack>=0.69.5; remove duplicated validato
 
 - [ ] Apply the same 9-step migration as Task 9 (dhara):
   - Look at current crackerjack version constraint in `pyproject.toml:165` (`crackerjack>=0.54.5`)
-  - Bump to `crackerjack>=0.69.5`
+  - Bump to `crackerjack>=0.70.0`
   - `git rm scripts/validate_document_frontmatter.py`
   - Update `scripts/regenerate_plan_index.py` doc reference
   - `uv cache clean crackerjack && uv sync --group dev`
@@ -1768,7 +1768,7 @@ git commit -m "chore(deps): bump crackerjack>=0.69.5; remove duplicated validato
 ```bash
 cd /Users/les/Projects/akosha
 git add pyproject.toml scripts/regenerate_plan_index.py
-git commit -m "chore(deps): bump crackerjack>=0.69.5; remove duplicated validator script"
+git commit -m "chore(deps): bump crackerjack>=0.70.0; remove duplicated validator script"
 ```
 
 ---
@@ -1782,7 +1782,7 @@ git commit -m "chore(deps): bump crackerjack>=0.69.5; remove duplicated validato
 
 - [ ] Apply the same 9-step migration as Task 9 (dhara):
   - Look at current crackerjack version constraint in `pyproject.toml:226` (`crackerjack>=0.66.1`)
-  - Bump to `crackerjack>=0.69.5`
+  - Bump to `crackerjack>=0.70.0`
   - `git rm scripts/validate_document_frontmatter.py`
   - Update `scripts/regenerate_plan_index.py` doc reference
   - `uv cache clean crackerjack && uv sync --group dev`
@@ -1796,7 +1796,7 @@ git commit -m "chore(deps): bump crackerjack>=0.69.5; remove duplicated validato
 ```bash
 cd /Users/les/Projects/oneiric
 git add pyproject.toml scripts/regenerate_plan_index.py
-git commit -m "chore(deps): bump crackerjack>=0.69.5; remove duplicated validator script"
+git commit -m "chore(deps): bump crackerjack>=0.70.0; remove duplicated validator script"
 ```
 
 ---
@@ -1817,8 +1817,8 @@ Expected: Two lines — line 132 (`"crackerjack>=0.65.0"` in main deps) and line
 - [ ] **Step 2: Bump both dep versions**
 
 In `pyproject.toml`:
-- Line 132: change `"crackerjack>=0.65.0"` → `"crackerjack>=0.69.5"`
-- Line 489: change `"crackerjack"` → `"crackerjack>=0.69.5"` (consistency)
+- Line 132: change `"crackerjack>=0.65.0"` → `"crackerjack>=0.70.0"`
+- Line 489: change `"crackerjack"` → `"crackerjack>=0.70.0"` (consistency)
 
 - [ ] **Step 3: Delete the script AND the test that imports it**
 
@@ -1878,7 +1878,7 @@ Expected: All tests pass (the deleted test is no longer in the suite).
 ```bash
 cd /Users/les/Projects/mahavishnu
 git add pyproject.toml scripts/regenerate_plan_index.py
-git commit -m "chore(deps): bump crackerjack>=0.69.5; remove duplicated validator script and test"
+git commit -m "chore(deps): bump crackerjack>=0.70.0; remove duplicated validator script and test"
 ```
 
 ---
@@ -1937,9 +1937,9 @@ For each repo, run the cleanup phase smoke test from Task 9 step 6. Expected: `T
 If verification passes, write a comment in the crackerjack CHANGELOG:
 
 ```markdown
-## 0.69.5 (2026-07-26) — verification
+## 0.70.0 (2026-07-26) — verification
 
-5 consumer repos migrated to `crackerjack>=0.69.5`; all `crackerjack docs validate` runs exit 0.
+5 consumer repos migrated to `crackerjack>=0.70.0`; all `crackerjack docs validate` runs exit 0.
 ```
 
 ---
