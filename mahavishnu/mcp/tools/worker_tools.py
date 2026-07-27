@@ -72,6 +72,35 @@ async def worker_spawn(
     return {"worker_ids": worker_ids}
 
 
+async def worker_monitor(
+    worker_ids: list[str] | None = None,
+    interval: float = 1.0,
+) -> dict[str, str | None]:
+    """Monitor worker status using durable records or the legacy manager.
+
+    When a durable manager is configured, this performs a one-shot status
+    lookup for each requested worker and returns its authoritative state as a
+    flat ``{worker_id: state}`` mapping. Missing durable workers map to
+    ``None``. Without a durable manager, the legacy manager's polling behavior
+    and interval validation are preserved.
+    """
+    if _durable_manager is not None:
+        out: dict[str, str | None] = {}
+        for wid in worker_ids or []:
+            record = _durable_manager.status(wid)
+            out[wid] = record.state if record is not None else None
+        return out
+
+    if interval < 0.1 or interval > 10.0:
+        raise ValueError("interval must be between 0.1 and 10.0")
+
+    if _worker_manager is None:
+        raise RuntimeError("worker_manager not configured")
+
+    statuses = await _worker_manager.monitor_workers(worker_ids, interval)
+    return {wid: status.value for wid, status in statuses.items()}
+
+
 def register_worker_tools(  # noqa: C901
     mcp: FastMCP,
     worker_manager: WorkerManager,
@@ -97,6 +126,7 @@ def register_worker_tools(  # noqa: C901
     _worker_manager = worker_manager
 
     mcp.tool()(worker_spawn)
+    mcp.tool()(worker_monitor)
 
     @mcp.tool()
     async def worker_execute(
@@ -195,19 +225,6 @@ def register_worker_tools(  # noqa: C901
         if worker_id is not None:
             records = [r for r in records if r.worker_id == worker_id]
         return [{"worker_id": r.worker_id, "state": r.state} for r in records]
-
-    @mcp.tool()
-    async def worker_monitor(
-        worker_ids: list[str] | None = None,
-        interval: float = 1.0,
-    ) -> dict:
-        """Monitor worker status in real-time."""
-        if interval < 0.1 or interval > 10.0:
-            raise ValueError("interval must be between 0.1 and 10.0")
-
-        statuses = await worker_manager.monitor_workers(worker_ids, interval)
-
-        return {wid: status.value for wid, status in statuses.items()}
 
     @mcp.tool()
     async def worker_collect_results(
