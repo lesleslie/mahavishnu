@@ -25,11 +25,15 @@ from typing import TYPE_CHECKING, Any
 if TYPE_CHECKING:
     from ..workers.contract.manager import DurableWorkerManager
 
+from mahavishnu.observability.worker_metrics import WorkerMetrics
 
 # Module-level reference set by ``register_worker_contract_tools`` and
 # patchable by tests. Reading from a module global keeps the FastMCP tool
 # functions free of bound state, which simplifies test isolation.
 _durable_manager: DurableWorkerManager | None = None
+
+# Spec §14 success-criteria instrumentation. Singleton per module; thread-safe.
+_metrics = WorkerMetrics()
 
 
 # Match CSI escape sequences (colors, cursor moves) so we can strip ANSI
@@ -84,6 +88,7 @@ async def launch_worker(
     ``no_tmux`` falls back to the legacy PTY/backend path with a sentinel
     return so callers can route accordingly.
     """
+    _metrics.record("launch_worker")
     if _durable_manager is None:
         return {"worker_id": None, "state": "manager_unconfigured"}
 
@@ -116,6 +121,7 @@ async def send_input(worker_id: str, input: str, *, submit: bool = True) -> dict
     """Deliver text to the worker's pane. ``accepted=False`` means the worker
     is in a state that cannot accept input (already reaped, missing pane, etc.).
     """
+    _metrics.record("send_input")
     if _durable_manager is None:
         return {"accepted": False, "byte_offset": 0}
     accepted = _durable_manager.send_input(worker_id, input, submit=submit)
@@ -130,6 +136,7 @@ async def capture_output(
     strip_ansi: bool = True,
 ) -> dict:
     """Return a fresh pane snapshot bounded by ``since_offset`` and ``max_bytes``."""
+    _metrics.record("capture_output")
     if _durable_manager is None:
         return {
             "worker_id": worker_id,
@@ -161,6 +168,7 @@ async def worker_status(worker_id: str) -> dict:
     revisions) the field silently falls back to ``None`` rather than crash
     the status call.
     """
+    _metrics.record("worker_status")
     if _durable_manager is None:
         return {"worker_id": worker_id, "state": "manager_unconfigured"}
 
@@ -213,6 +221,7 @@ async def wait_for_state(
     When ``include_output`` is True, the response carries incremental pane
     output captured during the wait (``output_during_wait``), matching F9.
     """
+    _metrics.record("wait_for_state")
     if _durable_manager is None:
         return {"worker_id": worker_id, "state": "manager_unconfigured", "elapsed_ms": 0}
 
@@ -260,6 +269,7 @@ async def cancel_worker(worker_id: str, *, signal: str = "soft", grace_ms: int =
     The response always carries ``exit_code`` (F10) so callers can
     distinguish a graceful exit from a hard kill.
     """
+    _metrics.record("cancel_worker")
     if _durable_manager is None:
         return {"killed": False, "exit_code": None}
     killed = _durable_manager.cancel(worker_id, signal=signal, grace_ms=grace_ms)
@@ -278,6 +288,7 @@ async def worker_revoke(worker_id: str, *, force: bool = False) -> dict:
     NEVER auto-executed by Mahavishnu; the caller must issue the command in
     their own shell.
     """
+    _metrics.record("worker_revoke")
     if _durable_manager is None:
         return {"revoked": False, "force": force, "attach_command": None}
     if force:
@@ -288,6 +299,8 @@ async def worker_revoke(worker_id: str, *, force: bool = False) -> dict:
     attach_command: str | None = None
     if record is not None and getattr(record, "tmux", None) is not None:
         attach_command = getattr(record.tmux, "attach_command", None)
+    if attach_command:
+        _metrics.record_attach()
     return {
         "revoked": True,
         "force": force,
