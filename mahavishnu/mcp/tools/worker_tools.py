@@ -164,9 +164,37 @@ def register_worker_tools(  # noqa: C901
         return out
 
     @mcp.tool()
-    async def worker_list() -> list[dict]:
-        """List all active workers."""
-        return await worker_manager.list_workers()
+    async def worker_list(
+        state: str | None = None,
+        worker_id: str | None = None,
+    ) -> list[dict]:
+        """List workers, optionally filtered by state and/or worker_id.
+
+        When the durable worker manager is configured, the tool reads
+        from ``_durable_manager.store.list_all()`` and applies the
+        optional ``state`` and ``worker_id`` filters, projecting each
+        surviving record to ``{"worker_id": ..., "state": ...}``. When
+        the durable manager is absent, the tool falls back to
+        ``worker_manager.list_workers()`` so existing callers stay
+        green; the legacy path does not apply the new filters.
+
+        Args:
+            state: Optional ``WorkerLifecycleState`` value to filter by
+                (e.g. ``"ready"``, ``"running"``). Only honored on the
+                durable-manager path.
+            worker_id: Optional worker id to filter by. Only honored on
+                the durable-manager path.
+        """
+        if _durable_manager is None:
+            return await worker_manager.list_workers()
+        records = list(_durable_manager.store.list_all())
+        # DurableWorkerRecord uses ``use_enum_values=True``, so ``r.state``
+        # is already the enum's string value (e.g. "ready"); no .value access.
+        if state is not None:
+            records = [r for r in records if r.state == state]
+        if worker_id is not None:
+            records = [r for r in records if r.worker_id == worker_id]
+        return [{"worker_id": r.worker_id, "state": r.state} for r in records]
 
     @mcp.tool()
     async def worker_monitor(
