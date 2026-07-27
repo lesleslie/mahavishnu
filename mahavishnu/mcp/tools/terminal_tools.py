@@ -5,12 +5,13 @@ allowing Claude Code and other MCP clients to launch, control, and
 capture output from terminal sessions.
 """
 
+from __future__ import annotations
+
 from typing import Annotated, Any
 
 from mcp_common.fastmcp import FastMCP
 from pydantic import Field, StringConstraints
 
-from ...terminal.adapters.iterm2 import ITERM2_AVAILABLE, ITerm2Adapter
 from ...terminal.adapters.mcpretentious import McpretentiousAdapter
 from ...terminal.manager import TerminalManager
 
@@ -167,23 +168,17 @@ def register_terminal_tools(  # noqa: C901
 
         # Create new adapter instance
         if adapter_name == "iterm2":
-            if not ITERM2_AVAILABLE:
-                return {
-                    "status": "error",
-                    "message": "iTerm2 adapter not available. Install with: pip install iterm2",
-                }
-            try:
-                new_adapter = ITerm2Adapter()
-            except Exception as e:
-                return {"status": "error", "message": f"Failed to initialize iTerm2 adapter: {e}"}
-        elif adapter_name == "mcpretentious":
+            raise NotImplementedError(
+                "iTerm2 adapter is deprecated; use tmux or mcpretentious"
+            )
+        if adapter_name == "mcpretentious":
             if mcp_client is None:
                 return {"status": "error", "message": "mcpretentious adapter requires MCP client"}
             new_adapter = McpretentiousAdapter(mcp_client)
         else:
             return {
                 "status": "error",
-                "message": f"Unknown adapter: {adapter_name}. Use 'iterm2' or 'mcpretentious'",
+                "message": f"Unknown adapter: {adapter_name}. Use 'mcpretentious'",
             }
 
         # Perform the switch
@@ -216,79 +211,8 @@ def register_terminal_tools(  # noqa: C901
             }
         }
 
-        if ITERM2_AVAILABLE:
-            adapters["iterm2"] = {
-                "status": "available",
-                "description": "Native iTerm2 Python API (WebSocket)",
-            }
-        else:
-            adapters["iterm2"] = {
-                "status": "unavailable",
-                "description": "Install with: pip install iterm2",
-            }
 
         return {
             "adapters": adapters,
             "current": terminal_manager.current_adapter(),
         }
-
-    @mcp.tool()
-    async def terminal_list_profiles() -> dict:
-        """List available iTerm2 profiles (only works with iTerm2 adapter)."""
-        if terminal_manager.current_adapter() != "iterm2":
-            return {
-                "status": "error",
-                "message": "Profile listing only available with iTerm2 adapter",
-                "current_adapter": terminal_manager.current_adapter(),
-                "profiles": [],
-            }
-
-        try:
-            # Get the adapter's connection
-            adapter = terminal_manager.adapter
-            if not hasattr(adapter, "_connection") or adapter._connection is None:
-                return {
-                    "status": "error",
-                    "message": "iTerm2 not connected",
-                    "profiles": [],
-                }
-
-            # Import iterm2 and fetch profiles
-            import iterm2
-
-            profiles = await iterm2.Profile.async_get_all(adapter._connection)  # ty: ignore[unresolved-attribute]
-            profile_names = [p.name for p in profiles]
-
-            return {
-                "status": "success",
-                "profiles": profile_names,
-                "count": len(profile_names),
-            }
-        except Exception as e:
-            return {
-                "status": "error",
-                "message": f"Failed to list profiles: {e}",
-                "profiles": [],
-            }
-
-    @mcp.tool()
-    async def terminal_launch_with_profile(
-        command: str,
-        profile_name: str,
-        count: int = 1,
-        columns: int = 120,
-        rows: int = 40,
-    ) -> list[str]:
-        """Launch terminal sessions with a specific iTerm2 profile."""
-        if terminal_manager.current_adapter() != "iterm2":
-            raise RuntimeError(
-                f"Profile selection requires iTerm2 adapter. Current: {terminal_manager.current_adapter()}"
-            )
-
-        return await terminal_manager.launch_sessions(
-            command,
-            count,
-            columns,
-            rows,
-            profile_name=profile_name,  # ty: ignore[unknown-argument]
-        )
