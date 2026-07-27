@@ -28,14 +28,14 @@ class TestManagerPassesPreferenceToClient:
         config.terminal = TerminalSettings(adapter_preference="mcpretentious")
 
         mock_client = MagicMock()
-            with patch(
-                "mahavishnu.terminal.manager.McpretentiousAdapter",
-            ) as mock_adapter_cls:
-                adapter_instance = MagicMock()
-                adapter_instance.adapter_name = "mcpretentious"
-                mock_adapter_cls.return_value = adapter_instance
+        with patch(
+            "mahavishnu.terminal.manager.McpretentiousAdapter",
+        ) as mock_adapter_cls:
+            adapter_instance = MagicMock()
+            adapter_instance.adapter_name = "mcpretentious"
+            mock_adapter_cls.return_value = adapter_instance
 
-                await TerminalManager.create(config, mcp_client=mock_client)
+            await TerminalManager.create(config, mcp_client=mock_client)
 
         mock_adapter_cls.assert_called_once()
         call_kwargs = mock_adapter_cls.call_args.kwargs
@@ -66,14 +66,14 @@ class TestManagerAcceptsBuiltinBackend:
         config.terminal = TerminalSettings(adapter_preference=self.preference)
 
         mock_client = MagicMock()
-            with patch(
-                "mahavishnu.terminal.manager.McpretentiousAdapter",
-            ) as mock_adapter_cls:
-                adapter_instance = MagicMock()
-                adapter_instance.adapter_name = self.preference
-                mock_adapter_cls.return_value = adapter_instance
+        with patch(
+            "mahavishnu.terminal.manager.McpretentiousAdapter",
+        ) as mock_adapter_cls:
+            adapter_instance = MagicMock()
+            adapter_instance.adapter_name = self.preference
+            mock_adapter_cls.return_value = adapter_instance
 
-                await TerminalManager.create(config, mcp_client=mock_client)
+            await TerminalManager.create(config, mcp_client=mock_client)
 
         mock_adapter_cls.assert_called_once()
         call_kwargs = mock_adapter_cls.call_args.kwargs
