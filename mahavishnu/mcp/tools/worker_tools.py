@@ -10,6 +10,7 @@ if TYPE_CHECKING:
     from mcp_common.fastmcp import FastMCP
 
     from ...workers.contract.manager import DurableWorkerManager
+    from ...workers.contract.tmux_adapter import CapturedOutput
     from ...workers.manager import WorkerManager
 
 
@@ -101,6 +102,58 @@ async def worker_monitor(
     return {wid: status.value for wid, status in statuses.items()}
 
 
+async def worker_collect_results(
+    worker_ids: list[str] | None = None,
+    *,
+    since_offset: int = 0,
+) -> dict:
+    """Collect results from completed workers.
+
+    Wire shape differs by configuration. This is an intentional breaking
+    change relative to the legacy flat-dict shape (``{wid: {...}}``):
+
+    * **Durable-manager path** — when ``_durable_manager`` is configured,
+      returns an envelope ``{"workers": {wid: {text, next_offset,
+      truncated, pane_alive}}}`` so callers can page pane output via
+      ``since_offset`` (F1, F20). An empty ``worker_ids`` returns
+      ``{"workers": {}}`` without calling ``capture_output``.
+    * **Legacy path** — when ``_durable_manager`` is not configured,
+      returns the original flat ``{wid: {status, output, error,
+      exit_code, duration_seconds, metadata}}`` mapping so existing
+      callers stay green.
+    """
+    if _durable_manager is not None:
+        workers_out: dict[str, dict[str, object]] = {}
+        for wid in worker_ids or []:
+            captured: CapturedOutput = _durable_manager.capture_output(
+                wid, since_offset=since_offset
+            )
+            workers_out[wid] = {
+                "text": captured.text,
+                "next_offset": captured.next_offset,
+                "truncated": captured.truncated,
+                "pane_alive": captured.pane_alive,
+            }
+        return {"workers": workers_out}
+
+    if _worker_manager is None:
+        raise RuntimeError("worker_manager not configured")
+
+    results = await _worker_manager.collect_results(worker_ids)
+
+    return {
+        wid: {
+            "status": result.status.value,
+            "output": result.output,
+            "error": result.error,
+            "exit_code": result.exit_code,
+            "duration_seconds": result.duration_seconds,
+            "metadata": result.metadata or {},
+        }
+        for wid, result in results.items()
+    }
+
+
 def register_worker_tools(  # noqa: C901
     mcp: FastMCP,
     worker_manager: WorkerManager,
@@ -127,6 +180,7 @@ def register_worker_tools(  # noqa: C901
 
     mcp.tool()(worker_spawn)
     mcp.tool()(worker_monitor)
+    mcp.tool()(worker_collect_results)
 
     @mcp.tool()
     async def worker_execute(
@@ -225,25 +279,6 @@ def register_worker_tools(  # noqa: C901
         if worker_id is not None:
             records = [r for r in records if r.worker_id == worker_id]
         return [{"worker_id": r.worker_id, "state": r.state} for r in records]
-
-    @mcp.tool()
-    async def worker_collect_results(
-        worker_ids: list[str] | None = None,
-    ) -> dict:
-        """Collect results from completed workers."""
-        results = await worker_manager.collect_results(worker_ids)
-
-        return {
-            wid: {
-                "status": result.status.value,
-                "output": result.output,
-                "error": result.error,
-                "exit_code": result.exit_code,
-                "duration_seconds": result.duration_seconds,
-                "metadata": result.metadata or {},
-            }
-            for wid, result in results.items()
-        }
 
     @mcp.tool()
     async def worker_close(worker_id: str) -> dict:
