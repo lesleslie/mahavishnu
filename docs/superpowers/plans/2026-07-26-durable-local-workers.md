@@ -24,7 +24,7 @@
 
 ## Pre-Flight Findings (from multi-reviewer audit)
 
-A four-lens review (coverage, technical risk, test design, rollout) and adversarial verification produced 20 in-scope findings before execution. The high and medium findings are folded into the affected tasks below. The reviewer batch also produced 16 out-of-scope "TST-*" findings that reference a different plan; they are ignored.
+A four-lens review (coverage, technical risk, test design, rollout) and adversarial verification produced 20 in-scope findings before execution. The high and medium findings are folded into the affected tasks below. The reviewer batch also produced 16 out-of-scope "TST-\*" findings that reference a different plan; they are ignored.
 
 In-scope findings and where they are addressed:
 
@@ -54,9 +54,9 @@ In-scope findings and where they are addressed:
 The spec §16 lists four open questions. Confirm these defaults before Task 1 starts:
 
 1. Default `backend` for `launch_worker` — `claude_tui` (default) or `claude_print`? Plan uses `claude_tui`.
-2. Allow outright removal of 500-character `worker_execute` truncation in Phase A? Plan assumes **yes**; reject to keep the cap.
-3. Confirm `~/.mahavishnu/tmux/` private-socket directory layout. Plan assumes **yes**.
-4. Confirm `worker_revoke` is allowed to leave the underlying process running unless `force=true`. Plan assumes **yes**.
+1. Allow outright removal of 500-character `worker_execute` truncation in Phase A? Plan assumes **yes**; reject to keep the cap.
+1. Confirm `~/.mahavishnu/tmux/` private-socket directory layout. Plan assumes **yes**.
+1. Confirm `worker_revoke` is allowed to leave the underlying process running unless `force=true`. Plan assumes **yes**.
 
 ## File Structure
 
@@ -137,18 +137,21 @@ docs/MCP_TOOLS_SPECIFICATION.md
 - Constellation dashboard patches to consume the new event types.
 - WebSocket push and tmux control-mode streaming.
 
----
+______________________________________________________________________
 
 ## Task 1: WorkerLifecycleState enum and transitions
 
 **Files:**
+
 - Create: `mahavishnu/workers/contract/__init__.py`
 - Create: `mahavishnu/workers/contract/state.py`
 - Test: `tests/unit/workers/contract/__init__.py`
 - Test: `tests/unit/workers/contract/test_state.py`
 
 **Interfaces:**
+
 - Consumes: none
+
 - Produces: `WorkerLifecycleState` enum and `ALLOWED_TRANSITIONS` dict
 
 - [ ] **Step 1: Write the failing test**
@@ -307,16 +310,19 @@ git add mahavishnu/workers/contract tests/unit/workers/contract
 git commit -m "feat(workers/contract): add WorkerLifecycleState and transition rules"
 ```
 
----
+______________________________________________________________________
 
 ## Task 2: DurableWorkerRecord Pydantic model
 
 **Files:**
+
 - Create: `mahavishnu/workers/contract/record.py`
 - Test: `tests/unit/workers/contract/test_record.py`
 
 **Interfaces:**
+
 - Consumes: `WorkerLifecycleState` (Task 1)
+
 - Produces: `DurableWorkerRecord`, `TmuxTarget`, `WorkerResultSummary`, `from_dict`, `to_dict`
 
 - [ ] **Step 1: Write the failing test**
@@ -448,16 +454,19 @@ git add mahavishnu/workers/contract/record.py tests/unit/workers/contract/test_r
 git commit -m "feat(workers/contract): add DurableWorkerRecord Pydantic model"
 ```
 
----
+______________________________________________________________________
 
 ## Task 3: WorkerRecordStore with atomic JSON I/O
 
 **Files:**
+
 - Create: `mahavishnu/workers/contract/store.py`
 - Test: `tests/unit/workers/contract/test_store.py`
 
 **Interfaces:**
+
 - Consumes: `DurableWorkerRecord` (Task 2)
+
 - Produces: `WorkerRecordStore` class with `put`, `get`, `delete`, `list_active`, `list_all`
 
 - [ ] **Step 1: Write the failing test**
@@ -635,12 +644,14 @@ git add mahavishnu/workers/contract/store.py tests/unit/workers/contract/test_st
 git commit -m "feat(workers/contract): add atomic JSON store for durable records"
 ```
 
----
+______________________________________________________________________
 
 ## Task 4: tmux event topic constants
 
 **Files:**
+
 - Create: `mahavishnu/core/events/worker_topics.py`
+
 - Test: `tests/unit/core/test_worker_topics.py`
 
 - [ ] **Step 1: Write the failing test**
@@ -721,11 +732,12 @@ git add mahavishnu/core/events/worker_topics.py tests/unit/core/test_worker_topi
 git commit -m "feat(events): add worker topic constants and helper"
 ```
 
----
+______________________________________________________________________
 
 ## Task 5: TmuxTerminalAdapter — create/attach primitives
 
 **Files:**
+
 - Create: `mahavishnu/workers/contract/tmux_adapter.py`
 - Test: `tests/unit/workers/contract/test_tmux_adapter.py`
 
@@ -1072,17 +1084,20 @@ git add mahavishnu/workers/contract/tmux_adapter.py tests/unit/workers/contract/
 git commit -m "feat(workers/contract): add tmux adapter primitives"
 ```
 
----
+______________________________________________________________________
 
 ## Task 6: DurableWorkerManager lifecycle
 
 **Files:**
+
 - Modify: `mahavishnu/workers/contract/__init__.py` (export the manager)
 - Create: `mahavishnu/workers/contract/manager.py`
 - Test: `tests/unit/workers/contract/test_manager.py`
 
 **Interfaces:**
+
 - Consumes: `DurableWorkerRecord`, `WorkerRecordStore`, `TmuxSessionInfo` (Tasks 2, 3, 5); canonical event publisher from `mahavishnu.core.events`
+
 - Produces: `DurableWorkerManager.spawn`, `.status`, `.capture_output`, `.send_input`, `.cancel`, `.reap`, `.reconcile_all`
 
 - [ ] **Step 1: Write the failing test**
@@ -1493,12 +1508,14 @@ git add mahavishnu/workers/contract/manager.py mahavishnu/workers/contract/__ini
 git commit -m "feat(workers/contract): add DurableWorkerManager with reconcile_all"
 ```
 
----
+______________________________________________________________________
 
 ## Task 7: EventPublisher adapter for canonical Oneiric envelope
 
 **Files:**
+
 - Create: `mahavishnu/workers/contract/publisher.py`
+
 - Test: `tests/unit/workers/contract/test_publisher.py`
 
 - [ ] **Step 1: Write the failing test**
@@ -1599,12 +1616,14 @@ git add mahavishnu/workers/contract/publisher.py tests/unit/workers/contract/tes
 git commit -m "feat(workers/contract): add canonical envelope publisher"
 ```
 
----
+______________________________________________________________________
 
 ## Task 8: Repair `worker_execute` truncation in MCP worker tools
 
 **Files:**
+
 - Modify: `mahavishnu/mcp/tools/worker_tools.py` (replace the `output[:500]` truncation in `worker_execute` and `output[:200]` in `worker_execute_batch` with a structured cursor)
+
 - Test: `tests/unit/mcp/tools/test_worker_execute_no_truncation.py`
 
 - [ ] **Step 1: Write the failing test**
@@ -1715,12 +1734,14 @@ git add mahavishnu/mcp/tools/worker_tools.py tests/unit/mcp/tools/test_worker_ex
 git commit -m "fix(mcp): stop truncating worker_execute output to 500 chars"
 ```
 
----
+______________________________________________________________________
 
 ## Task 9: `workflow_result` MCP tool
 
 **Files:**
+
 - Modify: `mahavishnu/mcp/tools/pool_tools.py` (add `workflow_result` tool and registration)
+
 - Test: `tests/unit/mcp/tools/test_workflow_result.py`
 
 - [ ] **Step 1: Write the failing test**
@@ -1831,12 +1852,14 @@ git add mahavishnu/mcp/tools/pool_tools.py tests/unit/mcp/tools/test_workflow_re
 git commit -m "feat(mcp): add workflow_result retrieval tool"
 ```
 
----
+______________________________________________________________________
 
 ## Task 10: `terminal-claude` completion marker normalization
 
 **Files:**
+
 - Modify: `mahavishnu/workers/generic_shell.py` (add a fallback completion detection that triggers on Claude's actual stream-JSON `"type":"result"` line)
+
 - Test: `tests/unit/workers/test_terminal_claude_completion.py`
 
 - [ ] **Step 1: Write the failing test**
@@ -1906,12 +1929,14 @@ git add mahavishnu/workers/generic_shell.py tests/unit/workers/test_terminal_cla
 git commit -m "fix(workers): recognize Claude Code stream-json result marker"
 ```
 
----
+______________________________________________________________________
 
 ## Task 11: BUILTIN_BACKENDS `tmux` entry
 
 **Files:**
+
 - Modify: `mahavishnu/terminal/backends.py` (add `tmux` entry to `BUILTIN_BACKENDS`)
+
 - Test: `tests/unit/terminal/test_tmux_backend_entry.py`
 
 - [ ] **Step 1: Write the failing test**
@@ -1969,12 +1994,14 @@ git add mahavishnu/terminal/backends.py tests/unit/terminal/test_tmux_backend_en
 git commit -m "feat(terminal): register tmux as a builtin backend"
 ```
 
----
+______________________________________________________________________
 
 ## Task 12: Wire `TmuxTerminalAdapter` into the terminal manager
 
 **Files:**
+
 - Create: `mahavishnu/terminal/adapters/tmux.py`
+
 - Modify: `mahavishnu/terminal/manager.py` (route `tmux` to the new adapter; do not break the existing `mcpretentious` path)
 
 - [ ] **Step 1: Write the failing test**
@@ -2126,13 +2153,16 @@ git add mahavishnu/terminal/adapters/tmux.py mahavishnu/terminal/manager.py test
 git commit -m "feat(terminal): route tmux preference to TmuxTerminalAdapter"
 ```
 
----
+______________________________________________________________________
 
 ## Task 13: Worker-contract MCP tool group
 
 **Files:**
+
 - Create: `mahavishnu/mcp/tools/worker_contract_tools.py`
+
 - Test: `tests/unit/mcp/tools/test_worker_contract_tools.py`
+
 - Modify: `mahavishnu/mcp/bootstrap.py` (register the new tool group)
 
 - [ ] **Step 1: Write the failing test**
@@ -2397,12 +2427,14 @@ git add mahavishnu/mcp/tools/worker_contract_tools.py mahavishnu/mcp/bootstrap.p
 git commit -m "feat(mcp): add worker contract tools and bootstrap registration"
 ```
 
----
+______________________________________________________________________
 
 ## Task 14: Settings additions for the worker contract
 
 **Files:**
+
 - Modify: `settings/mahavishnu.yaml` (add `worker_contract` block with defaults)
+
 - Test: `tests/unit/config/test_worker_contract_settings.py`
 
 - [ ] **Step 1: Write the failing test**
@@ -2458,11 +2490,12 @@ git add settings/mahavishnu.yaml tests/unit/config/test_worker_contract_settings
 git commit -m "feat(settings): add worker_contract defaults"
 ```
 
----
+______________________________________________________________________
 
 ## Task 15: MCP tools documentation
 
 **Files:**
+
 - Modify: `docs/MCP_TOOLS_SPECIFICATION.md` (add a new section describing the seven worker contract tools)
 
 - [ ] **Step 1: Append a new section to the doc**
@@ -2499,11 +2532,12 @@ git add docs/MCP_TOOLS_SPECIFICATION.md
 git commit -m "docs(mcp): document worker contract tools"
 ```
 
----
+______________________________________________________________________
 
 ## Task 16: End-to-end reconciliation test
 
 **Files:**
+
 - Create: `tests/integration/workers/contract/test_reconciliation.py`
 
 - [ ] **Step 1: Write the test**
@@ -2603,7 +2637,7 @@ git add tests/integration/workers/contract/test_reconciliation.py
 git commit -m "test(workers/contract): add reconciliation integration test"
 ```
 
----
+______________________________________________________________________
 
 ## Task 17: Crackerjack quality gate
 
@@ -2625,7 +2659,7 @@ git add -A
 git commit -m "chore(quality): address crackerjack findings"
 ```
 
----
+______________________________________________________________________
 
 ## Self-Review (after the four-lens audit)
 
@@ -2664,16 +2698,19 @@ Placeholder scan: no TBDs or "add appropriate error handling" stubs remain. Ever
 
 Out-of-scope reviewer findings (TST-001 through TST-016) reference a different plan (Tasks 2.1, 2.3, 3.2, 3.3) and are ignored.
 
----
+______________________________________________________________________
 
 ## Task 8a: Graceful shutdown wiring (F2)
 
 **Files:**
+
 - Create: `mahavishnu/lifecycle/worker_shutdown.py`
 - Test: `tests/unit/lifecycle/test_worker_shutdown.py`
 
 **Interfaces:**
+
 - Consumes: `DurableWorkerManager` (Task 6)
+
 - Produces: `install_worker_shutdown(mahavishnu_app)` no-op for non-local pools; calls `mark_all_detached()` on shutdown
 
 - [ ] **Step 1: Write the failing test**
@@ -2744,12 +2781,14 @@ git add mahavishnu/lifecycle/worker_shutdown.py tests/unit/lifecycle/test_worker
 git commit -m "feat(lifecycle): wire graceful shutdown for durable workers"
 ```
 
----
+______________________________________________________________________
 
 ## Task 8b: Startup reconciliation hook (F15)
 
 **Files:**
+
 - Create: `mahavishnu/lifecycle/worker_startup.py`
+
 - Test: `tests/unit/lifecycle/test_worker_startup.py`
 
 - [ ] **Step 1: Write the failing test**
@@ -2811,12 +2850,14 @@ git add mahavishnu/lifecycle/worker_startup.py tests/unit/lifecycle/test_worker_
 git commit -m "feat(lifecycle): wire startup reconciliation for durable workers"
 ```
 
----
+______________________________________________________________________
 
 ## Task 18: `worker_spawn` rewired to use the durable contract (F1)
 
 **Files:**
+
 - Modify: `mahavishnu/mcp/tools/worker_tools.py`
+
 - Test: `tests/unit/mcp/tools/test_worker_spawn_contract.py`
 
 - [ ] **Step 1: Write the failing test**
@@ -2861,12 +2902,14 @@ git add mahavishnu/mcp/tools/worker_tools.py tests/unit/mcp/tools/test_worker_sp
 git commit -m "feat(mcp): route worker_spawn shell types through durable contract"
 ```
 
----
+______________________________________________________________________
 
 ## Task 19: `worker_list` filters by state and worker_id (F1)
 
 **Files:**
+
 - Modify: `mahavishnu/mcp/tools/worker_tools.py`
+
 - Test: `tests/unit/mcp/tools/test_worker_list_filter.py`
 
 - [ ] **Step 1: Write the failing test**
@@ -2912,12 +2955,14 @@ git add mahavishnu/mcp/tools/worker_tools.py tests/unit/mcp/tools/test_worker_li
 git commit -m "feat(mcp): filter worker_list by state and worker_id"
 ```
 
----
+______________________________________________________________________
 
 ## Task 20: `worker_monitor` returns authoritative state (F1)
 
 **Files:**
+
 - Modify: `mahavishnu/mcp/tools/worker_tools.py`
+
 - Test: `tests/unit/mcp/tools/test_worker_monitor_state.py`
 
 - [ ] **Step 1: Write the failing test**
@@ -2963,12 +3008,14 @@ git add mahavishnu/mcp/tools/worker_tools.py tests/unit/mcp/tools/test_worker_mo
 git commit -m "feat(mcp): worker_monitor returns authoritative state"
 ```
 
----
+______________________________________________________________________
 
 ## Task 21: `worker_collect_results` supports incremental output (F1, F20)
 
 **Files:**
+
 - Modify: `mahavishnu/mcp/tools/worker_tools.py`
+
 - Test: `tests/unit/mcp/tools/test_worker_collect_results_offset.py`
 
 - [ ] **Step 1: Write the failing test**
@@ -3012,12 +3059,14 @@ git add mahavishnu/mcp/tools/worker_tools.py tests/unit/mcp/tools/test_worker_co
 git commit -m "feat(mcp): worker_collect_results supports incremental output"
 ```
 
----
+______________________________________________________________________
 
 ## Task 22: `worker_close` two-phase graceful shutdown (F1)
 
 **Files:**
+
 - Modify: `mahavishnu/mcp/tools/worker_tools.py`
+
 - Test: `tests/unit/mcp/tools/test_worker_close_two_phase.py`
 
 - [ ] **Step 1: Write the failing test**
@@ -3060,12 +3109,14 @@ git add mahavishnu/mcp/tools/worker_tools.py tests/unit/mcp/tools/test_worker_cl
 git commit -m "feat(mcp): worker_close uses two-phase cancellation"
 ```
 
----
+______________________________________________________________________
 
 ## Task 23: `worker_close_all` and `worker_health` (F1)
 
 **Files:**
+
 - Modify: `mahavishnu/mcp/tools/worker_tools.py`
+
 - Test: `tests/unit/mcp/tools/test_worker_close_all_and_health.py`
 
 - [ ] **Step 1: Write the failing test**
@@ -3128,12 +3179,14 @@ git add mahavishnu/mcp/tools/worker_tools.py tests/unit/mcp/tools/test_worker_cl
 git commit -m "feat(mcp): worker_close_all and worker_health use durable contract"
 ```
 
----
+______________________________________________________________________
 
 ## Task 24: `pool_route_execute` and `dispatch_to_pool` use the contract (F1, F12)
 
 **Files:**
+
 - Modify: `mahavishnu/mcp/tools/pool_tools.py`
+
 - Test: `tests/unit/mcp/tools/test_pool_route_execute_contract.py`
 
 - [ ] **Step 1: Write the failing test**
@@ -3185,13 +3238,16 @@ git add mahavishnu/mcp/tools/pool_tools.py tests/unit/mcp/tools/test_pool_route_
 git commit -m "feat(mcp): pool tools route shell types through durable contract"
 ```
 
----
+______________________________________________________________________
 
 ## Task 25: §14 success-criteria instrumentation (F13)
 
 **Files:**
+
 - Create: `mahavishnu/observability/worker_metrics.py`
+
 - Test: `tests/unit/observability/test_worker_metrics.py`
+
 - Modify: `mahavishnu/mcp/tools/worker_contract_tools.py` (instrument every tool call)
 
 - [ ] **Step 1: Write the failing test**
@@ -3284,40 +3340,40 @@ git add mahavishnu/observability/worker_metrics.py tests/unit/observability/test
 git commit -m "feat(observability): instrument worker contract tools with metrics"
 ```
 
----
+______________________________________________________________________
 
 ## Updated task list
 
 The plan now has 26 tasks in execution order:
 
 1. `WorkerLifecycleState` enum
-2. `DurableWorkerRecord` Pydantic model
-3. `WorkerRecordStore` atomic JSON I/O
-4. Worker topic constants
-5. `TmuxTerminalAdapter` primitives
-6. `DurableWorkerManager` lifecycle
-7. `CanonicalEnvelopePublisher`
-8. Repair `worker_execute` truncation
-8a. Graceful shutdown wiring
-8b. Startup reconciliation hook
-9. `workflow_result` MCP tool
-10. `terminal-claude` completion detection
-11. `tmux` backend entry
-12. Wire tmux adapter into manager
-13. Worker contract MCP tool group
-14. Settings additions
-15. MCP tools documentation
-16. End-to-end reconciliation test
-17. Crackerjack quality gate
-18. `worker_spawn` rewired
-19. `worker_list` filters
-20. `worker_monitor` authoritative state
-21. `worker_collect_results` incremental output
-22. `worker_close` two-phase shutdown
-23. `worker_close_all` and `worker_health`
-24. `pool_route_execute` and `dispatch_to_pool` use the contract
-25. §14 success-criteria instrumentation
-26. iTerm2 adapter deprecation and removal
+1. `DurableWorkerRecord` Pydantic model
+1. `WorkerRecordStore` atomic JSON I/O
+1. Worker topic constants
+1. `TmuxTerminalAdapter` primitives
+1. `DurableWorkerManager` lifecycle
+1. `CanonicalEnvelopePublisher`
+1. Repair `worker_execute` truncation
+   8a. Graceful shutdown wiring
+   8b. Startup reconciliation hook
+1. `workflow_result` MCP tool
+1. `terminal-claude` completion detection
+1. `tmux` backend entry
+1. Wire tmux adapter into manager
+1. Worker contract MCP tool group
+1. Settings additions
+1. MCP tools documentation
+1. End-to-end reconciliation test
+1. Crackerjack quality gate
+1. `worker_spawn` rewired
+1. `worker_list` filters
+1. `worker_monitor` authoritative state
+1. `worker_collect_results` incremental output
+1. `worker_close` two-phase shutdown
+1. `worker_close_all` and `worker_health`
+1. `pool_route_execute` and `dispatch_to_pool` use the contract
+1. §14 success-criteria instrumentation
+1. iTerm2 adapter deprecation and removal
 
 This preserves the original four-phase rollout while closing the audit gaps.
 
@@ -3326,24 +3382,34 @@ This preserves the original four-phase rollout while closing the audit gaps.
 Confirmed before execution:
 
 1. Default `backend` for `launch_worker`: `claude_tui`.
-2. Remove 500-character `worker_execute` truncation: yes.
-3. Private-socket directory: `~/.mahavishnu/tmux/`.
-4. `worker_revoke` may leave the underlying process running unless `force=true`.
+1. Remove 500-character `worker_execute` truncation: yes.
+1. Private-socket directory: `~/.mahavishnu/tmux/`.
+1. `worker_revoke` may leave the underlying process running unless `force=true`.
 
----
+______________________________________________________________________
 
 ## Task 26: iTerm2 adapter deprecation and removal
 
 **Files:**
+
 - Modify: `mahavishnu/terminal/manager.py` (replace the iTerm2 branch in `TerminalManager.create` with a one-release deprecation warning that falls back to the mock adapter; do not block the boot path)
+
 - Modify: `mahavishnu/mcp/tools/terminal_tools.py` (remove `terminal_switch_adapter("iterm2")` and the iTerm2 profile launch MCP tool; raise `NotImplementedError` if called with `iterm2`)
+
 - Modify: `mahavishnu/terminal/adapters/iterm2.py` (delete the file or convert it to a stub that raises a clear `DeprecationWarning` then re-raises)
+
 - Modify: `mahavishnu/terminal/grid/models.py` and any iTerm2-type-coupled files (replace `ITerm2Adapter` with a generic `TerminalAdapter` Protocol so the grid manager compiles after the class is removed)
+
 - Modify: `mahavishnu/terminal/manager.py` `ITerm2_AVAILABLE` references (remove import paths; replace with `True` only at the iTerm2 deprecation warning site)
+
 - Modify: `mahavishnu/mcp/bootstrap.py` (remove the iTerm2-specific boot-path branch; `adapter_preference: "iTerm2"` now triggers the same deprecation warning)
+
 - Modify: `pyproject.toml` (remove the `iterm2 = ["iterm2>=2.20"]` extra; the dead-pin comment in the spec is now actionable)
+
 - Modify: `settings/mahavishnu.yaml` and `settings/mahavishnu.yaml.example` (remove the iTerm2-specific configuration block; add a one-time deprecation note in CHANGELOG)
+
 - Delete: iTerm2-specific tests under `tests/unit/terminal/` and `tests/accessibility/`
+
 - Test: `tests/unit/terminal/test_iterm2_deprecation.py`
 
 - [ ] **Step 1: Write the failing test**
@@ -3433,7 +3499,9 @@ Expected: all previously-passing tests still pass; the iTerm2-only tests are del
 - [ ] **Step 7: Delete the iTerm2-specific files**
 
 - Delete `mahavishnu/terminal/adapters/iterm2.py`.
+
 - Delete `mahavishnu/terminal/pool.py` if its only purpose was iTerm2.
+
 - Delete `tests/unit/terminal/test_iterm2*.py` and any iTerm2-only tests under `tests/accessibility/`.
 
 - [ ] **Step 8: Refactor the grid manager to a generic adapter protocol**

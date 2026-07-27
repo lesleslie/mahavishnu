@@ -12,12 +12,12 @@ bottlenecks:
 
 1. `worker_execute` truncates output to 500 characters; `worker_execute_batch`
    truncates to 200. Long refactors come back clipped.
-2. `dispatch_to_pool(async_callback=True)` returns a `workflow_id` but Claude
+1. `dispatch_to_pool(async_callback=True)` returns a `workflow_id` but Claude
    Code has no first-class tool to retrieve the result.
-3. Synchronous pool calls block the MCP request for the full `timeout` window.
-4. Raw `terminal_launch` / `terminal_send` is fire-and-forget with no
+1. Synchronous pool calls block the MCP request for the full `timeout` window.
+1. Raw `terminal_launch` / `terminal_send` is fire-and-forget with no
    completion state.
-5. The interactive `terminal-claude` worker relies on platform-dependent
+1. The interactive `terminal-claude` worker relies on platform-dependent
    completion markers that often do not match the actual stream-JSON output.
 
 The current iTerm2-windowed worker transport also produces an opaque window
@@ -290,17 +290,17 @@ Without it, Claude Code has no first-class path to a queued async result.
 On Mahavishnu startup:
 
 1. Load durable worker records from `~/.mahavishnu/worker-sessions/`.
-2. For each record, derive the actual tmux target and try to reach it
+1. For each record, derive the actual tmux target and try to reach it
    through its recorded socket.
-3. Classify:
+1. Classify:
    - `reaped` if the tmux server or pane is gone,
    - `detached` if the server is reachable but the pane is not owned by
      this controller,
    - `ready` / `completed` / `failed` / `degraded` if the pane is alive
      and reachable.
-4. Emit one canonical `worker.status_changed` event per record.
-5. Persist a `worker-status/<worker_id>.json` snapshot for the dashboard.
-6. Open the EventBridge consumer from the persisted cursor if available;
+1. Emit one canonical `worker.status_changed` event per record.
+1. Persist a `worker-status/<worker_id>.json` snapshot for the dashboard.
+1. Open the EventBridge consumer from the persisted cursor if available;
    otherwise start at the current stream position.
 
 ### 8.2 Controller disconnect
@@ -314,22 +314,22 @@ capture, with output continuation via the offset cursor.
 If the tmux server or pane disappears:
 
 1. The next poll reclassifies the record as `reaped`.
-2. The last captured output is retained until the user explicitly closes
+1. The last captured output is retained until the user explicitly closes
    the record, with a clear `reaped` label.
-3. A `worker.status_changed` event is emitted.
-4. A new worker can be spawned by re-issuing a launch; the record can be
+1. A `worker.status_changed` event is emitted.
+1. A new worker can be spawned by re-issuing a launch; the record can be
    archived or deleted.
 
 ### 8.4 Cancellation
 
 1. The controller sends a soft signal (`\x03` for CLI tools or a defined
    marker for SDKs).
-2. The grace period starts (default 5 seconds).
-3. If the worker has not exited, the controller escalates to `SIGTERM` on
+1. The grace period starts (default 5 seconds).
+1. If the worker has not exited, the controller escalates to `SIGTERM` on
    the tmux pane, then `SIGKILL` after another grace period.
-4. Final state is `reaped` with the last exit code or `killed` reason
+1. Final state is `reaped` with the last exit code or `killed` reason
    recorded.
-5. The local record is reconciled; the dashboard is notified.
+1. The local record is reconciled; the dashboard is notified.
 
 A second `cancel_worker` call observes the existing `draining` or terminal
 state and does not start a new cancellation sequence.
@@ -339,14 +339,14 @@ state and does not start a new cancellation sequence.
 Graceful shutdown:
 
 1. Mark all in-flight workers as `detached` in the local record.
-2. Emit `worker.status_changed` events.
-3. Do not kill panes; they may belong to the operator.
+1. Emit `worker.status_changed` events.
+1. Do not kill panes; they may belong to the operator.
 
 Restart:
 
 1. Reload the durable records.
-2. Resume the EventBridge consumer from the persisted cursor.
-3. Reattach to the panes that are still alive.
+1. Resume the EventBridge consumer from the persisted cursor.
+1. Reattach to the panes that are still alive.
 
 This is the core difference from a per-call worker: workers outlive the
 controller.
@@ -463,8 +463,7 @@ Open questions:
   to the new contract.
 - Workers survive a Mahavishnu controller restart with no operator
   intervention; the controller reattaches within 5 seconds.
-- tmux-attached operator action is logged (`tmux attach -t
-  mahavishnu-*`); at least one such attach per active power user per
+- tmux-attached operator action is logged (`tmux attach -t mahavishnu-*`); at least one such attach per active power user per
   week.
 - Crackerjack quality score remains ≥75 after the rollout.
 
@@ -474,25 +473,25 @@ Open questions:
    `workflow_result`, fix `terminal-claude` completion detection, add
    `worker_status`, `worker_wait`, `worker_output`, `worker_cancel`.
    Ship behind a feature flag; legacy path remains default.
-2. **Phase B — tmux as default local transport.** Add a direct
+1. **Phase B — tmux as default local transport.** Add a direct
    `TmuxTerminalAdapter`, use private sockets, reuse the current tmux
    session when `TMUX` is present, otherwise create a managed session.
    Keep iTerm2 available via explicit configuration.
-3. **Phase C — deprecate iTerm2.** Add deprecation warnings, refactor
+1. **Phase C — deprecate iTerm2.** Add deprecation warnings, refactor
    the terminal grid manager to depend on a generic `TerminalAdapter`
    protocol, schedule hard removal in a future breaking release.
-4. **Phase D — extension to Session-Buddy and cloud.** See §11 and §12.
+1. **Phase D — extension to Session-Buddy and cloud.** See §11 and §12.
 
 ## 16. Open questions for the user before implementation
 
 1. Default `backend` for `launch_worker` — `claude_tui` (PTY + Claude
    Code TUI) or `claude_print` (PTY + `--print`)? Suggest
    `claude_tui` default, override per-call.
-2. Confirm that 500-character `worker_execute` output truncation can be
+1. Confirm that 500-character `worker_execute` output truncation can be
    removed outright in Phase A, or whether some operators rely on it
    being a short summary.
-3. Confirm the `~/.mahavishnu/tmux/` private-socket directory layout.
-4. Confirm that we may add `worker_revoke` and that it is allowed to
+1. Confirm the `~/.mahavishnu/tmux/` private-socket directory layout.
+1. Confirm that we may add `worker_revoke` and that it is allowed to
    leave the underlying process running unless `force=true`.
 
 ## 17. References

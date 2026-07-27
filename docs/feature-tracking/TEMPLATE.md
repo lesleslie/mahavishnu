@@ -1,3 +1,12 @@
+---
+name: <feature-slug>
+status: <built|wired|adopted>
+date: YYYY-MM-DD
+last_reviewed: YYYY-MM-DD
+owner: <name or role>
+role: canonical
+---
+
 # Feature: <feature-slug>
 
 **Owner:** <name or role>

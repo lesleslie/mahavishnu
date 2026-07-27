@@ -92,9 +92,7 @@ async def launch_worker(
         return {"worker_id": None, "state": "no_tmux"}
 
     effective_command = command or ["claude"]
-    window_name = (
-        metadata.get("window_name", "main") if isinstance(metadata, dict) else "main"
-    )
+    window_name = metadata.get("window_name", "main") if isinstance(metadata, dict) else "main"
     result = _durable_manager.spawn(
         worker_type=worker_type,
         backend=backend,
@@ -256,9 +254,7 @@ async def wait_for_state(
     }
 
 
-async def cancel_worker(
-    worker_id: str, *, signal: str = "soft", grace_ms: int = 5_000
-) -> dict:
+async def cancel_worker(worker_id: str, *, signal: str = "soft", grace_ms: int = 5_000) -> dict:
     """Cancel a worker gracefully. ``signal="SIGKILL"`` escalates after grace.
 
     The response always carries ``exit_code`` (F10) so callers can
@@ -299,9 +295,7 @@ async def worker_revoke(worker_id: str, *, force: bool = False) -> dict:
     }
 
 
-def register_worker_contract_tools(
-    app: Any, durable_manager: DurableWorkerManager | None
-) -> None:
+def register_worker_contract_tools(app: Any, durable_manager: DurableWorkerManager | None) -> None:
     """Register the worker-contract tool group on a FastMCP ``app``.
 
     Each module-level tool function is attached to ``app`` via the

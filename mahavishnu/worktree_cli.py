@@ -273,8 +273,6 @@ def provider_health():
     _run_async(_health())
 
 
-
-
 def _worktree_repo_manager(app):
     """Resolve the repository manager across app compatibility surfaces."""
     direct = getattr(app, "repo_manager", None)
@@ -309,7 +307,9 @@ def prune_merged_worktrees(
     force_reason: str | None = typer.Option(
         None, "--force-reason", help="Required when --include-dirty is set; logged to audit trail"
     ),
-    dry_run: bool = typer.Option(False, "--dry-run", help="List candidates without removing anything"),
+    dry_run: bool = typer.Option(
+        False, "--dry-run", help="List candidates without removing anything"
+    ),
     json_output: bool = typer.Option(False, "--json", help="Emit machine-readable JSON"),
     trigger: str = typer.Option("cli", "--trigger", hidden=True),
 ) -> None:
@@ -368,7 +368,11 @@ def prune_merged_worktrees(
                     typer.echo(f"Error scanning {repo_info.nickname}: {exc}", err=True)
 
         if not candidates:
-            typer.echo(json.dumps({"candidates": [], "would_remove": 0}) if json_output else "No merged worktrees to remove.")
+            typer.echo(
+                json.dumps({"candidates": [], "would_remove": 0})
+                if json_output
+                else "No merged worktrees to remove."
+            )
             return
         if dry_run:
             payload = {
@@ -391,32 +395,51 @@ def prune_merged_worktrees(
             else:
                 typer.echo(f"Would remove {len(candidates)} merged worktree(s):")
                 for candidate in candidates:
-                    typer.echo(f"  {'✅' if candidate.is_clean else '⚠️'} {candidate.branch}  {candidate.worktree_path}  behind={candidate.behind}")
+                    typer.echo(
+                        f"  {'✅' if candidate.is_clean else '⚠️'} {candidate.branch}  {candidate.worktree_path}  behind={candidate.behind}"
+                    )
             return
 
         results = await WorktreePruner(coordinator=coordinator).remove(
-            candidates, force_reason=force_reason, trigger=trigger, ttl_days=ttl_days,
+            candidates,
+            force_reason=force_reason,
+            trigger=trigger,
+            ttl_days=ttl_days,
             include_dirty=include_dirty,
         )
         if json_output:
-            typer.echo(json.dumps({
-                "removed_count": sum(result.success for result in results),
-                "failed_count": sum(not result.success for result in results),
-                "results": [
-                    {"branch": result.candidate.branch, "worktree_path": str(result.candidate.worktree_path),
-                     "success": result.success, "backup_path": result.backup_path, "error": result.error,
-                     "escalated": result.escalated}
-                    for result in results
-                ],
-            }, indent=2))
+            typer.echo(
+                json.dumps(
+                    {
+                        "removed_count": sum(result.success for result in results),
+                        "failed_count": sum(not result.success for result in results),
+                        "results": [
+                            {
+                                "branch": result.candidate.branch,
+                                "worktree_path": str(result.candidate.worktree_path),
+                                "success": result.success,
+                                "backup_path": result.backup_path,
+                                "error": result.error,
+                                "escalated": result.escalated,
+                            }
+                            for result in results
+                        ],
+                    },
+                    indent=2,
+                )
+            )
         else:
             for result in results:
-                typer.echo(f"{'✅' if result.success else '❌'} {result.candidate.branch}  {result.candidate.worktree_path}")
+                typer.echo(
+                    f"{'✅' if result.success else '❌'} {result.candidate.branch}  {result.candidate.worktree_path}"
+                )
                 if result.backup_path:
                     typer.echo(f"   Backup: {result.backup_path}")
                 if result.error:
                     typer.echo(f"   Error: {result.error}")
-            typer.echo(f"Removed {sum(result.success for result in results)}/{len(results)} worktree(s).")
+            typer.echo(
+                f"Removed {sum(result.success for result in results)}/{len(results)} worktree(s)."
+            )
         if any(not result.success for result in results):
             raise typer.Exit(code=1)
 

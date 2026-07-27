@@ -1,9 +1,9 @@
 from __future__ import annotations
 
-from enum import Enum
+from enum import StrEnum
 
 
-class WorkerLifecycleState(str, Enum):
+class WorkerLifecycleState(StrEnum):
     PENDING = "pending"
     STARTING = "starting"
     READY = "ready"
@@ -74,7 +74,5 @@ ALLOWED_TRANSITIONS: dict[WorkerLifecycleState, set[WorkerLifecycleState]] = {
 }
 
 
-def can_transition(
-    current: WorkerLifecycleState, target: WorkerLifecycleState
-) -> bool:
+def can_transition(current: WorkerLifecycleState, target: WorkerLifecycleState) -> bool:
     return target in ALLOWED_TRANSITIONS.get(current, set())

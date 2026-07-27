@@ -1493,6 +1493,8 @@ def workers_execute(
         typer.echo("✅ All workers closed")
 
     asyncio.run(_execute())
+
+
 @workers_app.command("list-types")
 def workers_list_types(
     ready: bool = typer.Option(False, "--ready", help="Only routable types"),
@@ -1513,7 +1515,9 @@ def workers_list_types(
     rows: list[tuple[str, str, str]] = []
     for worker_type in WORKER_REGISTRY:
         report: WorkerCapabilityReport = evaluate_worker_capabilities(
-            worker_type, settings=settings, force_live=probe,
+            worker_type,
+            settings=settings,
+            force_live=probe,
         )
         if ready and report.state not in {
             WorkerCapabilityState.READY,
@@ -1919,7 +1923,8 @@ def shell_cmd() -> None:
 def dashboard_cmd() -> None:
     """Launch the read-only ecosystem dashboard (Textual TUI).
 
-    Provides four screens: Overview, Sweep, Routing, Alerts.
+    Provides twelve screens: Overview, Sweep, Routing, Alerts, Reviews, Session,
+    Recovery, Approvals, Files, Events, Agno, Trace.
 
     Example:
         $ mahavishnu dashboard
@@ -1927,7 +1932,7 @@ def dashboard_cmd() -> None:
     try:
         from mahavishnu.tui.app import DashboardApp
     except ImportError:
-        typer.echo("ERROR: textual not installed. Install with: pip install mahavishnu[tui]")
+        typer.echo("ERROR: textual not installed. Install with: uv sync --group tui")
         raise typer.Exit(code=1) from None
 
     app = DashboardApp()

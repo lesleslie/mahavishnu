@@ -102,9 +102,7 @@ def create_health_app(
                 else "unhealthy"
             )
             default_worker = worker_summary.get("default_worker", "unknown")
-            checks["workers_default"] = (
-                f"{default_worker}:{worker_status}"
-            )
+            checks["workers_default"] = f"{default_worker}:{worker_status}"
         except Exception:
             logger.exception("readiness worker aggregation failed")
             checks["workers"] = "unhealthy"

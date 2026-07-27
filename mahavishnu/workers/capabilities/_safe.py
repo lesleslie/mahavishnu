@@ -1,4 +1,5 @@
 """Safe-redaction helpers for capability reports, exceptions, and logs."""
+
 from __future__ import annotations
 
 import re
@@ -26,4 +27,6 @@ def safe_error_for_user(message: str | None) -> str:
 
 
 def safe_dict(details: dict[str, Any] | None) -> dict[str, Any]:
-    return {k: safe_error_for_user(v) if isinstance(v, str) else v for k, v in (details or {}).items()}
+    return {
+        k: safe_error_for_user(v) if isinstance(v, str) else v for k, v in (details or {}).items()
+    }

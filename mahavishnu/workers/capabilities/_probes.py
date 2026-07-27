@@ -1,11 +1,14 @@
 """Async live probes for worker capability evaluation."""
+
 from __future__ import annotations
 
-import asyncio, os, shutil, socket
-from collections.abc import Awaitable, Callable
+import asyncio
+import os
+import shutil
 from urllib.parse import urlparse
 
 import httpx
+
 from ._safe import safe_error_for_user
 from ._states import WorkerCheck
 
@@ -35,8 +38,8 @@ async def _probe_openclaw_gateway(endpoint: str, token: str | None) -> WorkerChe
     try:
         async with httpx.AsyncClient(timeout=5) as client:
             r = await client.get(
-                f'{endpoint.rstrip("/")}/health',
-                headers={'Authorization': f'Bearer {token}'} if token else {},
+                f"{endpoint.rstrip('/')}/health",
+                headers={"Authorization": f"Bearer {token}"} if token else {},
             )
             r.raise_for_status()
             p = r.json()
@@ -57,7 +60,7 @@ async def _probe_openclaw_cli(binary: str) -> WorkerCheck:
             binary, "--version", stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE
         )
         out, _ = await asyncio.wait_for(p.communicate(), 5)
-    except (asyncio.TimeoutError, OSError) as exc:
+    except (TimeoutError, OSError) as exc:
         return WorkerCheck("openclaw_cli", "fail", type(exc).__name__)
     return WorkerCheck(
         "openclaw_cli",
@@ -71,22 +74,30 @@ async def _probe_container_daemon(runtime: str) -> WorkerCheck:
         return WorkerCheck("container_daemon", "fail", f"missing:{runtime}")
     try:
         p = await asyncio.create_subprocess_exec(
-            runtime, "version", "--format", "{{.Server.Version}}",
-            stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE,
+            runtime,
+            "version",
+            "--format",
+            "{{.Server.Version}}",
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE,
         )
         out, _ = await asyncio.wait_for(p.communicate(), 5)
-    except (asyncio.TimeoutError, OSError) as exc:
+    except (TimeoutError, OSError) as exc:
         return WorkerCheck("container_daemon", "fail", type(exc).__name__)
     return WorkerCheck(
         "container_daemon",
         "pass" if p.returncode == 0 else "fail",
-        safe_error_for_user(out.decode().strip() or "ok") if p.returncode == 0 else "daemon_unreachable",
+        safe_error_for_user(out.decode().strip() or "ok")
+        if p.returncode == 0
+        else "daemon_unreachable",
     )
 
 
 async def _probe_auth_presence(names: list[str]) -> WorkerCheck:
     missing = [n for n in names if not os.environ.get(n)]
-    return WorkerCheck("auth", "fail" if missing else "pass", ",".join(missing) if missing else "ok")
+    return WorkerCheck(
+        "auth", "fail" if missing else "pass", ",".join(missing) if missing else "ok"
+    )
 
 
 async def _probe_provider_request(provider: str, env_var: str, endpoint: str) -> WorkerCheck:
@@ -98,7 +109,7 @@ async def _probe_provider_request(provider: str, env_var: str, endpoint: str) ->
         return WorkerCheck(f"{provider}_auth", "fail", scheme_error)
     try:
         async with httpx.AsyncClient(timeout=5) as client:
-            r = await client.get(endpoint, headers={'Authorization': f'Bearer {token}'})
+            r = await client.get(endpoint, headers={"Authorization": f"Bearer {token}"})
             r.raise_for_status()
     except httpx.HTTPError as exc:
         return WorkerCheck(f"{provider}_auth", "fail", safe_error_for_user(type(exc).__name__))

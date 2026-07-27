@@ -2,7 +2,9 @@
 name: worktree-autoremove
 status: built
 date: 2026-07-26
+last_reviewed: 2026-07-27
 owner: mahavishnu
+role: canonical
 plan: docs/superpowers/plans/2026-07-26-worktree-autoremove.md
 policy: .claude/decisions/worktree-autoremove-policy.md
 user_docs: docs/WORKTREE_AUTOREMOVE.md

@@ -221,15 +221,18 @@ def trigger_test_alert(
 def watch_dashboard() -> None:
     """Launch a live Textual monitor dashboard (requires tui extra)."""
     if TUI_AVAILABLE:
-        from ..tui.monitor_app import MonitorApp  # noqa: PLC0415
+        from ..tui.monitor_app import (  # noqa: PLC0415
+            MonitorApp,
+            _DefaultMonitorDataProvider,
+        )
 
-        monitor = MonitorApp()
+        monitor = MonitorApp(data_provider=_DefaultMonitorDataProvider())
         monitor.run()
     else:
         console = get_console()
         console.print(
             "[yellow]Textual not installed.[/yellow] "
-            "Install: [bold]uv add --optional tui textual[/bold]\n"
+            "Install: [bold]uv add --group tui textual[/bold]\n"
             "Falling back to one-shot Rich output...\n"
         )
         _print_rich_dashboard()

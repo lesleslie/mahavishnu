@@ -1,6 +1,6 @@
 """Mahavishnu Dashboard — read-only Textual TUI for ecosystem diagnostics.
 
-Eleven tabs:
+Twelve tabs:
 - Overview: System health, active workflows, recent alerts
 - Sweep: Workflow history, success/fail rates
 - Routing: Adapter health, resolution decisions

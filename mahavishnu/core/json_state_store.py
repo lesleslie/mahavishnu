@@ -159,9 +159,7 @@ def atomic_json_write(path: Path, data: dict[str, Any] | list[Any]) -> None:
 
 def locked_json_modify(
     path: Path,
-    modifier: Callable[
-        [dict[str, Any] | list[Any] | None], dict[str, Any] | list[Any] | object
-    ],
+    modifier: Callable[[dict[str, Any] | list[Any] | None], dict[str, Any] | list[Any] | object],
     *,
     default_factory: Callable[[], dict[str, Any] | list[Any]] | None = None,
 ) -> dict[str, Any] | list[Any]:

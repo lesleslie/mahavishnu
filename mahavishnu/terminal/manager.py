@@ -547,9 +547,7 @@ class TerminalManager:
             from ..workers.contract.store import WorkerRecordStore
             from .adapters.tmux import TmuxTerminalAdapter
 
-            store = WorkerRecordStore(
-                pathlib.Path.home() / ".mahavishnu" / "worker-sessions"
-            )
+            store = WorkerRecordStore(pathlib.Path.home() / ".mahavishnu" / "worker-sessions")
             publisher = _ManagerEventPublisher(_enqueue_to_eventbridge)
             manager = DurableWorkerManager(
                 store=store,

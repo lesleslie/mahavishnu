@@ -2,11 +2,14 @@ from __future__ import annotations
 
 import dataclasses
 import os
+from pathlib import Path
 import re
 import shlex
 import subprocess
-from collections.abc import Sequence
-from pathlib import Path
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from collections.abc import Sequence
 
 # Session and socket identifiers must be path-safe. tmux names that
 # contain whitespace, `:`, shell metacharacters, or newlines can be
@@ -66,9 +69,7 @@ class CapturedOutput:
     pane_alive: bool
 
 
-def _run(
-    socket: str, *args: str, check: bool = True
-) -> subprocess.CompletedProcess[str]:
+def _run(socket: str, *args: str, check: bool = True) -> subprocess.CompletedProcess[str]:
     _validate_socket_path(socket)
     cmd = ["tmux", "-S", socket, *args]
     proc = subprocess.run(cmd, check=False, capture_output=True, text=True)
@@ -76,8 +77,7 @@ def _run(
         # Use repr() for `args` and the sanitized stderr to prevent log
         # injection through crafted names.
         raise TmuxAdapterError(
-            f"tmux {args!r} failed: rc={proc.returncode} "
-            f"stderr={_safe_stderr(proc.stderr)}"
+            f"tmux {args!r} failed: rc={proc.returncode} stderr={_safe_stderr(proc.stderr)}"
         )
     return proc
 
@@ -131,16 +131,13 @@ def create_session(
     )
     if proc.returncode != 0:
         raise TmuxAdapterError(
-            f"tmux new-session failed: rc={proc.returncode} "
-            f"stderr={_safe_stderr(proc.stderr)}"
+            f"tmux new-session failed: rc={proc.returncode} stderr={_safe_stderr(proc.stderr)}"
         )
     stdout = proc.stdout.strip()
     line = stdout.splitlines()[-1] if stdout else ""
     parts = line.split(":")
     if len(parts) != 3:
-        raise TmuxAdapterError(
-            f"unexpected tmux new-session -P output: {proc.stdout!r}"
-        )
+        raise TmuxAdapterError(f"unexpected tmux new-session -P output: {proc.stdout!r}")
     session_name, window_id, pane_id = parts
     # Validate the parsed session name too (the -F template is fixed
     # but we should still reject anything malformed).
@@ -150,9 +147,7 @@ def create_session(
         try:
             os.chmod(socket, 0o600)
         except PermissionError as e:
-            raise TmuxAdapterError(
-                f"cannot chmod socket {socket} to 0600: {e}"
-            ) from e
+            raise TmuxAdapterError(f"cannot chmod socket {socket} to 0600: {e}") from e
     # Launch the command inside the pane.
     _run(socket, "send-keys", "-t", pane_id, quoted, "Enter")
     return TmuxSessionInfo(
@@ -204,8 +199,7 @@ def kill_session(socket: str, session: str) -> None:
     proc = _run(socket, "kill-session", "-t", session, check=False)
     if proc.returncode != 0:
         raise TmuxAdapterError(
-            f"tmux kill-session failed: rc={proc.returncode} "
-            f"stderr={_safe_stderr(proc.stderr)}"
+            f"tmux kill-session failed: rc={proc.returncode} stderr={_safe_stderr(proc.stderr)}"
         )
 
 
@@ -236,8 +230,7 @@ def send_keys(socket: str, pane: str, keys: Sequence[str]) -> None:
     proc = _run(socket, "send-keys", "-t", pane, "-l", literal, check=False)
     if proc.returncode != 0:
         raise TmuxAdapterError(
-            f"tmux send-keys failed: rc={proc.returncode} "
-            f"stderr={_safe_stderr(proc.stderr)}"
+            f"tmux send-keys failed: rc={proc.returncode} stderr={_safe_stderr(proc.stderr)}"
         )
     # Always press Enter unless the caller appended a literal "\n" already.
     if not (len(parts) == 1 and parts[0].endswith("\n")):

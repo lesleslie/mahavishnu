@@ -94,8 +94,7 @@ they store names and kinds only.
 
 - `required_env: list[str]` — required environment variable names.
 - `required_settings: list[str]` — dotted settings paths that must be truthy.
-- `auth_kind: AuthKind` — `NONE | API_KEY | CLI_SUBSCRIPTION | MCP_CREDENTIAL |
-  BEARER_TOKEN | OAUTH`; the value drives which probe is run.
+- `auth_kind: AuthKind` — `NONE | API_KEY | CLI_SUBSCRIPTION | MCP_CREDENTIAL | BEARER_TOKEN | OAUTH`; the value drives which probe is run.
 - `runtime_kind: RuntimeKind` — `NONE | SHELL | DOCKER | PODMAN | ORBSTACK`; for container
   workers, drives runtime discovery.
 - `mcp_server: str | None` (already present) is now validated against
@@ -123,8 +122,7 @@ new APIs.
 ### Factory dispatch
 
 `_create_worker` switches on `WorkerCategory` first, then on `worker_type` for
-category-internal specialization. This removes the dead `ValueError("Unknown gateway
-worker type")` branch and wires the missing dedicated classes for `openhands`, `a2a`,
+category-internal specialization. This removes the dead `ValueError("Unknown gateway worker type")` branch and wires the missing dedicated classes for `openhands`, `a2a`,
 and `terminal-crow`.
 
 ### Capability integration points
@@ -175,17 +173,17 @@ unreachable. Routing uses only READY (lazy) or AVAILABLE (immediate) workers.
 ## Data flow
 
 1. CLI / pool / MCP / health calls the capability layer.
-2. Capability layer runs static checks (fast) and, if requested, live probes (async,
+1. Capability layer runs static checks (fast) and, if requested, live probes (async,
    cached).
-3. Result is a `WorkerCapabilityReport` per worker.
-4. Consumer chooses:
+1. Result is a `WorkerCapabilityReport` per worker.
+1. Consumer chooses:
    - Routing: `select_routable_workers(require_available=True/False)`.
    - CLI: render table/list with `--explain` detail.
    - Health: aggregate component status using existing precedence.
    - Metrics: increment capability counters; emit reason-code labels.
-5. `WorkerManager.spawn_workers` / `submit_workers` consult the report; they never
+1. `WorkerManager.spawn_workers` / `submit_workers` consult the report; they never
    bypass it.
-6. Lifecycle events fan out via the existing WebSocket and metrics surfaces.
+1. Lifecycle events fan out via the existing WebSocket and metrics surfaces.
 
 ## Provider authentication
 
@@ -209,10 +207,10 @@ Order of precedence for `RuntimeKind.DOCKER | PODMAN | ORBSTACK`:
 
 1. Explicit override from `settings.mahavishnu.yaml:workers.container.runtime` and
    `socket_path` (e.g., `unix:///Users/les/.orbstack/docker/docker.sock`).
-2. OrbStack socket presence at the documented path (only on darwin).
-3. `DOCKER_HOST` environment variable.
-4. `docker` / `podman` on `PATH`; first match wins.
-5. Daemon ping (`docker info` or equivalent) before promoting to READY.
+1. OrbStack socket presence at the documented path (only on darwin).
+1. `DOCKER_HOST` environment variable.
+1. `docker` / `podman` on `PATH`; first match wins.
+1. Daemon ping (`docker info` or equivalent) before promoting to READY.
 
 The probe result is cached briefly; failures fall through to the next candidate.
 
@@ -320,14 +318,14 @@ and `slow` markers; the default unit suite remains deterministic.
 ## Rollout order
 
 1. Fix global `workers.enabled` wiring and add the regression test.
-2. Split interactive spawn and one-shot submit paths; add the regression test.
-3. Switch factory dispatch to `WorkerCategory`; add dedicated classes for the missing
+1. Split interactive spawn and one-shot submit paths; add the regression test.
+1. Switch factory dispatch to `WorkerCategory`; add dedicated classes for the missing
    gateway/application workers.
-4. Add registry capability metadata and `evaluate_worker_capabilities` (static phase).
-5. Add live probes (auth, gateway, MCP, Docker/OrbStack).
-6. Wire routing, CLI diagnostics, and health/readiness.
-7. Run the worker matrix demo in an environment with valid credentials and services.
-8. Run `scripts/audit_orphans.py` and the project quality gates.
+1. Add registry capability metadata and `evaluate_worker_capabilities` (static phase).
+1. Add live probes (auth, gateway, MCP, Docker/OrbStack).
+1. Wire routing, CLI diagnostics, and health/readiness.
+1. Run the worker matrix demo in an environment with valid credentials and services.
+1. Run `scripts/audit_orphans.py` and the project quality gates.
 
 ## Integration contract
 
@@ -347,9 +345,9 @@ and `slow` markers; the default unit suite remains deterministic.
 1. Should the public API expose a third symbol such as
    `list_routable_workers_with_reasons()` for UIs that need richer output than
    `select_routable_workers`?
-2. Should the capability layer cache the `READY` state in the registry process even
+1. Should the capability layer cache the `READY` state in the registry process even
    after a `start()` failure, or invalidate immediately? Default is immediate
    invalidation; we can revisit if probe storms appear.
-3. Should `terminal-ssh` count as a "remote" worker in capability gating the same way
+1. Should `terminal-ssh` count as a "remote" worker in capability gating the same way
    OpenClaw does, or as a remote worker with a separate "ssh" probe? Default is
    separate remote probe; revisited if the SSH probe proves too expensive.

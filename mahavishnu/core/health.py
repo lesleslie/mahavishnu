@@ -700,11 +700,7 @@ async def readiness(
         "terminal-claude",
     )
     default_report = reports.get(default_type)
-    state = (
-        default_report.state
-        if default_report is not None
-        else WorkerCapabilityState.REGISTERED
-    )
+    state = default_report.state if default_report is not None else WorkerCapabilityState.REGISTERED
 
     if state is WorkerCapabilityState.REGISTERED:
         status = HealthStatus.UNHEALTHY

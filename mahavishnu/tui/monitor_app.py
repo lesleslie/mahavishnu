@@ -4,6 +4,59 @@ from typing import Any
 
 from mahavishnu.tui import TUI_AVAILABLE, get_console
 
+
+class _DefaultMonitorDataProvider:
+    """Default data provider for ``MonitorApp``.
+
+    Bridges :meth:`MahavishnuApp.get_metrics` to the
+    ``get_pools()`` / ``get_workers()`` shape expected by
+    ``MonitorApp``. Returns one aggregate row per call on
+    success; an empty list on any error so the TUI always
+    renders (the existing ``try/except`` in ``action_refresh``
+    catches additional failures).
+
+    The aggregate row is a thin stand-in: ``MahavishnuApp`` does
+    not currently expose per-pool or per-worker detail. A future
+    v1.5+ change can replace this with a real per-pool/worker
+    provider; for now, one labelled summary row is better than
+    empty containers, and cheaper than a new API.
+    """
+
+    async def get_pools(self) -> list[dict[str, Any]]:
+        try:
+            from mahavishnu.core.app import MahavishnuApp
+
+            app = MahavishnuApp()
+            metrics = await app.get_metrics()
+        except Exception:
+            return []
+        return [
+            {
+                "name": "aggregate",
+                "type": "summary",
+                "worker_count": int(metrics.get("workers_running", 0) or 0),
+                "healthy": metrics.get("adapter_health") != "unhealthy",
+            }
+        ]
+
+    async def get_workers(self) -> list[dict[str, Any]]:
+        try:
+            from mahavishnu.core.app import MahavishnuApp
+
+            app = MahavishnuApp()
+            metrics = await app.get_metrics()
+        except Exception:
+            return []
+        running = int(metrics.get("workers_running", 0) or 0)
+        return [
+            {
+                "id": "aggregate",
+                "type": "summary",
+                "status": "running" if running > 0 else "idle",
+            }
+        ]
+
+
 if TUI_AVAILABLE:
     from textual.app import App, ComposeResult
     from textual.containers import ScrollableContainer
@@ -82,5 +135,5 @@ else:
             console = get_console()
             console.print(
                 "[yellow]Textual not installed. Install with: uv add"
-                " --optional tui textual[/yellow]"
+                " --group tui textual[/yellow]"
             )

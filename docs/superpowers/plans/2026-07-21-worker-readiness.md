@@ -80,23 +80,30 @@ Modified files:
 
 Tasks 1–2 fix wiring; Task 3 adds metadata; Task 4 builds the capability layer (static + live + observability); Task 5 is the integration suite; Task 6 is container runtime; Task 7 splits spawn vs submit and de-couples `resolve_worker_type`; Task 8 wires dedicated factory branches; Task 9 caps OpenClaw auto-restart; Task 10 wires CLI/MCP/health; Task 11 gates cloud worker; Task 12 runs the demo and quality gates including a crackerjack-style compliance review.
 
----
+______________________________________________________________________
 
 ### Task 1: Fix global `workers.enabled` wiring
 
 **Files:**
+
 - Modify: `mahavishnu/_main_cli.py:1316,1399`
 - Test: `tests/unit/test_workers_cli_gate.py`
 
 **Interfaces:**
+
 - Consumes: `MahavishnuSettings.workers.enabled` (Pydantic nested field, already defined in `mahavishnu/core/config.py:1084-1112`).
 - Produces: `workers spawn` and `workers execute` honor `workers.enabled=false`.
 
 **Integration Contract:**
+
 - Triggered from: `mahavishnu workers spawn`, `mahavishnu workers execute`.
+
 - Returns to / updates: CLI exit code 1 with explicit message when disabled.
+
 - Demonstrable by: the failing test in Step 1.
+
 - Rollback signal: `workers.enabled: false` no longer exits 1.
+
 - Observability added: stderr message format `ERROR: Worker orchestration is disabled`.
 
 - [ ] **Step 1: Write the failing test**
@@ -158,23 +165,30 @@ git add mahavishnu/_main_cli.py tests/unit/test_workers_cli_gate.py
 git commit -m "fix(workers): honor nested workers.enabled setting in CLI"
 ```
 
----
+______________________________________________________________________
 
 ### Task 2: Add capability-aware exceptions to the error hierarchy
 
 **Files:**
+
 - Modify: `mahavishnu/core/errors.py`
 - Test: `tests/unit/test_errors.py`
 
 **Interfaces:**
+
 - Consumes: existing `MahavishnuError` constructor and `ErrorCode` enum.
 - Produces: `WorkerUnavailableError(worker_type, state, missing_requirements, message)` and `ContainerDaemonUnavailable(runtime, error)` that carry safe fields only.
 
 **Integration Contract:**
+
 - Triggered from: capability check failures, container daemon probe failures.
+
 - Returns to / updates: structured exception with `ErrorCode.WORKER_UNAVAILABLE` and details; never secret values.
+
 - Demonstrable by: the three tests in Step 1.
+
 - Rollback signal: secret value appears in `str(exc)`.
+
 - Observability added: error code increments; no new metrics.
 
 - [ ] **Step 1: Write the failing test**
@@ -238,7 +252,7 @@ In `mahavishnu/core/errors.py`:
    ```python
    WORKER_UNAVAILABLE = "MHV-310"
    ```
-2. Append after `ExternalServiceError`:
+1. Append after `ExternalServiceError`:
    ```python
    class WorkerUnavailableError(MahavishnuError):
        """Raised when a worker cannot be spawned because capability checks fail.
@@ -288,23 +302,30 @@ git add mahavishnu/core/errors.py tests/unit/test_errors.py
 git commit -m "feat(errors): add WorkerUnavailableError and ContainerDaemonUnavailable"
 ```
 
----
+______________________________________________________________________
 
 ### Task 3: Add capability metadata to `WorkerConfig`
 
 **Files:**
+
 - Modify: `mahavishnu/workers/registry.py:24-58, 62-540`
 - Test: `tests/unit/test_workers_registry.py`
 
 **Interfaces:**
+
 - Consumes: existing `WorkerConfig` fields (`name`, `worker_type`, `command`, `category`, `requires_tool`, `mcp_server`).
 - Produces: extended `WorkerConfig` with `required_env`, `required_settings`, `auth_kind`, `runtime_kind`, `one_shot`, `endpoint`. All defaulted; existing 46 entries stay valid.
 
 **Integration Contract:**
+
 - Triggered from: registry construction; capability layer reads new fields.
+
 - Returns to / updates: `WORKER_REGISTRY` with 46 entries still valid; no behavior change at this step.
+
 - Demonstrable by: tests in Step 1 pass.
+
 - Rollback signal: existing tests `tests/unit/test_workers_registry_coverage.py` fail.
+
 - Observability added: none yet.
 
 - [ ] **Step 1: Write the failing test**
@@ -478,11 +499,12 @@ git add mahavishnu/workers/registry.py tests/unit/test_workers_registry.py
 git commit -m "feat(workers): add capability metadata fields to WorkerConfig"
 ```
 
----
+______________________________________________________________________
 
 ### Task 4: Build the capability layer (static, live, and observability)
 
 **Files (created in this order to avoid forward imports):**
+
 - Create: `mahavishnu/workers/capabilities/_safe.py`
 - Create: `mahavishnu/workers/capabilities/_states.py`
 - Create: `mahavishnu/workers/capabilities/_cache.py`
@@ -497,6 +519,7 @@ git commit -m "feat(workers): add capability metadata fields to WorkerConfig"
 - Test: `tests/unit/workers/test_capabilities_observability.py`
 
 **Interfaces:**
+
 - Consumes: `WORKER_REGISTRY`, `MahavishnuSettings`, env vars, asyncio, httpx.
 - Produces:
   - `WorkerCapabilityState` enum with `REGISTERED`, `CONFIGURED`, `READY`, `AVAILABLE`.
@@ -507,10 +530,15 @@ git commit -m "feat(workers): add capability metadata fields to WorkerConfig"
   - Capability transitions emit metrics, log markers (`worker_capability_transition`, `worker_capability_probe_failed`), and the `worker.availability_changed` + `adapter.health_changed` WebSocket events with payload `{worker_type, state, safe_reason, probe_at}`.
 
 **Integration Contract:**
+
 - Triggered from: `WorkerManager.spawn_workers`, `WorkerManager.submit_workers`, CLI list-types, pool routing, MCP discover_tools, health/readiness.
+
 - Returns to / updates: capability report consumed by every consumer above.
+
 - Demonstrable by: tests in Steps 9, 10, 11.
+
 - Rollback signal: capability evaluation throws unhandled exception; secret value appears in report.
+
 - Observability added: `_TRANSITIONS`, `_PROBE_DURATION`, `_CACHE_TOTAL` metrics; `worker_capability_transition` and `worker_capability_probe_failed` log markers; two WebSocket events.
 
 - [ ] **Step 1: Implement `_safe.py`**
@@ -876,7 +904,7 @@ PROVIDER_PROBES: dict[str, tuple[str, str]] = {
 }
 ```
 
-`★ Fix-up: replace the noop body in `_probe_provider_request` so the call site is correct.` Replace the post-except block with the standard `safe_error_for_user` handling:
+`★ Fix-up: replace the noop body in `\_probe_provider_request` so the call site is correct.` Replace the post-except block with the standard `safe_error_for_user` handling:
 
 ```python
     except httpx.HTTPError as exc:
@@ -1474,20 +1502,26 @@ git add mahavishnu/workers/capabilities tests/unit/workers/test_capabilities_*.p
 git commit -m "feat(workers): add capability layer with static, live, and observability phases"
 ```
 
----
+______________________________________________________________________
 
 ### Task 5: Add the integration live-probe suite
 
 **Files:**
+
 - Create: `tests/integration/workers/__init__.py`
 - Create: `tests/integration/workers/test_capabilities_live.py`
 - Test (no new test file beyond this)
 
 **Integration Contract:**
+
 - Triggered from: integration test run.
+
 - Returns to / updates: confidence that the live probe contract works end-to-end.
+
 - Demonstrable by: tests in Step 2.
+
 - Rollback signal: integration tests fail under default `pytest` invocation.
+
 - Observability added: none.
 
 - [ ] **Step 1: Confirm the `integration` marker exists**
@@ -1575,21 +1609,27 @@ git add tests/integration/workers/test_capabilities_live.py pyproject.toml tests
 git commit -m "test(workers): add integration suite for capability live probes"
 ```
 
----
+______________________________________________________________________
 
 ### Task 6: Add Docker/OrbStack runtime discovery in container workers
 
 **Files:**
+
 - Modify: `mahavishnu/workers/container.py:35-105, 163-210`
 - Modify: `mahavishnu/core/config.py:1084-1112`
 - Modify: `settings/mahavishnu.yaml`
 - Test: `tests/unit/test_container_worker.py`
 
 **Integration Contract:**
+
 - Triggered from: `ContainerWorker` instantiation and `start()`.
+
 - Returns to / updates: container worker uses discovered runtime and refuses to start with a typed `ContainerDaemonUnavailable` when the daemon is unreachable.
+
 - Demonstrable by: tests in Step 1.
+
 - Rollback signal: bare `RuntimeError` raised from `start()`; default runtime no longer Docker-aware.
+
 - Observability added: `ContainerDaemonUnavailable` with `runtime` in `details`.
 
 - [ ] **Step 1: Write the failing test**
@@ -1764,11 +1804,12 @@ git add mahavishnu/workers/container.py mahavishnu/core/config.py settings/mahav
 git commit -m "feat(workers): discover docker/orbstack runtime and probe daemon"
 ```
 
----
+______________________________________________________________________
 
 ### Task 7: Split `spawn_workers` and `submit_workers`; de-couple `resolve_worker_type`
 
 **Files:**
+
 - Modify: `mahavishnu/workers/manager.py:79-112, 114-229, 231-294`
 - Modify: `mahavishnu/workers/generic_shell.py:135`
 - Modify: `mahavishnu/_main_cli.py:1404-1430`
@@ -1777,10 +1818,15 @@ git commit -m "feat(workers): discover docker/orbstack runtime and probe daemon"
 - Test: `tests/unit/test_workers_registry.py` (new test for `resolve_worker_type`)
 
 **Integration Contract:**
+
 - Triggered from: CLI `workers spawn` / `workers execute`; pool routing; MCP worker tools.
+
 - Returns to / updates: one-shot workers go through `submit_workers`; interactive workers go through `spawn_workers`; `resolve_worker_type` no longer infers gateway availability from env-var presence.
+
 - Demonstrable by: tests in Step 1.
+
 - Rollback signal: one-shot worker fails with the prior `ValueError`; gateway-openclaw routing chosen because `OPENCLAW_GATEWAY_URL` is set.
+
 - Observability added: capability transition broadcasts when `submit_workers` fails.
 
 - [ ] **Step 1: Write the failing tests**
@@ -1994,19 +2040,25 @@ git add mahavishnu/workers/manager.py mahavishnu/workers/generic_shell.py mahavi
 git commit -m "feat(workers): split one-shot submit path and de-couple resolve_worker_type"
 ```
 
----
+______________________________________________________________________
 
 ### Task 8: Wire dedicated-class factory branches for `openhands`, `a2a`, and `terminal-crow`
 
 **Files:**
+
 - Modify: `mahavishnu/workers/manager.py:114-229`
 - Test: `tests/unit/test_worker_manager.py`
 
 **Integration Contract:**
+
 - Triggered from: `_create_worker` dispatch.
+
 - Returns to / updates: dedicated classes for `openhands`, `a2a`, `terminal-crow`; existing `gateway-openclaw` and other category branches remain unchanged.
+
 - Demonstrable by: tests in Step 1.
+
 - Rollback signal: any of the three dedicated workers raises `ValueError("Unknown gateway worker type")`.
+
 - Observability added: none beyond existing capability transition.
 
 - [ ] **Step 1: Write the failing test**
@@ -2116,19 +2168,25 @@ git add mahavishnu/workers/manager.py tests/unit/test_worker_manager.py
 git commit -m "refactor(workers): add dedicated factory branches for openhands, a2a, terminal-crow"
 ```
 
----
+______________________________________________________________________
 
 ### Task 9: Cap `OpenClawGatewayWorker` auto-restart and surface failure
 
 **Files:**
+
 - Modify: `mahavishnu/workers/openclaw_gateway.py:139-210`
 - Test: `tests/unit/test_openclaw_gateway.py`
 
 **Integration Contract:**
+
 - Triggered from: `OpenClawGatewayWorker.execute`.
+
 - Returns to / updates: at most one auto-restart attempt; subsequent failures return `WorkerStatus.FAILED` with `safe_reason`.
+
 - Demonstrable by: test in Step 1.
+
 - Rollback signal: execute loops indefinitely calling start.
+
 - Observability added: existing `worker_capability_transition` event fires when status flips to FAILED.
 
 - [ ] **Step 1: Write the failing test**
@@ -2230,11 +2288,12 @@ git add mahavishnu/workers/openclaw_gateway.py tests/unit/test_openclaw_gateway.
 git commit -m "fix(openclaw): cap auto-restart and surface terminal failure"
 ```
 
----
+______________________________________________________________________
 
 ### Task 10: Wire CLI diagnostics, MCP tools, and health
 
 **Files:**
+
 - Modify: `mahavishnu/_main_cli.py:1500-1600`
 - Modify: `mahavishnu/mcp/tools/worker_tools.py`
 - Modify: `mahavishnu/mcp/tools/pool_tools.py`
@@ -2244,10 +2303,15 @@ git commit -m "fix(openclaw): cap auto-restart and surface terminal failure"
 - Test: `tests/unit/test_workers_cli_diagnostics.py`
 
 **Integration Contract:**
+
 - Triggered from: CLI list-types, MCP discover_tools, pool route, readiness endpoint.
+
 - Returns to / updates: filtered/listed worker types; readiness aggregates the worker component.
+
 - Demonstrable by: tests in Step 1.
+
 - Rollback signal: `--ready` missing workers; readiness does not mention capability reports.
+
 - Observability added: capability state surfaced in every consumer.
 
 - [ ] **Step 1: Write the failing tests**
@@ -2415,19 +2479,25 @@ git add mahavishnu/_main_cli.py mahavishnu/mcp/tools/worker_tools.py mahavishnu/
 git commit -m "feat(workers): wire capability diagnostics into CLI, MCP, and health"
 ```
 
----
+______________________________________________________________________
 
 ### Task 11: Cloud worker credential gating and secret hygiene
 
 **Files:**
+
 - Modify: `mahavishnu/workers/cloud_worker.py:76-155, 312-341`
 - Test: `tests/unit/test_cloud_worker.py`
 
 **Integration Contract:**
+
 - Triggered from: `CloudWorker.start`.
+
 - Returns to / updates: `READY`/`DEGRADED` registered honestly, `missing_credentials` populated.
+
 - Demonstrable by: tests in Step 1.
+
 - Rollback signal: cloud worker reports `RUNNING` when a credential is missing; secret appears in `caplog.text`.
+
 - Observability added: existing capability transition event fires for cloud worker.
 
 - [ ] **Step 1: Write the failing tests**
@@ -2509,18 +2579,24 @@ git add mahavishnu/workers/cloud_worker.py tests/unit/test_cloud_worker.py
 git commit -m "feat(workers): gate cloud worker on credentials, no secret logging"
 ```
 
----
+______________________________________________________________________
 
 ### Task 12: Run the demo and quality gates (with crackerjack-style compliance audit)
 
 **Files:**
+
 - No new files.
 
 **Integration Contract:**
+
 - Triggered from: an environment with valid credentials and services.
+
 - Returns to / updates: validated worker matrix, full test suite, crackerjack run, orphan audit, compliance checklist.
+
 - Demonstrable by: every routable worker class returns two concurrent `PONG` sessions; blocked classes print safe reasons.
+
 - Rollback signal: any rollback signal from Tasks 1–11 fires.
+
 - Observability added: full observability surface exercised end-to-end.
 
 - [ ] **Step 1: Run the worker matrix demo**
@@ -2554,15 +2630,25 @@ Expected: all routable workers run; diagnostics show the missing pieces for the 
 For every new module, verify:
 
 - [ ] `from __future__ import annotations` is the first non-comment line.
+
 - [ ] No `Optional[X]` / `List[X]`; only `X | None` and `list[str]`.
+
 - [ ] No `assert` in `mahavishnu/**` production code.
+
 - [ ] `except` blocks use `logger.exception(...)`.
+
 - [ ] No `print()`.
+
 - [ ] No blocking I/O inside `async def`; sync only at CLI entry points.
+
 - [ ] No `Any` in tool inputs or orchestration state.
+
 - [ ] Function args ≤ 10; branches ≤ 15; returns ≤ 6; statements ≤ 55.
+
 - [ ] Ruff `line-length = 100` clean.
+
 - [ ] mypy strict clean.
+
 - [ ] No secret value appears in logs, reports, or exception details.
 
 - [ ] **Step 3: Run pytest with coverage**

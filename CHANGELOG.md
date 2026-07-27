@@ -38,7 +38,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
-- claude: Enable bodai-activity-* hooks by nesting under 'hooks' key
+- claude: Enable bodai-activity-\* hooks by nesting under 'hooks' key
 - followups: Map legacy status 'resolved' to canonical 'complete'
 - frontmatter: Populate superseded_by for 2026-04-09-tui-design.md
 - frontmatter: Re-convert 2026-04-09-tui-design.md
