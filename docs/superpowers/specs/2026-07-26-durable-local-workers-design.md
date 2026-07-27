@@ -450,7 +450,10 @@ Open questions:
   plan/spec should be patched in a follow-up to fix its `task_id` keys
   and frozen allowlist, but that is out of scope for this design's
   implementation plan.
-- Removing iTerm2. Demoted, not removed.
+- ~~Removing iTerm2. Demoted, not removed.~~ **Updated 2026-07-27**:
+  iTerm2 is removed in this plan (per user direction — the cautious
+  Phase C / Phase C.1 split is collapsed into one). See §15 for the
+  updated rollout.
 
 ## 14. Success criteria
 
@@ -477,9 +480,17 @@ Open questions:
    `TmuxTerminalAdapter`, use private sockets, reuse the current tmux
    session when `TMUX` is present, otherwise create a managed session.
    Keep iTerm2 available via explicit configuration.
-1. **Phase C — deprecate iTerm2.** Add deprecation warnings, refactor
-   the terminal grid manager to depend on a generic `TerminalAdapter`
-   protocol, schedule hard removal in a future breaking release.
+1. **Phase C — deprecate AND remove iTerm2 (collapsed).** Add
+   `DeprecationWarning` + `MockTerminalAdapter` fallback for
+   `adapter_preference="iterm2"`; then immediately delete the iTerm2
+   adapter module, the iTerm2-only test files, the `pyproject.toml`
+   `iterm2` extra, and the `mahavishnu/terminal/pool.py` module if
+   its only purpose was iTerm2. Refactor the terminal grid manager to
+   depend on a generic `TerminalAdapter` (the existing ABC) so it
+   compiles after the iTerm2 class is gone. **Updated 2026-07-27**
+   per user direction ("ok, can we just go ahead and remove the
+   iterm2 worker too from this plan?"); Phase C.1 (the previously
+   planned future breaking release) is folded into Phase C.
 1. **Phase D — extension to Session-Buddy and cloud.** See §11 and §12.
 
 ## 16. Open questions for the user before implementation
