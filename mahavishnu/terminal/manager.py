@@ -7,6 +7,7 @@ from datetime import datetime
 from logging import getLogger
 import pathlib
 from typing import TYPE_CHECKING, Any
+import warnings
 
 from .adapters.mcpretentious import McpretentiousAdapter
 from .backends import BUILTIN_BACKENDS
@@ -486,7 +487,6 @@ class TerminalManager:
             ConfigurationError: No suitable adapter available
         """
         from ..core.errors import ConfigurationError
-        from .adapters.iterm2 import ITERM2_AVAILABLE
         from .adapters.mock import MockTerminalAdapter
 
         terminal_config = config.terminal
@@ -593,20 +593,15 @@ class TerminalManager:
                     details={"error": str(e)},
                 ) from e
 
-        # iTerm2 adapter (requires iTerm2 app)
-        if preference == "iterm2" and ITERM2_AVAILABLE:
-            try:
-                from .adapters.iterm2 import ITerm2Adapter
-
-                adapter = ITerm2Adapter()
-                logger.info("Using iTerm2 adapter")
-                return cls(adapter, terminal_config)
-            except Exception as e:
-                logger.warning(f"iTerm2 adapter failed: {e}")
-                raise ConfigurationError(
-                    message="iTerm2 adapter failed",
-                    details={"error": str(e)},
-                ) from e
+        if preference == "iterm2":
+            warnings.warn(
+                "adapter_preference='iterm2' is deprecated and has been removed. "
+                "Use 'tmux' or 'mcpretentious' instead.",
+                DeprecationWarning,
+                stacklevel=2,
+            )
+            adapter = MockTerminalAdapter()
+            return cls(adapter, terminal_config)
 
         # No suitable adapter found
         raise ConfigurationError(
@@ -614,6 +609,5 @@ class TerminalManager:
             details={
                 "adapter_preference": preference,
                 "mcp_client_provided": mcp_client is not None,
-                "iterm2_available": ITERM2_AVAILABLE,
             },
         )
