@@ -8,12 +8,39 @@ import json
 import logging
 import os
 from pathlib import Path
+import re
 from typing import Any
 from uuid import uuid4
 
 from mcp_common.fastmcp import FastMCP  # noqa: TC002
 
 from mahavishnu.core.errors import RateLimitError
+
+# Explicit per-worker_type allowlist for the durable fast path.
+# NOT a category-level gate — each worker here has its durable spawn
+# template verified. SSH (REMOTE) and AI assistants without explicit
+# verification are deliberately excluded. The REMOTE category is rejected
+# until the SSH template (host/credential substitution) is verified end
+# to end. Add new entries only after their ``_durable_manager.spawn``
+# template is audited.
+_DURABLE_WORKER_TYPES: frozenset[str] = frozenset(
+    {
+        "terminal-claude",  # AI_ASSISTANT — explicit allow (template verified)
+        "terminal-shell",   # SHELL
+        "terminal-zsh",     # SHELL
+        "terminal-python",  # SHELL
+        "terminal-ipython", # SHELL
+        "terminal-node",    # SHELL
+    }
+)
+
+# Conservative path-traversal guard for caller-supplied workflow IDs.
+# Mirrors the legacy ``uuid4()`` shape: 1-128 chars, alphanumeric
+# plus dot, dash, and underscore. Anything outside this regex must
+# be rejected BEFORE the value is spliced into a Dhara key path,
+# otherwise a caller can read or write ``workflow-results/../../etc/...``
+# on the persist layer.
+_WORKFLOW_ID_PATTERN: re.Pattern[str] = re.compile(r"^[A-Za-z0-9._-]{1,128}$")
 
 try:
     from mahavishnu.pools.memory_aggregator import MemoryAggregator
@@ -52,6 +79,67 @@ def _resolve_peer_affinity_allowlist_from_env() -> set[str] | None:
         # pools are currently registered.
         return {"*"}
     return {item.strip() for item in raw.split(",") if item.strip()}
+
+
+def _authorize_durable_fast_path(
+    pool_manager: Any,
+    caller_kind: str,
+    pool_selector: str,
+    caller_pool_allowlist: list[str] | None,
+) -> tuple[bool, Any]:
+    """Run the auth gates that legacy ``PoolManager.route_task`` enforces.
+
+    The durable fast path bypasses ``pool_manager.route_task`` entirely,
+    so without this guard a caller could skip ``coerce_caller_kind``,
+    the per-caller_kind quota, and the ADR-014 ``caller_pool_allowlist``
+    authorization by routing through the fast path. Mirrors the legacy
+    route_task contract so quota buckets and allowlists are honored the
+    same way on both paths.
+
+    Args:
+        pool_manager: PoolManager instance (or duck-typed test stand-in).
+        caller_kind: Caller identity string. Coerced via
+            ``coerce_caller_kind`` so unrecognized values land in the
+            canonical ``UNKNOWN`` bucket.
+        pool_selector: One of the ``PoolSelector`` string values
+            (``"least_loaded"``, ``"round_robin"``, ``"random"``,
+            ``"affinity"``, ``"peer_affinity"``).
+        caller_pool_allowlist: Optional caller-supplied pool allowlist.
+            When ``None`` and ``pool_selector`` is a specific-pool
+            selector, the helper refuses the fast path so the caller
+            cannot bypass ADR-014.
+
+    Returns:
+        Tuple ``(allowed, coerced_kind)``. When ``allowed`` is False,
+        the caller MUST fall back to the legacy pool-router path.
+        ``coerced_kind`` is the result of ``coerce_caller_kind`` for
+        downstream use.
+
+    Raises:
+        RateLimitError: When the per-caller_kind quota is exhausted.
+            Mirrors the legacy ``route_task`` contract; the caller
+            surfaces this as a rate-limit response on the MCP boundary.
+    """
+    from mahavishnu.pools.manager import coerce_caller_kind
+
+    coerced_kind = coerce_caller_kind(caller_kind)
+
+    # Quota enforcement — matches the legacy route_task contract.
+    # When ``_enforce_caller_quota`` is absent (e.g. test Mock without
+    # it), we silently skip the rate-limit check. Production callers
+    # always supply a real PoolManager.
+    enforce = getattr(pool_manager, "_enforce_caller_quota", None)
+    if enforce is not None:
+        enforce(coerced_kind)
+
+    # ADR-014: AFFINITY/PEER_AFFINITY require a caller_pool_allowlist.
+    # The fast path does not select a pool, but a missing allowlist
+    # must still refuse specific-pool routing so a caller cannot bypass
+    # the gate by routing through the durable path.
+    if pool_selector in ("affinity", "peer_affinity") and not caller_pool_allowlist:
+        return False, coerced_kind
+
+    return True, coerced_kind
 
 
 async def _run_async_dispatch(
@@ -461,34 +549,44 @@ def register_pool_tools(  # noqa: C901
             )
             ```
         """
-        # Durable-routing fast path: when the caller pins a shell-based
-        # ``worker_type`` and a DurableWorkerManager is configured, spawn
-        # via the contract directly and return the worker_id/pane pair
-        # without going through the legacy pool router.
-        if worker_type is not None and _durable_manager is not None:
-            from mahavishnu.workers.registry import WORKER_REGISTRY, WorkerCategory
-
-            _DURABLE_CATS: frozenset[WorkerCategory] = frozenset(
-                {
-                    WorkerCategory.SHELL,
-                    WorkerCategory.AI_ASSISTANT,
-                    WorkerCategory.REMOTE,
-                }
+        # Durable-routing fast path: when the caller pins a ``worker_type``
+        # in the explicit per-worker_type allowlist AND a
+        # DurableWorkerManager is configured, spawn via the contract
+        # directly and return the worker_id/pane pair without going
+        # through the legacy pool router. All auth gates (caller_kind
+        # coercion, quota enforcement, ADR-014 allowlist) run BEFORE
+        # the fast path so a caller cannot bypass them by routing here.
+        try:
+            allowed, _coerced_kind = _authorize_durable_fast_path(
+                pool_manager,
+                caller_kind,
+                pool_selector,
+                caller_pool_allowlist,
             )
-            config = WORKER_REGISTRY.get(worker_type)
-            if config is not None and config.category in _DURABLE_CATS:
-                spawn_result = _durable_manager.spawn(
-                    worker_type=worker_type,
-                    backend="claude_tui",
-                    command=[worker_type],
-                )
-                return {
-                    "worker_id": spawn_result.worker_id,
-                    "pane": spawn_result.pane,
-                }
+        except RateLimitError as exc:
+            return {
+                "status": "rate_limited",
+                "caller_kind": caller_kind,
+                "retry_after_seconds": exc.details.get("retry_after_seconds"),
+                "error": str(exc),
+            }
+        if (
+            allowed
+            and worker_type is not None
+            and _durable_manager is not None
+            and worker_type in _DURABLE_WORKER_TYPES
+        ):
+            spawn_result = _durable_manager.spawn(
+                worker_type=worker_type,
+                backend="claude_tui",
+                command=[worker_type],
+            )
+            return {
+                "worker_id": spawn_result.worker_id,
+                "pane": spawn_result.pane,
+            }
 
         from mahavishnu.core.config import MahavishnuSettings
-        from mahavishnu.core.errors import RateLimitError
         from mahavishnu.pools.manager import PoolSelector, coerce_caller_kind
         from mahavishnu.workers.capabilities import select_routable_workers
 
@@ -658,40 +756,63 @@ def register_pool_tools(  # noqa: C901
             # Poll workflow-results/{workflow_id}/ later
             ```
         """
-        # Durable-routing fast path: when the caller pins a shell-based
-        # ``worker_type`` and supplies a ``workflow_id``, spawn via the
-        # contract directly and persist worker_id under
-        # ``workflow-results/{workflow_id}/`` so downstream pollers can
-        # observe the durable assignment.
-        if worker_type is not None and _durable_manager is not None and workflow_id is not None:
-            from mahavishnu.workers.registry import WORKER_REGISTRY, WorkerCategory
-
-            _DURABLE_CATS: frozenset[WorkerCategory] = frozenset(
-                {
-                    WorkerCategory.SHELL,
-                    WorkerCategory.AI_ASSISTANT,
-                    WorkerCategory.REMOTE,
-                }
+        # Durable-routing fast path: when the caller pins a ``worker_type``
+        # in the explicit per-worker_type allowlist AND supplies a
+        # ``workflow_id``, spawn via the contract directly and persist
+        # worker_id under ``workflow-results/{workflow_id}/`` so
+        # downstream pollers can observe the durable assignment. All
+        # auth gates (caller_kind coercion, quota enforcement, ADR-014
+        # allowlist) run BEFORE the fast path so a caller cannot bypass
+        # them by routing here. ``workflow_id`` is also validated
+        # against a conservative regex BEFORE splicing into the Dhara
+        # key — a caller-supplied ``../../etc/passwd`` would otherwise
+        # escape ``workflow-results/``.
+        try:
+            allowed, _coerced_kind = _authorize_durable_fast_path(
+                pool_manager,
+                caller_kind,
+                pool_selector,
+                None,  # dispatch_to_pool does not expose caller_pool_allowlist
             )
-            config = WORKER_REGISTRY.get(worker_type)
-            if config is not None and config.category in _DURABLE_CATS:
-                spawn_result = _durable_manager.spawn(
-                    worker_type=worker_type,
-                    backend="claude_tui",
-                    command=[worker_type],
-                )
-                if _dhara is not None:
-                    _dhara.put(
-                        f"workflow-results/{workflow_id}/",
-                        {
-                            "worker_id": spawn_result.worker_id,
-                            "status": "started",
-                        },
-                    )
+        except RateLimitError as exc:
+            return {
+                "status": "rate_limited",
+                "caller_kind": caller_kind,
+                "retry_after_seconds": exc.details.get("retry_after_seconds"),
+                "error": str(exc),
+            }
+        if (
+            allowed
+            and worker_type is not None
+            and _durable_manager is not None
+            and workflow_id is not None
+            and worker_type in _DURABLE_WORKER_TYPES
+        ):
+            # Path-traversal guard: refuse workflow_ids that don't match
+            # the conservative regex BEFORE splicing into the Dhara key.
+            if not _WORKFLOW_ID_PATTERN.match(workflow_id):
                 return {
-                    "worker_id": spawn_result.worker_id,
+                    "status": "failed",
+                    "error": "invalid_workflow_id",
                     "workflow_id": workflow_id,
                 }
+            spawn_result = _durable_manager.spawn(
+                worker_type=worker_type,
+                backend="claude_tui",
+                command=[worker_type],
+            )
+            if _dhara is not None:
+                _dhara.put(
+                    f"workflow-results/{workflow_id}/",
+                    {
+                        "worker_id": spawn_result.worker_id,
+                        "status": "started",
+                    },
+                )
+            return {
+                "worker_id": spawn_result.worker_id,
+                "workflow_id": workflow_id,
+            }
 
         from mahavishnu.pools.manager import PoolSelector, coerce_caller_kind
 
