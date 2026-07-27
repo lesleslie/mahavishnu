@@ -133,6 +133,10 @@ def test_dispatch_to_pool_rejects_path_traversal_workflow_id() -> None:
 
     A malicious caller could otherwise supply ``../../etc/passwd`` and
     escape the ``workflow-results/`` prefix on the persist layer.
+
+    Both ``dispatch_to_pool`` and ``workflow_result`` use the shared
+    ``_validate_workflow_id`` helper and return the consistent error
+    shape ``{"workflow_id": ..., "status": "invalid_workflow_id"}``.
     """
     from mahavishnu.mcp.tools.pool_tools import register_pool_tools
 
@@ -160,13 +164,89 @@ def test_dispatch_to_pool_rejects_path_traversal_workflow_id() -> None:
             workflow_id="../../etc/passwd",  # path-traversal payload
         )
     )
-    assert out["status"] == "failed"
-    assert out["error"] == "invalid_workflow_id"
+    assert out["status"] == "invalid_workflow_id"
     assert out["workflow_id"] == "../../etc/passwd"
     # Durable spawn MUST NOT have happened for an invalid workflow_id.
     durable_manager.spawn.assert_not_called()
     # Dhara put MUST NOT have happened for an invalid workflow_id.
     fake_dhara.put.assert_not_called()
+
+
+def test_workflow_result_rejects_path_traversal_workflow_id() -> None:
+    """``workflow_result`` rejects caller-supplied workflow IDs outside the
+    conservative regex BEFORE the Dhara read (sibling-gate-parity fix).
+
+    A malicious caller could otherwise supply ``../../etc/passwd`` to
+    escape the ``workflow-results/`` prefix on the persist layer and
+    read arbitrary Dhara keys via the tool surface.
+    """
+    from mahavishnu.mcp.tools.pool_tools import register_pool_tools
+
+    fake_dhara = MagicMock()
+    fake_dhara.get = AsyncMock()
+
+    stub = _StubMCP()
+    register_pool_tools(
+        stub,
+        pool_manager=_stub_pool_manager(),
+        durable_manager=MagicMock(),
+        dhara=fake_dhara,
+    )
+
+    fn = stub.tools["workflow_result"]
+    out = asyncio.run(fn("../../etc/passwd"))
+
+    assert out["status"] == "invalid_workflow_id"
+    assert out["workflow_id"] == "../../etc/passwd"
+    # Dhara read MUST NOT have happened for an invalid workflow_id.
+    fake_dhara.get.assert_not_called()
+
+
+def test_workflow_result_rejects_empty_workflow_id() -> None:
+    """``workflow_result`` rejects the empty string (regex requires >=1 char)."""
+    from mahavishnu.mcp.tools.pool_tools import register_pool_tools
+
+    fake_dhara = MagicMock()
+    fake_dhara.get = AsyncMock()
+
+    stub = _StubMCP()
+    register_pool_tools(
+        stub,
+        pool_manager=_stub_pool_manager(),
+        durable_manager=MagicMock(),
+        dhara=fake_dhara,
+    )
+
+    fn = stub.tools["workflow_result"]
+    out = asyncio.run(fn(""))
+
+    assert out["status"] == "invalid_workflow_id"
+    assert out["workflow_id"] == ""
+    fake_dhara.get.assert_not_called()
+
+
+def test_workflow_result_rejects_overly_long_workflow_id() -> None:
+    """``workflow_result`` rejects workflow IDs longer than 128 chars."""
+    from mahavishnu.mcp.tools.pool_tools import register_pool_tools
+
+    fake_dhara = MagicMock()
+    fake_dhara.get = AsyncMock()
+
+    stub = _StubMCP()
+    register_pool_tools(
+        stub,
+        pool_manager=_stub_pool_manager(),
+        durable_manager=MagicMock(),
+        dhara=fake_dhara,
+    )
+
+    fn = stub.tools["workflow_result"]
+    long_id = "a" * 129
+    out = asyncio.run(fn(long_id))
+
+    assert out["status"] == "invalid_workflow_id"
+    assert out["workflow_id"] == long_id
+    fake_dhara.get.assert_not_called()
 
 
 def test_pool_route_execute_rejects_worker_type_outside_allowlist() -> None:
