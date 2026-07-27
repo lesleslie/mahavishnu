@@ -6,7 +6,7 @@
 |-------|--------|------|-------|
 | built | ✅ | 2026-07-27 | Mock-only tests (12); SDK lazy-imported, no network in suite |
 | wired | ✅ | 2026-07-27 | Fallback tier in `WorkerManager._create_isolated_worker`; registry type `e2b-sandbox` |
-| adopted | ❌ | — | Needs `E2B_API_KEY` + `uv sync --group sandbox` + live smoke test |
+| adopted | ⚠️ partial | 2026-07-27 | SDK installed and API shape verified against `e2b`; live sandbox run still blocked on `E2B_API_KEY` |
 
 ## What it is
 
@@ -39,13 +39,31 @@ worker types remain as auto-tier aliases.
 - **Observability added:** structured logs on start/stop/exec transport
   errors; `runtime: "e2b"` tag in `WorkerResult.metadata`.
 
+## SDK verification (2026-07-27, `uv sync --group sandbox`)
+
+Both assumptions that were coded defensively are now **confirmed against
+the installed `e2b` package** — no code changes were needed:
+
+| Assumption | Actual SDK | Verdict |
+|---|---|---|
+| `AsyncSandbox.create(template=, timeout=)` | `create(template: str \| None = None, timeout: int \| None = None, ...)` | ✅ exact |
+| `commands.run()` result has `exit_code` / `stdout` / `stderr` | `CommandResult(stderr, stdout, exit_code, error)` | ✅ exact |
+| `CommandExitException` carries exit_code/stdout/stderr | `@dataclass class CommandExitException(SandboxException, CommandResult)` | ✅ inherits all three |
+| `sandbox.kill()` | present, plus `set_timeout`, `sandbox_id` | ✅ |
+
+Call-path proof without a key: invoking `start()` reaches the real
+`AsyncSandbox.create(**create_kwargs)` and fails only at
+`AuthenticationException` ("API key is required"), which the worker wraps
+as `RuntimeError: E2B sandbox failed to start: ...`. A wrong kwarg shape
+would have raised `TypeError` before that point.
+
 ## Open work before "adopted"
 
-- [ ] `uv sync --group sandbox` in dev environments (group added to
-  `pyproject.toml` dev includes) and `E2B_API_KEY` provisioning.
-- [ ] Live smoke test: verify `AsyncSandbox.create(template=, timeout=)`
-  kwargs and `CommandExitException` attribute names against the installed
-  SDK version (worker parses them defensively via getattr).
+- [ ] **Live smoke test** — the one step still outstanding. Requires
+  `E2B_API_KEY` in the shell (not set in the authoring environment):
+  export it, then spawn an `e2b-sandbox` worker and execute
+  `{"command": "echo hello"}` to confirm end-to-end sandbox creation,
+  exec, and teardown against real infrastructure.
 - [ ] Degraded-mode surfacing: decide operator-facing signal when the E2B
   tier is unreachable from a host that also lacks the Apple tier
   (currently a raised RuntimeError with install/start context).
