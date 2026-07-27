@@ -974,6 +974,23 @@ class ContainerDaemonUnavailable(MahavishnuError):  # noqa: N818
         )
 
 
+class AppleContainerUnsupported(MahavishnuError):  # noqa: N818
+    """Raised when the Apple ``container`` runtime cannot run on this host.
+
+    Distinct from ContainerDaemonUnavailable by design: this error means
+    the *hardware/platform* can never satisfy the request (Intel Mac,
+    non-macOS host, runtime not installed), so callers should skip to the
+    next isolation tier (e.g. a cloud sandbox pool) rather than fail loud.
+    """
+
+    def __init__(self, *, reason: str) -> None:
+        super().__init__(
+            f"Apple container runtime unsupported on this host: {reason}",
+            ErrorCode.WORKER_UNAVAILABLE,
+            details={"runtime": "apple-container", "reason": reason},
+        )
+
+
 class WorkflowError(MahavishnuError):
     """
     Workflow execution error.

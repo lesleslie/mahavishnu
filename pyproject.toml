@@ -122,6 +122,7 @@ dev = [
     "zensical>=0.0.44",
     {include-group = "ai"},
     {include-group = "gpu"},
+    {include-group = "sandbox"},
     {include-group = "content-ingest"},
     {include-group = "storage-pg"},
 ]
@@ -198,6 +199,11 @@ ai = [
 # RunPod pool is deployed.
 gpu = [
     "runpod-flash>=1.17.0",
+]
+
+# E2B cloud sandbox tier for isolated worker execution (workers/e2b_sandbox.py)
+sandbox = [
+    "e2b>=1.0",
 ]
 
 # Optional: Content ingestion — PDF, EPUB, and trafilatura readability
