@@ -80,7 +80,7 @@ def _make_app(
     state_manager: object | None = None,
     observability: object | None = None,
 ):
-    async def _execute_workflow(task, adapter_name, repo_subset):  # noqa: ANN001
+    async def _execute_workflow(task, adapter_name, repo_subset):
         if execute_workflow_error is not None:
             raise execute_workflow_error
         return execute_workflow_result or {
@@ -90,7 +90,7 @@ def _make_app(
             "repos": repo_subset,
         }
 
-    async def _check_permission(user, repo, permission):  # noqa: ANN001
+    async def _check_permission(user, repo, permission):
         if rbac_error is not None:
             raise rbac_error
         return rbac_result
@@ -98,7 +98,7 @@ def _make_app(
     if state_manager is None:
         state_store: dict[str, dict[str, object]] = {}
 
-        async def _create(workflow_id, task, workflow_repos):  # noqa: ANN001
+        async def _create(workflow_id, task, workflow_repos):
             state_store[workflow_id] = {
                 "id": workflow_id,
                 "task": task,
@@ -106,10 +106,10 @@ def _make_app(
             }
             return state_store[workflow_id]
 
-        async def _get(workflow_id):  # noqa: ANN001
+        async def _get(workflow_id):
             return state_store.get(workflow_id)
 
-        async def _delete(workflow_id):  # noqa: ANN001
+        async def _delete(workflow_id):
             state_store.pop(workflow_id, None)
 
         state_manager = SimpleNamespace(create=_create, get=_get, delete=_delete)
@@ -120,7 +120,7 @@ def _make_app(
             def __init__(self) -> None:
                 self.calls: list[tuple[int, dict[str, str] | None]] = []
 
-            def add(self, value, labels=None):  # noqa: ANN001
+            def add(self, value, labels=None):
                 self.calls.append((value, labels))
 
         class _Observability:
@@ -129,13 +129,13 @@ def _make_app(
                 self.logged: list[tuple[str, dict[str, object] | None]] = []
                 self.logs = ["log-1", "log-2"]
 
-            def log_info(self, message, metadata=None):  # noqa: ANN001
+            def log_info(self, message, metadata=None):
                 self.logged.append((message, metadata))
 
             def create_workflow_counter(self):
                 return self.counter
 
-            def get_logs(self, limit=10):  # noqa: ANN001
+            def get_logs(self, limit=10):
                 return self.logs[:limit]
 
         observability = _Observability()
@@ -160,7 +160,7 @@ def _run_in_new_loop(coro):
 
 
 def _sync_check(name: str, result: bool):
-    def _check(self):  # noqa: ANN001
+    def _check(self):
         self.results[name[7:]] = {"status": "PASS" if result else "FAIL"}
         return result
 
@@ -169,7 +169,7 @@ def _sync_check(name: str, result: bool):
 
 
 def _async_check(name: str, result: bool):
-    async def _check(self):  # noqa: ANN001
+    async def _check(self):
         self.results[name[7:]] = {"status": "PASS" if result else "FAIL"}
         return result
 
@@ -178,7 +178,7 @@ def _async_check(name: str, result: bool):
 
 
 def _raising_check(name: str):
-    def _check(self):  # noqa: ANN001
+    def _check(self):
         raise RuntimeError("boom")
 
     _check.__name__ = name
@@ -186,21 +186,21 @@ def _raising_check(name: str):
 
 
 def _sync_suite_test(result: bool):
-    def _test(self):  # noqa: ANN001
+    def _test(self):
         return result
 
     return _test
 
 
 def _async_suite_test(result: bool):
-    async def _test(self):  # noqa: ANN001
+    async def _test(self):
         return result
 
     return _test
 
 
 def _raising_suite_test():
-    def _test(self):  # noqa: ANN001
+    def _test(self):
         raise RuntimeError("boom")
 
     return _test
@@ -232,7 +232,7 @@ def test_config_resource_security_and_adapter_checks(
 
     class _BrokenApp:
         @property
-        def config(self):  # noqa: D401
+        def config(self):
             raise RuntimeError("broken")
 
         adapters: dict[str, object] = {}
@@ -306,7 +306,7 @@ def test_config_resource_security_and_adapter_checks(
         config = _make_config()
 
         @property
-        def adapters(self):  # noqa: D401
+        def adapters(self):
             raise RuntimeError("broken")
 
     assert ProductionReadinessChecker(_BrokenAdaptersApp())._check_adapter_health() is False
@@ -375,7 +375,7 @@ async def test_workflow_execution_and_integration_suite_paths(tmp_path: Path) ->
     assert await no_repo_suite._test_basic_workflow_execution() is True
 
     class _BadRbac:
-        async def check_permission(self, *args, **kwargs):  # noqa: ANN001,ANN002,ANN003
+        async def check_permission(self, *args, **kwargs):
             raise RuntimeError("rbac")
 
     bad_rbac_suite = IntegrationTestSuite(
@@ -385,13 +385,13 @@ async def test_workflow_execution_and_integration_suite_paths(tmp_path: Path) ->
     assert await bad_rbac_suite._test_rbac_permissions() is False
 
     class _BadStateManager:
-        async def create(self, *args, **kwargs):  # noqa: ANN001,ANN002,ANN003
+        async def create(self, *args, **kwargs):
             raise RuntimeError("state")
 
-        async def get(self, *args, **kwargs):  # noqa: ANN001,ANN002,ANN003
+        async def get(self, *args, **kwargs):
             raise RuntimeError("state")
 
-        async def delete(self, *args, **kwargs):  # noqa: ANN001,ANN002,ANN003
+        async def delete(self, *args, **kwargs):
             raise RuntimeError("state")
 
     bad_state_suite = IntegrationTestSuite(
@@ -418,13 +418,13 @@ async def test_workflow_execution_and_integration_suite_paths(tmp_path: Path) ->
     assert await no_obs_suite._test_observation_logging() is True
 
     class _BadObs:
-        def log_info(self, *args, **kwargs):  # noqa: ANN001,ANN002,ANN003
+        def log_info(self, *args, **kwargs):
             raise RuntimeError("obs")
 
         def create_workflow_counter(self):
             return None
 
-        def get_logs(self, limit=10):  # noqa: ANN001
+        def get_logs(self, limit=10):
             return []
 
     bad_obs_suite = IntegrationTestSuite(
@@ -531,13 +531,13 @@ async def test_suite_runners_and_benchmarks(
         await empty_benchmark._benchmark_repo_operations()
         assert empty_benchmark.benchmarks == {}
 
-        async def _fake_run_all_checks(self):  # noqa: ANN001
+        async def _fake_run_all_checks(self):
             return {"summary": {"score_percentage": 95}, "details": {}}
 
-        async def _fake_run_all_tests(self):  # noqa: ANN001
+        async def _fake_run_all_tests(self):
             return {"summary": {"score_percentage": 90}, "details": []}
 
-        async def _fake_run_benchmarks(self):  # noqa: ANN001
+        async def _fake_run_benchmarks(self):
             return {"summary": {"performance_score": 92}, "benchmarks": {}}
 
         monkeypatch.setattr(
@@ -600,7 +600,7 @@ async def test_remaining_readiness_branches(
 
     original_exists = pr.Path.exists
 
-    def fake_exists(self):  # noqa: ANN001
+    def fake_exists(self):
         if self.name == "boom":
             raise OSError("bad")
         return original_exists(self)
@@ -623,7 +623,7 @@ async def test_remaining_readiness_branches(
 
     class _ConfigErrorApp:
         @property
-        def config(self):  # noqa: D401
+        def config(self):
             raise RuntimeError("config")
 
         adapters: dict[str, object] = {}

@@ -727,13 +727,13 @@ def add_team_commands(main_app: typer.Typer) -> None:
 
 
 __all__ = [
-    "app",
     "add_team_commands",
+    "app",
     "create_team",
-    "parse_goal_cmd",
+    "learning_stats",
     "list_skills",
     "list_teams",
-    "show_feature_flags",
-    "learning_stats",
+    "parse_goal_cmd",
     "recommend_mode",
+    "show_feature_flags",
 ]

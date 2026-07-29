@@ -237,6 +237,6 @@ class BaseRepository[CreateModel, ReadModel, UpdateModel](ABC):
 
 
 __all__ = [
-    "RepositoryError",
     "BaseRepository",
+    "RepositoryError",
 ]

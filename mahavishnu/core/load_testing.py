@@ -676,11 +676,11 @@ class BenchmarkSuite:
 
 
 __all__ = [
-    "LoadTestRunner",
+    "BenchmarkResult",
+    "BenchmarkSuite",
     "LoadTestConfig",
     "LoadTestResult",
-    "BenchmarkSuite",
-    "BenchmarkResult",
-    "PerformanceMetric",
+    "LoadTestRunner",
     "MetricType",
+    "PerformanceMetric",
 ]

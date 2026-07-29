@@ -374,9 +374,9 @@ def get_builtin_team_templates() -> dict[str, dict[str, Any]]:
 
 
 __all__ = [
-    "TeamMode",
     "MemberConfig",
     "TeamConfig",
     "TeamConfigFile",
+    "TeamMode",
     "get_builtin_team_templates",
 ]

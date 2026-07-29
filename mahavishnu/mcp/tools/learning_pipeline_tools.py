@@ -15,7 +15,7 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
-def register_learning_tools(  # noqa: C901
+def register_learning_tools(
     mcp: FastMCP,
     pipeline_service: Any | None = None,
     evidence_store: Any | None = None,

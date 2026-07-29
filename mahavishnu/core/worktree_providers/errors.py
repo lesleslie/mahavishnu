@@ -47,22 +47,18 @@ class WorktreeOperationError(Exception):
 class WorktreeCreationError(WorktreeOperationError):
     """Raised when worktree creation fails."""
 
-    pass
 
 
 class WorktreeRemovalError(WorktreeOperationError):
     """Raised when worktree removal fails."""
 
-    pass
 
 
 class WorktreeValidationError(WorktreeOperationError):
     """Raised when worktree validation fails."""
 
-    pass
 
 
 class ProviderUnavailableError(WorktreeOperationError):
     """Raised when no worktree providers are available."""
 
-    pass

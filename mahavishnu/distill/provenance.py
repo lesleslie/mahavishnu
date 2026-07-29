@@ -226,8 +226,8 @@ def check_source_purity(
 
 __all__ = [
     "EXTERNAL_SOURCE_SENTINELS",
+    "TRUSTED_SOURCE_TYPE",
     "ProvenanceDecision",
     "SourcePurity",
-    "TRUSTED_SOURCE_TYPE",
     "check_source_purity",
 ]

@@ -659,7 +659,7 @@ class TestWorkflowExecutionCoverageAdditions:
     async def test_prepare_execution_invalid_repo_path(self, monkeypatch):
         app = _make_mock_app()
 
-        def boom(*args, **kwargs):  # noqa: ANN001,ANN002
+        def boom(*args, **kwargs):
             raise ValidationError(message="bad path", details={})
 
         monkeypatch.setattr(we, "validate_path", boom, raising=True)
@@ -693,7 +693,7 @@ class TestWorkflowExecutionCoverageAdditions:
         semaphore = asyncio.Semaphore(1)
         progress_calls: list[tuple[int, int, str]] = []
 
-        def progress_callback(done, total, repo):  # noqa: ANN001,ANN002,ANN003
+        def progress_callback(done, total, repo):
             progress_calls.append((done, total, repo))
 
         result = await we.process_single_repo(
@@ -735,7 +735,7 @@ class TestWorkflowExecutionCoverageAdditions:
         app.observability.start_workflow_trace.return_value.__enter__ = MagicMock()
         app.observability.start_workflow_trace.return_value.__exit__ = MagicMock()
 
-        async def fake_process_single_repo(**kwargs):  # noqa: ANN003
+        async def fake_process_single_repo(**kwargs):
             if kwargs["repo_path"] == "/repo/b":
                 return RuntimeError("boom")
             return {"repo": kwargs["repo_path"]}

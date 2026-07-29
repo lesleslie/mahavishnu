@@ -31,6 +31,6 @@ __all__ = [
     "HttpSOPPersister",
     "InMemorySOPPersister",
     "ProjectSOP",
-    "SOPSuggestion",
     "SOPPersister",
+    "SOPSuggestion",
 ]

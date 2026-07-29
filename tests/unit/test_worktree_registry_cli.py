@@ -7,8 +7,8 @@ backed by ``tmp_path``.
 """
 from __future__ import annotations
 
-import json
 from datetime import UTC, datetime, timedelta
+import json
 from pathlib import Path
 
 import pytest

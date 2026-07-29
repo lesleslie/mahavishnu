@@ -301,8 +301,8 @@ def reset_all_factories() -> None:
 
 __all__ = [
     "get_pool_manager",
-    "get_websocket_server",
     "get_terminal_manager",
+    "get_websocket_server",
     "initialize_websocket_server",
     "reset_all_factories",
 ]

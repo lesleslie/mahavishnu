@@ -31,7 +31,7 @@ logger = logging.getLogger(__name__)
 # The internal representation is not a stable Python type — treat as bytes-like.
 type TQPackedVector = Any
 
-__all__ = ["TurboQuantCompressor", "TQPackedVector", "TURBOQUANT_AVAILABLE"]
+__all__ = ["TURBOQUANT_AVAILABLE", "TQPackedVector", "TurboQuantCompressor"]
 
 
 class TurboQuantCompressor:

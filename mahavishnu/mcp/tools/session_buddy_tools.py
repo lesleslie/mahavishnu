@@ -29,7 +29,7 @@ def _coerce_priority(value: str) -> MessagePriority:
     return MessagePriority(value.lower())
 
 
-def register_session_buddy_tools(  # noqa: C901
+def register_session_buddy_tools(
     server, session_manager, mcp_client, rbac_manager: RBACManager | None = None
 ):
     """Register Session Buddy integration tools with the MCP server.

@@ -113,7 +113,6 @@ def complete_tag(ctx: click.Context, args: list[str], incomplete: str) -> list[s
 @click.group(name="task", help="Task management commands")
 def task_group() -> None:
     """Task management commands."""
-    pass
 
 
 # Task Create Command

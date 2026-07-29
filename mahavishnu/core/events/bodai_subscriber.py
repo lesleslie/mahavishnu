@@ -814,8 +814,8 @@ async def subscribe_to_bodai_events(
 
 
 __all__ = [
-    "DEFAULT_QUEUE_CAP",
     "DEFAULT_PER_EVENT_TIMEOUT_SECONDS",
+    "DEFAULT_QUEUE_CAP",
     "STREAM_NAME",
     "append_to_queue",
     "format_bodai_summary",

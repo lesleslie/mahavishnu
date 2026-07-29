@@ -341,6 +341,6 @@ __all__ = [
     "EvidenceCluster",
     "EvidenceRetrieval",
     "EvidenceRetriever",
-    "RetrievedEvidence",
     "RetrievalContext",
+    "RetrievedEvidence",
 ]

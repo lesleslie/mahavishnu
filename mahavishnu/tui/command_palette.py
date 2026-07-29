@@ -86,7 +86,7 @@ class CommandMatch(BaseModel):
 
 # Rebuild CommandMatch with Callable/Coroutine in scope — they're TYPE_CHECKING-only
 # imports so Pydantic can't resolve them automatically at model_rebuild time.
-from collections.abc import Callable, Coroutine  # noqa: E402, TCH003
+from collections.abc import Callable, Coroutine
 
 CommandMatch.model_rebuild(_types_namespace={"Callable": Callable, "Coroutine": Coroutine})
 

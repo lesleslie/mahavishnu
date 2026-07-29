@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-import warnings
 from unittest.mock import MagicMock
+import warnings
 
 import pytest
 

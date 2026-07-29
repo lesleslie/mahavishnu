@@ -494,10 +494,10 @@ class MigrationManager:
 
 
 __all__ = [
-    "MigrationManager",
     "Migration",
-    "MigrationStatus",
+    "MigrationManager",
+    "MigrationPlan",
     "MigrationResult",
     "MigrationScript",
-    "MigrationPlan",
+    "MigrationStatus",
 ]

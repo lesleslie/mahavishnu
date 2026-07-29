@@ -128,7 +128,7 @@ def register_eventbridge_tools(
 
         if async_callback:
             workflow_id = f"pub_{uuid.uuid4().hex[:12]}"
-            _dispatch_task = asyncio.create_task(_dispatch_with_publisher())  # noqa: RUF006
+            _dispatch_task = asyncio.create_task(_dispatch_with_publisher())
             return {"workflow_id": workflow_id, "status": "queued"}
 
         await _dispatch_with_publisher()

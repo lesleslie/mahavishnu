@@ -900,13 +900,13 @@ def validate_worker_dependencies() -> dict[str, bool]:
 
 
 __all__ = [
+    "WORKER_REGISTRY",
     "AuthKind",
     "RuntimeKind",
     "WorkerCategory",
     "WorkerConfig",
-    "WORKER_REGISTRY",
     "get_worker_config",
-    "list_worker_types",
     "get_workers_by_category",
+    "list_worker_types",
     "validate_worker_dependencies",
 ]

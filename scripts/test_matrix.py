@@ -29,7 +29,7 @@ from __future__ import annotations
 
 import argparse
 from collections import defaultdict
-from collections.abc import Iterable  # noqa: TC003
+from collections.abc import Iterable
 from dataclasses import dataclass, field
 import json
 from pathlib import Path

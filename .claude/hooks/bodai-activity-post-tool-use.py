@@ -28,8 +28,8 @@ from __future__ import annotations
 
 import json
 import os
-import sys
 from pathlib import Path
+import sys
 from typing import Any
 
 ALLOWED_SOURCES: frozenset[str] = frozenset({"mahavishnu", "akosha", "crackerjack"})
@@ -223,20 +223,17 @@ def _post_tool_use() -> int:
                 f"source={source!r} topic={envelope.get('topic')!r}"
             )
             # Still advance the cursor so we don't keep re-evaluating it
-            if received_at > new_max_at:
-                new_max_at = received_at
+            new_max_at = max(new_max_at, received_at)
             continue
         try:
             summary = _format_summary(envelope)
         except Exception:
             _log("bodai-activity-post-tool-use: failed to format envelope")
-            if received_at > new_max_at:
-                new_max_at = received_at
+            new_max_at = max(new_max_at, received_at)
             continue
         print(summary, flush=True)
         surfaced += 1
-        if received_at > new_max_at:
-            new_max_at = received_at
+        new_max_at = max(new_max_at, received_at)
 
     if surfaced or skipped_unknown or new_max_at > last_read_at:
         state["last_read_at"] = new_max_at

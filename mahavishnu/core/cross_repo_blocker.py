@@ -453,8 +453,8 @@ class CrossRepoBlockerTracker:
 
 
 __all__ = [
-    "CrossRepoBlockerTracker",
-    "BlockingChain",
     "BlockerImpact",
+    "BlockingChain",
     "BlockingStatus",
+    "CrossRepoBlockerTracker",
 ]

@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-import mahavishnu.core.code_index.path_validation as path_validation
+from mahavishnu.core.code_index import path_validation
 
 if TYPE_CHECKING:
     from pathlib import Path

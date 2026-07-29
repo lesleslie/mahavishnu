@@ -225,7 +225,7 @@ class TestAutomationManager:
 
         result = await manager._execute(
             OperationType.LAUNCH_APP,
-            lambda: {},
+            dict,
             dry_run=True,
         )
 

@@ -164,7 +164,7 @@ class WorkflowCheckpoint(BaseModel):
 
 # Export public API
 __all__ = [
-    "WorkflowExecution",
     "PoolExecution",
     "WorkflowCheckpoint",
+    "WorkflowExecution",
 ]

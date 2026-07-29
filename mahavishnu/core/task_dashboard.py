@@ -420,7 +420,6 @@ class TaskDashboard:
     def _refresh_list(self) -> None:
         """Refresh task list (async, no wait)."""
         # Just mark that refresh was requested
-        pass
 
     def _cancel(self) -> None:
         """Cancel current action."""
@@ -514,11 +513,11 @@ class TaskDashboard:
 
 
 __all__ = [
-    "TaskDashboard",
     "DashboardState",
     "DashboardTheme",
-    "KeyBinding",
-    "TaskListPanel",
-    "TaskDetailPanel",
     "HelpPanel",
+    "KeyBinding",
+    "TaskDashboard",
+    "TaskDetailPanel",
+    "TaskListPanel",
 ]

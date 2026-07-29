@@ -265,7 +265,7 @@ class TestIngesterPackageSurface:
 
 class TestTaskRouterSurface:
     def test_legacy_aliases_are_gone(self):
-        import mahavishnu.core.task_router as task_router
+        from mahavishnu.core import task_router
 
         assert not hasattr(task_router, "get_task_router")
         assert not hasattr(task_router, "reset_task_router")
@@ -273,7 +273,7 @@ class TestTaskRouterSurface:
 
 class TestAdapterDiscoverySurface:
     def test_oneiric_aliases_are_gone(self):
-        import mahavishnu.core.adapter_discovery as adapter_discovery
+        from mahavishnu.core import adapter_discovery
 
         assert not hasattr(adapter_discovery, "_get_oneiric_client")
         assert not hasattr(adapter_discovery, "discover_from_oneiric_mcp")

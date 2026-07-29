@@ -720,11 +720,11 @@ class OllamaWorker(BaseWorker):
 
 
 __all__ = [
-    "OllamaWorker",
+    "DEFAULT_MODEL_ROUTING",
+    "TASK_PATTERNS",
     "OllamaConfig",
+    "OllamaWorker",
     "TaskCategory",
     "classify_task",
     "get_model_for_task",
-    "DEFAULT_MODEL_ROUTING",
-    "TASK_PATTERNS",
 ]

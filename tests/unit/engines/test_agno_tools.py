@@ -615,7 +615,6 @@ class TestErrorHandling:
 
         # write_file may fail differently for paths that don't exist
         # (tries to create parent directories)
-        pass
 
         with pytest.raises(AgnoError):
             _list_directory_impl(invalid_path)

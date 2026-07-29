@@ -35,9 +35,8 @@ from __future__ import annotations
 
 import asyncio
 import json
-import re
-import uuid
 from pathlib import Path
+import re
 from typing import Any
 from unittest.mock import MagicMock, patch
 
@@ -49,7 +48,6 @@ from mahavishnu.pools.base import PoolConfig
 from mahavishnu.pools.manager import (
     CallerKind,
     PoolManager,
-    PoolSelector,
     _QuotaState,
 )
 
@@ -353,7 +351,7 @@ class TestRateLimitErrorSurfacesRetryAfter:
     """Saturated caller_kind buckets produce retry_after metadata."""
 
     async def test_rate_limit_error_surfaces_retry_after(self) -> None:
-        from datetime import UTC, datetime, timedelta
+        from datetime import UTC, datetime
 
         from mahavishnu.core.errors import RateLimitError
 

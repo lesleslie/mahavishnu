@@ -80,7 +80,7 @@ def main():
 
     except Exception as e:
         # Fallback output on error
-        print(f"⚠️  Session tracking error: {str(e)}", file=sys.stderr)
+        print(f"⚠️  Session tracking error: {e!s}", file=sys.stderr)
         print("🟢 Claude Code Active")
 
 

@@ -88,7 +88,7 @@ def _fallback_search(pattern: str, file_pattern: str | None = None) -> list[dict
 # --- Tool registration ---
 
 
-def register_pycharm_tools(mcp: FastMCP, app: Any = None) -> None:  # noqa: C901
+def register_pycharm_tools(mcp: FastMCP, app: Any = None) -> None:
     """Register PyCharm IDE MCP tools with the FastMCP server.
 
     Args:

@@ -1,7 +1,10 @@
 from __future__ import annotations
+
 from dataclasses import dataclass, field
-import pytest
-from mahavishnu.workers.capabilities import WorkerCapabilityState,evaluate_worker_capabilities
+
+from mahavishnu.workers.capabilities import WorkerCapabilityState, evaluate_worker_capabilities
+
+
 @dataclass
 class C: runtime:str|None=None; socket_path:str|None=None
 @dataclass

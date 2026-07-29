@@ -537,8 +537,8 @@ class TaskRunRepository(BaseRepository[TaskRunCreate, TaskRunRead, TaskRunUpdate
 __all__ = [
     "RunStatus",
     "TaskRunCreate",
-    "TaskRunRead",
-    "TaskRunUpdate",
     "TaskRunFilter",
+    "TaskRunRead",
     "TaskRunRepository",
+    "TaskRunUpdate",
 ]

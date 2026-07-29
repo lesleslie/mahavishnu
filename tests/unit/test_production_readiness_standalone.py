@@ -80,13 +80,13 @@ def test_generate_report_formats_sections_and_details() -> None:
 async def test_run_full_check_with_monkeypatched_checks(monkeypatch: pytest.MonkeyPatch) -> None:
     checker = ProductionReadinessChecker(Path("."))
 
-    async def _pass(self) -> None:  # noqa: ANN001
+    async def _pass(self) -> None:
         self.checks.append(ReadinessCheck("x", ReadinessStatus.PASS, "ok"))
 
-    async def _warn(self) -> None:  # noqa: ANN001
+    async def _warn(self) -> None:
         self.checks.append(ReadinessCheck("y", ReadinessStatus.WARN, "warn"))
 
-    async def _fail(self) -> None:  # noqa: ANN001
+    async def _fail(self) -> None:
         self.checks.append(ReadinessCheck("z", ReadinessStatus.FAIL, "fail"))
 
     names = [
@@ -231,7 +231,7 @@ async def test_secrets_scan_ignores_read_errors(monkeypatch: pytest.MonkeyPatch)
 
     original_read_text = Path.read_text
 
-    def fake_read_text(self, *args, **kwargs):  # noqa: ANN001,ANN002,ANN003
+    def fake_read_text(self, *args, **kwargs):
         if self.name == "bad.py":
             raise OSError("boom")
         return original_read_text(self, *args, **kwargs)
@@ -247,7 +247,7 @@ async def test_logging_check_warn_and_pass(monkeypatch: pytest.MonkeyPatch, tmp_
 
     real_import = __import__
 
-    def fake_import(name, globals=None, locals=None, fromlist=(), level=0):  # noqa: ANN001,ANN002,ANN003
+    def fake_import(name, globals=None, locals=None, fromlist=(), level=0):
         if name == "structlog":
             raise ImportError("missing")
         return real_import(name, globals, locals, fromlist, level)
@@ -266,7 +266,7 @@ async def test_unit_test_check_branches(monkeypatch: pytest.MonkeyPatch, tmp_pat
     checker = ProductionReadinessChecker(tmp_path)
 
     # coverage >= 80 => PASS
-    def run_ok(*args, **kwargs):  # noqa: ANN002,ANN003
+    def run_ok(*args, **kwargs):
         (tmp_path / "coverage.xml").write_text('<coverage line-rate="0.90"></coverage>')
         return types.SimpleNamespace(returncode=0)
 
@@ -275,7 +275,7 @@ async def test_unit_test_check_branches(monkeypatch: pytest.MonkeyPatch, tmp_pat
     assert checker.checks[-1].status == ReadinessStatus.PASS
 
     # parse error => WARN
-    def run_parse_err(*args, **kwargs):  # noqa: ANN002,ANN003
+    def run_parse_err(*args, **kwargs):
         (tmp_path / "coverage.xml").write_text("<coverage")
         return types.SimpleNamespace(returncode=0)
 
@@ -284,7 +284,7 @@ async def test_unit_test_check_branches(monkeypatch: pytest.MonkeyPatch, tmp_pat
     assert checker.checks[-1].status == ReadinessStatus.WARN
 
     # timeout => WARN
-    def run_timeout(*args, **kwargs):  # noqa: ANN002,ANN003
+    def run_timeout(*args, **kwargs):
         raise prs.subprocess.TimeoutExpired(cmd="pytest", timeout=1)
 
     monkeypatch.setattr(prs.subprocess, "run", run_timeout)
@@ -321,7 +321,7 @@ async def test_remaining_warn_fail_and_main_branches(
     assert checker.checks[-1].status == ReadinessStatus.FAIL
 
     # Unit tests: low coverage, no coverage file, missing pytest, generic exception
-    def run_low_cov(*args, **kwargs):  # noqa: ANN002,ANN003
+    def run_low_cov(*args, **kwargs):
         (tmp_path / "coverage.xml").write_text('<coverage line-rate="0.55"></coverage>')
         return types.SimpleNamespace(returncode=0)
 
@@ -329,7 +329,7 @@ async def test_remaining_warn_fail_and_main_branches(
     await checker._check_unit_tests()
     assert checker.checks[-1].status == ReadinessStatus.FAIL
 
-    def run_mid_cov(*args, **kwargs):  # noqa: ANN002,ANN003
+    def run_mid_cov(*args, **kwargs):
         (tmp_path / "coverage.xml").write_text('<coverage line-rate="0.70"></coverage>')
         return types.SimpleNamespace(returncode=0)
 
@@ -337,7 +337,7 @@ async def test_remaining_warn_fail_and_main_branches(
     await checker._check_unit_tests()
     assert checker.checks[-1].status == ReadinessStatus.WARN
 
-    def run_no_cov(*args, **kwargs):  # noqa: ANN002,ANN003
+    def run_no_cov(*args, **kwargs):
         cov = tmp_path / "coverage.xml"
         if cov.exists():
             cov.unlink()
@@ -347,14 +347,14 @@ async def test_remaining_warn_fail_and_main_branches(
     await checker._check_unit_tests()
     assert checker.checks[-1].status == ReadinessStatus.WARN
 
-    def run_missing(*args, **kwargs):  # noqa: ANN002,ANN003
+    def run_missing(*args, **kwargs):
         raise FileNotFoundError("pytest")
 
     monkeypatch.setattr(prs.subprocess, "run", run_missing)
     await checker._check_unit_tests()
     assert checker.checks[-1].status == ReadinessStatus.WARN
 
-    def run_generic(*args, **kwargs):  # noqa: ANN002,ANN003
+    def run_generic(*args, **kwargs):
         raise RuntimeError("boom")
 
     monkeypatch.setattr(prs.subprocess, "run", run_generic)
@@ -366,13 +366,13 @@ async def test_remaining_warn_fail_and_main_branches(
     report_warn = ProductionReadinessReport(total_checks=1, warnings=1, timestamp="now")
     report_ok = ProductionReadinessReport(total_checks=1, timestamp="now")
 
-    async def fake_fail(self):  # noqa: ANN001
+    async def fake_fail(self):
         return report_fail
 
-    async def fake_warn(self):  # noqa: ANN001
+    async def fake_warn(self):
         return report_warn
 
-    async def fake_ok(self):  # noqa: ANN001
+    async def fake_ok(self):
         return report_ok
 
     monkeypatch.setattr(

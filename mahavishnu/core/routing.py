@@ -520,9 +520,9 @@ def reset_task_router() -> None:
 
 
 __all__ = [
+    "INTENT_PATTERNS",
     "RoutingStrategy",
     "TaskRouter",
-    "INTENT_PATTERNS",
     "get_task_router",
     "reset_task_router",
 ]

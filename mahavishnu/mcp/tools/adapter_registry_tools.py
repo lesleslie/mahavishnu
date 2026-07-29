@@ -21,7 +21,7 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
-def register_adapter_registry_tools(mcp: FastMCP) -> None:  # noqa: C901
+def register_adapter_registry_tools(mcp: FastMCP) -> None:
     """Register adapter registry MCP tools.
 
     Structural C901 suppression: FastMCP's ``@mcp.tool()`` decorator

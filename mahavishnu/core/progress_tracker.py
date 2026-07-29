@@ -180,7 +180,7 @@ class ProgressBar:
 
     def __init__(
         self,
-        total: int | float,
+        total: float,
         width: int = 40,
         fill_char: str = "█",
         empty_char: str = "░",
@@ -198,7 +198,7 @@ class ProgressBar:
         self.fill_char = fill_char
         self.empty_char = empty_char
 
-    def render(self, completed: int | float) -> str:
+    def render(self, completed: float) -> str:
         """Render progress bar.
 
         Args:
@@ -272,8 +272,8 @@ class ProgressTracker:
     def add_task(
         self,
         description: str,
-        total: int | float,
-        completed: int | float = 0,
+        total: float,
+        completed: float = 0,
         parent_id: str | None = None,
         metadata: dict[str, Any] | None = None,
     ) -> str:
@@ -321,8 +321,8 @@ class ProgressTracker:
     def update_task(
         self,
         task_id: str,
-        completed: int | float | None = None,
-        advance: int | float | None = None,
+        completed: float | None = None,
+        advance: float | None = None,
         description: str | None = None,
     ) -> bool:
         """Update task progress.
@@ -356,8 +356,7 @@ class ProgressTracker:
             task.description = description
 
         # Check for completion
-        if task.completed >= task.total:
-            task.completed = task.total
+        task.completed = min(task.total, task.completed)
 
         if not self._quiet and self._console:
             self._display_task(task)
@@ -605,7 +604,7 @@ class ProgressTracker:
         self,
         description: str,
         operation: Callable[[Callable], Coroutine[Any, Any, Any]],
-        total: int | float,
+        total: float,
     ) -> Any:
         """Track an async operation with progress.
 
@@ -620,7 +619,7 @@ class ProgressTracker:
         task_id = self.add_task(description, total)
 
         def update(
-            completed: int | float | None = None, advance: int | float | None = None
+            completed: float | None = None, advance: float | None = None
         ) -> None:
             self.update_task(task_id, completed=completed, advance=advance)
 
@@ -634,9 +633,9 @@ class ProgressTracker:
 
 
 __all__ = [
-    "ProgressTracker",
+    "ProgressBar",
+    "ProgressSpinner",
     "ProgressState",
     "ProgressTask",
-    "ProgressSpinner",
-    "ProgressBar",
+    "ProgressTracker",
 ]

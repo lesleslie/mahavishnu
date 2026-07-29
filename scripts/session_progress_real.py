@@ -235,7 +235,7 @@ def main():
 
     except Exception as e:
         # Ultimate fallback
-        print(f"⚠️  Status error: {str(e)}", file=sys.stderr)
+        print(f"⚠️  Status error: {e!s}", file=sys.stderr)
         print("Session active")
 
 

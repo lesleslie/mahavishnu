@@ -46,7 +46,7 @@ from mahavishnu.tui.command_palette import MahavishnuCommandProvider
 if TYPE_CHECKING:
     from mahavishnu.core.ecosystem_status import EcosystemStatusReport
 
-__all__ = ["MahavishnuDashboard", "DashboardApp"]
+__all__ = ["DashboardApp", "MahavishnuDashboard"]
 
 _REFRESH_INTERVAL = 30  # seconds
 _COCKPIT_FILES = (

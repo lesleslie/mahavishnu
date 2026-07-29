@@ -12,10 +12,10 @@ Example:
 """
 
 __all__ = [
+    "McpretentiousAdapter",
+    "TerminalAdapter",
     "TerminalManager",
     "TerminalSession",
-    "TerminalAdapter",
-    "McpretentiousAdapter",
 ]
 
 # Mapping of export name -> (module_path, attribute_name)

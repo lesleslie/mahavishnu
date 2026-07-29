@@ -295,7 +295,7 @@ class FastMCPServer:
             server_name = "mahavishnu"
         mcp_tools_registered.labels(server=server_name).set(self._registered_tool_count)
 
-    def _register_tools(self):  # noqa: C901
+    def _register_tools(self):
         """Register all MCP tools using the FastMCP decorator pattern.
 
         Structural C901 suppression: FastMCP's ``@server.tool()`` decorator

@@ -43,7 +43,6 @@ class WorktreeProvider(ABC):
         Raises:
             WorktreeOperationError: If creation fails
         """
-        pass
 
     @abstractmethod
     async def remove_worktree(
@@ -68,7 +67,6 @@ class WorktreeProvider(ABC):
         Raises:
             WorktreeOperationError: If removal fails
         """
-        pass
 
     @abstractmethod
     async def list_worktrees(
@@ -89,7 +87,6 @@ class WorktreeProvider(ABC):
         Raises:
             WorktreeOperationError: If listing fails
         """
-        pass
 
     @abstractmethod
     def health_check(self) -> bool:
@@ -98,7 +95,6 @@ class WorktreeProvider(ABC):
         Returns:
             True if provider is healthy and can be used, False otherwise
         """
-        pass
 
     @abstractmethod
     def provider_name(self) -> str:
@@ -107,4 +103,3 @@ class WorktreeProvider(ABC):
         Returns:
             Provider name (e.g., "session-buddy", "direct-git", "mock")
         """
-        pass

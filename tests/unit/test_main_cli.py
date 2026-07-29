@@ -681,7 +681,6 @@ class TestMCPHealth:
             )
             # The mcp_health function uses asyncio.run internally,
             # so we need to patch at the open_connection level
-            pass
 
 
 # ===========================================================================

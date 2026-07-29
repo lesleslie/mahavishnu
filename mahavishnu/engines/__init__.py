@@ -7,10 +7,10 @@ optional heavy dependencies (LlamaIndex, Prefect, etc.) at package import time.
 __all__ = [
     "AgnoAdapter",
     "GoalDrivenTeamFactory",
-    "ParsedGoal",
-    "SkillConfig",
     "LlamaIndexAdapter",
+    "ParsedGoal",
     "PrefectAdapter",
+    "SkillConfig",
 ]
 
 # Mapping of export name -> (relative_module, attribute_name)

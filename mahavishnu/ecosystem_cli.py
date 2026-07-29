@@ -472,7 +472,7 @@ def add_ecosystem_commands(app: typer.Typer) -> None:
 
     @app.command("generate-claude-config")
     def generate_claude_config(
-        output: Path | None = typer.Option(  # noqa: B008
+        output: Path | None = typer.Option(
             None, "--output", "-o", help="Output path for generated config"
         ),
         dry_run: bool = typer.Option(False, "--dry-run", help="Print config without writing"),

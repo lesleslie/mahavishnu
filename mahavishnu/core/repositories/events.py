@@ -21,7 +21,6 @@ from mahavishnu.core.repositories.base import BaseRepository, RepositoryError
 if TYPE_CHECKING:
     from uuid import UUID
 
-    pass
 
 logger = logging.getLogger(__name__)
 
@@ -278,8 +277,8 @@ class TaskEventRepository(BaseRepository[TaskEventCreate, TaskEventRead, TaskEve
 
 __all__ = [
     "TaskEventCreate",
-    "TaskEventUpdate",
     "TaskEventFilter",
     "TaskEventRead",
     "TaskEventRepository",
+    "TaskEventUpdate",
 ]

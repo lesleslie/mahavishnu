@@ -4,8 +4,8 @@ from __future__ import annotations
 
 import pytest
 
+from mahavishnu.core import routing
 from mahavishnu.core.metrics_schema import AdapterType, TaskType
-import mahavishnu.core.routing as routing
 
 
 def test_classify_intent_defaults_and_pattern_matches() -> None:

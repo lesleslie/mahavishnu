@@ -172,4 +172,4 @@ def build_http_failure_response(
     text: str = "service unavailable",
 ) -> SimpleNamespace:
     """Create a minimal HTTP response object for failure injection."""
-    return SimpleNamespace(status_code=status_code, text=text, json=lambda: {})
+    return SimpleNamespace(status_code=status_code, text=text, json=dict)

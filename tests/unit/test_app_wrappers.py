@@ -46,7 +46,7 @@ class TestMahavishnuAppInit:
         calls: list[str] = []
 
         class _CircuitBreaker:
-            def __init__(self, threshold, timeout):  # noqa: ANN001
+            def __init__(self, threshold, timeout):
                 self.threshold = threshold
                 self.timeout = timeout
 

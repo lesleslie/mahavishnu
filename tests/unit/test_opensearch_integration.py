@@ -118,7 +118,7 @@ def test_init_with_opensearch_available_success_and_fallback(
     monkeypatch.setattr(osc, "OPENSEARCH_AVAILABLE", True)
 
     class _CtorClient:
-        def __init__(self, **kwargs) -> None:  # noqa: ANN003
+        def __init__(self, **kwargs) -> None:
             self.kwargs = kwargs
 
     monkeypatch.setattr(osi, "AsyncOpenSearch", _CtorClient)
@@ -126,7 +126,7 @@ def test_init_with_opensearch_available_success_and_fallback(
     assert isinstance(analytics.client, _CtorClient)
 
     class _BoomClient:
-        def __init__(self, **kwargs) -> None:  # noqa: ANN003
+        def __init__(self, **kwargs) -> None:
             raise RuntimeError("ctor failed")
 
     monkeypatch.setattr(osi, "AsyncOpenSearch", _BoomClient)
@@ -144,7 +144,7 @@ def test_import_success_branch_uses_real_async_client_symbol(
     fake_pkg = ModuleType("opensearchpy")
 
     class _CtorClient:
-        def __init__(self, *args, **kwargs) -> None:  # noqa: ANN003
+        def __init__(self, *args, **kwargs) -> None:
             self.args = args
             self.kwargs = kwargs
 

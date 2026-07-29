@@ -34,7 +34,7 @@ class _SpanContextManager:
     def __enter__(self) -> _Span:
         return self._span
 
-    def __exit__(self, exc_type, exc, tb) -> bool:  # noqa: ANN001,ANN201,ANN202
+    def __exit__(self, exc_type, exc, tb) -> bool:
         return False
 
 

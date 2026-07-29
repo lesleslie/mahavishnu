@@ -13,7 +13,6 @@ import pytest
 
 from mahavishnu.mcp.tools.eventbridge_tools import register_eventbridge_tools
 
-
 pytestmark = pytest.mark.unit
 
 

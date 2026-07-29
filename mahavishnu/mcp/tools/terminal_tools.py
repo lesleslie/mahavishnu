@@ -73,7 +73,7 @@ def validate_command_safety(command: str) -> None:
             )
 
 
-def register_terminal_tools(  # noqa: C901
+def register_terminal_tools(
     mcp: FastMCP,
     terminal_manager: TerminalManager,
     mcp_client: Any = None,

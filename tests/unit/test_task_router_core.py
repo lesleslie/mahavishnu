@@ -244,7 +244,7 @@ async def test_capability_router_with_cache_and_routing_decision_branch(
             return {"enabled": True, "size": len(self.store)}
 
     class _RoutingDecision:
-        def __init__(self, **kwargs) -> None:  # noqa: ANN003
+        def __init__(self, **kwargs) -> None:
             self.__dict__.update(kwargs)
 
     class _Match(SimpleNamespace):
@@ -346,7 +346,7 @@ async def test_execute_with_fallback_edge_branches(monkeypatch: pytest.MonkeyPat
     assert "adapter failed" in result2["error"]
 
     # branch: generic exception from retry_async call
-    async def _raise_generic(*args, **kwargs):  # noqa: ANN002,ANN003
+    async def _raise_generic(*args, **kwargs):
         raise RuntimeError("retry blew up")
 
     monkeypatch.setattr(tr, "retry_async", _raise_generic)
@@ -499,10 +499,10 @@ def test_capability_routing_import_success_branch(monkeypatch: pytest.MonkeyPatc
         def __init__(self, ttl_seconds: int = 300) -> None:
             self.ttl_seconds = ttl_seconds
 
-        def get(self, key: str):  # noqa: ANN001
+        def get(self, key: str):
             return None
 
-        def set(self, key: str, value: object) -> None:  # noqa: ANN001
+        def set(self, key: str, value: object) -> None:
             return None
 
         def invalidate(self) -> None:
@@ -512,7 +512,7 @@ def test_capability_routing_import_success_branch(monkeypatch: pytest.MonkeyPatc
             return {"enabled": True}
 
     class _RoutingDecision:
-        def __init__(self, **kwargs) -> None:  # noqa: ANN003
+        def __init__(self, **kwargs) -> None:
             self.__dict__.update(kwargs)
 
     fake.TaskRequirements = object
@@ -537,7 +537,7 @@ async def test_execute_with_fallback_success_retry_exhausted_and_stats(
     await manager.register_adapter(AdapterType.PREFECT, _ExecAdapter(AdapterType.PREFECT))
     router = tr.TaskRouter(adapter_registry=manager, state_manager=tr.StateManager())
 
-    async def _retry_success(fn, policy, operation, dependency):  # noqa: ANN001,ANN003
+    async def _retry_success(fn, policy, operation, dependency):
         return await fn(), 2
 
     monkeypatch.setattr(tr, "retry_async", _retry_success)
@@ -547,7 +547,7 @@ async def test_execute_with_fallback_success_retry_exhausted_and_stats(
     assert success["fallback_chain"] == [AdapterType.PREFECT]
     assert success["total_attempts"] == 2
 
-    async def _retry_exhausted(fn, policy, operation, dependency):  # noqa: ANN001,ANN003
+    async def _retry_exhausted(fn, policy, operation, dependency):
         raise tr.RetryExhaustedError(RuntimeError("retry failed"), 3)
 
     monkeypatch.setattr(tr, "retry_async", _retry_exhausted)

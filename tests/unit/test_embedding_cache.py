@@ -162,21 +162,21 @@ class TestEmbeddingCache:
     def test_initialization(self) -> None:
         """Test cache initialization."""
         cache = EmbeddingCache()
-        assert cache._config is not None  # noqa: SLF001
-        assert cache._l1 is not None  # noqa: SLF001
-        assert cache._metrics is not None  # noqa: SLF001
+        assert cache._config is not None
+        assert cache._l1 is not None
+        assert cache._metrics is not None
 
     def test_initialization_with_config(self) -> None:
         """Test cache initialization with custom config."""
         config = EmbeddingCacheConfig(l1_max_size=5000)
         cache = EmbeddingCache(config=config)
-        assert cache._config.l1_max_size == 5000  # noqa: SLF001
+        assert cache._config.l1_max_size == 5000
 
     def test_hash_text_consistent(self) -> None:
         """Test that text hashing is consistent."""
         cache = EmbeddingCache()
-        hash1 = cache._hash_text("test text")  # noqa: SLF001
-        hash2 = cache._hash_text("test text")  # noqa: SLF001
+        hash1 = cache._hash_text("test text")
+        hash2 = cache._hash_text("test text")
         assert hash1 == hash2
         # Format is {model_version}:{sha256_hash} = "1.0.0:" (6) + 64 hex chars = 70 chars
         assert ":" in hash1  # Version separator present
@@ -185,8 +185,8 @@ class TestEmbeddingCache:
     def test_hash_text_different(self) -> None:
         """Test that different texts produce different hashes."""
         cache = EmbeddingCache()
-        hash1 = cache._hash_text("text 1")  # noqa: SLF001
-        hash2 = cache._hash_text("text 2")  # noqa: SLF001
+        hash1 = cache._hash_text("text 1")
+        hash2 = cache._hash_text("text 2")
         assert hash1 != hash2
 
     @pytest.mark.asyncio
@@ -303,12 +303,12 @@ class TestEmbeddingCache:
         cache = EmbeddingCache()
 
         # Add some items synchronously
-        cache._l1.set("key1", [0.1])  # noqa: SLF001
-        cache._l1.set("key2", [0.2])  # noqa: SLF001
+        cache._l1.set("key1", [0.1])
+        cache._l1.set("key2", [0.2])
 
         count = cache.clear_l1()
         assert count == 2
-        assert len(cache._l1) == 0  # noqa: SLF001
+        assert len(cache._l1) == 0
 
 
 class TestGetEmbeddingCache:
@@ -335,7 +335,7 @@ class TestEmbeddingCacheL2Disabled:
     async def test_l2_disabled_by_default(self) -> None:
         """Test that L2 is disabled by default."""
         cache = EmbeddingCache()
-        assert cache._config.l2_enabled is False  # noqa: SLF001
+        assert cache._config.l2_enabled is False
 
     @pytest.mark.asyncio
     async def test_get_still_works_without_l2(self) -> None:
@@ -566,7 +566,7 @@ class TestEmbeddingCacheL2Enabled:
         emb = [0.1, 0.2, 0.3]
         await cache.set("text", emb)
         # Verify L1 was populated
-        assert cache._l1.get(cache._hash_text("text")) == emb  # noqa: SLF001
+        assert cache._l1.get(cache._hash_text("text")) == emb
         result = await cache.get("text")
         assert result == emb
 
@@ -587,7 +587,7 @@ class TestEmbeddingCacheL2Enabled:
         cache = EmbeddingCache(config)
 
         emb = [0.5, 0.6, 0.7]
-        l2_key = cache._make_l2_key(cache._hash_text("text"))  # noqa: SLF001
+        l2_key = cache._make_l2_key(cache._hash_text("text"))
 
         # Mock the L2 client
         l2_client = MagicMock()
@@ -597,8 +597,8 @@ class TestEmbeddingCacheL2Enabled:
 
         assert result == emb
         # L1 should now be populated
-        l1_key = cache._hash_text("text")  # noqa: SLF001
-        assert cache._l1.get(l1_key) == emb  # noqa: SLF001
+        l1_key = cache._hash_text("text")
+        assert cache._l1.get(l1_key) == emb
         l2_client.get.assert_awaited_with(l2_key)
 
     @pytest.mark.asyncio
@@ -613,7 +613,7 @@ class TestEmbeddingCacheL2Enabled:
             result = await cache.get("text")
 
         assert result is None
-        assert cache._circuit_breaker.failure_count >= 1  # noqa: SLF001
+        assert cache._circuit_breaker.failure_count >= 1
 
     @pytest.mark.asyncio
     async def test_get_l2_circuit_open_skips_redis(self) -> None:
@@ -622,8 +622,8 @@ class TestEmbeddingCacheL2Enabled:
         cache = EmbeddingCache(config)
 
         # Force circuit breaker to be open (with recent failure time so it doesn't recover)
-        cache._circuit_breaker.state = CircuitState.OPEN  # noqa: SLF001
-        cache._circuit_breaker.last_failure_time = time.monotonic()  # noqa: SLF001
+        cache._circuit_breaker.state = CircuitState.OPEN
+        cache._circuit_breaker.last_failure_time = time.monotonic()
 
         with patch.object(cache, "_get_l2_client", AsyncMock()) as get_l2:
             result = await cache.get("text")
@@ -642,7 +642,7 @@ class TestEmbeddingCacheL2Enabled:
         with patch.object(cache, "_get_l2_client", AsyncMock(return_value=l2_client)):
             await cache.set("text", [0.1, 0.2])
 
-        assert cache._circuit_breaker.failure_count >= 1  # noqa: SLF001
+        assert cache._circuit_breaker.failure_count >= 1
 
     @pytest.mark.asyncio
     async def test_set_l2_success_records(self) -> None:
@@ -663,8 +663,8 @@ class TestEmbeddingCacheL2Enabled:
         """If circuit is open, L2 set is skipped."""
         config = EmbeddingCacheConfig(l2_enabled=True, l2_redis_url="redis://localhost:6379/0")
         cache = EmbeddingCache(config)
-        cache._circuit_breaker.state = CircuitState.OPEN  # noqa: SLF001
-        cache._circuit_breaker.last_failure_time = time.monotonic()  # noqa: SLF001
+        cache._circuit_breaker.state = CircuitState.OPEN
+        cache._circuit_breaker.last_failure_time = time.monotonic()
 
         with patch.object(cache, "_get_l2_client", AsyncMock()) as get_l2:
             await cache.set("text", [0.1])
@@ -690,9 +690,9 @@ class TestEmbeddingCacheL2Enabled:
         sys.modules["redis"] = fake_redis
         sys.modules["redis.asyncio"] = fake_asyncio
         try:
-            client = await cache._get_l2_client()  # noqa: SLF001
+            client = await cache._get_l2_client()
             assert client is fake_client
-            assert cache._l2_available is True  # noqa: SLF001
+            assert cache._l2_available is True
         finally:
             del sys.modules["redis"]
             del sys.modules["redis.asyncio"]
@@ -716,9 +716,9 @@ class TestEmbeddingCacheL2Enabled:
         sys.modules["redis"] = fake_redis
         sys.modules["redis.asyncio"] = fake_asyncio
         try:
-            client = await cache._get_l2_client()  # noqa: SLF001
+            client = await cache._get_l2_client()
             assert client is None
-            assert cache._l2_available is False  # noqa: SLF001
+            assert cache._l2_available is False
         finally:
             del sys.modules["redis"]
             del sys.modules["redis.asyncio"]
@@ -742,8 +742,8 @@ class TestEmbeddingCacheL2Enabled:
         sys.modules["redis"] = fake_redis
         sys.modules["redis.asyncio"] = fake_asyncio
         try:
-            c1 = await cache._get_l2_client()  # noqa: SLF001
-            c2 = await cache._get_l2_client()  # noqa: SLF001
+            c1 = await cache._get_l2_client()
+            c2 = await cache._get_l2_client()
             assert c1 is c2
             # from_url should be called only once
             assert fake_asyncio.from_url.call_count == 1  # type: ignore[attr-defined]
@@ -771,7 +771,7 @@ class TestEmbeddingCacheGetOrCompute:
         """When singleflight disabled, falls back to direct compute."""
         config = EmbeddingCacheConfig(singleflight_enabled=False)
         cache = EmbeddingCache(config)
-        assert cache._singleflight is None  # noqa: SLF001
+        assert cache._singleflight is None
 
         async def compute_fn() -> list[list[float]]:
             return [[0.1, 0.2, 0.3]]
@@ -860,7 +860,7 @@ class TestEmbeddingCacheStats:
     def test_stats_includes_l2_available(self) -> None:
         """get_stats should report l2_available status."""
         cache = EmbeddingCache()
-        cache._l2_available = True  # noqa: SLF001
+        cache._l2_available = True
         stats = cache.get_stats()
         assert stats["l2_available"] is True
 
@@ -892,7 +892,7 @@ class TestEmbeddingCacheClearL2:
         """clear_l2 returns 0 when circuit breaker is open."""
         config = EmbeddingCacheConfig(l2_enabled=True, l2_redis_url="redis://localhost:6379/0")
         cache = EmbeddingCache(config)
-        cache._circuit_breaker.state = CircuitState.OPEN  # noqa: SLF001
+        cache._circuit_breaker.state = CircuitState.OPEN
 
         result = await cache.clear_l2()
         assert result == 0
@@ -916,7 +916,7 @@ class TestEmbeddingCacheClearL2:
 
         async def empty_iter(match: str):
             return
-            yield  # noqa: F841 - make this an async generator
+            yield
 
         l2_client.scan_iter = empty_iter
         with patch.object(cache, "_get_l2_client", AsyncMock(return_value=l2_client)):
@@ -949,14 +949,14 @@ class TestEmbeddingCacheClearL2:
 
         async def failing_iter(match: str):
             raise ConnectionError("redis down")
-            yield  # noqa: F841
+            yield
 
         l2_client = MagicMock()
         l2_client.scan_iter = failing_iter
         with patch.object(cache, "_get_l2_client", AsyncMock(return_value=l2_client)):
             result = await cache.clear_l2()
         assert result == 0
-        assert cache._circuit_breaker.failure_count >= 1  # noqa: SLF001
+        assert cache._circuit_breaker.failure_count >= 1
 
 
 class TestEmbeddingCacheClose:
@@ -974,12 +974,12 @@ class TestEmbeddingCacheClose:
         cache = EmbeddingCache()
         l2_client = MagicMock()
         l2_client.close = AsyncMock()
-        cache._l2_client = l2_client  # noqa: SLF001
+        cache._l2_client = l2_client
 
         await cache.close()
 
         l2_client.close.assert_awaited_once()
-        assert cache._l2_client is None  # noqa: SLF001
+        assert cache._l2_client is None
 
     @pytest.mark.asyncio
     async def test_close_resets_circuit_breaker(self) -> None:
@@ -1081,9 +1081,9 @@ class TestEmbeddingCacheSetGetEdgeCases:
     async def test_get_returns_none_for_expired_l1(self) -> None:
         """Expired L1 entry should be removed and return None."""
         cache = EmbeddingCache()
-        key = cache._hash_text("text")  # noqa: SLF001
+        key = cache._hash_text("text")
         # Set with very short TTL
-        cache._l1.set(key, [0.1, 0.2, 0.3], ttl=0.01)  # noqa: SLF001
+        cache._l1.set(key, [0.1, 0.2, 0.3], ttl=0.01)
         time.sleep(0.02)
         result = await cache.get("text")
         assert result is None

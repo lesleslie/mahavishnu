@@ -528,12 +528,12 @@ async def initialize_alert_manager(
 
 __all__ = [
     "Alert",
+    "AlertHandler",
     "AlertSeverity",
     "AlertType",
-    "AlertHandler",
     "LoggingAlertHandler",
-    "WebhookAlertHandler",
     "RoutingAlertManager",
+    "WebhookAlertHandler",
     "get_alert_manager",
     "initialize_alert_manager",
 ]

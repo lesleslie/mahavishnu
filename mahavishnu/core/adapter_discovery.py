@@ -409,7 +409,7 @@ class AdapterDiscoveryEngine:
 
         try:
             # Use importlib.metadata for entry point discovery
-            import importlib.metadata as metadata
+            from importlib import metadata
 
             # Get entry points for our group
             eps: Iterable[EntryPoint]
@@ -583,7 +583,7 @@ class AdapterDiscoveryEngine:
 # ============================================================================
 
 __all__ = [
-    "AdapterMetadata",
-    "AdapterDiscoveryEngine",
     "ENTRY_POINT_GROUP",
+    "AdapterDiscoveryEngine",
+    "AdapterMetadata",
 ]

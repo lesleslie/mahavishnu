@@ -110,9 +110,9 @@ def test_recovery_summary_swallows_dhara_errors() -> None:
     dhara_state = SimpleNamespace(
         available=False,
         recover_workflows=recover_workflows,
-        recover_approvals=lambda: [],
-        recover_pools=lambda: [],
-        recover_routing_decisions=lambda: [],
+        recover_approvals=list,
+        recover_pools=list,
+        recover_routing_decisions=list,
     )
     app = SimpleNamespace(
         active_workflows=["existing"],

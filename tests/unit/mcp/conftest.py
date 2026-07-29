@@ -30,7 +30,7 @@ def _restore_real_mcp() -> None:
                 del sys.modules[key]
 
         try:
-            import mcp  # noqa: F401
+            import mcp
             import mcp.types  # noqa: F401
         except ImportError:
             pass  # unavailable; individual tests will fail naturally

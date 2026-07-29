@@ -19,7 +19,7 @@ def test_reconcile_marks_dead_pane_as_reaped(tmp_path: pathlib.Path):
         publisher=publisher,
         socket_dir=tmp_path / "tmux",
     )
-    now = dt.datetime(2026, 7, 26, 10, 0, 0, tzinfo=dt.timezone.utc)
+    now = dt.datetime(2026, 7, 26, 10, 0, 0, tzinfo=dt.UTC)
     record = DurableWorkerRecord(
         worker_id="w-1",
         worker_type="terminal-claude",
@@ -56,7 +56,7 @@ def test_reconcile_revives_detached_pane(tmp_path: pathlib.Path):
         publisher=publisher,
         socket_dir=tmp_path / "tmux",
     )
-    now = dt.datetime(2026, 7, 26, 10, 0, 0, tzinfo=dt.timezone.utc)
+    now = dt.datetime(2026, 7, 26, 10, 0, 0, tzinfo=dt.UTC)
     record = DurableWorkerRecord(
         worker_id="w-1",
         worker_type="terminal-claude",

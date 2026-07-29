@@ -642,7 +642,7 @@ async def main():
     checker = ProductionReadinessChecker(project_root)
 
     print("🔍 Running production readiness checks...")
-    print("")
+    print()
 
     report = await checker.run_full_check()
 

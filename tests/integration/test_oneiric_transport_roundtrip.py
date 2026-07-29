@@ -9,15 +9,13 @@ emit`` path against a real ``oneiric.domains.events.EventBridge``.
 from __future__ import annotations
 
 import inspect
-from typing import Any
-
-import pytest
 
 from oneiric.core.config import LayerSettings
 from oneiric.core.lifecycle import LifecycleManager
 from oneiric.core.resolution import Resolver
 from oneiric.domains.events import EventBridge
 from oneiric.runtime.events import EventEnvelope, EventHandler, HandlerResult
+import pytest
 
 from mahavishnu.core.events.eventbridge_adapter import EventBridgePublisher
 from mahavishnu.core.events.mahavishnu_publisher import (
@@ -25,7 +23,6 @@ from mahavishnu.core.events.mahavishnu_publisher import (
     publish_workflow_failed,
     publish_workflow_started,
 )
-
 
 pytestmark = [pytest.mark.integration, pytest.mark.timeout(30)]
 
@@ -72,7 +69,7 @@ def _build_real_eventbridge() -> tuple[EventBridge, _CapturingDispatcher]:
     settings = LayerSettings()
     bridge = EventBridge(resolver, lifecycle, settings)
     dispatcher = _CapturingDispatcher()
-    bridge._dispatcher = dispatcher  # noqa: SLF001 -- test-only
+    bridge._dispatcher = dispatcher
     return bridge, dispatcher
 
 

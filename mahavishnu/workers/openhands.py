@@ -19,7 +19,7 @@ logger = get_logger(__name__)
 @dataclass
 class OpenHandsConfig:
     base_url: str = "http://localhost:3000"
-    workspace_dir: Path = Path("/tmp/openhands-workspace")  # noqa: S108
+    workspace_dir: Path = Path("/tmp/openhands-workspace")
     timeout_seconds: int = 600
     poll_interval_seconds: float = 3.0
     max_output_chars: int = 50_000
@@ -52,9 +52,9 @@ class OpenHandsClient:
 
     async def stream_events(self, conv_id: str) -> list[dict[str, Any]]:
         """Attempt to consume WebSocket events (best-effort, may raise)."""
-        import json  # noqa: PLC0415
+        import json
 
-        import websockets  # noqa: PLC0415
+        import websockets
 
         url = (
             self._config.base_url.replace("http://", "ws://").replace("https://", "wss://")

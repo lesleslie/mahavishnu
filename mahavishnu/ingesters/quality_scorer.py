@@ -523,7 +523,7 @@ __all__ = [
     "MetricScore",
     "QualityMetric",
     "QualityThresholds",
+    "score_completeness",
     "score_readability",
     "score_technical_depth",
-    "score_completeness",
 ]

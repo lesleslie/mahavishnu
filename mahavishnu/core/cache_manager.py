@@ -708,10 +708,10 @@ def aggregate_cache_health(
 
 
 __all__ = [
-    "CacheManager",
     "CacheBackend",
-    "LRUCache",
-    "CacheStats",
     "CacheKey",
+    "CacheManager",
+    "CacheStats",
+    "LRUCache",
     "aggregate_cache_health",
 ]

@@ -34,14 +34,14 @@ def _make_config() -> OpenHandsConfig:
         else "http://localhost:3000"
     )
     workspace_dir = (
-        getattr(oh_settings, "workspace_dir", Path("/tmp/openhands-workspace"))  # noqa: S108
+        getattr(oh_settings, "workspace_dir", Path("/tmp/openhands-workspace"))
         if oh_settings
-        else Path("/tmp/openhands-workspace")  # noqa: S108
+        else Path("/tmp/openhands-workspace")
     )
 
     # Validate workspace_dir containment (MUST be under a configured root)
     workspace_dir = Path(workspace_dir).resolve()
-    allowed_root = Path("/tmp").resolve()  # noqa: S108 - override via settings in production
+    allowed_root = Path("/tmp").resolve()
     if oh_settings and hasattr(oh_settings, "workspace_root"):
         allowed_root = Path(oh_settings.workspace_root).resolve()
     if not workspace_dir.is_relative_to(allowed_root):
@@ -53,7 +53,7 @@ def _make_config() -> OpenHandsConfig:
 async def _run_quality_check(output: str) -> int | None:
     """Run Crackerjack quality check on output. Returns score or None."""
     try:
-        from mahavishnu.quality_cli import run_quality_check as crackerjack_check  # noqa: PLC0415
+        from mahavishnu.quality_cli import run_quality_check as crackerjack_check
 
         score = await crackerjack_check(output)
         return score

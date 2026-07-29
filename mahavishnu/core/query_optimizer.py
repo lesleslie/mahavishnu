@@ -610,10 +610,10 @@ class QueryAnalyzer:
 
 
 __all__ = [
-    "QueryAnalyzer",
-    "QueryPlan",
     "IndexRecommendation",
-    "QueryMetrics",
     "NPlusOneDetector",
+    "QueryAnalyzer",
+    "QueryMetrics",
+    "QueryPlan",
     "QueryType",
 ]

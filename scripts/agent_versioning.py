@@ -188,7 +188,6 @@ class AgentVersionManager:
 @click.group()
 def cli():
     """Agent Versioning System CLI"""
-    pass
 
 
 @cli.command("add-version")

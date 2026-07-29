@@ -23,7 +23,7 @@ class _Meta:
 
 
 class _FakeDiscovery:
-    def __init__(self, config) -> None:  # noqa: ANN001
+    def __init__(self, config) -> None:
         self.config = config
         self.closed = False
         self.invalidated = False
@@ -52,10 +52,10 @@ class _FakePersistence:
     async def load_state(self, adapter_id: str):
         return self.states.get(adapter_id)
 
-    async def save_state(self, state) -> None:  # noqa: ANN001
+    async def save_state(self, state) -> None:
         self.states[state.adapter_id] = state
 
-    async def record_health(self, record) -> None:  # noqa: ANN001
+    async def record_health(self, record) -> None:
         self.health.append(record)
 
     async def close(self) -> None:
@@ -68,13 +68,13 @@ class _WS:
         self.health_changed: list[dict] = []
         self.enabled_calls: list[dict] = []
 
-    async def broadcast_adapter_registered(self, **kwargs):  # noqa: ANN003
+    async def broadcast_adapter_registered(self, **kwargs):
         self.registered.append(kwargs)
 
-    async def broadcast_adapter_health_changed(self, **kwargs):  # noqa: ANN003
+    async def broadcast_adapter_health_changed(self, **kwargs):
         self.health_changed.append(kwargs)
 
-    async def broadcast_adapter_enabled(self, **kwargs):  # noqa: ANN003
+    async def broadcast_adapter_enabled(self, **kwargs):
         self.enabled_calls.append(kwargs)
 
 
@@ -84,7 +84,7 @@ def _patch_registry_deps(monkeypatch: pytest.MonkeyPatch) -> None:
 
 
 class _Adapter:
-    def __init__(self, config=None, health=None, fail=False):  # noqa: ANN001
+    def __init__(self, config=None, health=None, fail=False):
         self.config = config
         self._health = health or {"status": "healthy", "latency_ms": 5}
         self._fail = fail
@@ -158,7 +158,7 @@ async def test_register_failure_and_resolve_no_match(monkeypatch: pytest.MonkeyP
         capabilities=[],
         factory_path="",
     )
-    ok = await registry._register_adapter_from_metadata(bad)  # noqa: SLF001
+    ok = await registry._register_adapter_from_metadata(bad)
     assert ok is False
 
     # Import failure branch
@@ -173,7 +173,7 @@ async def test_register_failure_and_resolve_no_match(monkeypatch: pytest.MonkeyP
         capabilities=[],
         factory_path="a.b:C",
     )
-    ok2 = await registry._register_adapter_from_metadata(bad2)  # noqa: SLF001
+    ok2 = await registry._register_adapter_from_metadata(bad2)
     assert ok2 is False
 
     # Module-only path branch: factory_path without ":" returns the imported module object.
@@ -186,7 +186,7 @@ async def test_register_failure_and_resolve_no_match(monkeypatch: pytest.MonkeyP
         factory_path="module.path",
     )
     monkeypatch.setattr(ar.importlib, "import_module", lambda _p: SimpleNamespace(marker=True))
-    ok3 = await registry._register_adapter_from_metadata(module_only)  # noqa: SLF001
+    ok3 = await registry._register_adapter_from_metadata(module_only)
     assert ok3 is True
     assert registry.get_adapter("module-only") is not None
 
@@ -205,8 +205,8 @@ async def test_health_checks_enable_disable_and_close(monkeypatch: pytest.Monkey
 
     m1 = _Meta("id.prefect", "orchestration", "workflow", "prefect", ["a"], "x")
     m2 = _Meta("id.agno", "orchestration", "agent", "agno", ["b"], "y")
-    registry._metadata = {"prefect": m1, "agno": m2}  # noqa: SLF001
-    registry._adapters = {  # noqa: SLF001
+    registry._metadata = {"prefect": m1, "agno": m2}
+    registry._adapters = {
         "prefect": _Adapter(health={"healthy": True, "latency_ms": 3}),
         "agno": _Adapter(fail=True),
     }
@@ -253,7 +253,7 @@ async def test_discover_register_handles_registration_exception(
         )
     ]
 
-    async def _boom(_metadata):  # noqa: ANN001
+    async def _boom(_metadata):
         raise RuntimeError("boom")
 
     monkeypatch.setattr(registry, "_register_adapter_from_metadata", _boom)
@@ -324,12 +324,12 @@ async def test_resolve_and_list_filters_and_enable_state_update(
         priority=70,
     )
 
-    registry._metadata = {  # noqa: SLF001
+    registry._metadata = {
         "good": good,
         "wrong-domain": wrong_domain,
         "wrong-caps": wrong_caps,
     }
-    registry._adapters = {  # noqa: SLF001
+    registry._adapters = {
         "good": _Adapter(),
         "wrong-domain": _Adapter(),
         "wrong-caps": _Adapter(),

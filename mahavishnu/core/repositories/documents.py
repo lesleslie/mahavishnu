@@ -22,7 +22,6 @@ from pydantic import BaseModel, Field
 from mahavishnu.core.repositories.base import BaseRepository, RepositoryError
 
 if TYPE_CHECKING:
-    pass
     from uuid import UUID
 
 logger = logging.getLogger(__name__)
@@ -394,7 +393,7 @@ class DocumentRepository(
 __all__ = [
     "DocumentCreate",
     "DocumentRead",
-    "DocumentUpdate",
-    "DocumentSearchResult",
     "DocumentRepository",
+    "DocumentSearchResult",
+    "DocumentUpdate",
 ]

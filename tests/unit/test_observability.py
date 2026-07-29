@@ -37,7 +37,7 @@ class _Tracer:
             def __enter__(self):
                 return self
 
-            def __exit__(self, *args):  # noqa: ANN002,ANN003
+            def __exit__(self, *args):
                 return None
 
         self.last_name = name
@@ -46,13 +46,13 @@ class _Tracer:
 
 
 class _Meter:
-    def create_counter(self, name: str, **kwargs):  # noqa: ANN002,ANN003
+    def create_counter(self, name: str, **kwargs):
         return _Counter()
 
-    def create_histogram(self, name: str, **kwargs):  # noqa: ANN002,ANN003
+    def create_histogram(self, name: str, **kwargs):
         return _Histogram()
 
-    def create_up_down_counter(self, name: str, **kwargs):  # noqa: ANN002,ANN003
+    def create_up_down_counter(self, name: str, **kwargs):
         return _Counter()
 
 
@@ -421,7 +421,7 @@ async def test_flush_and_shutdown_otel_exception_paths(monkeypatch: pytest.Monke
 def test_import_error_branch_defines_fallback_classes(monkeypatch: pytest.MonkeyPatch) -> None:
     original_import = builtins.__import__
 
-    def guarded_import(name, globals=None, locals=None, fromlist=(), level=0):  # noqa: ANN001
+    def guarded_import(name, globals=None, locals=None, fromlist=(), level=0):
         if name == "opentelemetry" or name.startswith("opentelemetry."):
             raise ImportError("otel unavailable")
         return original_import(name, globals, locals, fromlist, level)

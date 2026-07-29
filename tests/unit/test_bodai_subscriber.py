@@ -13,7 +13,6 @@ from __future__ import annotations
 
 import asyncio
 import json
-import logging
 from pathlib import Path
 from typing import Any
 from unittest.mock import AsyncMock, MagicMock, patch
@@ -21,6 +20,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 from oneiric.runtime.events import EventEnvelope, create_event_envelope
 import pytest
 
+from mahavishnu.core.errors import EventEnvelopeConversionError
 from mahavishnu.core.events.bodai_subscriber import (
     DEFAULT_QUEUE_CAP,
     STREAM_NAME,
@@ -39,7 +39,6 @@ from mahavishnu.core.events.contract import (
     InMemoryEventTransport,  # noqa: F401  (kept for downstream test references)
 )
 from mahavishnu.core.events.envelope import EventEnvelope as MahavishnuEventEnvelope
-from mahavishnu.core.errors import EventEnvelopeConversionError
 
 pytestmark = pytest.mark.unit
 

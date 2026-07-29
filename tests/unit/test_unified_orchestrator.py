@@ -71,7 +71,7 @@ class _AdapterManager:
     def __init__(self, adapters: dict) -> None:
         self.adapters = adapters
 
-    def get_adapter(self, name):  # noqa: ANN001
+    def get_adapter(self, name):
         # unified_orchestrator passes string adapter names from saved state.
         return self.adapters.get(name)
 
@@ -83,7 +83,7 @@ class _FakeTaskRouter:
         self._execution_results = execution_results or []
         self.execute_calls: list[dict] = []
 
-    async def execute_with_fallback(self, **kwargs):  # noqa: ANN003
+    async def execute_with_fallback(self, **kwargs):
         self.execute_calls.append(kwargs)
         if self._execution_results:
             return self._execution_results.pop(0)
@@ -107,7 +107,7 @@ async def test_init_uses_default_or_custom_task_router(monkeypatch: pytest.Monke
 
     created: list[_FakeTaskRouter] = []
 
-    def factory():  # noqa: ANN202
+    def factory():
         inst = _FakeTaskRouter()
         created.append(inst)
         return inst
@@ -241,7 +241,7 @@ async def test_get_adapter_health_collects_errors() -> None:
 def test_generate_config_id_fallback_branch(monkeypatch: pytest.MonkeyPatch) -> None:
     original_import = builtins.__import__
 
-    def guarded_import(name, globals=None, locals=None, fromlist=(), level=0):  # noqa: ANN001
+    def guarded_import(name, globals=None, locals=None, fromlist=(), level=0):
         if name == "oneiric.core.ulid" or name.startswith("oneiric.core.ulid"):
             raise ImportError("oneiric missing")
         return original_import(name, globals, locals, fromlist, level)

@@ -30,10 +30,10 @@ try:
 except ImportError:
     pass
 
-from mcp_common.websocket import MessageType, WebSocketMessage  # noqa: E402
+from mcp_common.websocket import MessageType, WebSocketMessage
 
-from mahavishnu.websocket.rate_limiter import RateLimitResult  # noqa: E402
-from mahavishnu.websocket.server import (  # noqa: E402
+from mahavishnu.websocket.rate_limiter import RateLimitResult
+from mahavishnu.websocket.server import (
     MahavishnuWebSocketServer,
     _get_explicit_attribute,
 )
@@ -213,7 +213,7 @@ def test_init_non_localhost_no_tls_warns(caplog) -> None:
     ):
         MahavishnuWebSocketServer(
             pool_manager=_make_pool_manager(),
-            host="0.0.0.0",  # noqa: S104
+            host="0.0.0.0",
             port=8690,
         )
     assert any("SECURITY WARNING" in r.message for r in caplog.records)

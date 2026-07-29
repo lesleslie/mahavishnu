@@ -36,7 +36,7 @@ from mahavishnu.core.goal_team_metrics import get_goal_team_metrics
 logger = logging.getLogger(__name__)
 
 
-def register_goal_team_tools(mcp: FastMCP) -> None:  # noqa: C901
+def register_goal_team_tools(mcp: FastMCP) -> None:
     """Register goal-driven team management tools.
 
     Args:
@@ -49,7 +49,7 @@ def register_goal_team_tools(mcp: FastMCP) -> None:  # noqa: C901
     """
 
     @mcp.tool()
-    async def team_from_goal(  # noqa: C901
+    async def team_from_goal(
         goal: str,
         name: str | None = None,
         mode: str | None = None,
@@ -438,7 +438,7 @@ def register_goal_team_tools(mcp: FastMCP) -> None:  # noqa: C901
             }
 
     @mcp.tool()
-    async def parse_goal(goal: str, user_id: str | None = None) -> dict[str, Any]:  # noqa: C901
+    async def parse_goal(goal: str, user_id: str | None = None) -> dict[str, Any]:
         """Parse a goal to see what team would be created.
 
         Structural C901 suppression: parses, validates, broadcasts, and

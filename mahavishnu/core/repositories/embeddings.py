@@ -22,7 +22,6 @@ from mahavishnu.core.repositories.base import BaseRepository, RepositoryError
 if TYPE_CHECKING:
     from uuid import UUID
 
-    pass
 
 logger = logging.getLogger(__name__)
 
@@ -232,7 +231,7 @@ class EmbeddingRepository(
 __all__ = [
     "EmbeddingCreate",
     "EmbeddingRead",
-    "EmbeddingUpdate",
-    "EmbeddingSearchResult",
     "EmbeddingRepository",
+    "EmbeddingSearchResult",
+    "EmbeddingUpdate",
 ]

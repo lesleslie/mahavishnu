@@ -424,7 +424,7 @@ def show_all_help() -> None:
 
             console.print(f"  [yellow]Usage:[/] {cmd_info['usage']}")
 
-            if "examples" in cmd_info and cmd_info["examples"]:
+            if cmd_info.get("examples"):
                 console.print(f"  [green]Example:[/] {cmd_info['examples'][0]}")
 
 

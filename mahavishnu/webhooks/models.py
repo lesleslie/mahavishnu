@@ -335,9 +335,9 @@ class WebhookErrorResponse(BaseModel):
 
 
 __all__ = [
-    "WebhookStatus",
     "OpenClawSweepRequest",
     "OpenClawWorkflowRequest",
-    "WebhookResponse",
     "WebhookErrorResponse",
+    "WebhookResponse",
+    "WebhookStatus",
 ]

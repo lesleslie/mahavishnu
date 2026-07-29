@@ -196,4 +196,4 @@ def register_primitive_tools(mcp: FastMCP) -> None:
         return await show_primitive(name=name, server=mcp)
 
 
-__all__ = ["list_primitives", "show_primitive", "register_primitive_tools"]
+__all__ = ["list_primitives", "register_primitive_tools", "show_primitive"]

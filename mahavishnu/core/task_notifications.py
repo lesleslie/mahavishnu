@@ -484,9 +484,9 @@ class TaskEventEmitter:
 
 
 __all__ = [
+    "EventFilter",
+    "EventSubscription",
+    "TaskEvent",
     "TaskEventEmitter",
     "TaskEventType",
-    "TaskEvent",
-    "EventSubscription",
-    "EventFilter",
 ]

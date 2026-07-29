@@ -24,7 +24,7 @@ import json
 from pathlib import Path
 
 # ``scripts/`` is on ``sys.path`` at test time (see root ``conftest.py``)
-from check_ecosystem_gitignores import (  # noqa: E402
+from check_ecosystem_gitignores import (
     ClaudeDirState,
     ClaudeIgnoreState,
     classify_claude_dir,

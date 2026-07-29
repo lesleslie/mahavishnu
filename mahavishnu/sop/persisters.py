@@ -214,7 +214,7 @@ class HttpSOPPersister:
 
 
 __all__ = [
-    "SOPPersister",
-    "InMemorySOPPersister",
     "HttpSOPPersister",
+    "InMemorySOPPersister",
+    "SOPPersister",
 ]

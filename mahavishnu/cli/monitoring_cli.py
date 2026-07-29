@@ -221,7 +221,7 @@ def trigger_test_alert(
 def watch_dashboard() -> None:
     """Launch a live Textual monitor dashboard (requires tui extra)."""
     if TUI_AVAILABLE:
-        from ..tui.monitor_app import (  # noqa: PLC0415
+        from ..tui.monitor_app import (
             MonitorApp,
             _DefaultMonitorDataProvider,
         )
@@ -240,7 +240,7 @@ def watch_dashboard() -> None:
 
 def _print_rich_dashboard() -> None:
     """Print a one-shot Rich-formatted system status to the terminal."""
-    from ..core.app import MahavishnuApp  # noqa: PLC0415
+    from ..core.app import MahavishnuApp
 
     formatter = FallbackRichFormatter()
 

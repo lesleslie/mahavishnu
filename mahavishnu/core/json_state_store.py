@@ -34,7 +34,7 @@ import errno
 import fcntl
 import json
 import os
-from pathlib import Path  # noqa: TC003 — type-only with __future__ annotations
+from pathlib import Path
 import tempfile
 from typing import Any, cast
 
@@ -247,8 +247,8 @@ to write, or ``SKIP_WRITE`` to indicate the operation should be a no-op
 
 __all__ = [
     "SKIP_WRITE",
-    "locked_json_read",
     "atomic_json_write",
     "locked_json_modify",
+    "locked_json_read",
     "utcnow_iso",
 ]

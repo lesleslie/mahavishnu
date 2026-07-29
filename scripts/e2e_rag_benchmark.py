@@ -64,7 +64,7 @@ class RAGStageMetrics:
     name: str
     latency_ms: float
     success: bool = True
-    metadata: dict[str, Any] = field(default_factory=lambda: {})
+    metadata: dict[str, Any] = field(default_factory=dict)
 
     def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""

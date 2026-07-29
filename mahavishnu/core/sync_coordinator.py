@@ -529,10 +529,10 @@ class SyncCoordinator:
 
 
 __all__ = [
-    "SyncCoordinator",
-    "SyncPlan",
-    "SyncItem",
-    "SyncStatus",
-    "SyncConflict",
     "ConflictResolution",
+    "SyncConflict",
+    "SyncCoordinator",
+    "SyncItem",
+    "SyncPlan",
+    "SyncStatus",
 ]

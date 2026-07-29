@@ -327,12 +327,12 @@ _web_extract_batch_impl = web_extract_batch
 
 
 __all__ = [
-    "web_extract",
-    "web_extract_batch",
     "ExtractResult",
     "_extract_article",
-    "_trafilatura_extract",
-    "_selectolax_extract",
     "_find_near_duplicates",
+    "_selectolax_extract",
+    "_trafilatura_extract",
     "register",
+    "web_extract",
+    "web_extract_batch",
 ]

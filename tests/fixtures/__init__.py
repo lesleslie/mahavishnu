@@ -64,7 +64,7 @@ from tests.fixtures.shell_fixtures import ShellFixtures
 from tests.fixtures.workflow_fixtures import WorkflowFixtures
 
 __all__ = [
-    "WorkflowFixtures",
-    "ShellFixtures",
     "IntegrationFixtures",
+    "ShellFixtures",
+    "WorkflowFixtures",
 ]

@@ -18,6 +18,6 @@ __all__ = [
     "evaluate_all_capabilities",
     "evaluate_worker_capabilities",
     "invalidate_capability",
-    "select_routable_workers",
     "reset_for_tests",
+    "select_routable_workers",
 ]

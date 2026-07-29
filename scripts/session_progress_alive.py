@@ -117,7 +117,7 @@ def main():
 
     except Exception as e:
         # Fallback output on error
-        print(f"⚠️  Error: {str(e)}", file=sys.stderr)
+        print(f"⚠️  Error: {e!s}", file=sys.stderr)
         print("🟢 Claude Code Active")
 
 

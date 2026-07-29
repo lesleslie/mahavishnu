@@ -44,7 +44,7 @@ import sys
 
 # Shared helper lives in the same .claude/hooks directory.
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from _hook_io import read_session_payload  # noqa: E402
+from _hook_io import read_session_payload
 
 # Environment variable that gates the whole feature.
 OPT_IN_ENV = "MAHAVISHNU_AUTO_WORKTREE"
@@ -216,7 +216,7 @@ def _run_session_start(session_id_full: str, cwd: str) -> int:
     """
     # Lazy import — only after env-var gate passes.
     _ensure_mahavishnu_importable()
-    from mahavishnu.core.worktree_session_registry import (  # noqa: E402
+    from mahavishnu.core.worktree_session_registry import (
         SessionWorktreeRegistry,
         short_session_id,
     )
@@ -369,7 +369,7 @@ def _run_session_start(session_id_full: str, cwd: str) -> int:
 def _run_session_end(session_id_full: str) -> int:
     """SessionEnd: mark the worktree abandoned (default policy)."""
     _ensure_mahavishnu_importable()
-    from mahavishnu.core.worktree_session_registry import (  # noqa: E402
+    from mahavishnu.core.worktree_session_registry import (
         SessionWorktreeRegistry,
         short_session_id,
     )

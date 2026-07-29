@@ -473,8 +473,8 @@ class CrossRepoFilter:
 
 __all__ = [
     "CrossRepoFilter",
+    "DateRangeFilter",
     "FilterCriteria",
     "FilterResult",
-    "DateRangeFilter",
     "SortOrder",
 ]

@@ -84,12 +84,12 @@ DEFAULT_HEALTH_URL = "http://127.0.0.1:8678/health"
 DEFAULT_SHUTDOWN_TIMEOUT = 15.0
 
 __all__ = [
+    "ALLOWED_HEALTH_SCHEMES",
     "DEFAULT_DB_PATH",
-    "DEFAULT_SB_CWD",
     "DEFAULT_SB_CMD",
+    "DEFAULT_SB_CWD",
     "CleanupResult",
     "LockProbe",
-    "ALLOWED_HEALTH_SCHEMES",
     "force_release_lock",
     "is_process_alive",
     "probe_lock",
@@ -97,8 +97,8 @@ __all__ = [
     "run_checkpoint",
     "shutdown_session_buddy",
     "validate_health_url",
-    "verify_lock_refreshed",
     "verify_health",
+    "verify_lock_refreshed",
 ]
 
 
@@ -205,7 +205,7 @@ def probe_lock(db_path: Path) -> LockProbe:
         con = duckdb.connect(str(db_path))
         con.close()
         return LockProbe(locked=False, holder_pid=None, stale=False)
-    except Exception as e:  # noqa: BLE001 — duckdb raises generic Exception
+    except Exception as e:
         msg = str(e)
         m = re.search(r"\(PID\s+(\d+)\)", msg)
         if "Conflicting lock" not in msg or not m:
@@ -456,7 +456,7 @@ def run_checkpoint(db_path: Path, log: Callable[[str], None] = print) -> bool:
         # specific error; we catch it, install+load vss, and retry.
         try:
             con.execute("CHECKPOINT")
-        except Exception as e:  # noqa: BLE001
+        except Exception as e:
             msg = str(e)
             if "HNSW" not in msg and "vss" not in msg.lower():
                 raise

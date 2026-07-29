@@ -488,7 +488,6 @@ class MockOneiricResolver:
 
     async def close(self) -> None:
         """Close the resolver (no-op for mock)."""
-        pass
 
 
 # =============================================================================
@@ -649,7 +648,6 @@ class MockDharaRegistry:
 
     async def close(self) -> None:
         """Close the registry (no-op for mock)."""
-        pass
 
     @property
     def _initialized(self) -> bool:
@@ -803,7 +801,6 @@ class MockAdapterDiscovery:
 
     async def close(self) -> None:
         """Close the discovery engine (no-op for mock)."""
-        pass
 
 
 # =============================================================================

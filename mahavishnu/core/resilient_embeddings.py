@@ -628,10 +628,10 @@ def create_resilient_client(
 
 
 __all__ = [
+    "STANDARD_EMBEDDING_DIMENSION",
     "CircuitBreaker",
     "EmbeddingSource",
     "ResilientEmbeddingClient",
     "ResilientEmbeddingResult",
-    "STANDARD_EMBEDDING_DIMENSION",
     "create_resilient_client",
 ]

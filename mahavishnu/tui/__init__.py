@@ -20,7 +20,7 @@ from rich.console import Console
 from rich.table import Table
 
 try:
-    from mahavishnu.tui.command_palette import (  # noqa: F401
+    from mahavishnu.tui.command_palette import (
         Command,
         CommandCategory,
         CommandPalette,
@@ -75,10 +75,10 @@ class FallbackRichFormatter:
 
 
 __all__ = [
-    "CommandPalette",
+    "TUI_AVAILABLE",
     "Command",
     "CommandCategory",
-    "TUI_AVAILABLE",
-    "get_console",
+    "CommandPalette",
     "FallbackRichFormatter",
+    "get_console",
 ]

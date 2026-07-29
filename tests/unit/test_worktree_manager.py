@@ -127,10 +127,10 @@ class TestWorktreeManager:
         runner = WorktreeManager(task_store=mock_task_store, git_runner=None)._git
         assert runner.__class__.__name__ == "GitRunner"
 
-        async def _create_ok(*args, **kwargs):  # noqa: ANN001,ANN003
+        async def _create_ok(*args, **kwargs):
             return _Process(0, stdout=b"ok\n")
 
-        async def _create_fail(*args, **kwargs):  # noqa: ANN001,ANN003
+        async def _create_fail(*args, **kwargs):
             return _Process(1, stderr=b"boom")
 
         with patch(

@@ -1060,8 +1060,8 @@ class OpenHandsSettings(BaseModel):
     """Configuration for the OpenHands autonomous agent integration."""
 
     base_url: str = "http://localhost:3000"
-    workspace_dir: Path = Path("/tmp/openhands-workspace")  # noqa: S108
-    workspace_root: Path = Path("/tmp")  # noqa: S108
+    workspace_dir: Path = Path("/tmp/openhands-workspace")
+    workspace_root: Path = Path("/tmp")
     timeout_seconds: int = Field(600, ge=30, le=3600)
     poll_interval_seconds: float = Field(3.0, ge=0.5, le=30.0)
     enabled: bool = True

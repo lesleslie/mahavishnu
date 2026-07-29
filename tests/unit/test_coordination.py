@@ -1022,7 +1022,7 @@ class TestCoordinationManagerNormalization:
         try:
             cm = CoordinationManager(path)
 
-            def _boom(*args, **kwargs):  # noqa: ANN001
+            def _boom(*args, **kwargs):
                 raise OSError("disk full")
 
             monkeypatch.setattr("builtins.open", _boom)

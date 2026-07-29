@@ -264,7 +264,7 @@ __all__ = [
     "SkillDraft",
     "SkillPromotionPolicy",
     "SkillPromotionState",
-    "SkillRollback",
     "SkillReview",
     "SkillReviewDecision",
+    "SkillRollback",
 ]

@@ -230,7 +230,7 @@ class CostOptimizer:
             Status with spent, remaining, percentage
         """
         # Calculate total spent for this budget
-        total_spent = Decimal("0")
+        total_spent = Decimal(0)
         now = datetime.now(UTC)
 
         for date_costs in self._cost_tracking.values():
@@ -239,16 +239,16 @@ class CostOptimizer:
                     continue
 
                 if budget.task_type is not None:
-                    total_spent += task_costs.get(budget.task_type.value, Decimal("0"))
+                    total_spent += task_costs.get(budget.task_type.value, Decimal(0))
                 else:
-                    total_spent += sum(task_costs.values(), Decimal("0"))
+                    total_spent += sum(task_costs.values(), Decimal(0))
 
         # Check if budget period is active
         active = budget.is_active(now)
 
-        remaining = budget.limit_usd - total_spent if active else Decimal("0")
+        remaining = budget.limit_usd - total_spent if active else Decimal(0)
         percentage = (
-            (total_spent / budget.limit_usd) if active and budget.limit_usd > 0 else Decimal("0")
+            (total_spent / budget.limit_usd) if active and budget.limit_usd > 0 else Decimal(0)
         )
 
         return {
@@ -331,7 +331,7 @@ class CostOptimizer:
                 tracked_cost = self._get_tracked_cost(adapter, task_type)
                 cost_per_second = ADAPTER_COSTS.get(adapter)
                 if tracked_cost > 0 and cost_per_second:
-                    actual_latency_ms = int((tracked_cost / cost_per_second) * Decimal("1000"))
+                    actual_latency_ms = int((tracked_cost / cost_per_second) * Decimal(1000))
 
             success_rate = stats["success_rate"] if stats is not None else 0.0
 
@@ -355,10 +355,10 @@ class CostOptimizer:
 
     def _get_tracked_cost(self, adapter: AdapterType, task_type: TaskType) -> Decimal:
         """Return total tracked cost for an adapter/task pair."""
-        total = Decimal("0")
+        total = Decimal(0)
         for date_costs in self._cost_tracking.values():
             adapter_costs = date_costs.get(adapter.value, {})
-            total += adapter_costs.get(task_type.value, Decimal("0"))
+            total += adapter_costs.get(task_type.value, Decimal(0))
         return total
 
     def calculate_pareto_frontier(
@@ -492,7 +492,7 @@ class CostOptimizer:
         tracked_cost = self._get_tracked_cost(adapter, task_type)
         cost_per_second = ADAPTER_COSTS.get(adapter)
         return (
-            int((tracked_cost / cost_per_second) * Decimal("1000"))
+            int((tracked_cost / cost_per_second) * Decimal(1000))
             if tracked_cost > 0 and cost_per_second
             else 0
         )
@@ -615,7 +615,7 @@ class CostOptimizer:
         self,
         budget: Budget | None = None,
         budget_type: BudgetType | None = None,
-        limit_usd: float | int | Decimal | None = None,
+        limit_usd: float | Decimal | None = None,
         task_type: TaskType | None = None,
         adapter: AdapterType | None = None,
         period_days: int | None = None,
@@ -806,12 +806,12 @@ async def initialize_cost_optimizer(
 
 __all__ = [
     "ADAPTER_COSTS",
-    "BudgetType",
-    "TaskStrategy",
     "Budget",
+    "BudgetType",
     "CostAwareChoice",
-    "ParetoFrontier",
     "CostOptimizer",
+    "ParetoFrontier",
+    "TaskStrategy",
     "get_cost_optimizer",
     "initialize_cost_optimizer",
 ]

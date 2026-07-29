@@ -17,7 +17,7 @@ or use ``aiofiles`` at the call site.
 from __future__ import annotations
 
 from os import environ
-from pathlib import Path  # noqa: TC003  (runtime Path argument)
+from pathlib import Path
 from re import compile
 
 from mahavishnu.core.completion_report import CompletionReport

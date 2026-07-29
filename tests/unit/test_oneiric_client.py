@@ -17,7 +17,7 @@ from mahavishnu.core.oneiric_client import (
 class _Client:
     base_url = "http://localhost:8683/mcp"
 
-    async def call_tool(self, name: str, arguments: dict):  # noqa: ANN001
+    async def call_tool(self, name: str, arguments: dict):
         if name == "list_adapters":
             return {
                 "success": True,
@@ -384,21 +384,21 @@ class TestAdapterCircuitBreaker:
 class _FailingClient:
     base_url = "http://localhost:8683/mcp"
 
-    async def call_tool(self, name: str, arguments: dict):  # noqa: ANN001
+    async def call_tool(self, name: str, arguments: dict):
         raise ConnectionError("Dhara unavailable")
 
 
 class _EmptyClient:
     base_url = "http://localhost:8683/mcp"
 
-    async def call_tool(self, name: str, arguments: dict):  # noqa: ANN001
+    async def call_tool(self, name: str, arguments: dict):
         return {"success": True, "adapters": [], "adapter": None}
 
 
 class _ErrorPayloadClient:
     base_url = "http://localhost:8683/mcp"
 
-    async def call_tool(self, name: str, arguments: dict):  # noqa: ANN001
+    async def call_tool(self, name: str, arguments: dict):
         if name == "list_adapters":
             return {"success": False, "error": "registry error"}
         if name == "get_adapter":
@@ -409,7 +409,7 @@ class _ErrorPayloadClient:
 class _FallbackLookupClient:
     base_url = "http://localhost:8683/mcp"
 
-    async def call_tool(self, name: str, arguments: dict):  # noqa: ANN001
+    async def call_tool(self, name: str, arguments: dict):
         if name == "list_adapters":
             return {
                 "success": True,

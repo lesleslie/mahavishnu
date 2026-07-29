@@ -331,8 +331,8 @@ async def webhook_health() -> dict[str, str | list[str]]:
 
 
 __all__ = [
-    "webhook_router",
-    "validate_auth",
     "sweep_endpoint",
+    "validate_auth",
+    "webhook_router",
     "workflow_endpoint",
 ]

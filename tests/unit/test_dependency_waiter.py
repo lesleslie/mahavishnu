@@ -98,7 +98,7 @@ async def test_wait_for_dependencies_returns_false_on_strict_validation_error(
             self.wait_for_all = AsyncMock(return_value=result)
 
     class FakeUnifiedConfig:
-        validate = staticmethod(lambda: SimpleNamespace(valid=True, get_errors=lambda: []))
+        validate = staticmethod(lambda: SimpleNamespace(valid=True, get_errors=list))
 
         @staticmethod
         def validate_strict() -> None:
@@ -139,7 +139,7 @@ async def test_wait_for_dependencies_returns_false_on_failed_health_check(
             self.wait_for_all = AsyncMock(return_value=result)
 
     class FakeUnifiedConfig:
-        validate = staticmethod(lambda: SimpleNamespace(valid=True, get_errors=lambda: []))
+        validate = staticmethod(lambda: SimpleNamespace(valid=True, get_errors=list))
 
         validate_strict = staticmethod(lambda: None)
 

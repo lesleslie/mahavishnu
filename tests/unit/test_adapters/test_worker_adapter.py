@@ -168,7 +168,7 @@ def test_init_with_config_branch_uses_terminal_and_context(monkeypatch: pytest.M
     captured: dict = {}
 
     class _WM:
-        def __init__(self, **kwargs):  # noqa: ANN003
+        def __init__(self, **kwargs):
             captured.update(kwargs)
 
     monkeypatch.setattr(wa, "WorkerManager", _WM)

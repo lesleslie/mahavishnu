@@ -471,10 +471,10 @@ class JSONRPCServer:
 
 
 __all__ = [
-    "JSONRPCServer",
-    "JSONRPCRequest",
-    "JSONRPCResponse",
     "JSONRPCError",
     "JSONRPCErrorCode",
+    "JSONRPCRequest",
+    "JSONRPCResponse",
+    "JSONRPCServer",
     "MethodHandler",
 ]

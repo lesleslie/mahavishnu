@@ -283,15 +283,15 @@ _delete_file_impl = delete_file
 
 
 __all__ = [
-    "read_file",
-    "write_file",
-    "list_directory",
-    "stat",
-    "delete_file",
-    "ReadResult",
-    "WriteResult",
-    "ListDirectoryResult",
-    "StatResult",
     "DeleteResult",
+    "ListDirectoryResult",
+    "ReadResult",
+    "StatResult",
+    "WriteResult",
+    "delete_file",
+    "list_directory",
+    "read_file",
     "register",
+    "stat",
+    "write_file",
 ]

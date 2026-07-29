@@ -160,7 +160,7 @@ class TestRoutingMetrics:
         self, reset_metrics, monkeypatch: pytest.MonkeyPatch
     ):
         class _BoomMetric:
-            def __init__(self, *args, **kwargs):  # noqa: ANN002,ANN003
+            def __init__(self, *args, **kwargs):
                 raise ValueError("dup")
 
         monkeypatch.setattr(repo_module, "Counter", _BoomMetric, raising=True)
@@ -187,7 +187,7 @@ class TestRoutingMetrics:
     def test_prometheus_fallback_import_and_dummy_classes(self, monkeypatch: pytest.MonkeyPatch):
         real_import = builtins.__import__
 
-        def fake_import(name, globals=None, locals=None, fromlist=(), level=0):  # noqa: ANN001,ANN002,ANN003
+        def fake_import(name, globals=None, locals=None, fromlist=(), level=0):
             if name == "prometheus_client":
                 raise ImportError("missing")
             return real_import(name, globals, locals, fromlist, level)

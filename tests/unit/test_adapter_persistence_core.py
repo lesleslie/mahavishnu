@@ -193,7 +193,7 @@ async def test_persistence_error_paths_and_cleanup_branch(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
     class _MixedDB:
-        async def execute(self, query, params=None):  # noqa: ANN001,ANN201
+        async def execute(self, query, params=None):
             if "DELETE FROM health_history" in query:
                 return SimpleNamespace(rowcount=2)
             if "DELETE FROM adapter_state" in query:
@@ -207,7 +207,7 @@ async def test_persistence_error_paths_and_cleanup_branch(
             return None
 
     class _BoomDB:
-        def execute(self, *args, **kwargs):  # noqa: ANN001,ANN003
+        def execute(self, *args, **kwargs):
             raise RuntimeError("boom")
 
         async def commit(self) -> None:
@@ -235,7 +235,7 @@ async def test_persistence_error_paths_and_cleanup_branch(
     # initialize() failure branch.
     failing = ap.AdapterPersistenceLayer(storage_path=str(tmp_path / "fail.db"))
 
-    async def boom_connect(*args, **kwargs):  # noqa: ANN001,ANN003
+    async def boom_connect(*args, **kwargs):
         raise RuntimeError("connect boom")
 
     monkeypatch.setattr(ap.aiosqlite, "connect", boom_connect, raising=True)

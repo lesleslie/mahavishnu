@@ -22,7 +22,7 @@ from pathlib import Path
 # ``scripts/`` is added to ``sys.path`` by the root ``conftest.py`` so we
 # can ``import tool_frontmatter_validator`` directly without installing
 # it as a package.
-from tool_frontmatter_validator import ToolFrontmatterValidator  # noqa: E402
+from tool_frontmatter_validator import ToolFrontmatterValidator
 
 # A representative sample of the real frontmatter used in the repo.
 # Captured verbatim from

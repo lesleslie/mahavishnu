@@ -10,7 +10,7 @@ from typing import Any
 logger = getLogger(__name__)
 
 
-def register_otel_tools(server, app, mcp_client):  # noqa: C901
+def register_otel_tools(server, app, mcp_client):
     """Register OTel trace management tools with the MCP server.
 
     Uses Akosha HotStore (DuckDB) for zero-dependency storage with semantic search.
@@ -29,7 +29,7 @@ def register_otel_tools(server, app, mcp_client):  # noqa: C901
     """
 
     @server.tool()
-    async def ingest_otel_traces(  # noqa: C901
+    async def ingest_otel_traces(
         log_files: list[str] | None = None,
         trace_data: list[dict] | None = None,
         system_id: str = "unknown",
@@ -100,7 +100,7 @@ def register_otel_tools(server, app, mcp_client):  # noqa: C901
                         logger.info(f"Ingested {len(traces)} traces from {log_file}")
 
                     except Exception as e:
-                        error_msg = f"Failed to process {log_file}: {str(e)}"
+                        error_msg = f"Failed to process {log_file}: {e!s}"
                         logger.error(error_msg)
                         errors.append(error_msg)
 
@@ -116,7 +116,7 @@ def register_otel_tools(server, app, mcp_client):  # noqa: C901
                     traces_ingested += len(trace_data)
                     logger.info(f"Ingested {len(trace_data)} direct traces")
                 except Exception as e:
-                    error_msg = f"Failed to process direct traces: {str(e)}"
+                    error_msg = f"Failed to process direct traces: {e!s}"
                     logger.error(error_msg)
                     errors.append(error_msg)
 
@@ -134,7 +134,7 @@ def register_otel_tools(server, app, mcp_client):  # noqa: C901
         except ImportError as e:
             return {
                 "status": "error",
-                "error": f"OtelIngester not available: {str(e)}",
+                "error": f"OtelIngester not available: {e!s}",
                 "traces_ingested": 0,
                 "files_processed": 0,
                 "errors": [str(e)],
@@ -147,7 +147,7 @@ def register_otel_tools(server, app, mcp_client):  # noqa: C901
                 await ingester.close()
             return {
                 "status": "error",
-                "error": f"Unexpected error: {str(e)}",
+                "error": f"Unexpected error: {e!s}",
                 "traces_ingested": 0,
                 "files_processed": 0,
                 "errors": [str(e)],

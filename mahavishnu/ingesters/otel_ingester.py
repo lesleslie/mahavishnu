@@ -1340,7 +1340,7 @@ async def create_otel_ingester(
 
         hot_store = HotStore(database_path=hot_store_path)
         await hot_store.initialize()
-        ingester._hot_store = hot_store  # noqa: SLF001
+        ingester._hot_store = hot_store
 
     await ingester.initialize()
 

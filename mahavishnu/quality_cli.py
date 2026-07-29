@@ -56,7 +56,7 @@ def quality_fix(
     if auto:
         typer.echo("Auto-fixing issues")
         path_str = str(path)
-        subprocess.run(["ruff", "check", "--fix", path_str], check=False)  # noqa: S603, S607
-        subprocess.run(["ruff", "format", path_str], check=False)  # noqa: S603, S607
-        subprocess.run(["ruff", "check", path_str], check=False)  # noqa: S603, S607
+        subprocess.run(["ruff", "check", "--fix", path_str], check=False)
+        subprocess.run(["ruff", "format", path_str], check=False)
+        subprocess.run(["ruff", "check", path_str], check=False)
     typer.echo("Quality fix complete")

@@ -312,8 +312,7 @@ class EcosystemBackupManager:
         def dump_database():
             conn = sqlite3.connect(str(db_path))
             with open(backup_path, "w") as f:
-                for line in conn.iterdump():
-                    f.write(f"{line}\n")
+                f.writelines(f"{line}\n" for line in conn.iterdump())
             conn.close()
 
         # Run in thread pool to avoid blocking

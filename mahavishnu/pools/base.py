@@ -111,7 +111,6 @@ class BasePool(ABC):
         Returns:
             pool_id: Unique pool identifier
         """
-        pass
 
     @abstractmethod
     async def execute_task(self, task: dict[str, Any]) -> dict[str, Any]:
@@ -130,7 +129,6 @@ class BasePool(ABC):
                 - error: Error message (if failed)
                 - duration: Execution duration in seconds
         """
-        pass
 
     @abstractmethod
     async def execute_batch(self, tasks: list[dict[str, Any]]) -> dict[str, dict[str, Any]]:
@@ -142,7 +140,6 @@ class BasePool(ABC):
         Returns:
             Dictionary mapping task_id -> execution result
         """
-        pass
 
     @abstractmethod
     async def scale(self, target_worker_count: int) -> None:
@@ -155,7 +152,6 @@ class BasePool(ABC):
             ValueError: If target outside [min_workers, max_workers]
             NotImplementedError: If pool doesn't support scaling
         """
-        pass
 
     @abstractmethod
     async def health_check(self) -> dict[str, Any]:
@@ -169,7 +165,6 @@ class BasePool(ABC):
                 - workers_active: Number of active workers
                 - worker_health: Detailed worker health info (optional)
         """
-        pass
 
     @abstractmethod
     async def get_metrics(self) -> PoolMetrics:
@@ -178,7 +173,6 @@ class BasePool(ABC):
         Returns:
             PoolMetrics with current statistics
         """
-        pass
 
     @abstractmethod
     async def collect_memory(self) -> list[dict[str, Any]]:
@@ -196,12 +190,10 @@ class BasePool(ABC):
                     - status: Execution status
                     - timestamp: Execution timestamp
         """
-        pass
 
     @abstractmethod
     async def stop(self) -> None:
         """Gracefully shutdown pool and all workers."""
-        pass
 
     async def status(self) -> PoolStatus:
         """Get current pool status.

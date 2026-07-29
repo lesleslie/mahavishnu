@@ -214,4 +214,4 @@ def register(server: FastMCP | StandardServer, settings: CrowSettings) -> None:
 _rg_search_impl = rg_search
 
 
-__all__ = ["rg_search", "RgMatch", "RgResult", "Format", "register"]
+__all__ = ["Format", "RgMatch", "RgResult", "register", "rg_search"]

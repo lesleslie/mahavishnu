@@ -24,6 +24,6 @@ __all__ = [
     "register_adapter_registry_tools",
     "register_goal_team_tools",
     "register_primitive_tools",
-    "register_treesitter_tools",
     "register_search_tools",
+    "register_treesitter_tools",
 ]

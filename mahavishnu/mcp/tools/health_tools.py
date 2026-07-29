@@ -55,7 +55,7 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
-def register_health_tools(mcp: FastMCP, app: Any = None) -> None:  # noqa: C901
+def register_health_tools(mcp: FastMCP, app: Any = None) -> None:
     """Register health check tools with MCP server.
 
     Structural C901 suppression: FastMCP's ``@mcp.tool()`` decorator

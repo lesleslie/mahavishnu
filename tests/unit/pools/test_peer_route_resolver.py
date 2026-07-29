@@ -219,7 +219,7 @@ class TestPeerRouteResolverDefaultAclProvider:
     def test_explicit_acl_provider_is_preserved(self) -> None:
         """Passing an explicit acl_provider overrides the default."""
         client = MagicMock()
-        explicit = lambda _peer_id: {"peer_models:read": True}  # noqa: E731
+        explicit = lambda _peer_id: {"peer_models:read": True}
         resolver = PeerRouteResolver(
             session_buddy_client=client,
             acl_provider=explicit,

@@ -168,7 +168,7 @@ class TestRateLimiting:
         """Test that secure service creates semaphore with correct limit."""
         config = RateLimitConfig(max_concurrent=3)
         service = SecureEmbeddingService(rate_limit=config)
-        assert service._semaphore._value == 3  # noqa: SLF001
+        assert service._semaphore._value == 3
 
 
 class TestBudgetTracking:
@@ -201,29 +201,29 @@ class TestSecureEmbeddingService:
     def test_initialization(self) -> None:
         """Test that service initializes correctly."""
         service = SecureEmbeddingService()
-        assert service._service is not None  # noqa: SLF001
-        assert service._rate_limit is not None  # noqa: SLF001
-        assert service._budget is not None  # noqa: SLF001
+        assert service._service is not None
+        assert service._rate_limit is not None
+        assert service._budget is not None
 
     def test_hash_text_consistent(self) -> None:
         """Test that text hashing is consistent."""
         service = SecureEmbeddingService()
-        hash1 = service._hash_text("test text")  # noqa: SLF001
-        hash2 = service._hash_text("test text")  # noqa: SLF001
+        hash1 = service._hash_text("test text")
+        hash2 = service._hash_text("test text")
         assert hash1 == hash2
         assert len(hash1) == 64  # SHA256 produces 64 char hex string
 
     def test_hash_text_different(self) -> None:
         """Test that different texts produce different hashes."""
         service = SecureEmbeddingService()
-        hash1 = service._hash_text("test 1")  # noqa: SLF001
-        hash2 = service._hash_text("test 2")  # noqa: SLF001
+        hash1 = service._hash_text("test 1")
+        hash2 = service._hash_text("test 2")
         assert hash1 != hash2
 
     def test_rate_limit_allows_initial_requests(self) -> None:
         """Test that initial requests are allowed."""
         service = SecureEmbeddingService()
-        assert service._check_rate_limit("user-1") is True  # noqa: SLF001
+        assert service._check_rate_limit("user-1") is True
 
     def test_rate_limit_tracks_requests(self) -> None:
         """Test that rate limit tracks request counts."""
@@ -231,10 +231,10 @@ class TestSecureEmbeddingService:
 
         # Make several requests
         for _ in range(5):
-            service._check_rate_limit("user-1")  # noqa: SLF001
+            service._check_rate_limit("user-1")
 
         # Should have recorded timestamps
-        assert len(service._request_counts["user-1"]) == 5  # noqa: SLF001
+        assert len(service._request_counts["user-1"]) == 5
 
 
 class TestServiceOverloadedError:

@@ -103,7 +103,6 @@ class GitRunner:
 
     def __init__(self) -> None:
         """Initialize git runner."""
-        pass
 
     async def run(self, *args: str, cwd: str | None = None) -> str:
         """Run a git command safely using asyncio subprocess.
@@ -557,9 +556,9 @@ class WorktreeManager:
 
 
 __all__ = [
-    "WorktreeManager",
-    "WorktreeInfo",
-    "WorktreeState",
-    "WorktreeError",
     "GitRunner",
+    "WorktreeError",
+    "WorktreeInfo",
+    "WorktreeManager",
+    "WorktreeState",
 ]

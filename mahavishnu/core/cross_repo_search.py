@@ -487,7 +487,7 @@ class CrossRepoSearch:
 __all__ = [
     "CrossRepoSearch",
     "SearchCriteria",
-    "SearchResult",
     "SearchMatch",
+    "SearchResult",
     "SearchType",
 ]

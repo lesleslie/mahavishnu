@@ -12,7 +12,7 @@ from unittest.mock import AsyncMock
 
 import pytest
 
-import mahavishnu.core.bootstrap as bootstrap
+from mahavishnu.core import bootstrap
 from mahavishnu.core.bootstrap import (
     _load_raw_yaml,
     _resolve_repos_path,
@@ -338,7 +338,6 @@ class TestComponentEndpointRegistration:
 
             async def put(self, key, value):
                 self.put_calls.append((key, value))
-                return None
 
         fake_client = FakeClient("http://dhara")
         monkeypatch.setattr(
@@ -856,7 +855,7 @@ class TestBootstrapDeepHelpers:
         class RetryPolicy:
             pass
 
-        async def retry_async(*args, **kwargs):  # noqa: ANN002,ANN003
+        async def retry_async(*args, **kwargs):
             return None
 
         install(

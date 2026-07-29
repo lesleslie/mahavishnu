@@ -34,7 +34,6 @@ class TerminalAdapter(ABC):
         Raises:
             TerminalError: If session launch fails
         """
-        pass
 
     @abstractmethod
     async def send_command(
@@ -52,7 +51,6 @@ class TerminalAdapter(ABC):
             SessionNotFoundError: If session_id doesn't exist
             TerminalError: If command send fails
         """
-        pass
 
     @abstractmethod
     async def capture_output(
@@ -73,7 +71,6 @@ class TerminalAdapter(ABC):
             SessionNotFoundError: If session_id doesn't exist
             TerminalError: If output capture fails
         """
-        pass
 
     @abstractmethod
     async def close_session(self, session_id: str) -> None:
@@ -86,7 +83,6 @@ class TerminalAdapter(ABC):
             SessionNotFoundError: If session_id doesn't exist
             TerminalError: If session close fails
         """
-        pass
 
     @abstractmethod
     async def list_sessions(self) -> list[dict[str, Any]]:
@@ -100,10 +96,8 @@ class TerminalAdapter(ABC):
         Raises:
             TerminalError: If listing fails
         """
-        pass
 
     @property
     @abstractmethod
     def adapter_name(self) -> str:
         """Return adapter name for identification."""
-        pass

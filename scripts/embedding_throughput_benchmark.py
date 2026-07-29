@@ -96,8 +96,8 @@ class BenchmarkSuite:
     """Collection of benchmark results."""
 
     name: str
-    results: list[BenchmarkResult] = field(default_factory=lambda: [])
-    targets: dict[str, dict[str, float]] = field(default_factory=lambda: {})
+    results: list[BenchmarkResult] = field(default_factory=list)
+    targets: dict[str, dict[str, float]] = field(default_factory=dict)
 
     def add_result(self, result: BenchmarkResult) -> None:
         """Add a benchmark result."""

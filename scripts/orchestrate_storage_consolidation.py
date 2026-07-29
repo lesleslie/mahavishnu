@@ -528,7 +528,7 @@ async def main(dry_run: bool = False, phase: str | None = None) -> int:
     print(f"Duration: {summary['duration_seconds']:.2f}s")
     print(f"Tasks: {summary['completed']}/{summary['total_tasks']} completed")
     print(f"Failed: {summary['failed']}")
-    print("")
+    print()
 
     for ws_name, ws_data in summary["workstreams"].items():
         status = "✅" if ws_data["failed_tasks"] == 0 else "⚠️"
@@ -536,7 +536,7 @@ async def main(dry_run: bool = False, phase: str | None = None) -> int:
             f"{status} {ws_name}: {ws_data['completed_tasks']}/{ws_data['total_tasks']} ({ws_data['progress_pct']:.0f}%)"
         )
 
-    print("")
+    print()
     print(f"WebSocket events: {summary['websocket_events']}")
     print(f"MessageBus messages: {summary['message_bus_messages']}")
 

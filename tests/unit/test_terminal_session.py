@@ -216,7 +216,7 @@ class TestTerminalSessionEdgeCases:
     async def test_read_updates_last_output_before_error(self, mock_adapter):
         """Test that even if read fails, buffer captures what it can."""
         # This tests the scenario where read partially succeeds
-        pass  # Already covered - last_output and buffer are updated after successful read
+        # Already covered - last_output and buffer are updated after successful read
 
     def test_output_buffer_is_private(self, session):
         """Test that _output_buffer is a private list."""

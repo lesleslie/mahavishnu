@@ -705,8 +705,8 @@ CONFIDENCE: <0.0-1.0>"""
 
 
 __all__ = [
+    "SKILL_MAPPING",
     "GoalDrivenTeamFactory",
     "ParsedGoal",
     "SkillConfig",
-    "SKILL_MAPPING",
 ]

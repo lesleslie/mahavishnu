@@ -574,8 +574,8 @@ class TaskFilter(BaseModel):
 
 
 __all__ = [
-    "TaskCreateRequest",
-    "TaskUpdateRequest",
     "FTSSearchQuery",
+    "TaskCreateRequest",
     "TaskFilter",
+    "TaskUpdateRequest",
 ]

@@ -150,4 +150,4 @@ def get_auth_from_config(config) -> MultiAuthHandler | None:
 
 
 # Re-export AuthenticationError for convenience
-__all__ = ["JWTAuth", "get_auth_from_config", "AuthenticationError", "MultiAuthHandler"]
+__all__ = ["AuthenticationError", "JWTAuth", "MultiAuthHandler", "get_auth_from_config"]

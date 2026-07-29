@@ -89,7 +89,7 @@ class WorkflowProgressRecorder:
     loop, which is the only supported usage.
     """
 
-    __slots__ = ("workflow_id", "_snapshots")
+    __slots__ = ("_snapshots", "workflow_id")
 
     def __init__(self, workflow_id: str) -> None:
         self.workflow_id = workflow_id
@@ -236,6 +236,6 @@ async def list_progress_snapshots(workflow_id: str) -> list[ProgressSnapshot]:
 __all__ = [
     "ProgressSnapshot",
     "WorkflowProgressRecorder",
-    "record_progress_snapshot",
     "list_progress_snapshots",
+    "record_progress_snapshot",
 ]

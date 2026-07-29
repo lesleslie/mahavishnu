@@ -28,7 +28,6 @@ from mahavishnu.automation.models import AutomationConfig
 if TYPE_CHECKING:
     from pathlib import Path
 
-    pass
 
 app = typer.Typer(
     name="automation",

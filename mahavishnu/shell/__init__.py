@@ -11,7 +11,7 @@ Example:
     >>> shell.start()
 """
 
-__all__ = ["MahavishnuShell", "WorkflowFormatter", "LogFormatter", "RepoFormatter"]
+__all__ = ["LogFormatter", "MahavishnuShell", "RepoFormatter", "WorkflowFormatter"]
 
 # Mapping of export name -> (relative_module, attribute_name)
 _LAZY_IMPORTS: dict[str, tuple[str, str]] = {

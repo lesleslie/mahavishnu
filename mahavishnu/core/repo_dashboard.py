@@ -500,10 +500,10 @@ class RepositoryDashboard:
 
 
 __all__ = [
-    "RepositoryDashboard",
-    "DashboardView",
     "ActivityMetrics",
+    "DashboardView",
     "HealthIndicator",
-    "TaskDistribution",
+    "RepositoryDashboard",
     "RiskAssessment",
+    "TaskDistribution",
 ]

@@ -87,7 +87,6 @@ class MockCounter:
 
     def add(self, amount: int, attributes: dict[str, str] | None = None) -> None:
         """No-op add method."""
-        pass
 
 
 class MockHistogram:
@@ -95,7 +94,6 @@ class MockHistogram:
 
     def record(self, amount: float, attributes: dict[str, str] | None = None) -> None:
         """No-op record method."""
-        pass
 
 
 class MockSpan:
@@ -107,19 +105,15 @@ class MockSpan:
 
     def __exit__(self, *args) -> None:
         """Exit context manager."""
-        pass
 
-    def set_attribute(self, key: str, value: str | int | float | bool) -> None:
+    def set_attribute(self, key: str, value: str | float | bool) -> None:
         """No-op set_attribute method."""
-        pass
 
     def set_status(self, status) -> None:
         """No-op set_status method."""
-        pass
 
     def record_exception(self, exception) -> None:
         """No-op record_exception method."""
-        pass
 
 
 class MockTracer:
@@ -300,7 +294,7 @@ class LlamaIndexAdapter(OrchestratorAdapter):
 
     async def initialize(self) -> None:
         """Initialize the LlamaIndex adapter."""
-        return None
+        return
 
     async def cleanup(self) -> None:
         """Cleanup LlamaIndex adapter resources."""
@@ -392,7 +386,7 @@ class LlamaIndexAdapter(OrchestratorAdapter):
         except Exception as e:
             logger.debug("OpenSearch vector store unavailable: %s", e)
             try:
-                from turbovec.integrations.llamaindex import (  # noqa: PLC0415  # ty: ignore[unresolved-import]
+                from turbovec.integrations.llamaindex import (  # ty: ignore[unresolved-import]
                     TurboVec,
                 )
 
@@ -1220,8 +1214,8 @@ class LlamaIndexAdapter(OrchestratorAdapter):
 
 __all__ = [
     "LlamaIndexAdapter",
+    "LlamaIndexEmbeddingError",
+    "LlamaIndexIndexNotFoundError",
     "LlamaIndexIngestionError",
     "LlamaIndexQueryError",
-    "LlamaIndexIndexNotFoundError",
-    "LlamaIndexEmbeddingError",
 ]

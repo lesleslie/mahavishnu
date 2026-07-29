@@ -34,7 +34,7 @@ class _FakeAcquire:
     async def __aenter__(self) -> _FakeConnection:
         return self._connection
 
-    async def __aexit__(self, exc_type, exc, tb) -> None:  # noqa: ANN001,ANN201,ANN202
+    async def __aexit__(self, exc_type, exc, tb) -> None:
         return None
 
 
@@ -573,7 +573,7 @@ class TestRoutingMetricsPersistence:
         """Test asyncpg import fallback and constructor guard."""
         original_import = builtins.__import__
 
-        def guarded_import(name, globals=None, locals=None, fromlist=(), level=0):  # noqa: ANN001,ANN002,ANN003
+        def guarded_import(name, globals=None, locals=None, fromlist=(), level=0):
             if name == "asyncpg":
                 raise ImportError("asyncpg unavailable")
             return original_import(name, globals, locals, fromlist, level)

@@ -56,7 +56,7 @@ async def test_three_concurrent_workers_get_isolated_sessions() -> None:
 
 @pytest.mark.integration
 async def test_canonical_session_id_path() -> None:
-    """When the server returns a canonical session_id, the adapter follows it.
+    r"""When the server returns a canonical session_id, the adapter follows it.
 
     Pre-T3-M1: the integration test only exercised the *fallback* branch
     of \`_canonical_session_id\` (the stub returned no \`session_id\` field).

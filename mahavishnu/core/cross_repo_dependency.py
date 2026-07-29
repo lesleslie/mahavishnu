@@ -519,9 +519,9 @@ class CrossRepoDependencyLinker:
 
 
 __all__ = [
-    "CrossRepoDependencyLinker",
     "CrossRepoDependency",
-    "DependencyType",
-    "DependencyStatus",
     "CrossRepoDependencyError",
+    "CrossRepoDependencyLinker",
+    "DependencyStatus",
+    "DependencyType",
 ]

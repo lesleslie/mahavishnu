@@ -165,7 +165,7 @@ class DharaThinClient:
             return await self._adapter.call_tool(tool_name, arguments)
         except DharaSQLProxyError:
             raise
-        except Exception as exc:  # noqa: BLE001 — surface transport failures
+        except Exception as exc:
             logger.warning(
                 "dhara adapter call_tool failed for %s: %s",
                 tool_name,
@@ -188,7 +188,7 @@ class DharaThinClient:
         except httpx.HTTPError as exc:
             logger.warning("dhara sql_proxy transport failure: %s", exc)
             raise DharaSQLProxyError(f"{tool_name} transport failure: {exc}") from exc
-        except Exception as exc:  # noqa: BLE001 — surface anything unexpected
+        except Exception as exc:
             logger.exception("dhara sql_proxy unexpected failure")
             raise DharaSQLProxyError(f"{tool_name} unexpected failure: {exc}") from exc
 

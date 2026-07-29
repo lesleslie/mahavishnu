@@ -2,8 +2,8 @@ from __future__ import annotations
 
 import datetime as dt
 
-import pytest
 from pydantic import ValidationError
+import pytest
 
 from mahavishnu.workers.contract.record import (
     DurableWorkerRecord,
@@ -24,8 +24,8 @@ def _sample_kwargs() -> dict:
             pane="%7",
         ),
         state=WorkerLifecycleState.READY,
-        created_at=dt.datetime(2026, 7, 26, 10, 0, 0, tzinfo=dt.timezone.utc),
-        last_seen_at=dt.datetime(2026, 7, 26, 10, 5, 0, tzinfo=dt.timezone.utc),
+        created_at=dt.datetime(2026, 7, 26, 10, 0, 0, tzinfo=dt.UTC),
+        last_seen_at=dt.datetime(2026, 7, 26, 10, 5, 0, tzinfo=dt.UTC),
     )
 
 
@@ -44,8 +44,8 @@ def test_record_pane_default_empty_when_no_tmux() -> None:
         backend="runpod_flash",
         tmux=None,
         state=WorkerLifecycleState.READY,
-        created_at=dt.datetime(2026, 7, 26, 10, 0, 0, tzinfo=dt.timezone.utc),
-        last_seen_at=dt.datetime(2026, 7, 26, 10, 5, 0, tzinfo=dt.timezone.utc),
+        created_at=dt.datetime(2026, 7, 26, 10, 0, 0, tzinfo=dt.UTC),
+        last_seen_at=dt.datetime(2026, 7, 26, 10, 5, 0, tzinfo=dt.UTC),
     )
     assert rec.tmux is None
     payload = rec.to_dict()

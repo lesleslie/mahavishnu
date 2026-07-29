@@ -691,10 +691,10 @@ class OutputFormatter:
 
 
 __all__ = [
-    "OutputFormatter",
     "OutputFormat",
-    "OutputTheme",
+    "OutputFormatter",
     "OutputLevel",
+    "OutputTheme",
     "TableColumn",
     "TableConfig",
 ]

@@ -621,7 +621,7 @@ class AgentTeamManager:
 
 
 __all__ = [
-    "AgentTeamManager",
     "AgentRunResult",
+    "AgentTeamManager",
     "TeamRunResult",
 ]

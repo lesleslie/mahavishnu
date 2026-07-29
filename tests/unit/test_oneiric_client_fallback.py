@@ -31,7 +31,7 @@ class _FakeDharaClient:
             }
         ]
 
-    async def call_tool(self, name: str, arguments: dict):  # noqa: ANN001
+    async def call_tool(self, name: str, arguments: dict):
         self.calls.append((name, arguments))
         if self.fail_next:
             self.fail_next = False

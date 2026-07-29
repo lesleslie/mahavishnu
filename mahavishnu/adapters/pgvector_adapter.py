@@ -677,9 +677,9 @@ class PgvectorAdapter:
 
 
 __all__ = [
-    "PgvectorAdapter",
-    "PgvectorSettings",
     "HNSWConfig",
     "IVFFlatConfig",
     "IndexType",
+    "PgvectorAdapter",
+    "PgvectorSettings",
 ]

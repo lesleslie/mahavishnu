@@ -308,7 +308,7 @@ class LogEntry(BaseModel):
 __all__ = [
     "DeploymentResponse",
     "FlowRunResponse",
+    "LogEntry",
     "ScheduleResponse",
     "WorkPoolResponse",
-    "LogEntry",
 ]

@@ -84,7 +84,7 @@ def render_block(metrics: Metrics) -> str:
 def update_doc(doc_path: Path, block: str) -> None:
     text = doc_path.read_text(encoding="utf-8")
     if START in text and END in text:
-        pattern = re.compile(re.escape(START) + r".*?" + re.escape(END), re.S)
+        pattern = re.compile(re.escape(START) + r".*?" + re.escape(END), re.DOTALL)
         new_text = pattern.sub(block, text)
     else:
         new_text = text.rstrip() + "\n\n" + block + "\n"

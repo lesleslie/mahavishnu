@@ -12,16 +12,16 @@ from .manager import TerminalGridManager
 from .models import DesktopSession, GridSession, GridStatus, Quadrant, WindowSession
 
 __all__ = [
-    "TerminalGridManager",
-    "GridSession",
+    "DesktopCreationError",
     "DesktopSession",
-    "WindowSession",
-    "GridStatus",
-    "Quadrant",
     "GridError",
     "GridNotFoundError",
-    "DesktopCreationError",
-    "WindowTilingError",
-    "SessionNotFoundError",
+    "GridSession",
+    "GridStatus",
     "MultiDesktopUnavailableError",
+    "Quadrant",
+    "SessionNotFoundError",
+    "TerminalGridManager",
+    "WindowSession",
+    "WindowTilingError",
 ]

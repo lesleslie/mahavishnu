@@ -48,7 +48,7 @@ def _ensure_grammar_loaded(language: str) -> bool:
         return False
 
 
-def register_treesitter_tools(mcp: FastMCP) -> None:  # noqa: C901
+def register_treesitter_tools(mcp: FastMCP) -> None:
     """Register 5 tree-sitter tools for Mahavishnu.
 
     Structural C901 suppression: FastMCP's ``@mcp.tool()`` decorator

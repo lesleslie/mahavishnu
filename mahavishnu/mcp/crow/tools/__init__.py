@@ -44,4 +44,4 @@ def register_all(server: FastMCP | StandardServer, settings: CrowSettings) -> No
     terminal_proxy_tool.register(server, settings)
 
 
-__all__ = ["register_all", "_tool_decorator"]
+__all__ = ["_tool_decorator", "register_all"]

@@ -423,7 +423,7 @@ class AdapterHealthMonitor:
         self,
         adapter_name: str,
         health: dict[str, Any],
-        state: AdapterHealthState,  # noqa: ARG002
+        state: AdapterHealthState,
     ) -> None:
         """Update Prometheus metrics for adapter health.
 
@@ -556,7 +556,7 @@ class AdapterHealthMonitor:
             if not state.is_healthy:
                 # Clear cached preferences to force recalculation
                 # This will deprioritize unhealthy adapters
-                router._preferences.clear()  # noqa: SLF001
+                router._preferences.clear()
                 logger.info(f"Cleared StatisticalRouter cache due to {adapter_name} health change")
         except Exception as e:
             logger.debug(f"Failed to update router preferences: {e}")

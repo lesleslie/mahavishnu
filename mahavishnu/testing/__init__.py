@@ -21,8 +21,8 @@ from mahavishnu.testing.load_test import (
 __all__ = [
     "LoadTestConfig",
     "LoadTestMetrics",
-    "LoadTestRunner",
     "LoadTestPhase",
+    "LoadTestRunner",
     "MockTaskClient",
     "RequestResult",
 ]

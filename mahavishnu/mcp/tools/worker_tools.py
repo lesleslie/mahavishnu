@@ -250,7 +250,7 @@ async def worker_health() -> dict:
     return await _worker_manager.health_check()
 
 
-def register_worker_tools(  # noqa: C901
+def register_worker_tools(
     mcp: FastMCP,
     worker_manager: WorkerManager,
     durable_manager: DurableWorkerManager | None = None,

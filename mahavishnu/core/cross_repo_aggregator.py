@@ -520,9 +520,9 @@ class CrossRepoAggregator:
 
 
 __all__ = [
-    "CrossRepoAggregator",
     "AggregatedTasks",
     "AggregationFilter",
-    "RepoTaskStats",
+    "CrossRepoAggregator",
     "CrossRepoSummary",
+    "RepoTaskStats",
 ]

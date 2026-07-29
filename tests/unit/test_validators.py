@@ -639,7 +639,7 @@ class TestValidatorsAdditionalBranches:
         parent = path.parent
         calls = {"count": 0}
 
-        def fake_resolve(self, strict=False):  # noqa: ANN001,ANN003
+        def fake_resolve(self, strict=False):
             if self == path:
                 calls["count"] += 1
                 if calls["count"] == 1:
@@ -660,7 +660,7 @@ class TestValidatorsAdditionalBranches:
         parent = path.parent
         calls = {"count": 0}
 
-        def fake_resolve(self, strict=False):  # noqa: ANN001,ANN003
+        def fake_resolve(self, strict=False):
             if self == path:
                 calls["count"] += 1
                 if calls["count"] == 1:
@@ -678,7 +678,7 @@ class TestValidatorsAdditionalBranches:
     def test_is_path_within_base_handles_resolution_errors(self, monkeypatch):
         validator = PathValidator()
 
-        def fake_resolve(self, strict=False):  # noqa: ANN001,ANN003
+        def fake_resolve(self, strict=False):
             raise RuntimeError("boom")
 
         monkeypatch.setattr(Path, "resolve", fake_resolve, raising=True)
@@ -690,7 +690,7 @@ class TestValidatorsAdditionalBranches:
         monkeypatch.setattr(
             validator,
             "_resolve_path_safely",
-            lambda path_obj, must_exist: Path("../escape"),  # noqa: ARG005
+            lambda path_obj, must_exist: Path("../escape"),
             raising=True,
         )
 
@@ -706,7 +706,7 @@ class TestValidatorsAdditionalBranches:
         validator = PathValidator()
         monkeypatch.setattr(validator, "_check_path_format", lambda path_str: None, raising=True)
 
-        def boom(*args, **kwargs):  # noqa: ANN001,ANN002
+        def boom(*args, **kwargs):
             raise RuntimeError("boom")
 
         monkeypatch.setattr(validator, "_resolve_path_safely", boom, raising=True)
@@ -755,7 +755,7 @@ class TestValidatorsAdditionalBranches:
         target = parent / "file.txt"
         validator = PathValidator()
 
-        def fake_access(path, mode):  # noqa: ANN001,ANN002
+        def fake_access(path, mode):
             return path != parent
 
         monkeypatch.setattr(os, "access", fake_access, raising=True)
@@ -784,12 +784,12 @@ class TestValidatorsAdditionalBranches:
         orig_is_file = Path.is_file
         orig_stat = Path.stat
 
-        def fake_is_file(self, *args, **kwargs):  # noqa: ANN001,ANN003
+        def fake_is_file(self, *args, **kwargs):
             if self == test_file:
                 return True
             return orig_is_file(self, *args, **kwargs)
 
-        def fake_stat(self, *args, **kwargs):  # noqa: ANN001,ANN003
+        def fake_stat(self, *args, **kwargs):
             if self == test_file:
                 return _Stat()
             return orig_stat(self, *args, **kwargs)

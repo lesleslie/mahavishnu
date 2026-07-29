@@ -17,7 +17,7 @@ class _Metric:
         self.labels_kwargs: dict[str, object] | None = None
         self.values: list[float] = []
 
-    def labels(self, **kwargs):  # noqa: ANN003
+    def labels(self, **kwargs):
         self.labels_kwargs = kwargs
         return self
 
@@ -145,7 +145,7 @@ class TestRepoFiltering:
 
 class TestPermissions:
     def test_check_user_repo_permission_asyncio_thread_branch(self, monkeypatch):
-        async def _check_permission(user_id, repo_path, permission):  # noqa: ANN001
+        async def _check_permission(user_id, repo_path, permission):
             return True
 
         app = _make_app(rbac_manager=SimpleNamespace(check_permission=_check_permission))
@@ -155,17 +155,17 @@ class TestPermissions:
             def __init__(self, value):
                 self._value = value
 
-            def result(self, timeout=None):  # noqa: ARG002
+            def result(self, timeout=None):
                 return self._value
 
         class _Executor:
             def __enter__(self):
                 return self
 
-            def __exit__(self, exc_type, exc, tb):  # noqa: ANN001,ANN002,ANN003
+            def __exit__(self, exc_type, exc, tb):
                 return False
 
-            def submit(self, fn, *args, **kwargs):  # noqa: ANN001,ANN002,ANN003
+            def submit(self, fn, *args, **kwargs):
                 return _Future(fn(*args, **kwargs))
 
         monkeypatch.setattr(
@@ -175,7 +175,7 @@ class TestPermissions:
         assert rs.check_user_repo_permission(app, "u1", "/repo") is True
 
     def test_check_user_repo_permission_asyncio_run_branch(self, monkeypatch):
-        async def _check_permission(user_id, repo_path, permission):  # noqa: ANN001
+        async def _check_permission(user_id, repo_path, permission):
             return False
 
         app = _make_app(rbac_manager=SimpleNamespace(check_permission=_check_permission))
@@ -188,7 +188,7 @@ class TestPermissions:
         assert rs.check_user_repo_permission(app, "u1", "/repo") is False
 
     def test_check_user_repo_permission_exception_falls_back_true(self, monkeypatch):
-        async def _boom(user_id, repo_path, permission):  # noqa: ANN001
+        async def _boom(user_id, repo_path, permission):
             raise ValueError("boom")
 
         app = _make_app(rbac_manager=SimpleNamespace(check_permission=_boom))

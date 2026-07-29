@@ -313,7 +313,7 @@ async def _run_async_dispatch(
     )
 
 
-def register_pool_tools(  # noqa: C901
+def register_pool_tools(
     mcp: FastMCP,
     pool_manager,
     *,

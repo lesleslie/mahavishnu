@@ -16,7 +16,7 @@ import asyncio
 import json
 from pathlib import Path
 from typing import Any
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock
 from uuid import UUID
 
 import pytest
@@ -250,7 +250,6 @@ class TestDispatchToPoolAsyncResultWriteFailed:
             statuses_seen.append(value.get("status", ""))
             if value.get("status") == "completed":
                 raise RuntimeError("Dhara unreachable for terminal state")
-            return
 
         mock_pool_manager._dhara_state.put = AsyncMock(side_effect=flaky_put)
         # Mock route_task returns cleanly so the only error is from the put.

@@ -494,7 +494,7 @@ class TestRetryProcessor:
         """Test retry processor loop exception handling."""
         callback = AsyncMock(return_value={"status": "success"})
 
-        async def _boom(_callback):  # noqa: ANN001
+        async def _boom(_callback):
             raise RuntimeError("loop failed")
 
         monkeypatch.setattr(dlq, "_process_ready_tasks", _boom)

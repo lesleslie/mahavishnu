@@ -512,11 +512,11 @@ class QualityGateManager:
 
 
 __all__ = [
-    "QualityGateManager",
-    "QualityGateRule",
-    "QualityGateResult",
-    "QualityCheckResult",
     "CheckSeverity",
     "CheckType",
+    "QualityCheckResult",
     "QualityGateError",
+    "QualityGateManager",
+    "QualityGateResult",
+    "QualityGateRule",
 ]

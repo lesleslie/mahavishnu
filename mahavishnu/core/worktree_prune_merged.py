@@ -79,7 +79,7 @@ class WorktreePruneResult:
 
 
 def _run_git(path: Path, *args: str, text: bool = False) -> subprocess.CompletedProcess[str]:
-    return subprocess.run(  # noqa: S603
+    return subprocess.run(
         ["git", "-C", str(path), *args],
         capture_output=True,
         text=text,

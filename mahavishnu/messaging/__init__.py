@@ -1,8 +1,8 @@
 """Messaging module for Mahavishnu - inter-repository communication."""
 
 __all__ = [
-    "MessageType",
     "MessagePriority",
+    "MessageType",
     "RepositoryMessage",
     "RepositoryMessenger",
     "RepositoryMessengerManager",

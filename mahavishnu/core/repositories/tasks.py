@@ -711,13 +711,13 @@ class TaskRepository(BaseRepository[TaskCreate, TaskRead, TaskUpdate]):
 
 
 __all__ = [
-    "TaskPriority",
     "DependencyType",
     "TaskCreate",
-    "TaskRead",
-    "TaskUpdate",
     "TaskDependencyCreate",
     "TaskDependencyRead",
     "TaskFilter",
+    "TaskPriority",
+    "TaskRead",
     "TaskRepository",
+    "TaskUpdate",
 ]

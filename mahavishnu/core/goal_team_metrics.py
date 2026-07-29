@@ -99,7 +99,6 @@ except ImportError:
         logging.warning(
             f"prometheus_client not available, metrics server not started on port {port}"
         )
-        return None
 
 
 logger = logging.getLogger(__name__)

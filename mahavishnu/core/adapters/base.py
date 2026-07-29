@@ -46,7 +46,6 @@ class OrchestratorAdapter(ABC):
     @abstractmethod
     async def initialize(self) -> None:
         """Initialize adapter resources before execution."""
-        pass
 
     async def cleanup(self) -> None:
         """Release adapter resources after execution.
@@ -54,7 +53,7 @@ class OrchestratorAdapter(ABC):
         Concrete adapters may override this. The default implementation is a no-op
         so lightweight test doubles and legacy adapters remain compatible.
         """
-        return None
+        return
 
     async def shutdown(self) -> None:
         """Backward-compatible shutdown alias for cleanup."""
@@ -64,19 +63,16 @@ class OrchestratorAdapter(ABC):
     @abstractmethod
     def adapter_type(self) -> AdapterType:
         """Return adapter type enum."""
-        pass
 
     @property
     @abstractmethod
     def name(self) -> str:
         """Return adapter name."""
-        pass
 
     @property
     @abstractmethod
     def capabilities(self) -> AdapterCapabilities:
         """Return adapter capabilities."""
-        pass
 
     @abstractmethod
     async def execute(self, task: dict[str, Any], repos: list[str]) -> dict[str, Any]:
@@ -90,7 +86,6 @@ class OrchestratorAdapter(ABC):
         Returns:
             Execution result
         """
-        pass
 
     @abstractmethod
     async def get_health(self) -> dict[str, Any]:
@@ -101,12 +96,11 @@ class OrchestratorAdapter(ABC):
             Dict with 'status' key ('healthy', 'degraded', 'unhealthy') and optional
             adapter-specific health details.
         """
-        pass
 
 
 __all__ = [
-    "OrchestratorAdapter",
-    "AdapterType",
     "AdapterCapabilities",
     "AdapterMetadata",
+    "AdapterType",
+    "OrchestratorAdapter",
 ]

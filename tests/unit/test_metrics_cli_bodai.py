@@ -20,7 +20,7 @@ from typing import Any
 import pytest
 from typer.testing import CliRunner
 
-from mahavishnu.metrics_cli import metrics_app, _event_timestamp
+from mahavishnu.metrics_cli import _event_timestamp, metrics_app
 
 runner = CliRunner()
 

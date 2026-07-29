@@ -234,7 +234,7 @@ class TestResilientEmbeddingClientAkosha:
         """Successful Akosha response should populate cache and count."""
         client = ResilientEmbeddingClient(circuit_breaker_threshold=2)
         cache = EmbeddingCache()
-        client._embedding_cache = cache  # noqa: SLF001
+        client._embedding_cache = cache
 
         embedding = [0.1] * STANDARD_EMBEDDING_DIMENSION
         fake_response = MagicMock()
@@ -265,7 +265,7 @@ class TestResilientEmbeddingClientAkosha:
     async def test_akosha_http_failure_falls_through(self) -> None:
         """If Akosha raises, client should fall through to local/mock."""
         client = ResilientEmbeddingClient(circuit_breaker_threshold=10)
-        client._embedding_service = None  # noqa: SLF001
+        client._embedding_service = None
 
         with patch.object(
             client,
@@ -281,7 +281,7 @@ class TestResilientEmbeddingClientAkosha:
     async def test_akosha_invalid_response_falls_through(self) -> None:
         """If Akosha returns unexpected JSON shape, fall through."""
         client = ResilientEmbeddingClient(circuit_breaker_threshold=10)
-        client._embedding_service = None  # noqa: SLF001
+        client._embedding_service = None
 
         fake_response = MagicMock()
         fake_response.json.return_value = {"unexpected": "shape"}
@@ -303,7 +303,7 @@ class TestResilientEmbeddingClientAkosha:
             circuit_breaker_threshold=10,
             standard_dimension=STANDARD_EMBEDDING_DIMENSION,
         )
-        client._embedding_service = None  # noqa: SLF001
+        client._embedding_service = None
 
         bad_embedding = [0.5] * 10  # Wrong dim
         fake_response = MagicMock()
@@ -326,19 +326,19 @@ class TestResilientEmbeddingClientAkosha:
 
         # Falls through to mock because dimension mismatch
         assert result.source == EmbeddingSource.MOCK
-        assert client._dimension_mismatches >= 1  # noqa: SLF001
+        assert client._dimension_mismatches >= 1
 
     @pytest.mark.asyncio
     async def test_circuit_open_short_circuits_akosha(self) -> None:
         """When circuit is open, Akosha call should be skipped."""
         client = ResilientEmbeddingClient(circuit_breaker_threshold=1)
-        client._circuit_breaker._is_open = True  # noqa: SLF001
-        client._circuit_breaker.last_failure_time = time.monotonic()  # noqa: SLF001
+        client._circuit_breaker._is_open = True
+        client._circuit_breaker.last_failure_time = time.monotonic()
 
         post_mock = AsyncMock()
         with patch.object(client, "_get_client", AsyncMock()) as client_mock:
             client_mock.return_value.post = post_mock
-            await client._try_akosha("anything")  # noqa: SLF001
+            await client._try_akosha("anything")
 
         # No HTTP call should have been made
         post_mock.assert_not_called()
@@ -347,7 +347,7 @@ class TestResilientEmbeddingClientAkosha:
     async def test_try_local_service_none_when_service_unset(self) -> None:
         """Local service path returns None when service is not configured."""
         client = ResilientEmbeddingClient()
-        result = await client._try_local_service("test")  # noqa: SLF001
+        result = await client._try_local_service("test")
         assert result is None
 
     @pytest.mark.asyncio
@@ -362,11 +362,11 @@ class TestResilientEmbeddingClientAkosha:
                 provider=EmbeddingProvider.FASTEMBED,
             )
         )
-        client._embedding_service = service  # noqa: SLF001
+        client._embedding_service = service
 
-        result = await client._try_local_service("test")  # noqa: SLF001
+        result = await client._try_local_service("test")
         assert result is None
-        assert client._dimension_mismatches >= 1  # noqa: SLF001
+        assert client._dimension_mismatches >= 1
 
     @pytest.mark.asyncio
     async def test_try_local_service_exception_returns_none(self) -> None:
@@ -374,16 +374,16 @@ class TestResilientEmbeddingClientAkosha:
         client = ResilientEmbeddingClient()
         service = MagicMock(spec=EmbeddingService)
         service.embed = AsyncMock(side_effect=RuntimeError("boom"))
-        client._embedding_service = service  # noqa: SLF001
+        client._embedding_service = service
 
-        result = await client._try_local_service("test")  # noqa: SLF001
+        result = await client._try_local_service("test")
         assert result is None
 
     @pytest.mark.asyncio
     async def test_try_cache_none_when_cache_unset(self) -> None:
         """Cache path returns None when cache is not configured."""
         client = ResilientEmbeddingClient()
-        result = await client._try_cache("text")  # noqa: SLF001
+        result = await client._try_cache("text")
         assert result is None
 
     @pytest.mark.asyncio
@@ -393,9 +393,9 @@ class TestResilientEmbeddingClientAkosha:
         cache = EmbeddingCache()
         emb = [0.1] * STANDARD_EMBEDDING_DIMENSION
         await cache.set("text", emb)
-        client._embedding_cache = cache  # noqa: SLF001
+        client._embedding_cache = cache
 
-        result = await client._try_cache("text")  # noqa: SLF001
+        result = await client._try_cache("text")
         assert result == emb
 
     @pytest.mark.asyncio
@@ -404,11 +404,11 @@ class TestResilientEmbeddingClientAkosha:
         client = ResilientEmbeddingClient(standard_dimension=STANDARD_EMBEDDING_DIMENSION)
         cache = EmbeddingCache()
         # Set with correct dim but client expects different dim
-        client._standard_dimension = 999  # noqa: SLF001
+        client._standard_dimension = 999
         await cache.set("text", [0.1] * STANDARD_EMBEDDING_DIMENSION)
-        client._embedding_cache = cache  # noqa: SLF001
+        client._embedding_cache = cache
 
-        result = await client._try_cache("text")  # noqa: SLF001
+        result = await client._try_cache("text")
         assert result is None
 
     @pytest.mark.asyncio
@@ -417,9 +417,9 @@ class TestResilientEmbeddingClientAkosha:
         client = ResilientEmbeddingClient()
         cache = MagicMock()
         cache.get = AsyncMock(side_effect=RuntimeError("boom"))
-        client._embedding_cache = cache  # noqa: SLF001
+        client._embedding_cache = cache
 
-        result = await client._try_cache("text")  # noqa: SLF001
+        result = await client._try_cache("text")
         assert result is None
 
     @pytest.mark.asyncio
@@ -435,7 +435,7 @@ class TestResilientEmbeddingClientAkosha:
                 provider=EmbeddingProvider.FASTEMBED,
             )
         )
-        client._embedding_service = service  # noqa: SLF001
+        client._embedding_service = service
 
         with patch.object(
             client,
@@ -455,7 +455,7 @@ class TestResilientEmbeddingClientAkosha:
         cache = EmbeddingCache()
         emb = [0.3] * STANDARD_EMBEDDING_DIMENSION
         await cache.set("text", emb)
-        client._embedding_cache = cache  # noqa: SLF001
+        client._embedding_cache = cache
 
         # No _akosha or _local_service should be hit
         with (
@@ -483,7 +483,7 @@ class TestResilientEmbeddingClientAkosha:
         cache = EmbeddingCache()
         emb = [0.4] * STANDARD_EMBEDDING_DIMENSION
         await cache.set("text", emb)
-        client._embedding_cache = cache  # noqa: SLF001
+        client._embedding_cache = cache
 
         # With use_cache=False, should not consult cache
         with patch.object(
@@ -500,8 +500,8 @@ class TestResilientEmbeddingClientAkosha:
         """_get_client should reuse the same client across calls."""
         client = ResilientEmbeddingClient()
         try:
-            c1 = await client._get_client()  # noqa: SLF001
-            c2 = await client._get_client()  # noqa: SLF001
+            c1 = await client._get_client()
+            c2 = await client._get_client()
             assert c1 is c2
         finally:
             await client.close()
@@ -533,7 +533,7 @@ class TestBatchEmbeddingsEdgeCases:
         e2 = [0.2] * STANDARD_EMBEDDING_DIMENSION
         await cache.set("a", e1)
         await cache.set("b", e2)
-        client._embedding_cache = cache  # noqa: SLF001
+        client._embedding_cache = cache
 
         results = await client.generate_batch_embeddings(["a", "b"], use_cache=True)
         assert len(results) == 2
@@ -547,7 +547,7 @@ class TestBatchEmbeddingsEdgeCases:
         """With use_cache=False, the cache should not be consulted."""
         client = ResilientEmbeddingClient()
         cache = EmbeddingCache()
-        client._embedding_cache = cache  # noqa: SLF001
+        client._embedding_cache = cache
 
         with patch.object(
             cache, "get", AsyncMock(side_effect=AssertionError("should not call"))
@@ -560,8 +560,8 @@ class TestBatchEmbeddingsEdgeCases:
         """When batch Akosha fails, each item is generated individually."""
         client = ResilientEmbeddingClient(circuit_breaker_threshold=1)
         # Pre-open circuit to short-circuit Akosha batch
-        client._circuit_breaker._is_open = True  # noqa: SLF001
-        client._circuit_breaker.last_failure_time = time.monotonic()  # noqa: SLF001
+        client._circuit_breaker._is_open = True
+        client._circuit_breaker.last_failure_time = time.monotonic()
 
         results = await client.generate_batch_embeddings(["a", "b"], use_cache=False)
         assert len(results) == 2
@@ -588,7 +588,7 @@ class TestGetStatsAdvanced:
     async def test_stats_records_circuit_open(self) -> None:
         """Stats should report circuit_breaker_open=True when opened."""
         client = ResilientEmbeddingClient(circuit_breaker_threshold=1)
-        client._circuit_breaker._is_open = True  # noqa: SLF001
+        client._circuit_breaker._is_open = True
 
         stats = client.get_stats()
         assert stats["circuit_breaker_open"] is True

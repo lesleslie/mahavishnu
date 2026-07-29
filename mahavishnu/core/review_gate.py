@@ -208,7 +208,7 @@ class ReviewGate:
             message="No injection patterns detected.",
         )
 
-    def _check_crackerjack(self, draft: SkillDraft) -> ReviewCheck:  # noqa: C901
+    def _check_crackerjack(self, draft: SkillDraft) -> ReviewCheck:
         """Run a Crackerjack quality check if the MCP server is available.
 
         The check is wrapped in broad exception handling so that an

@@ -67,7 +67,6 @@ class DesktopAutomationBackend(ABC):
         Returns:
             True if the backend can be used on this system.
         """
-        pass
 
     @property
     @abstractmethod
@@ -77,7 +76,6 @@ class DesktopAutomationBackend(ABC):
         Returns:
             Backend identifier string.
         """
-        pass
 
     # =========================================================================
     # Application Operations
@@ -97,7 +95,6 @@ class DesktopAutomationBackend(ABC):
             ApplicationNotFoundError: If the application cannot be found.
             AutomationError: If the application fails to launch.
         """
-        pass
 
     @abstractmethod
     async def get_application(self, bundle_id: str) -> ApplicationInfo | None:
@@ -109,7 +106,6 @@ class DesktopAutomationBackend(ABC):
         Returns:
             ApplicationInfo if the application is running, None otherwise.
         """
-        pass
 
     @abstractmethod
     async def list_applications(self) -> list[ApplicationInfo]:
@@ -118,7 +114,6 @@ class DesktopAutomationBackend(ABC):
         Returns:
             List of ApplicationInfo for all running applications.
         """
-        pass
 
     @abstractmethod
     async def quit_application(self, bundle_id: str, force: bool = False) -> bool:
@@ -134,7 +129,6 @@ class DesktopAutomationBackend(ABC):
         Raises:
             ApplicationNotFoundError: If the application is not running.
         """
-        pass
 
     @abstractmethod
     async def activate_application(self, bundle_id: str) -> bool:
@@ -146,7 +140,6 @@ class DesktopAutomationBackend(ABC):
         Returns:
             True if the application was activated successfully.
         """
-        pass
 
     @abstractmethod
     async def get_active_application(self) -> ApplicationInfo | None:
@@ -155,7 +148,6 @@ class DesktopAutomationBackend(ABC):
         Returns:
             ApplicationInfo for the active application, or None if no app is active.
         """
-        pass
 
     # =========================================================================
     # Window Operations
@@ -171,7 +163,6 @@ class DesktopAutomationBackend(ABC):
         Returns:
             List of WindowInfo for the application's windows.
         """
-        pass
 
     @abstractmethod
     async def activate_window(self, window_id: str) -> bool:
@@ -183,7 +174,6 @@ class DesktopAutomationBackend(ABC):
         Returns:
             True if the window was activated successfully.
         """
-        pass
 
     @abstractmethod
     async def resize_window(self, window_id: str, width: int, height: int) -> bool:
@@ -197,7 +187,6 @@ class DesktopAutomationBackend(ABC):
         Returns:
             True if the window was resized successfully.
         """
-        pass
 
     @abstractmethod
     async def move_window(self, window_id: str, x: int, y: int) -> bool:
@@ -211,7 +200,6 @@ class DesktopAutomationBackend(ABC):
         Returns:
             True if the window was moved successfully.
         """
-        pass
 
     @abstractmethod
     async def close_window(self, window_id: str) -> bool:
@@ -223,7 +211,6 @@ class DesktopAutomationBackend(ABC):
         Returns:
             True if the window was closed successfully.
         """
-        pass
 
     # =========================================================================
     # Menu Operations
@@ -243,7 +230,6 @@ class DesktopAutomationBackend(ABC):
         Raises:
             MenuNotFoundError: If the menu item cannot be found.
         """
-        pass
 
     @abstractmethod
     async def list_menus(self, bundle_id: str) -> list[MenuInfo]:
@@ -255,7 +241,6 @@ class DesktopAutomationBackend(ABC):
         Returns:
             List of MenuInfo for the application's menus.
         """
-        pass
 
     # =========================================================================
     # Clipboard Operations
@@ -301,7 +286,6 @@ class DesktopAutomationBackend(ABC):
         Returns:
             True if the text was typed successfully.
         """
-        pass
 
     @abstractmethod
     async def press_key(self, key: str, modifiers: list[str] | None = None) -> bool:
@@ -314,7 +298,6 @@ class DesktopAutomationBackend(ABC):
         Returns:
             True if the key was pressed successfully.
         """
-        pass
 
     @abstractmethod
     async def click(self, x: int, y: int, button: str = "left", clicks: int = 1) -> bool:
@@ -329,7 +312,6 @@ class DesktopAutomationBackend(ABC):
         Returns:
             True if the click was performed successfully.
         """
-        pass
 
     @abstractmethod
     async def drag(
@@ -354,7 +336,6 @@ class DesktopAutomationBackend(ABC):
         Returns:
             True if the drag was performed successfully.
         """
-        pass
 
     @abstractmethod
     async def scroll(self, x: int, y: int, dx: int, dy: int) -> bool:
@@ -369,7 +350,6 @@ class DesktopAutomationBackend(ABC):
         Returns:
             True if the scroll was performed successfully.
         """
-        pass
 
     # =========================================================================
     # Screenshot Operations
@@ -389,7 +369,6 @@ class DesktopAutomationBackend(ABC):
         Raises:
             ScreenshotError: If the screenshot fails.
         """
-        pass
 
     # =========================================================================
     # Screen Operations
@@ -402,7 +381,6 @@ class DesktopAutomationBackend(ABC):
         Returns:
             List of ScreenInfo for each display.
         """
-        pass
 
     # =========================================================================
     # UI Element Operations (Optional)

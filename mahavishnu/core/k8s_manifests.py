@@ -481,7 +481,7 @@ class K8sManifestGenerator:
                 "hosts": [config.host],
                 "secretName": config.tls_secret,
             }
-            spec["tls"] = [tls_entry]  # noqa: E501
+            spec["tls"] = [tls_entry]
 
         self.manifests.append(manifest)
         return manifest
@@ -653,13 +653,13 @@ class K8sManifestGenerator:
 
 
 __all__ = [
-    "K8sManifestGenerator",
-    "DeploymentConfig",
-    "ServiceConfig",
     "ConfigMapConfig",
-    "IngressConfig",
+    "DeploymentConfig",
     "HPAConfig",
-    "ResourceRequirements",
-    "ProbeConfig",
+    "IngressConfig",
+    "K8sManifestGenerator",
     "ManifestType",
+    "ProbeConfig",
+    "ResourceRequirements",
+    "ServiceConfig",
 ]

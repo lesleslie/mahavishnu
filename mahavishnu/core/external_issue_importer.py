@@ -446,10 +446,10 @@ class ExternalIssueImporter:
 
 
 __all__ = [
-    "ExternalIssueImporter",
     "ExternalIssue",
-    "IssueMapping",
+    "ExternalIssueImporter",
     "ImportConfig",
     "ImportResult",
+    "IssueMapping",
     "IssueSource",
 ]

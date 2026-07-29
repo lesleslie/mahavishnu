@@ -114,4 +114,4 @@ def _format(snap) -> str:
     )
 
 
-__all__ = ["watch_app", "watch_cmd", "emit_cmd"]
+__all__ = ["emit_cmd", "watch_app", "watch_cmd"]

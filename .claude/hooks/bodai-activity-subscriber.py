@@ -41,11 +41,11 @@ import argparse
 import asyncio
 import json
 import os
+from pathlib import Path
 import signal
 import subprocess
 import sys
 import time
-from pathlib import Path
 from typing import Any
 
 SUBSCRIBER_STOP_GRACE_SECONDS = 5.0

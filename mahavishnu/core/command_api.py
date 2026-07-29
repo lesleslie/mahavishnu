@@ -378,9 +378,9 @@ class CommandRegistry:
 
 
 __all__ = [
-    "CommandRegistry",
-    "CommandHandler",
-    "CommandResult",
     "CommandError",
+    "CommandHandler",
+    "CommandRegistry",
+    "CommandResult",
     "ErrorCode",
 ]

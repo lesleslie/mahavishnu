@@ -38,7 +38,7 @@ def _patch_ulid_generators(monkeypatch: pytest.MonkeyPatch):
     monkeypatch.setattr("session_buddy.core.ulid_generator.generate_ulid", generate, raising=False)
     monkeypatch.setattr("session_buddy.core.ulid_generator.is_valid_ulid", is_valid, raising=False)
 
-    import mahavishnu.core.workflow_models as workflow_models
+    from mahavishnu.core import workflow_models
 
     monkeypatch.setattr(workflow_models, "generate_config_id", generate, raising=False)
     monkeypatch.setattr(workflow_models, "is_config_ulid", is_valid, raising=False)

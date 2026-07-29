@@ -117,11 +117,11 @@ def test_mode_recommendation_none_and_ranked() -> None:
             )
         )
 
-    engine._intent_mode_stats["other:ignored"] = tl.TeamLearningStats(  # noqa: SLF001
+    engine._intent_mode_stats["other:ignored"] = tl.TeamLearningStats(
         total_executions=10,
         successful_executions=10,
     )
-    engine._intent_mode_stats["review:tiny"] = tl.TeamLearningStats(  # noqa: SLF001
+    engine._intent_mode_stats["review:tiny"] = tl.TeamLearningStats(
         total_executions=1,
         successful_executions=1,
     )
@@ -145,10 +145,10 @@ def test_top_skills_and_recent_window_and_clear() -> None:
                 quality=80 if i < 4 else 70,
             )
         )
-    top = engine._get_top_skills(limit=5)  # noqa: SLF001
+    top = engine._get_top_skills(limit=5)
     assert top
     assert top[0]["executions"] >= 3
-    assert 0.0 <= engine._get_recent_success_rate(window=3) <= 1.0  # noqa: SLF001
+    assert 0.0 <= engine._get_recent_success_rate(window=3) <= 1.0
 
     engine.clear_stats()
     assert engine.get_learning_summary()["total_outcomes"] == 0

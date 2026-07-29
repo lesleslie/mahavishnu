@@ -165,7 +165,6 @@ class BaseWorker(ABC):
         Raises:
             RuntimeError: If worker fails to start
         """
-        pass
 
     @abstractmethod
     async def execute(self, task: dict[str, Any]) -> WorkerResult:
@@ -181,7 +180,6 @@ class BaseWorker(ABC):
             RuntimeError: If execution fails
             TimeoutError: If task execution times out
         """
-        pass
 
     @abstractmethod
     async def stop(self) -> None:
@@ -190,7 +188,6 @@ class BaseWorker(ABC):
         Raises:
             RuntimeError: If worker fails to stop
         """
-        pass
 
     @abstractmethod
     async def status(self) -> WorkerStatus:
@@ -199,7 +196,6 @@ class BaseWorker(ABC):
         Returns:
             Current WorkerStatus
         """
-        pass
 
     @abstractmethod
     async def get_progress(self) -> dict[str, Any]:
@@ -212,7 +208,6 @@ class BaseWorker(ABC):
             - duration: Execution time in seconds
             - metadata: Worker-specific progress data
         """
-        pass
 
     async def health_check(self) -> dict[str, Any]:
         """Check worker health and availability.

@@ -256,9 +256,9 @@ _web_fetch_batch_impl = web_fetch_batch
 
 
 __all__ = [
+    "BatchItem",
+    "WebFetchResult",
+    "register",
     "web_fetch",
     "web_fetch_batch",
-    "WebFetchResult",
-    "BatchItem",
-    "register",
 ]

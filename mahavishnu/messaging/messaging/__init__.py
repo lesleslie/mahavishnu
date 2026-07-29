@@ -11,11 +11,11 @@ from .types import (
 )
 
 __all__ = [
-    "Priority",
-    "MessageType",
-    "MessageStatus",
     "MessageContent",
+    "MessagePriority",
+    "MessageStatus",
+    "MessageType",
+    "Priority",
     "ProjectMessage",
     "RepositoryMessage",
-    "MessagePriority",
 ]

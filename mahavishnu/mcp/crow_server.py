@@ -153,4 +153,4 @@ def create_crow_server(settings: CrowSettings | None = None) -> CrowServer:
     return CrowServer(cfg)
 
 
-__all__ = ["CrowServer", "create_crow_server", "create_crow_mcp_client", "_lifespan"]
+__all__ = ["CrowServer", "_lifespan", "create_crow_mcp_client", "create_crow_server"]

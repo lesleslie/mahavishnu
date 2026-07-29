@@ -170,7 +170,7 @@ class RateLimiter:
         now = time.time()
 
         # Check if key is currently in violation cooldown
-        if key in self._violations and self._violations[key]:
+        if self._violations.get(key):
             # Check if there was a recent violation (within last minute)
             recent_violations = [v for v in self._violations[key] if now - v < 60]
             if len(recent_violations) >= 5:

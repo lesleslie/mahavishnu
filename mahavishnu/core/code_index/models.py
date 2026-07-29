@@ -10,7 +10,6 @@ from pydantic import BaseModel, Field, field_validator
 if TYPE_CHECKING:
     from datetime import datetime
 
-    pass
 
 
 class CodeGraphNode(BaseModel):

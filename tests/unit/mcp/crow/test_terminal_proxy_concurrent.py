@@ -13,8 +13,8 @@ Task 2 extends this file with per-session pool semantics + the four
 
 from __future__ import annotations
 
-import pytest
 from fastmcp import FastMCP
+import pytest
 
 from mahavishnu.mcp.crow.settings import CrowSettings
 from mahavishnu.mcp.crow.tools import terminal_proxy_tool

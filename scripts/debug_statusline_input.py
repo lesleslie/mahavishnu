@@ -35,8 +35,7 @@ with open(debug_log, "w") as f:
         f.write("\n\n")
 
         f.write("ALL KEYS:\n")
-        for key in sorted(data.keys()):
-            f.write(f"- {key}\n")
+        f.writelines(f"- {key}\n" for key in sorted(data.keys()))
     except json.JSONDecodeError as e:
         f.write(f"JSON PARSE ERROR: {e}\n")
 

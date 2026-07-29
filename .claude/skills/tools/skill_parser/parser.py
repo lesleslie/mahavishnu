@@ -17,19 +17,16 @@ RELATED_PATTERN = re.compile(r"\*\*RELATED:\*\*\s*`([\w-]+)`")
 class SkillParserError(Exception):
     """Base exception for parser errors."""
 
-    pass
 
 
 class MalformedFrontmatterError(SkillParserError):
     """Raised when YAML frontmatter is malformed."""
 
-    pass
 
 
 class MissingRequiredFieldError(SkillParserError):
     """Raised when required field is missing."""
 
-    pass
 
 
 @dataclass

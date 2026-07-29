@@ -527,11 +527,11 @@ class DeploymentManager:
 
 
 __all__ = [
-    "DeploymentManager",
+    "BlueGreenStrategy",
     "DeploymentConfig",
-    "DeploymentStatus",
+    "DeploymentManager",
     "DeploymentResult",
+    "DeploymentStatus",
     "DeploymentVersion",
     "HealthCheckResult",
-    "BlueGreenStrategy",
 ]

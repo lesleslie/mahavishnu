@@ -14,7 +14,7 @@ from ...core.permissions import RBACManager
 from ...mcp.auth import require_mcp_auth
 
 
-def register_git_analytics_tools(  # noqa: C901
+def register_git_analytics_tools(
     server, mcp_client, rbac_manager: RBACManager | None = None
 ):
     """Register Git analytics tools with MCP server.
@@ -106,7 +106,7 @@ def register_git_analytics_tools(  # noqa: C901
             }
 
         except Exception as e:
-            return {"status": "error", "error": f"Failed to get git velocity dashboard: {str(e)}"}
+            return {"status": "error", "error": f"Failed to get git velocity dashboard: {e!s}"}
 
     @server.tool()
     @require_mcp_auth(
@@ -169,7 +169,7 @@ def register_git_analytics_tools(  # noqa: C901
             }
 
         except Exception as e:
-            return {"status": "error", "error": f"Failed to get repository health: {str(e)}"}
+            return {"status": "error", "error": f"Failed to get repository health: {e!s}"}
 
     @server.tool()
     @require_mcp_auth(
@@ -308,7 +308,7 @@ def register_git_analytics_tools(  # noqa: C901
             return {"status": "success", "result": result}
 
         except Exception as e:
-            return {"status": "error", "error": f"Failed to get cross-project patterns: {str(e)}"}
+            return {"status": "error", "error": f"Failed to get cross-project patterns: {e!s}"}
 
     async def _query_session_buddy_metrics(app, repo_path: str) -> dict[str, Any]:
         """Query Session-Buddy for workflow performance metrics.

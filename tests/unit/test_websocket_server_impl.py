@@ -73,7 +73,7 @@ class TestMahavishnuWebSocketServerImport:
 
     def test_module_imports(self):
         """The server module imports without side effects."""
-        import mahavishnu.websocket.server as srv  # noqa: F401
+        import mahavishnu.websocket.server as srv
 
         assert hasattr(srv, "MahavishnuWebSocketServer")
         assert hasattr(srv, "_get_explicit_attribute")

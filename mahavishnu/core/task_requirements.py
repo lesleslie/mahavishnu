@@ -295,9 +295,9 @@ class ResolutionCache:
 
 
 __all__ = [
-    "TaskRequirements",
-    "AdapterResolutionResult",
-    "RoutingDecision",  # backward-compat alias
     "TASK_CAPABILITY_REQUIREMENTS",
+    "AdapterResolutionResult",
     "ResolutionCache",
+    "RoutingDecision",  # backward-compat alias
+    "TaskRequirements",
 ]

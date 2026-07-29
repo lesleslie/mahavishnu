@@ -5,7 +5,7 @@ from pathlib import Path
 import pytest
 import yaml
 
-import mahavishnu.core.repo_manager as repo_manager
+from mahavishnu.core import repo_manager
 from mahavishnu.core.repo_manager import RepositoryManager
 from mahavishnu.core.repo_models import (
     Repository,

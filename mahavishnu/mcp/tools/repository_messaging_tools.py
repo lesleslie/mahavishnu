@@ -18,7 +18,7 @@ def _coerce_priority(value: str) -> MessagePriority:
     return MessagePriority(value.lower())
 
 
-def register_repository_messaging_tools(server, app, mcp_client):  # noqa: C901
+def register_repository_messaging_tools(server, app, mcp_client):
     """Register repository messaging tools with the MCP server.
 
     Structural C901 suppression: FastMCP's ``@server.tool()`` decorator

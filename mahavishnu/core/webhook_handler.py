@@ -567,9 +567,9 @@ class WebhookHandler:
 
 
 __all__ = [
-    "WebhookHandler",
+    "EventType",
     "WebhookEvent",
+    "WebhookHandler",
     "WebhookResult",
     "WebhookSource",
-    "EventType",
 ]

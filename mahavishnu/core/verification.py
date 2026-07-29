@@ -63,7 +63,6 @@ except ImportError:  # pragma: no cover
     class _RateLimitError(Exception):  # type: ignore[no-redef]
         """Fallback stub when mahavishnu.core.errors is not importable."""
 
-        pass
 
 
 # ---------------------------------------------------------------------------

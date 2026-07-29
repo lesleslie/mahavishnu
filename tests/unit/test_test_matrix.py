@@ -21,7 +21,7 @@ if TYPE_CHECKING:
 
 # ``scripts/`` is added to ``sys.path`` by the root ``conftest.py`` so we
 # can ``import test_matrix`` directly without installing it as a package.
-from test_matrix import (  # noqa: E402
+from test_matrix import (
     ComponentCoverage,
     assemble_go_matrix,
     assemble_node_matrix,

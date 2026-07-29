@@ -14,7 +14,7 @@ import logging
 logger = logging.getLogger(__name__)
 
 
-def register_websocket_tools(server, websocket_server):  # noqa: C901
+def register_websocket_tools(server, websocket_server):
     """Register WebSocket-related MCP tools.
 
     Structural C901 suppression: FastMCP's ``@server.tool()`` decorator

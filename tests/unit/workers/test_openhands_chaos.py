@@ -20,7 +20,7 @@ async def test_network_drop_during_polling(monkeypatch: pytest.MonkeyPatch) -> N
     )
     config = OpenHandsConfig(
         base_url="http://localhost:3000",
-        workspace_dir=Path("/tmp/openhands-workspace"),  # noqa: S108
+        workspace_dir=Path("/tmp/openhands-workspace"),
         poll_interval_seconds=0.01,
     )
     with respx.mock:
@@ -47,7 +47,7 @@ async def test_server_500_during_polling(monkeypatch: pytest.MonkeyPatch) -> Non
     )
     config = OpenHandsConfig(
         base_url="http://localhost:3000",
-        workspace_dir=Path("/tmp/openhands-workspace"),  # noqa: S108
+        workspace_dir=Path("/tmp/openhands-workspace"),
         poll_interval_seconds=0.01,
     )
     with respx.mock:
@@ -74,7 +74,7 @@ async def test_task_timeout(monkeypatch: pytest.MonkeyPatch) -> None:
     )
     config = OpenHandsConfig(
         base_url="http://localhost:3000",
-        workspace_dir=Path("/tmp/openhands-workspace"),  # noqa: S108
+        workspace_dir=Path("/tmp/openhands-workspace"),
         poll_interval_seconds=0.01,
         timeout_seconds=1,
     )

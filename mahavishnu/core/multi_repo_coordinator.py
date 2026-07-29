@@ -507,9 +507,9 @@ class MultiRepoCoordinator:
 
 
 __all__ = [
-    "MultiRepoCoordinator",
     "CoordinationPlan",
-    "CoordinationStep",
     "CoordinationStatus",
+    "CoordinationStep",
+    "MultiRepoCoordinator",
     "RepoSyncState",
 ]

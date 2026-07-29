@@ -6,8 +6,8 @@ from dataclasses import dataclass
 
 import pytest
 
+from mahavishnu.core import rate_limit_tools
 from mahavishnu.core.rate_limit import RateLimitConfig
-import mahavishnu.core.rate_limit_tools as rate_limit_tools
 
 
 @dataclass
@@ -17,7 +17,7 @@ class _Info:
 
 
 class _FakeLimiter:
-    def __init__(self, *args, **kwargs) -> None:  # noqa: ANN002,ANN003
+    def __init__(self, *args, **kwargs) -> None:
         self.args = args
         self.kwargs = kwargs
         self.allowed_result = (True, _Info())
@@ -41,7 +41,7 @@ def _reset_globals() -> None:
 def test_get_global_limiter_with_config(monkeypatch: pytest.MonkeyPatch) -> None:
     created: list[_FakeLimiter] = []
 
-    def factory(*args, **kwargs):  # noqa: ANN002,ANN003
+    def factory(*args, **kwargs):
         limiter = _FakeLimiter(*args, **kwargs)
         created.append(limiter)
         return limiter
@@ -65,7 +65,7 @@ def test_get_global_limiter_with_config(monkeypatch: pytest.MonkeyPatch) -> None
 def test_get_global_limiter_is_singleton(monkeypatch: pytest.MonkeyPatch) -> None:
     created: list[_FakeLimiter] = []
 
-    def factory(*args, **kwargs):  # noqa: ANN002,ANN003
+    def factory(*args, **kwargs):
         limiter = _FakeLimiter(*args, **kwargs)
         created.append(limiter)
         return limiter
@@ -84,7 +84,7 @@ async def test_rate_limit_tool_allows_and_uses_user_id_key(
 ) -> None:
     created: list[_FakeLimiter] = []
 
-    def factory(*args, **kwargs):  # noqa: ANN002,ANN003
+    def factory(*args, **kwargs):
         limiter = _FakeLimiter(*args, **kwargs)
         created.append(limiter)
         return limiter
@@ -110,7 +110,7 @@ async def test_rate_limit_tool_denied_returns_error_and_records_violation(
 ) -> None:
     created: list[_FakeLimiter] = []
 
-    def factory(*args, **kwargs):  # noqa: ANN002,ANN003
+    def factory(*args, **kwargs):
         limiter = _FakeLimiter(*args, **kwargs)
         limiter.allowed_result = (False, _Info(reset_time=200.0, retry_after=9))
         created.append(limiter)
@@ -140,7 +140,7 @@ async def test_rate_limit_tool_key_func_failure_falls_back_default(
 ) -> None:
     created: list[_FakeLimiter] = []
 
-    def factory(*args, **kwargs):  # noqa: ANN002,ANN003
+    def factory(*args, **kwargs):
         limiter = _FakeLimiter(*args, **kwargs)
         created.append(limiter)
         return limiter
@@ -163,7 +163,7 @@ async def test_rate_limit_tool_key_func_failure_falls_back_default(
 async def test_rate_limit_tool_reraises_underlying_tool_exception(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    def factory(*args, **kwargs):  # noqa: ANN002,ANN003
+    def factory(*args, **kwargs):
         return _FakeLimiter(*args, **kwargs)
 
     monkeypatch.setattr(rate_limit_tools, "RateLimiter", factory)

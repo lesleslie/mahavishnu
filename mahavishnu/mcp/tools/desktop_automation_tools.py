@@ -46,7 +46,7 @@ def get_manager() -> AutomationManager:
     return _manager
 
 
-def register_desktop_automation_tools(mcp: Any) -> None:  # noqa: C901
+def register_desktop_automation_tools(mcp: Any) -> None:
     """Register all desktop automation tools with the MCP server.
 
     Structural C901 suppression: FastMCP's ``@mcp.tool()`` decorator

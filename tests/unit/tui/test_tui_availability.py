@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import asyncio
 from unittest.mock import AsyncMock
 
 import pytest
@@ -8,7 +7,7 @@ import pytest
 
 @pytest.mark.unit
 def test_tui_available_is_bool() -> None:
-    import mahavishnu.tui as tui
+    from mahavishnu import tui
 
     assert isinstance(tui.TUI_AVAILABLE, bool)
 
@@ -110,7 +109,7 @@ async def test_monitor_app_action_refresh_with_mock_provider() -> None:
 @pytest.mark.unit
 def test_tui_available_can_be_patched_as_boolean() -> None:
     """Confirm tests can override TUI_AVAILABLE by patching the bool attribute."""
-    import mahavishnu.tui as tui
+    from mahavishnu import tui
 
     original = tui.TUI_AVAILABLE
     tui.TUI_AVAILABLE = False

@@ -121,11 +121,10 @@ class WorkerOrchestratorAdapter(OrchestratorAdapter):
         """Initialize the worker adapter."""
         if self.worker_manager is None and self._config is not None:
             await self._ensure_worker_manager()
-        return None
 
     async def cleanup(self) -> None:
         """Cleanup worker resources."""
-        return None
+        return
 
     async def execute(
         self,

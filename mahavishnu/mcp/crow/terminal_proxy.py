@@ -514,13 +514,13 @@ async def shutdown_all_sessions() -> None:
 
 
 __all__ = [
+    "SessionNotFoundError",
     "_CrowState",
-    "init_crow_stdio_client",
+    "acquire_session",
     "close_crow_stdio_client",
     "get_crow_session",
-    "acquire_session",
-    "release_session",
     "get_crow_session_by_handle",
+    "init_crow_stdio_client",
+    "release_session",
     "shutdown_all_sessions",
-    "SessionNotFoundError",
 ]

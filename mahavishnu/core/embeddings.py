@@ -63,13 +63,11 @@ class EmbeddingProvider(Enum):
 class EmbeddingServiceError(Exception):
     """Base exception for embedding service errors."""
 
-    pass
 
 
 class EmbeddingProviderError(EmbeddingServiceError):
     """Raised when embedding provider is not available."""
 
-    pass
 
 
 class EmbeddingResult:
@@ -245,12 +243,10 @@ class EmbeddingProviderInterface(ABC):
             EmbeddingProviderError: If provider is not available
             EmbeddingServiceError: If embedding generation fails
         """
-        pass
 
     @abstractmethod
     def is_available(self) -> bool:
         """Check if the provider is available."""
-        pass
 
 
 class FastEmbedProvider(EmbeddingProviderInterface):
@@ -486,7 +482,7 @@ class OpenAIProvider(EmbeddingProviderInterface):
     def is_available(self) -> bool:
         """Check if OpenAI provider is available."""
         try:
-            import os  # noqa: F401
+            import os
 
             return bool(os.getenv("OPENAI_API_KEY"))
         except Exception:
@@ -1094,7 +1090,6 @@ class BudgetExceededError(EmbeddingServiceError):
 class ServiceOverloadedError(EmbeddingServiceError):
     """Raised when the embedding service is overloaded."""
 
-    pass
 
 
 class SecureEmbeddingService:

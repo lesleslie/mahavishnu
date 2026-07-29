@@ -1,6 +1,6 @@
 from mahavishnu.workers.contract.state import (
-    WorkerLifecycleState,
     ALLOWED_TRANSITIONS,
+    WorkerLifecycleState,
     can_transition,
 )
 

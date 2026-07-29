@@ -290,7 +290,6 @@ class AgentAnalyzer:
 @click.group()
 def cli():
     """Agent Performance Metrics CLI"""
-    pass
 
 
 @cli.command()

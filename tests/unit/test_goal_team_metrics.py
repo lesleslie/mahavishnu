@@ -10,30 +10,30 @@ import mahavishnu.core.goal_team_metrics as gtm
 
 
 class _Metric:
-    def __init__(self, *args, **kwargs) -> None:  # noqa: ANN002,ANN003
+    def __init__(self, *args, **kwargs) -> None:
         self.label_calls: list[dict] = []
         self.inc_calls: list[float] = []
         self.observe_calls: list[float] = []
         self.set_calls: list[float] = []
         self.info_calls: list[dict] = []
 
-    def labels(self, **kwargs):  # noqa: ANN003
+    def labels(self, **kwargs):
         self.label_calls.append(kwargs)
         return self
 
-    def inc(self, amount=1):  # noqa: ANN001
+    def inc(self, amount=1):
         self.inc_calls.append(amount)
 
-    def dec(self, amount=1):  # noqa: ANN001
+    def dec(self, amount=1):
         self.inc_calls.append(-amount)
 
-    def observe(self, amount):  # noqa: ANN001
+    def observe(self, amount):
         self.observe_calls.append(amount)
 
-    def set(self, value):  # noqa: ANN001
+    def set(self, value):
         self.set_calls.append(value)
 
-    def info(self, val):  # noqa: ANN001
+    def info(self, val):
         self.info_calls.append(val)
 
 
@@ -127,7 +127,7 @@ def test_start_server_getter_and_reset(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(gtm, "start_http_server", lambda port: f"server-{port}")
     assert gtm.start_metrics_server(9098) == "server-9098"
 
-    def _boom(_port: int):  # noqa: ANN001
+    def _boom(_port: int):
         raise OSError("in use")
 
     monkeypatch.setattr(gtm, "start_http_server", _boom)
@@ -164,7 +164,7 @@ def test_reset_clears_registry_when_available(monkeypatch: pytest.MonkeyPatch) -
 def test_fallback_module_import_and_dummy_metrics(monkeypatch: pytest.MonkeyPatch) -> None:
     real_import = __import__
 
-    def fake_import(name, globals=None, locals=None, fromlist=(), level=0):  # noqa: ANN001,ANN002,ANN003
+    def fake_import(name, globals=None, locals=None, fromlist=(), level=0):
         if name == "prometheus_client":
             raise ImportError("no prometheus")
         return real_import(name, globals, locals, fromlist, level)
@@ -197,7 +197,7 @@ def test_initialize_metrics_valueerror_paths_and_recorder_start_none(
 ) -> None:
     monkeypatch.setattr(gtm, "PROMETHEUS_AVAILABLE", True)
 
-    def _raise(*args, **kwargs):  # noqa: ANN002,ANN003
+    def _raise(*args, **kwargs):
         raise ValueError("dup")
 
     monkeypatch.setattr(gtm, "Counter", _raise)
