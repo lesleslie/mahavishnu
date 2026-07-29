@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import asyncio
 from contextlib import suppress
-from datetime import datetime
+from datetime import datetime, UTC
 from functools import wraps
 from importlib.metadata import version
 from logging import getLogger
@@ -743,7 +743,7 @@ class FastMCPServer:
                         }
                         for log in recent_logs[-10:]  # Last 10 logs
                     ],
-                    "timestamp": datetime.now().isoformat(),
+                    "timestamp": datetime.now((UTC)).isoformat(),
                 }
             except Exception as e:
                 return {"error": f"Failed to get observability metrics: {e}", "metrics": {}}

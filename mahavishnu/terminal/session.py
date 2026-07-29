@@ -1,6 +1,6 @@
 """Terminal session representation."""
 
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, UTC
 
 from .adapters.base import TerminalAdapter
 
@@ -37,7 +37,7 @@ class TerminalSession:
         self.session_id = session_id
         self.command = command
         self.adapter = adapter
-        self.created_at = datetime.now()
+        self.created_at = datetime.now((UTC))
         self.last_output: str | None = None
         self._output_buffer: list[str] = []
 
@@ -80,7 +80,7 @@ class TerminalSession:
     @property
     def age(self) -> timedelta:
         """Get session age."""
-        return datetime.now() - self.created_at
+        return datetime.now((UTC)) - self.created_at
 
     def get_output_history(self) -> list[str]:
         """Get all captured outputs from this session.

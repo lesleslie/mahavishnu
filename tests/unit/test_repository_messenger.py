@@ -1,6 +1,6 @@
 """Unit tests for repository messaging functionality."""
 
-from datetime import datetime
+from datetime import datetime, UTC
 from unittest.mock import Mock
 
 import pytest
@@ -53,7 +53,7 @@ async def test_repository_message_structure():
         message_type=MessageType.CODE_CHANGE_NOTIFICATION,
         content={"change": "test change"},
         priority=MessagePriority.HIGH,
-        timestamp=datetime.now(),
+        timestamp=datetime.now((UTC)),
         correlation_id=str(uuid.uuid4()),
     )
 

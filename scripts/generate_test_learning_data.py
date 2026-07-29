@@ -15,7 +15,7 @@ Usage:
 from __future__ import annotations
 
 import argparse
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, UTC
 import hashlib
 import logging
 from pathlib import Path
@@ -158,7 +158,7 @@ def generate_test_data(
     logger.info(f"Generating {count} test records...")
 
     # Generate timestamps over the last 90 days
-    now = datetime.now()
+    now = datetime.now((UTC))
     start_time = time.time()
 
     for i in range(count):

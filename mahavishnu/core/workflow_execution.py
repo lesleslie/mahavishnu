@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import asyncio
 from asyncio import Semaphore
-from datetime import datetime
+from datetime import datetime, UTC
 import logging
 import time
 from typing import Any
@@ -346,7 +346,7 @@ async def finalize_workflow_execution(
         workflow_id=workflow_id,
         status=final_status,
         execution_time_seconds=execution_time,
-        completed_at=datetime.now().isoformat(),
+        completed_at=datetime.now((UTC)).isoformat(),
     )
 
     await app.opensearch_integration.log_workflow_completion(
@@ -423,7 +423,7 @@ async def handle_workflow_execution_error(
         workflow_id=workflow_id,
         status="failed",
         error=str(error),
-        completed_at=datetime.now().isoformat(),
+        completed_at=datetime.now((UTC)).isoformat(),
     )
 
     await app.opensearch_integration.log_error(

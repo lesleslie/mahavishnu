@@ -12,7 +12,7 @@ This module provides extensive test coverage for:
 
 from __future__ import annotations
 
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, UTC
 import json
 from pathlib import Path
 import tarfile
@@ -36,7 +36,7 @@ class TestBackupInfo:
         """Test BackupInfo creation with all fields."""
         info = BackupInfo(
             backup_id="backup_20250101_120000",
-            timestamp=datetime.now(),
+            timestamp=datetime.now((UTC)),
             size_bytes=1024000,
             location="/backups/backup.tar.gz",
             status="completed",
@@ -54,7 +54,7 @@ class TestBackupInfo:
         """Test BackupInfo creation with minimal data."""
         info = BackupInfo(
             backup_id="backup_test",
-            timestamp=datetime.now(),
+            timestamp=datetime.now((UTC)),
             size_bytes=0,
             location="/tmp/test.tar.gz",
             status="pending",
@@ -388,7 +388,7 @@ class TestDisasterRecoveryManager:
                 return_value=[
                     BackupInfo(
                         backup_id="backup_recent",
-                        timestamp=datetime.now(),
+                        timestamp=datetime.now((UTC)),
                         size_bytes=1024,
                         location="/backups/backup.tar.gz",
                         status="available",
@@ -425,7 +425,7 @@ class TestDisasterRecoveryManager:
     async def test_run_disaster_recovery_check_stale_backup(self, recovery_manager):
         """Test disaster recovery check with stale backup."""
         # Create old backup timestamp (> 24 hours)
-        old_timestamp = datetime.now() - timedelta(hours=48)
+        old_timestamp = datetime.now((UTC)) - timedelta(hours=48)
 
         with patch.object(
             recovery_manager.backup_manager,
@@ -472,7 +472,7 @@ class TestDisasterRecoveryManager:
         """Test disaster recovery uses latest backup when ID not specified."""
         latest_backup = BackupInfo(
             backup_id="backup_latest",
-            timestamp=datetime.now(),
+            timestamp=datetime.now((UTC)),
             size_bytes=1024,
             location="/backups/latest.tar.gz",
             status="available",
@@ -522,7 +522,7 @@ class TestDisasterRecoveryManager:
                 return_value=[
                     BackupInfo(
                         backup_id="backup_test",
-                        timestamp=datetime.now(),
+                        timestamp=datetime.now((UTC)),
                         size_bytes=1024,
                         location="/backups/test.tar.gz",
                         status="available",
@@ -598,7 +598,7 @@ class TestBackupAndRecoveryCLI:
         """Test successful backup creation via CLI."""
         backup_info = BackupInfo(
             backup_id="backup_test",
-            timestamp=datetime.now(),
+            timestamp=datetime.now((UTC)),
             size_bytes=1024000,
             location="/backups/test.tar.gz",
             status="completed",
@@ -636,7 +636,7 @@ class TestBackupAndRecoveryCLI:
         backups = [
             BackupInfo(
                 backup_id="backup_1",
-                timestamp=datetime.now(),
+                timestamp=datetime.now((UTC)),
                 size_bytes=1024000,
                 location="/backups/1.tar.gz",
                 status="available",
@@ -645,7 +645,7 @@ class TestBackupAndRecoveryCLI:
             ),
             BackupInfo(
                 backup_id="backup_2",
-                timestamp=datetime.now(),
+                timestamp=datetime.now((UTC)),
                 size_bytes=2048000,
                 location="/backups/2.tar.gz",
                 status="available",
@@ -687,7 +687,7 @@ class TestBackupAndRecoveryCLI:
     @pytest.mark.asyncio
     async def test_run_disaster_recovery_check(self, cli):
         """Test disaster recovery check via CLI."""
-        check_results = {"timestamp": datetime.now().isoformat(), "checks": {}, "status": "healthy"}
+        check_results = {"timestamp": datetime.now((UTC)).isoformat(), "checks": {}, "status": "healthy"}
 
         with patch.object(
             cli.recovery_manager,

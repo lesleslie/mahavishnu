@@ -9,7 +9,7 @@ Target: Reduce from ~615 docs to ~400 docs by archiving ~215 files.
 """
 
 from collections import defaultdict
-from datetime import datetime
+from datetime import datetime, UTC
 from pathlib import Path
 import re
 import shutil
@@ -142,8 +142,8 @@ def should_keep_file(filepath: Path) -> bool:
 
     # Keep recent checkpoint files (last 7 days)
     if "CHECKPOINT" in filename.upper():
-        file_mtime = datetime.fromtimestamp(filepath.stat().st_mtime)
-        if (datetime.now() - file_mtime).days < 7:
+        file_mtime = datetime.fromtimestamp(filepath.stat().st_mtime, tz=UTC)
+        if (datetime.now((UTC)) - file_mtime).days < 7:
             return True
 
     return False

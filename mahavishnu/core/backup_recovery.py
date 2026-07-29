@@ -1,7 +1,7 @@
 """Backup and disaster recovery system for Mahavishnu."""
 
 from dataclasses import dataclass
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, UTC
 import hashlib
 import json
 import logging
@@ -53,7 +53,7 @@ class BackupManager:
            ``create_backup`` MCP tool over calling this method directly.
            See ``docs/reports/golden-paths-guide.md`` for canonical pathways.
         """
-        now = datetime.now()
+        now = datetime.now((UTC))
         backup_id = f"backup_{now.strftime('%Y%m%d_%H%M%S')}_{now.microsecond:06d}"
         backup_path = self.backup_dir / f"{backup_id}.tar.gz"
 
@@ -81,7 +81,7 @@ class BackupManager:
                 # Backup any other important data
                 metadata: dict[str, Any] = {
                     "backup_id": backup_id,
-                    "timestamp": datetime.now().isoformat(),
+                    "timestamp": datetime.now((UTC)).isoformat(),
                     "type": backup_type,
                     "version": "1.0.0",
                     "config": self.app.config.model_dump()
@@ -109,7 +109,7 @@ class BackupManager:
                 # Create backup info
                 backup_info = BackupInfo(
                     backup_id=backup_id,
-                    timestamp=datetime.now(),
+                    timestamp=datetime.now((UTC)),
                     size_bytes=size_bytes,
                     location=str(backup_path),
                     status="completed",
@@ -177,7 +177,7 @@ class BackupManager:
             backup_files.sort(key=lambda x: x.stat().st_mtime, reverse=True)
 
             # Group by day, week, month
-            now = datetime.now()
+            now = datetime.now((UTC))
             daily_backups = []
             weekly_backups = []
             monthly_backups = []
@@ -189,7 +189,7 @@ class BackupManager:
                         backup_file.name.split(".")[0].split("_")[1]
                         + backup_file.name.split(".")[0].split("_")[2]
                     )
-                    backup_date = datetime.strptime(date_str, "%Y%m%d%H%M%S")
+                    backup_date = datetime.strptime(date_str, "%Y%m%d%H%M%S").replace(tzinfo=UTC)
 
                     days_diff = (now - backup_date).days
 
@@ -326,7 +326,7 @@ class BackupManager:
 
                 # Get file stats
                 stat = backup_file.stat()
-                timestamp = datetime.fromtimestamp(stat.st_mtime)
+                timestamp = datetime.fromtimestamp(stat.st_mtime, tz=UTC)
 
                 # Create backup info
                 backup_info = BackupInfo(
@@ -357,7 +357,7 @@ class BackupManager:
 
         try:
             stat = backup_path.stat()
-            timestamp = datetime.fromtimestamp(stat.st_mtime)
+            timestamp = datetime.fromtimestamp(stat.st_mtime, tz=UTC)
 
             # Try to extract metadata if possible
             with tempfile.TemporaryDirectory() as temp_dir:
@@ -399,7 +399,7 @@ class DisasterRecoveryManager:
 
     async def run_disaster_recovery_check(self) -> dict[str, Any]:
         """Run a comprehensive disaster recovery check."""
-        results = {"timestamp": datetime.now().isoformat(), "checks": {}, "status": "healthy"}
+        results = {"timestamp": datetime.now((UTC)).isoformat(), "checks": {}, "status": "healthy"}
 
         # Check backup availability
         backups = await self.backup_manager.list_backups()
@@ -430,7 +430,7 @@ class DisasterRecoveryManager:
 
         # Check if we have recent backups (within last 24 hours)
         if backups:
-            latest_backup_age = datetime.now() - backups[0].timestamp
+            latest_backup_age = datetime.now((UTC)) - backups[0].timestamp
             recent_backup_ok = latest_backup_age < timedelta(hours=24)
         else:
             recent_backup_ok = False

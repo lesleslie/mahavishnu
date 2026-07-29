@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, UTC
 from enum import Enum
 from typing import TYPE_CHECKING, Any
 import uuid
@@ -52,7 +52,7 @@ class RepositoryMessage:
 
     def __post_init__(self) -> None:
         if self.timestamp is None:
-            self.timestamp = datetime.now()
+            self.timestamp = datetime.now((UTC))
         if self.correlation_id is None:
             self.correlation_id = str(uuid.uuid4())
 
@@ -117,7 +117,7 @@ class RepositoryMessenger:
 
             # Add authentication signature if authenticator is available
             if self.authenticator:
-                signature_timestamp = message.timestamp or datetime.now()
+                signature_timestamp = message.timestamp or datetime.now((UTC))
                 message.signature = self.authenticator.sign_message(
                     {
                         "id": message.id,
@@ -213,7 +213,7 @@ class RepositoryMessenger:
 
             # Sort by timestamp (newest first); entries without a timestamp sort last
             repo_messages.sort(
-                key=lambda x: x.timestamp or datetime.min,
+                key=lambda x: x.timestamp or datetime.min.replace(tzinfo=UTC),
                 reverse=True,
             )
 
@@ -277,7 +277,7 @@ class RepositoryMessenger:
     async def cleanup_expired_messages(self):
         """Remove expired messages from the queue."""
         try:
-            current_time = datetime.now()
+            current_time = datetime.now((UTC))
             expired_count = 0
 
             # Remove expired messages
@@ -303,7 +303,7 @@ class RepositoryMessenger:
             return True
 
         # Create the message payload to verify
-        verify_timestamp = message.timestamp or datetime.now()
+        verify_timestamp = message.timestamp or datetime.now((UTC))
         payload = {
             "id": message.id,
             "sender_repo": message.sender_repo,
@@ -338,7 +338,7 @@ class RepositoryMessengerManager:
             content = {
                 "repo_path": repo_path,
                 "changes": changes,
-                "timestamp": datetime.now().isoformat(),
+                "timestamp": datetime.now((UTC)).isoformat(),
                 "change_count": len(changes),
             }
 
@@ -367,7 +367,7 @@ class RepositoryMessengerManager:
                 "workflow_id": workflow_id,
                 "status": status,
                 "repo_path": repo_path,
-                "timestamp": datetime.now().isoformat(),
+                "timestamp": datetime.now((UTC)).isoformat(),
             }
 
             # Send status update to target repositories
@@ -410,7 +410,7 @@ class RepositoryMessengerManager:
                 "alert_type": alert_type,
                 "description": description,
                 "severity": severity,
-                "timestamp": datetime.now().isoformat(),
+                "timestamp": datetime.now((UTC)).isoformat(),
             }
 
             # Broadcast quality alert

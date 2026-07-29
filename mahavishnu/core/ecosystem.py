@@ -8,7 +8,7 @@ This module provides utilities to:
 - Manage audit timestamps
 """
 
-from datetime import date
+from datetime import UTC, date, datetime
 from pathlib import Path
 from typing import Any
 
@@ -346,7 +346,7 @@ class EcosystemLoader:
         except ValueError:
             warnings.append(f"ecosystem last_updated is invalid: {self.config.last_updated!r}")
         else:
-            age_days = (date.today() - updated).days
+            age_days = (datetime.now(UTC).date() - updated).days
             if age_days > 30:
                 warnings.append(f"ecosystem last_updated is {age_days} days old; refresh metadata")
 

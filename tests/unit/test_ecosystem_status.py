@@ -1,6 +1,6 @@
 """Tests for canonical status normalization."""
 
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, UTC
 from types import SimpleNamespace
 
 import pytest
@@ -156,7 +156,7 @@ class TestEcosystemStatusReport:
     def test_default_report(self):
         report = EcosystemStatusReport(
             status=CanonicalStatus.OK,
-            generated_at=datetime.now(),
+            generated_at=datetime.now((UTC)),
             duration_ms=10.0,
         )
         assert report.schema_version == "1.0"
@@ -168,7 +168,7 @@ class TestEcosystemStatusReport:
     def test_report_with_services(self):
         report = EcosystemStatusReport(
             status=CanonicalStatus.DEGRADED,
-            generated_at=datetime.now(),
+            generated_at=datetime.now((UTC)),
             duration_ms=50.0,
             services={
                 "session_buddy": ServiceStatus(status=CanonicalStatus.OK, required=True),
@@ -247,8 +247,8 @@ class TestEcosystemStatusService:
         """Services with old last_check should be flagged as UNKNOWN."""
         service = EcosystemStatusService(staleness_threshold_seconds=60.0)
 
-        stale_time = datetime.now() - timedelta(seconds=120)
-        fresh_time = datetime.now() - timedelta(seconds=10)
+        stale_time = datetime.now((UTC)) - timedelta(seconds=120)
+        fresh_time = datetime.now((UTC)) - timedelta(seconds=10)
 
         services = {
             "stale_service": ServiceStatus(
@@ -435,7 +435,7 @@ class TestEcosystemStatusServiceCollectionBranches:
                 self.severity = severity
                 self.type = type_
                 self.description = description
-                self.timestamp = datetime.now()
+                self.timestamp = datetime.now((UTC))
 
         class AlertProvider:
             def get_active_alerts_sync(self):

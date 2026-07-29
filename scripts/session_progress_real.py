@@ -30,7 +30,7 @@ Date: 2025-11-20
 Version: 6.0 (reverted to billable-only, tuned budget)
 """
 
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, UTC
 import json
 from pathlib import Path
 import subprocess
@@ -106,7 +106,7 @@ def load_cache() -> tuple[dict | None, float]:
         if not block:
             return None, float("inf")
 
-        age = datetime.now().timestamp() - cached_at
+        age = datetime.now((UTC)).timestamp() - cached_at
         return block, age
 
     except (json.JSONDecodeError, OSError, KeyError):
@@ -116,7 +116,7 @@ def load_cache() -> tuple[dict | None, float]:
 def save_cache(block: dict) -> None:
     """Save block data to cache with current timestamp."""
     try:
-        cache = {"timestamp": datetime.now().timestamp(), "block": block}
+        cache = {"timestamp": datetime.now((UTC)).timestamp(), "block": block}
         with open(CACHE_FILE, "w") as f:
             json.dump(cache, f)
     except OSError:

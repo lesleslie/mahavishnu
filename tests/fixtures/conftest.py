@@ -611,9 +611,9 @@ def sample_timestamp():
     Returns:
         ISO format timestamp string.
     """
-    from datetime import datetime
+    from datetime import datetime, UTC
 
-    return datetime.now().isoformat()
+    return datetime.now((UTC)).isoformat()
 
 
 # Environment variable fixtures

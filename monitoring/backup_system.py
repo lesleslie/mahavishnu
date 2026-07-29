@@ -12,7 +12,7 @@ This module provides:
 from __future__ import annotations
 
 import asyncio
-from datetime import datetime
+from datetime import datetime, UTC
 from enum import Enum
 import hashlib
 import json
@@ -172,8 +172,8 @@ class EcosystemBackupManager:
         Raises:
             Exception: If backup fails
         """
-        backup_id = f"backup_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
-        backup_start = datetime.now()
+        backup_id = f"backup_{datetime.now((UTC)).strftime('%Y%m%d_%H%M%S')}"
+        backup_start = datetime.now((UTC))
 
         logger.info(f"Starting {backup_type.value} backup: {backup_id}")
 
@@ -231,14 +231,14 @@ class EcosystemBackupManager:
                 await self._verify_backup(archive_path, metadata.checksum)
 
             # Calculate backup duration
-            backup_duration = (datetime.now() - backup_start).total_seconds()
+            backup_duration = (datetime.now((UTC)) - backup_start).total_seconds()
             metadata.backup_duration_seconds = backup_duration
 
             # Update statistics
             self.stats["total_backups"] += 1
             self.stats["successful_backups"] += 1
             self.stats["total_size_bytes"] += metadata.size_bytes
-            self.stats["last_backup_time"] = datetime.now().isoformat()
+            self.stats["last_backup_time"] = datetime.now((UTC)).isoformat()
 
             # Clean up old backups based on retention policy
             await self._cleanup_old_backups()
@@ -422,7 +422,7 @@ class EcosystemBackupManager:
                 json.dump(
                     {
                         "workflows": [],
-                        "timestamp": datetime.now().isoformat(),
+                        "timestamp": datetime.now((UTC)).isoformat(),
                         "note": "Workflow state export to be implemented",
                     },
                     f,
@@ -544,7 +544,7 @@ class EcosystemBackupManager:
                             metadata = json.load(f)
                             logger.info(f"Verified backup metadata: {metadata.get('backup_id')}")
 
-            self.stats["last_verification_time"] = datetime.now().isoformat()
+            self.stats["last_verification_time"] = datetime.now((UTC)).isoformat()
             return True
 
         except Exception as e:
@@ -572,7 +572,7 @@ class EcosystemBackupManager:
             backup_files.sort(key=lambda x: x.stat().st_mtime, reverse=True)
 
             # Group by retention tier
-            now = datetime.now()
+            now = datetime.now((UTC))
             tiered_backups: dict[RetentionTier, list[tuple[Path, datetime]]] = {
                 RetentionTier.DAILY: [],
                 RetentionTier.WEEKLY: [],
@@ -585,7 +585,7 @@ class EcosystemBackupManager:
                     date_str = (
                         backup_file.stem.split("_", 1)[1] + "_" + backup_file.stem.split("_", 2)[2]
                     )
-                    backup_date = datetime.strptime(date_str, "%Y%m%d_%H%M%S")
+                    backup_date = datetime.strptime(date_str, "%Y%m%d_%H%M%S").replace(tzinfo=UTC)
 
                     days_old = (now - backup_date).days
 
@@ -872,7 +872,7 @@ class EcosystemBackupManager:
         total_backups = len(backups)
 
         # Calculate backup age distribution
-        now = datetime.now()
+        now = datetime.now((UTC))
         age_distribution = {
             "< 1 day": 0,
             "1-7 days": 0,

@@ -42,7 +42,7 @@ def test_hypothesis_dataclass_carries_all_fields() -> None:
     """The dataclass must store every required field."""
     from mahavishnu.core.precommitment import Hypothesis
 
-    locked = datetime(2026, 6, 22, 10, 0, 0)
+    locked = datetime(2026, 6, 22, 10, 0, 0, tzinfo=UTC)
     h = Hypothesis(
         claim="Will improve throughput by 10%",
         falsification_criteria=("throughput drops", "latency spikes"),
@@ -66,7 +66,7 @@ def test_hypothesis_dataclass_is_frozen() -> None:
         falsification_criteria=("a",),
         success_criteria=("b",),
         confidence=50,
-        locked_at=datetime(2026, 1, 1),
+        locked_at=datetime(2026, 1, 1, tzinfo=UTC),
     )
     with pytest.raises(dataclasses.FrozenInstanceError):
         h.claim = "y"  # type: ignore[misc]
@@ -82,7 +82,7 @@ def test_hypothesis_confidence_must_be_in_range() -> None:
             falsification_criteria=("a",),
             success_criteria=("b",),
             confidence=150,
-            locked_at=datetime(2026, 1, 1),
+            locked_at=datetime(2026, 1, 1, tzinfo=UTC),
         )
 
 
@@ -100,7 +100,7 @@ def test_compute_signature_is_sha256_hex() -> None:
         falsification_criteria=("a", "b"),
         success_criteria=("c", "d"),
         confidence=50,
-        locked_at=datetime(2026, 6, 22, 10, 0, 0),
+        locked_at=datetime(2026, 6, 22, 10, 0, 0, tzinfo=UTC),
     )
     sig = compute_signature(h)
     assert isinstance(sig, str)
@@ -112,7 +112,7 @@ def test_compute_signature_is_stable_across_calls() -> None:
     """Same hypothesis inputs must produce the same signature."""
     from mahavishnu.core.precommitment import Hypothesis, compute_signature
 
-    locked = datetime(2026, 6, 22, 10, 0, 0)
+    locked = datetime(2026, 6, 22, 10, 0, 0, tzinfo=UTC)
     h = Hypothesis(
         claim="stable",
         falsification_criteria=("a",),
@@ -127,7 +127,7 @@ def test_compute_signature_differs_when_claim_changes() -> None:
     """Changing any field must change the signature."""
     from mahavishnu.core.precommitment import Hypothesis, compute_signature
 
-    locked = datetime(2026, 6, 22, 10, 0, 0)
+    locked = datetime(2026, 6, 22, 10, 0, 0, tzinfo=UTC)
     base = Hypothesis(
         claim="a",
         falsification_criteria=("f",),
@@ -181,7 +181,7 @@ def test_hypothesis_lock_lock_returns_lock_result() -> None:
         falsification_criteria=("f",),
         success_criteria=("s",),
         confidence=50,
-        locked_at=datetime(2026, 6, 22),
+        locked_at=datetime(2026, 6, 22, tzinfo=UTC),
     )
     store = InMemoryLockStoreProbe()
     lock = HypothesisLock(store=store)
@@ -205,7 +205,7 @@ def test_lock_result_is_immutable() -> None:
         falsification_criteria=("f",),
         success_criteria=("s",),
         confidence=50,
-        locked_at=datetime(2026, 6, 22),
+        locked_at=datetime(2026, 6, 22, tzinfo=UTC),
     )
     lock = HypothesisLock(store=InMemoryLockStoreProbe())
     result = lock.lock(h)
@@ -227,7 +227,7 @@ def test_lock_persists_to_store() -> None:
         falsification_criteria=("f",),
         success_criteria=("s",),
         confidence=50,
-        locked_at=datetime(2026, 6, 22),
+        locked_at=datetime(2026, 6, 22, tzinfo=UTC),
     )
     result = lock.lock(h)
     fetched = store.get(result.lock_id)
@@ -253,7 +253,7 @@ def test_verify_lock_returns_true_for_unmodified() -> None:
         falsification_criteria=("f",),
         success_criteria=("s",),
         confidence=50,
-        locked_at=datetime(2026, 6, 22),
+        locked_at=datetime(2026, 6, 22, tzinfo=UTC),
     )
     store = InMemoryLockStoreProbe()
     lock = HypothesisLock(store=store)
@@ -274,7 +274,7 @@ def test_verify_lock_raises_signature_mismatch_on_tamper() -> None:
         falsification_criteria=("f",),
         success_criteria=("s",),
         confidence=50,
-        locked_at=datetime(2026, 6, 22),
+        locked_at=datetime(2026, 6, 22, tzinfo=UTC),
     )
     store = InMemoryLockStoreProbe()
     lock = HypothesisLock(store=store)
@@ -312,7 +312,7 @@ def test_check_post_hoc_passes_when_claim_unchanged() -> None:
         falsification_criteria=("down",),
         success_criteria=("up",),
         confidence=50,
-        locked_at=datetime(2026, 6, 22),
+        locked_at=datetime(2026, 6, 22, tzinfo=UTC),
     )
     lock = HypothesisLock(store=InMemoryLockStoreProbe())
     result = lock.lock(h)
@@ -333,7 +333,7 @@ def test_check_post_hoc_raises_on_claim_drift() -> None:
         falsification_criteria=("down",),
         success_criteria=("up",),
         confidence=50,
-        locked_at=datetime(2026, 6, 22),
+        locked_at=datetime(2026, 6, 22, tzinfo=UTC),
     )
     lock = HypothesisLock(store=InMemoryLockStoreProbe())
     result = lock.lock(h)
@@ -377,7 +377,7 @@ def test_in_memory_lock_store_rejects_duplicate_lock_id() -> None:
         falsification_criteria=("f",),
         success_criteria=("s",),
         confidence=50,
-        locked_at=datetime(2026, 6, 22),
+        locked_at=datetime(2026, 6, 22, tzinfo=UTC),
     )
     first = LockResult(lock_id="L-1", signature="x" * 64, hypothesis=h)
     store.put(first)
@@ -407,7 +407,7 @@ def test_in_memory_lock_store_iteration_order_is_insertion() -> None:
         falsification_criteria=("f",),
         success_criteria=("s",),
         confidence=50,
-        locked_at=datetime(2026, 6, 22),
+        locked_at=datetime(2026, 6, 22, tzinfo=UTC),
     )
     for i in range(3):
         store.put(LockResult(lock_id=f"L-{i}", signature=str(i) * 64, hypothesis=h))
@@ -429,7 +429,7 @@ def test_lock_survives_process_restart(tmp_path: object) -> None:
     invocation, so ``verify_lock`` and ``check_post_hoc`` never saw prior
     locks and the security control silently failed open).
     """
-    from datetime import datetime
+    from datetime import datetime, UTC
 
     from mahavishnu.core.precommitment import (
         Hypothesis,
@@ -473,7 +473,7 @@ def test_json_file_lock_store_persists_signature(tmp_path: object) -> None:
         falsification_criteria=("f",),
         success_criteria=("s",),
         confidence=60,
-        locked_at=datetime(2026, 6, 27),
+        locked_at=datetime(2026, 6, 27, tzinfo=UTC),
     )
 
     store = JsonFileLockStore(path=store_path)
@@ -507,7 +507,7 @@ def test_json_file_lock_store_rejects_duplicate_lock_id(tmp_path: object) -> Non
         falsification_criteria=("f",),
         success_criteria=("s",),
         confidence=50,
-        locked_at=datetime(2026, 6, 27),
+        locked_at=datetime(2026, 6, 27, tzinfo=UTC),
     )
     lock = HypothesisLock(store=JsonFileLockStore(path=store_path))
     result = lock.lock(h)

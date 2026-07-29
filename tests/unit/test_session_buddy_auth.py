@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, UTC
 import hashlib
 import hmac as hmac_module
 import json
@@ -463,7 +463,7 @@ class TestVerifyAuthenticatedMessage:
             content={},
         )
         # Set timestamp to 10 minutes ago (beyond 5-minute window)
-        old_ts = (datetime.now() - timedelta(minutes=10)).isoformat()
+        old_ts = (datetime.now((UTC)) - timedelta(minutes=10)).isoformat()
         auth_msg["message"]["timestamp"] = old_ts
         is_valid, payload = message_authenticator.verify_authenticated_message(auth_msg)
         assert is_valid is False
@@ -478,7 +478,7 @@ class TestVerifyAuthenticatedMessage:
             content={},
         )
         # Set timestamp to 4m59s ago (just under 5-minute window)
-        boundary_ts = (datetime.now() - timedelta(minutes=4, seconds=59)).isoformat()
+        boundary_ts = (datetime.now((UTC)) - timedelta(minutes=4, seconds=59)).isoformat()
         auth_msg["message"]["timestamp"] = boundary_ts
         # Re-sign after modifying the message
         auth_msg["signature"] = message_authenticator.authenticator.sign_message(
@@ -496,7 +496,7 @@ class TestVerifyAuthenticatedMessage:
             content={},
         )
         # Just past the boundary
-        old_ts = (datetime.now() - timedelta(minutes=5, seconds=1)).isoformat()
+        old_ts = (datetime.now((UTC)) - timedelta(minutes=5, seconds=1)).isoformat()
         auth_msg["message"]["timestamp"] = old_ts
         is_valid, payload = message_authenticator.verify_authenticated_message(auth_msg)
         assert is_valid is False
@@ -522,7 +522,7 @@ class TestVerifyAuthenticatedMessage:
         # Use a Z suffix timestamp (UTC) - source replaces Z with +00:00
         # but datetime.now() is naive, so this triggers the except path
         # Verify it returns False gracefully rather than crashing
-        auth_msg["message"]["timestamp"] = datetime.now().isoformat() + "Z"
+        auth_msg["message"]["timestamp"] = datetime.now((UTC)).isoformat() + "Z"
         auth_msg["signature"] = message_authenticator.authenticator.sign_message(
             auth_msg["message"]
         )
@@ -852,7 +852,7 @@ class TestReceiveAuthenticatedMessage:
             content={},
         )
         # Set timestamp to 10 minutes ago
-        old_ts = (datetime.now() - timedelta(minutes=10)).isoformat()
+        old_ts = (datetime.now((UTC)) - timedelta(minutes=10)).isoformat()
         auth_msg["message"]["timestamp"] = old_ts
         # Re-sign with the old timestamp
         auth_msg["signature"] = authenticated_client.authenticator.authenticator.sign_message(

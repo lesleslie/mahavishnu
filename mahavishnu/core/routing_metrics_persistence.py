@@ -200,8 +200,8 @@ class RoutingMetricsPersistence:
                             r.execution_id,
                             r.adapter.value,
                             r.task_type.value,
-                            datetime.fromtimestamp(r.start_timestamp, UTC),
-                            datetime.fromtimestamp(r.end_timestamp, UTC)
+                            datetime.fromtimestamp(r.start_timestamp, UTC, tz=UTC),
+                            datetime.fromtimestamp(r.end_timestamp, UTC, tz=UTC)
                             if r.end_timestamp
                             else None,
                             r.status.value,
@@ -347,7 +347,7 @@ class RoutingMetricsPersistence:
                         updated_at = NOW()
                     """,
                     stats.adapter.value,
-                    datetime.strptime(stats.date, "%Y-%m-%d").date()
+                    datetime.strptime(stats.date, "%Y-%m-%d").replace(tzinfo=UTC).date()
                     if isinstance(stats.date, str)
                     else stats.date,
                     Decimal(str(stats.success_rate)),
@@ -466,7 +466,7 @@ class RoutingMetricsPersistence:
                             d.reasoning,
                             dict(d.adapter_scores.items()),
                             d.constraints,
-                            datetime.fromtimestamp(d.timestamp, UTC),
+                            datetime.fromtimestamp(d.timestamp, UTC, tz=UTC),
                         )
                         for d in decisions
                     ],

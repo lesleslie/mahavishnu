@@ -1,6 +1,6 @@
 """Unit tests for TerminalSession."""
 
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, UTC
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
@@ -203,7 +203,7 @@ class TestTerminalSessionEdgeCases:
 
     def test_age_with_known_created_at(self):
         """Test age calculation with a known created_at time."""
-        old_time = datetime.now() - timedelta(hours=1)
+        old_time = datetime.now((UTC)) - timedelta(hours=1)
         adapter = MagicMock()
         session = TerminalSession("old_session", "echo old", adapter)
         session.created_at = old_time

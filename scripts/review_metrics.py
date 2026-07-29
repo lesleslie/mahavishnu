@@ -4,7 +4,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, UTC
 from pathlib import Path
 import re
 
@@ -53,7 +53,7 @@ def count_lines(path: Path) -> int:
 def build_metrics() -> Metrics:
     adapter_lines = [(str(p.relative_to(ROOT)), count_lines(p)) for p in ADAPTERS]
     todo_markers = count_todo_markers(ROOT / "mahavishnu")
-    generated_at = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    generated_at = datetime.now((UTC)).strftime("%Y-%m-%d %H:%M:%S")
     return Metrics(
         generated_at=generated_at,
         todo_markers=todo_markers,

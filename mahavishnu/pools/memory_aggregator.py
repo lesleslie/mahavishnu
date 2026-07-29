@@ -15,7 +15,7 @@ from __future__ import annotations
 import asyncio
 from collections import deque
 import contextlib
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, UTC
 import logging
 import time
 from typing import TYPE_CHECKING, Any
@@ -536,7 +536,7 @@ class MemoryAggregator:
 
         if cache_key in self._search_cache:
             cached_entry = self._search_cache[cache_key]
-            age = datetime.now() - cached_entry["cached_at"]
+            age = datetime.now((UTC)) - cached_entry["cached_at"]
 
             if age < self.CACHE_TTL:
                 logger.debug(f"Cache HIT for query: {query} (age: {age.total_seconds():.1f}s)")
@@ -576,7 +576,7 @@ class MemoryAggregator:
                 # Store in cache
                 self._search_cache[cache_key] = {
                     "results": conversations,
-                    "cached_at": datetime.now(),
+                    "cached_at": datetime.now((UTC)),
                 }
 
                 return conversations  # type: ignore[no-any-return]
@@ -613,7 +613,7 @@ class MemoryAggregator:
             - ttl_minutes: Cache TTL in minutes
         """
         total = len(self._search_cache)
-        now = datetime.now()
+        now = datetime.now((UTC))
 
         active = sum(
             1

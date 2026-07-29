@@ -6,7 +6,7 @@ handling, and error responses.
 """
 
 import asyncio
-from datetime import datetime
+from datetime import datetime, UTC
 from unittest.mock import AsyncMock, MagicMock, patch
 
 from mcp_common.fastmcp import FastMCP
@@ -665,7 +665,7 @@ class TestToolExecutionSuccess:
             return_value={"cpu": 50, "memory": 70}
         )
         server.app.observability.get_logs = MagicMock(
-            return_value=[MagicMock(timestamp=datetime.now())]
+            return_value=[MagicMock(timestamp=datetime.now((UTC)))]
         )
 
         result = await server.server.call_tool("get_observability_metrics", {})

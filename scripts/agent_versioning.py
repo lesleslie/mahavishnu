@@ -12,7 +12,7 @@ Usage:
 """
 
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import datetime, UTC
 from pathlib import Path
 import re
 
@@ -82,7 +82,7 @@ class AgentVersionManager:
         # Add new changelog entry
         new_entry = {
             "version": version,
-            "date": datetime.now().strftime("%Y-%m-%d"),
+            "date": datetime.now((UTC)).strftime("%Y-%m-%d"),
             "changes": changes,
         }
 

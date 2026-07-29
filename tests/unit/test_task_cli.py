@@ -7,7 +7,7 @@ and register_shorthands functionality. All external dependencies are mocked.
 
 from __future__ import annotations
 
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, UTC
 from unittest.mock import AsyncMock, MagicMock, patch
 
 from click.testing import CliRunner
@@ -153,43 +153,43 @@ class TestParseDueDate:
     def test_parse_tomorrow(self) -> None:
         result = parse_due_date("tomorrow")
         assert result is not None
-        expected = (datetime.now() + timedelta(days=1)).date()
+        expected = (datetime.now((UTC)) + timedelta(days=1)).date()
         assert result.date() == expected
 
     def test_parse_next_week(self) -> None:
         result = parse_due_date("next week")
         assert result is not None
-        expected = (datetime.now() + timedelta(weeks=1)).date()
+        expected = (datetime.now((UTC)) + timedelta(weeks=1)).date()
         assert result.date() == expected
 
     def test_parse_next_month(self) -> None:
         result = parse_due_date("next month")
         assert result is not None
-        expected = (datetime.now() + timedelta(days=30)).date()
+        expected = (datetime.now((UTC)) + timedelta(days=30)).date()
         assert result.date() == expected
 
     def test_parse_in_5_days(self) -> None:
         result = parse_due_date("in 5 days")
         assert result is not None
-        expected = (datetime.now() + timedelta(days=5)).date()
+        expected = (datetime.now((UTC)) + timedelta(days=5)).date()
         assert result.date() == expected
 
     def test_parse_in_1_day(self) -> None:
         result = parse_due_date("in 1 day")
         assert result is not None
-        expected = (datetime.now() + timedelta(days=1)).date()
+        expected = (datetime.now((UTC)) + timedelta(days=1)).date()
         assert result.date() == expected
 
     def test_parse_in_2_weeks(self) -> None:
         result = parse_due_date("in 2 weeks")
         assert result is not None
-        expected = (datetime.now() + timedelta(weeks=2)).date()
+        expected = (datetime.now((UTC)) + timedelta(weeks=2)).date()
         assert result.date() == expected
 
     def test_parse_in_1_week(self) -> None:
         result = parse_due_date("in 1 week")
         assert result is not None
-        expected = (datetime.now() + timedelta(weeks=1)).date()
+        expected = (datetime.now((UTC)) + timedelta(weeks=1)).date()
         assert result.date() == expected
 
     def test_parse_iso_date(self) -> None:
@@ -222,7 +222,7 @@ class TestParseDueDate:
     def test_parse_case_insensitive_tomorrow(self) -> None:
         result = parse_due_date("Tomorrow")
         assert result is not None
-        expected = (datetime.now() + timedelta(days=1)).date()
+        expected = (datetime.now((UTC)) + timedelta(days=1)).date()
         assert result.date() == expected
 
     def test_parse_in_n_without_unit(self) -> None:

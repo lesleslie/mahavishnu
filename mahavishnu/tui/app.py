@@ -21,7 +21,7 @@ Launch with: mahavishnu dashboard
 from __future__ import annotations
 
 import contextlib
-from datetime import datetime
+from datetime import datetime, UTC
 import logging
 from pathlib import Path
 import subprocess
@@ -233,7 +233,7 @@ async def fetch_skill_drafts() -> list[dict[str, Any]]:
                         "version": getattr(record, "version", "-"),
                         "state": getattr(record, "state", "active"),
                         "proposed_by": getattr(activation, "activated_by", "ecosystem"),
-                        "created_at": created_at or datetime.now(),
+                        "created_at": created_at or datetime.now((UTC)),
                         "description": description,
                     }
                 )
@@ -257,7 +257,7 @@ async def fetch_skill_drafts() -> list[dict[str, Any]]:
             m = re.search(r"^description:\s*(.+)$", text, re.MULTILINE)
             if m:
                 description = m.group(1).strip()
-            mtime = datetime.fromtimestamp(skill_file.stat().st_mtime)
+            mtime = datetime.fromtimestamp(skill_file.stat().st_mtime, tz=UTC)
             drafts.append(
                 {
                     "skill_id": name,

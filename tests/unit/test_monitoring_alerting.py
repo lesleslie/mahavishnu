@@ -115,7 +115,7 @@ class TestAlert:
 
     def test_acknowledge_sets_fields(self):
         alert = Alert(title="test")
-        before = datetime.now()
+        before = datetime.now((UTC))
         alert.acknowledge("alice")
         assert alert.acknowledged is True
         assert alert.acknowledged_by == "alice"

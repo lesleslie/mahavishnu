@@ -52,6 +52,7 @@ from __future__ import annotations
 
 import argparse
 import datetime
+from datetime import UTC
 import re
 import sys
 import tempfile
@@ -903,7 +904,7 @@ def main(argv: list[str] | None = None) -> int:
         entries_by_store[store] = store_entries
         total_with_frontmatter += len(store_entries)
 
-    generated_at = datetime.date.today().isoformat()
+    generated_at = datetime.datetime.now(UTC).date().isoformat()
     rendered = _render_index(
         repo_root,
         stores,

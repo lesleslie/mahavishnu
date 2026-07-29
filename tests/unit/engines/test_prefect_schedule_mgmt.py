@@ -8,7 +8,7 @@ These tests cover the Phase 3 features:
 Tests use mocked Prefect clients to avoid requiring a real Prefect server.
 """
 
-from datetime import datetime
+from datetime import datetime, UTC
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -81,8 +81,8 @@ def mock_deployment():
     deployment.tags = ["test", "unit"]
     deployment.description = "Test deployment"
     deployment.version = "1.0.0"
-    deployment.created = datetime(2024, 1, 1, 12, 0, 0)
-    deployment.updated = datetime(2024, 1, 2, 12, 0, 0)
+    deployment.created = datetime(2024, 1, 1, 12, 0, 0, tzinfo=UTC)
+    deployment.updated = datetime(2024, 1, 2, 12, 0, 0, tzinfo=UTC)
     return deployment
 
 

@@ -21,7 +21,7 @@ Usage:
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, UTC
 from logging import getLogger
 import time
 from typing import TYPE_CHECKING, Any, TypeVar
@@ -217,7 +217,7 @@ class AutomationManager:
     def _record_operation(self, success: bool, dry_run: bool = False) -> None:
         """Record operation statistics."""
         self._stats.operations_total += 1
-        self._stats.last_operation = datetime.now()
+        self._stats.last_operation = datetime.now((UTC))
 
         if dry_run:
             self._stats.operations_dry_run += 1

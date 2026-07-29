@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import asyncio
-from datetime import datetime
+from datetime import datetime, UTC
 from logging import getLogger
 import pathlib
 from typing import TYPE_CHECKING, Any
@@ -137,7 +137,7 @@ class TerminalManager:
             {
                 "from": old_adapter_name,
                 "to": new_adapter_name,
-                "timestamp": datetime.now().isoformat(),
+                "timestamp": datetime.now((UTC)).isoformat(),
                 "migrate_sessions": migrate_sessions,
             }
         )

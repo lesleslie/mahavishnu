@@ -7,7 +7,7 @@ of external dependencies.
 
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import datetime, UTC
 import os
 from pathlib import Path
 import tempfile
@@ -851,8 +851,8 @@ class TestCoordinationManagerNormalization:
         issue = _sample_issue_dict()
         issue.pop("created")
         issue.pop("updated")
-        issue["created_at"] = datetime(2026, 1, 1)
-        issue["updated_at"] = datetime(2026, 1, 2)
+        issue["created_at"] = datetime(2026, 1, 1, tzinfo=UTC)
+        issue["updated_at"] = datetime(2026, 1, 2, tzinfo=UTC)
         data = _make_ecosystem_yaml(issues=[issue])
         path = _write_ecosystem(data)
         try:
@@ -867,8 +867,8 @@ class TestCoordinationManagerNormalization:
         todo = _sample_todo_dict()
         todo.pop("created")
         todo.pop("updated")
-        todo["created_at"] = datetime(2026, 1, 3)
-        todo["completed_at"] = datetime(2026, 1, 4)
+        todo["created_at"] = datetime(2026, 1, 3, tzinfo=UTC)
+        todo["completed_at"] = datetime(2026, 1, 4, tzinfo=UTC)
         todo.pop("repo")
         todo["pool"] = "akosha"
         data = _make_ecosystem_yaml(todos=[todo])
@@ -1076,8 +1076,8 @@ class TestCoordinationManagerNormalization:
 
     def test_stringify_datetime(self, ecosystem_path):
         issue = _sample_issue_dict(
-            created=datetime(2026, 1, 15),
-            updated=datetime(2026, 1, 15),
+            created=datetime(2026, 1, 15, tzinfo=UTC),
+            updated=datetime(2026, 1, 15, tzinfo=UTC),
         )
         data = _make_ecosystem_yaml(issues=[issue])
         path = _write_ecosystem(data)

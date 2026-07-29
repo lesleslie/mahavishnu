@@ -7,7 +7,7 @@ Covers the foundational data classes for desktop automation:
 
 from __future__ import annotations
 
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, UTC
 from unittest.mock import patch
 
 import pytest
@@ -422,7 +422,7 @@ class TestAutomationContext:
 
     @pytest.mark.unit
     def test_record_operation_sets_timestamp(self, sample_context):
-        before = datetime.now() - timedelta(seconds=1)
+        before = datetime.now((UTC)) - timedelta(seconds=1)
         sample_context.record_operation()
         assert sample_context.last_operation is not None
         assert sample_context.last_operation >= before
@@ -431,7 +431,7 @@ class TestAutomationContext:
     @patch("mahavishnu.automation.base.datetime")
     def test_record_operation_uses_now(self, mock_dt, sample_context):
         # Fix the return value of datetime.now() for deterministic check
-        fixed = datetime(2024, 1, 1, 12, 0, 0)
+        fixed = datetime(2024, 1, 1, 12, 0, 0, tzinfo=UTC)
         mock_dt.now.return_value = fixed
         sample_context.record_operation()
         assert sample_context.last_operation == fixed
