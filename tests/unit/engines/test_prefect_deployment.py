@@ -9,7 +9,7 @@ These tests cover the Phase 2 features:
 Tests use mocked Prefect clients to avoid requiring a real Prefect server.
 """
 
-from datetime import datetime
+from datetime import datetime, UTC
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -86,8 +86,8 @@ def mock_deployment():
     deployment.tags = ["test", "unit"]
     deployment.description = "Test deployment"
     deployment.version = "1.0.0"
-    deployment.created = datetime(2024, 1, 1, 12, 0, 0)
-    deployment.updated = datetime(2024, 1, 2, 12, 0, 0)
+    deployment.created = datetime(2024, 1, 1, 12, 0, 0, tzinfo=UTC)
+    deployment.updated = datetime(2024, 1, 2, 12, 0, 0, tzinfo=UTC)
     return deployment
 
 
@@ -107,10 +107,10 @@ def mock_flow_run():
 
     flow_run.parameters = {"env": "test"}
     flow_run.tags = ["manual"]
-    flow_run.created = datetime(2024, 1, 1, 12, 0, 0)
-    flow_run.updated = datetime(2024, 1, 1, 13, 0, 0)
-    flow_run.start_time = datetime(2024, 1, 1, 12, 1, 0)
-    flow_run.end_time = datetime(2024, 1, 1, 12, 30, 0)
+    flow_run.created = datetime(2024, 1, 1, 12, 0, 0, tzinfo=UTC)
+    flow_run.updated = datetime(2024, 1, 1, 13, 0, 0, tzinfo=UTC)
+    flow_run.start_time = datetime(2024, 1, 1, 12, 1, 0, tzinfo=UTC)
+    flow_run.end_time = datetime(2024, 1, 1, 12, 30, 0, tzinfo=UTC)
     flow_run.total_run_time = 1740.0  # 29 minutes
     flow_run.estimated_run_time = 1800.0
     flow_run.work_queue_name = "default"
@@ -126,7 +126,7 @@ def mock_work_pool():
     work_pool.description = "Test work pool"
     work_pool.is_paused = False
     work_pool.concurrency_limit = 10
-    work_pool.created = datetime(2024, 1, 1, 12, 0, 0)
+    work_pool.created = datetime(2024, 1, 1, 12, 0, 0, tzinfo=UTC)
     work_pool.updated = None
     return work_pool
 
@@ -175,7 +175,7 @@ class TestIntervalSchedule:
 
     def test_interval_with_anchor(self):
         """Test interval schedule with anchor date."""
-        anchor = datetime(2024, 1, 1, 0, 0, 0)
+        anchor = datetime(2024, 1, 1, 0, 0, 0, tzinfo=UTC)
         schedule = IntervalSchedule(
             interval_seconds=1800,
             anchor_date=anchor,
@@ -231,7 +231,7 @@ class TestScheduleConversion:
 
     def test_interval_with_anchor_conversion(self):
         """Test converting IntervalSchedule with anchor to Prefect format."""
-        anchor = datetime(2024, 1, 1, 0, 0, 0)
+        anchor = datetime(2024, 1, 1, 0, 0, 0, tzinfo=UTC)
         schedule = IntervalSchedule(interval_seconds=1800, anchor_date=anchor)
         result = schedule_to_prefect_dict(schedule)
         assert result["interval"] == 1800
@@ -265,7 +265,7 @@ class TestDeploymentResponse:
             schedule={"cron": "0 9 * * *"},
             parameters={"env": "test"},
             paused=False,
-            created_at=datetime.now(),
+            created_at=datetime.now((UTC)),
         )
         assert response.id == "dep-123"
         assert response.name == "test-deployment"
@@ -278,7 +278,7 @@ class TestDeploymentResponse:
             name="test",
             flow_name="flow",
             flow_id="flow-456",
-            created_at=datetime.now(),
+            created_at=datetime.now((UTC)),
         )
         assert response.parameters == {}
         assert response.tags == []
@@ -297,7 +297,7 @@ class TestFlowRunResponse:
             flow_id="flow-456",
             state_type="COMPLETED",
             state_name="Completed",
-            created_at=datetime.now(),
+            created_at=datetime.now((UTC)),
         )
         assert response.id == "run-123"
         assert response.deployment_id is None
@@ -311,7 +311,7 @@ class TestFlowRunResponse:
             deployment_id="dep-789",
             state_type="RUNNING",
             state_name="Running",
-            created_at=datetime.now(),
+            created_at=datetime.now((UTC)),
         )
         assert response.deployment_id == "dep-789"
 

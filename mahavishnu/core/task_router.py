@@ -231,9 +231,9 @@ class StateManager:
 
     @staticmethod
     def _now_iso() -> str:
-        from datetime import datetime
+        from datetime import datetime, UTC
 
-        return datetime.now().isoformat()
+        return datetime.now((UTC)).isoformat()
 
     def _default_record(self, workflow_id: str) -> dict[str, Any]:
         now = self._now_iso()

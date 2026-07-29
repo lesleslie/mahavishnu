@@ -4,7 +4,7 @@ Stores coordination events in Session-Buddy and Akosha for semantic search
 and analytics.
 """
 
-from datetime import datetime
+from datetime import datetime, UTC
 import logging
 from typing import Any, cast
 
@@ -141,7 +141,7 @@ class CoordinationMemory:
             "priority": issue.priority.value,
             "repos": issue.repos,
             "assignee": issue.assignee,
-            "timestamp": datetime.now().isoformat(),
+            "timestamp": datetime.now((UTC)).isoformat(),
         }
 
         if changes:
@@ -177,7 +177,7 @@ class CoordinationMemory:
             "priority": todo.priority.value,
             "assignee": todo.assignee,
             "estimated_hours": todo.estimated_hours,
-            "timestamp": datetime.now().isoformat(),
+            "timestamp": datetime.now((UTC)).isoformat(),
         }
 
         if changes:
@@ -215,7 +215,7 @@ class CoordinationMemory:
             "type": dependency.type.value,
             "version_constraint": dependency.version_constraint,
             "status": dependency.status.value,
-            "timestamp": datetime.now().isoformat(),
+            "timestamp": datetime.now((UTC)).isoformat(),
         }
 
         if validation_result:
@@ -250,7 +250,7 @@ class CoordinationMemory:
             "repos": plan.repos,
             "target": plan.target,
             "milestone_count": len(plan.milestones),
-            "timestamp": datetime.now().isoformat(),
+            "timestamp": datetime.now((UTC)).isoformat(),
         }
 
         if milestone:
@@ -679,7 +679,7 @@ class CoordinationManagerWithMemory:
         for todo in todos_data:
             if todo.get("id") == todo_id:
                 todo["status"] = "completed"
-                todo["updated"] = datetime.now().isoformat()
+                todo["updated"] = datetime.now((UTC)).isoformat()
                 self._coordination_mgr._coordination["todos"] = todos_data
                 self.save()
 

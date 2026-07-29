@@ -26,7 +26,7 @@ Usage:
 from __future__ import annotations
 
 import asyncio
-from datetime import datetime
+from datetime import datetime, UTC
 import logging
 import os
 import re
@@ -517,7 +517,7 @@ def parse_due_date(due: str) -> datetime | None:
     from datetime import timedelta
 
     due_lower = due.lower().strip()
-    now = datetime.now()
+    now = datetime.now((UTC))
 
     if due_lower == "today":
         return now.replace(hour=23, minute=59, second=59)

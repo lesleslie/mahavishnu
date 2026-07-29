@@ -4,7 +4,7 @@ Provides dataclasses for representing applications, windows, and UI elements.
 """
 
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import datetime, UTC
 from enum import StrEnum
 from typing import Any
 
@@ -239,5 +239,5 @@ class AutomationContext:
 
     def record_operation(self) -> None:
         """Record that an operation was performed."""
-        self.last_operation = datetime.now()
+        self.last_operation = datetime.now((UTC))
         self.operation_count += 1

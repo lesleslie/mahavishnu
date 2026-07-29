@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import asyncio
-from datetime import datetime
+from datetime import datetime, UTC
 from logging import getLogger
 from typing import TYPE_CHECKING
 import uuid
@@ -166,7 +166,7 @@ class TerminalGridManager:
 
         grid = GridSession(
             grid_id=grid_id,
-            created_at=datetime.now(),
+            created_at=datetime.now((UTC)),
             task_count=len(tasks),
         )
         self._grids[grid_id] = grid

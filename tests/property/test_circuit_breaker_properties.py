@@ -23,7 +23,7 @@ State Machine Invariants Tested:
 - Half-open state closes on success, opens on failure
 """
 
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, UTC
 
 from hypothesis import (
     HealthCheck,
@@ -141,7 +141,7 @@ class TestCircuitBreakerStateProperties:
         assert cb.state == CircuitState.OPEN
 
         # Simulate timeout elapsing by manipulating last_failure_time
-        cb.last_failure_time = datetime.now() - timedelta(seconds=timeout + 1)
+        cb.last_failure_time = datetime.now((UTC)) - timedelta(seconds=timeout + 1)
 
         # Property: Circuit should transition to HALF_OPEN after timeout
         allowed = cb.allow_request()
@@ -159,7 +159,7 @@ class TestCircuitBreakerStateProperties:
             cb.record_failure()
 
         # Transition to half-open
-        cb.last_failure_time = datetime.now() - timedelta(seconds=timeout + 1)
+        cb.last_failure_time = datetime.now((UTC)) - timedelta(seconds=timeout + 1)
         cb.allow_request()
         assert cb.state == CircuitState.HALF_OPEN
 
@@ -181,7 +181,7 @@ class TestCircuitBreakerStateProperties:
             cb.record_failure()
 
         # Transition to half-open
-        cb.last_failure_time = datetime.now() - timedelta(seconds=timeout + 1)
+        cb.last_failure_time = datetime.now((UTC)) - timedelta(seconds=timeout + 1)
         cb.allow_request()
         assert cb.state == CircuitState.HALF_OPEN
 
@@ -243,7 +243,7 @@ class TestCircuitBreakerStateProperties:
             cb.record_failure()
 
         # Transition to half-open
-        cb.last_failure_time = datetime.now() - timedelta(seconds=timeout + 1)
+        cb.last_failure_time = datetime.now((UTC)) - timedelta(seconds=timeout + 1)
         cb.allow_request()
         assert cb.state == CircuitState.HALF_OPEN
 
@@ -280,9 +280,9 @@ class TestCircuitBreakerStateProperties:
         assert cb.last_failure_time is None
 
         # Record failure
-        before = datetime.now()
+        before = datetime.now((UTC))
         cb.record_failure()
-        after = datetime.now()
+        after = datetime.now((UTC))
 
         # Property: Last failure time should be set
         assert cb.last_failure_time is not None
@@ -373,7 +373,7 @@ class TestCircuitBreakerIntegrationProperties:
         assert cb.state == CircuitState.OPEN
 
         # Transition to half-open
-        cb.last_failure_time = datetime.now() - timedelta(seconds=timeout + 1)
+        cb.last_failure_time = datetime.now((UTC)) - timedelta(seconds=timeout + 1)
 
         # First call after timeout succeeds
         result = await cb.call(success_function)
@@ -404,7 +404,7 @@ class TestCircuitBreakerIntegrationProperties:
         assert cb.state == CircuitState.OPEN
 
         # Transition to half-open
-        cb.last_failure_time = datetime.now() - timedelta(seconds=timeout + 1)
+        cb.last_failure_time = datetime.now((UTC)) - timedelta(seconds=timeout + 1)
 
         # First call after timeout fails
         with pytest.raises(Exception):
@@ -450,7 +450,7 @@ class CircuitBreakerStateMachine(RuleBasedStateMachine):
     @rule()
     def advance_time_past_timeout(self):
         """Advance time past timeout."""
-        self.cb.last_failure_time = datetime.now() - timedelta(seconds=self.timeout + 1)
+        self.cb.last_failure_time = datetime.now((UTC)) - timedelta(seconds=self.timeout + 1)
 
     @invariant()
     def failure_count_never_negative(self):
@@ -474,7 +474,7 @@ class CircuitBreakerStateMachine(RuleBasedStateMachine):
         if self.cb.state == CircuitState.OPEN:
             # Check if timeout has elapsed
             if self.cb.last_failure_time:
-                time_since_failure = (datetime.now() - self.cb.last_failure_time).seconds
+                time_since_failure = (datetime.now((UTC)) - self.cb.last_failure_time).seconds
                 if time_since_failure <= self.timeout:
                     # Timeout hasn't elapsed, should block
                     assert self.cb.allow_request() is False
@@ -537,7 +537,7 @@ class TestCircuitBreakerEdgeCases:
             assert cb.state == CircuitState.OPEN
 
             # Transition to half-open
-            cb.last_failure_time = datetime.now() - timedelta(seconds=timeout + 1)
+            cb.last_failure_time = datetime.now((UTC)) - timedelta(seconds=timeout + 1)
             cb.allow_request()
             assert cb.state == CircuitState.HALF_OPEN
 
@@ -564,7 +564,7 @@ class TestCircuitBreakerEdgeCases:
         # For testing, we use short timeouts
         if timeout <= 59:
             # Set time past timeout
-            cb.last_failure_time = datetime.now() - timedelta(seconds=timeout + 1)
+            cb.last_failure_time = datetime.now((UTC)) - timedelta(seconds=timeout + 1)
 
             # Should transition to half-open
             allowed = cb.allow_request()

@@ -9,7 +9,7 @@ file isolates manager behavior with finer-grained edge cases.
 
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import datetime, UTC
 import os
 from pathlib import Path
 import subprocess
@@ -1195,8 +1195,8 @@ class TestCoordinationManagerNormalization:
 
     def test_normalize_datetime_objects_to_iso(self, ecosystem_path: str) -> None:
         issue = _issue()
-        issue["created"] = datetime(2026, 1, 1)
-        issue["updated"] = datetime(2026, 1, 2)
+        issue["created"] = datetime(2026, 1, 1, tzinfo=UTC)
+        issue["updated"] = datetime(2026, 1, 2, tzinfo=UTC)
         path = _write({"coordination": {"issues": [issue]}})
         try:
             cm = CoordinationManager(path)
@@ -1212,7 +1212,7 @@ class TestCoordinationManagerNormalization:
         assert manager._stringify_datetime(None) is None
 
     def test_stringify_datetime_converts_datetime(self, manager: CoordinationManager) -> None:
-        result = manager._stringify_datetime(datetime(2026, 5, 10, 12, 30, 0))
+        result = manager._stringify_datetime(datetime(2026, 5, 10, 12, 30, 0, tzinfo=UTC))
         assert isinstance(result, str)
         assert result.startswith("2026-05-10")
 

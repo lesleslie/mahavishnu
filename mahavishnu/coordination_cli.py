@@ -6,7 +6,7 @@ plans, todos, and dependencies.
 """
 
 import asyncio
-from datetime import datetime
+from datetime import datetime, UTC
 from uuid import UUID
 
 from rich.console import Console
@@ -169,7 +169,7 @@ def create_issue(
         raise typer.Exit(code=1)
 
     # Create issue
-    now = datetime.now().isoformat()
+    now = datetime.now((UTC)).isoformat()
     issue = CrossRepoIssue(
         id=issue_id,
         title=title,
@@ -358,7 +358,7 @@ def create_todo(
         raise typer.Exit(code=1)
 
     # Create todo
-    now = datetime.now().isoformat()
+    now = datetime.now((UTC)).isoformat()
     todo = CrossRepoTodo(
         id=todo_id,
         task=task,
@@ -400,7 +400,7 @@ def complete_todo(
     for todo in todos_data:
         if todo.get("id") == todo_id:
             todo["status"] = "completed"
-            todo["updated"] = datetime.now().isoformat()
+            todo["updated"] = datetime.now((UTC)).isoformat()
             mgr._coordination["todos"] = todos_data
             mgr.save()
             console.print(f"[green]Completed todo {todo_id}[/green]")

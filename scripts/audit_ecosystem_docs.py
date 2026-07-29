@@ -10,7 +10,7 @@ from __future__ import annotations
 import argparse
 from collections import Counter
 from dataclasses import asdict, dataclass
-from datetime import date
+from datetime import UTC, date, datetime
 import json
 from pathlib import Path
 import re
@@ -164,7 +164,7 @@ def audit_catalog_snapshot(snapshot: CatalogSnapshot, docs_path: Path) -> list[s
                 f"{snapshot.ecosystem_path} has invalid last_updated metadata: {snapshot.last_updated!r}"
             )
         else:
-            age_days = (date.today() - updated).days
+            age_days = (datetime.now(UTC).date() - updated).days
             if age_days > 30:
                 issues.append(
                     f"{snapshot.ecosystem_path} last_updated is {age_days} days old; refresh catalog metadata"

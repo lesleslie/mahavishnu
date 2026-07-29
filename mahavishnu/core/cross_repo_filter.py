@@ -405,16 +405,16 @@ class CrossRepoFilter:
                 }
                 return status_order.get(task.status, 99)
             elif sort_by == "created_at":
-                return task.created_at or datetime.min.replace(tzinfo=UTC)
+                return task.created_at or datetime.min.replace(tzinfo=UTC).replace(tzinfo=UTC)
             elif sort_by == "updated_at":
-                return task.updated_at or datetime.min.replace(tzinfo=UTC)
+                return task.updated_at or datetime.min.replace(tzinfo=UTC).replace(tzinfo=UTC)
             elif sort_by == "title":
                 return task.title.lower()
             elif sort_by == "repository":
                 return task.repository.lower()
             else:
                 # Default to created_at
-                return task.created_at or datetime.min.replace(tzinfo=UTC)
+                return task.created_at or datetime.min.replace(tzinfo=UTC).replace(tzinfo=UTC)
 
         return sorted(tasks, key=sort_key, reverse=reverse)
 

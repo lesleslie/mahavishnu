@@ -4,7 +4,7 @@
 This script benchmarks semantic search performance with and without HNSW index.
 """
 
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, UTC
 import hashlib
 import time
 import uuid
@@ -55,7 +55,7 @@ def main():
     if embedding_count < 1000:
         print(f"\nGenerating {1000 - embedding_count} additional test records...")
 
-        now = datetime.now()
+        now = datetime.now((UTC))
         task_types = ["code_review", "testing", "deployment", "documentation", "optimization"]
         descriptions = [
             "Review pull request for authentication module",

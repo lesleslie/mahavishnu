@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Quick test to add embeddings and benchmark HNSW."""
 
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, UTC
 import hashlib
 import time
 import uuid
@@ -16,7 +16,7 @@ conn.execute("LOAD vss")
 conn.execute("SET hnsw_enable_experimental_persistence=true")
 
 # Generate 1000 test records using executemany with proper formatting
-now = datetime.now()
+now = datetime.now((UTC))
 task_types = ["code_review", "testing", "deployment", "documentation", "optimization"]
 descriptions = [
     "Review pull request for authentication module",

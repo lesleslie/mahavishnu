@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Add test embeddings to learning database for HNSW benchmarking."""
 
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, UTC
 import hashlib
 import time
 import uuid
@@ -20,7 +20,7 @@ result = conn.execute("SELECT COUNT(*) FROM executions").fetchone()
 print(f"Current record count: {result[0]}")
 
 # Generate 1000 test records
-now = datetime.now()
+now = datetime.now((UTC))
 task_types = ["code_review", "testing", "deployment", "documentation", "optimization"]
 descriptions = [
     "Review pull request for authentication module",

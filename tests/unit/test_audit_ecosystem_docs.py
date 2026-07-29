@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import date
+from datetime import UTC, date, datetime
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
@@ -33,7 +33,7 @@ def test_build_audit_report_detects_catalog_count_drift(tmp_path: Path) -> None:
         tmp_path,
         {
             "version": "1.0",
-            "last_updated": date.today().isoformat(),
+            "last_updated": datetime.now(UTC).date().isoformat(),
             "maintainer": "les",
             "description": "test",
             "repos": [
@@ -87,7 +87,7 @@ def test_build_audit_report_flags_missing_health_probe_metadata(
         tmp_path,
         {
             "version": "1.0",
-            "last_updated": date.today().isoformat(),
+            "last_updated": datetime.now(UTC).date().isoformat(),
             "maintainer": "les",
             "description": "test",
             "repos": [{"name": "repo-a", "path": "/tmp/a", "role": "orchestrator"}],
@@ -137,7 +137,7 @@ def test_load_catalog_snapshot_counts_roles_and_repos(tmp_path: Path) -> None:
         tmp_path,
         {
             "version": "1.0",
-            "last_updated": date.today().isoformat(),
+            "last_updated": datetime.now(UTC).date().isoformat(),
             "maintainer": "les",
             "description": "test",
             "repos": [

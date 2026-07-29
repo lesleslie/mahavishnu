@@ -8,7 +8,7 @@ import time. Tests reach into the registered FastMCP server via
 
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import datetime, UTC
 from types import SimpleNamespace
 from typing import TYPE_CHECKING
 from unittest.mock import MagicMock, patch
@@ -77,7 +77,7 @@ def fake_manager():
 
 
 def _make_issue(issue_id: str = "ISSUE-001", **overrides) -> CrossRepoIssue:
-    now = datetime.now().isoformat()
+    now = datetime.now((UTC)).isoformat()
     defaults = {
         "id": issue_id,
         "title": "Test",
@@ -100,7 +100,7 @@ def _make_issue(issue_id: str = "ISSUE-001", **overrides) -> CrossRepoIssue:
 
 
 def _make_todo(todo_id: str = "TODO-001", **overrides) -> CrossRepoTodo:
-    now = datetime.now().isoformat()
+    now = datetime.now((UTC)).isoformat()
     defaults = {
         "id": todo_id,
         "task": "Test task",

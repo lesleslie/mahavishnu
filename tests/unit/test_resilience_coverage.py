@@ -363,17 +363,17 @@ class TestCircuitBreaker:
         cb = CircuitBreaker(timeout=60)
         cb.state = CircuitState.OPEN
         cb.last_failure_time = cb._now_mock = None
-        from datetime import datetime
+        from datetime import UTC, datetime
 
-        cb.last_failure_time = datetime.now()
+        cb.last_failure_time = datetime.now(UTC)
         assert cb.allow_request() is False
 
     def test_allow_request_open_after_timeout_transitions_to_half_open(self) -> None:
-        from datetime import datetime, timedelta
+        from datetime import UTC, datetime, timedelta
 
         cb = CircuitBreaker(timeout=0)
         cb.state = CircuitState.OPEN
-        cb.last_failure_time = datetime.now() - timedelta(seconds=10)
+        cb.last_failure_time = datetime.now(UTC) - timedelta(seconds=10)
         result = cb.allow_request()
         assert result is True
         assert cb.state == CircuitState.HALF_OPEN

@@ -47,7 +47,7 @@ def _make_message(
         message_type=message_type,
         content=content or {"k": "v"},
         priority=priority,
-        timestamp=datetime(2026, 6, 1, 12, 0, 0),
+        timestamp=datetime(2026, 6, 1, 12, 0, 0, tzinfo=UTC),
         correlation_id=correlation_id,
     )
 

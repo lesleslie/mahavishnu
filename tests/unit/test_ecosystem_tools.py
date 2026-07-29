@@ -1,6 +1,6 @@
 """Tests for MCP error envelope and ecosystem tool validation."""
 
-from datetime import datetime
+from datetime import datetime, UTC
 
 from mahavishnu.mcp.error_envelope import McpErrorEnvelope, wrap_error
 
@@ -127,7 +127,7 @@ class TestEcosystemStatusReport:
 
         report = EcosystemStatusReport(
             status=CanonicalStatus.OK,
-            generated_at=datetime.now(),
+            generated_at=datetime.now((UTC)),
             duration_ms=12.5,
             request_id="test-123",
             services={
@@ -153,7 +153,7 @@ class TestEcosystemStatusReport:
 
         report = EcosystemStatusReport(
             status=CanonicalStatus.OK,
-            generated_at=datetime.now(),
+            generated_at=datetime.now((UTC)),
             duration_ms=5.0,
         )
         data = report.model_dump()
@@ -175,7 +175,7 @@ class TestEcosystemStatusReport:
 
         report = EcosystemStatusReport(
             status=CanonicalStatus.OK,
-            generated_at=datetime.now(),
+            generated_at=datetime.now((UTC)),
             duration_ms=5.0,
         )
         json_data = report.model_dump(mode="json")

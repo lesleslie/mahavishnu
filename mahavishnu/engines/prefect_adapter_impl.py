@@ -54,7 +54,7 @@ Example:
 import asyncio
 from collections.abc import Callable, Iterator
 from contextlib import asynccontextmanager, contextmanager
-from datetime import datetime
+from datetime import datetime, UTC
 import importlib
 import inspect
 import logging
@@ -338,7 +338,7 @@ def _deployment_to_response(deployment: Any) -> DeploymentResponse:
         tags=getattr(deployment, "tags", []) or [],
         description=getattr(deployment, "description", None),
         version=getattr(deployment, "version", None),
-        created_at=getattr(deployment, "created", datetime.now()) or datetime.now(),
+        created_at=getattr(deployment, "created", datetime.now((UTC))) or datetime.now((UTC)),
         updated_at=getattr(deployment, "updated", None),
     )
 
@@ -364,7 +364,7 @@ def _flow_run_to_response(flow_run: Any) -> FlowRunResponse:
         state_name=getattr(state, "name", "Unknown") if state else "Unknown",
         parameters=getattr(flow_run, "parameters", {}) or {},
         tags=getattr(flow_run, "tags", []) or [],
-        created_at=getattr(flow_run, "created", datetime.now()) or datetime.now(),
+        created_at=getattr(flow_run, "created", datetime.now((UTC))) or datetime.now((UTC)),
         updated_at=getattr(flow_run, "updated", None),
         start_time=getattr(flow_run, "start_time", None),
         end_time=getattr(flow_run, "end_time", None),
@@ -389,7 +389,7 @@ def _work_pool_to_response(work_pool: Any) -> WorkPoolResponse:
         description=getattr(work_pool, "description", None),
         is_paused=getattr(work_pool, "is_paused", False) or False,
         concurrency_limit=getattr(work_pool, "concurrency_limit", None),
-        created_at=getattr(work_pool, "created", datetime.now()) or datetime.now(),
+        created_at=getattr(work_pool, "created", datetime.now((UTC))) or datetime.now((UTC)),
         updated_at=getattr(work_pool, "updated", None),
     )
 

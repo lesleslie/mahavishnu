@@ -3,7 +3,7 @@
 Tests intent classification, entity extraction, and confidence scoring.
 """
 
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, UTC
 
 import pytest
 
@@ -156,7 +156,7 @@ class TestDueDateExtraction:
         """Test 'today' due date extraction."""
         result = await parser.parse("create task by today")
         if "due_date" in result.entities:
-            expected = datetime.now().strftime("%Y-%m-%d")
+            expected = datetime.now((UTC)).strftime("%Y-%m-%d")
             assert result.entities["due_date"].value == expected
 
     @pytest.mark.asyncio
@@ -164,7 +164,7 @@ class TestDueDateExtraction:
         """Test 'tomorrow' due date extraction."""
         result = await parser.parse("create task by tomorrow")
         if "due_date" in result.entities:
-            expected = (datetime.now() + timedelta(days=1)).strftime("%Y-%m-%d")
+            expected = (datetime.now((UTC)) + timedelta(days=1)).strftime("%Y-%m-%d")
             assert result.entities["due_date"].value == expected
 
     @pytest.mark.asyncio
@@ -172,7 +172,7 @@ class TestDueDateExtraction:
         """Test 'in X days' due date extraction."""
         result = await parser.parse("create task in 3 days")
         if "due_date" in result.entities:
-            expected = (datetime.now() + timedelta(days=3)).strftime("%Y-%m-%d")
+            expected = (datetime.now((UTC)) + timedelta(days=3)).strftime("%Y-%m-%d")
             assert result.entities["due_date"].value == expected
 
 

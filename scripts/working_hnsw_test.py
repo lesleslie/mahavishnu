@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Working HNSW test using DuckDB Python API correctly."""
 
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, UTC
 import hashlib
 import struct
 import time
@@ -29,7 +29,7 @@ print(f"\nCurrent records with embeddings: {count}")
 if count < 1000:
     print(f"\nGenerating {1000 - count} test records...")
 
-    now = datetime.now()
+    now = datetime.now((UTC))
     task_types = ["code_review", "testing", "deployment", "documentation", "optimization"]
     descriptions = [
         "Review pull request for authentication module",

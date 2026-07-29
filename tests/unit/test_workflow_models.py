@@ -6,7 +6,7 @@ Uses only the fallback generate_config_id and is_config_ulid from the module its
 
 from __future__ import annotations
 
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, UTC
 
 from pydantic import ValidationError
 import pytest
@@ -128,8 +128,8 @@ class TestWorkflowExecutionMethods:
 
     def test_duration_seconds_calculates_correctly(self):
         """duration_seconds returns correct delta between end and start."""
-        start = datetime(2026, 5, 1, 12, 0, 0)
-        end = datetime(2026, 5, 1, 12, 1, 30)
+        start = datetime(2026, 5, 1, 12, 0, 0, tzinfo=UTC)
+        end = datetime(2026, 5, 1, 12, 1, 30, tzinfo=UTC)
         wf = WorkflowExecution(
             workflow_name="test",
             status="completed",
@@ -235,8 +235,8 @@ class TestPoolExecutionMethods:
 
     def test_duration_seconds_calculates_correctly(self):
         """duration_seconds calculates correct delta."""
-        start = datetime(2026, 5, 1, 10, 0, 0)
-        end = datetime(2026, 5, 1, 10, 2, 15)
+        start = datetime(2026, 5, 1, 10, 0, 0, tzinfo=UTC)
+        end = datetime(2026, 5, 1, 10, 2, 15, tzinfo=UTC)
         pe = PoolExecution(
             pool_id="local",
             operation="spawn",

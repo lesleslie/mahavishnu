@@ -461,7 +461,7 @@ class MigrationManager:
             List of applied migrations
         """
         completed = self.get_completed_migrations()
-        completed.sort(key=lambda m: m.applied_at or datetime.min.replace(tzinfo=UTC))
+        completed.sort(key=lambda m: m.applied_at or datetime.min.replace(tzinfo=UTC).replace(tzinfo=UTC))
         return completed
 
     async def dry_run(self) -> MigrationPlan:

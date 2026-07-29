@@ -5,7 +5,7 @@ from __future__ import annotations
 import asyncio
 from collections import defaultdict
 from dataclasses import dataclass, field
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, UTC
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from enum import Enum
@@ -190,7 +190,7 @@ class Alert:
     def acknowledge(self, by: str) -> None:
         self.acknowledged = True
         self.acknowledged_by = by
-        self.acknowledged_at = datetime.now()
+        self.acknowledged_at = datetime.now((UTC))
 
     def to_dict(self) -> dict[str, Any]:
         payload = {
@@ -342,7 +342,7 @@ class AlertManager:
 
         alert = Alert(
             id=alert_id,
-            timestamp=datetime.now(),
+            timestamp=datetime.now((UTC)),
             severity=severity,
             type=alert_type,
             title=title,
@@ -509,7 +509,7 @@ class AlertManager:
                 status=WorkflowStatus.RUNNING, limit=100
             )
 
-            current_time = datetime.now()
+            current_time = datetime.now((UTC))
             timeout_threshold = timedelta(minutes=30)  # 30-minute timeout
 
             for workflow in running_workflows:
@@ -592,7 +592,7 @@ class AlertManager:
             else:
                 # Check if the latest backup is too old (older than 24 hours)
                 latest_backup = backups[0]
-                age = datetime.now() - latest_backup.timestamp
+                age = datetime.now((UTC)) - latest_backup.timestamp
                 if age > timedelta(hours=24):
                     await self.trigger_alert(
                         severity=AlertSeverity.MEDIUM,
@@ -976,7 +976,7 @@ class MonitoringDashboard:
         alert_counts = await self._get_alert_counts()
 
         return {
-            "timestamp": datetime.now().isoformat(),
+            "timestamp": datetime.now((UTC)).isoformat(),
             "system": {
                 "cpu_percent": cpu_percent,
                 "memory_percent": memory_info.percent,
@@ -1073,7 +1073,7 @@ class MonitoringService:
         return {
             "metrics": metrics,
             "recent_alerts": recent_alerts,
-            "timestamp": datetime.now().isoformat(),
+            "timestamp": datetime.now((UTC)).isoformat(),
         }
 
     async def acknowledge_alert(self, alert_id: str, user: str) -> bool:

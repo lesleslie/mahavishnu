@@ -227,7 +227,7 @@ class CircuitBreaker:
     def record_failure(self) -> None:
         """Record a failure and potentially open the circuit."""
         self.failure_count += 1
-        self.last_failure_time = datetime.now()
+        self.last_failure_time = datetime.now((UTC))
 
         if self.state == CircuitState.HALF_OPEN:
             self.failure_count = max(self.failure_count, self.threshold)
@@ -255,7 +255,7 @@ class CircuitBreaker:
             if self.last_failure_time is None:
                 return False
 
-            now = datetime.now()
+            now = datetime.now((UTC))
             elapsed = (now - self.last_failure_time).total_seconds()
             if elapsed >= max(self.timeout, 0):
                 self._transition(CircuitState.HALF_OPEN)

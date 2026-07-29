@@ -594,7 +594,7 @@ class TestOutputFormatter:
     def test_format_timestamp_naive_datetime(self, mock_console: MagicMock) -> None:
         """Naive datetime (no tzinfo) should be handled by replacing with UTC."""
         formatter = OutputFormatter(console=mock_console)
-        naive_ts = datetime.now() - timedelta(days=20)
+        naive_ts = datetime.now((UTC)) - timedelta(days=20)
         result = formatter.format_timestamp(naive_ts)
         assert result is not None  # Should not raise
 

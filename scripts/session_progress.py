@@ -4,7 +4,7 @@ Claude Code Session Progress StatusLine
 Shows a progress bar for the 5-hour session limit using alive-progress
 """
 
-from datetime import datetime
+from datetime import datetime, UTC
 import json
 from pathlib import Path
 import sys
@@ -28,7 +28,7 @@ def get_session_start_time():
             pass
 
     # Fallback: create new session file
-    start_time = datetime.now()
+    start_time = datetime.now((UTC))
     session_file.parent.mkdir(parents=True, exist_ok=True)
     with open(session_file, "w") as f:
         json.dump({"start_time": start_time.isoformat()}, f)
@@ -53,7 +53,7 @@ def format_time_remaining(seconds: int) -> str:
 def main():
     try:
         start_time = get_session_start_time()
-        now = datetime.now()
+        now = datetime.now((UTC))
         elapsed = (now - start_time).total_seconds()
 
         # Calculate progress

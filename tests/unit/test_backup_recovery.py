@@ -1,6 +1,6 @@
 """Unit tests for backup and recovery functionality."""
 
-from datetime import datetime
+from datetime import datetime, UTC
 from pathlib import Path
 import tempfile
 from unittest.mock import AsyncMock, Mock
@@ -29,7 +29,7 @@ async def test_backup_info_structure():
     """Test the structure of BackupInfo dataclass."""
     backup_info = BackupInfo(
         backup_id="test_backup_123",
-        timestamp=datetime.now(),
+        timestamp=datetime.now((UTC)),
         size_bytes=1024,
         location="/path/to/backup.tar.gz",
         status="completed",

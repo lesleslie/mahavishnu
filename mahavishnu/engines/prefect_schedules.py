@@ -29,7 +29,7 @@ Example:
     ```
 """
 
-from datetime import datetime
+from datetime import datetime, UTC
 from typing import Literal
 
 from pydantic import BaseModel, Field, field_validator
@@ -323,7 +323,7 @@ def create_hourly_schedule(minute: int = 0) -> IntervalSchedule:
         raise ValueError(f"minute must be between 0 and 59, got {minute}")
 
     # Use anchor date to align to specific minute
-    anchor = datetime(2024, 1, 1, 0, minute, 0)
+    anchor = datetime(2024, 1, 1, 0, minute, 0, tzinfo=UTC)
 
     return IntervalSchedule(
         interval_seconds=3600,  # 1 hour in seconds

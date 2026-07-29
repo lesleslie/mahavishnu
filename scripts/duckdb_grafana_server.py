@@ -13,7 +13,7 @@ Then add a JSON datasource in Grafana pointing to http://localhost:8080
 from __future__ import annotations
 
 import argparse
-from datetime import datetime
+from datetime import datetime, UTC
 import logging
 from pathlib import Path
 import sys
@@ -208,7 +208,7 @@ def health() -> dict[str, Any]:
             {
                 "status": "ok",
                 "database": "connected",
-                "timestamp": datetime.now().isoformat(),
+                "timestamp": datetime.now((UTC)).isoformat(),
             }
         )
     except Exception as e:
@@ -216,7 +216,7 @@ def health() -> dict[str, Any]:
             {
                 "status": "error",
                 "message": str(e),
-                "timestamp": datetime.now().isoformat(),
+                "timestamp": datetime.now((UTC)).isoformat(),
             }
         ), 503
 

@@ -1,6 +1,6 @@
 """Unit tests for TerminalGridManager."""
 
-from datetime import datetime
+from datetime import datetime, UTC
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -69,7 +69,7 @@ class TestTerminalGridManager:
             bounds={"x": 0, "y": 0, "w": 960, "h": 540},
             quadrant="tl",
         )
-        grid = GridSession(grid_id=grid_id, created_at=datetime.now(), desktops={"d1": desktop})
+        grid = GridSession(grid_id=grid_id, created_at=datetime.now((UTC)), desktops={"d1": desktop})
         manager._grids[grid_id] = grid
 
         await manager.send_to_session(grid_id, "sess_001", "ls -la")
@@ -84,7 +84,7 @@ class TestTerminalGridManager:
     async def test_send_to_session_not_found(self, manager):
         """SessionNotFoundError raised for unknown session."""
         grid_id = "grid_test"
-        manager._grids[grid_id] = GridSession(grid_id=grid_id, created_at=datetime.now())
+        manager._grids[grid_id] = GridSession(grid_id=grid_id, created_at=datetime.now((UTC)))
 
         with pytest.raises(SessionNotFoundError):
             await manager.send_to_session(grid_id, "nonexistent", "test")
@@ -98,7 +98,7 @@ class TestTerminalGridManager:
         desktop = DesktopSession(desktop_id="win1", position=1)
         desktop.windows["tl"] = WindowSession("tl", "tab1", "s1", "task1", {}, "tl")
         desktop.windows["tr"] = WindowSession("tr", "tab2", "s2", "task2", {}, "tr")
-        grid = GridSession(grid_id=grid_id, created_at=datetime.now(), desktops={"d1": desktop})
+        grid = GridSession(grid_id=grid_id, created_at=datetime.now((UTC)), desktops={"d1": desktop})
         manager._grids[grid_id] = grid
 
         await manager.broadcast_to_grid(grid_id, "echo broadcast")
@@ -116,7 +116,7 @@ class TestTerminalGridManager:
         grid_id = "grid_close"
         desktop = DesktopSession(desktop_id="win1", position=1)
         desktop.windows["tl"] = WindowSession("tl", "tab1", "s1", "task1", {}, "tl")
-        grid = GridSession(grid_id=grid_id, created_at=datetime.now(), desktops={"d1": desktop})
+        grid = GridSession(grid_id=grid_id, created_at=datetime.now((UTC)), desktops={"d1": desktop})
         manager._grids[grid_id] = grid
 
         await manager.close_grid(grid_id)
@@ -132,7 +132,7 @@ class TestTerminalGridManager:
         desktop = DesktopSession(desktop_id="win1", position=1)
         desktop.windows["tl"] = WindowSession("tl", "tab1", "s1", "task1", {}, "tl")
         desktop.windows["tr"] = WindowSession("tr", "tab2", "s2", "task2", {}, "tr")
-        grid = GridSession(grid_id=grid_id, created_at=datetime.now(), desktops={"d1": desktop})
+        grid = GridSession(grid_id=grid_id, created_at=datetime.now((UTC)), desktops={"d1": desktop})
         manager._grids[grid_id] = grid
 
         sessions = await manager.list_grid_sessions(grid_id)
@@ -148,7 +148,7 @@ class TestTerminalGridManager:
         grid_id = "grid_capture"
         desktop = DesktopSession(desktop_id="win1", position=1)
         desktop.windows["tl"] = WindowSession("tl", "tab1", "s1", "task1", {}, "tl")
-        grid = GridSession(grid_id=grid_id, created_at=datetime.now(), desktops={"d1": desktop})
+        grid = GridSession(grid_id=grid_id, created_at=datetime.now((UTC)), desktops={"d1": desktop})
         manager._grids[grid_id] = grid
 
         output = await manager.capture_session_output(grid_id, "s1")

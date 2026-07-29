@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import datetime, UTC
 from typing import Any
 
 from ...core.errors import ErrorCode, MahavishnuError
@@ -95,7 +95,7 @@ class McpretentiousAdapter(TerminalAdapter):
             # Store session metadata
             self._sessions[session_id] = {
                 "command": command,
-                "created_at": datetime.now(),
+                "created_at": datetime.now((UTC)),
                 "columns": columns,
                 "rows": rows,
             }

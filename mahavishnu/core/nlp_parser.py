@@ -21,7 +21,7 @@ Usage:
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, UTC
 from enum import StrEnum
 import logging
 import re
@@ -405,7 +405,7 @@ class NlpParser:
                 if pattern_type == "relative_day":
                     day_name = match.group(1)
                     if day_name in days_map:
-                        due_date = datetime.now() + timedelta(days=days_map[day_name])
+                        due_date = datetime.now((UTC)) + timedelta(days=days_map[day_name])
                         return ParsedEntity(
                             name="due_date",
                             value=due_date.strftime("%Y-%m-%d"),
@@ -414,10 +414,10 @@ class NlpParser:
                         )
                 elif pattern_type == "relative_week":
                     # End of week
-                    days_ahead = 4 - datetime.now().weekday()  # Friday
+                    days_ahead = 4 - datetime.now((UTC)).weekday()  # Friday
                     if days_ahead <= 0:
                         days_ahead += 7
-                    due_date = datetime.now() + timedelta(days=days_ahead)
+                    due_date = datetime.now((UTC)) + timedelta(days=days_ahead)
                     return ParsedEntity(
                         name="due_date",
                         value=due_date.strftime("%Y-%m-%d"),
@@ -428,11 +428,11 @@ class NlpParser:
                     amount = int(match.group(1))
                     unit = match.group(2)
                     if "day" in unit:
-                        due_date = datetime.now() + timedelta(days=amount)
+                        due_date = datetime.now((UTC)) + timedelta(days=amount)
                     elif "week" in unit:
-                        due_date = datetime.now() + timedelta(weeks=amount)
+                        due_date = datetime.now((UTC)) + timedelta(weeks=amount)
                     elif "hour" in unit:
-                        due_date = datetime.now() + timedelta(hours=amount)
+                        due_date = datetime.now((UTC)) + timedelta(hours=amount)
                     return ParsedEntity(
                         name="due_date",
                         value=due_date.strftime("%Y-%m-%d"),
@@ -444,7 +444,7 @@ class NlpParser:
 
     def _days_until_weekday(self, target_weekday: int) -> int:
         """Calculate days until next occurrence of weekday."""
-        today = datetime.now().weekday()
+        today = datetime.now((UTC)).weekday()
         days = target_weekday - today
         if days <= 0:
             days += 7

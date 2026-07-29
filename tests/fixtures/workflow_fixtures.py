@@ -5,7 +5,7 @@ including sample workflows in various states (pending, running, completed,
 failed) for testing workflow state management, execution, and monitoring.
 """
 
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, UTC
 from typing import Any
 from unittest.mock import AsyncMock
 import uuid
@@ -49,8 +49,8 @@ class WorkflowFixtures:
             ],
             "adapter": "llamaindex",
             "progress": 45,
-            "created_at": (datetime.now() - timedelta(minutes=5)).isoformat(),
-            "updated_at": datetime.now().isoformat(),
+            "created_at": (datetime.now((UTC)) - timedelta(minutes=5)).isoformat(),
+            "updated_at": datetime.now((UTC)).isoformat(),
             "results": [
                 {
                     "repo": "/Users/les/Projects/mahavishnu",
@@ -78,7 +78,7 @@ class WorkflowFixtures:
         if workflow_id is None:
             workflow_id = f"wf_{uuid.uuid4().hex[:8]}_test_generation"
 
-        completed_at = datetime.now()
+        completed_at = datetime.now((UTC))
         created_at = completed_at - timedelta(minutes=10)
 
         return {
@@ -137,7 +137,7 @@ class WorkflowFixtures:
         if workflow_id is None:
             workflow_id = f"wf_{uuid.uuid4().hex[:8]}_refactor"
 
-        failed_at = datetime.now()
+        failed_at = datetime.now((UTC))
         created_at = failed_at - timedelta(minutes=3)
 
         return {
@@ -195,7 +195,7 @@ class WorkflowFixtures:
         if workflow_id is None:
             workflow_id = f"wf_{uuid.uuid4().hex[:8]}_lint"
 
-        completed_at = datetime.now()
+        completed_at = datetime.now((UTC))
         created_at = completed_at - timedelta(minutes=7)
 
         return {
@@ -259,7 +259,7 @@ class WorkflowFixtures:
         if workflow_id is None:
             workflow_id = f"wf_{uuid.uuid4().hex[:8]}_documentation"
 
-        created_at = datetime.now()
+        created_at = datetime.now((UTC))
 
         return {
             "id": workflow_id,

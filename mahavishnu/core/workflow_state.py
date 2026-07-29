@@ -7,7 +7,7 @@ path should import this module. The OpenSearch-backed persistence path
 is retired — durable workflow execution history stays with Prefect.
 """
 
-from datetime import datetime
+from datetime import datetime, UTC
 from typing import Any
 import warnings
 
@@ -45,11 +45,11 @@ class WorkflowState:
             "status": WorkflowStatus.PENDING,
             "task": task,
             "repos": repos,
-            "created_at": datetime.now().isoformat(),
+            "created_at": datetime.now((UTC)).isoformat(),
             "progress": 0,
             "results": [],
             "errors": [],
-            "updated_at": datetime.now().isoformat(),
+            "updated_at": datetime.now((UTC)).isoformat(),
         }
 
         if self.opensearch and OPENSEARCH_AVAILABLE:
@@ -63,7 +63,7 @@ class WorkflowState:
 
     async def update(self, workflow_id: str, **updates: Any) -> None:
         """Update workflow state"""
-        updates["updated_at"] = datetime.now().isoformat()
+        updates["updated_at"] = datetime.now((UTC)).isoformat()
 
         if self.opensearch and OPENSEARCH_AVAILABLE:
             # Update in OpenSearch

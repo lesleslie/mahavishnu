@@ -1,7 +1,7 @@
 """Production readiness and testing module for Mahavishnu."""
 
 import asyncio
-from datetime import datetime
+from datetime import datetime, UTC
 import inspect
 import logging
 from pathlib import Path
@@ -719,7 +719,7 @@ async def run_production_readiness_suite(app: MahavishnuApp) -> dict[str, Any]:
 
     # Combine all results
     final_report = {
-        "timestamp": datetime.now().isoformat(),
+        "timestamp": datetime.now((UTC)).isoformat(),
         "production_readiness": readiness_results,
         "integration_tests": test_results,
         "performance_benchmarks": benchmark_results,

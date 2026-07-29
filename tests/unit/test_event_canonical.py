@@ -104,7 +104,7 @@ def test_factory_normalizes_uuid_to_string() -> None:
 
 
 def test_factory_converts_naive_timestamp_to_utc() -> None:
-    naive = datetime(2026, 7, 14, 12, 30)
+    naive = datetime(2026, 7, 14, 12, 30, tzinfo=UTC)
     envelope = create_oneiric_envelope(
         topic="workflow.started",
         payload={},

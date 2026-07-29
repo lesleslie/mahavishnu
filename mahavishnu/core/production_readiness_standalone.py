@@ -6,7 +6,7 @@ monitoring, resilience, performance, and operational readiness.
 
 import asyncio
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import datetime, UTC
 from enum import Enum
 import os
 from pathlib import Path
@@ -115,7 +115,7 @@ class ProductionReadinessChecker:
         await self._check_maintenance_procedures()
 
         # Generate report
-        report = ProductionReadinessReport(checks=self.checks, timestamp=datetime.now().isoformat())
+        report = ProductionReadinessReport(checks=self.checks, timestamp=datetime.now((UTC)).isoformat())
         report.total_checks = len(self.checks)
         report.passed = sum(1 for c in self.checks if c.status == ReadinessStatus.PASS)
         report.failed = sum(1 for c in self.checks if c.status == ReadinessStatus.FAIL)

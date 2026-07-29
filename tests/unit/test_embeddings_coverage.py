@@ -104,9 +104,9 @@ class TestEmbeddingResult:
         assert r.model_version == "abc123"
 
     def test_explicit_created_at_used(self):
-        from datetime import datetime
+        from datetime import datetime, UTC
 
-        dt = datetime(2020, 1, 1)
+        dt = datetime(2020, 1, 1, tzinfo=UTC)
         r = EmbeddingResult(
             embeddings=[[0.0]],
             model="m",

@@ -164,7 +164,7 @@ def test_find_session_returns_none_for_missing_id() -> None:
 
 
 def test_find_session_returns_none_on_empty_grid() -> None:
-    grid = GridSession(grid_id="g", created_at=datetime.now())
+    grid = GridSession(grid_id="g", created_at=datetime.now((UTC)))
     assert grid.find_session("anything") is None
 
 
@@ -181,7 +181,7 @@ def test_all_sessions_flattens_all_desktops_and_windows() -> None:
 
 
 def test_all_sessions_returns_empty_list_for_empty_grid() -> None:
-    grid = GridSession(grid_id="g", created_at=datetime.now())
+    grid = GridSession(grid_id="g", created_at=datetime.now((UTC)))
     assert grid.all_sessions() == []
 
 
@@ -193,7 +193,7 @@ def test_all_sessions_handles_desktop_with_no_windows() -> None:
 
     grid = GridSession(
         grid_id="g",
-        created_at=datetime.now(),
+        created_at=datetime.now((UTC)),
         desktops={"empty": d_empty, "full": d_full},
     )
 
@@ -208,7 +208,7 @@ def test_all_sessions_handles_desktop_with_no_windows() -> None:
 
 
 def test_grid_session_default_status_is_active() -> None:
-    grid = GridSession(grid_id="g", created_at=datetime.now())
+    grid = GridSession(grid_id="g", created_at=datetime.now((UTC)))
     assert grid.status == GridStatus.ACTIVE
     assert grid.task_count == 0
     assert grid.desktops == {}
@@ -217,7 +217,7 @@ def test_grid_session_default_status_is_active() -> None:
 def test_grid_session_status_can_be_set_to_closed() -> None:
     grid = GridSession(
         grid_id="g",
-        created_at=datetime.now(),
+        created_at=datetime.now((UTC)),
         status=GridStatus.CLOSED,
         task_count=4,
     )

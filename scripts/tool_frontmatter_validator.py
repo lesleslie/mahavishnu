@@ -13,7 +13,7 @@ Usage:
 """
 
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, UTC
 from pathlib import Path
 import re
 import sys
@@ -194,8 +194,8 @@ class ToolFrontmatterValidator:
 
         # Check staleness
         try:
-            review_date = datetime.strptime(date_value, "%Y-%m-%d")
-            today = datetime.now()
+            review_date = datetime.strptime(date_value, "%Y-%m-%d").replace(tzinfo=UTC)
+            today = datetime.now((UTC))
             age_days = (today - review_date).days
 
             if age_days > 365:
@@ -600,7 +600,7 @@ class ToolFrontmatterValidator:
         print("\nScanning for stale tools (not reviewed in 6+ months)...\n")
 
         stale_tools = []
-        today = datetime.now()
+        today = datetime.now((UTC))
 
         for md_file in self.tools_dir.rglob("*.md"):
             if not md_file.is_file():
@@ -611,7 +611,7 @@ class ToolFrontmatterValidator:
                 continue
 
             try:
-                review_date = datetime.strptime(frontmatter["last_reviewed"], "%Y-%m-%d")
+                review_date = datetime.strptime(frontmatter["last_reviewed"], "%Y-%m-%d").replace(tzinfo=UTC)
                 age_days = (today - review_date).days
 
                 if age_days > 180:
