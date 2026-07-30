@@ -34,6 +34,8 @@ import os
 from typing import TYPE_CHECKING, Any
 import uuid
 
+from mahavishnu.core.errors import ErrorCode, MahavishnuError
+
 if TYPE_CHECKING:
     from mahavishnu.core.task_store import TaskStore
 
@@ -90,11 +92,11 @@ class WorktreeInfo:
         }
 
 
-class WorktreeError(Exception):
+class WorktreeError(MahavishnuError):
     """Exception raised for worktree errors."""
 
     def __init__(self, message: str, worktree_id: str | None = None) -> None:
-        super().__init__(message)
+        super().__init__(message, ErrorCode.INTERNAL_ERROR)
         self.worktree_id = worktree_id
 
 
@@ -129,7 +131,7 @@ class GitRunner:
 
         if proc.returncode != 0:
             error_msg = stderr.decode().strip() or f"Git command failed: {' '.join(cmd)}"
-            raise Exception(error_msg)
+            raise WorktreeError(error_msg)
 
         return stdout.decode().strip()
 

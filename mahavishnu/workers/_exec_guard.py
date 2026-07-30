@@ -72,7 +72,8 @@ def validate_command(command: str) -> None:
             dangerous pattern, is empty, or is not on the allowlist.
     """
     if not isinstance(command, str):
-        raise ValueError("Command must be a string")
+        # ValueError is retained for this public validator's documented contract.
+        raise ValueError("Command must be a string")  # noqa: TRY004
 
     if len(command) > MAX_COMMAND_LENGTH:
         raise ValueError(f"Command too long: {len(command)} > {MAX_COMMAND_LENGTH} characters")

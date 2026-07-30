@@ -274,7 +274,7 @@ def schedule_to_prefect_dict(schedule: ScheduleConfig) -> dict:
             "timezone": schedule.timezone,
         }
     else:
-        raise ValueError(f"Unknown schedule type: {type(schedule)}")
+        raise TypeError(f"Unknown schedule type: {type(schedule)}")
 
 
 # =============================================================================

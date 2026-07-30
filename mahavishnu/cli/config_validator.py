@@ -61,7 +61,8 @@ def _load_yaml_mapping(path: Path) -> dict[str, Any]:
         data = yaml.safe_load(handle) or {}  # type: ignore[var-annotated]
 
     if not isinstance(data, dict):
-        raise ValueError(f"Configuration file must contain a mapping: {path}")
+        # ValueError is retained for the loader's tested invalid-content contract.
+        raise ValueError(f"Configuration file must contain a mapping: {path}")  # noqa: TRY004
 
     return data
 

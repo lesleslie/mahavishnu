@@ -104,7 +104,8 @@ class FlowRegistry:
             ```
         """
         if not callable(flow_func):
-            raise ValueError("flow_func must be callable")
+            # ValueError is retained for the documented public registry contract.
+            raise ValueError("flow_func must be callable")  # noqa: TRY004
 
         flow_id = str(uuid.uuid4())
         flow_name = getattr(flow_func, "__name__", name)

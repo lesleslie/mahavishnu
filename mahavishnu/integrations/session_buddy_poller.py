@@ -343,7 +343,8 @@ class SessionBuddyPoller:
 
             result = response.json()
             if not isinstance(result, dict):
-                raise ValueError(f"Invalid response type: {type(result)}")
+                # ValueError is handled below as the invalid-response contract.
+                raise ValueError(f"Invalid response type: {type(result)}")  # noqa: TRY004
             return result
 
         try:

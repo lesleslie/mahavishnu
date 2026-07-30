@@ -11,6 +11,8 @@ import random
 import time
 from typing import TYPE_CHECKING, Any
 
+from mahavishnu.core.errors import ErrorCode, MahavishnuError
+
 from ..core.workflow_state import WorkflowStatus
 
 if TYPE_CHECKING:
@@ -44,6 +46,16 @@ except ImportError:  # pragma: no cover - optional dependency
 
 
 logger = logging.getLogger(__name__)
+
+
+class CircuitBreakerOpenError(MahavishnuError):
+    """Raised when an open circuit breaker rejects an operation."""
+
+    def __init__(self, state: CircuitState) -> None:
+        super().__init__(
+            f"Circuit breaker is {state.value}, request denied",
+            ErrorCode.EXTERNAL_SERVICE_UNAVAILABLE,
+        )
 
 
 class CircuitState(Enum):
@@ -269,7 +281,7 @@ class CircuitBreaker:
     async def call(self, func: Callable, *args, **kwargs) -> Any:
         """Call a function with circuit breaker protection."""
         if not self.allow_request():
-            raise Exception(f"Circuit breaker is {self.state.value}, request denied")
+            raise CircuitBreakerOpenError(self.state)
 
         try:
             result = (
@@ -286,7 +298,7 @@ class CircuitBreaker:
     def call_sync(self, func: Callable, *args, **kwargs) -> Any:
         """Call a synchronous function with circuit breaker protection."""
         if not self.allow_request():
-            raise Exception(f"Circuit breaker is {self.state.value}, request denied")
+            raise CircuitBreakerOpenError(self.state)
 
         try:
             result = func(*args, **kwargs)
