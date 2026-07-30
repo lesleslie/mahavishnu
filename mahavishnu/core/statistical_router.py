@@ -20,7 +20,7 @@ from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta
 from enum import StrEnum
 import logging
-from typing import Any
+from typing import Any, ClassVar
 
 import numpy as np
 
@@ -44,9 +44,9 @@ class ScoringWeights:
     DEFAULT_SPEED_WEIGHT = 0.3
 
     # Task-type-specific weights
-    INTERACTIVE = {"success": 0.5, "speed": 0.5}  # User-facing, minimize latency
-    BATCH = {"success": 0.9, "speed": 0.1}  # Background, minimize cost via throughput
-    CRITICAL = {"success": 0.8, "speed": 0.2}  # Reliability over speed
+    INTERACTIVE: ClassVar[dict[str, float]] = {"success": 0.5, "speed": 0.5}  # User-facing, minimize latency
+    BATCH: ClassVar[dict[str, float]] = {"success": 0.9, "speed": 0.1}  # Background, minimize cost via throughput
+    CRITICAL: ClassVar[dict[str, float]] = {"success": 0.8, "speed": 0.2}  # Reliability over speed
 
 
 class ConfidenceLevel(StrEnum):
@@ -604,7 +604,7 @@ class StatisticalRouter:
                 logger.info("Recalculation loop cancelled")
                 break
             except Exception as e:
-                logger.error(f"Recalculation error: {e}", exc_info=True)
+                logger.exception("Recalculation error")
                 # Wait before retry
                 await asyncio.sleep(300)  # 5 minutes
 

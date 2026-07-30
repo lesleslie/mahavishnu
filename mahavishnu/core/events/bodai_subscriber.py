@@ -569,8 +569,8 @@ async def _close_redis_client(client: Any) -> None:
     except Exception:
         try:
             await client.close()
-        except Exception:
-            pass
+        except Exception as e:
+            logger.debug("Client close error: %s", e)
 
 
 async def _process_stream_entry(

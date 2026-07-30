@@ -379,7 +379,7 @@ class ExecutionTracker:
                 logger.info("Aggregation loop cancelled")
                 break
             except Exception as e:
-                logger.error(f"Aggregation error: {e}", exc_info=True)
+                logger.exception("Aggregation error")
 
     async def _calculate_aggregates(self) -> dict[str, Any]:
         """Calculate statistical aggregates from tracked metrics.

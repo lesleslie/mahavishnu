@@ -39,7 +39,7 @@ from enum import Enum
 import logging
 import math
 import random
-from typing import Any
+from typing import Any, ClassVar
 
 logger = logging.getLogger(__name__)
 
@@ -191,7 +191,7 @@ class ThompsonSamplingRouter:
     """
 
     # Default complexity bands
-    DEFAULT_BANDS = [
+    DEFAULT_BANDS: ClassVar[list] = [
         (0.0, 0.3),  # Low complexity
         (0.3, 0.6),  # Medium complexity
         (0.6, 0.8),  # High complexity

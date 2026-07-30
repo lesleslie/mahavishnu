@@ -31,6 +31,7 @@ Related: Goal-Driven Teams Phase 1 foundation, WebSocket broadcasting, Phase 3 L
 from __future__ import annotations
 
 from contextvars import ContextVar
+from types import TracebackType
 from typing import TYPE_CHECKING, Any, Protocol, runtime_checkable
 
 from .errors import ContextNotInitializedError
@@ -388,7 +389,12 @@ class AppContext:
 
         return self
 
-    def __exit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
+    def __exit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc_val: BaseException | None,
+        exc_tb: TracebackType | None,
+    ) -> None:
         """Exit context and restore previous values."""
         _llm_factory.set(self._old_llm_factory)
         _agno_adapter.set(self._old_agno_adapter)

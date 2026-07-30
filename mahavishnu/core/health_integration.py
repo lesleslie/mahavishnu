@@ -638,7 +638,7 @@ class AdapterHealthMonitor:
                     logger.info("Health monitor loop cancelled")
                     break
                 except Exception as e:
-                    logger.error(f"Health monitor error: {e}", exc_info=True)
+                    logger.exception("Health monitor error")
                     await asyncio.sleep(check_interval)
 
         self._monitor_task = asyncio.create_task(_monitor_loop())
@@ -709,7 +709,6 @@ def get_health_monitor() -> AdapterHealthMonitor:
     Raises:
         RuntimeError: If health monitor not initialized
     """
-    global _health_monitor
     if _health_monitor is None:
         raise RuntimeError(
             "Health monitor not initialized. Call initialize_health_monitor() first."

@@ -17,6 +17,7 @@ import builtins
 from collections.abc import AsyncGenerator, Callable
 from contextlib import asynccontextmanager
 import logging
+from types import TracebackType
 from typing import Any, ParamSpec, TypeVar
 
 from mahavishnu.core.errors import ErrorCode, MahavishnuError, TimeoutError
@@ -106,8 +107,8 @@ async def db_connection(
             # Rollback on cancellation
             try:
                 await conn.execute("ROLLBACK")
-            except Exception:
-                pass  # Ignore rollback errors during cancellation
+            except Exception as e:
+                logger.debug("Rollback error during cancellation: %s", e)
             raise
         except Exception as e:
             logger.error(f"Database error: {e}")
@@ -195,7 +196,12 @@ class SagaLock:
             logger.debug(f"Acquired lock on saga {self.saga_id}")
             return self
 
-    async def __aexit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> bool:
+    async def __aexit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc_val: BaseException | None,
+        exc_tb: TracebackType | None,
+    ) -> bool:
         """Release lock (automatic on transaction commit)."""
         self._locked = False
         logger.debug(f"Released lock on saga {self.saga_id}")

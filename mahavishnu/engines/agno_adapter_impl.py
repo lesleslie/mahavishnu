@@ -114,7 +114,7 @@ class LLMProviderFactory:
         self.config = config
         self._model_instance = None
 
-    _PROVIDER_FACTORY_METHODS: dict[str, str] = {
+    _PROVIDER_FACTORY_METHODS: ClassVar[dict[str, str]] = {
         LLMProvider.OPENAI: "_create_openai_model",
         LLMProvider.ANTHROPIC: "_create_anthropic_model",
         LLMProvider.OLLAMA: "_create_ollama_model",

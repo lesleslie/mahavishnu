@@ -11,7 +11,7 @@ from __future__ import annotations
 from datetime import UTC, datetime
 import logging
 import math
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, ClassVar
 
 from pydantic import BaseModel, Field
 
@@ -93,7 +93,7 @@ class BlockerPredictor:
     """Predicts potential blockers for tasks."""
 
     # Risk indicator keywords
-    RISK_KEYWORDS: dict[str, float] = {
+    RISK_KEYWORDS: ClassVar[dict[str, float]] = {
         "integration": 0.3,
         "external": 0.25,
         "api": 0.2,

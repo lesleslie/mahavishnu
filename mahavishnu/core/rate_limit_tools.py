@@ -198,8 +198,6 @@ def reset_tool_stats(tool_name: str | None = None):
     Args:
         tool_name: Optional specific tool to reset, or None to reset all
     """
-    global _tool_stats
-
     if tool_name:
         if tool_name in _tool_stats:
             _tool_stats[tool_name] = {

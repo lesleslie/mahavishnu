@@ -9,7 +9,7 @@ from __future__ import annotations
 from collections import defaultdict
 from datetime import UTC, datetime, timedelta
 import logging
-from typing import Any
+from typing import Any, ClassVar
 
 from pydantic import BaseModel, Field
 
@@ -76,7 +76,7 @@ class BlockerDetector:
     """Detects and analyzes recurring blockers in tasks."""
 
     # Standard blocker categories with their keywords
-    BLOCKER_CATEGORIES: dict[str, list[str]] = {
+    BLOCKER_CATEGORIES: ClassVar[dict[str, list[str]]] = {
         "dependency": [
             "dependency",
             "depends on",

@@ -179,8 +179,8 @@ class EmbeddingConfig(BaseModel):
         ]:
             try:
                 config = config.load_from_file(yaml_file)
-            except Exception:
-                pass  # File doesn't exist or has errors
+            except Exception as e:
+                logger.debug("Config file skipped: %s", e)
 
         # Override with environment variables
         config = config.load_from_env()

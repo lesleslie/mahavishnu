@@ -17,7 +17,7 @@ import contextlib
 from dataclasses import dataclass
 from datetime import UTC, datetime
 import logging
-from typing import Any
+from typing import Any, ClassVar
 
 import httpx
 
@@ -69,7 +69,7 @@ class SessionBuddyPoller:
     """
 
     # MCP tools to poll on Session-Buddy
-    MCP_TOOLS = [
+    MCP_TOOLS: ClassVar[list[str]] = [
         "get_activity_summary",
         "get_workflow_metrics",
         "get_session_analytics",
@@ -211,7 +211,7 @@ class SessionBuddyPoller:
                     self.logger.info("Polling loop cancelled")
                     break
                 except Exception as e:
-                    self.logger.error(f"Error in polling loop: {e}", exc_info=True)
+                    self.logger.exception("Error in polling loop")
                     self._record_error(f"Polling loop error: {e}")
                     # Continue running despite errors
                     await asyncio.sleep(self.interval)
@@ -602,8 +602,8 @@ class SessionBuddyPoller:
                     description="Total polling errors",
                 )
                 error_counter.add(1, {"source": "session_buddy_poller"})
-            except Exception:
-                pass  # Don't fail if metric recording fails
+            except Exception as e:
+                logger.debug("Metric recording skipped: %s", e)
 
     async def _open_circuit_breaker(self) -> None:
         """Open the circuit breaker to stop polling.

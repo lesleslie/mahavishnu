@@ -618,9 +618,9 @@ class TaskOrderer:
                     )
 
         # Add any remaining tasks (circular dependencies)
-        for task_id in task_map:
-            if task_map[task_id] not in result:
-                result.append(task_map[task_id])
+        for task_obj in task_map.values():
+            if task_obj not in result:
+                result.append(task_obj)
 
         return result
 

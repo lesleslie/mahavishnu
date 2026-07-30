@@ -86,8 +86,9 @@ except ImportError:
             return self
 
     def start_http_server(port: int):  # type: ignore[misc]
-        logging.warning(
-            f"prometheus_client not available, metrics server not started on port {port}"
+        logger.warning(
+            "prometheus_client not available, metrics server not started on port %s",
+            port,
         )
 
 
@@ -624,7 +625,6 @@ def reset_routing_metrics() -> None:
         >>> reset_routing_metrics()
         >>> print("All routing metrics instances and registry cleared")
     """
-    global _instances
     _instances.clear()
 
     # Clear Prometheus registry if available

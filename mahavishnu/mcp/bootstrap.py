@@ -201,7 +201,7 @@ def _build_noop_worker_manager() -> Any:
         last_output_offset = 0
         claude_session = None
         last_exit_code = None
-        metadata: dict = {}
+        metadata: dict = field(default_factory=dict)
 
         def model_dump(self) -> dict:
             return {}

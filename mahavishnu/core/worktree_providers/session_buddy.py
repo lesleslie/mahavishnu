@@ -94,7 +94,7 @@ class SessionBuddyWorktreeProvider(WorktreeProvider):
                     details={"error": str(e)},
                 ) from e
             except Exception as e:
-                logger.error(f"Failed to connect to Session-Buddy: {e}", exc_info=True)
+                logger.exception("Failed to connect to Session-Buddy")
                 raise WorktreeCreationError(
                     message=f"Failed to connect to Session-Buddy: {e}",
                     details={"session_buddy_url": self.session_buddy_url},
@@ -162,7 +162,7 @@ class SessionBuddyWorktreeProvider(WorktreeProvider):
         except WorktreeCreationError:
             raise
         except Exception as e:
-            logger.error(f"Session-Buddy create_worktree failed: {e}", exc_info=True)
+            logger.exception("Session-Buddy create_worktree failed")
             raise WorktreeCreationError(
                 message=f"Session-Buddy worktree creation failed: {e}",
                 details={
@@ -228,7 +228,7 @@ class SessionBuddyWorktreeProvider(WorktreeProvider):
         except WorktreeRemovalError:
             raise
         except Exception as e:
-            logger.error(f"Session-Buddy remove_worktree failed: {e}", exc_info=True)
+            logger.exception("Session-Buddy remove_worktree failed")
             raise WorktreeRemovalError(
                 message=f"Session-Buddy worktree removal failed: {e}",
                 details={
@@ -275,7 +275,7 @@ class SessionBuddyWorktreeProvider(WorktreeProvider):
         except WorktreeValidationError:
             raise
         except Exception as e:
-            logger.error(f"Session-Buddy list_worktrees failed: {e}", exc_info=True)
+            logger.exception("Session-Buddy list_worktrees failed")
             raise WorktreeValidationError(
                 message=f"Session-Buddy worktree listing failed: {e}",
                 details={"repository_path": str(repository_path)},
@@ -329,6 +329,6 @@ class SessionBuddyWorktreeProvider(WorktreeProvider):
                 await self._mcp_client.__aexit__(None, None, None)
                 logger.info("Session-Buddy MCP connection closed")
             except Exception as e:
-                logger.error(f"Error closing Session-Buddy connection: {e}", exc_info=True)
+                logger.exception("Error closing Session-Buddy connection")
             finally:
                 self._mcp_client = None

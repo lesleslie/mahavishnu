@@ -81,14 +81,13 @@ def register_search_tools(mcp: FastMCP) -> None:
             return [result.model_dump() for result in results]
 
         except Exception as e:
-            logger.error(
+            logger.exception(
                 "hybrid_search tool failed",
                 extra={
                     "query": query[:100],
                     "repository": repository,
                     "error": str(e),
                 },
-                exc_info=True,
             )
             raise
 
@@ -132,14 +131,13 @@ def register_search_tools(mcp: FastMCP) -> None:
             )
             raise ValueError(f"Invalid document UUID: {doc_id}") from e
         except Exception as e:
-            logger.error(
+            logger.exception(
                 "index_document tool failed",
                 extra={
                     "doc_id": doc_id,
                     "title": title[:50] if title else None,
                     "error": str(e),
                 },
-                exc_info=True,
             )
             raise
 
@@ -170,10 +168,9 @@ def register_search_tools(mcp: FastMCP) -> None:
             )
             raise ValueError(f"Invalid document UUID: {doc_id}") from e
         except Exception as e:
-            logger.error(
+            logger.exception(
                 "delete_document tool failed",
                 extra={"doc_id": doc_id, "error": str(e)},
-                exc_info=True,
             )
             raise
 
@@ -199,14 +196,13 @@ def register_search_tools(mcp: FastMCP) -> None:
             return [result.model_dump() for result in results]
 
         except Exception as e:
-            logger.error(
+            logger.exception(
                 "search_by_repository tool failed",
                 extra={
                     "repository": repository,
                     "query": query[:100],
                     "error": str(e),
                 },
-                exc_info=True,
             )
             raise
 

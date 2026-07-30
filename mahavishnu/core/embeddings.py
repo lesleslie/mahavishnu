@@ -788,8 +788,8 @@ class EmbeddingService:
                 provider = self._get_provider(provider_type)
                 if provider.is_available():
                     available.append(provider_type)
-            except Exception:
-                pass
+            except Exception as e:
+                logger.debug("Provider not available: %s", e)
 
         return available
 

@@ -51,8 +51,8 @@ class CompositeEventEnvelopeHandler:
             app = get_app_from_context()
             if app is not None and hasattr(app, "record_event_activity"):
                 app.record_event_activity(envelope)
-        except Exception:
-            pass
+        except Exception as e:
+            logger.debug("Event activity skipped: %s", e)
         results: list[Any] = []
         for handler in self.handlers:
             results.append(await handler.handle(envelope))

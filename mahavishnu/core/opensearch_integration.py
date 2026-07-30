@@ -1,12 +1,12 @@
 """OpenSearch integration for log analytics and search."""
 
 from datetime import UTC, datetime
-
-UTC = UTC
 import logging
 from typing import Any
 
 from mahavishnu.core.opensearch_constants import OPENSEARCH_AVAILABLE
+
+logger = logging.getLogger(__name__)
 
 
 class MockIndicesClient:
@@ -70,7 +70,7 @@ class OpenSearchLogAnalytics:
                 # Cannot use asyncio.create_task() in sync __init__ context
                 self._indices_initialized = False
             except Exception as e:
-                logging.warning(f"Failed to initialize OpenSearch client: {e}")
+                logger.warning("Failed to initialize OpenSearch client: %s", e)
                 self.client = MockAsyncOpenSearch()
         else:
             self.client = MockAsyncOpenSearch()
@@ -112,7 +112,7 @@ class OpenSearchLogAnalytics:
                 }
                 await self.client.indices.create(index=self.log_index, body=mapping)
         except Exception as e:
-            logging.warning(f"Failed to create log index: {e}")
+            logger.warning("Failed to create log index: %s", e)
 
     async def _create_workflow_index(self):
         """Create the workflow index with appropriate mapping."""
@@ -143,7 +143,7 @@ class OpenSearchLogAnalytics:
                 }
                 await self.client.indices.create(index=self.workflow_index, body=mapping)
         except Exception as e:
-            logging.warning(f"Failed to create workflow index: {e}")
+            logger.warning("Failed to create workflow index: %s", e)
 
     async def log_event(
         self,
@@ -175,7 +175,7 @@ class OpenSearchLogAnalytics:
 
             await self.client.index(index=self.log_index, body=doc)
         except Exception as e:
-            logging.warning(f"Failed to log event to OpenSearch: {e}")
+            logger.warning("Failed to log event to OpenSearch: %s", e)
 
     async def log_workflow_event(
         self, workflow_id: str, adapter: str, task_type: str, status: str, **kwargs
@@ -198,7 +198,7 @@ class OpenSearchLogAnalytics:
 
             await self.client.index(index=self.workflow_index, body=doc)
         except Exception as e:
-            logging.warning(f"Failed to log workflow event to OpenSearch: {e}")
+            logger.warning("Failed to log workflow event to OpenSearch: %s", e)
 
     async def search_logs(
         self,
@@ -247,7 +247,7 @@ class OpenSearchLogAnalytics:
 
             return [hit["_source"] for hit in response["hits"]["hits"]]
         except Exception as e:
-            logging.warning(f"Failed to search logs in OpenSearch: {e}")
+            logger.warning("Failed to search logs in OpenSearch: %s", e)
             return []
 
     async def search_workflows(
@@ -295,7 +295,7 @@ class OpenSearchLogAnalytics:
 
             return [hit["_source"] for hit in response["hits"]["hits"]]
         except Exception as e:
-            logging.warning(f"Failed to search workflows in OpenSearch: {e}")
+            logger.warning("Failed to search workflows in OpenSearch: %s", e)
             return []
 
     async def get_workflow_stats(self) -> dict[str, Any]:
@@ -336,7 +336,7 @@ class OpenSearchLogAnalytics:
                 "adapter_breakdown": adapter_breakdown,
             }
         except Exception as e:
-            logging.warning(f"Failed to get workflow stats from OpenSearch: {e}")
+            logger.warning("Failed to get workflow stats from OpenSearch: %s", e)
             return {}
 
     async def get_log_stats(self) -> dict[str, Any]:
@@ -363,7 +363,7 @@ class OpenSearchLogAnalytics:
 
             return {"total_logs": total_logs, "level_breakdown": level_breakdown}
         except Exception as e:
-            logging.warning(f"Failed to get log stats from OpenSearch: {e}")
+            logger.warning("Failed to get log stats from OpenSearch: %s", e)
             return {}
 
     async def health_check(self) -> dict[str, Any]:

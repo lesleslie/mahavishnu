@@ -42,7 +42,7 @@ from enum import StrEnum
 import json
 import logging
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, cast
+from typing import TYPE_CHECKING, Any, cast, ClassVar
 
 from mahavishnu.core.adapters.base import (
     AdapterType,
@@ -408,7 +408,7 @@ class CapabilityRouter:
     """
 
     # Task type → required capabilities mapping
-    TASK_CAPABILITY_REQUIREMENTS: dict[TaskType, list[str]] = {
+    TASK_CAPABILITY_REQUIREMENTS: ClassVar[dict[TaskType, list[str]]] = {
         TaskType.RAG_QUERY: ["rag", "vector_search"],
         TaskType.BATCH_TASK: ["batch", "workflow", "deploy_flows"],
         TaskType.INTERACTIVE_TASK: ["multi_agent", "tool_use", "conversational"],
@@ -561,7 +561,7 @@ class CapabilityRouter:
 class TaskRouter:
     """Intelligent task routing with graceful fallback."""
 
-    TASK_PREFERENCE_ORDERS = {
+    TASK_PREFERENCE_ORDERS: ClassVar[dict] = {
         TaskType.WORKFLOW: [
             AdapterType.PREFECT,
             AdapterType.AGNO,
@@ -589,7 +589,7 @@ class TaskRouter:
         ],
     }
 
-    DEFAULT_PREFERENCE_ORDER = [
+    DEFAULT_PREFERENCE_ORDER: ClassVar[list] = [
         AdapterType.PREFECT,
         AdapterType.AGNO,
         AdapterType.LLAMAINDEX,

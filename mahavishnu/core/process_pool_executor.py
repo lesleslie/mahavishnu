@@ -190,8 +190,8 @@ class ProcessPoolTaskExecutor:
             # Try to shutdown if not already done
             try:
                 self._executor.shutdown(wait=False)
-            except Exception:
-                pass  # Ignore errors during cleanup
+            except Exception as e:
+                logger.debug("Executor shutdown skipped: %s", e)
 
 
 # Singleton instance for global access
@@ -207,8 +207,6 @@ def get_process_pool() -> ProcessPoolTaskExecutor:
     Raises:
         RuntimeError: If executor not initialized
     """
-    global _process_pool_instance
-
     if _process_pool_instance is None:
         raise RuntimeError(
             "ProcessPoolTaskExecutor not initialized. "

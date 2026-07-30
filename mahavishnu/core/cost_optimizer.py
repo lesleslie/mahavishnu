@@ -731,7 +731,7 @@ class CostOptimizer:
                 logger.info("Budget monitoring loop cancelled")
                 break
             except Exception as e:
-                logger.error(f"Budget monitoring error: {e}", exc_info=True)
+                logger.exception("Budget monitoring error")
                 await asyncio.sleep(300)  # Retry after 5 minutes
 
     async def stop(self) -> None:

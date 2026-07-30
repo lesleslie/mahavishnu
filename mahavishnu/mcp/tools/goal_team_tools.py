@@ -419,7 +419,7 @@ def register_goal_team_tools(mcp: FastMCP) -> None:
                 },
             }
         except Exception as e:
-            logger.exception(f"Failed to create team from goal: {e}")
+            logger.exception("Failed to create team from goal")
             metrics.record_error(error_code=ErrorCode.INTERNAL_ERROR.value)
             # Broadcast error
             if ws_server:
@@ -610,7 +610,7 @@ def register_goal_team_tools(mcp: FastMCP) -> None:
                 },
             }
         except Exception as e:
-            logger.exception(f"Failed to parse goal: {e}")
+            logger.exception("Failed to parse goal")
             metrics.record_error(error_code=ErrorCode.INTERNAL_ERROR.value)
             # Broadcast error
             if ws_server:
@@ -684,7 +684,7 @@ def register_goal_team_tools(mcp: FastMCP) -> None:
                 "count": 0,
             }
         except Exception as e:
-            logger.exception(f"Failed to list team skills: {e}")
+            logger.exception("Failed to list team skills")
             return {
                 "success": False,
                 "error": {

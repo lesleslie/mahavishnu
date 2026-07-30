@@ -704,7 +704,6 @@ def get_registry() -> HybridAdapterRegistry:
     Returns:
         HybridAdapterRegistry instance
     """
-    global _registry
     if _registry is None:
         raise RuntimeError(
             "HybridAdapterRegistry not initialized. Call initialize_registry() first."

@@ -1,8 +1,6 @@
 """Permissions and RBAC module for Mahavishnu."""
 
 from datetime import UTC, datetime, timedelta
-
-UTC = UTC
 from enum import StrEnum
 
 import jwt

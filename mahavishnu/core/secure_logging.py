@@ -15,7 +15,7 @@ import json
 import logging
 from pathlib import Path
 import re
-from typing import Any
+from typing import Any, ClassVar
 
 from pydantic import SecretStr
 
@@ -55,7 +55,7 @@ class CredentialPatterns:
     """Regular expression patterns for detecting credentials."""
 
     # SSH private keys (RSA, ECDSA, Ed25519, DSA)
-    SSH_PRIVATE_KEY_PATTERNS = [
+    SSH_PRIVATE_KEY_PATTERNS: ClassVar[list[str]] = [
         r"-----BEGIN\s+(RSA\s+)?PRIVATE\s+KEY-----",
         r"-----BEGIN\s+EC\s+PRIVATE\s+KEY-----",
         r"-----BEGIN\s+OPENSSH\s+PRIVATE\s+KEY-----",
@@ -64,7 +64,7 @@ class CredentialPatterns:
     ]
 
     # SSH public keys
-    SSH_PUBLIC_KEY_PATTERNS = [
+    SSH_PUBLIC_KEY_PATTERNS: ClassVar[list[str]] = [
         r"ssh-rsa\s+[A-Za-z0-9+/]+[=]{0,2}\s+\S+",
         r"ssh-ed25519\s+[A-Za-z0-9+/]+[=]{0,2}\s+\S+",
         r"ssh-ecdsa\s+[A-Za-z0-9+/]+[=]{0,2}\s+\S+",
@@ -72,7 +72,7 @@ class CredentialPatterns:
     ]
 
     # API keys (common patterns)
-    API_KEY_PATTERNS = [
+    API_KEY_PATTERNS: ClassVar[list[str]] = [
         r'(?i)(api[_-]?key|apikey)["\']?\s*[:=]\s*["\']?([a-zA-Z0-9_\-]{20,})["\']?',
         r"(?i)(sk_|ak_|ai_|api_)[a-zA-Z0-9_\-]{15,}",
         r'(?i)(key|token)["\']?\s*[:=]\s*["\']?([a-zA-Z0-9_\-]{32,})["\']?',
@@ -89,37 +89,37 @@ class CredentialPatterns:
     ]
 
     # Bearer tokens
-    BEARER_TOKEN_PATTERNS = [
+    BEARER_TOKEN_PATTERNS: ClassVar[list[str]] = [
         r"Bearer\s+[A-Za-z0-9_\-\.~=]{20,}",
         r"authorization:\s*Bearer\s+[A-Za-z0-9_\-\.~=]{20,}",
     ]
 
     # Database URLs
-    DATABASE_URL_PATTERNS = [
+    DATABASE_URL_PATTERNS: ClassVar[list[str]] = [
         r"(postgresql|mysql|sqlite|mongodb|redis)://[^:]+:[^@]+@",
         r"(postgres|mysql|mongodb|redis)://[^:]+:[^@]+@",
     ]
 
     # Connection strings
-    CONNECTION_STRING_PATTERNS = [
+    CONNECTION_STRING_PATTERNS: ClassVar[list[str]] = [
         r"(Server|Host|Data Source)[^;=;]*[=;][^;:]+:[^;@]+",
         r"(User ID|Username)[^;=]*[=;][^;]+;(Password|Pass)[^;=]*[=;][^;]+",
     ]
 
     # Basic authentication
-    BASIC_AUTH_PATTERNS = [
+    BASIC_AUTH_PATTERNS: ClassVar[list[str]] = [
         r"basic\s+[A-Za-z0-9+/=]{20,}",
         r"authorization:\s*basic\s+[A-Za-z0-9+/=]{20,}",
     ]
 
     # Session IDs and cookies
-    SESSION_PATTERNS = [
+    SESSION_PATTERNS: ClassVar[list[str]] = [
         r'session[_-]?id["\']?\s*[:=]\s*["\']?([a-zA-Z0-9_\-]{20,})',
         r'cookie["\']?\s*[:=]\s*["\']?([a-zA-Z0-9_%\-\.]{20,})',
     ]
 
     # Certificates
-    CERTIFICATE_PATTERNS = [
+    CERTIFICATE_PATTERNS: ClassVar[list[str]] = [
         r"-----BEGIN\s+CERTIFICATE-----",
         r"-----BEGIN\s+X509\s+CERTIFICATE-----",
     ]

@@ -233,16 +233,16 @@ class ScaffoldingEngine:
         """
         issues: list[str] = []
         file_claims: dict[str, list[str]] = {}
-        for pid in resolved:
-            for f in resolved[pid].get_files():
+        for pid, pattern in resolved.items():
+            for f in pattern.get_files():
                 if f.required:
                     file_claims.setdefault(f.path, []).append(pid)
 
         # Build ancestor sets for dependency-aware conflict detection
         ancestors: dict[str, set[str]] = {}
-        for pid in resolved:
+        for pid, pattern in resolved.items():
             ancestors[pid] = set()
-            queue = list(resolved[pid].get_dependency_ids())
+            queue = list(pattern.get_dependency_ids())
             visited: set[str] = set()
             while queue:
                 dep = queue.pop(0)
@@ -290,12 +290,12 @@ class ScaffoldingEngine:
         topological sort produces prerequisites before dependents.
         """
         graph = PatternDependencyGraph()
-        for pid in resolved:
+        for pid, pattern in resolved.items():
             graph.add(pid)
             # For each dependency of pid: the dependency is the prerequisite
-            for dep_id in resolved[pid].get_dependency_ids():
+            for dep_id in pattern.get_dependency_ids():
                 graph.add_edge(dep_id, pid)
-            for f in resolved[pid].get_files():
+            for f in pattern.get_files():
                 if f.required:
                     graph.claim_file(pid, f.path)
         return graph

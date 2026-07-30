@@ -702,8 +702,8 @@ class EcosystemStatusService:
                         cap_statuses[cap], 0
                     ):
                         cap_statuses[cap] = adapter_status
-            except Exception:
-                pass
+            except Exception as e:
+                logger.debug("Adapter capability status skipped: %s", e)
 
         result: dict[str, CapabilityStatus] = {}
         for cap, providers in cap_providers.items():

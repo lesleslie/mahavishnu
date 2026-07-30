@@ -31,7 +31,7 @@ def _fallback_diagnostics(file_path: str, errors_only: bool = False) -> list[dic
         cmd.append("--select")
         cmd.append("E,F")
     try:
-        result = subprocess.run(cmd, capture_output=True, text=True, timeout=30)
+        result = subprocess.run(cmd, capture_output=True, text=True, timeout=30, check=False)
         if result.returncode != 0:
             import json
 
@@ -67,7 +67,7 @@ def _fallback_search(pattern: str, file_pattern: str | None = None) -> list[dict
         if file_pattern:
             cmd.extend(["--include", file_pattern])
         cmd.append(".")
-        proc = subprocess.run(cmd, capture_output=True, text=True, timeout=15)
+        proc = subprocess.run(cmd, capture_output=True, text=True, timeout=15, check=False)
         for line in proc.stdout.split("\n")[:100]:
             if ":" in line:
                 parts = line.split(":", 2)
@@ -123,8 +123,8 @@ def register_pycharm_tools(mcp: FastMCP, app: Any = None) -> None:
                         mcp_available = True
                     except Exception:
                         mcp_available = False
-        except Exception:
-            pass
+        except Exception as e:
+            logger.debug("PyCharm MCP probe skipped: %s", e)
 
         return {
             "status": "healthy" if mcp_available else "degraded",

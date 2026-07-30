@@ -50,6 +50,7 @@ def _run_osascript(script: str) -> str:
         capture_output=True,
         text=True,
         timeout=10,
+        check=False,
     )
     if result.returncode != 0:
         raise RuntimeError(f"osascript failed: {result.stderr.strip()}")
@@ -63,6 +64,7 @@ def _run_cliclick(args: str) -> str:
         capture_output=True,
         text=True,
         timeout=10,
+        check=False,
     )
     if result.returncode != 0:
         raise RuntimeError(f"cliclick failed: {result.stderr.strip()}")
@@ -576,7 +578,7 @@ class NativeMacOSBackend(DesktopAutomationBackend):
             with open(path, "rb") as img:
                 data = img.read()
 
-            subprocess.run(["rm", "-f", path], capture_output=True)
+            subprocess.run(["rm", "-f", path], capture_output=True, check=False)
             return data
 
         except subprocess.TimeoutExpired:

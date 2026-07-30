@@ -13,6 +13,7 @@ Security Checks:
 
 import logging
 from pathlib import Path
+from typing import ClassVar
 
 logger = logging.getLogger(__name__)
 
@@ -41,10 +42,10 @@ class WorktreePathValidator:
     """
 
     # Dangerous shell metacharacters (CWE-114)
-    SHELL_METACHARACTERS = [";", "&", "|", "`", "$", "\n", "\r", "(", ")", "<", ">"]
+    SHELL_METACHARACTERS: ClassVar[list[str]] = [";", "&", "|", "`", "$", "\n", "\r", "(", ")", "<", ">"]
 
     # Dangerous path components (CWE-22)
-    DANGER_PATH_COMPONENTS = ["..", "~", ".git", ".svn", ".hg"]
+    DANGER_PATH_COMPONENTS: ClassVar[list[str]] = ["..", "~", ".git", ".svn", ".hg"]
 
     def __init__(
         self,

@@ -66,7 +66,7 @@ async def wait_for_dependencies(app: Any) -> bool:
             if not report.valid:
                 for err in report.get_errors():
                     logger.warning("Config issue [%s]: %s", err.path, err.message)
-        except Exception:
-            pass
+        except Exception as e:
+            logger.debug("Config validation skipped: %s", e)
 
     return result.success

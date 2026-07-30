@@ -20,7 +20,7 @@ from __future__ import annotations
 from enum import StrEnum
 import logging
 import re
-from typing import Any
+from typing import Any, ClassVar
 
 from mahavishnu.core.metrics_schema import AdapterType, TaskType
 
@@ -136,7 +136,7 @@ class TaskRouter:
     """
 
     # Default fallback chains for each task type
-    DEFAULT_FALLBACK_CHAINS: dict[TaskType, list[AdapterType]] = {
+    DEFAULT_FALLBACK_CHAINS: ClassVar[dict[TaskType, list[AdapterType]]] = {
         TaskType.AI_TASK: [
             AdapterType.AGNO,  # Best for multi-agent AI tasks
             AdapterType.LLAMAINDEX,  # Good for RAG + AI

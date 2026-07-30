@@ -453,8 +453,8 @@ class GenericShellWorker(BaseWorker):
                     if session.get("id") == self.session_id:
                         self._status = WorkerStatus.RUNNING
                         return self._status
-            except Exception:
-                pass
+            except Exception as e:
+                logger.debug("Session status probe skipped: %s", e)
 
         if self._status == WorkerStatus.RUNNING:
             self._status = WorkerStatus.COMPLETED

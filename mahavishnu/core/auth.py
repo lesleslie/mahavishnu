@@ -5,7 +5,7 @@ to create authentication handlers from configuration.
 """
 
 from datetime import UTC, datetime, timedelta
-from typing import Any
+from typing import Any, ClassVar
 
 import jwt
 
@@ -96,7 +96,7 @@ class JWTAuth:
         token_scopes = scopes if scopes is not None else claims.get("scopes")
         return self.create_token(user_id=user_id, scopes=token_scopes, **merged_claims)
 
-    _JWT_ERROR_MAP: dict[type, tuple[str, str]] = {
+    _JWT_ERROR_MAP: ClassVar[dict[type, tuple[str, str]]] = {
         jwt.exceptions.InvalidSignatureError: ("Invalid token signature", "Invalid signature"),
         jwt.exceptions.ExpiredSignatureError: ("Token has expired", "Expired token"),
         jwt.exceptions.DecodeError: ("Could not decode token", "Decode error"),

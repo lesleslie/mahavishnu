@@ -190,7 +190,7 @@ def register_otel_tools(server, app, mcp_client):
             logger.error("OtelIngester not available for search")
             return []
         except Exception as e:
-            logger.exception(f"Error during trace search: {e}")
+            logger.exception("Error during trace search")
             if "ingester" in dir() and ingester is not None:
                 await ingester.close()
             return []
@@ -225,7 +225,7 @@ def register_otel_tools(server, app, mcp_client):
             logger.error("OtelIngester not available for trace retrieval")
             return None
         except Exception as e:
-            logger.exception(f"Error retrieving trace {trace_id}: {e}")
+            logger.exception("Error retrieving trace %s", trace_id)
             if "ingester" in dir() and ingester is not None:
                 await ingester.close()
             return None
@@ -332,7 +332,7 @@ def register_otel_tools(server, app, mcp_client):
             logger.error("HotStore not available for query_local_traces")
             return []
         except Exception as e:
-            logger.exception(f"Error querying traces: {e}")
+            logger.exception("Error querying traces")
             return []
 
     @server.tool()
@@ -374,7 +374,7 @@ def register_otel_tools(server, app, mcp_client):
                 "error": "OtelIngester or HotStore not available",
             }
         except Exception as e:
-            logger.exception(f"Error getting ingester stats: {e}")
+            logger.exception("Error getting ingester stats")
             return {
                 "storage_backend": "duckdb_hotstore",
                 "status": "error",

@@ -16,7 +16,7 @@ import json
 import logging
 from pathlib import Path
 import re
-from typing import Any
+from typing import Any, ClassVar
 
 import yaml
 
@@ -77,10 +77,10 @@ class ConfigValidator:
     """Validates Mahavishnu configuration."""
 
     # Required fields in repos.yaml
-    REQUIRED_REPO_FIELDS = ["name", "path"]
+    REQUIRED_REPO_FIELDS: ClassVar[list[str]] = ["name", "path"]
 
     # Optional fields with expected types
-    OPTIONAL_REPO_FIELDS = {
+    OPTIONAL_REPO_FIELDS: ClassVar[dict[str, type]] = {
         "package": str,
         "nickname": str,
         "nicknames": list,
@@ -91,7 +91,7 @@ class ConfigValidator:
     }
 
     # Valid roles (from CLAUDE.md)
-    VALID_ROLES = {
+    VALID_ROLES: ClassVar[set[str]] = {
         "orchestrator",
         "resolver",
         "manager",
@@ -107,7 +107,7 @@ class ConfigValidator:
     }
 
     # Valid MCP types
-    VALID_MCP_TYPES = {"native", "3rd-party"}
+    VALID_MCP_TYPES: ClassVar[set[str]] = {"native", "3rd-party"}
 
     def __init__(self) -> None:
         self.report = ConfigValidationReport(valid=True)

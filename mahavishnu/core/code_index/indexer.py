@@ -39,6 +39,7 @@ def get_current_commit(repo_path: str) -> str:
         cwd=repo_path,
         capture_output=True,
         text=True,
+        check=False,
     )
     return result.stdout.strip()
 

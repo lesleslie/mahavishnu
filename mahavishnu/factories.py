@@ -68,7 +68,7 @@ def get_pool_manager(
         session_buddy_client: Optional Session-Buddy client
         message_bus: Optional MessageBus instance
     """
-    global _pool_manager, _pool_lock
+    global _pool_manager
 
     if _pool_manager is not None:
         return _pool_manager
@@ -115,7 +115,7 @@ def get_websocket_server(
         cert_file: Path to TLS certificate file
         key_file: Path to TLS private key file
     """
-    global _websocket_server, _ws_lock
+    global _websocket_server
 
     if _websocket_server is not None:
         return _websocket_server
@@ -220,7 +220,7 @@ def get_terminal_manager(
         adapter: Optional terminal adapter
         config: Optional terminal settings
     """
-    global _terminal_manager, _tm_lock
+    global _terminal_manager
 
     if _terminal_manager is not None:
         return _terminal_manager
@@ -261,8 +261,6 @@ def initialize_websocket_server(
         cert_file: Path to TLS certificate file
         key_file: Path to TLS private key file
     """
-    global _websocket_server
-
     get_websocket_server(
         pool_manager=pool_manager,
         host=host,
@@ -285,7 +283,6 @@ def reset_all_factories() -> None:
     This is primarily intended for testing purposes.
     """
     global _pool_manager, _websocket_server, _terminal_manager
-    global _pool_lock, _ws_lock, _tm_lock
 
     with _pool_lock:
         _pool_manager = None

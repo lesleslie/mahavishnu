@@ -2,8 +2,6 @@
 
 from dataclasses import dataclass
 from datetime import UTC, datetime
-
-UTC = UTC
 from enum import Enum
 import logging
 import time
@@ -169,7 +167,7 @@ class ObservabilityManager:
 
     def _init_fallback_components(self):
         """Initialize fallback components when OpenTelemetry is not available."""
-        self.tracer = MockTracer() if OTEL_AVAILABLE else MockTracer()
+        self.tracer = MockTracer()
         self.meter = MockMeter()
 
         # Create fallback instruments

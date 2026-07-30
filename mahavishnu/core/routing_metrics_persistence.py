@@ -128,7 +128,7 @@ class RoutingMetricsPersistence:
             except asyncio.CancelledError:
                 break
             except Exception as e:
-                logger.error(f"Periodic flush error: {e}", exc_info=True)
+                logger.exception("Periodic flush error")
 
     async def _flush_all_pending(self) -> None:
         """Flush all pending records to database."""

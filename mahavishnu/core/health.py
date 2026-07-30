@@ -327,11 +327,12 @@ class HealthChecker(HTTPXClientMixin):
 
         except Exception as e:
             latency_ms = (time.time() - start_time) * 1000
-            self._logger.error(
+            self._logger.exception(
                 "health-check-error",
-                url=url,
-                error=str(e),
-                exc_info=True,
+                extra={
+                    "url": url,
+                    "error": str(e),
+                },
             )
             health_result = HealthCheckResult(
                 service_name=service_name,

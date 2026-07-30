@@ -19,7 +19,7 @@ except ImportError:
     logger.warning(
         "websocket_broadcast_unavailable",
         extra={
-            "module": "mahavishnu.websocket.server",
+            "component": "mahavishnu.websocket.server",
             "reason": (
                 "broadcast_event could not be imported; capability transitions "
                 "will not be broadcast to the adapters room"

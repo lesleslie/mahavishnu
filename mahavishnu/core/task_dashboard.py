@@ -20,7 +20,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from enum import StrEnum
 import logging
-from typing import Any
+from typing import Any, ClassVar
 
 logger = logging.getLogger(__name__)
 
@@ -275,7 +275,7 @@ class TaskDashboard:
     """
 
     # Default key bindings
-    DEFAULT_BINDINGS = [
+    DEFAULT_BINDINGS: ClassVar[list] = [
         KeyBinding("q", "quit", "Quit"),
         KeyBinding("ctrl+q", "quit", "Quit"),
         KeyBinding("?", "help", "Help"),

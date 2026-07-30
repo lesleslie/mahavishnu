@@ -240,7 +240,8 @@ def register_treesitter_tools(mcp: FastMCP) -> None:
                                         "context": line.strip()[:80],
                                     }
                                 )
-                except Exception:
+                except Exception as e:
+                    logger.debug("Tree-sitter pattern match skipped: %s", e)
                     continue
 
             return {

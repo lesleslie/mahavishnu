@@ -6,8 +6,6 @@ that use subscription tokens, in addition to the existing JWT authentication.
 """
 
 from datetime import UTC, datetime, timedelta
-
-UTC = UTC
 from enum import StrEnum
 from typing import Any
 

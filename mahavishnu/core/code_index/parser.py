@@ -161,6 +161,7 @@ def filter_changed_files(
             ["git", "-C", repo_path, "ls-files", "--cached"],
             capture_output=True,
             text=True,
+            check=False,
         )
         all_files = result.stdout.strip().split("\n") if result.stdout.strip() else []
         py_files = [str(repo / f) for f in all_files if Path(f).suffix == ".py"]
@@ -171,6 +172,7 @@ def filter_changed_files(
         cwd=repo_path,
         capture_output=True,
         text=True,
+        check=False,
     )
     changed = result.stdout.strip().split("\n") if result.stdout.strip() else []
     return sorted(str(repo / f) for f in changed if Path(f).suffix in PARSABLE_EXTENSIONS)

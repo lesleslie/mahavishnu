@@ -142,9 +142,9 @@ class WorktreeProviderRegistry:
                             logger.debug(f"Provider {provider_name} is healthy")
 
                     except Exception as e:
-                        logger.error(
-                            f"Health check failed for {provider_name}: {e}",
-                            exc_info=True,
+                        logger.exception(
+                            "Health check failed",
+                            extra={"provider": provider_name},
                         )
                         self._provider_health[provider_name] = False
 
@@ -152,5 +152,5 @@ class WorktreeProviderRegistry:
                 logger.info("Provider health check loop cancelled")
                 break
             except Exception as e:
-                logger.error(f"Error in health check loop: {e}", exc_info=True)
+                logger.exception("Error in health check loop")
                 # Continue loop despite errors

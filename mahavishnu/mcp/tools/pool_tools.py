@@ -243,9 +243,8 @@ async def _run_async_dispatch(
         }
     except Exception as exc:
         logger.exception(
-            "dispatch_to_pool: async workflow_id=%s failed: %s",
+            "dispatch_to_pool: async workflow_id=%s failed",
             workflow_id,
-            exc,
         )
         terminal_status = "failed"
         result_payload = {"error": str(exc)}
@@ -645,10 +644,10 @@ def register_pool_tools(
             task["routable_workers"] = select_routable_workers(
                 settings=MahavishnuSettings(),
             )
-        except Exception:
+        except Exception as e:
             # Settings may be unavailable in test environments; we
             # never want capability resolution to block routing.
-            pass
+            logger.debug("Routable workers resolution skipped: %s", e)
 
         try:
             selector = PoolSelector(pool_selector)
@@ -859,7 +858,7 @@ def register_pool_tools(
                     "error": str(exc),
                 }
             except Exception as exc:
-                logger.exception("dispatch_to_pool: sync dispatch failed: %s", exc)
+                logger.exception("dispatch_to_pool: sync dispatch failed")
                 return {
                     "status": "failed",
                     "error": str(exc),

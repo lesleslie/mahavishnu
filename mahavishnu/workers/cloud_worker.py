@@ -281,8 +281,8 @@ class CloudWorker(BaseWorker):
                     from mahavishnu.core.routing_metrics import get_routing_metrics
 
                     get_routing_metrics().record_rate_limit_rejected(model_for_rate)
-                except Exception:
-                    pass
+                except Exception as e:
+                    logger.debug("Rate limit metric skipped: %s", e)
                 return WorkerResult(
                     worker_id=self._worker_id,
                     status=WorkerStatus.FAILED,

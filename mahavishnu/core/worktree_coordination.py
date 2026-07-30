@@ -236,7 +236,7 @@ class WorktreeCoordinator:
                 worktree_path=str(worktree_path),
                 error=str(e),
             )
-            logger.error(f"Failed to create worktree: {e}", exc_info=True)
+            logger.exception("Failed to create worktree")
             raise
 
     async def remove_worktree(
@@ -322,7 +322,7 @@ class WorktreeCoordinator:
                 )
                 logger.info(f"Backup created before force removal: {backup_path}")
             except Exception as e:
-                logger.error(f"Failed to create backup: {e}", exc_info=True)
+                logger.exception("Failed to create backup")
                 return {
                     "success": False,
                     "error": f"Failed to create backup before force removal: {e}",
@@ -384,7 +384,7 @@ class WorktreeCoordinator:
                 worktree_path=worktree_path,
                 error=str(e),
             )
-            logger.error(f"Failed to remove worktree: {e}", exc_info=True)
+            logger.exception("Failed to remove worktree")
             raise
 
     async def list_worktrees(
@@ -442,7 +442,7 @@ class WorktreeCoordinator:
                 }
 
         except Exception as e:
-            logger.error(f"Failed to list worktrees: {e}", exc_info=True)
+            logger.exception("Failed to list worktrees")
             raise
 
     async def prune_worktrees(
@@ -503,7 +503,7 @@ class WorktreeCoordinator:
             }
 
         except Exception as e:
-            logger.error(f"Failed to prune worktrees: {e}", exc_info=True)
+            logger.exception("Failed to prune worktrees")
             raise
 
     async def get_worktree_safety_status(

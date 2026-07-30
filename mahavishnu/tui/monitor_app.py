@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, ClassVar
 
 from mahavishnu.tui import TUI_AVAILABLE, get_console
 
@@ -80,7 +80,7 @@ if TUI_AVAILABLE:
         }
         """
 
-        BINDINGS = [
+        BINDINGS: ClassVar[list] = [
             ("q", "quit", "Quit"),
             ("r", "refresh", "Refresh now"),
         ]
@@ -106,8 +106,8 @@ if TUI_AVAILABLE:
                 try:
                     self._pool_data = await self._data_provider.get_pools()
                     self._worker_data = await self._data_provider.get_workers()
-                except Exception:
-                    pass
+                except Exception as e:
+                    logger.debug("Data provider fetch skipped: %s", e)
             self._render_pools()
             self._render_workers()
 

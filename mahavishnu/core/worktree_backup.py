@@ -123,7 +123,7 @@ class WorktreeBackupManager:
             return backup_path
 
         except Exception as e:
-            logger.error(f"Failed to create backup: {e}", exc_info=True)
+            logger.exception("Failed to create backup")
             raise OSError(f"Backup creation failed: {e}") from e
 
     async def _copy_directory_async(
@@ -283,7 +283,7 @@ class WorktreeBackupManager:
             }
 
         except Exception as e:
-            logger.error(f"Failed to restore from backup: {e}", exc_info=True)
+            logger.exception("Failed to restore from backup")
             raise OSError(f"Backup restoration failed: {e}") from e
 
     async def cleanup_old_backups(self) -> int:
@@ -337,7 +337,7 @@ class WorktreeBackupManager:
             return removed_count
 
         except Exception as e:
-            logger.error(f"Backup cleanup failed: {e}", exc_info=True)
+            logger.exception("Backup cleanup failed")
             return 0
 
     async def list_backups(
@@ -380,5 +380,5 @@ class WorktreeBackupManager:
             return backups
 
         except Exception as e:
-            logger.error(f"Failed to list backups: {e}", exc_info=True)
+            logger.exception("Failed to list backups")
             return []

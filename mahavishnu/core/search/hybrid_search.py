@@ -350,14 +350,13 @@ class HybridSearchEngine:
             return filtered_results
 
         except Exception as e:
-            logger.error(
+            logger.exception(
                 "Hybrid search failed",
                 extra={
                     "query": query[:100],
                     "repository": repository,
                     "error": str(e),
                 },
-                exc_info=True,
             )
             raise
 
@@ -638,14 +637,13 @@ class HybridSearchEngine:
             )
 
         except Exception as e:
-            logger.error(
+            logger.exception(
                 "Failed to index document",
                 extra={
                     "doc_id": str(doc_id),
                     "title": title[:50] if title else None,
                     "error": str(e),
                 },
-                exc_info=True,
             )
             raise
 
@@ -683,9 +681,8 @@ class HybridSearchEngine:
                 return deleted  # type: ignore[no-any-return]
 
         except Exception as e:
-            logger.error(
+            logger.exception(
                 "Failed to delete document",
                 extra={"doc_id": str(doc_id), "error": str(e)},
-                exc_info=True,
             )
             raise

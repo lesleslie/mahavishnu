@@ -180,8 +180,8 @@ class ProductionReadinessChecker:
                             # Exclude obvious placeholders/examples
                             if "example" not in content.lower() and "test" not in content.lower():
                                 issues.append(f"{py_file.relative_to(self.project_root)}: {desc}")
-                except Exception:
-                    pass
+                except Exception as e:
+                    logger.debug("Pattern scan skipped: %s", e)
 
         if issues:
             status = ReadinessStatus.FAIL
@@ -405,6 +405,7 @@ class ProductionReadinessChecker:
                 capture_output=True,
                 text=True,
                 timeout=300,  # Increased to 5 minutes
+                check=False,
             )
 
             # Parse coverage from coverage.xml (XML) if available

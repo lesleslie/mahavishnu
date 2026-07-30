@@ -1317,8 +1317,8 @@ def _resolve_dhara_url(explicit_url: str | None) -> str:
                 port = dhara.get("port", 8683)
                 scheme = "https" if dhara.get("use_tls") else "http"
                 return f"{scheme}://{host}:{port}".rstrip("/")
-        except Exception:
-            pass
+        except Exception as e:
+            logger.debug("Dhara URL resolution skipped: %s", e)
 
     return "http://localhost:8683"
 

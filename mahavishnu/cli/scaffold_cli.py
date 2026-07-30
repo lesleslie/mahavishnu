@@ -186,8 +186,7 @@ def scaffold(
                 raise typer.Exit(code=1)
             resolved.append(p)
             seen.add(pid)
-            for dep in p.get_dependency_ids():
-                queue.append(dep)
+            queue.extend(p.get_dependency_ids())
 
         typer.echo(f"dry-run: Would scaffold '{project_name}' with {len(resolved)} patterns:")
         for p in resolved:

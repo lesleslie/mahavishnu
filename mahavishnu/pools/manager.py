@@ -679,8 +679,8 @@ class PoolManager:
                         return override
                     except ValueError:
                         pass  # Unknown selector string — keep current selector
-        except Exception:
-            pass  # Dhara unavailable — use selector as-is
+        except Exception as e:
+            logger.debug("Dhara selector override skipped: %s", e)
         return selector
 
     async def _route_by_affinity(

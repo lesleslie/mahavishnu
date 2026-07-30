@@ -25,7 +25,7 @@ from datetime import datetime, UTC
 import logging
 from pathlib import Path
 import subprocess
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, ClassVar
 
 from textual.app import App, ComposeResult
 from textual.binding import Binding
@@ -83,8 +83,8 @@ async def _get_report() -> EcosystemStatusReport | None:
                 dhara_url = getattr(oneiric, "url", None) or getattr(oneiric, "base_url", None)
                 if dhara_url:
                     service_configs["dhara"] = {"url": dhara_url, "required": False, "timeout_s": 3}
-        except Exception:
-            pass
+        except Exception as e:
+            logger.debug("Service config skipped: %s", e)
 
         app = get_app_from_context()
         return await EcosystemStatusService(
@@ -238,8 +238,8 @@ async def fetch_skill_drafts() -> list[dict[str, Any]]:
                     }
                 )
             return drafts
-        except Exception:
-            pass
+        except Exception as e:
+            logger.debug("Draft loading skipped: %s", e)
 
     skills_root = Path.home() / ".claude" / "skills"
     if not skills_root.exists():
@@ -269,7 +269,8 @@ async def fetch_skill_drafts() -> list[dict[str, Any]]:
                     "description": description,
                 }
             )
-        except Exception:
+        except Exception as e:
+            logger.debug("Draft entry skipped: %s", e)
             continue
     return drafts
 
@@ -901,7 +902,7 @@ class RecoveryScreen(VerticalScroll):
 class ApprovalsScreen(VerticalScroll):
     """Pending approvals backed by the durable approval manager."""
 
-    _approval_ids: list[str] = []
+    _approval_ids: ClassVar[list[str]] = []
 
     def compose(self) -> ComposeResult:
         yield Label("Pending Approvals", classes="screen-title")
@@ -1223,7 +1224,7 @@ class DashboardApp(App):
     TITLE = "Mahavishnu Dashboard"
     SUB_TITLE = f"Auto-refresh every {_REFRESH_INTERVAL}s · Press R to refresh now · Q to quit"
 
-    COMMANDS = {MahavishnuCommandProvider}
+    COMMANDS: ClassVar[set[type]] = {MahavishnuCommandProvider}
 
     CSS = """
     Screen {
@@ -1269,7 +1270,7 @@ class DashboardApp(App):
     }
     """
 
-    BINDINGS = [
+    BINDINGS: ClassVar[list] = [
         Binding("q", "quit", "Quit", priority=True),
         Binding("r", "refresh_all", "Refresh"),
         Binding("ctrl+k", "command_palette", "Commands"),

@@ -25,7 +25,7 @@ from datetime import datetime, timedelta, UTC
 from enum import StrEnum
 import logging
 import re
-from typing import Any
+from typing import Any, ClassVar
 
 logger = logging.getLogger(__name__)
 
@@ -101,7 +101,7 @@ class NlpParser:
     """
 
     # Intent patterns with weights
-    INTENT_PATTERNS: dict[Intent, list[tuple[str, float]]] = {
+    INTENT_PATTERNS: ClassVar[dict[Intent, list[tuple[str, float]]]] = {
         Intent.CREATE: [
             (r"\b(create|add|new|make|start)\b", 0.8),
             (r"\b(task|issue|ticket|item)\b", 0.3),
@@ -141,7 +141,7 @@ class NlpParser:
     }
 
     # Priority keywords (order matters - check multi-word phrases first in extraction)
-    PRIORITY_KEYWORDS: dict[Priority, list[str]] = {
+    PRIORITY_KEYWORDS: ClassVar[dict[Priority, list[str]]] = {
         Priority.CRITICAL: ["critical", "urgent", "asap", "emergency", "blocker", "hotfix"],
         Priority.HIGH: ["high priority", "high", "important", "soon"],
         Priority.MEDIUM: ["medium priority", "normal priority", "medium", "normal", "regular"],
@@ -149,7 +149,7 @@ class NlpParser:
     }
 
     # Repository name patterns (includes hyphens and underscores)
-    REPO_PATTERNS = [
+    REPO_PATTERNS: ClassVar[list[str]] = [
         r"\bfor\s+([a-zA-Z0-9_-]+)\s+repo",
         r"\bin\s+([a-zA-Z0-9_-]+)\s+repo",
         r"\brepo[:\s]+([a-zA-Z0-9_-]+)",
@@ -157,14 +157,14 @@ class NlpParser:
     ]
 
     # Tag patterns
-    TAG_PATTERNS = [
+    TAG_PATTERNS: ClassVar[list[str]] = [
         r"#(\w+)",
         r"\btag(?:s)?[:\s]+([\w\s,-]+)",
         r"\blabeled?\s+(?:as\s+)?([\w\s,-]+)",
     ]
 
     # Due date patterns
-    DUE_DATE_PATTERNS = [
+    DUE_DATE_PATTERNS: ClassVar[list[str]] = [
         (
             r"\bby\s+(tomorrow|today|monday|tuesday|wednesday|thursday|friday|saturday|sunday)\b",
             "relative_day",

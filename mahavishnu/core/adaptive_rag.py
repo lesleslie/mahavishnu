@@ -33,7 +33,7 @@ from dataclasses import dataclass, field
 from enum import Enum
 import logging
 import re
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, ClassVar
 
 if TYPE_CHECKING:
     from mahavishnu.core.embedding_cache import EmbeddingCache
@@ -126,7 +126,7 @@ class QueryComplexityAnalyzer:
     """
 
     # Domain-specific terminology patterns
-    DOMAIN_PATTERNS = [
+    DOMAIN_PATTERNS: ClassVar[list[str]] = [
         r"\b(api|rest|graphql|grpc|websocket|http)\b",
         r"\b(database|sql|nosql|postgres|mongodb|redis)\b",
         r"\b(authentication|authorization|jwt|oauth|token)\b",
@@ -138,7 +138,7 @@ class QueryComplexityAnalyzer:
     ]
 
     # Multi-hop reasoning indicators
-    REASONING_PATTERNS = [
+    REASONING_PATTERNS: ClassVar[list[str]] = [
         r"\b(why|how|explain|describe|analyze)\b",
         r"\b(compare|contrast|difference|versus|vs)\b",
         r"\b(relationship|connection|impact|affect)\b",
@@ -147,7 +147,7 @@ class QueryComplexityAnalyzer:
     ]
 
     # Temporal/spatial patterns
-    TEMPORAL_PATTERNS = [
+    TEMPORAL_PATTERNS: ClassVar[list[str]] = [
         r"\b(when|while|during|before|after)\b",
         r"\b(today|yesterday|tomorrow|last week|next month)\b",
         r"\b(where|location|region|area|place)\b",
@@ -155,7 +155,7 @@ class QueryComplexityAnalyzer:
     ]
 
     # Intent patterns
-    INTENT_PATTERNS = {
+    INTENT_PATTERNS: ClassVar[dict[str, list[str]]] = {
         "explain": [r"\b(explain|describe|what is|tell me about)\b"],
         "how_to": [r"\b(how (to|do|can)|steps|guide|tutorial)\b"],
         "compare": [r"\b(compare|difference|versus|vs|contrast)\b"],
@@ -165,7 +165,7 @@ class QueryComplexityAnalyzer:
     }
 
     # Structure complexity patterns
-    STRUCTURE_PATTERNS = [
+    STRUCTURE_PATTERNS: ClassVar[list[str]] = [
         r"\band\b",
         r"\bor\b",
         r"\bbut\b",

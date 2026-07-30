@@ -26,7 +26,7 @@ from datetime import UTC, datetime
 from enum import StrEnum
 import json
 import logging
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, ClassVar
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -137,7 +137,7 @@ class OutputFormatter:
     """
 
     # Status color mappings
-    STATUS_COLORS = {
+    STATUS_COLORS: ClassVar[dict[str, str]] = {
         "completed": "green",
         "done": "green",
         "success": "green",
@@ -152,7 +152,7 @@ class OutputFormatter:
     }
 
     # Priority indicators
-    PRIORITY_INDICATORS = {
+    PRIORITY_INDICATORS: ClassVar[dict[str, str]] = {
         "critical": "!!!",
         "high": "!!",
         "medium": "!",

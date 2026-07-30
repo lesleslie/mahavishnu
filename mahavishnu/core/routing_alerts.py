@@ -430,7 +430,7 @@ class RoutingAlertManager:
                 self.logger.info("Alert evaluation loop cancelled")
                 break
             except Exception as e:
-                self.logger.error(f"Alert evaluation error: {e}", exc_info=True)
+                self.logger.exception("Alert evaluation error")
 
     async def start(self) -> None:
         """Start alert evaluation loop.

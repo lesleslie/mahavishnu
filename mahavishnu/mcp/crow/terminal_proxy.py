@@ -244,8 +244,8 @@ async def _safe_stdio_client(command: str):
         tg_task.cancel()
         try:
             await asyncio.wait_for(asyncio.shield(tg_task), timeout=2.0)
-        except BaseException:
-            pass
+        except BaseException as e:
+            logger.debug("Task group shutdown skipped: %s", e)
         # Step 2: close the memory streams so any straggler unblocks.
         for stream in (rs, ws):
             try:
@@ -334,9 +334,8 @@ async def _close_session(handle: str) -> None:
         await state.exit_stack.aclose()
     except BaseException as exc:
         logger.exception(
-            "Error closing crow session %s (subprocess reap is best-effort): %s",
+            "Error closing crow session %s (subprocess reap is best-effort)",
             handle,
-            exc,
         )
         raise  # T2-M2: preserve cancellation/error propagation
 

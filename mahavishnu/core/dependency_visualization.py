@@ -11,6 +11,7 @@ from __future__ import annotations
 
 from enum import StrEnum
 import logging
+from typing import ClassVar
 
 from mahavishnu.core.dependency_graph import (
     DependencyGraph,
@@ -39,7 +40,7 @@ class DependencyVisualizer:
     """Visualizes dependency graphs in terminal."""
 
     # Symbols for tree rendering
-    SYMBOLS = {
+    SYMBOLS: ClassVar[dict[str, str]] = {
         "branch": "├── ",
         "last_branch": "└── ",
         "vertical": "│   ",
@@ -49,7 +50,7 @@ class DependencyVisualizer:
     }
 
     # Status indicators
-    STATUS_ICONS = {
+    STATUS_ICONS: ClassVar[dict[str, str]] = {
         DependencyStatus.PENDING: "⏳",
         DependencyStatus.SATISFIED: "✓",
         DependencyStatus.FAILED: "✗",
@@ -57,7 +58,7 @@ class DependencyVisualizer:
     }
 
     # Type indicators
-    TYPE_ICONS = {
+    TYPE_ICONS: ClassVar[dict[str, str]] = {
         DependencyType.BLOCKS: "🚫",
         DependencyType.REQUIRES: "📦",
         DependencyType.RELATED: "🔗",

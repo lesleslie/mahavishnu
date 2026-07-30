@@ -173,6 +173,7 @@ class SecretsScanner:
                 ["detect-secrets", "--version"],
                 capture_output=True,
                 text=True,
+                check=False,
             )
             if result.returncode == 0:
                 logger.info(f"detect-secrets installed: {result.stdout.strip()}")
@@ -216,6 +217,7 @@ class SecretsScanner:
                 ],
                 capture_output=True,
                 text=True,
+                check=False,
             )
 
             scan_duration = time.time() - start_time

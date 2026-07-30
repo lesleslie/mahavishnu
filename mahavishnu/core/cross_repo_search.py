@@ -30,7 +30,7 @@ from dataclasses import dataclass, field
 from enum import StrEnum
 import logging
 import re
-from typing import Any
+from typing import Any, ClassVar
 
 from mahavishnu.core.task_store import Task, TaskListFilter, TaskPriority, TaskStatus, TaskStore
 
@@ -150,10 +150,10 @@ class CrossRepoSearch:
     """
 
     # Default fields to search in
-    DEFAULT_SEARCH_FIELDS = ["title", "description", "tags"]
+    DEFAULT_SEARCH_FIELDS: ClassVar[list[str]] = ["title", "description", "tags"]
 
     # Field weights for scoring
-    FIELD_WEIGHTS = {
+    FIELD_WEIGHTS: ClassVar[dict[str, float]] = {
         "title": 3.0,  # Title matches are most important
         "tags": 2.0,  # Tag matches are significant
         "description": 1.0,  # Description matches are baseline
