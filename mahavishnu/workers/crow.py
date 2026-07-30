@@ -110,7 +110,7 @@ class CrowWorker(BaseWorker):
                     await self._client.post(
                         f"{self._base_url}/acp/cancel/{self._session_id}",
                     )
-                except Exception as e:
+                except Exception as e:  # noqa: BLE001 - boundary preserves structured backend failure handling
                     logger.warning(f"Failed to cancel CrowWorker ACP session: {e}")
                 finally:
                     self._status = WorkerStatus.COMPLETED

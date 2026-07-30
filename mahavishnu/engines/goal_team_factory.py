@@ -655,7 +655,7 @@ CONFIDENCE: <0.0-1.0>"""
             content = response.content if hasattr(response, "content") else str(response)
             return self._parse_llm_response(goal, content)
 
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - boundary preserves structured backend failure handling
             logger.warning(f"LLM parsing failed: {e}")
             return ParsedGoal(
                 intent="analyze",

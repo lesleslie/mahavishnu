@@ -333,7 +333,7 @@ class MCPToolsRegistry:
                 f"transport={self.config.mcp_transport}"
             )
 
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - boundary preserves structured backend failure handling
             logger.warning(f"Failed to initialize MCP tools: {e}")
             # Don't raise - MCP tools are optional
             self._initialized = True
@@ -603,7 +603,7 @@ class AgnoAdapter(OrchestratorAdapter):
             self._client = httpx.AsyncClient(base_url=self.api_url)
             try:
                 await self._client.get(self.api_url)
-            except Exception as e:
+            except Exception as e:  # noqa: BLE001 - boundary preserves structured backend failure handling
                 logger.warning(f"AgnoAdapter compatibility ping failed: {e}")
             logger.info(
                 f"AgnoAdapter initialized successfully: "
@@ -1401,7 +1401,7 @@ Use available tools to complete the task and provide a summary."""
             if self._llm_factory:
                 # Just check if factory is configured, don't create model
                 health_details["llm_configured"] = True
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - boundary preserves structured backend failure handling
             return {
                 "status": "degraded",
                 "details": {**health_details, "llm_error": str(e)},
@@ -1450,7 +1450,7 @@ Use available tools to complete the task and provide a summary."""
             if callable(close_method):
                 try:
                     await close_method()
-                except Exception as e:
+                except Exception as e:  # noqa: BLE001 - boundary preserves structured backend failure handling
                     logger.warning(f"Error closing Agno client session: {e}")
         self._client = None
 

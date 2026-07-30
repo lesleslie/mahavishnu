@@ -207,7 +207,7 @@ def _analyze_python_file(file_path: Path) -> dict[str, Any]:
 
     except SyntaxError as e:
         _record_syntax_error(file_path, e, result)
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001 - boundary preserves structured backend failure handling
         _record_parse_error(file_path, e, result)
 
     return result
@@ -318,7 +318,7 @@ def _search_code_impl(query: str, repo_path: str) -> list[dict[str, Any]]:
                         }
                     )
 
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - boundary preserves structured backend failure handling
             logger.debug(f"Error reading {py_file}: {e}")
             continue
 

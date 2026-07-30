@@ -166,7 +166,7 @@ class ApplicationWorker(BaseWorker):
                 metadata={"tool": tool_name, "timeout": timeout},
             )
 
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - boundary preserves structured backend failure handling
             logger.error(f"MCP tool {tool_name} failed: {e}")
             return WorkerResult(
                 worker_id=self.worker_id,
@@ -197,7 +197,7 @@ class ApplicationWorker(BaseWorker):
         try:
             # Try prefixed name first
             return await self.mcp_client.call_tool(prefixed_name, arguments)
-        except Exception:
+        except Exception:  # noqa: BLE001 - boundary preserves structured backend failure handling
             # Fall back to unprefixed name
             return await self.mcp_client.call_tool(tool_name, arguments)
 
@@ -279,7 +279,7 @@ class ApplicationWorker(BaseWorker):
                 },
             )
             logger.info(f"Stored result for {self.worker_id} in Session-Buddy")
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - boundary preserves structured backend failure handling
             logger.warning(f"Failed to store result in Session-Buddy: {e}")
 
     async def stop(self) -> None:

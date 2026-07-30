@@ -154,7 +154,7 @@ class OpenClawGatewayWorker(BaseWorker):
         if self._status is not WorkerStatus.RUNNING:
             try:
                 await self.start()
-            except Exception as exc:
+            except Exception as exc:  # noqa: BLE001 - boundary preserves structured backend failure handling
                 self._status = WorkerStatus.FAILED
                 return WorkerResult(
                     worker_id=self.worker_id,
@@ -192,7 +192,7 @@ class OpenClawGatewayWorker(BaseWorker):
                 duration_seconds=self._duration(),
                 metadata={"method": request.method},
             )
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001 - boundary preserves structured backend failure handling
             return WorkerResult(
                 worker_id=self.worker_id,
                 status=WorkerStatus.FAILED,

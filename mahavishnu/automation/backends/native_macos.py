@@ -195,7 +195,7 @@ class NativeMacOSBackend(DesktopAutomationBackend):
                     )
                 )
             return apps
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - boundary preserves structured backend failure handling
             logger.error("Failed to list applications: %s", e)
             return []
 
@@ -472,7 +472,7 @@ class NativeMacOSBackend(DesktopAutomationBackend):
                 if interval > 0:
                     await asyncio.sleep(interval)
             return True
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - boundary preserves structured backend failure handling
             logger.warning("Failed to type text: %s", e)
             return False
 
@@ -491,7 +491,7 @@ class NativeMacOSBackend(DesktopAutomationBackend):
             else:
                 await _async_run_sync(_run_cliclick, f"k:{key}")
             return True
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - boundary preserves structured backend failure handling
             logger.warning("Failed to press key %s: %s", key, e)
             return False
 
@@ -511,7 +511,7 @@ class NativeMacOSBackend(DesktopAutomationBackend):
             elif clicks == 3:
                 await _async_run_sync(_run_cliclick, f"tc:{x},{y}")
             return True
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - boundary preserves structured backend failure handling
             logger.warning("Failed to click at %d,%d: %s", x, y, e)
             return False
 
@@ -532,7 +532,7 @@ class NativeMacOSBackend(DesktopAutomationBackend):
             await asyncio.sleep(duration)
             await _async_run_sync(_run_cliclick, f"{end_x},{end_y}")
             return True
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - boundary preserves structured backend failure handling
             logger.warning(
                 "Failed to drag from %d,%d to %d,%d: %s", start_x, start_y, end_x, end_y, e
             )
@@ -546,7 +546,7 @@ class NativeMacOSBackend(DesktopAutomationBackend):
             await _async_run_sync(_run_cliclick, f"m:{x},{y}")
             await _async_run_sync(_run_cliclick, f"sw:{dx},{dy}")
             return True
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - boundary preserves structured backend failure handling
             logger.warning("Failed to scroll at %d,%d: %s", x, y, e)
             return False
 
@@ -583,7 +583,7 @@ class NativeMacOSBackend(DesktopAutomationBackend):
 
         except subprocess.TimeoutExpired:
             raise RuntimeError("screenshot timed out")
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - boundary preserves structured backend failure handling
             raise RuntimeError(f"screenshot failed: {e}")
 
     # =====================================================================
@@ -638,6 +638,6 @@ class NativeMacOSBackend(DesktopAutomationBackend):
                     )
                 )
             return screens
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - boundary preserves structured backend failure handling
             logger.error("Failed to list screens: %s", e)
             return []

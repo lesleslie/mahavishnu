@@ -343,7 +343,7 @@ class MahavishnuAgent:
                 active_workers=active_workers,
             )
 
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - boundary preserves structured backend failure handling
             logger.warning("get_pool_status failed: %s", e)
             return PoolStatusResult(error=str(e))
 
@@ -381,7 +381,7 @@ class MahavishnuAgent:
                 adapter_scores={a.value: s for a, s in scores.items()},
             )
 
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - boundary preserves structured backend failure handling
             logger.warning("get_routing_info failed: %s", e)
             return RoutingInfoResult(
                 task_type=task_type,

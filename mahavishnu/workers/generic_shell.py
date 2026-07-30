@@ -219,7 +219,7 @@ class GenericShellWorker(BaseWorker):
             # Capture latest output
             try:
                 output = await self.terminal_manager.capture_output(self.session_id, lines=100)
-            except Exception as e:
+            except Exception as e:  # noqa: BLE001 - boundary preserves structured backend failure handling
                 logger.error(f"Failed to capture output: {e}")
                 output = ""
 
@@ -426,7 +426,7 @@ class GenericShellWorker(BaseWorker):
                 },
             )
             logger.info(f"Stored result for {self.session_id} in Session-Buddy")
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - boundary preserves structured backend failure handling
             logger.warning(f"Failed to store result in Session-Buddy: {e}")
 
     async def stop(self) -> None:
@@ -435,7 +435,7 @@ class GenericShellWorker(BaseWorker):
             try:
                 await self.terminal_manager.close_session(self.session_id)
                 logger.info(f"Stopped worker {self.session_id}")
-            except Exception as e:
+            except Exception as e:  # noqa: BLE001 - boundary preserves structured backend failure handling
                 logger.error(f"Failed to stop worker {self.session_id}: {e}")
             finally:
                 self._status = WorkerStatus.COMPLETED
@@ -453,7 +453,7 @@ class GenericShellWorker(BaseWorker):
                     if session.get("id") == self.session_id:
                         self._status = WorkerStatus.RUNNING
                         return self._status
-            except Exception as e:
+            except Exception as e:  # noqa: BLE001 - boundary preserves structured backend failure handling
                 logger.debug("Session status probe skipped: %s", e)
 
         if self._status == WorkerStatus.RUNNING:

@@ -320,7 +320,7 @@ class AgentTeamManager:
             self._run_history[team_id].append(result)
             return result
 
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - boundary preserves structured backend failure handling
             latency_ms = (time.monotonic() - start_time) * 1000
             logger.error(f"Team run failed: team={config.name}, error={e}")
 

@@ -135,7 +135,7 @@ def _get_allowed_base_dirs() -> list[Path]:
                 ]
             )
             return list(dict.fromkeys(allowed))
-    except Exception:
+    except Exception:  # noqa: BLE001 - boundary preserves structured backend failure handling
         logger.debug("Could not load allowed_repo_paths from configuration, using defaults")
 
     return [p.resolve() for p in DEFAULT_ALLOWED_BASE_DIRS]
@@ -536,7 +536,7 @@ def _search_files_impl(pattern: str, directory: str) -> list[str]:
                         extra={"match": str(match)},
                     )
                     continue
-            except Exception as e:
+            except Exception as e:  # noqa: BLE001 - boundary preserves structured backend failure handling
                 logger.warning(f"Could not validate search result path: {e}")
                 continue
 

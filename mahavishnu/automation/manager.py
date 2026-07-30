@@ -208,7 +208,7 @@ class AutomationManager:
                     self._backend = backend_cls()
                     logger.info(f"Selected backend: {name}")
                     return
-                except Exception as e:
+                except Exception as e:  # noqa: BLE001 - boundary preserves structured backend failure handling
                     logger.warning(f"Failed to initialize {name} backend: {e}")
                     continue
 
@@ -275,7 +275,7 @@ class AutomationManager:
                 data=result if isinstance(result, dict) else {"result": result},
                 duration_ms=duration_ms,
             )
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - boundary preserves structured backend failure handling
             duration_ms = (time.time() - start_time) * 1000
             self._record_operation(False)
             logger.error(f"Operation {operation_type} failed: {e}")

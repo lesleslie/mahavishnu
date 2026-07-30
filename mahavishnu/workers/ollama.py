@@ -485,7 +485,7 @@ class OllamaWorker(BaseWorker):
                 metadata={"timeout": timeout},
             )
 
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - boundary preserves structured backend failure handling
             duration = time.time() - start_time
             logger.error(f"Ollama task failed: {e}")
             return WorkerResult(
@@ -535,7 +535,7 @@ class OllamaWorker(BaseWorker):
             try:
                 available = await self._is_available()
                 progress["ollama_available"] = available
-            except Exception:
+            except Exception:  # noqa: BLE001 - boundary preserves structured backend failure handling
                 progress["ollama_available"] = False
 
         return progress
@@ -568,7 +568,7 @@ class OllamaWorker(BaseWorker):
                     "base_url": self.config.base_url,
                 },
             }
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - boundary preserves structured backend failure handling
             return {
                 "healthy": False,
                 "status": WorkerStatus.FAILED.value,
@@ -585,7 +585,7 @@ class OllamaWorker(BaseWorker):
         try:
             response = await self._client.get("/", timeout=5.0)
             return response.status_code == 200 or "Ollama is running" in response.text
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - boundary preserves structured backend failure handling
             logger.debug(f"Ollama availability check failed: {e}")
             return False
 
@@ -683,7 +683,7 @@ class OllamaWorker(BaseWorker):
         if self._client:
             try:
                 await self._client.aclose()
-            except Exception as e:
+            except Exception as e:  # noqa: BLE001 - boundary preserves structured backend failure handling
                 logger.error(f"Error closing Ollama client: {e}")
             finally:
                 self._client = None
@@ -715,7 +715,7 @@ class OllamaWorker(BaseWorker):
                 },
             )
             logger.debug(f"Stored result in Session-Buddy: {self._worker_id}")
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - boundary preserves structured backend failure handling
             logger.warning(f"Failed to store result in Session-Buddy: {e}")
 
 

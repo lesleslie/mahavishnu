@@ -205,7 +205,7 @@ class PyAutoGUIBackend(DesktopAutomationBackend):
             try:
                 pyautogui.write(text, interval=interval)
                 return True
-            except Exception as e:
+            except Exception as e:  # noqa: BLE001 - boundary preserves structured backend failure handling
                 logger.error(f"Failed to type text: {e}")
                 return False
 
@@ -228,7 +228,7 @@ class PyAutoGUIBackend(DesktopAutomationBackend):
                     pyautogui.press(key_normalized)
 
                 return True
-            except Exception as e:
+            except Exception as e:  # noqa: BLE001 - boundary preserves structured backend failure handling
                 logger.error(f"Failed to press key {key}: {e}")
                 return False
 
@@ -268,7 +268,7 @@ class PyAutoGUIBackend(DesktopAutomationBackend):
             try:
                 pyautogui.click(x, y, clicks=clicks, button=button)
                 return True
-            except Exception as e:
+            except Exception as e:  # noqa: BLE001 - boundary preserves structured backend failure handling
                 logger.error(f"Failed to click at ({x}, {y}): {e}")
                 return False
 
@@ -296,7 +296,7 @@ class PyAutoGUIBackend(DesktopAutomationBackend):
                     button=button,
                 )
                 return True
-            except Exception as e:
+            except Exception as e:  # noqa: BLE001 - boundary preserves structured backend failure handling
                 logger.error(f"Failed to drag: {e}")
                 return False
 
@@ -312,7 +312,7 @@ class PyAutoGUIBackend(DesktopAutomationBackend):
                 pyautogui.scroll(dy, x, y)
                 # Horizontal scroll not directly supported
                 return True
-            except Exception as e:
+            except Exception as e:  # noqa: BLE001 - boundary preserves structured backend failure handling
                 logger.error(f"Failed to scroll: {e}")
                 return False
 
@@ -426,7 +426,7 @@ class PyAutoGUIBackend(DesktopAutomationBackend):
                     pass
 
                 return screens
-            except Exception as e:
+            except Exception as e:  # noqa: BLE001 - boundary preserves structured backend failure handling
                 logger.error(f"Failed to list screens: {e}")
                 return []
 
@@ -453,7 +453,7 @@ class PyAutoGUIBackend(DesktopAutomationBackend):
             try:
                 pyautogui.moveTo(x, y, duration=duration)
                 return True
-            except Exception as e:
+            except Exception as e:  # noqa: BLE001 - boundary preserves structured backend failure handling
                 logger.error(f"Failed to move to ({x}, {y}): {e}")
                 return False
 
@@ -495,7 +495,7 @@ class PyAutoGUIBackend(DesktopAutomationBackend):
                 if location:
                     return (location.left, location.top, location.width, location.height)
                 return None
-            except Exception as e:
+            except Exception as e:  # noqa: BLE001 - boundary preserves structured backend failure handling
                 logger.error(f"Failed to locate image: {e}")
                 return None
 
@@ -523,7 +523,7 @@ class PyAutoGUIBackend(DesktopAutomationBackend):
                 if location:
                     return (location.x, location.y)
                 return None
-            except Exception as e:
+            except Exception as e:  # noqa: BLE001 - boundary preserves structured backend failure handling
                 logger.error(f"Failed to locate image center: {e}")
                 return None
 
