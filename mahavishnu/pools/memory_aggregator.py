@@ -307,9 +307,7 @@ class MemoryAggregator:
             tags: list[str] = [str(t) for t in tags_obj] if isinstance(tags_obj, list) else []
             inserted = await self._insert_batch_to_session_buddy([{"text": text, "tags": tags}])
             if inserted != 1:
-                raise SinkDeliveryError(
-                    f"expected 1 row inserted for {key}, got {inserted}"
-                )
+                raise SinkDeliveryError(f"expected 1 row inserted for {key}, got {inserted}")
             return
         # Other kinds (e.g. "code_graph:*") are deferred to later phases.
         logger.debug(f"outbox_sink_skipped: kind={kind} key={key}")
@@ -522,6 +520,17 @@ class MemoryAggregator:
             buffer_result = await self.flush_local_buffer()
             if buffer_result["flushed"] > 0:
                 logger.info(f"Flushed {buffer_result['flushed']} buffered items")
+
+        # PHASE 2.7: Drive the outbox drainer (Q2 durability). When
+        # MAHAVISHNU_OUTBOX_DRAIN=true the aggregator owns a drainer; firing
+        # it here (after the synchronous insert path) closes the loop so
+        # WAL rows do not sit ``pending`` until process restart. The drainer
+        # is a no-op when the breaker is open or the WAL is empty.
+        if self._outbox_drainer is not None:
+            try:
+                await self._outbox_drainer.drain_once()
+            except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
+                logger.warning(f"Outbox drainer failed during collect_and_sync: {e}")
 
         # Sync summary to Akosha
         await self._sync_to_akosha(

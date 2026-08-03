@@ -77,3 +77,11 @@ async def test_writer_mark_failed_records_error(writer: MemoryOutboxWriter) -> N
     id1 = await writer.enqueue("k1", {"a": 1})
     await writer.mark_failed([id1], "boom")
     assert await writer.pending_count() == 0
+    # Verify the row itself: status flipped to `failed`, attempts bumped,
+    # and last_error captured. Uses the public ``get_row`` helper which
+    # ignores status filtering (unlike ``pending_batch``).
+    row = await writer.get_row(id1)
+    assert row is not None
+    assert row.status == "failed"
+    assert row.attempts == 1
+    assert row.last_error == "boom"

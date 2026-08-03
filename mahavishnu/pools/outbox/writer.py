@@ -110,6 +110,33 @@ class MemoryOutboxWriter:
             [error, *ids],
         )
 
+    async def get_row(self, row_id: int) -> MemoryOutboxRow | None:
+        """Fetch a single row by id, ignoring status.
+
+        Test helper: the public ``pending_batch`` filters on
+        ``status='pending'``, which makes post-failure assertions awkward
+        (a row in the ``failed`` terminal state would not appear). This
+        method returns the row regardless of status so callers can
+        verify ``attempts`` and ``last_error`` directly.
+        """
+        conn = self._ensure_conn()
+        row = conn.execute(
+            "SELECT id, key, payload, enqueued_at, attempts, last_error, status "
+            "FROM memory_outbox WHERE id = ?",
+            [row_id],
+        ).fetchone()
+        if row is None:
+            return None
+        return MemoryOutboxRow(
+            id=row[0],
+            key=row[1],
+            payload=json.loads(row[2]),
+            enqueued_at=row[3],
+            attempts=row[4],
+            last_error=row[5],
+            status=cast("OutboxStatus", row[6]),
+        )
+
     async def pending_batch(self, limit: int) -> list[MemoryOutboxRow]:
         conn = self._ensure_conn()
         rows = conn.execute(

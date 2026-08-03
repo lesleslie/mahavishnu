@@ -8,6 +8,7 @@ by constructing MemoryAggregator directly — no real Session-Buddy required.
 from __future__ import annotations
 
 import os
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
@@ -57,6 +58,89 @@ def test_aggregator_with_outbox_enabled_and_drain_creates_both() -> None:
     try:
         assert agg._outbox_writer is not None
         assert agg._outbox_drainer is not None
+    finally:
+        if agg._outbox_writer is not None:
+            agg._outbox_writer.close()
+
+
+def test_collect_and_sync_fires_drainer_when_outbox_enabled() -> None:
+    """When MAHAVISHNU_OUTBOX_DRAIN is on, ``collect_and_sync`` must invoke
+    the drainer's ``drain_once`` so the WAL actually moves rows. This is
+    the wiring that closes the loop between PHASE 2 (batch insert) and
+    the outbox sink: without it, rows enqueued during this cycle sit
+    ``pending`` until the next process restart.
+    """
+    os.environ["MAHAVISHNU_OUTBOX_ENABLED"] = "true"
+    os.environ["MAHAVISHNU_OUTBOX_DRAIN"] = "true"
+    agg = _fresh_aggregator()
+    try:
+        # Swap in a mock drainer so we can assert the wiring without hitting
+        # the real Session-Buddy sink. The aggregator's own writer/drainer
+        # already point at the live ~/.mahavishnu/outbox.duckdb — we don't
+        # need to touch the WAL for this test.
+        drainer_mock = MagicMock()
+        drainer_mock.drain_once = AsyncMock()
+        agg._outbox_drainer = drainer_mock
+
+        pool_manager = MagicMock()
+        pool_manager.list_pools = AsyncMock(return_value=[])
+
+        with (
+            patch.object(
+                agg,
+                "_batch_insert_to_session_buddy",
+                new_callable=AsyncMock,
+                return_value=0,
+            ),
+            patch.object(
+                agg,
+                "flush_local_buffer",
+                new_callable=AsyncMock,
+                return_value={"flushed": 0, "remaining": 0},
+            ),
+            patch.object(agg, "_sync_to_akosha", new_callable=AsyncMock),
+        ):
+            import asyncio
+
+            asyncio.run(agg.collect_and_sync(pool_manager))
+
+        drainer_mock.drain_once.assert_awaited_once()
+    finally:
+        if agg._outbox_writer is not None:
+            agg._outbox_writer.close()
+
+
+def test_collect_and_sync_skips_drainer_when_outbox_disabled() -> None:
+    """Sanity check: when no drainer is constructed (env-var default),
+    ``collect_and_sync`` must not raise or attempt to await ``None``.
+    """
+    os.environ["MAHAVISHNU_OUTBOX_ENABLED"] = "false"
+    os.environ["MAHAVISHNU_OUTBOX_DRAIN"] = "false"
+    agg = _fresh_aggregator()
+    try:
+        assert agg._outbox_drainer is None
+
+        pool_manager = MagicMock()
+        pool_manager.list_pools = AsyncMock(return_value=[])
+
+        with (
+            patch.object(
+                agg,
+                "_batch_insert_to_session_buddy",
+                new_callable=AsyncMock,
+                return_value=0,
+            ),
+            patch.object(
+                agg,
+                "flush_local_buffer",
+                new_callable=AsyncMock,
+                return_value={"flushed": 0, "remaining": 0},
+            ),
+            patch.object(agg, "_sync_to_akosha", new_callable=AsyncMock),
+        ):
+            import asyncio
+
+            asyncio.run(agg.collect_and_sync(pool_manager))
     finally:
         if agg._outbox_writer is not None:
             agg._outbox_writer.close()
