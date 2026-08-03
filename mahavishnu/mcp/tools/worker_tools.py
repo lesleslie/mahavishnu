@@ -201,6 +201,8 @@ async def worker_close(
             "exit_code": getattr(record, "last_exit_code", None),
         }
     # Legacy fallback (unchanged shape)
+    if _worker_manager is None:
+        return {"success": False, "worker_id": worker_id, "error": "worker_manager_unconfigured"}
     try:
         await _worker_manager.close_worker(worker_id)
         return {"success": True, "worker_id": worker_id}
@@ -226,6 +228,8 @@ async def worker_close_all() -> dict:
                 closed.append(record.worker_id)
         return {"closed": closed}
     # Legacy fallback (preserves original shape)
+    if _worker_manager is None:
+        return {"closed_count": 0, "error": "worker_manager_unconfigured"}
     workers_list = await _worker_manager.list_workers()
     worker_ids = [w["worker_id"] for w in workers_list]
     for wid in worker_ids:
@@ -247,6 +251,8 @@ async def worker_health() -> dict:
         for record in records:
             counts[record.state] = counts.get(record.state, 0) + 1
         return {"total": len(records), "counts": counts}
+    if _worker_manager is None:
+        return {"total": 0, "counts": {}, "error": "worker_manager_unconfigured"}
     return await _worker_manager.health_check()
 
 

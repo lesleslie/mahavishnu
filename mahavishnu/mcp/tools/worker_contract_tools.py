@@ -23,7 +23,7 @@ import re
 from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
-    from ..workers.contract.manager import DurableWorkerManager
+    from ...workers.contract.manager import DurableWorkerManager
 
 from mahavishnu.observability.worker_metrics import WorkerMetrics
 

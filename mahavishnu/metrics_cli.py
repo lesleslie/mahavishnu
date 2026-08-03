@@ -1003,14 +1003,11 @@ def _render_queue_state(queue_path: Path, events: list[dict[str, Any]], queue_ca
     """Render the Queue State table for the bodai metrics command."""
     queue_size = len(events)
     drop_count = max(0, queue_cap - queue_size) if queue_cap <= queue_size else 0
-    oldest = min(
-        (_event_timestamp(ev) for ev in events if _event_timestamp(ev) is not None),
-        default=None,
-    )
-    newest = max(
-        (_event_timestamp(ev) for ev in events if _event_timestamp(ev) is not None),
-        default=None,
-    )
+    # ``_event_timestamp`` may return ``None`` for malformed events; narrow to
+    # ``datetime`` so ``min``/``max`` accept the comparator-typed sequence.
+    timestamps = [t for t in (_event_timestamp(ev) for ev in events) if t is not None]
+    oldest = min(timestamps, default=None)
+    newest = max(timestamps, default=None)
     queue_table = Table(title="Queue State", show_header=True, header_style="bold magenta")
     queue_table.add_column("Field", style="cyan")
     queue_table.add_column("Value", style="white")

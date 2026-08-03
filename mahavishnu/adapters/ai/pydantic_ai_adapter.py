@@ -451,7 +451,7 @@ class PydanticAIAdapter[OutputT: BaseModel](OrchestratorAdapter):
 
             except AdapterInitializationError:
                 raise
-            except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
+            except Exception as e:
                 # Cleanup any partially initialized resources
                 await self._cleanup_mcp_servers()
                 raise AdapterInitializationError(
@@ -617,7 +617,7 @@ class PydanticAIAdapter[OutputT: BaseModel](OrchestratorAdapter):
                     agent_tools.append(self._mcp_servers[tool_name])
 
         try:
-            agent = Agent(  # type: ignore[call-overload]
+            agent = Agent(  # ty: ignore[no-matching-overload]
                 model=model_str,
                 system_prompt=instructions,
                 output_type=output_type or self.output_type,
@@ -636,7 +636,7 @@ class PydanticAIAdapter[OutputT: BaseModel](OrchestratorAdapter):
             logger.info("Created agent '%s' with ID: %s", name, agent_id)
             return agent_id  # type: ignore[no-any-return]
 
-        except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
+        except Exception as e:
             raise PydanticAIAdapterError(
                 f"Failed to create agent: {self._sanitize_error_message(e)}",
                 code=ErrorCode.INTERNAL_ERROR,

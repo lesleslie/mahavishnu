@@ -249,20 +249,27 @@ class SecretsScanner:
 
     def _parse_detect_secrets_output(
         self,
-        stdout: str,
-        stderr: str,
+        stdout: str | bytes,
+        stderr: str | bytes,
         base_path: Path,
     ) -> list[DetectedSecret]:
         """Parse detect-secrets output.
 
         Args:
-            stdout: Standard output from detect-secrets
-            stderr: Standard error from detect-secrets
+            stdout: Standard output from detect-secrets (str or bytes)
+            stderr: Standard error from detect-secrets (str or bytes)
             base_path: Base path for resolving file paths
 
         Returns:
             List of detected secrets
         """
+        # subprocess with ``text=True`` returns str on most platforms, but
+        # ty infers the union ``str | bytes``. Decode defensively so the
+        # downstream parser always sees str.
+        if isinstance(stdout, bytes):
+            stdout = stdout.decode("utf-8", errors="replace")
+        if isinstance(stderr, bytes):
+            stderr = stderr.decode("utf-8", errors="replace")
         secrets = []
 
         # Parse stderr where detect-secrets reports findings

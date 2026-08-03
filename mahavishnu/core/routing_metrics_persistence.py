@@ -127,7 +127,7 @@ class RoutingMetricsPersistence:
                     await self._flush_all_pending()
             except asyncio.CancelledError:
                 break
-            except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
+            except Exception:
                 logger.exception("Periodic flush error")
 
     async def _flush_all_pending(self) -> None:
@@ -200,8 +200,8 @@ class RoutingMetricsPersistence:
                             r.execution_id,
                             r.adapter.value,
                             r.task_type.value,
-                            datetime.fromtimestamp(r.start_timestamp, UTC, tz=UTC),
-                            datetime.fromtimestamp(r.end_timestamp, UTC, tz=UTC)
+                            datetime.fromtimestamp(r.start_timestamp, UTC),
+                            datetime.fromtimestamp(r.end_timestamp, UTC)
                             if r.end_timestamp
                             else None,
                             r.status.value,
@@ -466,7 +466,7 @@ class RoutingMetricsPersistence:
                             d.reasoning,
                             dict(d.adapter_scores.items()),
                             d.constraints,
-                            datetime.fromtimestamp(d.timestamp, UTC, tz=UTC),
+                            datetime.fromtimestamp(d.timestamp, UTC),
                         )
                         for d in decisions
                     ],
