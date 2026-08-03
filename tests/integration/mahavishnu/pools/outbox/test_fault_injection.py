@@ -24,11 +24,11 @@ pytestmark = pytest.mark.integration
 
 
 class _StubBreaker:
-    def __init__(self, is_open: bool = False) -> None:
-        self._is_open = is_open
+    def __init__(self, can_execute: bool = True) -> None:
+        self._can_execute = can_execute
 
-    def is_open(self) -> bool:
-        return self._is_open
+    def can_execute(self) -> bool:
+        return self._can_execute
 
 
 @pytest.fixture
@@ -49,7 +49,7 @@ async def test_session_buddy_5xx_then_recovery(writer: MemoryOutboxWriter) -> No
             fail_count["n"] += 1
             raise RuntimeError("simulated 5xx")
 
-    drainer = MemoryOutboxDrainer(writer, _StubBreaker(is_open=False), flaky_sink)
+    drainer = MemoryOutboxDrainer(writer, _StubBreaker(can_execute=True), flaky_sink)
     # First drain fails on row 0 (attempts=1); subsequent drains recover.
     for _ in range(10):
         await drainer.drain_once()
@@ -71,7 +71,7 @@ async def test_partial_drain_failure_continues_batch(writer: MemoryOutboxWriter)
         if fail_k5["active"] and key == "k5":
             raise RuntimeError("fail k5")
 
-    drainer = MemoryOutboxDrainer(writer, _StubBreaker(is_open=False), sink)
+    drainer = MemoryOutboxDrainer(writer, _StubBreaker(can_execute=True), sink)
     # Drive enough drains that k5 hits max_attempts and ends up failed.
     for _ in range(20):
         await drainer.drain_once()

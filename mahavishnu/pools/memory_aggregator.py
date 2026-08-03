@@ -46,6 +46,18 @@ async def _await_if_needed(value: Any) -> Any:
     return value
 
 
+class SinkDeliveryError(Exception):
+    """Raised when the outbox drainer sink does not deliver exactly one row.
+
+    Why a typed exception rather than a return-value sentinel: the drainer's
+    ``sink`` contract is ``Callable[[str, dict], Awaitable[None]]`` (no return
+    value), so the only way to signal "did not deliver" is to raise. Any
+    exception bubbles to the drainer, which then leaves the row ``pending``
+    for retry. This is the path that protects against a network-200 / no-row
+    data-loss failure mode in ``_insert_batch_to_session_buddy``.
+    """
+
+
 class _CircuitBreaker:
     """Lightweight circuit breaker for external service protection.
 
@@ -278,6 +290,13 @@ class MemoryAggregator:
         handled here. Other kinds log at DEBUG and return without doing
         anything — they remain `pending` and an operator can extend the
         dispatch when a new kind is wired in (see plan Task 5).
+
+        Contract: when the row is known to this sink, the call must persist
+        exactly one item to Session-Buddy. A return value other than ``1``
+        from ``_insert_batch_to_session_buddy`` means the underlying call
+        reported a network-200 / no-row outcome; raising
+        :class:`SinkDeliveryError` here forces the drainer to leave the row
+        ``pending`` for retry rather than marking it ``drained``.
         """
         kind, _, _ = key.partition(":")
         if kind == "reflection":
@@ -286,7 +305,11 @@ class MemoryAggregator:
                 text = str(text)
             tags_obj = payload.get("tags", [])
             tags: list[str] = [str(t) for t in tags_obj] if isinstance(tags_obj, list) else []
-            await self._insert_batch_to_session_buddy([{"text": text, "tags": tags}])
+            inserted = await self._insert_batch_to_session_buddy([{"text": text, "tags": tags}])
+            if inserted != 1:
+                raise SinkDeliveryError(
+                    f"expected 1 row inserted for {key}, got {inserted}"
+                )
             return
         # Other kinds (e.g. "code_graph:*") are deferred to later phases.
         logger.debug(f"outbox_sink_skipped: kind={kind} key={key}")

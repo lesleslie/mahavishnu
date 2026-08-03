@@ -20,9 +20,16 @@ if TYPE_CHECKING:
 
 
 class CircuitBreakerLike(Protocol):
-    """Subset of the aggregator's _CircuitBreaker the drainer depends on."""
+    """Subset of the aggregator's _CircuitBreaker the drainer depends on.
 
-    def is_open(self) -> bool: ...
+    The drainer uses ``can_execute()`` (not ``is_open``) so the breaker
+    can own the half-open / recovery probe. ``is_open`` is a static
+    snapshot that would cause the drainer to skip forever after a
+    ``recovery_timeout`` elapses; ``can_execute()`` is the method that
+    actually returns ``True`` once a probe should be allowed through.
+    """
+
+    def can_execute(self) -> bool: ...
 
 
 @dataclass
@@ -72,8 +79,11 @@ class MemoryOutboxDrainer:
         self._max_attempts = max_attempts
 
     async def drain_once(self) -> DrainResult:
-        if self._breaker.is_open():
-            # Breaker open: don't touch the WAL; report everything as deferred.
+        if not self._breaker.can_execute():
+            # Breaker open (or half-open not yet ready): don't touch the WAL;
+            # report everything as deferred. can_execute() owns the half-open
+            # probe logic so the drainer never skips forever after the
+            # recovery window elapses.
             pending = await self._writer.pending_count()
             return DrainResult(drained=0, deferred=pending, failed=0)
 

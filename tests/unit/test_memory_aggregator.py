@@ -13,6 +13,7 @@ import pytest
 
 from mahavishnu.pools.memory_aggregator import (
     MemoryAggregator,
+    SinkDeliveryError,
     _await_if_needed,
     _CircuitBreaker,
 )
@@ -344,6 +345,89 @@ class TestInsertBatchToSessionBuddy:
         result = await aggregator._insert_batch_to_session_buddy(items)
         assert result == 0
         assert len(aggregator._local_buffer) == 1
+
+
+# ---------------------------------------------------------------------------
+# _sink_to_session_buddy (drainer sink contract)
+# ---------------------------------------------------------------------------
+
+
+class TestSinkToSessionBuddy:
+    """Contract: a sink must raise SinkDeliveryError unless exactly one row
+    was written to Session-Buddy. Returning 0 (network-200 but no actual
+    write) is a data-loss failure mode and must surface as an exception so
+    the drainer leaves the row `pending` for retry.
+    """
+
+    @pytest.mark.asyncio
+    async def test_zero_rows_raises_sink_delivery_error(
+        self, aggregator: MemoryAggregator
+    ) -> None:
+        with patch.object(
+            aggregator,
+            "_insert_batch_to_session_buddy",
+            new_callable=AsyncMock,
+            return_value=0,
+        ):
+            with pytest.raises(SinkDeliveryError) as excinfo:
+                await aggregator._sink_to_session_buddy(
+                    "reflection:abc", {"text": "hello", "tags": ["project"]}
+                )
+        assert "1" in str(excinfo.value)
+
+    @pytest.mark.asyncio
+    async def test_two_rows_raises_sink_delivery_error(
+        self, aggregator: MemoryAggregator
+    ) -> None:
+        with patch.object(
+            aggregator,
+            "_insert_batch_to_session_buddy",
+            new_callable=AsyncMock,
+            return_value=2,
+        ):
+            with pytest.raises(SinkDeliveryError) as excinfo:
+                await aggregator._sink_to_session_buddy(
+                    "reflection:abc", {"text": "hello", "tags": []}
+                )
+        assert "2" in str(excinfo.value)
+
+    @pytest.mark.asyncio
+    async def test_one_row_passes(self, aggregator: MemoryAggregator) -> None:
+        with patch.object(
+            aggregator,
+            "_insert_batch_to_session_buddy",
+            new_callable=AsyncMock,
+            return_value=1,
+        ) as mock:
+            await aggregator._sink_to_session_buddy(
+                "reflection:abc", {"text": "hello", "tags": ["project"]}
+            )
+        mock.assert_awaited_once()
+
+    @pytest.mark.asyncio
+    async def test_unknown_kind_logs_and_returns(self, aggregator: MemoryAggregator) -> None:
+        with patch.object(
+            aggregator,
+            "_insert_batch_to_session_buddy",
+            new_callable=AsyncMock,
+        ) as mock:
+            await aggregator._sink_to_session_buddy(
+                "code_graph:xyz", {"text": "x", "tags": []}
+            )
+        mock.assert_not_awaited()
+
+    @pytest.mark.asyncio
+    async def test_insert_failure_propagates(self, aggregator: MemoryAggregator) -> None:
+        with patch.object(
+            aggregator,
+            "_insert_batch_to_session_buddy",
+            new_callable=AsyncMock,
+            side_effect=httpx.HTTPError("connection refused"),
+        ):
+            with pytest.raises(httpx.HTTPError):
+                await aggregator._sink_to_session_buddy(
+                    "reflection:abc", {"text": "hello", "tags": []}
+                )
 
 
 # ---------------------------------------------------------------------------
