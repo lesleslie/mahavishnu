@@ -224,7 +224,7 @@ class TaskCreateRequest(BaseModel):
             )
 
         # Additional checks for edge cases
-        if v.startswith("-") or v.startswith("_"):
+        if v.startswith(("-", "_")):
             raise ValueError(f"Repository name cannot start with hyphen or underscore: '{v}'")
 
         if len(v) > 100:
@@ -256,7 +256,7 @@ class TaskCreateRequest(BaseModel):
 
         try:
             # Parse ISO 8601 timestamp
-            deadline = datetime.fromisoformat(v.replace("Z", "+00:00"))
+            deadline = datetime.fromisoformat(v)
 
             # Ensure timezone-aware (assume UTC if naive)
             if deadline.tzinfo is None:
@@ -550,7 +550,7 @@ class TaskFilter(BaseModel):
             return None
 
         try:
-            datetime.fromisoformat(v.replace("Z", "+00:00"))
+            datetime.fromisoformat(v)
             return v
         except ValueError as e:
             raise ValueError(
@@ -561,8 +561,8 @@ class TaskFilter(BaseModel):
     def validate_date_range(self) -> "TaskFilter":
         """Validate created_before is after created_after."""
         if self.created_after and self.created_before:
-            after = datetime.fromisoformat(self.created_after.replace("Z", "+00:00"))
-            before = datetime.fromisoformat(self.created_before.replace("Z", "+00:00"))
+            after = datetime.fromisoformat(self.created_after)
+            before = datetime.fromisoformat(self.created_before)
 
             if after > before:
                 raise ValueError(

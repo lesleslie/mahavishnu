@@ -432,7 +432,7 @@ def register_health_tools(mcp: FastMCP, app: Any = None) -> None:
         # MCP surface matches the ``/ready`` HTTP endpoint.
         try:
             payload["workers"] = await worker_get_readiness()
-        except Exception:  # noqa: BLE001 - MCP boundary must preserve all operation failures
+        except Exception:
             logger.exception("readiness worker aggregation failed")
             payload["workers"] = {"status": "unhealthy"}
         return payload

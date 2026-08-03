@@ -155,7 +155,7 @@ class LearningPipelineService:
                 )
             except asyncio.CancelledError:
                 break
-            except Exception:  # noqa: BLE001 - executor boundary; logs and re-raises or returns
+            except Exception:
                 logger.exception("learning_pipeline_cycle_error")
 
             with contextlib.suppress(TimeoutError):
@@ -170,7 +170,7 @@ class LearningPipelineService:
         # Stage 1: Observe
         try:
             evidence = await self._collector.collect_recent_outcomes()
-        except Exception:  # noqa: BLE001 - executor boundary; logs and re-raises or returns
+        except Exception:
             logger.warning("learning_pipeline_collect_failed", exc_info=True)
             result.cycle_completed_at = datetime.now(UTC)
             return result
@@ -193,7 +193,7 @@ class LearningPipelineService:
         try:
             ctx = await self._retriever.get_retrieval_context(all_goals, all_repos)
             result.clusters_found = len(ctx.clusters)
-        except Exception:  # noqa: BLE001 - executor boundary; logs and re-raises or returns
+        except Exception:
             logger.warning("learning_pipeline_retrieve_failed", exc_info=True)
             result.cycle_completed_at = datetime.now(UTC)
             return result
@@ -205,7 +205,7 @@ class LearningPipelineService:
         # Stage 4: Synthesize
         try:
             drafts = await self._synthesizer.synthesize_batch(ctx.clusters, ctx.similar_evidence)
-        except Exception:  # noqa: BLE001 - executor boundary; logs and re-raises or returns
+        except Exception:
             logger.warning("learning_pipeline_synthesize_failed", exc_info=True)
             result.cycle_completed_at = datetime.now(UTC)
             return result

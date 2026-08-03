@@ -424,7 +424,7 @@ class CoordinationManager:
         """
         issues = self._coordination.get("issues", [])
 
-        for i, issue in enumerate(issues):
+        for _i, issue in enumerate(issues):
             if issue.get("id") == issue_id:
                 issue.update(updates)
                 self._coordination["issues"] = issues

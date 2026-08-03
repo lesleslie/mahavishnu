@@ -210,7 +210,7 @@ def _find_common_files(
 def _infer_category(dir_path: str) -> str:
     if dir_path.startswith("adapter"):
         return "adapters"
-    if dir_path.startswith("component") or dir_path.startswith("template"):
+    if dir_path.startswith(("component", "template")):
         return "components"
     if dir_path in ("deploy", "deployment", "docker"):
         return "deployment"

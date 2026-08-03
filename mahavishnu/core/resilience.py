@@ -239,7 +239,7 @@ class CircuitBreaker:
     def record_failure(self) -> None:
         """Record a failure and potentially open the circuit."""
         self.failure_count += 1
-        self.last_failure_time = datetime.now((UTC))
+        self.last_failure_time = datetime.now(UTC)
 
         if self.state == CircuitState.HALF_OPEN:
             self.failure_count = max(self.failure_count, self.threshold)
@@ -267,7 +267,7 @@ class CircuitBreaker:
             if self.last_failure_time is None:
                 return False
 
-            now = datetime.now((UTC))
+            now = datetime.now(UTC)
             elapsed = (now - self.last_failure_time).total_seconds()
             if elapsed >= max(self.timeout, 0):
                 self._transition(CircuitState.HALF_OPEN)
@@ -291,7 +291,7 @@ class CircuitBreaker:
             )
             self.record_success()
             return result
-        except Exception:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
+        except Exception:
             self.record_failure()
             raise
 
@@ -304,7 +304,7 @@ class CircuitBreaker:
             result = func(*args, **kwargs)
             self.record_success()
             return result
-        except Exception:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
+        except Exception:
             self.record_failure()
             raise
 
@@ -980,7 +980,7 @@ class ErrorRecoveryManager:
                 updated_at_str = workflow.get("updated_at")
                 if updated_at_str:
                     try:
-                        updated_at = datetime.fromisoformat(updated_at_str.replace("Z", "+00:00"))
+                        updated_at = datetime.fromisoformat(updated_at_str)
                         if current_time - updated_at > timeout_threshold:
                             # Workflow appears stuck, mark as failed
                             workflow_id = workflow.get("id") or workflow.get("workflow_id")

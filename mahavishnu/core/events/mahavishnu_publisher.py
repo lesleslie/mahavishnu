@@ -91,7 +91,7 @@ async def _publish(
         result = publisher.publish(envelope)
         if inspect.isawaitable(result):
             await result
-    except Exception:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
+    except Exception:
         logger.exception(
             "mahavishnu.publisher: failed to publish topic=%s event_id=%s",
             envelope.topic,

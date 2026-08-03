@@ -4,7 +4,7 @@ MCP tools for cross-repository coordination.
 Exposes coordination functionality via FastMCP for AI agent access.
 """
 
-from datetime import datetime, UTC
+from datetime import UTC, datetime
 from typing import Any
 
 from mcp_common.fastmcp import FastMCP
@@ -90,7 +90,7 @@ async def coord_create_issue(
         )
 
     # Create issue
-    now = datetime.now((UTC)).isoformat()
+    now = datetime.now(UTC).isoformat()
     issue = CrossRepoIssue(
         id=issue_id,
         title=title,
@@ -222,7 +222,7 @@ async def coord_create_todo(
         raise ValueError(f"Invalid priority: {priority}")
 
     # Create todo
-    now = datetime.now((UTC)).isoformat()
+    now = datetime.now(UTC).isoformat()
     todo = CrossRepoTodo(
         id=todo_id,
         task=task,
@@ -259,7 +259,7 @@ async def coord_complete_todo(todo_id: str) -> dict[str, Any]:
     for todo in todos_data:
         if todo.get("id") == todo_id:
             todo["status"] = "completed"
-            todo["updated"] = datetime.now((UTC)).isoformat()
+            todo["updated"] = datetime.now(UTC).isoformat()
             mgr._coordination["todos"] = todos_data
             mgr.save()
 

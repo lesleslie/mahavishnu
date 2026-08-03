@@ -42,7 +42,7 @@ from enum import StrEnum
 import json
 import logging
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, cast, ClassVar
+from typing import TYPE_CHECKING, Any, ClassVar, cast
 
 from mahavishnu.core.adapters.base import (
     AdapterType,
@@ -210,7 +210,7 @@ class StateManager:
                         record["adapter_states"] = adapter_states
                 self._workflows[wf_id] = record
             logger.debug("Loaded %d workflow states from %s", len(self._workflows), path)
-        except Exception:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
+        except Exception:
             logger.warning("Failed to load workflow state from %s", path, exc_info=True)
 
     def _persist(self) -> None:
@@ -218,7 +218,7 @@ class StateManager:
             self._state_dir.mkdir(parents=True, exist_ok=True)
             data = dict(self._workflows)
             self._state_file().write_text(json.dumps(data, indent=2))
-        except Exception:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
+        except Exception:
             logger.warning("Failed to persist workflow state", exc_info=True)
 
     @staticmethod
@@ -231,9 +231,9 @@ class StateManager:
 
     @staticmethod
     def _now_iso() -> str:
-        from datetime import datetime, UTC
+        from datetime import UTC, datetime
 
-        return datetime.now((UTC)).isoformat()
+        return datetime.now(UTC).isoformat()
 
     def _default_record(self, workflow_id: str) -> dict[str, Any]:
         now = self._now_iso()

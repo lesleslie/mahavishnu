@@ -174,7 +174,7 @@ async def detect_until_dry(
             exception = exc
             logger.exception("detect_until_dry: timeout on iteration %d", iterations)
             break
-        except Exception as exc:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
+        except Exception as exc:
             stopped_reason = "error"
             error = f"scan_fn raised on iteration {iterations}: {type(exc).__name__}: {exc}"
             exception = exc

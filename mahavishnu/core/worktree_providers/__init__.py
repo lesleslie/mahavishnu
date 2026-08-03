@@ -24,20 +24,20 @@ Example:
 """
 
 __all__ = [
-    # Abstract interface
-    "WorktreeProvider",
-    # Concrete providers
-    "SessionBuddyWorktreeProvider",
     "DirectGitWorktreeProvider",
     "MockWorktreeProvider",
-    # Registry
-    "WorktreeProviderRegistry",
+    "ProviderUnavailableError",
+    # Concrete providers
+    "SessionBuddyWorktreeProvider",
+    "WorktreeCreationError",
     # Exceptions
     "WorktreeOperationError",
-    "WorktreeCreationError",
+    # Abstract interface
+    "WorktreeProvider",
+    # Registry
+    "WorktreeProviderRegistry",
     "WorktreeRemovalError",
     "WorktreeValidationError",
-    "ProviderUnavailableError",
 ]
 
 # Mapping of export name -> (relative_module, attribute_name)

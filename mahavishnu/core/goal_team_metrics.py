@@ -23,7 +23,7 @@ Related: Goal-Driven Teams Phase 1 + Phase 3 - Prometheus metrics integration wi
 from __future__ import annotations
 
 from contextlib import contextmanager
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Self
 
 if TYPE_CHECKING:
     from collections.abc import Generator
@@ -711,7 +711,7 @@ class GoalTeamMetricsRecorder:
         self.start_time: float | None = None
         self.metadata: dict[str, Any] = {}
 
-    def __enter__(self) -> GoalTeamMetricsRecorder:
+    def __enter__(self) -> Self:
         """Start timing."""
         self.start_time = time.perf_counter()
         return self
@@ -744,7 +744,7 @@ class GoalTeamMetricsRecorder:
         self.metadata.update(kwargs)
 
     # For async context manager support
-    async def __aenter__(self) -> GoalTeamMetricsRecorder:
+    async def __aenter__(self) -> Self:
         """Start timing (async version)."""
         return self.__enter__()
 

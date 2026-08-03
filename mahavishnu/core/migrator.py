@@ -255,7 +255,7 @@ class DatabaseMigrator:
             self._current_phase = MigrationPhase.COMPLETED
             self.metrics.phase = MigrationPhase.COMPLETED
 
-        except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
+        except Exception as e:
             logger.error(f"Migration failed: {e}")
             self.metrics.rollback_triggered = True
             self.metrics.rollback_reason = str(e)
@@ -298,7 +298,7 @@ class DatabaseMigrator:
                 logger.info(f"Phase {phase.value} active for {duration_seconds}s")
                 await asyncio.sleep(duration_seconds)
 
-        except Exception as e:  # noqa: BLE001 - executor boundary; logs and re-raises or returns
+        except Exception as e:
             logger.error(f"Phase {phase.value} failed: {e}")
             raise
 

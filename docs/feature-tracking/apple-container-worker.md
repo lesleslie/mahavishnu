@@ -51,8 +51,7 @@ Supporting pieces:
    - [ ] `container system status` is the right liveness probe (and its
      exit code semantics); adjust `_probe_runtime` if the subcommand
      differs. May need `container system start` first.
-   - [ ] `container run --detach --rm [--cpus N] [--memory X] IMAGE sleep
-     infinity` — flag spellings and that stdout is the container ID.
+   - [ ] `container run --detach --rm [--cpus N] [--memory X] IMAGE sleep infinity` — flag spellings and that stdout is the container ID.
    - [ ] `container exec ID sh -c ...` works against a `--detach` VM and
      the image auto-pulls on first `run`.
    - [ ] `container inspect ID` JSON schema — `_inspect_reports_running`

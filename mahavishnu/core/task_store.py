@@ -364,7 +364,7 @@ class TaskStore:
             logger.info(f"Created task {task_id}: {data.title}")
             return task
 
-        except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
+        except Exception as e:
             logger.error(f"Failed to create task: {e}")
             raise DatabaseError(
                 f"Failed to create task: {e}",
@@ -526,7 +526,7 @@ class TaskStore:
 
             return await self.get(task_id)
 
-        except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
+        except Exception as e:
             logger.error(f"Failed to update task {task_id}: {e}")
             raise DatabaseError(
                 f"Failed to update task: {e}",
@@ -561,7 +561,7 @@ class TaskStore:
 
             logger.info(f"Deleted task {task_id}")
 
-        except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
+        except Exception as e:
             logger.error(f"Failed to delete task {task_id}: {e}")
             raise DatabaseError(
                 f"Failed to delete task: {e}",
@@ -821,7 +821,7 @@ class TaskStore:
                 dependency_type=dependency_type,
             )
 
-        except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
+        except Exception as e:
             logger.error(f"Failed to add dependency: {e}")
             raise DatabaseError(
                 f"Failed to add dependency: {e}",

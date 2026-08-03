@@ -161,7 +161,7 @@ class AdapterMetadata:
                 source="entry_point",
             )
 
-        except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
+        except Exception as e:
             logger.error(f"Failed to load entry point {entry_point.name}: {e}")
             raise ValueError(f"Invalid entry point {entry_point.name}: {e}") from e
 
@@ -440,7 +440,7 @@ class AdapterDiscoveryEngine:
                     logger.error(f"Error loading entry point {ep.name}: {e}")
                     continue
 
-        except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
+        except Exception as e:
             logger.error(f"Failed to discover entry points: {e}")
             raise
 

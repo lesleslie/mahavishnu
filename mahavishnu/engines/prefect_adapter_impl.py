@@ -54,7 +54,7 @@ Example:
 import asyncio
 from collections.abc import Callable, Iterator
 from contextlib import asynccontextmanager, contextmanager
-from datetime import datetime, UTC
+from datetime import UTC, datetime
 import importlib
 import inspect
 import logging
@@ -145,7 +145,7 @@ async def process_repository(repo_path: str, task_spec: dict[str, Any]) -> dict[
             complex_funcs: list[dict[str, Any]] = []
             func_lengths: list[int] = []
             call_counts: list[int] = []
-            for _node_id, node in graph_analyzer.nodes.items():
+            for node in graph_analyzer.nodes.values():
                 if isinstance(node, FunctionNode):
                     func_length = node.end_line - node.start_line
                     calls_count = len(node.calls)
@@ -338,7 +338,7 @@ def _deployment_to_response(deployment: Any) -> DeploymentResponse:
         tags=getattr(deployment, "tags", []) or [],
         description=getattr(deployment, "description", None),
         version=getattr(deployment, "version", None),
-        created_at=getattr(deployment, "created", datetime.now((UTC))) or datetime.now((UTC)),
+        created_at=getattr(deployment, "created", datetime.now(UTC)) or datetime.now(UTC),
         updated_at=getattr(deployment, "updated", None),
     )
 
@@ -364,7 +364,7 @@ def _flow_run_to_response(flow_run: Any) -> FlowRunResponse:
         state_name=getattr(state, "name", "Unknown") if state else "Unknown",
         parameters=getattr(flow_run, "parameters", {}) or {},
         tags=getattr(flow_run, "tags", []) or [],
-        created_at=getattr(flow_run, "created", datetime.now((UTC))) or datetime.now((UTC)),
+        created_at=getattr(flow_run, "created", datetime.now(UTC)) or datetime.now(UTC),
         updated_at=getattr(flow_run, "updated", None),
         start_time=getattr(flow_run, "start_time", None),
         end_time=getattr(flow_run, "end_time", None),
@@ -389,7 +389,7 @@ def _work_pool_to_response(work_pool: Any) -> WorkPoolResponse:
         description=getattr(work_pool, "description", None),
         is_paused=getattr(work_pool, "is_paused", False) or False,
         concurrency_limit=getattr(work_pool, "concurrency_limit", None),
-        created_at=getattr(work_pool, "created", datetime.now((UTC))) or datetime.now((UTC)),
+        created_at=getattr(work_pool, "created", datetime.now(UTC)) or datetime.now(UTC),
         updated_at=getattr(work_pool, "updated", None),
     )
 
@@ -625,7 +625,7 @@ class PrefectAdapter(OrchestratorAdapter):
                 extra={"api_url": api_url},
             )
 
-        except Exception as exc:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
+        except Exception as exc:
             error = _map_prefect_exception(exc, "initialize", api_url)
             logger.error(
                 "Failed to initialize PrefectAdapter",
@@ -1052,7 +1052,7 @@ class PrefectAdapter(OrchestratorAdapter):
 
         except PrefectError:
             raise
-        except Exception as exc:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
+        except Exception as exc:
             error = _map_prefect_exception(
                 exc, f"create_deployment({flow_name}/{deployment_name})", self.config.api_url
             )
@@ -1300,7 +1300,7 @@ class PrefectAdapter(OrchestratorAdapter):
 
         except PrefectError:
             raise
-        except Exception as exc:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
+        except Exception as exc:
             error = _map_prefect_exception(
                 exc, f"update_deployment({deployment_id})", self.config.api_url
             )
@@ -1348,7 +1348,7 @@ class PrefectAdapter(OrchestratorAdapter):
 
         except PrefectError:
             raise
-        except Exception as exc:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
+        except Exception as exc:
             error = _map_prefect_exception(
                 exc, f"delete_deployment({deployment_id})", self.config.api_url
             )
@@ -1390,7 +1390,7 @@ class PrefectAdapter(OrchestratorAdapter):
 
         except PrefectError:
             raise
-        except Exception as exc:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
+        except Exception as exc:
             error = _map_prefect_exception(
                 exc, f"get_deployment({deployment_id})", self.config.api_url
             )
@@ -1441,7 +1441,7 @@ class PrefectAdapter(OrchestratorAdapter):
 
         except PrefectError:
             raise
-        except Exception as exc:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
+        except Exception as exc:
             error = _map_prefect_exception(
                 exc,
                 f"get_deployment_by_name({flow_name}/{deployment_name})",
@@ -1515,7 +1515,7 @@ class PrefectAdapter(OrchestratorAdapter):
 
         except PrefectError:
             raise
-        except Exception as exc:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
+        except Exception as exc:
             error = _map_prefect_exception(exc, "list_deployments", self.config.api_url)
             logger.error(
                 "Failed to list deployments",
@@ -1585,7 +1585,7 @@ class PrefectAdapter(OrchestratorAdapter):
 
         except PrefectError:
             raise
-        except Exception as exc:  # noqa: BLE001 - executor boundary; logs and re-raises or returns
+        except Exception as exc:
             error = _map_prefect_exception(
                 exc, f"trigger_flow_run({deployment_id})", self.config.api_url
             )
@@ -1626,7 +1626,7 @@ class PrefectAdapter(OrchestratorAdapter):
 
         except PrefectError:
             raise
-        except Exception as exc:  # noqa: BLE001 - executor boundary; logs and re-raises or returns
+        except Exception as exc:
             error = _map_prefect_exception(exc, f"get_flow_run({flow_run_id})", self.config.api_url)
             logger.error(
                 "Failed to get flow run",
@@ -1698,7 +1698,7 @@ class PrefectAdapter(OrchestratorAdapter):
 
         except PrefectError:
             raise
-        except Exception as exc:  # noqa: BLE001 - executor boundary; logs and re-raises or returns
+        except Exception as exc:
             error = _map_prefect_exception(exc, "list_flow_runs", self.config.api_url)
             logger.error(
                 "Failed to list flow runs",
@@ -1747,7 +1747,7 @@ class PrefectAdapter(OrchestratorAdapter):
 
         except PrefectError:
             raise
-        except Exception as exc:  # noqa: BLE001 - executor boundary; logs and re-raises or returns
+        except Exception as exc:
             error = _map_prefect_exception(
                 exc, f"cancel_flow_run({flow_run_id})", self.config.api_url
             )
@@ -1791,7 +1791,7 @@ class PrefectAdapter(OrchestratorAdapter):
 
         except PrefectError:
             raise
-        except Exception as exc:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
+        except Exception as exc:
             error = _map_prefect_exception(exc, "list_work_pools", self.config.api_url)
             logger.error(
                 "Failed to list work pools",
@@ -1828,7 +1828,7 @@ class PrefectAdapter(OrchestratorAdapter):
 
         except PrefectError:
             raise
-        except Exception as exc:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
+        except Exception as exc:
             error = _map_prefect_exception(
                 exc, f"get_work_pool({work_pool_name})", self.config.api_url
             )
@@ -1920,7 +1920,7 @@ class PrefectAdapter(OrchestratorAdapter):
 
         except PrefectError:
             raise
-        except Exception as exc:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
+        except Exception as exc:
             error = _map_prefect_exception(
                 exc,
                 f"clear_deployment_schedule({deployment_id})",
@@ -2115,22 +2115,22 @@ class PrefectAdapter(OrchestratorAdapter):
 
 
 __all__ = [
-    "PrefectAdapter",
-    "process_repository",
-    "process_repositories_flow",
     # Re-export schedule types for convenience
     "CronSchedule",
-    "IntervalSchedule",
-    "RRuleSchedule",
     # Re-export response types for convenience
     "DeploymentResponse",
-    "FlowRunResponse",
-    "WorkPoolResponse",
     # Re-export registry for convenience
     "FlowRegistry",
+    "FlowRunResponse",
+    "IntervalSchedule",
+    "PrefectAdapter",
+    "RRuleSchedule",
+    "WorkPoolResponse",
     "get_flow_registry",
     # Entry point function
     "prefect_adapter_entries",
+    "process_repositories_flow",
+    "process_repository",
 ]
 
 

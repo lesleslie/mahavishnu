@@ -1,7 +1,7 @@
 """Backup and disaster recovery system for Mahavishnu."""
 
 from dataclasses import dataclass
-from datetime import datetime, timedelta, UTC
+from datetime import UTC, datetime, timedelta
 import hashlib
 import json
 import logging
@@ -53,7 +53,7 @@ class BackupManager:
            ``create_backup`` MCP tool over calling this method directly.
            See ``docs/reports/golden-paths-guide.md`` for canonical pathways.
         """
-        now = datetime.now((UTC))
+        now = datetime.now(UTC)
         backup_id = f"backup_{now.strftime('%Y%m%d_%H%M%S')}_{now.microsecond:06d}"
         backup_path = self.backup_dir / f"{backup_id}.tar.gz"
 
@@ -81,7 +81,7 @@ class BackupManager:
                 # Backup any other important data
                 metadata: dict[str, Any] = {
                     "backup_id": backup_id,
-                    "timestamp": datetime.now((UTC)).isoformat(),
+                    "timestamp": datetime.now(UTC).isoformat(),
                     "type": backup_type,
                     "version": "1.0.0",
                     "config": self.app.config.model_dump()
@@ -109,7 +109,7 @@ class BackupManager:
                 # Create backup info
                 backup_info = BackupInfo(
                     backup_id=backup_id,
-                    timestamp=datetime.now((UTC)),
+                    timestamp=datetime.now(UTC),
                     size_bytes=size_bytes,
                     location=str(backup_path),
                     status="completed",
@@ -124,7 +124,7 @@ class BackupManager:
 
                 return backup_info
 
-        except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
+        except Exception as e:
             self.logger.error(f"Failed to create backup: {e}")
             raise
 
@@ -177,7 +177,7 @@ class BackupManager:
             backup_files.sort(key=lambda x: x.stat().st_mtime, reverse=True)
 
             # Group by day, week, month
-            now = datetime.now((UTC))
+            now = datetime.now(UTC)
             daily_backups = []
             weekly_backups = []
             monthly_backups = []
@@ -286,7 +286,7 @@ class BackupManager:
                 self.logger.info(f"Restored backup: {backup_id}")
                 return True
 
-        except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
+        except Exception as e:
             self.logger.error(f"Failed to restore backup: {e}")
             raise
 
@@ -399,7 +399,7 @@ class DisasterRecoveryManager:
 
     async def run_disaster_recovery_check(self) -> dict[str, Any]:
         """Run a comprehensive disaster recovery check."""
-        results = {"timestamp": datetime.now((UTC)).isoformat(), "checks": {}, "status": "healthy"}
+        results = {"timestamp": datetime.now(UTC).isoformat(), "checks": {}, "status": "healthy"}
 
         # Check backup availability
         backups = await self.backup_manager.list_backups()
@@ -430,7 +430,7 @@ class DisasterRecoveryManager:
 
         # Check if we have recent backups (within last 24 hours)
         if backups:
-            latest_backup_age = datetime.now((UTC)) - backups[0].timestamp
+            latest_backup_age = datetime.now(UTC) - backups[0].timestamp
             recent_backup_ok = latest_backup_age < timedelta(hours=24)
         else:
             recent_backup_ok = False

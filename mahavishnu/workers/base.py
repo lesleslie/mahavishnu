@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
-from datetime import datetime, UTC
+from datetime import UTC, datetime
 from typing import Any, Final
 
 from mahavishnu.core.errors import ErrorCode
@@ -35,7 +35,7 @@ class WorkerResult:
     exit_code: int | None = None
     duration_seconds: float = 0.0
     metadata: dict[str, Any] = field(default_factory=dict)
-    timestamp: str = field(default_factory=lambda: datetime.now((UTC)).isoformat())
+    timestamp: str = field(default_factory=lambda: datetime.now(UTC).isoformat())
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> WorkerResult:

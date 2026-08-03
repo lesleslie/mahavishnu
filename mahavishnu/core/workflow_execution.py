@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import asyncio
 from asyncio import Semaphore
-from datetime import datetime, UTC
+from datetime import UTC, datetime
 import logging
 import time
 from typing import Any
@@ -214,7 +214,7 @@ async def process_single_repo(
 
             return result
 
-        except Exception as exc:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
+        except Exception as exc:
             app.circuit_breaker.record_failure()
 
             error_info = {
@@ -244,7 +244,7 @@ async def process_single_repo(
                 adapter=adapter_name,
             )
 
-            raise exc
+            raise
 
 
 async def execute_parallel_workflow(
@@ -346,7 +346,7 @@ async def finalize_workflow_execution(
         workflow_id=workflow_id,
         status=final_status,
         execution_time_seconds=execution_time,
-        completed_at=datetime.now((UTC)).isoformat(),
+        completed_at=datetime.now(UTC).isoformat(),
     )
 
     await app.opensearch_integration.log_workflow_completion(
@@ -423,7 +423,7 @@ async def handle_workflow_execution_error(
         workflow_id=workflow_id,
         status="failed",
         error=str(error),
-        completed_at=datetime.now((UTC)).isoformat(),
+        completed_at=datetime.now(UTC).isoformat(),
     )
 
     await app.opensearch_integration.log_error(
@@ -489,7 +489,7 @@ async def execute_workflow_parallel(  # type: ignore[invalid-return]
             errors=errors,
             checkpoint_id=checkpoint_id,
         )
-    except Exception as exc:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
+    except Exception as exc:
         await handle_workflow_execution_error(
             app=app,
             workflow_id=workflow_id,

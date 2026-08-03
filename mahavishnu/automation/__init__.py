@@ -48,29 +48,29 @@ from mahavishnu.automation.models import (
 )
 
 __all__ = [
-    # Manager
-    "AutomationManager",
-    # Backends
-    "DesktopAutomationBackend",
-    "NativeMacOSBackend",
-    "PyAutoGUIBackend",
     # Data classes
     "ApplicationInfo",
-    "WindowInfo",
+    # Errors
+    "AutomationError",
+    # Manager
+    "AutomationManager",
     # Models
     "AutomationOperation",
     "AutomationResult",
-    "ClickOperation",
-    "DragOperation",
-    "KeyPressOperation",
-    "MenuClickOperation",
-    "ScreenshotOperation",
-    "TypeTextOperation",
-    "WindowOperation",
-    # Errors
-    "AutomationError",
     "BackendNotAvailableError",
     "BlockedAppError",
     "BlockedTextError",
+    "ClickOperation",
+    # Backends
+    "DesktopAutomationBackend",
+    "DragOperation",
+    "KeyPressOperation",
+    "MenuClickOperation",
+    "NativeMacOSBackend",
     "PermissionDeniedError",
+    "PyAutoGUIBackend",
+    "ScreenshotOperation",
+    "TypeTextOperation",
+    "WindowInfo",
+    "WindowOperation",
 ]

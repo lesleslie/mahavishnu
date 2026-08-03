@@ -8,7 +8,7 @@ hardware or applications. Useful for:
 """
 
 import asyncio
-from datetime import datetime, UTC
+from datetime import UTC, datetime
 from typing import Any
 import uuid
 
@@ -71,7 +71,7 @@ class MockTerminalAdapter(TerminalAdapter):
             "command": command,
             "columns": columns,
             "rows": rows,
-            "created_at": datetime.now((UTC)),
+            "created_at": datetime.now(UTC),
             "output_buffer": [f"[Mock Terminal Started - Session {session_id}]"],
         }
         self._command_history[session_id] = [command]

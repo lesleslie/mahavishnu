@@ -31,13 +31,13 @@ Related: Goal-Driven Teams Phase 1 foundation, WebSocket broadcasting, Phase 3 L
 from __future__ import annotations
 
 from contextvars import ContextVar
-from types import TracebackType
-from typing import TYPE_CHECKING, Any, Protocol, runtime_checkable
+from typing import TYPE_CHECKING, Any, Protocol, Self, runtime_checkable
 
 from .errors import ContextNotInitializedError
 
 if TYPE_CHECKING:
     from collections.abc import Callable
+    from types import TracebackType
 
     from ..engines.agno_adapter_impl import AgnoAdapter
     from ..websocket.server import MahavishnuWebSocketServer
@@ -368,7 +368,7 @@ class AppContext:
         self._old_learning_engine: Any | None = None
         self._old_app: Any | None = None
 
-    def __enter__(self) -> AppContext:
+    def __enter__(self) -> Self:
         """Enter context and set variables."""
         self._old_llm_factory = _llm_factory.get()
         self._old_agno_adapter = _agno_adapter.get()
@@ -408,23 +408,23 @@ class AppContext:
 # ============================================================================
 
 __all__ = [
-    # Protocol
-    "LLMFactory",
-    # Context getters
-    "get_llm_factory",
-    "get_agno_adapter",
-    "get_websocket_server",
-    "get_learning_engine_from_context",
-    "get_app_from_context",
-    # Context setters
-    "set_app_context",
-    "clear_app_context",
-    "is_context_initialized",
-    # Convenience functions
-    "require_llm_factory",
-    "require_agno_adapter",
     # Context manager
     "AppContext",
     # Exceptions
     "ContextNotInitializedError",
+    # Protocol
+    "LLMFactory",
+    "clear_app_context",
+    "get_agno_adapter",
+    "get_app_from_context",
+    "get_learning_engine_from_context",
+    # Context getters
+    "get_llm_factory",
+    "get_websocket_server",
+    "is_context_initialized",
+    "require_agno_adapter",
+    # Convenience functions
+    "require_llm_factory",
+    # Context setters
+    "set_app_context",
 ]

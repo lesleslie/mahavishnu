@@ -325,7 +325,7 @@ class HealthChecker(HTTPXClientMixin):
             self._record_metrics(health_result)
             return health_result
 
-        except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
+        except Exception as e:
             latency_ms = (time.time() - start_time) * 1000
             self._logger.exception(
                 "health-check-error",

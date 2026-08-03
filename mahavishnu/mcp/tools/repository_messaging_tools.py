@@ -147,7 +147,7 @@ def register_repository_messaging_tools(server, app, mcp_client):
             since_dt = None
             if since:
                 try:
-                    since_dt = datetime.fromisoformat(since.replace("Z", "+00:00"))
+                    since_dt = datetime.fromisoformat(since)
                 except ValueError:
                     return {
                         "status": "error",

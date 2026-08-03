@@ -155,7 +155,7 @@ class Singleflight:
             result = await fn()
             future.set_result(result)
             return result
-        except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
+        except Exception as e:
             future.set_exception(e)
             raise
         finally:

@@ -15,7 +15,7 @@ from datetime import UTC, datetime
 from enum import StrEnum
 import logging
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Protocol, cast, runtime_checkable
+from typing import TYPE_CHECKING, Any, Protocol, Self, cast, runtime_checkable
 
 # Feature detection for embedding backends
 # Try sentence-transformers first (best quality), then fastembed (cross-platform)
@@ -615,7 +615,7 @@ class OtelIngester:
 
             logger.info(f"OTel ingester initialized (storage={self._storage_type.value})")
 
-        except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
+        except Exception as e:
             logger.error(f"Failed to initialize OTel ingester: {e}")
             raise RuntimeError(f"OTel ingester initialization failed: {e}") from e
 
@@ -1204,7 +1204,7 @@ class OtelIngester:
                 # Parse ISO 8601 timestamp
                 if isinstance(start_time, str):
                     # Handle various ISO 8601 formats
-                    return datetime.fromisoformat(start_time.replace("Z", "+00:00"))
+                    return datetime.fromisoformat(start_time)
                 elif isinstance(start_time, int):
                     # Handle Unix timestamp (nanoseconds)
                     return datetime.fromtimestamp(start_time / 1_000_000_000, tz=UTC)
@@ -1230,7 +1230,7 @@ class OtelIngester:
 
         return all_attributes
 
-    async def __aenter__(self) -> OtelIngester:
+    async def __aenter__(self) -> Self:
         """Async context manager entry.
 
         Returns:

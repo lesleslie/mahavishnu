@@ -291,12 +291,12 @@ def get_all_feature_flags() -> dict[str, bool]:
 __all__ = [
     # Classes
     "GoalTeamsFeatureFlags",
-    # Context management
-    "set_config",
+    "check_feature",
+    "get_all_feature_flags",
     "get_config",
     # Feature checking
     "is_feature_enabled",
     "require_feature",
-    "check_feature",
-    "get_all_feature_flags",
+    # Context management
+    "set_config",
 ]

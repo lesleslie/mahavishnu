@@ -288,7 +288,7 @@ def _validate_path(path: str) -> Path:
     except AgnoError:
         # Re-raise our security errors
         raise
-    except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
+    except Exception as e:
         # Wrap other exceptions
         raise AgnoError(
             "Invalid path provided",
@@ -627,19 +627,19 @@ def search_files(pattern: str, directory: str) -> list[str]:
 
 
 __all__ = [
-    # Agno tools (for agent use)
-    "read_file",
-    "write_file",
-    "list_directory",
-    "search_files",
+    "_detect_path_traversal_attempts",
+    "_get_allowed_base_dirs",
+    "_list_directory_impl",
     # Implementation functions (for testing)
     "_read_file_impl",
-    "_write_file_impl",
-    "_list_directory_impl",
     "_search_files_impl",
     # Security functions (for testing)
     "_validate_path",
     "_validate_path_within_allowed",
-    "_detect_path_traversal_attempts",
-    "_get_allowed_base_dirs",
+    "_write_file_impl",
+    "list_directory",
+    # Agno tools (for agent use)
+    "read_file",
+    "search_files",
+    "write_file",
 ]

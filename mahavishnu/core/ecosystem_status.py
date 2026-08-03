@@ -450,7 +450,7 @@ class EcosystemStatusService:
         A failed section produces an error entry, not an exception.
         """
         start = time.monotonic()
-        generated_at = datetime.now((UTC))
+        generated_at = datetime.now(UTC)
 
         # Collect sections concurrently
         section_results = await asyncio.gather(
@@ -805,7 +805,7 @@ class EcosystemStatusService:
         items: dict[str, ServiceStatus] | dict[str, AdapterStatus],
     ) -> dict[str, ServiceStatus] | dict[str, AdapterStatus]:
         """Flag items whose last_check exceeds the staleness threshold as UNKNOWN."""
-        now = datetime.now((UTC))
+        now = datetime.now(UTC)
         threshold = self.staleness_threshold_seconds
         updated: dict[str, ServiceStatus | AdapterStatus] = {}
 
@@ -817,37 +817,37 @@ class EcosystemStatusService:
 
 
 __all__ = [
-    # Enums
-    "CanonicalStatus",
-    "DegradationTrend",
-    "RejectionReason",
-    # Status helpers
-    "normalize_status",
-    "aggregate_statuses",
-    "aggregate_with_optional",
-    "is_valid_transition",
     "ADAPTER_STATUS_MAP",
     "STATUS_SEVERITY",
     "VALID_TRANSITIONS",
+    "AdapterStatus",
+    "AlertRef",
+    "AlertSummary",
+    "CandidateEvaluation",
+    # Enums
+    "CanonicalStatus",
+    "CapabilityStatus",
+    "DegradationTrend",
+    "EcosystemStatusReport",
+    # Service
+    "EcosystemStatusService",
+    # Routing observability models (Phase 5)
+    "FallbackCandidate",
+    "OperationalRecommendation",
+    "RecoverySummary",
+    "RejectedAdapter",
+    "RejectionReason",
+    "RoutingDecision",
+    "RoutingDecisionBuffer",
+    "RoutingReadiness",
     # Report models
     "SectionError",
     "ServiceStatus",
-    "AdapterStatus",
-    "CapabilityStatus",
     "WorkflowSummary",
-    "RecoverySummary",
-    "AlertRef",
-    "AlertSummary",
-    "OperationalRecommendation",
-    "EcosystemStatusReport",
-    # Routing observability models (Phase 5)
-    "FallbackCandidate",
-    "CandidateEvaluation",
-    "RejectedAdapter",
-    "RoutingDecision",
-    "RoutingReadiness",
-    "RoutingDecisionBuffer",
+    "aggregate_statuses",
+    "aggregate_with_optional",
     "get_routing_buffer",
-    # Service
-    "EcosystemStatusService",
+    "is_valid_transition",
+    # Status helpers
+    "normalize_status",
 ]

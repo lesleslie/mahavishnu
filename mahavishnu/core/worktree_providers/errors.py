@@ -48,17 +48,13 @@ class WorktreeCreationError(WorktreeOperationError):
     """Raised when worktree creation fails."""
 
 
-
 class WorktreeRemovalError(WorktreeOperationError):
     """Raised when worktree removal fails."""
-
 
 
 class WorktreeValidationError(WorktreeOperationError):
     """Raised when worktree validation fails."""
 
 
-
 class ProviderUnavailableError(WorktreeOperationError):
     """Raised when no worktree providers are available."""
-

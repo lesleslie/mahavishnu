@@ -64,7 +64,6 @@ except ImportError:  # pragma: no cover
         """Fallback stub when mahavishnu.core.errors is not importable."""
 
 
-
 # ---------------------------------------------------------------------------
 # Shared MCP-tool helpers (lifted from clone_tools.py / self_improvement_tools.py
 # so both surfaces use one canonical implementation. Issue 3+4 in Phase 1 review.)
@@ -373,7 +372,7 @@ async def _run_refuter(strategy: RefuterStrategy, proposal: Proposal) -> Refuter
             latency_seconds=latency,
             error=RefuterErrorKind.RATE_LIMITED,
         )
-    except Exception as exc:  # noqa: BLE001 - executor boundary; logs and re-raises or returns
+    except Exception as exc:
         latency = time.monotonic() - start
         logger.exception("refuter %s failed unexpectedly", strategy.name)
         return RefuterVerdict(
@@ -650,7 +649,7 @@ class VerificationStore:
                     indent=2,
                 )
             )
-        except Exception:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
+        except Exception:
             logger.exception(
                 "verification.dead_letter_failed proposal_id=%s",
                 result.proposal_id,
@@ -665,7 +664,7 @@ class VerificationStore:
             return None
         try:
             data = await self.dhara.get(self._result_key(proposal_id))
-        except Exception:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
+        except Exception:
             logger.exception("verification.get_failed proposal_id=%s", proposal_id)
             return None
         if not data:
@@ -675,7 +674,7 @@ class VerificationStore:
         data.pop("persisted_at", None)
         try:
             return VerificationResult.model_validate(data)
-        except Exception:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
+        except Exception:
             logger.exception(
                 "verification.get_invalid_payload proposal_id=%s",
                 proposal_id,

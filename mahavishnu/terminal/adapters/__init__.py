@@ -70,17 +70,17 @@ def get_adapter_class(name: str) -> type[TerminalAdapter] | None:
 
 
 __all__ = [
-    # Base
-    "TerminalAdapter",
-    # Mock adapter (always available)
-    "MockTerminalAdapter",
-    # Mcpretentious adapter (requires MCP server)
-    "McpretentiousAdapter",
-    "SessionNotFoundError",
-    "TerminalError",
     # Crow adapter (requires crow-mcp MCP server)
     "CrowTerminalAdapter",
+    # Mcpretentious adapter (requires MCP server)
+    "McpretentiousAdapter",
+    # Mock adapter (always available)
+    "MockTerminalAdapter",
+    "SessionNotFoundError",
+    # Base
+    "TerminalAdapter",
+    "TerminalError",
+    "get_adapter_class",
     # Utility functions
     "get_available_adapters",
-    "get_adapter_class",
 ]

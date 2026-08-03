@@ -82,7 +82,7 @@ def load_ssl_context(
                 verify_client=verify_client,
             )
             logger.info(f"Loaded TLS certificate: {cert_file}")
-        except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
+        except Exception as e:
             logger.error(f"Failed to load SSL context: {e}")
             raise
 

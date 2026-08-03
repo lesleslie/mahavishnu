@@ -618,16 +618,14 @@ class ProgressTracker:
         """
         task_id = self.add_task(description, total)
 
-        def update(
-            completed: float | None = None, advance: float | None = None
-        ) -> None:
+        def update(completed: float | None = None, advance: float | None = None) -> None:
             self.update_task(task_id, completed=completed, advance=advance)
 
         try:
             result = await operation(update)
             self.complete_task(task_id)
             return result
-        except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
+        except Exception as e:
             self.fail_task(task_id, str(e))
             raise
 

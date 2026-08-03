@@ -224,7 +224,7 @@ class Database:
                     f"Database connection failed: {e}",
                     details={"error": str(e)},
                 ) from e
-            except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
+            except Exception as e:
                 self._status = DatabaseStatus.ERROR
                 raise DatabaseError(
                     f"Unexpected database error: {e}",

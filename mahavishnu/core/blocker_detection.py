@@ -232,7 +232,7 @@ class BlockerDetector:
         detected = []
         text_lower = text.lower()
 
-        for _category, keywords in self.BLOCKER_CATEGORIES.items():
+        for keywords in self.BLOCKER_CATEGORIES.values():
             for keyword in keywords:
                 if keyword in text_lower:
                     detected.append(keyword)

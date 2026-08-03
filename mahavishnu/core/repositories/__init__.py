@@ -62,32 +62,32 @@ from mahavishnu.core.repositories.tasks import (
 __all__ = [
     # Base
     "BaseRepository",
+    # Documents
+    "DocumentCreate",
+    "DocumentRead",
+    "DocumentRepository",
+    "DocumentSearchResult",
+    "DocumentUpdate",
+    # Embeddings
+    "EmbeddingCreate",
+    "EmbeddingRead",
+    "EmbeddingRepository",
+    "EmbeddingSearchResult",
     "RepositoryError",
     # Tasks
     "TaskCreate",
-    "TaskFilter",
-    "TaskRead",
-    "TaskUpdate",
-    "TaskRepository",
-    # Runs
-    "TaskRunCreate",
-    "TaskRunRead",
-    "TaskRunUpdate",
-    "TaskRunRepository",
     # Events
     "TaskEventCreate",
     "TaskEventFilter",
     "TaskEventRead",
     "TaskEventRepository",
-    # Documents
-    "DocumentCreate",
-    "DocumentRead",
-    "DocumentUpdate",
-    "DocumentSearchResult",
-    "DocumentRepository",
-    # Embeddings
-    "EmbeddingCreate",
-    "EmbeddingRead",
-    "EmbeddingSearchResult",
-    "EmbeddingRepository",
+    "TaskFilter",
+    "TaskRead",
+    "TaskRepository",
+    # Runs
+    "TaskRunCreate",
+    "TaskRunRead",
+    "TaskRunRepository",
+    "TaskRunUpdate",
+    "TaskUpdate",
 ]

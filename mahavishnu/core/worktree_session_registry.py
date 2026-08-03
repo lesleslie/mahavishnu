@@ -334,7 +334,7 @@ class SessionWorktreeRegistry:
                 if not ts_str:
                     return False
                 try:
-                    ts = datetime.fromisoformat(ts_str.replace("Z", "+00:00"))
+                    ts = datetime.fromisoformat(ts_str)
                 except ValueError:
                     return False
                 return ts < cutoff

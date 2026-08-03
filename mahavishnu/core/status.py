@@ -300,28 +300,28 @@ class OnboardingStatus(StrEnum):
 # =============================================================================
 
 __all__ = [
-    # Task status family
-    "TaskStatus",
-    "IssueStatus",
-    "TodoStatus",
+    "BlockingStatus",
     "CoordinationStatus",
-    "MigrationStatus",
-    "WorkerStatus",
-    # Workflow status family
-    "WorkflowStatus",
+    "DatabaseStatus",
+    # Specialized status
+    "DeadLetterStatus",
+    "DependencyStatus",
+    "DeploymentStatus",
     "ExecutionStatus",
+    # Health status family
+    "HealthStatus",
+    "IssueStatus",
+    "MigrationStatus",
+    "OnboardingStatus",
     "PlanStatus",
     # Resource status family
     "PoolStatus",
-    "DeploymentStatus",
-    "DatabaseStatus",
-    # Health status family
-    "HealthStatus",
     "ReadinessStatus",
-    "DependencyStatus",
-    # Specialized status
-    "DeadLetterStatus",
-    "BlockingStatus",
     "SyncStatus",
-    "OnboardingStatus",
+    # Task status family
+    "TaskStatus",
+    "TodoStatus",
+    "WorkerStatus",
+    # Workflow status family
+    "WorkflowStatus",
 ]

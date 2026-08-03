@@ -18,7 +18,7 @@ from collections.abc import AsyncGenerator, Callable
 from contextlib import asynccontextmanager
 import logging
 from types import TracebackType
-from typing import Any, ParamSpec, TypeVar
+from typing import Any, ParamSpec, Self, TypeVar
 
 from mahavishnu.core.errors import ErrorCode, MahavishnuError, TimeoutError
 from mahavishnu.core.resilience import RetryExhaustedError, RetryPolicy, retry_async
@@ -110,7 +110,7 @@ async def db_connection(
             except (OSError, RuntimeError) as e:
                 logger.debug("Rollback error during cancellation: %s", e)
             raise
-        except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
+        except Exception as e:
             logger.error("Database error: %s", e)
             raise
 
@@ -174,7 +174,7 @@ class SagaLock:
         self.timeout_seconds = timeout_seconds
         self._locked = False
 
-    async def __aenter__(self) -> "SagaLock":
+    async def __aenter__(self) -> Self:
         """Acquire lock on saga row using SELECT FOR UPDATE."""
         async with timeout_context(self.timeout_seconds, "saga_lock"):
             row = await self.db.fetch_one(

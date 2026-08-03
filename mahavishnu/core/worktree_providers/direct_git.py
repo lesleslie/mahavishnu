@@ -84,7 +84,7 @@ class DirectGitWorktreeProvider(WorktreeProvider):
                 stderr=asyncio.subprocess.PIPE,
             )
 
-            stdout, stderr = await process.communicate()
+            _stdout, stderr = await process.communicate()
 
             if process.returncode != 0:
                 error_msg = stderr.decode() if stderr else "Unknown error"
@@ -99,7 +99,7 @@ class DirectGitWorktreeProvider(WorktreeProvider):
                 "provider": self.provider_name(),
             }
 
-        except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
+        except Exception as e:
             logger.error(f"DirectGit create failed: {e}")
             raise
 
@@ -142,7 +142,7 @@ class DirectGitWorktreeProvider(WorktreeProvider):
                 stderr=asyncio.subprocess.PIPE,
             )
 
-            stdout, stderr = await process.communicate()
+            _stdout, stderr = await process.communicate()
 
             if process.returncode != 0:
                 error_msg = stderr.decode() if stderr else "Unknown error"
@@ -156,7 +156,7 @@ class DirectGitWorktreeProvider(WorktreeProvider):
                 "provider": self.provider_name(),
             }
 
-        except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
+        except Exception as e:
             logger.error(f"DirectGit remove failed: {e}")
             raise
 
@@ -222,6 +222,6 @@ class DirectGitWorktreeProvider(WorktreeProvider):
                 "provider": self.provider_name(),
             }
 
-        except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
+        except Exception as e:
             logger.error(f"DirectGit list failed: {e}")
             raise

@@ -70,7 +70,7 @@ class RunPodPool(BasePool):
                 self._endpoint_name,
                 self._gpu_type,
             )
-        except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
+        except Exception as e:
             self._status = PoolStatus.FAILED
             logger.error("RunPodPool failed to start: %s", e)
             raise

@@ -405,7 +405,7 @@ class LoadTestRunner:
                     timestamp_str = point_data.get("time", datetime.now(UTC).isoformat())
 
                     try:
-                        timestamp = datetime.fromisoformat(timestamp_str.replace("Z", "+00:00"))
+                        timestamp = datetime.fromisoformat(timestamp_str)
                     except ValueError:
                         timestamp = datetime.now(UTC)
 

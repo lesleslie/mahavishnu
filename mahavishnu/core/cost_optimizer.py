@@ -730,7 +730,7 @@ class CostOptimizer:
             except asyncio.CancelledError:
                 logger.info("Budget monitoring loop cancelled")
                 break
-            except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
+            except Exception:
                 logger.exception("Budget monitoring error")
                 await asyncio.sleep(300)  # Retry after 5 minutes
 

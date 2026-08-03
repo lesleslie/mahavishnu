@@ -42,7 +42,19 @@ class WorktreePathValidator:
     """
 
     # Dangerous shell metacharacters (CWE-114)
-    SHELL_METACHARACTERS: ClassVar[list[str]] = [";", "&", "|", "`", "$", "\n", "\r", "(", ")", "<", ">"]
+    SHELL_METACHARACTERS: ClassVar[list[str]] = [
+        ";",
+        "&",
+        "|",
+        "`",
+        "$",
+        "\n",
+        "\r",
+        "(",
+        ")",
+        "<",
+        ">",
+    ]
 
     # Dangerous path components (CWE-22)
     DANGER_PATH_COMPONENTS: ClassVar[list[str]] = ["..", "~", ".git", ".svn", ".hg"]

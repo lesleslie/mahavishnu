@@ -168,7 +168,7 @@ class ProcessPoolTaskExecutor:
 
             return result
 
-        except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
+        except Exception as e:
             logger.error(f"Task execution failed: {cast('Any', func).__name__}: {e}")
             raise
 

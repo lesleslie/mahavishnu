@@ -378,7 +378,7 @@ class ExecutionTracker:
             except asyncio.CancelledError:
                 logger.info("Aggregation loop cancelled")
                 break
-            except Exception as e:  # noqa: BLE001 - event handler; logs and continues
+            except Exception:
                 logger.exception("Aggregation error")
 
     async def _calculate_aggregates(self) -> dict[str, Any]:

@@ -227,7 +227,7 @@ class WorktreeCoordinator:
             logger.info(f"Worktree created successfully: {worktree_path}")
             return result
 
-        except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
+        except Exception as e:
             # Log failure
             self.audit_logger.log_creation_failure(
                 user_id=user_id,
@@ -321,7 +321,7 @@ class WorktreeCoordinator:
                     user_id=user_id,
                 )
                 logger.info(f"Backup created before force removal: {backup_path}")
-            except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
+            except Exception as e:
                 logger.exception("Failed to create backup")
                 return {
                     "success": False,
@@ -377,7 +377,7 @@ class WorktreeCoordinator:
             logger.info(f"Worktree removed successfully: {worktree_path}")
             return result
 
-        except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
+        except Exception as e:
             self.audit_logger.log_removal_failure(
                 user_id=user_id,
                 repo_nickname=repo_nickname,
@@ -441,7 +441,7 @@ class WorktreeCoordinator:
                     "total_count": len(all_worktrees),
                 }
 
-        except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
+        except Exception:
             logger.exception("Failed to list worktrees")
             raise
 
@@ -502,7 +502,7 @@ class WorktreeCoordinator:
                 "pruned_count": pruned_count,
             }
 
-        except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
+        except Exception:
             logger.exception("Failed to prune worktrees")
             raise
 

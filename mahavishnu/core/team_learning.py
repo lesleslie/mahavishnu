@@ -702,15 +702,15 @@ def reset_learning_engine() -> None:
 
 
 __all__ = [
+    "ModeRecommendation",
     # Models
     "TeamExecutionOutcome",
-    "TeamLearningStats",
-    "ModeRecommendation",
     # Engine
     "TeamLearningEngine",
+    "TeamLearningStats",
     # Module functions
     "get_learning_engine",
     "get_learning_engine_from_context",
-    "set_learning_engine_in_context",
     "reset_learning_engine",
+    "set_learning_engine_in_context",
 ]

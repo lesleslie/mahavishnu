@@ -24,6 +24,7 @@ The OTel Ingester converts OpenTelemetry trace data into Akosha `HotRecord` form
 import asyncio
 from mahavishnu.ingesters.otel_ingester import OtelIngester
 
+
 async def main():
     # Create ingester
     ingester = OtelIngester()
@@ -39,18 +40,15 @@ async def main():
                 "attributes": {
                     "service.name": "claude",
                     "http.method": "GET",
-                    "http.status_code": 200
-                }
+                    "http.status_code": 200,
+                },
             },
             {
                 "name": "database query",
                 "start_time": "2024-01-01T00:00:01Z",
-                "attributes": {
-                    "service.name": "claude",
-                    "db.system": "postgresql"
-                }
-            }
-        ]
+                "attributes": {"service.name": "claude", "db.system": "postgresql"},
+            },
+        ],
     }
 
     await ingester.ingest_trace(trace_data)
@@ -64,6 +62,7 @@ async def main():
 
     # Cleanup
     await ingester.close()
+
 
 asyncio.run(main())
 ```
@@ -85,9 +84,7 @@ from mahavishnu.ingesters.otel_ingester import create_otel_ingester
 
 # Create with custom HotStore path
 ingester = await create_otel_ingester(
-    hot_store_path="/path/to/traces.db",
-    embedding_model="all-MiniLM-L6-v2",
-    cache_size=2000
+    hot_store_path="/path/to/traces.db", embedding_model="all-MiniLM-L6-v2", cache_size=2000
 )
 
 await ingester.ingest_trace(trace_data)
@@ -198,11 +195,7 @@ Ingest multiple OTel traces in batch.
 **Returns:**
 
 ```python
-{
-    "success_count": 95,
-    "error_count": 5,
-    "errors": ["Trace xyz: missing trace_id", ...]
-}
+{"success_count": 95, "error_count": 5, "errors": ["Trace xyz: missing trace_id", ...]}
 ```
 
 #### `async search_traces(query: str, limit=10, system_id=None, threshold=0.7) -> list`
@@ -286,18 +279,10 @@ await ingester.initialize()
 
 ```python
 # Search only Claude traces
-results = await ingester.search_traces(
-    "error handling",
-    system_id="claude",
-    limit=10
-)
+results = await ingester.search_traces("error handling", system_id="claude", limit=10)
 
 # Search only Qwen traces
-results = await ingester.search_traces(
-    "API calls",
-    system_id="qwen",
-    limit=5
-)
+results = await ingester.search_traces("API calls", system_id="qwen", limit=5)
 ```
 
 ### Batch Processing with Error Handling
@@ -308,9 +293,9 @@ traces = load_traces_from_file("traces.json")
 result = await ingester.ingest_batch(traces)
 
 print(f"Ingested {result['success_count']} traces")
-if result['error_count'] > 0:
+if result["error_count"] > 0:
     print(f"Failed {result['error_count']} traces:")
-    for error in result['errors']:
+    for error in result["errors"]:
         print(f"  - {error}")
 ```
 
@@ -318,16 +303,10 @@ if result['error_count'] > 0:
 
 ```python
 # High precision (fewer results, more relevant)
-results = await ingester.search_traces(
-    "database errors",
-    threshold=0.9
-)
+results = await ingester.search_traces("database errors", threshold=0.9)
 
 # High recall (more results, less strict)
-results = await ingester.search_traces(
-    "database errors",
-    threshold=0.6
-)
+results = await ingester.search_traces("database errors", threshold=0.6)
 ```
 
 ## Performance

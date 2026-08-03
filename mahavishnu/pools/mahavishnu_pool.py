@@ -297,7 +297,7 @@ class MahavishnuPool(BasePool):
 
         # Transform WorkerResults to memory format
         memory_items = []
-        for _worker_id, result in results.items():
+        for result in results.values():
             memory_items.append(
                 {
                     "content": result.output or "",

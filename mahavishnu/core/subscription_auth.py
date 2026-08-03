@@ -107,7 +107,7 @@ class SubscriptionAuth:
             raise AuthenticationError(
                 message="Could not decode subscription token", details={"error": "Decode error"}
             ) from e
-        except Exception as e:  # noqa: BLE001 - event handler; logs and continues
+        except Exception as e:
             raise AuthenticationError(
                 message=f"Subscription authentication error: {e}", details={"error": str(e)}
             ) from e

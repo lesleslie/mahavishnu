@@ -29,7 +29,7 @@ Example:
     ```
 """
 
-from datetime import datetime, UTC
+from datetime import UTC, datetime
 from typing import Literal
 
 from pydantic import BaseModel, Field, field_validator
@@ -98,7 +98,7 @@ class CronSchedule(BaseModel):
                 raise ValueError(
                     f"Invalid cron expression '{v}': expected 5 space-separated fields"
                 )
-        except (ValueError, Exception) as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
+        except (ValueError, Exception) as e:
             raise ValueError(f"Invalid cron expression '{v}': {e}") from e
         return v
 
@@ -123,7 +123,7 @@ class CronSchedule(BaseModel):
         except ImportError:
             # zoneinfo not available (Python < 3.9), skip validation
             pass
-        except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
+        except Exception as e:
             raise ValueError(f"Invalid timezone '{v}': {e}") from e
         return v
 
@@ -239,7 +239,7 @@ class RRuleSchedule(BaseModel):
         except ImportError:
             # zoneinfo not available, skip validation
             pass
-        except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
+        except Exception as e:
             raise ValueError(f"Invalid timezone '{v}': {e}") from e
         return v
 
@@ -505,10 +505,10 @@ __all__ = [
     "IntervalSchedule",
     "RRuleSchedule",
     "ScheduleConfig",
-    "schedule_to_prefect_dict",
+    "create_daily_schedule",
     # Schedule helper functions (Phase 3)
     "create_hourly_schedule",
-    "create_daily_schedule",
-    "create_weekly_schedule",
     "create_monthly_schedule",
+    "create_weekly_schedule",
+    "schedule_to_prefect_dict",
 ]

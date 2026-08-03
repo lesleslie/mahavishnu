@@ -125,9 +125,7 @@ class AppleContainerWorker(BaseWorker):
                 cannot be executed, or the services report failure.
         """
         try:
-            returncode, _stdout, stderr = await _run_cli(
-                "system", "status", timeout=_PROBE_TIMEOUT
-            )
+            returncode, _stdout, stderr = await _run_cli("system", "status", timeout=_PROBE_TIMEOUT)
         except (TimeoutError, OSError) as exc:
             raise ContainerDaemonUnavailable(
                 runtime="apple-container",
@@ -290,7 +288,7 @@ class AppleContainerWorker(BaseWorker):
                     },
                 },
             )
-        except Exception:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
+        except Exception:
             logger.exception("Failed to store apple-container result in Session-Buddy")
 
     async def stop(self) -> None:

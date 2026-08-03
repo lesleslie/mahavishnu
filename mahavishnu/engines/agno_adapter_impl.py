@@ -160,7 +160,7 @@ class LLMProviderFactory:
             return self._model_instance
         except (AgnoError, ConfigurationError):
             raise
-        except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
+        except Exception as e:
             raise AgnoError(
                 f"Failed to create LLM model: {e}",
                 error_code=ErrorCode.AGNO_LLM_PROVIDER_ERROR,
@@ -612,7 +612,7 @@ class AgnoAdapter(OrchestratorAdapter):
                 f"native_tools={len(self.get_available_tools())}"
             )
 
-        except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
+        except Exception as e:
             logger.error(f"Failed to initialize AgnoAdapter: {e}")
             raise AgnoError(
                 f"AgnoAdapter initialization failed: {e}",
@@ -887,7 +887,7 @@ class AgnoAdapter(OrchestratorAdapter):
             logger.debug(f"Created agent: name={name}, role={role}, tools={len(tools)}")
             return agent
 
-        except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
+        except Exception as e:
             raise AgnoError(
                 f"Failed to create agent '{name}': {e}",
                 error_code=ErrorCode.AGNO_AGENT_NOT_FOUND,
@@ -1040,7 +1040,7 @@ class AgnoAdapter(OrchestratorAdapter):
                 timeout_seconds=self.agno_config.default_timeout_seconds,
                 details={"agent_name": agent.name, "latency_ms": latency_ms},
             ) from None
-        except Exception as e:  # noqa: BLE001 - executor boundary; logs and re-raises or returns
+        except Exception as e:
             latency_ms = (time.monotonic() - start_time) * 1000
             raise AgnoError(
                 f"Agent '{agent.name}' execution failed: {e}",
@@ -1151,7 +1151,7 @@ class AgnoAdapter(OrchestratorAdapter):
                     "error_code": e.error_code.value,
                     "task_id": task.get("id", "unknown"),
                 }
-            except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
+            except Exception as e:
                 logger.exception(f"Unexpected error processing repo {repo}")
                 return {
                     "repo": repo,
@@ -1358,7 +1358,7 @@ Use available tools to complete the task and provide a summary."""
                 "timestamp": datetime.now(UTC).isoformat(),
             }
 
-        except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
+        except Exception as e:
             logger.exception("Agno execution failed")
             raise AgnoError(
                 f"Agno execution failed: {e}",
@@ -1462,17 +1462,17 @@ Use available tools to complete the task and provide a summary."""
 # ============================================================================
 
 __all__ = [
+    "AgentRunResult",
     "AgnoAdapter",
     "AgnoAdapterConfig",
     "AgnoLLMConfig",
     "AgnoMemoryConfig",
     "AgnoToolsConfig",
     "LLMProvider",
-    "MemoryBackend",
     "LLMProviderFactory",
     "MCPToolsRegistry",
+    "MemoryBackend",
     "NativeToolsRegistry",
-    "AgentRunResult",
     "TeamRunResult",
     # Entry point function
     "agno_adapter_entries",

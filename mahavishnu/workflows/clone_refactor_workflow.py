@@ -110,7 +110,7 @@ async def create_extraction_pr(
             diff=diff,
         )
         return ExtractionPR(pr_url=result["html_url"], repo=target_repo, status="open")
-    except Exception as exc:  # noqa: BLE001 - event handler; logs and continues
+    except Exception as exc:
         logger.exception("create_extraction_pr: failed for cluster %s", cluster_id)
         raise RuntimeError(f"Failed to create extraction PR: {exc}") from exc
 
@@ -204,7 +204,7 @@ async def create_consuming_pr(
             diff=diff,
         )
         return ConsumingPR(pr_url=result["html_url"], repo=consumer_repo, status="open")
-    except Exception as exc:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
+    except Exception as exc:
         logger.exception(
             "create_consuming_pr: failed for cluster %s consumer %s", cluster_id, consumer_repo
         )
@@ -259,7 +259,7 @@ async def run_clone_refactor_dag(
             gh_client=gh_client,
         )
         result.extraction_pr = extraction_pr
-    except Exception as exc:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
+    except Exception as exc:
         result.error = f"create_extraction_pr failed: {exc}"
         logger.exception("run_clone_refactor_dag: Step 1 failed for cluster %s", cluster_id)
         return result

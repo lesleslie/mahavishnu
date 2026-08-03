@@ -5,7 +5,7 @@ Executes todo items via worker pools with progress tracking.
 """
 
 import asyncio
-from datetime import datetime, UTC
+from datetime import UTC, datetime
 import logging
 from typing import Any
 
@@ -97,7 +97,7 @@ class CoordinationExecutor:
         }
 
         # Execute via pool
-        start_time = datetime.now((UTC))
+        start_time = datetime.now(UTC)
 
         try:
             if not self.pool_manager:
@@ -111,7 +111,7 @@ class CoordinationExecutor:
                     pool_selector,
                 )
 
-            end_time = datetime.now((UTC))
+            end_time = datetime.now(UTC)
             duration = (end_time - start_time).total_seconds()
 
             # Update todo with results
@@ -134,7 +134,7 @@ class CoordinationExecutor:
                                     "actual_hours": round(actual_hours, 2),
                                 },
                             )
-                        except Exception:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
+                        except Exception:
                             logger.debug(
                                 "Skipping todo completion memory event for %s",
                                 todo_id,
@@ -386,7 +386,7 @@ class CoordinationExecutor:
         for todo in todos_data:
             if todo.get("id") == todo_id:
                 todo["status"] = status
-                todo["updated"] = datetime.now((UTC)).isoformat()
+                todo["updated"] = datetime.now(UTC).isoformat()
                 self._get_coordination_state()["todos"] = todos_data
                 self._save_coordination_state()
                 return

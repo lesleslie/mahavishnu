@@ -5,7 +5,7 @@ data from Crackerjack (git metrics), Session-Buddy (workflow performance),
 and providing cross-project intelligence.
 """
 
-from datetime import datetime, timedelta, UTC
+from datetime import UTC, datetime, timedelta
 from typing import Any, cast
 
 from mcp_common.auth.permissions import Permission
@@ -14,9 +14,7 @@ from ...core.permissions import RBACManager
 from ...mcp.auth import require_mcp_auth
 
 
-def register_git_analytics_tools(
-    server, mcp_client, rbac_manager: RBACManager | None = None
-):
+def register_git_analytics_tools(server, mcp_client, rbac_manager: RBACManager | None = None):
     """Register Git analytics tools with MCP server.
 
     Structural C901 suppression: FastMCP's ``@server.tool()`` decorator
@@ -54,7 +52,7 @@ def register_git_analytics_tools(
             dhara = DharaAdapter(app.dhara_url)
 
             # Calculate date threshold
-            threshold_date = datetime.now((UTC)) - timedelta(days=days_back)
+            threshold_date = datetime.now(UTC) - timedelta(days=days_back)
 
             results = {}
             total_commits = 0
@@ -101,7 +99,7 @@ def register_git_analytics_tools(
                         "total_projects": len(repo_paths),
                         "analysis_period_days": days_back,
                     },
-                    "generated_at": datetime.now((UTC)).isoformat(),
+                    "generated_at": datetime.now(UTC).isoformat(),
                 },
             }
 
@@ -164,7 +162,7 @@ def register_git_analytics_tools(
                     "workflow_performance": workflow_health,
                     "health_score": health_score,
                     "health_status": _get_health_status(health_score),
-                    "assessed_at": datetime.now((UTC)).isoformat(),
+                    "assessed_at": datetime.now(UTC).isoformat(),
                 },
             }
 
@@ -209,7 +207,7 @@ def register_git_analytics_tools(
             dhara = DharaAdapter(app.dhara_url)
 
             # Query all metrics for the analysis period
-            threshold_date = (datetime.now((UTC)) - timedelta(days=days_back)).isoformat()
+            threshold_date = (datetime.now(UTC) - timedelta(days=days_back)).isoformat()
 
             async def _single_scan() -> tuple[
                 list[dict[str, Any]], list[dict[str, Any]], list[dict[str, Any]]
@@ -300,7 +298,7 @@ def register_git_analytics_tools(
                 "quality_patterns": quality_patterns,
                 "correlations": correlations,
                 "insights": _generate_insights(git_patterns, workflow_patterns, correlations),
-                "generated_at": datetime.now((UTC)).isoformat(),
+                "generated_at": datetime.now(UTC).isoformat(),
             }
             if run_metadata is not None:
                 result["run_metadata"] = run_metadata

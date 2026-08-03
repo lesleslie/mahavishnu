@@ -637,7 +637,7 @@ class AdapterHealthMonitor:
                 except asyncio.CancelledError:
                     logger.info("Health monitor loop cancelled")
                     break
-                except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
+                except Exception:
                     logger.exception("Health monitor error")
                     await asyncio.sleep(check_interval)
 

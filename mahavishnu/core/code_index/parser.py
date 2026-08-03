@@ -62,7 +62,7 @@ def parse_file(
         # _analyze_python_file populates analyzer.nodes but returns None
         asyncio.run(analyzer._analyze_python_file(path))
         result_nodes = list(analyzer.nodes.values())
-    except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
+    except Exception as e:
         logger.warning(f"Parse failure for {file_path}: {e}")
         raise
 

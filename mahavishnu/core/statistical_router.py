@@ -44,8 +44,14 @@ class ScoringWeights:
     DEFAULT_SPEED_WEIGHT = 0.3
 
     # Task-type-specific weights
-    INTERACTIVE: ClassVar[dict[str, float]] = {"success": 0.5, "speed": 0.5}  # User-facing, minimize latency
-    BATCH: ClassVar[dict[str, float]] = {"success": 0.9, "speed": 0.1}  # Background, minimize cost via throughput
+    INTERACTIVE: ClassVar[dict[str, float]] = {
+        "success": 0.5,
+        "speed": 0.5,
+    }  # User-facing, minimize latency
+    BATCH: ClassVar[dict[str, float]] = {
+        "success": 0.9,
+        "speed": 0.1,
+    }  # Background, minimize cost via throughput
     CRITICAL: ClassVar[dict[str, float]] = {"success": 0.8, "speed": 0.2}  # Reliability over speed
 
 
@@ -603,7 +609,7 @@ class StatisticalRouter:
             except asyncio.CancelledError:
                 logger.info("Recalculation loop cancelled")
                 break
-            except Exception as e:  # noqa: BLE001 - event handler; logs and continues
+            except Exception:
                 logger.exception("Recalculation error")
                 # Wait before retry
                 await asyncio.sleep(300)  # 5 minutes

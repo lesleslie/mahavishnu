@@ -1,6 +1,6 @@
 """Cross-project authentication for Session Buddy integration."""
 
-from datetime import datetime, timedelta, UTC
+from datetime import UTC, datetime, timedelta
 import hashlib
 import hmac
 import json
@@ -108,7 +108,7 @@ class MessageAuthenticator:
             "from_project": from_project,
             "to_project": to_project,
             "content": content,
-            "timestamp": datetime.now((UTC)).isoformat(),
+            "timestamp": datetime.now(UTC).isoformat(),
         }
 
         # Sign the message
@@ -147,9 +147,9 @@ class MessageAuthenticator:
                 timestamp_str = message_payload.get("timestamp") if message_payload else None
                 if timestamp_str:
                     try:
-                        timestamp = datetime.fromisoformat(timestamp_str.replace("Z", "+00:00"))
+                        timestamp = datetime.fromisoformat(timestamp_str)
                         # Allow messages up to 5 minutes old
-                        if datetime.now((UTC)) - timestamp > timedelta(minutes=5):
+                        if datetime.now(UTC) - timestamp > timedelta(minutes=5):
                             return False, None
                     except ValueError:
                         # If timestamp is invalid, reject the message
@@ -218,7 +218,7 @@ class AuthenticatedSessionBuddyClient:
             result = {
                 "status": "sent",
                 "message_id": f"auth_msg_{hash(str(authenticated_msg))}",
-                "timestamp": datetime.now((UTC)).isoformat(),
+                "timestamp": datetime.now(UTC).isoformat(),
             }
 
             return result

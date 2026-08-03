@@ -398,7 +398,7 @@ class EventStore:
             logger.debug(f"Appended event {event.event_type.value} for task {task_id} by {actor}")
             return event
 
-        except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
+        except Exception as e:
             logger.error(f"Failed to append event: {e}")
             raise DatabaseError(
                 f"Failed to append event: {e}",

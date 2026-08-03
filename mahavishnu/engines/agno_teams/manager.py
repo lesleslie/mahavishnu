@@ -33,6 +33,7 @@ if TYPE_CHECKING:
     from agno.run.team import TeamRunOutput
     from agno.team import Team
 
+
 def _load_yaml(path: Path) -> Any:
     """Read a YAML file synchronously; for ``asyncio.to_thread`` use only.
 

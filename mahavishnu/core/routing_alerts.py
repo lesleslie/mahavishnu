@@ -429,7 +429,7 @@ class RoutingAlertManager:
             except asyncio.CancelledError:
                 self.logger.info("Alert evaluation loop cancelled")
                 break
-            except Exception as e:  # noqa: BLE001 - event handler; logs and continues
+            except Exception:
                 self.logger.exception("Alert evaluation error")
 
     async def start(self) -> None:

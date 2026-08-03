@@ -7,7 +7,7 @@ package.
 
 from __future__ import annotations
 
-from datetime import datetime, UTC
+from datetime import UTC, datetime
 from enum import StrEnum
 from typing import Any
 from uuid import uuid4
@@ -56,7 +56,7 @@ class ProjectMessage(BaseModel):
     project_id: str
     message: dict[str, Any]
     priority: Priority = Priority.NORMAL
-    timestamp: str = Field(default_factory=lambda: datetime.now((UTC)).isoformat())
+    timestamp: str = Field(default_factory=lambda: datetime.now(UTC).isoformat())
 
 
 class RepositoryMessage(BaseModel):
@@ -68,7 +68,7 @@ class RepositoryMessage(BaseModel):
     message_type: MessageType = MessageType.NOTIFICATION
     content: dict[str, Any]
     priority: Priority = Priority.NORMAL
-    timestamp: str = Field(default_factory=lambda: datetime.now((UTC)).isoformat())
+    timestamp: str = Field(default_factory=lambda: datetime.now(UTC).isoformat())
 
 
 MessagePriority = Priority

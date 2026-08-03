@@ -50,6 +50,7 @@ class HookSingleFlight:
 Wiring: extends the existing single-flight pattern around `commands/checkpoint.py`. Applied to the `PreCompact` and `PostToolUse` hooks. `ttl_seconds=5.0` is a constant — not configurable per the existing single-flight pattern.
 
 Session-Buddy's plugin manifest update lands as part of the next release (target 0.21.0):
+
 - `plugins/session-buddy/.claude-plugin/plugin.json` declares the namespaced commands (additive to v0.20.0).
 - `plugins/session-buddy/hooks/PreCompact.md` calls `mcp__session-buddy__pre_compact_sync` (existing MCP tool).
 
@@ -202,6 +203,7 @@ async def pre_commit_skill_coverage_gate(repo_path: pathlib.Path) -> int:
 ## Testing strategy
 
 **Functional** — `tests/unit/mahavishnu/pools/outbox/`:
+
 - `test_writer_enqueues_and_round_trips`
 - `test_writer_pending_count_filters_correctly`
 - `test_drainer_drains_pending_when_breaker_closed`
@@ -209,11 +211,13 @@ async def pre_commit_skill_coverage_gate(repo_path: pathlib.Path) -> int:
 - `test_drainer_marks_failed_after_max_attempts`
 
 **Fault injection** — `tests/integration/mahavishnu/pools/outbox/`:
+
 - `test_disk_full_during_enqueue_raises_write_error`
 - `test_session_buddy_5xx_then_recovery`
 - `test_partial_drain_failure_continues_batch`
 
 **Operator-experience** — `tests/unit/crackerjack/hooks/`, `tests/unit/session_buddy/hooks/`:
+
 - `test_skill_coverage_pre_commit_passes_with_fresh_skills`
 - `test_skill_coverage_pre_commit_warns_on_stale`
 - `test_skill_coverage_pre_commit_warns_when_unreachable`
@@ -222,6 +226,7 @@ async def pre_commit_skill_coverage_gate(repo_path: pathlib.Path) -> int:
 - `test_hook_single_flight_distinct_keys_dont_block`
 
 **End-to-end** — `tests/e2e/mahavishnu_session_buddy/`:
+
 - `test_pool_memory_survives_session_buddy_outage`
 
 ## Rollout

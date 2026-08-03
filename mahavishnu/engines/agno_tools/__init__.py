@@ -47,17 +47,17 @@ CODE_TOOLS: list = [
 ALL_TOOLS: list = [*FILE_TOOLS, *CODE_TOOLS]
 
 __all__ = [
-    # File tools
-    "read_file",
-    "write_file",
-    "list_directory",
-    "search_files",
-    # Code tools
-    "analyze_code",
-    "search_code",
-    "get_function_signature",
+    "ALL_TOOLS",
+    "CODE_TOOLS",
     # Tool collections
     "FILE_TOOLS",
-    "CODE_TOOLS",
-    "ALL_TOOLS",
+    # Code tools
+    "analyze_code",
+    "get_function_signature",
+    "list_directory",
+    # File tools
+    "read_file",
+    "search_code",
+    "search_files",
+    "write_file",
 ]

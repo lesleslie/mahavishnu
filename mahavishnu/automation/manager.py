@@ -21,10 +21,10 @@ Usage:
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import datetime, UTC
+from datetime import UTC, datetime
 from logging import getLogger
 import time
-from typing import TYPE_CHECKING, Any, TypeVar
+from typing import TYPE_CHECKING, Any, Self, TypeVar
 
 from mahavishnu.automation.backends.native_macos import NativeMacOSBackend
 from mahavishnu.automation.backends.pyautogui import PyAutoGUIBackend
@@ -217,7 +217,7 @@ class AutomationManager:
     def _record_operation(self, success: bool, dry_run: bool = False) -> None:
         """Record operation statistics."""
         self._stats.operations_total += 1
-        self._stats.last_operation = datetime.now((UTC))
+        self._stats.last_operation = datetime.now(UTC)
 
         if dry_run:
             self._stats.operations_dry_run += 1
@@ -690,7 +690,7 @@ class AutomationManager:
         self._initialized = False
         logger.info("Automation manager closed")
 
-    async def __aenter__(self) -> AutomationManager:
+    async def __aenter__(self) -> Self:
         """Async context manager entry."""
         await self.initialize()
         return self

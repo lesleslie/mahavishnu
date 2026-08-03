@@ -365,7 +365,7 @@ class PoolManager:
 
             return pool_id
 
-        except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
+        except Exception as e:
             logger.error(f"Failed to spawn pool: {e}")
             raise
 

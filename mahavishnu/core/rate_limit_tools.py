@@ -144,7 +144,7 @@ def rate_limit_tool(
             try:
                 result = await func(*args, **kwargs)
                 return result
-            except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
+            except Exception as e:
                 # Log error but don't wrap it
                 logger.error(f"Error in rate-limited tool {tool_name}: {e}")
                 raise

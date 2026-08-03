@@ -74,7 +74,7 @@ class EvidenceStore:
                 resp.text[:200],
             )
             return False
-        except Exception:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
+        except Exception:
             logger.exception("evidence_store_error: id=%s", evidence.evidence_id)
             return False
 

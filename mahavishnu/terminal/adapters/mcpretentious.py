@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import datetime, UTC
+from datetime import UTC, datetime
 from typing import Any
 
 from ...core.errors import ErrorCode, MahavishnuError
@@ -95,7 +95,7 @@ class McpretentiousAdapter(TerminalAdapter):
             # Store session metadata
             self._sessions[session_id] = {
                 "command": command,
-                "created_at": datetime.now((UTC)),
+                "created_at": datetime.now(UTC),
                 "columns": columns,
                 "rows": rows,
             }
@@ -105,7 +105,7 @@ class McpretentiousAdapter(TerminalAdapter):
 
             return session_id  # type: ignore[no-any-return]
 
-        except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
+        except Exception as e:
             raise TerminalError(
                 message=f"Failed to launch session: {e}",
                 details={"command": command, "columns": columns, "rows": rows},
@@ -140,7 +140,7 @@ class McpretentiousAdapter(TerminalAdapter):
                     "input": [command, "enter"],
                 },
             )
-        except Exception as e:  # noqa: BLE001 - CLI entrypoint; converts unhandled errors to exit
+        except Exception as e:
             raise TerminalError(
                 message=f"Failed to send command: {e}",
                 details={"session_id": session_id, "command": command},
@@ -178,7 +178,7 @@ class McpretentiousAdapter(TerminalAdapter):
             result = await self.mcp.call_tool("mcpretentious-read", kwargs)
             return result["output"]  # type: ignore[no-any-return]
 
-        except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
+        except Exception as e:
             raise TerminalError(
                 message=f"Failed to capture output: {e}",
                 details={"session_id": session_id, "lines": lines},
@@ -200,7 +200,7 @@ class McpretentiousAdapter(TerminalAdapter):
                     "terminal_id": session_id,
                 },
             )
-        except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
+        except Exception as e:
             raise TerminalError(
                 message=f"Failed to close session: {e}",
                 details={"session_id": session_id},
@@ -223,7 +223,7 @@ class McpretentiousAdapter(TerminalAdapter):
             result = await self.mcp.call_tool("mcpretentious-list", {})
             return result.get("terminals", [])  # type: ignore[no-any-return]
 
-        except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
+        except Exception as e:
             raise TerminalError(
                 message=f"Failed to list sessions: {e}",
                 details={},

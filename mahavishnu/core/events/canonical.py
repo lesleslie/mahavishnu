@@ -159,7 +159,7 @@ def to_mahavishnu_envelope(envelope: OneiricEventEnvelope) -> MahavishnuEventEnv
     if not timestamp_str:
         timestamp = datetime.now(UTC)
     else:
-        timestamp = datetime.fromisoformat(timestamp_str.replace("Z", "+00:00"))
+        timestamp = datetime.fromisoformat(timestamp_str)
 
     metadata = headers.get("metadata") or {}
     correlation_id = _parse_uuid_or_none(headers.get("correlation_id"))
@@ -266,7 +266,7 @@ def _validate_oneiric_envelope(envelope: OneiricEventEnvelope) -> OneiricEventEn
 
     timestamp_str = headers["timestamp"]
     try:
-        datetime.fromisoformat(timestamp_str.replace("Z", "+00:00"))
+        datetime.fromisoformat(timestamp_str)
     except (TypeError, ValueError) as exc:
         raise EventEnvelopeConversionError(
             direction="decode_oneiric",

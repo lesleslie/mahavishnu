@@ -209,7 +209,7 @@ class OpenClawWorkflowRequest(BaseModel):
                     "and dots (no path traversal allowed)"
                 )
             # Check for absolute path attempts
-            if repo.startswith("/") or repo.startswith("~"):
+            if repo.startswith(("/", "~")):
                 raise ValueError(f"Invalid repository path '{repo}'. Absolute paths not allowed")
         return v
 

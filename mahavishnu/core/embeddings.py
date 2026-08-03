@@ -64,10 +64,8 @@ class EmbeddingServiceError(Exception):
     """Base exception for embedding service errors."""
 
 
-
 class EmbeddingProviderError(EmbeddingServiceError):
     """Raised when embedding provider is not available."""
-
 
 
 class EmbeddingResult:
@@ -671,7 +669,7 @@ class EmbeddingService:
             result = await provider.embed(texts)
             cb.record_success()
             return result
-        except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
+        except Exception as e:
             cb.record_failure()
             logger.error(
                 "embedding-provider-failed",
@@ -1091,7 +1089,6 @@ class ServiceOverloadedError(EmbeddingServiceError):
     """Raised when the embedding service is overloaded."""
 
 
-
 class SecureEmbeddingService:
     """Secure embedding service with rate limiting and caching.
 
@@ -1276,30 +1273,30 @@ def get_secure_embedding_service(
 
 
 __all__ = [
-    "EmbeddingProvider",
-    "EmbeddingServiceError",
-    "EmbeddingProviderError",
-    "EmbeddingResult",
-    "EmbeddingProviderInterface",
-    "FastEmbedProvider",
-    "OllamaProvider",
-    "OpenAIProvider",
-    "EmbeddingService",
-    "get_embedding_service",
-    "embed",
-    "cosine_similarity",
-    "euclidean_distance",
+    "BatchEmbeddingRequest",
+    "BudgetConfig",
+    "BudgetExceededError",
     # Circuit breaker
     "CircuitBreaker",
     "CircuitState",
+    "EmbeddingProvider",
+    "EmbeddingProviderError",
+    "EmbeddingProviderInterface",
+    "EmbeddingQuery",
     # Security models
     "EmbeddingRequest",
-    "BatchEmbeddingRequest",
-    "EmbeddingQuery",
+    "EmbeddingResult",
+    "EmbeddingService",
+    "EmbeddingServiceError",
+    "FastEmbedProvider",
+    "OllamaProvider",
+    "OpenAIProvider",
     "RateLimitConfig",
-    "BudgetConfig",
-    "BudgetExceededError",
-    "ServiceOverloadedError",
     "SecureEmbeddingService",
+    "ServiceOverloadedError",
+    "cosine_similarity",
+    "embed",
+    "euclidean_distance",
+    "get_embedding_service",
     "get_secure_embedding_service",
 ]

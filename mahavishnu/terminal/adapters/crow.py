@@ -111,7 +111,7 @@ class CrowTerminalAdapter(TerminalAdapter):
             }
             logger.debug("crow-mcp session launched: %s", session_id)
             return session_id
-        except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
+        except Exception as e:
             raise TerminalError(
                 message=f"crow-mcp: failed to launch session: {e}",
                 error_code=ErrorCode.CROW_MCP_UNAVAILABLE,
@@ -139,7 +139,7 @@ class CrowTerminalAdapter(TerminalAdapter):
                 "crow_terminal_exec",
                 {"session_id": session_id, "command": command},
             )
-        except Exception as e:  # noqa: BLE001 - CLI entrypoint; converts unhandled errors to exit
+        except Exception as e:
             raise TerminalError(
                 message=f"crow-mcp: failed to send command: {e}",
                 error_code=ErrorCode.CROW_MCP_UNAVAILABLE,
@@ -178,7 +178,7 @@ class CrowTerminalAdapter(TerminalAdapter):
                 params,
             )
             return _extract_output(result)
-        except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
+        except Exception as e:
             raise TerminalError(
                 message=f"crow-mcp: failed to capture output: {e}",
                 error_code=ErrorCode.CROW_MCP_UNAVAILABLE,

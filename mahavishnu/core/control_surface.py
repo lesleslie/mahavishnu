@@ -7,7 +7,7 @@ collectors.
 
 from __future__ import annotations
 
-from datetime import datetime, UTC
+from datetime import UTC, datetime
 from typing import Any
 
 
@@ -38,7 +38,7 @@ async def get_recovery_summary(app: Any) -> dict[str, Any]:
                 "recovered_pools": len(pools),
                 "recovered_routing_decisions": len(routing),
                 "dhara_available": bool(app._dhara_state.available),
-                "last_recovered_at": datetime.now((UTC)).isoformat(),
+                "last_recovered_at": datetime.now(UTC).isoformat(),
             }
         )
     except (AttributeError, OSError, RuntimeError, TypeError, ValueError) as exc:
@@ -112,7 +112,7 @@ def record_fix_trace(
             "stage": stage,
             "message": message,
             "metadata": metadata or {},
-            "timestamp": datetime.now((UTC)).isoformat(),
+            "timestamp": datetime.now(UTC).isoformat(),
         }
     )
 

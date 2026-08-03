@@ -88,7 +88,7 @@ class E2BSandboxWorker(BaseWorker):
             create_kwargs["api_key"] = self._api_key
         try:
             self._sandbox = await AsyncSandbox.create(**create_kwargs)
-        except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
+        except Exception as e:
             self._status = WorkerStatus.FAILED
             logger.exception("Failed to create E2B sandbox (template=%s)", self.template)
             raise RuntimeError(f"E2B sandbox failed to start: {e}") from e
@@ -126,9 +126,7 @@ class E2BSandboxWorker(BaseWorker):
 
         start_time = time.time()
         safe_command = _exec_guard.sanitize_command(command)
-        exit_code, output, error_output = await self._run_in_sandbox(
-            f"echo {safe_command} | sh"
-        )
+        exit_code, output, error_output = await self._run_in_sandbox(f"echo {safe_command} | sh")
         duration = time.time() - start_time
         result = self._build_result(command, exit_code, output, error_output, duration)
         await self._store_result(result, command)
@@ -144,7 +142,7 @@ class E2BSandboxWorker(BaseWorker):
         """
         try:
             execution = await self._sandbox.commands.run(shell_command)
-        except Exception as exc:  # noqa: BLE001 - executor boundary; logs and re-raises or returns
+        except Exception as exc:
             exit_code = getattr(exc, "exit_code", None)
             if not isinstance(exit_code, int):
                 # Transport-level failure, not a command failure
@@ -225,7 +223,7 @@ class E2BSandboxWorker(BaseWorker):
                     },
                 },
             )
-        except Exception:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
+        except Exception:
             logger.exception("Failed to store e2b-sandbox result in Session-Buddy")
 
     async def stop(self) -> None:
@@ -240,7 +238,7 @@ class E2BSandboxWorker(BaseWorker):
             await self._sandbox.kill()
             self._status = WorkerStatus.COMPLETED
             logger.info("Stopped e2b-sandbox worker: %s", self.sandbox_id)
-        except Exception as exc:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
+        except Exception as exc:
             logger.exception("Failed to kill e2b sandbox %s", self.sandbox_id)
             self._status = WorkerStatus.FAILED
             raise RuntimeError(f"Failed to stop E2B sandbox: {exc}") from exc
@@ -265,7 +263,7 @@ class E2BSandboxWorker(BaseWorker):
         try:
             probe = checker()
             running = await probe if inspect.isawaitable(probe) else probe
-        except Exception:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
+        except Exception:
             logger.exception("e2b-sandbox status probe failed for %s", self.sandbox_id)
             self._running = False
             return WorkerStatus.FAILED

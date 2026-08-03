@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import asyncio
-from datetime import datetime, UTC
+from datetime import UTC, datetime
 from logging import getLogger
 import pathlib
 from typing import TYPE_CHECKING, Any
@@ -137,7 +137,7 @@ class TerminalManager:
             {
                 "from": old_adapter_name,
                 "to": new_adapter_name,
-                "timestamp": datetime.now((UTC)).isoformat(),
+                "timestamp": datetime.now(UTC).isoformat(),
                 "migrate_sessions": migrate_sessions,
             }
         )
@@ -170,7 +170,7 @@ class TerminalManager:
         """Migrate sessions from old adapter to new adapter.
 
         This is experimental and may not work for all adapter combinations.
-        
+
         Args:
             old_adapter: Adapter to migrate from
             new_adapter: Adapter to migrate to
@@ -196,7 +196,6 @@ class TerminalManager:
             command = session_info.get("command", "")
 
             try:
-        
                 # For mcpretentious → mcpretentious (different instances)
                 # We can recreate sessions with the same command
                 new_session_id = await new_adapter.launch_session(
@@ -279,7 +278,7 @@ class TerminalManager:
             )
             return session_ids
 
-        except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
+        except Exception as e:
             logger.error(f"Failed to launch sessions: {e}")
             raise
 
@@ -575,7 +574,7 @@ class TerminalManager:
                 adapter = McpretentiousAdapter(mcp_client, backend_name=preference)
                 logger.info(f"Using {preference} adapter")
                 return cls(adapter, terminal_config)
-            except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
+            except Exception as e:
                 logger.error(f"{preference} adapter failed: {e}")
                 raise ConfigurationError(
                     message=f"{preference} adapter failed",

@@ -5,6 +5,171 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.11.0] - 2026-08-03
+
+### Added
+
+- Add tiered microVM isolation workers (Apple container + E2B)
+- Add WorktreePruneCandidate, classify_merge_status, WorktreePruner
+- Drain pending WAL rows through Session-Buddy sink (MAHAVISHNU_OUTBOX_DRAIN)
+- errors: Add WorkerUnavailableError and ContainerDaemonUnavailable
+- events: Add worker topic constants and helper
+- lifecycle: Add on_mahavishnu_shutdown for graceful worker detaching
+- lifecycle: Add startup reconciliation hook for durable workers
+- mahavishnu: Add MemoryOutboxWriter (WAL schema + DuckDB writer)
+- mcp: Add worker contract tools and bootstrap registration
+- mcp: Add workflow_result retrieval tool
+- mcp: Filter worker_list by state and worker_id
+- mcp: Pool tools route shell types through durable contract
+- mcp: Remove iTerm2 terminal bootstrap path
+- mcp: Remove iTerm2 terminal tool branches
+- mcp: Route worker_spawn shell types through durable contract
+- mcp: Stop truncating worker_execute / worker_execute_batch output
+- mcp: Worker_close uses two-phase cancellation
+- mcp: Worker_close_all and worker_health use durable contract
+- mcp: Worker_collect_results supports incremental output
+- mcp: Worker_monitor routes through durable manager
+- observability: Instrument pool_route_execute and terminal_launch for §14 pool_share
+- observability: Instrument worker contract tools with metrics
+- Re-enable SessionBuddyWorktreeProvider by default
+- Route tmux preference to durable TmuxTerminalAdapter
+- settings: Add worker_contract defaults
+- terminal: Deprecate iTerm2 preference to mock fallback
+- terminal: Register tmux as a builtin backend
+- terminal: Remove iTerm2 adapter implementation
+- terminal: Remove iTerm2 session pool
+- workers/contract: Add atomic JSON store for durable records
+- workers/contract: Add canonical envelope publisher
+- workers/contract: Add DurableWorkerManager with reconcile_all
+- workers/contract: Add DurableWorkerRecord Pydantic model
+- workers/contract: Add tmux adapter primitives
+- workers/contract: Add WorkerLifecycleState and transition rules
+- workers: Add capability layer with static, live, and observability phases
+- workers: Add capability metadata fields to WorkerConfig
+- workers: Discover docker/orbstack runtime and probe daemon
+- workers: Gate cloud worker on credentials, no secret logging
+- workers: Split one-shot submit path and de-couple resolve_worker_type
+- workers: Wire capability diagnostics into CLI, MCP, and health
+- worktree-cli: Add prune-merged subcommand
+
+### Changed
+
+- events: Add trailing newlines to worker_topics files
+- Mahavishnu (quality: 72/100) - 2026-07-25 02:10:24
+- Mahavishnu (quality: 74/100) - 2026-07-26 13:47:32
+- Mahavishnu (quality: 74/100) - 2026-07-27 02:25:40
+- session-buddy: Mahavishnu seam hardening design (WAL + hook gate + plugin + code-graph facade + skill-coverage gate)
+- session-buddy: Mahavishnu seam hardening implementation plan (6 tasks)
+- terminal: Fix import order in manager.py
+- terminal: Remove iTerm2 adapter registry entries
+- terminal: Type grid against adapter ABC
+- workers/contract: Add trailing newlines to publisher files
+- workers: Add dedicated factory branches for openhands, a2a, terminal-crow
+- workers: Complete DebugMonitorWorker Wave 2 removal; drop stale MCP test duplicate
+- workers: Remove Docker/OrbStack ContainerWorker in favor of microVM tiers
+
+### Fixed
+
+- ecosystem+audit: Complete 3 missing nicknames; route worktree audit to dedicated logger
+- ecosystem: Quote oneiric nickname to avoid YAML 1.1 boolean coercion
+- errors: Redact secret-shaped substrings in exception messages
+- Honor nested workers.enabled setting in CLI
+- mcp: Harden durable-routing fast path against Task 24 security review
+- mcp: Workflow_result reads full Dhara key
+- openclaw: Cap auto-restart and surface terminal failure
+- pools: Close fail-open-state-drift in outbox sink and drainer breaker
+- pools: Wire drainer into collect_and_sync + strengthen writer test (whole-branch follow-ups)
+- provider: Parse Session-Buddy JSON payload; flip session-buddy default to enabled
+- quality: Resolve pyscn/ty/refurb/lychee findings (Wave 2)
+- Resolve 7 merge conflicts from pre-wave-merge dirty state
+- Resolve Wave 3 type errors (14 findings, 7 files)
+- ruff: Resolve F821 undefined names + ASYNC blocking I/O (20 findings)
+- tui: Make textual a true optional dependency
+- workers/contract: Address Task 1 review notes (F401 + from __future__)
+- workers/contract: Make WorkerLifecycleState available at class definition for Pydantic v2
+- workers/contract: Mark_all_detached only includes states that can transition to DETACHED
+- workers/contract: Narrow tmux type in cancel() and unbreak Pydantic enum import
+- workers/contract: Replace misleading F3 comment with honest deferral; cover cancel idempotency
+- workers/contract: Security hardening for tmux adapter (validation, safe stderr, send-keys -l) and portable test socket path
+- workers/contract: Space-join send_keys parts so multi-token prompts type correctly
+- workers: Address 5 capability-layer security findings
+- workers: Enable runtime discovery and DOCKER_HOST wiring
+- workers: Handle DEGRADED in execute and cover start() in tests
+- workers: Make get_readiness async and surface aggregation errors
+- workers: Recognize Claude Code stream-json result marker
+- workers: Thread prompt kwarg and update remaining routing tests
+- workers: Trailing newlines and tighten AWS char class
+- workers: Wire A2A agent configs from settings + add openhands test
+- worktree: Filter Session-Buddy provider when its tools are missing
+
+### Documentation
+
+- Add WORKTREE_AUTOREMOVE guide + feature tracking + DEFERRED appendix
+- Amend plan Task 1 testing contract to nested env var
+- decisions: Add worktree-autoremove-policy with explicit Rule 2 amendment
+- feature-tracking: Record E2B SDK API verification
+- mahavishnu: Add Rule #7/8/9 for invalid-return-type, invalid-await, unused-type-ignore-comment
+- mahavishnu: Amend ty ignore codes — Rule #6 for return-type bugs, slim audit counts
+- mahavishnu: Index ty-ignore-codes decision in decisions README
+- mcp: Document worker contract tools
+- plans: Add durable local workers implementation plan
+- plans: Add session-buddy-worktree-tools follow-up plan
+- plans: Add Task 26 (iTerm2 deprecation/removal) and confirm open questions
+- plans: Apply multi-reviewer audit fixes (F1-F20 + new tasks 8a/8b/18-25)
+- plans: Bump target version 0.69.5 → 0.70.0 (MINOR per SemVer)
+- plans: Keep wrapper pkg_path per spec; CLI flag stays as repo_root
+- plans: Revise shared-validator plan based on 4-agent review
+- readme: Add Bodai Ecosystem Role section
+- Record iTerm2 adapter removal
+- spec: Collapse Phase C iTerm2 deprecation+removal per user direction
+- specs: Add durable local workers design (tmux default, iTerm2 demoted, Zellij deferred)
+- terminal: Drop iTerm2 docstring references
+- Worker readiness and lifecycle repair design
+- Worker readiness plan v3 (full review fixes)
+
+### Testing
+
+- Delete resurrected test_terminal_manager.py
+- Fix collection collisions by renaming, not packaging
+- Fix pytest module-name collision by completing the test package chain
+- lifecycle: Assert on_mahavishnu_startup returns reconciled records
+- mcp: Cover workflow_result path-traversal guard (Task 24 sibling-gate-parity)
+- Pin EventBridgeConfig default_factory resolution
+- terminal: Cover removed iTerm2 preference fallback
+- terminal: Fix indentation after iTerm2 patch removal
+- terminal: Remove deleted iTerm2 test dependencies
+- terminal: Remove iTerm2-only suites
+- terminal: Remove leftover iTerm2-coupled suites
+- terminal: Repair indentation in mcp-client test
+- workers/contract: Add reconciliation integration test
+- workers: Add integration suite for capability live probes
+- workers: Add trailing newline to gate test
+- workers: Add trailing newlines to integration suite
+- workers: Align observability tests with Oneiric logger
+- workers: Assert tool-result blocks do not trigger completion
+- workers: Fix list-types ready-only test for log noise and path gating
+- workers: Switch gate test to nested env-var override
+- workers: Update registry tests for resolve_worker_type de-coupling
+
+### Build
+
+- Remove iTerm2 dependency group
+
+### Internal
+
+- Bump oneiric dep to >=0.16.0
+- deps: Bump crackerjack>=0.70.0; remove duplicated validator script; fix plan/spec frontmatter
+- ecosystem: Add 5 nicknames; docs(plans): track nickname + audit logger gaps
+- ecosystem: Add package field to all 8 repos
+- Restore unrelated task dashboard files
+- ruff: Apply safe autofix for 600 findings (Wave 0.5)
+- ruff: Apply Wave 1a datetime UTC fixes (251 findings, 87 files)
+- ruff: Apply Wave 1b mechanical fixes (176 findings, 77 files)
+- ruff: Apply Wave 1b/2/3 exceptions (9 findings, 8 files)
+- ruff: Apply Wave 1b/2/3 workers_engines_automation (79 findings, 22 files)
+- ruff: Apply Wave 3 BLE001 + TRY002/TRY004 (740 findings, 232 files)
+- ruff: Apply Wave 3 BLE001 partial (267 findings, 51 files)
+
 ## [0.10.0] - 2026-07-21
 
 ### Added

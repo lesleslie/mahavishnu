@@ -27,24 +27,24 @@ from .team_cli import (
 )
 
 __all__ = [
-    "app",
     "MahavishnuApp",
     "MultiAuthHandler",
-    "help_group",
-    "show_general_help",
-    "show_command_help",
-    "show_all_help",
-    # Team CLI
-    "team_app",
-    "add_team_commands",
-    "create_team",
-    "parse_goal_cmd",
-    "list_skills",
-    "list_teams",
-    # Events CLI
-    "add_events_commands",
     # Docs audit CLI
     "add_docs_commands",
+    # Events CLI
+    "add_events_commands",
+    "add_team_commands",
+    "app",
+    "create_team",
+    "help_group",
+    "list_skills",
+    "list_teams",
+    "parse_goal_cmd",
+    "show_all_help",
+    "show_command_help",
+    "show_general_help",
+    # Team CLI
+    "team_app",
 ]
 
 

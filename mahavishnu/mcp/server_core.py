@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import asyncio
 from contextlib import suppress
-from datetime import datetime, UTC
+from datetime import UTC, datetime
 from functools import wraps
 from importlib.metadata import version
 from logging import getLogger
@@ -62,7 +62,7 @@ class McpretentiousMCPClient:
                 await self._client.start()
                 self._started = True
                 logger.info("Started mcpretentious MCP server")
-            except Exception as e:  # noqa: BLE001 - MCP boundary must preserve all operation failures
+            except Exception as e:
                 logger.error(f"Failed to start mcpretentious server: {e}")
                 raise RuntimeError(
                     f"Could not start mcpretentious server. "
@@ -113,7 +113,7 @@ class McpretentiousMCPClient:
             else:
                 raise ValueError(f"Unknown tool: {tool_name}")
 
-        except Exception as e:  # noqa: BLE001 - MCP boundary must preserve all operation failures
+        except Exception as e:
             logger.error(f"Error calling mcpretentious tool {tool_name}: {e}")
             raise
 
@@ -238,7 +238,7 @@ class FastMCPServer:
             except TimeoutError:
                 status = "timeout"
                 raise
-            except Exception:  # noqa: BLE001 - MCP boundary must preserve all operation failures
+            except Exception:
                 status = "error"
                 raise
             finally:
@@ -259,7 +259,7 @@ class FastMCPServer:
             except TimeoutError:
                 status = "timeout"
                 raise
-            except Exception:  # noqa: BLE001 - MCP boundary must preserve all operation failures
+            except Exception:
                 status = "error"
                 raise
             finally:
@@ -743,7 +743,7 @@ class FastMCPServer:
                         }
                         for log in recent_logs[-10:]  # Last 10 logs
                     ],
-                    "timestamp": datetime.now((UTC)).isoformat(),
+                    "timestamp": datetime.now(UTC).isoformat(),
                 }
             except Exception as e:  # noqa: BLE001 - MCP boundary must preserve all operation failures
                 return {"error": f"Failed to get observability metrics: {e}", "metrics": {}}

@@ -241,7 +241,7 @@ async def _run_async_dispatch(
             "rate_limited": True,
             "retry_after_seconds": exc.details.get("retry_after_seconds"),
         }
-    except Exception as exc:  # noqa: BLE001 - MCP boundary must preserve all operation failures
+    except Exception as exc:
         logger.exception(
             "dispatch_to_pool: async workflow_id=%s failed",
             workflow_id,
@@ -273,7 +273,7 @@ async def _run_async_dispatch(
                             default=str,
                         )
                     )
-                except Exception:  # noqa: BLE001 - MCP boundary must preserve all operation failures
+                except Exception:
                     logger.exception(
                         "dispatch_to_pool: dead-letter write FAILED workflow_id=%s path=%s",
                         workflow_id,
@@ -290,14 +290,14 @@ async def _run_async_dispatch(
                             **final_payload,
                         },
                     )
-                except Exception:  # noqa: BLE001 - MCP boundary must preserve all operation failures
+                except Exception:
                     logger.exception(
                         "dispatch_to_pool: marker write FAILED "
                         "workflow_id=%s intended_terminal_status=%s",
                         workflow_id,
                         terminal_status,
                     )
-            except Exception:  # noqa: BLE001 - MCP boundary must preserve all operation failures
+            except Exception:
                 logger.exception(
                     "dispatch_to_pool: dead-letter recovery FAILED workflow_id=%s",
                     workflow_id,
@@ -667,7 +667,7 @@ def register_pool_tools(
                 "retry_after_seconds": exc.details.get("retry_after_seconds"),
                 "error": str(exc),
             }
-        except Exception as e:  # noqa: BLE001 - MCP boundary must preserve all operation failures
+        except Exception as e:
             logger.exception("pool_route_execute failed")
             return {
                 "status": "failed",
@@ -857,7 +857,7 @@ def register_pool_tools(
                     "retry_after_seconds": exc.details.get("retry_after_seconds"),
                     "error": str(exc),
                 }
-            except Exception as exc:  # noqa: BLE001 - MCP boundary must preserve all operation failures
+            except Exception as exc:
                 logger.exception("dispatch_to_pool: sync dispatch failed")
                 return {
                     "status": "failed",

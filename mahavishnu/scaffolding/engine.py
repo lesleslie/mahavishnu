@@ -189,7 +189,7 @@ class ScaffoldingEngine:
             shutil.rmtree(temp_dir, ignore_errors=True)
 
             return output
-        except Exception:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
+        except Exception:
             if temp_dir.exists():
                 shutil.rmtree(temp_dir, ignore_errors=True)
             if output.exists():
@@ -355,7 +355,7 @@ class ScaffoldingEngine:
 
         # Then, collect injection templates from ALL patterns
         injections: dict[str, str] = {}
-        for _pid, pattern in resolved.items():
+        for pattern in resolved.values():
             for slot_name in declared_slots:
                 injection_key = f"{slot_name}-injection"
                 if injection_key in pattern.templates:
@@ -389,7 +389,7 @@ class ScaffoldingEngine:
             dir_path.mkdir(parents=True, exist_ok=True)
 
         # Create slot directories
-        for _slot_name, slot in pattern.get_slots().items():
+        for slot in pattern.get_slots().values():
             slot_path = output_dir / slot.path
             slot_path.mkdir(parents=True, exist_ok=True)
 
@@ -403,7 +403,7 @@ class ScaffoldingEngine:
             env = template_env if f.path.endswith(".html") else scaffold_env
             try:
                 rendered = env.from_string(template_str).render(**variables)
-            except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
+            except Exception as e:
                 raise ValueError(
                     f"Template render error in '{template_name}' for '{pattern.id}': {e}"
                 ) from e

@@ -25,7 +25,7 @@ def load_config() -> MahavishnuSettings:
     """Load configuration from Oneiric-compatible sources."""
     try:
         return MahavishnuSettings()
-    except Exception as exc:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
+    except Exception as exc:
         raise ConfigurationError(
             message=f"Failed to load configuration: {exc}",
             details={"error": str(exc), "error_type": type(exc).__name__},
@@ -122,7 +122,7 @@ def _parse_repos_config_file(repos_path: Path) -> dict:
         return raw_config
     except ConfigurationError:
         raise
-    except Exception as exc:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
+    except Exception as exc:
         raise ConfigurationError(
             message=f"Failed to load {repos_path.name}: {exc}",
             details={"repos_path": str(repos_path), "error": str(exc)},
@@ -247,7 +247,7 @@ def _instantiate_adapters(app: Any, adapter_classes: dict[str, type], logger: An
                 adapter_name,
                 exc,
             )
-        except Exception as exc:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
+        except Exception as exc:
             raise ConfigurationError(
                 message=f"Failed to initialize {adapter_name} adapter: {exc}",
                 details={

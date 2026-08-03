@@ -492,7 +492,7 @@ class SelfImprovementTools:
                 "patterns": patterns,
                 "time_window_days": time_window_days,
             }
-        except Exception as exc:  # noqa: BLE001 - MCP boundary must preserve all operation failures
+        except Exception as exc:
             logger.exception("self_improvement_analyze_failures failed")
             return {"error": str(exc), "patterns": []}
 
@@ -594,7 +594,7 @@ class SelfImprovementTools:
                 "fingerprint": fingerprint,
                 "verification": verification_payload,
             }
-        except Exception as exc:  # noqa: BLE001 - MCP boundary must preserve all operation failures
+        except Exception as exc:
             logger.exception("self_improvement_generate failed")
             return {"error": str(exc), "status": "failed"}
 
@@ -628,7 +628,7 @@ class SelfImprovementTools:
                 "total": len(records),
                 "improvements": records,
             }
-        except Exception as exc:  # noqa: BLE001 - MCP boundary must preserve all operation failures
+        except Exception as exc:
             logger.exception("self_improvement_status failed")
             return {"error": str(exc), "improvements": [], "total": 0}
 

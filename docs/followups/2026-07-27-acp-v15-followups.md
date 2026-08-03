@@ -2,7 +2,7 @@
 status: active
 role: canonical
 date: 2026-07-27
-last_reviewed: 2026-07-27
+last_reviewed: 2026-08-03
 topic: acp-v15-followups
 ---
 
@@ -10,7 +10,7 @@ topic: acp-v15-followups
 
 ## Status
 
-**Open** — 7 items, all deferred from the v1.0 ACP server build plan
+**Open** — 8 items, all deferred from the v1.0 ACP server build plan
 (`docs/plans/2026-07-26-mahavishnu-acp-server.md`, status `active`,
 promoted 2026-07-27 after multi-lens adversarial review).
 
@@ -105,6 +105,27 @@ context (standalone vs. bundled).
 - **Shipping context:** standalone; ships when Toad integration
   is in scope (a separate test plan, not a feature plan).
 
+### v1.5.8 — A2UI as ACP sessionUpdate payload carrier
+
+- **Scope:** Investigate carrying Google A2UI payloads (declarative
+  JSON UI markup; `github.com/google/A2UI` v0.2 schema) inside ACP
+  `sessionUpdate` messages. The ACP server would emit A2UI-formatted
+  chunks for ACP clients that opt in (e.g., Toad, a web frontend),
+  while preserving plain-text chunks for clients that don't.
+  Layered, not competing: ACP owns session lifecycle; A2UI owns
+  rendering. The Mahavishnu A2A server (`mahavishnu/a2a/server.py`)
+  places us adjacent to Google's protocol ecosystem, but A2A work
+  does not transfer to A2UI — treat as a new surface.
+- **Prerequisite:** v1.0 ships; an ACP client (Toad, a web
+  frontend, or another consumer) expresses demand for rich-UI
+  rendering. The A2UI spec is public at v0.2, so there is no
+  upstream-stabilization blocker.
+- **Shipping context:** reactive; ship a separate plan when a
+  client wants to consume A2UI. Bundling with v1.5.2 (MCP-over-ACP)
+  is not assumed — independent trigger.
+- **Origin:** TUI planning relevance check 2026-08-03 (companion
+  note: `docs/feature-tracking/tui.md` — Toad decision gate).
+
 ## Action
 
 1. **Independent ship (now, non-blocking):** v1.5.6 is a one-line
@@ -115,10 +136,11 @@ context (standalone vs. bundled).
    together as v1.5.0. Each item gets its own v1.5 plan file
    that inherits the v1.0 plan's structure (Integration Contracts,
    Validation Matrix, Decision Rule).
-3. **Reactive ship:** v1.5.2 (MCP-over-ACP) and v1.5.3 (Remote
-   ACP) ship when their respective upstream specs stabilize.
-   Each gets its own plan file with a `blocks_on:` link to the
-   upstream stabilization signal.
+3. **Reactive ship:** v1.5.2 (MCP-over-ACP), v1.5.3 (Remote
+   ACP), and v1.5.8 (A2UI payload carrier) ship when their
+   respective triggers fire — upstream-spec stabilization for
+   v1.5.2 / v1.5.3, client demand for v1.5.8. Each gets its own
+   plan file with a `blocks_on:` link to the trigger signal.
 4. **Adoption-gated ship:** v1.5.7 is the gate for the TUI
    tracker's `adopted` state. It ships as a test plan, not a
    feature plan, and resolves the TUI's adoption criterion.
@@ -127,8 +149,8 @@ context (standalone vs. bundled).
 
 A v1.5 release closes this followup by:
 
-- Filing v1.5.0, v1.5.2, v1.5.3, and v1.5.7 plan files (or
-  equivalent) that each `blocks_on:` this followup
+- Filing v1.5.0, v1.5.2, v1.5.3, v1.5.7, and v1.5.8 plan files
+  (or equivalent) that each `blocks_on:` this followup
 - Moving this file to `docs/followups/.archive/` per the
   followups lifecycle policy at
   `docs/followups/README.md` § "Closing and archiving" and

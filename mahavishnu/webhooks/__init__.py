@@ -32,10 +32,10 @@ __all__ = [
     # Models
     "OpenClawSweepRequest",
     "OpenClawWorkflowRequest",
-    "WebhookResponse",
     "WebhookErrorResponse",
+    "WebhookResponse",
     "WebhookStatus",
+    "validate_auth",
     # Router
     "webhook_router",
-    "validate_auth",
 ]

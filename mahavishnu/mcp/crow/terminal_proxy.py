@@ -123,7 +123,7 @@ async def init_crow_stdio_client(settings: CrowSettings) -> None:
             )
             session = await stack.enter_async_context(ClientSession(_read, _write))
             await session.initialize()
-        except BaseException:  # noqa: BLE001 - MCP boundary must preserve all operation failures
+        except BaseException:
             await stack.aclose()
             raise
         _state = _CrowState(session=session, exit_stack=stack)
@@ -282,7 +282,7 @@ async def _spawn_crow_state(settings: CrowSettings) -> _CrowState:
         )
         session = await stack.enter_async_context(ClientSession(_read, _write))
         await session.initialize()
-    except BaseException:  # noqa: BLE001 - MCP boundary must preserve all operation failures
+    except BaseException:
         await stack.aclose()
         raise
     return _CrowState(
@@ -332,7 +332,7 @@ async def _close_session(handle: str) -> None:
 
     try:
         await state.exit_stack.aclose()
-    except BaseException as exc:  # noqa: BLE001 - MCP boundary must preserve all operation failures
+    except BaseException:
         logger.exception(
             "Error closing crow session %s (subprocess reap is best-effort)",
             handle,

@@ -308,7 +308,7 @@ class DLQIntegration:
 
             return result  # type: ignore[no-any-return]
 
-        except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
+        except Exception as e:
             self._stats["workflows_failed"] += 1
 
             # Try to enqueue in DLQ

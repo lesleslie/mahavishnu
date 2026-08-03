@@ -458,12 +458,12 @@ def get_function_signature(file_path: str, function_name: str) -> dict[str, Any]
 
 
 __all__ = [
-    # Agno tools (for agent use)
-    "analyze_code",
-    "search_code",
-    "get_function_signature",
     # Implementation functions (for testing)
     "_analyze_code_impl",
-    "_search_code_impl",
     "_get_function_signature_impl",
+    "_search_code_impl",
+    # Agno tools (for agent use)
+    "analyze_code",
+    "get_function_signature",
+    "search_code",
 ]

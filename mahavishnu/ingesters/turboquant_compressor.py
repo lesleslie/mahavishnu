@@ -122,7 +122,7 @@ class TurboQuantCompressor:
         for i, emb in enumerate(embeddings):
             try:
                 compressed.append(tq.compress(emb))
-            except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
+            except Exception as e:
                 raise RuntimeError(
                     f"TurboQuant compression failed at index {i}/{len(embeddings)}: {e}"
                 ) from e
@@ -171,7 +171,7 @@ class TurboQuantCompressor:
                 None,
                 lambda: tq.search_compressed(conn, table, query_embedding, top_k=top_k),
             )
-        except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
+        except Exception as e:
             logger.error(f"turboquant_search_pgvector_failed table={table} top_k={top_k} error={e}")
             raise
 

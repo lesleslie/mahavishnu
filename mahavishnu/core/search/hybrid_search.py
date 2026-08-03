@@ -349,7 +349,7 @@ class HybridSearchEngine:
 
             return filtered_results
 
-        except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
+        except Exception as e:
             logger.exception(
                 "Hybrid search failed",
                 extra={
@@ -636,7 +636,7 @@ class HybridSearchEngine:
                 },
             )
 
-        except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
+        except Exception as e:
             logger.exception(
                 "Failed to index document",
                 extra={
@@ -680,7 +680,7 @@ class HybridSearchEngine:
 
                 return deleted  # type: ignore[no-any-return]
 
-        except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
+        except Exception as e:
             logger.exception(
                 "Failed to delete document",
                 extra={"doc_id": str(doc_id), "error": str(e)},

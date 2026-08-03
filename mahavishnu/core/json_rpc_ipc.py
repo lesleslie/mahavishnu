@@ -423,7 +423,7 @@ class JSONRPCServer:
                 request_id=request.request_id,
             )
 
-        except Exception as e:  # noqa: BLE001 - event handler; logs and continues
+        except Exception as e:
             logger.exception(f"Internal error handling {request.method}")
             if request.is_notification:
                 return None

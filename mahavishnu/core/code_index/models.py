@@ -11,7 +11,6 @@ if TYPE_CHECKING:
     from datetime import datetime
 
 
-
 class CodeGraphNode(BaseModel):
     """A node in the code knowledge graph."""
 

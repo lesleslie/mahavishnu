@@ -457,7 +457,7 @@ def add_config_validation_commands(app: typer.Typer) -> None:
 
             try:
                 report = UnifiedConfig.validate(settings_dir=config_dir)
-            except Exception as exc:  # noqa: BLE001 - CLI entrypoint; converts unhandled errors to exit
+            except Exception as exc:
                 typer.echo(f"[ERROR] Validation failed to run: {exc}", err=True)
                 raise typer.Exit(code=2) from exc
 

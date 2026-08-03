@@ -228,11 +228,11 @@ class ExternalIssueImporter:
 
         created_at = None
         if data.get("created_at"):
-            created_at = datetime.fromisoformat(data["created_at"].replace("Z", "+00:00"))
+            created_at = datetime.fromisoformat(data["created_at"])
 
         updated_at = None
         if data.get("updated_at"):
-            updated_at = datetime.fromisoformat(data["updated_at"].replace("Z", "+00:00"))
+            updated_at = datetime.fromisoformat(data["updated_at"])
 
         repository = data.get("repository", {}).get("full_name", "")
 
@@ -267,11 +267,11 @@ class ExternalIssueImporter:
 
         created_at = None
         if data.get("created_at"):
-            created_at = datetime.fromisoformat(data["created_at"].replace("Z", "+00:00"))
+            created_at = datetime.fromisoformat(data["created_at"])
 
         updated_at = None
         if data.get("updated_at"):
-            updated_at = datetime.fromisoformat(data["updated_at"].replace("Z", "+00:00"))
+            updated_at = datetime.fromisoformat(data["updated_at"])
 
         # Extract repository from references
         refs = data.get("references", {})

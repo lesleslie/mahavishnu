@@ -185,7 +185,7 @@ class CommandHandler:
                 return result
             return CommandResult.success(data=result)
 
-        except Exception as e:  # noqa: BLE001 - command dispatcher boundary catches all handler failures
+        except Exception as e:
             # Handle validation errors
             error_name = type(e).__name__
             if "Validation" in error_name or "ValidationError" in error_name:

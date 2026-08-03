@@ -75,7 +75,7 @@ class StdioMCPClient:
             # Start reader task
             asyncio.create_task(self._read_stdout())
 
-        except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
+        except Exception as e:
             raise RuntimeError(f"Failed to start MCP server: {e}") from e
 
     async def stop(self) -> None:
@@ -193,7 +193,7 @@ class StdioMCPClient:
         except TimeoutError:
             self._pending_requests.pop(request["id"], None)
             raise RuntimeError(f"Timeout calling MCP tool {tool_name}") from None
-        except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
+        except Exception as e:
             self._pending_requests.pop(request["id"], None)
             raise RuntimeError(f"Failed to call MCP tool {tool_name}: {e}") from e
 

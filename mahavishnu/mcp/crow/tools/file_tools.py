@@ -136,7 +136,7 @@ async def write_file(
         if existing_mode is not None:
             os.chmod(tmp_path, existing_mode)
         os.replace(tmp_path, path)
-    except BaseException:  # noqa: BLE001 - MCP boundary must preserve all operation failures
+    except BaseException:
         tmp_path.unlink(missing_ok=True)
         raise
     return WriteResult(written=True, path=str(path), bytes=byte_count, lines=lines)

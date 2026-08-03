@@ -209,7 +209,7 @@ class DharaAdapterRegistryClient:
             result = await self._client.call_tool(name, arguments)
             self._connected = True
             return result
-        except Exception as exc:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
+        except Exception as exc:
             self._connected = False
             raise ConnectionError(f"Dhara adapter registry unavailable: {exc}") from exc
 

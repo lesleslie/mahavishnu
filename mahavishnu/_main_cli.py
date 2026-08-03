@@ -785,7 +785,7 @@ def mcp_health() -> None:
 
         try:
             # Try to connect to the MCP server
-            reader, writer = await asyncio.wait_for(
+            _reader, writer = await asyncio.wait_for(
                 asyncio.open_connection(host, port), timeout=2.0
             )
             writer.close()

@@ -80,7 +80,7 @@ def register_search_tools(mcp: FastMCP) -> None:
             # Convert to dict for JSON serialization
             return [result.model_dump() for result in results]
 
-        except Exception as e:  # noqa: BLE001 - MCP boundary must preserve all operation failures
+        except Exception as e:
             logger.exception(
                 "hybrid_search tool failed",
                 extra={
@@ -130,7 +130,7 @@ def register_search_tools(mcp: FastMCP) -> None:
                 extra={"doc_id": doc_id, "error": str(e)},
             )
             raise ValueError(f"Invalid document UUID: {doc_id}") from e
-        except Exception as e:  # noqa: BLE001 - MCP boundary must preserve all operation failures
+        except Exception as e:
             logger.exception(
                 "index_document tool failed",
                 extra={
@@ -167,7 +167,7 @@ def register_search_tools(mcp: FastMCP) -> None:
                 extra={"doc_id": doc_id, "error": str(e)},
             )
             raise ValueError(f"Invalid document UUID: {doc_id}") from e
-        except Exception as e:  # noqa: BLE001 - MCP boundary must preserve all operation failures
+        except Exception as e:
             logger.exception(
                 "delete_document tool failed",
                 extra={"doc_id": doc_id, "error": str(e)},
@@ -195,7 +195,7 @@ def register_search_tools(mcp: FastMCP) -> None:
 
             return [result.model_dump() for result in results]
 
-        except Exception as e:  # noqa: BLE001 - MCP boundary must preserve all operation failures
+        except Exception as e:
             logger.exception(
                 "search_by_repository tool failed",
                 extra={

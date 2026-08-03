@@ -29,7 +29,7 @@ from functools import lru_cache
 import ipaddress
 from pathlib import Path
 import socket
-from typing import Any, TypedDict, cast
+from typing import Any, Self, TypedDict, cast
 import urllib.parse
 
 import httpx
@@ -276,7 +276,7 @@ class ContentIngester:
             self._initialized = True
             self._log.info("content_ingester_initialized")
 
-        except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
+        except Exception as e:
             self._log.error("initialization_failed", error=str(e))
             raise RuntimeError(f"Failed to initialize ContentIngester: {e}") from e
 
@@ -294,7 +294,7 @@ class ContentIngester:
         self._initialized = False
         self._log.info("content_ingester_closed")
 
-    async def __aenter__(self) -> ContentIngester:
+    async def __aenter__(self) -> Self:
         """Async context manager entry."""
         await self.initialize()
         return self
@@ -516,7 +516,7 @@ class ContentIngester:
                 "metadata": metadata,
             }
 
-        except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
+        except Exception as e:
             self._log.error("fetch_failed", url=url, error=str(e))
             raise RuntimeError(f"Failed to fetch URL {url}: {e}") from e
 

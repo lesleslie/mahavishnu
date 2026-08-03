@@ -103,7 +103,7 @@ def create_health_app(
             )
             default_worker = worker_summary.get("default_worker", "unknown")
             checks["workers_default"] = f"{default_worker}:{worker_status}"
-        except Exception:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
+        except Exception:
             logger.exception("readiness worker aggregation failed")
             checks["workers"] = "unhealthy"
             checks["workers_default"] = "unresolved"

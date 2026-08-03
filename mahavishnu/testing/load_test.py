@@ -25,6 +25,7 @@ import json
 import logging
 from pathlib import Path
 import statistics
+import sys
 import time
 from typing import Any
 
@@ -536,4 +537,4 @@ async def main():
 
 
 if __name__ == "__main__":
-    exit(asyncio.run(main()))
+    sys.exit(asyncio.run(main()))
