@@ -33,7 +33,6 @@ _DURABLE_WORKER_TYPES: frozenset[str] = frozenset(
     {
         "terminal-claude",  # AI_ASSISTANT — explicit allow (template verified)
         "terminal-shell",  # SHELL
-        "terminal-zsh",  # SHELL
         "terminal-python",  # SHELL
         "terminal-ipython",  # SHELL
         "terminal-node",  # SHELL

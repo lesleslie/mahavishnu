@@ -439,7 +439,6 @@ Mahavishnu uses a role-based taxonomy to organize repositories:
 - **terminal-claude** - Headless Claude Code CLI execution
 - **terminal-qwen** - Headless Qwen CLI execution (supported non-default worker type)
 - **terminal-codex** - Headless Codex CLI execution in one-shot mode with marker-based completion
-- **terminal-openclaw** - Headless OpenClaw agent execution for local communication and delivery tasks
 - **terminal-deepagents** - Headless DeepAgents CLI execution in one-shot mode with marker-based completion
 - **terminal-clai** - Headless CLAI CLI execution in one-shot mode with marker-based completion
 - **gateway-openclaw** - Preferred OpenClaw gateway worker over HTTP JSON-RPC for channel-aware communication tasks
@@ -451,7 +450,7 @@ Worker selection policy:
 
 ### Routing Notes
 
-- Communication-style tasks such as notifications, handoffs, replies, inbox triage, and channel delivery prefer **gateway-openclaw** when `OPENCLAW_GATEWAY_URL` is configured, and fall back to **terminal-openclaw** otherwise.
+- Communication-style tasks such as notifications, handoffs, replies, inbox triage, and channel delivery prefer **gateway-openclaw** when `OPENCLAW_GATEWAY_URL` is configured. There is no CLI fallback — operators who want local OpenClaw execution must configure the gateway URL or run OpenClaw externally (e.g., via `cc-connect` with Claude Code).
 - Coding tasks remain on coding workers such as Claude or the configured cloud provider unless you explicitly request OpenClaw.
 
 ### Optional Worker CLI Profiles
@@ -463,15 +462,14 @@ These worker CLIs are optional and can be enabled via extras:
 uv sync --extra worker-alt-cli
 
 # Or enable specific profiles
-uv sync --extra worker-openclaw --extra worker-deepagents --extra worker-clai
+uv sync --extra worker-deepagents --extra worker-clai
 ```
 
 Important: these extras are profile flags only. You must install the actual CLI binaries
-(`openclaw`, `deepagents-cli`, `clai`) so they are available on your `PATH`.
+(`deepagents-cli`, `clai`) so they are available on your `PATH`.
 
 Structured output note:
 
-- `terminal-openclaw` is JSON-native and completes on valid JSON output.
 - `terminal-codex` uses `codex exec --json` and completes on an explicit sentinel marker.
 - `terminal-deepagents` uses `deepagents-cli --non-interactive --quiet --no-stream` and completes on an explicit sentinel marker because the verified task-run path is plain text.
 - `terminal-clai` uses `clai --no-stream` and completes on an explicit sentinel marker because the verified one-shot path is plain text.

@@ -31,8 +31,6 @@ def _run_live(report, config, settings):
         endpoint = os.getenv("OPENCLAW_GATEWAY_URL", "")
         token = os.getenv("OPENCLAW_GATEWAY_TOKEN")
         check = asyncio.run(_probe_openclaw_gateway(endpoint, token))
-    elif config.worker_type == "terminal-openclaw":
-        check = asyncio.run(_probe_openclaw_cli("openclaw"))
     elif config.requires_tool:
         check = asyncio.run(_probe_openclaw_cli(config.requires_tool))
     else:

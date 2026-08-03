@@ -1299,7 +1299,7 @@ def workers_spawn(
         "-t",
         help=(
             "Type of worker "
-            "(terminal-qwen [legacy], terminal-claude, terminal-codex, terminal-openclaw, "
+            "(terminal-qwen [legacy], terminal-claude, terminal-codex, "
             "gateway-openclaw, container-executor)"
         ),
     ),
@@ -1311,7 +1311,6 @@ def workers_spawn(
         $ mahavishnu workers spawn --type terminal-claude --count 3
         $ mahavishnu workers spawn -t terminal-claude -n 5
         $ mahavishnu workers spawn -t terminal-codex -n 2
-        $ mahavishnu workers spawn -t terminal-openclaw -n 2
     """
 
     async def _spawn():
@@ -1369,7 +1368,7 @@ def workers_execute(
         "-t",
         help=(
             "Type of worker "
-            "(terminal-qwen [legacy], terminal-claude, terminal-codex, terminal-openclaw, gateway-openclaw)"
+            "(terminal-qwen [legacy], terminal-claude, terminal-codex, gateway-openclaw)"
         ),
     ),
     timeout: int = typer.Option(
@@ -1388,11 +1387,11 @@ def workers_execute(
         $ mahavishnu workers execute -p "Create a Python class" -n 5 -t terminal-claude
         $ mahavishnu workers execute -p "Draft migration steps for this API" -t terminal-codex
         $ mahavishnu workers execute -p "Review this patch for regressions" -t terminal-claude
-        $ mahavishnu workers execute -p "Notify Slack with a deployment summary" -t terminal-openclaw
+        $ mahavishnu workers execute -p "Notify Slack with a deployment summary" -t gateway-openclaw
 
     Notes:
-        Communication-style prompts may be rerouted to gateway-openclaw or
-        terminal-openclaw when appropriate.
+        Communication-style prompts may be rerouted to gateway-openclaw when
+        OPENCLAW_GATEWAY_URL is configured.
     """
 
     async def _execute():
@@ -1556,7 +1555,7 @@ def pool_spawn(
         "-w",
         help=(
             "Worker type "
-            "(terminal-qwen [legacy], terminal-claude, terminal-codex, terminal-openclaw, "
+            "(terminal-qwen [legacy], terminal-claude, terminal-codex, "
             "gateway-openclaw, container-executor)"
         ),
     ),

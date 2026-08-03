@@ -30,7 +30,6 @@ Keep an integration **external reference only** when the integration:
 - `terminal-qwen` (supported non-default)
 - `terminal-claude`
 - `terminal-codex`
-- `terminal-openclaw`
 - `terminal-deepagents`
 - `terminal-clai`
 

@@ -4,10 +4,10 @@ Provides worker orchestration for headless AI execution across terminals
 and containers with real-time progress tracking and Session-Buddy integration.
 
 Available Worker Types:
-    AI Assistants: terminal-claude, terminal-openclaw, terminal-deepagents,
+    AI Assistants: terminal-claude, terminal-deepagents,
         terminal-clai (terminal-qwen is a legacy alias; terminal-ollama removed — use OllamaWorker)
     Gateways: gateway-openclaw
-    Shell/REPL: terminal-shell, terminal-zsh, terminal-python, terminal-ipython, terminal-node
+    Shell/REPL: terminal-shell, terminal-python, terminal-ipython, terminal-node
     Database: terminal-mysql, terminal-psql, terminal-redis
     WebAssembly: terminal-wasmtime, terminal-wasmer
     Remote: terminal-ssh
@@ -17,7 +17,7 @@ Available Worker Types:
 
 Routing notes:
     - communication-style tasks prefer gateway-openclaw when OPENCLAW_GATEWAY_URL
-      is configured, and otherwise fall back to terminal-openclaw.
+      is configured.
 """
 
 from mahavishnu.workers.apple_container import AppleContainerWorker

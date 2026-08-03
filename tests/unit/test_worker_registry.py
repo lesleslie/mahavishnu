@@ -380,8 +380,8 @@ class TestResolveWorkerType:
         with patch.dict(os.environ, {}, clear=False):
             os.environ.pop("OPENCLAW_GATEWAY_URL", None)
             for marker in markers:
-                result = resolve_worker_type("terminal-openclaw", None, marker)
-                assert result == "terminal-openclaw", f"Failed for prompt: {marker}"
+                result = resolve_worker_type("terminal-qwen", None, marker)
+                assert result == "terminal-qwen", f"Failed for prompt: {marker}"
 
     def test_coding_task_does_not_resolve_to_openclaw(self):
         with patch.dict(os.environ, {}, clear=False):

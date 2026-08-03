@@ -166,12 +166,10 @@ class TestWorkerRegistry:
             "terminal-qwen",
             "terminal-claude",
             "terminal-codex",
-            "terminal-openclaw",
             "terminal-deepagents",
             "terminal-clai",
             "gateway-openclaw",
             "terminal-shell",
-            "terminal-zsh",
             "terminal-python",
             "terminal-ipython",
             "terminal-node",
@@ -231,7 +229,10 @@ class TestWorkerRegistry:
                 )
 
     def test_registry_size(self) -> None:
-        assert len(WORKER_REGISTRY) == 48
+        # 46 = baseline 48 minus terminal-openclaw and terminal-zsh removed 2026-08.
+        # If you add or remove a worker, update both this assertion and
+        # ``test_registry_has_expected_keys``.
+        assert len(WORKER_REGISTRY) == 46
 
 
 # ---------------------------------------------------------------------------
@@ -296,9 +297,7 @@ class TestResolveWorkerType:
     )
     def test_communication_task_types_for_claude_pass_through(self, task_type: str) -> None:
         with patch.dict(os.environ, {}, clear=True):
-            assert (
-                resolve_worker_type("terminal-claude", task_type=task_type) == "terminal-claude"
-            )
+            assert resolve_worker_type("terminal-claude", task_type=task_type) == "terminal-claude"
 
     @pytest.mark.parametrize(
         "task_type",
@@ -331,25 +330,6 @@ class TestResolveWorkerType:
     def test_communication_task_types_for_codex_pass_through(self, task_type: str) -> None:
         with patch.dict(os.environ, {}, clear=True):
             assert resolve_worker_type("terminal-codex", task_type=task_type) == "terminal-codex"
-
-    @pytest.mark.parametrize(
-        "task_type",
-        [
-            "communication",
-            "notification",
-            "messaging",
-            "handoff",
-            "delivery",
-            "outreach",
-            "chatops",
-        ],
-    )
-    def test_communication_task_types_for_openclaw_routes_to_openclaw(self, task_type: str) -> None:
-        # terminal-openclaw is itself in the routing set
-        with patch.dict(os.environ, {}, clear=True):
-            assert (
-                resolve_worker_type("terminal-openclaw", task_type=task_type) == "terminal-openclaw"
-            )
 
     # --- gateway routing ---
 
@@ -433,13 +413,6 @@ class TestResolveWorkerType:
             assert (
                 resolve_worker_type("terminal-codex", prompt="send a slack message")
                 == "terminal-codex"
-            )
-
-    def test_prompt_marker_via_openclaw(self) -> None:
-        with patch.dict(os.environ, {}, clear=True):
-            assert (
-                resolve_worker_type("terminal-openclaw", prompt="send a slack message")
-                == "terminal-openclaw"
             )
 
     # --- negative cases ---

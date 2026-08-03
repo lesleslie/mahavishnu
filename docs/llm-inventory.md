@@ -136,7 +136,6 @@ Relevant workers:
 - `terminal-claude`
 - `terminal-qwen`
 - `terminal-codex`
-- `terminal-openclaw`
 - `terminal-ollama`
 
 Practical reading:

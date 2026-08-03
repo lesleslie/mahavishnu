@@ -135,17 +135,17 @@ class TestFormatCommand:
         assert command == "bash --noediting"
 
     def test_format_command_with_prompt(self) -> None:
-        worker = _make_shell_worker(worker_type="terminal-openclaw")
+        worker = _make_shell_worker(worker_type="terminal-codex")
         command = worker._format_command("Do something")
         assert "Do something" in command
 
     def test_format_command_prompts_are_shell_quoted(self) -> None:
-        worker = _make_shell_worker(worker_type="terminal-openclaw")
+        worker = _make_shell_worker(worker_type="terminal-codex")
         command = worker._format_command("arg with spaces")
         assert "'arg with spaces'" in command
 
     def test_format_command_raises_when_prompt_needed_but_missing(self) -> None:
-        worker = _make_shell_worker(worker_type="terminal-openclaw")
+        worker = _make_shell_worker(worker_type="terminal-codex")
         with pytest.raises(ValueError, match="requires prompt but no prompt was provided"):
             worker._format_command()
 
@@ -227,8 +227,22 @@ class TestExecute:
 
     @pytest.mark.asyncio
     async def test_execute_prompt_bound_auto_start(self) -> None:
+        # terminal-openclaw was the canonical JSON-complete worker; use a
+        # synthetic config that preserves the same flags so the JSON-completion
+        # path is still covered after the worker removal.
         tm = _mock_terminal_manager()
-        worker = _make_shell_worker(terminal_manager=tm, worker_type="terminal-openclaw")
+        cfg = WorkerConfig(
+            name="JSON Complete",
+            worker_type="json-complete-test",
+            command="sh -lc 'echo {prompt}'",
+            category=WorkerCategory.AI_ASSISTANT,
+            stream_format="json",
+            complete_on_valid_json=True,
+        )
+        worker = _make_shell_worker(
+            terminal_manager=tm, worker_type="json-complete-test", config=cfg,
+            session_id="session_123",
+        )
         tm.capture_output = AsyncMock(return_value='{"text":"done"}')
         result = await worker.execute({"prompt": "hello"})
         assert result.status == WorkerStatus.COMPLETED
@@ -286,9 +300,23 @@ class TestMonitorCompletion:
 
     @pytest.mark.asyncio
     async def test_monitor_completion_returns_on_json_valid(self) -> None:
+        # terminal-openclaw was the canonical JSON-complete worker; use a
+        # synthetic config that preserves the same flags so the JSON-completion
+        # monitor path is still covered after the worker removal.
         tm = _mock_terminal_manager()
         tm.capture_output = AsyncMock(return_value='{"text":"done"}')
-        worker = _make_shell_worker(terminal_manager=tm, worker_type="terminal-openclaw")
+        cfg = WorkerConfig(
+            name="JSON Complete",
+            worker_type="json-complete-test",
+            command="sh -lc 'echo'",
+            category=WorkerCategory.AI_ASSISTANT,
+            stream_format="json",
+            complete_on_valid_json=True,
+        )
+        worker = _make_shell_worker(
+            terminal_manager=tm, worker_type="json-complete-test", config=cfg,
+            session_id="session_123",
+        )
         result = await worker._monitor_completion({}, 10)
         assert result.status == WorkerStatus.COMPLETED
         assert result.output == "done"
@@ -333,7 +361,16 @@ class TestCheckJsonCompletion:
         assert content is None
 
     def test_valid_json_with_complete_on_flag(self) -> None:
-        worker = _make_shell_worker(worker_type="terminal-openclaw")
+        # Use a synthetic config since terminal-openclaw (the previous canonical
+        # JSON-complete worker) was removed in the worker-surface cleanup.
+        cfg = WorkerConfig(
+            name="JSON Complete",
+            worker_type="json-complete-test",
+            command="sh -lc 'echo'",
+            category=WorkerCategory.AI_ASSISTANT,
+            complete_on_valid_json=True,
+        )
+        worker = _make_shell_worker(worker_type="json-complete-test", config=cfg)
         completed, content = worker._check_json_completion('{"text":"hello world"}')
         assert completed is True
         assert content == "hello world"
@@ -721,12 +758,15 @@ class TestRegistryIntegration:
     def test_terminal_aider_not_registered(self) -> None:
         assert get_worker_config("terminal-aider") is None
 
-    def test_openclaw_json_agent_mode(self) -> None:
-        config = get_worker_config("terminal-openclaw")
+    def test_crow_acp_json_mode(self) -> None:
+        # terminal-crow has complete_on_valid_json=True but is HTTP-API-only
+        # (empty command), so GenericShellWorker refuses it. Use it here to
+        # verify the registry-level flag survives after terminal-openclaw removal.
+        config = get_worker_config("terminal-crow")
         assert config is not None
-        assert config.stream_format == "json"
         assert config.complete_on_valid_json is True
-        assert "openclaw agent" in config.command
+        assert config.requires_tool == "crow"
+        assert config.command == ""  # HTTP-API-only worker, not for GenericShellWorker
 
     def test_deepagents_marker_mode(self) -> None:
         config = get_worker_config("terminal-deepagents")
