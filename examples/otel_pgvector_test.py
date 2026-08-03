@@ -103,7 +103,7 @@ async def test_pgvector() -> bool:
             storage_type=storage_type,
             pgvector_dsn=pg_url,
         )
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001 - test fixture cleanup
         print(f"  FAILED to create ingester: {e}")
         return False
 
@@ -115,7 +115,7 @@ async def test_pgvector() -> bool:
                 collection="otel_traces",
                 ids=["pg-trace-1", "pg-trace-2", "pg-trace-3"],
             )
-    except Exception:
+    except Exception:  # noqa: BLE001 - test fixture cleanup
         pass
 
     traces = [

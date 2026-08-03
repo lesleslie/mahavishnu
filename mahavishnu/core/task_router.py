@@ -161,7 +161,7 @@ class AdapterManager:
             return adapter
         try:
             return AdapterType(adapter)
-        except Exception:
+        except Exception:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
             for adapter_type in AdapterType:
                 if adapter_type.value == adapter:
                     return adapter_type
@@ -210,7 +210,7 @@ class StateManager:
                         record["adapter_states"] = adapter_states
                 self._workflows[wf_id] = record
             logger.debug("Loaded %d workflow states from %s", len(self._workflows), path)
-        except Exception:
+        except Exception:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
             logger.warning("Failed to load workflow state from %s", path, exc_info=True)
 
     def _persist(self) -> None:
@@ -218,7 +218,7 @@ class StateManager:
             self._state_dir.mkdir(parents=True, exist_ok=True)
             data = dict(self._workflows)
             self._state_file().write_text(json.dumps(data, indent=2))
-        except Exception:
+        except Exception:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
             logger.warning("Failed to persist workflow state", exc_info=True)
 
     @staticmethod
@@ -526,7 +526,7 @@ class CapabilityRouter:
                     "resolution_time_ms": resolution_time_ms,
                 }
 
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
             logger.error(f"Capability routing failed: {e}")
             return {
                 "success": False,
@@ -633,7 +633,7 @@ class TaskRouter:
             return adapter
         try:
             return AdapterType(adapter)
-        except Exception:
+        except Exception:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
             for adapter_type in AdapterType:
                 if adapter_type.value == adapter:
                     return adapter_type
@@ -831,7 +831,7 @@ class TaskRouter:
             except RetryExhaustedError as exc:
                 total_attempts += exc.attempts
                 last_error = exc.last_exception if exc.last_exception is not None else exc
-            except Exception as exc:
+            except Exception as exc:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
                 last_error = exc
 
             self.adapter_registry.record_execution(adapter_type, success=False)
@@ -894,7 +894,7 @@ class TaskRouter:
                 "adapter_type": adapter_enum.value,
                 "status": "available_but_no_health_check",
             }
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
             return {
                 "adapter_type": adapter_enum.value,
                 "status": "error",

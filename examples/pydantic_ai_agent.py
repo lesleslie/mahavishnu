@@ -285,7 +285,7 @@ async def pydantic_ai_example(agent: MahavishnuAgent) -> None:
             deps=deps,
         )
         logger.info("Pydantic AI agent response: %s", result.output)
-    except Exception:
+    except Exception:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
         # The agent may fail if no LLM provider is configured, which
         # is fine for demonstration purposes.
         logger.exception(

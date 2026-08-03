@@ -646,7 +646,7 @@ class TestLifecycle:
             # After shutdown
             assert executor.get_stats()["running"] is False
             assert executor.get_stats()["shutdown"] is True
-        except Exception:
+        except Exception:  # noqa: BLE001 - test fixture cleanup
             # Clean up if test fails mid-way
             if executor._executor is not None:
                 executor._executor.shutdown(wait=False)

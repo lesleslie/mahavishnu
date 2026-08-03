@@ -325,7 +325,7 @@ class HealthChecker(HTTPXClientMixin):
             self._record_metrics(health_result)
             return health_result
 
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
             latency_ms = (time.time() - start_time) * 1000
             self._logger.exception(
                 "health-check-error",
@@ -374,7 +374,7 @@ class HealthChecker(HTTPXClientMixin):
 
             parsed = urlparse(url)
             return f"{parsed.hostname}:{parsed.port}" if parsed.port else str(parsed.hostname)
-        except Exception:
+        except Exception:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
             return url
 
 

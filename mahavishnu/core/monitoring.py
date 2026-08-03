@@ -358,7 +358,7 @@ class AlertManager:
             for handler in self.alert_handlers[alert_type]:
                 try:
                     await handler(alert)
-                except Exception as e:
+                except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
                     self.logger.error(f"Error in alert handler: {e}")
 
         # Send notifications
@@ -388,7 +388,7 @@ class AlertManager:
         for channel in self.notification_channels:
             try:
                 await channel.send_notification(alert)
-            except Exception as e:
+            except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
                 self.logger.error(f"Failed to send notification via {channel.name}: {e}")
 
     async def _handle_workflow_failure(self, alert: Alert):
@@ -407,7 +407,7 @@ class AlertManager:
                         msg = "Cannot heal workflows: app not initialized"
                         raise RuntimeError(msg)
                     await app.error_recovery_manager.monitor_and_heal_workflows()
-                except Exception as e:
+                except Exception as e:  # noqa: BLE001 - event handler; logs and continues
                     self.logger.error(f"Failed to auto-heal workflow: {e}")
 
     async def _handle_system_health(self, alert: Alert):
@@ -437,7 +437,7 @@ class AlertManager:
 
             backup_manager = BackupManager(self.app)
             await backup_manager.create_backup("full")
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - event handler; logs and continues
             self.logger.error(f"Failed to retry backup: {e}")
 
     async def _monitoring_loop(self):
@@ -456,7 +456,7 @@ class AlertManager:
                     break  # Shutdown signaled
                 except TimeoutError:
                     pass  # Normal timeout, continue loop
-            except Exception as e:
+            except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
                 self.logger.error(f"Error in monitoring loop: {e}")
                 # Wait longer if there's an error (with shutdown check)
                 try:
@@ -492,7 +492,7 @@ class AlertManager:
                     description=f"The following adapters are not healthy: {', '.join(unhealthy_adapters)}",
                     details={"unhealthy_adapters": unhealthy_adapters},
                 )
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
             self.logger.error(f"Error checking system health: {e}")
 
     async def _check_workflow_health(self):
@@ -533,7 +533,7 @@ class AlertManager:
                     except ValueError:
                         # If we can't parse the date, skip this workflow
                         continue
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
             self.logger.error(f"Error checking workflow health: {e}")
 
     async def _check_resource_usage(self):
@@ -569,7 +569,7 @@ class AlertManager:
                         "available_gb": round(disk_usage.free / (1024**3), 2),
                     },
                 )
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
             self.logger.error(f"Error checking resource usage: {e}")
 
     async def _check_backup_status(self):
@@ -604,7 +604,7 @@ class AlertManager:
                             "backup_age_hours": age.total_seconds() / 3600,
                         },
                     )
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
             self.logger.error(f"Error checking backup status: {e}")
 
 
@@ -663,7 +663,7 @@ This is an automated message from the Mahavishnu monitoring system.
             server.quit()
 
             self.logger.info(f"Email notification sent for alert {alert.id}")
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
             self.logger.error(f"Failed to send email notification: {e}")
 
 
@@ -707,7 +707,7 @@ class SlackNotificationChannel(NotificationChannel):
                 self.logger.warning(f"Failed to send Slack notification: {response.text}")
             else:
                 self.logger.info(f"Slack notification sent for alert {alert.id}")
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
             self.logger.error(f"Failed to send Slack notification: {e}")
 
 
@@ -760,7 +760,7 @@ class PagerDutyNotificationChannel(NotificationChannel):
                 self.logger.warning(f"Failed to send PagerDuty notification: {response.text}")
             else:
                 self.logger.info(f"PagerDuty notification sent for alert {alert.id}")
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
             self.logger.error(f"Failed to send PagerDuty notification: {e}")
 
 
@@ -918,7 +918,7 @@ class ComponentHealthChecker:
                 coro = cast("Coroutine[Any, Any, ComponentHealthResult]", result)
                 result = await coro
             return result
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
             return ComponentHealthResult(
                 component=name,
                 status=ComponentHealthStatus.UNHEALTHY,
@@ -999,7 +999,7 @@ class MonitoringDashboard:
                     status=status, limit=1
                 )
                 counts[status.value] = len(workflows)
-            except Exception:
+            except Exception:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
                 counts[status.value] = 0
 
         return counts
@@ -1011,7 +1011,7 @@ class MonitoringDashboard:
             try:
                 result = await adapter.get_health()
                 health[name] = result.get("status", "unknown")
-            except Exception:
+            except Exception:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
                 health[name] = "error"
 
         return health
@@ -1081,5 +1081,5 @@ class MonitoringService:
         try:
             await self.alert_manager.acknowledge_alert(alert_id, user)
             return True
-        except Exception:
+        except Exception:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
             return False

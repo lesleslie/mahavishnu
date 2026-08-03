@@ -373,7 +373,7 @@ class MultiRepoCoordinator:
             logger.info(f"Completed coordination step {step.step_id} for task {step.task_id}")
             return True
 
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
             step.status = CoordinationStatus.FAILED
             step.error = str(e)
             logger.error(f"Failed to execute step {step.step_id}: {e}")
@@ -432,7 +432,7 @@ class MultiRepoCoordinator:
                         step.status = CoordinationStatus.ROLLED_BACK
                         rollback_count += 1
                         logger.info(f"Rolled back step {step.task_id}")
-                except Exception as e:
+                except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
                     logger.error(f"Failed to rollback step {step.step_id}: {e}")
 
         plan.status = CoordinationStatus.ROLLED_BACK
@@ -474,7 +474,7 @@ class MultiRepoCoordinator:
                         sync_status="in_sync",
                     )
                 )
-            except Exception as e:
+            except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
                 states.append(
                     RepoSyncState(
                         repository=repo,

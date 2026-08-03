@@ -627,7 +627,7 @@ class ProgressTracker:
             result = await operation(update)
             self.complete_task(task_id)
             return result
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
             self.fail_task(task_id, str(e))
             raise
 

@@ -38,7 +38,7 @@ class DirectGitWorktreeProvider(WorktreeProvider):
             import shutil
 
             return shutil.which(self._git_executable) is not None
-        except Exception:
+        except Exception:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
             return False
 
     async def create_worktree(
@@ -99,7 +99,7 @@ class DirectGitWorktreeProvider(WorktreeProvider):
                 "provider": self.provider_name(),
             }
 
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
             logger.error(f"DirectGit create failed: {e}")
             raise
 
@@ -156,7 +156,7 @@ class DirectGitWorktreeProvider(WorktreeProvider):
                 "provider": self.provider_name(),
             }
 
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
             logger.error(f"DirectGit remove failed: {e}")
             raise
 
@@ -222,6 +222,6 @@ class DirectGitWorktreeProvider(WorktreeProvider):
                 "provider": self.provider_name(),
             }
 
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
             logger.error(f"DirectGit list failed: {e}")
             raise

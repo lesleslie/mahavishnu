@@ -92,7 +92,7 @@ async def check_ollama(host: str = DEFAULT_OLLAMA_HOST) -> bool:
             else:
                 logger.error(f"Ollama returned status {response.status_code}")
                 return False
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
         logger.error(f"Cannot connect to Ollama at {host}: {e}")
         logger.error("Make sure Ollama is running: ollama serve")
         return False
@@ -134,7 +134,7 @@ async def generate_embedding(
 
             return data["embedding"]
 
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
         logger.error(f"Failed to generate embedding: {e}")
         return None
 
@@ -276,7 +276,7 @@ async def generate_embeddings(
                     # Small delay to avoid overwhelming Ollama
                     await asyncio.sleep(0.1)
 
-                except Exception as e:
+                except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
                     logger.error(f"Error processing batch: {e}")
                     import traceback
 
@@ -302,7 +302,7 @@ async def generate_embeddings(
         finally:
             conn.close()
 
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
         logger.error(f"Failed to generate embeddings: {e}")
         import traceback
 
@@ -444,7 +444,7 @@ async def test_semantic_search(
         finally:
             conn.close()
 
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001 - test fixture cleanup
         logger.error(f"Semantic search failed: {e}")
         import traceback
 
@@ -482,7 +482,7 @@ async def main_async(args: argparse.Namespace) -> int:
 
         return 0 if success else 1
 
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001 - CLI entrypoint; converts unhandled errors to exit
         logger.error(f"Execution failed: {e}")
         import traceback
 

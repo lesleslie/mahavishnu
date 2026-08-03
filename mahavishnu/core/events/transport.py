@@ -51,7 +51,7 @@ class CompositeEventEnvelopeHandler:
             app = get_app_from_context()
             if app is not None and hasattr(app, "record_event_activity"):
                 app.record_event_activity(envelope)
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
             logger.debug("Event activity skipped: %s", e)
         results: list[Any] = []
         for handler in self.handlers:
@@ -190,7 +190,7 @@ class RetryingEventEnvelopeHandler:
         for attempt in range(1, attempts + 1):
             try:
                 return await self.handler.handle(envelope)
-            except Exception as exc:
+            except Exception as exc:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
                 last_error = exc
                 if attempt < attempts and self.retry_delay_seconds > 0:
                     delay = self.retry_delay_seconds * (2 ** (attempt - 1))

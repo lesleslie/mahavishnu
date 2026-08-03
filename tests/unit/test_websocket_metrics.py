@@ -47,7 +47,7 @@ def _unregister_custom_collectors() -> None:
             continue
         try:
             REGISTRY.unregister(collector)
-        except Exception:
+        except Exception:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
             pass
 
 

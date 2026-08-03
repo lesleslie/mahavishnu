@@ -52,7 +52,7 @@ def mock_http_client(monkeypatch):
                     asyncio.run(fake.aclose())
                 else:
                     loop.run_until_complete(fake.aclose())
-            except Exception:
+            except Exception:  # noqa: BLE001 - CLI entrypoint; converts unhandled errors to exit
                 pass
 
 

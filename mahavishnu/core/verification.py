@@ -98,7 +98,7 @@ def build_default_store(app: Any) -> VerificationStore | None:
 
         backend = DharaStateBackend(base_url=dhara_url)
         return VerificationStore(dhara=backend)
-    except Exception:
+    except Exception:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
         logger.warning("build_default_store: Dhara unavailable, persistence disabled")
         return None
 
@@ -373,7 +373,7 @@ async def _run_refuter(strategy: RefuterStrategy, proposal: Proposal) -> Refuter
             latency_seconds=latency,
             error=RefuterErrorKind.RATE_LIMITED,
         )
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001 - executor boundary; logs and re-raises or returns
         latency = time.monotonic() - start
         logger.exception("refuter %s failed unexpectedly", strategy.name)
         return RefuterVerdict(
@@ -615,7 +615,7 @@ class VerificationStore:
                     "persisted_at": payload["persisted_at"],
                 },
             )
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
             logger.warning(
                 "verification.persist_failure proposal_id=%s error=%s",
                 result.proposal_id,
@@ -650,7 +650,7 @@ class VerificationStore:
                     indent=2,
                 )
             )
-        except Exception:
+        except Exception:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
             logger.exception(
                 "verification.dead_letter_failed proposal_id=%s",
                 result.proposal_id,
@@ -665,7 +665,7 @@ class VerificationStore:
             return None
         try:
             data = await self.dhara.get(self._result_key(proposal_id))
-        except Exception:
+        except Exception:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
             logger.exception("verification.get_failed proposal_id=%s", proposal_id)
             return None
         if not data:
@@ -675,7 +675,7 @@ class VerificationStore:
         data.pop("persisted_at", None)
         try:
             return VerificationResult.model_validate(data)
-        except Exception:
+        except Exception:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
             logger.exception(
                 "verification.get_invalid_payload proposal_id=%s",
                 proposal_id,

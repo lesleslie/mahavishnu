@@ -178,7 +178,7 @@ class EncryptedSQLite:
             logger.debug("Database decrypted successfully")
             return True
 
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
             logger.error(f"Decryption failed: {e}")
             # Re-raise to signal decryption failure to caller
             raise EncryptionKeyError(

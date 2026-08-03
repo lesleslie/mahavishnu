@@ -125,7 +125,7 @@ class IntegrationFixtures:
                     if hasattr(config, key):
                         setattr(config, key, value)
                 return config
-            except Exception:
+            except Exception:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
                 # Fall back to mock if real config fails
                 pass
 
@@ -571,7 +571,7 @@ def mock_event_loop():
         from mahavishnu.core.adapter_persistence import close_persistence
 
         loop.run_until_complete(close_persistence())
-    except Exception:
+    except Exception:  # noqa: BLE001 - event handler; logs and continues
         pass
 
     pending = [task for task in asyncio.all_tasks(loop) if not task.done()]

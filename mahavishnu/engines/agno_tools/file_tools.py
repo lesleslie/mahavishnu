@@ -288,7 +288,7 @@ def _validate_path(path: str) -> Path:
     except AgnoError:
         # Re-raise our security errors
         raise
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
         # Wrap other exceptions
         raise AgnoError(
             "Invalid path provided",

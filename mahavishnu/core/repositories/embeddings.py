@@ -148,7 +148,7 @@ class EmbeddingRepository(
                         details={"document_id": str(data.document_id)},
                     )
                 return self._row_to_model(row)
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
             raise self._handle_error("store_embedding", e, {"document_id": str(data.document_id)})
 
     async def get_embedding(self, document_id: UUID) -> EmbeddingRead | None:
@@ -157,7 +157,7 @@ class EmbeddingRepository(
             async with self.connection() as conn:
                 row = await conn.fetchrow(_SELECT_BY_DOC, document_id)
                 return self._row_to_model(row) if row is not None else None
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
             raise self._handle_error("get_embedding", e, {"document_id": str(document_id)})
 
     async def search_similar(
@@ -182,7 +182,7 @@ class EmbeddingRepository(
                     )
                     for row in rows
                 ]
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
             raise self._handle_error(
                 "search_similar", e, {"limit": limit, "threshold": similarity_threshold}
             )
@@ -193,7 +193,7 @@ class EmbeddingRepository(
             async with self.transaction() as conn:
                 result = await conn.execute(_DELETE_EMBEDDING, document_id)
                 return result == "DELETE 1"  # type: ignore[no-any-return]
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
             raise self._handle_error("delete_embedding", e, {"document_id": str(document_id)})
 
     async def list_embeddings(
@@ -210,7 +210,7 @@ class EmbeddingRepository(
                 else:
                     rows = await conn.fetch(_LIST_ALL, limit, offset)
                 return [self._row_to_model(row) for row in rows]
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
             raise self._handle_error("list_embeddings", e, {"model_name": model_name})
 
     def _row_to_model(self, row: Any) -> EmbeddingRead:

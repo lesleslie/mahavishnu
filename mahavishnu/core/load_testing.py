@@ -326,7 +326,7 @@ class LoadTestRunner:
             self.results.append(result)
             return result
 
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
             logger.error(f"Load test failed: {e}")
             result = LoadTestResult(
                 test_name=self.config.name,

@@ -313,7 +313,7 @@ class TestCircuitBreakerIntegrationProperties:
         cb = CircuitBreaker(threshold=threshold, timeout=timeout)
 
         async def failing_function():
-            raise Exception("Function failed")
+            raise Exception("Function failed")  # noqa: TRY002 - test fixture uses generic exception intentionally
 
         async def success_function():
             return "success"
@@ -340,7 +340,7 @@ class TestCircuitBreakerIntegrationProperties:
         cb = CircuitBreaker(threshold=threshold, timeout=timeout)
 
         async def failing_function():
-            raise Exception("Function failed")
+            raise Exception("Function failed")  # noqa: TRY002 - test fixture uses generic exception intentionally
 
         # Open the circuit by making failing calls
         for _ in range(threshold):
@@ -360,7 +360,7 @@ class TestCircuitBreakerIntegrationProperties:
         cb = CircuitBreaker(threshold=threshold, timeout=timeout)
 
         async def failing_function():
-            raise Exception("Function failed")
+            raise Exception("Function failed")  # noqa: TRY002 - test fixture uses generic exception intentionally
 
         async def success_function():
             return "success"
@@ -391,7 +391,7 @@ class TestCircuitBreakerIntegrationProperties:
         cb = CircuitBreaker(threshold=threshold, timeout=timeout)
 
         async def failing_function():
-            raise Exception("Function failed")
+            raise Exception("Function failed")  # noqa: TRY002 - test fixture uses generic exception intentionally
 
         async def success_function():
             return "success"

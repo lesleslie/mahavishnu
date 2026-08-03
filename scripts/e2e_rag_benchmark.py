@@ -257,7 +257,7 @@ async def execute_rag_pipeline(query: str) -> RAGPipelineResult:
                     metadata={"results_count": 5},
                 )
             )
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
             stage_time = (time.perf_counter() - stage_start) * 1000
             stages.append(
                 RAGStageMetrics(
@@ -292,7 +292,7 @@ async def execute_rag_pipeline(query: str) -> RAGPipelineResult:
             )
         )
 
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
         error = str(e)
 
     total_latency = (time.perf_counter() - start_time) * 1000

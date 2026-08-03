@@ -93,7 +93,7 @@ class SessionBuddyWorktreeProvider(WorktreeProvider):
                     message="MCP client not installed",
                     details={"error": str(e)},
                 ) from e
-            except Exception as e:
+            except Exception as e:  # noqa: BLE001 - CLI entrypoint; converts unhandled errors to exit
                 logger.exception("Failed to connect to Session-Buddy")
                 raise WorktreeCreationError(
                     message=f"Failed to connect to Session-Buddy: {e}",
@@ -161,7 +161,7 @@ class SessionBuddyWorktreeProvider(WorktreeProvider):
 
         except WorktreeCreationError:
             raise
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
             logger.exception("Session-Buddy create_worktree failed")
             raise WorktreeCreationError(
                 message=f"Session-Buddy worktree creation failed: {e}",
@@ -227,7 +227,7 @@ class SessionBuddyWorktreeProvider(WorktreeProvider):
 
         except WorktreeRemovalError:
             raise
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
             logger.exception("Session-Buddy remove_worktree failed")
             raise WorktreeRemovalError(
                 message=f"Session-Buddy worktree removal failed: {e}",
@@ -274,7 +274,7 @@ class SessionBuddyWorktreeProvider(WorktreeProvider):
 
         except WorktreeValidationError:
             raise
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
             logger.exception("Session-Buddy list_worktrees failed")
             raise WorktreeValidationError(
                 message=f"Session-Buddy worktree listing failed: {e}",
@@ -310,7 +310,7 @@ class SessionBuddyWorktreeProvider(WorktreeProvider):
 
             return is_healthy
 
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
             logger.warning(f"Session-Buddy health check failed: {e}")
             return False
 
@@ -328,7 +328,7 @@ class SessionBuddyWorktreeProvider(WorktreeProvider):
             try:
                 await self._mcp_client.__aexit__(None, None, None)
                 logger.info("Session-Buddy MCP connection closed")
-            except Exception as e:
+            except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
                 logger.exception("Error closing Session-Buddy connection")
             finally:
                 self._mcp_client = None

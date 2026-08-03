@@ -302,7 +302,7 @@ class CrossRepoFilter:
                 repos = self.repo_manager.get_repos_by_role(role)
                 for repo in repos:
                     repo_names.append(repo.name)
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
             logger.warning(f"Failed to resolve repos by roles: {e}")
 
         return repo_names
@@ -316,7 +316,7 @@ class CrossRepoFilter:
                 repos = self.repo_manager.get_repos_by_tag(tag)
                 for repo in repos:
                     repo_names.append(repo.name)
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
             logger.warning(f"Failed to resolve repos by tags: {e}")
 
         return repo_names
@@ -449,7 +449,7 @@ class CrossRepoFilter:
                     repo_roles.add(repo.role)
                 if hasattr(repo, "tags"):
                     repo_tags.update(repo.tags)
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
             logger.warning(f"Could not get repo metadata: {e}")
 
         return {

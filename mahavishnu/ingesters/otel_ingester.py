@@ -615,7 +615,7 @@ class OtelIngester:
 
             logger.info(f"OTel ingester initialized (storage={self._storage_type.value})")
 
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
             logger.error(f"Failed to initialize OTel ingester: {e}")
             raise RuntimeError(f"OTel ingester initialization failed: {e}") from e
 

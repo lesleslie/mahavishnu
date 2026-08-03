@@ -47,7 +47,7 @@ class MockAdapter(OrchestratorAdapter):
         self.attempt_count += 1
 
         if self.should_fail and self.attempt_count < self.fail_until_attempt:
-            raise Exception(f"{self._adapter_type.value} failed intentionally")
+            raise Exception(f"{self._adapter_type.value} failed intentionally")  # noqa: TRY002 - test fixture uses generic exception intentionally
 
         # Return mock ULID
         return {"execution_id": "01" + "A" * 24}  # 26-char ULID

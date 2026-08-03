@@ -141,7 +141,7 @@ async def test_execute_with_resilience_retry_success():
         nonlocal attempt_count
         attempt_count += 1
         if attempt_count < 3:
-            raise Exception("Temporary network issue")
+            raise Exception("Temporary network issue")  # noqa: TRY002 - test fixture uses generic exception intentionally
         return "success"
 
     # Execute with resilience - should succeed after retries
@@ -170,7 +170,7 @@ async def test_execute_with_resilience_retry_failure():
     async def consistently_failing_operation():
         nonlocal attempt_count
         attempt_count += 1
-        raise Exception("Temporary network issue")  # Transient error to trigger retries
+        raise Exception("Temporary network issue")  # Transient error to trigger retries  # noqa: TRY002 - test fixture uses generic exception intentionally
 
     # Execute with resilience - should fail after max attempts
     result = await recovery_manager.execute_with_resilience(
@@ -192,7 +192,7 @@ async def test_execute_with_resilience_skip_strategy():
     recovery_manager = ErrorRecoveryManager(app)
 
     async def permanent_error_operation():
-        raise Exception("Permission denied: access forbidden")
+        raise Exception("Permission denied: access forbidden")  # noqa: TRY002 - test fixture uses generic exception intentionally
 
     # Execute with resilience - should skip for permission errors
     result = await recovery_manager.execute_with_resilience(

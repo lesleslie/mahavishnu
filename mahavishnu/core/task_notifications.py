@@ -261,7 +261,7 @@ class TaskEventEmitter:
             if subscription.should_receive(event):
                 try:
                     subscription.callback(event)
-                except Exception as e:
+                except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
                     logger.error(f"Error in event callback for {subscription.subscription_id}: {e}")
         self._publish_canonical_event(event)
 

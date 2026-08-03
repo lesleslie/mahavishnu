@@ -344,7 +344,7 @@ class LlamaIndexAdapter(OrchestratorAdapter):
                 model_name=ollama_model, base_url=ollama_base_url
             )
             Settings.llm = Ollama(model=ollama_model, base_url=ollama_base_url)
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
             raise LlamaIndexEmbeddingError(
                 f"Failed to initialize Ollama embedding model: {e}",
                 model=ollama_model,

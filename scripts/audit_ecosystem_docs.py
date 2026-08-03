@@ -86,7 +86,7 @@ def load_ecosystem_data(ecosystem_path: Path) -> dict[str, Any]:
     """Load the raw ecosystem configuration payload."""
     data = yaml.safe_load(ecosystem_path.read_text()) or {}
     if not isinstance(data, dict):
-        raise ValueError(f"Invalid ecosystem data in {ecosystem_path}")
+        raise TypeError(f"Invalid ecosystem data in {ecosystem_path}")
     return data
 
 
@@ -211,7 +211,7 @@ def load_active_repos(ecosystem_path: Path) -> list[dict[str, Any]]:
     data = load_ecosystem_data(ecosystem_path)
     repos = data.get("repos", [])
     if not isinstance(repos, list):
-        raise ValueError(f"Invalid repos list in {ecosystem_path}")
+        raise TypeError(f"Invalid repos list in {ecosystem_path}")
     return [repo for repo in repos if repo.get("status", "active") == "active"]
 
 

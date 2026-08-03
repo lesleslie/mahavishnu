@@ -142,7 +142,7 @@ class RepositoryMessenger:
             )
 
             return message
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
             self.logger.error(f"Error sending message: {e}")
             raise
 
@@ -253,7 +253,7 @@ class RepositoryMessenger:
                 f"Broadcast message from {sender_repo} to {len(sent_messages)} repositories"
             )
             return sent_messages
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
             self.logger.error(f"Error broadcasting message: {e}")
             raise
 

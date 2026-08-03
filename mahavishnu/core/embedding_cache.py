@@ -155,7 +155,7 @@ class Singleflight:
             result = await fn()
             future.set_result(result)
             return result
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
             future.set_exception(e)
             raise
         finally:
@@ -380,7 +380,7 @@ class EmbeddingCache:
             self._l2_available = True
             logger.info("L2 Redis cache connected")
             return self._l2_client
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - CLI entrypoint; converts unhandled errors to exit
             logger.warning(f"L2 Redis cache unavailable: {e}")
             self._l2_available = False
             return None
@@ -419,7 +419,7 @@ class EmbeddingCache:
                         self._metrics.record_l2_hit()
                         self._circuit_breaker.record_success()
                         return embedding  # type: ignore[no-any-return]
-                except Exception as e:
+                except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
                     logger.debug(f"L2 cache get failed: {e}")
                     self._circuit_breaker.record_failure()
 
@@ -457,7 +457,7 @@ class EmbeddingCache:
                         ex=ttl,
                     )
                     self._circuit_breaker.record_success()
-                except Exception as e:
+                except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
                     logger.debug(f"L2 cache set failed: {e}")
                     self._circuit_breaker.record_failure()
 
@@ -620,7 +620,7 @@ class EmbeddingCache:
                 self._circuit_breaker.record_success()
                 return len(keys)
             return 0
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
             logger.warning(f"L2 cache clear failed: {e}")
             self._circuit_breaker.record_failure()
             return 0

@@ -349,7 +349,7 @@ class HybridSearchEngine:
 
             return filtered_results
 
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
             logger.exception(
                 "Hybrid search failed",
                 extra={
@@ -374,7 +374,7 @@ class HybridSearchEngine:
             if result.embeddings and len(result.embeddings) > 0:
                 return result.embeddings[0]
             return None
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
             logger.warning(
                 "Failed to generate query embedding",
                 extra={"query": query[:100], "error": str(e)},
@@ -636,7 +636,7 @@ class HybridSearchEngine:
                 },
             )
 
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
             logger.exception(
                 "Failed to index document",
                 extra={
@@ -680,7 +680,7 @@ class HybridSearchEngine:
 
                 return deleted  # type: ignore[no-any-return]
 
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
             logger.exception(
                 "Failed to delete document",
                 extra={"doc_id": str(doc_id), "error": str(e)},

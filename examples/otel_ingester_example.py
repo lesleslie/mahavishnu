@@ -272,7 +272,7 @@ async def main():
         print(f"\n✗ Missing dependency: {e}")
         print("\nTo run these examples, install required dependencies:")
         print("  pip install sentence-transformers")
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001 - CLI entrypoint; converts unhandled errors to exit
         print(f"\n✗ Error: {e}")
         import traceback
 

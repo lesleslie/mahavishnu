@@ -105,7 +105,7 @@ def main():
         print("✓ ALL CLIENT TESTS PASSED")
         print("=" * 60)
 
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001 - CLI entrypoint; converts unhandled errors to exit
         print(f"\n✗ TEST FAILED: {e}")
         import traceback
 

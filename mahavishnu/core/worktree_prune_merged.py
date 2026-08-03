@@ -194,7 +194,7 @@ async def find_merged_worktrees(
     if coordinator is not None:
         try:
             listed = await coordinator.list_worktrees(repo_nickname=repo_nickname)
-        except Exception:
+        except Exception:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
             return []
         if not listed.get("success"):
             return []
@@ -333,7 +333,7 @@ class WorktreePruner:
                         escalated=escalated,
                     )
                 )
-            except Exception as exc:
+            except Exception as exc:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
                 results.append(WorktreePruneResult(candidate, False, None, str(exc)))
 
         successful = [result for result in results if result.success]

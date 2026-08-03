@@ -161,7 +161,7 @@ class ObservabilityManager:
                 unit="s",
             )
 
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
             self.logger.warning(f"Failed to initialize OpenTelemetry: {e}")
             self._init_fallback_components()
 
@@ -344,7 +344,7 @@ class ObservabilityManager:
                 from opentelemetry.trace import get_tracer_provider
 
                 get_tracer_provider().force_flush()  # ty: ignore[unresolved-attribute]
-            except Exception as e:
+            except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
                 self.logger.warning(f"Failed to flush metrics: {e}")
 
     def shutdown(self):
@@ -357,7 +357,7 @@ class ObservabilityManager:
 
                 get_meter_provider().shutdown()  # ty: ignore[unresolved-attribute]
                 get_tracer_provider().shutdown()  # ty: ignore[unresolved-attribute]
-            except Exception as e:
+            except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
                 self.logger.warning(f"Error during observability shutdown: {e}")
 
 

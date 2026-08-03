@@ -515,7 +515,7 @@ class TestEventBuffering:
         async def failing_broadcast(*args, **kwargs):
             call_count[0] += 1
             if call_count[0] == 2:
-                raise Exception("Broadcast failed")
+                raise Exception("Broadcast failed")  # noqa: TRY002 - test fixture uses generic exception intentionally
 
         mock_server = MagicMock()
         mock_server.is_running = True

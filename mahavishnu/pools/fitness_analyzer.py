@@ -138,7 +138,7 @@ class FitnessAnalyzer:
             # Success — reset failure counter so intermittent errors don't stack
             self._component_failures.pop(endpoint_key, None)
             return result
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
             # Track consecutive failures per component
             if _is_session_loss_error(exc):
                 consecutive = self._component_failures.get(endpoint_key, 0) + 1
@@ -247,7 +247,7 @@ class FitnessAnalyzer:
                     await self._dhara_state.put(key, value, ttl=7200)
                 # Success: clear DLQ counter
                 self._dlq_failures.pop(key, None)
-            except Exception as exc:
+            except Exception as exc:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
                 dlq_count = self._dlq_failures.get(key, 0) + 1
                 self._dlq_failures[key] = dlq_count
                 if dlq_count >= _DLQ_FAILURE_THRESHOLD:
@@ -310,7 +310,7 @@ class FitnessAnalyzer:
         while self._running:
             try:
                 await self._analyze_and_persist()
-            except Exception as exc:
+            except Exception as exc:  # noqa: BLE001 - executor boundary; logs and re-raises or returns
                 logger.debug("FitnessAnalyzer cycle failed: %s", exc)
             await asyncio.sleep(self._poll_interval)
 

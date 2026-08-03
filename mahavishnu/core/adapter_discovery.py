@@ -161,7 +161,7 @@ class AdapterMetadata:
                 source="entry_point",
             )
 
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
             logger.error(f"Failed to load entry point {entry_point.name}: {e}")
             raise ValueError(f"Invalid entry point {entry_point.name}: {e}") from e
 
@@ -286,7 +286,7 @@ class AdapterDiscoveryEngine:
             try:
                 self._dhara_client = DharaAdapterRegistryClient(self._dhara_registry_config)
                 logger.info("Dhara registry client initialized for adapter discovery")
-            except Exception as e:
+            except Exception as e:  # noqa: BLE001 - CLI entrypoint; converts unhandled errors to exit
                 logger.warning(f"Failed to initialize Dhara registry client: {e}")
                 return None
 
@@ -360,7 +360,7 @@ class AdapterDiscoveryEngine:
                 entry_adapters = await self.discover_from_entry_points()
                 for adapter in entry_adapters:
                     all_adapters[adapter.adapter_id] = adapter
-            except Exception as e:
+            except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
                 logger.error(f"Entry point discovery failed: {e}")
 
         # Dhara registry (fills in gaps not covered by entry points)
@@ -371,7 +371,7 @@ class AdapterDiscoveryEngine:
                     # Only add if not already discovered via entry points
                     if adapter.adapter_id not in all_adapters:
                         all_adapters[adapter.adapter_id] = adapter
-            except Exception as e:
+            except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
                 logger.warning(f"Dhara registry discovery failed (graceful fallback): {e}")
 
         result = list(all_adapters.values())
@@ -436,11 +436,11 @@ class AdapterDiscoveryEngine:
                 except ValueError as e:
                     logger.warning(f"Skipping invalid entry point {ep.name}: {e}")
                     continue
-                except Exception as e:
+                except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
                     logger.error(f"Error loading entry point {ep.name}: {e}")
                     continue
 
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
             logger.error(f"Failed to discover entry points: {e}")
             raise
 
@@ -498,7 +498,7 @@ class AdapterDiscoveryEngine:
         except ConnectionError as e:
             logger.warning(f"Dhara registry connection error (graceful fallback): {e}")
             # Return empty list - graceful fallback
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
             logger.error(f"Dhara registry discovery failed: {e}")
             # Still return empty list - graceful fallback
 
@@ -540,7 +540,7 @@ class AdapterDiscoveryEngine:
                 try:
                     await self._dhara_client.close()
                     logger.info("Dhara registry client closed")
-                except Exception as e:
+                except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
                     logger.warning(f"Error closing Dhara registry client: {e}")
                 finally:
                     self._dhara_client = None

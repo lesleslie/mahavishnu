@@ -444,7 +444,7 @@ class CrossRepoDependencyLinker:
         """Get a task by ID."""
         try:
             return await self.task_store.get(task_id)
-        except Exception:
+        except Exception:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
             return None
 
     def _would_create_cycle(

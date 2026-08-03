@@ -35,7 +35,7 @@ def count_todo_markers(root: Path) -> int:
             continue
         try:
             text = path.read_text(encoding="utf-8", errors="ignore")
-        except Exception:
+        except Exception:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
             continue
         for line in text.splitlines():
             if TODO_PAT.search(line):
@@ -46,7 +46,7 @@ def count_todo_markers(root: Path) -> int:
 def count_lines(path: Path) -> int:
     try:
         return len(path.read_text(encoding="utf-8", errors="ignore").splitlines())
-    except Exception:
+    except Exception:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
         return 0
 
 

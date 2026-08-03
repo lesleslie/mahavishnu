@@ -368,7 +368,7 @@ class Retry:
                     if self.on_retry:
                         try:
                             await self._call_on_retry(attempt, e)
-                        except Exception as callback_error:
+                        except Exception as callback_error:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
                             logger.error(f"on_retry callback failed: {callback_error}")
 
                     # Wait before retry

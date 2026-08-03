@@ -75,7 +75,7 @@ class EvidenceRetriever:
         try:
             akosha_results = await self._search_akosha(query, limit)
             results.extend(akosha_results)
-        except Exception:
+        except Exception:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
             logger.warning("akosha_search_failed: falling back to Session-Buddy", exc_info=True)
             results.extend(await self._search_session_buddy(query, limit))
 
@@ -204,7 +204,7 @@ class EvidenceRetriever:
                         )
                     )
                 return results
-        except Exception:
+        except Exception:  # noqa: BLE001 - event handler; logs and continues
             logger.warning("session_buddy_search_failed: returning empty", exc_info=True)
             return []
 

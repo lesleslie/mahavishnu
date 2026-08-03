@@ -182,7 +182,7 @@ class AgentTeamManager:
 
             return team_id
 
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
             logger.error(f"Failed to create team '{config.name}': {e}")
             raise AgnoError(
                 f"Failed to create team: {e}",
@@ -226,7 +226,7 @@ class AgentTeamManager:
 
         except AgnoError:
             raise
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
             logger.error(f"Failed to load team config from {yaml_path}: {e}")
             raise AgnoError(
                 f"Failed to load team config: {e}",

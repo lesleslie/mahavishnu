@@ -83,7 +83,7 @@ async def _get_report() -> EcosystemStatusReport | None:
                 dhara_url = getattr(oneiric, "url", None) or getattr(oneiric, "base_url", None)
                 if dhara_url:
                     service_configs["dhara"] = {"url": dhara_url, "required": False, "timeout_s": 3}
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
             logger.debug("Service config skipped: %s", e)
 
         app = get_app_from_context()
@@ -91,7 +91,7 @@ async def _get_report() -> EcosystemStatusReport | None:
             service_configs=service_configs or None,
             recovery_provider=app if app and hasattr(app, "get_recovery_summary") else None,
         ).generate_report()
-    except Exception:
+    except Exception:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
         return None
 
 
@@ -238,7 +238,7 @@ async def fetch_skill_drafts() -> list[dict[str, Any]]:
                     }
                 )
             return drafts
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
             logger.debug("Draft loading skipped: %s", e)
 
     skills_root = Path.home() / ".claude" / "skills"
@@ -269,7 +269,7 @@ async def fetch_skill_drafts() -> list[dict[str, Any]]:
                     "description": description,
                 }
             )
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
             logger.debug("Draft entry skipped: %s", e)
             continue
     return drafts
@@ -321,7 +321,7 @@ async def fetch_pending_approvals() -> list[dict[str, Any]]:
         return []
     try:
         return list(app.list_pending_approvals())
-    except Exception:
+    except Exception:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
         return []
 
 
@@ -333,7 +333,7 @@ async def fetch_event_activity(limit: int = 25) -> list[dict[str, Any]]:
         return []
     try:
         return list(app.get_event_activity(limit=limit))
-    except Exception:
+    except Exception:  # noqa: BLE001 - event handler; logs and continues
         return []
 
 
@@ -346,7 +346,7 @@ async def fetch_agno_activity(limit: int = 25) -> list[dict[str, Any]]:
         return []
     try:
         return list(adapter.get_execution_log(limit=limit))
-    except Exception:
+    except Exception:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
         return []
 
 
@@ -377,7 +377,7 @@ async def fetch_correlation_trace(
             "trace": trace,
             **status,
         }
-    except Exception:
+    except Exception:  # noqa: BLE001 - event handler; logs and continues
         return {
             "correlation_id": correlation_id,
             "trace": [],
@@ -409,7 +409,7 @@ async def forward_approval_request(
             options=options,
             timeout_minutes=timeout_minutes,
         )
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
         return {
             "error": str(exc),
             "approval_type": approval_type,
@@ -440,7 +440,7 @@ async def forward_approval_response(
             selected_option=selected_option,
             rejection_reason=rejection_reason,
         )
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
         return {
             "error": str(exc),
             "request_id": request_id,
@@ -527,7 +527,7 @@ async def _probe_service(base_url: str) -> bool:
             return resp.status_code < 500
     except (httpx.ConnectError, httpx.TimeoutException, httpx.NetworkError):
         return False
-    except Exception:
+    except Exception:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
         _tui_log.warning(
             "Unexpected error probing %s — treating as unavailable", base_url, exc_info=True
         )
@@ -546,7 +546,7 @@ def _component_urls() -> dict[str, str | None]:
         from mahavishnu.core.config import MahavishnuSettings
 
         s = MahavishnuSettings()
-    except Exception:
+    except Exception:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
         _tui_log.warning(
             "Could not load MahavishnuSettings; optional tabs suppressed", exc_info=True
         )
@@ -595,7 +595,7 @@ async def _fetch_health(base_url: str) -> dict[str, Any]:
             return {"available": True, **(data if isinstance(data, dict) else {"raw": str(data)})}
     except (httpx.ConnectError, httpx.TimeoutException, httpx.NetworkError):
         return {"available": False, "reason": "unreachable"}
-    except Exception:
+    except Exception:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
         _tui_log.warning("Unexpected error fetching health from %s", base_url, exc_info=True)
         return {"available": False, "reason": "unexpected error"}
 
@@ -1337,7 +1337,7 @@ class DashboardApp(App):
                             tab_label, BodaiComponentScreen(screen_label, tab_id, url), id=tab_id
                         )
                     )
-                except Exception:
+                except Exception:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
                     _tui_log.warning("Failed to mount tab %r", tab_id, exc_info=True)
 
     def on_mount(self) -> None:

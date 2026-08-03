@@ -392,7 +392,7 @@ def parse_all_skills(skills_dir: Path) -> list[SkillMetadata]:
         except SkillParserError as e:
             print(f"⚠️  Skipping {skill_file}: {e}")
             continue
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
             print(f"❌ Unexpected error parsing {skill_file}: {e}")
             continue
 

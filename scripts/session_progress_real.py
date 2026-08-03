@@ -233,7 +233,7 @@ def main():
         )
         print(output)
 
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001 - CLI entrypoint; converts unhandled errors to exit
         # Ultimate fallback
         print(f"⚠️  Status error: {e!s}", file=sys.stderr)
         print("Session active")

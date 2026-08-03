@@ -225,7 +225,7 @@ class ReviewGate:
 
         try:
             return self._run_crackerjack_check(draft)
-        except Exception:
+        except Exception:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
             logger.debug(
                 "Crackerjack MCP check failed for skill %s, degrading gracefully.",
                 draft.skill_id,

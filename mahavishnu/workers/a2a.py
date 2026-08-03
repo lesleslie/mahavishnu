@@ -180,7 +180,7 @@ class A2AWorker(BaseWorker):
                 error_code=ErrorCode.A2A_AGENT_ERROR,
                 metadata={"worker_type": "a2a", "agent": agent_name},
             )
-        except Exception:
+        except Exception:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
             logger.exception("Unexpected error for A2A agent %r", agent_name)
             return WorkerResult(
                 worker_id=task_id,

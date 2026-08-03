@@ -481,7 +481,7 @@ class DeadLetterQueue:
                 id=failed_task.task_id,
                 body=failed_task.to_dict(),
             )
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
             if strict:
                 self._logger.error(
                     f"DLQ fail-closed: OpenSearch write failed for {failed_task.task_id}: {e}"
@@ -517,7 +517,7 @@ class DeadLetterQueue:
                     id=failed_task.task_id,
                     body={"doc": failed_task.to_dict()},
                 )
-            except Exception as e:
+            except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
                 self._logger.error(f"Failed to update task in OpenSearch: {e}")
 
     async def start_retry_processor(
@@ -555,7 +555,7 @@ class DeadLetterQueue:
                 try:
                     await self._process_ready_tasks(callback)
                     await asyncio.sleep(self._retry_interval_seconds)
-                except Exception as e:
+                except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
                     self._logger.exception("Error in retry processor loop")
                     # Wait before retrying to avoid tight error loop
                     await asyncio.sleep(10)
@@ -641,7 +641,7 @@ class DeadLetterQueue:
                 # Remove from OpenSearch
                 await self._remove_from_persistence(failed_task.task_id)
 
-            except Exception as e:
+            except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
                 # Retry failed again - increment retry count
                 async with self._lock:
                     if failed_task in self._queue:
@@ -705,7 +705,7 @@ class DeadLetterQueue:
         if self._opensearch and OPENSEARCH_AVAILABLE:
             try:
                 await self._opensearch.delete(index="mahavishnu_dlq", id=task_id)
-            except Exception as e:
+            except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
                 self._logger.error(f"Failed to remove task from OpenSearch: {e}")
 
     async def retry_task(self, task_id: str) -> dict[str, Any]:
@@ -764,7 +764,7 @@ class DeadLetterQueue:
                 "message": "Task successfully retried",
             }
 
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
             # Failed - update error info
             async with self._lock:
                 if failed_task in self._queue:
@@ -913,7 +913,7 @@ class DeadLetterQueue:
                         index="mahavishnu_dlq",
                         body={"query": {"match_all": {}}},
                     )
-                except Exception as e:
+                except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
                     self._logger.error(f"Failed to clear OpenSearch index: {e}")
 
             self._logger.warning(f"Cleared {count} tasks from dead letter queue")

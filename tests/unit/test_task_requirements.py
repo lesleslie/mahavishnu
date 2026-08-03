@@ -465,14 +465,14 @@ class TestResolutionCache:
             try:
                 for i in range(100):
                     cache.set(f"key_{i}", decision)
-            except Exception as e:
+            except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
                 errors.append(e)
 
         def reader():
             try:
                 for i in range(100):
                     cache.get(f"key_{i}")
-            except Exception as e:
+            except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
                 errors.append(e)
 
         threads = [

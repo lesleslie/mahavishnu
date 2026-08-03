@@ -268,7 +268,7 @@ class MigrationManager:
             self._results.append(result)
             return result
 
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
             migration.status = MigrationStatus.FAILED
             result = MigrationResult(
                 migration_id=migration_id,
@@ -331,7 +331,7 @@ class MigrationManager:
             self._results.append(result)
             return result
 
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
             result = MigrationResult(
                 migration_id=migration_id,
                 status=MigrationStatus.FAILED,

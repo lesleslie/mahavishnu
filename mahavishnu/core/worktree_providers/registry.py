@@ -68,7 +68,7 @@ class WorktreeProviderRegistry:
                 logger.debug(f"Using provider: {provider_name}")
                 return provider
 
-            except Exception as e:
+            except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
                 # Provider health check raised an exception
                 logger.warning(
                     f"Provider {provider_name} health check failed: {e}",
@@ -141,7 +141,7 @@ class WorktreeProviderRegistry:
                         else:
                             logger.debug(f"Provider {provider_name} is healthy")
 
-                    except Exception as e:
+                    except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
                         logger.exception(
                             "Health check failed",
                             extra={"provider": provider_name},
@@ -151,6 +151,6 @@ class WorktreeProviderRegistry:
             except asyncio.CancelledError:
                 logger.info("Provider health check loop cancelled")
                 break
-            except Exception as e:
+            except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
                 logger.exception("Error in health check loop")
                 # Continue loop despite errors

@@ -227,7 +227,7 @@ async def benchmark_single_embeddings(
             await client.generate_embedding(text, use_cache=False)
             iter_end = time.perf_counter()
             latencies_ms.append((iter_end - iter_start) * 1000)
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
             errors += 1
             logger.debug(f"Error in iteration {i}: {e}")
 
@@ -308,7 +308,7 @@ async def benchmark_batch_embeddings(
             successful = sum(1 for r in results if r.embedding)
             total_embeddings += successful
             latencies_ms.append((iter_end - iter_start) * 1000 / successful)
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
             errors += 1
             logger.debug(f"Error in batch {i}: {e}")
 

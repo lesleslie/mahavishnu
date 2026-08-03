@@ -127,7 +127,7 @@ class RoutingMetricsPersistence:
                     await self._flush_all_pending()
             except asyncio.CancelledError:
                 break
-            except Exception as e:
+            except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
                 logger.exception("Periodic flush error")
 
     async def _flush_all_pending(self) -> None:
@@ -218,7 +218,7 @@ class RoutingMetricsPersistence:
             logger.debug(f"Wrote {len(records)} execution records to PostgreSQL")
             return len(records)
 
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
             logger.error(f"Failed to write execution records: {e}")
             # Re-queue failed records
             self._pending_executions.extend(records)
@@ -249,7 +249,7 @@ class RoutingMetricsPersistence:
                     return self._row_to_execution_record(row)
                 return None
 
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
             logger.error(f"Failed to get execution {execution_id}: {e}")
             return None
 
@@ -290,7 +290,7 @@ class RoutingMetricsPersistence:
 
                 return [self._row_to_execution_record(r) for r in rows]
 
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
             logger.error(f"Failed to get recent executions: {e}")
             return []
 
@@ -365,7 +365,7 @@ class RoutingMetricsPersistence:
 
             logger.debug(f"Wrote adapter stats for {stats.adapter.value} on {stats.date}")
 
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
             logger.error(f"Failed to write adapter stats: {e}")
 
     async def get_adapter_stats(
@@ -399,7 +399,7 @@ class RoutingMetricsPersistence:
 
                 return [self._row_to_adapter_stats(r) for r in rows]
 
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
             logger.error(f"Failed to get adapter stats: {e}")
             return []
 
@@ -475,7 +475,7 @@ class RoutingMetricsPersistence:
             logger.debug(f"Wrote {len(decisions)} routing decisions to PostgreSQL")
             return len(decisions)
 
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
             logger.error(f"Failed to write routing decisions: {e}")
             self._pending_decisions.extend(decisions)
             return 0
@@ -528,7 +528,7 @@ class RoutingMetricsPersistence:
             logger.debug(f"Wrote {len(costs)} cost records to PostgreSQL")
             return len(costs)
 
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
             logger.error(f"Failed to write cost records: {e}")
             self._pending_costs.extend(costs)
             return 0
@@ -562,7 +562,7 @@ class RoutingMetricsPersistence:
                     "pool_idle": self._pool.get_idle_size(),
                 }
 
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
             return {
                 "status": "unhealthy",
                 "error": str(e),

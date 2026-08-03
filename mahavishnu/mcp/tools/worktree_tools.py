@@ -140,7 +140,7 @@ async def worktree_manage(
 
     try:
         return await _dispatch_worktree_action(coordinator, normalized_action, fields)
-    except Exception as e:  # pragma: no cover - exercised by integration tests  # noqa: BLE001 - MCP boundary must preserve all operation failures
+    except Exception as e:  # pragma: no cover - exercised by integration tests  # noqa: BLE001 - MCP boundary must preserve all operation failures  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
         return {
             "success": False,
             "action": normalized_action,

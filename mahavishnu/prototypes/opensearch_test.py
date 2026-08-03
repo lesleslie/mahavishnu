@@ -62,7 +62,7 @@ async def test_opensearch_connection():
 
         return True
 
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001 - test fixture cleanup
         print(f"❌ OpenSearch prototype failed: {e}")
         print("\n💡 To fix:")
         print("   1. Install OpenSearch: brew install opensearch")

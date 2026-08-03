@@ -595,7 +595,7 @@ class TestHandleWorkflowExecutionError:
                 error=error,
                 checkpoint_id=None,
             )
-        except Exception:
+        except Exception:  # noqa: BLE001 - event handler; logs and continues
             pass  # Expected - error is re-raised
 
         assert "wf_123" not in app.active_workflows

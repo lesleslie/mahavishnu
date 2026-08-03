@@ -141,7 +141,7 @@ class DeploymentVerifier:
             print_error(f"Connection failed: {e}")
             self.record_result("health_endpoint", False, str(e))
             return False
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
             print_error(f"Unexpected error: {e}")
             self.record_result("health_endpoint", False, str(e))
             return False
@@ -183,7 +183,7 @@ class DeploymentVerifier:
                     self.record_result("metrics_endpoint", False, f"HTTP {response.status_code}")
                     return False
 
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
             print_error(f"Metrics check failed: {e}")
             self.record_result("metrics_endpoint", False, str(e))
             return False
@@ -220,7 +220,7 @@ class DeploymentVerifier:
             print_error(f"Invalid status code: {e}")
             self.record_result("websocket_connection", False, str(e))
             return False
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
             print_error(f"WebSocket connection failed: {e}")
             self.record_result("websocket_connection", False, str(e))
             return False
@@ -264,7 +264,7 @@ class DeploymentVerifier:
                         )
                         return False
 
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
             print_error(f"TLS check failed: {e}")
             self.record_result("tls_configuration", False, str(e))
             return False
@@ -398,7 +398,7 @@ class DeploymentVerifier:
                 )
                 return True
 
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
             print_error(f"Certificate validation failed: {e}")
             self.record_result("certificate_validity", False, str(e))
             return False
@@ -425,7 +425,7 @@ class DeploymentVerifier:
             self.record_result("redis_connection", True, "Redis accessible")
             return True
 
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
             print_error(f"Redis connection failed: {e}")
             self.record_result("redis_connection", False, str(e))
             return False

@@ -156,7 +156,7 @@ class UnifiedOrchestrator:
 
             return workflow_id  # type: ignore[no-any-return]
 
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
             # Log error and update state
             await self.task_router.state_manager.update_adapter_state(
                 workflow_id=workflow_id,
@@ -217,7 +217,7 @@ class UnifiedOrchestrator:
                     canceller = cast("Any", adapter)
                     await canceller.cancel_workflow(workflow_id)
                     logger.info(f"Cancelled {adapter_name} workflow: {workflow_id}")
-            except Exception as e:
+            except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
                 logger.error(f"Failed to cancel with {adapter_name}: {e}")
 
         await self.task_router.state_manager.update_adapter_state(
@@ -244,7 +244,7 @@ class UnifiedOrchestrator:
             if adapter and hasattr(adapter, "get_health"):
                 try:
                     adapter_health[adapter_name] = await adapter.get_health()
-                except Exception as e:
+                except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
                     adapter_health[adapter_name] = {
                         "status": "error",
                         "error": str(e),

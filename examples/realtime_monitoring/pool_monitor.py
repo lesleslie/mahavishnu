@@ -193,7 +193,7 @@ class PoolMonitor:
                 try:
                     dt = datetime.fromisoformat(timestamp.replace("Z", "+00:00"))
                     time_str = dt.strftime("%H:%M:%S")
-                except Exception:
+                except Exception:  # noqa: BLE001 - event handler; logs and continues
                     time_str = timestamp[:8]
             else:
                 time_str = "???"
@@ -265,7 +265,7 @@ class PoolMonitor:
             # Subscribe to pool channel
             await self._subscribe_to_pool()
 
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
             self.connection_status = ConnectionStatus.ERROR
             self.console.print(f"[red]Connection failed: {e}[/red]")
             raise
@@ -337,7 +337,7 @@ class PoolMonitor:
 
         except json.JSONDecodeError as e:
             self.console.print(f"[red]JSON decode error: {e}[/red]")
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - event handler; logs and continues
             self.console.print(f"[red]Error handling message: {e}[/red]")
 
     async def _handle_event(self, data: dict[str, Any]) -> None:
@@ -473,7 +473,7 @@ class PoolMonitor:
         try:
             await self.connect()
             await self.listen()
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
             self.console.print(f"[red]Error: {e}[/red]")
         finally:
             await self.disconnect()
@@ -505,7 +505,7 @@ async def main(
 
     try:
         await monitor.run()
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001 - CLI entrypoint; converts unhandled errors to exit
         print(f"Error: {e}", file=sys.stderr)
         sys.exit(1)
 

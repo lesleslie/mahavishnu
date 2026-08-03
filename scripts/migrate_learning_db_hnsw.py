@@ -89,7 +89,7 @@ def check_vss_extension(conn: duckdb.DuckDBPyConnection) -> bool:
 
         return True
 
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
         logger.error(f"Failed to load VSS extension: {e}")
         return False
 
@@ -159,7 +159,7 @@ def create_hnsw_index(conn: duckdb.DuckDBPyConnection) -> bool:
         try:
             conn.execute("DROP INDEX IF EXISTS hnsw_embeddings")
             logger.info("Dropped existing HNSW index")
-        except Exception:
+        except Exception:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
             pass  # Index doesn't exist
 
         # Create HNSW index using VSS extension
@@ -181,7 +181,7 @@ def create_hnsw_index(conn: duckdb.DuckDBPyConnection) -> bool:
         logger.info("HNSW index created successfully on embeddings column")
         return True
 
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
         logger.error(f"Failed to create HNSW index: {e}")
         return False
 
@@ -222,7 +222,7 @@ def upgrade(db_path: str) -> bool:
         finally:
             conn.close()
 
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
         logger.error(f"Failed to upgrade database: {e}")
         return False
 
@@ -289,7 +289,7 @@ def generate_embeddings(db_path: str, limit: int | None = None) -> bool:
         finally:
             conn.close()
 
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
         logger.error(f"Failed to generate embeddings: {e}")
         return False
 
@@ -416,7 +416,7 @@ def benchmark_search(db_path: str) -> dict[str, Any]:
         finally:
             conn.close()
 
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
         logger.error(f"Benchmark failed: {e}")
         return results
 

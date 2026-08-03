@@ -40,6 +40,6 @@ for filename in transcripts:
 
             print(f"  Tokens: {total_tokens:,}")
             print()
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
             print(f"{filename}: ERROR - {e}")
             print()

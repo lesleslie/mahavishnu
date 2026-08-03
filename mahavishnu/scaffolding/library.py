@@ -41,7 +41,7 @@ class PatternLibrary:
                     self._file_paths[pattern.id] = None  # None signals duplicate
                 else:
                     self._file_paths[pattern.id] = yaml_file
-            except Exception as e:
+            except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
                 raise ValueError(f"Failed to load {yaml_file}: {e}") from e
         return list(self._cache.values())
 

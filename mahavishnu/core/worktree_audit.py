@@ -160,7 +160,7 @@ class WorktreeAuditLogger:
                     default=str,
                 )
             )
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
             # Don't fail if audit logging fails
             logger.error(f"Failed to write to audit log: {e}")
 

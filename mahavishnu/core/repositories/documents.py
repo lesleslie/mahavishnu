@@ -256,7 +256,7 @@ class DocumentRepository(
                         details={"source_key": data.source_key},
                     )
                 return self._row_to_model(row)
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
             raise self._handle_error("create_document", e, {"source_key": data.source_key})
 
     async def get_document(self, document_id: UUID) -> DocumentRead | None:
@@ -265,7 +265,7 @@ class DocumentRepository(
             async with self.connection() as conn:
                 row = await conn.fetchrow(_SELECT_BY_ID, document_id)
                 return self._row_to_model(row) if row is not None else None
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
             raise self._handle_error("get_document", e, {"document_id": str(document_id)})
 
     async def get_document_by_key(
@@ -281,7 +281,7 @@ class DocumentRepository(
                 else:
                     row = await conn.fetchrow(_SELECT_BY_KEY, source_key)
                 return self._row_to_model(row) if row is not None else None
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
             raise self._handle_error("get_document_by_key", e, {"source_key": source_key})
 
     async def update_document(
@@ -306,7 +306,7 @@ class DocumentRepository(
             async with self.transaction() as conn:
                 row = await conn.fetchrow(query, *params)
                 return self._row_to_model(row) if row is not None else None
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
             raise self._handle_error("update_document", e, {"document_id": str(document_id)})
 
     async def delete_document(self, document_id: UUID) -> bool:
@@ -315,7 +315,7 @@ class DocumentRepository(
             async with self.transaction() as conn:
                 result = await conn.execute(_DELETE_BY_ID, document_id)
                 return result == "DELETE 1"  # type: ignore[no-any-return]
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
             raise self._handle_error("delete_document", e, {"document_id": str(document_id)})
 
     async def search_documents(
@@ -345,7 +345,7 @@ class DocumentRepository(
                         )
                     )
                 return results
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
             raise self._handle_error("search_documents", e, {"query": query_text})
 
     async def list_documents(
@@ -369,7 +369,7 @@ class DocumentRepository(
                 else:
                     rows = await conn.fetch(_LIST_ALL, limit, offset)
                 return [self._row_to_model(row) for row in rows]
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
             raise self._handle_error(
                 "list_documents", e, {"repository": repository, "source_type": source_type}
             )

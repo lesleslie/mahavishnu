@@ -65,7 +65,7 @@ def _validate_workflow_id(workflow_id: str) -> bool:
 
 try:
     from mahavishnu.pools.memory_aggregator import MemoryAggregator
-except Exception:  # pragma: no cover - optional import for test patching  # noqa: BLE001 - MCP boundary must preserve all operation failures
+except Exception:  # pragma: no cover - optional import for test patching  # noqa: BLE001 - MCP boundary must preserve all operation failures  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
     MemoryAggregator = None  # ty: ignore[invalid-assignment]
 
 logger = logging.getLogger(__name__)

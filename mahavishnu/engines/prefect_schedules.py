@@ -98,7 +98,7 @@ class CronSchedule(BaseModel):
                 raise ValueError(
                     f"Invalid cron expression '{v}': expected 5 space-separated fields"
                 )
-        except (ValueError, Exception) as e:
+        except (ValueError, Exception) as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
             raise ValueError(f"Invalid cron expression '{v}': {e}") from e
         return v
 
@@ -123,7 +123,7 @@ class CronSchedule(BaseModel):
         except ImportError:
             # zoneinfo not available (Python < 3.9), skip validation
             pass
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
             raise ValueError(f"Invalid timezone '{v}': {e}") from e
         return v
 
@@ -239,7 +239,7 @@ class RRuleSchedule(BaseModel):
         except ImportError:
             # zoneinfo not available, skip validation
             pass
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
             raise ValueError(f"Invalid timezone '{v}': {e}") from e
         return v
 

@@ -130,7 +130,7 @@ class WorkflowMonitorClient:
                 f"❌ Connection refused - is Mahavishnu WebSocket server running at {self.uri}?"
             )
             return False
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
             logger.error(f"❌ Failed to connect: {e}")
             if self.auto_reconnect and self._reconnect_attempts < self.max_reconnect_attempts:
                 self._reconnect_attempts += 1
@@ -150,7 +150,7 @@ class WorkflowMonitorClient:
             try:
                 await self.websocket.close()
                 logger.info("👋 Disconnected from WebSocket server")
-            except Exception as e:
+            except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
                 logger.warning(f"⚠️  Error during disconnect: {e}")
 
         self.connected = False
@@ -195,7 +195,7 @@ class WorkflowMonitorClient:
                     await handler(data)
                 else:
                     handler(data)
-            except Exception as e:
+            except Exception as e:  # noqa: BLE001 - event handler; logs and continues
                 logger.error(f"❌ Error in event handler for {event_type}: {e}")
 
     # Channel subscription
@@ -286,7 +286,7 @@ class WorkflowMonitorClient:
         except TimeoutError:
             logger.error("❌ Timeout waiting for subscription confirmation")
             return False
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
             logger.error(f"❌ Subscription error: {e}")
             return False
 
@@ -312,7 +312,7 @@ class WorkflowMonitorClient:
 
             return True
 
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
             logger.error(f"❌ Unsubscription error: {e}")
             return False
 
@@ -368,7 +368,7 @@ class WorkflowMonitorClient:
         except TimeoutError:
             logger.error("❌ Timeout querying workflow status")
             return {}
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
             logger.error(f"❌ Error querying workflow status: {e}")
             return {}
 
@@ -416,7 +416,7 @@ class WorkflowMonitorClient:
                             logger.info("✅ Reconnected successfully")
                             continue
                     break
-                except Exception as e:
+                except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
                     logger.error(f"❌ Error receiving message: {e}")
                     break
 
@@ -508,7 +508,7 @@ class WorkflowMonitorClient:
                 "timestamp": datetime.now(UTC).isoformat(),
             }
             await self.websocket.send(json.dumps(ping_msg))
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
             logger.debug(f"Failed to send ping: {e}")
 
 
@@ -564,7 +564,7 @@ async def demo_basic_monitoring():
 
     except KeyboardInterrupt:
         logger.info("\n🛑 Demo stopped by user")
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
         logger.error(f"❌ Demo error: {e}")
     finally:
         await monitor.disconnect()
@@ -611,7 +611,7 @@ async def demo_multi_workflow_monitoring():
 
     except KeyboardInterrupt:
         logger.info("\n🛑 Demo stopped by user")
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
         logger.error(f"❌ Demo error: {e}")
     finally:
         await monitor.disconnect()
@@ -654,7 +654,7 @@ async def demo_query_workflow_status():
         else:
             logger.warning("⚠️  No status data received")
 
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
         logger.error(f"❌ Demo error: {e}")
     finally:
         await monitor.disconnect()
@@ -722,7 +722,7 @@ async def demo_all_workflow_events():
 
     except KeyboardInterrupt:
         logger.info("\n🛑 Demo stopped by user")
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001 - event handler; logs and continues
         logger.error(f"❌ Demo error: {e}")
     finally:
         await monitor.disconnect()

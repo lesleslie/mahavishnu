@@ -741,7 +741,7 @@ async def test_ingest_retry_on_transient_failure(mock_config, sample_repo_path):
         nonlocal call_count
         call_count += 1
         if call_count < 2:
-            raise Exception("Transient error")
+            raise Exception("Transient error")  # noqa: TRY002 - test fixture uses generic exception intentionally
         return []
 
     mock_reader = MagicMock()

@@ -323,7 +323,7 @@ class LoadTestRunner:
 
             except asyncio.CancelledError:
                 break
-            except Exception as e:
+            except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
                 logger.error(f"User {user_id} error: {e}")
                 self.results.append(
                     RequestResult(

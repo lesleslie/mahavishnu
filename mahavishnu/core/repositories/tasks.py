@@ -283,7 +283,7 @@ class TaskRepository(BaseRepository[TaskCreate, TaskRead, TaskUpdate]):
 
                 return self._row_to_model(row)
 
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
             raise self._handle_error("create_task", e, {"title": data.title})
 
     async def get_task(self, task_id: UUID) -> TaskRead | None:
@@ -309,7 +309,7 @@ class TaskRepository(BaseRepository[TaskCreate, TaskRead, TaskUpdate]):
 
                 return self._row_to_model(row)
 
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
             raise self._handle_error("get_task", e, {"task_id": str(task_id)})
 
     async def get_task_by_external_id(self, external_id: str) -> TaskRead | None:
@@ -335,7 +335,7 @@ class TaskRepository(BaseRepository[TaskCreate, TaskRead, TaskUpdate]):
 
                 return self._row_to_model(row)
 
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
             raise self._handle_error(
                 "get_task_by_external_id",
                 e,
@@ -403,7 +403,7 @@ class TaskRepository(BaseRepository[TaskCreate, TaskRead, TaskUpdate]):
 
                 return self._row_to_model(row)
 
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
             raise self._handle_error(
                 "update_task_status",
                 e,
@@ -480,7 +480,7 @@ class TaskRepository(BaseRepository[TaskCreate, TaskRead, TaskUpdate]):
 
                 return self._row_to_model(row)
 
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
             raise self._handle_error(
                 "update_task",
                 e,
@@ -548,7 +548,7 @@ class TaskRepository(BaseRepository[TaskCreate, TaskRead, TaskUpdate]):
                 rows = await conn.fetch(query, *params)
                 return [self._row_to_model(row) for row in rows]
 
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
             raise self._handle_error("list_tasks", e, {"filters": filters.model_dump()})
 
     async def add_dependency(
@@ -606,7 +606,7 @@ class TaskRepository(BaseRepository[TaskCreate, TaskRead, TaskUpdate]):
                     created_at=row["created_at"],
                 )
 
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
             raise self._handle_error(
                 "add_dependency",
                 e,
@@ -647,7 +647,7 @@ class TaskRepository(BaseRepository[TaskCreate, TaskRead, TaskUpdate]):
                     for row in rows
                 ]
 
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
             raise self._handle_error(
                 "get_dependencies",
                 e,
@@ -673,7 +673,7 @@ class TaskRepository(BaseRepository[TaskCreate, TaskRead, TaskUpdate]):
                 result = await conn.execute(query, task_id)
                 return result == "DELETE 1"  # type: ignore[no-any-return]
 
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
             raise self._handle_error(
                 "delete_task",
                 e,

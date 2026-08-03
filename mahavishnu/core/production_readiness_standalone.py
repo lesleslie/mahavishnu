@@ -180,7 +180,7 @@ class ProductionReadinessChecker:
                             # Exclude obvious placeholders/examples
                             if "example" not in content.lower() and "test" not in content.lower():
                                 issues.append(f"{py_file.relative_to(self.project_root)}: {desc}")
-                except Exception as e:
+                except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
                     logger.debug("Pattern scan skipped: %s", e)
 
         if issues:
@@ -450,7 +450,7 @@ class ProductionReadinessChecker:
             status = ReadinessStatus.WARN
             message = "pytest not available"
             details = None
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
             status = ReadinessStatus.WARN
             message = f"Could not run tests: {e}"
             details = None

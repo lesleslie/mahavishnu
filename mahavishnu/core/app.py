@@ -590,7 +590,7 @@ class MahavishnuApp:
 
             result = await adapter.execute(task, validated_repos)
             return result
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
             # Record error in observability if enabled
             if self.observability:
                 error_counter = self.observability.create_error_counter()

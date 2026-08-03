@@ -188,7 +188,7 @@ class WorkerOrchestratorAdapter(OrchestratorAdapter):
                 count=count,
             )
             logger.info(f"Spawned {len(worker_ids)} workers: {', '.join(worker_ids)}")
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
             logger.error(f"Failed to spawn workers: {e}")
             raise
 
@@ -210,7 +210,7 @@ class WorkerOrchestratorAdapter(OrchestratorAdapter):
                 worker_ids,
                 tasks,
             )
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
             logger.error(f"Failed to execute tasks: {e}")
             # Partial results may exist
             results = await worker_manager.collect_results(worker_ids)

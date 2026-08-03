@@ -793,7 +793,7 @@ class TestExecuteWithResilience:
             call_count += 1
             if call_count < 2:
                 # Use a real TRANSIENT keyword so the recovery action picks RETRY
-                raise Exception("service busy")
+                raise Exception("service busy")  # noqa: TRY002 - test fixture uses generic exception intentionally
             return "ok"
 
         # TRANSIENT default has max_attempts=5
@@ -807,7 +807,7 @@ class TestExecuteWithResilience:
         mgr = ErrorRecoveryManager(app)
 
         async def op():
-            raise Exception("permission denied")
+            raise Exception("permission denied")  # noqa: TRY002 - test fixture uses generic exception intentionally
 
         result = await mgr.execute_with_resilience(op)
         assert result["success"] is False
@@ -819,7 +819,7 @@ class TestExecuteWithResilience:
         mgr = ErrorRecoveryManager(app)
 
         async def op():
-            raise Exception("resource exhausted")
+            raise Exception("resource exhausted")  # noqa: TRY002 - test fixture uses generic exception intentionally
 
         result = await mgr.execute_with_resilience(op)
         assert result["success"] is True
@@ -830,7 +830,7 @@ class TestExecuteWithResilience:
         mgr = ErrorRecoveryManager(app)
 
         async def op():
-            raise Exception("transient unavailable")
+            raise Exception("transient unavailable")  # noqa: TRY002 - test fixture uses generic exception intentionally
 
         # Patch random to avoid jitter variance
         with patch("mahavishnu.core.resilience.random.uniform", return_value=0.0):
@@ -847,7 +847,7 @@ class TestExecuteWithResilience:
         mgr.recovery_actions.pop("TRANSIENT", None)
 
         async def op():
-            raise Exception("transient busy")
+            raise Exception("transient busy")  # noqa: TRY002 - test fixture uses generic exception intentionally
 
         with patch("mahavishnu.core.resilience.random.uniform", return_value=0.0):
             result = await mgr.execute_with_resilience(op)
@@ -866,7 +866,7 @@ class TestExecuteWithResilience:
         mgr.recovery_actions["RESOURCE"].fallback_function = bad_fallback
 
         async def op():
-            raise Exception("resource exhausted")
+            raise Exception("resource exhausted")  # noqa: TRY002 - test fixture uses generic exception intentionally
 
         result = await mgr.execute_with_resilience(op)
         assert result["success"] is False
@@ -881,7 +881,7 @@ class TestExecuteWithResilience:
         )
 
         async def op():
-            raise Exception("some unknown error")
+            raise Exception("some unknown error")  # noqa: TRY002 - test fixture uses generic exception intentionally
 
         result = await mgr.execute_with_resilience(op)
         assert result["success"] is False
@@ -1250,7 +1250,7 @@ class TestResiliencePatternsEdgeBranches:
         )
 
         async def op():
-            raise Exception("service busy")
+            raise Exception("service busy")  # noqa: TRY002 - test fixture uses generic exception intentionally
 
         with patch("mahavishnu.core.resilience.random.uniform", return_value=0.0):
             result = await mgr.execute_with_resilience(op)

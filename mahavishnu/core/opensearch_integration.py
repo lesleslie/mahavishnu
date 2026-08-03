@@ -69,7 +69,7 @@ class OpenSearchLogAnalytics:
                 # Defer index initialization to first async call
                 # Cannot use asyncio.create_task() in sync __init__ context
                 self._indices_initialized = False
-            except Exception as e:
+            except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
                 logger.warning("Failed to initialize OpenSearch client: %s", e)
                 self.client = MockAsyncOpenSearch()
         else:
@@ -111,7 +111,7 @@ class OpenSearchLogAnalytics:
                     }
                 }
                 await self.client.indices.create(index=self.log_index, body=mapping)
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
             logger.warning("Failed to create log index: %s", e)
 
     async def _create_workflow_index(self):
@@ -142,7 +142,7 @@ class OpenSearchLogAnalytics:
                     }
                 }
                 await self.client.indices.create(index=self.workflow_index, body=mapping)
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
             logger.warning("Failed to create workflow index: %s", e)
 
     async def log_event(
@@ -174,7 +174,7 @@ class OpenSearchLogAnalytics:
             }
 
             await self.client.index(index=self.log_index, body=doc)
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - event handler; logs and continues
             logger.warning("Failed to log event to OpenSearch: %s", e)
 
     async def log_workflow_event(
@@ -197,7 +197,7 @@ class OpenSearchLogAnalytics:
             }
 
             await self.client.index(index=self.workflow_index, body=doc)
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - event handler; logs and continues
             logger.warning("Failed to log workflow event to OpenSearch: %s", e)
 
     async def search_logs(
@@ -246,7 +246,7 @@ class OpenSearchLogAnalytics:
             response = await self.client.search(index=self.log_index, body=search_body)
 
             return [hit["_source"] for hit in response["hits"]["hits"]]
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
             logger.warning("Failed to search logs in OpenSearch: %s", e)
             return []
 
@@ -294,7 +294,7 @@ class OpenSearchLogAnalytics:
             response = await self.client.search(index=self.workflow_index, body=search_body)
 
             return [hit["_source"] for hit in response["hits"]["hits"]]
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
             logger.warning("Failed to search workflows in OpenSearch: %s", e)
             return []
 
@@ -335,7 +335,7 @@ class OpenSearchLogAnalytics:
                 "status_breakdown": status_breakdown,
                 "adapter_breakdown": adapter_breakdown,
             }
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
             logger.warning("Failed to get workflow stats from OpenSearch: %s", e)
             return {}
 
@@ -362,7 +362,7 @@ class OpenSearchLogAnalytics:
             }
 
             return {"total_logs": total_logs, "level_breakdown": level_breakdown}
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
             logger.warning("Failed to get log stats from OpenSearch: %s", e)
             return {}
 
@@ -383,7 +383,7 @@ class OpenSearchLogAnalytics:
                 }
             else:
                 return {"status": "unhealthy", "error": "Cannot connect to OpenSearch"}
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
             return {"status": "unhealthy", "error": str(e)}
 
     async def close(self):

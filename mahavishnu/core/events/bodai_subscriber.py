@@ -304,7 +304,7 @@ def _decode_with_legacy_fallback(
         try:
             record_legacy_decoded(consumer="bodai_subscriber")
             return _decode_legacy_envelope(fallback_blob)
-        except Exception as legacy_exc:
+        except Exception as legacy_exc:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
             record_wire_decode_failed(
                 consumer="bodai_subscriber",
                 reason="legacy_decode_failed",
@@ -367,7 +367,7 @@ def _decode_envelope(
         try:
             record_legacy_decoded(consumer="bodai_subscriber")
             return _decode_legacy_envelope(fallback_blob)
-        except Exception as legacy_exc:
+        except Exception as legacy_exc:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
             raise EventEnvelopeConversionError(
                 direction="decode_legacy",
                 reason="legacy_decode_failed",
@@ -428,7 +428,7 @@ async def _ensure_consumer_group(
             id="$",
             mkstream=True,
         )
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
         if "BUSYGROUP" in str(exc):
             _logger.debug(
                 "bodai.subscriber: consumer group already exists",
@@ -522,7 +522,7 @@ async def _invoke_callback(
         raise
     except TimeoutError:
         return False
-    except Exception:
+    except Exception:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
         _logger.exception(
             "bodai.subscriber: callback raised; proceeding to next envelope",
         )
@@ -555,7 +555,7 @@ async def _acknowledge_message(
     """XACK a single message; log + swallow transport errors so the loop continues."""
     try:
         await client.xack(stream_name, consumer_group, message_id)
-    except Exception:
+    except Exception:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
         _logger.exception(
             "bodai.subscriber: xack failed for message_id=%s",
             message_id,
@@ -566,10 +566,10 @@ async def _close_redis_client(client: Any) -> None:
     """Close the redis client via ``aclose`` then ``close`` (best-effort)."""
     try:
         await client.aclose()
-    except Exception:
+    except Exception:  # noqa: BLE001 - CLI entrypoint; converts unhandled errors to exit
         try:
             await client.close()
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - CLI entrypoint; converts unhandled errors to exit
             logger.debug("Client close error: %s", e)
 
 
@@ -592,7 +592,7 @@ async def _process_stream_entry(
 
     try:
         envelope = _decode_envelope(payload)
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
         _logger.warning(
             "bodai.subscriber: failed to decode envelope (message not acked for retry): %s",
             exc,
@@ -620,7 +620,7 @@ async def _process_stream_entry(
             queue_path=queue_path,
             queue_cap=queue_cap,
         )
-    except Exception:
+    except Exception:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
         _logger.exception(
             "bodai.subscriber: failed to append envelope to queue path=%s",
             queue_path,
@@ -699,7 +699,7 @@ async def _run_subscription_loop(
             )
         except asyncio.CancelledError:
             raise
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001 - event handler; logs and continues
             _logger.warning(
                 "bodai.subscriber: xreadgroup error: %s",
                 exc,

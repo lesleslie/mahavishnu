@@ -353,7 +353,7 @@ class PyAutoGUIBackend(DesktopAutomationBackend):
                 buffer = BytesIO()
                 img.save(buffer, format="PNG")
                 return buffer.getvalue()
-            except Exception as e:
+            except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
                 raise ScreenshotError(
                     f"Failed to capture screenshot: {e}",
                     region=region,

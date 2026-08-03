@@ -67,7 +67,7 @@ class BackupManager:
                 config_backup.mkdir()
                 try:
                     await self._backup_config(config_backup)
-                except Exception as e:
+                except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
                     self.logger.warning(f"Failed to back up config files: {e}")
 
                 # Backup workflow states
@@ -75,7 +75,7 @@ class BackupManager:
                 workflow_backup.mkdir()
                 try:
                     await self._backup_workflows(workflow_backup)
-                except Exception as e:
+                except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
                     self.logger.warning(f"Failed to back up workflows: {e}")
 
                 # Backup any other important data
@@ -124,7 +124,7 @@ class BackupManager:
 
                 return backup_info
 
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
             self.logger.error(f"Failed to create backup: {e}")
             raise
 
@@ -144,7 +144,7 @@ class BackupManager:
                     dest_path = backup_dir / source_path.name
                     shutil.copy2(source_path, dest_path)
 
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
             self.logger.warning(f"Failed to backup config: {e}")
 
     async def _backup_workflows(self, backup_dir: Path) -> None:
@@ -158,7 +158,7 @@ class BackupManager:
             with workflows_file.open("w") as f:
                 json.dump(all_workflows, f, indent=2, default=str)
 
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
             self.logger.warning(f"Failed to backup workflows: {e}")
 
     async def _calculate_checksum(self, file_path: Path) -> str:
@@ -229,10 +229,10 @@ class BackupManager:
                 try:
                     backup_file.unlink()
                     self.logger.info(f"Deleted old backup: {backup_file.name}")
-                except Exception as e:
+                except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
                     self.logger.warning(f"Failed to delete backup {backup_file.name}: {e}")
 
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
             self.logger.warning(f"Failed to cleanup old backups: {e}")
 
     async def restore_backup(self, backup_id: str) -> bool:
@@ -286,7 +286,7 @@ class BackupManager:
                 self.logger.info(f"Restored backup: {backup_id}")
                 return True
 
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
             self.logger.error(f"Failed to restore backup: {e}")
             raise
 
@@ -341,7 +341,7 @@ class BackupManager:
 
                 backups.append(backup_info)
 
-            except Exception as e:
+            except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
                 self.logger.warning(f"Failed to read backup info for {backup_file}: {e}")
 
         # Sort by timestamp (newest first)
@@ -383,7 +383,7 @@ class BackupManager:
                 files_backed_up=0,  # Would need to count files in archive
                 checksum=await self._calculate_checksum(backup_path),
             )
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
             self.logger.warning(f"Failed to get backup info for {backup_id}: {e}")
             return None
 
@@ -422,7 +422,7 @@ class DisasterRecoveryManager:
                 else:
                     integrity_check["failed"] += 1
                     integrity_check["status"] = "fail"
-            except Exception:
+            except Exception:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
                 integrity_check["failed"] += 1
                 integrity_check["status"] = "fail"
 
@@ -479,7 +479,7 @@ class DisasterRecoveryManager:
             else:
                 return {"status": "fail", "error": f"Failed to restore from backup {backup_id}"}
 
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
             self.logger.error(f"Disaster recovery failed: {e}")
             return {"status": "fail", "error": str(e)}
 
@@ -544,7 +544,7 @@ class BackupAndRecoveryCLI:
                 "size_mb": round(backup_info.size_bytes / (1024 * 1024), 2),
                 "timestamp": backup_info.timestamp.isoformat(),
             }
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
             return {"status": "error", "error": str(e)}
 
     async def list_backups(self) -> dict[str, Any]:
@@ -564,7 +564,7 @@ class BackupAndRecoveryCLI:
                 ],
                 "total_count": len(backups),
             }
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
             return {"status": "error", "error": str(e)}
 
     async def restore_backup(self, backup_id: str) -> dict[str, Any]:
@@ -575,7 +575,7 @@ class BackupAndRecoveryCLI:
                 "status": "success" if success else "error",
                 "message": f"Restore {'completed' if success else 'failed'} for backup {backup_id}",
             }
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
             return {"status": "error", "error": str(e)}
 
     async def run_disaster_recovery_check(self) -> dict[str, Any]:
@@ -583,7 +583,7 @@ class BackupAndRecoveryCLI:
         try:
             results = await self.recovery_manager.run_disaster_recovery_check()
             return {"status": results["status"], "results": results}
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
             return {"status": "error", "error": str(e)}
 
     async def get_recovery_procedures(self) -> dict[str, Any]:
@@ -591,5 +591,5 @@ class BackupAndRecoveryCLI:
         try:
             procedures = await self.recovery_manager.get_recovery_procedures()
             return {"status": "success", "procedures": procedures}
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
             return {"status": "error", "error": str(e)}

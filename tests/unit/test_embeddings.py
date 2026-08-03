@@ -82,7 +82,7 @@ class TestOllamaProvider:
                     pytest.skip(
                         "Ollama model 'nomic-embed-text' not pulled. Run: ollama pull nomic-embed-text"
                     )
-        except Exception:
+        except Exception:  # noqa: BLE001 - test fixture cleanup
             pytest.skip("Could not verify Ollama model availability")
 
         provider = OllamaProvider()

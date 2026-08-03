@@ -203,7 +203,7 @@ class MemoryAggregator:
             memory_items = await _await_if_needed(pool.collect_memory())
             logger.info(f"Collected {len(memory_items)} items from pool {pool_id}")
             return memory_items  # type: ignore[no-any-return]
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
             logger.warning(f"Failed to collect from pool {pool_id}: {e}")
             return []
 
@@ -403,7 +403,7 @@ class MemoryAggregator:
             while not self._shutdown_event.is_set():
                 try:
                     await self.collect_and_sync(pool_manager)
-                except Exception as e:
+                except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
                     logger.error(f"Memory sync error: {e}")
 
                 # Sleep with shutdown check
@@ -713,7 +713,7 @@ class MemoryAggregator:
                         "pool_type": pool.config.pool_type,
                         "status": (await _await_if_needed(pool.status())).value,
                     }
-                except Exception as e:
+                except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
                     stats[pool_id] = {
                         "error": str(e),
                         "memory_count": 0,

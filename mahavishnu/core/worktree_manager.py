@@ -259,7 +259,7 @@ class WorktreeManager:
 
             return worktree
 
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
             logger.error(f"Failed to create worktree for task {task_id}: {e}")
             raise WorktreeError(f"Failed to create worktree: {e}", worktree_id)
 
@@ -351,7 +351,7 @@ class WorktreeManager:
             logger.info(f"Completed worktree {worktree_id} (state: {worktree.state.value})")
             return True
 
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
             logger.error(f"Failed to complete worktree {worktree_id}: {e}")
             raise WorktreeError(f"Failed to complete worktree: {e}", worktree_id)
 
@@ -404,7 +404,7 @@ class WorktreeManager:
             logger.info(f"Cleaned up worktree {worktree_id}")
             return True
 
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
             logger.error(f"Failed to cleanup worktree {worktree_id}: {e}")
             # Still remove from tracking even if git command fails
             if worktree_id in self._worktrees:
@@ -455,7 +455,7 @@ class WorktreeManager:
             logger.info(f"Synced worktree {worktree_id} with {worktree.base_branch}")
             return True
 
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
             logger.error(f"Failed to sync worktree {worktree_id}: {e}")
             return False
 
@@ -511,7 +511,7 @@ class WorktreeManager:
                 "path": worktree.path,
             }
 
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
             logger.error(f"Failed to get status for worktree {worktree_id}: {e}")
             return {
                 "worktree_id": worktree_id,

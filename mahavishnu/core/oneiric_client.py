@@ -209,7 +209,7 @@ class DharaAdapterRegistryClient:
             result = await self._client.call_tool(name, arguments)
             self._connected = True
             return result
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
             self._connected = False
             raise ConnectionError(f"Dhara adapter registry unavailable: {exc}") from exc
 
@@ -291,7 +291,7 @@ class DharaAdapterRegistryClient:
         except ConnectionError:
             await self._circuit_breaker.record_failure(adapter_id)
             raise
-        except Exception:
+        except Exception:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
             await self._circuit_breaker.record_failure(adapter_id)
             return None
 
@@ -318,7 +318,7 @@ class DharaAdapterRegistryClient:
             else:
                 await self._circuit_breaker.record_failure(adapter_id)
             return healthy
-        except Exception:
+        except Exception:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
             await self._circuit_breaker.record_failure(adapter_id)
             return False
 
@@ -364,7 +364,7 @@ class DharaAdapterRegistryClient:
                 "cache_entries": len(self._cache),
                 "contract": contract,
             }
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
             return {
                 "status": "unhealthy",
                 "connected": False,

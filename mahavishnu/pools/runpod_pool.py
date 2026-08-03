@@ -70,7 +70,7 @@ class RunPodPool(BasePool):
                 self._endpoint_name,
                 self._gpu_type,
             )
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
             self._status = PoolStatus.FAILED
             logger.error("RunPodPool failed to start: %s", e)
             raise
@@ -155,7 +155,7 @@ class RunPodPool(BasePool):
                 "duration": duration,
             }
 
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
             self._tasks_failed += 1
             duration = time.time() - start_time
             logger.error("RunPod task failed: %s", e)

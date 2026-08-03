@@ -229,7 +229,7 @@ class PoolManager:
                     "updated_at": datetime.now(UTC).isoformat(),
                 },
             )
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
             logger.debug("Failed to persist pool state for %s: %s", pool_id, exc)
 
     async def _persist_routing_decision(
@@ -262,7 +262,7 @@ class PoolManager:
                 },
                 timestamp=datetime.now(UTC),
             )
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
             logger.debug("Failed to persist routing decision for %s: %s", pool_id, exc)
 
     def _refresh_pool_worker_metrics(self) -> None:
@@ -365,7 +365,7 @@ class PoolManager:
 
             return pool_id
 
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
             logger.error(f"Failed to spawn pool: {e}")
             raise
 
@@ -679,7 +679,7 @@ class PoolManager:
                         return override
                     except ValueError:
                         pass  # Unknown selector string — keep current selector
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
             logger.debug("Dhara selector override skipped: %s", e)
         return selector
 

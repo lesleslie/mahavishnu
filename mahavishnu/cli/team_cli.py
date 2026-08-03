@@ -307,7 +307,7 @@ def create_team(
             console.print(f"\n[red]Team creation error:[/red] {e.message}")
             console.print(f"[dim]Code: {e.error_code.value}[/dim]")
             raise typer.Exit(code=1) from None
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
             console.print(f"\n[red]Unexpected error:[/red] {e}")
             raise typer.Exit(code=1) from None
 
@@ -350,7 +350,7 @@ def parse_goal_cmd(
                 console.print(f"  Raw goal: {parsed.raw_goal}")
                 console.print(f"  Metadata: {parsed.metadata}")
 
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
             console.print(f"\n[red]Error parsing goal:[/red] {e}")
             raise typer.Exit(code=1) from None
 

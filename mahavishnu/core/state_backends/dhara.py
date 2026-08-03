@@ -112,7 +112,7 @@ class DharaStateBackend:
         try:
             await self._client.put(key, value, ttl=ttl)
             self._record_success()
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
             self._record_failure()
             logger.debug("Dhara put(%r) failed: %s", key, exc)
 
@@ -183,7 +183,7 @@ class DharaStateBackend:
             if isinstance(result, dict):
                 return result
             return None
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
             self._record_failure()
             logger.debug("Dhara get(%r) failed: %s", key, exc)
             return None
@@ -195,7 +195,7 @@ class DharaStateBackend:
         try:
             await self._client.call_tool("delete", {"key": key})
             self._record_success()
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
             self._record_failure()
             logger.debug("Dhara delete(%r) failed: %s", key, exc)
 
@@ -209,7 +209,7 @@ class DharaStateBackend:
             if isinstance(result, list):
                 return [(item["key"], item.get("value", {})) for item in result if "key" in item]
             return []
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
             self._record_failure()
             logger.debug("Dhara list_prefix(%r) failed: %s", prefix, exc)
             return []
@@ -229,7 +229,7 @@ class DharaStateBackend:
             self._available = True
             self._consecutive_failures = 0
             return True
-        except Exception:
+        except Exception:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
             self._available = False
             logger.warning("Dhara unavailable — state persistence disabled")
             return False

@@ -305,7 +305,7 @@ def main() -> int:
         finally:
             conn.close()
 
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001 - CLI entrypoint; converts unhandled errors to exit
         logger.error(f"Failed to generate test data: {e}")
         import traceback
 

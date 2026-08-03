@@ -297,7 +297,7 @@ class CoordinationMemory:
                 limit=limit,
             )
             return results  # type: ignore[no-any-return]
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - event handler; logs and continues
             # If search fails, log error and return empty results
             logger.error(f"Coordination memory search failed: {e}")
             return []
@@ -340,7 +340,7 @@ class CoordinationMemory:
                 content=content,
                 metadata=metadata,
             )
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
             logger.error("Failed to store coordination memory in Session-Buddy: %s", e)
 
         await self._push_to_akosha(content, metadata)

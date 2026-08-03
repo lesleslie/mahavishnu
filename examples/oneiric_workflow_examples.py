@@ -362,7 +362,7 @@ async def main():
         try:
             await example_func()
             logger.info(f"✓ {name} completed")
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - CLI entrypoint; converts unhandled errors to exit
             logger.error(f"✗ {name} failed: {e}")
 
     logger.info("\n" + "=" * 60)

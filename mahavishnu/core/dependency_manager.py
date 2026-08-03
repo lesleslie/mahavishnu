@@ -110,7 +110,7 @@ class DependencyEventEmitter:
         for handler in self._handlers[event_data.event_type]:
             try:
                 handler(event_data)
-            except Exception as e:
+            except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
                 logger.error(f"Error in event handler for {event_data.event_type}: {e}")
 
     def clear_handlers(self) -> None:

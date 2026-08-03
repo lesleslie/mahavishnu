@@ -227,7 +227,7 @@ class WorktreeCoordinator:
             logger.info(f"Worktree created successfully: {worktree_path}")
             return result
 
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
             # Log failure
             self.audit_logger.log_creation_failure(
                 user_id=user_id,
@@ -321,7 +321,7 @@ class WorktreeCoordinator:
                     user_id=user_id,
                 )
                 logger.info(f"Backup created before force removal: {backup_path}")
-            except Exception as e:
+            except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
                 logger.exception("Failed to create backup")
                 return {
                     "success": False,
@@ -377,7 +377,7 @@ class WorktreeCoordinator:
             logger.info(f"Worktree removed successfully: {worktree_path}")
             return result
 
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
             self.audit_logger.log_removal_failure(
                 user_id=user_id,
                 repo_nickname=repo_nickname,
@@ -431,7 +431,7 @@ class WorktreeCoordinator:
                         provider = await self.provider_registry.get_available_provider()
                         result = await provider.list_worktrees(repository_path=Path(repo.path))
                         all_worktrees.extend(result.get("worktrees", []))
-                    except Exception as e:
+                    except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
                         logger.warning(f"Failed to list worktrees for {repo.nickname}: {e}")
                         continue
 
@@ -441,7 +441,7 @@ class WorktreeCoordinator:
                     "total_count": len(all_worktrees),
                 }
 
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
             logger.exception("Failed to list worktrees")
             raise
 
@@ -502,7 +502,7 @@ class WorktreeCoordinator:
                 "pruned_count": pruned_count,
             }
 
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
             logger.exception("Failed to prune worktrees")
             raise
 
@@ -560,7 +560,7 @@ class WorktreeCoordinator:
         try:
             result = await self._execute_git_command(worktree_path, ["status", "--porcelain"])
             return bool(result.strip())
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
             logger.warning(f"Failed to check uncommitted changes: {e}")
             return False
 
@@ -594,7 +594,7 @@ class WorktreeCoordinator:
             content = git_file.read_text().strip()
             return content.startswith("gitdir:")
 
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
             logger.warning(f"Failed to verify worktree: {e}")
             return False
 
@@ -603,7 +603,7 @@ class WorktreeCoordinator:
         try:
             result = await self._execute_git_command(repo_path, ["branch", "--list", branch])
             return bool(result.strip())
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
             logger.warning(f"Failed to check branch existence: {e}")
             return False
 
@@ -612,7 +612,7 @@ class WorktreeCoordinator:
         try:
             result = await self._execute_git_command(worktree_path, ["branch", "--show-current"])
             return result.strip()
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
             logger.warning(f"Failed to get worktree branch: {e}")
             return "unknown"
 

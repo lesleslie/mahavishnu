@@ -301,7 +301,7 @@ class DeploymentManager:
 
             return result
 
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
             logger.error(f"Deployment {deployment_id} failed: {e}")
             return DeploymentResult(
                 deployment_id=deployment_id,
@@ -361,7 +361,7 @@ class DeploymentManager:
 
             return result
 
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
             logger.error(f"Rollback failed: {e}")
             return DeploymentResult(
                 deployment_id=deployment_id,

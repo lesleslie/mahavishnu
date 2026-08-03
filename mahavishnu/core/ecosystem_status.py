@@ -563,7 +563,7 @@ class EcosystemStatusService:
                         required=required,
                         latency_ms=body.get("latency_ms"),
                     )
-            except Exception:
+            except Exception:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
                 services[name] = ServiceStatus(
                     status=CanonicalStatus.UNKNOWN,
                     required=required,
@@ -585,7 +585,7 @@ class EcosystemStatusService:
                     last_check=datetime.now(UTC),
                     preference_score=health.get("preference_score"),
                 )
-            except Exception:
+            except Exception:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
                 adapters[name] = AdapterStatus(
                     status=CanonicalStatus.UNKNOWN,
                     last_check=datetime.now(UTC),
@@ -605,7 +605,7 @@ class EcosystemStatusService:
                 failed_count=failed,
                 recent_count=len(workflows),
             )
-        except Exception:
+        except Exception:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
             return WorkflowSummary()
 
     async def _collect_recovery(self) -> RecoverySummary:
@@ -617,7 +617,7 @@ class EcosystemStatusService:
             if isinstance(summary, RecoverySummary):
                 return summary
             return RecoverySummary.model_validate(summary)
-        except Exception:
+        except Exception:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
             return RecoverySummary()
 
     async def _collect_alerts(self) -> AlertSummary:
@@ -644,7 +644,7 @@ class EcosystemStatusService:
                 by_severity=by_severity,
                 top_alerts=top,
             )
-        except Exception:
+        except Exception:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
             return AlertSummary()
 
     async def _collect_capabilities(self) -> dict[str, CapabilityStatus]:
@@ -702,7 +702,7 @@ class EcosystemStatusService:
                         cap_statuses[cap], 0
                     ):
                         cap_statuses[cap] = adapter_status
-            except Exception as e:
+            except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
                 logger.debug("Adapter capability status skipped: %s", e)
 
         result: dict[str, CapabilityStatus] = {}

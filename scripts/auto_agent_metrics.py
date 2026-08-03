@@ -134,7 +134,7 @@ class TranscriptParser:
 
                     if name_match and model_match:
                         mapping[name_match] = model_match
-            except Exception:
+            except Exception:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
                 continue
 
         return mapping

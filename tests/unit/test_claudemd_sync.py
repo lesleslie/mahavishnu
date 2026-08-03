@@ -103,7 +103,7 @@ def _lookup(config: dict, dotted_key: tuple[str, ...]) -> int:
             )
         cursor = cursor[part]
     if not isinstance(cursor, int):
-        raise AssertionError(
+        raise TypeError(
             f"pyproject.toml '{'.'.join(dotted_key)}' = {cursor!r} is not an integer"
         )
     return cursor

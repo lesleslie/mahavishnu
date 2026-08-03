@@ -152,7 +152,7 @@ class CutoverReadinessValidator:
                 message="pgvector extension not installed",
                 details={"hint": "Run: CREATE EXTENSION vector;"},
             )
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
             return CheckResult(
                 name="pgvector_extension",
                 status=CheckStatus.FAIL,
@@ -183,7 +183,7 @@ class CutoverReadinessValidator:
                 message=f"All {len(found)} schemas present",
                 details={"schemas": list(found)},
             )
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
             return CheckResult(
                 name="schemas_exist",
                 status=CheckStatus.FAIL,
@@ -227,7 +227,7 @@ class CutoverReadinessValidator:
                 message=f"All {total_tables} required tables present",
                 details={"tables_per_schema": {k: list(v) for k, v in found.items()}},
             )
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
             return CheckResult(
                 name="tables_exist",
                 status=CheckStatus.FAIL,
@@ -261,7 +261,7 @@ class CutoverReadinessValidator:
                 message=f"Only {len(constraints)} enum CHECK constraints found (expected 4+)",
                 details={"constraint_count": len(constraints)},
             )
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
             return CheckResult(
                 name="check_constraints",
                 status=CheckStatus.FAIL,
@@ -293,7 +293,7 @@ class CutoverReadinessValidator:
                 message="HNSW index not found for vector search",
                 details={"hint": "Run: CREATE INDEX ... USING hnsw (embedding vector_cosine_ops)"},
             )
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
             return CheckResult(
                 name="hnsw_index",
                 status=CheckStatus.FAIL,
@@ -324,7 +324,7 @@ class CutoverReadinessValidator:
                 status=CheckStatus.FAIL,
                 message="Full-text search index not found",
             )
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
             return CheckResult(
                 name="fts_index",
                 status=CheckStatus.FAIL,
@@ -356,7 +356,7 @@ class CutoverReadinessValidator:
                 message="Task events may not be properly partitioned",
                 details={"partitions": [p["tablename"] for p in partitions]},
             )
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
             return CheckResult(
                 name="table_partitions",
                 status=CheckStatus.FAIL,
@@ -393,7 +393,7 @@ class CutoverReadinessValidator:
                     "hint": "Add persistence_write_mode and persistence_read_source to settings",
                 },
             )
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
             return CheckResult(
                 name="feature_flags",
                 status=CheckStatus.WARN,
@@ -419,7 +419,7 @@ class CutoverReadinessValidator:
                 status=CheckStatus.WARN,
                 message="Rollback procedure documentation not found",
             )
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
             return CheckResult(
                 name="rollback_documentation",
                 status=CheckStatus.WARN,
@@ -503,7 +503,7 @@ async def main(dsn: str, verbose: bool = False, output_format: str = "json") -> 
 
         return 0 if result.status != CheckStatus.FAIL else 1
 
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001 - CLI entrypoint; converts unhandled errors to exit
         logger.error(f"Validation failed: {e}")
         return 1
     finally:

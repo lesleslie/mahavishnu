@@ -361,7 +361,7 @@ Examples:
             console_export=args.console,
         )
         print("✅ Telemetry initialized successfully!")
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001 - CLI entrypoint; converts unhandled errors to exit
         print(f"❌ Failed to initialize telemetry: {e}")
         return 1
 
@@ -397,7 +397,7 @@ Examples:
             print("\n⏳ Waiting for metric export (15 seconds)...")
             time.sleep(15)
 
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001 - CLI entrypoint; converts unhandled errors to exit
         print(f"\n❌ Error generating telemetry: {e}")
         import traceback
 

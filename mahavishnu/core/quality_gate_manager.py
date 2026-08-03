@@ -353,7 +353,7 @@ class QualityGateManager:
                 severity=rule.severity,
             )
 
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
             logger.error(f"Quality check {rule.name} failed with error: {e}")
             return QualityCheckResult(
                 check_name=rule.name,

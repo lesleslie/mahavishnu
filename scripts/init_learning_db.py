@@ -127,7 +127,7 @@ def create_schema(conn: duckdb.DuckDBPyConnection) -> bool:
 
         return True
 
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
         logger.error(f"Failed to create schema: {e}")
         import traceback
 
@@ -178,7 +178,7 @@ def init_database(db_path: str, force: bool = False) -> bool:
         finally:
             conn.close()
 
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
         logger.error(f"Failed to initialize database: {e}")
         import traceback
 

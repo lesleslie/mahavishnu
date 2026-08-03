@@ -185,7 +185,7 @@ class PathValidator:
 
         except PathValidationError:
             raise
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
             raise PathValidationError(
                 message="Unexpected validation error",
                 path=str(path),
@@ -284,7 +284,7 @@ class PathValidator:
             return validated_path
         except PathValidationError:
             raise
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
             raise PathValidationError(
                 message="Repository validation failed",
                 path=str(path),
@@ -500,7 +500,7 @@ class PathValidator:
 
         except PathValidationError:
             raise
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
             raise PathValidationError(
                 message=f"File operation validation failed: {operation}",
                 path=str(path),

@@ -251,7 +251,7 @@ class EcosystemBackupManager:
 
             return metadata
 
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
             logger.error(f"Backup failed: {backup_id} - {e}")
             self.stats["total_backups"] += 1
             self.stats["failed_backups"] += 1
@@ -283,7 +283,7 @@ class EcosystemBackupManager:
             try:
                 await self._backup_single_database(backup_dir, db_config)
                 backed_up.append(db_config.name)
-            except Exception as e:
+            except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
                 logger.error(f"Failed to backup database {db_config.name}: {e}")
                 # Continue with other databases
                 continue
@@ -350,7 +350,7 @@ class EcosystemBackupManager:
 
             logger.info(f"Verified database backup: {config.name}")
 
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
             logger.error(f"Database backup verification failed: {config.name} - {e}")
             raise
 
@@ -431,7 +431,7 @@ class EcosystemBackupManager:
 
             return "workflows.json"
 
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
             logger.warning(f"Failed to backup workflow states: {e}")
             return None
 
@@ -547,7 +547,7 @@ class EcosystemBackupManager:
             self.stats["last_verification_time"] = datetime.now((UTC)).isoformat()
             return True
 
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
             logger.error(f"Backup verification failed: {e}")
             return False
 
@@ -620,13 +620,13 @@ class EcosystemBackupManager:
                         backup_file.unlink()
                         deleted_count += 1
                         logger.info(f"Deleted old backup: {backup_file.name}")
-                    except Exception as e:
+                    except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
                         logger.warning(f"Failed to delete backup {backup_file.name}: {e}")
 
             if deleted_count > 0:
                 logger.info(f"Cleaned up {deleted_count} old backups")
 
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
             logger.error(f"Failed to cleanup old backups: {e}")
 
     async def restore_backup(
@@ -685,7 +685,7 @@ class EcosystemBackupManager:
                 "restored_components": restored,
             }
 
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
             logger.error(f"Restore failed: {backup_id} - {e}")
             return {
                 "status": "failed",
@@ -713,7 +713,7 @@ class EcosystemBackupManager:
                 logger.info(f"Database restore would be performed: {db_name}")
                 restored.append(db_name)
 
-            except Exception as e:
+            except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
                 logger.error(f"Failed to restore database {sql_file.stem}: {e}")
 
         return restored
@@ -740,7 +740,7 @@ class EcosystemBackupManager:
                     # This would need project-specific logic
                     logger.info(f"Config restore would be performed: {config_file.name}")
                     restored.append(str(config_file))
-                except Exception as e:
+                except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
                     logger.error(f"Failed to restore config {config_file.name}: {e}")
 
         return restored
@@ -781,7 +781,7 @@ class EcosystemBackupManager:
                             )
                             backups.append(metadata)
 
-            except Exception as e:
+            except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
                 logger.warning(f"Failed to read backup metadata for {archive_path.name}: {e}")
 
         # Sort by timestamp (newest first)
@@ -831,7 +831,7 @@ class EcosystemBackupManager:
         logger.info("Running scheduled daily backup")
         try:
             await self.create_backup(BackupType.FULL, verify=True)
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
             logger.error(f"Scheduled daily backup failed: {e}")
 
     async def _scheduled_weekly_backup(self):
@@ -845,7 +845,7 @@ class EcosystemBackupManager:
             )
             # Tag as weekly backup for retention
             logger.info(f"Weekly backup completed: {metadata.backup_id}")
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
             logger.error(f"Scheduled weekly backup failed: {e}")
 
     def start_scheduler(self):

@@ -214,7 +214,7 @@ async def process_single_repo(
 
             return result
 
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
             app.circuit_breaker.record_failure()
 
             error_info = {
@@ -489,7 +489,7 @@ async def execute_workflow_parallel(  # type: ignore[invalid-return]
             errors=errors,
             checkpoint_id=checkpoint_id,
         )
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
         await handle_workflow_execution_error(
             app=app,
             workflow_id=workflow_id,
@@ -538,7 +538,7 @@ async def execute_workflow_with_fallback(
                 "repo_results": result,
                 "errors": [],
             }
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
             errors.append((adapter_name.value, str(exc)))
             logger.warning("Adapter %s failed: %s", adapter_name.value, exc)
             continue

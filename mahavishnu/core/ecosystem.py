@@ -174,7 +174,7 @@ class EcosystemLoader:
         try:
             with self.config_path.open() as f:
                 data = yaml.safe_load(f)
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
             raise ConfigurationError(
                 message=f"Failed to load ecosystem configuration: {e}",
                 details={"path": str(self.config_path)},
@@ -182,7 +182,7 @@ class EcosystemLoader:
 
         try:
             self._config = EcosystemConfig(**data)
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
             raise ConfigurationError(
                 message=f"Failed to validate ecosystem configuration: {e}",
                 details={"path": str(self.config_path)},
@@ -414,7 +414,7 @@ class EcosystemLoader:
         try:
             with self.config_path.open("w") as f:
                 yaml.dump(self._config.model_dump(mode="yaml"), f, default_flow_style=False)  # ty: ignore[unresolved-attribute]
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
             raise ConfigurationError(
                 message=f"Failed to save ecosystem configuration: {e}",
                 details={"path": str(self.config_path)},

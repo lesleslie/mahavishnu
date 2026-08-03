@@ -382,7 +382,7 @@ class WebhookHandler:
                 event_id=event.event_id,
             )
 
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - event handler; logs and continues
             logger.error(f"Failed to handle event {event.event_id}: {e}")
             return WebhookResult(
                 success=False,

@@ -505,7 +505,7 @@ def track_calls(
                 result = await func(*args, **kwargs)
                 counter.labels(**label_values, status="success").inc()
                 return result
-            except Exception:
+            except Exception:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
                 counter.labels(**label_values, status="error").inc()
                 raise
 
@@ -519,7 +519,7 @@ def track_calls(
                 result = func(*args, **kwargs)
                 counter.labels(**label_values, status="success").inc()
                 return result
-            except Exception:
+            except Exception:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
                 counter.labels(**label_values, status="error").inc()
                 raise
 

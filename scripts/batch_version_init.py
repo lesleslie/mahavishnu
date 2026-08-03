@@ -236,7 +236,7 @@ def main(dry_run: bool, agents_dir: Path):
                 click.echo(f"{progress} ✓ {agent_name}: Initialized at {version}")
                 results["initialized"].append({"name": agent_name, "version": version})
 
-            except Exception as e:
+            except Exception as e:  # noqa: BLE001 - CLI entrypoint; converts unhandled errors to exit
                 click.echo(f"{progress} ❌ {agent_name}: Error - {e}", err=True)
                 results["errors"].append({"name": agent_name, "error": str(e)})
 

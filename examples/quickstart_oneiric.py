@@ -166,7 +166,7 @@ async def main():
 
         return 0
 
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001 - CLI entrypoint; converts unhandled errors to exit
         print(f"  ✗ Error: {e}")
         print()
         print("Troubleshooting:")

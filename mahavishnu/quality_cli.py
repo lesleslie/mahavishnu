@@ -29,7 +29,7 @@ async def run_quality_check(output: str) -> int | None:
         # a deterministic ``int | None`` rather than an import error.
         score = float(len(output.strip()))
         return int(score)
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
         logger.warning("Crackerjack quality check failed: %s", e)
         return None
 

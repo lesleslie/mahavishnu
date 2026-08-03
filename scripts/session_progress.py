@@ -78,7 +78,7 @@ def main():
         output = f"{status} │ {bar} {percentage:.1f}% │ {time_left} left"
         print(output)
 
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001 - CLI entrypoint; converts unhandled errors to exit
         # Fallback output on error
         print(f"⚠️  Session tracking error: {e!s}", file=sys.stderr)
         print("🟢 Claude Code Active")

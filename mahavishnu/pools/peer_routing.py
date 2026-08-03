@@ -176,7 +176,7 @@ class PeerRouteResolver:
                 peer_id=peer_id,
                 project_id=project_id,
             )
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
             logger.warning(
                 "peer_route_session_buddy_failure: peer_id=%r project_id=%r err=%s",
                 peer_id,

@@ -293,7 +293,7 @@ class ResilientEmbeddingClient:
             self._circuit_breaker.record_failure()
             return None
 
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
             logger.debug(f"akosha_embedding_failed: {e}")
             self._circuit_breaker.record_failure()
             return None
@@ -317,7 +317,7 @@ class ResilientEmbeddingClient:
                 if self._validate_dimension(embedding, "local_service"):
                     return embedding
             return None
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
             logger.debug(f"local_embedding_failed: {e}")
             return None
 
@@ -338,7 +338,7 @@ class ResilientEmbeddingClient:
             if cached and self._validate_dimension(cached, "cache"):
                 return cached
             return None
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
             logger.debug(f"cache_lookup_failed: {e}")
             return None
 
@@ -453,7 +453,7 @@ class ResilientEmbeddingClient:
                 result = await self._embedding_service.embed(uncached_texts)
                 if result.embeddings:
                     batch_embeddings = result.embeddings
-            except Exception as e:
+            except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
                 logger.debug(f"local_batch_failed: {e}")
 
         results: list[ResilientEmbeddingResult] = []
@@ -575,7 +575,7 @@ class ResilientEmbeddingClient:
             self._circuit_breaker.record_failure()
             return None
 
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
             logger.debug(f"akosha_batch_failed: {e}")
             self._circuit_breaker.record_failure()
             return None

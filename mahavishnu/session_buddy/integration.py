@@ -90,7 +90,7 @@ class SessionBuddyIntegration:
                 "classes_extracted": len(code_context["classes"]),
                 "imports_extracted": len(code_context["imports"]),
             }
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
             self.logger.error(f"Error integrating code graph: {e}")
             return {"status": "error", "error": str(e)}
 
@@ -118,7 +118,7 @@ class SessionBuddyIntegration:
             # Log the message that would be sent
             self.logger.info(f"Session Buddy message prepared: {session_buddy_message.project_id}")
 
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - event handler; logs and continues
             self.logger.error(f"Error sending code context to Session Buddy: {e}")
 
     async def get_related_code(self, repo_path: str, file_path: str) -> dict[str, Any]:
@@ -137,7 +137,7 @@ class SessionBuddyIntegration:
                 "related_files": related_files,
                 "count": len(related_files),
             }
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
             self.logger.error(f"Error getting related code: {e}")
             return {"status": "error", "error": str(e)}
 
@@ -152,7 +152,7 @@ class SessionBuddyIntegration:
             context = await analyzer.get_function_context(function_name)
 
             return {"status": "success", "function_name": function_name, "context": context}
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - event handler; logs and continues
             self.logger.error(f"Error getting function context: {e}")
             return {"status": "error", "error": str(e)}
 
@@ -190,7 +190,7 @@ class SessionBuddyIntegration:
                 "documentation_items": len(documentation),
                 "indexed": True,
             }
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
             self.logger.error(f"Error indexing documentation: {e}")
             return {"status": "error", "error": str(e)}
 
@@ -219,7 +219,7 @@ class SessionBuddyIntegration:
                     return docstring  # type: ignore[no-any-return]
 
             return None
-        except Exception:
+        except Exception:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
             return None
 
     async def _index_documentation_in_session_buddy(
@@ -248,7 +248,7 @@ class SessionBuddyIntegration:
             # Log the message that would be sent
             self.logger.info(f"Documentation index message prepared for {repo_path}")
 
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - event handler; logs and continues
             self.logger.error(f"Error indexing documentation in Session Buddy: {e}")
 
     async def search_documentation(self, query: str) -> dict[str, Any]:
@@ -261,7 +261,7 @@ class SessionBuddyIntegration:
             # This would normally be a call to Session Buddy's search API
             # For now, return an empty result
             return {"status": "success", "query": query, "results": [], "count": 0}
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
             self.logger.error(f"Error searching documentation: {e}")
             return {"status": "error", "error": str(e)}
 
@@ -296,7 +296,7 @@ class SessionBuddyIntegration:
                 "message_id": f"msg_{hash(str(project_message))}",
                 "sent": True,
             }
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
             self.logger.error(f"Error sending project message: {e}")
             return {"status": "error", "error": str(e)}
 
@@ -308,7 +308,7 @@ class SessionBuddyIntegration:
             self.logger.info(f"Listing messages for project: {project}")
 
             return {"status": "success", "project": project, "messages": [], "count": 0}
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
             self.logger.error(f"Error listing project messages: {e}")
             return {"status": "error", "error": str(e)}
 
@@ -364,5 +364,5 @@ class SessionBuddyManager:
                 results["documentation_search"] = doc_search
 
             return {"status": "success", "enhanced_context": results, "repo_path": repo_path}
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
             return {"status": "error", "error": str(e)}

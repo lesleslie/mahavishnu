@@ -310,7 +310,7 @@ async def run_validation(config_dir: str | Path = "settings", full: bool = False
             else:
                 settings = _load_settings_from_dir(config_dir)
                 runtime_settings_source = str(config_dir)
-        except Exception as exc:  # pragma: no cover - defensive, exercised via CLI error paths
+        except Exception as exc:  # pragma: no cover - defensive, exercised via CLI error paths  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
             runtime_validations.append(
                 ValidationResult(
                     valid=False,
@@ -457,7 +457,7 @@ def add_config_validation_commands(app: typer.Typer) -> None:
 
             try:
                 report = UnifiedConfig.validate(settings_dir=config_dir)
-            except Exception as exc:
+            except Exception as exc:  # noqa: BLE001 - CLI entrypoint; converts unhandled errors to exit
                 typer.echo(f"[ERROR] Validation failed to run: {exc}", err=True)
                 raise typer.Exit(code=2) from exc
 

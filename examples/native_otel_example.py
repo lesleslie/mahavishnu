@@ -121,7 +121,7 @@ async def example_ingest_claude_sessions():
         print(f"❌ Import error: {e}")
         print("   Make sure Mahavishnu is installed: pip install -e .")
         return False
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
         print(f"❌ Error: {e}")
         return False
 
@@ -217,7 +217,7 @@ async def example_ingest_qwen_sessions():
 
         return True
 
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
         print(f"❌ Error: {e}")
         return False
 
@@ -327,7 +327,7 @@ async def example_semantic_search():
 
         return True
 
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
         print(f"❌ Error: {e}")
         return False
 
@@ -402,7 +402,7 @@ async def example_retrieve_trace():
 
         return True
 
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
         print(f"❌ Error: {e}")
         return False
 
@@ -472,7 +472,7 @@ async def example_batch_ingestion():
 
         return True
 
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
         print(f"❌ Error: {e}")
         return False
 
@@ -564,7 +564,7 @@ async def example_health_check():
 
         return True
 
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
         print(f"❌ Error: {e}")
         return False
 
@@ -704,7 +704,7 @@ async def example_real_world_workflow():
 
         return True
 
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
         print(f"❌ Error: {e}")
         return False
 
@@ -751,7 +751,7 @@ async def main():
         try:
             result = await example_func()
             results[name] = result
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - CLI entrypoint; converts unhandled errors to exit
             print(f"❌ Example '{name}' failed with error: {e}")
             results[name] = False
 

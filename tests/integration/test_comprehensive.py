@@ -246,7 +246,7 @@ async def test_error_recovery_integration():
 
     # Test error recovery execution
     async def failing_operation():
-        raise Exception("Simulated failure")
+        raise Exception("Simulated failure")  # noqa: TRY002 - test fixture uses generic exception intentionally
 
     # Execute with resilience
     result = await app.error_recovery_manager.execute_with_resilience(

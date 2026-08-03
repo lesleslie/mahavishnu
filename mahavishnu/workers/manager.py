@@ -164,7 +164,7 @@ class WorkerManager:
                 worker_id = await worker.start(prompt=prompt)
                 self._workers[worker_id] = worker
                 worker_ids.append(worker_id)
-        except Exception:
+        except Exception:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
             for wid in worker_ids:
                 await self.close_worker(wid)
             invalidate_capability(worker_type)

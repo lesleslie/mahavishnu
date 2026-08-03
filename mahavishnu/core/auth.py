@@ -125,7 +125,7 @@ class JWTAuth:
         ) as e:
             msg, detail = self._JWT_ERROR_MAP[type(e)]
             raise AuthenticationError(message=msg, details={"error": detail}) from e
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
             raise AuthenticationError(
                 message=f"Authentication error: {e}",
                 details={"error": str(e)},

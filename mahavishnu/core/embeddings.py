@@ -407,7 +407,7 @@ class OllamaProvider(EmbeddingProviderInterface):
             sock.close()
 
             return result == 0
-        except Exception:
+        except Exception:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
             return False
 
 
@@ -485,7 +485,7 @@ class OpenAIProvider(EmbeddingProviderInterface):
             import os
 
             return bool(os.getenv("OPENAI_API_KEY"))
-        except Exception:
+        except Exception:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
             return False
 
 
@@ -671,7 +671,7 @@ class EmbeddingService:
             result = await provider.embed(texts)
             cb.record_success()
             return result
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
             cb.record_failure()
             logger.error(
                 "embedding-provider-failed",
@@ -721,7 +721,7 @@ class EmbeddingService:
                     result = await provider.embed(texts)
                     cb.record_success()
                     return result
-            except Exception as e:
+            except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
                 cb.record_failure()
                 errors.append(f"{provider_type.value}: {e}")
 
@@ -788,7 +788,7 @@ class EmbeddingService:
                 provider = self._get_provider(provider_type)
                 if provider.is_available():
                     available.append(provider_type)
-            except Exception as e:
+            except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
                 logger.debug("Provider not available: %s", e)
 
         return available
@@ -1233,7 +1233,7 @@ class SecureEmbeddingService:
             try:
                 result = await _embed_chunk(chunk)
                 results.append(result)
-            except Exception as e:
+            except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
                 # Record exception for partial failure handling
                 results.append(e)
                 logger.warning(

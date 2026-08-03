@@ -34,7 +34,7 @@ def load_active_repos(ecosystem_path: Path) -> list[dict[str, Any]]:
     data = yaml.safe_load(ecosystem_path.read_text()) or {}
     repos = data.get("repos", [])
     if not isinstance(repos, list):
-        raise ValueError(f"Invalid repos list in {ecosystem_path}")
+        raise TypeError(f"Invalid repos list in {ecosystem_path}")
     return [repo for repo in repos if repo.get("status", "active") == "active"]
 
 

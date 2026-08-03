@@ -359,7 +359,7 @@ class OllamaWorker(BaseWorker):
             try:
                 logger.info(f"Attempting to pull model {self.config.model}...")
                 await self._pull_model(self.config.model)
-            except Exception as e:
+            except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
                 await self._cleanup_client()
                 self._status = WorkerStatus.FAILED
                 raise RuntimeError(

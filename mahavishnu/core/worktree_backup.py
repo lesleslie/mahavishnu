@@ -122,7 +122,7 @@ class WorktreeBackupManager:
             logger.info(f"Backup created successfully: {backup_path}")
             return backup_path
 
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
             logger.exception("Failed to create backup")
             raise OSError(f"Backup creation failed: {e}") from e
 
@@ -242,7 +242,7 @@ class WorktreeBackupManager:
                 },
                 result="success",
             )
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
             logger.error(f"Failed to log backup to audit trail: {e}")
 
     async def restore_from_backup(
@@ -282,7 +282,7 @@ class WorktreeBackupManager:
                 "backup_path": str(backup_path),
             }
 
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
             logger.exception("Failed to restore from backup")
             raise OSError(f"Backup restoration failed: {e}") from e
 
@@ -336,7 +336,7 @@ class WorktreeBackupManager:
             logger.info(f"Cleaned up {removed_count} old backups")
             return removed_count
 
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
             logger.exception("Backup cleanup failed")
             return 0
 
@@ -379,6 +379,6 @@ class WorktreeBackupManager:
 
             return backups
 
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
             logger.exception("Failed to list backups")
             return []

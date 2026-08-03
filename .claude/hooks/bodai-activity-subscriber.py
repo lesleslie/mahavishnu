@@ -300,7 +300,7 @@ async def _run_subscriber() -> int:
                 signal.signal(sig, lambda *_: stop.set())
         try:
             await stop.wait()
-        except Exception:
+        except Exception:  # noqa: BLE001 - executor boundary; logs and re-raises or returns
             _log_exception("bodai-activity-subscriber: idle wait interrupted")
         return 0
 
@@ -341,7 +341,7 @@ async def _run_subscriber() -> int:
             queue_path=queue_path,
             cancellation_token=stop,
         )
-    except Exception:
+    except Exception:  # noqa: BLE001 - executor boundary; logs and re-raises or returns
         _log_exception("bodai-activity-subscriber: subscriber crashed")
     return 0
 
@@ -403,6 +403,6 @@ def main(argv: list[str] | None = None) -> int:
 if __name__ == "__main__":
     try:
         sys.exit(main())
-    except Exception:
+    except Exception:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
         _log_exception("bodai-activity-subscriber: unhandled error in main")
         sys.exit(0)

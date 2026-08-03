@@ -325,7 +325,7 @@ class ExecutionTracker:
                     # Fallback for legacy interface
                     await asyncio.sleep(0.001)
                     written = len(records)
-            except Exception as e:
+            except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
                 logger.error(f"PostgreSQL write failed: {e}")
                 return {"status": "error", "error": str(e), "written": 0}
         else:
@@ -378,7 +378,7 @@ class ExecutionTracker:
             except asyncio.CancelledError:
                 logger.info("Aggregation loop cancelled")
                 break
-            except Exception as e:
+            except Exception as e:  # noqa: BLE001 - event handler; logs and continues
                 logger.exception("Aggregation error")
 
     async def _calculate_aggregates(self) -> dict[str, Any]:

@@ -96,7 +96,7 @@ def get_embedding_model(model_name: str = DEFAULT_MODEL):
                 "Install with: uv pip install sentence-transformers"
             )
             raise
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
             logger.error(f"Failed to load embedding model: {e}")
             raise
 
@@ -255,7 +255,7 @@ def generate_embeddings(
                         )
                         metrics["generated"] += 1
 
-                except Exception as e:
+                except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
                     logger.error(f"Error processing batch: {e}")
                     metrics["errors"] += len(batch)
 
@@ -278,7 +278,7 @@ def generate_embeddings(
         finally:
             conn.close()
 
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
         logger.error(f"Failed to generate embeddings: {e}")
         import traceback
 
@@ -393,7 +393,7 @@ def test_semantic_search(
         finally:
             conn.close()
 
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001 - test fixture cleanup
         logger.error(f"Semantic search failed: {e}")
         import traceback
 
@@ -491,7 +491,7 @@ Available Models:
 
         return 0 if success else 1
 
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001 - CLI entrypoint; converts unhandled errors to exit
         logger.error(f"Execution failed: {e}")
         import traceback
 

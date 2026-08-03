@@ -227,7 +227,7 @@ def _post_tool_use() -> int:
             continue
         try:
             summary = _format_summary(envelope)
-        except Exception:
+        except Exception:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
             _log("bodai-activity-post-tool-use: failed to format envelope")
             new_max_at = max(new_max_at, received_at)
             continue
@@ -259,7 +259,7 @@ def main(argv: list[str] | None = None) -> int:
 if __name__ == "__main__":
     try:
         sys.exit(main())
-    except Exception:
+    except Exception:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
         sys.stderr.write("Hook output: bodai-activity-post-tool-use: unhandled error\n")
         sys.stderr.flush()
         sys.exit(0)

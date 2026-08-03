@@ -241,7 +241,7 @@ class MahavishnuAgent:
                 results=result,
             )
 
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
             logger.exception("sweep_repos failed for tag=%s", request.tag)
             return SweepReposResult(
                 tag=request.tag,
@@ -305,7 +305,7 @@ class MahavishnuAgent:
                 results=result,
             )
 
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
             logger.exception("route_task failed for intent=%s", request.intent[:50])
             return RouteTaskResult(
                 intent=request.intent,

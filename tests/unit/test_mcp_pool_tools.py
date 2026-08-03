@@ -160,7 +160,7 @@ class TestPoolSpawnTool:
                     "name": name,
                     "status": "created",
                 }
-            except Exception as e:
+            except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
                 return {
                     "status": "failed",
                     "error": str(e),
@@ -201,7 +201,7 @@ class TestPoolExecuteTool:
             try:
                 result = await mock_pool_manager.execute_on_pool(pool_id, task)
                 return result
-            except Exception as e:
+            except Exception as e:  # noqa: BLE001 - executor boundary; logs and re-raises or returns
                 return {
                     "pool_id": pool_id,
                     "status": "failed",
@@ -274,7 +274,7 @@ class TestPoolRouteExecuteTool:
                 selector = PoolSelector(pool_selector)
                 result = await mock_pool_manager.route_task(task, selector)
                 return result
-            except Exception as e:
+            except Exception as e:  # noqa: BLE001 - executor boundary; logs and re-raises or returns
                 return {
                     "status": "failed",
                     "error": str(e),
@@ -596,7 +596,7 @@ class TestPoolCloseTool:
             try:
                 await mock_pool_manager.close_pool(pool_id)
                 return {"pool_id": pool_id, "status": "closed"}
-            except Exception as e:
+            except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
                 return {
                     "pool_id": pool_id,
                     "status": "failed",
@@ -676,7 +676,7 @@ class TestPoolHealthTool:
         async def pool_health():
             try:
                 return await mock_pool_manager.health_check()
-            except Exception as e:
+            except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
                 return {
                     "status": "unhealthy",
                     "error": str(e),
@@ -739,7 +739,7 @@ class TestPoolSearchMemoryTool:
                     limit=limit,
                 )
                 return results
-            except Exception:
+            except Exception:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
                 return []
 
         # Mock the aggregator to raise error

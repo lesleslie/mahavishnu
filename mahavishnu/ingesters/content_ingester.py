@@ -276,7 +276,7 @@ class ContentIngester:
             self._initialized = True
             self._log.info("content_ingester_initialized")
 
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
             self._log.error("initialization_failed", error=str(e))
             raise RuntimeError(f"Failed to initialize ContentIngester: {e}") from e
 
@@ -516,7 +516,7 @@ class ContentIngester:
                 "metadata": metadata,
             }
 
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
             self._log.error("fetch_failed", url=url, error=str(e))
             raise RuntimeError(f"Failed to fetch URL {url}: {e}") from e
 

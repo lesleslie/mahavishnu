@@ -50,7 +50,7 @@ def load_all_agents() -> list[dict]:
         try:
             agent = parse_agent_file(file_path)
             agents.append(agent)
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
             print(f"Error parsing {file_path}: {e}", file=sys.stderr)
     return agents
 

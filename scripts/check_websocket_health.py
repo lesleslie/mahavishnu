@@ -282,7 +282,7 @@ async def check_websocket_server(
                 result = sock.connect_ex((host, port))
                 sock.close()
                 return result == 0
-            except Exception:
+            except Exception:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
                 return False
 
         # Run TCP check in thread pool to avoid blocking
@@ -356,7 +356,7 @@ async def check_websocket_server(
             except ImportError:
                 # websockets not available, fall back to TCP check
                 status = HealthStatus.HEALTHY
-            except Exception as e:
+            except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
                 # WebSocket protocol error but TCP connected
                 status = HealthStatus.DEGRADED
                 error_msg = str(e)
@@ -377,7 +377,7 @@ async def check_websocket_server(
     except TimeoutError:
         error_msg = f"Connection timeout after {timeout}s"
         status = HealthStatus.UNHEALTHY
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
         error_msg = str(e)
         status = HealthStatus.UNHEALTHY
 
@@ -598,7 +598,7 @@ def load_config_from_yaml(config_path: Path | None = None) -> dict[ServerName, S
         if servers_config and isinstance(servers_config, dict):
             return servers_config
 
-    except Exception:
+    except Exception:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
         # Silently fall back to defaults on any error
         pass
 

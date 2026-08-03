@@ -23,7 +23,7 @@ def _do_backup_create(backup_type: str) -> None:
             typer.echo(f"  Location: {backup_info.location}")
             typer.echo(f"  Size: {backup_info.size_bytes / (1024 * 1024):.2f} MB")
             typer.echo(f"  Time: {backup_info.timestamp.isoformat()}")
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
             typer.echo(f"✗ Backup failed: {e}", err=True)
             raise typer.Exit(code=1) from None
 
@@ -71,7 +71,7 @@ def _do_backup_restore(backup_id: str) -> None:
             else:
                 typer.echo(f"✗ Restore failed: {backup_id}", err=True)
                 raise typer.Exit(code=1)
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
             typer.echo(f"✗ Restore error: {e}", err=True)
             raise typer.Exit(code=1) from None
 

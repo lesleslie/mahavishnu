@@ -133,7 +133,7 @@ class PoolMonitorClient:
                 f"❌ Connection refused - is Mahavishnu WebSocket server running at {self.uri}?"
             )
             return False
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
             logger.error(f"❌ Failed to connect: {e}")
             if self.auto_reconnect and self._reconnect_attempts < self.max_reconnect_attempts:
                 self._reconnect_attempts += 1
@@ -153,7 +153,7 @@ class PoolMonitorClient:
             try:
                 await self.websocket.close()
                 logger.info("👋 Disconnected from WebSocket server")
-            except Exception as e:
+            except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
                 logger.warning(f"⚠️  Error during disconnect: {e}")
 
         self.connected = False
@@ -198,7 +198,7 @@ class PoolMonitorClient:
                     await handler(data)
                 else:
                     handler(data)
-            except Exception as e:
+            except Exception as e:  # noqa: BLE001 - event handler; logs and continues
                 logger.error(f"❌ Error in event handler for {event_type}: {e}")
 
     # Channel subscription
@@ -289,7 +289,7 @@ class PoolMonitorClient:
         except TimeoutError:
             logger.error("❌ Timeout waiting for subscription confirmation")
             return False
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
             logger.error(f"❌ Subscription error: {e}")
             return False
 
@@ -315,7 +315,7 @@ class PoolMonitorClient:
 
             return True
 
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
             logger.error(f"❌ Unsubscription error: {e}")
             return False
 
@@ -373,7 +373,7 @@ class PoolMonitorClient:
         except TimeoutError:
             logger.error("❌ Timeout querying pool status")
             return {}
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
             logger.error(f"❌ Error querying pool status: {e}")
             return {}
 
@@ -421,7 +421,7 @@ class PoolMonitorClient:
                             logger.info("✅ Reconnected successfully")
                             continue
                     break
-                except Exception as e:
+                except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
                     logger.error(f"❌ Error receiving message: {e}")
                     break
 
@@ -539,7 +539,7 @@ class PoolMonitorClient:
                 "timestamp": datetime.now(UTC).isoformat(),
             }
             await self.websocket.send(json.dumps(ping_msg))
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
             logger.debug(f"Failed to send ping: {e}")
 
 
@@ -612,7 +612,7 @@ async def demo_basic_pool_monitoring():
 
     except KeyboardInterrupt:
         logger.info("\n🛑 Demo stopped by user")
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
         logger.error(f"❌ Demo error: {e}")
     finally:
         await monitor.disconnect()
@@ -685,7 +685,7 @@ async def demo_multi_pool_monitoring():
 
     except KeyboardInterrupt:
         logger.info("\n🛑 Demo stopped by user")
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
         logger.error(f"❌ Demo error: {e}")
     finally:
         await monitor.disconnect()
@@ -744,7 +744,7 @@ async def demo_query_pool_status():
         else:
             logger.warning("⚠️  No status data received")
 
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
         logger.error(f"❌ Demo error: {e}")
     finally:
         await monitor.disconnect()
@@ -827,7 +827,7 @@ async def demo_worker_lifecycle_tracking():
 
     except KeyboardInterrupt:
         logger.info("\n🛑 Demo stopped by user")
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
         logger.error(f"❌ Demo error: {e}")
     finally:
         await monitor.disconnect()
@@ -933,7 +933,7 @@ async def demo_pool_scaling_events():
                 print(f"  [{ts}] {event['event'].upper()}: {event['pool_id']}")
             print("=" * 70 + "\n")
 
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001 - event handler; logs and continues
         logger.error(f"❌ Demo error: {e}")
     finally:
         await monitor.disconnect()

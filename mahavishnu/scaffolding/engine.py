@@ -189,7 +189,7 @@ class ScaffoldingEngine:
             shutil.rmtree(temp_dir, ignore_errors=True)
 
             return output
-        except Exception:
+        except Exception:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
             if temp_dir.exists():
                 shutil.rmtree(temp_dir, ignore_errors=True)
             if output.exists():
@@ -403,7 +403,7 @@ class ScaffoldingEngine:
             env = template_env if f.path.endswith(".html") else scaffold_env
             try:
                 rendered = env.from_string(template_str).render(**variables)
-            except Exception as e:
+            except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
                 raise ValueError(
                     f"Template render error in '{template_name}' for '{pattern.id}': {e}"
                 ) from e

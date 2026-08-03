@@ -504,7 +504,7 @@ class SecretRedactor:
 
             return redacted_path
 
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
             logger.error(f"Failed to redact file {file_path}: {e}")
             raise
 

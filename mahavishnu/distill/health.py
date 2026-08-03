@@ -48,7 +48,7 @@ def distilled_workflow_health(
             LIMIT 1
             """
         ).fetchone()
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
         if require_table_exists:
             raise RuntimeError(
                 "distilled_workflows table not found; call apply_distill_schema() first"

@@ -290,7 +290,7 @@ class AppleContainerWorker(BaseWorker):
                     },
                 },
             )
-        except Exception:
+        except Exception:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
             logger.exception("Failed to store apple-container result in Session-Buddy")
 
     async def stop(self) -> None:

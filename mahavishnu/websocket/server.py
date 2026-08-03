@@ -354,7 +354,7 @@ class MahavishnuWebSocketServer(WebSocketServer):
 
         try:
             await websocket.send(WebSocketProtocol.encode(error))
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
             logger.debug(f"Failed to send rate limit error: {e}")
 
     async def _handle_request(self, websocket: Any, message: WebSocketMessage) -> None:
@@ -499,7 +499,7 @@ class MahavishnuWebSocketServer(WebSocketServer):
                 }
             else:
                 return {"pool_id": pool_id, "status": "not_found"}
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
             logger.error(f"Error getting pool status: {e}")
             return {"pool_id": pool_id, "status": "error", "error": str(e)}
 
@@ -521,7 +521,7 @@ class MahavishnuWebSocketServer(WebSocketServer):
                 "stages_completed": 0,
                 "total_stages": 10,
             }
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
             logger.error(f"Error getting workflow status: {e}")
             return {"workflow_id": workflow_id, "status": "error", "error": str(e)}
 

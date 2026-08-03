@@ -205,7 +205,7 @@ def probe_lock(db_path: Path) -> LockProbe:
         con = duckdb.connect(str(db_path))
         con.close()
         return LockProbe(locked=False, holder_pid=None, stale=False)
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
         msg = str(e)
         m = re.search(r"\(PID\s+(\d+)\)", msg)
         if "Conflicting lock" not in msg or not m:
@@ -456,7 +456,7 @@ def run_checkpoint(db_path: Path, log: Callable[[str], None] = print) -> bool:
         # specific error; we catch it, install+load vss, and retry.
         try:
             con.execute("CHECKPOINT")
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
             msg = str(e)
             if "HNSW" not in msg and "vss" not in msg.lower():
                 raise

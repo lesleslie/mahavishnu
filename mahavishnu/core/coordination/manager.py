@@ -246,7 +246,7 @@ class CoordinationManager:
 
         try:
             return IssueStatus(normalized)
-        except Exception:
+        except Exception:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
             return IssueStatus.PENDING
 
     def _normalize_issue_priority(self, value: Any) -> str:
@@ -287,7 +287,7 @@ class CoordinationManager:
 
         try:
             return TodoStatus(normalized)
-        except Exception:
+        except Exception:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
             return TodoStatus.PENDING
 
     def _stringify_datetime(self, value: Any) -> Any:
@@ -684,7 +684,7 @@ class CoordinationManager:
             except subprocess.CalledProcessError as e:
                 result["passed"] = False
                 result["details"] = getattr(e, "output", str(e))
-            except Exception as e:
+            except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
                 result["passed"] = False
                 result["details"] = str(e)
 

@@ -150,7 +150,7 @@ def _tasks_send_handler(execute_fn: Any):  # type: ignore[no-untyped-def]
         try:
             result = await execute_fn({"prompt": prompt})
             return JSONResponse(_result_to_a2a(task_id, result))
-        except Exception:
+        except Exception:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
             logger.exception("A2A /tasks/send handler error")
             return JSONResponse(_error_to_a2a(task_id, "Task execution failed"))
 
@@ -174,7 +174,7 @@ def _tasks_send_subscribe_handler(execute_fn: Any, timeout: float = 600.0):  # t
                 await queue.put(
                     _sse_event(task_id, "failed", final=True, error="Task execution timed out")
                 )
-            except Exception:
+            except Exception:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
                 logger.exception("A2A /tasks/sendSubscribe handler error")
                 await queue.put(
                     _sse_event(task_id, "failed", final=True, error="Task execution failed")

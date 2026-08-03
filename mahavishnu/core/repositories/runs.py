@@ -234,7 +234,7 @@ class TaskRunRepository(BaseRepository[TaskRunCreate, TaskRunRead, TaskRunUpdate
 
                 return self._row_to_model(row)
 
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - executor boundary; logs and re-raises or returns
             raise self._handle_error(
                 "create_run",
                 e,
@@ -264,7 +264,7 @@ class TaskRunRepository(BaseRepository[TaskRunCreate, TaskRunRead, TaskRunUpdate
 
                 return self._row_to_model(row)
 
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - executor boundary; logs and re-raises or returns
             raise self._handle_error("get_run", e, {"run_id": str(run_id)})
 
     async def update_run(self, run_id: UUID, data: TaskRunUpdate) -> TaskRunRead | None:
@@ -331,7 +331,7 @@ class TaskRunRepository(BaseRepository[TaskRunCreate, TaskRunRead, TaskRunUpdate
 
                 return self._row_to_model(row)
 
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - executor boundary; logs and re-raises or returns
             raise self._handle_error("update_run", e, {"run_id": str(run_id)})
 
     async def list_runs_for_task(
@@ -365,7 +365,7 @@ class TaskRunRepository(BaseRepository[TaskRunCreate, TaskRunRead, TaskRunUpdate
                 rows = await conn.fetch(query, task_id, limit, offset)
                 return [self._row_to_model(row) for row in rows]
 
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - executor boundary; logs and re-raises or returns
             raise self._handle_error(
                 "list_runs_for_task",
                 e,
@@ -438,7 +438,7 @@ class TaskRunRepository(BaseRepository[TaskRunCreate, TaskRunRead, TaskRunUpdate
                 rows = await conn.fetch(query, *params)
                 return [self._row_to_model(row) for row in rows]
 
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - executor boundary; logs and re-raises or returns
             raise self._handle_error("list_runs", e, {"filters": filters.model_dump()})
 
     async def get_latest_run_for_task(self, task_id: UUID) -> TaskRunRead | None:
@@ -469,7 +469,7 @@ class TaskRunRepository(BaseRepository[TaskRunCreate, TaskRunRead, TaskRunUpdate
 
                 return self._row_to_model(row)
 
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - test fixture cleanup
             raise self._handle_error(
                 "get_latest_run_for_task",
                 e,
@@ -499,7 +499,7 @@ class TaskRunRepository(BaseRepository[TaskRunCreate, TaskRunRead, TaskRunUpdate
                 result = await conn.fetchval(query, task_id)
                 return result or 1
 
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - executor boundary; logs and re-raises or returns
             raise self._handle_error(
                 "get_next_run_number",
                 e,

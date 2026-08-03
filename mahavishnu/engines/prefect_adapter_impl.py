@@ -625,7 +625,7 @@ class PrefectAdapter(OrchestratorAdapter):
                 extra={"api_url": api_url},
             )
 
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
             error = _map_prefect_exception(exc, "initialize", api_url)
             logger.error(
                 "Failed to initialize PrefectAdapter",
@@ -1052,7 +1052,7 @@ class PrefectAdapter(OrchestratorAdapter):
 
         except PrefectError:
             raise
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
             error = _map_prefect_exception(
                 exc, f"create_deployment({flow_name}/{deployment_name})", self.config.api_url
             )
@@ -1300,7 +1300,7 @@ class PrefectAdapter(OrchestratorAdapter):
 
         except PrefectError:
             raise
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
             error = _map_prefect_exception(
                 exc, f"update_deployment({deployment_id})", self.config.api_url
             )
@@ -1348,7 +1348,7 @@ class PrefectAdapter(OrchestratorAdapter):
 
         except PrefectError:
             raise
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
             error = _map_prefect_exception(
                 exc, f"delete_deployment({deployment_id})", self.config.api_url
             )
@@ -1390,7 +1390,7 @@ class PrefectAdapter(OrchestratorAdapter):
 
         except PrefectError:
             raise
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
             error = _map_prefect_exception(
                 exc, f"get_deployment({deployment_id})", self.config.api_url
             )
@@ -1441,7 +1441,7 @@ class PrefectAdapter(OrchestratorAdapter):
 
         except PrefectError:
             raise
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
             error = _map_prefect_exception(
                 exc,
                 f"get_deployment_by_name({flow_name}/{deployment_name})",
@@ -1515,7 +1515,7 @@ class PrefectAdapter(OrchestratorAdapter):
 
         except PrefectError:
             raise
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
             error = _map_prefect_exception(exc, "list_deployments", self.config.api_url)
             logger.error(
                 "Failed to list deployments",
@@ -1585,7 +1585,7 @@ class PrefectAdapter(OrchestratorAdapter):
 
         except PrefectError:
             raise
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001 - executor boundary; logs and re-raises or returns
             error = _map_prefect_exception(
                 exc, f"trigger_flow_run({deployment_id})", self.config.api_url
             )
@@ -1626,7 +1626,7 @@ class PrefectAdapter(OrchestratorAdapter):
 
         except PrefectError:
             raise
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001 - executor boundary; logs and re-raises or returns
             error = _map_prefect_exception(exc, f"get_flow_run({flow_run_id})", self.config.api_url)
             logger.error(
                 "Failed to get flow run",
@@ -1698,7 +1698,7 @@ class PrefectAdapter(OrchestratorAdapter):
 
         except PrefectError:
             raise
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001 - executor boundary; logs and re-raises or returns
             error = _map_prefect_exception(exc, "list_flow_runs", self.config.api_url)
             logger.error(
                 "Failed to list flow runs",
@@ -1747,7 +1747,7 @@ class PrefectAdapter(OrchestratorAdapter):
 
         except PrefectError:
             raise
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001 - executor boundary; logs and re-raises or returns
             error = _map_prefect_exception(
                 exc, f"cancel_flow_run({flow_run_id})", self.config.api_url
             )
@@ -1791,7 +1791,7 @@ class PrefectAdapter(OrchestratorAdapter):
 
         except PrefectError:
             raise
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
             error = _map_prefect_exception(exc, "list_work_pools", self.config.api_url)
             logger.error(
                 "Failed to list work pools",
@@ -1828,7 +1828,7 @@ class PrefectAdapter(OrchestratorAdapter):
 
         except PrefectError:
             raise
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
             error = _map_prefect_exception(
                 exc, f"get_work_pool({work_pool_name})", self.config.api_url
             )
@@ -1920,7 +1920,7 @@ class PrefectAdapter(OrchestratorAdapter):
 
         except PrefectError:
             raise
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
             error = _map_prefect_exception(
                 exc,
                 f"clear_deployment_schedule({deployment_id})",

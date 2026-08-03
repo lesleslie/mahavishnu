@@ -374,7 +374,7 @@ class StatisticalRouter:
                     f"{pref.adapters[0].value if pref.adapters else 'none'} "
                     f"({pref.confidence.value})"
                 )
-            except Exception as e:
+            except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
                 logger.error(f"Failed to calculate preference for {task_type.value}: {e}")
 
         # Clear cache after recalculation
@@ -603,7 +603,7 @@ class StatisticalRouter:
             except asyncio.CancelledError:
                 logger.info("Recalculation loop cancelled")
                 break
-            except Exception as e:
+            except Exception as e:  # noqa: BLE001 - event handler; logs and continues
                 logger.exception("Recalculation error")
                 # Wait before retry
                 await asyncio.sleep(300)  # 5 minutes

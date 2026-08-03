@@ -110,7 +110,7 @@ async def db_connection(
             except (OSError, RuntimeError) as e:
                 logger.debug("Rollback error during cancellation: %s", e)
             raise
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
             logger.error("Database error: %s", e)
             raise
 

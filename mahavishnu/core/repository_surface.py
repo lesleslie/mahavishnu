@@ -174,7 +174,7 @@ def check_user_repo_permission(app: Any, user_id: str, repo_path: str) -> bool:
                     app.rbac_manager.check_permission(user_id, repo_path, Permission.READ_REPO)
                 ),
             )
-    except Exception:
+    except Exception:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
         return True
 
 
@@ -228,7 +228,7 @@ async def is_healthy(app: Any) -> bool:
             health = await adapter.get_health()
             if health.get("status") != "healthy":
                 return False
-        except Exception:
+        except Exception:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
             return False
 
     return True

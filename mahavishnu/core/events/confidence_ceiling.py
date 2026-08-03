@@ -124,7 +124,7 @@ def _try_emit_anomaly(
             return
     except ImportError:
         return
-    except Exception:
+    except Exception:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
         logger.exception("failed to import akosha emit_anomaly")
         return
 
@@ -136,7 +136,7 @@ def _try_emit_anomaly(
             reported_confidence=reported,
             computed_cap=cap,
         )
-    except Exception:
+    except Exception:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
         logger.exception("failed to emit akosha anomaly for confidence cap")
 
 

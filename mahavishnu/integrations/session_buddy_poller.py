@@ -210,7 +210,7 @@ class SessionBuddyPoller:
                 except asyncio.CancelledError:
                     self.logger.info("Polling loop cancelled")
                     break
-                except Exception as e:
+                except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
                     self.logger.exception("Error in polling loop")
                     self._record_error(f"Polling loop error: {e}")
                     # Continue running despite errors

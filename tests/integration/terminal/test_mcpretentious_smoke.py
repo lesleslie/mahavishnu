@@ -69,11 +69,11 @@ class TestMcpretentiousSmoke(unittest.IsolatedAsyncioTestCase):
                         "mcpretentious-close",
                         {"terminal_id": session_id},
                     )
-                except Exception:
+                except Exception:  # noqa: BLE001 - event handler; logs and continues
                     pass
         finally:
             # Stop the client subprocess.
             try:
                 await client._client.stop()  # type: ignore[attr-defined]
-            except Exception:
+            except Exception:  # noqa: BLE001 - event handler; logs and continues
                 pass

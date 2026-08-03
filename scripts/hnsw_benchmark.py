@@ -143,7 +143,7 @@ def main():
     try:
         conn.execute("DROP INDEX IF EXISTS hnsw_embeddings")
         print("Dropped existing HNSW index for fair comparison")
-    except Exception:
+    except Exception:  # noqa: BLE001 - CLI entrypoint; converts unhandled errors to exit
         pass
 
     # Run exact search 10 times

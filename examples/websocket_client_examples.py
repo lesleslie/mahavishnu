@@ -49,7 +49,7 @@ class MahavishnuWebSocketClient:
             data = json.loads(welcome)
             logger.info(f"Server message: {data.get('message', 'Welcome')}")
 
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
             logger.error(f"Failed to connect: {e}")
             raise
 
@@ -176,7 +176,7 @@ class MahavishnuWebSocketClient:
                     self.connected = False
                     break
 
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - event handler; logs and continues
             logger.error(f"Error listening to events: {e}")
             self.connected = False
 
@@ -273,7 +273,7 @@ async def example_query_status():
         # Disconnect after query
         await client.disconnect()
 
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
         logger.error(f"Error: {e}")
         await client.disconnect()
 

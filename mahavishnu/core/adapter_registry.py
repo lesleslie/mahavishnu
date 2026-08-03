@@ -250,7 +250,7 @@ class HybridAdapterRegistry:
                     report.registered += 1
                 else:
                     report.failed.append((metadata.adapter_id, "Registration failed"))
-            except Exception as e:
+            except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
                 error_msg = str(e)
                 report.failed.append((metadata.adapter_id, error_msg))
                 logger.error(f"Failed to register adapter {metadata.adapter_id}: {error_msg}")
@@ -334,7 +334,7 @@ class HybridAdapterRegistry:
             )
             return True
 
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
             logger.error(
                 f"Failed to instantiate adapter {metadata.adapter_id} from {factory_path}: {e}"
             )
@@ -584,7 +584,7 @@ class HybridAdapterRegistry:
                     )
                 )
 
-            except Exception as e:
+            except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
                 results[name] = {
                     "status": "unhealthy",
                     "error": str(e),

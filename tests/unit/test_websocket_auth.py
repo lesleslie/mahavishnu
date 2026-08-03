@@ -226,7 +226,7 @@ class TestWebSocketAuthenticationIntegration:
                 await client.connect()
                 # If connection succeeds, auth should have failed
                 assert client.is_authenticated is False
-            except (ConnectionError, Exception):
+            except (ConnectionError, Exception):  # noqa: BLE001 - event handler; logs and continues
                 # Expected - connection should be rejected
                 pass
             finally:

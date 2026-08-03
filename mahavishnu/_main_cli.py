@@ -388,7 +388,7 @@ async def _async_heal_workflows() -> dict:
             result = await dlq.retry_task(task.task_id)
             if result.get("status") == "retried":
                 healed += 1
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
             errors.append({"workflow_id": task.task_id, "error": str(e)})
 
     return {
@@ -795,7 +795,7 @@ def mcp_health() -> None:
         except (TimeoutError, ConnectionRefusedError, OSError):
             typer.echo("MCP Server: ✗ Not running")
             typer.echo(f"Could not connect to {host}:{port}")
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
             typer.echo(f"MCP Server: ? Unknown status: {e}")
 
     asyncio.run(_health())
@@ -921,7 +921,7 @@ def list_repos(
 
         for repo in repos:
             typer.echo(f"  - {repo}")
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
         typer.echo(f"Error: {e}", err=True)
         raise typer.Exit(code=1) from None
 
@@ -1107,7 +1107,7 @@ def terminal_launch(
             typer.echo(f"✓ Launched {len(session_ids)} session(s)")
             for sid in session_ids:
                 typer.echo(f"  - {sid}")
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
             typer.echo(f"ERROR: Failed to launch sessions: {e}")
             raise typer.Exit(code=1) from None
 
@@ -1134,7 +1134,7 @@ def terminal_list() -> None:
             typer.echo(f"Active sessions: {len(sessions)}")
             for session in sessions:
                 typer.echo(f"  - {session}")
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
             typer.echo(f"ERROR: Failed to list sessions: {e}")
             raise typer.Exit(code=1) from None
 
@@ -1162,7 +1162,7 @@ def terminal_send(
         try:
             await maha_app.terminal_manager.send_command(session_id, command)
             typer.echo(f"✓ Sent command to {session_id}")
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
             typer.echo(f"ERROR: Failed to send command: {e}")
             raise typer.Exit(code=1) from None
 
@@ -1193,7 +1193,7 @@ def terminal_capture(
                 lines,
             )
             typer.echo(output)
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
             typer.echo(f"ERROR: Failed to capture output: {e}")
             raise typer.Exit(code=1) from None
 
@@ -1229,7 +1229,7 @@ def terminal_close(
             else:
                 await maha_app.terminal_manager.close_session(session_id)
                 typer.echo(f"✓ Closed session {session_id}")
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
             typer.echo(f"ERROR: Failed to close session(s): {e}")
             raise typer.Exit(code=1) from None
 
@@ -1352,7 +1352,7 @@ def workers_spawn(
             workers_list = await worker_mgr.list_workers()
             typer.echo(f"\nActive workers: {len(workers_list)}")
 
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
             typer.echo(f"❌ Failed to spawn workers: {e}", err=True)
             raise typer.Exit(code=1)
 
@@ -1613,7 +1613,7 @@ def pool_spawn(
             typer.echo(f"   Workers: {min_workers}-{max_workers}")
             typer.echo(f"   Worker type: {worker_type}")
 
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
             typer.echo(f"❌ Failed to spawn pool: {e}", err=True)
             raise typer.Exit(code=1)
 
@@ -1653,7 +1653,7 @@ def pool_list() -> None:
                 )
                 typer.echo("")
 
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
             typer.echo(f"❌ Failed to list pools: {e}", err=True)
             raise typer.Exit(code=1)
 
@@ -1697,7 +1697,7 @@ def pool_execute(
         except ValueError as e:
             typer.echo(f"❌ {e}", err=True)
             raise typer.Exit(code=1)
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - executor boundary; logs and re-raises or returns
             typer.echo(f"❌ Failed to execute task: {e}", err=True)
             raise typer.Exit(code=1)
 
@@ -1747,7 +1747,7 @@ def pool_route(
         except ValueError as e:
             typer.echo(f"❌ {e}", err=True)
             raise typer.Exit(code=1)
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
             typer.echo(f"❌ Failed to route task: {e}", err=True)
             raise typer.Exit(code=1)
 
@@ -1785,7 +1785,7 @@ def pool_scale(
         except NotImplementedError as e:
             typer.echo(f"❌ {e}", err=True)
             raise typer.Exit(code=1)
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
             typer.echo(f"❌ Failed to scale pool: {e}", err=True)
             raise typer.Exit(code=1)
 
@@ -1813,7 +1813,7 @@ def pool_close(
             await maha_app.pool_manager.close_pool(pool_id)
             typer.echo(f"✅ Closed pool: {pool_id}")
 
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
             typer.echo(f"❌ Failed to close pool: {e}", err=True)
             raise typer.Exit(code=1)
 
@@ -1839,7 +1839,7 @@ def pool_close_all() -> None:
             await maha_app.pool_manager.close_all()
             typer.echo("✅ All pools closed")
 
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
             typer.echo(f"❌ Failed to close pools: {e}", err=True)
             raise typer.Exit(code=1)
 
@@ -1875,7 +1875,7 @@ def pool_health() -> None:
                     typer.echo(f"     Workers: {pool['workers']}")
                     typer.echo("")
 
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
             typer.echo(f"❌ Failed to get health: {e}", err=True)
             raise typer.Exit(code=1)
 

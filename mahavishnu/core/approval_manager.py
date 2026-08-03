@@ -266,7 +266,7 @@ class ApprovalManager:
                 if not request.is_expired and request.id not in self._pending_requests:
                     self._pending_requests[request.id] = request
                     restored += 1
-            except Exception as e:
+            except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
                 logger.debug("Skipped approval request: %s", e)
         return restored
 

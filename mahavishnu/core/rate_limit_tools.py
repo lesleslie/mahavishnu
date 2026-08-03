@@ -106,7 +106,7 @@ def rate_limit_tool(
             if key_func and kwargs:
                 try:
                     key = key_func(kwargs)
-                except Exception as e:
+                except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
                     logger.warning(f"Failed to get rate limit key: {e}")
                     key = "default"
 
@@ -144,7 +144,7 @@ def rate_limit_tool(
             try:
                 result = await func(*args, **kwargs)
                 return result
-            except Exception as e:
+            except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
                 # Log error but don't wrap it
                 logger.error(f"Error in rate-limited tool {tool_name}: {e}")
                 raise

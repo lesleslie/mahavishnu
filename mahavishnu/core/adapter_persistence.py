@@ -320,7 +320,7 @@ class AdapterPersistenceLayer:
 
             logger.info(f"AdapterPersistenceLayer initialized: {self.storage_path}")
 
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
             if not self._explicit_storage_path:
                 fallback_path = self._fallback_storage_path()
                 logger.warning(
@@ -333,7 +333,7 @@ class AdapterPersistenceLayer:
                     self._initialized = True
                     logger.info(f"AdapterPersistenceLayer initialized: {self.storage_path}")
                     return
-                except Exception as fallback_exc:
+                except Exception as fallback_exc:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
                     logger.error(f"Failed to initialize persistence layer: {fallback_exc}")
                     raise PersistenceError(
                         f"Failed to initialize database at {self.storage_path}",
@@ -455,7 +455,7 @@ class AdapterPersistenceLayer:
             # Future: Sync to Dhara MCP
             # await self._sync_to_dhara("adapter_state", data)
 
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
             logger.error(f"Failed to save state for adapter '{state.adapter_id}': {e}")
             raise AdapterStateError(
                 adapter_id=state.adapter_id,
@@ -507,7 +507,7 @@ class AdapterPersistenceLayer:
                 }
             )
 
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
             logger.error(f"Failed to load state for adapter '{adapter_id}': {e}")
             raise AdapterStateError(
                 adapter_id=adapter_id,
@@ -554,7 +554,7 @@ class AdapterPersistenceLayer:
             logger.debug(f"Loaded {len(states)} adapter states")
             return states
 
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
             logger.error(f"Failed to load all adapter states: {e}")
             raise AdapterStateError(
                 adapter_id="*",
@@ -602,7 +602,7 @@ class AdapterPersistenceLayer:
             # Future: Sync to Dhara MCP
             # await self._sync_to_dhara("health_history", data)
 
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
             logger.error(f"Failed to record health for adapter '{record.adapter_id}': {e}")
             raise HealthRecordError(
                 adapter_id=record.adapter_id,
@@ -662,7 +662,7 @@ class AdapterPersistenceLayer:
             logger.debug(f"Loaded {len(records)} health records for adapter '{adapter_id}'")
             return records
 
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
             logger.error(f"Failed to get health history for adapter '{adapter_id}': {e}")
             raise HealthRecordError(
                 adapter_id=adapter_id,
@@ -712,7 +712,7 @@ class AdapterPersistenceLayer:
 
             return deleted
 
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
             logger.error(f"Failed to cleanup old health records: {e}")
             raise HealthRecordError(
                 adapter_id="*",
@@ -752,7 +752,7 @@ class AdapterPersistenceLayer:
 
             return deleted
 
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
             logger.error(f"Failed to delete state for adapter '{adapter_id}': {e}")
             raise AdapterStateError(
                 adapter_id=adapter_id,
@@ -769,7 +769,7 @@ class AdapterPersistenceLayer:
             try:
                 await self._db.close()
                 logger.debug("Closed database connection")
-            except Exception as e:
+            except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
                 logger.warning(f"Error closing database: {e}")
             finally:
                 self._db = None

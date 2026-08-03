@@ -185,7 +185,7 @@ async def execute_agent_task(
 
             return result
 
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
             duration = time.time() - start_time
             agent_task_duration_seconds.labels(agent_type=agent_type, adapter=adapter).observe(
                 duration
