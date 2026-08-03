@@ -93,6 +93,23 @@ class MemoryOutboxWriter:
             return 0
         return int(row[0])
 
+    async def _bump_attempts(self, ids: list[int], error: str) -> None:
+        """Increment `attempts` and record the error without changing status.
+
+        Used by the drainer when a row fails transiently: the row stays
+        `pending` so a later drain pass retries it. Contrast with
+        `mark_failed` which also flips the status to `failed` (terminal).
+        """
+        if not ids:
+            return
+        conn = self._ensure_conn()
+        placeholders = ",".join(["?"] * len(ids))
+        conn.execute(
+            f"UPDATE memory_outbox SET attempts = attempts + 1, last_error = ? "
+            f"WHERE id IN ({placeholders})",
+            [error, *ids],
+        )
+
     async def pending_batch(self, limit: int) -> list[MemoryOutboxRow]:
         conn = self._ensure_conn()
         rows = conn.execute(

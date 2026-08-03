@@ -15,12 +15,19 @@ from __future__ import annotations
 import asyncio
 from collections import deque
 import contextlib
-from datetime import datetime, timedelta, UTC
+from datetime import UTC, datetime, timedelta
 import logging
+import os
+import pathlib
 import time
 from typing import TYPE_CHECKING, Any
 
 import httpx
+
+# Outbox (Q2 data-plane durability) is opt-in. Operators set the env vars
+# explicitly; the default behavior matches pre-Task-2 exactly.
+_OUTBOX_ENABLED = os.environ.get("MAHAVISHNU_OUTBOX_ENABLED", "false").lower() == "true"
+_OUTBOX_DRAIN = os.environ.get("MAHAVISHNU_OUTBOX_DRAIN", "false").lower() == "true"
 
 if TYPE_CHECKING:
     # Type-check-only imports — BasePool/PoolManager are duck-typed parameters
@@ -153,6 +160,26 @@ class MemoryAggregator:
         self._local_buffer: deque[dict[str, Any]] = deque(maxlen=self.LOCAL_BUFFER_MAX)
         self._buffer_drops = 0
 
+        # Optional outbox (Q2: deferred Session-Buddy writes). Off by default;
+        # activated only when MAHAVISHNU_OUTBOX_ENABLED=true. The drainer is
+        # only constructed when MAHAVISHNU_OUTBOX_DRAIN=true, so a passive WAL
+        # (writer-only) is also possible for downstream consumers that prefer
+        # to run their own drainer.
+        self._outbox_writer: Any = None
+        self._outbox_drainer: Any = None
+        if _OUTBOX_ENABLED:
+            from .outbox import MemoryOutboxDrainer, MemoryOutboxWriter
+
+            self._outbox_writer = MemoryOutboxWriter(
+                pathlib.Path.home() / ".mahavishnu" / "outbox.duckdb"
+            )
+            if _OUTBOX_DRAIN:
+                self._outbox_drainer = MemoryOutboxDrainer(
+                    writer=self._outbox_writer,
+                    breaker=self._sb_breaker,
+                    sink=self._sink_to_session_buddy,
+                )
+
         logger.info(f"MemoryAggregator initialized (sync_interval={sync_interval}s)")
 
         # PERFORMANCE: Batch size for Session-Buddy inserts
@@ -242,6 +269,27 @@ class MemoryAggregator:
                 "drops": self._buffer_drops,
             },
         }
+
+    async def _sink_to_session_buddy(self, key: str, payload: dict[str, object]) -> None:
+        """Drainer sink: dispatch a WAL row to the right Session-Buddy MCP call.
+
+        Key format is "<kind>:<id>" (e.g. "reflection:<uuid>").
+        YAGNI: only the kinds the aggregator already knows how to write are
+        handled here. Other kinds log at DEBUG and return without doing
+        anything — they remain `pending` and an operator can extend the
+        dispatch when a new kind is wired in (see plan Task 5).
+        """
+        kind, _, _ = key.partition(":")
+        if kind == "reflection":
+            text = payload.get("text", "")
+            if not isinstance(text, str):
+                text = str(text)
+            tags_obj = payload.get("tags", [])
+            tags: list[str] = [str(t) for t in tags_obj] if isinstance(tags_obj, list) else []
+            await self._insert_batch_to_session_buddy([{"text": text, "tags": tags}])
+            return
+        # Other kinds (e.g. "code_graph:*") are deferred to later phases.
+        logger.debug(f"outbox_sink_skipped: kind={kind} key={key}")
 
     async def _batch_insert_to_session_buddy(self, memory_items: list[dict[str, Any]]) -> int:
         """Insert memory items to Session-Buddy in batches (25x faster).
@@ -536,7 +584,7 @@ class MemoryAggregator:
 
         if cache_key in self._search_cache:
             cached_entry = self._search_cache[cache_key]
-            age = datetime.now((UTC)) - cached_entry["cached_at"]
+            age = datetime.now(UTC) - cached_entry["cached_at"]
 
             if age < self.CACHE_TTL:
                 logger.debug(f"Cache HIT for query: {query} (age: {age.total_seconds():.1f}s)")
@@ -576,7 +624,7 @@ class MemoryAggregator:
                 # Store in cache
                 self._search_cache[cache_key] = {
                     "results": conversations,
-                    "cached_at": datetime.now((UTC)),
+                    "cached_at": datetime.now(UTC),
                 }
 
                 return conversations  # type: ignore[no-any-return]
@@ -613,7 +661,7 @@ class MemoryAggregator:
             - ttl_minutes: Cache TTL in minutes
         """
         total = len(self._search_cache)
-        now = datetime.now((UTC))
+        now = datetime.now(UTC)
 
         active = sum(
             1
