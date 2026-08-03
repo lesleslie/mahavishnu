@@ -39,7 +39,7 @@ _NON_PTY_TERMINAL_ADAPTERS = frozenset({"auto", "crow", "iterm2", "mock"})
 # Get version from package metadata
 try:
     __version__ = version("mahavishnu")
-except Exception:
+except Exception:  # noqa: BLE001 - MCP boundary must preserve all operation failures
     __version__ = "0.0.0-unknown"
 
 
@@ -62,7 +62,7 @@ class McpretentiousMCPClient:
                 await self._client.start()
                 self._started = True
                 logger.info("Started mcpretentious MCP server")
-            except Exception as e:
+            except Exception as e:  # noqa: BLE001 - MCP boundary must preserve all operation failures
                 logger.error(f"Failed to start mcpretentious server: {e}")
                 raise RuntimeError(
                     f"Could not start mcpretentious server. "
@@ -113,7 +113,7 @@ class McpretentiousMCPClient:
             else:
                 raise ValueError(f"Unknown tool: {tool_name}")
 
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - MCP boundary must preserve all operation failures
             logger.error(f"Error calling mcpretentious tool {tool_name}: {e}")
             raise
 
@@ -238,7 +238,7 @@ class FastMCPServer:
             except TimeoutError:
                 status = "timeout"
                 raise
-            except Exception:
+            except Exception:  # noqa: BLE001 - MCP boundary must preserve all operation failures
                 status = "error"
                 raise
             finally:
@@ -259,7 +259,7 @@ class FastMCPServer:
             except TimeoutError:
                 status = "timeout"
                 raise
-            except Exception:
+            except Exception:  # noqa: BLE001 - MCP boundary must preserve all operation failures
                 status = "error"
                 raise
             finally:
@@ -332,7 +332,7 @@ class FastMCPServer:
                     "filtered_count": len(repos),
                     "tag": tag,
                 }
-            except Exception as e:
+            except Exception as e:  # noqa: BLE001 - MCP boundary must preserve all operation failures
                 return {
                     "status": "error",
                     "error": f"Failed to list repositories: {e}",
@@ -467,7 +467,7 @@ class FastMCPServer:
                     "execution_time": timeout,
                     "errors": [{"error": "Operation timed out", "type": "TimeoutError"}],
                 }
-            except Exception as e:
+            except Exception as e:  # noqa: BLE001 - MCP boundary must preserve all operation failures
                 # Create a workflow ID for the error case
                 import uuid
 
@@ -543,7 +543,7 @@ class FastMCPServer:
                     "errors_count": len(workflow_state.get("errors", [])),
                     "execution_time": workflow_state.get("execution_time_seconds"),
                 }
-            except Exception as e:
+            except Exception as e:  # noqa: BLE001 - MCP boundary must preserve all operation failures
                 return {
                     "workflow_id": workflow_id,
                     "status": "error",
@@ -607,7 +607,7 @@ class FastMCPServer:
                     "offset": offset,
                     "status_filter": status,
                 }
-            except Exception as e:
+            except Exception as e:  # noqa: BLE001 - MCP boundary must preserve all operation failures
                 return {
                     "status": "error",
                     "error": f"Failed to list workflows: {e}",
@@ -643,7 +643,7 @@ class FastMCPServer:
                     "status": "cancelled",
                     "message": f"Workflow {workflow_id} has been cancelled",
                 }
-            except Exception as e:
+            except Exception as e:  # noqa: BLE001 - MCP boundary must preserve all operation failures
                 return {
                     "workflow_id": workflow_id,
                     "status": "error",
@@ -682,7 +682,7 @@ class FastMCPServer:
                     "allowed_repos": allowed_repos,
                     "message": f"User {user_id} created successfully",
                 }
-            except Exception as e:
+            except Exception as e:  # noqa: BLE001 - MCP boundary must preserve all operation failures
                 return {"status": "error", "error": str(e), "message": "Failed to create user"}
 
         @server.tool()
@@ -710,7 +710,7 @@ class FastMCPServer:
                     "permission": permission,
                     "has_permission": has_permission,
                 }
-            except Exception as e:
+            except Exception as e:  # noqa: BLE001 - MCP boundary must preserve all operation failures
                 return {
                     "status": "error",
                     "error": f"Failed to check permission: {e}",
@@ -745,7 +745,7 @@ class FastMCPServer:
                     ],
                     "timestamp": datetime.now((UTC)).isoformat(),
                 }
-            except Exception as e:
+            except Exception as e:  # noqa: BLE001 - MCP boundary must preserve all operation failures
                 return {"error": f"Failed to get observability metrics: {e}", "metrics": {}}
 
         @server.tool()
@@ -784,7 +784,7 @@ class FastMCPServer:
                         "size": size,
                     },
                 }
-            except Exception as e:
+            except Exception as e:  # noqa: BLE001 - MCP boundary must preserve all operation failures
                 return {"status": "error", "error": f"Failed to search logs: {e}", "logs": []}
 
         @server.tool()
@@ -823,7 +823,7 @@ class FastMCPServer:
                         "size": size,
                     },
                 }
-            except Exception as e:
+            except Exception as e:  # noqa: BLE001 - MCP boundary must preserve all operation failures
                 return {
                     "status": "error",
                     "error": f"Failed to search workflows: {e}",
@@ -837,7 +837,7 @@ class FastMCPServer:
                 stats = await self.app.opensearch_integration.get_workflow_stats()
 
                 return {"status": "success", "statistics": stats}
-            except Exception as e:
+            except Exception as e:  # noqa: BLE001 - MCP boundary must preserve all operation failures
                 return {
                     "status": "error",
                     "error": f"Failed to get workflow statistics: {e}",
@@ -851,7 +851,7 @@ class FastMCPServer:
                 stats = await self.app.opensearch_integration.get_log_stats()
 
                 return {"status": "success", "statistics": stats}
-            except Exception as e:
+            except Exception as e:  # noqa: BLE001 - MCP boundary must preserve all operation failures
                 return {
                     "status": "error",
                     "error": f"Failed to get log statistics: {e}",
@@ -865,7 +865,7 @@ class FastMCPServer:
                 metrics = await self.app.error_recovery_manager.get_recovery_metrics()
 
                 return {"status": "success", "metrics": metrics}
-            except Exception as e:
+            except Exception as e:  # noqa: BLE001 - MCP boundary must preserve all operation failures
                 return {
                     "status": "error",
                     "error": f"Failed to get recovery metrics: {e}",
@@ -892,7 +892,7 @@ class FastMCPServer:
                     "timestamp": backup_info.timestamp.isoformat(),
                     "message": f"Backup {backup_info.backup_id} created successfully",
                 }
-            except Exception as e:
+            except Exception as e:  # noqa: BLE001 - MCP boundary must preserve all operation failures
                 return {"status": "error", "error": f"Failed to create backup: {e}"}
 
         @server.tool()
@@ -919,7 +919,7 @@ class FastMCPServer:
                     ],
                     "total_count": len(backups),
                 }
-            except Exception as e:
+            except Exception as e:  # noqa: BLE001 - MCP boundary must preserve all operation failures
                 return {
                     "status": "error",
                     "error": f"Failed to list backups: {e}",
@@ -941,7 +941,7 @@ class FastMCPServer:
                     "backup_id": backup_id,
                     "message": f"Restore {'completed' if success else 'failed'} for backup {backup_id}",
                 }
-            except Exception as e:
+            except Exception as e:  # noqa: BLE001 - MCP boundary must preserve all operation failures
                 return {"status": "error", "error": f"Failed to restore backup: {e}"}
 
         @server.tool()
@@ -955,7 +955,7 @@ class FastMCPServer:
                 results = await dr_manager.run_disaster_recovery_check()
 
                 return {"status": "success", "results": results}
-            except Exception as e:
+            except Exception as e:  # noqa: BLE001 - MCP boundary must preserve all operation failures
                 return {
                     "status": "error",
                     "error": f"Failed to run disaster recovery check: {e}",
@@ -968,7 +968,7 @@ class FastMCPServer:
                 await self.app.error_recovery_manager.monitor_and_heal_workflows()
 
                 return {"status": "success", "message": "Healing process initiated"}
-            except Exception as e:
+            except Exception as e:  # noqa: BLE001 - MCP boundary must preserve all operation failures
                 return {"status": "error", "error": f"Failed to initiate healing: {e}"}
 
         @server.tool()
@@ -990,7 +990,7 @@ class FastMCPServer:
                     "status": "success",
                     "ecosystem_status": report.model_dump(mode="json"),
                 }
-            except Exception as e:
+            except Exception as e:  # noqa: BLE001 - MCP boundary must preserve all operation failures
                 return {"status": "error", "error": f"Failed to get monitoring dashboard: {e}"}
 
         @server.tool()
@@ -1018,7 +1018,7 @@ class FastMCPServer:
                     ],
                     "count": len(active_alerts),
                 }
-            except Exception as e:
+            except Exception as e:  # noqa: BLE001 - MCP boundary must preserve all operation failures
                 return {"status": "error", "error": f"Failed to get active alerts: {e}"}
 
         @server.tool()
@@ -1034,7 +1034,7 @@ class FastMCPServer:
                     "status": "success" if success else "error",
                     "message": f"Alert {alert_id} {'acknowledged' if success else 'failed to acknowledge'} by {user}",
                 }
-            except Exception as e:
+            except Exception as e:  # noqa: BLE001 - MCP boundary must preserve all operation failures
                 return {"status": "error", "error": f"Failed to acknowledge alert: {e}"}
 
         @server.tool()
@@ -1072,7 +1072,7 @@ class FastMCPServer:
                     "alert_id": alert.id,
                     "message": f"Test alert created with ID: {alert.id}",
                 }
-            except Exception as e:
+            except Exception as e:  # noqa: BLE001 - MCP boundary must preserve all operation failures
                 return {"status": "error", "error": f"Failed to trigger test alert: {e}"}
 
         @server.tool()
@@ -1088,7 +1088,7 @@ class FastMCPServer:
                 await self.app.observability.flush_metrics()
 
                 return {"status": "success", "message": "Metrics flushed successfully"}
-            except Exception as e:
+            except Exception as e:  # noqa: BLE001 - MCP boundary must preserve all operation failures
                 return {"status": "error", "error": f"Failed to flush metrics: {e}"}
 
         @server.tool()
@@ -1127,7 +1127,7 @@ class FastMCPServer:
                         ]
 
                     adapters_info[name] = adapter_details
-                except Exception as e:
+                except Exception as e:  # noqa: BLE001 - MCP boundary must preserve all operation failures
                     adapters_info[name] = {
                         "enabled": True,
                         "health": {"status": "unhealthy", "error": str(e)},
@@ -1153,7 +1153,7 @@ class FastMCPServer:
                     try:
                         health = await adapter.get_health()
                         adapter_health[name] = health
-                    except Exception as e:
+                    except Exception as e:  # noqa: BLE001 - MCP boundary must preserve all operation failures
                         adapter_health[name] = {"status": "unhealthy", "error": str(e)}
 
                 # Check workflow state manager health
@@ -1165,7 +1165,7 @@ class FastMCPServer:
                         "status": "healthy",
                         "recent_workflows_count": len(recent_workflows),
                     }
-                except Exception as e:
+                except Exception as e:  # noqa: BLE001 - MCP boundary must preserve all operation failures
                     workflow_state_healthy = False
                     workflow_state_info = {"status": "unhealthy", "error": str(e)}
 
@@ -1178,7 +1178,7 @@ class FastMCPServer:
                         "default_roles_count": len(self.app.rbac_manager.roles),
                         "admin_role_exists": "admin" in self.app.rbac_manager.roles,
                     }
-                except Exception as e:
+                except Exception as e:  # noqa: BLE001 - MCP boundary must preserve all operation failures
                     rbac_healthy = False
                     rbac_info = {"status": "unhealthy", "error": str(e)}
 
@@ -1187,7 +1187,7 @@ class FastMCPServer:
                     opensearch_health = await self.app.opensearch_integration.health_check()
                     opensearch_healthy = opensearch_health.get("status") == "healthy"
                     opensearch_info = opensearch_health
-                except Exception as e:
+                except Exception as e:  # noqa: BLE001 - MCP boundary must preserve all operation failures
                     opensearch_healthy = False
                     opensearch_info = {"status": "unhealthy", "error": str(e)}
 
@@ -1218,7 +1218,7 @@ class FastMCPServer:
                     "opensearch_info": opensearch_info,
                     "timestamp": asyncio.get_event_loop().time(),
                 }
-            except Exception as e:
+            except Exception as e:  # noqa: BLE001 - MCP boundary must preserve all operation failures
                 return {
                     "status": "unhealthy",
                     "error": str(e),
@@ -1291,7 +1291,7 @@ class FastMCPServer:
             # broken by FastMCP 3.x and returned stale data.
             try:
                 registered_names = {t.name for t in await server.list_tools()}
-            except Exception:
+            except Exception:  # noqa: BLE001 - MCP boundary must preserve all operation failures
                 registered_names = set()
 
             # All known tools from the version registry

@@ -122,10 +122,10 @@ class EvidenceStore:
                     continue
                 try:
                     evidences.append(LearningEvidence.model_validate(item))
-                except Exception:
+                except (ValueError, TypeError):
                     logger.debug("evidence_parse_skipped: id=%s", item.get("id"))
             return evidences
-        except Exception:
+        except (httpx.HTTPError, KeyError, OSError, TimeoutError, ValueError):
             logger.exception("evidence_query_error: query=%s", query)
             return []
 

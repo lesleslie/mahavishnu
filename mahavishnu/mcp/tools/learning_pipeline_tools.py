@@ -66,7 +66,7 @@ def register_learning_tools(
                 "count": len(results),
                 "evidence": [e.model_dump(mode="json") for e in results],
             }
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001 - MCP boundary must preserve all operation failures
             logger.warning("list_evidence_failed", exc_info=True)
             return {"available": True, "error": str(exc), "count": 0, "evidence": []}
 
@@ -81,7 +81,7 @@ def register_learning_tools(
                 "available": True,
                 "cycle_result": result.model_dump(mode="json"),
             }
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001 - MCP boundary must preserve all operation failures
             logger.warning("trigger_synthesis_failed", exc_info=True)
             return {"available": True, "error": str(exc)}
 
@@ -105,7 +105,7 @@ def register_learning_tools(
                     for r in active
                 ],
             }
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001 - MCP boundary must preserve all operation failures
             logger.warning("list_pending_drafts_failed", exc_info=True)
             return {"available": True, "error": str(exc), "count": 0, "drafts": []}
 
@@ -130,7 +130,7 @@ def register_learning_tools(
                     for r in history
                 ],
             }
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001 - MCP boundary must preserve all operation failures
             logger.warning("get_promotion_history_failed", exc_info=True)
             return {
                 "available": True,

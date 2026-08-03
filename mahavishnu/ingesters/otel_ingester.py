@@ -243,7 +243,7 @@ class AkoshaEmbedder:
             if self._available:
                 logger.info("akosha_embedding_service_available")
             return self._available
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - remote service availability probe; any failure means unavailable
             logger.warning(f"akosha_embedding_service_unavailable: {e}")
             self._available = False
             return False
@@ -307,7 +307,7 @@ class AkoshaEmbedder:
             logger.warning(f"unexpected_akosha_response: {result}")
             return [0.0] * self._dimension
 
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - remote embedding service; degrade to zero-vector on any failure
             logger.error(f"akosha_embedding_failed: {e}")
             return [0.0] * self._dimension
 
@@ -342,7 +342,7 @@ class AkoshaEmbedder:
 
             return [[0.0] * self._dimension] * len(texts)
 
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - remote embedding service; degrade to zero-vector on any failure
             logger.error(f"akosha_batch_embedding_failed: {e}")
             return [[0.0] * self._dimension] * len(texts)
 
@@ -676,7 +676,7 @@ class OtelIngester:
                 embedder = self._create_embedder()
                 logger.info(f"Successfully initialized fallback backend: {backend.value}")
                 return embedder
-            except (ImportError, Exception) as e:
+            except Exception as e:  # noqa: BLE001 - optional backend probe; any import/init failure tries the next backend
                 logger.debug(f"Fallback backend {backend.value} unavailable: {e}")
                 continue
 
@@ -767,7 +767,7 @@ class OtelIngester:
 
         except ValidationError:
             raise
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - ingest boundary: log and continue so one bad trace does not stop the batch
             logger.error(f"Failed to ingest trace {trace_data.get('trace_id', 'unknown')}: {e}")
             # Don't fail - log and continue for other traces
 
@@ -824,7 +824,7 @@ class OtelIngester:
 
         except ValidationError:
             raise
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - ingest boundary: log and continue so one bad trace does not stop the batch
             logger.error(f"Failed to ingest trace {trace_data.get('trace_id', 'unknown')}: {e}")
 
     async def ingest_batch(self, traces: list[dict[str, Any]]) -> dict[str, Any]:
@@ -849,7 +849,7 @@ class OtelIngester:
             try:
                 await self.ingest_trace(trace)
                 success_count += 1
-            except Exception as e:
+            except Exception as e:  # noqa: BLE001 - per-trace resilience: one failure must not abort batch ingestion
                 error_count += 1
                 error_msg = f"Trace {trace.get('trace_id', 'unknown')}: {e}"
                 errors.append(error_msg)
@@ -907,7 +907,7 @@ class OtelIngester:
             logger.info(f"Search for '{query}' returned {len(results)} results")
             return results
 
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - search boundary: degrade to empty results on any backend failure
             logger.error(f"Search failed for query '{query}': {e}")
             return []
 
@@ -1030,7 +1030,7 @@ class OtelIngester:
                 "metadata": metadata,
             }
 
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - backend-agnostic lookup; degrade to None on any failure
             logger.error(f"Failed to get trace {trace_id}: {e}")
             return None
 
@@ -1065,7 +1065,7 @@ class OtelIngester:
             logger.debug(f"Trace {trace_id} not found")
             return None
 
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - backend-agnostic lookup; degrade to None on any failure
             logger.error(f"Failed to get trace {trace_id}: {e}")
             return None
 
@@ -1085,7 +1085,7 @@ class OtelIngester:
             self._embedding_cache.clear()
             logger.info(f"OTel ingester closed (storage={self._storage_type.value})")
 
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - cleanup path must never raise
             logger.error(f"Error closing OTel ingester: {e}")
 
     async def _get_embedding(self, content: str) -> list[float]:
@@ -1111,7 +1111,7 @@ class OtelIngester:
             if self._compressor and self._compressor.available:
                 try:
                     return self._compressor.decompress_batch([cached])[0]
-                except Exception as e:
+                except Exception as e:  # noqa: BLE001 - optional compressor; corrupt cache entry is evicted and regenerated
                     # Cache entry is corrupt (e.g. bit-width changed after restart).
                     # Evict it and fall through to re-generate a fresh embedding.
                     logger.warning(
@@ -1136,7 +1136,7 @@ class OtelIngester:
         if self._compressor and self._compressor.available:
             try:
                 self._embedding_cache[content] = self._compressor.compress_batch([embedding])[0]
-            except Exception as e:
+            except Exception as e:  # noqa: BLE001 - optional compressor; fall back to caching the raw embedding
                 logger.warning(f"turboquant_compress_failed, caching raw: {e}")
                 self._embedding_cache[content] = embedding
         else:
@@ -1208,7 +1208,7 @@ class OtelIngester:
                 elif isinstance(start_time, int):
                     # Handle Unix timestamp (nanoseconds)
                     return datetime.fromtimestamp(start_time / 1_000_000_000, tz=UTC)
-            except Exception as e:
+            except (ValueError, TypeError, OverflowError, OSError) as e:
                 logger.warning(f"Failed to parse timestamp {start_time}: {e}")
 
         return datetime.now(UTC)

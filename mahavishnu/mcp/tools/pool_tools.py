@@ -65,7 +65,7 @@ def _validate_workflow_id(workflow_id: str) -> bool:
 
 try:
     from mahavishnu.pools.memory_aggregator import MemoryAggregator
-except Exception:  # pragma: no cover - optional import for test patching
+except Exception:  # pragma: no cover - optional import for test patching  # noqa: BLE001 - MCP boundary must preserve all operation failures
     MemoryAggregator = None  # ty: ignore[invalid-assignment]
 
 logger = logging.getLogger(__name__)
@@ -241,7 +241,7 @@ async def _run_async_dispatch(
             "rate_limited": True,
             "retry_after_seconds": exc.details.get("retry_after_seconds"),
         }
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001 - MCP boundary must preserve all operation failures
         logger.exception(
             "dispatch_to_pool: async workflow_id=%s failed",
             workflow_id,
@@ -254,7 +254,7 @@ async def _run_async_dispatch(
         try:
             await _persist_state(terminal_status, final_payload)
             return
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001 - MCP boundary must preserve all operation failures
             dead_letter_dir = Path.home() / ".mahavishnu" / "async-dead-letter"
             try:
                 dead_letter_dir.mkdir(parents=True, exist_ok=True)
@@ -273,7 +273,7 @@ async def _run_async_dispatch(
                             default=str,
                         )
                     )
-                except Exception:
+                except Exception:  # noqa: BLE001 - MCP boundary must preserve all operation failures
                     logger.exception(
                         "dispatch_to_pool: dead-letter write FAILED workflow_id=%s path=%s",
                         workflow_id,
@@ -290,14 +290,14 @@ async def _run_async_dispatch(
                             **final_payload,
                         },
                     )
-                except Exception:
+                except Exception:  # noqa: BLE001 - MCP boundary must preserve all operation failures
                     logger.exception(
                         "dispatch_to_pool: marker write FAILED "
                         "workflow_id=%s intended_terminal_status=%s",
                         workflow_id,
                         terminal_status,
                     )
-            except Exception:
+            except Exception:  # noqa: BLE001 - MCP boundary must preserve all operation failures
                 logger.exception(
                     "dispatch_to_pool: dead-letter recovery FAILED workflow_id=%s",
                     workflow_id,
@@ -389,7 +389,7 @@ def register_pool_tools(
                 "min_workers": min_workers,
                 "max_workers": max_workers,
             }
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - MCP boundary must preserve all operation failures
             logger.error(f"Failed to spawn pool: {e}")
             return {
                 "status": "failed",
@@ -478,7 +478,7 @@ def register_pool_tools(
                 "retry_after_seconds": exc.details.get("retry_after_seconds"),
                 "error": str(exc),
             }
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - MCP boundary must preserve all operation failures
             logger.error(f"Failed to execute task: {e}")
             return {
                 "pool_id": pool_id,
@@ -644,7 +644,7 @@ def register_pool_tools(
             task["routable_workers"] = select_routable_workers(
                 settings=MahavishnuSettings(),
             )
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - MCP boundary must preserve all operation failures
             # Settings may be unavailable in test environments; we
             # never want capability resolution to block routing.
             logger.debug("Routable workers resolution skipped: %s", e)
@@ -667,7 +667,7 @@ def register_pool_tools(
                 "retry_after_seconds": exc.details.get("retry_after_seconds"),
                 "error": str(exc),
             }
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - MCP boundary must preserve all operation failures
             logger.exception("pool_route_execute failed")
             return {
                 "status": "failed",
@@ -857,7 +857,7 @@ def register_pool_tools(
                     "retry_after_seconds": exc.details.get("retry_after_seconds"),
                     "error": str(exc),
                 }
-            except Exception as exc:
+            except Exception as exc:  # noqa: BLE001 - MCP boundary must preserve all operation failures
                 logger.exception("dispatch_to_pool: sync dispatch failed")
                 return {
                     "status": "failed",
@@ -885,7 +885,7 @@ def register_pool_tools(
                         "queued_at": datetime.now(UTC).isoformat(),
                     },
                 )
-            except Exception as exc:
+            except Exception as exc:  # noqa: BLE001 - MCP boundary must preserve all operation failures
                 logger.warning(
                     "dispatch_to_pool: initial queued state write failed workflow_id=%s error=%s",
                     workflow_id,
@@ -965,7 +965,7 @@ def register_pool_tools(
         """List all active pools."""
         try:
             return await pool_manager.list_pools()  # type: ignore[no-any-return]
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - MCP boundary must preserve all operation failures
             logger.error(f"Failed to list pools: {e}")
             return []
 
@@ -976,7 +976,7 @@ def register_pool_tools(
         """Monitor pool status and metrics."""
         try:
             return await pool_manager.aggregate_results(pool_ids)  # type: ignore[no-any-return]
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - MCP boundary must preserve all operation failures
             logger.error(f"Failed to monitor pools: {e}")
             return {}
 
@@ -1009,7 +1009,7 @@ def register_pool_tools(
                 "status": "failed",
                 "error": "Pool does not support scaling (e.g., SessionBuddyPool is fixed at 3 workers)",
             }
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - MCP boundary must preserve all operation failures
             logger.error(f"Failed to scale pool: {e}")
             return {
                 "pool_id": pool_id,
@@ -1029,7 +1029,7 @@ def register_pool_tools(
                 "pool_id": pool_id,
                 "status": "closed",
             }
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - MCP boundary must preserve all operation failures
             logger.error(f"Failed to close pool: {e}")
             return {
                 "pool_id": pool_id,
@@ -1050,7 +1050,7 @@ def register_pool_tools(
                 "pools_closed": count,
                 "status": "all_closed",
             }
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - MCP boundary must preserve all operation failures
             logger.error(f"Failed to close pools: {e}")
             return {
                 "pools_closed": 0,
@@ -1063,7 +1063,7 @@ def register_pool_tools(
         """Get health status of all pools."""
         try:
             return await pool_manager.health_check()  # type: ignore[no-any-return]
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - MCP boundary must preserve all operation failures
             logger.error(f"Failed to get health: {e}")
             return {
                 "status": "unhealthy",
@@ -1089,7 +1089,7 @@ def register_pool_tools(
             )
 
             return results
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - MCP boundary must preserve all operation failures
             logger.error(f"Failed to search memory: {e}")
             return []
 

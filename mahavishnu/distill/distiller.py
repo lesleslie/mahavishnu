@@ -208,7 +208,7 @@ def distill_workflows(
         # H4 source provenance gate — runs per candidate.
         try:
             run_record = _find_session_run_record(conn, session_id)
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001 - backend-agnostic conn Protocol; any query error skips the candidate
             logger.warning(
                 "distill_workflows: H4 provenance lookup failed; skipping",
                 extra={"session_id": session_id, "error": str(exc)},
@@ -235,7 +235,7 @@ def distill_workflows(
 
         try:
             payload = _synthesize_candidate(conn, session_id)
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001 - backend-agnostic conn Protocol; any synthesis error skips the candidate
             logger.warning(
                 "distill_workflows: skipping candidate due to error",
                 extra={"session_id": session_id, "error": str(exc)},
@@ -253,7 +253,7 @@ def distill_workflows(
                 distill_run_id=distill_run_id,
             )
             inserted_ids.append(workflow_id)
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001 - backend-agnostic conn Protocol; any INSERT error skips the candidate
             logger.warning(
                 "distill_workflows: INSERT failed for candidate",
                 extra={"session_id": session_id, "error": str(exc)},

@@ -70,7 +70,7 @@ def register_adapter_registry_tools(mcp: FastMCP) -> None:
                 "adapters": [],
                 "count": 0,
             }
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - MCP boundary must preserve all operation failures
             logger.error(f"Failed to list adapters: {e}")
             return {
                 "success": False,
@@ -118,7 +118,7 @@ def register_adapter_registry_tools(mcp: FastMCP) -> None:
                 "success": False,
                 "error": "Adapter registry not initialized",
             }
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - MCP boundary must preserve all operation failures
             logger.error(f"Failed to resolve adapter: {e}")
             return {
                 "success": False,
@@ -167,7 +167,7 @@ def register_adapter_registry_tools(mcp: FastMCP) -> None:
                 "success": False,
                 "error": "Adapter registry not initialized",
             }
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - MCP boundary must preserve all operation failures
             logger.error(f"Failed to check adapter health: {e}")
             return {
                 "success": False,
@@ -209,7 +209,7 @@ def register_adapter_registry_tools(mcp: FastMCP) -> None:
                 "success": False,
                 "error": "Adapter registry not initialized",
             }
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - MCP boundary must preserve all operation failures
             logger.error(f"Failed to set adapter enabled: {e}")
             return {
                 "success": False,
@@ -244,7 +244,7 @@ def register_adapter_registry_tools(mcp: FastMCP) -> None:
                 "success": False,
                 "error": "Adapter registry not initialized",
             }
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - MCP boundary must preserve all operation failures
             logger.error(f"Failed to get adapter metadata: {e}")
             return {
                 "success": False,
@@ -283,7 +283,7 @@ def register_adapter_registry_tools(mcp: FastMCP) -> None:
                 "success": False,
                 "error": "Adapter registry not initialized",
             }
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - MCP boundary must preserve all operation failures
             logger.error(f"Failed to invalidate cache: {e}")
             return {
                 "success": False,
@@ -315,7 +315,7 @@ def register_adapter_registry_tools(mcp: FastMCP) -> None:
                 "success": False,
                 "error": "Adapter registry not initialized",
             }
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - MCP boundary must preserve all operation failures
             logger.error(f"Failed to discover adapters: {e}")
             return {
                 "success": False,

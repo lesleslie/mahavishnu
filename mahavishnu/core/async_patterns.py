@@ -107,11 +107,11 @@ async def db_connection(
             # Rollback on cancellation
             try:
                 await conn.execute("ROLLBACK")
-            except Exception as e:
+            except (OSError, RuntimeError) as e:
                 logger.debug("Rollback error during cancellation: %s", e)
             raise
         except Exception as e:
-            logger.error(f"Database error: {e}")
+            logger.error("Database error: %s", e)
             raise
 
 

@@ -64,7 +64,7 @@ def register_websocket_tools(server, websocket_server):
                 "message_rate_limit": websocket_server.message_rate_limit,
             }
 
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - MCP boundary must preserve all operation failures
             logger.error(f"Error checking WebSocket health: {e}")
             return {
                 "status": "error",
@@ -107,7 +107,7 @@ def register_websocket_tools(server, websocket_server):
                 "total_rooms": len(rooms),
             }
 
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - MCP boundary must preserve all operation failures
             logger.error(f"Error getting WebSocket status: {e}")
             return {
                 "error": str(e),
@@ -136,7 +136,7 @@ def register_websocket_tools(server, websocket_server):
                 "total_rooms": len(rooms),
             }
 
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - MCP boundary must preserve all operation failures
             logger.error(f"Error listing WebSocket rooms: {e}")
             return {
                 "error": str(e),
@@ -205,7 +205,7 @@ def register_websocket_tools(server, websocket_server):
                 "message": "Test event broadcast successfully",
             }
 
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - MCP boundary must preserve all operation failures
             logger.error(f"Error broadcasting test event: {e}")
             return {
                 "status": "error",
@@ -236,7 +236,7 @@ def register_websocket_tools(server, websocket_server):
                 "current_connections": len(websocket_server.connections),
             }
 
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - MCP boundary must preserve all operation failures
             logger.error(f"Error getting WebSocket metrics: {e}")
             return {
                 "error": str(e),

@@ -149,7 +149,7 @@ def is_feature_enabled(feature_name: str) -> bool:
         # Check specific feature flag
         return getattr(feature_flags, feature_name, False)
 
-    except Exception:
+    except (AttributeError, KeyError, TypeError):
         # On any error, return default
         return _get_default_flag(feature_name)
 

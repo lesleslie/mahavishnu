@@ -320,7 +320,7 @@ class ContentIngester:
                 ratio=savings["ratio"],
                 bits=self._compressor.bits,
             )
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - optional compressor probe; estimation failure must not block ingestion
             self._log.warning("turboquant_estimate_failed", error=str(e))
             return None
 
@@ -578,7 +578,7 @@ class ContentIngester:
 
             return response.status_code == 200
 
-        except Exception as e:
+        except (httpx.HTTPError, OSError, ValueError, KeyError) as e:
             self._log.warning("akosha_store_failed", error=str(e))
             return False
 
@@ -617,7 +617,7 @@ class ContentIngester:
 
             return response.status_code == 200
 
-        except Exception as e:
+        except (httpx.HTTPError, OSError, ValueError, KeyError) as e:
             self._log.warning("crackerjack_index_failed", error=str(e))
             return False
 
@@ -661,7 +661,7 @@ class ContentIngester:
 
             return response.status_code == 200
 
-        except Exception as e:
+        except (httpx.HTTPError, OSError, ValueError, KeyError) as e:
             self._log.warning("session_buddy_track_failed", error=str(e))
             return False
 
@@ -767,7 +767,7 @@ class ContentIngester:
 
             return result
 
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - ingestion boundary: returns IngestionResult(success=False)
             self._log.error("ingestion_failed", url=url, error=str(e))
             return IngestionResult(
                 success=False,
@@ -876,7 +876,7 @@ class ContentIngester:
 
             return result
 
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - ingestion boundary: returns IngestionResult(success=False)
             self._log.error("file_ingestion_failed", file_path=str(file_path), error=str(e))
             return IngestionResult(
                 success=False,

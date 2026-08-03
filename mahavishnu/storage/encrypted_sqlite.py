@@ -216,7 +216,7 @@ class EncryptedSQLite:
             logger.debug("Database encrypted successfully")
             return True
 
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - encryption must degrade to False, never propagate
             logger.error(f"Encryption failed: {e}")
             return False
 
@@ -680,6 +680,6 @@ async def verify_encrypted_database(
         await db.close()
         return is_valid
 
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001 - verification probe must degrade to False, never propagate
         logger.error(f"Encrypted database verification failed: {e}")
         return False

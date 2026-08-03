@@ -126,7 +126,7 @@ def discover_workflows(repo_root: Path) -> list[dict[str, Any]]:
         module = importlib.util.module_from_spec(spec)
         try:
             spec.loader.exec_module(module)
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - plugin loader: a broken module must not abort discovery
             # Module failed to import. Skip silently — publish-time QC will
             # surface this. We deliberately do not raise: discovery is
             # best-effort enumeration, not a gate.

@@ -177,7 +177,7 @@ class PgvectorAdapter:
             async with self._connection() as conn:
                 await conn.execute("SELECT 1")
             return True
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001 - health probe must never raise
             self._logger.warning("pgvector-health-failed", extra={"error": str(exc)})
             return False
 

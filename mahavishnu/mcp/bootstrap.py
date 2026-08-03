@@ -57,7 +57,7 @@ def init_terminal_manager(server: FastMCPServer) -> TerminalManager | None:
             config.max_concurrent_sessions,
         )
         return manager
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001 - MCP boundary must preserve all operation failures
         logger.error("Failed to initialize terminal manager: %s", exc)
         return None
 

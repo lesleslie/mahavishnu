@@ -157,7 +157,7 @@ class MessageBus:
             try:
                 # Run subscriber asynchronously
                 asyncio.create_task(subscriber(msg))
-            except Exception as e:
+            except Exception as e:  # noqa: BLE001 - MCP boundary must preserve all operation failures
                 logger.error(f"Subscriber error: {e}")
 
     async def _publish_canonical_event(self, msg: Message) -> None:

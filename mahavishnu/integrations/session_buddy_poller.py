@@ -270,7 +270,7 @@ class SessionBuddyPoller:
                 # Reset consecutive failures on success
                 self._consecutive_failures = 0
 
-            except Exception as e:
+            except Exception as e:  # noqa: BLE001 - per-tool resilience: one failing tool must not abort the poll cycle
                 error_msg = f"Failed to poll {tool_name}: {e}"
                 self.logger.warning(error_msg)
                 results["errors"].append(error_msg)
@@ -578,7 +578,7 @@ class SessionBuddyPoller:
 
                 self.logger.debug(f"Recorded OTel metric: {metric_name} = {value}")
 
-            except Exception as e:
+            except Exception as e:  # noqa: BLE001 - OTel instrumentation must never break the poll loop
                 self.logger.warning(f"Failed to record metric {metric.get('name')}: {e}")
 
     def _record_error(self, error_message: str) -> None:
@@ -603,7 +603,7 @@ class SessionBuddyPoller:
                     description="Total polling errors",
                 )
                 error_counter.add(1, {"source": "session_buddy_poller"})
-            except Exception as e:
+            except Exception as e:  # noqa: BLE001 - OTel instrumentation must never break error recording
                 logger.debug("Metric recording skipped: %s", e)
 
     async def _open_circuit_breaker(self) -> None:

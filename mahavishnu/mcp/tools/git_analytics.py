@@ -105,7 +105,7 @@ def register_git_analytics_tools(
                 },
             }
 
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - MCP boundary must preserve all operation failures
             return {"status": "error", "error": f"Failed to get git velocity dashboard: {e!s}"}
 
     @server.tool()
@@ -168,7 +168,7 @@ def register_git_analytics_tools(
                 },
             }
 
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - MCP boundary must preserve all operation failures
             return {"status": "error", "error": f"Failed to get repository health: {e!s}"}
 
     @server.tool()
@@ -307,7 +307,7 @@ def register_git_analytics_tools(
 
             return {"status": "success", "result": result}
 
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - MCP boundary must preserve all operation failures
             return {"status": "error", "error": f"Failed to get cross-project patterns: {e!s}"}
 
     async def _query_session_buddy_metrics(app, repo_path: str) -> dict[str, Any]:
@@ -328,7 +328,7 @@ def register_git_analytics_tools(
                 "dict[str, Any]",
                 await cast("Any", integration).get_workflow_metrics(repo_path),
             )
-        except Exception:
+        except Exception:  # noqa: BLE001 - MCP boundary must preserve all operation failures
             # Session-Buddy might not be available or configured
             return {"status": "unavailable", "metrics": {}}
 
@@ -350,7 +350,7 @@ def register_git_analytics_tools(
                 "list[dict[str, Any]]",
                 await cast("Any", integration).detect_patterns(days_back),
             )
-        except Exception:
+        except Exception:  # noqa: BLE001 - MCP boundary must preserve all operation failures
             return []
 
     async def _query_quality_patterns(app, days_back: int) -> list[dict]:
@@ -371,7 +371,7 @@ def register_git_analytics_tools(
                 "list[dict[str, Any]]",
                 await cast("Any", integration).get_quality_patterns(days_back),
             )
-        except Exception:
+        except Exception:  # noqa: BLE001 - MCP boundary must preserve all operation failures
             return []
 
     def _calculate_health_score(stale_prs: int, stale_branches: int, workflow_health: dict) -> int:

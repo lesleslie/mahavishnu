@@ -74,7 +74,7 @@ def register_repository_messaging_tools(server, app, mcp_client):
                 "sent_at": message.timestamp.isoformat(),  # ty: ignore[unresolved-attribute]
                 "priority": message.priority.value,
             }
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - MCP boundary must preserve all operation failures
             return {"status": "error", "error": f"Failed to send repository message: {e}"}
 
     @server.tool()
@@ -120,7 +120,7 @@ def register_repository_messaging_tools(server, app, mcp_client):
                 "message_ids": [msg.id for msg in messages],
                 "target_repos": target_repos or app.get_repos(),
             }
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - MCP boundary must preserve all operation failures
             return {"status": "error", "error": f"Failed to broadcast repository message: {e}"}
 
     @server.tool()
@@ -176,7 +176,7 @@ def register_repository_messaging_tools(server, app, mcp_client):
                 ],
                 "count": len(messages),
             }
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - MCP boundary must preserve all operation failures
             return {"status": "error", "error": f"Failed to get repository messages: {e}"}
 
     @server.tool()
@@ -193,7 +193,7 @@ def register_repository_messaging_tools(server, app, mcp_client):
                 "acknowledged_by": receiver_repo,
                 "success": success,
             }
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - MCP boundary must preserve all operation failures
             return {
                 "status": "error",
                 "error": f"Failed to acknowledge repository message: {e}",
@@ -212,7 +212,7 @@ def register_repository_messaging_tools(server, app, mcp_client):
                 "messages_sent": result.get("messages_sent", 0),
                 "changes_notified": result.get("changes_notified", 0),
             }
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - MCP boundary must preserve all operation failures
             return {"status": "error", "error": f"Failed to notify repository changes: {e}"}
 
     @server.tool()
@@ -230,7 +230,7 @@ def register_repository_messaging_tools(server, app, mcp_client):
                 "messages_sent": result.get("messages_sent", 0),
                 "workflow_id": workflow_id,
             }
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - MCP boundary must preserve all operation failures
             return {"status": "error", "error": f"Failed to notify workflow status: {e}"}
 
     @server.tool()
@@ -249,7 +249,7 @@ def register_repository_messaging_tools(server, app, mcp_client):
                 "alert_type": alert_type,
                 "severity": severity,
             }
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - MCP boundary must preserve all operation failures
             return {"status": "error", "error": f"Failed to send quality alert: {e}"}
 
     print("✅ Registered 7 repository messaging tools with MCP server")

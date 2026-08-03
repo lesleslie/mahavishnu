@@ -123,7 +123,7 @@ async def init_crow_stdio_client(settings: CrowSettings) -> None:
             )
             session = await stack.enter_async_context(ClientSession(_read, _write))
             await session.initialize()
-        except BaseException:
+        except BaseException:  # noqa: BLE001 - MCP boundary must preserve all operation failures
             await stack.aclose()
             raise
         _state = _CrowState(session=session, exit_stack=stack)
@@ -244,13 +244,13 @@ async def _safe_stdio_client(command: str):
         tg_task.cancel()
         try:
             await asyncio.wait_for(asyncio.shield(tg_task), timeout=2.0)
-        except BaseException as e:
+        except BaseException as e:  # noqa: BLE001 - MCP boundary must preserve all operation failures
             logger.debug("Task group shutdown skipped: %s", e)
         # Step 2: close the memory streams so any straggler unblocks.
         for stream in (rs, ws):
             try:
                 await stream.aclose()
-            except Exception as exc:
+            except Exception as exc:  # noqa: BLE001 - MCP boundary must preserve all operation failures
                 logger.warning("stream.aclose() failed during cleanup: %s", exc)
         # Step 3: SIGKILL the OS process and reap it. SIGKILL is the
         # unconditional exit hatch — it does not require the
@@ -282,7 +282,7 @@ async def _spawn_crow_state(settings: CrowSettings) -> _CrowState:
         )
         session = await stack.enter_async_context(ClientSession(_read, _write))
         await session.initialize()
-    except BaseException:
+    except BaseException:  # noqa: BLE001 - MCP boundary must preserve all operation failures
         await stack.aclose()
         raise
     return _CrowState(
@@ -323,7 +323,7 @@ async def _close_session(handle: str) -> None:
         # sequence (0.5s exit attempt + 1s + 1s). The unconditional
         # SIGKILL in _safe_stdio_client is the final backstop.
         await asyncio.wait_for(asyncio.shield(grace_task), timeout=3.0)
-    except BaseException as exc:
+    except BaseException as exc:  # noqa: BLE001 - MCP boundary must preserve all operation failures
         logger.debug(
             "Grace sequence for %s did not complete cleanly (continuing): %s",
             handle,
@@ -332,7 +332,7 @@ async def _close_session(handle: str) -> None:
 
     try:
         await state.exit_stack.aclose()
-    except BaseException as exc:
+    except BaseException as exc:  # noqa: BLE001 - MCP boundary must preserve all operation failures
         logger.exception(
             "Error closing crow session %s (subprocess reap is best-effort)",
             handle,
@@ -365,7 +365,7 @@ async def _graceful_evict_task(state: _CrowState, handle: str) -> None:
             state.session.call_tool("terminal", {"command": "exit"}),
             timeout=0.5,
         )
-    except BaseException as exc:
+    except BaseException as exc:  # noqa: BLE001 - MCP boundary must preserve all operation failures
         logger.debug("Grace exit request failed for %s: %s", handle, exc)
 
     # Step 2: wait 1s for the PTY to honour the exit.
@@ -458,7 +458,7 @@ async def acquire_session(handle: str, settings: CrowSettings) -> _CrowState:
             logger.info("LRU-evicting crow session handle=%s (cap=%d)", oldest, cap)
             try:
                 await _close_session(oldest)
-            except BaseException as exc:
+            except BaseException as exc:  # noqa: BLE001 - MCP boundary must preserve all operation failures
                 logger.debug(
                     "LRU eviction of %s swallowed (continuing): %s",
                     oldest,
@@ -504,7 +504,7 @@ async def shutdown_all_sessions() -> None:
     for handle in handles:
         try:
             await _close_session(handle)
-        except BaseException as exc:
+        except BaseException as exc:  # noqa: BLE001 - MCP boundary must preserve all operation failures
             logger.debug(
                 "Shutdown close of %s swallowed (continuing): %s",
                 handle,

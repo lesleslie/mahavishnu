@@ -282,7 +282,7 @@ class CloneTools:
             records = await client.list_prefix("clone-handled/")
             clusters = records[:limit] if records else []
             return {"clusters": clusters, "total": len(records) if records else 0}
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001 - MCP boundary must preserve all operation failures
             logger.exception("clone_refactor_status failed")
             return {"clusters": [], "total": 0, "error": str(exc)}
 

@@ -191,7 +191,7 @@ class SelfImprovementTools:
                         },
                     )
                     issues_created += 1
-            except Exception as e:
+            except Exception as e:  # noqa: BLE001 - MCP boundary must preserve all operation failures
                 logger.warning(f"Failed to create issue for finding {finding.get('id')}: {e}")
 
         result["issues_created"] = issues_created
@@ -268,7 +268,7 @@ class SelfImprovementTools:
                 "expires_at": request_dict.get("expires_at"),
                 "options": request_dict.get("options", []),
             }
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - MCP boundary must preserve all operation failures
             logger.error(f"Failed to create approval request: {e}")
             return {
                 "error": str(e),
@@ -352,7 +352,7 @@ class SelfImprovementTools:
                 "error": error_msg,
                 "approved": False,
             }
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - MCP boundary must preserve all operation failures
             logger.error(f"Unexpected error responding to approval: {e}")
             return {
                 "error": f"Request {approval_id} not found or expired",
@@ -492,7 +492,7 @@ class SelfImprovementTools:
                 "patterns": patterns,
                 "time_window_days": time_window_days,
             }
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001 - MCP boundary must preserve all operation failures
             logger.exception("self_improvement_analyze_failures failed")
             return {"error": str(exc), "patterns": []}
 
@@ -594,7 +594,7 @@ class SelfImprovementTools:
                 "fingerprint": fingerprint,
                 "verification": verification_payload,
             }
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001 - MCP boundary must preserve all operation failures
             logger.exception("self_improvement_generate failed")
             return {"error": str(exc), "status": "failed"}
 
@@ -628,7 +628,7 @@ class SelfImprovementTools:
                 "total": len(records),
                 "improvements": records,
             }
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001 - MCP boundary must preserve all operation failures
             logger.exception("self_improvement_status failed")
             return {"error": str(exc), "improvements": [], "total": 0}
 

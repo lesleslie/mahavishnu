@@ -54,5 +54,5 @@ async def initialize_worktree_coordinator(app: Any) -> None:
             )
 
             logger.info("WorktreeCoordinator initialized")
-        except Exception as exc:
+        except (AttributeError, OSError, RuntimeError, TypeError, ValueError) as exc:
             logger.warning("Failed to initialize WorktreeCoordinator: %s", exc)

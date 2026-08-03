@@ -73,15 +73,15 @@ class EvidenceCollector:
     async def collect_recent_outcomes(self) -> list[LearningEvidence]:
         try:
             raw = await self._source.get_recent_outcomes(self._max_per_cycle)
-        except Exception:
-            logger.warning("evidence_collection_failed: returning empty list", exc_info=True)
+        except (httpx.HTTPError, OSError, TimeoutError) as exc:
+            logger.warning("evidence_collection_failed: returning empty list: %s", exc)
             return []
 
         evidence: list[LearningEvidence] = []
         for item in raw[: self._max_per_cycle]:
             try:
                 evidence.append(self._parse_item(item))
-            except Exception:
+            except (AttributeError, KeyError, TypeError, ValueError):
                 logger.debug("skipping_unparseable_evidence_item: %s", item)
         return evidence
 

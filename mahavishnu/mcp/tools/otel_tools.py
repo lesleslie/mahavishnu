@@ -99,7 +99,7 @@ def register_otel_tools(server, app, mcp_client):
                         files_processed += 1
                         logger.info(f"Ingested {len(traces)} traces from {log_file}")
 
-                    except Exception as e:
+                    except Exception as e:  # noqa: BLE001 - MCP boundary must preserve all operation failures
                         error_msg = f"Failed to process {log_file}: {e!s}"
                         logger.error(error_msg)
                         errors.append(error_msg)
@@ -115,7 +115,7 @@ def register_otel_tools(server, app, mcp_client):
                     await ingester.ingest_batch(trace_data)
                     traces_ingested += len(trace_data)
                     logger.info(f"Ingested {len(trace_data)} direct traces")
-                except Exception as e:
+                except Exception as e:  # noqa: BLE001 - MCP boundary must preserve all operation failures
                     error_msg = f"Failed to process direct traces: {e!s}"
                     logger.error(error_msg)
                     errors.append(error_msg)
@@ -141,7 +141,7 @@ def register_otel_tools(server, app, mcp_client):
                 "system_id": system_id,
                 "storage_backend": "none",
             }
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - MCP boundary must preserve all operation failures
             logger.exception("Unexpected error during trace ingestion")
             if "ingester" in dir() and ingester is not None:
                 await ingester.close()
@@ -189,7 +189,7 @@ def register_otel_tools(server, app, mcp_client):
         except ImportError:
             logger.error("OtelIngester not available for search")
             return []
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - MCP boundary must preserve all operation failures
             logger.exception("Error during trace search")
             if "ingester" in dir() and ingester is not None:
                 await ingester.close()
@@ -224,7 +224,7 @@ def register_otel_tools(server, app, mcp_client):
         except ImportError:
             logger.error("OtelIngester not available for trace retrieval")
             return None
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - MCP boundary must preserve all operation failures
             logger.exception("Error retrieving trace %s", trace_id)
             if "ingester" in dir() and ingester is not None:
                 await ingester.close()
@@ -331,7 +331,7 @@ def register_otel_tools(server, app, mcp_client):
         except ImportError:
             logger.error("HotStore not available for query_local_traces")
             return []
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - MCP boundary must preserve all operation failures
             logger.exception("Error querying traces")
             return []
 
@@ -373,7 +373,7 @@ def register_otel_tools(server, app, mcp_client):
                 "status": "error",
                 "error": "OtelIngester or HotStore not available",
             }
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - MCP boundary must preserve all operation failures
             logger.exception("Error getting ingester stats")
             return {
                 "storage_backend": "duckdb_hotstore",

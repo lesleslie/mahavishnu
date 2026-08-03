@@ -197,7 +197,7 @@ def register_terminal_tools(
                 "new_adapter": adapter_name,
                 "migrate_sessions": migrate_sessions,
             }
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - MCP boundary must preserve all operation failures
             return {"status": "error", "message": f"Failed to switch adapter: {e}"}
 
     @mcp.tool()

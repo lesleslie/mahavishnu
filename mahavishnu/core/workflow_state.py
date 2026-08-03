@@ -82,7 +82,7 @@ class WorkflowState:
                 response = await self.opensearch.get(index="mahavishnu_workflows", id=workflow_id)
                 source = response.get("_source")
                 return source if isinstance(source, dict) else None
-            except Exception:
+            except (KeyError, OSError, RuntimeError):
                 # If OpenSearch fails, fall back to local storage
                 return self.local_states.get(workflow_id)
         else:
@@ -104,7 +104,7 @@ class WorkflowState:
                 )
 
                 return [hit["_source"] for hit in response["hits"]["hits"]]
-            except Exception:
+            except (KeyError, OSError, RuntimeError):
                 # Fall back to local storage
                 workflows = list(self.local_states.values())
                 if status:
@@ -122,7 +122,7 @@ class WorkflowState:
         if self.opensearch and OPENSEARCH_AVAILABLE:
             try:
                 await self.opensearch.delete(index="mahavishnu_workflows", id=workflow_id)
-            except Exception:
+            except (KeyError, OSError, RuntimeError):
                 # If OpenSearch fails, remove from local storage
                 self.local_states.pop(workflow_id, None)
         else:

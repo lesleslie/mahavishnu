@@ -159,7 +159,7 @@ class MessageAuthenticator:
             else:
                 return False, None
 
-        except Exception:
+        except (AttributeError, TypeError, ValueError, KeyError):
             return False, None
 
     def is_cross_project_auth_enabled(self) -> bool:
@@ -222,7 +222,7 @@ class AuthenticatedSessionBuddyClient:
             }
 
             return result
-        except Exception as e:
+        except (AttributeError, TypeError, ValueError, KeyError) as e:
             self.logger.error(f"Error sending authenticated message: {e}")
             return {"status": "error", "error": str(e)}
 
@@ -259,7 +259,7 @@ class AuthenticatedSessionBuddyClient:
                 self.logger.warning("Received invalid authenticated message")
 
                 return {"status": "invalid", "error": "Message signature verification failed"}
-        except Exception as e:
+        except (AttributeError, TypeError, ValueError, KeyError) as e:
             self.logger.error(f"Error receiving authenticated message: {e}")
             return {"status": "error", "error": str(e)}
 

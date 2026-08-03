@@ -193,7 +193,7 @@ async def worker_status(worker_id: str) -> dict:
     if pane_fn is not None and getattr(record, "tmux", None) is not None:
         try:
             pane_command = pane_fn(worker_id)
-        except Exception:
+        except Exception:  # noqa: BLE001 - MCP boundary must preserve all operation failures
             pane_command = None
 
     return {

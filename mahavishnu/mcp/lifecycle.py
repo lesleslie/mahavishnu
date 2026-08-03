@@ -34,7 +34,7 @@ async def stop_server(server: Any) -> None:
         try:
             await server.mcp_client._client.stop()
             logger.info("Stopped mcpretentious MCP server")
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001 - MCP boundary must preserve all operation failures
             logger.warning("Error stopping mcpretentious server: %s", exc)
 
 

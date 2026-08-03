@@ -356,7 +356,7 @@ def register_goal_team_tools(mcp: FastMCP) -> None:
                             mode=team_config.mode.value,
                             latency_ms=latency_ms,
                         )
-                    except Exception:
+                    except Exception:  # noqa: BLE001 - MCP boundary must preserve all operation failures
                         logger.debug(
                             "Learning outcome recording failed; continuing without blocking",
                             exc_info=True,
@@ -418,7 +418,7 @@ def register_goal_team_tools(mcp: FastMCP) -> None:
                     "details": e.details,
                 },
             }
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - MCP boundary must preserve all operation failures
             logger.exception("Failed to create team from goal")
             metrics.record_error(error_code=ErrorCode.INTERNAL_ERROR.value)
             # Broadcast error
@@ -549,7 +549,7 @@ def register_goal_team_tools(mcp: FastMCP) -> None:
                             mode=recommendation.mode,
                             confidence=recommendation.confidence,
                         )
-                except Exception:
+                except Exception:  # noqa: BLE001 - MCP boundary must preserve all operation failures
                     logger.debug(
                         "Mode recommendation failed; continuing without recommendation",
                         exc_info=True,
@@ -609,7 +609,7 @@ def register_goal_team_tools(mcp: FastMCP) -> None:
                     "details": e.details,
                 },
             }
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - MCP boundary must preserve all operation failures
             logger.exception("Failed to parse goal")
             metrics.record_error(error_code=ErrorCode.INTERNAL_ERROR.value)
             # Broadcast error
@@ -683,7 +683,7 @@ def register_goal_team_tools(mcp: FastMCP) -> None:
                 "skills": {},
                 "count": 0,
             }
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - MCP boundary must preserve all operation failures
             logger.exception("Failed to list team skills")
             return {
                 "success": False,

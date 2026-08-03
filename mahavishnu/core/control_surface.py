@@ -41,7 +41,7 @@ async def get_recovery_summary(app: Any) -> dict[str, Any]:
                 "last_recovered_at": datetime.now((UTC)).isoformat(),
             }
         )
-    except Exception as exc:
+    except (AttributeError, OSError, RuntimeError, TypeError, ValueError) as exc:
         from logging import getLogger
 
         getLogger(__name__).debug("Dhara recovery summary skipped: %s", exc)
@@ -65,7 +65,7 @@ async def get_recovered_routing_decisions(
             for decision in decisions
             if isinstance(decision, dict) and decision.get("task_class") == task_class
         ]
-    except Exception as exc:
+    except (AttributeError, OSError, RuntimeError, TypeError, ValueError) as exc:
         from logging import getLogger
 
         getLogger(__name__).debug("Dhara routing recovery skipped: %s", exc)

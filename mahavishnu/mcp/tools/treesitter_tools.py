@@ -102,7 +102,7 @@ def register_treesitter_tools(mcp: FastMCP) -> None:
                 "error": result.error,
             }
 
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - MCP boundary must preserve all operation failures
             logger.error(f"Failed to parse file: {e}")
             return {
                 "success": False,
@@ -165,7 +165,7 @@ def register_treesitter_tools(mcp: FastMCP) -> None:
                 "error": result.error,
             }
 
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - MCP boundary must preserve all operation failures
             logger.error(f"Failed to extract symbols: {e}")
             return {
                 "success": False,
@@ -240,7 +240,7 @@ def register_treesitter_tools(mcp: FastMCP) -> None:
                                         "context": line.strip()[:80],
                                     }
                                 )
-                except Exception as e:
+                except Exception as e:  # noqa: BLE001 - MCP boundary must preserve all operation failures
                     logger.debug("Tree-sitter pattern match skipped: %s", e)
                     continue
 
@@ -259,7 +259,7 @@ def register_treesitter_tools(mcp: FastMCP) -> None:
                 "total_usages": len(usages),
             }
 
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - MCP boundary must preserve all operation failures
             logger.error(f"Failed to find usages: {e}")
             return {
                 "success": False,
@@ -307,7 +307,7 @@ def register_treesitter_tools(mcp: FastMCP) -> None:
                 "tip": "Use treesitter_extract_symbols with symbol_kinds filter instead",
             }
 
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - MCP boundary must preserve all operation failures
             logger.error(f"Failed to run query: {e}")
             return {
                 "success": False,
@@ -365,7 +365,7 @@ def register_treesitter_tools(mcp: FastMCP) -> None:
                             }
                         )
 
-                except Exception as e:
+                except Exception as e:  # noqa: BLE001 - MCP boundary must preserve all operation failures
                     errors.append(
                         {
                             "file": str(file_path.relative_to(dir_path)),
@@ -390,7 +390,7 @@ def register_treesitter_tools(mcp: FastMCP) -> None:
                 "error_count": len(errors),
             }
 
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - MCP boundary must preserve all operation failures
             logger.error(f"Failed to batch analyze: {e}")
             return {
                 "success": False,
@@ -409,7 +409,7 @@ def register_treesitter_tools(mcp: FastMCP) -> None:
                 "success": True,
                 **stats,
             }
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - MCP boundary must preserve all operation failures
             return {
                 "success": False,
                 "error": str(e),
@@ -425,7 +425,7 @@ def register_treesitter_tools(mcp: FastMCP) -> None:
                 "success": True,
                 "entries_cleared": count,
             }
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - MCP boundary must preserve all operation failures
             return {
                 "success": False,
                 "error": str(e),

@@ -190,7 +190,7 @@ class ProcessPoolTaskExecutor:
             # Try to shutdown if not already done
             try:
                 self._executor.shutdown(wait=False)
-            except Exception as e:
+            except (OSError, RuntimeError) as e:
                 logger.debug("Executor shutdown skipped: %s", e)
 
 

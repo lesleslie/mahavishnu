@@ -97,7 +97,7 @@ def index_repo(
                     nodes, edges = result
                     all_nodes.extend(nodes)
                     all_edges.extend(edges)
-            except Exception as e:
+            except (OSError, SyntaxError, ValueError) as e:
                 parse_failures += 1
                 logger.warning("Failed to parse %s: %s", file_path, e)
 
@@ -171,7 +171,7 @@ def _upsert_to_session_buddy(
             timeout=30.0,
         )
         return resp.status_code == 200
-    except Exception as e:
+    except (httpx.HTTPError, OSError, TimeoutError) as e:
         logger.warning("Session-Buddy MCP unavailable: %s", e)
         return False
 
