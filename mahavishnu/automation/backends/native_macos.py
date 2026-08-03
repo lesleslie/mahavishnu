@@ -76,6 +76,16 @@ def _parse_bool(value: str) -> bool:
     return value.lower() in ("true", "true\n")
 
 
+def _read_bytes(path: str) -> bytes:
+    """Read a file's bytes synchronously; for ``asyncio.to_thread`` use only.
+
+    Helper for ASYNC230 remediation: file I/O inside an async path
+    must be offloaded to a worker thread.
+    """
+    with open(path, "rb") as f:
+        return f.read()
+
+
 class NativeMacOSBackend(DesktopAutomationBackend):
     """Native macOS automation backend using osascript, screencapture, and cliclick.
 
@@ -573,12 +583,25 @@ class NativeMacOSBackend(DesktopAutomationBackend):
             else:
                 cmd = ["screencapture", "-x", path]
 
-            subprocess.run(cmd, capture_output=True, timeout=10, check=True)
+            # ASYNC221/230: ``screencapture`` is a subprocess and ``open().read()``
+            # is blocking I/O; offload both to a worker thread so the event
+            # loop stays responsive during the screenshot capture.
+            await asyncio.to_thread(
+                subprocess.run,
+                cmd,
+                capture_output=True,
+                timeout=10,
+                check=True,
+            )
 
-            with open(path, "rb") as img:
-                data = img.read()
+            data = await asyncio.to_thread(_read_bytes, path)
 
-            subprocess.run(["rm", "-f", path], capture_output=True, check=False)
+            await asyncio.to_thread(
+                subprocess.run,
+                ["rm", "-f", path],
+                capture_output=True,
+                check=False,
+            )
             return data
 
         except subprocess.TimeoutExpired:

@@ -11,6 +11,7 @@ Key Features:
 - Custom secret pattern support
 """
 
+import asyncio
 from enum import StrEnum
 import logging
 from pathlib import Path
@@ -206,7 +207,10 @@ class SecretsScanner:
 
         # Run detect-secrets
         try:
-            result = subprocess.run(
+            # ASYNC221: ``detect-secrets scan`` is a long-running subprocess;
+            # offload to a worker thread so the event loop stays responsive.
+            result = await asyncio.to_thread(
+                subprocess.run,
                 [
                     "detect-secrets",
                     "scan",
@@ -504,7 +508,7 @@ class SecretRedactor:
 
             return redacted_path
 
-        except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
+        except Exception as e:
             logger.error(f"Failed to redact file {file_path}: {e}")
             raise
 

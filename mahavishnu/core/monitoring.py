@@ -5,7 +5,7 @@ from __future__ import annotations
 import asyncio
 from collections import defaultdict
 from dataclasses import dataclass, field
-from datetime import datetime, timedelta, UTC
+from datetime import UTC, datetime, timedelta
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from enum import Enum
@@ -15,7 +15,7 @@ import smtplib
 import time
 from typing import TYPE_CHECKING, Any, cast
 
-import requests
+import httpx
 
 from ..core.status import HealthStatus as ComponentHealthStatus
 from ..core.workflow_state import WorkflowStatus
@@ -190,7 +190,7 @@ class Alert:
     def acknowledge(self, by: str) -> None:
         self.acknowledged = True
         self.acknowledged_by = by
-        self.acknowledged_at = datetime.now((UTC))
+        self.acknowledged_at = datetime.now(UTC)
 
     def to_dict(self) -> dict[str, Any]:
         payload = {
@@ -342,7 +342,7 @@ class AlertManager:
 
         alert = Alert(
             id=alert_id,
-            timestamp=datetime.now((UTC)),
+            timestamp=datetime.now(UTC),
             severity=severity,
             type=alert_type,
             title=title,
@@ -509,14 +509,14 @@ class AlertManager:
                 status=WorkflowStatus.RUNNING, limit=100
             )
 
-            current_time = datetime.now((UTC))
+            current_time = datetime.now(UTC)
             timeout_threshold = timedelta(minutes=30)  # 30-minute timeout
 
             for workflow in running_workflows:
                 updated_at_str = workflow.get("updated_at")
                 if updated_at_str:
                     try:
-                        updated_at = datetime.fromisoformat(updated_at_str.replace("Z", "+00:00"))
+                        updated_at = datetime.fromisoformat(updated_at_str)
                         if current_time - updated_at > timeout_threshold:
                             # Workflow appears stuck
                             await self.trigger_alert(
@@ -592,7 +592,7 @@ class AlertManager:
             else:
                 # Check if the latest backup is too old (older than 24 hours)
                 latest_backup = backups[0]
-                age = datetime.now((UTC)) - latest_backup.timestamp
+                age = datetime.now(UTC) - latest_backup.timestamp
                 if age > timedelta(hours=24):
                     await self.trigger_alert(
                         severity=AlertSeverity.MEDIUM,
@@ -702,7 +702,8 @@ class SlackNotificationChannel(NotificationChannel):
                 ],
             }
 
-            response = requests.post(self.webhook_url, json=message, timeout=10)
+            async with httpx.AsyncClient(timeout=10.0) as client:
+                response = await client.post(self.webhook_url, json=message)
             if response.status_code != 200:
                 self.logger.warning(f"Failed to send Slack notification: {response.text}")
             else:
@@ -749,12 +750,12 @@ class PagerDutyNotificationChannel(NotificationChannel):
 
             headers = {"Content-Type": "application/json"}
 
-            response = requests.post(
-                "https://events.pagerduty.com/v2/enqueue",
-                json=payload,
-                headers=headers,
-                timeout=10,
-            )
+            async with httpx.AsyncClient(timeout=10.0) as client:
+                response = await client.post(
+                    "https://events.pagerduty.com/v2/enqueue",
+                    json=payload,
+                    headers=headers,
+                )
 
             if response.status_code != 202:
                 self.logger.warning(f"Failed to send PagerDuty notification: {response.text}")
@@ -976,7 +977,7 @@ class MonitoringDashboard:
         alert_counts = await self._get_alert_counts()
 
         return {
-            "timestamp": datetime.now((UTC)).isoformat(),
+            "timestamp": datetime.now(UTC).isoformat(),
             "system": {
                 "cpu_percent": cpu_percent,
                 "memory_percent": memory_info.percent,
@@ -1073,7 +1074,7 @@ class MonitoringService:
         return {
             "metrics": metrics,
             "recent_alerts": recent_alerts,
-            "timestamp": datetime.now((UTC)).isoformat(),
+            "timestamp": datetime.now(UTC).isoformat(),
         }
 
     async def acknowledge_alert(self, alert_id: str, user: str) -> bool:

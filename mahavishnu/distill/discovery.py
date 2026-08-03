@@ -21,6 +21,10 @@ import importlib.util
 from pathlib import Path
 from typing import Any
 
+from oneiric.core.logging import get_logger
+
+logger = get_logger(__name__)
+
 # ---------------------------------------------------------------------------
 # Discovery configuration — central path constants
 # ---------------------------------------------------------------------------

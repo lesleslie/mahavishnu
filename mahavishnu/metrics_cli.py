@@ -19,6 +19,7 @@ from typing import Any
 from urllib import error as urllib_error
 from urllib import request as urllib_request
 
+from oneiric.core.logging import get_logger
 from rich.console import Console
 from rich.table import Table
 import typer
@@ -26,6 +27,7 @@ import typer
 # Create metrics app
 metrics_app = typer.Typer(help="Metrics collection and reporting for the Mahavishnu ecosystem")
 console = Console()
+logger = get_logger(__name__)
 
 
 def _resolve_postgres_dsn(explicit_dsn: str | None) -> str | None:
@@ -645,7 +647,7 @@ def verify_endpoints(
         raise SystemExit(verify_main())
     except SystemExit as exc:
         raise typer.Exit(exc.code if isinstance(exc.code, int) else 1) from None
-    except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
+    except Exception as e:
         console.print(f"[red]Error verifying metrics endpoints:[/red] {e}")
         raise typer.Exit(1) from e
 
@@ -674,7 +676,7 @@ def _fetch_engine_metrics(
             try:
                 metrics = asyncio.run(_load_engine_metrics_from_postgres(resolved_dsn, days))
                 selected_source = "postgres"
-            except Exception as exc:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
+            except Exception as exc:
                 errors.append(f"postgres: {exc}")
                 if source_normalized == "postgres":
                     console.print(f"[red]PostgreSQL query failed:[/red] {exc}")
@@ -684,7 +686,7 @@ def _fetch_engine_metrics(
         try:
             metrics = _load_engine_metrics_from_prometheus(metrics_url)
             selected_source = "prometheus"
-        except Exception as exc:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
+        except Exception as exc:
             errors.append(f"prometheus: {exc}")
             if source_normalized == "prometheus":
                 console.print(f"[red]Prometheus query failed:[/red] {exc}")
@@ -890,7 +892,7 @@ def _parse_bodai_timestamp(value: Any) -> datetime | None:
             return None
     if isinstance(value, str):
         try:
-            parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
+            parsed = datetime.fromisoformat(value)
         except ValueError:
             return None
         if parsed.tzinfo is None:
@@ -1340,7 +1342,7 @@ async def _fetch_dhara_entries(
     client = DharaClient(base_url=dhara_url, timeout=10.0)
     try:
         result = await client.call_tool("list_prefix", {"prefix": prefix})
-    except Exception as exc:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
+    except Exception as exc:
         console.print(f"[red]Dhara unreachable at {dhara_url}:[/red] {exc}")
         raise typer.Exit(1) from exc
     finally:
@@ -1394,7 +1396,7 @@ def _entry_timestamp(entry: dict[str, Any]) -> datetime | None:
         if not isinstance(raw, str):
             continue
         try:
-            parsed = datetime.fromisoformat(raw.replace("Z", "+00:00"))
+            parsed = datetime.fromisoformat(raw)
         except ValueError:
             continue
         if parsed.tzinfo is None:

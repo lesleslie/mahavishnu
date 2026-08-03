@@ -16,6 +16,7 @@ Architecture:
 - Graceful degradation if encryption unavailable (with warning)
 """
 
+import asyncio
 import base64
 import logging
 import os
@@ -178,7 +179,7 @@ class EncryptedSQLite:
             logger.debug("Database decrypted successfully")
             return True
 
-        except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
+        except Exception as e:
             logger.error(f"Decryption failed: {e}")
             # Re-raise to signal decryption failure to caller
             raise EncryptionKeyError(
@@ -436,13 +437,11 @@ class EncryptedSQLite:
                     )
 
                 # Read plaintext backup
-                with open(backup_path, "rb") as f:
-                    plaintext_data = f.read()
+                plaintext_data = await asyncio.to_thread(backup_path.read_bytes)
 
                 # Encrypt and write
                 encrypted_data = self._fernet.encrypt(plaintext_data)
-                with open(enc_backup_path, "wb") as f:
-                    f.write(encrypted_data)
+                await asyncio.to_thread(enc_backup_path.write_bytes, encrypted_data)
 
                 # Delete plaintext backup
                 backup_path.unlink()

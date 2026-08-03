@@ -33,6 +33,16 @@ if TYPE_CHECKING:
     from agno.run.team import TeamRunOutput
     from agno.team import Team
 
+def _load_yaml(path: Path) -> Any:
+    """Read a YAML file synchronously; for ``asyncio.to_thread`` use only.
+
+    Helper for ASYNC230 remediation: file I/O inside an async path
+    must be offloaded to a worker thread.
+    """
+    with open(path) as f:
+        return yaml.safe_load(f)
+
+
 logger = logging.getLogger(__name__)
 
 
@@ -182,7 +192,7 @@ class AgentTeamManager:
 
             return team_id
 
-        except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
+        except Exception as e:
             logger.error(f"Failed to create team '{config.name}': {e}")
             raise AgnoError(
                 f"Failed to create team: {e}",
@@ -211,8 +221,7 @@ class AgentTeamManager:
                     details={"path": yaml_path},
                 )
 
-            with open(path) as f:
-                data = yaml.safe_load(f)
+            data = await asyncio.to_thread(_load_yaml, path)
 
             if "team" not in data:
                 raise AgnoError(
@@ -226,7 +235,7 @@ class AgentTeamManager:
 
         except AgnoError:
             raise
-        except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
+        except Exception as e:
             logger.error(f"Failed to load team config from {yaml_path}: {e}")
             raise AgnoError(
                 f"Failed to load team config: {e}",

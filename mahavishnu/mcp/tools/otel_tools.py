@@ -2,10 +2,22 @@
 
 from __future__ import annotations
 
+import asyncio
 import json
 from logging import getLogger
 from pathlib import Path
 from typing import Any
+
+
+def _read_json_file(path: Path) -> Any:
+    """Read and JSON-parse a file synchronously; for ``asyncio.to_thread`` use only.
+
+    Helper for ASYNC230 remediation: file I/O inside an async path
+    must be offloaded to a worker thread.
+    """
+    with path.open("r") as f:
+        return json.load(f)
+
 
 logger = getLogger(__name__)
 
@@ -75,8 +87,7 @@ def register_otel_tools(server, app, mcp_client):
                             continue
 
                         # Read and parse JSON log file
-                        with file_path.open("r") as f:
-                            file_data = json.load(f)
+                        file_data = await asyncio.to_thread(_read_json_file, file_path)
 
                         # Handle different file formats
                         if isinstance(file_data, list):
@@ -141,7 +152,7 @@ def register_otel_tools(server, app, mcp_client):
                 "system_id": system_id,
                 "storage_backend": "none",
             }
-        except Exception as e:  # noqa: BLE001 - MCP boundary must preserve all operation failures
+        except Exception as e:
             logger.exception("Unexpected error during trace ingestion")
             if "ingester" in dir() and ingester is not None:
                 await ingester.close()
@@ -189,7 +200,7 @@ def register_otel_tools(server, app, mcp_client):
         except ImportError:
             logger.error("OtelIngester not available for search")
             return []
-        except Exception as e:  # noqa: BLE001 - MCP boundary must preserve all operation failures
+        except Exception:
             logger.exception("Error during trace search")
             if "ingester" in dir() and ingester is not None:
                 await ingester.close()
@@ -224,7 +235,7 @@ def register_otel_tools(server, app, mcp_client):
         except ImportError:
             logger.error("OtelIngester not available for trace retrieval")
             return None
-        except Exception as e:  # noqa: BLE001 - MCP boundary must preserve all operation failures
+        except Exception:
             logger.exception("Error retrieving trace %s", trace_id)
             if "ingester" in dir() and ingester is not None:
                 await ingester.close()
@@ -331,7 +342,7 @@ def register_otel_tools(server, app, mcp_client):
         except ImportError:
             logger.error("HotStore not available for query_local_traces")
             return []
-        except Exception as e:  # noqa: BLE001 - MCP boundary must preserve all operation failures
+        except Exception:
             logger.exception("Error querying traces")
             return []
 
@@ -373,7 +384,7 @@ def register_otel_tools(server, app, mcp_client):
                 "status": "error",
                 "error": "OtelIngester or HotStore not available",
             }
-        except Exception as e:  # noqa: BLE001 - MCP boundary must preserve all operation failures
+        except Exception as e:
             logger.exception("Error getting ingester stats")
             return {
                 "storage_backend": "duckdb_hotstore",

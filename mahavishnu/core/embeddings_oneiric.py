@@ -23,12 +23,15 @@ from __future__ import annotations
 import os
 from typing import Any
 
+from oneiric.core.logging import get_logger
 from pydantic import BaseModel, ConfigDict, Field
 
 from mahavishnu.core.embeddings import (
     EmbeddingProvider,
     EmbeddingService,
 )
+
+logger = get_logger(__name__)
 
 
 class EmbeddingConfig(BaseModel):

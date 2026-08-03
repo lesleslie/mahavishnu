@@ -32,6 +32,8 @@ from monitoring.metrics import (
 from ..core.config import MahavishnuSettings
 from ..core.resilience import RetryPolicy, retry_async
 
+logger = logging.getLogger(__name__)
+
 
 @dataclass
 class PollerStatus:
@@ -210,7 +212,7 @@ class SessionBuddyPoller:
                 except asyncio.CancelledError:
                     self.logger.info("Polling loop cancelled")
                     break
-                except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
+                except Exception as e:
                     self.logger.exception("Error in polling loop")
                     self._record_error(f"Polling loop error: {e}")
                     # Continue running despite errors

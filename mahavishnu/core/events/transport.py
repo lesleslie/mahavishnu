@@ -52,7 +52,7 @@ class CompositeEventEnvelopeHandler:
             if app is not None and hasattr(app, "record_event_activity"):
                 app.record_event_activity(envelope)
         except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
-            logger.debug("Event activity skipped: %s", e)
+            _logger.debug("Event activity skipped: %s", e)
         results: list[Any] = []
         for handler in self.handlers:
             results.append(await handler.handle(envelope))
@@ -446,7 +446,7 @@ class WebSocketEventHandler:
             return f"pool:{payload['pool_id']}"
         if event_type.startswith("adapter."):
             return "adapters"
-        if event_type.startswith("goal_team.") or event_type.startswith("goal-teams."):
+        if event_type.startswith(("goal_team.", "goal-teams.")):
             user_id = payload.get("user_id")
             return f"goal-teams:{user_id}" if user_id else "goal-teams"
         if event_type.startswith("code."):

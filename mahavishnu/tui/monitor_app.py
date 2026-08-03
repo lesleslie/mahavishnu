@@ -2,7 +2,11 @@ from __future__ import annotations
 
 from typing import Any, ClassVar
 
+from oneiric.core.logging import get_logger
+
 from mahavishnu.tui import TUI_AVAILABLE, get_console
+
+logger = get_logger(__name__)
 
 
 class _DefaultMonitorDataProvider:
@@ -134,6 +138,5 @@ else:
         def run(self) -> None:
             console = get_console()
             console.print(
-                "[yellow]Textual not installed. Install with: uv add"
-                " --group tui textual[/yellow]"
+                "[yellow]Textual not installed. Install with: uv add --group tui textual[/yellow]"
             )

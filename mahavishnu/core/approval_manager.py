@@ -7,8 +7,13 @@ from datetime import UTC, datetime, timedelta
 from typing import TYPE_CHECKING, Any, Literal
 import uuid
 
+from oneiric.core.logging import get_logger
+
 if TYPE_CHECKING:
     from mahavishnu.core.state_backends.dhara import DharaStateBackend
+
+
+logger = get_logger(__name__)
 
 
 @dataclass

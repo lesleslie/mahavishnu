@@ -6,12 +6,16 @@ monitoring, resilience, performance, and operational readiness.
 
 import asyncio
 from dataclasses import dataclass, field
-from datetime import datetime, UTC
+from datetime import UTC, datetime
 from enum import Enum
 import os
 from pathlib import Path
 import subprocess
 from typing import Any
+
+from oneiric.core.logging import get_logger
+
+logger = get_logger(__name__)
 
 
 class ReadinessStatus(Enum):
@@ -115,7 +119,9 @@ class ProductionReadinessChecker:
         await self._check_maintenance_procedures()
 
         # Generate report
-        report = ProductionReadinessReport(checks=self.checks, timestamp=datetime.now((UTC)).isoformat())
+        report = ProductionReadinessReport(
+            checks=self.checks, timestamp=datetime.now(UTC).isoformat()
+        )
         report.total_checks = len(self.checks)
         report.passed = sum(1 for c in self.checks if c.status == ReadinessStatus.PASS)
         report.failed = sum(1 for c in self.checks if c.status == ReadinessStatus.FAIL)
@@ -398,8 +404,12 @@ class ProductionReadinessChecker:
         start = time.time()
 
         try:
-            # Run pytest with coverage (unit tests only for faster execution)
-            subprocess.run(
+            # Run pytest with coverage (unit tests only for faster execution).
+            # ASYNC221: pytest is a long-running subprocess; offload to a worker
+            # thread so the event loop stays responsive during the 5-minute
+            # coverage run.
+            await asyncio.to_thread(
+                subprocess.run,
                 ["pytest", "-m", "unit", "--cov=mahavishnu", "--cov-report=xml", "--tb=no", "-q"],
                 cwd=self.project_root,
                 capture_output=True,

@@ -20,8 +20,9 @@ Launch with: mahavishnu dashboard
 
 from __future__ import annotations
 
+import asyncio
 import contextlib
-from datetime import datetime, UTC
+from datetime import UTC, datetime
 import logging
 from pathlib import Path
 import subprocess
@@ -84,7 +85,7 @@ async def _get_report() -> EcosystemStatusReport | None:
                 if dhara_url:
                     service_configs["dhara"] = {"url": dhara_url, "required": False, "timeout_s": 3}
         except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
-            logger.debug("Service config skipped: %s", e)
+            _tui_log.debug("Service config skipped: %s", e)
 
         app = get_app_from_context()
         return await EcosystemStatusService(
@@ -233,13 +234,13 @@ async def fetch_skill_drafts() -> list[dict[str, Any]]:
                         "version": getattr(record, "version", "-"),
                         "state": getattr(record, "state", "active"),
                         "proposed_by": getattr(activation, "activated_by", "ecosystem"),
-                        "created_at": created_at or datetime.now((UTC)),
+                        "created_at": created_at or datetime.now(UTC),
                         "description": description,
                     }
                 )
             return drafts
         except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
-            logger.debug("Draft loading skipped: %s", e)
+            _tui_log.debug("Draft loading skipped: %s", e)
 
     skills_root = Path.home() / ".claude" / "skills"
     if not skills_root.exists():
@@ -270,7 +271,7 @@ async def fetch_skill_drafts() -> list[dict[str, Any]]:
                 }
             )
         except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
-            logger.debug("Draft entry skipped: %s", e)
+            _tui_log.debug("Draft entry skipped: %s", e)
             continue
     return drafts
 
@@ -493,7 +494,10 @@ async def fetch_diff_views(paths: tuple[str, ...] = _COCKPIT_FILES) -> list[dict
         if not is_valid:
             diffs.append({"path": rel_path, "diff": "", "error": error or "invalid path"})
             continue
-        completed = subprocess.run(
+        # ASYNC221: ``git diff`` is a subprocess call; offload it to a worker
+        # thread so the event loop stays responsive while the diff resolves.
+        completed = await asyncio.to_thread(
+            subprocess.run,
             ["git", "-C", str(repo_root), "diff", "--unified=0", "--", rel_path],
             capture_output=True,
             text=True,
