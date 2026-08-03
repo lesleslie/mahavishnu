@@ -77,7 +77,7 @@ class ApplicationWorker(BaseWorker):
         """Unique identifier for this worker instance."""
         return self._worker_id
 
-    async def start(self) -> str:
+    async def start(self, *, prompt: str | None = None) -> str:
         """Initialize connection to MCP application.
 
         Returns:

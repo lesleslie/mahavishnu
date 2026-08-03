@@ -36,7 +36,7 @@ class CrowWorker(BaseWorker):
         self._session_id: str | None = None
         self._client = httpx.AsyncClient(timeout=_ACP_TIMEOUT)
 
-    async def start(self) -> str:
+    async def start(self, *, prompt: str | None = None) -> str:
         """Initialize ACP connection and create a session."""
         resp = await self._client.post(
             f"{self._base_url}/acp/new_session",

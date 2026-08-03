@@ -319,7 +319,7 @@ class OllamaWorker(BaseWorker):
         self._client: httpx.AsyncClient | None = None
         self._start_time: float | None = None
 
-    async def start(self) -> str:
+    async def start(self, *, prompt: str | None = None) -> str:
         """Initialize the Ollama worker.
 
         Verifies Ollama server availability and model presence.
@@ -359,7 +359,7 @@ class OllamaWorker(BaseWorker):
             try:
                 logger.info(f"Attempting to pull model {self.config.model}...")
                 await self._pull_model(self.config.model)
-            except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
+            except Exception as e:
                 await self._cleanup_client()
                 self._status = WorkerStatus.FAILED
                 raise RuntimeError(

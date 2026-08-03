@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import asyncio
-from datetime import datetime, UTC
+from datetime import UTC, datetime
 from logging import getLogger
 from typing import TYPE_CHECKING
 import uuid
@@ -46,7 +46,7 @@ class TerminalGridManager:
         end tell
         """
         bounds_str = await asyncio.wait_for(
-            self._adapter._run_applescript(script), timeout=APPLE_SCRIPT_TIMEOUT
+            self._adapter.run_applescript(script), timeout=APPLE_SCRIPT_TIMEOUT
         )
         parts = [int(p.strip()) for p in bounds_str.split(",")]
         x, y, w, h = parts[0], parts[1], parts[2], parts[3]
@@ -66,7 +66,7 @@ class TerminalGridManager:
         """
         try:
             await asyncio.wait_for(
-                self._adapter._run_applescript(script), timeout=APPLE_SCRIPT_TIMEOUT
+                self._adapter.run_applescript(script), timeout=APPLE_SCRIPT_TIMEOUT
             )
             await asyncio.sleep(0.5)
             return True
@@ -115,7 +115,7 @@ class TerminalGridManager:
         '''
         try:
             tab_id = await asyncio.wait_for(
-                self._adapter._run_applescript(script), timeout=APPLE_SCRIPT_TIMEOUT
+                self._adapter.run_applescript(script), timeout=APPLE_SCRIPT_TIMEOUT
             )
         except TimeoutError as e:
             raise WindowTilingError(
@@ -166,7 +166,7 @@ class TerminalGridManager:
 
         grid = GridSession(
             grid_id=grid_id,
-            created_at=datetime.now((UTC)),
+            created_at=datetime.now(UTC),
             task_count=len(tasks),
         )
         self._grids[grid_id] = grid
@@ -201,7 +201,7 @@ class TerminalGridManager:
                 except StopIteration:
                     return grid_id
 
-                win_session, tab_id = await self._create_positioned_window(
+                win_session, _tab_id = await self._create_positioned_window(
                     desktop_id=desktop_id,
                     quadrant=quadrant,
                     half_w=half_w,
@@ -227,7 +227,7 @@ class TerminalGridManager:
             end tell
         end tell
         '''
-        await asyncio.wait_for(self._adapter._run_applescript(script), timeout=APPLE_SCRIPT_TIMEOUT)
+        await asyncio.wait_for(self._adapter.run_applescript(script), timeout=APPLE_SCRIPT_TIMEOUT)
         await asyncio.sleep(0.3)
 
     async def send_to_session(self, grid_id: str, session_id: str, command: str) -> None:
@@ -240,7 +240,7 @@ class TerminalGridManager:
         if not found:
             raise SessionNotFoundError(session_id, grid_id=grid_id)
 
-        desktop, window = found
+        _desktop, window = found
         escaped = command.replace("\\", "\\\\").replace('"', '\\"')
         script = f'''
         tell application "iTerm2"
@@ -252,7 +252,7 @@ class TerminalGridManager:
             end tell
         end tell
         '''
-        await asyncio.wait_for(self._adapter._run_applescript(script), timeout=APPLE_SCRIPT_TIMEOUT)
+        await asyncio.wait_for(self._adapter.run_applescript(script), timeout=APPLE_SCRIPT_TIMEOUT)
 
     async def capture_session_output(self, grid_id: str, session_id: str) -> str:
         """Capture output from a session.
@@ -327,7 +327,7 @@ class TerminalGridManager:
         '''
         try:
             await asyncio.wait_for(
-                self._adapter._run_applescript(script), timeout=APPLE_SCRIPT_TIMEOUT
+                self._adapter.run_applescript(script), timeout=APPLE_SCRIPT_TIMEOUT
             )
         except TimeoutError as e:
             logger.warning(f"Timeout closing grid {grid_id}: {e}")

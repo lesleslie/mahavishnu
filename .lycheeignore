@@ -1,1 +1,4 @@
 https://brandur.org/migrations
+# Sites that block automated link checkers (verified reachable in browsers)
+https://martinfowler.com/bliki/CircuitBreaker.html
+https://stackoverflow.com/questions/75664004/install-pgv-ext-on-mac

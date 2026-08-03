@@ -100,7 +100,7 @@ class OpenHandsWorker(BaseWorker):
         self._crackerjack_client = crackerjack_client
         self._client = OpenHandsClient(self._config)
 
-    async def start(self) -> str:
+    async def start(self, *, prompt: str | None = None) -> str:
         """Mark the worker as running and return a fixed worker ID."""
         self._status = WorkerStatus.RUNNING
         return "openhands"

@@ -62,7 +62,7 @@ class WorkerRecordStore:
             os.replace(tmp_name, path)
         except BaseException:
             try:
-                os.unlink(tmp_name)
+                pathlib.Path(tmp_name).unlink()
             except FileNotFoundError:
                 pass
             raise

@@ -109,7 +109,7 @@ def create_session(
             f"cannot chmod socket parent {socket_path.parent!s} to 0700: {e}"
         ) from e
     # -d: detached, -s: session name, -n: window name, -P: print info
-    quoted = " ".join(shlex.quote(part) for part in command)
+    quoted = shlex.join(command)
     proc = subprocess.run(
         [
             "tmux",

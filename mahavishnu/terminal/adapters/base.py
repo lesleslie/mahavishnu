@@ -101,3 +101,16 @@ class TerminalAdapter(ABC):
     @abstractmethod
     def adapter_name(self) -> str:
         """Return adapter name for identification."""
+
+    async def run_applescript(self, script: str) -> str:
+        """Execute an AppleScript snippet and return its raw output.
+
+        Only meaningful on macOS adapters (iTerm2, mock with AppleScript
+        shim). Adapters running on other platforms should raise
+        ``NotImplementedError`` so callers can fall back. Defined on the
+        ABC (rather than only on concrete macOS adapters) so the
+        grid manager's static-typed call sites are valid.
+        """
+        raise NotImplementedError(
+            f"{type(self).__name__} does not support AppleScript execution"
+        )

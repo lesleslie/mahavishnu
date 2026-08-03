@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import asyncio
+
 from oneiric.core.logging import get_logger
 from prometheus_client import Counter, Histogram
 
@@ -13,6 +15,7 @@ logger = get_logger(__name__)
 # Resolve the websocket broadcast helper at import time so wiring bugs surface.
 # Unit tests that don't need websocket broadcasting can monkeypatch
 # `_broadcast_event` to a mock (or set it to None) before calling _publish_event.
+_broadcast_event = None
 try:
     from ...websocket.server import broadcast_event as _broadcast_event
 except ImportError:
@@ -26,7 +29,6 @@ except ImportError:
             ),
         },
     )
-    _broadcast_event = None  # type: ignore[assignment]
 
 
 _TRANSITIONS = Counter(
@@ -134,7 +136,17 @@ def _publish_event(report: WorkerCapabilityReport) -> None:
         "reason_bucket": safe_error_for_user(_bucket(report)),
         "probe_at": safe_error_for_user(report.probe_at.isoformat()),
     }
-    _broadcast_event("worker.availability_changed", payload, room="adapters")
+    # ``_publish_event`` is synchronous; the websocket broadcast is fire-and-forget.
+    # Schedule the coroutine on the running loop so we never block capability
+    # evaluation on a websocket round-trip.
+    coro = _broadcast_event("worker.availability_changed", payload, room="adapters")
+    try:
+        loop = asyncio.get_running_loop()
+        loop.create_task(coro)
+    except RuntimeError:
+        # No running loop (e.g. capability evaluation called from sync context);
+        # fall through and silently drop the broadcast.
+        coro.close()
 
 
 def reset_for_tests() -> None:

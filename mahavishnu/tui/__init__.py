@@ -16,22 +16,33 @@ from oneiric.core.logging import get_logger
 
 if TYPE_CHECKING:
     from typing import Any
+
+    from mahavishnu.tui.command_palette import (
+        Command,
+        CommandCategory,
+        CommandPalette,
+    )
 from rich.console import Console
 from rich.table import Table
 
+# Public re-exports; ``None`` when textual isn't installed. Consumers
+# should fall back to ``FallbackRichFormatter`` in that case. Typed as
+# ``Any`` so ty accepts both the live class import and the ``None``
+# fallback without a conflicting-declaration error.
+Command: Any = None
+CommandCategory: Any = None
+CommandPalette: Any = None
 try:
     from mahavishnu.tui.command_palette import (
         Command,
         CommandCategory,
         CommandPalette,
     )
-except ImportError:
+except ImportError:  # textual optional: command palette stays None
     # textual is optional — when it's missing, the command palette symbols
-    # become None and consumers should fall back to FallbackRichFormatter.
-    # FallbackRichFormatter and get_console below still work.
-    Command = None  # type: ignore[assignment,misc]
-    CommandCategory = None  # type: ignore[assignment,misc]
-    CommandPalette = None  # type: ignore[assignment,misc]
+    # remain ``None`` (per the module-level ``Command: Any = None`` binding
+    # above) and consumers should fall back to FallbackRichFormatter.
+    ...
 
 logger = get_logger(__name__)
 

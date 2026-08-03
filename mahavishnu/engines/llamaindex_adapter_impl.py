@@ -294,7 +294,6 @@ class LlamaIndexAdapter(OrchestratorAdapter):
 
     async def initialize(self) -> None:
         """Initialize the LlamaIndex adapter."""
-        return
 
     async def cleanup(self) -> None:
         """Cleanup LlamaIndex adapter resources."""
@@ -344,7 +343,7 @@ class LlamaIndexAdapter(OrchestratorAdapter):
                 model_name=ollama_model, base_url=ollama_base_url
             )
             Settings.llm = Ollama(model=ollama_model, base_url=ollama_base_url)
-        except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
+        except Exception as e:
             raise LlamaIndexEmbeddingError(
                 f"Failed to initialize Ollama embedding model: {e}",
                 model=ollama_model,

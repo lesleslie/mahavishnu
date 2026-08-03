@@ -11,7 +11,10 @@ from ..registry import WORKER_REGISTRY, get_worker_config
 from ._cache import invalidate as cache_invalidate
 from ._cache import put as cache_put
 from ._observability import emit_transition, record_cache, record_probe, record_probe_failure
-from ._probes import PROBES
+from ._probes import (
+    _probe_openclaw_cli,
+    _probe_openclaw_gateway,
+)
 from ._states import WorkerCapabilityReport, WorkerCapabilityState
 from ._static import StaticContext, evaluate_static
 
@@ -22,19 +25,19 @@ if TYPE_CHECKING:
 def _run_live(report, config, settings):
     if report.state is not WorkerCapabilityState.READY:
         return report
+    # Dispatch is per-branch so each call site matches its probe's typed
+    # signature (avoids tuple-spreading unions that confuse ty).
     if config.worker_type == "gateway-openclaw":
-        fn = PROBES["openclaw_gateway"]
-        args = (os.getenv("OPENCLAW_GATEWAY_URL", ""), os.getenv("OPENCLAW_GATEWAY_TOKEN"))
+        endpoint = os.getenv("OPENCLAW_GATEWAY_URL", "")
+        token = os.getenv("OPENCLAW_GATEWAY_TOKEN")
+        check = asyncio.run(_probe_openclaw_gateway(endpoint, token))
     elif config.worker_type == "terminal-openclaw":
-        fn = PROBES["openclaw_cli"]
-        args = ("openclaw",)
+        check = asyncio.run(_probe_openclaw_cli("openclaw"))
     elif config.requires_tool:
-        fn = PROBES["openclaw_cli"]
-        args = (config.requires_tool,)
+        check = asyncio.run(_probe_openclaw_cli(config.requires_tool))
     else:
         return report
     start = time.perf_counter()
-    check = asyncio.run(fn(*args))
     record_probe(config.worker_type, check.kind, time.perf_counter() - start, check.status)
     if check.status == "fail":
         record_probe_failure(report, check.kind, check.safe_reason or "unknown")

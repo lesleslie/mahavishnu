@@ -906,7 +906,9 @@ class RecoveryScreen(VerticalScroll):
 class ApprovalsScreen(VerticalScroll):
     """Pending approvals backed by the durable approval manager."""
 
-    _approval_ids: ClassVar[list[str]] = []
+    def __init__(self) -> None:
+        super().__init__()
+        self._approval_ids: list[str] = []
 
     def compose(self) -> ComposeResult:
         yield Label("Pending Approvals", classes="screen-title")

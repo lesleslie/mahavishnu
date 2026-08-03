@@ -135,7 +135,7 @@ class A2AWorker(BaseWorker):
         super().__init__(worker_type="a2a")
         self._registry = agent_configs  # name → A2AAgentConfig
 
-    async def start(self) -> str:
+    async def start(self, *, prompt: str | None = None) -> str:
         self._status = WorkerStatus.RUNNING
         return "a2a"
 
@@ -180,7 +180,7 @@ class A2AWorker(BaseWorker):
                 error_code=ErrorCode.A2A_AGENT_ERROR,
                 metadata={"worker_type": "a2a", "agent": agent_name},
             )
-        except Exception:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
+        except Exception:
             logger.exception("Unexpected error for A2A agent %r", agent_name)
             return WorkerResult(
                 worker_id=task_id,

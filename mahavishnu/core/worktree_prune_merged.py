@@ -61,7 +61,7 @@ class WorktreePruneCandidate:
         if not self.last_touched_at:
             return None
         try:
-            ts = datetime.fromisoformat(self.last_touched_at.replace("Z", "+00:00"))
+            ts = datetime.fromisoformat(self.last_touched_at)
         except ValueError:
             return None
         return (datetime.now(UTC) - ts).days
@@ -226,7 +226,7 @@ async def find_merged_worktrees(
         last_touched_at = registry_lookup(str(worktree_path)) if registry_lookup else None
         if ttl_days > 0 and last_touched_at:
             try:
-                touched = datetime.fromisoformat(last_touched_at.replace("Z", "+00:00"))
+                touched = datetime.fromisoformat(last_touched_at)
             except ValueError:
                 continue
             if (datetime.now(UTC) - touched).days < ttl_days:
@@ -280,6 +280,26 @@ class WorktreePruner:
         trigger: str = "cli",
     ) -> list[WorktreePruneResult]:
         """Remove candidates, escalating force only for recognized safety blocks."""
+        self._validate_candidates(candidates, force_reason)
+        self._audit_logger.log_prune_merged_attempt(
+            user_id, len(candidates), ttl_days, include_dirty, trigger
+        )
+        results: list[WorktreePruneResult] = []
+        for candidate in candidates:
+            results.append(await self._apply_candidate(candidate, force_reason, user_id))
+        self._log_audit_outcome(user_id, results, trigger)
+        return results
+
+    @staticmethod
+    def _validate_candidates(
+        candidates: list[WorktreePruneCandidate], force_reason: str | None
+    ) -> None:
+        """Reject candidate lists that violate the pruner's safety invariants.
+
+        Centralising these checks keeps ``remove`` at a single
+        cyclomatic-complexity budget and gives callers a precise error
+        for each failure mode.
+        """
         if any(candidate.merge_status != "merged" for candidate in candidates):
             raise ValueError("All candidates must have merge_status='merged'")
         if any(candidate.dirty_status == "undetermined" for candidate in candidates):
@@ -287,77 +307,109 @@ class WorktreePruner:
         if any(candidate.dirty_status == "dirty" for candidate in candidates) and not force_reason:
             raise ValueError("force_reason is required for dirty candidates")
 
-        self._audit_logger.log_prune_merged_attempt(
-            user_id, len(candidates), ttl_days, include_dirty, trigger
-        )
-        results: list[WorktreePruneResult] = []
-        for candidate in candidates:
-            current_sha = _git_head_sha(candidate.worktree_path)
-            current_merge = classify_merge_status(candidate.worktree_path)
-            current_dirty = _git_dirty_count(candidate.worktree_path)
-            if (
-                current_sha != candidate.head_sha
-                or current_merge != "merged"
-                or current_dirty != candidate.dirty_status
-            ):
-                results.append(
-                    WorktreePruneResult(candidate, False, None, "candidate changed since discovery")
-                )
-                continue
-            try:
-                first = await self._coordinator.remove_worktree(
-                    repo_nickname=candidate.repo_nickname,
-                    worktree_path=str(candidate.worktree_path),
-                    force=False,
-                    force_reason=None,
-                    user_id=user_id,
-                )
-                escalated = _requires_force(first)
-                final = first
-                if escalated:
-                    final = await self._coordinator.remove_worktree(
-                        repo_nickname=candidate.repo_nickname,
-                        worktree_path=str(candidate.worktree_path),
-                        force=True,
-                        force_reason=force_reason or "merged worktree dependency cleanup",
-                        user_id=user_id,
-                    )
-                results.append(
-                    WorktreePruneResult(
-                        candidate=candidate,
-                        success=bool(final.get("success")),
-                        backup_path=(
-                            str(final["backup_path"]) if final.get("backup_path") else None
-                        ),
-                        error=(str(final["error"]) if final.get("error") else None),
-                        escalated=escalated,
-                    )
-                )
-            except Exception as exc:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
-                results.append(WorktreePruneResult(candidate, False, None, str(exc)))
+    async def _apply_candidate(
+        self,
+        candidate: WorktreePruneCandidate,
+        force_reason: str | None,
+        user_id: str | None,
+    ) -> WorktreePruneResult:
+        """Run the per-candidate removal flow: re-validate, attempt, escalate."""
+        if not self._candidate_unchanged(candidate):
+            return WorktreePruneResult(
+                candidate, False, None, "candidate changed since discovery"
+            )
+        try:
+            return await self._remove_with_escalation(candidate, force_reason, user_id)
+        except Exception as exc:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
+            return WorktreePruneResult(candidate, False, None, str(exc))
 
-        successful = [result for result in results if result.success]
-        failed = [result for result in results if not result.success]
-        backup_paths = [result.backup_path for result in successful if result.backup_path]
-        failed_paths = [str(result.candidate.worktree_path) for result in failed]
+    @staticmethod
+    def _candidate_unchanged(candidate: WorktreePruneCandidate) -> bool:
+        """Confirm the candidate still matches its discovery-time state.
+
+        Race guard: a worktree may have been touched between discovery and
+        prune. Re-running git status / dirty checks here means a stale
+        ``WorktreePruneCandidate`` is rejected with a precise error.
+        """
+        current_sha = _git_head_sha(candidate.worktree_path)
+        current_merge = classify_merge_status(candidate.worktree_path)
+        current_dirty = _git_dirty_count(candidate.worktree_path)
+        return (
+            current_sha == candidate.head_sha
+            and current_merge == "merged"
+            and current_dirty == candidate.dirty_status
+        )
+
+    async def _remove_with_escalation(
+        self,
+        candidate: WorktreePruneCandidate,
+        force_reason: str | None,
+        user_id: str | None,
+    ) -> WorktreePruneResult:
+        """Call ``coordinator.remove_worktree`` once, escalating to force on safety blocks."""
+        first = await self._coordinator.remove_worktree(
+            repo_nickname=candidate.repo_nickname,
+            worktree_path=str(candidate.worktree_path),
+            force=False,
+            force_reason=None,
+            user_id=user_id,
+        )
+        escalated = _requires_force(first)
+        final = first
+        if escalated:
+            final = await self._coordinator.remove_worktree(
+                repo_nickname=candidate.repo_nickname,
+                worktree_path=str(candidate.worktree_path),
+                force=True,
+                force_reason=force_reason or "merged worktree dependency cleanup",
+                user_id=user_id,
+            )
+        return WorktreePruneResult(
+            candidate=candidate,
+            success=bool(final.get("success")),
+            backup_path=str(final["backup_path"]) if final.get("backup_path") else None,
+            error=str(final["error"]) if final.get("error") else None,
+            escalated=escalated,
+        )
+
+    @staticmethod
+    def _summarize_results(
+        results: list[WorktreePruneResult],
+    ) -> tuple[list[WorktreePruneResult], list[WorktreePruneResult], list[str], list[str]]:
+        """Partition results into (successful, failed, backup_paths, failed_paths).
+
+        Pulled out so the audit-logging branch in ``remove`` reads top-down
+        without inlining list comprehensions.
+        """
+        successful = [r for r in results if r.success]
+        failed = [r for r in results if not r.success]
+        backup_paths = [r.backup_path for r in successful if r.backup_path]
+        failed_paths = [str(r.candidate.worktree_path) for r in failed]
+        return successful, failed, backup_paths, failed_paths
+
+    def _log_audit_outcome(
+        self,
+        user_id: str | None,
+        results: list[WorktreePruneResult],
+        trigger: str,
+    ) -> None:
+        """Emit the appropriate audit-log line for the batch outcome."""
+        successful, failed, backup_paths, failed_paths = self._summarize_results(results)
         if failed and successful:
             self._audit_logger.log_prune_merged_partial(
+                user_id, len(successful), len(failed), failed_paths, backup_paths, trigger
+            )
+            return
+        if failed:
+            self._audit_logger.log_prune_merged_failure(
                 user_id,
-                len(successful),
-                len(failed),
-                failed_paths,
-                backup_paths,
+                "; ".join(r.error or "unknown error" for r in failed),
                 trigger,
             )
-        elif failed:
-            self._audit_logger.log_prune_merged_failure(
-                user_id, "; ".join(result.error or "unknown error" for result in failed), trigger
-            )
-        else:
-            self._audit_logger.log_prune_merged_success(
-                user_id, len(successful), backup_paths, trigger, failed_paths
-            )
-        return results
+            return
+        self._audit_logger.log_prune_merged_success(
+            user_id, len(successful), backup_paths, trigger, failed_paths
+        )
 
 
 __all__ = [

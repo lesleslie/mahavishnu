@@ -146,7 +146,7 @@ class CloudWorker(BaseWorker):
         if missing:
             self._status = WorkerStatus.DEGRADED
 
-    async def start(self) -> str:
+    async def start(self, *, prompt: str | None = None) -> str:
         """Initialize the cloud worker.
 
         Re-checks credentials at start time (env vars may have changed since

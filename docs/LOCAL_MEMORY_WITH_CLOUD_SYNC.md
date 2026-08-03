@@ -207,7 +207,7 @@ clusters:
 - **Disaster recovery**: If Mac crashes, restore from cloud replica
 - **Geographic distribution**: Replicas across regions
 
-**Documentation**: [Qdrant Distributed Deployment](https://qdrant.tech/documentation/guides/distributed_deployment/)
+**Documentation**: [Qdrant Distributed Deployment](https://qdrant.tech/documentation/scaling/distributed_deployment/)
 
 **Pricing**:
 
@@ -662,7 +662,7 @@ ______________________________________________________________________
 ### Qdrant
 
 - [Qdrant Documentation](https://qdrant.tech/documentation/)
-- [Qdrant Distributed Deployment](https://qdrant.tech/documentation/guides/distributed_deployment/)
+- [Qdrant Distributed Deployment](https://qdrant.tech/documentation/scaling/distributed_deployment/)
 
 ### Pgvector
 

@@ -137,7 +137,7 @@ class OpenClawGatewayWorker(BaseWorker):
         self.worker_id = f"openclaw_{uuid.uuid4().hex[:12]}"
         self._start_time: float | None = None
 
-    async def start(self) -> str:
+    async def start(self, *, prompt: str | None = None) -> str:
         """Validate gateway availability and mark worker as running."""
         health = await self.gateway_client.health()
         healthy = bool(health.get("healthy", True))

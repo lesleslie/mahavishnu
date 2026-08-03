@@ -1074,3 +1074,30 @@ class MahavishnuWebSocketServer(WebSocketServer):
             room="adapters",
         )
         await self.broadcast_to_room("adapters", event)
+
+
+async def broadcast_event(event_type: str, payload: dict[str, Any], *, room: str) -> None:
+    """Module-level broadcast helper for capability/event publishers.
+
+    Wraps ``WebSocketProtocol.create_event`` + ``broadcast_to_room`` so callers
+    that don't hold a server instance reference can still publish to a
+    room. Currently used by ``workers/capabilities/_observability.py`` to
+    publish worker availability transitions to the ``adapters`` room.
+
+    The implementation looks up the singleton ``MahavishnuWebSocketServer``
+    from the app context if present, otherwise it no-ops. This keeps the
+    helper safe to call from non-server contexts (e.g. capability probes
+    during CLI startup) without raising.
+    """
+    try:
+        from mahavishnu.core.context import get_app_from_context
+
+        app = get_app_from_context()
+    except Exception:  # noqa: BLE001 - defensive: context lookup is best-effort
+        app = None
+    server = getattr(app, "websocket_server", None) if app is not None else None
+    if server is None:
+        logger.debug("broadcast_event no-op: no websocket server in context (room=%s)", room)
+        return
+    event = WebSocketProtocol.create_event(event_type, payload, room=room)
+    await server.broadcast_to_room(room, event)
