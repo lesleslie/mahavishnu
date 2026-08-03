@@ -44,9 +44,9 @@ repos:
 - name: oneiric
   package: oneiric
   path: /Users/les/Projects/oneiric
-  nickname: "on"
+  nickname: oc
   nicknames:
-  - "on"
+  - oc
   role: resolver
   tags:
   - configuration
@@ -69,9 +69,9 @@ repos:
 - name: mdinject
   package: mdinject
   path: /Users/les/Projects/mdinject
-  nickname: md
+  nickname: mj
   nicknames:
-  - md
+  - mj
   role: app
   tags:
   - app
