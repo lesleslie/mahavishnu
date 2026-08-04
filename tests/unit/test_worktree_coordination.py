@@ -444,6 +444,78 @@ class TestWorktreeCoordinator:
         assert result["success"] is True
 
     @pytest.mark.asyncio
+    async def test_remove_worktree_provider_failure_does_not_log_success(self, tmp_path):
+        """Regression for bug session-buddy-mcp-remove-worktree-bugs.md.
+
+        Before the fix, ``coordinator.remove_worktree`` logged
+        ``removal_success`` whenever ``provider.remove_worktree`` returned
+        without raising — even when the provider's dict reported
+        ``success=False`` (e.g., session-buddy timed out or git rejected
+        the path). That made green audit lines mean nothing.
+
+        After the fix: the coordinator reads ``result['success']`` and
+        branches on it. A failure goes through ``log_removal_failure``,
+        not ``log_removal_success``.
+        """
+        mock_repo = Repository(
+            name="test-repo",
+            package="test_repo",
+            path=str(tmp_path / "repos" / "test_repo"),
+            nickname="test-repo",
+            role="app",
+            tags=["test"],
+            description="Test repository",
+        )
+        mock_repo_manager = MagicMock()
+        mock_repo_manager.get_by_name.return_value = mock_repo
+
+        mock_coord_manager = MagicMock()
+        mock_coord_manager.list_dependencies.return_value = []
+
+        from mahavishnu.core.worktree_providers.mock import MockWorktreeProvider
+
+        mock_provider = MockWorktreeProvider()
+        mock_provider.remove_worktree = AsyncMock(
+            return_value={
+                "success": False,
+                "error": "git worktree remove timed out",
+                "force_required": True,
+                "safety_check": "dependency_block",
+                "error_code": "timeout",
+            }
+        )
+
+        coordinator = WorktreeCoordinator(
+            repo_manager=mock_repo_manager,
+            coordination_manager=mock_coord_manager,
+            providers=[mock_provider],
+            allowed_worktree_roots=[tmp_path / "worktrees"],
+        )
+        _patch_safe_path(coordinator, tmp_path / "worktrees")
+
+        coordinator._check_uncommitted_changes = AsyncMock(return_value=False)
+        coordinator._verify_is_worktree = AsyncMock(return_value=True)
+
+        # Spy on the audit logger
+        coordinator.audit_logger.log_removal_success = MagicMock()
+        coordinator.audit_logger.log_removal_failure = MagicMock()
+
+        result = await coordinator.remove_worktree(
+            repo_nickname="test-repo",
+            worktree_path=str(tmp_path / "worktrees" / "test-repo" / "main"),
+            force=False,
+            user_id="user-123",
+        )
+
+        assert result["success"] is False
+        # The success branch must NOT have fired
+        coordinator.audit_logger.log_removal_success.assert_not_called()
+        # The failure branch MUST have fired with the provider's error message
+        coordinator.audit_logger.log_removal_failure.assert_called_once()
+        call_kwargs = coordinator.audit_logger.log_removal_failure.call_args.kwargs
+        assert "timed out" in call_kwargs["error"]
+
+    @pytest.mark.asyncio
     async def test_remove_worktree_with_uncommitted_changes_blocked(self, tmp_path):
         """Test that removal is blocked when worktree has uncommitted changes."""
         mock_repo = Repository(

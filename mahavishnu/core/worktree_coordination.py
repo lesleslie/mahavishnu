@@ -386,8 +386,16 @@ class WorktreeCoordinator:
                 force=force,
             )
 
-            # Enhanced audit logging for force operations
-            if force and has_uncommitted:
+            # Bug session-buddy-mcp-remove-worktree-bugs.md: do not log
+            # ``removal_success`` when the provider reports failure. The
+            # provider's return value is the only source of truth — an
+            # exception path below handles programming errors, but a
+            # well-formed ``{"success": False, ...}`` dict was previously
+            # logged as success, hiding real failures behind a green audit
+            # line.
+            succeeded = bool(result.get("success"))
+
+            if succeeded and force and has_uncommitted:
                 self.audit_logger.log_forced_removal(
                     user_id=user_id,
                     repo_nickname=repo_nickname,
@@ -396,13 +404,26 @@ class WorktreeCoordinator:
                     has_uncommitted=has_uncommitted,
                     backup_path=str(backup_path) if backup_path else None,
                 )
-            else:
+            elif succeeded:
                 self.audit_logger.log_removal_success(
                     user_id=user_id,
                     repo_nickname=repo_nickname,
                     worktree_path=worktree_path,
                     force=force,
                 )
+            else:
+                self.audit_logger.log_removal_failure(
+                    user_id=user_id,
+                    repo_nickname=repo_nickname,
+                    worktree_path=worktree_path,
+                    error=str(result.get("error", "provider reported failure")),
+                )
+                logger.warning(
+                    "Worktree removal failed: path=%s, error=%s",
+                    worktree_path,
+                    result.get("error"),
+                )
+                return result
 
             logger.info(f"Worktree removed successfully: {worktree_path}")
             return result
