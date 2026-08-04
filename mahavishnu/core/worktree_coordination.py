@@ -112,8 +112,16 @@ class WorktreeCoordinator:
 
         # Path validator (security - defense in depth)
         if allowed_worktree_roots is None:
+            # Default allow-list covers:
+            #  - ~/worktrees : the canonical convention
+            #  - ~/Projects  : where every Bodai ecosystem repo lives, so
+            #                   per-repo `.worktrees/` and
+            #                   `.claude/worktrees/` subdirs are accepted.
+            # Defense-in-depth (CWE-22/114/170) is preserved: the validator
+            # still rejects null bytes, traversal, and shell metacharacters.
             allowed_worktree_roots = [
                 Path.home() / "worktrees",
+                Path.home() / "Projects",
                 Path.cwd(),
             ]
 
