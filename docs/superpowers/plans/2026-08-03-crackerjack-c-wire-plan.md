@@ -2,44 +2,51 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Resolve six Crackerjack quality and wiring gaps identified in `docs/superpowers/specs/2026-08-03-bodai-openclaw-hermes-inspired-portfolio-design.md` §"C-WIRE".
+**Goal:** Resolve six Crackerjack quality and wiring gaps identified in `docs/superpowers/specs/2026-08-03-bodai-openclaw-hermes-inspired-portfolio-design.md` §"C-WIRE", add per-task observability so each task reaches the `wired` state, and satisfy the portfolio's 5-field integration contract template at plan level.
 
-**Architecture:** Six independent tasks targeting distinct modules in `/Users/les/Projects/crackerjack`. Five tasks (C-SKILL-METRICS, C-OUTCOME-CONTRACT, C-PLUGIN-TRUST, C-WEBSOCKET-AUTH, C-HOOKS-LIST) ship in Phase 1. C-ASYNC-DURABILITY is gated on D-LOCK from the Dhara substrate and ships as Phase 1.5. Each task follows strict TDD: write the failing test, verify the failure, implement, verify the pass, commit.
+**Architecture:** Five independent tasks (Tasks 1, 3, 5 ship first as small additive fixes; Tasks 2 and 4 ship last because they are contract changes, not additive fixes). Task 6 (C-ASYNC-DURABILITY) is gated on D-LOCK from the Dhara substrate and ships as Phase 1.5. Each task follows strict TDD and emits a metric/log line so a smoke command can prove the change took effect.
 
-**Tech Stack:** Python 3.13, pytest 9.x, asyncio, Pydantic v2, mcp-common auth primitives, crackerjack existing test infrastructure.
+**Tech Stack:** Python 3.13, pytest 9.x, asyncio, Pydantic v2, mcp-common auth primitives, pathlib (Python 3.9+ `is_relative_to`), crackerjack existing test infrastructure.
 
 ## Global Constraints
 
-These come from `crackerjack/CLAUDE.md` and `crackerjack/pyproject.toml`. Every task implicitly requires them:
+Inherited from `crackerjack/CLAUDE.md` and `crackerjack/pyproject.toml`:
 
-- All source files start with `from __future__ import annotations`.
-- All test files start with `from __future__ import annotations`.
+- `from __future__ import annotations` is **not** mandated by crackerjack's CLAUDE.md; omit unless a target file already imports it (the prior plan mandated it incorrectly — it is now removed). The remaining `crackerjack/**` files that start with `from __future__ import annotations` are following a local convention; new files may match or omit.
 - Imports sorted within each section (stdlib → third-party → first-party, with `known-first-party = ["crackerjack"]`).
 - Modern type syntax: `X | None` (not `Optional[X]`), `list[str]` (not `List[str]`), `pathlib.Path` for filesystem paths.
-- Function arguments with default `None` must be typed `X | None = None`.
-- No `assert` in production code (`crackerjack/**`). Use the `crackerjack/exceptions` hierarchy. Enforced by bandit B101.
-- All first-party imports use `from crackerjack.X import Y` form, not `import crackerjack.X.Y`.
+- No `assert` in production code (`crackerjack/**`). Use the `crackerjack/exceptions/` hierarchy. Enforced by bandit B101.
+- All first-party imports use `from crackerjack.X import Y` form.
 - Tests live under `/Users/les/Projects/crackerjack/tests/` mirroring package structure.
-- Existing pytest markers `unit`, `integration` are available; use `unit` for new unit tests.
-- Async tests run with `asyncio_mode = "auto"` — no `@pytest.mark.asyncio` decorator needed.
-- Per-test timeout ceiling is 300s; mark slow tests with `@pytest.mark.slow`.
-- Run `uv run pytest <path> -v` (from `/Users/les/Projects/crackerjack/`) to execute any test step in this plan.
-- Run `uv run ruff check <path>` and `uv run ruff format <path>` to lint/format any file touched in this plan.
+- Use existing pytest markers `unit`, `integration`; `asyncio_mode = "auto"` means no `@pytest.mark.asyncio` decorator.
+- Per-test timeout ceiling is 300 s; mark slow tests with `@pytest.mark.slow`.
+- Run commands from `/Users/les/Projects/crackerjack/`. Use `uv run pytest <path> -v`, `uv run ruff check <path>`, `uv run ruff format <path>`.
 
 ## Working Directory
 
-Every task runs from `/Users/les/Projects/crackerjack/`. The plan references paths relative to that root unless noted otherwise. The plan file lives in `/Users/les/Projects/mahavishnu/docs/superpowers/plans/` because it was authored from the Mahavishnu repo; the implementer must `cd` to crackerjack before executing any step.
+Every task runs from `/Users/les/Projects/crackerjack/`. The plan file lives in the mahavishnu repo by authoring convention only.
+
+## Plan-Level Integration Contract
+
+Per `docs/superpowers/specs/2026-08-03-bodai-openclaw-hermes-inspired-portfolio-design.md` §"Integration contract (template)" the C-WIRE plan declares:
+
+- **Triggered from:** any `crackerjack run` invocation, `crackerjack publish` flow, MCP `search_skills` tool call, WebSocket subscription request, security audit invocation.
+- **Returns to / updates:** `SkillMetadata.success_rate` (per skill), `QualityGateReport.required_check_failures` (per gate), `HookPluginBase.metadata` (per plugin), WebSocket subscription allow-list, `SecurityAuditor.CRITICAL_HOOKS` lookup table, `crackerjack/skills_tracking.py::SessionBuddyMCPTracker.mcp_server_url` default.
+- **Demonstrable by:** `cd /Users/les/Projects/crackerjack && uv run pytest tests/unit/skills/ tests/unit/mcp/tools/test_skill_tools.py tests/models/ tests/test_plugins_coverage.py tests/integration/test_skills_tracking.py tests/test_websocket_auth.py tests/test_security_audit.py -q` plus `curl :8686/metrics | grep -E 'crackerjack_skill_outcome|crackerjack_ws_subscribe|crackerjack_security_critical'` shows the new observability surface.
+- **Rollback signal:** `crackerjack_skill_outcome_total{outcome="failure"}` rate climbing > 50 % post-rollout (suggests the new metric is double-counting or a regression); `crackerjack_security_critical` report count drops to zero (suggests the dict lookup silently regressed); manual rollback via `git revert` on the per-task commit.
+- **Observability added (per task, listed in each task's "Observability added" section):** `crackerjack.skill.outcome{outcome}` counter (Task 1); `crackerjack.gate.required_check_failure{name}` counter (Task 2); `crackerjack.plugin.trust_check_failed{plugin_type}` counter (Task 3); `crackerjack.ws.subscribe.denied{channel,reason}` counter (Task 4); `crackerjack.security.critical_hooks{hook}` gauge size (Task 5). Task 6 (when unblocked) emits `crackerjack.async_task.persisted{task_id,status}` audit event.
 
 ## Dependency Graph Within This Plan
 
-Tasks 1–5 are independent and may run in any order. Task 6 (C-ASYNC-DURABILITY) depends on D-LOCK from the Dhara substrate (`docs/superpowers/specs/2026-08-03-bodai-openclaw-hermes-inspired-portfolio-design.md` §"Layer 0"). Do not start Task 6 until D-LOCK has shipped.
+Tasks 1, 3, 5 are additive and can ship in any order; recommended order is 1 → 3 → 5. Tasks 2 and 4 are contract changes; ship after 1, 3, 5 to land additive fixes first. Task 6 is gated on D-LOCK.
 
 ```
 Task 1 (C-SKILL-METRICS)   ─┐
-Task 2 (C-OUTCOME-CONTRACT) ─┤
-Task 3 (C-PLUGIN-TRUST)     ─┼─ all parallelizable
-Task 4 (C-WEBSOCKET-AUTH)   ─┤
+Task 3 (C-PLUGIN-TRUST)     ─┼─ additive, ship first
 Task 5 (C-HOOKS-LIST)       ─┘
+                            ↓
+Task 2 (C-OUTCOME-CONTRACT) ─┐ contract changes, ship last
+Task 4 (C-WEBSOCKET-AUTH)   ─┘
                             ↓
                     D-LOCK ships
                             ↓
@@ -48,84 +55,109 @@ Task 5 (C-HOOKS-LIST)       ─┘
 
 ---
 
-### Task 1: Fix skill metrics wire-up (C-SKILL-METRICS)
+### Task 1: Wire skill-metrics for failure/timeout + repair skill-tools kwarg (C-SKILL-METRICS)
 
-Two distinct defects, both in the skill-metrics path. One affects the runtime metric update; the other raises a `TypeError` from every skill MCP search.
+Two defects in the skill-metrics path. The first affects every skill execution metric (failure/timeout never lower the success rate); the second raises `TypeError` from every MCP skill search.
 
 **Files:**
-- Modify: `crackerjack/skills/agent_skills.py:218` (`_update_success_rate` only runs on success branch)
-- Modify: `crackerjack/mcp/tools/skill_tools.py:184` (calls `search_tool_names` with the `search_names` kwarg)
-- Test: `tests/unit/skills/test_agent_skills.py` (extend existing)
-- Test: `tests/unit/mcp/test_skill_tools.py` (new test file)
+- Modify: `crackerjack/skills/agent_skills.py:130, 142, 148, 218-224` (call sites + `_update_success_rate` body)
+- Modify: `crackerjack/mcp/tools/skill_tools.py:180-188` (`_search_mcp_skills` call site)
+- Test: `tests/unit/skills/test_agent_skills.py` (extend `TestAgentSkill`)
+- Test: `tests/unit/mcp/tools/test_skill_tools.py` (new file — sibling of existing `test_git_metrics_mcp_tools.py`)
 
 **Interfaces:**
-- Consumes: `AgentSkillOutcome` from `crackerjack/skills/agent_skills.py:120-140` (the call site that invokes `_update_success_rate`)
-- Consumes: `search_skill_tools(search_in: str, ...)` — the function at `crackerjack/mcp/tools/skill_tools.py:179`
-- Produces: `_update_success_rate(outcome: "success" | "failure" | "timeout")` — three-way classification that records all three paths
-- Produces: `search_skill_tools` callable with the keyword arg `search_tool_names=...` (matches the actual parameter name on the underlying `search_semantic` call)
+- Consumes: `AgentSkill` (line 92 of `crackerjack/skills/agent_skills.py`); `AgentSkill.execute(issue, timeout)` returning `SkillExecutionResult` (lines 68-89); `MCPSkillRegistry.search_skills` (line 138 of `crackerjack/skills/mcp_skills.py`) accepting `search_tool_names`, `search_tags`, `search_descriptions`, `search_domains`.
+- Produces: `_update_success_rate(self, outcome: str)` accepting `"success" | "failure" | "timeout"`, applying the EMA (`alpha = 0.1`) with score 1.0 for success and 0.0 otherwise; raises `ValueError` on unknown outcome.
+- Produces: `_search_mcp_skills` calls `mcp_skills.search_skills(query, search_names=..., search_tags=..., search_descriptions=...)` without `TypeError`. The kwarg names are preserved (the `search_names` flag here is the local boolean, distinct from `MCPSkillRegistry.search_skills.search_tool_names`).
+- Observability added: counter `crackerjack.skill.outcome{skill_name, outcome}` incremented once per `execute()` call (in each of the three branches).
 
-- [ ] **Step 1: Add failing test for failure/timeout success-rate updates**
+- [ ] **Step 1: Write failing test for failure/timeout EMA**
 
-Open `tests/unit/skills/test_agent_skills.py`. Add a new test method to `TestAgentSkillsOutcome` (or create it if absent):
+Open `tests/unit/skills/test_agent_skills.py`. Locate `TestAgentSkill` (around line 142). Add:
 
 ```python
-def test_update_success_rate_records_failures_and_timeouts(self) -> None:
-    """Skill outcomes must record failure and timeout paths, not only success."""
-    from crackerjack.skills.agent_skills import AgentSkillsTracker
+@pytest.mark.asyncio
+async def test_execute_lowers_success_rate_on_timeout(self, monkeypatch) -> None:
+    """Timeout path must lower skill.metadata.success_rate below 1.0."""
+    from crackerjack.agents.base import AgentContext, Issue
+    from crackerjack.skills.agent_skills import AgentSkill, SkillMetadata, SkillCategory
+    from crackerjack.agents.base import IssueType
 
-    tracker = AgentSkillsTracker()
-    tracker.record_outcome("skill.a", "failure", duration_ms=42)
-    tracker.record_outcome("skill.b", "timeout", duration_ms=123)
+    md = SkillMetadata(
+        name="timeout_skill",
+        description="times out",
+        category=SkillCategory.CODE_QUALITY,
+        supported_types={IssueType.LINTING},
+    )
 
-    assert tracker.success_rate("skill.a") < 1.0
-    assert tracker.success_rate("skill.b") < 1.0
+    class SlowAgent:
+        async def execute(self, issue):
+            import asyncio
+            await asyncio.sleep(10)
+            return None
+        async def can_handle(self, issue):
+            return 0.9
+
+    skill = AgentSkill(agent=SlowAgent(), metadata=md)
+    issue = Issue(type=IssueType.LINTING, message="x", file_path="x.py")
+    with pytest.raises(Exception):
+        await skill.execute(issue, timeout=0)
+    assert skill.metadata.success_rate < 1.0
 ```
 
-The actual method names on `AgentSkillsTracker` may differ. Read `crackerjack/skills/agent_skills.py` first to confirm the public surface (`record_outcome`, `success_rate`, or the equivalents). Adjust the test to use the names you find. The contract under test is: a `failure` or `timeout` outcome must lower the recorded success rate below 1.0.
+Adjust the `Issue` constructor signature to match the real one in `crackerjack/agents/base.py` if it differs. The assertion `skill.metadata.success_rate < 1.0` is the contract under test.
 
 - [ ] **Step 2: Run the test and verify it fails**
 
-Run: `cd /Users/les/Projects/crackerjack && uv run pytest tests/unit/skills/test_agent_skills.py::TestAgentSkillsOutcome::test_update_success_rate_records_failures_and_timeouts -v`
-Expected: FAIL with assertion on `success_rate` returning 1.0 (the current default when only success path is wired).
+Run: `cd /Users/les/Projects/crackerjack && uv run pytest tests/unit/skills/test_agent_skills.py::TestAgentSkill::test_execute_lowers_success_rate_on_timeout -v`
+Expected: FAIL with `success_rate == 1.0` (current code never lowers it on TimeoutError).
 
-- [ ] **Step 3: Add failing test for skill-tools TypeError**
+- [ ] **Step 3: Add failing test for skill-tools `TypeError`**
 
-Create `tests/unit/mcp/test_skill_tools.py`:
+Create `tests/unit/mcp/tools/test_skill_tools.py`:
 
 ```python
 from __future__ import annotations
 
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
+
+import pytest
 
 
-def test_search_skill_tools_does_not_raise_typeerror() -> None:
-    """Every skill MCP search used to raise TypeError; verify it now returns."""
+@pytest.mark.asyncio
+async def test_search_mcp_skills_does_not_raise_typeerror() -> None:
+    """_search_mcp_skills must not raise TypeError when calling search_skills."""
     from crackerjack.mcp.tools import skill_tools
 
-    with patch.object(skill_tools, "_search_skill_tools_impl", return_value=[]) as mock:
-        # Whichever keyword is supported — both forms exercised below.
-        try:
-            result = skill_tools.search_skill_tools(search_in="names", query="x")
-        except TypeError:
-            result = skill_tools.search_skill_tools(search_tool_names=True, query="x")
-        assert result == []
-        assert mock.called
+    # Build a fake registry whose search_skills accepts **only** the known kwargs.
+    fake_registry = MagicMock()
+    fake_skill = MagicMock()
+    fake_skill.to_dict.return_value = {"name": "x", "tags": [], "description": "x"}
+    fake_registry.search_skills.return_value = [fake_skill]
+
+    with patch.object(skill_tools, "_skill_registries", {"mcp_skills": fake_registry}):
+        result = skill_tools._search_mcp_skills("query", "names")
+
+    assert result == [{"name": "x", "tags": [], "description": "x"}]
+    fake_registry.search_skills.assert_called_once()
 ```
 
-The test asserts no `TypeError` is raised and the underlying implementation is invoked. Adjust the import path if `skill_tools.search_skill_tools` is not the public name (read `crackerjack/mcp/tools/skill_tools.py` to confirm the exported symbol).
+The test asserts the call does not raise `TypeError`. Read `crackerjack/mcp/tools/skill_tools.py` to confirm `_search_mcp_skills` and `_skill_registries` exist and match this signature.
 
 - [ ] **Step 4: Run the test and verify it fails**
 
-Run: `cd /Users/les/Projects/crackerjack && uv run pytest tests/unit/mcp/test_skill_tools.py -v`
-Expected: FAIL with `TypeError: search_tool_tools_impl() got an unexpected keyword argument 'search_names'`.
+Run: `cd /Users/les/Projects/crackerjack && uv run pytest tests/unit/mcp/tools/test_skill_tools.py::test_search_mcp_skills_does_not_raise_typeerror -v`
+Expected: FAIL with `TypeError: search_skills() got an unexpected keyword argument 'search_names'`.
 
-- [ ] **Step 5: Implement the fix in `_update_success_rate`**
+- [ ] **Step 5: Fix `_update_success_rate` and wire the failure/timeout branches**
 
-Open `crackerjack/skills/agent_skills.py`. Locate `_update_success_rate(self, success: bool)` at line 218. Change the signature and body so it accepts the outcome classification and records all three branches:
+Open `crackerjack/skills/agent_skills.py`. Three edits:
+
+**Edit 5a** — change the method body at lines 218-224:
 
 ```python
 def _update_success_rate(self, outcome: str) -> None:
-    """Record a skill outcome for the success-rate rolling metric.
+    """Update the EMA success rate based on outcome.
 
     Args:
         outcome: One of "success", "failure", "timeout".
@@ -133,62 +165,94 @@ def _update_success_rate(self, outcome: str) -> None:
     if outcome not in {"success", "failure", "timeout"}:
         msg = f"Unknown skill outcome: {outcome!r}"
         raise ValueError(msg)
-
-    self._total_runs += 1
-    if outcome == "success":
-        self._success_runs += 1
-    # failure and timeout both reduce the success rate; no separate counter needed.
-    self._success_rate = self._success_runs / self._total_runs if self._total_runs else 1.0
+    score = 1.0 if outcome == "success" else 0.0
+    alpha = 0.1
+    self.metadata.success_rate = (
+        alpha * score + (1 - alpha) * self.metadata.success_rate
+    )
 ```
 
-Adjust the attribute names (`_total_runs`, `_success_runs`, `_success_rate`) to match what the existing dataclass already uses. Read lines 1-100 of `agent_skills.py` to confirm.
+**Edit 5b** — change line 130 from `self._update_success_rate(success)` to `self._update_success_rate("success")` (assuming `success` is the bool extracted on line 127; if `success` is False the new code will lower the rate — but the original code only reaches line 130 in the try-success path, so the bool is effectively always True here).
 
-Then update the call site (line 130 area) to pass the classification string instead of a bool. If the call site currently passes `bool(success)`, change it to pass the outcome name directly.
+**Edit 5c** — add a call in each except branch:
 
-- [ ] **Step 6: Implement the fix in `skill_tools.py:184`**
-
-Open `crackerjack/mcp/tools/skill_tools.py`. At line 184, replace:
+In the `except TimeoutError` block (line 142-146), before the `_failure_result(...)` return:
 
 ```python
-search_names=search_in in ("all", "names"),
+self.metadata.execution_count += 1
+self._update_success_rate("timeout")
 ```
 
-with the keyword that `search_skill_tools_impl` actually accepts (read the function signature at the top of the file to confirm — most likely `search_tool_names`):
+In the `except Exception as e` block (line 148-152), before the `_failure_result(...)` return:
 
 ```python
-search_tool_names=search_in in ("all", "names"),
+self.metadata.execution_count += 1
+self._update_success_rate("failure")
 ```
 
-If the implementation function uses a different keyword (e.g. `search_query`), match that exactly.
+Add the observability counter at each of the three branches. Find the crackerjack metrics emitter (search `crackerjack` for an OTel counter or a `prometheus_client.Counter` registration); if none exists, emit a structured log line via the module logger:
+
+```python
+logger.info(
+    "skill.outcome",
+    extra={"skill_name": self.metadata.name, "outcome": outcome},
+)
+```
+
+Replace the literal `"timeout"` / `"failure"` / `"success"` strings with the corresponding outcome name. Do this in all three places.
+
+- [ ] **Step 6: Fix the skill-tools kwarg mismatch**
+
+Open `crackerjack/mcp/tools/skill_tools.py:180-188`. The current code calls:
+
+```python
+mcp_skills.search_skills(
+    query,
+    search_names=search_in in ("all", "names"),
+    search_tags=search_in in ("all", "tags"),
+    search_descriptions=search_in in ("all", "descriptions"),
+)
+```
+
+But `MCPSkillRegistry.search_skills` (line 138 of `crackerjack/skills/mcp_skills.py`) only accepts `search_domains`, `search_tags`, `search_descriptions`, `search_tool_names`. The `search_names` kwarg is not declared and raises `TypeError`.
+
+Two valid fixes; pick one and document the choice in the commit message:
+
+**Option A (minimal)**: rename `search_names` to `search_tool_names` in the call site. Local flag is renamed to match the registry's parameter.
+
+**Option B (broader)**: add `search_names` to `MCPSkillRegistry.search_skills` as an alias for `search_tool_names`. This requires editing `crackerjack/skills/mcp_skills.py:138-168`.
+
+Pick Option A unless the implementer has a reason to add the alias. Update the test in Step 3 to assert the renamed kwarg (`fake_registry.search_skills.assert_called_once_with(query, search_tool_names=..., search_tags=..., search_descriptions=...)`).
 
 - [ ] **Step 7: Re-run both tests and verify they pass**
 
-Run: `cd /Users/les/Projects/crackerjack && uv run pytest tests/unit/skills/test_agent_skills.py::TestAgentSkillsOutcome::test_update_success_rate_records_failures_and_timeouts tests/unit/mcp/test_skill_tools.py -v`
+Run: `cd /Users/les/Projects/crackerjack && uv run pytest tests/unit/skills/test_agent_skills.py::TestAgentSkill::test_execute_lowers_success_rate_on_timeout tests/unit/mcp/tools/test_skill_tools.py::test_search_mcp_skills_does_not_raise_typeerror -v`
 Expected: PASS, PASS.
 
-- [ ] **Step 8: Run the full skill test files to confirm no regression**
+- [ ] **Step 8: Run the broader skill + MCP test suites for regressions**
 
 Run: `cd /Users/les/Projects/crackerjack && uv run pytest tests/unit/skills/ tests/unit/mcp/ -q`
-Expected: all pass; pre-existing failures (if any) documented in the prior research are out of scope.
+Expected: no new failures. Pre-existing failures are out of scope.
 
-- [ ] **Step 9: Lint and format**
-
-Run: `cd /Users/les/Projects/crackerjack && uv run ruff check crackerjack/skills/agent_skills.py crackerjack/mcp/tools/skill_tools.py tests/unit/skills/test_agent_skills.py tests/unit/mcp/test_skill_tools.py && uv run ruff format crackerjack/skills/agent_skills.py crackerjack/mcp/tools/skill_tools.py tests/unit/skills/test_agent_skills.py tests/unit/mcp/test_skill_tools.py`
-Expected: no errors; format applies if needed.
-
-- [ ] **Step 10: Commit**
+- [ ] **Step 9: Lint, format, commit**
 
 ```bash
 cd /Users/les/Projects/crackerjack
-git add crackerjack/skills/agent_skills.py crackerjack/mcp/tools/skill_tools.py tests/unit/skills/test_agent_skills.py tests/unit/mcp/test_skill_tools.py
-git commit -m "fix(skills): wire skill-metrics for failure/timeout + repair skill-tools kwarg
+uv run ruff check crackerjack/skills/agent_skills.py crackerjack/mcp/tools/skill_tools.py tests/unit/skills/test_agent_skills.py tests/unit/mcp/tools/test_skill_tools.py
+uv run ruff format crackerjack/skills/agent_skills.py crackerjack/mcp/tools/skill_tools.py tests/unit/skills/test_agent_skills.py tests/unit/mcp/tools/test_skill_tools.py
+git add crackerjack/skills/agent_skills.py crackerjack/mcp/tools/skill_tools.py tests/unit/skills/test_agent_skills.py tests/unit/mcp/tools/test_skill_tools.py
+git commit -m "fix(skills): wire failure/timeout EMA + repair skill-tools kwarg
 
-- _update_success_rate now takes the outcome classification
-  (\"success\" | \"failure\" | \"timeout\") and lowers the rolling rate on
-  any non-success path.
-- skill_tools.search_skill_tools passes search_tool_names (matching the
-  underlying impl signature) instead of the never-declared search_names,
-  which previously raised TypeError on every MCP skill search.
+- _update_success_rate now takes an outcome (\"success\" | \"failure\"
+  | \"timeout\"), applies the EMA on all three paths, and raises
+  ValueError on unknown outcomes.
+- The two except branches in AgentSkill.execute now bump
+  execution_count and call _update_success_rate, so the success
+  metric actually reflects reality.
+- _search_mcp_skills passes search_tool_names (matching the registry
+  signature), eliminating the TypeError raised on every MCP skill
+  search through the agent-skills / hybrid paths.
+- Adds structured log line skill.outcome for observability.
 
 C-SKILL-METRICS from the Bodai OpenClaw/Hermes portfolio.
 
@@ -197,254 +261,178 @@ Co-Authored-By: Claude <noreply@anthropic.com>"
 
 ---
 
-### Task 2: Complete QualityGateReport outcome contract (C-OUTCOME-CONTRACT)
-
-`QualityGateReport.passed` and `blocking_failure` only consider `REQUIRED` severity today. Optional and warning checks are missing from the contract. Spec demands they participate in the boolean at least in a documented way.
-
-**Files:**
-- Modify: `crackerjack/models/validation_contracts.py:254-295` (`QualityGateReport.passed` and `blocking_failure`)
-- Test: `tests/models/test_validation_contracts.py` (extend existing)
-
-**Interfaces:**
-- Consumes: `GateSeverity` enum (already in the file at line ~50) with members `REQUIRED`, `WARNING`, `OPTIONAL`
-- Consumes: `GateCheck.passed: bool` (already in the file)
-- Produces: `QualityGateReport.passed` returns `True` iff every `REQUIRED` check is `passed` AND no warning-level `blocking_failure` exists (warnings must be reviewed, not silently passed)
-- Produces: `QualityGateReport.blocking_failure` returns the name of the first failing required check, or `None` when all required pass
-
-- [ ] **Step 1: Add failing tests**
-
-Open `tests/models/test_validation_contracts.py`. Locate `TestQualityGateReport`. Add:
-
-```python
-def test_passed_false_when_required_check_fails(self) -> None:
-    from crackerjack.models.validation_contracts import GateCheck, GateSeverity, QualityGateReport
-
-    failing = GateCheck(name="lint.required", passed=False, severity=GateSeverity.REQUIRED)
-    report = QualityGateReport(checks=[failing])
-
-    assert report.passed is False
-    assert report.blocking_failure == "lint.required"
-
-
-def test_passed_true_when_only_optional_check_fails(self) -> None:
-    from crackerjack.models.validation_contracts import GateCheck, GateSeverity, QualityGateReport
-
-    optional = GateCheck(name="docs.optional", passed=False, severity=GateSeverity.OPTIONAL)
-    report = QualityGateReport(checks=[optional])
-
-    assert report.passed is True
-    assert report.blocking_failure is None
-
-
-def test_blocking_failure_is_well_documented_for_warnings(self) -> None:
-    """Warnings must surface; contract decides whether they block or are reported.
-
-    Per the spec: warnings are reviewed, not silently passed. Document the
-    behavior by asserting the chosen contract explicitly. The chosen contract
-    here is: warnings are reported (block via `blocking_failure`) but do not
-    flip `passed` to False on their own — only REQUIRED failures do.
-    """
-    from crackerjack.models.validation_contracts import GateCheck, GateSeverity, QualityGateReport
-
-    warning = GateCheck(name="lint.warning", passed=False, severity=GateSeverity.WARNING)
-    report = QualityGateReport(checks=[warning])
-
-    # Documented contract: warning is surfaced but does not by itself block `passed`.
-    assert report.passed is True
-    assert report.blocking_failure is None  # see QualityGateReport docstring for rationale
-```
-
-If the `GateCheck` constructor signature differs from `(name, passed, severity)`, read `crackerjack/models/validation_contracts.py` to confirm and adjust.
-
-- [ ] **Step 2: Run the tests and verify the failure**
-
-Run: `cd /Users/les/Projects/crackerjack && uv run pytest tests/models/test_validation_contracts.py -k "passed_false_when_required_check_fails or passed_true_when_only_optional or blocking_failure_is_well_documented_for_warnings" -v`
-Expected: at least one failure (the contract is incomplete).
-
-- [ ] **Step 3: Implement the contract fix**
-
-Open `crackerjack/models/validation_contracts.py`. Replace the `passed` and `blocking_failure` properties on `QualityGateReport` (lines 270-289) with:
-
-```python
-@property
-def passed(self) -> bool:
-    """True iff every REQUIRED check passes. Optional failures do not block.
-
-    Warning-level failures are surfaced via `blocking_failure` callers but
-    do not flip this property to False on their own — operators are expected
-    to review warnings before declaring the gate green.
-    """
-    return all(
-        check.passed for check in self.checks if check.severity == GateSeverity.REQUIRED
-    )
-
-@property
-def blocking_failure(self) -> str | None:
-    """Name of the first failing REQUIRED check, or None when all REQUIRED pass."""
-    for check in self.checks:
-        if check.severity == GateSeverity.REQUIRED and not check.passed:
-            return check.name
-    return None
-```
-
-The exact field name on `GateCheck` may be `severity` or something else; adjust if needed. Update the module docstring or `QualityGateReport` class docstring to document the WARNING policy explicitly (one sentence: "Warning failures do not flip `passed`; review them via `report_failures()` or downstream consumers").
-
-- [ ] **Step 4: Re-run tests and verify they pass**
-
-Run: `cd /Users/les/Projects/crackerjack && uv run pytest tests/models/test_validation_contracts.py -v`
-Expected: PASS, PASS, PASS (and any pre-existing tests still passing).
-
-- [ ] **Step 5: Lint, format, commit**
-
-```bash
-cd /Users/les/Projects/crackerjack
-uv run ruff check crackerjack/models/validation_contracts.py tests/models/test_validation_contracts.py
-uv run ruff format crackerjack/models/validation_contracts.py tests/models/test_validation_contracts.py
-git add crackerjack/models/validation_contracts.py tests/models/test_validation_contracts.py
-git commit -m "fix(contracts): complete QualityGateReport outcome contract
-
-- passed is True iff every REQUIRED check passes; OPTIONAL failures
-  no longer silently flip the gate.
-- blocking_failure returns the first failing REQUIRED check name (or
-  None).
-- WARNING-level failures are surfaced through report consumers but do
-  not by themselves block `passed`; the chosen contract is documented
-  on the class.
-
-C-OUTCOME-CONTRACT from the Bodai OpenClaw/Hermes portfolio.
-
-Co-Authored-By: Claude <noreply@anthropic.com>"
-```
-
----
-
 ### Task 3: Crackerjack plugin-trust fixes (C-PLUGIN-TRUST)
 
-Three small but distinct trust defects. The `_get_test_status` placeholder is a fourth but lives in `tests/integration/test_skills_tracking.py` and is a test-only fake — address it in the same commit since they share the theme.
+Three trust defects. The assert in production code is a bandit B101 violation; the malformed URL and python-specifier are silent foot-guns; the `_get_test_status` placeholder is in the websocket server (covered in Task 4).
 
 **Files:**
-- Modify: `crackerjack/plugins/hooks.py:42` (replace `assert` with explicit raise)
-- Modify: `crackerjack/plugins/base.py:19-50` (fix `PluginMetadata.requires_python` parsing)
-- Modify: `crackerjack/integration/skills_tracking.py:251` (fix `SessionBuddyMCPTracker` default URL)
-- Modify: `tests/integration/test_skills_tracking.py` (`_get_test_status` placeholder)
-- Test: `tests/test_plugins_coverage.py` (extend existing)
+- Modify: `crackerjack/plugins/hooks.py:42` (replace `assert metadata.plugin_type == PluginType.HOOK` inside `HookPluginBase.__init__`)
+- Modify: `crackerjack/plugins/base.py:26` (fix `requires_python` default)
+- Modify: `crackerjack/integration/skills_tracking.py:253, 443` (fix `mcp_server_url` defaults; both occurrences)
+- Create: `crackerjack/exceptions/plugin_trust_error.py` (new exception class)
+- Modify: `crackerjack/exceptions/__init__.py` (re-export the new class)
+- Modify: `tests/integration/test_skills_tracking.py` (update line 452 assertion that encodes the URL bug)
+- Test: `tests/test_plugins_coverage.py` (extend existing — likely `TestPluginBase` or `TestPluginSecurity`)
 
 **Interfaces:**
-- Consumes: `PluginType` enum already imported in `hooks.py`
-- Consumes: `PluginMetadata` in `base.py`; existing parsing logic for `requires_python`
-- Consumes: `SessionBuddyMCPTracker.__init__` defaults in `skills_tracking.py`
-- Produces: `register_custom_hook` raises `crackerjack.exceptions.PluginTrustError` instead of asserting
-- Produces: `PluginMetadata.requires_python: str | None` accepts malformed inputs and parses them safely (returns the raw string and flags invalid parses via a separate validator method, not a runtime crash)
-- Produces: `SessionBuddyMCPTracker` default `mcp_server_url` is `"http://localhost:8678"` (no space)
-- Produces: `_get_test_status` returns a real pytest-based status (collected via `pytest.main(["--collect-only", ...])` returning exit-code semantics) or, if simpler, marks the placeholder as such via `TODO(durable)` and raises `NotImplementedError` instead of returning 100%
+- Consumes: `HookPluginBase(PluginMetadata)` constructor (line 39-44 of `crackerjack/plugins/hooks.py`); `PluginMetadata.requires_python: str` (line 26 of `crackerjack/plugins/base.py`); `SessionBuddyMCPTracker(session_id, mcp_server_url)` (line 251-254 of `crackerjack/integration/skills_tracking.py`); `create_skills_tracker(session_id, ..., mcp_server_url)` (line 438-443 of same file).
+- Produces: `HookPluginBase.__init__` raises `PluginTrustError` instead of asserting on wrong `plugin_type`.
+- Produces: `PluginMetadata.requires_python` default is `"">=3.11"` (no spaces; valid PEP 440).
+- Produces: Both URL defaults are `"http://localhost:8678"` (no space).
+- Observability added: counter `crackerjack.plugin.trust_check_failed{plugin_type}` incremented each time `HookPluginBase.__init__` rejects a metadata.
 
-- [ ] **Step 1: Add failing test for plugin-trust asserts**
+- [ ] **Step 1: Add failing test for the plugin-trust assert**
 
-Open `tests/test_plugins_coverage.py`. Add:
+Open `tests/test_plugins_coverage.py`. Locate `TestPluginSecurity` (around line 367). Add:
 
 ```python
-def test_register_custom_hook_raises_on_wrong_type() -> None:
-    """assert removed from production code; explicit exception instead."""
-    from crackerjack.plugins.hooks import register_custom_hook
-    from crackerjack.plugins.base import PluginMetadata, PluginType
+def test_hook_plugin_base_rejects_wrong_plugin_type(self) -> None:
     from crackerjack.exceptions import PluginTrustError
+    from crackerjack.plugins.base import PluginBase, PluginMetadata, PluginType
+    from crackerjack.plugins.hooks import HookPluginBase
 
-    # Minimal valid metadata for everything except the type, which is wrong.
-    md = PluginMetadata(name="bad", plugin_type=PluginType.TOOL, version="0.0.1")  # type isn't HOOK
+    md = PluginMetadata(
+        name="bad",
+        version="0.0.1",
+        plugin_type=PluginType.TOOL,  # not HOOK
+        description="not a hook",
+    )
+
+    class _Stub(HookPluginBase):
+        def get_hook_definitions(self):  # pragma: no cover - not reached
+            return []
+        def execute_hook(self, *args, **kwargs):  # pragma: no cover - not reached
+            return None
+
     with pytest.raises(PluginTrustError):
-        register_custom_hook(md, callable=lambda: None)
+        _Stub(metadata=md)
 ```
 
-If the `PluginMetadata` constructor signature differs, adjust. If the import path for `PluginTrustError` is wrong, find the actual exception class in `crackerjack/exceptions/` and use that.
+- [ ] **Step 2: Run the test and verify it fails**
 
-- [ ] **Step 2: Add failing test for malformed URL**
+Run: `cd /Users/les/Projects/crackerjack && uv run pytest tests/test_plugins_coverage.py::TestPluginSecurity::test_hook_plugin_base_rejects_wrong_plugin_type -v`
+Expected: FAIL with `ImportError` on `crackerjack.exceptions.PluginTrustError` (the class doesn't exist yet).
 
-Open `tests/integration/test_skills_tracking.py`. Add:
+- [ ] **Step 3: Create `PluginTrustError`**
+
+Create `crackerjack/exceptions/plugin_trust_error.py`:
 
 ```python
-def test_session_buddy_mcp_tracker_default_url_has_no_space() -> None:
-    from crackerjack.integration.skills_tracking import SessionBuddyMCPTracker
+"""Raised when plugin metadata fails a trust check."""
 
-    tracker = SessionBuddyMCPTracker(session_id="x")
-    assert " " not in tracker.mcp_server_url
-    assert tracker.mcp_server_url == "http://localhost:8678"
+
+class PluginTrustError(Exception):
+    """Plugin metadata violated a trust invariant (e.g. wrong plugin_type for a HookPluginBase)."""
 ```
 
-- [ ] **Step 3: Add failing test for placeholder `_get_test_status`**
-
-In the same file or `tests/integration/test_skills_tracking.py`, find `_get_test_status`. Add:
+Modify `crackerjack/exceptions/__init__.py`:
 
 ```python
-def test_get_test_status_does_not_lie() -> None:
-    """The placeholder that always returned 100% must not be a default."""
-    from crackerjack.integration.skills_tracking import _get_test_status
+from .plugin_trust_error import PluginTrustError
+from .tool_execution_error import ToolExecutionError
 
-    with pytest.raises((NotImplementedError, RuntimeError)):
-        _get_test_status(skill_name="nonexistent.skill")
+__all__ = ["PluginTrustError", "ToolExecutionError"]
 ```
 
-- [ ] **Step 4: Run all three tests and verify failures**
+- [ ] **Step 4: Replace the assert in `HookPluginBase.__init__`**
 
-Run: `cd /Users/les/Projects/crackerjack && uv run pytest tests/test_plugins_coverage.py::test_register_custom_hook_raises_on_wrong_type tests/integration/test_skills_tracking.py::test_session_buddy_mcp_tracker_default_url_has_no_space tests/integration/test_skills_tracking.py::test_get_test_status_does_not_lie -v`
-Expected: three failures (assert raises AssertionError instead of PluginTrustError; URL has a space; `_get_test_status` returns 1.0).
-
-- [ ] **Step 5: Implement the fixes**
-
-Open `crackerjack/plugins/hooks.py:42`. Replace:
+Open `crackerjack/plugins/hooks.py:40-44`. Replace:
 
 ```python
-assert metadata.plugin_type == PluginType.HOOK
+class HookPluginBase(PluginBase, abc.ABC):
+    def __init__(self, metadata: PluginMetadata) -> None:
+        super().__init__(metadata)
+        assert metadata.plugin_type == PluginType.HOOK
+        self.console: Console | None = None
+        self.pkg_path: Path | None = None
 ```
 
 with:
 
 ```python
-if metadata.plugin_type != PluginType.HOOK:
-    raise PluginTrustError(
-        f"register_custom_hook requires PluginType.HOOK, got {metadata.plugin_type!r}"
-    )
+from crackerjack.exceptions import PluginTrustError
+
+class HookPluginBase(PluginBase, abc.ABC):
+    def __init__(self, metadata: PluginMetadata) -> None:
+        super().__init__(metadata)
+        if metadata.plugin_type != PluginType.HOOK:
+            logger.warning(
+                "plugin.trust_check_failed",
+                extra={"plugin_type": str(metadata.plugin_type)},
+            )
+            msg = (
+                f"HookPluginBase requires PluginType.HOOK, got "
+                f"{metadata.plugin_type!r}"
+            )
+            raise PluginTrustError(msg)
+        self.console: Console | None = None
+        self.pkg_path: Path | None = None
 ```
 
-Add the import for `PluginTrustError` (or whichever exception class actually exists in `crackerjack/exceptions/`).
+Add the observability log line at the rejection site. If the module already has a `logger` from the top of `hooks.py`, reuse it; otherwise add `logger = logging.getLogger(__name__)` to the top of the file. Place the import for `PluginTrustError` near the top of `hooks.py` with the other imports.
 
-Open `crackerjack/plugins/base.py:19-50`. Locate `PluginMetadata.requires_python`. The current value is `'>= 3.11'` with a stray space — fix the literal to `'>=3.11'`. If the field has a `field(...)` validator, ensure the validator enforces that the value parses as a PEP 440 specifier; if not, add a soft parse via `packaging.specifiers.SpecifierSet` and store the parsed form, raising `ValueError` on parse failure. Keep the change minimal: strip the space, add a `validator` that parses the specifier, store the raw string. Update the docstring.
+- [ ] **Step 5: Re-run the failing test and verify it passes**
 
-Open `crackerjack/integration/skills_tracking.py:251`. Change the default:
+Run: `cd /Users/les/Projects/crackerjack && uv run pytest tests/test_plugins_coverage.py::TestPluginSecurity::test_hook_plugin_base_rejects_wrong_plugin_type -v`
+Expected: PASS.
+
+- [ ] **Step 6: Fix `requires_python` and the two URL defaults**
+
+Open `crackerjack/plugins/base.py:26`. Change:
 
 ```python
-mcp_server_url: str = "http://localhost:8678"
+requires_python: str = "> = 3.11"
 ```
 
-(no space).
+to:
 
-Open the file containing `_get_test_status`. Find the placeholder. If it's a function returning `1.0` (100%), replace the body with a `raise NotImplementedError("DURABLE: integrate with crackerjack CI runner — see C-ASYNC-DURABILITY")`. If it's already raising somewhere else, leave it but document the integration contract on the docstring. The tests will tell you which is which.
+```python
+requires_python: str = "">=3.11"
+```
 
-- [ ] **Step 6: Re-run all three tests and verify they pass**
+(No spaces inside `>=`. This is a valid PEP 440 specifier.)
 
-Run: `cd /Users/les/Projects/crackerjack && uv run pytest tests/test_plugins_coverage.py::test_register_custom_hook_raises_on_wrong_type tests/integration/test_skills_tracking.py::test_session_buddy_mcp_tracker_default_url_has_no_space tests/integration/test_skills_tracking.py::test_get_test_status_does_not_lie -v`
-Expected: PASS, PASS, PASS.
+Open `crackerjack/integration/skills_tracking.py`. Make two edits:
 
-- [ ] **Step 7: Run the broader plugin + integration suites for regressions**
+**Edit 6a** at line 253: change `"http://localhost: 8678"` → `"http://localhost:8678"`.
+
+**Edit 6b** at line 443: change `"http://localhost: 8678"` → `"http://localhost:8678"`.
+
+- [ ] **Step 7: Update the test that encodes the URL bug**
+
+Open `tests/integration/test_skills_tracking.py:452` (per the security review). Locate the line `assert settings.mcp_server_url == "http://localhost: 8678"` (or similar — read the file to confirm the exact assertion). Change the literal to `"http://localhost:8678"`.
+
+Search the file for any other occurrences of the malformed URL string and update them. Search the whole crackerjack repo for `"http://localhost: 8678"` and fix all hits in one commit:
+
+Run: `cd /Users/les/Projects/crackerjack && grep -rn '"http://localhost: 8678"' --include='*.py'`
+Expected: at minimum the two known sites and possibly a test fixture or two. Fix all of them.
+
+- [ ] **Step 8: Run plugin + integration test suites**
 
 Run: `cd /Users/les/Projects/crackerjack && uv run pytest tests/test_plugins_coverage.py tests/integration/test_skills_tracking.py -q`
-Expected: no new failures; pre-existing failures are out of scope.
+Expected: no new failures. Pre-existing failures are out of scope.
 
-- [ ] **Step 8: Lint, format, commit**
+- [ ] **Step 9: Lint, format, commit**
 
 ```bash
 cd /Users/les/Projects/crackerjack
-uv run ruff check crackerjack/plugins/hooks.py crackerjack/plugins/base.py crackerjack/integration/skills_tracking.py tests/test_plugins_coverage.py tests/integration/test_skills_tracking.py
-uv run ruff format crackerjack/plugins/hooks.py crackerjack/plugins/base.py crackerjack/integration/skills_tracking.py tests/test_plugins_coverage.py tests/integration/test_skills_tracking.py
-git add crackerjack/plugins/hooks.py crackerjack/plugins/base.py crackerjack/integration/skills_tracking.py tests/test_plugins_coverage.py tests/integration/test_skills_tracking.py
-git commit -m "fix(plugins): replace asserts, fix malformed url + python spec, surface placeholder
+uv run ruff check crackerjack/plugins/hooks.py crackerjack/plugins/base.py crackerjack/integration/skills_tracking.py crackerjack/exceptions/ tests/test_plugins_coverage.py tests/integration/test_skills_tracking.py
+uv run ruff format crackerjack/plugins/hooks.py crackerjack/plugins/base.py crackerjack/integration/skills_tracking.py crackerjack/exceptions/ tests/test_plugins_coverage.py tests/integration/test_skills_tracking.py
+git add crackerjack/plugins/hooks.py crackerjack/plugins/base.py crackerjack/integration/skills_tracking.py crackerjack/exceptions/ tests/test_plugins_coverage.py tests/integration/test_skills_tracking.py
+git commit -m "fix(plugins): trust invariants + URL and python-spec defaults
 
-- register_custom_hook raises PluginTrustError instead of assert.
-- PluginMetadata.requires_python literal stripped of stray space;
-  validator parses via packaging.specifiers.
-- SessionBuddyMCPTracker default mcp_server_url is the well-formed
-  http://localhost:8678.
-- _get_test_status no longer silently returns 100%; raises
-  NotImplementedError with a C-ASYNC-DURABILITY handoff note.
+- HookPluginBase.__init__ now raises PluginTrustError (new class in
+  crackerjack/exceptions/) instead of asserting; bandit B101 violation
+  removed.
+- PluginMetadata.requires_python default corrected to '>=3.11'
+  (PEP 440 valid; previous literal '> = 3.11' had whitespace inside
+  the operator and was invalid).
+- SessionBuddyMCPTracker.mcp_server_url and create_skills_tracker
+  default both fixed to 'http://localhost:8678' (no space). The
+  malformed URL silently propagated through every backend='auto'
+  call.
+- Tests that previously encoded the URL bug are updated to the
+  no-space form.
 
 C-PLUGIN-TRUST from the Bodai OpenClaw/Hermes portfolio.
 
@@ -453,184 +441,81 @@ Co-Authored-By: Claude <noreply@anthropic.com>"
 
 ---
 
-### Task 4: Fix WebSocket subscription auth normalize (C-WEBSOCKET-AUTH)
+### Task 5: Expand SecurityAuditor.CRITICAL_HOOKS (C-HOOKS-LIST)
 
-`_can_subscribe_to_channel` in `crackerjack/websocket/server.py:167-185` transforms permission strings via `.strip().lower().replace(" ", ":")` and then compares against the literal `"crackerjack: read"` (with space). The two sides disagree: the stored form has no space, the compared form has one. Operators with a legitimate `"crackerjack: read"` permission get a `FORBIDDEN`.
-
-**Files:**
-- Modify: `crackerjack/websocket/server.py:167-185` (`_can_subscribe_to_channel`)
-- Test: `tests/unit/test_websocket_auth.py` (extend existing)
-
-**Interfaces:**
-- Consumes: `user["permissions"]` list of strings (some `crackerjack: read`, some `crackerjack:read`, some bare `read`)
-- Produces: `_can_subscribe_to_channel(user, channel)` returns `True` iff the user's permission set, after canonicalization, contains the channel's required permission
-
-- [ ] **Step 1: Add failing test**
-
-Open `tests/unit/test_websocket_auth.py`. Add:
-
-```python
-def test_can_subscribe_quality_channel_with_space_separated_permission(self) -> None:
-    """User with permission 'crackerjack: read' (with space) must subscribe to quality:* channels."""
-    from crackerjack.websocket.server import WebSocketServer
-
-    server = WebSocketServer()
-    user = {"permissions": ["crackerjack: read"]}
-    assert server._can_subscribe_to_channel(user, "quality:lint") is True
-
-
-def test_can_subscribe_with_canonical_no_space_permission(self) -> None:
-    user = {"permissions": ["crackerjack:read"]}
-    from crackerjack.websocket.server import WebSocketServer
-
-    server = WebSocketServer()
-    assert server._can_subscribe_to_channel(user, "quality:lint") is True
-```
-
-If `WebSocketServer` has constructor requirements (config, manager, etc.), use whatever bare constructor the existing tests already use; read the existing tests in this file for the pattern.
-
-- [ ] **Step 2: Run the tests and verify the failure**
-
-Run: `cd /Users/les/Projects/crackerjack && uv run pytest tests/unit/test_websocket_auth.py::test_can_subscribe_quality_channel_with_space_separated_permission -v`
-Expected: FAIL with `AssertionError` (the current code returns `False`).
-
-- [ ] **Step 3: Implement the fix**
-
-Open `crackerjack/websocket/server.py:167-185`. Replace the body of `_can_subscribe_to_channel` with a version that canonicalizes both sides the same way. Use the existing `Permission` enum from `mcp_common.auth.permissions` (the same one `crackerjack/websocket/auth.py` already uses):
-
-```python
-def _can_subscribe_to_channel(self, user: dict[str, Any], channel: str) -> bool:
-    """Return True iff the user can subscribe to ``channel``.
-
-    Permission strings are canonicalized to ``crackerjack:<action>`` form
-    before comparison so operators may use either ``crackerjack: read``
-    (with space, legacy) or ``crackerjack:read`` (no space, canonical).
-    """
-    from crackerjack.websocket.auth import _normalize_permission
-
-    user_perms = {
-        p.normalized for p in (_normalize_permission(p) for p in user.get("permissions", []))
-        if p is not None
-    }
-
-    required_perm = self._required_permission_for_channel(channel)
-    if required_perm is None:
-        return True
-    return required_perm.normalized in user_perms or "admin" in user_perms
-```
-
-Then add `_required_permission_for_channel`:
-
-```python
-def _required_permission_for_channel(self, channel: str) -> "Permission | None":
-    """Return the Permission required to subscribe to ``channel``, or None if open."""
-    from mcp_common.auth.permissions import Permission
-
-    if channel.startswith(("quality:", "test:")):
-        return Permission("read")
-    return None
-```
-
-If `_normalize_permission` in `crackerjack/websocket/auth.py` returns `Permission | None` (it does, per the spec's earlier grep), use it directly. If it returns a different shape, wrap accordingly. Keep imports minimal; do not over-import.
-
-- [ ] **Step 4: Re-run tests and verify they pass**
-
-Run: `cd /Users/les/Projects/crackerjack && uv run pytest tests/unit/test_websocket_auth.py -v`
-Expected: PASS, PASS, plus any pre-existing tests.
-
-- [ ] **Step 5: Lint, format, commit**
-
-```bash
-cd /Users/les/Projects/crackerjack
-uv run ruff check crackerjack/websocket/server.py tests/unit/test_websocket_auth.py
-uv run ruff format crackerjack/websocket/server.py tests/unit/test_websocket_auth.py
-git add crackerjack/websocket/server.py tests/unit/test_websocket_auth.py
-git commit -m "fix(websocket): canonicalize subscription permission comparison
-
-- _can_subscribe_to_channel now normalizes both user permissions and
-  the channel-required permission via the shared _normalize_permission
-  helper before comparing, so 'crackerjack: read' (legacy space form)
-  and 'crackerjack:read' (canonical) both subscribe to quality:*/test:*
-  channels.
-- Extracted _required_permission_for_channel so the rule lives in one
-  place and is testable.
-
-C-WEBSOCKET-AUTH from the Bodai OpenClaw/Hermes portfolio.
-
-Co-Authored-By: Claude <noreply@anthropic.com>"
-```
-
----
-
-### Task 5: Refresh CRITICAL_HOOKS in SecurityAuditor (C-HOOKS-LIST)
-
-`crackerjack/security/audit.py:44` declares `CRITICAL_HOOKS` with three names (bandit, pyright, gitleaks). Real-world coverage wants at least semgrep and a secrets scanner (betterleaks or trufflehog). Adding them keeps parity with the prior research's recommendation.
+`SecurityAuditor.CRITICAL_HOOKS` is a `dict[str, str]` mapping hook name → human reason. Adding entries (not converting to a frozenset) extends the security-critical set. The new hook names must be lowercase since `_get_hook_security_level` does case-insensitive lookup.
 
 **Files:**
-- Modify: `crackerjack/security/audit.py:44` (extend the set)
+- Modify: `crackerjack/security/audit.py:44-48` (extend the dict)
 - Test: `tests/test_security_audit.py` (extend existing)
 
 **Interfaces:**
-- Consumes: existing `SecurityAuditor.CRITICAL_HOOKS` consumers (the `is_critical_hook` lookup at line 131 and the reason lookup at line 152)
-- Produces: `CRITICAL_HOOKS` set includes at minimum: `bandit`, `pyright`, `gitleaks`, `semgrep`, `betterleaks` (or `trufflehog` if betterleaks is unavailable — pick the one in `pyproject.toml` extras or `crackerjack/hooks/`)
+- Consumes: existing `SecurityAuditor.CRITICAL_HOOKS` consumer at line 131 (`_get_hook_security_level`) and line 152 (`_generate_security_warnings`).
+- Produces: `CRITICAL_HOOKS` includes `bandit`, `pyright`, `gitleaks` (existing), plus `semgrep` (static analysis) and a secrets scanner. Pick the scanner that exists in `crackerjack/hooks/`; if none, add `trufflehog` as the planned scanner and document the wiring gap.
+- Observability added: gauge `crackerjack.security.critical_hooks` set to `len(CRITICAL_HOOKS)` after audit runs (read by operators to confirm the allow-list size).
 
-- [ ] **Step 1: Add failing test**
+- [ ] **Step 1: Inspect existing hook names**
 
-Open `tests/test_security_audit.py`. Add:
+Run: `cd /Users/les/Projects/crackerjack && ls crackerjack/hooks/ && grep -rn "HookDefinition\|HookStage\|stage=" crackerjack/hooks/ crackerjack/config/hooks.py 2>&1 | head -20`
+Expected: identifies which hook names actually appear as registered hooks. If `semgrep` or a secrets scanner (trufflehog, gitleaks) does NOT exist as a hook, the audit still benefits from the entry — the dict lookup at line 131 won't promote an unknown hook, but the entry is in place for when the hook is wired.
+
+- [ ] **Step 2: Add failing test**
+
+Open `tests/test_security_audit.py`. Locate any test that asserts `CRITICAL_HOOKS` membership. Add:
 
 ```python
-def test_critical_hooks_includes_semgrep_and_betterleaks(self) -> None:
-    """Critical hooks must include semgrep and a modern secrets scanner."""
+def test_critical_hooks_includes_semgrep_and_secrets_scanner(self) -> None:
     from crackerjack.security.audit import SecurityAuditor
 
-    required = {"bandit", "pyright", "gitleaks", "semgrep", "betterleaks"}
-    assert required.issubset(SecurityAuditor.CRITICAL_HOOKS)
+    expected = {"bandit", "pyright", "gitleaks", "semgrep"}
+    assert expected.issubset(SecurityAuditor.CRITICAL_HOOKS.keys())
 ```
 
-If `betterleaks` is not actually available in crackerjack (read `pyproject.toml` to confirm), substitute `"trufflehog"` or whatever real hook name exists in `crackerjack/hooks/`. Update the test to match what's actually wired in.
+If `trufflehog` (or another secrets scanner) exists as a real hook, add it to `expected` as well. If no secrets scanner is wired, document this in the test's docstring as a known gap.
 
-- [ ] **Step 2: Run the test and verify it fails**
+- [ ] **Step 3: Run the test and verify it fails**
 
-Run: `cd /Users/les/Projects/crackerjack && uv run pytest tests/test_security_audit.py::test_critical_hooks_includes_semgrep_and_betterleaks -v`
-Expected: FAIL with assertion showing the missing hooks.
+Run: `cd /Users/les/Projects/crackerjack && uv run pytest tests/test_security_audit.py::test_critical_hooks_includes_semgrep_and_secrets_scanner -v`
+Expected: FAIL with the missing-key assertion.
 
-- [ ] **Step 3: Implement the fix**
+- [ ] **Step 4: Extend `CRITICAL_HOOKS` (preserving dict shape)**
 
-Open `crackerjack/security/audit.py:44`. Extend `CRITICAL_HOOKS` (a `frozenset[str]`) by adding `"semgrep"` and `"betterleaks"` (or whatever real hook name you confirmed in Step 1). Keep the existing entries. Add a comment explaining why each entry matters:
+Open `crackerjack/security/audit.py:44-48`. Extend the dict:
 
 ```python
-CRITICAL_HOOKS = frozenset(
-    {
-        # Code quality / static analysis
-        "bandit",
-        "pyright",
-        "semgrep",
-        # Secret detection
-        "gitleaks",
-        "betterleaks",  # or trufflehog if betterleaks is unavailable
-    }
-)
+CRITICAL_HOOKS = {
+    "bandit": "Security vulnerability detection (OWASP A09)",
+    "pyright": "Type safety prevents runtime security holes (OWASP A04)",
+    "gitleaks": "Secret/credential detection (OWASP A07)",
+    "semgrep": "Multi-language static analysis for security patterns (OWASP A03/A05)",
+    # TODO: wire trufflehog or betterleaks as a real hook; entry added
+    # so the lookup at line 131 promotes it once the hook is registered.
+    "trufflehog": "Secret/credential scanning against git history (OWASP A07)",
+}
 ```
 
-Verify the new hook names exist as actual hook names in `crackerjack/hooks/` (or in `pyproject.toml` extras). If they don't, drop the missing one from the test in Step 1 and adjust accordingly — but do not silently weaken the contract.
+Replace `trufflehog` with whatever scanner the implementer confirmed in Step 1 (or omit if it would create a phantom entry without a follow-up plan).
 
-- [ ] **Step 4: Re-run tests and verify they pass**
+Do NOT convert to a frozenset — line 152 calls `.get()` on it.
+
+- [ ] **Step 5: Re-run tests and verify they pass**
 
 Run: `cd /Users/les/Projects/crackerjack && uv run pytest tests/test_security_audit.py -v`
-Expected: PASS plus any pre-existing tests.
+Expected: PASS plus any pre-existing tests still passing.
 
-- [ ] **Step 5: Lint, format, commit**
+- [ ] **Step 6: Lint, format, commit**
 
 ```bash
 cd /Users/les/Projects/crackerjack
 uv run ruff check crackerjack/security/audit.py tests/test_security_audit.py
 uv run ruff format crackerjack/security/audit.py tests/test_security_audit.py
 git add crackerjack/security/audit.py tests/test_security_audit.py
-git commit -m "fix(security): expand SecurityAuditor.CRITICAL_HOOKS
+git commit -m "fix(security): add semgrep and secrets-scanner to CRITICAL_HOOKS
 
-Add semgrep (static analysis) and betterleaks (secrets) to the
-critical-hooks allow-list so the auditor flags their absence as
-noteworthy, matching the prior parity audit.
+Extend SecurityAuditor.CRITICAL_HOOKS with semgrep (static
+analysis) and trufflehog (secret scanning) so the line-131 lookup
+flags them as SecurityLevel.CRITICAL once the hooks are wired.
+Dict shape preserved (line 152 uses .get()).
 
 C-HOOKS-LIST from the Bodai OpenClaw/Hermes portfolio.
 
@@ -639,24 +524,337 @@ Co-Authored-By: Claude <noreply@anthropic.com>"
 
 ---
 
+### Task 2: Complete QualityGateReport outcome contract (C-OUTCOME-CONTRACT) — CONTRACT CHANGE
+
+`QualityGateReport.passed` (line 270) returns `self.fast_hooks and self.tests and self.comprehensive`. It ignores `self.checks` entirely. The intended contract per the portfolio spec is that REQUIRED-severity check failures also drive the gate. This is a contract change — ship after Tasks 1, 3, 5 land.
+
+The minimal-risk approach: keep `passed` and `blocking_failure` semantics unchanged (callers depend on them). Add a NEW severity-aware computed field that surfaces the gap. Wire it through `to_dict()` for downstream consumers.
+
+**Files:**
+- Modify: `crackerjack/models/validation_contracts.py` (add `required_check_failures` property + thread it through `to_dict()`)
+- Test: `tests/models/test_validation_contracts.py` (extend existing)
+
+**Interfaces:**
+- Consumes: `QualityGateReport` at line 254; `QualityGateCheck` at line 190; `GateSeverity` enum (REQUIRED / WARNING / OPTIONAL).
+- Produces: `QualityGateReport.required_check_failures: list[str]` — names of all `REQUIRED`-severity checks where `passed is False`. Empty list when all REQUIRED checks pass.
+- Produces: `to_dict()` includes the new field under key `required_check_failures`.
+- Observability added: counter `crackerjack.gate.required_check_failure{name}` incremented once per failed REQUIRED check at report-creation time.
+
+- [ ] **Step 1: Add failing test**
+
+Open `tests/models/test_validation_contracts.py`. Add:
+
+```python
+def test_required_check_failures_lists_failed_required(self) -> None:
+    from crackerjack.models.validation_contracts import (
+        GateSeverity,
+        QualityGateCheck,
+        QualityGateReport,
+    )
+
+    failing = QualityGateCheck(
+        name="lint.required",
+        passed=False,
+        severity=GateSeverity.REQUIRED,
+    )
+    warning = QualityGateCheck(
+        name="lint.warning",
+        passed=False,
+        severity=GateSeverity.WARNING,
+    )
+    report = QualityGateReport(
+        fast_hooks=True,
+        tests=True,
+        comprehensive=True,
+        coverage=1.0,
+        checks=[failing, warning],
+    )
+
+    assert report.required_check_failures == ["lint.required"]
+    assert "required_check_failures" in report.to_dict()
+```
+
+If the test fails with `AttributeError: 'QualityGateReport' object has no attribute 'required_check_failures'`, that is the expected pre-fix failure.
+
+- [ ] **Step 2: Run the test and verify it fails**
+
+Run: `cd /Users/les/Projects/crackerjack && uv run pytest tests/models/test_validation_contracts.py::test_required_check_failures_lists_failed_required -v`
+Expected: FAIL with `AttributeError` on `required_check_failures`.
+
+- [ ] **Step 3: Add the new property and dict field**
+
+Open `crackerjack/models/validation_contracts.py`. Add a property to `QualityGateReport` (after the `warnings` property at line 282-287):
+
+```python
+@property
+def required_check_failures(self) -> list[str]:
+    """Names of REQUIRED-severity checks that did not pass.
+
+    This is additive to ``passed`` / ``blocking_failure``: it surfaces
+    severity-aware failure information without changing the existing
+    boolean contract consumed by ``from_result`` callers.
+    """
+    return [
+        check.name
+        for check in self.checks
+        if not check.passed and check.severity == GateSeverity.REQUIRED
+    ]
+```
+
+In `to_dict()` (line 289-295), add the new field:
+
+```python
+def to_dict(self) -> dict[str, t.Any]:
+    data = self.model_dump(mode="json")
+    data["passed"] = self.passed
+    data["all_passed"] = self.all_passed
+    data["blocking_failure"] = self.blocking_failure
+    data["warnings"] = self.warnings
+    data["required_check_failures"] = self.required_check_failures
+    return data
+```
+
+- [ ] **Step 4: Add the observability counter**
+
+Find crackerjack's metric emitter (search `crackerjack` for `prometheus_client.Counter` or a custom emitter; if neither exists, emit a structured log via `logging.getLogger(__name__)`). In `QualityGateReport.from_result` (line 297+) — or wherever the report is constructed from incoming data — emit the counter per failed REQUIRED check.
+
+If no metric emitter exists, add this logger line to the `to_dict()` method:
+
+```python
+import logging
+logger = logging.getLogger(__name__)
+# inside to_dict(), after computing required_check_failures:
+for name in self.required_check_failures:
+    logger.warning(
+        "gate.required_check_failure",
+        extra={"check_name": name, "report_id": str(id(self))},
+    )
+```
+
+If a metric emitter does exist (Prometheus client, OpenTelemetry), use it instead of `logger.warning`.
+
+- [ ] **Step 5: Re-run tests and verify they pass**
+
+Run: `cd /Users/les/Projects/crackerjack && uv run pytest tests/models/test_validation_contracts.py -v`
+Expected: PASS plus any pre-existing tests still passing.
+
+- [ ] **Step 6: Run the broader crackerjack test suite for regressions**
+
+Run: `cd /Users/les/Projects/crackerjack && uv run pytest tests/models/ tests/test_websocket_auth.py tests/unit/mcp/ tests/mcp/ -q`
+Expected: no new failures. Pre-existing failures are out of scope.
+
+- [ ] **Step 7: Lint, format, commit**
+
+```bash
+cd /Users/les/Projects/crackerjack
+uv run ruff check crackerjack/models/validation_contracts.py tests/models/test_validation_contracts.py
+uv run ruff format crackerjack/models/validation_contracts.py tests/models/test_validation_contracts.py
+git add crackerjack/models/validation_contracts.py tests/models/test_validation_contracts.py
+git commit -m "fix(contracts): surface REQUIRED-check failures on QualityGateReport
+
+Adds QualityGateReport.required_check_failures (list[str]) that
+walks self.checks for REQUIRED-severity failures and exposes them
+through to_dict(). Existing passed / blocking_failure semantics
+preserved (callers depend on them); the new field is additive.
+
+Wired through with a structured log line per failed check so
+operators can detect severity-aware gate failures via grep /
+metrics.
+
+C-OUTCOME-CONTRACT from the Bodai OpenClaw/Hermes portfolio.
+
+Co-Authored-By: Claude <noreply@anthropic.com>"
+```
+
+---
+
+### Task 4: WebSocket subscription auth normalize + test-status placeholder (C-WEBSOCKET-AUTH) — CONTRACT CHANGE
+
+`_can_subscribe_to_channel` (line 167-188 of `crackerjack/websocket/server.py`) normalizes `"crackerjack: read"` → `"crackerjack:read"` then compares to the literal `"crackerjack: read"` (with space), so legitimate users with `"crackerjack: read"` get `FORBIDDEN`. Also fixes the `_get_test_status` placeholder that hardcodes a "running" dict.
+
+**Files:**
+- Modify: `crackerjack/websocket/server.py:167-188` (fix the comparison literal)
+- Modify: `crackerjack/websocket/server.py:190-201` (replace the placeholder with a real lookup or honest stub)
+- Test: `tests/test_websocket_auth.py` (extend `TestChannelAuthorization`)
+
+**Interfaces:**
+- Consumes: `CrackerjackWebSocketServer._can_subscribe_to_channel(self, user, channel)` (line 167); `_get_test_status(self, run_id)` (line 190).
+- Produces: `_can_subscribe_to_channel` returns `True` when the user's permission set (after normalization) contains the channel-required permission — for both `"crackerjack: read"` (legacy space form) and `"crackerjack:read"` (canonical).
+- Produces: `_get_test_status` either (a) delegates to `self.qc_manager` if available, or (b) returns `{"status": "unknown", "run_id": run_id}` and logs a structured warning that the test-status integration is pending C-ASYNC-DURABILITY (Task 6).
+- Observability added: counter `crackerjack.ws.subscribe.denied{channel, reason}` incremented on `FORBIDDEN` reply.
+
+- [ ] **Step 1: Add failing test for the WS permission normalize**
+
+Open `tests/test_websocket_auth.py`. Locate `TestChannelAuthorization` (around line 195). Update the existing buggy test (line 198) so it asserts `True` for both forms, and add a fresh test:
+
+```python
+def test_can_subscribe_with_space_separated_permission(self) -> None:
+    """'crackerjack: read' (legacy space form) must subscribe to quality:*."""
+    from unittest.mock import MagicMock
+    from crackerjack.websocket.server import CrackerjackWebSocketServer
+
+    server = CrackerjackWebSocketServer(qc_manager=MagicMock())
+    user = {"permissions": ["crackerjack: read"]}
+    assert server._can_subscribe_to_channel(user, "quality:lint") is True
+
+
+def test_can_subscribe_with_canonical_no_space_permission(self) -> None:
+    from unittest.mock import MagicMock
+    from crackerjack.websocket.server import CrackerjackWebSocketServer
+
+    server = CrackerjackWebSocketServer(qc_manager=MagicMock())
+    user = {"permissions": ["crackerjack:read"]}
+    assert server._can_subscribe_to_channel(user, "quality:lint") is True
+```
+
+Update the existing buggy test at line 198 (which asserts `False` for `"crackerjack: read"`) to assert `True` so the suite captures the new contract. The two new tests exercise both forms; the existing test should agree with the new contract.
+
+- [ ] **Step 2: Run the tests and verify they fail**
+
+Run: `cd /Users/les/Projects/crackerjack && uv run pytest tests/test_websocket_auth.py::TestChannelAuthorization::test_can_subscribe_with_space_separated_permission tests/test_websocket_auth.py::TestChannelAuthorization::test_can_subscribe_with_canonical_no_space_permission -v`
+Expected: `test_can_subscribe_with_space_separated_permission` FAILS (the bug); `test_can_subscribe_with_canonical_no_space_permission` passes (this is the no-space form which currently matches because the literal happens to collide after normalization is unchanged — verify, and adjust the test if needed).
+
+- [ ] **Step 3: Fix the comparison literals**
+
+Open `crackerjack/websocket/server.py:167-188`. Change the comparison literals from `"crackerjack: read"` (with space) to `"crackerjack:read"` (no space), to match the post-normalization form produced by line 169's `.replace(" ", ":")`:
+
+```python
+def _can_subscribe_to_channel(self, user: dict[str, Any], channel: str) -> bool:
+    permissions = {
+        str(permission).strip().lower().replace(" ", ":")
+        for permission in user.get("permissions", [])
+    }
+
+    if "admin" in permissions or "crackerjack:admin" in permissions:
+        return True
+
+    if channel.startswith("quality:"):
+        return (
+            "crackerjack:read" in permissions
+            or "crackerjack:admin" in permissions
+        )
+
+    if channel.startswith("test:"):
+        return (
+            "crackerjack:read" in permissions
+            or "crackerjack:admin" in permissions
+        )
+
+    return False
+```
+
+Note: also fixed `"crackerjack: admin"` → `"crackerjack:admin"` for the admin shortcut (same bug).
+
+- [ ] **Step 4: Add the observability counter on `FORBIDDEN`**
+
+In `_handle_request` (line 103-161), the existing code sends a `FORBIDDEN` error when `_can_subscribe_to_channel` returns `False`. Add an emit before the error is sent. Find crackerjack's metric emitter (Prometheus client, OpenTelemetry, or fall back to a structured logger line):
+
+If a `crackerjack.ws.subscribe.denied` counter exists, increment it with `{channel: str(channel)}` label. Otherwise:
+
+```python
+logger.warning(
+    "ws.subscribe.denied",
+    extra={"channel": str(channel), "user_id": user.get("user_id") if user else "anonymous"},
+)
+```
+
+Add this line at the rejection site (just before the `WebSocketProtocol.create_error(...)` call).
+
+- [ ] **Step 5: Re-run tests and verify they pass**
+
+Run: `cd /Users/les/Projects/crackerjack && uv run pytest tests/test_websocket_auth.py -v`
+Expected: PASS plus any pre-existing tests still passing.
+
+- [ ] **Step 6: Replace the `_get_test_status` placeholder**
+
+Open `crackerjack/websocket/server.py:190-201`. Replace the hardcoded dict with either:
+
+**Option A (preferred — wires to qc_manager):**
+
+```python
+async def _get_test_status(self, run_id: str) -> dict[str, t.Any]:
+    """Look up the test status for ``run_id`` via the quality-control manager.
+
+    Returns the qc_manager's response if it exposes a usable interface;
+    otherwise returns an honest ``unknown`` stub with a structured log
+    warning. The full integration is pending C-ASYNC-DURABILITY
+    (Bodai portfolio Task 6).
+    """
+    if self.qc_manager is None:
+        logger.warning("ws.test_status.no_qc_manager run_id=%s", run_id)
+        return {"run_id": run_id, "status": "unknown"}
+
+    for attr in ("get_test_status", "test_status", "run_status"):
+        getter = getattr(self.qc_manager, attr, None)
+        if getter is None:
+            continue
+        value = getter(run_id) if callable(getter) else getter
+        if inspect.isawaitable(value):
+            value = await value
+        if isinstance(value, dict):
+            return value
+
+    logger.warning("ws.test_status.qc_manager_no_getter run_id=%s", run_id)
+    return {"run_id": run_id, "status": "unknown"}
+```
+
+**Option B (minimal — honest stub):**
+
+```python
+async def _get_test_status(self, run_id: str) -> dict[str, t.Any]:
+    """Honest stub: returns 'unknown' until C-ASYNC-DURABILITY (Bodai portfolio Task 6) ships."""
+    logger.warning("ws.test_status.not_implemented run_id=%s", run_id)
+    return {"run_id": run_id, "status": "unknown"}
+```
+
+Pick Option A if `qc_manager` exposes any test-status method; otherwise Option B.
+
+- [ ] **Step 7: Lint, format, commit**
+
+```bash
+cd /Users/les/Projects/crackerjack
+uv run ruff check crackerjack/websocket/server.py tests/test_websocket_auth.py
+uv run ruff format crackerjack/websocket/server.py tests/test_websocket_auth.py
+git add crackerjack/websocket/server.py tests/test_websocket_auth.py
+git commit -m "fix(websocket): canonicalize subscription permission + honest test-status stub
+
+- _can_subscribe_to_channel compares against 'crackerjack:read' and
+  'crackerjack:admin' (post-normalization form) instead of the
+  legacy 'crackerjack: read' / 'crackerjack: admin' literals, so
+  'crackerjack: read' users get subscribed to quality:*/test:*
+  channels as the policy intends.
+- _get_test_status returns an honest 'unknown' (Option B) or
+  delegates to qc_manager (Option A) instead of the hardcoded
+  'running' dict that misled callers into believing a run was
+  in flight.
+- Adds structured log lines ws.subscribe.denied and (if Option B)
+  ws.test_status.not_implemented for observability.
+
+C-WEBSOCKET-AUTH from the Bodai OpenClaw/Hermes portfolio.
+
+Co-Authored-By: Claude <noreply@anthropic.com>"
+```
+
+---
+
 ### Task 6: Persist AsyncTaskManager jobs (C-ASYNC-DURABILITY) — Phase 1.5, GATED ON D-LOCK
 
-**Do not start this task** until `D-LOCK` from `docs/superpowers/specs/2026-08-03-bodai-openclaw-hermes-inspired-portfolio-design.md` §"Layer 0" has shipped into the Dhara substrate and is consumable from crackerjack. This task is the only one in the C-WIRE plan that depends on substrate work; the other five ship ahead.
+**Do not start this task** until `D-LOCK` from `docs/superpowers/specs/2026-08-03-bodai-openclaw-hermes-inspired-portfolio-design.md` §"Layer 0" has shipped into the Dhara substrate and is consumable from crackerjack. Verified: line 37 of `crackerjack/mcp/task_manager.py` is `self._cleanup_task = asyncio.create_task(self._cleanup_loop())` — the gating claim is accurate.
 
-This plan intentionally stops at the gating signal. When D-LOCK is available, write a follow-up plan that:
+When unblocked, write a follow-up plan that:
 
-- Imports `dhara.lock.DharaLock` (or the agreed API; reconfirm at plan time).
-- Replaces `asyncio.create_task(self._cleanup_loop())` at `crackerjack/mcp/task_manager.py:37` with a DharaLock-guarded equivalent.
+- Imports `dhara.lock.DharaLock` (or whatever the agreed API is; reconfirm at plan time).
+- Replaces the cleanup-loop `_cleanup_task` with a DharaLock-guarded equivalent.
 - Persists `task_id → status` to Dhara so a restart resumes from the last persisted state.
-- Surfaces a `result_store` MCP tool that returns the persisted result for a given `task_id`.
-- Defines a `reap_zombies` task (analogous to the Mahavishnu one) keyed on the lock TTL.
+- Surfaces a `result_store` MCP tool returning the persisted result for a given `task_id`.
+- Defines a `reap_zombies` task keyed on the lock TTL.
 
-The integration contract for this task (placeholder until the per-repo D-LOCK spec lands):
+Integration contract for the follow-up plan:
 
-- **Triggered from:** `crackerjack mcp` restart, `reap_zombies` cron (TBD), and `create_task` invocations on `AsyncTaskManager`.
+- **Triggered from:** `crackerjack mcp` restart, `reap_zombies` cron (TBD), and every `AsyncTaskManager.create_task` invocation.
 - **Returns to / updates:** Dhara key `crackerjack/async-tasks/{task_id}` storing `{status, started_at, finished_at, result_payload}`.
 - **Demonstrable by:** restart the MCP server mid-task, observe the task resume with the same `task_id`; `pytest tests/mcp/test_task_manager.py::test_restart_resumes_task -v` passes.
-- **Rollback signal:** `metric:crackerjack.async_tasks.resumed == 0` after a restart that should have resumed at least one task; revert the durability commit.
+- **Rollback signal:** `crackerjack.async_tasks.resumed == 0` after a restart that should have resumed at least one task.
 - **Observability added:** audit event `crackerjack.async_task.persisted` with `task_id + status + age_ms`.
 
-Skip this task in the current round. The integration contract above is the seed for the follow-up plan.
+Skip this task in the current round.
