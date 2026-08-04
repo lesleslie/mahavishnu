@@ -34,7 +34,7 @@ Per `docs/superpowers/specs/2026-08-03-bodai-openclaw-hermes-inspired-portfolio-
 - **Returns to / updates:** `SkillMetadata.success_rate` (per skill), `QualityGateReport.required_check_failures` (per gate), `HookPluginBase.metadata` (per plugin), WebSocket subscription allow-list, `SecurityAuditor.CRITICAL_HOOKS` lookup table, `crackerjack/skills_tracking.py::SessionBuddyMCPTracker.mcp_server_url` default.
 - **Demonstrable by:** `cd /Users/les/Projects/crackerjack && uv run pytest tests/unit/skills/ tests/unit/mcp/tools/test_skill_tools.py tests/models/ tests/test_plugins_coverage.py tests/integration/test_skills_tracking.py tests/test_websocket_auth.py tests/test_security_audit.py -q` plus `curl :8686/metrics | grep -E 'crackerjack_skill_outcome|crackerjack_ws_subscribe|crackerjack_security_critical'` shows the new observability surface.
 - **Rollback signal:** `crackerjack_skill_outcome_total{outcome="failure"}` rate climbing > 50 % post-rollout (suggests the new metric is double-counting or a regression); `crackerjack_security_critical` report count drops to zero (suggests the dict lookup silently regressed); manual rollback via `git revert` on the per-task commit.
-- **Observability added (per task, listed in each task's "Observability added" section):** `crackerjack.skill.outcome{outcome}` counter (Task 1); `crackerjack.gate.required_check_failure{name}` counter (Task 2); `crackerjack.plugin.trust_check_failed{plugin_type}` counter (Task 3); `crackerjack.ws.subscribe.denied{channel,reason}` counter (Task 4); `crackerjack.security.critical_hooks{hook}` gauge size (Task 5). Task 6 (when unblocked) emits `crackerjack.async_task.persisted{task_id,status}` audit event.
+- **Observability added (per task, listed in each task's "Observability added" section):** `crackerjack.skill.outcome{outcome}` counter (Task 1); `crackerjack.gate.required_check_failure{name}` counter (Task 2); `crackerjack.plugin.trust_check_failed{plugin_type}` counter (Task 3); `crackerjack.ws.subscribe.denied{channel,reason}` counter (Task 4). Task 5 extends a dict and emits no metric or log line. Task 6 (when unblocked) emits `crackerjack.async_task.persisted{task_id,status}` audit event.
 
 ## Dependency Graph Within This Plan
 
@@ -452,7 +452,7 @@ Co-Authored-By: Claude <noreply@anthropic.com>"
 **Interfaces:**
 - Consumes: existing `SecurityAuditor.CRITICAL_HOOKS` consumer at line 131 (`_get_hook_security_level`) and line 152 (`_generate_security_warnings`).
 - Produces: `CRITICAL_HOOKS` includes `bandit`, `pyright`, `gitleaks` (existing), plus `semgrep` (static analysis) and a secrets scanner. Pick the scanner that exists in `crackerjack/hooks/`; if none, add `trufflehog` as the planned scanner and document the wiring gap.
-- Observability added: gauge `crackerjack.security.critical_hooks` set to `len(CRITICAL_HOOKS)` after audit runs (read by operators to confirm the allow-list size).
+- Observability added: none (the `CRITICAL_HOOKS` dict extension is the deliverable; no metric or log line is emitted).
 
 - [ ] **Step 1: Inspect existing hook names**
 
