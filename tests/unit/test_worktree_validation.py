@@ -235,6 +235,71 @@ class TestWorktreePathValidator:
         assert error is None
 
     # =========================================================================
+    # Sibling-confusion regression tests (CWE-22)
+    # =========================================================================
+
+    def test_reject_sibling_directory_with_similar_prefix(self, tmp_path) -> None:
+        """Paths under a sibling with a similar name (e.g. ~/projects-evil) must
+        not match the prefix ~/projects. Pure str.startswith lets this leak; the
+        Path.is_relative_to() check rejects it because the path components differ.
+        """
+        legit = tmp_path / "projects" / "myrepo" / ".worktrees"
+        sibling = tmp_path / "projects-evil" / ".worktrees"
+        legit.mkdir(parents=True)
+        sibling.mkdir(parents=True)
+
+        validator = WorktreePathValidator(allowed_roots=[legit])
+
+        # Legitimate subdir: accepted.
+        legit_target = legit / "feature-x"
+        legit_target.mkdir()
+        is_valid, _ = validator.validate_worktree_path(str(legit_target))
+        assert is_valid
+
+        # Sibling subdir: rejected. The validator's is_relative_to returns
+        # False for ~/projects-evil/... against ~/projects/myrepo/.worktrees.
+        sibling_target = sibling / "feature-x"
+        sibling_target.mkdir()
+        is_valid, error = validator.validate_worktree_path(str(sibling_target))
+        assert not is_valid
+        assert "outside allowed directories" in (error or "").lower()
+
+    def test_accept_per_repo_worktrees_subdir(self, tmp_path) -> None:
+        """The WorktreeCoordinator default allow-list now permits <repo>/.worktrees
+        and <repo>/.claude/worktrees for every registered repo. This test pins
+        the per-repo subdir contract at the validator level so a future refactor
+        of the coordinator's allow-list build does not silently regress it.
+        """
+        repo_path = tmp_path / "projects" / "myrepo"
+        worktree_dir = repo_path / ".worktrees" / "feature-auth"
+        worktree_dir.mkdir(parents=True)
+
+        validator = WorktreePathValidator(
+            allowed_roots=[repo_path / ".worktrees", repo_path / ".claude" / "worktrees"],
+        )
+
+        is_valid, error = validator.validate_worktree_path(str(worktree_dir))
+        assert is_valid
+        assert error is None
+
+    def test_reject_non_worktrees_subdir_of_a_repo(self, tmp_path) -> None:
+        """Even when the repo is registered, paths under the repo that aren't in
+        .worktrees or .claude/worktrees must be rejected. This guards against a
+        future allow-list that accidentally broadens to the whole repo path.
+        """
+        repo_path = tmp_path / "projects" / "myrepo"
+        bad_dir = repo_path / "src" / "secrets"
+        bad_dir.mkdir(parents=True)
+
+        validator = WorktreePathValidator(
+            allowed_roots=[repo_path / ".worktrees", repo_path / ".claude" / "worktrees"],
+        )
+
+        is_valid, error = validator.validate_worktree_path(str(bad_dir))
+        assert not is_valid
+        assert "outside allowed directories" in (error or "").lower()
+
+    # =========================================================================
     # Path Normalization Tests
     # =========================================================================
 

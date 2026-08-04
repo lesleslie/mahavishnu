@@ -135,10 +135,13 @@ class WorktreePathValidator:
                 return False, error
 
             # Check 4: Allowed root verification (defense in depth)
+            # Use Path.is_relative_to() for component-aware containment.
+            # str.startswith() lets ~/projects-evil match the prefix
+            # ~/projects; is_relative_to() requires path-component
+            # alignment so siblings with similar names are rejected.
             if self.strict_mode:
                 is_allowed = any(
-                    str(resolved_path).startswith(str(root)) or resolved_path == root
-                    for root in self.allowed_roots
+                    resolved_path.is_relative_to(root) for root in self.allowed_roots
                 )
 
                 if not is_allowed:

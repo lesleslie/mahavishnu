@@ -114,16 +114,38 @@ class WorktreeCoordinator:
         if allowed_worktree_roots is None:
             # Default allow-list covers:
             #  - ~/worktrees : the canonical convention
-            #  - ~/Projects  : where every Bodai ecosystem repo lives, so
-            #                   per-repo `.worktrees/` and
-            #                   `.claude/worktrees/` subdirs are accepted.
-            # Defense-in-depth (CWE-22/114/170) is preserved: the validator
-            # still rejects null bytes, traversal, and shell metacharacters.
+            #  - <cwd>        : the current working directory
+            #  - <repo>/.worktrees
+            #  - <repo>/.claude/worktrees
+            #    For every repo registered with the repo_manager. This
+            #    replaces the previous broad `~/Projects` entry, which
+            #    under a str.startswith check let `~/Projects-evil/...`
+            #    match the `~/Projects` prefix (sibling-confusion). The
+            #    per-repo subdirs are enumerated at init time so the
+            #    validator's is_relative_to check can match them
+            #    component-wise without glob support.
+            #
+            # Defense-in-depth (CWE-22/114/170) is preserved: the
+            # validator still rejects null bytes, traversal, and shell
+            # metacharacters on top of this allow-list.
             allowed_worktree_roots = [
                 Path.home() / "worktrees",
-                Path.home() / "Projects",
                 Path.cwd(),
             ]
+            try:
+                for repo in self.repo_manager.filter():
+                    repo_path = Path(repo.path).resolve()
+                    allowed_worktree_roots.append(repo_path / ".worktrees")
+                    allowed_worktree_roots.append(repo_path / ".claude" / "worktrees")
+            except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
+                # If the repo catalog is briefly unavailable, fall back
+                # to the base allow-list rather than failing to construct
+                # the coordinator. Per-repo subdirs are added on the next
+                # coordinator construction.
+                logger.warning(
+                    "Failed to enumerate repo subdirs for worktree allow-list: %s",
+                    e,
+                )
 
         self.path_validator = WorktreePathValidator(
             allowed_roots=allowed_worktree_roots,
