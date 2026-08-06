@@ -1,29 +1,12 @@
-"""JSON state-store helpers with POSIX flock + atomic write.
+"""JSON-file atomic-write helpers.
 
-Generic, type-agnostic primitives for persistent JSON state files that
-need concurrent-safe read/write across processes. Used by:
-
-- ``mahavishnu.core.precommitment.JsonFileLockStore`` (the canonical
-  producer; uses list-of-LockResult shape)
+Used by:
 - ``mahavishnu.core.worktree_session_registry.SessionWorktreeRegistry``
-  (uses dict-of-session shape)
-- ``mahavishnu.distill.llm_usage.LLMUsageStore`` (uses list shape)
+- ``mahavishnu.distill.llm_usage.LLMUsageStore``
 
-All callers share the same flock + temp-write + os.replace pattern.
-This module is the single source of truth for those primitives so we
-don't triplicate them (reviewer feedback, multi-agent review, 2026-07-20).
-
-Security hardening (per reviewer feedback, multi-agent review, 2026-07-20):
-
-- **O_NOFOLLOW** on open refuses pre-planted symlinks (CWE-59). The
-  write path uses ``O_NOFOLLOW`` to canonicalize the destination
-  inode before ``os.replace`` (closes the TOCTOU window that the
-  prior ``lstat``-then-``os.replace`` pattern had).
-- **chmod 0o600** on the file + **chmod 0o700** on the parent at first
-  write (default-deny on world-read).
-
-POSIX-only — mahavishnu is Unix-targeted by posture. NFS has subtle
-flock semantics; this code assumes local FS.
+(Precommit used this module historically via JsonFileLockStore, which
+was retired in 2026-08-04 in favor of the Dhara substrate D-LOCK
+primitive — see docs/superpowers/specs/2026-08-04-d-lock-design.md.)
 """
 
 from __future__ import annotations
