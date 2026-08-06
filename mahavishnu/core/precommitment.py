@@ -14,6 +14,7 @@ from dhara.lock import DharaLock
 
 from mahavishnu.core.errors import ErrorCode, MahavishnuError
 
+
 # Exceptions (unchanged shape)
 class HypothesisViolationError(MahavishnuError):
     def __init__(self, message: str) -> None:

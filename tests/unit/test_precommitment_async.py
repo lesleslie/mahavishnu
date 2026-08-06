@@ -8,12 +8,11 @@ from datetime import datetime
 from importlib.resources import files
 from typing import Any
 
-import duckdb
-import pytest
-
 from dhara.lock import DharaLock
 from dhara.lock.in_memory import InMemoryDharaLock
 from dhara.lock.sql import SQLBackendLock
+import duckdb
+import pytest
 
 from mahavishnu.core.precommitment import (
     Hypothesis,
@@ -131,26 +130,15 @@ async def test_check_post_hoc_drift_raises(lock_inmem: HypothesisLock) -> None:
 
 
 @pytest.mark.asyncio
-async def test_duplicate_lock_returns_none_from_underlying(
-    lock_sql: HypothesisLock,
-) -> None:
-    """Ambiguity resolution: the underlying try_acquire returns None on duplicate.
+async def test_duplicate_lock_raises_value_error(lock_sql: HypothesisLock) -> None:
+    """Public lock() raises ValueError when a lock with the same key already exists."""
+    from unittest.mock import patch
 
-    When the same precommit lock key is asked twice, the underlying
-    SQLBackendLock.try_acquire returns None (because the first call is
-    permanent and the conditional UPSERT returns no rows). The public
-    HypothesisLock.lock path doesn't trigger this naturally (UUID4
-    lock_ids are unique), so we test the underlying directly: the
-    SQL substrate contract is that duplicate permanent acquisition
-    returns None.
-    """
-    h = _hypo("first")
-    result = await lock_sql.lock(h)
-    key = f"precommit:l:{result.lock_id}"
-    second = lock_sql._lock.try_acquire(  # type: ignore[attr-defined]
-        key,
-        owner_token="someone-else",
-        permanent=True,
-        metadata={"some": "metadata"},
-    )
-    assert second is None, "duplicate precommit lock acquisition must return None"
+    h = _hypo()
+    with patch("mahavishnu.core.precommitment.uuid.uuid4") as mock_uuid:
+        mock_uuid.return_value.hex = "abcdef0123456789" * 2
+        r1 = await lock_sql.lock(h)
+        with pytest.raises(ValueError, match="duplicate lock_id"):
+            await lock_sql.lock(h)
+    assert r1.lock_id == "L-abcdef012345"
+    assert lock_sql._lock.get("precommit:l:L-abcdef012345") is not None  # type: ignore[attr-defined]
