@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -42,14 +42,14 @@ def lock(file_db: str) -> HypothesisLock:
 def _hypo(claim: str = "test claim") -> Hypothesis:
     return Hypothesis(
         claim=claim, falsification_criteria=("a",), success_criteria=("b",),
-        confidence=80, locked_at=datetime.now(),
+        confidence=80, locked_at=datetime.now(UTC),
     )
 
 
 def test_hypothesis_validation_confidence_range() -> None:
     with pytest.raises(ValueError):
         Hypothesis(claim="x", falsification_criteria=(), success_criteria=(),
-                   confidence=150, locked_at=datetime.now())
+                   confidence=150, locked_at=datetime.now(UTC))
 
 
 def test_compute_signature_is_deterministic() -> None:
@@ -70,19 +70,24 @@ async def test_lock_persists_with_signature(lock: HypothesisLock) -> None:
 
 @pytest.mark.asyncio
 async def test_duplicate_lock_raises(lock: HypothesisLock) -> None:
-    """Spec: duplicate-permanent raises ValueError, mirroring JsonFileLockStore.put."""
+    """Spec: duplicate-permanent raises ValueError when a lock with the same key already exists."""
+    from unittest.mock import patch
+
     h = _hypo()
-    await lock.lock(h)
-    # Use the underlying DharaLock directly to attempt the same key
-    handle = lock._lock.try_acquire(  # type: ignore[attr-defined]
-        f"precommit:l:L-{'a' * 12}",  # arbitrary new lock_id, but our key function
-        owner_token="other", permanent=True, metadata={},
-    )
-    # The above is a different lock_id; the real duplicate scenario requires
-    # constructing a fresh HypothesisLock with the same lock_id — which
-    # random uuid generation makes hard. Skip explicit test; rely on
-    # Task 3's SQL test for the duplicate-permanent path.
-    assert handle is None or handle is not None  # either outcome is acceptable
+    # Force two lock() calls to generate the same lock_id (so they hit the same key).
+    with patch("mahavishnu.core.precommitment.uuid.uuid4") as mock_uuid:
+        mock_uuid.return_value.hex = "abcdef0123456789" * 2  # 32 hex chars; [:12] = "abcdef012345"
+        r1 = await lock.lock(h)
+        # Second call: try_acquire returns None (held) → raises ValueError
+        with pytest.raises(ValueError, match="duplicate lock_id"):
+            await lock.lock(h)
+    # Verify the first lock was actually written
+    sql = lock._lock._db  # type: ignore[attr-defined]
+    fetched = sql.execute(
+        "SELECT lock_key FROM substrate_locks WHERE lock_key = ?",
+        [f"precommit:l:L-abcdef012345"],
+    ).fetchone()
+    assert fetched is not None, "first lock must be persisted"
 
 
 @pytest.mark.asyncio
