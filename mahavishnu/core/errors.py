@@ -579,7 +579,7 @@ class MahavishnuError(Exception):
         ],
         ErrorCode.PRECOMMITMENT_SIGNATURE_MISMATCH: [
             "Stored lock hypothesis has been altered since signing",
-            "Verify the LockStore backend has not been tampered with",
+            "Verify the DharaLock backend has not been tampered with",
             "Re-lock the hypothesis with 'mahavishnu precommit lock' if needed",
             "Investigate the storage layer for unintended writes",
         ],

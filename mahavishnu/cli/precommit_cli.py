@@ -1,125 +1,77 @@
-"""CLI subcommand: ``mahavishnu precommit lock`` (Spec #2, Phase 1).
-
-Locks a hypothesis before iteration 0 so downstream iterations can be
-checked for silent claim drift via ``check_post_hoc``.
-
-Example::
-
-    mahavishnu precommit lock \\
-        --claim "Will improve throughput by 10%" \\
-        --falsify "throughput drops" --falsify "p99 > 200ms" \\
-        --success "throughput up >=10%" --success "p99 < 150ms" \\
-        --confidence 75 \\
-        --verify-with "echo POST-RUN-CLAIM"
-"""
+"""Precommit CLI commands — async, D-LOCK backed."""
 
 from __future__ import annotations
 
-from datetime import UTC, datetime
-import json
-from pathlib import Path  # noqa: TC003 - needed at runtime: typer eval's string annotations
+import asyncio
+from datetime import datetime
 
 import typer
+
+from dhara.lock.in_memory import InMemoryDharaLock
 
 from mahavishnu.core.precommitment import (
     Hypothesis,
     HypothesisLock,
-    JsonFileLockStore,
-    compute_signature,
+    SignatureMismatchError,
 )
 
-precommit_app = typer.Typer(help="Precommitment hypothesis lock (Spec #2)")
+precommit_app = typer.Typer(help="Precommitment hypothesis lock CLI.")
+
+
+def _make_lock() -> HypothesisLock:
+    """Construct a D-LOCK backed HypothesisLock.
+
+    Production wiring (out of scope for v1): instantiate the SQLBackendLock
+    from a configured DharaSettings.storage_path. Tests use InMemoryDharaLock;
+    CLI smoke runs use the in-memory impl by default.
+    """
+    return HypothesisLock(dhara_lock=InMemoryDharaLock())
 
 
 @precommit_app.command("lock")
 def precommit_lock(
-    claim: str = typer.Option(..., "--claim", "-c", help="Hypothesis claim to lock"),
-    falsify: list[str] = typer.Option(
-        ...,
-        "--falsify",
-        "-f",
-        help=(
-            "Falsification criterion (repeat for multiple). "
-            "If any observed at verify time, the lock is broken."
-        ),
-    ),
-    success: list[str] = typer.Option(
-        ...,
-        "--success",
-        "-s",
-        help="Success criterion (repeat for multiple).",
-    ),
-    confidence: int = typer.Option(
-        ...,
-        "--confidence",
-        "-C",
-        min=0,
-        max=100,
-        help="Confidence in the hypothesis (0..100).",
-    ),
-    verify_with: str = typer.Option(
-        "",
-        "--verify-with",
-        "-V",
-        help=(
-            "Optional verify-token. The lock records this opaque string so "
-            "post-hoc verifiers know which downstream tool will be used."
-        ),
-    ),
-    store_path: Path | None = typer.Option(
-        None,
-        "--store-path",
-        help=(
-            "Override the lock-store file path. Default: "
-            "$XDG_CACHE_HOME/mahavishnu/precommitment_locks.json "
-            "(falls back to ~/.cache/mahavishnu/precommitment_locks.json). "
-            "Use this for tests or to keep per-project lock files."
-        ),
-    ),
-    json_output: bool = typer.Option(
-        False,
-        "--json",
-        help="Emit structured JSON instead of human-readable text.",
-    ),
+    claim: str = typer.Option(...),
+    falsification: list[str] = typer.Option(..., "--falsification"),
+    success: list[str] = typer.Option(..., "--success"),
+    confidence: int = typer.Option(..., min=0, max=100),
 ) -> None:
-    """Lock a hypothesis before iteration 0."""
-    hypothesis = Hypothesis(
-        claim=claim,
-        falsification_criteria=tuple(falsify),
-        success_criteria=tuple(success),
-        confidence=confidence,
-        locked_at=datetime.now(UTC),
-    )
-    signature = compute_signature(hypothesis)
-    store = JsonFileLockStore(path=store_path) if store_path else JsonFileLockStore()
-    lock = HypothesisLock(store=store)
-    result = lock.lock(hypothesis)
+    async def _run() -> None:
+        h = Hypothesis(
+            claim=claim,
+            falsification_criteria=tuple(falsification),
+            success_criteria=tuple(success),
+            confidence=confidence,
+            locked_at=datetime.now(),
+        )
+        lock = _make_lock()
+        result = await lock.lock(h)
+        typer.echo(f"Locked hypothesis: {result.lock_id}")
+        typer.echo(f"Signature: {result.signature[:16]}...")
 
-    payload = {
-        "lock_id": result.lock_id,
-        "signature": signature,
-        "confidence": confidence,
-        "locked_at": hypothesis.locked_at.isoformat(),
-        "claim": claim,
-        "falsification_criteria": list(falsify),
-        "success_criteria": list(success),
-        "verify_with": verify_with,
-        "stored_signature": result.signature,
-        "store_path": str(store.path),
-    }
-
-    if json_output:
-        typer.echo(json.dumps(payload, indent=2))
-        return
-
-    typer.echo(f"Locked hypothesis: {result.lock_id}")
-    typer.echo(f"  Claim:      {claim}")
-    typer.echo(f"  Confidence: {confidence}")
-    typer.echo(f"  Signature:  {result.signature}")
-    typer.echo(f"  Locked at:  {hypothesis.locked_at.isoformat()}")
-    typer.echo(f"  Store:      {store.path}")
-    if verify_with:
-        typer.echo(f"  Verify-with: {verify_with}")
+    asyncio.run(_run())
 
 
-__all__ = ["precommit_app", "precommit_lock"]
+@precommit_app.command("verify")
+def precommit_verify(lock_id: str = typer.Option(...)) -> None:
+    async def _run() -> None:
+        lock = _make_lock()
+        ok = await lock.verify_lock(lock_id)
+        typer.echo("valid" if ok else "not found")
+
+    asyncio.run(_run())
+
+
+@precommit_app.command("check-post-hoc")
+def precommit_check_post_hoc(
+    lock_id: str = typer.Option(...),
+    observed_claim: str = typer.Option(...),
+) -> None:
+    async def _run() -> None:
+        lock = _make_lock()
+        try:
+            await lock.check_post_hoc(lock_id, observed_claim=observed_claim)
+            typer.echo("ok")
+        except SignatureMismatchError as exc:
+            typer.echo(f"signature mismatch: {exc.message}")
+
+    asyncio.run(_run())
