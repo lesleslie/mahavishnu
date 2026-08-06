@@ -77,7 +77,7 @@ async def test_duplicate_lock_raises(lock: HypothesisLock) -> None:
     # Force two lock() calls to generate the same lock_id (so they hit the same key).
     with patch("mahavishnu.core.precommitment.uuid.uuid4") as mock_uuid:
         mock_uuid.return_value.hex = "abcdef0123456789" * 2  # 32 hex chars; [:12] = "abcdef012345"
-        r1 = await lock.lock(h)
+        await lock.lock(h)
         # Second call: try_acquire returns None (held) → raises ValueError
         with pytest.raises(ValueError, match="duplicate lock_id"):
             await lock.lock(h)
@@ -85,7 +85,7 @@ async def test_duplicate_lock_raises(lock: HypothesisLock) -> None:
     sql = lock._lock._db  # type: ignore[attr-defined]
     fetched = sql.execute(
         "SELECT lock_key FROM substrate_locks WHERE lock_key = ?",
-        [f"precommit:l:L-abcdef012345"],
+        ["precommit:l:L-abcdef012345"],
     ).fetchone()
     assert fetched is not None, "first lock must be persisted"
 
