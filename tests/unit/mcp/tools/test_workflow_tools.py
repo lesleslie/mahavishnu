@@ -4,11 +4,13 @@ from __future__ import annotations
 
 import asyncio
 from datetime import UTC, datetime
+from unittest.mock import AsyncMock
 
 from dhara.schema import WorkflowOutcome
 from fastmcp import FastMCP
 import pytest
 
+from mahavishnu.mcp.tools import workflow_tools
 from mahavishnu.mcp.tools.workflow_tools import (
     register_workflow_tools,
     workflow_get_outcome,
@@ -107,3 +109,51 @@ async def test_registered_tool_delegates_to_module_function(
 async def test_workflow_get_outcome_is_coroutine_function() -> None:
     """workflow_get_outcome is async — FastMCP requires coroutines for tools."""
     assert asyncio.iscoroutinefunction(workflow_get_outcome)
+
+
+@pytest.mark.asyncio
+async def test_workflow_get_outcome_rejects_path_traversal(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Module-level guard: caller-supplied path-traversal workflow_id is refused.
+
+    Mirrors the sibling parity gate in ``pool_tools.workflow_result``: when
+    ``workflow_id`` is anything other than ``^[A-Za-z0-9._-]{1,128}$``, the
+    function returns the sentinel ``{"status": "invalid_workflow_id"}`` and
+    Dhara is never queried. Without this gate, a caller could read arbitrary
+    Dhara keys via ``workflow_id="../../etc/passwd"``.
+    """
+    dhara_get = AsyncMock()
+    monkeypatch.setattr(workflow_tools.dhara, "get", dhara_get)
+
+    result = await workflow_get_outcome("../../etc/passwd")
+
+    assert result == {
+        "workflow_id": "../../etc/passwd",
+        "status": "invalid_workflow_id",
+    }
+    dhara_get.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_registered_tool_rejects_path_traversal(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """End-to-end: registered MCP tool returns sentinel and never touches Dhara.
+
+    Walks the FastMCP-registered ``workflow_get_outcome_tool`` so we know the
+    guard is wired in the production registration path, not only on the
+    module-level coroutine.
+    """
+    dhara_get = AsyncMock()
+    monkeypatch.setattr(workflow_tools.dhara, "get", dhara_get)
+
+    mcp = FastMCP(name="test-workflow-tools-traversal")
+    register_workflow_tools(mcp)
+    tool = next(t for t in await mcp.list_tools() if t.name == "workflow_get_outcome_tool")
+
+    result = await tool.fn(workflow_id="../../etc/passwd")
+
+    assert result == {
+        "workflow_id": "../../etc/passwd",
+        "status": "invalid_workflow_id",
+    }
+    dhara_get.assert_not_called()

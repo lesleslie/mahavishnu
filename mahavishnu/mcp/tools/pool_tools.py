@@ -8,13 +8,13 @@ import json
 import logging
 import os
 from pathlib import Path
-import re
 from typing import Any
 from uuid import uuid4
 
 from mcp_common.fastmcp import FastMCP  # noqa: TC002
 
 from mahavishnu.core.errors import RateLimitError
+from mahavishnu.mcp.tools._workflow_id_guard import _validate_workflow_id
 from mahavishnu.observability.worker_metrics import WorkerMetrics
 
 # Spec §14 success-criteria instrumentation. Singleton per module; thread-safe.
@@ -38,28 +38,6 @@ _DURABLE_WORKER_TYPES: frozenset[str] = frozenset(
         "terminal-node",  # SHELL
     }
 )
-
-# Conservative path-traversal guard for caller-supplied workflow IDs.
-# Mirrors the legacy ``uuid4()`` shape: 1-128 chars, alphanumeric
-# plus dot, dash, and underscore. Anything outside this regex must
-# be rejected BEFORE the value is spliced into a Dhara key path,
-# otherwise a caller can read or write ``workflow-results/../../etc/...``
-# on the persist layer.
-_WORKFLOW_ID_PATTERN: re.Pattern[str] = re.compile(r"^[A-Za-z0-9._-]{1,128}$")
-
-
-def _validate_workflow_id(workflow_id: str) -> bool:
-    """Return True iff ``workflow_id`` is a safe Dhara key fragment.
-
-    Caller-provided ``workflow_id`` is spliced into
-    ``f"workflow-results/{workflow_id}/"`` for both ``dispatch_to_pool``
-    and ``workflow_result``, so it MUST match a conservative identifier
-    pattern before touching Dhara. On mismatch, callers should return
-    ``{"workflow_id": workflow_id, "status": "invalid_workflow_id"}`` so
-    MCP callers see a consistent error shape and Dhara is never touched
-    with a tainted key.
-    """
-    return bool(_WORKFLOW_ID_PATTERN.match(workflow_id))
 
 
 try:
