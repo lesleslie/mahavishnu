@@ -1,9 +1,9 @@
 ---
-status: draft
+status: shipped
 role: implementation
 date: 2026-07-16
-last_reviewed: 2026-07-16
-superseded_by: null
+last_reviewed: 2026-08-10
+superseded_by: mahavishnu/core/self_heal/
 topic: three-layer-self-heal
 ---
 
