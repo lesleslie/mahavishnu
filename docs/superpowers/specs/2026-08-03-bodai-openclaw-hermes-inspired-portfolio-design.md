@@ -12,8 +12,8 @@ Mahavishnu is the control plane for the **Bodai Ecosystem** (Mahavishnu / Sessio
 The cleanup leaves three architectural gaps that OpenClaw and Hermes already solve:
 
 1. **Durable ingress** — webhook endpoints accept work but never enqueue; an MCP restart loses accepted requests.
-2. **Durable memory lifecycle** — channel sessions live only in memory; durable storage for forked conversations / branch metadata is missing.
-3. **Rubric-scored outcomes** — every workflow execution publishes a status but no structured outcome rubric; downstream routing decisions and adaptive scheduling have nothing to act on.
+1. **Durable memory lifecycle** — channel sessions live only in memory; durable storage for forked conversations / branch metadata is missing.
+1. **Rubric-scored outcomes** — every workflow execution publishes a status but no structured outcome rubric; downstream routing decisions and adaptive scheduling have nothing to act on.
 
 The previous research (`wf_37283d45-77e`, `wc34b8gza`) inventoried 16 immediate candidates across the Bodai ecosystem. They cluster around three leverage primitives — **durable ingress**, **durable memory lifecycle**, **rubric-scored outcomes**. This portfolio coordinates them.
 
@@ -133,9 +133,9 @@ The dependency graph dictates the order. Within a layer, items are sequenced by 
 D-WIRE must ship before any Layer 1 work that depends on it. Internal order:
 
 1. D-OBJ-SCHEMA first (defines the shapes every other durable primitive consumes).
-2. D-LOCK second (locks depend on typed objects).
-3. D-AUDIT third (audit subscriber consumes the same shapes).
-4. D-REPLAY-VEC last (vector clocks only matter once replay is being built).
+1. D-LOCK second (locks depend on typed objects).
+1. D-AUDIT third (audit subscriber consumes the same shapes).
+1. D-REPLAY-VEC last (vector clocks only matter once replay is being built).
 
 ### Phase 1 — Per-repo specs in parallel
 
@@ -149,19 +149,19 @@ After D-WIRE lands, the four per-repo specs can run in parallel:
 Recommended order within Phase 1 (user value × risk):
 
 1. The five D-LOCK-independent C-WIRE items first — purely additive fixes inside one repo, lowest coordination cost.
-2. M-WEBHOOK-DURABLE next — closes a documented P0 risk and produces an immediately observable improvement.
-3. S-MEM-VERSIONS next — unblocks S-REPLAY and X-REPLAY; user-visible immediately.
-4. A-RUBRIC-TABLE next — establishes the shape M-INFRA and X-RUBRIC-FEEDBACK consume.
-5. The rest in any order.
-6. C-ASYNC-DURABILITY ships as soon as D-LOCK lands (Phase 1.5).
+1. M-WEBHOOK-DURABLE next — closes a documented P0 risk and produces an immediately observable improvement.
+1. S-MEM-VERSIONS next — unblocks S-REPLAY and X-REPLAY; user-visible immediately.
+1. A-RUBRIC-TABLE next — establishes the shape M-INFRA and X-RUBRIC-FEEDBACK consume.
+1. The rest in any order.
+1. C-ASYNC-DURABILITY ships as soon as D-LOCK lands (Phase 1.5).
 
 ### Phase 2 — Cross-cutting specs
 
 After Phase 1 lands:
 
 1. **X-CHANNEL-DURABLE** — depends on S-CHANNEL-DURABLE + A-EVENT-LOG.
-2. **X-RUBRIC-FEEDBACK** — depends on A-RUBRIC-TABLE + A-RUBRIC-MCP + C-OUTCOME-CONTRACT.
-3. **X-REPLAY** — depends on S-REPLAY + M-WORKFLOW-OUTCOME + D-REPLAY-VEC.
+1. **X-RUBRIC-FEEDBACK** — depends on A-RUBRIC-TABLE + A-RUBRIC-MCP + C-OUTCOME-CONTRACT.
+1. **X-REPLAY** — depends on S-REPLAY + M-WORKFLOW-OUTCOME + D-REPLAY-VEC.
 
 Deferred: M-INFRA adaptive scheduling is gated on X-RUBRIC-FEEDBACK being adopted.
 
@@ -194,7 +194,7 @@ State per item. Updated at each layer gate.
 | M-WEBHOOK-DURABLE | mahavishnu | parked | — | — |
 | M-APPROVAL-LOG | mahavishnu | parked | — | — |
 | M-WORKER-LEASE | mahavishnu | parked | — | — |
-| M-WORKFLOW-OUTCOME | mahavishnu | parked | — | — |
+| M-WORKFLOW-OUTCOME | mahavishnu | wired | [completion report](feature-tracking/2026-08-10-m-workflow-outcome.md) | [spec](2026-08-10-m-workflow-outcome-design.md) |
 | M-TOOL-AUDIT | mahavishnu | parked | — | — |
 | M-TRANSCRIPT-TAIL | mahavishnu | parked | — | — |
 | S-MEM-VERSIONS | session-buddy | parked | — | — |
@@ -219,8 +219,8 @@ States: `parked` (queued in portfolio), `building` (per-repo spec exists, plan i
 ## Open questions
 
 1. **Dhara ownership of typed schemas** — should D-OBJ-SCHEMA live in Dhara or in a shared `bodai-contracts` package? Current portfolio assumes Dhara. Worth confirming with the Dhara maintainer before D-WIRE brainstorming starts.
-2. **A-RUBRIC evaluator authority** — does the rubric evaluator run inside Crackerjack (C-OUTCOME-CONTRACT) and push to Akosha, or inside Akosha pulling from Crackerjack? The dependency graph allows either; the choice affects who owns the failure mode when the evaluator is down. To resolve in A-RUBRIC brainstorming.
-3. **M-WORKER-LEASE backward compat** — adding `lease_expires_at` to existing `DurableWorkerRecord` rows is a migration. Decide between hard migration vs dual-read window before M-WORKER-LEASE spec.
+1. **A-RUBRIC evaluator authority** — does the rubric evaluator run inside Crackerjack (C-OUTCOME-CONTRACT) and push to Akosha, or inside Akosha pulling from Crackerjack? The dependency graph allows either; the choice affects who owns the failure mode when the evaluator is down. To resolve in A-RUBRIC brainstorming.
+1. **M-WORKER-LEASE backward compat** — adding `lease_expires_at` to existing `DurableWorkerRecord` rows is a migration. Decide between hard migration vs dual-read window before M-WORKER-LEASE spec.
 
 ## Appendix — research-only ideas (not in the 16, parked for later)
 
