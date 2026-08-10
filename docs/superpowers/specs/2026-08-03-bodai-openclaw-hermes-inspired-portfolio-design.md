@@ -188,7 +188,7 @@ State per item. Updated at each layer gate.
 | ID | Repo | State | Plan link | Spec link |
 |---|---|---|---|---|
 | D-LOCK | dhara | parked | — | — |
-| D-AUDIT | dhara | parked | — | — |
+| D-AUDIT | dhara | adopted | [completion report](../../../dhara/docs/feature-tracking/2026-08-10-d-audit.md) | — |
 | D-OBJ-SCHEMA | dhara | parked | — | — |
 | D-REPLAY-VEC | dhara | parked | — | — |
 | M-WEBHOOK-DURABLE | mahavishnu | parked | — | — |
