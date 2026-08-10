@@ -415,7 +415,7 @@ async def finalize_workflow_execution(
             "record_workflow_outcome_failed",
             extra={
                 "workflow_id": workflow_id,
-                "error": str(outcome_err),
+                "error_type": type(outcome_err).__name__,
             },
         )
 
