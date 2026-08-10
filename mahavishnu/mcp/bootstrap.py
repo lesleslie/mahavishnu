@@ -484,8 +484,11 @@ async def register_profile_tools(server: FastMCPServer, methods_set: set[str]) -
 
     from ..mcp.tools.ecosystem_tools import register_ecosystem_tools
     from ..mcp.tools.health_tools import register_health_tools
+    from ..mcp.tools.workflow_tools import register_workflow_tools
 
     register_health_tools(server.server, server.app)
     logger.info("Registered health check tools with MCP server")
     register_ecosystem_tools(server.server)
     logger.info("Registered 3 canonical ecosystem status tools with MCP server")
+    register_workflow_tools(server.server)
+    logger.info("Registered workflow outcome tools with MCP server")

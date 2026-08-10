@@ -528,6 +528,129 @@ class TestFinalizeWorkflowExecution:
         assert result["failed_repos"] == 1
         assert result["execution_time_seconds"] == 2.5
 
+    @pytest.mark.asyncio
+    async def test_records_workflow_outcome_with_succeeded_status(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """When no errors, record_workflow_outcome is called with status='succeeded'."""
+        fake_record = MagicMock()
+        monkeypatch.setattr(
+            "mahavishnu.core.workflow_execution.record_workflow_outcome",
+            fake_record,
+        )
+        app = _make_mock_app()
+        app.active_workflows.add("wf_123")
+
+        await finalize_workflow_execution(
+            app=app,
+            workflow_id="wf_123",
+            adapter_name="prefect",
+            task={"type": "check"},
+            validated_repos=["/repo/a"],
+            execution_time=1.5,
+            successful_results=[{"status": "ok"}],
+            errors=[],
+            checkpoint_id="cp_123",
+        )
+
+        assert fake_record.call_count == 1
+        call_kwargs = fake_record.call_args.kwargs
+        assert call_kwargs["workflow_id"] == "wf_123"
+        assert call_kwargs["status"] == "succeeded"
+        # started_at is derived from finished_at - execution_time
+        finished_at = call_kwargs["finished_at"]
+        started_at = call_kwargs["started_at"]
+        assert (finished_at - started_at).total_seconds() == 1.5
+
+    @pytest.mark.asyncio
+    async def test_records_workflow_outcome_with_failed_status(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """When errors and no successes, status maps to 'failed'."""
+        fake_record = MagicMock()
+        monkeypatch.setattr(
+            "mahavishnu.core.workflow_execution.record_workflow_outcome",
+            fake_record,
+        )
+        app = _make_mock_app()
+        app.active_workflows.add("wf_456")
+
+        await finalize_workflow_execution(
+            app=app,
+            workflow_id="wf_456",
+            adapter_name="prefect",
+            task={"type": "check"},
+            validated_repos=["/repo/a"],
+            execution_time=1.5,
+            successful_results=[],
+            errors=[{"repo": "/repo/a", "error": "boom"}],
+            checkpoint_id=None,
+        )
+
+        assert fake_record.call_count == 1
+        assert fake_record.call_args.kwargs["status"] == "failed"
+        assert fake_record.call_args.kwargs["workflow_id"] == "wf_456"
+
+    @pytest.mark.asyncio
+    async def test_records_workflow_outcome_with_cancelled_status_for_partial(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """When partial (some errors, some successes), status maps to 'cancelled'."""
+        fake_record = MagicMock()
+        monkeypatch.setattr(
+            "mahavishnu.core.workflow_execution.record_workflow_outcome",
+            fake_record,
+        )
+        app = _make_mock_app()
+        app.active_workflows.add("wf_789")
+
+        await finalize_workflow_execution(
+            app=app,
+            workflow_id="wf_789",
+            adapter_name="prefect",
+            task={"type": "check"},
+            validated_repos=["/repo/a", "/repo/b"],
+            execution_time=1.5,
+            successful_results=[{"status": "ok"}],
+            errors=[{"repo": "/repo/b", "error": "failed"}],
+            checkpoint_id="cp_789",
+        )
+
+        assert fake_record.call_count == 1
+        assert fake_record.call_args.kwargs["status"] == "cancelled"
+
+    @pytest.mark.asyncio
+    async def test_record_workflow_outcome_failure_does_not_propagate(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """If record_workflow_outcome raises, finalize still returns normally (G6 contract)."""
+        fake_record = MagicMock(side_effect=RuntimeError("substrate failure"))
+        monkeypatch.setattr(
+            "mahavishnu.core.workflow_execution.record_workflow_outcome",
+            fake_record,
+        )
+        app = _make_mock_app()
+        app.active_workflows.add("wf_xyz")
+
+        result = await finalize_workflow_execution(
+            app=app,
+            workflow_id="wf_xyz",
+            adapter_name="prefect",
+            task={"type": "check"},
+            validated_repos=["/repo/a"],
+            execution_time=1.0,
+            successful_results=[{"status": "ok"}],
+            errors=[],
+            checkpoint_id=None,
+        )
+
+        assert result["workflow_id"] == "wf_xyz"
+        assert result["status"] == "completed"
+
 
 # ============================================================================
 # handle_workflow_execution_error Tests
