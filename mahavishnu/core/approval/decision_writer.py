@@ -76,6 +76,15 @@ def record_approval_decision(
     put = getattr(dhara, "put", None)
     if put is not None:
         put(f"approval-history/{approval_id}/", validated)
+    else:
+        logger.warning(
+            "approval_log_persistence_skipped",
+            extra={
+                "approval_id": approval_id,
+                "reason": "dhara.put_unbound",
+                "v1_enabled": os.environ.get("APPROVAL_LOG_V1_ENABLED", "true"),
+            },
+        )
 
     logger.info(
         "approval_log_recorded",
