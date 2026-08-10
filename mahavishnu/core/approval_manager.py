@@ -4,16 +4,30 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
+import os
 from typing import TYPE_CHECKING, Any, Literal
 import uuid
 
 from oneiric.core.logging import get_logger
+
+from mahavishnu.core.approval.decision_writer import record_approval_decision
 
 if TYPE_CHECKING:
     from mahavishnu.core.state_backends.dhara import DharaStateBackend
 
 
 logger = get_logger(__name__)
+
+
+def _approval_log_v1_enabled() -> bool:
+    """Read the APPROVAL_LOG_V1_ENABLED feature flag (default True).
+
+    When the flag is set to ``"false"`` the legacy delete-on-resolve branch
+    stays live; otherwise approval resolutions persist structured ApprovalLog
+    records via :func:`record_approval_decision`. This is the rollback switch
+    for M-APPROVAL-LOG Task 3.
+    """
+    return os.environ.get("APPROVAL_LOG_V1_ENABLED", "true").lower() != "false"
 
 
 @dataclass
@@ -149,10 +163,50 @@ class ApprovalManager:
         )
 
     def _schedule_dhara_delete(self, request_id: str) -> None:
-        """Fire-and-forget: remove resolved/expired approval from Dhara."""
+        """Fire-and-forget: remove resolved/expired approval from Dhara.
+
+        This helper always deletes when called — it is the legacy delete
+        primitive. The ``APPROVAL_LOG_V1_ENABLED`` feature flag is gated at
+        the ``respond()`` call site (see Task 3 of M-APPROVAL-LOG): when v1
+        is enabled, live resolutions persist structured ``ApprovalLog``
+        records instead. ``cleanup_expired`` is an admin op that always
+        deletes, so it continues to invoke this helper unconditionally.
+        """
         if self._dhara_state is None:
             return
         self._dhara_state.schedule_delete(f"approval/v1/{request_id}")
+
+    def _persist_approval_decision(
+        self,
+        request: ApprovalRequest,
+        approved: bool,
+        selected_option: int | None,
+        rejection_reason: str | None,
+    ) -> None:
+        """Validate-on-write: persist a structured ApprovalLog via the producer.
+
+        Builds the producer payload from the in-memory ApprovalRequest so the
+        durable record carries the same actor metadata the request was created
+        with. ``decided_by`` falls back to ``"system"`` when the request context
+        does not provide an actor identifier.
+        """
+        decision = "approved" if approved else "denied"
+        rationale = rejection_reason or ""
+        decided_by = str(request.context.get("decided_by", "system"))
+
+        metadata: dict[str, Any] = {}
+        if selected_option is not None:
+            metadata["selected_option"] = selected_option
+        if request.approval_type:
+            metadata["approval_type"] = request.approval_type
+
+        record_approval_decision(
+            approval_id=request.id,
+            decision=decision,
+            rationale=rationale,
+            decided_by=decided_by,
+            metadata=metadata or None,
+        )
 
     def _generate_default_options(
         self,
@@ -231,11 +285,26 @@ class ApprovalManager:
 
         if request.is_expired:
             del self._pending_requests[request_id]
-            self._schedule_dhara_delete(request_id)
+            if not _approval_log_v1_enabled():
+                # Legacy delete-on-expire path; v1 keeps the dangling record
+                # because no decision was actually recorded.
+                self._schedule_dhara_delete(request_id)
             raise ValueError(f"Request {request_id} has expired")
 
         del self._pending_requests[request_id]
-        self._schedule_dhara_delete(request_id)
+
+        if _approval_log_v1_enabled():
+            # Persist a structured ApprovalLog so the durable record survives
+            # orchestrator restarts (replaces the legacy delete-on-resolve).
+            self._persist_approval_decision(
+                request=request,
+                approved=approved,
+                selected_option=selected_option,
+                rejection_reason=rejection_reason,
+            )
+        else:
+            # Rollback path: legacy delete-on-resolve behavior.
+            self._schedule_dhara_delete(request_id)
 
         return ApprovalResult(
             approved=approved,

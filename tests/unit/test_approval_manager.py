@@ -205,12 +205,19 @@ class TestApprovalManagerDharaPersistence:
         assert request.id.startswith("approval-")
 
     def test_respond_schedules_dhara_delete(self) -> None:
+        """Legacy delete-on-resolve behavior is gated behind
+        APPROVAL_LOG_V1_ENABLED=false (rollback path). Default flag value
+        means the legacy delete is NOT scheduled; instead the producer
+        persists an ApprovalLog (verified separately in
+        tests/unit/approval/test_decision_wiring.py).
+        """
         mock_dhara = self._make_mock_dhara()
         manager = ApprovalManager(dhara_state=mock_dhara)
         request = manager.create_request(approval_type="publish", context={})
         mock_dhara.schedule_put.reset_mock()
         manager.respond(request.id, approved=True)
-        mock_dhara.schedule_delete.assert_called_once_with(f"approval/v1/{request.id}")
+        # Default flag = v1 enabled, so legacy delete must NOT fire.
+        mock_dhara.schedule_delete.assert_not_called()
 
     def test_cleanup_expired_schedules_dhara_delete(self) -> None:
         mock_dhara = self._make_mock_dhara()
