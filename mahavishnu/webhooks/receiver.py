@@ -14,9 +14,12 @@ typed-Pydantic contract for OpenClaw's per-endpoint payload shapes.
 
 from __future__ import annotations
 
+import os
+
 import dhara
 from dhara.schema import SchemaValidationError, validate
 from fastapi import FastAPI, HTTPException, status
+from fastapi.responses import JSONResponse
 from oneiric.core.logging import get_logger
 
 # Substrate-compat: `dhara.put` is not a module-level attribute on the
@@ -29,6 +32,18 @@ from oneiric.core.logging import get_logger
 if not hasattr(dhara, "put"):
     dhara.put = None  # type: ignore[attr-defined]
 
+
+def _webhook_durable_v1_enabled() -> bool:
+    """Read the WEBHOOK_DURABLE_V1_ENABLED feature flag (default true).
+
+    Returns:
+        ``False`` when the operator has set ``WEBHOOK_DURABLE_V1_ENABLED=false``
+        (case-insensitive). All other values — including unset — resolve to
+        ``True`` so existing deployments default to the durable path.
+    """
+    return os.environ.get("WEBHOOK_DURABLE_V1_ENABLED", "true").lower() != "false"
+
+
 logger = get_logger(__name__)
 
 app = FastAPI(
@@ -38,12 +53,16 @@ app = FastAPI(
 )
 
 
-@app.post("/webhook", status_code=status.HTTP_202_ACCEPTED)
-def receive_webhook(payload: dict[str, object]) -> dict[str, str]:
+@app.post("/webhook", status_code=status.HTTP_202_ACCEPTED, response_model=None)
+def receive_webhook(payload: dict[str, object]) -> JSONResponse | dict[str, str]:
     """Validate ``payload`` as a ``WebhookIngress`` and persist via ``dhara.put``.
 
     Returns:
-        ``{"status": "accepted", "webhook_id": <validated.webhook_id>}``
+        On the durable path: ``{"status": "accepted", "webhook_id": <id>}``.
+        On the in-memory fallback path (``WEBHOOK_DURABLE_V1_ENABLED=false`` or
+        ``dhara.put`` unbound): a 202 ``JSONResponse`` with
+        ``{"status": "accepted_in_memory_only"}`` and a structured
+        ``webhook_persistence_skipped`` warning log entry.
 
     Raises:
         HTTPException: 422 when the payload fails schema validation. The
@@ -69,7 +88,38 @@ def receive_webhook(payload: dict[str, object]) -> dict[str, str]:
     # msgspec.Struct is duck-typed so we read fields directly without an
     # isinstance check (bandit B101 forbids asserts in production).
     webhook_id = validated.webhook_id
-    dhara.put(f"webhook-ingress/{webhook_id}/", validated)
+
+    if not _webhook_durable_v1_enabled():
+        logger.warning(
+            "webhook_persistence_skipped",
+            extra={
+                "reason": "v1_disabled",
+                "webhook_id": webhook_id,
+            },
+        )
+        return JSONResponse(
+            {"status": "accepted_in_memory_only"},
+            status_code=status.HTTP_202_ACCEPTED,
+        )
+
+    # Substrate-compat gate: only persist when dhara.put is exposed.
+    put = getattr(dhara, "put", None)
+    if put is not None:
+        put(f"webhook-ingress/{webhook_id}/", validated)
+    else:
+        logger.warning(
+            "webhook_persistence_skipped",
+            extra={
+                "reason": "dhara.put_unbound",
+                "webhook_id": webhook_id,
+                "v1_enabled": _webhook_durable_v1_enabled(),
+            },
+        )
+        return JSONResponse(
+            {"status": "accepted_in_memory_only"},
+            status_code=status.HTTP_202_ACCEPTED,
+        )
+
     logger.info(
         "webhook_ingress_recorded",
         extra={"webhook_id": webhook_id, "source": validated.source},
