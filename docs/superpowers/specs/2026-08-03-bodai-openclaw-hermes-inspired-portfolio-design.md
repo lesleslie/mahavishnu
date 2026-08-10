@@ -192,7 +192,7 @@ State per item. Updated at each layer gate.
 | D-OBJ-SCHEMA | dhara | parked | — | — |
 | D-REPLAY-VEC | dhara | parked | — | — |
 | M-WEBHOOK-DURABLE | mahavishnu | parked | — | — |
-| M-APPROVAL-LOG | mahavishnu | parked | — | — |
+| M-APPROVAL-LOG | mahavishnu | wired | [completion report](feature-tracking/2026-08-10-m-approval-log.md) | [spec](2026-08-10-m-approval-log-design.md) |
 | M-WORKER-LEASE | mahavishnu | parked | — | — |
 | M-WORKFLOW-OUTCOME | mahavishnu | wired | [completion report](feature-tracking/2026-08-10-m-workflow-outcome.md) | [spec](2026-08-10-m-workflow-outcome-design.md) |
 | M-TOOL-AUDIT | mahavishnu | parked | — | — |
