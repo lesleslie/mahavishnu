@@ -94,10 +94,28 @@ None blocking. Two follow-up items from spec section "Observability added" remai
 
 Owner: mahavishnu core. Target: v1.1 hardening cycle.
 
-1. **MEDIUM `missing-observability-counters`** — Spec calls for `approval_log_recorded_total{decision}` and `approval_log_invalid_total{reason}` counters. Currently producer uses `logger.info/warn` for v1 visibility; switch to a metrics sink when one stabilizes.
-2. **MEDIUM `missing-migration`** — Pre-v1 approvals remain in `approval/v1/`; new v1 records land in `approval-history/`. The two paths coexist; cleanup is not in scope but a backfill migration is a v1.1 candidate.
-3. **Minor** — Pull the `ApprovalLog` schema test fixture (used in `test_decision_wiring.py` for the `selected_option` carrying test) out of the test file into a shared fixture if a third writer-adjacent test lands.
-4. **Minor** — Promote the `approval-history/{approval_id}/` path prefix to a constant in `decision_writer.py` so the producer and consumer agree on it without string repetition.
+1. **MEDIUM `async-passthrough-not-verified`** — Task 3 reviewer flagged that `record_approval_decision` calls `dhara.put(...)` sync, but substrate binding may be async-only in production. Task 4 round-trip test uses sync monkeypatches, not the real async binding. Validate against the real substrate under load — if a hang/coroutine warning surfaces, convert `record_approval_decision` to `async def` (mirrors M-WORKFLOW-OUTCOME Task 3 fix).
+2. **MEDIUM `missing-observability-counters`** — Spec calls for `approval_log_recorded_total{decision}` and `approval_log_invalid_total{reason}` counters. Currently producer uses `logger.info/warn` for v1 visibility; switch to a metrics sink when one stabilizes.
+3. **MEDIUM `missing-migration`** — Pre-v1 approvals remain in `approval/v1/`; new v1 records land in `approval-history/`. The two paths coexist; cleanup is not in scope but a backfill migration is a v1.1 candidate.
+4. **Minor** — Pull the `ApprovalLog` schema test fixture (used in `test_decision_wiring.py` for the `selected_option` carrying test) out of the test file into a shared fixture if a third writer-adjacent test lands.
+5. **Minor** — Promote the `approval-history/{approval_id}/` path prefix to a constant in `decision_writer.py` so the producer and consumer agree on it without string repetition.
+6. **Cross-portfolio v1.1 hardening items** (from M-WORKFLOW-OUTCOME backlog, equally applicable here):
+   - HIGH — Add RBAC `user_id` + permission check on the read path (CLI: `list_approval_history`)
+   - MEDIUM — Tighten `approval_id` allowlist if `approval_id` is ever constructed from user input
+   - MEDIUM — Never log `str(exception)` in `extra=` payloads (producer's `approval_log_persistence_skipped` already does this correctly per commit `3fe46719`)
+
+## Spec coverage map
+
+| Spec section / requirement | Task(s) |
+|---|---|
+| Goal — wire `approval_log` typed schema, stop delete-on-resolve | Tasks 1, 3 |
+| Architecture — producer + consumer | Tasks 1, 2 |
+| Integration Contract: Triggered from `record_decision` | Task 3 |
+| Integration Contract: Returns to `approval-history/{approval_id}/` | Task 1 |
+| Integration Contract: Demonstrable by round-trip | Task 4 |
+| Rollback signal `APPROVAL_LOG_V1_ENABLED` | Task 3 (call-site gate, not producer body) |
+| Observability: `approval_log_recorded_total{decision}` counters | Deferred (v1.1 hardening) |
+| Observability: `approval_log_invalid_total{reason}` counters | Deferred (v1.1 hardening) |
 
 ## Related
 
@@ -106,12 +124,11 @@ Owner: mahavishnu core. Target: v1.1 hardening cycle.
 - Task 1 commits: `c8cec717` (producer) → `3fe46719` (cross-portfolio log warn consistency)
 - Task 2 commits: `d4c0937d` (log error type not str(err)) → `136df375` (consumer)
 - Task 3 commit: `b28ac619` (wire record_approval_decision into decision flow)
-- Task 4 commit: pending — round-trip integration test + this completion report
+- Task 4 commit: `e091ecea` — round-trip integration test + this completion report
 - Substrate-compat pattern: `dhara.schema` public re-exports (never `_base` / `_registry`)
 - Sibling precedent: `2026-08-10-m-workflow-outcome.md` (same validate-on-write + validate-on-read contract, same substrate-compat pattern)
 - Rollback: revert the 4 land commits; toggle `APPROVAL_LOG_V1_ENABLED=false` for inline rollback without redeploy
 
 ## Session-Buddy
 
-- Reflection ID: <to be filled>
-- Saved at: <ISO timestamp>
+- Reflection capture deferred to follow-up — this completion report is the canonical record; reflection capture happens during `wired` → `adopted` transition when a downstream consumer exercises the read path in production.
