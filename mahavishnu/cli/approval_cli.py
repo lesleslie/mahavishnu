@@ -18,6 +18,8 @@ import dhara
 from dhara.schema import ApprovalLog, SchemaValidationError, from_dict
 from oneiric.core.logging import get_logger
 
+from mahavishnu.mcp.tools._workflow_id_guard import validate_approval_id
+
 logger = get_logger(__name__)
 
 # Substrate-compat: dhara.list is not part of the static substrate API on
@@ -44,8 +46,24 @@ def list_approval_history(
         are skipped (partial-failure resilience) rather than raising, so a
         single corrupted record does not mask the rest of the history.
         Returns an empty list and emits a WARNING when the substrate does
-        not expose ``dhara.list``.
+        not expose ``dhara.list``, or when ``approval_id`` fails the
+        path-traversal allowlist check.
     """
+    # Path-traversal guard: ``approval_id`` is spliced into the Dhara key
+    # ``f"approval-history/{approval_id}/"`` below. Reject caller-supplied
+    # values that contain traversal characters BEFORE the substrate sees
+    # them. Matches the existing convention for the substrate-unbound
+    # case (log warning, return []) so callers see a single error shape.
+    if not validate_approval_id(approval_id):
+        logger.warning(
+            "approval_list_skipped",
+            extra={
+                "approval_id": approval_id,
+                "reason": "invalid_approval_id",
+            },
+        )
+        return []
+
     list_fn = getattr(dhara, "list", None)
     if list_fn is None:
         logger.warning(

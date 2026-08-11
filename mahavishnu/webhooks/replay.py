@@ -21,6 +21,8 @@ import dhara
 from dhara.schema import WebhookIngress, from_dict
 from oneiric.core.logging import get_logger
 
+from mahavishnu.mcp.tools._workflow_id_guard import validate_webhook_id
+
 # Substrate-compat: `dhara.get` is not a module-level attribute on the
 # installed dhara package — real callers pass a Dhara client instance
 # (e.g. `await self.dhara.get(...)`) or import a configured binding into
@@ -39,8 +41,9 @@ def webhook_replay(webhook_id: str) -> WebhookIngress | None:
 
     Returns:
         The validated :class:`WebhookIngress` instance, or ``None`` when
-        no record exists at the durability key or the substrate is
-        unbound. A missing-record read emits no log line; a substrate-
+        no record exists at the durability key, the substrate is
+        unbound, or ``webhook_id`` fails the path-traversal allowlist
+        check. A missing-record read emits no log line; a substrate-
         unbound read emits a structured ``webhook_replay_skipped``
         warning with ``reason='dhara.get_unbound'`` so operators can
         disambiguate the failure mode.
@@ -51,6 +54,21 @@ def webhook_replay(webhook_id: str) -> WebhookIngress | None:
         side in :mod:`mahavishnu.webhooks.receiver` — the M-WEBHOOK-
         DURABLE producer/consumer contract relies on it.
     """
+    # Path-traversal guard: ``webhook_id`` is spliced into the Dhara key
+    # ``f"webhook-ingress/{webhook_id}/"`` below. Reject caller-supplied
+    # values that contain traversal characters BEFORE the substrate sees
+    # them. Matches the existing convention for the substrate-unbound
+    # case (log warning, return None) so callers see a single error shape.
+    if not validate_webhook_id(webhook_id):
+        logger.warning(
+            "webhook_replay_skipped",
+            extra={
+                "reason": "invalid_webhook_id",
+                "webhook_id": webhook_id,
+            },
+        )
+        return None
+
     get = getattr(dhara, "get", None)
     if get is None:
         logger.warning(
