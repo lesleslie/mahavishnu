@@ -24,6 +24,11 @@ import dhara
 from dhara.schema import WorkflowOutcome, validate
 from oneiric.core.logging import get_logger
 
+from mahavishnu.core._dhara_substrate_compat import (
+    dhara_calltime,
+    stamp_dhara_attr,
+)
+
 if TYPE_CHECKING:
     from datetime import datetime
 
@@ -33,8 +38,7 @@ if TYPE_CHECKING:
 # `dhara.put` at integration time. Tests substitute via
 # `monkeypatch.setattr("writer.dhara.put", ...)`; the hasattr guard lets
 # that patch land even when the host package has not injected a binding.
-if not hasattr(dhara, "put"):
-    dhara.put = None  # type: ignore[attr-defined]
+stamp_dhara_attr("put")
 
 logger = get_logger(__name__)
 
@@ -68,7 +72,7 @@ def record_workflow_outcome(
     validated = validate("workflow_outcome", payload)
 
     # Substrate-compat gate: only persist when dhara.put is exposed.
-    put = getattr(dhara, "put", None)
+    put = dhara_calltime("put")
     if put is not None:
         put(f"workflow-results/{workflow_id}/", validated)
         logger.info(

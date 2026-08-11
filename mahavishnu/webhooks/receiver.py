@@ -28,6 +28,11 @@ from fastapi import FastAPI, HTTPException, status
 from fastapi.responses import JSONResponse
 from oneiric.core.logging import get_logger
 
+from mahavishnu.core._dhara_substrate_compat import (
+    dhara_calltime,
+    stamp_dhara_attr,
+)
+
 # Substrate-compat: `dhara.put` is not a module-level attribute on the
 # installed dhara package — real callers pass a Dhara client instance
 # (e.g. `await self.dhara.put(...)`) or import a configured binding into
@@ -35,8 +40,7 @@ from oneiric.core.logging import get_logger
 # `monkeypatch.setattr("receiver.dhara.put", ...)`; the hasattr guard
 # lets that patch land even when the host package has not injected a
 # binding.
-if not hasattr(dhara, "put"):
-    dhara.put = None  # type: ignore[attr-defined]
+stamp_dhara_attr("put")
 
 
 def _webhook_durable_v1_enabled() -> bool:
@@ -109,7 +113,7 @@ def receive_webhook(payload: dict[str, object]) -> JSONResponse | dict[str, str]
         )
 
     # Substrate-compat gate: only persist when dhara.put is exposed.
-    put = getattr(dhara, "put", None)
+    put = dhara_calltime("put")
     if put is not None:
         put(f"webhook-ingress/{webhook_id}/", validated)
     else:

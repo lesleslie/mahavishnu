@@ -30,13 +30,17 @@ import dhara
 from dhara.schema import ApprovalLog, validate
 from oneiric.core.logging import get_logger
 
+from mahavishnu.core._dhara_substrate_compat import (
+    dhara_calltime,
+    stamp_dhara_attr,
+)
+
 logger = get_logger(__name__)
 
 # Substrate-compat: dhara.put is not part of the static substrate API on
 # the local install. Tests monkeypatch this attribute; production builds
 # that expose dhara.put will see a real callable at runtime.
-if not hasattr(dhara, "put"):  # pragma: no cover - substrate introspection
-    dhara.put = None  # type: ignore[attr-defined]
+stamp_dhara_attr("put")  # pragma: no cover - substrate introspection
 
 
 def record_approval_decision(
@@ -79,7 +83,7 @@ def record_approval_decision(
     validated: ApprovalLog = validate("approval_log", payload)
 
     # Substrate-compat gate: only persist when dhara.put is exposed.
-    put = getattr(dhara, "put", None)
+    put = dhara_calltime("put")
     if put is not None:
         put(f"approval-history/{approval_id}/", validated)
     else:
