@@ -51,6 +51,7 @@ def test_list_approval_history_returns_validated_structs(
         approval_id="apr-stream",
         since=None,
         status=None,
+    token="header.payload.signature",
     )
 
     assert isinstance(results, list)
@@ -79,6 +80,7 @@ def test_list_approval_history_passes_since_and_status(
         approval_id="apr-stream",
         since="2026-08-01",
         status="approved",
+    token="header.payload.signature",
     )
 
     substrate_list.assert_called_once_with(
@@ -103,6 +105,7 @@ def test_list_approval_history_returns_empty_when_dhara_unbound(
             approval_id="apr-stream",
             since=None,
             status=None,
+        token="header.payload.signature",
         )
 
     assert results == []
@@ -141,6 +144,7 @@ def test_list_approval_history_skips_invalid_payloads(
         approval_id="apr-stream",
         since=None,
         status=None,
+    token="header.payload.signature",
     )
 
     assert len(results) == 1
@@ -178,6 +182,7 @@ def test_list_entry_skipped_log_carries_bound_exception_type(
             approval_id="apr-stream",
             since=None,
             status=None,
+        token="header.payload.signature",
         )
 
     # Partial-failure resilience still holds.
@@ -202,3 +207,82 @@ def test_list_entry_skipped_log_carries_bound_exception_type(
     )
     # No exception text leaked into the structured payload.
     assert "Traceback" not in msg
+
+
+def test_list_approval_history_rejects_missing_token(monkeypatch, caplog):
+    """RBAC gate: missing token returns [] before any Dhara call.
+
+    Multi-agent review flagged HIGH-severity missing auth on this read
+    path. The new gate must short-circuit before list_fn is invoked.
+    """
+    from mahavishnu.cli import approval_cli
+
+    list_fn = MagicMock(return_value=[{"approval_id": "apr-1"}])
+    monkeypatch.setattr(approval_cli.dhara, "list", list_fn, raising=False)
+
+    with caplog.at_level("WARNING", logger="mahavishnu.cli.approval_cli"):
+        result = approval_cli.list_approval_history(
+            approval_id="apr-1",
+            since=None,
+            status=None,
+            token=None,
+        )
+
+    assert result == []
+    list_fn.assert_not_called()
+    skip_records = [r for r in caplog.records if "approval_list_skipped" in r.message]
+    assert skip_records, [r.message for r in caplog.records]
+    assert "'reason': 'rbac_denied'" in skip_records[-1].message
+
+
+def test_list_approval_history_rejects_non_jwt_token(monkeypatch, caplog):
+    """RBAC gate: a non-JWT-shaped token is rejected as malformed.
+
+    The CLI surface is sync, so the check is JWT-shape presence (three
+    dot-separated segments). A single-segment string looks like a token
+    but is not a JWT — must be rejected.
+    """
+    from mahavishnu.cli import approval_cli
+
+    list_fn = MagicMock(return_value=[])
+    monkeypatch.setattr(approval_cli.dhara, "list", list_fn, raising=False)
+
+    with caplog.at_level("WARNING", logger="mahavishnu.cli.approval_cli"):
+        result = approval_cli.list_approval_history(
+            approval_id="apr-2",
+            since=None,
+            status=None,
+            token="not-a-jwt",
+        )
+
+    assert result == []
+    list_fn.assert_not_called()
+
+
+def test_list_approval_history_passes_with_jwt_shaped_token(monkeypatch):
+    """With a JWT-shaped token the RBAC gate passes and the substrate is queried.
+
+    The substrate is monkeypatched to return a valid ApprovalLog payload,
+    so the function returns the validated record. Confirms the gate only
+    blocks on missing/malformed tokens.
+    """
+    from mahavishnu.cli import approval_cli
+
+    payload = _make_payload("apr-3", action="approved", actor="reviewer-1")
+    list_fn = MagicMock(return_value=[payload])
+    monkeypatch.setattr(approval_cli.dhara, "list", list_fn, raising=False)
+
+    token = "header.payload.signature"
+
+    result = approval_cli.list_approval_history(
+        approval_id="apr-3",
+        since=None,
+        status=None,
+        token=token,
+    )
+
+    list_fn.assert_called_once()
+    assert isinstance(result, list)
+    assert len(result) == 1
+    assert isinstance(result[0], ApprovalLog)
+    assert result[0].approval_id == "apr-3"

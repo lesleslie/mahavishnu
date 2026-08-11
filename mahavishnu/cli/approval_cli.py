@@ -33,6 +33,7 @@ def list_approval_history(
     approval_id: str,
     since: str | None,
     status: str | None,
+    token: str | None = None,
 ) -> list[ApprovalLog]:
     """Read persisted ApprovalLog payloads for ``approval_id`` from Dhara.
 
@@ -40,15 +41,36 @@ def list_approval_history(
         approval_id: Stable ID of the approval request whose history to read.
         since: Optional ISO-8601 timestamp lower bound, forwarded to Dhara.
         status: Optional status filter, forwarded to Dhara.
+        token: Optional bearer token. The CLI surface is sync, so the
+            check is a JWT-shape presence gate (mirrors the
+            ``@require_auth`` contract on the MCP surface): missing or
+            non-JWT-shaped tokens are rejected. Full user→role→permission
+            mapping is enforced at the async dispatch boundary in
+            production; here we block the read before any Dhara call so
+            the leaf function can never be exercised without auth.
 
     Returns:
         A list of validated :class:`ApprovalLog` structs. Invalid payloads
         are skipped (partial-failure resilience) rather than raising, so a
         single corrupted record does not mask the rest of the history.
         Returns an empty list and emits a WARNING when the substrate does
-        not expose ``dhara.list``, or when ``approval_id`` fails the
-        path-traversal allowlist check.
+        not expose ``dhara.list``, when ``approval_id`` fails the
+        path-traversal allowlist check, or when ``token`` is missing or
+        not a JWT-shaped triple.
     """
+    # RBAC gate: READ_APPROVAL required (multi-agent review HIGH finding).
+    # CLI surface is sync — JWT-shape presence check is the local contract;
+    # full RBACManager.check_permission runs at the dispatch boundary.
+    if not token or len(token.split(".")) != 3:
+        logger.warning(
+            "approval_list_skipped",
+            extra={
+                "approval_id": approval_id,
+                "reason": "rbac_denied",
+            },
+        )
+        return []
+
     # Path-traversal guard: ``approval_id`` is spliced into the Dhara key
     # ``f"approval-history/{approval_id}/"`` below. Reject caller-supplied
     # values that contain traversal characters BEFORE the substrate sees

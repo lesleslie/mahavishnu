@@ -20,6 +20,8 @@ class Permission(StrEnum):
     CANCEL_WORKFLOW = "cancel_workflow"
     READ_ADAPTERS = "read_adapters"
     MANAGE_TERMINALS = "manage_terminals"
+    READ_APPROVAL = "read_approval"
+    READ_WEBHOOK = "read_webhook"
 
 
 class Role(BaseModel):
@@ -77,6 +79,8 @@ class RBACManager:
                 Permission.READ_REPO,
                 Permission.LIST_WORKFLOWS,
                 Permission.VIEW_WORKFLOW_STATUS,
+                Permission.READ_APPROVAL,
+                Permission.READ_WEBHOOK,
             ],
             allowed_repos=[],
         )

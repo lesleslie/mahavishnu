@@ -99,7 +99,7 @@ async def test_registered_tool_delegates_to_module_function(
     mcp = FastMCP(name="test-workflow-tools")
     register_workflow_tools(mcp)
     tool = next(t for t in await mcp.list_tools() if t.name == "workflow_get_outcome_tool")
-    result = await tool.fn(workflow_id="wf-e2e")
+    result = await tool.fn(workflow_id="wf-e2e", user_id="viewer-1")
     assert isinstance(result, WorkflowOutcome)
     assert result.workflow_id == "wf-e2e"
     assert result.status == "succeeded"
@@ -150,10 +150,65 @@ async def test_registered_tool_rejects_path_traversal(
     register_workflow_tools(mcp)
     tool = next(t for t in await mcp.list_tools() if t.name == "workflow_get_outcome_tool")
 
-    result = await tool.fn(workflow_id="../../etc/passwd")
+    result = await tool.fn(workflow_id="../../etc/passwd", user_id="viewer-1")
 
     assert result == {
         "workflow_id": "../../etc/passwd",
         "status": "invalid_workflow_id",
     }
     dhara_get.assert_not_called()
+
+
+async def test_workflow_get_outcome_tool_rejects_without_user_id(monkeypatch):
+    """@require_mcp_auth wrapper rejects calls missing user_id.
+
+    Without user_id the wrapper returns the AUTH_REQUIRED error envelope
+    before the underlying workflow_get_outcome runs. Mirrors the brief's
+    "rejection without permission" contract: the read never reaches the
+    Dhara substrate.
+    """
+    from mcp_common.fastmcp import FastMCP
+
+    from mahavishnu.mcp.tools import workflow_tools
+    from mahavishnu.mcp.tools.workflow_tools import register_workflow_tools
+
+    dhara_get = AsyncMock()
+    monkeypatch.setattr(workflow_tools.dhara, "get", dhara_get)
+
+    mcp = FastMCP(name="test-workflow-tools-auth")
+    register_workflow_tools(mcp)
+    tool = next(t for t in await mcp.list_tools() if t.name == "workflow_get_outcome_tool")
+
+    result = await tool.fn(workflow_id="wf-1")
+
+    assert isinstance(result, dict)
+    assert result.get("status") == "error"
+    assert result.get("error_code") == "AUTH_REQUIRED"
+    dhara_get.assert_not_called()
+
+
+async def test_workflow_get_outcome_tool_passes_with_user_id(monkeypatch):
+    """@require_mcp_auth wrapper passes when user_id is supplied.
+
+    With user_id the wrapper falls through to workflow_get_outcome. The
+    substrate-compat gate still returns None when dhara.get returns None
+    — we assert the wrapper did NOT short-circuit on auth.
+    """
+    from mcp_common.fastmcp import FastMCP
+
+    from mahavishnu.mcp.tools import workflow_tools
+    from mahavishnu.mcp.tools.workflow_tools import register_workflow_tools
+
+    dhara_get = AsyncMock(return_value=None)
+    monkeypatch.setattr(workflow_tools.dhara, "get", dhara_get)
+
+    mcp = FastMCP(name="test-workflow-tools-auth-ok")
+    register_workflow_tools(mcp)
+    tool = next(t for t in await mcp.list_tools() if t.name == "workflow_get_outcome_tool")
+
+    result = await tool.fn(workflow_id="wf-ok", user_id="viewer-1")
+
+    # No AUTH_REQUIRED envelope → wrapper fell through.
+    if isinstance(result, dict):
+        assert result.get("error_code") != "AUTH_REQUIRED"
+    dhara_get.assert_awaited_once_with("workflow-results/wf-ok/")

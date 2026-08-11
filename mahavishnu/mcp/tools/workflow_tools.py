@@ -8,6 +8,8 @@ import dhara
 from dhara.schema import WorkflowOutcome, from_dict
 from oneiric.core.logging import get_logger
 
+from mahavishnu.core.permissions import Permission
+from mahavishnu.mcp.auth import require_mcp_auth
 from mahavishnu.mcp.tools._workflow_id_guard import validate_workflow_id
 
 if TYPE_CHECKING:
@@ -78,8 +80,10 @@ def register_workflow_tools(mcp: FastMCP) -> None:
     """
 
     @mcp.tool()
+    @require_mcp_auth(required_permission=Permission.VIEW_WORKFLOW_STATUS)
     async def workflow_get_outcome_tool(
         workflow_id: str,
+        user_id: str | None = None,
     ) -> WorkflowOutcome | dict[str, Any] | None:
         """Read back the persisted WorkflowOutcome for ``workflow_id``.
 
@@ -88,5 +92,10 @@ def register_workflow_tools(mcp: FastMCP) -> None:
         the workflow_id is rejected by the path-traversal guard. Validates
         the persisted payload against the substrate ``workflow_outcome``
         schema.
+
+        Auth: requires ``user_id`` with ``VIEW_WORKFLOW_STATUS`` permission
+        (mirror of the ``@require_mcp_auth`` contract). Without ``user_id``
+        the tool returns ``{"status": "error", "error_code": "AUTH_REQUIRED", ...}``
+        before any substrate access.
         """
         return await workflow_get_outcome(workflow_id)

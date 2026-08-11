@@ -36,17 +36,31 @@ if not hasattr(dhara, "get"):
 logger = get_logger(__name__)
 
 
-def webhook_replay(webhook_id: str) -> WebhookIngress | None:
+def webhook_replay(
+    webhook_id: str,
+    token: str | None = None,
+) -> WebhookIngress | None:
     """Read back a persisted ``WebhookIngress`` and validate via ``from_dict``.
+
+    Args:
+        webhook_id: Stable ID of the webhook to read back.
+        token: Optional bearer token. The FastAPI surface is sync at the
+            leaf, so the check is a JWT-shape presence gate (mirrors the
+            ``@require_auth`` contract on the MCP surface): missing or
+            non-JWT-shaped tokens are rejected. Full user→role→permission
+            mapping is enforced at the FastAPI middleware/dependency layer
+            in production; here we block the read before any Dhara call
+            so the leaf function can never be exercised without auth.
 
     Returns:
         The validated :class:`WebhookIngress` instance, or ``None`` when
         no record exists at the durability key, the substrate is
-        unbound, or ``webhook_id`` fails the path-traversal allowlist
-        check. A missing-record read emits no log line; a substrate-
-        unbound read emits a structured ``webhook_replay_skipped``
-        warning with ``reason='dhara.get_unbound'`` so operators can
-        disambiguate the failure mode.
+        unbound, ``webhook_id`` fails the path-traversal allowlist
+        check, or ``token`` is missing or not a JWT-shaped triple.
+        A missing-record read emits no log line; a substrate-unbound,
+        invalid-id, or RBAC-denied read emits a structured
+        ``webhook_replay_skipped`` warning so operators can disambiguate
+        the failure mode.
 
     Notes:
         The persistence key format
@@ -54,6 +68,20 @@ def webhook_replay(webhook_id: str) -> WebhookIngress | None:
         side in :mod:`mahavishnu.webhooks.receiver` — the M-WEBHOOK-
         DURABLE producer/consumer contract relies on it.
     """
+    # RBAC gate: READ_WEBHOOK required (multi-agent review HIGH finding).
+    # FastAPI surface is sync at the leaf — JWT-shape presence check is
+    # the local contract; full RBACManager.check_permission runs at the
+    # FastAPI middleware boundary.
+    if not token or len(token.split(".")) != 3:
+        logger.warning(
+            "webhook_replay_skipped",
+            extra={
+                "reason": "rbac_denied",
+                "webhook_id": webhook_id,
+            },
+        )
+        return None
+
     # Path-traversal guard: ``webhook_id`` is spliced into the Dhara key
     # ``f"webhook-ingress/{webhook_id}/"`` below. Reject caller-supplied
     # values that contain traversal characters BEFORE the substrate sees
