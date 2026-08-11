@@ -67,16 +67,16 @@ def list_approval_history(
     for payload in raw_payloads:
         try:
             record: ApprovalLog = from_dict("approval_log", payload)
-        except SchemaValidationError:
+        except SchemaValidationError as exc:
             # Skip-bad not raise-all: partial-failure resilience so a single
             # corrupted entry does not mask the rest of the history. Log the
-            # exception type only — never the message, which may carry
+            # bound exception's type — never the message, which may carry
             # credentials or connection strings.
             logger.warning(
                 "approval_list_entry_skipped",
                 extra={
                     "approval_id": approval_id,
-                    "reason": type(SchemaValidationError).__name__,
+                    "reason": type(exc).__name__,
                 },
             )
             continue

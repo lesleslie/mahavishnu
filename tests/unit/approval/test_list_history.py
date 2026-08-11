@@ -146,3 +146,59 @@ def test_list_approval_history_skips_invalid_payloads(
     assert len(results) == 1
     assert isinstance(results[0], ApprovalLog)
     assert results[0].approval_id == "apr-good"
+
+
+def test_list_entry_skipped_log_carries_bound_exception_type(
+    substrate_list: MagicMock,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """`approval_list_entry_skipped` log carries the bound exc type, not a constant string.
+
+    Regression guard for the constant-string bug:
+    `type(SchemaValidationError).__name__` evaluates to the literal string
+    "SchemaValidationError" because the surrounding `except` already
+    narrowed the type. The fix binds the exception as ``exc`` and logs
+    ``type(exc).__name__``. We trigger a real `SchemaValidationError`
+    via an invalid `action` Literal (same shape as
+    `test_list_approval_history_skips_invalid_payloads`) and assert the
+    structured log carries the bound-exception class name.
+    """
+    substrate_list.return_value = [
+        {
+            "approval_id": "apr-bad",
+            "action": "not_a_real_action",  # fails Literal validation
+            "actor": "carol",
+            "at": datetime(2026, 8, 10, 12, 0, 0, tzinfo=UTC),
+            "metadata": {},
+        },
+    ]
+
+    with caplog.at_level(logging.WARNING, logger="mahavishnu.cli.approval_cli"):
+        results = list_approval_history(
+            approval_id="apr-stream",
+            since=None,
+            status=None,
+        )
+
+    # Partial-failure resilience still holds.
+    assert results == []
+
+    # Find the structured skip log. Use substring match (the existing
+    # `_list_skipped` test at line 109 follows the same pattern) so we
+    # don't trip over trailing ANSI escapes or formatter padding.
+    skip_records = [
+        rec
+        for rec in caplog.records
+        if "approval_list_entry_skipped" in rec.message
+    ]
+    assert len(skip_records) == 1, [rec.message for rec in caplog.records]
+    rec = skip_records[0]
+
+    # Oneiric renders `extra={...}` into the formatted message; parse for
+    # the `reason` field and assert it's the bound-exception class name.
+    msg = rec.message
+    assert "'reason': 'SchemaValidationError'" in msg, (
+        f"Expected bound-exception type name, got: {msg!r}"
+    )
+    # No exception text leaked into the structured payload.
+    assert "Traceback" not in msg
