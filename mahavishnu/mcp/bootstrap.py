@@ -405,6 +405,14 @@ def _register_a2a_routes_block(server: FastMCPServer) -> None:
                 allowed_origins=allowed_origins,
             )
             app.mount("/", a2a_app)
+            # Mount the durable webhook receiver BEFORE the catch-all
+            # ``/`` mount above. Starlette resolves mounts in declaration
+            # order, so ``/durable-webhooks/webhook`` would otherwise be
+            # swallowed by A2A. Lazy-import keeps bootstrap cheap when
+            # A2A is disabled.
+            from ..webhooks import mount_durable_webhooks
+
+            mount_durable_webhooks(app)
             return app
 
         # The bound method's ``self`` parameter is implicit; binding is
@@ -484,6 +492,7 @@ async def register_profile_tools(server: FastMCPServer, methods_set: set[str]) -
 
     from ..mcp.tools.ecosystem_tools import register_ecosystem_tools
     from ..mcp.tools.health_tools import register_health_tools
+    from ..mcp.tools.webhook_tools import register_webhook_tools
     from ..mcp.tools.workflow_tools import register_workflow_tools
 
     register_health_tools(server.server, server.app)
@@ -492,3 +501,5 @@ async def register_profile_tools(server: FastMCPServer, methods_set: set[str]) -
     logger.info("Registered 3 canonical ecosystem status tools with MCP server")
     register_workflow_tools(server.server)
     logger.info("Registered workflow outcome tools with MCP server")
+    register_webhook_tools(server.server)
+    logger.info("Registered webhook replay tools with MCP server")
