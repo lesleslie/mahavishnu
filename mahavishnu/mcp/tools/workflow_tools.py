@@ -6,6 +6,7 @@ from typing import TYPE_CHECKING, Any
 
 import dhara
 from dhara.schema import WorkflowOutcome, from_dict
+from oneiric.core.logging import get_logger
 
 from mahavishnu.mcp.tools._workflow_id_guard import validate_workflow_id
 
@@ -22,13 +23,17 @@ if TYPE_CHECKING:
 if not hasattr(dhara, "get"):
     dhara.get = None  # type: ignore[attr-defined]
 
+logger = get_logger(__name__)
+
 
 async def workflow_get_outcome(
     workflow_id: str,
 ) -> WorkflowOutcome | dict[str, Any] | None:
     """Read back the persisted WorkflowOutcome via from_dict, validating the payload.
 
-    Returns ``None`` when no record exists at ``workflow-results/{workflow_id}/``.
+    Returns ``None`` when no record exists at ``workflow-results/{workflow_id}/``
+    OR when the substrate does not expose ``dhara.get`` (logged WARNING, see
+    the substrate-compat gate below).
     Returns ``{"workflow_id": workflow_id, "status": "invalid_workflow_id"}``
     when ``workflow_id`` is rejected by the conservative path-traversal guard
     (mirrors the sibling parity gate in ``pool_tools.workflow_result``);
@@ -39,7 +44,20 @@ async def workflow_get_outcome(
     # outside the conservative regex BEFORE the Dhara read.
     if not validate_workflow_id(workflow_id):
         return {"workflow_id": workflow_id, "status": "invalid_workflow_id"}
-    payload = await dhara.get(f"workflow-results/{workflow_id}/")
+
+    # Substrate-compat gate: only read when dhara.get is exposed. Missing
+    # substrate → return None and warn (do not conflate with "no record").
+    get_fn = getattr(dhara, "get", None)
+    if get_fn is None:
+        logger.warning(
+            "workflow_outcome_read_skipped",
+            extra={
+                "workflow_id": workflow_id,
+                "reason": "dhara.get_unbound",
+            },
+        )
+        return None
+    payload = await get_fn(f"workflow-results/{workflow_id}/")
     if payload is None:
         return None
     return from_dict("workflow_outcome", payload)

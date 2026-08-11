@@ -25,7 +25,10 @@ from .metrics_schema import AdapterType, TaskType
 from .permissions import Permission
 from .repository_surface import validate_path
 from .routing import RoutingStrategy, TaskRouter
-from .workflow.outcome_writer import record_workflow_outcome
+from .workflow.outcome_writer import (
+    _workflow_outcome_v1_enabled,
+    record_workflow_outcome,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -402,22 +405,23 @@ async def finalize_workflow_execution(
     _OUTCOME_STATUS_MAP = {"completed": "succeeded", "partial": "cancelled"}
     finished_at = datetime.now(UTC)
     started_at = finished_at - timedelta(seconds=execution_time)
-    try:
-        record_workflow_outcome(
-            workflow_id=workflow_id,
-            status=_OUTCOME_STATUS_MAP.get(final_status, "failed"),
-            started_at=started_at,
-            finished_at=finished_at,
-            metadata={"adapter": adapter_name, "task_type": task_type},
-        )
-    except Exception as outcome_err:  # noqa: BLE001 - substrate failures must never propagate
-        logger.warning(
-            "record_workflow_outcome_failed",
-            extra={
-                "workflow_id": workflow_id,
-                "error_type": type(outcome_err).__name__,
-            },
-        )
+    if _workflow_outcome_v1_enabled():
+        try:
+            record_workflow_outcome(
+                workflow_id=workflow_id,
+                status=_OUTCOME_STATUS_MAP.get(final_status, "failed"),
+                started_at=started_at,
+                finished_at=finished_at,
+                metadata={"adapter": adapter_name, "task_type": task_type},
+            )
+        except Exception as outcome_err:  # noqa: BLE001 - substrate failures must never propagate
+            logger.warning(
+                "record_workflow_outcome_failed",
+                extra={
+                    "workflow_id": workflow_id,
+                    "error_type": type(outcome_err).__name__,
+                },
+            )
 
     return {
         "workflow_id": workflow_id,
