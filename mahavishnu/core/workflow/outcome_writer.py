@@ -28,6 +28,7 @@ from mahavishnu.core._dhara_substrate_compat import (
     dhara_calltime,
     stamp_dhara_attr,
 )
+from mahavishnu.core._producer_metrics import COUNTERS
 
 if TYPE_CHECKING:
     from datetime import datetime
@@ -39,6 +40,9 @@ if TYPE_CHECKING:
 # `monkeypatch.setattr("writer.dhara.put", ...)`; the hasattr guard lets
 # that patch land even when the host package has not injected a binding.
 stamp_dhara_attr("put")
+
+# Producer name used for Prometheus label cardinality.
+_PRODUCER_NAME = "workflow_outcome_writer"
 
 logger = get_logger(__name__)
 
@@ -73,8 +77,10 @@ def record_workflow_outcome(
 
     # Substrate-compat gate: only persist when dhara.put is exposed.
     put = dhara_calltime("put")
+    COUNTERS.attempted.labels(producer=_PRODUCER_NAME).inc()
     if put is not None:
         put(f"workflow-results/{workflow_id}/", validated)
+        COUNTERS.succeeded.labels(producer=_PRODUCER_NAME).inc()
         logger.info(
             "workflow_outcome_recorded",
             extra={
@@ -84,6 +90,7 @@ def record_workflow_outcome(
             },
         )
     else:
+        COUNTERS.skipped.labels(producer=_PRODUCER_NAME).inc()
         logger.warning(
             "workflow_outcome_persistence_skipped",
             extra={

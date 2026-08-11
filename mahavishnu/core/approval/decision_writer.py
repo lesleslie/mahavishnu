@@ -34,6 +34,7 @@ from mahavishnu.core._dhara_substrate_compat import (
     dhara_calltime,
     stamp_dhara_attr,
 )
+from mahavishnu.core._producer_metrics import COUNTERS
 
 logger = get_logger(__name__)
 
@@ -41,6 +42,9 @@ logger = get_logger(__name__)
 # the local install. Tests monkeypatch this attribute; production builds
 # that expose dhara.put will see a real callable at runtime.
 stamp_dhara_attr("put")  # pragma: no cover - substrate introspection
+
+# Producer name used for Prometheus label cardinality.
+_PRODUCER_NAME = "decision_writer"
 
 
 def record_approval_decision(
@@ -84,9 +88,12 @@ def record_approval_decision(
 
     # Substrate-compat gate: only persist when dhara.put is exposed.
     put = dhara_calltime("put")
+    COUNTERS.attempted.labels(producer=_PRODUCER_NAME).inc()
     if put is not None:
         put(f"approval-history/{approval_id}/", validated)
+        COUNTERS.succeeded.labels(producer=_PRODUCER_NAME).inc()
     else:
+        COUNTERS.skipped.labels(producer=_PRODUCER_NAME).inc()
         logger.warning(
             "approval_log_persistence_skipped",
             extra={

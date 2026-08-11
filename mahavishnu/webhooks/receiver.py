@@ -32,6 +32,7 @@ from mahavishnu.core._dhara_substrate_compat import (
     dhara_calltime,
     stamp_dhara_attr,
 )
+from mahavishnu.core._producer_metrics import COUNTERS
 
 # Substrate-compat: `dhara.put` is not a module-level attribute on the
 # installed dhara package — real callers pass a Dhara client instance
@@ -41,6 +42,9 @@ from mahavishnu.core._dhara_substrate_compat import (
 # lets that patch land even when the host package has not injected a
 # binding.
 stamp_dhara_attr("put")
+
+# Producer name used for Prometheus label cardinality.
+_PRODUCER_NAME = "webhook_receiver"
 
 
 def _webhook_durable_v1_enabled() -> bool:
@@ -114,9 +118,12 @@ def receive_webhook(payload: dict[str, object]) -> JSONResponse | dict[str, str]
 
     # Substrate-compat gate: only persist when dhara.put is exposed.
     put = dhara_calltime("put")
+    COUNTERS.attempted.labels(producer=_PRODUCER_NAME).inc()
     if put is not None:
         put(f"webhook-ingress/{webhook_id}/", validated)
+        COUNTERS.succeeded.labels(producer=_PRODUCER_NAME).inc()
     else:
+        COUNTERS.skipped.labels(producer=_PRODUCER_NAME).inc()
         logger.warning(
             "webhook_persistence_skipped",
             extra={
