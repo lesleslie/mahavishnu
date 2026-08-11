@@ -10,6 +10,12 @@ This module is intentionally separate from :mod:`mahavishnu.webhooks.router`
 untyped JSON body, validates it against the cross-system durable schema,
 and returns a 202 once the record is enqueued. The router keeps its
 typed-Pydantic contract for OpenClaw's per-endpoint payload shapes.
+
+Substrate contract: ``dhara.put(...)`` is synchronous at the call boundary;
+internal async behavior (MemoryOutbox flush, PostgresBackendLock
+resolution) is the substrate's concern and is invisible to callers. See
+``dhara/docs/superpowers/specs/2026-08-10-substrate-call-boundary-contract.md``
+for the cross-portfolio rationale.
 """
 
 from __future__ import annotations

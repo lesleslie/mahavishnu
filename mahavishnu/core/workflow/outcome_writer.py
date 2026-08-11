@@ -1,4 +1,19 @@
-"""Workflow outcome writer — validate-on-write at completion boundary."""
+"""Workflow outcome writer — validate-on-write at completion boundary.
+
+Persists ``workflow_outcome`` records to the Bodai Dhara substrate at
+``workflow-results/{workflow_id}/``. Validation happens at the completion
+boundary so bad payloads never reach the durable store.
+
+Substrate contract: ``dhara.put(...)`` is synchronous at the call boundary.
+The substrate's internal handling (MemoryOutbox queue, async flush) is
+opaque to callers. This producer is sync by design — see
+``dhara/docs/superpowers/specs/2026-08-10-substrate-call-boundary-contract.md``
+for the cross-portfolio rationale.
+
+Feature flag: ``WORKFLOW_OUTCOME_V1_ENABLED`` (default True). When False, the
+caller is expected to skip ``record_workflow_outcome`` entirely and fall
+back to the legacy non-durable completion path.
+"""
 
 from __future__ import annotations
 

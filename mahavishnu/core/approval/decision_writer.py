@@ -12,6 +12,12 @@ Substrate-compat: ``dhara.put`` is a runtime-attached attribute on the
 local substrate install, so the module stamps it to ``None`` at import
 time if absent. Tests (and any future Dhara substrate builds that expose
 ``put``) can monkeypatch ``writer.dhara.put`` to a callable.
+
+Substrate contract: ``dhara.put(...)`` is synchronous at the call boundary —
+internal async (MemoryOutbox flush, PostgresBackendLock resolution) is the
+substrate's concern, not the caller's. See
+``dhara/docs/superpowers/specs/2026-08-10-substrate-call-boundary-contract.md``
+for the full architectural decision.
 """
 
 from __future__ import annotations
