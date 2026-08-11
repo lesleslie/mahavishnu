@@ -1,8 +1,11 @@
 ---
 name: m-workflow-outcome
-status: wired
+status: built
 date: 2026-08-10
 last_reviewed: 2026-08-10
+state_history:
+  - "2026-08-10: wired (initial v1 ship — Task 4)"
+  - "2026-08-10: built (multi-agent review surfaced missing feature flag + producer/consumer getattr gates)"
 owner: mahavishnu core
 role: canonical
 ---
@@ -17,11 +20,19 @@ role: canonical
 
 ## State — pick one
 
-- [ ] **built** (code merged, no callers wired)
-- [x] **wired** (entry-point exists; integration contract executed end-to-end)
+- [x] **built** (code merged, no callers wired)
+- [ ] **wired** (entry-point exists; integration contract executed end-to-end)
 - [ ] **adopted** (in active use by ≥1 user/workflow/agent)
 
-`wired` was reached when Task 3 production-gated `record_workflow_outcome()` inside `finalize_workflow_execution()` (`mahavishnu/core/workflow_execution.py:331`) and registered `workflow_get_outcome_tool` via FastMCP (`mahavishnu/mcp/bootstrap.py`). Task 4 round-trip test (5 passing tests) proves the end-to-end contract between producer and consumer.
+> **State correction (2026-08-10):** flipped from `wired` to `built` per multi-agent review. Three Critical findings prevent the `wired` claim from holding:
+>
+> 1. **`WORKFLOW_OUTCOME_V1_ENABLED` feature flag** — absent at `outcome_writer.py`. Plan's own global-constraint §24 mandated the flag (default `True`; rollback is "disable the flag, writer becomes no-op"). M-APPROVAL-LOG and M-WEBHOOK-DURABLE both ship their flag; this plan was the outlier.
+> 2. **`getattr(dhara, "put", None)` runtime gate in producer body** — absent at `outcome_writer.py:42`. The import-time hasattr stamp (`outcome_writer.py:20-21`) sets `dhara.put = None` if unbound, but the producer body calls `dhara.put(...)` directly; a substrate-unbound production deployment would raise `TypeError: 'NoneType' object is not callable` on every workflow completion rather than skip-and-warn.
+> 3. **`getattr(dhara, "get", None)` runtime gate in consumer body** — absent at `workflow_tools.py:42`. Same risk; a substrate-unbound MCP caller would 500.
+>
+> Once all three land (target: v1.1 hardening cycle), flip back to `wired`. Original ship evidence preserved below for audit.
+
+`wired` (original, pre-flip): reached when Task 3 production-gated `record_workflow_outcome()` inside `finalize_workflow_execution()` (`mahavishnu/core/workflow_execution.py:331`) and registered `workflow_get_outcome_tool` via FastMCP (`mahavishnu/mcp/bootstrap.py`). Task 4 round-trip test (5 passing tests) proves the end-to-end contract between producer and consumer.
 
 ## Wiring checklist
 
