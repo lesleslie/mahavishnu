@@ -199,7 +199,7 @@ State per item. Updated at each layer gate.
 | M-TOOL-AUDIT | mahavishnu | parked | — | — |
 | M-TRANSCRIPT-TAIL | mahavishnu | parked | — | — |
 | S-MEM-VERSIONS | session-buddy | parked | — | — |
-| S-CHANNEL-DURABLE | session-buddy | parked | — | — |
+| S-CHANNEL-DURABLE | session-buddy | wired | [completion report](https://github.com/lesleslie/session-buddy/blob/main/docs/feature-tracking/2026-08-10-s-channel-durable.md) | [spec](https://github.com/lesleslie/session-buddy/blob/main/docs/superpowers/specs/2026-08-10-s-channel-durable-design.md) |
 | S-SKILL-PROVENANCE | session-buddy | parked | — | — |
 | S-REPLAY | session-buddy | parked | — | — |
 | A-EVENT-LOG | akosha | parked | — | — |
