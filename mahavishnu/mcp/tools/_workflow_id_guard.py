@@ -62,5 +62,3 @@ def validate_webhook_id(webhook_id: str) -> bool:
 # ``validate_webhook_id`` from this module directly.
 _WORKFLOW_ID_PATTERN = WORKFLOW_ID_PATTERN
 _validate_workflow_id = validate_workflow_id
-_validate_approval_id = validate_approval_id
-_validate_webhook_id = validate_webhook_id
