@@ -261,3 +261,5 @@ cron/jobs.json
 .superpowers/sdd/preserve/
 .superpowers/sdd/*.diff
 .superpowers/sdd/progress.md
+
+.superprofits/
