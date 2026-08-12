@@ -50,7 +50,7 @@ class McpretentiousMCPClient:
     expected by the McpretentiousAdapter.
     """
 
-    def __init__(self, backend_name: str = "mcpretentious") -> None:
+    def __init__(self, backend_name: str = "tmux") -> None:
         """Initialize the wrapper for the selected PTY backend."""
         self._client = McpretentiousClient(backend_name=backend_name)
         self._started = False
@@ -139,13 +139,15 @@ class FastMCPServer:
         self._register_telemetry_middleware()
 
         # Initialize the PTY MCP wrapper with the operator-selected built-in.
-        # Other recognized terminal adapters do not select a PTY subprocess,
-        # so the wrapper retains its backward-compatible default for auxiliary users.
+        # Other recognized terminal adapters do not select a PTY subprocess;
+        # the wrapper defaults to the durable tmux path (Spec §9.4).
+        # mcpretentious was removed from the ecosystem in 2026-08-12.
+        # See docs/followups/2026-08-12-mcpretentious-removed.md.
         preference = self.app.config.terminal.adapter_preference.lower()
         if preference in BUILTIN_BACKENDS:
             backend_name = preference
         elif preference in _NON_PTY_TERMINAL_ADAPTERS:
-            backend_name = "mcpretentious"
+            backend_name = "tmux"
         else:
             raise ConfigurationError(
                 message=f"Unknown terminal adapter or PTY backend {preference!r}",

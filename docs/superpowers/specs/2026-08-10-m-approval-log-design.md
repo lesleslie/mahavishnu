@@ -1,6 +1,10 @@
 ---
 status: draft
+role: implementation
 date: 2026-08-10
+last_reviewed: 2026-08-10
+superseded_by: null
+blocks_on: []
 topic: m-approval-log
 entity: approval_log
 owner_repo: mahavishnu

@@ -9,7 +9,6 @@ from typing import TYPE_CHECKING, cast
 from oneiric.core.logging import get_logger
 from starlette.responses import JSONResponse
 
-from ..terminal.adapters.mcpretentious import McpretentiousAdapter
 from ..terminal.adapters.mock import MockTerminalAdapter
 from ..terminal.manager import TerminalManager
 
@@ -41,15 +40,18 @@ def init_terminal_manager(server: FastMCPServer) -> TerminalManager | None:
 
             warnings.warn(
                 "adapter_preference='iterm2' is deprecated and has been removed. "
-                "Use 'tmux' or 'mcpretentious' instead.",
+                "Use 'tmux' or 'crow' instead.",
                 DeprecationWarning,
                 stacklevel=2,
             )
             adapter = MockTerminalAdapter()
             logger.info("iTerm2 adapter removed; initialized mock adapter")
         else:
-            adapter = McpretentiousAdapter(server.mcp_client)
-            logger.info("Initialized mcpretentious adapter")
+            # mcpretentious was removed from the ecosystem in 2026-08-12.
+            # The default durable-worker path is now tmux; the mock adapter
+            # covers the "auto" preference. See docs/followups/2026-08-12-mcpretentious-removed.md
+            adapter = MockTerminalAdapter()
+            logger.info("Initialized mock terminal adapter (mcpretentious removed; defaulting to mock)")
 
         manager = TerminalManager(adapter, config)
         logger.info(

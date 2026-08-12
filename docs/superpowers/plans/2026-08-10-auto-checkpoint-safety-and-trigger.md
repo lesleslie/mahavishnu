@@ -43,26 +43,42 @@ Four independent gates control auto-checkpoint behavior. The plan is explicit ab
 ## Global Constraints
 
 1. **Source spec**: `docs/superpowers/specs/2026-07-15-sb-checkpoint-stash-clobber-fix-design.md` — every invariant and component shape comes from there verbatim.
-2. **Working tree is never mutated by a checkpoint** — snapshot capture writes only to `tempfile.gettempdir()/session-buddy-snapshots/snap-<uuid>.patch`. The legacy `git add -A && git commit` only runs after the snapshot succeeds AND no subagent is active.
-3. **End-of-task checkpoint is mandatory.** Every Claude Code `Stop` event results in a checkpoint, period. If the orchestrator cannot fire synchronously (e.g., subagent timeout >60s), it persists a marker at `~/.session-buddy/pending-checkpoint.json` and the next `AutoCheckpointLoop` tick or `SessionEnd` consumes it. NEVER silently drop.
-4. **Midpoint checkpoint is conditional.** Fires only when value-add criteria (≥300s since last commit OR ≥5 dirty files) AND no subagent is active.
-5. **Failures fail closed.** Mechanism error → skip checkpoint, log loudly. **Specific transient errors** (5xx from `forward_to`) retry once with exponential backoff. **Broad `except Exception`** is forbidden — narrow to `(subprocess.SubprocessError, OSError, ValueError, httpx.HTTPStatusError)`. Programming errors propagate.
+
+1. **Working tree is never mutated by a checkpoint** — snapshot capture writes only to `tempfile.gettempdir()/session-buddy-snapshots/snap-<uuid>.patch`. The legacy `git add -A && git commit` only runs after the snapshot succeeds AND no subagent is active.
+
+1. **End-of-task checkpoint is mandatory.** Every Claude Code `Stop` event results in a checkpoint, period. If the orchestrator cannot fire synchronously (e.g., subagent timeout >60s), it persists a marker at `~/.session-buddy/pending-checkpoint.json` and the next `AutoCheckpointLoop` tick or `SessionEnd` consumes it. NEVER silently drop.
+
+1. **Midpoint checkpoint is conditional.** Fires only when value-add criteria (≥300s since last commit OR ≥5 dirty files) AND no subagent is active.
+
+1. **Failures fail closed.** Mechanism error → skip checkpoint, log loudly. **Specific transient errors** (5xx from `forward_to`) retry once with exponential backoff. **Broad `except Exception`** is forbidden — narrow to `(subprocess.SubprocessError, OSError, ValueError, httpx.HTTPStatusError)`. Programming errors propagate.
 
    > **Note (I-9, resolved by review-fix-plan Task 2):** The spec literal `(subprocess.SubprocessError, OSError, ValueError, httpx.HTTPStatusError)` is canonical. The `TransientForwardError` tuple in Task 4 Step 3 of this plan body was previously written as `(httpx.HTTPStatusError, OSError, asyncio.TimeoutError)` — that was drift. The implementation in `session_buddy/checkpoint/orchestrator.py` matches the spec literal (see Task 4 Step 3 below for the corrected tuple).
-6. **Project conventions** (from `mahavishnu/CLAUDE.md`): `from __future__ import annotations` first, Ruff/Black-compatible formatting, Oneiric logger (`from oneiric.core.logging import get_logger`), pytest markers (`unit`, `integration`, `property`, `slow`), `asyncio_mode = "auto"` (no `@pytest.mark.asyncio` needed).
-7. **Bodai pre-1.0 merge-to-main policy**: branch + squash/ff-merge into `main`; no PRs, no review gates for Bodai components.
-8. **Python 3.13 syntax**: `X | None` not `Optional[X]`, `list[str]` not `List[str]`, `pathlib.Path` for filesystem paths. `from collections.abc import Protocol` (not `typing.Protocol`).
-9. **No `Any` in tool inputs / orchestration state** — use `TYPE_CHECKING` and a typed protocol to escape.
-10. **No `assert` in production code** (`session_buddy/**`) — use the `session_buddy/core/errors.py` exception hierarchy. Bandit B101.
-11. **Hard limits** (per `[tool.ruff.lint.pylint]`): line length 100, max 10 function args, max 15 branches, max 6 returns, max 55 statements (target 30).
-12. **Per-working-tree lockfile**, NOT global. Lockfile path: `<working_dir>/.session-buddy/subagent.lock`. Prevents cross-project false-deferral in multi-session deployments.
-13. **MCP lifespan shutdown order**: timer `stop()` MUST run in a `finally:` block after the existing `_dhara_publisher.aclose()`. Mirror the existing Dhara cleanup pattern, not nest it.
-14. **Coverage gate**: 90% on `session_buddy/checkpoint/` module (per spec line 472). Enforced via `pytest --cov-fail-under=90`. Steps in Task 10.
-15. **`hypothesis` must be a declared dep** in session-buddy's `pyproject.toml` dev group (currently only transitive). Step in Task 8.
-16. **Mid-task commits are opt-in**, not default. Default behavior (`midpoint_commits_enabled=False`) keeps mid-task ticks as analytics-only snapshots to avoid polluting git log during interactive sessions. Operators opt in for autonomous or subagent-heavy workflows where durability matters more than log noise. Safety invariants (snapshot-first, subagent deferral, fail-closed, retry-once-with-backoff) are NOT relaxed when commits are enabled — only `forward_to` changes from `_noop_forward` to a real git-commit forward.
-17. **Effective interval coupling.** When `midpoint_commits_enabled=True`, the lifespan uses `settings.midpoint_commit_interval_s` (default 600s / 10 min) instead of `settings.auto_checkpoint_interval` (1800s). The two intervals are not independently meaningful — the commit-enabled knob implicitly switches the cadence.
 
----
+1. **Project conventions** (from `mahavishnu/CLAUDE.md`): `from __future__ import annotations` first, Ruff/Black-compatible formatting, Oneiric logger (`from oneiric.core.logging import get_logger`), pytest markers (`unit`, `integration`, `property`, `slow`), `asyncio_mode = "auto"` (no `@pytest.mark.asyncio` needed).
+
+1. **Bodai pre-1.0 merge-to-main policy**: branch + squash/ff-merge into `main`; no PRs, no review gates for Bodai components.
+
+1. **Python 3.13 syntax**: `X | None` not `Optional[X]`, `list[str]` not `List[str]`, `pathlib.Path` for filesystem paths. `from collections.abc import Protocol` (not `typing.Protocol`).
+
+1. **No `Any` in tool inputs / orchestration state** — use `TYPE_CHECKING` and a typed protocol to escape.
+
+1. **No `assert` in production code** (`session_buddy/**`) — use the `session_buddy/core/errors.py` exception hierarchy. Bandit B101.
+
+1. **Hard limits** (per `[tool.ruff.lint.pylint]`): line length 100, max 10 function args, max 15 branches, max 6 returns, max 55 statements (target 30).
+
+1. **Per-working-tree lockfile**, NOT global. Lockfile path: `<working_dir>/.session-buddy/subagent.lock`. Prevents cross-project false-deferral in multi-session deployments.
+
+1. **MCP lifespan shutdown order**: timer `stop()` MUST run in a `finally:` block after the existing `_dhara_publisher.aclose()`. Mirror the existing Dhara cleanup pattern, not nest it.
+
+1. **Coverage gate**: 90% on `session_buddy/checkpoint/` module (per spec line 472). Enforced via `pytest --cov-fail-under=90`. Steps in Task 10.
+
+1. **`hypothesis` must be a declared dep** in session-buddy's `pyproject.toml` dev group (currently only transitive). Step in Task 8.
+
+1. **Mid-task commits are opt-in**, not default. Default behavior (`midpoint_commits_enabled=False`) keeps mid-task ticks as analytics-only snapshots to avoid polluting git log during interactive sessions. Operators opt in for autonomous or subagent-heavy workflows where durability matters more than log noise. Safety invariants (snapshot-first, subagent deferral, fail-closed, retry-once-with-backoff) are NOT relaxed when commits are enabled — only `forward_to` changes from `_noop_forward` to a real git-commit forward.
+
+1. **Effective interval coupling.** When `midpoint_commits_enabled=True`, the lifespan uses `settings.midpoint_commit_interval_s` (default 600s / 10 min) instead of `settings.auto_checkpoint_interval` (1800s). The two intervals are not independently meaningful — the commit-enabled knob implicitly switches the cadence.
+
+______________________________________________________________________
 
 ## File Structure
 
@@ -101,18 +117,22 @@ Four independent gates control auto-checkpoint behavior. The plan is explicit ab
 | `session_buddy/modes/standard.py` + `lite.py` | Verify `ModeConfig` is plumbed through to `SessionManager` constructor at the call site. |
 | `pyproject.toml` (session-buddy) | Add `hypothesis` to a dev dependency group. |
 
----
+______________________________________________________________________
 
 ## Task 1: SubagentDetector + SignalSource
 
 **Files:**
+
 - Create: `session_buddy/checkpoint/subagent_detector.py`
 - Create: `tests/unit/core/checkpoint/conftest.py` (helper used across tasks)
 - Create: `tests/unit/core/checkpoint/test_subagent_detector.py`
 
 **Interfaces:**
+
 - Consumes: nothing (this is the first task).
+
 - Produces:
+
   - `SignalSource` (Protocol): `def read() -> bool` and `def write(active: bool) -> None`
   - `LockfileSignalSource(lockfile_path: Path)`: concrete impl, **per-working-tree**.
   - `SubagentDetector(working_dir: Path, signal_source: SignalSource)`: `def is_active() -> bool` and `async def wait_until_idle(timeout: float = 60.0) -> bool`
@@ -335,17 +355,21 @@ git add session_buddy/checkpoint/subagent_detector.py tests/unit/core/checkpoint
 git commit -m "feat(checkpoint): add SubagentDetector with per-tree lockfile signal source"
 ```
 
----
+______________________________________________________________________
 
 ## Task 2: SnapshotMechanism + hardened restore
 
 **Files:**
+
 - Create: `session_buddy/checkpoint/snapshot.py`
 - Create: `tests/unit/core/checkpoint/test_snapshot.py`
 
 **Interfaces:**
+
 - Consumes: nothing.
+
 - Produces:
+
   - `Snapshot` (dataclass): `path: Path`, `label: str`, `snapshot_id: str`, `captured_at: datetime`, `parent_commit: str`, `dirty_files: list[str]`
   - `RestoreResult` (dataclass): `success: bool`, `error: str | None`, `hunks: list[str]`, `drift_detected: bool`
   - `SnapshotMechanism(working_dir: Path, snapshot_dir: Path | None = None)`: `def capture(label: str) -> Snapshot` and `def restore(snapshot: Snapshot) -> RestoreResult`
@@ -654,17 +678,21 @@ git add session_buddy/checkpoint/snapshot.py tests/unit/core/checkpoint/test_sna
 git commit -m "feat(checkpoint): add stash-free SnapshotMechanism with hardened restore"
 ```
 
----
+______________________________________________________________________
 
 ## Task 3: CheckpointPolicy + WorkingTreeInspector
 
 **Files:**
+
 - Create: `session_buddy/checkpoint/policy.py`
 - Create: `tests/unit/core/checkpoint/test_policy.py`
 
 **Interfaces:**
+
 - Consumes: `SubagentDetector` from Task 1.
+
 - Produces:
+
   - `CheckpointPhase(str, Enum)`: `END_OF_TASK`, `MIDPOINT_TIME`, `MIDPOINT_DIRTINESS`, `HOOK_REQUESTED`
   - `PolicyDecision`: `should_fire: bool`, `reason: str`
   - `ValueAddSignal` (Protocol)
@@ -994,17 +1022,21 @@ git add session_buddy/checkpoint/policy.py tests/unit/core/checkpoint/test_polic
 git commit -m "feat(checkpoint): add CheckpointPolicy + WorkingTreeInspector"
 ```
 
----
+______________________________________________________________________
 
 ## Task 4: CheckpointOrchestrator (with retry, lock, narrow exceptions, empty-tree skip)
 
 **Files:**
+
 - Create: `session_buddy/checkpoint/orchestrator.py`
 - Create: `tests/unit/core/checkpoint/test_orchestrator.py`
 
 **Interfaces:**
+
 - Consumes: `SubagentDetector` (Task 1), `SnapshotMechanism` (Task 2), `CheckpointPolicy` (Task 3).
+
 - Produces:
+
   - `CheckpointResult`: `fired: bool`, `snapshot_id: str | None`, `session_buddy_id: str | None`, `decision_reason: str`, `error: str | None`, `pending_marker_path: Path | None`
   - `CheckpointOrchestrator(working_dir, policy, snapshot, subagent_detector, forward_to, metrics=None, pending_writer=None)`: `async def run_checkpoint(phase, hook_request=False) -> CheckpointResult`. Owns an `asyncio.Lock` per instance. Retries 5xx-once-with-backoff for `forward_to`. Skips forward when `len(snapshot.dirty_files) == 0`. Narrows exceptions.
 
@@ -1388,17 +1420,20 @@ git add session_buddy/checkpoint/orchestrator.py tests/unit/core/checkpoint/test
 git commit -m "feat(checkpoint): add CheckpointOrchestrator with retry, lock, narrow exceptions"
 ```
 
----
+______________________________________________________________________
 
 ## Task 5: PendingCheckpoint marker + cleanup metrics stubs
 
 **Files:**
+
 - Create: `session_buddy/checkpoint/pending.py`
 - Create: `session_buddy/checkpoint/metrics.py`
 - Create: `tests/unit/core/checkpoint/test_pending.py`
 
 **Interfaces:**
+
 - Produces:
+
   - `PendingCheckpoint` (dataclass): `working_dir: Path`, `reason: str`, `created_at: datetime`
   - `save_pending(p: PendingCheckpoint) -> Path`
   - `load_pending(path: Path) -> PendingCheckpoint | None`
@@ -1551,16 +1586,19 @@ git add session_buddy/checkpoint/pending.py session_buddy/checkpoint/metrics.py 
 git commit -m "feat(checkpoint): add PendingCheckpoint marker + CheckpointMetrics"
 ```
 
----
+______________________________________________________________________
 
 ## Task 6: SnapshotCleanupTask (TTL)
 
 **Files:**
+
 - Create: `session_buddy/checkpoint/cleanup.py`
 - Create: `tests/unit/core/checkpoint/test_cleanup.py`
 
 **Interfaces:**
+
 - Produces:
+
   - `SnapshotCleanupTask(snapshot_dir: Path, ttl_seconds: int = 604800)`: `async def cleanup_once() -> int` (returns count removed)
 
 - [ ] **Step 1: Write the failing tests**
@@ -1678,15 +1716,17 @@ git add session_buddy/checkpoint/cleanup.py tests/unit/core/checkpoint/test_clea
 git commit -m "feat(checkpoint): add SnapshotCleanupTask (7-day TTL)"
 ```
 
----
+______________________________________________________________________
 
 ## Task 7: Module re-exports + CLI cleanup-snapshots command
 
 **Files:**
+
 - Create: `session_buddy/checkpoint/__init__.py`
 - Modify: `session_buddy/cli/checkpoint_cli.py` (or create)
 
 **Interfaces:**
+
 - Produces: stable public import surface; CLI subcommand `session-buddy checkpoint cleanup-snapshots [--older-than=<N> days]`
 
 - [ ] **Step 1: Write the failing test**
@@ -1849,19 +1889,25 @@ git add session_buddy/checkpoint/__init__.py session_buddy/cli/checkpoint_cli.py
 git commit -m "feat(checkpoint): module re-exports + cleanup-snapshots CLI"
 ```
 
----
+______________________________________________________________________
 
 ## Task 8: Wire CheckpointOrchestrator into session_manager
 
 **Files:**
+
 - Modify: `session_buddy/core/session_manager.py` (3 spots: `__init__`, the call site within `_checkpoint_with_safety_capture`, plus the pending-checkpoint drain on `end()`)
 - Create: `tests/unit/core/test_session_manager_orchestrator_wiring.py`
 
 **Integration contract:**
+
 - **Triggered from**: `_single_flight_checkpoint()` MCP tool handler and any internal callers of the checkpoint flow.
+
 - **Returns to / updates**: returns a list `git_output` matching the legacy `perform_git_checkpoint` shape, plus a final decision summary line. Cross-repo accounting block at session_manager.py:1144-1227 is preserved.
+
 - **Demonstrable by**: `pytest tests/unit/core/test_session_manager_orchestrator_wiring.py -v`.
+
 - **Rollback signal**: `mode_config.enable_auto_checkpoint=False` → legacy direct path. Plus pending-checkpoint marker visible at `~/.session-buddy/pending/`.
+
 - **Observability added**: structured logs `checkpoint_orchestrator_decision` and `checkpoint_orchestrator_metrics` on `end()`.
 
 - [ ] **Step 1: Read existing code site**
@@ -2048,18 +2094,22 @@ git add session_buddy/core/session_manager.py tests/unit/core/test_session_manag
 git commit -m "feat(checkpoint): wire CheckpointOrchestrator into session_manager with lite-mode bypass"
 ```
 
----
+______________________________________________________________________
 
 ## Task 9: AutoCheckpointLoop in MCP server lifespan + pending-checkpoint consumption
 
 **Files:**
+
 - Create: `session_buddy/core/auto_checkpoint_loop.py`
 - Modify: `session_buddy/mcp/server.py:174-187` (lifespan with try/finally)
 - Create: `tests/unit/mcp/test_auto_checkpoint_timer.py`
 
 **Interfaces:**
+
 - Consumes: `settings.auto_checkpoint_interval`, `mode_config.enable_auto_checkpoint`, pending-checkpoint marker directory.
+
 - Produces:
+
   - `AutoCheckpointLoop(interval_s, working_dir_resolver, orch_factory, pending_consume_fn=None)`: `async def start()`, `async def stop()`, `async def _tick()`
 
 - [ ] **Step 1: Write the failing tests**
@@ -2552,11 +2602,12 @@ git add session_buddy/core/auto_checkpoint_loop.py session_buddy/mcp/server.py s
 git commit -m "feat(checkpoint): AutoCheckpointLoop with pending-marker drain + opt-in mid-task commits"
 ```
 
----
+______________________________________________________________________
 
 ## Task 10: Property-based keystone + stash-clobber regression + coverage gate
 
 **Files:**
+
 - Create: `tests/unit/core/checkpoint/test_working_tree_invariant.py` (note: in `tests/unit/`, NOT `tests/property/`, per session-buddy convention; the `@pytest.mark.property` marker still applies)
 
 This is the keystone test from the spec (lines 426-444) plus the regression test for the 2026-07-15 stash-clobber observation (lines 446-467).
@@ -2760,7 +2811,7 @@ git add pyproject.toml tests/unit/core/checkpoint/test_working_tree_invariant.py
 git commit -m "test(checkpoint): property-based keystone + stash-clobber regression + coverage gate"
 ```
 
----
+______________________________________________________________________
 
 ## Self-Review (post-review)
 
@@ -2809,7 +2860,7 @@ git commit -m "test(checkpoint): property-based keystone + stash-clobber regress
 - `PendingCheckpoint.working_dir: Path` defined Task 5, consumed Tasks 8, 9 ✓
 - `SnapshotCleanupTask` defined Task 6, consumed Tasks 7 (CLI), 9 (drain) ✓
 
----
+______________________________________________________________________
 
 ## Execution Handoff
 
@@ -2825,6 +2876,6 @@ Plan complete and saved to `docs/superpowers/plans/2026-08-10-auto-checkpoint-sa
 Two execution options:
 
 1. **Subagent-Driven (recommended)** — dispatch a fresh subagent per task, review between tasks, fast iteration
-2. **Inline Execution** — execute tasks in this session using executing-plans, batch execution with checkpoints
+1. **Inline Execution** — execute tasks in this session using executing-plans, batch execution with checkpoints
 
 Which approach?

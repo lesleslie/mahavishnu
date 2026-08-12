@@ -53,22 +53,27 @@ Task 4 (C-WEBSOCKET-AUTH)   ─┘
                 Task 6 (C-ASYNC-DURABILITY)
 ```
 
----
+______________________________________________________________________
 
 ### Task 1: Wire skill-metrics for failure/timeout + repair skill-tools kwarg (C-SKILL-METRICS)
 
 Two defects in the skill-metrics path. The first affects every skill execution metric (failure/timeout never lower the success rate); the second raises `TypeError` from every MCP skill search.
 
 **Files:**
+
 - Modify: `crackerjack/skills/agent_skills.py:130, 142, 148, 218-224` (call sites + `_update_success_rate` body)
 - Modify: `crackerjack/mcp/tools/skill_tools.py:180-188` (`_search_mcp_skills` call site)
 - Test: `tests/unit/skills/test_agent_skills.py` (extend `TestAgentSkill`)
 - Test: `tests/unit/mcp/tools/test_skill_tools.py` (new file — sibling of existing `test_git_metrics_mcp_tools.py`)
 
 **Interfaces:**
+
 - Consumes: `AgentSkill` (line 92 of `crackerjack/skills/agent_skills.py`); `AgentSkill.execute(issue, timeout)` returning `SkillExecutionResult` (lines 68-89); `MCPSkillRegistry.search_skills` (line 138 of `crackerjack/skills/mcp_skills.py`) accepting `search_tool_names`, `search_tags`, `search_descriptions`, `search_domains`.
+
 - Produces: `_update_success_rate(self, outcome: str)` accepting `"success" | "failure" | "timeout"`, applying the EMA (`alpha = 0.1`) with score 1.0 for success and 0.0 otherwise; raises `ValueError` on unknown outcome.
+
 - Produces: `_search_mcp_skills` calls `mcp_skills.search_skills(query, search_names=..., search_tags=..., search_descriptions=...)` without `TypeError`. The kwarg names are preserved (the `search_names` flag here is the local boolean, distinct from `MCPSkillRegistry.search_skills.search_tool_names`).
+
 - Observability added: counter `crackerjack.skill.outcome{skill_name, outcome}` incremented once per `execute()` call (in each of the three branches).
 
 - [ ] **Step 1: Write failing test for failure/timeout EMA**
@@ -259,13 +264,14 @@ C-SKILL-METRICS from the Bodai OpenClaw/Hermes portfolio.
 Co-Authored-By: Claude <noreply@anthropic.com>"
 ```
 
----
+______________________________________________________________________
 
 ### Task 3: Crackerjack plugin-trust fixes (C-PLUGIN-TRUST)
 
 Three trust defects. The assert in production code is a bandit B101 violation; the malformed URL and python-specifier are silent foot-guns; the `_get_test_status` placeholder is in the websocket server (covered in Task 4).
 
 **Files:**
+
 - Modify: `crackerjack/plugins/hooks.py:42` (replace `assert metadata.plugin_type == PluginType.HOOK` inside `HookPluginBase.__init__`)
 - Modify: `crackerjack/plugins/base.py:26` (fix `requires_python` default)
 - Modify: `crackerjack/integration/skills_tracking.py:253, 443` (fix `mcp_server_url` defaults; both occurrences)
@@ -275,10 +281,15 @@ Three trust defects. The assert in production code is a bandit B101 violation; t
 - Test: `tests/test_plugins_coverage.py` (extend existing — likely `TestPluginBase` or `TestPluginSecurity`)
 
 **Interfaces:**
+
 - Consumes: `HookPluginBase(PluginMetadata)` constructor (line 39-44 of `crackerjack/plugins/hooks.py`); `PluginMetadata.requires_python: str` (line 26 of `crackerjack/plugins/base.py`); `SessionBuddyMCPTracker(session_id, mcp_server_url)` (line 251-254 of `crackerjack/integration/skills_tracking.py`); `create_skills_tracker(session_id, ..., mcp_server_url)` (line 438-443 of same file).
+
 - Produces: `HookPluginBase.__init__` raises `PluginTrustError` instead of asserting on wrong `plugin_type`.
+
 - Produces: `PluginMetadata.requires_python` default is `"">=3.11"` (no spaces; valid PEP 440).
+
 - Produces: Both URL defaults are `"http://localhost:8678"` (no space).
+
 - Observability added: counter `crackerjack.plugin.trust_check_failed{plugin_type}` incremented each time `HookPluginBase.__init__` rejects a metadata.
 
 - [ ] **Step 1: Add failing test for the plugin-trust assert**
@@ -439,19 +450,23 @@ C-PLUGIN-TRUST from the Bodai OpenClaw/Hermes portfolio.
 Co-Authored-By: Claude <noreply@anthropic.com>"
 ```
 
----
+______________________________________________________________________
 
 ### Task 5: Expand SecurityAuditor.CRITICAL_HOOKS (C-HOOKS-LIST)
 
 `SecurityAuditor.CRITICAL_HOOKS` is a `dict[str, str]` mapping hook name → human reason. Adding entries (not converting to a frozenset) extends the security-critical set. The new hook names must be lowercase since `_get_hook_security_level` does case-insensitive lookup.
 
 **Files:**
+
 - Modify: `crackerjack/security/audit.py:44-48` (extend the dict)
 - Test: `tests/test_security_audit.py` (extend existing)
 
 **Interfaces:**
+
 - Consumes: existing `SecurityAuditor.CRITICAL_HOOKS` consumer at line 131 (`_get_hook_security_level`) and line 152 (`_generate_security_warnings`).
+
 - Produces: `CRITICAL_HOOKS` includes `bandit`, `pyright`, `gitleaks` (existing), plus `semgrep` (static analysis) and a secrets scanner. Pick the scanner that exists in `crackerjack/hooks/`; if none, add `trufflehog` as the planned scanner and document the wiring gap.
+
 - Observability added: none (the `CRITICAL_HOOKS` dict extension is the deliverable; no metric or log line is emitted).
 
 - [ ] **Step 1: Inspect existing hook names**
@@ -522,7 +537,7 @@ C-HOOKS-LIST from the Bodai OpenClaw/Hermes portfolio.
 Co-Authored-By: Claude <noreply@anthropic.com>"
 ```
 
----
+______________________________________________________________________
 
 ### Task 2: Complete QualityGateReport outcome contract (C-OUTCOME-CONTRACT) — CONTRACT CHANGE
 
@@ -531,13 +546,18 @@ Co-Authored-By: Claude <noreply@anthropic.com>"
 The minimal-risk approach: keep `passed` and `blocking_failure` semantics unchanged (callers depend on them). Add a NEW severity-aware computed field that surfaces the gap. Wire it through `to_dict()` for downstream consumers.
 
 **Files:**
+
 - Modify: `crackerjack/models/validation_contracts.py` (add `required_check_failures` property + thread it through `to_dict()`)
 - Test: `tests/models/test_validation_contracts.py` (extend existing)
 
 **Interfaces:**
+
 - Consumes: `QualityGateReport` at line 254; `QualityGateCheck` at line 190; `GateSeverity` enum (REQUIRED / WARNING / OPTIONAL).
+
 - Produces: `QualityGateReport.required_check_failures: list[str]` — names of all `REQUIRED`-severity checks where `passed is False`. Empty list when all REQUIRED checks pass.
+
 - Produces: `to_dict()` includes the new field under key `required_check_failures`.
+
 - Observability added: counter `crackerjack.gate.required_check_failure{name}` incremented once per failed REQUIRED check at report-creation time.
 
 - [ ] **Step 1: Add failing test**
@@ -666,21 +686,26 @@ C-OUTCOME-CONTRACT from the Bodai OpenClaw/Hermes portfolio.
 Co-Authored-By: Claude <noreply@anthropic.com>"
 ```
 
----
+______________________________________________________________________
 
 ### Task 4: WebSocket subscription auth normalize + test-status placeholder (C-WEBSOCKET-AUTH) — CONTRACT CHANGE
 
 `_can_subscribe_to_channel` (line 167-188 of `crackerjack/websocket/server.py`) normalizes `"crackerjack: read"` → `"crackerjack:read"` then compares to the literal `"crackerjack: read"` (with space), so legitimate users with `"crackerjack: read"` get `FORBIDDEN`. Also fixes the `_get_test_status` placeholder that hardcodes a "running" dict.
 
 **Files:**
+
 - Modify: `crackerjack/websocket/server.py:167-188` (fix the comparison literal)
 - Modify: `crackerjack/websocket/server.py:190-201` (replace the placeholder with a real lookup or honest stub)
 - Test: `tests/test_websocket_auth.py` (extend `TestChannelAuthorization`)
 
 **Interfaces:**
+
 - Consumes: `CrackerjackWebSocketServer._can_subscribe_to_channel(self, user, channel)` (line 167); `_get_test_status(self, run_id)` (line 190).
+
 - Produces: `_can_subscribe_to_channel` returns `True` when the user's permission set (after normalization) contains the channel-required permission — for both `"crackerjack: read"` (legacy space form) and `"crackerjack:read"` (canonical).
+
 - Produces: `_get_test_status` either (a) delegates to `self.qc_manager` if available, or (b) returns `{"status": "unknown", "run_id": run_id}` and logs a structured warning that the test-status integration is pending C-ASYNC-DURABILITY (Task 6).
+
 - Observability added: counter `crackerjack.ws.subscribe.denied{channel, reason}` incremented on `FORBIDDEN` reply.
 
 - [ ] **Step 1: Add failing test for the WS permission normalize**
@@ -835,7 +860,7 @@ C-WEBSOCKET-AUTH from the Bodai OpenClaw/Hermes portfolio.
 Co-Authored-By: Claude <noreply@anthropic.com>"
 ```
 
----
+______________________________________________________________________
 
 ### Task 6: Persist AsyncTaskManager jobs (C-ASYNC-DURABILITY) — Phase 1.5, GATED ON D-LOCK
 

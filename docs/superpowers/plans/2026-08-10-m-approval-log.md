@@ -22,16 +22,19 @@ These constraints apply to **every task** below.
 - Feature flag: `APPROVAL_LOG_V1_ENABLED` (default True); rollback disables writer, restores old delete-on-resolve branch.
 - Bodai pre-1.0 merge policy: commits to main directly.
 
----
+______________________________________________________________________
 
 ### Task 1: Producer module — `decision_writer.py`
 
 **Files:**
+
 - Create: `mahavishnu/core/approval/decision_writer.py`
 - Test: `tests/unit/approval/test_decision_writer.py`
 
 **Interfaces:**
+
 - Consumes: `dhara.schema.approval_log.ApprovalLog`, `validate("approval_log", payload)` from `SCHEMA_REGISTRY`
+
 - Produces: `record_approval_decision(approval_id, decision, rationale, decided_by, metadata=None) -> ApprovalLog`
 
 - [ ] **Step 1: Write the failing test**
@@ -151,16 +154,19 @@ git add mahavishnu/core/approval/decision_writer.py tests/unit/approval/test_dec
 git -c user.name="lesleslie" -c user.email="les@wedgwoodwebworks.local" commit -m "feat(approval): decision_writer — validate-on-write at decision boundary"
 ```
 
----
+______________________________________________________________________
 
 ### Task 2: Consumer — `list_approval_history` extension
 
 **Files:**
+
 - Modify: `mahavishnu/cli/approval_cli.py` (extend `list_approval_history` to return validated structs)
 - Test: `tests/unit/approval/test_list_history.py`
 
 **Interfaces:**
+
 - Consumes: existing `list_approval_history(approval_id, since, status)`, `from_dict("approval_log", payload)`
+
 - Produces: returns `list[ApprovalLog]` instead of raw dicts
 
 - [ ] **Step 1: Write the failing test**
@@ -243,16 +249,19 @@ git add mahavishnu/cli/approval_cli.py tests/unit/approval/test_list_history.py
 git -c user.name="lesleslie" -c user.email="les@wedgwoodwebworks.local" commit -m "feat(approval): list_approval_history returns validated ApprovalLog structs"
 ```
 
----
+______________________________________________________________________
 
 ### Task 3: Wire producer into existing decision flow; remove old delete-on-resolve
 
 **Files:**
+
 - Modify: `mahavishnu/core/approval.py` (find existing `record_decision` function; replace its body with `record_approval_decision` call + remove the "delete on resolve" branch)
 - Test: `tests/integration/approval/test_decision_persists.py`
 
 **Interfaces:**
+
 - Consumes: existing decision logic + `record_approval_decision` from Task 1
+
 - Produces: every decision persists as ApprovalLog (no more deletion)
 
 - [ ] **Step 1: Write the failing test**
@@ -330,12 +339,14 @@ git add mahavishnu/core/approval.py tests/integration/approval/test_decision_per
 git -c user.name="lesleslie" -c user.email="les@wedgwoodwebworks.local" commit -m "feat(approval): resolve_approval persists ApprovalLog (replaces delete-on-resolve)"
 ```
 
----
+______________________________________________________________________
 
 ### Task 4: Round-trip integration test + crackerjack gate + completion report
 
 **Files:**
+
 - Test: `tests/integration/approval/test_round_trip.py`
+
 - Create: `docs/feature-tracking/2026-08-10-m-approval-log.md`
 
 - [ ] **Step 1: Write round-trip test**
@@ -371,7 +382,7 @@ git add tests/integration/approval/test_round_trip.py docs/feature-tracking/2026
 git -c user.name="lesleslie" -c user.email="les@wedgwoodwebworks.local" commit -m "test(approval): round-trip + completion report for M-APPROVAL-LOG"
 ```
 
----
+______________________________________________________________________
 
 ## Spec coverage map
 

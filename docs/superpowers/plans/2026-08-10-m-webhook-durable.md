@@ -22,16 +22,19 @@ These constraints apply to **every task** below.
 - Feature flag: `WEBHOOK_DURABLE_V1_ENABLED` (default True); rollback reverts to in-memory queue.
 - Bodai pre-1.0 merge policy: commits to main directly.
 
----
+______________________________________________________________________
 
 ### Task 1: Producer — webhook receiver
 
 **Files:**
+
 - Modify: `mahavishnu/webhooks/receiver.py` (extend POST handler)
 - Test: `tests/unit/webhooks/test_receiver.py`
 
 **Interfaces:**
+
 - Consumes: `dhara.schema.webhook_ingress.WebhookIngress`, `validate("webhook_ingress", payload)` from `SCHEMA_REGISTRY`
+
 - Produces: HTTP POST handler emits validated WebhookIngress via `dhara.put`
 
 - [ ] **Step 1: Write the failing test**
@@ -123,16 +126,19 @@ git add mahavishnu/webhooks/receiver.py tests/unit/webhooks/test_receiver.py
 git -c user.name="lesleslie" -c user.email="les@wedgwoodwebworks.local" commit -m "feat(webhooks): receiver emits validated WebhookIngress via dhara.put"
 ```
 
----
+______________________________________________________________________
 
 ### Task 2: Consumer MCP tool — `webhook_replay`
 
 **Files:**
+
 - Create: `mahavishnu/mcp_tools/webhook_tools.py`
 - Test: `tests/unit/mcp_tools/test_webhook_tools.py`
 
 **Interfaces:**
+
 - Consumes: `from_dict("webhook_ingress", payload)`, `dhara.get(...)`
+
 - Produces: `webhook_replay(webhook_id) -> WebhookIngress | None`
 
 - [ ] **Step 1: Write the failing test**
@@ -212,12 +218,14 @@ git add mahavishnu/mcp_tools/webhook_tools.py tests/unit/mcp_tools/test_webhook_
 git -c user.name="lesleslie" -c user.email="les@wedgwoodwebworks.local" commit -m "feat(webhooks): webhook_replay MCP tool — read-back via from_dict"
 ```
 
----
+______________________________________________________________________
 
 ### Task 3: Cross-process durability test + crackerjack gate + completion report
 
 **Files:**
+
 - Test: `tests/integration/webhooks/test_durable_restart.py`
+
 - Create: `docs/feature-tracking/2026-08-10-m-webhook-durable.md`
 
 - [ ] **Step 1: Write durability-across-restart test**
@@ -251,7 +259,7 @@ git add tests/integration/webhooks/test_durable_restart.py docs/feature-tracking
 git -c user.name="lesleslie" -c user.email="les@wedgwoodwebworks.local" commit -m "test(webhooks): cross-process durability test + completion report for M-WEBHOOK-DURABLE"
 ```
 
----
+______________________________________________________________________
 
 ## Spec coverage map
 

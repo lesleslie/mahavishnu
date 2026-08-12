@@ -7,12 +7,13 @@ import dataclasses
 from datetime import datetime
 import hashlib
 import json
-from typing import Any
+from typing import TYPE_CHECKING, Any
 import uuid
 
-from dhara.lock import DharaLock
-
 from mahavishnu.core.errors import ErrorCode, MahavishnuError
+
+if TYPE_CHECKING:
+    from dhara.lock import DharaLock
 
 
 # Exceptions (unchanged shape)

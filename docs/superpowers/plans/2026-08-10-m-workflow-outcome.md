@@ -24,16 +24,19 @@ These constraints apply to **every task** below.
 - Feature flag: `WORKFLOW_OUTCOME_V1_ENABLED` (default True) gates the writer; rollback is "disable the flag, writer becomes no-op".
 - Bodai pre-1.0 merge policy: commits to main directly.
 
----
+______________________________________________________________________
 
 ### Task 1: Producer module — `outcome_writer.py`
 
 **Files:**
+
 - Create: `mahavishnu/core/workflow/outcome_writer.py`
 - Test: `tests/unit/workflow/test_outcome_writer.py`
 
 **Interfaces:**
+
 - Consumes: `dhara.schema.workflow_outcome.WorkflowOutcome`, `validate("workflow_outcome", payload)` from `SCHEMA_REGISTRY`
+
 - Produces: `record_workflow_outcome(workflow_id, status, started_at, finished_at, metadata=None) -> WorkflowOutcome` (persists to Dhara storage)
 
 - [ ] **Step 1: Write the failing test**
@@ -156,16 +159,19 @@ git add mahavishnu/core/workflow/outcome_writer.py tests/unit/workflow/test_outc
 git -c user.name="lesleslie" -c user.email="les@wedgwoodwebworks.local" commit -m "feat(workflow): outcome_writer — validate-on-write at completion boundary"
 ```
 
----
+______________________________________________________________________
 
 ### Task 2: Consumer MCP tool — `workflow_get_outcome`
 
 **Files:**
+
 - Create: `mahavishnu/mcp_tools/workflow_tools.py`
 - Test: `tests/unit/mcp_tools/test_workflow_tools.py`
 
 **Interfaces:**
+
 - Consumes: `from_dict("workflow_outcome", payload)` from `SCHEMA_REGISTRY`, `dhara.get(...)` (existing)
+
 - Produces: `workflow_get_outcome(workflow_id) -> WorkflowOutcome | None`
 
 - [ ] **Step 1: Write the failing test**
@@ -246,16 +252,19 @@ git add mahavishnu/mcp_tools/workflow_tools.py tests/unit/mcp_tools/test_workflo
 git -c user.name="lesleslie" -c user.email="les@wedgwoodwebworks.local" commit -m "feat(workflow): workflow_get_outcome MCP tool — read-back via from_dict"
 ```
 
----
+______________________________________________________________________
 
 ### Task 3: Wire producer into completion callback
 
 **Files:**
+
 - Modify: `mahavishnu/core/workflow.py` (find the completion handler, add the outcome_writer call)
 - Test: `tests/integration/workflow/test_completion_emits_outcome.py`
 
 **Interfaces:**
+
 - Consumes: existing workflow completion logic + `record_workflow_outcome` from Task 1
+
 - Produces: completion handler now writes WorkflowOutcome
 
 - [ ] **Step 1: Write the failing test**
@@ -326,12 +335,14 @@ git add mahavishnu/core/workflow.py tests/integration/workflow/test_completion_e
 git -c user.name="lesleslie" -c user.email="les@wedgwoodwebworks.local" commit -m "feat(workflow): wire on_workflow_complete to record_workflow_outcome"
 ```
 
----
+______________________________________________________________________
 
 ### Task 4: Round-trip integration test + crackerjack gate
 
 **Files:**
+
 - Test: `tests/integration/workflow/test_round_trip.py`
+
 - Modify: `docs/feature-tracking/2026-08-10-m-workflow-outcome.md` (NEW)
 
 - [ ] **Step 1: Write the failing test**
@@ -379,7 +390,7 @@ git add tests/integration/workflow/test_round_trip.py docs/feature-tracking/2026
 git -c user.name="lesleslie" -c user.email="les@wedgwoodwebworks.local" commit -m "test(workflow): round-trip integration + completion report for M-WORKFLOW-OUTCOME"
 ```
 
----
+______________________________________________________________________
 
 ## Spec coverage map
 

@@ -24,10 +24,10 @@ Build the four-component design from the approved 2026-07-15 spec (`SubagentDete
 ## Safety invariants (the contract the design protects)
 
 1. **Working tree is never mutated by a checkpoint.** All captures are `git diff HEAD > /tmp/snap-<uuid>.patch` with `chmod 0o444`. The legacy `git add -A && git commit` runs only after a successful snapshot AND no subagent is active.
-2. **Subagent active → defer.** `LockfileSignalSource` at `<working_dir>/.session-buddy/subagent.lock`. Fail-open on lockfile error.
-3. **End-of-task is mandatory.** If subagent doesn't go idle in 60s, persist a marker at `~/.session-buddy/pending/*.json`; the next loop tick or `SessionEnd` consumes it. NEVER silently drop.
-4. **Failures fail closed.** Narrow exceptions: `(subprocess.SubprocessError, OSError, ValueError, httpx.HTTPStatusError)`. Programming errors propagate. Transient 5xx from `forward_to` retries once with 500ms backoff.
-5. **Concurrency serialized.** `asyncio.Lock` per `CheckpointOrchestrator` instance; two simultaneous calls on the same working dir serialize, never race.
+1. **Subagent active → defer.** `LockfileSignalSource` at `<working_dir>/.session-buddy/subagent.lock`. Fail-open on lockfile error.
+1. **End-of-task is mandatory.** If subagent doesn't go idle in 60s, persist a marker at `~/.session-buddy/pending/*.json`; the next loop tick or `SessionEnd` consumes it. NEVER silently drop.
+1. **Failures fail closed.** Narrow exceptions: `(subprocess.SubprocessError, OSError, ValueError, httpx.HTTPStatusError)`. Programming errors propagate. Transient 5xx from `forward_to` retries once with 500ms backoff.
+1. **Concurrency serialized.** `asyncio.Lock` per `CheckpointOrchestrator` instance; two simultaneous calls on the same working dir serialize, never race.
 
 ## Failure-mode handling
 

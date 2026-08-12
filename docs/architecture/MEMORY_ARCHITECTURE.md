@@ -28,20 +28,20 @@ stemmed from undocumented expectations about how the workflow-results path,
 the caller-kind quota, the ADR-014 peer authorization, the tool profile
 gating, and the `_audit_set` fixture mismatch line up.
 
----
+______________________________________________________________________
 
 ## Table of Contents
 
 1. [Storage Inventory](#1-storage-inventory)
-2. [MCP Write Surface](#2-mcp-write-surface)
-3. [MCP Read Surface](#3-mcp-read-surface)
-4. [Cross-Component Visibility](#4-cross-component-visibility)
-5. [Integration Contract](#5-integration-contract)
-6. [Sample Queries](#6-sample-queries)
-7. [Diagrams](#7-diagrams)
-8. [Operational Notes](#8-operational-notes)
+1. [MCP Write Surface](#2-mcp-write-surface)
+1. [MCP Read Surface](#3-mcp-read-surface)
+1. [Cross-Component Visibility](#4-cross-component-visibility)
+1. [Integration Contract](#5-integration-contract)
+1. [Sample Queries](#6-sample-queries)
+1. [Diagrams](#7-diagrams)
+1. [Operational Notes](#8-operational-notes)
 
----
+______________________________________________________________________
 
 ## 1. Storage Inventory
 
@@ -257,9 +257,9 @@ should run `python -m mahavishnu.scripts.migrate_legacy_data` to copy.
 `pydantic_settings.YamlConfigSettingsSource`. Precedence order:
 
 1. `oneiric://defaults` — Oneiric-bundled defaults
-2. `${REPO}/settings/mahavishnu.yaml` — committed configuration
-3. `${REPO}/settings/local.yaml` — gitignored operator overrides
-4. Environment variables `MAHAVISHNU_*` (nested fields via `__` separator,
+1. `${REPO}/settings/mahavishnu.yaml` — committed configuration
+1. `${REPO}/settings/local.yaml` — gitignored operator overrides
+1. Environment variables `MAHAVISHNU_*` (nested fields via `__` separator,
    e.g. `MAHAVISHNU_POOLS__ENABLED=true`)
 
 Top-level config groups (each `extra="forbid"`):
@@ -279,7 +279,7 @@ Top-level config groups (each `extra="forbid"`):
 | `tool_profile` | MCP tool registration gate | `MINIMAL` / `STANDARD` / `FULL` (default FULL) |
 | `tool_profile_env_var` | Override | `MAHAVISHNU_TOOL_PROFILE` |
 
----
+______________________________________________________________________
 
 ## 2. MCP Write Surface
 
@@ -371,16 +371,17 @@ Five side-effect paths write operational state outside the MCP surface:
 - `FULL_REGISTRATIONS = STANDARD + [_register_otel_tools, _register_self_improvement_tools, _register_clone_tools, _register_goal_team_tools, _register_treesitter_tools, _register_adapter_registry_tools, _register_pycharm_tools]`
 
 Resolution precedence:
+
 1. `MAHAVISHNU_TOOL_PROFILE` env var (`full` / `standard` / `minimal`)
-2. `settings/local.yaml` `tool_profile:` field
-3. Default = `FULL` (no reduction)
+1. `settings/local.yaml` `tool_profile:` field
+1. Default = `FULL` (no reduction)
 
 The `discover_tools(query=, capability=)` meta-tool is always registered
 and returns `{loaded_tools, not_loaded_tools, profile, profile_methods_scheduled, hint}`
 plus — when `capability="ready"` is passed — the live `routable_workers`
 list from `mahavishnu/workers/capabilities/select_routable_workers`.
 
----
+______________________________________________________________________
 
 ## 3. MCP Read Surface
 
@@ -462,7 +463,7 @@ by access pattern: discovery, state, recall, monitor, health.
 |------|---------------|----------|
 | `health_check` / `health_check_service` / `health_check_all` / `get_liveness` / `get_readiness` / `mcp_list_tools` / `mcp_test_connection` / `mcp_get_metrics` / `wait_for_dependency` / `wait_for_all_dependencies` | mcp-common dependency probes (session_buddy 8678, dhara 8683, akosha 8682, crackerjack 8676) | Boot readiness |
 
----
+______________________________________________________________________
 
 ## 4. Cross-Component Visibility
 
@@ -488,16 +489,16 @@ ecosystem. Five components coordinate:
 1. **`PoolSelector`** (`mahavishnu/pools/manager.py:73`): `ROUND_ROBIN`,
    `LEAST_LOADED`, `RANDOM`, `AFFINITY`, `PEER_AFFINITY`. The selector
    decision is recorded via `_persist_routing_decision`.
-2. **`CallerKind`** (`mahavishnu/pools/manager.py:64`): `ULTRA_CODE`,
+1. **`CallerKind`** (`mahavishnu/pools/manager.py:64`): `ULTRA_CODE`,
    `CLAUDE_CODE`, `WORKFLOW`, `CLI`, `UNKNOWN`. Unknown strings at the MCP
    wire boundary are coerced to `UNKNOWN` via `coerce_caller_kind` —
    callers cannot inflate quota by sending novel strings.
-3. **`PeerRouteResolver`** (`mahavishnu/pools/peer_routing.py`): reads
+1. **`PeerRouteResolver`** (`mahavishnu/pools/peer_routing.py`): reads
    `pool: <pool_id>` hint from Session-Buddy's `user_models.representation_text`.
-4. **`RoutingFitnessReader`** (`mahavishnu/pools/routing_fitness.py`): reads
+1. **`RoutingFitnessReader`** (`mahavishnu/pools/routing_fitness.py`): reads
    `routing_fitness/{tc}/{selector}` from Dhara, picks the best selector
    per task class.
-5. **`PoolManager._enforce_caller_quota`** (`mahavishnu/pools/manager.py`):
+1. **`PoolManager._enforce_caller_quota`** (`mahavishnu/pools/manager.py`):
    per-`CallerKind` fixed-window quota with `max_per_window=60` (default).
 
 ### Pool types and what they delegate to
@@ -508,7 +509,7 @@ ecosystem. Five components coordinate:
 | `SessionBuddyPool` | Session-Buddy MCP at `:8678/mcp` | Spawns SB workers, polls `dispatch_to_pool` results |
 | `RunPodPool` | RunPod Flash API (GPU cloud) | Runs ML/embedding workloads via `cloud_worker.py` |
 
----
+______________________________________________________________________
 
 ## 5. Integration Contract
 
@@ -604,8 +605,8 @@ short-circuit to `LEAST_LOADED` whenever:
 
 1. The peer has no `user_models` row for `(peer_id, project_id)` —
    `representation_text` is `None` or empty.
-2. The peer model row exists but contains no `pool: <id>` hint.
-3. The ACL provider returns `None` or a dict without
+1. The peer model row exists but contains no `pool: <id>` hint.
+1. The ACL provider returns `None` or a dict without
    `peer_models:read: True`. **The ACL check MUST happen BEFORE the
    `peer_context` call** — see
    `tests/integration/test_pool_routing_peer_affinity.py::test_peer_affinity_no_acl_falls_back_to_least_loaded`.
@@ -618,6 +619,7 @@ the manager also falls back to `LEAST_LOADED`.
 **Regression test**:
 `tests/integration/test_pool_routing_peer_affinity.py` covers all three
 fallback paths:
+
 - `test_peer_affinity_routes_to_named_pool` (happy path with ACL grant)
 - `test_peer_affinity_falls_back_to_least_loaded_when_no_row` (no row)
 - `test_peer_affinity_no_acl_falls_back_to_least_loaded` (ACL denied;
@@ -712,7 +714,7 @@ violation; the next refactor that splits a group (e.g., moving OTel
 ingestion into a separate module) must update both `profiles.py` and
 the count assertion in the profile tests.
 
----
+______________________________________________________________________
 
 ## 6. Sample Queries
 
@@ -914,7 +916,7 @@ mcp__mahavishnu__respond_to_approval(
 Writes to `approval_manager` queue; approved fixes get applied via
 `crackerjack_run` in a follow-up call.
 
----
+______________________________________________________________________
 
 ## 7. Diagrams
 
@@ -924,12 +926,12 @@ Three diagrams are embedded above and persisted with this document:
    operational stores plus settings layers and the dead-letter / queue
    side channels. Green = authoritative write targets; yellow =
    ephemeral in-process / dead-letter; blue = XDG-compliant local state.
-2. **Pool routing flow** (this section) — `sequenceDiagram` showing
+1. **Pool routing flow** (this section) — `sequenceDiagram` showing
    prompt → `PoolManager.route_task` → selector → caller-kind quota →
    ACL check (ADR-014) → peer resolver → pool → worker → Dhara
    `workflow-results/{id}/` persistence. Captures the five contract
    invariants.
-3. **Tool profile gate** (this section) — `flowchart` of how
+1. **Tool profile gate** (this section) — `flowchart` of how
    `MAHAVISHNU_TOOL_PROFILE` filters the 14 registration groups.
 
 ### Pool routing flow (ADR-014 + caller-kind + peer resolver)
@@ -1061,7 +1063,7 @@ not a parent-hash chain. Workstream D's migration to formal SQL tables will
 add `parent_version_id` (ULID FK to the previous row) and a uniqueness
 constraint — see Known Gaps.
 
----
+______________________________________________________________________
 
 ## 8. Operational Notes
 
@@ -1121,7 +1123,7 @@ CLI under `mahavishnu/backup_cli.py` is the canonical entrypoint.
 |-----------|-----------------|-----------|
 | `pool_route_execute` (sync, least_loaded) | 50-200 ms (selector + execute) | Yes |
 | `dispatch_to_pool` (sync) | 50-200 ms + worker execution | Yes |
-| `dispatch_to_pool` (async_callback=True) | <10 ms (returns workflow_id) | Yes (kickoff) |
+| `dispatch_to_pool` (async_callback=True) | \<10 ms (returns workflow_id) | Yes (kickoff) |
 | `workflow_result(workflow_id=)` | 5-20 ms (Dhara KV read) | Yes (poll) |
 | `pool_list` / `pool_health` / `pool_monitor` | 10-50 ms (in-process state) | Yes (dashboards) |
 | `discover_tools` | 5-30 ms (FastMCP introspection) | No |
@@ -1216,7 +1218,7 @@ The contracts in Section 5 are derived from these ADRs and decisions:
 
 See `docs/adr/` for the full ADR catalog.
 
----
+______________________________________________________________________
 
 ## See Also
 

@@ -37,30 +37,30 @@ hierarchy) → ASYNC rules (wrap blocking calls in `asyncio.to_thread`)
 |------|------:|----------|----------|
 | BLE001 | 785 | high | blind-except — narrows to specific exceptions |
 | DTZ005 | 189 | low | `datetime.now()` → `datetime.now(UTC)` |
-| RUF012 |  79 | med  | mutable class default → `ClassVar` / `field(default_factory=…)` |
-| DTZ001 |  46 | low | `datetime(...)` → `datetime(..., tzinfo=UTC)` |
-| S110   |  39 | low | `try-except-pass` → add `logger.debug(…)` |
-| G201   |  32 | low | `logger.error(…, exc_info=True)` → `logger.exception(…)` |
-| PLW1510|  32 | low | `subprocess.run` add explicit `check=…` |
+| RUF012 | 79 | med | mutable class default → `ClassVar` / `field(default_factory=…)` |
+| DTZ001 | 46 | low | `datetime(...)` → `datetime(..., tzinfo=UTC)` |
+| S110 | 39 | low | `try-except-pass` → add `logger.debug(…)` |
+| G201 | 32 | low | `logger.error(…, exc_info=True)` → `logger.exception(…)` |
+| PLW1510| 32 | low | `subprocess.run` add explicit `check=…` |
 | ASYNC221| 23 | high | run subprocess in async → wrap in `asyncio.to_thread` |
-| TRY002 |  22 | high | `raise Exception(…)` → use `mahavishnu.core.errors.MahavishnuError` (or domain subclass) |
-| PLW0602|  14 | low | `global _x` with no assignment in body → delete the line |
+| TRY002 | 22 | high | `raise Exception(…)` → use `mahavishnu.core.errors.MahavishnuError` (or domain subclass) |
+| PLW0602| 14 | low | `global _x` with no assignment in body → delete the line |
 | ASYNC230| 13 | high | `open()` in async → `aiofiles.open()` / `asyncio.to_thread` |
-| LOG015 |  12 | low | root logger call → use module logger |
-| TRY004 |  11 | med  | `raise ValueError` for type check → `raise TypeError` |
-| TRY401 |  10 | low | `logger.exception(f"…{e}")` → `logger.exception("…%s", e)` |
-| PYI036 |   9 | low | `__aexit__/__exit__` arg annotation → `object|None`, `BaseException|None`, `TracebackType|None` |
-| DTZ011 |   6 | low | `date.today()` → `datetime.now(UTC).date()` |
-| DTZ007 |   5 | low | `strptime(…)` no `%z` → pass `tzinfo=UTC` after parse |
-| S112   |   5 | low | `try-except-continue` → add `logger.debug(…)` |
-| DTZ006 |   4 | low | `fromtimestamp()` → `fromtimestamp(…, tz=UTC)` |
-| PLC0206|   4 | low | `for k in d: use(d[k])` → `for k, v in d.items(): use(v)` |
-| PLW0127|   4 | low | `UTC = UTC` self-assign → delete the line |
-| ASYNC210|  2 | high | `requests` in async → `httpx.AsyncClient` / `to_thread` |
-| RUF034 |   2 | low | useless if-else → direct expression |
-| G101   |   1 | low | `extra={"module": …}` clashes with `LogRecord.module` → rename key |
-| PERF402|   1 | low | `my_list[:]` copy → `list(my_list)` |
-| DTZ901 |   1 | low | `datetime.min` no tz → `datetime.min.replace(tzinfo=UTC)` |
+| LOG015 | 12 | low | root logger call → use module logger |
+| TRY004 | 11 | med | `raise ValueError` for type check → `raise TypeError` |
+| TRY401 | 10 | low | `logger.exception(f"…{e}")` → `logger.exception("…%s", e)` |
+| PYI036 | 9 | low | `__aexit__/__exit__` arg annotation → `object|None`, `BaseException|None`, `TracebackType|None` |
+| DTZ011 | 6 | low | `date.today()` → `datetime.now(UTC).date()` |
+| DTZ007 | 5 | low | `strptime(…)` no `%z` → pass `tzinfo=UTC` after parse |
+| S112 | 5 | low | `try-except-continue` → add `logger.debug(…)` |
+| DTZ006 | 4 | low | `fromtimestamp()` → `fromtimestamp(…, tz=UTC)` |
+| PLC0206| 4 | low | `for k in d: use(d[k])` → `for k, v in d.items(): use(v)` |
+| PLW0127| 4 | low | `UTC = UTC` self-assign → delete the line |
+| ASYNC210| 2 | high | `requests` in async → `httpx.AsyncClient` / `to_thread` |
+| RUF034 | 2 | low | useless if-else → direct expression |
+| G101 | 1 | low | `extra={"module": …}` clashes with `LogRecord.module` → rename key |
+| PERF402| 1 | low | `my_list[:]` copy → `list(my_list)` |
+| DTZ901 | 1 | low | `datetime.min` no tz → `datetime.min.replace(tzinfo=UTC)` |
 
 **Sum:** 1351. **Mechanical (autofix candidate):** ≈ 600. **Judgment:
 ≈ 750** (BLE001 785, RUF012 79, ASYNC 38, TRY002/004 33).
@@ -263,7 +263,7 @@ one PR.
 ### Wave 0 — Sanity (no edits)
 
 - [ ] Run `uv run ruff check . --statistics` and confirm counts match
-      this document.
+  this document.
 - [ ] Run `uv run pytest -x -q --no-header` to record baseline.
 - [ ] Run `uv run crackerjack run` to record baseline gate output.
 - **Output:** baseline numbers in PR description. *No source changes.*
@@ -353,7 +353,7 @@ one PR.
 
 - [ ] `uv run ruff check .` → 0 in scope (1351 → 0).
 - [ ] `uv run ruff check .` overall count drops by 1351 (target
-      reduction from 1854 to 503).
+  reduction from 1854 to 503).
 - [ ] `uv run pytest` → green.
 - [ ] `uv run crackerjack run` → green.
 - [ ] `python scripts/audit_orphans.py` → no new orphans.
@@ -361,17 +361,17 @@ one PR.
 ## Decisions and Approvals Needed
 
 - [ ] **Approve scope** (25 rules, 1351 findings) or trim to a
-      subset.
+  subset.
 - [ ] **Approve per-rule transforms** above. Any rule where the
-      project prefers a different fix (e.g. keep `Exception` for
-      plugin loaders) should be flagged here.
+  project prefers a different fix (e.g. keep `Exception` for
+  plugin loaders) should be flagged here.
 - [ ] **Approve Wave 3's judgment approach** (sub-waves of ~100 with
-      per-directory review checklist) vs. a single mega-PR.
+  per-directory review checklist) vs. a single mega-PR.
 - [ ] **Wave 4 mock-impact analysis:** confirm we accept touching
-      test mocks for the async wrap.
+  test mocks for the async wrap.
 - [ ] **Naming question for G101:** rename `extra={"module": ...}`
-      to `extra={"component": ...}` or another key? Affects
-      downstream log-parsing queries (Grafana, Akosha).
+  to `extra={"component": ...}` or another key? Affects
+  downstream log-parsing queries (Grafana, Akosha).
 
 ## Out-of-Scope Follow-Ups (separate plans)
 

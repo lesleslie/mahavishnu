@@ -1,7 +1,7 @@
 """Tests for path-traversal guards in ``_workflow_id_guard``.
 
 Covers ``validate_approval_id`` and ``validate_webhook_id`` — both
-re-use the canonical ``WORKFLOW_ID_PATTERN`` from
+reuse the canonical ``WORKFLOW_ID_PATTERN`` from
 :mod:`mahavishnu.mcp.tools._workflow_id_guard` so the rejection cases
 mirror each other.
 """

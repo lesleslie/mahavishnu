@@ -188,7 +188,11 @@ terminal:
   capture_lines: 100
   poll_interval: 0.5
   max_concurrent_sessions: 20
-  adapter_preference: "crow"
+  # See docs/followups/2026-08-12-mcpretentious-removed.md for the
+  # reasons crow was replaced as the default. tmux routes through the
+  # existing DurableWorkerManager (Spec §9.4) and needs no extra
+  # operator opt-in. Crow remains selectable via adapter_preference: "crow".
+  adapter_preference: "tmux"
   fallback_on_probe_failure: false
 
 openhands:

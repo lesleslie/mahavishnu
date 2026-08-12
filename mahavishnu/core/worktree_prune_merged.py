@@ -315,9 +315,7 @@ class WorktreePruner:
     ) -> WorktreePruneResult:
         """Run the per-candidate removal flow: re-validate, attempt, escalate."""
         if not self._candidate_unchanged(candidate):
-            return WorktreePruneResult(
-                candidate, False, None, "candidate changed since discovery"
-            )
+            return WorktreePruneResult(candidate, False, None, "candidate changed since discovery")
         try:
             return await self._remove_with_escalation(candidate, force_reason, user_id)
         except Exception as exc:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive

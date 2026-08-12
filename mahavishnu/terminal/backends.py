@@ -28,12 +28,6 @@ class PtyBackend:
 
 
 BUILTIN_BACKENDS: dict[str, PtyBackend] = {
-    "mcpretentious": PtyBackend(
-        name="mcpretentious",
-        command="npx",  # was: "uvx" — BUG
-        args=("mcpretentious",),
-        requires=("node",),  # npm package
-    ),
     "tmux": PtyBackend(
         name="tmux",
         command="tmux",

@@ -140,9 +140,7 @@ class WorktreePathValidator:
             # ~/projects; is_relative_to() requires path-component
             # alignment so siblings with similar names are rejected.
             if self.strict_mode:
-                is_allowed = any(
-                    resolved_path.is_relative_to(root) for root in self.allowed_roots
-                )
+                is_allowed = any(resolved_path.is_relative_to(root) for root in self.allowed_roots)
 
                 if not is_allowed:
                     error = f"Path outside allowed directories: {self.allowed_roots} (CWE-22)"

@@ -13,7 +13,7 @@ from mcp_common.fastmcp import FastMCP  # noqa: TC002
 from pydantic import Field, StringConstraints
 
 from ...observability.worker_metrics import WorkerMetrics
-from ...terminal.adapters.mcpretentious import McpretentiousAdapter
+from ...terminal.adapters.tmux import TmuxTerminalAdapter
 from ...terminal.manager import TerminalManager  # noqa: TC001
 
 # SECURITY: Define validation constraints for MCP tool inputs
@@ -177,15 +177,26 @@ def register_terminal_tools(
 
         # Create new adapter instance
         if adapter_name == "iterm2":
-            raise NotImplementedError("iTerm2 adapter is deprecated; use tmux or mcpretentious")
-        if adapter_name == "mcpretentious":
-            if mcp_client is None:
-                return {"status": "error", "message": "mcpretentious adapter requires MCP client"}
-            new_adapter = McpretentiousAdapter(mcp_client)
+            raise NotImplementedError("iTerm2 adapter is deprecated; use tmux")
+        if adapter_name == "tmux":
+            # Reuse the existing tmux-backed terminal manager's durable-worker
+            # contract; switch_adapter just rebinds to the same factory.
+            from pathlib import Path
+            from ...workers.contract.manager import DurableWorkerManager
+            from ...workers.contract.store import WorkerRecordStore
+
+            store = WorkerRecordStore(Path.home() / ".mahavishnu" / "worker-sessions")
+            new_adapter = TmuxTerminalAdapter(
+                DurableWorkerManager(
+                    store=store,
+                    publisher=None,
+                    socket_dir=Path.home() / ".mahavishnu" / "tmux",
+                )
+            )
         else:
             return {
                 "status": "error",
-                "message": f"Unknown adapter: {adapter_name}. Use 'mcpretentious'",
+                "message": f"Unknown adapter: {adapter_name}. Use 'tmux'",
             }
 
         # Perform the switch

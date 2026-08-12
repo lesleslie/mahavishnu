@@ -33,9 +33,9 @@ async def stop_server(server: Any) -> None:
     if hasattr(server, "mcp_client") and hasattr(server.mcp_client, "_client"):
         try:
             await server.mcp_client._client.stop()
-            logger.info("Stopped mcpretentious MCP server")
+            logger.info("Stopped embedded MCP client")
         except Exception as exc:  # noqa: BLE001 - MCP boundary must preserve all operation failures
-            logger.warning("Error stopping mcpretentious server: %s", exc)
+            logger.warning("Error stopping embedded MCP client: %s", exc)
 
 
 async def register_worktree_tools(server: Any) -> None:

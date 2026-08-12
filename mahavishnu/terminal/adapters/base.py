@@ -111,6 +111,4 @@ class TerminalAdapter(ABC):
         ABC (rather than only on concrete macOS adapters) so the
         grid manager's static-typed call sites are valid.
         """
-        raise NotImplementedError(
-            f"{type(self).__name__} does not support AppleScript execution"
-        )
+        raise NotImplementedError(f"{type(self).__name__} does not support AppleScript execution")
