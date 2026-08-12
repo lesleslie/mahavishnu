@@ -22,8 +22,7 @@ from __future__ import annotations
 
 import os
 
-import dhara
-from dhara.schema import SchemaValidationError, validate
+from dhara.schema import SchemaValidationError, WebhookIngress, validate
 from fastapi import FastAPI, HTTPException, status
 from fastapi.responses import JSONResponse
 from oneiric.core.logging import get_logger
@@ -84,7 +83,7 @@ def receive_webhook(payload: dict[str, object]) -> JSONResponse | dict[str, str]
             ``invalid_webhook`` event key (no exception message in ``extra``).
     """
     try:
-        validated = validate("webhook_ingress", payload)
+        validated: WebhookIngress = validate("webhook_ingress", payload)  # ty: ignore[invalid-assignment]
     except SchemaValidationError:
         logger.warning(
             "invalid_webhook",

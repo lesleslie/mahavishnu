@@ -106,7 +106,7 @@ def list_approval_history(
     results: list[ApprovalLog] = []
     for payload in raw_payloads:
         try:
-            record: ApprovalLog = from_dict("approval_log", payload)
+            record: ApprovalLog = from_dict("approval_log", payload)  # ty: ignore[invalid-assignment]
         except SchemaValidationError as exc:
             # Skip-bad not raise-all: partial-failure resilience so a single
             # corrupted entry does not mask the rest of the history. Log the

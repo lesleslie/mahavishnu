@@ -20,7 +20,6 @@ from __future__ import annotations
 import os
 from typing import TYPE_CHECKING
 
-import dhara
 from dhara.schema import WorkflowOutcome, validate
 from oneiric.core.logging import get_logger
 
@@ -73,7 +72,7 @@ def record_workflow_outcome(
         "finished_at": finished_at,
         "metadata": metadata or {},
     }
-    validated = validate("workflow_outcome", payload)
+    validated: WorkflowOutcome = validate("workflow_outcome", payload)  # ty: ignore[invalid-assignment]
 
     # Substrate-compat gate: only persist when dhara.put is exposed.
     put = dhara_calltime("put")

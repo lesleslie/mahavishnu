@@ -17,6 +17,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
+from dhara.schema import to_dict
 from oneiric.core.logging import get_logger
 
 from mahavishnu.core.permissions import Permission
@@ -73,4 +74,4 @@ def register_webhook_tools(mcp: FastMCP) -> None:
         # msgspec.Struct → dict via the standard ``to_dict`` helper,
         # matching the convention used at
         # ``mahavishnu/core/adapter_persistence.py``.
-        return record.to_dict()
+        return to_dict(record)

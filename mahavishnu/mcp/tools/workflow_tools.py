@@ -62,7 +62,7 @@ async def workflow_get_outcome(
     payload = await get_fn(f"workflow-results/{workflow_id}/")
     if payload is None:
         return None
-    return from_dict("workflow_outcome", payload)
+    return from_dict("workflow_outcome", payload)  # ty: ignore[invalid-return-type]
 
 
 def register_workflow_tools(mcp: FastMCP) -> None:

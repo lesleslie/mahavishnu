@@ -26,7 +26,6 @@ from datetime import UTC, datetime
 import os
 from typing import Any
 
-import dhara
 from dhara.schema import ApprovalLog, validate
 from oneiric.core.logging import get_logger
 
@@ -84,7 +83,7 @@ def record_approval_decision(
         "metadata": merged_metadata,
     }
 
-    validated: ApprovalLog = validate("approval_log", payload)
+    validated: ApprovalLog = validate("approval_log", payload)  # ty: ignore[invalid-assignment]
 
     # Substrate-compat gate: only persist when dhara.put is exposed.
     put = dhara_calltime("put")

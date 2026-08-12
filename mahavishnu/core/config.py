@@ -2299,11 +2299,11 @@ class MahavishnuSettings(BaseSettings):
         }
         restore_init_kwargs = cls._settings_restore_init_kwarg_names
         if "init_state" in inspect.signature(restore_init_kwargs).parameters:
-            from pydantic_settings.main import InitState
+            from pydantic_settings.main import InitState  # ty: ignore[unresolved-import]  # pydantic_settings>=2.16
 
             last_source = sources[-1]
             init_state = getattr(last_source, "_init_state", None) or InitState()
-            restore_init_kwargs(cls, init_kwargs, state, init_state)
+            restore_init_kwargs(cls, init_kwargs, state, init_state)  # ty: ignore[too-many-positional-arguments]
         else:
             restore_init_kwargs(cls, init_kwargs, state)
         return state

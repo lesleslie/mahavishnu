@@ -37,14 +37,14 @@ def _get_config() -> AuthConfig:
 
 def require_mcp_auth(
     rbac_manager: Any | None = None,
-    required_permission: Permission | None = None,
+    required_permission: Any | None = None,
     require_repo_param: str | None = None,
 ) -> Callable[..., Any]:
     def decorator(func: Callable[..., Any]) -> Callable[..., Any]:
         @wraps(func)
         async def wrapper(*args: Any, **kwargs: Any) -> Any:
             user_id = kwargs.get("user_id")
-            perm = required_permission or Permission.READ
+            perm = cast("Permission", required_permission) if required_permission else Permission.READ
             if not user_id:
                 _audit_logger.emit(
                     AuthAuditEvent(

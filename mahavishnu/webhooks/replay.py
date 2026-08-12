@@ -115,7 +115,7 @@ def webhook_replay(
     # The registry returns a WebhookIngress for name='webhook_ingress';
     # msgspec.Struct is duck-typed so we read fields directly without an
     # isinstance check (bandit B101 forbids asserts in production).
-    return from_dict("webhook_ingress", payload)
+    return from_dict("webhook_ingress", payload)  # ty: ignore[invalid-return-type]
 
 
 __all__ = ["webhook_replay"]

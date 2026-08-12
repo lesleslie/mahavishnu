@@ -38,10 +38,10 @@ from mahavishnu.webhooks.router import (
 )
 
 if TYPE_CHECKING:
-    from fastapi import FastAPI
+    from starlette.applications import Starlette
 
 
-def mount_durable_webhooks(parent_app: "FastAPI") -> None:
+def mount_durable_webhooks(parent_app: Starlette) -> None:
     """Mount the durable webhook receiver under ``/durable-webhooks``.
 
     The receiver (:mod:`mahavishnu.webhooks.receiver`) is a standalone
@@ -76,9 +76,9 @@ __all__ = [
     "WebhookErrorResponse",
     "WebhookResponse",
     "WebhookStatus",
+    # Mount helper
+    "mount_durable_webhooks",
     "validate_auth",
     # Router
     "webhook_router",
-    # Mount helper
-    "mount_durable_webhooks",
 ]
