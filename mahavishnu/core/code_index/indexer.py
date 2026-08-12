@@ -150,9 +150,38 @@ def _upsert_to_session_buddy(
     try:
         import httpx
 
-        resp = httpx.post(
-            "http://localhost:8678/mcp",
+        session_url = "http://localhost:8678/mcp"
+        streamable_headers = {"Accept": "application/json, text/event-stream"}
+        # FastMCP streamable-http requires an ``initialize`` handshake
+        # before ``tools/call``; the server returns a ``mcp-session-id``
+        # header on that first response which must be sent on every
+        # subsequent call. Without this, the server returns 400 with
+        # ``Missing session ID``.
+        init_resp = httpx.post(
+            session_url,
             json={
+                "jsonrpc": "2.0",
+                "id": 1,
+                "method": "initialize",
+                "params": {
+                    "protocolVersion": "2025-03-26",
+                    "capabilities": {},
+                    "clientInfo": {"name": "mahavishnu", "version": "0"},
+                },
+            },
+            headers=streamable_headers,
+            timeout=30.0,
+        )
+        session_id = init_resp.headers.get("mcp-session-id", "")
+        if not session_id:
+            return False
+
+        call_headers = {**streamable_headers, "mcp-session-id": session_id}
+        resp = httpx.post(
+            session_url,
+            json={
+                "jsonrpc": "2.0",
+                "id": 2,
                 "method": "tools/call",
                 "params": {
                     "name": "store_code_graph_from_mahavishnu",
@@ -168,6 +197,7 @@ def _upsert_to_session_buddy(
                     },
                 },
             },
+            headers=call_headers,
             timeout=30.0,
         )
         return resp.status_code == 200

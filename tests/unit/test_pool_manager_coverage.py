@@ -1383,3 +1383,53 @@ def test_get_message_bus_stats_returns_dict(
     assert "queue_sizes" in out
     assert "subscriber_counts" in out
     assert "max_queue_size" in out
+
+
+# ---------------------------------------------------------------------------
+# auto-spawn fallback for empty pools
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.unit
+async def test_route_task_auto_spawn_when_no_pools(pool_mgr: PoolManager) -> None:
+    """When auto_spawn=True and the registry is empty, route_task must
+    spawn a default Mahavishnu pool and then route the task normally.
+
+    Regression for: ``pool_route_execute`` short-circuiting with
+    ``RuntimeError: No pools available for routing`` on a fresh
+    orchestrator with no manually-spawned pools.
+    """
+    spawned_pool = _make_pool("auto_pool", n_workers=1)
+
+    async def _spawn(pool_type: str, config) -> str:
+        pool_mgr._pools["auto_pool"] = spawned_pool
+        pool_mgr._pool_worker_counts["auto_pool"] = 1
+        pool_mgr._worker_count_heap = [(1, "auto_pool")]
+        return "auto_pool"
+
+    pool_mgr.spawn_pool = AsyncMock(side_effect=_spawn)
+
+    result = await pool_mgr.route_task(
+        task={"prompt": "x"},
+        pool_selector=PoolSelector.LEAST_LOADED,
+        auto_spawn=True,
+    )
+
+    assert result["pool_id"] == "auto_pool"
+    assert pool_mgr.spawn_pool.await_count == 1
+
+
+@pytest.mark.unit
+async def test_route_task_auto_spawn_default_off_keeps_legacy_raises(
+    pool_mgr: PoolManager,
+) -> None:
+    """Without ``auto_spawn=True``, the legacy RuntimeError must remain.
+
+    Auto-spawn is opt-in: callers that explicitly do not want surprise
+    pool creation must still see the original failure mode.
+    """
+    with pytest.raises(RuntimeError, match="No pools available"):
+        await pool_mgr.route_task(
+            task={"prompt": "x"},
+            pool_selector=PoolSelector.LEAST_LOADED,
+        )

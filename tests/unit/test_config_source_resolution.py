@@ -93,6 +93,13 @@ def _clean_state(monkeypatch: pytest.MonkeyPatch) -> None:
     cfg_mod._settings_cache = None
 
 
+def test_settings_constructs_with_current_pydantic_settings_api() -> None:
+    """Settings construction must remain compatible with the installed API."""
+    settings = MahavishnuSettings()
+
+    assert settings.repos_path == "settings/ecosystem.yaml"
+
+
 # ---------------------------------------------------------------------------
 # Parametric: env var wins over YAML default
 # ---------------------------------------------------------------------------

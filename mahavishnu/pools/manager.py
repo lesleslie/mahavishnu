@@ -22,7 +22,8 @@ from .runpod_pool import RunPodPool
 from .session_buddy_pool import SessionBuddyPool
 
 if TYPE_CHECKING:
-    from .base import BasePool, PoolConfig
+    from .base import BasePool
+from .base import PoolConfig
 
 logger = logging.getLogger(__name__)
 
@@ -550,6 +551,7 @@ class PoolManager:
         caller_pool_allowlist: set[str] | None = None,
         caller_kind: CallerKind | str = CallerKind.UNKNOWN,
         parent_session_id: str | None = None,
+        auto_spawn: bool = False,
     ) -> dict[str, Any]:
         """Route task to best pool based on selector strategy.
 
@@ -578,6 +580,11 @@ class PoolManager:
             parent_session_id: Optional Session-Buddy session ID
                 that originated this routing request. Forwarded to
                 ``_persist_routing_decision`` for audit trails.
+            auto_spawn: When True and the pool registry is empty,
+                spawn a default ``MahavishnuPool`` (min=max=1) before
+                routing. Defaults to False to preserve the existing
+                "no pools available" failure mode for callers that
+                have not opted in.
 
         Returns:
             Execution result
@@ -599,7 +606,18 @@ class PoolManager:
             ```
         """
         if not self._pools:
-            raise RuntimeError("No pools available for routing")
+            if auto_spawn:
+                await self.spawn_pool(
+                    "mahavishnu",
+                    PoolConfig(
+                        name="auto-spawned",
+                        pool_type="mahavishnu",
+                        min_workers=1,
+                        max_workers=1,
+                    ),
+                )
+            else:
+                raise RuntimeError("No pools available for routing")
 
         caller_kind = coerce_caller_kind(caller_kind)
 

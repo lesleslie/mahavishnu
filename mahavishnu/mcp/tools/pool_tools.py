@@ -472,6 +472,7 @@ def register_pool_tools(
         caller_kind: str = "unknown",
         parent_session_id: str | None = None,
         worker_type: str | None = None,
+        auto_spawn: bool = False,
     ) -> dict[str, Any]:
         """Route a prompt to the best Mahavishnu worker pool automatically.
 
@@ -634,6 +635,7 @@ def register_pool_tools(
                 caller_pool_allowlist=allowlist,
                 caller_kind=caller_kind,
                 parent_session_id=parent_session_id,
+                auto_spawn=auto_spawn,
             )
             return result  # type: ignore[no-any-return]
         except RateLimitError as exc:

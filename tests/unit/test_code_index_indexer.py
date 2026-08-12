@@ -156,3 +156,63 @@ def test_index_repo_parse_failure_tolerance(
     result = index_repo(str(tmp_path), trigger="manual", full=True)
     assert result.status == "complete"
     assert result.parse_failures == 1
+
+
+def test_upsert_to_session_buddy_sends_sse_accept_header(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """_upsert_to_session_buddy must request text/event-stream so FastMCP accepts it.
+
+    Regression for the 406 'Client must accept text/event-stream' error that
+    occurs when the local indexer posts JSON to a FastMCP streamable-http
+    endpoint without the required Accept header.
+    """
+    from datetime import datetime
+
+    import httpx
+
+    from mahavishnu.core.code_index import indexer
+    from mahavishnu.core.code_index.models import CodeGraphNode
+
+    captured: dict[str, object] = {}
+
+    class FakeResponse:
+        status_code = 200
+        text = ""
+
+        def __init__(self, headers: dict[str, str] | None = None) -> None:
+            self.headers = headers or {}
+
+    def fake_post(url, json=None, timeout=None, headers=None, **kwargs):
+        captured.setdefault("calls", []).append({"url": url, "headers": headers, "payload": json})
+        if isinstance(json, dict) and json.get("method") == "initialize":
+            return FakeResponse(headers={"mcp-session-id": "test-session"})
+        return FakeResponse()
+
+    monkeypatch.setattr(httpx, "post", fake_post)
+
+    node = CodeGraphNode(
+        symbol_id="test|||foo.py|||function|||bar",
+        symbol_name="bar",
+        symbol_type="function",
+        file_path="foo.py",
+        repo_path=str(tmp_path),
+        last_indexed_at=datetime.now(UTC),
+        commit_hash="abc",
+    )
+
+    ok = indexer._upsert_to_session_buddy(str(tmp_path), [node], [])
+    assert ok is True
+    # The first call must be the initialize handshake with the
+    # streamable-http Accept header.
+    first = captured["calls"][0]
+    assert first["headers"].get("Accept", "").startswith("application/json")
+    assert "text/event-stream" in first["headers"].get("Accept", "")
+    assert first["payload"]["method"] == "initialize"
+    # The second call must carry the mcp-session-id header that the
+    # server returned (or the negotiated session id we tracked) and
+    # the tools/call payload.
+    assert len(captured["calls"]) == 2
+    second = captured["calls"][1]
+    assert second["payload"]["method"] == "tools/call"
+    assert second["payload"]["params"]["name"] == "store_code_graph_from_mahavishnu"
