@@ -320,62 +320,17 @@ class WorktreeCoordinator:
             force=force,
         )
 
-        # SAFETY CHECK 1: Check for uncommitted changes
-        has_uncommitted = await self._check_uncommitted_changes(worktree_path)
-
-        if has_uncommitted and not force:
-            return {
-                "success": False,
-                "error": "Worktree has uncommitted changes. Use --force with --force-reason to override.",
-                "safety_check": "uncommitted_changes",
-            }
-
-        # SECURITY-001: Require reason when bypassing uncommitted changes
-        if has_uncommitted and force and not force_reason:
-            return {
-                "success": False,
-                "error": "Worktree has uncommitted changes. --force requires --force-reason.",
-                "safety_check": "force_reason_required",
-            }
-
-        # SECURITY-001: Create backup before force removal
-        backup_path = None
-        if has_uncommitted and force:
-            try:
-                # Get branch name for backup naming
-                branch = await self._get_worktree_branch(worktree_path)
-                backup_path = await self.backup_manager.create_backup_before_removal(
-                    worktree_path=Path(worktree_path),
-                    repo_nickname=repo_nickname,
-                    branch=branch,
-                    user_id=user_id,
-                )
-                logger.info(f"Backup created before force removal: {backup_path}")
-            except Exception as e:
-                logger.exception("Failed to create backup")
-                return {
-                    "success": False,
-                    "error": f"Failed to create backup before force removal: {e}",
-                    "safety_check": "backup_failed",
-                }
-
-        # SAFETY CHECK 2: Check if worktree is depended on by other repos
-        dependents = self._get_worktree_dependents(repo_nickname, worktree_path)
-        if dependents and not force:
-            return {
-                "success": False,
-                "error": f"Worktree is depended on by {len(dependents)} other repositories",
-                "safety_check": "dependency_block",
-                "dependents": dependents,
-            }
-
-        # SAFETY CHECK 3: Verify path is actually a worktree
-        if not await self._verify_is_worktree(worktree_path):
-            return {
-                "success": False,
-                "error": "Path is not a valid worktree",
-                "safety_check": "path_validation",
-            }
+        # Run preflight safety checks (uncommitted, dependents, verify).
+        # Returns (error_dict_or_None, has_uncommitted, backup_path_or_None).
+        safety_error, has_uncommitted, backup_path = await self._evaluate_removal_safety(
+            repo_nickname=repo_nickname,
+            worktree_path=worktree_path,
+            force=force,
+            force_reason=force_reason,
+            user_id=user_id,
+        )
+        if safety_error is not None:
+            return safety_error
 
         try:
             # Get provider and delegate
@@ -393,36 +348,18 @@ class WorktreeCoordinator:
             # well-formed ``{"success": False, ...}`` dict was previously
             # logged as success, hiding real failures behind a green audit
             # line.
-            succeeded = bool(result.get("success"))
+            self._log_removal_outcome(
+                result=result,
+                repo_nickname=repo_nickname,
+                worktree_path=worktree_path,
+                force=force,
+                force_reason=force_reason,
+                user_id=user_id,
+                has_uncommitted=has_uncommitted,
+                backup_path=backup_path,
+            )
 
-            if succeeded and force and has_uncommitted:
-                self.audit_logger.log_forced_removal(
-                    user_id=user_id,
-                    repo_nickname=repo_nickname,
-                    worktree_path=worktree_path,
-                    force_reason=force_reason or "not provided",
-                    has_uncommitted=has_uncommitted,
-                    backup_path=str(backup_path) if backup_path else None,
-                )
-            elif succeeded:
-                self.audit_logger.log_removal_success(
-                    user_id=user_id,
-                    repo_nickname=repo_nickname,
-                    worktree_path=worktree_path,
-                    force=force,
-                )
-            else:
-                self.audit_logger.log_removal_failure(
-                    user_id=user_id,
-                    repo_nickname=repo_nickname,
-                    worktree_path=worktree_path,
-                    error=str(result.get("error", "provider reported failure")),
-                )
-                logger.warning(
-                    "Worktree removal failed: path=%s, error=%s",
-                    worktree_path,
-                    result.get("error"),
-                )
+            if not result.get("success"):
                 return result
 
             logger.info(f"Worktree removed successfully: {worktree_path}")
@@ -437,6 +374,130 @@ class WorktreeCoordinator:
             )
             logger.exception("Failed to remove worktree")
             raise
+
+    async def _evaluate_removal_safety(
+        self,
+        repo_nickname: str,
+        worktree_path: str,
+        force: bool,
+        force_reason: str | None,
+        user_id: str | None,
+    ) -> tuple[dict[str, Any] | None, bool, Path | None]:
+        """Run preflight safety checks for worktree removal.
+
+        Returns:
+            (error_dict_or_None, has_uncommitted, backup_path_or_None).
+
+            If the first element is not None, the caller should return it
+            as the operation result. The boolean + Path are returned for
+            the caller's audit log regardless.
+        """
+        # SAFETY CHECK 1: Check for uncommitted changes
+        has_uncommitted = await self._check_uncommitted_changes(worktree_path)
+
+        if has_uncommitted and not force:
+            return {
+                "success": False,
+                "error": "Worktree has uncommitted changes. Use --force with --force-reason to override.",
+                "safety_check": "uncommitted_changes",
+            }, has_uncommitted, None
+
+        # SECURITY-001: Require reason when bypassing uncommitted changes
+        if has_uncommitted and force and not force_reason:
+            return {
+                "success": False,
+                "error": "Worktree has uncommitted changes. --force requires --force-reason.",
+                "safety_check": "force_reason_required",
+            }, has_uncommitted, None
+
+        # SECURITY-001: Create backup before force removal
+        backup_path: Path | None = None
+        if has_uncommitted and force:
+            try:
+                # Get branch name for backup naming
+                branch = await self._get_worktree_branch(worktree_path)
+                backup_path = await self.backup_manager.create_backup_before_removal(
+                    worktree_path=Path(worktree_path),
+                    repo_nickname=repo_nickname,
+                    branch=branch,
+                    user_id=user_id,
+                )
+                logger.info(f"Backup created before force removal: {backup_path}")
+            except Exception as e:
+                logger.exception("Failed to create backup")
+                return {
+                    "success": False,
+                    "error": f"Failed to create backup before force removal: {e}",
+                    "safety_check": "backup_failed",
+                }, has_uncommitted, None
+
+        # SAFETY CHECK 2: Check if worktree is depended on by other repos
+        dependents = self._get_worktree_dependents(repo_nickname, worktree_path)
+        if dependents and not force:
+            return {
+                "success": False,
+                "error": f"Worktree is depended on by {len(dependents)} other repositories",
+                "safety_check": "dependency_block",
+                "dependents": dependents,
+            }, has_uncommitted, backup_path
+
+        # SAFETY CHECK 3: Verify path is actually a worktree
+        if not await self._verify_is_worktree(worktree_path):
+            return {
+                "success": False,
+                "error": "Path is not a valid worktree",
+                "safety_check": "path_validation",
+            }, has_uncommitted, backup_path
+
+        return None, has_uncommitted, backup_path
+
+    def _log_removal_outcome(
+        self,
+        result: dict[str, Any],
+        repo_nickname: str,
+        worktree_path: str,
+        force: bool,
+        force_reason: str | None,
+        user_id: str | None,
+        has_uncommitted: bool,
+        backup_path: Path | None,
+    ) -> None:
+        """Emit the audit log entry for a removal attempt's outcome.
+
+        Extracted from ``remove_worktree`` to keep the public method's
+        branch count below the project's complexity limit (C901).
+        """
+        succeeded = bool(result.get("success"))
+
+        if succeeded and force and has_uncommitted:
+            self.audit_logger.log_forced_removal(
+                user_id=user_id,
+                repo_nickname=repo_nickname,
+                worktree_path=worktree_path,
+                force_reason=force_reason or "not provided",
+                has_uncommitted=has_uncommitted,
+                backup_path=str(backup_path) if backup_path else None,
+            )
+        elif succeeded:
+            self.audit_logger.log_removal_success(
+                user_id=user_id,
+                repo_nickname=repo_nickname,
+                worktree_path=worktree_path,
+                force=force,
+            )
+        else:
+            self.audit_logger.log_removal_failure(
+                user_id=user_id,
+                repo_nickname=repo_nickname,
+                worktree_path=worktree_path,
+                error=str(result.get("error", "provider reported failure")),
+            )
+            logger.warning(
+                "Worktree removal failed: path=%s, error=%s",
+                worktree_path,
+                result.get("error"),
+            )
+
 
     async def list_worktrees(
         self, repo_nickname: str | None = None, user_id: str | None = None
