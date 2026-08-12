@@ -97,7 +97,7 @@ def index_repo(
                     nodes, edges = result
                     all_nodes.extend(nodes)
                     all_edges.extend(edges)
-            except (OSError, SyntaxError, ValueError) as e:
+            except (OSError, SyntaxError, ValueError, RuntimeError) as e:
                 parse_failures += 1
                 logger.warning("Failed to parse %s: %s", file_path, e)
 
