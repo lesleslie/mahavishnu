@@ -3,11 +3,10 @@
 from __future__ import annotations
 
 import asyncio
-from datetime import datetime
-
-import typer
+from datetime import UTC, datetime
 
 from dhara.lock.in_memory import InMemoryDharaLock
+import typer
 
 from mahavishnu.core.precommitment import (
     Hypothesis,
@@ -41,7 +40,7 @@ def precommit_lock(
             falsification_criteria=tuple(falsification),
             success_criteria=tuple(success),
             confidence=confidence,
-            locked_at=datetime.now(),
+            locked_at=datetime.now(UTC),
         )
         lock = _make_lock()
         result = await lock.lock(h)
