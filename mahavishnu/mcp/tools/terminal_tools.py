@@ -54,6 +54,20 @@ DANGEROUS_COMMAND_PATTERNS = [
 ]
 
 
+class _NullEventPublisher:
+    """No-op EventPublisher for the switch_adapter path.
+
+    The ``switch_adapter`` flow constructs a second ``DurableWorkerManager``
+    only to wire a fresh ``TmuxTerminalAdapter``; the canonical sink still
+    belongs to the existing manager. Passing a real publisher here would
+    duplicate events on the EventBridge, so this stub satisfies the
+    contract's ``EventPublisher`` Protocol without emitting anything.
+    """
+
+    def emit(self, payload: dict[str, Any], topic: str) -> None:
+        return None
+
+
 def validate_command_safety(command: str) -> None:
     """Validate command for safety to prevent injection.
 
@@ -182,6 +196,7 @@ def register_terminal_tools(
             # Reuse the existing tmux-backed terminal manager's durable-worker
             # contract; switch_adapter just rebinds to the same factory.
             from pathlib import Path
+
             from ...workers.contract.manager import DurableWorkerManager
             from ...workers.contract.store import WorkerRecordStore
 
@@ -189,7 +204,7 @@ def register_terminal_tools(
             new_adapter = TmuxTerminalAdapter(
                 DurableWorkerManager(
                     store=store,
-                    publisher=None,
+                    publisher=_NullEventPublisher(),
                     socket_dir=Path.home() / ".mahavishnu" / "tmux",
                 )
             )

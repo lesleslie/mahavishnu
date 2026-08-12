@@ -11,8 +11,9 @@ TypeError: BaseSettings._settings_restore_init_kwarg_names() missing 1 required 
 The full stack-trace (in the mahavishnu index repo subprocess) leads through `dhara.schema` symbols and `oneiric.config.settings`.
 
 Two prerequisites to reproduce:
+
 1. A repo with the `mahavishnu index install-hooks` post-commit hook. The 162-byte hook script is: `mahavishnu index repo --trigger git-event "$(pwd)" &`
-2. A `mahavishnu` install where `BaseSettings._settings_restore_init_kwarg_names()` is the up-to-date (post-`init_state`) signature but a downstream caller is calling it without that argument.
+1. A `mahavishnu` install where `BaseSettings._settings_restore_init_kwarg_names()` is the up-to-date (post-`init_state`) signature but a downstream caller is calling it without that argument.
 
 Use this doc as the kickoff when diagnosing the failure in a fresh session.
 
@@ -41,10 +42,11 @@ mahavishnu index repo --trigger git-event "$(pwd)" --verbose --show-traceback 2>
 After capturing, look at the failing frame that calls `_settings_restore_init_kwarg_names`. The flow is typically:
 
 1. mahavishnu CLI imports some module that constructs a `BaseSettings`.
-2. `BaseSettings.__init__` (or `__init_subclass__`, or some metaclass hook) calls `_settings_restore_init_kwarg_names()` to seed the kwargs it remembers.
-3. The signature got a new required parameter (`init_state`, presumably) in a recent oneiric version, but the call site that constructs `BaseSettings` predates that change.
+1. `BaseSettings.__init__` (or `__init_subclass__`, or some metaclass hook) calls `_settings_restore_init_kwarg_names()` to seed the kwargs it remembers.
+1. The signature got a new required parameter (`init_state`, presumably) in a recent oneiric version, but the call site that constructs `BaseSettings` predates that change.
 
 Identify:
+
 - Which oneiric version is installed in the venv (`uv pip show oneiric`).
 - The commit in oneiric that added the `init_state` parameter to `_settings_restore_init_kwarg_names`.
 - The code in mahavishnu that constructs `BaseSettings` (or its subclasses) — `grep -rn "BaseSettings\|Settings(" mahavishnu/ --include="*.py" | head`.
@@ -52,8 +54,8 @@ Identify:
 ## Possible fixes (verify with reproducer first)
 
 1. **Pin oneiric** to the last version before the signature change. The exact version depends on when the change landed; check `git log -p` on the `BaseSettings` file in the oneiric repo.
-2. **Bump mahavishnu** to pass `init_state=None` (or whatever the new default expects) at every `BaseSettings(...)` call site. Look for: `BaseSettings(`, `Settings(`, or the class-specific construction.
-3. **Add `init_state` to the canonical BaseSettings constructor kwargs list** in oneiric (preferred if oneiric is the upstream you'd want to change).
+1. **Bump mahavishnu** to pass `init_state=None` (or whatever the new default expects) at every `BaseSettings(...)` call site. Look for: `BaseSettings(`, `Settings(`, or the class-specific construction.
+1. **Add `init_state` to the canonical BaseSettings constructor kwargs list** in oneiric (preferred if oneiric is the upstream you'd want to change).
 
 For each candidate fix, the reproducer should run with the staged change and either succeed (TypeError gone) or fail with a different error.
 

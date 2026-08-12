@@ -7,7 +7,7 @@ packages = ["mahavishnu"]
 
 [project]
 name = "mahavishnu"
-version = "0.11.0"
+version = "0.12.0"
 description = "Global orchestrator package for development workflows"
 authors = [
     {name = "Les Leslie", email = "les@wedgwoodwebworks.com"},
@@ -120,6 +120,7 @@ dev = [
     "refurb>=2.3.1",
     "complexipy>=5.5.0",
     "zensical>=0.0.44",
+    "crackerjack>=0.70.3",
     {include-group = "ai"},
     {include-group = "gpu"},
     {include-group = "sandbox"},
@@ -574,4 +575,3 @@ nav = [
 ]
 
 [tool.uv.sources]
-session-buddy = { path = "../session-buddy", editable = true }

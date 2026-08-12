@@ -51,7 +51,9 @@ def init_terminal_manager(server: FastMCPServer) -> TerminalManager | None:
             # The default durable-worker path is now tmux; the mock adapter
             # covers the "auto" preference. See docs/followups/2026-08-12-mcpretentious-removed.md
             adapter = MockTerminalAdapter()
-            logger.info("Initialized mock terminal adapter (mcpretentious removed; defaulting to mock)")
+            logger.info(
+                "Initialized mock terminal adapter (mcpretentious removed; defaulting to mock)"
+            )
 
         manager = TerminalManager(adapter, config)
         logger.info(

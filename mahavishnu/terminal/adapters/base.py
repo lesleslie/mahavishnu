@@ -3,6 +3,30 @@
 from abc import ABC, abstractmethod
 from typing import Any
 
+from ...core.errors import ErrorCode, MahavishnuError
+
+
+class TerminalError(MahavishnuError):
+    """Base exception for terminal operations."""
+
+    def __init__(
+        self,
+        message: str,
+        error_code: ErrorCode = ErrorCode.INTERNAL_ERROR,
+        details: dict | None = None,
+    ) -> None:
+        super().__init__(message, error_code, details=details)
+
+
+class SessionNotFoundError(TerminalError):
+    """Raised when a session ID is not tracked by the adapter."""
+
+    def __init__(self, message: str, details: dict | None = None) -> None:
+        super().__init__(message, details=details)
+
+
+__all__ = ["SessionNotFoundError", "TerminalAdapter", "TerminalError"]
+
 
 class TerminalAdapter(ABC):
     """Abstract interface for terminal adapters.

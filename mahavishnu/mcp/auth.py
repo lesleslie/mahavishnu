@@ -44,7 +44,9 @@ def require_mcp_auth(
         @wraps(func)
         async def wrapper(*args: Any, **kwargs: Any) -> Any:
             user_id = kwargs.get("user_id")
-            perm = cast("Permission", required_permission) if required_permission else Permission.READ
+            perm = (
+                cast("Permission", required_permission) if required_permission else Permission.READ
+            )
             if not user_id:
                 _audit_logger.emit(
                     AuthAuditEvent(

@@ -396,19 +396,27 @@ class WorktreeCoordinator:
         has_uncommitted = await self._check_uncommitted_changes(worktree_path)
 
         if has_uncommitted and not force:
-            return {
-                "success": False,
-                "error": "Worktree has uncommitted changes. Use --force with --force-reason to override.",
-                "safety_check": "uncommitted_changes",
-            }, has_uncommitted, None
+            return (
+                {
+                    "success": False,
+                    "error": "Worktree has uncommitted changes. Use --force with --force-reason to override.",
+                    "safety_check": "uncommitted_changes",
+                },
+                has_uncommitted,
+                None,
+            )
 
         # SECURITY-001: Require reason when bypassing uncommitted changes
         if has_uncommitted and force and not force_reason:
-            return {
-                "success": False,
-                "error": "Worktree has uncommitted changes. --force requires --force-reason.",
-                "safety_check": "force_reason_required",
-            }, has_uncommitted, None
+            return (
+                {
+                    "success": False,
+                    "error": "Worktree has uncommitted changes. --force requires --force-reason.",
+                    "safety_check": "force_reason_required",
+                },
+                has_uncommitted,
+                None,
+            )
 
         # SECURITY-001: Create backup before force removal
         backup_path: Path | None = None
@@ -425,29 +433,41 @@ class WorktreeCoordinator:
                 logger.info(f"Backup created before force removal: {backup_path}")
             except Exception as e:
                 logger.exception("Failed to create backup")
-                return {
-                    "success": False,
-                    "error": f"Failed to create backup before force removal: {e}",
-                    "safety_check": "backup_failed",
-                }, has_uncommitted, None
+                return (
+                    {
+                        "success": False,
+                        "error": f"Failed to create backup before force removal: {e}",
+                        "safety_check": "backup_failed",
+                    },
+                    has_uncommitted,
+                    None,
+                )
 
         # SAFETY CHECK 2: Check if worktree is depended on by other repos
         dependents = self._get_worktree_dependents(repo_nickname, worktree_path)
         if dependents and not force:
-            return {
-                "success": False,
-                "error": f"Worktree is depended on by {len(dependents)} other repositories",
-                "safety_check": "dependency_block",
-                "dependents": dependents,
-            }, has_uncommitted, backup_path
+            return (
+                {
+                    "success": False,
+                    "error": f"Worktree is depended on by {len(dependents)} other repositories",
+                    "safety_check": "dependency_block",
+                    "dependents": dependents,
+                },
+                has_uncommitted,
+                backup_path,
+            )
 
         # SAFETY CHECK 3: Verify path is actually a worktree
         if not await self._verify_is_worktree(worktree_path):
-            return {
-                "success": False,
-                "error": "Path is not a valid worktree",
-                "safety_check": "path_validation",
-            }, has_uncommitted, backup_path
+            return (
+                {
+                    "success": False,
+                    "error": "Path is not a valid worktree",
+                    "safety_check": "path_validation",
+                },
+                has_uncommitted,
+                backup_path,
+            )
 
         return None, has_uncommitted, backup_path
 
@@ -497,7 +517,6 @@ class WorktreeCoordinator:
                 worktree_path,
                 result.get("error"),
             )
-
 
     async def list_worktrees(
         self, repo_nickname: str | None = None, user_id: str | None = None

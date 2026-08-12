@@ -9,8 +9,7 @@ from oneiric.core.logging import get_logger
 
 from mahavishnu.core.errors import ErrorCode
 
-from ..adapters.base import TerminalAdapter
-from .mcpretentious import SessionNotFoundError, TerminalError
+from ..adapters.base import SessionNotFoundError, TerminalAdapter, TerminalError
 
 logger = get_logger(__name__)
 

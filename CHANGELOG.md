@@ -5,6 +5,91 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.12.0] - 2026-08-12
+
+### Added
+
+- 2026-08-10-wave: Mcpretentious removal + webhook-durable/approval-log/workflow-outcome specs
+- Adopt coverage-ratchet at current coverage
+- approval: Decision_writer — validate-on-write at decision boundary
+- List_approval_history returns validated ApprovalLog structs
+- Mount durable receiver + register webhook_replay as MCP tool
+- precommit: Add Prometheus counters to 3 substrate producers
+- precommit: Retire LockStore/JsonFileLockStore, rewrite tests
+- precommit: Rewrite HypothesisLock as async D-LOCK backed
+- precommit: Wire CLI with asyncio.run wrappers + update error strings
+- substrate-compat: Extract stamp/calltime pattern into shared helper (task 144)
+- webhooks: Receiver emits validated WebhookIngress via dhara.put
+- webhooks: Webhook_replay MCP tool — read-back via from_dict
+- Wire outcome_writer into on_workflow_complete + register workflow_get_outcome MCP tool
+- Wire record_approval_decision into decision flow (replaces delete-on-resolve)
+- workflow: Outcome_writer — validate-on-write at completion boundary
+- Workflow_get_outcome MCP tool — read-back via from_dict
+
+### Changed
+
+- coordinator: Extract preflight safety checks to reduce complexity
+
+### Fixed
+
+- approval-cli: Bind real exception in approval_list_entry_skipped log
+- approval: Log warning when decision_writer persistence is skipped (cross-portfolio consistency)
+- cli: Use timezone-aware datetime in precommit_lock
+- coordinator: Don't log removal_success when provider fails
+- docs: Rewrite worktree-prefixed paths and drop broken Medium URLs
+- ecosystem: Rename nicknames on→oc (oneiric), md→mj (mdinject)
+- Fold multi-agent review findings into D-LOCK plan
+- Gate workflow_get_outcome against workflow_id allowlist (sibling-parity)
+- id-guard: Add validate_approval_id + validate_webhook_id guards
+- indexer: Tolerate RuntimeError from tree-sitter parse failures
+- Log error type not str(err) on record_workflow_outcome failure
+- MCP streamable-http handshake + pydantic-settings 2.15 compat + pool auto-spawn
+- rbac: Gate 3 read-path tools on substrate-permission check
+- Repair 4 broken links in openclaw portfolio spec
+- typing: Widen schemas and permission types to satisfy ty
+- webhooks: Add WEBHOOK_DURABLE_V1_ENABLED flag + runtime gate (Task 1 review follow-ups)
+- workflow-outcome: Env-var gate + producer/consumer getattr runtime gates
+- worktree: Component-aware allow-list check + per-repo subdir allowlist
+- worktree: Widen path-validator default to ~/Projects
+
+### Documentation
+
+- 4 entity wire-up specs + D-LOCK v1.1 update
+- Add Crackerjack C-WIRE implementation plan
+- Add D-LOCK implementation plan
+- approval: Surface async-passthrough concern + Spec coverage map (Task 4 review follow-ups)
+- Mark 4 superseded 2026-06-22 plans shipped + cross-link replacements
+- Note substrate put/get call-boundary contract in 3 producer module docstrings
+- plan: Drop speculative crackerjack.security.critical_hooks gauge
+- plan: M-APPROVAL-LOG — wire approval_log into Mahavishnu (4 tasks)
+- plan: M-WEBHOOK-DURABLE — wire webhook_ingress into Mahavishnu (3 tasks)
+- plan: M-WORKFLOW-OUTCOME — wire workflow_outcome into Mahavishnu (4 tasks)
+- portfolio: Flip D-AUDIT from parked to adopted (substrate shipped)
+- portfolio: Flip D-LOCK to wired (v1 shipped) + link v1.1 follow-up plan
+- portfolio: Flip M-APPROVAL-LOG from parked to wired (substrate shipped)
+- portfolio: Flip M-WORKFLOW-OUTCOME from parked to wired (substrate shipped)
+- portfolio: Flip S-CHANNEL-DURABLE from parked to wired (4th consumer wire-up shipped)
+- portfolio: M-WEBHOOK-DURABLE building (receiver built, not mounted) + add M-WEBHOOK-DURABLE-WIRED follow-up row
+- Reconcile auto-checkpoint review findings
+- Rewrite C-WIRE plan with verified APIs + observability
+- spec: Add Bodai OpenClaw/Hermes-inspired follow-ups portfolio
+- workflow-outcome: Flip status to built per multi-agent review
+
+### Testing
+
+- precommit: Cover duplicate async lock branch
+- precommit: Drop unused r1 assignment + unnecessary f-prefix
+- precommit: Replace vacuous duplicate-lock test + fix DTZ005
+- Round-trip + completion report for M-APPROVAL-LOG
+- Round-trip + completion report for M-WORKFLOW-OUTCOME
+- webhooks: Round-trip + completion report for M-WEBHOOK-DURABLE
+
+### Internal
+
+- cleanup: Remove unused _validate_approval_id + _validate_webhook_id aliases
+- Remove .superprofits/ scratch typo, add to .gitignore
+- workers: Remove terminal-openclaw and terminal-zsh
+
 ## [0.11.0] - 2026-08-03
 
 ### Added

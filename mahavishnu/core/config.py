@@ -14,7 +14,6 @@ Architecture:
 from __future__ import annotations
 
 from enum import StrEnum
-import inspect
 from pathlib import Path
 
 from pydantic import BaseModel, Field, field_validator, model_validator
@@ -2298,14 +2297,12 @@ class MahavishnuSettings(BaseSettings):
             key: val for key, val in state.items() if key not in defaults or defaults[key] != val
         }
         restore_init_kwargs = cls._settings_restore_init_kwarg_names
-        if "init_state" in inspect.signature(restore_init_kwargs).parameters:
-            from pydantic_settings.main import InitState  # ty: ignore[unresolved-import]  # pydantic_settings>=2.16
+        # pydantic_settings>=2.16 added the required ``init_state`` parameter.
+        from pydantic_settings.main import InitState
 
-            last_source = sources[-1]
-            init_state = getattr(last_source, "_init_state", None) or InitState()
-            restore_init_kwargs(cls, init_kwargs, state, init_state)  # ty: ignore[too-many-positional-arguments]
-        else:
-            restore_init_kwargs(cls, init_kwargs, state)
+        last_source = sources[-1]
+        init_state = getattr(last_source, "_init_state", None) or InitState()
+        restore_init_kwargs(cls, init_kwargs, state, init_state)
         return state
 
 
