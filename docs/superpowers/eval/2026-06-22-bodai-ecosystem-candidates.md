@@ -29,9 +29,9 @@ ______________________________________________________________________
 | # | Project | URL | Triage | Verdict |
 |---|---|---|---|---|
 | 1 | **Keystone** | https://www.tacoda.dev/keystone/ | Agent harness with `.claude/skills/` projection, MCP `keystone_show` server, web dashboard. | 🟡 Adjacent — deep-dive (38/100) |
-| 2 | **Milvus "7 best Claude Code context tools"** | https://milvusio.medium.com/... | Article, not a project. | 📰 Reference only |
-| 3 | **"Ghost — a database for our time"** | https://levelup.gitconnected.com/... | Article about a database. | 📰 Reference only |
-| 4 | **"Week 1-5 Open Source GitHub Repos"** | https://vijayasekhar-deepak.medium.com/... | Roundup article. | 📰 Reference only |
+| 2 | **Milvus "7 best Claude Code context tools"** | — | Article, not a project. | 📰 Reference only |
+| 3 | **"Ghost — a database for our time"** | — | Article about a database. | 📰 Reference only |
+| 4 | **"Week 1-5 Open Source GitHub Repos"** | — | Roundup article. | 📰 Reference only |
 | 5 | **claude-mem** | https://github.com/thedotmack/claude-mem | Node.js persistent memory compression, v13.4.0. Overlaps with Session-Buddy memory. | 🟡 Adjacent to Session-Buddy; skip deep-dive (covered by Graphify/PageIndex memory tier) |
 | 6 | **claude-memory-compiler** | https://github.com/coleam00/claude-memory-compiler | Personal KB from Claude Code conversations via Agent SDK. Overlaps with Session-Buddy. | 🟡 Adjacent to Session-Buddy; skip deep-dive |
 | 7 | **Repomix** | https://github.com/yamadashy/repomix | Codebase packer (Node). Likely used by some agents already. | ✅ Probably already-used utility |
@@ -42,13 +42,13 @@ ______________________________________________________________________
 | 12 | **crewAI** | https://github.com/crewAIInc/crewAI | Multi-agent framework. **Already evaluated in `LIBRARY_EVALUATION_2025.md` — recommendation: deprecate in favor of LangGraph.** | ✅ Already-decided |
 | 13 | **Unsloth** | https://github.com/unslothai/unsloth | LLM fine-tuning. Off-topic for orchestrator. | 🔴 Off-topic |
 | 14 | **OpenObserve** | https://github.com/openobserve/openobserve | Open-source Datadog alt: logs/metrics/traces/RUM, S3-backed, 140× cheaper storage. | 🟢 High fit — deep-dive (72/100) |
-| 15 | **"Prompt for senior-dev Python"** | https://levelup.gitconnected.com/... | Article about a prompt. | 📰 Reference only |
+| 15 | **"Prompt for senior-dev Python"** | — | Article about a prompt. | 📰 Reference only |
 | 16 | **Arbor** (project page) | https://ruc-nlpir.github.io/Arbor/ | Autonomous research agent (hypothesis tree) for ML. | 🔴 Off-topic (academic ML) |
 | 17 | **Arbor** (repo) | https://github.com/RUC-NLPIR/Arbor | Same as #16. | 🔴 Off-topic (duplicate URL) |
 | 18 | **Ray** (repo) | https://github.com/ray-project/ray | Distributed Python compute. Massive operational complexity; we have pools. | 🔴 Redundant with pools |
 | 19 | **Ray** (docs) | https://docs.ray.io/en/latest/ | Same as #18. | 🔴 Off-topic (duplicate URL) |
 | 20 | **Firecrawl pricing** | https://www.firecrawl.dev/pricing | Commercial web crawling API. Just deferred crawl4ai; commercial route = low fit. | 🔴 Off-strategy |
-| 21 | **"Production agent harness"** (article) | https://licaomeng.medium.com/... | Article about building an agent pipeline. | 📰 Reference only |
+| 21 | **"Production agent harness"** (article) | — | Article about building an agent pipeline. | 📰 Reference only |
 
 **Net**: 5 deep-dive survivors (Keystone, Emdash, Graphify, PageIndex, OpenObserve). 15 triaged out.
 
