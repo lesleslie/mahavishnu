@@ -188,14 +188,14 @@ State per item. Updated at each layer gate.
 | ID | Repo | State | Plan link | Spec link |
 |---|---|---|---|---|
 | D-LOCK | dhara | wired | [v1 implementation (initial session)](https://github.com/lesleslie/dhara/blob/main/docs/feature-tracking/2026-08-04-d-lock.md) + [v1.1 follow-up plan](https://github.com/lesleslie/dhara/blob/main/docs/superpowers/plans/2026-08-10-d-lock-v1.1-postgres-translation.md) | [spec](https://github.com/lesleslie/dhara/blob/main/docs/superpowers/specs/2026-08-04-d-lock-design.md) |
-| D-AUDIT | dhara | adopted | [completion report](../../../dhara/docs/feature-tracking/2026-08-10-d-audit.md) | — |
+| D-AUDIT | dhara | adopted | [completion report](https://github.com/lesleslie/dhara/blob/main/docs/feature-tracking/2026-08-10-d-audit.md) | — |
 | D-OBJ-SCHEMA | dhara | parked | — | — |
 | D-REPLAY-VEC | dhara | parked | — | — |
-| M-WEBHOOK-DURABLE | mahavishnu | building | [completion report](feature-tracking/2026-08-10-m-webhook-durable.md) | [spec](2026-08-10-m-webhook-durable-design.md) |
+| M-WEBHOOK-DURABLE | mahavishnu | building | [completion report](../../feature-tracking/2026-08-10-m-webhook-durable.md) | [spec](2026-08-10-m-webhook-durable-design.md) |
 | M-WEBHOOK-DURABLE-WIRED | mahavishnu | parked | — | — | (mount receiver in production ingress — plan not yet authored)
-| M-APPROVAL-LOG | mahavishnu | wired | [completion report](feature-tracking/2026-08-10-m-approval-log.md) | [spec](2026-08-10-m-approval-log-design.md) |
+| M-APPROVAL-LOG | mahavishnu | wired | [completion report](../../feature-tracking/2026-08-10-m-approval-log.md) | [spec](2026-08-10-m-approval-log-design.md) |
 | M-WORKER-LEASE | mahavishnu | parked | — | — |
-| M-WORKFLOW-OUTCOME | mahavishnu | wired | [completion report](feature-tracking/2026-08-10-m-workflow-outcome.md) | [spec](2026-08-10-m-workflow-outcome-design.md) |
+| M-WORKFLOW-OUTCOME | mahavishnu | wired | [completion report](../../feature-tracking/2026-08-10-m-workflow-outcome.md) | [spec](2026-08-10-m-workflow-outcome-design.md) |
 | M-TOOL-AUDIT | mahavishnu | parked | — | — |
 | M-TRANSCRIPT-TAIL | mahavishnu | parked | — | — |
 | S-MEM-VERSIONS | session-buddy | parked | — | — |
