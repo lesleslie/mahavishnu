@@ -1,3 +1,12 @@
+---
+status: active
+role: canonical
+date: 2026-08-12
+last_reviewed: 2026-08-12
+topic: bodai-conformance
+title: Bodai Ecosystem Consistency Mechanisms
+---
+
 # Bodai Ecosystem Consistency Mechanisms — Design Spec
 
 **Date:** 2026-08-12 (revised)

@@ -1,3 +1,14 @@
+---
+status: draft
+role: implementation
+date: 2026-08-12
+last_reviewed: 2026-08-12
+topic: bodai-conformance
+title: Bodai Ecosystem Conformance
+blocks_on:
+  - docs/superpowers/specs/2026-08-12-bodai-ecosystem-consistency-design.md
+---
+
 # Bodai Ecosystem Conformance — Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
