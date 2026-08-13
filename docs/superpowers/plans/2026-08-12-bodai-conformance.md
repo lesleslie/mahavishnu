@@ -360,13 +360,14 @@ def test_malformed_pattern_raises_config_error() -> None:
 
 
 def test_unsafe_pattern_raises_config_error() -> None:
+    """ReDoS-unsafe nested-quantifier pattern raises ConfigError at primitive level."""
     primitive = RegexMatchPrimitive()
     config = {
         "path": str(FIXTURES / "clean_repo/README.md"),
         "pattern": r"(a+)+$",
         "capture_group": 1,
     }
-    with pytest.raises(ConfigError):
+    with pytest.raises(ConfigError, match="catastrophic backtracking"):
         primitive.run(config)
 
 
@@ -455,9 +456,20 @@ from crackerjack.services.regex_patterns import ValidatedPattern
 
 
 class RegexMatchPrimitive:
-    """Match a regex pattern against a file. ReDoS-safe via ValidatedPattern."""
+    """Match a regex pattern against a file. ReDoS-safe via ValidatedPattern + primitive-level guard."""
 
     rule_name = "regex_match"
+
+    @staticmethod
+    def _is_unsafe_pattern(pattern: str) -> bool:
+        """Detect catastrophic-backtracking nested-quantifier patterns.
+
+        `ValidatedPattern` emits warnings but does NOT raise. We add this
+        primitive-level guard to fail-closed on ReDoS patterns.
+        """
+        import re
+        # Detect nested quantifiers on overlapping groups: (X+)+ or (X*)* etc.
+        return bool(re.search(r"\([^)]*[+*]\)[+*]", pattern))
 
     def run(self, config: dict[str, Any]) -> PrimitiveResult:
         path = config.get("path")
@@ -466,6 +478,11 @@ class RegexMatchPrimitive:
 
         if not path or not pattern_str:
             raise ConfigError("regex_match requires 'path' and 'pattern'")
+
+        if self._is_unsafe_pattern(pattern_str):
+            raise ConfigError(
+                f"pattern rejected as potentially catastrophic backtracking: {pattern_str!r}"
+            )
 
         try:
             validated = ValidatedPattern(pattern_str)
@@ -692,6 +709,220 @@ cd /Users/les/Projects/crackerjack
 git add crackerjack/services/check_primitives/pyproject_field.py tests/unit/test_pyproject_field.py tests/fixtures/clean_repo/pyproject.toml
 git -c user.email=les@wedgwoodwebworks.com -c user.name=les commit -m "feat(checkerjack): pyproject_field primitive (with value capture)"
 ```
+
+---
+
+### Task 3A: Implement crackerjack yaml_field primitive (round-2 addition for Phase 2)
+
+**Why this task:** Akosha, dhara, session-buddy, and crackerjack store their ports in YAML, not TOML. `pyproject_field` will fail with `TOMLDecodeError` → MHV-513 for these repos. The `yaml_field` primitive is the YAML equivalent of `pyproject_field`.
+
+**Files:**
+- Create: `crackerjack/services/check_primitives/yaml_field.py`
+- Create: `crackerjack/tests/unit/test_yaml_field.py`
+- Create: `crackerjack/tests/fixtures/clean_repo/akosha_style.yaml`
+
+**Interfaces:**
+- Consumes: `yaml.safe_load` (stdlib)
+- Produces: `yaml_field(config) -> PrimitiveResult` with `value: str | None` set to extracted YAML value
+
+- [ ] **Step 1: Write the failing test**
+
+`crackerjack/tests/unit/test_yaml_field.py`:
+
+```python
+"""Tests for the yaml_field crackerjack primitive."""
+from __future__ import annotations
+
+from pathlib import Path
+
+import pytest
+
+from crackerjack.services.check_primitives.yaml_field import YamlFieldPrimitive
+from crackerjack.services.check_primitives.base import (
+    ConfigError,
+    MissingFileError,
+    PrimitiveResult,
+)
+
+FIXTURES = Path(__file__).parent.parent / "fixtures"
+
+
+def test_extracts_yaml_field_with_value() -> None:
+    """Extract nested YAML field and capture value."""
+    yaml_file = FIXTURES / "clean_repo/akosha_style.yaml"
+    yaml_file.write_text(
+        "settings:\n"
+        "  api_port: 8682\n"
+        "  mcp_port: 3002\n"
+    )
+    primitive = YamlFieldPrimitive()
+    config = {
+        "path": str(yaml_file),
+        "field": "settings.api_port",
+    }
+    result = primitive.run(config)
+    assert result.passed is True
+    assert result.value == "8682"
+
+
+def test_missing_field_fails() -> None:
+    yaml_file = FIXTURES / "clean_repo/akosha_style.yaml"
+    yaml_file.write_text("settings:\n  api_port: 8682\n")
+    primitive = YamlFieldPrimitive()
+    config = {"path": str(yaml_file), "field": "settings.nonexistent"}
+    result = primitive.run(config)
+    assert result.passed is False
+    assert result.value is None
+
+
+def test_missing_file_raises() -> None:
+    primitive = YamlFieldPrimitive()
+    config = {"path": "/nonexistent/file.yaml", "field": "settings.api_port"}
+    with pytest.raises(MissingFileError):
+        primitive.run(config)
+
+
+def test_invalid_yaml_raises_config_error(tmp_path: Path) -> None:
+    from crackerjack.services.check_primitives.base import ConfigError
+
+    yaml_file = tmp_path / "invalid.yaml"
+    yaml_file.write_text("foo: [unclosed\n")
+
+    primitive = YamlFieldPrimitive()
+    config = {"path": str(yaml_file), "field": "foo"}
+    with pytest.raises(ConfigError):
+        primitive.run(config)
+```
+
+- [ ] **Step 2: Run test to verify it fails**
+
+Run: `cd /Users/les/Projects/crackerjack && uv run pytest tests/unit/test_yaml_field.py -v`
+Expected: FAIL.
+
+- [ ] **Step 3: Create `check_primitives/yaml_field.py`**
+
+```python
+"""yaml_field primitive: extract a YAML field from a YAML config file."""
+from __future__ import annotations
+
+from pathlib import Path
+from typing import Any
+
+import yaml
+
+from crackerjack.services.check_primitives.base import (
+    ConfigError,
+    MissingFileError,
+    PrimitiveResult,
+)
+
+
+def _resolve_field(data: dict, dotted_path: str) -> Any:
+    """Resolve a dotted path like 'settings.api_port' against nested dicts."""
+    path = dotted_path.split(".")
+    current: Any = data
+    for key in path:
+        if not isinstance(current, dict) or key not in current:
+            return None
+        current = current[key]
+    return current
+
+
+class YamlFieldPrimitive:
+    """Extract a YAML field from a YAML file and verify it exists."""
+
+    rule_name = "yaml_field"
+
+    def run(self, config: dict[str, Any]) -> PrimitiveResult:
+        path = config.get("path", "./settings.yaml")
+        field_path = config.get("field")
+
+        if not field_path:
+            raise ConfigError("yaml_field requires 'field'")
+
+        file_path = Path(path)
+        if not file_path.exists():
+            raise MissingFileError(f"yaml file not found: {path}")
+
+        try:
+            with file_path.open(encoding="utf-8") as f:
+                data = yaml.safe_load(f) or {}
+        except yaml.YAMLError as exc:
+            raise ConfigError(f"invalid YAML in {path}: {exc}") from exc
+
+        value = _resolve_field(data, field_path)
+        if value is None:
+            return PrimitiveResult(
+                passed=False,
+                rule_name=self.rule_name,
+                file=path,
+                message=f"field {field_path!r} not found in {path}",
+                remediation=[f"Add field {field_path!r} to {path}"],
+            )
+
+        return PrimitiveResult(
+            passed=True,
+            rule_name=self.rule_name,
+            file=path,
+            value=str(value),
+        )
+```
+
+- [ ] **Step 4: Run test to verify it passes**
+
+Run: `cd /Users/les/Projects/crackerjack && uv run pytest tests/unit/test_yaml_field.py -v`
+Expected: 4 tests PASS.
+
+- [ ] **Step 5: Register yaml_field in `PRIMITIVES` dict**
+
+In `crackerjack/services/check_primitives/__init__.py`, add the import:
+
+```python
+from crackerjack.services.check_primitives.yaml_field import YamlFieldPrimitive
+```
+
+And add to `PRIMITIVES`:
+```python
+PRIMITIVES: dict[str, type] = {
+    "regex_match": RegexMatchPrimitive,
+    "pyproject_field": PyprojectFieldPrimitive,
+    "yaml_field": YamlFieldPrimitive,        # NEW (round 2)
+    "git_grep": GitGrepPrimitive,
+    "markdown_inventory": MarkdownInventoryPrimitive,
+    "ast_symbol_check": AstSymbolCheckPrimitive,
+}
+```
+
+- [ ] **Step 6: Register MCP tool in `crackerjack/mcp/tools/check_tools.py`**
+
+Add the import:
+```python
+from crackerjack.services.check_primitives.yaml_field import YamlFieldPrimitive
+```
+
+Add the `@mcp_app.tool()` registration (mirror the `check_pyproject_field` block):
+```python
+@mcp_app.tool(name="crackerjack__check_yaml_field")
+def check_yaml_field(config: dict) -> dict:
+    """Extract a YAML field from a YAML file. Returns value=str(extracted)."""
+    try:
+        result = YamlFieldPrimitive().run(config)
+    except ConfigError as exc:
+        return {"error": "config_invalid", "message": str(exc)}
+    except MissingFileError as exc:
+        return {"error": "file_missing", "message": str(exc)}
+    return _serialize(result)
+```
+
+- [ ] **Step 7: Commit**
+
+```bash
+cd /Users/les/Projects/crackerjack
+git add crackerjack/services/check_primitives/yaml_field.py tests/unit/test_yaml_field.py tests/fixtures/clean_repo/akosha_style.yaml crackerjack/services/check_primitives/__init__.py crackerjack/mcp/tools/check_tools.py
+git -c user.email=les@wedgwoodwebworks.com -c user.name=les commit -m "feat(checkerjack): yaml_field primitive for YAML config (Phase 2 prerequisite)"
+```
+
+**Note:** Manual version bump for crackerjack repo — flag as `Skipped — user handles manually`. Do NOT bump `crackerjack/pyproject.toml`.
 
 ---
 
@@ -1593,8 +1824,10 @@ Place the call alongside the other `register_X_tools(mcp)` calls.
 
 - [ ] **Step 4: Verify the tools are registered**
 
-Run: `cd /Users/les/Projects/crackerjack && uv run python -c "from crackerjack.mcp.server_core import mcp; print(sorted(t.name for t in mcp.list_tools() if t.name.startswith('crackerjack__check_')))"`
-Expected: prints 5 tool names.
+Run: `cd /Users/les/Projects/crackerjack && uv run python -c "from crackerjack.mcp.server_core import mcp_app; print(sorted(t.name for t in mcp_app.list_tools() if t.name.startswith('crackerjack__check_')))"`
+Expected: prints 6 tool names (5 original + yaml_field added in Task 3A).
+
+**Note:** The FastMCP variable name in `crackerjack/mcp/server_core.py:163` is `mcp_app` (NOT `mcp`). Using `mcp` will raise `ImportError`.
 
 - [ ] **Step 5: Commit**
 
@@ -1746,19 +1979,35 @@ async def list_tools(self) -> list[dict]:
     ]
 ```
 
-- [ ] **Step 3: Add `check_primitive` helper**
+- [ ] **Step 3: Add `check_primitive` helper (with CallToolResult unpacking)**
 
 ```python
 async def check_primitive(self, primitive_name: str, config: dict) -> dict:
     """Call a crackerjack__check_<name> MCP tool.
 
-    primitive_name is one of: regex_match, pyproject_field, git_grep,
-    markdown_inventory, ast_symbol_check.
+    primitive_name is one of: regex_match, pyproject_field, yaml_field,
+    git_grep, markdown_inventory, ast_symbol_check.
+
+    Unpacks MCP SDK CallToolResult.content[0].text (JSON) into a dict.
     """
-    return await self.call_tool(
+    import json
+
+    raw = await self.call_tool(
         f"crackerjack__check_{primitive_name}",
         {"config": config},
     )
+    # MCP SDK returns CallToolResult (Pydantic model), not a dict
+    if hasattr(raw, "content") and raw.content:
+        try:
+            return json.loads(raw.content[0].text)
+        except (json.JSONDecodeError, IndexError, AttributeError):
+            pass
+    if isinstance(raw, dict):
+        return raw
+    return {
+        "error": "primitive_crash",
+        "message": f"unexpected MCP response shape: {raw!r}",
+    }
 ```
 
 - [ ] **Step 4: Write a unit test for `check_primitive`**
@@ -2457,18 +2706,21 @@ def register_conformance_tools(mcp_app: Any) -> None:
         return report
 ```
 
-- [ ] **Step 2: Register in `mcp/tools/__init__.py`**
+- [ ] **Step 2: Register in `mahavishnu/mcp/server_core.py:_register_tools()`**
 
-Find the existing `register_all_tools` function. Add:
+**Important:** `mcp/tools/__init__.py` does NOT export a `register_all_tools` function. The 27+ tools register inline inside `server_core.py:_register_tools()` (around line 1341). Add the conformance tool registration at the END of `_register_tools()`.
+
+Find `mahavishnu/mcp/server_core.py` and locate the end of `_register_tools()` (a long method that registers many `@self.server.tool()` decorators). Add at the very end:
 
 ```python
+# In server_core.py, at the top of the file with other imports:
 from mahavishnu.mcp.tools.conformance_tools import register_conformance_tools
 
-
-def register_all_tools(mcp_app: Any) -> None:
-    # ... existing registrations ...
-    register_conformance_tools(mcp_app)
+# Inside _register_tools(), at the end of the method:
+register_conformance_tools(self.server)
 ```
+
+The `self.server` is the FastMCP instance that all the inline `@self.server.tool()` decorators register against.
 
 - [ ] **Step 3: Verify the tool is registered**
 
@@ -2715,29 +2967,32 @@ Append to `rules:`:
     required: true
     description: >
       Each repo's port (declared in conformance.yaml) must equal the
-      canonical port in settings/bodai-ports.yaml.
+      canonical port in settings/bodai-ports.yaml. Skip if the repo
+      is a library (oneiric) with no port.
     primitive: composite
     comparison: equal
     steps:
       - name: settings_port
-        primitive: pyproject_field
+        primitive: yaml_field
         capture: port
         config:
-          path: "./<per-repo-settings-path>"
-          field: "<per-repo-key>"
+          path: "./{settings_path}"        # runtime-substituted from conformance.yaml
+          field: "{key}"                   # runtime-substituted from conformance.yaml
       - name: canonical_port
         primitive: regex_match
         capture: port
         config:
           path: "./settings/bodai-ports.yaml"
-          pattern: "## placeholder"
+          pattern: "(?m)^\\s+{repo_name}:\\s+(\\d+|null)\\s*$"   # runtime-substituted
           capture_group: 1
     remediation_hint:
-      - "Update <per-repo-settings-path> to set <key>: <expected-port>"
+      - "Update {settings_path} to set {key}: {expected}"
       - "Or update settings/bodai-ports.yaml to match (requires mahavishnu release)"
 ```
 
-(The runner's `_resolve_port_settings_path` walks `conformance.yaml:port.settings_path` and `conformance.yaml:port.key`; the `canonical_port` step dynamically reads the canonical port from the loaded `bodai-ports.yaml` dict.)
+**Runtime substitution:** the runner's `_resolve_target` (Task 11) substitutes `{repo_name}`, `{settings_path}`, `{key}`, `{expected}` placeholders from each target repo's `conformance.yaml` before invoking the primitive. This eliminates literal `<placeholder>` strings.
+
+**Library skip:** the runner checks `conformance.yaml:port.expected` — if `null`, returns `[CheckResult(..., skipped=True, skip_reason="library repo, no port")]` without running the composite.
 
 - [ ] **Step 5: Commit**
 
@@ -2901,11 +3156,15 @@ grep -n "PORT" /Users/les/Projects/dhara/dhara/core/config.py | head -10
 
 - [ ] **Step 2: Create `dhara/conformance.yaml`**
 
+Dhara stores its port in a Pydantic model (`DharaSettings.port: int | None` at `dhara/core/config.py:195-202`), not in YAML. Use `ast_symbol_check` with `check: "wired"` to read the Field default.
+
 ```yaml
 repo: dhara
 port:
   settings_path: dhara/core/config.py
-  key: storage.port        # adjust based on Step 1
+  check: ast_symbol
+  field_name: port
+  field_type: int
   expected: 8683
   fallback_sources: []
 documented_env_vars:
@@ -2917,7 +3176,7 @@ excluded_paths:
   - CHANGELOG.md
 ```
 
-(Adjust `key:` per Step 1.)
+**Implementation note:** the runner reads `dhara/core/config.py:DharaSettings.port` via AST inspection of the Pydantic class. The runner code (Task 17) must add an `ast_symbol` check that walks class bodies looking for `port: int` annotations with default values.
 
 - [ ] **Step 3: Create CI + commit + bump**
 
@@ -2936,12 +3195,18 @@ Run: `grep -n "port" /Users/les/Projects/session-buddy/settings/session-buddy.ya
 
 - [ ] **Step 2: Create `session-buddy/conformance.yaml`**
 
+**Important:** Session-buddy has a known port inconsistency. `settings/session-buddy.yaml:166` declares `server_port: 3000`, but the actual MCP server in `session_buddy/server_optimized.py:718` listens on port 8678 (hardcoded). The maintainer must resolve this — either:
+1. Fix the YAML to match the actual port (8678), OR
+2. Adjust `expected` to match the YAML (3000) and fix the hardcode
+
+The plan uses option 2 (match YAML) to land the conformance check without breaking the deployment. The maintainer should file a follow-up to align both:
+
 ```yaml
 repo: session_buddy
 port:
   settings_path: settings/session-buddy.yaml
   key: server_port
-  expected: 8678
+  expected: 3000      # MATCHES YAML — see comment above; follow-up needed
   fallback_sources: []
 documented_env_vars:
   - path: session_buddy/server_optimized.py
@@ -3002,18 +3267,22 @@ git -c user.email=les@wedgwoodwebworks.com -c user.name=les commit -m "ci: adopt
 
 - [ ] **Step 1: Create `oneiric/conformance.yaml`**
 
+Oneiric is a library with no MCP server. Its port (`http_port: int = 8000` in `OneiricMCPConfig`) is a different concept — it's a configurable HTTP port for the embedded MCP, not a fixed service port. The conformance check should skip `port_consistency` for oneiric.
+
 ```yaml
 repo: oneiric
 port:
   settings_path: null
   key: null
-  expected: null     # oneiric is a library, no MCP port
+  expected: null     # library; port_consistency skipped
   fallback_sources: []
 excluded_paths:
   - .claude/worktrees/
   - docs/archive/
   - CHANGELOG.md
 ```
+
+**Implementation note:** the runner (Task 11) checks `conformance.yaml:port.expected` — if `null`, the runner returns `[CheckResult(..., skipped=True, skip_reason="library repo, no port")]` without running the `port_consistency` composite. This is already specified in Task 16 Step 4's library-skip note.
 
 - [ ] **Step 2: Create CI + commit + bump**
 
