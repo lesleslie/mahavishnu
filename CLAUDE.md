@@ -25,7 +25,7 @@ Mahavishnu is repo-centric orchestration infrastructure optimized for the Bodai 
 - **Multi-pool orchestration**: Horizontal scaling across local, delegated, cloud workers
 - **WebSocket infrastructure**: Real-time workflow monitoring
 - **Content ingestion**: Webpages, blogs, books, OpenTelemetry traces
-- **MCP tools**: ~174 tools across pool, worker, coordination, messaging, session-buddy, OTel domains
+- **MCP tools**: ~180 decorated tools across 17 profile-gated groups (plus inline core tools registered unconditionally)
 
 **Product posture**: Internal-first. MCP-first. Control-plane scope.
 
@@ -121,10 +121,10 @@ Mahavishnu has three independent pool/executor abstractions with distinct owners
 | Module | Location | Purpose | Scope |
 |--------|----------|---------|-------|
 | **Multi-pool orchestration** | `mahavishnu/pools/` | Production task distribution across MahavishnuPool, SessionBuddyPool, RunPodPool | Cross-server, auto-scaling |
-| **iTerm2 session pool** | `mahavishnu/terminal/pool.py` | macOS iTerm2 terminal session management via AppleScript | Local development only |
+| **Terminal adapter registry** | `mahavishnu/terminal/adapters/` | Terminal backend adapters (`crow`, `mock`, `tmux`) resolved via `get_adapter_class()` | Local development only |
 | **Process pool executor** | `mahavishnu/core/process_pool_executor.py` | Generic ProcessPoolExecutor for blocking CPU-bound operations | Single-process offload |
 
-These modules share no imports or state. `pools/` is the production orchestration layer. `terminal/pool.py` is an iTerm2-specific visualization tool. `process_pool_executor.py` is a low-level utility for event loop unblocking.
+These modules share no imports or state. `pools/` is the production orchestration layer. `terminal/adapters/` resolves the active terminal backend (`adapter_preference` in settings; default is `tmux`). `process_pool_executor.py` is a low-level utility for event loop unblocking.
 
 ### Pool CLI Commands
 
@@ -326,8 +326,8 @@ All MCP tools are registered in `mahavishnu/mcp/tools/` using FastMCP decorators
 
 Tools are gated by the `MAHAVISHNU_TOOL_PROFILE` environment variable:
 
-- `full` (default): All 14 tool groups (~174 tools)
-- `standard`: Core 7 groups (terminal, pool, worker, messaging, git, session-buddy)
+- `full` (default): All 17 tool groups (~180 tools)
+- `standard`: Core 9 groups (terminal, pool, worker, messaging, git, session-buddy)
 - `minimal`: Health probes only
 
 Profile configuration is in `mahavishnu/mcp/tools/profiles.py`. A `discover_tools(query)` meta-tool is always registered so Claude can find unloaded tools.
@@ -498,7 +498,7 @@ Mahavishnu can ingest web content, blogs, and books into the knowledge ecosystem
 - Blogs (RSS/Atom feeds)
 - Books (PDF via pypdf, EPUB via ebooklib)
 
-**Quality Evaluation**: `mahavishnu/ingesters/quality_evaluator.py`
+**Quality Evaluation**: `mahavishnu/ingesters/quality_scorer.py`
 
 - Evaluates content quality before ingestion
 - Scores for readability, technical depth, completeness
@@ -600,7 +600,7 @@ The `examples/` directory contains runnable examples for key features:
 
 1. **Configuration is layered** - Oneiric loads from defaults → YAML → env vars
 
-1. **iTerm2 adapter limitation** - The iTerm2 Python API is designed for standalone scripts, not embedding in existing async apps. Use mcpretentious or mock adapters for pool management.
+1. **Terminal adapters are pluggable** - `mahavishnu/terminal/adapters/` resolves the active backend via `adapter_preference` (default `tmux`). `crow` requires `crow_enabled: true` plus the crow-mcp server; `mock` is the always-available in-process adapter used by the test suite.
 
 ## Process Discipline
 
@@ -636,7 +636,7 @@ canonical template lives in `docs/plans/TEMPLATE.md`.
 
 ### MCP & WebSocket
 
-- **MCP server**: `mahavishnu/mcp/server.py` - FastMCP server
+- **MCP server**: `mahavishnu/mcp/server_core.py` - FastMCP server (entry point; tool registration lives in `mahavishnu/mcp/tools/`)
 - **WebSocket server**: `mahavishnu/websocket/server.py` - Real-time updates
 - **MCP tools**: `mahavishnu/mcp/tools/` - Tool implementations
   - `pool_tools.py` - Pool management (10 tools)
@@ -664,26 +664,44 @@ canonical template lives in `docs/plans/TEMPLATE.md`.
 - **Cloud worker**: `mahavishnu/workers/cloud_worker.py` - OpenAI-compatible cloud worker with MiniMax primary defaults
 - **Task router**: `mahavishnu/workers/task_router.py` - Task classification + model selection
 - **Terminal manager**: `mahavishnu/terminal/manager.py` - Terminal session management
-- **Terminal adapters**:
-  - `iterm2.py` - iTerm2 integration
-  - `mcpretentious.py` - MCP-retentious terminal
+- **Terminal adapters**: `mahavishnu/terminal/adapters/`
+  - `base.py` - `TerminalAdapter` ABC + `TerminalError`/`SessionNotFoundError`
+  - `mock.py` - in-process adapter (always available; used by the test suite)
+  - `crow.py` - crow-mcp PTY adapter (requires `crow_enabled: true` + the crow-mcp MCP server)
+  - `tmux.py` - default terminal adapter (resolved via `adapter_preference: "tmux"`)
 
 ### Data Ingestion
 
 - **OTel ingester**: `mahavishnu/ingesters/otel_ingester.py` - Trace ingestion with pgvector
 - **Content ingester**: `mahavishnu/ingesters/content_ingester.py` - Web/book/blog ingestion
-- **Quality evaluator**: `mahavishnu/ingesters/quality_evaluator.py` - Content quality scoring
+- **Quality scorer**: `mahavishnu/ingesters/quality_scorer.py` - Content quality scoring (used by `ContentIngester.ingest`)
 
-### CLI Sub-commands
+The CLI is split between the package root (cross-cutting subsystems) and `mahavishnu/cli/`
+(workflow + scaffolding helpers). Entry point: `mahavishnu/cli.py`.
 
-- **Backup CLI**: `mahavishnu/cli/backup_cli.py` - Backup/recovery commands
+#### Package-root CLIs (cross-cutting subsystems)
+
 - **Coordination CLI**: `mahavishnu/coordination_cli.py` - Issues/todos/dependencies
 - **Ecosystem CLI**: `mahavishnu/ecosystem_cli.py` - Repository management
 - **Ingestion CLI**: `mahavishnu/ingestion_cli.py` - Content ingestion
 - **Metrics CLI**: `mahavishnu/metrics_cli.py` - Observability metrics
 - **Monitoring CLI**: `mahavishnu/monitoring_cli.py` - Health monitoring
-- **Production CLI**: `mahavishnu/cli/production_cli.py` - Production readiness
 - **Quality CLI**: `mahavishnu/quality_cli.py` - Quality evaluation
+
+#### `mahavishnu/cli/` (workflow + scaffolding helpers)
+
+- **Approval CLI**: `mahavishnu/cli/approval_cli.py` - Approval workflow commands
+- **Docs CLI**: `mahavishnu/cli/docs_cli.py` - Local docs server / generation helpers
+- **Help CLI**: `mahavishnu/cli/help_cli.py` - Self-documenting help output
+- **Index CLI**: `mahavishnu/cli/index_cli.py` - Index/reindex commands
+- **Monitoring CLI** (cli-local): `mahavishnu/cli/monitoring_cli.py` - CLI-side monitoring helpers (sibling of the package-root `monitoring_cli.py`)
+- **Pre-commit CLI**: `mahavishnu/cli/precommit_cli.py` - Pre-commit hook helpers
+- **Rollback CLI**: `mahavishnu/cli/rollback_cli.py` - Rollback / revert commands
+- **Scaffold CLI**: `mahavishnu/cli/scaffold_cli.py` - Project scaffolding
+- **SOP CLI**: `mahavishnu/cli/sop_cli.py` - Standard-operating-procedure runner
+- **Team CLI**: `mahavishnu/cli/team_cli.py` - Team management
+- **Config validator**: `mahavishnu/cli/config_validator.py` - `mahavishnu config validate` entry point
+- **Events**: `mahavishnu/cli/events.py` - Shared CLI event helpers
 
 <!-- CRACKERJACK_START -->
 

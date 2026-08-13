@@ -355,7 +355,7 @@ mahavishnu show-role orchestrator
 mahavishnu mcp start
 ```
 
-The MCP server starts on `http://127.0.0.1:8680` by default and exposes 150+ orchestration and coordination tools across 21 tool groups. Tool exposure is gated by the `MAHAVISHNU_TOOL_PROFILE` environment variable: `full` (default, all groups), `standard` (core 7 groups), `minimal` (health probes only).
+The MCP server starts on `http://127.0.0.1:8680` by default and exposes ~180 FastMCP-decorated tools organized into 17 profile-gated groups (plus inline core tools registered unconditionally). Tool exposure is gated by the `MAHAVISHNU_TOOL_PROFILE` environment variable: `full` (default, all 17 groups), `standard` (core 9 groups), `minimal` (health probes only).
 
 ### 5. Use Admin Shell
 
@@ -527,7 +527,7 @@ See **[Goal-Driven Teams Documentation](docs/GOAL_DRIVEN_TEAMS.md)** for complet
 
 ## MCP Tools
 
-Mahavishnu's MCP server exposes **150+ tools** across 21 tool groups (see `MAHAVISHNU_TOOL_PROFILE` for gating). Core tool groups:
+Mahavishnu's MCP server exposes **~180 tools** across 17 profile-gated groups plus inline core tools (see `MAHAVISHNU_TOOL_PROFILE` for gating). Core tool groups:
 
 ### Pool Management (10 tools)
 
@@ -769,7 +769,7 @@ Important scope note: Mahavishnu is validated for multi-repo orchestration, asyn
 
 - Security hardening (JWT auth, mcp-common canonical JWT package across Bodai)
 - Async base adapter architecture
-- FastMCP-based MCP server (150+ tools, 21 groups, profile-gated)
+- FastMCP-based MCP server (~180 tools across 17 profile-gated groups plus inline core tools)
 - Multi-pool orchestration (local, delegated, K8s, RunPod GPU)
 - Worker orchestration (Claude, MiniMax, OpenClaw terminal/gateway)
 - Cross-repository coordination (issues, todos, dependencies, messaging)
