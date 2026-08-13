@@ -45,6 +45,7 @@ crackerjack/
 │   │   ├── base.py                       # PrimitiveResult with `value` field
 │   │   ├── regex_match.py                # returns value=match.group(capture_group)
 │   │   ├── pyproject_field.py            # returns value=str(extracted_field)
+│   │   ├── yaml_field.py                 # NEW (round 2): yaml.safe_load variant of pyproject_field
 │   │   ├── git_grep.py                   # returns value=None
 │   │   ├── markdown_inventory.py         # returns value=None
 │   │   └── ast_symbol_check.py           # returns value=None
@@ -3205,3 +3206,317 @@ No "TBD" or "TODO". Phase 4 explicitly marked as future scope.
 - Mock pattern matches real async-context manager shape (uses AsyncMock attributes)
 - `__init__.py` imports added where required
 - One task per per-repo adoption (Tasks 18-22) with full content per repo
+
+---
+
+## Round-2 Known Issues & Mitigations
+
+The following issues were surfaced by the second 4-agent review cycle. They are **not blockers for Phase 1** but **must be addressed before Phase 2 lands**. Each is documented with the concrete fix the implementer should apply.
+
+### R2-1 [BLOCKER for Phase 2]: `pyproject_field` is TOML-only; `port_consistency` needs YAML access
+
+**Files affected:** Tasks 16-17 (`port_consistency` rule), Tasks 18-22 (per-repo adoption)
+
+**Issue:** `pyproject_field` uses `tomllib.load` (Task 3). Akosha, dhara, session-buddy, and crackerjack store their ports in YAML (or Python Pydantic, not TOML). The rule will fail with `TOMLDecodeError` → MHV-513 for 5 of 6 sibling repos.
+
+**Mitigation:** Add a `yaml_field` primitive (mirror of `pyproject_field` but uses `yaml.safe_load`). The plan's file structure was updated to include `yaml_field.py`; the implementer must:
+1. Create `crackerjack/services/check_primitives/yaml_field.py` (mirror Task 3's `pyproject_field.py` but with `yaml.safe_load` instead of `tomllib.load`)
+2. Register it in `crackerjack/services/check_primitives/__init__.py` as `PRIMITIVES["yaml_field"] = YamlFieldPrimitive`
+3. Update `port_consistency` rule in `mahavishnu/settings/bodai-doc-rules.yaml` (Task 16 Step 4) to use `primitive: yaml_field` instead of `pyproject_field`
+4. For repos with ports in Pydantic models only (dhara), use `primitive: ast_symbol_check` with `check: "wired"` and `wired_kwarg: "default_factory"` to read the Field default.
+
+### R2-2 [BLOCKER]: `BodaiComponentMCPClient.call_tool()` returns `CallToolResult`, not dict
+
+**Files affected:** Task 10 (helper extension), Task 11 (`_response_to_result`)
+
+**Issue:** The MCP SDK's `session.call_tool()` returns a `CallToolResult` (Pydantic model), not a plain dict. The runner's `_response_to_result` uses `"error" in response` and `response.get(...)` — both raise `TypeError: argument of type 'CallToolResult' is not iterable` on real MCP calls. Tests pass because mocks return dicts.
+
+**Mitigation:** In Task 10 Step 3's `check_primitive` helper, unpack the `CallToolResult`:
+
+```python
+async def check_primitive(self, primitive_name: str, config: dict) -> dict:
+    raw = await self.call_tool(
+        f"crackerjack__check_{primitive_name}",
+        {"config": config},
+    )
+    # Unpack MCP CallToolResult.content[0].text (JSON string) to a dict
+    import json
+    if hasattr(raw, "content") and raw.content:
+        try:
+            return json.loads(raw.content[0].text)
+        except (json.JSONDecodeError, IndexError, AttributeError):
+            pass
+    # Fallback: return raw as-is if it's already a dict
+    if isinstance(raw, dict):
+        return raw
+    return {"error": "primitive_crash", "message": f"unexpected response: {raw!r}"}
+```
+
+### R2-3 [HIGH]: `pattern: "## placeholder"` literal in Task 16 Step 4
+
+**Files affected:** `mahavishnu/settings/bodai-doc-rules.yaml` (port_consistency rule)
+
+**Issue:** The `canonical_port` step's regex pattern is the literal string `"## placeholder"` — it never matches anything. The runner doesn't substitute the canonical port from `bodai-ports.yaml`.
+
+**Mitigation:** Replace with a real regex matching the `bodai-ports.yaml` structure:
+```yaml
+- name: canonical_port
+  primitive: regex_match
+  capture: port
+  config:
+    path: "./settings/bodai-ports.yaml"
+    pattern: "(?m)^\\s+<repo_name>:\\s+(\\d+|null)\\s*$"
+    capture_group: 1
+```
+**Or** (simpler): have the runner pre-substitute `<repo_name>` with `conformance.yaml:repo` before passing config to the primitive. This is the most robust approach — add this to `_resolve_target`:
+
+```python
+def _resolve_target(config: dict, target_path: Path, repo_name: str) -> dict:
+    """Resolve relative paths + substitute {repo_name} placeholder."""
+    resolved = dict(config)
+    if "path" in resolved and not Path(resolved["path"]).is_absolute():
+        resolved["path"] = str(target_path / resolved["path"])
+    # Substitute placeholders
+    for key, value in resolved.items():
+        if isinstance(value, str):
+            resolved[key] = value.replace("{repo_name}", repo_name)
+    return resolved
+```
+
+### R2-4 [HIGH]: `ValidatedPattern` doesn't raise on ReDoS-unsafe patterns
+
+**Files affected:** Task 2 (regex_match primitive), test `test_unsafe_pattern_raises_config_error`
+
+**Issue:** `crackerjack/services/patterns/core.py:124-127` validates pattern safety but only emits warnings — does NOT raise. Task 2's test expects `ConfigError` on `(a+)+$` pattern; the test will FAIL.
+
+**Mitigation:** Add a separate ReDoS guard at the primitive level in `regex_match.py`:
+
+```python
+def run(self, config: dict[str, Any]) -> PrimitiveResult:
+    pattern_str = config.get("pattern", "")
+    # ReDoS guard: detect catastrophic backtracking patterns
+    if self._is_unsafe_pattern(pattern_str):
+        raise ConfigError(
+            f"pattern rejected as potentially catastrophic backtracking: {pattern_str!r}"
+        )
+    # ... rest of implementation
+
+@staticmethod
+def _is_unsafe_pattern(pattern: str) -> bool:
+    """Detect (a+)+ patterns and similar nested quantifiers."""
+    import re
+    # Simple heuristic: nested quantifiers on overlapping groups
+    return bool(re.search(r"\([^)]*[+*]\)[+*]", pattern))
+```
+
+Update the test to use a pattern the heuristic catches (the existing `(a+)+$` already does).
+
+### R2-5 [HIGH]: `register_all_tools` doesn't exist; tools register inline in `server_core.py:_register_tools()`
+
+**Files affected:** Task 12 (MCP tool registration)
+
+**Issue:** `mahavishnu/mcp/tools/__init__.py` exports individual `register_*_tools` functions but NOT a `register_all_tools`. Tools register inline in `mahavishnu/mcp/server_core.py:_register_tools()`.
+
+**Mitigation:** Task 12 should modify `server_core.py:_register_tools()` to add the conformance tool registration call, not look for `register_all_tools`. Find the end of `_register_tools()` and add:
+
+```python
+from mahavishnu.mcp.tools.conformance_tools import register_conformance_tools
+
+# At the end of _register_tools():
+register_conformance_tools(self.server)
+```
+
+### R2-6 [HIGH]: Crackerjack FastMCP variable is `mcp_app`, not `mcp`
+
+**Files affected:** Task 8 Step 4 (verification command)
+
+**Issue:** `crackerjack/mcp/server_core.py:163` defines `mcp_app = FastMCP(...)`. The verification command `from crackerjack.mcp.server_core import mcp` will fail with `ImportError`.
+
+**Mitigation:** Change Task 8 Step 4 verification:
+```bash
+cd /Users/les/Projects/crackerjack && uv run python -c "from crackerjack.mcp.server_core import mcp_app; print(sorted(t.name for t in mcp_app.list_tools() if t.name.startswith('crackerjack__check_')))"
+```
+
+### R2-7 [HIGH]: Per-repo port values — session-buddy/dhara/oneiric specifics
+
+**Files affected:** Tasks 19-22 conformance.yaml templates
+
+**Issue:**
+- **session-buddy**: YAML has `server_port: 3000` but actual MCP port is 8678 (hardcoded in `server_optimized.py:718`). Conformance will fail with MHV-512 unless `expected: 3000` matches YAML.
+- **dhara**: YAML has no port field. Port lives in Pydantic `DharaSettings.port: int | None` field at `dhara/core/config.py:195-202`.
+- **oneiric**: No `settings/oneiric.yaml` exists. Only `config/lite.yaml` and `config/standard.yaml`. Port is `http_port: int = 8000` in `OneiricMCPConfig`.
+
+**Mitigation:**
+
+Task 19 (dhara): Change `conformance.yaml` to use `ast_symbol_check` instead of `yaml_field`:
+```yaml
+repo: dhara
+port:
+  settings_path: dhara/core/config.py
+  check: ast_symbol
+  field_name: port
+  field_type: int
+  expected: 8683
+  fallback_sources: []
+```
+The runner reads `dhara/core/config.py:DharaSettings.port` via AST inspection of the class.
+
+Task 20 (session-buddy): Set `expected: 3000` (matches YAML) and add a NOTE that the actual MCP server port is 8678 (hardcoded); either fix YAML to match or document the discrepancy.
+
+Task 22 (oneiric): Add `expected: null` and set the runner to skip port_consistency when `expected is None`:
+```python
+# In runner.run_rule for port_consistency:
+if rule.get("expected") is None:
+    return [CheckResult(rule_name="port_consistency", ..., skipped=True, skip_reason="library repo, no port")]
+```
+
+### R2-8 [MEDIUM]: Drop `pull_request:` CI trigger (pre-1.0 forbids PRs)
+
+**Files affected:** Task 14, Tasks 18-22 (CI workflow yaml)
+
+**Issue:** `pull_request:` trigger doesn't fire under pre-1.0 merge policy (no PRs exist).
+
+**Mitigation:** Replace `pull_request:` with:
+```yaml
+on:
+  push:
+    branches: [main]
+```
+
+Drop the `pull_request:` block entirely.
+
+### R2-9 [MEDIUM]: `audit_orphans.py` only after Phase 1
+
+**Files affected:** Add a Task 22.5 (post-Phase-2 audit) and Task 24.1 (post-Phase-3 audit)
+
+**Mitigation:** Add to each Phase 2 and Phase 3 task:
+```bash
+- name: Run audit_orphans
+  run: uv run python scripts/audit_orphans.py
+- name: Verify no orphans
+  run: test -z "$(uv run python scripts/audit_orphans.py --json)"
+```
+
+### R2-10 [MEDIUM]: Wire-up Contract missing for Phase 2 + 3
+
+**Files affected:** End of Phase 2 (Task 22) and Phase 3 (Task 24)
+
+**Mitigation:** Add an Integration Contract block at the end of Phase 2 (after Task 22) and Phase 3 (after Task 24), mirroring Task 15 Step 4. Each block specifies:
+- Triggered from: which event/workflow
+- Returns to / updates: which artifacts
+- Demonstrable by: smoke command
+- Rollback signal: alert/log line
+- Observability added: OTel span, Dhara event
+
+### R2-11 [LOW]: Mock test invertibility false-positive
+
+**Files affected:** Task 11 Step 8 (test_version_guard.py)
+
+**Issue:** `side_effect=[{"value": "1.2.3"}, {"value": "1.2.3"}]` for the clean test passes even if swapped.
+
+**Mitigation:** Add specific value assertions to the test stdout:
+```python
+def test_clean_repo_version_guard_passes() -> None:
+    # ... mock setup ...
+    assert result.exit_code == 0
+    assert "pyproject=1.2.3" in result.stdout  # captured value surfaced
+    assert "README=1.2.3" in result.stdout
+```
+
+### R2-12 [LOW]: `check_app` vs `app` naming inconsistency
+
+**Files affected:** Task 7 (crackerjack CLI)
+
+**Issue:** Other crackerjack CLI files (`docs_cli.py`, `mcp_cli.py`) export `app` (not `check_app`).
+
+**Mitigation:** In Task 7, rename `check_app` → `app`:
+```python
+app = typer.Typer(help="Run a single generic check primitive")
+```
+And the registration call becomes:
+```python
+_safe_add_typer(app, "crackerjack.cli.check", "app", "check")
+```
+
+### R2-13 [LOW]: Task 11 monolithic commit (drift bundling risk)
+
+**Files affected:** Task 11 Step 10
+
+**Mitigation:** Split the commit into 3:
+```bash
+git add mahavishnu/services/conformance/ 
+git commit -m "feat(conformance): async runner with composite rule"
+git add mahavishnu/cli/conformance_cli.py mahavishnu/_main_cli.py
+git commit -m "feat(conformance): CLI subcommand and registration"
+git add tests/integration/conformance/
+git commit -m "test(conformance): integration test for version_guard"
+```
+
+### R2-14 [LOW]: capture_name uniqueness check
+
+**Files affected:** Task 11 `_run_composite`
+
+**Mitigation:** Add uniqueness validation:
+```python
+capture_names = [s.get("capture") for s in steps if s.get("capture")]
+if len(set(capture_names)) != len(capture_names):
+    raise ConformanceRulesConfigInvalid(
+        rule_name=rule_name,
+        recovery=[f"composite rule {rule_name!r} has duplicate capture names: {capture_names}"],
+    )
+```
+
+### R2-15 [LOW]: `excluded_paths` from conformance.yaml not wired to runner
+
+**Files affected:** Task 11 runner, all per-repo conformance.yaml
+
+**Mitigation:** In runner, before calling primitives, merge `conformance.yaml:excluded_paths` into each primitive's config:
+```python
+def _merge_excluded_paths(self, target_path: Path, config: dict) -> dict:
+    manifest = target_path / "conformance.yaml"
+    if not manifest.exists():
+        return config
+    with manifest.open() as f:
+        data = yaml.safe_load(f) or {}
+    excludes = data.get("excluded_paths", [])
+    if excludes and "exclude_paths" in config:
+        config["exclude_paths"] = list(set(config["exclude_paths"]) | set(excludes))
+    return config
+```
+
+### R2-16 [LOW]: Print recovery lines in CLI
+
+**Files affected:** Task 11 `conformance_cli.py`
+
+**Mitigation:** Before re-raising `ConformanceDriftDetected`, print recovery hints:
+```python
+try:
+    report_failures(rule_name, results)
+except MahavishnuError as exc:
+    typer.echo(f"[{exc.error_code}]", err=True)
+    for r in exc.recovery:
+        typer.echo(f"  -> {r}", err=True)
+    any_failed = True
+```
+
+### R2-17 [LOW]: YAML 1.1 truthy coercion risk
+
+**Files affected:** yaml_field primitive (when added)
+
+**Mitigation:** Use `yaml.safe_load` with `Loader=yaml.SafeLoader` (default) — this rejects unquoted `yes`/`no`/`on`/`off`/`null` as booleans. If a per-repo YAML has unquoted booleans where the field expects a number, the rule will fail with `ValueError`. Add a regression test for the YAML 1.1 case.
+
+---
+
+## Implementation Order (revised)
+
+For Phase 1, execute Tasks 0-15 in order. The yaml_field primitive (R2-1) is not needed for Phase 1 — defer until Phase 2.
+
+For Phase 2, before executing Tasks 16-22:
+1. Apply R2-1 (add yaml_field primitive + update port_consistency rule)
+2. Apply R2-2 (CallToolResult unpacking in BodaiComponentMCPClient helper)
+3. Apply R2-3 (replace `## placeholder` with real regex OR runtime substitution)
+4. Apply R2-7 (per-repo port values for session-buddy/dhara/oneiric)
+5. Then execute Tasks 18-22
+
+For Phase 3, apply R2-5 (register conformance in server_core.py:_register_tools()) and R2-9/10 (audit_orphans per phase + Wire-up Contract for Phase 2/3).
+
