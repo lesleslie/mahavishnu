@@ -79,8 +79,8 @@ contribution workflow below.
 | `m-workflow-outcome` | M-WORKFLOW-OUTCOME Design Spec |
 | `mcp-common-http-health-route-helper` | mcp-common `register_http_health_route` Helper |
 | `mcpbase-migration` | MCP Server Family: MCPBaseSettings → OneiricMCPConfig Migration |
-| `mcpretentious-removed` | mcpretentious terminal adapter removed — bootstrap followup documenting the fallback chain. |
-| `mcpretentious-runtime-wiring` | Mcpretentious Runtime Wiring Implementation Plan |
+| `mcpretentious-removed` | mcpretentious terminal adapter removed (2026-08-10 wave, commit `34f61672`) — bootstrap followup documenting the fallback chain. *Topic migrated — see `terminal-adapter-architecture` for the live tmux/mock/crow stack.* |
+| `mcpretentious-runtime-wiring` | Mcpretentious Runtime Wiring Implementation Plan. *Historical — adapter removed in 2026-08-10 wave; see `terminal-adapter-architecture`.* |
 | `mcpserver-settings-convention` | MCP Server Settings Convention — `OneiricMCPConfig` + `mcp-common` |
 | `multi-backend-pty` | Multi-Backend PTY Implementation Plan |
 | `multi-tenant-context-packs` | Multi-Tenant Context Packs v1.0 Implementation Plan |
