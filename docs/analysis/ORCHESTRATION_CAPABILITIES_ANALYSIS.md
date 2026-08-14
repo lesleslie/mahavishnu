@@ -11,7 +11,7 @@
 
 ### Current State:
 1. ✅ **Session-Buddy**: Hook-based lifecycle system (can be integrated with terminal sessions)
-2. ✅ **Mahavishnu**: Terminal session orchestration (iTerm2, mcpretentious adapters)
+2. ✅ **Mahavishnu**: Terminal session orchestration (tmux, mock, crow adapters)
 3. ⚠️ **Cloud Run**: MCP server exists but not integrated with orchestration
 4. ⚠️ **Agent Registration**: Custom agents require manual registration in Task tool
 
@@ -235,7 +235,7 @@ class TerminalManager:
 ### Are They Separate?
 
 **YES** - Currently separate systems:
-1. **TerminalManager**: Handles iTerm2, mcpretentious terminals
+1. **TerminalManager**: Handles tmux, mock, crow adapters
 2. **No K8sManager**: Doesn't exist yet
 
 ### Unification Architecture:
