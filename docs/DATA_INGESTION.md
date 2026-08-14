@@ -12,7 +12,7 @@ Ingest web content, blogs, and books into the knowledge ecosystem.
 - Blogs (RSS/Atom feeds)
 - Books (PDF via pypdf, EPUB via ebooklib)
 
-**Quality Evaluation**: `mahavishnu/ingesters/quality_evaluator.py`
+**Quality Evaluation**: `mahavishnu/ingesters/quality_scorer.py`
 
 - Scores for readability, technical depth, completeness
 - Configurable quality thresholds

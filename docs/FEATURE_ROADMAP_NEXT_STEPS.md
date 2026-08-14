@@ -109,7 +109,7 @@ ______________________________________________________________________
 
 ### Priority 1: Content Quality ML Enhancements
 
-**File**: `mahavishnu/ingesters/quality_evaluator.py`
+**File**: `mahavishnu/ingesters/quality_scorer.py`
 **Current State**: Basic stub (84 lines, returns hardcoded `1.0` scores)
 
 **Tasks**:

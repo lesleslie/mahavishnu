@@ -13,7 +13,7 @@
 | Module | Location | Purpose | Scope |
 |--------|----------|---------|-------|
 | **Multi-pool orchestration** | `mahavishnu/pools/` | Task distribution across pool types | Cross-server, auto-scaling |
-| **iTerm2 session pool** | `mahavishnu/terminal/pool.py` | macOS iTerm2 terminal session management | Local development only |
+| **iTerm2 session pool** | `mahavishnu/terminal/adapters/` | Terminal adapter implementations (tmux, mock, crow) | Local development only |
 | **Process pool executor** | `mahavishnu/core/process_pool_executor.py` | CPU-bound operation offload | Single-process |
 
 ## Configuration

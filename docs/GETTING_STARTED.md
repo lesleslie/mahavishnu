@@ -556,7 +556,7 @@ mahavishnu pool execute pool_abc --prompt "..." --timeout 600
 # In settings/mahavishnu.yaml:
 terminal:
   enabled: true
-  adapter_preference: "auto"  # or "iterm2" / "mcpretentious"
+  adapter_preference: "auto"  # or "tmux" / "mock" / "crow"
 
 # Install iTerm2 Python API (if using iTerm2)
 pip install iterm2
