@@ -404,9 +404,9 @@ ______________________________________________________________________
 **Features**:
 
 - Launch 10+ concurrent terminal sessions
-- Hot-swappable adapters (iTerm2 ↔ mcpretentious)
+- Hot-swappable adapters (tmux ↔ mock, with crow adapter available)
 - Connection pooling for reduced overhead
-- iTerm2 profile support
+- tmux session template support
 - Command injection and output capture
 
 ### Not Yet Implemented (Core Orchestration)
