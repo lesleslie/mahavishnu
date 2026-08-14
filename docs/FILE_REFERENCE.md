@@ -38,24 +38,23 @@
 - `mahavishnu/workers/cloud_worker.py` — OpenAI-compatible cloud worker (MiniMax defaults)
 - `mahavishnu/workers/task_router.py` — Task classification + model selection
 - `mahavishnu/terminal/manager.py` — Terminal session management
-- `mahavishnu/terminal/iterm2.py` — iTerm2 integration
-- `mahavishnu/terminal/mcpretentious.py` — MCP-retentious terminal
+- `mahavishnu/terminal/adapters/` — Terminal adapter implementations (tmux, mock, crow, base)
 
 ## Data Ingestion
 
 - `mahavishnu/ingesters/otel_ingester.py` — Trace ingestion with pgvector
 - `mahavishnu/ingesters/content_ingester.py` — Web/book/blog ingestion
-- `mahavishnu/ingesters/quality_evaluator.py` — Content quality scoring
+- `mahavishnu/ingesters/quality_scorer.py` — Content quality scoring
 
 ## CLI Sub-commands
 
-- `mahavishnu/cli/backup_cli.py` — Backup/recovery commands
+- `mahavishnu/backup_cli.py` — Backup/recovery commands
 - `mahavishnu/coordination_cli.py` — Issues/todos/dependencies
 - `mahavishnu/ecosystem_cli.py` — Repository management
 - `mahavishnu/ingestion_cli.py` — Content ingestion
 - `mahavishnu/metrics_cli.py` — Observability metrics
 - `mahavishnu/monitoring_cli.py` — Health monitoring
-- `mahavishnu/cli/production_cli.py` — Production readiness
+- `mahavishnu/production_cli.py` — Production readiness
 - `mahavishnu/quality_cli.py` — Quality evaluation
 - `mahavishnu/routing_cli.py` — Adaptive routing system
 
