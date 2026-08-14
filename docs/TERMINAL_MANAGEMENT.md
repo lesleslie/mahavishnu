@@ -12,8 +12,8 @@ Mahavishnu provides terminal session management capabilities for launching, cont
 - **MCP integration**: Full support via MCP tools
 - **CLI interface**: Command-line tools for terminal operations
 - **Hot-swappable adapters**: Switch terminal backends without restart (Phase 4)
-- **Connection pooling**: Reuse iTerm2 WebSocket connections (Phase 5)
-- **Profile selection**: Use custom iTerm2 profiles per session (Phase 6)
+- **Connection pooling**: Reuse tmux client connections (Phase 5)
+- **Profile selection**: Use named tmux session templates per session (Phase 6)
 
 ## Configuration
 
@@ -27,58 +27,60 @@ terminal:
   capture_lines: 100
   poll_interval: 0.5
   max_concurrent_sessions: 20
-  adapter_preference: "auto"  # Options: "auto", "iterm2", "mcpretentious"
+  adapter_preference: "auto"  # Options: "auto", "tmux", "mock", "crow"
 ```
 
 ### Adapter Options
 
 **Auto-Detection (default: `"auto"`):**
 
-- Automatically detects and uses iTerm2 if available (requires iTerm2 running)
-- Falls back to mcpretentious if iTerm2 is not available
+- Automatically detects and uses tmux if available (recommended for local development)
+- Falls back to mock adapter if tmux is not available
 
-**iTerm2 Adapter (`"iterm2"`):**
+**tmux Adapter (`"tmux"`):**
 
-- Uses native iTerm2 Python API via WebSocket
-- Requires iTerm2 to be running with Python API enabled:
-  - iTerm2 → Preferences → General → Magic → Enable Python API
-- Install: `pip install iterm2`
-- Provides native iTerm2 integration with tabs and windows
+- Uses the system `tmux` binary for persistent, multiplexed terminal sessions
+- Works on any platform with tmux installed (macOS, Linux)
+- Sessions survive across Mahavishnu restarts
+- Install: `brew install tmux` (macOS) or `apt install tmux` (Linux)
 
-**mcpretentious Adapter (`"mcpretentious"`):**
+**mock Adapter (`"mock"`):**
 
-- Uses mcpretentious MCP server for PTY-based terminal management
-- Works with any terminal (not iTerm2-specific)
-- Started on-demand by Mahavishnu when needed
-- No additional installation required (uses uvx)
+- In-memory adapter for tests and CI environments
+- No external dependencies; sessions do not persist past process exit
+
+**crow Adapter (`"crow"`):**
+
+- Bridges to the crow MCP server for browser-based terminal control
+- Useful for remote development environments
 
 ### Advanced Configuration (Optional)
 
-**Connection Pooling (iTerm2):**
+**Connection Pooling (tmux):**
 
 ```yaml
 terminal:
   enabled: true
-  adapter_preference: "iterm2"
-  iterm2_pooling_enabled: true  # Enable connection pooling
-  iterm2_pool_max_size: 3        # Max pooled connections
-  iterm2_pool_idle_timeout: 300  # Close idle connections after 5 minutes
+  adapter_preference: "tmux"
+  tmux_pooling_enabled: true  # Enable connection pooling
+  tmux_pool_max_size: 3        # Max pooled connections
+  tmux_pool_idle_timeout: 300  # Close idle connections after 5 minutes
 ```
 
-**Profile Selection (iTerm2):**
+**Profile Selection (tmux):**
 
 ```yaml
 terminal:
   enabled: true
-  adapter_preference: "iterm2"
-  iterm2_default_profile: "My Profile"  # Default profile for all sessions
+  adapter_preference: "tmux"
+  tmux_default_template: "my-template"  # Default template for all sessions
 ```
 
 **Configuration Benefits:**
 
-- **Pooling**: Reduces connection overhead by reusing WebSocket connections
+- **Pooling**: Reduces connection overhead by reusing tmux client connections
 - **Profiles**: Customize appearance, color schemes, and behavior per session
-- **Auto-detection**: Seamlessly falls back if iTerm2 unavailable
+- **Auto-detection**: Seamlessly falls back to mock adapter if tmux unavailable
 
 ## CLI Usage
 
@@ -260,7 +262,7 @@ Hot-swap to a different terminal adapter without restart.
 
 **Parameters:**
 
-- `adapter_name` (str): Name of adapter to switch to ("iterm2" or "mcpretentious")
+- `adapter_name` (str): Name of adapter to switch to ("tmux", "mock", or "crow")
 - `migrate_sessions` (bool): If True, attempt to migrate existing sessions (experimental)
 
 **Returns:** Dictionary with switch result
@@ -268,9 +270,9 @@ Hot-swap to a different terminal adapter without restart.
 **Example:**
 
 ```python
-# Switch to iTerm2 adapter
+# Switch to tmux adapter
 result = await mcp.call_tool("terminal_switch_adapter", {
-    "adapter_name": "iterm2",
+    "adapter_name": "tmux",
     "migrate_sessions": False
 })
 
@@ -307,28 +309,28 @@ for name, info in adapters['adapters'].items():
     print(f"{name}: {info['status']} - {info['description']}")
 ```
 
-### `terminal_list_profiles` (iTerm2 only)
+### `terminal_list_templates` (tmux only)
 
-List available iTerm2 profiles (requires iTerm2 adapter).
+List available tmux session templates (requires tmux adapter).
 
-**Returns:** Dictionary with list of profile names
+**Returns:** Dictionary with list of template names
 
 **Example:**
 
 ```python
-profiles = await mcp.call_tool("terminal_list_profiles", {})
-if profiles["status"] == "success":
-    print(f"Available profiles: {profiles['profiles']}")
+templates = await mcp.call_tool("terminal_list_templates", {})
+if templates["status"] == "success":
+    print(f"Available templates: {templates['templates']}")
 ```
 
-### `terminal_launch_with_profile` (iTerm2 only)
+### `terminal_launch_with_template` (tmux only)
 
-Launch terminal sessions with a specific iTerm2 profile.
+Launch terminal sessions with a specific tmux template.
 
 **Parameters:**
 
 - `command` (str): Command to run in each terminal
-- `profile_name` (str): iTerm2 profile name to use
+- `template_name` (str): tmux template name to use
 - `count` (int): Number of sessions to launch (default: 1)
 - `columns` (int): Terminal width in characters (default: 120)
 - `rows` (int): Terminal height in lines (default: 40)
@@ -338,10 +340,10 @@ Launch terminal sessions with a specific iTerm2 profile.
 **Example:**
 
 ```python
-# Launch with custom profile
-session_ids = await mcp.call_tool("terminal_launch_with_profile", {
+# Launch with custom template
+session_ids = await mcp.call_tool("terminal_launch_with_template", {
     "command": "qwen",
-    "profile_name": "My Custom Profile",
+    "template_name": "my-custom-template",
     "count": 3
 })
 ```
@@ -423,15 +425,16 @@ async def interactive_session(session_id: str, adapter):
 ## Requirements
 
 - Python 3.10+
-- uvx (for running mcpretentious)
-- mcpretentious package (auto-installed via uvx)
+- tmux (for the tmux adapter; install via system package manager)
 
 ## Architecture
 
 The terminal management system uses a layered architecture:
 
-1. **Adapter Interface** (`TerminalAdapter`): Abstract interface for different backends
-1. **mcpretentious Adapter** (`McpretentiousAdapter`): Communicates with mcpretentious MCP server
+1. **Adapter Interface** (`TerminalAdapter`): Abstract interface for different backends (see `mahavishnu/terminal/adapters/base.py`)
+1. **tmux Adapter** (`TmuxAdapter`): Drives the system `tmux` binary
+1. **mock Adapter** (`MockAdapter`): In-memory adapter for tests
+1. **crow Adapter** (`CrowAdapter`): Bridges to the crow MCP server
 1. **Terminal Manager** (`TerminalManager`): High-level orchestration with concurrency control
 1. **MCP Tools**: 7 tools for Claude Code integration
 1. **CLI Commands**: User-friendly command-line interface
@@ -455,21 +458,21 @@ The terminal management system includes comprehensive error handling:
 
 ## Troubleshooting
 
-### "mcpretentious server not configured"
+### "tmux: command not found"
 
-Ensure uvx is installed:
-
-```bash
-pip install uvx
-```
-
-### "Failed to start mcpretentious server"
-
-The mcpretentious package will be auto-installed by uvx on first use. If it fails, install manually:
+Install tmux via your system package manager:
 
 ```bash
-uvx --from mcpretentious mcpretentious
+# macOS
+brew install tmux
+
+# Debian/Ubuntu
+sudo apt install tmux
 ```
+
+### Adapter fails to start
+
+Check that the configured adapter is installed and on `PATH`. Use `mahavishnu terminal list_adapters` to see which adapters are healthy.
 
 ### High memory usage with many sessions
 
@@ -489,7 +492,6 @@ Use `mahavishnu terminal close all` to force cleanup. The MCP server also includ
 
 Planned features for future releases:
 
-1. **iTerm2 Adapter**: Native iTerm2 integration with WebSocket streaming
 1. **Session Persistence**: Save/restore terminal sessions
 1. **Output Filtering**: Filter output by patterns or regex
 1. **Session Templates**: Predefined session configurations
