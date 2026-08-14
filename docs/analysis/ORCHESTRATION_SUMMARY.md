@@ -13,7 +13,7 @@
 **Current State**:
 - Session-Buddy has SessionStart/SessionEnd hooks
 - Can trigger arbitrary shell commands
-- Mahavishnu has TerminalManager for iTerm2/mcpretentious
+- Mahavishnu has TerminalManager for tmux/mock/crow adapters
 
 **Integration Needed**:
 ```python
@@ -66,7 +66,7 @@ Task(
 **Answer**: ✅ **Same pattern, separate implementations**
 
 **Current State**:
-- ✅ **TerminalManager**: Implemented (iTerm2, mcpretentious)
+- ✅ **TerminalManager**: Implemented (tmux, mock, crow adapters)
 - ❌ **K8sManager**: Doesn't exist yet
 - ❌ **CloudRunManager**: Doesn't exist yet
 
