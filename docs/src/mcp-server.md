@@ -25,9 +25,9 @@ mahavishnu mcp-serve
 **Features**:
 
 - Launch 10+ concurrent terminal sessions
-- Hot-swappable adapters (iTerm2 \<-> mcpretentious)
+- Hot-swappable adapters (tmux \<-> mock, with crow adapter available)
 - Connection pooling for reduced overhead
-- iTerm2 profile support
+- tmux session template support
 - Command injection and output capture
 
 ### Not Yet Implemented
@@ -78,7 +78,7 @@ The terminal management feature is fully implemented and ready to use.
 # settings/mahavishnu.yaml
 terminal:
   enabled: true
-  adapter_preference: "auto"  # Auto-detect iTerm2, fallback to mcpretentious
+  adapter_preference: "auto"  # Auto-detect tmux, fallback to mock
 ```
 
 ```bash
