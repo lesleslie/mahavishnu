@@ -326,15 +326,15 @@ All MCP tools are registered in `mahavishnu/mcp/tools/` using FastMCP decorators
 
 Tools are gated by the `MAHAVISHNU_TOOL_PROFILE` environment variable:
 
-- `full` (default): All 17 tool groups (~180 tools)
-- `standard`: Core 9 groups (terminal, pool, worker, messaging, git, session-buddy)
+- `full` (default): All 17 profile-gated groups (~180 decorated tools)
+- `standard`: Core 9 groups (terminal, pool, worker, messaging, git, session-buddy, coordination, ecosystem, health)
 - `minimal`: Health probes only
 
 Profile configuration is in `mahavishnu/mcp/tools/profiles.py`. A `discover_tools(query)` meta-tool is always registered so Claude can find unloaded tools.
 
 ## Tool Preferences
 
-This project ships a Mahavishnu control plane with ~174 MCP tools. For non-trivial work, prefer Mahavishnu workers over direct local invocations.
+This project ships a Mahavishnu control plane with ~180 MCP tools across 17 profile-gated groups. For non-trivial work, prefer Mahavishnu workers over direct local invocations.
 
 ### When to use Mahavishnu workers
 
@@ -676,16 +676,19 @@ canonical template lives in `docs/plans/TEMPLATE.md`.
 - **Content ingester**: `mahavishnu/ingesters/content_ingester.py` - Web/book/blog ingestion
 - **Quality scorer**: `mahavishnu/ingesters/quality_scorer.py` - Content quality scoring (used by `ContentIngester.ingest`)
 
-The CLI is split between the package root (cross-cutting subsystems) and `mahavishnu/cli/`
-(workflow + scaffolding helpers). Entry point: `mahavishnu/cli.py`.
+### CLI Sub-commands
+
+The CLI is split between the package root (cross-cutting subsystems) and `mahavishnu/cli/` (workflow + scaffolding helpers). Entry point: `mahavishnu/cli.py`.
 
 #### Package-root CLIs (cross-cutting subsystems)
 
+- **Backup CLI**: `mahavishnu/backup_cli.py` - Backup/recovery commands
 - **Coordination CLI**: `mahavishnu/coordination_cli.py` - Issues/todos/dependencies
 - **Ecosystem CLI**: `mahavishnu/ecosystem_cli.py` - Repository management
 - **Ingestion CLI**: `mahavishnu/ingestion_cli.py` - Content ingestion
 - **Metrics CLI**: `mahavishnu/metrics_cli.py` - Observability metrics
 - **Monitoring CLI**: `mahavishnu/monitoring_cli.py` - Health monitoring
+- **Production CLI**: `mahavishnu/production_cli.py` - Production readiness
 - **Quality CLI**: `mahavishnu/quality_cli.py` - Quality evaluation
 
 #### `mahavishnu/cli/` (workflow + scaffolding helpers)
