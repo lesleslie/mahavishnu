@@ -125,8 +125,8 @@ mahavishnu mcp start
                     Verify with `grep -n "adapter_preference" settings/mahavishnu.yaml`.
       == "mock"?  →  Different issue. Crow is not the selected adapter.
                     Check terminal manager construction at the call site.
-      == "iterm2" / "mcpretentious"?  →  Different issue. Verify the relevant
-                    adapter's prerequisites (e.g. iTerm2 AppleScript bridge).
+      == "tmux"?  →  Different issue. Crow is not the selected adapter.
+                    Check terminal manager construction at the call site.
 ```
 
 ## Remediation
