@@ -1344,7 +1344,7 @@ docker stop mahavishnu-websocket
 docker run -d \
     --name mahavishnu-websocket \
     --network host \
-    mahavishnu:v0.1.9
+    mahavishnu:v0.12.0
 ```
 
 ### 11.5 Rollback Verification
