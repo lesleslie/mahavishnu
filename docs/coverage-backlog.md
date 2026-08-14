@@ -427,9 +427,8 @@
 **7 low-coverage file(s)** (1-49%):
 
 - `terminal/manager.py` — 27/151 lines (17.9%)
-- `terminal/adapters/iterm2.py` — 22/113 lines (19.5%)
+- `terminal/adapters/tmux.py` — 22/113 lines (19.5%)  *(was iterm2.py before 2026-08-10 removal)*
 - `terminal/adapters/mock.py` — 16/58 lines (27.6%)
-- `terminal/adapters/mcpretentious.py` — 18/58 lines (31.0%)
 - `terminal/adapters/__init__.py` — 12/38 lines (31.6%)
 - `terminal/adapters/crow.py` — 17/53 lines (32.1%)
 - `terminal/__init__.py` — 3/8 lines (37.5%)
