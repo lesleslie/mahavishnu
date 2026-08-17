@@ -276,10 +276,18 @@ graph TB
         Agno[AgnoAdapter<br/>🟡 Stub Only<br/>116 lines]
     end
 
-    subgraph "Terminal Management"
+    subgraph "Terminal Management (post-2026-08)"
         Terminal[TerminalManager]
-        Mcpretentious[Mcpretentious]
-        ITerm2[ITerm2.Adapter]
+        Tmux[Tmux Adapter (default)]
+        Crow[Crow Adapter (opt-in via crow_enabled)]
+        Mock[Mock Adapter (tests)]
+    end
+
+    subgraph "Pool Management"
+        PoolMgr[PoolManager]
+        MhvPool[MahavishnuPool]
+        SbPool[SessionBuddyPool]
+        RpPool[RunPodPool]
     end
 
     subgraph "Repository Layer"
@@ -310,8 +318,15 @@ graph TB
 
     %% Terminal Management
     App --> Terminal
-    Terminal --> Mcpretentious
-    Terminal --> ITerm2
+    Terminal --> Tmux
+    Terminal --> Crow
+    Terminal --> Mock
+
+    %% Pool Management
+    App --> PoolMgr
+    PoolMgr --> MhvPool
+    PoolMgr --> SbPool
+    PoolMgr --> RpPool
 
     %% Repository Management
     App --> Manager
@@ -324,8 +339,8 @@ graph TB
 
     %% Styling
     style LlamaIndex fill:#90EE90,stroke:#2E7D32,stroke-width:3px
-    style Prefect fill:#FFD700,stroke:#B8860B,stroke-width:2px,stroke-dasharray: 5 5
-    style Agno fill:#FFD700,stroke:#B8860B,stroke-width:2px,stroke-dasharray: 5 5
+    style Prefect fill:#90EE90,stroke:#2E7D32,stroke-width:3px
+    style Agno fill:#90EE90,stroke:#2E7D32,stroke-width:3px
 ```
 
 **Legend**:
