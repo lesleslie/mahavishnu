@@ -138,6 +138,11 @@ flowchart TD
     Strategy -->|round_robin| RR[Next Pool<br/>Cycle Through]
     Strategy -->|random| Rand[Random Pool<br/>Selection]
     Strategy -->|affinity| Aff[Check Task Tags<br/>Pool Affinity]
+    Strategy -->|peer_affinity| Peer{peer_id<br/>in caller_pool_allowlist?}
+    Peer -->|yes| PeerResolve[PeerRouteResolver<br/>resolve_pool(peer_id)]
+    Peer -->|no| Load
+    PeerResolve -->|found| AffExecute[Execute On Peer Pool]
+    PeerResolve -->|not found| Load
 
     Load --> Select1[Select Pool with<br/>Fewest Workers]
     RR --> Select2[Select Next Pool<br/>In Rotation]
