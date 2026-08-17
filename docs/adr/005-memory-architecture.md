@@ -65,15 +65,15 @@ collection_name="mahavishnu_global"
   - Solutions discoverable by related projects
 ```
 
-### 2. AgentDB + PostgreSQL (Agent Memory)
+### 2. Dhara + PostgreSQL (Agent Memory)
 
 **What:**
 
-- Use AgentDB with PostgreSQL backend for agent-specific memory
+- Use Dhara with PostgreSQL backend for agent-specific memory
 - Store high-volume agent data (conversations, tool usage, reasoning traces)
 - Provide PostgreSQL-backed persistent storage with replication support
   **Why:**
-- **Scalability**: AgentDB optimized for agent workloads, handles high-frequency operations
+- **Scalability**: Dhara optimized for agent workloads, handles high-frequency operations
 - **Persistence**: PostgreSQL provides durable, scalable storage with replication
 - **Vector operations**: Built-in similarity search for agent memory
 - **Separation of concerns**: Agent-specific data separated from project memory
@@ -84,17 +84,17 @@ collection_name="mahavishnu_global"
 - Reasoning traces and decision processes
 - Agent context window management
 
-### 3. LlamaIndex + AgentDB (RAG Knowledge Base)
+### 3. LlamaIndex + Dhara (RAG Knowledge Base)
 
 **What:**
 
-- Use LlamaIndex for RAG pipelines with AgentDB as vector store backend
-- Ingest repositories and documents with Ollama embeddings
+- Use LlamaIndex for RAG pipelines with Dhara as vector store backend
+- Ingest repositories and documents with FastEmbed embeddings
 - Provide large-scale semantic search capabilities
   **Why:**
 - **Purpose-built**: LlamaIndex optimized for RAG and vector operations
-- **Ollama integration**: Local embeddings (nomic-embed-text), no external APIs
-- **AgentDB backend**: Persistent vector storage in PostgreSQL
+- **FastEmbed integration**: Local embeddings (all-MiniLM-L6-v2), no external APIs
+- **Dhara backend**: Persistent vector storage in PostgreSQL
 - **Advanced retrieval**: Hybrid search, re-ranking, filters
 - **Large-scale**: Handles millions of documents efficiently
   **Use Cases:**
@@ -128,8 +128,8 @@ graph TB
         SERVICE[Memory Integration Service]
     end
     subgraph "Memory Storage Backends"
-        AGENTDB[AgentDB + PostgreSQL<br/>🤖 Agent Memory]
-        RAG[LlamaIndex + AgentDB<br/>📚 RAG Knowledge Base]
+        AGENTDB[Dhara + pgvector<br/>🤖 Agent Memory]
+        RAG[LlamaIndex + Dhara<br/>📚 RAG Knowledge Base]
         BUDDY[Session-Buddy<br/>🧠 Reflection DB]
     end
     subgraph "Data Flow"
@@ -164,12 +164,12 @@ graph LR
         SYNC[Memory Sync Service]
         DEDUP[Deduplication Engine]
     end
-    subgraph "AgentDB + PostgreSQL"
+    subgraph "Dhara + PostgreSQL"
         AGENT1[Agent Conversations]
         AGENT2[Tool Usage]
         AGENT3[Reasoning Traces]
     end
-    subgraph "LlamaIndex + AgentDB"
+    subgraph "LlamaIndex + Dhara"
         RAG1[Vector Embeddings]
         RAG2[Document Chunks]
         RAG3[Semantic Search]
@@ -205,13 +205,13 @@ graph LR
             │                    │                    │
             ↓                    ↓                    ↓
 ┌──────────────────────┐  ┌──────────────────────┐  ┌──────────────────┐
-│  AgentDB + PostgreSQL│  │  LlamaIndex RAG     │  │  Session-Buddy   │
+│  Dhara + PostgreSQL│  │  LlamaIndex RAG     │  │  Session-Buddy   │
 │  (Agent Memory)      │  │  (Knowledge Base)    │  │  Reflection DB   │
 ├──────────────────────┤  ├──────────────────────┤  ├──────────────────┤
 │ • Agent conversations│  │ • Vector embeddings │  │ • Project memory │
 │ • Tool usage         │  │ • Document chunks   │  │ • Global memory  │
 │ • Reasoning traces   │  │ • Semantic search    │  │ • Insights       │
-│ • Persistent storage │  │ • AgentDB backend    │  │ • Cross-project  │
+│ • Persistent storage │  │ • Dhara backend    │  │ • Cross-project  │
 └──────────────────────┘  └──────────────────────┘  └──────────────────┘
 ```
 
@@ -220,7 +220,7 @@ graph LR
 ### Positive
 
 - **✅ Leverages existing infrastructure**: Session-Buddy already available and proven
-- **✅ Scales for production**: AgentDB + PostgreSQL handles high-volume operations
+- **✅ Scales for production**: Dhara + PostgreSQL handles high-volume operations
 - **✅ Optimized workloads**: Each system does what it's best at
 - **✅ Unified developer experience**: Single API for all memory operations
 - **✅ Cross-project intelligence**: Session-Buddy's unique features fully utilized
@@ -230,7 +230,7 @@ graph LR
 ### Negative
 
 - **❌ Complexity**: More complex than single-system memory (justified by benefits)
-- **❌ Multiple dependencies**: Requires PostgreSQL, AgentDB, Session-Buddy, LlamaIndex
+- **❌ Multiple dependencies**: Requires PostgreSQL, Dhara, Session-Buddy, LlamaIndex
 - **❌ Migration effort**: Need to set up all backends and configure integration
 - **❌ Operational overhead**: More systems to monitor and maintain
 
@@ -255,17 +255,17 @@ graph LR
   **Cons:**
 - Not optimized for high-volume agent operations
 - LlamaIndex would need custom vector store adapter
-- No AgentDB agent-specific features
+- No Dhara agent-specific features
   **Decision:** Rejected because Session-Buddy's DuckDB may not scale for high-frequency agent operations and large-scale RAG workloads.
 
-### Alternative 2: AgentDB Only
+### Alternative 2: Dhara Only
 
-**Approach:** Use AgentDB for all memory storage
+**Approach:** Use Dhara for all memory storage
 **Pros:**
 
 - Single system to manage
 - PostgreSQL backend provides persistence and scalability
-- AgentDB optimized for agent workloads
+- Dhara optimized for agent workloads
   **Cons:**
 - Loses Session-Buddy's cross-project intelligence features
 - Loses automatic insights capture
@@ -280,10 +280,10 @@ graph LR
 - Complete control over architecture
 - Can optimize for Mahavishnu-specific needs
   **Cons:**
-- Reinventing the wheel (Session-Buddy and AgentDB already exist)
+- Reinventing the wheel (Session-Buddy and Dhara already exist)
 - High development and maintenance cost
 - Risk of building inferior solution
-  **Decision:** Rejected because existing solutions (Session-Buddy, AgentDB) are well-designed and proven.
+  **Decision:** Rejected because existing solutions (Session-Buddy, Dhara) are well-designed and proven.
 
 ## Implementation Plan
 
@@ -297,10 +297,10 @@ gantt
     Core Memory Integration           :a1, 2025-01-27, 3d
     Create MahavishnuMemoryIntegration :a2, after a1, 2d
     Set up Session-Buddy collections   :a3, after a1, 2d
-    Add AgentDB + PostgreSQL          :a4, after a1, 3d
+    Add Dhara + PostgreSQL          :a4, after a1, 3d
     Basic unified search              :a5, after a4, 2d
     section RAG Integration
-    LlamaIndex + AgentDB backend      :b1, after a5, 4d
+    LlamaIndex + Dhara backend      :b1, after a5, 4d
     RAG ingestion workflows           :b2, after b1, 3d
     Unified RAG search                :b3, after b2, 2d
     section Cross-Project
@@ -322,12 +322,12 @@ gantt
 
 - Create `MahavishnuMemoryIntegration` class
 - Set up Session-Buddy collections
-- Add AgentDB + PostgreSQL
+- Add Dhara + PostgreSQL
 - Implement basic unified search
 
-### Phase 2: LlamaIndex + AgentDB Backend
+### Phase 2: LlamaIndex + Dhara Backend
 
-- Update `llamaindex_adapter.py` with AgentDB backend
+- Update `llamaindex_adapter.py` with Dhara backend
 - Create RAG ingestion workflows
 - Implement unified search including RAG results
 
@@ -364,18 +364,18 @@ memory_service:
   enable_reflection_search: true
   enable_cross_system_sharing: true
   sync_interval_minutes: 5
-agentdb:
+dhara:
   enabled: true
-  postgres_url: "postgresql://localhost:5432/agentdb"
+  postgres_url: "postgresql://localhost:5432/dhara"
   embedding_dimension: 1536
   connection_pool_size: 10
 llamaindex:
   enabled: true
-  ollama_base_url: "http://localhost:11434"
-  llm_model: "nomic-embed-text"
+  fastembed_base_url: "http://localhost:11434"
+  llm_model: "all-MiniLM-L6-v2"
   chunk_size: 1024
   chunk_overlap: 20
-  vector_store_backend: "agentdb"
+  vector_store_backend: "dhara"
 ```
 
 ## Success Metrics
@@ -398,7 +398,7 @@ llamaindex:
 
 - [Session-Buddy Documentation](https://github.com/lesleslie/session-buddy) - Project memory and cross-project intelligence
 - [LlamaIndex Documentation](https://docs.llamaindex.ai) - RAG pipelines and vector operations
-- [AgentDB Documentation](https://github.com/agentdb/agentdb) - Agent memory storage (verify availability)
+- [Dhara Documentation](https://github.com/dhara/dhara) - Agent memory storage (verify availability)
 - [ADR 004: Adapter Architecture](./004-adapter-architecture.md) - Previous architecture decisions
 
 ## Related Decisions
