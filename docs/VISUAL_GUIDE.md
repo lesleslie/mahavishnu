@@ -413,7 +413,7 @@ ______________________________________________________________________
 sequenceDiagram
     participant User as User
     participant App as MahavishnuApp
-    participant Adapter as OrchestratorAdapter
+    participant PoolMgr as PoolManager
     participant Pool as Pool
     participant Workers as Workers
     participant QC as QualityControl
@@ -425,27 +425,29 @@ sequenceDiagram
     App->>App: Validate repos
     App->>App: Generate workflow_id
 
-    App->>Adapter: execute(task, repos)
+    App->>PoolMgr: route_task(task, caller_kind)
+
+    Note over PoolMgr: caller_kind quota<br/>60 req / 60s window
 
     par Parallel Execution
-        Adapter->>Pool: Route task
+        PoolMgr->>Pool: Route task
         Pool->>Workers: Execute
-        Workers-->>Adapter: Result
+        Workers-->>PoolMgr: Result
     and
-        Adapter->>Pool: Route task
+        PoolMgr->>Pool: Route task
         Pool->>Workers: Execute
-        Workers-->>Adapter: Result
+        Workers-->>PoolMgr: Result
     and
-        Adapter->>Pool: Route task
+        PoolMgr->>Pool: Route task
         Pool->>Workers: Execute
-        Workers-->>Adapter: Result
+        Workers-->>PoolMgr: Result
     end
 
-    Adapter->>QC: Run quality checks
-    QC-->>Adapter: QC results
+    PoolMgr->>QC: Run quality checks
+    QC-->>PoolMgr: QC results
 
     alt All Passed
-        Adapter-->>App: Success
+        PoolMgr-->>App: Success
         App->>App: _finalize_workflow()
         App-->>User: Workflow complete
     else Some Failed
@@ -470,9 +472,12 @@ flowchart TD
     CheckTimeout -->|Yes| ApplyTimeout[Apply asyncio.timeout]
     CheckTimeout -->|No| Execute
 
-    ApplyTimeout --> Execute[Execute on Adapter]
+    ApplyTimeout --> Execute[PoolManager.route_task<br/>caller_kind=claude_code]
 
-    Execute --> Success{Success?}
+    Execute --> Quota[Per-caller-kind quota<br/>60 req / 60s window]
+    Quota --> Persist[Persist to Dhara KV<br/>workflow-results/{id}/]
+    Persist --> Success{Success?}
+
     Success -->|Yes| QC[Run QC Checks]
     Success -->|No| Error2[Return AdapterError]
 
@@ -838,7 +843,8 @@ graph TB
 
         subgraph "Queue Storage"
             Memory[(In-Memory<br/>Fast Access)]
-            OpenSearch[(OpenSearch<br/>Persistent)]
+            JSONDeadLetter[JSON files<br/>~/.mahavishnu/async-dead-letter/]
+            Dhara[Dhara KV<br/>workflow-results/{id}/]
         end
 
         Processor[Retry Processor<br/>Background Task]
@@ -858,10 +864,12 @@ graph TB
     Enqueue --> Policy
     Policy --> Schedule
     Schedule --> Memory
-    Schedule --> OpenSearch
+    Schedule --> JSONDeadLetter
+    Schedule --> Dhara
 
     Memory --> Processor
-    OpenSearch --> Processor
+    JSONDeadLetter --> Processor
+    Dhara --> Processor
 
     Processor --> Check
     Check -->|Yes| Callback
@@ -879,7 +887,8 @@ graph TB
     style Pass fill:#90EE90,stroke:#2E7D32
     style Dead fill:#FF6B6B,stroke:#8B0000
     style Memory fill:#87CEEB,stroke:#4682B4
-    style OpenSearch fill:#F7DC6F,stroke:#B7950B
+    style JSONDeadLetter fill:#F7DC6F,stroke:#B7950B
+    style Dhara fill:#82E0AA,stroke:#27AE60
 ```
 
 ### Retry Policies
