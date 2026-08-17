@@ -263,41 +263,7 @@ sequenceDiagram
     MA-->>PM: Sync complete<br/>325 items synced
 ```
 
-### Performance Comparison
-
-```mermaid
-graph LR
-    subgraph "Before Phase 3"
-        B1[Pool Collection<br/>50 seconds]
-        B2[Memory Sync<br/>Sequential<br/>0.1s per item]
-        B3[Total Time<br/>50s + 32.5s = 82.5s]
-    end
-
-    subgraph "After Phase 3"
-        A1[Pool Collection<br/>Concurrent<br/>2 seconds]
-        A2[Memory Sync<br/>Batched<br/>1 second]
-        A3[Total Time<br/>2s + 1s = 3s]
-    end
-
-    B1 -.->|25x faster| A1
-    B2 -.->|32x faster| A2
-    B3 -.->|27x faster| A3
-
-    style B1 fill:#FF6B6B,stroke:#8B0000
-    style B2 fill:#FF6B6B,stroke:#8B0000
-    style B3 fill:#FF6B6B,stroke:#8B0000
-    style A1 fill:#90EE90,stroke:#2E7D32
-    style A2 fill:#90EE90,stroke:#2E7D32
-    style A3 fill:#90EE90,stroke:#2E7D32
-```
-
-### Cache Performance
-
-```mermaid
-pie title "Cross-Pool Search Performance (60% Cache Hit Rate)"
-    "Cache Hit (&lt;0.1s)" : 60
-    "Cache Miss (1-2s)" : 40
-```
+### Performance Comparison (removed decorative diagram)
 
 ______________________________________________________________________
 
@@ -345,63 +311,7 @@ flowchart TD
     style JWTAuth fill:#F0B27A,stroke:#D68910
 ```
 
-### Security Layers
-
-```mermaid
-graph TB
-    subgraph "Layer 1: Input Validation"
-        V1[Pydantic Models<br/>Type Checking]
-        V2[String Constraints<br/>Length Limits]
-        V3[Pattern Validation<br/>Blocked Characters]
-    end
-
-    subgraph "Layer 2: Signature Verification"
-        S1[HMAC Signature<br/>HS256 Algorithm]
-        S2[Secret Validation<br/>Min 32 chars]
-        S3[No Fallback<br/>Must Verify]
-    end
-
-    subgraph "Layer 3: Token Validation"
-        T1[Expiration Check<br/>Timestamp Verification]
-        T2[Scope Validation<br/>Permission Check]
-        T3[Subscription Type<br/>Service Mapping]
-    end
-
-    subgraph "Layer 4: Response Security"
-        R1[No Secrets in Logs<br/>Redacted Output]
-        R2[Error Messages<br/>Generic Failures]
-        R3[Rate Limiting<br/>DOS Prevention]
-    end
-
-    Request([Incoming Request]) --> V1
-    V1 --> V2
-    V2 --> V3
-    V3 --> S1
-    S1 --> S2
-    S2 --> S3
-    S3 --> T1
-    T1 --> T2
-    T2 --> T3
-    T3 --> R1
-    R1 --> R2
-    R2 --> R3
-    R3 --> Response([Secured Response])
-
-    style Request fill:#82E0AA,stroke:#27AE60
-    style Response fill:#90EE90,stroke:#2E7D32
-    style V1 fill:#BB8FCE
-    style V2 fill:#BB8FCE
-    style V3 fill:#BB8FCE
-    style S1 fill:#85C1E2
-    style S2 fill:#85C1E2
-    style S3 fill:#85C1E2
-    style T1 fill:#F8B500
-    style T2 fill:#F8B500
-    style T3 fill:#F8B500
-    style R1 fill:#EC7063
-    style R2 fill:#EC7063
-    style R3 fill:#EC7063
-```
+### Security Layers (removed decorative diagram)
 
 ______________________________________________________________________
 
@@ -506,203 +416,19 @@ ______________________________________________________________________
 
 ## 6. Performance Optimizations
 
-### Before vs After Comparison
-
-```mermaid
-graph TB
-    subgraph "Phase 3 Performance Improvements"
-        direction TB
-
-        subgraph "Memory Aggregation"
-            B1A[BEFORE<br/>Sequential collection<br/>50 seconds]
-            B1B[Sequential insert<br/>32.5 seconds<br/>0.1s per item]
-            A1[AFTER<br/>Concurrent collection<br/>2 seconds]
-            A2[Batch insert<br/>1 second<br/>25 items/batch]
-
-            B1A ==>|25x faster| A1
-            B1B ==>|32x faster| A2
-        end
-
-        subgraph "Pool Collection"
-            B2[BEFORE<br/>Sequential awaits<br/>10 seconds]
-            A2[AFTER<br/>asyncio.gather<br/>1 second]
-
-            B2 ==>|10x faster| A2
-        end
-
-        subgraph "Cross-Pool Search"
-            B3[BEFORE<br/>HTTP every time<br/>1-2 seconds]
-            A3[AFTER<br/>60% cache hit rate<br/>&lt;0.1s hit / 1-2s miss]
-
-            B3 ==>|10-20x avg faster| A3
-        end
-
-        subgraph "Concurrency"
-            B4[BEFORE<br/>Double semaphore<br/>10 operations]
-            A4[AFTER<br/>Single semaphore<br/>20 operations]
-
-            B4 ==>|2x more| A4
-        end
-
-        subgraph "Pool Routing"
-            B5[BEFORE<br/>O n linear scan<br/>100 ops for 100 pools]
-            A5[AFTER<br/>O log n heap<br/>10 ops for 100 pools]
-
-            B5 ==>|10x faster| A5
-        end
-    end
-
-    style B1A fill:#FF6B6B,stroke:#8B0000
-    style B1B fill:#FF6B6B,stroke:#8B0000
-    style B2 fill:#FF6B6B,stroke:#8B0000
-    style B3 fill:#FF6B6B,stroke:#8B0000
-    style B4 fill:#FF6B6B,stroke:#8B0000
-    style B5 fill:#FF6B6B,stroke:#8B0000
-
-    style A1 fill:#90EE90,stroke:#2E7D32
-    style A2 fill:#90EE90,stroke:#2E7D32
-    style A3 fill:#90EE90,stroke:#2E7D32
-    style A4 fill:#90EE90,stroke:#2E7D32
-    style A5 fill:#90EE90,stroke:#2E7D32
-```
-
-### Throughput Comparison
-
-```mermaid
-xychart-beta
-    title "Workflow Throughput (Workflows Per Minute)"
-    x-axis ["Before", "After"]
-    y-axis "Workflows/Minute" 0 --> 250
-    bar [20, 200]
-    line [20, 200]
-```
+### Before vs After Comparison (removed decorative diagram)
 
 ______________________________________________________________________
 
 ## 7. Security Architecture
 
-### Defense in Depth
-
-```mermaid
-graph TB
-    subgraph "Layer 1: Network Security"
-        N1[JWT Authentication<br/>Multi-Method]
-        N2[Subscription Tokens<br/>Signature Verified]
-        N3[No Default Secrets<br/>Env Variables Only]
-    end
-
-    subgraph "Layer 2: Input Validation"
-        I1[Pydantic Models<br/>Type Safety]
-        I2[String Constraints<br/>Min/Max Length]
-        I3[Pattern Blocking<br/>Dangerous Patterns]
-        I4[Command Whitelist<br/>Container Security]
-    end
-
-    subgraph "Layer 3: Resource Protection"
-        R1[Path Validation<br/>Symlink-Safe resolve]
-        R2[Repository Allowlist<br/>Configured Paths Only]
-        R3[Pool Isolation<br/>Resource Limits]
-    end
-
-    subgraph "Layer 4: Error Handling"
-        E1[Generic Error Messages<br/>No Leakage]
-        E2[Structured Logging<br/>No Secrets]
-        E3[Dead Letter Queue<br/>Failed Operation Tracking]
-    end
-
-    subgraph "Layer 5: Monitoring"
-        M1[OpenTelemetry<br/>Audit Trail]
-        M2[Health Checks<br/>Status Monitoring]
-        M3[Security Scanning<br/>Bandit/Safety]
-    end
-
-    Request([Untrusted Input]) --> N1
-    N1 --> N2
-    N2 --> N3
-    N3 --> I1
-    I1 --> I2
-    I2 --> I3
-    I3 --> I4
-    I4 --> R1
-    R1 --> R2
-    R2 --> R3
-    R3 --> E1
-    E1 --> E2
-    E2 --> E3
-    E3 --> M1
-    M1 --> M2
-    M2 --> M3
-    M3 --> Response([Secured Response])
-
-    style Request fill:#FF6B6B,stroke:#8B0000
-    style Response fill:#90EE90,stroke:#2E7D32
-    style N1 fill:#BB8FCE
-    style N2 fill:#BB8FCE
-    style N3 fill:#BB8FCE
-    style I1 fill:#85C1E2
-    style I2 fill:#85C1E2
-    style I3 fill:#85C1E2
-    style I4 fill:#85C1E2
-    style R1 fill:#F8B500
-    style R2 fill:#F8B500
-    style R3 fill:#F8B500
-    style E1 fill:#EC7063
-    style E2 fill:#EC7063
-    style E3 fill:#EC7063
-    style M1 fill:#82E0AA
-    style M2 fill:#82E0AA
-    style M3 fill:#82E0AA
-```
-
-### Vulnerability Remediation
-
-```mermaid
-pie title "Security Vulnerabilities Fixed (Phase 1)"
-    "Critical Fixed" : 3
-    "High Fixed" : 3
-    "Remaining" : 0
-```
+### Defense in Depth (removed decorative diagram)
 
 ______________________________________________________________________
 
 ## 8. Testing Architecture
 
-### Test Coverage Pyramid
-
-```mermaid
-graph TB
-    subgraph "Testing Pyramid"
-        direction TB
-
-        E2E[E2E Tests<br/>5%<br/>End-to-End Workflows<br/>Slow, Expensive]
-
-        Integration[Integration Tests<br/>15%<br/>Component Interaction<br/>Medium Speed]
-
-        Unit[Unit Tests<br/>50%<br/>Fast, Isolated<br/>Mocked Dependencies]
-
-        Property[Property-Based Tests<br/>30%<br/>Hypothesis<br/>Edge Case Coverage]
-    end
-
-    E2E --> Integration
-    Integration --> Unit
-    Unit --> Property
-
-    style E2E fill:#FF6B6B,stroke:#8B0000
-    style Integration fill:#FFB347,stroke:#FF8C00
-    style Unit fill:#90EE90,stroke:#2E7D32
-    style Property fill:#87CEEB,stroke:#4682B4
-```
-
-### Test Score Evolution
-
-```mermaid
-xychart-beta
-    title "Test Coverage Score Over Time"
-    x-axis ["Initial", "Phase 2", "Current"]
-    y-axis "Coverage Score" 0 --> 100
-    bar [42, 88, 88]
-    line [42, 88, 88]
-```
+### Test Coverage Pyramid (removed decorative diagram)
 
 ### Test Architecture
 
@@ -920,77 +646,13 @@ graph LR
     style Immediate fill:#90EE90,stroke:#2E7D32
 ```
 
-### Retry Timeline Example
-
-```mermaid
-sequenceDiagram
-    participant WF as Workflow
-    participant DLQ as Dead Letter Queue
-    participant CB as Callback
-    participant OS as OpenSearch
-
-    WF->>DLQ: Task Failed
-    DLQ->>DLQ: Create FailedTask<br/>retry_count=0
-
-    Note over DLQ: Policy: EXPONENTIAL<br/>next_retry_at: now + 1min
-
-    DLQ->>OS: Store in OpenSearch
-    DLQ->>DLQ: Add to in-memory queue
-
-    loop Retry Processor
-        DLQ->>DLQ: Check every 60s
-        DLQ->>DLQ: Task ready?
-        alt Ready
-            DLQ->>CB: Execute callback(task)
-            alt Success
-                CB-->>DLQ: Success
-                DLQ->>DLQ: Mark complete
-            else Failure
-                CB-->>DLQ: Failed
-                DLQ->>DLQ: retry_count++
-                DLQ->>DLQ: Calculate next retry<br/>2min, 4min, 8min...
-                DLQ->>OS: Update in OpenSearch
-            end
-        end
-    end
-```
+### Retry Timeline Example (removed decorative sequence)
 
 ______________________________________________________________________
 
 ## 11. Quality Metrics Timeline
 
-### Overall Score Evolution
-
-```mermaid
-xychart-beta
-    title "Mahavishnu Quality Score Over All Phases"
-    x-axis ["Initial", "Phase 1<br/>Security", "Phase 3<br/>Performance", "Phase 2<br/>Testing", "Phase 4<br/>Architecture", "Phase 5<br/>Code Quality", "Phase 6<br/>Documentation", "Final"]
-    y-axis "Quality Score" 0 --> 100
-    line [69, 75, 85, 88, 90, 92, 95, 97]
-```
-
-### Category Breakdown
-
-```mermaid
-radar-beta
-    title "Quality Metrics by Category"
-    axis Security["Security", 95], Performance["Performance", 90], Testing["Testing", 88], Architecture["Architecture", 90], Code Quality["Code Quality", 92], Documentation["Documentation", 95]
-    curve "Initial" : [65, 65, 42, 70, 75, 75]
-    curve "Final" : [95, 90, 88, 90, 92, 95]
-    max 100
-```
-
-### Phase Impact
-
-```mermaid
-pie title "Quality Score Contribution by Phase"
-    "Phase 1: Security (+30)" : 30
-    "Phase 3: Performance (+25)" : 25
-    "Phase 2: Testing (+46)" : 46
-    "Phase 4: Architecture (+20)" : 20
-    "Phase 5: Code Quality (+17)" : 17
-    "Phase 6: Documentation (+20)" : 20
-```
+### Overall Score Evolution (removed decorative chart)
 
 ______________________________________________________________________
 
