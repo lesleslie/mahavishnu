@@ -492,7 +492,7 @@ sequenceDiagram
 
 ```mermaid
 mindmap
-    root((MCP Tools<br/>49 Total))
+    root((MCP Tools<br/>174+ Total))
         Repository Management
             list_repos
             show_repo
@@ -506,6 +506,8 @@ mindmap
             pool_scale
             pool_health
             pool_close
+            pool_route_execute
+            dispatch_to_pool
         Workflow Execution
             trigger_workflow
             get_workflow_status
@@ -526,6 +528,31 @@ mindmap
             resume_workflow
             delete_checkpoint
             cross_pool_search
+        Coordination
+            coord_create_issue
+            coord_create_todo
+            coord_close_issue
+        Worker Tools
+            launch_worker
+            worker_status
+            worker_revoke
+        Git & Messaging
+            send_repository_message
+            broadcast_repository_message
+            acknowledge_repository_message
+        Ecosystem
+            list_adapters
+            adapter_resolve
+            ecosystem_status
+            clone_refactor_group
+        Health
+            get_health
+            get_liveness
+            get_readiness
+        OTel
+            ingest_otel_traces
+            search_otel_traces
+            get_otel_trace
 ```
 
 ______________________________________________________________________
