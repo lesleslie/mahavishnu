@@ -154,66 +154,7 @@ graph TB
     style DEDUP fill:#FFA500
 ```
 
-### Component Details
-
-```mermaid
-graph LR
-    subgraph "Memory Integration Service"
-        API[Unified API]
-        SEARCH[Cross-System Search]
-        SYNC[Memory Sync Service]
-        DEDUP[Deduplication Engine]
-    end
-    subgraph "Dhara + PostgreSQL"
-        AGENT1[Agent Conversations]
-        AGENT2[Tool Usage]
-        AGENT3[Reasoning Traces]
-    end
-    subgraph "LlamaIndex + Dhara"
-        RAG1[Vector Embeddings]
-        RAG2[Document Chunks]
-        RAG3[Semantic Search]
-    end
-    subgraph "Session-Buddy"
-        BUDDY1[Project Memory]
-        BUDDY2[Global Intelligence]
-        BUDDY3[Cross-Project Insights]
-    end
-    API --> SEARCH
-    API --> SYNC
-    SEARCH --> DEDUP
-    SEARCH --> AGENT1
-    SEARCH --> RAG1
-    SEARCH --> BUDDY1
-    style API fill:#FFD700
-    style SEARCH fill:#FFA500
-    style SYNC fill:#FFA500
-    style DEDUP fill:#FFA500
-```
-
-**Legacy ASCII Diagram** (for reference):
-
-```
-┌───────────────────────────────────────────────────────────────────┐
-│          Mahavishnu Memory Interface Service                      │
-├───────────────────────────────────────────────────────────────────┤
-│  • Unified search across all memory systems                      │
-│  • Bidirectional memory sharing with Session-Buddy               │
-│  • Memory deduplication and intelligent merging                  │
-│  • Cross-system memory sharing protocols                         │
-└───────────────────────────────────────────────────────────────────┘
-            │                    │                    │
-            ↓                    ↓                    ↓
-┌──────────────────────┐  ┌──────────────────────┐  ┌──────────────────┐
-│  Dhara + PostgreSQL│  │  LlamaIndex RAG     │  │  Session-Buddy   │
-│  (Agent Memory)      │  │  (Knowledge Base)    │  │  Reflection DB   │
-├──────────────────────┤  ├──────────────────────┤  ├──────────────────┤
-│ • Agent conversations│  │ • Vector embeddings │  │ • Project memory │
-│ • Tool usage         │  │ • Document chunks   │  │ • Global memory  │
-│ • Reasoning traces   │  │ • Semantic search    │  │ • Insights       │
-│ • Persistent storage │  │ • Dhara backend    │  │ • Cross-project  │
-└──────────────────────┘  └──────────────────────┘  └──────────────────┘
-```
+### Component Details (removed decorative diagram)
 
 ## Consequences
 
@@ -287,36 +228,7 @@ graph LR
 
 ## Implementation Plan
 
-### Implementation Timeline
-
-```mermaid
-gantt
-    title Memory Architecture Implementation Timeline
-    dateFormat  YYYY-MM-DD
-    section Foundation
-    Core Memory Integration           :a1, 2025-01-27, 3d
-    Create MahavishnuMemoryIntegration :a2, after a1, 2d
-    Set up Session-Buddy collections   :a3, after a1, 2d
-    Add Dhara + PostgreSQL          :a4, after a1, 3d
-    Basic unified search              :a5, after a4, 2d
-    section RAG Integration
-    LlamaIndex + Dhara backend      :b1, after a5, 4d
-    RAG ingestion workflows           :b2, after b1, 3d
-    Unified RAG search                :b3, after b2, 2d
-    section Cross-Project
-    Session-Buddy project registration :c1, after b3, 2d
-    Define dependencies from repos    :c2, after c1, 1d
-    Enable cross-project search        :c3, after c2, 2d
-    section Advanced
-    Memory sharing protocols           :d1, after c3, 3d
-    Knowledge graph visualization     :d2, after d1, 3d
-    Memory sync service               :d3, after d2, 2d
-    section Quality
-    Comprehensive test suite          :e1, after d3, 3d
-    Performance benchmarks            :e2, after e1, 2d
-    Complete documentation            :e3, after e1, 2d
-    Usage examples                    :e4, after e3, 1d
-```
+### Implementation Timeline (removed decorative gantt)
 
 ### Phase 1: Core Memory Integration (Foundation)
 
