@@ -342,65 +342,16 @@ ______________________________________________________________________
 
 ## 9. Provider Feature Matrix
 
-```mermaid
-graph TD
-    subgraph "Features"
-        FEATURE1[✅ Cross-Platform]
-        FEATURE2[🔒 Privacy-First]
-        FEATURE3[⚡ Fast Inference]
-        FEATURE4[💰 Cost]
-        FEATURE5[🏆 Quality]
-        FEATURE6[🔧 Setup Complexity]
-    end
+See the table below for the canonical feature comparison. (Removed decorative graph-rendering-of-table per wave-8 cleanup.)
 
-    subgraph "FastEmbed"
-        FE1[✅ Intel Mac]
-        FE2[✅ Local]
-        FE3[⚡⚡⚡ 20ms]
-        FE4[💰 Free]
-        FE5[⭐⭐ Good]
-        FE6[🟢 Low]
-    end
-
-    subgraph "Ollama"
-        O1[✅ Intel Mac]
-        O2[✅ Local]
-        O3[⚡⚡ 80ms]
-        O4[💰 Free]
-        O5[⭐⭐⭐ Very Good]
-        O6[🟡 Medium]
-    end
-
-    subgraph "OpenAI"
-        AI1[✅ Any Platform]
-        AI2[❌ Cloud]
-        AI3[⚡⚡ 250ms]
-        AI4[💵 Pay-per-use]
-        AI5[⭐⭐⭐⭐ Best]
-        AI6[🟢 Low]
-    end
-
-    style FE1 fill:#90EE90
-    style FE2 fill:#90EE90
-    style FE3 fill:#90EE90
-    style FE4 fill:#90EE90
-    style FE5 fill:#FFFF00
-    style FE6 fill:#90EE90
-
-    style O1 fill:#87CEEB
-    style O2 fill:#87CEEB
-    style O3 fill:#FFFF00
-    style O4 fill:#87CEEB
-    style O5 fill:#90EE90
-    style O6 fill:#FFFF00
-
-    style AI1 fill:#90EE90
-    style AI2 fill:#FFB6C1
-    style AI3 fill:#FFFF00
-    style AI4 fill:#FFB6C1
-    style AI5 fill:#90EE90
-    style AI6 fill:#90EE90
-```
+| Feature | FastEmbed | Ollama | OpenAI |
+|---------|-----------|--------|--------|
+| Cross-Platform | ✅ Intel Mac | ✅ Intel Mac | ✅ Any Platform |
+| Privacy-First | ✅ Local | ✅ Local | ❌ Cloud |
+| Fast Inference | �⚡⚡ 20ms | ⚡⚡ 80ms | ⚡� 250ms |
+| Cost | 💰 Free | 💰 Free | 💵 Pay-per-use |
+| Quality | ⭐⭐ Good | ⭐⭐⭐ Very Good | ⭐⭐⭐⭐ Best |
+| Setup Complexity | 🟢 Low | 🟡 Medium | � Low |
 
 ______________________________________________________________________
 
@@ -491,8 +442,6 @@ ______________________________________________________________________
 # Your Documentation
 
 ## Architecture Overview
-
-![Embedding Architecture](diagrams/embedding-architecture.png)
 
 See [diagrams/embedding-architecture.md](diagrams/embedding-architecture.md) for source.
 ```
