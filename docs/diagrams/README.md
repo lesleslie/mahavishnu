@@ -9,17 +9,7 @@ ______________________________________________________________________
 
 ### System Architecture at a Glance
 
-```mermaid
-graph LR
-    USER[Your Code] --> MAHAVISHNU[Mahavishnu<br/>Embeddings]
-    MAHAVISHNU --> FAST[🏭 FastEmbed<br/>Production]
-    MAHAVISHNU --> OLLAMA[🔧 Ollama<br/>Dev]
-    MAHAVISHNU --> OPENAI[☁️ OpenAI<br/>Cloud]
-
-    style FAST fill:#90EE90
-    style OLLAMA fill:#87CEEB
-    style OPENAI fill:#FFD700
-```
+(See [embedding-architecture.md](embedding-architecture.md) for the full canonical diagram.)
 
 ______________________________________________________________________
 
@@ -97,15 +87,7 @@ flowchart TD
 
 #### Step 2: Understand Configuration
 
-```mermaid
-flowchart LR
-    DEFAULTS[1. Code Defaults] --> YAML[2. mahavishnu.yaml]
-    YAML --> LOCAL[3. local.yaml]
-    LOCAL --> ENV[4. Environment Variables]
-    ENV --> FINAL[Final Config]
-
-    style FINAL fill:#90EE90,stroke:#333,stroke-width:3px
-```
+(See [Configuration](../EMBEDDINGS_SETUP_GUIDE.md#configuration-examples) section.)
 
 **Configuration Priority** (highest to lowest):
 4\. ✅ Environment Variables
@@ -120,34 +102,11 @@ ______________________________________________________________________
 
 ### Speed Comparison (Intel Mac x86_64)
 
-```mermaid
-xychart-beta
-    title "Embedding Speed (lower is better)"
-    x-axis ["FastEmbed", "Ollama", "OpenAI"]
-    y-axis "Milliseconds" 0 --> 300
-    bar [20, 80, 250]
-```
+See `embedding-architecture.md` for the canonical benchmark chart.
 
 ### Quality vs Speed Trade-off
 
-```mermaid
-graph LR
-    subgraph "Fast ⚡"
-        SPEED1[FastEmbed<br/>20ms<br/>⭐⭐ Quality]
-    end
-
-    subgraph "Balanced ⚖️"
-        SPEED2[Ollama<br/>80ms<br/>⭐⭐⭐ Quality]
-    end
-
-    subgraph "Quality 🏆"
-        SPEED3[OpenAI<br/>250ms<br/>⭐⭐⭐⭐ Quality]
-    end
-
-    style SPEED1 fill:#90EE90
-    style SPEED2 fill:#87CEEB
-    style SPEED3 fill:#FFD700
-```
+See `embedding-architecture.md` for the canonical trade-off chart.
 
 ______________________________________________________________________
 

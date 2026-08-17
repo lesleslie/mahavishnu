@@ -11,58 +11,11 @@ ______________________________________________________________________
 
 ### Architecture at a Glance
 
-```mermaid
-graph LR
-    subgraph "Your Code"
-        APP[Your Application]
-    end
-
-    subgraph "Mahavishnu Embeddings"
-        CONFIG[EmbeddingConfig<br/>Oneiric]
-        SERVICE[EmbeddingService]
-    end
-
-    subgraph "Providers"
-        FAST[🏭 FastEmbed<br/>Production]
-        OLLAMA[🔧 Ollama<br/>Development]
-        OPENAI[☁️ OpenAI<br/>Cloud]
-    end
-
-    APP --> CONFIG
-    CONFIG --> SERVICE
-    SERVICE --> FAST
-    SERVICE --> OLLAMA
-    SERVICE --> OPENAI
-
-    style FAST fill:#90EE90
-    style OLLAMA fill:#87CEEB
-    style OPENAI fill:#FFD700
-```
+See `diagrams/embedding-architecture.md` for the canonical architecture diagram.
 
 ### Provider Selection Decision Tree
 
-```mermaid
-flowchart TD
-    START([Need Embeddings]) --> ENV{Environment?}
-
-    ENV -->|Production| PROD{Need<br/>Privacy?}
-    ENV -->|Development| DEV{Local<br/>Machine?}
-
-    PROD -->|Yes| FAST[🏭 FastEmbed]
-    PROD -->|No| CLOUD{Have<br/>API Key?}
-    DEV -->|Yes| OLLAMA[🔧 Ollama]
-    DEV -->|No| CLOUD
-
-    CLOUD -->|Yes| OPENAI[☁️ OpenAI]
-    CLOUD -->|No| FALLBACK{FastEmbed<br/>Available?}
-    FALLBACK -->|Yes| FAST
-    FALLBACK -->|No| ERROR[❌ No provider]
-
-    style FAST fill:#90EE90,stroke:#333,stroke-width:3px
-    style OLLAMA fill:#87CEEB,stroke:#333,stroke-width:3px
-    style OPENAI fill:#FFD700,stroke:#333,stroke-width:3px
-    style ERROR fill:#FFB6C1,stroke:#333,stroke-width:3px
-```
+See `diagrams/embedding-architecture.md` for the canonical provider selection diagram.
 
 ______________________________________________________________________
 
@@ -150,19 +103,7 @@ ______________________________________________________________________
 
 Mahavishnu uses a **layered configuration loading** pattern (Oneiric):
 
-```mermaid
-flowchart LR
-    DEFAULTS[1. Default Values<br/>in Code] --> YAML1[2. mahavishnu.yaml<br/>git-tracked]
-    YAML1 --> YAML2[3. local.yaml<br/>git-ignored]
-    YAML2 --> ENV[4. Environment Variables<br/>MAHAVISHNU_EMBEDDINGS_*]
-    ENV --> CONFIG[Final EmbeddingConfig]
-
-    style DEFAULTS fill:#E6E6FA
-    style YAML1 fill:#DDA0DD
-    style YAML2 fill:#DA70D6
-    style ENV fill:#BA55D3
-    style CONFIG fill:#90EE90,stroke:#333,stroke-width:3px
-```
+See `diagrams/embedding-architecture.md` for the canonical layered-config diagram.
 
 **Priority Order** (higher overrides lower):
 
@@ -302,34 +243,9 @@ ______________________________________________________________________
 
 ### Model Dimensions & Quality Visualization
 
-```mermaid
-graph LR
-    subgraph "FastEmbed Models 🏭"
-        FE1[bge-small<br/>384-d<br/>⚡⚡⚡ Fast<br/>⭐⭐ Quality]
-        FE2[bge-base<br/>768-d<br/>⚡⚡ Medium<br/>⭐⭐⭐ Quality]
-        FE3[bge-large<br/>1024-d<br/>⚡ Slow<br/>⭐⭐⭐⭐ Quality]
-    end
+See `diagrams/embedding-architecture.md` for the canonical model dimension chart.
 
-    subgraph "Ollama Models 🔧"
-        O1[nomic-embed-text<br/>768-d<br/>⚡⚡ Medium<br/>⭐⭐⭐ Quality]
-        O2[mxbai-embed-large<br/>1024-d<br/>⚡ Slow<br/>⭐⭐⭐ Quality]
-    end
-
-    subgraph "OpenAI Models ☁️"
-        AI1[text-embedding-3-small<br/>1536-d<br/>⚡⚡⚡ Fast<br/>⭐⭐⭐⭐ Best]
-        AI2[text-embedding-3-large<br/>3072-d<br/>⚡⚡ Medium<br/>⭐⭐⭐⭐ Best]
-    end
-
-    style FE1 fill:#90EE90
-    style FE2 fill:#98FB98
-    style FE3 fill:#00FF7F
-    style O1 fill:#87CEEB
-    style O2 fill:#00BFFF
-    style AI1 fill:#FFD700
-    style AI2 fill:#FFA500
-```
-
-**📏 Dimension Guide:**
+**� Dimension Guide:**
 
 - **384-d**: Fastest, good for quick similarity matching
 - **768-d**: Balanced speed/quality, good for most use cases
@@ -403,13 +319,7 @@ ______________________________________________________________________
 
 ### Visual Performance Comparison
 
-```mermaid
-xychart-beta
-    title "Embedding Performance Comparison (Intel Mac x86_64)"
-    x-axis ["FastEmbed", "Ollama", "OpenAI"]
-    y-axis "Time (milliseconds)" 0 --> 350
-    bar [20, 80, 250]
-```
+See `diagrams/embedding-architecture.md` for the canonical benchmark chart.
 
 **📊 Key Insights:**
 
