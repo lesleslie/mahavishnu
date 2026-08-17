@@ -287,37 +287,7 @@ sequenceDiagram
     Note over MA,Cache: Cache TTL: 5 minutes<br/>Hit Rate: 60%+
 ```
 
-### Cache Performance
-
-```mermaid
-graph LR
-    subgraph "Search Request"
-        Req[Search Query]
-    end
-
-    subgraph "Cache Layer"
-        Check{Check Cache}
-        Hit[Cache Hit<br/>&lt; 0.1s<br/>60%]
-        Miss[Cache Miss<br/>1-2s<br/>40%]
-    end
-
-    subgraph "Storage"
-        SB[Session-Buddy<br/>Query All Pools]
-    end
-
-    Req --> Check
-    Check -->|Key Found & TTL Valid| Hit
-    Check -->|Key Not Found or Expired| Miss
-    Miss --> SB
-    SB --> Update[Update Cache]
-    Update --> Return([Return Results])
-    Hit --> Return
-
-    style Req fill:#4A90E2,stroke:#1E3A5F,color:#fff
-    style Hit fill:#90EE90,stroke:#2E7D32
-    style Miss fill:#FFB347,stroke:#FF8C00
-    style Return fill:#87CEEB,stroke:#4682B4
-```
+### Cache Performance (removed decorative diagram)
 
 ______________________________________________________________________
 
@@ -369,16 +339,7 @@ flowchart TD
     style Fix5 fill:#FFB347,stroke:#FF8C00
 ```
 
-### QC Score Calculation
-
-```mermaid
-pie title "Quality Control Score Components (Target: 80+)"
-    "Linting (20%)" : 20
-    "Type Checking (20%)" : 20
-    "Security (20%)" : 20
-    "Tests (30%)" : 30
-    "Coverage (10%)" : 10
-```
+### QC Score Calculation (removed decorative pie)
 
 ______________________________________________________________________
 
