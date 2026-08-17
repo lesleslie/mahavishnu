@@ -66,25 +66,25 @@ ______________________________________________________________________
 
 ```mermaid
 flowchart TD
-    START([Need Embeddings]) -> CHECK{Environment?}
+    START(["Need Embeddings"]) --> CHECK{Environment?}
 
     CHECK -->|Production| PROD{Need<br/>Privacy?}
     CHECK -->|Development| DEV{Local<br/>Machine?}
     CHECK -->|Cloud| CLOUD{Have<br/>API Key?}
 
-    PROD -->|Yes| FASTEMBED1[🏭 FastEmbed<br/>✅ Cross-platform<br/>⚡ Fast<br/>🔒 Local]
+    PROD -->|Yes| FASTEMBED1["🏭 FastEmbed<br/>✅ Cross-platform<br/>⚡ Fast<br/>🔒 Local"]
     PROD -->|No| CLOUD
 
-    DEV -->|Yes| OLLAMA[🔧 Ollama<br/>🏠 Local service<br/>🔒 Private<br/>✅ Works on Intel Macs]
+    DEV -->|Yes| OLLAMA["🔧 Ollama<br/>🏠 Local service<br/>🔒 Private<br/>✅ Works on Intel Macs"]
     DEV -->|No| CLOUD
 
-    CLOUD -->|Yes| OPENAI[☁️ OpenAI API<br/>🏆 Best quality<br/>💰 Pay-per-use<br/>⚡ Zero setup]
+    CLOUD -->|Yes| OPENAI["☁️ OpenAI API<br/>🏆 Best quality<br/>💰 Pay-per-use<br/>⚡ Zero setup"]
     CLOUD -->|No| FALLBACK{FastEmbed<br/>Available?}
 
     FALLBACK -->|Yes| FASTEMBED1
-    FALLBACK -->|No| ERROR[❌ No provider<br/>available]
+    FALLBACK -->|No| ERROR["❌ No provider<br/>available"]
 
-    FASTEMBED1 --> END([✅ Generate Embeddings])
+    FASTEMBED1 --> END(["✅ Generate Embeddings"])
     OLLAMA --> END
     OPENAI --> END
     ERROR --> END
@@ -101,32 +101,32 @@ ______________________________________________________________________
 
 ```mermaid
 flowchart TD
-    START([Load EmbeddingConfig]) -> LAYER1{Layer 1:<br/>Default Values}
+    START(["Load EmbeddingConfig"]) --> LAYER1{Layer 1:<br/>Default Values}
 
     LAYER1 -->|Apply| LAYER2{Layer 2:<br/>settings/mahavishnu.yaml}
-    LAYER2 -->|File exists?| LOAD2[Load YAML Config]
-    LAYER2 -->|No file| SKIP2[Skip]
+    LAYER2 -->|File exists?| LOAD2["Load YAML Config"]
+    LAYER2 -->|No file| SKIP2["Skip"]
     LAYER2 -->|Invalid| SKIP2
 
     LOAD2 --> LAYER3{Layer 3:<br/>settings/local.yaml}
     SKIP2 --> LAYER3
 
-    LAYER3 -->|File exists?| LOAD3[Load Local Config]
-    LAYER3 -->|No file| SKIP3[Skip]
+    LAYER3 -->|File exists?| LOAD3["Load Local Config"]
+    LAYER3 -->|No file| SKIP3["Skip"]
     LAYER3 -->|Invalid| SKIP3
 
     LOAD3 --> LAYER4{Layer 4:<br/>Environment Variables}
     SKIP3 --> LAYER4
 
-    LAYER4 -->|MAHAVISHNU_EMBEDDINGS_*<br/>Set?| LOAD4[Override from ENV]
-    LAYER4 -->|No ENV| SKIP4[Skip]
+    LAYER4 -->|MAHAVISHNU_EMBEDDINGS_*<br/>Set?| LOAD4["Override from ENV"]
+    LAYER4 -->|No ENV| SKIP4["Skip"]
 
-    LOAD4 --> CONFIG[Final EmbeddingConfig]
+    LOAD4 --> CONFIG["Final EmbeddingConfig"]
     SKIP4 --> CONFIG
 
     CONFIG --> VALIDATE{Validate<br/>Config}
-    VALIDATE -->|Invalid| ERROR[❌ Config Error]
-    VALIDATE -->|Valid| RETURN([✅ Return Config])
+    VALIDATE -->|Invalid| ERROR["❌ Config Error"]
+    VALIDATE -->|Valid| RETURN(["✅ Return Config"])
 
     style LAYER1 fill:#E6E6FA
     style LAYER2 fill:#DDA0DD
@@ -244,34 +244,34 @@ ______________________________________________________________________
 
 ```mermaid
 flowchart TD
-    START([Setup FastEmbed]) --> CHECK1{Python 3.13<br/>Installed?}
+    START(["Setup FastEmbed"]) --> CHECK1{Python 3.13<br/>Installed?}
 
-    CHECK1 -->|No| INSTALL_PY[Install Python 3.13]
+    CHECK1 -->|No| INSTALL_PY["Install Python 3.13"]
     CHECK1 -->|Yes| CHECK2{Mahavishnu<br/>Installed?}
 
     INSTALL_PY --> CHECK2
 
-    CHECK2 -->|No| INSTALL_MV[Install Mahavishnu<br/>uv pip install -e mahavishnu]
-    CHECK2 -->|Yes| VERIFY1[Verify Installation]
+    CHECK2 -->|No| INSTALL_MV["Install Mahavishnu<br/>uv pip install -e mahavishnu"]
+    CHECK2 -->|Yes| VERIFY1["Verify Installation"]
 
     INSTALL_MV --> VERIFY1
 
-    VERIFY1 --> TEST1[python -c "from fastembed import SentenceTransformer"]
+    VERIFY1 --> TEST1["python -c 'from fastembed import SentenceTransformer'"]
     TEST1 --> SUCCESS1{✅ FastEmbed<br/>Available?}
 
-    SUCCESS1 -->|Yes| CONFIGURE[Configure Provider<br/>settings/mahavishnu.yaml]
-    SUCCESS1 -->|No| ERROR1[❌ Installation Failed<br/>Check error message]
+    SUCCESS1 -->|Yes| CONFIGURE["Configure Provider<br/>settings/mahavishnu.yaml"]
+    SUCCESS1 -->|No| ERROR1["❌ Installation Failed<br/>Check error message"]
 
-    ERROR1 --> END1([Fix Issues])
+    ERROR1 --> END1(["Fix Issues"])
 
-    CONFIGURE --> SET_YAML[embeddings:<br/>  provider: fastembed<br/>  model: BAAI/bge-small-en-v1.5]
+    CONFIGURE --> SET_YAML["embeddings:<br/>  provider: fastembed<br/>  model: BAAI/bge-small-en-v1.5"]
 
-    SET_YAML --> TEST2[Test Embeddings<br/>python -c "from mahavishnu.core.embeddings_oneiric import get_embeddings_with_oneiric"]
+    SET_YAML --> TEST2["Test Embeddings<br/>python -c 'from mahavishnu.core.embeddings_oneiric import get_embeddings_with_oneiric'"]
 
     TEST2 --> SUCCESS2{✅ Embeddings<br/>Working?}
 
-    SUCCESS2 -->|Yes| COMPLETE([🎉 Setup Complete!])
-    SUCCESS2 -->|No| TROUBLE[Check Troubleshooting<br/>docs/EMBEDDINGS_SETUP_GUIDE.md]
+    SUCCESS2 -->|Yes| COMPLETE(["🎉 Setup Complete!"])
+    SUCCESS2 -->|No| TROUBLE["Check Troubleshooting<br/>docs/EMBEDDINGS_SETUP_GUIDE.md"]
 
     TROUBLE --> COMPLETE
 
@@ -287,46 +287,46 @@ ______________________________________________________________________
 
 ```mermaid
 flowchart TD
-    START([Setup Ollama]) --> CHECK1{Homebrew<br/>Installed?}
+    START(["Setup Ollama"]) --> CHECK1{Homebrew<br/>Installed?}
 
-    CHECK1 -->|No| INSTALL_BREW[Install Homebrew<br/>/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"]
-    CHECK1 -->|Yes| INSTALL_OLLAMA[Install Ollama<br/>brew install ollama]
+    CHECK1 -->|No| INSTALL_BREW["Install Homebrew<br/>/bin/bash -c '$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)'"]
+    CHECK1 -->|Yes| INSTALL_OLLAMA["Install Ollama<br/>brew install ollama"]
 
     INSTALL_BREW --> INSTALL_OLLAMA
 
-    INSTALL_OLLAMA --> START_SERVICE[Start Ollama Service<br/>ollama serve &]
+    INSTALL_OLLAMA --> START_SERVICE["Start Ollama Service<br/>ollama serve &"]
 
     START_SERVICE --> CHECK2{Service<br/>Running?}
 
-    CHECK2 -->|No| ERROR1[❌ Service Failed<br/>Check logs]
-    CHECK2 -->|Yes| PULL_MODEL[Pull Embedding Model<br/>ollama pull nomic-embed-text]
+    CHECK2 -->|No| ERROR1["❌ Service Failed<br/>Check logs"]
+    CHECK2 -->|Yes| PULL_MODEL["Pull Embedding Model<br/>ollama pull nomic-embed-text"]
 
-    ERROR1 --> END1([Fix Issues])
+    ERROR1 --> END1(["Fix Issues"])
 
     PULL_MODEL --> CHECK3{Model<br/>Downloaded?}
 
-    CHECK3 -->|No| ERROR2[❌ Download Failed<br/>Check internet]
-    CHECK3 -->|Yes| VERIFY1[Verify Installation<br/>curl http://localhost:11434/api/tags]
+    CHECK3 -->|No| ERROR2["❌ Download Failed<br/>Check internet"]
+    CHECK3 -->|Yes| VERIFY1["Verify Installation<br/>curl http://localhost:11434/api/tags"]
 
-    ERROR2 --> END2([Fix Issues])
+    ERROR2 --> END2(["Fix Issues"])
 
     VERIFY1 --> SUCCESS1{✅ Ollama<br/>Available?}
 
-    SUCCESS1 -->|Yes| INSTALL_DEPS[Install Python Dependencies<br/>uv sync --extra ollama]
-    SUCCESS1 -->|No| ERROR3[❌ Connection Failed]
+    SUCCESS1 -->|Yes| INSTALL_DEPS["Install Python Dependencies<br/>uv sync --extra ollama"]
+    SUCCESS1 -->|No| ERROR3["❌ Connection Failed"]
 
-    ERROR3 --> END3([Check Ollama Service])
+    ERROR3 --> END3(["Check Ollama Service"])
 
-    INSTALL_DEPS --> CONFIGURE[Configure Provider<br/>settings/mahavishnu.yaml]
+    INSTALL_DEPS --> CONFIGURE["Configure Provider<br/>settings/mahavishnu.yaml"]
 
-    CONFIGURE --> SET_YAML[embeddings:<br/>  provider: ollama<br/>  model: nomic-embed-text<br/>  ollama_base_url: http://localhost:11434]
+    CONFIGURE --> SET_YAML["embeddings:<br/>  provider: ollama<br/>  model: nomic-embed-text<br/>  ollama_base_url: http://localhost:11434"]
 
-    SET_YAML --> TEST2[Test Embeddings<br/>python -c "from mahavishnu.core.embeddings_oneiric import get_embeddings_with_oneiric"]
+    SET_YAML --> TEST2["Test Embeddings<br/>python -c 'from mahavishnu.core.embeddings_oneiric import get_embeddings_with_oneiric'"]
 
     TEST2 --> SUCCESS2{✅ Embeddings<br/>Working?}
 
-    SUCCESS2 -->|Yes| COMPLETE([🎉 Setup Complete!])
-    SUCCESS2 -->|No| TROUBLE[Check Troubleshooting<br/>docs/EMBEDDINGS_SETUP_GUIDE.md]
+    SUCCESS2 -->|Yes| COMPLETE(["🎉 Setup Complete!"])
+    SUCCESS2 -->|No| TROUBLE["Check Troubleshooting<br/>docs/EMBEDDINGS_SETUP_GUIDE.md"]
 
     TROUBLE --> COMPLETE
 

@@ -996,9 +996,9 @@ sequenceDiagram
 
 ```mermaid
 flowchart TD
-    Start([Server startup]) --> Env{MAHAVISHNU_TOOL_PROFILE?}
+    Start(["Server startup"]) --> Env{MAHAVISHNU_TOOL_PROFILE?}
     Env -->|set| ParseEnv["Parse: full / standard / minimal"]
-    Env -->|unset| LocalYAML{settings/local.yaml<br/>tool_profile?}
+    Env -->|unset| LocalYAML{"settings/local.yaml<br/>tool_profile?"}
     LocalYAML -->|set| UseYAML[Use YAML value]
     LocalYAML -->|unset| Default[Use ToolProfile.FULL default]
 
@@ -1006,9 +1006,9 @@ flowchart TD
     UseYAML --> Resolve
     Default --> Resolve
 
-    Resolve --> Methods[PROFILE_REGISTRATIONS[profile]]
+    Resolve --> Methods["PROFILE_REGISTRATIONS[profile]"]
 
-    Methods --> Match{match in MINIMAL_<br/>STANDARD_ or FULL_}
+    Methods --> Match{"match in MINIMAL_<br/>STANDARD_ or FULL_"}
 
     Match -->|yes| Register[Call _register_* on server]
     Match -->|no| Skip[Skip registration]

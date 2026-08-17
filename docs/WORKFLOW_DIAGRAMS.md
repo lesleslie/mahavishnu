@@ -24,16 +24,16 @@ ______________________________________________________________________
 
 ```mermaid
 flowchart TD
-    Start([Clone Repository]) --> Install[Install Dependencies<br/>uv venv + pip install]
-    Install --> Config[Configure Settings<br/>settings/mahavishnu.yaml]
-    Config --> Env[Set Environment Variables<br/>MAHAVISHNU_AUTH_SECRET]
-    Env --> Verify[Verify Installation<br/>mahavishnu health-check]
+    Start(["Clone Repository"]) --> Install["Install Dependencies<br/>uv venv + pip install"]
+    Install --> Config["Configure Settings<br/>settings/mahavishnu.yaml"]
+    Config --> Env["Set Environment Variables<br/>MAHAVISHNU_AUTH_SECRET"]
+    Env --> Verify["Verify Installation<br/>mahavishnu health-check"]
     Verify --> Healthy{Healthy?}
-    Healthy -->|No| Troubleshoot[Troubleshoot<br/>Check logs]
+    Healthy -->|No| Troubleshoot["Troubleshoot<br/>Check logs"]
     Troubleshoot --> Verify
-    Healthy -->|Yes| Launch[Launch MCP Server<br/>mahavishnu mcp start]
-    Launch --> Test[Test CLI<br/>mahavishnu list-repos]
-    Test --> Success([Ready to Use!])
+    Healthy -->|Yes| Launch["Launch MCP Server<br/>mahavishnu mcp start"]
+    Launch --> Test["Test CLI<br/>mahavishnu list-repos"]
+    Test --> Success(["Ready to Use!"])
 
     style Start fill:#82E0AA,stroke:#27AE60
     style Success fill:#90EE90,stroke:#2E7D32
@@ -132,32 +132,32 @@ sequenceDiagram
 
 ```mermaid
 flowchart TD
-    Start([Task Submitted]) --> Strategy{Routing Strategy?}
+    Start(["Task Submitted"]) --> Strategy{Routing Strategy?}
 
-    Strategy -->|least_loaded| Load[Check Worker Counts<br/>All Pools]
-    Strategy -->|round_robin| RR[Next Pool<br/>Cycle Through]
-    Strategy -->|random| Rand[Random Pool<br/>Selection]
-    Strategy -->|affinity| Aff[Check Task Tags<br/>Pool Affinity]
-    Strategy -->|peer_affinity| Peer{peer_id<br/>in caller_pool_allowlist?}
-    Peer -->|yes| PeerResolve[PeerRouteResolver<br/>resolve_pool(peer_id)]
+    Strategy -->|least_loaded| Load["Check Worker Counts<br/>All Pools"]
+    Strategy -->|round_robin| RR["Next Pool<br/>Cycle Through"]
+    Strategy -->|random| Rand["Random Pool<br/>Selection"]
+    Strategy -->|affinity| Aff["Check Task Tags<br/>Pool Affinity"]
+    Strategy -->|peer_affinity| Peer{"peer_id<br/>in caller_pool_allowlist?"}
+    Peer -->|yes| PeerResolve["PeerRouteResolver<br/>resolve_pool(peer_id)"]
     Peer -->|no| Load
-    PeerResolve -->|found| AffExecute[Execute On Peer Pool]
+    PeerResolve -->|found| AffExecute["Execute On Peer Pool"]
     PeerResolve -->|not found| Load
 
-    Load --> Select1[Select Pool with<br/>Fewest Workers]
-    RR --> Select2[Select Next Pool<br/>In Rotation]
-    Rand --> Select3[Select Random Pool<br/>From Available]
-    Aff --> Select4[Select Pool with<br/>Matching Tags]
+    Load --> Select1["Select Pool with<br/>Fewest Workers"]
+    RR --> Select2["Select Next Pool<br/>In Rotation"]
+    Rand --> Select3["Select Random Pool<br/>From Available"]
+    Aff --> Select4["Select Pool with<br/>Matching Tags"]
 
     Select1 --> Available{Pool Available?}
     Select2 --> Available
     Select3 --> Available
     Select4 --> Available
 
-    Available -->|Yes| Execute[Execute Task]
-    Available -->|No| Fallback[Use Fallback Pool]
+    Available -->|Yes| Execute["Execute Task"]
+    Available -->|No| Fallback["Use Fallback Pool"]
 
-    Execute --> Complete([Task Complete])
+    Execute --> Complete(["Task Complete"])
     Fallback --> Complete
 
     style Start fill:#82E0AA,stroke:#27AE60
@@ -297,37 +297,37 @@ ______________________________________________________________________
 
 ```mermaid
 flowchart TD
-    Start([Code Change]) --> Trigger[QC Triggered<br/>Pre-commit/Manual]
+    Start(["Code Change"]) --> Trigger["QC Triggered<br/>Pre-commit/Manual"]
 
-    Trigger --> Lint[Ruff Linting<br/>Code Style]
+    Trigger --> Lint["Ruff Linting<br/>Code Style"]
     Lint --> LintPass{Pass?}
-    LintPass -->|No| Fix1[Auto-fix or Manual Fix]
+    LintPass -->|No| Fix1["Auto-fix or Manual Fix"]
     Fix1 --> Lint
 
-    LintPass -->|Yes| Type[Mypy Type Check<br/>Type Safety]
+    LintPass -->|Yes| Type["Mypy Type Check<br/>Type Safety"]
     Type --> TypePass{Pass?}
-    TypePass -->|No| Fix2[Fix Type Hints]
+    TypePass -->|No| Fix2["Fix Type Hints"]
     Fix2 --> Type
 
-    TypePass -->|Yes| Security[Bandit Security Scan<br/>Vulnerability Check]
+    TypePass -->|Yes| Security["Bandit Security Scan<br/>Vulnerability Check"]
     Security --> SecPass{Pass?}
-    SecPass -->|No| Fix3[Fix Security Issues]
+    SecPass -->|No| Fix3["Fix Security Issues"]
     Fix3 --> Security
 
-    SecPass -->|Yes| Tests[pytest Test Suite<br/>Unit + Integration]
+    SecPass -->|Yes| Tests["pytest Test Suite<br/>Unit + Integration"]
     Tests --> TestsPass{Pass?}
-    TestsPass -->|No| Fix4[Fix Tests]
+    TestsPass -->|No| Fix4["Fix Tests"]
     Fix4 --> Tests
 
-    TestsPass -->|Yes| Coverage[Coverage Report<br/>Target: 80%]
+    TestsPass -->|Yes| Coverage["Coverage Report<br/>Target: 80%"]
     Coverage --> CovPass{>= 80%?}
-    CovPass -->|No| Fix5[Add Tests]
+    CovPass -->|No| Fix5["Add Tests"]
     Fix5 --> Coverage
 
-    CovPass -->|Yes| Score[Calculate QC Score<br/>All Checks Weighted]
+    CovPass -->|Yes| Score["Calculate QC Score<br/>All Checks Weighted"]
     Score --> Threshold{Score >= 80?}
-    Threshold -->|Yes| Success([QC Passed ✅<br/>Ready to Merge])
-    Threshold -->|No| Fail([QC Failed ❌<br/>Fix Required])
+    Threshold -->|Yes| Success(["QC Passed ✅<br/>Ready to Merge"])
+    Threshold -->|No| Fail(["QC Failed ❌<br/>Fix Required"])
 
     style Start fill:#82E0AA,stroke:#27AE60
     style Success fill:#90EE90,stroke:#2E7D32
@@ -379,28 +379,28 @@ stateDiagram-v2
 
 ```mermaid
 flowchart TD
-    Start([Execute Operation]) --> Try[Attempt Operation]
+    Start(["Execute Operation"]) --> Try["Attempt Operation"]
 
     Try --> Result{Result?}
-    Result -->|Success| Success([Return Result])
+    Result -->|Success| Success(["Return Result"])
     Result -->|Failure| Error{Error Type?}
 
-    Error -->|Transient| Retry{Retry<br/>Available?}
-    Error -->|Permanent| Fail[Permanent Failure]
-    Error -->|Validation| ValidationError[Return 400]
-    Error -->|Auth| AuthError[Return 401]
-    Error -->|Permission| PermError[Return 403]
+    Error -->|Transient| Retry{"Retry<br/>Available?"}
+    Error -->|Permanent| Fail["Permanent Failure"]
+    Error -->|Validation| ValidationError["Return 400"]
+    Error -->|Auth| AuthError["Return 401"]
+    Error -->|Permission| PermError["Return 403"]
 
-    Retry -->|Yes| Backoff[Exponential Backoff<br/>Wait: 2^n seconds]
+    Retry -->|Yes| Backoff["Exponential Backoff<br/>Wait: 2^n seconds"]
     Backoff --> RetryCount{Retries < Max?}
     RetryCount -->|Yes| Try
-    RetryCount -->|No| DLQ[Send to DLQ]
+    RetryCount -->|No| DLQ["Send to DLQ"]
 
     Fail --> DLQ
-    DLQ --> Store[Store with Retry Policy]
-    Store --> Notify[Notify Monitoring]
+    DLQ --> Store["Store with Retry Policy"]
+    Store --> Notify["Notify Monitoring"]
 
-    ValidationError --> End([Return Error])
+    ValidationError --> End(["Return Error"])
     AuthError --> End
     PermError --> End
     Notify --> End

@@ -278,9 +278,9 @@ graph TB
 
     subgraph "Terminal Management (post-2026-08)"
         Terminal[TerminalManager]
-        Tmux[Tmux Adapter (default)]
-        Crow[Crow Adapter (opt-in via crow_enabled)]
-        Mock[Mock Adapter (tests)]
+        Tmux["Tmux Adapter (default)"]
+        Crow["Crow Adapter (opt-in via crow_enabled)"]
+        Mock["Mock Adapter (tests)"]
     end
 
     subgraph "Pool Management"

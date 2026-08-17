@@ -166,7 +166,7 @@ graph TB
 
     subgraph "Memory Aggregation"
         MA[MemoryAggregator]
-        Cache[(TTL Cache<br/>5-minute expiry)]
+        Cache[("TTL Cache<br/>5-minute expiry")]
         SB[Session-Buddy<br/>Persistent Storage]
         AK[Akosha<br/>Analytics]
     end
@@ -273,34 +273,34 @@ ______________________________________________________________________
 
 ```mermaid
 flowchart TD
-    Start([Request with Auth Header]) --> Parse[Parse Bearer Token]
+    Start(["Request with Auth Header"]) --> Parse["Parse Bearer Token"]
 
-    Parse --> TrySub{Subscription<br/>Auth Available?}
+    Parse --> TrySub{"Subscription<br/>Auth Available?"}
 
-    TrySub -->|Yes| VerifySub[Verify Subscription Token<br/>Signature Check]
+    TrySub -->|Yes| VerifySub["Verify Subscription Token<br/>Signature Check"]
     VerifySub --> ValidSub{Valid?}
-    ValidSub -->|Yes| CheckSubType{Subscription<br/>Type?}
+    ValidSub -->|Yes| CheckSubType{"Subscription<br/>Type?"}
     ValidSub -->|No| TryJWT
 
-    CheckSubType -->|claude_code| ClaudeAuth[Claude Code<br/>Subscription]
-    CheckSubType -->|codex| CodexAuth[Codex<br/>Subscription]
-    CheckSubType -->|qwen_free| QwenAuth[Qwen Free<br/>Service]
+    CheckSubType -->|claude_code| ClaudeAuth["Claude Code<br/>Subscription"]
+    CheckSubType -->|codex| CodexAuth["Codex<br/>Subscription"]
+    CheckSubType -->|qwen_free| QwenAuth["Qwen Free<br/>Service"]
 
     ClaudeAuth --> Success
     CodexAuth --> Success
     QwenAuth --> Success
 
-    TrySub -->|No| TryJWT{JWT<br/>Auth Available?}
-    TryJWT -->|Yes| VerifyJWT[Verify JWT Token<br/>Signature Check]
+    TrySub -->|No| TryJWT{"JWT<br/>Auth Available?"}
+    TryJWT -->|Yes| VerifyJWT["Verify JWT Token<br/>Signature Check"]
     VerifyJWT --> ValidJWT{Valid?}
-    ValidJWT -->|Yes| JWTAuth[JWT<br/>Authentication]
+    ValidJWT -->|Yes| JWTAuth["JWT<br/>Authentication"]
     ValidJWT -->|No| Fail
     JWTAuth --> Success
 
     TryJWT -->|No| Fail
 
-    Success([Access Granted<br/>Return User Info])
-    Fail([Access Denied<br/>401 Unauthorized])
+    Success(["Access Granted<br/>Return User Info"])
+    Fail(["Access Denied<br/>401 Unauthorized"])
 
     style Start fill:#82E0AA,stroke:#27AE60
     style Success fill:#90EE90,stroke:#2E7D32
@@ -371,34 +371,34 @@ sequenceDiagram
 
 ```mermaid
 flowchart TD
-    Start([Execute Task]) --> LoadAdapter[Load Adapter<br/>LlamaIndex/Prefect/Agno]
+    Start(["Execute Task"]) --> LoadAdapter["Load Adapter<br/>LlamaIndex/Prefect/Agno"]
 
-    LoadAdapter --> Validate[Validate Task<br/>Type Check]
+    LoadAdapter --> Validate["Validate Task<br/>Type Check"]
     Validate --> Valid{Valid?}
 
-    Valid -->|No| Error1[Return ValidationError]
-    Valid -->|Yes| CheckTimeout{Timeout<br/>Set?}
+    Valid -->|No| Error1["Return ValidationError"]
+    Valid -->|Yes| CheckTimeout{"Timeout<br/>Set?"}
 
-    CheckTimeout -->|Yes| ApplyTimeout[Apply asyncio.timeout]
+    CheckTimeout -->|Yes| ApplyTimeout["Apply asyncio.timeout"]
     CheckTimeout -->|No| Execute
 
-    ApplyTimeout --> Execute[PoolManager.route_task<br/>caller_kind=claude_code]
+    ApplyTimeout --> Execute["PoolManager.route_task<br/>caller_kind=claude_code"]
 
-    Execute --> Quota[Per-caller-kind quota<br/>60 req / 60s window]
-    Quota --> Persist[Persist to Dhara KV<br/>workflow-results/{id}/]
+    Execute --> Quota["Per-caller-kind quota<br/>60 req / 60s window"]
+    Quota --> Persist["Persist to Dhara KV<br/>workflow-results/{id}/"]
     Persist --> Success{Success?}
 
-    Success -->|Yes| QC[Run QC Checks]
-    Success -->|No| Error2[Return AdapterError]
+    Success -->|Yes| QC["Run QC Checks"]
+    Success -->|No| Error2["Return AdapterError"]
 
     QC --> QCPass{QC Passed?}
-    QCPass -->|Yes| Store[Store in Session-Buddy]
-    QCPass -->|No| DLQ[Send to DLQ]
+    QCPass -->|Yes| Store["Store in Session-Buddy"]
+    QCPass -->|No| DLQ["Send to DLQ"]
 
-    Store --> Return[Return Result]
-    DLQ --> Schedule[Schedule Retry]
+    Store --> Return["Return Result"]
+    DLQ --> Schedule["Schedule Retry"]
 
-    Return --> End([Complete])
+    Return --> End(["Complete"])
     Error1 --> End
     Error2 --> End
     Schedule --> End
@@ -568,9 +568,9 @@ graph TB
         Schedule[Calculate Next Retry]
 
         subgraph "Queue Storage"
-            Memory[(In-Memory<br/>Fast Access)]
-            JSONDeadLetter[JSON files<br/>~/.mahavishnu/async-dead-letter/]
-            Dhara[Dhara KV<br/>workflow-results/{id}/]
+            Memory[("In-Memory<br/>Fast Access")]
+            JSONDeadLetter["JSON files<br/>~/.mahavishnu/async-dead-letter/"]
+            Dhara["Dhara KV<br/>workflow-results/{id}/"]
         end
 
         Processor[Retry Processor<br/>Background Task]
