@@ -45,9 +45,9 @@ graph TB
 
     subgraph "Pool Management"
         PoolMgr[PoolManager]
-        LocalPool[MahavishnuPool<br/>Local Workers]
-        SessionPool[SessionBuddyPool<br/>Delegated]
-        K8sPool[KubernetesPool<br/>Removed 2026-06-23]
+        LocalPool[MahavishnuPool<br/>Low-latency local]
+        SessionPool[SessionBuddyPool<br/>3 workers / instance]
+        RunPodPool[RunPodPool<br/>Serverless GPU]
         MemoryAgg[MemoryAggregator<br/>Cross-Pool Search]
     end
 
@@ -59,9 +59,10 @@ graph TB
 
     subgraph "Worker Layer"
         WorkerMgr[WorkerManager]
-        Terminal[TerminalManager<br/>iTerm2/MCPretentious]
-        Container[AppleContainerWorker / E2BSandboxWorker<br/>microVM isolation]
-        Subprocess[SubprocessWorker<br/>Local Execution]
+        Terminal[TerminalManager]
+        AppleC[AppleContainerWorker<br/>Apple silicon microVMs]
+        E2B[E2BSandboxWorker<br/>E2B cloud sandboxes]
+        Cloud[CloudWorker<br/>MiniMax M3 / M2.7]
     end
 
     subgraph "Quality & Operations"
@@ -90,7 +91,7 @@ graph TB
     App --> PoolMgr
     PoolMgr --> LocalPool
     PoolMgr --> SessionPool
-    PoolMgr --> K8sPool
+    PoolMgr --> RunPodPool
     PoolMgr --> MemoryAgg
 
     App --> LlamaIndex
@@ -102,8 +103,9 @@ graph TB
     Agno --> WorkerMgr
 
     WorkerMgr --> Terminal
-    WorkerMgr --> Container
-    WorkerMgr --> Subprocess
+    WorkerMgr --> AppleC
+    WorkerMgr --> E2B
+    WorkerMgr --> Cloud
 
     App --> QC
     App --> SessionBuddy
@@ -151,8 +153,8 @@ graph TB
 
     subgraph "Pool Types"
         MP[MahavishnuPool<br/>Local Execution<br/>Low Latency]
-        SB[SessionBuddyPool<br/>Delegated<br/>Remote Workers]
-        KP[KubernetesPool<br/>Removed 2026-06-23]
+        SB[SessionBuddyPool<br/>Delegated<br/>3 workers / instance]
+        RP[RunPodPool<br/>Serverless GPU<br/>RunPod Flash]
     end
 
     subgraph "Worker Resources"
@@ -179,7 +181,7 @@ graph TB
     Load --> MP
     RR --> MP
     Rand --> SB
-    Aff --> KP
+    Aff --> RP
 
     MP --> W1
     MP --> W2
@@ -195,7 +197,7 @@ graph TB
     style PM fill:#4A90E2,stroke:#1E3A5F,stroke-width:4px,color:#fff
     style MP fill:#90EE90,stroke:#2E7D32,stroke-width:3px
     style SB fill:#87CEEB,stroke:#4682B4,stroke-width:3px
-    style KP fill:#DDA0DD,stroke:#9370DB,stroke-width:3px
+    style RP fill:#DDA0DD,stroke:#9370DB,stroke-width:3px
     style MA fill:#FFB347,stroke:#FF8C00,stroke-width:3px
     style Cache fill:#98D8C8,stroke:#2E8B57,stroke-width:2px
     style SB fill:#F7DC6F,stroke:#B7950B,stroke-width:2px
@@ -208,7 +210,7 @@ graph TB
 |-----------|---------|---------|----------|---------|
 | **MahavishnuPool** | Local (2-10) | < 10ms | Development, CI/CD | Direct management |
 | **SessionBuddyPool** | Remote (3 per instance) | 50-100ms | Distributed workloads | MCP delegation |
-| **KubernetesPool** | _Removed 2026-06-23_ | — | — | — |
+| **RunPodPool** | Serverless (auto) | 200-500ms | GPU/ML workloads | RunPod Flash API |
 
 ______________________________________________________________________
 
