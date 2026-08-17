@@ -44,18 +44,7 @@ Mahavishnu includes comprehensive visual documentation with **50+ diagrams** cov
 
 ### 📊 **Key Visual Aids**
 
-**Architecture Overview:**
-
-```mermaid
-graph TB
-    User([User]) --> CLI[CLI]
-    User --> MCP[MCP Server]
-    CLI --> App[MahavishnuApp]
-    MCP --> App
-    App --> Pools[Pool Manager]
-    App --> Adapters[Adapters]
-    App --> Workers[Workers]
-```
+**Architecture Overview:** See [VISUAL_GUIDE.md](VISUAL_GUIDE.md#1-overall-architecture) for the canonical diagram.
 
 **Performance Improvements:**
 | Operation | Before | After | Improvement |
