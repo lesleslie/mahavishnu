@@ -49,6 +49,10 @@
     },
     "minimax-coding-plan": {
       "args": [
+        "--from",
+        "minimax-coding-plan-mcp",
+        "--with",
+        "mcp<2",
         "minimax-coding-plan-mcp",
         "-y"
       ],
