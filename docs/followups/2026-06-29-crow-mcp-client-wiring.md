@@ -56,7 +56,7 @@ Two options, in order of preference. **The recommended option is to introduce a 
      http_port: 8675
    ```
 
-1. **Update `mahavishnu/terminal/manager.py:451-456`** to skip the `mcp_client is None` check when `settings.crow.enabled` is `false`. When disabled, fall through to the next preference (`mock` → `iterm2` → `mcpretentious`) per the existing cascade. No `ConfigurationError` raised.
+1. **Update `mahavishnu/terminal/manager.py:451-456`** to skip the `mcp_client is None` check when `settings.crow.enabled` is `false`. When disabled, fall through to the next preference (`mock` → `tmux` → `crow`) per the existing cascade. No `ConfigurationError` raised.
 
 1. **Update `mahavishnu/_main_cli.py:1073,1156,1381`** to pass `mcp_client=None` only when `settings.crow.enabled` is false; otherwise, construct a client from `MAHAVISHNU_CROW_HTTP_HOST` / `MAHAVISHNU_CROW_HTTP_PORT` (or the corresponding `settings.crow.*` values).
 
