@@ -216,7 +216,7 @@ sequenceDiagram
 ```mermaid
 graph LR
     subgraph "Repository Database"
-        AllRepos[All Repositories<br/>9 total]
+        AllRepos[All Repositories<br/>7 components]
 
         subgraph "By Tag"
             Python[python<br/>3 repos]
