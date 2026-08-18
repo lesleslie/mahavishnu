@@ -161,12 +161,19 @@ REGISTRATION_MAP: dict[str, Callable] = {
 }
 
 
-# Per-repo mandatory group keys. The W0 helper's default MANDATORY_TOOLS set
-# uses tool names ('get_liveness', etc.) but its dispatch loop looks them up
-# in registration_map as keys. Mahavishnu's group keys are
-# '_register_health_tools' etc., so we pass the per-repo subset below.
-# See task-2-report.md W0 API gap for full analysis.
-MAHAVISHNU_MANDATORY_TOOLS: set[str] = {
+# Per-repo always-on group keys. The W0 helper (now mcp-common
+# mcp_common.tools.dispatch) walks this set AFTER per-profile registration
+# so each listed group is guaranteed at every profile. Mahavishnu's health,
+# ecosystem, workflow, and webhook groups are infrastructure-critical
+# (K8s probes, observability, Mahavishnu's own async workflows) — they
+# MUST be present at MINIMAL.
+#
+# W0.5 rename: this was previously MAHAVISHNU_MANDATORY_TOOLS because the
+# pre-W0.5 helper conflated "always-on group keys" with "subset-check tool
+# names". The old name was misleading; the new canonical parameter is
+# `mandatory_groups` (dispatch driver) and the subset check is a separate
+# `essential_tool_names` parameter (default: MANDATORY_TOOLS).
+MAHAVISHNU_MANDATORY_GROUPS: set[str] = {
     "_register_health_tools",
     "_register_ecosystem_tools",
     "_register_workflow_tools",

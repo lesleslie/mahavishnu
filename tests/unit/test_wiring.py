@@ -59,21 +59,22 @@ async def test_full_matches_golden_fixture(monkeypatch):
     "profile",
     ["minimal", "standard", "full"],
 )
-def test_mandatory_tools_invariant(profile: str, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_mandatory_groups_invariant(profile: str, monkeypatch: pytest.MonkeyPatch) -> None:
     """Per-repo mandatory group keys must be in REGISTRATION_MAP.
 
-    W0 helper's default MANDATORY_TOOLS set uses tool names ('get_liveness',
-    etc.) but the dispatch loop looks them up in REGISTRATION_MAP. Mahavishnu
-    uses group keys ('_register_health_tools', ...) so the per-repo subset
-    is asserted against REGISTRATION_MAP, not the W0 default set. This is
-    the W0 API gap recorded in the task report.
+    W0.5 helper's ``mandatory_groups`` parameter expects registration_map keys
+    (group names like ``_register_health_tools``). The pre-W0.5
+    ``mandatory_tools`` parameter was a confusing dual-purpose parameter; the
+    canonical API now splits it into ``mandatory_groups`` (dispatch driver)
+    and ``essential_tool_names`` (subset check). This test asserts the
+    per-repo always-on groups are all valid registration_map keys.
     """
     from mahavishnu.mcp.tools.profiles import (
-        MAHAVISHNU_MANDATORY_TOOLS,
+        MAHAVISHNU_MANDATORY_GROUPS,
         REGISTRATION_MAP,
     )
 
-    missing = MAHAVISHNU_MANDATORY_TOOLS - set(REGISTRATION_MAP.keys())
+    missing = MAHAVISHNU_MANDATORY_GROUPS - set(REGISTRATION_MAP.keys())
     assert not missing, f"MANDATORY groups not in REGISTRATION_MAP: {sorted(missing)}"
     expected = json.loads(Path(f"tests/fixtures/{profile}/tool_names.json").read_text())
     expected_set = set(expected)

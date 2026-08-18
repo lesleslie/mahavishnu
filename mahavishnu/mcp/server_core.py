@@ -33,7 +33,7 @@ from .lifecycle import register_worktree_tools as _register_worktree_tools_helpe
 from .lifecycle import start_server as _start_server_helper
 from .lifecycle import stop_server as _stop_server_helper
 from .tools.profiles import (
-    MAHAVISHNU_MANDATORY_TOOLS,
+    MAHAVISHNU_MANDATORY_GROUPS,
     PROFILE_REGISTRATIONS,
     REGISTRATION_MAP,
     settings_yaml_loader,
@@ -1376,6 +1376,12 @@ class FastMCPServer:
         ``self.app.config``, ``self.terminal_manager``, etc. — they
         recover the wrapper via the ``_mhv_server`` back-reference set
         in ``__init__``.
+
+        W0.5 API: passes ``mandatory_groups=MAHAVISHNU_MANDATORY_GROUPS`` so
+        the helper force-registers health/ecosystem/workflow/webhook at every
+        profile. The pre-W0.5 ``mandatory_tools`` parameter (conflated dispatch
+        driver + subset check) is now deprecated; mcp-common retains it as a
+        backward-compatible alias for ``mandatory_groups``.
         """
         await apply_tool_profile(
             self.server,
@@ -1383,7 +1389,7 @@ class FastMCPServer:
             registrations=PROFILE_REGISTRATIONS,
             registration_map=REGISTRATION_MAP,
             register_all_fn=None,
-            mandatory_tools=MAHAVISHNU_MANDATORY_TOOLS,
+            mandatory_groups=MAHAVISHNU_MANDATORY_GROUPS,
             yaml_loader=settings_yaml_loader,
         )
         self._update_registered_tool_metrics()
