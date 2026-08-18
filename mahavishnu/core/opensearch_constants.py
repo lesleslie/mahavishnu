@@ -9,6 +9,6 @@ from __future__ import annotations
 try:
     from opensearchpy import AsyncOpenSearch as _AsyncOpenSearch
 except ImportError:
-    _AsyncOpenSearch = None  # ty: ignore[invalid-assignment] # type: ignore[misc]
+    _AsyncOpenSearch = None  # type: ignore[misc]
 
 OPENSEARCH_AVAILABLE: bool = _AsyncOpenSearch is not None

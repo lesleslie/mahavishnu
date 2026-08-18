@@ -52,6 +52,7 @@ contribution workflow below.
 | `agent-curation` | Agent curation strategy — rules for adding/archiving agents in the curated catalog (mycelium-core dedup, Bodai-stack relevance). |
 | `agent-skill-modernization` | Agent & Skill Modernization Implementation Plan |
 | `bodai-auth` | Bodai Inter-Service Authentication Standardization |
+| `bodai-conformance` | Bodai ecosystem conformance — cross-repo consistency checks, naming/port/version invariants across the five components (Mahavishnu, Akosha, Dhara, Session-Buddy, Crackerjack). |
 | `bodai-crow-http-server` | Bodai Crow HTTP MCP Server |
 | `bodai-observability` | Bodai observability pattern — one subscriber, one bus; cross-component OTel correlation. |
 | `code-indexing-integration` | Code Indexing Integration Plan |

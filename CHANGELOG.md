@@ -5,6 +5,68 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.12.1] - 2026-08-18
+
+### Added
+
+- mahavishnu: Mirror wave-11 mermaid CI guard from crackerjack
+
+### Changed
+
+- bodai-conformance: Address 4-agent review findings (critical + material)
+- bodai-conformance: Apply R2-1..7 fixes inline
+- bodai-conformance: Round-2 review findings as known-issues appendix
+- bodai-consistency: Address 4-agent review findings
+- bodai-consistency: Design for ecosystem conformance mechanisms
+
+### Fixed
+
+- mahavishnu: Add peer_affinity to routing decision tree
+- mahavishnu: Remove ASCII duplicates and one block from GETTING_STARTED.md
+- mahavishnu: Remove broken image ref from embedding-architecture.md:495
+- mahavishnu: Remove decorative diagram blocks from ADR-005 (3 removals)
+- mahavishnu: Remove decorative diagram blocks from VISUAL_GUIDE (13 removals)
+- mahavishnu: Remove decorative diagram blocks from WORKFLOW_DIAGRAMS (2 removals)
+- mahavishnu: Remove embedding-architecture.md duplicates from README/EMBEDDINGS_SETUP_GUIDE (5 removals)
+- mahavishnu: Replace AgentDB/Ollama with Dhara/FastEmbed in ADR-005
+- mahavishnu: Replace iTerm2/MCPretentious adapters in canonical arch diagram
+- mahavishnu: Replace OpenSearch DLQ with JSON + Dhara KV in VISUAL_GUIDE
+- mahavishnu: Replace PoolManager routing and caller_kind in adapter diagrams
+- mahavishnu: Update repo count 9 → 7 in tag-based filtering
+- mahavishnu: Update tool count 49 → 174+ in MCP tools mindmap
+
+### Documentation
+
+- Add INDEX.md cataloging all plans under docs/superpowers/plans/
+- audit: Apply 2026-08-12 drift fixes
+- Capture bodai diagram audit snapshot 2026-08-16
+- changelog: Document mcpretentious removal + quality_scorer rename
+- mahavishnu: Annotate mcpretentious topic keys with migration note
+- mahavishnu: Bump WebSocket rollback example image from v0.1.9 to v0.12.0
+- mahavishnu: Drop dead iterm2/mcpretentious coverage targets from backlog
+- mahavishnu: Fix stale cascade reference in crow-mcp-client-wiring followup
+- mahavishnu: Replace 5 dead file paths (iterm2/mcpretentious/quality_evaluator/backup_cli/production_cli)
+- mahavishnu: Replace iTerm2/mcpretentious with live adapters in ARCHITECTURE
+- mahavishnu: Replace iTerm2/mcpretentious with live adapters in CAPABILITIES analysis
+- mahavishnu: Replace iTerm2/mcpretentious with live adapters in ORCHESTRATION_SUMMARY
+- mahavishnu: Replace iterm2/mcpretentious with tmux in crow runbook
+- mahavishnu: Replace mcpretentious/iTerm2 references with tmux/mock/crow adapters
+- mahavishnu: Replace mcpretentious/iTerm2 with tmux/mock in mcp-server doc
+- mahavishnu: Replace quality_evaluator/pool.py/iterm2/mcpretentious in 4 small docs
+- mahavishnu: Rewrite backends.md as live-adapter stub (mcpretentious removed)
+- plans: Add bodai-conformance plan + spec to canonical PLAN_INDEX.md
+- Refine P0 audit fixes for tool-count, profile wording, and CLI inventory
+
+### Testing
+
+- mcp: Add tool inventory ratchet test (CI guard against count drift)
+
+### Internal
+
+- gitignore: Add .coverage* + untrack .coverage-ratchet.json (bodai 2026-08-17)
+- mahavishnu: Delete archive diagram mirrors (9 files)
+- Pin minimax-coding-plan-mcp install args
+
 ## [Unreleased]
 
 ### Removed
@@ -101,7 +163,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Internal
 
-- cleanup: Remove unused _validate_approval_id + _validate_webhook_id aliases
+- cleanup: Remove unused \_validate_approval_id + \_validate_webhook_id aliases
 - Remove .superprofits/ scratch typo, add to .gitignore
 - workers: Remove terminal-openclaw and terminal-zsh
 

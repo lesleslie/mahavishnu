@@ -80,7 +80,7 @@ Five generic rule types, each accepting a config block:
 - `markdown_inventory` — extract a structured block from Markdown and compare. **Block boundaries use HTML comment delimiters:** `<!-- BEGIN inventory-name -->` / `<!-- END inventory-name -->`. Single-file scope only.
 - `ast_symbol_check` — resolve a Python symbol via `ast.parse()` and check existence/wiring. Python-specific (5 of 5 current Bodai repos are Python); documented as such.
 
-No Bodai knowledge in any primitive. Each is independently invokable via `crackerjack check --rule <type> --config <yaml>` or via MCP tool call.
+No Bodai knowledge in any primitive. Each is independently invocable via `crackerjack check --rule <type> --config <yaml>` or via MCP tool call.
 
 ### 2. Mahavishnu conformance CLI
 

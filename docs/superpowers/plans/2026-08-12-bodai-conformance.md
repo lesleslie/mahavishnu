@@ -3724,7 +3724,7 @@ _safe_add_typer(app, "crackerjack.cli.check", "app", "check")
 
 **Mitigation:** Split the commit into 3:
 ```bash
-git add mahavishnu/services/conformance/ 
+git add mahavishnu/services/conformance/
 git commit -m "feat(conformance): async runner with composite rule"
 git add mahavishnu/cli/conformance_cli.py mahavishnu/_main_cli.py
 git commit -m "feat(conformance): CLI subcommand and registration"
@@ -3799,4 +3799,3 @@ For Phase 2, before executing Tasks 16-22:
 5. Then execute Tasks 18-22
 
 For Phase 3, apply R2-5 (register conformance in server_core.py:_register_tools()) and R2-9/10 (audit_orphans per phase + Wire-up Contract for Phase 2/3).
-

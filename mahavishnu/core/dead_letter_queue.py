@@ -58,7 +58,7 @@ if TYPE_CHECKING:
     try:
         from opensearchpy import AsyncOpenSearch
     except ImportError:
-        AsyncOpenSearch = Any  # type: ignore
+        AsyncOpenSearch = Any
 
 
 class RetryPolicy(StrEnum):

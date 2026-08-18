@@ -1,12 +1,13 @@
 from __future__ import annotations
 
+from dataclasses import dataclass
 import json
 import os
+from pathlib import Path
 import re
 import shutil
 import subprocess
-from dataclasses import dataclass
-from pathlib import Path
+from typing import Any
 
 from rich.console import Console
 
@@ -110,9 +111,7 @@ DEFAULT_MERMAID_PREFIXES: tuple[str, ...] = (
 # imported and executed as code. We trust only the locally-vendored
 # `node_modules/jsdom/` installed in the mahavishnu repo by `npm install`
 # (which pins the version in package.json). The path is `<repo>/node_modules/`.
-DEFAULT_JSDOM_LOCATIONS: tuple[str, ...] = (
-    "node_modules/jsdom/lib/api.js",
-)
+DEFAULT_JSDOM_LOCATIONS: tuple[str, ...] = ("node_modules/jsdom/lib/api.js",)
 
 
 def _locate_mermaid_core() -> Path | None:
@@ -184,9 +183,7 @@ def _locate_jsdom() -> Path | None:
         path = Path(env_override).resolve()
         if path.is_file():
             return path
-        raise RuntimeError(
-            f"MAHAVISHNU_JSDOM={env_override} does not exist or is not a file"
-        )
+        raise RuntimeError(f"MAHAVISHNU_JSDOM={env_override} does not exist or is not a file")
 
     # Walk up from this file to find the mahavishnu repo root.
     repo_root = Path(__file__).resolve()
@@ -201,9 +198,7 @@ def _locate_jsdom() -> Path | None:
 def _is_trusted_mermaid_path(path: Path) -> bool:
     """Allow-list check: `path` must live under a known-good mermaid prefix."""
     resolved = str(path.resolve())
-    return any(
-        resolved.startswith(prefix) for prefix in DEFAULT_MERMAID_PREFIXES
-    )
+    return any(resolved.startswith(prefix) for prefix in DEFAULT_MERMAID_PREFIXES)
 
 
 def validate_mermaid_blocks(
@@ -240,15 +235,39 @@ def validate_mermaid_blocks(
             "wave-11 dev dep, or set MAHAVISHNU_JSDOM to its absolute path"
         )
 
-    payload = json.dumps(
-        [
-            {"file": str(b.file), "line": b.line, "code": b.code}
-            for b in blocks
-        ]
-    )
+    payload = _build_payload(blocks)
+    completed = _run_mermaid_subprocess(runner, mermaid_core, jsdom, payload, timeout)
+
+    if completed.returncode != 0:
+        raise RuntimeError(
+            f"validate_mermaid.mjs exited {completed.returncode}: {completed.stderr.strip()[:500]}"
+        )
 
     try:
-        completed = subprocess.run(
+        results = json.loads(completed.stdout)
+    except json.JSONDecodeError as e:
+        raise RuntimeError(
+            f"validate_mermaid.mjs returned invalid JSON: {e}; stdout={completed.stdout[:200]!r}"
+        ) from e
+
+    return _parse_results(results)
+
+
+def _build_payload(blocks: list[MermaidBlock]) -> str:
+    """Serialize the blocks into the JSON shape the Node runner expects."""
+    return json.dumps([{"file": str(b.file), "line": b.line, "code": b.code} for b in blocks])
+
+
+def _run_mermaid_subprocess(
+    runner: Path,
+    mermaid_core: Path,
+    jsdom: Path,
+    payload: str,
+    timeout: float,
+) -> subprocess.CompletedProcess[str]:
+    """Invoke the Node validator, translating subprocess errors into RuntimeError."""
+    try:
+        return subprocess.run(
             ["node", str(runner), str(mermaid_core), str(jsdom)],
             input=payload,
             capture_output=True,
@@ -262,35 +281,23 @@ def validate_mermaid_blocks(
         ) from e
     except subprocess.TimeoutExpired as e:
         raise RuntimeError(
-            f"validate_mermaid.mjs timed out after {timeout}s on {len(blocks)} "
-            f"blocks"
+            f"validate_mermaid.mjs timed out after {timeout}s on {len(payload)} bytes"
         ) from e
 
-    if completed.returncode != 0:
-        raise RuntimeError(
-            f"validate_mermaid.mjs exited {completed.returncode}: "
-            f"{completed.stderr.strip()[:500]}"
+
+def _parse_results(
+    results: list[dict[str, Any]],
+) -> list[MermaidValidationError]:
+    """Filter the runner output down to entries that flagged an error."""
+    return [
+        MermaidValidationError(
+            file=Path(entry["file"]),
+            line=entry["line"],
+            error=entry.get("error", "<unknown error>"),
         )
-
-    try:
-        results = json.loads(completed.stdout)
-    except json.JSONDecodeError as e:
-        raise RuntimeError(
-            f"validate_mermaid.mjs returned invalid JSON: {e}; "
-            f"stdout={completed.stdout[:200]!r}"
-        ) from e
-
-    errors: list[MermaidValidationError] = []
-    for entry in results:
-        if entry.get("status") == "error":
-            errors.append(
-                MermaidValidationError(
-                    file=Path(entry["file"]),
-                    line=entry["line"],
-                    error=entry.get("error", "<unknown error>"),
-                )
-            )
-    return errors
+        for entry in results
+        if entry.get("status") == "error"
+    ]
 
 
 def find_broken_mermaid_blocks(

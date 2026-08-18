@@ -43,7 +43,7 @@ _DURABLE_WORKER_TYPES: frozenset[str] = frozenset(
 try:
     from mahavishnu.pools.memory_aggregator import MemoryAggregator
 except Exception:  # pragma: no cover - optional import for test patching  # noqa: BLE001 - MCP boundary must preserve all operation failures  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
-    MemoryAggregator = None  # ty: ignore[invalid-assignment]
+    MemoryAggregator = None
 
 logger = logging.getLogger(__name__)
 

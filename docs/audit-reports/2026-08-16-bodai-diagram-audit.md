@@ -8,7 +8,7 @@ syntax where possible, and assigning KEEP / UPDATE / REMOVE / ADD verdicts. Synt
 the six reports and surfaces cross-repo patterns.
 **Total diagrams catalogued:** ~360
 
----
+______________________________________________________________________
 
 ## Aggregate stats
 
@@ -26,11 +26,12 @@ Only **3 of 360 diagrams actually fail to render** (all in crackerjack, all 1-li
 The dominant problem is content staleness, not syntax.
 
 `★ Render-defect note:` The 3 broken diagrams in crackerjack are all easily fixable:
-1. `docs/diagrams/skills-ecosystem-mermaid.md:13` — unescaped `"` in a node label
-2. `docs/architecture/MEMORY_ARCHITECTURE.md:399` — `Over` keyword collision + `;` in `Note over` text
-3. `docs/architecture/MEMORY_ARCHITECTURE.md:1247` — same `Over` keyword + `;` in `Note over` text
 
----
+1. `docs/diagrams/skills-ecosystem-mermaid.md:13` — unescaped `"` in a node label
+1. `docs/architecture/MEMORY_ARCHITECTURE.md:399` — `Over` keyword collision + `;` in `Note over` text
+1. `docs/architecture/MEMORY_ARCHITECTURE.md:1247` — same `Over` keyword + `;` in `Note over` text
+
+______________________________________________________________________
 
 ## Cross-repo patterns
 
@@ -119,7 +120,7 @@ but never re-validated against the live `CREATE TABLE` statements.
 **Pattern:** CLI diagrams drift fast because CLI surface expands frequently. The oneiric case is
 the most acute (15+ commands vs. 7 in the diagram).
 
----
+______________________________________________________________________
 
 ## Top 10 highest-impact actions, prioritized
 
@@ -136,41 +137,41 @@ the most acute (15+ commands vs. 7 in the diagram).
 | 9 | Update session-buddy `MEMORY_ARCHITECTURE.md:55` (4 tables that don't exist) | session-buddy | MEDIUM | S |
 | 10 | Update session-buddy `developer/ARCHITECTURE.md:344` (wrong table names) | session-buddy | MEDIUM | S |
 
----
+______________________________________________________________________
 
 ## Wire-up candidates (recommended ADDs)
 
 The audits surfaced 30+ recommended additions across all 6 repos. The highest-impact:
 
 1. **mahavishnu**: Pool topology diagram (CLAUDE.md names `MahavishnuPool`, `SessionBuddyPool`, `RunPodPool` but no canonical diagram exists)
-2. **mahavishnu**: Terminal adapter selection flowchart (replaces the stale `iTerm2+MCPretentious` diagram)
-3. **mahavishnu**: Worker-isolation topology (`AppleContainer` + `E2BSandbox` — replaced removed Docker/OrbStack)
-4. **mahavishnu**: MCP tool topology (174+ tools × 14 groups)
-5. **mahavishnu**: LLM routing sequence for `mahavishnu/workers/task_router.py`
-6. **akosha**: Embedding pipeline flow (mock-only embedding path is currently invisible in any diagram)
-7. **akosha**: Fitness signal flow (the 60s `loop` that writes to `routing_fitness/{tc}/{selector}`)
-8. **akosha**: End-to-end query → embedding → search → result flow
-9. **session-buddy**: `track_channel_session` state machine (the new MCP tool has zero diagrams)
-10. **session-buddy**: Worktree lifecycle (creating → listing → pruning → removing, with the wave-4 fixed bugs)
-11. **crackerjack**: Post-removal architecture diagram (the canonical answer to "what runs when you say `crackerjack run`")
-12. **crackerjack**: External ai-fix-loop diagram (the proposed replacement architecture in the spec)
-13. **crackerjack**: Ratchet CLI defects diagram (the 4 defects in `crackerjack-ratchet-cli-defects.md`)
+1. **mahavishnu**: Terminal adapter selection flowchart (replaces the stale `iTerm2+MCPretentious` diagram)
+1. **mahavishnu**: Worker-isolation topology (`AppleContainer` + `E2BSandbox` — replaced removed Docker/OrbStack)
+1. **mahavishnu**: MCP tool topology (174+ tools × 14 groups)
+1. **mahavishnu**: LLM routing sequence for `mahavishnu/workers/task_router.py`
+1. **akosha**: Embedding pipeline flow (mock-only embedding path is currently invisible in any diagram)
+1. **akosha**: Fitness signal flow (the 60s `loop` that writes to `routing_fitness/{tc}/{selector}`)
+1. **akosha**: End-to-end query → embedding → search → result flow
+1. **session-buddy**: `track_channel_session` state machine (the new MCP tool has zero diagrams)
+1. **session-buddy**: Worktree lifecycle (creating → listing → pruning → removing, with the wave-4 fixed bugs)
+1. **crackerjack**: Post-removal architecture diagram (the canonical answer to "what runs when you say `crackerjack run`")
+1. **crackerjack**: External ai-fix-loop diagram (the proposed replacement architecture in the spec)
+1. **crackerjack**: Ratchet CLI defects diagram (the 4 defects in `crackerjack-ratchet-cli-defects.md`)
 
----
+______________________________________________________________________
 
 ## Strategic recommendations
 
-1. **Adopt a canonical-diagram-per-concept convention.** Each repo gets a `docs/diagrams/` directory where each diagram is defined ONCE. Cross-references go through `![…](path)` embeds. The wave-1..7 cascade for prose, applied to diagrams, would prevent the 5–6 duplicate mirrors per repo.
+1. **Adopt a canonical-diagram-per-concept convention.** Each repo gets a `docs/diagrams/` directory where each diagram is defined ONCE. Cross-references go through `![…](<path>)` embeds. The wave-1..7 cascade for prose, applied to diagrams, would prevent the 5–6 duplicate mirrors per repo.
 
-2. **CI guard for mermaid render.** Crackerjack already proves this is feasible (`mmdc` v11.16.0 + system Chrome). Add a `pytest --mermaid-render` that runs all fenced mermaid blocks through `mmdc -i` and fails on syntax error. Existing `tests/unit/test_mcp_tool_inventory.py` for tool-counts is the template.
+1. **CI guard for mermaid render.** Crackerjack already proves this is feasible (`mmdc` v11.16.0 + system Chrome). Add a `pytest --mermaid-render` that runs all fenced mermaid blocks through `mmdc -i` and fails on syntax error. Existing `tests/unit/test_mcp_tool_inventory.py` for tool-counts is the template.
 
-3. **Documentation-update contract for module removals.** When a module is removed (matches the wave-6 commit pattern), the same PR must include an inventory of diagrams that reference it. Could be a `dep-check` script that greps `git grep -l <removed_module>` across all fenced mermaid + ASCII art fences.
+1. **Documentation-update contract for module removals.** When a module is removed (matches the wave-6 commit pattern), the same PR must include an inventory of diagrams that reference it. Could be a `dep-check` script that greps `git grep -l <removed_module>` across all fenced mermaid + ASCII art fences.
 
-4. **`[^]` footnote convention for diagrams referencing soon-to-be-removed subsystems.** Like `!!! note "Diagram predates 2026-08-10 cleanup — see ADR-NNN."` at the top of the diagram block. Lets the diagram stay useful while flagging that it's not canonical.
+1. **`[^]` footnote convention for diagrams referencing soon-to-be-removed subsystems.** Like `!!! note "Diagram predates 2026-08-10 cleanup — see ADR-NNN."` at the top of the diagram block. Lets the diagram stay useful while flagging that it's not canonical.
 
-5. **One ecosystem diagram, shared.** The Bodai topology (Mahavishnu ↔ Akosha ↔ Dhara ↔ Session-Buddy ↔ Crackerjack ↔ Oneiric) should live in ONE place (recommend session-buddy `docs/reference/service-dependencies.md:563`) and be re-embedded from there cross-repo. Six repositories can't all draw the same picture and stay in sync.
+1. **One ecosystem diagram, shared.** The Bodai topology (Mahavishnu ↔ Akosha ↔ Dhara ↔ Session-Buddy ↔ Crackerjack ↔ Oneiric) should live in ONE place (recommend session-buddy `docs/reference/service-dependencies.md:563`) and be re-embedded from there cross-repo. Six repositories can't all draw the same picture and stay in sync.
 
----
+______________________________________________________________________
 
 ## Auditing methodology notes
 
@@ -179,7 +180,7 @@ The audits surfaced 30+ recommended additions across all 6 repos. The highest-im
 - **Outdated reference verification:** Module paths and method signatures were cross-checked against the live source files of each repo.
 - **Strictly read-only:** No file edits, no installs, no `git` mutations beyond `git ls-files`-equivalent inventory operations.
 
----
+______________________________________________________________________
 
 ## Repo-by-repo detailed reports
 
@@ -189,6 +190,7 @@ common patterns so they can be acted on as a coordinated wave rather than five u
 drifts.
 
 For deeper drill-down per repo, refer to:
+
 - `mahavishnu` — 141 entries
 - `oneiric` — 95 entries
 - `session-buddy` — 77 entries
