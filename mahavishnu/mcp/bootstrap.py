@@ -16,6 +16,7 @@ if TYPE_CHECKING:
     from collections.abc import Callable
     from typing import Any, Literal
 
+    from fastmcp import FastMCP
     from fastmcp.server.event_store import EventStore
     from fastmcp.server.http import StarletteWithLifespan
     from starlette.middleware import Middleware as ASGIMiddleware
@@ -24,6 +25,18 @@ if TYPE_CHECKING:
 
     # Bound-method signature for FastMCP.TransportMixin.http_app.
     _HttpAppCallable = Callable[..., StarletteWithLifespan]
+
+
+def _mhv_server(fastmcp: FastMCP) -> FastMCPServer:
+    """Resolve the FastMCPServer wrapper from the FastMCP back-reference.
+
+    The W0 helper invocation pattern (see ``FastMCPServer.apply_tool_profile``)
+    passes the FastMCP to per-group registration functions. The mahavishnu
+    registrars need the wrapper for ``app``, ``terminal_manager``, etc. — those
+    attributes live on the wrapper, not on the FastMCP. The wrapper is set
+    as ``server._mhv_server`` in ``FastMCPServer.__init__``.
+    """
+    return fastmcp._mhv_server  # type: ignore[attr-defined, no-any-return]
 
 
 logger = get_logger(__name__)
@@ -507,3 +520,230 @@ async def register_profile_tools(server: FastMCPServer, methods_set: set[str]) -
     logger.info("Registered workflow outcome tools with MCP server")
     register_webhook_tools(server.server)
     logger.info("Registered webhook replay tools with MCP server")
+
+
+# ---------------------------------------------------------------------------
+# Per-group registration functions for W0 apply_tool_profile() wiring.
+# Each function takes (server: FastMCPServer) and registers exactly one
+# `_register_*_tools` group. Keep these in sync with PROFILE_REGISTRATIONS
+# in `mahavishnu/mcp/tools/profiles.py`.
+# ---------------------------------------------------------------------------
+
+
+def _register_health_tools(server: FastMCPServer) -> None:
+    """Register health check tools (always-on)."""
+    from ..mcp.tools.health_tools import register_health_tools
+
+    register_health_tools(server.server, server.app)
+    logger.info("Registered health check tools with MCP server")
+
+
+def _register_ecosystem_tools(server: FastMCPServer) -> None:
+    """Register canonical ecosystem status tools (always-on)."""
+    from ..mcp.tools.ecosystem_tools import register_ecosystem_tools
+
+    register_ecosystem_tools(server.server)
+    logger.info("Registered 3 canonical ecosystem status tools with MCP server")
+
+
+def _register_workflow_tools(server: FastMCPServer) -> None:
+    """Register workflow outcome tools (always-on)."""
+    from ..mcp.tools.workflow_tools import register_workflow_tools
+
+    register_workflow_tools(server.server)
+    logger.info("Registered workflow outcome tools with MCP server")
+
+
+def _register_webhook_tools(server: FastMCPServer) -> None:
+    """Register webhook replay tools (always-on)."""
+    from ..mcp.tools.webhook_tools import register_webhook_tools
+
+    register_webhook_tools(server.server)
+    logger.info("Registered webhook replay tools with MCP server")
+
+
+def _register_terminal_tools(server: FastMCPServer) -> None:
+    """Register terminal management tools (gated on terminal_manager)."""
+    if server.terminal_manager is None:
+        return
+    from ..mcp.tools.terminal_tools import register_terminal_tools
+
+    register_terminal_tools(server.server, server.terminal_manager, server.mcp_client)
+    logger.info("Registered 12 terminal management tools with MCP server")
+
+
+def _register_session_buddy_tools(server: FastMCPServer) -> None:
+    """Register Session Buddy integration tools."""
+    from ..mcp.tools.session_buddy_tools import register_session_buddy_tools
+
+    register_session_buddy_tools(server.server, server.app, server.mcp_client)
+    logger.info("Registered 9 Session Buddy integration tools with MCP server")
+
+
+def _register_git_analytics_tools(server: FastMCPServer) -> None:
+    """Register Git analytics tools."""
+    from ..mcp.tools.git_analytics import register_git_analytics_tools
+
+    register_git_analytics_tools(server.server, server.mcp_client)
+    logger.info("Registered 3 Git analytics tools with MCP server")
+
+
+def _register_repository_messaging_tools(server: FastMCPServer) -> None:
+    """Register repository messaging tools."""
+    from ..mcp.tools.repository_messaging_tools import (
+        register_repository_messaging_tools,
+    )
+
+    register_repository_messaging_tools(server.server, server.app, server.mcp_client)
+    logger.info("Registered 7 repository messaging tools with MCP server")
+
+
+def _register_worker_tools(server: FastMCPServer) -> None:
+    """Register worker orchestration tools (gated on workers_enabled + manager)."""
+    if not getattr(server.app.config, "workers_enabled", True):
+        logger.info("Worker orchestration disabled, skipping tool registration")
+        return
+    worker_manager = getattr(server.app, "_worker_manager", None)
+    if worker_manager is None:
+        logger.warning("Worker manager not initialized, skipping worker tools")
+        return
+    from ..mcp.tools.worker_tools import register_worker_tools
+
+    register_worker_tools(server.server, worker_manager)
+    logger.info("Registered 9 worker orchestration tools with MCP server")
+
+
+def _register_pool_tools(server: FastMCPServer) -> None:
+    """Register pool management tools (gated on pools_enabled + manager)."""
+    if not getattr(server.app.config, "pools_enabled", True):
+        logger.info("Pool management disabled, skipping tool registration")
+        return
+    pool_manager = getattr(server.app, "pool_manager", None)
+    if pool_manager is None:
+        logger.warning("Pool manager not initialized, skipping pool tools")
+        return
+    from ..mcp.tools.pool_tools import register_pool_tools
+
+    register_pool_tools(server.server, pool_manager)
+    logger.info("Registered 10 pool management tools with MCP server")
+
+
+def _register_worker_contract_tools(server: FastMCPServer) -> None:
+    """Register the durable-worker contract tool group (defensive fallback)."""
+    from ..mcp.tools.worker_contract_tools import register_worker_contract_tools
+
+    durable_worker_manager = getattr(server.app, "_durable_worker_manager", None)
+    if durable_worker_manager is None:
+        durable_worker_manager = _build_noop_worker_manager()
+    register_worker_contract_tools(server.server, durable_worker_manager)
+    logger.info("Registered 7 worker-contract tools with MCP server")
+
+
+def _register_otel_tools(server: FastMCPServer) -> None:
+    """Register OTel trace management tools (gated on Akosha availability)."""
+    import importlib.util
+
+    try:
+        akosha_spec = importlib.util.find_spec("akosha.storage")
+    except Exception as exc:  # noqa: BLE001 - defensive
+        logger.warning("Skipping OTel tool registration: akosha import failed: %s", exc)
+        return
+    if akosha_spec is None:
+        logger.info("HotStore not available, skipping OTel tool registration")
+        return
+    try:
+        from ..mcp.tools.otel_tools import register_otel_tools
+
+        register_otel_tools(server.server, server.app, server.mcp_client)
+        logger.info("Registered 4 OTel trace management tools with MCP server")
+    except Exception as exc:  # noqa: BLE001 - defensive
+        logger.warning("Skipping OTel tool registration after spec found: %s", exc)
+
+
+def _register_self_improvement_tools(server: FastMCPServer) -> None:
+    """Register self-improvement tools."""
+    from ..mcp.tools.self_improvement_tools import register_self_improvement_tools
+
+    register_self_improvement_tools(server.server, server.app)
+
+
+def _register_clone_tools(server: FastMCPServer) -> None:
+    """Register clone detection + refactoring tools."""
+    from ..mcp.tools.clone_tools import register_clone_tools
+
+    register_clone_tools(server.server, server.app)
+    logger.info("Registered 3 clone detection and refactoring tools with MCP server")
+
+
+def _register_goal_team_tools(server: FastMCPServer) -> None:
+    """Register goal-driven team tools (feature-flag gated)."""
+    from ..core.feature_flags import is_feature_enabled
+
+    if not (is_feature_enabled("enabled") and is_feature_enabled("mcp_tools_enabled")):
+        logger.info("Goal-Driven Teams tools disabled, skipping tool registration")
+        return
+    from ..mcp.tools.goal_team_tools import register_goal_team_tools
+
+    register_goal_team_tools(server.server)
+    logger.info("Registered 3 goal-driven team tools with MCP server")
+
+
+def _register_treesitter_tools(server: FastMCPServer) -> None:
+    """Register tree-sitter code analysis tools (optional import)."""
+    try:
+        from ..mcp.tools.treesitter_tools import register_treesitter_tools
+
+        register_treesitter_tools(server.server)
+        logger.info("Registered 7 tree-sitter code analysis tools with MCP server")
+    except ImportError as exc:
+        logger.info("Tree-sitter tools not available: %s", exc)
+
+
+def _register_adapter_registry_tools(server: FastMCPServer) -> None:
+    """Register adapter registry tools (optional import + config gate)."""
+    adapter_registry_config = getattr(server.app.config, "adapter_registry", None)
+    if adapter_registry_config and not adapter_registry_config.enabled:
+        logger.info("Adapter registry disabled, skipping tool registration")
+        return
+    try:
+        from ..mcp.tools.adapter_registry_tools import register_adapter_registry_tools
+
+        register_adapter_registry_tools(server.server)
+        logger.info("Registered 7 adapter registry management tools with MCP server")
+    except ImportError as exc:
+        logger.warning("Adapter registry tools not available: %s", exc)
+
+
+def _register_pycharm_tools(server: FastMCPServer) -> None:
+    """Register PyCharm IDE tools (optional import)."""
+    try:
+        from ..mcp.tools.pycharm_tools import register_pycharm_tools
+
+        register_pycharm_tools(server.server, server.app)
+        logger.info("Registered 8 PyCharm IDE tools with MCP server")
+    except ImportError as exc:
+        logger.warning("PyCharm tools not available: %s", exc)
+
+
+def _register_primitive_tools(server: FastMCPServer) -> None:
+    """Register primitive introspection tools (optional import)."""
+    try:
+        from ..mcp.tools.primitive_tools import register_primitive_tools
+
+        register_primitive_tools(server.server)
+        logger.info(
+            "Registered 2 primitive introspection tools (list_primitives, show_primitive) with MCP server"
+        )
+    except ImportError as exc:
+        logger.warning("Primitive tools not available: %s", exc)
+
+
+def _register_openhands_tools(server: FastMCPServer) -> None:
+    """Register OpenHands integration tools (mounts external MCP server)."""
+    try:
+        from ..mcp.tools.openhands_tools import mcp as openhands_mcp
+
+        server.server.mount(openhands_mcp, "openhands")
+        logger.info("Registered 4 OpenHands integration tools with MCP server")
+    except Exception as exc:  # noqa: BLE001 - defensive
+        logger.warning("OpenHands tools not available: %s", exc)

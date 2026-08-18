@@ -13,6 +13,7 @@ from typing import Any, cast
 
 from mcp_common.fastmcp import FastMCP
 from mcp_common.server.telemetry import FastMCPOpenTelemetryMiddleware
+from mcp_common.tools.dispatch import _apply_tool_profile as apply_tool_profile
 
 from monitoring.metrics import (
     mcp_tool_calls_total,
@@ -31,6 +32,12 @@ from .bootstrap import register_health_endpoint as _register_health_endpoint_hel
 from .lifecycle import register_worktree_tools as _register_worktree_tools_helper
 from .lifecycle import start_server as _start_server_helper
 from .lifecycle import stop_server as _stop_server_helper
+from .tools.profiles import (
+    MAHAVISHNU_MANDATORY_TOOLS,
+    PROFILE_REGISTRATIONS,
+    REGISTRATION_MAP,
+    settings_yaml_loader,
+)
 
 logger = getLogger(__name__)
 
@@ -134,6 +141,11 @@ class FastMCPServer:
             self.app = app
         self.auth_handler = get_auth_from_config(self.app.config)
         self.server = FastMCP(name="Mahavishnu Orchestrator", version=__version__)
+        # Back-reference so the W0 helper's REGISTRATION_MAP functions can
+        # recover the FastMCPServer wrapper (for app, terminal_manager, etc.)
+        # from the FastMCP it receives. The W0 helper signature only
+        # forwards the FastMCP, but our per-group functions need the wrapper.
+        self.server._mhv_server = self  # type: ignore[attr-defined]
         self._registered_tool_count = 0
         self._instrument_server_tool_registration()
         self._register_telemetry_middleware()
@@ -1347,6 +1359,34 @@ class FastMCPServer:
     async def stop(self) -> None:
         """Stop the MCP server and cleanup resources."""
         await _stop_server_helper(self)
+
+    async def apply_tool_profile(self) -> None:
+        """Apply the W0 tool profile to the underlying FastMCP server.
+
+        Wires ``mcp_common.tools.dispatch._apply_tool_profile`` with the
+        mahavishnu-specific ``PROFILE_REGISTRATIONS`` and ``REGISTRATION_MAP``.
+        Must be awaited from an async context (the sync ``apply_tool_profile``
+        wrapper would raise RuntimeError when called from inside a running
+        event loop, which is the case for any pytest-asyncio test).
+
+        The W0 helper is invoked with ``self.server`` (the FastMCP), not
+        ``self`` (the FastMCPServer wrapper). The W0 helper calls
+        ``server.list_tools()`` and ``server.add_tool()`` on the FastMCP.
+        The per-group functions in REGISTRATION_MAP need access to
+        ``self.app.config``, ``self.terminal_manager``, etc. — they
+        recover the wrapper via the ``_mhv_server`` back-reference set
+        in ``__init__``.
+        """
+        await apply_tool_profile(
+            self.server,
+            profile_env_var="MAHAVISHNU_TOOL_PROFILE",
+            registrations=PROFILE_REGISTRATIONS,
+            registration_map=REGISTRATION_MAP,
+            register_all_fn=None,
+            mandatory_tools=MAHAVISHNU_MANDATORY_TOOLS,
+            yaml_loader=settings_yaml_loader,
+        )
+        self._update_registered_tool_metrics()
 
     async def register_worktree_tools(self):
         """Register worktree management tools."""
