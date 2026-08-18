@@ -13,7 +13,7 @@ from typing import Any, cast
 
 from mcp_common.fastmcp import FastMCP
 from mcp_common.server.telemetry import FastMCPOpenTelemetryMiddleware
-from mcp_common.tools.dispatch import _apply_tool_profile as apply_tool_profile
+from mcp_common.tools.dispatch import _apply_tool_profile
 
 from monitoring.metrics import (
     mcp_tool_calls_total,
@@ -1363,11 +1363,12 @@ class FastMCPServer:
     async def apply_tool_profile(self) -> None:
         """Apply the W0 tool profile to the underlying FastMCP server.
 
-        Wires ``mcp_common.tools.dispatch._apply_tool_profile`` with the
-        mahavishnu-specific ``PROFILE_REGISTRATIONS`` and ``REGISTRATION_MAP``.
-        Must be awaited from an async context (the sync ``apply_tool_profile``
-        wrapper would raise RuntimeError when called from inside a running
-        event loop, which is the case for any pytest-asyncio test).
+        Wires ``mcp_common.tools.dispatch._apply_tool_profile`` (the async
+        helper) with the mahavishnu-specific ``PROFILE_REGISTRATIONS`` and
+        ``REGISTRATION_MAP``. Must be awaited from an async context — the
+        sync ``apply_tool_profile`` wrapper raises RuntimeError when called
+        from inside a running event loop, which is the case for any
+        pytest-asyncio test.
 
         The W0 helper is invoked with ``self.server`` (the FastMCP), not
         ``self`` (the FastMCPServer wrapper). The W0 helper calls
@@ -1381,9 +1382,10 @@ class FastMCPServer:
         the helper force-registers health/ecosystem/workflow/webhook at every
         profile. The pre-W0.5 ``mandatory_tools`` parameter (conflated dispatch
         driver + subset check) is now deprecated; mcp-common retains it as a
-        backward-compatible alias for ``mandatory_groups``.
+        backward-compatible alias for ``mandatory_groups``. Requires
+        mcp-common>=0.18.0 (see pyproject.toml).
         """
-        await apply_tool_profile(
+        await _apply_tool_profile(
             self.server,
             profile_env_var="MAHAVISHNU_TOOL_PROFILE",
             registrations=PROFILE_REGISTRATIONS,

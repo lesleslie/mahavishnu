@@ -13,10 +13,11 @@ def test_server_core_calls_apply_tool_profile():
     server_core = Path("mahavishnu/mcp/server_core.py")
     tree = ast.parse(server_core.read_text())
     found = any(
-        isinstance(node, ast.Call) and getattr(node.func, "id", "") == "apply_tool_profile"
+        isinstance(node, ast.Call)
+        and getattr(node.func, "id", "") in ("apply_tool_profile", "_apply_tool_profile")
         for node in ast.walk(tree)
     )
-    assert found, "server_core.py must call apply_tool_profile()"
+    assert found, "server_core.py must call apply_tool_profile() or _apply_tool_profile()"
 
 
 @pytest.mark.asyncio

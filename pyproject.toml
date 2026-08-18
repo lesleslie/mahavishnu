@@ -24,7 +24,8 @@ dependencies = [
     # Oneiric ecosystem
     "oneiric>=0.16.0",
     # Shared infrastructure (mcp-common)
-    "mcp-common>=0.17.0",
+    # 0.18.0+ required for `apply_tool_profile()` (ToolProfile dispatch helper).
+    "mcp-common>=0.18.0",
     # Fast JSON serialization for the canonical event wire
     "msgspec>=0.21.1,<0.22",
     # MCP server
