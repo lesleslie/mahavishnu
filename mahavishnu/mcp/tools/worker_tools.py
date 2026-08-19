@@ -20,7 +20,7 @@ if TYPE_CHECKING:
 # from these globals so tests can monkeypatch without going through the
 # FastMCP app.
 _durable_manager: DurableWorkerManager | None = None
-_worker_manager: WorkerManager | None = None
+worker_manager: WorkerManager | None = None
 
 
 # Categories that must go through the durable-worker contract per the
@@ -83,10 +83,10 @@ async def worker_spawn(
         ]
         return {"worker_ids": [r.worker_id for r in results]}
 
-    if _worker_manager is None:
+    if worker_manager is None:
         raise RuntimeError("worker_manager not configured")
 
-    worker_ids = await _worker_manager.spawn_workers(
+    worker_ids = await worker_manager.spawn_workers(
         worker_type=worker_type,
         count=count,
     )
@@ -115,10 +115,10 @@ async def worker_monitor(
     if interval < 0.1 or interval > 10.0:
         raise ValueError("interval must be between 0.1 and 10.0")
 
-    if _worker_manager is None:
+    if worker_manager is None:
         raise RuntimeError("worker_manager not configured")
 
-    statuses = await _worker_manager.monitor_workers(worker_ids, interval)
+    statuses = await worker_manager.monitor_workers(worker_ids, interval)
     return {wid: status.value for wid, status in statuses.items()}
 
 
@@ -156,10 +156,10 @@ async def worker_collect_results(
             }
         return {"workers": workers_out}
 
-    if _worker_manager is None:
+    if worker_manager is None:
         raise RuntimeError("worker_manager not configured")
 
-    results = await _worker_manager.collect_results(worker_ids)
+    results = await worker_manager.collect_results(worker_ids)
 
     return {
         wid: {
@@ -201,10 +201,10 @@ async def worker_close(
             "exit_code": getattr(record, "last_exit_code", None),
         }
     # Legacy fallback (unchanged shape)
-    if _worker_manager is None:
+    if worker_manager is None:
         return {"success": False, "worker_id": worker_id, "error": "worker_manager_unconfigured"}
     try:
-        await _worker_manager.close_worker(worker_id)
+        await worker_manager.close_worker(worker_id)
         return {"success": True, "worker_id": worker_id}
     except Exception as e:  # noqa: BLE001 - MCP boundary must preserve all operation failures
         return {"success": False, "worker_id": worker_id, "error": str(e)}
@@ -228,12 +228,12 @@ async def worker_close_all() -> dict:
                 closed.append(record.worker_id)
         return {"closed": closed}
     # Legacy fallback (preserves original shape)
-    if _worker_manager is None:
+    if worker_manager is None:
         return {"closed_count": 0, "error": "worker_manager_unconfigured"}
-    workers_list = await _worker_manager.list_workers()
+    workers_list = await worker_manager.list_workers()
     worker_ids = [w["worker_id"] for w in workers_list]
     for wid in worker_ids:
-        await _worker_manager.close_worker(wid)
+        await worker_manager.close_worker(wid)
     return {"closed_count": len(worker_ids)}
 
 
@@ -251,9 +251,115 @@ async def worker_health() -> dict:
         for record in records:
             counts[record.state] = counts.get(record.state, 0) + 1
         return {"total": len(records), "counts": counts}
-    if _worker_manager is None:
+    if worker_manager is None:
         return {"total": 0, "counts": {}, "error": "worker_manager_unconfigured"}
-    return await _worker_manager.health_check()
+    return await worker_manager.health_check()
+
+
+async def worker_execute(
+    worker_id: str,
+    prompt: str,
+    timeout: int = 300,
+) -> dict:
+    """Execute task on specific worker.
+
+    Returns the full structured result without silent truncation;
+    callers that need a summary should pass the result through
+    their own formatter.
+    """
+    if timeout < 30 or timeout > 3600:
+        raise ValueError("timeout must be between 30 and 3600")
+
+    if worker_manager is None:
+        raise RuntimeError("worker_manager not configured")
+
+    task = {
+        "prompt": prompt,
+        "timeout": timeout,
+    }
+
+    result = await worker_manager.execute_task(worker_id, task)
+
+    return {
+        "worker_id": result.worker_id,
+        "status": result.status.value,
+        "output": result.output,
+        "error": result.error,
+        "exit_code": result.exit_code,
+        "duration_seconds": result.duration_seconds,
+        "metadata": result.metadata or {},
+    }
+
+
+async def worker_execute_batch(
+    worker_ids: list[str],
+    prompts: list[str],
+    timeout: int = 300,
+) -> list[dict]:
+    """Execute tasks on multiple workers concurrently.
+
+    Returns a list of structured results, one per input, in the
+    same order as the input worker_ids / prompts.
+    """
+    if len(worker_ids) != len(prompts):
+        raise ValueError("worker_ids and prompts must have same length")
+
+    if worker_manager is None:
+        raise RuntimeError("worker_manager not configured")
+
+    tasks = [{"prompt": prompt, "timeout": timeout} for prompt in prompts]
+
+    results = await worker_manager.execute_batch(worker_ids, tasks)
+
+    out: list[dict] = []
+    for wid, result in results.items():
+        out.append(
+            {
+                "worker_id": wid,
+                "status": result.status.value,
+                "output": result.output,
+                "error": result.error,
+                "exit_code": result.exit_code,
+                "duration_seconds": result.duration_seconds,
+                "metadata": result.metadata or {},
+            }
+        )
+    return out
+
+
+async def worker_list(
+    state: str | None = None,
+    worker_id: str | None = None,
+) -> list[dict]:
+    """List workers, optionally filtered by state and/or worker_id.
+
+    When the durable worker manager is configured, the tool reads
+    from ``_durable_manager.store.list_all()`` and applies the
+    optional ``state`` and ``worker_id`` filters, projecting each
+    surviving record to ``{"worker_id": ..., "state": ...}``. When
+    the durable manager is absent, the tool falls back to
+    ``worker_manager.list_workers()`` so existing callers stay
+    green; the legacy path does not apply the new filters.
+
+    Args:
+        state: Optional ``WorkerLifecycleState`` value to filter by
+            (e.g. ``"ready"``, ``"running"``). Only honored on the
+            durable-manager path.
+        worker_id: Optional worker id to filter by. Only honored on
+            the durable-manager path.
+    """
+    if worker_manager is None:
+        raise RuntimeError("worker_manager not configured")
+    if _durable_manager is None:
+        return await worker_manager.list_workers()
+    records = list(_durable_manager.store.list_all())
+    # DurableWorkerRecord uses ``use_enum_values=True``, so ``r.state``
+    # is already the enum's string value (e.g. "ready"); no .value access.
+    if state is not None:
+        records = [r for r in records if r.state == state]
+    if worker_id is not None:
+        records = [r for r in records if r.worker_id == worker_id]
+    return [{"worker_id": r.worker_id, "state": r.state} for r in records]
 
 
 def register_worker_tools(
@@ -263,11 +369,14 @@ def register_worker_tools(
 ) -> None:
     """Register worker orchestration tools with MCP server.
 
-    Structural C901 suppression: FastMCP's ``@mcp.tool()`` decorator
-    requires each tool function to be defined inline so it can introspect
-    the function name and signature for the MCP tool schema. The tools
-    registered here are intentionally kept inline; the complexity is the
-    cost of the FastMCP API contract, not bad code.
+    The tool functions are defined at module scope (``worker_spawn``,
+    ``worker_monitor``, ``worker_collect_results``, ``worker_close``,
+    ``worker_close_all``, ``worker_health``, ``worker_execute``,
+    ``worker_execute_batch``, ``worker_list``) so they can be invoked
+    directly in tests by monkeypatching the module-level
+    ``worker_manager`` and ``_durable_manager`` references. FastMCP's
+    ``@mcp.tool()`` decorator still introspects the function name and
+    signature for the MCP tool schema.
 
     Args:
         mcp: FastMCP server instance
@@ -276,9 +385,9 @@ def register_worker_tools(
             routing. When ``None`` (default), shell workers fall back to
             the legacy ``WorkerManager.spawn_workers`` path.
     """
-    global _durable_manager, _worker_manager
+    global _durable_manager
     _durable_manager = durable_manager
-    _worker_manager = worker_manager
+    globals()["worker_manager"] = worker_manager
 
     mcp.tool()(worker_spawn)
     mcp.tool()(worker_monitor)
@@ -286,101 +395,6 @@ def register_worker_tools(
     mcp.tool()(worker_close)
     mcp.tool()(worker_close_all)
     mcp.tool()(worker_health)
-
-    @mcp.tool()
-    async def worker_execute(
-        worker_id: str,
-        prompt: str,
-        timeout: int = 300,
-    ) -> dict:
-        """Execute task on specific worker.
-
-        Returns the full structured result without silent truncation;
-        callers that need a summary should pass the result through
-        their own formatter.
-        """
-        if timeout < 30 or timeout > 3600:
-            raise ValueError("timeout must be between 30 and 3600")
-
-        task = {
-            "prompt": prompt,
-            "timeout": timeout,
-        }
-
-        result = await worker_manager.execute_task(worker_id, task)
-
-        return {
-            "worker_id": result.worker_id,
-            "status": result.status.value,
-            "output": result.output,
-            "error": result.error,
-            "exit_code": result.exit_code,
-            "duration_seconds": result.duration_seconds,
-            "metadata": result.metadata or {},
-        }
-
-    @mcp.tool()
-    async def worker_execute_batch(
-        worker_ids: list[str],
-        prompts: list[str],
-        timeout: int = 300,
-    ) -> list[dict]:
-        """Execute tasks on multiple workers concurrently.
-
-        Returns a list of structured results, one per input, in the
-        same order as the input worker_ids / prompts.
-        """
-        if len(worker_ids) != len(prompts):
-            raise ValueError("worker_ids and prompts must have same length")
-
-        tasks = [{"prompt": prompt, "timeout": timeout} for prompt in prompts]
-
-        results = await worker_manager.execute_batch(worker_ids, tasks)
-
-        out: list[dict] = []
-        for wid, result in results.items():
-            out.append(
-                {
-                    "worker_id": wid,
-                    "status": result.status.value,
-                    "output": result.output,
-                    "error": result.error,
-                    "exit_code": result.exit_code,
-                    "duration_seconds": result.duration_seconds,
-                    "metadata": result.metadata or {},
-                }
-            )
-        return out
-
-    @mcp.tool()
-    async def worker_list(
-        state: str | None = None,
-        worker_id: str | None = None,
-    ) -> list[dict]:
-        """List workers, optionally filtered by state and/or worker_id.
-
-        When the durable worker manager is configured, the tool reads
-        from ``_durable_manager.store.list_all()`` and applies the
-        optional ``state`` and ``worker_id`` filters, projecting each
-        surviving record to ``{"worker_id": ..., "state": ...}``. When
-        the durable manager is absent, the tool falls back to
-        ``worker_manager.list_workers()`` so existing callers stay
-        green; the legacy path does not apply the new filters.
-
-        Args:
-            state: Optional ``WorkerLifecycleState`` value to filter by
-                (e.g. ``"ready"``, ``"running"``). Only honored on the
-                durable-manager path.
-            worker_id: Optional worker id to filter by. Only honored on
-                the durable-manager path.
-        """
-        if _durable_manager is None:
-            return await worker_manager.list_workers()
-        records = list(_durable_manager.store.list_all())
-        # DurableWorkerRecord uses ``use_enum_values=True``, so ``r.state``
-        # is already the enum's string value (e.g. "ready"); no .value access.
-        if state is not None:
-            records = [r for r in records if r.state == state]
-        if worker_id is not None:
-            records = [r for r in records if r.worker_id == worker_id]
-        return [{"worker_id": r.worker_id, "state": r.state} for r in records]
+    mcp.tool()(worker_execute)
+    mcp.tool()(worker_execute_batch)
+    mcp.tool()(worker_list)

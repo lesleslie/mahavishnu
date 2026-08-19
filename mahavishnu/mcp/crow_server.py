@@ -26,7 +26,7 @@ from contextlib import asynccontextmanager
 import os
 from typing import TYPE_CHECKING, Any, cast
 
-from fastmcp import FastMCP
+from mcp_common.fastmcp import FastMCP
 from mcp_common.profiles.standard import StandardServer
 
 from mahavishnu.mcp.bodai_component_client import BodaiComponentMCPClient
