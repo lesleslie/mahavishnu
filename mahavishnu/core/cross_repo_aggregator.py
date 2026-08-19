@@ -42,6 +42,12 @@ class AggregationFilter:
 
     Attributes:
         repo_names: Filter to specific repositories (AND logic if multiple)
+        repo_tags: Filter to repositories carrying ALL these tags.
+            Preserves the public surface exercised by the empty-filter
+            smoke test alongside the task-level ``tags`` field.
+        repo_roles: Filter to repositories with these roles. Preserves
+            the public surface exercised by the empty-filter smoke test
+            alongside the legacy ``roles`` field.
         roles: Filter to repositories with these roles
         tags: Filter to tasks with ALL these tags
         tags_any: Filter to tasks with ANY of these tags
@@ -53,6 +59,8 @@ class AggregationFilter:
     """
 
     repo_names: list[str] | None = None
+    repo_tags: list[str] | None = None
+    repo_roles: list[str] | None = None
     roles: list[str] | None = None
     tags: list[str] | None = None
     tags_any: list[str] | None = None

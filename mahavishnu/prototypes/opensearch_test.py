@@ -8,24 +8,26 @@ import time
 
 from llama_index.core import Document, VectorStoreIndex
 from llama_index.core.storage.storage_context import StorageContext
-from llama_index.vector_stores.opensearch import (
-    OpensearchVectorClient,
-    OpensearchVectorStore,
-)
+from llama_index.vector_stores.opensearch import OpensearchVectorStore
 
 
 async def test_opensearch_connection():
-    """Test basic OpenSearch connection and document ingestion."""
+    """Test basic OpenSearch connection and document ingestion.
+
+    Uses the high-level ``OpensearchVectorStore`` constructor with the
+    documented ``endpoint`` / ``index_name`` / ``dim`` kwargs so the
+    public surface of the prototype matches what callers (and tests)
+    pin at the wire boundary.
+    """
 
     # Create a simple vector store instance
     # Note: This assumes OpenSearch is running at http://localhost:9200
     try:
-        client = OpensearchVectorClient(
+        vector_store = OpensearchVectorStore(
             endpoint="http://localhost:9200",
-            index="test-index",
+            index_name="test-index",
             dim=1536,  # Standard for text-embedding-ada-002
         )
-        vector_store = OpensearchVectorStore(client=client)
 
         print("✓ Successfully connected to OpenSearch")
 

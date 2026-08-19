@@ -35,7 +35,7 @@ class User(BaseModel):
     roles: list[Role]
     email: str | None = None
     name: str | None = None
-    created_at: datetime = Field(default_factory=datetime.now)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
 
 
 class RBACManager:
@@ -79,8 +79,6 @@ class RBACManager:
                 Permission.READ_REPO,
                 Permission.LIST_WORKFLOWS,
                 Permission.VIEW_WORKFLOW_STATUS,
-                Permission.READ_APPROVAL,
-                Permission.READ_WEBHOOK,
             ],
             allowed_repos=[],
         )

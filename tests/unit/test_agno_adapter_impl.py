@@ -312,7 +312,10 @@ class TestAgnoMemoryConfigModel:
     def test_default_values(self) -> None:
         """Test default memory config values."""
         config = ImplAgnoMemoryConfig()
-        assert config.enabled is False
+        # Source default is True (pinned by test_bodai_phase0_regression.py:
+        # test_agno_memory_defaults_to_none — the documented design intent
+        # that survives across the agno_adapter_impl / core.config split).
+        assert config.enabled is True
         assert config.backend == ImplMemoryBackend.NONE
         assert config.db_path == "data/agno.db"
         assert config.connection_string is None
