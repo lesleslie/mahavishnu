@@ -505,12 +505,16 @@ class PoolManager:
             )
             ```
         """
-        # Quota enforcement is the first gate — same rule as route_task
-        # so a caller cannot bypass it by switching from pool_route_execute
-        # to pool_execute. Coercion happens here so any wire-string input
-        # lands in the canonical bucket before _enforce_caller_quota runs.
+        # Quota enforcement happens at the MCP tool boundary (see
+        # ``_authorize_durable_fast_path`` in pool_tools.py for the
+        # dispatch_to_pool / pool_route_execute paths, and the
+        # ``pool_execute`` tool for the direct path). Calling
+        # ``_enforce_caller_quota`` here would double-count quota because
+        # ``route_task`` already delegates through ``execute_on_pool``.
+        # Coercion still happens here so callers using ``execute_on_pool``
+        # directly with a wire-string ``caller_kind`` land in the
+        # canonical bucket for the routing-decision audit trail.
         caller_kind = coerce_caller_kind(caller_kind)
-        self._enforce_caller_quota(caller_kind)
 
         pool = self._pools.get(pool_id)
         if not pool:
@@ -628,6 +632,13 @@ class PoolManager:
         # reject the call later. ``RateLimitError`` propagates
         # through the MCP boundary as
         # ``{"status": "rate_limited", "retry_after_seconds": ...}``.
+        # Quota is enforced here (NOT in ``execute_on_pool`` because
+        # the latter is a sub-routine of ``route_task`` and double
+        # enforcement would consume quota twice per call) and the
+        # MCP-tool boundary helper
+        # (``_authorize_durable_fast_path``) does NOT also enforce
+        # quota — only the durable fast-path spawn site does, so
+        # legacy-path callers are gated exactly once.
         self._enforce_caller_quota(caller_kind)
 
         logger.debug(

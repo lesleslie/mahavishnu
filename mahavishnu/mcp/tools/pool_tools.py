@@ -122,13 +122,14 @@ def _authorize_durable_fast_path(
 
     coerced_kind = coerce_caller_kind(caller_kind)
 
-    # Quota enforcement — matches the legacy route_task contract.
-    # When ``_enforce_caller_quota`` is absent (e.g. test Mock without
-    # it), we silently skip the rate-limit check. Production callers
-    # always supply a real PoolManager.
-    enforce = getattr(pool_manager, "_enforce_caller_quota", None)
-    if enforce is not None:
-        enforce(coerced_kind)
+    # Quota enforcement is performed inside ``route_task`` (for the
+    # legacy path) and at the durable fast-path spawn site (for the
+    # fast path). Performing it here as well would double-count quota
+    # for legacy-path callers and surface a spurious ``rate_limited``
+    # on the second call against a bucket sized for ``max_per_window=N``.
+    # The fast-path spawn site has its own quota gate so a caller
+    # cannot bypass rate-limiting by routing through the durable
+    # path either.
 
     # ADR-014: AFFINITY/PEER_AFFINITY require a caller_pool_allowlist.
     # The fast path does not select a pool, but a missing allowlist
@@ -431,6 +432,15 @@ def register_pool_tools(
         from mahavishnu.pools.manager import coerce_caller_kind
 
         coerced_kind = coerce_caller_kind(caller_kind)
+        # Quota gate: enforce BEFORE building the task so a saturated
+        # bucket short-circuits cheaply. ``execute_on_pool`` no longer
+        # enforces quota (delegated callers like ``route_task`` are
+        # gated by ``_authorize_durable_fast_path``), so the gate
+        # moved to the tool boundary to keep ``pool_execute`` callers
+        # on the same contract as ``pool_route_execute``.
+        enforce = getattr(pool_manager, "_enforce_caller_quota", None)
+        if enforce is not None:
+            enforce(coerced_kind)
         task = {
             "prompt": prompt,
             "timeout": timeout,
