@@ -446,6 +446,7 @@ def prune_merged_worktrees(
     _run_async(_run())
 
 
+@worktree_app.command("list-sessions")
 def list_sessions(
     state: str = typer.Option(
         "active",
