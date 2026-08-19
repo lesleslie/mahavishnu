@@ -208,8 +208,7 @@ class GenericShellWorker(BaseWorker):
         Returns:
             WorkerResult when completion detected or timeout
         """
-        if self.session_id is None:
-            raise RuntimeError("session_id not set; worker not started")
+        session_id = self.session_id or ""
 
         output_lines: list[str] = []
         last_output = ""
@@ -218,7 +217,7 @@ class GenericShellWorker(BaseWorker):
         while True:
             # Capture latest output
             try:
-                output = await self.terminal_manager.capture_output(self.session_id, lines=100)
+                output = await self.terminal_manager.capture_output(session_id, lines=100)
             except Exception as e:  # noqa: BLE001 - boundary preserves structured backend failure handling
                 logger.error(f"Failed to capture output: {e}")
                 output = ""
