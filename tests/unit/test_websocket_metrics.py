@@ -2,16 +2,44 @@
 
 from __future__ import annotations
 
+import sys
 from unittest.mock import MagicMock, patch
 
 import pytest
 
-from mahavishnu.websocket.metrics import (
-    WebSocketMetrics,
-    get_metrics,
-    reset_metrics,
-    start_metrics_server,
-)
+# Imported via the module path so we can rebind the names below if
+# ``test_websocket_metrics_coverage`` re-executes ``metrics.py`` via
+# importlib. The captured ``from ... import ...`` names below stay live
+# references to whatever lives at ``sys.modules["mahavishnu.websocket.metrics"]``
+# at the moment each test starts, which keeps ``with patch(...)`` patches in
+# sync with the actual function objects the tests call.
+import mahavishnu.websocket.metrics as _metrics_module
+
+WebSocketMetrics = _metrics_module.WebSocketMetrics
+get_metrics = _metrics_module.get_metrics
+reset_metrics = _metrics_module.reset_metrics
+start_metrics_server = _metrics_module.start_metrics_server
+
+
+def _refresh_module_references() -> None:
+    """Re-bind ``_metrics_module`` (and friends) to the live metrics module.
+
+    ``tests/unit/test_websocket_metrics_coverage.py`` re-executes
+    ``metrics.py`` through importlib so multiple module instances can be in
+    flight inside a single test session. Without this refresh, the
+    ``from mahavishnu.websocket.metrics import ...`` bindings captured at
+    import time point at the stale instance and ``with patch("...PROMETHEUS_AVAILABLE", ...)``
+    writes to whichever instance currently lives at
+    ``sys.modules["mahavishnu.websocket.metrics"]``, not to the one whose
+    ``__globals__`` the tests' functions actually close over.
+    """
+    global _metrics_module, WebSocketMetrics, get_metrics, reset_metrics, start_metrics_server
+    _metrics_module = sys.modules["mahavishnu.websocket.metrics"]
+    WebSocketMetrics = _metrics_module.WebSocketMetrics
+    get_metrics = _metrics_module.get_metrics
+    reset_metrics = _metrics_module.reset_metrics
+    start_metrics_server = _metrics_module.start_metrics_server
+
 
 # ---------------------------------------------------------------------------
 # Fixtures
@@ -22,7 +50,8 @@ from mahavishnu.websocket.metrics import (
 def _clean_slate():
     """Reset module-level state and Prometheus registry before and after each
     test so that tests are fully isolated."""
-    import mahavishnu.websocket.metrics as mod
+    _refresh_module_references()
+    mod = _metrics_module
 
     _unregister_custom_collectors()
     mod._instances.clear()
@@ -821,10 +850,16 @@ class TestResetMetrics:
 
 
 def _get_instances() -> dict:
-    """Helper to access the private _instances dict from the module."""
-    import mahavishnu.websocket.metrics as mod
+    """Helper to access the private _instances dict from the module.
 
-    return mod._instances
+    Uses ``sys.modules`` directly rather than ``import ... as mod`` because
+    ``import mahavishnu.websocket.metrics`` resolves through the package
+    attribute (``mahavishnu.websocket.metrics``), which can be stale when
+    ``test_websocket_metrics_coverage`` re-executes metrics.py via importlib
+    and replaces the sys.modules entry but leaves the package attribute
+    pointing at the original module.
+    """
+    return sys.modules["mahavishnu.websocket.metrics"]._instances
 
 
 # ===========================================================================

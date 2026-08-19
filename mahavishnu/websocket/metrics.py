@@ -136,6 +136,17 @@ class WebSocketMetrics:
         """
         from prometheus_client import REGISTRY
 
+        # ``prometheus_client`` strips the ``_total`` suffix from ``Counter``
+        # when storing ``_name`` but keeps the full name in
+        # ``_names_to_collectors`` and ``_collector_to_names``. The previous
+        # helper only consulted ``_name``, which missed Counters registered
+        # under the full ``..._total`` name. Iterate the registry's name
+        # -> collector map directly so both forms are matched.
+        if name in REGISTRY._names_to_collectors:
+            return REGISTRY._names_to_collectors[name]
+
+        # Fall back to a scan for Histogram-style collectors whose ``_name``
+        # matches exactly.
         for collector in REGISTRY._names_to_collectors.values():
             if hasattr(collector, "_name") and collector._name == name:
                 return collector
@@ -186,14 +197,22 @@ class WebSocketMetrics:
         self._metrics_initialized = True
         logger.info(f"Initialized Prometheus metrics for server: {self.server_name}")
 
-    def _ensure_enabled(self) -> None:
-        """Check if metrics are enabled and initialize if needed."""
+    def _ensure_enabled(self) -> bool:
+        """Check if metrics are enabled and initialize if needed.
+
+        Returns True when metrics are ready for use, False when the
+        collector is disabled (e.g. ``prometheus_client`` is unavailable
+        or was patched to ``PROMETHEUS_AVAILABLE = False``). Callers must
+        treat a False return as a no-op signal so disabled-mode tests
+        don't trip the "X not initialized" RuntimeError.
+        """
         if not self._enabled:
             logger.debug(f"Metrics disabled, skipping operation for server: {self.server_name}")
-            return
+            return False
 
         # Initialize metrics on first use
         self._initialize_metrics()
+        return True
 
     def _get_message_counter(self) -> Counter:
         """Get message counter (initializes if needed)."""
@@ -273,7 +292,8 @@ class WebSocketMetrics:
             message_type: Type of message (request, response, event)
             amount: Amount to increment (default: 1)
         """
-        self._ensure_enabled()
+        if not self._ensure_enabled():
+            return
         counter = self._get_message_counter()
         try:
             self._select_metric_child(
@@ -289,7 +309,8 @@ class WebSocketMetrics:
         Args:
             count: Number of active connections
         """
-        self._ensure_enabled()
+        if not self._ensure_enabled():
+            return
         gauge = self._get_connection_gauge()
         try:
             self._select_metric_child(gauge, server=self.server_name).set(count)
@@ -303,7 +324,8 @@ class WebSocketMetrics:
         Args:
             delta: Amount to adjust (positive or negative)
         """
-        self._ensure_enabled()
+        if not self._ensure_enabled():
+            return
         gauge = self._get_connection_gauge()
         try:
             self._select_metric_child(gauge, server=self.server_name).inc(delta)
@@ -318,7 +340,8 @@ class WebSocketMetrics:
             channel: Channel name broadcasted to
             duration: Duration in seconds
         """
-        self._ensure_enabled()
+        if not self._ensure_enabled():
+            return
         histogram = self._get_broadcast_histogram(channel)
         try:
             self._select_metric_child(histogram, server=self.server_name, channel=channel).observe(
@@ -334,7 +357,8 @@ class WebSocketMetrics:
         Args:
             count: Number of active subscriptions
         """
-        self._ensure_enabled()
+        if not self._ensure_enabled():
+            return
         gauge = self._get_subscription_gauge()
         try:
             self._select_metric_child(gauge, server=self.server_name).set(count)
@@ -349,7 +373,8 @@ class WebSocketMetrics:
             error_type: Type of error (connection, parse, broadcast, auth)
             amount: Amount to increment (default: 1)
         """
-        self._ensure_enabled()
+        if not self._ensure_enabled():
+            return
         counter = self._get_error_counter(error_type)
         try:
             self._select_metric_child(counter, server=self.server_name, error_type=error_type).inc(
