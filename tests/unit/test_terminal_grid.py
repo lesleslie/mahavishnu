@@ -21,7 +21,7 @@ from mahavishnu.terminal.grid.exceptions import (
 def mock_adapter():
     """Mock TerminalAdapter for testing."""
     adapter = MagicMock()
-    adapter._run_applescript = AsyncMock(return_value="tab_123")
+    adapter.run_applescript = AsyncMock(return_value="tab_123")
     return adapter
 
 
@@ -38,7 +38,7 @@ class TestTerminalGridManager:
     @pytest.mark.asyncio
     async def test_deploy_single_desktop_four_tasks(self, manager, mock_adapter):
         """4 tasks fill tl,tr,bl,br on single desktop."""
-        mock_adapter._run_applescript = AsyncMock(return_value="tab_123")
+        mock_adapter.run_applescript = AsyncMock(return_value="tab_123")
 
         with patch.object(manager, "_get_primary_screen_bounds", return_value=(0, 0, 1920, 1080)):
             with patch.object(manager, "_create_desktop_via_spaces", return_value=False):
@@ -57,7 +57,7 @@ class TestTerminalGridManager:
     @pytest.mark.asyncio
     async def test_send_to_session(self, manager, mock_adapter):
         """send_to_session sends to correct window by session_id."""
-        mock_adapter._run_applescript = AsyncMock(return_value="")
+        mock_adapter.run_applescript = AsyncMock(return_value="")
 
         grid_id = "grid_test"
         desktop = DesktopSession(desktop_id="win1", position=1)
@@ -74,8 +74,8 @@ class TestTerminalGridManager:
 
         await manager.send_to_session(grid_id, "sess_001", "ls -la")
 
-        mock_adapter._run_applescript.assert_called()
-        call_args = mock_adapter._run_applescript.call_args[0][0]
+        mock_adapter.run_applescript.assert_called()
+        call_args = mock_adapter.run_applescript.call_args[0][0]
         assert "write text" in call_args
         assert "ls -la" in call_args
         assert "grid_test_d1_win_tl" in call_args
@@ -92,7 +92,7 @@ class TestTerminalGridManager:
     @pytest.mark.asyncio
     async def test_broadcast_to_grid(self, manager, mock_adapter):
         """broadcast_to_grid sends to all sessions."""
-        mock_adapter._run_applescript = AsyncMock(return_value="")
+        mock_adapter.run_applescript = AsyncMock(return_value="")
 
         grid_id = "grid_bcast"
         desktop = DesktopSession(desktop_id="win1", position=1)
@@ -103,15 +103,15 @@ class TestTerminalGridManager:
 
         await manager.broadcast_to_grid(grid_id, "echo broadcast")
 
-        assert mock_adapter._run_applescript.call_count == 2
-        for call in mock_adapter._run_applescript.call_args_list:
+        assert mock_adapter.run_applescript.call_count == 2
+        for call in mock_adapter.run_applescript.call_args_list:
             args = call[0][0]
             assert "echo broadcast" in args
 
     @pytest.mark.asyncio
     async def test_close_grid(self, manager, mock_adapter):
         """close_grid closes all windows and marks status closed."""
-        mock_adapter._run_applescript = AsyncMock(return_value="")
+        mock_adapter.run_applescript = AsyncMock(return_value="")
 
         grid_id = "grid_close"
         desktop = DesktopSession(desktop_id="win1", position=1)
@@ -121,7 +121,7 @@ class TestTerminalGridManager:
 
         await manager.close_grid(grid_id)
 
-        call_args = mock_adapter._run_applescript.call_args[0][0]
+        call_args = mock_adapter.run_applescript.call_args[0][0]
         assert "close w" in call_args
         assert grid.status == GridStatus.CLOSED
 
