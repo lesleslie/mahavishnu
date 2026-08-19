@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from dataclasses import field
 import datetime as dt
+import shutil
 from typing import TYPE_CHECKING, cast
 
 from oneiric.core.logging import get_logger
@@ -179,14 +180,62 @@ def _register_worker_contract_block(server: FastMCPServer) -> None:
     at boot, it falls back to a no-op manager so the MCP server can still
     start with the rest of the tool profile intact. Tools exposed by this
     group surface ``state="manager_unconfigured"`` in that mode.
+
+    When tmux is on PATH, a real :class:`DurableWorkerManager` is built via
+    :func:`_try_build_durable_worker_manager` and stashed on
+    ``server.app._durable_worker_manager`` so worker-contract tools can
+    actually exercise the 26-task contract (FIX-FIRST #1 of the
+    durable-local-workers whole-branch review).
     """
     from ..mcp.tools.worker_contract_tools import register_worker_contract_tools
 
-    durable_worker_manager = getattr(server.app, "_durable_worker_manager", None)
+    durable_worker_manager = _try_build_durable_worker_manager()
     if durable_worker_manager is None:
+        logger.warning(
+            "durable worker manager unavailable (tmux missing); "
+            "worker-contract tools will report manager_unconfigured"
+        )
         durable_worker_manager = _build_noop_worker_manager()
+    else:
+        server.app._durable_worker_manager = durable_worker_manager
     register_worker_contract_tools(server.server, durable_worker_manager)
     logger.info("Registered 7 worker-contract tools with MCP server")
+
+
+def _try_build_durable_worker_manager() -> Any:
+    """Build a :class:`DurableWorkerManager` when tmux is available.
+
+    Returns ``None`` when tmux is not on PATH or any constructor import
+    fails. CI / dev containers without Homebrew stay green; production
+    hosts with tmux on PATH get a real manager wired into the
+    worker-contract tool surface.
+
+    The publisher adapts the contract's ``EventPublisher.emit(payload, topic)``
+    signature to the canonical ``EventEnvelope`` shape via the bridge
+    defined in :mod:`mahavishnu.terminal.manager` (FIX-FIRST #2 of the
+    durable-local-workers review).
+    """
+    if shutil.which("tmux") is None:
+        return None
+    try:
+        import pathlib
+
+        from ..terminal.manager import _ManagerEventPublisher, _enqueue_to_eventbridge
+        from ..workers.contract.manager import DurableWorkerManager
+        from ..workers.contract.store import WorkerRecordStore
+
+        store = WorkerRecordStore(
+            pathlib.Path.home() / ".mahavishnu" / "worker-sessions"
+        )
+        publisher = _ManagerEventPublisher(_enqueue_to_eventbridge)
+        return DurableWorkerManager(
+            store=store,
+            publisher=publisher,
+            socket_dir=pathlib.Path.home() / ".mahavishnu" / "tmux",
+        )
+    except Exception as exc:  # noqa: BLE001 - MCP boundary must preserve all operation failures
+        logger.warning("Failed to build durable worker manager: %s", exc)
+        return None
 
 
 def _build_noop_worker_manager() -> Any:

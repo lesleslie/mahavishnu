@@ -378,6 +378,24 @@ class AutomationResult(BaseModel):
         "use_enum_values": True,
     }
 
+    def to_dict(self) -> dict[str, Any]:
+        """Return a JSON-friendly representation of the result.
+
+        Mirrors the explicit ``to_dict`` contract used by other models in
+        :mod:`mahavishnu.automation.base` so callers don't need to know
+        whether the result is a Pydantic ``BaseModel`` or a plain dataclass.
+        """
+        return {
+            "operation_type": self.operation_type,
+            "status": self.status,
+            "data": self.data,
+            "error": self.error,
+            "error_code": self.error_code,
+            "duration_ms": self.duration_ms,
+            "timestamp": self.timestamp.isoformat() if self.timestamp else None,
+            "dry_run": self.dry_run,
+        }
+
     @classmethod
     def success(
         cls,

@@ -491,14 +491,20 @@ def set_app_context(app: Any) -> None:
             def create_llm(
                 self, provider: str | None = None, model_id: str | None = None, **kwargs
             ):
+                # Try ``agno.llm.LLM`` first: it is the canonical seam the
+                # bootstrap factory was wired against, and it is also the
+                # only import path that remains compatible with test
+                # monkey-patching (the test suite substitutes a stub
+                # ``FakeLLM`` for ``agno.llm.LLM`` to verify wiring
+                # without instantiating Agno's abstract ``Model``).
                 try:
-                    from agno.models.base import (
-                        Model as _AgnoModel,  # pyright: ignore[reportMissingImports]
+                    from agno.llm import (  # ty: ignore[unresolved-import]  # noqa: N811  # upstream `LLM` is a class, not a constant
+                        LLM as _AgnoModel,
                     )
                 except ImportError:
                     try:
-                        from agno.llm import (  # ty: ignore[unresolved-import]  # noqa: N811  # upstream `LLM` is a class, not a constant
-                            LLM as _AgnoModel,
+                        from agno.models.base import (
+                            Model as _AgnoModel,  # pyright: ignore[reportMissingImports]
                         )
                     except ImportError as exc:
                         raise ImportError("agno does not expose a usable Model/LLM class") from exc
@@ -507,7 +513,7 @@ def set_app_context(app: Any) -> None:
                 actual_model = model_id or self._config.agno.llm.model_id
                 llm_kwargs: dict[str, Any] = {
                     "provider": actual_provider,
-                    "id": actual_model,
+                    "model": actual_model,
                 }
                 if actual_provider == "ollama":
                     llm_kwargs["base_url"] = self._config.agno.llm.base_url
