@@ -115,6 +115,20 @@ class RepositoryManager:
         """Get all repository paths."""
         return self._all_paths.copy()
 
+    def list_repos(self) -> list[Repository]:
+        """Return every repository in the manifest as a flat list.
+
+        This is the canonical "give me everything you know about" accessor
+        used by aggregation paths (worktree listing, cross-repo filters,
+        coordinator init). Callers should prefer ``list_repos`` over
+        ``filter()`` when they do not need criteria-based filtering, since
+        ``filter()`` has an LRU cache keyed on the filter arguments and
+        ``list_repos`` is a thin pass-through with no caching concerns.
+        """
+        if self._manifest is None:
+            return []
+        return list(self._manifest.repos)
+
     def filter(
         self,
         tags: list[str] | None = None,

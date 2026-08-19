@@ -555,7 +555,7 @@ class WorktreeCoordinator:
             else:
                 # Aggregate across all repos
                 all_worktrees = []
-                repos = self.repo_manager.filter()
+                repos = self.repo_manager.list_repos()
 
                 for repo in repos:
                     try:
