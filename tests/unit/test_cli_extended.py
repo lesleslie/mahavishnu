@@ -289,8 +289,10 @@ class TestWorkerCommands:
 
         with patch("mahavishnu._main_cli.MahavishnuApp") as mock_app_class:
             mock_app = MagicMock()
-            mock_app.config.workers_enabled = True
+            mock_app.config.workers.enabled = True
             mock_app.config.max_concurrent_workers = 5
+            # Disable crow adapter so _resolve_crow_mcp_client returns None
+            mock_app.config.terminal.crow_enabled = False
             mock_app_class.return_value = mock_app
 
             with patch(

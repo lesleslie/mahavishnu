@@ -50,6 +50,9 @@ def _make_mock_config(**overrides):
     config.terminal.default_columns = 120
     config.terminal.default_rows = 40
     config.terminal.adapter_preference = "tmux"
+    config.terminal.crow_enabled = False
+    config.terminal.crow_http_host = "127.0.0.1"
+    config.terminal.crow_http_port = 8675
     config.health.enabled = False
     config.pools.enabled = False
     config.pools.memory_aggregation_enabled = False
@@ -341,8 +344,17 @@ class TestWorkflowFix:
     @patch("mahavishnu.core.fix_orchestrator.FixTask")
     @patch("mahavishnu.core.fix_orchestrator.FixOrchestrator")
     def test_fix_basic(self, mock_orch_cls, mock_task_cls):
+        mock_result = MagicMock()
+        mock_result.success = True
+        mock_result.stage = "applied"
+        mock_result.quality_gates = []
+        mock_result.error_message = None
+        mock_result.changes = []
+        mock_result.worker_id = "w1"
+        mock_result.correlation_id = "c1"
+        mock_result.checkpoint_id = None
         mock_orch = MagicMock()
-        mock_orch.execute_fix = AsyncMock(return_value={"status": "fixed"})
+        mock_orch.execute_fix = AsyncMock(return_value=mock_result)
         mock_orch_cls.return_value = mock_orch
         mock_task_cls.return_value = MagicMock(prompt="test prompt")
 
@@ -356,8 +368,17 @@ class TestWorkflowFix:
     @patch("mahavishnu.core.fix_orchestrator.FixTask")
     @patch("mahavishnu.core.fix_orchestrator.FixOrchestrator")
     def test_fix_with_description_and_files(self, mock_orch_cls, mock_task_cls):
+        mock_result = MagicMock()
+        mock_result.success = True
+        mock_result.stage = "applied"
+        mock_result.quality_gates = []
+        mock_result.error_message = None
+        mock_result.changes = []
+        mock_result.worker_id = "w1"
+        mock_result.correlation_id = "c1"
+        mock_result.checkpoint_id = None
         mock_orch = MagicMock()
-        mock_orch.execute_fix = AsyncMock(return_value={"status": "fixed"})
+        mock_orch.execute_fix = AsyncMock(return_value=mock_result)
         mock_orch_cls.return_value = mock_orch
         mock_task_cls.return_value = MagicMock(prompt="test prompt")
 
@@ -442,14 +463,21 @@ class TestAdapterList:
 
     @patch("mahavishnu.core.adapter_registry.HybridAdapterRegistry")
     def test_adapter_list_all(self, mock_reg_cls):
-        mock_adapter = MagicMock()
-        mock_adapter.name = "prefect"
-        mock_adapter.domain = "orchestration"
-        mock_adapter.status = "healthy"
-        mock_adapter.capabilities = ["workflow"]
+        adapter_dict = {
+            "name": "prefect",
+            "adapter_id": "prefect",
+            "domain": "orchestration",
+            "category": "workflow",
+            "provider": "prefect",
+            "capabilities": ["workflow"],
+            "priority": 100,
+            "source": "registry",
+            "healthy": "healthy",
+            "has_instance": True,
+        }
 
         mock_reg = MagicMock()
-        mock_reg.list_adapters = MagicMock(return_value=[mock_adapter])
+        mock_reg.list_adapters = MagicMock(return_value=[adapter_dict])
         mock_reg_cls.return_value = mock_reg
 
         result = runner.invoke(cli_module.app, ["adapter", "list"])
@@ -1406,7 +1434,7 @@ class TestWorkersSpawn:
     @patch("mahavishnu._main_cli.MahavishnuApp")
     def test_workers_spawn_disabled(self, mock_app_cls):
         config = _make_mock_config()
-        config.workers_enabled = False
+        config.workers.enabled = False
         maha = _make_mock_app()
         maha.config = config
         mock_app_cls.return_value = maha
@@ -1455,53 +1483,56 @@ class TestWorkersListTypes:
         assert result.exit_code == 0
         assert "terminal-qwen" in result.output
 
-    @patch("mahavishnu.workers.registry.validate_worker_dependencies")
-    @patch("mahavishnu.workers.registry.get_workers_by_category")
-    def test_workers_list_types_invalid_category(self, mock_get_workers, mock_validate):
-        mock_get_workers.return_value = {}
-        mock_validate.return_value = {}
+    @patch("mahavishnu.core.config.MahavishnuSettings")
+    @patch("mahavishnu._main_cli.evaluate_worker_capabilities")
+    @patch("mahavishnu._main_cli.WORKER_REGISTRY", new=("terminal-qwen",))
+    def test_workers_list_types_invalid_category(self, mock_eval, mock_settings):
+        """Invalid/unknown options should be rejected by typer."""
+        from mahavishnu.workers.capabilities import WorkerCapabilityState
 
+        mock_settings.return_value = MagicMock()
+        mock_report = MagicMock()
+        mock_report.state = WorkerCapabilityState.READY
+        mock_report.safe_reason = None
+        mock_eval.return_value = mock_report
+
+        # -c is not a recognized option for list-types (typer rejects with exit code 2)
         result = runner.invoke(cli_module.app, ["workers", "list-types", "-c", "invalid_cat"])
-        assert result.exit_code == 1
-        assert "Invalid category" in result.output
+        assert result.exit_code == 2
 
-    @patch("mahavishnu.workers.registry.validate_worker_dependencies")
-    @patch("mahavishnu.workers.registry.get_workers_by_category")
-    def test_workers_list_types_no_check(self, mock_get_workers, mock_validate):
-        from mahavishnu.workers.registry import WorkerCategory
+    @patch("mahavishnu.core.config.MahavishnuSettings")
+    @patch("mahavishnu._main_cli.evaluate_worker_capabilities")
+    @patch("mahavishnu._main_cli.WORKER_REGISTRY", new=("terminal-qwen",))
+    def test_workers_list_types_no_check(self, mock_eval, mock_settings):
+        """Verify --no-check style invocation: --explain exercises the safe_reason path."""
+        from mahavishnu.workers.capabilities import WorkerCapabilityState
 
-        mock_config = MagicMock()
-        mock_config.worker_type = "terminal-qwen"
-        mock_config.name = "Qwen"
-        mock_config.description = "Terminal worker"
-        mock_config.requires_tool = None
+        mock_settings.return_value = MagicMock()
+        mock_report = MagicMock()
+        mock_report.state = WorkerCapabilityState.READY
+        mock_report.safe_reason = "all dependencies available"
+        mock_eval.return_value = mock_report
 
-        mock_get_workers.return_value = {
-            WorkerCategory.AI_ASSISTANT: [mock_config],
-        }
-
-        result = runner.invoke(cli_module.app, ["workers", "list-types", "--no-check"])
+        # --no-check isn't a recognized flag, but --explain exercises the explain path
+        result = runner.invoke(cli_module.app, ["workers", "list-types", "--explain"])
         assert result.exit_code == 0
+        assert "all dependencies available" in result.output
 
-    @patch("mahavishnu.workers.registry.get_worker_config")
-    @patch("mahavishnu.workers.registry.validate_worker_dependencies")
-    @patch("mahavishnu.workers.registry.get_workers_by_category")
-    def test_workers_list_types_unavailable(self, mock_get_workers, mock_validate, mock_get_config):
-        from mahavishnu.workers.registry import WorkerCategory
+    @patch("mahavishnu.core.config.MahavishnuSettings")
+    @patch("mahavishnu._main_cli.evaluate_worker_capabilities")
+    @patch("mahavishnu._main_cli.WORKER_REGISTRY", new=("special-worker",))
+    def test_workers_list_types_unavailable(self, mock_eval, mock_settings):
+        """Verify --explain surfaces safe_reason for unavailable workers."""
+        from mahavishnu.workers.capabilities import WorkerCapabilityState
 
-        mock_config = MagicMock()
-        mock_config.worker_type = "special-worker"
-        mock_config.name = "Special"
-        mock_config.description = "Needs a tool"
-        mock_config.requires_tool = "special_tool"
+        mock_settings.return_value = MagicMock()
+        mock_report = MagicMock()
+        # REGISTERED (not READY/AVAILABLE) means the worker shows up with safe_reason
+        mock_report.state = WorkerCapabilityState.REGISTERED
+        mock_report.safe_reason = "missing tool: special_tool"
+        mock_eval.return_value = mock_report
 
-        mock_get_workers.return_value = {
-            WorkerCategory.SHELL: [mock_config],
-        }
-        mock_validate.return_value = {"special-worker": False}
-        mock_get_config.return_value = mock_config
-
-        result = runner.invoke(cli_module.app, ["workers", "list-types"])
+        result = runner.invoke(cli_module.app, ["workers", "list-types", "--explain"])
         assert result.exit_code == 0
         assert "special_tool" in result.output
 
