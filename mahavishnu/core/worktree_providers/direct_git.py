@@ -27,7 +27,8 @@ class DirectGitWorktreeProvider(WorktreeProvider):
         """Initialize DirectGit provider."""
         self._git_executable = "git"
 
-    def provider_name(self) -> str:
+    @staticmethod
+    def provider_name() -> str:
         """Get provider name."""
         return "DirectGitWorktreeProvider"
 

@@ -19,9 +19,14 @@ def _extract_tool_payload(result: Any) -> dict[str, Any]:
     worktree tools serialize their response via ``json.dumps``, so the
     raw text is a JSON document we parse back to a dict.
 
+    For dict inputs (un-mocked tests or alternative clients) the dict is
+    returned as-is so callers can use the existing payload shape.
+
     Returns an empty dict when the response cannot be parsed — callers
     then see ``success=False`` and skip the provider gracefully.
     """
+    if isinstance(result, dict):
+        return result
     try:
         content = getattr(result, "content", None)
         if content is None and isinstance(result, list):
@@ -80,7 +85,7 @@ class SessionBuddyWorktreeProvider(WorktreeProvider):
         if self._mcp_client is None:
             # Import MCP client lazily (only when needed)
             try:
-                from fastmcp.client import Client as MCPClient
+                from mcp_client import MCPClient
 
                 self._mcp_client = MCPClient(self.session_buddy_url)
                 await self._mcp_client.__aenter__()
@@ -135,7 +140,7 @@ class SessionBuddyWorktreeProvider(WorktreeProvider):
                 arguments={
                     "repository_path": str(repository_path),
                     "branch": branch,
-                    "worktree_path": str(worktree_path),
+                    "new_path": str(worktree_path),
                     "create_branch": create_branch,
                 },
             )
@@ -264,11 +269,20 @@ class SessionBuddyWorktreeProvider(WorktreeProvider):
             worktrees = payload.get("worktrees", []) if payload else []
             logger.debug(f"Found {len(worktrees)} worktrees")
 
+            # Default to True when the payload is present; only treat as failure
+            # when the upstream explicitly reports success=False.
+            if not payload:
+                success = False
+                error = "Session-Buddy did not respond"
+            else:
+                success = payload.get("success", True)
+                error = payload.get("error")
+
             return {
-                "success": payload.get("success", False) if payload else False,
+                "success": success,
                 "worktrees": worktrees,
                 "repository_path": str(repository_path),
-                "error": payload.get("error") if payload else "Session-Buddy did not respond",
+                "error": error,
                 "provider": "session-buddy",
             }
 
