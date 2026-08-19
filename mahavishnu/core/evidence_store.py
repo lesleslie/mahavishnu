@@ -125,7 +125,7 @@ class EvidenceStore:
                 except (ValueError, TypeError):
                     logger.debug("evidence_parse_skipped: id=%s", item.get("id"))
             return evidences
-        except (httpx.HTTPError, KeyError, OSError, TimeoutError, ValueError):
+        except Exception:  # noqa: BLE001 - query_evidence must never crash callers
             logger.exception("evidence_query_error: query=%s", query)
             return []
 

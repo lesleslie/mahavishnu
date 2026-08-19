@@ -107,7 +107,7 @@ class AgnoMemoryConfig(BaseModel):
             num_history_runs: 10
     """
 
-    enabled: bool = Field(default=True, description="Enable agent memory")
+    enabled: bool = Field(default=False, description="Enable agent memory")
     backend: MemoryBackend = Field(
         default=MemoryBackend.NONE,
         description="Memory backend storage type",
