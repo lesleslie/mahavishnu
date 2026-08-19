@@ -229,10 +229,12 @@ class TestWorkerRegistry:
                 )
 
     def test_registry_size(self) -> None:
-        # 46 = baseline 48 minus terminal-openclaw and terminal-zsh removed 2026-08.
+        # 45 = baseline 48 minus terminal-aider, terminal-openclaw, and
+        # terminal-zsh removed 2026-08. terminal-aider was removed because
+        # Aider is no longer a maintained worker surface in this repo.
         # If you add or remove a worker, update both this assertion and
         # ``test_registry_has_expected_keys``.
-        assert len(WORKER_REGISTRY) == 46
+        assert len(WORKER_REGISTRY) == 45
 
 
 # ---------------------------------------------------------------------------
