@@ -51,7 +51,9 @@ CREATE TABLE IF NOT EXISTS mahavishnu_workflow_runs (
     duration_ms INTEGER,
     adapter TEXT NOT NULL, -- 'prefect', 'llamaindex', 'agno'
     task_type TEXT NOT NULL,
-    error_summary TEXT
+    error_summary TEXT,
+    source_type TEXT, -- Plan 5 audit H4 provenance gate; nullable for legacy inserts
+    reviewer_id TEXT -- Plan 5 audit H4 + H6; nullable for legacy inserts
 );
 CREATE INDEX IF NOT EXISTS idx_mwf_runs_session
     ON mahavishnu_workflow_runs(session_id);

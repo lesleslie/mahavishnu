@@ -90,8 +90,9 @@ def _seed_workflow_session(
             """
             INSERT INTO mahavishnu_workflow_runs
                 (workflow_id, session_id, repo_path, status, started_at,
-                 adapter, task_type)
-            VALUES (?, ?, '/tmp/repo', 'completed', now(), 'prefect', ?)
+                 adapter, task_type, source_type, reviewer_id)
+            VALUES (?, ?, '/tmp/repo', 'completed', now(), 'prefect', ?,
+                    'mahavishnu_workflow', 'test_reviewer')
             """,
             [f"wf-{session_id}", session_id, task_type],
         )
