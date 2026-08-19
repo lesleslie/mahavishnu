@@ -62,17 +62,22 @@ def _count_tool_decorators() -> int:
 def _count_full_profile_groups() -> int:
     """Count the number of registration methods in ``FULL_REGISTRATIONS``.
 
-    Imported via importlib because ``mahavishnu.mcp.tools.profiles`` pulls
-    in ``mcp_common`` which may not be available in all test envs. The
-    import is wrapped in a helper so the test fails with a useful message
-    rather than a collection-time ImportError.
+    Loaded via importlib with the proper package namespace so the
+    relative ``from ..bootstrap import …`` inside ``profiles.py`` resolves
+    correctly. Loading with a bare top-level name (``profiles_under_test``)
+    makes the relative import fail with "attempted relative import with no
+    known parent package".
     """
     import importlib.util
+    import sys
 
-    spec = importlib.util.spec_from_file_location("profiles_under_test", PROFILES_FILE)
+    spec = importlib.util.spec_from_file_location(
+        "mahavishnu.mcp.tools.profiles", PROFILES_FILE
+    )
     if spec is None or spec.loader is None:  # pragma: no cover - defensive
         raise RuntimeError(f"cannot load spec for {PROFILES_FILE}")
     module = importlib.util.module_from_spec(spec)
+    sys.modules["mahavishnu.mcp.tools.profiles"] = module
     spec.loader.exec_module(module)
     return len(module.FULL_REGISTRATIONS)
 
