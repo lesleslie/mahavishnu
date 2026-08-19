@@ -376,6 +376,35 @@ def evaluate_repo(name: str, repo: Path) -> Verdict:
     if claude_state.shared_subdirs:
         # SHARED content — must use selective ignore, NOT blanket.
         if ignore_state.has_blanket and not ignore_state.selective_paths:
+            # When the only runtime content is files (e.g.
+            # ``settings.local.json``), the blanket rule is hiding
+            # exactly what should be hidden — there's no runtime
+            # subtree for the catalog-vs-runtime split to ignore.
+            # The catalog being collateral-hidden is suboptimal but
+            # not actionable: no selective ``.claude/<runtime>/``
+            # ignore is needed.
+            if claude_state.runtime_entries:
+                claude_dir = repo / ".claude"
+                runtime_dirs = [
+                    entry
+                    for entry in claude_state.runtime_entries
+                    if (claude_dir / entry).is_dir()
+                ]
+                if not runtime_dirs:
+                    return Verdict(
+                        name=name,
+                        repo=repo,
+                        claude_state=claude_state,
+                        ignore_state=ignore_state,
+                        status="PASS",
+                        matched_rule=None,
+                        section=None,
+                        issue=(
+                            "Catalog-only repo (runtime entries are "
+                            "files); blanket .claude/ rule redundant "
+                            "but harmless"
+                        ),
+                    )
             return Verdict(
                 name=name,
                 repo=repo,

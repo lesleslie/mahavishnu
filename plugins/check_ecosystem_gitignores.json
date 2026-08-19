@@ -1,0 +1,20 @@
+{
+    "name": "check_ecosystem_gitignores",
+    "version": "1.0.0",
+    "type": "hook",
+    "description": "Audit .gitignore rules across every Bodai ecosystem repo so blanket .claude/ ignores never hide the agent catalog.",
+    "author": "mahavishnu",
+    "license": "MIT",
+    "hooks": [
+        {
+            "name": "check_ecosystem_gitignores",
+            "description": "Walk every Bodai ecosystem repo's .gitignore and verify .claude/ rules match the repo's classification (catalog vs runtime). Exits non-zero on any FAIL.",
+            "command": ["python", "scripts/check_ecosystem_gitignores.py"],
+            "file_patterns": [".gitignore"],
+            "timeout": 120,
+            "stage": "comprehensive",
+            "requires_files": true,
+            "parallel_safe": false
+        }
+    ]
+}
