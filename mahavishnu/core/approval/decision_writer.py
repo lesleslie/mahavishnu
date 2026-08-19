@@ -26,6 +26,7 @@ from datetime import UTC, datetime
 import os
 from typing import Any
 
+import dhara
 from dhara.schema import ApprovalLog, validate
 from oneiric.core.logging import get_logger
 
