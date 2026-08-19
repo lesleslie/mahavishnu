@@ -6,7 +6,7 @@ from unittest.mock import AsyncMock, MagicMock
 import pytest
 
 from mahavishnu.core.errors import ErrorCode
-from mahavishnu.terminal.adapters.mcpretentious import SessionNotFoundError, TerminalError
+from mahavishnu.terminal.adapters.base import SessionNotFoundError, TerminalError
 
 
 class MockMcpResult:

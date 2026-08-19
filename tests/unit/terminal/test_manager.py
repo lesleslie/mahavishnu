@@ -1,11 +1,17 @@
 """Unit tests for mahavishnu.terminal.manager.
 
-Pins that the operator's ``terminal.adapter_preference`` is threaded through
-to the underlying client constructor so that any registered backend
-(not just the default) can be selected via settings.
+Pins that the operator's ``terminal.adapter_preference`` is honored by the
+factory method so any registered backend (not just the default) can be
+selected via settings. These are wiring tests — they catch the regression
+where the manager hardcoded its backend choice and ignored the
+operator's preference.
 
-These are wiring tests — they catch the regression where the manager
-hardcoded its backend choice and ignored the operator's preference.
+The mcpretentious adapter was removed 2026-08-12 (see
+``docs/followups/2026-08-12-mcpretentious-removed.md``). The only PTY
+backends now are ``tmux`` (default) and ``crow`` (opt-in via
+``crow_enabled: true``). These tests now cover the ``tmux`` / ``crow``
+routing paths and the operator guidance surfaced when neither is
+available.
 """
 from __future__ import annotations
 
@@ -17,111 +23,75 @@ from mahavishnu.terminal.config import TerminalSettings
 from mahavishnu.terminal.manager import TerminalManager
 
 
-class TestManagerPassesPreferenceToClient:
-    """The manager must thread the operator's preference through to the client."""
+class TestManagerRoutesTmuxPreference:
+    """``tmux`` is the default durable-worker terminal backend (Spec §9.4)."""
 
     @pytest.mark.asyncio
-    async def test_mcpretentious_preference_passes_name(self) -> None:
-        """When preference='mcpretentious', the manager must construct
-        ``McpretentiousAdapter`` with ``backend_name='mcpretentious'``."""
+    async def test_tmux_preference_routes_to_tmux_adapter(self) -> None:
         config = MagicMock()
-        config.terminal = TerminalSettings(adapter_preference="mcpretentious")
+        config.terminal = TerminalSettings(adapter_preference="tmux")
 
-        mock_client = MagicMock()
+        # The tmux branch imports ``TmuxTerminalAdapter`` lazily from
+        # ``mahavishnu.terminal.adapters.tmux``. Patch the symbol at its
+        # source module so the lazy import resolves to the mock.
         with patch(
-            "mahavishnu.terminal.manager.McpretentiousAdapter",
+            "mahavishnu.terminal.adapters.tmux.TmuxTerminalAdapter",
         ) as mock_adapter_cls:
             adapter_instance = MagicMock()
-            adapter_instance.adapter_name = "mcpretentious"
+            adapter_instance.adapter_name = "tmux"
             mock_adapter_cls.return_value = adapter_instance
 
-            await TerminalManager.create(config, mcp_client=mock_client)
+            manager = await TerminalManager.create(config, mcp_client=None)
 
         mock_adapter_cls.assert_called_once()
-        call_kwargs = mock_adapter_cls.call_args.kwargs
-        assert call_kwargs.get("backend_name") == "mcpretentious", (
-            f"Expected backend_name='mcpretentious' in {call_kwargs!r}. "
-            "The operator's adapter_preference must flow through to the client "
-            "so any registered backend (not just the hardcoded default) can "
-            "be selected via settings."
-        )
+        assert manager.adapter.adapter_name == "tmux"
 
 
-class TestManagerAcceptsBuiltinBackend:
-    """``mcpretentious`` is the sole BUILTIN_BACKENDS entry — the manager must
-    route it through ``McpretentiousAdapter`` (and pass the name through).
-
-    When the second backend (``pty_mcp_python``) was dropped (commit
-    dropping it) the parametrize lists collapsed to a single value. If
-    another built-in is added later, restore the parametrize here.
-    """
-
-    preference: str = "mcpretentious"
+class TestManagerRoutesMockPreference:
+    """``mock`` (and ``auto``) resolve to the always-available mock adapter."""
 
     @pytest.mark.asyncio
-    async def test_builtin_backend_preference_routes_to_mcpretentious(self) -> None:
-        """When preference is any BUILTIN_BACKENDS name, the manager must
-        construct ``McpretentiousAdapter`` with ``backend_name=<preference>``."""
+    async def test_mock_preference_constructs_mock_adapter(self) -> None:
         config = MagicMock()
-        config.terminal = TerminalSettings(adapter_preference=self.preference)
+        config.terminal = TerminalSettings(adapter_preference="mock")
 
-        mock_client = MagicMock()
-        with patch(
-            "mahavishnu.terminal.manager.McpretentiousAdapter",
-        ) as mock_adapter_cls:
-            adapter_instance = MagicMock()
-            adapter_instance.adapter_name = self.preference
-            mock_adapter_cls.return_value = adapter_instance
+        manager = await TerminalManager.create(config, mcp_client=None)
 
-            await TerminalManager.create(config, mcp_client=mock_client)
-
-        mock_adapter_cls.assert_called_once()
-        call_kwargs = mock_adapter_cls.call_args.kwargs
-        assert call_kwargs.get("backend_name") == self.preference, (
-            f"Expected backend_name={self.preference!r} in {call_kwargs!r}. "
-            "The BUILTIN_BACKENDS name must route through McpretentiousAdapter "
-            "with the operator's preference threaded into backend_name."
-        )
+        assert manager.adapter.adapter_name == "mock"
 
 
-class TestManagerBuiltinBackendRequiresMcpClient:
-    """Both code paths must agree on the mcp_client contract.
-
-    The MCP boot path (mcp/server_core.py) always constructs an
-    ``McpretentiousMCPClient`` before any adapter selection happens, so a
-    BUILTIN_BACKENDS preference implicitly gets a working client. The direct
-    ``TerminalManager.create(config, mcp_client=None)`` path historically fell
-    through to the misleading ``"No suitable terminal adapter found"``
-    ConfigurationError, masking the real cause. The two paths must agree:
-    both succeed when an mcp_client is supplied, both refuse (with an
-    actionable message) when one is not.
-    """
+class TestManagerCrowPreferenceRequiresFlag:
+    """``crow`` only takes the bundled adapter path when ``crow_enabled`` is set."""
 
     @pytest.mark.asyncio
-    async def test_create_without_mcp_client_raises_actionable_error(self) -> None:
-        """Direct Manager.create with mcp_client=None must raise a clear error.
+    async def test_crow_without_flag_falls_back_to_mock(self) -> None:
+        config = MagicMock()
+        # TerminalSettings defaults ``crow_enabled`` to False — pin it explicitly
+        # so the test is robust against future default flips.
+        config.terminal = TerminalSettings(
+            adapter_preference="crow",
+            crow_enabled=False,
+        )
 
-        Previously this fell through to the misleading
-        ``"No suitable terminal adapter found"`` ConfigurationError. The fix
-        raises an early ConfigurationError that names the preference and
-        points the operator at non-PTY adapters (``mock`` / ``crow`` /
-        ``auto``).
-        """
+        manager = await TerminalManager.create(config, mcp_client=None)
+
+        # Stock installs with ``adapter_preference='crow'`` no longer crash —
+        # the manager falls back to the mock adapter (MHV-001 fix).
+        assert manager.adapter.adapter_name == "mock"
+
+
+class TestManagerUnknownPreferenceRaisesActionableError:
+    """Unknown preferences surface a ConfigurationError naming the preference."""
+
+    @pytest.mark.asyncio
+    async def test_unknown_preference_raises_configuration_error(self) -> None:
         from mahavishnu.core.errors import ConfigurationError
 
-        preference = "mcpretentious"
         config = MagicMock()
-        config.terminal = TerminalSettings(adapter_preference=preference)
+        config.terminal = TerminalSettings(adapter_preference="bogus")
 
         with pytest.raises(ConfigurationError) as exc_info:
             await TerminalManager.create(config, mcp_client=None)
 
-        message = exc_info.value.message
-        assert preference in message
-        assert "mcp_client" in message
-        # Operator guidance should mention the non-PTY fallbacks.
-        assert "mock" in message
-        # The error details should name the preference and the available PTY set
-        # so downstream tooling can introspect the rejection.
-        assert exc_info.value.details.get("adapter_preference") == preference
-        assert "mcpretentious" in exc_info.value.details.get("available_pty_backends", [])
+        assert "bogus" in exc_info.value.message
+        assert exc_info.value.details.get("adapter_preference") == "bogus"

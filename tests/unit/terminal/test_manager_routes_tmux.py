@@ -8,11 +8,14 @@ from mahavishnu.terminal.config import TerminalSettings
 from mahavishnu.terminal.manager import TerminalManager
 
 
-class _FakeMcpretentiousAdapter:
+class _FakeTmuxTerminalAdapter:
+    """Stand-in for the real TmuxTerminalAdapter."""
+
     adapter_name = "tmux"
 
     def __init__(self, *_args: object, **_kwargs: object) -> None:
-        raise AssertionError("tmux preference must not construct McpretentiousAdapter")
+        # Track that the durable-worker manager was wired through.
+        self.durable_worker_manager = _kwargs.get("durable_worker_manager")
 
 
 class _FakeDurableWorkerManager:
@@ -26,9 +29,12 @@ async def test_manager_routes_tmux_preference(
     tmp_path: pathlib.Path,
 ) -> None:
     """The tmux preference selects the durable terminal adapter."""
+    # The tmux branch imports ``TmuxTerminalAdapter`` lazily from
+    # ``mahavishnu.terminal.adapters.tmux``. Patch the symbol at its source
+    # module so the lazy import resolves to the fake.
     monkeypatch.setattr(
-        "mahavishnu.terminal.manager.McpretentiousAdapter",
-        _FakeMcpretentiousAdapter,
+        "mahavishnu.terminal.adapters.tmux.TmuxTerminalAdapter",
+        _FakeTmuxTerminalAdapter,
     )
     monkeypatch.setattr(
         "mahavishnu.workers.contract.manager.DurableWorkerManager",
@@ -44,5 +50,5 @@ async def test_manager_routes_tmux_preference(
 
     manager = await TerminalManager.create(config, mcp_client=None)
 
-    assert type(manager.adapter).__name__ == "TmuxTerminalAdapter"
+    assert type(manager.adapter).__name__ == "_FakeTmuxTerminalAdapter"
     assert manager.adapter.adapter_name == "tmux"

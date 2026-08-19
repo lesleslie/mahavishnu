@@ -13,11 +13,11 @@ from datetime import UTC, datetime
 import logging
 from unittest.mock import MagicMock
 
+import dhara
 from dhara.schema import WebhookIngress
 from fastapi.testclient import TestClient
 import pytest
 
-from mahavishnu.webhooks import receiver as receiver_module
 from mahavishnu.webhooks.receiver import app
 
 
@@ -25,14 +25,15 @@ from mahavishnu.webhooks.receiver import app
 def client_and_storage(monkeypatch: pytest.MonkeyPatch) -> tuple[TestClient, MagicMock]:
     """Return ``(TestClient, captured_dhara_put_mock)``.
 
-    ``monkeypatch.setattr`` resolves ``"mahavishnu.webhooks.receiver.dhara"``
-    against the same module reference that the receiver binds at import time,
-    which is required because the receiver installs ``dhara.put = None`` in a
-    substrate-compat guard that runs at module load.
+    The receiver resolves ``dhara.put`` via
+    :func:`mahavishnu.core._dhara_substrate_compat.dhara_calltime` at request
+    time, so we patch the attribute on the live ``dhara`` module (not on
+    the receiver module — the receiver no longer imports ``dhara`` as a
+    name).
     """
     captured: list[tuple[str, object]] = []
     mock_put = MagicMock(side_effect=lambda key, value: captured.append((key, value)))
-    monkeypatch.setattr("mahavishnu.webhooks.receiver.dhara.put", mock_put)
+    monkeypatch.setattr(dhara, "put", mock_put, raising=False)
     return TestClient(app), mock_put
 
 
@@ -95,7 +96,7 @@ def test_post_webhook_emits_warning_when_dhara_put_unbound(
     ``decision_writer.py``: when the substrate attribute is missing the
     receiver must skip persistence gracefully instead of raising TypeError.
     """
-    monkeypatch.setattr(receiver_module.dhara, "put", None, raising=False)
+    monkeypatch.setattr(dhara, "put", None, raising=False)
     client = TestClient(app)
 
     with caplog.at_level(logging.WARNING, logger="mahavishnu.webhooks.receiver"):
@@ -126,7 +127,7 @@ def test_post_webhook_falls_back_to_in_memory_when_v1_disabled(
     Ensures the rollback lever named in the plan's rollback-signal matrix
     short-circuits persistence before the substrate-compat gate runs.
     """
-    monkeypatch.setattr(receiver_module.dhara, "put", MagicMock(), raising=False)
+    monkeypatch.setattr(dhara, "put", MagicMock(), raising=False)
     monkeypatch.setenv("WEBHOOK_DURABLE_V1_ENABLED", "false")
     client = TestClient(app)
 

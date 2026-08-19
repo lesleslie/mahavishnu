@@ -258,7 +258,8 @@ class TerminalGridManager:
         """Capture output from a session.
 
         AppleScript cannot read terminal buffer. Returns a placeholder message
-        directing users to the mcpretentious adapter for actual output capture.
+        directing users to the tmux adapter (the default durable PTY backend
+        after the 2026-08-12 mcpretentious removal) for actual output capture.
         """
         grid = self._grids.get(grid_id)
         if not grid:
@@ -273,7 +274,7 @@ class TerminalGridManager:
             f"[Output capture not available via AppleScript]\n"
             f"Session: {session_id}\n"
             f"Window: {window.window_name}\n"
-            f"Use mcpretentious adapter for output capture"
+            f"Use tmux adapter for output capture"
         )
 
     async def broadcast_to_grid(self, grid_id: str, command: str) -> None:

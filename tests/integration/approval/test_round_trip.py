@@ -34,9 +34,13 @@ def shared_dhara_storage(
     returns the accumulated records (filtered by ``status`` when provided).
     ``since`` is accepted but not enforced — no test in this module exercises
     the lower-bound, and adding fake-time semantics would cloud the contract.
+
+    Both modules resolve their substrate bindings at call time via
+    :func:`dhara_calltime` (producer) and ``getattr(dhara, ...)`` (consumer),
+    so we patch the live ``dhara`` module (not the consumer/producer
+    modules — neither imports ``dhara`` as a name).
     """
-    import mahavishnu.cli.approval_cli as cli
-    import mahavishnu.core.approval.decision_writer as writer
+    import dhara
 
     storage: dict[str, list[Any]] = {}
 
@@ -54,8 +58,8 @@ def shared_dhara_storage(
             records = [r for r in records if getattr(r, "action", None) == status]
         return records
 
-    monkeypatch.setattr(writer.dhara, "put", fake_put, raising=False)
-    monkeypatch.setattr(cli.dhara, "list", fake_list, raising=False)
+    monkeypatch.setattr(dhara, "put", fake_put, raising=False)
+    monkeypatch.setattr(dhara, "list", fake_list, raising=False)
     return storage
 
 
@@ -79,6 +83,7 @@ def test_approval_log_round_trips_with_struct_equality(
         approval_id="apr-roundtrip",
         since=None,
         status=None,
+        token="header.payload.signature",
     )
 
     assert len(results) == 1
@@ -115,16 +120,19 @@ def test_approval_log_round_trip_with_status_filter(
         approval_id="apr-filter",
         since=None,
         status="approved",
+        token="header.payload.signature",
     )
     denied = list_approval_history(
         approval_id="apr-filter",
         since=None,
         status="denied",
+        token="header.payload.signature",
     )
     all_records = list_approval_history(
         approval_id="apr-filter",
         since=None,
         status=None,
+        token="header.payload.signature",
     )
 
     assert len(approved) == 1
@@ -155,8 +163,12 @@ def test_approval_log_round_trip_isolates_per_approval_id(
         decided_by="alice",
     )
 
-    first = list_approval_history(approval_id="apr-100", since=None, status=None)
-    second = list_approval_history(approval_id="apr-200", since=None, status=None)
+    first = list_approval_history(
+        approval_id="apr-100", since=None, status=None, token="header.payload.signature"
+    )
+    second = list_approval_history(
+        approval_id="apr-200", since=None, status=None, token="header.payload.signature"
+    )
 
     assert len(first) == 1
     assert first[0].approval_id == "apr-100"
@@ -188,6 +200,7 @@ def test_approval_log_round_trip_default_metadata_round_trips(
         approval_id="apr-default-meta",
         since=None,
         status=None,
+        token="header.payload.signature",
     )
 
     assert len(results) == 1

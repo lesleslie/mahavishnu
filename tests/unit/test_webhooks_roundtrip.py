@@ -16,11 +16,11 @@ from __future__ import annotations
 from datetime import UTC, datetime
 from unittest.mock import MagicMock
 
+import dhara
 from dhara.schema import WebhookIngress
 from fastapi.testclient import TestClient
 import pytest
 
-from mahavishnu.webhooks import receiver as receiver_module
 from mahavishnu.webhooks import replay as replay_module
 from mahavishnu.webhooks.receiver import app
 
@@ -35,12 +35,17 @@ def client_and_storage(
     the consumer-side mock is wired so that ``dhara.get(key)`` returns the
     value the producer just wrote. This stands in for a real substrate
     while still letting the test exercise both modules' validation paths.
+
+    Both modules resolve their substrate bindings at call time via
+    ``getattr(dhara, "put"/"get", None)``, so we patch the live ``dhara``
+    module (not the receiver module — the receiver no longer imports
+    ``dhara`` as a name).
     """
     storage: dict[str, object] = {}
     mock_put = MagicMock(side_effect=lambda key, value: storage.__setitem__(key, value))
     mock_get = MagicMock(side_effect=lambda key: storage.get(key))
-    monkeypatch.setattr(receiver_module.dhara, "put", mock_put)
-    monkeypatch.setattr(replay_module.dhara, "get", mock_get, raising=False)
+    monkeypatch.setattr(dhara, "put", mock_put, raising=False)
+    monkeypatch.setattr(dhara, "get", mock_get, raising=False)
     return TestClient(app), mock_put, mock_get
 
 
@@ -82,8 +87,10 @@ def test_webhook_round_trip_struct_equality(
     assert written.source == "github"
     assert written.payload_hash == "sha256:roundtrip"
 
-    # Consumer side: read it back via the persistence key.
-    result = replay_module.webhook_replay("evt-roundtrip")
+    # Consumer side: read it back via the persistence key. Pass a
+    # JWT-shaped token so the leaf's RBAC gate (rejects missing/non-JWT
+    # tokens) falls through.
+    result = replay_module.webhook_replay("evt-roundtrip", token="header.payload.signature")
     assert result is not None
     mock_get.assert_called_with("webhook-ingress/evt-roundtrip/")
 
@@ -112,7 +119,7 @@ def test_webhook_round_trip_uses_matching_persistence_keys(
     assert response.status_code == 202, response.text
     producer_key = mock_put.call_args.args[0]
 
-    replay_module.webhook_replay("evt-keycheck")
+    replay_module.webhook_replay("evt-keycheck", token="header.payload.signature")
     consumer_key = mock_get.call_args.args[0]
 
     assert producer_key == consumer_key == "webhook-ingress/evt-keycheck/"
@@ -138,7 +145,7 @@ def test_webhook_round_trip_with_distinct_ids_isolates_records(
     # Read-back scoping: webhook_replay("evt-a") must read the "evt-a"
     # key, not the "evt-b" key — the consumer's key format enforces
     # per-id isolation.
-    replay_module.webhook_replay("evt-a")
-    replay_module.webhook_replay("evt-b")
+    replay_module.webhook_replay("evt-a", token="header.payload.signature")
+    replay_module.webhook_replay("evt-b", token="header.payload.signature")
     assert mock_get.call_args_list[0].args[0] == "webhook-ingress/evt-a/"
     assert mock_get.call_args_list[1].args[0] == "webhook-ingress/evt-b/"

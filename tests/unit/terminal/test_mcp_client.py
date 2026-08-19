@@ -1,7 +1,9 @@
 """Unit tests for mahavishnu.terminal.mcp_client.McpretentiousClient.
 
-Regression tests pinning the launch command so a future regression to 'uvx'
-on the npm-based mcpretentious package would be caught immediately.
+Regression tests pinning the launch command resolution through
+``BUILTIN_BACKENDS``. After the 2026-08-12 mcpretentious removal, ``tmux``
+is the only PTY builtin; these tests pin that the constructor still
+delegates to the registry instead of hardcoding a launch command.
 """
 from __future__ import annotations
 
@@ -12,7 +14,7 @@ from mahavishnu.terminal.mcp_client import McpretentiousClient, StdioMCPClient
 
 @pytest.mark.unit
 class TestMcpretentiousClientLaunchesViaRegistry:
-    """The original bug was using 'uvx' for an npm package.
+    """The default and explicit ``backend_name`` resolve through ``BUILTIN_BACKENDS``.
 
     These tests pin the launch command by inspecting the inner
     ``StdioMCPClient`` that ``McpretentiousClient`` constructs. The
@@ -21,26 +23,23 @@ class TestMcpretentiousClientLaunchesViaRegistry:
     not on ``create_subprocess_exec`` call args.
     """
 
-    def test_default_backend_uses_npx_not_uvx(self) -> None:
-        """The default 'mcpretentious' backend must be spawned via npx, not uvx."""
+    def test_default_backend_uses_tmux(self) -> None:
+        """The default 'tmux' backend must be spawned via the tmux binary."""
         client = McpretentiousClient()
         inner = client._client  # type: ignore[attr-defined]
 
         assert isinstance(inner, StdioMCPClient)
-        assert inner.command == "npx", (
-            f"Expected npx for npm package, got {inner.command!r}. "
-            "This is the original 'uvx on npm' regression."
-        )
-        assert inner.args == ["mcpretentious"]
+        assert inner.command == "tmux"
+        assert inner.args == []
 
     def test_explicit_backend_name_uses_registry(self) -> None:
-        """Passing a name resolves through BUILTIN_BACKENDS, not hardcoded."""
-        client = McpretentiousClient(backend_name="mcpretentious")
+        """Passing 'tmux' resolves through BUILTIN_BACKENDS, not hardcoded."""
+        client = McpretentiousClient(backend_name="tmux")
         inner = client._client  # type: ignore[attr-defined]
 
         assert isinstance(inner, StdioMCPClient)
-        assert inner.command == "npx"
-        assert inner.args == ["mcpretentious"]
+        assert inner.command == "tmux"
+        assert inner.args == []
 
     def test_unknown_backend_name_raises_keyerror(self) -> None:
         """Asking for a backend that doesn't exist should fail loud, not silently."""

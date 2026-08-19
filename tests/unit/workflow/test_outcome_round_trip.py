@@ -43,12 +43,16 @@ pytestmark = pytest.mark.unit
 def shared_dhara(monkeypatch: pytest.MonkeyPatch) -> dict[str, object]:
     """Patch both producer and consumer to share an in-memory dict.
 
-    Both modules' ``dhara.put`` / ``dhara.get`` are monkeypatched at the
-    module level (NOT at the substrate-compat attribute level) so the
-    writer's persisted payload lands in the same dict the consumer reads.
-    Keys are formatted ``f"workflow-results/{workflow_id}/"`` to match
-    the producer key format exactly.
+    Both modules' ``dhara.put`` / ``dhara.get`` resolve at call time via
+    :func:`dhara_calltime` / direct ``getattr(dhara, ...)`` on the live
+    ``dhara`` module. Patch the live module (NOT the producer/consumer
+    modules — neither imports ``dhara`` as a name anymore) so the writer's
+    persisted payload lands in the same dict the consumer reads. Keys are
+    formatted ``f"workflow-results/{workflow_id}/"`` to match the producer
+    key format exactly.
     """
+    import dhara
+
     store: dict[str, object] = {}
 
     def put(key: str, value: object) -> None:
@@ -57,14 +61,8 @@ def shared_dhara(monkeypatch: pytest.MonkeyPatch) -> dict[str, object]:
     async def get(key: str) -> object | None:
         return store.get(key)
 
-    monkeypatch.setattr(
-        "mahavishnu.core.workflow.outcome_writer.dhara.put",
-        put,
-    )
-    monkeypatch.setattr(
-        "mahavishnu.mcp.tools.workflow_tools.dhara.get",
-        get,
-    )
+    monkeypatch.setattr(dhara, "put", put, raising=False)
+    monkeypatch.setattr(dhara, "get", get, raising=False)
     return store
 
 

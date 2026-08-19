@@ -15,13 +15,18 @@ from mahavishnu.core.workflow.outcome_writer import record_workflow_outcome
 
 @pytest.fixture
 def dhara_storage(monkeypatch: pytest.MonkeyPatch) -> MagicMock:
-    """Patch the dhara.put call to capture writes without hitting the real DB."""
+    """Patch the dhara.put call to capture writes without hitting the real DB.
+
+    The writer resolves ``dhara.put`` at call time via
+    :func:`mahavishnu.core._dhara_substrate_compat.dhara_calltime`, so the
+    patch must target the live ``dhara`` module (the writer module no
+    longer imports ``dhara`` as a name).
+    """
+    import dhara
+
     captured: list[tuple[str, object]] = []
     mock_put = MagicMock(side_effect=lambda key, value: captured.append((key, value)))
-    monkeypatch.setattr(
-        "mahavishnu.core.workflow.outcome_writer.dhara.put",
-        mock_put,
-    )
+    monkeypatch.setattr(dhara, "put", mock_put, raising=False)
     return mock_put
 
 
@@ -84,10 +89,9 @@ def test_producer_skips_when_dhara_put_unbound(
     """Substrate-compat: missing dhara.put → no persistence, returns validated struct,
     logs WARNING with omission fingerprint for diagnosis."""
     # Simulate the substrate not exposing dhara.put.
-    monkeypatch.setattr(
-        "mahavishnu.core.workflow.outcome_writer.dhara.put",
-        None,
-    )
+    import dhara
+
+    monkeypatch.setattr(dhara, "put", None, raising=False)
     with caplog.at_level("WARNING"):
         record = record_workflow_outcome(
             workflow_id="wf-unbound",
@@ -110,10 +114,9 @@ def test_consumer_returns_none_when_dhara_get_unbound(
 ) -> None:
     """Substrate-compat: missing dhara.get → return None + warn (do not raise)."""
     # Simulate the substrate not exposing dhara.get.
-    monkeypatch.setattr(
-        "mahavishnu.mcp.tools.workflow_tools.dhara.get",
-        None,
-    )
+    import dhara
+
+    monkeypatch.setattr(dhara, "get", None, raising=False)
     # Import inside the test so the monkeypatched module is the one we hit.
     from mahavishnu.mcp.tools import workflow_tools
 

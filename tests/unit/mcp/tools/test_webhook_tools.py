@@ -31,12 +31,14 @@ from fastmcp import FastMCP
 import pytest
 
 # Pre-warm a minimal ``dhara.schema`` stub so ``mahavishnu.webhooks.replay``
-# can import in environments where the upstream ``dhara`` package is missing
-# the ``schema`` submodule. The stub exposes the surface
-# :func:`webhook_replay` reads:
+# and ``mahavishnu.mcp.tools.webhook_tools`` can import in environments where
+# the upstream ``dhara`` package is missing the ``schema`` submodule. The
+# stub exposes the surface :func:`webhook_replay` and the MCP wrapper read:
 #
 # - ``WebhookIngress`` (mirrors msgspec.Struct shape via ``to_dict()``)
 # - ``from_dict(name, payload)`` — registry-style 2-arg call signature
+# - ``to_dict(record)`` — registry-style struct→dict serializer used by
+#   ``mahavishnu/mcp/tools/webhook_tools.py`` line 77
 # - ``SchemaValidationError``, ``validate`` (passthrough)
 _DHARA_SCHEMA_STUB: ModuleType = ModuleType("dhara.schema")
 
@@ -59,9 +61,24 @@ def _stub_from_dict(name: str, payload: dict) -> _StubWebhookIngress:
     """Stand-in for ``dhara.schema.from_dict``.
 
     Mirrors the registry call shape ``from_dict(name, payload)`` used at
-    ``mahavishnu/webhooks/replay.py:118``.
+    ``mahavishnu/webhooks/replay.py``.
     """
     return _StubWebhookIngress(payload)
+
+
+def _stub_to_dict(record: object) -> dict:
+    """Stand-in for ``dhara.schema.to_dict`` used by webhook_tools.
+
+    Mirrors the registry call shape ``to_dict(record)`` at
+    ``mahavishnu/mcp/tools/webhook_tools.py`` line 77. Accepts either a
+    stub ``WebhookIngress`` (with ``._payload``) or a plain ``dict`` and
+    returns a dict either way.
+    """
+    if isinstance(record, _StubWebhookIngress):
+        return record._payload
+    if isinstance(record, dict):
+        return record
+    return dict(record)
 
 
 class _StubSchemaValidationError(Exception):
@@ -75,13 +92,20 @@ def _stub_validate(_name: str, payload: object) -> object:
 
 _DHARA_SCHEMA_STUB.WebhookIngress = _StubWebhookIngress
 _DHARA_SCHEMA_STUB.from_dict = _stub_from_dict
+_DHARA_SCHEMA_STUB.to_dict = _stub_to_dict
 _DHARA_SCHEMA_STUB.SchemaValidationError = _StubSchemaValidationError
 _DHARA_SCHEMA_STUB.validate = _stub_validate
-# Force-assign (not setdefault): sibling tests in the same xdist worker may
-# have already populated ``dhara.schema`` in sys.modules with a different
-# stub. We need the webhook-shaped stub installed unconditionally so the
-# ``webhook_replay`` import chain resolves the Struct surface.
-sys.modules["dhara.schema"] = _DHARA_SCHEMA_STUB
+# Only install the stub when the real ``dhara.schema`` package is NOT
+# importable. The pinned ``dhara`` package in this venv ships a real
+# ``dhara.schema`` module — replacing it would shadow the msgspec Structs
+# and break the ``WebhookIngress``/``WorkflowOutcome`` import in sibling
+# tests. Falls back to the stub only when the upstream package is missing
+# the submodule entirely (substrate-compat guard for legacy test envs).
+if "dhara.schema" not in sys.modules:
+    try:
+        import dhara.schema  # noqa: F401
+    except ImportError:
+        sys.modules["dhara.schema"] = _DHARA_SCHEMA_STUB
 
 from mahavishnu.mcp.tools import webhook_tools  # noqa: E402,F401
 from mahavishnu.mcp.tools.webhook_tools import register_webhook_tools  # noqa: E402
@@ -119,8 +143,8 @@ async def test_registered_tool_returns_dict_for_known_webhook(
         "webhook_id": "wh-abc",
         "source": "openclaw",
         "received_at": datetime(2026, 8, 10, 12, 0, 0, tzinfo=UTC).isoformat(),
-        "payload": {"hello": "world"},
-        "metadata": {},
+        "payload_hash": "sha256:deadbeef",
+        "metadata": {"hello": "world"},
     }
 
     fake_get = MagicMock(return_value=payload)

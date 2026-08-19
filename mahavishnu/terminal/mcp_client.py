@@ -262,7 +262,7 @@ class McpretentiousClient:
 
     def __init__(
         self,
-        backend_name: str = "mcpretentious",
+        backend_name: str = "tmux",
     ) -> None:
         """Construct a McpretentiousClient.
 

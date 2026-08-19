@@ -132,17 +132,22 @@ class TestFastMCPServerInit:
         assert isinstance(server.mcp_client, McpretentiousMCPClient)
 
     @pytest.mark.parametrize("non_pty_preference", ["auto", "mock", "iterm2", "crow"])
-    def test_init_spawns_mcpretentious_for_non_pty_preference(
+    def test_init_spawns_tmux_for_non_pty_preference(
         self, mock_app: MagicMock, non_pty_preference: str
     ) -> None:
-        """Non-PTY adapter preferences still spawn the mcpretentious subprocess.
+        """Non-PTY adapter preferences still spawn the durable tmux subprocess.
 
-        The boot path wraps `McpretentiousMCPClient` with the default
-        ``backend_name='mcpretentious'`` even when the operator selected a
-        non-PTY adapter (`auto` / `mock` / `iterm2` / `crow`). This preserves
-        the contract that auxiliary MCP tool registrars can dereference
-        ``server.mcp_client`` regardless of the operator's preference. See
-        ``docs/terminal/backends.md`` for the full rationale.
+        The boot path wraps ``McpretentiousMCPClient`` (the MCP-tool wrapper)
+        with the default ``backend_name='tmux'`` even when the operator
+        selected a non-PTY adapter (``auto`` / ``mock`` / ``iterm2`` /
+        ``crow``). This preserves the contract that auxiliary MCP tool
+        registrars can dereference ``server.mcp_client`` regardless of the
+        operator's preference. See ``docs/terminal/backends.md`` for the
+        full rationale.
+
+        After the 2026-08-12 mcpretentious removal the wrapper's default
+        backend is ``tmux`` (the only PTY builtin). The mcpretentious
+        npm-package path is no longer reachable.
         """
         mock_app.config.terminal.adapter_preference = non_pty_preference
 
@@ -152,18 +157,15 @@ class TestFastMCPServerInit:
         ):
             FastMCPServer(app=mock_app)
 
-        mock_client.assert_called_once_with(backend_name="mcpretentious")
+        mock_client.assert_called_once_with(backend_name="tmux")
 
-    def test_init_threads_mcpretentious_preference_to_client(
+    def test_init_threads_tmux_preference_to_client(
         self, mock_app: MagicMock
     ) -> None:
-        """When the operator picks the BUILTIN_BACKENDS 'mcpretentious' entry,
-        the configured preference must reach the subprocess client constructor.
-
-        (The previous second backend ``pty_mcp_python`` was dropped. If you
-        re-add a built-in, restore the parametrize for this test.)
+        """When the operator picks the BUILTIN_BACKENDS 'tmux' entry, the
+        configured preference must reach the subprocess client constructor.
         """
-        mock_app.config.terminal.adapter_preference = "mcpretentious"
+        mock_app.config.terminal.adapter_preference = "tmux"
 
         with (
             patch("mahavishnu.mcp.server_core.get_auth_from_config"),
@@ -171,7 +173,7 @@ class TestFastMCPServerInit:
         ):
             FastMCPServer(app=mock_app)
 
-        mock_client.assert_called_once_with(backend_name="mcpretentious")
+        mock_client.assert_called_once_with(backend_name="tmux")
 
     def test_init_rejects_unknown_terminal_backend(self, mock_app: MagicMock) -> None:
         """Unknown adapter/backend names must fail instead of selecting a default."""

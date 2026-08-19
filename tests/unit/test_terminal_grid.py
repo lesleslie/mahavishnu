@@ -154,4 +154,4 @@ class TestTerminalGridManager:
         output = await manager.capture_session_output(grid_id, "s1")
 
         assert "Output capture not available via AppleScript" in output
-        assert "mcpretentious" in output
+        assert "tmux" in output

@@ -16,7 +16,7 @@ The following are project-wide requirements from the design spec (`docs/superpow
 - **No backwards compatibility / legacy support.** Crackerjack's existing `TOOL_REGISTRY` is **deleted** via `git rm` (whole file), not wrapped.
 - **User bumps `mcp-common` version manually before W1 starts.** Implementers do NOT bump mcp-common themselves.
 - **mcp-common depends on `fastmcp>=3.4.0,<4`** (already pinned in pyproject.toml). Helper targets FastMCP 3.4.7's public API.
-- **Helper uses `oneiric.logging.get_logger`** (NOT stdlib, NOT `print()``).
+- **Helper uses `oneiric.logging.get_logger`** (NOT stdlib, NOT \`print()\`\`).
 - **Helper uses FastMCP public `await server.list_tools()`** for default introspection (NOT private `_tool_manager`).
 - **Helper uses FastMCP 3.4.7's `Tool.from_function()`** for registering the `discover_tools` meta-tool (the only correct way to pass name/description/fn kwargs).
 - **Helper uses `_local_provider.remove_tool()`** for idempotent discover_tools removal (the FastMCP 3.4+ public attribute; `_tool_manager` was removed).
@@ -33,7 +33,7 @@ The following are project-wide requirements from the design spec (`docs/superpow
 - **Each PR is independently revertable via `git revert`.**
 - **mcp-common version re-bump:** user bumps after W0 lands; W2b+ repos need their `pyproject.toml` updated to pull the new helper (flag in each wave's brief).
 
----
+______________________________________________________________________
 
 ## File Structure
 
@@ -71,21 +71,24 @@ The following are project-wide requirements from the design spec (`docs/superpow
 | `/Users/les/Projects/crackerjack/crackerjack/mcp/tools/discover_tools.py` | W2a (`git rm` whole file; 170 lines TOOL_REGISTRY + 6 DEFERRED_TOOLS + 41 register_discover_tools + helpers = 236 total) |
 | Any Crackerjack test importing `TOOL_REGISTRY` | W2a |
 
----
+______________________________________________________________________
 
 ## Task 1 (W0): Add `apply_tool_profile()` helper to `mcp-common`
 
 **Files:**
+
 - Create: `/Users/les/Projects/mcp-common/mcp_common/tools/dispatch.py`
 - Create: `/Users/les/Projects/mcp-common/tests/unit/test_apply_tool_profile.py`
 - Create: `/Users/les/Projects/mcp-common/tests/integration/test_profile_dispatch.py`
 - Modify: `/Users/les/Projects/mcp-common/mcp_common/tools/__init__.py`
 
 **Interfaces:**
+
 - Consumes: `fastmcp.FastMCP` instance, `{SERVER}_TOOL_PROFILE` env var (optional `yaml_loader()` fallback)
 - Produces: `apply_tool_profile(server, profile_env_var, registrations, registration_map, register_all_fn, mandatory_tools, discovery_fn, yaml_loader)` callable; `ALL_TOOLS` sentinel; `InvalidProfileError` exception
 
 **IMPORTANT FastMCP 3.4.7 API verification:** Before writing any code, the implementer MUST verify the actual FastMCP API by running:
+
 ```bash
 cd /Users/les/Projects/mcp-common
 uv run python -c "
@@ -655,15 +658,20 @@ Co-Authored-By: Claude <noreply@anthropic.com>"
 
 **W0 soft review gate:** Wait for 1–2 W1 implementers to confirm the API covers their backfill needs before proceeding to Task 2.
 
----
+______________________________________________________________________
 
 ## Task 2 (W1.1): Backfill mahavishnu
 
 **Files:**
+
 - Read first: `/Users/les/Projects/mahavishnu/mahavishnu/mcp/tools/profiles.py` — actual `PROFILE_REGISTRATIONS` is at **lines 69-73** (NOT 39-63 which is the three list constants `MINIMAL_REGISTRATIONS`/`STANDARD_REGISTRATIONS`/`FULL_REGISTRATIONS`). Verify the actual `_register_<group>()` method names exist on the server class before writing the `REGISTRATION_MAP`.
+
 - Modify: `/Users/les/Projects/mahavishnu/mahavishnu/mcp/tools/profiles.py`
+
 - Modify: `/Users/les/Projects/mahavishnu/mahavishnu/mcp/server_core.py`
+
 - Create: `/Users/les/Projects/mahavishnu/tests/unit/test_wiring.py`
+
 - Create (golden fixtures): `/Users/les/Projects/mahavishnu/tests/fixtures/{minimal,standard,full}/tool_names.json`
 
 - [ ] **Step 1: Verify `_register_<group>()` methods exist on the server**
@@ -857,58 +865,80 @@ Co-Authored-By: Claude <noreply@anthropic.com>"
 git checkout main && git merge --ff-only <branch-name>
 ```
 
----
+______________________________________________________________________
 
 ## Task 3 (W1.2): Backfill session-buddy
 
 **Files:** Same as Task 2 but for session-buddy repo. **Follow the Task 2 pattern exactly**, with these substitutions:
+
 - Replace `mahavishnu` paths with `session-buddy`/`session_buddy`
+
 - Replace `MAHAVISHNU_TOOL_PROFILE` with `SESSION_BUDDY_TOOL_PROFILE`
+
 - Verify session-buddy's `_register_<group>()` method names via `grep -E '^    def _register_' session_buddy/mcp/server.py` BEFORE writing `REGISTRATION_MAP`
+
 - Skip `yaml_loader` parameter (session-buddy uses env-only — pass `None`)
+
 - Skip the `settings_yaml_loader` function definition
 
 - [ ] **Steps 1–9:** Same as Task 2, scoped to session-buddy. Skip Step 5's `settings_yaml_loader`.
 
----
+______________________________________________________________________
 
 ## Task 4 (W1.3): Backfill akosha
 
 **Files:** Same as Task 3 but for akosha repo. Substitutions:
+
 - Replace paths with `akosha/akosha/mcp/...`
+
 - Replace env var with `AKOSHA_TOOL_PROFILE`
+
 - Skip yaml_loader (env-only)
+
 - Verify `_register_<group>()` methods via grep
 
 - [ ] **Steps 1–9:** Same as Task 3, scoped to akosha.
 
----
+______________________________________________________________________
 
 ## Task 5 (W1.4): Backfill dhara
 
 **Files:** Same as Task 3 but for dhara repo. Substitutions:
+
 - Replace paths with `dhara/dhara/mcp/...`
+
 - Replace env var with `DHARA_TOOL_PROFILE`
+
 - Skip yaml_loader (env-only)
+
 - Verify `_register_<group>()` methods via grep
 
 - [ ] **Steps 1–9:** Same as Task 3, scoped to dhara.
 
 **W1 completion gate:** All 4 repos land. Run `python mahavishnu/scripts/audit_orphans.py --days 7 --root <each-repo>` to confirm `apply_tool_profile` is called in each main entrypoint.
 
----
+______________________________________________________________________
 
 ## Task 6 (W2a): Crackerjack retrofit
 
 **Files:**
+
 - Read first: `/Users/les/Projects/crackerjack/crackerjack/mcp/tools/discover_tools.py` (236 lines total: `TOOL_REGISTRY`=170 lines at 9-178; `DEFERRED_TOOLS`=6 lines at 181-186; `register_discover_tools`=41 lines at 189-229)
+
 - Delete: `/Users/les/Projects/crackerjack/crackerjack/mcp/tools/discover_tools.py` (use `git rm`, NOT AST surgery)
+
 - Create: `/Users/les/Projects/crackerjack/crackerjack/mcp/tools/profiles.py`
+
 - Create: `/Users/les/Projects/crackerjack/crackerjack/mcp/tools/discover_query.py` (preserves existing `query` filter)
+
 - Modify: `/Users/les/Projects/crackerjack/crackerjack/mcp/server_core.py`
+
 - Create: `/Users/les/Projects/crackerjack/tests/unit/test_tool_profile.py`
+
 - Create: `/Users/les/Projects/crackerjack/tests/unit/test_discover_tools_deletion.py`
+
 - Create: `/Users/les/Projects/crackerjack/.claude/decisions/tool-profile-rationale.md`
+
 - Modify: `/Users/les/Projects/crackerjack/docs/architecture/MEMORY_ARCHITECTURE.md`
 
 - [ ] **Step 1: Pre-deletion grep** (scoped to docs AND production)
@@ -1170,6 +1200,7 @@ Validate the rest of the repo still parses: `python -c "import ast; ast.parse(op
 - [ ] **Step 9: Wire `apply_tool_profile()` in `crackerjack/mcp/server_core.py`**
 
 Add at top:
+
 ```python
 from mcp_common.tools import ToolProfile, apply_tool_profile
 from crackerjack.mcp.tools.profiles import (
@@ -1181,6 +1212,7 @@ from crackerjack.mcp.tools.discover_query import crackerjack_discovery
 ```
 
 Replace any existing `discover_tools()` registration with:
+
 ```python
 await apply_tool_profile(
     server,
@@ -1195,6 +1227,7 @@ await apply_tool_profile(
 - [ ] **Step 10: Update `MEMORY_ARCHITECTURE.md` with the literal annotation text**
 
 Find the section referencing missing `CRACKERJACK_TOOL_PROFILE`. Replace with:
+
 ```
 **Resolved 2026-08-18:** `CRACKERJACK_TOOL_PROFILE` is now implemented in `crackerjack/mcp/tools/profiles.py`. See `2026-08-18-mcp-tool-profile-adoption-design` for context.
 ```
@@ -1202,8 +1235,11 @@ Find the section referencing missing `CRACKERJACK_TOOL_PROFILE`. Replace with:
 - [ ] **Step 11: Create `.claude/decisions/tool-profile-rationale.md`**
 
 Document:
+
 - Why `eventbridge_tools` and `progress_tools` are in FULL not STANDARD
+
 - Why `validate_claude_md` is in STANDARD (write-side tool)
+
 - Reference `2026-08-18-mcp-tool-profile-adoption-design` for context
 
 - [ ] **Step 12: Run all tests; verify golden fixture match**
@@ -1232,17 +1268,22 @@ Co-Authored-By: Claude <noreply@anthropic.com>"
 git checkout main && git merge --ff-only <branch-name>
 ```
 
----
+______________________________________________________________________
 
 ## Task 7 (W2b.1): Adopt `apply_tool_profile()` in mailgun-mcp (Tier-C example)
 
 **CRITICAL CORRECTION:** The package is `mailgun_mcp/` (underscore), NOT `mailgun/mcp/`. Main is `mailgun_mcp/main.py` with **inline `@mcp.tool()` decorators** (no `register_*` functions exist). This is the **decorator-mode** case.
 
 **Files:**
+
 - Read first: `/Users/les/Projects/mailgun-mcp/mailgun_mcp/main.py` to enumerate the inline `@mcp.tool()` decorators
+
 - Modify: `/Users/les/Projects/mailgun-mcp/mailgun_mcp/main.py` (refactor decorators into callable registrations — Task 7 needs to do this BEFORE applying the helper)
+
 - Create: `/Users/les/Projects/mailgun-mcp/mailgun_mcp/tools/profiles.py`
+
 - Create: `/Users/les/Projects/mailgun-mcp/tests/unit/test_tool_profile.py`
+
 - Create: `/Users/les/Projects/mailgun-mcp/.claude/decisions/tool-profile-rationale.md`
 
 - [ ] **Step 1: Audit existing `@mcp.tool()` decorators + refactor to register functions**
@@ -1255,6 +1296,7 @@ grep -nE '@mcp\.tool\(' mailgun_mcp/main.py | head -20
 Refactor strategy: extract each `@mcp.tool()` decorated function into a named module-level function (e.g., `def send_messages(): ...`), then group related functions into `register_<group>` module functions called by the helper.
 
 For mailgun-mcp's 20+ tools, group by domain:
+
 - `register_send_tools()` — send_messages, send_batch, etc.
 - `register_stats_tools()` — get_stats, get_deliverability, etc.
 - `register_validation_tools()` — validate_address, validate_domain, etc.
@@ -1390,6 +1432,7 @@ def register_send_tools(server) -> None:
 - [ ] **Step 6: Wire `apply_tool_profile()` in `mailgun_mcp/main.py`**
 
 At the server startup section:
+
 ```python
 from mcp_common.tools import ToolProfile, apply_tool_profile
 from mailgun_mcp.tools.profiles import (
@@ -1420,6 +1463,7 @@ Expected: PASS.
 - [ ] **Step 9: Update `mailgun-mcp/CLAUDE.md` "Tool Profile System" subsection**
 
 Add (corrected env var name):
+
 ```
 ## Tool Profile System
 
@@ -1450,42 +1494,52 @@ Co-Authored-By: Claude <noreply@anthropic.com>"
 git checkout main && git merge --ff-only <branch-name>
 ```
 
----
+______________________________________________________________________
 
 ## Task 8 (W2b.2): Adopt `apply_tool_profile()` in opera-cloud-mcp
 
 **CORRECTIONS from prior plan:**
+
 - Package is `opera_cloud_mcp/` (underscore), NOT `opera-cloud/mcp/`
 - Tool count is **53**, NOT 56 as previously stated
 - Has ~40 register fns in `tools/operation_tools.py`, `tools/room_tools.py`, `tools/tool_registry.py`
 
 **Files:** Same as Task 7 but for opera-cloud-mcp. Substitutions:
+
 - Replace `mailgun`/`mailgun_mcp` with `opera-cloud`/`opera_cloud_mcp`
+
 - Replace `MAILGUN_TOOL_PROFILE` with `OPERA_CLOUD_TOOL_PROFILE`
+
 - Audit `opera_cloud_mcp/tools/*.py` for actual `register_*` functions BEFORE writing `REGISTRATION_MAP`
+
 - 3-tier mapping: STANDARD = reservation_search + guest_lookup; FULL = all 53 (incl. write-side ops)
 
 - [ ] **Steps 1–11:** Same as Task 7, scoped to opera-cloud-mcp.
 
----
+______________________________________________________________________
 
 ## Task 9 (W2b.3): Adopt `apply_tool_profile()` in spline-mcp
 
 **CORRECTIONS from prior plan:**
+
 - Package is `spline_mcp/` (underscore), NOT `spline/mcp/`
 - Actually has these register fns: `register_generation_tools`, `register_asset_tools`, `register_helper_tools`, `register_docs_tools`, `register_integration_tools` (5 register fns, 25 tools total — matches plan)
 
 **Files:** Same as Task 7 but for spline-mcp. Substitutions:
+
 - Replace `mailgun`/`mailgun_mcp` with `spline`/`spline_mcp`
+
 - Replace `MAILGUN_TOOL_PROFILE` with `SPLINE_TOOL_PROFILE`
+
 - Audit `spline_mcp/tools/*.py` for actual `register_*` functions (already known: 5 fns)
+
 - 3-tier mapping: STANDARD = scene CRUD + import/export; FULL = all 25
 
 - [ ] **Steps 1–11:** Same as Task 7, scoped to spline-mcp.
 
 **W2b completion gate:** All 3 Tier-C repos land. Verify with `python mahavishnu/scripts/audit_orphans.py --days 7 --root <each-repo>`.
 
----
+______________________________________________________________________
 
 ## Tasks 10-13 (W3): Tier-B adoption (graphics-mcp, langsmith-mcp, synxis-crs-mcp, unifi-mcp)
 
@@ -1497,19 +1551,20 @@ git checkout main && git merge --ff-only <branch-name>
 - Task 13: unifi-mcp → env var `UNIFI_TOOL_PROFILE`
 
 Per-repo specifics:
+
 1. Audit `<pkg>/mcp/` for actual register patterns (decorator vs callable)
-2. Decorator-mode refactor if needed (mailgun-mcp pattern)
-3. Create `profiles.py` with 2-tier mapping (smaller than Tier-C's 3-tier)
-4. Wire `apply_tool_profile()` in main entrypoint
-5. Update CLAUDE.md "Tool Profile System" subsection
-6. Write `.claude/decisions/tool-profile-rationale.md`
-7. Commit + ff-merge
+1. Decorator-mode refactor if needed (mailgun-mcp pattern)
+1. Create `profiles.py` with 2-tier mapping (smaller than Tier-C's 3-tier)
+1. Wire `apply_tool_profile()` in main entrypoint
+1. Update CLAUDE.md "Tool Profile System" subsection
+1. Write `.claude/decisions/tool-profile-rationale.md`
+1. Commit + ff-merge
 
 All commits MUST include `-c user.email=les@wedgwoodwebworks.com`.
 
 **W3 completion gate:** All 4 repos land. Verify with `audit_orphans.py`.
 
----
+______________________________________________________________________
 
 ## Tasks 14-23 (W4): Tier-A batch adoption (10 repos as 10 sub-tasks)
 
@@ -1620,7 +1675,7 @@ git checkout main && git merge --ff-only <branch-name>
 
 **W4 completion gate:** All 10 repos land. Run `audit_orphans.py` per repo. Generate `docs/ecosystem/MCP_TOOL_PROFILES.md` programmatically from `mcp.list_tools()` (per spec §Cross-Cutting).
 
----
+______________________________________________________________________
 
 ## Self-Review
 
@@ -1629,6 +1684,7 @@ git checkout main && git merge --ff-only <branch-name>
 **2. Placeholder scan:** No "TBD" / "fill in details" remain. The `<pkg>` / `<repo>` placeholders in W4 Tasks 14-23 are intentional — they document per-repo substitution points (each repo's package name + env var). All other code blocks are complete.
 
 **3. Type consistency:**
+
 - `apply_tool_profile()` signature: `(server, *, profile_env_var, registrations, registration_map, register_all_fn, mandatory_tools, discovery_fn, yaml_loader)` — consistent across all tasks.
 - `PROFILE_REGISTRATIONS` shape: `dict[ToolProfile, list[str | Callable] | type[ALL_TOOLS]]` — consistent.
 - `REGISTRATION_MAP` shape: `dict[str, Callable]` — consistent.
@@ -1637,21 +1693,22 @@ git checkout main && git merge --ff-only <branch-name>
 All checks pass. Plan is ready for execution.
 
 **Critical fixes applied (from 4-agent review):**
+
 1. FastMCP 3.4.7 API: `Tool.from_function()` (not `add_tool(name=, description=, fn=)`); `_local_provider.remove_tool()` (not `_tool_manager`); `Tool.parameters` (not `Tool.inputSchema`)
-2. `_resolve_profile()`: UNSET env → FULL (not raise); SET-BUT-INVALID → raise `InvalidProfileError`
-3. `_resolve_profile()` and `mandatory_tools` loop: refresh `registered_names` after each call (avoid stale set)
-4. MANDATORY entries: per-tool lambdas (not 4× same group)
-5. Tier-C repo paths: `mailgun_mcp/` / `spline_mcp/` / `opera_cloud_mcp/` (underscore package names, NOT hyphen)
-6. mailgun-mcp: decorator-mode refactor step BEFORE applying helper
-7. opera-cloud-mcp: tool count 53 (not 56)
-8. spline-mcp: actual register fn names (`register_generation_tools`, `register_asset_tools`, etc.)
-9. Crackerjack: 236 lines discover_tools.py; AST surgery replaced with `git rm`; `_TOOL_GROUPS` capture step BEFORE deletion
-10. W4 batch: split into 10 sub-tasks (Tasks 14-23) for proper TDD discipline
-11. W0 Step 10 commit: `-c user.email=les@wedgwoodwebworks.com` flag
-12. Tests: monkeypatch for env isolation; correct expected count (7 unit tests + 6 integration tests)
-13. Task 2: corrected line range (PROFILE_REGISTRATIONS at lines 69-73, not 39-63); `settings_yaml_loader` is NEW code
-14. Crackerjack: discover_fn wiring test added
-15. Mailgun-mcp CLAUDE.md: corrected env var name (MAILGUN, not MAHAVISHNU)
-16. Typo: `crackerjack-fastfast-hooks-ruff-autofix` → `crackerjack-fast-hooks-ruff-autofix`
+1. `_resolve_profile()`: UNSET env → FULL (not raise); SET-BUT-INVALID → raise `InvalidProfileError`
+1. `_resolve_profile()` and `mandatory_tools` loop: refresh `registered_names` after each call (avoid stale set)
+1. MANDATORY entries: per-tool lambdas (not 4× same group)
+1. Tier-C repo paths: `mailgun_mcp/` / `spline_mcp/` / `opera_cloud_mcp/` (underscore package names, NOT hyphen)
+1. mailgun-mcp: decorator-mode refactor step BEFORE applying helper
+1. opera-cloud-mcp: tool count 53 (not 56)
+1. spline-mcp: actual register fn names (`register_generation_tools`, `register_asset_tools`, etc.)
+1. Crackerjack: 236 lines discover_tools.py; AST surgery replaced with `git rm`; `_TOOL_GROUPS` capture step BEFORE deletion
+1. W4 batch: split into 10 sub-tasks (Tasks 14-23) for proper TDD discipline
+1. W0 Step 10 commit: `-c user.email=les@wedgwoodwebworks.com` flag
+1. Tests: monkeypatch for env isolation; correct expected count (7 unit tests + 6 integration tests)
+1. Task 2: corrected line range (PROFILE_REGISTRATIONS at lines 69-73, not 39-63); `settings_yaml_loader` is NEW code
+1. Crackerjack: discover_fn wiring test added
+1. Mailgun-mcp CLAUDE.md: corrected env var name (MAILGUN, not MAHAVISHNU)
+1. Typo: `crackerjack-fastfast-hooks-ruff-autofix` → `crackerjack-fast-hooks-ruff-autofix`
 
 Plan complete and ready for execution.

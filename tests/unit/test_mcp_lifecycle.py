@@ -65,7 +65,7 @@ async def test_stop_server_handles_client_stop_failure(
     with caplog.at_level(logging.WARNING):
         await stop_server(server)
 
-    assert "Error stopping mcpretentious server" in caplog.text
+    assert "Error stopping embedded MCP client" in caplog.text
 
 
 @pytest.mark.asyncio

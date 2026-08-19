@@ -37,30 +37,21 @@ class TestPtyBackend:
 
 @pytest.mark.unit
 class TestBuiltinBackends:
-    def test_has_mcpretentious(self) -> None:
-        assert "mcpretentious" in BUILTIN_BACKENDS
+    def test_has_tmux(self) -> None:
+        assert "tmux" in BUILTIN_BACKENDS
 
-    def test_mcpretentious_uses_npx(self) -> None:
-        # Regression: the original bug was using "uvx" for an npm package.
-        # The fix is "npx" + the npm package name.
-        backend = BUILTIN_BACKENDS["mcpretentious"]
-        assert backend.command == "npx"
-        assert backend.args == ("mcpretentious",)
+    def test_tmux_backend_shape(self) -> None:
+        backend = BUILTIN_BACKENDS["tmux"]
+        assert backend.command == "tmux"
+        assert backend.args == ()
+        assert "tmux" in backend.requires
 
-    def test_mcpretentious_requires_node(self) -> None:
-        # MCPretentious is an npm package, so it needs Node.js on PATH.
-        assert "node" in BUILTIN_BACKENDS["mcpretentious"].requires
-
-    def test_no_other_backends_registered(self) -> None:
-        # Backends are added one at a time. The previous second entry
-        # (pty_mcp_python) was dropped because the upstream package had 0
-        # stars, no recent activity, and is not on PyPI. The `tmux` entry
-        # was added by Task 11 of the durable-local-workers plan
-        # (docs/superpowers/plans/2026-07-26-durable-local-workers.md);
-        # the actual wiring is in Task 12. If you add a new entry here,
-        # also update docs/terminal/backends.md and add backends-specific
-        # tests for it.
-        assert list(BUILTIN_BACKENDS) == ["mcpretentious", "tmux"]
+    def test_only_tmux_backend_registered(self) -> None:
+        # The mcpretentious backend was removed 2026-08-12 (see
+        # ``docs/followups/2026-08-12-mcpretentious-removed.md``). The only
+        # builtin left is tmux; if you add a new entry here, also update
+        # docs/terminal/backends.md and add backends-specific tests for it.
+        assert list(BUILTIN_BACKENDS) == ["tmux"]
 
     def test_all_backends_have_command_args_name(self) -> None:
         # Defensive: every registered backend must be launchable. The

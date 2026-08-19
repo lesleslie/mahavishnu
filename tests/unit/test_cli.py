@@ -1,9 +1,30 @@
 """Unit tests for CLI commands."""
 
+from unittest.mock import AsyncMock, MagicMock
+
 import pytest
 from typer.testing import CliRunner
 
 from mahavishnu._main_cli import app
+
+
+@pytest.fixture(autouse=True)
+def _force_mock_terminal_adapter(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Bypass local.yaml's crow adapter toggle for CLI tests.
+
+    ``settings/local.yaml`` enables the bundled crow adapter by default; the
+    CLI test environment cannot satisfy the crow HTTP contract. Force the
+    TerminalManager factory to construct the always-available MockTerminalAdapter
+    so commands like ``list-repos`` don't crash on adapter resolution.
+    """
+    from mahavishnu.terminal.adapters.mock import MockTerminalAdapter
+    from mahavishnu.terminal.manager import TerminalManager
+
+    async def _fake_create(cls: type, config: object, mcp_client: object) -> object:
+        return cls(MockTerminalAdapter(), config.terminal)
+
+    monkeypatch.setattr(TerminalManager, "create", classmethod(_fake_create))
+    yield
 
 
 class TestListReposCommand:

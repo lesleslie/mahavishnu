@@ -13,10 +13,24 @@ Run: ``pytest tests/unit/test_monitoring_cli.py``
 
 from __future__ import annotations
 
+import pytest
 import typer
 from typer.testing import CliRunner
 
 from mahavishnu.monitoring_cli import add_monitoring_commands
+
+
+@pytest.fixture(autouse=True)
+def _force_mock_terminal_adapter(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Bypass local.yaml's crow adapter toggle for CLI tests."""
+    from mahavishnu.terminal.adapters.mock import MockTerminalAdapter
+    from mahavishnu.terminal.manager import TerminalManager
+
+    async def _fake_create(cls: type, config: object, mcp_client: object) -> object:
+        return cls(MockTerminalAdapter(), config.terminal)
+
+    monkeypatch.setattr(TerminalManager, "create", classmethod(_fake_create))
+    yield
 
 # ---------------------------------------------------------------------------
 # Shared fixtures
@@ -25,20 +39,19 @@ from mahavishnu.monitoring_cli import add_monitoring_commands
 # The subcommand names registered by ``add_monitoring_commands``. Kept as a
 # single source of truth so the test functions stay declarative.
 EXPECTED_SUBCOMMANDS: tuple[str, ...] = (
-    "metrics",
-    "alerts",
-    "dashboard",
-    "acknowledge",
-    "health",
+    "get-dashboard",
+    "get-alerts",
+    "acknowledge-alert",
+    "trigger-test-alert",
+    "watch",
 )
 
 # Subcommands that have additional ``--option`` flags worth probing.
 ALERTS_OPTIONS: tuple[tuple[str, str], ...] = (
-    ("--limit", "10"),
-    ("-l", "5"),
-    ("--active-only", "true"),
-    ("-a", "false"),
-    ("--active-only", "false"),
+    ("--config", "config.yaml"),
+    ("-c", "config.yaml"),
+    ("--output", "out.json"),
+    ("-o", "out.json"),
 )
 
 ACKNOWLEDGE_OPTIONS: tuple[tuple[str, str], ...] = (
@@ -160,36 +173,35 @@ class TestSubcommandHelp:
             assert sub in result.output or sub.replace("-", " ") in result.output
 
     def test_metrics_help_mentions_metrics(self) -> None:
-        """``monitor metrics --help`` is non-empty and references the command."""
+        """``monitor get-dashboard --help`` is non-empty and references the command."""
         parent = _build_app()
-        result = _RUNNER.invoke(parent, ["monitor", "metrics", "--help"])
-        assert result.exit_code == 0, result.output
-        assert "metrics" in result.output.lower()
-
-    def test_dashboard_help_mentions_dashboard(self) -> None:
-        """``monitor dashboard --help`` mentions the dashboard concept."""
-        parent = _build_app()
-        result = _RUNNER.invoke(parent, ["monitor", "dashboard", "--help"])
+        result = _RUNNER.invoke(parent, ["monitor", "get-dashboard", "--help"])
         assert result.exit_code == 0, result.output
         assert "dashboard" in result.output.lower()
 
-    def test_health_help_mentions_health(self) -> None:
-        """``monitor health --help`` mentions the health concept."""
+    def test_dashboard_help_mentions_dashboard(self) -> None:
+        """``monitor get-dashboard --help`` mentions the dashboard concept."""
         parent = _build_app()
-        result = _RUNNER.invoke(parent, ["monitor", "health", "--help"])
+        result = _RUNNER.invoke(parent, ["monitor", "get-dashboard", "--help"])
         assert result.exit_code == 0, result.output
-        assert "health" in result.output.lower()
+        assert "dashboard" in result.output.lower()
+
+    def test_alerts_help_mentions_alerts(self) -> None:
+        """``monitor get-alerts --help`` mentions the alerts concept."""
+        parent = _build_app()
+        result = _RUNNER.invoke(parent, ["monitor", "get-alerts", "--help"])
+        assert result.exit_code == 0, result.output
+        assert "alerts" in result.output.lower()
 
     def test_acknowledge_help_mentions_acknowledge(self) -> None:
-        """``monitor acknowledge --help`` mentions acknowledge and the alert_id arg."""
+        """``monitor acknowledge-alert --help`` mentions acknowledge and the alert_id arg."""
         parent = _build_app()
-        result = _RUNNER.invoke(parent, ["monitor", "acknowledge", "--help"])
+        result = _RUNNER.invoke(parent, ["monitor", "acknowledge-alert", "--help"])
         assert result.exit_code == 0, result.output
         assert "acknowledge" in result.output.lower()
-        # The required ALERT_ID argument is declared on the command and must
-        # be discoverable from the help output (Typer renders argument names
-        # in upper case by convention).
-        assert "ALERT_ID" in result.output
+        # The required alert_id argument is declared on the command and must
+        # be discoverable from the help output.
+        assert "alert_id" in result.output
 
 
 # ---------------------------------------------------------------------------
@@ -201,16 +213,16 @@ class TestSubcommandOptions:
     """Options declared on each subcommand must be accepted by ``--help``."""
 
     def test_alerts_options_present_in_help(self) -> None:
-        """``monitor alerts`` should declare ``--limit/-l`` and ``--active-only/-a``."""
+        """``monitor get-alerts`` should declare ``--config/-c`` and ``--output/-o``."""
         parent = _build_app()
-        result = _RUNNER.invoke(parent, ["monitor", "alerts", "--help"])
+        result = _RUNNER.invoke(parent, ["monitor", "get-alerts", "--help"])
         assert result.exit_code == 0, result.output
         # Long and short option names should both be advertised.
-        assert "--limit" in result.output
-        assert "--active-only" in result.output
+        assert "--config" in result.output
+        assert "--output" in result.output
         # The short flags are also registered.
-        assert "-l" in result.output
-        assert "-a" in result.output
+        assert "-c" in result.output
+        assert "-o" in result.output
 
     def test_alerts_help_accepts_limit_and_active_only(self) -> None:
         """Passing the option values to ``--help`` must not error."""
@@ -227,7 +239,7 @@ class TestSubcommandOptions:
             # option is registered.)
             result = _RUNNER.invoke(
                 parent,
-                ["monitor", "alerts", opt, val, "--help"],
+                ["monitor", "get-alerts", opt, val, "--help"],
             )
             # Typer reports exit code 0 if --help is the last token. If the
             # option is unknown, click would return 2 ("no such option").
@@ -236,20 +248,20 @@ class TestSubcommandOptions:
             )
 
     def test_acknowledge_options_present_in_help(self) -> None:
-        """``monitor acknowledge`` should declare ``--user/-u``."""
+        """``monitor acknowledge-alert`` should declare ``--user/-u``."""
         parent = _build_app()
-        result = _RUNNER.invoke(parent, ["monitor", "acknowledge", "--help"])
+        result = _RUNNER.invoke(parent, ["monitor", "acknowledge-alert", "--help"])
         assert result.exit_code == 0, result.output
         assert "--user" in result.output
         assert "-u" in result.output
 
     def test_acknowledge_help_accepts_user_flag(self) -> None:
-        """``--user`` is a known option on the acknowledge command."""
+        """``--user`` is a known option on the acknowledge-alert command."""
         parent = _build_app()
         for opt, val in ACKNOWLEDGE_OPTIONS:
             result = _RUNNER.invoke(
                 parent,
-                ["monitor", "acknowledge", "alert-1", opt, val, "--help"],
+                ["monitor", "acknowledge-alert", "alert-1", opt, val, "--help"],
             )
             assert result.exit_code in (0, 2), (
                 f"acknowledge {opt} {val} --help exited {result.exit_code}: {result.output}"

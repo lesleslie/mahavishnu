@@ -173,7 +173,7 @@ class TestTerminalSettings:
         assert settings.max_concurrent_sessions == 20
         assert (
             settings.adapter_preference == "mock"
-        )  # Default to mock until iTerm2/mcpretentious configured
+        )  # Default to mock until iTerm2/tmux configured
         assert settings.iterm2_pooling_enabled is True
         assert settings.iterm2_pool_max_size == 3
         assert settings.iterm2_pool_idle_timeout == 300.0
@@ -188,7 +188,7 @@ class TestTerminalSettings:
             capture_lines=500,
             poll_interval=1.0,
             max_concurrent_sessions=10,
-            adapter_preference="mcpretentious",
+            adapter_preference="tmux",
         )
 
         assert settings.enabled is True
@@ -197,7 +197,7 @@ class TestTerminalSettings:
         assert settings.capture_lines == 500
         assert settings.poll_interval == 1.0
         assert settings.max_concurrent_sessions == 10
-        assert settings.adapter_preference == "mcpretentious"
+        assert settings.adapter_preference == "tmux"
 
     def test_columns_validation(self):
         """Test columns field validation."""

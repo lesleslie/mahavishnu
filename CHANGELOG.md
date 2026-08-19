@@ -63,7 +63,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Internal
 
-- gitignore: Add .coverage* + untrack .coverage-ratchet.json (bodai 2026-08-17)
+- gitignore: Add .coverage\* + untrack .coverage-ratchet.json (bodai 2026-08-17)
 - mahavishnu: Delete archive diagram mirrors (9 files)
 - Pin minimax-coding-plan-mcp install args
 

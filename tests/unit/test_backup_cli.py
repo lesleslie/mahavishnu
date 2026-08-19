@@ -29,6 +29,19 @@ from typer.testing import CliRunner
 
 from mahavishnu.backup_cli import add_backup_commands
 
+
+@pytest.fixture(autouse=True)
+def _force_mock_terminal_adapter(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Bypass local.yaml's crow adapter toggle for CLI tests."""
+    from mahavishnu.terminal.adapters.mock import MockTerminalAdapter
+    from mahavishnu.terminal.manager import TerminalManager
+
+    async def _fake_create(cls: type, config: object, mcp_client: object) -> object:
+        return cls(MockTerminalAdapter(), config.terminal)
+
+    monkeypatch.setattr(TerminalManager, "create", classmethod(_fake_create))
+    yield
+
 # Every subcommand registered by add_backup_commands. Order is preserved
 # for deterministic help-text traversal in the parametrized tests below.
 EXPECTED_SUBCOMMANDS: list[str] = [
@@ -172,18 +185,19 @@ def test_create_accepts_type_with_help(runner: CliRunner, app: typer.Typer) -> N
 
 
 def test_restore_advertises_backup_id_argument(runner: CliRunner, app: typer.Typer) -> None:
-    """'restore' must declare a BACKUP_ID argument in its help text."""
+    """'restore' must declare a backup_id argument in its help text."""
     result = runner.invoke(app, ["backup", "restore", "--help"])
     assert result.exit_code == 0
-    # Typer renders positional args in uppercase in the Usage line.
-    assert "BACKUP_ID" in result.stdout
+    # Typer renders the positional arg in the Arguments block (lowercase
+    # ``backup_id`` in the current Typer version).
+    assert "backup_id" in result.output
 
 
 def test_info_advertises_backup_id_argument(runner: CliRunner, app: typer.Typer) -> None:
-    """'info' must declare a BACKUP_ID argument in its help text."""
+    """'info' must declare a backup_id argument in its help text."""
     result = runner.invoke(app, ["backup", "info", "--help"])
     assert result.exit_code == 0
-    assert "BACKUP_ID" in result.stdout
+    assert "backup_id" in result.output
 
 
 def test_restore_missing_argument_fails(runner: CliRunner, app: typer.Typer) -> None:
