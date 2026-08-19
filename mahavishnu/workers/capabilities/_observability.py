@@ -136,17 +136,21 @@ def _publish_event(report: WorkerCapabilityReport) -> None:
         "reason_bucket": safe_error_for_user(_bucket(report)),
         "probe_at": safe_error_for_user(report.probe_at.isoformat()),
     }
-    # ``_publish_event`` is synchronous; the websocket broadcast is fire-and-forget.
-    # Schedule the coroutine on the running loop so we never block capability
-    # evaluation on a websocket round-trip.
-    coro = _broadcast_event("worker.availability_changed", payload, room="adapters")
+    # ``_publish_event`` is synchronous; the websocket broadcast may be async
+    # (production) or sync (tests that monkeypatch a synchronous stub). Detect
+    # the result shape before scheduling so tests with sync stubs do not trip
+    # on ``coro.close()`` against a ``None`` return value.
+    result = _broadcast_event("worker.availability_changed", payload, room="adapters")
+    if not asyncio.iscoroutine(result):
+        return
+    # Async path: schedule the coroutine on the running loop so we never block
+    # capability evaluation on a websocket round-trip. When no loop is running
+    # (sync context, no event loop available), close the coroutine cleanly.
     try:
         loop = asyncio.get_running_loop()
-        loop.create_task(coro)
+        loop.create_task(result)
     except RuntimeError:
-        # No running loop (e.g. capability evaluation called from sync context);
-        # fall through and silently drop the broadcast.
-        coro.close()
+        result.close()
 
 
 def reset_for_tests() -> None:
