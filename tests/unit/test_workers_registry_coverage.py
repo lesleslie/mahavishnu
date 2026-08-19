@@ -229,12 +229,14 @@ class TestWorkerRegistry:
                 )
 
     def test_registry_size(self) -> None:
-        # 45 = baseline 48 minus terminal-aider, terminal-openclaw, and
-        # terminal-zsh removed 2026-08. terminal-aider was removed because
-        # Aider is no longer a maintained worker surface in this repo.
+        # 42 = baseline 48 minus terminal-aider, terminal-goose,
+        # terminal-gemini, terminal-amp, terminal-openclaw, and
+        # terminal-zsh removed 2026-08. The three AI-assistant entries
+        # (goose/gemini/amp) had zero production or test references and
+        # only appeared in historical plans/specs.
         # If you add or remove a worker, update both this assertion and
         # ``test_registry_has_expected_keys``.
-        assert len(WORKER_REGISTRY) == 45
+        assert len(WORKER_REGISTRY) == 42
 
 
 # ---------------------------------------------------------------------------
