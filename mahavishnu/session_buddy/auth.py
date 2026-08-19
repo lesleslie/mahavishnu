@@ -222,7 +222,7 @@ class AuthenticatedSessionBuddyClient:
             }
 
             return result
-        except (AttributeError, TypeError, ValueError, KeyError) as e:
+        except (AttributeError, TypeError, ValueError, KeyError, RuntimeError) as e:
             self.logger.error(f"Error sending authenticated message: {e}")
             return {"status": "error", "error": str(e)}
 
@@ -259,7 +259,7 @@ class AuthenticatedSessionBuddyClient:
                 self.logger.warning("Received invalid authenticated message")
 
                 return {"status": "invalid", "error": "Message signature verification failed"}
-        except (AttributeError, TypeError, ValueError, KeyError) as e:
+        except (AttributeError, TypeError, ValueError, KeyError, RuntimeError) as e:
             self.logger.error(f"Error receiving authenticated message: {e}")
             return {"status": "error", "error": str(e)}
 

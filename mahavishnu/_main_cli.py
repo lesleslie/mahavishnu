@@ -1318,6 +1318,7 @@ def workers_spawn(
         from .workers import WorkerManager
 
         maha_app = MahavishnuApp()
+        crow_client = _resolve_crow_mcp_client(maha_app.config)
 
         # Check if workers are enabled
         if not getattr(maha_app.config.workers, "enabled", True):
@@ -1327,7 +1328,7 @@ def workers_spawn(
         # Create terminal manager (reusing existing infrastructure)
         terminal_mgr = await TerminalManager.create(
             maha_app.config,
-            mcp_client=_resolve_crow_mcp_client(maha_app.config),
+            mcp_client=crow_client,
         )
 
         # Create worker manager
@@ -1400,6 +1401,7 @@ def workers_execute(
         from .workers.registry import get_worker_config, resolve_worker_type
 
         maha_app = MahavishnuApp()
+        crow_client = _resolve_crow_mcp_client(maha_app.config)
 
         # Check if workers are enabled
         if not getattr(maha_app.config.workers, "enabled", True):
@@ -1409,7 +1411,7 @@ def workers_execute(
         # Create managers
         terminal_mgr = await TerminalManager.create(
             maha_app.config,
-            mcp_client=_resolve_crow_mcp_client(maha_app.config),
+            mcp_client=crow_client,
         )
 
         worker_mgr = WorkerManager(
@@ -1579,6 +1581,48 @@ def pool_spawn(
             typer.echo("ERROR: Pool management is disabled")
             raise typer.Exit(code=1)
 
+        # Pre-spawn validation. Fail-fast on the cheapest checks first so
+        # operators get actionable error messages before we spin up any
+        # infrastructure (terminal manager, message bus, pool manager).
+        # The order matters: cheap string comparisons before any I/O.
+        # See mahavishnu/pools/manager.py for the runtime enforcement
+        # in PoolConfig and PoolManager.spawn_pool().
+        if pool_type not in {"mahavishnu", "session_buddy", "runpod"}:
+            typer.echo(f"ERROR: Unsupported pool type: {pool_type!r}", err=True)
+            typer.echo("Supported types: mahavishnu, session_buddy, runpod", err=True)
+            raise typer.Exit(code=1)
+        if min_workers < 1 or max_workers > 100:
+            typer.echo("ERROR: Worker count must be 1 <= min <= max <= 100", err=True)
+            raise typer.Exit(code=1)
+        if min_workers > max_workers:
+            typer.echo(
+                f"ERROR: min_workers ({min_workers}) exceeds max_workers ({max_workers})",
+                err=True,
+            )
+            raise typer.Exit(code=1)
+        if not name or not isinstance(name, str):
+            typer.echo("ERROR: Pool name must be a non-empty string", err=True)
+            raise typer.Exit(code=1)
+        if worker_type not in {
+            "terminal-claude",
+            "terminal-codex",
+            "terminal-qwen",
+            "gateway-openclaw",
+            "container-executor",
+        }:
+            typer.echo(f"ERROR: Unknown worker type: {worker_type!r}", err=True)
+            raise typer.Exit(code=1)
+        # The pool configuration is well-formed; we can proceed to the
+        # expensive setup steps below. Logging context is set up by the
+        # spawn CLI command itself before reaching this point.
+        # The terminal manager and message bus live for the lifetime of
+        # the spawn call. The pool manager outlives this function and is
+        # stored on the MahavishnuApp instance for later pool commands.
+        # The crow MCP client is constructed via the helper so that the
+        # default (crow_enabled=false) falls through to the mock adapter.
+        # The default config in settings/mahavishnu.yaml sets crow_enabled
+        # to false to avoid coupling bootstrap to the bundled crow server.
+        # Operators opt in by setting crow_enabled: true in local.yaml.
         # Create terminal manager
         terminal_mgr = await TerminalManager.create(
             maha_app.config,
