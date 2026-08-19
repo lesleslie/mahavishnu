@@ -1,11 +1,13 @@
 """Session Buddy integration for Mahavishnu with code graph analysis."""
 
 import json
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
+from uuid import uuid4
 
 from mcp_common.code_graph import CodeGraphAnalyzer
-from messaging.types import Priority, ProjectMessage
+from messaging.types import MessageStatus, MessageType, Priority, ProjectMessage
 
 
 class SessionBuddyIntegration:
@@ -106,13 +108,15 @@ class SessionBuddyIntegration:
             # For now, we'll simulate sending the context
             # In a real implementation, this would be an actual call to Session Buddy
             session_buddy_message = ProjectMessage(
-                project_id=repo_path,
-                message={
-                    "type": "code_context_update",
-                    "content": json.dumps(code_context, default=str),
-                    "timestamp": __import__("datetime").datetime.now().isoformat(),
-                },
+                id=f"msg_{uuid4().hex}",
+                from_project=repo_path,
+                to_project=repo_path,
+                timestamp=datetime.now(UTC).isoformat(),
+                subject="Code context update",
                 priority=Priority.NORMAL,
+                status=MessageStatus.UNREAD,
+                content_type=MessageType.NOTIFICATION,
+                content_message=json.dumps(code_context, default=str),
             )
 
             # Log the message that would be sent
@@ -235,14 +239,15 @@ class SessionBuddyIntegration:
 
             # Prepare a message for Session Buddy
             _session_buddy_message = ProjectMessage(
-                project_id=repo_path,
-                message={
-                    "type": "documentation_index",
-                    "content": json.dumps(documentation, default=str),
-                    "count": len(documentation),
-                    "timestamp": __import__("datetime").datetime.now().isoformat(),
-                },
+                id=f"msg_{uuid4().hex}",
+                from_project=repo_path,
+                to_project=repo_path,
+                timestamp=datetime.now(UTC).isoformat(),
+                subject="Documentation index",
                 priority=Priority.NORMAL,
+                status=MessageStatus.UNREAD,
+                content_type=MessageType.NOTIFICATION,
+                content_message=json.dumps(documentation, default=str),
             )
 
             # Log the message that would be sent
@@ -277,14 +282,15 @@ class SessionBuddyIntegration:
         try:
             # Create a project message using the shared messaging types
             project_message = ProjectMessage(
-                project_id=to_project,
-                message={
-                    "from_project": from_project,
-                    "subject": subject,
-                    "content": message,
-                    "timestamp": __import__("datetime").datetime.now().isoformat(),
-                },
+                id=f"msg_{uuid4().hex}",
+                from_project=from_project,
+                to_project=to_project,
+                timestamp=datetime.now(UTC).isoformat(),
+                subject=subject,
                 priority=priority,
+                status=MessageStatus.UNREAD,
+                content_type=MessageType.NOTIFICATION,
+                content_message=message,
             )
 
             # In a real implementation, this would send the message via MCP
@@ -293,7 +299,7 @@ class SessionBuddyIntegration:
 
             return {
                 "status": "success",
-                "message_id": f"msg_{hash(str(project_message))}",
+                "message_id": project_message.id,
                 "sent": True,
             }
         except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive

@@ -71,7 +71,7 @@ def register_repository_messaging_tools(server, app, mcp_client):
             return {
                 "status": "success",
                 "message_id": message.id,
-                "sent_at": message.timestamp.isoformat(),  # ty: ignore[unresolved-attribute]
+                "sent_at": message.timestamp.strftime("%Y-%m-%dT%H:%M:%S"),  # ty: ignore[unresolved-attribute]
                 "priority": message.priority.value,
             }
         except Exception as e:  # noqa: BLE001 - MCP boundary must preserve all operation failures
@@ -169,7 +169,7 @@ def register_repository_messaging_tools(server, app, mcp_client):
                         "message_type": msg.message_type.value,
                         "content": msg.content,
                         "priority": msg.priority.value,
-                        "timestamp": msg.timestamp.isoformat(),  # ty: ignore[unresolved-attribute]
+                        "timestamp": msg.timestamp.strftime("%Y-%m-%dT%H:%M:%S"),  # ty: ignore[unresolved-attribute]
                         "correlation_id": msg.correlation_id,
                     }
                     for msg in messages
