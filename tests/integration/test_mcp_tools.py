@@ -32,6 +32,7 @@ def mock_app():
     app.config.subscription_auth.enabled = False
     app.config.subscription_auth.secret = None
     app.config.terminal.enabled = False
+    app.config.terminal.adapter_preference = "mock"
 
     app.get_repos = Mock(return_value=["/repo1", "/repo2", "/repo3"])
     app.execute_workflow_parallel = AsyncMock(
