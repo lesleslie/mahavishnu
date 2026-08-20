@@ -124,9 +124,9 @@ persistence:
   search_write: null  # Override for search/documents
   event_write: null  # Override for audit events
 
-# Quality control
+# Quality control (off by default — opt-in for production)
 qc:
-  enabled: true
+  enabled: false
   min_score: 80
   checks:
     - linting

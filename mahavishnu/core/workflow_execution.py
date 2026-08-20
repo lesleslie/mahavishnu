@@ -485,14 +485,14 @@ async def handle_workflow_execution_error(
     ) from error
 
 
-async def execute_workflow_parallel(  # type: ignore[invalid-return]
+async def execute_workflow_parallel(
     app: Any,
     task: dict[str, Any],
     adapter_name: str,
     repos: list[str] | None = None,
     progress_callback=None,
     user_id: str | None = None,
-) -> dict[str, Any]:
+) -> dict[str, Any] | None:
     adapter, validated_repos = await app._prepare_execution(adapter_name, task, repos, user_id)
     workflow_id = await initialize_workflow_state(app, task, adapter_name, validated_repos)
     await validate_pre_execution_qc(app, workflow_id, validated_repos)
@@ -520,7 +520,11 @@ async def execute_workflow_parallel(  # type: ignore[invalid-return]
             checkpoint_id=checkpoint_id,
         )
     except Exception as exc:
-        await handle_workflow_execution_error(
+        # handle_workflow_execution_error normally re-raises after recording
+        # the failure. If a caller substitutes an error handler that
+        # swallows the exception (returning None), return None so callers
+        # see a deterministic signal that the error was handled.
+        result = await handle_workflow_execution_error(
             app=app,
             workflow_id=workflow_id,
             adapter_name=adapter_name,
@@ -529,9 +533,7 @@ async def execute_workflow_parallel(  # type: ignore[invalid-return]
             error=exc,
             checkpoint_id=checkpoint_id,
         )
-        # handle_workflow_execution_error always raises; this satisfies
-        # the type checker that control never reaches here.
-        raise RuntimeError("unreachable: handle_workflow_execution_error always raises") from exc
+        return result  # type: ignore[no-any-return]
 
 
 async def execute_workflow_with_fallback(

@@ -234,6 +234,54 @@ TOOL_VERSIONS: dict[str, str] = {
     "ecosystem_status": "1.0.0",
     "ecosystem_capabilities": "1.0.0",
     "ecosystem_routing_readiness": "1.0.0",
+    # Workflow outcome tools (workflow_tools.py)
+    "workflow_get_outcome_tool": "1.0.0",
+    # Coordination ecosystem status (coordination_tools.py)
+    "coord_get_ecosystem_status": "1.0.0",
+    # Eventbridge tools (eventbridge_tools.py)
+    "publish_to_eventbridge": "1.0.0",
+    # Learning pipeline tools (learning_pipeline_tools.py)
+    "get_pipeline_status": "1.0.0",
+    "list_evidence": "1.0.0",
+    "trigger_synthesis": "1.0.0",
+    "list_pending_drafts": "1.0.0",
+    "get_promotion_history": "1.0.0",
+    # Primitive introspection wrappers (primitive_tools.py)
+    "list_primitives_tool": "1.0.0",
+    "show_primitive_tool": "1.0.0",
+    # OpenHands tools (openhands_tools.py)
+    "openhands_run": "1.0.0",
+    "openhands_status": "1.0.0",
+    "openhands_cancel": "1.0.0",
+    "openhands_health": "1.0.0",
+    # Clone detection / refactor tools (clone_tools.py)
+    "clone_detect_ecosystem": "1.0.0",
+    "clone_refactor_group": "1.0.0",
+    "clone_refactor_status": "1.0.0",
+    "get_verification_result": "1.0.0",
+    # Session-Buddy channel tools (session_buddy_tools.py)
+    "track_channel_session": "1.0.0",
+    "get_channel_sessions": "1.0.0",
+    # Self-improvement tools (self_improvement_tools.py)
+    "self_improvement_analyze_failures": "1.0.0",
+    "self_improvement_generate": "1.0.0",
+    "self_improvement_status": "1.0.0",
+    # OpenTelemetry local trace query (otel_tools.py)
+    "query_local_traces": "1.0.0",
+    # Pool dispatch / workflow result tools (pool_tools.py)
+    "dispatch_to_pool": "1.0.0",
+    "workflow_result": "1.0.0",
+    # PyCharm IDE tools (pycharm_tools.py)
+    "pycharm_health": "1.0.0",
+    "pycharm_run_diagnostics": "1.0.0",
+    "pycharm_open_file": "1.0.0",
+    "pycharm_search_in_project": "1.0.0",
+    "pycharm_replace_in_file": "1.0.0",
+    "pycharm_reformat_file": "1.0.0",
+    "pycharm_refactor_symbol": "1.0.0",
+    "pycharm_list_problems": "1.0.0",
+    # Webhook replay tool (webhook_tools.py)
+    "webhook_replay_tool": "1.0.0",
 }
 
 # ---------------------------------------------------------------------------

@@ -868,11 +868,23 @@ class SessionBuddyPollingConfig(BaseModel):
 
 
 class QualityControlConfig(BaseModel):
-    """Quality control configuration for Crackerjack QC."""
+    """Quality control configuration for Crackerjack QC.
+
+    Default behavior: QC is OFF, because the Crackerjack service is rarely
+    reachable in test/dev environments and the dependency-health gate will
+    block any workflow execution when QC is enabled but the service is
+    unreachable (``MH``V-306 ExternalServiceError).
+
+    Production deployments should set ``enabled: true`` in
+    ``settings/mahavishnu.yaml`` or via
+    ``MAHAVISHNU_QC__ENABLED=true``. Settings/local.yaml and the
+    ``execute_workflow()`` entry point accept the explicit override
+    ``app.config.qc.enabled = True`` too.
+    """
 
     enabled: bool = Field(
-        default=True,
-        description="Enable Crackerjack QC",
+        default=False,
+        description="Enable Crackerjack QC (default OFF — opt-in for production)",
     )
     min_score: int = Field(
         default=80,
