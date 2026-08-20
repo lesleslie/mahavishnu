@@ -324,12 +324,10 @@ class CommandPalette:
             raise ValueError(f"Command not found: {command_id}")
 
         if not command.action:
-            # Commands without actions are informational placeholders
-            # (e.g., default-registered docs / help commands). Return
-            # None rather than raising so the palette UI doesn't
-            # blow up when an operator selects one.
-            logger.info(f"Command {command_id} has no action; treating as informational")
-            return None
+            # Executable commands must have an action; raise so callers
+            # surface the missing-action condition instead of silently
+            # no-oping (which masks wiring bugs in the palette).
+            raise ValueError(f"Command {command_id} has no action")
 
         # Add to history
         self._history.append(command_id)

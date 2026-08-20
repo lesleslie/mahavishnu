@@ -29,6 +29,7 @@ import argparse
 import json
 from pathlib import Path
 import re
+import subprocess
 import sys
 from typing import NamedTuple
 
@@ -91,6 +92,13 @@ class ClaudeDirState(NamedTuple):
 def classify_claude_dir(repo: Path) -> ClaudeDirState:
     """Inspect ``<repo>/.claude/`` and split its contents.
 
+    A subdir only counts as catalog content (``shared_subdirs``) when
+    it both exists on disk **and** has at least one file tracked by
+    git. A bare directory with no tracked content is treated as
+    runtime — the user is presumably about to populate it, but the
+    blanket ``.claude/`` rule cannot yet be said to "hide the catalog"
+    because there is no committed catalog to hide.
+
     Returns ``ClaudeDirState`` with the presence flag plus the list of
     shared-subdir hits and the list of everything-else. Empty
     ``.claude/`` returns ``present=True`` with empty lists.
@@ -101,11 +109,53 @@ def classify_claude_dir(repo: Path) -> ClaudeDirState:
     shared: list[str] = []
     runtime: list[str] = []
     for child in sorted(claude_dir.iterdir()):
-        if child.is_dir() and child.name in SHARED_CLAUDE_SUBDIRS:
+        if (
+            child.is_dir()
+            and child.name in SHARED_CLAUDE_SUBDIRS
+            and _git_tracked_files(repo, f".claude/{child.name}")
+        ):
             shared.append(child.name)
         else:
             runtime.append(child.name)
     return ClaudeDirState(present=True, shared_subdirs=shared, runtime_entries=runtime)
+
+
+def _git_tracked_files(repo: Path, subpath: str) -> list[str]:
+    """Return the paths of files git tracks under ``repo/<subpath>``.
+
+    Returns an empty list when ``repo`` is not a git working tree or
+    git is unavailable. Tracked files are immune to ``.gitignore``
+    patterns, so a blanket rule that *would* ignore them is harmless.
+    """
+    if not (repo / ".git").exists():
+        return []
+    try:
+        result = subprocess.run(
+            ["git", "ls-files", "--", subpath],
+            cwd=repo,
+            capture_output=True,
+            text=True,
+            timeout=10,
+            check=False,
+        )
+    except (subprocess.TimeoutExpired, FileNotFoundError, OSError):
+        return []
+    if result.returncode != 0:
+        return []
+    return [line for line in result.stdout.splitlines() if line]
+
+
+def _catalog_has_tracked_content(repo: Path, shared_subdirs: list[str]) -> bool:
+    """True if any file under a ``shared_subdir`` is tracked by git.
+
+    A tracked file is committed and therefore visible regardless of the
+    blanket ``.claude/`` rule. The audit only needs to flag a blanket
+    rule when it would actively hide un-tracked catalog content.
+    """
+    for subdir in shared_subdirs:
+        if _git_tracked_files(repo, f".claude/{subdir}"):
+            return True
+    return False
 
 
 # ---------------------------------------------------------------------------
@@ -375,7 +425,14 @@ def evaluate_repo(name: str, repo: Path) -> Verdict:
 
     if claude_state.shared_subdirs:
         # SHARED content — must use selective ignore, NOT blanket.
-        if ignore_state.has_blanket and not ignore_state.selective_paths:
+        # Exception: if the catalog content is already tracked by git,
+        # the blanket rule only blocks future additions and is harmless
+        # to the committed catalog.
+        if (
+            ignore_state.has_blanket
+            and not ignore_state.selective_paths
+            and not _catalog_has_tracked_content(repo, claude_state.shared_subdirs)
+        ):
             # When the only runtime content is files (e.g.
             # ``settings.local.json``), the blanket rule is hiding
             # exactly what should be hidden — there's no runtime
@@ -430,6 +487,32 @@ def evaluate_repo(name: str, repo: Path) -> Verdict:
                 matched_rule=rule,
                 section=_find_section_for(ignore_state.sections, rule),
                 issue=None,
+            )
+        if (
+            ignore_state.has_blanket
+            and _catalog_has_tracked_content(repo, claude_state.shared_subdirs)
+        ):
+            # Blanket rule is present and the catalog files are already
+            # tracked by git — tracked files remain visible regardless
+            # of ``.gitignore`` patterns, so the blanket is harmless to
+            # the committed catalog.
+            rule = next(
+                p
+                for p in _BLANKET_CLAUDE_PATTERNS
+                if p in (pat for _name, pats in ignore_state.sections for pat in pats)
+            )
+            return Verdict(
+                name=name,
+                repo=repo,
+                claude_state=claude_state,
+                ignore_state=ignore_state,
+                status="PASS",
+                matched_rule=rule,
+                section=_find_section_for(ignore_state.sections, rule),
+                issue=(
+                    "Catalog files are already tracked by git; blanket "
+                    ".claude/ rule only blocks future additions"
+                ),
             )
         return Verdict(
             name=name,
