@@ -4,7 +4,7 @@
 
 **Goal:** Refresh `oneiric` + `mcp-common` in all 15 `*-mcp` repos and publish a new version of each to PyPI via `crackerjack run -p minor`, with annotated git tags pushed to origin.
 
-**Architecture:** Three sequential layers: (0) pre-flight gate across all 15 repos to verify clean state, (1) one-line patch + own publish of `crackerjack` itself so per-repo runs resolve to the patched PyPI version, (2) sequential per-repo loop: pre-flight → `uv sync --upgrade --all-groups` → `crackerjack run -v -p minor` → tag fix-up → next.
+**Architecture:** Three sequential layers: (0) pre-flight gate across all 15 repos to verify clean state, (1) one-line patch + own publish of `crackerjack` itself so per-repo runs resolve to the patched PyPI version, (2) sequential per-repo loop: pre-flight → `uv add --upgrade-package oneiric --upgrade-package mcp-common --upgrade-package crackerjack` → `crackerjack run -v -p minor` → tag fix-up → next.
 
 **Tech Stack:** Python 3.13, uv (with `--upgrade` semantics per memory `uv-sync-upgrade-minimizes-version.md`), crackerjack (PyPI published workflow), PyPI via `UV_PUBLISH_TOKEN`, git annotated tags.
 
@@ -13,7 +13,7 @@
 - Working directory: `/Users/les/Projects/<repo>` (each `*-mcp` repo lives in `/Users/les/Projects/`).
 - For all `uv` invocations in `*-mcp` repos: strip `VIRTUAL_ENV`, `UV_ACTIVE`, `UV_PROJECT_ENVIRONMENT` per memory `uv-active-and-virtual-env-cross-repo`. Use `env -u VAR1 -u VAR2 ... uv ...`.
 - For all `git commit` invocations across all repos: use `-c user.email=les@wedgwoodwebworks.com -c user.name=les` per memory `git-author-email-correct-domain`.
-- Use `--upgrade` (broad) per user decision despite memory warning about downgrade risk; risk called out in spec Risk #1.
+- Use `uv add --upgrade-package oneiric --upgrade-package mcp-common --upgrade-package crackerjack` (NOT broad `--upgrade --all-groups`). This is critical: `--upgrade` downgrades to MINIMUM-version-satisfying-constraints per memory `uv-sync-upgrade-minimizes-version.md`, which would resolve `crackerjack>=0.54.3` to 0.54.3 instead of the new patched version. `--upgrade-package <name>` minimizes nothing and forces the new crackerjack to land.
 - Pre-flight is a HARD GATE: `git status --porcelain` MUST be empty. Abort if not.
 - PyPI publish uses `UV_PUBLISH_TOKEN` (NOT OIDC) per spec Risk #2.
 - PyPI version divergence from local `pyproject.toml` is also a HARD ABORT.
@@ -276,16 +276,16 @@ Expected: `✓ pre-flight passed for css-mcp`. If either check fails, abort and 
 cd /Users/les/Projects/css-mcp
 unset VIRTUAL_ENV UV_ACTIVE UV_PROJECT_ENVIRONMENT
 env -u VIRTUAL_ENV -u UV_ACTIVE -u UV_PROJECT_ENVIRONMENT \
-    uv sync --upgrade --all-groups
+    uv add --upgrade-package oneiric --upgrade-package mcp-common --upgrade-package crackerjack
 ```
 
-Expected: success. Note: per memory `uv-sync-upgrade-minimizes-version.md`, `--upgrade` may downgrade rather than upgrade — verify `uv.lock` shows reasonable version numbers for `oneiric` and `mcp-common` (both should be the latest published, NOT a downgrade from current).
+Expected: pyproject.toml constraint pins get bumped (or stay the same if already satisfied), uv.lock resolves to latest of each. Critical: `--upgrade-package` (NOT `--upgrade`) is used because `--upgrade` downgrades to MINIMUM-version-satisfying-constraints per memory `uv-sync-upgrade-minimizes-version.md`. With `--upgrade --all-groups`, `crackerjack>=0.54.3` would resolve to 0.54.3, not the new patched version. `--upgrade-package crackerjack` forces the new release.
 
 Quick sanity check:
 ```bash
 grep -E "^(name|version):" /Users/les/Projects/css-mcp/uv.lock | grep -E "(oneiric|mcp-common|crackerjack)"
 ```
-Expected: versions for oneiric + mcp-common should be ≥ the previous baseline.
+Expected: versions for oneiric, mcp-common, AND crackerjack should be ≥ the previous baseline. The crackerjack version MUST be the new patched one (Layer 1); if it shows an older version, `--upgrade-package` didn't fire and the loop will use unpatched crackerjack.
 
 - [ ] **Step 3: Commit the lockfile change (separate from bump commit)**
 
