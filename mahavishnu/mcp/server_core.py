@@ -135,17 +135,28 @@ class FastMCPServer:
             app: Optional MahavishnuApp instance (creates new one if None)
             config: Optional configuration object (used if app is None)
         """
-        if app is None:
-            self.app = MahavishnuApp(config)
-        else:
-            self.app = app
-        self.auth_handler = get_auth_from_config(self.app.config)
+        # Create the FastMCP server + register /health BEFORE creating
+        # ``self.app`` — the latter blocks on heavy adapter init
+        # (OpenSearch, LlamaIndex, Agno, session-buddy poller, ...).
+        # ``/health`` only reads ``version`` (closure) and ``self.server``;
+        # it never touches ``self.app``, so attaching it here means Uvicorn
+        # can serve ``/health`` the instant it binds, regardless of how
+        # long ``MahavishnuApp.__init__`` takes. This unblocks the launchd
+        # ``launch_with_healthcheck.sh`` wrapper's 60s timeout. See
+        # docs/plans/2026-08-20-mahavishnu-lifespan-health-bypass.md.
         self.server = FastMCP(name="Mahavishnu Orchestrator", version=__version__)
+        _register_health_endpoint_helper(self, __version__)
         # Back-reference so the W0 helper's REGISTRATION_MAP functions can
         # recover the FastMCPServer wrapper (for app, terminal_manager, etc.)
         # from the FastMCP it receives. The W0 helper signature only
         # forwards the FastMCP, but our per-group functions need the wrapper.
         self.server._mhv_server = self  # type: ignore[attr-defined]
+
+        if app is None:
+            self.app = MahavishnuApp(config)
+        else:
+            self.app = app
+        self.auth_handler = get_auth_from_config(self.app.config)
         self._registered_tool_count = 0
         self._instrument_server_tool_registration()
         self._register_telemetry_middleware()
@@ -187,7 +198,9 @@ class FastMCPServer:
                 logger.info("Updated pool_manager terminal_manager reference")
 
         # Register HTTP health endpoint for Claude Code health checks
-        _register_health_endpoint_helper(self, __version__)
+        # (already registered earlier in __init__ to bypass runtime init —
+        # this call is a no-op kept for backward compatibility with callers
+        # that invoke _register_health_endpoint manually).
 
         # Register all tools
         self._register_tools()
