@@ -94,6 +94,15 @@ The `/ready` endpoint schema already exists
 (`mahavishnu/core/health.py:97`) — it's just not wired into the
 application's startup signaling.
 
+**Related finding (2026-08-20 cross-server smoke test):** During the
+`discover_tools` verification that surfaced this plan, Session-Buddy
+was identified as the lone Bodai core MCP server lacking the
+canonical `discover_tools` meta-tool and shipping a one-off `ping`
+tool instead of the mcp-common `get_liveness` primitive. That gap
+is the subject of the companion plan
+[`2026-08-20-bodai-mcp-surface-standardization.md`](./2026-08-20-bodai-mcp-surface-standardization.md),
+not this one.
+
 ## 5. Implementation Phases
 
 ### Phase 1: Decouple `/health` from runtime init
@@ -211,6 +220,15 @@ correctly reports warming-up.
 - **Observability added**: test emits timing data via `pytest -v` so
   regressions in /health response time are visible.
 
+> **Phase 4 moved.** The cross-server `discover_tools` smoke test
+> that surfaced this plan also surfaced a Session-Buddy
+> standardization gap. That work was promoted during plan review on
+> 2026-08-20 to its own plan:
+> [`2026-08-20-bodai-mcp-surface-standardization.md`](./2026-08-20-bodai-mcp-surface-standardization.md).
+> Phases 1-3 here are Mahavishnu-internal and ship on the
+> `worktree-mhv-lifespan-health-bypass` branch; the standardization
+> plan ships separately in mcp-common + session-buddy.
+
 ## 6. Required Code Changes
 
 - [ ] `mahavishnu/core/app.py` — reorder init so `/health` route binds
@@ -235,6 +253,7 @@ correctly reports warming-up.
 | `pytest tests/integration/test_lifespan_health_bypass.py` | PASS | pytest output |
 | `crackerjack run` (full quality gate) | PASS | crackerjack report |
 | `git grep -n '_initialize_runtime_services' mahavishnu/` | shows reorder | grep output |
+| Session-Buddy standardization gate: `pytest mcp-common/tests/test_baseline_surface.py` passes (see companion plan) | PASS | companion plan link |
 
 ## 8. Risks
 
@@ -252,6 +271,12 @@ Phase 1 is the **load-bearing** deliverable. Phase 2 is a one-line
 defense-in-depth bump. Phase 3 is a regression test.
 
 Ship Phase 1 alone if Phase 2/3 block. Don't ship without Phase 1.
+
+**Companion plan:** Session-Buddy standardization work was promoted
+from the original Phase 4 to
+[`2026-08-20-bodai-mcp-surface-standardization.md`](./2026-08-20-bodai-mcp-surface-standardization.md)
+on 2026-08-20. It is non-blocking on this plan and ships
+independently in mcp-common + session-buddy.
 
 ---
 
