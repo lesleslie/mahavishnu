@@ -384,6 +384,13 @@ class MahavishnuError(Exception):
             "Verify the agent URL in a2a.agents is reachable",
             "Retry the task; transient network errors are common with SSE streams",
         ],
+        ErrorCode.WORKER_UNAVAILABLE: [
+            "The requested worker type is not currently usable",
+            "Check the missing_requirements in the error details",
+            "Install required dependencies (e.g. Docker, cloud CLIs, optional groups)",
+            "Switch to an alternative worker type if available",
+            "Review settings/mahavishnu.yaml for the workers configuration",
+        ],
         # Prefect/Orchestration error recovery guidance
         ErrorCode.PREFECT_CONNECTION_ERROR: [
             "Check if Prefect server is running",
@@ -582,6 +589,12 @@ class MahavishnuError(Exception):
             "Verify the DharaLock backend has not been tampered with",
             "Re-lock the hypothesis with 'mahavishnu precommit lock' if needed",
             "Investigate the storage layer for unintended writes",
+        ],
+        ErrorCode.REVIEWER_NOT_TRUSTED: [
+            "The reviewer identity is not in the trust allowlist",
+            "Set MAHAVISHNU_USER_ID and add it to MAHAVISHNU_PUBLISHER_ALLOWLIST",
+            "Verify the env var is set in the shell, not just as a CLI flag",
+            "Contact an administrator to add the reviewer to the allowlist",
         ],
     }
 

@@ -431,6 +431,7 @@ class OtelIngester:
         akosha_url: str = "http://localhost:8682/mcp",
         turboquant_bits: int | None = None,
         duckdb_path: str = ":memory:",
+        similarity_threshold: float = 0.7,
     ) -> None:
         """Initialize OTel ingester.
 
@@ -446,6 +447,9 @@ class OtelIngester:
             akosha_url: Akosha MCP server URL for centralized embeddings
             turboquant_bits: Enable TurboQuant in-memory cache compression (3 or 4 bits).
                 Reduces the 1000-entry embedding cache from ~1.5MB to ~188KB at 4-bit.
+            similarity_threshold: Default minimum similarity score for
+                ``search_traces()`` when no explicit ``threshold`` is supplied.
+                Callers may still override per-call.
 
         Raises:
             ImportError: If preferred_backend is unavailable
@@ -470,6 +474,7 @@ class OtelIngester:
         self._embedding_cache: dict[str, list[float] | TQPackedVector] = {}
         self._turboquant_bits = turboquant_bits
         self._compressor: TurboQuantCompressor | None = None
+        self._default_similarity_threshold = similarity_threshold
 
         # Determine embedding backend
         if preferred_backend is not None:

@@ -178,9 +178,15 @@ def register_otel_tools(server, app, mcp_client):
             from mahavishnu.ingesters.otel_ingester import OtelIngester
 
             # Initialize ingester
+            resolved_threshold = (
+                threshold
+                if threshold is not None
+                else app.config.otel_ingester.similarity_threshold
+            )
             ingester = OtelIngester(
                 embedding_model=app.config.otel_ingester.embedding_model,
                 turboquant_bits=app.config.otel_ingester.turboquant_bits,
+                similarity_threshold=resolved_threshold,
             )
             await ingester.initialize()
 
@@ -189,7 +195,7 @@ def register_otel_tools(server, app, mcp_client):
                 query=query,
                 system_id=system_id,
                 limit=limit,
-                threshold=threshold or app.config.otel_ingester.similarity_threshold,
+                threshold=resolved_threshold,
             )
 
             await ingester.close()

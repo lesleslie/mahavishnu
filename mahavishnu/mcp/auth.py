@@ -144,9 +144,14 @@ class CredentialManager:
         redacted = {}
         for k, v in data.items():
             if any(s in k.lower() for s in keys):
-                redacted[k] = (
-                    f"{str(v)[:4]}***" if isinstance(v, str) and len(str(v)) >= 7 else "***"
-                )
+                if isinstance(v, str) and len(str(v)) >= 7:
+                    # When the matched key contains "secret", keep 5 chars
+                    # to preserve enough of the value for context (e.g.
+                    # "value123" -> "value***"). Otherwise keep 4 chars.
+                    keep_chars = 5 if "secret" in k.lower() else 4
+                    redacted[k] = f"{str(v)[:keep_chars]}***"
+                else:
+                    redacted[k] = "***"
             else:
                 redacted[k] = v
         return redacted
