@@ -514,6 +514,8 @@ class TestEdgeCases:
         """Test that user created_at is timezone-aware."""
         user = User(user_id="test", roles=[])
 
-        # Should be offset-naive (no timezone info)
-        assert user.created_at.tzinfo is None
+        # Should carry UTC tzinfo so callers can compare against
+        # ``datetime.now(UTC)`` without raising TypeError on
+        # offset-naive vs offset-aware comparisons.
+        assert user.created_at.tzinfo is not None
         assert isinstance(user.created_at, datetime)

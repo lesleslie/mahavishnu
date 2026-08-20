@@ -584,6 +584,24 @@ def register_pool_tools(
             and _durable_manager is not None
             and worker_type in _DURABLE_WORKER_TYPES
         ):
+            # Exercise the per-caller_kind quota on the fast path so a
+            # caller cannot bypass ``_enforce_caller_quota`` by routing
+            # through the durable branch (Task 24 security review:
+            # gate-action-field-mismatch fix). The legacy
+            # ``route_task`` path also calls this hook, so the durable
+            # fast path mirrors that contract without double-counting
+            # for callers who fall through to the legacy path.
+            enforce = getattr(pool_manager, "_enforce_caller_quota", None)
+            if enforce is not None:
+                try:
+                    enforce(_coerced_kind)
+                except RateLimitError as exc:
+                    return {
+                        "status": "rate_limited",
+                        "caller_kind": caller_kind,
+                        "retry_after_seconds": exc.details.get("retry_after_seconds"),
+                        "error": str(exc),
+                    }
             _metrics.record("pool_route_execute")
             _metrics.record_pool_share(pool_calls=1, terminal_calls=0)
             spawn_result = _durable_manager.spawn(
