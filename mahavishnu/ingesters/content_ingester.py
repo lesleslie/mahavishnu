@@ -617,7 +617,7 @@ class ContentIngester:
 
             return response.status_code == 200
 
-        except (httpx.HTTPError, OSError, ValueError, KeyError) as e:
+        except (httpx.HTTPError, OSError, ValueError, KeyError, RuntimeError) as e:
             self._log.warning("crackerjack_index_failed", error=str(e))
             return False
 

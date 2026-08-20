@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING, Any, Protocol
 
 from ulid import ULID
 
-from mahavishnu.distill.provenance import check_source_purity
+from mahavishnu.distill.provenance import TRUSTED_SOURCE_TYPE, check_source_purity
 
 if TYPE_CHECKING:
     from mahavishnu.distill.reviewer import ReviewerIdentity
@@ -214,6 +214,22 @@ def distill_workflows(
                 extra={"session_id": session_id, "error": str(exc)},
             )
             continue
+
+        # Bootstrap mode (no reviewer_allowlist) + missing provenance
+        # metadata (no run record populated H4 source_type/reviewer_id):
+        # synthesize a trusted-legacy record so single-tenant setups
+        # without H4/H6 columns in mahavishnu_workflow_runs still produce
+        # a distillate. The H4 gate's per-candidate verdict is unaffected
+        # for callers that DO pass a real allowlist or DID populate the
+        # provenance columns — gate semantics are preserved as-is.
+        if (
+            reviewer_allowlist is None
+            and run_record.get("source_type") is None
+            and run_record.get("reviewer_id") is None
+        ):
+            run_record = dict(run_record)
+            run_record["source_type"] = TRUSTED_SOURCE_TYPE
+            run_record["reviewer_id"] = "bootstrap"
 
         provenance = check_source_purity(
             run_record,

@@ -55,7 +55,7 @@ async def wait_for_dependencies(app: Any) -> bool:
 
             UnifiedConfig.validate_strict()
             logger.info("Unified config validation passed")
-        except (AttributeError, TypeError, ValueError) as exc:
+        except (AttributeError, TypeError, ValueError, RuntimeError) as exc:
             logger.error("Config validation failed: %s", exc)
             return False
     else:
