@@ -558,6 +558,14 @@ class CapabilityRouter:
         logger.info("CapabilityRouter registry updated")
 
 
+# Snapshot of the TaskType enum captured at module-import time. This
+# reference is used by ``_normalize_task_type`` so its ``isinstance``
+# and iteration stay anchored to the real enum even when sibling
+# tests monkeypatch ``mahavishnu.core.task_router.TaskType`` with a
+# ``side_effect=ValueError`` MagicMock.
+_TASK_TYPE = TaskType
+
+
 class TaskRouter:
     """Intelligent task routing with graceful fallback."""
 
@@ -617,13 +625,25 @@ class TaskRouter:
 
     @staticmethod
     def _normalize_task_type(task_type: Any) -> TaskType:
-        if isinstance(task_type, TaskType):
+        # ``TaskType`` is captured into ``_TASK_TYPE`` at module-import time so
+        # ``isinstance`` and iteration remain anchored to the real enum even
+        # when sibling tests monkeypatch
+        # ``mahavishnu.core.task_router.TaskType`` (e.g.
+        # ``test_main_cli.py::TestAdapterResolve::test_adapter_resolve_invalid_task_type``
+        # which replaces it with a ``side_effect=ValueError`` MagicMock).
+        # Without this snapshot, a leftover MagicMock causes
+        # ``isinstance(task_type, TaskType)`` to return False, which routes
+        # through the string-coercion branch and yields a Mock value — then
+        # ``test_task_router_coverage``'s ``is TaskType.AI_TASK`` assertion
+        # fails because the returned Mock.AI_TASK is not the real
+        # ``TaskType.AI_TASK`` enum member.
+        if isinstance(task_type, _TASK_TYPE):
             return task_type
-        task_type_str = str(task_type or TaskType.WORKFLOW.value)
-        for candidate in TaskType:
+        task_type_str = str(task_type or _TASK_TYPE.WORKFLOW.value)
+        for candidate in _TASK_TYPE:
             if candidate.value == task_type_str:
                 return candidate
-        return TaskType.WORKFLOW
+        return _TASK_TYPE.WORKFLOW
 
     @staticmethod
     def _coerce_adapter_type(adapter: AdapterType | str | None) -> AdapterType | None:

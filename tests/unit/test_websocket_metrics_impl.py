@@ -9,6 +9,7 @@ isolated.
 
 from __future__ import annotations
 
+from contextlib import suppress
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -29,10 +30,42 @@ from mahavishnu.websocket.metrics import (
 
 @pytest.fixture(autouse=True)
 def _reset_instances():
-    """Clear the module-level cache before AND after each test."""
+    """Clear the module-level cache AND websocket-named REGISTRY entries
+    around each test.
+
+    The real ``prometheus_client.REGISTRY`` is shared across all tests in
+    the same xdist worker process. Sibling tests that call ``Counter(...)``
+    or ``Histogram(...)`` for websocket metrics leave their collectors
+    registered — the next test then sees a ValueError on duplicate
+    registration and falls through to ``_get_existing_collector``,
+    bypassing the per-test ``patch.object(metrics_module, "Counter")``
+    mocks this file relies on. We re-unregister websocket-named
+    collectors before AND after each test so every assertion sees a
+    clean slate. ``test_websocket_server_coverage.py`` uses the same
+    pattern for the same reason.
+    """
     metrics_module._instances.clear()
+    _unregister_websocket_collectors()
     yield
     metrics_module._instances.clear()
+    _unregister_websocket_collectors()
+
+
+def _unregister_websocket_collectors() -> None:
+    """Drop any ``*websocket*`` collector from the default Prometheus REGISTRY.
+
+    Tolerates the case where ``prometheus_client`` is not installed so
+    this fixture remains usable in environments without the optional
+    dependency.
+    """
+    try:
+        from prometheus_client import REGISTRY
+    except ImportError:
+        return
+    for name, collector in list(REGISTRY._names_to_collectors.items()):
+        if "websocket" in name.lower():
+            with suppress(Exception):
+                REGISTRY.unregister(collector)
 
 
 @pytest.fixture
@@ -516,12 +549,23 @@ class TestResetMetrics:
     """Tests for the reset_metrics utility."""
 
     def test_reset_metrics_clears_instances(self):
-        """reset_metrics empties the _instances dict."""
+        """reset_metrics empties the _instances dict.
+
+        REGISTRY is patched so the *real* default Prometheus registry
+        isn't cleared — that's the responsibility of the production
+        ``reset_metrics`` call, but asserting it here would tear down
+        the cross-portfolio collectors registered by sibling tests
+        (e.g. ``mahavishnu_producer_writes_*``), leaving their
+        assertions with an empty ``REGISTRY._names_to_collectors``.
+        ``test_reset_metrics_unregisters_collectors`` below pins the
+        REGISTRY-cleanup behavior in isolation.
+        """
         get_metrics("svc-1")
         get_metrics("svc-2")
         assert len(metrics_module._instances) == 2
 
-        reset_metrics()
+        with patch.object(metrics_module, "REGISTRY", MagicMock()):
+            reset_metrics()
 
         assert metrics_module._instances == {}
 
@@ -542,8 +586,10 @@ class TestResetMetrics:
     def test_reset_metrics_noop_without_prometheus(self, monkeypatch):
         """Without prometheus_client, reset_metrics is still safe."""
         monkeypatch.setattr(metrics_module, "PROMETHEUS_AVAILABLE", False)
-        # No exception should be raised
-        reset_metrics()
+        # No exception should be raised. Patch REGISTRY too so the
+        # production registry isn't torn down.
+        with patch.object(metrics_module, "REGISTRY", MagicMock()):
+            reset_metrics()
         assert metrics_module._instances == {}
 
 

@@ -2,12 +2,45 @@
 
 import json
 from datetime import UTC, datetime
+from enum import Enum
 from pathlib import Path
 from typing import Any
 from uuid import uuid4
 
 from mcp_common.code_graph import CodeGraphAnalyzer
-from messaging.types import MessageStatus, MessageType, Priority, ProjectMessage
+
+# ``messaging`` is an optional Bodai-ecosystem dependency. When it is not
+# installed (e.g. minimal venvs used by CI smoke jobs), fall back to
+# in-process stub enums/dataclasses so the module remains importable.
+# The test suite relies on
+# ``mahavishnu.session_buddy.integration.SessionBuddyIntegration`` being
+# importable for ``monkeypatch.setattr(..., "SessionBuddyIntegration", ...)``
+# patches; an ImportError here breaks every test in
+# ``test_mcp_git_analytics.py`` with
+# ``AttributeError: module 'mahavishnu.session_buddy' has no attribute 'integration'``.
+try:
+    from messaging.types import MessageStatus, MessageType, Priority, ProjectMessage  # type: ignore[import-not-found]
+except ImportError:  # pragma: no cover - exercised only on minimal installs
+
+    class MessageStatus(Enum):
+        NORMAL = "normal"
+        URGENT = "urgent"
+        LOW = "low"
+
+    class MessageType(Enum):
+        INFO = "info"
+        WARNING = "warning"
+        ERROR = "error"
+
+    class Priority(Enum):
+        HIGH = 1
+        NORMAL = 2
+        LOW = 3
+
+    class ProjectMessage:  # type: ignore[no-redef]
+        def __init__(self, **kwargs: Any) -> None:
+            for key, value in kwargs.items():
+                setattr(self, key, value)
 
 
 class SessionBuddyIntegration:
