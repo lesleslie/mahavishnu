@@ -20,7 +20,7 @@ if TYPE_CHECKING:
 # from these globals so tests can monkeypatch without going through the
 # FastMCP app.
 _durable_manager: DurableWorkerManager | None = None
-worker_manager: WorkerManager | None = None
+_worker_manager: WorkerManager | None = None
 
 
 # Categories that must go through the durable-worker contract per the
@@ -83,10 +83,10 @@ async def worker_spawn(
         ]
         return {"worker_ids": [r.worker_id for r in results]}
 
-    if worker_manager is None:
+    if _worker_manager is None:
         raise RuntimeError("worker_manager not configured")
 
-    worker_ids = await worker_manager.spawn_workers(
+    worker_ids = await _worker_manager.spawn_workers(
         worker_type=worker_type,
         count=count,
     )
@@ -115,10 +115,10 @@ async def worker_monitor(
     if interval < 0.1 or interval > 10.0:
         raise ValueError("interval must be between 0.1 and 10.0")
 
-    if worker_manager is None:
+    if _worker_manager is None:
         raise RuntimeError("worker_manager not configured")
 
-    statuses = await worker_manager.monitor_workers(worker_ids, interval)
+    statuses = await _worker_manager.monitor_workers(worker_ids, interval)
     return {wid: status.value for wid, status in statuses.items()}
 
 
@@ -156,10 +156,10 @@ async def worker_collect_results(
             }
         return {"workers": workers_out}
 
-    if worker_manager is None:
+    if _worker_manager is None:
         raise RuntimeError("worker_manager not configured")
 
-    results = await worker_manager.collect_results(worker_ids)
+    results = await _worker_manager.collect_results(worker_ids)
 
     return {
         wid: {
@@ -201,10 +201,10 @@ async def worker_close(
             "exit_code": getattr(record, "last_exit_code", None),
         }
     # Legacy fallback (unchanged shape)
-    if worker_manager is None:
+    if _worker_manager is None:
         return {"success": False, "worker_id": worker_id, "error": "worker_manager_unconfigured"}
     try:
-        await worker_manager.close_worker(worker_id)
+        await _worker_manager.close_worker(worker_id)
         return {"success": True, "worker_id": worker_id}
     except Exception as e:  # noqa: BLE001 - MCP boundary must preserve all operation failures
         return {"success": False, "worker_id": worker_id, "error": str(e)}
@@ -228,12 +228,12 @@ async def worker_close_all() -> dict:
                 closed.append(record.worker_id)
         return {"closed": closed}
     # Legacy fallback (preserves original shape)
-    if worker_manager is None:
+    if _worker_manager is None:
         return {"closed_count": 0, "error": "worker_manager_unconfigured"}
-    workers_list = await worker_manager.list_workers()
+    workers_list = await _worker_manager.list_workers()
     worker_ids = [w["worker_id"] for w in workers_list]
     for wid in worker_ids:
-        await worker_manager.close_worker(wid)
+        await _worker_manager.close_worker(wid)
     return {"closed_count": len(worker_ids)}
 
 
@@ -243,7 +243,7 @@ async def worker_health() -> dict:
     Durable path returns ``{"total": int, "counts": {state: int}}`` with
     every ``WorkerLifecycleState`` value present in ``counts`` (zero
     default). Legacy fallback returns whatever
-    ``worker_manager.health_check()`` returns.
+    ``_worker_manager.health_check()`` returns.
     """
     if _durable_manager is not None:
         records = list(_durable_manager.store.list_all())
@@ -251,9 +251,9 @@ async def worker_health() -> dict:
         for record in records:
             counts[record.state] = counts.get(record.state, 0) + 1
         return {"total": len(records), "counts": counts}
-    if worker_manager is None:
+    if _worker_manager is None:
         return {"total": 0, "counts": {}, "error": "worker_manager_unconfigured"}
-    return await worker_manager.health_check()
+    return await _worker_manager.health_check()
 
 
 async def worker_execute(
@@ -270,7 +270,7 @@ async def worker_execute(
     if timeout < 30 or timeout > 3600:
         raise ValueError("timeout must be between 30 and 3600")
 
-    if worker_manager is None:
+    if _worker_manager is None:
         raise RuntimeError("worker_manager not configured")
 
     task = {
@@ -278,7 +278,7 @@ async def worker_execute(
         "timeout": timeout,
     }
 
-    result = await worker_manager.execute_task(worker_id, task)
+    result = await _worker_manager.execute_task(worker_id, task)
 
     return {
         "worker_id": result.worker_id,
@@ -304,12 +304,12 @@ async def worker_execute_batch(
     if len(worker_ids) != len(prompts):
         raise ValueError("worker_ids and prompts must have same length")
 
-    if worker_manager is None:
+    if _worker_manager is None:
         raise RuntimeError("worker_manager not configured")
 
     tasks = [{"prompt": prompt, "timeout": timeout} for prompt in prompts]
 
-    results = await worker_manager.execute_batch(worker_ids, tasks)
+    results = await _worker_manager.execute_batch(worker_ids, tasks)
 
     out: list[dict] = []
     for wid, result in results.items():
@@ -338,7 +338,7 @@ async def worker_list(
     optional ``state`` and ``worker_id`` filters, projecting each
     surviving record to ``{"worker_id": ..., "state": ...}``. When
     the durable manager is absent, the tool falls back to
-    ``worker_manager.list_workers()`` so existing callers stay
+    ``_worker_manager.list_workers()`` so existing callers stay
     green; the legacy path does not apply the new filters.
 
     Args:
@@ -348,10 +348,10 @@ async def worker_list(
         worker_id: Optional worker id to filter by. Only honored on
             the durable-manager path.
     """
-    if worker_manager is None:
+    if _worker_manager is None:
         raise RuntimeError("worker_manager not configured")
     if _durable_manager is None:
-        return await worker_manager.list_workers()
+        return await _worker_manager.list_workers()
     records = list(_durable_manager.store.list_all())
     # DurableWorkerRecord uses ``use_enum_values=True``, so ``r.state``
     # is already the enum's string value (e.g. "ready"); no .value access.
@@ -374,7 +374,7 @@ def register_worker_tools(
     ``worker_close_all``, ``worker_health``, ``worker_execute``,
     ``worker_execute_batch``, ``worker_list``) so they can be invoked
     directly in tests by monkeypatching the module-level
-    ``worker_manager`` and ``_durable_manager`` references. FastMCP's
+    ``_worker_manager`` and ``_durable_manager`` references. FastMCP's
     ``@mcp.tool()`` decorator still introspects the function name and
     signature for the MCP tool schema.
 
@@ -387,7 +387,7 @@ def register_worker_tools(
     """
     global _durable_manager
     _durable_manager = durable_manager
-    globals()["worker_manager"] = worker_manager
+    globals()["_worker_manager"] = worker_manager
 
     mcp.tool()(worker_spawn)
     mcp.tool()(worker_monitor)

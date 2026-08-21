@@ -31,7 +31,7 @@ def test_worker_execute_returns_full_output(monkeypatch):
     from mahavishnu.mcp.tools import worker_tools
 
     manager = _StubManager(_StubWorker())
-    monkeypatch.setattr(worker_tools, "worker_manager", manager)
+    monkeypatch.setattr(worker_tools, "_worker_manager", manager)
     out = asyncio.run(worker_tools.worker_execute("w-1", "do it"))
     assert out["status"] == "completed"
     assert len(out["output"]) == 5000  # full output, not 500 chars

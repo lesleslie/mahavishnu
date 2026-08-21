@@ -681,9 +681,14 @@ class TestQualityControlConfig:
     """Tests for QualityControlConfig."""
 
     def test_default_values(self):
-        """Test QualityControlConfig defaults."""
+        """Test QualityControlConfig defaults.
+
+        QC is OFF by default; opt-in for production via settings or MAHAVISHNU_QC__ENABLED.
+        See QualityControlConfig docstring for rationale (avoids MHV-306 ExternalServiceError
+        when Crackerjack service is unreachable in dev/test).
+        """
         config = QualityControlConfig()
-        assert config.enabled is True
+        assert config.enabled is False
         assert config.min_score == 80
         assert config.checks == ["linting", "type_checking", "security_scan"]
         assert config.crackerjack_url == "http://localhost:8676/mcp"

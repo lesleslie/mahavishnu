@@ -11,6 +11,39 @@ import os
 # field doesn't receive a string value set by the outer Claude Code environment.
 os.environ.pop("AI_AGENT", None)
 
+# ---------------------------------------------------------------------------
+# Disable ANSI escape codes in CLI help / table output for the test session.
+#
+# Two layers need to be neutralised:
+#
+# 1. Typer's Rich-based help renderer is controlled at module-import time by
+#    reading environment variables. Setting ``_TYPER_FORCE_DISABLE_TERMINAL``
+#    forces ``FORCE_TERMINAL = False`` in ``typer.rich_utils`` so the help
+#    tables render without ANSI codes (otherwise ``"--type"`` becomes
+#    ``"--\\x1b[0m\\x1b[1;36mtype"`` which breaks plain-text assertions).
+#
+# 2. CLI modules that bind ``console = Console()`` at import time also need
+#    to be constructed with ``no_color=True``. Patching ``Console.__init__``
+#    here — before any test module is imported — ensures every Console in
+#    the test session is built without colors.
+# ---------------------------------------------------------------------------
+os.environ["_TYPER_FORCE_DISABLE_TERMINAL"] = "1"
+
+from rich.console import Console as _RichConsole
+
+_orig_console_init = _RichConsole.__init__
+
+
+def _patched_console_init(self, *args, **kwargs):
+    kwargs.setdefault("no_color", True)
+    kwargs.setdefault("color_system", None)
+    kwargs.setdefault("force_terminal", False)
+    kwargs.setdefault("force_interactive", False)
+    _orig_console_init(self, *args, **kwargs)
+
+
+_RichConsole.__init__ = _patched_console_init
+
 import pytest
 
 # Import fixtures from fixtures package for global availability

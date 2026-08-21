@@ -1,8 +1,33 @@
 """Comprehensive unit tests for the routing CLI commands."""
 
-from typer.testing import CliRunner
+# IMPORTANT: Patch Rich's Console.__init__ BEFORE importing the CLI module.
+# The CLI binds ``console = Console()`` at module-import time, so any Rich
+# ANSI escape codes are baked into that instance. Without this pre-import
+# patch, Rich inserts ANSI codes mid-string (e.g. ``Repo: \\x1b[35m alpha
+# \\x1b[0m``) which breaks plain-text assertions like ``"Repo: alpha" in
+# result.stdout``.
+from __future__ import annotations
 
-from mahavishnu.routing_cli import add_routing_commands, routing_app
+from rich.console import Console as _RichConsole
+
+_orig_console_init = _RichConsole.__init__
+
+
+def _patched_console_init(self: _RichConsole, *args: object, **kwargs: object) -> None:
+    kwargs.setdefault("no_color", True)
+    kwargs.setdefault("color_system", None)
+    kwargs.setdefault("force_terminal", False)
+    kwargs.setdefault("force_interactive", False)
+    kwargs.setdefault("width", 200)
+    _orig_console_init(self, *args, **kwargs)
+
+
+_RichConsole.__init__ = _patched_console_init  # type: ignore[method-assign]
+
+import pytest  # noqa: E402
+from typer.testing import CliRunner  # noqa: E402
+
+from mahavishnu.routing_cli import add_routing_commands, routing_app  # noqa: E402
 
 runner = CliRunner()
 

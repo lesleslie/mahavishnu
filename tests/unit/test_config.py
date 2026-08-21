@@ -45,7 +45,7 @@ def test_default_config_values():
         config.adapters.llamaindex_enabled is True
     )  # Re-enabled 2026-02-23 with llama-index 0.14.x
     assert config.adapters.agno_enabled is True  # Enabled in settings/mahavishnu.yaml
-    assert config.qc.enabled is True
+    assert config.qc.enabled is False  # OFF by default; opt-in for production (see QualityControlConfig docstring)
     assert config.qc.min_score == 80
     assert config.session.enabled is True
     assert config.session.checkpoint_interval == 60
@@ -628,7 +628,7 @@ class TestObservabilityConfigDefaults:
 class TestQualityControlConfigDefaults:
     def test_defaults(self):
         cfg = QualityControlConfig()
-        assert cfg.enabled is True
+        assert cfg.enabled is False  # OFF by default; opt-in for production (see docstring)
         assert cfg.min_score == 80
         assert "linting" in cfg.checks
 

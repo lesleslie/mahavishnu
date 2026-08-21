@@ -7,6 +7,7 @@ mocking CoordinationManager to avoid filesystem access to ecosystem.yaml.
 
 from unittest.mock import MagicMock, patch
 
+import pytest
 import typer
 from typer.testing import CliRunner
 
@@ -19,6 +20,31 @@ from mahavishnu.core.coordination.models import (
 )
 
 runner = CliRunner()
+
+
+@pytest.fixture(autouse=True)
+def _disable_rich_color(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Suppress Rich ANSI escape codes for the duration of each test.
+
+    The CLI module binds ``console = Console()`` at import time, so the
+    simplest fix is to patch ``Console.__init__`` so every Console created
+    during the test disables colors. Without this, Rich inserts ANSI codes
+    mid-string (e.g. ``ISSUE-\\x1b[0m\\x1b[1;36m001``) which breaks plain
+    text assertions like ``"ISSUE-001" in result.output``.
+    """
+    from rich.console import Console as _RichConsole
+
+    _orig_init = _RichConsole.__init__
+
+    def _patched_init(self: _RichConsole, *args: object, **kwargs: object) -> None:
+        kwargs.setdefault("no_color", True)
+        kwargs.setdefault("color_system", None)
+        kwargs.setdefault("force_terminal", False)
+        kwargs.setdefault("force_interactive", False)
+        kwargs.setdefault("width", 200)
+        _orig_init(self, *args, **kwargs)
+
+    monkeypatch.setattr(_RichConsole, "__init__", _patched_init)
 
 
 # ---------------------------------------------------------------------------
