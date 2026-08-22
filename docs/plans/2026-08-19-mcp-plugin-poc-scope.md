@@ -5,7 +5,7 @@
 **Author:** mahavishnu session
 **Goal:** Validate the bodai plugin conversion pattern by converting two `-mcp` repos (graphics-mcp, css-mcp) into bodai-style plugins. Establish the repeatable pattern for the rest of the `-mcp` fleet.
 
----
+______________________________________________________________________
 
 ## 1. Background
 
@@ -32,6 +32,7 @@ Each plugin lives in its own repo. Required files:
 **Manifest required keys:** `schema_version`, `name`, `version`, `mcpServers` (string path to `.mcp.json`).
 
 **`.mcp.json` shape:** bare-map (NOT wrapped in `mcpServers`):
+
 ```json
 {
   "<plugin-name>": {
@@ -44,6 +45,7 @@ Each plugin lives in its own repo. Required files:
 **Slash command frontmatter:** real YAML between `---` delimiters, with `description`, `argument-hint`, `allowed-tools` (must include `mcp__<server>__<tool>` for each tool the command invokes).
 
 **Marketplace entry:** add to `bodai-plugins/.claude-plugin/marketplace.json`:
+
 ```json
 {"name": "<plugin-name>", "source": "../<plugin-name>", "ref": "main"}
 ```
@@ -53,8 +55,8 @@ Each plugin lives in its own repo. Required files:
 Crackerjack is the canonical bodai plugin but has known defects. We mirror the structure but fix these:
 
 1. **Broken frontmatter** — mdformat destroyed the `---` YAML markers into underscores. All three slash commands are missing `description`, `argument-hint`, `allowed-tools`. **Fix:** write valid YAML frontmatter and add `commands/*.md` to `[tool.mdformat]` exclude list.
-2. **Bare tool names in prose** — crackerjack-run.md says "uses the `get_comprehensive_status` MCP tool" with no `mcp__crackerjack__` prefix. **Fix:** use fully-qualified `mcp__<server>__<tool>` names and declare them in `allowed-tools`.
-3. **Hardcoded localhost URL** — `.mcp.json` hardcodes `http://localhost:8676/mcp`. **Fix:** keep the same shape (no env templating needed for local-only servers) but document the port in the plugin README.
+1. **Bare tool names in prose** — crackerjack-run.md says "uses the `get_comprehensive_status` MCP tool" with no `mcp__crackerjack__` prefix. **Fix:** use fully-qualified `mcp__<server>__<tool>` names and declare them in `allowed-tools`.
+1. **Hardcoded localhost URL** — `.mcp.json` hardcodes `http://localhost:8676/mcp`. **Fix:** keep the same shape (no env templating needed for local-only servers) but document the port in the plugin README.
 
 ## 4. Out of scope (explicitly)
 
@@ -75,6 +77,7 @@ Crackerjack is the canonical bodai plugin but has known defects. We mirror the s
 **New files:**
 
 1. `.claude-plugin/plugin.json`
+
    ```json
    {
      "author": {"name": "Bodai"},
@@ -87,7 +90,8 @@ Crackerjack is the canonical bodai plugin but has known defects. We mirror the s
    }
    ```
 
-2. `.mcp.json` (repo root)
+1. `.mcp.json` (repo root)
+
    ```json
    {
      "graphics": {
@@ -97,14 +101,18 @@ Crackerjack is the canonical bodai plugin but has known defects. We mirror the s
    }
    ```
 
-3. `commands/graphics-convert.md` — wraps `mcp__graphics__convert_image`
-4. `commands/graphics-resize.md` — wraps `mcp__graphics__resize_image`
-5. `commands/graphics-thumbnail.md` — wraps `mcp__graphics__create_thumbnail`
+1. `commands/graphics-convert.md` — wraps `mcp__graphics__convert_image`
+
+1. `commands/graphics-resize.md` — wraps `mcp__graphics__resize_image`
+
+1. `commands/graphics-thumbnail.md` — wraps `mcp__graphics__create_thumbnail`
 
 **Modified files:**
+
 - `README.md` — add `## Installation via Bodai Marketplace` section.
 
 **Slash command frontmatter example (`graphics-convert.md`):**
+
 ```markdown
 ---
 description: Convert an image to JPEG/PNG/GIF/BMP/WEBP/TIFF with optional quality and optimization.
@@ -141,6 +149,7 @@ Convert an image to a different format.
 **New files:**
 
 1. `.claude-plugin/plugin.json`
+
    ```json
    {
      "author": {"name": "Bodai"},
@@ -153,7 +162,8 @@ Convert an image to a different format.
    }
    ```
 
-2. `.mcp.json` (repo root)
+1. `.mcp.json` (repo root)
+
    ```json
    {
      "css": {
@@ -163,11 +173,14 @@ Convert an image to a different format.
    }
    ```
 
-3. `commands/css-audit-project.md` — wraps `mcp__css__analyze_project_css`
-4. `commands/css-analyze.md` — wraps `mcp__css__analyze_css`
-5. `commands/css-check-compat.md` — multi-step orchestration over `mcp__css__get_browser_compatibility` + `mcp__css__get_docs`
+1. `commands/css-audit-project.md` — wraps `mcp__css__analyze_project_css`
+
+1. `commands/css-analyze.md` — wraps `mcp__css__analyze_css`
+
+1. `commands/css-check-compat.md` — multi-step orchestration over `mcp__css__get_browser_compatibility` + `mcp__css__get_docs`
 
 **Modified files:**
+
 - `README.md` — add `## Installation via Bodai Marketplace` section.
 
 ### 5.3 bodai-plugins marketplace
@@ -175,6 +188,7 @@ Convert an image to a different format.
 **File:** `/Users/les/Projects/bodai-plugins/.claude-plugin/marketplace.json`
 
 Add two entries to the `plugins` array:
+
 ```json
 {"name": "graphics", "source": "../graphics-mcp", "ref": "main"},
 {"name": "css", "source": "../css-mcp", "ref": "main"}
@@ -183,10 +197,10 @@ Add two entries to the `plugins` array:
 ## 6. Validation steps
 
 1. Run `bodai-plugins validate --path ./graphics-mcp` — must pass with 0 errors.
-2. Run `bodai-plugins validate --path ./css-mcp` — must pass with 0 errors.
-3. Run `bodai-plugins validate --path ./bodai-plugins` — confirms marketplace.json schema is still valid.
-4. Smoke test: from a fresh session, `claude plugin marketplace add /Users/les/Projects/bodai-plugins` then `claude plugin install graphics --marketplace bodai-plugins`. Confirm slash commands appear.
-5. Verify the existing `.mcp.json` registrations still work (the dual-registration is intentional during transition).
+1. Run `bodai-plugins validate --path ./css-mcp` — must pass with 0 errors.
+1. Run `bodai-plugins validate --path ./bodai-plugins` — confirms marketplace.json schema is still valid.
+1. Smoke test: from a fresh session, `claude plugin marketplace add /Users/les/Projects/bodai-plugins` then `claude plugin install graphics --marketplace bodai-plugins`. Confirm slash commands appear.
+1. Verify the existing `.mcp.json` registrations still work (the dual-registration is intentional during transition).
 
 ## 7. Acceptance criteria
 
@@ -205,9 +219,9 @@ These need user input before implementation:
 
 1. **MCP server key naming** — proposed: `graphics` and `css` (matches the slash command namespace). Alternative: `graphics-mcp` and `css-mcp` (matches the repo name). The bodai "one string, three places" rule means the choice cascades to plugin name, server key, and command namespace.
 
-2. **Frontmatter protection** — should we add `commands/*.md` to `[tool.mdformat]` exclude list in both repos' pyproject.toml? Recommended yes, to prevent the crackerjack bug.
+1. **Frontmatter protection** — should we add `commands/*.md` to `[tool.mdformat]` exclude list in both repos' pyproject.toml? Recommended yes, to prevent the crackerjack bug.
 
-3. **Backend registration** — graphics-mcp uses HTTP transport (already documented). css-mcp also uses HTTP. No stdio cmd is provided. The `.mcp.json` will use the `{type: "http", url: ...}` shape only.
+1. **Backend registration** — graphics-mcp uses HTTP transport (already documented). css-mcp also uses HTTP. No stdio cmd is provided. The `.mcp.json` will use the `{type: "http", url: ...}` shape only.
 
 ## 9. Effort estimate
 
@@ -222,7 +236,7 @@ If the POC passes, the remaining 13 repos can be batched in a single marketplace
 ## 10. Next steps after POC approval
 
 1. Use the writing-plans skill to convert this scope into a detailed implementation plan.
-2. Dispatch parallel implementers for graphics-mcp and css-mcp (separate worktrees, no shared state).
-3. After both land, do a single-PR marketplace.json update + validation.
-4. Smoke test the plugin install end-to-end.
-5. If POC passes, write the "convert the remaining 13 repos" plan.
+1. Dispatch parallel implementers for graphics-mcp and css-mcp (separate worktrees, no shared state).
+1. After both land, do a single-PR marketplace.json update + validation.
+1. Smoke test the plugin install end-to-end.
+1. If POC passes, write the "convert the remaining 13 repos" plan.

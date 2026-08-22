@@ -5,6 +5,82 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.13.0] - 2026-08-22
+
+### Changed
+
+- mahavishnu: Use apply_tool_profile() from mcp-common
+- mahavishnu: Use mandatory_groups + W0.5 fix from mcp-common 0.18.0
+- mahavishnu: Use unaliased _apply_tool_profile + pin mcp-common>=0.18.0
+
+### Fixed
+
+- claude-code-stop-hook: Use absolute Python paths in hook commands
+- docs: Add canonical frontmatter to mcp-deps-crackerjack-loop spec
+- docs: Register 4 fresh topic slugs in vocabulary v1
+- lint: Resolve 8 ruff violations in fast_hooks
+- mahavishnu: Agno config defaults — 5 tests
+- mahavishnu: Bootstrap-helper-renames — 49 tests
+- mahavishnu: Cli-output-routing — 11 tests
+- mahavishnu: Content_ingester + dependency_waiter + distill + sop + repo_properties — 5 tests
+- mahavishnu: Dhara-schema-imports — 4 decision_writer tests
+- mahavishnu: Drop obsolete terminal-aider from worker registry (was: 9343fc47)
+- mahavishnu: Drop obsolete terminal-goose/gemini/amp worker entries
+- mahavishnu: Gitignores + claude_settings + claudemd + command_palette — 4 tests
+- mahavishnu: Health + dispatch_to_pool — 3 tests
+- mahavishnu: Health + errors + mcp_auth + mcp_otel — 5 tests
+- mahavishnu: Mcp_external + end_to_end + wiring + workflow + cli_accessibility — 5 tests
+- mahavishnu: Mcpretentious-removal — 4 tests
+- mahavishnu: Opensearch + permissions + cross_repo + pool_route — 6 tests
+- mahavishnu: Reconcile AgnoMemoryConfig default — True (was: d3f396d0)
+- mahavishnu: Resolve 70+ pre-existing test failures
+- mahavishnu: Test_agno + test_evidence + test_feature_flags — 3 tests
+- mahavishnu: Test_capabilities_observability.py — 3 tests
+- mahavishnu: Test_check_ecosystem_gitignores_plugin.py — 6 tests
+- mahavishnu: Test_distill_workflows.py — 3 tests (schema columns + provenance gate wiring)
+- mahavishnu: Test_generic_shell_worker.py — 4 tests
+- mahavishnu: Test_mcp_server_core + fastmcp imports + worker_execute — 2 tests
+- mahavishnu: Test_mcp_tool_inventory.py — 3 tests
+- mahavishnu: Test_mcp_tools.py collection errors — 6 tests
+- mahavishnu: Test_monitoring_alerting.py requests stub — 9 tests
+- mahavishnu: Test_repositories.py pydantic forward-refs — 12 tests
+- mahavishnu: Test_repository_messaging_tools.py + test_session_buddy_integration.py — 5 tests
+- mahavishnu: Test_session_buddy_auth.py + test_crow_call_site_wiring.py — 5 tests
+- mahavishnu: Test_task_router_coverage.py + test_task_router_and_auth.py — 3 tests
+- mahavishnu: Test_workers_registry_coverage.py — 106 tests
+- mahavishnu: Test_worktree_providers.py — 7 tests
+- mahavishnu: Test_worktree_registry_cli.py — 8 tests
+- mahavishnu: Websocket-metrics disabled-mode + collector lookup — 13 tests
+- mahavishnu: Worktree + prefect + coordination — 5 tests
+- metrics: Targeted REGISTRY cleanup in production reset helpers
+- plans: Use --upgrade-package instead of --upgrade --all-groups
+- Register /health before MahavishnuApp.__init__ blocks
+- Resolve 3 pre-existing ty errors in core/
+- tests: Fix 10 more pre-existing failures (TaskType pollution, golden fixture, integration)
+- tests: Resolve 5 more pre-existing failures + harden test plumbing
+- tests: Resolve 66 of 83 pre-existing test failures
+- tests: Resolve 9 more xdist-suite failures via module-reference + targeted REGISTRY cleanup
+- ty/lychee: Resolve comprehensive_hooks failures
+- ty: Remove unused missing-argument ignores
+- ty: Resolve 10 union-attribute + missing-argument errors
+
+### Documentation
+
+- docs+scripts(mahavishnu): plan lifespan health bypass + bodai MCP verify script
+- mahavishnu: Add per-repo tool-profile rationale doc (W1.1 backfill)
+- mahavishnu: Record MANDATORY_GROUPS erratum in task-20 brief (Minor 1)
+- MCP tool profile adoption implementation plan
+- plans: 2-repo plugin POC scope for graphics-mcp + css-mcp
+- plans: Add bodai MCP surface standardization plan + lifespan cleanup
+- plans: Mcp-deps-crackerjack-loop implementation plan
+- spec: MCP tool profile adoption across 18 Bodai-ecosystem MCP servers
+- specs: Mcp-deps-crackerjack-loop design (2026-08-20)
+- specs: Rev2 — addresses 5-reviewer audit findings
+
+### Testing
+
+- mahavishnu: Regression test for /health lifespan bypass
+
 ## [0.12.1] - 2026-08-18
 
 ### Added

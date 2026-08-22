@@ -20,14 +20,16 @@
 - Sequential per repo; do not parallelize (PyPI rate limits + audit trail).
 - Repo order: alphabetical: css-mcp, excalidraw-mcp, graphics-mcp, langsmith-mcp, mailgun-mcp, neo4j-mcp, opera-cloud-mcp, penpot-api-mcp, porkbun-dns-mcp, porkbun-domain-mcp, raindropio-mcp, spline-mcp, synxis-crs-mcp, synxis-pms-mcp, unifi-mcp.
 
----
+______________________________________________________________________
 
 ## Task 1: Pre-flight gate across all 15 repos
 
 **Files:** None modified. Output: baseline snapshots in `/tmp/`.
 
 **Interfaces:**
+
 - Produces: `/tmp/baseline-<repo>.txt` per repo (PyPI version, local commit SHA, dirty-state check)
+
 - Produces: aggregate report at end
 
 - [ ] **Step 1: Create the pre-flight script**
@@ -92,6 +94,7 @@ Expected: All 15 repos show `✓ clean`. If any show `✗ DIRTY`, STOP — surfa
 ```bash
 ls -la /tmp/baseline-*.txt | wc -l
 ```
+
 Expected: 15
 
 - [ ] **Step 4: Spot-check one baseline file**
@@ -99,20 +102,23 @@ Expected: 15
 ```bash
 cat /tmp/baseline-css-mcp.txt
 ```
+
 Expected: contains date, commit, pyproject_version, pypi_version, dirty (empty), dirty_count (0).
 
 - [ ] **Step 5: Commit (no code changes; this task produces snapshots only)**
 
 No commit needed for this task.
 
----
+______________________________________________________________________
 
 ## Task 2: Patch crackerjack — one-line fix to `publish_manager.py:676`
 
 **Files:**
+
 - Modify: `/Users/les/Projects/crackerjack/crackerjack/managers/publish_manager.py:676`
 
 **Interfaces:**
+
 - Produces: patched function `create_git_tag_local(self, version: str) -> bool` that creates **annotated** tags via `git tag -a v{version} -m "Release v{version}"` instead of lightweight.
 
 - [ ] **Step 1: Verify pre-flight on crackerjack repo**
@@ -121,6 +127,7 @@ No commit needed for this task.
 cd /Users/les/Projects/crackerjack
 test -z "$(git status --porcelain)" && echo "clean" || { echo "DIRTY"; exit 1; }
 ```
+
 Expected: `clean`. If DIRTY, abort and surface to user.
 
 - [ ] **Step 2: Read the current line**
@@ -128,7 +135,9 @@ Expected: `clean`. If DIRTY, abort and surface to user.
 ```bash
 sed -n '676p' /Users/les/Projects/crackerjack/crackerjack/managers/publish_manager.py
 ```
+
 Expected output:
+
 ```
         result = self._run_command(["git", "tag", f"v{version}"])
 ```
@@ -149,7 +158,9 @@ Use the Edit tool to make the exact replacement shown. Do NOT modify any other l
 ```bash
 sed -n '676p' /Users/les/Projects/crackerjack/crackerjack/managers/publish_manager.py
 ```
+
 Expected output:
+
 ```
         result = self._run_command(["git", "tag", "-a", f"v{version}", "-m", f"Release v{version}"])
 ```
@@ -183,13 +194,14 @@ tag that --follow-tags will propagate.
 Co-Authored-By: Claude <noreply@anthropic.com>"
 ```
 
----
+______________________________________________________________________
 
 ## Task 3: Publish patched crackerjack to PyPI
 
 **Files:** None modified locally (crackerjack's own loop handles it).
 
 **Interfaces:**
+
 - Produces: New `crackerjack>=X.Y.Z` on PyPI (where X.Y.Z is the version in `/Users/les/Projects/crackerjack/pyproject.toml` after the patch's auto-bump). Local consumers will resolve to this on next `uv sync`.
 
 - [ ] **Step 1: Confirm crackerjack env has UV_PUBLISH_TOKEN**
@@ -197,6 +209,7 @@ Co-Authored-By: Claude <noreply@anthropic.com>"
 ```bash
 echo "${UV_PUBLISH_TOKEN:0:4}"
 ```
+
 Expected: `pypi-` (PyPI token prefix). If empty/wrong, surface to user; PyPI publish will fail.
 
 - [ ] **Step 2: Run crackerjack's own `-p minor` loop**
@@ -215,6 +228,7 @@ Expected: All phases pass; PyPI publish succeeds; commit pushed; tag created. If
 ```bash
 pip index versions crackerjack | head -3
 ```
+
 Expected: New version at top (higher than 0.73.5 — confirm by eye).
 
 - [ ] **Step 4: Verify the tag is annotated AND on origin**
@@ -227,32 +241,41 @@ git for-each-ref refs/tags/v\* --format='%(objecttype) %(refname:short)' | tail 
 echo "=== remote tag ==="
 git ls-remote origin 'refs/tags/v*' | tail -1
 ```
+
 Expected:
+
 - `local tag type`: `tag vX.Y.Z` (annotated)
+
 - `remote tag`: shows the new tag SHA
 
 - [ ] **Step 5: No commit needed (crackerjack's own loop committed already)**
 
 Verify final state of `/Users/les/Projects/crackerjack`:
+
 ```bash
 cd /Users/les/Projects/crackerjack
 git log --oneline -3
 git status --porcelain
 ```
+
 Expected: clean working tree, recent commits show "chore: bump version" + the patch.
 
----
+______________________________________________________________________
 
 ## Task 4: Per-repo loop — first repo (css-mcp)
 
 **Files:** Inside `/Users/les/Projects/css-mcp/`:
+
 - Modify: `pyproject.toml` (crackerjack auto-edits)
 - Modify: `uv.lock` (uv sync)
 - Optional: `src/<pkg>/__init__.py`, `CHANGELOG.md`
 
 **Interfaces:**
+
 - Consumes: Layer 0 baseline at `/tmp/baseline-css-mcp.txt`
+
 - Consumes: Layer 1 published crackerjack (Task 3)
+
 - Produces: New PyPI release of `css-mcp` with annotated tag `vX.Y.Z` on origin
 
 - [ ] **Step 1: Pre-flight gate**
@@ -282,9 +305,11 @@ env -u VIRTUAL_ENV -u UV_ACTIVE -u UV_PROJECT_ENVIRONMENT \
 Expected: pyproject.toml constraint pins get bumped (or stay the same if already satisfied), uv.lock resolves to latest of each. Critical: `--upgrade-package` (NOT `--upgrade`) is used because `--upgrade` downgrades to MINIMUM-version-satisfying-constraints per memory `uv-sync-upgrade-minimizes-version.md`. With `--upgrade --all-groups`, `crackerjack>=0.54.3` would resolve to 0.54.3, not the new patched version. `--upgrade-package crackerjack` forces the new release.
 
 Quick sanity check:
+
 ```bash
 grep -E "^(name|version):" /Users/les/Projects/css-mcp/uv.lock | grep -E "(oneiric|mcp-common|crackerjack)"
 ```
+
 Expected: versions for oneiric, mcp-common, AND crackerjack should be ≥ the previous baseline. The crackerjack version MUST be the new patched one (Layer 1); if it shows an older version, `--upgrade-package` didn't fire and the loop will use unpatched crackerjack.
 
 - [ ] **Step 3: Commit the lockfile change (separate from bump commit)**
@@ -364,17 +389,22 @@ git ls-remote origin 'refs/tags/v*' | tail -1
 ```
 
 Expected:
+
 - Last commit: `chore(css-mcp): bump version to X.Y.Z` (or "drift recovered" variant)
+
 - Clean working tree
+
 - PyPI version = local version
+
 - `tag vX.Y.Z` (annotated)
+
 - Tag SHA present in `git ls-remote`
 
 - [ ] **Step 8: Move to next repo**
 
 Continue to Task 5. Repeat Task 4 with `excalidraw-mcp` substituted for `css-mcp` everywhere. Each of Tasks 5-18 mirrors Task 4 for one repo.
 
----
+______________________________________________________________________
 
 ## Tasks 5-18: Per-repo loop — remaining 14 repos
 
@@ -383,10 +413,12 @@ Continue to Task 5. Repeat Task 4 with `excalidraw-mcp` substituted for `css-mcp
 **For each repo in**: `excalidraw-mcp graphics-mcp langsmith-mcp mailgun-mcp neo4j-mcp opera-cloud-mcp penpot-api-mcp porkbun-dns-mcp porkbun-domain-mcp raindropio-mcp spline-mcp synxis-crs-mcp synxis-pms-mcp unifi-mcp`
 
 **Each task is a verbatim copy of Task 4 with these substitutions:**
+
 - `css-mcp` → target repo name in all paths
 - PyPI package name = directory name (e.g., `excalidraw-mcp`)
 
 **Per-task acceptance:**
+
 - All 8 steps of Task 4 pass for the target repo
 - Final state shows new PyPI version + annotated tag on origin + clean tree
 
@@ -409,7 +441,7 @@ Continue to Task 5. Repeat Task 4 with `excalidraw-mcp` substituted for `css-mcp
 | 17 | synxis-pms-mcp |
 | 18 | unifi-mcp |
 
----
+______________________________________________________________________
 
 ## Task 19: Final verification across all 15 repos
 
@@ -430,6 +462,7 @@ for repo in css-mcp excalidraw-mcp graphics-mcp langsmith-mcp mailgun-mcp \
     fi
 done
 ```
+
 Expected: 15 `✓` lines.
 
 - [ ] **Step 2: Verify all 15 repos have annotated tag on origin**
@@ -448,6 +481,7 @@ for repo in css-mcp excalidraw-mcp graphics-mcp langsmith-mcp mailgun-mcp \
     fi
 done
 ```
+
 Expected: 15 `✓` lines.
 
 - [ ] **Step 3: Verify all 15 repos have clean working trees**
@@ -465,6 +499,7 @@ for repo in css-mcp excalidraw-mcp graphics-mcp langsmith-mcp mailgun-mcp \
     fi
 done
 ```
+
 Expected: 15 `✓` lines.
 
 - [ ] **Step 4: Verify crackerjack passes clean on each main (no `-p`)**
@@ -485,6 +520,7 @@ for repo in css-mcp excalidraw-mcp graphics-mcp langsmith-mcp mailgun-mcp \
     fi
 done
 ```
+
 Expected: 15 `✓` lines. If any `�`, fix inline (the crackerjack run without `-p` should not trigger publish; if hooks fail, fix and re-run).
 
 - [ ] **Step 5: Generate final report**

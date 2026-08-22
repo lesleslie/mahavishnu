@@ -103,14 +103,12 @@ def create_health_app(
             worker_status = worker_summary.get("status", "unhealthy")
             checks["workers"] = (
                 "ok"
-                if worker_status
-                in (HealthStatus.OK.value, HealthStatus.DEGRADED.value)
+                if worker_status in (HealthStatus.OK.value, HealthStatus.DEGRADED.value)
                 else "unhealthy"
             )
             checks["workers_default"] = (
                 "ok"
-                if worker_status
-                in (HealthStatus.OK.value, HealthStatus.DEGRADED.value)
+                if worker_status in (HealthStatus.OK.value, HealthStatus.DEGRADED.value)
                 else "unhealthy"
             )
         except Exception:

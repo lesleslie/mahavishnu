@@ -653,7 +653,8 @@ def reset_routing_metrics() -> None:
         # below.
         for collector, names in list(REGISTRY._collector_to_names.items()):
             if any(
-                n.startswith("mahavishnu_") and not n.startswith("mahavishnu_dependency_")
+                n.startswith("mahavishnu_")
+                and not n.startswith("mahavishnu_dependency_")
                 and not n.startswith("mahavishnu_producer_")
                 for n in names
             ):

@@ -41,8 +41,8 @@ from dataclasses import dataclass, field
 from enum import StrEnum
 import json
 import logging
-import sys
 from pathlib import Path
+import sys
 from typing import TYPE_CHECKING, Any, ClassVar, cast
 
 from mahavishnu.core.adapters.base import (
@@ -645,7 +645,9 @@ class TaskRouter:
         # ``is`` identity matches the test's current module attribute), so we
         # always look up by value rather than short-circuiting on isinstance.
         _live_task_type = _TASK_TYPE
-        if sys.modules[__name__].TaskType is not _live_task_type:  # pragma: no cover - reload branch
+        if (
+            sys.modules[__name__].TaskType is not _live_task_type
+        ):  # pragma: no cover - reload branch
             _live_task_type = sys.modules[__name__].TaskType
         if isinstance(task_type, _live_task_type):
             # Re-look-up by value to guarantee we return the *current* class's

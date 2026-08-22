@@ -56,8 +56,8 @@ is gated by `WorktreeCoordinator` runtime state, not by profile.
 ## Configuration Precedence
 
 1. `MAHAVISHNU_TOOL_PROFILE` env var (preferred).
-2. `tool_profile` in `settings/local.yaml` (Oneiric layered config).
-3. Default `FULL` — preserves v1.x behavior; every existing operator keeps
+1. `tool_profile` in `settings/local.yaml` (Oneiric layered config).
+1. Default `FULL` — preserves v1.x behavior; every existing operator keeps
    every tool unless they opt in to a smaller profile.
 
 Loaded via `settings_yaml_loader()` in `tools/profiles.py`. The loader uses

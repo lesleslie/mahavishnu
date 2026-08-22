@@ -5,6 +5,7 @@
 This is the SEVENTH of 10 Tier-A repos. Tier-A trivial mapping: `MINIMAL=health, STANDARD/FULL=all`.
 
 **Key facts about raindropio-mcp (verified in pre-flight):**
+
 - Package: `raindropio_mcp/` (underscore)
 - Main entrypoint: `server.py` — sync `create_app()` function
 - Version: 0.3.1 (per pyproject.toml)
@@ -17,6 +18,7 @@ This is the SEVENTH of 10 Tier-A repos. Tier-A trivial mapping: `MINIMAL=health,
 - **mcp-common dep**: already `mcp-common>=0.17.0`. **Bump to `>=0.18.0`** in pyproject.toml.
 
 **Files:**
+
 - Create: `raindropio_mcp/tools/profiles.py` (dispatch machinery)
 - Modify: `raindropio_mcp/server.py` — add async `create_app_async(settings)` OR refactor `create_app` to call `apply_raindropio_tool_profile` before any registration
 - Modify: `raindropio_mcp/pyproject.toml` — bump `mcp-common>=0.18.0`
@@ -27,19 +29,20 @@ This is the SEVENTH of 10 Tier-A repos. Tier-A trivial mapping: `MINIMAL=health,
 **Standard corrections to apply to all W4 briefs:**
 
 1. `git commit -c user.email=...` is WRONG. Correct: `git -c user.email=les@wedgwoodwebworks.com commit -m "..."`.
-2. `crackerjack run --no-publish` doesn't exist — use plain `crackerjack run`. **Revert any version bump**.
-3. `.claude/decisions/` is gitignored — put rationale at `docs/architecture/tool-profile-rationale.md`.
-4. **W2b.3 lesson** (CRITICAL): production path uses `_apply_tool_profile` (async helper), NOT `apply_tool_profile` (sync wrapper). Add real production-path test.
-5. **W2b.2 lesson**: sync `__init__.py` `__version__` to match `pyproject.toml` if they drift (use `importlib.metadata.version()`).
-6. **W2b.1 lesson**: audit startup banners; gate behind `RAINDROPIO_TOOL_PROFILE in {"", "full"}` BEFORE the first commit.
-7. **W3.2 round 1 fix lesson**: AST guard MUST structurally check for `ast.Await(value=ast.Call(...))`. MANDATORY_TOOLS opt-out justification must be accurate.
-8. **W3.2 lesson**: extract `_GROUP_REGISTRY: list[tuple[str, str]]` constant.
-9. **W4.1 CRITICAL lesson**: Follow explicit `MINIMAL=health, STANDARD/FULL=all` mapping. Thread caller-supplied `settings` through registration chain. Do NOT re-load from env. Add regression tests for both patterns.
-10. **W4.3 CRITICAL lesson**: Lifespan finally block MUST close any clients constructed during dispatch. **(Already done — verify regression test still passes.)**
+1. `crackerjack run --no-publish` doesn't exist — use plain `crackerjack run`. **Revert any version bump**.
+1. `.claude/decisions/` is gitignored — put rationale at `docs/architecture/tool-profile-rationale.md`.
+1. **W2b.3 lesson** (CRITICAL): production path uses `_apply_tool_profile` (async helper), NOT `apply_tool_profile` (sync wrapper). Add real production-path test.
+1. **W2b.2 lesson**: sync `__init__.py` `__version__` to match `pyproject.toml` if they drift (use `importlib.metadata.version()`).
+1. **W2b.1 lesson**: audit startup banners; gate behind `RAINDROPIO_TOOL_PROFILE in {"", "full"}` BEFORE the first commit.
+1. **W3.2 round 1 fix lesson**: AST guard MUST structurally check for `ast.Await(value=ast.Call(...))`. MANDATORY_TOOLS opt-out justification must be accurate.
+1. **W3.2 lesson**: extract `_GROUP_REGISTRY: list[tuple[str, str]]` constant.
+1. **W4.1 CRITICAL lesson**: Follow explicit `MINIMAL=health, STANDARD/FULL=all` mapping. Thread caller-supplied `settings` through registration chain. Do NOT re-load from env. Add regression tests for both patterns.
+1. **W4.3 CRITICAL lesson**: Lifespan finally block MUST close any clients constructed during dispatch. **(Already done — verify regression test still passes.)**
 
 **NEW W4.7 lesson (this task)**: **MANDATORY opt-out assumption was wrong.** Plan's brief said "0 tools" — actually 30. Don't follow the plan's "MANDATORY opt-out" rationale; adopt the standard pattern with the W3.1 backend-lambda adapter.
 
 **NEW W4.7 lesson**: Custom registry wrapper (`FastMCPToolRegistry`) means the 10 register fns don't match the `(server, settings)` contract. Wrap each in a backend-lambda adapter:
+
 ```python
 def _register_collection_tools_via_registry(server, settings):
     """Backend adapter: closure over (registry, client)."""
@@ -47,7 +50,9 @@ def _register_collection_tools_via_registry(server, settings):
     client = build_raindrop_client(settings)
     register_collection_tools(registry, client)
 ```
+
 Or hold `client` in the lifespan closure (W4.3 already does this — `app._raindrop_client`) and reuse it:
+
 ```python
 def _register_collection_tools_via_registry(server, settings):
     registry = FastMCPToolRegistry(server)
@@ -59,31 +64,36 @@ def _register_collection_tools_via_registry(server, settings):
 raindropio-mcp: Tier-A trivial mapping per the plan: `MINIMAL=health, STANDARD/FULL=all`. Apply ToolProfile dispatch with the W3.1 backend-lambda adapter for the FastMCPToolRegistry wrapper:
 
 1. **Pre-flight audit** (CRITICAL FIRST STEP):
+
    ```bash
    grep -rEn 'def register_|ToolMetadata\(' raindropio_mcp/tools/ | head -40
    grep -cE 'ToolMetadata\(' raindropio_mcp/tools/*.py
    ```
+
    Verify the actual count is 30 (NOT 0).
 
-2. **CRITICAL (W4.1)**: extract a `register_health_tool(server, settings)` callable that registers ONLY the MCP `health_check` tool via `mcp_common.health.register_health_tools`. The existing `register_http_health_route` call stays in `create_app` (always-on, not part of the profile dispatch).
+1. **CRITICAL (W4.1)**: extract a `register_health_tool(server, settings)` callable that registers ONLY the MCP `health_check` tool via `mcp_common.health.register_health_tools`. The existing `register_http_health_route` call stays in `create_app` (always-on, not part of the profile dispatch).
 
-3. **CRITICAL (W4.3)**: lifespan already closes client via `await client.close()`. Verify the regression test exists (or add one) that the refactor doesn't break it.
+1. **CRITICAL (W4.3)**: lifespan already closes client via `await client.close()`. Verify the regression test exists (or add one) that the refactor doesn't break it.
 
-4. Create `raindropio_mcp/tools/profiles.py` with:
+1. Create `raindropio_mcp/tools/profiles.py` with:
+
    - `PROFILE_REGISTRATIONS`: 3-tier mapping. MINIMAL = `["health_tools"]`, STANDARD = FULL_REGISTRATIONS, FULL = ALL_TOOLS
    - `_GROUP_REGISTRY: list[tuple[str, str]]` constant (SSOT for group keys → register fn attr names)
    - `_build_registration_map(settings)` factory that wraps each `register_*_tools(registry, client)` in a backend-lambda adapter `(server) -> _register_via_registry(server, client)`
    - `register_all_tool_groups(server, settings)` that holds a single `client` and `FastMCPToolRegistry(server)` and calls every register fn
    - `apply_raindropio_tool_profile(server, settings)` wrapper that calls `await _apply_tool_profile(...)` with `essential_tool_names={"health_check"}`
 
-5. Wire the dispatch in `server.py`. The cleanest approach:
+1. Wire the dispatch in `server.py`. The cleanest approach:
+
    - Make `create_app` async (`async def create_app() -> FastMCP`) OR
    - Keep `create_app` sync and add a private `async def _setup_profile(app, settings)` called inside `create_app` via `_run_async_safely` (ThreadPoolExecutor bridge — W3.4 lesson)
    - **CRITICAL**: production path must use `_apply_tool_profile` (async). Verify with AST keystone test.
 
-6. Set `essential_tool_names={"health_check"}` so the W0 helper's subset check enforces it at runtime.
+1. Set `essential_tool_names={"health_check"}` so the W0 helper's subset check enforces it at runtime.
 
-7. Write tests covering:
+1. Write tests covering:
+
    - AST keystone: `await apply_raindropio_tool_profile` in production path
    - MINIMAL profile registers `health_check` (and only that)
    - STD/FULL profiles register all 30 tools
@@ -92,15 +102,16 @@ raindropio-mcp: Tier-A trivial mapping per the plan: `MINIMAL=health, STANDARD/F
    - `_GROUP_REGISTRY` SSOT check
    - MANDATORY subset check
 
-8. Write rationale doc + CLAUDE.md update
+1. Write rationale doc + CLAUDE.md update
 
-9. Run `uv run crackerjack run` to verify full lifecycle (revert any version bump)
+1. Run `uv run crackerjack run` to verify full lifecycle (revert any version bump)
 
-10. Commit
+1. Commit
 
 **Report contract:**
 
 Write your report to `/Users/les/Projects/mahavishnu/.superpowers/sdd/2026-08-18-mcp-tool-profile-adoption/task-20-report.md` with:
+
 - Status: DONE / DONE_WITH_CONCERNS / NEEDS_CONTEXT / BLOCKED
 - Pre-flight verification output (the register grep + actual count)
 - Commit SHAs
