@@ -221,13 +221,11 @@ def _try_build_durable_worker_manager() -> Any:
     try:
         import pathlib
 
-        from ..terminal.manager import _ManagerEventPublisher, _enqueue_to_eventbridge
+        from ..terminal.manager import _enqueue_to_eventbridge, _ManagerEventPublisher
         from ..workers.contract.manager import DurableWorkerManager
         from ..workers.contract.store import WorkerRecordStore
 
-        store = WorkerRecordStore(
-            pathlib.Path.home() / ".mahavishnu" / "worker-sessions"
-        )
+        store = WorkerRecordStore(pathlib.Path.home() / ".mahavishnu" / "worker-sessions")
         publisher = _ManagerEventPublisher(_enqueue_to_eventbridge)
         return DurableWorkerManager(
             store=store,

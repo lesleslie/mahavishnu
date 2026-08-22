@@ -1,8 +1,8 @@
 """Session Buddy integration for Mahavishnu with code graph analysis."""
 
-import json
 from datetime import UTC, datetime
 from enum import Enum
+import json
 from pathlib import Path
 from typing import Any
 from uuid import uuid4
@@ -19,7 +19,12 @@ from mcp_common.code_graph import CodeGraphAnalyzer
 # ``test_mcp_git_analytics.py`` with
 # ``AttributeError: module 'mahavishnu.session_buddy' has no attribute 'integration'``.
 try:
-    from messaging.types import MessageStatus, MessageType, Priority, ProjectMessage  # type: ignore[import-not-found]
+    from messaging.types import (  # type: ignore[import-not-found]
+        MessageStatus,
+        MessageType,
+        Priority,
+        ProjectMessage,
+    )
 except ImportError:  # pragma: no cover - exercised only on minimal installs
 
     class MessageStatus(Enum):

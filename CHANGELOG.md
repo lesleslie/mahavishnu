@@ -5,13 +5,27 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.14.0] - 2026-08-22
+
+### Added
+
+- w3: Adopt http.fetch + workflow.retry action kits
+
+### Fixed
+
+- mahavishnu: Close ruff TC002 + BLE001 in http_probe
+- mahavishnu: Close ty errors after cj update
+- mahavishnu: Drop dead code from pre-hybrid embeddings
+- mahavishnu: Replace EmbeddingService with oneiric hybrid chain
+- w3: Close mahavishnu BLOCKER 1 + BLOCKER 2 from review
+
 ## [0.13.0] - 2026-08-22
 
 ### Changed
 
 - mahavishnu: Use apply_tool_profile() from mcp-common
 - mahavishnu: Use mandatory_groups + W0.5 fix from mcp-common 0.18.0
-- mahavishnu: Use unaliased _apply_tool_profile + pin mcp-common>=0.18.0
+- mahavishnu: Use unaliased \_apply_tool_profile + pin mcp-common>=0.18.0
 
 ### Fixed
 

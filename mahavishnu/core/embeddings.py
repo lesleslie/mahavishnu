@@ -29,12 +29,11 @@ path is the oneiric chain.
 
 from __future__ import annotations
 
-import logging
 from enum import StrEnum
+import logging
 from typing import Any
 
 import numpy as np
-
 from oneiric.adapters.observability.embedding_settings import (
     EmbeddingSettings as _OneiricEmbeddingSettings,
 )
@@ -221,10 +220,10 @@ def get_embedding_service() -> EmbeddingService:
 
 __all__ = [
     "EmbeddingProvider",
+    "EmbeddingProviderError",
     "EmbeddingResult",
     "EmbeddingService",
     "EmbeddingServiceError",
-    "EmbeddingProviderError",
     "cosine_similarity",
     "euclidean_distance",
     "get_embedding_service",
