@@ -85,7 +85,9 @@ class SessionBuddyWorktreeProvider(WorktreeProvider):
         if self._mcp_client is None:
             # Import MCP client lazily (only when needed)
             try:
-                from mcp_client import MCPClient
+                # ty: ignore[unresolved-import] — lazy import for optional
+                # mcp_client package; ImportError handled below.
+                from mcp_client import MCPClient  # type: ignore[import-not-found]
 
                 self._mcp_client = MCPClient(self.session_buddy_url)
                 await self._mcp_client.__aenter__()

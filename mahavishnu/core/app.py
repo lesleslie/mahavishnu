@@ -857,6 +857,9 @@ class MahavishnuApp:
             ValidationError: If task or adapter_name is invalid
             AdapterError: If adapter execution fails
         """
+        # ty: ignore[invalid-return-type] — helper may return None when caller
+        # substitutes a swallowing error handler (matches existing
+        # ``# type: ignore[no-any-return]`` at workflow_execution.py:536).
         return await _execute_workflow_parallel_helper(
             self,
             task=task,
