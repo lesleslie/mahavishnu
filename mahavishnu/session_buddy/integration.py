@@ -143,7 +143,7 @@ class SessionBuddyIntegration:
             # Codebase uses from_project/to_project/content_message; the bundled
             # ``messaging.types.ProjectMessage`` (Pydantic BaseModel) requires
             # ``project_id``/``message`` instead, and the fallback accepts **kwargs: Any.
-            session_buddy_message = ProjectMessage(  # ty: ignore[missing-argument]
+            session_buddy_message = ProjectMessage(
                 id=f"msg_{uuid4().hex}",
                 from_project=repo_path,
                 to_project=repo_path,
@@ -275,7 +275,7 @@ class SessionBuddyIntegration:
             )
 
             # Prepare a message for Session Buddy
-            _session_buddy_message = ProjectMessage(  # ty: ignore[missing-argument]
+            _session_buddy_message = ProjectMessage(
                 id=f"msg_{uuid4().hex}",
                 from_project=repo_path,
                 to_project=repo_path,
@@ -318,7 +318,7 @@ class SessionBuddyIntegration:
         """Send message between projects using MCP protocol."""
         try:
             # Create a project message using the shared messaging types
-            project_message = ProjectMessage(  # ty: ignore[missing-argument]
+            project_message = ProjectMessage(
                 id=f"msg_{uuid4().hex}",
                 from_project=from_project,
                 to_project=to_project,
