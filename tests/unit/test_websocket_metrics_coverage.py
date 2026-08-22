@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import importlib.util
+from contextlib import suppress
 from pathlib import Path
 import sys
 from unittest.mock import MagicMock, patch
@@ -46,10 +47,35 @@ pytestmark = pytest.mark.unit
 
 @pytest.fixture(autouse=True)
 def _reset_metrics_state() -> None:
-    """Ensure each test starts with a clean metrics state and registry."""
-    reset_metrics()
+    """Ensure each test starts with a clean metrics state and registry.
+
+    Uses a targeted cleanup — only clears ``_instances`` and unregisters
+    ``websocket``-named collectors from REGISTRY. The production
+    ``reset_metrics()`` helper unregisters *every* collector from REGISTRY,
+    which pollutes sibling tests that depend on cross-portfolio counters
+    (e.g. ``mahavishnu_dependency_requests_total`` from
+    ``tests/unit/core/test_health.py`` and
+    ``mahavishnu_producer_writes_*`` from
+    ``tests/unit/test_producer_counters.py``) when both files land in the
+    same xdist worker.
+    """
+    _instances.clear()
+    _unregister_websocket_only()
     yield
-    reset_metrics()
+    _instances.clear()
+    _unregister_websocket_only()
+
+
+def _unregister_websocket_only() -> None:
+    """Drop only ``*websocket*`` collectors from the default Prometheus REGISTRY."""
+    try:
+        from prometheus_client import REGISTRY
+    except ImportError:
+        return
+    for name, collector in list(REGISTRY._names_to_collectors.items()):
+        if "websocket" in name.lower():
+            with suppress(Exception):
+                REGISTRY.unregister(collector)
 
 
 @pytest.fixture

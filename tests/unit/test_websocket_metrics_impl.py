@@ -10,18 +10,33 @@ isolated.
 from __future__ import annotations
 
 from contextlib import suppress
+import sys
 from unittest.mock import MagicMock, patch
 
 import pytest
 
-from mahavishnu.websocket import metrics as metrics_module
-from mahavishnu.websocket.metrics import (
-    PROMETHEUS_AVAILABLE,
-    WebSocketMetrics,
-    get_metrics,
-    reset_metrics,
-    start_metrics_server,
-)
+# Resolve ``metrics_module`` via ``sys.modules`` rather than the package
+# attribute (``from mahavishnu.websocket import metrics as metrics_module``).
+# ``test_websocket_metrics_coverage`` replaces the
+# ``sys.modules["mahavishnu.websocket.metrics"]`` entry at import time with a
+# freshly-executed module object; the package attribute is left pointing at
+# the original. ``test_websocket_metrics.py:858`` documented the same trap
+# and switched to ``sys.modules`` for that reason. Without the same fix here,
+# ``patch.object(metrics_module, "Counter")`` patches the OLD module's
+# ``Counter`` while ``m.inc_error(...)`` looks up ``Counter`` in the NEW
+# module's globals — the patch silently no-ops and the assertion fails
+# with ``Expected 'Counter' to have been called once. Called 0 times.``
+# Force the metrics module to load via ``import mahavishnu.websocket.metrics``
+# (which also pulls in ``mahavishnu.websocket.__init__``) before looking it
+# up — otherwise workers that don't transitively import the package would
+# see ``KeyError: 'mahavishnu.websocket.metrics'`` at collection time.
+importlib_import = __import__("mahavishnu.websocket.metrics", fromlist=["_instances"])
+metrics_module = sys.modules["mahavishnu.websocket.metrics"]
+PROMETHEUS_AVAILABLE = metrics_module.PROMETHEUS_AVAILABLE
+WebSocketMetrics = metrics_module.WebSocketMetrics
+get_metrics = metrics_module.get_metrics
+reset_metrics = metrics_module.reset_metrics
+start_metrics_server = metrics_module.start_metrics_server
 
 # =============================================================================
 # Fixtures
