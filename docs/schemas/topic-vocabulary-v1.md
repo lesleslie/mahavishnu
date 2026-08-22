@@ -55,6 +55,7 @@ contribution workflow below.
 | `bodai-conformance` | Bodai ecosystem conformance — cross-repo consistency checks, naming/port/version invariants across the five components (Mahavishnu, Akosha, Dhara, Session-Buddy, Crackerjack). |
 | `bodai-crow-http-server` | Bodai Crow HTTP MCP Server |
 | `bodai-observability` | Bodai observability pattern — one subscriber, one bus; cross-component OTel correlation. |
+| `bodai-mcp-surface-standardization` | Bodai Core MCP Surface Standardization — uniform MCP tool surface across the Mahavishnu core ecosystem. |
 | `code-indexing-integration` | Code Indexing Integration Plan |
 | `completion-report-schema` | Completion Report Schema v1 Implementation Plan |
 | `component-health` | Component-health CLI gap — overlap between ecosystem_status and per-component CLI probes. |
@@ -79,6 +80,9 @@ contribution workflow below.
 | `m-webhook-durable` | M-WEBHOOK-DURABLE Design Spec |
 | `m-workflow-outcome` | M-WORKFLOW-OUTCOME Design Spec |
 | `mcp-common-http-health-route-helper` | mcp-common `register_http_health_route` Helper |
+| `mcp-deps-crackerjack-loop` | `*-mcp` dep refresh + crackerjack loop — refresh `oneiric`/`mcp-common` in `*-mcp` repos via `crackerjack run -p minor`; one-line annotated-tag patch in `publish_manager.py`. |
+| `mcp-lifespan-startup-ordering` | Mahavishnu MCP `/health` Lifespan Bypass — `/health` must respond before lifespan startup completes (regression test for ordering). |
+| `mcp-tool-profile-adoption` | MCP Tool Profile Adoption Across Bodai Ecosystem — tiered dynamic tool loading in `*-mcp` repos (`full`/`standard`/`minimal`). |
 | `mcpbase-migration` | MCP Server Family: MCPBaseSettings → OneiricMCPConfig Migration |
 | `mcpretentious-removed` | mcpretentious terminal adapter removed (2026-08-10 wave, commit `34f61672`) — bootstrap followup documenting the fallback chain. *Topic migrated — see `terminal-adapter-architecture` for the live tmux/mock/crow stack.* |
 | `mcpretentious-runtime-wiring` | Mcpretentious Runtime Wiring Implementation Plan. *Historical — adapter removed in 2026-08-10 wave; see `terminal-adapter-architecture`.* |
