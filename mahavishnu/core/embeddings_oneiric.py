@@ -314,8 +314,14 @@ class OneiricEmbeddingsAdapter:
         Returns:
             True if at least one embedding provider is available
         """
+        # ``provider`` is accepted for backwards compatibility but ignored
+        # by the oneiric hybrid chain — backend selection now happens via
+        # ``EmbeddingService.initialize()``. ``is_available()`` reflects
+        # the post-initialize state; on a fresh uninitialized service it
+        # returns False. Callers that need a probed answer should use the
+        # async ``EmbeddingService.initialize()`` first.
         service = EmbeddingService(provider=self.config.provider)
-        return service.get_available_providers() != []
+        return service.is_available()
 
 
 # MCP tool integration (optional)

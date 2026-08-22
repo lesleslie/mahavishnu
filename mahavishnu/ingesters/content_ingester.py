@@ -239,7 +239,12 @@ class ContentIngester:
         try:
             # Initialize embedding service
             if self._embedding_service is None:
-                self._embedding_service = get_embedding_service(self._embedding_provider)
+                # ``get_embedding_service`` is the singleton factory and
+                # no longer accepts a provider argument — backend selection
+                # happens inside ``EmbeddingService.initialize()`` via the
+                # oneiric probe chain. ``self._embedding_provider`` is kept
+                # on the instance for API compatibility but is unused.
+                self._embedding_service = get_embedding_service()
 
             # Initialize TurboQuant compressor if requested
             if self._turboquant_bits is not None and self._compressor is None:
