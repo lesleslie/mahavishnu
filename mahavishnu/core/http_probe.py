@@ -12,12 +12,15 @@ HTTP probe inherits the canonical envelope:
 
 from __future__ import annotations
 
-import time
 from functools import lru_cache
-from typing import Any
+import time
+from typing import TYPE_CHECKING, Any
 
-from httpx import AsyncClient
+from httpx import HTTPError
 from oneiric.actions.http import HttpActionSettings, HttpFetchAction
+
+if TYPE_CHECKING:
+    from httpx import AsyncClient
 
 # Module-level settings so the client override path doesn't need to reach
 # into ``HttpFetchAction._settings`` (a private attribute).
@@ -83,7 +86,7 @@ async def service_probe(
         action = _http_probe_action()
     try:
         result = await action.execute(payload)
-    except Exception as exc:
+    except (HTTPError, OSError) as exc:
         latency_ms = (time.monotonic() - start) * 1000.0
         return {
             "healthy": False,
