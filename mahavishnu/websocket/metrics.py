@@ -460,7 +460,15 @@ def get_metrics(server_name: str) -> WebSocketMetrics:
 def reset_metrics() -> None:
     """Reset all metrics instances (useful for testing).
 
-    Also clears the Prometheus registry to avoid duplicate errors.
+    Also clears the websocket-owned Prometheus collectors from the default
+    registry to avoid duplicate errors when tests re-instantiate
+    ``WebSocketMetrics`` with the same server name.
+
+    Only websocket-owned collectors (those whose metric name starts with
+    ``websocket_``) are unregistered. Cross-portfolio collectors registered
+    by sibling modules (``mahavishnu_dependency_*``,
+    ``mahavishnu_producer_*``, etc.) are preserved — they are not the
+    responsibility of this helper.
 
     Example:
         >>> from mahavishnu.websocket.metrics import reset_metrics
@@ -469,11 +477,16 @@ def reset_metrics() -> None:
     """
     _instances.clear()
 
-    # Clear Prometheus registry if available
+    # Clear ONLY websocket-owned collectors from the default registry.
+    # Clearing every collector (the previous behaviour) destroyed
+    # cross-portfolio counters that sibling tests in the same xdist
+    # worker depended on (``mahavishnu_dependency_requests_total``,
+    # ``mahavishnu_producer_writes_*``, …), causing unrelated tests to
+    # fail with ``assert '<cross-portfolio name>' in ''``.
     if PROMETHEUS_AVAILABLE:
-        # Clear all collectors from the default registry
-        for collector in list(REGISTRY._collector_to_names.keys()):
-            REGISTRY.unregister(collector)
-        logger.info("Cleared Prometheus registry")
+        for collector, names in list(REGISTRY._collector_to_names.items()):
+            if any(n.startswith("websocket_") for n in names):
+                REGISTRY.unregister(collector)
+        logger.info("Cleared websocket Prometheus collectors")
 
     logger.info("Reset all metrics instances")

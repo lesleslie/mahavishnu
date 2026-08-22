@@ -618,7 +618,16 @@ def get_routing_metrics(server_name: str = "mahavishnu") -> RoutingMetrics:
 def reset_routing_metrics() -> None:
     """Reset all routing metrics instances (useful for testing).
 
-    Also clears Prometheus registry to avoid duplicate errors.
+    Also clears the routing-related Prometheus collectors from the default
+    registry to avoid duplicate errors when tests re-instantiate
+    ``RoutingMetrics`` with the same server name.
+
+    Only the routing-owned collectors (those whose metric name starts with
+    ``mahavishnu_routing_``, ``mahavishnu_adapter_``, or
+    ``mahavishnu_budget_``) are unregistered. Cross-portfolio collectors
+    registered by sibling modules (``mahavishnu_dependency_*``,
+    ``mahavishnu_producer_*``, etc.) are preserved — they are not the
+    responsibility of this helper.
 
     Example:
         >>> from mahavishnu.core.routing_metrics import reset_routing_metrics
@@ -627,12 +636,29 @@ def reset_routing_metrics() -> None:
     """
     _instances.clear()
 
-    # Clear Prometheus registry if available
+    # Clear ONLY routing-related collectors from the default registry.
+    # Clearing every collector (the previous behaviour) destroyed
+    # cross-portfolio counters that sibling tests in the same xdist
+    # worker depended on (``mahavishnu_dependency_requests_total``,
+    # ``mahavishnu_producer_writes_*``, …), causing unrelated tests to
+    # fail with ``assert '<cross-portfolio name>' in ''``.
     if PROMETHEUS_AVAILABLE:
-        # Clear all collectors from default registry
-        for collector in list(REGISTRY._collector_to_names.keys()):
-            REGISTRY.unregister(collector)
-        logger.info("Cleared Prometheus registry")
+        # ``RoutingMetrics.__init__`` registers counters/gauges whose
+        # names start with ``mahavishnu_routing_``, ``mahavishnu_adapter_``,
+        # ``mahavishnu_budget_``, ``mahavishnu_ab_tests_``, or
+        # ``mahavishnu_rate_limit_rejected_``. ``monitoring.metrics`` is
+        # the cross-portfolio module that owns ``mahavishnu_dependency_*``
+        # and ``mahavishnu_producer_writes_*`` — those names are NOT
+        # prefixed ``mahavishnu_routing_``, so they survive the filter
+        # below.
+        for collector, names in list(REGISTRY._collector_to_names.items()):
+            if any(
+                n.startswith("mahavishnu_") and not n.startswith("mahavishnu_dependency_")
+                and not n.startswith("mahavishnu_producer_")
+                for n in names
+            ):
+                REGISTRY.unregister(collector)
+        logger.info("Cleared routing Prometheus collectors")
 
     logger.info("Reset all routing metrics instances")
 

@@ -24,7 +24,15 @@ from mahavishnu.core.routing_metrics import (
 
 @pytest.fixture
 def reset_metrics():
-    """Reset metrics before each test."""
+    """Reset metrics before each test.
+
+    The production ``reset_routing_metrics()`` now only unregisters the
+    routing-owned collectors (``mahavishnu_routing_*``,
+    ``mahavishnu_adapter_*``, ``mahavishnu_budget_*``), preserving
+    cross-portfolio collectors (``mahavishnu_dependency_*``,
+    ``mahavishnu_producer_*``, …) that sibling tests in the same xdist
+    worker depend on. Call the production helper directly.
+    """
     reset_routing_metrics()
     yield
     reset_routing_metrics()

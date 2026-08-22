@@ -61,23 +61,27 @@ def _clean_slate():
 
 
 def _unregister_custom_collectors() -> None:
-    """Remove all non-builtin collectors from the default Prometheus registry."""
+    """Remove only ``websocket``-named collectors from the default Prometheus
+    registry.
+
+    The previous implementation unregistered *every* non-builtin collector,
+    which destroyed cross-portfolio counters that sibling tests in the same
+    xdist worker depend on (e.g. ``mahavishnu_dependency_requests_total``
+    in ``tests/unit/core/test_health.py`` and
+    ``mahavishnu_producer_writes_*`` in
+    ``tests/unit/test_producer_counters.py``).
+    """
     try:
         from prometheus_client import REGISTRY
     except ImportError:
         return
 
-    builtin_prefixes = ("python_gc_", "python_info")
-
-    for collector in list(REGISTRY._collector_to_names.keys()):
-        names = REGISTRY._collector_to_names.get(collector, [])
-        # Keep built-in collectors (GC, platform info)
-        if any(n.startswith(builtin_prefixes) for n in names):
-            continue
-        try:
-            REGISTRY.unregister(collector)
-        except Exception:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
-            pass
+    for name, collector in list(REGISTRY._names_to_collectors.items()):
+        if "websocket" in name.lower():
+            try:
+                REGISTRY.unregister(collector)
+            except Exception:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
+                pass
 
 
 @pytest.fixture()

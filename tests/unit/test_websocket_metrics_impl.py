@@ -616,13 +616,24 @@ class TestResetMetrics:
         assert metrics_module._instances == {}
 
     def test_reset_metrics_unregisters_collectors(self):
-        """reset_metrics attempts to unregister Prometheus collectors."""
+        """reset_metrics unregisters websocket-prefixed collectors.
+
+        ``reset_metrics()`` now only unregisters collectors whose names
+        start with ``websocket_`` — cross-portfolio collectors (e.g.
+        ``mahavishnu_dependency_requests_total``,
+        ``mahavishnu_producer_writes_*``) registered by sibling modules
+        are preserved. This test pins the targeted-cleanup behavior.
+        """
         if not PROMETHEUS_AVAILABLE:
             pytest.skip("prometheus_client not installed in this environment")
 
-        fake_collector = MagicMock()
+        fake_websocket_collector = MagicMock()
+        fake_other_collector = MagicMock()
         registry = MagicMock()
-        registry._collector_to_names = {fake_collector: ["x"]}
+        registry._collector_to_names = {
+            fake_websocket_collector: ["websocket_messages_total"],
+            fake_other_collector: ["mahavishnu_dependency_requests_total"],
+        }
 
         patcher = patch.object(metrics_module, "REGISTRY", registry)
         patcher.start()
@@ -631,7 +642,9 @@ class TestResetMetrics:
         finally:
             patcher.stop()
 
-        registry.unregister.assert_called_once_with(fake_collector)
+        # The websocket-prefixed collector was unregistered; the
+        # cross-portfolio collector was preserved.
+        registry.unregister.assert_called_once_with(fake_websocket_collector)
 
     def test_reset_metrics_noop_without_prometheus(self, monkeypatch):
         """Without prometheus_client, reset_metrics is still safe."""

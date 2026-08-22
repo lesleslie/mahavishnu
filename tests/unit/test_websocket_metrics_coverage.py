@@ -717,8 +717,16 @@ class TestGetAndResetMetrics:
 
         assert len(list(REGISTRY._collector_to_names.keys())) > 0
         reset_metrics()
-        # After reset, registry should be empty
-        assert list(REGISTRY._collector_to_names.keys()) == []
+        # After reset, websocket-prefixed collectors should be gone but
+        # cross-portfolio collectors (``mahavishnu_dependency_*``,
+        # ``mahavishnu_producer_*``, …) are preserved by the targeted
+        # ``reset_metrics()`` cleanup.
+        websocket_collectors_remaining = [
+            c
+            for c, names in REGISTRY._collector_to_names.items()
+            if any(n.startswith("websocket_") for n in names)
+        ]
+        assert websocket_collectors_remaining == []
 
     def test_reset_logs_when_prom_unavailable(self) -> None:
         """When prometheus is unavailable, reset still runs and logs info."""
