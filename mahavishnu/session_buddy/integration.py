@@ -153,8 +153,9 @@ class SessionBuddyIntegration:
             )
 
             # Log the message that would be sent
-            self.logger.info(f"Session Buddy message prepared: {session_buddy_message.project_id}")
-
+            self.logger.info(
+                f"Session Buddy message prepared: {getattr(session_buddy_message, 'project_id', '<unknown>')}"
+            )
         except Exception as e:  # noqa: BLE001 - event handler; logs and continues
             self.logger.error(f"Error sending code context to Session Buddy: {e}")
 

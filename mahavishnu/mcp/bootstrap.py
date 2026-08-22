@@ -37,7 +37,7 @@ def _mhv_server(fastmcp: FastMCP) -> FastMCPServer:
     attributes live on the wrapper, not on the FastMCP. The wrapper is set
     as ``server._mhv_server`` in ``FastMCPServer.__init__``.
     """
-    return fastmcp._mhv_server  # type: ignore[attr-defined, no-any-return]
+    return fastmcp._mhv_server  # type: ignore[attr-defined, no-any-return]  # ty: ignore[unresolved-attribute]
 
 
 logger = get_logger(__name__)
@@ -197,6 +197,7 @@ def _register_worker_contract_block(server: FastMCPServer) -> None:
         )
         durable_worker_manager = _build_noop_worker_manager()
     else:
+        # ty: ignore[invalid-assignment] — _durable_worker_manager is set dynamically on the wrapper
         server.app._durable_worker_manager = durable_worker_manager
     register_worker_contract_tools(server.server, durable_worker_manager)
     logger.info("Registered 7 worker-contract tools with MCP server")

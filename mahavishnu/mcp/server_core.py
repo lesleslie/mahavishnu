@@ -150,7 +150,7 @@ class FastMCPServer:
         # recover the FastMCPServer wrapper (for app, terminal_manager, etc.)
         # from the FastMCP it receives. The W0 helper signature only
         # forwards the FastMCP, but our per-group functions need the wrapper.
-        self.server._mhv_server = self  # type: ignore[attr-defined]
+        self.server._mhv_server = self  # type: ignore[attr-defined]  # ty: ignore[unresolved-attribute]
 
         if app is None:
             self.app = MahavishnuApp(config)
@@ -1401,7 +1401,7 @@ class FastMCPServer:
         await _apply_tool_profile(
             self.server,
             profile_env_var="MAHAVISHNU_TOOL_PROFILE",
-            registrations=PROFILE_REGISTRATIONS,
+            registrations=PROFILE_REGISTRATIONS,  # ty: ignore[invalid-argument-type]
             registration_map=REGISTRATION_MAP,
             register_all_fn=None,
             mandatory_groups=MAHAVISHNU_MANDATORY_GROUPS,

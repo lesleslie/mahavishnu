@@ -45,6 +45,9 @@ exclude = [
   # Sites that block bots (connection failures or persistent 403s)
   "https://openai.com/",
   "https://www.datacamp.com/",
+  # Slack workspaces (require auth; always 403 for anonymous clients)
+  "https://cloud-native.slack.com/",
+  "https://*.slack.com/archives/",
   # Sites with TLS issues or HTTP/2 problems
   "https://appwrite.io/",
   # Grafana example URLs
