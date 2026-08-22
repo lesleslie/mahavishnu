@@ -6,7 +6,7 @@ into the Mahavishnu knowledge ecosystem.
 Example:
     $ mahavishnu ingest url https://blog.example.com/post
     $ mahavishnu ingest file document.pdf
-    $ mahavishnu ingest batch urls.txt
+    $ mahavishnu ingest batch blogs.txt
 """
 
 import asyncio
@@ -15,7 +15,6 @@ from pathlib import Path
 import structlog
 import typer
 
-from .core.embeddings import EmbeddingProvider
 from .ingesters.content_ingester import create_content_ingester
 from .ingesters.turboquant_compressor import TURBOQUANT_AVAILABLE
 
@@ -57,9 +56,6 @@ def _format_result(result: dict) -> None:
 @ingestion_app.command("url")
 def ingest_url(
     url: str = typer.Argument(..., help="URL to ingest"),
-    provider: str = typer.Option(
-        None, "--provider", "-p", help="Embedding provider (fastembed, ollama, openai)"
-    ),
     chunk_size: int = typer.Option(1000, "--chunk-size", "-c", help="Maximum characters per chunk"),
     chunk_overlap: int = typer.Option(
         200, "--chunk-overlap", "-o", help="Character overlap between chunks"
@@ -73,24 +69,18 @@ def ingest_url(
     - Crackerjack semantic file index
     - Session-Buddy tracking
 
+    Embedding backend selection is automatic via the oneiric probe chain
+    (llama_cpp -> ollama -> minimax -> model2vec -> mock). Configure which
+    legs participate in ``EmbeddingSettings`` from
+    ``oneiric.adapters.observability.embedding_settings``.
+
     Example:
         $ mahavishnu ingest url https://blog.example.com/post
-        $ mahavishnu ingest url https://example.com --provider ollama --chunk-size 500
+        $ mahavishnu ingest url https://example.com --chunk-size 500
     """
 
     async def _ingest():
-        # Map provider string to enum
-        embedding_provider = None
-        if provider:
-            provider_map = {
-                "fastembed": EmbeddingProvider.FASTEMBED,
-                "ollama": EmbeddingProvider.OLLAMA,
-                "openai": EmbeddingProvider.OPENAI,
-            }
-            embedding_provider = provider_map.get(provider.lower())
-
         ingester = create_content_ingester(
-            embedding_provider=embedding_provider,
             chunk_size=chunk_size,
             chunk_overlap=chunk_overlap,
             output_dir=output_dir,
@@ -111,9 +101,6 @@ def ingest_url(
 @ingestion_app.command("file")
 def ingest_file(
     file_path: str = typer.Argument(..., help="Path to file to ingest"),
-    provider: str = typer.Option(
-        None, "--provider", "-p", help="Embedding provider (fastembed, ollama, openai)"
-    ),
     chunk_size: int = typer.Option(1000, "--chunk-size", "-c", help="Maximum characters per chunk"),
     chunk_overlap: int = typer.Option(
         200, "--chunk-overlap", "-o", help="Character overlap between chunks"
@@ -123,9 +110,13 @@ def ingest_file(
 
     Supports PDF, EPUB, Markdown, and text files.
 
+    Embedding backend selection is automatic via the oneiric probe chain.
+    Configure which legs participate in ``EmbeddingSettings`` from
+    ``oneiric.adapters.observability.embedding_settings``.
+
     Example:
         $ mahavishnu ingest file document.pdf
-        $ mahavishnu ingest file book.epub --provider fastembed
+        $ mahavishnu ingest file book.epub
     """
     # Validate file exists
     path = Path(file_path)
@@ -134,18 +125,7 @@ def ingest_file(
         raise typer.Exit(code=1)
 
     async def _ingest():
-        # Map provider string to enum
-        embedding_provider = None
-        if provider:
-            provider_map = {
-                "fastembed": EmbeddingProvider.FASTEMBED,
-                "ollama": EmbeddingProvider.OLLAMA,
-                "openai": EmbeddingProvider.OPENAI,
-            }
-            embedding_provider = provider_map.get(provider.lower())
-
         ingester = create_content_ingester(
-            embedding_provider=embedding_provider,
             chunk_size=chunk_size,
             chunk_overlap=chunk_overlap,
             turboquant_bits=_DEFAULT_TURBOQUANT_BITS,
@@ -165,9 +145,6 @@ def ingest_file(
 @ingestion_app.command("batch")
 def ingest_batch(
     input_file: str = typer.Argument(..., help="File containing URLs (one per line)"),
-    provider: str = typer.Option(
-        None, "--provider", "-p", help="Embedding provider (fastembed, ollama, openai)"
-    ),
     parallel: int = typer.Option(5, "--parallel", "-n", help="Number of parallel ingestions"),
 ):
     """Ingest multiple URLs from a file.
@@ -175,9 +152,11 @@ def ingest_batch(
     Reads URLs from a text file (one per line) and processes them
     in parallel for faster ingestion.
 
+    Embedding backend selection is automatic via the oneiric probe chain.
+
     Example:
         $ mahavishnu ingest batch urls.txt
-        $ mahavishnu ingest batch blogs.txt --parallel 10 --provider ollama
+        $ mahavishnu ingest batch blogs.txt --parallel 10
     """
     # Validate file exists
     path = Path(input_file)
@@ -195,18 +174,7 @@ def ingest_batch(
     typer.secho(f"📋 Found {len(urls)} URLs to ingest", fg=typer.colors.BLUE)
 
     async def _ingest():
-        # Map provider string to enum
-        embedding_provider = None
-        if provider:
-            provider_map = {
-                "fastembed": EmbeddingProvider.FASTEMBED,
-                "ollama": EmbeddingProvider.OLLAMA,
-                "openai": EmbeddingProvider.OPENAI,
-            }
-            embedding_provider = provider_map.get(provider.lower())
-
         ingester = create_content_ingester(
-            embedding_provider=embedding_provider,
             turboquant_bits=_DEFAULT_TURBOQUANT_BITS,
         )
 
@@ -234,7 +202,8 @@ def ingest_batch(
     typer.secho(f"   Total: {len(results)}", fg=typer.colors.BLUE)
     typer.secho(f"   Success: {success_count}", fg=typer.colors.GREEN)
     typer.secho(
-        f"   Failed: {fail_count}", fg=typer.colors.RED if fail_count > 0 else typer.colors.GREEN
+        f"   Failed: {fail_count}",
+        fg=typer.colors.RED if fail_count > 0 else typer.colors.GREEN,
     )
 
     # Show failed items
@@ -248,35 +217,26 @@ def ingest_batch(
 
 
 @ingestion_app.command("stats")
-def ingestion_stats(
-    provider: str = typer.Option(None, "--provider", "-p", help="Preferred embedding provider"),
-):
+def ingestion_stats() -> None:
     """Show content ingestion system status.
 
     Displays:
-    - Available embedding providers
+    - Active embedding backend (selected by oneiric's probe chain)
     - Output directory
     - Chunk configuration
     - System status
 
+    Embedding backend selection is automatic via the oneiric probe chain
+    (llama_cpp -> ollama -> minimax -> model2vec -> mock). Configure which
+    legs participate in ``EmbeddingSettings`` from
+    ``oneiric.adapters.observability.embedding_settings``.
+
     Example:
         $ mahavishnu ingest stats
-        $ mahavishnu ingest stats --provider fastembed
     """
 
     async def _stats():
-        # Map provider string to enum
-        embedding_provider = None
-        if provider:
-            provider_map = {
-                "fastembed": EmbeddingProvider.FASTEMBED,
-                "ollama": EmbeddingProvider.OLLAMA,
-                "openai": EmbeddingProvider.OPENAI,
-            }
-            embedding_provider = provider_map.get(provider.lower())
-
         ingester = create_content_ingester(
-            embedding_provider=embedding_provider,
             turboquant_bits=_DEFAULT_TURBOQUANT_BITS,
         )
 
@@ -287,7 +247,7 @@ def ingestion_stats(
             "output_dir": str(ingester._output_dir),
             "chunk_size": ingester._chunk_size,
             "chunk_overlap": ingester._chunk_overlap,
-            "embedding_provider": embedding_provider.value if embedding_provider else "auto",
+            "embedding_provider": "auto (oneiric probe chain)",
         }
 
     stats = asyncio.run(_stats())

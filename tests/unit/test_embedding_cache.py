@@ -350,7 +350,12 @@ class TestEmbeddingCacheL2Disabled:
 
 
 class TestEmbeddingServiceBatch:
-    """Tests for EmbeddingService batch operations."""
+    """Tests for EmbeddingService batch operations.
+
+    The legacy ``embed_batch(batches, max_concurrent=...)`` API is gone;
+    use ``encode_batch(texts)`` (oneiric's API) instead. These tests
+    pin the shim's behavior on the new contract.
+    """
 
     def test_service_initialization(self) -> None:
         """Test that EmbeddingService initializes correctly."""
@@ -358,27 +363,18 @@ class TestEmbeddingServiceBatch:
         assert service is not None
 
     @pytest.mark.asyncio
-    async def test_embed_batch_empty(self) -> None:
-        """Test embed_batch with empty input."""
+    async def test_encode_batch_empty(self) -> None:
+        """Test encode_batch with empty input.
+
+        The shim's ``encode_batch`` requires ``initialize()`` to be
+        awaited first (it delegates to oneiric, which probes the chain
+        at init time). Empty input returns an empty list once init
+        has completed.
+        """
         service = EmbeddingService()
-        results = await service.embed_batch([])
+        await service.initialize()
+        results = await service.encode_batch([])
         assert results == []
-
-    @pytest.mark.asyncio
-    async def test_embed_batch_returns_results_or_exceptions(self) -> None:
-        """Test that embed_batch returns results or exceptions."""
-        service = EmbeddingService()
-        # Mock batches (actual embedding depends on provider availability)
-        batches: list[list[str]] = [["test1"], ["test2"]]
-
-        results = await service.embed_batch(batches, max_concurrent=2)
-
-        # Results should be same length as input batches
-        assert len(results) == len(batches)
-
-        # Each result should be either EmbeddingResult or Exception
-        for result in results:
-            assert isinstance(result, (EmbeddingResult, Exception))
 
 
 class TestEmbeddingResult:

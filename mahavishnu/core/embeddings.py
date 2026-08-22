@@ -103,6 +103,13 @@ class EmbeddingResult:
         self.model = model
         self.dimension = dimension or (len(embeddings[0]) if embeddings else 0)
 
+    def __repr__(self) -> str:
+        return (
+            f"EmbeddingResult(embeddings={len(self.embeddings)} vectors, "
+            f"dimension={self.dimension}, provider={self.provider!r}, "
+            f"model={self.model!r})"
+        )
+
 
 # ---------------------------------------------------------------------------
 # Helpers (unchanged — pure-Python / numpy, no external deps)
