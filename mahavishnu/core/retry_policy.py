@@ -62,6 +62,11 @@ async def compute_retry_delay(
         multiplier: Exponential growth factor between attempts.
         max_delay_seconds: Cap on the computed delay.
         jitter: Deterministic jitter factor in [0, 1].
+
+    Returns ``0.0`` when the policy is exhausted (the kit omits the
+    ``delay_seconds`` key on the exhausted branch — verified at
+    ``oneiric.actions.workflow``). Callers can ``await
+    asyncio.sleep(compute_retry_delay(...))`` unconditionally.
     """
     result = await _retry_action().execute(
         {
@@ -73,7 +78,7 @@ async def compute_retry_delay(
             "jitter": jitter,
         }
     )
-    return float(result["delay_seconds"])
+    return float(result.get("delay_seconds", 0.0))
 
 
 async def next_retry_decision(

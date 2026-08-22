@@ -12,6 +12,7 @@ from __future__ import annotations
 import asyncio
 from typing import Any
 
+import httpx
 import pytest
 
 from mahavishnu.core.http_probe import _http_probe_action, service_probe
@@ -33,6 +34,21 @@ def _reset_action_caches() -> None:
 
 def _run(coro):
     return asyncio.run(coro)
+
+
+def _action_with_transport(template_action, transport: httpx.MockTransport):
+    """Return a copy of ``template_action`` whose client uses ``transport``.
+
+    Used by happy-path tests that need to stub out real HTTP. The
+    ``HttpFetchAction`` accepts a shared ``AsyncClient`` in its constructor;
+    we build one wrapped around the mock transport.
+    """
+    from oneiric.actions.http import HttpFetchAction
+
+    return HttpFetchAction(
+        settings=template_action._settings,
+        client=httpx.AsyncClient(transport=transport),
+    )
 
 
 def test_http_probe_action_is_canonical() -> None:
@@ -74,6 +90,45 @@ async def test_service_probe_passes_method_and_headers() -> None:
     }
 
 
+async def test_service_probe_returns_healthy_on_200() -> None:
+    """BLOCKER 1 regression guard: a real 200 response must show healthy=True.
+
+    Earlier W3 code read ``result["response"]["status_code"]`` from a nested
+    key that doesn't exist; the kit returns a flat dict. That bug made
+    every probe return ``healthy=False`` regardless of server state, and
+    the failure-mode tests passed by coincidence. This test exercises the
+    success path with an httpx MockTransport so the regression can't slip
+    through again.
+    """
+    import httpx
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(
+            200,
+            json={"status": "ok", "service": "probe-test"},
+            headers={"content-type": "application/json"},
+        )
+
+    transport = httpx.MockTransport(handler)
+
+    # Patch the lru_cache singleton so the next probe uses our transport.
+    from mahavishnu.core import http_probe as http_probe_module
+
+    real_action = http_probe_module._http_probe_action()
+    patched_action = _action_with_transport(real_action, transport)
+    http_probe_module._http_probe_action = lambda: patched_action
+    try:
+        result = await service_probe("https://probe.example/health", expected_status=200)
+        assert result["healthy"] is True, (
+            f"service_probe mis-classified healthy response: {result}"
+        )
+        assert result["status_code"] == 200
+        assert result["body"] == {"status": "ok", "service": "probe-test"}
+        assert result["error"] is None
+    finally:
+        http_probe_module._http_probe_action = real_action
+
+
 def test_retry_action_uses_canonical_defaults() -> None:
     action = _retry_action()
     assert action._settings.max_attempts == 3
@@ -109,6 +164,21 @@ async def test_next_retry_decision_marks_exhausted() -> None:
     result = await next_retry_decision(attempt=3, max_attempts=3)
     assert result["status"] == "exhausted"
     assert result["delay_seconds"] == 0.0
+
+
+async def test_compute_retry_delay_returns_zero_on_exhausted() -> None:
+    """BLOCKER 2 regression guard: exhausted branch must not raise KeyError.
+
+    The kit omits ``delay_seconds`` from its exhausted-branch response.
+    ``compute_retry_delay`` previously indexed ``result["delay_seconds"]``
+    directly, raising ``KeyError`` on any exhausted call.
+    """
+    # attempt=3 with max_attempts=3 → exhausted
+    delay = await compute_retry_delay(attempt=3, max_attempts=3)
+    assert delay == 0.0
+    # attempt far past max_attempts is also exhausted
+    delay_late = await compute_retry_delay(attempt=10, max_attempts=3)
+    assert delay_late == 0.0
 
 
 async def test_service_probe_uses_oneiric_action_not_reimplemented_httpx() -> None:

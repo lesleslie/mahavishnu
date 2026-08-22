@@ -12,24 +12,27 @@ HTTP probe inherits the canonical envelope:
 
 from __future__ import annotations
 
+import time
 from functools import lru_cache
 from typing import Any
 
 from httpx import AsyncClient
 from oneiric.actions.http import HttpActionSettings, HttpFetchAction
 
+# Module-level settings so the client override path doesn't need to reach
+# into ``HttpFetchAction._settings`` (a private attribute).
+_PROBE_SETTINGS = HttpActionSettings(
+    timeout_seconds=10.0,
+    verify_ssl=True,
+    allow_redirects=False,
+    raise_for_status=False,
+)
+
 
 @lru_cache(maxsize=1)
 def _http_probe_action() -> HttpFetchAction:
     """Return the process-wide ``HttpFetchAction`` used by ``service_probe``."""
-    return HttpFetchAction(
-        settings=HttpActionSettings(
-            timeout_seconds=10.0,
-            verify_ssl=True,
-            allow_redirects=False,
-            raise_for_status=False,
-        )
-    )
+    return HttpFetchAction(settings=_PROBE_SETTINGS)
 
 
 async def service_probe(
@@ -55,9 +58,15 @@ async def service_probe(
         Dict with keys: ``healthy`` (bool), ``status_code`` (int|None),
         ``latency_ms`` (float), ``body`` (dict|str|None), ``error``
         (str|None), and ``url`` (str).
-    """
-    import time
 
+    Note:
+        ``HttpFetchAction.execute()`` returns a flat dict with ``status``,
+        ``status_code``, ``ok``, ``headers``, ``elapsed_ms``, ``json``, and
+        ``text`` at the top level (see ``oneiric.actions.http``). Earlier
+        W3 code read a nested ``response`` key — that was a bug that made
+        every probe return ``healthy=False``. The fix here reads the flat
+        shape and prefers ``json`` (parsed) over ``text`` for the body.
+    """
     payload: dict[str, Any] = {
         "method": method,
         "url": url,
@@ -68,11 +77,10 @@ async def service_probe(
         payload["headers"] = headers
 
     start = time.monotonic()
-    action = _http_probe_action()
     if client is not None:
-        # Rebuild the action with the caller-supplied client so connection
-        # pooling / TLS config carry through.
-        action = HttpFetchAction(settings=action._settings, client=client)
+        action = HttpFetchAction(settings=_PROBE_SETTINGS, client=client)
+    else:
+        action = _http_probe_action()
     try:
         result = await action.execute(payload)
     except Exception as exc:
@@ -87,11 +95,13 @@ async def service_probe(
         }
     latency_ms = (time.monotonic() - start) * 1000.0
 
-    response = result.get("response") or {}
-    status_code = response.get("status_code")
-    body = response.get("body")
+    status_code = result.get("status_code")
+    body = result.get("json")
+    if body is None:
+        body = result.get("text")
 
-    healthy = status_code == expected_status
+    ok = bool(result.get("ok"))
+    healthy = ok and status_code == expected_status
     return {
         "healthy": healthy,
         "status_code": status_code,
