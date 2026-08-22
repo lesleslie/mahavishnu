@@ -8,8 +8,11 @@ accepts the three expected producer names.
 """
 from __future__ import annotations
 
+import pytest
+
 from prometheus_client import REGISTRY
 
+from mahavishnu.core import _producer_metrics as _producer_metrics_module
 from mahavishnu.core._producer_metrics import COUNTERS
 
 
@@ -20,6 +23,35 @@ def _counter_value(metric_name: str, producer: str) -> float:
         {"producer": producer},
     )
     return float(samples) if samples is not None else 0.0
+
+
+@pytest.fixture(autouse=True)
+def _ensure_producer_counters_registered():
+    """Re-register producer counters if a sibling test unregistered them.
+
+    ``tests/unit/test_websocket_metrics_impl.py::test_reset_metrics_clears_instances``
+    calls ``reset_metrics()`` which unregisters *all* collectors from
+    REGISTRY — including ``mahavishnu_producer_writes_*``. When
+    ``test_producer_counters.py`` runs in the same xdist worker after
+    that test, the counters are missing. Re-importing the module
+    re-creates them *and* rebinds the ``COUNTERS`` singleton so the
+    tests use the freshly-registered counter instances.
+    """
+    needed = (
+        "mahavishnu_producer_writes_attempted_total",
+        "mahavishnu_producer_writes_succeeded_total",
+        "mahavishnu_producer_writes_skipped_total",
+    )
+    if any(name not in REGISTRY._names_to_collectors for name in needed):
+        import importlib
+
+        importlib.reload(_producer_metrics_module)
+        # Rebind COUNTERS to the freshly-reloaded module's singleton so
+        # the tests use the new Counter instances (the old ones were
+        # unregistered and any subsequent ``.labels(...).inc()`` would
+        # raise ``ValueError`` from a stale reference).
+        globals()["COUNTERS"] = _producer_metrics_module.COUNTERS
+    yield
 
 
 def test_producer_counters_registered_on_import() -> None:

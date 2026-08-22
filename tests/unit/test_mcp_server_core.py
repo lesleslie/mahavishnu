@@ -203,16 +203,25 @@ class TestFastMCPServerInit:
 
         mock_app.config.observability = MagicMock(tracing_enabled=True, environment="testing")
 
-        with (
-            patch("mahavishnu.mcp.server_core.get_auth_from_config"),
-            patch.object(FastMCP, "add_middleware") as mock_add,
-        ):
+        # Explicit patcher.start()/stop() instead of parenthesized
+        # ``with`` blocks — pytest's parenthesized-with handling under
+        # xdist can leave the patched attribute unbound, so the
+        # ``FastMCPServer(app=mock_app)`` call below bypasses the
+        # patch and ``mock_add.called`` stays False.
+        auth_patcher = patch("mahavishnu.mcp.server_core.get_auth_from_config")
+        add_patcher = patch.object(FastMCP, "add_middleware")
+        auth_patcher.start()
+        mock_add = add_patcher.start()
+        try:
             FastMCPServer(app=mock_app)
 
             # Confirm middleware is an instance of the OTel middleware
             assert mock_add.called
             middleware_arg = mock_add.call_args.args[0]
             assert isinstance(middleware_arg, FastMCPOpenTelemetryMiddleware)
+        finally:
+            add_patcher.stop()
+            auth_patcher.stop()
 
 
 # =============================================================================

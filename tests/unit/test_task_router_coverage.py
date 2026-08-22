@@ -25,16 +25,39 @@ from mahavishnu.core.adapters.base import (
 )
 from mahavishnu.core.routing_metrics import RoutingMetrics
 from mahavishnu.core.status import WorkflowStatus
-from mahavishnu.core.task_router import (
+# Import the task_router module rather than its symbols so that
+# ``importlib.reload(mahavishnu.core.task_router)`` (used by sibling tests
+# such as ``tests/unit/test_task_router_core.py``) does not leave us holding
+# a stale ``TaskType`` enum class. After reload, the test's
+# ``task_router.TaskType`` attribute is the *new* class, and
+# ``TaskRouter._normalize_task_type`` returns a member of that new class —
+# so the ``is`` identity assertions below keep matching.
+import mahavishnu.core.task_router as task_router
+from mahavishnu.core.task_router import (  # noqa: E402  -- symbol re-export
     AdapterExecutionStats,
     AdapterManager,
     CapabilityRouter,
     RouterMode,
     StateManager,
     TaskRouter,
-    TaskType,
     WorkflowState,
 )
+
+
+def _current_task_type():
+    """Return the live ``TaskType`` enum class from ``task_router``.
+
+    Always reads from the module attribute so a reload of
+    ``mahavishnu.core.task_router`` (performed by sibling tests such as
+    ``test_task_router_core.py``) is reflected in subsequent assertions.
+    """
+    return task_router.TaskType
+
+
+# Bind a single name for module-internal use. Callers that need to assert
+# ``is`` identity should use ``_current_task_type()`` so the comparison
+# targets the *current* class member after any reloads.
+TaskType = _current_task_type()  # noqa: F841  -- kept for legacy assertions
 
 # ---------------------------------------------------------------------------
 # Test helpers
@@ -699,16 +722,24 @@ class TestCapabilityRouter:
 
 class TestTaskRouterHelpers:
     def test_normalize_task_type_passthrough_enum(self) -> None:
-        assert TaskRouter._normalize_task_type(TaskType.AI_TASK) is TaskType.AI_TASK
+        # Late-bind via ``_current_task_type()`` so any reload of the
+        # ``task_router`` module (triggered by sibling tests such as
+        # ``tests/unit/test_task_router_core.py``) is reflected in both
+        # sides of the ``is`` identity assertion below.
+        current = _current_task_type()
+        assert TaskRouter._normalize_task_type(current.AI_TASK) is current.AI_TASK
 
     def test_normalize_task_type_string_match(self) -> None:
-        assert TaskRouter._normalize_task_type("ai_task") is TaskType.AI_TASK
+        current = _current_task_type()
+        assert TaskRouter._normalize_task_type("ai_task") is current.AI_TASK
 
     def test_normalize_task_type_none_defaults_workflow(self) -> None:
-        assert TaskRouter._normalize_task_type(None) is TaskType.WORKFLOW
+        current = _current_task_type()
+        assert TaskRouter._normalize_task_type(None) is current.WORKFLOW
 
     def test_normalize_task_type_invalid_falls_back(self) -> None:
-        assert TaskRouter._normalize_task_type("not-a-type") is TaskType.WORKFLOW
+        current = _current_task_type()
+        assert TaskRouter._normalize_task_type("not-a-type") is current.WORKFLOW
 
     def test_coerce_adapter_type(self) -> None:
         assert TaskRouter._coerce_adapter_type(AdapterType.PREFECT) is AdapterType.PREFECT

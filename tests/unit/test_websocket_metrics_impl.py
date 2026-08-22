@@ -303,9 +303,17 @@ class TestBroadcastMetrics:
         m = WebSocketMetrics("svc")
         m._enabled = True
 
-        with patch.object(metrics_module, "Histogram", return_value=histogram_mock):
+        # Use explicit patcher.start()/stop() instead of a parenthesized
+        # ``with`` block — pytest's parenthesized-with handling under xdist
+        # can leave the patched attribute unbound, so subsequent
+        # ``Histogram(...)`` calls inside the test bypass the patch.
+        patcher = patch.object(metrics_module, "Histogram", return_value=histogram_mock)
+        patcher.start()
+        try:
             m.observe_broadcast("ch-a", 0.1)
             m.observe_broadcast("ch-b", 0.2)
+        finally:
+            patcher.stop()
 
         # The histogram should be created only once
         assert m._broadcast_histogram is histogram_mock
@@ -381,8 +389,12 @@ class TestOtherMetrics:
         fake_counter = MagicMock()
         fake_counter.labels.return_value = fake_counter
 
-        with patch.object(metrics_module, "Counter", return_value=fake_counter) as counter_cls:
+        patcher = patch.object(metrics_module, "Counter", return_value=fake_counter)
+        counter_cls = patcher.start()
+        try:
             m.inc_error("auth", amount=2)
+        finally:
+            patcher.stop()
 
         counter_cls.assert_called_once()
         fake_counter.labels.assert_called_with(server="svc", error_type="auth")
@@ -402,9 +414,13 @@ class TestOtherMetrics:
         fake_counter.labels.return_value = fake_counter
         m._error_counter = fake_counter
 
-        with patch.object(metrics_module, "Counter") as counter_cls:
+        patcher = patch.object(metrics_module, "Counter")
+        counter_cls = patcher.start()
+        try:
             m.inc_error("parse")
             m.inc_error("auth")
+        finally:
+            patcher.stop()
 
         # Counter constructor not called again - we reuse _error_counter
         counter_cls.assert_not_called()
@@ -515,8 +531,15 @@ class TestStartMetricsServer:
         if not PROMETHEUS_AVAILABLE:
             pytest.skip("prometheus_client not installed in this environment")
 
-        with patch.object(metrics_module, "start_http_server", return_value="thread-1") as start:
+        # Explicit patcher.start()/stop() instead of parenthesized ``with`` —
+        # see test_initialize_metrics_uses_unique_metric_names for the
+        # rationale (pytest xdist + parenthesized-with leaks bindings).
+        patcher = patch.object(metrics_module, "start_http_server", return_value="thread-1")
+        start = patcher.start()
+        try:
             result = start_metrics_server(port=9999)
+        finally:
+            patcher.stop()
 
         start.assert_called_once_with(9999)
         assert result == "thread-1"
@@ -526,8 +549,12 @@ class TestStartMetricsServer:
         if not PROMETHEUS_AVAILABLE:
             pytest.skip("prometheus_client not installed in this environment")
 
-        with patch.object(metrics_module, "start_http_server", side_effect=OSError("port in use")):
+        patcher = patch.object(metrics_module, "start_http_server", side_effect=OSError("port in use"))
+        patcher.start()
+        try:
             result = start_metrics_server(port=9999)
+        finally:
+            patcher.stop()
 
         assert result is None
 
@@ -564,8 +591,12 @@ class TestResetMetrics:
         get_metrics("svc-2")
         assert len(metrics_module._instances) == 2
 
-        with patch.object(metrics_module, "REGISTRY", MagicMock()):
+        patcher = patch.object(metrics_module, "REGISTRY", MagicMock())
+        patcher.start()
+        try:
             reset_metrics()
+        finally:
+            patcher.stop()
 
         assert metrics_module._instances == {}
 
@@ -578,8 +609,12 @@ class TestResetMetrics:
         registry = MagicMock()
         registry._collector_to_names = {fake_collector: ["x"]}
 
-        with patch.object(metrics_module, "REGISTRY", registry):
+        patcher = patch.object(metrics_module, "REGISTRY", registry)
+        patcher.start()
+        try:
             reset_metrics()
+        finally:
+            patcher.stop()
 
         registry.unregister.assert_called_once_with(fake_collector)
 
@@ -588,8 +623,12 @@ class TestResetMetrics:
         monkeypatch.setattr(metrics_module, "PROMETHEUS_AVAILABLE", False)
         # No exception should be raised. Patch REGISTRY too so the
         # production registry isn't torn down.
-        with patch.object(metrics_module, "REGISTRY", MagicMock()):
+        patcher = patch.object(metrics_module, "REGISTRY", MagicMock())
+        patcher.start()
+        try:
             reset_metrics()
+        finally:
+            patcher.stop()
         assert metrics_module._instances == {}
 
 
@@ -609,14 +648,25 @@ class TestInitializeMetrics:
         fake_msg_counter = MagicMock()
         fake_conn_gauge = MagicMock()
         fake_sub_gauge = MagicMock()
-        with (
-            patch.object(metrics_module, "Counter", return_value=fake_msg_counter),
-            patch.object(metrics_module, "Gauge", side_effect=[fake_conn_gauge, fake_sub_gauge]),
-        ):
+        # Explicit patcher.start()/stop() instead of parenthesized
+        # ``with`` — pytest's parenthesized-with handling under xdist
+        # can leave the patched attribute unbound, so subsequent
+        # ``Counter(...)``/``Gauge(...)`` calls inside the test bypass
+        # the patch. See test_initialize_metrics_uses_unique_metric_names.
+        counter_patcher = patch.object(metrics_module, "Counter", return_value=fake_msg_counter)
+        gauge_patcher = patch.object(
+            metrics_module, "Gauge", side_effect=[fake_conn_gauge, fake_sub_gauge]
+        )
+        counter_patcher.start()
+        gauge_patcher.start()
+        try:
             m._initialize_metrics()
             first_msg_counter = m._message_counter
             first_conn_gauge = m._connection_gauge
             m._initialize_metrics()  # second call should be a no-op
+        finally:
+            counter_patcher.stop()
+            gauge_patcher.stop()
 
         assert m._message_counter is first_msg_counter
         assert m._connection_gauge is first_conn_gauge
@@ -626,11 +676,18 @@ class TestInitializeMetrics:
         m = WebSocketMetrics("svc")
         m._enabled = True
 
-        with (
-            patch.object(metrics_module, "Counter", return_value=MagicMock()),
-            patch.object(metrics_module, "Gauge", return_value=MagicMock()),
-        ):
+        # Explicit patcher.start()/stop() instead of parenthesized
+        # ``with`` — see test_initialize_metrics_uses_unique_metric_names
+        # for the rationale.
+        counter_patcher = patch.object(metrics_module, "Counter", return_value=MagicMock())
+        gauge_patcher = patch.object(metrics_module, "Gauge", return_value=MagicMock())
+        counter_patcher.start()
+        gauge_patcher.start()
+        try:
             m._initialize_metrics()
+        finally:
+            counter_patcher.stop()
+            gauge_patcher.stop()
 
         assert m._metrics_initialized is True
 
@@ -639,11 +696,15 @@ class TestInitializeMetrics:
         m = WebSocketMetrics("svc")
         m._enabled = True
 
-        with (
-            patch.object(metrics_module, "Counter") as counter_cls,
-            patch.object(metrics_module, "Gauge") as gauge_cls,
-        ):
+        counter_patcher = patch.object(metrics_module, "Counter")
+        gauge_patcher = patch.object(metrics_module, "Gauge")
+        counter_cls = counter_patcher.start()
+        gauge_cls = gauge_patcher.start()
+        try:
             m._initialize_metrics()
+        finally:
+            counter_patcher.stop()
+            gauge_patcher.stop()
 
         # Counter: messages
         counter_cls.assert_called_once()

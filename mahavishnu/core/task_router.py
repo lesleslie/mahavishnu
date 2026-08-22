@@ -41,6 +41,7 @@ from dataclasses import dataclass, field
 from enum import StrEnum
 import json
 import logging
+import sys
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, ClassVar, cast
 
@@ -625,25 +626,40 @@ class TaskRouter:
 
     @staticmethod
     def _normalize_task_type(task_type: Any) -> TaskType:
-        # ``TaskType`` is captured into ``_TASK_TYPE`` at module-import time so
-        # ``isinstance`` and iteration remain anchored to the real enum even
-        # when sibling tests monkeypatch
-        # ``mahavishnu.core.task_router.TaskType`` (e.g.
-        # ``test_main_cli.py::TestAdapterResolve::test_adapter_resolve_invalid_task_type``
-        # which replaces it with a ``side_effect=ValueError`` MagicMock).
-        # Without this snapshot, a leftover MagicMock causes
-        # ``isinstance(task_type, TaskType)`` to return False, which routes
-        # through the string-coercion branch and yields a Mock value — then
-        # ``test_task_router_coverage``'s ``is TaskType.AI_TASK`` assertion
-        # fails because the returned Mock.AI_TASK is not the real
-        # ``TaskType.AI_TASK`` enum member.
-        if isinstance(task_type, _TASK_TYPE):
-            return task_type
-        task_type_str = str(task_type or _TASK_TYPE.WORKFLOW.value)
-        for candidate in _TASK_TYPE:
+        # ``TaskType`` is resolved at call time (via ``_TASK_TYPE`` snapshot +
+        # live-module re-lookup) so ``isinstance`` and iteration stay anchored
+        # to the real enum even when sibling tests:
+        # 1. Monkeypatch ``mahavishnu.core.task_router.TaskType`` with a
+        #    ``side_effect=ValueError`` MagicMock
+        #    (``test_main_cli.py::TestAdapterResolve::test_adapter_resolve_invalid_task_type``).
+        # 2. Call ``importlib.reload(mahavishnu.core.task_router)``
+        #    (``test_task_router_core.py``) — the reload rebuilds the
+        #    ``TaskType`` class, and any reference captured at module-import
+        #    time becomes a stale *different class object* whose members no
+        #    longer ``is``-compare equal to the live module's members.
+        # Without the live lookup, ``is TaskType.AI_TASK`` assertions in
+        # ``test_task_router_coverage.py`` fail because the test holds the
+        # pre-reload class while the function returns the post-reload class.
+        # Also: when the caller passes an *enum member* of the pre-reload
+        # class, we still need to return the *post-reload* member (whose
+        # ``is`` identity matches the test's current module attribute), so we
+        # always look up by value rather than short-circuiting on isinstance.
+        _live_task_type = _TASK_TYPE
+        if sys.modules[__name__].TaskType is not _live_task_type:  # pragma: no cover - reload branch
+            _live_task_type = sys.modules[__name__].TaskType
+        if isinstance(task_type, _live_task_type):
+            # Re-look-up by value to guarantee we return the *current* class's
+            # member, not a stale reference captured by an earlier import.
+            task_type_str = task_type.value
+            for candidate in _live_task_type:
+                if candidate.value == task_type_str:
+                    return candidate
+            return _live_task_type.WORKFLOW
+        task_type_str = str(task_type or _live_task_type.WORKFLOW.value)
+        for candidate in _live_task_type:
             if candidate.value == task_type_str:
                 return candidate
-        return _TASK_TYPE.WORKFLOW
+        return _live_task_type.WORKFLOW
 
     @staticmethod
     def _coerce_adapter_type(adapter: AdapterType | str | None) -> AdapterType | None:
