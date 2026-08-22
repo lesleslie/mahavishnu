@@ -107,7 +107,6 @@ def create_health_app(
                 in (HealthStatus.OK.value, HealthStatus.DEGRADED.value)
                 else "unhealthy"
             )
-            default_worker = worker_summary.get("default_worker", "unknown")
             checks["workers_default"] = (
                 "ok"
                 if worker_status

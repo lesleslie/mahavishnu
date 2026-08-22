@@ -11,10 +11,11 @@ from email.mime.text import MIMEText
 from enum import Enum
 import json
 import logging
-import requests
 import smtplib
 import time
 from typing import TYPE_CHECKING, Any, cast
+
+import requests
 
 from ..core.status import HealthStatus as ComponentHealthStatus
 from ..core.workflow_state import WorkflowStatus
@@ -701,7 +702,7 @@ class SlackNotificationChannel(NotificationChannel):
                 ],
             }
 
-            response = requests.post(self.webhook_url, json=message)
+            response = await asyncio.to_thread(requests.post, self.webhook_url, json=message)
             if response.status_code != 200:
                 self.logger.warning(f"Failed to send Slack notification: {response.text}")
             else:
@@ -748,7 +749,8 @@ class PagerDutyNotificationChannel(NotificationChannel):
 
             headers = {"Content-Type": "application/json"}
 
-            response = requests.post(
+            response = await asyncio.to_thread(
+                requests.post,
                 "https://events.pagerduty.com/v2/enqueue",
                 json=payload,
                 headers=headers,

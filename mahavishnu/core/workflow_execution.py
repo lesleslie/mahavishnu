@@ -519,7 +519,7 @@ async def execute_workflow_parallel(
             errors=errors,
             checkpoint_id=checkpoint_id,
         )
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001 - boundary handler; re-raise depends on substituted error handler
         # handle_workflow_execution_error normally re-raises after recording
         # the failure. If a caller substitutes an error handler that
         # swallows the exception (returning None), return None so callers
