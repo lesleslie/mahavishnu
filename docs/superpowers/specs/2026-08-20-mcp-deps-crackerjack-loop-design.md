@@ -1,6 +1,12 @@
 ---
 name: mcp-deps-crackerjack-loop
 description: Refresh oneiric deps in 15 *-mcp repos via crackerjack -p minor, with a one-line crackerjack patch for annotated tags
+status: active
+role: canonical
+date: 2026-08-20
+last_reviewed: 2026-08-20
+topic: mcp-deps-crackerjack-loop
+title: mcp-deps-crackerjack-loop Design Spec (rev2)
 ---
 
 # Design: `*-mcp` dep refresh + crackerjack loop (2026-08-20, rev2)
