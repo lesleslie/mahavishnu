@@ -155,17 +155,70 @@ def _storage_ref_to_dict(storage_ref: Any) -> dict[str, Any]:
 def _validate_storage_path(path_str: str, backend_kind: str) -> str:
     """Validate a path string before using it as a filesystem path.
 
-    Rejects relative paths, parent-traversal (``..``), and dash-prefixed
-    arguments (which some CLIs treat as flags).
+    Rejects:
+
+    - empty strings
+    - relative paths (must be absolute)
+    - parent-traversal (``..``)
+    - dash-prefixed paths (some CLIs treat these as flags, e.g. ``-rf /tmp``)
+    - paths outside the configured worktree base directory
+
+    The base-directory allowlist pins every registered path inside
+    ``get_worktree_base_path()`` so the registry can't accumulate
+    off-base entries. Symlink safety is enforced at consumer time
+    (when the worktree is actually used), not here.
     """
     if not path_str:
         raise ValueError(f"{backend_kind} storage path is empty")
     p = Path(path_str)
+    # Dash-prefix: a path string starting with `-` could be mis-parsed as
+    # a CLI flag by downstream tooling (e.g. `rm -rf /tmp` if the path
+    # was ever passed as an argument). Check the raw string rather than
+    # ``p.parts[0]`` since absolute Unix paths always have ``/`` as
+    # parts[0].
+    if path_str.startswith("-"):
+        raise ValueError(
+            f"{backend_kind} storage path starts with dash (flag-like): {path_str!r}"
+        )
     if not p.is_absolute():
         raise ValueError(f"{backend_kind} storage path must be absolute: {path_str!r}")
     if any(part == ".." for part in p.parts):
         raise ValueError(f"{backend_kind} storage path contains '..': {path_str!r}")
+    # Base-directory allowlist: the path must resolve to a location
+    # under the configured worktree base.
+    base = _worktree_base_resolved()
+    try:
+        candidate = p.resolve()
+    except OSError as e:
+        raise ValueError(
+            f"{backend_kind} storage path cannot be resolved: {path_str!r} ({e})"
+        ) from e
+    if not _is_within(candidate, base):
+        raise ValueError(
+            f"{backend_kind} storage path {candidate} is outside worktree base {base}"
+        )
     return path_str
+
+
+def _worktree_base_resolved() -> Path:
+    """Resolve the worktree base directory. Lazy import to avoid a hard
+    import cycle (``paths.py`` does not depend on dhara_registry, but
+    ``dhara_registry`` is consumed by adapters that load oneiric config
+    which in turn pulls ``paths.py``).
+    """
+    from mahavishnu.core.paths import get_worktree_base_path
+
+    return get_worktree_base_path().resolve()
+
+
+def _is_within(candidate: Path, base: Path) -> bool:
+    """Return True iff ``candidate`` resolves to a path under ``base``.
+
+    Uses ``Path.is_relative_to`` (Python 3.9+) which handles the
+    trailing-separator edge case correctly. Both inputs are expected
+    to be resolved absolute paths.
+    """
+    return candidate.is_relative_to(base)
 
 
 def _row_to_handle(row: dict[str, Any]) -> WorktreeHandle:
@@ -182,11 +235,15 @@ def _row_to_handle(row: dict[str, Any]) -> WorktreeHandle:
     elif backend_kind in ("s3", "gcs", "azure", "bundle"):
         # RemoteWorktreeRef stores the actual backend_kind in
         # storage_data so callers can roundtrip the original
-        # cloud backend without losing fidelity.
+        # cloud backend without losing fidelity. Fall back to the
+        # column-level ``backend_kind`` for storage_data written by
+        # pre-fix code that didn't include the field.
+        actual_backend = storage_data.get("backend_kind") or backend_kind
         storage_ref = RemoteWorktreeRef(
             bucket=storage_data.get("bucket", ""),
             key=storage_data.get("key", ""),
             worktree_id=storage_data.get("worktree_id", row["handle_id"]),
+            backend_kind=actual_backend,  # type: ignore[arg-type]
         )
     else:
         # Unknown backend — fail loud rather than silently downgrading
@@ -321,12 +378,23 @@ async def list_handles(
 ) -> list[WorktreeHandle]:
     """List WorktreeHandles, optionally filtered by principal or repo.
 
-    Multi-tenant safety: ``all_tenants=True`` requires ``caller`` to have
-    scope ``worktree:list-all``. Without that explicit opt-in, the
-    principal-scoped or repo-scoped filter is required.
+    Authorization model (mirrors ``register_handles``):
+
+    * ``all_tenants=True`` requires scope ``worktree:list-all`` on
+      ``caller`` (admin / SRE).
+    * ``principal=<name>`` requires ``caller.name == principal`` unless
+      the caller has ``worktree:list-all``.
+    * ``repo=<name>`` requires scope ``worktree:read`` on ``caller``
+      unless they have ``worktree:list-all``; results are
+      post-filtered to handles the caller owns.
+    * With no filter and no ``all_tenants`` flag, defaults to
+      ``caller.name`` if ``caller`` is provided (the typical "show me
+      my handles" call), or refuses if ``caller`` is None.
     """
+    is_admin = caller is not None and "worktree:list-all" in caller.scopes
+
     if all_tenants:
-        if caller is None or "worktree:list-all" not in caller.scopes:
+        if not is_admin:
             raise PermissionError(
                 "Listing all tenants requires caller with scope 'worktree:list-all'"
             )
@@ -334,35 +402,67 @@ async def list_handles(
         return [_row_to_handle(r) for r in rows]
 
     if principal is not None:
+        if not is_admin and (caller is None or caller.name != principal):
+            raise PermissionError(
+                f"Non-admin callers can only list their own handles; "
+                f"caller {caller.name if caller else 'None'!r} asked for {principal!r}"
+            )
         rows = await client.query(
             """
             SELECT r.* FROM mahavishnu_worktree_registry r
               JOIN mahavishnu_worktree_registry_idx_principal p
                 ON r.handle_id = p.handle_id
-            WHERE p.principal = :principal
-            ORDER BY r.created_at
+              WHERE p.principal = :principal
+              ORDER BY r.created_at
             """,
             {"principal": principal},
         )
-    elif repo is not None:
+        return [_row_to_handle(r) for r in rows]
+
+    if repo is not None:
+        if not is_admin:
+            if caller is None:
+                raise PermissionError(
+                    "Repo-scoped listing requires a caller with scope 'worktree:read'"
+                )
+            if "worktree:read" not in caller.scopes:
+                raise PermissionError(
+                    f"Caller {caller.name!r} lacks scope 'worktree:read' for repo listing"
+                )
         rows = await client.query(
             """
             SELECT r.* FROM mahavishnu_worktree_registry r
               JOIN mahavishnu_worktree_registry_idx_repo x
                 ON r.handle_id = x.handle_id
-            WHERE x.repo = :repo
-            ORDER BY r.created_at
+              WHERE x.repo = :repo
+              ORDER BY r.created_at
             """,
             {"repo": repo},
         )
-    else:
-        # Refuse unfiltered listing — would leak across principals.
+        handles = [_row_to_handle(r) for r in rows]
+        # Post-filter: non-admin callers only see their own handles.
+        if not is_admin and caller is not None:
+            handles = [h for h in handles if h.principal.name == caller.name]
+        return handles
+
+    # No filter provided — default to caller's own handles, or refuse
+    # if there's no caller at all.
+    if caller is None:
         raise PermissionError(
-            "list_handles requires a principal, repo, or explicit all_tenants=True with admin scope"
+            "list_handles requires a principal, repo, caller, or explicit "
+            "all_tenants=True with admin scope"
         )
-
+    rows = await client.query(
+        """
+        SELECT r.* FROM mahavishnu_worktree_registry r
+          JOIN mahavishnu_worktree_registry_idx_principal p
+            ON r.handle_id = p.handle_id
+          WHERE p.principal = :principal
+          ORDER BY r.created_at
+        """,
+        {"principal": caller.name},
+    )
     return [_row_to_handle(r) for r in rows]
-
 
 __all__ = [
     "SCHEMA_STATEMENTS",

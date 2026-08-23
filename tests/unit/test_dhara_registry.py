@@ -3,18 +3,17 @@
 from __future__ import annotations
 
 import asyncio
-from datetime import UTC, datetime
+from datetime import UTC
 from typing import Any
 
 import pytest
 
 from mahavishnu.auth import Principal
 from mahavishnu.core.worktree_providers.dhara_registry import (
-    register_handles,
     list_handles,
+    register_handles,
 )
 from mahavishnu.core.worktree_providers.pre_migrate import synthesize_handle
-from mahavishnu.core.worktree_providers.types import LocalWorktreeRef
 
 
 class FakeDharaClient:
@@ -81,7 +80,7 @@ class FakeDharaClient:
         raise ValueError(f"Unhandled SELECT in fake: {sql[:80]}")
 
 
-def _make_handle(name: str = "h-1", repo: str = "mahavishnu") -> "Any":
+def _make_handle(name: str = "h-1", repo: str = "mahavishnu") -> Any:
     return synthesize_handle(
         f"/Users/les/Projects/{repo}",
         {
@@ -277,28 +276,49 @@ def test_list_handles_filter_by_principal() -> None:
             principal=Principal(name="uid:2000", uid=2000),
         )
         # uid:1000 handles need a uid:1000 caller; uid:2000 handle
-        # needs an admin caller (different uid).
+        # needs an admin caller (different uid, with register-any).
         caller_uid1k = _caller_with_scope("worktree:register")
         caller_admin = _caller_with_scope(
             "worktree:register", "worktree:register-any",
             uid=9999, name="uid:9999",
+        )
+        # Listing uid:2000's handles requires worktree:list-all scope
+        # (different uid than the caller). Use a separate admin caller.
+        caller_list_all = _caller_with_scope(
+            "worktree:list-all", uid=9999, name="uid:9999",
         )
         await register_handles(
             client, [h_uid1000_a, h_uid1000_b], caller=caller_uid1k
         )
         await register_handles(client, [h_uid2000], caller=caller_admin)
 
-        uid1000_handles = await list_handles(client, principal="uid:1000")
-        uid2000_handles = await list_handles(client, principal="uid:2000")
+        uid1000_handles = await list_handles(
+            client, principal="uid:1000", caller=caller_uid1k
+        )
+        uid2000_handles = await list_handles(
+            client, principal="uid:2000", caller=caller_list_all
+        )
         return uid1000_handles, uid2000_handles, h_uid1000_a, h_uid1000_b, h_uid2000
 
-    uid1000, uid2000, h_a, h_b, h_2k = asyncio.run(run())
+    uid1000, uid2000, h_a, h_b, _h_2k = asyncio.run(run())
     assert len(uid1000) == 2
     assert len(uid2000) == 1
     assert uid2000[0].principal.name == "uid:2000"
     uid1000_ids = {h.handle_id for h in uid1000}
     assert h_a.handle_id in uid1000_ids
     assert h_b.handle_id in uid1000_ids
+
+
+def test_list_handles_non_admin_cannot_query_other_principal() -> None:
+    """Non-admin callers are rejected when asking for someone else's handles."""
+    async def run() -> None:
+        client = FakeDharaClient()
+        await _ensure_schema(client)
+        caller_uid1k = _caller_with_scope("worktree:register", "worktree:read")
+        with pytest.raises(PermissionError, match="can only list their own"):
+            await list_handles(client, principal="uid:2000", caller=caller_uid1k)
+
+    asyncio.run(run())
 
 
 def test_list_handles_filter_by_repo() -> None:
@@ -310,24 +330,86 @@ def test_list_handles_filter_by_repo() -> None:
         await register_handles(
             client, [h_mah, h_fb], caller=_caller_with_scope("worktree:register")
         )
-        return await list_handles(client, repo="mahavishnu")
+        # Repo listing requires worktree:read scope for non-admin callers
+        return await list_handles(
+            client, repo="mahavishnu", caller=_caller_with_scope("worktree:read")
+        )
 
     handles = asyncio.run(run())
     assert len(handles) == 1
     assert handles[0].repo == "mahavishnu"
 
 
+def test_list_handles_repo_filter_without_read_scope_rejected() -> None:
+    async def run() -> None:
+        client = FakeDharaClient()
+        await _ensure_schema(client)
+        # No worktree:read scope → reject
+        caller = _caller_with_scope("worktree:register")
+        with pytest.raises(PermissionError, match="worktree:read"):
+            await list_handles(client, repo="mahavishnu", caller=caller)
+
+    asyncio.run(run())
+
+
+def test_list_handles_repo_filter_post_filters_to_callers_own() -> None:
+    """Repo-scoped listing returns all rows from SQL, then post-filters
+    to only handles the non-admin caller owns."""
+    async def run() -> tuple:
+        client = FakeDharaClient()
+        await _ensure_schema(client)
+        h_owner = _make_handle("h-owner")  # uid:1000
+        from dataclasses import replace
+        h_other = replace(
+            _make_handle("h-other"),
+            principal=Principal(name="uid:2000", uid=2000),
+        )
+        caller_uid1k = _caller_with_scope(
+            "worktree:register", "worktree:register-any",
+            uid=9999, name="uid:9999",
+        )
+        await register_handles(client, [h_owner, h_other], caller=caller_uid1k)
+        # uid:1000 caller asks for repo=mahavishnu → sees only own handle
+        caller_uid1k = _caller_with_scope("worktree:read")
+        handles = await list_handles(
+            client, repo="mahavishnu", caller=caller_uid1k
+        )
+        return handles, h_owner, h_other
+
+    handles, h_owner, _h_other = asyncio.run(run())
+    assert len(handles) == 1
+    assert handles[0].handle_id == h_owner.handle_id
+
+
 # ----- list_handles security ------------------------------------------------
 
 
-def test_list_handles_unfiltered_raises_without_admin() -> None:
+def test_list_handles_unfiltered_raises_without_caller() -> None:
+    """No caller + no filter → reject (would have nothing to default to)."""
     async def run() -> None:
         client = FakeDharaClient()
         await _ensure_schema(client)
         with pytest.raises(PermissionError, match="list_handles requires"):
-            await list_handles(client, caller=_caller_with_scope("worktree:read"))
+            await list_handles(client)
 
     asyncio.run(run())
+
+
+def test_list_handles_unfiltered_with_caller_returns_own_handles() -> None:
+    """Caller + no filter → returns the caller's own handles (their
+    default view)."""
+    async def run() -> tuple:
+        client = FakeDharaClient()
+        await _ensure_schema(client)
+        h = _make_handle("h-1")
+        caller = _caller_with_scope("worktree:register")
+        await register_handles(client, [h], caller=caller)
+        handles = await list_handles(client, caller=caller)
+        return h, handles
+
+    h, handles = asyncio.run(run())
+    assert len(handles) == 1
+    assert handles[0].handle_id == h.handle_id
 
 
 def test_list_handles_all_tenants_requires_admin_scope() -> None:
@@ -411,6 +493,53 @@ def test_rejects_dotdot_storage_path() -> None:
     asyncio.run(run())
 
 
+def test_rejects_dash_prefix_storage_path() -> None:
+    """A path string starting with '-' could be mis-parsed as a CLI flag
+    by downstream tooling (e.g. `rm -rf /tmp` if the path was ever passed
+    as an argument)."""
+    from dataclasses import replace
+    from pathlib import Path
+
+    h = _make_handle("h-bad")
+    # Path can't be both absolute and start with '-' on Unix, but the
+    # raw string check catches the dash-prefix before the absolute check
+    # fires (the path doesn't even need to be absolute for the threat
+    # to exist if a consumer ever interpolates it into a shell command).
+    bad_ref = replace(h.storage_ref, path=Path("-rf/tmp"))
+    bad_handle = replace(h, storage_ref=bad_ref)
+
+    async def run() -> None:
+        client = FakeDharaClient()
+        await _ensure_schema(client)
+        with pytest.raises(ValueError, match="dash"):
+            await register_handles(
+                client, [bad_handle], caller=_caller_with_scope("worktree:register")
+            )
+
+    asyncio.run(run())
+
+
+def test_rejects_path_outside_worktree_base() -> None:
+    """Storage paths must resolve to a location inside the configured
+    worktree base directory."""
+    from dataclasses import replace
+    from pathlib import Path
+
+    h = _make_handle("h-bad")
+    bad_ref = replace(h.storage_ref, path=Path("/etc/passwd"))
+    bad_handle = replace(h, storage_ref=bad_ref)
+
+    async def run() -> None:
+        client = FakeDharaClient()
+        await _ensure_schema(client)
+        with pytest.raises(ValueError, match="outside worktree base"):
+            await register_handles(
+                client, [bad_handle], caller=_caller_with_scope("worktree:register")
+            )
+
+    asyncio.run(run())
+
+
 # ----- backend-kind-loss (security review #6) ------------------------------
 
 
@@ -419,10 +548,8 @@ def test_remote_worktree_ref_preserves_backend_kind() -> None:
     backend_kind (s3 vs gcs vs azure) in storage_ref_json so round-trip
     doesn't silently downgrade to a generic remote type."""
     from dataclasses import replace
-    from pathlib import Path
 
     from mahavishnu.core.worktree_providers.types import (
-        LocalWorktreeRef,
         RemoteWorktreeRef,
     )
 
@@ -443,7 +570,8 @@ def test_remote_worktree_ref_preserves_backend_kind() -> None:
 
     # Just create a fresh handle via synthesize_handle with a different
     # approach: directly construct.
-    from datetime import UTC, datetime as dt
+    from datetime import datetime as dt
+
     from mahavishnu.core.worktree_providers.types import WorktreeHandle
 
     h_remote = WorktreeHandle(
@@ -478,3 +606,51 @@ def test_remote_worktree_ref_preserves_backend_kind() -> None:
         assert loaded.storage_ref.key == "path/to/bundle"
 
     asyncio.run(run())
+
+
+@pytest.mark.parametrize("backend", ["gcs", "azure", "s3"])
+def test_remote_worktree_ref_round_trip_all_backends(backend: str) -> None:
+    """Non-default backends (gcs/azure) must round-trip without
+    silently downgrading to s3. Bug was: RemoteWorktreeRef.backend_kind
+    was a hardcoded property returning 's3' regardless of the actual
+    storage backend, so a gcs handle would silently downgrade to s3
+    on read."""
+    from datetime import datetime as dt
+
+    from mahavishnu.core.worktree_providers.types import (
+        RemoteWorktreeRef,
+        WorktreeHandle,
+    )
+
+    h = WorktreeHandle(
+        handle_id=f"h-remote-{backend}",
+        principal=Principal(name="uid:1000", uid=1000),
+        repo="mahavishnu",
+        branch=f"feature/{backend}",
+        base_ref="main",
+        created_at=dt.now(UTC),
+        storage_ref=RemoteWorktreeRef(
+            bucket="my-bucket",
+            key=f"path/to/{backend}/bundle",
+            worktree_id=f"h-remote-{backend}",
+            backend_kind=backend,  # type: ignore[arg-type]
+        ),
+        sha256="",
+        bytes_size=0,
+        cleanup_policy=None,
+        provenance="v4",
+    )
+
+    async def run() -> str:
+        client = FakeDharaClient()
+        await _ensure_schema(client)
+        await register_handles(
+            client, [h], caller=_caller_with_scope("worktree:register")
+        )
+        admin = _caller_with_scope("worktree:list-all")
+        loaded = (
+            await list_handles(client, principal=h.principal.name, caller=admin)
+        )[0]
+        return loaded.storage_ref.backend_kind
+
+    assert asyncio.run(run()) == backend

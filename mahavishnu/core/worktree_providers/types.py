@@ -16,12 +16,13 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from datetime import datetime
-from pathlib import Path
-from typing import Literal
+from typing import TYPE_CHECKING, Literal
 
-from mahavishnu.auth import CleanupPolicy, Principal
+if TYPE_CHECKING:
+    from datetime import datetime
+    from pathlib import Path
 
+    from mahavishnu.auth import CleanupPolicy, Principal
 
 # Discriminator for WorktreeRef. Typed via Literal (not StrEnum) for
 # compatibility with @dataclass(frozen=True, slots=True) inheritance
@@ -43,7 +44,7 @@ class WorktreeHandle:
     branch: str
     base_ref: str
     created_at: datetime
-    storage_ref: "WorktreeRef"
+    storage_ref: WorktreeRef
     sha256: str  # empty for pre-v4 worktrees; lazily computed
     bytes_size: int  # 0 for pre-v4; lazily computed
     cleanup_policy: CleanupPolicy | None = None
@@ -85,21 +86,21 @@ class RemoteWorktreeRef(WorktreeRef):
 
     Renamed from ``S3WorktreeRef`` in Phase 1 (ADR 015 v4 §13) to
     reflect that the provider wraps *any* Oneiric storage adapter, not
-    just S3. ``backend_kind`` still distinguishes the actual backend at
-    runtime via the ``BackendKind`` literal.
+    just S3. ``backend_kind`` carries the actual backend identity
+    (``"s3"``, ``"gcs"``, ``"azure"``, ``"bundle"``) — round-trips
+    through ``dhara_registry`` preserve this field exactly so a gcs
+    handle never silently downgrades to ``"s3"``.
+
+    The default of ``"s3"`` is retained for backward compatibility with
+    callers that construct a ``RemoteWorktreeRef`` without specifying
+    the backend (e.g. legacy code paths, tests). New code SHOULD pass
+    the explicit backend kind at construction.
     """
 
     bucket: str
     key: str
     worktree_id: str
-
-    @property
-    def backend_kind(self) -> str:
-        # Default is "s3" for backward compat; the runtime backend
-        # is recorded on the WorktreeHandle via its provenance field.
-        # Callers that need exact backend discrimination should
-        # read the handle's provenance, not this default.
-        return "s3"
+    backend_kind: BackendKind = "s3"
 
 
 @dataclass(frozen=True, slots=True)
