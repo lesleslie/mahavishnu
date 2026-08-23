@@ -57,6 +57,25 @@ DEBUG_ENV = "MAHAVISHNU_AUTO_WORKTREE_DEBUG"
 TIMEOUT_ENV = "MAHAVISHNU_AUTO_WORKTREE_TIMEOUT"
 
 
+def _worktree_base_path() -> Path:
+    """Resolve the worktree base path inline (mirrors paths.py::get_worktree_base_path).
+
+    This hook runs BEFORE MahavishnuApp.load() (per the latency comment
+    near ``_run_session_start``), so it cannot import from
+    ``mahavishnu.core.paths``. The CI guard test in
+    tests/unit/test_worktree_base_path_resolution.py pins the resolution
+    order here so the inline helper stays in sync with the package
+    helper. If the env var name or default changes, update both.
+    """
+    explicit = os.environ.get("MAHAVISHNU_WORKTREE_BASE_PATH")
+    if explicit:
+        return Path(explicit).expanduser().resolve()
+    legacy = os.environ.get(ROOT_ENV)
+    if legacy:
+        return Path(legacy).expanduser().resolve()
+    return (Path.home() / "worktrees").resolve()
+
+
 def _log(msg: str) -> None:
     """Write a single line to stderr; Claude Code surfaces as Hook output."""
     sys.stderr.write(f"mahavishnu: {msg}\n")
@@ -287,8 +306,7 @@ def _run_session_start(session_id_full: str, cwd: str) -> int:
     #   - branch name is derived from session_id (predictable)
     #   - no dependency chain involved
     # Path validation is re-applied below (relative_to root) for safety.
-    root_env = os.environ.get(ROOT_ENV, "~/worktrees")
-    root = Path(root_env).expanduser().resolve()
+    root = _worktree_base_path()
     target_path = (root / worktree_name).resolve()
     branch_base = os.environ.get(BRANCH_BASE_ENV)
     if not branch_base:
@@ -424,9 +442,7 @@ def _maybe_print_discovery_hint(cwd: str, mode: str) -> None:
         return  # already in a worktree — they know
     if _detect_repo_nickname(cwd) is None:
         return  # not a git repo — feature not applicable
-    root_env = os.environ.get(ROOT_ENV, "~/worktrees")
-    root = Path(root_env).expanduser()
-    if root.exists():
+    if _worktree_base_path().exists():
         return  # already configured — they've set something up
     _log(
         "per-session worktree isolation is on "

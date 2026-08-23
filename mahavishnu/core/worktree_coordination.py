@@ -20,6 +20,7 @@ from typing import Any
 
 from mahavishnu.core.coordination.manager import CoordinationManager
 from mahavishnu.core.errors import ConfigurationError
+from mahavishnu.core.paths import get_worktree_base_path
 from mahavishnu.core.repo_manager import RepositoryManager
 
 from .worktree_audit import WorktreeAuditLogger
@@ -113,7 +114,9 @@ class WorktreeCoordinator:
         # Path validator (security - defense in depth)
         if allowed_worktree_roots is None:
             # Default allow-list covers:
-            #  - ~/worktrees : the canonical convention
+            #  - <get_worktree_base_path()> : the canonical convention
+            #    (resolved from MAHAVISHNU_WORKTREE_BASE_PATH or
+            #    MAHAVISHNU_AUTO_WORKTREE_ROOT or Path.home()/"worktrees")
             #  - <cwd>        : the current working directory
             #  - <repo>/.worktrees
             #  - <repo>/.claude/worktrees
@@ -129,7 +132,7 @@ class WorktreeCoordinator:
             # validator still rejects null bytes, traversal, and shell
             # metacharacters on top of this allow-list.
             allowed_worktree_roots = [
-                Path.home() / "worktrees",
+                get_worktree_base_path(),
                 Path.cwd(),
             ]
             try:

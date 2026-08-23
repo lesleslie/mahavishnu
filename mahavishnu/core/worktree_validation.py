@@ -15,6 +15,8 @@ import logging
 from pathlib import Path
 from typing import ClassVar
 
+from mahavishnu.core.paths import get_worktree_base_path
+
 logger = logging.getLogger(__name__)
 
 
@@ -31,11 +33,12 @@ class WorktreePathValidator:
     4. Log all security rejections for audit trail
 
     Example:
+        >>> from mahavishnu.core.paths import get_worktree_base_path
         >>> validator = WorktreePathValidator(
-        ...     allowed_roots=[Path.home() / "worktrees", Path.cwd()]
+        ...     allowed_roots=[get_worktree_base_path(), Path.cwd()]
         ... )
         >>> is_valid, error = validator.validate_worktree_path(
-        ...     "~/worktrees/mahavishnu/feature-auth",
+        ...     str(get_worktree_base_path() / "mahavishnu/feature-auth"),
         ...     user_id="user-123"
         ... )
         >>> assert is_valid
@@ -294,13 +297,14 @@ class WorktreePathValidator:
         Args:
             repo_nickname: Repository nickname (safe, from repos.yaml)
             branch: Branch name (will be sanitized)
-            base_dir: Base directory for worktrees (default: ~/worktrees)
+            base_dir: Base directory for worktrees
+                (default: ``get_worktree_base_path()`` from ``paths.py``)
 
         Returns:
             Safe, absolute worktree path
         """
         if base_dir is None:
-            base_dir = Path.home() / "worktrees"
+            base_dir = get_worktree_base_path()
 
         # Sanitize branch name for filesystem
         safe_branch = self._sanitize_branch_name(branch)

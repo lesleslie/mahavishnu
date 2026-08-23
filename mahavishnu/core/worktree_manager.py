@@ -8,8 +8,13 @@ Manages git worktree lifecycle for task isolation:
 
 Usage:
     from mahavishnu.core.worktree_manager import WorktreeManager
+    from mahavishnu.core.paths import get_worktree_base_path
 
-    manager = WorktreeManager(task_store, git_runner, base_path="/repos")
+    manager = WorktreeManager(
+        task_store,
+        git_runner,
+        base_path=str(get_worktree_base_path()),
+    )
 
     # Create worktree for task
     worktree = await manager.create_worktree(
@@ -31,10 +36,12 @@ from datetime import UTC, datetime
 from enum import StrEnum
 import logging
 import os
+from pathlib import Path
 from typing import TYPE_CHECKING, Any
 import uuid
 
 from mahavishnu.core.errors import ErrorCode, MahavishnuError
+from mahavishnu.core.paths import get_worktree_base_path
 
 if TYPE_CHECKING:
     from mahavishnu.core.task_store import TaskStore
@@ -173,18 +180,22 @@ class WorktreeManager:
         self,
         task_store: TaskStore,
         git_runner: Any = None,  # GitRunner or mock
-        base_path: str = "",
+        base_path: str | None = None,
     ) -> None:
         """Initialize the worktree manager.
 
         Args:
             task_store: TaskStore for task operations
             git_runner: Optional git command runner (creates default if None)
-            base_path: Base path for worktrees (default: repo parent + worktrees)
+            base_path: Base path for worktrees
+                (default: ``str(get_worktree_base_path())`` from
+                ``mahavishnu.core.paths``; pass an empty string ``""`` to
+                fall back to the legacy "repo parent + worktree-{task_id}"
+                behavior)
         """
         self.task_store = task_store
         self._git = git_runner or GitRunner()
-        self._base_path = base_path
+        self._base_path = base_path or str(get_worktree_base_path())
         self._worktrees: dict[str, WorktreeInfo] = {}
 
     def _generate_worktree_id(self) -> str:

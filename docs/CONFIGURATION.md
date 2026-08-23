@@ -67,7 +67,7 @@ When **multiple Claude Code sessions run concurrently** in the same repo, they s
 | Variable | Default | Effect |
 |----------|---------|--------|
 | `MAHAVISHNU_AUTO_WORKTREE` | unset = **enabled** | Unset or truthy (`1`/`true`/`yes`/`on`) → per-session worktree isolation is on. Falsy (`0`/`false`/`no`/`off`) → opt out and emit a stderr hint. |
-| `MAHAVISHNU_AUTO_WORKTREE_ROOT` | `~/worktrees` | Parent directory for auto-provisioned worktrees. Matches `WorktreePathValidator`'s default. |
+| `MAHAVISHNU_AUTO_WORKTREE_ROOT` | `~/worktrees` | Parent directory for auto-provisioned worktrees. Resolved via `mahavishnu.core.paths.get_worktree_base_path()`; matches `WorktreePathValidator`'s default. **Deprecated alias for `MAHAVISHNU_WORKTREE_BASE_PATH`** (canonical name, added in v4). |
 | `MAHAVISHNU_AUTO_WORKTREE_BRANCH_BASE` | current branch in cwd | Base branch when creating the new session branch. Falls back to `main` when discovery fails (detached HEAD, non-git dir). |
 | `MAHAVISHNU_AUTO_WORKTREE_CLEANUP` | `mark` | `mark` records the worktree as `abandoned` in the registry at SessionEnd (recommended). `keep` is a no-op. The plan never auto-removes worktrees — see [`mahavishnu worktree prune-abandoned`](#cli-cleanup) below. |
 | `MAHAVISHNU_AUTO_WORKTREE_DEBUG` | unset | Set truthy to emit `[debug]`-prefixed lines to stderr (cwd, branch, target path, branch_base, timeout). Useful for operators debugging without enabling the full feature. |
