@@ -1643,3 +1643,37 @@ class ErrorTemplates:
             error_code=ErrorCode.LEARNING_FEEDBACK_FAILED,
             details={"team_id": team_id, "feedback_type": feedback_type, "reason": reason},
         )
+
+
+# ---------------------------------------------------------------------------
+# Worktree storage errors (ADR 015 v4 §13)
+# ---------------------------------------------------------------------------
+
+
+class WorktreeError(MahavishnuError):
+    """Base class for worktree storage operation errors.
+
+    Distinct from the existing
+    :class:`mahavishnu.core.worktree_providers.errors.WorktreeOperationError`
+    which is the legacy provider-level error. New code that operates
+    on :class:`WorktreeHandle` objects should raise this hierarchy.
+    """
+
+
+class WorktreeLocked(WorktreeError):
+    """Distributed worktree lock could not be acquired.
+
+    Raised by ``WorktreeProvider.lock()`` when another process holds
+    the lock for the same ``(principal, repo, branch)`` tuple and
+    the acquire_timeout has elapsed.
+    """
+
+
+class WorktreeIntegrityError(WorktreeError):
+    """Bundle hash mismatch detected during ``fetch()``.
+
+    Raised when the SHA-256 of a retrieved bundle does not match
+    the recorded hash. Indicates either storage corruption or
+    unauthorized substitution. The worktree is NOT materialized
+    in this case (fail-closed).
+    """

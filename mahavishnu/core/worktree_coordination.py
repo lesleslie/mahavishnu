@@ -26,7 +26,7 @@ from mahavishnu.core.repo_manager import RepositoryManager
 from .worktree_audit import WorktreeAuditLogger
 from .worktree_backup import WorktreeBackupManager
 from .worktree_providers.base import WorktreeProvider
-from .worktree_providers.local import DirectGitWorktreeProvider
+from .worktree_providers.local import DirectGitWorktreeProvider, LocalWorktreeProvider
 from .worktree_providers.registry import WorktreeProviderRegistry
 from .worktree_providers.session_buddy import SessionBuddyWorktreeProvider
 from .worktree_validation import WorktreePathValidator
@@ -97,8 +97,13 @@ class WorktreeCoordinator:
 
         # Initialize provider registry with fallback chain
         if providers is None:
+            # ADR 015 v4 §1: LocalWorktreeProvider is the v4-era primary
+            # local backend (preserves .git/objects/ sharing with the
+            # source repo, returns WorktreeHandle). DirectGitWorktreeProvider
+            # is the 1-release deprecated alias (Phase 0.5).
             providers = [
-                DirectGitWorktreeProvider(),  # Fallback
+                LocalWorktreeProvider(),  # v4 primary (local)
+                DirectGitWorktreeProvider(),  # 1-release alias
             ]
             # Re-enable SessionBuddyWorktreeProvider when its MCP server
             # exposes the worktree tools (worktree-list / worktree-add /

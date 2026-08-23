@@ -234,3 +234,290 @@ class DirectGitWorktreeProvider(WorktreeProvider):
         except Exception as e:
             logger.error(f"DirectGit list failed: {e}")
             raise
+
+
+
+# ---------------------------------------------------------------------------
+# LocalWorktreeProvider (ADR 015 v4 §1) — the v4-era primary local provider.
+# ---------------------------------------------------------------------------
+
+
+class LocalWorktreeProvider(WorktreeProvider):
+    """v4-era local worktree provider.
+
+    Uses ``git worktree add`` directly (preserves ``.git/objects/`` sharing
+    with the source repo, which the v1 review flagged as a key v3
+    defect). This is the primary local backend; the legacy
+    ``DirectGitWorktreeProvider`` is preserved as a 1-release
+    fallback for callers that still use the ``dict[str, Any]`` API.
+    """
+
+    def __init__(self) -> None:
+        self._git_executable = "git"
+
+    def provider_name(self) -> str:
+        return "LocalWorktreeProvider"
+
+    def health_check(self) -> bool:
+        import shutil
+        return shutil.which(self._git_executable) is not None
+
+    async def create_worktree(
+        self,
+        repository_path: Path,
+        branch: str,
+        worktree_path: Path,
+        create_branch: bool = False,
+    ) -> dict[str, Any]:
+        return await _create_worktree_via_git(
+            self._git_executable,
+            repository_path,
+            branch,
+            worktree_path,
+            create_branch,
+        )
+
+    async def remove_worktree(
+        self,
+        repository_path: Path,
+        worktree_path: Path,
+        force: bool = False,
+    ) -> dict[str, Any]:
+        return await _remove_worktree_via_git(
+            self._git_executable,
+            repository_path,
+            worktree_path,
+            force,
+        )
+
+    async def list_worktrees(
+        self,
+        repository_path: Path,
+    ) -> dict[str, Any]:
+        return await _list_worktrees_via_git(self._git_executable, repository_path)
+
+    # v4 WorktreeHandle-based interface (async)
+    async def create_worktree_handle(
+        self,
+        repo: str,
+        branch: str,
+        base_ref: str,
+        principal,
+    ) -> "WorktreeHandle":
+        """Create a worktree and return a WorktreeHandle.
+
+        Bundle integrity (sha256) is computed lazily on first fetch()
+        per v4 §6.
+        """
+        from datetime import UTC, datetime
+        import uuid
+
+        from .types import LocalWorktreeRef, WorktreeHandle
+        from mahavishnu.core.paths import get_worktree_path
+
+        wt_path = get_worktree_path(repo, branch)
+        wt_path.mkdir(parents=True, exist_ok=True)
+
+        await _create_worktree_via_git(
+            self._git_executable,
+            Path(repo),
+            branch,
+            wt_path,
+            create_branch=True,
+        )
+
+        return WorktreeHandle(
+            handle_id=uuid.uuid4().hex,
+            principal=principal,
+            repo=repo,
+            branch=branch,
+            base_ref=base_ref,
+            created_at=datetime.now(UTC),
+            storage_ref=LocalWorktreeRef(
+                path=wt_path,
+                worktree_id=uuid.uuid4().hex,
+            ),
+            sha256="",  # lazy
+            bytes_size=0,  # lazy
+            cleanup_policy=None,
+            provenance="v4",
+        )
+
+    async def fetch(self, handle) -> "WorktreeRef":
+        from .types import LocalWorktreeRef
+        from mahavishnu.core.errors import WorktreeError
+
+        if not isinstance(handle.storage_ref, LocalWorktreeRef):
+            raise NotImplementedError(
+                f"LocalWorktreeProvider can only fetch LocalWorktreeRef; got {type(handle.storage_ref).__name__}"
+            )
+        if not handle.storage_ref.path.exists():
+            raise WorktreeError(
+                f"Worktree path does not exist: {handle.storage_ref.path}"
+            )
+        return handle.storage_ref
+
+    async def remove_handle(self, handle) -> None:
+        from .types import LocalWorktreeRef
+
+        if not isinstance(handle.storage_ref, LocalWorktreeRef):
+            raise NotImplementedError(
+                f"LocalWorktreeProvider can only remove LocalWorktreeRef; got {type(handle.storage_ref).__name__}"
+            )
+        await _remove_worktree_via_git(
+            self._git_executable,
+            Path(handle.repo),
+            handle.storage_ref.path,
+            force=True,
+        )
+
+    async def list_handles(
+        self,
+        principal=None,
+        repo: str | None = None,
+    ) -> list:
+        return []
+
+    async def exists(self, handle) -> bool:
+        from .types import LocalWorktreeRef
+
+        if not isinstance(handle.storage_ref, LocalWorktreeRef):
+            return False
+        return handle.storage_ref.path.exists()
+
+    async def lock(
+        self,
+        repo: str,
+        branch: str,
+        *,
+        acquire_timeout: float = 10.0,
+        lease_ttl: float = 30.0,
+    ):
+        raise NotImplementedError(
+            "LocalWorktreeProvider.lock() requires Redis; see ADR 015 v4 §14"
+        )
+
+    async def health(self) -> bool:
+        return self.health_check()
+
+
+async def _create_worktree_via_git(
+    git_executable: str,
+    repository_path: Path,
+    branch: str,
+    worktree_path: Path,
+    create_branch: bool = False,
+) -> dict[str, Any]:
+    cmd = [git_executable, "-C", str(repository_path), "worktree", "add"]
+    if create_branch:
+        cmd.extend(["-b", branch])
+    else:
+        cmd.extend(["-B", branch])
+    cmd.append(str(worktree_path))
+
+    from .errors import WorktreeCreationError
+
+    try:
+        process = await asyncio.create_subprocess_exec(
+            *cmd,
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE,
+        )
+        _stdout, stderr = await process.communicate()
+        if process.returncode != 0:
+            error_msg = stderr.decode() if stderr else "Unknown error"
+            raise WorktreeCreationError(
+                f"Failed to create worktree: {error_msg}"
+            )
+        return {
+            "success": True,
+            "worktree_path": str(worktree_path),
+            "branch": branch,
+            "provider": "LocalWorktreeProvider",
+        }
+    except Exception as e:
+        raise WorktreeCreationError(f"git worktree add failed: {e}") from e
+
+
+async def _remove_worktree_via_git(
+    git_executable: str,
+    repository_path: Path,
+    worktree_path: Path,
+    force: bool = False,
+) -> dict[str, Any]:
+    cmd = [git_executable, "-C", str(repository_path), "worktree", "remove"]
+    if force:
+        cmd.append("--force")
+    cmd.append(str(worktree_path))
+
+    from .errors import WorktreeOperationError
+
+    try:
+        process = await asyncio.create_subprocess_exec(
+            *cmd,
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE,
+        )
+        _stdout, stderr = await process.communicate()
+        if process.returncode != 0:
+            error_msg = stderr.decode() if stderr else "Unknown error"
+            raise WorktreeOperationError(
+                f"Failed to remove worktree: {error_msg}"
+            )
+        return {
+            "success": True,
+            "removed_path": str(worktree_path),
+            "provider": "LocalWorktreeProvider",
+        }
+    except Exception as e:
+        raise WorktreeOperationError(f"git worktree remove failed: {e}") from e
+
+
+async def _list_worktrees_via_git(
+    git_executable: str,
+    repository_path: Path,
+) -> dict[str, Any]:
+    cmd = [
+        git_executable,
+        "-C",
+        str(repository_path),
+        "worktree",
+        "list",
+        "--porcelain",
+    ]
+
+    from .errors import WorktreeOperationError
+
+    try:
+        process = await asyncio.create_subprocess_exec(
+            *cmd,
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE,
+        )
+        stdout, stderr = await process.communicate()
+        if process.returncode != 0:
+            error_msg = stderr.decode() if stderr else "Unknown error"
+            raise WorktreeOperationError(
+                f"Failed to list worktrees: {error_msg}"
+            )
+        worktrees = []
+        for line in stdout.decode().splitlines():
+            if not line.strip():
+                continue
+            parts = line.split()
+            if len(parts) >= 4:
+                worktrees.append(
+                    {
+                        "path": parts[0],
+                        "branch": parts[1],
+                        "commit": parts[2],
+                        "status": parts[3] if len(parts) > 3 else "ok",
+                    }
+                )
+        return {
+            "success": True,
+            "worktrees": worktrees,
+            "provider": "LocalWorktreeProvider",
+        }
+    except Exception as e:
+        raise WorktreeOperationError(f"git worktree list failed: {e}") from e

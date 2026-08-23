@@ -24,18 +24,25 @@ Example:
 """
 
 __all__ = [
+    "BundleRef",
     "DirectGitWorktreeProvider",
+    "LocalWorktreeRef",
+    "LocalWorktreeProvider",
     "MockWorktreeProvider",
     "ProviderUnavailableError",
     # Concrete providers
+    "S3WorktreeRef",
     "SessionBuddyWorktreeProvider",
     "WorktreeCreationError",
     # Exceptions
     "WorktreeOperationError",
     # Abstract interface
+    "WorktreeHandle",
     "WorktreeProvider",
     # Registry
     "WorktreeProviderRegistry",
+    "WorktreeLock",
+    "WorktreeRef",
     "WorktreeRemovalError",
     "WorktreeValidationError",
 ]
@@ -43,9 +50,16 @@ __all__ = [
 # Mapping of export name -> (relative_module, attribute_name)
 _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
     "WorktreeProvider": (".base", "WorktreeProvider"),
-    "DirectGitWorktreeProvider": (".local", "DirectGitWorktreeProvider"),
-    "MockWorktreeProvider": (".mock", "MockWorktreeProvider"),
     "WorktreeProviderRegistry": (".registry", "WorktreeProviderRegistry"),
+    "WorktreeHandle": (".types", "WorktreeHandle"),
+    "WorktreeRef": (".types", "WorktreeRef"),
+    "LocalWorktreeRef": (".types", "LocalWorktreeRef"),
+    "S3WorktreeRef": (".types", "S3WorktreeRef"),
+    "BundleRef": (".types", "BundleRef"),
+    "WorktreeLock": (".types", "WorktreeLock"),
+    "DirectGitWorktreeProvider": (".local", "DirectGitWorktreeProvider"),
+    "LocalWorktreeProvider": (".local", "LocalWorktreeProvider"),
+    "MockWorktreeProvider": (".mock", "MockWorktreeProvider"),
     "SessionBuddyWorktreeProvider": (".session_buddy", "SessionBuddyWorktreeProvider"),
     "ProviderUnavailableError": (".errors", "ProviderUnavailableError"),
     "WorktreeCreationError": (".errors", "WorktreeCreationError"),
