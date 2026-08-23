@@ -494,8 +494,22 @@ class LocalWorktreeProvider(WorktreeProvider):
             )
             raise
 
-    async def remove_handle(self, handle) -> bool:
-        """Remove worktree: git rm + cache invalidate + Dhara remove (§18 Phase 2)."""
+    async def remove_handle(
+        self,
+        handle,
+        *,
+        caller: "Principal",
+    ) -> bool:
+        """Remove worktree: git rm + cache invalidate + Dhara remove (§18 Phase 2).
+
+        ``caller`` is the authenticated session principal — NOT
+        ``handle.principal``. Dhara's ``remove_handle`` uses ``caller``
+        for the ownership + scope check; passing the handle's
+        principal would defeat that check (the owner could remove
+        their own handle, but a session principal could impersonate
+        the owner). Use ``WorktreeCoordinator.remove_worktree_handle``
+        which threads ``caller`` through.
+        """
         from .dhara_registry import remove_handle as dhara_remove
         from .types import LocalWorktreeRef
         from mahavishnu.observability.metrics import record_cache_invalidation
@@ -530,7 +544,7 @@ class LocalWorktreeProvider(WorktreeProvider):
                 await dhara_remove(
                     self._dhara_client,
                     handle.handle_id,
-                    caller=handle.principal,
+                    caller=caller,
                 )
             except PermissionError:
                 raise  # auth errors propagate; data errors swallowed
@@ -543,25 +557,30 @@ class LocalWorktreeProvider(WorktreeProvider):
         repo: str | None = None,
         caller=None,
     ) -> list:
-        """Delegate to Dhara registry (filter by principal/repo)."""
-        from .dhara_registry import list_handles as dhara_list
-        from mahavishnu.auth import Principal as P
+        """Delegate to Dhara registry (filter by principal/repo).
 
+        ``caller`` is REQUIRED — we never synthesize an authenticated
+        principal. If you want to list your own handles, pass
+        ``caller=Principal(uid=..., name=..., scopes=...)`` from a
+        verified session. The Dhara ``list_handles`` defaults
+        ``principal=caller.name`` when no explicit principal is passed,
+        so dropping ``principal=`` here is correct.
+        """
+        from .dhara_registry import list_handles as dhara_list
+
+        if caller is None:
+            raise PermissionError(
+                "LocalWorktreeProvider.list_handles requires a caller "
+                "(no anonymous name-based listing)"
+            )
         if self._dhara_client is None:
             return []
 
-        effective_caller = caller
-        if effective_caller is None:
-            if isinstance(principal, str):
-                effective_caller = P(uid=None, name=principal)
-            else:
-                effective_caller = P.anonymous()
-
         return await dhara_list(
             self._dhara_client,
-            principal=principal if isinstance(principal, str) else None,
+            principal=None,
             repo=repo,
-            caller=effective_caller,
+            caller=caller,
         )
 
     async def exists(self, handle) -> bool:

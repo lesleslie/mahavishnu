@@ -405,14 +405,24 @@ class RemoteWorktreeProvider(WorktreeProvider):
             worktree_id=handle.handle_id,
         )
 
-    async def remove_handle(self, handle: "WorktreeHandle") -> bool:
+    async def remove_handle(
+        self,
+        handle: "WorktreeHandle",
+        *,
+        caller: "Principal",
+    ) -> bool:
         """Remove a handle from storage + cache + Dhara registry.
 
+        ``caller`` is the authenticated session principal — NOT
+        ``handle.principal``. Threading it through Dhara's ownership
+        + scope check prevents a session from impersonating the
+        handle owner (the auth-fabrication risk documented in the
+        PR-D security review). WorktreeCoordinator forwards caller.
+
         Returns ``True`` when the primary Dhara row was deleted, ``False``
-        when it was not found (so callers can distinguish "no-op" from
-        "deleted"). Best-effort: storage and cache invalidation errors
-        are logged but do not abort the Dhara deletion — the registry is
-        the source of truth for "is this handle alive?".
+        when it was not found. Best-effort: storage and cache
+        invalidation errors are logged but do not abort the Dhara
+        deletion — the registry is the source of truth.
         """
         from .types import RemoteWorktreeRef
 
@@ -420,6 +430,11 @@ class RemoteWorktreeProvider(WorktreeProvider):
             raise NotImplementedError(
                 "RemoteWorktreeProvider.remove_handle expects a RemoteWorktreeRef; "
                 f"got {type(handle.storage_ref).__name__}"
+            )
+        if caller is None:
+            raise PermissionError(
+                "RemoteWorktreeProvider.remove_handle requires a caller "
+                "(no anonymous handle removal)"
             )
         ref: RemoteWorktreeRef = handle.storage_ref
         backend_kind = ref.backend_kind
@@ -444,14 +459,13 @@ class RemoteWorktreeProvider(WorktreeProvider):
             count = 0
         record_cache_invalidation(backend_kind, "remove_handle", count)
 
-        # 3. Remove from the Dhara registry. ``dhara_remove_handle``
-        # returns True iff the primary row was deleted.
+        # 3. Remove from the Dhara registry (caller = authenticated session).
         if self._dhara_client is None:
             return False
         return await dhara_remove_handle(
             self._dhara_client,
             handle.handle_id,
-            caller=handle.principal,
+            caller=caller,
         )
 
     async def list_handles(

@@ -832,16 +832,29 @@ class WorktreeCoordinator:
             )
         return await provider.fetch(handle)
 
-    async def remove_worktree_handle(self, handle: Any) -> bool:
-        """v4 dispatch: resolve provider + call ``remove_handle(handle)``."""
+    async def remove_worktree_handle(
+        self, handle: Any, *, caller: Any
+    ) -> bool:
+        """v4 dispatch: resolve provider + call ``remove_handle(handle, caller=caller)``.
+
+        ``caller`` is the authenticated session principal (NOT the
+        handle's owner). Providers thread it to Dhara's ownership
+        check. Sessions that don't have an authenticated principal
+        can't remove handles — refuse rather than fabricate.
+        """
         from mahavishnu.core.errors import WorktreeError
 
+        if caller is None:
+            raise PermissionError(
+                "WorktreeCoordinator.remove_worktree_handle requires a "
+                "caller (no anonymous handle removal)"
+            )
         provider = await self.provider_registry.get_available_provider()
         if not hasattr(provider, "remove_handle"):
             raise WorktreeError(
                 f"Provider {provider.provider_name()} does not support v4 remove_handle"
             )
-        return await provider.remove_handle(handle)
+        return await provider.remove_handle(handle, caller=caller)
 
     async def list_worktree_handles(
         self,

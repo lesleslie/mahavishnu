@@ -370,16 +370,20 @@ async def remove_handle(
 ) -> bool:
     """Remove a single ``WorktreeHandle`` from the Dhara registry.
 
-    Authorizes via ``worktree:remove`` scope (admin override:
-    ``worktree:register-any``). Best-effort sequential delete of:
-    primary + 2 indexes (``idx:principal:<p>`` + ``idx:repo:<r>``).
+    Authorizes via:
+      - Scope: caller must have ``worktree:remove`` OR admin override
+        (``worktree:register-any``).
+      - Ownership: non-admin callers can only remove handles they own
+        (caller.uid == handle's principal_uid). Mirrors the per-handle
+        ownership check in ``register_handles``.
 
-    **Atomicity caveat (CONFIRMED):** Dhara's ``dhara/mcp/worktree_registry.py``
-    does NOT expose a ``multi_set`` / ``BEGIN`` / ``COMMIT`` transaction
-    primitive. ``remove_handle`` is best-effort: delete primary first,
-    then indexes. If a step fails mid-sequence, log a warning
-    identifying the orphan state and continue (the next call will
-    detect + report drift via ``worktree_registry_drift_total``).
+    **Atomicity caveat (CONFIRMED):** Dhara's
+    ``dhara/mcp/worktree_registry.py`` does NOT expose a
+    ``multi_set`` / ``BEGIN`` / ``COMMIT`` transaction primitive.
+    ``remove_handle`` is best-effort: delete primary first, then
+    indexes. If a step fails mid-sequence, log a warning identifying
+    the orphan state and continue (the next call will detect + report
+    drift via ``worktree_registry_drift_total``).
 
     Atomic-remove is deferred to a separate Dhara-side PR.
 
@@ -393,11 +397,11 @@ async def remove_handle(
             f"Principal {caller.name!r} lacks scope 'worktree:remove'"
         )
 
-    # Look up the primary to discover principal + repo for index cleanup
-    # BEFORE we delete the primary. If absent, return False without
-    # touching indexes (no drift to report).
+    # Look up the primary to discover principal + uid + repo BEFORE
+    # we delete the primary. If absent, return False without touching
+    # indexes (no drift to report).
     rows = await client.query(
-        "SELECT principal, repo FROM mahavishnu_worktree_registry "
+        "SELECT principal, principal_uid, repo FROM mahavishnu_worktree_registry "
         "WHERE handle_id = :handle_id",
         {"handle_id": handle_id},
     )
@@ -405,7 +409,19 @@ async def remove_handle(
         return False
 
     principal_name = rows[0]["principal"]
+    owner_uid = rows[0].get("principal_uid")
     repo_name = rows[0]["repo"]
+
+    # Per-handle ownership check: non-admin callers can only remove
+    # their own handles. owner_uid may be None for pre-v2 migrated
+    # handles (anonymous in pre-migration world); in that case only
+    # admin can remove (since we can't verify ownership).
+    if not has_admin:
+        if owner_uid is None or owner_uid != caller.uid:
+            raise PermissionError(
+                f"Principal {caller.name!r} cannot remove handle "
+                f"{handle_id!r} owned by {principal_name!r}"
+            )
 
     # Delete primary first.
     await client.execute(

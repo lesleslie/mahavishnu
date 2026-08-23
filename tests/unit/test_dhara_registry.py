@@ -30,6 +30,32 @@ class FakeDharaClient:
         self._sql_log.append((sql, params or {}))
         sql_normalized = " ".join(sql.split()).lower()
 
+        # DELETE FROM — remove_handle support (PR-D).
+        # IMPORTANT: more specific index patterns must match BEFORE the
+        # primary-table pattern (which would otherwise catch them as a
+        # prefix and return early without cleaning the indexes).
+        if sql_normalized.startswith(
+            "delete from mahavishnu_worktree_registry_idx_principal"
+        ):
+            p = params or {}
+            handle_id = p.get("handle_id")
+            for s_set in self._idx_principal.values():
+                s_set.discard(handle_id)
+            return {"rowcount": 1, "status": "ok"}
+        if sql_normalized.startswith(
+            "delete from mahavishnu_worktree_registry_idx_repo"
+        ):
+            p = params or {}
+            handle_id = p.get("handle_id")
+            for s_set in self._idx_repo.values():
+                s_set.discard(handle_id)
+            return {"rowcount": 1, "status": "ok"}
+        if sql_normalized.startswith("delete from mahavishnu_worktree_registry"):
+            p = params or {}
+            handle_id = p.get("handle_id")
+            removed = self._registry.pop(handle_id, None)
+            return {"rowcount": 1 if removed else 0, "status": "ok"}
+
         if sql_normalized.startswith("create table"):
             self._schema_ready = True
             return {"rowcount": 0, "status": "ok"}
@@ -69,6 +95,17 @@ class FakeDharaClient:
                 return [self._registry[i] for i in ids if i in self._registry]
 
         if sql_normalized.startswith("select * from mahavishnu_worktree_registry"):
+            return list(self._registry.values())
+
+        # remove_handle pre-fetch: SELECT principal, principal_uid, repo
+        if sql_normalized.startswith(
+            "select principal, principal_uid, repo from mahavishnu_worktree_registry"
+        ) or sql_normalized.startswith(
+            "select principal, repo from mahavishnu_worktree_registry"
+        ):
+            if params and "handle_id" in params:
+                row = self._registry.get(params["handle_id"])
+                return [row] if row else []
             return list(self._registry.values())
 
         raise ValueError(f"Unhandled SELECT in fake: {sql[:80]}")
@@ -654,3 +691,98 @@ def test_remote_worktree_ref_round_trip_all_backends(backend: str) -> None:
         return loaded.storage_ref.backend_kind
 
     assert asyncio.run(run()) == backend
+
+
+# ---------------------------------------------------------------------------
+# remove_handle — security review fixes (PR-D)
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_remove_handle_owner_can_delete() -> None:
+    """Owner with ``worktree:remove`` scope can delete their own handle."""
+    from mahavishnu.core.worktree_providers.dhara_registry import remove_handle
+
+    client = FakeDharaClient()
+    await _ensure_schema(client)
+    owner = Principal(uid=1000, name="uid:1000", scopes=frozenset({"worktree:register", "worktree:remove"}))
+    handle = _make_handle()
+    await register_handles(client, [handle], caller=owner)
+    removed = await remove_handle(client, handle.handle_id, caller=owner)
+    assert removed is True
+    # Verify primary + 2 indexes cleared.
+    assert handle.handle_id not in client._registry
+    for s_set in client._idx_principal.values():
+        assert handle.handle_id not in s_set
+    for s_set in client._idx_repo.values():
+        assert handle.handle_id not in s_set
+
+
+@pytest.mark.asyncio
+async def test_remove_handle_non_owner_raises_permission_error() -> None:
+    """Non-admin caller WITHOUT matching uid is rejected (security review fix).
+
+    Previously the auth check only validated the ``worktree:remove``
+    scope, which let any caller with that scope delete any handle.
+    The fix mirrors ``register_handles`` per-handle ownership: the
+    caller's uid must match the handle's owner uid.
+    """
+    from mahavishnu.core.worktree_providers.dhara_registry import remove_handle
+
+    client = FakeDharaClient()
+    await _ensure_schema(client)
+    owner = Principal(uid=1000, name="uid:1000", scopes=frozenset({"worktree:register", "worktree:remove"}))
+    handle = _make_handle()
+    await register_handles(client, [handle], caller=owner)
+
+    # Different uid (1010) + has ``worktree:remove`` scope → must be rejected
+    other = Principal(uid=1010, name="uid:1010", scopes=frozenset({"worktree:remove"}))
+    with pytest.raises(PermissionError, match="cannot remove handle"):
+        await remove_handle(client, handle.handle_id, caller=other)
+    # Handle must still exist after rejected attempt
+    assert handle.handle_id in client._registry
+
+
+@pytest.mark.asyncio
+async def test_remove_handle_admin_can_delete_any() -> None:
+    """Admin (``worktree:register-any``) bypasses the ownership check."""
+    from mahavishnu.core.worktree_providers.dhara_registry import remove_handle
+
+    client = FakeDharaClient()
+    await _ensure_schema(client)
+    # Admin registers (worktree:register-any → admin override) AND removes
+    # (worktree:register-any → admin override of ownership check).
+    admin = Principal(uid=9999, name="uid:9999", scopes=frozenset({"worktree:register-any"}))
+    handle = _make_handle()
+    await register_handles(client, [handle], caller=admin)
+    removed = await remove_handle(client, handle.handle_id, caller=admin)
+    assert removed is True
+
+
+@pytest.mark.asyncio
+async def test_remove_handle_unauthorized_raises() -> None:
+    """Caller without ``worktree:remove`` or admin scope is rejected."""
+    from mahavishnu.core.worktree_providers.dhara_registry import remove_handle
+
+    client = FakeDharaClient()
+    await _ensure_schema(client)
+    handle = _make_handle()
+    await register_handles(
+        client, [handle], caller=_caller_with_scope("worktree:register")
+    )
+
+    no_scope = Principal(uid=1000, name="uid:1000", scopes=frozenset())
+    with pytest.raises(PermissionError, match="lacks scope 'worktree:remove'"):
+        await remove_handle(client, handle.handle_id, caller=no_scope)
+
+
+@pytest.mark.asyncio
+async def test_remove_handle_not_found_returns_false() -> None:
+    """Missing handle returns False (no exception)."""
+    from mahavishnu.core.worktree_providers.dhara_registry import remove_handle
+
+    client = FakeDharaClient()
+    await _ensure_schema(client)
+    admin = Principal(uid=9999, name="uid:9999", scopes=frozenset({"worktree:remove"}))
+    removed = await remove_handle(client, "nonexistent-id", caller=admin)
+    assert removed is False

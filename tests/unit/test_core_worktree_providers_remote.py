@@ -170,7 +170,9 @@ class FakeDharaClient:
 
     async def query(self, sql: str, params: dict[str, Any] | None = None) -> list[dict[str, Any]]:
         s = " ".join(sql.split()).lower()
-        if s.startswith("select principal, repo from mahavishnu_worktree_registry"):
+        if s.startswith("select principal, repo from mahavishnu_worktree_registry") or s.startswith(
+            "select principal, principal_uid, repo from mahavishnu_worktree_registry"
+        ):
             p = params or {}
             row = self._registry.get(p["handle_id"])
             return [row] if row else []
@@ -504,7 +506,7 @@ def test_remove_handle_invalidates_cache_and_storage_and_dhara(tmp_path: Path) -
 
         await dhara_register(dhara, [handle], caller=principal_full)
 
-        removed = await provider.remove_handle(handle)
+        removed = await provider.remove_handle(handle, caller=principal_full)
         assert removed is True
 
         # Storage: deleted.
