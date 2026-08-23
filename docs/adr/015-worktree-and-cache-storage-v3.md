@@ -371,18 +371,44 @@ def lock(self, repo, branch, *, acquire_timeout=10.0, lease_ttl=30.0) -&gt; Work
 - Fencing token: monotonic counter (Redis `INCR` on `mahavishnu:worktree-fence:<repo>:<branch>`)
 - WorktreeLocked raised on acquire failure or lease expiry
 
-### 15. S3 credentials resolution
+### 15. S3 / GCS credentials (delegated to Oneiric)
 
-```text
-Resolution order (first match wins):
-  1. MAHAVISHNU_S3_ACCESS_KEY_ID + MAHAVISHNU_S3_SECRET_ACCESS_KEY env vars (dev only; rejected in prod by config validator)
-  2. AWS Web Identity (IRSA) — AWS_WEB_IDENTITY_TOKEN_FILE + AWS_ROLE_ARN
+S3 and GCS credentials are managed by Oneiric's `S3StorageSettings` (`oneiric/oneiric/adapters/storage/s3.py`) and `GCSStorageSettings` (`oneiric/oneiric/adapters/storage/gcs.py`) and resolved by the underlying cloud SDKs under the hood. mahavishnu's `StorageSettings` exposes these as nested `s3: S3StorageSettings | None` and `gcs: GCSStorageSettings | None` fields; **no custom credential chain needed in mahavishnu.**
+
+**S3 credential resolution (delegated to aioboto3):**
+
+- **EXPLICIT credentials** (from `S3StorageSettings`):
+  - `access_key_id` + `secret_access_key` (settings or env vars)
+  - `profile_name` (AWS profile)
+  - `session_token` (for STS)
+- **IMPLICIT credentials** (resolved by aioboto3's default provider chain when no explicit credentials are set):
+  1. Environment variables (`AWS_ACCESS_KEY_ID`, etc.)
+  2. AWS Web Identity / IRSA — `AWS_WEB_IDENTITY_TOKEN_FILE` + `AWS_ROLE_ARN`
   3. EC2/ECS task role via IMDSv2
   4. Lambda execution role (automatic in Lambda runtime)
-  5. Fail with clear error: "No S3 credentials resolved; configure IRSA or set MAHAVISHNU_S3_* env vars"
+
+**GCS credential resolution (delegated to google-cloud-storage):**
+
+- Service account JSON path via `GCSStorageSettings.credentials_path`
+- Application Default Credentials (ADC) otherwise: `GOOGLE_APPLICATION_CREDENTIALS` env var → metadata server → etc.
+
+**Redis credentials:** `StorageSettings.redis_url: str` (with `rediss://` TLS by default). On connection failure, log + decrement health-check counter.
+
+### 15.1. GCS mock for tests and localhost
+
+A GCS mock (homebrew package) is available for testing and localhost development. Configure `GCSStorageSettings.endpoint_url` to point at the mock's local endpoint:
+
+```python
+# settings/local.yaml
+storage:
+  gcs:
+    bucket: "test-bucket"
+    project: "test-project"
+    endpoint_url: "http://localhost:4443"  # GCS mock local endpoint
+    credentials_path: null  # mock accepts unauthenticated requests
 ```
 
-For Redis: `MAHAVISHNU_REDIS_URL` env var (with `rediss://` TLS by default); on connection failure, log + decrement health-check counter.
+This avoids hitting real GCS during tests and enables fully-local development without cloud credentials. **Recommended for CI:** include the mock install in test runners and use it as the default GCS endpoint in `settings/test.yaml`.
 
 ### 16. SLOs (concrete)
 
