@@ -67,3 +67,7 @@ cron, or other unattended invocation. The amended rule is recorded in
 - Plan: `docs/superpowers/plans/2026-07-26-worktree-autoremove.md`
 - Operator guide: `docs/WORKTREE_AUTOREMOVE.md`
 - CLI: `mahavishnu worktree prune-merged`
+- v4 worktree types: `docs/adr/015-worktree-and-cache-storage-v2.md` §13
+  (`WorktreeHandle`, `RemoteWorktreeProvider`, `Principal`)
+- v4 followup for automated cleanup (draft, not yet permitted):
+  `.claude/decisions/worktree-autoremove-v4-followup.md`
