@@ -36,6 +36,7 @@ from __future__ import annotations
 import json
 from collections.abc import Iterable
 from datetime import UTC, datetime
+from pathlib import Path
 from typing import Any
 
 from mahavishnu.auth import Principal
@@ -44,11 +45,14 @@ from .types import WorktreeHandle
 
 
 # SQL schema (executed once via CREATE TABLE IF NOT EXISTS).
+# Note: principal_uid is added so we can round-trip the full Principal
+# (uid + name) instead of lossy-encoding uid as 0 (see security review).
 SCHEMA_STATEMENTS: tuple[str, ...] = (
     """
     CREATE TABLE IF NOT EXISTS mahavishnu_worktree_registry (
         handle_id       TEXT PRIMARY KEY,
         principal       TEXT NOT NULL,
+        principal_uid   INTEGER,
         repo            TEXT NOT NULL,
         branch          TEXT NOT NULL,
         base_ref        TEXT,
@@ -80,20 +84,11 @@ SCHEMA_STATEMENTS: tuple[str, ...] = (
 
 
 def _ensure_schema(client: Any) -> None:
-    """Create the worktree-registry tables if they don't exist.
-
-    ``client`` must expose ``async execute(sql, params)``.
-    """
-    for stmt in SCHEMA_STATEMENTS:
-        # The execute() method is async; caller (register_handles or
-        # the migration script) is responsible for awaiting it.
-        # We can't await here without making this function async, so
-        # we yield the coroutines via a small helper. Simpler:
-        # callers call ``await _ensure_schema_async(client)`` instead.
-        raise NotImplementedError(
-            "Use the async helper _ensure_schema_async; this sync "
-            "wrapper exists only for type documentation."
-        )
+    """Sync wrapper exists for type documentation; use _ensure_schema_async."""
+    raise NotImplementedError(
+        "Use the async helper _ensure_schema_async; this sync "
+        "wrapper exists only for type documentation."
+    )
 
 
 async def _ensure_schema_async(client: Any) -> None:
@@ -102,10 +97,19 @@ async def _ensure_schema_async(client: Any) -> None:
 
 
 def _handle_to_row(handle: WorktreeHandle) -> dict[str, Any]:
-    """Flatten a WorktreeHandle to a SQL parameter dict."""
+    """Flatten a WorktreeHandle to a SQL parameter dict.
+
+    Validates paths at write time so path-injection attempts are rejected
+    before the handle reaches storage.
+    """
+    storage_ref = handle.storage_ref
+    if storage_ref.backend_kind == "local":
+        _validate_storage_path(str(storage_ref.path), "local")
+
     return {
         "handle_id": handle.handle_id,
         "principal": handle.principal.name,
+        "principal_uid": handle.principal.uid,
         "repo": handle.repo,
         "branch": handle.branch,
         "base_ref": handle.base_ref,
@@ -114,21 +118,59 @@ def _handle_to_row(handle: WorktreeHandle) -> dict[str, Any]:
         "bytes_size": handle.bytes_size,
         "cleanup_policy": handle.cleanup_policy,
         "provenance": handle.provenance,
-        "storage_ref_json": json.dumps(_storage_ref_to_dict(handle.storage_ref)),
-        "backend_kind": handle.storage_ref.backend_kind,
-        "origin_path": str(handle.storage_ref.path)
-        if hasattr(handle.storage_ref, "path")
+        "storage_ref_json": json.dumps(_storage_ref_to_dict(storage_ref)),
+        "backend_kind": storage_ref.backend_kind,
+        "origin_path": str(storage_ref.path)
+        if hasattr(storage_ref, "path")
         else "",
     }
 
 
 def _storage_ref_to_dict(storage_ref: Any) -> dict[str, Any]:
-    """Serialize a WorktreeRef to a dict."""
-    if hasattr(storage_ref, "__dict__"):
-        d = dict(storage_ref.__dict__)
+    """Serialize a WorktreeRef to a dict. Works for slotted dataclasses
+    (no __dict__) via dataclasses.asdict which reads __slots__ correctly.
+    Path objects are converted to str for JSON serialization.
+    """
+    from dataclasses import asdict, is_dataclass
+    from pathlib import Path
+
+    def _normalize(v: Any) -> Any:
+        if isinstance(v, Path):
+            return str(v)
+        if isinstance(v, dict):
+            return {k: _normalize(x) for k, x in v.items()}
+        if isinstance(v, (list, tuple)):
+            return [_normalize(x) for x in v]
+        return v
+
+    if is_dataclass(storage_ref):
+        d = asdict(storage_ref)
     else:
-        d = {"backend_kind": storage_ref.backend_kind}
+        d = dict(storage_ref.__dict__) if hasattr(storage_ref, "__dict__") else {}
+    d = _normalize(d)
+    # Always include backend_kind at the top level for round-trip
+    d["backend_kind"] = getattr(storage_ref, "backend_kind", "local")
     return d
+
+
+def _validate_storage_path(path_str: str, backend_kind: str) -> str:
+    """Validate a path string before using it as a filesystem path.
+
+    Rejects relative paths, parent-traversal (``..``), and dash-prefixed
+    arguments (which some CLIs treat as flags).
+    """
+    if not path_str:
+        raise ValueError(f"{backend_kind} storage path is empty")
+    p = Path(path_str)
+    if not p.is_absolute():
+        raise ValueError(
+            f"{backend_kind} storage path must be absolute: {path_str!r}"
+        )
+    if any(part == ".." for part in p.parts):
+        raise ValueError(
+            f"{backend_kind} storage path contains '..': {path_str!r}"
+        )
+    return path_str
 
 
 def _row_to_handle(row: dict[str, Any]) -> WorktreeHandle:
@@ -139,25 +181,31 @@ def _row_to_handle(row: dict[str, Any]) -> WorktreeHandle:
     backend_kind = row["backend_kind"]
 
     if backend_kind == "local" and "path" in storage_data:
-        from pathlib import Path
-
+        _validate_storage_path(storage_data["path"], backend_kind)
         storage_ref: Any = LocalWorktreeRef(
             path=Path(storage_data["path"]),
             worktree_id=storage_data.get("worktree_id", row["handle_id"]),
         )
     elif backend_kind in ("s3", "gcs", "azure", "bundle"):
+        # RemoteWorktreeRef stores the actual backend_kind in
+        # storage_data so callers can roundtrip the original
+        # cloud backend without losing fidelity.
         storage_ref = RemoteWorktreeRef(
             bucket=storage_data.get("bucket", ""),
             key=storage_data.get("key", ""),
             worktree_id=storage_data.get("worktree_id", row["handle_id"]),
         )
     else:
-        # Unknown backend — fall back to LocalWorktreeRef
-        from pathlib import Path
+        # Unknown backend — fail loud rather than silently downgrading
+        # (which would mask bugs and silently misroute work).
+        raise ValueError(f"Unknown backend_kind: {backend_kind!r}")
 
-        storage_ref = LocalWorktreeRef(path=Path(""), worktree_id=row["handle_id"])
-
-    principal = Principal(uid=0, name=row["principal"])
+    # Preserve principal_uid round-trip; NULL for anonymous
+    principal_uid = row.get("principal_uid")
+    if principal_uid is None:
+        principal = Principal(uid=None, name=row["principal"])
+    else:
+        principal = Principal(uid=int(principal_uid), name=row["principal"])
 
     return WorktreeHandle(
         handle_id=row["handle_id"],
@@ -183,6 +231,7 @@ async def register_handles(
     client: Any,
     handles: Iterable[WorktreeHandle],
     *,
+    caller: Principal,
     ensure_schema: bool = True,
 ) -> int:
     """Register a batch of WorktreeHandles into the Dhara registry.
@@ -192,35 +241,64 @@ async def register_handles(
             ``async query(sql, params)``. In production this is a
             ``DharaThinClient``; in tests a fake.
         handles: Iterable of ``WorktreeHandle`` to register.
+        caller: Principal performing the registration. Must have
+            scope ``worktree:register`` and own each handle's principal
+            (or have scope ``worktree:register-any``).
         ensure_schema: If True (default), runs the
             ``CREATE TABLE IF NOT EXISTS`` statements first.
             Set False for tests that have already initialized the schema.
 
     Returns:
-        Number of handles registered (== number of INSERT statements
-        executed; idempotent on conflict via INSERT OR REPLACE).
+        Number of handles registered.
+
+    Note on atomicity: each handle does 3 separate INSERTs (primary +
+    two indexes). Without an enclosing transaction, a failure between
+    the primary and an index write leaves the registry inconsistent.
+    Dhara's sql_proxy MCP doesn't currently expose a ``BEGIN``/``COMMIT``
+    tool, so for Phase 4 the migration script should re-run
+    ``list_handles`` after the write to verify index consistency. A
+    ``tx`` tool addition is tracked separately as follow-up.
     """
     if ensure_schema:
         await _ensure_schema_async(client)
 
+    # Authorization check: caller must have the register scope
+    # explicitly. We use "in scopes" rather than has_scope() because
+    # Principal.has_scope treats empty scopes as "all" which is wrong
+    # for security checks.
+    has_register = "worktree:register" in caller.scopes
+    has_admin = "worktree:register-any" in caller.scopes
+    if not (has_register or has_admin):
+        raise PermissionError(
+            f"Principal {caller.name!r} lacks scope 'worktree:register'"
+        )
+
     count = 0
     for handle in handles:
+        # Per-handle ownership: non-admin callers can only register
+        # handles they own (same uid).
+        if not has_admin and handle.principal.uid != caller.uid:
+            raise PermissionError(
+                f"Caller {caller.name!r} cannot register handle "
+                f"{handle.handle_id!r} owned by "
+                f"{handle.principal.name!r}"
+            )
+
         row = _handle_to_row(handle)
         # Primary record (idempotent via UPSERT semantics)
         await client.execute(
             """
             INSERT OR REPLACE INTO mahavishnu_worktree_registry
-              (handle_id, principal, repo, branch, base_ref,
+              (handle_id, principal, principal_uid, repo, branch, base_ref,
                created_at, sha256, bytes_size, cleanup_policy,
                provenance, storage_ref_json, backend_kind, origin_path)
             VALUES
-              (:handle_id, :principal, :repo, :branch, :base_ref,
+              (:handle_id, :principal, :principal_uid, :repo, :branch, :base_ref,
                :created_at, :sha256, :bytes_size, :cleanup_policy,
                :provenance, :storage_ref_json, :backend_kind, :origin_path)
             """,
             row,
         )
-
         # Secondary indexes (multi-row INSERT with unique constraint)
         await client.execute(
             """
@@ -238,7 +316,6 @@ async def register_handles(
             """,
             {"repo": row["repo"], "handle_id": row["handle_id"]},
         )
-
         count += 1
     return count
 
@@ -248,12 +325,26 @@ async def list_handles(
     *,
     principal: str | None = None,
     repo: str | None = None,
+    caller: Principal | None = None,
+    all_tenants: bool = False,
 ) -> list[WorktreeHandle]:
     """List WorktreeHandles, optionally filtered by principal or repo.
 
-    Uses the secondary indexes when filters are provided. Falls back to
-    a full scan otherwise.
+    Multi-tenant safety: ``all_tenants=True`` requires ``caller`` to have
+    scope ``worktree:list-all``. Without that explicit opt-in, the
+    principal-scoped or repo-scoped filter is required.
     """
+    if all_tenants:
+        if caller is None or "worktree:list-all" not in caller.scopes:
+            raise PermissionError(
+                "Listing all tenants requires caller with scope "
+                "'worktree:list-all'"
+            )
+        rows = await client.query(
+            "SELECT * FROM mahavishnu_worktree_registry ORDER BY created_at"
+        )
+        return [_row_to_handle(r) for r in rows]
+
     if principal is not None:
         rows = await client.query(
             """
@@ -277,9 +368,12 @@ async def list_handles(
             {"repo": repo},
         )
     else:
-        rows = await client.query(
-            "SELECT * FROM mahavishnu_worktree_registry ORDER BY created_at"
+        # Refuse unfiltered listing — would leak across principals.
+        raise PermissionError(
+            "list_handles requires a principal, repo, or explicit "
+            "all_tenants=True with admin scope"
         )
+
     return [_row_to_handle(r) for r in rows]
 
 
@@ -288,3 +382,4 @@ __all__ = [
     "list_handles",
     "register_handles",
 ]
+

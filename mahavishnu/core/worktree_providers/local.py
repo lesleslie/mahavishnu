@@ -392,9 +392,41 @@ class LocalWorktreeProvider(WorktreeProvider):
         *,
         acquire_timeout: float = 10.0,
         lease_ttl: float = 30.0,
+        redis_client: object | None = None,
     ):
-        raise NotImplementedError(
-            "LocalWorktreeProvider.lock() requires Redis; see ADR 015 v4 §14"
+        """Acquire a distributed lock via Redis SETNX with fencing token.
+
+        Wraps ``RedisLockBackend`` (in ``worktree_providers.lock``).
+        Lazily constructs the Redis client from ``MAHAVISHNU_REDIS_URL``
+        if none is provided; the caller may also pass their own to
+        reuse an existing connection pool.
+
+        See ``RedisLockBackend.acquire`` for argument details.
+        Returns a ``WorktreeLock`` whose ``fencing_token`` should be
+        passed to all subsequent writes (fencing contract per v4 §14).
+        """
+        if redis_client is None:
+            import os
+
+            import redis.asyncio as redis_async
+
+            redis_url = os.environ.get(
+                "MAHAVISHNU_REDIS_URL", "redis://localhost:6379/0"
+            )
+            redis_client = redis_async.from_url(redis_url, decode_responses=True)
+
+        # Lazy import to keep `redis` optional at module load
+        from .lock import RedisLockBackend
+
+        backend = RedisLockBackend(
+            redis_client,
+            acquire_timeout=acquire_timeout,
+            lease_ttl=lease_ttl,
+        )
+        return await backend.acquire(
+            principal_name="LocalWorktreeProvider",
+            repo=repo,
+            branch=branch,
         )
 
     async def health(self) -> bool:
