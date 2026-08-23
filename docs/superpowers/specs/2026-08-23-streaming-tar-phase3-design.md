@@ -55,6 +55,99 @@ Phase 3 readers try to decode as tar.zst. Runbook
 and a startup-time sweep that identifies any `.tar.gz` keys remaining
 in the storage prefix.
 
+**Cross-repo version coupling (BLOCKER R2-09):** Mahavishnu PR-D pins
+`oneiric` to the **exact commit SHA** of Oneiric PR-A landing in main
+until Oneiric cuts a release:
+
+```toml
+# mahavishnu/pyproject.toml — interim pin (BLOCKER R2-09)
+dependencies = [
+    "oneiric @ git+https://github.com/lesleslie/oneiric.git@<oneiric_pr_a_commit_sha>",
+    ...
+]
+```
+
+Once Oneiric cuts the next minor (e.g. `0.45.0` containing
+`compression.stream`), a follow-up Mahavishnu PR bumps the dependency
+to `oneiric>=0.45.0,<0.46.0`. This avoids the "two minors shipped
+between PR-A and PR-D" problem (Mahavishnu would otherwise pull in
+unrelated changes). Document the selection criterion in
+`docs/decisions/oneiric-version-coupling.md` so future Phase 3-class
+changes follow the same pattern.
+
+**Streaming actually streams (BLOCKER R2-10):** the spec's "full
+streaming path" via `chunks_buffer: list[bytes]` materializes the full
+bundle in memory BEFORE `to_thread(deserialize_worktree_tar)` — peak
+memory is `O(bundle_size)`, NOT `O(chunk_size)` as claimed. This
+defeats the streaming benefit and creates an inconsistency with
+`MAX_BUNDLE_BYTES_STOPGAP` (which is checked on the stopgap path but
+not on the "full streaming" path). Fix: use a queue-based handoff
+between the async-for-loop and the thread:
+
+```python
+import asyncio
+import queue
+from concurrent.futures import ThreadPoolExecutor
+
+async def fetch(self, handle):
+    # ...
+    storage_key = f"worktrees/{handle.repo}/{handle.branch}/{handle.handle_id}.tar.zst"
+
+    if supports_streaming(self._storage):
+        # Phase 2 orphan magic-byte sniff (MHV-213) — see File 4 above.
+        first_chunk = await anext(self._storage.read_stream(storage_key))
+        if first_chunk[:2] == b"\x1f\x8b":
+            raise WorktreeError(...)
+
+        # Bridge: async-for-loop producer feeds a sync queue consumed by
+        # the worker thread. Bounded queue enforces backpressure and
+        # caps memory at chunk_size × queue_capacity.
+        q: queue.Queue[bytes | None] = queue.Queue(maxsize=4)
+        async def _produce() -> None:
+            async for chunk in self._storage.read_stream(
+                storage_key, offset=len(first_chunk), chunk_size=65_536,
+            ):
+                q.put(chunk)  # blocks if queue full → backpressure
+            q.put(None)  # sentinel: end-of-stream
+        produce_task = asyncio.create_task(_produce())
+
+        def chunk_reader() -> Iterator[bytes]:
+            while True:
+                item = q.get()
+                if item is None:
+                    return
+                yield item
+
+        # _validate_stopgap_size applies to the streaming path too —
+        # total bytes is unknown until drained, so we estimate via the
+        # bundle_size metadata on the handle (Phase 2 stored this).
+        estimated_size = handle.bytes_size  # Dhara-registered
+        _validate_stopgap_size(estimated_size)  # raises MHV-221 if exceeded
+
+        await asyncio.to_thread(
+            deserialize_worktree_tar, chunk_reader, target,
+            expected_sha256=handle.sha256, backend="local", principal_short=...,
+        )
+        await produce_task  # ensure producer finished cleanly
+    else:
+        # Stopgap: read whole blob into memory. Cap applies.
+        blob = await self._storage.read(storage_key)
+        _validate_stopgap_size(len(blob))
+        # ... rest unchanged ...
+```
+
+The `queue.Queue(maxsize=4)` bounds memory at `4 × chunk_size ≈ 256KB`
+regardless of bundle size. The `_validate_stopgap_size` applies to
+both paths so an oversized bundle fails loudly rather than OOM-ing.
+The memory-profile table in this spec is corrected:
+
+| Phase | Before (Phase 2) | After (Phase 3) |
+|---|---|---|
+| Create (compression peak) | 2.5× bundle_size (~250MB for 100MB worktree) | ~0 (disk is the buffer) |
+| Create (upload peak) | bundle_size | bundle_size (stopgap) → O(chunk_size × queue_capacity) ≈ 256KB (full streaming) |
+| Fetch (blob load peak) | bundle_size | bundle_size (stopgap) → O(chunk_size × queue_capacity) ≈ 256KB (full streaming) |
+| Fetch (extract peak) | 2.5× bundle_size (~250MB) | ~0 (disk is the buffer; staging subdir, then atomic rename) |
+
 ## Architecture
 
 ### Two repos, three components (down from initial four when backward compat was in scope)
@@ -113,19 +206,24 @@ storage adapters to expose `save_stream` (Phase 3 scope).
 7. record_worktree_op(backend="local", op="fetch", success=True)
 ```
 
-### Memory profile comparison
+### Memory profile comparison (corrected after BLOCKER R2-10)
 
 | Phase | Before (Phase 2) | After (Phase 3) |
 |---|---|---|
 | **Create (compression peak)** | 2.5× bundle_size (~250MB for 100MB worktree) | ~0 (disk is the buffer) |
-| **Create (upload peak)** | bundle_size (already in-memory) | bundle_size (stopgap) → ~0 (full streaming) |
-| **Fetch (blob load peak)** | bundle_size | bundle_size (stopgap) → O(chunk_size) (full streaming) |
-| **Fetch (extract peak)** | 2.5× bundle_size (~250MB) | ~0 (disk is the buffer) |
+| **Create (upload peak)** | bundle_size (already in-memory) | bundle_size (stopgap) → O(chunk_size × queue_capacity) ≈ 256KB (full streaming) |
+| **Fetch (blob load peak)** | bundle_size | bundle_size (stopgap) → O(chunk_size × queue_capacity) ≈ 256KB (full streaming) |
+| **Fetch (extract peak)** | 2.5× bundle_size (~250MB) | ~0 (disk is the buffer; staging subdir, then atomic rename) |
 
 Net: the 250MB peak during compression and the 250MB peak during extract
 are eliminated in all configurations. Upload/download peak depends on
 whether `save_stream` / `read_stream` are wired (in scope for Phase 3) or
-the stopgap `read_bytes` path is used.
+the stopgap `read_bytes` path is used. **BLOCKER R2-10 fix:** the full
+streaming path uses a bounded `queue.Queue(maxsize=4)` to bridge the
+async-for-loop producer and the worker thread consumer; memory is
+bounded at `chunk_size × 4 ≈ 256KB` regardless of bundle size. The
+`_validate_stopgap_size` cap applies to both stopgap and streaming paths
+so an oversized bundle fails loudly (MHV-221) rather than OOM-ing.
 
 ### Why temp file as intermediate buffer (not pure streaming)
 
@@ -144,7 +242,29 @@ directory listings.
 
 **File 1: `oneiric/pyproject.toml`**
 
-Add `zstandard>=0.21` to `dependencies`.
+Add `requires-python = ">=3.14"` (BLOCKER R2-08 — `tarfile.data_filter` is
+only stable in 3.14; 3.11/3.10 install paths get cryptic `AttributeError`).
+
+Add `zstandard>=0.23.0` (BLOCKER R2-13 — 0.21.0 has a known
+`chunked_stream_decompress` bug yielding one extra empty chunk after
+frame EOF on fragmented input; bumped to current stable for the
+streaming-fetch path that fragments at chunk boundaries).
+
+**Add PEP 735 optional dependency group** (BLOCKER R2-07 — CLAUDE.md
+explicitly enumerates PEP 735 for large/narrow deps; `zstandard` is a
+~500KB C extension requiring native compilation):
+
+```toml
+[dependency-groups]
+compression-zstd = ["zstandard>=0.23.0"]
+# existing groups preserved: ai, gpu, content-ingest, storage-pg
+```
+
+`dev` includes `compression-zstd` (matching the existing 4-group pattern
+documented in CLAUDE.md). Production deployments that do not use
+streaming compression omit the group; the runtime code raises a clear
+`LifecycleError("zstandard not installed. Install with: uv sync --group compression-zstd")`
+matching the existing wrapper convention in `content_ingester.py`.
 
 **File 2: `oneiric/actions/compression.py`** — append a new class:
 
@@ -194,7 +314,17 @@ class StreamingCompressionAction:
         if algo not in self._SUPPORTED:
             raise LifecycleError(f"compression-stream-unsupported-algorithm: {algo}")
         if algo == "zstd":
-            import zstandard
+            try:
+                import zstandard
+            except ImportError as exc:
+                # BLOCKER R2-15: tarfile uses its own lazy-import path that
+                # surfaces as tarfile.CompressionError. This action-kit path
+                # uses an explicit import — wrap ImportError as LifecycleError
+                # so callers get a consistent error envelope.
+                raise LifecycleError(
+                    "zstandard dependency required for zstd algorithm; "
+                    "install with `uv sync --group compression-zstd`"
+                ) from exc
             lvl = level if level is not None else self._settings.level
             cctx = zstandard.ZstdCompressor(level=lvl)
             yield from cctx.chunked_stream_compress(chunks)
@@ -211,7 +341,13 @@ class StreamingCompressionAction:
         if algo not in self._SUPPORTED:
             raise LifecycleError(f"compression-stream-unsupported-algorithm: {algo}")
         if algo == "zstd":
-            import zstandard
+            try:
+                import zstandard
+            except ImportError as exc:
+                raise LifecycleError(
+                    "zstandard dependency required for zstd algorithm; "
+                    "install with `uv sync --group compression-zstd`"
+                ) from exc
             dctx = zstandard.ZstdDecompressor()
             yield from dctx.chunked_stream_decompress(chunks)
         elif algo == "gzip":
@@ -252,9 +388,25 @@ class StreamingCompressionAction:
 **File 3: `oneiric/actions/__init__.py::builtin_action_metadata()`** — register
 the new kit's `metadata`.
 
-**File 4: `docs/action-kits.md`** — append a new entry alphabetically (after
-`compression.encode` since `compression.encode` (0x65) < `compression.stream`
-(0x73) in ASCII byte order, AND before `compression.hash`).
+**File 4: `docs/action-kits.md`** — append a new entry. **Note (BLOCKER R2-14):**
+the Oneiric resolver selects candidates by `priority` then `stack_level`,
+NOT by entry order in `builtin_action_metadata()`. The alphabetical
+ordering note is a docs-file hint for human readers, not a resolver
+mechanism. Spec writers must NOT try to control resolution by editing
+return order.
+
+**Priority selection rationale (BLOCKER R2-14):** existing
+`CompressionAction` has `priority=450`, `HashAction` has `priority=445`.
+Phase 3's `StreamingCompressionAction` is `priority=448`. Order in
+resolver: `CompressionAction` (450) > `StreamingCompressionAction` (448) >
+`HashAction` (445). Callers requesting `mode=compress` on a generic
+action-kit dispatch get `CompressionAction` (higher priority), preserving
+existing Phase 1+2 callers. Callers explicitly requesting
+`compression.stream` get the new streaming action. This is the intent;
+a future maintainer bumping `StreamingCompressionAction.priority` above
+450 would silently route Phase 1+2 callers to the streaming action
+(which has different semantics — bytes-in/bytes-out vs iterator-in),
+breaking them. Document this as a constant in the spec.
 
 **File 5: `oneiric/adapters/storage/{local,s3,gcs,azure}.py`** — add two
 methods to each adapter. The existing `save` and `read` stay (backward
@@ -338,13 +490,25 @@ multipart uploads older than 24h (standard practice).
 
 **File 8b: `oneiric/tests/adapters/storage/test_gcs_stream.py`** + `test_azure_blob_stream.py`
 (new, mirror S3 streaming tests — required to meet the ≥90% coverage target
-on `oneiric/adapters/storage/{local,s3,gcs,azure}.py`). Uses `@mock_gcs` /
-`@mock_azure` decorators from the respective SDK mock packages.
+on `oneiric/adapters/storage/{local,s3,gcs,azure}.py`). Uses `gcp-storage-emulator`
+Docker container + `pytest-gcs-emulator` plugin (GCS) and Azurite Docker +
+`pytest-azurite` plugin (Azure) — see R2-12 emulator strategy below.
+**Do NOT** use `@mock_gcs` or `@mock_azure` decorators — neither exists
+in the standard SDKs; community mock packages (`google-cloud-test-utils`,
+`azure-storage-blob-mock`) are unreliable and not in the project's dev
+deps. The emulator-Docker approach is reproducible across CI runs.
 
 ### Mahavishnu
 
-**File 1: `pyproject.toml`** — add `zstandard>=0.21` to dependencies (or rely
-on transitive from oneiric; explicit add is safer).
+**File 1: `pyproject.toml`** — add `requires-python = ">=3.14"` (BLOCKER R2-08).
+
+Add `zstandard>=0.23.0` via the `compression-zstd` PEP 735 group
+(inherited from Oneiric — BLOCKER R2-07). The group is declared in
+Oneiric's `pyproject.toml` and pulled transitively into Mahavishnu via
+the `dev` include group. A clean install that omits `compression-zstd`
+hits `tarfile.CompressionError("Unable to locate decompressor for 'zst' format")`
+on first worktree create — wrapped as MHV-223 WORKTREE_BUNDLE_CODEC_UNAVAILABLE
+with install hint (added below).
 
 **File 2: `mahavishnu/core/worktree_providers/storage_io.py`** — full rewrite
 of the three functions:
@@ -546,14 +710,15 @@ WORKTREE_BUNDLE_LEGACY_PHASE2 = "MHV-213"       # fetch hit a .tar.gz Phase 2 ha
 WORKTREE_BUNDLE_STORAGE_KEY_TOO_LONG = "MHV-220"  # S3 1024-byte limit
 WORKTREE_BUNDLE_STOPGAP_TOO_LARGE = "MHV-221"     # in-memory path OOM guard
 WORKTREE_BUNDLE_NOT_FOUND = "MHV-222"             # storage adapter returned None
+WORKTREE_BUNDLE_CODEC_UNAVAILABLE = "MHV-223"     # zstandard not installed; tarfile CompressionError
 ```
 
 **Code table (full, with gaps reserved):**
 - `MHV-200`–`MHV-207` — Phase 1 + Phase 2 (cache, lock, registry)
 - `MHV-208` — Phase 2 (`WORKTREE_INTEGRITY_FAILED` — SHA mismatch)
 - `MHV-209`–`MHV-213` — Phase 3 (streaming bundle lifecycle)
-- `MHV-220`–`MHV-222` — Phase 3 (storage-key validation, stopgap OOM guard, not-found)
-- `MHV-214`–`MHV-219`, `MHV-223`+ — reserved for Phase 4 (encryption-at-rest, multipart abort, etc.)
+- `MHV-220`–`MHV-223` — Phase 3 (storage-key validation, stopgap OOM guard, not-found, codec unavailable)
+- `MHV-214`–`MHV-219`, `MHV-224`+ — reserved for Phase 4 (encryption-at-rest, multipart abort, etc.)
 
 **File 3b: `mahavishnu/observability/bundle_integrity.py`** — add
 `verify_sha256_streaming` (sibling to existing `verify_sha256`):
@@ -775,6 +940,260 @@ streaming API. Mirror tests for `tests/unit/test_core_worktree_providers_remote.
 **File 8: `docs/adr/015-worktree-and-cache-storage-v4.md`** — §18 status
 updated to "Phase 3 shipped" with link to commits.
 
+## Phase 2 caller migration (BLOCKER fixes)
+
+The signature changes to `serialize_worktree_tar` (now a context manager)
+and `deserialize_worktree_tar` (new kwargs + Callable shape) break every
+existing Phase 2 call site. The spec enumerates them explicitly so the
+implementer doesn't ship a runtime crash.
+
+### Caller inventory
+
+| File:line | Phase 2 call | Phase 3 replacement |
+|---|---|---|
+| `mahavishnu/core/worktree_providers/local.py:356` | `blob = serialize_worktree_tar(wt_path)` | `async with serialize_worktree_tar(wt_path) as (temp_path, byte_size, sha): ...` |
+| `mahavishnu/core/worktree_providers/local.py:476` | `deserialize_worktree_tar(blob, target)` | `await asyncio.to_thread(deserialize_worktree_tar, chunk_reader, target, expected_sha256=handle.sha256, backend="local", principal_short=...)` (chunk_reader wraps `iter([blob])` for the legacy stopgap) |
+| `mahavishnu/core/worktree_providers/remote.py:265` | `blob = serialize_worktree_tar(Path(repo))` | `async with serialize_worktree_tar(Path(repo)) as (temp_path, byte_size, sha): ...` |
+| `mahavishnu/core/worktree_providers/remote.py:393` | `deserialize_worktree_tar(blob, target_dir)` | Same pattern as local.py:476 with `backend="s3"` |
+| `mahavishnu/core/worktree_providers/remote.py:354` | `cache_key = f"{handle.handle_id}:materialized"` | `cache_key = f"materialized:{handle.handle_id}"` (unify with local.py shape — was inconsistent in Phase 2) |
+| `tests/unit/test_core_worktree_providers_storage_io.py:41,49,58,67,100` | 5 Phase 2 tests assign `blob = serialize_worktree_tar(...)` | **DELETE** these 5 tests before/alongside the rewrite. New tests use the context-manager form. The spec's "Test files" section lists new test names; old names must NOT coexist. |
+
+### `verify_sha256_streaming` full body (BLOCKER R2-19)
+
+The Phase 2 `verify_sha256` enforces `backend in ALLOWED_BACKEND_KINDS` to
+guard OTel label cardinality. Phase 3's streaming helper MUST mirror this:
+
+```python
+def verify_sha256_streaming(
+    actual_sha: str,
+    expected_sha: str,
+    *,
+    backend: str,
+    principal_short: str,
+) -> None:
+    if backend not in ALLOWED_BACKEND_KINDS:  # frozenset({"local","s3","gcs","azure","bundle"})
+        raise ValueError(f"backend {backend!r} not in ALLOWED_BACKEND_KINDS")
+    # Principal_short is already 8 chars from the caller; do NOT re-hash.
+    if actual_sha == expected_sha:
+        return
+    record_bundle_integrity_failure(backend=backend, principal_short=principal_short)
+    _bundle_integrity_failure_logger.warning(
+        "bundle integrity mismatch",
+        extra={
+            "error_code": "MHV-208",
+            "backend": backend,
+            "principal_short": principal_short,
+            "expected_sha_prefix8": expected_sha[:8],
+            "actual_sha_prefix8": actual_sha[:8],
+        },
+    )
+    # Dhara audit row (forensic chain-of-custody; full uid via audit row).
+    write_dhara_audit_row(
+        kind="bundle_integrity_failure",
+        backend=backend,
+        principal_short=principal_short,
+        expected_sha_prefix8=expected_sha[:8],
+        actual_sha_prefix8=actual_sha[:8],
+    )
+    raise WorktreeIntegrityError(
+        f"SHA-256 mismatch: expected={expected_sha!r}, actual={actual_sha!r}",
+        error_code=ErrorCode.WORKTREE_INTEGRITY_FAILED,
+    )
+```
+
+`record_bundle_integrity_failure` is the existing Phase 2 helper that
+calls `_short_principal(name)` internally. Since the new helper receives
+an already-8-char `principal_short`, callers MUST call the metric
+recording path that **does not re-hash** (a new `record_bundle_integrity_failure_short`
+helper or inline `_bundle_integrity_failure_counter.add(1, ...)`).
+Phase 2's `verify_sha256(blob, expected, *, backend, principal)` becomes
+a thin wrapper:
+
+```python
+def verify_sha256(blob: bytes, expected_sha: str, *, backend: str, principal) -> None:
+    principal_short = _short_principal(principal.name if hasattr(principal, "name") else str(principal))
+    verify_sha256_streaming(
+        hashlib.sha256(blob).hexdigest(), expected_sha,
+        backend=backend, principal_short=principal_short,
+    )
+```
+
+`_short_principal` (existing in `observability/metrics.py`) returns
+`sha256(name.encode("utf-8")).hexdigest()[:8]` — NOT `name[:8]`. The
+literal-slice form would collapse distinct principals into the same
+8-char bucket (e.g., `alice@acme.com` and `alice@acme2.com` both map
+to `alice@ac`).
+
+### `MAX_BUNDLE_BYTES_STOPGAP` definition (BLOCKER R2-21)
+
+```python
+# mahavishnu/core/worktree_providers/storage_io.py
+MAX_BUNDLE_BYTES_STOPGAP: int = 256 * 1024 * 1024  # 256MB
+```
+
+Phase 2's cap was implicit (no explicit limit; OOM at bundle_size).
+Phase 3 makes it explicit and raises MHV-221 STOPGAP_TOO_LARGE before
+OOM. The `to_thread` chunk_reader path also applies this cap — without
+it, the pre-drain `chunks_buffer: list[bytes]` materializes the full
+bundle in memory, defeating the streaming benefit (BLOCKER R2-10).
+
+```python
+def _validate_stopgap_size(byte_size: int) -> None:
+    if byte_size > MAX_BUNDLE_BYTES_STOPGAP:
+        raise WorktreeError(
+            f"Bundle of {byte_size} bytes exceeds MAX_BUNDLE_BYTES_STOPGAP "
+            f"({MAX_BUNDLE_BYTES_STOPGAP}); storage adapter does not support streaming.",
+            error_code=ErrorCode.WORKTREE_BUNDLE_STOPGAP_TOO_LARGE,  # MHV-221
+        )
+```
+
+Use `len(blob)`, not `sys.getsizeof(blob)` — `getsizeof` includes
+Python object overhead (~33 bytes for empty `bytes`) and is not the
+canonical bundle byte count.
+
+## Observability additions for Phase 3 (BLOCKER fixes)
+
+### Phase 3 op enum (BLOCKER R2-06)
+
+| Op value | Emitted by | When |
+|---|---|---|
+| `create` | local.py + remote.py | Successful streaming create |
+| `create_stopgap` | local.py + remote.py | Stopgap in-memory path used (no `save_stream`) |
+| `create_s3_multipart_aborted` | remote.py | S3 multipart upload aborted mid-flight |
+| `create_codec_unavailable` | local.py + remote.py | zstandard missing at tarfile call |
+| `fetch` | local.py + remote.py | Successful streaming fetch |
+| `fetch_legacy_guard_hit` | local.py + remote.py | Migration guard detected Phase 2 tar.gz bundle (MHV-213) |
+| `fetch_sha_mismatch` | local.py + remote.py | Streaming SHA mismatch (MHV-208) |
+| `remove_handle` | local.py + remote.py | Successful handle removal |
+| `invalidate_handle` | local.py + remote.py | Cache invalidation |
+
+Existing Phase 2 op values (`lock`, `unlock`, `health`) remain. The
+Phase 3 enum is **additive** — dashboards keyed on a fixed op set
+should re-derive their filter list.
+
+### New OTel counters (BLOCKER R2-01, R2-02)
+
+| Counter | Labels | Emitted on |
+|---|---|---|
+| `s3_multipart_abort_total{backend, reason, principal_short}` | backend + reason (`cancelled\|exception\|timeout`) + 8-char principal | S3 multipart upload aborted (with byte-uploaded-before-abort as an explicit attribute on the span, not a label) |
+| `s3_multipart_cost_events_total{principal_short}` | 8-char principal | One event per successful `complete_multipart_upload` (cost-attribution accounting) |
+| `bundle_integrity_failure_total` (existing) | backend + 8-char principal | Preserved; emit from `verify_sha256_streaming` directly |
+| `streaming_codec_unavailable_total{algorithm}` | algorithm (`zstd\|gzip`) | tarfile's lazy codec lookup fails (zstandard not installed) |
+
+### `bundle_bytes` histogram bucket fix (BLOCKER R2-05)
+
+Phase 2's histogram ended at `104857100` (≈99.99MB), pushing all ≥100MB
+bundles into the `+Inf` bucket. Phase 3's purpose is supporting >100MB
+bundles; the histogram must have dedicated percentiles for the
+streaming-enabled size class:
+
+```python
+bundle_bytes_histogram = meter.create_histogram(
+    name="mahavishnu_bundle_bytes",
+    unit="By",
+    explicit_bucket_boundaries=[
+        1024,           # 1 KB
+        10240,          # 10 KB
+        102400,         # 100 KB
+        1048576,        # 1 MB
+        10485760,       # 10 MB
+        52428800,       # 50 MB
+        104857600,      # 100 MB
+        209715200,      # 200 MB
+        524288000,      # 500 MB
+        1073741824,     # 1 GB
+    ],
+)
+```
+
+### Health probe for streaming capability (BLOCKER R2-03)
+
+`LocalWorktreeProvider.health()` and `RemoteWorktreeProvider.health()` MUST
+verify streaming capability, not just legacy `save`/`read`:
+
+```python
+async def health(self) -> HealthReport:
+    report = await super().health()
+    if not supports_streaming(self._storage):
+        report.add_warning(
+            kind="streaming_capability_missing",
+            message=f"Storage adapter {type(self._storage).__name__} lacks save_stream/read_stream; "
+                    f"stopgap path will be used (max bundle size {MAX_BUNDLE_BYTES_STOPGAP // (1024*1024)}MB)",
+        )
+    return report
+```
+
+A deployment missing streaming capability surfaces as a `HealthReport`
+warning, not a silent degradation. The runbook includes "streaming
+probe failed → fall back to stopgap + page primary on-call" as a
+triage item.
+
+### Trace context propagation across `to_thread` (NICE-TO-HAVE)
+
+`asyncio.to_thread(deserialize_worktree_tar, ...)` does NOT propagate
+the asyncio context by default. Without explicit propagation, the
+worker thread's OTel spans are orphaned from the parent `fetch` span.
+
+```python
+import contextvars
+from opentelemetry import trace
+
+tracer = trace.get_tracer(__name__)
+
+async def fetch(self, handle):
+    # ... cache check ...
+    with tracer.start_as_current_span("fetch.deserialize_worktree_tar"):
+        await asyncio.to_thread(
+            deserialize_worktree_tar, chunk_reader, target,
+            expected_sha256=handle.sha256,
+            backend="local",
+            principal_short=principal_short,
+        )
+```
+
+The `start_as_current_span` wraps the thread call; the span context
+propagates via `contextvars.copy_context()` (Python 3.12+).
+Operators investigating fetch latency see the full trace tree.
+
+### Structured logging contract per error path (NICE-TO-HAVE)
+
+| Error code | Required fields | Log level |
+|---|---|---|
+| `MHV-209` | `error_code, handle_id, backend, principal_short, mkstemp_errno` | ERROR |
+| `MHV-210` | `error_code, handle_id, backend, principal_short, byte_size, temp_path_pattern="worktree-*.tar.zst", exception_type` | ERROR |
+| `MHV-211` | `error_code, handle_id, backend, principal_short, member_name` | ERROR |
+| `MHV-212` | `error_code, handle_id, backend, principal_short, zstd_error_offset` (if zstandard) | ERROR |
+| `MHV-213` | `error_code, handle_id, storage_key, first_2_bytes_hex="1f8b", detected_format="tar.gz"` | WARN |
+| `MHV-220` | `error_code, handle_id, repo, branch, storage_key, key_length, s3_limit=1024` | ERROR |
+| `MHV-221` | `error_code, handle_id, byte_size, max_stopgap_bytes, storage_adapter_class` | ERROR |
+| `MHV-222` | `error_code, handle_id, storage_key` | ERROR |
+
+The `record_worktree_error(error_code, **fields)` helper enforces this
+shape across all error raise sites.
+
+### Concurrent-create semaphore (NICE-TO-HAVE)
+
+Phase 3's streaming path holds a temp file (up to bundle_size) per
+in-flight create. No upper bound exists; a 100-burst of 100MB creates
+= 10GB `/tmp` reservation. Pin a semaphore:
+
+```python
+# mahavishnu/core/worktree_providers/local.py
+MAX_CONCURRENT_WORKTREE_STREAMS: int = 8
+
+class LocalWorktreeProvider:
+    def __init__(self, ...) -> None:
+        ...
+        self._stream_semaphore = asyncio.Semaphore(MAX_CONCURRENT_WORKTREE_STREAMS)
+
+    async def create_worktree_handle(self, ...):
+        async with self._stream_semaphore:
+            ...
+```
+
+`health()` surfaces the semaphore's current value (`_stream_semaphore._value`)
+as a metric so operators can see saturation.
+
 ## Error handling
 
 ### Categories
@@ -894,22 +1313,44 @@ a Phase 4 follow-up).
   - `test_s3_save_stream_aborts_multipart_on_cancelled_error` — `asyncio.CancelledError` injection
   - `test_s3_read_stream_returns_chunks`
   - `test_s3_read_stream_offset_resume`
-- `oneiric/tests/adapters/storage/test_gcs_stream.py` (uses `@mock_gcs`)
+- `oneiric/tests/adapters/storage/test_gcs_stream.py` (uses `gcp-storage-emulator` Docker + `pytest-gcs-emulator` plugin — see Block R2-12 fix below)
   - `test_gcs_save_stream_chunked_upload`
   - `test_gcs_save_stream_cleans_up_on_failure`
   - `test_gcs_read_stream_yields_chunks`
-- `oneiric/tests/adapters/storage/test_azure_blob_stream.py` (uses `@mock_azure` or `azure-storage-blob` test mock)
+- `oneiric/tests/adapters/storage/test_azure_blob_stream.py` (uses Azurite Docker + `pytest-azurite` plugin — R2-12 fix)
   - `test_azure_save_stream_chunked_upload`
   - `test_azure_save_stream_cleans_up_on_failure`
   - `test_azure_read_stream_yields_chunks`
 
-**`zstandard` CI availability:** `zstandard>=0.21` is added to both Oneiric
-and Mahavishnu `[project.dependencies]`. The `[tool.pytest]` test suite
-uses `pytest.importorskip("zstandard")` at the top of
-`test_stream_compression_action.py` and `test_core_worktree_providers_storage_io.py`
-to fail fast on missing installs rather than producing cryptic tarfile
-errors. The `[project.optional-dependencies]` `dev` group already pulls
-`zstandard` transitively.
+**`zstandard` CI availability:** `zstandard>=0.23.0` is added to both Oneiric
+and Mahavishnu via the `compression-zstd` PEP 735 group. The `[tool.pytest]`
+test suite uses `pytest.fail(...)` (NOT `pytest.importorskip` — see
+BLOCKER R2-11) at the top of `test_stream_compression_action.py` and
+`test_core_worktree_providers_storage_io.py` to fail fast on missing
+installs rather than producing cryptic tarfile errors OR silently
+green-skipping the streaming tests. The dev group includes
+`compression-zstd` so test runs pull the dep.
+
+**BLOCKER R2-11 — `importorskip` does not match the spec's intent:**
+`pytest.importorskip("zstandard")` SKIPS the test (returns as PASSED in
+the suite) when the dep is missing. A missing `zstandard` would
+silently turn the streaming tests into green skips, and `crackerjack`'s
+coverage gate (`--cov-fail-under=89`) would still pass because skipped
+tests don't count against coverage. The spec's intent ("fail fast on
+missing installs") does NOT match the mechanism (silently pass when
+missing).
+
+```python
+# tests/unit/test_core_worktree_providers_storage_io.py
+try:
+    import zstandard  # noqa: F401
+except ImportError:
+    pytest.fail(
+        "zstandard required for Phase 3 tar.zst streaming; "
+        "install with `uv sync --group compression-zstd`",
+        pytrace=False,
+    )
+```
 
 **Mahavishnu (rewritten):**
 - `tests/unit/test_core_worktree_providers_storage_io.py`
@@ -950,6 +1391,7 @@ errors. The `[project.optional-dependencies]` `dev` group already pulls
   - `test_fetch_phase2_targz_handle_raises_mhv213` (NEW — migration regression)
   - `test_fetch_migration_guard_does_not_swallow_gzip_magic` (NEW)
   - `test_supports_streaming_checks_capabilities_not_just_methods` (NEW)
+  - `test_supports_streaming_advertises_but_does_not_implement_returns_false` (NEW — adapter claims `"stream"` in metadata.capabilities but does not implement `save_stream`/`read_stream`; helper MUST return False to avoid crashing call site — covers the Phase 2 `LocalStorageAdapter.metadata.capabilities` "advertised-but-staged" state)
 - `tests/unit/test_core_worktree_providers_remote.py` — updated for streaming API
   - `test_remote_create_uses_save_stream_when_available` (NEW — named for coverage)
   - `test_remote_create_falls_back_to_stopgap_when_no_save_stream` (NEW)
@@ -983,7 +1425,7 @@ errors. The `[project.optional-dependencies]` `dev` group already pulls
 - `pytest -m integration` — integration suite, run on demand or in dedicated CI lane.
 - `crackerjack run` clean — no new diagnostics, ty ratchet unchanged
 - Pre-commit hook (crackerjack fast_hooks) checks ruff formatting + ty on new files
-- `pytest.importorskip("zstandard")` at top of storage_io + streaming-compression tests prevents cryptic failures if zstandard is missing
+- `pytest.fail(...)` (NOT `importorskip`) at top of storage_io + streaming-compression tests prevents cryptic failures if zstandard is missing — `importorskip` silently green-skips, defeating the coverage gate (BLOCKER R2-11)
 
 ### What is NOT tested (intentional)
 
@@ -993,16 +1435,16 @@ errors. The `[project.optional-dependencies]` `dev` group already pulls
 
 ## Definition of done
 
-1. All tests green on the merged branch (pytest + crackerjack). New test files use `pytest.importorskip("zstandard")` at module top (handled in `conftest.py`).
+1. All tests green on the merged branch (pytest + crackerjack). New test files use `pytest.fail(...)` at module top to gate on `zstandard` presence (NOT `pytest.importorskip` — see BLOCKER R2-11). The PEP 735 `compression-zstd` group is included in `dev` so test runs pull the dep.
 2. Coverage targets met per the table above; MHV-209 + MHV-210 have explicit tests (storage_io 100% is enforceable).
 3. Crackerjack quality gate passes (no new ERROR/WARNING; ty ratchet unchanged).
 4. Integration test `test_create_then_fetch_round_trip_100mb` passes against `moto.mock_aws` + `fakeredis`.
 5. `docs/adr/015-worktree-and-cache-storage-v4.md` §18 status updated to "Phase 3 shipped" with link to commits.
-6. **NEW:** `docs/runbooks/worktree-streaming-phase3.md` written — covers: (a) startup-time migration sweep to detect legacy `.tar.gz` keys; (b) MHV-209..MHV-213 + MHV-220..MHV-221 error code triage table; (c) rollback procedure (revert Phase 3 commits; no schema migration); (d) operator's S3 lifecycle rule verification (multipart upload auto-abort at 24h).
+6. **NEW:** `docs/runbooks/worktree-streaming-phase3.md` written — covers: (a) startup-time migration sweep to detect legacy `.tar.gz` keys; (b) MHV-209..MHV-213 + MHV-220..MHV-222 error code triage table; (c) rollback procedure (revert Phase 3 commits; no schema migration); (d) operator's S3 lifecycle rule verification (multipart upload auto-abort at 24h); (e) **SLO/SLI targets** with concrete numbers — `fetch` P99 < 5s for 100MB bundle, `bundle_integrity_failure_total` rate < 0.01% of fetches, `create_worktree_handle` P99 < 10s for 100MB bundle; (f) **PromQL alert queries** wired to PagerDuty — `mahavishnu_worktree_op_duration_seconds{op="fetch", quantile="0.99"} > 5`, `rate(mahavishnu_bundle_integrity_failure_total[5m]) / rate(mahavishnu_worktree_op_duration_seconds_count{op="fetch"}[5m]) > 0.0001`, `rate(mahavishnu_s3_multipart_abort_total[5m]) > 0`; (g) **capacity planning** — `/tmp` headroom = `bundle_size × concurrent_creates × 1.5 (safety_factor)`; (h) **on-call escalation matrix** with primary / secondary / manager; (i) **postmortem template** for streaming-path incidents.
 7. **NEW:** `mahavishnu/core/worktree_providers/README.md` created — documents the new `serialize_worktree_tar` context-manager API, the chunk_reader contract, error codes, and the rollout guard (Phase 2 → Phase 3 migration).
 8. **NEW:** Oneiric `CHANGELOG.md` entry — `compression.stream` kit + storage adapter `save_stream` / `read_stream` are additive public surface changes; bump Oneiric minor version per semver.
 9. **NEW:** Mahavishnu `CHANGELOG.md` entry — cross-link from Oneiric's entry.
-10. PRs merged to their target branches per Bodai pre-1.0 policy (Oneiric main first, then Mahavishnu PR-D with `oneiric>=X.Y.Z` bump).
+10. PRs merged to their target branches per Bodai pre-1.0 policy. Oneiric main first; Mahavishnu PR-D pins `oneiric` to the exact commit SHA of Oneiric PR-A (BLOCKER R2-09) via `oneiric @ git+https://...@<sha>` in `pyproject.toml`, then a follow-up PR bumps to `oneiric>=X.Y.Z` once Oneiric cuts the next minor.
 11. Existing Phase 2 handles are orphaned; MHV-213 error path tested explicitly.
 
 ## Out of scope (deferred to follow-up ADRs)
