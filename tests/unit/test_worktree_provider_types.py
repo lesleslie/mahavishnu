@@ -5,8 +5,6 @@ from __future__ import annotations
 from datetime import UTC, datetime
 from pathlib import Path
 
-import pytest
-
 from mahavishnu.auth import Principal
 from mahavishnu.core.worktree_providers.local import (
     DirectGitWorktreeProvider,
@@ -21,7 +19,6 @@ from mahavishnu.core.worktree_providers.types import (
     WorktreeLock,
     WorktreeRef,
 )
-
 
 # ----- Principal / cleanup policy -----------------------------------------
 
@@ -47,8 +44,14 @@ def test_local_worktree_ref_backend_kind() -> None:
 
 
 def test_remote_worktree_ref_backend_kind() -> None:
-    """Renamed from S3WorktreeRef in Phase 1 (ADR 015 v4 §13)."""
-    ref = RemoteWorktreeRef(bucket="b", key="k", worktree_id="wt-1")
+    """Renamed from S3WorktreeRef in Phase 1 (ADR 015 v4 §13).
+
+    ``backend_kind`` is required at construction (no default) — the
+    previous hardcoded default of ``"s3"`` silently downgraded gcs/
+    azure handles (security review #3). Tests must declare the
+    backend explicitly.
+    """
+    ref = RemoteWorktreeRef(bucket="b", key="k", worktree_id="wt-1", backend_kind="s3")
     assert ref.backend_kind == "s3"
     assert isinstance(ref, WorktreeRef)
 

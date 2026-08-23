@@ -177,9 +177,7 @@ def _validate_storage_path(path_str: str, backend_kind: str) -> str:
     # ``p.parts[0]`` since absolute Unix paths always have ``/`` as
     # parts[0].
     if path_str.startswith("-"):
-        raise ValueError(
-            f"{backend_kind} storage path starts with dash (flag-like): {path_str!r}"
-        )
+        raise ValueError(f"{backend_kind} storage path starts with dash (flag-like): {path_str!r}")
     if not p.is_absolute():
         raise ValueError(f"{backend_kind} storage path must be absolute: {path_str!r}")
     if any(part == ".." for part in p.parts):
@@ -194,9 +192,7 @@ def _validate_storage_path(path_str: str, backend_kind: str) -> str:
             f"{backend_kind} storage path cannot be resolved: {path_str!r} ({e})"
         ) from e
     if not _is_within(candidate, base):
-        raise ValueError(
-            f"{backend_kind} storage path {candidate} is outside worktree base {base}"
-        )
+        raise ValueError(f"{backend_kind} storage path {candidate} is outside worktree base {base}")
     return path_str
 
 
@@ -233,17 +229,15 @@ def _row_to_handle(row: dict[str, Any]) -> WorktreeHandle:
             worktree_id=storage_data.get("worktree_id", row["handle_id"]),
         )
     elif backend_kind in ("s3", "gcs", "azure", "bundle"):
-        # RemoteWorktreeRef stores the actual backend_kind in
-        # storage_data so callers can roundtrip the original
-        # cloud backend without losing fidelity. Fall back to the
-        # column-level ``backend_kind`` for storage_data written by
-        # pre-fix code that didn't include the field.
-        actual_backend = storage_data.get("backend_kind") or backend_kind
+        # ``backend_kind`` is required at construction (no default).
+        # The column value is authoritative — it was written by
+        # ``_handle_to_row`` from ``storage_ref.backend_kind`` and
+        # reflects the actual backend identity (not a silent default).
         storage_ref = RemoteWorktreeRef(
             bucket=storage_data.get("bucket", ""),
             key=storage_data.get("key", ""),
             worktree_id=storage_data.get("worktree_id", row["handle_id"]),
-            backend_kind=actual_backend,  # type: ignore[arg-type]
+            backend_kind=backend_kind,  # type: ignore[arg-type]
         )
     else:
         # Unknown backend — fail loud rather than silently downgrading
@@ -463,6 +457,7 @@ async def list_handles(
         {"principal": caller.name},
     )
     return [_row_to_handle(r) for r in rows]
+
 
 __all__ = [
     "SCHEMA_STATEMENTS",

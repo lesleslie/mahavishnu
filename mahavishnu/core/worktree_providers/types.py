@@ -87,20 +87,16 @@ class RemoteWorktreeRef(WorktreeRef):
     Renamed from ``S3WorktreeRef`` in Phase 1 (ADR 015 v4 §13) to
     reflect that the provider wraps *any* Oneiric storage adapter, not
     just S3. ``backend_kind`` carries the actual backend identity
-    (``"s3"``, ``"gcs"``, ``"azure"``, ``"bundle"``) — round-trips
-    through ``dhara_registry`` preserve this field exactly so a gcs
-    handle never silently downgrades to ``"s3"``.
-
-    The default of ``"s3"`` is retained for backward compatibility with
-    callers that construct a ``RemoteWorktreeRef`` without specifying
-    the backend (e.g. legacy code paths, tests). New code SHOULD pass
-    the explicit backend kind at construction.
+    (``"s3"``, ``"gcs"``, ``"azure"``, ``"bundle"``) and is required
+    at construction — there is no default. The previous silent default
+    of ``"s3"`` masked bugs where gcs/azure handles would round-trip
+    through the Dhara registry as s3 (security review #3).
     """
 
     bucket: str
     key: str
     worktree_id: str
-    backend_kind: BackendKind = "s3"
+    backend_kind: BackendKind
 
 
 @dataclass(frozen=True, slots=True)

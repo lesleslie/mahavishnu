@@ -26,9 +26,7 @@ class FakeDharaClient:
         self._sql_log: list[tuple[str, dict[str, Any]]] = []
         self._schema_ready: bool = False
 
-    async def execute(
-        self, sql: str, params: dict[str, Any] | None = None
-    ) -> dict[str, Any]:
+    async def execute(self, sql: str, params: dict[str, Any] | None = None) -> dict[str, Any]:
         self._sql_log.append((sql, params or {}))
         sql_normalized = " ".join(sql.split()).lower()
 
@@ -42,9 +40,7 @@ class FakeDharaClient:
             "insert or replace into mahavishnu_worktree_registry_idx_principal"
         ):
             p = params or {}
-            self._idx_principal.setdefault(p["principal"], set()).add(
-                p["handle_id"]
-            )
+            self._idx_principal.setdefault(p["principal"], set()).add(p["handle_id"])
             return {"rowcount": 1, "status": "ok"}
 
         if sql_normalized.startswith(
@@ -61,9 +57,7 @@ class FakeDharaClient:
 
         raise ValueError(f"Unhandled SQL in fake: {sql[:80]}")
 
-    async def query(
-        self, sql: str, params: dict[str, Any] | None = None
-    ) -> list[dict[str, Any]]:
+    async def query(self, sql: str, params: dict[str, Any] | None = None) -> list[dict[str, Any]]:
         sql_normalized = " ".join(sql.split()).lower()
 
         if sql_normalized.startswith("select r.* from mahavishnu_worktree_registry r"):
@@ -100,8 +94,10 @@ def _caller_with_scope(*scopes: str, uid: int = 1000, name: str = "uid:1000") ->
     new_scopes = frozenset(scopes)
     if base.scopes == new_scopes:
         return base
-    return replace(base, scopes=new_scopes) if base.uid is not None else Principal(
-        uid=base.uid, name=name, scopes=new_scopes
+    return (
+        replace(base, scopes=new_scopes)
+        if base.uid is not None
+        else Principal(uid=base.uid, name=name, scopes=new_scopes)
     )
 
 
@@ -117,17 +113,26 @@ def test_register_handles_creates_schema_then_inserts() -> None:
         assert n == 1
         assert len(client._sql_log) == 6
         for i in range(3):
-            assert client._sql_log[i][0].strip().lower().startswith(
-                "create table"
-            ), f"call {i} was not CREATE TABLE: {client._sql_log[i][0][:80]}"
-        assert client._sql_log[3][0].strip().lower().startswith(
-            "insert or replace into mahavishnu_worktree_registry"
+            assert client._sql_log[i][0].strip().lower().startswith("create table"), (
+                f"call {i} was not CREATE TABLE: {client._sql_log[i][0][:80]}"
+            )
+        assert (
+            client._sql_log[3][0]
+            .strip()
+            .lower()
+            .startswith("insert or replace into mahavishnu_worktree_registry")
         )
-        assert client._sql_log[4][0].strip().lower().startswith(
-            "insert or replace into mahavishnu_worktree_registry_idx_principal"
+        assert (
+            client._sql_log[4][0]
+            .strip()
+            .lower()
+            .startswith("insert or replace into mahavishnu_worktree_registry_idx_principal")
         )
-        assert client._sql_log[5][0].strip().lower().startswith(
-            "insert or replace into mahavishnu_worktree_registry_idx_repo"
+        assert (
+            client._sql_log[5][0]
+            .strip()
+            .lower()
+            .startswith("insert or replace into mahavishnu_worktree_registry_idx_repo")
         )
         return n
 
@@ -151,9 +156,7 @@ def test_register_handles_inserts_principal_index() -> None:
         client = FakeDharaClient()
         await _ensure_schema(client)
         handle = _make_handle("h-1")
-        await register_handles(
-            client, [handle], caller=_caller_with_scope("worktree:register")
-        )
+        await register_handles(client, [handle], caller=_caller_with_scope("worktree:register"))
         assert "uid:1000" in client._idx_principal
         assert handle.handle_id in client._idx_principal["uid:1000"]
 
@@ -165,9 +168,7 @@ def test_register_handles_inserts_repo_index() -> None:
         client = FakeDharaClient()
         await _ensure_schema(client)
         handle = _make_handle("h-1")
-        await register_handles(
-            client, [handle], caller=_caller_with_scope("worktree:register")
-        )
+        await register_handles(client, [handle], caller=_caller_with_scope("worktree:register"))
         assert "mahavishnu" in client._idx_repo
         assert handle.handle_id in client._idx_repo["mahavishnu"]
 
@@ -233,8 +234,10 @@ def test_register_handles_admin_can_register_any_principal() -> None:
         client = FakeDharaClient()
         await _ensure_schema(client)
         caller = _caller_with_scope(
-            "worktree:register", "worktree:register-any",
-            uid=9999, name="uid:9999",
+            "worktree:register",
+            "worktree:register-any",
+            uid=9999,
+            name="uid:9999",
         )
         handle = _make_handle("h-1")  # owned by uid:1000
         # Admin scope bypasses ownership check
@@ -271,6 +274,7 @@ def test_list_handles_filter_by_principal() -> None:
         h_uid1000_a = _make_handle("h-1")
         h_uid1000_b = _make_handle("h-3")
         from dataclasses import replace
+
         h_uid2000 = replace(
             _make_handle("h-2"),
             principal=Principal(name="uid:2000", uid=2000),
@@ -279,25 +283,23 @@ def test_list_handles_filter_by_principal() -> None:
         # needs an admin caller (different uid, with register-any).
         caller_uid1k = _caller_with_scope("worktree:register")
         caller_admin = _caller_with_scope(
-            "worktree:register", "worktree:register-any",
-            uid=9999, name="uid:9999",
+            "worktree:register",
+            "worktree:register-any",
+            uid=9999,
+            name="uid:9999",
         )
         # Listing uid:2000's handles requires worktree:list-all scope
         # (different uid than the caller). Use a separate admin caller.
         caller_list_all = _caller_with_scope(
-            "worktree:list-all", uid=9999, name="uid:9999",
+            "worktree:list-all",
+            uid=9999,
+            name="uid:9999",
         )
-        await register_handles(
-            client, [h_uid1000_a, h_uid1000_b], caller=caller_uid1k
-        )
+        await register_handles(client, [h_uid1000_a, h_uid1000_b], caller=caller_uid1k)
         await register_handles(client, [h_uid2000], caller=caller_admin)
 
-        uid1000_handles = await list_handles(
-            client, principal="uid:1000", caller=caller_uid1k
-        )
-        uid2000_handles = await list_handles(
-            client, principal="uid:2000", caller=caller_list_all
-        )
+        uid1000_handles = await list_handles(client, principal="uid:1000", caller=caller_uid1k)
+        uid2000_handles = await list_handles(client, principal="uid:2000", caller=caller_list_all)
         return uid1000_handles, uid2000_handles, h_uid1000_a, h_uid1000_b, h_uid2000
 
     uid1000, uid2000, h_a, h_b, _h_2k = asyncio.run(run())
@@ -311,6 +313,7 @@ def test_list_handles_filter_by_principal() -> None:
 
 def test_list_handles_non_admin_cannot_query_other_principal() -> None:
     """Non-admin callers are rejected when asking for someone else's handles."""
+
     async def run() -> None:
         client = FakeDharaClient()
         await _ensure_schema(client)
@@ -355,25 +358,27 @@ def test_list_handles_repo_filter_without_read_scope_rejected() -> None:
 def test_list_handles_repo_filter_post_filters_to_callers_own() -> None:
     """Repo-scoped listing returns all rows from SQL, then post-filters
     to only handles the non-admin caller owns."""
+
     async def run() -> tuple:
         client = FakeDharaClient()
         await _ensure_schema(client)
         h_owner = _make_handle("h-owner")  # uid:1000
         from dataclasses import replace
+
         h_other = replace(
             _make_handle("h-other"),
             principal=Principal(name="uid:2000", uid=2000),
         )
         caller_uid1k = _caller_with_scope(
-            "worktree:register", "worktree:register-any",
-            uid=9999, name="uid:9999",
+            "worktree:register",
+            "worktree:register-any",
+            uid=9999,
+            name="uid:9999",
         )
         await register_handles(client, [h_owner, h_other], caller=caller_uid1k)
         # uid:1000 caller asks for repo=mahavishnu → sees only own handle
         caller_uid1k = _caller_with_scope("worktree:read")
-        handles = await list_handles(
-            client, repo="mahavishnu", caller=caller_uid1k
-        )
+        handles = await list_handles(client, repo="mahavishnu", caller=caller_uid1k)
         return handles, h_owner, h_other
 
     handles, h_owner, _h_other = asyncio.run(run())
@@ -386,6 +391,7 @@ def test_list_handles_repo_filter_post_filters_to_callers_own() -> None:
 
 def test_list_handles_unfiltered_raises_without_caller() -> None:
     """No caller + no filter → reject (would have nothing to default to)."""
+
     async def run() -> None:
         client = FakeDharaClient()
         await _ensure_schema(client)
@@ -398,6 +404,7 @@ def test_list_handles_unfiltered_raises_without_caller() -> None:
 def test_list_handles_unfiltered_with_caller_returns_own_handles() -> None:
     """Caller + no filter → returns the caller's own handles (their
     default view)."""
+
     async def run() -> tuple:
         client = FakeDharaClient()
         await _ensure_schema(client)
@@ -437,9 +444,7 @@ def test_register_then_list_roundtrip() -> None:
         caller = _caller_with_scope("worktree:register")
         await register_handles(client, [original], caller=caller)
         admin = _caller_with_scope("worktree:list-all")
-        loaded = (
-            await list_handles(client, principal=original.principal.name, caller=admin)
-        )[0]
+        loaded = (await list_handles(client, principal=original.principal.name, caller=admin))[0]
         return original, loaded
 
     original, loaded = asyncio.run(run())
@@ -561,12 +566,17 @@ def test_remote_worktree_ref_preserves_backend_kind() -> None:
         bucket="my-bucket",
         key="path/to/bundle",
         worktree_id=h_local.handle_id,
+        backend_kind="s3",
     )
-    h_remote = replace(
-        h_local,
-        storage_ref=s3_storage,
-        backend_kind_handler=None,  # placeholder, see below
-    ) if False else h_local  # don't actually replace (frozen conflict)
+    h_remote = (
+        replace(
+            h_local,
+            storage_ref=s3_storage,
+            backend_kind_handler=None,  # placeholder, see below
+        )
+        if False
+        else h_local
+    )  # don't actually replace (frozen conflict)
 
     # Just create a fresh handle via synthesize_handle with a different
     # approach: directly construct.
@@ -591,15 +601,9 @@ def test_remote_worktree_ref_preserves_backend_kind() -> None:
     async def run() -> None:
         client = FakeDharaClient()
         await _ensure_schema(client)
-        await register_handles(
-            client, [h_remote], caller=_caller_with_scope("worktree:register")
-        )
+        await register_handles(client, [h_remote], caller=_caller_with_scope("worktree:register"))
         admin = _caller_with_scope("worktree:list-all")
-        loaded = (
-            await list_handles(
-                client, principal=h_remote.principal.name, caller=admin
-            )
-        )[0]
+        loaded = (await list_handles(client, principal=h_remote.principal.name, caller=admin))[0]
         assert loaded.storage_ref.backend_kind == "s3"
         assert isinstance(loaded.storage_ref, RemoteWorktreeRef)
         assert loaded.storage_ref.bucket == "my-bucket"
@@ -644,13 +648,9 @@ def test_remote_worktree_ref_round_trip_all_backends(backend: str) -> None:
     async def run() -> str:
         client = FakeDharaClient()
         await _ensure_schema(client)
-        await register_handles(
-            client, [h], caller=_caller_with_scope("worktree:register")
-        )
+        await register_handles(client, [h], caller=_caller_with_scope("worktree:register"))
         admin = _caller_with_scope("worktree:list-all")
-        loaded = (
-            await list_handles(client, principal=h.principal.name, caller=admin)
-        )[0]
+        loaded = (await list_handles(client, principal=h.principal.name, caller=admin))[0]
         return loaded.storage_ref.backend_kind
 
     assert asyncio.run(run()) == backend
