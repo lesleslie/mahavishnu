@@ -3,9 +3,6 @@
 from __future__ import annotations
 
 import asyncio
-import time
-from datetime import UTC, datetime, timedelta
-from typing import Any
 
 import pytest
 
@@ -118,12 +115,10 @@ def test_acquire_times_out_when_lock_held() -> None:
     client = _make_client()
 
     async def run() -> None:
-        backend = RedisLockBackend(
-            client, acquire_timeout=0.1, poll_interval=0.01
-        )
+        backend = RedisLockBackend(client, acquire_timeout=0.1, poll_interval=0.01)
         # Pre-populate to simulate an existing holder
         client._kv["mahavishnu:worktree-registry:lock:uid:1:r:b"] = "someone-else"
-        with pytest.raises(asyncio.TimeoutError):
+        with pytest.raises(TimeoutError):
             await backend.acquire("uid:1", "r", "b")
 
     asyncio.run(run())
@@ -140,9 +135,7 @@ def test_acquire_retry_succeeds_when_existing_lock_released() -> None:
             await asyncio.sleep(0.1)
             del client._kv["mahavishnu:worktree-registry:lock:uid:1:r:b"]
 
-        backend = RedisLockBackend(
-            client, acquire_timeout=2.0, poll_interval=0.05
-        )
+        backend = RedisLockBackend(client, acquire_timeout=2.0, poll_interval=0.05)
         release_task = asyncio.create_task(release_after_delay())
         lock = await backend.acquire("uid:1", "r", "b")
         await release_task
@@ -191,9 +184,7 @@ def test_release_returns_false_when_key_already_gone() -> None:
         del client._kv["mahavishnu:worktree-registry:lock:uid:1:r:b"]
         return await backend.release(lock)
 
-    # Current implementation returns True even when key is gone (best-effort).
-    # Document the behavior in the test rather than asserting False.
-    assert asyncio.run(run()) is True
+    assert asyncio.run(run()) is False
 
 
 # ----- construction validation --------------------------------------------

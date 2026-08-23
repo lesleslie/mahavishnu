@@ -14,18 +14,17 @@ created via the v4 ``WorktreeProvider.create_worktree_handle`` flow.
 
 from __future__ import annotations
 
-import re
-import subprocess
-import uuid
 from dataclasses import asdict
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any
+import re
+import subprocess
+from typing import Any, cast
+import uuid
 
 from mahavishnu.auth import Principal
 
-from .types import LocalWorktreeRef, WorktreeHandle
-
+from .types import LocalWorktreeRef, RemoteWorktreeRef, WorktreeHandle
 
 # ----------------------------------------------------------------------------
 # Porcelain parser
@@ -180,9 +179,7 @@ def pre_migration_discover(
         check=True,
     )
     entries = parse_porcelain(result.stdout)
-    return [
-        synthesize_handle(main_repo, entry, principal) for entry in entries
-    ]
+    return [synthesize_handle(main_repo, entry, principal) for entry in entries]
 
 
 # ----------------------------------------------------------------------------
@@ -204,7 +201,10 @@ def handle_to_jsonl_dict(handle: WorktreeHandle) -> dict[str, Any]:
     if isinstance(d["principal"].get("scopes"), frozenset):
         d["principal"]["scopes"] = sorted(d["principal"]["scopes"])
     d["created_at"] = handle.created_at.isoformat()
-    d["storage_ref"] = asdict(handle.storage_ref)
+    # WorktreeRef is an abstract base; the concrete subclasses
+    # (LocalWorktreeRef, RemoteWorktreeRef) are dataclasses, so the
+    # cast is structural, not narrowing through an unknown type.
+    d["storage_ref"] = asdict(cast("LocalWorktreeRef | RemoteWorktreeRef", handle.storage_ref))
     # Convert nested Path objects to strings for JSON serialization.
     if "path" in d["storage_ref"]:
         d["storage_ref"]["path"] = str(d["storage_ref"]["path"])

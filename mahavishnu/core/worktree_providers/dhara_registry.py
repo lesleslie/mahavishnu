@@ -33,15 +33,18 @@ Phase 4 migration calls ``register_handles`` with the output of
 
 from __future__ import annotations
 
+from dataclasses import asdict, is_dataclass
+from datetime import datetime
 import json
-from collections.abc import Iterable
-from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from mahavishnu.auth import Principal
 
-from .types import WorktreeHandle
+from .types import LocalWorktreeRef, RemoteWorktreeRef, WorktreeHandle
+
+if TYPE_CHECKING:
+    from collections.abc import Iterable
 
 
 # SQL schema (executed once via CREATE TABLE IF NOT EXISTS).
@@ -103,7 +106,7 @@ def _handle_to_row(handle: WorktreeHandle) -> dict[str, Any]:
     before the handle reaches storage.
     """
     storage_ref = handle.storage_ref
-    if storage_ref.backend_kind == "local":
+    if isinstance(storage_ref, LocalWorktreeRef):
         _validate_storage_path(str(storage_ref.path), "local")
 
     return {
@@ -120,9 +123,7 @@ def _handle_to_row(handle: WorktreeHandle) -> dict[str, Any]:
         "provenance": handle.provenance,
         "storage_ref_json": json.dumps(_storage_ref_to_dict(storage_ref)),
         "backend_kind": storage_ref.backend_kind,
-        "origin_path": str(storage_ref.path)
-        if hasattr(storage_ref, "path")
-        else "",
+        "origin_path": str(storage_ref.path) if isinstance(storage_ref, LocalWorktreeRef) else "",
     }
 
 
@@ -131,8 +132,6 @@ def _storage_ref_to_dict(storage_ref: Any) -> dict[str, Any]:
     (no __dict__) via dataclasses.asdict which reads __slots__ correctly.
     Path objects are converted to str for JSON serialization.
     """
-    from dataclasses import asdict, is_dataclass
-    from pathlib import Path
 
     def _normalize(v: Any) -> Any:
         if isinstance(v, Path):
@@ -163,20 +162,14 @@ def _validate_storage_path(path_str: str, backend_kind: str) -> str:
         raise ValueError(f"{backend_kind} storage path is empty")
     p = Path(path_str)
     if not p.is_absolute():
-        raise ValueError(
-            f"{backend_kind} storage path must be absolute: {path_str!r}"
-        )
+        raise ValueError(f"{backend_kind} storage path must be absolute: {path_str!r}")
     if any(part == ".." for part in p.parts):
-        raise ValueError(
-            f"{backend_kind} storage path contains '..': {path_str!r}"
-        )
+        raise ValueError(f"{backend_kind} storage path contains '..': {path_str!r}")
     return path_str
 
 
 def _row_to_handle(row: dict[str, Any]) -> WorktreeHandle:
     """Build a WorktreeHandle from a SQL row."""
-    from .types import LocalWorktreeRef, RemoteWorktreeRef
-
     storage_data = json.loads(row["storage_ref_json"])
     backend_kind = row["backend_kind"]
 
@@ -269,9 +262,7 @@ async def register_handles(
     has_register = "worktree:register" in caller.scopes
     has_admin = "worktree:register-any" in caller.scopes
     if not (has_register or has_admin):
-        raise PermissionError(
-            f"Principal {caller.name!r} lacks scope 'worktree:register'"
-        )
+        raise PermissionError(f"Principal {caller.name!r} lacks scope 'worktree:register'")
 
     count = 0
     for handle in handles:
@@ -337,12 +328,9 @@ async def list_handles(
     if all_tenants:
         if caller is None or "worktree:list-all" not in caller.scopes:
             raise PermissionError(
-                "Listing all tenants requires caller with scope "
-                "'worktree:list-all'"
+                "Listing all tenants requires caller with scope 'worktree:list-all'"
             )
-        rows = await client.query(
-            "SELECT * FROM mahavishnu_worktree_registry ORDER BY created_at"
-        )
+        rows = await client.query("SELECT * FROM mahavishnu_worktree_registry ORDER BY created_at")
         return [_row_to_handle(r) for r in rows]
 
     if principal is not None:
@@ -370,8 +358,7 @@ async def list_handles(
     else:
         # Refuse unfiltered listing — would leak across principals.
         raise PermissionError(
-            "list_handles requires a principal, repo, or explicit "
-            "all_tenants=True with admin scope"
+            "list_handles requires a principal, repo, or explicit all_tenants=True with admin scope"
         )
 
     return [_row_to_handle(r) for r in rows]
@@ -382,4 +369,3 @@ __all__ = [
     "list_handles",
     "register_handles",
 ]
-

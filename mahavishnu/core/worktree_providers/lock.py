@@ -20,8 +20,11 @@ Implementation notes:
     (not implemented here; the lock itself just emits the token).
   - The lock key includes the principal so two principals locking
     the same ``(repo, branch)`` don't share state.
-  - Release is a compare-and-delete (Lua script) to avoid releasing
-    someone else's lock if the lease expired and was re-acquired.
+  - Release is a best-effort delete. A compare-and-delete (Lua) variant
+    is a tracked follow-up: ``WorktreeLock`` would need to carry the
+    original acquire token, and ``release()`` would ``client.eval()``
+    the script so we don't delete a still-held lock whose TTL hasn't
+    expired yet.
 
 Caller contract (returned ``WorktreeLock``):
 
@@ -38,11 +41,12 @@ Caller contract (returned ``WorktreeLock``):
 from __future__ import annotations
 
 import asyncio
+from datetime import UTC, datetime, timedelta
 import secrets
 import time
-import uuid
-from datetime import UTC, datetime, timedelta
 from typing import Protocol
+
+from mahavishnu.auth import Principal
 
 from .types import WorktreeLock
 
@@ -66,16 +70,13 @@ class RedisLike(Protocol):
     async def incr(self, key: str) -> int: ...
 
 
-# Atomic compare-and-delete: only delete the key if its value matches
-# the token we stored. Prevents releasing a lock that has already
-# expired and been re-acquired by another holder.
-_RELEASE_LUA = """
-if redis.call("get", KEYS[1]) == ARGV[1] then
-    return redis.call("del", KEYS[1])
-else
-    return 0
-end
-"""
+def _principal_with_name(name: str) -> Principal:
+    """Build a Principal from just the principal name (lock carries just a name).
+
+    The full Principal (with uid, scopes, etc.) lives in the registry;
+    the lock only needs the discriminator name for the key.
+    """
+    return Principal(uid=None, name=name)
 
 
 class RedisLockBackend:
@@ -110,12 +111,8 @@ class RedisLockBackend:
         self._poll_interval = poll_interval
 
     @staticmethod
-    def _lock_key(
-        principal_name: str, repo: str, branch: str
-    ) -> str:
-        return (
-            f"{RedisLockBackend.KEY_PREFIX}:{principal_name}:{repo}:{branch}"
-        )
+    def _lock_key(principal_name: str, repo: str, branch: str) -> str:
+        return f"{RedisLockBackend.KEY_PREFIX}:{principal_name}:{repo}:{branch}"
 
     @staticmethod
     def _fence_key(repo: str, branch: str) -> str:
@@ -131,7 +128,7 @@ class RedisLockBackend:
 
         Polls Redis SETNX with the configured ``acquire_timeout`` /
         ``lease_ttl``. Returns a ``WorktreeLock`` with a freshly
-        issued fencing token on success; raises ``asyncio.TimeoutError``
+        issued fencing token on success; raises ``TimeoutError``
         on timeout.
         """
         key = self._lock_key(principal_name, repo, branch)
@@ -139,15 +136,11 @@ class RedisLockBackend:
         deadline = time.monotonic() + self._acquire_timeout
 
         while True:
-            ok = await self._client.set(
-                key, token, nx=True, ex=int(self._lease_ttl)
-            )
+            ok = await self._client.set(key, token, nx=True, ex=int(self._lease_ttl))
             if ok:
                 break
             if time.monotonic() >= deadline:
-                raise asyncio.TimeoutError(
-                    f"Could not acquire lock {key} within {self._acquire_timeout}s"
-                )
+                raise TimeoutError(f"Could not acquire lock {key} within {self._acquire_timeout}s")
             await asyncio.sleep(self._poll_interval)
 
         # Now we hold the lock. Issue a monotonic fencing token.
@@ -164,37 +157,17 @@ class RedisLockBackend:
         )
 
     async def release(self, lock: WorktreeLock) -> bool:
-        """Release the lock atomically (compare-and-delete).
+        """Release the lock via best-effort delete.
 
-        Returns True if the lock was held and released; False if
-        the lock had already expired and was re-acquired by someone
-        else (or never held).
+        Returns True if the lock key existed and was deleted; False if
+        the key was already gone (TTL expired, or never held by this
+        caller). Tracked follow-up: a compare-and-delete Lua script
+        that only deletes when the stored token matches the lock's
+        original acquire token, so we never release a lock that has
+        since been re-acquired by another principal.
         """
-        key = self._lock_key(
-            lock.owner_principal.name, lock.repo, lock.branch
-        )
-        # We don't have the original token here (WorktreeLock doesn't
-        # carry it); for now use a simpler best-effort delete. A more
-        # correct impl would store the token on WorktreeLock itself and
-        # pass it to a Lua script here. Tracked as follow-up.
-        # The simpler delete is still safe: worst case we delete a
-        # still-held lock whose TTL hasn't expired yet; that holder's
-        # next operation will fail on lock contention.
-        await self._client.delete(key)
-        return True
-
-
-# Import at module level so callers don't need a separate import.
-from mahavishnu.auth import Principal  # noqa: E402
-
-
-def _principal_with_name(name: str) -> Principal:
-    """Build a Principal from just the principal name (lock carries just a name).
-
-    The full Principal (with uid, scopes, etc.) lives in the registry;
-    the lock only needs the discriminator name for the key.
-    """
-    return Principal(uid=None, name=name)
+        key = self._lock_key(lock.owner_principal.name, lock.repo, lock.branch)
+        return bool(await self._client.delete(key))
 
 
 __all__ = [
