@@ -26,7 +26,7 @@ from mahavishnu.core.repo_manager import RepositoryManager
 from .worktree_audit import WorktreeAuditLogger
 from .worktree_backup import WorktreeBackupManager
 from .worktree_providers.base import WorktreeProvider
-from .worktree_providers.direct_git import DirectGitWorktreeProvider
+from .worktree_providers.local import DirectGitWorktreeProvider
 from .worktree_providers.registry import WorktreeProviderRegistry
 from .worktree_providers.session_buddy import SessionBuddyWorktreeProvider
 from .worktree_validation import WorktreePathValidator

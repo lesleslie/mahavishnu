@@ -1,4 +1,8 @@
-"""Unit tests for mahavishnu/core/worktree_providers/direct_git.py.
+"""Unit tests for mahavishnu/core/worktree_providers/local.py.
+
+Module renamed from ``direct_git.py`` to ``local.py`` in ADR 015 v4
+Phase 0.5; the class ``DirectGitWorktreeProvider`` is preserved as a
+1-release deprecated alias.
 
 Mocks asyncio.create_subprocess_exec so no real git commands are run.
 
@@ -15,7 +19,7 @@ from unittest.mock import AsyncMock, patch
 import pytest
 
 from mahavishnu.core.worktree_providers.base import WorktreeProvider
-from mahavishnu.core.worktree_providers.direct_git import DirectGitWorktreeProvider
+from mahavishnu.core.worktree_providers.local import DirectGitWorktreeProvider
 from mahavishnu.core.worktree_providers.errors import (
     WorktreeCreationError,
     WorktreeOperationError,

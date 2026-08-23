@@ -1,4 +1,13 @@
-"""Direct Git worktree provider (fallback).
+"""Direct Git worktree provider (fallback) — formerly ``direct_git.py``.
+
+ADR 015 v4 Phase 0.5: file renamed from ``direct_git.py`` to ``local.py``
+in preparation for Phase 1's new ``LocalWorktreeProvider`` subclass.
+
+This module's class is still ``DirectGitWorktreeProvider`` and is preserved
+as a 1-release deprecated alias. In Phase 1, a new ``LocalWorktreeProvider``
+subclass of ``WorktreeProvider`` will be introduced that wraps
+``LocalStorageAdapter`` for bundle metadata. ``DirectGitWorktreeProvider``
+will become the fallback path used when no new provider is registered.
 
 Uses subprocess git commands as a fallback when Session-Buddy is unavailable.
 Always available (no external dependencies).

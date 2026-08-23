@@ -43,7 +43,7 @@ __all__ = [
 # Mapping of export name -> (relative_module, attribute_name)
 _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
     "WorktreeProvider": (".base", "WorktreeProvider"),
-    "DirectGitWorktreeProvider": (".direct_git", "DirectGitWorktreeProvider"),
+    "DirectGitWorktreeProvider": (".local", "DirectGitWorktreeProvider"),
     "MockWorktreeProvider": (".mock", "MockWorktreeProvider"),
     "WorktreeProviderRegistry": (".registry", "WorktreeProviderRegistry"),
     "SessionBuddyWorktreeProvider": (".session_buddy", "SessionBuddyWorktreeProvider"),
