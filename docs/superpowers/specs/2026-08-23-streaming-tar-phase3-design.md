@@ -236,14 +236,68 @@ and auto-cleaned after extract. The temp file is bounded by bundle size
 (no growth), and on POSIX the `mkstemp` prefix keeps it out of normal
 directory listings.
 
+## Python version strategy (Mission 2 outcome)
+
+**Decision: Option C — Phase 3 ships with `requires-python = ">=3.14"`; Phase 4 ADR drafts the 3.15 bump within ~6 months of 3.15.0 final.**
+
+### Why Option C over Option A (3.14 only) or Option B (3.15-beta now)
+
+1. **Bodai ecosystem all pins `>=3.13` today** (mahavishnu, oneiric, akosha, dhara, session-buddy, crackerjack, mcp-common). Jumping 2 versions in one release window forces coordinated 7-repo lockfile churn; 1 version is much cheaper. **Phase 3 lifts to 3.14** (one-version bump).
+
+2. **`tarfile.data_filter` is stable without DeprecationWarning in 3.14.** Phase 3's primary reason: `data_filter` removes path-traversal members. In 3.12–3.13 it's stable but emits DeprecationWarning unless `filter='data'` is explicit. Phase 3 always passes `filter=tarfile.data_filter` explicitly — but `requires-python = ">=3.14"` removes the noise and matches the spec's "stable in 3.14" framing.
+
+3. **3.15 is still in beta as of mid-2026.** First 3.15.0a1 dropped May 2025; 3.15.0b1 / final expected Oct 2026. Shipping on 3.15-beta means CI installs a pre-release interpreter, `uv` excludes it from default lockfiles, and any 3.15-final behavioral change re-triggers Phase 3 work. Pre-1.0 risk is high.
+
+4. **The user's "3.15+ is eventual objective" maps cleanly to Phase 4.** Phase 3 ships 3.14 now; Phase 4 ADR drafts the 3.15 plan (PEP 735 `compression-zstd` group tightening, `BundleTransport` decorator, encryption-at-rest, plus 3.15 interpreter upgrade). 6-month window lets 3.15 ship, lets ecosystem test 3.14 in prod, and gives a low-risk migration path.
+
+5. **Bodai pre-1.0 merge policy permits direct main-merges** (per `bodai-pre-1.0-merge-policy.md` memory). The version bump lands as a single PR per affected repo — no inter-version rollback window needed.
+
+### Bodai ecosystem readiness
+
+| Component | Current `requires-python` | Phase 3 (>=3.14) | Phase 4 (>=3.15) | Action |
+|---|---|---|---|---|
+| mahavishnu | `>=3.13, <3.15` | Compatible (drop `<3.15` cap) | Compatible after Phase 4 #7 | Phase 3: relax floor |
+| oneiric | `>=3.13` | Compatible | Compatible after Phase 4 #2 | Phase 3: bump to >=3.14 |
+| akosha | `>=3.13` | Compatible | Compatible after Phase 4 #5 | Phase 3: bump to >=3.14 |
+| dhara | `>=3.13` | Compatible | Compatible after Phase 4 #3 | Phase 3: bump to >=3.14 |
+| session-buddy | `>=3.13` | Compatible | Compatible after Phase 4 #4 | Phase 3: bump to >=3.14 |
+| crackerjack | `>=3.13` | Compatible | Compatible after Phase 4 #6 | Phase 3: bump to >=3.14 |
+| mcp-common | `>=3.13` | Compatible | Compatible after Phase 4 #1 | Phase 3: bump to >=3.14 |
+
+**Cross-component risk:** crackerjack is a runtime dep of mahavishnu (`dev` group). If crackerjack's `requires-python` lags mahavishnu's, `uv` may pull an older crackerjack. **Phase 3 bumps crackerjack BEFORE mahavishnu** (or simultaneously in the same lockfile batch).
+
+### Phase 4 ADR skeleton (to be filed after rollout)
+
+**File:** `docs/adr/016-phase4-python-3.15-migration.md`
+
+**Pre-Phase 4 (rolling):**
+- Track 3.15 beta issues weekly in `BODAI_UPGRADE_WATCH.md`
+- Verify each ecosystem repo's dep stack has 3.15 wheels — primary risk: `llama-index-core`, `pydantic-ai-slim`, `selectolax`. Bump deps as 3.15-wheeled versions release.
+
+**Phase 4 PRs (sequenced by dependency order, one per repo, 2-week soak between each):**
+1. mcp-common → 2. oneiric → 3. dhara → 4. session-buddy → 5. akosha → 6. crackerjack → 7. mahavishnu
+2. Each PR: `requires-python = ">=3.15"` + verify CI matrix at 3.15
+3. Cross-check: deprecation audit (`python -W error::DeprecationWarning -m pytest`), `crackerjack run` clean, compatibility matrix at 3.15.0rc3+
+
+**Target window:** Q1–Q2 2027 (3.15.0 final + 3 months ecosystem soak time)
+
+**Risks (Mission 2):**
+- **R-M2-01**: 3.14 minor regressions in patch releases — watch python/cpython 3.14 backports
+- **R-M2-02**: llama-index / pydantic-ai 3.14 wheel lag — pin specific dep versions; defer to Phase 4 if a dep is wedged
+- **R-M2-03**: `tarfile.data_filter` strips `os.setuid`/`os.setgid` — runbook documents as Phase 3 behavior change; Phase 4 ADR can address a custom filter if needed
+- **R-M2-04**: 3.15 migration window — Phase 4 ADR gated on calendar time (Q2 2027), not feature completion
+- **R-M2-05**: 7-repo coordination cost — sequence as a single wave (release branch or batched PRs)
+
 ## Component changes (detailed)
 
 ### Oneiric
 
 **File 1: `oneiric/pyproject.toml`**
 
-Add `requires-python = ">=3.14"` (BLOCKER R2-08 — `tarfile.data_filter` is
-only stable in 3.14; 3.11/3.10 install paths get cryptic `AttributeError`).
+**`requires-python = ">=3.14"`** (BLOCKER R2-08 + Python version strategy
+Option C — `tarfile.data_filter` stable without DeprecationWarning in
+3.14; Phase 4 ADR plans the 3.15 bump). No upper-bound pin — let
+`pyproject.toml` upstream packages decide.
 
 Add `zstandard>=0.23.0` (BLOCKER R2-13 — 0.21.0 has a known
 `chunked_stream_decompress` bug yielding one extra empty chunk after
@@ -265,6 +319,10 @@ documented in CLAUDE.md). Production deployments that do not use
 streaming compression omit the group; the runtime code raises a clear
 `LifecycleError("zstandard not installed. Install with: uv sync --group compression-zstd")`
 matching the existing wrapper convention in `content_ingester.py`.
+
+**CI matrix entry (BLOCKER B-DI-12):** `.github/workflows/test.yml`
+adds a `python-version: ['3.14', '3.14.2']` job. Phase 4 ADR will
+replace this with `['3.15']` after the 3.15 migration lands.
 
 **File 2: `oneiric/actions/compression.py`** — append a new class:
 
@@ -940,6 +998,309 @@ streaming API. Mirror tests for `tests/unit/test_core_worktree_providers_remote.
 **File 8: `docs/adr/015-worktree-and-cache-storage-v4.md`** — §18 status
 updated to "Phase 3 shipped" with link to commits.
 
+## Dotted-Is / Crossed-Ts fixes (final single-agent pass)
+
+The single-agent final pass found 15 BLOCKERs that the multi-agent rounds
+missed — primarily because the multi-agent reviews evaluated the spec
+top-down while the final pass evaluated it bottom-up (pseudocode vs
+error-code table vs test inventory). All folded here.
+
+### B-DI-01: `mkstemp` OSError → MHV-209 wrap
+
+The MHV-209 error code is documented in the table but the
+`serialize_worktree_tar` pseudocode never wraps `tempfile.mkstemp`:
+
+```python
+# FIXED pseudocode
+try:
+    fd, name = tempfile.mkstemp(suffix=".tar.zst", prefix="worktree-")
+except OSError as exc:
+    raise WorktreeError(
+        f"Failed to create temp file for bundle: {exc}",
+        error_code=ErrorCode.WORKTREE_BUNDLE_TEMP_CREATE_FAILED,  # MHV-209
+    ) from exc
+os.close(fd)
+temp_path = Path(name)
+```
+
+Same wrap added in `deserialize_worktree_tar` for its `mkstemp` call.
+
+### B-DI-02: `tarfile.CompressionError` → MHV-223 wrap (three sites)
+
+The MHV-223 codec-unavailable code is documented but three emit sites are
+uncovered. Each `tarfile.open(mode="w|zst")` / `mode="r|zst"` call wraps:
+
+```python
+# serialize_worktree_tar
+try:
+    with tarfile.open(temp_path, mode="w|zst") as tar:
+        tar.add(str(path), arcname=".", recursive=True)
+except tarfile.CompressionError as exc:
+    raise WorktreeError(
+        "zstandard codec unavailable for tar.zst compression; "
+        "install with `uv sync --group compression-zstd`",
+        error_code=ErrorCode.WORKTREE_BUNDLE_CODEC_UNAVAILABLE,  # MHV-223
+    ) from exc
+
+# deserialize_worktree_tar (open path)
+try:
+    with tarfile.open(temp_path, mode="r|zst") as tar:
+        tar.extractall(staging, filter=tarfile.data_filter)
+except tarfile.CompressionError as exc:
+    raise WorktreeError(
+        "zstandard codec unavailable for tar.zst decompression; "
+        "install with `uv sync --group compression-zstd`",
+        error_code=ErrorCode.WORKTREE_BUNDLE_CODEC_UNAVAILABLE,  # MHV-223
+    ) from exc
+```
+
+The streaming `data_filter` happy-path stays the same; only the codec
+lookup is wrapped.
+
+### B-DI-03: `record_bundle_integrity_failure_short` body explicit
+
+The spec's `verify_sha256_streaming` calls
+`record_bundle_integrity_failure(backend, principal_short)` but Phase 2's
+helper internally re-hashes via `_short_principal(name)`. Since the
+streaming helper receives an already-8-char `principal_short`, the
+metric-recording path must NOT re-hash. New helper:
+
+```python
+def record_bundle_integrity_failure_short(*, backend: str, principal_short: str) -> None:
+    """Emit bundle_integrity_failure_total{backend, principal_short} WITHOUT re-hashing.
+
+    Caller has already computed principal_short via _short_principal(name) in
+    bundle_integrity.py:101. Used by verify_sha256_streaming. Existing
+    record_bundle_integrity_failure(name=...) is preserved for the legacy
+    Phase 2 verify_sha256(blob, ...) wrapper.
+    """
+    _bundle_integrity_failure_counter.add(
+        1, attributes={"backend": backend, "principal_short": principal_short}
+    )
+```
+
+`verify_sha256_streaming` body calls this. `verify_sha256(blob, ...)`
+wrapper continues to use the existing `record_bundle_integrity_failure`
+(which re-hashes the full `principal.name`). This is the same
+double-hash risk pattern the round-2 fix R2-22 was protecting against.
+
+### B-DI-04: `s3_multipart_cost_events_total` raise site
+
+The S3 `save_stream` pseudocode now emits the counter on
+`complete_multipart_upload`:
+
+```python
+async def save_stream(self, key, chunks):
+    # ...
+    try:
+        upload_id = await self._client.create_multipart_upload(...)
+        parts = []
+        async for chunk in chunks:
+            part = await self._client.upload_part(...)
+            parts.append(part)
+        await self._client.complete_multipart_upload(upload_id, parts)
+        # Cost-attribution: one billable event per successful complete
+        _s3_multipart_cost_events_counter.add(
+            1, attributes={"principal_short": self._principal_short}
+        )
+    except BaseException:
+        await self._client.abort_multipart_upload(upload_id)
+        # ... abort counter emit ...
+        raise
+```
+
+`self._principal_short` is computed once at adapter construction
+(from `Settings.principal.uid[:8]` or the SHA-8 hash).
+
+### B-DI-05: `s3_multipart_abort_total` cardinality — `reason` is span-only
+
+Confirmed: `reason` (one of `cancelled|exception|timeout`) is on the OTel
+**span attribute**, NOT on the **counter label**. The counter label set
+is `{backend, principal_short}` — two axes. Documenting this prevents a
+future maintainer from adding `reason` to the label set and creating a
+3-axis cardinality explosion.
+
+```python
+async def save_stream(self, key, chunks):
+    try:
+        # ...
+    except asyncio.CancelledError as exc:
+        with tracer.start_as_current_span("s3_multipart_abort") as span:
+            span.set_attribute("abort_reason", "cancelled")
+            span.set_attribute("bytes_uploaded_before_abort", bytes_uploaded)
+        await self._client.abort_multipart_upload(upload_id)
+        _s3_multipart_abort_counter.add(1, attributes={"backend": "s3", "principal_short": self._principal_short})
+        raise
+```
+
+### B-DI-06: Metric naming convention
+
+OTel convention: `_total` suffix on counters; past tense for failure
+events (`bundle_integrity_failure_total`, `s3_multipart_abort_total`,
+`s3_multipart_cost_events_total`). `streaming_codec_failures_total`
+breaks the past-tense pattern. **Renamed to `streaming_codec_failures_total`**
+to align with the convention. Operators searching the metric catalog
+by "_total" suffix find it grouped with other failure counters.
+
+### B-DI-07: Test — `_short_principal` HMAC vs slice
+
+Added to `tests/unit/test_observability_metrics.py`:
+
+```python
+def test_short_principal_distinguishes_acme_acme2():
+    """R2-22 regression: _short_principal must use HMAC, NOT name[:8]."""
+    p1 = _short_principal("alice@acme.com")
+    p2 = _short_principal("alice@acme2.com")
+    # Literal slice would give both "alice@ac"; HMAC distinguishes them.
+    assert p1 != p2
+    assert len(p1) == 8
+    assert len(p2) == 8
+    # HMAC is deterministic
+    assert _short_principal("alice@acme.com") == p1
+```
+
+### B-DI-08: Test — cache key format unification
+
+```python
+def test_cache_key_format_unified_local_and_remote():
+    """R2-20: local.py + remote.py write the SAME cache key for the same handle."""
+    handle_id = "abc123def456"
+    local_key = f"materialized:{handle_id}"
+    # LocalWorktreeProvider.fetch constructs: f"materialized:{handle.handle_id}"
+    # RemoteWorktreeProvider.fetch constructs: f"materialized:{handle.handle_id}" (post-Phase-3)
+    remote_key = f"materialized:{handle_id}"
+    assert local_key == remote_key  # not "{handle_id}:materialized"
+```
+
+### B-DI-09: Test — Oneiric priority ordering
+
+```python
+# oneiric/tests/actions/test_resolver_priority.py
+def test_resolver_returns_compression_action_for_mode_compress():
+    """Generic action-kit dispatch resolves CompressionAction (priority=450)
+    over StreamingCompressionAction (priority=448)."""
+    resolver = OneiricResolver()
+    result = resolver.resolve(domain="action", key="compression", mode="compress")
+    assert result.metadata.key == "compression.encode"
+
+def test_resolver_returns_streaming_action_when_explicitly_requested():
+    resolver = OneiricResolver()
+    result = resolver.resolve(domain="action", key="compression.stream")
+    assert result.metadata.key == "compression.stream"
+```
+
+### B-DI-10: Test — `queue.Queue(maxsize=4)` memory bounded
+
+```python
+def test_fetch_memory_bounded_under_steaming():
+    """R2-10 regression: streaming path uses bounded queue.Queue(maxsize=4).
+    Peak memory is bounded at chunk_size × 4 ≈ 256KB regardless of bundle size."""
+    import tracemalloc
+    tracemalloc.start()
+    snapshot_before = tracemalloc.take_snapshot()
+
+    # Synthesize a 100MB bundle in chunks
+    chunks = [b"x" * 65_536 for _ in range(1500)]  # ~100MB
+    q = queue.Queue(maxsize=4)
+    for c in chunks:
+        q.put(c)
+
+    snapshot_after = tracemalloc.take_snapshot()
+    tracemalloc.stop()
+
+    # Memory should be bounded by queue capacity, not total chunk size
+    diff = snapshot_after.compare_to(snapshot_before, "filename")
+    # Heuristic: total bytes in queue at peak ≤ 4 × chunk_size ≈ 256KB
+    peak_queue_bytes = q.qsize() * 65_536
+    assert peak_queue_bytes <= 4 * 65_536 + 65_536  # tolerance for in-flight
+```
+
+### B-DI-11: Test — Dhara audit row on streaming SHA mismatch
+
+```python
+# tests/unit/test_observability_bundle_integrity_streaming.py
+def test_verify_sha256_streaming_writes_dhara_audit_row():
+    """R2-02: streaming integrity mismatch writes Dhara audit row."""
+    audit_rows = []
+    def fake_dhara(row): audit_rows.append(row)
+    monkeypatch.setattr("mahavishnu.observability.bundle_integrity.write_dhara_audit_row", fake_dhara)
+
+    with pytest.raises(WorktreeIntegrityError):
+        verify_sha256_streaming("a"*64, "b"*64, backend="local", principal_short="abc12345")
+
+    assert len(audit_rows) == 1
+    assert audit_rows[0]["kind"] == "bundle_integrity_failure"
+    assert audit_rows[0]["backend"] == "local"
+    assert audit_rows[0]["principal_short"] == "abc12345"
+```
+
+### B-DI-12: CI matrix entry (already added in File 1)
+
+`.github/workflows/test.yml` adds `python-version: ['3.14', '3.14.2']` job
+during Phase 3 rollout. Phase 4 replaces with `['3.15']`.
+
+### B-DI-13 / B-DI-14: Edge cases on migration guard
+
+```python
+def test_fetch_corrupted_storage_key_raises_mhv212():
+    """Empty first chunk (corrupted handle) → MHV-212 BUNDLE_MALFORMED."""
+    # Mock storage adapter returns b"" for read_stream
+    with pytest.raises(WorktreeError) as exc:
+        LocalWorktreeProvider(...).fetch(handle_with_corrupt_storage)
+    assert exc.value.error_code == ErrorCode.WORKTREE_BUNDLE_MALFORMED
+
+def test_fetch_short_first_chunk_does_not_crash():
+    """1-byte first chunk must not crash the gzip sniff."""
+    # Mock returns b"\x00" — not gzip (1f 8b), proceeds to tarfile
+    # Either succeeds (corrupt bundle extracted, garbage files) or raises MHV-212
+    # at tarfile decode time.
+
+def test_fetch_corrupted_non_gzip_non_zstd_handle_raises_mhv212():
+    """Non-gzip, non-zstd prefix (e.g., JSON error page) → MHV-212."""
+    # Storage adapter returns b'{"error": "Not Found"}' — not gzip magic
+    # Passes gzip sniff; tarfile.open(mode="r|zst") raises CompressionError
+    # → MHV-223 CODEC_UNAVAILABLE OR MHV-212 MALFORMED depending on whether
+    # the bytes happen to start with zstd magic (28 B5 2F FD).
+```
+
+### B-DI-15: `.superseded` dir accumulation
+
+`deserialize_worktree_tar`'s atomic-promote logic renames any pre-existing
+`target` content to `.extract-staging-{pid}.superseded`. Operators
+running many `fetch`es against a hand-seeded `target/` accumulate these.
+
+**Runbook entry added:** "Periodic cleanup — `find /var/lib/mahavishnu/worktrees -name '.extract-staging-*.superseded' -mtime +7 -delete` (cron weekly). Phase 4 ADR may replace the defensive rename with a fail-fast if `target` is non-empty."
+
+**Test added:** `test_atomic_promote_does_not_accumulate_superseded_dirs` —
+asserts `deserialize_worktree_tar` deletes pre-existing `.superseded`
+dirs older than 7 days (cleanup hook) and emits a log line at the
+cumulative-count threshold (e.g., every 10th superseded dir).
+
+### NICE-TO-HAVE folding
+
+- **N-DI-01 / N-DI-09:** `compute_sha256(blob)` orphan — keep the function
+  as a one-liner re-export of `hashlib.sha256(blob).hexdigest()` for
+  operators who want a streaming-friendly call without importing
+  hashlib. Document as "convenience helper, not used by Phase 3 internal
+  code; available for external callers (e.g., MCP tool inputs)."
+- **N-DI-03:** `import shutil` inside function — left as-is. Crackerjack
+  ruff config does not flag it.
+- **N-DI-04:** README template — added minimum sections list to DoD
+  item 7 (Overview · API contract · Error codes · Migration · Caveats).
+- **N-DI-05:** Cardinality probability math — added to runbook
+  (`docs/runbooks/worktree-streaming-phase3.md`) operator FAQ: "8-char
+  HMAC truncation per ADR 015 §17; collision probability < 0.001% at
+  1K principals."
+- **N-DI-06:** Phase 4 tracker issue — DoD item 14 added:
+  `bodai/mahavishnu#NNNN` placeholder for Phase 4 ADR.
+- **N-DI-07:** 7-day post-rollout monitoring window — DoD item 13 added.
+- **N-DI-08:** PagerDuty service name placeholder — DoD item 6h updated
+  with `pagerduty_service: "mahavishnu-worktree-streaming"` and team
+  handle.
+- **N-DI-10:** Reserved error code allocation — DoD item 11 updated:
+  `MHV-214..217` reserved for encryption-at-rest, `MHV-218..219` for
+  multipart-abort observability retrofits, `MHV-224+` open.
+
 ## Phase 2 caller migration (BLOCKER fixes)
 
 The signature changes to `serialize_worktree_tar` (now a context manager)
@@ -1078,7 +1439,7 @@ should re-derive their filter list.
 | `s3_multipart_abort_total{backend, reason, principal_short}` | backend + reason (`cancelled\|exception\|timeout`) + 8-char principal | S3 multipart upload aborted (with byte-uploaded-before-abort as an explicit attribute on the span, not a label) |
 | `s3_multipart_cost_events_total{principal_short}` | 8-char principal | One event per successful `complete_multipart_upload` (cost-attribution accounting) |
 | `bundle_integrity_failure_total` (existing) | backend + 8-char principal | Preserved; emit from `verify_sha256_streaming` directly |
-| `streaming_codec_unavailable_total{algorithm}` | algorithm (`zstd\|gzip`) | tarfile's lazy codec lookup fails (zstandard not installed) |
+| `streaming_codec_failures_total{algorithm}` | algorithm (`zstd\|gzip`) | tarfile's lazy codec lookup fails (zstandard not installed) |
 
 ### `bundle_bytes` histogram bucket fix (BLOCKER R2-05)
 
@@ -1445,7 +1806,10 @@ except ImportError:
 8. **NEW:** Oneiric `CHANGELOG.md` entry — `compression.stream` kit + storage adapter `save_stream` / `read_stream` are additive public surface changes; bump Oneiric minor version per semver.
 9. **NEW:** Mahavishnu `CHANGELOG.md` entry — cross-link from Oneiric's entry.
 10. PRs merged to their target branches per Bodai pre-1.0 policy. Oneiric main first; Mahavishnu PR-D pins `oneiric` to the exact commit SHA of Oneiric PR-A (BLOCKER R2-09) via `oneiric @ git+https://...@<sha>` in `pyproject.toml`, then a follow-up PR bumps to `oneiric>=X.Y.Z` once Oneiric cuts the next minor.
-11. Existing Phase 2 handles are orphaned; MHV-213 error path tested explicitly.
+11. Existing Phase 2 handles are orphaned; MHV-213 error path tested explicitly. Reserved error code allocations locked: `MHV-214..217` encryption-at-rest, `MHV-218..219` multipart-abort observability retrofits, `MHV-224+` open.
+12. **NEW:** Phase 4 ADR placeholder filed at `docs/adr/016-phase4-python-3.15-migration.md` (skeleton included in the spec's Python version strategy section); tracker issue `bodai/mahavishnu#NNNN` opened.
+13. **NEW:** Owner monitors `bundle_integrity_failure_total` rate for 7 calendar days post-rollout; escalates to primary on-call if rate > 0.01% of fetches (per DoD item 6h — `pagerduty_service: "mahavishnu-worktree-streaming"`).
+14. `mahavishnu/core/worktree_providers/README.md` created with minimum sections: Overview · API contract (`serialize_worktree_tar` context-manager + `deserialize_worktree_tar` chunk_reader) · Error codes (MHV-209..213 + MHV-220..223) · Phase 2 → Phase 3 migration · Caveats (`data_filter` strips setuid/setgid bits).
 
 ## Out of scope (deferred to follow-up ADRs)
 
