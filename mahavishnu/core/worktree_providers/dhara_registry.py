@@ -362,6 +362,106 @@ async def register_handles(
     return count
 
 
+async def remove_handle(
+    client: Any,
+    handle_id: str,
+    *,
+    caller: Principal,
+) -> bool:
+    """Remove a single ``WorktreeHandle`` from the Dhara registry.
+
+    Authorizes via ``worktree:remove`` scope (admin override:
+    ``worktree:register-any``). Best-effort sequential delete of:
+    primary + 2 indexes (``idx:principal:<p>`` + ``idx:repo:<r>``).
+
+    **Atomicity caveat (CONFIRMED):** Dhara's ``dhara/mcp/worktree_registry.py``
+    does NOT expose a ``multi_set`` / ``BEGIN`` / ``COMMIT`` transaction
+    primitive. ``remove_handle`` is best-effort: delete primary first,
+    then indexes. If a step fails mid-sequence, log a warning
+    identifying the orphan state and continue (the next call will
+    detect + report drift via ``worktree_registry_drift_total``).
+
+    Atomic-remove is deferred to a separate Dhara-side PR.
+
+    Returns ``True`` if the primary row was deleted, ``False`` if it
+    was not found.
+    """
+    has_remove = "worktree:remove" in caller.scopes
+    has_admin = "worktree:register-any" in caller.scopes
+    if not (has_remove or has_admin):
+        raise PermissionError(
+            f"Principal {caller.name!r} lacks scope 'worktree:remove'"
+        )
+
+    # Look up the primary to discover principal + repo for index cleanup
+    # BEFORE we delete the primary. If absent, return False without
+    # touching indexes (no drift to report).
+    rows = await client.query(
+        "SELECT principal, repo FROM mahavishnu_worktree_registry "
+        "WHERE handle_id = :handle_id",
+        {"handle_id": handle_id},
+    )
+    if not rows:
+        return False
+
+    principal_name = rows[0]["principal"]
+    repo_name = rows[0]["repo"]
+
+    # Delete primary first.
+    await client.execute(
+        "DELETE FROM mahavishnu_worktree_registry WHERE handle_id = :handle_id",
+        {"handle_id": handle_id},
+    )
+
+    # Best-effort index cleanup. Each failure is logged + counted as
+    # drift (handled in the wrapper layer via record_registry_drift).
+    index_drift = 0
+    try:
+        await client.execute(
+            "DELETE FROM mahavishnu_worktree_registry_idx_principal "
+            "WHERE handle_id = :handle_id",
+            {"handle_id": handle_id},
+        )
+    except Exception as exc:
+        _logger.warning(
+            "worktree-registry-index-cleanup-failed",
+            extra={
+                "index": "principal",
+                "handle_id": handle_id,
+                "error": str(exc),
+            },
+        )
+        index_drift += 1
+
+    try:
+        await client.execute(
+            "DELETE FROM mahavishnu_worktree_registry_idx_repo "
+            "WHERE handle_id = :handle_id",
+            {"handle_id": handle_id},
+        )
+    except Exception as exc:
+        _logger.warning(
+            "worktree-registry-index-cleanup-failed",
+            extra={
+                "index": "repo",
+                "handle_id": handle_id,
+                "error": str(exc),
+            },
+        )
+        index_drift += 1
+
+    # Surface drift via metric (best-effort — never raises out of remove).
+    if index_drift:
+        try:
+            from mahavishnu.observability.metrics import record_registry_drift
+
+            record_registry_drift(missing_in_dhara=index_drift)
+        except (ImportError, AttributeError):  # pragma: no cover - observability optional
+            pass
+
+    return True
+
+
 async def list_handles(
     client: Any,
     *,

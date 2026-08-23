@@ -781,3 +781,110 @@ class WorktreeCoordinator:
             raise RuntimeError(f"Git command failed: {stderr.decode()}")
 
         return stdout.decode()
+
+    # ------------------------------------------------------------------
+    # v4 WorktreeHandle-based dispatch (ADR 015 v4 §13, §18 Phase 2)
+    # ------------------------------------------------------------------
+    #
+    # The legacy ``create_worktree`` / ``remove_worktree`` / ``list_worktrees``
+    # methods above return ``dict[str, Any]`` and remain in place for the
+    # Phase 5 deprecation window. The new v4 methods below return
+    # ``WorktreeHandle`` / ``WorktreeRef`` directly. Legacy call sites
+    # continue to use the dict API; new code should use these.
+
+    async def create_worktree_handle(
+        self,
+        repo_nickname: str,
+        branch: str,
+        base_ref: str,
+        principal: Any,
+    ) -> Any:
+        """v4 dispatch: resolve a v4 provider via the registry, then call
+        ``create_worktree_handle`` on it.
+
+        Falls back to a structured error if the resolved provider
+        doesn't expose the v4 method (e.g. legacy providers that only
+        support ``create_worktree``).
+        """
+        from mahavishnu.core.errors import WorktreeError
+
+        provider = await self.provider_registry.get_available_provider()
+        if not hasattr(provider, "create_worktree_handle"):
+            raise WorktreeError(
+                f"Provider {provider.provider_name()} does not support the v4 "
+                f"create_worktree_handle API; use the legacy create_worktree path"
+            )
+        return await provider.create_worktree_handle(
+            repo=repo_nickname,
+            branch=branch,
+            base_ref=base_ref,
+            principal=principal,
+        )
+
+    async def fetch_worktree_handle(self, handle: Any) -> Any:
+        """v4 dispatch: resolve provider + call ``fetch(handle)``."""
+        from mahavishnu.core.errors import WorktreeError
+
+        provider = await self.provider_registry.get_available_provider()
+        if not hasattr(provider, "fetch"):
+            raise WorktreeError(
+                f"Provider {provider.provider_name()} does not support v4 fetch"
+            )
+        return await provider.fetch(handle)
+
+    async def remove_worktree_handle(self, handle: Any) -> bool:
+        """v4 dispatch: resolve provider + call ``remove_handle(handle)``."""
+        from mahavishnu.core.errors import WorktreeError
+
+        provider = await self.provider_registry.get_available_provider()
+        if not hasattr(provider, "remove_handle"):
+            raise WorktreeError(
+                f"Provider {provider.provider_name()} does not support v4 remove_handle"
+            )
+        return await provider.remove_handle(handle)
+
+    async def list_worktree_handles(
+        self,
+        principal: Any | None = None,
+        repo: str | None = None,
+        caller: Any | None = None,
+    ) -> list:
+        """v4 dispatch: resolve provider + call ``list_handles(...)``."""
+        from mahavishnu.core.errors import WorktreeError
+
+        provider = await self.provider_registry.get_available_provider()
+        if not hasattr(provider, "list_handles"):
+            raise WorktreeError(
+                f"Provider {provider.provider_name()} does not support v4 list_handles"
+            )
+        return await provider.list_handles(
+            principal=principal, repo=repo, caller=caller
+        )
+
+    def _legacy_create_worktree_response(self, handle: Any) -> dict[str, Any]:
+        """Adapter: convert a v4 ``WorktreeHandle`` to the legacy
+        ``dict[str, Any]`` response shape consumed by v1 callers.
+
+        Preserves backward compatibility for legacy call sites that
+        still expect the dict shape during the Phase 5 deprecation
+        window. New code should consume ``WorktreeHandle`` directly.
+        """
+        from .worktree_providers.types import (
+            LocalWorktreeRef,
+            RemoteWorktreeRef,
+        )
+
+        worktree_path: str = ""
+        if isinstance(handle.storage_ref, LocalWorktreeRef):
+            worktree_path = str(handle.storage_ref.path)
+        elif isinstance(handle.storage_ref, RemoteWorktreeRef):
+            worktree_path = f"s3://{handle.storage_ref.bucket}/{handle.storage_ref.key}"
+
+        return {
+            "success": True,
+            "worktree_path": worktree_path,
+            "branch": handle.branch,
+            "handle_id": handle.handle_id,
+            "provider": "v4-handle-based",
+            "provenance": handle.provenance,
+        }

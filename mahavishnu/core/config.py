@@ -2015,12 +2015,22 @@ class WorktreeCacheSettings(BaseModel):
     l1_ttl_seconds: float = Field(default=600.0, ge=0.0)
 
     l2_enabled: bool = Field(default=True, description="Enable L2 (Redis) tier.")
-    l2_url: str | None = Field(default=None, description="Full Redis URL (overrides host/port).")
+    l2_url: str | None = Field(
+        default=None,
+        repr=False,
+        exclude=True,
+        description="Full Redis URL (overrides host/port). May contain credentials; excluded from repr/dumps.",
+    )
     l2_host: str = Field(default="localhost")
     l2_port: int = Field(default=6379, ge=1, le=65535)
     l2_db: int = Field(default=1, ge=0)
     l2_ttl_seconds: int = Field(default=86400, ge=0)
-    l2_password: str | None = Field(default=None)
+    l2_password: str | None = Field(
+        default=None,
+        repr=False,
+        exclude=True,
+        description="Redis AUTH password. Excluded from repr/dumps.",
+    )
     l2_ssl: bool = Field(default=False)
 
     key_prefix: str = Field(

@@ -252,8 +252,26 @@ class LocalWorktreeProvider(WorktreeProvider):
     fallback for callers that still use the ``dict[str, Any]`` API.
     """
 
-    def __init__(self) -> None:
+    def __init__(
+        self,
+        *,
+        settings: "MahavishnuSettings | None" = None,
+        storage: "LocalStorageAdapter | None" = None,
+        cache: "WorktreeCache | None" = None,
+        dhara_client: "Any | None" = None,
+    ) -> None:
+        """v4 constructor (ADR 015 v4 §18 Phase 2).
+
+        All four deps are optional with default factories that build
+        from ``MahavishnuSettings``. Legacy callers (no args) get
+        the same default behavior as v1 (``git``-only) which keeps
+        the v1 path alive for the Phase 5 deprecation window.
+        """
         self._git_executable = "git"
+        self._settings = settings
+        self._storage = storage
+        self._cache = cache
+        self._dhara_client = dhara_client
 
     def provider_name(self) -> str:
         return "LocalWorktreeProvider"
@@ -296,7 +314,7 @@ class LocalWorktreeProvider(WorktreeProvider):
     ) -> dict[str, Any]:
         return await _list_worktrees_via_git(self._git_executable, repository_path)
 
-    # v4 WorktreeHandle-based interface (async)
+    # v4 WorktreeHandle-based interface (async) — ADR 015 v4 §13, §18 Phase 2
     async def create_worktree_handle(
         self,
         repo: str,
@@ -304,86 +322,259 @@ class LocalWorktreeProvider(WorktreeProvider):
         base_ref: str,
         principal,
     ) -> "WorktreeHandle":
-        """Create a worktree and return a WorktreeHandle.
+        """Create worktree, persist tar.gz bundle, register in Dhara.
 
-        Bundle integrity (sha256) is computed lazily on first fetch()
-        per v4 §6.
+        Bundle SHA-256 is computed at create time (NOT lazy) per
+        the new v4 contract; ``fetch`` verifies it on read.
         """
         from datetime import UTC, datetime
+        import time
         import uuid
 
+        from .dhara_registry import register_handles
+        from .storage_io import compute_sha256, serialize_worktree_tar
         from .types import LocalWorktreeRef, WorktreeHandle
         from mahavishnu.core.paths import get_worktree_path
+        from mahavishnu.observability.metrics import (
+            record_bundle_bytes,
+            record_worktree_op,
+        )
 
+        handle_id = uuid.uuid4().hex
         wt_path = get_worktree_path(repo, branch)
         wt_path.mkdir(parents=True, exist_ok=True)
 
-        await _create_worktree_via_git(
-            self._git_executable,
-            Path(repo),
-            branch,
-            wt_path,
-            create_branch=True,
-        )
+        start = time.monotonic()
+        try:
+            await _create_worktree_via_git(
+                self._git_executable,
+                Path(repo),
+                branch,
+                wt_path,
+                create_branch=True,
+            )
+            blob = serialize_worktree_tar(wt_path)
+            sha = compute_sha256(blob)
+            record_bundle_bytes(repo=repo, byte_size=len(blob))
 
-        return WorktreeHandle(
-            handle_id=uuid.uuid4().hex,
-            principal=principal,
-            repo=repo,
-            branch=branch,
-            base_ref=base_ref,
-            created_at=datetime.now(UTC),
-            storage_ref=LocalWorktreeRef(
-                path=wt_path,
-                worktree_id=uuid.uuid4().hex,
-            ),
-            sha256="",  # lazy
-            bytes_size=0,  # lazy
-            cleanup_policy=None,
-            provenance="v4",
-        )
+            if self._storage is not None:
+                storage_key = (
+                    f"worktrees/{repo}/{branch}/{handle_id}.tar.gz"
+                )
+                await self._storage.save(storage_key, blob)
+
+            handle = WorktreeHandle(
+                handle_id=handle_id,
+                principal=principal,
+                repo=repo,
+                branch=branch,
+                base_ref=base_ref,
+                created_at=datetime.now(UTC),
+                storage_ref=LocalWorktreeRef(
+                    path=wt_path,
+                    worktree_id=handle_id,
+                ),
+                sha256=sha,
+                bytes_size=len(blob),
+                cleanup_policy=None,
+                provenance="v4",
+            )
+
+            if self._dhara_client is not None:
+                await register_handles(
+                    self._dhara_client, [handle], caller=principal
+                )
+
+            record_worktree_op(
+                backend="local",
+                op="create",
+                duration_seconds=time.monotonic() - start,
+                success=True,
+                principal=principal.name,
+            )
+            return handle
+        except Exception:
+            record_worktree_op(
+                backend="local",
+                op="create",
+                duration_seconds=time.monotonic() - start,
+                success=False,
+                principal=principal.name,
+            )
+            raise
 
     async def fetch(self, handle) -> "WorktreeRef":
+        """Cache-aside read with SHA-256 verification (§3, §6).
+
+        1. Try cache for materialized path
+        2. On miss: read tar.gz from local storage, verify SHA-256,
+           extract to ``worktree_base / handle_id``, cache the result
+        """
+        from .storage_io import deserialize_worktree_tar
         from .types import LocalWorktreeRef
         from mahavishnu.core.errors import WorktreeError
+        from mahavishnu.core.paths import get_worktree_base_path
+        from mahavishnu.observability.bundle_integrity import verify_sha256
+        from mahavishnu.observability.metrics import record_worktree_op
+        import time
 
         if not isinstance(handle.storage_ref, LocalWorktreeRef):
             raise NotImplementedError(
-                f"LocalWorktreeProvider can only fetch LocalWorktreeRef; got {type(handle.storage_ref).__name__}"
+                f"LocalWorktreeProvider can only fetch LocalWorktreeRef; got "
+                f"{type(handle.storage_ref).__name__}"
             )
-        if not handle.storage_ref.path.exists():
-            raise WorktreeError(
-                f"Worktree path does not exist: {handle.storage_ref.path}"
-            )
-        return handle.storage_ref
 
-    async def remove_handle(self, handle) -> None:
+        start = time.monotonic()
+        cache_key = f"materialized:{handle.handle_id}"
+        # 1. Cache hit path
+        if self._cache is not None:
+            cached = await self._cache.get(cache_key)
+            if cached is not None:
+                path = Path(cached)
+                if path.exists():
+                    record_worktree_op(
+                        backend="local",
+                        op="fetch",
+                        duration_seconds=time.monotonic() - start,
+                        success=True,
+                        principal=handle.principal.name,
+                    )
+                    return LocalWorktreeRef(path=path, worktree_id=handle.handle_id)
+
+        # 2. Cache miss path: read + verify + extract + cache
+        try:
+            if self._storage is None:
+                # No storage adapter — fall back to existing path
+                if not handle.storage_ref.path.exists():
+                    raise WorktreeError(
+                        f"Worktree path does not exist: {handle.storage_ref.path}"
+                    )
+                record_worktree_op(
+                    backend="local",
+                    op="fetch",
+                    duration_seconds=time.monotonic() - start,
+                    success=True,
+                    principal=handle.principal.name,
+                )
+                return handle.storage_ref
+
+            storage_key = (
+                f"worktrees/{handle.repo}/{handle.branch}/{handle.handle_id}.tar.gz"
+            )
+            blob = await self._storage.read(storage_key)
+            if blob is None:
+                raise WorktreeError(
+                    f"No storage blob for handle {handle.handle_id}"
+                )
+            verify_sha256(
+                blob,
+                handle.sha256,
+                backend="local",
+                principal=handle.principal.name,
+            )
+            target = get_worktree_base_path() / handle.handle_id
+            deserialize_worktree_tar(blob, target)
+            if self._cache is not None:
+                await self._cache.set(cache_key, str(target))
+            record_worktree_op(
+                backend="local",
+                op="fetch",
+                duration_seconds=time.monotonic() - start,
+                success=True,
+                principal=handle.principal.name,
+            )
+            return LocalWorktreeRef(path=target, worktree_id=handle.handle_id)
+        except Exception:
+            record_worktree_op(
+                backend="local",
+                op="fetch",
+                duration_seconds=time.monotonic() - start,
+                success=False,
+                principal=handle.principal.name,
+            )
+            raise
+
+    async def remove_handle(self, handle) -> bool:
+        """Remove worktree: git rm + cache invalidate + Dhara remove (§18 Phase 2)."""
+        from .dhara_registry import remove_handle as dhara_remove
         from .types import LocalWorktreeRef
+        from mahavishnu.observability.metrics import record_cache_invalidation
 
         if not isinstance(handle.storage_ref, LocalWorktreeRef):
             raise NotImplementedError(
-                f"LocalWorktreeProvider can only remove LocalWorktreeRef; got {type(handle.storage_ref).__name__}"
+                f"LocalWorktreeProvider can only remove LocalWorktreeRef; got "
+                f"{type(handle.storage_ref).__name__}"
             )
-        await _remove_worktree_via_git(
-            self._git_executable,
-            Path(handle.repo),
-            handle.storage_ref.path,
-            force=True,
-        )
+
+        # 1. git worktree remove (idempotent: missing path is fine)
+        try:
+            await _remove_worktree_via_git(
+                self._git_executable,
+                Path(handle.repo),
+                handle.storage_ref.path,
+                force=True,
+            )
+        except Exception:
+            pass
+
+        # 2. Cache invalidate (per-handle prefix)
+        if self._cache is not None:
+            count = await self._cache.invalidate_handle(handle.handle_id)
+            record_cache_invalidation(
+                backend="local", reason="remove_handle", count=count
+            )
+
+        # 3. Dhara registry remove (best-effort; auth errors propagate)
+        if self._dhara_client is not None:
+            try:
+                await dhara_remove(
+                    self._dhara_client,
+                    handle.handle_id,
+                    caller=handle.principal,
+                )
+            except PermissionError:
+                raise  # auth errors propagate; data errors swallowed
+
+        return True
 
     async def list_handles(
         self,
         principal=None,
         repo: str | None = None,
+        caller=None,
     ) -> list:
-        return []
+        """Delegate to Dhara registry (filter by principal/repo)."""
+        from .dhara_registry import list_handles as dhara_list
+        from mahavishnu.auth import Principal as P
+
+        if self._dhara_client is None:
+            return []
+
+        effective_caller = caller
+        if effective_caller is None:
+            if isinstance(principal, str):
+                effective_caller = P(uid=None, name=principal)
+            else:
+                effective_caller = P.anonymous()
+
+        return await dhara_list(
+            self._dhara_client,
+            principal=principal if isinstance(principal, str) else None,
+            repo=repo,
+            caller=effective_caller,
+        )
 
     async def exists(self, handle) -> bool:
+        """Dispatch by backend_kind: local uses path.exists; remote returns False.
+
+        Remote handles must use ``RemoteWorktreeProvider.exists`` directly —
+        we don't cross-dispatch here to avoid tight coupling.
+        """
         from .types import LocalWorktreeRef
 
-        if not isinstance(handle.storage_ref, LocalWorktreeRef):
-            return False
-        return handle.storage_ref.path.exists()
+        if isinstance(handle.storage_ref, LocalWorktreeRef):
+            return handle.storage_ref.path.exists()
+        return False
 
     async def lock(
         self,
@@ -401,10 +592,18 @@ class LocalWorktreeProvider(WorktreeProvider):
         if none is provided; the caller may also pass their own to
         reuse an existing connection pool.
 
+        Emits ``worktree_lock_wait_seconds{repo, branch, acquired}``
+        per §17.
+
         See ``RedisLockBackend.acquire`` for argument details.
-        Returns a ``WorktreeLock`` whose ``fencing_token`` should be
-        passed to all subsequent writes (fencing contract per v4 §14).
+        Returns a ``WorktreeLock`` whose ``fencing_token`` should be passed
+        to all subsequent writes (fencing contract per v4 §14).
         """
+        import time
+
+        from mahavishnu.observability.metrics import record_lock_wait
+
+        start = time.monotonic()
         if redis_client is None:
             import os
 
@@ -423,14 +622,46 @@ class LocalWorktreeProvider(WorktreeProvider):
             acquire_timeout=acquire_timeout,
             lease_ttl=lease_ttl,
         )
-        return await backend.acquire(
-            principal_name="LocalWorktreeProvider",
-            repo=repo,
-            branch=branch,
-        )
+        try:
+            lock_obj = await backend.acquire(
+                principal_name="LocalWorktreeProvider",
+                repo=repo,
+                branch=branch,
+            )
+            record_lock_wait(
+                repo=repo,
+                branch=branch,
+                wait_seconds=time.monotonic() - start,
+                acquired=True,
+            )
+            return lock_obj
+        except TimeoutError:
+            record_lock_wait(
+                repo=repo,
+                branch=branch,
+                wait_seconds=time.monotonic() - start,
+                acquired=False,
+            )
+            raise
 
     async def health(self) -> bool:
-        return self.health_check()
+        """git + storage + cache probes (combined per §17)."""
+        from mahavishnu.observability.metrics import record_backend_health_check_failed
+
+        ok = self.health_check()
+        if not ok:
+            record_backend_health_check_failed(backend="local")
+        if self._storage is not None:
+            storage_ok = await self._storage.health()
+            if not storage_ok:
+                record_backend_health_check_failed(backend="local")
+            ok = ok and storage_ok
+        if self._cache is not None:
+            cache_ok = await self._cache.health()
+            if not cache_ok:
+                record_backend_health_check_failed(backend="local")
+            ok = ok and cache_ok
+        return ok
 
 
 async def _create_worktree_via_git(

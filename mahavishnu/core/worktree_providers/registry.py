@@ -1,7 +1,8 @@
-"""Provider registry with automatic fallback."""
+"""Provider registry with automatic fallback + capability-based resolver."""
 
 import asyncio
 import logging
+from typing import Any
 
 from .base import WorktreeProvider
 from .errors import ProviderUnavailableError
@@ -10,50 +11,107 @@ logger = logging.getLogger(__name__)
 
 
 class WorktreeProviderRegistry:
-    """Registry with automatic fallback for resilience.
+    """Registry with automatic fallback + Oneiric resolver wiring (ADR §4).
 
-    This registry manages multiple worktree providers with automatic fallback:
-    - Tries providers in order (primary first)
-    - Skips unhealthy providers
-    - Raises ProviderUnavailableError if all providers fail
+    Two selection paths:
 
-    Example:
-        >>> providers = [SessionBuddyWorktreeProvider(), DirectGitWorktreeProvider()]
-        >>> registry = WorktreeProviderRegistry(providers)
-        >>> provider = await registry.get_available_provider()
-        >>> await provider.create_worktree(...)
+    1. **Resolver path** (preferred when ``resolver`` is set): capability-
+       based selection via Oneiric's ``Resolver.resolve(domain, key,
+       capabilities=[...], require_all=True)``. Honors
+       ``ResolverSettings.selections[domain][key]`` overrides via
+       ``traced_decision`` OTel span.
+
+    2. **Legacy path** (fallback): ordered health-based fallback. The
+       first provider whose ``health_check()`` returns ``True`` wins.
+
+    The resolver path is selected automatically when ``resolver`` is
+    set at construction. Legacy callers (positional ``providers`` only)
+    keep the original health-fallback behavior with no breaking change.
     """
 
-    def __init__(self, providers: list[WorktreeProvider]) -> None:
-        """Initialize registry with ordered providers.
+    def __init__(
+        self,
+        providers: list[WorktreeProvider] | None = None,
+        *,
+        resolver: Any | None = None,
+        resolver_domain: str = "adapter",
+        resolver_key: str = "worktree-provider",
+    ) -> None:
+        """Initialize registry.
 
         Args:
-            providers: Ordered list of providers (primary first)
+            providers: Ordered list of legacy providers (used when
+                resolver returns None or is unset).
+            resolver: Oneiric ``Resolver`` instance (optional). When
+                set, ``get_available_provider`` consults it first.
+            resolver_domain: Resolver domain key (default ``"adapter"``).
+            resolver_key: Resolver selection key
+                (default ``"worktree-provider"``).
         """
-        self._providers = providers
+        self._providers = providers or []
+        self._resolver = resolver
+        self._resolver_domain = resolver_domain
+        self._resolver_key = resolver_key
         self._provider_health: dict[str, bool] = {}
         self._last_health_check: dict[str, float] = {}
 
         logger.info(
-            f"WorktreeProviderRegistry initialized with {len(providers)} providers: "
-            f"{', '.join(p.provider_name() for p in providers)}"
+            f"WorktreeProviderRegistry initialized with {len(self._providers)} "
+            f"providers (resolver={resolver is not None}): "
+            f"{', '.join(p.provider_name() for p in self._providers)}"
         )
 
     async def get_available_provider(self) -> WorktreeProvider:
-        """Get first available provider from registry.
+        """Get an available provider.
 
-        Tries each provider in order, skipping unhealthy ones.
-        Returns the first provider that passes health_check().
-
-        Returns:
-            Available provider instance
-
-        Raises:
-            ProviderUnavailableError: If no providers are healthy
+        Tries the resolver first (when configured). If the resolver
+        returns a provider candidate that matches one of our registered
+        providers, use it. Otherwise falls through to the legacy
+        ordered health-fallback.
         """
+        # 1. Resolver path
+        if self._resolver is not None:
+            try:
+                # Capability-based selection. ``require_all=True`` ensures
+                # only candidates declaring BOTH "worktree" + "v4" are
+                # considered. The resolver scores by capability match
+                # count, then priority, then registry order.
+                candidates = self._resolver.resolve(
+                    self._resolver_domain,
+                    self._resolver_key,
+                    capabilities=["worktree", "v4"],
+                    require_all=True,
+                )
+            except Exception as exc:  # pragma: no cover - resolver faults
+                logger.warning(
+                    "worktree-resolver-fault",
+                    extra={"domain": self._resolver_domain, "key": self._resolver_key,
+                           "error": str(exc)},
+                )
+                candidates = []
+
+            if candidates:
+                # Pick highest-scoring candidate (resolver already
+                # sorts by capability match count + priority).
+                top = candidates[0]
+                # Match against our registered providers by name.
+                for p in self._providers:
+                    if p.provider_name() == getattr(top, "provider", None):
+                        try:
+                            if await p.health():
+                                self._provider_health[p.provider_name()] = True
+                                return p
+                        except Exception:
+                            logger.warning(
+                                "worktree-resolver-selected-unhealthy",
+                                extra={"provider": p.provider_name()},
+                            )
+                # No registered provider matched the resolver's pick.
+                # Fall through to legacy path below.
+
+        # 2. Legacy path: ordered health fallback
         for provider in self._providers:
             provider_name = provider.provider_name()
-
             try:
                 # Check if provider is healthy
                 if not provider.health_check():
@@ -69,7 +127,6 @@ class WorktreeProviderRegistry:
                 return provider
 
             except Exception as e:
-                # Provider health check raised an exception
                 logger.warning(
                     f"Provider {provider_name} health check failed: {e}",
                     exc_info=True,
