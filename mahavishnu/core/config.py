@@ -20,6 +20,7 @@ from pydantic import BaseModel, Field, field_validator, model_validator
 from pydantic._internal._utils import deep_update
 from pydantic_settings import BaseSettings, SettingsConfigDict, YamlConfigSettingsSource
 
+from .paths import get_worktree_base_path
 from ..terminal.config import TerminalSettings
 
 # ============================================================================
@@ -1918,6 +1919,117 @@ class DistillSettings(BaseModel):
     model_config = {"extra": "forbid"}
 
 
+# ---------------------------------------------------------------------------
+# Worktree storage + cache settings (ADR 015 v4 §3, §18 Phase 2)
+# ---------------------------------------------------------------------------
+
+
+class WorktreeLocalStorageSettings(BaseModel):
+    """Local-storage adapter config for the worktree provider."""
+
+    model_config = {"extra": "forbid"}
+
+    base_path: Path = Field(
+        default_factory=get_worktree_base_path,
+        description="Local worktree base directory. Defaults via get_worktree_base_path().",
+    )
+    create_parents: bool = Field(
+        default=True,
+        description="Create the base_path (parents) on adapter init() if missing.",
+    )
+
+
+class WorktreeS3StorageSettings(BaseModel):
+    """S3-storage adapter config for the worktree provider."""
+
+    model_config = {"extra": "forbid"}
+
+    bucket: str | None = Field(default=None, description="S3 bucket name.")
+    region: str | None = Field(default=None, description="S3 region (e.g. us-east-1).")
+    endpoint_url: str | None = Field(
+        default=None,
+        description="Custom endpoint URL (S3-compatible: MinIO, R2, etc.).",
+    )
+
+
+class WorktreeGCSStorageSettings(BaseModel):
+    """GCS-storage adapter config for the worktree provider."""
+
+    model_config = {"extra": "forbid"}
+
+    bucket: str | None = Field(default=None, description="GCS bucket name.")
+    credentials_path: str | None = Field(
+        default=None, description="Path to GCS service-account JSON credentials."
+    )
+
+
+class WorktreeAzureStorageSettings(BaseModel):
+    """Azure-storage adapter config for the worktree provider."""
+
+    model_config = {"extra": "forbid"}
+
+    container: str | None = Field(
+        default=None, description="Azure Blob storage container name."
+    )
+
+
+class WorktreeStorageSettings(BaseModel):
+    """Top-level worktree storage config block.
+
+    Each backend block is consumed by ``RemoteWorktreeProvider`` when
+    constructing the corresponding Oneiric storage adapter. ``local``
+    is consumed by ``LocalWorktreeProvider``. ``backend_preference``
+    controls the auto-selection order in ``WorktreeProviderRegistry``
+    (the first configured backend with a healthy adapter wins).
+    """
+
+    model_config = {"extra": "forbid"}
+
+    backend_preference: list[str] = Field(
+        default_factory=lambda: ["local", "s3"],
+        description="Auto-selection order for the worktree provider registry.",
+    )
+    local: WorktreeLocalStorageSettings = Field(
+        default_factory=WorktreeLocalStorageSettings
+    )
+    s3: WorktreeS3StorageSettings = Field(default_factory=WorktreeS3StorageSettings)
+    gcs: WorktreeGCSStorageSettings = Field(default_factory=WorktreeGCSStorageSettings)
+    azure: WorktreeAzureStorageSettings = Field(
+        default_factory=WorktreeAzureStorageSettings
+    )
+
+
+class WorktreeCacheSettings(BaseModel):
+    """Multi-tier cache config for worktree operations (ADR §3, §18 Phase 2).
+
+    Consumed by ``mahavishnu.core.worktree_providers.cache.WorktreeCache``.
+    Defaults target the canonical L1 (in-process memory) + L2
+    (Redis at localhost:6379/1) split. Serverless deployments should
+    override ``l2_enabled=False`` and rely on L1 only.
+    """
+
+    model_config = {"extra": "forbid"}
+
+    l1_enabled: bool = Field(default=True, description="Enable L1 (memory) tier.")
+    l1_max_entries: int = Field(default=1024, ge=1, le=10000)
+    l1_ttl_seconds: float = Field(default=600.0, ge=0.0)
+
+    l2_enabled: bool = Field(default=True, description="Enable L2 (Redis) tier.")
+    l2_url: str | None = Field(default=None, description="Full Redis URL (overrides host/port).")
+    l2_host: str = Field(default="localhost")
+    l2_port: int = Field(default=6379, ge=1, le=65535)
+    l2_db: int = Field(default=1, ge=0)
+    l2_ttl_seconds: int = Field(default=86400, ge=0)
+    l2_password: str | None = Field(default=None)
+    l2_ssl: bool = Field(default=False)
+
+    key_prefix: str = Field(
+        default="mahavishnu:worktree-cache:",
+        description="Canonical Redis key prefix for worktree cache entries.",
+    )
+    default_ttl_seconds: int = Field(default=3600, ge=0)
+
+
 class MahavishnuSettings(BaseSettings):
     """Mahavishnu configuration extending MCPServerSettings.
 
@@ -2050,6 +2162,16 @@ class MahavishnuSettings(BaseSettings):
     otel_ingester: OTelIngesterConfig = Field(
         default_factory=OTelIngesterConfig,
         description="OpenTelemetry trace ingester configuration",
+    )
+
+    # Worktree storage (ADR 015 v4 §1, §18 Phase 2)
+    worktree_storage: WorktreeStorageSettings = Field(
+        default_factory=WorktreeStorageSettings,
+        description="Worktree storage backends (local / s3 / gcs / azure).",
+    )
+    worktree_cache: WorktreeCacheSettings = Field(
+        default_factory=WorktreeCacheSettings,
+        description="Worktree multi-tier cache (L1 memory + L2 Redis).",
     )
 
     # OpenSearch
