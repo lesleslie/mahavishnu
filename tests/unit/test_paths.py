@@ -83,3 +83,56 @@ def test_migrate_legacy_data_copies_directory(tmp_path: Path) -> None:
     assert paths.migrate_legacy_data(legacy_dir, new_dir) is True
     assert (new_dir / "one.txt").read_text() == "one"
     assert (new_dir / "sub" / "two.txt").read_text() == "two"
+
+
+def test_get_worktree_base_path_uses_canonical_env_var(
+    tmp_path: Path, monkeypatch: object
+) -> None:
+    """MAHAVISHNU_WORKTREE_BASE_PATH takes precedence."""
+    target = tmp_path / "canonical"
+    monkeypatch.setenv("MAHAVISHNU_WORKTREE_BASE_PATH", str(target))
+    # Legacy env var must be ignored when canonical is set
+    monkeypatch.setenv("MAHAVISHNU_AUTO_WORKTREE_ROOT", str(tmp_path / "legacy"))
+    assert paths.get_worktree_base_path() == target.resolve()
+
+
+def test_get_worktree_base_path_falls_back_to_legacy_env_var(
+    tmp_path: Path, monkeypatch: object
+) -> None:
+    """MAHAVISHNU_AUTO_WORKTREE_ROOT is the 1-release legacy alias."""
+    legacy = tmp_path / "legacy"
+    monkeypatch.delenv("MAHAVISHNU_WORKTREE_BASE_PATH", raising=False)
+    monkeypatch.setenv("MAHAVISHNU_AUTO_WORKTREE_ROOT", str(legacy))
+    assert paths.get_worktree_base_path() == legacy.resolve()
+
+
+def test_get_worktree_base_path_defaults_to_home_worktrees(
+    tmp_path: Path, monkeypatch: object
+) -> None:
+    """When neither env var is set, default to Path.home() / 'worktrees'."""
+    monkeypatch.delenv("MAHAVISHNU_WORKTREE_BASE_PATH", raising=False)
+    monkeypatch.delenv("MAHAVISHNU_AUTO_WORKTREE_ROOT", raising=False)
+    monkeypatch.setattr(paths.Path, "home", staticmethod(lambda: tmp_path))
+    assert paths.get_worktree_base_path() == (tmp_path / "worktrees").resolve()
+
+
+def test_get_worktree_base_path_expanduser_on_tilde(
+    tmp_path: Path, monkeypatch: object
+) -> None:
+    """A leading ~ in the env var value is expanded to the user's home."""
+    home = tmp_path / "home"
+    (home / "worktrees").mkdir(parents=True)
+    monkeypatch.setattr(paths.Path, "home", staticmethod(lambda: home))
+    monkeypatch.setenv("MAHAVISHNU_AUTO_WORKTREE_ROOT", "~/wt")
+    assert paths.get_worktree_base_path() == (home / "wt").resolve()
+
+
+def test_get_worktree_path_joins_parts(tmp_path: Path, monkeypatch: object) -> None:
+    """get_worktree_path is shorthand for get_worktree_base_path() / *parts."""
+    monkeypatch.setattr(paths.Path, "home", staticmethod(lambda: tmp_path))
+    monkeypatch.delenv("MAHAVISHNU_WORKTREE_BASE_PATH", raising=False)
+    monkeypatch.delenv("MAHAVISHNU_AUTO_WORKTREE_ROOT", raising=False)
+    assert (
+        paths.get_worktree_path("mahavishnu", "feature-auth")
+        == (tmp_path / "worktrees" / "mahavishnu" / "feature-auth").resolve()
+    )
