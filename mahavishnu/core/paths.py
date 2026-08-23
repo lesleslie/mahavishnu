@@ -6,8 +6,10 @@ and state directories using the platformdirs library.
 References:
 - XDG Base Directory Specification: https://specifications.freedesktop.org/basedir-spec/basedir-spec-latest.html
 - platformdirs: https://github.com/platformdirs/platformdirs
+- ADR 015: Worktree and Cache Storage Architecture (docs/adr/015-*)
 """
 
+import os
 from pathlib import Path
 from typing import Final
 
@@ -146,6 +148,58 @@ def get_audit_path(*path_parts: str) -> Path:
         Path('~/.local/state/mahavishnu/audit/audit.log')
     """
     return AUDIT_DIR.joinpath(*path_parts)
+
+
+def get_worktree_base_path() -> Path:
+    """Return the canonical worktree base path.
+
+    ALL worktree creation, lookup, and validation paths in mahavishnu
+    must resolve through this helper. Do not read MAHAVISHNU_AUTO_WORKTREE_ROOT
+    directly from any other location.
+
+    Resolution order (ADR 015 v4 §1, §9):
+      1. ``MAHAVISHNU_WORKTREE_BASE_PATH`` (canonical, v4+)
+      2. ``MAHAVISHNU_AUTO_WORKTREE_ROOT`` (legacy, 1-release alias)
+      3. Default: ``Path.home() / "worktrees"`` (preserves current behavior)
+
+    The default is intentionally NOT XDG-correct yet; future work (Phase
+    2/3) may migrate to ``DATA_DIR / "worktrees"`` once the per-MCP venv
+    registry lands and the workspace convention stabilizes.
+
+    Returns:
+        Resolved, absolute Path to the worktree base directory.
+
+    Examples:
+        >>> get_worktree_base_path()
+        PosixPath('/Users/les/worktrees')
+    """
+    explicit = os.environ.get("MAHAVISHNU_WORKTREE_BASE_PATH")
+    if explicit:
+        return Path(explicit).expanduser().resolve()
+    legacy = os.environ.get("MAHAVISHNU_AUTO_WORKTREE_ROOT")
+    if legacy:
+        return Path(legacy).expanduser().resolve()
+    return (Path.home() / "worktrees").resolve()
+
+
+def get_worktree_path(*path_parts: str) -> Path:
+    """Get a path under the worktree base.
+
+    Equivalent to ``get_worktree_base_path() / *path_parts`` but resolves
+    once and follows the same resolution order as
+    ``get_worktree_base_path``.
+
+    Args:
+        *path_parts: Path components to join with the worktree base.
+
+    Returns:
+        Resolved, absolute Path to the per-worktree subdirectory.
+
+    Examples:
+        >>> get_worktree_path("mahavishnu", "feature-auth")
+        PosixPath('/Users/les/worktrees/mahavishnu/feature-auth')
+    """
+    return get_worktree_base_path().joinpath(*path_parts)
 
 
 # Legacy path migration utilities
