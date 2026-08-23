@@ -16,7 +16,7 @@ from mahavishnu.core.worktree_providers.types import (
     BackendKind,
     BundleRef,
     LocalWorktreeRef,
-    S3WorktreeRef,
+    RemoteWorktreeRef,
     WorktreeHandle,
     WorktreeLock,
     WorktreeRef,
@@ -46,8 +46,9 @@ def test_local_worktree_ref_backend_kind() -> None:
     assert isinstance(ref, WorktreeRef)
 
 
-def test_s3_worktree_ref_backend_kind() -> None:
-    ref = S3WorktreeRef(bucket="b", key="k", worktree_id="wt-1")
+def test_remote_worktree_ref_backend_kind() -> None:
+    """Renamed from S3WorktreeRef in Phase 1 (ADR 015 v4 §13)."""
+    ref = RemoteWorktreeRef(bucket="b", key="k", worktree_id="wt-1")
     assert ref.backend_kind == "s3"
     assert isinstance(ref, WorktreeRef)
 

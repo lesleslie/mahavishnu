@@ -74,13 +74,31 @@ class LocalWorktreeRef(WorktreeRef):
 
 
 @dataclass(frozen=True, slots=True)
-class S3WorktreeRef(WorktreeRef):
+class RemoteWorktreeRef(WorktreeRef):
+    """Reference to a worktree stored on a remote (non-local) backend.
+
+    Wraps any of Oneiric's storage adapters: S3, GCS, Azure Blob, or
+    even a remote-mounted filesystem that exposes the same byte-store
+    interface. The literal ``bucket`` and ``key`` fields map onto each
+    adapter's underlying identifier (S3 bucket/key, GCS bucket/object,
+    Azure container/blob, etc.).
+
+    Renamed from ``S3WorktreeRef`` in Phase 1 (ADR 015 v4 §13) to
+    reflect that the provider wraps *any* Oneiric storage adapter, not
+    just S3. ``backend_kind`` still distinguishes the actual backend at
+    runtime via the ``BackendKind`` literal.
+    """
+
     bucket: str
     key: str
     worktree_id: str
 
     @property
     def backend_kind(self) -> str:
+        # Default is "s3" for backward compat; the runtime backend
+        # is recorded on the WorktreeHandle via its provenance field.
+        # Callers that need exact backend discrimination should
+        # read the handle's provenance, not this default.
         return "s3"
 
 
@@ -115,7 +133,7 @@ __all__ = [
     "BackendKind",
     "BundleRef",
     "LocalWorktreeRef",
-    "S3WorktreeRef",
+    "RemoteWorktreeRef",
     "WorktreeHandle",
     "WorktreeLock",
     "WorktreeRef",
