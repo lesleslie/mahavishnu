@@ -254,17 +254,27 @@ directory listings.
 
 ### Bodai ecosystem readiness
 
+Per user direction "ecosystem wide with the python version upgrade means all of the -mcp, fastblocks, splashstand, etc eventually going to 3.14 as well" — the scope extends beyond the 7 repos originally listed to include the full Bodai-maintained set. The canonical enumeration lives in `BODAI_REPO_REGISTRY.md` (Phase 0.0 deliverable).
+
 | Component | Current `requires-python` | Phase 3 (>=3.14) | Phase 4 (>=3.15) | Action |
 |---|---|---|---|---|
-| mahavishnu | `>=3.13, <3.15` | Compatible (drop `<3.15` cap) | Compatible after Phase 4 #7 | Phase 3: relax floor |
+| mahavishnu | `>=3.13, <3.15` | Compatible (drop `<3.15` cap) | Compatible after Phase 4 #9 | Phase 3: relax floor |
 | oneiric | `>=3.13` | Compatible | Compatible after Phase 4 #2 | Phase 3: bump to >=3.14 |
 | akosha | `>=3.13` | Compatible | Compatible after Phase 4 #5 | Phase 3: bump to >=3.14 |
 | dhara | `>=3.13` | Compatible | Compatible after Phase 4 #3 | Phase 3: bump to >=3.14 |
 | session-buddy | `>=3.13` | Compatible | Compatible after Phase 4 #4 | Phase 3: bump to >=3.14 |
 | crackerjack | `>=3.13` | Compatible | Compatible after Phase 4 #6 | Phase 3: bump to >=3.14 |
 | mcp-common | `>=3.13` | Compatible | Compatible after Phase 4 #1 | Phase 3: bump to >=3.14 |
+| fastblocks | (verify in registry) | Compatible | Compatible after Phase 4 #7 | Phase 3: bump to >=3.14 |
+| css-mcp | (verify in registry) | Compatible | Compatible after Phase 4 #8 | Phase 3: bump to >=3.14 |
+| graphics-mcp | (verify in registry) | Compatible | Compatible after Phase 4 #8 | Phase 3: bump to >=3.14 |
+| splashstand | (verify in registry) | Compatible | Compatible after Phase 4 #8 | Phase 3: bump to >=3.14 |
+| porkbun-domain-mcp | (verify in registry) | Compatible | Compatible after Phase 4 #8 | Phase 3: bump to >=3.14 |
+| langsmith-mcp | (verify in registry) | Compatible | Compatible after Phase 4 #8 | Phase 3: bump to >=3.14 |
+| opera-cloud-mcp | (verify in registry) | Compatible | Compatible after Phase 4 #8 | Phase 3: bump to >=3.14 |
+| (other Bodai repos per registry) | (per registry) | Compatible | Compatible | Phase 3: bump per registry |
 
-**Cross-component risk:** crackerjack is a runtime dep of mahavishnu (`dev` group). If crackerjack's `requires-python` lags mahavishnu's, `uv` may pull an older crackerjack. **Phase 3 bumps crackerjack BEFORE mahavishnu** (or simultaneously in the same lockfile batch).
+**Cross-component risk:** crackerjack is a runtime dep of mahavishnu (`dev` group). If crackerjack's `requires-python` lags mahavishnu's, `uv` may pull an older crackerjack. **Phase 3 bumps crackerjack BEFORE mahavishnu** (or simultaneously in the same lockfile batch). Same pattern applies to other -mcp servers that may be runtime deps of mahavishnu; Phase 0.0 discovery captures the full graph.
 
 ### Phase 4 ADR skeleton (to be filed after rollout)
 
@@ -273,9 +283,10 @@ directory listings.
 **Pre-Phase 4 (rolling):**
 - Track 3.15 beta issues weekly in `BODAI_UPGRADE_WATCH.md`
 - Verify each ecosystem repo's dep stack has 3.15 wheels — primary risk: `llama-index-core`, `pydantic-ai-slim`, `selectolax`. Bump deps as 3.15-wheeled versions release.
+- **Canonical repo enumeration:** `BODAI_REPO_REGISTRY.md` (Phase 0.0 deliverable). Same scope as the 3.14 rollout — all Bodai-maintained repos including `-mcp` servers (per `bodai-mcp-servers-not-mycelium-core.md`) and fastblocks.
 
-**Phase 4 PRs (sequenced by dependency order, one per repo, 2-week soak between each):**
-1. mcp-common → 2. oneiric → 3. dhara → 4. session-buddy → 5. akosha → 6. crackerjack → 7. mahavishnu
+**Phase 4 PRs (sequenced by dependency order per the registry, one per repo, 2-week soak between each):**
+1. mcp-common → 2. oneiric → 3. dhara → 4. session-buddy → 5. akosha → 6. crackerjack → 7. fastblocks → 8. each `-mcp` server (css-mcp, graphics-mcp, splashstand, porkbun-domain-mcp, langsmith-mcp, opera-cloud-mcp, sequenced within the -mcp family by dependency) → 9. mahavishnu
 2. Each PR: `requires-python = ">=3.15"` + verify CI matrix at 3.15
 3. Cross-check: deprecation audit (`python -W error::DeprecationWarning -m pytest`), `crackerjack run` clean, compatibility matrix at 3.15.0rc3+
 
@@ -286,7 +297,7 @@ directory listings.
 - **R-M2-02**: llama-index / pydantic-ai 3.14 wheel lag — pin specific dep versions; defer to Phase 4 if a dep is wedged
 - **R-M2-03**: `tarfile.data_filter` strips `os.setuid`/`os.setgid` — runbook documents as Phase 3 behavior change; Phase 4 ADR can address a custom filter if needed
 - **R-M2-04**: 3.15 migration window — Phase 4 ADR gated on calendar time (Q2 2027), not feature completion
-- **R-M2-05**: 7-repo coordination cost — sequence as a single wave (release branch or batched PRs)
+- **R-M2-05**: ecosystem-wide coordination cost — per the BODAI_REPO_REGISTRY.md enumeration; sequence as a single wave (release branch or batched PRs) to minimize calendar time
 
 ## Component changes (detailed)
 
