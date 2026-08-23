@@ -101,6 +101,18 @@ def _short_principal(principal: str | None) -> str:
     return sha256(principal.encode("utf-8")).hexdigest()[:8]
 
 
+def _short_label(value: str | None, *, default: str = "unknown") -> str:
+    """Hash a label value (repo, branch, etc.) to a stable 8-char prefix.
+
+    Returns ``default`` for None / empty so all bucket-affinity is
+    captured under a single value (no cardinality explosion from
+    unknown labels).
+    """
+    if not value:
+        return default
+    return sha256(value.encode("utf-8")).hexdigest()[:8]
+
+
 # ---------------------------------------------------------------------------
 # Instruments — created at import time, shared across the process
 # ---------------------------------------------------------------------------
@@ -233,7 +245,11 @@ def record_cache_invalidation(backend: str, reason: str, count: int = 1) -> None
     """Record a cache invalidation event. ``count`` defaults to 1; bulk
     invalidations (e.g. ``delete_prefix`` removing N keys) pass the
     actual count so dashboards see total invalidated-volume."""
-    labels = {"backend": backend, "reason": reason}
+    # Bounded allowlist for ``reason``: callers pass small literal strings
+    # like "remove_handle" / "fetch_miss" — cap at 32 chars to prevent
+    # caller-supplied data from spawning unbounded label series.
+    bounded_reason = (reason or "unknown")[:32]
+    labels = {"backend": backend, "reason": bounded_reason}
     _validate_labels(labels)
     _worktree_cache_invalidation_counter.add(count, attributes=labels)
 
@@ -255,7 +271,11 @@ def record_lock_wait(
     repo: str, branch: str, wait_seconds: float, acquired: bool
 ) -> None:
     """Record a worktree distributed-lock acquisition wait."""
-    labels = {"repo": repo, "branch": branch, "acquired": "true" if acquired else "false"}
+    labels = {
+        "repo": _short_label(repo),
+        "branch": _short_label(branch),
+        "acquired": "true" if acquired else "false",
+    }
     _validate_labels(labels)
     _worktree_lock_wait_histogram.record(wait_seconds, attributes=labels)
 
@@ -265,8 +285,8 @@ def record_lock_held(
 ) -> None:
     """Record a worktree distributed-lock held duration on release."""
     labels = {
-        "repo": repo,
-        "branch": branch,
+        "repo": _short_label(repo),
+        "branch": _short_label(branch),
         "principal_short": _short_principal(principal),
     }
     _validate_labels(labels)
@@ -293,8 +313,14 @@ def record_registry_drift(
 
 
 def record_cache_fallback(from_tier: str, to_tier: str) -> None:
-    """Record a cache tier fallback (e.g. L1 miss → L2 hit)."""
-    labels = {"from_tier": from_tier, "to_tier": to_tier}
+    """Record a cache tier fallback (e.g. L1 miss → L2 hit).
+
+    Tier labels are bounded to 8 chars (the only legal values are
+    "l1", "l2", "redis", "memory", etc. — short literals).
+    """
+    bounded_from = (from_tier or "unknown")[:8]
+    bounded_to = (to_tier or "unknown")[:8]
+    labels = {"from_tier": bounded_from, "to_tier": bounded_to}
     _validate_labels(labels)
     _cache_fallback_counter.add(1, attributes=labels)
 
@@ -308,7 +334,7 @@ def record_backend_health_check_failed(backend: str) -> None:
 
 def record_bundle_bytes(repo: str, byte_size: int) -> None:
     """Record the size of a worktree bundle in bytes (per repo)."""
-    labels = {"repo": repo}
+    labels = {"repo": _short_label(repo)}
     _validate_labels(labels)
     _bundle_bytes_histogram.record(byte_size, attributes=labels)
 
