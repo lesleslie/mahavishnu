@@ -107,47 +107,70 @@ Three jobs, three owners:
 ### 5.1 Decision doc — `mahavishnu/.claude/decisions/promote-oneiric-action-kits.md`
 
 Matches the existing pattern in `mahavishnu/.claude/decisions/`
-(see `bodai-observability-pattern.md` for the closest analog):
+(see `bodai-observability-pattern.md` for the closest analog).
+**Use this exact frontmatter** (matches every other file in
+`mahavishnu/.claude/decisions/`):
 
 ```markdown
+---
+status: active
+role: canonical
+date: 2026-08-22
+last_reviewed: 2026-08-22
+topic: oneiric-action-kit-promotion
+---
+
+# Promote Oneiric Action Kits Across Bodai
+
 ## Context
 [Why kit adoption matters — the W3 results, the 207 tests passing,
 the unification argument across 5 bodai repos.]
 
-## Decision rule
-[Imperative: "When about to write [list of kit-shaped primitives],
-reach for `oneiric.actions.<kit>` first. Catalog at <path>. If the kit
-doesn't fit, write a wrapper that defers to the kit — do NOT
-reimplement."]
+## Discovery hint
+When about to write [list of kit-shaped primitives: HMAC signing, token
+generation, schema validation, retries, redaction, HTTP probing,
+serialization, compression, hashing, data transforms, automation
+triggers, workflow orchestration], **discover** whether a matching
+`oneiric.actions.<kit>` exists before reaching for stdlib. The catalog
+is the canonical reference at `oneiric/docs/action-kits.md` in the
+oneiric project on this filesystem. If the kit fits, use it (or wrap it).
+If it doesn't fit (latency, API mismatch), document why in a code
+comment linking back to the catalog.
+
+This is a discovery surface, not an enforcement gate. The skill
+(`oneiric-action-kit-awareness` in `mahavishnu/.claude/skills/`)
+auto-fires when the user's task smells like kit-shaped work and prompts
+the user to reach for the kit.
 
 ## Status
 Active. Adopted 2026-08-22 after W3 across 5 repos.
 
 ## Inventory of kits (deferred to oneiric/docs/action-kits.md)
-[Link, not duplication.]
+[Link, not duplication. The catalog is the source of truth; this
+decision doc links to it.]
 
 ## Exceptions
 [List of legitimate non-kit cases: e.g., when latency budget is < 1ms
 and the kit adds an lru_cache lookup; when the kit's API doesn't fit
-and a wrapper would be dishonest.]
+and a wrapper would be dishonest. Discovery, not enforcement — bypass
+freely with a one-line note.]
 ```
 
 ### 5.2 Skill — `mahavishnu/.claude/skills/oneiric-action-kit-awareness/SKILL.md`
 
-Auto-trigger skill. The frontmatter `description:` lists the trigger
-phrases; the body is short — when fired, it surfaces the catalog and
-proposes the kit call.
+Auto-trigger skill. **Use header-style frontmatter** to match the
+active convention in `mahavishnu/.claude/skills/` (see
+`mahavishnu/SKILL.md:1-3`, `bodai-status/SKILL.md:1-3`):
 
 ```markdown
----
-name: oneiric-action-kit-awareness
-description: Use when about to write HMAC signing, token generation,
-schema validation, retries with backoff, span/log redaction, config
-serialization, HTTP fetch/probe, compression, hashing, data transforms,
-debug consoles, automation triggers, or workflow orchestration.
-Surfaces the matching oneiric.actions.X kit and prompts "Use the kit?"
-before implementation.
----
+______________________________________________________________________
+
+## name: oneiric-action-kit-awareness description: "Auto-trigger skill that surfaces the matching oneiric.actions.X kit when the user is about to write HMAC signing, token generation, schema validation, retries with backoff, span/log redaction, config serialization, HTTP fetch/probe, compression, hashing, data transforms, debug consoles, automation triggers, or workflow orchestration. Prompts 'Use the kit?' before implementation. Catalog at oneiric/docs/action-kits.md in the oneiric project."
+
+# Oneiric Action-Kit Awareness (auto-trigger)
+
+When user is about to write code that maps to a known kit, surface the
+kit before they reinvent.
 
 ## When this fires
 - HMAC, signing, signature verification → SecuritySignatureAction (`security.signature`)
@@ -169,13 +192,18 @@ before implementation.
 - Multi-step workflow orchestration → WorkflowOrchestratorAction (`workflow.orchestrate`)
 
 ## What to do
-1. Read the catalog at the absolute path baked into this skill body
-   (e.g., `/Users/les/Projects/oneiric/docs/action-kits.md`) for the
-   matching kit
-2. Surface to the user: "This looks like `<kit>`; canonical pattern is:
-   [snippet from catalog]. Use it?"
+1. Locate the catalog at `oneiric/docs/action-kits.md` in the oneiric
+   project on the developer's filesystem (path varies by setup; if not
+   findable, surface "couldn't find the oneiric catalog; please paste
+   the kit name from §When this fires above" and continue).
+2. Surface to the user: "This looks like `<kit>` (`<metadata.key>`);
+   canonical pattern is in the oneiric catalog. Use it?"
 3. If yes, write the wrapper. If no (latency, fit), document why in a
-   code comment linking back to the catalog.
+   code comment linking back to the catalog entry.
+
+Note: kit invocations go through `oneiric.actions.ActionBridge` (in
+`bridge.py`); not all kits require it directly, but the bridge is the
+canonical runtime surface for cross-process kit calls.
 ```
 
 ### 5.3 Catalog — `oneiric/docs/action-kits.md`
@@ -186,7 +214,15 @@ before implementation.
 `security`, `serialization`, `task`, `workflow`); the other 5 files in
 `oneiric/actions/` (`__init__.py`, `bootstrap.py`, `bridge.py`,
 `metadata.py`, `payloads.py`) are infrastructure (re-exports, resolver
-glue, metadata model, payload normalization) and not kit-shaped.
+glue, metadata model, payload normalization) and not kit-shaped. Note
+that this file does not yet exist at the time of writing; it is created
+in Wave 1 step 1.
+
+**Catalog ordering**: alphabetical by `metadata.key` (e.g.,
+`automation.trigger` before `compression.encode` before
+`compression.hash` …). This makes the catalog predictable and lets the
+skill grep it deterministically. New kits added to oneiric must be
+appended to maintain alphabetical order.
 
 Each entry follows the same template (see Section 6).
 
@@ -194,16 +230,17 @@ Each entry follows the same template (see Section 6).
 
 One line each, ~15 repos. Placed in `CLAUDE.md` for repos that have
 one, otherwise `AGENTS.md` (per a W3 spot check, every bodai repo has
-at least one).
+at least one). The breadcrumb text is **identical** across repos (no
+per-repo path substitution) so Wave 3 step 8's parallel dispatch works.
 
 ```markdown
 ## Oneiric action kits
 
 Before writing common primitives (HMAC, token gen, schema validation,
-retries, redaction, HTTP probing, serialization), check
-`oneiric.actions` — catalog at
-`<absolute-path>/oneiric/docs/action-kits.md`. The rule of thumb lives
-in `mahavishnu/.claude/decisions/promote-oneiric-action-kits.md`.
+retries, redaction, HTTP probing, serialization, compression, hashing,
+data transforms), check `oneiric.actions` — catalog lives at
+`oneiric/docs/action-kits.md` in the oneiric project. Discovery hint:
+`mahavishnu/.claude/decisions/promote-oneiric-action-kits.md`.
 ```
 
 ## 6. Catalog Entry Template
@@ -261,44 +298,75 @@ self-reinforcing network effect (visible evidence the kit works).
 
 ## 7. Rollout Sequence
 
-Three waves; each wave is a PR per repo.
+Four waves; each wave is one or more PRs per repo. The catalog file
+**does not yet exist**; Wave 1 step 1 creates it.
 
 ### Wave 1 — Authoring (~half a day)
 
-1. Write `oneiric/docs/action-kits.md` — 17 kit entries (one per
-   `*Action` class in `oneiric/actions/`)
+1. Write `oneiric/docs/action-kits.md` — 17 kit entries, alphabetical
+   by `metadata.key`. **Commit and push this to the oneiric repo** as a
+   docs-only PR (separate from mahavishnu's PRs).
 2. Write `mahavishnu/.claude/decisions/promote-oneiric-action-kits.md`
+   using the frontmatter and template in §5.1.
 3. Write `mahavishnu/.claude/skills/oneiric-action-kit-awareness/SKILL.md`
-4. **Verify locally** — open a Claude session in a bodai repo
-   (e.g. dhara), ask "write me an HMAC signer", confirm the skill fires
-   and surfaces the kit. No commits yet.
+   using the header-style frontmatter and template in §5.2.
+4. **Verify locally** — open a Claude session in a bodai repo (e.g.
+   dhara) with the new skill loaded, ask "write me an HMAC signer",
+   confirm the skill fires and surfaces the kit. If the skill does
+   not fire: tighten the trigger phrases in the `description:` field
+   (e.g., add synonyms for the kit action), re-test, and iterate. Do
+   not commit until the smoke test passes.
 
 ### Wave 2 — Self-bootstrap (~15 min)
 
-5. Add the breadcrumb to mahavishnu's own `CLAUDE.md`
-6. Add the breadcrumb to oneiric's `CLAUDE.md` (where the catalog
-   lives — contributors of new kits should know)
-7. Commit + push both to origin/main
+5. Add the breadcrumb to mahavishnu's own `CLAUDE.md` (PR to mahavishnu).
+6. Add the breadcrumb to oneiric's `CLAUDE.md` (PR to oneiric; same
+   oneiric PR as step 1's commit is fine if preferred).
+7. Merge both PRs to origin/main.
 
 ### Wave 3 — Ecosystem rollout (~1 hr)
 
 8. For each remaining bodai repo, add the breadcrumb (single PR per
-   repo, no other changes). Use a parallel dispatch (one agent per
-   repo) since the breadcrumb is identical.
-9. Verify with `git grep -l "oneiric action kits"` across
-   `/Users/les/Projects/` — should hit ≥10 repos.
+   repo, no other changes). Use parallel agent dispatch (one agent
+   per repo) since the breadcrumb text is identical. PR label:
+   `oneiric-action-kit-promotion` (consistent across repos).
+9. Verify with `git grep -l "oneiric action kits"` across the bodai
+   project tree — should hit ≥10 repos.
+
+### Wave 4 — Follow-up (separate planning wave; out of scope for this design)
+
+Promised in §10 risk mitigations; tracked separately:
+
+- **CI guard for catalog drift**: when oneiric adds a new kit, fail
+  the PR if `oneiric/docs/action-kits.md` is not updated.
+- **Skill firing observability**: lightweight counter that records
+  when the skill fires, so the day-7/day-14 success-criteria checks
+  don't require manual testing.
+- **Migrate existing reinventions** in non-W3 repos — separate
+  audit-and-migrate wave.
 
 ## 8. Success Criteria
 
-Measurable; checked 30 days post-rollout.
+Measurable; checked at day 7, day 14, and day 30 post-rollout.
 
-| Metric | Target | How to measure |
-|---|---|---|
-| Catalog completeness | 17/17 kits documented | `grep "^### \`" oneiric/docs/action-kits.md \| wc -l` == 17 |
-| Breadcrumb reach | ≥10 bodai repos have the breadcrumb | `git grep -l "oneiric actions" /Users/les/Projects/*/CLAUDE.md /Users/les/Projects/*/AGENTS.md` ≥ 10 |
-| Skill fires correctly | Skill triggers on ≥3 of the kit-shaped prompts in a clean Claude session | Manual smoke test (the W3 kit list above) |
-| Decision doc discoverable | A `git grep "promote-oneiric-action-kits"` from any bodai repo lands on the right file | Manual verification |
-| Adoption (lagging) | ≥2 new kit adoptions in the next 30 days (excluding W3) | PR scan |
+| Metric | Target | Day-7 / Day-14 check | How to measure |
+|---|---|---|---|
+| Catalog completeness | 17/17 kits documented | Day 7 only | `grep -c "^### \`" <oneiric-path>/docs/action-kits.md` == 17 |
+| Breadcrumb reach | ≥10 bodai repos have the breadcrumb | Day 7 | `git grep -l "oneiric action kits"` across bodai tree ≥ 10 |
+| Skill fires correctly | Skill triggers on the kit-shaped prompts in a Claude session with the skill loaded | Day 7, 14 | Manual smoke test: run 5 prompts (HMAC, token gen, retry, sanitize, fetch) in a session with the new skill loaded |
+| Decision doc discoverable | `git grep "promote-oneiric-action-kits"` from any bodai repo lands on the right file | Day 7 | Manual verification (filename is literal — do not rename the file without updating this needle) |
+| Adoption (lagging) | ≥2 new kit adoptions in the next 30 days (excluding W3) | Day 30 | PR scan |
+
+**Skill smoke-test definition** (was ambiguous in earlier draft): "A
+Claude session with the new skill loaded" = a session in
+`mahavishnu/.claude/worktrees/<branch>/` (so mahavishnu's
+`.claude/skills/oneiric-action-kit-awareness/` is on the active skill
+path) with no other bodai-specific skills pre-loaded. Run prompts like
+"write me an HMAC signer" / "generate a secure token" / "add retry
+with backoff" / "redact PII from this dict" / "fetch this URL with
+retries". Pass = skill surfaces the matching kit + asks "Use it?"
+for ≥3 of the 5 prompts. (Note: no automated instrumentation in Wave
+1; this is a manual test. Wave 4 follow-up adds observability.)
 
 ## 9. Rollback Plan
 
@@ -319,11 +387,15 @@ Nothing breaks if any one is removed; readers opt in independently.
   complete, add a CI guard that fails if `oneiric/actions/*.py` adds a
   new module without a matching catalog entry. (Out of scope for this
   design; noted for follow-up.)
-- **Path hardcoding**: The breadcrumb references the catalog by
-  absolute path. If the path changes (e.g., monorepo move), every
-  breadcrumb goes stale. Mitigation: link to `oneiric/docs/action-kits.md`
-  via repo-relative path in the breadcrumb text; agents can resolve to
-  the actual working tree.
+- **Path hardcoding**: The breadcrumb text uses a *symbolic* reference
+  (`oneiric/docs/action-kits.md` in the oneiric project) rather than
+  an absolute filesystem path. This avoids stale breadcrumbs when the
+  oneiric project moves on disk — the breadcrumb is identical across
+  repos, and only the skill body needs to know the developer's actual
+  filesystem layout (it gracefully degrades when the catalog can't be
+  located). Mitigation: keep the breadcrumb identical across repos; if
+  the catalog moves, only the skill body and any direct linkers need
+  updates.
 - **Skill over-trigger**: The skill's `description:` is broad. If it
   fires on every minor edit, contributors will tune it out. Mitigation:
   scope the trigger phrases narrowly (the 11 list items in §5.2).
