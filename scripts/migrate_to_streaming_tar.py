@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# ruff: noqa: EXE001  # script may be invoked via `python scripts/...` or chmod +x
 """Migrate legacy .tar.gz worktree bundles to streaming .tar.zst.
 
 Scans the worktree cache and re-uploads legacy ``.tar.gz`` bundles as
@@ -79,7 +80,7 @@ async def migrate_one(storage: LocalStorageAdapter, key: str, *, dry_run: bool) 
 
     try:
         async with await storage.open_stream(key) as source_stream:
-            chunk_reader = lambda: source_stream  # noqa: E731
+            chunk_reader = lambda: source_stream
             await deserialize_worktree_tar(
                 chunk_reader,
                 staging_dir,
@@ -88,7 +89,8 @@ async def migrate_one(storage: LocalStorageAdapter, key: str, *, dry_run: bool) 
                 principal_short="migrate",
             )
         with serialize_worktree_tar(staging_dir) as (temp_path, _byte_count, _sha):
-            await storage.save_stream(new_key, open(temp_path, "rb"))
+            data = await asyncio.to_thread(temp_path.read_bytes)
+            await storage.save_stream(new_key, lambda: iter([data]))
         logger.info("migrated %s -> %s", key, new_key)
         return True
     finally:
