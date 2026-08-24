@@ -13,8 +13,11 @@ from __future__ import annotations
 
 import hashlib
 import io
-from pathlib import Path
 import tarfile
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 
 def serialize_worktree_tar(path: Path) -> bytes:

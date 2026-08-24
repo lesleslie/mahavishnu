@@ -28,9 +28,7 @@ from pathlib import Path
 import uuid
 from typing import TYPE_CHECKING, Any
 
-from mahavishnu.auth import Principal
 from mahavishnu.core.paths import get_worktree_base_path
-from mahavishnu.core.worktree_providers.cache import WorktreeCache
 from mahavishnu.core.worktree_providers.dhara_registry import (
     list_handles as dhara_list_handles,
 )
@@ -54,6 +52,8 @@ from mahavishnu.observability.metrics import (
 from .base import WorktreeProvider
 
 if TYPE_CHECKING:
+    from mahavishnu.core.worktree_providers.cache import WorktreeCache
+    from mahavishnu.auth import Principal
     from oneiric.adapters.storage.azure import AzureBlobStorageAdapter
     from oneiric.adapters.storage.gcs import GCSStorageAdapter
     from oneiric.adapters.storage.s3 import S3StorageAdapter

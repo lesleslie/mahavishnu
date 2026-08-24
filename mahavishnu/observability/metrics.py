@@ -45,10 +45,12 @@ from __future__ import annotations
 
 from hashlib import sha256
 import logging
-from typing import Final
+from typing import Final, TYPE_CHECKING
 
 from opentelemetry import metrics
-from opentelemetry.metrics import Counter, Histogram
+
+if TYPE_CHECKING:
+    from opentelemetry.metrics import Counter, Histogram
 
 _logger = logging.getLogger(__name__)
 
