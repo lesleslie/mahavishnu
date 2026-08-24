@@ -128,6 +128,10 @@ def test_allowed_label_keys_is_a_stable_set() -> None:
         "from_tier",
         "to_tier",
         "drift_kind",
+        # Phase 3 PR-C — streaming_op_duration_seconds{op,backend}
+        # and streaming_op_total{op,backend,success}.
+        "op",
+        "success",
     }
     assert set(_ALLOWED_LABEL_KEYS) == expected
 
