@@ -750,7 +750,7 @@ Default command sequence:
 
 - **`from __future__ import annotations`** as the first non-comment line of every source file. Place after any module docstring.
 - **Imports sorted within each section** (stdlib → third-party → first-party, with `force-sort-within-sections = true` and `known-first-party = ["mahavishnu"]`).
-- **Modern syntax**: `X | None` (not `Optional[X]`), `list[str]` (not `List[str]`), `pathlib.Path` for filesystem paths (not `os.path`). Target Python 3.13.
+- **Modern syntax**: `X | None` (not `Optional[X]`), `list[str]` (not `List[str]`), `pathlib.Path` for filesystem paths (not `os.path`). Target Python 3.14.
 - **Function arguments with default `None`** must be typed `X | None = None` (mypy `no_implicit_optional = true`). `def f(x: int = None)` will fail.
 - **No `assert` in production code** (`mahavishnu/**`). Use the `mahavishnu/core/errors.py` exception hierarchy. Enforced by bandit B101.
 - **No `Any` in tool inputs or orchestration state.** Use `TYPE_CHECKING` and a typed protocol to escape. **Enforcement gap**: mypy warns on `Any` returns but not on `Any` parameters.
@@ -795,7 +795,7 @@ If the gate is passing but this table disagrees, trust the gate. A sync test (an
 
 ### Type checker configuration
 
-- **Mypy strict** (Python 3.13, `disallow_untyped_defs`, `no_implicit_optional`, `warn_unused_ignores`, `warn_no_return`, `strict_optional`, `warn_return_any`).
+- **Mypy strict** (Python 3.14, `disallow_untyped_defs`, `no_implicit_optional`, `warn_unused_ignores`, `warn_no_return`, `strict_optional`, `warn_return_any`).
 - **Pyright strict** with `reportMissingTypeStubs` downgraded to warning.
 - Both run; both must pass.
 

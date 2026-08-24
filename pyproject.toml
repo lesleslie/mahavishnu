@@ -14,7 +14,7 @@ authors = [
 ]
 readme = "README.md"
 license = {text = "BSD-3-Clause"}
-requires-python = ">=3.13, <3.15"
+requires-python = ">=3.14"
 classifiers = [
     "Development Status :: 4 - Beta",
 ]
@@ -334,7 +334,7 @@ max-returns = 6
 max-statements = 55
 
 [tool.mypy]
-python_version = "3.13"
+python_version = "3.14"
 warn_return_any = true
 warn_unused_configs = true
 disallow_untyped_defs = true
@@ -421,7 +421,7 @@ include = ["mahavishnu"]
 exclude = ["**/test*", "**/__pycache__"]
 reportMissingImports = "error"
 reportMissingTypeStubs = "warning"
-pythonVersion = "3.13"
+pythonVersion = "3.14"
 typeCheckingMode = "strict"
 
 [tool.pylint.messages_control]
