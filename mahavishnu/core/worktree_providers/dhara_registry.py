@@ -36,6 +36,7 @@ from __future__ import annotations
 from dataclasses import asdict, is_dataclass
 from datetime import datetime
 import json
+import logging
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
@@ -45,6 +46,8 @@ from .types import LocalWorktreeRef, RemoteWorktreeRef, WorktreeHandle
 
 if TYPE_CHECKING:
     from collections.abc import Iterable
+
+logger = logging.getLogger(__name__)
 
 
 # SQL schema (executed once via CREATE TABLE IF NOT EXISTS).
@@ -410,7 +413,6 @@ async def remove_handle(
 
     principal_name = rows[0]["principal"]
     owner_uid = rows[0].get("principal_uid")
-    repo_name = rows[0]["repo"]
 
     # Per-handle ownership check: non-admin callers can only remove
     # their own handles. owner_uid may be None for pre-v2 migrated
@@ -438,8 +440,8 @@ async def remove_handle(
             "WHERE handle_id = :handle_id",
             {"handle_id": handle_id},
         )
-    except Exception as exc:
-        _logger.warning(
+    except Exception as exc:  # noqa: BLE001 — best-effort cleanup; logged + drift counted
+        logger.warning(
             "worktree-registry-index-cleanup-failed",
             extra={
                 "index": "principal",
@@ -455,8 +457,8 @@ async def remove_handle(
             "WHERE handle_id = :handle_id",
             {"handle_id": handle_id},
         )
-    except Exception as exc:
-        _logger.warning(
+    except Exception as exc:  # noqa: BLE001 — best-effort cleanup; logged + drift counted
+        logger.warning(
             "worktree-registry-index-cleanup-failed",
             extra={
                 "index": "repo",

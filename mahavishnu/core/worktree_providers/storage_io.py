@@ -34,17 +34,20 @@ Design contract (per Phase 3 plan C.5 + reviewer feedback):
 
 from __future__ import annotations
 
+from contextlib import contextmanager
 import hashlib
 import io
 import logging
 import os
+from pathlib import Path
 import shutil
 import tarfile
 import tempfile
+from typing import TYPE_CHECKING
 import uuid
-from collections.abc import Callable, Iterator
-from contextlib import contextmanager
-from pathlib import Path
+
+if TYPE_CHECKING:
+    from collections.abc import Callable, Iterator
 
 from mahavishnu.core.errors import ErrorCode, WorktreeError
 from mahavishnu.observability.bundle_integrity import verify_sha256_streaming

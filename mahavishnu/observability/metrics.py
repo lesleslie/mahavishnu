@@ -49,9 +49,12 @@ import logging
 from typing import Final
 
 from opentelemetry import metrics
-from opentelemetry.metrics import Counter, Histogram
+from opentelemetry.metrics import (  # noqa: TC002 — Counter/Histogram used as module-level variable annotations (deferred by __future__ annotations) + as counter_fn/counter_holder factories
+    Counter,
+    Histogram,
+)
 
-_logger = logging.getLogger(__name__)
+logger = logging.getLogger(__name__)
 
 
 # ---------------------------------------------------------------------------
@@ -290,7 +293,7 @@ def record_worktree_op(
         _worktree_fetch_histogram.record(duration_seconds, attributes=labels)
     else:
         # Forward-compat: unknown op names still validate
-        _logger.debug("worktree-op-skipped-unknown-op", extra={"op": op})
+        logger.debug("worktree-op-skipped-unknown-op", extra={"op": op})
 
 
 def record_cache_op(

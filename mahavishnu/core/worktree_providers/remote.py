@@ -33,27 +33,31 @@ from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from hashlib import sha256 as _sha256_hash
 import logging
+from pathlib import Path
 import queue
 import threading
-from pathlib import Path
 import time
-import uuid
 from typing import TYPE_CHECKING, Any
+import uuid
 
-from mahavishnu.auth import Principal
+if TYPE_CHECKING:
+    from mahavishnu.auth import Principal
+    from mahavishnu.core.worktree_providers.cache import WorktreeCache
+
 from mahavishnu.core.paths import (
     get_worktree_base_path,
     get_worktree_path,
 )
-from mahavishnu.core.worktree_providers.cache import WorktreeCache
 from mahavishnu.core.worktree_providers.dhara_registry import (
     register_handles,
 )
 from mahavishnu.core.worktree_providers.dhara_registry import (
     remove_handle as dhara_remove_handle,
 )
-from mahavishnu.core.worktree_providers.local import _create_worktree_via_git
-from mahavishnu.core.worktree_providers.local import _remove_worktree_via_git
+from mahavishnu.core.worktree_providers.local import (
+    _create_worktree_via_git,
+    _remove_worktree_via_git,
+)
 from mahavishnu.core.worktree_providers.storage_io import (
     MAX_BUNDLE_BYTES_STOPGAP,
     deserialize_worktree_tar,
@@ -166,7 +170,7 @@ _STREAM_SENTINEL: object = object()
 
 def _producer_thread_target(
     stream_iter: Any,
-    q: "queue.Queue[bytes | object]",
+    q: queue.Queue[bytes | object],
 ) -> None:
     """Drain ``stream_iter`` into ``q``; enqueue ``_STREAM_SENTINEL`` on exit.
 
@@ -207,11 +211,11 @@ class RemoteWorktreeProvider(WorktreeProvider):
     def __init__(
         self,
         *,
-        storage: "S3StorageAdapter | GCSStorageAdapter | AzureBlobStorageAdapter",
+        storage: S3StorageAdapter | GCSStorageAdapter | AzureBlobStorageAdapter,
         cache: WorktreeCache,
         backend: str = "s3",
         dhara_client: Any | None = None,
-        settings: "MahavishnuSettings | None" = None,
+        settings: MahavishnuSettings | None = None,
         local_provider: Any | None = None,
     ) -> None:
         if storage is None:
@@ -285,7 +289,7 @@ class RemoteWorktreeProvider(WorktreeProvider):
         branch: str,
         base_ref: str,
         principal: Principal,
-    ) -> "WorktreeHandle":
+    ) -> WorktreeHandle:
         """Create a WorktreeHandle backed by streaming tar.zst upload.
 
         Phase 3 (Task C.7) implementation — mirrors
@@ -311,7 +315,7 @@ class RemoteWorktreeProvider(WorktreeProvider):
            on any exception.
         """
         from mahavishnu.core.errors import ErrorCode, WorktreeError
-        from .types import RemoteWorktreeRef, WorktreeHandle
+
         # Imports inside the function body mirror LocalWorktreeProvider
         # so tests can ``monkeypatch.setattr`` the source module without
         # fighting captured references (``from ... import`` at module
@@ -322,6 +326,8 @@ class RemoteWorktreeProvider(WorktreeProvider):
             record_streaming_op,
             record_worktree_op,
         )
+
+        from .types import RemoteWorktreeRef, WorktreeHandle
 
         handle_id = uuid.uuid4().hex
         bucket = self._resolve_bucket()
@@ -446,7 +452,7 @@ class RemoteWorktreeProvider(WorktreeProvider):
             )
             raise
 
-    async def fetch(self, handle: "WorktreeHandle") -> "WorktreeRef":
+    async def fetch(self, handle: WorktreeHandle) -> WorktreeRef:
         """Cache-aside read with SHA-256 verification (§3, §6).
 
         Phase 3 (Task C.7) implementation — true bounded-queue
@@ -466,11 +472,12 @@ class RemoteWorktreeProvider(WorktreeProvider):
            storage-side "missing key" error.
         """
         from mahavishnu.core.errors import ErrorCode, WorktreeError
-        from .types import LocalWorktreeRef, RemoteWorktreeRef
         from mahavishnu.observability.metrics import (
             StreamingOp,
             record_streaming_op,
         )
+
+        from .types import LocalWorktreeRef, RemoteWorktreeRef
 
         if not isinstance(handle.storage_ref, RemoteWorktreeRef):
             raise NotImplementedError(
@@ -532,7 +539,7 @@ class RemoteWorktreeProvider(WorktreeProvider):
                 # when the key is missing.
                 try:
                     chunk_reader_callable = load_stream(ref.key)
-                except Exception as exc:  # noqa: BLE001 — storage adapter errors vary
+                except Exception as exc:
                     raise WorktreeError(
                         f"Storage key not found: {ref.key}",
                         error_code=ErrorCode.WORKTREE_BUNDLE_NOT_FOUND,
@@ -544,7 +551,7 @@ class RemoteWorktreeProvider(WorktreeProvider):
                 # can re-invoke it after a retry.
                 try:
                     stream_iter = chunk_reader_callable()
-                except Exception as exc:  # noqa: BLE001 — boundary
+                except Exception as exc:
                     raise WorktreeError(
                         f"Storage key not found: {ref.key}",
                         error_code=ErrorCode.WORKTREE_BUNDLE_NOT_FOUND,
@@ -555,7 +562,7 @@ class RemoteWorktreeProvider(WorktreeProvider):
                 # drains the stream; consumer is the (sync)
                 # ``deserialize_worktree_tar`` running on the
                 # event-loop thread.
-                q: "queue.Queue[bytes | object]" = queue.Queue(maxsize=4)
+                q: queue.Queue[bytes | object] = queue.Queue(maxsize=4)
                 producer = threading.Thread(
                     target=_producer_thread_target,
                     args=(stream_iter, q),
@@ -643,9 +650,9 @@ class RemoteWorktreeProvider(WorktreeProvider):
 
     async def remove_handle(
         self,
-        handle: "WorktreeHandle",
+        handle: WorktreeHandle,
         *,
-        caller: "Principal",
+        caller: Principal,
     ) -> bool:
         """Remove a handle from storage + cache + Dhara registry.
 
@@ -693,8 +700,11 @@ class RemoteWorktreeProvider(WorktreeProvider):
                 await _remove_worktree_via_git(
                     "git", Path(handle.repo), wt_path, force=True
                 )
-        except Exception:
-            pass
+        except Exception as exc:  # noqa: BLE001 — best-effort on-disk cleanup; logged + falls through to storage delete
+            logger.debug(
+                "worktree-remove-handle-on-disk-cleanup-skipped",
+                extra={"handle_id": handle.handle_id, "error": str(exc)},
+            )
 
         # 1. Delete from object storage (best-effort — missing object is OK).
         try:
@@ -772,7 +782,7 @@ class RemoteWorktreeProvider(WorktreeProvider):
             all_tenants=all_tenants,
         )
 
-    async def exists(self, handle: "WorktreeHandle") -> bool:
+    async def exists(self, handle: WorktreeHandle) -> bool:
         """Return True iff the underlying object exists in remote storage.
 
         Uses ``storage.exists`` when the adapter supports it (post-Oneiric
@@ -929,8 +939,8 @@ class RemoteWorktreeProvider(WorktreeProvider):
 
 
 __all__ = [
-    "HealthReport",
     "MAX_CONCURRENT_WORKTREE_STREAMS",
+    "HealthReport",
     "RemoteWorktreeProvider",
     "supports_streaming",
 ]

@@ -29,11 +29,20 @@ import logging
 from pathlib import Path
 import queue
 import time
-from typing import Any
+from typing import TYPE_CHECKING, Any
 import uuid
 
 from .base import WorktreeProvider
 from .errors import WorktreeCreationError, WorktreeOperationError
+
+if TYPE_CHECKING:
+    from oneiric.adapters.storage.local import LocalStorageAdapter
+
+    from mahavishnu.auth import Principal
+    from mahavishnu.core.config import MahavishnuSettings
+
+    from .cache import WorktreeCache
+    from .types import WorktreeHandle, WorktreeRef
 
 logger = logging.getLogger(__name__)
 
@@ -344,10 +353,10 @@ class LocalWorktreeProvider(WorktreeProvider):
     def __init__(
         self,
         *,
-        settings: "MahavishnuSettings | None" = None,
-        storage: "LocalStorageAdapter | None" = None,
-        cache: "WorktreeCache | None" = None,
-        dhara_client: "Any | None" = None,
+        settings: MahavishnuSettings | None = None,
+        storage: LocalStorageAdapter | None = None,
+        cache: WorktreeCache | None = None,
+        dhara_client: Any | None = None,
     ) -> None:
         """v4 constructor (ADR 015 v4 §18 Phase 2).
 
@@ -410,7 +419,7 @@ class LocalWorktreeProvider(WorktreeProvider):
         branch: str,
         base_ref: str,
         principal,
-    ) -> "WorktreeHandle":
+    ) -> WorktreeHandle:
         """Create worktree, persist tar.zst bundle via streaming, register in Dhara.
 
         Phase 3 (Task C.6) implementation:
@@ -430,9 +439,6 @@ class LocalWorktreeProvider(WorktreeProvider):
         """
         from datetime import UTC, datetime
 
-        from .dhara_registry import register_handles
-        from .storage_io import MAX_BUNDLE_BYTES_STOPGAP, serialize_worktree_tar
-        from .types import LocalWorktreeRef, WorktreeHandle
         from mahavishnu.core.errors import ErrorCode, WorktreeError
         from mahavishnu.core.paths import get_worktree_path
         from mahavishnu.observability.metrics import (
@@ -441,6 +447,10 @@ class LocalWorktreeProvider(WorktreeProvider):
             record_streaming_op,
             record_worktree_op,
         )
+
+        from .dhara_registry import register_handles
+        from .storage_io import MAX_BUNDLE_BYTES_STOPGAP, serialize_worktree_tar
+        from .types import LocalWorktreeRef, WorktreeHandle
 
         handle_id = uuid.uuid4().hex
         wt_path = get_worktree_path(repo, branch)
@@ -562,7 +572,7 @@ class LocalWorktreeProvider(WorktreeProvider):
             )
             raise
 
-    async def fetch(self, handle) -> "WorktreeRef":
+    async def fetch(self, handle) -> WorktreeRef:
         """Cache-aside read with SHA-256 verification (§3, §6).
 
         Phase 3 (Task C.6) implementation:
@@ -580,7 +590,6 @@ class LocalWorktreeProvider(WorktreeProvider):
         5. MHV-222 (NOT_FOUND) when ``storage.load_stream`` raises a
            storage-side "missing key" error.
         """
-        from .types import LocalWorktreeRef
         from mahavishnu.core.errors import ErrorCode, WorktreeError
         from mahavishnu.core.paths import get_worktree_base_path
         from mahavishnu.observability.metrics import (
@@ -588,6 +597,8 @@ class LocalWorktreeProvider(WorktreeProvider):
             record_streaming_op,
             record_worktree_op,
         )
+
+        from .types import LocalWorktreeRef
 
         if not isinstance(handle.storage_ref, LocalWorktreeRef):
             raise NotImplementedError(
@@ -665,17 +676,11 @@ class LocalWorktreeProvider(WorktreeProvider):
                 # adapters raise their own native 404-shaped errors.
                 try:
                     stream_iter = load_stream(storage_key)
-                except Exception as exc:  # noqa: BLE001 - storage adapter errors vary
+                except Exception as exc:
                     raise WorktreeError(
                         f"Storage key not found: {storage_key}",
                         error_code=ErrorCode.WORKTREE_BUNDLE_NOT_FOUND,
                     ) from exc
-
-                # ``load_stream`` is documented to return an
-                # ``Iterator[bytes]``. Wrap in a zero-arg callable
-                # so ``deserialize_worktree_tar`` can re-invoke it
-                # after a retry (matches storage_io contract).
-                chunk_reader = lambda: stream_iter
 
                 # MHV-213: gzip magic sniff. If the first 2 bytes are
                 # 0x1f 0x8b, the stream is a legacy Phase 2 .tar.gz
@@ -759,7 +764,7 @@ class LocalWorktreeProvider(WorktreeProvider):
         self,
         handle,
         *,
-        caller: "Principal",
+        caller: Principal,
     ) -> bool:
         """Remove worktree: git rm + cache invalidate + Dhara remove (§18 Phase 2).
 
@@ -771,9 +776,10 @@ class LocalWorktreeProvider(WorktreeProvider):
         the owner). Use ``WorktreeCoordinator.remove_worktree_handle``
         which threads ``caller`` through.
         """
+        from mahavishnu.observability.metrics import record_cache_invalidation
+
         from .dhara_registry import remove_handle as dhara_remove
         from .types import LocalWorktreeRef
-        from mahavishnu.observability.metrics import record_cache_invalidation
 
         if not isinstance(handle.storage_ref, LocalWorktreeRef):
             raise NotImplementedError(
@@ -782,6 +788,8 @@ class LocalWorktreeProvider(WorktreeProvider):
             )
 
         # 1. git worktree remove (idempotent: missing path is fine)
+        # BLE001: best-effort cleanup — a stale on-disk worktree is
+        # not a hard error; the cache + Dhara removals below still run.
         try:
             await _remove_worktree_via_git(
                 self._git_executable,
@@ -789,8 +797,11 @@ class LocalWorktreeProvider(WorktreeProvider):
                 handle.storage_ref.path,
                 force=True,
             )
-        except Exception:
-            pass
+        except Exception as exc:  # noqa: BLE001 — best-effort cleanup; logged + falls through
+            logger.debug(
+                "worktree-remove-handle-on-disk-cleanup-skipped",
+                extra={"handle_id": handle.handle_id, "error": str(exc)},
+            )
 
         # 2. Cache invalidate (per-handle prefix)
         if self._cache is not None:
@@ -801,14 +812,11 @@ class LocalWorktreeProvider(WorktreeProvider):
 
         # 3. Dhara registry remove (best-effort; auth errors propagate)
         if self._dhara_client is not None:
-            try:
-                await dhara_remove(
-                    self._dhara_client,
-                    handle.handle_id,
-                    caller=caller,
-                )
-            except PermissionError:
-                raise  # auth errors propagate; data errors swallowed
+            await dhara_remove(
+                self._dhara_client,
+                handle.handle_id,
+                caller=caller,
+            )
 
         return True
 
@@ -924,7 +932,7 @@ class LocalWorktreeProvider(WorktreeProvider):
             )
             raise
 
-    async def health(self) -> "HealthReport":
+    async def health(self) -> HealthReport:
         """git + storage + cache probes (combined per §17).
 
         Phase 3 (Task C.6) B-DI-03: also probe
@@ -938,8 +946,9 @@ class LocalWorktreeProvider(WorktreeProvider):
         ``HealthReport`` is ``__bool__``-compatible so legacy
         ``if await provider.health()`` callers keep working.
         """
-        from .storage_io import MAX_BUNDLE_BYTES_STOPGAP
         from mahavishnu.observability.metrics import record_backend_health_check_failed
+
+        from .storage_io import MAX_BUNDLE_BYTES_STOPGAP
 
         report = HealthReport(healthy=True)
 

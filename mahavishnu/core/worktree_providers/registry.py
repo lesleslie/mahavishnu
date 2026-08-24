@@ -1,11 +1,15 @@
 """Provider registry with automatic fallback + capability-based resolver."""
 
+from __future__ import annotations
+
 import asyncio
 import logging
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
-from .base import WorktreeProvider
 from .errors import ProviderUnavailableError
+
+if TYPE_CHECKING:
+    from .base import WorktreeProvider
 
 logger = logging.getLogger(__name__)
 
@@ -82,7 +86,8 @@ class WorktreeProviderRegistry:
                     capabilities=["worktree", "v4"],
                     require_all=True,
                 )
-            except Exception as exc:  # pragma: no cover - resolver faults
+            except Exception as exc:  # noqa: BLE001 — best-effort resolver; logged + falls back to legacy health check
+            # pragma: no cover - resolver faults
                 logger.warning(
                     "worktree-resolver-fault",
                     extra={"domain": self._resolver_domain, "key": self._resolver_key,
@@ -101,7 +106,7 @@ class WorktreeProviderRegistry:
                             if await p.health():
                                 self._provider_health[p.provider_name()] = True
                                 return p
-                        except Exception:
+                        except Exception:  # noqa: BLE001 — best-effort health probe; logged + falls through to legacy path
                             logger.warning(
                                 "worktree-resolver-selected-unhealthy",
                                 extra={"provider": p.provider_name()},

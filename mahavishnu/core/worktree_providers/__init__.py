@@ -24,25 +24,25 @@ Example:
 """
 
 __all__ = [
+    # Abstract interface
     "BundleRef",
-    "DirectGitWorktreeProvider",
-    "LocalWorktreeRef",
-    "LocalWorktreeProvider",
-    "MockWorktreeProvider",
-    "ProviderUnavailableError",
     # Concrete providers
+    "DirectGitWorktreeProvider",
+    "LocalWorktreeProvider",
+    "LocalWorktreeRef",
+    "MockWorktreeProvider",
+    # Exceptions
+    "ProviderUnavailableError",
     "RemoteWorktreeProvider",
     "RemoteWorktreeRef",
     "SessionBuddyWorktreeProvider",
-    "WorktreeCreationError",
-    # Exceptions
-    "WorktreeOperationError",
-    # Abstract interface
-    "WorktreeHandle",
-    "WorktreeProvider",
     # Registry
-    "WorktreeProviderRegistry",
+    "WorktreeCreationError",
+    "WorktreeHandle",
     "WorktreeLock",
+    "WorktreeOperationError",
+    "WorktreeProvider",
+    "WorktreeProviderRegistry",
     "WorktreeRef",
     "WorktreeRemovalError",
     "WorktreeValidationError",

@@ -132,11 +132,11 @@ def test_worktree_error_hierarchy() -> None:
         MahavishnuError,
         WorktreeError,
         WorktreeIntegrityError,
-        WorktreeLocked,
+        WorktreeLockedError,
     )
 
     assert issubclass(WorktreeError, MahavishnuError)
-    assert issubclass(WorktreeLocked, WorktreeError)
+    assert issubclass(WorktreeLockedError, WorktreeError)
     assert issubclass(WorktreeIntegrityError, WorktreeError)
 
 
