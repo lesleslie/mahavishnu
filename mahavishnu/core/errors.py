@@ -1662,7 +1662,7 @@ class WorktreeError(MahavishnuError):
     """
 
 
-class WorktreeLocked(WorktreeError):
+class WorktreeLockError(WorktreeError):
     """Distributed worktree lock could not be acquired.
 
     Raised by ``WorktreeProvider.lock()`` when another process holds

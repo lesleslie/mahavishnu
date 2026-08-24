@@ -13,13 +13,24 @@ Uses subprocess git commands as a fallback when Session-Buddy is unavailable.
 Always available (no external dependencies).
 """
 
+from __future__ import annotations
+
 import asyncio
 import logging
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from .base import WorktreeProvider
 from .errors import WorktreeCreationError, WorktreeOperationError
+
+if TYPE_CHECKING:
+    from oneiric.adapters.storage.local import LocalStorageAdapter
+
+    from mahavishnu.auth import Principal
+    from mahavishnu.core.config import MahavishnuSettings
+    from mahavishnu.core.worktree_providers.cache import WorktreeCache
+
+    from .types import LocalWorktreeRef, WorktreeHandle, WorktreeRef
 
 logger = logging.getLogger(__name__)
 
