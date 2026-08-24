@@ -142,6 +142,11 @@ If Phase 3 7-day monitoring surfaces any of:
 ## Status (update weekly)
 
 - **2026-08-23**: Phase 3 streaming tar.zst merged. 3.14 is baseline. 3.15 still beta. Phase 4 ADR proposed.
+- **2026-08-24** (this session): Tool-config pin sweep closed the Phase 3 hygiene gap
+  across 26 sibling repos (Ruff target-version, Pyright pythonVersion, mypy
+  python_version, Programming Language :: Python classifier). Akosha and
+  peanutbutterpub already had 3.14 pins and were skipped. Phase 4 trigger
+  unchanged: see BODAI_UPGRADE_WATCH.md.
 - Phase 4 trigger: see BODAI_UPGRADE_WATCH.md.
 
 ## References

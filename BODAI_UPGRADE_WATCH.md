@@ -50,3 +50,12 @@ Per Bodai pre-1.0 policy: merge directly to `main`, no PRs. Branch + squash/ff-m
   - Phase E (monitoring + Phase 4 ADR): IN PROGRESS
   - Fastblocks `snob-lib` maturin Rust build fails under 3.14 — real blocker for that repo's 3.14 adoption; needs upstream snob-lib or maturin/pyo3 update.
   - 22 sibling repos have `.python-version = 3.14` on disk; user must run `uv sync` from network-enabled shell to populate venvs (sandbox DNS unreachable).
+- **2026-08-24** (this session): Tool-config pin sweep across 26 sibling repos
+  (Ruff target-version py313→py314, Pyright pythonVersion 3.13→3.14, mypy
+  python_version 3.13→3.14, Programming Language :: Python classifier
+  3.13→3.14). Each repo got a single `chore(<repo>): bump tool-config
+  pins from 3.13 to 3.14` commit on main. Closes the largest Phase 3
+  hygiene gap (only mahavishnu had updated these in commit c1f3c18).
+  - Akosha and peanutbutterpub already had 3.14 pins; no commit needed.
+  - Sibling repo venvs still empty under 3.14 — user must run `uv sync`
+    from network-enabled shell. Same operational prerequisite as 2026-08-23.
