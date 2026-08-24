@@ -3,7 +3,7 @@ status: proposed
 role: canonical
 date: 2026-08-23
 last_reviewed: 2026-08-23
-supersedes: "015-worktree-and-cache-storage", "015-worktree-and-cache-storage-v2"
+supersedes: ["015-worktree-and-cache-storage", "015-worktree-and-cache-storage-v2"]
 blocks_on: []
 decision_date: null
 topic: storage-abstraction
