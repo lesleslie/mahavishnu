@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-# ruff: noqa: EXE001  # script may be invoked via `python scripts/...` or chmod +x
 """Migrate legacy .tar.gz worktree bundles to streaming .tar.zst.
 
 Scans the worktree cache and re-uploads legacy ``.tar.gz`` bundles as
