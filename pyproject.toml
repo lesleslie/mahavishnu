@@ -127,6 +127,7 @@ dev = [
     {include-group = "sandbox"},
     {include-group = "content-ingest"},
     {include-group = "storage-pg"},
+    {include-group = "compression-zstd"},
 ]
 
 # Bodai ecosystem integrations
@@ -146,6 +147,13 @@ treesitter = [
 ]
 llm-providers = [
     "openai>=2.41.0",
+]
+# Phase 3 streaming tar.zst support (ADR 015 v4). Declared locally — PEP 735
+# inheritance is not transitive across Bodai repos, so each consumer must
+# re-declare the group. Pulled in by `dev` so the test suite can exercise the
+# streaming tar path.
+compression-zstd = [
+    "zstandard>=0.23.0",
 ]
 
 # Optional: TUI interface
