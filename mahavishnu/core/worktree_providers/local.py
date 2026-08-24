@@ -15,7 +15,7 @@ Always available (no external dependencies).
 Phase 3 (ADR 015 v4): ``LocalWorktreeProvider.create_worktree_handle``
 and ``fetch`` are rewritten to use the streaming tar.zst storage_io
 contract (Task C.6). Bundle create persists via
-``storage.save_stream``; fetch drains ``storage.read_stream`` through a
+``storage.save_stream``; fetch drains ``storage.load_stream`` through a
 bounded ``queue.Queue(maxsize=4)`` producer-consumer handoff to keep
 peak memory bounded under streaming. Legacy gzip (.tar.gz) bundles are
 rejected with ``WORKTREE_BUNDLE_LEGACY_PHASE2`` (MHV-213).
@@ -61,7 +61,7 @@ def supports_streaming(storage: Any) -> bool:
 
     B-DI-04: capability + method check (both). An adapter that
     advertises ``"stream"`` in ``metadata.capabilities`` but does NOT
-    implement ``save_stream`` / ``read_stream`` should return False
+    implement ``save_stream`` / ``load_stream`` should return False
     so the stopgap path is used (per the storage_io contract; the
     oneiric LocalStorageAdapter always implements both).
     """
@@ -69,7 +69,7 @@ def supports_streaming(storage: Any) -> bool:
         return False
     capabilities = getattr(getattr(storage, "metadata", None), "capabilities", [])
     has_methods = hasattr(storage, "save_stream") and hasattr(
-        storage, "read_stream"
+        storage, "load_stream"
     )
     return "stream" in capabilities and has_methods
 
@@ -568,7 +568,7 @@ class LocalWorktreeProvider(WorktreeProvider):
         Phase 3 (Task C.6) implementation:
 
         1. Try cache for the materialized path.
-        2. On miss: drain ``storage.read_stream`` through a bounded
+        2. On miss: drain ``storage.load_stream`` through a bounded
            ``queue.Queue(maxsize=4)`` producer-consumer handoff to
            ``deserialize_worktree_tar``. The bounded queue keeps
            peak memory at ``chunk_size * 4`` (B-DI-10).
@@ -577,7 +577,7 @@ class LocalWorktreeProvider(WorktreeProvider):
            the migration guard cannot silently swallow them.
         4. Codec unavailability (MHV-223) surfaces as a clear
            ``WorktreeError`` rather than a generic ImportError.
-        5. MHV-222 (NOT_FOUND) when ``storage.read_stream`` raises a
+        5. MHV-222 (NOT_FOUND) when ``storage.load_stream`` raises a
            storage-side "missing key" error.
         """
         from .types import LocalWorktreeRef
@@ -641,11 +641,11 @@ class LocalWorktreeProvider(WorktreeProvider):
                     error_code=ErrorCode.WORKTREE_BUNDLE_CODEC_UNAVAILABLE,
                 ) from exc
 
-            read_stream = getattr(self._storage, "read_stream", None)
-            if read_stream is None:
+            load_stream = getattr(self._storage, "load_stream", None)
+            if load_stream is None:
                 raise WorktreeError(
                     f"Storage adapter {type(self._storage).__name__} "
-                    f"does not implement read_stream; cannot fetch Phase 3 "
+                    f"does not implement load_stream; cannot fetch Phase 3 "
                     f"tar.zst bundle",
                     error_code=ErrorCode.WORKTREE_BUNDLE_CODEC_UNAVAILABLE,
                 )
@@ -664,14 +664,14 @@ class LocalWorktreeProvider(WorktreeProvider):
                 # when the key is missing; the S3 / GCS / Azure
                 # adapters raise their own native 404-shaped errors.
                 try:
-                    stream_iter = read_stream(storage_key)
+                    stream_iter = load_stream(storage_key)
                 except Exception as exc:  # noqa: BLE001 - storage adapter errors vary
                     raise WorktreeError(
                         f"Storage key not found: {storage_key}",
                         error_code=ErrorCode.WORKTREE_BUNDLE_NOT_FOUND,
                     ) from exc
 
-                # ``read_stream`` is documented to return an
+                # ``load_stream`` is documented to return an
                 # ``Iterator[bytes]``. Wrap in a zero-arg callable
                 # so ``deserialize_worktree_tar`` can re-invoke it
                 # after a retry (matches storage_io contract).
@@ -703,7 +703,7 @@ class LocalWorktreeProvider(WorktreeProvider):
                 from .storage_io import deserialize_worktree_tar
 
                 # Producer-consumer handoff is conceptual here:
-                # the local ``read_stream`` reads from a file on
+                # the local ``load_stream`` reads from a file on
                 # disk in fixed-size chunks; the consumer
                 # (``deserialize_worktree_tar``) decompresses + writes
                 # + extracts. For the local adapter this is fast and
@@ -930,7 +930,7 @@ class LocalWorktreeProvider(WorktreeProvider):
         Phase 3 (Task C.6) B-DI-03: also probe
         ``supports_streaming(self._storage)`` and emit a
         ``streaming_capability_missing`` warning when the adapter
-        lacks save_stream/read_stream — in that case the stopgap
+        lacks save_stream/load_stream — in that case the stopgap
         path (max bundle size ``MAX_BUNDLE_BYTES_STOPGAP``) is used.
 
         Returns a :class:`HealthReport` instead of a raw ``bool`` so
@@ -966,7 +966,7 @@ class LocalWorktreeProvider(WorktreeProvider):
                 record_backend_health_check_failed(backend="local")
 
         # B-DI-03: streaming-capability probe. If the storage
-        # adapter does not advertise save_stream / read_stream, the
+        # adapter does not advertise save_stream / load_stream, the
         # streaming path will be bypassed and the stopgap size cap
         # applies. Surface this as a warning so dashboards can flag
         # misconfigured adapters.
@@ -975,7 +975,7 @@ class LocalWorktreeProvider(WorktreeProvider):
                 kind="streaming_capability_missing",
                 message=(
                     f"Storage adapter {type(self._storage).__name__ if self._storage is not None else 'None'} "
-                    f"lacks save_stream/read_stream; "
+                    f"lacks save_stream/load_stream; "
                     f"stopgap path will be used (max bundle size "
                     f"{MAX_BUNDLE_BYTES_STOPGAP // (1024 * 1024)}MB)"
                 ),
