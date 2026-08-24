@@ -29,6 +29,14 @@ def _redact_message(text: str) -> str:
     return _REDACT_PATTERN.sub("***", text)
 
 
+# Code table (worktree/bundle storage):
+#   MHV-200..207 — Phase 1 + Phase 2 (cache, lock, registry)
+#   MHV-208      — Phase 2 (WORKTREE_INTEGRITY_FAILED — SHA mismatch)
+#   MHV-209..213 — Phase 3 (streaming bundle lifecycle)
+#   MHV-220..223 — Phase 3 (storage-key validation, stopgap OOM guard, not-found, codec unavailable)
+#   MHV-214..219, 224+ — reserved for Phase 4 (encryption-at-rest, multipart-abort observability retrofits)
+
+
 class ErrorCode(StrEnum):
     """
     Error code system for Mahavishnu Task Orchestration.
@@ -83,6 +91,18 @@ class ErrorCode(StrEnum):
     WORKTREE_CLEANUP_FAILED = "MHV-204"
     WORKTREE_LOCKED = "MHV-207"
     WORKTREE_INTEGRITY_FAILED = "MHV-208"
+    # Phase 3 (ADR 015 v4 streaming tar) — bundle lifecycle
+    WORKTREE_BUNDLE_TEMP_CREATE_FAILED = "MHV-209"  # mkstemp OSError
+    WORKTREE_BUNDLE_TEMP_WRITE_FAILED = "MHV-210"   # write OSError or CancelledError
+    WORKTREE_BUNDLE_PATH_TRAVERSAL = "MHV-211"      # data_filter rejects member
+    WORKTREE_BUNDLE_MALFORMED = "MHV-212"           # corrupt/truncated tar.zst
+    WORKTREE_BUNDLE_LEGACY_PHASE2 = "MHV-213"       # fetch hit a .tar.gz Phase 2 handle
+    WORKTREE_BUNDLE_STORAGE_KEY_TOO_LONG = "MHV-220"  # S3 1024-byte limit
+    WORKTREE_BUNDLE_STOPGAP_TOO_LARGE = "MHV-221"     # in-memory path OOM guard
+    WORKTREE_BUNDLE_NOT_FOUND = "MHV-222"             # storage adapter returned None
+    WORKTREE_BUNDLE_CODEC_UNAVAILABLE = "MHV-223"     # zstandard not installed
+    # MHV-214..219, 224+ reserved for Phase 4 (encryption-at-rest,
+    # multipart-abort observability retrofits).
     REPOSITORY_CLONE_FAILED = "MHV-205"
     REPOSITORY_ACCESS_DENIED = "MHV-206"
 
