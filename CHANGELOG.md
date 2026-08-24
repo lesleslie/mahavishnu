@@ -5,6 +5,23 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased] — Phase 3 streaming tar.zst (ADR 015 v4)
+
+### Added
+
+- **Streaming `tar.zst` worktree bundles** for >100 MB worktrees (replaces the in-memory Phase 2 `tar.gz` path)
+- **Bounded queue producer/consumer handoff** in `RemoteWorktreeProvider.fetch` (`queue.Queue(maxsize=4)`) coordinating slow disk + fast network
+- **MHV error codes 209–223** for streaming-specific failures (`MHV-209` `TEMP_CREATE_FAILED`, `MHV-210` `TEMP_WRITE_FAILED`, `MHV-211` `PATH_TRAVERSAL`, `MHV-212` `MALFORMED`, `MHV-213` `LEGACY_PHASE2`, `MHV-220` `STORAGE_KEY_TOO_LONG`, `MHV-221` `STOPGAP_TOO_LARGE`, `MHV-222` `NOT_FOUND`, `MHV-223` `CODEC_UNAVAILABLE`)
+- **Oneiric `compression-zstd` PEP 735 group** for the `zstandard` streaming codec
+- **SHA-256 streaming verification** via `verify_sha256_streaming` (no full-blob in memory) plus `streaming_op_total{op,backend,success}` OTel counter and `streaming_op_duration_seconds{op,backend}` histogram
+- **Operator runbook** `docs/runbooks/streaming-tar-rollout.md` and **migration script** `scripts/migrate_to_streaming_tar.py` plus error-severity runbook `docs/runbooks/coordinator-error-severity.md`
+
+### Changed
+
+- Worktree storage key suffix: `.tar.gz` → `.tar.zst`
+- `LocalStorageAdapter` / `S3StorageAdapter` / `GCSStorageAdapter` / `AzureBlobStorageAdapter` now expose `save_stream` / `load_stream` for streaming I/O
+- `bundle_bytes` histogram buckets extended to 1 GB so streaming-size percentiles are visible
+
 ## [0.14.0] - 2026-08-22
 
 ### Added
