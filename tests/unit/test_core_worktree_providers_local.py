@@ -355,7 +355,7 @@ class _AdapterMetadata:
 
 
 class _FakeStorage:
-    """Fake LocalStorageAdapter — captures save_stream / read_stream calls."""
+    """Fake LocalStorageAdapter — captures save_stream / load_stream calls."""
 
     def __init__(
         self,
@@ -368,7 +368,7 @@ class _FakeStorage:
             capabilities=capabilities if capabilities is not None else ["stream"]
         )
         self.save_stream_calls: list[tuple[str, dict, int]] = []
-        self.read_stream_calls: list[str] = []
+        self.load_stream_calls: list[str] = []
         self._raise_on_read = raise_on_read
         self._stream_payload = stream_payload if stream_payload is not None else b""
 
@@ -383,16 +383,16 @@ class _FakeStorage:
         self.save_stream_calls.append((key, metadata or {}, len(data)))
         return len(data)
 
-    def read_stream(self, key: str) -> Iterator[bytes]:
+    def load_stream(self, key: str) -> Iterator[bytes]:
         # NOTE: must NOT be a generator function. If this body has
-        # ``yield`` directly, calling ``read_stream(key)`` would
+        # ``yield`` directly, calling ``load_stream(key)`` would
         # return a generator object without running the body — so
         # the raise-on-missing-key would only fire on first
         # ``next()``, past the ``stream_iter = ...`` assignment
         # in ``fetch`` (and past the try/except that maps the
         # not-found path to MHV-222). Splitting the chunker into a
         # separate helper keeps the call site eager-raising.
-        self.read_stream_calls.append(key)
+        self.load_stream_calls.append(key)
         if self._raise_on_read is not None:
             # Raise synchronously (matches oneiric's
             # LocalStorageAdapter.load_stream which raises on
@@ -543,7 +543,7 @@ class TestSupportsStreaming:
         # broken / partial. Reject so the stopgap path is used.
         class _BrokenStorage:
             metadata = _AdapterMetadata(capabilities=["stream"])
-            # No save_stream / read_stream defined
+            # No save_stream / load_stream defined
 
         assert supports_streaming(_BrokenStorage()) is False
 
@@ -786,9 +786,9 @@ class TestCreateWorktreeHandleStreaming:
 
 
 class TestFetchStreaming:
-    """``fetch`` must stream via storage.read_stream with bounded handoff (Phase 3)."""
+    """``fetch`` must stream via storage.load_stream with bounded handoff (Phase 3)."""
 
-    async def test_fetch_streams_via_read_stream(self, tmp_path, monkeypatch):
+    async def test_fetch_streams_via_load_stream(self, tmp_path, monkeypatch):
         from mahavishnu.core.worktree_providers import local as local_mod
         from mahavishnu.core.worktree_providers import storage_io
 
@@ -828,9 +828,9 @@ class TestFetchStreaming:
         )
         ref = await provider.fetch(handle)
 
-        # read_stream was called with the right key
-        assert len(storage.read_stream_calls) == 1
-        key = storage.read_stream_calls[0]
+        # load_stream was called with the right key
+        assert len(storage.load_stream_calls) == 1
+        key = storage.load_stream_calls[0]
         assert key.startswith("worktrees/mahavishnu/feature-x/")
         assert key.endswith(".tar.zst")
         # target was materialized with file contents
@@ -954,7 +954,7 @@ class TestFetchStreaming:
         from mahavishnu.core.errors import ErrorCode, WorktreeError
         from mahavishnu.core.worktree_providers import local as local_mod
 
-        # Storage adapter that raises when read_stream is called —
+        # Storage adapter that raises when load_stream is called —
         # mirrors the LifecycleError("local-storage-key-not-found")
         # path on the real adapter.
         storage = _FakeStorage(
