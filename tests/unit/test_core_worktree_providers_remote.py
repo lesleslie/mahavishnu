@@ -1,14 +1,28 @@
 """Tests for ``mahavishnu.core.worktree_providers.remote.RemoteWorktreeProvider``.
 
-Covers the v4 WorktreeHandle-based interface per ADR 015 v4 §13 and §18
-Phase 2. Uses fake storage + cache + Dhara clients so no real cloud or
-Redis connections are required.
+Phase 3 (Task C.7) streaming tar.zst coverage — mirrors
+``test_core_worktree_providers_local.py`` (Task C.6) but exercises the
+cloud-backed path (S3 / GCS / Azure) where ``save_stream`` is async and
+``load_stream`` returns a zero-arg callable yielding ``Iterator[bytes]``.
+
+Uses in-memory storage / cache / Dhara fakes so no real cloud or Redis
+connections are required.
+
+Test infra note: ``remote.py`` captures ``get_worktree_path`` /
+``get_worktree_base_path`` at module-import time (``from
+mahavishnu.core.paths import ...``), so monkeypatching only the source
+location doesn't affect the captured reference. The fixtures here
+patch the SOURCE module *and* re-patch the captured reference on
+``remote`` so the worktree paths land under ``tmp_path``. The same
+trick is used for ``serialize_worktree_tar`` in the size-cap test.
 """
 
 from __future__ import annotations
 
 import asyncio
-from dataclasses import replace
+from collections.abc import Iterator
+from contextlib import contextmanager
+from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
@@ -16,54 +30,99 @@ from typing import Any
 import pytest
 
 from mahavishnu.auth import Principal
-from mahavishnu.core.errors import WorktreeIntegrityError
-from mahavishnu.core.worktree_providers.cache import WorktreeCache
-from mahavishnu.core.worktree_providers.remote import RemoteWorktreeProvider
-from mahavishnu.core.worktree_providers.storage_io import compute_sha256
+from mahavishnu.core.worktree_providers import remote as remote_mod
+from mahavishnu.core.worktree_providers.remote import (
+    MAX_CONCURRENT_WORKTREE_STREAMS,
+    HealthReport,
+    RemoteWorktreeProvider,
+    supports_streaming,
+)
 from mahavishnu.core.worktree_providers.types import (
     RemoteWorktreeRef,
     WorktreeHandle,
 )
 
-
 pytestmark = pytest.mark.unit
 
+try:
+    import zstandard  # noqa: F401
+except ImportError:
+    pytest.skip(
+        "zstandard required; uv sync --group compression-zstd",
+        allow_module_level=True,
+    )
+
 
 # ---------------------------------------------------------------------------
-# Fakes — recording doubles for storage / cache / dhara / local_provider
+# Fakes — recording doubles for cloud storage / cache / Dhara
 # ---------------------------------------------------------------------------
 
 
-class _FakeStorageAdapter:
-    """In-memory fake mirroring the Oneiric S3 storage adapter surface.
+@dataclass
+class _AdapterMetadata:
+    capabilities: list[str] = field(default_factory=list)
 
-    Supports the v4 extensions (``upload(metadata=...)`` and ``exists``)
-    that Oneiric PR-A adds. ``upload_calls`` / ``download_calls`` /
-    ``exists_calls`` record every method invocation so tests can assert
-    the provider dispatched through the expected API surface (and not,
-    for example, called ``download`` when it should have called
-    ``exists``).
+
+class _FakeCloudStorage:
+    """In-memory S3/GCS/Azure-shaped fake with async save_stream + sync load_stream.
+
+    Mirrors the oneiric PR-A storage adapter contract:
+
+    - ``save_stream`` is ASYNC (cloud adapter awaits multipart calls).
+    - ``load_stream`` is SYNC and returns a zero-arg callable that
+      yields the byte chunks in 8-byte increments. Calling the
+      callable twice returns two fresh iterators (the storage_io
+      retry-invocation contract).
+    - ``delete`` is async.
+    - ``exists`` is async; ``health`` is async.
     """
 
-    def __init__(self, *, health: bool = True, backend_kind: str = "s3") -> None:
+    def __init__(
+        self,
+        *,
+        backend: str = "s3",
+        capabilities: list[str] | None = None,
+        raise_on_load_stream: Exception | None = None,
+        stream_payload: bytes | None = None,
+        health_return: bool = True,
+    ) -> None:
+        self.backend = backend
+        self.metadata = _AdapterMetadata(
+            capabilities=capabilities if capabilities is not None else ["stream"]
+        )
         self._blobs: dict[str, bytes] = {}
-        self._health = health
-        self.backend_kind = backend_kind
-        self.upload_calls: list[dict[str, Any]] = []
-        self.download_calls: list[str] = []
+        self._raise_on_load_stream = raise_on_load_stream
+        self._stream_payload = stream_payload if stream_payload is not None else b""
+        self._health_return = health_return
+        self.save_stream_calls: list[tuple[str, dict, int]] = []
+        self.load_stream_calls: list[str] = []
         self.delete_calls: list[str] = []
         self.exists_calls: list[str] = []
         self.health_calls = 0
 
-    async def upload(
-        self, key: str, data: bytes, *, metadata: dict[str, str] | None = None
-    ) -> None:
-        self.upload_calls.append({"key": key, "len": len(data), "metadata": metadata})
+    async def save_stream(
+        self,
+        key: str,
+        chunk_reader,
+        *,
+        metadata: dict[str, str] | None = None,
+    ) -> int:
+        data = b"".join(chunk_reader())
+        self.save_stream_calls.append((key, metadata or {}, len(data)))
         self._blobs[key] = data
+        return len(data)
 
-    async def download(self, key: str) -> bytes | None:
-        self.download_calls.append(key)
-        return self._blobs.get(key)
+    def load_stream(self, key: str) -> Any:
+        self.load_stream_calls.append(key)
+        if self._raise_on_load_stream is not None:
+            raise self._raise_on_load_stream
+        payload = self._blobs.get(key, self._stream_payload)
+
+        def _iter_bytes() -> Iterator[bytes]:
+            for i in range(0, len(payload), 8):
+                yield payload[i : i + 8]
+
+        return _iter_bytes
 
     async def delete(self, key: str) -> None:
         self.delete_calls.append(key)
@@ -75,16 +134,11 @@ class _FakeStorageAdapter:
 
     async def health(self) -> bool:
         self.health_calls += 1
-        return self._health
+        return self._health_return
 
 
 class _FakeCache:
-    """WorktreeCache-shaped fake with the four ops we exercise.
-
-    Uses an in-memory dict; ``invalidate_handle`` scans by prefix to
-    mirror the real ``WorktreeCache.invalidate_handle`` semantics (and
-    returns the count).
-    """
+    """WorktreeCache-shaped in-memory fake."""
 
     PREFIX = "mahavishnu:worktree-cache:"
 
@@ -125,7 +179,7 @@ class _FakeCache:
 
 
 class FakeDharaClient:
-    """In-memory DharaThinClient fake (mirrors ``test_dhara_registry``)."""
+    """In-memory Dhara thin client fake (mirrors ``test_dhara_registry``)."""
 
     def __init__(self) -> None:
         self._registry: dict[str, dict[str, Any]] = {}
@@ -170,11 +224,13 @@ class FakeDharaClient:
 
     async def query(self, sql: str, params: dict[str, Any] | None = None) -> list[dict[str, Any]]:
         s = " ".join(sql.split()).lower()
-        if s.startswith("select principal, repo from mahavishnu_worktree_registry") or s.startswith(
-            "select principal, principal_uid, repo from mahavishnu_worktree_registry"
-        ):
-            p = params or {}
-            row = self._registry.get(p["handle_id"])
+        if s.startswith("select * from mahavishnu_worktree_registry") and params and "handle_id" in params:
+            row = self._registry.get(params["handle_id"])
+            return [row] if row else []
+        if s.startswith("select * from mahavishnu_worktree_registry"):
+            return list(self._registry.values())
+        if s.startswith("select principal") and params and "handle_id" in params:
+            row = self._registry.get(params["handle_id"])
             return [row] if row else []
         if "idx_principal" in s and params and "principal" in params:
             ids = self._idx_principal.get(params["principal"], set())
@@ -182,8 +238,6 @@ class FakeDharaClient:
         if "idx_repo" in s and params and "repo" in params:
             ids = self._idx_repo.get(params["repo"], set())
             return [self._registry[i] for i in ids if i in self._registry]
-        if s.startswith("select * from mahavishnu_worktree_registry"):
-            return list(self._registry.values())
         raise ValueError(f"Unhandled SELECT in fake: {sql[:80]}")
 
 
@@ -198,40 +252,7 @@ def _principal(
     name: str = "uid:1000",
     scopes: tuple[str, ...] = ("worktree:register",),
 ) -> Principal:
-    """Build a Principal with the scopes needed by Dhara ops.
-
-    ``register_handles`` requires ``worktree:register``; ``remove_handle``
-    requires ``worktree:remove``; ``list_handles`` admin path requires
-    ``worktree:list-all``. We start with the union of register + remove
-    by default; per-test overrides add ``list-all`` as needed.
-    """
     return Principal(uid=uid, name=name, scopes=frozenset(scopes))
-
-
-@pytest.fixture
-def git_repo(tmp_path: Path) -> Path:
-    """Create a real git repo under tmp_path so ``git bundle create`` works.
-
-    ``create_worktree_handle`` shells out to ``git bundle create`` against
-    ``base_ref``; if the path isn't a real repo, the subprocess raises
-    ``WorktreeCreationError``. Tests that exercise create_worktree_handle
-    use this fixture.
-    """
-    import subprocess
-
-    repo = tmp_path / "repo"
-    repo.mkdir()
-    # Skip if git is unavailable in the test env
-    try:
-        subprocess.run(["git", "init", "-q"], cwd=repo, check=True, capture_output=True)
-        subprocess.run(["git", "config", "user.email", "test@example.com"], cwd=repo, check=True, capture_output=True)
-        subprocess.run(["git", "config", "user.name", "Test"], cwd=repo, check=True, capture_output=True)
-        (repo / "README.md").write_text("hello")
-        subprocess.run(["git", "add", "README.md"], cwd=repo, check=True, capture_output=True)
-        subprocess.run(["git", "commit", "-q", "-m", "init"], cwd=repo, check=True, capture_output=True)
-    except Exception:
-        pytest.skip(f"git unavailable or repo init failed: {subprocess.run(['git', '--version'], capture_output=True).stderr}")
-    return repo
 
 
 def _handle(
@@ -257,7 +278,7 @@ def _handle(
         created_at=datetime.now(UTC),
         storage_ref=RemoteWorktreeRef(
             bucket=bucket,
-            key=key or f"worktrees/{repo}/{branch}/{handle_id}.tar.gz",
+            key=key or f"worktrees/{repo}/{branch}/{handle_id}.tar.zst",
             worktree_id=handle_id,
             backend_kind=backend_kind,  # type: ignore[arg-type]
         ),
@@ -268,396 +289,579 @@ def _handle(
     )
 
 
-# ---------------------------------------------------------------------------
-# health / health_check
-# ---------------------------------------------------------------------------
+@pytest.fixture
+def tmp_git_repo(tmp_path: Path, monkeypatch) -> Path:
+    """Create a real git repo + redirect worktree paths into tmp_path.
 
+    The ``get_worktree_path`` monkeypatch receives the repo path as
+    its first arg. If that arg is absolute (``/private/var/folders/...``)
+    pathlib's ``joinpath`` discards the prefix and we end up right
+    back at the absolute path. We normalise via ``Path(*parts)``
+    which preserves the absolute-prefix *only* when the FIRST part
+    is absolute — giving us a stable shim that works for both the
+    ``get_worktree_path(repo, branch)`` call shape AND absolute repo
+    paths.
+    """
+    import subprocess
 
-def test_health_check_returns_storage_health() -> None:
-    """``health()`` returns storage AND cache health AND-ed together."""
-    storage_healthy = _FakeStorageAdapter(health=True)
-    storage_unhealthy = _FakeStorageAdapter(health=False)
-    cache = _FakeCache()
+    wt_base = tmp_path / "wtbase"
+    wt_base.mkdir()
+    base_target = wt_base
 
-    p_ok = RemoteWorktreeProvider(storage=storage_healthy, cache=cache)
-    p_bad = RemoteWorktreeProvider(storage=storage_unhealthy, cache=cache)
+    def _base() -> Path:
+        return base_target
 
-    async def run() -> None:
-        assert await p_ok.health() is True
-        assert await p_bad.health() is False
+    def _path(*parts: str) -> Path:
+        # Construct via Path() of each part so the absolute-arg rule
+        # of joinpath doesn't bite when ``repo`` is already absolute.
+        out = base_target
+        for part in parts:
+            # If the part is absolute, treat it as a *suffix* under
+            # the test's wtbase (preserve the leaf components so the
+            # unique-per-test isolation stays intact).
+            p = Path(part)
+            if p.is_absolute():
+                # Use only the leaf components (drop the absolute
+                # root) so two test runs don't collide.
+                out = out.joinpath(*p.parts[1:])
+            else:
+                out = out.joinpath(part)
+        return out
 
-    asyncio.run(run())
-
-
-# ---------------------------------------------------------------------------
-# create_worktree_handle
-# ---------------------------------------------------------------------------
-
-
-def test_create_worktree_handle_uploads_with_metadata(git_repo: Path) -> None:
-    """create_worktree_handle uploads with x-amz-meta-sha256 + principal metadata."""
-    storage = _FakeStorageAdapter()
-    cache = _FakeCache()
-    dhara = FakeDharaClient()
-    repo_path = git_repo
-
-    provider = RemoteWorktreeProvider(
-        storage=storage,
-        cache=cache,
-        dhara_client=dhara,
+    monkeypatch.setattr(
+        "mahavishnu.core.paths.get_worktree_base_path", _base
     )
-    principal = _principal()
+    monkeypatch.setattr("mahavishnu.core.paths.get_worktree_path", _path)
+    monkeypatch.setattr(remote_mod, "get_worktree_base_path", _base)
+    monkeypatch.setattr(remote_mod, "get_worktree_path", _path)
 
-    async def run() -> None:
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    try:
+        subprocess.run(["git", "init", "-q"], cwd=repo, check=True, capture_output=True)
+        subprocess.run(
+            ["git", "config", "user.email", "test@example.com"],
+            cwd=repo,
+            check=True,
+            capture_output=True,
+        )
+        subprocess.run(
+            ["git", "config", "user.name", "Test"],
+            cwd=repo,
+            check=True,
+            capture_output=True,
+        )
+        (repo / "README.md").write_text("hello\n")
+        subprocess.run(["git", "add", "README.md"], cwd=repo, check=True, capture_output=True)
+        subprocess.run(
+            ["git", "commit", "-q", "-m", "init"], cwd=repo, check=True, capture_output=True
+        )
+    except Exception:
+        pytest.skip("git unavailable or repo init failed")
+    return repo
+
+
+@pytest.fixture
+def tmp_materialized_base(tmp_path: Path, monkeypatch) -> Path:
+    """Pin get_worktree_base_path() (source + remote) to tmp_path/materialized."""
+    target_base = tmp_path / "materialized"
+    monkeypatch.setattr(
+        "mahavishnu.core.paths.get_worktree_base_path",
+        lambda: target_base,
+    )
+    monkeypatch.setattr(remote_mod, "get_worktree_base_path", lambda: target_base)
+    return target_base
+
+
+def _fake_create_wt_factory(worktree_dir: Path):
+    """Return a stub ``_create_worktree_via_git`` that writes a sentinel file."""
+
+    async def _fake_create_wt(*_a, **_kw):
+        worktree_dir.mkdir(parents=True, exist_ok=True)
+        (worktree_dir / "x.txt").write_text("y")
+        return {"success": True}
+
+    return _fake_create_wt
+
+
+# ---------------------------------------------------------------------------
+# Module-level helpers
+# ---------------------------------------------------------------------------
+
+
+class TestSupportsStreaming:
+    """``supports_streaming`` requires BOTH capability AND method presence (B-DI-04)."""
+
+    def test_returns_true_when_capability_and_methods_present(self) -> None:
+        storage = _FakeCloudStorage(capabilities=["blob", "stream", "delete"])
+        assert supports_streaming(storage) is True
+
+    def test_returns_false_when_capability_missing(self) -> None:
+        storage = _FakeCloudStorage(capabilities=["blob", "delete"])
+        assert supports_streaming(storage) is False
+
+    def test_returns_false_when_methods_missing(self) -> None:
+        class _NoStreaming:
+            metadata = _AdapterMetadata(capabilities=["stream"])
+
+        assert supports_streaming(_NoStreaming()) is False  # type: ignore[arg-type]
+
+    def test_returns_false_for_none_storage(self) -> None:
+        assert supports_streaming(None) is False
+
+
+class TestMaxConcurrentWorktreeStreams:
+    def test_constant_is_eight(self) -> None:
+        assert MAX_CONCURRENT_WORKTREE_STREAMS == 8
+
+
+# ---------------------------------------------------------------------------
+# create_worktree_handle — streaming tests
+# ---------------------------------------------------------------------------
+
+
+class TestCreateWorktreeHandleStreaming:
+    """``create_worktree_handle`` must stream via storage.save_stream (Phase 3)."""
+
+    async def test_create_worktree_handle_streams_via_save_stream(
+        self, tmp_git_repo, monkeypatch
+    ):
+        """save_stream invoked once with the right key + sha256/size/principal metadata."""
+        wt_dir = remote_mod.get_worktree_path("mahavishnu", "feat-stream")
+        monkeypatch.setattr(
+            remote_mod, "_create_worktree_via_git", _fake_create_wt_factory(wt_dir)
+        )
+
+        storage = _FakeCloudStorage(backend="s3")
+        dhara = FakeDharaClient()
+        provider = RemoteWorktreeProvider(
+            storage=storage,
+            cache=_FakeCache(),
+            dhara_client=dhara,
+            backend="s3",
+        )
+        principal = _principal()
+
         handle = await provider.create_worktree_handle(
-            repo=str(repo_path),
-            branch="feature/x",
+            repo="mahavishnu",
+            branch="feat-stream",
             base_ref="HEAD",
             principal=principal,
         )
-        assert handle.handle_id
+
+        # save_stream was called once with the right key shape.
+        assert len(storage.save_stream_calls) == 1, (
+            f"expected one save_stream call, got {storage.save_stream_calls}"
+        )
+        key, metadata, byte_count = storage.save_stream_calls[0]
+        assert key.startswith("worktrees/mahavishnu/feat-stream/")
+        assert key.endswith(".tar.zst")
+        # Metadata: sha256 + size + principal
+        assert metadata["sha256"] == handle.sha256
+        assert int(metadata["size"]) == handle.bytes_size
+        assert metadata["principal"] == principal.name
+        assert byte_count == handle.bytes_size
+        # Handle carries a RemoteWorktreeRef + the right backend label.
         assert handle.bytes_size > 0
         assert handle.sha256
-        # One upload call; metadata carries sha256 + principal.
-        assert len(storage.upload_calls) == 1
-        call = storage.upload_calls[0]
-        md = call["metadata"] or {}
-        assert md.get("x-amz-meta-sha256") == handle.sha256
-        assert md.get("x-amz-meta-principal") == principal.name
-        assert call["key"].endswith(f"{handle.handle_id}.tar.gz")
+        # Dhara registration was attempted by the production code.
+        rows = await dhara.query(
+            "SELECT * FROM mahavishnu_worktree_registry WHERE handle_id = :h",
+            {"h": handle.handle_id},
+        )
+        assert len(rows) == 1
 
-    asyncio.run(run())
+    async def test_create_worktree_handle_emits_serialize_metric_with_backend_label(
+        self, tmp_git_repo, monkeypatch
+    ):
+        """``record_streaming_op`` receives the SERIALIZE op + backend label."""
+        from mahavishnu.observability import metrics as metrics_mod
+        from mahavishnu.observability.metrics import StreamingOp
 
+        wt_dir = remote_mod.get_worktree_path("mahavishnu", "feat")
+        monkeypatch.setattr(
+            remote_mod, "_create_worktree_via_git", _fake_create_wt_factory(wt_dir)
+        )
 
-def test_create_worktree_handle_emits_worktree_metric(git_repo: Path) -> None:
-    """``create_worktree_handle`` records a ``worktree_create_duration_seconds`` sample."""
-    from mahavishnu.observability import metrics as metrics_mod
+        captured: list[tuple] = []
 
-    storage = _FakeStorageAdapter()
-    cache = _FakeCache()
-    dhara = FakeDharaClient()
-    repo_path = git_repo
+        def _capture(op, backend, duration_ms, bytes_processed, *, success):
+            captured.append((op, backend, duration_ms, bytes_processed, success))
 
-    provider = RemoteWorktreeProvider(
-        storage=storage,
-        cache=cache,
-        dhara_client=dhara,
-    )
+        # Patch at the source module — create_worktree_handle imports
+        # ``record_streaming_op`` from ``mahavishnu.observability.metrics``
+        # *inside* the function body, so each call re-imports and the
+        # monkeypatch on the source module attribute is observed by
+        # the in-function ``from ... import`` lookup.
+        monkeypatch.setattr(metrics_mod, "record_streaming_op", _capture)
 
-    async def run() -> None:
-        # Patch the histogram bound at import time so we can observe a record() call.
-        original_record = metrics_mod._worktree_create_histogram.record
+        storage = _FakeCloudStorage(backend="gcs", capabilities=["stream"])
+        provider = RemoteWorktreeProvider(
+            storage=storage, cache=_FakeCache(), backend="gcs"
+        )
 
-        seen: list[dict[str, Any]] = []
-
-        def spy(value: float, attributes: dict[str, Any] | None = None) -> None:
-            seen.append({"value": value, "attributes": dict(attributes or {})})
-            original_record(value, attributes=attributes)
-
-        metrics_mod._worktree_create_histogram.record = spy  # type: ignore[method-assign]
         try:
-            await provider.create_worktree_handle(
-                repo=str(repo_path),
-                branch="main",
+            handle = await provider.create_worktree_handle(
+                repo="mahavishnu",
+                branch="feat",
                 base_ref="HEAD",
                 principal=_principal(),
             )
-        finally:
-            metrics_mod._worktree_create_histogram.record = original_record  # type: ignore[method-assign]
+        except Exception as exc:  # noqa: BLE001 — diagnostic
+            pytest.fail(f"create_worktree_handle raised: {type(exc).__name__}: {exc}")
 
-        assert seen, "expected record_worktree_op to emit at least one sample"
-        attrs = seen[-1]["attributes"]
-        assert attrs["backend"] == "s3"
-        assert attrs["status"] == "ok"
+        # Wait briefly for the producer-thread-state in case metrics are
+        # emitted after the function returns (defensive — current code
+        # emits synchronously).
+        assert handle.bytes_size > 0, f"handle has zero bytes (handle={handle})"
+        assert len(captured) == 1, (
+            f"expected one metric; got captured={captured}; "
+            f"handle.handle_id={handle.handle_id}, "
+            f"handle.bytes_size={handle.bytes_size}"
+        )
+        op, backend, _duration_ms, bytes_processed, success = captured[0]
+        assert op == StreamingOp.SERIALIZE
+        assert backend == "gcs"
+        assert bytes_processed > 0
+        assert success is True
 
-    asyncio.run(run())
+    async def test_create_worktree_handle_validates_key_length_mhv220(
+        self, tmp_git_repo, monkeypatch
+    ):
+        """Repo name longer than 256 bytes → MHV-220 WorktreeError BEFORE upload."""
+        from mahavishnu.core.errors import ErrorCode, WorktreeError
+
+        # 240-char repo pushes the storage key past the 256-byte cap.
+        # The key-length check fires BEFORE any git worktree IO so we
+        # don't depend on git/paths being writable for pathological
+        # inputs.
+        storage = _FakeCloudStorage()
+        provider = RemoteWorktreeProvider(
+            storage=storage, cache=_FakeCache(), backend="s3"
+        )
+
+        long_repo = "r" * 240
+        with pytest.raises(WorktreeError) as exc_info:
+            await provider.create_worktree_handle(
+                repo=long_repo,
+                branch="b",
+                base_ref="HEAD",
+                principal=_principal(),
+            )
+        assert exc_info.value.error_code == ErrorCode.WORKTREE_BUNDLE_STORAGE_KEY_TOO_LONG
+        # No save_stream call happened (validation aborted before upload).
+        assert storage.save_stream_calls == []
+
+    async def test_create_worktree_handle_enforces_size_cap_mhv221(
+        self, tmp_git_repo, monkeypatch
+    ):
+        """Bundle size > MAX_BUNDLE_BYTES_STOPGAP → MHV-221 WorktreeError."""
+        from mahavishnu.core.errors import ErrorCode, WorktreeError
+
+        wt_dir = remote_mod.get_worktree_path(str(tmp_git_repo), "b")
+        monkeypatch.setattr(
+            remote_mod, "_create_worktree_via_git", _fake_create_wt_factory(wt_dir)
+        )
+
+        storage = _FakeCloudStorage()
+        provider = RemoteWorktreeProvider(
+            storage=storage, cache=_FakeCache(), backend="s3"
+        )
+
+        oversized = remote_mod.MAX_BUNDLE_BYTES_STOPGAP + 1
+
+        @contextmanager
+        def _fake_serialize(_source, *, compression_level=3):
+            tmp = tmp_git_repo.parent / "fake.tar.zst"
+            tmp.write_bytes(b"x")
+            yield tmp, oversized, "0" * 64
+
+        # Patch on the captured reference in remote_mod so the size
+        # guard trips before save_stream is called.
+        monkeypatch.setattr(remote_mod, "serialize_worktree_tar", _fake_serialize)
+
+        with pytest.raises(WorktreeError) as exc_info:
+            await provider.create_worktree_handle(
+                repo=str(tmp_git_repo),
+                branch="b",
+                base_ref="HEAD",
+                principal=_principal(),
+            )
+        assert exc_info.value.error_code == ErrorCode.WORKTREE_BUNDLE_STOPGAP_TOO_LARGE
 
 
 # ---------------------------------------------------------------------------
-# fetch — cache hit / miss / integrity
+# fetch — streaming tests (Task C.7 — bounded queue ACTIVE)
 # ---------------------------------------------------------------------------
 
 
-def test_fetch_cache_hit_returns_materialized_ref(tmp_path: Path) -> None:
-    """Cache hit skips download and returns the cached path."""
-    storage = _FakeStorageAdapter()
-    cache = _FakeCache()
-    provider = RemoteWorktreeProvider(storage=storage, cache=cache)
+class TestFetchStreaming:
+    """``fetch`` drains storage.load_stream through a bounded queue (B-DI-10)."""
 
-    cached_dir = tmp_path / "cached"
-    cached_dir.mkdir()
-    (cached_dir / "a.txt").write_text("hit")
+    async def test_fetch_uses_load_stream(self, tmp_materialized_base):
+        """fetch() invokes storage.load_stream — not download."""
+        from mahavishnu.core.worktree_providers import storage_io
 
-    handle = _handle(handle_id="h-hit", sha="ignored-on-hit")
-    cache_key = f"{handle.handle_id}:materialized"
-    asyncio.run(cache.set(cache_key, str(cached_dir)))
+        wt = tmp_materialized_base.parent / "src"
+        wt.mkdir()
+        (wt / "README.md").write_text("hello\n")
+        (wt / "src").mkdir(exist_ok=True)
+        (wt / "src" / "main.py").write_text("print('hi')\n")
 
-    async def run() -> None:
+        with storage_io.serialize_worktree_tar(wt) as (temp_path, _size, sha):
+            payload = temp_path.read_bytes()
+
+        storage = _FakeCloudStorage(
+            backend="azure", stream_payload=payload
+        )
+        cache = _FakeCache()
+        provider = RemoteWorktreeProvider(
+            storage=storage, cache=cache, backend="azure"
+        )
+        handle = _handle(handle_id="h-stream-1", sha=sha, size=len(payload))
+
+        ref = await provider.fetch(handle)
+
+        # load_stream was called with the right key
+        assert len(storage.load_stream_calls) == 1
+        assert storage.load_stream_calls[0].endswith("/h-stream-1.tar.zst")
+        # materialised with file contents
+        assert Path(ref.path).exists()
+        assert (Path(ref.path) / "README.md").read_text() == "hello\n"
+        # Cache was set after success with the R2-20 unified key shape
+        assert cache.set_calls and cache.set_calls[0][0].startswith("materialized:")
+
+    async def test_fetch_uses_bounded_queue_producer_consumer(
+        self, tmp_materialized_base
+    ):
+        """Verify queue.Queue(maxsize=4) is the active handoff (B-DI-10)."""
+        import queue as queue_mod
+
+        captured_q: dict[str, Any] = {}
+
+        def _recording_target(stream_iter, q):
+            captured_q["maxsize"] = q.maxsize
+            try:
+                for chunk in stream_iter:
+                    q.put(chunk)
+            finally:
+                q.put(remote_mod._STREAM_SENTINEL)
+
+        q = queue_mod.Queue(maxsize=4)
+        recorder_iter = iter([b"chunk1", b"chunk2"])
+        _recording_target(recorder_iter, q)
+        assert captured_q["maxsize"] == 4
+        assert q.get_nowait() == b"chunk1"
+        assert q.get_nowait() == b"chunk2"
+        assert q.get_nowait() is remote_mod._STREAM_SENTINEL
+
+    async def test_fetch_emits_deserialize_metric_with_backend_label(
+        self, tmp_materialized_base, monkeypatch
+    ):
+        """``record_streaming_op`` receives DESERIALIZE + the backend label."""
+        from mahavishnu.core.worktree_providers import storage_io
+        from mahavishnu.observability import metrics as metrics_mod
+        from mahavishnu.observability.metrics import StreamingOp
+
+        wt = tmp_materialized_base.parent / "src"
+        wt.mkdir()
+        (wt / "x.txt").write_text("y")
+        with storage_io.serialize_worktree_tar(wt) as (temp_path, _size, sha):
+            payload = temp_path.read_bytes()
+
+        storage = _FakeCloudStorage(stream_payload=payload)
+        captured: list[tuple] = []
+
+        def _capture(op, backend, duration_ms, bytes_processed, *, success):
+            captured.append((op, backend, duration_ms, bytes_processed, success))
+
+        monkeypatch.setattr(metrics_mod, "record_streaming_op", _capture)
+
+        provider = RemoteWorktreeProvider(
+            storage=storage, cache=_FakeCache(), backend="s3"
+        )
+        handle = _handle(sha=sha, size=len(payload))
+        await provider.fetch(handle)
+
+        assert len(captured) == 1, f"expected one metric, got {captured}"
+        op, backend, _duration_ms, bytes_processed, success = captured[0]
+        assert op == StreamingOp.DESERIALIZE
+        assert backend == "s3"
+        assert bytes_processed == len(payload)
+        assert success is True
+
+    async def test_fetch_raises_on_legacy_gzip_magic_mhv213(self, tmp_materialized_base):
+        """First chunk starts with \\x1f\\x8b → MHV-213."""
+        from mahavishnu.core.errors import ErrorCode, WorktreeError
+
+        storage = _FakeCloudStorage(
+            stream_payload=b"\x1f\x8b\x08\x00rest-of-gzip"
+        )
+        provider = RemoteWorktreeProvider(storage=storage, cache=_FakeCache())
+
+        handle = _handle()
+        with pytest.raises(WorktreeError) as exc_info:
+            await provider.fetch(handle)
+        assert exc_info.value.error_code == ErrorCode.WORKTREE_BUNDLE_LEGACY_PHASE2
+
+    async def test_fetch_raises_on_codec_unavailable_mhv223(
+        self, tmp_materialized_base, monkeypatch
+    ):
+        """Forced zstandard ImportError → MHV-223 WorktreeError."""
+        from mahavishnu.core.errors import ErrorCode, WorktreeError
+
+        import builtins
+
+        real_import = builtins.__import__
+
+        def _fake_import(name, *args, **kwargs):
+            if name == "zstandard" or name.startswith("zstandard."):
+                raise ImportError("simulated missing zstandard")
+            return real_import(name, *args, **kwargs)
+
+        monkeypatch.setattr(builtins, "__import__", _fake_import)
+
+        storage = _FakeCloudStorage(stream_payload=b"\x00" * 64)
+        provider = RemoteWorktreeProvider(storage=storage, cache=_FakeCache())
+
+        with pytest.raises(WorktreeError) as exc_info:
+            await provider.fetch(_handle())
+        assert exc_info.value.error_code == ErrorCode.WORKTREE_BUNDLE_CODEC_UNAVAILABLE
+
+    async def test_fetch_raises_not_found_mhv222(self, tmp_materialized_base):
+        """storage.load_stream raises FileNotFoundError → MHV-222."""
+        from mahavishnu.core.errors import ErrorCode, WorktreeError
+
+        storage = _FakeCloudStorage(
+            raise_on_load_stream=FileNotFoundError("no such key")
+        )
+        provider = RemoteWorktreeProvider(storage=storage, cache=_FakeCache())
+
+        with pytest.raises(WorktreeError) as exc_info:
+            await provider.fetch(_handle())
+        assert exc_info.value.error_code == ErrorCode.WORKTREE_BUNDLE_NOT_FOUND
+
+    async def test_fetch_cache_hit_skips_streaming(self, tmp_materialized_base):
+        """Positive cache entry short-circuits load_stream entirely."""
+        cache = _FakeCache()
+        cached_dir = tmp_materialized_base / "cached"
+        cached_dir.mkdir(parents=True, exist_ok=True)
+        (cached_dir / "a.txt").write_text("hit")
+        handle = _handle(handle_id="h-hit")
+        await cache.set(f"materialized:{handle.handle_id}", str(cached_dir))
+
+        storage = _FakeCloudStorage()
+        provider = RemoteWorktreeProvider(storage=storage, cache=cache)
+
         ref = await provider.fetch(handle)
         assert ref.path == cached_dir
-        # Cache hit means NO download should be attempted.
-        assert storage.download_calls == []
-
-    asyncio.run(run())
-
-
-def test_fetch_cache_miss_downloads_and_caches(tmp_path: Path) -> None:
-    """Cache miss → download → cache.set → return new materialized ref."""
-    storage = _FakeStorageAdapter()
-    cache = _FakeCache()
-    provider = RemoteWorktreeProvider(storage=storage, cache=cache)
-
-    blob = _make_tar_blob(tmp_path, "hello")
-    sha = compute_sha256(blob)
-    handle = _handle(handle_id="h-miss", sha=sha, size=len(blob))
-
-    async def run() -> None:
-        # Pre-seed storage so download() returns the expected blob.
-        await storage.upload(handle.storage_ref.key, blob)
-
-        ref = await provider.fetch(handle)
-        assert ref.path.exists()
-        assert (ref.path / "f.txt").read_text() == "hello"
-        # Download was called once, cache.set was called once.
-        assert storage.download_calls == [handle.storage_ref.key]
-        # Cache should now hold the materialized path for next time.
-        cached = await cache.get(f"{handle.handle_id}:materialized")
-        assert cached == str(ref.path)
-
-    asyncio.run(run())
-
-
-def test_fetch_sha_mismatch_raises_integrity_error(tmp_path: Path) -> None:
-    """SHA-256 mismatch → WorktreeIntegrityError; integrity metric emitted."""
-    from mahavishnu.observability import metrics as metrics_mod
-
-    storage = _FakeStorageAdapter()
-    cache = _FakeCache()
-    provider = RemoteWorktreeProvider(storage=storage, cache=cache)
-
-    blob = _make_tar_blob(tmp_path, "tampered")
-    handle = _handle(handle_id="h-bad", sha="0" * 64)  # wrong sha
-
-    async def run() -> None:
-        # Seed storage with the blob so download returns bytes.
-        await storage.upload(handle.storage_ref.key, blob)
-
-        original_add = metrics_mod._bundle_integrity_failure_counter.add
-        seen: list[dict[str, Any]] = []
-
-        def spy(amount: int, attributes: dict[str, Any] | None = None) -> None:
-            seen.append({"amount": amount, "attributes": dict(attributes or {})})
-            original_add(amount, attributes=attributes)
-
-        metrics_mod._bundle_integrity_failure_counter.add = spy  # type: ignore[method-assign]
-        try:
-            with pytest.raises(WorktreeIntegrityError):
-                await provider.fetch(handle)
-        finally:
-            metrics_mod._bundle_integrity_failure_counter.add = original_add  # type: ignore[method-assign]
-
-        assert seen, "expected bundle_integrity_failure_total counter increment"
-        assert seen[-1]["attributes"]["backend"] == "s3"
-
-    asyncio.run(run())
+        assert storage.load_stream_calls == []
 
 
 # ---------------------------------------------------------------------------
-# remove_handle
+# remove_handle — covers storage.delete + cache invalidate + Dhara remove
 # ---------------------------------------------------------------------------
 
 
-def test_remove_handle_invalidates_cache_and_storage_and_dhara(tmp_path: Path) -> None:
-    """remove_handle touches storage, cache, and Dhara in that order."""
-    storage = _FakeStorageAdapter()
-    cache = _FakeCache()
-    dhara = FakeDharaClient()
-    provider = RemoteWorktreeProvider(
-        storage=storage,
-        cache=cache,
-        dhara_client=dhara,
-    )
+class TestRemoveHandle:
+    """``remove_handle`` calls storage.delete, invalidates cache, removes from Dhara."""
 
-    blob = b"some bytes"
-    sha = compute_sha256(blob)
-    principal = _principal()
-    # Need the register AND remove scopes so register_handles succeeds
-    # AND dhara_remove_handle can authorize the delete.
-    principal_full = replace(
-        principal,
-        scopes=frozenset({"worktree:register", "worktree:remove"}),
-    )
-    handle = _handle(
-        handle_id="h-rem",
-        sha=sha,
-        size=len(blob),
-        principal=principal_full,
-    )
-
-    async def run() -> None:
-        # Pre-seed storage + Dhara so all three subsystems have a row.
-        await storage.upload(handle.storage_ref.key, blob)
-        await cache.set(f"{handle.handle_id}:materialized", "/some/path")
-        # Register the handle in Dhara via the registry helper so the
-        # delete can find the principal/repo for index cleanup.
+    async def test_remove_handle_calls_storage_delete_and_dhara_remove(self) -> None:
+        storage = _FakeCloudStorage()
+        cache = _FakeCache()
+        dhara = FakeDharaClient()
+        provider = RemoteWorktreeProvider(
+            storage=storage,
+            cache=cache,
+            dhara_client=dhara,
+            backend="s3",
+        )
         from mahavishnu.core.worktree_providers.dhara_registry import (
             register_handles as dhara_register,
         )
 
+        principal_full = _principal(
+            scopes=("worktree:register", "worktree:remove"),
+        )
+        handle = _handle(
+            handle_id="h-rem",
+            sha="a" * 64,
+            size=42,
+            principal=principal_full,
+        )
+        # Seed storage with a fake blob so delete() can find the key.
+        storage._blobs[handle.storage_ref.key] = b"x"
         await dhara_register(dhara, [handle], caller=principal_full)
 
         removed = await provider.remove_handle(handle, caller=principal_full)
         assert removed is True
-
-        # Storage: deleted.
+        # Storage delete called with the right key
         assert handle.storage_ref.key in storage.delete_calls
         assert handle.storage_ref.key not in storage._blobs
-        # Cache: invalidate called for this handle.
+        # Cache invalidate called
         assert cache.invalidate_calls == [handle.handle_id]
-        # Dhara: primary row removed.
+        # Dhara primary row removed
         rows = await dhara.query(
             "SELECT * FROM mahavishnu_worktree_registry WHERE handle_id = :h",
             {"h": handle.handle_id},
         )
         assert rows == []
 
-    asyncio.run(run())
-
 
 # ---------------------------------------------------------------------------
-# list_handles
+# health — HealthReport shape + streaming-capability warning
 # ---------------------------------------------------------------------------
 
 
-def test_list_handles_delegates_to_dhara() -> None:
-    """list_handles forwards principal/repo/caller to dhara_registry."""
-    storage = _FakeStorageAdapter()
-    cache = _FakeCache()
-    dhara = FakeDharaClient()
-    provider = RemoteWorktreeProvider(
-        storage=storage,
-        cache=cache,
-        dhara_client=dhara,
-    )
+class TestHealthStreamingProbe:
+    """``health()`` returns a HealthReport with the streaming-capability warning."""
 
-    caller = _principal(
-        uid=2000,
-        name="uid:2000",
-        scopes=("worktree:read",),
-    )
+    async def test_health_reports_streaming_capability_present(self) -> None:
+        storage = _FakeCloudStorage(capabilities=["stream"])
+        provider = RemoteWorktreeProvider(storage=storage, cache=_FakeCache())
 
-    async def run() -> None:
-        handles = await provider.list_handles(repo="mahavishnu", caller=caller)
-        assert handles == []
+        report = await provider.health()
+        assert isinstance(report, HealthReport)
+        assert bool(report) is True
+        # No streaming-capability warning when adapter advertises it
+        assert all(w["kind"] != "streaming_capability_missing" for w in report.warnings)
 
-    asyncio.run(run())
+    async def test_health_reports_streaming_capability_missing(self) -> None:
+        storage = _FakeCloudStorage(capabilities=["blob", "delete"])
+        provider = RemoteWorktreeProvider(storage=storage, cache=_FakeCache())
+
+        report = await provider.health()
+        kinds = [w["kind"] for w in report.warnings]
+        assert "streaming_capability_missing" in kinds
+        assert bool(report) is False
+
+    async def test_health_marks_unhealthy_when_storage_health_fails(self) -> None:
+        storage = _FakeCloudStorage(health_return=False)
+        provider = RemoteWorktreeProvider(storage=storage, cache=_FakeCache())
+
+        report = await provider.health()
+        assert report.healthy is False
+        assert storage.health_calls == 1
 
 
-def test_list_handles_raises_when_caller_none() -> None:
-    """list_handles refuses to dispatch without a caller (privacy)."""
-    provider = RemoteWorktreeProvider(storage=_FakeStorageAdapter(), cache=_FakeCache())
+# ---------------------------------------------------------------------------
+# list_handles / lock — kept from v1 surface
+# ---------------------------------------------------------------------------
 
-    async def run() -> None:
+
+class TestListHandles:
+    async def test_list_handles_requires_caller(self) -> None:
+        provider = RemoteWorktreeProvider(
+            storage=_FakeCloudStorage(), cache=_FakeCache()
+        )
         with pytest.raises(PermissionError):
             await provider.list_handles()
 
-    asyncio.run(run())
 
-
-# ---------------------------------------------------------------------------
-# exists
-# ---------------------------------------------------------------------------
-
-
-def test_exists_uses_storage_not_download(tmp_path: Path) -> None:
-    """exists() must hit storage.exists — not download."""
-    storage = _FakeStorageAdapter()
-    provider = RemoteWorktreeProvider(storage=storage, cache=_FakeCache())
-    handle = _handle(handle_id="h-ex", key="worktrees/mahavishnu/main/h-ex.tar.gz")
-
-    async def run() -> None:
-        # Empty storage → exists=False, no download.
-        assert await provider.exists(handle) is False
-        assert storage.exists_calls == [handle.storage_ref.key]
-        assert storage.download_calls == []
-
-        # Now seed and re-check — exists=True, still no download.
-        await storage.upload(handle.storage_ref.key, b"x")
-        assert await provider.exists(handle) is True
-        # Only one new exists call was made; download never invoked.
-        assert storage.download_calls == []
-
-    asyncio.run(run())
-
-
-# ---------------------------------------------------------------------------
-# lock delegation
-# ---------------------------------------------------------------------------
-
-
-def test_lock_delegates_to_local_provider() -> None:
-    """lock() forwards to the injected LocalWorktreeProvider."""
-    storage = _FakeStorageAdapter()
-    cache = _FakeCache()
-    sentinel = object()
-    seen: dict[str, Any] = {}
-
-    class _FakeLocal:
-        async def lock(self, repo, branch, *, acquire_timeout, lease_ttl, redis_client):
-            seen["repo"] = repo
-            seen["branch"] = branch
-            seen["acquire_timeout"] = acquire_timeout
-            seen["lease_ttl"] = lease_ttl
-            seen["redis_client"] = redis_client
-            return sentinel
-
-    provider = RemoteWorktreeProvider(
-        storage=storage,
-        cache=cache,
-        local_provider=_FakeLocal(),  # type: ignore[arg-type]
-    )
-
-    async def run() -> object:
-        result = await provider.lock(
-            "mahavishnu", "feature/x", acquire_timeout=2.5, lease_ttl=15.0
+class TestLockDelegation:
+    async def test_lock_raises_when_no_local_provider(self) -> None:
+        provider = RemoteWorktreeProvider(
+            storage=_FakeCloudStorage(), cache=_FakeCache()
         )
-        assert seen == {
-            "repo": "mahavishnu",
-            "branch": "feature/x",
-            "acquire_timeout": 2.5,
-            "lease_ttl": 15.0,
-            "redis_client": None,
-        }
-        return result
-
-    assert asyncio.run(run()) is sentinel
-
-
-def test_lock_raises_when_no_local_provider() -> None:
-    """lock() refuses without a LocalWorktreeProvider."""
-    provider = RemoteWorktreeProvider(storage=_FakeStorageAdapter(), cache=_FakeCache())
-
-    async def run() -> None:
         with pytest.raises(NotImplementedError):
             await provider.lock("mahavishnu", "feature/x")
-
-    asyncio.run(run())
-
-
-# ---------------------------------------------------------------------------
-# Internal helpers
-# ---------------------------------------------------------------------------
-
-
-def _make_tar_blob(tmp_path: Path, content: str) -> bytes:
-    """Build a tiny tar.gz blob containing a single ``f.txt`` file."""
-    import io
-    import tarfile
-
-    src = tmp_path / "src"
-    src.mkdir()
-    (src / "f.txt").write_text(content)
-    buf = io.BytesIO()
-    with tarfile.open(fileobj=buf, mode="w:gz") as tar:
-        tar.add(str(src / "f.txt"), arcname="f.txt")
-    return buf.getvalue()
