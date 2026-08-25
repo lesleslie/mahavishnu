@@ -37,7 +37,7 @@ from pathlib import Path
 import queue
 import threading
 import time
-from typing import TYPE_CHECKING, Any, Literal
+from typing import TYPE_CHECKING, Any, Literal, cast
 import uuid
 
 if TYPE_CHECKING:
@@ -215,7 +215,7 @@ def _producer_thread_target(
         # is guaranteed to see end-of-stream before raising. The
         # attribute is ``_producer_error`` so external callers cannot
         # accidentally trip it; it is read inside ``fetch``.
-        thread._producer_error = error  # type: ignore[attr-defined]
+        thread._producer_error = error  # ty: ignore[unresolved-attribute]
 
 
 class RemoteWorktreeProvider(WorktreeProvider):
@@ -503,7 +503,7 @@ class RemoteWorktreeProvider(WorktreeProvider):
         from .types import LocalWorktreeRef, RemoteWorktreeRef
 
         self._validate_remote_handle(handle)
-        ref: RemoteWorktreeRef = handle.storage_ref
+        ref: RemoteWorktreeRef = cast(RemoteWorktreeRef, handle.storage_ref)
         backend_kind = ref.backend_kind
 
         start = time.monotonic()
@@ -725,7 +725,7 @@ class RemoteWorktreeProvider(WorktreeProvider):
                 f"Storage key not found: {storage_key}",
                 error_code=ErrorCode.WORKTREE_BUNDLE_NOT_FOUND,
             )
-        return first_chunk_any  # type: ignore[return-value]
+        return cast(bytes, first_chunk_any)
 
     @staticmethod
     def _reject_legacy_gzip_magic(

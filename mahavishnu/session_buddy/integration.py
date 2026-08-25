@@ -21,9 +21,9 @@ from mcp_common.code_graph import CodeGraphAnalyzer
 try:
     # ``messaging.types`` lives in an optional Bodai-ecosystem package
     # that is not always available (CI smoke jobs ship a minimal venv).
-    # Both mypy/ruff (``# type: ignore``) and ty (``# ty: ignore``)
-    # need their own directives to silence the missing-import report;
-    # keep both side-by-side so a single fix satisfies every checker.
+    # Both mypy/ruff and ty need their own suppression directives to
+    # silence the missing-import report; keep both side-by-side on the
+    # import line so a single fix satisfies every checker.
     from messaging.types import (  # type: ignore[import-not-found]  # ty: ignore[unresolved-import]
         MessageStatus,
         MessageType,
