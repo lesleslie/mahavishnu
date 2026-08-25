@@ -148,7 +148,9 @@ recursively and captures the per-command schema.
 - **Rollback signal**: inventory script broken in CI → skip audit phases
   until fixed; do not block existing tests.
 - **Observability added**: per-repo inventory JSON files; baseline
-  command-count column in `BODAI_REPO_REGISTRY.md` after Phase 4.
+  command-count column in `BODAI_REPO_REGISTRY.md` (Phase 7 adds the
+  registry row; Phase 0 only captures the baseline numbers in
+  the inventories themselves).
 
 ### Phase 1 — Per-repo parallel inventory
 
@@ -297,9 +299,11 @@ repo.
 **Integration Contract (Phase 4):**
 
 - **Triggered from**: Phase 3 completed (no open critical findings).
-- **Returns to / updates**: 1 commit per Core 7 repo (7 total); 1 commit
-  in mcp-common (factory extension); 1 commit in oneiric (base class);
-  1 new decision doc.
+- **Returns to / updates**: 1 commit per CLI-bearing Core 7 repo (6
+  total: oneiric, dhara, session-buddy, akosha, crackerjack,
+  mahavishnu — mcp-common is library-only and needs no CLI
+  conversion); 1 commit in mcp-common (factory extension); 1 commit
+  in oneiric (base class); 1 new decision doc.
 - **Demonstrable by**: `<repo> version` exits 0 across all 7 repos;
   `<repo> doctor` exits 0 (or documented `ExitCode.UNAVAILABLE` if not
   implemented); `<repo> --json` flag accepted by all 7.
@@ -366,11 +370,11 @@ mahavishnu-scoped TUI (pools/workers). Both TUIs coexist.
   `bodai.core.health.check_all()` results plus the canonical status
   vocabulary in `mahavishnu/core/ecosystem_status.py` (`CanonicalStatus`,
   `DegradationTrend`). Refreshes every 2-5s. ~100 LOC.
-- 6.3 — Verify or wire `mahavishnu monitor --tui` (or equivalent)
-  pointing at `mahavishnu/tui/monitor_app.py`. Currently `monitor_app.py`
-  defines `MonitorApp` but the CLI command that invokes it isn't
-  confirmed — add `@monitoring_cli.app.command("tui")` (or name TBD) if
-  missing.
+- 6.3 — Wire `mahavishnu monitor --tui` pointing at
+  `mahavishnu/tui/monitor_app.py`. If no CLI command currently invokes
+  `MonitorApp`, register it via `@monitoring_cli.app.command("tui")`
+  in `mahavishnu/cli/monitoring_cli.py`. Naming convention: the command
+  is `tui` (the `monitor` namespace already exists).
 - 6.4 — Update `bodai/cli.py` so `bodai shell` and `bodai dashboard`
   reach the new modules (currently they catch `ImportError` and print
   "not yet implemented").
@@ -485,7 +489,8 @@ See §3.
 
 ## 10. Cross-references
 
-- Decision doc: `docs/adr/...` (TBD after spec review)
+- Decision doc: `.claude/decisions/2026-08-25-bodai-cli-contract.md`
+  (NEW, written in Phase 4.5)
 - Companion decision: `.claude/decisions/2026-08-24-bodai-mcp-routing-pattern.md` (env audit decisions)
 - `BODAI_REPO_REGISTRY.md` — per-repo CLI surface summary (Phase 7)
 - `oneiric.shell` package — `AdminShell` base class for admin shells
