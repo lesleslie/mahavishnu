@@ -68,10 +68,12 @@ Concrete signal:
    (`.claude/decisions/worktree-autoremove-policy.md`,
    MEMORY.md `bodai-pre-1.0-merge-policy`), Bodai components merge
    **directly to main** with no PRs. The 6 per-repo commits in Phase
-   5.1, the 7 conversion commits in Phase 4.3, and all remediation
-   commits in Phase 3 land on `main` (or worktree-branches that
-   fast-forward to `main` via `git update-ref`). No branch protection
-   or PR workflow.
+   5.1, the **6** CLI-bearing-repo conversion commits in Phase 4.3
+   (oneiric, dhara, session-buddy, akosha, crackerjack, mahavishnu —
+   mcp-common is library-only and needs no CLI conversion), and all
+   remediation commits in Phase 3 land on `main` (or worktree-branches
+   that fast-forward to `main` via `git update-ref`). No branch
+   protection or PR workflow.
 
 ## 3. Non-Goals
 
@@ -533,27 +535,28 @@ mahavishnu-scoped TUI (pools/workers). Both TUIs coexist.
 ## 6. Required Code Changes (high-level)
 
 - [ ] `/Users/les/Projects/mahavishnu/scripts/audit_cli_inventory.py` (NEW)
-- [ ] `/Users/les/Projects/oneiric/oneiric/cli/base.py` (NEW)
-- [ ] `/Users/les/Projects/mcp-common/mcp_common/cli/factory.py` (modify — add `register_lifecycle_handlers`)
+- [ ] `/Users/les/Projects/oneiric/oneiric/cli.py` (modify — convert flat module to package: move contents to `oneiric/cli/__init__.py`)
+- [ ] `/Users/les/Projects/oneiric/oneiric/cli/base.py` (NEW — `BodaiCLIBase` + `ExitCode`)
+- [ ] `/Users/les/Projects/mcp-common/mcp_common/cli/factory.py` (modify — fix Python 2 `except` syntax at lines 530, 745 → `except (ValueError, OSError):` per Phase 3.2.6, BEFORE the factory extension in Phase 4.2)
+- [ ] `/Users/les/Projects/mcp-common/mcp_common/cli/factory.py` (modify — add `register_lifecycle_handlers` per Phase 4.2, AFTER the syntax fix)
 - [ ] Per-repo inventory JSON+MD × 6 (`docs/audit-inventory/*.json|md`)
-- [ ] `/Users/les/Projects/akosha/akosha/shell/adapter.py` (modify — gate stubs)
-- [ ] `/Users/les/Projects/akosha/pyproject.toml` (modify — add `ipython` direct dep)
+- [ ] `/Users/les/Projects/akosha/akosha/shell/adapter.py` (modify — gate 5 IPython namespace stubs behind `alpha_shell_commands_enabled` flag)
+- [ ] `/Users/les/Projects/akosha/pyproject.toml` (modify — add `ipython>=9.14.0` direct dep)
 - [ ] `/Users/les/Projects/crackerjack/crackerjack/shell/session_compat.py` (modify — fix Python 2 syntax)
-- [ ] `/Users/les/Projects/crackerjack/crackerjack/__main__.py` (modify — move `app` to `cli/__init__.py`)
-- [ ] `/Users/les/Projects/dhara/dhara/__main__.py` (modify — remove legacy `interactive_client`)
-- [ ] `/Users/les/Projects/session-buddy/session_buddy/__main__.py` (modify — wire `shell` command)
-- [ ] `/Users/les/Projects/{oneiric,dhara,session-buddy,akosha,crackerjack,mahavishnu}/{cli,__main__,_main_cli}.py` (modify — adopt `BodaiCLIBase`)
-- [ ] `/Users/les/Projects/{oneiric/oneiric/cli/__init__.py,akosha/akosha/cli.py,...}` (modify — `BodaiCLIBase(component_name=...)`)
+- [ ] `/Users/les/Projects/crackerjack/crackerjack/__main__.py` (modify — move `app = factory.create_app()` to `crackerjack/cli/__init__.py`)
+- [ ] `/Users/les/Projects/dhara/dhara/__main__.py` (modify — **DO NOT** remove legacy `interactive_client`; it is still imported by the modern `dhara db client` Typer command at `dhara/cli.py:571`. The Phase 3.1.2 fix is to add a doc note explaining when to use `dhara admin` vs `dhara db client`.)
+- [ ] `/Users/les/Projects/session-buddy/session_buddy/cli.py` (modify — wire `shell` command; `__main__.py` is a thin delegate and the `app` lives in `cli.py`)
+- [ ] `/Users/les/Projects/{oneiric/cli/__init__.py,dhara/cli.py,session-buddy/cli.py,akosha/cli.py,crackerjack/cli/__init__.py,mahavishnu/_main_cli.py}` (modify — adopt `BodaiCLIBase(component_name=...)`)
 - [ ] `/Users/les/Projects/{oneiric,akosha,dhara,session-buddy,crackerjack,mahavishnu}/pyproject.toml` (modify — add `[project.entry-points."bodai.apps"]`)
-- [ ] `/Users/les/Projects/bodai/bodai/cli.py` (modify — add `_discover_apps()`)
-- [ ] `/Users/les/Projects/bodai/bodai/admin/shell.py` (NEW)
-- [ ] `/Users/les/Projects/bodai/bodai/tui/dashboard.py` (NEW)
-- [ ] `/Users/les/Projects/bodai/tests/test_umbrella.py` (NEW)
-- [ ] `/Users/les/Projects/bodai/tests/test_shell.py` (NEW)
-- [ ] `/Users/les/Projects/bodai/tests/test_dashboard.py` (NEW)
+- [ ] `/Users/les/Projects/bodai/bodai/cli.py` (modify — add `_discover_apps()` AND remove defensive `try/except ImportError` for `shell`/`dashboard` once their modules verify)
+- [ ] `/Users/les/Projects/mahavishnu/mahavishnu/_main_cli.py` (consider rename to `main_cli.py` for non-underscored entry-point path)
+- [ ] `/Users/les/Projects/bodai/bodai/cli.py` (modify — Phase 6 verification: confirm `bodai shell` / `bodai dashboard` work end-to-end; remove defensive try/except)
+- [ ] `/Users/les/Projects/bodai/tests/test_umbrella.py` (NEW — verify `_discover_apps` composes via mock entry-points)
 - [ ] `/Users/les/Projects/mahavishnu/.claude/decisions/2026-08-25-bodai-cli-contract.md` (NEW)
-- [ ] `/Users/les/Projects/mahavishnu/BODAI_REPO_REGISTRY.md` (modify — CLI surface summary)
+- [ ] `/Users/les/Projects/mahavishnu/.claude/decisions/README.md` (modify — add row for the new decision per wire-up-contract policy)
+- [ ] `/Users/les/Projects/mahavishnu/BODAI_REPO_REGISTRY.md` (modify — add per-repo CLI surface summary column)
 - [ ] `/Users/les/Projects/bodai/README.md` (modify — document `bodai akosha shell` etc.)
+- [ ] `/Users/les/Projects/dhara/README.md` (modify — clarify `dhara admin` vs `dhara db client`)
 
 ## 7. Decision Rule
 
