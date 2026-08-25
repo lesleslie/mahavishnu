@@ -13,7 +13,20 @@ def get_registered_repos() -> set[str]:
     Returns absolute paths as strings.
     """
     settings = MahavishnuSettings()
-    manifest_path = Path(settings.repos_path).expanduser().resolve()
+    manifest_path = Path(settings.repos_path).expanduser()
+    if not manifest_path.is_absolute():
+        # Anchor relative paths to the mahavishnu project root, NOT to cwd.
+        # This file lives at ``mahavishnu/core/code_index/path_validation.py``;
+        # ``parents[3]`` is the project root (the directory containing the
+        # ``mahavishnu`` package). Anchoring to cwd silently breaks whenever
+        # ``git commit`` runs from a different repo (crackerjack, session-buddy,
+        # etc.) or from a worktree, because ``settings/ecosystem.yaml`` resolves
+        # to a non-existent path and ``get_registered_repos`` returns an empty
+        # set, which then trips ``validate_repo_path`` with a misleading
+        # ``"Registered paths: []"`` error.
+        project_root = Path(__file__).resolve().parents[3]
+        manifest_path = project_root / manifest_path
+    manifest_path = manifest_path.resolve()
 
     if not manifest_path.exists():
         return set()
