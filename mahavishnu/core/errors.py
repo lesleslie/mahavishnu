@@ -1679,7 +1679,20 @@ class WorktreeError(MahavishnuError):
     :class:`mahavishnu.core.worktree_providers.errors.WorktreeOperationError`
     which is the legacy provider-level error. New code that operates
     on :class:`WorktreeHandle` objects should raise this hierarchy.
+
+    Callers SHOULD pass ``error_code=`` when a more specific code
+    applies; the default is used when the failure doesn't map to one
+    of the granular codes (e.g. coordinator-level dispatch errors
+    that don't belong to a single storage operation).
     """
+
+    def __init__(
+        self,
+        message: str,
+        error_code: ErrorCode = ErrorCode.WORKTREE_NOT_FOUND,
+        details: dict | None = None,
+    ) -> None:
+        super().__init__(message, error_code, details=details)
 
 
 class WorktreeLockedError(WorktreeError):

@@ -36,7 +36,7 @@ from .base import WorktreeProvider
 from .errors import WorktreeCreationError, WorktreeOperationError
 
 if TYPE_CHECKING:
-    from collections.abc import Callable
+    from collections.abc import Callable, Iterator
 
     from oneiric.adapters.storage.local import LocalStorageAdapter
 
@@ -789,10 +789,22 @@ class LocalWorktreeProvider(WorktreeProvider):
         from mahavishnu.core.errors import ErrorCode, WorktreeError
         from mahavishnu.observability.metrics import record_worktree_op
 
+        # Narrow the abstract WorktreeRef to LocalWorktreeRef so the
+        # .path access is type-safe. This helper is local-only by
+        # construction; a non-LocalWorktreeRef is a programmer error.
+        from .types import LocalWorktreeRef as _LocalRef
 
-        if not handle.storage_ref.path.exists():
+        storage_ref = handle.storage_ref
+        if not isinstance(storage_ref, _LocalRef):
             raise WorktreeError(
-                f"Worktree path does not exist: {handle.storage_ref.path}",
+                "LocalWorktreeProvider._fallback_to_existing_path "
+                f"requires LocalWorktreeRef; got {type(storage_ref).__name__}",
+                error_code=ErrorCode.WORKTREE_NOT_FOUND,
+            )
+
+        if not storage_ref.path.exists():
+            raise WorktreeError(
+                f"Worktree path does not exist: {storage_ref.path}",
                 error_code=ErrorCode.WORKTREE_NOT_FOUND,
             )
         record_worktree_op(
@@ -802,7 +814,7 @@ class LocalWorktreeProvider(WorktreeProvider):
             success=True,
             principal=handle.principal.name,
         )
-        return handle.storage_ref  # type: ignore[return-value]
+        return storage_ref
 
     @staticmethod
     def _ensure_codec_available() -> None:
@@ -830,12 +842,28 @@ class LocalWorktreeProvider(WorktreeProvider):
                 error_code=ErrorCode.WORKTREE_BUNDLE_CODEC_UNAVAILABLE,
             )
 
-    def _open_storage_stream(self, storage_key: str):
-        """MHV-222: map storage-side ``not found`` to ``WorktreeError``."""
+    def _open_storage_stream(self, storage_key: str) -> Iterator[bytes]:
+        """MHV-222: map storage-side ``not found`` to ``WorktreeError``.
+
+        Refuse if no storage adapter is configured rather than
+        silently letting ``load_stream`` dereference ``None``.
+        """
+        from typing import cast
+
         from mahavishnu.core.errors import ErrorCode, WorktreeError
 
+        if self._storage is None:
+            raise WorktreeError(
+                "LocalWorktreeProvider has no storage adapter configured; "
+                "cannot fetch worktree bundle",
+                error_code=ErrorCode.WORKTREE_BUNDLE_NOT_FOUND,
+            )
         try:
-            return self._storage.load_stream(storage_key)  # type: ignore[union-attr]
+            # Cast through Any because oneiric's LocalStorageAdapter
+            # has no stubs in this workspace — ty treats
+            # ``_storage.load_stream`` as a method reference rather
+            # than a bound call without the cast.
+            return cast("Iterator[bytes]", self._storage.load_stream(storage_key))
         except Exception as exc:
             raise WorktreeError(
                 f"Storage key not found: {storage_key}",
@@ -1071,11 +1099,16 @@ class LocalWorktreeProvider(WorktreeProvider):
             redis_url = os.environ.get("MAHAVISHNU_REDIS_URL", "redis://localhost:6379/0")
             redis_client = redis_async.from_url(redis_url, decode_responses=True)
 
-        # Lazy import to keep `redis` optional at module load
-        from .lock import RedisLockBackend
+        # ``redis_client`` is now guaranteed non-None. The parameter
+        # is typed ``object | None`` for caller ergonomics (any object
+        # that quacks like Redis works); cast to ``RedisLike`` so the
+        # RedisLockBackend constructor accepts it without complaint.
+        from typing import cast
+
+        from .lock import RedisLike, RedisLockBackend
 
         backend = RedisLockBackend(
-            redis_client,
+            cast("RedisLike", redis_client),
             acquire_timeout=acquire_timeout,
             lease_ttl=lease_ttl,
         )

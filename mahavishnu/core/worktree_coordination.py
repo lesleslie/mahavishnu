@@ -12,24 +12,29 @@ Architecture (Phase 0 enhancements):
 - Comprehensive audit logging (all operations)
 """
 
+from __future__ import annotations
+
 import asyncio
 import logging
 import os
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
-from mahavishnu.core.coordination.manager import CoordinationManager
 from mahavishnu.core.errors import ConfigurationError
 from mahavishnu.core.paths import get_worktree_base_path
-from mahavishnu.core.repo_manager import RepositoryManager
 
 from .worktree_audit import WorktreeAuditLogger
 from .worktree_backup import WorktreeBackupManager
-from .worktree_providers.base import WorktreeProvider
 from .worktree_providers.local import DirectGitWorktreeProvider, LocalWorktreeProvider
 from .worktree_providers.registry import WorktreeProviderRegistry
 from .worktree_providers.session_buddy import SessionBuddyWorktreeProvider
 from .worktree_validation import WorktreePathValidator
+
+if TYPE_CHECKING:
+    from mahavishnu.core.coordination.manager import CoordinationManager
+    from mahavishnu.core.repo_manager import RepositoryManager
+
+    from .worktree_providers.base import WorktreeProvider
 
 logger = logging.getLogger(__name__)
 
@@ -814,7 +819,11 @@ class WorktreeCoordinator:
                 f"Provider {provider.provider_name()} does not support the v4 "
                 f"create_worktree_handle API; use the legacy create_worktree path"
             )
-        return await provider.create_worktree_handle(
+        # v4 dispatch — the hasattr check above guarantees the v4 method
+        # exists; cast to Any so ty doesn't reject the call against the
+        # v1 base class (WorktreeProvider.create_worktree returns dict).
+        v4_provider: Any = provider
+        return await v4_provider.create_worktree_handle(
             repo=repo_nickname,
             branch=branch,
             base_ref=base_ref,
@@ -830,7 +839,10 @@ class WorktreeCoordinator:
             raise WorktreeError(
                 f"Provider {provider.provider_name()} does not support v4 fetch"
             )
-        return await provider.fetch(handle)
+        # hasattr check above guarantees the v4 method exists; cast to
+        # Any so ty doesn't reject the call against the v1 base class.
+        v4_provider: Any = provider
+        return await v4_provider.fetch(handle)
 
     async def remove_worktree_handle(
         self, handle: Any, *, caller: Any
@@ -854,7 +866,10 @@ class WorktreeCoordinator:
             raise WorktreeError(
                 f"Provider {provider.provider_name()} does not support v4 remove_handle"
             )
-        return await provider.remove_handle(handle, caller=caller)
+        # hasattr check above guarantees the v4 method exists; cast to
+        # Any so ty doesn't reject the call against the v1 base class.
+        v4_provider: Any = provider
+        return await v4_provider.remove_handle(handle, caller=caller)
 
     async def list_worktree_handles(
         self,
@@ -870,7 +885,10 @@ class WorktreeCoordinator:
             raise WorktreeError(
                 f"Provider {provider.provider_name()} does not support v4 list_handles"
             )
-        return await provider.list_handles(
+        # hasattr check above guarantees the v4 method exists; cast to
+        # Any so ty doesn't reject the call against the v1 base class.
+        v4_provider: Any = provider
+        return await v4_provider.list_handles(
             principal=principal, repo=repo, caller=caller
         )
 

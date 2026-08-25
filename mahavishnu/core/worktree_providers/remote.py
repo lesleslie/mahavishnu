@@ -204,7 +204,12 @@ def _producer_thread_target(
         # is guaranteed to see end-of-stream before raising. The
         # attribute is ``_producer_error`` so external callers cannot
         # accidentally trip it; it is read inside ``fetch``.
-        thread._producer_error = error  # type: ignore[attr-defined]
+
+        # ty rejects ``thread._producer_error = error`` because
+        # ``threading.Thread`` has no such attribute. The ``ty: ignore``
+        # below is the documented escape hatch for attaching a
+        # private sentinel to an stdlib instance.
+        thread._producer_error = error  # ty: ignore[unresolved-attribute]
 
 
 class RemoteWorktreeProvider(WorktreeProvider):
@@ -487,7 +492,15 @@ class RemoteWorktreeProvider(WorktreeProvider):
         from .types import LocalWorktreeRef
 
         self._validate_remote_handle(handle)
-        ref: RemoteWorktreeRef = handle.storage_ref
+        # ``_validate_remote_handle`` raises if storage_ref is not a
+        # RemoteWorktreeRef, so the cast below is safe; ``cast`` is
+        # used (not isinstance) because the validator raises rather
+        # than narrowing for the type checker.
+        from typing import cast
+
+        from .types import RemoteWorktreeRef as _RemoteRef
+
+        ref: RemoteWorktreeRef = cast("_RemoteRef", handle.storage_ref)
         backend_kind = ref.backend_kind
 
         start = time.monotonic()
@@ -700,6 +713,8 @@ class RemoteWorktreeProvider(WorktreeProvider):
         q: queue.Queue[bytes | object], storage_key: str
     ) -> bytes:
         """Pull the first chunk from ``q``; raise NOT_FOUND on empty."""
+        from typing import cast
+
         from mahavishnu.core.errors import ErrorCode, WorktreeError
 
         first_chunk_any = q.get()
@@ -708,7 +723,9 @@ class RemoteWorktreeProvider(WorktreeProvider):
                 f"Storage key not found: {storage_key}",
                 error_code=ErrorCode.WORKTREE_BUNDLE_NOT_FOUND,
             )
-        return first_chunk_any  # type: ignore[return-value]
+        # ``_STREAM_SENTINEL`` is the only ``object`` we ever enqueue;
+        # any non-sentinel must be the actual bytes payload.
+        return cast("bytes", first_chunk_any)
 
     @staticmethod
     def _reject_legacy_gzip_magic(
