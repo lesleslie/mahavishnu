@@ -4,6 +4,7 @@ role: implementation
 date: 2026-08-24
 last_reviewed: 2026-08-24
 owner: les
+topic: claude-env-remediation
 scope: claude-env
 purpose: remediate drift, dead config, and bloat discovered by the 2026-08-24 ultracode audit
 ---

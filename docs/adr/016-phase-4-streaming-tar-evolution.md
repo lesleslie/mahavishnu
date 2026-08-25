@@ -1,8 +1,9 @@
 ---
-status: proposed
-role: adr
+status: draft
+role: canonical
 date: 2026-08-23
 last_reviewed: 2026-08-23
+topic: streaming-tar-evolution
 supersedes: []
 blocks_on:
   - "015-worktree-and-cache-storage-v4"

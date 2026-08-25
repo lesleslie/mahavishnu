@@ -1,6 +1,6 @@
 ---
-status: reference
-role: review-synthesis
+status: complete
+role: historical
 date: 2026-08-23
 last_reviewed: 2026-08-23
 superseded_by: null
