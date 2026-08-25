@@ -5,15 +5,36 @@ from __future__ import annotations
 from pathlib import Path
 import stat
 
+# Post-event hooks run the code-graph indexer.
 HOOK_CONTENT = """#!/bin/sh
 # Managed by mahavishnu index install-hooks
 # Remove with: mahavishnu index uninstall-hooks <path>
 mahavishnu index repo --trigger git-event "$(pwd)" &
 """
 
+# Pre-commit hook guards against hardcoded *_KEY / *_TOKEN / *_SECRET literals
+# landing in any .mcp.json. No-op when the audit script is absent (so other
+# repos without scripts/audit_no_secrets_in_mcp.py can still install hooks).
+PRE_COMMIT_CONTENT = """#!/bin/sh
+# Managed by mahavishnu index install-hooks
+# Remove with: mahavishnu index uninstall-hooks <path>
+# Enforces .claude/decisions/2026-08-24-bodai-mcp-routing-pattern.md §1.
+if [ -f "scripts/audit_no_secrets_in_mcp.py" ]; then
+    python3 scripts/audit_no_secrets_in_mcp.py
+fi
+"""
+
 MAHAVISHNU_HEADER = "# Managed by mahavishnu index install-hooks"
 
-_HOOK_NAMES = ("post-commit", "post-merge", "post-rewrite")
+_HOOK_NAMES = ("post-commit", "post-merge", "post-rewrite", "pre-commit")
+
+# Map each hook to its template content.
+_HOOK_TEMPLATES: dict[str, str] = {
+    "post-commit": HOOK_CONTENT,
+    "post-merge": HOOK_CONTENT,
+    "post-rewrite": HOOK_CONTENT,
+    "pre-commit": PRE_COMMIT_CONTENT,
+}
 
 
 def install_hooks(repo_path: str, force: bool = False) -> list[str]:
@@ -45,7 +66,7 @@ def install_hooks(repo_path: str, force: bool = False) -> list[str]:
                     f"Use --force to overwrite."
                 )
 
-        hook_file.write_text(HOOK_CONTENT)
+        hook_file.write_text(_HOOK_TEMPLATES[hook_name])
         hook_file.chmod(hook_file.stat().st_mode | stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH)
         installed.append(hook_name)
 

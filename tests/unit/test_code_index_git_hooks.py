@@ -8,6 +8,7 @@ import pytest
 
 from mahavishnu.core.code_index.git_hooks import (
     _HOOK_NAMES,
+    _HOOK_TEMPLATES,
     HOOK_CONTENT,
     MAHAVISHNU_HEADER,
     install_hooks,
@@ -113,3 +114,17 @@ class TestHookContent:
 
     def test_contains_mahavishnu_header(self) -> None:
         assert MAHAVISHNU_HEADER in HOOK_CONTENT
+
+    def test_pre_commit_invokes_secret_audit(self) -> None:
+        """pre-commit hook guards against hardcoded *_KEY/*_TOKEN/*_SECRET.
+
+        Enforces .claude/decisions/2026-08-24-bodai-mcp-routing-pattern.md §1.
+        The script path is guarded with -f so repos without the audit
+        script can still install without breaking.
+        """
+        pre_commit = _HOOK_TEMPLATES["pre-commit"]
+        assert pre_commit.startswith("#!/bin/sh")
+        assert MAHAVISHNU_HEADER in pre_commit
+        assert "scripts/audit_no_secrets_in_mcp.py" in pre_commit
+        # Guard clause so non-mahavishnu repos don't break on install
+        assert '[ -f "scripts/audit_no_secrets_in_mcp.py" ]' in pre_commit
