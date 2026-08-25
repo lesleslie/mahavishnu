@@ -34,10 +34,25 @@ keep the secret out of every filesystem layer. The same rule applies to
 docker-compose `env:`, Kubernetes manifests, and any other
 JSON/YAML file that gets serialized.
 
-**Enforcement**: `python scripts/audit_no_secrets_in_mcp.py` runs in
-pre-commit + crackerjack quality gate. Scans every `.mcp.json` for
-`*_KEY`, `*_TOKEN`, `*_SECRET`, `*_PASSWORD` patterns with literal values.
-Fails the gate on any hit.
+**Enforcement**: The audit script is wired through Mahavishnu's
+canonical hook installer (`mahavishnu index install-hooks`) as the
+`pre-commit` hook alongside the existing `post-commit`/`post-merge`/
+`post-rewrite` trio. Hooks live in `.git/hooks/` (per-clone, gitignored)
+and are managed by `mahavishnu index install-hooks <path>` /
+`uninstall-hooks <path>`. Setup (one-time per clone):
+
+```bash
+mahavishnu index install-hooks .
+```
+
+The pre-commit template is at
+`mahavishnu/core/code_index/git_hooks.py::PRE_COMMIT_CONTENT`. It
+runs `python3 scripts/audit_no_secrets_in_mcp.py` if the script
+exists (no-op otherwise, so the installer remains safe in repos that
+haven't adopted the audit script). The audit's non-zero exit code
+propagates via `|| exit 1`, so a violation blocks the commit. Scans
+every `.mcp.json` for `*_KEY`, `*_TOKEN`, `*_SECRET`, `*_PASSWORD`
+patterns with literal values.
 
 **Allowed exception**: `*_HOST`, `*_URL`, `*_PORT` (non-secret config) are
 explicitly allowlisted in the audit script. `MINIMAX_API_HOST` in
