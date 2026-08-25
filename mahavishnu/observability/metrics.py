@@ -43,16 +43,19 @@ time so a typo never silently spawns an unbounded label set.
 
 from __future__ import annotations
 
+from collections.abc import Mapping
+from enum import StrEnum
 from hashlib import sha256
 import logging
-from typing import Final, TYPE_CHECKING
+from typing import Final
 
 from opentelemetry import metrics
+from opentelemetry.metrics import (  # noqa: TC002 — Counter/Histogram used as module-level variable annotations (deferred by __future__ annotations) + as counter_fn/counter_holder factories
+    Counter,
+    Histogram,
+)
 
-if TYPE_CHECKING:
-    from opentelemetry.metrics import Counter, Histogram
-
-_logger = logging.getLogger(__name__)
+logger = logging.getLogger(__name__)
 
 
 # ---------------------------------------------------------------------------
@@ -79,16 +82,25 @@ _ALLOWED_LABEL_KEYS: Final[frozenset[str]] = frozenset(
         "from_tier",
         "to_tier",
         "drift_kind",
+        # Phase 3 PR-C — streaming_op_duration_seconds{op,backend}
+        # and streaming_op_total{op,backend,success}.
+        "op",
+        "success",
     }
 )
 
 
-def _validate_labels(labels: dict[str, object]) -> None:
+def _validate_labels(labels: Mapping[str, object]) -> None:
+    """Reject unknown label keys to prevent OTel cardinality explosion.
+
+    ``Mapping[str, object]`` is covariant on the value type, so callers
+    passing ``dict[str, str]`` (the common case for metric labels)
+    satisfy the bound without an explicit ``cast``.
+    """
     unknown = set(labels) - _ALLOWED_LABEL_KEYS
     if unknown:
         raise ValueError(
-            f"Unknown metric label keys: {sorted(unknown)}. "
-            f"Allowed: {sorted(_ALLOWED_LABEL_KEYS)}"
+            f"Unknown metric label keys: {sorted(unknown)}. Allowed: {sorted(_ALLOWED_LABEL_KEYS)}"
         )
 
 
@@ -153,7 +165,58 @@ _cache_set_histogram: Histogram = _meter.create_histogram(
 _bundle_bytes_histogram: Histogram = _meter.create_histogram(
     name="bundle_bytes",
     unit="By",
-    description="Bundle size (bytes) per repo, with exponential buckets to 100MB.",
+    description=(
+        "Bundle size (bytes) per repo. Phase 3 PR-C (B-DI-05) extended "
+        "buckets up to 1 GB so streaming-enabled size classes get "
+        "dedicated percentiles."
+    ),
+    explicit_bucket_boundaries_advisory=[
+        1024,  # 1 KB
+        10240,  # 10 KB
+        102400,  # 100 KB
+        1048576,  # 1 MB
+        10485760,  # 10 MB
+        52428800,  # 50 MB
+        104857600,  # 100 MB
+        134217728,  # 128 MB (Phase 3 — streaming midpoint)
+        209715200,  # 200 MB
+        524288000,  # 500 MB
+        1073741824,  # 1 GB
+    ],
+)
+
+# Streaming op histogram (Phase 3 PR-C) — duration per op/backend.
+_streaming_op_histogram: Histogram = _meter.create_histogram(
+    name="streaming_op_duration_seconds",
+    unit="s",
+    description=(
+        "Streaming tar.zst pipeline op duration (seconds) per op/backend. "
+        "Phase 3 PR-C: covers SERIALIZE / DESERIALIZE / COMPRESS / "
+        "DECOMPRESS / HASH / UPLOAD / DOWNLOAD ops from the streaming "
+        "bundle lifecycle (ADR 015 v4)."
+    ),
+    explicit_bucket_boundaries_advisory=[
+        0.001,  # 1 ms
+        0.005,  # 5 ms
+        0.01,  # 10 ms
+        0.05,  # 50 ms
+        0.1,  # 100 ms
+        0.5,  # 500 ms
+        1.0,  # 1 s
+        5.0,  # 5 s
+        30.0,  # 30 s
+        120.0,  # 2 min
+    ],
+)
+
+# Streaming op counter (Phase 3 PR-C) — total ops per op/backend/success.
+_streaming_op_counter: Counter = _meter.create_counter(
+    name="streaming_op_total",
+    description=(
+        "Streaming tar.zst pipeline op counter per op/backend/success. "
+        "Tracks both completed and failed streaming ops so dashboards "
+        "can compute success ratios per op kind."
+    ),
 )
 
 # Counters
@@ -184,6 +247,37 @@ _worktree_registry_drift_counter: Counter = _meter.create_counter(
 # ---------------------------------------------------------------------------
 
 
+# Phase 3 op enum (added with streaming tar support):
+#   SERIALIZE, DESERIALIZE, COMPRESS, DECOMPRESS, HASH, UPLOAD, DOWNLOAD
+# Phase 2 ops preserved: lock, unlock, health
+# Phase 3 PR-C sub-ops (create, create_stopgap, create_s3_multipart_aborted,
+#   create_codec_unavailable, fetch, fetch_legacy_guard_hit,
+#   fetch_sha_mismatch, remove_handle, invalidate_handle) documented for
+#   dashboard operators.
+
+
+class StreamingOp(StrEnum):
+    """Phase 3 streaming tar.zst pipeline operations.
+
+    Used by ``record_streaming_op`` to emit the
+    ``streaming_op_duration_seconds{op,backend}`` histogram and
+    ``streaming_op_total{op,backend,success}`` counter pair. Each
+    value is bounded to 16 chars to prevent caller-supplied data from
+    spawning unbounded label series on the ``op`` label.
+
+    The string values are intentionally short and stable so dashboard
+    queries can reference them without translation tables.
+    """
+
+    SERIALIZE = "serialize"
+    DESERIALIZE = "deserialize"
+    COMPRESS = "compress"
+    DECOMPRESS = "decompress"
+    HASH = "hash"
+    UPLOAD = "upload"
+    DOWNLOAD = "download"
+
+
 def record_worktree_op(
     backend: str,
     op: str,
@@ -205,7 +299,7 @@ def record_worktree_op(
         _worktree_fetch_histogram.record(duration_seconds, attributes=labels)
     else:
         # Forward-compat: unknown op names still validate
-        _logger.debug("worktree-op-skipped-unknown-op", extra={"op": op})
+        logger.debug("worktree-op-skipped-unknown-op", extra={"op": op})
 
 
 def record_cache_op(
@@ -269,9 +363,7 @@ def record_bundle_integrity_failure(
     _bundle_integrity_failure_counter.add(1, attributes=labels)
 
 
-def record_lock_wait(
-    repo: str, branch: str, wait_seconds: float, acquired: bool
-) -> None:
+def record_lock_wait(repo: str, branch: str, wait_seconds: float, acquired: bool) -> None:
     """Record a worktree distributed-lock acquisition wait."""
     labels = {
         "repo": _short_label(repo),
@@ -282,9 +374,7 @@ def record_lock_wait(
     _worktree_lock_wait_histogram.record(wait_seconds, attributes=labels)
 
 
-def record_lock_held(
-    repo: str, branch: str, principal: str | None, held_seconds: float
-) -> None:
+def record_lock_held(repo: str, branch: str, principal: str | None, held_seconds: float) -> None:
     """Record a worktree distributed-lock held duration on release."""
     labels = {
         "repo": _short_label(repo),
@@ -295,9 +385,7 @@ def record_lock_held(
     _worktree_lock_held_histogram.record(held_seconds, attributes=labels)
 
 
-def record_registry_drift(
-    *, missing_in_s3: int = 0, missing_in_dhara: int = 0
-) -> None:
+def record_registry_drift(*, missing_in_s3: int = 0, missing_in_dhara: int = 0) -> None:
     """Record drift between S3 inventory and Dhara registry.
 
     Two label dimensions collapse into one counter via a single
@@ -341,7 +429,59 @@ def record_bundle_bytes(repo: str, byte_size: int) -> None:
     _bundle_bytes_histogram.record(byte_size, attributes=labels)
 
 
+def record_streaming_op(
+    op: StreamingOp,
+    backend: str,
+    duration_ms: float,
+    bytes_processed: int,
+    *,
+    success: bool,
+) -> None:
+    """Record a streaming tar.zst pipeline op (Phase 3 PR-C).
+
+    Emits two instruments:
+
+    - ``streaming_op_duration_seconds{op,backend}`` histogram with
+      ``duration_ms / 1000`` (seconds).
+    - ``streaming_op_total{op,backend,success}`` counter, incremented
+      by 1.
+
+    ``op`` is constrained to the :class:`StreamingOp` enum (7 values,
+    all <=10 chars) so the ``op`` label set is bounded. ``backend``
+    is not validated against ``ALLOWED_BACKEND_KINDS`` here because
+    the streaming path emits under the same ``backend`` label as
+    Phase 1/2 helpers; we rely on ``_validate_labels`` (which only
+    checks key names) for cardinality protection. Unknown ``backend``
+    values still emit — typos surface as dashboard anomalies rather
+    than hard failures, matching the Phase 1/2 helper pattern.
+
+    ``bytes_processed`` is currently informational (recorded in the
+    call site's audit log, not in OTel) and is preserved on the
+    signature so callers don't need a separate histogram-emit for
+    bundle-bytes-per-op. Phase 4 may promote it to its own histogram
+    if dashboards start asking for bytes/op distributions.
+    """
+    op_value = op.value if isinstance(op, StreamingOp) else str(op)
+    duration_seconds = duration_ms / 1000.0
+
+    # Histogram — duration
+    duration_labels = {"op": op_value, "backend": backend}
+    _validate_labels(duration_labels)
+    _streaming_op_histogram.record(duration_seconds, attributes=duration_labels)
+
+    # Counter — total ops
+    success_label = "true" if success else "false"
+    counter_labels = {
+        "op": op_value,
+        "backend": backend,
+        "success": success_label,
+    }
+    _validate_labels(counter_labels)
+    _streaming_op_counter.add(1, attributes=counter_labels)
+
+
 __all__ = [
+    "StreamingOp",
     "record_backend_health_check_failed",
     "record_bundle_bytes",
     "record_bundle_integrity_failure",
@@ -351,5 +491,6 @@ __all__ = [
     "record_lock_held",
     "record_lock_wait",
     "record_registry_drift",
+    "record_streaming_op",
     "record_worktree_op",
 ]

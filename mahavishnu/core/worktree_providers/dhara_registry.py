@@ -396,9 +396,7 @@ async def remove_handle(
     has_remove = "worktree:remove" in caller.scopes
     has_admin = "worktree:register-any" in caller.scopes
     if not (has_remove or has_admin):
-        raise PermissionError(
-            f"Principal {caller.name!r} lacks scope 'worktree:remove'"
-        )
+        raise PermissionError(f"Principal {caller.name!r} lacks scope 'worktree:remove'")
 
     # Look up the primary to discover principal + uid + repo BEFORE
     # we delete the primary. If absent, return False without touching
@@ -436,8 +434,7 @@ async def remove_handle(
     index_drift = 0
     try:
         await client.execute(
-            "DELETE FROM mahavishnu_worktree_registry_idx_principal "
-            "WHERE handle_id = :handle_id",
+            "DELETE FROM mahavishnu_worktree_registry_idx_principal WHERE handle_id = :handle_id",
             {"handle_id": handle_id},
         )
     except Exception as exc:  # noqa: BLE001 — best-effort cleanup; logged + drift counted
@@ -453,8 +450,7 @@ async def remove_handle(
 
     try:
         await client.execute(
-            "DELETE FROM mahavishnu_worktree_registry_idx_repo "
-            "WHERE handle_id = :handle_id",
+            "DELETE FROM mahavishnu_worktree_registry_idx_repo WHERE handle_id = :handle_id",
             {"handle_id": handle_id},
         )
     except Exception as exc:  # noqa: BLE001 — best-effort cleanup; logged + drift counted
@@ -474,7 +470,7 @@ async def remove_handle(
             from mahavishnu.observability.metrics import record_registry_drift
 
             record_registry_drift(missing_in_dhara=index_drift)
-        except (ImportError, AttributeError):  # pragma: no cover - observability optional
+        except ImportError, AttributeError:  # pragma: no cover - observability optional
             pass
 
     return True

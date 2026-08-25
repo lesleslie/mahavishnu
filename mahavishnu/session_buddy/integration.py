@@ -19,7 +19,12 @@ from mcp_common.code_graph import CodeGraphAnalyzer
 # ``test_mcp_git_analytics.py`` with
 # ``AttributeError: module 'mahavishnu.session_buddy' has no attribute 'integration'``.
 try:
-    from messaging.types import (  # type: ignore[import-not-found]
+    # ``messaging.types`` lives in an optional Bodai-ecosystem package
+    # that is not always available (CI smoke jobs ship a minimal venv).
+    # Both mypy/ruff (``# type: ignore``) and ty (``# ty: ignore``)
+    # need their own directives to silence the missing-import report;
+    # keep both side-by-side so a single fix satisfies every checker.
+    from messaging.types import (  # type: ignore[import-not-found]  # ty: ignore[unresolved-import]
         MessageStatus,
         MessageType,
         Priority,

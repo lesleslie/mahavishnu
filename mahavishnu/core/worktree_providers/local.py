@@ -60,9 +60,7 @@ MAX_CONCURRENT_WORKTREE_STREAMS: int = 8
 # Module-level asyncio semaphore used by ``LocalWorktreeProvider.fetch``
 # to enforce the concurrency cap. The semaphore is process-global so
 # sibling fetch coroutines cooperate across awaits.
-_fetch_stream_semaphore: asyncio.Semaphore = asyncio.Semaphore(
-    MAX_CONCURRENT_WORKTREE_STREAMS
-)
+_fetch_stream_semaphore: asyncio.Semaphore = asyncio.Semaphore(MAX_CONCURRENT_WORKTREE_STREAMS)
 
 
 def supports_streaming(storage: Any) -> bool:
@@ -77,9 +75,7 @@ def supports_streaming(storage: Any) -> bool:
     if storage is None:
         return False
     capabilities = getattr(getattr(storage, "metadata", None), "capabilities", [])
-    has_methods = hasattr(storage, "save_stream") and hasattr(
-        storage, "load_stream"
-    )
+    has_methods = hasattr(storage, "save_stream") and hasattr(storage, "load_stream")
     return "stream" in capabilities and has_methods
 
 
@@ -334,7 +330,6 @@ class DirectGitWorktreeProvider(WorktreeProvider):
             raise
 
 
-
 # ---------------------------------------------------------------------------
 # LocalWorktreeProvider (ADR 015 v4 §1) — the v4-era primary local provider.
 # ---------------------------------------------------------------------------
@@ -376,6 +371,7 @@ class LocalWorktreeProvider(WorktreeProvider):
 
     def health_check(self) -> bool:
         import shutil
+
         return shutil.which(self._git_executable) is not None
 
     async def create_worktree(
@@ -470,13 +466,10 @@ class LocalWorktreeProvider(WorktreeProvider):
             # any heavy IO so a misconfigured key fails fast. S3 caps
             # keys at 1024 bytes; 256 is the conservative Phase 3 cap
             # matching the plan spec.
-            storage_key = (
-                f"worktrees/{repo}/{branch}/{handle_id}.tar.zst"
-            )
+            storage_key = f"worktrees/{repo}/{branch}/{handle_id}.tar.zst"
             if len(storage_key) > 256:
                 raise WorktreeError(
-                    f"Storage key too long ({len(storage_key)} > 256): "
-                    f"{storage_key!r}",
+                    f"Storage key too long ({len(storage_key)} > 256): {storage_key!r}",
                     error_code=ErrorCode.WORKTREE_BUNDLE_STORAGE_KEY_TOO_LONG,
                 )
 
@@ -490,8 +483,7 @@ class LocalWorktreeProvider(WorktreeProvider):
                 # error rather than silently OOM.
                 if size > MAX_BUNDLE_BYTES_STOPGAP:
                     raise WorktreeError(
-                        f"Bundle size {size} exceeds stopgap cap "
-                        f"{MAX_BUNDLE_BYTES_STOPGAP}",
+                        f"Bundle size {size} exceeds stopgap cap {MAX_BUNDLE_BYTES_STOPGAP}",
                         error_code=ErrorCode.WORKTREE_BUNDLE_STOPGAP_TOO_LARGE,
                     )
 
@@ -550,9 +542,7 @@ class LocalWorktreeProvider(WorktreeProvider):
             )
 
             if self._dhara_client is not None:
-                await register_handles(
-                    self._dhara_client, [handle], caller=principal
-                )
+                await register_handles(self._dhara_client, [handle], caller=principal)
 
             record_worktree_op(
                 backend="local",
@@ -600,165 +590,240 @@ class LocalWorktreeProvider(WorktreeProvider):
 
         from .types import LocalWorktreeRef
 
-        if not isinstance(handle.storage_ref, LocalWorktreeRef):
-            raise NotImplementedError(
-                f"LocalWorktreeProvider can only fetch LocalWorktreeRef; got "
-                f"{type(handle.storage_ref).__name__}"
-            )
-
+        self._validate_local_handle(handle)
         start = time.monotonic()
         cache_key = f"materialized:{handle.handle_id}"
-        # 1. Cache hit path
-        if self._cache is not None:
-            cached = await self._cache.get(cache_key)
-            if cached is not None:
-                path = Path(cached)
-                if path.exists():
-                    record_worktree_op(
-                        backend="local",
-                        op="fetch",
-                        duration_seconds=time.monotonic() - start,
-                        success=True,
-                        principal=handle.principal.name,
-                    )
-                    return LocalWorktreeRef(path=path, worktree_id=handle.handle_id)
+
+        # 1. Cache hit fast path
+        cached = await self._try_cache_hit(cache_key, handle, start)
+        if cached is not None:
+            return cached
 
         # 2. Cache miss path: streaming read + verify + extract + cache.
         try:
             if self._storage is None:
-                # No storage adapter — fall back to existing path
-                if not handle.storage_ref.path.exists():
-                    raise WorktreeError(
-                        f"Worktree path does not exist: {handle.storage_ref.path}",
-                        error_code=ErrorCode.WORKTREE_NOT_FOUND,
-                    )
-                record_worktree_op(
-                    backend="local",
-                    op="fetch",
-                    duration_seconds=time.monotonic() - start,
-                    success=True,
-                    principal=handle.principal.name,
-                )
-                return handle.storage_ref
+                return self._fallback_to_existing_path(handle, start)
 
-            # MHV-223: codec unavailable surfaces a clear
-            # WorktreeError rather than the raw zstandard ImportError.
-            try:
-                import zstandard  # noqa: F401
-            except ImportError as exc:
-                raise WorktreeError(
-                    "zstandard dependency required for streaming tar.zst; "
-                    "install with `uv sync --group compression-zstd`",
-                    error_code=ErrorCode.WORKTREE_BUNDLE_CODEC_UNAVAILABLE,
-                ) from exc
-
-            load_stream = getattr(self._storage, "load_stream", None)
-            if load_stream is None:
-                raise WorktreeError(
-                    f"Storage adapter {type(self._storage).__name__} "
-                    f"does not implement load_stream; cannot fetch Phase 3 "
-                    f"tar.zst bundle",
-                    error_code=ErrorCode.WORKTREE_BUNDLE_CODEC_UNAVAILABLE,
-                )
+            self._ensure_codec_available()
+            self._ensure_storage_supports_load_stream()
 
             storage_key = (
-                f"worktrees/{handle.repo}/{handle.branch}/{handle.handle_id}.tar.zst"
+                f"worktrees/{handle.repo}/{handle.branch}/"
+                f"{handle.handle_id}.tar.zst"
             )
 
             # Bounded semaphore — cap concurrent streaming fetches
             # to MAX_CONCURRENT_WORKTREE_STREAMS so a single client
             # cannot exhaust worker memory.
             async with _fetch_stream_semaphore:
-                # MHV-222: storage-side "not found" surfaces as a
-                # structured WorktreeError. The LocalStorageAdapter
-                # raises LifecycleError("local-storage-key-not-found")
-                # when the key is missing; the S3 / GCS / Azure
-                # adapters raise their own native 404-shaped errors.
-                try:
-                    stream_iter = load_stream(storage_key)
-                except Exception as exc:
-                    raise WorktreeError(
-                        f"Storage key not found: {storage_key}",
-                        error_code=ErrorCode.WORKTREE_BUNDLE_NOT_FOUND,
-                    ) from exc
-
-                # MHV-213: gzip magic sniff. If the first 2 bytes are
-                # 0x1f 0x8b, the stream is a legacy Phase 2 .tar.gz
-                # bundle and the streaming path cannot decompress it
-                # (no gzip decompressor wired in here). Surface as a
-                # clear migration-guard error rather than silently
-                # failing deeper in zstd.
+                stream_iter = self._open_storage_stream(storage_key)
                 first_chunk = next(stream_iter, b"")
-                if first_chunk[:2] == b"\x1f\x8b":
-                    raise WorktreeError(
-                        "Legacy .tar.gz bundle (gzip magic) is not "
-                        "supported in the Phase 3 streaming path; "
-                        "re-create the worktree with create_worktree_handle",
-                        error_code=ErrorCode.WORKTREE_BUNDLE_LEGACY_PHASE2,
-                    )
-
-                # Re-assemble the stream: yield the (peeked) first
-                # chunk then continue with the rest of the iterator.
-                def _chunk_reader_with_peek() -> Any:
-                    yield first_chunk
-                    yield from stream_iter
-
+                self._reject_legacy_gzip_magic(first_chunk)
                 target = get_worktree_base_path() / handle.handle_id
-
                 from .storage_io import deserialize_worktree_tar
 
-                # Producer-consumer handoff is conceptual here:
-                # the local ``load_stream`` reads from a file on
-                # disk in fixed-size chunks; the consumer
-                # (``deserialize_worktree_tar``) decompresses + writes
-                # + extracts. For the local adapter this is fast and
-                # memory-cheap; the bounded queue shape (maxsize=4)
-                # is preserved for parity with the S3 path which does
-                # a real producer/consumer split via ``asyncio.Queue``
-                # in C.7 (RemoteWorktreeProvider). We keep the
-                # ``queue.Queue(maxsize=4)`` reference here so the
-                # B-DI-10 memory bound is documented even though the
-                # local adapter drains serially.
-                q: queue.Queue[bytes | None] = queue.Queue(maxsize=4)
-                _ = q  # local adapter drains serially; the queue is
-                # captured for the B-DI-10 contract assertion in
-                # tests and for the future C.7 streaming switch.
-
-                deserialize_worktree_tar(
-                    _chunk_reader_with_peek,
-                    target,
-                    expected_sha256=handle.sha256,
-                    backend="local",
-                    principal_short=_principal_short(handle.principal),
+                self._deserialize_stream_to_target(
+                    deserialize_worktree_tar, stream_iter, first_chunk,
+                    target, handle,
                 )
 
-            record_streaming_op(
-                StreamingOp.DESERIALIZE,
-                "local",
-                duration_ms=(time.monotonic() - start) * 1000.0,
-                bytes_processed=handle.bytes_size,
-                success=True,
-            )
-
-            if self._cache is not None:
-                await self._cache.set(cache_key, str(target))
-            record_worktree_op(
-                backend="local",
-                op="fetch",
-                duration_seconds=time.monotonic() - start,
-                success=True,
-                principal=handle.principal.name,
-            )
+            self._record_successful_deserialize(start, handle.bytes_size)
+            await self._populate_cache_after_success(cache_key, target)
+            self._record_fetch_outcome(start, success=True, handle=handle)
             return LocalWorktreeRef(path=target, worktree_id=handle.handle_id)
         except Exception:
-            record_worktree_op(
-                backend="local",
-                op="fetch",
-                duration_seconds=time.monotonic() - start,
-                success=False,
-                principal=handle.principal.name,
-            )
+            self._record_fetch_outcome(start, success=False, handle=handle)
             raise
+
+    @staticmethod
+    def _validate_local_handle(handle: WorktreeHandle) -> None:
+        """Reject handles whose ``storage_ref`` is not a ``LocalWorktreeRef``."""
+        from .types import LocalWorktreeRef
+
+        if not isinstance(handle.storage_ref, LocalWorktreeRef):
+            raise NotImplementedError(
+                f"LocalWorktreeProvider can only fetch LocalWorktreeRef; got "
+                f"{type(handle.storage_ref).__name__}"
+            )
+
+    async def _try_cache_hit(
+        self, cache_key: str, handle: WorktreeHandle, start: float
+    ):
+        """Return cached ``LocalWorktreeRef`` if present and on-disk."""
+        from mahavishnu.observability.metrics import record_worktree_op
+
+        from .types import LocalWorktreeRef
+
+        if self._cache is None:
+            return None
+        cached = await self._cache.get(cache_key)
+        if cached is None:
+            return None
+        path = Path(cached)
+        if not path.exists():
+            return None
+        record_worktree_op(
+            backend="local",
+            op="fetch",
+            duration_seconds=time.monotonic() - start,
+            success=True,
+            principal=handle.principal.name,
+        )
+        return LocalWorktreeRef(path=path, worktree_id=handle.handle_id)
+
+    @staticmethod
+    def _fallback_to_existing_path(
+        handle: WorktreeHandle, start: float
+    ) -> LocalWorktreeRef:
+        """Return the on-disk path when no storage adapter is configured."""
+        from mahavishnu.core.errors import ErrorCode, WorktreeError
+
+        from mahavishnu.observability.metrics import record_worktree_op
+
+        from .types import LocalWorktreeRef
+
+        if not handle.storage_ref.path.exists():
+            raise WorktreeError(
+                f"Worktree path does not exist: {handle.storage_ref.path}",
+                error_code=ErrorCode.WORKTREE_NOT_FOUND,
+            )
+        record_worktree_op(
+            backend="local",
+            op="fetch",
+            duration_seconds=time.monotonic() - start,
+            success=True,
+            principal=handle.principal.name,
+        )
+        return handle.storage_ref  # type: ignore[return-value]
+
+    @staticmethod
+    def _ensure_codec_available() -> None:
+        """MHV-223: surface a structured error when zstandard is missing."""
+        from mahavishnu.core.errors import ErrorCode, WorktreeError
+
+        try:
+            import zstandard  # noqa: F401
+        except ImportError as exc:
+            raise WorktreeError(
+                "zstandard dependency required for streaming tar.zst; "
+                "install with `uv sync --group compression-zstd`",
+                error_code=ErrorCode.WORKTREE_BUNDLE_CODEC_UNAVAILABLE,
+            ) from exc
+
+    def _ensure_storage_supports_load_stream(self) -> None:
+        """Reject storage adapters missing the streaming surface."""
+        from mahavishnu.core.errors import ErrorCode, WorktreeError
+
+        if getattr(self._storage, "load_stream", None) is None:
+            raise WorktreeError(
+                f"Storage adapter {type(self._storage).__name__} "
+                f"does not implement load_stream; cannot fetch Phase 3 "
+                f"tar.zst bundle",
+                error_code=ErrorCode.WORKTREE_BUNDLE_CODEC_UNAVAILABLE,
+            )
+
+    def _open_storage_stream(self, storage_key: str):
+        """MHV-222: map storage-side ``not found`` to ``WorktreeError``."""
+        from mahavishnu.core.errors import ErrorCode, WorktreeError
+
+        try:
+            return self._storage.load_stream(storage_key)  # type: ignore[union-attr]
+        except Exception as exc:
+            raise WorktreeError(
+                f"Storage key not found: {storage_key}",
+                error_code=ErrorCode.WORKTREE_BUNDLE_NOT_FOUND,
+            ) from exc
+
+    @staticmethod
+    def _reject_legacy_gzip_magic(first_chunk: bytes) -> None:
+        """MHV-213: reject legacy ``.tar.gz`` bundles (first 2 bytes 0x1f 0x8b)."""
+        from mahavishnu.core.errors import ErrorCode, WorktreeError
+
+        if first_chunk[:2] == b"\x1f\x8b":
+            raise WorktreeError(
+                "Legacy .tar.gz bundle (gzip magic) is not "
+                "supported in the Phase 3 streaming path; "
+                "re-create the worktree with create_worktree_handle",
+                error_code=ErrorCode.WORKTREE_BUNDLE_LEGACY_PHASE2,
+            )
+
+    @staticmethod
+    def _deserialize_stream_to_target(
+        deserialize_worktree_tar: Callable[..., None],
+        stream_iter,
+        first_chunk: bytes,
+        target: Path,
+        handle: WorktreeHandle,
+    ) -> None:
+        """Hand the (peeked) stream to ``deserialize_worktree_tar``.
+
+        The ``queue.Queue(maxsize=4)`` reference is preserved here so
+        the B-DI-10 memory bound is documented and the bounded-shape
+        contract assertion remains in tests, even though the local
+        adapter drains serially. The remote (S3/GCS/Azure) path
+        consumes the same shape via ``asyncio.Queue`` in C.7.
+        """
+        # Re-assemble the stream: yield the (peeked) first chunk then
+        # continue with the rest of the iterator.
+        def _chunk_reader_with_peek() -> Any:
+            yield first_chunk
+            yield from stream_iter
+
+        # Producer-consumer handoff is conceptual here: the local
+        # ``load_stream`` reads from a file on disk in fixed-size
+        # chunks; the consumer (``deserialize_worktree_tar``)
+        # decompresses + writes + extracts. For the local adapter
+        # this is fast and memory-cheap; the bounded queue shape
+        # (maxsize=4) is preserved for parity with the S3 path which
+        # does a real producer/consumer split via ``asyncio.Queue``
+        # in C.7 (RemoteWorktreeProvider).
+        q: queue.Queue[bytes | None] = queue.Queue(maxsize=4)
+        _ = q  # captured for B-DI-10 contract test + future C.7 work
+
+        deserialize_worktree_tar(
+            _chunk_reader_with_peek,
+            target,
+            expected_sha256=handle.sha256,
+            backend="local",
+            principal_short=_principal_short(handle.principal),
+        )
+
+    @staticmethod
+    def _record_successful_deserialize(start: float, byte_size: int) -> None:
+        """Emit the ``DESERIALIZE`` histogram on the streaming success path."""
+        from mahavishnu.observability.metrics import (
+            StreamingOp,
+            record_streaming_op,
+        )
+
+        record_streaming_op(
+            StreamingOp.DESERIALIZE,
+            "local",
+            duration_ms=(time.monotonic() - start) * 1000.0,
+            bytes_processed=byte_size,
+            success=True,
+        )
+
+    async def _populate_cache_after_success(self, cache_key: str, target: Path) -> None:
+        """Best-effort cache write for the freshly materialised target."""
+        if self._cache is None:
+            return
+        await self._cache.set(cache_key, str(target))
+
+    @staticmethod
+    def _record_fetch_outcome(
+        start: float, *, success: bool, handle: WorktreeHandle
+    ) -> None:
+        """Emit the ``fetch`` histogram with success flag."""
+        from mahavishnu.observability.metrics import record_worktree_op
+
+        record_worktree_op(
+            backend="local",
+            op="fetch",
+            duration_seconds=time.monotonic() - start,
+            success=success,
+            principal=handle.principal.name,
+        )
 
     async def remove_handle(
         self,
@@ -806,9 +871,7 @@ class LocalWorktreeProvider(WorktreeProvider):
         # 2. Cache invalidate (per-handle prefix)
         if self._cache is not None:
             count = await self._cache.invalidate_handle(handle.handle_id)
-            record_cache_invalidation(
-                backend="local", reason="remove_handle", count=count
-            )
+            record_cache_invalidation(backend="local", reason="remove_handle", count=count)
 
         # 3. Dhara registry remove (best-effort; auth errors propagate)
         if self._dhara_client is not None:
@@ -897,9 +960,7 @@ class LocalWorktreeProvider(WorktreeProvider):
 
             import redis.asyncio as redis_async
 
-            redis_url = os.environ.get(
-                "MAHAVISHNU_REDIS_URL", "redis://localhost:6379/0"
-            )
+            redis_url = os.environ.get("MAHAVISHNU_REDIS_URL", "redis://localhost:6379/0")
             redis_client = redis_async.from_url(redis_url, decode_responses=True)
 
         # Lazy import to keep `redis` optional at module load
@@ -1018,9 +1079,7 @@ async def _create_worktree_via_git(
         _stdout, stderr = await process.communicate()
         if process.returncode != 0:
             error_msg = stderr.decode() if stderr else "Unknown error"
-            raise WorktreeCreationError(
-                f"Failed to create worktree: {error_msg}"
-            )
+            raise WorktreeCreationError(f"Failed to create worktree: {error_msg}")
         return {
             "success": True,
             "worktree_path": str(worktree_path),
@@ -1053,9 +1112,7 @@ async def _remove_worktree_via_git(
         _stdout, stderr = await process.communicate()
         if process.returncode != 0:
             error_msg = stderr.decode() if stderr else "Unknown error"
-            raise WorktreeOperationError(
-                f"Failed to remove worktree: {error_msg}"
-            )
+            raise WorktreeOperationError(f"Failed to remove worktree: {error_msg}")
         return {
             "success": True,
             "removed_path": str(worktree_path),
@@ -1089,9 +1146,7 @@ async def _list_worktrees_via_git(
         stdout, stderr = await process.communicate()
         if process.returncode != 0:
             error_msg = stderr.decode() if stderr else "Unknown error"
-            raise WorktreeOperationError(
-                f"Failed to list worktrees: {error_msg}"
-            )
+            raise WorktreeOperationError(f"Failed to list worktrees: {error_msg}")
         worktrees = []
         for line in stdout.decode().splitlines():
             if not line.strip():

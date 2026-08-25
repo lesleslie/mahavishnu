@@ -31,9 +31,7 @@ _logger = logging.getLogger(__name__)
 # Defined at module scope before helpers so both ``verify_sha256`` and
 # ``verify_sha256_streaming`` can validate backend labels against the
 # same frozenset (per round-2 BLOCKER R2-19).
-ALLOWED_BACKEND_KINDS: Final[frozenset[str]] = frozenset(
-    {"local", "s3", "gcs", "azure", "bundle"}
-)
+ALLOWED_BACKEND_KINDS: Final[frozenset[str]] = frozenset({"local", "s3", "gcs", "azure", "bundle"})
 
 
 def compute_sha256(blob: bytes) -> str:
@@ -68,17 +66,12 @@ def verify_sha256_streaming(
         WorktreeIntegrityError: If the digests do not match.
     """
     if backend not in ALLOWED_BACKEND_KINDS:
-        raise ValueError(
-            f"backend must be one of {sorted(ALLOWED_BACKEND_KINDS)}, "
-            f"got {backend!r}"
-        )
+        raise ValueError(f"backend must be one of {sorted(ALLOWED_BACKEND_KINDS)}, got {backend!r}")
     if actual_sha == expected_sha:
         return
 
     # B-DI-03 fix: pre-computed principal_short; NO re-hash.
-    record_bundle_integrity_failure_short(
-        backend=backend, principal_short=principal_short
-    )
+    record_bundle_integrity_failure_short(backend=backend, principal_short=principal_short)
     _logger.warning(
         "bundle-integrity-mismatch",
         extra={
@@ -97,8 +90,7 @@ def verify_sha256_streaming(
         actual_sha_prefix8=actual_sha[:8],
     )
     raise WorktreeIntegrityError(
-        f"SHA-256 mismatch for backend={backend}: "
-        f"expected={expected_sha!r}, actual={actual_sha!r}",
+        f"SHA-256 mismatch for backend={backend}: expected={expected_sha!r}, actual={actual_sha!r}",
         error_code=ErrorCode.WORKTREE_INTEGRITY_FAILED,
     )
 
@@ -152,7 +144,7 @@ def verify_sha256(
     expected_sha256: str,
     *,
     backend: str,
-    principal: str | None = None,
+    principal: object = None,
 ) -> None:
     """Verify ``blob``'s SHA-256 matches ``expected_sha256``.
 
@@ -180,7 +172,15 @@ def verify_sha256(
             ``bundle_integrity_failure_total{backend, principal_short}``
             counter is incremented before the raise.
     """
-    principal_name = principal.name if hasattr(principal, "name") else str(principal)
+    # ``principal`` may be a plain ``str`` or an object with a
+    # ``.name`` attribute (e.g. ``Principal``). Use ``getattr`` with
+    # an explicit ``None`` default so the type-checker does not
+    # have to narrow ``object`` based on ``hasattr``.
+    principal_name = (
+        getattr(principal, "name", None) or str(principal)
+        if principal is not None
+        else ""
+    )
     principal_short = _short_principal(principal_name)
     verify_sha256_streaming(
         compute_sha256(blob),
