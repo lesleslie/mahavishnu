@@ -155,6 +155,59 @@ def _storage_ref_to_dict(storage_ref: Any) -> dict[str, Any]:
     return d
 
 
+def _validate_storage_path_shape(path_str: str, backend_kind: str) -> None:
+    """Reject empty / dash-prefixed / non-absolute / parent-traversal paths.
+
+    Pure-string checks; no filesystem I/O. Splitting the shape checks
+    out of ``_validate_storage_path`` keeps each helper under the
+    complexity gate (4 branches here vs the previous 7 inside the
+    combined function) and lets tests exercise the shape rules without
+    mocking the filesystem.
+
+    Dash-prefix rationale: a path starting with ``-`` could be
+    mis-parsed as a CLI flag by downstream tooling (e.g. ``rm -rf /tmp``
+    if the path was ever passed as an argument). Check the raw
+    string rather than ``p.parts[0]`` since absolute Unix paths always
+    have ``/`` as parts[0].
+    """
+    if not path_str:
+        raise ValueError(f"{backend_kind} storage path is empty")
+    if path_str.startswith("-"):
+        raise ValueError(
+            f"{backend_kind} storage path starts with dash (flag-like): {path_str!r}"
+        )
+    p = Path(path_str)
+    if not p.is_absolute():
+        raise ValueError(
+            f"{backend_kind} storage path must be absolute: {path_str!r}"
+        )
+    if any(part == ".." for part in p.parts):
+        raise ValueError(
+            f"{backend_kind} storage path contains '..': {path_str!r}"
+        )
+
+
+def _validate_storage_path_within_base(path_str: str, backend_kind: str) -> None:
+    """Resolve ``path_str`` and confirm it falls under the worktree base.
+
+    Performs filesystem I/O (``.resolve()``) which is expensive and
+    side-effect-bearing; kept separate from the shape checks so tests
+    can mock either half in isolation.
+    """
+    base = _worktree_base_resolved()
+    try:
+        candidate = Path(path_str).resolve()
+    except OSError as exc:
+        raise ValueError(
+            f"{backend_kind} storage path cannot be resolved: {path_str!r} ({exc})"
+        ) from exc
+    if not _is_within(candidate, base):
+        raise ValueError(
+            f"{backend_kind} storage path {candidate} is outside "
+            f"worktree base {base}"
+        )
+
+
 def _validate_storage_path(path_str: str, backend_kind: str) -> str:
     """Validate a path string before using it as a filesystem path.
 
@@ -170,32 +223,11 @@ def _validate_storage_path(path_str: str, backend_kind: str) -> str:
     ``get_worktree_base_path()`` so the registry can't accumulate
     off-base entries. Symlink safety is enforced at consumer time
     (when the worktree is actually used), not here.
+
+    Returns ``path_str`` unchanged on success for chaining at call sites.
     """
-    if not path_str:
-        raise ValueError(f"{backend_kind} storage path is empty")
-    p = Path(path_str)
-    # Dash-prefix: a path string starting with `-` could be mis-parsed as
-    # a CLI flag by downstream tooling (e.g. `rm -rf /tmp` if the path
-    # was ever passed as an argument). Check the raw string rather than
-    # ``p.parts[0]`` since absolute Unix paths always have ``/`` as
-    # parts[0].
-    if path_str.startswith("-"):
-        raise ValueError(f"{backend_kind} storage path starts with dash (flag-like): {path_str!r}")
-    if not p.is_absolute():
-        raise ValueError(f"{backend_kind} storage path must be absolute: {path_str!r}")
-    if any(part == ".." for part in p.parts):
-        raise ValueError(f"{backend_kind} storage path contains '..': {path_str!r}")
-    # Base-directory allowlist: the path must resolve to a location
-    # under the configured worktree base.
-    base = _worktree_base_resolved()
-    try:
-        candidate = p.resolve()
-    except OSError as e:
-        raise ValueError(
-            f"{backend_kind} storage path cannot be resolved: {path_str!r} ({e})"
-        ) from e
-    if not _is_within(candidate, base):
-        raise ValueError(f"{backend_kind} storage path {candidate} is outside worktree base {base}")
+    _validate_storage_path_shape(path_str, backend_kind)
+    _validate_storage_path_within_base(path_str, backend_kind)
     return path_str
 
 
@@ -365,6 +397,83 @@ async def register_handles(
     return count
 
 
+def _assert_can_remove_handle(
+    caller: Principal,
+    *,
+    handle_id: str,
+    principal_name: str,
+    owner_uid: Any,
+    has_admin: bool,
+) -> None:
+    """Enforce per-handle ownership: non-admin callers may only remove their own.
+
+    ``owner_uid`` may be ``None`` for pre-v2 migrated (anonymous) handles;
+    in that case only admins may remove them since we cannot verify
+    ownership. Admins (``worktree:register-any``) bypass this check.
+    """
+    if has_admin:
+        return
+    if owner_uid is None or owner_uid != caller.uid:
+        raise PermissionError(
+            f"Principal {caller.name!r} cannot remove handle "
+            f"{handle_id!r} owned by {principal_name!r}"
+        )
+
+
+async def _cleanup_principal_index(client: Any, handle_id: str) -> int:
+    """Best-effort delete of the principal index row; return 1 on drift, 0 otherwise."""
+    try:
+        await client.execute(
+            "DELETE FROM mahavishnu_worktree_registry_idx_principal "
+            "WHERE handle_id = :handle_id",
+            {"handle_id": handle_id},
+        )
+    except Exception as exc:  # noqa: BLE001 — best-effort cleanup; logged + drift counted
+        logger.warning(
+            "worktree-registry-index-cleanup-failed",
+            extra={
+                "index": "principal",
+                "handle_id": handle_id,
+                "error": str(exc),
+            },
+        )
+        return 1
+    return 0
+
+
+async def _cleanup_repo_index(client: Any, handle_id: str) -> int:
+    """Best-effort delete of the repo index row; return 1 on drift, 0 otherwise."""
+    try:
+        await client.execute(
+            "DELETE FROM mahavishnu_worktree_registry_idx_repo "
+            "WHERE handle_id = :handle_id",
+            {"handle_id": handle_id},
+        )
+    except Exception as exc:  # noqa: BLE001 — best-effort cleanup; logged + drift counted
+        logger.warning(
+            "worktree-registry-index-cleanup-failed",
+            extra={
+                "index": "repo",
+                "handle_id": handle_id,
+                "error": str(exc),
+            },
+        )
+        return 1
+    return 0
+
+
+async def _surface_index_drift(index_drift: int) -> None:
+    """Best-effort metric surface for index drift; never raises out of remove."""
+    if not index_drift:
+        return
+    try:
+        from mahavishnu.observability.metrics import record_registry_drift
+
+        record_registry_drift(missing_in_dhara=index_drift)
+    except (ImportError, AttributeError):  # pragma: no cover - observability optional
+        pass
+
+
 async def remove_handle(
     client: Any,
     handle_id: str,
@@ -398,11 +507,11 @@ async def remove_handle(
     if not (has_remove or has_admin):
         raise PermissionError(f"Principal {caller.name!r} lacks scope 'worktree:remove'")
 
-    # Look up the primary to discover principal + uid + repo BEFORE
-    # we delete the primary. If absent, return False without touching
-    # indexes (no drift to report).
+    # Look up the primary to discover principal + uid BEFORE we delete
+    # the primary. If absent, return False without touching indexes
+    # (no drift to report).
     rows = await client.query(
-        "SELECT principal, principal_uid, repo FROM mahavishnu_worktree_registry "
+        "SELECT principal, principal_uid FROM mahavishnu_worktree_registry "
         "WHERE handle_id = :handle_id",
         {"handle_id": handle_id},
     )
@@ -411,17 +520,13 @@ async def remove_handle(
 
     principal_name = rows[0]["principal"]
     owner_uid = rows[0].get("principal_uid")
-
-    # Per-handle ownership check: non-admin callers can only remove
-    # their own handles. owner_uid may be None for pre-v2 migrated
-    # handles (anonymous in pre-migration world); in that case only
-    # admin can remove (since we can't verify ownership).
-    if not has_admin:
-        if owner_uid is None or owner_uid != caller.uid:
-            raise PermissionError(
-                f"Principal {caller.name!r} cannot remove handle "
-                f"{handle_id!r} owned by {principal_name!r}"
-            )
+    _assert_can_remove_handle(
+        caller,
+        handle_id=handle_id,
+        principal_name=principal_name,
+        owner_uid=owner_uid,
+        has_admin=has_admin,
+    )
 
     # Delete primary first.
     await client.execute(
@@ -431,49 +536,99 @@ async def remove_handle(
 
     # Best-effort index cleanup. Each failure is logged + counted as
     # drift (handled in the wrapper layer via record_registry_drift).
-    index_drift = 0
-    try:
-        await client.execute(
-            "DELETE FROM mahavishnu_worktree_registry_idx_principal WHERE handle_id = :handle_id",
-            {"handle_id": handle_id},
-        )
-    except Exception as exc:  # noqa: BLE001 — best-effort cleanup; logged + drift counted
-        logger.warning(
-            "worktree-registry-index-cleanup-failed",
-            extra={
-                "index": "principal",
-                "handle_id": handle_id,
-                "error": str(exc),
-            },
-        )
-        index_drift += 1
-
-    try:
-        await client.execute(
-            "DELETE FROM mahavishnu_worktree_registry_idx_repo WHERE handle_id = :handle_id",
-            {"handle_id": handle_id},
-        )
-    except Exception as exc:  # noqa: BLE001 — best-effort cleanup; logged + drift counted
-        logger.warning(
-            "worktree-registry-index-cleanup-failed",
-            extra={
-                "index": "repo",
-                "handle_id": handle_id,
-                "error": str(exc),
-            },
-        )
-        index_drift += 1
-
-    # Surface drift via metric (best-effort — never raises out of remove).
-    if index_drift:
-        try:
-            from mahavishnu.observability.metrics import record_registry_drift
-
-            record_registry_drift(missing_in_dhara=index_drift)
-        except (ImportError, AttributeError):  # pragma: no cover - observability optional
-            pass
+    index_drift = await _cleanup_principal_index(client, handle_id)
+    index_drift += await _cleanup_repo_index(client, handle_id)
+    await _surface_index_drift(index_drift)
 
     return True
+
+
+def _assert_admin_scope(caller: Principal | None, *, action: str) -> None:
+    """Raise PermissionError unless caller has the worktree:list-all scope."""
+    if caller is None or "worktree:list-all" not in caller.scopes:
+        raise PermissionError(
+            f"Action {action!r} requires scope 'worktree:list-all' on the caller"
+        )
+
+
+def _assert_principal_match(
+    caller: Principal | None, principal: str, is_admin: bool
+) -> None:
+    """Raise unless caller is admin or asking for their own principal."""
+    if is_admin:
+        return
+    if caller is None or caller.name != principal:
+        raise PermissionError(
+            "Non-admin callers can only list their own handles; "
+            f"caller {caller.name if caller else 'None'!r} asked for {principal!r}"
+        )
+
+
+def _assert_repo_read_scope(caller: Principal | None, is_admin: bool) -> None:
+    """Raise unless caller is admin or has the worktree:read scope."""
+    if is_admin:
+        return
+    if caller is None:
+        raise PermissionError(
+            "Repo-scoped listing requires a caller with scope 'worktree:read'"
+        )
+    if "worktree:read" not in caller.scopes:
+        raise PermissionError(
+            f"Caller {caller.name!r} lacks scope 'worktree:read' for repo listing"
+        )
+
+
+async def _fetch_all_handles(client: Any) -> list[WorktreeHandle]:
+    """Return every handle in the registry (admin-only caller gate above)."""
+    rows = await client.query(
+        "SELECT * FROM mahavishnu_worktree_registry ORDER BY created_at"
+    )
+    return [_row_to_handle(r) for r in rows]
+
+
+async def _fetch_handles_for_principal(
+    client: Any, principal: str
+) -> list[WorktreeHandle]:
+    """Run the principal-filtered JOIN query and materialize handles."""
+    rows = await client.query(
+        """
+        SELECT r.* FROM mahavishnu_worktree_registry r
+          JOIN mahavishnu_worktree_registry_idx_principal p
+            ON r.handle_id = p.handle_id
+          WHERE p.principal = :principal
+          ORDER BY r.created_at
+        """,
+        {"principal": principal},
+    )
+    return [_row_to_handle(r) for r in rows]
+
+
+async def _fetch_handles_for_repo(
+    client: Any, repo: str
+) -> list[WorktreeHandle]:
+    """Run the repo-filtered JOIN query and materialize handles."""
+    rows = await client.query(
+        """
+        SELECT r.* FROM mahavishnu_worktree_registry r
+          JOIN mahavishnu_worktree_registry_idx_repo x
+            ON r.handle_id = x.handle_id
+          WHERE x.repo = :repo
+          ORDER BY r.created_at
+        """,
+        {"repo": repo},
+    )
+    return [_row_to_handle(r) for r in rows]
+
+
+def _filter_handles_to_caller(
+    handles: list[WorktreeHandle],
+    caller: Principal | None,
+    is_admin: bool,
+) -> list[WorktreeHandle]:
+    """Post-filter handles so non-admin callers only see their own."""
+    if is_admin or caller is None:
+        return handles
+    return [h for h in handles if h.principal.name == caller.name]
 
 
 async def list_handles(
@@ -502,56 +657,17 @@ async def list_handles(
     is_admin = caller is not None and "worktree:list-all" in caller.scopes
 
     if all_tenants:
-        if not is_admin:
-            raise PermissionError(
-                "Listing all tenants requires caller with scope 'worktree:list-all'"
-            )
-        rows = await client.query("SELECT * FROM mahavishnu_worktree_registry ORDER BY created_at")
-        return [_row_to_handle(r) for r in rows]
+        _assert_admin_scope(caller, action="list all tenants")
+        return await _fetch_all_handles(client)
 
     if principal is not None:
-        if not is_admin and (caller is None or caller.name != principal):
-            raise PermissionError(
-                f"Non-admin callers can only list their own handles; "
-                f"caller {caller.name if caller else 'None'!r} asked for {principal!r}"
-            )
-        rows = await client.query(
-            """
-            SELECT r.* FROM mahavishnu_worktree_registry r
-              JOIN mahavishnu_worktree_registry_idx_principal p
-                ON r.handle_id = p.handle_id
-              WHERE p.principal = :principal
-              ORDER BY r.created_at
-            """,
-            {"principal": principal},
-        )
-        return [_row_to_handle(r) for r in rows]
+        _assert_principal_match(caller, principal, is_admin)
+        return await _fetch_handles_for_principal(client, principal)
 
     if repo is not None:
-        if not is_admin:
-            if caller is None:
-                raise PermissionError(
-                    "Repo-scoped listing requires a caller with scope 'worktree:read'"
-                )
-            if "worktree:read" not in caller.scopes:
-                raise PermissionError(
-                    f"Caller {caller.name!r} lacks scope 'worktree:read' for repo listing"
-                )
-        rows = await client.query(
-            """
-            SELECT r.* FROM mahavishnu_worktree_registry r
-              JOIN mahavishnu_worktree_registry_idx_repo x
-                ON r.handle_id = x.handle_id
-              WHERE x.repo = :repo
-              ORDER BY r.created_at
-            """,
-            {"repo": repo},
-        )
-        handles = [_row_to_handle(r) for r in rows]
-        # Post-filter: non-admin callers only see their own handles.
-        if not is_admin and caller is not None:
-            handles = [h for h in handles if h.principal.name == caller.name]
-        return handles
+        _assert_repo_read_scope(caller, is_admin)
+        handles = await _fetch_handles_for_repo(client, repo)
+        return _filter_handles_to_caller(handles, caller, is_admin)
 
     # No filter provided — default to caller's own handles, or refuse
     # if there's no caller at all.
@@ -560,17 +676,7 @@ async def list_handles(
             "list_handles requires a principal, repo, caller, or explicit "
             "all_tenants=True with admin scope"
         )
-    rows = await client.query(
-        """
-        SELECT r.* FROM mahavishnu_worktree_registry r
-          JOIN mahavishnu_worktree_registry_idx_principal p
-            ON r.handle_id = p.handle_id
-          WHERE p.principal = :principal
-          ORDER BY r.created_at
-        """,
-        {"principal": caller.name},
-    )
-    return [_row_to_handle(r) for r in rows]
+    return await _fetch_handles_for_principal(client, caller.name)
 
 
 __all__ = [

@@ -240,6 +240,29 @@ def _create_tar_tempfile() -> Path:
     return Path(temp_path_str)
 
 
+def _decompress_and_write(
+    chunk_reader: Callable[[], Iterator[bytes]],
+    decompressor: Any,
+    raw_file: Any,
+    sha: Any,
+) -> None:
+    """Drive the streaming decompression loop and write plaintext bytes to ``raw_file``.
+
+    ``sha`` is updated with the COMPRESSED chunk bytes so the caller
+    can verify integrity without re-hashing plaintext (matches the
+    producer side in ``serialize_worktree_tar``).
+    """
+    for compressed_chunk in chunk_reader():
+        sha.update(compressed_chunk)
+        plaintext = decompressor.decompress(compressed_chunk)
+        if plaintext:
+            raw_file.write(plaintext)
+    tail = decompressor.flush()
+    if tail:
+        raw_file.write(tail)
+    raw_file.flush()
+
+
 def _decompress_chunks_to_tempfile(
     chunk_reader: Callable[[], Iterator[bytes]],
     temp_path: Path,
@@ -257,15 +280,7 @@ def _decompress_chunks_to_tempfile(
 
     try:
         with open(temp_path, "wb") as raw_file:
-            for compressed_chunk in chunk_reader():
-                sha.update(compressed_chunk)
-                plaintext = decompressor.decompress(compressed_chunk)
-                if plaintext:
-                    raw_file.write(plaintext)
-            tail = decompressor.flush()
-            if tail:
-                raw_file.write(tail)
-            raw_file.flush()
+            _decompress_and_write(chunk_reader, decompressor, raw_file, sha)
     except OSError as exc:
         raise WorktreeError(
             f"Failed to write decompressed tar temp file: {exc}",
