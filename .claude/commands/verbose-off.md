@@ -1,4 +1,3 @@
-
 ## name: verbose-off description: Disable Claude CLI verbose/debug mode
 
 Disable verbose mode:

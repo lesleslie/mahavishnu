@@ -87,11 +87,14 @@ class WorktreeProviderRegistry:
                     require_all=True,
                 )
             except Exception as exc:  # noqa: BLE001 — best-effort resolver; logged + falls back to legacy health check
-            # pragma: no cover - resolver faults
+                # pragma: no cover - resolver faults
                 logger.warning(
                     "worktree-resolver-fault",
-                    extra={"domain": self._resolver_domain, "key": self._resolver_key,
-                           "error": str(exc)},
+                    extra={
+                        "domain": self._resolver_domain,
+                        "key": self._resolver_key,
+                        "error": str(exc),
+                    },
                 )
                 candidates = []
 

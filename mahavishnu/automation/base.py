@@ -129,7 +129,7 @@ class MenuInfo:
     path: list[str] = field(default_factory=list)
     enabled: bool = True
     shortcut: str | None = None
-    children: list["MenuInfo"] = field(default_factory=list)
+    children: list[MenuInfo] = field(default_factory=list)
 
     def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary representation."""

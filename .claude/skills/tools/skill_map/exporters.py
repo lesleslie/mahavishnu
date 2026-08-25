@@ -1,9 +1,11 @@
 """Export skill graphs to various formats."""
 
 import json
-from typing import Any
+from typing import Any, TYPE_CHECKING
 
-from .graph import SkillGraph
+
+if TYPE_CHECKING:
+    from .graph import SkillGraph
 
 
 def export_mermaid(graph: SkillGraph, direction: str = "TD") -> str:

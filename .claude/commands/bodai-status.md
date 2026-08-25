@@ -1,4 +1,3 @@
-
 ## name: bodai-status description: Check current Bodai-wide activity (Mahavishnu, Akosha, Crackerjack) — reads from ~/.mahavishnu/bodai-event-queue.json which the Phase 6A Bodai subscriber populates from Oneiric EventBridge.
 
 Check current Bodai-wide activity across Mahavishnu, Akosha, and Crackerjack.

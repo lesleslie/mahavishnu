@@ -2,11 +2,13 @@
 
 import json
 import logging
-from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from .base import WorktreeProvider
 from .errors import WorktreeCreationError, WorktreeRemovalError, WorktreeValidationError
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 logger = logging.getLogger(__name__)
 

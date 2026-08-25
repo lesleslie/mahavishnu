@@ -358,7 +358,7 @@ def _inspect_reports_running(inspect_output: str) -> bool:
     """
     try:
         data = json.loads(inspect_output)
-    except (json.JSONDecodeError, TypeError):
+    except json.JSONDecodeError, TypeError:
         return False
     entry: dict[str, Any]
     if isinstance(data, list):

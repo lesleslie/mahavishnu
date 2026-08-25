@@ -6,7 +6,6 @@ from unittest.mock import Mock
 import pytest
 
 from mahavishnu.core.app import MahavishnuApp
-from mahavishnu.core.events.envelope import EventEnvelope
 from mahavishnu.messaging.repository_messenger import (
     MessagePriority,
     MessageType,
@@ -14,6 +13,10 @@ from mahavishnu.messaging.repository_messenger import (
     RepositoryMessenger,
     RepositoryMessengerManager,
 )
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from mahavishnu.core.events.envelope import EventEnvelope
 
 
 class _FakeEventPublisher:

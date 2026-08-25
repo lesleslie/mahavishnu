@@ -5,7 +5,6 @@ Supports IP-based, user-based, and token-based rate limiting.
 """
 
 from collections import defaultdict
-from collections.abc import Callable
 from dataclasses import dataclass, field
 from functools import wraps
 from logging import getLogger
@@ -18,6 +17,7 @@ from starlette.responses import JSONResponse
 
 if TYPE_CHECKING:
     import asyncio
+    from collections.abc import Callable
 
 logger = getLogger(__name__)
 

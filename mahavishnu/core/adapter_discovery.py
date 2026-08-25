@@ -103,7 +103,7 @@ class AdapterMetadata:
         }
 
     @classmethod
-    def from_entry_point(cls, entry_point: Any) -> "AdapterMetadata":
+    def from_entry_point(cls, entry_point: Any) -> AdapterMetadata:
         """Create AdapterMetadata from a Python entry point.
 
         Entry points should return a dict with the following keys:
@@ -166,7 +166,7 @@ class AdapterMetadata:
             raise ValueError(f"Invalid entry point {entry_point.name}: {e}") from e
 
     @classmethod
-    def from_adapter_entry(cls, entry: Any) -> "AdapterMetadata":
+    def from_adapter_entry(cls, entry: Any) -> AdapterMetadata:
         """Create AdapterMetadata from a normalized remote adapter entry.
 
         Args:

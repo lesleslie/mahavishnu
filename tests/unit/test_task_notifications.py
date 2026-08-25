@@ -1,12 +1,11 @@
 """Tests for Task Notification System - Real-time task event broadcasting."""
 
 from datetime import UTC, datetime
-from typing import Any
+from typing import Any, TYPE_CHECKING
 from unittest.mock import MagicMock
 
 import pytest
 
-from mahavishnu.core.events.envelope import EventEnvelope
 from mahavishnu.core.task_notifications import (
     EventFilter,
     EventSubscription,
@@ -14,6 +13,9 @@ from mahavishnu.core.task_notifications import (
     TaskEventEmitter,
     TaskEventType,
 )
+
+if TYPE_CHECKING:
+    from mahavishnu.core.events.envelope import EventEnvelope
 
 
 class _FakeEventPublisher:

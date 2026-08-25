@@ -5,11 +5,14 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from mahavishnu.core.events.envelope import EventEnvelope
 from mahavishnu.mcp.protocols.message_bus import Message, MessageBus, MessageType
 from mahavishnu.pools.base import BasePool, PoolConfig, PoolMetrics, PoolStatus
 from mahavishnu.pools.manager import PoolManager, PoolSelector
 from monitoring.metrics import pool_workers_active
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from mahavishnu.core.events.envelope import EventEnvelope
 
 
 class TestPoolConfig:

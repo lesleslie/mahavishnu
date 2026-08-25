@@ -1,10 +1,13 @@
 """Admin shell commands for Mahavishnu workflow management."""
 
 import logging
+from typing import TYPE_CHECKING
 
-from ..core.app import MahavishnuApp
 from ..core.workflow_state import WorkflowStatus
 from .formatters import LogFormatter, WorkflowFormatter
+
+if TYPE_CHECKING:
+    from ..core.app import MahavishnuApp
 
 logger = logging.getLogger(__name__)
 

@@ -79,7 +79,7 @@ def short_session_id(session_id_full: str) -> str:
     """
     try:
         return uuid.UUID(session_id_full).hex[:8]
-    except (ValueError, AttributeError, TypeError):
+    except ValueError, AttributeError, TypeError:
         return ""
 
 

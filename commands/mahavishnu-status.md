@@ -1,4 +1,3 @@
-
 ## name: mahavishnu-status description: Check current Mahavishnu worker pool, verification, and dispatch status — equivalent to running pool list/health/metrics from a separate terminal.
 
 Check current Mahavishnu worker pool, verification, and dispatch status.

@@ -7,9 +7,10 @@ import logging
 from pathlib import Path
 import time
 import traceback
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
-from ..core.app import MahavishnuApp
+if TYPE_CHECKING:
+    from ..core.app import MahavishnuApp
 
 logger = logging.getLogger(__name__)
 

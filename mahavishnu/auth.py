@@ -15,10 +15,9 @@ compatibility.
 
 from __future__ import annotations
 
-import os
 from dataclasses import dataclass, field
+import os
 from typing import Literal
-
 
 # Cleanup policy applied to a worktree at SessionEnd.
 #   - 'mark'  (default): mark worktree abandoned in registry; never auto-remove

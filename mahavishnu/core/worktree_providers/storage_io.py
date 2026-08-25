@@ -84,7 +84,7 @@ def _load_zstandard() -> Any:
     (MHV-223) so callers see a uniform surface.
     """
     try:
-        import zstandard as zstandard_runtime  # noqa: F401  (type: ignore[import-not-found])
+        import zstandard as zstandard_runtime
     except ImportError as exc:
         raise WorktreeError(
             "zstandard dependency required for streaming tar.zst; "
@@ -176,7 +176,7 @@ def serialize_worktree_tar(
     source: Path,
     *,
     compression_level: int = 3,
-) -> Generator[tuple[Path, int, str], None, None]:
+) -> Generator[tuple[Path, int, str]]:
     """Stream a worktree directory to a temp tar.zst file.
 
     Yields ``(temp_path, byte_count, sha256)`` where:
@@ -206,9 +206,7 @@ def serialize_worktree_tar(
 
     try:
         tar_data = _build_tar_payload(source)
-        byte_count, sha_hex = _write_zstd_stream_to_file(
-            tar_data, temp_path, compression_level
-        )
+        byte_count, sha_hex = _write_zstd_stream_to_file(tar_data, temp_path, compression_level)
         yield temp_path, byte_count, sha_hex
     except BaseException:
         # CancelledError, KeyboardInterrupt, and any other
@@ -317,9 +315,7 @@ def _verify_compressed_integrity(
     )
 
 
-def _extract_tar_atomic(
-    temp_path: Path, target: Path, staging: Path
-) -> None:
+def _extract_tar_atomic(temp_path: Path, target: Path, staging: Path) -> None:
     """Extract ``temp_path`` into ``staging`` and atomic-promote onto ``target``.
 
     Uses ``tarfile.data_filter`` to reject path-traversal, absolute
@@ -419,9 +415,7 @@ def deserialize_worktree_tar(
     try:
         temp_path = _create_tar_tempfile()
         actual_sha = _decompress_chunks_to_tempfile(chunk_reader, temp_path)
-        _verify_compressed_integrity(
-            actual_sha, expected_sha256, backend, principal_short
-        )
+        _verify_compressed_integrity(actual_sha, expected_sha256, backend, principal_short)
 
         # Ensure target.parent exists, then create the sibling staging
         # directory. Using a sibling (not a child of target) is what

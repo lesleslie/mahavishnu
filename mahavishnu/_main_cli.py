@@ -792,7 +792,7 @@ def mcp_health() -> None:
             await writer.wait_closed()
             typer.echo("MCP Server: ✓ Running")
             typer.echo(f"Connected to {host}:{port}")
-        except (TimeoutError, ConnectionRefusedError, OSError):
+        except TimeoutError, ConnectionRefusedError, OSError:
             typer.echo("MCP Server: ✗ Not running")
             typer.echo(f"Could not connect to {host}:{port}")
         except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive

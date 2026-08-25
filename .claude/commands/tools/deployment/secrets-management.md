@@ -1,4 +1,3 @@
-
 title: Secrets Management
 owner: Security Guild
 last_reviewed: 2025-10-01

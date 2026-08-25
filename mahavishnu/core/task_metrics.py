@@ -25,7 +25,7 @@ _metrics_initialized = False
 _metrics_lock = threading.Lock()
 
 # Global metrics instance (lazy singleton)
-_task_metrics: "TaskMetrics | None" = None
+_task_metrics: TaskMetrics | None = None
 
 
 def _ensure_prometheus_available() -> bool:
@@ -145,7 +145,7 @@ class TaskMetrics:
         class NoOpMetric:
             """No-op metric that does nothing."""
 
-            def labels(self, *args: Any, **kwargs: Any) -> "NoOpMetric":  # type: ignore[name-defined]
+            def labels(self, *args: Any, **kwargs: Any) -> NoOpMetric:  # type: ignore[name-defined]
                 return self
 
             def inc(self, *args: Any, **kwargs: Any) -> None:

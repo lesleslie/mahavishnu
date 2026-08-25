@@ -1,4 +1,3 @@
-
 title: Product Discovery Sprint
 owner: Product Leadership
 last_reviewed: 2025-02-06

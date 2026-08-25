@@ -45,7 +45,7 @@ class WorkerRecordStore:
             with path.open("r", encoding="utf-8") as fh:
                 data = json.load(fh)
             return DurableWorkerRecord.from_dict(data)
-        except (json.JSONDecodeError, ValueError, OSError):
+        except json.JSONDecodeError, ValueError, OSError:
             logger.exception("failed to load durable worker record", path=str(path))
             return None
 
@@ -90,6 +90,6 @@ class WorkerRecordStore:
                 with path.open("r", encoding="utf-8") as fh:
                     data = json.load(fh)
                 yield DurableWorkerRecord.from_dict(data)
-            except (json.JSONDecodeError, ValueError, OSError):
+            except json.JSONDecodeError, ValueError, OSError:
                 logger.exception("failed to scan durable worker record", path=str(path))
                 continue

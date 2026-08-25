@@ -36,7 +36,7 @@ class RepoIndexLock:
             content = self.lock_file.read_text().strip().split("\n")
             pid = int(content[0])
             ts = float(content[1])
-        except (ValueError, IndexError, FileNotFoundError):
+        except ValueError, IndexError, FileNotFoundError:
             self._remove_lock()
             return self._try_acquire()
 
@@ -57,7 +57,7 @@ class RepoIndexLock:
             pid = int(content[0])
             if pid == os.getpid():
                 self._remove_lock()
-        except (ValueError, IndexError, FileNotFoundError):
+        except ValueError, IndexError, FileNotFoundError:
             pass
 
     def _try_acquire(self) -> bool:

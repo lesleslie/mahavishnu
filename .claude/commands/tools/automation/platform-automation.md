@@ -1,4 +1,3 @@
-
 title: Platform Automation
 owner: Automation Guild
 last_reviewed: 2025-02-06

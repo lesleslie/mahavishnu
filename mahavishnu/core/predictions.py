@@ -442,7 +442,7 @@ class DurationEstimator:
                     datetime.fromisoformat(completed) if isinstance(completed, str) else completed
                 )
                 return (completed_dt - created_dt).total_seconds() / 3600
-            except (ValueError, TypeError):
+            except ValueError, TypeError:
                 pass
         return None
 

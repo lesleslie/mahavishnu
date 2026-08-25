@@ -197,7 +197,7 @@ class BlockerDetector:
                             resolved_dt = self._parse_datetime(resolved_at)
                             hours = (resolved_dt - blocked_dt).total_seconds() / 3600
                             keyword_data[keyword]["resolution_times"].append(hours)
-                        except (ValueError, TypeError):
+                        except ValueError, TypeError:
                             pass
 
         # Create patterns for recurring blockers
@@ -285,7 +285,7 @@ class BlockerDetector:
                         resolved_dt = self._parse_datetime(resolved_at)
                         hours = (resolved_dt - blocked_dt).total_seconds() / 3600
                         resolution_times.append(hours)
-                    except (ValueError, TypeError):
+                    except ValueError, TypeError:
                         pass
 
         metrics.avg_resolution_time_hours = (
@@ -313,7 +313,7 @@ class BlockerDetector:
                         blocked_dt = self._parse_datetime(blocked_at)
                         if day_start <= blocked_dt < day_end:
                             count += 1
-                    except (ValueError, TypeError):
+                    except ValueError, TypeError:
                         pass
 
             trend.append(

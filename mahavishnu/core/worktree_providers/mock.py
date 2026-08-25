@@ -1,11 +1,13 @@
 """Mock worktree provider for safe testing (TEST-001 fix)."""
 
 import logging
-from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from .base import WorktreeProvider
 from .errors import WorktreeCreationError, WorktreeRemovalError
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 logger = logging.getLogger(__name__)
 

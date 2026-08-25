@@ -2,12 +2,14 @@
 
 import asyncio
 import logging
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from IPython.core.magic import Magics, line_magic, magics_class
 
-from ..core.app import MahavishnuApp
 from .formatters import RepoFormatter, WorkflowFormatter
+
+if TYPE_CHECKING:
+    from ..core.app import MahavishnuApp
 
 logger = logging.getLogger(__name__)
 

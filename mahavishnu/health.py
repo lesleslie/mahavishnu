@@ -11,13 +11,15 @@ Endpoints:
 
 import asyncio
 from datetime import UTC, datetime
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from fastapi import FastAPI, Response
 
-from .core.config import HealthConfig
 from .core.health import HealthResponse, HealthStatus
 from .core.health import ReadyResponse as ReadinessResponse
+
+if TYPE_CHECKING:
+    from .core.config import HealthConfig
 
 logger = __import__("logging").getLogger(__name__)
 

@@ -1,8 +1,10 @@
 """Abstract worktree provider interface."""
 
 from abc import ABC, abstractmethod
-from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 
 class WorktreeProvider(ABC):

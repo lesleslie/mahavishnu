@@ -80,7 +80,7 @@ def _fallback_search(pattern: str, file_pattern: str | None = None) -> list[dict
                             "match_text": parts[2],
                         }
                     )
-    except (FileNotFoundError, subprocess.TimeoutExpired):
+    except FileNotFoundError, subprocess.TimeoutExpired:
         pass
     return results
 

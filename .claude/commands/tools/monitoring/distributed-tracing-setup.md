@@ -1,4 +1,3 @@
-
 title: Distributed Tracing Setup
 owner: Observability Guild
 last_reviewed: 2025-10-01

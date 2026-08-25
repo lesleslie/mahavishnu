@@ -4,12 +4,14 @@ Provides decorators and utilities for rate limiting individual MCP tools.
 Designed to work with FastMCP's tool-based architecture.
 """
 
-from collections.abc import Callable
 from functools import wraps
 from logging import getLogger
-from typing import Any, cast
+from typing import TYPE_CHECKING, Any, cast
 
 from ..core.rate_limit import RateLimitConfig, RateLimiter
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
 
 logger = getLogger(__name__)
 

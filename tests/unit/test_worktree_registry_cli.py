@@ -9,13 +9,16 @@ from __future__ import annotations
 
 from datetime import UTC, datetime, timedelta
 import json
-from pathlib import Path
 
 import pytest
 from typer.testing import CliRunner
 
 from mahavishnu.core.worktree_session_registry import SessionWorktreeRegistry
 from mahavishnu.worktree_cli import worktree_app
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 runner = CliRunner()
 

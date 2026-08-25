@@ -7,10 +7,10 @@ planning. Filed 2026-08-23 during Phase 3 3.14 migration.
 ## Discovery process (per Phase 0.0)
 
 1. Read MEMORY.md for inventory hints (e.g., `bodai-mcp-servers-not-mycelium-core.md`)
-2. `ls /Users/les/Projects/` for git repos
-3. For each candidate, read `pyproject.toml` head; confirm Bodai-authored + Python-pinned
-4. Document in this file
-5. **Verification step** — the brief listed 14 entries with "(verify)" markers; the discovery pass
+1. `ls /Users/les/Projects/` for git repos
+1. For each candidate, read `pyproject.toml` head; confirm Bodai-authored + Python-pinned
+1. Document in this file
+1. **Verification step** — the brief listed 14 entries with "(verify)" markers; the discovery pass
    confirmed all 14 and surfaced **17 additional** Bodai-authored Python-pinned repos that
    belong in the registry (MCP servers not yet in scope for streaming tar, but in scope for
    the 3.14 / 3.15 rollout per the user's directive that ALL Bodai repos must migrate).
@@ -32,7 +32,7 @@ or higher.
 | session-buddy | /Users/les/Projects/session-buddy/ | >=3.13 | Phase 0.4 |
 | akosha | /Users/les/Projects/akosha/ | >=3.13 | Phase 0.5 |
 | crackerjack | /Users/les/Projects/crackerjack/ | >=3.13 | Phase 0.6 |
-| mahavishnu | /Users/les/Projects/mahavishnu/ | >=3.13, <3.15 | Phase 0.N (last); needed for Phase D |
+| mahavishnu | /Users/les/Projects/mahavishnu/ | >=3.13, \<3.15 | Phase 0.N (last); needed for Phase D |
 
 ### Web / framework libraries
 

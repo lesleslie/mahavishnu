@@ -1,7 +1,6 @@
 """Tests for WorktreeManager - Git worktree lifecycle management."""
 
 from datetime import UTC, datetime
-from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -12,6 +11,10 @@ from mahavishnu.core.worktree_manager import (
     WorktreeManager,
     WorktreeState,
 )
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 
 @pytest.fixture

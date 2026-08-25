@@ -20,12 +20,11 @@ trick is used for ``serialize_worktree_tar`` in the size-cap test.
 from __future__ import annotations
 
 import asyncio
-from collections.abc import Iterator
 from contextlib import contextmanager
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any
+from typing import Any, TYPE_CHECKING
 
 import pytest
 
@@ -41,6 +40,9 @@ from mahavishnu.core.worktree_providers.types import (
     RemoteWorktreeRef,
     WorktreeHandle,
 )
+
+if TYPE_CHECKING:
+    from collections.abc import Iterator
 
 pytestmark = pytest.mark.unit
 

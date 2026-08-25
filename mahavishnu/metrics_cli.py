@@ -860,7 +860,7 @@ def _load_bodai_queue(path: Path) -> list[dict[str, Any]]:
     try:
         with path.open("r", encoding="utf-8") as fh:
             data = json.load(fh)
-    except (OSError, json.JSONDecodeError):
+    except OSError, json.JSONDecodeError:
         return []
     return data if isinstance(data, list) else []
 
@@ -872,7 +872,7 @@ def _load_bodai_state(path: Path) -> dict[str, Any] | None:
     try:
         with path.open("r", encoding="utf-8") as fh:
             data = json.load(fh)
-    except (OSError, json.JSONDecodeError):
+    except OSError, json.JSONDecodeError:
         return None
     return data if isinstance(data, dict) else None
 
@@ -888,7 +888,7 @@ def _parse_bodai_timestamp(value: Any) -> datetime | None:
     if isinstance(value, (int, float)):
         try:
             return datetime.fromtimestamp(float(value), tz=UTC)
-        except (OverflowError, OSError, ValueError):
+        except OverflowError, OSError, ValueError:
             return None
     if isinstance(value, str):
         try:

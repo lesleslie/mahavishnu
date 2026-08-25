@@ -1,9 +1,11 @@
 """Terminal grid data model."""
 
 from dataclasses import dataclass, field
-from datetime import datetime
 from enum import Enum
-from typing import Literal
+from typing import TYPE_CHECKING, Literal
+
+if TYPE_CHECKING:
+    from datetime import datetime
 
 
 class GridStatus(Enum):

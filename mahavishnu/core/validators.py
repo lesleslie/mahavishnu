@@ -216,7 +216,7 @@ class PathValidator:
                 base_str = base_str + os.sep
 
             return path_str.startswith(base_str) or path_str == str(base_resolved)
-        except (OSError, RuntimeError):
+        except OSError, RuntimeError:
             return False
 
     _REPO_INDICATOR_FILES = (

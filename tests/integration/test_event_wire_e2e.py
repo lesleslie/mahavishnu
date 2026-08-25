@@ -20,8 +20,7 @@ from __future__ import annotations
 
 import asyncio
 from dataclasses import dataclass, field
-from pathlib import Path
-from typing import Any
+from typing import Any, TYPE_CHECKING
 from unittest.mock import AsyncMock
 
 import pytest
@@ -32,6 +31,9 @@ from mahavishnu.core.events.canonical import decode_oneiric_envelope
 from mahavishnu.core.events.contract import create_event_envelope
 from mahavishnu.core.events.transport import RedisEventTransport
 from mahavishnu.metrics_cli import metrics_app
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 pytestmark = pytest.mark.integration
 

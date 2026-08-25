@@ -14,14 +14,16 @@ Related: 4-Agent Opus Review P0 issue - async timeout handling
 
 import asyncio
 import builtins
-from collections.abc import AsyncGenerator, Callable
 from contextlib import asynccontextmanager
 import logging
-from types import TracebackType
-from typing import Any, ParamSpec, Self, TypeVar
+from typing import TYPE_CHECKING, Any, ParamSpec, Self, TypeVar
 
 from mahavishnu.core.errors import ErrorCode, MahavishnuError, TimeoutError
 from mahavishnu.core.resilience import RetryExhaustedError, RetryPolicy, retry_async
+
+if TYPE_CHECKING:
+    from collections.abc import AsyncGenerator, Callable
+    from types import TracebackType
 
 logger = logging.getLogger(__name__)
 

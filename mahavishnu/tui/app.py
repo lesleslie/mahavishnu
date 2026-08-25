@@ -529,7 +529,7 @@ async def _probe_service(base_url: str) -> bool:
         async with httpx.AsyncClient(timeout=3.0) as client:
             resp = await client.get(f"{base_url}/health")
             return resp.status_code < 500
-    except (httpx.ConnectError, httpx.TimeoutException, httpx.NetworkError):
+    except httpx.ConnectError, httpx.TimeoutException, httpx.NetworkError:
         return False
     except Exception:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
         _tui_log.warning(
@@ -597,7 +597,7 @@ async def _fetch_health(base_url: str) -> dict[str, Any]:
                 return {"available": False, "reason": f"HTTP {resp.status_code} — server error"}
             data = resp.json()
             return {"available": True, **(data if isinstance(data, dict) else {"raw": str(data)})}
-    except (httpx.ConnectError, httpx.TimeoutException, httpx.NetworkError):
+    except httpx.ConnectError, httpx.TimeoutException, httpx.NetworkError:
         return {"available": False, "reason": "unreachable"}
     except Exception:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
         _tui_log.warning("Unexpected error fetching health from %s", base_url, exc_info=True)

@@ -836,17 +836,13 @@ class WorktreeCoordinator:
 
         provider = await self.provider_registry.get_available_provider()
         if not hasattr(provider, "fetch"):
-            raise WorktreeError(
-                f"Provider {provider.provider_name()} does not support v4 fetch"
-            )
+            raise WorktreeError(f"Provider {provider.provider_name()} does not support v4 fetch")
         # hasattr check above guarantees the v4 method exists; cast to
         # Any so ty doesn't reject the call against the v1 base class.
         v4_provider: Any = provider
         return await v4_provider.fetch(handle)
 
-    async def remove_worktree_handle(
-        self, handle: Any, *, caller: Any
-    ) -> bool:
+    async def remove_worktree_handle(self, handle: Any, *, caller: Any) -> bool:
         """v4 dispatch: resolve provider + call ``remove_handle(handle, caller=caller)``.
 
         ``caller`` is the authenticated session principal (NOT the
@@ -888,9 +884,7 @@ class WorktreeCoordinator:
         # hasattr check above guarantees the v4 method exists; cast to
         # Any so ty doesn't reject the call against the v1 base class.
         v4_provider: Any = provider
-        return await v4_provider.list_handles(
-            principal=principal, repo=repo, caller=caller
-        )
+        return await v4_provider.list_handles(principal=principal, repo=repo, caller=caller)
 
     def _legacy_create_worktree_response(self, handle: Any) -> dict[str, Any]:
         """Adapter: convert a v4 ``WorktreeHandle`` to the legacy

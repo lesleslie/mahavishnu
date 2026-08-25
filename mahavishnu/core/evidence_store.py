@@ -122,7 +122,7 @@ class EvidenceStore:
                     continue
                 try:
                     evidences.append(LearningEvidence.model_validate(item))
-                except (ValueError, TypeError):
+                except ValueError, TypeError:
                     logger.debug("evidence_parse_skipped: id=%s", item.get("id"))
             return evidences
         except Exception:

@@ -17,7 +17,7 @@ import contextlib
 from dataclasses import dataclass
 from datetime import UTC, datetime
 import logging
-from typing import Any, ClassVar
+from typing import TYPE_CHECKING, Any, ClassVar
 
 import httpx
 
@@ -29,8 +29,10 @@ from monitoring.metrics import (
     bodai_bridge_polls_total,
 )
 
-from ..core.config import MahavishnuSettings
 from ..core.resilience import RetryPolicy, retry_async
+
+if TYPE_CHECKING:
+    from ..core.config import MahavishnuSettings
 
 logger = logging.getLogger(__name__)
 

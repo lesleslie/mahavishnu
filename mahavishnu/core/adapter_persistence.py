@@ -23,13 +23,15 @@ import logging
 import os
 from pathlib import Path
 import tempfile
-from types import TracebackType
-from typing import Any, Self, cast
+from typing import TYPE_CHECKING, Any, Self, cast
 
 import aiosqlite
 
 from .errors import ErrorCode, MahavishnuError
 from .paths import ensure_directories, get_data_path
+
+if TYPE_CHECKING:
+    from types import TracebackType
 
 logger = logging.getLogger(__name__)
 
@@ -140,7 +142,7 @@ class AdapterState:
         }
 
     @classmethod
-    def from_dict(cls, data: dict[str, Any]) -> "AdapterState":
+    def from_dict(cls, data: dict[str, Any]) -> AdapterState:
         """Create state from dictionary (loaded from storage).
 
         Args:
@@ -217,7 +219,7 @@ class HealthRecord:
         }
 
     @classmethod
-    def from_dict(cls, data: dict[str, Any]) -> "HealthRecord":
+    def from_dict(cls, data: dict[str, Any]) -> HealthRecord:
         """Create record from dictionary (loaded from storage).
 
         Args:

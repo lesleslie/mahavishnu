@@ -9,7 +9,6 @@ from __future__ import annotations
 
 import hashlib
 import io
-from collections.abc import Callable, Iterator
 from pathlib import Path
 import tarfile
 import tempfile
@@ -30,6 +29,10 @@ from mahavishnu.core.worktree_providers.storage_io import (
     deserialize_worktree_tar,
     serialize_worktree_tar,
 )
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from collections.abc import Callable, Iterator
 
 
 # ---------------------------------------------------------------------------
@@ -55,7 +58,7 @@ def _chunk_reader(path: Path, chunk_size: int = 64 * 1024) -> Callable[[], Itera
     """Return a fresh callable that yields ``path`` in fixed-size chunks.
 
     Per the storage_io contract, ``chunk_reader`` is a sync
-    ``Callable[[], Iterator[bytes]]`` — invokable to produce a fresh
+    ``Callable[[], Iterator[bytes]]`` — invocable to produce a fresh
     iterator per ``deserialize_worktree_tar`` call. Returning the
     callable (not the iterator) lets each call yield independently.
     """
@@ -466,7 +469,7 @@ def test_round_trip_at_size_boundary(
 
 
 def test_chunk_reader_contract(sample_worktree: Path) -> None:
-    """chunk_reader is a callable returning Iterator[bytes]; invokable
+    """chunk_reader is a callable returning Iterator[bytes]; invocable
     once per ``deserialize_worktree_tar`` call. Multiple invocations of
     the same callable return independent iterators (so retries are
     safe per the streaming-compression action-kit contract)."""

@@ -153,7 +153,7 @@ class QualityGateResult:
         coverage_value = data.get("coverage", data.get("overall_score", 0.0))
         try:
             coverage = float(coverage_value)
-        except (TypeError, ValueError):
+        except TypeError, ValueError:
             coverage = 0.0
 
         errors_value = data.get("errors", data.get("failed_required_checks", []))

@@ -4,7 +4,10 @@ from collections import deque
 
 import networkx as nx
 
-from .graph import SkillGraph
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from .graph import SkillGraph
 
 
 def find_learning_path(

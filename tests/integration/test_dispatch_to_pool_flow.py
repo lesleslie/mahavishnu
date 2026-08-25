@@ -35,9 +35,8 @@ from __future__ import annotations
 
 import asyncio
 import json
-from pathlib import Path
 import re
-from typing import Any
+from typing import Any, TYPE_CHECKING
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -50,6 +49,9 @@ from mahavishnu.pools.manager import (
     PoolManager,
     _QuotaState,
 )
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 pytestmark = pytest.mark.integration
 

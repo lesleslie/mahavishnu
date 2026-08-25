@@ -1039,4 +1039,3 @@ class TestHealthStreamingProbe:
 class TestMaxConcurrentWorktreeStreams:
     def test_constant_is_eight(self):
         assert MAX_CONCURRENT_WORKTREE_STREAMS == 8
-

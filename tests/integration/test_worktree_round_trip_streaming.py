@@ -35,8 +35,6 @@ from __future__ import annotations
 import hashlib
 import io
 import tarfile
-from collections.abc import Callable, Iterator
-from pathlib import Path
 
 import pytest
 
@@ -82,6 +80,11 @@ from mahavishnu.core.worktree_providers.storage_io import (  # noqa: E402
     deserialize_worktree_tar,
     serialize_worktree_tar,
 )
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from pathlib import Path
+    from collections.abc import Callable, Iterator
 
 
 pytestmark = [pytest.mark.integration, pytest.mark.slow]

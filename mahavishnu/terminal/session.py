@@ -1,8 +1,10 @@
 """Terminal session representation."""
 
 from datetime import UTC, datetime, timedelta
+from typing import TYPE_CHECKING
 
-from .adapters.base import TerminalAdapter
+if TYPE_CHECKING:
+    from .adapters.base import TerminalAdapter
 
 
 class TerminalSession:

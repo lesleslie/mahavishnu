@@ -5,11 +5,13 @@ Wraps existing WorkerManager to provide pool abstraction.
 
 import logging
 import time
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
-from ..terminal.manager import TerminalManager
 from ..workers.manager import WorkerManager
 from .base import BasePool, PoolConfig, PoolMetrics, PoolStatus
+
+if TYPE_CHECKING:
+    from ..terminal.manager import TerminalManager
 
 logger = logging.getLogger(__name__)
 

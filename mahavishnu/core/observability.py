@@ -5,9 +5,10 @@ from datetime import UTC, datetime
 from enum import Enum
 import logging
 import time
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
-from ..core.config import MahavishnuSettings
+if TYPE_CHECKING:
+    from ..core.config import MahavishnuSettings
 
 # Try to import OpenTelemetry components
 try:

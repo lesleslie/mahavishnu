@@ -15,6 +15,7 @@ during Phase 3 rollout (3.14 migration).
 ## Phase 4 trigger
 
 When 3.15.0 final releases AND all tracked deps have 3.15 wheels:
+
 - Open Phase 4 ADR update (move from Proposed to Accepted) — see `docs/adr/016-phase-4-streaming-tar-evolution.md`
 - Begin the 7-PR sequence: mcp-common → oneiric → dhara → session-buddy → akosha → crackerjack → mahavishnu
 - 2-week soak between each merge
@@ -25,12 +26,12 @@ When 3.15.0 final releases AND all tracked deps have 3.15 wheels:
 Same as Phase 0 (3.14 migration):
 
 1. **mcp-common** — leaf dependency
-2. **oneiric** — adapter framework
-3. **dhara** — curator
-4. **session-buddy** — builder
-5. **akosha** — seer
-6. **crackerjack** — inspector
-7. **mahavishnu** — orchestrator (last; consumes all of the above)
+1. **oneiric** — adapter framework
+1. **dhara** — curator
+1. **session-buddy** — builder
+1. **akosha** — seer
+1. **crackerjack** — inspector
+1. **mahavishnu** — orchestrator (last; consumes all of the above)
 
 Per Bodai pre-1.0 policy: merge directly to `main`, no PRs. Branch + squash/ff-merge into main is the expected flow.
 
@@ -53,8 +54,7 @@ Per Bodai pre-1.0 policy: merge directly to `main`, no PRs. Branch + squash/ff-m
 - **2026-08-24** (this session): Tool-config pin sweep across 26 sibling repos
   (Ruff target-version py313→py314, Pyright pythonVersion 3.13→3.14, mypy
   python_version 3.13→3.14, Programming Language :: Python classifier
-  3.13→3.14). Each repo got a single `chore(<repo>): bump tool-config
-  pins from 3.13 to 3.14` commit on main. Closes the largest Phase 3
+  3.13→3.14). Each repo got a single `chore(<repo>): bump tool-config pins from 3.13 to 3.14` commit on main. Closes the largest Phase 3
   hygiene gap (only mahavishnu had updated these in commit c1f3c18).
   - Akosha and peanutbutterpub already had 3.14 pins; no commit needed.
   - Sibling repo venvs still empty under 3.14 — user must run `uv sync`

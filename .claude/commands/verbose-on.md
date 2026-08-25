@@ -1,4 +1,3 @@
-
 ## name: verbose-on description: Enable Claude CLI verbose/debug mode
 
 Enable verbose mode by running the toggle script:

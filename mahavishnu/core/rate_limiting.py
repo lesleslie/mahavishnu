@@ -9,11 +9,15 @@ Version: 3.1
 Related: 4-Agent Opus Review P0 issue - rate limiting middleware
 """
 
-from collections.abc import Callable
 import logging
+from typing import TYPE_CHECKING
 
-from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
+
+    from fastapi import FastAPI, Request
 
 logger = logging.getLogger(__name__)
 

@@ -43,7 +43,8 @@ by Python's `tarfile` module via the `zstandard` library.
   bytes-out) stay for all current callers.
 
 **Two repos affected:** Oneiric (action kit + storage adapter streaming)
-+ Mahavishnu (storage_io rewrite + provider updates).
+
+- Mahavishnu (storage_io rewrite + provider updates).
 
 **Rollout note (2026-08-23 review):** because the storage_key suffix
 changes from `.tar.gz` to `.tar.zst` and the read-side codec changes
@@ -244,13 +245,13 @@ directory listings.
 
 1. **Bodai ecosystem all pins `>=3.13` today** (mahavishnu, oneiric, akosha, dhara, session-buddy, crackerjack, mcp-common). Jumping 2 versions in one release window forces coordinated 7-repo lockfile churn; 1 version is much cheaper. **Phase 3 lifts to 3.14** (one-version bump).
 
-2. **`tarfile.data_filter` is stable without DeprecationWarning in 3.14.** Phase 3's primary reason: `data_filter` removes path-traversal members. In 3.12–3.13 it's stable but emits DeprecationWarning unless `filter='data'` is explicit. Phase 3 always passes `filter=tarfile.data_filter` explicitly — but `requires-python = ">=3.14"` removes the noise and matches the spec's "stable in 3.14" framing.
+1. **`tarfile.data_filter` is stable without DeprecationWarning in 3.14.** Phase 3's primary reason: `data_filter` removes path-traversal members. In 3.12–3.13 it's stable but emits DeprecationWarning unless `filter='data'` is explicit. Phase 3 always passes `filter=tarfile.data_filter` explicitly — but `requires-python = ">=3.14"` removes the noise and matches the spec's "stable in 3.14" framing.
 
-3. **3.15 is still in beta as of mid-2026.** First 3.15.0a1 dropped May 2025; 3.15.0b1 / final expected Oct 2026. Shipping on 3.15-beta means CI installs a pre-release interpreter, `uv` excludes it from default lockfiles, and any 3.15-final behavioral change re-triggers Phase 3 work. Pre-1.0 risk is high.
+1. **3.15 is still in beta as of mid-2026.** First 3.15.0a1 dropped May 2025; 3.15.0b1 / final expected Oct 2026. Shipping on 3.15-beta means CI installs a pre-release interpreter, `uv` excludes it from default lockfiles, and any 3.15-final behavioral change re-triggers Phase 3 work. Pre-1.0 risk is high.
 
-4. **The user's "3.15+ is eventual objective" maps cleanly to Phase 4.** Phase 3 ships 3.14 now; Phase 4 ADR drafts the 3.15 plan (PEP 735 `compression-zstd` group tightening, `BundleTransport` decorator, encryption-at-rest, plus 3.15 interpreter upgrade). 6-month window lets 3.15 ship, lets ecosystem test 3.14 in prod, and gives a low-risk migration path.
+1. **The user's "3.15+ is eventual objective" maps cleanly to Phase 4.** Phase 3 ships 3.14 now; Phase 4 ADR drafts the 3.15 plan (PEP 735 `compression-zstd` group tightening, `BundleTransport` decorator, encryption-at-rest, plus 3.15 interpreter upgrade). 6-month window lets 3.15 ship, lets ecosystem test 3.14 in prod, and gives a low-risk migration path.
 
-5. **Bodai pre-1.0 merge policy permits direct main-merges** (per `bodai-pre-1.0-merge-policy.md` memory). The version bump lands as a single PR per affected repo — no inter-version rollback window needed.
+1. **Bodai pre-1.0 merge policy permits direct main-merges** (per `bodai-pre-1.0-merge-policy.md` memory). The version bump lands as a single PR per affected repo — no inter-version rollback window needed.
 
 ### Bodai ecosystem readiness
 
@@ -281,18 +282,21 @@ Per user direction "ecosystem wide with the python version upgrade means all of 
 **File:** `docs/adr/016-phase4-python-3.15-migration.md`
 
 **Pre-Phase 4 (rolling):**
+
 - Track 3.15 beta issues weekly in `BODAI_UPGRADE_WATCH.md`
 - Verify each ecosystem repo's dep stack has 3.15 wheels — primary risk: `llama-index-core`, `pydantic-ai-slim`, `selectolax`. Bump deps as 3.15-wheeled versions release.
 - **Canonical repo enumeration:** `BODAI_REPO_REGISTRY.md` (Phase 0.0 deliverable). Same scope as the 3.14 rollout — all Bodai-maintained repos including `-mcp` servers (per `bodai-mcp-servers-not-mycelium-core.md`) and fastblocks.
 
 **Phase 4 PRs (sequenced by dependency order per the registry, one per repo, 2-week soak between each):**
+
 1. mcp-common → 2. oneiric → 3. dhara → 4. session-buddy → 5. akosha → 6. crackerjack → 7. fastblocks → 8. each `-mcp` server (css-mcp, graphics-mcp, splashstand, porkbun-domain-mcp, langsmith-mcp, opera-cloud-mcp, sequenced within the -mcp family by dependency) → 9. mahavishnu
-2. Each PR: `requires-python = ">=3.15"` + verify CI matrix at 3.15
-3. Cross-check: deprecation audit (`python -W error::DeprecationWarning -m pytest`), `crackerjack run` clean, compatibility matrix at 3.15.0rc3+
+1. Each PR: `requires-python = ">=3.15"` + verify CI matrix at 3.15
+1. Cross-check: deprecation audit (`python -W error::DeprecationWarning -m pytest`), `crackerjack run` clean, compatibility matrix at 3.15.0rc3+
 
 **Target window:** Q1–Q2 2027 (3.15.0 final + 3 months ecosystem soak time)
 
 **Risks (Mission 2):**
+
 - **R-M2-01**: 3.14 minor regressions in patch releases — watch python/cpython 3.14 backports
 - **R-M2-02**: llama-index / pydantic-ai 3.14 wheel lag — pin specific dep versions; defer to Phase 4 if a dep is wedged
 - **R-M2-03**: `tarfile.data_filter` strips `os.setuid`/`os.setgid` — runbook documents as Phase 3 behavior change; Phase 4 ADR can address a custom filter if needed
@@ -783,6 +787,7 @@ WORKTREE_BUNDLE_CODEC_UNAVAILABLE = "MHV-223"     # zstandard not installed; tar
 ```
 
 **Code table (full, with gaps reserved):**
+
 - `MHV-200`–`MHV-207` — Phase 1 + Phase 2 (cache, lock, registry)
 - `MHV-208` — Phase 2 (`WORKTREE_INTEGRITY_FAILED` — SHA mismatch)
 - `MHV-209`–`MHV-213` — Phase 3 (streaming bundle lifecycle)
@@ -827,7 +832,8 @@ def verify_sha256(blob: bytes, expected: str, *, backend: str, principal) -> Non
 ```
 
 **File 4: `mahavishnu/core/worktree_providers/local.py`** — `create_worktree_handle`
-+ `fetch` updated. Uses capability-aware dispatch (NOT `hasattr`):
+
+- `fetch` updated. Uses capability-aware dispatch (NOT `hasattr`):
 
 ```python
 async def create_worktree_handle(self, repo, branch, base_ref, principal):
@@ -1151,7 +1157,7 @@ events (`bundle_integrity_failure_total`, `s3_multipart_abort_total`,
 `s3_multipart_cost_events_total`). `streaming_codec_failures_total`
 breaks the past-tense pattern. **Renamed to `streaming_codec_failures_total`**
 to align with the convention. Operators searching the metric catalog
-by "_total" suffix find it grouped with other failure counters.
+by "\_total" suffix find it grouped with other failure counters.
 
 ### B-DI-07: Test — `_short_principal` HMAC vs slice
 
@@ -1571,12 +1577,14 @@ as a metric so operators can see saturation.
 ### Categories
 
 **Tarfile errors:**
+
 - `tarfile.OutsideDestinationError` → wrapped as `WorktreeError(MHV-211)`.
 - `tarfile.ReadError` / `tarfile.CompressionError` / `tarfile.TarError`
   → wrapped as `WorktreeError(MHV-212)`.
 - `tarfile.HeaderError` → wrapped as `WorktreeError(MHV-212)`.
 
 **Bundle integrity:**
+
 - `WorktreeIntegrityError(MHV-208)` — SHA-256 mismatch. Phase 3 detects
   this during the stream-to-temp write phase, BEFORE extract. Earlier
   detection than Phase 2 (which verified after load, before extract).
@@ -1584,6 +1592,7 @@ as a metric so operators can see saturation.
   emitted on detection. Same error code and metric as Phase 2.
 
 **New Phase 3 errors:**
+
 - `WORKTREE_BUNDLE_TEMP_CREATE_FAILED (MHV-209)` — `mkstemp` OSError
   (permission, disk full).
 - `WORKTREE_BUNDLE_TEMP_WRITE_FAILED (MHV-210)` — OSError during write
@@ -1609,6 +1618,7 @@ as a metric so operators can see saturation.
   capability AND bundle is too large for in-memory stopgap.
 
 **Cleanup contracts:**
+
 - `serialize_worktree_tar` is a context manager — auto-unlinks temp on
   exit including on `asyncio.CancelledError` (which is `BaseException`,
   caught explicitly by `except BaseException:`).
@@ -1667,6 +1677,7 @@ a Phase 4 follow-up).
 ### Test files
 
 **Oneiric (new):**
+
 - `oneiric/tests/actions/test_stream_compression_action.py`
   - `test_stream_compress_zstd_roundtrip`
   - `test_stream_compress_gzip_roundtrip`
@@ -1725,6 +1736,7 @@ except ImportError:
 ```
 
 **Mahavishnu (rewritten):**
+
 - `tests/unit/test_core_worktree_providers_storage_io.py`
   - `test_serialize_returns_temp_path_size_sha`
   - `test_serialize_temp_cleaned_on_tarfile_error`
@@ -1784,6 +1796,7 @@ except ImportError:
   - `test_verify_sha256_blob_wrapper_delegates_to_streaming` (Phase 2 ABI preserved)
 
 **Mahavishnu (new integration):**
+
 - `tests/integration/test_worktree_round_trip_streaming.py`
   - `@pytest.mark.integration @pytest.mark.slow` on all tests below
   - `test_create_then_fetch_round_trip_100mb` — 100MB worktree, register, fetch on empty base, verify extract
@@ -1808,19 +1821,19 @@ except ImportError:
 ## Definition of done
 
 1. All tests green on the merged branch (pytest + crackerjack). New test files use `pytest.fail(...)` at module top to gate on `zstandard` presence (NOT `pytest.importorskip` — see BLOCKER R2-11). The PEP 735 `compression-zstd` group is included in `dev` so test runs pull the dep.
-2. Coverage targets met per the table above; MHV-209 + MHV-210 have explicit tests (storage_io 100% is enforceable).
-3. Crackerjack quality gate passes (no new ERROR/WARNING; ty ratchet unchanged).
-4. Integration test `test_create_then_fetch_round_trip_100mb` passes against `moto.mock_aws` + `fakeredis`.
-5. `docs/adr/015-worktree-and-cache-storage-v4.md` §18 status updated to "Phase 3 shipped" with link to commits.
-6. **NEW:** `docs/runbooks/worktree-streaming-phase3.md` written — covers: (a) startup-time migration sweep to detect legacy `.tar.gz` keys; (b) MHV-209..MHV-213 + MHV-220..MHV-222 error code triage table; (c) rollback procedure (revert Phase 3 commits; no schema migration); (d) operator's S3 lifecycle rule verification (multipart upload auto-abort at 24h); (e) **SLO/SLI targets** with concrete numbers — `fetch` P99 < 5s for 100MB bundle, `bundle_integrity_failure_total` rate < 0.01% of fetches, `create_worktree_handle` P99 < 10s for 100MB bundle; (f) **PromQL alert queries** wired to PagerDuty — `mahavishnu_worktree_op_duration_seconds{op="fetch", quantile="0.99"} > 5`, `rate(mahavishnu_bundle_integrity_failure_total[5m]) / rate(mahavishnu_worktree_op_duration_seconds_count{op="fetch"}[5m]) > 0.0001`, `rate(mahavishnu_s3_multipart_abort_total[5m]) > 0`; (g) **capacity planning** — `/tmp` headroom = `bundle_size × concurrent_creates × 1.5 (safety_factor)`; (h) **on-call escalation matrix** with primary / secondary / manager; (i) **postmortem template** for streaming-path incidents.
-7. **NEW:** `mahavishnu/core/worktree_providers/README.md` created — documents the new `serialize_worktree_tar` context-manager API, the chunk_reader contract, error codes, and the rollout guard (Phase 2 → Phase 3 migration).
-8. **NEW:** Oneiric `CHANGELOG.md` entry — `compression.stream` kit + storage adapter `save_stream` / `read_stream` are additive public surface changes; bump Oneiric minor version per semver.
-9. **NEW:** Mahavishnu `CHANGELOG.md` entry — cross-link from Oneiric's entry.
-10. PRs merged to their target branches per Bodai pre-1.0 policy. Oneiric main first; Mahavishnu PR-D pins `oneiric` to the exact commit SHA of Oneiric PR-A (BLOCKER R2-09) via `oneiric @ git+https://...@<sha>` in `pyproject.toml`, then a follow-up PR bumps to `oneiric>=X.Y.Z` once Oneiric cuts the next minor.
-11. Existing Phase 2 handles are orphaned; MHV-213 error path tested explicitly. Reserved error code allocations locked: `MHV-214..217` encryption-at-rest, `MHV-218..219` multipart-abort observability retrofits, `MHV-224+` open.
-12. **NEW:** Phase 4 ADR placeholder filed at `docs/adr/016-phase4-python-3.15-migration.md` (skeleton included in the spec's Python version strategy section); tracker issue `bodai/mahavishnu#NNNN` opened.
-13. **NEW:** Owner monitors `bundle_integrity_failure_total` rate for 7 calendar days post-rollout; escalates to primary on-call if rate > 0.01% of fetches (per DoD item 6h — `pagerduty_service: "mahavishnu-worktree-streaming"`).
-14. `mahavishnu/core/worktree_providers/README.md` created with minimum sections: Overview · API contract (`serialize_worktree_tar` context-manager + `deserialize_worktree_tar` chunk_reader) · Error codes (MHV-209..213 + MHV-220..223) · Phase 2 → Phase 3 migration · Caveats (`data_filter` strips setuid/setgid bits).
+1. Coverage targets met per the table above; MHV-209 + MHV-210 have explicit tests (storage_io 100% is enforceable).
+1. Crackerjack quality gate passes (no new ERROR/WARNING; ty ratchet unchanged).
+1. Integration test `test_create_then_fetch_round_trip_100mb` passes against `moto.mock_aws` + `fakeredis`.
+1. `docs/adr/015-worktree-and-cache-storage-v4.md` §18 status updated to "Phase 3 shipped" with link to commits.
+1. **NEW:** `docs/runbooks/worktree-streaming-phase3.md` written — covers: (a) startup-time migration sweep to detect legacy `.tar.gz` keys; (b) MHV-209..MHV-213 + MHV-220..MHV-222 error code triage table; (c) rollback procedure (revert Phase 3 commits; no schema migration); (d) operator's S3 lifecycle rule verification (multipart upload auto-abort at 24h); (e) **SLO/SLI targets** with concrete numbers — `fetch` P99 < 5s for 100MB bundle, `bundle_integrity_failure_total` rate < 0.01% of fetches, `create_worktree_handle` P99 < 10s for 100MB bundle; (f) **PromQL alert queries** wired to PagerDuty — `mahavishnu_worktree_op_duration_seconds{op="fetch", quantile="0.99"} > 5`, `rate(mahavishnu_bundle_integrity_failure_total[5m]) / rate(mahavishnu_worktree_op_duration_seconds_count{op="fetch"}[5m]) > 0.0001`, `rate(mahavishnu_s3_multipart_abort_total[5m]) > 0`; (g) **capacity planning** — `/tmp` headroom = `bundle_size × concurrent_creates × 1.5 (safety_factor)`; (h) **on-call escalation matrix** with primary / secondary / manager; (i) **postmortem template** for streaming-path incidents.
+1. **NEW:** `mahavishnu/core/worktree_providers/README.md` created — documents the new `serialize_worktree_tar` context-manager API, the chunk_reader contract, error codes, and the rollout guard (Phase 2 → Phase 3 migration).
+1. **NEW:** Oneiric `CHANGELOG.md` entry — `compression.stream` kit + storage adapter `save_stream` / `read_stream` are additive public surface changes; bump Oneiric minor version per semver.
+1. **NEW:** Mahavishnu `CHANGELOG.md` entry — cross-link from Oneiric's entry.
+1. PRs merged to their target branches per Bodai pre-1.0 policy. Oneiric main first; Mahavishnu PR-D pins `oneiric` to the exact commit SHA of Oneiric PR-A (BLOCKER R2-09) via `oneiric @ git+https://...@<sha>` in `pyproject.toml`, then a follow-up PR bumps to `oneiric>=X.Y.Z` once Oneiric cuts the next minor.
+1. Existing Phase 2 handles are orphaned; MHV-213 error path tested explicitly. Reserved error code allocations locked: `MHV-214..217` encryption-at-rest, `MHV-218..219` multipart-abort observability retrofits, `MHV-224+` open.
+1. **NEW:** Phase 4 ADR placeholder filed at `docs/adr/016-phase4-python-3.15-migration.md` (skeleton included in the spec's Python version strategy section); tracker issue `bodai/mahavishnu#NNNN` opened.
+1. **NEW:** Owner monitors `bundle_integrity_failure_total` rate for 7 calendar days post-rollout; escalates to primary on-call if rate > 0.01% of fetches (per DoD item 6h — `pagerduty_service: "mahavishnu-worktree-streaming"`).
+1. `mahavishnu/core/worktree_providers/README.md` created with minimum sections: Overview · API contract (`serialize_worktree_tar` context-manager + `deserialize_worktree_tar` chunk_reader) · Error codes (MHV-209..213 + MHV-220..223) · Phase 2 → Phase 3 migration · Caveats (`data_filter` strips setuid/setgid bits).
 
 ## Out of scope (deferred to follow-up ADRs)
 

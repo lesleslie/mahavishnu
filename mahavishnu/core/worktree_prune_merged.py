@@ -124,7 +124,7 @@ def classify_merge_status(
                 if any(line.startswith("+") for line in cherry.stdout.splitlines())
                 else "merged"
             )
-        except (subprocess.TimeoutExpired, OSError):
+        except subprocess.TimeoutExpired, OSError:
             return "undetermined"
     return "undetermined"
 
@@ -133,7 +133,7 @@ def _git_dirty_count(worktree_path: Path) -> str:
     """Return ``clean``, ``dirty``, or ``undetermined`` for a worktree."""
     try:
         result = _run_git(worktree_path, "status", "--short", text=True)
-    except (subprocess.TimeoutExpired, OSError):
+    except subprocess.TimeoutExpired, OSError:
         return "undetermined"
     if result.returncode != 0:
         return "undetermined"
@@ -143,7 +143,7 @@ def _git_dirty_count(worktree_path: Path) -> str:
 def _git_output(worktree_path: Path, *args: str) -> str | None:
     try:
         result = _run_git(worktree_path, *args, text=True)
-    except (subprocess.TimeoutExpired, OSError):
+    except subprocess.TimeoutExpired, OSError:
         return None
     if result.returncode != 0:
         return None
@@ -169,7 +169,7 @@ def _git_behind(worktree_path: Path, main_branch: str) -> int:
 def _direct_worktree_paths(repo_path: Path) -> list[Path]:
     try:
         result = _run_git(repo_path, "worktree", "list", "--porcelain", text=True)
-    except (subprocess.TimeoutExpired, OSError):
+    except subprocess.TimeoutExpired, OSError:
         return []
     if result.returncode != 0:
         return []

@@ -5,6 +5,237 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.17.0] - 2026-08-25
+
+### Added
+
+- Add pre-commit hook to mahavishnu index install-hooks
+- env: Scope fastblocks agents + document MCP/secret routing pattern
+- errors: 9 new error codes for Phase 3 streaming bundle lifecycle
+- githooks: Wire audit_no_secrets_in_mcp.py as tracked pre-commit hook
+- LocalWorktreeProvider streaming create + fetch (Phase 3 / Task C.6)
+- observability: Extend bundle_bytes histogram + Phase 3 op enum
+- observability: Verify_sha256_streaming + record_bundle_integrity_failure_short
+- RemoteWorktreeProvider streaming tar.zst + bounded queue (Task C.7)
+- storage_io: Streaming tar.zst rewrite with context manager + staging promote
+- tests: Phase 3 streaming tar.zst end-to-end integration test
+
+### Changed
+
+- Bring worktree-mahavishnu-fix-vishnu-hooks fixes onto main
+- Revert "feat(githooks): wire audit_no_secrets_in_mcp.py as tracked pre-commit hook"
+
+### Fixed
+
+- commands: Strip line-1 placeholder frontmatter from 78 skill/command files
+- docs: Align frontmatter status/role/topic with validator enums
+- docs: Register 8 fresh topic slugs in vocabulary v1
+- docs: Repair YAML frontmatter in 015 ADRs + regenerate PLAN_INDEX
+- hooks: Propagate audit script exit code in pre-commit hook
+- lint: Drop F401 unused imports in local.py
+- lint: Resolve comprehensive-hook failures (pyscn + ty + lychee)
+- lint: Resolve F821 / TC001 / TC003 in worktree_providers + metrics
+- lint: Resolve remaining TC001/TC002/TC003 violations
+- local: Align read_stream to load_stream with oneiric actual API
+- mahavishnu: Anchor ecosystem.yaml path to project root, not cwd
+- mahavishnu: Close ruff lint cleanup on Phase C files
+- pyscn: Extract-method refactor to bring complex funcs under CC≤10
+- remote: Resolve 3 residual ty errors + migrate integration.py docstring
+- Resolve comprehensive-hook ty errors across worktree + providers
+- scripts: Clean up 3 ruff diagnostics in migrate_to_streaming_tar
+- scripts: Make migrate_to_streaming_tar.py executable + drop EXE001 noqa
+- security: Address push-review findings (syntax, traversal, silent corruption)
+- tests: Align _FakeStorage mock with load_stream rename
+
+### Documentation
+
+- Add Bodai Core 7 CLI audit & standardization plan
+- BODAI_REPO_REGISTRY.md — authoritative Bodai repo list
+- BODAI_UPGRADE_WATCH.md - Phase 4 3.15 readiness tracker
+- decisions: Point enforcement section at canonical hook installer
+- docs+scripts: Phase 3 streaming tar rollout (D.1-D.6)
+- Finalize ADR 016 Phase 4 scope + decision
+- plan: Apply final-pass fixes to CLI audit spec (§6 checklist + Goal #8 count)
+- plan: Apply power-trio review fixes to CLI audit spec
+- plan: Apply round-2 power-trio review fixes (verification + ordering + risk + reader-experience)
+- plan: Apply round-2 single+random review fixes (pattern + realism)
+- plan: Self-review pass on CLI audit spec
+- plan: Update CLI audit spec for γ dual-TUI decision + monitoring_cli drift
+- plans: Broaden Phase 3 plan to cover all Bodai-maintained repos
+- specs: Broaden Python 3.14 scope to ALL Bodai-maintained repos
+- specs: Fold single-agent final pass + Python version strategy (Option C)
+
+### Internal
+
+- Bump requires-python to >=3.14
+- mahavishnu: Align ruff target-version with 3.14 + weekly status
+- PEP 735 compression-zstd group (Phase 3 streaming tar)
+- Re-pin python to 3.14 (follow-up to c1f3c18 requires-python bump)
+
+## [0.16.0] - 2026-08-24
+
+### Added
+
+- Add pre-commit hook to mahavishnu index install-hooks
+- config: WorktreeStorageSettings + WorktreeCacheSettings blocks (PR-D.0)
+- env: Scope fastblocks agents + document MCP/secret routing pattern
+- errors: 9 new error codes for Phase 3 streaming bundle lifecycle
+- githooks: Wire audit_no_secrets_in_mcp.py as tracked pre-commit hook
+- LocalWorktreeProvider streaming create + fetch (Phase 3 / Task C.6)
+- observability: Extend bundle_bytes histogram + Phase 3 op enum
+- observability: Verify_sha256_streaming + record_bundle_integrity_failure_short
+- RemoteWorktreeProvider streaming tar.zst + bounded queue (Task C.7)
+- storage_io: Streaming tar.zst rewrite with context manager + staging promote
+- tests: Phase 3 streaming tar.zst end-to-end integration test
+- worktree_providers: V4 wiring — LocalWorktreeProvider + RemoteWorktreeProvider + remove_handle + registry resolver + coordinator v4 dispatch (PR-D)
+- worktree_providers: WorktreeCache wrapper + storage_io helpers (PR-C)
+
+### Changed
+
+- Bring worktree-mahavishnu-fix-vishnu-hooks fixes onto main
+- Revert "feat(githooks): wire audit_no_secrets_in_mcp.py as tracked pre-commit hook"
+
+### Fixed
+
+- commands: Strip line-1 placeholder frontmatter from 78 skill/command files
+- docs: Align frontmatter status/role/topic with validator enums
+- docs: Register 8 fresh topic slugs in vocabulary v1
+- docs: Repair YAML frontmatter in 015 ADRs + regenerate PLAN_INDEX
+- hooks: Propagate audit script exit code in pre-commit hook
+- lint: Drop F401 unused imports in local.py
+- lint: Resolve comprehensive-hook failures (pyscn + ty + lychee)
+- lint: Resolve F821 / TC001 / TC003 in worktree_providers + metrics
+- lint: Resolve remaining TC001/TC002/TC003 violations
+- local: Align read_stream to load_stream with oneiric actual API
+- mahavishnu: Anchor ecosystem.yaml path to project root, not cwd
+- mahavishnu: Close ruff lint cleanup on Phase C files
+- pyscn: Extract-method refactor to bring complex funcs under CC≤10
+- remote: Resolve 3 residual ty errors + migrate integration.py docstring
+- Resolve comprehensive-hook ty errors across worktree + providers
+- scripts: Clean up 3 ruff diagnostics in migrate_to_streaming_tar
+- scripts: Make migrate_to_streaming_tar.py executable + drop EXE001 noqa
+- security: Address push-review findings (syntax, traversal, silent corruption)
+- tests: Align _FakeStorage mock with load_stream rename
+- worktree_providers: Address PR-D security review (3 findings)
+
+### Documentation
+
+- BODAI_REPO_REGISTRY.md — authoritative Bodai repo list
+- BODAI_UPGRADE_WATCH.md - Phase 4 3.15 readiness tracker
+- decisions: Point enforcement section at canonical hook installer
+- docs+scripts: Phase 3 streaming tar rollout (D.1-D.6)
+- Finalize ADR 016 Phase 4 scope + decision
+- plans: Broaden Phase 3 plan to cover all Bodai-maintained repos
+- specs: Broaden Python 3.14 scope to ALL Bodai-maintained repos
+- specs: Fold 15 BLOCKERs from multi-agent review into Phase3 streaming tar design
+- specs: Fold 22 BLOCKERs from round-2 multi-agent review into Phase3 design
+- specs: Fold single-agent final pass + Python version strategy (Option C)
+- specs: Streaming tar.zst bundles Phase 3 design
+
+### Internal
+
+- Bump requires-python to >=3.14
+- mahavishnu: Align ruff target-version with 3.14 + weekly status
+- PEP 735 compression-zstd group (Phase 3 streaming tar)
+- Re-pin python to 3.14 (follow-up to c1f3c18 requires-python bump)
+
+## [0.15.0] - 2026-08-24
+
+### Added
+
+- Add pre-commit hook to mahavishnu index install-hooks
+- auth: Add Principal and CleanupPolicy types
+- config: WorktreeStorageSettings + WorktreeCacheSettings blocks (PR-D.0)
+- env: Scope fastblocks agents + document MCP/secret routing pattern
+- errors: 9 new error codes for Phase 3 streaming bundle lifecycle
+- githooks: Wire audit_no_secrets_in_mcp.py as tracked pre-commit hook
+- LocalWorktreeProvider streaming create + fetch (Phase 3 / Task C.6)
+- observability: Extend bundle_bytes histogram + Phase 3 op enum
+- observability: Verify_sha256_streaming + record_bundle_integrity_failure_short
+- observability: §17 OTel metrics + bundle integrity helpers (PR-B)
+- paths: Add get_worktree_base_path() and get_worktree_path() helpers
+- RemoteWorktreeProvider streaming tar.zst + bounded queue (Task C.7)
+- storage_io: Streaming tar.zst rewrite with context manager + staging promote
+- tests: Phase 3 streaming tar.zst end-to-end integration test
+- w4: Promote oneiric action kits via decision doc and auto-trigger skill
+- worktree_providers: Add Dhara-backed worktree registry (ADR 015 v4 §11)
+- worktree_providers: Add LocalWorktreeProvider + v4 types (ADR 015 v4 §13)
+- worktree_providers: Add pre_migration_discover() for v4 Phase 1.5
+- worktree_providers: RedisLockBackend + Dhara registry security fixes
+- worktree_providers: V4 wiring — LocalWorktreeProvider + RemoteWorktreeProvider + remove_handle + registry resolver + coordinator v4 dispatch (PR-D)
+- worktree_providers: WorktreeCache wrapper + storage_io helpers (PR-C)
+
+### Changed
+
+- Bring worktree-mahavishnu-fix-vishnu-hooks fixes onto main
+- Revert "feat(githooks): wire audit_no_secrets_in_mcp.py as tracked pre-commit hook"
+- worktree_providers: Apply crackerjack-compliant-code cleanup
+- worktree_providers: Rename direct_git.py -> local.py (1-release alias)
+- worktree_providers: Rename S3WorktreeProvider + S3WorktreeRef to remote variants
+- worktrees: Funnel 5 default-value sites through get_worktree_base_path()
+
+### Fixed
+
+- commands: Strip line-1 placeholder frontmatter from 78 skill/command files
+- docs: Align frontmatter status/role/topic with validator enums
+- docs: Register 4 fresh topic slugs in vocabulary v1
+- docs: Register 8 fresh topic slugs in vocabulary v1
+- docs: Repair YAML frontmatter in 015 ADRs + regenerate PLAN_INDEX
+- hooks: Propagate audit script exit code in pre-commit hook
+- lint: Drop F401 unused imports in local.py
+- lint: Resolve comprehensive-hook failures (pyscn + ty + lychee)
+- lint: Resolve F821 / TC001 / TC003 in worktree_providers + metrics
+- lint: Resolve remaining TC001/TC002/TC003 violations
+- local: Align read_stream to load_stream with oneiric actual API
+- mahavishnu: Anchor ecosystem.yaml path to project root, not cwd
+- mahavishnu: Close ruff lint cleanup on Phase C files
+- pyscn: Extract-method refactor to bring complex funcs under CC≤10
+- remote: Resolve 3 residual ty errors + migrate integration.py docstring
+- Resolve comprehensive-hook ty errors across worktree + providers
+- scripts: Clean up 3 ruff diagnostics in migrate_to_streaming_tar
+- scripts: Make migrate_to_streaming_tar.py executable + drop EXE001 noqa
+- security: Address push-review findings (syntax, traversal, silent corruption)
+- tests: Align _FakeStorage mock with load_stream rename
+- worktree_providers: Address 3 security review findings from push sweep
+- worktree_providers: Address PR-D security review (3 findings)
+- worktree_providers: Make RemoteWorktreeRef.backend_kind required
+
+### Documentation
+
+- adr-015: Storage architecture — v1, multi-agent review, v2
+- adr-015: V3 — incorporates round-2 multi-agent review (~20 new BLOCKERs)
+- adr-015: V3 — S3/GCS credentials delegated to Oneiric, GCS mock note
+- adr-015: V4 — final-pass corrections (Principal defined, Protocol removed, exception base, Phase 1.5 spike)
+- BODAI_REPO_REGISTRY.md — authoritative Bodai repo list
+- BODAI_UPGRADE_WATCH.md - Phase 4 3.15 readiness tracker
+- decisions: Add v4 cross-references to worktree-autoremove-policy.md
+- decisions: Cross-reference ADR 015 v4 + add auto-prune follow-up doc
+- decisions: Point enforcement section at canonical hook installer
+- docs+scripts: Phase 3 streaming tar rollout (D.1-D.6)
+- Finalize ADR 016 Phase 4 scope + decision
+- Oneiric action-kit promotion implementation plan
+- plans: Broaden Phase 3 plan to cover all Bodai-maintained repos
+- spec: Oneiric action-kit adoption promotion design
+- spec: Review pass — fix kit count, frontmatter, path, rollout gaps
+- specs: Broaden Python 3.14 scope to ALL Bodai-maintained repos
+- specs: Fold 15 BLOCKERs from multi-agent review into Phase3 streaming tar design
+- specs: Fold 22 BLOCKERs from round-2 multi-agent review into Phase3 design
+- specs: Fold single-agent final pass + Python version strategy (Option C)
+- specs: Streaming tar.zst bundles Phase 3 design
+
+### Testing
+
+- paths: Add CI guard test for worktree base path resolution
+
+### Internal
+
+- Bump requires-python to >=3.14
+- claude-md: Add oneiric action-kit discovery breadcrumb
+- mahavishnu: Align ruff target-version with 3.14 + weekly status
+- PEP 735 compression-zstd group (Phase 3 streaming tar)
+- Re-pin python to 3.14 (follow-up to c1f3c18 requires-python bump)
+- skills: Trim oneiric-action-kit-awareness description to 396 chars (under 400 hard limit)
+
 ## [Unreleased] — Phase 3 streaming tar.zst (ADR 015 v4)
 
 ### Added

@@ -1,12 +1,14 @@
 """Repository validation models."""
 
 from datetime import UTC, datetime
-from pathlib import Path
-from typing import Literal
+from typing import TYPE_CHECKING, Literal
 
 from pydantic import BaseModel, Field, field_validator, model_validator
 
 from .repo_nicknames import normalize_nicknames
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 
 class RepositoryMetadata(BaseModel):
@@ -73,7 +75,7 @@ class Repository(BaseModel):
         return v.lower()
 
     @model_validator(mode="after")
-    def validate_mcp_consistency(self) -> "Repository":
+    def validate_mcp_consistency(self) -> Repository:
         """Ensure MCP type matches description."""
         self.nicknames = normalize_nicknames(self.nickname, self.nicknames)
         if self.nickname is None and self.nicknames:

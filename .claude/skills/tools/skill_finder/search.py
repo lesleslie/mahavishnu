@@ -2,7 +2,10 @@
 
 from dataclasses import dataclass, field
 
-from skill_finder.indexer import SearchIndex
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from skill_finder.indexer import SearchIndex
 
 
 @dataclass

@@ -564,17 +564,13 @@ class RemoteWorktreeProvider(WorktreeProvider):
 
             self._record_successful_deserialize(start, backend_kind, handle.bytes_size)
             await self._cache.set(cache_key, str(target))
-            self._record_fetch_outcome(
-                start, backend_kind, success=True, handle=handle
-            )
+            self._record_fetch_outcome(start, backend_kind, success=True, handle=handle)
             return LocalWorktreeRef(
                 path=target,
                 worktree_id=handle.handle_id,
             )
         except Exception:
-            self._record_fetch_outcome(
-                start, backend_kind, success=False, handle=handle
-            )
+            self._record_fetch_outcome(start, backend_kind, success=False, handle=handle)
             raise
 
     @staticmethod
@@ -643,9 +639,7 @@ class RemoteWorktreeProvider(WorktreeProvider):
                 error_code=ErrorCode.WORKTREE_BUNDLE_CODEC_UNAVAILABLE,
             )
 
-    def _open_storage_chunk_reader(
-        self, storage_key: str
-    ) -> Callable[[], Iterator[bytes]]:
+    def _open_storage_chunk_reader(self, storage_key: str) -> Callable[[], Iterator[bytes]]:
         """MHV-222 first half: map load_stream acquisition to NOT_FOUND.
 
         ``load_stream`` returns a ``Callable[[], Iterator[bytes]]``
@@ -709,9 +703,7 @@ class RemoteWorktreeProvider(WorktreeProvider):
         return q, producer
 
     @staticmethod
-    def _consume_first_chunk(
-        q: queue.Queue[bytes | object], storage_key: str
-    ) -> bytes:
+    def _consume_first_chunk(q: queue.Queue[bytes | object], storage_key: str) -> bytes:
         """Pull the first chunk from ``q``; raise NOT_FOUND on empty."""
         from typing import cast
 
@@ -728,9 +720,7 @@ class RemoteWorktreeProvider(WorktreeProvider):
         return cast("bytes", first_chunk_any)
 
     @staticmethod
-    def _reject_legacy_gzip_magic(
-        first_chunk: bytes, producer: threading.Thread
-    ) -> None:
+    def _reject_legacy_gzip_magic(first_chunk: bytes, producer: threading.Thread) -> None:
         """MHV-213: reject legacy ``.tar.gz`` bundles."""
         from mahavishnu.core.errors import ErrorCode, WorktreeError
 
@@ -793,9 +783,7 @@ class RemoteWorktreeProvider(WorktreeProvider):
         return target
 
     @staticmethod
-    def _record_successful_deserialize(
-        start: float, backend_kind: str, byte_size: int
-    ) -> None:
+    def _record_successful_deserialize(start: float, backend_kind: str, byte_size: int) -> None:
         """Emit the ``DESERIALIZE`` histogram for the streaming success path."""
         from mahavishnu.observability.metrics import (
             StreamingOp,

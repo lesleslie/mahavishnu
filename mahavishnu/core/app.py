@@ -24,7 +24,6 @@ from .bootstrap import (
 )
 from .bootstrap import resolve_dhara_url as _resolve_dhara_url_helper
 from .circuit_breaker import CircuitBreaker
-from .config import MahavishnuSettings
 from .control_surface import (
     get_correlation_status as _get_correlation_status,
 )
@@ -117,6 +116,7 @@ from .workflow_execution import (
 if TYPE_CHECKING:
     from ..terminal.manager import TerminalManager
     from .adapters.base import OrchestratorAdapter
+    from .config import MahavishnuSettings
 
 try:
     from ..terminal.manager import TerminalManager
@@ -159,7 +159,7 @@ class MahavishnuApp:
     opensearch_integration: Any
 
     @classmethod
-    def load(cls) -> "MahavishnuApp":
+    def load(cls) -> MahavishnuApp:
         """Load Mahavishnu application with default configuration.
 
         This is a convenience classmethod that creates a new instance
@@ -301,7 +301,7 @@ class MahavishnuApp:
         """
         await _initialize_worktree_coordinator_helper(self)
 
-    def _init_terminal_manager(self) -> "TerminalManager | None":
+    def _init_terminal_manager(self) -> TerminalManager | None:
         return _init_terminal_manager_helper(self)  # type: ignore[no-any-return]
 
     def _initialize_runtime_services(self):
@@ -616,7 +616,7 @@ class MahavishnuApp:
 
     async def _prepare_execution(
         self, adapter_name: str, task: dict[str, Any], repos: list[str] | None, user_id: str | None
-    ) -> tuple["OrchestratorAdapter", list[str]]:
+    ) -> tuple[OrchestratorAdapter, list[str]]:
         """Helper method to validate adapter and prepare for execution."""
         return await _prepare_execution_helper(self, adapter_name, task, repos, user_id)
 
@@ -681,7 +681,7 @@ class MahavishnuApp:
 
     async def _process_single_repo(
         self,
-        adapter: "OrchestratorAdapter",
+        adapter: OrchestratorAdapter,
         task: dict[str, Any],
         adapter_name: str,
         workflow_id: str,
@@ -722,7 +722,7 @@ class MahavishnuApp:
 
     async def _execute_parallel_workflow(
         self,
-        adapter: "OrchestratorAdapter",
+        adapter: OrchestratorAdapter,
         task: dict[str, Any],
         adapter_name: str,
         workflow_id: str,

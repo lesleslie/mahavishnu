@@ -91,7 +91,7 @@ def register_health_tools(mcp: FastMCP, app: Any = None) -> None:
             return float(timeout.total_seconds())
         try:
             return float(timeout)
-        except (TypeError, ValueError):
+        except TypeError, ValueError:
             return None
 
     def _summarize_tool(tool: Any) -> dict[str, Any]:

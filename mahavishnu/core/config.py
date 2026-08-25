@@ -20,8 +20,8 @@ from pydantic import BaseModel, Field, field_validator, model_validator
 from pydantic._internal._utils import deep_update
 from pydantic_settings import BaseSettings, SettingsConfigDict, YamlConfigSettingsSource
 
-from .paths import get_worktree_base_path
 from ..terminal.config import TerminalSettings
+from .paths import get_worktree_base_path
 
 # ============================================================================
 # Agno Adapter Configuration (Phase 1)
@@ -1968,9 +1968,7 @@ class WorktreeAzureStorageSettings(BaseModel):
 
     model_config = {"extra": "forbid"}
 
-    container: str | None = Field(
-        default=None, description="Azure Blob storage container name."
-    )
+    container: str | None = Field(default=None, description="Azure Blob storage container name.")
 
 
 class WorktreeStorageSettings(BaseModel):
@@ -1989,14 +1987,10 @@ class WorktreeStorageSettings(BaseModel):
         default_factory=lambda: ["local", "s3"],
         description="Auto-selection order for the worktree provider registry.",
     )
-    local: WorktreeLocalStorageSettings = Field(
-        default_factory=WorktreeLocalStorageSettings
-    )
+    local: WorktreeLocalStorageSettings = Field(default_factory=WorktreeLocalStorageSettings)
     s3: WorktreeS3StorageSettings = Field(default_factory=WorktreeS3StorageSettings)
     gcs: WorktreeGCSStorageSettings = Field(default_factory=WorktreeGCSStorageSettings)
-    azure: WorktreeAzureStorageSettings = Field(
-        default_factory=WorktreeAzureStorageSettings
-    )
+    azure: WorktreeAzureStorageSettings = Field(default_factory=WorktreeAzureStorageSettings)
 
 
 class WorktreeCacheSettings(BaseModel):

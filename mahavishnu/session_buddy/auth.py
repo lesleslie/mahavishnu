@@ -5,9 +5,10 @@ import hashlib
 import hmac
 import json
 import os
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
-from ..core.config import MahavishnuSettings
+if TYPE_CHECKING:
+    from ..core.config import MahavishnuSettings
 
 
 class CrossProjectAuth:
@@ -159,7 +160,7 @@ class MessageAuthenticator:
             else:
                 return False, None
 
-        except (AttributeError, TypeError, ValueError, KeyError):
+        except AttributeError, TypeError, ValueError, KeyError:
             return False, None
 
     def is_cross_project_auth_enabled(self) -> bool:

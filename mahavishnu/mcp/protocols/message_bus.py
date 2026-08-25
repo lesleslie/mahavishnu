@@ -1,14 +1,16 @@
 """Async message passing between pools."""
 
 import asyncio
-from collections.abc import Callable
 from dataclasses import dataclass
 from enum import Enum
 import logging
 import time
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from ...core.events.contract import EventPublisherProtocol, create_event_envelope
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
 
 logger = logging.getLogger(__name__)
 

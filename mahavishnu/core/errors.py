@@ -93,14 +93,14 @@ class ErrorCode(StrEnum):
     WORKTREE_INTEGRITY_FAILED = "MHV-208"
     # Phase 3 (ADR 015 v4 streaming tar) — bundle lifecycle
     WORKTREE_BUNDLE_TEMP_CREATE_FAILED = "MHV-209"  # mkstemp OSError
-    WORKTREE_BUNDLE_TEMP_WRITE_FAILED = "MHV-210"   # write OSError or CancelledError
-    WORKTREE_BUNDLE_PATH_TRAVERSAL = "MHV-211"      # data_filter rejects member
-    WORKTREE_BUNDLE_MALFORMED = "MHV-212"           # corrupt/truncated tar.zst
-    WORKTREE_BUNDLE_LEGACY_PHASE2 = "MHV-213"       # fetch hit a .tar.gz Phase 2 handle
+    WORKTREE_BUNDLE_TEMP_WRITE_FAILED = "MHV-210"  # write OSError or CancelledError
+    WORKTREE_BUNDLE_PATH_TRAVERSAL = "MHV-211"  # data_filter rejects member
+    WORKTREE_BUNDLE_MALFORMED = "MHV-212"  # corrupt/truncated tar.zst
+    WORKTREE_BUNDLE_LEGACY_PHASE2 = "MHV-213"  # fetch hit a .tar.gz Phase 2 handle
     WORKTREE_BUNDLE_STORAGE_KEY_TOO_LONG = "MHV-220"  # S3 1024-byte limit
-    WORKTREE_BUNDLE_STOPGAP_TOO_LARGE = "MHV-221"     # in-memory path OOM guard
-    WORKTREE_BUNDLE_NOT_FOUND = "MHV-222"             # storage adapter returned None
-    WORKTREE_BUNDLE_CODEC_UNAVAILABLE = "MHV-223"     # zstandard not installed
+    WORKTREE_BUNDLE_STOPGAP_TOO_LARGE = "MHV-221"  # in-memory path OOM guard
+    WORKTREE_BUNDLE_NOT_FOUND = "MHV-222"  # storage adapter returned None
+    WORKTREE_BUNDLE_CODEC_UNAVAILABLE = "MHV-223"  # zstandard not installed
     # MHV-214..219, 224+ reserved for Phase 4 (encryption-at-rest,
     # multipart-abort observability retrofits).
     REPOSITORY_CLONE_FAILED = "MHV-205"

@@ -1,4 +1,3 @@
-
 title: Observability Lifecycle Guide
 owner: Platform Reliability Guild
 last_reviewed: 2025-02-06

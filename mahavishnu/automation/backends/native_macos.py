@@ -327,7 +327,7 @@ class NativeMacOSBackend(DesktopAutomationBackend):
                             window_number=int(parts.get("idx", "0")) or None,
                         )
                     )
-                except (ValueError, IndexError):
+                except ValueError, IndexError:
                     continue
             return windows
         except RuntimeError as e:

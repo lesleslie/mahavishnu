@@ -182,7 +182,7 @@ async def worker_status(worker_id: str) -> dict:
     try:
         delta = record.last_seen_at - record.created_at
         uptime_seconds = int(delta.total_seconds())
-    except (AttributeError, TypeError, ValueError):
+    except AttributeError, TypeError, ValueError:
         uptime_seconds = 0
 
     last_activity = getattr(record, "last_seen_at", None)

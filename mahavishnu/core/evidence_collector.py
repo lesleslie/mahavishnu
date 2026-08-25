@@ -81,7 +81,7 @@ class EvidenceCollector:
         for item in raw[: self._max_per_cycle]:
             try:
                 evidence.append(self._parse_item(item))
-            except (AttributeError, KeyError, TypeError, ValueError):
+            except AttributeError, KeyError, TypeError, ValueError:
                 logger.debug("skipping_unparseable_evidence_item: %s", item)
         return evidence
 

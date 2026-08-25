@@ -6,12 +6,14 @@ and providing cross-project intelligence.
 """
 
 from datetime import UTC, datetime, timedelta
-from typing import Any, cast
+from typing import TYPE_CHECKING, Any, cast
 
 from mcp_common.auth.permissions import Permission
 
-from ...core.permissions import RBACManager
 from ...mcp.auth import require_mcp_auth
+
+if TYPE_CHECKING:
+    from ...core.permissions import RBACManager
 
 
 def register_git_analytics_tools(server, mcp_client, rbac_manager: RBACManager | None = None):

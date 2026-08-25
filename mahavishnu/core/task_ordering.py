@@ -437,7 +437,7 @@ class TaskOrderer:
                 # Normalize to 0-0.5 range
                 return max(0.1, 0.5 - (days - 7) * 0.02)
 
-        except (ValueError, TypeError):
+        except ValueError, TypeError:
             return None
 
     def _get_deadline_reason(self, task: dict[str, Any]) -> str:
@@ -464,7 +464,7 @@ class TaskOrderer:
             else:
                 return f"Due in {time_until.days} days"
 
-        except (ValueError, TypeError):
+        except ValueError, TypeError:
             return "Invalid deadline"
 
     def _score_priority(self, task: dict[str, Any]) -> float:
@@ -666,7 +666,7 @@ class TaskOrderer:
                     return "critical"
                 elif (deadline_dt - datetime.now(UTC)).days <= 3:
                     return "urgent"
-            except (ValueError, TypeError):
+            except ValueError, TypeError:
                 pass
 
         # Check priority

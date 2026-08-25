@@ -52,7 +52,6 @@ Example:
 """
 
 import asyncio
-from collections.abc import Callable, Iterator
 from contextlib import asynccontextmanager, contextmanager
 from datetime import UTC, datetime
 import importlib
@@ -106,12 +105,14 @@ from .prefect_schedules import (
 logger = logging.getLogger(__name__)
 
 if TYPE_CHECKING:
+    from collections.abc import Callable, Iterator
+
     from ..qc.checker import QualityControl
 
 try:
     from ..qc.checker import QualityControl as _QualityControlImpl
 except ImportError:  # pragma: no cover - optional dependency path
-    _QualityControlImpl: "type[QualityControl] | None" = None
+    _QualityControlImpl: type[QualityControl] | None = None
 
 
 # =============================================================================

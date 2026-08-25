@@ -1,4 +1,3 @@
-
 title: Dependency Lifecycle Management
 owner: Platform Engineering Guild
 last_reviewed: 2025-10-01

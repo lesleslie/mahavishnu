@@ -1,11 +1,13 @@
 """Core skill parser implementation."""
 
 from dataclasses import asdict, dataclass, field
-from pathlib import Path
 import re
-from typing import Literal
+from typing import Literal, TYPE_CHECKING
 
 import yaml
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 # Regex patterns
 FRONTMATTER_PATTERN = re.compile(r"^---\s*\n(.*?)\n---\s*\n(.*)$", re.DOTALL)

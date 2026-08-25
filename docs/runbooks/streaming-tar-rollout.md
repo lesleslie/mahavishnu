@@ -132,23 +132,23 @@ Phase 3 writers before allowing Phase 2 readers back in.
    export MAHAVISHNU_WORKTREE_STORAGE__STREAMING_ENABLED=false
    ```
 
-2. **Drain in-flight creates.** Wait for
+1. **Drain in-flight creates.** Wait for
    `worktree_create_duration_seconds_count` rate to fall to zero
    over a 5-minute window. This bounds how many Phase 3 `.tar.zst`
    bundles are in flight.
 
-3. **Revert Phase C commits.** Cherry-revert the commits that
+1. **Revert Phase C commits.** Cherry-revert the commits that
    introduced the streaming `storage_io.py`, the provider updates,
    and the observability helpers. No schema migration; the registry
    continues to point at the same handles.
 
-4. **Restart with Phase 2 code path.**
+1. **Restart with Phase 2 code path.**
 
    ```bash
    mahavishnu mcp stop && mahavishnu mcp start
    ```
 
-5. **Verify.** Re-run the Verification Steps above. The
+1. **Verify.** Re-run the Verification Steps above. The
    `streaming_op_total` counter will fall to zero; legacy
    `bundle_bytes` histogram will continue to populate from Phase 2
    reads.

@@ -3,9 +3,12 @@
 from rich.console import Console
 from rich.panel import Panel
 from rich.table import Table
-from skill_parser import SkillMetadata
 
-from .search import SearchResult
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from .search import SearchResult
+    from skill_parser import SkillMetadata
 
 console = Console()
 

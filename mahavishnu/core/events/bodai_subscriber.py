@@ -120,7 +120,7 @@ def _read_queue(path: Path) -> list[dict[str, Any]]:
     try:
         with path.open("r", encoding="utf-8") as fh:
             data = json.load(fh)
-    except (OSError, json.JSONDecodeError):
+    except OSError, json.JSONDecodeError:
         return []
     if not isinstance(data, list):
         return []
@@ -198,7 +198,7 @@ def format_bodai_summary(envelope: EventEnvelope) -> str:
         else:
             try:
                 parts.append(f"{key}={json.dumps(value, sort_keys=True)}")
-            except (TypeError, ValueError):
+            except TypeError, ValueError:
                 parts.append(f"{key}={value!s}")
 
     return " ".join(parts)

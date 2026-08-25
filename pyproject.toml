@@ -7,7 +7,7 @@ packages = ["mahavishnu"]
 
 [project]
 name = "mahavishnu"
-version = "0.14.0"
+version = "0.17.0"
 description = "Global orchestrator package for development workflows"
 authors = [
     {name = "Les Leslie", email = "les@wedgwoodwebworks.com"},
@@ -20,34 +20,34 @@ classifiers = [
 ]
 dependencies = [
     # CLI
-    "typer>=0.26.7",
+    "typer>=0.27.1",
     # Oneiric ecosystem
-    "oneiric>=0.16.0",
+    "oneiric>=0.18.0",
     # Shared infrastructure (mcp-common)
     # 0.18.0+ required for `apply_tool_profile()` (ToolProfile dispatch helper).
-    "mcp-common>=0.18.0",
+    "mcp-common>=0.20.0",
     # Fast JSON serialization for the canonical event wire
     "msgspec>=0.21.1,<0.22",
     # MCP server
-    "fastmcp>=3.4.0,<4",
-    "uvicorn[standard]>=0.49.0",
+    "fastmcp>=3.4.7,<4",
+    "uvicorn[standard]>=0.52.4",
     # Configuration
     "pydantic>=2.13.4",
     "pyyaml>=6.0.3",
     "tomli>=2.4.1",
     "aiofiles>=25.1.0",
     # XDG Base Directory compliance
-    "platformdirs>=4.10.0",
+    "platformdirs>=4.11.4",
     # Observability
-    "opentelemetry-api>=1.42.1",
-    "opentelemetry-sdk>=1.42.1",
-    "opentelemetry-instrumentation>=0.63b1",
-    "opentelemetry-exporter-otlp-proto-grpc>=1.42.1",
+    "opentelemetry-api>=1.44.0",
+    "opentelemetry-sdk>=1.44.0",
+    "opentelemetry-instrumentation>=0.65b0",
+    "opentelemetry-exporter-otlp-proto-grpc>=1.44.0",
     # Prometheus metrics
-    "prometheus-client>=0.25.0",
-    "structlog>=25.5.0",
+    "prometheus-client>=0.26.0",
+    "structlog>=26.1.0",
     # Rate limiting
-    "slowapi>=0.1.9",
+    "slowapi>=0.1.10",
     # OpenTelemetry trace storage
     "asyncpg>=0.31.0",
     # Embeddings: Use Ollama (local) or OpenAI API instead.
@@ -56,12 +56,12 @@ dependencies = [
     "tenacity>=9.1.4",
     "starlette-context>=0.5.1",
     # Prefect: High-level orchestration
-    "prefect>=3.7.3",
-    "croniter>=6.2.2",  # Prefect cron schedule validation (lazy + try/except fallback in prefect_schedules.py:91)
+    "prefect>=3.8.3",
+    "croniter>=6.2.4",  # Prefect cron schedule validation (lazy + try/except fallback in prefect_schedules.py:91)
     # Agno: Fast, scalable single/multi-agents
-    "agno>=2.6.11",
+    "agno>=3.0.0",
     # LlamaIndex: RAG pipelines
-    "llama-index-core>=0.14.22,<0.15.0",
+    "llama-index-core>=0.14.24,<0.15.0",
     "llama-index-embeddings-ollama>=0.8.6,<0.9.0",
     "llama-index-llms-ollama>=0.8.0,<0.9.0",
     "llama-index-vector-stores-opensearch>=0.6.3,<0.7.0",
@@ -69,24 +69,24 @@ dependencies = [
     "httpx[http2]>=0.28.1",
     # Web extract escalation (Plan 1 Tasks 7-9)
     # trafilatura moved to optional "content-ingest" group (PEP 735).
-    "selectolax~=0.3",
-    "rapidfuzz~=3.9",
+    "selectolax>=0.4.11",
+    "rapidfuzz>=3.14.5",
     # AI integrations
     # pydantic-ai-slim moved to optional "ai" group (PEP 735).
-    "llama-cpp-python>=0.3.26",
+    "llama-cpp-python>=0.3.35",
     # Serverless GPU
     # runpod-flash moved to optional "gpu" group (PEP 735).
     # Security
     "defusedxml>=0.7.1",
-    "ty>=0.0.44",
+    "ty>=0.0.74",
     # Git operations
-    "gitpython>=3.1.50",
+    "gitpython>=3.1.59",
     # Async SQLite
     "aiosqlite>=0.22.1",
     # Encryption
-    "cryptography>=48.0.0",
+    "cryptography>=50.0.0",
     # Admin shell
-    "ipython>=9.14.0",
+    "ipython>=9.16.1",
 ]
 
 [project.scripts]
@@ -103,25 +103,25 @@ worker = "mahavishnu.core.adapters.worker:worker_adapter_entries"
 # the wrapper modules that lazy-load pydantic_ai, runpod, trafilatura/pypdf,
 # ebooklib, and pgvector.
 dev = [
-    "pytest>=9.0.3",
+    "pytest>=9.1.1",
     "pytest-asyncio>=1.4.0",
     "pytest-cov>=7.1.0",
     "pytest-xdist>=3.8.0",
     "pytest-mock>=3.15.1",
-    "hypothesis>=6.155.1",
+    "hypothesis>=6.165.10",
     "pytest-timeout>=2.4.0",
     "respx>=0.23.1",
-    "ruff>=0.15.16",
-    "pyright>=1.1.410",
-    "pylint>=4.0.5",
+    "ruff>=0.16.0",
+    "pyright>=1.1.411",
+    "pylint>=4.0.7",
     "bandit>=1.9.4",
     "safety>=3.7.0",
     "creosote>=5.2.0",
     "detect-secrets>=1.5.0",
     "refurb>=2.3.1",
-    "complexipy>=5.5.0",
-    "zensical>=0.0.44",
-    "crackerjack>=0.70.3",
+    "complexipy>=7.0.1",
+    "zensical>=0.0.57",
+    "crackerjack>=0.75.3",
     {include-group = "ai"},
     {include-group = "gpu"},
     {include-group = "sandbox"},
@@ -132,43 +132,43 @@ dev = [
 
 # Bodai ecosystem integrations
 ecosystem = [
-    "akosha>=0.8.2",
-    "crackerjack>=0.70.0",
-    "dhara>=0.11.1",
-    "session-buddy>=0.19.10",
+    "akosha>=0.12.0",
+    "crackerjack>=0.75.3",
+    "dhara>=0.17.0",
+    "session-buddy>=0.24.0",
 ]
 
 # mcp-common sub-features (formerly `mcp-common[treesitter,llm]` extras).
 # Now declared here per the Bodai PEP 735 standard.
 treesitter = [
-    "tree-sitter>=0.25.2",
+    "tree-sitter>=0.26.0",
     "tree-sitter-python>=0.25.0",
     "tree-sitter-go>=0.25.0",
 ]
 llm-providers = [
-    "openai>=2.41.0",
+    "openai>=3.3.1",
 ]
 # Phase 3 streaming tar.zst support (ADR 015 v4). Declared locally — PEP 735
 # inheritance is not transitive across Bodai repos, so each consumer must
-# re-declare the group. Pulled in by `dev` so the test suite can exercise the
+# redeclare the group. Pulled in by `dev` so the test suite can exercise the
 # streaming tar path.
 compression-zstd = [
-    "zstandard>=0.23.0",
+    "zstandard>=0.25.0",
 ]
 
 # Optional: TUI interface
 tui = [
-    "textual>=8.2.7",
+    "textual>=8.2.8",
 ]
 
 # Optional: Embedding compression
 compression = [
-    "turboquant-pro>=1.0.0",
+    "turboquant-pro>=1.9.1",
 ]
 
 # Optional: Hatchet workflow orchestration
 hatchet = [
-    "hatchet-sdk>=1.33.6,<2",
+    "hatchet-sdk>=1.38.0,<2",
 ]
 
 # Desktop automation
@@ -185,45 +185,45 @@ automation = [
 # Use pytesseract + opencv-python instead. Install tesseract: brew install tesseract
 automation-vision = [
     "pytesseract>=0.3.13",
-    "opencv-python>=4.13.0.92",
+    "opencv-python>=5.0.0.93",
 ]
 
 # Optional: Explicit in-memory vector store (TurboVec)
 vector = [
-    "turbovec[llama-index]~=0.1",
+    "turbovec[llama-index]>=0.8.0",
 ]
 
 # Optional: Pydantic AI agent runtime (mahavishnu.adapters.ai.pydantic_ai_adapter).
 # Lazy-imported at runtime; install only when the pydantic_ai adapter is used.
 ai = [
-    "pydantic-ai-slim[mcp,openai,anthropic,google,groq]>=1.106.0",
+    "pydantic-ai-slim[mcp,openai,anthropic,google,groq]>=2.33.0",
 ]
 
 # Optional: Serverless GPU execution via RunPod Flash
 # (mahavishnu.pools.runpod_pool). Lazy-imported; install only when the
 # RunPod pool is deployed.
 gpu = [
-    "runpod-flash>=1.17.0",
+    "runpod-flash>=1.19.0",
 ]
 
 # E2B cloud sandbox tier for isolated worker execution (workers/e2b_sandbox.py)
 sandbox = [
-    "e2b>=1.0",
+    "e2b>=2.45.1",
 ]
 
 # Optional: Content ingestion — PDF, EPUB, and trafilatura readability
 # extractor. The base content ingester (mahavishnu/ingesters/content_ingester.py)
 # lazy-imports pypdf/ebooklib; trafilatura powers the web_extract escalation path.
 content-ingest = [
-    "pypdf>=6.12.2",
+    "pypdf>=6.16.2",
     "ebooklib>=0.20",
-    "trafilatura~=2.1",
+    "trafilatura>=2.2.0",
 ]
 
 # Optional: PostgreSQL pgvector adapter for HNSW-backed vector search
 # (mahavishnu.adapters.pgvector_adapter). Lazy-imported at runtime.
 storage-pg = [
-    "pgvector>=0.4.2",
+    "pgvector>=0.5.0",
 ]
 
 [tool.hatch.metadata]

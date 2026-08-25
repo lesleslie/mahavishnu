@@ -2,13 +2,16 @@
 
 from collections import defaultdict
 from functools import lru_cache
-from pathlib import Path
+from typing import TYPE_CHECKING
 
 import aiofiles
 from pydantic import ValidationError
 import yaml
 
 from .repo_models import Repository, RepositoryManifest
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 
 class RepositoryManager:

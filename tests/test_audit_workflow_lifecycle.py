@@ -1,8 +1,11 @@
 from __future__ import annotations
 
-from pathlib import Path
 
 from scripts.audit_workflow_lifecycle import audit_workflows
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 
 def _make_repo(tmp_path: Path) -> Path:

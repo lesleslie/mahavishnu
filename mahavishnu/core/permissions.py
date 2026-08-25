@@ -2,12 +2,15 @@
 
 from datetime import UTC, datetime, timedelta
 from enum import StrEnum
+from typing import TYPE_CHECKING
 
 import jwt
 from pydantic import BaseModel, Field
 
-from .config import MahavishnuSettings
 from .errors import ConfigurationError
+
+if TYPE_CHECKING:
+    from .config import MahavishnuSettings
 
 
 class Permission(StrEnum):

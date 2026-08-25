@@ -558,7 +558,7 @@ class TaskFilter(BaseModel):
             ) from e
 
     @model_validator(mode="after")
-    def validate_date_range(self) -> "TaskFilter":
+    def validate_date_range(self) -> TaskFilter:
         """Validate created_before is after created_after."""
         if self.created_after and self.created_before:
             after = datetime.fromisoformat(self.created_after)

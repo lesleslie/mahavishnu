@@ -1,4 +1,3 @@
-
 title: Security Hardening Workflow
 owner: Security & Compliance Office
 last_reviewed: 2025-02-06

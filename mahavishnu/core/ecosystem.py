@@ -47,7 +47,7 @@ class RepositoryConfig(BaseModel):
     )
 
     @model_validator(mode="after")
-    def normalize_nickname_aliases(self) -> "RepositoryConfig":
+    def normalize_nickname_aliases(self) -> RepositoryConfig:
         """Merge legacy nickname with multi-alias nicknames list."""
         self.nicknames = normalize_nicknames(self.nickname, self.nicknames)
         if self.nickname is None and self.nicknames:

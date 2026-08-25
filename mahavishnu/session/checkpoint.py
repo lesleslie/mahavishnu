@@ -1,13 +1,15 @@
 """Session-Buddy integration for Mahavishnu."""
 
 import logging
-from typing import Any, cast
+from typing import TYPE_CHECKING, Any, cast
 import uuid
 
 import httpx
 
-from ..core.config import MahavishnuSettings
 from ..core.errors import ExternalServiceError, TimeoutError
+
+if TYPE_CHECKING:
+    from ..core.config import MahavishnuSettings
 
 logger = logging.getLogger(__name__)
 
@@ -60,7 +62,7 @@ class SessionBuddy:
         try:
             r = await self._client.get(health_url, timeout=5.0)
             return r.status_code == 200
-        except (httpx.HTTPError, httpx.TransportError):
+        except httpx.HTTPError, httpx.TransportError:
             return False
 
     async def create_checkpoint(self, session_id: str, state: dict[str, Any]) -> str:

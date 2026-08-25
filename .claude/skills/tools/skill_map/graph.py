@@ -3,7 +3,10 @@
 from dataclasses import dataclass, field
 
 import networkx as nx
-from skill_parser import SkillMetadata
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from skill_parser import SkillMetadata
 
 
 @dataclass

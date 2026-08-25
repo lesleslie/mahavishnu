@@ -4,9 +4,10 @@ Defines the structural contract that all terminal-based workers must satisfy.
 Both GenericShellWorker and any compatibility shims conform to this protocol.
 """
 
-from typing import Any, Protocol, TypedDict, TypeGuard
+from typing import TYPE_CHECKING, Any, Protocol, TypedDict, TypeGuard
 
-from .base import WorkerResult, WorkerStatus
+if TYPE_CHECKING:
+    from .base import WorkerResult, WorkerStatus
 
 
 class ProgressSnapshot(TypedDict):

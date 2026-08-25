@@ -6,16 +6,17 @@ and analytics.
 
 from datetime import UTC, datetime
 import logging
-from typing import Any, cast
+from typing import TYPE_CHECKING, Any, cast
 
 import httpx
 
-from mahavishnu.core.coordination.models import (
-    CrossRepoIssue,
-    CrossRepoPlan,
-    CrossRepoTodo,
-    Dependency,
-)
+if TYPE_CHECKING:
+    from mahavishnu.core.coordination.models import (
+        CrossRepoIssue,
+        CrossRepoPlan,
+        CrossRepoTodo,
+        Dependency,
+    )
 
 # Type hints for circular imports
 

@@ -177,9 +177,7 @@ def verify_sha256(
     # an explicit ``None`` default so the type-checker does not
     # have to narrow ``object`` based on ``hasattr``.
     principal_name = (
-        getattr(principal, "name", None) or str(principal)
-        if principal is not None
-        else ""
+        getattr(principal, "name", None) or str(principal) if principal is not None else ""
     )
     principal_short = _short_principal(principal_name)
     verify_sha256_streaming(

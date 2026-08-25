@@ -7,10 +7,12 @@ Executes todo items via worker pools with progress tracking.
 import asyncio
 from datetime import UTC, datetime
 import logging
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from mahavishnu.core.coordination.manager import CoordinationManager
-from mahavishnu.core.coordination.models import CrossRepoTodo
+
+if TYPE_CHECKING:
+    from mahavishnu.core.coordination.models import CrossRepoTodo
 
 logger = logging.getLogger(__name__)
 

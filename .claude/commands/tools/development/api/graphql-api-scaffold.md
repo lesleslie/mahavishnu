@@ -1,4 +1,3 @@
-
 title: GraphQL API Scaffold
 owner: Developer Enablement Guild
 last_reviewed: 2025-10-01

@@ -42,13 +42,14 @@
 
 **Phase 0.8 enumeration**: see `BODAI_REPO_REGISTRY.md` (created in Phase 0.0) for the full list of `<each -mcp server>` repos. Per `bodai-mcp-servers-not-mycelium-core.md` memory: confirmed -mcp repos include css-mcp, graphics-mcp, splashstand, porkbun-domain-mcp, langsmith-mcp, opera-cloud-mcp. Each repo bumps independently; the sequencing is dependency-ordered within each `-mcp` repo (oneiric first, then others that depend on it).
 
----
+______________________________________________________________________
 
 # Workstream 1 — Bodai ecosystem 3.14 migration (Phases 0.0–0.N)
 
 ## Phase 0.0 — Discover and enumerate ALL Bodai-maintained repos
 
 **Integration Contract**
+
 - **Triggered from**: User direction "ecosystem wide with the python version upgrade means all of the -mcp, fastblocks, splashstand, etc eventually going to 3.14 as well".
 - **Returns to / updates**: `BODAI_REPO_REGISTRY.md` at mahavishnu repo root lists every Bodai-maintained repo, its current `requires-python` floor, its dependency relationships, and its 3.14 readiness status.
 - **Demonstrable by**: Plan Phase 0.0 enumerates ≥ the 7 known repos (mahavishnu, oneiric, akosha, dhara, session-buddy, crackerjack, mcp-common) PLUS fastblocks PLUS the 6 confirmed -mcp servers (css-mcp, graphics-mcp, splashstand, porkbun-domain-mcp, langsmith-mcp, opera-cloud-mcp) PLUS any other Bodai-maintained repos discovered.
@@ -56,12 +57,14 @@
 - **Observability added**: `BODAI_REPO_REGISTRY.md` becomes the canonical list for Phase 4 ADR too (Phase 4 will lift the same set to >=3.15).
 
 **Files**:
+
 - Create: `BODAI_REPO_REGISTRY.md` (at mahavishnu repo root, or `docs/BODAI_REPO_REGISTRY.md`)
 - Modify: `MEMORY.md` (add reference to `BODAI_REPO_REGISTRY.md`)
 
 ### Task 0.0.1: Enumerate Bodai-maintained repos
 
 **Files**:
+
 - Create: `BODAI_REPO_REGISTRY.md`
 
 - [ ] **Step 1: Read MEMORY.md for prior inventory hints**
@@ -91,10 +94,15 @@ A repo is Bodai-maintained if: (a) `pyproject.toml` exists, (b) author/org = les
 - [ ] **Step 4: Per `bodai-mcp-servers-not-mycelium-core.md`, the following `-mcp` servers are confirmed Bodai-ecosystem projects:**
 
 - css-mcp
+
 - graphics-mcp
+
 - splashstand
+
 - porkbun-domain-mcp
+
 - langsmith-mcp
+
 - opera-cloud-mcp
 
 Cross-check each exists at `/Users/les/Projects/<name>/` with a `pyproject.toml` containing `requires-python`.
@@ -180,7 +188,7 @@ This is a `feedback` memory because future Claude sessions should consult it for
 ---
 name: bodai-repo-registry
 description: "The authoritative list of Bodai-maintained repos lives at BODAI_REPO_REGISTRY.md (in the mahavishnu repo). Consult before any ecosystem-wide Python version or dep coordination question."
-metadata: 
+metadata:
   node_type: memory
   type: feedback
 ---
@@ -198,17 +206,19 @@ Includes:
 
 **Wait for Phase 0.0 commit before starting Phase 0.1.**
 
----
+______________________________________________________________________
 
 ## Phase 0.7 — fastblocks: bump requires-python
 
 **Integration Contract**
+
 - **Triggered from**: Phase 0.6 complete (crackerjack bumped, ecosystem-soak elapsed).
 - **Returns to / updates**: fastblocks's `requires-python` floor lifted; sets up fastblocks-specialist agent's environment at 3.14.
 - **Demonstrable by**: `python -c "import fastblocks"` succeeds on Python 3.14.2; `requires-python` reads `">=3.14"`.
 - **Observability added**: 3.14 in fastblocks CI matrix.
 
 **Files**:
+
 - Modify: `fastblocks/pyproject.toml:14`
 - Modify: `fastblocks/.github/workflows/test.yml`
 
@@ -221,21 +231,24 @@ requires-python = ">=3.14"
 CI matrix: `python-version: ['3.14']`.
 
 Three commits:
-1. `chore: bump requires-python to >=3.14`
-2. `ci: test against python 3.14`
-3. (push + optional tag/publish)
 
----
+1. `chore: bump requires-python to >=3.14`
+1. `ci: test against python 3.14`
+1. (push + optional tag/publish)
+
+______________________________________________________________________
 
 ## Phase 0.8 — every Bodai -mcp server: bump requires-python
 
 **Integration Contract**
+
 - **Triggered from**: Phase 0.7 complete (fastblocks bumped, soak elapsed).
 - **Returns to / updates**: Each `-mcp` server at `>=3.14`; the MCP tool surface (css-mcp, graphics-mcp, splashstand, porkbun-domain-mcp, langsmith-mcp, opera-cloud-mcp) available to ecosystem callers at 3.14.
 - **Demonstrable by**: `python -c "import css_mcp"` (or analogous) succeeds on Python 3.14.2.
 - **Observability added**: 3.14 in each `-mcp` server's CI matrix.
 
 **Files**:
+
 - For each `-mcp` server:
   - Modify: `<repo>/pyproject.toml:14`
   - Modify: `<repo>/.github/workflows/test.yml`
@@ -251,21 +264,23 @@ requires-python = ">=3.14"
 CI matrix: `python-version: ['3.14']`.
 
 Three commits per repo:
+
 1. `chore: bump requires-python to >=3.14`
-2. `ci: test against python 3.14`
-3. (push + optional tag/publish)
+1. `ci: test against python 3.14`
+1. (push + optional tag/publish)
 
 **Each `-mcp` repo gets its own commit sequence.** Sequence `-mcp` repos in dependency order (likely all are leaves — verify in Phase 0.0 discovery; if any depend on each other, sequence accordingly).
 
 **Wait 2 days after the LAST `-mcp` repo before Phase 0.N.**
 
----
+______________________________________________________________________
 
 # Workstream 1 — Bodai ecosystem 3.14 migration (Phases 0.1–0.N)
 
 ## Phase 0.1 — mcp-common: bump requires-python
 
 **Integration Contract**
+
 - **Triggered from**: User direction "we are full go for 3.14 across the whole greater ecosystem"; spec section "Python version strategy".
 - **Returns to / updates**: mcp-common consumers (oneiric, mahavishnu, crackerjack) can resolve against the new floor on next lockfile refresh.
 - **Demonstrable by**: `python -c "import mcp_common; print(mcp_common.__file__)"` succeeds on Python 3.14.2; `requires-python` in `pyproject.toml` reads `">=3.14"`.
@@ -273,12 +288,14 @@ Three commits per repo:
 - **Observability added**: CI workflow's `python-version` matrix logs 3.14 as a tested interpreter.
 
 **Files**
+
 - Modify: `mcp-common/pyproject.toml:14` (the `requires-python` line)
 - Modify: `mcp-common/.github/workflows/test.yml` (add 3.14 to python-version matrix)
 
 ### Task 0.1.1: Edit pyproject.toml
 
 **Files**:
+
 - Modify: `mcp-common/pyproject.toml:14`
 
 - [ ] **Step 1: Read current pyproject.toml to confirm 3.13 floor**
@@ -309,6 +326,7 @@ Co-Authored-By: Claude <noreply@anthropic.com>"
 ### Task 0.1.2: Update CI matrix
 
 **Files**:
+
 - Modify: `mcp-common/.github/workflows/test.yml`
 
 - [ ] **Step 1: Find the python-version line**
@@ -358,11 +376,12 @@ git push origin v<NEW_VERSION>
 
 **Wait 2 days for ecosystem soak** before starting Phase 0.2 (oneiric).
 
----
+______________________________________________________________________
 
 ## Phase 0.2 — oneiric: bump requires-python
 
 **Integration Contract**
+
 - **Triggered from**: Phase 0.1 complete (mcp-common bumped, 2-day soak elapsed).
 - **Returns to / updates**: oneiric consumers (dhara, session-buddy, akosha, crackerjack, mahavishnu) can resolve against 3.14.
 - **Demonstrable by**: `python -c "import oneiric"` succeeds on Python 3.14.2; `requires-python` reads `">=3.14"`.
@@ -370,6 +389,7 @@ git push origin v<NEW_VERSION>
 - **Observability added**: 3.14 in CI matrix; lockfile refresh in dependents lands cleanly.
 
 **Files**
+
 - Modify: `oneiric/pyproject.toml:14`
 - Modify: `oneiric/.github/workflows/test.yml`
 
@@ -384,17 +404,19 @@ requires-python = ">=3.14"
 CI matrix: `python-version: ['3.14']`.
 
 Three commits:
+
 1. `chore: bump requires-python to >=3.14`
-2. `ci: test against python 3.14`
-3. (push + optional tag/publish)
+1. `ci: test against python 3.14`
+1. (push + optional tag/publish)
 
 **Wait 2 days.**
 
----
+______________________________________________________________________
 
 ## Phase 0.3 — dhara: bump requires-python
 
 **Integration Contract**
+
 - **Triggered from**: Phase 0.2 complete.
 - **Returns to / updates**: dhara consumers (session-buddy, akosha, mahavishnu) can resolve against 3.14.
 - **Demonstrable by**: `python -c "import dhara"` on Python 3.14.2.
@@ -409,11 +431,12 @@ Three commits:
 
 **Wait 2 days.**
 
----
+______________________________________________________________________
 
 ## Phase 0.4 — session-buddy: bump requires-python
 
 **Integration Contract**
+
 - **Triggered from**: Phase 0.3 complete.
 - **Returns to / updates**: session-buddy consumers (mahavishnu).
 - **Demonstrable by**: `python -c "import session_buddy"` on Python 3.14.2.
@@ -427,11 +450,12 @@ Three commits:
 
 **Wait 2 days.**
 
----
+______________________________________________________________________
 
 ## Phase 0.5 — akosha: bump requires-python
 
 **Integration Contract**
+
 - **Triggered from**: Phase 0.4 complete.
 - **Returns to / updates**: akosha consumers (mahavishnu).
 - **Demonstrable by**: `python -c "import akosha"` on Python 3.14.2.
@@ -445,11 +469,12 @@ Three commits:
 
 **Wait 2 days.**
 
----
+______________________________________________________________________
 
 ## Phase 0.6 — crackerjack: bump requires-python
 
 **Integration Contract**
+
 - **Triggered from**: Phase 0.5 complete.
 - **Returns to / updates**: crackerjack consumers (mahavishnu dev group).
 - **Demonstrable by**: `crackerjack run` succeeds on Python 3.14.2 in the crackerjack repo's own CI.
@@ -463,11 +488,12 @@ Three commits:
 
 **Wait 2 days.**
 
----
+______________________________________________________________________
 
 ## Phase 0.7 — mahavishnu: bump requires-python (prereq for Phase D)
 
 **Integration Contract**
+
 - **Triggered from**: Phase 0.6 complete. This is the LAST 3.14 bump in Workstream 1.
 - **Returns to / updates**: mahavishnu's `requires-python` floor lifted; sets up Phase A-D (streaming tar) work in mahavishnu.
 - **Demonstrable by**: `python -c "import mahavishnu"` on Python 3.14.2; `pytest --cov=mahavishnu` runs on 3.14.2.
@@ -475,6 +501,7 @@ Three commits:
 - **Observability added**: 3.14 in mahavishnu CI matrix.
 
 **Files**:
+
 - Modify: `mahavishnu/pyproject.toml:14`
 - Modify: `mahavishnu/.github/workflows/test.yml`
 - Modify: `mahavishnu/.claude/CLAUDE.md` (update "Python 3.13 is the target" → "Python 3.14 is the target")
@@ -509,13 +536,14 @@ Co-Authored-By: Claude <noreply@anthropic.com>"
 
 **Step 5: Push + optional tag/publish**
 
----
+______________________________________________________________________
 
 # Workstream 2 — Streaming tar.zst (Phases A → D)
 
 ## Phase A — oneiric: StreamingCompressionAction + storage adapter streaming (NOT including GCS/Azure tests)
 
 **Integration Contract**
+
 - **Triggered from**: Phase 0.2 complete (oneiric requires-python bumped). Phase D of streaming-tar in mahavishnu depends on Phase A's `save_stream` / `read_stream` methods.
 - **Returns to / updates**: New `StreamingCompressionAction` registered in oneiric's action-kit catalog (key=`compression.stream`, priority=448). Storage adapters (`LocalStorageAdapter`, `S3StorageAdapter`) gain `save_stream` and `read_stream` methods with `async def` + `AsyncIterator[bytes]` signature. New error path: missing `zstandard` raises `LifecycleError` from the action-kit path.
 - **Demonstrable by**: `from oneiric.actions.compression import StreamingCompressionAction; StreamingCompressionAction().stream_compress(iter([b"x"*100]), algorithm="zstd")` yields zstd-compressed bytes. `LocalStorageAdapter().save_stream("k", async_iter([b"x"]))` writes to disk. `S3StorageAdapter(...).save_stream` uses multipart upload with `abort_multipart_upload` on partial failure.
@@ -523,6 +551,7 @@ Co-Authored-By: Claude <noreply@anthropic.com>"
 - **Observability added**: `s3_multipart_abort_total{backend, principal_short}` counter; `s3_multipart_cost_events_total{principal_short}` counter; `streaming_codec_failures_total{algorithm}` counter (note: past-tense naming per B-DI-06).
 
 **Files**:
+
 - Modify: `oneiric/oneiric/actions/compression.py` (add `StreamingCompressionAction` class)
 - Modify: `oneiric/oneiric/actions/__init__.py` (`builtin_action_metadata()` registers the new entry)
 - Modify: `oneiric/oneiric/adapters/storage/local.py` (add `save_stream`, `read_stream`)
@@ -537,6 +566,7 @@ Co-Authored-By: Claude <noreply@anthropic.com>"
 ### Task A.1: Add `compression-zstd` PEP 735 group
 
 **Files**:
+
 - Modify: `oneiric/pyproject.toml`
 
 - [ ] **Step 1: Read pyproject.toml to find existing PEP 735 group definitions**
@@ -572,6 +602,7 @@ Co-Authored-By: Claude <noreply@anthropic.com>"
 ### Task A.2: Write `StreamingCompressionAction` test (failing first)
 
 **Files**:
+
 - Create: `oneiric/tests/actions/test_stream_compression_action.py`
 
 - [ ] **Step 1: Add `pytest.fail` gate for missing zstandard at top of file**
@@ -680,6 +711,7 @@ Co-Authored-By: Claude <noreply@anthropic.com>"
 ### Task A.3: Implement `StreamingCompressionAction`
 
 **Files**:
+
 - Modify: `oneiric/oneiric/actions/compression.py`
 
 - [ ] **Step 1: Append the class to `compression.py` (after `CompressionAction`)**
@@ -826,6 +858,7 @@ Co-Authored-By: Claude <noreply@anthropic.com>"
 ### Task A.4: Register the action-kit entry
 
 **Files**:
+
 - Modify: `oneiric/oneiric/actions/__init__.py`
 
 - [ ] **Step 1: Locate `builtin_action_metadata()`**
@@ -853,6 +886,7 @@ Co-Authored-By: Claude <noreply@anthropic.com>"
 ### Task A.5: Update action-kits.md doc
 
 **Files**:
+
 - Modify: `oneiric/docs/action-kits.md`
 
 - [ ] **Step 1: Locate `compression.encode` entry**
@@ -882,6 +916,7 @@ Co-Authored-By: Claude <noreply@anthropic.com>"
 ### Task A.6: Add streaming methods to `LocalStorageAdapter`
 
 **Files**:
+
 - Modify: `oneiric/oneiric/adapters/storage/local.py`
 
 - [ ] **Step 1: Write the failing tests**
@@ -999,7 +1034,9 @@ Co-Authored-By: Claude <noreply@anthropic.com>"
 ### Task A.7: Add streaming methods to `S3StorageAdapter` with multipart abort
 
 **Files**:
+
 - Modify: `oneiric/oneiric/adapters/storage/s3.py`
+
 - Modify: `oneiric/oneiric/adapters/storage/base.py` (add abort + cost counter helpers)
 
 - [ ] **Step 1: Add streaming metrics to base.py**
@@ -1247,6 +1284,7 @@ Co-Authored-By: Claude <noreply@anthropic.com>"
 ### Task A.8: Update oneiric CHANGELOG
 
 **Files**:
+
 - Modify: `oneiric/CHANGELOG.md`
 
 - [ ] **Step 1: Add Phase 3 entry**
@@ -1294,11 +1332,12 @@ git push origin main
 
 **Wait 2 days for ecosystem soak** before Phase B.
 
----
+______________________________________________________________________
 
 ## Phase B — oneiric: GCS + Azure streaming tests, MCP wiring
 
 **Integration Contract**
+
 - **Triggered from**: Phase A complete. Phase B adds coverage parity for the other two remote storage backends.
 - **Returns to / updates**: `test_gcs_stream.py` and `test_azure_blob_stream.py` exercise GCS/Azure adapters at the same coverage level as S3. AdapterMetadata for both now reflects `capabilities = ["blob", "stream", "delete"]` matching the methods shipped in Phase A.
 - **Demonstrable by**: `uv run pytest tests/adapters/storage/test_gcs_stream.py tests/adapters/storage/test_azure_blob_stream.py -v` passes against emulator Docker containers.
@@ -1306,6 +1345,7 @@ git push origin main
 - **Observability added**: same counters as Phase A (already wired); new tests verify counter emissions on GCS/Azure paths.
 
 **Files**:
+
 - Create: `oneiric/tests/adapters/storage/test_gcs_stream.py`
 - Create: `oneiric/tests/adapters/storage/test_azure_blob_stream.py`
 - Modify: `oneiric/oneiric/adapters/storage/gcs.py` (verify `save_stream`/`read_stream` from Phase A)
@@ -1315,6 +1355,7 @@ git push origin main
 ### Task B.1: Verify GCS adapter has streaming methods
 
 **Files**:
+
 - Modify: `oneiric/oneiric/adapters/storage/gcs.py`
 
 - [ ] **Step 1: Read GCS adapter to confirm Phase A additions propagated**
@@ -1327,6 +1368,7 @@ If methods are missing (Phase A only updated Local + S3), copy the async shape f
 ### Task B.2: Verify Azure adapter has streaming methods
 
 **Files**:
+
 - Modify: `oneiric/oneiric/adapters/storage/azure.py`
 
 - [ ] **Step 1: Read Azure adapter**
@@ -1338,6 +1380,7 @@ If missing, copy from `s3.py` shape and adapt for `azure-storage-blob`'s `downlo
 ### Task B.3: Add emulator test dependencies
 
 **Files**:
+
 - Modify: `oneiric/pyproject.toml`
 
 - [ ] **Step 1: Read current `[project.optional-dependencies]`**
@@ -1372,6 +1415,7 @@ Co-Authored-By: Claude <noreply@anthropic.com>"
 ### Task B.4: Write GCS streaming tests
 
 **Files**:
+
 - Create: `oneiric/tests/adapters/storage/test_gcs_stream.py`
 
 ```python
@@ -1426,6 +1470,7 @@ async def test_gcs_read_stream_yields_chunks(adapter):
 ### Task B.5: Write Azure streaming tests
 
 **Files**:
+
 - Create: `oneiric/tests/adapters/storage/test_azure_blob_stream.py`
 
 ```python
@@ -1509,11 +1554,12 @@ git push origin main
 
 **Wait 2 days.**
 
----
+______________________________________________________________________
 
 ## Phase C — mahavishnu: storage_io.py rewrite + provider updates + observability
 
 **Integration Contract**
+
 - **Triggered from**: Phases 0.7 (mahavishnu 3.14 bump) + Phase A (oneiric streaming methods) complete.
 - **Returns to / updates**: New `mahavishnu/core/worktree_providers/storage_io.py` exposes `serialize_worktree_tar(path)` as `@contextmanager` yielding `(temp_path, byte_size, sha256)` and `deserialize_worktree_tar(chunk_reader, target, *, expected_sha256, backend, principal_short)`. New `verify_sha256_streaming` helper in `observability/bundle_integrity.py`. New `record_bundle_integrity_failure_short` helper to prevent re-hashing. New error codes MHV-209..213 + MHV-220..223. `LocalWorktreeProvider.create_worktree_handle` and `fetch` updated. `RemoteWorktreeProvider` mirror. Cache key unified to `materialized:{handle.handle_id}` across both providers.
 - **Demonstrable by**: `pytest tests/unit/test_core_worktree_providers_storage_io.py -v` passes; `pytest --cov=mahavishnu --cov-fail-under=89` passes; `test_create_then_fetch_round_trip_100mb` integration test passes against moto + fakeredis.
@@ -1521,6 +1567,7 @@ git push origin main
 - **Observability added**: `bundle_integrity_failure_total{backend, principal_short}` (preserved, streamed-path now emits), `streaming_codec_failures_total{algorithm}` (new), `worktree_op_duration_seconds{op, backend, principal_short, success}` (Phase 3 op enum), `bundle_bytes` histogram extended to 1GB.
 
 **Files**:
+
 - Modify: `mahavishnu/mahavishnu/core/worktree_providers/storage_io.py` (full rewrite)
 - Modify: `mahavishnu/mahavishnu/core/errors.py` (add MHV-209..213 + MHV-220..223)
 - Modify: `mahavishnu/mahavishnu/observability/bundle_integrity.py` (add `verify_sha256_streaming`, `record_bundle_integrity_failure_short`)
@@ -1540,7 +1587,9 @@ git push origin main
 ### Task C.1: Add PEP 735 group + delete Phase 2 tests
 
 **Files**:
+
 - Modify: `mahavishnu/pyproject.toml`
+
 - Modify: `tests/unit/test_core_worktree_providers_storage_io.py`
 
 - [ ] **Step 1: Add `compression-zstd` to mahavishnu pyproject**
@@ -1556,6 +1605,7 @@ If mahavishnu has its own PEP 735 `[dependency-groups]` block, add `compression-
 - [ ] **Step 2: Delete the 5 Phase 2 tests at known line numbers**
 
 Read the test file:
+
 ```bash
 grep -n "^def test_\|^class " tests/unit/test_core_worktree_providers_storage_io.py | head -30
 ```
@@ -1579,6 +1629,7 @@ Co-Authored-By: Claude <noreply@anthropic.com>"
 ### Task C.2: Add new error codes to errors.py
 
 **Files**:
+
 - Modify: `mahavishnu/mahavishnu/core/errors.py`
 
 - [ ] **Step 1: Locate existing error codes**
@@ -1630,6 +1681,7 @@ Co-Authored-By: Claude <noreply@anthropic.com>"
 ### Task C.3: Add streaming observability helpers
 
 **Files**:
+
 - Modify: `mahavishnu/mahavishnu/observability/bundle_integrity.py`
 
 - [ ] **Step 1: Read existing `verify_sha256` + `record_bundle_integrity_failure`**
@@ -1807,6 +1859,7 @@ Co-Authored-By: Claude <noreply@anthropic.com>"
 ### Task C.4: Extend bundle_bytes histogram + Phase 3 op enum
 
 **Files**:
+
 - Modify: `mahavishnu/mahavishnu/observability/metrics.py`
 
 - [ ] **Step 1: Locate `bundle_bytes` histogram + `record_worktree_op`**
@@ -1863,6 +1916,7 @@ Co-Authored-By: Claude <noreply@anthropic.com>"
 ### Task C.5: Rewrite `storage_io.py`
 
 **Files**:
+
 - Modify: `mahavishnu/mahavishnu/core/worktree_providers/storage_io.py`
 
 - [ ] **Step 1: Replace the file with the full rewrite from spec**
@@ -1878,21 +1932,37 @@ MAX_BUNDLE_BYTES_STOPGAP: int = 256 * 1024 * 1024  # 256MB
 - [ ] **Step 2: Write the failing tests**
 
 In `tests/unit/test_core_worktree_providers_storage_io.py`, write the test inventory from spec section "Mahavishnu (rewritten)" — all the named tests including:
+
 - `test_serialize_returns_temp_path_size_sha` (verify context-manager shape)
+
 - `test_serialize_chunked_hash_matches_full_hash`
+
 - `test_serialize_cleanup_on_cancellation` — uses `asyncio.CancelledError`, not ValueError
+
 - `test_serialize_cleanup_on_keyboard_interrupt`
+
 - `test_deserialize_extracts_content`
+
 - `test_deserialize_verifies_sha` (asserts temp file unlinked via finally)
+
 - `test_deserialize_blocks_path_traversal` + absolute-symlink + device-file + FIFO
+
 - `test_deserialize_blocks_zstd_corrupt_header` + corrupt_payload
+
 - `test_deserialize_cleans_temp_on_chunk_reader_runtime_error`
+
 - `test_deserialize_cleans_temp_on_cancelled_error`
+
 - `test_serialize_temp_create_oserror_wrapped` (NEW — MHV-209)
+
 - `test_deserialize_temp_write_oserror_wrapped` (NEW — MHV-210)
+
 - `test_round_trip_100mb_file`
+
 - `test_round_trip_at_size_boundary` (parametrized 0, 1, 1024, 99MB, 101MB)
+
 - `test_serialize_empty_worktree_round_trips`
+
 - `test_chunk_reader_contract`
 
 - [ ] **Step 3: Run tests to verify they pass**
@@ -1921,6 +1991,7 @@ Co-Authored-By: Claude <noreply@anthropic.com>"
 ### Task C.6: Update LocalWorktreeProvider with streaming + bounded queue handoff
 
 **Files**:
+
 - Modify: `mahavishnu/mahavishnu/core/worktree_providers/local.py`
 
 - [ ] **Step 1: Replace `create_worktree_handle` and `fetch` per spec**
@@ -1953,18 +2024,31 @@ async def health(self) -> HealthReport:
 - [ ] **Step 4: Write the failing tests**
 
 Extend `tests/unit/test_core_worktree_providers_local.py` with the named tests from spec:
+
 - `test_create_uses_save_stream_when_available`
+
 - `test_create_falls_back_to_stopgap_when_no_stream_capability`
+
 - `test_create_stopgap_raises_mhv221_on_oversized_bundle`
+
 - `test_fetch_uses_read_stream_when_available`
+
 - `test_fetch_sha_mismatch_raises_before_extract` (asserts no files in `target`)
+
 - `test_fetch_cache_hit_skips_streaming`
+
 - `test_fetch_phase2_targz_handle_raises_mhv213`
+
 - `test_fetch_migration_guard_does_not_swallow_gzip_magic`
+
 - `test_supports_streaming_checks_capabilities_not_just_methods`
+
 - `test_supports_streaming_advertises_but_does_not_implement_returns_false`
+
 - `test_fetch_corrupted_storage_key_raises_mhv212` (empty first chunk)
+
 - `test_fetch_corrupted_non_gzip_non_zstd_handle_raises_mhv212` (B-DI-14)
+
 - `test_fetch_memory_bounded_under_steaming` (B-DI-10, uses tracemalloc)
 
 - [ ] **Step 5: Run tests to verify they pass**
@@ -1991,23 +2075,33 @@ Co-Authored-By: Claude <noreply@anthropic.com>"
 ### Task C.7: Mirror streaming updates to RemoteWorktreeProvider
 
 **Files**:
+
 - Modify: `mahavishnu/mahavishnu/core/worktree_providers/remote.py`
 
 - [ ] **Step 1: Mirror the local.py changes for S3/GCS/Azure paths**
 
-Apply the spec's File 5 implementation: streaming create/fetch with abort, cache key unified to `materialized:{handle.handle_id}` (was `{handle_id}:materialized` — R2-20 fix), `health_check()` returns self._storage.health() (was hardcoded False — known Phase 2 stub now fixed).
+Apply the spec's File 5 implementation: streaming create/fetch with abort, cache key unified to `materialized:{handle.handle_id}` (was `{handle_id}:materialized` — R2-20 fix), `health_check()` returns self.\_storage.health() (was hardcoded False — known Phase 2 stub now fixed).
 
 - [ ] **Step 2: Write the failing tests**
 
 Extend `tests/unit/test_core_worktree_providers_remote.py` with the named tests from spec:
+
 - `test_remote_create_uses_save_stream_when_available`
+
 - `test_remote_create_falls_back_to_stopgap_when_no_save_stream`
+
 - `test_remote_create_uses_uuid4_handle_id_not_deterministic`
+
 - `test_remote_create_storage_key_too_long_raises_mhv220`
+
 - `test_remote_create_s3_multipart_aborted_on_partial_failure` (asserts `abort_multipart_upload` called via moto call count)
+
 - `test_remote_fetch_uses_read_stream_when_available`
+
 - `test_remote_fetch_sha_mismatch_raises_before_extract`
+
 - `test_remote_fetch_cache_hit_skips_streaming`
+
 - `test_remote_fetch_phase2_orphan_raises_mhv213`
 
 - [ ] **Step 3: Run tests + commit**
@@ -2029,6 +2123,7 @@ Co-Authored-By: Claude <noreply@anthropic.com>"
 ### Task C.8: Add streaming integration test
 
 **Files**:
+
 - Create: `mahavishnu/tests/integration/test_worktree_round_trip_streaming.py`
 
 - [ ] **Step 1: Write the integration test**
@@ -2122,11 +2217,12 @@ git push origin main
 
 **Wait 2 days for soak.**
 
----
+______________________________________________________________________
 
 ## Phase D — mahavishnu: runbook, README, CHANGELOG, rollout
 
 **Integration Contract**
+
 - **Triggered from**: Phase C complete (storage_io + providers + observability shipped).
 - **Returns to / updates**: Operator-facing runbook at `docs/runbooks/worktree-streaming-phase3.md`. Module README at `mahavishnu/core/worktree_providers/README.md`. CHANGELOG entry. Phase 4 ADR placeholder at `docs/adr/016-phase4-python-3.15-migration.md`.
 - **Demonstrable by**: A new operator reading the runbook can perform the migration sweep, triage any MHV-20x error, and follow the rollback procedure. A new contributor reading the README understands the streaming tar API.
@@ -2134,6 +2230,7 @@ git push origin main
 - **Observability added**: DoD item 13 — owner monitors `bundle_integrity_failure_total` rate for 7 calendar days post-rollout; escalates to primary on-call if rate > 0.01%.
 
 **Files**:
+
 - Create: `mahavishnu/docs/runbooks/worktree-streaming-phase3.md`
 - Create: `mahavishnu/mahavishnu/core/worktree_providers/README.md`
 - Modify: `mahavishnu/CHANGELOG.md`
@@ -2144,21 +2241,23 @@ git push origin main
 ### Task D.1: Write the runbook
 
 **Files**:
+
 - Create: `mahavishnu/docs/runbooks/worktree-streaming-phase3.md`
 
 - [ ] **Step 1: Write the runbook per spec DoD item 6**
 
 Sections (per spec):
+
 1. Overview (streaming tar.zst Phase 3 rollout summary)
-2. SLO/SLI targets (fetch P99 < 5s, integrity failure rate < 0.01%, create P99 < 10s)
-3. PromQL alert queries (per spec DoD item 6f)
-4. Capacity planning (`/tmp` headroom = bundle_size × concurrent_creates × 1.5)
-5. Error code triage table (MHV-208..213 + MHV-220..223 with first-response actions)
-6. Rollout procedure (drain Phase 2 writers, upgrade readers, upgrade writers)
-7. Startup-time migration sweep (Python script: `scripts/sweep_legacy_targz.py`)
-8. Rollback procedure (revert Phase 3 commits; no schema migration)
-9. On-call escalation matrix (`pagerduty_service: "mahavishnu-worktree-streaming"`, primary/secondary/manager contacts)
-10. Postmortem template
+1. SLO/SLI targets (fetch P99 < 5s, integrity failure rate < 0.01%, create P99 < 10s)
+1. PromQL alert queries (per spec DoD item 6f)
+1. Capacity planning (`/tmp` headroom = bundle_size × concurrent_creates × 1.5)
+1. Error code triage table (MHV-208..213 + MHV-220..223 with first-response actions)
+1. Rollout procedure (drain Phase 2 writers, upgrade readers, upgrade writers)
+1. Startup-time migration sweep (Python script: `scripts/sweep_legacy_targz.py`)
+1. Rollback procedure (revert Phase 3 commits; no schema migration)
+1. On-call escalation matrix (`pagerduty_service: "mahavishnu-worktree-streaming"`, primary/secondary/manager contacts)
+1. Postmortem template
 
 - [ ] **Step 2: Commit**
 
@@ -2177,6 +2276,7 @@ Co-Authored-By: Claude <noreply@anthropic.com>"
 ### Task D.2: Write the migration sweep script
 
 **Files**:
+
 - Create: `mahavishnu/scripts/sweep_legacy_targz.py`
 
 - [ ] **Step 1: Write the sweep script**
@@ -2231,16 +2331,18 @@ Co-Authored-By: Claude <noreply@anthropic.com>"
 ### Task D.3: Write the module README
 
 **Files**:
+
 - Create: `mahavishnu/mahavishnu/core/worktree_providers/README.md`
 
 - [ ] **Step 1: Write the README**
 
 Sections (per DoD item 14):
+
 1. Overview
-2. API contract (`serialize_worktree_tar` context-manager + `deserialize_worktree_tar` chunk_reader)
-3. Error codes (MHV-209..213 + MHV-220..223)
-4. Phase 2 → Phase 3 migration (handle_id format change, storage key suffix change, rollout sequence)
-5. Caveats (`data_filter` strips setuid/setgid bits vs Phase 2 default; stopgap path 256MB cap; UUID4 handle_id cardinality impact)
+1. API contract (`serialize_worktree_tar` context-manager + `deserialize_worktree_tar` chunk_reader)
+1. Error codes (MHV-209..213 + MHV-220..223)
+1. Phase 2 → Phase 3 migration (handle_id format change, storage key suffix change, rollout sequence)
+1. Caveats (`data_filter` strips setuid/setgid bits vs Phase 2 default; stopgap path 256MB cap; UUID4 handle_id cardinality impact)
 
 - [ ] **Step 2: Commit**
 
@@ -2255,6 +2357,7 @@ Co-Authored-By: Claude <noreply@anthropic.com>"
 ### Task D.4: Update CHANGELOG
 
 **Files**:
+
 - Modify: `mahavishnu/CHANGELOG.md`
 
 - [ ] **Step 1: Add Phase 3 entry**
@@ -2296,6 +2399,7 @@ Co-Authored-By: Claude <noreply@anthropic.com>"
 ### Task D.5: Phase 4 ADR placeholder
 
 **Files**:
+
 - Create: `mahavishnu/docs/adr/016-phase4-python-3.15-migration.md`
 
 - [ ] **Step 1: Write the ADR skeleton**
@@ -2350,6 +2454,7 @@ Co-Authored-By: Claude <noreply@anthropic.com>"
 ### Task D.6: Coordinator error severity table
 
 **Files**:
+
 - Modify: `mahavishnu/mahavishnu/core/worktree_coordination.py`
 
 - [ ] **Step 1: Add per-error-code severity decision comment**
@@ -2405,11 +2510,12 @@ git push origin main
 
 **Start 7-day post-rollout monitoring window.**
 
----
+______________________________________________________________________
 
 ## Phase E — Post-rollout: 7-day monitoring + Phase 4 ADR tracking
 
 **Integration Contract**
+
 - **Triggered from**: Phase D merged to main.
 - **Returns to / updates**: 7-day monitoring window per DoD item 13. Escalation triggers wired to PagerDuty.
 - **Demonstrable by**: After 7 days, `bundle_integrity_failure_total` rate < 0.01% of fetches; S3 multipart abort rate = 0 (or bounded by transient network errors); `pytest --cov=mahavishnu --cov-fail-under=89` continues to pass on 3.14; crackerjack clean.
@@ -2417,11 +2523,13 @@ git push origin main
 - **Observability added**: `BODAI_UPGRADE_WATCH.md` tracking doc; weekly Phase 4 readiness notes.
 
 **Files**:
+
 - Create: `BODAI_UPGRADE_WATCH.md` (cross-repo tracking)
 
 ### Task E.1: Write `BODAI_UPGRADE_WATCH.md`
 
 **Files**:
+
 - Create: `BODAI_UPGRADE_WATCH.md` (at repo root or in `docs/`)
 
 - [ ] **Step 1: Write the tracking doc**
@@ -2473,7 +2581,7 @@ If rate > 0.01% of fetches: page primary on-call per DoD item 6h.
 
 Defer to Q1-Q2 2027 per spec section "Python version strategy". Reopen this plan when 3.15.0 GA is announced.
 
----
+______________________________________________________________________
 
 ## Self-Review (per writing-plans skill)
 

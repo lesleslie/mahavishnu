@@ -20,12 +20,14 @@ Example:
     ```
 """
 
-from collections.abc import Callable
 import logging
-from typing import Any
+from typing import TYPE_CHECKING, Any
 import uuid
 
-from prefect import Flow
+if TYPE_CHECKING:
+    from collections.abc import Callable
+
+    from prefect import Flow
 
 logger = logging.getLogger(__name__)
 

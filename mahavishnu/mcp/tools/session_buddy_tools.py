@@ -1,15 +1,17 @@
 """MCP tools for Session Buddy integration with authorization."""
 
 from datetime import UTC, datetime
-from typing import Any
+from typing import TYPE_CHECKING, Any
 import uuid
 import warnings
 
 from mcp_common.auth.permissions import Permission as MCPPermission
 
-from ...core.permissions import RBACManager
 from ...mcp.auth import require_mcp_auth
 from ...messaging import MessagePriority
+
+if TYPE_CHECKING:
+    from ...core.permissions import RBACManager
 
 _CHANNEL_SESSION_TOOL = "mcp__session-buddy__track_channel_session"
 _CHANNEL_QUERY_TOOL = "mcp__session-buddy__get_channel_sessions"

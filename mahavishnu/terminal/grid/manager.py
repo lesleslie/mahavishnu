@@ -70,7 +70,7 @@ class TerminalGridManager:
             )
             await asyncio.sleep(0.5)
             return True
-        except (TimeoutError, AppleScriptError):
+        except TimeoutError, AppleScriptError:
             return False
 
     async def _create_positioned_window(
