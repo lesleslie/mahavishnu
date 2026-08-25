@@ -237,6 +237,9 @@ repo.
   `crackerjack/cli/interactive.py`. Default: keep `cli/interactive.py`
   (newer), deprecate the older one with a deprecation warning, plan
   removal in Phase 5 of a follow-up audit.
+- 3.2.5 — Mahavishnu: consolidate `mahavishnu/monitoring_cli.py` and
+  `mahavishnu/cli/monitoring_cli.py` (parallel-files pattern, same
+  drift as crackerjack). Same remediation strategy as 3.2.4.
 
 #### Phase 3.3 — Drift (doc sync)
 
@@ -343,33 +346,52 @@ repo.
 ### Phase 6 — Implement the two `bodai` stubs
 
 **Goal**: `bodai shell` and `bodai dashboard` are real, not stubs.
+Decided TUI scope (2026-08-25): the dashboard is a **cross-component
+aggregator that lives in bodai**, not a replacement for mahavishnu's
+mahavishnu-scoped TUI (pools/workers). Both TUIs coexist.
+
+| Surface | Lives in | Shows |
+|---|---|---|
+| **`bodai dashboard`** (NEW; was stub) | `bodai/tui/dashboard.py` | All 7 Core 7 components: name, role, port, status, version, recent events. Aggregator using `bodai.core.health.check_all()` + canonical status types. Refresh 2-5s. |
+| **`mahavishnu monitor --tui`** (existing; rename if needed) | `mahavishnu/tui/monitor_app.py` (already 142 LOC) | Mahavishnu-only: pools, workers, workflow state. Already scope-correct; just needs the CLI command wired if not already. |
 
 **Tasks:**
 
 - 6.1 — Implement `bodai/admin/shell.py::launch_shell()` using
   `oneiric.shell.AdminShell` (or a `BodaiShell(AdminShell)` subclass
   that imports `app`, `oneiric`, all 7 sub-CLIs into the namespace).
-- 6.2 — Implement `bodai/tui/dashboard.py::BodaiDashboard` using
-  Textual; grid view over `bodai.core.health.check_all()` results,
-  refreshes every 2s.
-- 6.3 — Update `bodai/cli.py` so `bodai shell` and `bodai dashboard`
+- 6.2 — Implement `bodai/tui/dashboard.py::BodaiDashboard` as a
+  **cross-component aggregator** (NOT a replacement for mahavishnu's
+  pools/workers TUI). Uses Textual; grid view over
+  `bodai.core.health.check_all()` results plus the canonical status
+  vocabulary in `mahavishnu/core/ecosystem_status.py` (`CanonicalStatus`,
+  `DegradationTrend`). Refreshes every 2-5s. ~100 LOC.
+- 6.3 — Verify or wire `mahavishnu monitor --tui` (or equivalent)
+  pointing at `mahavishnu/tui/monitor_app.py`. Currently `monitor_app.py`
+  defines `MonitorApp` but the CLI command that invokes it isn't
+  confirmed — add `@monitoring_cli.app.command("tui")` (or name TBD) if
+  missing.
+- 6.4 — Update `bodai/cli.py` so `bodai shell` and `bodai dashboard`
   reach the new modules (currently they catch `ImportError` and print
   "not yet implemented").
-- 6.4 — Tests: `bodai/tests/test_shell.py` exercises `BodaiShell`
+- 6.5 — Tests: `bodai/tests/test_shell.py` exercises `BodaiShell`
   (mocked AdminShell); `bodai/tests/test_dashboard.py` exercises the
   Textual app with a fake `check_all`.
 
 **Integration Contract (Phase 6):**
 
 - **Triggered from**: Phase 5 completed.
-- **Returns to / updates**: 1 commit per stub (2 commits); 1 test commit.
+- **Returns to / updates**: 1 commit per stub (2 commits); 1 commit to
+  wire `mahavishnu monitor --tui`; 1 test commit.
 - **Demonstrable by**: `bodai shell` opens an IPython REPL with
   `app`, `oneiric`, all 7 sub-CLIs pre-imported; `bodai dashboard`
-  opens a live Textual grid showing component health.
+  opens a live cross-component Textual grid; `mahavishnu monitor --tui`
+  opens mahavishnu's pool/worker view independently.
 - **Rollback signal**: stub still raises `ImportError` → blocked, not
   silently broken.
 - **Observability added**: the previously stubbed commands now exist
-  with real backing code.
+  with real backing code; both TUIs observable as separate
+  cross-component vs component-scoped surfaces.
 
 ### Phase 7 — Verification + sign-off
 
