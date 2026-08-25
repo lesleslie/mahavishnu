@@ -63,6 +63,31 @@ MAX_CONCURRENT_WORKTREE_STREAMS: int = 8
 _fetch_stream_semaphore: asyncio.Semaphore = asyncio.Semaphore(MAX_CONCURRENT_WORKTREE_STREAMS)
 
 
+def _validate_path_component(value: str, *, kind: str) -> str:
+    """Reject path components that could escape the worktree base.
+
+    ``get_worktree_path(repo, branch)`` joins ``repo`` and ``branch``
+    onto the worktree base; without this guard a value like
+    ``"../../../etc"`` could escape the sandbox. The accepted shape
+    is a single path segment: no separators, no parent-traversal,
+    no dash-prefix (the latter blocks accidental CLI-flag injection
+    in downstream tooling that treats leading ``-`` as an option).
+
+    Returns the validated ``value`` for chaining at the call site.
+    """
+    if not value:
+        raise ValueError(f"{kind} is empty")
+    if value.startswith("-"):
+        raise ValueError(f"{kind} starts with dash (flag-like): {value!r}")
+    if "/" in value or "\\" in value:
+        raise ValueError(f"{kind} contains a path separator: {value!r}")
+    if ".." in value.split("/") or ".." in value.split("\\"):
+        raise ValueError(f"{kind} contains '..': {value!r}")
+    if value in {".", ".."}:
+        raise ValueError(f"{kind} is a relative-path marker: {value!r}")
+    return value
+
+
 def supports_streaming(storage: Any) -> bool:
     """Return True iff ``storage`` advertises AND implements stream APIs.
 
@@ -449,6 +474,11 @@ class LocalWorktreeProvider(WorktreeProvider):
         from .types import LocalWorktreeRef, WorktreeHandle
 
         handle_id = uuid.uuid4().hex
+        # Validate ``repo`` / ``branch`` before they are joined into
+        # the filesystem path — a value containing ``/``, ``\``, or
+        # ``..`` could escape the worktree base.
+        _validate_path_component(repo, kind="repo")
+        _validate_path_component(branch, kind="branch")
         wt_path = get_worktree_path(repo, branch)
         wt_path.mkdir(parents=True, exist_ok=True)
 

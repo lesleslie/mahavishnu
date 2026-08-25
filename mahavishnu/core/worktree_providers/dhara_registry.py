@@ -470,7 +470,7 @@ async def remove_handle(
             from mahavishnu.observability.metrics import record_registry_drift
 
             record_registry_drift(missing_in_dhara=index_drift)
-        except ImportError, AttributeError:  # pragma: no cover - observability optional
+        except (ImportError, AttributeError):  # pragma: no cover - observability optional
             pass
 
     return True

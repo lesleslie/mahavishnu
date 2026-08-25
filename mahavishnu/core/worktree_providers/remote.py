@@ -57,6 +57,7 @@ from mahavishnu.core.worktree_providers.dhara_registry import (
 from mahavishnu.core.worktree_providers.local import (
     _create_worktree_via_git,
     _remove_worktree_via_git,
+    _validate_path_component,
 )
 from mahavishnu.core.worktree_providers.storage_io import (
     MAX_BUNDLE_BYTES_STOPGAP,
@@ -182,6 +183,7 @@ _STREAM_SENTINEL: object = object()
 
 
 def _producer_thread_target(
+    thread: threading.Thread,
     stream_iter: Any,
     q: queue.Queue[bytes | object],
 ) -> None:
@@ -191,20 +193,29 @@ def _producer_thread_target(
     on the event-loop thread) can pull chunks with bounded back-pressure
     (the queue is ``maxsize=4``). On any exception inside the iterator,
     the ``finally`` block guarantees ``_STREAM_SENTINEL`` lands in the
-    queue so the consumer can always make progress (then raise the
-    original exception to the caller via the deserialize path).
+    queue so the consumer can always make progress.
+
+    The exception (if any) is stashed on the ``thread`` object via
+    ``thread._producer_error`` so the consumer's
+    ``producer.join(timeout=...)`` can re-raise — without this handoff
+    the consumer would silently treat a truncated stream as end-of-data
+    and validate the SHA over partial bytes (silent data corruption).
     """
+    error: BaseException | None = None
     try:
-        for chunk in stream_iter:
-            q.put(chunk)
-    except BaseException:
-        # Surface the failure to the consumer thread via the queue so
-        # the (synchronous) ``deserialize_worktree_tar`` raises; the
-        # original traceback lands in the consumer's stack.
+        try:
+            for chunk in stream_iter:
+                q.put(chunk)
+        except BaseException as exc:
+            error = exc
+            raise
+    finally:
         q.put(_STREAM_SENTINEL)
-        raise
-    else:
-        q.put(_STREAM_SENTINEL)
+        # Attach the captured error AFTER the sentinel so the consumer
+        # is guaranteed to see end-of-stream before raising. The
+        # attribute is ``_producer_error`` so external callers cannot
+        # accidentally trip it; it is read inside ``fetch``.
+        thread._producer_error = error  # type: ignore[attr-defined]
 
 
 class RemoteWorktreeProvider(WorktreeProvider):
@@ -355,6 +366,12 @@ class RemoteWorktreeProvider(WorktreeProvider):
         # Materialize the transient worktree dir on disk first so the
         # serializer has source files. The branch is created if it
         # doesn't exist (matches LocalWorktreeProvider's create_branch=True).
+        # ``repo`` and ``branch`` are joined into a filesystem path;
+        # reject values containing ``/``, ``\``, ``..`` or starting
+        # with ``-`` so a malicious caller cannot escape the worktree
+        # base (security review finding).
+        _validate_path_component(repo, kind="repo")
+        _validate_path_component(branch, kind="branch")
         wt_path = get_worktree_path(repo, branch)
         wt_path.mkdir(parents=True, exist_ok=True)
         await _create_worktree_via_git(
@@ -517,7 +534,7 @@ class RemoteWorktreeProvider(WorktreeProvider):
                 target.parent.mkdir(parents=True, exist_ok=True)
                 from .storage_io import deserialize_worktree_tar
 
-                self._drain_queue_into_target(
+                compressed_bytes_total = self._drain_queue_into_target(
                     deserialize_worktree_tar,
                     q,
                     first_chunk,
@@ -526,6 +543,27 @@ class RemoteWorktreeProvider(WorktreeProvider):
                     backend_kind,
                 )
                 producer.join(timeout=30.0)
+                # Surface any mid-stream failure the producer thread
+                # stashed on itself (security review finding). Without
+                # this re-raise, a truncated stream would be treated
+                # as a successful EOF and the SHA would validate over
+                # fewer bytes than ``handle.bytes_size`` (silent
+                # corruption).
+                producer_error = getattr(producer, "_producer_error", None)
+                if producer_error is not None:
+                    raise producer_error
+                # Validate the compressed byte count against the
+                # recorded handle size. A mismatch means the iterator
+                # returned fewer chunks than expected (silent
+                # truncation) — even if SHA matched, the bytes would
+                # not be the full payload.
+                if compressed_bytes_total != handle.bytes_size:
+                    raise WorktreeError(
+                        f"Compressed bundle size mismatch: got "
+                        f"{compressed_bytes_total}, expected "
+                        f"{handle.bytes_size}",
+                        error_code=ErrorCode.WORKTREE_BUNDLE_MALFORMED,
+                    )
 
             self._record_successful_deserialize(start, backend_kind, handle.bytes_size)
             await self._cache.set(cache_key, str(target))
@@ -652,11 +690,23 @@ class RemoteWorktreeProvider(WorktreeProvider):
 
         Returns ``(queue, Thread)``. The bounded queue (maxsize=4)
         keeps producer/consumer memory at ``chunk_size * 4`` (B-DI-10).
+
+        The closure binds ``producer`` into the target so the
+        producer can stash any captured exception on
+        ``producer._producer_error``; the consumer reads this
+        attribute after ``producer.join()`` to surface mid-stream
+        failures (security review finding).
         """
         q: queue.Queue[bytes | object] = queue.Queue(maxsize=4)
+
+        def _run() -> None:
+            # Bind the thread reference first so the target can stash
+            # any captured exception on it. ``threading.current_thread()``
+            # returns the calling Thread for us.
+            _producer_thread_target(threading.current_thread(), stream_iter, q)
+
         producer = threading.Thread(
-            target=_producer_thread_target,
-            args=(stream_iter, q),
+            target=_run,
             daemon=True,
         )
         producer.start()
@@ -701,18 +751,29 @@ class RemoteWorktreeProvider(WorktreeProvider):
         target: Path,
         handle: WorktreeHandle,
         backend_kind: str,
-    ) -> None:
+    ) -> int:
         """Drain the bounded queue into ``deserialize_worktree_tar``.
 
         Yields the (peeked) ``first_chunk`` first, then continues
         draining the queue until the producer's sentinel arrives.
+
+        Returns the total compressed bytes observed (used by the
+        caller to verify against ``handle.bytes_size`` — a missing
+        chunk would otherwise validate SHA over a truncated payload).
         """
+        byte_count = 0
+
         def _chunk_reader_from_queue() -> Any:
+            nonlocal byte_count
             yield first_chunk
+            byte_count += len(first_chunk)
             while True:
                 item = q.get()
                 if item is _STREAM_SENTINEL:
                     return
+                # Sentinel already returned; remaining items are bytes.
+                assert isinstance(item, (bytes, bytearray))  # nosemgrep
+                byte_count += len(item)
                 yield item
 
         deserialize_worktree_tar(
@@ -722,6 +783,7 @@ class RemoteWorktreeProvider(WorktreeProvider):
             backend=backend_kind,
             principal_short=_principal_short(handle.principal),
         )
+        return byte_count
 
     @staticmethod
     def _resolve_materialized_path_for_handle(handle: WorktreeHandle) -> Path:
@@ -814,6 +876,11 @@ class RemoteWorktreeProvider(WorktreeProvider):
         # only exists when ``create_worktree_handle`` ran to
         # completion — missing path is a no-op.
         try:
+            # Validate the components the same way create_worktree_handle
+            # does — a handle whose recorded repo/branch contain ``/``
+            # or ``..`` must not be allowed to escape the base.
+            _validate_path_component(handle.repo, kind="repo")
+            _validate_path_component(handle.branch, kind="branch")
             wt_path = get_worktree_path(handle.repo, handle.branch)
             if wt_path.exists():
                 await _remove_worktree_via_git("git", Path(handle.repo), wt_path, force=True)
