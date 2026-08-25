@@ -1,4 +1,3 @@
-______________________________________________________________________
 
 title: Platform Automation
 owner: Automation Guild

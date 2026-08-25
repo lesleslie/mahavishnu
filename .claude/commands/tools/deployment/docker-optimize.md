@@ -1,4 +1,3 @@
-______________________________________________________________________
 
 title: Docker Optimize
 owner: Delivery Operations

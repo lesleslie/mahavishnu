@@ -1,4 +1,3 @@
-______________________________________________________________________
 
 title: Container Security Scan
 owner: Delivery Operations

@@ -1,4 +1,3 @@
-______________________________________________________________________
 
 title: Database Migration Workflow
 owner: Delivery Operations

@@ -1,4 +1,3 @@
-______________________________________________________________________
 
 title: Code Explain
 owner: Developer Enablement Guild

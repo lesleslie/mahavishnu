@@ -1,4 +1,3 @@
-______________________________________________________________________
 
 title: Issue
 owner: Operations Enablement Guild

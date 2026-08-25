@@ -1,4 +1,3 @@
-______________________________________________________________________
 
 ## name: task-orchestration-review description: Use when reviewing Task Orchestration components at phase boundaries. Coordinates pooled multi-agent reviews for security, database, and API quality. Use at end of each phase or before deployment.
 

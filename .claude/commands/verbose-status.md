@@ -1,4 +1,3 @@
-______________________________________________________________________
 
 ## name: verbose-status description: Check current Claude CLI verbose/debug mode status
 

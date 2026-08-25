@@ -1,4 +1,3 @@
-______________________________________________________________________
 
 ## name: verbose-on description: Enable Claude CLI verbose/debug mode
 

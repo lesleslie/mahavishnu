@@ -1,4 +1,3 @@
-______________________________________________________________________
 
 title: Frontend Bundle Analyze
 owner: Developer Enablement Guild

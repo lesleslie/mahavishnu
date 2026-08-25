@@ -1,4 +1,3 @@
-______________________________________________________________________
 
 title: ML Pipeline Release Workflow
 owner: ML Systems Guild

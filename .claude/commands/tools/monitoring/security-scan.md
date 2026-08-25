@@ -1,4 +1,3 @@
-______________________________________________________________________
 
 title: Security Scan
 owner: Platform Reliability Guild

@@ -1,4 +1,3 @@
-______________________________________________________________________
 
 title: Dependency Lifecycle Management
 owner: Platform Engineering Guild

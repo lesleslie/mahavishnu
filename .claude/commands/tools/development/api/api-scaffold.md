@@ -1,4 +1,3 @@
-______________________________________________________________________
 
 title: Api Scaffold
 owner: Developer Enablement Guild

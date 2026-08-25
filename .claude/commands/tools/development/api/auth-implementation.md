@@ -1,4 +1,3 @@
-______________________________________________________________________
 
 title: Auth Implementation
 owner: Developer Enablement Guild

@@ -1,4 +1,3 @@
-______________________________________________________________________
 
 title: Onboard
 owner: Operations Enablement Guild

@@ -1,4 +1,3 @@
-______________________________________________________________________
 
 title: Config Validate
 owner: Operations Enablement Guild

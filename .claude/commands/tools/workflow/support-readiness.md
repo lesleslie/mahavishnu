@@ -1,4 +1,3 @@
-______________________________________________________________________
 
 title: Support Readiness Runbook
 owner: Customer Experience

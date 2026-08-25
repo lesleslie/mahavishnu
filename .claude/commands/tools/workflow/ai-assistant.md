@@ -1,4 +1,3 @@
-______________________________________________________________________
 
 title: Ai Assistant
 owner: Operations Enablement Guild

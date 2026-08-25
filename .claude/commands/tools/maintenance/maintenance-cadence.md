@@ -1,4 +1,3 @@
-______________________________________________________________________
 
 title: Maintenance Cadence Planner
 owner: Platform Reliability Guild

@@ -1,4 +1,3 @@
-______________________________________________________________________
 
 title: Adoption & Analytics Workflow
 owner: Operations Enablement Guild

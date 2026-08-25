@@ -1,4 +1,3 @@
-______________________________________________________________________
 
 title: Plan-Then-Execute Feature Development
 owner: orchestration

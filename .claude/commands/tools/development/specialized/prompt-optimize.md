@@ -1,4 +1,3 @@
-______________________________________________________________________
 
 title: Prompt Optimize
 owner: Developer Enablement Guild

@@ -1,4 +1,3 @@
-______________________________________________________________________
 
 title: Workflow Orchestrator
 owner: Automation Guild

@@ -1,4 +1,3 @@
-______________________________________________________________________
 
 ## name: mahavishnu description: Route a coding task through Mahavishnu worker pools for observability and cross-server delegation. Use this when the user wants the work to appear in ecosystem observability (Dhara, Akosha) or run on a specific pool.
 

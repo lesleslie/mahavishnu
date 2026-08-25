@@ -1,4 +1,3 @@
-______________________________________________________________________
 
 title: Standup Notes
 owner: Operations Enablement Guild

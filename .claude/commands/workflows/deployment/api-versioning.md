@@ -1,4 +1,3 @@
-______________________________________________________________________
 
 title: API Versioning & Deprecation Workflow
 owner: Delivery Operations

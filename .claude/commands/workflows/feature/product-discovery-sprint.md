@@ -1,4 +1,3 @@
-______________________________________________________________________
 
 title: Product Discovery Sprint
 owner: Product Leadership

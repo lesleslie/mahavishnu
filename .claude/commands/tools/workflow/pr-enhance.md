@@ -1,4 +1,3 @@
-______________________________________________________________________
 
 title: Pr Enhance
 owner: Operations Enablement Guild

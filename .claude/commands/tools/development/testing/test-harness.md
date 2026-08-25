@@ -1,4 +1,3 @@
-______________________________________________________________________
 
 title: Comprehensive Test Harness & Advanced Testing Strategies
 owner: Quality Engineering Guild

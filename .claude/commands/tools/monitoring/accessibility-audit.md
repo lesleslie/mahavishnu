@@ -1,4 +1,3 @@
-______________________________________________________________________
 
 title: Accessibility Audit
 owner: Platform Reliability Guild

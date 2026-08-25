@@ -1,4 +1,3 @@
-______________________________________________________________________
 
 title: Disaster Recovery & Business Continuity Workflow
 owner: Platform Reliability Guild

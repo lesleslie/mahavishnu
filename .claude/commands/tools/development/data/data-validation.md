@@ -1,4 +1,3 @@
-______________________________________________________________________
 
 title: Data Validation
 owner: Developer Enablement Guild

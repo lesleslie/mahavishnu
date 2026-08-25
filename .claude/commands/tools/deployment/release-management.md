@@ -1,4 +1,3 @@
-______________________________________________________________________
 
 title: Release Management Playbook
 owner: Delivery Operations

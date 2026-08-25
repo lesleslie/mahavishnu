@@ -1,4 +1,3 @@
-______________________________________________________________________
 
 title: Ai Review
 owner: Operations Enablement Guild

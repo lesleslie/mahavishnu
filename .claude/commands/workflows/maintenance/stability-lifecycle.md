@@ -1,4 +1,3 @@
-______________________________________________________________________
 
 title: Stability Response Lifecycle
 owner: Platform Reliability Guild

@@ -1,4 +1,3 @@
-______________________________________________________________________
 
 title: Message Queue Integration
 owner: Backend Guild

@@ -1,4 +1,3 @@
-______________________________________________________________________
 
 title: Refactor Clean
 owner: Developer Enablement Guild

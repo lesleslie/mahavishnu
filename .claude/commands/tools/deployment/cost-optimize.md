@@ -1,4 +1,3 @@
-______________________________________________________________________
 
 title: Cost Optimize
 owner: Delivery Operations

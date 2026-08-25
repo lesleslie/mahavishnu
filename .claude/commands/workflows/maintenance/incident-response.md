@@ -1,4 +1,3 @@
-______________________________________________________________________
 
 title: Incident Response Workflow
 owner: Platform Reliability Guild

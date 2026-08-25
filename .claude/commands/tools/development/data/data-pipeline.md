@@ -1,4 +1,3 @@
-______________________________________________________________________
 
 title: Data Pipeline
 owner: Developer Enablement Guild

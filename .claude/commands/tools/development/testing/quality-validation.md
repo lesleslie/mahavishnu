@@ -1,4 +1,3 @@
-______________________________________________________________________
 
 title: Quality Validation Toolkit
 owner: Quality Engineering Guild

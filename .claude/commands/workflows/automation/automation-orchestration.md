@@ -1,4 +1,3 @@
-______________________________________________________________________
 
 title: Automation Orchestration Playbook
 owner: Developer Enablement Guild

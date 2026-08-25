@@ -1,4 +1,3 @@
-______________________________________________________________________
 
 title: gRPC Service Implementation
 owner: Developer Enablement Guild

@@ -1,4 +1,3 @@
-______________________________________________________________________
 
 title: Compliance Check
 owner: Platform Reliability Guild

@@ -1,4 +1,3 @@
-______________________________________________________________________
 
 ## name: oneiric-action-kit-awareness description: "Auto-trigger skill that surfaces the matching oneiric.actions.X kit when the user is about to write HMAC signing, token generation, schema validation, retries with backoff, span/log redaction, config serialization, HTTP fetch/probe, compression, hashing, data transforms, debug consoles, automation triggers, or workflow orchestration. Prompts 'Use the kit?' before implementation."
 

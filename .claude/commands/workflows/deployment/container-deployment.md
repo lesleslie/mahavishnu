@@ -1,4 +1,3 @@
-______________________________________________________________________
 
 title: Container Deployment Workflow
 owner: Delivery Operations

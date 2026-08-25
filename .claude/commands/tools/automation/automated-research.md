@@ -1,4 +1,3 @@
-______________________________________________________________________
 
 title: Automated Research
 owner: Automation Guild

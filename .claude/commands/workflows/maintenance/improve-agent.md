@@ -1,4 +1,3 @@
-______________________________________________________________________
 
 title: Agent Improvement Workflow
 owner: Developer Enablement Guild

@@ -1,4 +1,3 @@
-______________________________________________________________________
 
 title: Security Hardening Workflow
 owner: Security & Compliance Office

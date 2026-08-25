@@ -1,4 +1,3 @@
-______________________________________________________________________
 
 title: Legacy Modernization Workflow
 owner: Developer Enablement Guild

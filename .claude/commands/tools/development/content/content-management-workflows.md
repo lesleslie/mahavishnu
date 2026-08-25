@@ -1,4 +1,3 @@
-______________________________________________________________________
 
 title: Content Management Workflows
 owner: Developer Enablement Guild

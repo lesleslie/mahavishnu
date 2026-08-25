@@ -1,4 +1,3 @@
-______________________________________________________________________
 
 title: Api Mock
 owner: Developer Enablement Guild

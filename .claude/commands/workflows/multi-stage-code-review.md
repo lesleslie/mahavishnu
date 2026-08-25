@@ -1,4 +1,3 @@
-______________________________________________________________________
 
 title: Multi-Stage Code Review
 owner: workflow

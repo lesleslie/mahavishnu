@@ -1,4 +1,3 @@
-______________________________________________________________________
 
 title: K8S Manifest
 owner: Delivery Operations

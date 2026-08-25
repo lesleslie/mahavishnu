@@ -1,4 +1,3 @@
-______________________________________________________________________
 
 title: Doc Generate
 owner: Developer Enablement Guild

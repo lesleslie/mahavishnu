@@ -1,4 +1,3 @@
-______________________________________________________________________
 
 title: Websocket Connectivity
 owner: Platform Reliability Guild

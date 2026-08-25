@@ -1,4 +1,3 @@
-______________________________________________________________________
 
 title: Terminal Automation
 owner: Automation Guild

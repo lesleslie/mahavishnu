@@ -1,4 +1,3 @@
-______________________________________________________________________
 
 title: Secrets Management
 owner: Security Guild

@@ -1,4 +1,3 @@
-______________________________________________________________________
 
 title: Tech Debt
 owner: Platform Reliability Guild

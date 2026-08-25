@@ -1,4 +1,3 @@
-______________________________________________________________________
 
 title: Feature Delivery Lifecycle
 owner: Product Leadership

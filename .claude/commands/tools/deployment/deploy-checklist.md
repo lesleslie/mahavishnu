@@ -1,4 +1,3 @@
-______________________________________________________________________
 
 title: Deploy Checklist
 owner: Delivery Operations
