@@ -94,6 +94,7 @@ from collections.abc import Callable, Iterator  # noqa: E402,F401
 from .types import (  # noqa: E402  (runtime import after TYPE_CHECKING)
     WorktreeHandle,  # noqa: F401
     WorktreeRef,
+    RemoteWorktreeRef,  # noqa: F401
 )
 
 logger = logging.getLogger(__name__)
@@ -356,12 +357,7 @@ class RemoteWorktreeProvider(WorktreeProvider):
 
         # Storage-key validation (MHV-220) — must happen BEFORE any
         # heavy IO so a misconfigured key fails fast.
-        if len(storage_key) > _STORAGE_KEY_MAX_BYTES:
-            raise WorktreeError(
-                f"Storage key too long ({len(storage_key)} > "
-                f"{_STORAGE_KEY_MAX_BYTES}): {storage_key!r}",
-                error_code=ErrorCode.WORKTREE_BUNDLE_STORAGE_KEY_TOO_LONG,
-            )
+        self._assert_storage_key_length(storage_key)
 
         # Materialize the transient worktree dir on disk first so the
         # serializer has source files. The branch is created if it
@@ -392,88 +388,168 @@ class RemoteWorktreeProvider(WorktreeProvider):
                 # MAX_BUNDLE_BYTES_STOPGAP must use a streaming-only
                 # storage backend; we surface this as a clear error
                 # rather than silently OOM.
-                if size > MAX_BUNDLE_BYTES_STOPGAP:
-                    raise WorktreeError(
-                        f"Bundle size {size} exceeds stopgap cap {MAX_BUNDLE_BYTES_STOPGAP}",
-                        error_code=ErrorCode.WORKTREE_BUNDLE_STOPGAP_TOO_LARGE,
-                    )
-
+                self._assert_bundle_size_within_stopgap(size)
                 record_bundle_bytes(repo=repo, byte_size=size)
-
-                save_stream = getattr(self._storage, "save_stream", None)
-                if save_stream is None:
-                    raise WorktreeError(
-                        f"Storage adapter {type(self._storage).__name__} "
-                        f"does not implement save_stream; cannot persist "
-                        f"Phase 3 tar.zst bundle",
-                        error_code=ErrorCode.WORKTREE_BUNDLE_CODEC_UNAVAILABLE,
-                    )
-
-                # Save_stream is async on S3/GCS/Azure adapters per
-                # oneiric PR-A. ``chunk_reader()`` returns the (single)
-                # compressed bytes chunk for the stopgap path; for
-                # true streaming uploads the chunk_reader would yield
-                # multiple chunks and ``save_stream`` would issue
-                # multipart uploads.
-                result = save_stream(
-                    storage_key,
-                    lambda: iter([temp_path.read_bytes()]),
-                    metadata={
-                        "sha256": sha256,
-                        "size": str(size),
-                        "principal": principal.name,
-                    },
+                await self._upload_to_storage(
+                    storage_key, temp_path, size, sha256, principal,
                 )
-                if asyncio.iscoroutine(result):
-                    await result
+                self._record_serialize_metric(start, backend_kind, size)
 
-                record_streaming_op(
-                    StreamingOp.SERIALIZE,
-                    backend_kind,
-                    duration_ms=(time.monotonic() - start) * 1000.0,
-                    bytes_processed=size,
-                    success=True,
-                )
-
-            handle = WorktreeHandle(
+            handle = self._build_worktree_handle(
                 handle_id=handle_id,
                 principal=principal,
                 repo=repo,
                 branch=branch,
                 base_ref=base_ref,
-                created_at=datetime.now(UTC),
-                storage_ref=RemoteWorktreeRef(
-                    bucket=bucket,
-                    key=storage_key,
-                    worktree_id=handle_id,
-                    backend_kind=backend_kind,  # type: ignore[arg-type]
-                ),
+                bucket=bucket,
+                storage_key=storage_key,
+                backend_kind=backend_kind,
                 sha256=sha256,
-                bytes_size=size,
-                cleanup_policy=None,
-                provenance="v4",
+                size=size,
             )
-
-            if self._dhara_client is not None:
-                await register_handles(self._dhara_client, [handle], caller=principal)
-
-            record_worktree_op(
-                backend=backend_kind,
-                op="create",
-                duration_seconds=time.monotonic() - start,
-                success=True,
-                principal=principal.name,
-            )
+            await self._register_handle_with_dhara(handle, principal)
+            self._record_create_metric(start, backend_kind, principal, success=True)
             return handle
         except Exception:
-            record_worktree_op(
-                backend=backend_kind,
-                op="create",
-                duration_seconds=time.monotonic() - start,
-                success=False,
-                principal=principal.name,
-            )
+            self._record_create_metric(start, backend_kind, principal, success=False)
             raise
+
+    @staticmethod
+    def _assert_storage_key_length(storage_key: str) -> None:
+        """MHV-220: S3 caps storage keys at 1024 bytes; the Phase 3 cap is ``_STORAGE_KEY_MAX_BYTES``.
+
+        Must run BEFORE any heavy IO so a misconfigured key fails fast.
+        """
+        from mahavishnu.core.errors import ErrorCode, WorktreeError
+
+        if len(storage_key) > _STORAGE_KEY_MAX_BYTES:
+            raise WorktreeError(
+                f"Storage key too long ({len(storage_key)} > "
+                f"{_STORAGE_KEY_MAX_BYTES}): {storage_key!r}",
+                error_code=ErrorCode.WORKTREE_BUNDLE_STORAGE_KEY_TOO_LONG,
+            )
+
+    @staticmethod
+    def _assert_bundle_size_within_stopgap(size: int) -> None:
+        """MHV-221: refuse bundles above the in-memory stopgap cap."""
+        from mahavishnu.core.errors import ErrorCode, WorktreeError
+        from .storage_io import MAX_BUNDLE_BYTES_STOPGAP
+
+        if size > MAX_BUNDLE_BYTES_STOPGAP:
+            raise WorktreeError(
+                f"Bundle size {size} exceeds stopgap cap {MAX_BUNDLE_BYTES_STOPGAP}",
+                error_code=ErrorCode.WORKTREE_BUNDLE_STOPGAP_TOO_LARGE,
+            )
+
+    async def _upload_to_storage(
+        self,
+        storage_key: str,
+        temp_path: Path,
+        size: int,
+        sha256: str,
+        principal: Principal,
+    ) -> None:
+        """Stream the compressed bundle to the configured cloud backend.
+
+        ``save_stream`` may be sync (legacy adapters) or async
+        (S3/GCS/Azure per oneiric PR-A); both shapes are awaited via
+        ``asyncio.iscoroutine``.
+        """
+        from mahavishnu.core.errors import ErrorCode, WorktreeError
+
+        save_stream = getattr(self._storage, "save_stream", None)
+        if save_stream is None:
+            raise WorktreeError(
+                f"Storage adapter {type(self._storage).__name__} "
+                f"does not implement save_stream; cannot persist "
+                f"Phase 3 tar.zst bundle",
+                error_code=ErrorCode.WORKTREE_BUNDLE_CODEC_UNAVAILABLE,
+            )
+        result = save_stream(
+            storage_key,
+            lambda: iter([temp_path.read_bytes()]),
+            metadata={
+                "sha256": sha256,
+                "size": str(size),
+                "principal": principal.name,
+            },
+        )
+        if asyncio.iscoroutine(result):
+            await result
+
+    @staticmethod
+    def _record_serialize_metric(start: float, backend_kind: str, size: int) -> None:
+        """Emit the SERIALIZE streaming-op histogram (success path)."""
+        from mahavishnu.observability.metrics import StreamingOp, record_streaming_op
+
+        record_streaming_op(
+            StreamingOp.SERIALIZE,
+            backend_kind,
+            duration_ms=(time.monotonic() - start) * 1000.0,
+            bytes_processed=size,
+            success=True,
+        )
+
+    @staticmethod
+    def _build_worktree_handle(
+        *,
+        handle_id: str,
+        principal: Principal,
+        repo: str,
+        branch: str,
+        base_ref: str,
+        bucket: str,
+        storage_key: str,
+        backend_kind: str,
+        sha256: str,
+        size: int,
+    ) -> WorktreeHandle:
+        """Assemble the Phase 3 v4 ``WorktreeHandle`` record for the remote backend."""
+        from .types import RemoteWorktreeRef, WorktreeHandle
+
+        return WorktreeHandle(
+            handle_id=handle_id,
+            principal=principal,
+            repo=repo,
+            branch=branch,
+            base_ref=base_ref,
+            created_at=datetime.now(UTC),
+            storage_ref=RemoteWorktreeRef(
+                bucket=bucket,
+                key=storage_key,
+                worktree_id=handle_id,
+                backend_kind=backend_kind,  # type: ignore[arg-type]
+            ),
+            sha256=sha256,
+            bytes_size=size,
+            cleanup_policy=None,
+            provenance="v4",
+        )
+
+    async def _register_handle_with_dhara(
+        self, handle: WorktreeHandle, principal: Principal
+    ) -> None:
+        """Forward ``handle`` to Dhara's registry when a client is configured."""
+        from .dhara_registry import register_handles
+
+        if self._dhara_client is None:
+            return
+        await register_handles(self._dhara_client, [handle], caller=principal)
+
+    @staticmethod
+    def _record_create_metric(
+        start: float, backend_kind: str, principal: Principal, *, success: bool
+    ) -> None:
+        """Emit the ``worktree_op`` histogram for the create path."""
+        from mahavishnu.observability.metrics import record_worktree_op
+
+        record_worktree_op(
+            backend=backend_kind,
+            op="create",
+            duration_seconds=time.monotonic() - start,
+            success=success,
+            principal=principal.name,
+        )
 
     async def fetch(self, handle: WorktreeHandle) -> WorktreeRef:
         """Cache-aside read with SHA-256 verification (§3, §6).
@@ -829,6 +905,60 @@ class RemoteWorktreeProvider(WorktreeProvider):
             principal=handle.principal.name,
         )
 
+    async def _cleanup_remote_worktree_on_disk(self, handle: WorktreeHandle) -> None:
+        """Best-effort remove of the transient worktree dir from disk.
+
+        The dir is owned by ``get_worktree_path(repo, branch)`` and only
+        exists when ``create_worktree_handle`` ran to completion —
+        a missing path is a no-op. Path components are validated the
+        same way ``create_worktree_handle`` does so a handle with
+        malicious ``repo``/``branch`` cannot escape the base.
+        """
+        _validate_path_component(handle.repo, kind="repo")
+        _validate_path_component(handle.branch, kind="branch")
+        wt_path = get_worktree_path(handle.repo, handle.branch)
+        if wt_path.exists():
+            await _remove_worktree_via_git("git", Path(handle.repo), wt_path, force=True)
+
+    async def _delete_remote_storage_object(
+        self, ref: "RemoteWorktreeRef", backend_kind: str
+    ) -> None:
+        """Best-effort delete from the cloud storage backend.
+
+        Pre-PR-A adapters that lack ``delete`` are tolerated with a
+        debug log; ``delete`` may be sync (legacy) or async (post-PR-A
+        S3/GCS/Azure) and both shapes are awaited.
+        """
+        delete = getattr(self._storage, "delete", None)
+        if delete is None:
+            logger.debug(
+                "remote-storage-delete-skipped",
+                extra={"key": ref.key, "backend": backend_kind},
+            )
+            return
+        result = delete(ref.key)
+        if asyncio.iscoroutine(result):
+            await result
+
+    async def _invalidate_handle_cache(
+        self, handle: WorktreeHandle, backend_kind: str
+    ) -> None:
+        """Invalidate any cached materialized path for this handle.
+
+        Metric emission is shared with LocalWorktreeProvider per the
+        cache-metric shape (``record_cache_invalidation`` with
+        ``reason="remove_handle"``).
+        """
+        try:
+            count = await self._cache.invalidate_handle(handle.handle_id)
+        except Exception as exc:  # noqa: BLE001 — boundary; surface + continue
+            logger.warning(
+                "remote-cache-invalidate-failed",
+                extra={"handle_id": handle.handle_id, "error": str(exc)},
+            )
+            count = 0
+        record_cache_invalidation(backend_kind, "remove_handle", count)
+
     async def remove_handle(
         self,
         handle: WorktreeHandle,
@@ -871,19 +1001,9 @@ class RemoteWorktreeProvider(WorktreeProvider):
         ref: RemoteWorktreeRef = handle.storage_ref
         backend_kind = ref.backend_kind
 
-        # 0. Best-effort cleanup of the transient worktree dir on disk.
-        # The dir is owned by ``get_worktree_path(repo, branch)`` and
-        # only exists when ``create_worktree_handle`` ran to
-        # completion — missing path is a no-op.
+        # 0. Best-effort on-disk cleanup of the transient worktree dir.
         try:
-            # Validate the components the same way create_worktree_handle
-            # does — a handle whose recorded repo/branch contain ``/``
-            # or ``..`` must not be allowed to escape the base.
-            _validate_path_component(handle.repo, kind="repo")
-            _validate_path_component(handle.branch, kind="branch")
-            wt_path = get_worktree_path(handle.repo, handle.branch)
-            if wt_path.exists():
-                await _remove_worktree_via_git("git", Path(handle.repo), wt_path, force=True)
+            await self._cleanup_remote_worktree_on_disk(handle)
         except Exception as exc:  # noqa: BLE001 — best-effort on-disk cleanup; logged + falls through to storage delete
             logger.debug(
                 "worktree-remove-handle-on-disk-cleanup-skipped",
@@ -892,18 +1012,7 @@ class RemoteWorktreeProvider(WorktreeProvider):
 
         # 1. Delete from object storage (best-effort — missing object is OK).
         try:
-            delete = getattr(self._storage, "delete", None)
-            if delete is None:
-                # Pre-PR-A adapter — fall back to upload with empty
-                # bytes (not ideal, but matches the legacy contract).
-                logger.debug(
-                    "remote-storage-delete-skipped",
-                    extra={"key": ref.key, "backend": backend_kind},
-                )
-            else:
-                result = delete(ref.key)
-                if asyncio.iscoroutine(result):
-                    await result
+            await self._delete_remote_storage_object(ref, backend_kind)
         except Exception as exc:  # noqa: BLE001 — boundary; surface + continue
             logger.warning(
                 "remote-storage-delete-failed",
@@ -915,15 +1024,7 @@ class RemoteWorktreeProvider(WorktreeProvider):
             )
 
         # 2. Invalidate cache entries for this handle.
-        try:
-            count = await self._cache.invalidate_handle(handle.handle_id)
-        except Exception as exc:  # noqa: BLE001 — boundary; surface + continue
-            logger.warning(
-                "remote-cache-invalidate-failed",
-                extra={"handle_id": handle.handle_id, "error": str(exc)},
-            )
-            count = 0
-        record_cache_invalidation(backend_kind, "remove_handle", count)
+        await self._invalidate_handle_cache(handle, backend_kind)
 
         # 3. Remove from the Dhara registry (caller = authenticated session).
         if self._dhara_client is None:

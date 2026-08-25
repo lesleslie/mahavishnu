@@ -63,6 +63,35 @@ MAX_CONCURRENT_WORKTREE_STREAMS: int = 8
 _fetch_stream_semaphore: asyncio.Semaphore = asyncio.Semaphore(MAX_CONCURRENT_WORKTREE_STREAMS)
 
 
+def _validate_path_component_shape(value: str, kind: str) -> None:
+    """Reject path components with an obviously-unsafe raw shape.
+
+    Pure-string checks (empty / dash-prefix / path separator /
+    relative-path marker). No filesystem I/O. Splitting these from the
+    traversal check keeps each helper under the complexity gate (4
+    branches here vs 5 in the combined function).
+    """
+    if not value:
+        raise ValueError(f"{kind} is empty")
+    if value.startswith("-"):
+        raise ValueError(f"{kind} starts with dash (flag-like): {value!r}")
+    if "/" in value or "\\" in value:
+        raise ValueError(f"{kind} contains a path separator: {value!r}")
+    if value in {".", ".."}:
+        raise ValueError(f"{kind} is a relative-path marker: {value!r}")
+
+
+def _validate_path_component_no_parent_traversal(value: str, kind: str) -> None:
+    """Reject values containing '..' as a discrete path component.
+
+    Kept separate from the shape check because this rule is the
+    critical security boundary (parent-traversal out of the worktree
+    base) and benefits from its own test target surface.
+    """
+    if ".." in value.split("/") or ".." in value.split("\\"):
+        raise ValueError(f"{kind} contains '..': {value!r}")
+
+
 def _validate_path_component(value: str, *, kind: str) -> str:
     """Reject path components that could escape the worktree base.
 
@@ -75,16 +104,8 @@ def _validate_path_component(value: str, *, kind: str) -> str:
 
     Returns the validated ``value`` for chaining at the call site.
     """
-    if not value:
-        raise ValueError(f"{kind} is empty")
-    if value.startswith("-"):
-        raise ValueError(f"{kind} starts with dash (flag-like): {value!r}")
-    if "/" in value or "\\" in value:
-        raise ValueError(f"{kind} contains a path separator: {value!r}")
-    if ".." in value.split("/") or ".." in value.split("\\"):
-        raise ValueError(f"{kind} contains '..': {value!r}")
-    if value in {".", ".."}:
-        raise ValueError(f"{kind} is a relative-path marker: {value!r}")
+    _validate_path_component_shape(value, kind)
+    _validate_path_component_no_parent_traversal(value, kind)
     return value
 
 
@@ -497,11 +518,7 @@ class LocalWorktreeProvider(WorktreeProvider):
             # keys at 1024 bytes; 256 is the conservative Phase 3 cap
             # matching the plan spec.
             storage_key = f"worktrees/{repo}/{branch}/{handle_id}.tar.zst"
-            if len(storage_key) > 256:
-                raise WorktreeError(
-                    f"Storage key too long ({len(storage_key)} > 256): {storage_key!r}",
-                    error_code=ErrorCode.WORKTREE_BUNDLE_STORAGE_KEY_TOO_LONG,
-                )
+            self._assert_storage_key_length(storage_key)
 
             # Serialize the worktree to a tar.zst temp file (Phase 3
             # context-manager contract). The context manager cleans up
@@ -511,86 +528,159 @@ class LocalWorktreeProvider(WorktreeProvider):
                 # MAX_BUNDLE_BYTES_STOPGAP must use a streaming-only
                 # storage backend; we surface this as a clear
                 # error rather than silently OOM.
-                if size > MAX_BUNDLE_BYTES_STOPGAP:
-                    raise WorktreeError(
-                        f"Bundle size {size} exceeds stopgap cap {MAX_BUNDLE_BYTES_STOPGAP}",
-                        error_code=ErrorCode.WORKTREE_BUNDLE_STOPGAP_TOO_LARGE,
-                    )
-
+                self._assert_bundle_size_within_stopgap(size)
                 record_bundle_bytes(repo=repo, byte_size=size)
+                await self._persist_bundle(temp_path, storage_key, size, sha256)
+                self._record_serialize_metric(start, size)
 
-                if self._storage is not None:
-                    save_stream = getattr(self._storage, "save_stream", None)
-                    if save_stream is None:
-                        # No streaming capability — fail loudly rather
-                        # than silently fall back to ``save`` (the
-                        # whole point of Phase 3 is end-to-end
-                        # streaming; a regression to ``save`` would
-                        # load the full tar.zst into memory).
-                        raise WorktreeError(
-                            f"Storage adapter {type(self._storage).__name__} "
-                            f"does not implement save_stream; cannot persist "
-                            f"Phase 3 tar.zst bundle",
-                            error_code=ErrorCode.WORKTREE_BUNDLE_CODEC_UNAVAILABLE,
-                        )
-
-                    # The chunk_reader is a zero-arg callable that
-                    # returns a fresh iterator on each call. Wrapping
-                    # ``temp_path.read_bytes()`` in a list yields a
-                    # single chunk — for the local adapter this is
-                    # fine; the streaming guarantee comes from the
-                    # S3 / GCS adapters which do multipart upload.
-                    save_stream(
-                        storage_key,
-                        lambda: iter([temp_path.read_bytes()]),
-                        metadata={"sha256": sha256, "size": str(size)},
-                    )
-
-                record_streaming_op(
-                    StreamingOp.SERIALIZE,
-                    "local",
-                    duration_ms=(time.monotonic() - start) * 1000.0,
-                    bytes_processed=size,
-                    success=True,
-                )
-
-            handle = WorktreeHandle(
+            handle = self._build_worktree_handle(
                 handle_id=handle_id,
                 principal=principal,
                 repo=repo,
                 branch=branch,
                 base_ref=base_ref,
-                created_at=datetime.now(UTC),
-                storage_ref=LocalWorktreeRef(
-                    path=wt_path,
-                    worktree_id=handle_id,
-                ),
+                wt_path=wt_path,
                 sha256=sha256,
-                bytes_size=size,
-                cleanup_policy=None,
-                provenance="v4",
+                size=size,
             )
-
-            if self._dhara_client is not None:
-                await register_handles(self._dhara_client, [handle], caller=principal)
-
-            record_worktree_op(
-                backend="local",
-                op="create",
-                duration_seconds=time.monotonic() - start,
-                success=True,
-                principal=principal.name,
-            )
+            await self._register_handle_with_dhara(handle, principal)
+            self._record_create_metric(start, principal, success=True)
             return handle
         except Exception:
-            record_worktree_op(
-                backend="local",
-                op="create",
-                duration_seconds=time.monotonic() - start,
-                success=False,
-                principal=principal.name,
-            )
+            self._record_create_metric(start, principal, success=False)
             raise
+
+    @staticmethod
+    def _assert_storage_key_length(storage_key: str) -> None:
+        """MHV-220: S3 caps storage keys at 1024 bytes; 256 is the Phase 3 cap.
+
+        Must run BEFORE any heavy IO so a misconfigured key fails fast.
+        """
+        from mahavishnu.core.errors import ErrorCode, WorktreeError
+
+        if len(storage_key) > 256:
+            raise WorktreeError(
+                f"Storage key too long ({len(storage_key)} > 256): {storage_key!r}",
+                error_code=ErrorCode.WORKTREE_BUNDLE_STORAGE_KEY_TOO_LONG,
+            )
+
+    @staticmethod
+    def _assert_bundle_size_within_stopgap(size: int) -> None:
+        """MHV-221: refuse bundles above the in-memory stopgap cap.
+
+        Anything larger must go through a streaming-only storage backend;
+        we surface a clear error rather than silently OOM.
+        """
+        from mahavishnu.core.errors import ErrorCode, WorktreeError
+        from .storage_io import MAX_BUNDLE_BYTES_STOPGAP
+
+        if size > MAX_BUNDLE_BYTES_STOPGAP:
+            raise WorktreeError(
+                f"Bundle size {size} exceeds stopgap cap {MAX_BUNDLE_BYTES_STOPGAP}",
+                error_code=ErrorCode.WORKTREE_BUNDLE_STOPGAP_TOO_LARGE,
+            )
+
+    async def _persist_bundle(
+        self,
+        temp_path: Path,
+        storage_key: str,
+        size: int,
+        sha256: str,
+    ) -> None:
+        """Upload the compressed bundle to storage (Phase 3 streaming).
+
+        Fails loudly if the configured adapter doesn't implement
+        ``save_stream`` — silently falling back to ``save`` would
+        load the full tar.zst into memory and defeat the point of
+        Phase 3 streaming.
+        """
+        from mahavishnu.core.errors import ErrorCode, WorktreeError
+
+        if self._storage is None:
+            return
+        save_stream = getattr(self._storage, "save_stream", None)
+        if save_stream is None:
+            raise WorktreeError(
+                f"Storage adapter {type(self._storage).__name__} "
+                f"does not implement save_stream; cannot persist "
+                f"Phase 3 tar.zst bundle",
+                error_code=ErrorCode.WORKTREE_BUNDLE_CODEC_UNAVAILABLE,
+            )
+        # ``temp_path.read_bytes()`` in a list yields a single chunk —
+        # for the local adapter this is fine; the streaming guarantee
+        # comes from the S3 / GCS adapters which do multipart upload.
+        save_stream(
+            storage_key,
+            lambda: iter([temp_path.read_bytes()]),
+            metadata={"sha256": sha256, "size": str(size)},
+        )
+
+    def _record_serialize_metric(self, start: float, size: int) -> None:
+        """Emit the SERIALIZE streaming-op histogram (success path)."""
+        from mahavishnu.observability.metrics import StreamingOp, record_streaming_op
+
+        record_streaming_op(
+            StreamingOp.SERIALIZE,
+            "local",
+            duration_ms=(time.monotonic() - start) * 1000.0,
+            bytes_processed=size,
+            success=True,
+        )
+
+    @staticmethod
+    def _build_worktree_handle(
+        *,
+        handle_id: str,
+        principal: Any,
+        repo: str,
+        branch: str,
+        base_ref: str,
+        wt_path: Path,
+        sha256: str,
+        size: int,
+    ):
+        """Assemble the Phase 3 v4 ``WorktreeHandle`` record."""
+        from datetime import UTC, datetime
+
+        from .types import LocalWorktreeRef, WorktreeHandle
+
+        return WorktreeHandle(
+            handle_id=handle_id,
+            principal=principal,
+            repo=repo,
+            branch=branch,
+            base_ref=base_ref,
+            created_at=datetime.now(UTC),
+            storage_ref=LocalWorktreeRef(
+                path=wt_path,
+                worktree_id=handle_id,
+            ),
+            sha256=sha256,
+            bytes_size=size,
+            cleanup_policy=None,
+            provenance="v4",
+        )
+
+    async def _register_handle_with_dhara(self, handle: Any, principal: Any) -> None:
+        """Forward ``handle`` to Dhara's registry when a client is configured."""
+        from .dhara_registry import register_handles
+
+        if self._dhara_client is None:
+            return
+        await register_handles(self._dhara_client, [handle], caller=principal)
+
+    @staticmethod
+    def _record_create_metric(start: float, principal: Any, *, success: bool) -> None:
+        """Emit the ``worktree_op`` histogram for the create path."""
+        from mahavishnu.observability.metrics import record_worktree_op
+
+        record_worktree_op(
+            backend="local",
+            op="create",
+            duration_seconds=time.monotonic() - start,
+            success=success,
+            principal=principal.name,
+        )
 
     async def fetch(self, handle) -> WorktreeRef:
         """Cache-aside read with SHA-256 verification (§3, §6).
