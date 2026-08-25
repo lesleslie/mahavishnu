@@ -43,17 +43,19 @@ time so a typo never silently spawns an unbounded label set.
 
 from __future__ import annotations
 
-from collections.abc import Mapping
 from enum import StrEnum
 from hashlib import sha256
 import logging
-from typing import Final
+from typing import TYPE_CHECKING, Final
 
 from opentelemetry import metrics
 from opentelemetry.metrics import (  # noqa: TC002 — Counter/Histogram used as module-level variable annotations (deferred by __future__ annotations) + as counter_fn/counter_holder factories
     Counter,
     Histogram,
 )
+
+if TYPE_CHECKING:
+    from collections.abc import Mapping
 
 logger = logging.getLogger(__name__)
 

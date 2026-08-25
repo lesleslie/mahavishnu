@@ -61,7 +61,6 @@ from mahavishnu.core.worktree_providers.local import (
 )
 from mahavishnu.core.worktree_providers.storage_io import (
     MAX_BUNDLE_BYTES_STOPGAP,
-    deserialize_worktree_tar,
     serialize_worktree_tar,
 )
 from mahavishnu.observability.metrics import (
@@ -79,22 +78,12 @@ if TYPE_CHECKING:
     from oneiric.adapters.storage.s3 import S3StorageAdapter
 
     from mahavishnu.core.config import MahavishnuSettings
-    from mahavishnu.core.worktree_providers.types import WorktreeHandle, WorktreeRef
 
-# ``collections.abc`` is in the stdlib so a runtime import is safe
-# even when the type-checker narrows the alias to a TYPE_CHECKING
-# import — both names resolve to ``collections.abc.Callable`` at
-# runtime.
-from collections.abc import Callable, Iterator  # noqa: E402,F401
-
-# ``.types`` is a leaf module (no outbound runtime deps on the
-# provider packages) so importing it eagerly here is safe and lets
-# helper methods declare ``handle: WorktreeHandle`` parameters
-# without ``TYPE_CHECKING``-string-quote workarounds.
-from .types import (  # noqa: E402  (runtime import after TYPE_CHECKING)
-    WorktreeHandle,  # noqa: F401
-    WorktreeRef,
-)
+    from .types import (
+        RemoteWorktreeRef,
+        WorktreeHandle,
+        WorktreeRef,
+    )
 
 logger = logging.getLogger(__name__)
 
@@ -344,7 +333,6 @@ class RemoteWorktreeProvider(WorktreeProvider):
             StreamingOp,
             record_bundle_bytes,
             record_streaming_op,
-            record_worktree_op,
         )
 
         from .types import RemoteWorktreeRef, WorktreeHandle
@@ -495,12 +483,8 @@ class RemoteWorktreeProvider(WorktreeProvider):
            storage-side "missing key" error.
         """
         from mahavishnu.core.errors import ErrorCode, WorktreeError
-        from mahavishnu.observability.metrics import (
-            StreamingOp,
-            record_streaming_op,
-        )
 
-        from .types import LocalWorktreeRef, RemoteWorktreeRef
+        from .types import LocalWorktreeRef
 
         self._validate_remote_handle(handle)
         ref: RemoteWorktreeRef = handle.storage_ref
@@ -599,7 +583,6 @@ class RemoteWorktreeProvider(WorktreeProvider):
         backend_kind: str,
     ):
         """Return cached ``LocalWorktreeRef`` on cache hit, else ``None``."""
-        from mahavishnu.observability.metrics import record_worktree_op
 
         from .types import LocalWorktreeRef
 
@@ -819,7 +802,6 @@ class RemoteWorktreeProvider(WorktreeProvider):
         handle: WorktreeHandle,
     ) -> None:
         """Emit the ``fetch`` histogram with success/failure flag."""
-        from mahavishnu.observability.metrics import record_worktree_op
 
         record_worktree_op(
             backend=backend_kind,

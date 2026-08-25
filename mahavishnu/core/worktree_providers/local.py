@@ -36,13 +36,15 @@ from .base import WorktreeProvider
 from .errors import WorktreeCreationError, WorktreeOperationError
 
 if TYPE_CHECKING:
+    from collections.abc import Callable
+
     from oneiric.adapters.storage.local import LocalStorageAdapter
 
     from mahavishnu.auth import Principal
     from mahavishnu.core.config import MahavishnuSettings
 
     from .cache import WorktreeCache
-    from .types import WorktreeHandle, WorktreeRef
+    from .types import LocalWorktreeRef, WorktreeHandle, WorktreeRef
 
 logger = logging.getLogger(__name__)
 
@@ -610,13 +612,7 @@ class LocalWorktreeProvider(WorktreeProvider):
         5. MHV-222 (NOT_FOUND) when ``storage.load_stream`` raises a
            storage-side "missing key" error.
         """
-        from mahavishnu.core.errors import ErrorCode, WorktreeError
         from mahavishnu.core.paths import get_worktree_base_path
-        from mahavishnu.observability.metrics import (
-            StreamingOp,
-            record_streaming_op,
-            record_worktree_op,
-        )
 
         from .types import LocalWorktreeRef
 
@@ -707,10 +703,8 @@ class LocalWorktreeProvider(WorktreeProvider):
     ) -> LocalWorktreeRef:
         """Return the on-disk path when no storage adapter is configured."""
         from mahavishnu.core.errors import ErrorCode, WorktreeError
-
         from mahavishnu.observability.metrics import record_worktree_op
 
-        from .types import LocalWorktreeRef
 
         if not handle.storage_ref.path.exists():
             raise WorktreeError(
