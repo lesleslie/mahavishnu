@@ -103,7 +103,14 @@ class WorktreeProviderRegistry:
                 for p in self._providers:
                     if p.provider_name() == getattr(top, "provider", None):
                         try:
-                            if await p.health():
+                            # v4 providers expose ``health()`` (returns
+                            # HealthReport); v1 providers only have
+                            # ``health_check()`` (returns bool). Cast
+                            # to Any because ``hasattr`` doesn't narrow
+                            # for ty; runtime check is correct.
+                            from typing import cast
+
+                            if hasattr(p, "health") and await cast("Any", p).health():
                                 self._provider_health[p.provider_name()] = True
                                 return p
                         except Exception:  # noqa: BLE001 — best-effort health probe; logged + falls through to legacy path
