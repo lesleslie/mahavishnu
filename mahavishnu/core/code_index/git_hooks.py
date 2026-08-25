@@ -15,12 +15,13 @@ mahavishnu index repo --trigger git-event "$(pwd)" &
 # Pre-commit hook guards against hardcoded *_KEY / *_TOKEN / *_SECRET literals
 # landing in any .mcp.json. No-op when the audit script is absent (so other
 # repos without scripts/audit_no_secrets_in_mcp.py can still install hooks).
+# `|| exit 1` propagates the audit's exit code so a violation blocks the commit.
 PRE_COMMIT_CONTENT = """#!/bin/sh
 # Managed by mahavishnu index install-hooks
 # Remove with: mahavishnu index uninstall-hooks <path>
 # Enforces .claude/decisions/2026-08-24-bodai-mcp-routing-pattern.md §1.
 if [ -f "scripts/audit_no_secrets_in_mcp.py" ]; then
-    python3 scripts/audit_no_secrets_in_mcp.py
+    python3 scripts/audit_no_secrets_in_mcp.py || exit 1
 fi
 """
 

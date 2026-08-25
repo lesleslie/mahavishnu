@@ -120,7 +120,10 @@ class TestHookContent:
 
         Enforces .claude/decisions/2026-08-24-bodai-mcp-routing-pattern.md §1.
         The script path is guarded with -f so repos without the audit
-        script can still install without breaking.
+        script can still install without breaking. The audit's exit code
+        must be propagated via `|| exit 1` so a violation blocks the
+        commit — the surrounding `if [ -f ... ]; then ... fi` would
+        otherwise swallow the exit code.
         """
         pre_commit = _HOOK_TEMPLATES["pre-commit"]
         assert pre_commit.startswith("#!/bin/sh")
@@ -128,3 +131,5 @@ class TestHookContent:
         assert "scripts/audit_no_secrets_in_mcp.py" in pre_commit
         # Guard clause so non-mahavishnu repos don't break on install
         assert '[ -f "scripts/audit_no_secrets_in_mcp.py" ]' in pre_commit
+        # Audit's non-zero exit must propagate (otherwise the if swallows it)
+        assert "|| exit 1" in pre_commit
