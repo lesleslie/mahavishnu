@@ -11,15 +11,31 @@ purpose: comprehensive critical audit of CLI commands across the Bodai Core 7, p
 
 # Bodai Core 7 CLI Audit & Standardization
 
-> **Origin**: ultracode-style comprehensive critical audit dispatched 2026-08-25
-> covering CLI command surfaces across the Bodai Core 7 control plane
-> (mcp-common, oneiric, dhara, session-buddy, akosha, crackerjack, mahavishnu),
-> the `bodai` meta-CLI, and the existing IPython admin shell infra.
->
-> **Companion research**: 7 parallel subagents (one per Core 7 repo) confirmed
-> the IPython admin shell lives in **`oneiric`** (not mcp-common as I initially
-> misremembered), with `AdminShell` as the base class for cross-component
-> subclasses. Full findings are in §11 (Cross-shell landscape).
+## What & Why (for the human reviewer)
+
+**Goal**: every Core 7 CLI exposes consistent `version`, `doctor`,
+`health` global commands. A single `bodai` umbrella CLI composes all
+seven via entry-point discovery. Library-only `mcp-common` stays as-is.
+
+**Origin**: ultracode-style comprehensive critical audit, 2026-08-25.
+
+**Read order** (pick one):
+- **5 min skim**: §1 Outcome + §3 Non-Goals + §5.0 phase index
+- **20 min review**: above + §5 phases (skim Integration Contracts)
+- **60 min deep read**: everything; cross-check §4 findings against
+  the actual repo state
+
+**Concerns to flag**: §3 Non-Goals drift, §8 Risks (now 11 rows after
+round-2 review; see §5.0 for the per-phase structure).
+
+---
+
+> **Companion research note**: 7 parallel subagents (one per Core 7
+> repo) confirmed the IPython admin shell lives in **`oneiric`** (not
+> mcp-common as initially assumed), with `AdminShell` as the base
+> class for cross-component subclasses. Full findings live in the
+> research baseline file (see §10 Cross-references); Phase 1 will
+> supersede them with the inventory tool output.
 
 ## 1. Outcome
 
@@ -127,6 +143,36 @@ yet running the inventory tool. The inventory (Phase 1) will surface more.
 
 ## 5. Implementation Phases
 
+### §5.0 Phase index (at-a-glance)
+
+| Phase | Goal | Depends on | Commits | Smoke-test command |
+|---|---|---|---|---|
+| **0.0** | Pre-flight: mcp-common factory syntax fix | — | 1 | `git grep -n 'except.*,' mcp-common/mcp_common/cli/factory.py` returns zero matches |
+| **0** | Inventory tool (`audit_cli_inventory.py`) + per-repo inventories | — | 1 (script) + 6 (Phase 1) | `python scripts/audit_cli_inventory.py --all` exits 0; 6 JSON files in `docs/audit-inventory/` |
+| **1** | Per-repo inventories + staleness signals | 0 | 6 + 1 mcp-common confirmation | `ls docs/audit-inventory/*-cli-inventory.json \| wc -l` = 6 |
+| **2** | Cross-repo synthesis + findings.md | 1 | 1 | `wc -l docs/audit-inventory/findings.md` ≤ 250 (CI gate) |
+| **3** | Gap closure (REMOVE / UPDATE / ADD-NEW / staleness) | 2 (for staleness table) | ~10 parallel per-repo commits | per-finding commit testable in isolation |
+| **4** | `BodaiCLIBase` standardization | 0.0 (pre-flight) | 1 (oneiric base class) + 1 (mcp-common factory extension) + 6 (per-repo conversions) | per-repo CI: `pytest` exits 0; `<repo> version` exits 0 |
+| **5** | `bodai` umbrella + entry-points | 4 | 6 (per-repo entry-points) + 2 (bodai `_discover_apps` + `version`/`apps`) | umbrella CI: `bodai --help` lists 7 sub-CLIs |
+| **6** | Verify `bodai shell` / `bodai dashboard` / `mahavishnu monitor --tui` | 5 | 1 (mahavishnu `tui` wire) + 1 (bodai try/except removal) + 1 (tests) | per-CI: `pytest bodai/tests/test_dashboard.py` passes |
+| **7** | Verification + sign-off + quarterly staleness cadence | 6 | 2 (registry update + cadence note) | `diff_inventories.py` exits 0; 0 critical findings; `bodai --help \| wc -l` matches |
+
+**Critical-path items** (block the most downstream work):
+- **0.0** — 4-character fix, lands today, unblocks Phase 4.2.
+- **4.0** — oneiric package conversion, lands before Phase 4.1.
+- **4.2** — `register_lifecycle_handlers` extension, lands before Phase 4.3 (depends on 0.0).
+- **5** entry-point commits depend on each repo's Phase 4.3 file moves/renames.
+
+**Parallelizable** (no inter-dependencies):
+- Phase 3 sub-phases (each per-repo commit is independent)
+- Phase 4.3 per-repo conversions (after 4.0+4.1+4.2)
+- Phase 5.1 per-repo entry-point declarations (after 4.3's file moves land)
+- Phase 6 TUI verifications (after 5's entry-points are visible)
+
+**Net wall-clock** if all parallelization applied: ~7.5-11.5 days (vs
+~11-17 days if serialized). **Phase 3.4 staleness remediation** can
+also parallelize with Phase 4.3 / 5.1.
+
 ### Phase 0 — Inventory tool (precondition for the audit)
 
 **Goal**: a shared static-inventory tool that walks each Core 7's Typer app
@@ -134,8 +180,23 @@ recursively and captures the per-command schema.
 
 **Tasks:**
 
+- 0.0 — **Pre-flight fix** (land BEFORE anything else): fix Python 2
+  `except ValueError, OSError:` syntax in
+  `mcp-common/mcp_common/cli/factory.py` at lines 530 and 745 →
+  `except (ValueError, OSError):`. Latent bug (same shape as
+  crackerjack `session_compat.py:75` finding). 4-character change,
+  unblocks Phase 4.2's `register_lifecycle_handlers` extension. 1
+  commit in mcp-common. **This is moved up from the original Phase 3.2.6
+  because it has zero dependency on the inventory/synthesis and the
+  parallelization review flagged it as a critical-path item that
+  doesn't need to be critical-path.**
 - 0.1 — Write `scripts/audit_cli_inventory.py` in mahavishnu (reusable
   across all 7 repos; no per-repo forks).
+  **Location decision**: the script lives in `mahavishnu/scripts/` per
+  the established `audit_no_secrets_in_mcp.py` precedent. Phase 1
+  subagents either (a) install mahavishnu before running, or (b) copy
+  the script into their own `scripts/` for the duration of the agent
+  task (not committed; throwaway).
 - 0.2 — Walk each repo's Typer `app` recursively via the in-process API;
   fall back to `subprocess --help` if a repo's CLI is broken.
 - 0.3 — Per-command fields captured: `repo`, `entry_point`, `command_path`,
@@ -143,28 +204,45 @@ recursively and captures the per-command schema.
   `experimental`, `first_added_sha`, `last_modified_sha`,
   `last_modified_date`, `tests_present`, `doc_referenced`,
   `subcommand_count`, `notes`.
+  **Plus staleness signals** (per user requirement that "all CLI
+  commands be audited to make sure they still reflect current
+  features"): `todo_markers` (count of `TODO|FIXME|XXX|HACK` in the
+  command's source), `last_activity_days` (days since last git
+  commit touching the command's source module), `short_help_vs_impl_drift`
+  (manual flag, set by Phase 1 agent during review), `staleness_verdict`
+  (one of `current`/`stale`/`deprecated`/`unknown`).
 - 0.4 — Emit both `docs/audit-inventory/<repo>-cli-inventory.json`
   (machine-readable) and `docs/audit-inventory/<repo>-cli-inventory.md`
   (human-readable).
 - 0.5 — Smoke-test against mahavishnu (largest CLI surface) before Phase 1.
+- 0.6 — Save `docs/audit-inventory/PHASE_0_BASELINE.json` as the
+  committed baseline snapshot. Phase 7 diffs against this file.
 
 **Integration Contract (Phase 0):**
 
 - **Triggered from**: operator runs `python scripts/audit_cli_inventory.py
   --repo <r>` (or `--all`).
 - **Returns to / updates**: writes
-  `docs/audit-inventory/<r>-cli-inventory.{json,md}`; exits 0/1 per repo.
-- **Demonstrable by**: `jq '.commands | length'
-  docs/audit-inventory/mahavishnu-cli-inventory.json` returns a non-zero
-  integer; `jq '.commands | length'
-  docs/audit-inventory/mcp-common-cli-inventory.json` returns 0 (with
-  `notes: ["library-only; no CLI surface"]`).
-- **Rollback signal**: inventory script broken in CI → skip audit phases
-  until fixed; do not block existing tests.
-- **Observability added**: per-repo inventory JSON files; baseline
-  command-count column in `BODAI_REPO_REGISTRY.md` (Phase 7 adds the
-  registry row; Phase 0 only captures the baseline numbers in
-  the inventories themselves).
+  `docs/audit-inventory/<r>-cli-inventory.{json,md}` and
+  `PHASE_0_BASELINE.json`; exits 0/1 per repo.
+- **Demonstrable by**:
+  - `jq '.commands | length'
+    docs/audit-inventory/mahavishnu-cli-inventory.json` ≥ 50
+    (matches the 20+ `*_cli.py` files plus expected subcommands)
+  - `jq '.commands | length'
+    docs/audit-inventory/mcp-common-cli-inventory.json` = 0 (with
+    `notes: ["library-only; no CLI surface"]`)
+  - `jq '.commands[].command_path' mahavishnu-cli-inventory.json | sort -u | wc -l`
+    matches `mahavishnu --help 2>&1 | awk '/^  [A-Za-z]/ {print $1}' | sort -u | wc -l`
+    (inventory vs runtime parity check)
+  - `scripts/audit_cli_inventory.py --all` exits 0 against current state
+- **Rollback signal**: `audit_cli_inventory.py --all` exits non-zero,
+  OR any `*.json` file in `docs/audit-inventory/` is invalid JSON,
+  OR any file's `notes` contains `inventory_failed`. Skip Phases 1-7
+  until cleared; do not block existing per-repo tests.
+- **Observability added**: per-repo inventory JSON+MD files;
+  `PHASE_0_BASELINE.json` committed; Phase 7 enriches the registry
+  with per-repo CLI surface summary columns.
 
 ### Phase 1 — Per-repo parallel inventory
 
@@ -218,7 +296,7 @@ recursively and captures the per-command schema.
 ### Phase 2 — Cross-repo synthesis
 
 **Goal**: cross-reference all 6 inventories to surface duplications, gaps,
-and inconsistencies.
+inconsistencies, and staleness.
 
 **Tasks:**
 
@@ -231,17 +309,29 @@ and inconsistencies.
   - Orphan sub-CLI modules per repo (drift from `app = ...`)
   - Hidden/deprecated commands still referenced in docs
   - Top-10 most-changed commands (signal of where design is settling)
+  - **Stale commands table** (Phase 3.4 input): per-command
+    `staleness_verdict` from `audit_cli_inventory.py --check-stale`,
+    grouped by repo, with the staleness reason (TODO markers,
+    short-help vs impl drift, no recent activity, etc.)
 - 2.3 — Each row in the duplications table cites the inventory rows
   that surfaced it (so the reviewer can dismiss false positives).
 
 **Integration Contract (Phase 2):**
 
 - **Triggered from**: Phase 1 completed.
-- **Returns to / updates**: `findings.md` ≤ 250 lines.
-- **Demonstrable by**: each row links to a JSON inventory row.
-- **Rollback signal**: synthesis produced contradictions → revise and
-  re-run.
-- **Observability added**: `findings.md` becomes input to Phases 3-5.
+- **Returns to / updates**: `findings.md` ≤ 250 lines (CI-gated).
+- **Demonstrable by**:
+  - `test "$(wc -l < docs/audit-inventory/findings.md)" -le 250`
+  - `python scripts/validate_findings.py docs/audit-inventory/findings.md`
+    passes (parses every cited inventory row; verifies the inventory
+    file exists; verifies the cited row index is in range)
+  - `scripts/audit_cli_inventory.py --check-stale --repo <r>` for each
+    repo produces a list; Phase 3.4's table consumes those lists.
+- **Rollback signal**: `findings.md > 250 lines` (CI gate); or
+  `validate_findings.py` exits non-zero (broken inventory links);
+  or `check-stale` reports > 5 stale commands (regenerate).
+- **Observability added**: `findings.md` (human-readable, links to
+  inventory JSON); `validate_findings.py` + `wc -l` gate (CI).
 
 ### Phase 3 — Gap closure (REMOVE / UPDATE / ADD-NEW, by severity)
 
@@ -312,6 +402,24 @@ repo.
   `mahavishnu/docs/ADMIN_SHELL.md`: cross-link so users know all 5 shells
   share the `AdminShell` base.
 
+#### Phase 3.4 — Staleness remediation (per user requirement)
+
+Per the requirement that "all CLI commands be audited to make sure
+they still reflect current features and have not been
+deprecated/obsoleted":
+
+- 3.4.1 — For each Phase 1 inventory row with `staleness_verdict` in
+  `{stale, deprecated}`: emit a finding row in `findings.md` with the
+  per-command staleness reason (TODO markers, no recent activity,
+  short-help vs implementation drift).
+- 3.4.2 — Per-stale-command remediation: either deprecate (add
+  `deprecated=True` to Typer decorator + add deprecation note to
+  short_help), implement the missing functionality, or REMOVE the
+  command (with grep guard for `~/.zshrc`, `scripts/`, and docs).
+- 3.4.3 — Per-repo test: `audit_cli_inventory.py --repo <r> --check-stale`
+  exits 0 only when no commands are marked `stale` (post-remediation).
+  Wire into per-repo CI.
+
 **Integration Contract (Phase 3):**
 
 - **Triggered from**: Phase 2 findings.
@@ -336,44 +444,92 @@ repo.
   `oneiric/cli/__init__.py`, then add `oneiric/cli/base.py` for
   `BodaiCLIBase`. No other Core 7 has this issue (dhara, crackerjack,
   etc. already use `cli/` directories).
+  **Verification step**: after conversion, run
+  `python -m oneiric --help` and diff against the pre-conversion
+  command list. If anything changes, the conversion missed a
+  top-level reference or order-sensitive import — fix and re-run.
 - 4.1 — Add `oneiric/cli/base.py` with `BodaiCLIBase(typer.Typer)` and
   `ExitCode`. Provides:
   - `version` command (auto-registers from `importlib.metadata.version`)
   - `doctor` command (calls `_doctor_checks()` subclass hook)
   - `health` command (calls `_health_probe()` subclass hook)
+  - `--json` global option (Typer context-var; when set, every
+    command emits JSON via per-command `_format_json()` hook)
   - Standardized exit codes via `ExitCode` enum
   - Tests in `oneiric/tests/cli/test_base.py`
   - **Constraint**: `BodaiCLIBase` MUST NOT register its own
-    `@app.callback`; Typer allows only one callback per app, and
-    oneiric (`oneiric/cli.py:1959`) and mahavishnu (`_main_cli.py`)
-    each define `@app.callback(invoke_without_command=True)` for their
-    own state initialization. Subclasses retain callback registration.
+    `@app.callback`. Existing callbacks at (verified 2026-08-25):
+    - oneiric `cli.py:1959` (config setup)
+    - akosha `cli.py:54` (`@app.callback(invoke_without_command=True) def main` — shows help when no subcommand)
+    - crackerjack `__main__.py:138` (`@app.callback(invoke_without_command=True) def version_option` — handles `--version` flag)
+    - dhara `cli.py:706` (`@app.callback() def global_options` — handles `--version` flag)
+    - session-buddy `cli/__init__.py:218` (`@app.callback(invoke_without_command=True) def _root` — handles `--version` flag)
+    - **mahavishnu has NO `@app.callback` (verified — `app = typer.Typer(name="mahavishnu")` at `_main_cli.py:81`)**.
+  Phase 4.3 conversions MUST:
+  - Preserve akosha's `main` callback (orthogonal to `BodaiCLIBase`)
+  - **REMOVE** crackerjack/dhara/session-buddy's `--version` callbacks
+    (the new `BodaiCLIBase.version` subcommand is equivalent UX, and
+    Typer allows only one callback per app)
+  - Install `--json` via the base class context-var, NOT a callback
 - 4.2 — Extend `mcp_common/cli/factory.py::MCPServerCLIFactory` with a
   `register_lifecycle_handlers(app: typer.Typer) -> None` method that
   mounts the factory's `start`/`stop`/`restart`/`status`/`health`
-  handlers onto an external Typer instance (preserves the factory's
-  behavior while letting each repo put `start`/`stop` on its own
-  `BodaiCLIBase`).
-  - **Pre-condition** (Phase 3.2.6 first): fix Python 2
+  handlers onto an external Typer instance. Each repo that needs
+  lifecycle verbs builds its own `factory = MCPServerCLIFactory(...)`,
+  constructs `app = BodaiCLIBase(...)`, then calls
+  `factory.register_lifecycle_handlers(app)` (3-step recipe; see
+  Phase 4.3 dhara example).
+  - **Pre-condition** (Phase 0.5 fix lands first): fix Python 2
     `except ValueError, OSError:` syntax at factory lines 530 and 745
     before exposing handlers externally — these are latent bugs that
     would re-mount silently broken handlers onto every Core 7's
     `BodaiCLIBase`.
-- 4.3 — Convert each Core 7's `app` definition:
+- 4.3 — Convert each Core 7's `app` definition. Six per-repo
+  conversions are **independent** and can land as parallel commits
+  once Phase 4.0 + 4.1 + 4.2 land:
   - `oneiric/cli/__init__.py` (after package conversion in 4.0):
-    `app = BodaiCLIBase(component_name="oneiric", ...)`
-  - `dhara/cli.py`: same; `factory.register_lifecycle_handlers(app)`
-  - `session_buddy/cli.py` (NOT `__main__.py` — `app` is here):
-    same; `factory.register_lifecycle_handlers(app)`
-  - `crackerjack/__main__.py`: move `app = factory.create_app()` to
-    `crackerjack/cli/__init__.py` and convert; or convert in place
-    - Move `app` definition out of `__main__.py` to make importable
-  - `akosha/cli.py`: `app = BodaiCLIBase(component_name="akosha", ...)`
+    `app = BodaiCLIBase(component_name="oneiric", ...)`.
+    Preserves existing `cli.py:1959` callback.
+  - `dhara/cli.py`: 3-step factory recipe:
+    ```python
+    factory = MCPServerCLIFactory(component_name="dhara", ...)
+    app = BodaiCLIBase(component_name="dhara", ...)
+    factory.register_lifecycle_handlers(app)
+    ```
+    REMOVES existing `cli.py:706` `--version` callback (replaced by
+    `BodaiCLIBase.version` subcommand).
+  - `session_buddy/cli/__init__.py` (NOT `cli.py` — `app` is in the
+    package's `__init__.py:204`): same factory recipe as dhara.
+    REMOVES existing `cli/__init__.py:218` `--version` callback.
+  - `crackerjack/cli/__init__.py` (new file; move `app =
+    factory.create_app()` from `__main__.py:104` here):
+    factory recipe. REMOVES existing `__main__.py:138` `--version`
+    callback.
+  - `akosha/cli.py`: `app = BodaiCLIBase(component_name="akosha", ...)`.
+    **PRESERVES** existing `cli.py:54` `@app.callback(invoke_without_command=True) def main`
+    (orthogonal to BodaiCLIBase — no collision).
   - `mahavishnu/_main_cli.py`: `app = BodaiCLIBase(component_name="mahavishnu", ...)`.
     **Note**: the `_main_cli.py` underscore prefix is non-idiomatic for
     a public entry-point declaration. Either rename to `main_cli.py`
     (drop underscore) OR explicitly document that the entry-point
     name is `mahavishnu._main_cli:app`. Default: rename.
+- 4.4 — Each repo implements the two hooks `_doctor_checks()` and
+  `_health_probe()` returning the existing per-repo health-check logic.
+  Per-repo CI test asserts:
+  ```python
+  def test_<repo>_doctor_returns_real_checks():
+      app = BodaiCLIBase(component_name="<repo>")
+      checks = app._doctor_checks()
+      assert len(checks) >= 1
+      for c in checks:
+          assert hasattr(c, "name") and hasattr(c, "status")
+  ```
+  Guards against vacuous implementations.
+- 4.5 — Document the "Bodai CLI contract" in
+  `.claude/decisions/2026-08-25-bodai-cli-contract.md`. **Also add a
+  row to `.claude/decisions/README.md` index** (the wire-up-contract
+  policy forbids unindexed decisions; matches the
+  `2026-08-24-bodai-mcp-routing-pattern.md` precedent).
 - 4.4 — Each repo implements the two hooks `_doctor_checks()` and
   `_health_probe()` returning the existing per-repo health-check logic.
 - 4.5 — Document the "Bodai CLI contract" in
@@ -390,11 +546,19 @@ repo.
   mahavishnu — mcp-common is library-only and needs no CLI
   conversion); 1 commit in mcp-common (factory extension); 1 commit
   in oneiric (base class); 1 new decision doc.
-- **Demonstrable by**: `<repo> version` exits 0 across all 7 repos;
-  `<repo> doctor` exits 0 (or documented `ExitCode.UNAVAILABLE` if not
-  implemented); `<repo> --json` flag accepted by all 7.
-- **Rollback signal**: any repo's tests fail after the conversion →
-  revert that one repo's commit.
+- **Demonstrable by**:
+  - **Per-CI** (each repo): `<repo> version` exits 0;
+    `<repo> doctor` exits 0 (or documented `ExitCode.UNAVAILABLE` if
+    not yet implemented); `pytest tests/cli/test_base.py` passes
+    (asserts `isinstance(app, BodaiCLIBase)`); `pytest` (full suite)
+    passes (catches "BodaiCLIBase adoption broke my test" per Risk
+    Row 6).
+  - **Umbrella CI** (mahavishnu job installs all 7): for each repo,
+    `<repo> version`, `<repo> doctor`, `<repo> --json version` all
+    exit 0; one shell loop covers all 7.
+- **Rollback signal**: any converted repo's `pytest` exits non-zero →
+  revert that one repo's commit (per-repo rollback). The umbrella CI
+  job surfaces the failing repo by name in CI log output.
 - **Observability added**: per-repo `version` subcommand; `doctor`
   subcommand; uniform exit codes across the ecosystem.
 
@@ -410,43 +574,92 @@ repo.
   [project.entry-points."bodai.apps"]
   <repo> = "<repo>.<module>:app"
   ```
-  Concrete target per repo (verify in Phase 1 inventory):
-  - `oneiric = "oneiric.cli:app"` (after package conversion)
-  - `dhara = "dhara.cli:create_cli"` — **dhara exposes a factory, not
-    a module-level `app`**; the entry-point must invoke the factory,
-    or `bodai/cli.py::_discover_apps()` must call `create_cli()` and
-    mount its return value. Default: add `app = create_cli()` at
-    module-level in `dhara/cli.py` and use `"dhara.cli:app"`.
-  - `session-buddy = "session_buddy.cli:app"`
-  - `akosha = "akosha.cli:app"`
-  - `crackerjack = "crackerjack.cli:app"` (after moving `app` from
-    `__main__.py` per Phase 4.3)
-  - `mahavishnu = "mahavishnu.cli:app"` (after rename in Phase 4.3;
-    note that `mahavishnu/cli/__init__.py:36` re-exports `app` from
-    `_main_cli` via a lazy attribute, which works but underscore paths
-    in entry-points are non-idiomatic)
-  One commit per repo (6 commits).
-- 5.2 — `bodai/cli.py`: add `_discover_apps()` helper that walks
-  `importlib.metadata.entry_points(group="bodai.apps")` and calls
-  `app.add_typer(sub_app, name=ep.name)` for each. Lazy-import on
-  failure (skip + warn, don't crash).
-- 5.3 — Smoke-test: with all 7 repos installed, `bodai --help` lists
-  all 7 sub-CLIs; `bodai akosha --help` lists akosha commands; etc.
-- 5.4 — Add `tests/test_umbrella.py` in bodai that uses mock entry-points
-  to verify the composition logic without requiring all 7 repos in CI.
+  Concrete target per repo (verified 2026-08-25):
+
+  | Repo | Entry-point target | Notes |
+  |---|---|---|
+  | `oneiric` | `oneiric.cli:app` | after package conversion (4.0) |
+  | `dhara` | `dhara.cli:app` | add `app = create_cli()` at module-level; or have bodai's `_discover_apps` call the factory and catch the result. **Test for no import side-effects**: `python -c "import dhara.cli; import unittest.mock as m; with m.patch.object(dhara.cli, 'create_cli') as f: assert f.call_count == 0"` |
+  | `session-buddy` | `session_buddy.cli:app` | **app lives in `cli/__init__.py:204`, NOT a `cli.py` file**. Must add module-level `app = create_session_buddy_cli()` (currently `app` is local to `create_session_buddy_cli()` and returned via the factory). **Entry-point conflict**: `session-buddy/pyproject.toml` already declares `session_buddy = "session_buddy.__main__:main"`. REPLACE with `session-buddy = "session_buddy.cli:app"` (the existing `session_buddy` entry-point stays untouched; the new `session-buddy` is the kebab-case bodai entry-point). |
+  | `akosha` | `akosha.cli:app` | verified |
+  | `crackerjack` | `crackerjack.cli:app` | after moving `app` from `__main__.py` per Phase 4.3 |
+  | `mahavishnu` | `mahavishnu.cli:app` | after rename in Phase 4.3; `_main_cli.py` → `main_cli.py` |
+
+  One commit per repo (6 commits). For repos with crackerjack's
+  `app` move or session-buddy's entry-point conflict, verify
+  with: `pip install -e <repo> && <repo> --help | head -5` after
+  commit.
+- 5.2 — `bodai/cli.py`: add `_discover_apps()` helper:
+  ```python
+  def _discover_apps(app: typer.Typer) -> None:
+      """Mount registered Bodai apps via the bodai.apps entry-point group."""
+      from importlib.metadata import entry_points
+      try:
+          eps = entry_points(group="bodai.apps")
+      except Exception as e:  # pragma: no cover
+          console.print(f"[yellow]No bodai.apps entry points available: {e}[/yellow]")
+          return
+      for ep in sorted(eps, key=lambda e: e.name):
+          try:
+              sub_app = ep.load()
+          except (ImportError, ModuleNotFoundError) as e:
+              console.print(f"[yellow]Skipping {ep.name}: import failed ({e})[/yellow]")
+              continue
+          except Exception as e:  # noqa: BLE001 - boundary handler catches all errors
+              console.print(f"[yellow]Skipping {ep.name}: load failed ({e})[/yellow]")
+              continue
+          app.add_typer(sub_app, name=ep.name)
+  ```
+  Catches `ImportError`/`ModuleNotFoundError` per-app (skip + warn),
+  NOT bare `Exception` (which would hide real bugs). When 0 entry
+  points are registered, `bodai --help` still works (no sub-CLIs).
+- 5.3 — Smoke-test: with all 7 repos installed (umbrella CI), `bodai
+  --help` lists all 7 sub-CLIs; `bodai akosha --help` lists akosha
+  commands; etc.
+- 5.4 — Add `tests/test_umbrella.py` in bodai that uses mock
+  entry-points (via `monkeypatch.setattr(bodai.cli, 'entry_points', ...)`)
+  to verify the composition logic without requiring all 7 repos in
+  per-repo CI. **Specific tests**:
+  - `test_discover_apps_with_mock_entry_points` — registers 7 fake
+    entry-points; asserts all 7 sub-CLIs appear in `bodai --help`.
+  - `test_discover_apps_skips_broken_import` — registers 1 broken
+    entry-point + 6 healthy; asserts `bodai --help` lists 6 (broken
+    skipped with warning, no crash).
+  - `test_discover_apps_no_entry_points` — empty entry-points group;
+    asserts `bodai --help` works and shows "no bodai.apps registered"
+    message.
+- 5.5 — Implement two cross-component aggregation commands
+  (promised in Phase 5 Observability but never assigned a task):
+  - `bodai version` — walks `_discover_apps()` output, prints each
+    registered app's `importlib.metadata.version(<dist-name>)` as a
+    2-column table.
+  - `bodai apps` — lists entry-point names and their target module
+    path (`bodai.apps.<dist-name> = <module>:<attr>`).
+  Per-CI test: `bodai version | wc -l >= 1` (with mock apps) or 7
+  (umbrella CI).
 
 **Integration Contract (Phase 5):**
 
 - **Triggered from**: Phase 4 completed (all apps use `BodaiCLIBase`).
+  Phase 3.1 critical findings closed (so demonstrable
+  `bodai akosha shell` actually works).
 - **Returns to / updates**: 6 per-repo pyproject commits + 1 bodai
-  commit + 1 bodai test commit.
-- **Demonstrable by**: `pip install bodai && bodai --help` shows all 7
-  sub-CLIs (or 0 if none installed, with "no bodai.apps registered"
-  message); `bodai akosha shell` works.
-- **Rollback signal**: entry-point discovery raises on import → skip
-  core, log warning, continue.
-- **Observability added**: `bodai version` aggregation command (built
-  from `importlib.metadata.version`); `bodai apps` shows registered apps.
+  commit (`_discover_apps`) + 1 bodai commit (`version`/`apps` +
+  tests) = 8 commits total.
+- **Demonstrable by**:
+  - **Per-CI** (bodai repo only): `pytest
+    bodai/tests/test_umbrella.py` passes (3 test cases above).
+  - **Umbrella CI** (after `pip install -e bodai oneiric akosha
+    crackerjack dhara session-buddy mahavishnu mcp-common`):
+    `bodai --help | grep -E '^\s+(oneiric|akosha|crackerjack|dhara|session-buddy|mahavishnu)\b'`
+    returns 6 matches; `bodai version | wc -l` returns 6 lines (or 7
+    if mcp-common gets an entry-point).
+- **Rollback signal**: `pytest bodai/tests/test_umbrella.py` fails
+  → revert the bodai/cli.py `_discover_apps` commit. Per-repo CI
+  failures → revert that repo's entry-point commit.
+- **Observability added**: `bodai version` (aggregates versions
+  across all 7); `bodai apps` (lists registered apps + targets);
+  per-repo entry-points visible via `importlib.metadata`.
 
 ### Phase 6 — Verify & polish the two `bodai` surface commands
 
@@ -507,30 +720,55 @@ mahavishnu-scoped TUI (pools/workers). Both TUIs coexist.
 
 ### Phase 7 — Verification + sign-off
 
-**Goal**: confirm net improvement vs. baseline.
+**Goal**: confirm net improvement vs. baseline; establish ongoing
+staleness re-audit cadence.
 
 **Tasks:**
 
-- 7.1 — Re-run `audit_cli_inventory.py --all` and diff against Phase 0
-  baseline.
-- 7.2 — Confirm: 0 critical findings remain; 0 orphan sub-CLI modules;
+- 7.1 — Re-run `audit_cli_inventory.py --all` and diff against
+  `docs/audit-inventory/PHASE_0_BASELINE.json` via
+  `scripts/diff_inventories.py`. Per-repo command count must be
+  within ±2 of baseline (excludes Phase 3 ADD-NEW findings explicitly
+  tracked in `findings.md`).
+- 7.2 — Confirm: 0 critical findings remain (gate via
+  `jq '[.[] | select(.severity == "critical")] | length == 0' findings.json`,
+  after encoding severity in inventory JSON); 0 orphan sub-CLI modules;
   0 hidden commands referenced in docs; `bodai --help` lists all 7
   registered sub-CLIs.
 - 7.3 — Update `BODAI_REPO_REGISTRY.md` with per-repo CLI surface
   summary (entry point + command count + BodaiCLIBase adoption).
 - 7.4 — Update `.claude/decisions/2026-08-25-bodai-cli-contract.md`
   `last_reviewed:` field.
+- 7.5 — **Quarterly staleness re-audit cadence** (per user
+  requirement that commands be audited for obsolescence): add a
+  cron-style reminder or a session-buddy reminder entry that runs
+  `scripts/audit_cli_inventory.py --check-stale --all` every 90 days
+  and writes the output to `docs/audit-inventory/staleness-<date>.json`.
+  Each new finding that emerges between plan executions gets added
+  to Phase 3.4 retroactively. The mechanism is a one-line cron +
+  the existing inventory script; no new infrastructure.
 
 **Integration Contract (Phase 7):**
 
 - **Triggered from**: Phase 6 completed.
 - **Returns to / updates**: 1 commit in mahavishnu for the registry
-  update; the decision doc gets a `last_reviewed` bump.
-- **Demonstrable by**: `BODAI_REPO_REGISTRY.md` carries the per-repo CLI
-  surface summary.
-- **Rollback signal**: net command count increased (regressions).
+  update; the decision doc gets a `last_reviewed` bump; a
+  `.claude/decisions/bodai-cli-staleness-cadence.md` note captures the
+  quarterly re-audit mechanism.
+- **Demonstrable by**:
+  - `BODAI_REPO_REGISTRY.md` carries the per-repo CLI surface summary.
+  - `scripts/diff_inventories.py PHASE_0_BASELINE.json docs/audit-inventory/`
+    exits 0 (within ±2 per repo).
+  - `jq '[.findings[] | select(.severity == "critical")] | length'
+    findings.json` returns 0.
+  - `bodai --help | grep -c '^\s\+\(oneiric\|akosha\|crackerjack\|dhara\|session-buddy\|mahavishnu\)\b'`
+    returns 6.
+- **Rollback signal**: any per-repo `len(commands)` exceeds baseline +
+  2 → identify offending Phase 3.x commit via `git log --oneline
+  docs/audit-inventory/<repo>-cli-inventory.json` and revert.
 - **Observability added**: per-repo CLI surface visible in the
-  registry; future audits have a baseline.
+  registry; quarterly staleness cadence captured; future audits
+  have a baseline + automated diff.
 
 ## 6. Required Code Changes (high-level)
 
@@ -580,17 +818,19 @@ tracked as future work in the decision doc.
 
 ## 8. Risks
 
-| Risk | Likelihood | Mitigation |
-|---|---|---|
-| Inventory script misparses Typer app (hidden nested sub-apps, dynamic registration) | medium | dry-run against mahavishnu first (largest CLI surface); iterate until counts match `mahavishnu --help` recursive walk |
-| Phase-1 subagents hit stale-worktree bugs | medium | EnterWorktree + `git reset --hard main` per repo before each agent (matches established pattern) |
-| Phase-1 subagent context budget exceeded on mahavishnu (largest CLI) | medium | chunk inventory by subcommand tree; merge in Phase 2 |
-| REMOVE breaks user scripts (e.g. `dhara db client`) | low | grep `/Users/les/Projects/*/scripts/`, `~/.zshrc`, and docs for each command before REMOVE; deprecate-not-delete when in doubt |
-| Cross-repo synthesis sees "duplication" where there isn't (coordinated by design) | medium | synthesis agent cites specific evidence (command paths + docstrings) per duplication row; reviewer dismisses false positives |
-| `BodaiCLIBase` adoption breaks per-repo tests that import `app` | medium | run per-repo test suite after conversion; revert per-repo commit if any test fails |
-| Entry-point discovery at `bodai` runtime finds broken imports | medium | `_discover_apps()` catches per-app import errors and warns instead of crashing the whole umbrella |
-| `bodai admin/shell.py` introduces cyclic import (oneiric → mcp-common → bodai) | low | bodai already imports `oneiric`; new shell imports `oneiric.shell` only; verify with smoke test |
-| `MCPServerCLIFactory.register_lifecycle_handlers` change breaks crackerjack/dhara/session-buddy | low | preserve the old `create_app()` API alongside the new method; verify with smoke tests on all three |
+| # | Risk | Likelihood | Mitigation |
+|---|---|---|---|
+| 1 | Inventory script misparses Typer app (hidden nested sub-apps, dynamic registration) | medium | dry-run against mahavishnu first (largest CLI surface); iterate until counts match `mahavishnu --help` recursive walk; per-repo minimum-threshold gate (`commands.length >= known_min`) catches silent undercounts |
+| 2 | Phase-1 subagents hit stale-worktree bugs | medium | EnterWorktree + `git reset --hard main` per repo before each agent (matches established pattern) |
+| 3 | Phase-1 subagent context budget exceeded on mahavishnu (largest CLI, 20+ `*_cli.py`) | medium | chunk inventory by subcommand tree; merge in Phase 2 |
+| 4 | REMOVE breaks user scripts (e.g. `dhara db client`) | low | grep `/Users/les/Projects/*/scripts/`, `~/.zshrc`, and docs for each command before REMOVE; deprecate-not-delete when in doubt |
+| 5 | Cross-repo synthesis sees "duplication" where there isn't (coordinated by design) | medium | synthesis agent cites specific evidence (command paths + docstrings) per duplication row; reviewer dismisses false positives |
+| 6 | `BodaiCLIBase` adoption breaks per-repo tests that import `app` | medium | each per-repo CI runs `pytest` full suite after conversion; if `<repo> pytest` exits non-zero, revert that one repo's commit (umbrella CI job surfaces the failing repo by name) |
+| 7 | Entry-point discovery at `bodai` runtime finds broken imports | medium | `_discover_apps()` catches per-app `ImportError`/`ModuleNotFoundError` and warns to stderr instead of crashing; per-CI test asserts this with a mock broken entry-point |
+| 8 | **`BodaiCLIBase` collides with existing `@app.callback` in 4 of 6 conversion targets** (Typer allows only one). Verified: oneiric `cli.py:1959`, akosha `cli.py:54` (preserve), crackerjack `__main__.py:138` (REMOVE), dhara `cli.py:706` (REMOVE), session-buddy `cli/__init__.py:218` (REMOVE). mahavishnu has no callback. | high | Phase 4.1 enumerates each repo's existing callback with the preserve-or-remove decision; Phase 4.3 per-repo conversions execute those decisions; each conversion runs `python <repo> --help` smoke test before commit |
+| 9 | **session-buddy conversion target file is wrong** (`cli.py` doesn't exist; `app` is in `cli/__init__.py:204`) | high | Phase 4.3 explicitly targets `session_buddy/cli/__init__.py:204`; entry-point declaration uses `session-buddy = "session_buddy.cli:app"` (the `session-buddy` kebab-case replaces the existing `session_buddy` underscore entry-point) |
+| 10 | dhara factory-instance state lost when `register_lifecycle_handlers` mounts onto external Typer | medium | Phase 4.1's `register_lifecycle_handlers` is a method on the factory instance, not a class method; Phase 4.3 dhara recipe shows the 3-step pattern (`factory = MCPServerCLIFactory(...); app = BodaiCLIBase(...); factory.register_lifecycle_handlers(app)`); per-repo CI test asserts `dhara --help | grep -E '^(start|stop|restart|status|health)$'` returns 5 matches |
+| 11 | `bodai shell` import fails on systems where `ipython` isn't installed (genuine; `from IPython.terminal.embed import InteractiveShellEmbed` is lazy-imported inside `AdminShell.start()` but `from oneiric.shell import AdminShell` is eager) | low | bodai `pyproject.toml` declares `ipython>=8.0.0` as runtime dep; Phase 6.4 removes the defensive try/except and replaces it with a real error message including the install command (`uv pip install bodai[shell]`) |
 
 ## 9. Out of Scope (explicit non-goals)
 
@@ -598,13 +838,20 @@ See §3.
 
 ## 10. Cross-references
 
-- Decision doc: `.claude/decisions/2026-08-25-bodai-cli-contract.md`
-  (NEW, written in Phase 4.5)
-- Companion decision: `.claude/decisions/2026-08-24-bodai-mcp-routing-pattern.md` (env audit decisions)
-- `BODAI_REPO_REGISTRY.md` — per-repo CLI surface summary (Phase 7)
-- `oneiric.shell` package — `AdminShell` base class for admin shells
-- `mcp_common.cli.MCPServerCLIFactory` — lifecycle handler source
-- `bodai/cli.py` — existing meta-CLI; gains `_discover_apps()` in Phase 5
+- **Decision doc**: `.claude/decisions/2026-08-25-bodai-cli-contract.md`
+  (NEW, written in Phase 4.5; **also add a row to
+  `.claude/decisions/README.md` index** per wire-up-contract policy)
+- **Research baseline**: `docs/audit-inventory/2026-08-25-research-findings.md`
+  (NEW — moves §11's research data out of the spec body. Phase 1
+  inventory supersedes it. Link here when created in Phase 1)
+- **Companion decision**: `.claude/decisions/2026-08-24-bodai-mcp-routing-pattern.md` (env audit decisions)
+- **`BODAI_REPO_REGISTRY.md`** — per-repo CLI surface summary (Phase 7.3)
+- **`oneiric.shell` package** — `AdminShell` base class for admin shells
+- **`mcp_common.cli.MCPServerCLIFactory`** — lifecycle handler source
+- **`bodai/cli.py`** — existing meta-CLI; gains `_discover_apps()` in Phase 5
+- **Umbrella CI job** (Phase 4 + Phase 5 demonstrables) — new
+  GitHub Actions job in mahavishnu `.github/workflows/umbrella-ci.yml`
+  that installs all 7 packages and runs the multi-repo demonstrables
 
 ---
 
@@ -678,13 +925,24 @@ Phase 3.2.2 closes the akosha gap.
 
 ---
 
-## 12. Self-review checklist (per brainstorming skill)
+## 12. Reviewer checklist (run before approving)
 
-- [x] **Placeholder scan**: no TBD/TODO markers; all phases concrete
-- [x] **Internal consistency**: phases 0→1→2→3→4→5→6→7 sequence is
-      linear and dependency-ordered
-- [x] **Scope check**: focused on a single audit + standardization
-      cycle; decomposition unnecessary
-- [x] **Ambiguity check**: each Phase's "Triggered from / Returns to /
-      Demonstrable by / Rollback signal / Observability added" is
-      concrete
+- [ ] **§1 Outcome** — each "Concrete signal" bullet is verifiable with the
+  listed command in current state (no placeholders, no aspirational
+  signals)
+- [ ] **§2 Goals vs §3 Non-Goals** — no scope creep; each Goal maps to
+  one or more Phase tasks
+- [ ] **§5 phase dependencies** — Phase N's "Triggered from" matches
+  Phase M's "Returns to / updates" (the dependency graph is
+  bidirectional)
+- [ ] **§5.0 phase index** — every phase appears in the index table;
+  no orphan phases, no missing phases
+- [ ] **§6 Required Code Changes** — each checkbox matches the
+  corresponding Phase task (no contradictions; correct file paths)
+- [ ] **§8 Risks** — each row has a concrete mitigation; no bare
+  "low likelihood" entries
+- [ ] **§10 Cross-references** — all referenced files exist or are
+  marked as NEW with their target path
+- [ ] **§7 Decision Rule** — every "done enough" item maps to a
+  runnable CI gate (per-CI for the converted repo, umbrella CI for
+  cross-component)
