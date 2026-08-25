@@ -7,6 +7,7 @@ owner: les
 topic: bodai-cli-audit
 scope: bodai-cli
 purpose: comprehensive critical audit of CLI commands across the Bodai Core 7, plus phased standardization via BodaiCLIBase and bodai-as-umbrella composition
+superseded_by: null
 ---
 
 # Bodai Core 7 CLI Audit & Standardization
@@ -152,9 +153,9 @@ yet running the inventory tool. The inventory (Phase 1) will surface more.
 | **1** | Per-repo inventories + staleness signals | 0 | 6 + 1 mcp-common confirmation | `ls docs/audit-inventory/*-cli-inventory.json \| wc -l` = 6 |
 | **2** | Cross-repo synthesis + findings.md | 1 | 1 | `wc -l docs/audit-inventory/findings.md` ≤ 250 (CI gate) |
 | **3** | Gap closure (REMOVE / UPDATE / ADD-NEW / staleness) | 2 (for staleness table) | ~10 parallel per-repo commits | per-finding commit testable in isolation |
-| **4** | `BodaiCLIBase` standardization | 0.0 (pre-flight) | 1 (oneiric base class) + 1 (mcp-common factory extension) + 6 (per-repo conversions) | per-repo CI: `pytest` exits 0; `<repo> version` exits 0 |
+| **4** | `BodaiCLIBase` standardization | 0.0 (pre-flight) | 1 (oneiric base class) + 1 (mcp-common factory extension) + 6 (per-repo conversions) + 1 (**umbrella CI job — phantom commit, see F1**) | per-repo CI: `pytest` exits 0; `<repo> version` exits 0 |
 | **5** | `bodai` umbrella + entry-points | 4 | 6 (per-repo entry-points) + 2 (bodai `_discover_apps` + `version`/`apps`) | umbrella CI: `bodai --help` lists 7 sub-CLIs |
-| **6** | Verify `bodai shell` / `bodai dashboard` / `mahavishnu monitor --tui` | 5 | 1 (mahavishnu `tui` wire) + 1 (bodai try/except removal) + 1 (tests) | per-CI: `pytest bodai/tests/test_dashboard.py` passes |
+| **6** | Verify `bodai shell` / `bodai dashboard` / `mahavishnu monitor --tui` | 5 (and **3.2.5** for 6.3 specifically — must land after parallel-files consolidation) | 1 (mahavishnu `tui` wire) + 1 (bodai try/except removal) + 1 (tests) | per-CI: `pytest bodai/tests/test_dashboard.py` passes |
 | **7** | Verification + sign-off + quarterly staleness cadence | 6 | 2 (registry update + cadence note) | `diff_inventories.py` exits 0; 0 critical findings; `bodai --help \| wc -l` matches |
 
 **Critical-path items** (block the most downstream work):
@@ -169,9 +170,22 @@ yet running the inventory tool. The inventory (Phase 1) will surface more.
 - Phase 5.1 per-repo entry-point declarations (after 4.3's file moves land)
 - Phase 6 TUI verifications (after 5's entry-points are visible)
 
-**Net wall-clock** if all parallelization applied: ~7.5-11.5 days (vs
-~11-17 days if serialized). **Phase 3.4 staleness remediation** can
-also parallelize with Phase 4.3 / 5.1.
+**Net wall-clock** if all parallelization applied: **~12-16 days
+parallelized** (vs ~20-28 days serialized; see round-2 time-to-implementation
+reviewer's adjustments — oneiric 3K-line package conversion is real work,
+per-repo pytest full-suite gate catches test regressions requiring 1-2
+fix commits per active repo). **Phase 3.4 staleness remediation** can
+parallelize with Phase 4.3 / 5.1.
+
+**Per-commit landing pattern** (every multi-repo phase — 3.1, 3.2, 4.3,
+5.1, 5.5): each per-repo commit lands in its own worktree branch
+(`<worktree>/<phase>-<repo>`), then fast-forwards `main` via
+`git update-ref refs/heads/main <branch> && git push` from the main
+checkout. **Do NOT run cross-worktree file ops in the main checkout** —
+Bash classifier blocks per
+`mahavishname-worktree-isolation-guard-is-bash-classifier`. Refresh
+main checkout's working tree manually between merges. Reference:
+MEMORY.md `git-update-ref-from-worktree`, `bodai-pre-1.0-merge-policy`.
 
 ### Phase 0 — Inventory tool (precondition for the audit)
 
@@ -530,13 +544,6 @@ deprecated/obsoleted":
   row to `.claude/decisions/README.md` index** (the wire-up-contract
   policy forbids unindexed decisions; matches the
   `2026-08-24-bodai-mcp-routing-pattern.md` precedent).
-- 4.4 — Each repo implements the two hooks `_doctor_checks()` and
-  `_health_probe()` returning the existing per-repo health-check logic.
-- 4.5 — Document the "Bodai CLI contract" in
-  `.claude/decisions/2026-08-25-bodai-cli-contract.md`. **Also add a
-  row to `.claude/decisions/README.md` index** (the wire-up-contract
-  policy forbids unindexed decisions; matches the
-  `2026-08-24-bodai-mcp-routing-pattern.md` precedent).
 
 **Integration Contract (Phase 4):**
 
@@ -795,6 +802,7 @@ staleness re-audit cadence.
 - [ ] `/Users/les/Projects/mahavishnu/BODAI_REPO_REGISTRY.md` (modify — add per-repo CLI surface summary column)
 - [ ] `/Users/les/Projects/bodai/README.md` (modify — document `bodai akosha shell` etc.)
 - [ ] `/Users/les/Projects/dhara/README.md` (modify — clarify `dhara admin` vs `dhara db client`)
+- [ ] `/Users/les/Projects/mahavishnu/.github/workflows/umbrella-ci.yml` (NEW — Umbrella CI job: install all 7 packages + run multi-repo smoke loop. Demonstrable gate for every Phase 4.3 conversion and Phase 5 entry-point. NEW commit; does not currently exist.)
 
 ## 7. Decision Rule
 
@@ -834,7 +842,7 @@ tracked as future work in the decision doc.
 
 ## 9. Out of Scope (explicit non-goals)
 
-See §3.
+*(See §3 Non-Goals — this section intentionally duplicated §3 was deleted per round-2 pattern-alignment review.)*
 
 ## 10. Cross-references
 
