@@ -88,6 +88,53 @@ porkbun-dns, spline, synxis-crs, synxis-pms, unifi).
 |---|---|---|---|
 | fastblocks-htmy | /Users/les/Projects/fastblocks-htmy/ | >=3.13 | Self-declared "Development Status :: 7 - Inactive" shim; absorbed into `fastblocks>=0.31.0`. Skip migration. |
 
+## Per-project MCP server and agent scoping
+
+> Established 2026-08-24 per the post-audit architectural decision
+> `.claude/decisions/2026-08-24-bodai-mcp-routing-pattern.md`. Update
+> this table whenever a project gains or loses MCP servers.
+
+### MCP server assignments
+
+| Project | Local `.mcp.json` | Bodai core | Project-specific | Notes |
+|---|---|---|---|---|
+| **mahavishnu** | `/Users/les/Projects/mahavishnu/.mcp.json` | akosha, crackerjack, dhara, mahavishnu, session-buddy, minimax-coding-plan | (none — mahavishnu is control plane) | Also contains 10 noise entries (chart-antv, css, excalidraw, grafana, graphics, langsmith, mermaid, neo4j, penpot-api, pycharm); see Phase 5 of plan for cleanup |
+| **fastblocks** | `/Users/les/Projects/fastblocks/.mcp.json` | crackerjack, session-buddy | mailgun, porkbun-dns, porkbun-domain, splashstand | fastblocks workers + splashstand stdio launch |
+| **splashstand** | `/Users/les/Projects/splashstand/.mcp.json` | crackerjack, session-mgmt | (none — inherits fastblocks' splashstand MCP via fastblocks sessions) | Minimal config; splashstand capability token moved to shell env (see decision §1) |
+| **akosha** | `/Users/les/Projects/akosha/.mcp.json` | (self) | — | Standalone MCP server; loaded when CWD is akosha/ |
+| **dhara** | `/Users/les/Projects/dhara/.mcp.json` | (self) | — | Standalone MCP server |
+| **session-buddy** | `/Users/les/Projects/session-buddy/.mcp.json` | (self) | — | Standalone MCP server |
+| **crackerjack** | `/Users/les/Projects/crackerjack/.mcp.json` | (self) | — | Standalone MCP server |
+
+Other `*-mcp` repos (css-mcp, graphics-mcp, excalidraw-mcp, neo4j-mcp,
+mailgun-mcp, porkbun-dns-mcp, porkbun-domain-mcp, spline-mcp,
+synxis-crs-mcp, synxis-pms-mcp, unifi-mcp, langsmith-mcp,
+opera-cloud-mcp, raindropio-mcp, penpot-api-mcp) each ship their own
+`.mcp.json` for self-testing but are not yet wired into any
+consuming project's `.mcp.json`. Plugin packaging is the planned
+distribution mechanism.
+
+### Agent scoping rules
+
+| Project | Agent location | Notes |
+|---|---|---|
+| Global | `/Users/les/.claude/agents/` | Stack-agnostic specialists + mycelium-core backups |
+| **mahavishnu** | `/Users/les/Projects/mahavishnu/.claude/agents/` | Backend orchestration + Bodai-specific specialists. **Excludes** fastblocks-stack frontend agents (moved out 2026-08-24) |
+| **fastblocks** | `/Users/les/Projects/fastblocks/.claude/agents/` | Frontend-stack specialists: web-components-specialist, pwa-specialist, htmx-specialist, htmy-specialist, fastblocks-specialist |
+| **splashstand** | inherits via CLAUDE.md → fastblocks/.claude/agents/ | splashstand is built on fastblocks |
+
+See `.claude/decisions/agent-curation-strategy.md` for the broader
+agent-curation rule (15k token budget, mycelium-core deduplication).
+
+### Secret rule
+
+**No** literal `*_KEY`, `*_TOKEN`, `*_SECRET`, `*_PASSWORD` values in any
+`.mcp.json` file. All secrets must come from shell env (via `.zshrc`,
+direnv `.envrc`, or 1Password CLI). Enforced by
+`scripts/audit_no_secrets_in_mcp.py` in pre-commit + crackerjack quality gate.
+
+Allowed exception: `*_HOST`, `*_URL`, `*_PORT` (non-secret config).
+
 ## Summary counts
 
 - Core 7 (streaming-tar Phase 3 in-scope)
