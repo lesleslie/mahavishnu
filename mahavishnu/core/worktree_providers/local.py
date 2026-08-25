@@ -481,20 +481,13 @@ class LocalWorktreeProvider(WorktreeProvider):
            metrics with success=True on success, success=False on any
            exception.
         """
-        from datetime import UTC, datetime
 
-        from mahavishnu.core.errors import ErrorCode, WorktreeError
         from mahavishnu.core.paths import get_worktree_path
         from mahavishnu.observability.metrics import (
-            StreamingOp,
             record_bundle_bytes,
-            record_streaming_op,
-            record_worktree_op,
         )
 
-        from .dhara_registry import register_handles
-        from .storage_io import MAX_BUNDLE_BYTES_STOPGAP, serialize_worktree_tar
-        from .types import LocalWorktreeRef, WorktreeHandle
+        from .storage_io import serialize_worktree_tar
 
         handle_id = uuid.uuid4().hex
         # Validate ``repo`` / ``branch`` before they are joined into
@@ -574,6 +567,7 @@ class LocalWorktreeProvider(WorktreeProvider):
         we surface a clear error rather than silently OOM.
         """
         from mahavishnu.core.errors import ErrorCode, WorktreeError
+
         from .storage_io import MAX_BUNDLE_BYTES_STOPGAP
 
         if size > MAX_BUNDLE_BYTES_STOPGAP:
