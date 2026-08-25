@@ -39,8 +39,10 @@ Concrete signal:
 - `python scripts/audit_cli_inventory.py --all` produces parseable JSON for
   every Core 7 repo; per-repo `docs/audit-inventory/<repo>-cli-inventory.json`
   exists
-- `git grep -l 'shell_type="ipython"'` returns zero stale references to
-  shell commands that no longer exist
+- `git grep -l '<Component>Shell'` returns zero stale references to
+  shell classes whose backing CLI command was removed (e.g. if a
+  Core 7's `shell` Typer command is REMOVE'd in Phase 3, the grep
+  should surface any doc/comment still naming `ComponentShell`).
 
 ## 2. Goals
 
@@ -59,7 +61,17 @@ Concrete signal:
    TUI over `bodai.core.health.check_all`).
 7. **Document the new "Bodai CLI contract"** in
    `.claude/decisions/2026-08-25-bodai-cli-contract.md` so future components
-   know how to register.
+   know how to register. **Also add the new decision doc to
+   `.claude/decisions/README.md` index** (the wire-up-contract policy
+   forbids "documented but not indexed" drift).
+8. **Pre-1.0 merge policy**: per Bodai pre-1.0 convention
+   (`.claude/decisions/worktree-autoremove-policy.md`,
+   MEMORY.md `bodai-pre-1.0-merge-policy`), Bodai components merge
+   **directly to main** with no PRs. The 6 per-repo commits in Phase
+   5.1, the 7 conversion commits in Phase 4.3, and all remediation
+   commits in Phase 3 land on `main` (or worktree-branches that
+   fast-forward to `main` via `git update-ref`). No branch protection
+   or PR workflow.
 
 ## 3. Non-Goals
 
@@ -163,6 +175,26 @@ recursively and captures the per-command schema.
   session-buddy, akosha, crackerjack, mahavishnu). Each runs the
   inventory tool against its repo and commits the resulting
   `<repo>-cli-inventory.{json,md}` in a worktree.
+  **Scope reminder**: the inventory must enumerate **every** Typer
+  command — including ones not enumerated in §11 of this spec.
+  Concretely:
+  - **mahavishnu** has 20+ `*_cli.py` files (12 in `mahavishnu/cli/`,
+    11 in the package root). All must be inventoried.
+  - **crackerjack** has ~28 commands (`run`, `run_tests`, `health`,
+    `qa_health`, `shell`, plus sub-apps `docs`, `mcp`, `hypothesis-lock`,
+    `audit`, `skills`, `coverage-ratchet`).
+  - **dhara** has 8+ top-level commands (`admin`, `db {client,start,pack}`,
+    `mcp`, `adapters`, `storage`).
+  - **akosha** has 5 Typer commands (`shell`, `start`, `mcp start`,
+    `version`, `info`, `modes`); the 5 "stub" methods
+    (`aggregate`/`search`/etc.) are IPython namespace helpers, not
+    CLI commands.
+  - **session-buddy** has its `app` in `cli.py` (not `__main__.py` —
+    `__main__.py` is a thin delegate). The Phase 1 agent surfaces this
+    as the target for Phase 3.1.1.
+  - **oneiric** has `shell` at `cli.py:3031-3058` plus lifecycle
+    (`start`/`stop`/`restart`/`health` via `MCPServerCLIFactory`),
+    secret rotation, `config`, and adapter management.
 - 1.2 — mcp-common gets a 7th agent that confirms "library-only, no
   console script, no `cli.py`" and writes
   `docs/audit-inventory/mcp-common-cli-inventory.md` with that
@@ -217,19 +249,39 @@ repo.
 #### Phase 3.1 — Critical (REMOVE / wire-up)
 
 - 3.1.1 — Wire `session-buddy shell` (currently library-only). Add
-  `@app.command("shell")` to `session_buddy/__main__.py` that invokes
+  `@app.command("shell")` to `session_buddy/cli.py` (NOT
+  `__main__.py` — `__main__.py` is a thin delegate; the `app` lies in
+  `cli.py`). The command invokes
   `SessionBuddyShell(manager).start()`. Update `session-buddy/CLAUDE.md`
-  and `docs/` to reference the new command.
-- 3.1.2 — Remove legacy `dhara db client` IPython path
-  (`dhara/__main__.py::interactive_client`). Consolidate onto
-  `dhara admin --confirm`. Update README and docs.
+  and `docs/` to reference the new command. Also flag
+  `session_buddy/analytics/cli.py` (a separate CLI module that
+  Phase 1 should surface) for documentation in Phase 2 synthesis.
+- 3.1.2 — Consolidate `dhara admin` (modern `DharaShell(AdminShell)`)
+  and `dhara db client` (legacy direct-IPython) — both Typer
+  commands exist. The legacy path uses
+  `dhara/__main__.py::interactive_client`, which is **also imported
+  by** the modern `dhara/cli.py::db client` command (line 571). Do
+  NOT delete `interactive_client` — it's still required by the
+  modern `db client` Typer command. The fix is: (a) keep both Typer
+  commands but `dhara db client` keeps the legacy IPython path
+  intentionally (it's a different surface than `dhara admin`), (b)
+  add a doc note explaining when to use each. Update README and docs.
+- 3.1.3 — Add `dhara mcp` (start/status/health/stop), `dhara adapters`,
+  `dhara storage`, `dhara db start`, `dhara db pack` to the
+  `docs/audit-inventory/dhara-cli-inventory.md` so Phase 2 synthesis
+  sees dhara's full surface (8+ commands, not 2).
 
 #### Phase 3.2 — High (UPDATE / remediation)
 
-- 3.2.1 — Akosha stub commands: either implement `aggregate`, `search`,
-  `detect`, `graph`, `trends` against real adapters, OR add a
-  "preview/alpha" gate (config flag) so users know they're stubs. Default:
-  gate them behind `akosha.alpha_shell_commands_enabled: bool = False`.
+- 3.2.1 — Akosha **shell namespace** methods (`aggregate`, `search`,
+  `detect`, `graph`, `trends` — these are **IPython shell namespace
+  helpers, not Typer CLI commands**): either implement against real
+  adapters, OR add a "preview/alpha" gate so users know they're stubs.
+  Default: gate them behind
+  `akosha.alpha_shell_commands_enabled: bool = False`. Also document
+  the actual akosha CLI commands `start`, `mcp start`, `version`,
+  `info`, `modes` in `akosha/docs/CLI.md` so the inventory rows in
+  Phase 2 reflect reality.
 - 3.2.2 — Akosha `pyproject.toml`: add `ipython>=9.14.0` to direct
   runtime deps (crackerjack and mahavishnu already do this).
 - 3.2.3 — Crackerjack `crackerjack/shell/session_compat.py:75`: fix
@@ -242,6 +294,12 @@ repo.
 - 3.2.5 — Mahavishnu: consolidate `mahavishnu/monitoring_cli.py` and
   `mahavishnu/cli/monitoring_cli.py` (parallel-files pattern, same
   drift as crackerjack). Same remediation strategy as 3.2.4.
+- 3.2.6 — mcp-common: fix Python 2 `except ValueError, OSError:` syntax
+  in `mcp_common/cli/factory.py` at lines 530 and 745 →
+  `except (ValueError, OSError):`. Latent bug (same shape as crackerjack
+  `session_compat.py:75` finding) that would re-mount silently broken
+  handlers onto every Core 7's `BodaiCLIBase` if not fixed before
+  Phase 4.2's `register_lifecycle_handlers` extension.
 
 #### Phase 3.3 — Drift (doc sync)
 
@@ -269,6 +327,13 @@ repo.
 
 **Tasks:**
 
+- 4.0 — **Package conversion precondition** (oneiric only):
+  `oneiric/cli.py` is currently a 3217-line flat module. Adding
+  `oneiric/cli/base.py` would create a Python path conflict. Convert
+  `oneiric/cli.py` to a package: move its contents to
+  `oneiric/cli/__init__.py`, then add `oneiric/cli/base.py` for
+  `BodaiCLIBase`. No other Core 7 has this issue (dhara, crackerjack,
+  etc. already use `cli/` directories).
 - 4.1 — Add `oneiric/cli/base.py` with `BodaiCLIBase(typer.Typer)` and
   `ExitCode`. Provides:
   - `version` command (auto-registers from `importlib.metadata.version`)
@@ -276,25 +341,44 @@ repo.
   - `health` command (calls `_health_probe()` subclass hook)
   - Standardized exit codes via `ExitCode` enum
   - Tests in `oneiric/tests/cli/test_base.py`
+  - **Constraint**: `BodaiCLIBase` MUST NOT register its own
+    `@app.callback`; Typer allows only one callback per app, and
+    oneiric (`oneiric/cli.py:1959`) and mahavishnu (`_main_cli.py`)
+    each define `@app.callback(invoke_without_command=True)` for their
+    own state initialization. Subclasses retain callback registration.
 - 4.2 — Extend `mcp_common/cli/factory.py::MCPServerCLIFactory` with a
   `register_lifecycle_handlers(app: typer.Typer) -> None` method that
   mounts the factory's `start`/`stop`/`restart`/`status`/`health`
   handlers onto an external Typer instance (preserves the factory's
   behavior while letting each repo put `start`/`stop` on its own
   `BodaiCLIBase`).
+  - **Pre-condition** (Phase 3.2.6 first): fix Python 2
+    `except ValueError, OSError:` syntax at factory lines 530 and 745
+    before exposing handlers externally — these are latent bugs that
+    would re-mount silently broken handlers onto every Core 7's
+    `BodaiCLIBase`.
 - 4.3 — Convert each Core 7's `app` definition:
-  - `oneiric/cli.py`: `app = BodaiCLIBase(component_name="oneiric", ...)`
+  - `oneiric/cli/__init__.py` (after package conversion in 4.0):
+    `app = BodaiCLIBase(component_name="oneiric", ...)`
   - `dhara/cli.py`: same; `factory.register_lifecycle_handlers(app)`
-  - `session_buddy/__main__.py`: same; `factory.register_lifecycle_handlers(app)`
+  - `session_buddy/cli.py` (NOT `__main__.py` — `app` is here):
+    same; `factory.register_lifecycle_handlers(app)`
   - `crackerjack/__main__.py`: move `app = factory.create_app()` to
     `crackerjack/cli/__init__.py` and convert; or convert in place
     - Move `app` definition out of `__main__.py` to make importable
   - `akosha/cli.py`: `app = BodaiCLIBase(component_name="akosha", ...)`
-  - `mahavishnu/_main_cli.py`: `app = BodaiCLIBase(component_name="mahavishnu", ...)`
+  - `mahavishnu/_main_cli.py`: `app = BodaiCLIBase(component_name="mahavishnu", ...)`.
+    **Note**: the `_main_cli.py` underscore prefix is non-idiomatic for
+    a public entry-point declaration. Either rename to `main_cli.py`
+    (drop underscore) OR explicitly document that the entry-point
+    name is `mahavishnu._main_cli:app`. Default: rename.
 - 4.4 — Each repo implements the two hooks `_doctor_checks()` and
   `_health_probe()` returning the existing per-repo health-check logic.
 - 4.5 — Document the "Bodai CLI contract" in
-  `.claude/decisions/2026-08-25-bodai-cli-contract.md`.
+  `.claude/decisions/2026-08-25-bodai-cli-contract.md`. **Also add a
+  row to `.claude/decisions/README.md` index** (the wire-up-contract
+  policy forbids unindexed decisions; matches the
+  `2026-08-24-bodai-mcp-routing-pattern.md` precedent).
 
 **Integration Contract (Phase 4):**
 
@@ -324,6 +408,21 @@ repo.
   [project.entry-points."bodai.apps"]
   <repo> = "<repo>.<module>:app"
   ```
+  Concrete target per repo (verify in Phase 1 inventory):
+  - `oneiric = "oneiric.cli:app"` (after package conversion)
+  - `dhara = "dhara.cli:create_cli"` — **dhara exposes a factory, not
+    a module-level `app`**; the entry-point must invoke the factory,
+    or `bodai/cli.py::_discover_apps()` must call `create_cli()` and
+    mount its return value. Default: add `app = create_cli()` at
+    module-level in `dhara/cli.py` and use `"dhara.cli:app"`.
+  - `session-buddy = "session_buddy.cli:app"`
+  - `akosha = "akosha.cli:app"`
+  - `crackerjack = "crackerjack.cli:app"` (after moving `app` from
+    `__main__.py` per Phase 4.3)
+  - `mahavishnu = "mahavishnu.cli:app"` (after rename in Phase 4.3;
+    note that `mahavishnu/cli/__init__.py:36` re-exports `app` from
+    `_main_cli` via a lazy attribute, which works but underscore paths
+    in entry-points are non-idiomatic)
   One commit per repo (6 commits).
 - 5.2 — `bodai/cli.py`: add `_discover_apps()` helper that walks
   `importlib.metadata.entry_points(group="bodai.apps")` and calls
@@ -347,55 +446,62 @@ repo.
 - **Observability added**: `bodai version` aggregation command (built
   from `importlib.metadata.version`); `bodai apps` shows registered apps.
 
-### Phase 6 — Implement the two `bodai` stubs
+### Phase 6 — Verify & polish the two `bodai` surface commands
 
-**Goal**: `bodai shell` and `bodai dashboard` are real, not stubs.
-Decided TUI scope (2026-08-25): the dashboard is a **cross-component
+**Goal**: `bodai shell` and `bodai dashboard` work end-to-end. The
+implementations **already exist** (verified 2026-08-25: `bodai/admin/shell.py`
+contains `launch_shell()` with full IPython namespace setup; `bodai/tui/dashboard.py`
+contains `BodaiDashboard` Textual app). Phase 6 work is verification +
+polish, not implementation.
+
+| Surface | Lives in | Status (2026-08-25) |
+|---|---|---|
+| **`bodai shell`** | `bodai/admin/shell.py` | Implemented (`launch_shell()` exists with namespace preloading); wired in `bodai/cli.py`. Try/except catches ImportError defensively. Verify imports work after `pip install bodai`. |
+| **`bodai dashboard`** | `bodai/tui/dashboard.py` | Implemented (`BodaiDashboard` Textual app exists). Wired in `bodai/cli.py`. Verify imports work after install. |
+| **`mahavishnu monitor --tui`** | `mahavishnu/tui/monitor_app.py` (142 LOC) | Implemented (`MonitorApp` Textual app). Verify CLI command that invokes it is wired; if missing, add `@monitoring_cli.app.command("tui")` in `mahavishnu/cli/monitoring_cli.py`. |
+
+Decided TUI scope (2026-08-25): `bodai dashboard` is a **cross-component
 aggregator that lives in bodai**, not a replacement for mahavishnu's
 mahavishnu-scoped TUI (pools/workers). Both TUIs coexist.
 
-| Surface | Lives in | Shows |
-|---|---|---|
-| **`bodai dashboard`** (NEW; was stub) | `bodai/tui/dashboard.py` | All 7 Core 7 components: name, role, port, status, version, recent events. Aggregator using `bodai.core.health.check_all()` + canonical status types. Refresh 2-5s. |
-| **`mahavishnu monitor --tui`** (existing; rename if needed) | `mahavishnu/tui/monitor_app.py` (already 142 LOC) | Mahavishnu-only: pools, workers, workflow state. Already scope-correct; just needs the CLI command wired if not already. |
-
 **Tasks:**
 
-- 6.1 — Implement `bodai/admin/shell.py::launch_shell()` using
-  `oneiric.shell.AdminShell` (or a `BodaiShell(AdminShell)` subclass
-  that imports `app`, `oneiric`, all 7 sub-CLIs into the namespace).
-- 6.2 — Implement `bodai/tui/dashboard.py::BodaiDashboard` as a
-  **cross-component aggregator** (NOT a replacement for mahavishnu's
-  pools/workers TUI). Uses Textual; grid view over
-  `bodai.core.health.check_all()` results plus the canonical status
-  vocabulary in `mahavishnu/core/ecosystem_status.py` (`CanonicalStatus`,
-  `DegradationTrend`). Refreshes every 2-5s. ~100 LOC.
+- 6.1 — Verify `from bodai.admin.shell import launch_shell` succeeds
+  in a fresh `bodai` install (verified 2026-08-25 in editable install:
+  imports OK). If anything in the dependency chain fails, add the
+  missing imports to `bodai/pyproject.toml`.
+- 6.2 — Verify `from bodai.tui.dashboard import BodaiDashboard` succeeds
+  and `bodai dashboard` launches the TUI in a smoke test. Refine the
+  cross-component aggregator as needed (uses `bodai.core.health.check_all()`
+  + canonical status types from `mahavishnu/core/ecosystem_status.py`).
 - 6.3 — Wire `mahavishnu monitor --tui` pointing at
   `mahavishnu/tui/monitor_app.py`. If no CLI command currently invokes
   `MonitorApp`, register it via `@monitoring_cli.app.command("tui")`
   in `mahavishnu/cli/monitoring_cli.py`. Naming convention: the command
   is `tui` (the `monitor` namespace already exists).
-- 6.4 — Update `bodai/cli.py` so `bodai shell` and `bodai dashboard`
-  reach the new modules (currently they catch `ImportError` and print
-  "not yet implemented").
-- 6.5 — Tests: `bodai/tests/test_shell.py` exercises `BodaiShell`
-  (mocked AdminShell); `bodai/tests/test_dashboard.py` exercises the
-  Textual app with a fake `check_all`.
+- 6.4 — **Remove the defensive try/except** in `bodai/cli.py` once the
+  modules are verified importable. The current `except ImportError: ...
+  "Shell not yet implemented"` pattern hides real import errors.
+  Replace with a direct call and a real error message if the import
+  fails for any reason.
+- 6.5 — Tests: `bodai/tests/test_shell.py` exercises the IPython shell
+  path; `bodai/tests/test_dashboard.py` exercises the Textual app
+  with a fake `check_all`.
 
 **Integration Contract (Phase 6):**
 
 - **Triggered from**: Phase 5 completed.
-- **Returns to / updates**: 1 commit per stub (2 commits); 1 commit to
-  wire `mahavishnu monitor --tui`; 1 test commit.
-- **Demonstrable by**: `bodai shell` opens an IPython REPL with
-  `app`, `oneiric`, all 7 sub-CLIs pre-imported; `bodai dashboard`
-  opens a live cross-component Textual grid; `mahavishnu monitor --tui`
-  opens mahavishnu's pool/worker view independently.
-- **Rollback signal**: stub still raises `ImportError` → blocked, not
-  silently broken.
-- **Observability added**: the previously stubbed commands now exist
-  with real backing code; both TUIs observable as separate
-  cross-component vs component-scoped surfaces.
+- **Returns to / updates**: 1-2 verification commits (no new modules);
+  1 commit to wire `mahavishnu monitor --tui`; 1 commit to remove the
+  defensive try/except; 1 test commit.
+- **Demonstrable by**: `bodai shell` opens a real IPython REPL;
+  `bodai dashboard` opens a live cross-component Textual grid;
+  `mahavishnu monitor --tui` opens mahavishnu's pool/worker view
+  independently. All three verified via smoke test in CI.
+- **Rollback signal**: smoke test fails → block merge.
+- **Observability added**: both TUIs observable as separate
+  cross-component vs component-scoped surfaces; defensive try/except
+  removed so real failures surface loudly.
 
 ### Phase 7 — Verification + sign-off
 
@@ -521,8 +627,8 @@ command.
 | oneiric | defines `AdminShell` + `OneiricShell` | `oneiric shell` | `%help_shell`, `%status` | Foundation |
 | dhara | `DharaShell` | `dhara admin --confirm` + legacy `dhara db client` | (inherits) | Legacy direct-IPython duplicate in `dhara/__main__.py` |
 | session-buddy | `SessionBuddyShell` | **NONE** | (inherits) | **Built but never wired to CLI** |
-| akosha | `AkoshaShell` | `akosha shell --mode --verbose` | (none) | 5 stub commands; transitive `ipython` (not in `pyproject.toml`) |
-| crackerjack | `CrackerjackShell` | `crackerjack shell` | (inherits) | Python 2 syntax bug `crackerjack/shell/session_compat.py:75`; two parallel interactive modules (`crackerjack/interactive.py` 750 lines legacy + `crackerjack/cli/interactive.py` 496 lines newer) |
+| akosha | `AkoshaShell` | `akosha shell --mode --verbose` | (none) | 5 stub shell-namespace helpers (`aggregate`/`search`/`detect`/`graph`/`trends` — these are IPython helpers, NOT Typer CLI commands); transitive `ipython` (not in `pyproject.toml`); real Typer commands are `start`/`mcp start`/`version`/`info`/`modes` |
+| crackerjack | `CrackerjackShell` | `crackerjack shell` | (inherits) | ~28 Typer commands total (`run`, `run_tests`, `health`, `qa_health`, `shell`, + sub-apps `docs`, `mcp`, `hypothesis-lock`, `audit`, `skills`, `coverage-ratchet`); Python 2 syntax bug `crackerjack/shell/session_compat.py:75`; two parallel interactive modules (`crackerjack/interactive.py` 750 lines legacy + `crackerjack/cli/interactive.py` 496 lines newer) |
 | mahavishnu | `MahavishnuShell` | `mahavishnu shell` (config-gated by `shell_enabled`) | `%repos`, `%workflow` | Most fully-developed; 5 dedicated test files |
 | mcp-common | — | — | — | Library-only (intentional); `prompt_toolkit` only |
 | **bodai** | — | `bodai shell` is a **stub** (no `bodai/admin/shell.py` exists yet) | — | Plus `bodai dashboard` stub |
@@ -536,10 +642,15 @@ with `add_typer(config_app, name="config")` — the exact pattern
 proposed for the umbrella composition in Phase 5. `bodai = "bodai.cli:app"`
 is already declared as a console script in `bodai/pyproject.toml`.
 
-The `bodai shell` and `bodai dashboard` stubs are evidence the
-umbrella was always intended to host a cross-component IPython REPL
-and Textual TUI; both were deferred when the per-repo shells were
-built first. Phase 6 implements them.
+The `bodai shell` and `bodai dashboard` **implementations already exist**
+(`bodai/admin/shell.py::launch_shell()` and
+`bodai/tui/dashboard.py::BodaiDashboard`); the `try/except ImportError`
+in `bodai/cli.py` is defensive safety, not evidence of missing code.
+Verified 2026-08-25: `pip install -e .` on bodai makes both modules
+importable. The "not yet implemented" message only surfaces when the
+package itself isn't installed (e.g. fresh env without
+`uv pip install bodai`). Phase 6 verifies and polishes; it does not
+implement.
 
 ### 11.4 Cross-repo session tracking
 
