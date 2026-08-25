@@ -37,6 +37,8 @@ contribution workflow below.
 | `learning-pipeline` | Skill distillation, conscious agent, pattern library (ADR 012). |
 | `bodai-radar` | Bodai radar — cross-repo anomaly detection, OTel trace correlation, fitness feedback signals across the ecosystem. |
 | `observability` | Bodai observability surface, EventBridge subscriber pattern, Phase 6. |
+| `oneiric-action-kit-adoption` | Oneiric action-kit promotion design — catalog of common primitives (HMAC, token gen, schema validation, retries, redaction, HTTP probing, serialization, compression, hashing, data transforms) tracked for migration out of project-specific implementations. |
+| `oneiric-action-kit-promotion` | Oneiric action-kit promotion implementation — concrete plan to lift the catalog items in `oneiric-action-kit-adoption` into `oneiric.actions` so consumers can stop re-implementing them. |
 | `auth` | Auth standardization (Bodai auth spec), JWT, multi-provider. |
 | `crackerjack-publish-auth` | PyPI publishing authentication layer for crackerjack — TrustedPublishingProvider (OIDC), EnvVarAuthProvider, KeyringAuthProvider. Part of the PyPIAuth abstraction. |
 | `convergence-control-plane` | Convergence program C0-C7, umbrella plans. |
@@ -55,6 +57,7 @@ contribution workflow below.
 | `bodai-conformance` | Bodai ecosystem conformance — cross-repo consistency checks, naming/port/version invariants across the five components (Mahavishnu, Akosha, Dhara, Session-Buddy, Crackerjack). |
 | `bodai-crow-http-server` | Bodai Crow HTTP MCP Server |
 | `bodai-observability` | Bodai observability pattern — one subscriber, one bus; cross-component OTel correlation. |
+| `claude-env-remediation` | Claude Code environment audit remediation — drift/dead-config/bloat cleanup across `~/.claude/` and per-project `.claude/` (see `docs/plans/2026-08-24-claude-env-audit-remediation.md`). |
 | `bodai-mcp-surface-standardization` | Bodai Core MCP Surface Standardization — uniform MCP tool surface across the Mahavishnu core ecosystem. |
 | `code-indexing-integration` | Code Indexing Integration Plan |
 | `completion-report-schema` | Completion Report Schema v1 Implementation Plan |
@@ -82,6 +85,7 @@ contribution workflow below.
 | `mcp-common-http-health-route-helper` | mcp-common `register_http_health_route` Helper |
 | `mcp-deps-crackerjack-loop` | `*-mcp` dep refresh + crackerjack loop — refresh `oneiric`/`mcp-common` in `*-mcp` repos via `crackerjack run -p minor`; one-line annotated-tag patch in `publish_manager.py`. |
 | `mcp-lifespan-startup-ordering` | Mahavishnu MCP `/health` Lifespan Bypass — `/health` must respond before lifespan startup completes (regression test for ordering). |
+| `mcp-routing` | Bodai MCP routing pattern — secrets in shell env, MCP config in per-project `.mcp.json`, agents scoped to project, plugins preferred over bare URL (see `.claude/decisions/2026-08-24-bodai-mcp-routing-pattern.md`). |
 | `mcp-tool-profile-adoption` | MCP Tool Profile Adoption Across Bodai Ecosystem — tiered dynamic tool loading in `*-mcp` repos (`full`/`standard`/`minimal`). |
 | `mcpbase-migration` | MCP Server Family: MCPBaseSettings → OneiricMCPConfig Migration |
 | `mcpretentious-removed` | mcpretentious terminal adapter removed (2026-08-10 wave, commit `34f61672`) — bootstrap followup documenting the fallback chain. *Topic migrated — see `terminal-adapter-architecture` for the live tmux/mock/crow stack.* |
@@ -105,6 +109,9 @@ contribution workflow below.
 | `shared-frontmatter-validator` | Shared Frontmatter Validator |
 | `skill-vs-agent` | Skill vs. agent strategy — when to write a skill, an agent, or neither. |
 | `splashstand-oneiric` | Splashstand ACB → Oneiric Migration Plan |
+| `storage-abstraction` | Worktree + cache storage abstraction (ADR 015 family) — single substrate spanning local FS, Session-Buddy, and S3; supersession chain `015 → v2 → v3 → v4`. |
+| `storage-abstraction-review` | Multi-agent review of `storage-abstraction` (ADR 015) — synthesis of findings that informed the v2/v3/v4 supersession chain; historical record only. |
+| `streaming-tar-evolution` | Streaming tar.zst bundle format for worktree transfers (ADR 016, Phase 3-4 evolution) — phased rollout of end-to-end streaming serialization replacing the in-memory stopgap path. |
 | `style-sop` | Anti-AI-Flavor Style SOP v1.0 Implementation Plan |
 | `technical-debt` | Technical debt roadmap — consolidated multi-PR-horizon items not tied to a single review. |
 | `terminal-grid` | Terminal Grid Orchestration Implementation Plan |
@@ -123,6 +130,7 @@ contribution workflow below.
 | `wire-up-contract` | Wire-up contract — process rule for ensuring built features are wired into apps and workflows. |
 | `workflows` | Crackerjack coverage fan-out workflow — assign parallel test writers to independent packages. |
 | `worktree-autoremove` | Worktree Prune-Merged CLI |
+| `worktree-autoremove-v4-followup` | Followups from the worktree-prune-merged v4 retrospective — items deferred when the v4 cut landed, tracked separately for the next iteration. |
 
 ## Contribution Workflow
 
