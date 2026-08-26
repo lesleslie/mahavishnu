@@ -91,6 +91,8 @@ Agent files in `.claude/agents/` are loaded based on CWD. Therefore:
 - **fastblocks-stack agents** (`web-components-specialist`, `pwa-specialist`,
   `htmx-specialist`, `htmy-specialist`, `fastblocks-specialist`) live in
   `/Users/les/Projects/fastblocks/.claude/agents/`
+  *(Confirmed 2026-08-25: the move completed; none of these agents exist in
+  `mahavishnu/.claude/agents/` anymore — see `docs/plans/2026-08-24-claude-env-audit-remediation.md` §4.)*
 - **Mahavishnu-orchestration agents** (everything currently in
   `/Users/les/Projects/mahavishnu/.claude/agents/` minus the fastblocks
   ones) live in mahavishnu's `.claude/agents/`

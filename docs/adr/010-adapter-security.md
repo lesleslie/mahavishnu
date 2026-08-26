@@ -249,8 +249,12 @@ Security alerts in Grafana dashboard:
 ### Secrets Management
 
 ```bash
-# Environment variables for secrets
-export MAHAVISHNU_ADAPTER_SIGNING_KEY="/secure/path/to/signing.key"
+# Environment variables for secrets (design-time aspirational — verify before use)
+# NOTE: MAHAVISHNU_ADAPTER_SIGNING_KEY is documented here for forward-looking adapter
+# signature verification but is NOT yet wired in `AuthConfig` / `AdapterConfig`.
+# AdapterConfig.verify_signatures is the runtime knob; secrets are loaded from
+# `mahavishnu/core/secrets.py` rather than a dedicated env var.
+export MAHAVISHNU_ADAPTER_SIGNING_KEY="/secure/path/to/signing.key"  # NOT YET WIRED
 export MAHAVISHNU_ONEIRIC_TLS_CERT="/secure/path/to/tls.crt"
 export MAHAVISHNU_ONEIRIC_TLS_KEY="/secure/path/to/tls.key"
 ```
