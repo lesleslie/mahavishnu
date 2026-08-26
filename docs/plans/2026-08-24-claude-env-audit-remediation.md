@@ -36,9 +36,11 @@ matches across `/Users/les/Projects/`.
    crash on every call.
 2. Fix 47 skill/command files with `______________________________________________________________________` placeholder descriptions.
 3. Migrate 49 stub project agents from non-standard frontmatter to standard YAML.
-4. Move fastblocks-stack agents (`web-components-specialist`, `pwa-specialist`,
+4. ✅ **DONE 2026-08-25** — Move fastblocks-stack agents (`web-components-specialist`, `pwa-specialist`,
    `htmx-specialist`, `htmy-specialist`, `fastblocks-specialist`) out of
-   `mahavishnu/.claude/agents/` and into `fastblocks/.claude/agents/`.
+   `mahavishnu/.claude/agents/` and into `fastblocks/.claude/agents/`. All five agents
+   were deleted from mahavishnu (per `git log --diff-filter=D`) and now live in
+   `fastblocks/.claude/agents/`.
 5. Enforce secret rule: `*_KEY`, `*_TOKEN`, `*_SECRET`, `*_PASSWORD` env values
    belong in shell env (via `.zshrc`, direnv, 1Password CLI), never in
    `.mcp.json`.
@@ -79,7 +81,7 @@ drift/decay items across 5 domains. Top 5 by impact:
 4. **Fastblocks-stack agents in wrong project.** 5 agents
    (`web-components-specialist`, `pwa-specialist`, `htmx-specialist`,
    `htmy-specialist`, `fastblocks-specialist`) live in
-   `mahavishnu/.claude/agents/` despite being fastblocks-stack.
+   `mahavishnu/.claude/agents/` despite being fastblocks-stack. ✅ **Resolved 2026-08-25** — all five were deleted from mahavishnu and now live in `fastblocks/.claude/agents/`.
 5. **`BODAI_REPO_REGISTRY.md` drift.** Foreign marketing copy in
    `.claude/CLAUDE.md` (lines 62-67, 90-100) describes Gemini/gRPC/PostgreSQL-MySQL-Sqlite-Redis stack that doesn't exist.
 

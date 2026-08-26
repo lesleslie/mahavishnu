@@ -141,13 +141,13 @@ MAHAVISHNU_VERIFY_CLIENT=false
 # =============================================================================
 
 # Enable authentication (required for production)
-MAHAVISHNU_AUTH_ENABLED=true
+MAHAVISHNU_AUTH__ENABLED=true
 
 # JWT secret (generate with: openssl rand -base64 32)
-MAHAVISHNU_JWT_SECRET=your-generated-secret-key-here
+MAHAVISHNU_AUTH__SECRET=your-generated-secret-key-here
 
-# JWT token expiry (seconds)
-MAHAVISHNU_JWT_EXPIRY=3600
+# JWT token expiry (minutes, 5-1440)
+MAHAVISHNU_AUTH__EXPIRE_MINUTES=60
 
 # =============================================================================
 # Prometheus Metrics
@@ -198,7 +198,7 @@ OTEL_SERVICE_NAME=mahavishnu-websocket
 ```bash
 # Generate JWT secret
 JWT_SECRET=$(openssl rand -base64 32)
-echo "MAHAVISHNU_JWT_SECRET=$JWT_SECRET"
+echo "MAHAVISHNU_AUTH__SECRET=$JWT_SECRET"
 
 # Generate Redis password
 REDIS_PASSWORD=$(openssl rand -base64 24)

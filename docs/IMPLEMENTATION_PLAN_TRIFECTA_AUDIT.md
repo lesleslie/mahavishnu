@@ -115,7 +115,7 @@ def sweep(tag: str, adapter: str):
 **Required Actions**:
 
 1. Implement JWT middleware for all CLI commands
-1. Add `--token` parameter or `MAHAVISHNU_AUTH_TOKEN` env var
+1. Add `--token` parameter or wire `MAHAVISHNU_AUTH__SECRET` env var (today the auth subsystem reads `MAHAVISHNU_AUTH__SECRET`; the audit originally proposed a separate `MAHAVISHNU_AUTH_TOKEN` var that does not exist in `AuthConfig`)
 1. Document authentication setup
 1. Add role-based access control (admin vs. user)
 1. Add audit logging for all workflow triggers

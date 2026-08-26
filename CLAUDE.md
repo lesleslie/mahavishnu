@@ -13,6 +13,7 @@ Mahavishnu is the control plane for the **Bodai Ecosystem**:
 | [Dhara](https://github.com/lesleslie/dhara) | Curator (State) | 8683 |
 | [Session-Buddy](https://github.com/lesleslie/session-buddy) | Builder (Memory) | 8678 |
 | [Crackerjack](https://github.com/lesleslie/crackerjack) | Inspector (Quality) | 8676 |
+| **Bodai Crow** | Browser/automation MCP bridge | 8675 |
 | [Oneiric](https://github.com/lesleslie/oneiric) | Foundation | N/A |
 
 Routes tasks to Akosha, persists state to Dhara, tracks context in Session-Buddy, validates with Crackerjack.

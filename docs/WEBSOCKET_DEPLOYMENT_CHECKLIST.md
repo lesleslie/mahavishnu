@@ -79,8 +79,8 @@ ______________________________________________________________________
 - [ ] **Required variables set**
 
   - [ ] `MAHAVISHNU_TLS_ENABLED=true`
-  - [ ] `MAHAVISHNU_AUTH_ENABLED=true`
-  - [ ] `MAHAVISHNU_JWT_SECRET=your-secret`
+  - [ ] `MAHAVISHNU_AUTH__ENABLED=true`
+  - [ ] `MAHAVISHNU_AUTH__SECRET=your-secret`
   - [ ] `MAHAVISHNU_CERT_FILE=/etc/ssl/certs/mahavishnu.pem`
   - [ ] `MAHAVISHNU_KEY_FILE=/etc/ssl/private/mahavishnu-key.pem`
   - [ ] `MAHAVISHNU_METRICS_ENABLED=true`
