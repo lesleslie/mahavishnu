@@ -75,7 +75,12 @@ Concrete signal:
    `bodai.apps` entry-point group.
 6. **Implement the two existing `bodai` stubs**: `bodai shell` (IPython
    REPL using `oneiric.shell.AdminShell`) and `bodai dashboard` (Textual
-   TUI over `bodai.core.health.check_all`).
+   TUI over `bodai.core.health.check_all`). **Implementation lives in
+   companion plan `2026-08-25-bodai-tui-shell-surface.md` (Plan B);
+   this plan delivers the `BodaiCLIBase` foundation Plan B depends on.**
+   Round-1 review caught that this Goal cross-references Phase 6 work
+   that the original plan deferred to Plan B without explicit
+   acknowledgement; this annotation closes the cross-reference.
 7. **Document the new "Bodai CLI contract"** in
    `.claude/decisions/2026-08-25-bodai-cli-contract.md` so future components
    know how to register. **Also add the new decision doc to
@@ -149,20 +154,25 @@ yet running the inventory tool. The inventory (Phase 1) will surface more.
 | Phase | Goal | Depends on | Commits | Smoke-test command |
 |---|---|---|---|---|
 | **0.0** | Pre-flight: mcp-common factory syntax fix | — | 1 | `git grep -n 'except.*,' mcp-common/mcp_common/cli/factory.py` returns zero matches |
+| **0.0.5** | Pre-flight: CHANGELOG.md audit (round-1 F18) | — | 6 (one per repo that lacks one) | every Core 7 repo has `CHANGELOG.md` with `## [Unreleased]` header |
 | **0** | Inventory tool (`audit_cli_inventory.py`) + per-repo inventories | — | 1 (script) + 6 (Phase 1) | `python scripts/audit_cli_inventory.py --all` exits 0; 6 JSON files in `docs/audit-inventory/` |
 | **1** | Per-repo inventories + staleness signals | 0 | 6 + 1 mcp-common confirmation | `ls docs/audit-inventory/*-cli-inventory.json \| wc -l` = 6 |
-| **2** | Cross-repo synthesis + findings.md | 1 | 1 | `wc -l docs/audit-inventory/findings.md` ≤ 250 (CI gate) |
+| **2** | Cross-repo synthesis + findings.md | 1 | 1 | `wc -l docs/audit-inventory/findings.md` ≤ 250 (CI gate); per-repo pre-commit hook installed (round-1 F13) |
 | **3** | Gap closure (REMOVE / UPDATE / ADD-NEW / staleness) | 2 (for staleness table) | ~10 parallel per-repo commits | per-finding commit testable in isolation |
-| **4** | `BodaiCLIBase` standardization | 0.0 (pre-flight) | 1 (oneiric base class) + 1 (mcp-common factory extension) + 6 (per-repo conversions) + 1 (**umbrella CI job — phantom commit, see F1**) | per-repo CI: `pytest` exits 0; `<repo> version` exits 0 |
-| **5** | `bodai` umbrella + entry-points | 4 | 6 (per-repo entry-points) + 2 (bodai `_discover_apps` + `version`/`apps`) | umbrella CI: `bodai --help` lists 7 sub-CLIs |
-| **6** | Verify `bodai shell` / `bodai dashboard` / `mahavishnu monitor --tui` | 5 (and **3.2.5** for 6.3 specifically — must land after parallel-files consolidation) | 1 (mahavishnu `tui` wire) + 1 (bodai try/except removal) + 1 (tests) | per-CI: `pytest bodai/tests/test_dashboard.py` passes |
-| **7** | Verification + sign-off + quarterly staleness cadence | 6 | 2 (registry update + cadence note) | `diff_inventories.py` exits 0; 0 critical findings; `bodai --help \| wc -l` matches |
+| **4** | `BodaiCLIBase` standardization | 0.0 (pre-flight) | 1 (oneiric base class) + 1 (mcp-common factory extension, Task 3.2.6) + 6 (per-repo conversions Task 4.2, each with 4.1.5 dep bump) + 1 (umbrella CI job in `bodai` repo, Task 4.3, per round-1 F2) + 1 (manual oneiric publish, Task 4.4.1, per round-1 F4) | per-repo CI: `pytest` exits 0; `<repo> version` exits 0; umbrella CI: per-repo smoke loop in `bodai/.github/workflows/umbrella-ci.yml` |
+| **5** | `bodai` umbrella + entry-points | 4 | 6 (per-repo entry-points) + 2 (bodai `_discover_apps` + `version`/`apps`) + 1 (umbrella CI extension for `bodai --help`, deferred from Phase 4 per round-1 F1) | umbrella CI: `bodai --help` lists 7 sub-CLIs |
+| **6** | Verify `bodai shell` / `bodai dashboard` / `mahavishnu monitor --tui` | 5 (and **3.2.5** for 6.3 specifically — must land after parallel-files consolidation) | 1 (mahavishnu `tui` wire) + 1 (bodai try/except removal) + 1 (tests) + 1 (CI smoke for shell/dashboard/TUI commands per round-1 F21) | per-CI: `pytest bodai/tests/test_dashboard.py` passes; `bodai shell --help`, `bodai dashboard --help`, `mahavishnu monitor tui --help` all exit 0 |
+| **7** | Verification + sign-off + quarterly staleness cadence | 6 | 2 (registry update + cadence note + Linux/CI cadence path per round-1 MINOR) | `diff_inventories.py` exits 0; 0 critical findings; `bodai --help \| wc -l` matches |
 
 **Critical-path items** (block the most downstream work):
 - **0.0** — 4-character fix, lands today, unblocks Phase 4.2.
+- **0.0.5** — CHANGELOG.md audit, lands before Phase 3+ commits that include CHANGELOG updates.
 - **4.0** — oneiric package conversion, lands before Phase 4.1.
-- **4.2** — `register_lifecycle_handlers` extension, lands before Phase 4.3 (depends on 0.0).
-- **5** entry-point commits depend on each repo's Phase 4.3 file moves/renames.
+- **4.1** — `BodaiCLIBase` (with the round-1 revised unified callback), lands before Phase 4.3.
+- **4.1.5** — oneiric dep declaration in each converting repo's `pyproject.toml`, lands as part of each Phase 4.3 conversion.
+- **4.2** — `register_lifecycle_handlers` (with `prefix=` arg), lands before Phase 4.3.
+- **4.4.1** — manual oneiric publish (per `crackerjack-version-bumping-manual.md`), lands between 4.1 and any 4.3 consumer.
+- **5** entry-point commits depend on each repo's Phase 4.3 file moves/renames + 4.4.1 publish.
 
 **Parallelizable** (no inter-dependencies):
 - Phase 3 sub-phases (each per-repo commit is independent)
@@ -204,6 +214,31 @@ recursively and captures the per-command schema.
   because it has zero dependency on the inventory/synthesis and the
   parallelization review flagged it as a critical-path item that
   doesn't need to be critical-path.**
+- 0.0.5 — **CHANGELOG.md audit** (round-1 F18): every Core 7 repo's
+  `pyproject.toml` or working tree may lack a `CHANGELOG.md`. Phase 3
+  and Phase 4 commits mandate `CHANGELOG.md` updates per the global
+  constraint (`**BREAKING:**` prefix where applicable). For each
+  repo that lacks `CHANGELOG.md`, create one with at minimum:
+  ```markdown
+  ## [Unreleased]
+
+  ### Changed
+
+  ### Added
+
+  ### Removed
+
+  ### Deprecated
+
+  ### Fixed
+
+  ### Security
+  ```
+  One commit per repo that lacks one (likely 1-3 commits; most Core 7
+  repos may already have one — verify via `git ls-tree HEAD --name-only
+  | grep '^CHANGELOG\.md$' | wc -l`). Lands BEFORE Phase 3 commits
+  (any Phase 3 commit with CHANGELOG updates requires the file to
+  exist).
 - 0.1 — Write `scripts/audit_cli_inventory.py` in mahavishnu (reusable
   across all 7 repos; no per-repo forks).
   **Location decision**: the script lives in `mahavishnu/scripts/` per
@@ -316,7 +351,32 @@ inconsistencies, and staleness.
 
 - 2.1 — Single synthesis subagent consumes all 6 JSON inventories + their
   markdown summaries.
-- 2.2 — Produce `docs/audit-inventory/findings.md` with tables:
+- 2.2 — Produce `docs/audit-inventory/findings.md` with tables,
+  **and install the CLI-inventory gate across all 7 Core 7 repos**
+  (round-1 F13 fix — the prior plan installed the gate only in
+  mahavishnu's `.git/hooks/pre-commit`, which meant a developer
+  adding `@app.command("foo")` in akosha could land without ever
+  touching the gate):
+  - **Pre-CI gate** (preventive, not reactive): each Core 7 repo's
+    `.git/hooks/pre-commit` runs
+    `python /Users/les/Projects/mahavishnu/scripts/audit_cli_inventory.py --repo <self> --check-stale`.
+    Installer: `cd /Users/les/Projects/<repo> && uv run mahavishnu index install-hooks .`
+    (canonical hook installer per
+    `.claude/decisions/2026-08-24-bodai-mcp-routing-pattern.md`).
+    One commit per repo (7 commits) that adds the hook to `.git/hooks/pre-commit`
+    (`.git/hooks/` is per-clone gitignored; the installer is invoked
+    once per clone, not committed). **Verification**: after install,
+    `cd /Users/les/Projects/<repo> && echo "TODO" >> some_file && git add some_file && git commit -m test`
+    must fail with "audit_cli_inventory: stale/deprecated commands".
+  - **Typer-side guard** (alternative preventive gate; pick one per repo
+    based on test-coverage preference): `BodaiCLIBase.__init_subclass__`
+    records every registered command into a sidecar file
+    `cli-inventory-sidecar.json` checked into the repo. CI fails when
+    the sidecar diverges from the Phase 1 inventory. This is
+    stronger than the pre-commit gate because it captures the
+    actual Typer `app` runtime, not the source-file regex match.
+    Default: pre-commit gate for now; Typer-side guard as a Phase 8
+    enhancement.
   - Per-repo command counts (sorted descending)
   - Cross-repo command-name duplications (e.g., `shell`, `health`,
     `version`) — with citation to the inventory rows
@@ -471,47 +531,84 @@ deprecated/obsoleted":
     command emits JSON via per-command `_format_json()` hook)
   - Standardized exit codes via `ExitCode` enum
   - Tests in `oneiric/tests/cli/test_base.py`
-  - **Constraint**: `BodaiCLIBase` MUST NOT register its own
-    `@app.callback`. Existing callbacks at (verified 2026-08-25):
-    - oneiric `cli.py:1959` (config setup)
-    - akosha `cli.py:54` (`@app.callback(invoke_without_command=True) def main` — shows help when no subcommand)
-    - crackerjack `__main__.py:138` (`@app.callback(invoke_without_command=True) def version_option` — handles `--version` flag)
-    - dhara `cli.py:706` (`@app.callback() def global_options` — handles `--version` flag)
-    - session-buddy `cli/__init__.py:218` (`@app.callback(invoke_without_command=True) def _root` — handles `--version` flag)
+  - **Constraint (revised after round-1 review)**: `BodaiCLIBase`
+    DOES register a single `@app.callback(invoke_without_command=True)`
+    that wires `--json` (sets `ctx.obj["json_output"] = True`) and
+    `--version`/`-V` (prints version + emits `DeprecationWarning` to
+    stderr for one release, then dispatches to the `version` subcommand).
+    Typer's `no_args_is_help=True` is also set so empty-args invokes
+    `--help`. This is the standard Typer mechanism for global options;
+    round-1 review confirmed the alternative (`sys.argv` mutation)
+    is broken under `CliRunner`. Existing callbacks at (verified
+    2026-08-25):
+    - oneiric `cli.py:1959` (config setup) → **MERGE into BodaiCLIBase's
+      unified callback body** (preserve config-setup behavior; BodaiCLIBase's
+      callback runs first, then defers to subclass-supplied `_pre_callback`
+      hook for repo-specific setup)
+    - akosha `cli.py:54` (`@app.callback(invoke_without_command=True) def main`
+      — shows help when no subcommand) → **PRESERVE** by merging into the
+      unified callback body via akosha's `_pre_callback` override (the
+      `no_args_is_help` behavior is orthogonal; both paths trigger on
+      the same condition and are designed to merge)
+    - crackerjack `__main__.py:138` (`@app.callback(invoke_without_command=True) def version_option`
+      — handles `--version` flag) → **REMOVE** (the new `BodaiCLIBase`'s
+      `--version` Typer option replaces it)
+    - dhara `cli.py:706` (`@app.callback() def global_options` — handles `--version` flag) → **REMOVE**
+    - session-buddy `cli/__init__.py:218` (`@app.callback(invoke_without_command=True) def _root`
+      — handles `--version` flag) → **REMOVE**
     - **mahavishnu has NO `@app.callback` (verified — `app = typer.Typer(name="mahavishnu")` at `_main_cli.py:81`)**.
   Phase 4.3 conversions MUST:
-  - Preserve akosha's `main` callback (orthogonal to `BodaiCLIBase`)
+  - Preserve akosha's `main` callback body via the `_pre_callback` hook
+    (merged into the unified callback)
   - **REMOVE** crackerjack/dhara/session-buddy's `--version` callbacks
-    (the new `BodaiCLIBase.version` subcommand is equivalent UX, and
-    Typer allows only one callback per app)
-  - Install `--json` via the base class context-var, NOT a callback
+    (the new `BodaiCLIBase` registers `--version` as a Typer option in
+    its unified callback; Typer allows only one callback per app, and
+    the unified callback subsumes the old behavior)
+  - `--json` and `--version` are registered as Typer options in the
+    unified `@app.callback`, NOT via context-var mutation of `sys.argv`
+    or per-command parametrize (round-1 review confirmed the `sys.argv`
+    mutation shim is broken under `CliRunner` tests)
 - 4.2 — Extend `mcp_common/cli/factory.py::MCPServerCLIFactory` with a
-  `register_lifecycle_handlers(app: typer.Typer) -> None` method that
-  mounts the factory's `start`/`stop`/`restart`/`status`/`health`
-  handlers onto an external Typer instance. Each repo that needs
-  lifecycle verbs builds its own `factory = MCPServerCLIFactory(...)`,
-  constructs `app = BodaiCLIBase(...)`, then calls
-  `factory.register_lifecycle_handlers(app)` (3-step recipe; see
-  Phase 4.3 dhara example).
+  `register_lifecycle_handlers(app: typer.Typer, *, prefix: str = "mcp-") -> None`
+  method that mounts the factory's `start`/`stop`/`restart`/`status`/
+  `health` handlers onto an external Typer instance, **prefixed** to
+  avoid the `health` name collision with `BodaiCLIBase.health` (round-1
+  review confirmed the collision silently overwrites whichever is
+  registered second; the `prefix=` arg resolves it cleanly). Each repo
+  that needs lifecycle verbs builds its own
+  `factory = MCPServerCLIFactory(...)`, constructs `app = BodaiCLIBase(...)`,
+  then calls `factory.register_lifecycle_handlers(app)` (3-step recipe;
+  see Phase 4.3 dhara example). **The default prefix `mcp-` mounts
+  lifecycle handlers as `mcp-start`/`mcp-stop`/`mcp-restart`/
+  `mcp-status`/`mcp-health`**; lifecycle-bearing repos may pass
+  `prefix=""` if they want the bare names (only safe when no other code
+  registers `health` on the same app).
   - **Pre-condition** (Phase 0.5 fix lands first): fix Python 2
     `except ValueError, OSError:` syntax at factory lines 530 and 745
     before exposing handlers externally — these are latent bugs that
     would re-mount silently broken handlers onto every Core 7's
     `BodaiCLIBase`.
+  - **Round-1 test gap** (review finding): the test asserting
+    `register_lifecycle_handlers` mounted correctly uses bare
+    `typer.Typer()`, not `BodaiCLIBase`. The `BodaiCLIBase`-bearing test
+    must also assert that all 5 prefixed lifecycle commands AND the
+    base class's `version`/`doctor`/`health` coexist in `--help`. This
+    test guards the Phase 4.3 conversion integration point.
 - 4.3 — Convert each Core 7's `app` definition. Six per-repo
   conversions are **independent** and can land as parallel commits
-  once Phase 4.0 + 4.1 + 4.2 land:
+  once Phase 4.0 + 4.1 + 4.2 + **4.1.5 (oneiric dep declaration)** +
+  **4.4.1 (oneiric publish)** land:
   - `oneiric/cli/__init__.py` (after package conversion in 4.0):
     `app = BodaiCLIBase(component_name="oneiric", ...)`.
-    Preserves existing `cli.py:1959` callback.
+    Preserves existing `cli.py:1959` callback body via `_pre_callback` hook.
   - `dhara/cli.py`: 3-step factory recipe:
     ```python
     factory = MCPServerCLIFactory(component_name="dhara", ...)
     app = BodaiCLIBase(component_name="dhara", ...)
-    factory.register_lifecycle_handlers(app)
+    factory.register_lifecycle_handlers(app)  # mounts as mcp-start, mcp-stop, etc.
     ```
     REMOVES existing `cli.py:706` `--version` callback (replaced by
-    `BodaiCLIBase.version` subcommand).
+    `BodaiCLIBase`'s unified callback's `--version` option).
   - `session_buddy/cli/__init__.py` (NOT `cli.py` — `app` is in the
     package's `__init__.py:204`): same factory recipe as dhara.
     REMOVES existing `cli/__init__.py:218` `--version` callback.
@@ -521,29 +618,164 @@ deprecated/obsoleted":
     callback.
   - `akosha/cli.py`: `app = BodaiCLIBase(component_name="akosha", ...)`.
     **PRESERVES** existing `cli.py:54` `@app.callback(invoke_without_command=True) def main`
-    (orthogonal to BodaiCLIBase — no collision).
+    callback body via the `_pre_callback` hook (merged into the unified
+    callback; the `no_args_is_help` behavior is orthogonal and merges
+    cleanly per round-1 review).
   - `mahavishnu/_main_cli.py`: `app = BodaiCLIBase(component_name="mahavishnu", ...)`.
     **Note**: the `_main_cli.py` underscore prefix is non-idiomatic for
     a public entry-point declaration. Either rename to `main_cli.py`
     (drop underscore) OR explicitly document that the entry-point
     name is `mahavishnu._main_cli:app`. Default: rename.
+  - **Umbrella CI gate** (revised after round-1 review): each
+    per-repo commit triggers the umbrella CI in the `bodai` repo
+    (NOT mahavishnu — see Phase 4.5 revised). The umbrella CI installs
+    the published oneiric from PyPI (after Task 4.4.1 publishes) and
+    the converting repo's `uv pip install -e .` from its worktree.
+    The umbrella CI's smoke loop covers **only** per-repo `version` /
+    `doctor` / `--json version` exits 0; **the `bodai --help` smoke is
+    deferred to Phase 5.4** (after `_discover_apps()` and the per-repo
+    `bodai.apps` entry-points land — round-1 review confirmed Task 4.3
+    lands Day 9 but Task 5.1+5.2 land Day 11, so the original Task 4.3
+    smoke ran before its prerequisites).
 - 4.4 — Each repo implements the two hooks `_doctor_checks()` and
   `_health_probe()` returning the existing per-repo health-check logic.
-  Per-repo CI test asserts:
+  Per-repo CI test asserts (concrete template, added after round-1
+  review — the prior plan left "Add test" to subagent discretion):
   ```python
-  def test_<repo>_doctor_returns_real_checks():
-      app = BodaiCLIBase(component_name="<repo>")
+  # tests/cli/test_base.py in each converting repo
+  import pytest
+  from typer.testing import CliRunner
+
+  from oneiric.cli.base import BodaiCLIBase, ExitCode
+
+
+  def test_app_is_bodai_cli_base():
+      from <repo>.cli import app  # noqa: PLC0415
+      assert isinstance(app, BodaiCLIBase)
+      assert app.component_name == "<repo>"
+
+
+  def test_doctor_returns_real_checks():
+      from <repo>.cli import app  # noqa: PLC0415
       checks = app._doctor_checks()
+      assert isinstance(checks, dict)
       assert len(checks) >= 1
-      for c in checks:
-          assert hasattr(c, "name") and hasattr(c, "status")
+      for name, check in checks.items():
+          assert hasattr(check, "status")
+
+
+  def test_health_probe_returns_real_data():
+      from <repo>.cli import app  # noqa: PLC0415
+      snapshot = app._health_probe()
+      assert isinstance(snapshot, dict)
+      assert "status" in snapshot
+
+
+  def test_global_json_flag_accepted():
+      from <repo>.cli import app  # noqa: PLC0415
+      runner = CliRunner()
+      result = runner.invoke(app, ["--json", "version"])
+      assert result.exit_code == ExitCode.SUCCESS
+
+
+  def test_global_version_flag_accepted():
+      from <repo>.cli import app  # noqa: PLC0415
+      runner = CliRunner()
+      result = runner.invoke(app, ["--version"])
+      assert result.exit_code == ExitCode.SUCCESS
+      assert "<repo>" in result.output  # or whatever the version string is
   ```
-  Guards against vacuous implementations.
+  Guards against vacuous implementations AND tests the new Typer-option
+  registration (round-1 review confirmed the prior `_intercept_version_flag`
+  `sys.argv` mutation was broken under `CliRunner`).
+- 4.1.5 — **Cross-repo dep declaration** (NEW after round-1 review):
+  Add `oneiric>=<X.Y.Z>` to each converting repo's
+  `[project.dependencies]` in `pyproject.toml`, where `<X.Y.Z>` is the
+  oneiric version published in Task 4.4.1. Without this, fresh
+  `uv pip install -e .` of each converting repo fails with
+  `ModuleNotFoundError: No module named 'oneiric.cli.base'`. Per-repo
+  CI guard test:
+  ```python
+  def test_oneiric_bodai_cli_base_importable():
+      from oneiric.cli.base import BodaiCLIBase
+      assert BodaiCLIBase is not None
+  ```
+  Lands as part of each Phase 4.3 conversion commit (the dep bump is
+  scoped to that repo's `pyproject.toml`).
+- 4.4.1 — **Manual oneiric publish step** (NEW after round-1 review):
+  Between Task 4.1 (lands BodaiCLIBase on oneiric's main) and the
+  first Phase 4.3 conversion (consumes `oneiric.cli.base`), the operator
+  bumps oneiric's version and publishes. Per
+  `crackerjack-version-bumping-manual.md` ("user initiates bumps and
+  PyPI publishes; flag those steps in plans"), this is a **manual**
+  step the user runs:
+  ```bash
+  cd /Users/les/Projects/oneiric
+  uv version --bump minor
+  git add pyproject.toml
+  git -c user.name=les -c user.email=les@wedgwoodwebworks.com \
+      commit -m "chore(release): bump version to <X.Y.Z> for BodaiCLIBase"
+  uv build
+  uv publish
+  ```
+  **Pre-Phase-4.3 verification** (must pass before any consumer's CI
+  runs against the new oneiric):
+  ```bash
+  python -c "from importlib.metadata import version; \
+             import oneiric.cli.base; \
+             print(version('oneiric'))"
+  ```
+  The umbrella CI's smoke loop installs oneiric from PyPI for the
+  published version; only the repo currently under test uses
+  `uv pip install -e .` (round-1 review confirmed editable-only install
+  breaks any consumer outside `/Users/les/Projects/oneiric`).
 - 4.5 — Document the "Bodai CLI contract" in
   `.claude/decisions/2026-08-25-bodai-cli-contract.md`. **Also add a
   row to `.claude/decisions/README.md` index** (the wire-up-contract
   policy forbids unindexed decisions; matches the
   `2026-08-24-bodai-mcp-routing-pattern.md` precedent).
+  - **Umbrella CI (revised after round-1 review)**: lives in the
+    **`bodai` repo**, NOT mahavishnu (the prior plan put it in
+    mahavishnu's `.github/workflows/`, which had two structural
+    defects: (a) `actions/checkout@v4` only clones mahavishnu so
+    `BODAI_ROOT: ${{ github.workspace }}/../` points to an empty
+    directory, and (b) GitHub Actions `paths:` filters only match
+    files in the workflow's own repo, so pushes to oneiric's `main`
+    never trigger the umbrella CI even though the umbrella exists
+    precisely to catch cross-repo breakages). The revised workflow:
+    1. Lives at `bodai/.github/workflows/umbrella-ci.yml`
+    2. Has 7 explicit `actions/checkout@v4` steps (one per Core 7 repo,
+       each with `repository: lesleslie/<repo>` and `path: ../<repo>`)
+    3. Triggers on `push: branches: [main]` to `bodai`'s `main`
+       (the umbrella lives in `bodai`, so this catches both `bodai`
+       changes AND any `repository_dispatch` webhook from sibling repos)
+    4. **No `paths:` filter** — the workflow's job is to test all 7
+       repos every time `bodai` itself changes (and via webhook when
+       any sibling pushes). Filtering by file path is no longer
+       meaningful once the workflow lives in `bodai`
+    5. Per-repo smoke loop:
+       `(cd "$REPO_ROOT/$repo" && uv pip install -e . --quiet) && \
+        "$repo" version && "$repo" doctor && "$repo" --json version`
+       All three must exit 0 for the repo to pass. **No `bodai --help`
+       assertion in this workflow** (moved to Phase 5.4).
+    6. Coverage assertion (added after round-1 review): for each
+       converting repo, `uv run pytest --cov=<pkg> --cov-fail-under=89`
+       must pass; this guards against vacuous `_doctor_checks()` /
+       `_health_probe()` implementations that pass the smoke loop
+       but drop coverage.
+    7. **Worktree-to-main landing step** (added after round-1 review):
+       each per-repo conversion commit lands in a worktree branch
+       (`<worktree>/phase-4.3-<repo>`), then fast-forwards `main` via
+       `git update-ref refs/heads/main <branch>` from the **main
+       checkout** (NOT the worktree — the Bash classifier blocks
+       cross-worktree file ops per
+       `mahavishname-worktree-isolation-guard-is-bash-classifier`). The
+       worktree's agent dispatches a separate "merge agent" to run
+       the `git update-ref` + `git push` from the main checkout. The
+       umbrella CI fires on the push and validates. Without this
+       landing step, commits sit on detached branches and Phase 4.3
+       appears to succeed locally but breaks downstream consumers
+       (round-1 finding).
 
 **Integration Contract (Phase 4):**
 
@@ -623,6 +855,18 @@ deprecated/obsoleted":
 - 5.3 — Smoke-test: with all 7 repos installed (umbrella CI), `bodai
   --help` lists all 7 sub-CLIs; `bodai akosha --help` lists akosha
   commands; etc.
+- 5.4 — **Umbrella CI extension** (round-1 F1 fix — `bodai --help` smoke
+  deferred from Phase 4.3 because `_discover_apps()` and the per-repo
+  `bodai.apps` entry-points don't land until Phase 5.1+5.2): the
+  umbrella CI workflow in `bodai/.github/workflows/umbrella-ci.yml`
+  gains a second job (or second step in the existing job) that
+  asserts
+  `bodai --help | grep -E '^\s+(oneiric|akosha|crackerjack|dhara|session-buddy|mahavishnu)\b'`
+  returns 6 matches and `bodai version | wc -l` returns 6 (or 7 if
+  mcp-common gets an entry-point). This task is what the Phase 4.3
+  smoke was supposed to verify; round-1 review confirmed it can't
+  run until Tasks 5.1+5.2 land (Day 11, vs Day 9 for 4.3). Lands as a
+  separate PR on the umbrella CI workflow after Phase 5.2 commits.
 - 5.4 — Add `tests/test_umbrella.py` in bodai that uses mock
   entry-points (via `monkeypatch.setattr(bodai.cli, 'entry_points', ...)`)
   to verify the composition logic without requiring all 7 repos in
@@ -709,6 +953,23 @@ mahavishnu-scoped TUI (pools/workers). Both TUIs coexist.
 - 6.5 — Tests: `bodai/tests/test_shell.py` exercises the IPython shell
   path; `bodai/tests/test_dashboard.py` exercises the Textual app
   with a fake `check_all`.
+- 6.6 — **CI smoke for the three TUI/shell commands** (round-1 F21
+  fix — the spec claimed "smoke test in CI" but the impl plan had
+  no actual CI step asserting these work): the umbrella CI gains
+  a step that runs
+  `timeout 5 bodai shell --help`,
+  `timeout 5 bodai dashboard --help`, and
+  `timeout 5 mahavishnu monitor tui --help`. Each must exit 0
+  (verifies imports + command registration; not interactive).
+  Per-repo CI (bodai + mahavishnu) adds the same step.
+- 6.7 — **Typer-CLI-Runner assertion** for the three commands (added
+  after round-1 review to match the `--json` / `--version` test
+  pattern from Phase 4.4): for each of `bodai shell`, `bodai
+  dashboard`, `mahavishnu monitor tui`, a `typer.testing.CliRunner`
+  invocation that asserts `--help` exits 0 and the `__doc__` /
+  short-help is non-empty. This catches import failures and broken
+  registration that the timeout smoke wouldn't (the timeout smoke
+  could pass if the command hangs but never imports).
 
 **Integration Contract (Phase 6):**
 
@@ -839,6 +1100,22 @@ tracked as future work in the decision doc.
 | 9 | **session-buddy conversion target file is wrong** (`cli.py` doesn't exist; `app` is in `cli/__init__.py:204`) | high | Phase 4.3 explicitly targets `session_buddy/cli/__init__.py:204`; entry-point declaration uses `session-buddy = "session_buddy.cli:app"` (the `session-buddy` kebab-case replaces the existing `session_buddy` underscore entry-point) |
 | 10 | dhara factory-instance state lost when `register_lifecycle_handlers` mounts onto external Typer | medium | Phase 4.1's `register_lifecycle_handlers` is a method on the factory instance, not a class method; Phase 4.3 dhara recipe shows the 3-step pattern (`factory = MCPServerCLIFactory(...); app = BodaiCLIBase(...); factory.register_lifecycle_handlers(app)`); per-repo CI test asserts `dhara --help | grep -E '^(start|stop|restart|status|health)$'` returns 5 matches |
 | 11 | `bodai shell` import fails on systems where `ipython` isn't installed (genuine; `from IPython.terminal.embed import InteractiveShellEmbed` is lazy-imported inside `AdminShell.start()` but `from oneiric.shell import AdminShell` is eager) | low | bodai `pyproject.toml` declares `ipython>=8.0.0` as runtime dep; Phase 6.4 removes the defensive try/except and replaces it with a real error message including the install command (`uv pip install bodai[shell]`) |
+| 12 | **Umbrella CI in mahavishnu's repo can't see sibling repos** (round-1 CRITICAL): `actions/checkout@v4` only clones mahavishnu; `${{ github.workspace }}/../` is empty on the runner | high | Phase 4.5 moves the workflow to `bodai/.github/workflows/umbrella-ci.yml` with 7 explicit `actions/checkout@v4` steps (one per Core 7 repo) |
+| 13 | **`BodaiCLIBase.health` collides with `factory.register_lifecycle_handlers`'s `health` handler** (round-1 CRITICAL): Click/Typer duplicate-name behavior varies by version; one of the two definitions is silently lost | high | Phase 4.2 adds `prefix: str = "mcp-"` parameter to `register_lifecycle_handlers` so lifecycle commands mount as `mcp-start`/`mcp-stop`/etc. by default; the test in Phase 4.2 asserts all prefixed commands AND `BodaiCLIBase`'s `version`/`doctor`/`health` coexist |
+| 14 | **`oneiric.cli.base` import fails in 5 converting repos because `oneiric` is not in their `[project.dependencies]`** (round-1 CRITICAL) | high | Phase 4.1.5 adds `oneiric>=<X.Y.Z>` to each converting repo's `pyproject.toml` as part of the Phase 4.3 conversion commit; per-repo CI guard test asserts `from oneiric.cli.base import BodaiCLIBase` succeeds in fresh `uv pip install -e .` |
+| 15 | **`--json` global option never populated because `BodaiCLIBase.__init__` doesn't register `@app.callback`** (round-1 CRITICAL): the constraint forbidding BodaiCLIBase from registering its own callback was incompatible with Typer's mechanism for global options | high | Phase 4.1's constraint is **revised**: `BodaiCLIBase` now registers a single unified `@app.callback(invoke_without_command=True)` that wires `--json` (sets `ctx.obj["json_output"]`) and `--version`/`-V` (prints version + deprecation warning, then dispatches to `version` subcommand); akosha's preserved callback merges via `_pre_callback` hook |
+| 16 | **`_intercept_version_flag()` mutates `sys.argv` at `__init__` time, broken under `CliRunner`** (round-1 MAJOR): CliRunner invokes Typer with its own `args` parameter, not `sys.argv`, so the shim never fires; the shim also pollutes global state at import time | high | Replaced by Typer-native `--version` option in the unified callback (Risk 15); no `sys.argv` mutation |
+| 17 | **Phase 4.3's `bodai --help` smoke can't pass because `_discover_apps()` and `bodai.apps` entry-points don't land until Phase 5.1+5.2** (round-1 CRITICAL): Task 4.3 lands Day 9, Task 5.1+5.2 land Day 11; the smoke would fail for ~2 days | high | Phase 4.3 drops the `bodai --help` smoke; Phase 5.4 adds it after Phase 5.1+5.2 land |
+| 18 | **Manual oneiric publish step missing between Phase 4.1 and Phase 4.3** (round-1 MAJOR): BodaiCLIBase lands on oneiric's `main` but PyPI still ships the pre-`BodaiCLIBase` version; any consumer outside `/Users/les/Projects/oneiric` fails `from oneiric.cli.base import BodaiCLIBase` | medium | Phase 4.4.1 adds an explicit manual publish step (per `crackerjack-version-bumping-manual.md`); pre-Phase-4.3 verification checks `importlib.metadata.version('oneiric')` against the new release |
+| 19 | **Per-worktree commits never land on `main` because the Bash classifier blocks `git update-ref` cross-worktree** (round-1 MAJOR): each per-repo commit block ends with `git commit` but never `git update-ref refs/heads/main <branch> && git push`; commits sit on detached branches and downstream tasks silently fail | high | Phase 4.5 mandates a separate "merge agent" dispatched to the **main checkout** (NOT the worktree) that runs the `git update-ref` + `git push` between per-repo conversion commits and the umbrella CI's run |
+| 20 | **Inventory script hardcodes module paths that change in Phase 4.3** (round-1 MAJOR): `mahavishnu._main_cli` → `mahavishnu.main_cli` rename and `crackerjack.__main__` → `crackerjack.cli` move break the `entry_points` dict in `audit_cli_inventory.py` | medium | Task 0.1 reads entry-point targets from `importlib.metadata.entry_points(group="console_scripts")` instead of the hardcoded dict |
+| 21 | **`_discover_apps()` at module load runs BEFORE test mocks can take effect** (round-1 MAJOR): `with patch("bodai.cli.entry_points", ...)` is too late; module-load has already called `_discover_apps(app)` with real entry points | medium | Task 5.1 makes `_discover_apps()` lazy — called explicitly inside `__main__.py` or gated behind `if __name__ == "__main__"`; the test constructs a fresh Typer app and calls `_discover_apps(test_app)` with the mock in place |
+| 22 | **`entry_points(group=...)` requires Python 3.10+** (round-1 MAJOR): the 3.9 API is `entry_points().get(group, [])`; on 3.10+ it's `entry_points(group=...)` | low | Task 5.1 adds a version-check shim at the top of `bodai/cli.py`: if `sys.version_info < (3, 10)`, dispatch to the 3.9 API; otherwise use the 3.10+ API. Decision doc records the 3.10+ requirement |
+| 23 | **`audit_cli_inventory.py --repo` test doesn't enforce spec's minimum command counts** (round-1 MAJOR): `>=50` for mahavishnu, `==0` for mcp-common | medium | Task 0.1's test asserts the minimum count for at least one known repo (`>= 50` for mahavishnu, `== 0` for mcp-common) |
+| 24 | **No `--cov-fail-under=89` enforcement across 6 repos with new code** (round-1 MAJOR): a stub `_doctor_checks() → {}` would pass `pytest` but drop coverage below the 89% gate | medium | Phase 4.5 umbrella CI smoke loop adds `uv run pytest --cov=<pkg> --cov-fail-under=89` for each converting repo |
+| 25 | **CHANGELOG.md precondition missing in repos that lack one** (round-1 MAJOR): `git add CHANGELOG.md` in every commit block fails if the file doesn't exist | high | Phase 0.0.5 audits each Core 7 repo and creates an empty `CHANGELOG.md` with `## [Unreleased]` header in any repo that lacks one |
+| 26 | **Phase 2.2 gate is reactive (250-line budget), not preventive** (round-1 MAJOR): lives only in mahavishnu's `.git/hooks/pre-commit`; a developer adding `@app.command("foo")` in akosha bypasses the gate entirely | medium | Phase 2.2 installs the per-repo pre-commit hook in all 7 Core 7 repos via `mahavishnu index install-hooks .`; preventive gate asserts the new command is in the inventory before commit |
+| 27 | **Quarterly staleness cadence is launchd/macOS-only** (round-1 MINOR): the 6 consumer repos may run on Linux CI; the launchd plist only fires on macOS | low | Phase 7.5 adds a `schedule: - cron: '0 9 25 */3 *'` GitHub Actions trigger to `bodai/.github/workflows/quarterly-staleness.yml`; launchd plist remains the operator's local-reminder surface |
 
 ## 9. Out of Scope (explicit non-goals)
 
@@ -858,8 +1135,13 @@ tracked as future work in the decision doc.
 - **`mcp_common.cli.MCPServerCLIFactory`** — lifecycle handler source
 - **`bodai/cli.py`** — existing meta-CLI; gains `_discover_apps()` in Phase 5
 - **Umbrella CI job** (Phase 4 + Phase 5 demonstrables) — new
-  GitHub Actions job in mahavishnu `.github/workflows/umbrella-ci.yml`
-  that installs all 7 packages and runs the multi-repo demonstrables
+  GitHub Actions job in **`bodai/.github/workflows/umbrella-ci.yml`**
+  (revised after round-1 review — was mahavishnu's `.github/workflows/`
+  which had two structural defects: empty `${{ github.workspace }}/../`
+  and `paths:` filter that never fires on sibling pushes). The
+  workflow has 7 explicit `actions/checkout@v4` steps (one per Core 7
+  repo), runs the per-repo smoke loop, and is gated on Phase 4.3
+  conversions + Phase 5 entry-points.
 
 ---
 
