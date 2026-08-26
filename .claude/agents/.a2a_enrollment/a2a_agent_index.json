@@ -329,17 +329,6 @@
       "name": "elasticsearch-specialist",
       "priority": 1
     },
-    "fastblocks-specialist": {
-      "capabilities": [
-        "code_analysis",
-        "doc_generation"
-      ],
-      "discovery": true,
-      "file": "/Users/les/.claude/agents/fastblocks-specialist.md",
-      "max_concurrent_tasks": 3,
-      "name": "fastblocks-specialist",
-      "priority": 1
-    },
     "finops-specialist": {
       "capabilities": [
         "code_analysis",
@@ -436,28 +425,6 @@
       "file": "/Users/les/.claude/agents/helm-specialist.md",
       "max_concurrent_tasks": 3,
       "name": "helm-specialist",
-      "priority": 1
-    },
-    "htmx-specialist": {
-      "capabilities": [
-        "code_analysis",
-        "doc_generation"
-      ],
-      "discovery": true,
-      "file": "/Users/les/.claude/agents/htmx-specialist.md",
-      "max_concurrent_tasks": 3,
-      "name": "htmx-specialist",
-      "priority": 1
-    },
-    "htmy-specialist": {
-      "capabilities": [
-        "code_analysis",
-        "doc_generation"
-      ],
-      "discovery": true,
-      "file": "/Users/les/.claude/agents/htmy-specialist.md",
-      "max_concurrent_tasks": 3,
-      "name": "htmy-specialist",
       "priority": 1
     },
     "incident-responder": {
@@ -749,17 +716,6 @@
       "name": "prompt-engineer",
       "priority": 1
     },
-    "pwa-specialist": {
-      "capabilities": [
-        "code_analysis",
-        "doc_generation"
-      ],
-      "discovery": true,
-      "file": "/Users/les/.claude/agents/pwa-specialist.md",
-      "max_concurrent_tasks": 3,
-      "name": "pwa-specialist",
-      "priority": 1
-    },
     "pycharm-plugin-creator": {
       "capabilities": [
         "code_analysis",
@@ -1045,17 +1001,6 @@
       "file": "/Users/les/.claude/agents/vitest-specialist.md",
       "max_concurrent_tasks": 3,
       "name": "vitest-specialist",
-      "priority": 1
-    },
-    "web-components-specialist": {
-      "capabilities": [
-        "code_analysis",
-        "doc_generation"
-      ],
-      "discovery": true,
-      "file": "/Users/les/.claude/agents/web-components-specialist.md",
-      "max_concurrent_tasks": 3,
-      "name": "web-components-specialist",
       "priority": 1
     },
     "websocket-specialist": {
