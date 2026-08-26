@@ -25,11 +25,21 @@
 
 ## Task ordering
 
-Tasks are grouped into the 8 phases from the spec. **Critical-path items** (block the most downstream work):
-1. **Task 0.5** — mcp-common factory syntax fix (4-char change, unblocks Phase 4.2)
-2. **Task 4.0** — oneiric package conversion (precondition for Phase 4.1)
-3. **Task 4.2** — `register_lifecycle_handlers` (after 0.5; blocks Phase 4.3)
-4. **Task 4.5** — umbrella CI job (after 0.5; gates every Phase 4.3 conversion)
+Tasks are grouped into the 8 phases from the spec. **Critical-path items** (block the most downstream work) — round-2 F1 fix
+clarifies actual task IDs:
+1. **Task 0.5** — mcp-common factory syntax fix (4-char change, unblocks Task 3.2.6)
+2. **Task 4.0** — oneiric package conversion (precondition for Task 4.1)
+3. **Task 3.2.6** — `register_lifecycle_handlers` factory extension
+   (NOT Task 4.2 — that is now per-repo conversions). Lands after 0.5; blocks Task 4.2.
+4. **Task 4.1** — `BodaiCLIBase` implementation (depends on Task 4.0)
+5. **Task 4.4.1** — manual oneiric publish step (per `crackerjack-version-bumping-manual.md`);
+   lands between Task 4.1 and any Task 4.2 consumer conversion.
+6. **Task 4.1.5** — oneiric dep declaration in each converting repo's
+   `pyproject.toml`. Lands as part of each Task 4.2 conversion commit.
+7. **Task 4.3** — umbrella CI job (in `bodai` repo per round-1 F2 fix;
+   gates every Task 4.2 conversion).
+8. **Task 5.1 + 5.2** — entry-point commits depend on each repo's
+   Task 4.2 file moves/renames + Task 4.4.1 publish.
 
 **Parallelizable** (independent per-repo commits): Phase 3 sub-phases; Phase 4.3 conversions; Phase 5.1 entry-point declarations.
 
@@ -1386,11 +1396,17 @@ the contract; subclasses add component-specific surface.
 from __future__ import annotations
 
 import json
+import logging
 import warnings
-from importlib.metadata import version as metadata_version
+from importlib.metadata import PackageNotFoundError, version as metadata_version
 from typing import Any
 
 import typer
+
+# Round-2 refactoring fix (F-β): logger replaces bare `print` for error
+# reporting; per CLAUDE.md "In `except` blocks, use `logger.exception(...)`,
+# never `logger.error(..., exc_info=True)`."
+_logger = logging.getLogger(__name__)
 
 
 class ExitCode:
@@ -1423,7 +1439,11 @@ class BodaiCLIBase(typer.Typer):
     def _detect_version(self) -> str:
         try:
             return metadata_version(self.component_name)
-        except Exception:
+        except PackageNotFoundError:
+            # Round-2 refactoring fix (F-β): narrow the catch from bare
+            # `Exception` (which masked real bugs like corrupt .dist-info
+            # or filesystem permission errors) to the specific expected
+            # miss. Everything else propagates so failures are loud.
             return "(not installed)"
 
     def _register_global_callback(self) -> None:
@@ -1487,12 +1507,19 @@ class BodaiCLIBase(typer.Typer):
         @self.command()
         def doctor(ctx: typer.Context) -> None:
             """Run diagnostic checks against this component's runtime."""
-            json_output = (ctx.obj or {}).get("json_output", False)
+            json_output = self._resolve_json_output(ctx)
             try:
                 checks = self._doctor_checks()
             except NotImplementedError:
-                typer.echo(f"{self.component_name}: doctor checks not yet implemented")
+                # Round-2 refactoring fix (F-γ): distinct from "broken".
+                # ExitCode.UNAVAILABLE means "intentionally not yet
+                # implemented"; ExitCode.ERROR means "real failure".
+                typer.echo(f"{self.component_name}: doctor checks not yet implemented", err=True)
                 raise typer.Exit(code=ExitCode.UNAVAILABLE)
+            except Exception:
+                _logger.exception("doctor failed for %s", self.component_name)
+                typer.echo(f"{self.component_name}: doctor failed (see logs)", err=True)
+                raise typer.Exit(code=ExitCode.ERROR)
             if json_output:
                 typer.echo(json.dumps({"checks": checks}, indent=2))
             else:
@@ -1502,29 +1529,32 @@ class BodaiCLIBase(typer.Typer):
         @self.command()
         def health(ctx: typer.Context) -> None:
             """Probe this component's runtime health."""
-            json_output = (ctx.obj or {}).get("json_output", False)
+            json_output = self._resolve_json_output(ctx)
             try:
                 snapshot = self._health_probe()
             except NotImplementedError:
-                typer.echo(f"{self.component_name}: health checks not yet implemented")
+                typer.echo(f"{self.component_name}: health checks not yet implemented", err=True)
                 raise typer.Exit(code=ExitCode.UNAVAILABLE)
+            except Exception:
+                _logger.exception("health failed for %s", self.component_name)
+                typer.echo(f"{self.component_name}: health failed (see logs)", err=True)
+                raise typer.Exit(code=ExitCode.ERROR)
             if json_output:
                 typer.echo(json.dumps(snapshot, indent=2))
             else:
                 typer.echo(str(snapshot))
 
-    def _intercept_version_flag(self) -> None:
-        """--version flag deprecation shim (one release)."""
-    def _doctor_checks(self) -> dict[str, Any]:
-        """Override in subclass. Return dict of check_name -> {status, detail}."""
-        raise NotImplementedError
+    def _resolve_json_output(self, ctx: typer.Context) -> bool:
+        """Round-2 refactoring fix (F-δ): single source of truth for json_output.
 
-    def _health_probe(self) -> dict[str, Any]:
-        """Override in subclass. Return dict matching oneiric health schema."""
-        raise NotImplementedError
+        Replaces the duplicated `(ctx.obj or {}).get("json_output", False)`
+        expression in two commands. The `(ctx.obj or {})` fallback goes
+        away once the unified callback guarantees `ctx.obj` is a dict.
+        """
+        obj = ctx.obj or {}
+        return bool(obj.get("json_output", False))
 
-    # NOTE: the original `_intercept_version_flag()` method (which mutated
-    # `sys.argv` at __init__ time) was REMOVED after round-1 review.
+    # NOTE: `_intercept_version_flag()` was REMOVED after round-1 review.
     # The cascade fix replaces it with the `--version` Typer option in the
     # unified callback `_register_global_callback()`. Rationale:
     # CliRunner uses its own `args` parameter (not `sys.argv`), so the
@@ -1532,6 +1562,14 @@ class BodaiCLIBase(typer.Typer):
     # also polluted global state. The Typer option is the standard
     # mechanism and works under both `CliRunner` and real entry-point
     # invocations.
+
+    def _doctor_checks(self) -> dict[str, Any]:
+        """Override in subclass. Return dict of check_name -> {status, detail}."""
+        raise NotImplementedError
+
+    def _health_probe(self) -> dict[str, Any]:
+        """Override in subclass. Return dict matching oneiric health schema."""
+        raise NotImplementedError
 ```
 
 - [ ] **Step 4: Run test + commit**
