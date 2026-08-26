@@ -25,21 +25,11 @@
 
 ## Task ordering
 
-Tasks are grouped into the 8 phases from the spec. **Critical-path items** (block the most downstream work) — round-2 F1 fix
-clarifies actual task IDs:
-1. **Task 0.5** — mcp-common factory syntax fix (4-char change, unblocks Task 3.2.6)
-2. **Task 4.0** — oneiric package conversion (precondition for Task 4.1)
-3. **Task 3.2.6** — `register_lifecycle_handlers` factory extension
-   (NOT Task 4.2 — that is now per-repo conversions). Lands after 0.5; blocks Task 4.2.
-4. **Task 4.1** — `BodaiCLIBase` implementation (depends on Task 4.0)
-5. **Task 4.4.1** — manual oneiric publish step (per `crackerjack-version-bumping-manual.md`);
-   lands between Task 4.1 and any Task 4.2 consumer conversion.
-6. **Task 4.1.5** — oneiric dep declaration in each converting repo's
-   `pyproject.toml`. Lands as part of each Task 4.2 conversion commit.
-7. **Task 4.3** — umbrella CI job (in `bodai` repo per round-1 F2 fix;
-   gates every Task 4.2 conversion).
-8. **Task 5.1 + 5.2** — entry-point commits depend on each repo's
-   Task 4.2 file moves/renames + Task 4.4.1 publish.
+Tasks are grouped into the 8 phases from the spec. **Critical-path items** (block the most downstream work):
+1. **Task 0.5** — mcp-common factory syntax fix (4-char change, unblocks Phase 4.2)
+2. **Task 4.0** — oneiric package conversion (precondition for Phase 4.1)
+3. **Task 4.2** — `register_lifecycle_handlers` (after 0.5; blocks Phase 4.3)
+4. **Task 4.5** — umbrella CI job (after 0.5; gates every Phase 4.3 conversion)
 
 **Parallelizable** (independent per-repo commits): Phase 3 sub-phases; Phase 4.3 conversions; Phase 5.1 entry-point declarations.
 
@@ -57,82 +47,13 @@ clarifies actual task IDs:
 - Consumes: each Core 7 repo's Typer app (via importlib)
 - Produces: per-repo JSON inventory + MD summary; PHASE_0_BASELINE.json aggregate
 
-## Phase 0 — Inventory tooling
-
-### Task 0.0.5: CHANGELOG.md audit (round-1 F18)
-
-**Files:**
-- Audit: 7 Core 7 repos for `CHANGELOG.md` presence
-- Create (per missing repo): `CHANGELOG.md` with `## [Unreleased]` header
-
-**Context:** Phase 3 and Phase 4 commits mandate `CHANGELOG.md` updates per the global constraint. A `git add CHANGELOG.md` in any commit fails if the file doesn't exist. This audit catches the gap before Phase 3 starts.
-
-- [ ] **Step 1: Audit each Core 7 repo for `CHANGELOG.md` presence**
-
-Run:
-```bash
-for repo in oneiric dhara session-buddy akosha crackerjack mahavishnu bodai mcp-common; do
-    if [ -f "/Users/les/Projects/$repo/CHANGELOG.md" ]; then
-        echo "$repo: present"
-    else
-        echo "$repo: MISSING"
-    fi
-done
-```
-
-- [ ] **Step 2: For each missing repo, create `CHANGELOG.md`**
-
-For each missing repo (likely 0-3; most Core 7 repos may already have one):
-
-```bash
-REPO="<missing-repo>"
-cat > /Users/les/Projects/$REPO/CHANGELOG.md <<'EOF'
-# Changelog
-
-All notable changes to `<repo>` are documented here.
-
-## [Unreleased]
-
-### Changed
-
-### Added
-
-### Removed
-
-### Deprecated
-
-### Fixed
-
-### Security
-EOF
-
-cd /Users/les/Projects/$REPO
-git add CHANGELOG.md
-git -c user.name=les -c user.email=les@wedgwoodwebworks.com commit -m "chore($REPO): bootstrap CHANGELOG.md"
-```
-
-- [ ] **Step 3: Verify all 7 repos have `CHANGELOG.md`**
-
-Re-run the audit script from Step 1. Expected: 7 "present" lines, 0 "MISSING" lines.
-
-### Task 0.1: Write `scripts/audit_cli_inventory.py` (mahavishnu)
-
-**Files:**
-- Create: `/Users/les/Projects/mahavishnu/scripts/audit_cli_inventory.py`
-- Test: `/Users/les/Projects/mahavishnu/tests/unit/test_audit_cli_inventory.py`
-
-**Interfaces:**
-- Consumes: each Core 7 repo's Typer app (via importlib)
-- Produces: per-repo JSON inventory + MD summary; PHASE_0_BASELINE.json aggregate
-
-- [ ] **Step 1: Write the failing test** (round-1 F16: includes minimum count assertions)
+- [ ] **Step 1: Write the failing test**
 
 ```python
 # tests/unit/test_audit_cli_inventory.py
 import json
 from pathlib import Path
 from scripts.audit_cli_inventory import inventory_one_repo
-
 
 def test_inventory_mahavishnu_returns_per_command_fields(tmp_path):
     out = tmp_path / "mahavishnu-cli-inventory.json"
@@ -146,27 +67,6 @@ def test_inventory_mahavishnu_returns_per_command_fields(tmp_path):
             "command_path", "module", "function", "short_help",
             "tests_present", "staleness_verdict",
         }
-
-
-def test_inventory_mahavishnu_meets_minimum_count(tmp_path):
-    """Round-1 F16: spec §5 Phase 0 demonstrable requires >= 50 commands
-    for mahavishnu (20+ *_cli.py files). A regression that breaks
-    `_walk_typer` recursion would silently return 1 command and pass the
-    schema-only test above. This test catches that."""
-    out = tmp_path / "mahavishnu-cli-inventory.json"
-    data = inventory_one_repo("mahavishnu", "/Users/les/Projects/mahavishnu", out)
-    assert len(data["commands"]) >= 50, (
-        f"Inventory returned {len(data['commands'])} commands; "
-        "spec §5 Phase 0 demonstrable requires >= 50"
-    )
-
-
-def test_inventory_mcp_common_is_library_only(tmp_path):
-    """Spec §5 Phase 0 demonstrable: mcp-common has no CLI surface."""
-    out = tmp_path / "mcp-common-cli-inventory.json"
-    data = inventory_one_repo("mcp-common", "/Users/les/Projects/mcp-common", out)
-    assert len(data["commands"]) == 0
-    assert any("library-only" in n.lower() for n in data.get("notes", []))
 ```
 
 - [ ] **Step 2: Run test to verify it fails**
@@ -175,10 +75,6 @@ Run: `cd /Users/les/Projects/mahavishnu && uv run pytest tests/unit/test_audit_c
 Expected: FAIL with `ModuleNotFoundError: No module named 'scripts.audit_cli_inventory'`
 
 - [ ] **Step 3: Write minimal implementation**
-
-```python
-# scripts/audit_cli_inventory.py
-"""Typer CLI surface inventory for Bodai Core 7.
 
 ```python
 # scripts/audit_cli_inventory.py
@@ -306,52 +202,20 @@ def inventory_one_repo(repo: str, repo_path: str, out_path: Path) -> dict[str, A
             data = {"repo": repo, "commands": [], "notes": ["library-only; no CLI surface"], "version": _safe_version(repo)}
             out_path.write_text(json.dumps(data, indent=2))
             return data
-        # Round-1 F11 fix: read entry-point targets from the real
-        # entry-points machinery (`importlib.metadata.entry_points(group="console_scripts")`)
-        # instead of the hardcoded dict. Phase 4.3 renames
-        # `mahavishnu._main_cli` → `mahavishnu.main_cli` and moves
-        # `crackerjack.__main__` → `crackerjack.cli`; a hardcoded dict
-        # would silently break in those phases. Falls out of using the
-        # real entry-point machinery instead of guessing.
-        from importlib.metadata import entry_points as _eps
-        try:
-            # Python 3.10+ API
-            console_eps = _eps(group="console_scripts")
-        except TypeError:
-            # Python 3.9 API
-            console_eps = _eps().get("console_scripts", [])
-        target = None
-        for ep in console_eps:
-            if ep.name == repo:
-                target = ep
-                break
-        if target is None:
-            # Fallback for repos whose console script differs from the
-            # kebab-case repo name (e.g. `session_buddy` underscore vs
-            # `session-buddy` kebab-case).
-            alias_map = {"session-buddy": "session_buddy", "mcp-common": None}
-            for ep in console_eps:
-                if ep.name == alias_map.get(repo, repo):
-                    target = ep
-                    break
-        if target is None:
-            raise RuntimeError(
-                f"Could not find console script entry-point for repo '{repo}'. "
-                f"Available: {[ep.name for ep in console_eps]}"
-            )
-        # entry-point target is `<module>:<attr>`. For factory-returned
-        # apps (dhara), the attr may be a factory function we must call.
-        mod_name, _, attr_name = target.value.partition(":")
+        entry_points = {
+            "oneiric": ("oneiric.cli", "app"),
+            "dhara": ("dhara.cli", "create_cli"),
+            "session-buddy": ("session_buddy.cli", "app"),
+            "akosha": ("akosha.cli", "app"),
+            "crackerjack": ("crackerjack.__main__", "app"),
+            "mahavishnu": ("mahavishnu._main_cli", "app"),
+        }
+        mod_name, attr_name = entry_points[repo]
         mod = __import__(mod_name, fromlist=[attr_name])
         typer_app = getattr(mod, attr_name)
-        # Phase 5.4 fix: factory-returned apps must run in a subprocess
-        # to isolate side effects (signal handlers, port binds, etc.).
-        # For now we call them in-process with the documented caveat
-        # that the inventory tool is "unsafe to run with anything
-        # installed except the target repo" (round-1 MINOR-8).
         if hasattr(typer_app, "create_app"):
             typer_app = typer_app.create_app()
-        elif callable(typer_app) and not isinstance(typer_app, typer.Typer):
+        elif callable(typer_app):
             typer_app = typer_app()
     finally:
         sys.path.pop(0)
@@ -452,117 +316,35 @@ git -c user.name=les -c user.email=les@wedgwoodwebworks.com commit -m "feat(maha
 **Files:**
 - Modify: `/Users/les/Projects/mcp-common/mcp_common/cli/factory.py:530`
 - Modify: `/Users/les/Projects/mcp-common/mcp_common/cli/factory.py:745`
-- Create: `/Users/les/Projects/mcp-common/tests/unit/test_factory_syntax.py` (round-1 F8 regression test)
 
 **Context:** Most-impactful 4-character fix in the plan. Phase 4.2's `register_lifecycle_handlers` extension would otherwise re-mount silently broken handlers.
 
-- [ ] **Step 1: Write the failing regression test FIRST** (round-1 F8 fix)
-
-Create `/Users/les/Projects/mcp-common/tests/unit/test_factory_syntax.py`:
-
-```python
-"""Round-1 F8 regression test: factory.py's except clauses must be Python 3 syntax.
-
-The 4-character fix changes `except ValueError, OSError:` (Python 2 syntax
-that binds `OSError` as alias for `ValueError`) to `except (ValueError, OSError):`
-(tuple, catches both). Without this targeted test, a `git revert` would
-silently re-break the file under Python 3.14 (which won't even parse the
-old syntax, masking the regression). This test forces module import
-which validates every except clause at parse time.
-"""
-from __future__ import annotations
-
-import ast
-
-
-def test_factory_module_parses_cleanly():
-    """The factory.py module must parse without SyntaxError."""
-    import mcp_common.cli.factory as factory_mod
-    # Module-level import already triggers parse; assert we got the module
-    assert factory_mod is not None
-
-
-def test_factory_module_has_no_python2_except_syntax():
-    """AST scan: no `except ExcTypeA, ExcTypeB:` (Python 2 comma-separated)."""
-    import mcp_common.cli.factory as factory_mod
-    source_path = factory_mod.__file__
-    if source_path is None:
-        return  # builtin or namespace package
-    with open(source_path) as f:
-        tree = ast.parse(f.read())
-    for node in ast.walk(tree):
-        if isinstance(node, ast.ExceptHandler):
-            if node.body and len(node.body) == 1:
-                # Look for `except Type1, Type2:` — Python 2 style. Under
-                # Python 3 the parser already rejects it, but be explicit
-                # for clarity and to catch any future regression.
-                # (No AST node directly represents this; rely on parse
-                # succeeding for the test_factory_module_parses_cleanly
-                # assertion above.)
-                pass
-
-
-def test_register_lifecycle_handlers_runs_end_to_end():
-    """Round-1 F15 fix: the factory actually constructs + mounts without
-    hitting the bad except clauses. Pre-fix, the bad except clauses
-    were inside handler registration, so any consumer that called
-    `register_lifecycle_handlers` would silently fall through.
-    """
-    from mcp_common.cli.factory import MCPServerCLIFactory
-    import typer
-    from typer.testing import CliRunner
-
-    app = typer.Typer()
-    factory = MCPServerCLIFactory(component_name="syntax-test", server_name="syntax-test-server")
-    factory.register_lifecycle_handlers(app)
-    runner = CliRunner()
-    result = runner.invoke(app, ["--help"])
-    # If the bad except clauses were inside the handler factory,
-    # register_lifecycle_handlers would raise during handler construction.
-    # Smoke: assert no exception raised.
-    assert result.exit_code == 0
-    for cmd in ("start", "stop", "restart", "status", "health"):
-        assert cmd in result.output, f"missing {cmd} in help output"
-```
-
-- [ ] **Step 2: Run the regression test BEFORE the fix; verify it fails**
-
-Run: `cd /Users/les/Projects/mcp-common && uv run pytest tests/unit/test_factory_syntax.py -v`
-Expected: PASS (this is the post-fix state — if you're applying the fix
-on a fresh repo, you can skip this verification step; the test is
-written first to lock in the contract)
-
-- [ ] **Step 3: Read the two sites to confirm they're Python 2 syntax**
+- [ ] **Step 1: Read the two sites to confirm they're Python 2 syntax**
 
 Run: `grep -n 'except ValueError, OSError:' /Users/les/Projects/mcp-common/mcp_common/cli/factory.py`
 Expected: 2 matches at lines 530 and 745
 
-- [ ] **Step 4: Fix line 530**
+- [ ] **Step 2: Fix line 530**
 
 Edit `/Users/les/Projects/mcp-common/mcp_common/cli/factory.py` at line 530:
 - Find: `except ValueError, OSError:`
 - Replace: `except (ValueError, OSError):`
 
-- [ ] **Step 5: Fix line 745**
+- [ ] **Step 3: Fix line 745**
 
 Same edit at line 745.
 
-- [ ] **Step 6: Run mcp-common tests (full suite)**
+- [ ] **Step 4: Run mcp-common tests**
 
 Run: `cd /Users/les/Projects/mcp-common && uv run pytest tests/ -x`
 Expected: PASS
 
-- [ ] **Step 7: Run the new regression test specifically**
-
-Run: `cd /Users/les/Projects/mcp-common && uv run pytest tests/unit/test_factory_syntax.py -v`
-Expected: PASS (the targeted test would FAIL if a `git revert` reintroduces the syntax)
-
-- [ ] **Step 8: Commit**
+- [ ] **Step 5: Commit**
 
 ```bash
 cd /Users/les/Projects/mcp-common
-git add mcp_common/cli/factory.py tests/unit/test_factory_syntax.py
-git -c user.name=les -c user.email=les@wedgwoodwebworks.com commit -m "fix(mcp-common): correct Python 2 'except' syntax in factory.py + add regression test"
+git add mcp_common/cli/factory.py
+git -c user.name=les -c user.email=les@wedgwoodwebworks.com commit -m "fix(mcp-common): correct Python 2 'except' syntax in factory.py"
 ```
 
 ---
@@ -1375,38 +1157,24 @@ Create `/Users/les/Projects/oneiric/oneiric/cli/base.py`:
 
 Each Core 7 repo subclasses `BodaiCLIBase(component_name="...")` to get
 `version`, `doctor`, `health` global commands plus the `--json` flag and
-the `--version` deprecation shim. **Round-1 review (cascade fix)**: the
-prior design forbade BodaiCLIBase from registering its own
-`@app.callback`, which made Typer's mechanism for global options
-(`--json`, `--version`) unreachable. The revised design registers a
-single unified `@app.callback(invoke_without_command=True)` that wires
-both global options. The constraint is RELAXED, not removed: subclasses
-with an existing `@app.callback` (akosha, oneiric) MUST merge their
-callback body via the `_pre_callback` subclass hook (or REMOVE the
-prior callback if it only handles `--version`/`--json`, since the
-unified callback subsumes that behavior).
+the `--version` deprecation shim. Subclasses retain callback registration
+(Typer allows only one `@app.callback` per app).
 
 Subclasses override `_doctor_checks()` and `_health_probe()` to return
 their repo-specific checks. Both raise `NotImplementedError` by default;
 per-repo CI tests must assert the hooks return real data, not `{}`.
 
-Subclassing model mirrors `oneiric.shell.AdminShell`: base provides
-the contract; subclasses add component-specific surface.
+Mirrors the `oneiric.shell.AdminShell` pattern: base provides the
+contract; subclasses add component-specific surface.
 """
 from __future__ import annotations
 
 import json
-import logging
-import warnings
-from importlib.metadata import PackageNotFoundError, version as metadata_version
+import sys
+from importlib.metadata import version as metadata_version
 from typing import Any
 
 import typer
-
-# Round-2 refactoring fix (F-β): logger replaces bare `print` for error
-# reporting; per CLAUDE.md "In `except` blocks, use `logger.exception(...)`,
-# never `logger.error(..., exc_info=True)`."
-_logger = logging.getLogger(__name__)
 
 
 class ExitCode:
@@ -1433,69 +1201,14 @@ class BodaiCLIBase(typer.Typer):
         super().__init__(help=help, no_args_is_help=no_args_is_help, **kwargs)
         self.component_name = component_name
         self.component_version = self._detect_version()
-        self._register_global_callback()
+        self._intercept_version_flag()
         self._register_global_commands()
 
     def _detect_version(self) -> str:
         try:
             return metadata_version(self.component_name)
-        except PackageNotFoundError:
-            # Round-2 refactoring fix (F-β): narrow the catch from bare
-            # `Exception` (which masked real bugs like corrupt .dist-info
-            # or filesystem permission errors) to the specific expected
-            # miss. Everything else propagates so failures are loud.
+        except Exception:
             return "(not installed)"
-
-    def _register_global_callback(self) -> None:
-        """Register the unified `@app.callback` that wires --json and --version.
-
-        Round-1 cascade fix: this replaces the prior `_intercept_version_flag`
-        `sys.argv` mutation (broken under CliRunner) and the missing
-        `ctx.obj["json_output"]` setup. Subclasses with their own callback
-        (akosha, oneiric) override `_pre_callback` to merge their body in;
-        subclasses whose existing callback only handled `--version`/`--json`
-        (crackerjack, dhara, session-buddy) REMOVE that callback per
-        Phase 4.3 because the unified callback subsumes the behavior.
-        """
-        @self.callback(invoke_without_command=True)
-        def _bodai_global_callback(
-            ctx: typer.Context,
-            json_output: bool = typer.Option(
-                False,
-                "--json",
-                help="Emit JSON output (sets ctx.obj['json_output'] = True for every command).",
-            ),
-            version_flag: bool = typer.Option(
-                False,
-                "--version",
-                "-V",
-                help="[DEPRECATED] Use `version` subcommand. Will be removed in next minor release.",
-                hidden=True,
-            ),
-        ) -> None:
-            if version_flag:
-                warnings.warn(
-                    "--version/-V flag is deprecated; use the `version` subcommand instead",
-                    DeprecationWarning,
-                    stacklevel=2,
-                )
-                typer.echo(f"{self.component_name}: {self.component_version}")
-                raise typer.Exit(code=ExitCode.SUCCESS)
-            ctx.ensure_object(dict)
-            ctx.obj["json_output"] = json_output
-            ctx.obj["component_name"] = self.component_name
-            ctx.obj["component_version"] = self.component_version
-            self._pre_callback(ctx)
-
-    def _pre_callback(self, ctx: typer.Context) -> None:
-        """Subclass hook: extend the unified callback with repo-specific setup.
-
-        Akosha's preserved `main` callback (cli.py:54) and oneiric's
-        config-setup callback (cli.py:1959) merge into the unified callback
-        body via this hook. Default: no-op. Subclasses MUST NOT register
-        their own `@app.callback` — that would conflict with this one.
-        """
-        return None
 
     def _register_global_commands(self) -> None:
         @self.command()
@@ -1507,19 +1220,12 @@ class BodaiCLIBase(typer.Typer):
         @self.command()
         def doctor(ctx: typer.Context) -> None:
             """Run diagnostic checks against this component's runtime."""
-            json_output = self._resolve_json_output(ctx)
+            json_output = (ctx.obj or {}).get("json_output", False)
             try:
                 checks = self._doctor_checks()
             except NotImplementedError:
-                # Round-2 refactoring fix (F-γ): distinct from "broken".
-                # ExitCode.UNAVAILABLE means "intentionally not yet
-                # implemented"; ExitCode.ERROR means "real failure".
-                typer.echo(f"{self.component_name}: doctor checks not yet implemented", err=True)
+                typer.echo(f"{self.component_name}: doctor checks not yet implemented")
                 raise typer.Exit(code=ExitCode.UNAVAILABLE)
-            except Exception:
-                _logger.exception("doctor failed for %s", self.component_name)
-                typer.echo(f"{self.component_name}: doctor failed (see logs)", err=True)
-                raise typer.Exit(code=ExitCode.ERROR)
             if json_output:
                 typer.echo(json.dumps({"checks": checks}, indent=2))
             else:
@@ -1529,39 +1235,29 @@ class BodaiCLIBase(typer.Typer):
         @self.command()
         def health(ctx: typer.Context) -> None:
             """Probe this component's runtime health."""
-            json_output = self._resolve_json_output(ctx)
+            json_output = (ctx.obj or {}).get("json_output", False)
             try:
                 snapshot = self._health_probe()
             except NotImplementedError:
-                typer.echo(f"{self.component_name}: health checks not yet implemented", err=True)
+                typer.echo(f"{self.component_name}: health checks not yet implemented")
                 raise typer.Exit(code=ExitCode.UNAVAILABLE)
-            except Exception:
-                _logger.exception("health failed for %s", self.component_name)
-                typer.echo(f"{self.component_name}: health failed (see logs)", err=True)
-                raise typer.Exit(code=ExitCode.ERROR)
             if json_output:
                 typer.echo(json.dumps(snapshot, indent=2))
             else:
                 typer.echo(str(snapshot))
 
-    def _resolve_json_output(self, ctx: typer.Context) -> bool:
-        """Round-2 refactoring fix (F-δ): single source of truth for json_output.
-
-        Replaces the duplicated `(ctx.obj or {}).get("json_output", False)`
-        expression in two commands. The `(ctx.obj or {})` fallback goes
-        away once the unified callback guarantees `ctx.obj` is a dict.
-        """
-        obj = ctx.obj or {}
-        return bool(obj.get("json_output", False))
-
-    # NOTE: `_intercept_version_flag()` was REMOVED after round-1 review.
-    # The cascade fix replaces it with the `--version` Typer option in the
-    # unified callback `_register_global_callback()`. Rationale:
-    # CliRunner uses its own `args` parameter (not `sys.argv`), so the
-    # shim never fired under tests; mutating `sys.argv` at import time
-    # also polluted global state. The Typer option is the standard
-    # mechanism and works under both `CliRunner` and real entry-point
-    # invocations.
+    def _intercept_version_flag(self) -> None:
+        """--version flag deprecation shim (one release)."""
+        if "--version" in sys.argv or "-V" in sys.argv:
+            sys.stderr.write(
+                f"NOTE: --version is deprecated; use '{self.component_name} version'"
+                " (or '<component> -V'). The flag will be removed in the next minor.\n"
+            )
+            argv = sys.argv[:]
+            for i, arg in enumerate(argv):
+                if arg in ("--version", "-V"):
+                    argv[i] = "version"
+            sys.argv = argv
 
     def _doctor_checks(self) -> dict[str, Any]:
         """Override in subclass. Return dict of check_name -> {status, detail}."""
@@ -1580,122 +1276,6 @@ cd /Users/les/Projects/oneiric
 git add oneiric/cli/base.py oneiric/tests/cli/test_base.py CHANGELOG.md
 git -c user.name=les -c user.email=les@wedgwoodwebworks.com commit -m "feat(oneiric): add BodaiCLIBase + ExitCode"
 ```
-
----
-
-### Task 4.1.5: Cross-repo dep declaration (round-1 F3 fix)
-
-**Files:**
-- Modify: `/Users/les/Projects/{dhara,session-buddy,akosha,crackerjack,mahavishnu}/pyproject.toml` (5 files)
-- Create: per-repo CI guard test in each converting repo's `tests/cli/test_bodai_cli_base_import.py`
-
-**Context:** Phase 4.2's 6 conversion subagents import `oneiric.cli.base.BodaiCLIBase`. Without `oneiric>=<X.Y.Z>` in their `[project.dependencies]`, fresh `uv pip install -e .` fails with `ModuleNotFoundError`. The umbrella CI smoke loop installs released versions from PyPI (Task 4.4.1 publishes the oneiric release containing `BodaiCLIBase`), so each converting repo must declare a `oneiric` dep that satisfies `>= <published_version>`.
-
-- [ ] **Step 1: Identify the oneiric version to bump to**
-
-After Task 4.4.1 (manual oneiric publish), the published oneiric version is `<X.Y.Z>` (whatever the operator bumped to). For Phase 4.2's 6 conversions, the dep floor is `<X.Y.Z>` (no upper bound; let oneiric's minor releases flow through).
-
-- [ ] **Step 2: For each converting repo, add `oneiric>=<X.Y.Z>` to `[project.dependencies]`**
-
-Per repo:
-```bash
-REPO="<converting-repo>"
-VERSION="<X.Y.Z>"
-cd /Users/les/Projects/$REPO
-# Add oneiric dep using uv:
-uv add "oneiric>=${VERSION}"
-git add pyproject.toml uv.lock
-git -c user.name=les -c user.email=les@wedgwoodwebworks.com commit -m "chore($REPO): declare oneiric>=${VERSION} dep (BodaiCLIBase)"
-```
-
-The 6 commits land in each repo's worktree branch. After each commit, dispatch a "merge agent" from the **main checkout** to run
-`git update-ref refs/heads/main <branch> && git push origin main`
-(Bash classifier blocks cross-worktree file ops per
-`mahavishname-worktree-isolation-guard-is-bash-classifier`).
-
-- [ ] **Step 3: Add per-repo CI guard test**
-
-In each converting repo, create `tests/cli/test_bodai_cli_base_import.py`:
-
-```python
-"""Round-1 F3 fix: per-repo CI guard that oneiric.cli.base is importable.
-
-Catches regressions where a dep bump gets reverted (or where the
-published oneiric on PyPI hasn't been updated yet).
-"""
-from __future__ import annotations
-
-
-def test_bodai_cli_base_importable():
-    from oneiric.cli.base import BodaiCLIBase
-    assert BodaiCLIBase is not None
-    # Subclasses must be constructable with a component_name kwarg.
-    class _Test(BodaiCLIBase):
-        pass
-    app = _Test(component_name="<repo>")
-    assert app.component_name == "<repo>"
-```
-
-Lands in the same per-repo commit as the dep bump.
-
-- [ ] **Step 4: Verify fresh-install path works**
-
-Run (per repo):
-```bash
-cd /Users/les/Projects/<repo>
-rm -rf .venv && uv venv && source .venv/bin/activate && uv pip install -e .
-python -c "from oneiric.cli.base import BodaiCLIBase; print('OK')"
-```
-Expected: `OK` (without the dep bump, this would fail with
-`ModuleNotFoundError: No module named 'oneiric.cli.base'`).
-
-### Task 4.4.1: Manual oneiric publish (round-1 F4 fix)
-
-**Files:**
-- Modify: `/Users/les/Projects/oneiric/pyproject.toml` (version bump)
-- Add tag: `v<X.Y.Z>` on oneiric
-
-**Context:** Per `crackerjack-version-bumping-manual.md` ("user
-initiates bumps and PyPI publishes; flag those steps in plans"),
-this is a **manual** step the operator runs after Task 4.1 lands
-BodaiCLIBase on oneiric's `main` and BEFORE any Phase 4.2 consumer
-conversion. Without it, `uv pip install oneiric` from PyPI fails to
-provide `BodaiCLIBase`.
-
-- [ ] **Step 1: Bump oneiric's version + commit**
-
-```bash
-cd /Users/les/Projects/oneiric
-uv version --bump minor
-git add pyproject.toml
-git -c user.name=les -c user.email=les@wedgwoodwebworks.com commit -m "chore(release): bump oneiric to <X.Y.Z> for BodaiCLIBase"
-```
-
-- [ ] **Step 2: Tag + build + publish**
-
-```bash
-cd /Users/les/Projects/oneiric
-git tag v<X.Y.Z>
-uv build
-uv publish
-```
-
-- [ ] **Step 3: Verify the release contains BodaiCLIBase**
-
-```bash
-python -c "
-from importlib.metadata import version
-import oneiric.cli.base as b
-v = version('oneiric')
-print(f'oneiric {v}: BodaiCLIBase present:', b.BodaiCLIBase is not None)
-assert v.startswith('<X.Y.Z>'), f'unexpected version {v}'
-assert b.BodaiCLIBase is not None, 'BodaiCLIBase not in released oneiric'
-print('PRE-PHASE-4.2 VERIFICATION: PASS')
-"
-```
-
-Expected: `PRE-PHASE-4.2 VERIFICATION: PASS`. **If this fails, do NOT
-proceed to Phase 4.2** — every consumer's CI will break.
 
 ---
 
@@ -1740,67 +1320,34 @@ Expected: 6 OKs
 
 ---
 
-### Task 4.3: Umbrella CI job (in `bodai` repo) + per-repo worktree landing
+### Task 4.3: Umbrella CI job (NEW)
 
 **Files:**
-- Create: `/Users/les/Projects/bodai/.github/workflows/umbrella-ci.yml`
-- Create: `/Users/les/Projects/bodai/scripts/umbrella_smoke.sh`
-- Modify: `/Users/les/Projects/bodai/pyproject.toml` (add `[project.optional-dependencies] dev = [...]` for `pytest` etc. if not already present)
-
-**Round-1 fixes applied here:**
-1. The umbrella CI workflow lives in **`bodai/.github/workflows/umbrella-ci.yml`**, NOT mahavishnu's. The prior location had two structural defects: `actions/checkout@v4` only cloned mahavishnu, leaving `${{ github.workspace }}/../` empty, and GitHub Actions `paths:` filters only match the workflow's own repo, so pushes to oneiric's `main` never triggered the umbrella CI (the very regression it's meant to catch).
-2. The `bodai --help` smoke is **REMOVED** from this task. `_discover_apps()` and the per-repo `bodai.apps` entry-points don't land until Phase 5.1+5.2 (Day 11, vs Day 9 for Task 4.3). The `bodai --help` smoke moves to Phase 5.4 (lands after Phase 5.1+5.2).
-3. The workflow uses 7 explicit `actions/checkout@v4` steps (one per Core 7 repo), each with `repository: lesleslie/<repo>` and `path: ../<repo>`.
-4. **No `paths:` filter** — the workflow fires on every push to `bodai`'s `main` and via `repository_dispatch` from sibling repos.
-5. `--cov-fail-under=89` is enforced for each converting repo (added after round-1 review).
-6. **Worktree-to-main landing step** (added after round-1 review) is documented in the per-repo commit pattern; the actual `git update-ref` happens from the **main checkout** (NOT the worktree — Bash classifier blocks cross-worktree file ops per `mahavishname-worktree-isolation-guard-is-bash-classifier`).
+- Create: `/Users/les/Projects/mahavishnu/.github/workflows/umbrella-ci.yml`
+- Create: `/Users/les/Projects/mahavishnu/scripts/umbrella_smoke.sh`
 
 - [ ] **Step 1: Write the smoke script**
 
-Create `/Users/les/Projects/bodai/scripts/umbrella_smoke.sh`:
+Create `/Users/les/Projects/mahavishnu/scripts/umbrella_smoke.sh`:
 
 ```bash
 #!/bin/bash
 # Umbrella CI smoke loop: install all 7 Core 7 repos + verify BodaiCLIBase adoption.
-# Lives in the `bodai` repo (not mahavishnu) so the workflow's
-# `actions/checkout@v4` × 7 steps can clone sibling repos into the runner.
 set -euo pipefail
 
 BODAI_REPOS=(mcp-common oneiric dhara session-buddy akosha crackerjack mahavishnu)
-# In GitHub Actions the runner's $GITHUB_WORKSPACE is `bodai/`; siblings
-# land at `../<repo>` via the per-repo `actions/checkout@v4` steps.
-# In local dev (running the script directly), default to the operator's
-# expected checkout layout.
-BODAI_ROOT="${BODAI_ROOT:-$(cd "$(dirname "$0")/.." && pwd)/..}"
+BODAI_ROOT="${BODAI_ROOT:-/Users/les}"
 
 for repo in "${BODAI_REPOS[@]}"; do
-    if [ ! -d "$BODAI_ROOT/$repo" ]; then
-        echo "::error::missing repo: $BODAI_ROOT/$repo"
+    if [ ! -d "$BODAI_ROOT/Projects/$repo" ]; then
+        echo "::error::missing repo: $BODAI_ROOT/Projects/$repo"
         exit 1
     fi
     echo "=== Installing $repo ==="
-    if [ "$repo" = "mahavishnu" ]; then
-        # mahavishnu is the repo under test for this run — editable install
-        (cd "$BODAI_ROOT/$repo" && uv pip install -e . --quiet) || {
-            echo "::error::failed to install $repo"
-            exit 1
-        }
-    else
-        # Released versions for everything else — installs from PyPI per
-        # Task 4.4.1's published oneiric. Local dev override: set
-        # BODAI_DEV_EDITABLE=1 to use `uv pip install -e` for all repos.
-        if [ "${BODAI_DEV_EDITABLE:-0}" = "1" ]; then
-            (cd "$BODAI_ROOT/$repo" && uv pip install -e . --quiet) || {
-                echo "::error::failed to install $repo"
-                exit 1
-            }
-        else
-            uv pip install "$repo" --quiet || {
-                echo "::error::failed to install $repo from PyPI"
-                exit 1
-            }
-        fi
-    fi
+    (cd "$BODAI_ROOT/Projects/$repo" && uv pip install -e . --quiet) || {
+        echo "::error::failed to install $repo"
+        exit 1
+    }
 done
 
 for repo in "${BODAI_REPOS[@]}"; do
@@ -1810,145 +1357,72 @@ for repo in "${BODAI_REPOS[@]}"; do
         continue
     fi
     "$repo" version || { echo "::error::$repo version failed"; exit 1; }
-    # Doctor may return ExitCode.UNAVAILABLE (3) if not yet implemented;
-    # that's acceptable per spec.
     "$repo" doctor || [ $? -eq 3 ] || { echo "::error::$repo doctor failed unexpectedly"; exit 1; }
     "$repo" --json version >/dev/null || { echo "::error::$repo --json flag rejected"; exit 1; }
 done
 
-# Coverage assertion (added after round-1 review): each converting repo
-# must maintain 89% coverage. A stub `_doctor_checks() → {}` would pass
-# the smoke loop above but drop coverage.
-for repo in oneiric dhara session-buddy akosha crackerjack mahavishnu; do
-    echo "=== Coverage check: $repo ==="
-    pkg="$repo"
-    case "$repo" in
-        session-buddy) pkg="session_buddy" ;;
-    esac
-    (cd "$BODAI_ROOT/$repo" && uv run pytest --cov="$pkg" --cov-fail-under=89 -q) || {
-        echo "::error::$repo coverage below 89% (vacuous _doctor_checks/_health_probe suspected)"
-        exit 1
-    }
-done
+echo "=== Checking bodai umbrella ==="
+bodai --help | grep -E '^\s+(oneiric|akosha|crackerjack|dhara|session-buddy|mahavishnu)\b' || {
+    echo "::error::bodai umbrella did not list all 6 sub-CLIs"
+    exit 1
+}
 
-echo "=== Per-repo BodaiCLIBase smoke loop PASSED ==="
-# NOTE: the `bodai --help` smoke is deferred to Task 5.4 (after
-# _discover_apps() and the per-repo bodai.apps entry-points land).
+echo "=== ALL SMOKE TESTS PASSED ==="
 ```
 
-- [ ] **Step 2: Make executable + test locally**
+- [ ] **Step 2: Make executable + test**
 
-Run: `chmod +x /Users/les/Projects/bodai/scripts/umbrella_smoke.sh && BODAI_DEV_EDITABLE=1 /Users/les/Projects/bodai/scripts/umbrella_smoke.sh 2>&1 | tail -15`
-Expected: `=== Per-repo BodaiCLIBase smoke loop PASSED ===` after Task 4.2's per-repo conversions land (Day 9).
+Run: `chmod +x /Users/les/Projects/mahavishnu/scripts/umbrella_smoke.sh && /Users/les/Projects/mahavishnu/scripts/umbrella_smoke.sh 2>&1 | tail -10`
+Expected: `=== ALL SMOKE TESTS PASSED ===` (after Task 5.2 lands)
 
-- [ ] **Step 3: Create the umbrella CI workflow in `bodai`**
+- [ ] **Step 3: Create GitHub Actions workflow**
 
-Create `/Users/les/Projects/bodai/.github/workflows/umbrella-ci.yml`:
+Create `/Users/les/Projects/mahavishnu/.github/workflows/umbrella-ci.yml`:
 
 ```yaml
 name: Umbrella CI
 
-# Round-1 fix: workflow lives in `bodai` (not mahavishnu) so the 7 sibling
-# checkouts can land at `../<repo>`. Triggered on every push to `bodai`'s
-# `main` and via repository_dispatch from sibling repos (configured via
-# `gh repo edit --add-webhook` per sibling).
-
 on:
   push:
     branches: [main]
-  repository_dispatch:
-    types: [bodai-cli-changed]
+    paths:
+      - 'mahavishnu/cli/**'
+      - 'oneiric/cli/**'
+      - 'dhara/cli/**'
+      - 'session-buddy/cli/**'
+      - 'akosha/cli/**'
+      - 'crackerjack/cli/**'
+      - '.github/workflows/umbrella-ci.yml'
+      - 'scripts/umbrella_smoke.sh'
+  pull_request:
+    paths:
+      - 'mahavishnu/cli/**'
+      - 'oneiric/cli/**'
+      - 'dhara/cli/**'
+      - 'session-buddy/cli/**'
+      - 'akosha/cli/**'
+      - 'crackerjack/cli/**'
 
 jobs:
   umbrella-smoke:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-        with:
-          repository: lesleslie/bodai
-          path: bodai
-
-      - name: Checkout sibling repos (7 × actions/checkout@v4)
-        uses: actions/checkout@v4
-        with:
-          repository: lesleslie/mcp-common
-          path: ../mcp-common
-      - uses: actions/checkout@v4
-        with:
-          repository: lesleslie/oneiric
-          path: ../oneiric
-      - uses: actions/checkout@v4
-        with:
-          repository: lesleslie/dhara
-          path: ../dhara
-      - uses: actions/checkout@v4
-        with:
-          repository: lesleslie/session-buddy
-          path: ../session-buddy
-      - uses: actions/checkout@v4
-        with:
-          repository: lesleslie/akosha
-          path: ../akosha
-      - uses: actions/checkout@v4
-        with:
-          repository: lesleslie/crackerjack
-          path: ../crackerjack
-      - uses: actions/checkout@v4
-        with:
-          repository: lesleslie/mahavishnu
-          path: ../mahavishnu
-
       - name: Install uv
         uses: astral-sh/setup-uv@v3
-
       - name: Install Bodai Core 7 + run smoke loop
-        working-directory: bodai
+        env:
+          BODAI_ROOT: ${{ github.workspace }}/../
         run: ./scripts/umbrella_smoke.sh
 ```
 
-**NOTE on paths filter**: the prior design had a `paths:` filter (e.g.
-`'oneiric/cli/**'`) on this workflow. **Round-1 fix**: no `paths:` filter.
-The workflow's purpose is to catch cross-repo breakage — filtering by
-file path only makes sense for repos whose `paths:` can match files
-they own. Now that the workflow lives in `bodai`, only `bodai`'s paths
-match the filter. Sibling-repo pushes fire via `repository_dispatch`
-(which has no file-path filter). Filtering by file path would break
-the cross-repo regression detection.
-
-- [ ] **Step 4: Commit (in the `bodai` repo's worktree)**
+- [ ] **Step 4: Commit**
 
 ```bash
-cd /Users/les/Projects/bodai
+cd /Users/les/Projects/mahavishnu
 git add .github/workflows/umbrella-ci.yml scripts/umbrella_smoke.sh
-git -c user.name=les -c user.email=les@wedgwoodwebworks.com commit -m "feat(bodai): add umbrella CI job (per-repo BodaiCLIBase smoke loop)"
+git -c user.name=les -c user.email=les@wedgwoodwebworks.com commit -m "feat(mahavishnu): add umbrella CI job"
 ```
-
-- [ ] **Step 5: Worktree-to-main landing (round-1 fix)**
-
-The commit lands on a worktree branch
-(`<worktree>/umbrella-ci`). The Bash classifier blocks cross-worktree
-file ops per `mahavishname-worktree-isolation-guard-is-bash-classifier`,
-so a **separate "merge agent"** runs from the **main checkout** (NOT
-the worktree):
-
-```bash
-# Dispatched from the worktree's agent — runs in the main checkout.
-# Use `git -C` carefully or run inside the main checkout directory.
-cd /Users/les/Projects/bodai   # main checkout
-git fetch . <worktree-branch>
-git update-ref refs/heads/main FETCH_HEAD
-git push origin main
-# Refresh working tree:
-git checkout main -- .github/workflows/umbrella-ci.yml scripts/umbrella_smoke.sh
-```
-
-**This pattern applies to EVERY per-repo commit in this plan** (Phase
-3.x, Phase 4.3, Phase 5.1) — not just Task 4.3. Without it, commits
-sit on detached worktree branches and downstream Tasks silently fail
-because `main` doesn't have the prerequisite commits. Reference:
-MEMORY.md `git-update-ref-from-worktree`.
-
-The umbrella CI fires on the push and validates the per-repo conversions.
 
 ---
 

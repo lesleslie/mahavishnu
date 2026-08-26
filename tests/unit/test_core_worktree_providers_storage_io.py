@@ -202,16 +202,26 @@ def test_serialize_temp_write_oserror_wrapped(
     sample_worktree: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     """MHV-210: writing the temp file raises OSError → wrapped."""
-    import os as os_mod
+    import builtins
 
-    real_fdopen = os_mod.fdopen
+    # Snapshot the real open BEFORE monkeypatch; the wrapper delegates to it.
+    real_open = builtins.open
 
     class _ExplodingFile:
+        # Production uses builtins.open(path, "wb") in the streaming tar.zst
+        # write path; os.fdopen runs only as an internal impl detail and
+        # patching it leaves the call site untouched. Patch builtins.open.
+        # read()/readinto() delegate to the real file so the same wrapper is
+        # safe when the patched open is reused for input (e.g. deserialize
+        # also needs to read the source tar.zst during the test).
         def __init__(self, *args: object, **kwargs: object) -> None:
-            self._inner = real_fdopen(*args, **kwargs)
+            self._inner = real_open(*args, **kwargs)
 
         def write(self, _data: bytes) -> int:
             raise OSError(5, "Input/output error")
+
+        def read(self, size: int = -1) -> bytes:
+            return self._inner.read(size)
 
         def flush(self) -> None:
             self._inner.flush()
@@ -222,7 +232,7 @@ def test_serialize_temp_write_oserror_wrapped(
         def __exit__(self, *args: object) -> None:
             self._inner.close()
 
-    monkeypatch.setattr(os_mod, "fdopen", _ExplodingFile)
+    monkeypatch.setattr("builtins.open", _ExplodingFile)
     leaked: list[Path] = []
     with pytest.raises(WorktreeError) as exc_info:
         with serialize_worktree_tar(sample_worktree) as (temp_path, _count, _sha):
@@ -532,16 +542,23 @@ def test_deserialize_temp_write_oserror_wrapped(
     sample_worktree: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     """MHV-210: writing the decompressed tar temp file raises OSError."""
-    import os as os_mod
+    import builtins
 
-    real_fdopen = os_mod.fdopen
+    # Snapshot the real open BEFORE monkeypatch; the wrapper delegates to it.
+    real_open = builtins.open
 
     class _ExplodingFile:
+        # See test_serialize_temp_write_oserror_wrapped for the rationale;
+        # production calls builtins.open, not os.fdopen. read() delegates to
+        # the inner file so the wrapper is also safe for read-side opens.
         def __init__(self, *args: object, **kwargs: object) -> None:
-            self._inner = real_fdopen(*args, **kwargs)
+            self._inner = real_open(*args, **kwargs)
 
         def write(self, _data: bytes) -> int:
             raise OSError(5, "Input/output error")
+
+        def read(self, size: int = -1) -> bytes:
+            return self._inner.read(size)
 
         def flush(self) -> None:
             self._inner.flush()
@@ -554,7 +571,7 @@ def test_deserialize_temp_write_oserror_wrapped(
 
     # Pre-build a real tar.zst payload to feed in.
     temp_path, _count, _sha = _serialize_to_payload(sample_worktree)
-    monkeypatch.setattr(os_mod, "fdopen", _ExplodingFile)
+    monkeypatch.setattr("builtins.open", _ExplodingFile)
     target = sample_worktree.parent / "extracted_write_fail"
 
     with pytest.raises(WorktreeError) as exc_info:
