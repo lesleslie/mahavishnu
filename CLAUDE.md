@@ -27,7 +27,7 @@ Routes tasks to Akosha, persists state to Dhara, tracks context in Session-Buddy
 
 > **Portmap note**: Prefect (8675) and Bodai Crow (8693) used to both default
 > to 8675, which made Crow's bundled HTTP server collide with Prefect's
-> local uvicorn. Crow moved to 8693 (this repo, da3ad842). The Crow port
+> local uvicorn. Crow moved to 8693 (this repo, 999f69ec). The Crow port
 > is configured via ``terminal.crow_http_port`` in
 > ``settings/mahavishnu.yaml`` / ``settings/local.yaml``.
 
