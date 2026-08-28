@@ -71,10 +71,20 @@ def _build_tmux_adapter() -> TerminalAdapter:
 def _build_crow_adapter(config: Any, mcp_client: Any) -> TerminalAdapter:
     """Construct the crow adapter, falling back to mock when not usable.
 
-    Crow needs both ``crow_enabled=true`` and a live ``mcp_client``. Rather
-    than raising at MCP boot (which would take down every other tool group),
-    an unusable crow configuration degrades to the mock adapter with a loud
-    warning.
+    Crow needs ``crow_enabled=true`` and a live ``mcp_client``. The two
+    call sites that reach this function have different shapes:
+
+    * App boot (``MahavishnuApp.start``) builds a client via
+      ``_main_cli._resolve_crow_mcp_client`` and passes it in.
+    * MCP server boot (``mahavishnu mcp start``) passes ``None`` because
+      no client has been built yet. We construct one here using the
+      same ``MAHAVISHNU_CROW_HTTP_HOST`` / ``MAHAVISHNU_CROW_HTTP_PORT``
+      / ``terminal.crow_http_host`` / ``terminal.crow_http_port`` knobs
+      so both paths converge on the same code.
+
+    Failure to construct the client (network unreachable, missing deps)
+    degrades to the mock adapter with a loud warning rather than
+    crashing MCP boot.
     """
     if not getattr(config, "crow_enabled", False):
         logger.warning(
@@ -83,13 +93,28 @@ def _build_crow_adapter(config: Any, mcp_client: Any) -> TerminalAdapter:
             "terminal.crow_enabled=true or switch adapter_preference to 'tmux'."
         )
         return MockTerminalAdapter()
+
     if mcp_client is None:
-        logger.warning(
-            "adapter_preference='crow' and crow_enabled=true but no mcp_client "
-            "is available; falling back to mock adapter. Pools will NOT execute "
-            "real work. Switch adapter_preference to 'tmux' for local execution."
-        )
-        return MockTerminalAdapter()
+        try:
+            from .crow_server import create_crow_mcp_client
+
+            mcp_client = create_crow_mcp_client(
+                host=getattr(config, "crow_http_host", None),
+                port=getattr(config, "crow_http_port", None),
+            )
+            logger.info(
+                "Constructed crow MCP client targeting %s:%s",
+                getattr(config, "crow_http_host", "127.0.0.1"),
+                getattr(config, "crow_http_port", 8693),
+            )
+        except Exception as exc:  # noqa: BLE001 - MCP boundary must stay alive
+            logger.warning(
+                "Failed to construct crow MCP client (%s); falling back to mock "
+                "adapter. Pools will NOT execute real work. Verify the bodai-crow "
+                "HTTP server is running on the configured host:port.",
+                exc,
+            )
+            return MockTerminalAdapter()
 
     from ..terminal.adapters.crow import CrowTerminalAdapter
 
