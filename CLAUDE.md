@@ -21,6 +21,7 @@ Mahavishnu is the control plane for the **Bodai Ecosystem**:
 | **Akosha Pattern WS** | Pattern detection | 8692 |
 | **Crackerjack Test WS** | Test execution | 8686 |
 | **web_reader** | Webpage ingestion MCP | 8699 |
+| **Bifrost** | LLM gateway (`bifrost-http`) | 8471 |
 | [Oneiric](https://github.com/lesleslie/oneiric) | Foundation | N/A |
 
 Routes tasks to Akosha, persists state to Dhara, tracks context in Session-Buddy, validates with Crackerjack.
