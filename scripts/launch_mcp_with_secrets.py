@@ -26,7 +26,11 @@ from pathlib import Path
 import sys
 
 SECRETS_ENV = Path.home() / ".config" / "secrets.env"
-MCP_PROGRAM = "/Users/les/Projects/mahavishnu/.venv/bin/python"
+# Resolve the venv interpreter relative to this script so the launcher works
+# regardless of where the repo lives. ``launch_mcp_with_secrets.py`` sits at
+# ``<repo>/scripts/``, so the venv is ``<repo>/.venv/bin/python``.
+_REPO_ROOT = Path(__file__).resolve().parent.parent
+MCP_PROGRAM = str(_REPO_ROOT / ".venv" / "bin" / "python")
 MCP_ARGS = ("-m", "mahavishnu", "mcp", "start")
 
 # Matches: optional `export `, KEY, =, then a quoted or unquoted value.
