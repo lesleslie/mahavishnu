@@ -74,10 +74,14 @@ class TerminalSettings(BaseModel):
         description="Hostname for the bundled crow HTTP server (used when crow_enabled is true)",
     )
     crow_http_port: int = Field(
-        default=8675,
+        default=8693,
         ge=1,
         le=65535,
-        description="Port for the bundled crow HTTP server (used when crow_enabled is true)",
+        description=(
+            "Port for the bundled crow HTTP server (used when crow_enabled is "
+            "true). 8693 is reserved in CLAUDE.md portmap; 8675 is occupied by "
+            "Prefect's local uvicorn."
+        ),
     )
     # Connection pooling settings (for iTerm2)
     iterm2_pooling_enabled: bool = Field(

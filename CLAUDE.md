@@ -11,12 +11,25 @@ Mahavishnu is the control plane for the **Bodai Ecosystem**:
 | **Mahavishnu** | Orchestrator | 8680 |
 | [Akosha](https://github.com/lesleslie/akosha) | Seer (Intelligence) | 8682 |
 | [Dhara](https://github.com/lesleslie/dhara) | Curator (State) | 8683 |
-| [Session-Buddy](https://github.com/lesleslie/session-buddy) | Builder (Memory) | 8678 |
+| [Session-Buddy](https://github.com/lesleslie/session-buddy) | Builder (Memory) MCP | 8678 |
+| [Session-Buddy WebSocket](https://github.com/lesleslie/session-buddy) | Real-time metrics | 8765 |
 | [Crackerjack](https://github.com/lesleslie/crackerjack) | Inspector (Quality) | 8676 |
-| **Bodai Crow** | Browser/automation MCP bridge | 8675 |
+| **Bodai Crow** | Browser/automation MCP bridge | 8693 |
+| **Prefect API** | Workflow orchestration backend (`uvicorn prefect.server.api.server`) | 8675 |
+| **Mahavishnu WebSocket** | Real-time workflow events | 8690 |
+| **Mahavishnu Pool WebSocket** | Pool status events | 8691 |
+| **Akosha Pattern WS** | Pattern detection | 8692 |
+| **Crackerjack Test WS** | Test execution | 8686 |
+| **web_reader** | Webpage ingestion MCP | 8699 |
 | [Oneiric](https://github.com/lesleslie/oneiric) | Foundation | N/A |
 
 Routes tasks to Akosha, persists state to Dhara, tracks context in Session-Buddy, validates with Crackerjack.
+
+> **Portmap note**: Prefect (8675) and Bodai Crow (8693) used to both default
+> to 8675, which made Crow's bundled HTTP server collide with Prefect's
+> local uvicorn. Crow moved to 8693 (this repo, da3ad842). The Crow port
+> is configured via ``terminal.crow_http_port`` in
+> ``settings/mahavishnu.yaml`` / ``settings/local.yaml``.
 
 ## Project Overview
 
