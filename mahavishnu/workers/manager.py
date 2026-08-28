@@ -398,7 +398,40 @@ class WorkerManager:
             agent_tasks_in_progress.labels(agent_type=worker_type, adapter=adapter).inc()
             try:
                 logger.info(f"Executing task on worker {worker_id}")
-                result = await worker.execute(task)
+                # Bounded execution: a hung worker would otherwise hold this
+                # semaphore slot indefinitely and starve every subsequent
+                # pool_execute. ``asyncio.wait_for`` cancels the inner awaitable
+                # on timeout; workers that spawn their own background tasks
+                # are responsible for their own cancellation propagation.
+                default_timeout = getattr(worker, "config", None)
+                default_timeout_s = (
+                    getattr(default_timeout, "default_timeout", None)
+                    if default_timeout is not None
+                    else None
+                )
+                timeout_s = task.get("timeout", default_timeout_s)
+                try:
+                    if timeout_s is not None and float(timeout_s) > 0:
+                        result = await asyncio.wait_for(
+                            worker.execute(task), timeout=float(timeout_s)
+                        )
+                    else:
+                        result = await worker.execute(task)
+                except asyncio.TimeoutError:
+                    logger.warning(
+                        "Worker %s timed out after %ss; releasing semaphore slot",
+                        worker_id,
+                        timeout_s,
+                    )
+                    return WorkerResult(
+                        worker_id=worker_id,
+                        status=WorkerStatus.TIMEOUT,
+                        output=None,
+                        error=f"worker execute() exceeded timeout of {timeout_s}s",
+                        exit_code=None,
+                        duration_seconds=float(timeout_s) if timeout_s else 0.0,
+                        metadata={"timeout": True, "timeout_seconds": timeout_s},
+                    )
                 agent_tasks_total.labels(
                     agent_type=worker_type,
                     adapter=adapter,

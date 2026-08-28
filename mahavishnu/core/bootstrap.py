@@ -540,13 +540,26 @@ def set_app_context(app: Any) -> None:
 
 
 def init_terminal_manager(app: Any) -> Any:
-    """Initialize terminal manager with the current MCP client wiring."""
+    """Initialize terminal manager with the current MCP client wiring.
+
+    Previously this returned ``None`` unconditionally with a comment saying
+    the manager would be built later in the MCP server context. That left
+    every CLI code path (``mahavishnu pool ...``, ``mahavishnu shell``,
+    ``mahavishnu agent ...``) with a ``terminal_manager = None`` and broke
+    pool/worker execution when launched outside the MCP server. The real
+    implementation lives in ``mahavishnu.mcp.bootstrap`` and now delegates
+    here so both paths converge on the same code.
+    """
 
     logger = logging.getLogger(__name__)
     try:
-        logger.info("Terminal management enabled, but MCP client not yet connected")
-        logger.info("Terminal manager will be fully initialized in MCP server context")
-        return None
+        # Local import to avoid a circular dependency between
+        # ``mahavishnu.core.bootstrap`` and ``mahavishnu.mcp.bootstrap``
+        # (``mcp.server_core`` imports this module to register tools,
+        # so loading it eagerly would form a cycle).
+        from ..mcp.bootstrap import init_terminal_manager as _mcp_init_terminal_manager
+
+        return _mcp_init_terminal_manager(app)
     except Exception as exc:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
         logger.warning("Failed to initialize terminal manager: %s", exc)
         return None
