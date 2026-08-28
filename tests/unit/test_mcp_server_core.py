@@ -1,8 +1,7 @@
 """Tests for FastMCPServer core functionality in mahavishnu.mcp.server_core.
 
 Covers initialization, tool registration, telemetry middleware,
-HTTP health endpoint registration, McpretentiousMCPClient dispatch,
-lifecycle, and tool-registration metrics.
+HTTP health endpoint registration, lifecycle, and tool-registration metrics.
 """
 
 from __future__ import annotations
@@ -15,10 +14,8 @@ import pytest
 
 from mahavishnu.core.app import MahavishnuApp
 from mahavishnu.core.config import MahavishnuSettings
-from mahavishnu.core.errors import ConfigurationError
 from mahavishnu.mcp.server_core import (
     FastMCPServer,
-    McpretentiousMCPClient,
     run_server,
 )
 from monitoring.metrics import mcp_tools_registered
@@ -125,65 +122,6 @@ class TestFastMCPServerInit:
         assert hasattr(server, "_registered_tool_count")
         assert isinstance(server._registered_tool_count, int)
         assert server._registered_tool_count >= 0
-
-    def test_init_creates_mcp_client_wrapper(self, server: FastMCPServer) -> None:
-        """Server should initialize a McpretentiousMCPClient wrapper."""
-        assert server.mcp_client is not None
-        assert isinstance(server.mcp_client, McpretentiousMCPClient)
-
-    @pytest.mark.parametrize("non_pty_preference", ["auto", "mock", "iterm2", "crow"])
-    def test_init_spawns_tmux_for_non_pty_preference(
-        self, mock_app: MagicMock, non_pty_preference: str
-    ) -> None:
-        """Non-PTY adapter preferences still spawn the durable tmux subprocess.
-
-        The boot path wraps ``McpretentiousMCPClient`` (the MCP-tool wrapper)
-        with the default ``backend_name='tmux'`` even when the operator
-        selected a non-PTY adapter (``auto`` / ``mock`` / ``iterm2`` /
-        ``crow``). This preserves the contract that auxiliary MCP tool
-        registrars can dereference ``server.mcp_client`` regardless of the
-        operator's preference. See ``docs/terminal/backends.md`` for the
-        full rationale.
-
-        After the 2026-08-12 mcpretentious removal the wrapper's default
-        backend is ``tmux`` (the only PTY builtin). The mcpretentious
-        npm-package path is no longer reachable.
-        """
-        mock_app.config.terminal.adapter_preference = non_pty_preference
-
-        with (
-            patch("mahavishnu.mcp.server_core.get_auth_from_config"),
-            patch("mahavishnu.mcp.server_core.McpretentiousClient") as mock_client,
-        ):
-            FastMCPServer(app=mock_app)
-
-        mock_client.assert_called_once_with(backend_name="tmux")
-
-    def test_init_threads_tmux_preference_to_client(
-        self, mock_app: MagicMock
-    ) -> None:
-        """When the operator picks the BUILTIN_BACKENDS 'tmux' entry, the
-        configured preference must reach the subprocess client constructor.
-        """
-        mock_app.config.terminal.adapter_preference = "tmux"
-
-        with (
-            patch("mahavishnu.mcp.server_core.get_auth_from_config"),
-            patch("mahavishnu.mcp.server_core.McpretentiousClient") as mock_client,
-        ):
-            FastMCPServer(app=mock_app)
-
-        mock_client.assert_called_once_with(backend_name="tmux")
-
-    def test_init_rejects_unknown_terminal_backend(self, mock_app: MagicMock) -> None:
-        """Unknown adapter/backend names must fail instead of selecting a default."""
-        mock_app.config.terminal.adapter_preference = "unknown_pty_backend"
-
-        with (
-            patch("mahavishnu.mcp.server_core.get_auth_from_config"),
-            pytest.raises(ConfigurationError, match="unknown_pty_backend"),
-        ):
-            FastMCPServer(app=mock_app)
 
     def test_init_with_tracing_disabled_skips_middleware(self, mock_app: MagicMock) -> None:
         """Telemetry middleware should NOT be added when tracing is disabled."""
@@ -429,139 +367,6 @@ class TestHealthEndpoint:
 
 
 # =============================================================================
-# McpretentiousMCPClient Tests
-# =============================================================================
-
-
-class TestMcpretentiousMCPClient:
-    """Test suite for the McpretentiousMCPClient wrapper."""
-
-    def test_initialization_defaults(self) -> None:
-        """Client should start un-started with a non-None inner client."""
-        client = McpretentiousMCPClient()
-        assert client._started is False
-        assert client._client is not None
-        assert hasattr(client._client, "start")
-
-    @pytest.mark.asyncio
-    async def test_ensure_started_starts_first_time(self) -> None:
-        """First call should invoke the inner client's start."""
-        client = McpretentiousMCPClient()
-        client._client.start = AsyncMock()
-
-        await client._ensure_started()
-
-        assert client._started is True
-        client._client.start.assert_awaited_once()
-
-    @pytest.mark.asyncio
-    async def test_ensure_started_skips_when_already_started(self) -> None:
-        """Subsequent calls should not re-start the inner client."""
-        client = McpretentiousMCPClient()
-        client._client.start = AsyncMock()
-        client._started = True
-
-        await client._ensure_started()
-
-        client._client.start.assert_not_awaited()
-
-    @pytest.mark.asyncio
-    async def test_start_failure_raises_runtime_error(self) -> None:
-        """A start failure should raise RuntimeError with install hint."""
-        client = McpretentiousMCPClient()
-        client._client.start = AsyncMock(side_effect=Exception("uvx missing"))
-
-        with pytest.raises(RuntimeError, match="Could not start mcpretentious server"):
-            await client._ensure_started()
-
-    @pytest.mark.asyncio
-    async def test_call_tool_dispatches_open(self) -> None:
-        """mcpretentious-open should call open_terminal with provided dims."""
-        client = McpretentiousMCPClient()
-        client._client.start = AsyncMock()
-        client._client.open_terminal = AsyncMock(return_value="term_1")
-
-        result = await client.call_tool("mcpretentious-open", {"columns": 120, "rows": 40})
-
-        assert result == {"terminal_id": "term_1"}
-        client._client.open_terminal.assert_awaited_once_with(columns=120, rows=40)
-
-    @pytest.mark.asyncio
-    async def test_call_tool_dispatches_type(self) -> None:
-        """mcpretentious-type should pass input splat to type_text."""
-        client = McpretentiousMCPClient()
-        client._client.start = AsyncMock()
-        client._client.type_text = AsyncMock()
-
-        result = await client.call_tool(
-            "mcpretentious-type", {"terminal_id": "t1", "input": ["ls", "-la"]}
-        )
-
-        assert result == {}
-        client._client.type_text.assert_awaited_once_with("t1", "ls", "-la")
-
-    @pytest.mark.asyncio
-    async def test_call_tool_dispatches_read(self) -> None:
-        """mcpretentious-read should map limit_lines -> lines."""
-        client = McpretentiousMCPClient()
-        client._client.start = AsyncMock()
-        client._client.read_text = AsyncMock(return_value="line1\nline2")
-
-        result = await client.call_tool(
-            "mcpretentious-read", {"terminal_id": "t1", "limit_lines": 5}
-        )
-
-        assert result == {"output": "line1\nline2"}
-        client._client.read_text.assert_awaited_once_with("t1", lines=5)
-
-    @pytest.mark.asyncio
-    async def test_call_tool_dispatches_close(self) -> None:
-        """mcpretentious-close should delegate to close_terminal."""
-        client = McpretentiousMCPClient()
-        client._client.start = AsyncMock()
-        client._client.close_terminal = AsyncMock()
-
-        result = await client.call_tool("mcpretentious-close", {"terminal_id": "t1"})
-
-        assert result == {}
-        client._client.close_terminal.assert_awaited_once_with("t1")
-
-    @pytest.mark.asyncio
-    async def test_call_tool_dispatches_list(self) -> None:
-        """mcpretentious-list should return terminals list."""
-        client = McpretentiousMCPClient()
-        client._client.start = AsyncMock()
-        client._client.list_terminals = AsyncMock(return_value=["t1", "t2"])
-
-        result = await client.call_tool("mcpretentious-list", {})
-
-        assert result == {"terminals": ["t1", "t2"]}
-        client._client.list_terminals.assert_awaited_once()
-
-    @pytest.mark.asyncio
-    async def test_call_tool_unknown_name_raises_value_error(self) -> None:
-        """An unknown tool name should raise ValueError."""
-        client = McpretentiousMCPClient()
-        client._client.start = AsyncMock()
-        await client._ensure_started()
-
-        with pytest.raises(ValueError, match="Unknown tool: nope"):
-            await client.call_tool("nope", {})
-
-    @pytest.mark.asyncio
-    async def test_call_tool_propagates_inner_errors(self) -> None:
-        """Underlying errors should be re-raised verbatim."""
-        client = McpretentiousMCPClient()
-        client._client.start = AsyncMock()
-        client._client.list_terminals = AsyncMock(side_effect=RuntimeError("boom"))
-
-        await client._ensure_started()
-
-        with pytest.raises(RuntimeError, match="boom"):
-            await client.call_tool("mcpretentious-list", {})
-
-
-# =============================================================================
 # Lifecycle Tests
 # =============================================================================
 
@@ -588,21 +393,36 @@ class TestLifecycle:
         server.server.run_http_async.assert_awaited_once_with(host="127.0.0.1", port=3000)
 
     @pytest.mark.asyncio
-    async def test_stop_invokes_client_stop(self, server: FastMCPServer) -> None:
-        """stop() should call _client.stop on the mcpretentious client."""
-        server.mcp_client._client.stop = AsyncMock()
+    async def test_stop_is_noop_when_mcp_client_absent(self, server: FastMCPServer) -> None:
+        """stop() should be a no-op when server.mcp_client is not set.
 
+        Since mcpretentious removal (2026-08-12), the legacy McpretentiousMCPClient
+        wrapper is gone, so FastMCPServer no longer pre-populates ``mcp_client``.
+        The lifecycle helper guards with ``hasattr`` so stop() is silent.
+        """
+        # No mcp_client attribute is set on the server.
+        assert not hasattr(server, "mcp_client") or server.mcp_client is None
+
+        # Should NOT raise.
         await server.stop()
-
-        server.mcp_client._client.stop.assert_awaited_once()
 
     @pytest.mark.asyncio
-    async def test_stop_handles_inner_errors(self, server: FastMCPServer) -> None:
-        """stop() should not propagate errors from the inner client."""
-        server.mcp_client._client.stop = AsyncMock(side_effect=Exception("ignored"))
+    async def test_stop_invokes_client_stop_when_present(
+        self, mock_app: MagicMock
+    ) -> None:
+        """stop() should call _client.stop when mcp_client IS configured."""
+        mock_client = MagicMock()
+        mock_client._client.stop = AsyncMock()
+        # Inject mcp_client only for this test.
+        with patch(
+            "mahavishnu.mcp.server_core.get_auth_from_config",
+        ):
+            server = FastMCPServer(app=mock_app)
+        server.mcp_client = mock_client
 
-        # Should NOT raise
         await server.stop()
+
+        mock_client._client.stop.assert_awaited_once()
 
     @pytest.mark.asyncio
     async def test_register_worktree_tools_noop_when_coordinator_missing(

@@ -203,25 +203,25 @@ async def _register_core_integration_tools(server: FastMCPServer, methods_set: s
     if server.terminal_manager is not None and "_register_terminal_tools" in methods_set:
         from ..mcp.tools.terminal_tools import register_terminal_tools
 
-        register_terminal_tools(server.server, server.terminal_manager, server.mcp_client)
+        register_terminal_tools(server.server, server.terminal_manager, getattr(server, "mcp_client", None))
         logger.info("Registered 12 terminal management tools with MCP server")
 
     if "_register_session_buddy_tools" in methods_set:
         from ..mcp.tools.session_buddy_tools import register_session_buddy_tools
 
-        register_session_buddy_tools(server.server, server.app, server.mcp_client)
+        register_session_buddy_tools(server.server, server.app, getattr(server, "mcp_client", None))
         logger.info("Registered Session Buddy integration tools with MCP server")
 
     if "_register_git_analytics_tools" in methods_set:
         from ..mcp.tools.git_analytics import register_git_analytics_tools
 
-        register_git_analytics_tools(server.server, server.mcp_client)
+        register_git_analytics_tools(server.server, getattr(server, "mcp_client", None))
         logger.info("Registered 3 Git analytics tools with MCP server")
 
     if "_register_repository_messaging_tools" in methods_set:
         from ..mcp.tools.repository_messaging_tools import register_repository_messaging_tools
 
-        register_repository_messaging_tools(server.server, server.app, server.mcp_client)
+        register_repository_messaging_tools(server.server, server.app, getattr(server, "mcp_client", None))
         logger.info("Registered repository messaging tools with MCP server")
 
 
@@ -421,7 +421,7 @@ def _register_otel_block(server: FastMCPServer) -> None:
     try:
         from ..mcp.tools.otel_tools import register_otel_tools
 
-        register_otel_tools(server.server, server.app, server.mcp_client)
+        register_otel_tools(server.server, server.app, getattr(server, "mcp_client", None))
         logger.info("Registered 4 OTel trace management tools with MCP server")
     except Exception as exc:  # noqa: BLE001 - defensive
         logger.warning("Skipping OTel tool registration after spec found: %s", exc)
@@ -716,7 +716,7 @@ def _register_terminal_tools(server: FastMCPServer) -> None:
         return
     from ..mcp.tools.terminal_tools import register_terminal_tools
 
-    register_terminal_tools(server.server, server.terminal_manager, server.mcp_client)
+    register_terminal_tools(server.server, server.terminal_manager, getattr(server, "mcp_client", None))
     logger.info("Registered 12 terminal management tools with MCP server")
 
 
@@ -724,7 +724,7 @@ def _register_session_buddy_tools(server: FastMCPServer) -> None:
     """Register Session Buddy integration tools."""
     from ..mcp.tools.session_buddy_tools import register_session_buddy_tools
 
-    register_session_buddy_tools(server.server, server.app, server.mcp_client)
+    register_session_buddy_tools(server.server, server.app, getattr(server, "mcp_client", None))
     logger.info("Registered 9 Session Buddy integration tools with MCP server")
 
 
@@ -732,7 +732,7 @@ def _register_git_analytics_tools(server: FastMCPServer) -> None:
     """Register Git analytics tools."""
     from ..mcp.tools.git_analytics import register_git_analytics_tools
 
-    register_git_analytics_tools(server.server, server.mcp_client)
+    register_git_analytics_tools(server.server, getattr(server, "mcp_client", None))
     logger.info("Registered 3 Git analytics tools with MCP server")
 
 
@@ -742,7 +742,7 @@ def _register_repository_messaging_tools(server: FastMCPServer) -> None:
         register_repository_messaging_tools,
     )
 
-    register_repository_messaging_tools(server.server, server.app, server.mcp_client)
+    register_repository_messaging_tools(server.server, server.app, getattr(server, "mcp_client", None))
     logger.info("Registered 7 repository messaging tools with MCP server")
 
 
@@ -802,7 +802,7 @@ def _register_otel_tools(server: FastMCPServer) -> None:
     try:
         from ..mcp.tools.otel_tools import register_otel_tools
 
-        register_otel_tools(server.server, server.app, server.mcp_client)
+        register_otel_tools(server.server, server.app, getattr(server, "mcp_client", None))
         logger.info("Registered 4 OTel trace management tools with MCP server")
     except Exception as exc:  # noqa: BLE001 - defensive
         logger.warning("Skipping OTel tool registration after spec found: %s", exc)

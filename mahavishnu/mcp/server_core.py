@@ -23,10 +23,7 @@ from monitoring.metrics import (
 
 from ..core.app import MahavishnuApp
 from ..core.auth import get_auth_from_config
-from ..core.errors import ConfigurationError
 from ..core.permissions import Permission
-from ..terminal.backends import BUILTIN_BACKENDS
-from ..terminal.mcp_client import McpretentiousClient
 from .bootstrap import init_terminal_manager as _init_terminal_manager_helper
 from .bootstrap import register_health_endpoint as _register_health_endpoint_helper
 from .lifecycle import register_worktree_tools as _register_worktree_tools_helper
@@ -41,88 +38,11 @@ from .tools.profiles import (
 
 logger = getLogger(__name__)
 
-_NON_PTY_TERMINAL_ADAPTERS = frozenset({"auto", "crow", "iterm2", "mock"})
-
 # Get version from package metadata
 try:
     __version__ = version("mahavishnu")
 except Exception:  # noqa: BLE001 - MCP boundary must preserve all operation failures
     __version__ = "0.0.0-unknown"
-
-
-class McpretentiousMCPClient:
-    """MCP client wrapper for mcpretentious server.
-
-    Wraps the McpretentiousClient to provide the call_tool interface
-    expected by the McpretentiousAdapter.
-    """
-
-    def __init__(self, backend_name: str = "tmux") -> None:
-        """Initialize the wrapper for the selected PTY backend."""
-        self._client = McpretentiousClient(backend_name=backend_name)
-        self._started = False
-
-    async def _ensure_started(self) -> None:
-        """Ensure the mcpretentious server is started."""
-        if not self._started:
-            try:
-                await self._client.start()
-                self._started = True
-                logger.info("Started mcpretentious MCP server")
-            except Exception as e:
-                logger.error(f"Failed to start mcpretentious server: {e}")
-                raise RuntimeError(
-                    f"Could not start mcpretentious server. "
-                    f"Ensure uvx and mcpretentious are installed: {e}"
-                ) from e
-
-    async def call_tool(self, tool_name: str, params: dict[str, Any]) -> Any:
-        """Call an mcpretentious MCP tool.
-
-        Args:
-            tool_name: Name of the tool (e.g., "mcpretentious-open")
-            params: Parameters for the tool
-
-        Returns:
-            Tool execution result
-
-        Raises:
-            RuntimeError: If tool call fails
-        """
-        await self._ensure_started()
-
-        try:
-            # Map tool names to client methods
-            if tool_name == "mcpretentious-open":
-                terminal_id = await self._client.open_terminal(
-                    columns=params.get("columns", 80), rows=params.get("rows", 24)
-                )
-                return {"terminal_id": terminal_id}
-
-            elif tool_name == "mcpretentious-type":
-                await self._client.type_text(params["terminal_id"], *params["input"])
-                return {}
-
-            elif tool_name == "mcpretentious-read":
-                output = await self._client.read_text(
-                    params["terminal_id"], lines=params.get("limit_lines")
-                )
-                return {"output": output}
-
-            elif tool_name == "mcpretentious-close":
-                await self._client.close_terminal(params["terminal_id"])
-                return {}
-
-            elif tool_name == "mcpretentious-list":
-                terminals = await self._client.list_terminals()
-                return {"terminals": terminals}
-
-            else:
-                raise ValueError(f"Unknown tool: {tool_name}")
-
-        except Exception as e:
-            logger.error(f"Error calling mcpretentious tool {tool_name}: {e}")
-            raise
 
 
 class FastMCPServer:
@@ -160,26 +80,6 @@ class FastMCPServer:
         self._registered_tool_count = 0
         self._instrument_server_tool_registration()
         self._register_telemetry_middleware()
-
-        # Initialize the PTY MCP wrapper with the operator-selected built-in.
-        # Other recognized terminal adapters do not select a PTY subprocess;
-        # the wrapper defaults to the durable tmux path (Spec §9.4).
-        # mcpretentious was removed from the ecosystem in 2026-08-12.
-        # See docs/followups/2026-08-12-mcpretentious-removed.md.
-        preference = self.app.config.terminal.adapter_preference.lower()
-        if preference in BUILTIN_BACKENDS:
-            backend_name = preference
-        elif preference in _NON_PTY_TERMINAL_ADAPTERS:
-            backend_name = "tmux"
-        else:
-            raise ConfigurationError(
-                message=f"Unknown terminal adapter or PTY backend {preference!r}",
-                details={
-                    "adapter_preference": preference,
-                    "available_pty_backends": sorted(BUILTIN_BACKENDS),
-                },
-            )
-        self.mcp_client = McpretentiousMCPClient(backend_name=backend_name)
 
         # Initialize terminal manager if enabled
         self.terminal_manager = None
