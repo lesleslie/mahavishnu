@@ -2082,6 +2082,7 @@ dependencies = [
     { name = "protobuf" },
     { name = "requests" },
 ]
+sdist = { url = "https://files.pythonhosted.org/packages/d2/b1/de2bc1db39979fb7912c0547563fe720e12a11296976ccd6e2e701e22cfe/google_api_core-2.35.0.tar.gz", hash = "sha256:80611ccbd0291919f6cea8827d57b472946fcd9ab519625becce0c002140a7b0", size = 192600, upload-time = "2026-08-25T19:18:22.346Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/d1/a9/fcaef7316fc169ee07aafeed82d3788cee539f0d31d1c4e30cf085dc6bbe/google_api_core-2.35.0-py3-none-any.whl", hash = "sha256:88ce7a11146e1ddd331f7d2fd379787eb7e9015c34c6ed681e4f5fb8af3615af", size = 181423, upload-time = "2026-08-24T21:55:02.781Z" },
 ]
@@ -2100,6 +2101,7 @@ dependencies = [
     { name = "cryptography" },
     { name = "pyasn1-modules" },
 ]
+sdist = { url = "https://files.pythonhosted.org/packages/41/64/55f316b729f92a552d26e00aa3b1542b2e149d0a5efe2842afff0cac7af7/google_auth-2.57.0.tar.gz", hash = "sha256:9b4f96d6a1feb5f7201231f47cfb3de08d8f176f8a61f9e461555116e95a8789", size = 370794, upload-time = "2026-08-25T19:18:26.419Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/00/f3/8508a702c094af5f6e89773f4dfdeee74913df0f41a02c21b5e7dc3d75cd/google_auth-2.57.0-py3-none-any.whl", hash = "sha256:180dafe015cfb62193bea26b677500fab5b9fd51a1e825ebf3ad9b182047ae59", size = 259728, upload-time = "2026-08-24T21:55:08.449Z" },
 ]
@@ -2117,6 +2119,7 @@ dependencies = [
     { name = "google-api-core" },
     { name = "google-auth" },
 ]
+sdist = { url = "https://files.pythonhosted.org/packages/f9/54/790548b190cff9cf07225c811d2668eacd8f2cbf04114475cbe3e5738752/google_cloud_core-2.7.0.tar.gz", hash = "sha256:874aaf89765db87a9b911b7a2ca7c5068554868eed9e75c7766affe342a2913d", size = 36603, upload-time = "2026-08-25T19:18:43.076Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/cb/64/904dbc9bee128e7b87eeb60da67c8fa4d1a8acdc9a45dd2fedca67ef184d/google_cloud_core-2.7.0-py3-none-any.whl", hash = "sha256:c18a250904cfdda021eb3ae8b8238c9f9ca272a4cbbfb5cba946b3fe3022eed1", size = 31046, upload-time = "2026-08-24T21:55:28.36Z" },
 ]
@@ -3547,7 +3550,7 @@ wheels = [
 
 [[package]]
 name = "mahavishnu"
-version = "0.16.0"
+version = "0.17.0"
 source = { editable = "." }
 dependencies = [
     { name = "agno" },
@@ -3696,7 +3699,7 @@ requires-dist = [
     { name = "llama-index-vector-stores-opensearch", specifier = ">=0.6.3,<0.7.0" },
     { name = "mcp-common", specifier = ">=0.20.0" },
     { name = "msgspec", specifier = ">=0.21.1,<0.22" },
-    { name = "oneiric", specifier = ">=0.18.0" },
+    { name = "oneiric", specifier = ">=0.19.0" },
     { name = "opentelemetry-api", specifier = ">=1.44.0" },
     { name = "opentelemetry-exporter-otlp-proto-grpc", specifier = ">=1.44.0" },
     { name = "opentelemetry-instrumentation", specifier = ">=0.65b0" },
@@ -4392,7 +4395,7 @@ wheels = [
 
 [[package]]
 name = "oneiric"
-version = "0.18.0"
+version = "0.19.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "aiobreaker" },
@@ -4414,9 +4417,9 @@ dependencies = [
     { name = "typer" },
     { name = "watchfiles" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/a3/9c/24568307cc7dc5d0f7b6e025aae57519085bb1286766fe592a06ae0cfc92/oneiric-0.18.0.tar.gz", hash = "sha256:b9e9678e3f2f6d6bb7883e4cf7be749a882dc75e16ae00423650223e55672451", size = 334972, upload-time = "2026-08-24T15:29:05.192Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/e1/48/0b744e7a01a3c4a6252611ebd9c5d6ff95aa6c3af5a6668e2a02cf8a9a4f/oneiric-0.19.0.tar.gz", hash = "sha256:f444ff1950d9b50772b335245452e23218ab11f968ab4f89e758ea2ac77a2058", size = 1581530, upload-time = "2026-08-27T07:09:25.129Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/65/f2/b71711a2916b45e3423390f021c202e59de4e3528b2e787a24bfcee16c5e/oneiric-0.18.0-py3-none-any.whl", hash = "sha256:fbb6c4e9e5b72a50cbd4aafdce4c6b2454d5f3beaa69e1d915127b66a67794ce", size = 382759, upload-time = "2026-08-24T15:29:03.737Z" },
+    { url = "https://files.pythonhosted.org/packages/38/0c/f296e7bc2f7a07337434c4338266730f5fae678b1da495c7afa932d5bda0/oneiric-0.19.0-py3-none-any.whl", hash = "sha256:4b700442e9686b13998e475d25d9fc511cf2acbd49000d64fd7d9364f6c361a4", size = 390548, upload-time = "2026-08-27T07:09:23.183Z" },
 ]
 
 [[package]]
