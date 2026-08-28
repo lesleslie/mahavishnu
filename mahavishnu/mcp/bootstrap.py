@@ -10,6 +10,7 @@ from typing import TYPE_CHECKING, cast
 from oneiric.core.logging import get_logger
 from starlette.responses import JSONResponse
 
+from ..terminal.adapters.base import TerminalAdapter  # noqa: TC001  (runtime return annotation)
 from ..terminal.adapters.mock import MockTerminalAdapter
 from ..terminal.manager import TerminalManager
 
@@ -43,31 +44,105 @@ def _mhv_server(fastmcp: FastMCP) -> FastMCPServer:
 logger = get_logger(__name__)
 
 
+def _build_tmux_adapter() -> TerminalAdapter:
+    """Construct the durable-worker tmux adapter.
+
+    Mirrors the tmux branch of :meth:`TerminalManager.create`. Every step is a
+    plain constructor, so this stays callable from the synchronous MCP
+    bootstrap without an async refactor.
+    """
+    import pathlib
+
+    from ..terminal.adapters.tmux import TmuxTerminalAdapter
+    from ..terminal.manager import _enqueue_to_eventbridge, _ManagerEventPublisher
+    from ..workers.contract.manager import DurableWorkerManager
+    from ..workers.contract.store import WorkerRecordStore
+
+    store = WorkerRecordStore(pathlib.Path.home() / ".mahavishnu" / "worker-sessions")
+    publisher = _ManagerEventPublisher(_enqueue_to_eventbridge)
+    manager = DurableWorkerManager(
+        store=store,
+        publisher=publisher,
+        socket_dir=pathlib.Path.home() / ".mahavishnu" / "tmux",
+    )
+    return TmuxTerminalAdapter(manager)
+
+
+def _build_crow_adapter(config: Any, mcp_client: Any) -> TerminalAdapter:
+    """Construct the crow adapter, falling back to mock when not usable.
+
+    Crow needs both ``crow_enabled=true`` and a live ``mcp_client``. Rather
+    than raising at MCP boot (which would take down every other tool group),
+    an unusable crow configuration degrades to the mock adapter with a loud
+    warning.
+    """
+    if not getattr(config, "crow_enabled", False):
+        logger.warning(
+            "adapter_preference='crow' but crow_enabled=false; falling back to "
+            "mock adapter. Pools will NOT execute real work. Set "
+            "terminal.crow_enabled=true or switch adapter_preference to 'tmux'."
+        )
+        return MockTerminalAdapter()
+    if mcp_client is None:
+        logger.warning(
+            "adapter_preference='crow' and crow_enabled=true but no mcp_client "
+            "is available; falling back to mock adapter. Pools will NOT execute "
+            "real work. Switch adapter_preference to 'tmux' for local execution."
+        )
+        return MockTerminalAdapter()
+
+    from ..terminal.adapters.crow import CrowTerminalAdapter
+
+    return CrowTerminalAdapter(mcp_client)
+
+
+def _resolve_terminal_adapter(config: Any, mcp_client: Any) -> TerminalAdapter:
+    """Select the terminal adapter named by ``terminal.adapter_preference``.
+
+    Previously this function ignored the preference entirely and always
+    returned the mock adapter, which made every pool a silent no-op: the mock
+    emits canned output that never contains the completion marker
+    ``GenericShellWorker._monitor_completion`` waits for, so ``pool_execute``
+    hung until its timeout.
+    """
+    preference = config.adapter_preference.lower()
+
+    if preference in ("mock", "auto"):
+        logger.info("Using mock terminal adapter (adapter_preference=%s)", preference)
+        return MockTerminalAdapter()
+
+    if preference == "tmux":
+        logger.info("Using tmux durable-worker terminal adapter")
+        return _build_tmux_adapter()
+
+    if preference == "crow":
+        return _build_crow_adapter(config, mcp_client)
+
+    if preference == "iterm2":
+        import warnings
+
+        warnings.warn(
+            "adapter_preference='iterm2' is deprecated and has been removed. "
+            "Use 'tmux' or 'crow' instead.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        logger.warning("iTerm2 adapter removed; falling back to mock adapter")
+        return MockTerminalAdapter()
+
+    logger.warning(
+        "Unknown adapter_preference=%r; falling back to mock adapter. "
+        "Pools will NOT execute real work. Valid values: mock, auto, tmux, crow.",
+        preference,
+    )
+    return MockTerminalAdapter()
+
+
 def init_terminal_manager(server: FastMCPServer) -> TerminalManager | None:
     """Initialize the terminal manager using the server's MCP client."""
     try:
         config = server.app.config.terminal
-        preference = config.adapter_preference.lower()
-
-        if preference == "iterm2":
-            import warnings
-
-            warnings.warn(
-                "adapter_preference='iterm2' is deprecated and has been removed. "
-                "Use 'tmux' or 'crow' instead.",
-                DeprecationWarning,
-                stacklevel=2,
-            )
-            adapter = MockTerminalAdapter()
-            logger.info("iTerm2 adapter removed; initialized mock adapter")
-        else:
-            # mcpretentious was removed from the ecosystem in 2026-08-12.
-            # The default durable-worker path is now tmux; the mock adapter
-            # covers the "auto" preference. See docs/followups/2026-08-12-mcpretentious-removed.md
-            adapter = MockTerminalAdapter()
-            logger.info(
-                "Initialized mock terminal adapter (mcpretentious removed; defaulting to mock)"
-            )
+        adapter = _resolve_terminal_adapter(config, getattr(server, "mcp_client", None))
 
         manager = TerminalManager(adapter, config)
         logger.info(
