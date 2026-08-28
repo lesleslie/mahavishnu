@@ -8,6 +8,7 @@ import typer
 
 # Import backup and recovery CLI
 from .backup_cli import add_backup_commands
+from .cli.base import MahavishnuCLI
 
 # Import configuration validation CLI
 from .cli.config_validator import add_config_inventory_commands, add_config_validation_commands
@@ -78,7 +79,7 @@ from .worktree_cli import worktree_app
 # NOTE: help_cli uses Click which is incompatible with Typer's add_typer()
 # from .cli.help_cli import help_group
 
-app = typer.Typer(name="mahavishnu")
+app = MahavishnuCLI(name="mahavishnu")
 DEFAULT_MCP_HOST = "127.0.0.1"
 DEFAULT_MCP_PORT = 8680
 
