@@ -49,6 +49,7 @@
 - This repository does not use GitHub Actions for active CI or quality gating. Use Crackerjack-based validation and repository-local test commands instead of adding or relying on `.github/workflows/*` for enforcement.
 - Treat external service ports, URLs, and auth settings as configuration, not constants embedded in new code.
 - New orchestration features should fit the existing adapter model and preserve the MCP-first design: expose reusable capabilities through tools or well-defined service layers rather than repo-local scripts only.
+- When dispatching parallel-fanout workflows across repos, ensure the parent session is in a clean main checkout (not inside any Claude-Code worktree) and let each agent create its own worktree under `$XDG_RUNTIME_DIR/...` or `/tmp/<branch>` via raw `git worktree add`; subagents inherit the parent CWD and `EnterWorktree` will refuse. See `.claude/decisions/2026-08-28-cross-repo-fanout-cwd-isolation.md`.
 
 ## Git Hooks
 
