@@ -5,6 +5,25 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.18.0] - 2026-08-28
+
+### Added
+
+- mahavishnu: Adopt BodaiCLIBase + real doctor/health (Phase 3 Task 4.6)
+
+### Fixed
+
+- 5 of 6 doc-drift findings from mahavishnu audit
+- a2a_index: Remove 5 stale fastblocks-stack specialist entries
+- plan-a: Apply round-1 multi-agent review fixes (21 findings)
+- plan-a: Apply round-2 review fixes
+- tests: Re-apply storage_io OSError test patch (built around builtins.open)
+
+### Documentation
+
+- decisions: Add cross-repo fanout CWD isolation policy
+- readme: Bump Python badge from 3.13+ to 3.14+
+
 ## [0.17.0] - 2026-08-25
 
 ### Added
@@ -45,7 +64,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - scripts: Clean up 3 ruff diagnostics in migrate_to_streaming_tar
 - scripts: Make migrate_to_streaming_tar.py executable + drop EXE001 noqa
 - security: Address push-review findings (syntax, traversal, silent corruption)
-- tests: Align _FakeStorage mock with load_stream rename
+- tests: Align \_FakeStorage mock with load_stream rename
 
 ### Documentation
 
@@ -115,7 +134,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - scripts: Clean up 3 ruff diagnostics in migrate_to_streaming_tar
 - scripts: Make migrate_to_streaming_tar.py executable + drop EXE001 noqa
 - security: Address push-review findings (syntax, traversal, silent corruption)
-- tests: Align _FakeStorage mock with load_stream rename
+- tests: Align \_FakeStorage mock with load_stream rename
 - worktree_providers: Address PR-D security review (3 findings)
 
 ### Documentation
@@ -195,7 +214,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - scripts: Clean up 3 ruff diagnostics in migrate_to_streaming_tar
 - scripts: Make migrate_to_streaming_tar.py executable + drop EXE001 noqa
 - security: Address push-review findings (syntax, traversal, silent corruption)
-- tests: Align _FakeStorage mock with load_stream rename
+- tests: Align \_FakeStorage mock with load_stream rename
 - worktree_providers: Address 3 security review findings from push sweep
 - worktree_providers: Address PR-D security review (3 findings)
 - worktree_providers: Make RemoteWorktreeRef.backend_kind required

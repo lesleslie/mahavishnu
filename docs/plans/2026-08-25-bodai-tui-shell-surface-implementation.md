@@ -20,17 +20,20 @@
 - **TUI/REPL smoke tests** (real interactive launches) are release-checklist items, NOT CI gates. CI uses mocks + Textual `Pilot` harness.
 - **CHANGELOG convention**: every commit that changes user-facing surface updates the relevant `CHANGELOG.md` with `### Changed` / `### Added` / `### Removed` / `### Deprecated` sections.
 
----
+______________________________________________________________________
 
 ## Phase B-1 — Verify & polish the three TUI surfaces
 
 ### Task B-1.1: Verify `bodai shell` IPython REPL opens
 
 **Files:**
+
 - Create: `/Users/les/Projects/bodai/tests/test_shell.py`
 
 **Interfaces:**
+
 - Consumes: `bodai/admin/shell.py::launch_shell` (already implemented)
+
 - Produces: per-CI test that asserts `launch_shell` invokes IPython with the correct namespace
 
 - [ ] **Step 1: Write the failing test**
@@ -79,15 +82,18 @@ git add tests/test_shell.py
 git -c user.name=les -c user.email=les@wedgwoodwebworks.com commit -m "test(bodai): verify shell invokes IPython with expected namespace"
 ```
 
----
+______________________________________________________________________
 
 ### Task B-1.2: Verify `bodai dashboard` Textual TUI renders
 
 **Files:**
+
 - Create: `/Users/les/Projects/bodai/tests/test_dashboard.py`
 
 **Interfaces:**
+
 - Consumes: `bodai/tui/dashboard.py::BodaiDashboard`
+
 - Produces: per-CI test using Textual's `Pilot` harness (no real TTY needed)
 
 - [ ] **Step 1: Write the failing test**
@@ -142,13 +148,16 @@ git add tests/test_dashboard.py
 git -c user.name=les -c user.email=les@wedgwoodwebworks.com commit -m "test(bodai): verify dashboard renders with mock check_all"
 ```
 
----
+______________________________________________________________________
 
 ### Task B-1.3: Wire `mahavishnu monitor --tui` (if not already wired)
 
 **Files:**
+
 - Read: `/Users/les/Projects/mahavishnu/mahavishnu/cli/monitoring_cli.py` (verify `monitor` Typer app exists; check whether `tui` command is registered)
+
 - Modify if needed: `/Users/les/Projects/mahavishnu/mahavishnu/cli/monitoring_cli.py`
+
 - Create: `/Users/les/Projects/mahavishnu/tests/cli/test_monitor_tui.py`
 
 - [ ] **Step 1: Read monitoring_cli.py and check whether `tui` is registered**
@@ -190,6 +199,7 @@ Expected: FAIL (test file missing OR test asserts `tui` not registered)
 - [ ] **Step 4: Wire the `tui` command (if not already wired)**
 
 If the existing `monitoring_cli.py` has a Typer app `app` but no `tui` command, add:
+
 ```python
 @app.command("tui")
 def monitor_tui() -> None:
@@ -219,11 +229,12 @@ git add mahavishnu/cli/monitoring_cli.py tests/cli/test_monitor_tui.py CHANGELOG
 git -c user.name=les -c user.email=les@wedgwoodwebworks.com commit -m "feat(mahavishnu): wire monitor --tui command"
 ```
 
----
+______________________________________________________________________
 
 ### Task B-1.4: Replace defensive `try/except` in `bodai/cli.py`
 
 **Files:**
+
 - Modify: `/Users/les/Projects/bodai/bodai/cli.py`
 
 **Context:** The current code catches `ImportError` and prints "Shell not yet implemented" / "TUI not yet implemented". The modules exist; remove the catch and replace with a friendly install hint.
@@ -298,6 +309,7 @@ def dashboard() -> None:
 ```
 
 Replace with:
+
 ```python
 @app.command()
 def shell() -> None:
@@ -329,18 +341,21 @@ def dashboard() -> None:
 - [ ] **Step 5: Run test + commit**
 
 Run: `cd /Users/les/Projects/bodai && uv run pytest tests/ -x`
+
 ```bash
 cd /Users/les/Projects/bodai
 git add bodai/cli.py tests/test_shell.py CHANGELOG.md
 git -c user.name=les -c user.email=les@wedgwoodwebworks.com commit -m "feat(bodai): replace defensive try/except with friendly install hint"
 ```
 
----
+______________________________________________________________________
 
 ### Task B-1.5: Document the Bodai TUI contract
 
 **Files:**
+
 - Create: `/Users/les/Projects/mahavishnu/.claude/decisions/2026-08-25-bodai-tui-contract.md`
+
 - Modify: `/Users/les/Projects/mahavishnu/.claude/decisions/README.md`
 
 - [ ] **Step 1: Write the decision doc**
@@ -396,6 +411,7 @@ Each Core 7 with an admin shell (oneiric, dhara, session-buddy, akosha, mahavish
 - [ ] **Step 2: Add row to decisions index**
 
 Append to `/Users/les/Projects/mahavishnu/.claude/decisions/README.md`:
+
 ```markdown
 | `2026-08-25-bodai-tui-contract.md` | Bodai TUI contract (cross-component vs component-scoped, AdminShell pattern) | active |
 ```
@@ -408,25 +424,29 @@ git add .claude/decisions/2026-08-25-bodai-tui-contract.md .claude/decisions/REA
 git -c user.name=les -c user.email=les@wedgwoodwebworks.com commit -m "docs(mahavishnu): add Bodai TUI contract decision + index entry"
 ```
 
----
+______________________________________________________________________
 
 ### Task B-1.6: Update READMEs (bodai + mahavishnu)
 
 **Files:**
+
 - Modify: `/Users/les/Projects/bodai/README.md`
+
 - Modify: `/Users/les/Projects/mahavishnu/README.md`
 
 - [ ] **Step 1: Update bodai README**
 
 Add a section to `/Users/les/Projects/bodai/README.md`:
-```markdown
+
+````markdown
 ## `bodai shell` — IPython admin shell
 
 ```bash
 bodai shell
-```
+````
 
 Launches an IPython REPL pre-loaded with:
+
 - `ecosystem` — BodaiEcosystem (all 7 components)
 - `portmap` — PortMap
 - `storage_map` — StorageMap
@@ -442,7 +462,8 @@ bodai dashboard
 Live Textual TUI showing all 7 Core 7 components with health/role/port. Refreshes every 2-5s.
 
 Requires `textual` (install with `uv pip install 'bodai[dashboard]'`).
-```
+
+````
 
 - [ ] **Step 2: Update mahavishnu README**
 
@@ -454,14 +475,15 @@ Add a section to `/Users/les/Projects/mahavishnu/README.md`:
 mahavishnu monitor --tui
 # or
 mahavishnu monitoring tui
-```
+````
 
 Live Textual TUI showing mahavishnu's pool/worker status. Refreshes every 5s.
 
 Distinct from `bodai dashboard` (which is cross-component). Use
 `mahavishnu monitor --tui` for mahavishnu-internal observability; use
 `bodai dashboard` for cross-component health.
-```
+
+````
 
 - [ ] **Step 3: Commit (2 separate commits)**
 
@@ -473,9 +495,9 @@ git -c user.name=les -c user.email=les@wedgwoodwebworks.com commit -m "docs(boda
 cd /Users/les/Projects/mahavishnu
 git add README.md
 git -c user.name=les -c user.email=les@wedgwoodwebworks.com commit -m "docs(mahavishnu): document monitor --tui in README"
-```
+````
 
----
+______________________________________________________________________
 
 ## Execution order
 
@@ -495,11 +517,12 @@ Day 3:
   Task B-1.6 (README updates)
 ```
 
----
+______________________________________________________________________
 
 ## Self-review
 
 **Spec coverage:**
+
 - Spec §1 Outcome — Tasks B-1.1, B-1.2, B-1.3, B-1.4 verify the three TUI surfaces work end-to-end
 - Spec §2 Goals — Tasks B-1.1 (G1), B-1.2 (G2), B-1.3 (G3), B-1.4 (G4), B-1.5 (G5); G6 deferred (cross-shell UX standardization is future work)
 - Spec §3 Non-Goals — verified; no task contradicts (e.g., no new shells created)
@@ -512,11 +535,13 @@ Day 3:
 **Placeholder scan:** No TBDs. Each test code block is concrete. Each commit message is specific.
 
 **Type consistency:**
+
 - `BodaiDashboard().run()` — used in B-1.2 and B-1.6
 - `MonitorApp().run()` — used in B-1.3
 - `from bodai.admin.shell import launch_shell` — consistent in B-1.1 and B-1.4
 
 **Gaps:**
+
 - Cross-shell UX standardization (Plan B Phase B-2 future) — explicitly out of scope; documented in spec
 - Akosha stub implementations (Plan B Phase B-3 future) — out of scope; documented in spec
 - bodai shell cross-CLI mount (Plan B Phase B-4 future) — out of scope
