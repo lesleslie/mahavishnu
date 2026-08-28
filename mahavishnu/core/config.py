@@ -2070,7 +2070,18 @@ class MahavishnuSettings(BaseSettings):
     """
 
     model_config = SettingsConfigDict(
-        yaml_file=["settings/mahavishnu.yaml", "settings/local.yaml"],
+        # Resolve ``settings/`` relative to the package install location so
+        # the loader works regardless of process CWD. CWD-relative paths
+        # broke launcher-spawned processes (which may run from any
+        # working directory). XDG layering (~/.config/mahavishnu/
+        # {local,config}.yaml) is intentionally NOT duplicated here —
+        # it's oneiric.core.config.load_settings()'s job to walk
+        # those paths. If we ever switch to using load_settings() in
+        # load_config(), XDG support comes for free.
+        yaml_file=[
+            str(Path(__file__).resolve().parent.parent / "settings" / "mahavishnu.yaml"),
+            str(Path(__file__).resolve().parent.parent / "settings" / "local.yaml"),
+        ],
         env_prefix="MAHAVISHNU_",
         env_nested_delimiter="__",
         extra="allow",
