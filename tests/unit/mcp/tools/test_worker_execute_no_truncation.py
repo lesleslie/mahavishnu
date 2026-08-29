@@ -1,7 +1,8 @@
 # tests/unit/mcp/tools/test_worker_execute_no_truncation.py
 import asyncio
 
-from mahavishnu.workers.protocol import WorkerResult, WorkerStatus
+from mahavishnu.core.status import WorkerStatus
+from mahavishnu.workers.base import WorkerResult
 
 
 class _StubWorker:
