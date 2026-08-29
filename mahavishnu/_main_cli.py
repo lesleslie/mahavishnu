@@ -1399,11 +1399,7 @@ def workers_execute(
     """
 
     async def _execute():
-        from mahavishnu.core.capabilities import (
-            CapabilityId,
-            CapabilitySpec,
-            TraceId,
-        )
+        from mahavishnu.core.capabilities import CapabilitySpec
         from mahavishnu.core.conductor import plan, resolve
         from mahavishnu.engines import load_engine_registrations
 
@@ -1416,11 +1412,11 @@ def workers_execute(
 
         # Map legacy worker_type to the worker capability namespace consumed
         # by the conductor. ``count`` becomes fan-out inside the DAG node.
-        worker_cap = CapabilityId(
+        worker_cap = (
             f"worker:{worker_type.replace('terminal-', '').replace('-', '_')}-context"
         )
         requires = [
-            CapabilityId("engine:durable-flow"),
+            "engine:durable-flow",
             worker_cap,
         ]
 
@@ -1428,12 +1424,12 @@ def workers_execute(
         spec = CapabilitySpec(
             requires=requires,
             prompt=prompt,
-            trace_id=TraceId("0" * 32),
+            trace_id="0" * 32,
         )
 
         engines = load_engine_registrations(maha_app.config)
         candidates = resolve(spec, engines)
-        dag = plan(spec, candidates, trace_id=spec.trace_id or TraceId("0" * 32))
+        dag = plan(spec, candidates, trace_id=spec.trace_id or "0" * 32)
 
         typer.echo(f"✅ Planned DAG with {len(dag.nodes)} node(s), {len(dag.edges)} edge(s)")
         for n in dag.nodes:
@@ -1717,11 +1713,7 @@ def pool_route(
     """
 
     async def _route():
-        from mahavishnu.core.capabilities import (
-            CapabilityId,
-            CapabilitySpec,
-            TraceId,
-        )
+        from mahavishnu.core.capabilities import CapabilitySpec
         from mahavishnu.core.conductor import plan, resolve
         from mahavishnu.engines import load_engine_registrations
 
@@ -1729,13 +1721,13 @@ def pool_route(
 
         try:
             spec = CapabilitySpec(
-                requires=[CapabilityId("engine:durable-flow")],
+                requires=["engine:durable-flow"],
                 prompt=prompt,
-                trace_id=TraceId("0" * 32),
+                trace_id="0" * 32,
             )
             engines = load_engine_registrations(maha_app.config)
             candidates = resolve(spec, engines)
-            dag = plan(spec, candidates, trace_id=spec.trace_id or TraceId("0" * 32))
+            dag = plan(spec, candidates, trace_id=spec.trace_id or "0" * 32)
 
             typer.echo(f"✅ Planned DAG (selector={selector}, timeout={timeout}s)")
             typer.echo(f"   Nodes: {len(dag.nodes)}")

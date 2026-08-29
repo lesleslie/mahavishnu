@@ -69,7 +69,7 @@ def _walk_typer(app: typer.Typer, prefix: str = "") -> list[CommandEntry]:
         # Inherited Typer callbacks (e.g., OneiricCLIBase's version/doctor/
         # health methods) sometimes register with cmd_name == "None" (the
         # literal string). Fall back to the callback's __name__ when the
-        # registered name is missing or unparseable.
+        # registered name is missing or unparsable.
         cb = cmd.callback
         cb_name = getattr(cb, "__name__", "") if cb else ""
         effective_name = cmd_name

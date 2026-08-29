@@ -119,12 +119,12 @@ class PermissionChecker:
             import Quartz  # ty: ignore[unresolved-import]
 
             # Create a small image to test capture
-            rect = Quartz.CGRectInfinite
-            image = Quartz.CGWindowListCreateImage(
+            rect = Quartz.CGRectInfinite  # ty: ignore[unresolved-attribute]
+            image = Quartz.CGWindowListCreateImage(  # ty: ignore[unresolved-attribute]
                 rect,
-                Quartz.kCGWindowListOptionOnScreenOnly,
-                Quartz.kCGNullWindowID,
-                Quartz.kCGWindowImageDefault,
+                Quartz.kCGWindowListOptionOnScreenOnly,  # ty: ignore[unresolved-attribute]
+                Quartz.kCGNullWindowID,  # ty: ignore[unresolved-attribute]
+                Quartz.kCGWindowImageDefault,  # ty: ignore[unresolved-attribute]
             )
 
             # If we got an image, permissions are granted

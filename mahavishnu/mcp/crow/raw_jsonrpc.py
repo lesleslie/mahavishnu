@@ -36,9 +36,10 @@ from dataclasses import dataclass
 import json
 import logging
 import sys
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
-from mahavishnu.mcp.crow.settings import CrowSettings
+if TYPE_CHECKING:
+    from mahavishnu.mcp.crow.settings import CrowSettings
 
 logger = logging.getLogger(__name__)
 
@@ -264,8 +265,8 @@ class _RawJsonRpcClient:
         if proc.stdin is not None:
             try:
                 proc.stdin.close()
-            except Exception:  # noqa: BLE001 - cleanup boundary
-                pass
+            except Exception as exc:  # noqa: BLE001 - cleanup boundary
+                logger.debug("subprocess stdin close failed: %s", exc)
         # SIGKILL + reap.
         if proc.returncode is None:
             try:

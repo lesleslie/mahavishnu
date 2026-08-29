@@ -3,13 +3,13 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from fastmcp import FastMCP
-
-from mahavishnu.core.capabilities import TraceId
 from mahavishnu.core.envelopes import list_envelopes
 
 if TYPE_CHECKING:
-    from mahavishnu.core.dhara import DharaClient
+    from fastmcp import FastMCP
+
+    from mahavishnu.core.capabilities import TraceId
+    from mahavishnu.core.dhara_adapter import DharaClient
 
 
 def register_get_capability_result(

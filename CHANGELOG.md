@@ -5,6 +5,98 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.19.0] - 2026-08-29
+
+### Added
+
+- **BREAKING:** mahavishnu: Rename BodaiCLIBase to OneiricCLIBase
+- Add WorkerRegistryConfig with Pydantic-validated provides
+- config: Add capability_enabled / capability_scopes / legacy_tools flags
+- core: Add capability schema with typed I/O contracts
+- core: Add Oneiric-driven capability loader (grouped by id)
+- core: Conductor with resolve, plan (real edges), emit_node, emit_flow
+- core: Dhara-backed envelope transport with secret redaction
+- engines: Add load_engine_registrations helper
+- engines: Declare provides: list[Capability] on all 6 adapters
+- mahavishnu: Add audit_cli_inventory.py for Core 7 CLI surface audit
+- mahavishnu: Bugfix + first inventory (mcp-common) for CLI audit
+- mahavishnu: Close Phase 4/5 gaps — Bodai CLI contract + bodai.apps entry-point
+- mahavishnu: Migrate load_config() to oneiric.core.config.load_settings
+- mahavishnu: Phase 1 inventory snapshots for 7 Core 7 repos
+- mahavishnu: Phase 7 diff_inventories.py (Plan Task 7.1)
+- mahavishnu: Pre-commit gate for findings.md (Plan Task 2.2)
+- mcp: Add get_capability_result tool (Dhara envelope reader)
+- mcp: Capability resolver/planner/executor tools + profile wiring
+- settings: Add workers.entries block for capability-driven registry
+
+### Changed
+
+- Continue CLI audit plan + worktree residue after rebase onto origin/main
+- mahavishnu: Bump oneiric floor to >=0.20 for OneiricCLIBase
+- workers: Replace WORKER_REGISTRY with Oneiric-loaded lookup
+- workers: WorkerManager consumes command_argv from WorkerEntry
+
+### Fixed
+
+- config: Anchor MahavishnuSettings yaml_file at package
+- Construct crow MCP client inside init_terminal_manager
+- crow: Replace anyio ClientSession with raw JSON-RPC subprocess
+- envelopes: Pass arguments dict to dhara.call_tool, not kwargs
+- Honor terminal.adapter_preference in MCP bootstrap
+- hooks: Skip post-commit/merge/rewrite indexer in worktrees
+- launcher: Discover venv python relative to script path
+- mahavishnu: Correct off-by-2 line numbers in findings.md links
+- mahavishnu: Delete yaml_file workaround now that oneiric handles YAML
+- mahavishnu: Inventory fallback for inherited Typer commands
+- mahavishnu: Make ty gate deterministic across sync states
+- mahavishnu: Restore ty ignores on scripts/ imports
+- mahavishnu: Silence ty unresolved-import on optional deps
+- mcp: Await list_envelopes in get_capability_result tool
+- ports: Move bodai-crow HTTP off 8675 (Prefect) to 8693
+- Remove McpretentiousMCPClient wrapper so Crow adapter reaches bodai-crow
+- Remove remaining mcpretentious references + make crow switchable
+- workers: Bound execute_task timeout + wire CLI path's terminal manager
+- workers: Pass launch command via tmux new-session instead of send-keys
+
+### Documentation
+
+- Add complementarity section + synthesis-plan sequencing rules
+- CLAUDE: Add Bifrost LLM gateway to portmap (8471)
+- CLAUDE: Point portmap note at the crow-port-move commit
+- Full revision of capability-refactor plan (v2)
+- mahavishnu: Add ADMIN_SHELL.md with cross-link to oneiric docs (Plan Task 3.3.x)
+- mahavishnu: Add CLI surface summary to BODAI_REPO_REGISTRY (Plan Task 7.2)
+- mahavishnu: Mark CLI audit plan complete (all 95 boxes ticked)
+- mahavishnu: Phase 1 subagent dispatch template + status
+- mahavishnu: Phase 2 cross-repo synthesis findings.md + validate_findings.py
+- mahavishnu: Phase 3.4 staleness findings (Plan Task 3.4.1)
+- mahavishnu: Quarterly CLI staleness cadence (Plan Task 7.3)
+- plan: V3 fixes from single-agent final review
+- plans: Worker registry capability refactor implementation plan
+- skills: Migrate slash commands and CLI to execute_capability
+- specs: Capability-driven worker registry + engine composition design
+- specs: Revise capability refactor per multi-agent review feedback
+
+### Testing
+
+- integration: Add docker-compose for end-to-end DAG test
+- integration: End-to-end execute_capability DAG
+- mcp: Remove orphan test files for deleted tools (3b.3 followup)
+- terminal: Prune stale iterm2_* assertions after 3b.0 field removal
+- workers: Assert new tmux new-session invocation shape
+- workers: Fix WorkerResult import path (3b.4 cleanup)
+- workers: Smoke test all 16 terminal-* worker types
+
+### Internal
+
+- Bump version to 0.18.1
+- deps: Bump oneiric floor to >=0.19.1
+- mcp: Deprecate legacy pool/worker/dispatch tools (3b.1)
+- mcp: Prune tool_versions deprecated entries + add 4 new
+- mcp: Remove deprecated pool/worker/dispatch tools (3b.3)
+- Stage 2 cleanup pass
+- terminal: Drop mcpretentious reference in config default
+
 ## [0.18.0] - 2026-08-28
 
 ### Added

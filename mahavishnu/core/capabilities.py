@@ -5,18 +5,22 @@ ExecutionDAG, etc. look like. Imported by ``capabilities_loader``,
 ``conductor``, ``envelopes``, and the capability MCP tools.
 
 Schema rules:
-- Every model uses ``model_config = ConfigDict(frozen=True, extra="forbid")``.
+- Every model uses ``model_config = ConfigDict(frozen=True, extra="forbid")``
+  except ``CapabilityExecutionResult`` which is mutable by design
+  (returns are mutated after construction by the executor).
 - Newtypes enforce ID patterns at the Pydantic layer (not just docstring).
 - No ``Any`` in tool inputs or orchestration state.
 """
 
 from __future__ import annotations
 
-from datetime import datetime
-from enum import Enum
-from typing import Annotated
+from enum import StrEnum
+from typing import TYPE_CHECKING, Annotated
 
 from pydantic import BaseModel, ConfigDict, Field, StringConstraints, TypeAdapter
+
+if TYPE_CHECKING:
+    from datetime import datetime
 
 # ---------------------------------------------------------------------------
 # ID patterns
@@ -52,6 +56,7 @@ _FROZEN_FORBID = ConfigDict(frozen=True, extra="forbid")
 # Pydantic field context (e.g., parsing untrusted input in from_key()).
 _TRACE_ID_ADAPTER: TypeAdapter[str] = TypeAdapter(TraceId)
 _ENVELOPE_ID_ADAPTER: TypeAdapter[str] = TypeAdapter(EnvelopeId)
+_CAPABILITY_ID_ADAPTER: TypeAdapter[str] = TypeAdapter(CapabilityId)
 
 
 # ---------------------------------------------------------------------------
@@ -59,26 +64,26 @@ _ENVELOPE_ID_ADAPTER: TypeAdapter[str] = TypeAdapter(EnvelopeId)
 # ---------------------------------------------------------------------------
 
 
-class CapabilityKind(str, Enum):
+class CapabilityKind(StrEnum):
     ENGINE = "engine"
     MODEL = "model"
     WORKER = "worker"
     ADAPTER = "adapter"
 
 
-class CapabilityState(str, Enum):
+class CapabilityState(StrEnum):
     EPHEMERAL = "ephemeral"
     DURABLE = "durable"
     INTERACTIVE = "interactive"  # added per spec §2
 
 
-class HealthStatus(str, Enum):
+class HealthStatus(StrEnum):
     HEALTHY = "healthy"
     DEGRADED = "degraded"
     UNKNOWN = "unknown"
 
 
-class SelectorStrategy(str, Enum):
+class SelectorStrategy(StrEnum):
     LEAST_LOADED = "least_loaded"
     ROUND_ROBIN = "round_robin"
     CAPABILITY_SCORE = "capability_score"

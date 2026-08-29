@@ -14,6 +14,7 @@ Three responsibilities:
 from __future__ import annotations
 
 import random
+from types import ModuleType
 from typing import TYPE_CHECKING
 
 from mahavishnu.core.capabilities import (
@@ -30,6 +31,8 @@ from mahavishnu.core.capabilities import (
 from mahavishnu.core.errors import ErrorCode, MahavishnuError
 
 if TYPE_CHECKING:
+    from types import ModuleType
+
     from mahavishnu.core.capabilities import EnvelopeId
     from mahavishnu.core.dhara_adapter import DharaAdapter
 
@@ -124,7 +127,7 @@ def plan(
     # n_j.outputs.fields is a non-empty subset of n_i.inputs.fields).
     edges: list[DAGEdge] = []
     for i, downstream in enumerate(nodes):
-        for j, upstream in enumerate(nodes[:i]):
+        for upstream in nodes[:i]:
             for field, ty in downstream.inputs.fields.items():
                 if upstream.outputs.fields.get(field) == ty:
                     edges.append(DAGEdge(
@@ -152,7 +155,7 @@ async def emit_node(
 
 
 def emit_flow(
-    dag: ExecutionDAG, *, prefect_factory: object | None = None,
+    dag: ExecutionDAG, *, prefect_factory: ModuleType | None = None,
 ) -> object:
     """Compile an ExecutionDAG into a Prefect flow definition.
 
@@ -164,6 +167,11 @@ def emit_flow(
     if prefect_factory is None:
         import prefect as _prefect
         prefect_factory = _prefect
+
+    # Prefect is a hard dependency; the lazy-import fallback above
+    # guarantees ``prefect_factory`` is a module exposing ``.task`` and
+    # ``.flow``. The parameter widens to ``ModuleType | None`` for the
+    # optional test-injection seam only.
 
     task_decorator = prefect_factory.task
     flow_decorator = prefect_factory.flow

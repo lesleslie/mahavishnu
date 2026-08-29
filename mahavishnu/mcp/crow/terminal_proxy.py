@@ -279,7 +279,6 @@ for _alias in _deprecated_aliases:
     globals()[_alias] = None  # type: ignore[assignment]
 
 
-@asynccontextmanager
 async def _deprecated_no_op(*_args, **_kwargs):  # pragma: no cover
     raise RuntimeError(
         f"terminal_proxy.{_args[0].__name__ if _args else 'helper'} was removed 2026-08-29; "

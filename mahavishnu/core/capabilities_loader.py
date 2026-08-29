@@ -12,7 +12,6 @@ from typing import TYPE_CHECKING
 
 from mahavishnu.core.capabilities import (
     Capability,
-    CapabilityId,
     CapabilityKind,
     CapabilityState,
     CostHint,
@@ -26,7 +25,7 @@ if TYPE_CHECKING:
 def load_capabilities_from_settings(
     settings: MahavishnuSettings,
 ) -> dict[str, list[Capability]]:
-    """Convert ``settings.worker_registry.entries`` into a ``{capability_id: [Capability, ...]}`` map.
+    """Convert ``settings.worker_registry.entries`` into a Capability->[Capability] map.
 
     CapabilityId pattern is enforced at the Pydantic layer (WorkerEntry.provides
     field_validator), so this function trusts the input.
@@ -35,7 +34,7 @@ def load_capabilities_from_settings(
     for entry in settings.worker_registry.entries:
         for cap_id in entry.provides:
             capability = Capability(
-                id=CapabilityId(cap_id),
+                id=cap_id,
                 kind=CapabilityKind.WORKER,
                 description=entry.description or entry.name,
                 io_in=TypeSchema(),

@@ -86,8 +86,8 @@ class HatchetAdapterImpl(OrchestratorAdapter):
                 "HatchetAdapterImpl requires HATCHET_CLIENT_TOKEN environment variable."
             )
         try:
-            from hatchet_sdk import Hatchet  # ty: ignore[unresolved-import]
-            from hatchet_sdk.config import ClientConfig  # ty: ignore[unresolved-import]
+            from hatchet_sdk import Hatchet
+            from hatchet_sdk.config import ClientConfig
         except ImportError:
             raise RuntimeError(
                 "hatchet-sdk not installed. Install with: uv pip install 'mahavishnu[hatchet]'"

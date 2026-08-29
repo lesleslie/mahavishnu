@@ -43,6 +43,7 @@ the JSON (written by the inventory script) and the MD summary.
 ## Worktree Conventions
 
 Per-repo worktrees live at:
+
 ```
 /Users/les/Projects/<repo>/.claude/worktrees/bodai-cli-audit-phase-1-<repo>
 ```
@@ -81,21 +82,22 @@ print('OK: all minimum thresholds met')
 
 ## Current State (after commit 26e39d3c)
 
-| Repo         | Commands | Min | Status   | Notes |
+| Repo | Commands | Min | Status | Notes |
 |--------------|----------|-----|----------|-------|
-| mahavishnu   | 159      | 50  | OK       | Includes OneiricCLIBase surface |
-| crackerjack  | 32       | 28  | OK       | |
-| oneiric      | 30       | 30  | OK       | |
-| session-buddy| 16       | 5   | OK       | |
-| dhara        | 15       | 15  | OK       | dhara/cli.py uses `app = create_cli()` pattern |
-| akosha       | 9        | 5   | OK       | Run from akosha's worktree (pyarrow dep) |
-| mcp-common   | 0        | 0   | OK       | Library-only, branch short-circuits |
+| mahavishnu | 159 | 50 | OK | Includes OneiricCLIBase surface |
+| crackerjack | 32 | 28 | OK | |
+| oneiric | 30 | 30 | OK | |
+| session-buddy| 16 | 5 | OK | |
+| dhara | 15 | 15 | OK | dhara/cli.py uses `app = create_cli()` pattern |
+| akosha | 9 | 5 | OK | Run from akosha's worktree (pyarrow dep) |
+| mcp-common | 0 | 0 | OK | Library-only, branch short-circuits |
 
 Total: 261 commands. PHASE_0_BASELINE.json written.
 
 ## Outstanding for Phase 1 completion
 
 Per Plan Task 1.1:
+
 - [x] 7 inventory JSON files written
 - [x] PHASE_0_BASELINE.json written
 - [x] All minimum thresholds met
@@ -109,9 +111,9 @@ Phase 2 dispatch or as a follow-up.
 ## Task 1.2: mcp-common confirmation
 
 Plan Task 1.2 is library-only confirmation — already verified:
+
 - `mcp-common-cli-inventory.json` shows `command_count: 0`
 - The `mcp-common` branch in `inventory_one_repo` short-circuits to
-  `{"repo": "mcp-common", "command_count": 0, "commands": [],
-    "notes": ["library-only; no CLI surface"], "version": "..."}`
+  `{"repo": "mcp-common", "command_count": 0, "commands": [],   "notes": ["library-only; no CLI surface"], "version": "..."}`
 
 No follow-up needed for Task 1.2.

@@ -20,7 +20,6 @@ from mcp_common.auth.permissions import Permission as MCPPermission
 from ...mcp.auth import require_mcp_auth
 from ...core.capabilities import (
     CapabilityExecutionResult,
-    CapabilityId,
     CapabilityKind,
     CapabilitySpec,
     CapabilityState,
@@ -29,6 +28,7 @@ from ...core.capabilities import (
     SelectorStrategy,
     TraceId,
     TypeSchema,
+    _TRACE_ID_ADAPTER,
 )
 from ...core.capabilities_loader import load_capabilities_from_settings
 from ...core.conductor import plan, resolve
@@ -96,7 +96,7 @@ def _build_worker_capability(
     from ...core.capabilities import Capability
 
     return Capability(
-        id=CapabilityId(cap_id),
+        id=cap_id,
         kind=CapabilityKind.WORKER,
         description=entry.description or entry.name or entry.worker_type,
         io_in=TypeSchema(),
@@ -185,7 +185,7 @@ def _coerce_selector(value: str) -> SelectorStrategy:
 
 def _new_trace_id() -> TraceId:
     """Generate a hex trace id matching the TraceId newtype pattern."""
-    return TraceId(uuid.uuid4().hex)
+    return _TRACE_ID_ADAPTER.validate_python(uuid.uuid4().hex)
 
 
 # ---------------------------------------------------------------------------
@@ -240,7 +240,7 @@ def register_capability_tools(
             _check_capability_feature_flag(settings)
             _check_scope(user_id, settings)
             spec = CapabilitySpec(
-                requires=[CapabilityId(r) for r in requires],
+                requires=list(requires),
                 prompt=prompt,
                 selector=_coerce_selector(selector),
             )
@@ -289,12 +289,12 @@ def register_capability_tools(
         user_id: str | None = None,
     ) -> dict[str, object]:
         """Plan the DAG; returns the ExecutionDAG JSON (no engine dispatch)."""
-        tid = TraceId(trace_id) if trace_id else _new_trace_id()
+        tid = trace_id if trace_id else _new_trace_id()
         try:
             _check_capability_feature_flag(settings)
             _check_scope(user_id, settings)
             spec = CapabilitySpec(
-                requires=[CapabilityId(r) for r in requires],
+                requires=list(requires),
                 prompt=prompt,
                 selector=_coerce_selector(selector),
                 trace_id=tid,
@@ -358,12 +358,12 @@ def register_capability_tools(
         ``status='rejected'`` is returned when no engine satisfies a required
         capability.
         """
-        tid = TraceId(trace_id) if trace_id else _new_trace_id()
+        tid = trace_id if trace_id else _new_trace_id()
         try:
             _check_capability_feature_flag(settings)
             _check_scope(user_id, settings)
             spec = CapabilitySpec(
-                requires=[CapabilityId(r) for r in requires],
+                requires=list(requires),
                 prompt=prompt,
                 selector=_coerce_selector(selector),
                 trace_id=tid,
