@@ -10,6 +10,9 @@
 
 **Spec:** `docs/superpowers/specs/2026-08-29-worker-registry-capability-refactor-design.md`
 
+**Related plans (complementary, not duplicative):**
+- `docs/plans/2026-08-29-orchestrator-research-synthesis.md` — the synthesis plan has `blocks_on: docs/superpowers/plans/2026-08-29-worker-registry-capability-refactor.md` (this plan). Synthesis Phases 0, 1, and 2 consume artifacts from this plan; see "Complementarity & sequencing rules" below for the two conflict points (Phases 3 and 4) that require coordination.
+
 ## Global Constraints
 
 - **Python 3.14 floor.** Target 3.14+ syntax (`X | None`, `list[str]`, `pathlib.Path`).
@@ -29,7 +32,55 @@
 - **Pyproject markers:** `unit`, `integration`, `mcp`, `requires_network`, `requires_auth`, `slow` (per CLAUDE.md). New tests should use these markers; don't invent new ones.
 - **Async tests** don't need `@pytest.mark.asyncio` — `asyncio_mode = "auto"`.
 
+## Complementarity with the Orchestrator Synthesis Plan
+
+The synthesis plan (`docs/plans/2026-08-29-orchestrator-research-synthesis.md`) explicitly has `blocks_on: docs/superpowers/plans/2026-08-29-worker-registry-capability-refactor.md`. It does **not** redefine the Capability schema, conductor, or capability-tools surface. Synthesis consumes the following artifacts from this plan:
+
+| Synthesis Phase | Consumes from this plan | Notes |
+|---|---|---|
+| Phase 0 (`workflow_result: not_found` bug fix) | Task 3a.4 `get_capability_result(trace_id: TraceId)` | Synthesis notes that the right fix is **switching the caller**, not patching `workflow_result`. My Stage 3b deletes `workflow_result`; the migration path is `workflow_result(workflow_id)` → `get_capability_result(trace_id)`. |
+| Phase 1 (cross-repo capability search) | Tasks 2.1 + 2.4 (`Capability` schema + `load_capabilities_from_settings`) | Synthesis builds its search index on top of my `Capability` registry; it does not redefine the type. |
+
+### Sequencing rules (two conflict points)
+
+These rules MUST hold or synthesis Phase 3 / Phase 4 will break. They're coordination constraints, not this plan's tasks.
+
+1. **Phase 3 (synthesis, budget enforcement) must ship BEFORE Stage 3b (this plan, deletes `pool_tools.py`).**
+   - Synthesis Phase 3 adds `budget_enforce(...)` to `mahavishnu/mcp/tools/pool_tools.py` (Task 3 of synthesis Phase 3) and starts `budget_watchdog` in `core/app.py` lifespan.
+   - This plan's Stage 3b (Task 3b.3) deletes `pool_spawn`, `pool_execute`, `pool_route_execute`, `dispatch_to_pool`, `workflow_result` from `pool_tools.py`.
+   - **Conflict**: if synthesis Phase 3 lands AFTER Stage 3b's deletion, `budget_enforce` has no home in `pool_tools.py`.
+   - **Resolution options** (pick one before execution):
+     - (a) **Sequence**: ship synthesis Phase 3 first, then this plan's Stage 3b. `budget_enforce` lives in `pool_tools.py`.
+     - (b) **Relocate**: this plan's Stage 3b also creates `mahavishnu/mcp/tools/budget_tools.py` and moves `budget_enforce` there before deletion.
+   - Either way: synthesis Phase 3's integration contract (Dhara record at `mahavishnu://budgets/{workflow_id}.json`, OTel span `budget.check`) is preserved.
+
+2. **Phase 4 (synthesis, Shepherd as worker backend) MUST register Shepherd via the new `worker_registry:` YAML block — NOT via the legacy `__init__.py:66-144` lazy-import table.**
+   - Synthesis Phase 4 tasks 3-5 say: "Register `shepherd` as a worker type in `mahavishnu/workers/manager.py` and `mahavishnu/workers/__init__.py` lazy-import table" and "expose `worker_type="shepherd"` option in `mahavishnu/mcp/tools/worker_tools.py`."
+   - This plan replaces both of those mechanisms: Task 2.3 moves worker registration to Oneiric-loaded YAML (`settings/mahavishnu.yaml:worker_registry:`); Stage 3b deletes `mahavishnu/mcp/tools/worker_tools.py`.
+   - **Conflict**: if synthesis Phase 4 lands and adds Shepherd via the legacy path, it will hit the same ImportError cascade and field-shadowing this plan fixes in Task 2.5 / 2.6.
+   - **Resolution** (mandatory before synthesis Phase 4 execution): Shepherd registers via:
+     1. Add `pyproject.toml` `shepherd-ai` (optional worker backend dep).
+     2. Add a `worker_registry:` entry in `settings/mahavishnu.yaml`:
+        ```yaml
+        - worker_type: shepherd
+          name: "Shepherd Sandbox"
+          command_argv: ["shepherd", "run"]
+          completion_markers: ["__SHEPHERN_DONE__"]
+          requires_tool: shepherd
+          provides: ["worker:shepherd-sandbox", "worker:ai-context"]
+        ```
+     3. Create `mahavishnu/workers/shepherd_backend.py` (the dispatch handler — out of scope for this plan; synthesis Phase 4 owns it).
+     4. Shepherd `provides: list[Capability]` lives in the new entry's resolution path (Task 2.7 pattern for engines; same shape for workers).
+     5. Stage 3b's `worker_tools.py` deletion already happens; Shepherd dispatch happens via the new `execute_capability(spec=CapabilitySpec(requires=["worker:shepherd-sandbox"], prompt=...))`.
+
+### Other notes (not conflicts)
+
+- **Phase 2 (synthesis, settle ops)** lives in `mahavishnu/mcp/tools/worker_contract_tools.py` (existing file). This plan does not touch that file. The settle ops use `git merge-file` against bindings; the capability `provides:` for "settle operations" is implicit through `worker_run_with_settle` rather than a `Capability` entry. Synthesis can add a `CapabilityKind.ADAPTER` entry for settle if it wants settle ops in the capability registry — out of scope for both plans.
+- **Phase 5 (synthesis, charter wrapper)** lives in the Crackerjack repo, not Mahavishnu. No coordination needed.
+
 ---
+
+## Phase 1 — Stage 1: Worker Bootstrap Fix
 
 ## Phase 1 — Stage 1: Worker Bootstrap Fix
 
