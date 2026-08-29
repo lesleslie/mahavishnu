@@ -158,7 +158,7 @@ def inventory_one_repo(repo: str, repo_path: str, out_path: Path) -> dict[str, A
             return data
         entry_points = {
             "oneiric": ("oneiric.cli", "app"),
-            "dhara": ("dhara.cli", "create_cli"),
+            "dhara": ("dhara.cli", "app"),
             "session-buddy": ("session_buddy.cli", "app"),
             "akosha": ("akosha.cli", "app"),
             "crackerjack": ("crackerjack.__main__", "app"),
@@ -213,19 +213,56 @@ def write_phase_0_baseline(repos: list[str], repo_root: str, out_path: Path) -> 
 def repo(
     repo_name: str = typer.Option(..., "--repo", help="Single repo to inventory"),
     check_stale: bool = typer.Option(False, "--check-stale"),
+    repo_path: str | None = typer.Option(
+        None,
+        "--repo-path",
+        help=(
+            "Path to the repo root (defaults to /Users/les/Projects/<repo>). "
+            "Override when running from a clean worktree while main has "
+            "uncommitted modifications."
+        ),
+    ),
+    out_dir: str | None = typer.Option(
+        None,
+        "--out-dir",
+        help=(
+            "Output directory for the JSON inventory file "
+            "(defaults to ./docs/audit-inventory). Subagents writing to "
+            "the centralized mahavishnu location should pass "
+            "/Users/les/Projects/mahavishnu/docs/audit-inventory."
+        ),
+    ),
 ) -> None:
-    repo_path = f"/Users/les/Projects/{repo_name}"
-    out_dir = Path("docs/audit-inventory")
-    out_dir.mkdir(parents=True, exist_ok=True)
-    out_path = out_dir / f"{repo_name}-cli-inventory.json"
-    data = inventory_one_repo(repo_name, repo_path, out_path)
-    typer.echo(f"Wrote {out_path} ({data['command_count']} commands)")
+    resolved_repo_path = repo_path or f"/Users/les/Projects/{repo_name}"
+    resolved_out_dir = Path(out_dir) if out_dir else Path("docs/audit-inventory")
+    resolved_out_dir.mkdir(parents=True, exist_ok=True)
+    out_path = resolved_out_dir / f"{repo_name}-cli-inventory.json"
+    data = inventory_one_repo(repo_name, resolved_repo_path, out_path)
+    typer.echo(
+        f"Wrote {out_path} ({data['command_count']} commands) from {resolved_repo_path}"
+    )
 
 
 @app.command(name="all")
 def all_repos(
     check_stale: bool = typer.Option(
         False, "--check-stale", help="Exit non-zero if any command is stale"
+    ),
+    out_dir: str | None = typer.Option(
+        None,
+        "--out-dir",
+        help=(
+            "Output directory for inventory JSON files and "
+            "PHASE_0_BASELINE.json (defaults to ./docs/audit-inventory)."
+        ),
+    ),
+    projects_root: str = typer.Option(
+        "/Users/les/Projects",
+        "--projects-root",
+        help=(
+            "Root directory containing the Core 7 repos. Each repo's "
+            "inventory is fetched as <projects-root>/<repo>."
+        ),
     ),
 ) -> None:
     repos = [
@@ -237,12 +274,12 @@ def all_repos(
         "crackerjack",
         "mahavishnu",
     ]
-    out_dir = Path("docs/audit-inventory")
-    out_dir.mkdir(parents=True, exist_ok=True)
+    resolved_out_dir = Path(out_dir) if out_dir else Path("docs/audit-inventory")
+    resolved_out_dir.mkdir(parents=True, exist_ok=True)
     any_stale = False
     for repo in repos:
-        repo_path = f"/Users/les/Projects/{repo}"
-        out_path = out_dir / f"{repo}-cli-inventory.json"
+        repo_path = f"{projects_root}/{repo}"
+        out_path = resolved_out_dir / f"{repo}-cli-inventory.json"
         try:
             data = inventory_one_repo(repo, repo_path, out_path)
         except (ImportError, AttributeError, OSError) as e:
@@ -256,7 +293,7 @@ def all_repos(
             if stale:
                 any_stale = True
                 typer.echo(f"  [yellow]{len(stale)} stale/deprecated commands[/yellow]")
-    write_phase_0_baseline(repos, "/Users/les/Projects", out_dir / "PHASE_0_BASELINE.json")
+    write_phase_0_baseline(repos, projects_root, resolved_out_dir / "PHASE_0_BASELINE.json")
     if check_stale and any_stale:
         raise typer.Exit(code=1)
 
