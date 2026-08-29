@@ -1,0 +1,25 @@
+# Local stack for tests/integration/conductor/test_end_to_end_dag.py
+# Brings up Prefect API + a Dhara stub. Network-isolated, ephemeral volumes.
+
+services:
+  prefect-server:
+    image: prefecthq/prefect:3.1.0-python3.12
+    command: prefect server start --host 0.0.0.0 --port 4200
+    ports:
+      - "4200:4200"
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:4200/api/health"]
+      interval: 5s
+      timeout: 3s
+      retries: 6
+    environment:
+      PREFECT_HOME: /opt/prefect
+
+  dhara-stub:
+    image: python:3.12-slim
+    command: ["python", "-m", "mahavishnu.dev.dhara_stub", "--port", "8683"]
+    ports:
+      - "8683:8683"
+    # Stub is local-only; the integration test injects MAHAVISHNU_DHARA_URL=http://localhost:8683.
+    environment:
+      MAHAVISHNU_LOG_LEVEL: INFO
