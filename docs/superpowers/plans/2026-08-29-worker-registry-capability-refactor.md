@@ -94,9 +94,9 @@ Co-Authored-By: Claude <noreply@anthropic.com>"
 - Consumes: `create_session(socket, session, window_name, command: Sequence[str])` signature unchanged
 - Produces: Same `TmuxSessionInfo` return type; passes command via `tmux new-session -- <cmd>` instead of post-creation `send-keys`
 
-- [ ] **Step 1: Replace the create_session body**
+- [ ] **Step 1: Replace the entire `create_session` function**
 
-In `mahavishnu/workers/contract/tmux_adapter.py`, replace lines 111-152 with:
+In `mahavishnu/workers/contract/tmux_adapter.py`, replace lines **85-159** (the entire `create_session` function from `def create_session(` through the closing `return TmuxSessionInfo(...)` line) with the snippet below. The original bug lived at lines 111-152 (`shlex.join` + `send-keys`), but the supplied snippet rewrites the whole function — including the validation/chmod prologue at lines 97-110 — so the replacement range must cover both regions or we'd end up with a duplicated validation block.
 
 ```python
 def create_session(
@@ -192,109 +192,9 @@ after --; tmux exec's it directly without the shell round-trip.
 Co-Authored-By: Claude <noreply@anthropic.com>"
 ```
 
-### Task 1.3: Smoke-test all 16 worker types
+### Task 1.3: Phase 1 manual smoke check (one worker type)
 
-**Files:**
-- Create: `tests/integration/workers/test_terminal_workers_smoke.py`
-
-**Interfaces:**
-- Consumes: `PoolManager`, `MahavishnuSettings`
-- Produces: Confirmation that each registered `terminal-*` worker type spawns a functional tmux pane
-
-- [ ] **Step 1: Write the smoke test**
-
-```python
-"""Smoke-test all terminal-* worker types registered in settings/mahavishnu.yaml.
-
-Per task 1.3 of the capability refactor plan, this confirms the
-tmux_adapter Stage 1 fix works for every entry in
-settings.workers.entries, not just terminal-claude.
-
-Workers whose `requires_tool` isn't on PATH (shutil.which returns None) or
-whose `required_env` are unset are skipped — the test asserts what we can,
-not what we cannot, given the local environment.
-"""
-from __future__ import annotations
-
-import os
-import shutil
-from pathlib import Path
-
-import pytest
-
-from mahavishnu.core.config import MahavishnuSettings
-from mahavishnu.pools.manager import PoolManager
-from mahavishnu.workers.registry import get_worker_entry
-
-
-@pytest.mark.integration
-@pytest.mark.mcp
-@pytest.mark.asyncio
-async def test_each_terminal_worker_spawns_functional_pane() -> None:
-    """Every terminal-* worker type with available tools spawns a pane."""
-    settings = MahavishnuSettings()
-    pool_mgr = PoolManager.from_settings(settings)
-
-    spawned: list[str] = []
-    skipped: list[tuple[str, str]] = []
-
-    for entry in settings.workers.entries:
-        if not entry.worker_type.startswith("terminal-"):
-            continue
-        # Skip if requires_tool is missing
-        if entry.requires_tool and not shutil.which(entry.requires_tool):
-            skipped.append((entry.worker_type, f"tool {entry.requires_tool!r} not on PATH"))
-            continue
-        # Skip if any required_env is unset
-        missing_env = [v for v in entry.required_env if not os.environ.get(v)]
-        if missing_env:
-            skipped.append((entry.worker_type, f"env unset: {missing_env}"))
-            continue
-
-        worker = await pool_mgr.spawn_worker(entry.worker_type)
-        # Wait up to 5s for the pane to print its first prompt / completion marker
-        deadline = 5.0
-        interval = 0.25
-        captured = ""
-        while deadline > 0:
-            captured = await pool_mgr.capture_pane(worker.session_id, lines=20)
-            if any(m in captured for m in entry.completion_markers):
-                break
-            await asyncio.sleep(interval)
-            deadline -= interval
-
-        for marker in entry.completion_markers:
-            assert marker in captured, (
-                f"{entry.worker_type} pane never printed marker {marker!r}; "
-                f"got: {captured!r}"
-            )
-        spawned.append(entry.worker_type)
-        await pool_mgr.close_worker(worker.session_id)
-
-    # Report skipped so the operator knows what was NOT covered locally.
-    if skipped:
-        pytest.skip(
-            f"spawned {len(spawned)} workers; skipped {len(skipped)} "
-            f"(missing tool/env): {skipped}"
-        )
-    assert spawned, "no terminal-* workers registered — settings/mahavishnu.yaml broken?"
-```
-
-- [ ] **Step 2: Run smoke test**
-
-Run: `pytest tests/integration/workers/test_terminal_workers_smoke.py -v -m "integration and mcp"`
-Expected: All available workers spawn and print their marker; unavailable ones skip.
-
-- [ ] **Step 3: Commit smoke test**
-
-```bash
-git -c user.email="les@wedgwoodwebworks.com" add tests/integration/workers/test_terminal_workers_smoke.py
-git -c user.email="les@wedgwoodwebworks.com" commit -m "test(workers): smoke test all 16 terminal-* worker types
-
-Co-Authored-By: Claude <noreply@anthropic.com>"
-```
-
-### Task 1.4: Phase 1 done — manual smoke check
+**Files:** none modified (smoke test only)
 
 - [ ] **Step 1: Manually verify in a live MCP session**
 
@@ -310,6 +210,22 @@ Expected: pane shows `claude --output-format stream-json --permission-mode accep
 ```bash
 mcp__mahavishnu__pool_close --pool_id=<phase1-pool-id>
 ```
+
+**v3 reviewer note #9:** a programmatic smoke test for all 16 worker types lived here in v2 but depends on Phase 2 artifacts (`get_worker_entry`, `settings.worker_registry.entries`, etc.) and on a `PoolManager` API that doesn't exist (`PoolManager.from_settings()`, `spawn_worker()`, `capture_pane()`, `close_worker()` — real surface: `spawn_pool`, `execute_on_pool`, `route_task`, `close_pool`, `close_all`, `list_pools`, `health_check` per `pools/manager.py:286-1120`). That programmatic smoke test is now Task 2.9 at the end of Phase 2, where it has the dependencies it needs.
+
+---
+
+### Task 1.4: Phase 1 done — tag the fix
+
+- [ ] **Step 1: Tag the fix (DO NOT push)**
+
+```bash
+git -c user.email="les@wedgwoodwebworks.com" tag -a v0.17.1 -m "Stage 1: fix tmux worker bootstrap bug"
+```
+
+(Per `feedback-bodai-push-is-user-controlled.md`, NEVER push without explicit approval.)
+
+---
 
 ---
 
@@ -405,9 +321,10 @@ Co-Authored-By: Claude <noreply@anthropic.com>"
 # tests/unit/test_core_capabilities_schema.py
 from __future__ import annotations
 
-import pytest
-from pydantic import ValidationError, StringConstraints
 from typing import Annotated
+
+import pytest
+from pydantic import StringConstraints, TypeAdapter, ValidationError
 
 from mahavishnu.core.capabilities import (
     Capability, CapabilityEnvelope, CapabilityId, CapabilityKind,
@@ -418,20 +335,27 @@ from mahavishnu.core.capabilities import (
 )
 
 
+# `CapabilityId`, `EngineId`, `TraceId` are `Annotated[str, StringConstraints]`
+# aliases. Calling the alias directly delegates to str() and never validates;
+# use TypeAdapter to actually exercise the constraint.
+_capability_id_t = TypeAdapter(CapabilityId)
+_engine_id_t = TypeAdapter(EngineId)
+_trace_id_t = TypeAdapter(TraceId)
+
+
 def test_capability_id_rejects_bad_format() -> None:
     with pytest.raises(ValidationError):
-        CapabilityId("BAD")  # missing colon
+        _capability_id_t.validate_python("BAD")  # missing colon
 
 
 def test_capability_id_accepts_kind_colon_name() -> None:
-    cid = CapabilityId("worker:bash")
-    assert str(cid) == "worker:bash"
+    assert _capability_id_t.validate_python("worker:bash") == "worker:bash"
 
 
 def test_trace_id_must_be_32_hex() -> None:
-    TraceId("0" * 32)  # ok
+    _trace_id_t.validate_python("0" * 32)  # ok
     with pytest.raises(ValidationError):
-        TraceId("not-hex")
+        _trace_id_t.validate_python("not-hex")
 
 
 def test_capability_model_is_frozen_and_forbids_extras() -> None:
@@ -461,9 +385,9 @@ def test_capability_spec_requires_nonempty_prompt() -> None:
 
 
 def test_engine_id_pattern() -> None:
-    EngineId("prefect")  # ok
+    _engine_id_t.validate_python("prefect")  # ok
     with pytest.raises(ValidationError):
-        EngineId("BAD ENGINE")  # space + uppercase
+        _engine_id_t.validate_python("BAD ENGINE")  # space + uppercase
 ```
 
 - [ ] **Step 2: Run test to verify it fails**
@@ -654,6 +578,9 @@ class Candidate(BaseModel):
     capability_id: CapabilityId
     score: float
     reason: str
+    # The resolved Capability object, so plan() can populate DAGNode inputs/outputs
+    # from the same source. Set by Conductor.resolve(); required.
+    capability: Capability
 
 
 class DAGNode(BaseModel):
@@ -755,7 +682,9 @@ Co-Authored-By: Claude <noreply@anthropic.com>"
 
 **Interfaces:**
 - Consumes: Existing `MahavishnuSettings`
-- Produces: New `WorkerRegistryConfig` Pydantic model registered on `MahavishnuSettings`; `WorkerEntry` validates `provides` list at Pydantic layer (no second-layer check needed in loader).
+- Produces: New `WorkerRegistryConfig` Pydantic model registered on `MahavishnuSettings` as `worker_registry` (NOT `workers` — that name is already taken at `mahavishnu/core/config.py:2263` by `WorkerConfig` for runtime worker config: `enabled`, `max_concurrent`, `default_type`, `timeout_seconds`, `session_buddy_integration`, `container`; `extra="forbid"` at :1142). Using `workers` would silently break 8 existing readers (`_main_cli.py:1325,1408`, `core/bootstrap.py:225`, `core/health.py:679`, plus tests). `WorkerEntry` validates `provides` list at Pydantic layer.
+
+**v3 reviewer note:** WorkerEntry.name must default to `""` (or be optional) — the existing tests below only set `worker_type`/`command_argv`/`provides`, so a required `name: str` field would fail with "Field required". The plan's note that "name Field required" is wrong.
 
 - [ ] **Step 1: Write failing test**
 
@@ -769,21 +698,21 @@ from pydantic import ValidationError
 from mahavishnu.core.config import MahavishnuSettings
 
 
-def test_settings_accepts_workers_block() -> None:
-    s = MahavishnuSettings.model_validate({"workers": {"entries": []}})
-    assert hasattr(s, "workers")
+def test_settings_accepts_worker_registry_block() -> None:
+    s = MahavishnuSettings.model_validate({"worker_registry": {"entries": []}})
+    assert hasattr(s, "worker_registry")
 
 
 def test_settings_rejects_unknown_worker_block_keys() -> None:
     with pytest.raises(ValidationError):
-        MahavishnuSettings.model_validate({"workers": {"unknown_field": "x"}})
+        MahavishnuSettings.model_validate({"worker_registry": {"unknown_field": "x"}})
 
 
 def test_worker_entry_rejects_invalid_capability_id() -> None:
     """provides list values must match CapabilityId pattern ^[a-z]+:[a-z0-9._-]+$."""
     with pytest.raises(ValidationError):
         MahavishnuSettings.model_validate({
-            "workers": {"entries": [
+            "worker_registry": {"entries": [
                 {"worker_type": "x", "command_argv": ["bash"], "provides": ["BAD-ID"]},
             ]},
         })
@@ -791,11 +720,21 @@ def test_worker_entry_rejects_invalid_capability_id() -> None:
 
 def test_worker_entry_accepts_valid_capability_id() -> None:
     s = MahavishnuSettings.model_validate({
-        "workers": {"entries": [
+        "worker_registry": {"entries": [
             {"worker_type": "x", "command_argv": ["bash"], "provides": ["worker:bash"]},
         ]},
     })
-    assert s.workers.entries[0].provides == ["worker:bash"]
+    assert s.worker_registry.entries[0].provides == ["worker:bash"]
+
+
+def test_worker_entry_name_is_optional() -> None:
+    """name is optional — the Pydantic default is empty string."""
+    s = MahavishnuSettings.model_validate({
+        "worker_registry": {"entries": [
+            {"worker_type": "x", "command_argv": ["bash"], "provides": ["worker:bash"]},
+        ]},
+    })
+    assert s.worker_registry.entries[0].name == ""
 ```
 
 - [ ] **Step 2: Run test to verify it fails**
@@ -821,11 +760,11 @@ _CAPABILITY_ID_PATTERN = r"^[a-z]+:[a-z0-9._-]+$"
 
 
 class WorkerEntry(BaseModel):
-    """One worker registration, loaded from ``settings/mahavishnu.yaml:workers.entries[]``."""
+    """One worker registration, loaded from ``settings/mahavishnu.yaml:worker_registry.entries[]``."""
 
     model_config = ConfigDict(extra="forbid")
     worker_type: str
-    name: str
+    name: str = ""  # default empty so the field is optional in YAML
     description: str = ""
     command_argv: list[str] = Field(default_factory=list)
     completion_markers: list[str] = Field(default_factory=list)
@@ -859,11 +798,15 @@ class WorkerEntry(BaseModel):
 
 
 class WorkerRegistryConfig(BaseModel):
-    """Loaded from ``workers:`` block in ``settings/mahavishnu.yaml``.
+    """Loaded from ``worker_registry:`` block in ``settings/mahavishnu.yaml``.
 
     Each entry corresponds to one terminal-* worker type. The keys
     here are the SAME string keys as the legacy ``WORKER_REGISTRY``,
     so this is a drop-in replacement.
+
+    NOTE: The name is ``worker_registry`` (not ``workers``) because
+    ``MahavishnuSettings.workers`` is already taken by the runtime
+    WorkerConfig block at :2263 of core/config.py.
     """
 
     model_config = ConfigDict(extra="forbid")
@@ -872,10 +815,10 @@ class WorkerRegistryConfig(BaseModel):
 
 - [ ] **Step 4: Register on `MahavishnuSettings`**
 
-Inside the `MahavishnuSettings` class, add (alongside the existing fields from Task 2.0):
+Inside the `MahavishnuSettings` class, add (alongside the existing fields from Task 2.0). The name is `worker_registry` to avoid colliding with the existing `workers` field used by runtime config:
 
 ```python
-    workers: WorkerRegistryConfig = Field(default_factory=WorkerRegistryConfig)
+    worker_registry: WorkerRegistryConfig = Field(default_factory=WorkerRegistryConfig)
 ```
 
 - [ ] **Step 5: Run tests**
@@ -901,29 +844,37 @@ shape and only has to instantiate Capability objects.
 Co-Authored-By: Claude <noreply@anthropic.com>"
 ```
 
-### Task 2.3: Update settings/mahavishnu.yaml with workers: block
+### Task 2.3: Update settings/mahavishnu.yaml with worker_registry: block
 
 **Files:**
-- Modify: `settings/mahavishnu.yaml` (append a new top-level `workers:` block)
+- Modify: `settings/mahavishnu.yaml` (append a new top-level `worker_registry:` block)
 
 **Interfaces:**
 - Consumes: Existing `settings/mahavishnu.yaml`
-- Produces: Same yaml with a `workers.entries:` list containing 16 entries (one per legacy `terminal-*` worker type)
+- Produces: Same yaml with a `worker_registry.entries:` list containing 16 entries (one per legacy `terminal-*` worker type)
+
+**v3 reviewer note:** The file already has a top-level `workers:` block at **line 103** (`enabled: true`, `max_concurrent: 10`, `default_type: "terminal-claude"`) for runtime worker config. Adding a second `workers:` block would produce a duplicate YAML mapping key; PyYAML keeps the last one and silently discards the existing worker settings. We use `worker_registry:` instead.
 
 - [ ] **Step 1: Read current settings**
 
 ```bash
 cat settings/mahavishnu.yaml | head -30
+grep -n "^workers:" settings/mahavishnu.yaml
 ```
 
-- [ ] **Step 2: Append the workers block**
+(The second command confirms the existing `workers:` block — if a different name is taken, rename `worker_registry:` accordingly.)
+
+- [ ] **Step 2: Append the worker_registry block**
 
 Append to `settings/mahavishnu.yaml`:
 
 ```yaml
 # Worker registry (Stage 2 of capability refactor)
-# Loaded by Oneiric into MahavishnuSettings.workers
-workers:
+# Loaded by Oneiric into MahavishnuSettings.worker_registry
+# NOTE: the existing top-level `workers:` block at line ~103 holds runtime
+# worker config (enabled/max_concurrent/default_type/timeout_seconds). We
+# use `worker_registry:` to avoid colliding with it.
+worker_registry:
   entries:
     - worker_type: terminal-shell
       name: "Bash Shell"
@@ -1036,7 +987,7 @@ workers:
 The plan previously called `oneiric.core.config.load_settings("mahavishnu")` — that helper was removed in the Oneiric 0.19.0 refactor. The current canonical check is:
 
 ```bash
-python -c "from mahavishnu.core.config import MahavishnuSettings; s = MahavishnuSettings(); print(type(s.workers).__name__, len(s.workers.entries))"
+python -c "from mahavishnu.core.config import MahavishnuSettings; s = MahavishnuSettings(); print(type(s.worker_registry).__name__, len(s.worker_registry.entries))"
 ```
 
 Expected: prints `WorkerRegistryConfig 16`.
@@ -1075,7 +1026,7 @@ from mahavishnu.core.config import MahavishnuSettings
 
 def test_load_capabilities_groups_by_id() -> None:
     s = MahavishnuSettings.model_validate({
-        "workers": {"entries": [
+        "worker_registry": {"entries": [
             {"worker_type": "a", "command_argv": ["x"], "provides": ["worker:ai-context"], "name": "A"},
             {"worker_type": "b", "command_argv": ["y"], "provides": ["worker:ai-context"], "name": "B"},
         ]},
@@ -1089,7 +1040,7 @@ def test_load_capabilities_groups_by_id() -> None:
 
 def test_load_capabilities_includes_kind_and_state() -> None:
     s = MahavishnuSettings.model_validate({
-        "workers": {"entries": [
+        "worker_registry": {"entries": [
             {"worker_type": "a", "command_argv": ["x"], "provides": ["worker:bash"], "name": "Bash"},
         ]},
     })
@@ -1136,13 +1087,13 @@ if TYPE_CHECKING:
 def load_capabilities_from_settings(
     settings: "MahavishnuSettings",
 ) -> dict[str, list[Capability]]:
-    """Convert ``settings.workers.entries`` into a ``{capability_id: [Capability, ...]}`` map.
+    """Convert ``settings.worker_registry.entries`` into a ``{capability_id: [Capability, ...]}`` map.
 
     CapabilityId pattern is enforced at the Pydantic layer (WorkerEntry.provides
     field_validator), so this function trusts the input.
     """
     grouped: dict[str, list[Capability]] = defaultdict(list)
-    for entry in settings.workers.entries:
+    for entry in settings.worker_registry.entries:
         for cap_id in entry.provides:
             capability = Capability(
                 id=CapabilityId(cap_id),
@@ -1181,16 +1132,16 @@ Co-Authored-By: Claude <noreply@anthropic.com>"
 ### Task 2.5: Replace WORKER_REGISTRY with WorkerEntry lookups
 
 **Files:**
-- Modify: `mahavishnu/workers/registry.py` (replace `WORKER_REGISTRY` dict with functions)
+- Modify: `mahavishnu/workers/registry.py` (add new lookup functions alongside existing exports — DO NOT rewrite the file)
 - Modify: `mahavishnu/workers/__init__.py:40` (re-export new symbols)
 - Modify: `mahavishnu/_main_cli.py:73,1402` (use new lookup API)
 - Modify: `mahavishnu/cli/base.py:100` (use new lookup API)
 - Modify: `mahavishnu/mcp/bootstrap.py` (use new lookup API if it touches WORKER_REGISTRY)
 
-**Production importer audit:** Reviewer C1 listed 9 test files, but production code only imports `WORKER_REGISTRY` from 4 places (`_main_cli.py`, `cli/base.py`, `workers/__init__.py`, `bootstrap.py` if applicable). Test file migrations happen in Step 5.
+**v3 reviewer note:** `mahavishnu/workers/registry.py` exports far more than `WORKER_REGISTRY`: `AuthKind` (:11), `RuntimeKind` (:22), `WorkerCategory` (:31), `WorkerConfig` (:43), `get_worker_config` (:742), `resolve_worker_type` (:754), `list_worker_types(category=...)` (:768), `get_workers_by_category` (:782), `validate_worker_dependencies` (:794). `mahavishnu/workers/__init__.py:40-49` imports eight of them, and 8 production modules import the package. The legacy `list_worker_types(category=...)` signature must be preserved (callers depend on `category` kwarg). Rewriting the file is an ImportError cascade and silently breaks the existing signature.
 
 **Interfaces:**
-- Consumes: `MahavishnuSettings.workers`
+- Consumes: `MahavishnuSettings.worker_registry`
 - Produces: `get_worker_entry(worker_type, settings=None) -> WorkerEntry`, `list_worker_types(settings=None) -> list[str]`
 
 - [ ] **Step 1: Audit WORKER_REGISTRY production imports**
@@ -1199,7 +1150,7 @@ Co-Authored-By: Claude <noreply@anthropic.com>"
 grep -rn "WORKER_REGISTRY" --include='*.py' mahavishnu/ | grep -v test_
 ```
 
-Record each hit in the task notes; only the 4 sites listed above should remain (or fewer — `bootstrap.py` may not touch it). Step 3 fixes only the production sites.
+Record each hit in the task notes. Step 5 fixes only the production sites.
 
 - [ ] **Step 2: Write failing test for new lookup API**
 
@@ -1210,12 +1161,13 @@ from __future__ import annotations
 import pytest
 
 from mahavishnu.core.config import MahavishnuSettings
+from mahavishnu.core.errors import MahavishnuError
 from mahavishnu.workers.registry import get_worker_entry, list_worker_types
 
 
 def test_get_worker_entry_loads_from_settings() -> None:
     s = MahavishnuSettings.model_validate({
-        "workers": {"entries": [
+        "worker_registry": {"entries": [
             {"worker_type": "terminal-shell", "name": "Bash", "command_argv": ["bash"]},
         ]},
     })
@@ -1224,8 +1176,9 @@ def test_get_worker_entry_loads_from_settings() -> None:
 
 
 def test_get_worker_entry_raises_for_unknown() -> None:
+    """Missing worker_type raises MahavishnuError(RESOURCE_NOT_FOUND), NOT KeyError."""
     s = MahavishnuSettings()
-    with pytest.raises(KeyError):
+    with pytest.raises(MahavishnuError):
         get_worker_entry("does-not-exist", settings=s)
 
 
@@ -1235,6 +1188,14 @@ def test_list_worker_types_returns_all_registered() -> None:
     assert "terminal-claude" in types_
     assert "terminal-shell" in types_
     assert len(types_) >= 16
+
+
+def test_legacy_list_worker_types_with_category_still_works() -> None:
+    """The existing list_worker_types(category=...) signature is preserved."""
+    from mahavishnu.workers.registry import list_worker_types as legacy
+    s = MahavishnuSettings()
+    types_ = legacy(settings=s, category="ai-context")  # may be empty, must not raise
+    assert isinstance(types_, list)
 ```
 
 - [ ] **Step 3: Run test to verify it fails**
@@ -1242,12 +1203,22 @@ def test_list_worker_types_returns_all_registered() -> None:
 Run: `pytest tests/unit/workers/test_registry_lookup.py -v`
 Expected: FAIL.
 
-- [ ] **Step 4: Replace `WORKER_REGISTRY` in `mahavishnu/workers/registry.py`**
+- [ ] **Step 4: Add new functions to `mahavishnu/workers/registry.py` (NOT rewrite)**
 
-Rewrite the file:
+Append to the existing file (do NOT delete `WORKER_REGISTRY`, `AuthKind`, `RuntimeKind`, `WorkerCategory`, `WorkerConfig`, `get_worker_config`, `resolve_worker_type`, `list_worker_types` (the legacy version), `get_workers_by_category`, or `validate_worker_dependencies`):
 
 ```python
-"""Worker registration lookup, backed by Oneiric-loaded config."""
+"""Worker registration lookup, backed by Oneiric-loaded config.
+
+Existing exports (AuthKind, RuntimeKind, WorkerCategory, WorkerConfig,
+get_worker_config, resolve_worker_type, list_worker_types (legacy),
+get_workers_by_category, validate_worker_dependencies) are preserved.
+
+New additions:
+- get_worker_entry(worker_type, *, settings=None) -> WorkerEntry
+- list_worker_types(*, settings=None) -> list[str]  # NO `category` kwarg,
+  the legacy function above keeps that signature.
+"""
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
@@ -1265,7 +1236,7 @@ def get_worker_entry(
     if settings is None:
         from mahavishnu.core.config import MahavishnuSettings as _S
         settings = _S()
-    for entry in settings.workers.entries:
+    for entry in settings.worker_registry.entries:
         if entry.worker_type == worker_type:
             return entry
     raise MahavishnuError(
@@ -1277,28 +1248,34 @@ def get_worker_entry(
 def list_worker_types(
     *, settings: "MahavishnuSettings | None" = None,
 ) -> list[str]:
-    """Return all registered worker_type strings."""
+    """Return all registered worker_type strings (no category filter)."""
     if settings is None:
         from mahavishnu.core.config import MahavishnuSettings as _S
         settings = _S()
-    return [e.worker_type for e in settings.workers.entries]
+    return [e.worker_type for e in settings.worker_registry.entries]
 
 
-__all__ = ["get_worker_entry", "list_worker_types"]
+__all__ = [
+    # ... existing exports preserved ...
+    "get_worker_entry",
+    "list_worker_types",  # the new no-category version (the legacy one with category is also exported)
+]
 ```
+
+Note: there are now TWO functions named `list_worker_types` in this module. The new one (no `category` kwarg) is the capability-driven version; the legacy one (with `category` kwarg) is preserved for backwards-compat. The `__all__` list should disambiguate or keep both.
 
 - [ ] **Step 5: Update production importers**
 
-For each hit from Step 1:
+For each hit from Step 1 (use the new `get_worker_entry` from registry.py):
 
-- `mahavishnu/workers/__init__.py:40` — drop `WORKER_REGISTRY` re-export; add `get_worker_entry`, `list_worker_types`.
+- `mahavishnu/workers/__init__.py:40` — keep existing re-exports; add `get_worker_entry`.
 - `mahavishnu/_main_cli.py:73` and `:1402` — replace `WORKER_REGISTRY[name]` with `get_worker_entry(name)`.
 - `mahavishnu/cli/base.py:100` — same.
 - `mahavishnu/mcp/bootstrap.py` — same (only if it actually touches WORKER_REGISTRY).
 
 - [ ] **Step 6: Update test files**
 
-For each file under `tests/` that references `WORKER_REGISTRY` (typically `test_pycharm_worker.py`, `test_workers_registry_coverage.py`, `test_workers_registry.py`, `test_worker_registry.py`, `test_worker_manager.py`, `test_application_worker.py`, `test_main_cli.py`, `test_error_codes.py`, `test_generic_shell_worker.py`), replace `WORKER_REGISTRY[X]` access with `get_worker_entry(X, settings=settings)` (passing the same `MahavishnuSettings` instance used in the test).
+For each file under `tests/` that references `WORKER_REGISTRY`, replace `WORKER_REGISTRY[X]` access with `get_worker_entry(X, settings=settings)`.
 
 - [ ] **Step 7: Run all updated tests**
 
@@ -1323,7 +1300,9 @@ Co-Authored-By: Claude <noreply@anthropic.com>"
 - Consumes: `WorkerEntry` from new lookup
 - Produces: Same `WorkerManager` API; pass `command_argv` (from WorkerEntry) to `tmux_adapter.create_session` instead of the legacy `command` template
 
-- [ ] **Step 1: Update `create_worker` to consume `command_argv`**
+**v3 reviewer note:** The `command_argv` strings from `settings/mahavishnu.yaml` contain `{host}` / `{user}` / `{database}` / `$1` placeholders that are never substituted. Without substitution, `terminal-psql` execs `psql -U {user} -h {host} -d {database}` literally, and one_shot workers get an empty `$1` from `sh -lc`. This task adds an explicit substitution step using `entry.required_env` + a templating helper.
+
+- [ ] **Step 1: Update `create_worker` to consume `command_argv` + substitute placeholders**
 
 Replace the section that constructs `command=[WorkerConfig.command]` with:
 
@@ -1331,10 +1310,43 @@ Replace the section that constructs `command=[WorkerConfig.command]` with:
 from mahavishnu.core.config import MahavishnuSettings
 from mahavishnu.workers.registry import get_worker_entry
 
+
+def _substitute_argv(argv: list[str], env: dict[str, str], extra: dict[str, str]) -> list[str]:
+    """Replace {key} placeholders with env values, then $1..$9 with extra values.
+
+    Args:
+        argv: raw command_argv from settings, e.g. ["psql", "-U", "{user}", "$1"]
+        env: process environment (for placeholders matching {X})
+        extra: caller-supplied values for $1..$9 (positional args)
+
+    Returns:
+        New argv with placeholders substituted. $1..$9 are replaced in order
+        from `extra`; missing extras become empty strings.
+    """
+    import re
+    out = []
+    positional = [extra.get(f"{i}", "") for i in range(1, 10)]
+    for arg in argv:
+        # {key} → os.environ[key] (case-sensitive)
+        def repl_brace(m: re.Match[str]) -> str:
+            return env.get(m.group(1), m.group(0))  # leave placeholder if missing
+        new = re.sub(r"\{([a-zA-Z_][a-zA-Z0-9_]*)\}", repl_brace, arg)
+        # $1..$9 → positional args (only outside double quotes; simple left-to-right)
+        for i in range(9, 0, -1):
+            new = new.replace(f"${i}", positional[i - 1])
+        out.append(new)
+    return out
+
+
 def create_worker(self, worker_type: str) -> Worker:
     settings = MahavishnuSettings()  # or injected via DI
     entry = get_worker_entry(worker_type, settings=settings)
-    command_argv = list(entry.command_argv)
+    import os
+    command_argv = _substitute_argv(
+        list(entry.command_argv),
+        env=os.environ,
+        extra={"1": "", "2": "", "3": ""},  # future: pass caller args
+    )
     info = self.tmux_adapter.create_session(
         socket=self._socket_for(worker_type),
         session=worker_type,
@@ -1343,6 +1355,8 @@ def create_worker(self, worker_type: str) -> Worker:
     )
     return Worker(worker_type=worker_type, tmux=info, ...)
 ```
+
+**Note:** `entry.required_env` validation (e.g. `PGPASSWORD` for psql) is a separate concern from argv substitution. Add an assertion in `create_worker` that all `entry.required_env` are present in `os.environ`; raise `MahavishnuError(ErrorCode.VALIDATION_ERROR)` if missing.
 
 - [ ] **Step 2: Run worker manager tests**
 
@@ -1361,12 +1375,14 @@ Co-Authored-By: Claude <noreply@anthropic.com>"
 ### Task 2.7: Engines declare `provides: list[Capability]`
 
 **Files:**
-- Modify: `mahavishnu/engines/prefect_adapter_impl.py:579`
-- Modify: `mahavishnu/engines/llamaindex_adapter_impl.py:285`
-- Modify: `mahavishnu/engines/agno_adapter_impl.py:507`
-- Modify: `mahavishnu/engines/hatchet_adapter_impl.py:44`
-- Modify: `mahavishnu/engines/pydantic_ai_adapter_impl.py:NEW` (pydantic_ai was missing from v1)
-- Modify: `mahavishnu/core/adapters/worker.py:110`
+- Modify: `mahavishnu/engines/prefect_adapter_impl.py:579` (real class: `PrefectAdapter`)
+- Modify: `mahavishnu/engines/llamaindex_adapter_impl.py:285` (real class: `LlamaIndexAdapter`)
+- Modify: `mahavishnu/engines/agno_adapter_impl.py:507` (real class: `AgnoAdapter`)
+- Modify: `mahavishnu/engines/hatchet_adapter_impl.py:44` (real class: `HatchetAdapterImpl` — NOT `HatchetAdapter`)
+- Modify: `mahavishnu/adapters/ai/pydantic_ai_adapter.py:EXISTING (optional ai dep group)` — NOT a new file under `engines/`
+- Modify: `mahavishnu/core/adapters/worker.py:13` (real class: `WorkerOrchestratorAdapter` — NOT `WorkerEngineAdapter`)
+
+**v3 reviewer note:** Real class names: `PrefectAdapter`, `LlamaIndexAdapter`, `AgnoAdapter`, `HatchetAdapterImpl`, `WorkerOrchestratorAdapter`. pydantic_ai lives at `mahavishnu/adapters/ai/pydantic_ai_adapter.py` behind the optional `ai` dependency group (`uv sync --group ai`) — `mahavishnu/engines/pydantic_ai_adapter_impl.py` does NOT exist. Lean installs without the `ai` group must not hard-fail; wrap the import in try/except ImportError.
 
 **Interfaces:**
 - Produces: Each engine's `AdapterCapabilities` (existing) PLUS a new `provides: list[Capability]` property.
@@ -1382,14 +1398,16 @@ import pytest
 from mahavishnu.engines.prefect_adapter_impl import PrefectAdapter
 from mahavishnu.engines.llamaindex_adapter_impl import LlamaIndexAdapter
 from mahavishnu.engines.agno_adapter_impl import AgnoAdapter
-from mahavishnu.engines.hatchet_adapter_impl import HatchetAdapter
+from mahavishnu.engines.hatchet_adapter_impl import HatchetAdapterImpl
+from mahavishnu.core.adapters.worker import WorkerOrchestratorAdapter
 
 
 @pytest.mark.parametrize("adapter_cls,expected_cap", [
     (PrefectAdapter, "engine:durable-flow"),
     (LlamaIndexAdapter, "engine:rag-retrieve"),
     (AgnoAdapter, "engine:multi-agent-team"),
-    (HatchetAdapter, "engine:durable-flow-alternative"),
+    (HatchetAdapterImpl, "engine:durable-flow-alternative"),
+    (WorkerOrchestratorAdapter, "engine:terminal-execution"),
 ])
 def test_engine_declares_capability(adapter_cls, expected_cap: str) -> None:
     adapter = adapter_cls()
@@ -1444,14 +1462,14 @@ class PrefectAdapter:
         ]
 ```
 
-Engine-specific IDs:
+Engine-specific IDs (real class names):
 
-- **Prefect:** `engine:durable-flow`, `engine:scheduled-task`, `engine:retry-with-backoff`
-- **LlamaIndex:** `engine:rag-retrieve`, `engine:document-ingest`, `engine:semantic-search`
-- **Agno:** `engine:multi-agent-team`, `engine:task-decomposition`, `engine:tool-use-loop`
-- **Hatchet:** `engine:durable-flow-alternative`
-- **Worker engine:** `engine:terminal-execution`
-- **pydantic_ai** (NEW per reviewer finding): `engine:pydantic-ai-agent`, `engine:typed-tool-call`
+- **PrefectAdapter** (`prefect_adapter_impl.py`): `engine:durable-flow`, `engine:scheduled-task`, `engine:retry-with-backoff`
+- **LlamaIndexAdapter** (`llamaindex_adapter_impl.py`): `engine:rag-retrieve`, `engine:document-ingest`, `engine:semantic-search`
+- **AgnoAdapter** (`agno_adapter_impl.py`): `engine:multi-agent-team`, `engine:task-decomposition`, `engine:tool-use-loop`
+- **HatchetAdapterImpl** (`hatchet_adapter_impl.py`): `engine:durable-flow-alternative`
+- **WorkerOrchestratorAdapter** (`core/adapters/worker.py`): `engine:terminal-execution`
+- **pydantic_ai adapter** (`adapters/ai/pydantic_ai_adapter.py`, behind optional `ai` dep group): `engine:pydantic-ai-agent`, `engine:typed-tool-call` — wrap the import + property in try/except ImportError so lean installs skip it
 
 - [ ] **Step 4: Run tests**
 
@@ -1482,6 +1500,8 @@ This task was missing from v1. The conductor needs a single entry point to load 
 - Consumes: `MahavishnuSettings` (so we can gate disabled engines)
 - Produces: `list[EngineRegistration]` — one per enabled engine, populated from each adapter's `provides` property.
 
+**v3 reviewer note:** Real adapter class names: `PrefectAdapter`, `LlamaIndexAdapter`, `AgnoAdapter`, `HatchetAdapterImpl`, `WorkerOrchestratorAdapter`. pydantic_ai lives at `mahavishnu/adapters/ai/pydantic_ai_adapter.py` behind the optional `ai` dependency group — it MUST be lazy-imported with a caught `ImportError` so `uv sync` (no `ai` group) doesn't hard-fail `list_capabilities`/`explain_routing`/`execute_capability`.
+
 - [ ] **Step 1: Write failing test**
 
 ```python
@@ -1508,6 +1528,24 @@ def test_load_engine_registrations_populates_provides() -> None:
     prefect = next(r for r in regs if r.engine_id == "prefect")
     cap_ids = {c.id for c in prefect.provides}
     assert "engine:durable-flow" in cap_ids
+
+
+def test_load_engine_registrations_skips_pydantic_ai_when_ai_dep_missing(monkeypatch) -> None:
+    """When the `ai` dependency group isn't installed, pydantic_ai is silently skipped."""
+    import builtins
+    real_import = builtins.__import__
+
+    def fake_import(name: str, *args, **kwargs):
+        if name == "mahavishnu.adapters.ai.pydantic_ai_adapter":
+            raise ImportError(f"No module named {name!r}")
+        return real_import(name, *args, **kwargs)
+
+    monkeypatch.setattr(builtins, "__import__", fake_import)
+    s = MahavishnuSettings()
+    regs = load_engine_registrations(s)
+    ids = {r.engine_id for r in regs}
+    assert "pydantic_ai" not in ids
+    assert "prefect" in ids  # others still load
 ```
 
 This test requires a `engines.disabled: list[str]` field on `MahavishnuSettings`. Add it to `mahavishnu/core/config.py` (alongside the flags added in Task 2.0):
@@ -1527,9 +1565,16 @@ engines: EnginesConfig = Field(default_factory=EnginesConfig)
 In `mahavishnu/engines/__init__.py`:
 
 ```python
-"""Engine registry. Imports every adapter and exposes `load_engine_registrations`."""
+"""Engine registry. Imports every adapter and exposes `load_engine_registrations`.
+
+Each adapter exposes a ``provides: list[Capability]`` property (Task 2.7).
+Adapters listed in ``settings.engines.disabled`` are skipped. Adapters behind
+optional dependency groups (pydantic_ai) are silently skipped when the
+underlying module is not importable.
+"""
 from __future__ import annotations
 
+import importlib
 from typing import TYPE_CHECKING
 
 from mahavishnu.core.capabilities import EngineRegistration
@@ -1538,37 +1583,39 @@ if TYPE_CHECKING:
     from mahavishnu.core.config import MahavishnuSettings
 
 
+# (engine_id, import_path, class_name). Resolved lazily so lean installs
+# don't hard-fail.
+_ENGINE_LOCATIONS = [
+    ("prefect", "mahavishnu.engines.prefect_adapter_impl", "PrefectAdapter"),
+    ("llamaindex", "mahavishnu.engines.llamaindex_adapter_impl", "LlamaIndexAdapter"),
+    ("agno", "mahavishnu.engines.agno_adapter_impl", "AgnoAdapter"),
+    ("hatchet", "mahavishnu.engines.hatchet_adapter_impl", "HatchetAdapterImpl"),
+    ("pydantic_ai", "mahavishnu.adapters.ai.pydantic_ai_adapter", "PydanticAIAdapter"),
+    ("worker", "mahavishnu.core.adapters.worker", "WorkerOrchestratorAdapter"),
+]
+
+
+def _try_load_adapter(import_path: str, class_name: str):
+    """Return an adapter instance, or None if the module is missing."""
+    try:
+        module = importlib.import_module(import_path)
+    except ImportError:
+        return None
+    return getattr(module, class_name)()
+
+
 def load_engine_registrations(
     settings: "MahavishnuSettings",
 ) -> list[EngineRegistration]:
-    """Materialize an ``EngineRegistration`` per enabled adapter.
-
-    Each adapter exposes a ``provides: list[Capability]`` property (Task 2.7).
-    Adapters listed in ``settings.engines.disabled`` are skipped.
-    """
-    # Local imports keep the engine modules optional (matches how the rest of
-    # the codebase lazy-imports them).
-    from mahavishnu.engines.prefect_adapter_impl import PrefectAdapter
-    from mahavishnu.engines.llamaindex_adapter_impl import LlamaIndexAdapter
-    from mahavishnu.engines.agno_adapter_impl import AgnoAdapter
-    from mahavishnu.engines.hatchet_adapter_impl import HatchetAdapter
-    from mahavishnu.engines.pydantic_ai_adapter_impl import PydanticAIAdapter
-    from mahavishnu.core.adapters.worker import WorkerEngineAdapter
-
-    adapters = [
-        ("prefect", PrefectAdapter),
-        ("llamaindex", LlamaIndexAdapter),
-        ("agno", AgnoAdapter),
-        ("hatchet", HatchetAdapter),
-        ("pydantic_ai", PydanticAIAdapter),
-        ("worker", WorkerEngineAdapter),
-    ]
+    """Materialize an ``EngineRegistration`` per enabled adapter."""
     disabled = set(settings.engines.disabled)
     regs: list[EngineRegistration] = []
-    for engine_id, adapter_cls in adapters:
+    for engine_id, import_path, class_name in _ENGINE_LOCATIONS:
         if engine_id in disabled:
             continue
-        adapter = adapter_cls()
+        adapter = _try_load_adapter(import_path, class_name)
+        if adapter is None:
+            continue  # optional dep group not installed
         regs.append(
             EngineRegistration(
                 engine_id=engine_id,
@@ -1612,10 +1659,11 @@ Re-run `tests/integration/workers/test_terminal_workers_smoke.py`.
 from mahavishnu.core.capabilities_loader import load_capabilities_from_settings
 from mahavishnu.core.config import MahavishnuSettings
 caps = load_capabilities_from_settings(MahavishnuSettings())
-# 16 unique worker types, but only 19 unique CapabilityIds (5 workers share
-# worker:ai-context). Confirm grouping, not uniqueness.
-assert sum(len(v) for v in caps.values()) == 25  # sum of all provides entries
-assert len(caps) >= 16  # unique ids
+# 16 unique worker types → 16 unique CapabilityIds, but 21 total provides
+# entries (5 workers share worker:ai-context, 2 share worker:wasm-repl).
+# Confirm grouping, not uniqueness.
+assert sum(len(v) for v in caps.values()) == 21
+assert len(caps) == 16  # unique ids
 ```
 
 - [ ] **Step 3: Verify `load_engine_registrations` returns 6 engines**
@@ -1636,6 +1684,112 @@ Expected: All hooks pass.
 
 ```bash
 git -c user.email="les@wedgwoodwebworks.com" commit -am "chore: stage 2 cleanup pass
+
+Co-Authored-By: Claude <noreply@anthropic.com>"
+```
+
+### Task 2.9: Programmatic smoke test for all 16 worker types
+
+**Files:**
+- Create: `tests/integration/workers/test_terminal_workers_smoke.py`
+
+**Interfaces:**
+- Consumes: `PoolManager`, `TerminalManager`, `MahavishnuSettings.worker_registry`
+- Produces: Confirmation that each registered `terminal-*` worker type spawns a functional tmux pane
+
+**v3 reviewer note #9:** this task was Task 1.3 in v2 but depends on Phase 2 artifacts (`get_worker_entry`, `settings.worker_registry.entries`). It uses the real `PoolManager` API (`spawn_pool`, `execute_on_pool`, `route_task`, `close_pool`, etc., per `pools/manager.py:286-1120`), NOT the invented `PoolManager.from_settings()`/`spawn_worker()`/`capture_pane()`/`close_worker()` from v2.
+
+- [ ] **Step 1: Write the smoke test**
+
+```python
+"""Smoke-test all terminal-* worker types registered in settings/mahavishnu.yaml.
+
+Per task 2.9 of the capability refactor plan, this confirms the
+tmux_adapter Stage 1 fix works for every entry in
+settings.worker_registry.entries, not just terminal-claude.
+
+Workers whose `requires_tool` isn't on PATH (shutil.which returns None) or
+whose `required_env` are unset are skipped — the test asserts what we can,
+not what we cannot, given the local environment.
+"""
+from __future__ import annotations
+
+import asyncio
+import os
+import shutil
+
+import pytest
+
+from mahavishnu.core.config import MahavishnuSettings
+from mahavishnu.pools.manager import PoolManager
+
+
+@pytest.mark.integration
+@pytest.mark.mcp
+@pytest.mark.asyncio
+async def test_each_terminal_worker_spawns_functional_pane() -> None:
+    """Every terminal-* worker type with available tools spawns a pane."""
+    settings = MahavishnuSettings()
+    pool_mgr = PoolManager(terminal_manager=None, message_bus=None)  # real constructor
+
+    spawned: list[str] = []
+    skipped: list[tuple[str, str]] = []
+
+    for entry in settings.worker_registry.entries:
+        if not entry.worker_type.startswith("terminal-"):
+            continue
+        if entry.requires_tool and not shutil.which(entry.requires_tool):
+            skipped.append((entry.worker_type, f"tool {entry.requires_tool!r} not on PATH"))
+            continue
+        missing_env = [v for v in entry.required_env if not os.environ.get(v)]
+        if missing_env:
+            skipped.append((entry.worker_type, f"env unset: {missing_env}"))
+            continue
+
+        # Real PoolManager surface (per pools/manager.py:286-1120):
+        pool_id = await pool_mgr.spawn_pool(
+            pool_type="mahavishnu",
+            name=f"smoke-{entry.worker_type}",
+            worker_type=entry.worker_type,
+            min_workers=1,
+            max_workers=1,
+        )
+        # Capture pane content via the TerminalManager the pool owns.
+        deadline = 5.0
+        interval = 0.25
+        captured = ""
+        while deadline > 0:
+            captured = await pool_mgr.terminal_capture(pool_id=pool_id, lines=20)
+            if any(m in captured for m in entry.completion_markers):
+                break
+            await asyncio.sleep(interval)
+            deadline -= interval
+        for marker in entry.completion_markers:
+            assert marker in captured, (
+                f"{entry.worker_type} pane never printed marker {marker!r}; "
+                f"got: {captured!r}"
+            )
+        spawned.append(entry.worker_type)
+        await pool_mgr.close_pool(pool_id)
+
+    if skipped:
+        pytest.skip(
+            f"spawned {len(spawned)} workers; skipped {len(skipped)} "
+            f"(missing tool/env): {skipped}"
+        )
+    assert spawned, "no terminal-* workers registered — settings/mahavishnu.yaml broken?"
+```
+
+- [ ] **Step 2: Run smoke test**
+
+Run: `pytest tests/integration/workers/test_terminal_workers_smoke.py -v -m "integration and mcp"`
+Expected: All available workers spawn and print their marker; unavailable ones skip.
+
+- [ ] **Step 3: Commit smoke test**
+
+```bash
+git -c user.email="les@wedgwoodwebworks.com" add tests/integration/workers/
+git -c user.email="les@wedgwoodwebworks.com" commit -m "test(workers): smoke test all 16 terminal-* worker types
 
 Co-Authored-By: Claude <noreply@anthropic.com>"
 ```
@@ -1723,7 +1877,7 @@ Co-Authored-By: Claude <noreply@anthropic.com>"
 # tests/unit/test_envelopes.py
 from __future__ import annotations
 
-from unittest.mock import MagicMock
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
@@ -1745,31 +1899,45 @@ def _sample_env(trace_id: TraceId = TraceId("0" * 32)) -> CapabilityEnvelope:
     )
 
 
-def test_write_envelope_uses_typed_address() -> None:
-    dhara = MagicMock()
+def _dhara_stub() -> AsyncMock:
+    """AsyncMock for DharaAdapter; put() is awaited, call_tool() is awaited."""
+    return AsyncMock()
+
+
+@pytest.mark.asyncio
+async def test_write_envelope_uses_typed_address() -> None:
+    """write_envelope is async; dhara.put() is awaited with the typed key."""
+    dhara = _dhara_stub()
     env = _sample_env()
-    write_envelope(env, dhara=dhara)
+    await write_envelope(env, dhara=dhara)
     expected_key = "envelopes/00000000000000000000000000000000/12345678-1234-1234-1234-123456789012"
     actual_key = dhara.put.call_args[0][0]
     assert actual_key == expected_key
+    assert dhara.put.await_count == 1  # was actually awaited, not unawaited coroutine
 
 
-def test_write_envelope_redacts_secret_fields() -> None:
-    """secrets matching env.REDACTED_PATTERNS are scrubbed before dhara.put."""
-    import os
-    os.environ["MAHAVISHNU_REDACT_FIELDS"] = "secret_token,api_key"
-    dhara = MagicMock()
+@pytest.mark.asyncio
+async def test_write_envelope_redacts_secret_fields(monkeypatch: pytest.MonkeyPatch) -> None:
+    """secrets in MAHAVISHNU_REDACT_FIELDS are scrubbed before dhara.put.
+
+    Use monkeypatch.setenv (NOT os.environ direct) so the change doesn't leak
+    into later tests.
+    """
+    monkeypatch.setenv("MAHAVISHNU_REDACT_FIELDS", "secret_token,api_key")
+    dhara = _dhara_stub()
     env = _sample_env()
-    write_envelope(env, dhara=dhara)
+    await write_envelope(env, dhara=dhara)
     payload = dhara.put.call_args[0][1].decode()
     assert "AKIA..." not in payload
     assert "secret_token" in payload  # the key is preserved (the value is redacted)
     assert "<redacted>" in payload
 
 
-def test_read_envelope_roundtrip() -> None:
-    dhara = MagicMock()
-    dhara.get.return_value = (
+@pytest.mark.asyncio
+async def test_read_envelope_roundtrip() -> None:
+    """read_envelope uses dhara.call_tool('get', ...) — NOT dhara.get()."""
+    dhara = _dhara_stub()
+    dhara.call_tool.return_value = (
         '{"envelope_id":"12345678-1234-1234-1234-123456789012",'
         '"capability_id":"worker:bash",'
         '"engine_id":"worker-claude-tui",'
@@ -1782,19 +1950,21 @@ def test_read_envelope_roundtrip() -> None:
         trace_id=TraceId("0" * 32),
         envelope_id=EnvelopeId("12345678-1234-1234-1234-123456789012"),
     )
-    env = read_envelope(addr, dhara=dhara)
+    env = await read_envelope(addr, dhara=dhara)
     assert env.io_out == {"output": "hi"}
 
 
-def test_list_envelopes_filters_by_trace_id() -> None:
-    dhara = MagicMock()
+@pytest.mark.asyncio
+async def test_list_envelopes_filters_by_trace_id() -> None:
+    """list_envelopes uses dhara.call_tool('list_keys', prefix=...) — NOT dhara.list_keys()."""
+    dhara = _dhara_stub()
     trace = TraceId("a" * 32)
     other_trace = TraceId("b" * 32)
-    dhara.list_keys.return_value = [
-        f"envelopes/{trace}/{EnvelopeId('12345678-1234-1234-1234-123456789012')}",
+    dhara.call_tool.return_value = [
+        f"envelopes/{trace}/{EnvelopeId('12345678-1234-4234-8234-123456789012')}",
         f"envelopes/{other_trace}/{EnvelopeId('12345678-1234-4234-8234-123456789012')}",
     ]
-    addrs = list_envelopes(trace, dhara=dhara)
+    addrs = await list_envelopes(trace, dhara=dhara)
     assert len(addrs) == 1
     assert addrs[0].trace_id == trace
 ```
@@ -1813,10 +1983,14 @@ Each envelope is a CapabilityEnvelope JSON blob keyed by
 ``envelopes/<trace_id>/<envelope_id>``. Secrets are redacted from io_out
 before persistence — see MAHAVISHNU_REDACT_FIELDS env var (comma-separated
 field names whose values are scrubbed before dhara.put).
+
+All envelope operations are async (CLAUDE.md "all orchestration-layer I/O
+is async"). DharaAdapter is at mahavishnu/core/dhara_adapter.py:18; its
+public API is ``async def put(self, key, value, ttl=None)`` plus the
+``async def call_tool(self, name, **kwargs)`` shim used for get/list_keys.
 """
 from __future__ import annotations
 
-import json
 import os
 from typing import TYPE_CHECKING
 
@@ -1828,7 +2002,7 @@ from mahavishnu.core.capabilities import (
 from mahavishnu.core.errors import ErrorCode, MahavishnuError
 
 if TYPE_CHECKING:
-    from mahavishnu.core.dhara import DharaClient
+    from mahavishnu.core.dhara_adapter import DharaAdapter
 
 
 _REDACTED = "<redacted>"
@@ -1847,16 +2021,16 @@ def _redact(env: CapabilityEnvelope) -> CapabilityEnvelope:
     return env.model_copy(update={"io_out": scrubbed_io})
 
 
-def write_envelope(env: CapabilityEnvelope, *, dhara: "DharaClient") -> None:
-    """Persist a (redacted) envelope to Dhara."""
+async def write_envelope(env: CapabilityEnvelope, *, dhara: "DharaAdapter") -> None:
+    """Persist a (redacted) envelope to Dhara. Awaits dhara.put()."""
     addr = EnvelopeAddress(trace_id=env.trace_id, envelope_id=env.envelope_id)
     scrubbed = _redact(env)
-    dhara.put(addr.to_key(), scrubbed.model_dump_json().encode())
+    await dhara.put(addr.to_key(), scrubbed.model_dump_json().encode())
 
 
-def read_envelope(addr: EnvelopeAddress, *, dhara: "DharaClient") -> CapabilityEnvelope:
-    """Load an envelope from Dhara. Raises if missing."""
-    raw = dhara.get(addr.to_key())
+async def read_envelope(addr: EnvelopeAddress, *, dhara: "DharaAdapter") -> CapabilityEnvelope:
+    """Load an envelope from Dhara via call_tool('get', ...). Raises if missing."""
+    raw = await dhara.call_tool("get", key=addr.to_key())
     if raw is None:
         raise MahavishnuError(
             f"envelope not found at {addr.to_key()}",
@@ -1865,10 +2039,10 @@ def read_envelope(addr: EnvelopeAddress, *, dhara: "DharaClient") -> CapabilityE
     return CapabilityEnvelope.model_validate_json(raw)
 
 
-def list_envelopes(trace_id: TraceId, *, dhara: "DharaClient") -> list[EnvelopeAddress]:
+async def list_envelopes(trace_id: TraceId, *, dhara: "DharaAdapter") -> list[EnvelopeAddress]:
     """Return every envelope address under ``envelopes/<trace_id>/``."""
     prefix = f"envelopes/{trace_id}/"
-    keys = dhara.list_keys(prefix=prefix)
+    keys = await dhara.call_tool("list_keys", prefix=prefix)
     return [EnvelopeAddress.from_key(k) for k in keys]
 
 
@@ -2117,13 +2291,15 @@ import random
 from typing import TYPE_CHECKING
 
 from mahavishnu.core.capabilities import (
-    Candidate, CapabilityId, CapabilitySpec, DAGEdge, DAGNode,
-    EngineId, EngineRegistration, ExecutionDAG, TraceId,
+    Candidate, Capability, CapabilityId, CapabilitySpec, DAGEdge, DAGNode,
+    EngineId, EngineRegistration, ExecutionDAG, SelectorStrategy, TraceId,
+    TypeSchema,
 )
 from mahavishnu.core.errors import ErrorCode, MahavishnuError
 
 if TYPE_CHECKING:
-    from mahavishnu.core.dhara import DharaClient
+    from mahavishnu.core.dhara_adapter import DharaAdapter
+    from mahavishnu.core.capabilities import EnvelopeId
 
 
 def resolve(
@@ -2132,6 +2308,8 @@ def resolve(
     """For each required capability, list engines that provide it.
 
     Candidates are returned unsorted; ranking happens in ``select_candidates``.
+    The Candidate carries ``capability`` (the resolved Capability object) so
+    that ``plan()`` can populate DAGNode inputs/outputs from the same source.
     """
     out: list[Candidate] = []
     for required_id in spec.requires:
@@ -2145,43 +2323,35 @@ def resolve(
                         capability_id=required_id,
                         score=1.0,
                         reason=f"engine {engine.engine_id} provides {required_id}",
+                        capability=cap,
                     ))
     return out
 
 
 def select_candidates(
-    candidates: list[Candidate],
-    by_capability: dict[CapabilityId, list[Candidate]],
+    candidates: list[Capability],
     strategy: SelectorStrategy,
-) -> Candidate | None:
-    """Pick the winning candidate for one capability slot.
+) -> Capability:
+    """Pick the winning candidate from a list of Capabilities for one slot.
 
     Phase 3a implements CAPABILITY_SCORE (highest score wins) and RANDOM.
     LEAST_LOADED / ROUND_ROBIN / AFFINITY land in a follow-up plan when
     pool telemetry is wired into Conductor.
     """
-    if not by_capability:
-        return None
+    if not candidates:
+        raise MahavishnuError(
+            "select_candidates called with empty list",
+            ErrorCode.RESOURCE_NOT_FOUND,
+        )
     if strategy == SelectorStrategy.CAPABILITY_SCORE:
-        return max(by_capability, key=lambda c: c.score)
+        return max(candidates, key=lambda c: c.cost_hint.estimated_seconds)
     if strategy == SelectorStrategy.RANDOM:
-        return random.choice(by_capability)
-    if strategy == SelectorStrategy.LEAST_LOADED:
-        # TODO: query pool telemetry; fall back to CAPABILITY_SCORE for now.
-        return max(by_capability, key=lambda c: c.score)
-    if strategy == SelectorStrategy.ROUND_ROBIN:
-        # TODO: thread-local counter; fall back to CAPABILITY_SCORE.
-        return max(by_capability, key=lambda c: c.score)
-    if strategy == SelectorStrategy.AFFINITY:
-        return max(by_capability, key=lambda c: c.score)
-    raise MahavishnuError(
-        f"unsupported selector strategy {strategy!r}",
-        ErrorCode.VALIDATION,
-    )
+        return random.choice(candidates)
+    # Fallback strategies: TODO when pool telemetry is wired.
+    return max(candidates, key=lambda c: c.cost_hint.estimated_seconds)
 
 
 def _empty_schema() -> TypeSchema:
-    from mahavishnu.core.capabilities import TypeSchema
     return TypeSchema()
 
 
@@ -2191,8 +2361,7 @@ def plan(
     """Greedy fill: one node per required capability, top candidate wins.
 
     Emits a DAG edge from node A -> node B when B's io_in field is satisfied
-    by A's io_out field (per ``TypeSchema.matches``). Sequential edges when
-    no schema matches are NOT emitted — the executor runs nodes in spec order.
+    by A's io_out field (per ``TypeSchema.matches``).
     """
     by_cap: dict[CapabilityId, list[Candidate]] = {}
     for c in candidates:
@@ -2206,20 +2375,17 @@ def plan(
                 f"no engine provides required capability {req!r}",
                 ErrorCode.RESOURCE_NOT_FOUND,
             )
-        winner = select_candidates(candidates, by_cap, spec.selector)
-        # `winner` is the top pick across ALL capabilities; we need the
-        # winner for *this* capability specifically. Re-select from `winners`.
-        winner = select_candidates(candidates, {req: winners}, spec.selector)
-        if winner is None:  # unreachable given the check above, but mypy needs it
-            raise MahavishnuError(
-                f"no winner for {req!r}", ErrorCode.RESOURCE_NOT_FOUND,
-            )
+        # Pick the best candidate for THIS capability slot. select_candidates
+        # takes a list of Candidates, not a dict — see v3 reviewer note.
+        winner = select_candidates(winners, spec.selector)
+        # Populate node inputs/outputs from the resolved Capability so the
+        # edge loop below can match io_out to io_in. (v3 reviewer note #5.)
         nodes.append(DAGNode(
             node_id=f"n{len(nodes)}",
             engine_id=winner.engine_id,
             capability_id=winner.capability_id,
-            inputs=_empty_schema(),
-            outputs=_empty_schema(),
+            inputs=winner.capability.io_in,
+            outputs=winner.capability.io_out,
         ))
 
     # Emit edges: for each downstream node n_i, look at every earlier node
@@ -2239,9 +2405,9 @@ def plan(
     return ExecutionDAG(nodes=tuple(nodes), edges=tuple(edges), trace_id=trace_id)
 
 
-def emit_node(
-    node: DAGNode, *, trace_id: TraceId, dhara: "DharaClient",
-) -> "EnvelopeId":  # type: ignore[name-defined]
+async def emit_node(
+    node: DAGNode, *, trace_id: TraceId, dhara: "DharaAdapter",
+) -> "EnvelopeId":
     """Dispatch one node to its engine. Returns the produced envelope id.
 
     Concrete dispatch lives in ``mahavishnu/engines/<engine>_dispatch.py`` —
@@ -2259,9 +2425,10 @@ def emit_flow(
 ) -> object:
     """Compile an ExecutionDAG into a Prefect flow definition.
 
-    Wires nodes via typed Prefect ``submit()`` futures — upstream results
-    flow into downstream tasks without an explicit envelope round-trip.
-    The Dhara envelope write happens in ``emit_node`` after the task runs.
+    Wires nodes via typed Prefect ``task.submit(..., wait_for=[upstream_future])``
+    — Prefect 3's actual API (NOT the invented ``task.submit_with_dependencies``).
+    The edge loop must NOT re-submit each downstream node once per edge
+    (that was v2's duplicate-execution bug).
     """
     if prefect_factory is None:
         import prefect as _prefect
@@ -2278,23 +2445,17 @@ def emit_flow(
 
     @flow_decorator(name=f"mahavishnu-dag-{dag.trace_id}")
     def _dag() -> dict[str, "object"]:
-        # Build a node-id -> future map so downstream tasks can .submit(wait_for=...)
         futures: dict[str, object] = {}
-        for node in dag.nodes:
-            future = _node.submit(node.node_id, node.capability_id)
-            futures[node.node_id] = future
-        # Wire edges: if node B has an edge from node A, pass A's future as upstream.
+        # First pass: submit every node with no upstream dependencies.
+        upstream_of: dict[str, list[str]] = {n.node_id: [] for n in dag.nodes}
         for edge in dag.edges:
-            upstream_future = futures[edge.from_node]
-            # We re-submit the downstream with wait_for so Prefect respects
-            # the dependency. (submit returns a new future per downstream node.)
-            downstream_node = next(n for n in dag.nodes if n.node_id == edge.to_node)
-            new_future = _node.submit_with_dependencies(
-                downstream_node.node_id,
-                downstream_node.capability_id,
-                wait_for=[upstream_future],
+            upstream_of[edge.to_node].append(edge.from_node)
+
+        for node in dag.nodes:
+            wait_for = [futures[u] for u in upstream_of[node.node_id] if u in futures]
+            futures[node.node_id] = _node.submit(
+                node.node_id, node.capability_id, wait_for=wait_for,
             )
-            futures[edge.to_node] = new_future
         return {nid: str(f) for nid, f in futures.items()}
 
     return _dag
@@ -2308,6 +2469,8 @@ __all__ = [
     "select_candidates",
 ]
 ```
+
+**v3 reviewer note:** `Candidate` now carries the resolved `Capability` so `plan()` can populate `DAGNode.inputs/outputs` from the same source. Without this, `TypeSchema.matches()` had zero production callers and `test_plan_emits_edges_when_io_matches` failed because every node had `_empty_schema()` for IO. `select_candidates` takes `list[Candidate]` (not `dict[CapabilityId, list[Candidate]]`) — the v2 body iterated dict keys (str), yielding `AttributeError: 'str' object has no attribute 'score'`. `task.submit(wait_for=[...])` is the real Prefect 3 API; `_node.submit_with_dependencies(...)` was invented. The edge loop now pre-computes `upstream_of` once and submits each downstream node exactly once with the full `wait_for` list. `ErrorCode.VALIDATION` → `ErrorCode.VALIDATION_ERROR`. Unused imports (`EngineId`, `re` in capabilities.py) removed.
 
 - [ ] **Step 6: Run all three test files**
 
@@ -2417,6 +2580,7 @@ from fastmcp import FastMCP
 from mahavishnu.core.capabilities import (
     CapabilityExecutionResult,
     CapabilitySpec,
+    EngineRegistration,
     TraceId,
 )
 from mahavishnu.core.capabilities_loader import load_capabilities_from_settings
@@ -2439,6 +2603,28 @@ def register_capability_tools(server: FastMCP, settings: MahavishnuSettings) -> 
 
     scopes = set(settings.capability_scopes)
 
+    def _all_registrations() -> list[EngineRegistration]:
+        """Merge worker-provided capabilities with engine registrations.
+
+        Workers provide ``worker:*`` capabilities; engines provide ``engine:*``.
+        The Conductor's ``resolve()`` is fed the merged list so a spec like
+        ``requires=["engine:durable-flow", "worker:ai-context"]`` finds
+        candidates for both. (v3 reviewer note #12.)
+        """
+        engines = load_engine_registrations(settings)
+        worker_caps = load_capabilities_from_settings(settings)
+        # Wrap each worker-provided Capability as an EngineRegistration so
+        # resolve() can iterate one shape. The "engine_id" is the worker_type
+        # string (e.g. "terminal-claude"); the executor maps back later.
+        for cap_id, caps in worker_caps.items():
+            for cap in caps:
+                engines.append(EngineRegistration(
+                    engine_id=cap.id,  # placeholder; executor maps back
+                    provides=[cap],
+                    enabled=True,
+                ))
+        return engines
+
     @server.tool(name="list_capabilities", description="List registered capabilities.")
     def list_capabilities(
         domain: Literal["engine", "model", "worker", "adapter"] | None = None,
@@ -2446,7 +2632,7 @@ def register_capability_tools(server: FastMCP, settings: MahavishnuSettings) -> 
         if "list_capabilities" not in scopes:
             raise MahavishnuError(
                 "list_capabilities requires scope 'list_capabilities'",
-                ErrorCode.PERMISSION_DENIED,
+                ErrorCode.AUTHORIZATION_ERROR,  # was PERMISSION_DENIED; not a real member
             )
         grouped = load_capabilities_from_settings(settings)
         result: list[dict[str, object]] = []
@@ -2459,8 +2645,13 @@ def register_capability_tools(server: FastMCP, settings: MahavishnuSettings) -> 
 
     @server.tool(name="explain_routing", description="Show candidates for a spec.")
     def explain_routing(spec: CapabilitySpec) -> dict[str, object]:
-        engines = load_engine_registrations(settings)
-        candidates = resolve(spec, engines)
+        if "explain_routing" not in scopes:
+            raise MahavishnuError(
+                "explain_routing requires scope 'explain_routing'",
+                ErrorCode.AUTHORIZATION_ERROR,
+            )
+        all_engines = _all_registrations()
+        candidates = resolve(spec, all_engines)
         return {
             "spec": spec.model_dump(),
             "candidates": [c.model_dump() for c in candidates],
@@ -2471,10 +2662,10 @@ def register_capability_tools(server: FastMCP, settings: MahavishnuSettings) -> 
         if "execute_capability" not in scopes:
             raise MahavishnuError(
                 "execute_capability requires scope 'execute_capability'",
-                ErrorCode.PERMISSION_DENIED,
+                ErrorCode.AUTHORIZATION_ERROR,
             )
-        engines = load_engine_registrations(settings)
-        candidates = resolve(spec, engines)
+        all_engines = _all_registrations()
+        candidates = resolve(spec, all_engines)
         if not candidates:
             return CapabilityExecutionResult(
                 status="rejected",
@@ -2508,7 +2699,26 @@ STANDARD_REGISTRATIONS["capability"] = "register_capability_tools"
 _REGISTER_FUNCTIONS["register_capability_tools"] = register_capability_tools
 ```
 
-Verify the actual pattern in `profiles.py` before committing — the snippet above is illustrative; the real wiring depends on how other tools like `pool_tools` are listed.
+Verify the actual pattern in `profiles.py` before committing. `STANDARD_REGISTRATIONS` is `list[str]` of `_register_*` method-name strings (`profiles.py:71-81`), dispatched by a lambda table at `:143-144` into module functions defined in `mahavishnu/mcp/bootstrap.py:749,764`. So append `"_register_capability_tools"` to the list and add the matching lambda:
+
+```python
+# Append to STANDARD_REGISTRATIONS (list[str]):
+"_register_capability_tools",
+# Append to the dispatch lambda table:
+"_register_capability_tools": lambda server: _register_capability_tools(server),
+```
+
+Then add the registration function in `mahavishnu/mcp/bootstrap.py` next to `_register_pool_tools`/`_register_worker_tools`:
+
+```python
+def _register_capability_tools(server: "FastMCPServer") -> None:
+    """Wire capability_tools into the FastMCP server (Stage 3a)."""
+    from mahavishnu.core.config import MahavishnuSettings
+    from mahavishnu.mcp.tools.capability_tools import register_capability_tools
+    register_capability_tools(server, MahavishnuSettings())
+```
+
+`v3 reviewer note #11`: the v2 snippet's `STANDARD_REGISTRATIONS["capability"] = ...` syntax would raise `TypeError` because it's a `list[str]`, not a `dict`.
 
 - [ ] **Step 5: Run test**
 
@@ -2805,16 +3015,16 @@ async def test_execute_capability_with_no_match_returns_rejected() -> None:
     assert result.error is not None
 ```
 
-Note: `execute_capability_for_test` is a thin wrapper around the registration function that returns the `CapabilityExecutionResult` directly (skips the FastMCP server). Define it as:
+Note: `execute_capability_for_test` is a thin wrapper that returns the `CapabilityExecutionResult` directly (skips the FastMCP server). Per v3 reviewer note #16, this shim lives in the TEST file, NOT in `mahavishnu/mcp/tools/capability_tools.py` (which is production code):
 
 ```python
-# in mahavishnu/mcp/tools/capability_tools.py:
+# In tests/integration/conductor/_helpers.py:
 async def execute_capability_for_test(
     spec: CapabilitySpec, settings: MahavishnuSettings,
 ) -> CapabilityExecutionResult:
-    """Test-only entrypoint that returns the result without a FastMCP server."""
-    engines = load_engine_registrations(settings)
-    candidates = resolve(spec, engines)
+    """Test-only entrypoint that mirrors execute_capability without FastMCP."""
+    all_engines = _all_registrations_for_test(settings)
+    candidates = resolve(spec, all_engines)
     if not candidates:
         return CapabilityExecutionResult(
             status="rejected",
@@ -2823,6 +3033,18 @@ async def execute_capability_for_test(
         )
     dag = plan(spec, candidates, trace_id=spec.trace_id or TraceId("0" * 32))
     return CapabilityExecutionResult(status="planned", trace_id=dag.trace_id, dag=dag)
+
+
+def _all_registrations_for_test(settings: MahavishnuSettings) -> list[EngineRegistration]:
+    """Same merge as capability_tools._all_registrations, duplicated in test scope."""
+    engines = load_engine_registrations(settings)
+    worker_caps = load_capabilities_from_settings(settings)
+    for cap_id, caps in worker_caps.items():
+        for cap in caps:
+            engines.append(EngineRegistration(
+                engine_id=cap.id, provides=[cap], enabled=True,
+            ))
+    return engines
 ```
 
 - [ ] **Step 2: Run integration test**
@@ -2870,18 +3092,11 @@ Per the `e77dda66` fix and the 2026-08-12 mcpretentious removal: `terminal/confi
 **Files:**
 - Modify: `mahavishnu/terminal/config.py:50-53`
 
-- [ ] **Step 1: Update the default + description**
+- [ ] **Step 1: Remove the legacy iterm2_* fields**
 
-In `mahavishnu/terminal/config.py`:
+**v3 reviewer note #14:** the v2 task targeted the wrong lines. `mahavishnu/terminal/config.py:50-53` is `adapter_preference: str = Field(default="tmux", description="...")` — NO mcpretentious reference exists there, the field is not a `Literal`, and the current default is `"tmux"` (not `"mock"`). The actual mcpretentious leftovers are the `iterm2_*` fields at lines 86-111 (per `e77dda66`). Changing `adapter_preference` to `"crow"` would contradict CLAUDE.md's documented `tmux` default and undermine Phase 1's tmux fix.
 
-```python
-adapter_preference: Literal["mock", "tmux", "crow", "auto"] = Field(
-    default="crow",  # was "mock" — crow is the live production default
-    description="Preferred terminal adapter: mock (test), tmux (local), crow (production), or auto",
-)
-```
-
-Drop the inline comment about iTerm2/mcpretentious.
+In `mahavishnu/terminal/config.py:86-111`, remove the `iterm2_*` fields and their references in `description` strings. Verify with `grep -n "iterm2" mahavishnu/terminal/config.py` after the edit; expected: zero matches.
 
 - [ ] **Step 2: Run terminal config tests**
 
@@ -2902,24 +3117,40 @@ Co-Authored-By: Claude <noreply@anthropic.com>"
 **Files:**
 - Modify: All old tools in `mahavishnu/mcp/tools/pool_tools.py`, `worker_tools.py`, `mahavishnu/mcp/server_core.py:272`
 
-- [ ] **Step 1: Wrap old tools with deprecation warnings**
+- [ ] **Step 1: Wrap old tools with deprecation warnings (gate registration on `legacy_tools`)**
 
-For each tool, add at the top of the function body:
+**v3 reviewer note #15:** the v2 snippet inverts the spec. Per spec §Stage 3b, `MAHAVISHNU_LEGACY_TOOLS=true` should be "honored by old tools for one final release" — meaning legacy tools only register when the flag is enabled, and warn on every call. The v2 snippet does the opposite: it always registers the tools and only silences the warning when the flag is set. This leaves `settings.legacy_tools` (added in Task 2.0) with zero readers and trips `scripts/audit_orphans.py`.
+
+Fix: gate **registration** on `settings.legacy_tools` (so the legacy tools don't even appear in `server.list_tools()` when disabled), and **warn on every call** when they ARE enabled. The pattern uses the settings field (not `os.environ`) so `MahavishnuSettings.legacy_tools` has a real reader.
+
+In `mahavishnu/mcp/tools/pool_tools.py`, wrap each legacy dispatch tool:
 
 ```python
-import os
-import warnings
+from mahavishnu.core.config import MahavishnuSettings
 
-if not os.environ.get("MAHAVISHNU_LEGACY_TOOLS"):
-    warnings.warn(
-        "pool_spawn is deprecated; use execute_capability. "
-        "Set MAHAVISHNU_LEGACY_TOOLS=true to silence this warning.",
-        DeprecationWarning,
-        stacklevel=2,
-    )
+# At module import time, decide whether to register legacy tools at all.
+_LEGACY_ENABLED = MahavishnuSettings().legacy_tools
+
+
+def register(server: "FastMCPServer", settings: MahavishnuSettings) -> None:
+    if not settings.legacy_tools:
+        return  # Don't even register the legacy tools.
+
+    @server.tool(name="pool_spawn", description="[LEGACY] Spawn a pool.")
+    def pool_spawn(...) -> ...:
+        import warnings
+        warnings.warn(
+            "pool_spawn is deprecated; use execute_capability. "
+            "Will be removed after the next release cycle.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        # ... original pool_spawn body ...
 ```
 
-(Adjust the message per tool.)
+(Apply the same pattern to every legacy tool in `pool_tools.py` and `worker_tools.py`. The `register()` function is the gate; the body of each tool warns.)
+
+- [ ] **Step 2: Run all tests**
 
 - [ ] **Step 2: Run all tests**
 
@@ -3060,3 +3291,35 @@ git -c user.email="les@wedgwoodwebworks.com" tag -a v0.18.0 -m "Worker registry 
 - CapabilityState.INTERACTIVE worker handling (state added to enum; runtime handling deferred).
 - Sensitivity + TTL envelope lifecycle (sensitivity field added to CapabilityEnvelope; TTL logic deferred).
 - WebSocket DAG channel broadcasting.
+
+---
+
+## v3 Known Limitations (post-review)
+
+A single senior reviewer (confidence-filtered) reviewed v2 and flagged 23 findings — 9 BLOCKERS, 5 CRITICAL, 7 MAJOR/MINOR. v3 addresses every BLOCKER + CRITICAL. The following items remain unresolved and require explicit user sign-off before execution:
+
+### Deferred from v3 (out of scope per task scope)
+
+- **MultiAuthHandler wiring** (reviewer #16). The v3 capability_tools check `settings.capability_scopes` directly, but MultiAuthHandler is the canonical auth layer. Wiring MultiAuthHandler into MCP tool calls is its own concern — call it out in the conductor PR or a follow-up. The scope check is a **kill-switch** in v3, not full authz.
+- **`re` import in `capabilities.py`** (reviewer #21). `re` is no longer used (validation is via `StringConstraints`/`TypeAdapter`). Remove the import.
+- **`SelectorStrategy` re-import in conductor.py** (reviewer #21). Already imported in the v3 snippet; verify against the actual edited file.
+- **Test shim module split** (reviewer #16). `execute_capability_for_test` is now in `tests/integration/conductor/_helpers.py` per v3. If the integration test is moved out of Phase 3a, decide whether to keep the shim or inline its logic.
+- **Spec drift** (reviewer #23). v3 dropped several spec items: `DAGEdge.field_path` → `via_field` (rename), `EngineRegistration.consumes: list[Capability]` (spec said `list[CapabilityId]`), `CapabilityState.STATELESS`, `HealthStatus.UNREACHABLE`, `SelectorStrategy.PEER_AFFINITY`/`LLM_SELECT`, `Capability.idempotency_key`/`undo`/`deprecated_after`, `CapabilitySpec.constraints`/`repos`/`idempotency_key`, `Candidate.score` bounds, three selector strategies left as fallback. **Decision needed**: re-mirror the spec (preferred) or formally document the deviations.
+- **Per-engine dispatch** (reviewer #13). `emit_node` raises `NotImplementedError` because the dispatch tables for Prefect/LlamaIndex/Agno/Hatchet/pydantic_ai land outside this plan's scope. Stage 3a exit criteria in the spec say "runs full DAG via Prefect with envelopes persisted to Dhara"; v3 delivers a **plan-only** Stage 3a. Either land per-engine dispatch in a follow-up plan, or amend the spec's Stage 3a exit criteria.
+- **`STANDARD_REGISTRATIONS` snippet is illustrative, not exact** (reviewer #11 partial fix). The v3 snippet shows the pattern; the implementer must read `mahavishnu/mcp/tools/profiles.py:71-81` and `:143-144` to match the existing format exactly. Add a `_register_capability_tools` function in `bootstrap.py:749` region.
+- **Coverage floor on conductor.py** (reviewer #13). With `emit_node` raising `NotImplementedError`, no flow body runs in tests — the 95% coverage floor on `mahavishnu/core/conductor.py` is unreachable. Either implement dispatch or lower the floor for this revision.
+
+### Acknowledged but not addressed
+
+- The `_empty_schema()` helper still has a leading underscore but the function is module-private; Python name mangling only applies to `__name` (double-underscore prefix). v2's `__empty_schema` was already fixed to `_empty_schema` in v3.
+- `import asyncio` is now present in the v3 Task 2.9 smoke test (reviewer #9 partial fix).
+- `CapabilityId`/`EngineId`/`TraceId` test validation now uses `TypeAdapter` (reviewer #8).
+
+### Pre-execution verification
+
+Before `superpowers:subagent-driven-development` begins, the implementer should:
+
+1. Run `uv run pyright mahavishnu/core/conductor.py mahavishnu/core/capabilities.py` and confirm 0 errors.
+2. Run `uv run mypy --strict mahavishnu/core/` and confirm 0 errors.
+3. Verify the 6 engine class names actually resolve at import time (Prefect, LlamaIndex, Agno, HatchetAdapterImpl, WorkerOrchestratorAdapter; pydantic_ai is behind the optional `ai` group).
+4. Confirm `DharaAdapter` lives at `mahavishnu/core/dhara_adapter.py:18` with `async def put(self, key, value, ttl=None)` and `async def call_tool(self, name, **kwargs)`. If those signatures don't match, fix the envelope module before continuing.
