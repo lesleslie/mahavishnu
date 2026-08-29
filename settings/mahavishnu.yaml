@@ -389,3 +389,113 @@ worker_contract:
   socket_dir: ~/.mahavishnu/tmux
   records_dir: ~/.mahavishnu/worker-sessions
   event_topic_prefix: worker
+
+# Worker registry (Stage 2 of capability refactor)
+# Loaded by Oneiric into MahavishnuSettings.worker_registry
+# NOTE: the existing top-level `workers:` block at line ~103 holds runtime
+# worker config (enabled/max_concurrent/default_type/timeout_seconds). We
+# use `worker_registry:` to avoid colliding with it.
+worker_registry:
+  entries:
+    - worker_type: terminal-shell
+      name: "Bash Shell"
+      command_argv: ["bash", "--noediting"]
+      completion_markers: ["$"]
+      provides: ["worker:bash"]
+    - worker_type: terminal-python
+      name: "Python REPL"
+      command_argv: ["python3", "-iq"]
+      completion_markers: [">>>", "..."]
+      requires_tool: python3
+      provides: ["worker:python-repl"]
+    - worker_type: terminal-ipython
+      name: "IPython"
+      command_argv: ["ipython", "--no-banner"]
+      completion_markers: ["In [", "Out ["]
+      requires_tool: ipython
+      provides: ["worker:ipython"]
+    - worker_type: terminal-node
+      name: "Node.js REPL"
+      command_argv: ["node", "-i"]
+      completion_markers: [">"]
+      requires_tool: node
+      provides: ["worker:node-repl"]
+    - worker_type: terminal-claude
+      name: "Claude Code"
+      command_argv: ["sh", "-lc", "claude --output-format stream-json --permission-mode acceptEdits"]
+      completion_markers: ['"done"', "finish_reason"]
+      requires_tool: claude
+      provides: ["worker:claude-persistent", "worker:ai-context"]
+    - worker_type: terminal-qwen
+      name: "Qwen AI"
+      command_argv: ["sh", "-lc", "qwen -o stream-json --approval-mode yolo"]
+      completion_markers: ['"done"', "finish_reason"]
+      requires_tool: qwen
+      provides: ["worker:qwen-persistent", "worker:ai-context"]
+    - worker_type: terminal-codex
+      name: "Codex CLI"
+      command_argv: ["sh", "-lc", "codex exec --json \"$1\"; printf \"\\n__MAHAVISHNU_DONE__\\n\""]
+      completion_markers: ["__MAHAVISHNU_DONE__"]
+      requires_tool: codex
+      one_shot: true
+      provides: ["worker:codex-oneshot", "worker:ai-context"]
+    - worker_type: terminal-deepagents
+      name: "DeepAgents CLI"
+      command_argv: ["sh", "-lc", "deepagents-cli --non-interactive \"$1\" --quiet --no-stream; printf \"\\n__MAHAVISHNU_DONE__\\n\""]
+      completion_markers: ["__MAHAVISHNU_DONE__"]
+      requires_tool: deepagents-cli
+      one_shot: true
+      provides: ["worker:deepagents-oneshot", "worker:ai-context"]
+    - worker_type: terminal-clai
+      name: "CLAI"
+      command_argv: ["sh", "-lc", "clai --no-stream \"$1\"; printf \"\\n__MAHAVISHNU_DONE__\\n\""]
+      completion_markers: ["__MAHAVISHNU_DONE__"]
+      requires_tool: clai
+      one_shot: true
+      provides: ["worker:clai-oneshot", "worker:ai-context"]
+    - worker_type: terminal-mysql
+      name: "MySQL CLI"
+      command_argv: ["mysql", "-u", "{user}", "-p{password}", "-h", "{host}", "{database}"]
+      completion_markers: ["mysql>", "->"]
+      requires_tool: mysql
+      required_env: ["MYSQL_PASSWORD"]
+      provides: ["worker:mysql-repl"]
+    - worker_type: terminal-psql
+      name: "PostgreSQL CLI"
+      command_argv: ["psql", "-U", "{user}", "-h", "{host}", "-d", "{database}"]
+      completion_markers: ["=>", "->"]
+      requires_tool: psql
+      required_env: ["PGPASSWORD"]
+      provides: ["worker:psql-repl"]
+    - worker_type: terminal-turso
+      name: "Turso CLI"
+      command_argv: ["turso", "db", "shell", "{database}"]
+      completion_markers: ["turso> ", "...>"]
+      requires_tool: turso
+      required_env: ["TURSO_AUTH_TOKEN"]
+      provides: ["worker:turso-repl"]
+    - worker_type: terminal-redis
+      name: "Redis CLI"
+      command_argv: ["redis-cli", "-h", "{host}", "-p", "{port}"]
+      completion_markers: [">"]
+      requires_tool: redis-cli
+      provides: ["worker:redis-repl"]
+    - worker_type: terminal-wasmtime
+      name: "Wasmtime Runtime"
+      command_argv: ["wasmtime"]
+      completion_markers: [">", "$"]
+      requires_tool: wasmtime
+      provides: ["worker:wasm-repl"]
+    - worker_type: terminal-wasmer
+      name: "Wasmer Runtime"
+      command_argv: ["wasmer"]
+      completion_markers: [">", "$"]
+      requires_tool: wasmer
+      provides: ["worker:wasm-repl"]
+    - worker_type: terminal-ssh
+      name: "SSH Remote"
+      command_argv: ["ssh", "{host}"]
+      completion_markers: ["$", "#", "%"]
+      requires_tool: ssh
+      default_timeout: 600
+      provides: ["worker:ssh"]
