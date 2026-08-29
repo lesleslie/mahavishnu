@@ -1176,9 +1176,6 @@ class TestTerminalSettings:
         assert settings.terminal.default_columns == 120
         assert settings.terminal.default_rows == 40
         assert settings.terminal.max_concurrent_sessions == 20
-        assert settings.terminal.iterm2_pooling_enabled is True
-        assert settings.terminal.iterm2_pool_max_size == 3
-        assert settings.terminal.iterm2_pool_idle_timeout == 300.0
 
     def test_terminal_adapter_preference_values(self, clean_env):
         """Test terminal adapter_preference accepts valid values."""

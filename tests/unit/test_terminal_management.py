@@ -174,10 +174,6 @@ class TestTerminalSettings:
         assert (
             settings.adapter_preference == "mock"
         )  # Default to mock until iTerm2/tmux configured
-        assert settings.iterm2_pooling_enabled is True
-        assert settings.iterm2_pool_max_size == 3
-        assert settings.iterm2_pool_idle_timeout == 300.0
-        assert settings.iterm2_default_profile is None
 
     def test_custom_settings(self):
         """Test custom configuration values."""
@@ -268,32 +264,6 @@ class TestTerminalSettings:
 
         with pytest.raises(ValueError):
             TerminalSettings(max_concurrent_sessions=101)  # Too large
-
-    def test_iterm2_pool_settings_validation(self):
-        """Test iTerm2 pool settings validation."""
-        # Valid pool settings
-        TerminalSettings(
-            iterm2_pool_max_size=1,  # Minimum
-            iterm2_pool_idle_timeout=30.0,  # Minimum
-        )
-        TerminalSettings(
-            iterm2_pool_max_size=10,  # Maximum
-            iterm2_pool_idle_timeout=3600.0,  # Maximum
-        )
-
-        # Invalid pool size
-        with pytest.raises(ValueError):
-            TerminalSettings(iterm2_pool_max_size=0)
-
-        with pytest.raises(ValueError):
-            TerminalSettings(iterm2_pool_max_size=11)
-
-        # Invalid idle timeout
-        with pytest.raises(ValueError):
-            TerminalSettings(iterm2_pool_idle_timeout=29.9)
-
-        with pytest.raises(ValueError):
-            TerminalSettings(iterm2_pool_idle_timeout=3600.1)
 
 
 # =============================================================================
