@@ -1,10 +1,10 @@
 {
   "repo": "crackerjack",
-  "version": "0.75.8",
+  "version": "0.76.2",
   "command_count": 32,
   "commands": [
     {
-      "command_path": "docs None",
+      "command_path": "docs init",
       "module": "crackerjack.cli.docs_cli",
       "function": "init",
       "short_help": "",
@@ -24,7 +24,7 @@
       "notes": []
     },
     {
-      "command_path": "docs None",
+      "command_path": "docs build",
       "module": "crackerjack.cli.docs_cli",
       "function": "build",
       "short_help": "",
@@ -44,7 +44,7 @@
       "notes": []
     },
     {
-      "command_path": "docs None",
+      "command_path": "docs serve",
       "module": "crackerjack.cli.docs_cli",
       "function": "serve",
       "short_help": "",
@@ -64,7 +64,7 @@
       "notes": []
     },
     {
-      "command_path": "docs None",
+      "command_path": "docs deploy",
       "module": "crackerjack.cli.docs_cli",
       "function": "deploy",
       "short_help": "",
@@ -84,7 +84,7 @@
       "notes": []
     },
     {
-      "command_path": "docs None",
+      "command_path": "docs check",
       "module": "crackerjack.cli.docs_cli",
       "function": "check",
       "short_help": "",
@@ -124,7 +124,7 @@
       "notes": []
     },
     {
-      "command_path": "docs None",
+      "command_path": "docs validate",
       "module": "crackerjack.cli.docs_cli",
       "function": "validate",
       "short_help": "",
@@ -164,7 +164,7 @@
       "notes": []
     },
     {
-      "command_path": "mcp None",
+      "command_path": "mcp start",
       "module": "crackerjack.cli.mcp_cli",
       "function": "start",
       "short_help": "",
@@ -184,7 +184,7 @@
       "notes": []
     },
     {
-      "command_path": "mcp None",
+      "command_path": "mcp stop",
       "module": "crackerjack.cli.mcp_cli",
       "function": "stop",
       "short_help": "",
@@ -204,7 +204,7 @@
       "notes": []
     },
     {
-      "command_path": "mcp None",
+      "command_path": "mcp status",
       "module": "crackerjack.cli.mcp_cli",
       "function": "status",
       "short_help": "",
@@ -224,7 +224,7 @@
       "notes": []
     },
     {
-      "command_path": "mcp None",
+      "command_path": "mcp restart",
       "module": "crackerjack.cli.mcp_cli",
       "function": "restart",
       "short_help": "",
@@ -244,7 +244,7 @@
       "notes": []
     },
     {
-      "command_path": "mcp None",
+      "command_path": "mcp health",
       "module": "crackerjack.cli.mcp_cli",
       "function": "health",
       "short_help": "",
@@ -284,7 +284,7 @@
       "notes": []
     },
     {
-      "command_path": "audit None",
+      "command_path": "audit orphans",
       "module": "crackerjack.cli.audit_cli",
       "function": "orphans",
       "short_help": "",
@@ -304,7 +304,7 @@
       "notes": []
     },
     {
-      "command_path": "audit None",
+      "command_path": "audit locate",
       "module": "crackerjack.cli.audit_cli",
       "function": "locate",
       "short_help": "",
@@ -324,7 +324,7 @@
       "notes": []
     },
     {
-      "command_path": "audit None",
+      "command_path": "audit skills",
       "module": "crackerjack.cli.audit_cli",
       "function": "skills",
       "short_help": "Show the Session-Buddy distilled-skill freshness report.",
@@ -344,7 +344,7 @@
       "notes": []
     },
     {
-      "command_path": "skills None",
+      "command_path": "skills refresh",
       "module": "crackerjack.cli.skills_cli",
       "function": "refresh",
       "short_help": "Call `distill_skills_now` on Session-Buddy. Cron-friendly.",
@@ -364,7 +364,7 @@
       "notes": []
     },
     {
-      "command_path": "coverage-ratchet None",
+      "command_path": "coverage-ratchet init",
       "module": "crackerjack.cli.coverage_ratchet_cli",
       "function": "init",
       "short_help": "Initialize the coverage ratchet at current coverage.",
@@ -384,7 +384,7 @@
       "notes": []
     },
     {
-      "command_path": "coverage-ratchet None",
+      "command_path": "coverage-ratchet status",
       "module": "crackerjack.cli.coverage_ratchet_cli",
       "function": "status",
       "short_help": "Show ratchet state.",
@@ -404,7 +404,7 @@
       "notes": []
     },
     {
-      "command_path": "coverage-ratchet None",
+      "command_path": "coverage-ratchet lower",
       "module": "crackerjack.cli.coverage_ratchet_cli",
       "function": "lower",
       "short_help": "Explicitly lower the ratchet (operator ack of regression).",
@@ -424,7 +424,7 @@
       "notes": []
     },
     {
-      "command_path": "None",
+      "command_path": "version",
       "module": "oneiric.cli.base",
       "function": "version",
       "short_help": "Print this component's version.",
@@ -438,13 +438,13 @@
       "doc_referenced": [],
       "subcommand_count": 0,
       "todo_markers": 0,
-      "last_activity_days": 18,
+      "last_activity_days": -1,
       "short_help_vs_impl_drift": "",
       "staleness_verdict": "current",
       "notes": []
     },
     {
-      "command_path": "None",
+      "command_path": "doctor",
       "module": "oneiric.cli.base",
       "function": "doctor",
       "short_help": "Run diagnostic checks against this component's runtime.",
@@ -458,13 +458,13 @@
       "doc_referenced": [],
       "subcommand_count": 0,
       "todo_markers": 0,
-      "last_activity_days": 18,
+      "last_activity_days": -1,
       "short_help_vs_impl_drift": "",
       "staleness_verdict": "current",
       "notes": []
     },
     {
-      "command_path": "None",
+      "command_path": "health",
       "module": "oneiric.cli.base",
       "function": "health",
       "short_help": "Probe this component's runtime health.",
@@ -478,7 +478,7 @@
       "doc_referenced": [],
       "subcommand_count": 0,
       "todo_markers": 0,
-      "last_activity_days": 18,
+      "last_activity_days": -1,
       "short_help_vs_impl_drift": "",
       "staleness_verdict": "current",
       "notes": []
@@ -498,7 +498,7 @@
       "doc_referenced": [],
       "subcommand_count": 0,
       "todo_markers": 0,
-      "last_activity_days": 5,
+      "last_activity_days": -1,
       "short_help_vs_impl_drift": "",
       "staleness_verdict": "current",
       "notes": []
@@ -518,7 +518,7 @@
       "doc_referenced": [],
       "subcommand_count": 0,
       "todo_markers": 0,
-      "last_activity_days": 5,
+      "last_activity_days": -1,
       "short_help_vs_impl_drift": "",
       "staleness_verdict": "current",
       "notes": []
@@ -538,7 +538,7 @@
       "doc_referenced": [],
       "subcommand_count": 0,
       "todo_markers": 0,
-      "last_activity_days": 5,
+      "last_activity_days": -1,
       "short_help_vs_impl_drift": "",
       "staleness_verdict": "current",
       "notes": []
@@ -558,13 +558,13 @@
       "doc_referenced": [],
       "subcommand_count": 0,
       "todo_markers": 0,
-      "last_activity_days": 5,
+      "last_activity_days": -1,
       "short_help_vs_impl_drift": "",
       "staleness_verdict": "current",
       "notes": []
     },
     {
-      "command_path": "None",
+      "command_path": "run",
       "module": "crackerjack.__main__",
       "function": "run",
       "short_help": "",
@@ -584,7 +584,7 @@
       "notes": []
     },
     {
-      "command_path": "None",
+      "command_path": "run_tests",
       "module": "crackerjack.__main__",
       "function": "run_tests",
       "short_help": "",
@@ -604,7 +604,7 @@
       "notes": []
     },
     {
-      "command_path": "None",
+      "command_path": "qa_health",
       "module": "crackerjack.__main__",
       "function": "qa_health",
       "short_help": "",
@@ -624,7 +624,7 @@
       "notes": []
     },
     {
-      "command_path": "None",
+      "command_path": "shell",
       "module": "crackerjack.__main__",
       "function": "shell",
       "short_help": "",

@@ -2804,7 +2804,7 @@
       "notes": []
     },
     {
-      "command_path": "None",
+      "command_path": "version",
       "module": "oneiric.cli.base",
       "function": "version",
       "short_help": "Print this component's version.",
@@ -2824,7 +2824,7 @@
       "notes": []
     },
     {
-      "command_path": "None",
+      "command_path": "doctor",
       "module": "oneiric.cli.base",
       "function": "doctor",
       "short_help": "Run diagnostic checks against this component's runtime.",
@@ -2844,7 +2844,7 @@
       "notes": []
     },
     {
-      "command_path": "None",
+      "command_path": "health",
       "module": "oneiric.cli.base",
       "function": "health",
       "short_help": "Probe this component's runtime health.",
@@ -2984,7 +2984,7 @@
       "notes": []
     },
     {
-      "command_path": "None",
+      "command_path": "sweep",
       "module": "mahavishnu._main_cli",
       "function": "sweep",
       "short_help": "",
@@ -3024,7 +3024,7 @@
       "notes": []
     },
     {
-      "command_path": "None",
+      "command_path": "list_repos",
       "module": "mahavishnu._main_cli",
       "function": "list_repos",
       "short_help": "",
@@ -3044,7 +3044,7 @@
       "notes": []
     },
     {
-      "command_path": "None",
+      "command_path": "list_roles",
       "module": "mahavishnu._main_cli",
       "function": "list_roles",
       "short_help": "",
@@ -3064,7 +3064,7 @@
       "notes": []
     },
     {
-      "command_path": "None",
+      "command_path": "show_role",
       "module": "mahavishnu._main_cli",
       "function": "show_role",
       "short_help": "",
@@ -3084,7 +3084,7 @@
       "notes": []
     },
     {
-      "command_path": "None",
+      "command_path": "list_nicknames",
       "module": "mahavishnu._main_cli",
       "function": "list_nicknames",
       "short_help": "",
@@ -3104,7 +3104,7 @@
       "notes": []
     },
     {
-      "command_path": "None",
+      "command_path": "generate_claude_token",
       "module": "mahavishnu._main_cli",
       "function": "generate_claude_token",
       "short_help": "",
@@ -3124,7 +3124,7 @@
       "notes": []
     },
     {
-      "command_path": "None",
+      "command_path": "generate_codex_token",
       "module": "mahavishnu._main_cli",
       "function": "generate_codex_token",
       "short_help": "",

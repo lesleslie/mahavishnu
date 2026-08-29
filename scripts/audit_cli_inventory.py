@@ -66,7 +66,16 @@ def _walk_typer(app: typer.Typer, prefix: str = "") -> list[CommandEntry]:
         else ((getattr(cmd, "name", ""), cmd) for cmd in registered_commands)
     )
     for cmd_name, cmd in cmd_items:
-        full_path = f"{prefix}{cmd_name}".strip()
+        # Inherited Typer callbacks (e.g., OneiricCLIBase's version/doctor/
+        # health methods) sometimes register with cmd_name == "None" (the
+        # literal string). Fall back to the callback's __name__ when the
+        # registered name is missing or unparseable.
+        cb = cmd.callback
+        cb_name = getattr(cb, "__name__", "") if cb else ""
+        effective_name = cmd_name
+        if not effective_name or effective_name == "None":
+            effective_name = cb_name or effective_name or "<unknown>"
+        full_path = f"{prefix}{effective_name}".strip()
         callback = cmd.callback
         module = getattr(callback, "__module__", "")
         func = getattr(callback, "__name__", "")

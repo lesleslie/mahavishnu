@@ -184,7 +184,7 @@
       "notes": []
     },
     {
-      "command_path": "None",
+      "command_path": "version",
       "module": "oneiric.cli.base",
       "function": "version",
       "short_help": "Print this component's version.",
@@ -204,7 +204,7 @@
       "notes": []
     },
     {
-      "command_path": "None",
+      "command_path": "doctor",
       "module": "oneiric.cli.base",
       "function": "doctor",
       "short_help": "Run diagnostic checks against this component's runtime.",
@@ -224,7 +224,7 @@
       "notes": []
     },
     {
-      "command_path": "None",
+      "command_path": "health",
       "module": "oneiric.cli.base",
       "function": "health",
       "short_help": "Probe this component's runtime health.",
