@@ -1460,6 +1460,65 @@ class TestWorkersSpawn:
         assert "spawn failed" in result.output
 
 
+class TestWorkersExecute:
+    """Tests for 'workers execute' command (migrated to capability conductor in 3a.5)."""
+
+    @patch("mahavishnu.core.conductor.plan")
+    @patch("mahavishnu.core.conductor.resolve")
+    @patch("mahavishnu.engines.load_engine_registrations")
+    @patch("mahavishnu._main_cli.MahavishnuApp")
+    def test_workers_execute_plans_capability_dag(
+        self, mock_app_cls, mock_load_engines, mock_resolve, mock_plan
+    ):
+        """Migrated caller references capability-tools (plan, resolve), not WorkerManager."""
+        from mahavishnu.core.capabilities import ExecutionDAG
+
+        mock_app = _make_mock_app()
+        mock_app_cls.return_value = mock_app
+        mock_load_engines.return_value = []
+        mock_resolve.return_value = []
+        mock_plan.return_value = ExecutionDAG(trace_id="0" * 32, nodes=[], edges=[])
+
+        result = runner.invoke(
+            cli_module.app,
+            ["workers", "execute", "-p", "Implement a REST API", "-n", "2"],
+        )
+        assert result.exit_code == 0
+        assert "Planning capability DAG" in result.output
+        assert "Planned DAG" in result.output
+        mock_load_engines.assert_called_once()
+        mock_resolve.assert_called_once()
+        mock_plan.assert_called_once()
+
+    @patch("mahavishnu.core.conductor.plan")
+    @patch("mahavishnu.core.conductor.resolve")
+    @patch("mahavishnu.engines.load_engine_registrations")
+    @patch("mahavishnu._main_cli.MahavishnuApp")
+    def test_workers_execute_no_legacy_worker_manager_used(
+        self, mock_app_cls, mock_load_engines, mock_resolve, mock_plan
+    ):
+        """Legacy WorkerManager.spawn_workers / execute_batch must NOT be called."""
+        from mahavishnu.core.capabilities import ExecutionDAG
+
+        mock_app = _make_mock_app()
+        mock_app_cls.return_value = mock_app
+        mock_load_engines.return_value = []
+        mock_resolve.return_value = []
+        mock_plan.return_value = ExecutionDAG(trace_id="0" * 32, nodes=[], edges=[])
+
+        # Even if some legacy attribute is referenced, the migrated handler
+        # must not call WorkerManager.
+        with patch(
+            "mahavishnu.workers.WorkerManager"
+        ) as mock_wm_cls:
+            result = runner.invoke(
+                cli_module.app,
+                ["workers", "execute", "-p", "Create a class", "-t", "terminal-claude"],
+            )
+            assert result.exit_code == 0
+            mock_wm_cls.assert_not_called()
+
+
 class TestWorkersListTypes:
     """Tests for 'workers list-types' command."""
 
@@ -1716,46 +1775,72 @@ class TestPoolExecute:
 
 
 class TestPoolRoute:
-    """Tests for 'pool route' command."""
+    """Tests for 'pool route' command (migrated to capability conductor in 3a.5)."""
 
+    @patch("mahavishnu.core.conductor.plan")
+    @patch("mahavishnu.core.conductor.resolve")
+    @patch("mahavishnu.engines.load_engine_registrations")
     @patch("mahavishnu._main_cli.MahavishnuApp")
-    def test_pool_route_no_manager(self, mock_app_cls):
+    def test_pool_route_plans_capability_dag(
+        self, mock_app_cls, mock_load_engines, mock_resolve, mock_plan
+    ):
+        """Migrated caller references capability-tools, not PoolManager.route_task."""
+        from mahavishnu.core.capabilities import ExecutionDAG
+
         mock_app = _make_mock_app()
         mock_app_cls.return_value = mock_app
-
-        result = runner.invoke(cli_module.app, ["pool", "route", "-p", "do something"])
-        assert result.exit_code == 1
-
-    @patch("mahavishnu.pools.PoolSelector")
-    @patch("mahavishnu._main_cli.MahavishnuApp")
-    def test_pool_route_success(self, mock_app_cls, mock_selector_cls):
-        mock_app = _make_mock_app()
-        mock_pm = MagicMock()
-        mock_pm.route_task = AsyncMock(
-            return_value={"pool_id": "pool_1", "status": "completed", "output": "done"}
-        )
-        mock_app.pool_manager = mock_pm
-        mock_app_cls.return_value = mock_app
-        mock_selector_cls.return_value = MagicMock()
+        mock_load_engines.return_value = []
+        mock_resolve.return_value = []
+        mock_plan.return_value = ExecutionDAG(trace_id="0" * 32, nodes=[], edges=[])
 
         result = runner.invoke(cli_module.app, ["pool", "route", "-p", "do something"])
         assert result.exit_code == 0
-        assert "pool_1" in result.output
+        assert "Planned DAG" in result.output
+        # Conductor-based output mentions Nodes and Edges counts, not legacy pool_id.
+        assert "pool_id" not in result.output
+        mock_load_engines.assert_called_once()
+        mock_resolve.assert_called_once()
+        mock_plan.assert_called_once()
 
-    @patch("mahavishnu.pools.PoolSelector")
+    @patch("mahavishnu.core.conductor.plan")
+    @patch("mahavishnu.core.conductor.resolve")
+    @patch("mahavishnu.engines.load_engine_registrations")
     @patch("mahavishnu._main_cli.MahavishnuApp")
-    def test_pool_route_value_error(self, mock_app_cls, mock_selector_cls):
+    def test_pool_route_no_legacy_pool_manager_used(
+        self, mock_app_cls, mock_load_engines, mock_resolve, mock_plan
+    ):
+        """Legacy pool_manager.route_task must NOT be called after 3a.5 migration."""
+        from mahavishnu.core.capabilities import ExecutionDAG
+
         mock_app = _make_mock_app()
+        # Even when a pool_manager is present, the migrated handler must
+        # bypass it (legacy pool_manager is deprecated).
         mock_pm = MagicMock()
-        mock_pm.route_task = AsyncMock(side_effect=ValueError("bad selector"))
+        mock_pm.route_task = AsyncMock(
+            return_value={"pool_id": "pool_1", "status": "completed"}
+        )
         mock_app.pool_manager = mock_pm
         mock_app_cls.return_value = mock_app
-        mock_selector_cls.return_value = MagicMock()
+        mock_load_engines.return_value = []
+        mock_resolve.return_value = []
+        mock_plan.return_value = ExecutionDAG(trace_id="0" * 32, nodes=[], edges=[])
 
-        result = runner.invoke(
-            cli_module.app, ["pool", "route", "-p", "task", "-s", "bad_selector"]
-        )
+        result = runner.invoke(cli_module.app, ["pool", "route", "-p", "do something"])
+        assert result.exit_code == 0
+        # Legacy path was NOT exercised.
+        mock_pm.route_task.assert_not_called()
+
+    @patch("mahavishnu.engines.load_engine_registrations")
+    @patch("mahavishnu._main_cli.MahavishnuApp")
+    def test_pool_route_conductor_error(self, mock_app_cls, mock_load_engines):
+        """Errors from the conductor are surfaced as exit code 1."""
+        mock_app = _make_mock_app()
+        mock_app_cls.return_value = mock_app
+        mock_load_engines.side_effect = Exception("conductor unavailable")
+
+        result = runner.invoke(cli_module.app, ["pool", "route", "-p", "task"])
         assert result.exit_code == 1
+        assert "Failed to plan" in result.output
 
     def test_pool_route_missing_prompt(self):
         result = runner.invoke(cli_module.app, ["pool", "route"])

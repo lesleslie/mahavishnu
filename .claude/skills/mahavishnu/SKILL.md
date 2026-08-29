@@ -4,8 +4,8 @@
 
 When user asks Claude to route work through Mahavishnu (e.g., "use mahavishnu
 for this", "route through the orchestrator", or simply by invoking
-`mcp__mahavishnu__pool_route_execute` directly), route `<task>` through the
-Mahavishnu worker pool manager rather than running it locally.
+`mcp__mahavishnu__execute_capability` directly), route `<task>` through the
+Mahavishnu capability resolver / planner rather than running it locally.
 
 ## Behavior
 
@@ -14,12 +14,8 @@ Mahavishnu worker pool manager rather than running it locally.
 
 1. **Pick the entry point based on the task:**
 
-   - **Quick work** (single command, single file, \<5 min) →
-     `mcp__mahavishnu__pool_route_execute(prompt="<task>")`
-   - **Long-running or multi-step** →
-     `mcp__mahavishnu__dispatch_to_pool(prompt="<task>", async_callback=True)`
-   - **Durable orchestration across repos** →
-     `mcp__mahavishnu__trigger_workflow(adapter="prefect", task_type="...")`
+   - **Capability-driven dispatch** (single, declarative entry point — preferred) →
+     Use `mcp__mahavishnu__execute_capability(spec=CapabilitySpec(requires=["engine:rag-retrieve", "worker:ai-context"], prompt="..."))` for capability-driven dispatch.
 
 1. **Provide a clear dispatch prompt.** Refine the user's raw task into
    a prompt that includes:
@@ -33,7 +29,8 @@ Mahavishnu worker pool manager rather than running it locally.
    applicable.
 
 1. **Fall back gracefully.** If `mcp__mahavishnu__pool_health` returns
-   unhealthy, tell the user Mahavishnu is unavailable and ask whether to
+   unhealthy (legacy pool surface) or the capability planner returns no
+   candidates, tell the user Mahavishnu is unavailable and ask whether to
    proceed locally (with no observability) or wait.
 
 ## What this skill is NOT

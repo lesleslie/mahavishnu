@@ -18,7 +18,7 @@ visibility, e.g.:
 - "Surface pool / worker / dispatch metrics."
 
 The skill is *not* for requests like "dispatch this to Mahavishnu" or "run
-the workers on X" — those use `mcp__mahavishnu__*` tools directly (or the
+the workers on X" — those use `mcp__mahavishnu__execute_capability` (or the
 `mahavishnu-orchestrator` subagent for forced delegation).
 
 ## Behavior
@@ -46,7 +46,7 @@ canonical fallback wording.
 
 | Surface | Purpose | Effect |
 |----------------------|---------------------------------------|---------------------------------|
-| `mcp__mahavishnu__pool_route_execute` / `dispatch_to_pool` | Dispatch / *do work* through Mahavishnu | Routes a task to worker pools |
+| `mcp__mahavishnu__execute_capability` | Dispatch / *do work* through Mahavishnu | Plans and emits an ExecutionDAG from a `CapabilitySpec` |
 | `/mahavishnu:status` | Observe / *show state* of Mahavishnu | Surfaces pool, workflow, dispatch metrics |
 | `mahavishnu-orchestrator` (subagent) | Forced delegation with tool isolation | Same as the dispatch tools but with strict `tools:` frontmatter |
 

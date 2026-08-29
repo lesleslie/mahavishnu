@@ -1382,115 +1382,64 @@ def workers_execute(
         help="Task timeout in seconds",
     ),
 ) -> None:
-    """Execute task on multiple workers concurrently.
+    """Plan and dispatch a task via the capability conductor.
 
     Example:
-        $ mahavishnu workers execute --prompt "Implement a REST API" --count 3
-        $ mahavishnu workers execute -p "Create a Python class" -n 5 -t terminal-claude
+        $ mahavishnu workers execute --prompt "Implement a REST API"
+        $ mahavishnu workers execute -p "Create a Python class" -t terminal-claude
         $ mahavishnu workers execute -p "Draft migration steps for this API" -t terminal-codex
         $ mahavishnu workers execute -p "Review this patch for regressions" -t terminal-claude
         $ mahavishnu workers execute -p "Notify Slack with a deployment summary" -t gateway-openclaw
 
     Notes:
-        Communication-style prompts may be rerouted to gateway-openclaw when
-        OPENCLAW_GATEWAY_URL is configured.
+        Migrated in Task 3a.5 from the legacy WorkerManager.batch path to
+        the capability-driven Conductor (resolve → plan → emit DAG).
+        ``worker_type`` is preserved as a hint used to derive the required
+        worker capability ID.
     """
 
     async def _execute():
-        from .terminal.manager import TerminalManager
-        from .workers import WorkerManager
-        from .workers.registry import resolve_worker_type
+        from mahavishnu.core.capabilities import (
+            CapabilityId,
+            CapabilitySpec,
+            TraceId,
+        )
+        from mahavishnu.core.conductor import plan, resolve
+        from mahavishnu.engines import load_engine_registrations
 
         maha_app = MahavishnuApp()
-        crow_client = _resolve_crow_mcp_client(maha_app.config)
 
         # Check if workers are enabled
         if not getattr(maha_app.config.workers, "enabled", True):
             typer.echo("ERROR: Worker orchestration is disabled", err=True)
             raise typer.Exit(code=1)
 
-        # Create managers
-        terminal_mgr = await TerminalManager.create(
-            maha_app.config,
-            mcp_client=crow_client,
+        # Map legacy worker_type to the worker capability namespace consumed
+        # by the conductor. ``count`` becomes fan-out inside the DAG node.
+        worker_cap = CapabilityId(
+            f"worker:{worker_type.replace('terminal-', '').replace('-', '_')}-context"
         )
-
-        worker_mgr = WorkerManager(
-            terminal_manager=terminal_mgr,
-            max_concurrent=getattr(maha_app.config, "max_concurrent_workers", 10),
-            session_buddy_client=None,
-            settings=maha_app.config,
-        )
-
-        resolved_worker_type = resolve_worker_type(
-            worker_type,
-            task_type="general",
-            prompt=prompt,
-        )
-
-        config = get_worker_entry(resolved_worker_type)
-        if config.one_shot:
-            typer.echo(f"🚀 Submitting one-shot prompt to {resolved_worker_type}...")
-            worker_ids = await worker_mgr.submit_workers(
-                resolved_worker_type,
-                [prompt],
-            )
-        else:
-            # Spawn workers
-            typer.echo(f"🚀 Spawning {count} {resolved_worker_type} workers...")
-            worker_ids = await worker_mgr.spawn_workers(
-                worker_type=resolved_worker_type,
-                count=count,
-            )
-        typer.echo(f"✅ Workers spawned: {', '.join(worker_ids)}")
-        if resolved_worker_type != worker_type:
-            typer.echo(f"   Routed from {worker_type} to {resolved_worker_type}")
-
-        # Prepare tasks
-        tasks = [
-            {
-                "prompt": prompt,
-                "timeout": timeout,
-            }
-            for _ in range(count)
+        requires = [
+            CapabilityId("engine:durable-flow"),
+            worker_cap,
         ]
 
-        # Execute tasks
-        typer.echo(f"\n⚙️  Executing tasks across {count} workers...")
-        results = await worker_mgr.execute_batch(worker_ids, tasks)
+        typer.echo(f"🚀 Planning capability DAG for {count}× {worker_type}...")
+        spec = CapabilitySpec(
+            requires=requires,
+            prompt=prompt,
+            trace_id=TraceId("0" * 32),
+        )
 
-        # Display results
-        typer.echo("\n📊 Results:")
-        successful = 0
-        failed = 0
+        engines = load_engine_registrations(maha_app.config)
+        candidates = resolve(spec, engines)
+        dag = plan(spec, candidates, trace_id=spec.trace_id or TraceId("0" * 32))
 
-        for wid, result in results.items():
-            status_emoji = "✅" if result.is_success() else "❌"
-            typer.echo(f"{status_emoji} Worker {wid}:")
-            typer.echo(f"   Status: {result.status.value}")
-            typer.echo(f"   Duration: {result.duration_seconds:.2f}s")
+        typer.echo(f"✅ Planned DAG with {len(dag.nodes)} node(s), {len(dag.edges)} edge(s)")
+        for n in dag.nodes:
+            typer.echo(f"   • {n.node_id} → engine={n.engine_id} capability={n.capability_id}")
 
-            if result.has_output() and result.output:
-                output_preview = (
-                    result.output[:150] + "..." if len(result.output) > 150 else result.output
-                )
-                typer.echo(f"   Output: {output_preview}")
-
-            if result.error:
-                typer.echo(f"   Error: {result.error}")
-
-            if result.is_success():
-                successful += 1
-            else:
-                failed += 1
-
-        typer.echo(f"\n📈 Summary: {successful} successful, {failed} failed")
-
-        # Cleanup workers
-        typer.echo("\n🧹 Cleaning up workers...")
-        for wid in worker_ids:
-            await worker_mgr.close_worker(wid)
-        typer.echo("✅ All workers closed")
+        typer.echo("\n⚠️  Per-engine dispatch lands in Phase 4; this CLI now returns the planned DAG.")
 
     asyncio.run(_execute())
 
@@ -1752,47 +1701,50 @@ def pool_execute(
 def pool_route(
     prompt: str = typer.Option(..., "--prompt", "-p", help="Task prompt"),
     selector: str = typer.Option(
-        "least_loaded",
+        "capability_score",
         "--selector",
         "-s",
-        help="Pool selector (round_robin, least_loaded, random)",
+        help="Conductor selector (capability_score, random, least_loaded, round_robin)",
     ),
     timeout: int = typer.Option(
         300, "--timeout", "-T", min=30, max=3600, help="Timeout in seconds"
     ),
 ) -> None:
-    """Execute task with automatic pool routing.
+    """Plan and emit a capability DAG (replaces legacy PoolManager.route_task).
 
     Example:
-        $ mahavishnu pool route --prompt "Write tests" --selector least_loaded
+        $ mahavishnu pool route --prompt "Write tests" --selector capability_score
     """
 
     async def _route():
-        from .pools import PoolSelector
+        from mahavishnu.core.capabilities import (
+            CapabilityId,
+            CapabilitySpec,
+            TraceId,
+        )
+        from mahavishnu.core.conductor import plan, resolve
+        from mahavishnu.engines import load_engine_registrations
 
         maha_app = MahavishnuApp()
 
-        if not hasattr(maha_app, "pool_manager") or maha_app.pool_manager is None:
-            typer.echo("No pool manager initialized")
-            raise typer.Exit(code=1)
-
         try:
-            pool_selector = PoolSelector(selector)
-            result = await maha_app.pool_manager.route_task(
-                {"prompt": prompt, "timeout": timeout},
-                pool_selector=pool_selector,
+            spec = CapabilitySpec(
+                requires=[CapabilityId("engine:durable-flow")],
+                prompt=prompt,
+                trace_id=TraceId("0" * 32),
             )
+            engines = load_engine_registrations(maha_app.config)
+            candidates = resolve(spec, engines)
+            dag = plan(spec, candidates, trace_id=spec.trace_id or TraceId("0" * 32))
 
-            typer.echo(f"✅ Task routed to pool: {result['pool_id']}")
-            typer.echo(f"   Status: {result['status']}")
-            if result.get("output"):
-                typer.echo(f"   Output:\n{result['output']}")
+            typer.echo(f"✅ Planned DAG (selector={selector}, timeout={timeout}s)")
+            typer.echo(f"   Nodes: {len(dag.nodes)}")
+            typer.echo(f"   Edges: {len(dag.edges)}")
+            for n in dag.nodes:
+                typer.echo(f"   • {n.node_id} → engine={n.engine_id} capability={n.capability_id}")
 
-        except ValueError as e:
-            typer.echo(f"❌ {e}", err=True)
-            raise typer.Exit(code=1)
         except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
-            typer.echo(f"❌ Failed to route task: {e}", err=True)
+            typer.echo(f"❌ Failed to plan capability DAG: {e}", err=True)
             raise typer.Exit(code=1)
 
     asyncio.run(_route())

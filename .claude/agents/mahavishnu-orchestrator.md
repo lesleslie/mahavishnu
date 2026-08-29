@@ -11,6 +11,7 @@ last_reviewed: 2026-07-11
 model: opus
 tools:
 
+- mcp\_\_mahavishnu\_\_execute_capability
 - mcp\_\_mahavishnu\_\_pool_route_execute
 - mcp\_\_mahavishnu\_\_dispatch_to_pool
 - mcp\_\_mahavishnu\_\_discover_tools
@@ -46,11 +47,11 @@ the work rather than running it locally. Typical triggers:
 
 1. **Pick the right entry point:**
 
-   - **Quick, single-task work** (\<5 min, sync) →
-     `mcp__mahavishnu__pool_route_execute(prompt=..., pool_selector="least_loaded")`
-   - **Long-running or async work** (refactors, multi-repo sweeps, builds) →
-     `mcp__mahavishnu__dispatch_to_pool(prompt=..., caller_kind="claude_code", parent_session_id="<session>", async_callback=True)`. Capture the
-     `workflow_id` and surface it to the caller for polling.
+   - **Capability-driven dispatch** (preferred for new work) →
+     `mcp__mahavishnu__execute_capability(requires=["engine:durable-flow", "worker:ai-context"], prompt=...)`. The conductor resolves the spec into an `ExecutionDAG` and emits Dhara envelopes; surface the `trace_id` for polling.
+   - **Legacy pool dispatch** (still supported pre-3b.3; deprecation warning fires) →
+     `mcp__mahavishnu__pool_route_execute(prompt=..., pool_selector="least_loaded")` for quick sync work, or
+     `mcp__mahavishnu__dispatch_to_pool(prompt=..., caller_kind="claude_code", parent_session_id="<session>", async_callback=True)` for long-running work.
 
 1. **Write a clear dispatch prompt.** Include:
 
