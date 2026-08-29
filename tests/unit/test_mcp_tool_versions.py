@@ -51,7 +51,7 @@ class TestToolVersionsRegistry:
         expected = {
             "list_repos",
             "trigger_workflow",
-            "pool_spawn",
+            "pool_list",
             "terminal_launch",
             "coord_create_issue",
             "treesitter_parse",

@@ -1,11 +1,8 @@
 """Unit tests for mahavishnu.mcp.tools.pool_tools.
 
-The module exposes ``register_pool_tools`` which attaches 12 FastMCP tools
-(``pool_spawn``, ``pool_execute``, ``pool_route_execute``,
-``dispatch_to_pool``, ``workflow_result``, ``pool_list``, ``pool_monitor``,
-``pool_scale``, ``pool_close``, ``pool_close_all``, ``pool_health``,
-``pool_search_memory``) plus the module-level
-``_resolve_peer_affinity_allowlist_from_env`` helper.
+The module exposes ``register_pool_tools`` which attaches 7 FastMCP tools
+(``pool_list``, ``pool_monitor``, ``pool_scale``, ``pool_close``,
+``pool_close_all``, ``pool_health``, ``pool_search_memory``).
 
 The FastMCP API requires each tool function to be defined inline so the
 decorator can introspect the function name and signature. We therefore
@@ -21,10 +18,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from mahavishnu.mcp.tools.pool_tools import (
-    _resolve_peer_affinity_allowlist_from_env,
-    register_pool_tools,
-)
+from mahavishnu.mcp.tools.pool_tools import register_pool_tools
 
 pytestmark = pytest.mark.unit
 
@@ -97,11 +91,6 @@ def registered_mcp(stub_mcp: _StubMCP, mock_pool_manager: AsyncMock) -> _StubMCP
 
 
 EXPECTED_TOOL_NAMES = {
-    "pool_spawn",
-    "pool_execute",
-    "pool_route_execute",
-    "dispatch_to_pool",
-    "workflow_result",
     "pool_list",
     "pool_monitor",
     "pool_scale",
@@ -120,261 +109,11 @@ EXPECTED_TOOL_NAMES = {
 class TestRegistration:
     """register_pool_tools attaches every documented tool to the FastMCP."""
 
-    def test_all_eleven_tools_registered(self, registered_mcp: _StubMCP) -> None:
+    def test_all_seven_tools_registered(self, registered_mcp: _StubMCP) -> None:
         assert EXPECTED_TOOL_NAMES.issubset(set(registered_mcp.tools))
 
     def test_registers_exactly_expected_tools(self, registered_mcp: _StubMCP) -> None:
         assert set(registered_mcp.tools) == EXPECTED_TOOL_NAMES
-
-
-# =============================================================================
-# TestResolveAllowlist
-# =============================================================================
-
-
-class TestResolvePeerAffinityAllowlistFromEnv:
-    """``_resolve_peer_affinity_allowlist_from_env`` reads the env var."""
-
-    def test_unset_returns_none(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        monkeypatch.delenv("MAHAVISHNU_PEER_AFFINITY_ALLOWLIST", raising=False)
-        assert _resolve_peer_affinity_allowlist_from_env() is None
-
-    def test_empty_returns_none(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        monkeypatch.setenv("MAHAVISHNU_PEER_AFFINITY_ALLOWLIST", "")
-        assert _resolve_peer_affinity_allowlist_from_env() is None
-
-    def test_whitespace_only_returns_none(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        monkeypatch.setenv("MAHAVISHNU_PEER_AFFINITY_ALLOWLIST", "   ")
-        assert _resolve_peer_affinity_allowlist_from_env() is None
-
-    def test_wildcard_returns_singleton_set(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        monkeypatch.setenv("MAHAVISHNU_PEER_AFFINITY_ALLOWLIST", "*")
-        assert _resolve_peer_affinity_allowlist_from_env() == {"*"}
-
-    def test_comma_separated_returns_set(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        monkeypatch.setenv("MAHAVISHNU_PEER_AFFINITY_ALLOWLIST", "pool_abc, pool_xyz , pool_q")
-        assert _resolve_peer_affinity_allowlist_from_env() == {
-            "pool_abc",
-            "pool_xyz",
-            "pool_q",
-        }
-
-    def test_skips_empty_segments(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        monkeypatch.setenv("MAHAVISHNU_PEER_AFFINITY_ALLOWLIST", "pool_abc,, pool_xyz,")
-        assert _resolve_peer_affinity_allowlist_from_env() == {
-            "pool_abc",
-            "pool_xyz",
-        }
-
-
-# =============================================================================
-# TestPoolSpawn
-# =============================================================================
-
-
-class TestPoolSpawn:
-    """``pool_spawn`` creates a new pool via PoolManager.spawn_pool."""
-
-    async def test_returns_pool_id_and_status(
-        self, registered_mcp: _StubMCP, mock_pool_manager: AsyncMock
-    ) -> None:
-        fn = registered_mcp.tools["pool_spawn"]
-        result = await fn(
-            pool_type="mahavishnu",
-            name="test-pool",
-            min_workers=2,
-            max_workers=5,
-            worker_type="terminal-claude",
-        )
-        assert result["status"] == "created"
-        assert result["pool_id"] == "pool_test_id"
-        assert result["pool_type"] == "mahavishnu"
-        assert result["name"] == "test-pool"
-        assert result["min_workers"] == 2
-        assert result["max_workers"] == 5
-
-    async def test_passes_pool_config_to_manager(
-        self, registered_mcp: _StubMCP, mock_pool_manager: AsyncMock
-    ) -> None:
-        fn = registered_mcp.tools["pool_spawn"]
-        await fn(
-            pool_type="session-buddy",
-            name="buddy-pool",
-            min_workers=3,
-            max_workers=3,
-            worker_type="terminal-claude",
-        )
-        mock_pool_manager.spawn_pool.assert_awaited_once()
-        # Second positional arg is the PoolConfig; ensure it carries
-        # the kwargs the caller passed through.
-        _pool_type, config = mock_pool_manager.spawn_pool.call_args.args
-        assert config.name == "buddy-pool"
-        assert config.pool_type == "session-buddy"
-        assert config.min_workers == 3
-        assert config.max_workers == 3
-
-    async def test_default_arguments_used_when_omitted(
-        self, registered_mcp: _StubMCP, mock_pool_manager: AsyncMock
-    ) -> None:
-        fn = registered_mcp.tools["pool_spawn"]
-        result = await fn()
-        assert result["status"] == "created"
-        assert result["pool_type"] == "mahavishnu"
-        assert result["name"] == "default"
-        assert result["min_workers"] == 1
-        assert result["max_workers"] == 10
-
-    async def test_returns_failure_dict_on_exception(
-        self, registered_mcp: _StubMCP, mock_pool_manager: AsyncMock
-    ) -> None:
-        mock_pool_manager.spawn_pool = AsyncMock(side_effect=RuntimeError("Spawn failed"))
-        fn = registered_mcp.tools["pool_spawn"]
-        result = await fn(pool_type="mahavishnu", name="test")
-        assert result == {"status": "failed", "error": "Spawn failed"}
-
-
-# =============================================================================
-# TestPoolExecute
-# =============================================================================
-
-
-class TestPoolExecute:
-    """``pool_execute`` runs a task on a specific pool."""
-
-    async def test_returns_manager_result(
-        self, registered_mcp: _StubMCP, mock_pool_manager: AsyncMock
-    ) -> None:
-        from mahavishnu.pools.manager import CallerKind
-
-        fn = registered_mcp.tools["pool_execute"]
-        result = await fn(pool_id="pool_1", prompt="Write tests", timeout=300)
-        assert result == {"status": "completed", "output": "test output"}
-        mock_pool_manager.execute_on_pool.assert_awaited_once()
-        _pool_id, task = mock_pool_manager.execute_on_pool.call_args.args
-        assert _pool_id == "pool_1"
-        # pool_execute enriches the task with caller_kind + parent_session_id
-        # so downstream code reading the task can see who dispatched it. The
-        # baseline prompt/timeout must still be present.
-        assert task["prompt"] == "Write tests"
-        assert task["timeout"] == 300
-        assert task["caller_kind"] == "unknown"  # default coerced to UNKNOWN
-        assert task["parent_session_id"] is None
-        # The kwarg path also forwarded caller_kind so the manager can
-        # enforce quota (Phase 3 security fix: pool_execute gates the same
-        # as pool_route_execute).
-        assert (
-            mock_pool_manager.execute_on_pool.call_args.kwargs["caller_kind"] == CallerKind.UNKNOWN
-        )
-
-    async def test_uses_default_timeout(
-        self, registered_mcp: _StubMCP, mock_pool_manager: AsyncMock
-    ) -> None:
-        fn = registered_mcp.tools["pool_execute"]
-        await fn(pool_id="pool_1", prompt="hi")
-        _, task = mock_pool_manager.execute_on_pool.call_args.args
-        assert task["timeout"] == 300
-
-    async def test_returns_failure_dict_on_exception(
-        self, registered_mcp: _StubMCP, mock_pool_manager: AsyncMock
-    ) -> None:
-        mock_pool_manager.execute_on_pool = AsyncMock(side_effect=RuntimeError("Task failed"))
-        fn = registered_mcp.tools["pool_execute"]
-        result = await fn(pool_id="pool_1", prompt="x")
-        assert result["status"] == "failed"
-        assert "Task failed" in result["error"]
-        assert result["pool_id"] == "pool_1"
-
-
-# =============================================================================
-# TestPoolRouteExecute
-# =============================================================================
-
-
-class TestPoolRouteExecute:
-    """``pool_route_execute`` routes a task via a PoolSelector."""
-
-    async def test_least_loaded_default(
-        self, registered_mcp: _StubMCP, mock_pool_manager: AsyncMock
-    ) -> None:
-        fn = registered_mcp.tools["pool_route_execute"]
-        result = await fn(prompt="Write tests")
-        assert result["status"] == "completed"
-        _task, selector = mock_pool_manager.route_task.call_args.args
-        assert selector.value == "least_loaded"
-
-    async def test_round_robin_selector(
-        self, registered_mcp: _StubMCP, mock_pool_manager: AsyncMock
-    ) -> None:
-        fn = registered_mcp.tools["pool_route_execute"]
-        result = await fn(prompt="Write tests", pool_selector="round_robin")
-        assert result["status"] == "completed"
-        _task, selector = mock_pool_manager.route_task.call_args.args
-        assert selector.value == "round_robin"
-
-    async def test_returns_failure_dict_on_exception(
-        self, registered_mcp: _StubMCP, mock_pool_manager: AsyncMock
-    ) -> None:
-        mock_pool_manager.route_task = AsyncMock(side_effect=RuntimeError("Routing failed"))
-        fn = registered_mcp.tools["pool_route_execute"]
-        result = await fn(prompt="x")
-        assert result == {"status": "failed", "error": "Routing failed"}
-
-    async def test_explicit_caller_pool_allowlist_forwarded(
-        self, registered_mcp: _StubMCP, mock_pool_manager: AsyncMock
-    ) -> None:
-        """When the caller supplies an allowlist, it's forwarded to the
-        manager as-is so the manager can apply ADR-014 authorization."""
-        fn = registered_mcp.tools["pool_route_execute"]
-        await fn(
-            prompt="x",
-            pool_selector="peer_affinity",
-            caller_pool_allowlist=["pool_abc", "pool_xyz"],
-        )
-        _, kwargs = mock_pool_manager.route_task.call_args
-        assert set(kwargs["caller_pool_allowlist"]) == {"pool_abc", "pool_xyz"}
-
-    async def test_env_allowlist_used_when_arg_omitted(
-        self,
-        registered_mcp: _StubMCP,
-        mock_pool_manager: AsyncMock,
-        monkeypatch: pytest.MonkeyPatch,
-    ) -> None:
-        monkeypatch.setenv("MAHAVISHNU_PEER_AFFINITY_ALLOWLIST", "pool_env_a,pool_env_b")
-        fn = registered_mcp.tools["pool_route_execute"]
-        await fn(prompt="x", pool_selector="peer_affinity")
-        _, kwargs = mock_pool_manager.route_task.call_args
-        assert set(kwargs["caller_pool_allowlist"]) == {
-            "pool_env_a",
-            "pool_env_b",
-        }
-
-    async def test_explicit_allowlist_overrides_env(
-        self,
-        registered_mcp: _StubMCP,
-        mock_pool_manager: AsyncMock,
-        monkeypatch: pytest.MonkeyPatch,
-    ) -> None:
-        monkeypatch.setenv("MAHAVISHNU_PEER_AFFINITY_ALLOWLIST", "pool_env_only")
-        fn = registered_mcp.tools["pool_route_execute"]
-        await fn(
-            prompt="x",
-            pool_selector="peer_affinity",
-            caller_pool_allowlist=["pool_arg_a"],
-        )
-        _, kwargs = mock_pool_manager.route_task.call_args
-        assert set(kwargs["caller_pool_allowlist"]) == {"pool_arg_a"}
-
-    async def test_no_allowlist_passes_none_when_env_unset(
-        self,
-        registered_mcp: _StubMCP,
-        mock_pool_manager: AsyncMock,
-        monkeypatch: pytest.MonkeyPatch,
-    ) -> None:
-        monkeypatch.delenv("MAHAVISHNU_PEER_AFFINITY_ALLOWLIST", raising=False)
-        fn = registered_mcp.tools["pool_route_execute"]
-        await fn(prompt="x")
-        _, kwargs = mock_pool_manager.route_task.call_args
-        assert kwargs["caller_pool_allowlist"] is None
 
 
 # =============================================================================

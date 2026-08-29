@@ -69,9 +69,6 @@ TOOL_VERSIONS: dict[str, str] = {
     "terminal_launch_with_profile": "1.0.0",
     "terminal_list_profiles": "1.0.0",
     # Pool tools (pool_tools.py)
-    "pool_spawn": "1.0.0",
-    "pool_execute": "1.0.0",
-    "pool_route_execute": "1.0.0",
     "pool_scale": "1.0.0",
     "pool_close": "1.0.0",
     "pool_close_all": "1.0.0",
@@ -268,9 +265,6 @@ TOOL_VERSIONS: dict[str, str] = {
     "self_improvement_status": "1.0.0",
     # OpenTelemetry local trace query (otel_tools.py)
     "query_local_traces": "1.0.0",
-    # Pool dispatch / workflow result tools (pool_tools.py)
-    "dispatch_to_pool": "1.0.0",
-    "workflow_result": "1.0.0",
     # PyCharm IDE tools (pycharm_tools.py)
     "pycharm_health": "1.0.0",
     "pycharm_run_diagnostics": "1.0.0",

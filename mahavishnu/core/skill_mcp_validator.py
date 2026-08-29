@@ -48,8 +48,6 @@ KNOWN_TOOLS: frozenset[str] = frozenset(
         "mcp__session-buddy___code_get_symbol_graph_impl",
         "mcp__session-buddy___code_list_projects_impl",
         # mahavishnu (port 8680)
-        "mcp__mahavishnu__pool_spawn",
-        "mcp__mahavishnu__pool_route_execute",
         "mcp__mahavishnu__pool_health",
         "mcp__mahavishnu__trigger_workflow",
         "mcp__mahavishnu__get_health",
@@ -113,7 +111,6 @@ KNOWN_TOOLS: frozenset[str] = frozenset(
         "mcp__mahavishnu__pool_scale",
         "mcp__mahavishnu__pool_close",
         "mcp__mahavishnu__pool_close_all",
-        "mcp__mahavishnu__pool_execute",
         "mcp__mahavishnu__pool_monitor",
         "mcp__mahavishnu__pool_search_memory",
         "mcp__mahavishnu__pool_list",
