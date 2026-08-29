@@ -97,6 +97,9 @@ prefect = "mahavishnu.engines.prefect_adapter:prefect_adapter_entries"
 agno = "mahavishnu.engines.agno_adapter:agno_adapter_entries"
 worker = "mahavishnu.core.adapters.worker:worker_adapter_entries"
 
+[project.entry-points."bodai.apps"]
+mahavishnu = "mahavishnu._main_cli:app"
+
 [dependency-groups]
 # Core development and testing
 # Includes the lazy-imported runtime groups so the test suite can exercise
