@@ -1,13 +1,10 @@
 """Terminal adapters for different terminal backends.
 
 Available adapters:
-- CrowTerminalAdapter: crow-mcp PTY terminal (requires crow-mcp MCP server)
+- CrowTerminalAdapter: PTY via bodai-crow HTTP MCP server (requires crow_enabled=True)
 - MockTerminalAdapter: Simulated terminal for testing
-
-The mcpretentious adapter was removed 2026-08-12 (see
-``docs/followups/2026-08-12-mcpretentious-removed.md``). The default
-``adapter_preference`` is now ``tmux``; ``crow`` remains opt-in via
-``adapter_preference: "crow"`` + ``crow_enabled: true``.
+- TmuxTerminalAdapter: Constructed inside terminal.manager via the durable-worker
+  contract; not exported here. Default adapter per settings/mahavishnu.yaml.
 
 Example usage:
     >>> from mahavishnu.terminal.adapters import MockTerminalAdapter

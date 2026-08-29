@@ -40,7 +40,7 @@ BUILTIN_BACKENDS: dict[str, PtyBackend] = {
 def check_prerequisites(backend: PtyBackend) -> list[str]:
     """Return a list of missing prerequisites (empty = all good).
 
-    Called at McpretentiousClient construction time so failures surface
-    with a clear message instead of every subsequent tool call timing out.
+    Used by any code that wants to fail fast on a missing PTY binary
+    (e.g. tmux) instead of letting subprocess spawn fail at first call.
     """
     return [req for req in backend.requires if shutil.which(req) is None]

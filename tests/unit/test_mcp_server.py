@@ -16,7 +16,6 @@ from mahavishnu.core.app import MahavishnuApp
 from mahavishnu.core.config import MahavishnuSettings
 from mahavishnu.mcp.server_core import (
     FastMCPServer,
-    McpretentiousMCPClient,
     run_server,
 )
 from mahavishnu.mcp.server_core import (
@@ -124,165 +123,6 @@ def server(mock_app):
 
 
 # =============================================================================
-# McpretentiousMCPClient Tests
-# =============================================================================
-
-
-class TestMcpretentiousMCPClient:
-    """Test suite for McpretentiousMCPClient wrapper."""
-
-    def test_initialization(self):
-        """Test client initializes correctly with required attributes."""
-        client = McpretentiousMCPClient()
-
-        assert client._started is False
-        assert client._client is not None
-        assert hasattr(client._client, "start")
-
-    @pytest.mark.asyncio
-    async def test_ensure_started_first_time(self):
-        """Test starting the mcpretentious server for the first time."""
-        client = McpretentiousMCPClient()
-        client._client.start = AsyncMock()
-
-        await client._ensure_started()
-
-        assert client._started is True
-        client._client.start.assert_called_once()
-
-    @pytest.mark.asyncio
-    async def test_ensure_started_already_started(self):
-        """Test that ensure_started doesn't start if already started."""
-        client = McpretentiousMCPClient()
-        client._client.start = AsyncMock()
-        client._started = True
-
-        await client._ensure_started()
-
-        client._client.start.assert_not_called()
-
-    @pytest.mark.asyncio
-    async def test_ensure_start_failure_raises_runtime_error(self):
-        """Test that start failures raise RuntimeError with helpful message."""
-        client = McpretentiousMCPClient()
-        client._client.start = AsyncMock(side_effect=Exception("uvx not found"))
-
-        with pytest.raises(RuntimeError, match="Could not start mcpretentious server"):
-            await client._ensure_started()
-
-    @pytest.mark.asyncio
-    async def test_call_tool_open(self):
-        """Test calling mcpretentious-open tool."""
-        client = McpretentiousMCPClient()
-        client._client.open_terminal = AsyncMock(return_value="term_abc123")
-        client._client.start = AsyncMock()
-
-        result = await client.call_tool("mcpretentious-open", {"columns": 100, "rows": 30})
-
-        assert result == {"terminal_id": "term_abc123"}
-        client._client.open_terminal.assert_called_once_with(columns=100, rows=30)
-
-    @pytest.mark.asyncio
-    async def test_call_tool_open_with_defaults(self):
-        """Test mcpretentious-open uses default dimensions."""
-        client = McpretentiousMCPClient()
-        client._client.open_terminal = AsyncMock(return_value="term_def")
-        client._client.start = AsyncMock()
-
-        result = await client.call_tool("mcpretentious-open", {})
-
-        assert result == {"terminal_id": "term_def"}
-        client._client.open_terminal.assert_called_once_with(columns=80, rows=24)
-
-    @pytest.mark.asyncio
-    async def test_call_tool_type(self):
-        """Test calling mcpretentious-type tool."""
-        client = McpretentiousMCPClient()
-        client._client.type_text = AsyncMock()
-        client._client.start = AsyncMock()
-
-        result = await client.call_tool(
-            "mcpretentious-type", {"terminal_id": "term_123", "input": ["hello", "world"]}
-        )
-
-        assert result == {}
-        client._client.type_text.assert_called_once_with("term_123", "hello", "world")
-
-    @pytest.mark.asyncio
-    async def test_call_tool_read(self):
-        """Test calling mcpretentious-read tool."""
-        client = McpretentiousMCPClient()
-        client._client.read_text = AsyncMock(return_value="output text\nline 2")
-        client._client.start = AsyncMock()
-
-        result = await client.call_tool(
-            "mcpretentious-read", {"terminal_id": "term_123", "limit_lines": 10}
-        )
-
-        assert result == {"output": "output text\nline 2"}
-        client._client.read_text.assert_called_once_with("term_123", lines=10)
-
-    @pytest.mark.asyncio
-    async def test_call_tool_read_without_limit(self):
-        """Test mcpretentious-read without limit_lines parameter."""
-        client = McpretentiousMCPClient()
-        client._client.read_text = AsyncMock(return_value="all output")
-        client._client.start = AsyncMock()
-
-        result = await client.call_tool("mcpretentious-read", {"terminal_id": "term_123"})
-
-        assert result == {"output": "all output"}
-        client._client.read_text.assert_called_once_with("term_123", lines=None)
-
-    @pytest.mark.asyncio
-    async def test_call_tool_close(self):
-        """Test calling mcpretentious-close tool."""
-        client = McpretentiousMCPClient()
-        client._client.close_terminal = AsyncMock()
-        client._client.start = AsyncMock()
-
-        result = await client.call_tool("mcpretentious-close", {"terminal_id": "term_123"})
-
-        assert result == {}
-        client._client.close_terminal.assert_called_once_with("term_123")
-
-    @pytest.mark.asyncio
-    async def test_call_tool_list(self):
-        """Test calling mcpretentious-list tool."""
-        client = McpretentiousMCPClient()
-        client._client.list_terminals = AsyncMock(return_value=["term_1", "term_2"])
-        client._client.start = AsyncMock()
-
-        result = await client.call_tool("mcpretentious-list", {})
-
-        assert result == {"terminals": ["term_1", "term_2"]}
-        client._client.list_terminals.assert_called_once()
-
-    @pytest.mark.asyncio
-    async def test_call_tool_unknown_tool(self):
-        """Test calling unknown tool raises ValueError."""
-        client = McpretentiousMCPClient()
-        client._client.start = AsyncMock()
-
-        await client._ensure_started()
-
-        with pytest.raises(ValueError, match="Unknown tool: unknown_tool"):
-            await client.call_tool("unknown_tool", {})
-
-    @pytest.mark.asyncio
-    async def test_call_tool_error_propagates(self):
-        """Test that tool call errors are propagated and logged."""
-        client = McpretentiousMCPClient()
-        client._client.start = AsyncMock()
-        client._client.list_terminals = AsyncMock(side_effect=RuntimeError("Connection lost"))
-
-        await client._ensure_started()
-
-        with pytest.raises(RuntimeError, match="Connection lost"):
-            await client.call_tool("mcpretentious-list", {})
-
-
-# =============================================================================
 # FastMCPServer Initialization Tests
 # =============================================================================
 
@@ -297,7 +137,10 @@ class TestFastMCPServerInitialization:
         assert server.app == mock_app
         assert server.server is not None
         assert isinstance(server.server, FastMCP)
-        assert server.mcp_client is not None
+        # ``server.mcp_client`` is no longer pre-populated after commit
+        # ``e77dda66`` (mcpretentious removal). Tool registrars dereference
+        # it via ``getattr(server, "mcp_client", None)`` so absence is OK.
+        assert getattr(server, "mcp_client", None) is None
 
     def test_initialization_with_config(self, mock_settings):
         """Test server initialization creates new app if not provided."""
@@ -847,6 +690,8 @@ class TestServerLifecycle:
     @pytest.mark.asyncio
     async def test_server_stop(self, server):
         """Test server stops and cleans up resources."""
+        # Inject a fake mcp_client so the lifecycle helper has something to call.
+        server.mcp_client = MagicMock()
         server.mcp_client._client.stop = AsyncMock()
 
         await server.stop()
@@ -856,6 +701,8 @@ class TestServerLifecycle:
     @pytest.mark.asyncio
     async def test_server_stop_handles_errors(self, server):
         """Test server stop handles cleanup errors gracefully."""
+        # Inject a fake mcp_client whose _client.stop raises.
+        server.mcp_client = MagicMock()
         server.mcp_client._client.stop = AsyncMock(side_effect=Exception("Stop failed"))
 
         # Should not raise exception
@@ -1005,9 +852,11 @@ class TestMCPIntegration:
         assert isinstance(server.server, FastMCP)
 
     def test_mcp_client_initialized(self, server):
-        """Test that MCP client wrapper is initialized."""
-        assert server.mcp_client is not None
-        assert isinstance(server.mcp_client, McpretentiousMCPClient)
+        """``server.mcp_client`` is not pre-populated after the mcpretentious
+        removal. Tool registrars dereference it via ``getattr(server,
+        "mcp_client", None)`` so absence is the expected state.
+        """
+        assert getattr(server, "mcp_client", None) is None
 
     @pytest.mark.asyncio
     async def test_tool_registration_via_decorator(self, server):

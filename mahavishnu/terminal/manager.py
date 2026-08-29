@@ -194,8 +194,8 @@ class TerminalManager:
             command = session_info.get("command", "")
 
             try:
-                # For mcpretentious → mcpretentious (different instances)
-                # We can recreate sessions with the same command
+                # Recreate sessions on the new adapter with the same command.
+                # Re-keyed by the new adapter's session id; old ids are dead.
                 new_session_id = await new_adapter.launch_session(
                     command,
                     columns=self.config.default_columns,
@@ -459,8 +459,8 @@ class TerminalManager:
 
         Priority order:
         1. mock - Always works, no dependencies (default)
-        2. mcpretentious - Requires MCP client
-        3. tmux - Default durable-worker terminal (Spec §9.4)
+        2. tmux - Default durable-worker terminal (Spec §9.4)
+        3. crow - Bundled HTTP MCP bridge to bodai-crow (requires crow_enabled=True)
 
         Args:
             config: MahavishnuSettings with terminal config
@@ -546,7 +546,7 @@ class TerminalManager:
         if preference == "iterm2":
             warnings.warn(
                 "adapter_preference='iterm2' is deprecated and has been removed. "
-                "Use 'tmux' or 'mcpretentious' instead.",
+                "Use 'tmux' or 'crow' instead.",
                 DeprecationWarning,
                 stacklevel=2,
             )

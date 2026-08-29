@@ -208,10 +208,34 @@ def register_terminal_tools(
                     socket_dir=Path.home() / ".mahavishnu" / "tmux",
                 )
             )
+        elif adapter_name == "crow":
+            config = getattr(terminal_manager, "config", None)
+            crow_enabled = bool(getattr(config, "crow_enabled", False))
+            if not crow_enabled:
+                return {
+                    "status": "error",
+                    "message": (
+                        "crow adapter requested but terminal.crow_enabled is false. "
+                        "Set terminal.crow_enabled=true in settings/local.yaml and restart."
+                    ),
+                }
+            # Construct a fresh BodaiComponentMCPClient targeting the configured
+            # crow HTTP server, then wrap it in a CrowTerminalAdapter. Mirrors
+            # the boot path in mcp/bootstrap.py:_build_crow_adapter so the two
+            # converge on the same factory.
+            from ...mcp.crow_server import create_crow_mcp_client
+            from ...terminal.adapters.crow import CrowTerminalAdapter
+
+            new_adapter = CrowTerminalAdapter(
+                create_crow_mcp_client(
+                    host=getattr(config, "crow_http_host", None),
+                    port=getattr(config, "crow_http_port", None),
+                )
+            )
         else:
             return {
                 "status": "error",
-                "message": f"Unknown adapter: {adapter_name}. Use 'tmux'",
+                "message": f"Unknown adapter: {adapter_name}. Use 'tmux' or 'crow'",
             }
 
         # Perform the switch
@@ -237,12 +261,26 @@ def register_terminal_tools(
     @mcp.tool()
     async def terminal_list_adapters() -> dict:
         """List all available terminal adapters."""
-        adapters = {
-            "mcpretentious": {
+        # Built dynamically from the live terminal manager + crow_enabled flag.
+        # tmux and mock are always available; crow is opt-in via crow_enabled.
+        config = getattr(terminal_manager, "config", None)
+        crow_enabled = bool(getattr(config, "crow_enabled", False))
+
+        adapters: dict[str, dict[str, str]] = {
+            "tmux": {
                 "status": "available",
-                "description": "PTY-based terminal management (universal)",
-            }
+                "description": "Durable-worker terminal via local tmux subprocess",
+            },
+            "mock": {
+                "status": "available",
+                "description": "Simulated terminal for tests and offline fallbacks",
+            },
         }
+        if crow_enabled:
+            adapters["crow"] = {
+                "status": "available",
+                "description": "PTY via bodai-crow HTTP MCP bridge",
+            }
 
         return {
             "adapters": adapters,

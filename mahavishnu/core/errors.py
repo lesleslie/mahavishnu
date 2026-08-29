@@ -380,7 +380,7 @@ class MahavishnuError(Exception):
             "crow-mcp terminal server is not reachable",
             "Check 'crow-mcp status' or restart the crow-mcp process",
             "Verify crow-mcp is listed in .mcp.json and the server is running",
-            "Switch adapter: 'mahavishnu terminal switch-adapter mcpretentious'",
+            "Switch adapter: 'mahavishnu terminal switch-adapter tmux'",
         ],
         ErrorCode.OPENHANDS_SERVICE_ERROR: [
             "OpenHands service returned an unexpected error",

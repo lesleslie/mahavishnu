@@ -9,5 +9,5 @@ def test_tmux_backend_registered() -> None:
     assert "tmux" in BUILTIN_BACKENDS
     entry = BUILTIN_BACKENDS["tmux"]
     assert entry.name == "tmux"
-    assert "tmux" in entry.command  # binary, not "npx mcpretentious"
+    assert "tmux" in entry.command  # binary, not "npx ..."
     assert "tmux" in entry.requires

@@ -258,8 +258,8 @@ class TerminalGridManager:
         """Capture output from a session.
 
         AppleScript cannot read terminal buffer. Returns a placeholder message
-        directing users to the tmux adapter (the default durable PTY backend
-        after the 2026-08-12 mcpretentious removal) for actual output capture.
+        directing users to the tmux adapter (the default durable PTY backend)
+        for actual output capture.
         """
         grid = self._grids.get(grid_id)
         if not grid:

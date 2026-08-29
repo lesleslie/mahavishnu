@@ -9,6 +9,7 @@ operator's preference.
 The mcpretentious adapter was removed 2026-08-12 (see
 ``docs/followups/2026-08-12-mcpretentious-removed.md``). The only PTY
 backends now are ``tmux`` (default) and ``crow`` (opt-in via
+crow_enabled + Bodai-component HTTP MCP server) — see ``adapters/crow.py`` and ``mcp/crow_server.py``.
 ``crow_enabled: true``). These tests now cover the ``tmux`` / ``crow``
 routing paths and the operator guidance surfaced when neither is
 available.

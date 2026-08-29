@@ -47,10 +47,9 @@ class TestBuiltinBackends:
         assert "tmux" in backend.requires
 
     def test_only_tmux_backend_registered(self) -> None:
-        # The mcpretentious backend was removed 2026-08-12 (see
-        # ``docs/followups/2026-08-12-mcpretentious-removed.md``). The only
-        # builtin left is tmux; if you add a new entry here, also update
-        # docs/terminal/backends.md and add backends-specific tests for it.
+        # Only the tmux PTY backend is registered. If you add a new entry
+        # here, also update docs/terminal/backends.md and add a
+        # backends-specific test for it.
         assert list(BUILTIN_BACKENDS) == ["tmux"]
 
     def test_all_backends_have_command_args_name(self) -> None:
