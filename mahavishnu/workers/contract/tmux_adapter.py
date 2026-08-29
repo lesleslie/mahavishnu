@@ -4,7 +4,6 @@ import dataclasses
 import os
 from pathlib import Path
 import re
-import shlex
 import subprocess
 from typing import TYPE_CHECKING
 
@@ -89,41 +88,32 @@ def create_session(
     window_name: str,
     command: Sequence[str],
 ) -> TmuxSessionInfo:
-    """Create a new detached tmux session and launch ``command`` in its first pane.
+    """Create a new detached tmux session and exec ``command`` in its first pane.
 
-    Returns the session metadata, including the pane id and attach command.
-    Raises :class:`TmuxAdapterError` on failure.
+    The command is passed as a positional argv after ``--`` so tmux exec's it
+    directly without a shell round-trip. Pre-quoting / shlex.join is FORBIDDEN
+    here — see commit msg of fix: shlex.join was producing doubly-quoted output
+    that zsh could not parse.
     """
     _validate_socket_path(socket)
     _validate_session_name(session)
     _validate_session_name(window_name)
     socket_path = Path(socket)
     socket_path.parent.mkdir(parents=True, exist_ok=True)
-    # Spec §9: 0700 on the tmux socket parent directory. Wrapped in
-    # try/except because the parent may be a system path we don't own
-    # (e.g. /tmp on multi-user hosts).
     try:
         os.chmod(socket_path.parent, 0o700)
     except PermissionError as e:
         raise TmuxAdapterError(
             f"cannot chmod socket parent {socket_path.parent!s} to 0700: {e}"
         ) from e
-    # -d: detached, -s: session name, -n: window name, -P: print info
-    quoted = shlex.join(command)
+
     proc = subprocess.run(
         [
-            "tmux",
-            "-S",
-            socket,
-            "new-session",
-            "-d",
-            "-s",
-            session,
-            "-n",
-            window_name,
-            "-P",
-            "-F",
-            "#{session_name}:#{window_id}:#{pane_id}",
+            "tmux", "-S", socket, "new-session", "-d",
+            "-s", session, "-n", window_name,
+            "-P", "-F", "#{session_name}:#{window_id}:#{pane_id}",
+            "--",
+            *command,
         ],
         check=False,
         capture_output=True,
@@ -139,17 +129,13 @@ def create_session(
     if len(parts) != 3:
         raise TmuxAdapterError(f"unexpected tmux new-session -P output: {proc.stdout!r}")
     session_name, window_id, pane_id = parts
-    # Validate the parsed session name too (the -F template is fixed
-    # but we should still reject anything malformed).
     _validate_session_name(session_name)
-    # Spec §9: tighten the freshly-created socket file's mode.
     if socket_path.exists():
         try:
             os.chmod(socket, 0o600)
         except PermissionError as e:
             raise TmuxAdapterError(f"cannot chmod socket {socket} to 0600: {e}") from e
-    # Launch the command inside the pane.
-    _run(socket, "send-keys", "-t", pane_id, quoted, "Enter")
+
     return TmuxSessionInfo(
         socket=socket,
         session=session_name,
