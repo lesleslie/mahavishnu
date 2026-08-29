@@ -30,6 +30,12 @@ import httpx
 from tenacity import retry, stop_after_attempt, wait_exponential
 
 from ..core.adapters.base import AdapterCapabilities, AdapterType, OrchestratorAdapter
+from ..core.capabilities import (
+    Capability,
+    CapabilityKind,
+    CapabilityState,
+    TypeSchema,
+)
 
 # Canonical Agno config schema — imported from core.config.
 # The previous duplicates of LLMProvider, MemoryBackend, AgnoLLMConfig,
@@ -547,6 +553,41 @@ class AgnoAdapter(OrchestratorAdapter):
     def capabilities(self) -> AdapterCapabilities:
         """Return adapter capabilities."""
         return self._capabilities
+
+    @property
+    def provides(self) -> list[Capability]:
+        """Capabilities this engine exposes to the conductor.
+
+        Surfaces multi-agent team orchestration, task decomposition, and
+        tool-use loops so the worker-registry-capability-refactor conductor
+        (Phase 3a) can route agent-team workloads here.
+        """
+        return [
+            Capability(
+                id="engine:multi-agent-team",
+                kind=CapabilityKind.ENGINE,
+                description="Multi-agent team orchestration with role assignment",
+                io_in=TypeSchema(),
+                io_out=TypeSchema(),
+                state=CapabilityState.EPHEMERAL,
+            ),
+            Capability(
+                id="engine:task-decomposition",
+                kind=CapabilityKind.ENGINE,
+                description="Decompose complex goals into agent-runnable subtasks",
+                io_in=TypeSchema(),
+                io_out=TypeSchema(),
+                state=CapabilityState.EPHEMERAL,
+            ),
+            Capability(
+                id="engine:tool-use-loop",
+                kind=CapabilityKind.ENGINE,
+                description="Agent loop with native tool calling and MCP integration",
+                io_in=TypeSchema(),
+                io_out=TypeSchema(),
+                state=CapabilityState.EPHEMERAL,
+            ),
+        ]
 
     @property
     def agent_team_manager(self) -> AgentTeamManager | None:

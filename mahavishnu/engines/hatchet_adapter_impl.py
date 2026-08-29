@@ -13,6 +13,13 @@ import os
 from typing import Any
 
 from mahavishnu.core.adapters.base import AdapterCapabilities, AdapterType, OrchestratorAdapter
+from mahavishnu.core.capabilities import (
+    Capability,
+    CapabilityKind,
+    CapabilityState,
+    CostHint,
+    TypeSchema,
+)
 from mahavishnu.core.config import HatchetConfig
 
 logger = logging.getLogger(__name__)
@@ -50,6 +57,26 @@ class HatchetAdapterImpl(OrchestratorAdapter):
             has_cloud_ui=True,
             supports_multi_agent=True,
         )
+
+    @property
+    def provides(self) -> list[Capability]:
+        """Capabilities this engine exposes to the conductor.
+
+        Surfaces ``engine:durable-flow-alternative`` so the worker-registry-capability-refactor
+        conductor (Phase 3a) can route durable-flow workloads to Hatchet
+        when preferred over Prefect (Hatchet is the alternative backend).
+        """
+        return [
+            Capability(
+                id="engine:durable-flow-alternative",
+                kind=CapabilityKind.ENGINE,
+                description="Durable agent-loop workflow execution via Hatchet",
+                io_in=TypeSchema(),
+                io_out=TypeSchema(),
+                state=CapabilityState.DURABLE,
+                cost_hint=CostHint(has_side_effects=True),
+            ),
+        ]
 
     async def initialize(self) -> None:
         """Connect to Hatchet server using HATCHET_CLIENT_TOKEN."""

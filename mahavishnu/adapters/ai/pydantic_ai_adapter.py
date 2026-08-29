@@ -33,6 +33,12 @@ from mahavishnu.core.adapters.base import (
     AdapterType,
     OrchestratorAdapter,
 )
+from mahavishnu.core.capabilities import (
+    Capability,
+    CapabilityKind,
+    CapabilityState,
+    TypeSchema,
+)
 from mahavishnu.core.errors import (
     AdapterInitializationError,
     ErrorCode,
@@ -339,6 +345,35 @@ class PydanticAIAdapter[OutputT: BaseModel](OrchestratorAdapter):
             supports_multi_agent=True,  # Agent chaining/hand-offs
             has_cloud_ui=False,  # No cloud UI
         )
+
+    @property
+    def provides(self) -> list[Capability]:
+        """Capabilities this engine exposes to the conductor.
+
+        Surfaces Pydantic-AI's typed agent runtime so the worker-registry-capability-refactor
+        conductor (Phase 3a) can route typed-tool-call workloads here. The
+        ``ai`` dependency group is optional, but this property is defined at
+        class body (no pydantic_ai runtime call) so it's safe to access on
+        lean installs once the module is importable.
+        """
+        return [
+            Capability(
+                id="engine:pydantic-ai-agent",
+                kind=CapabilityKind.ENGINE,
+                description="Type-safe Pydantic-AI agent runtime with structured outputs",
+                io_in=TypeSchema(),
+                io_out=TypeSchema(),
+                state=CapabilityState.EPHEMERAL,
+            ),
+            Capability(
+                id="engine:typed-tool-call",
+                kind=CapabilityKind.ENGINE,
+                description="Native typed tool calling via Pydantic-AI with MCP integration",
+                io_in=TypeSchema(),
+                io_out=TypeSchema(),
+                state=CapabilityState.EPHEMERAL,
+            ),
+        ]
 
     async def _ensure_initialized(self) -> None:
         """Ensure adapter is initialized before operations.

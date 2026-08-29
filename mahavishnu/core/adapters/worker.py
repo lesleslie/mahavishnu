@@ -8,6 +8,12 @@ from typing import Any
 from ...workers.manager import WorkerManager
 from ...workers.registry import resolve_worker_type
 from ..adapters.base import AdapterCapabilities, AdapterType, OrchestratorAdapter
+from ..capabilities import (
+    Capability,
+    CapabilityKind,
+    CapabilityState,
+    TypeSchema,
+)
 
 
 class WorkerOrchestratorAdapter(OrchestratorAdapter):
@@ -116,6 +122,24 @@ class WorkerOrchestratorAdapter(OrchestratorAdapter):
             has_cloud_ui=False,
             supports_multi_agent=False,
         )
+
+    @property
+    def provides(self) -> list[Capability]:
+        """Capabilities this engine exposes to the conductor.
+
+        Surfaces ``engine:terminal-execution`` so the worker-registry-capability-refactor
+        conductor (Phase 3a) can route terminal/worker-pool execution here.
+        """
+        return [
+            Capability(
+                id="engine:terminal-execution",
+                kind=CapabilityKind.ENGINE,
+                description="Spawn headless AI workers in terminals and execute prompts",
+                io_in=TypeSchema(),
+                io_out=TypeSchema(),
+                state=CapabilityState.INTERACTIVE,
+            ),
+        ]
 
     async def initialize(self) -> None:
         """Initialize the worker adapter."""

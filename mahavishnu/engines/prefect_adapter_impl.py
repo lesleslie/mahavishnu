@@ -82,6 +82,13 @@ from ..core.adapters.base import (
     AdapterType,
     OrchestratorAdapter,
 )
+from ..core.capabilities import (
+    Capability,
+    CapabilityKind,
+    CapabilityState,
+    CostHint,
+    TypeSchema,
+)
 from ..core.config import PrefectConfig, get_settings
 from ..core.errors import (
     ErrorCode,
@@ -585,6 +592,43 @@ class PrefectAdapter(OrchestratorAdapter):
             has_cloud_ui=True,
             supports_multi_agent=False,  # Prefect is not an agent framework
         )
+
+    @property
+    def provides(self) -> list[Capability]:
+        """Capabilities this engine exposes to the conductor.
+
+        Surfaced to the worker-registry-capability-refactor conductor
+        (Phase 3a) so it can resolve ``engine:durable-flow``,
+        ``engine:scheduled-task``, and ``engine:retry-with-backoff``
+        to this adapter.
+        """
+        return [
+            Capability(
+                id="engine:durable-flow",
+                kind=CapabilityKind.ENGINE,
+                description="Durable workflow execution with retries and scheduling",
+                io_in=TypeSchema(),
+                io_out=TypeSchema(),
+                state=CapabilityState.DURABLE,
+                cost_hint=CostHint(has_side_effects=True),
+            ),
+            Capability(
+                id="engine:scheduled-task",
+                kind=CapabilityKind.ENGINE,
+                description="Scheduled task execution via Prefect deployments",
+                io_in=TypeSchema(),
+                io_out=TypeSchema(),
+                state=CapabilityState.DURABLE,
+            ),
+            Capability(
+                id="engine:retry-with-backoff",
+                kind=CapabilityKind.ENGINE,
+                description="Retry with exponential backoff",
+                io_in=TypeSchema(),
+                io_out=TypeSchema(),
+                state=CapabilityState.DURABLE,
+            ),
+        ]
 
     # =========================================================================
     # Lifecycle Management

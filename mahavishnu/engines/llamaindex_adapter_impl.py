@@ -63,6 +63,12 @@ from ..core.adapters.base import (
     AdapterType,
     OrchestratorAdapter,
 )
+from ..core.capabilities import (
+    Capability,
+    CapabilityKind,
+    CapabilityState,
+    TypeSchema,
+)
 from ..core.errors import (
     AdapterError,
     ErrorCode,
@@ -291,6 +297,41 @@ class LlamaIndexAdapter(OrchestratorAdapter):
             supports_multi_agent=False,  # Single query engine
             has_cloud_ui=False,  # Local engine
         )
+
+    @property
+    def provides(self) -> list[Capability]:
+        """Capabilities this engine exposes to the conductor.
+
+        Surfaces ``engine:rag-retrieve``, ``engine:document-ingest``, and
+        ``engine:semantic-search`` so the worker-registry-capability-refactor
+        conductor (Phase 3a) can route RAG-style workloads here.
+        """
+        return [
+            Capability(
+                id="engine:rag-retrieve",
+                kind=CapabilityKind.ENGINE,
+                description="RAG retrieval-augmented generation over indexed documents",
+                io_in=TypeSchema(),
+                io_out=TypeSchema(),
+                state=CapabilityState.EPHEMERAL,
+            ),
+            Capability(
+                id="engine:document-ingest",
+                kind=CapabilityKind.ENGINE,
+                description="Ingest documents into the vector store with embeddings",
+                io_in=TypeSchema(),
+                io_out=TypeSchema(),
+                state=CapabilityState.EPHEMERAL,
+            ),
+            Capability(
+                id="engine:semantic-search",
+                kind=CapabilityKind.ENGINE,
+                description="Semantic similarity search over the vector index",
+                io_in=TypeSchema(),
+                io_out=TypeSchema(),
+                state=CapabilityState.EPHEMERAL,
+            ),
+        ]
 
     async def initialize(self) -> None:
         """Initialize the LlamaIndex adapter."""
