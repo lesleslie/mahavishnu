@@ -3699,7 +3699,7 @@ requires-dist = [
     { name = "llama-index-vector-stores-opensearch", specifier = ">=0.6.3,<0.7.0" },
     { name = "mcp-common", specifier = ">=0.20.0" },
     { name = "msgspec", specifier = ">=0.21.1,<0.22" },
-    { name = "oneiric", specifier = ">=0.20" },
+    { name = "oneiric", specifier = ">=0.19.0" },
     { name = "opentelemetry-api", specifier = ">=1.44.0" },
     { name = "opentelemetry-exporter-otlp-proto-grpc", specifier = ">=1.44.0" },
     { name = "opentelemetry-instrumentation", specifier = ">=0.65b0" },
@@ -4395,7 +4395,7 @@ wheels = [
 
 [[package]]
 name = "oneiric"
-version = "0.20.0"
+version = "0.19.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "aiobreaker" },
@@ -4417,9 +4417,9 @@ dependencies = [
     { name = "typer" },
     { name = "watchfiles" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/d5/c6/9efd73b012685dda00886f91110feafa114c02311c0430dacfbc58c71aca/oneiric-0.20.0.tar.gz", hash = "sha256:cc715b863c091b6e6658fe8e8ac3b14b11a1be3a7badb800b65a02e0e01357c2", size = 1587902, upload-time = "2026-08-29T08:39:51.2Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/e1/48/0b744e7a01a3c4a6252611ebd9c5d6ff95aa6c3af5a6668e2a02cf8a9a4f/oneiric-0.19.0.tar.gz", hash = "sha256:f444ff1950d9b50772b335245452e23218ab11f968ab4f89e758ea2ac77a2058", size = 1581530, upload-time = "2026-08-27T07:09:25.129Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/33/6d/3fd5b72e3c9cda4190b465bc1956b480efd3c4ec0ef788dce30f3fbc8d72/oneiric-0.20.0-py3-none-any.whl", hash = "sha256:da4671d9f52f541f5d9910ea0a2f14fef65b2833da0c77d84390973486bf9673", size = 393424, upload-time = "2026-08-29T08:39:49.391Z" },
+    { url = "https://files.pythonhosted.org/packages/38/0c/f296e7bc2f7a07337434c4338266730f5fae678b1da495c7afa932d5bda0/oneiric-0.19.0-py3-none-any.whl", hash = "sha256:4b700442e9686b13998e475d25d9fc511cf2acbd49000d64fd7d9364f6c361a4", size = 390548, upload-time = "2026-08-27T07:09:23.183Z" },
 ]
 
 [[package]]

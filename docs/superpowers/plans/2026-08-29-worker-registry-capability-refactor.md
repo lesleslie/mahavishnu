@@ -87,6 +87,8 @@ ______________________________________________________________________
 
 ## Phase 1 — Stage 1: Worker Bootstrap Fix
 
+## Phase 1 — Stage 1: Worker Bootstrap Fix
+
 The bug: `WorkerManager.create_worker()` constructs `command=[WorkerConfig.command]` (a single-element argv containing the pre-quoted shell string). `tmux_adapter.create_session()` does `shlex.join()` on it and `send-keys`' the doubly-quoted text into a fresh zsh pane. zsh can't parse it.
 
 **Fix:** Pass the command directly to `tmux new-session -- <command>` instead of `send-keys`. The tmux_adapter change is what makes this work; `WorkerManager`'s single-element argv (which is currently a *single string* in the legacy code) becomes a list-of-strings argv that tmux passes to exec directly.

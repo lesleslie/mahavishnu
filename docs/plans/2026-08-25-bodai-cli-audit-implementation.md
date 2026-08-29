@@ -1,14 +1,12 @@
 # Bodai Core 7 CLI Audit & Standardization Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [x]`) syntax for tracking.
+> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Every Bodai Core 7 CLI exposes consistent `version`, `doctor`, `health` global commands; a single `bodai` umbrella CLI composes all seven via entry-point discovery; CLI surface is inventoried and audited for staleness quarterly.
 
 **Architecture:** Shared `BodaiCLIBase(typer.Typer)` in `oneiric.cli.base` provides the contract. Each Core 7 repo's CLI converts to extend the base class. `MCPServerCLIFactory.register_lifecycle_handlers()` lets the 3 lifecycle-bearing repos (crackerjack, dhara, session-buddy) keep their `--start/stop/restart/status/health` commands via the base class. `bodai` umbrella discovers sub-CLIs via the `bodai.apps` entry-point group and mounts them via Typer `add_typer`. Per-repo CLI surface is inventoried via `scripts/audit_cli_inventory.py`; quarterly cadence re-runs for staleness.
 
 **Tech Stack:** Python 3.14, Typer ≥0.9, Rich ≥13, Pydantic v2, pytest, uv, GitHub Actions (umbrella CI).
-
-**Plan status:** COMPLETE 2026-08-29 — all 13 sub-tasks shipped. See `BODAI_REPO_REGISTRY.md` "CLI surface summary" section for the post-audit command count and `docs/audit-inventory/findings-staleness.md` for the staleness sweep.
 
 **Spec:** `/Users/les/Projects/mahavishnu/docs/plans/2026-08-25-bodai-cli-audit.md`
 
@@ -53,7 +51,7 @@ ______________________________________________________________________
 
 - Produces: per-repo JSON inventory + MD summary; PHASE_0_BASELINE.json aggregate
 
-- [x] **Step 1: Write the failing test**
+- [ ] **Step 1: Write the failing test**
 
 ```python
 # tests/unit/test_audit_cli_inventory.py
@@ -75,12 +73,12 @@ def test_inventory_mahavishnu_returns_per_command_fields(tmp_path):
         }
 ```
 
-- [x] **Step 2: Run test to verify it fails**
+- [ ] **Step 2: Run test to verify it fails**
 
 Run: `cd /Users/les/Projects/mahavishnu && uv run pytest tests/unit/test_audit_cli_inventory.py -v`
 Expected: FAIL with `ModuleNotFoundError: No module named 'scripts.audit_cli_inventory'`
 
-- [x] **Step 3: Write minimal implementation**
+- [ ] **Step 3: Write minimal implementation**
 
 ```python
 # scripts/audit_cli_inventory.py
@@ -302,12 +300,12 @@ if __name__ == "__main__":
     app()
 ```
 
-- [x] **Step 4: Run test to verify it passes**
+- [ ] **Step 4: Run test to verify it passes**
 
 Run: `cd /Users/les/Projects/mahavishnu && uv run pytest tests/unit/test_audit_cli_inventory.py -v`
 Expected: PASS
 
-- [x] **Step 5: Commit**
+- [ ] **Step 5: Commit**
 
 ```bash
 cd /Users/les/Projects/mahavishnu
@@ -326,12 +324,12 @@ ______________________________________________________________________
 
 **Context:** Most-impactful 4-character fix in the plan. Phase 4.2's `register_lifecycle_handlers` extension would otherwise re-mount silently broken handlers.
 
-- [x] **Step 1: Read the two sites to confirm they're Python 2 syntax**
+- [ ] **Step 1: Read the two sites to confirm they're Python 2 syntax**
 
 Run: `grep -n 'except ValueError, OSError:' /Users/les/Projects/mcp-common/mcp_common/cli/factory.py`
 Expected: 2 matches at lines 530 and 745
 
-- [x] **Step 2: Fix line 530**
+- [ ] **Step 2: Fix line 530**
 
 Edit `/Users/les/Projects/mcp-common/mcp_common/cli/factory.py` at line 530:
 
@@ -339,16 +337,16 @@ Edit `/Users/les/Projects/mcp-common/mcp_common/cli/factory.py` at line 530:
 
 - Replace: `except (ValueError, OSError):`
 
-- [x] **Step 3: Fix line 745**
+- [ ] **Step 3: Fix line 745**
 
 Same edit at line 745.
 
-- [x] **Step 4: Run mcp-common tests**
+- [ ] **Step 4: Run mcp-common tests**
 
 Run: `cd /Users/les/Projects/mcp-common && uv run pytest tests/ -x`
 Expected: PASS
 
-- [x] **Step 5: Commit**
+- [ ] **Step 5: Commit**
 
 ```bash
 cd /Users/les/Projects/mcp-common
@@ -387,11 +385,11 @@ Tasks:
 Report: total command count, number of stale/deprecated, any drift.
 ```
 
-- [x] **Step 1: Dispatch 6 inventory subagents in parallel**
+- [ ] **Step 1: Dispatch 6 inventory subagents in parallel**
 
 Use the Agent tool with `subagent_type: general-purpose` and `isolation: worktree`. Run prompts for oneiric, dhara, session-buddy, akosha, crackerjack, mahavishnu in parallel.
 
-- [x] **Step 2: Verify all 6 inventory JSON files exist and parse**
+- [ ] **Step 2: Verify all 6 inventory JSON files exist and parse**
 
 Run:
 
@@ -403,12 +401,12 @@ done
 
 Expected: 6 "OK" lines
 
-- [x] **Step 3: Generate PHASE_0_BASELINE.json**
+- [ ] **Step 3: Generate PHASE_0_BASELINE.json**
 
 Run: `cd /Users/les/Projects/mahavishnu && uv run python scripts/audit_cli_inventory.py --all`
 Expected: `PHASE_0_BASELINE.json` written
 
-- [x] **Step 4: Confirm command counts meet minimum thresholds**
+- [ ] **Step 4: Confirm command counts meet minimum thresholds**
 
 Run:
 
@@ -426,7 +424,7 @@ print('OK: all minimum thresholds met')
 
 Expected: `OK`
 
-- [x] **Step 5: Commit PHASE_0_BASELINE.json**
+- [ ] **Step 5: Commit PHASE_0_BASELINE.json**
 
 ```bash
 cd /Users/les/Projects/mahavishnu
@@ -442,7 +440,7 @@ ______________________________________________________________________
 
 - Create: `/Users/les/Projects/mahavishnu/docs/audit-inventory/mcp-common-cli-inventory.md`
 
-- [x] **Step 1: Write mcp-common confirmation MD**
+- [ ] **Step 1: Write mcp-common confirmation MD**
 
 Create `/Users/les/Projects/mahavishnu/docs/audit-inventory/mcp-common-cli-inventory.md`:
 
@@ -470,7 +468,7 @@ no Typer app.
 
 ````
 
-- [x] **Step 2: Commit mcp-common confirmation**
+- [ ] **Step 2: Commit mcp-common confirmation**
 
 ```bash
 cd /Users/les/Projects/mahavishnu
@@ -520,11 +518,11 @@ Also produce `/Users/les/Projects/mahavishnu/scripts/validate_findings.py`:
 - Exits 0 on success, 1 on any broken link
 ```
 
-- [x] **Step 1: Dispatch the synthesis subagent**
+- [ ] **Step 1: Dispatch the synthesis subagent**
 
 Run the subagent prompt above using the Agent tool with `subagent_type: general-purpose`.
 
-- [x] **Step 2: Verify findings.md meets the 250-line CI gate**
+- [ ] **Step 2: Verify findings.md meets the 250-line CI gate**
 
 Run:
 
@@ -534,12 +532,12 @@ test "$(wc -l < /Users/les/Projects/mahavishnu/docs/audit-inventory/findings.md)
 
 Expected: `OK`
 
-- [x] **Step 3: Verify validate_findings.py passes**
+- [ ] **Step 3: Verify validate_findings.py passes**
 
 Run: `cd /Users/les/Projects/mahavishnu && python3 scripts/validate_findings.py docs/audit-inventory/findings.md`
 Expected: exit 0
 
-- [x] **Step 4: Commit findings.md + validate_findings.py**
+- [ ] **Step 4: Commit findings.md + validate_findings.py**
 
 ```bash
 cd /Users/les/Projects/mahavishnu
@@ -555,11 +553,11 @@ ______________________________________________________________________
 
 - Modify: `/Users/les/Projects/mahavishnu/.git/hooks/pre-commit`
 
-- [x] **Step 1: Read the current pre-commit hook**
+- [ ] **Step 1: Read the current pre-commit hook**
 
 Read `/Users/les/Projects/mahavishnu/.git/hooks/pre-commit`. Locate the `audit_no_secrets_in_mcp.py` invocation.
 
-- [x] **Step 2: Add the 250-line + validate_findings gate**
+- [ ] **Step 2: Add the 250-line + validate_findings gate**
 
 Append to the hook (after the `audit_no_secrets_in_mcp.py` invocation):
 
@@ -571,7 +569,7 @@ if [ -f "docs/audit-inventory/findings.md" ] && [ -f "scripts/validate_findings.
 fi
 ```
 
-- [x] **Step 3: Test the hook manually**
+- [ ] **Step 3: Test the hook manually**
 
 Run:
 
@@ -582,7 +580,7 @@ git -c user.name=les -c user.email=les@wedgwoodwebworks.com commit --allow-empty
 
 Expected: hook runs, no errors
 
-- [x] **Step 4: Reinstall via canonical installer**
+- [ ] **Step 4: Reinstall via canonical installer**
 
 Run: `cd /Users/les/Projects/mahavishnu && uv run mahavishnu index install-hooks .`
 Expected: hook regenerated with the gate
@@ -599,7 +597,7 @@ ______________________________________________________________________
 
 - Create: `/Users/les/Projects/session-buddy/tests/unit/test_shell_cli_command.py`
 
-- [x] **Step 1: Write the failing test**
+- [ ] **Step 1: Write the failing test**
 
 ```python
 # tests/unit/test_shell_cli_command.py
@@ -613,12 +611,12 @@ def test_shell_command_registered():
     assert "shell" in result.output
 ```
 
-- [x] **Step 2: Run test to verify it fails**
+- [ ] **Step 2: Run test to verify it fails**
 
 Run: `cd /Users/les/Projects/session-buddy && uv run pytest tests/unit/test_shell_cli_command.py -v`
 Expected: FAIL
 
-- [x] **Step 3: Implement the shell command**
+- [ ] **Step 3: Implement the shell command**
 
 Edit `/Users/les/Projects/session-buddy/session_buddy/cli/__init__.py`:
 
@@ -636,18 +634,18 @@ def shell_command() -> None:
     asyncio.run(_run())
 ```
 
-- [x] **Step 4: Run test + full suite**
+- [ ] **Step 4: Run test + full suite**
 
 Run: `cd /Users/les/Projects/session-buddy && uv run pytest tests/unit/test_shell_cli_command.py -v && uv run pytest tests/ -x`
 
-- [x] **Step 5: Update CHANGELOG.md**
+- [ ] **Step 5: Update CHANGELOG.md**
 
 ```markdown
 ### Changed
 - **`session-buddy shell` CLI command** is now wired. Previously the `SessionBuddyShell` was library-only.
 ```
 
-- [x] **Step 6: Commit**
+- [ ] **Step 6: Commit**
 
 ```bash
 cd /Users/les/Projects/session-buddy
@@ -665,7 +663,7 @@ ______________________________________________________________________
 
 - Modify: `/Users/les/Projects/dhara/README.md`
 
-- [x] **Step 1: Add docstring to `dhara admin`**
+- [ ] **Step 1: Add docstring to `dhara admin`**
 
 Edit `_create_admin_command` in `dhara/cli.py`:
 
@@ -683,7 +681,7 @@ def _create_admin_command(app, settings):
     """
 ```
 
-- [x] **Step 2: Update dhara README**
+- [ ] **Step 2: Update dhara README**
 
 Replace the `dhara db client` line in the README's CLI table with:
 
@@ -694,7 +692,7 @@ Replace the `dhara db client` line in the README's CLI table with:
 **Which shell to use?** `dhara admin` for configuration/adapter inspection; `dhara db client` for low-level druva storage access.
 ```
 
-- [x] **Step 3: Run dhara tests + commit**
+- [ ] **Step 3: Run dhara tests + commit**
 
 Run: `cd /Users/les/Projects/dhara && uv run pytest tests/ -x`
 Commit:
@@ -719,7 +717,7 @@ ______________________________________________________________________
 
 - Modify: `/Users/les/Projects/akosha/akosha/docs/ADMIN_SHELL.md`
 
-- [x] **Step 1: Write the failing test**
+- [ ] **Step 1: Write the failing test**
 
 ```python
 # tests/shell/test_alpha_gate.py
@@ -740,7 +738,7 @@ def test_stubs_enabled_when_flag_set():
         assert stub in ns
 ```
 
-- [x] **Step 2: Add `alpha_shell_commands_enabled` to AkoshaSettings**
+- [ ] **Step 2: Add `alpha_shell_commands_enabled` to AkoshaSettings**
 
 Edit `/Users/les/Projects/akosha/akosha/core/config.py`:
 
@@ -751,7 +749,7 @@ alpha_shell_commands_enabled: bool = Field(
 )
 ```
 
-- [x] **Step 3: Gate the stubs in adapter.py**
+- [ ] **Step 3: Gate the stubs in adapter.py**
 
 Edit `_add_akasha_namespace` in `akosha/shell/adapter.py`:
 
@@ -764,7 +762,7 @@ else:
     rprint("[dim]5 alpha shell commands (aggregate, search, detect, graph, trends) are disabled. Set alpha_shell_commands_enabled=true to enable. See akosha/docs/ADMIN_SHELL.md.[/dim]")
 ```
 
-- [x] **Step 4: Update ADMIN_SHELL.md**
+- [ ] **Step 4: Update ADMIN_SHELL.md**
 
 Add section after the existing alpha-command table:
 
@@ -779,7 +777,7 @@ To enable, set `akosha.alpha_shell_commands_enabled: bool = True`
 flag is false, akosha shell prints a one-line banner on startup.
 ```
 
-- [x] **Step 5: Run tests + commit**
+- [ ] **Step 5: Run tests + commit**
 
 Run: `cd /Users/les/Projects/akosha && uv run pytest tests/ -x`
 Commit:
@@ -798,11 +796,11 @@ ______________________________________________________________________
 
 - Modify: `/Users/les/Projects/akosha/pyproject.toml`
 
-- [x] **Step 1: Add ipython to dependencies**
+- [ ] **Step 1: Add ipython to dependencies**
 
 Edit `[project] dependencies` in `akosha/pyproject.toml`: add `"ipython>=9.14.0"`.
 
-- [x] **Step 2: Test + commit**
+- [ ] **Step 2: Test + commit**
 
 Run: `cd /Users/les/Projects/akosha && uv sync && uv run pytest tests/ -x`
 
@@ -820,17 +818,17 @@ ______________________________________________________________________
 
 - Modify: `/Users/les/Projects/crackerjack/crackerjack/shell/session_compat.py:75`
 
-- [x] **Step 1: Read the site**
+- [ ] **Step 1: Read the site**
 
 Run: `sed -n '70,80p' /Users/les/Projects/crackerjack/crackerjack/shell/session_compat.py`
 
-- [x] **Step 2: Fix the syntax**
+- [ ] **Step 2: Fix the syntax**
 
 - Find: `except ImportError, AttributeError:`
 
 - Replace: `except (ImportError, AttributeError):`
 
-- [x] **Step 3: Test + commit**
+- [ ] **Step 3: Test + commit**
 
 Run: `cd /Users/les/Projects/crackerjack && uv run pytest tests/ -x`
 
@@ -852,7 +850,7 @@ ______________________________________________________________________
 
 - Modify: 4 test files (per migration-safety review)
 
-- [x] **Step 1: Replace `crackerjack/interactive.py` with deprecation shim**
+- [ ] **Step 1: Replace `crackerjack/interactive.py` with deprecation shim**
 
 ```python
 """DEPRECATED: legacy interactive module.
@@ -872,12 +870,12 @@ warnings.warn(
 )
 ```
 
-- [x] **Step 2: Update 4 test files**
+- [ ] **Step 2: Update 4 test files**
 
 Run: `grep -rln 'from crackerjack.interactive import\|from crackerjack import interactive' /Users/les/Projects/crackerjack/tests/`
 For each: replace `crackerjack.interactive` with `crackerjack.cli.interactive`.
 
-- [x] **Step 3: Add deprecation test**
+- [ ] **Step 3: Add deprecation test**
 
 Create `tests/unit/test_interactive_legacy_deprecation.py`:
 
@@ -895,7 +893,7 @@ def test_legacy_interactive_emits_deprecation_warning():
         )
 ```
 
-- [x] **Step 4: Test + commit**
+- [ ] **Step 4: Test + commit**
 
 Run: `cd /Users/les/Projects/crackerjack && uv run pytest tests/ -x`
 
@@ -915,11 +913,11 @@ ______________________________________________________________________
 
 - Modify: `/Users/les/Projects/mahavishnu/mahavishnu/cli/monitoring_cli.py` (canonical stays)
 
-- [x] **Step 1: Determine which is canonical**
+- [ ] **Step 1: Determine which is canonical**
 
 Run: `grep -rn 'from mahavishnu.monitoring_cli\|from mahavishnu.cli.monitoring_cli' /Users/les/Projects/mahavishnu/mahavishnu/ --include='*.py'`
 
-- [x] **Step 2: Replace the redundant file with a shim**
+- [ ] **Step 2: Replace the redundant file with a shim**
 
 Suppose `mahavishnu/cli/monitoring_cli.py` is canonical:
 
@@ -928,7 +926,7 @@ Suppose `mahavishnu/cli/monitoring_cli.py` is canonical:
 from mahavishnu.cli.monitoring_cli import *  # noqa: F401,F403
 ```
 
-- [x] **Step 3: Test + commit**
+- [ ] **Step 3: Test + commit**
 
 Run: `cd /Users/les/Projects/mahavishnu && uv run pytest tests/ -x`
 
@@ -948,7 +946,7 @@ ______________________________________________________________________
 
 - Create: `/Users/les/Projects/mcp-common/tests/unit/cli/test_factory_register_handlers.py`
 
-- [x] **Step 1: Write the failing test**
+- [ ] **Step 1: Write the failing test**
 
 ```python
 # tests/unit/cli/test_factory_register_handlers.py
@@ -965,12 +963,12 @@ def test_register_lifecycle_handlers_mounts_start_stop_etc():
         assert cmd in result.output
 ```
 
-- [x] **Step 2: Run test to verify it fails**
+- [ ] **Step 2: Run test to verify it fails**
 
 Run: `cd /Users/les/Projects/mcp-common && uv run pytest tests/unit/cli/test_factory_register_handlers.py -v`
 Expected: FAIL
 
-- [x] **Step 3: Implement the method**
+- [ ] **Step 3: Implement the method**
 
 Edit `mcp_common/cli/factory.py`. Add to `MCPServerCLIFactory`:
 
@@ -989,7 +987,7 @@ def register_lifecycle_handlers(self, app: typer.Typer) -> None:
         app.command(name=name)(handler)
 ```
 
-- [x] **Step 4: Test + commit**
+- [ ] **Step 4: Test + commit**
 
 Run: `cd /Users/les/Projects/mcp-common && uv run pytest tests/ -x`
 
@@ -1009,7 +1007,7 @@ ______________________________________________________________________
 
 - `mahavishnu/mahavishnu/docs/ADMIN_SHELL.md`
 
-- [x] **Step 1: Cross-link in oneiric docs**
+- [ ] **Step 1: Cross-link in oneiric docs**
 
 Append to `/Users/les/Projects/oneiric/oneiric/docs/ONEIRIC_ADMIN_SHELL.md`:
 
@@ -1021,7 +1019,7 @@ All 5 per-repo admin shells share the `AdminShell` base class. See
 (MahavishnuShell adds `%repos`, `%workflow` magics).
 ```
 
-- [x] **Step 2: Reciprocal link in mahavishnu docs**
+- [ ] **Step 2: Reciprocal link in mahavishnu docs**
 
 Append to `/Users/les/Projects/mahavishnu/mahavishnu/docs/ADMIN_SHELL.md`:
 
@@ -1033,7 +1031,7 @@ All 5 per-repo admin shells share the `AdminShell` base class in
 canonical base class doc.
 ```
 
-- [x] **Step 3: Commit (2 separate commits)**
+- [ ] **Step 3: Commit (2 separate commits)**
 
 ```bash
 cd /Users/les/Projects/oneiric
@@ -1053,7 +1051,7 @@ ______________________________________________________________________
 
 - Create: `/Users/les/Projects/mahavishnu/docs/audit-inventory/findings-staleness.md`
 
-- [x] **Step 1: Run staleness check + generate findings**
+- [ ] **Step 1: Run staleness check + generate findings**
 
 Run:
 
@@ -1078,7 +1076,7 @@ print(f'Wrote docs/audit-inventory/findings-staleness.md with {len(findings)} ro
 "
 ```
 
-- [x] **Step 2: Commit**
+- [ ] **Step 2: Commit**
 
 ```bash
 cd /Users/les/Projects/mahavishnu
@@ -1096,27 +1094,27 @@ ______________________________________________________________________
 
 - Move: `/Users/les/Projects/oneiric/oneiric/cli.py` → `/Users/les/Projects/oneiric/oneiric/cli/__init__.py`
 
-- [x] **Step 1: Snapshot CLI command list (baseline)**
+- [ ] **Step 1: Snapshot CLI command list (baseline)**
 
 Run: `cd /Users/les/Projects/oneiric && python -m oneiric --help 2>&1 | head -40 > /tmp/oneiric-help-before.txt`
 
-- [x] **Step 2: Move cli.py**
+- [ ] **Step 2: Move cli.py**
 
 ```bash
 mkdir -p /Users/les/Projects/oneiric/oneiric/cli
 git -C /Users/les/Projects/oneiric mv oneiric/cli.py oneiric/cli/__init__.py
 ```
 
-- [x] **Step 3: Verify parity**
+- [ ] **Step 3: Verify parity**
 
 Run: `cd /Users/les/Projects/oneiric && python -m oneiric --help 2>&1 | head -40 > /tmp/oneiric-help-after.txt && diff /tmp/oneiric-help-before.txt /tmp/oneiric-help-after.txt`
 Expected: no diff
 
-- [x] **Step 4: Run tests**
+- [ ] **Step 4: Run tests**
 
 Run: `cd /Users/les/Projects/oneiric && uv run pytest tests/ -x`
 
-- [x] **Step 5: Commit**
+- [ ] **Step 5: Commit**
 
 ```bash
 cd /Users/les/Projects/oneiric
@@ -1134,7 +1132,7 @@ ______________________________________________________________________
 
 - Create: `/Users/les/Projects/oneiric/oneiric/tests/cli/test_base.py`
 
-- [x] **Step 1: Write the failing test**
+- [ ] **Step 1: Write the failing test**
 
 ```python
 # oneiric/tests/cli/test_base.py
@@ -1209,12 +1207,12 @@ def test_json_global_option_accepted():
     assert result.exit_code == ExitCode.SUCCESS
 ```
 
-- [x] **Step 2: Run test to verify it fails**
+- [ ] **Step 2: Run test to verify it fails**
 
 Run: `cd /Users/les/Projects/oneiric && uv run pytest oneiric/tests/cli/test_base.py -v`
 Expected: FAIL
 
-- [x] **Step 3: Implement `BodaiCLIBase`**
+- [ ] **Step 3: Implement `BodaiCLIBase`**
 
 Create `/Users/les/Projects/oneiric/oneiric/cli/base.py`:
 
@@ -1334,7 +1332,7 @@ class BodaiCLIBase(typer.Typer):
         raise NotImplementedError
 ```
 
-- [x] **Step 4: Run test + commit**
+- [ ] **Step 4: Run test + commit**
 
 Run: `cd /Users/les/Projects/oneiric && uv run pytest oneiric/tests/cli/test_base.py -v`
 
@@ -1370,7 +1368,7 @@ Tasks:
 Use the worktree pattern.
 ```
 
-- [x] **Step 1: Dispatch 6 conversion subagents in parallel**
+- [ ] **Step 1: Dispatch 6 conversion subagents in parallel**
 
 Use Agent tool with `isolation: worktree`. Each subagent gets the prompt above with their repo's values:
 
@@ -1386,7 +1384,7 @@ Use Agent tool with `isolation: worktree`. Each subagent gets the prompt above w
 
 - `mahavishnu`: rename `_main_cli.py` → `main_cli.py` (with shim); convert
 
-- [x] **Step 2: Verify each repo's app is now a BodaiCLIBase**
+- [ ] **Step 2: Verify each repo's app is now a BodaiCLIBase**
 
 Run: `cd /Users/les/Projects/mahavishnu && for repo in oneiric dhara session-buddy akosha crackerjack mahavishnu; do cd /Users/les/Projects/$repo && python3 -c "from $([ \"$repo\" = oneiric ] && echo oneiric.cli || ([ \"$repo\" = session-buddy ] && echo session_buddy.cli || ([ \"$repo\" = crackerjack ] && echo crackerjack.cli || ([ \"$repo\" = mahavishnu ] && echo mahavishnu.main_cli || echo $repo.cli)))) import app; from oneiric.cli.base import BodaiCLIBase; assert isinstance(app, BodaiCLIBase); print('$repo OK')" 2>&1; done`
 Expected: 6 OKs
@@ -1401,7 +1399,7 @@ ______________________________________________________________________
 
 - Create: `/Users/les/Projects/mahavishnu/scripts/umbrella_smoke.sh`
 
-- [x] **Step 1: Write the smoke script**
+- [ ] **Step 1: Write the smoke script**
 
 Create `/Users/les/Projects/mahavishnu/scripts/umbrella_smoke.sh`:
 
@@ -1445,12 +1443,12 @@ bodai --help | grep -E '^\s+(oneiric|akosha|crackerjack|dhara|session-buddy|maha
 echo "=== ALL SMOKE TESTS PASSED ==="
 ```
 
-- [x] **Step 2: Make executable + test**
+- [ ] **Step 2: Make executable + test**
 
 Run: `chmod +x /Users/les/Projects/mahavishnu/scripts/umbrella_smoke.sh && /Users/les/Projects/mahavishnu/scripts/umbrella_smoke.sh 2>&1 | tail -10`
 Expected: `=== ALL SMOKE TESTS PASSED ===` (after Task 5.2 lands)
 
-- [x] **Step 3: Create GitHub Actions workflow**
+- [ ] **Step 3: Create GitHub Actions workflow**
 
 Create `/Users/les/Projects/mahavishnu/.github/workflows/umbrella-ci.yml`:
 
@@ -1491,7 +1489,7 @@ jobs:
         run: ./scripts/umbrella_smoke.sh
 ```
 
-- [x] **Step 4: Commit**
+- [ ] **Step 4: Commit**
 
 ```bash
 cd /Users/les/Projects/mahavishnu
@@ -1509,7 +1507,7 @@ ______________________________________________________________________
 
 - Modify: `/Users/les/Projects/mahavishnu/.claude/decisions/README.md`
 
-- [x] **Step 1: Write the decision doc**
+- [ ] **Step 1: Write the decision doc**
 
 Create `/Users/les/Projects/mahavishnu/.claude/decisions/2026-08-25-bodai-cli-contract.md`:
 
@@ -1565,14 +1563,14 @@ No vacuous implementations. Per-repo CI tests assert at least 1 check returned.
 
 ````
 
-- [x] **Step 2: Add row to decisions index**
+- [ ] **Step 2: Add row to decisions index**
 
 Append to `/Users/les/Projects/mahavishnu/.claude/decisions/README.md`:
 ```markdown
 | `2026-08-25-bodai-cli-contract.md` | Bodai CLI contract (BodaiCLIBase, ExitCode, bodai.apps entry-points) | active |
 ````
 
-- [x] **Step 3: Commit**
+- [ ] **Step 3: Commit**
 
 ```bash
 cd /Users/les/Projects/mahavishnu
@@ -1592,7 +1590,7 @@ ______________________________________________________________________
 
 - Create: `/Users/les/Projects/bodai/tests/test_umbrella.py`
 
-- [x] **Step 1: Write the failing test**
+- [ ] **Step 1: Write the failing test**
 
 ```python
 # tests/test_umbrella.py
@@ -1638,12 +1636,12 @@ def test_bodai_apps_command_lists_registered():
     assert result.exit_code == 0
 ```
 
-- [x] **Step 2: Run test to verify it fails**
+- [ ] **Step 2: Run test to verify it fails**
 
 Run: `cd /Users/les/Projects/bodai && uv run pytest tests/test_umbrella.py -v`
 Expected: FAIL
 
-- [x] **Step 3: Implement `_discover_apps` + `version` + `apps`**
+- [ ] **Step 3: Implement `_discover_apps` + `version` + `apps`**
 
 Edit `/Users/les/Projects/bodai/bodai/cli.py`:
 
@@ -1732,7 +1730,7 @@ def apps() -> None:
 _discover_apps(app)
 ```
 
-- [x] **Step 4: Run test + commit**
+- [ ] **Step 4: Run test + commit**
 
 Run: `cd /Users/les/Projects/bodai && uv run pytest tests/test_umbrella.py -v`
 
@@ -1770,11 +1768,11 @@ Then: `uv pip install -e .` (or `pip install -e .`), verify with `python3 -c "fr
 
 ````
 
-- [x] **Step 1: Dispatch 6 entry-point subagents in parallel**
+- [ ] **Step 1: Dispatch 6 entry-point subagents in parallel**
 
 Use Agent tool. Run for all 6 repos.
 
-- [x] **Step 2: Verify all 6 are registered**
+- [ ] **Step 2: Verify all 6 are registered**
 
 For each repo: `cd /Users/les/Projects/<repo> && python3 -c "from importlib.metadata import entry_points; eps = entry_points(group='bodai.apps'); names = [e.name for e in eps]; assert '<name>' in names; print('OK')"`
 
@@ -1785,7 +1783,7 @@ For each repo: `cd /Users/les/Projects/<repo> && python3 -c "from importlib.meta
 **Files:**
 - Modify: `/Users/les/Projects/bodai/tests/test_umbrella.py`
 
-- [x] **Step 1: Add smoke test**
+- [ ] **Step 1: Add smoke test**
 
 Append to `/Users/les/Projects/bodai/tests/test_umbrella.py`:
 ```python
@@ -1797,7 +1795,7 @@ def test_bodai_akosha_shell_command_present():
     assert "shell" in result.output.lower()
 ````
 
-- [x] **Step 2: Run + commit**
+- [ ] **Step 2: Run + commit**
 
 Run: `cd /Users/les/Projects/bodai && uv run pytest tests/test_umbrella.py -v`
 
@@ -1817,11 +1815,11 @@ ______________________________________________________________________
 
 - Create: `/Users/les/Projects/mahavishnu/scripts/diff_inventories.py`
 
-- [x] **Step 1: Re-run inventory**
+- [ ] **Step 1: Re-run inventory**
 
 Run: `cd /Users/les/Projects/mahavishnu && uv run python scripts/audit_cli_inventory.py --all`
 
-- [x] **Step 2: Write diff script**
+- [ ] **Step 2: Write diff script**
 
 Create `/Users/les/Projects/mahavishnu/scripts/diff_inventories.py`:
 
@@ -1870,7 +1868,7 @@ if __name__ == "__main__":
     sys.exit(main())
 ```
 
-- [x] **Step 3: Run + commit**
+- [ ] **Step 3: Run + commit**
 
 Run: `cd /Users/les/Projects/mahavishnu && python3 scripts/diff_inventories.py`
 
@@ -1888,7 +1886,7 @@ ______________________________________________________________________
 
 - Modify: `/Users/les/Projects/mahavishnu/BODAI_REPO_REGISTRY.md`
 
-- [x] **Step 1: Add CLI surface section**
+- [ ] **Step 1: Add CLI surface section**
 
 Append to `/Users/les/Projects/mahavishnu/BODAI_REPO_REGISTRY.md`:
 
@@ -1908,7 +1906,7 @@ Generated by the 2026-08-25 CLI audit. Run `uv run python scripts/audit_cli_inve
 | mahavishnu | `mahavishnu` | <count> | ✓ | ✓ |
 ```
 
-- [x] **Step 2: Populate counts**
+- [ ] **Step 2: Populate counts**
 
 Run:
 
@@ -1921,7 +1919,7 @@ done
 
 Substitute counts into the table.
 
-- [x] **Step 3: Commit**
+- [ ] **Step 3: Commit**
 
 ```bash
 cd /Users/les/Projects/mahavishnu
@@ -1937,7 +1935,7 @@ ______________________________________________________________________
 
 - Create: `/Users/les/Projects/mahavishnu/.claude/decisions/bodai-cli-staleness-cadence.md`
 
-- [x] **Step 1: Write the cadence doc**
+- [ ] **Step 1: Write the cadence doc**
 
 ````markdown
 ---
@@ -1986,7 +1984,7 @@ If `--check-stale` exits non-zero:
 
 ````
 
-- [x] **Step 2: Commit**
+- [ ] **Step 2: Commit**
 
 ```bash
 cd /Users/les/Projects/mahavishnu
@@ -1994,7 +1992,7 @@ git add .claude/decisions/bodai-cli-staleness-cadence.md
 git -c user.name=les -c user.email=les@wedgwoodwebworks.com commit -m "docs(mahavishnu): quarterly staleness cadence"
 ````
 
-- [x] **Step 3: Set up launchd plist (manual user step)**
+- [ ] **Step 3: Set up launchd plist (manual user step)**
 
 Document the launchd plist in the cadence doc; user installs manually:
 

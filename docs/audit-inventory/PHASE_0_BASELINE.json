@@ -176,7 +176,7 @@
           "notes": []
         },
         {
-          "command_path": "version",
+          "command_path": "None",
           "module": "oneiric.cli.base",
           "function": "version",
           "short_help": "Print this component's version.",
@@ -196,7 +196,7 @@
           "notes": []
         },
         {
-          "command_path": "doctor",
+          "command_path": "None",
           "module": "oneiric.cli.base",
           "function": "doctor",
           "short_help": "Run diagnostic checks against this component's runtime.",
@@ -216,7 +216,7 @@
           "notes": []
         },
         {
-          "command_path": "health",
+          "command_path": "None",
           "module": "oneiric.cli.base",
           "function": "health",
           "short_help": "Probe this component's runtime health.",
@@ -296,7 +296,7 @@
           "notes": []
         },
         {
-          "command_path": "explain",
+          "command_path": "None",
           "module": "oneiric.cli",
           "function": "explain",
           "short_help": "",
@@ -316,7 +316,7 @@
           "notes": []
         },
         {
-          "command_path": "swap",
+          "command_path": "None",
           "module": "oneiric.cli",
           "function": "swap",
           "short_help": "",
@@ -396,7 +396,7 @@
           "notes": []
         },
         {
-          "command_path": "orchestrate",
+          "command_path": "None",
           "module": "oneiric.cli",
           "function": "orchestrate",
           "short_help": "",
@@ -436,7 +436,7 @@
           "notes": []
         },
         {
-          "command_path": "status",
+          "command_path": "None",
           "module": "oneiric.cli",
           "function": "status",
           "short_help": "",
@@ -496,7 +496,7 @@
           "notes": []
         },
         {
-          "command_path": "health",
+          "command_path": "None",
           "module": "oneiric.cli",
           "function": "health",
           "short_help": "",
@@ -804,7 +804,7 @@
           "notes": []
         },
         {
-          "command_path": "version",
+          "command_path": "None",
           "module": "oneiric.cli.base",
           "function": "version",
           "short_help": "Print this component's version.",
@@ -824,7 +824,7 @@
           "notes": []
         },
         {
-          "command_path": "doctor",
+          "command_path": "None",
           "module": "oneiric.cli.base",
           "function": "doctor",
           "short_help": "Run diagnostic checks against this component's runtime.",
@@ -844,7 +844,7 @@
           "notes": []
         },
         {
-          "command_path": "health",
+          "command_path": "None",
           "module": "oneiric.cli.base",
           "function": "health",
           "short_help": "Probe this component's runtime health.",
@@ -928,7 +928,7 @@
     },
     "session-buddy": {
       "repo": "session-buddy",
-      "version": "0.24.1",
+      "version": "(not installed)",
       "command_count": 16,
       "commands": [
         {
@@ -1192,7 +1192,7 @@
           "notes": []
         },
         {
-          "command_path": "version",
+          "command_path": "None",
           "module": "oneiric.cli.base",
           "function": "version",
           "short_help": "Print this component's version.",
@@ -1212,7 +1212,7 @@
           "notes": []
         },
         {
-          "command_path": "doctor",
+          "command_path": "None",
           "module": "oneiric.cli.base",
           "function": "doctor",
           "short_help": "Run diagnostic checks against this component's runtime.",
@@ -1232,7 +1232,7 @@
           "notes": []
         },
         {
-          "command_path": "health",
+          "command_path": "None",
           "module": "oneiric.cli.base",
           "function": "health",
           "short_help": "Probe this component's runtime health.",
@@ -1280,7 +1280,7 @@
           "notes": []
         },
         {
-          "command_path": "version",
+          "command_path": "None",
           "module": "oneiric.cli.base",
           "function": "version",
           "short_help": "Print this component's version.",
@@ -1300,7 +1300,7 @@
           "notes": []
         },
         {
-          "command_path": "doctor",
+          "command_path": "None",
           "module": "oneiric.cli.base",
           "function": "doctor",
           "short_help": "Run diagnostic checks against this component's runtime.",
@@ -1320,7 +1320,7 @@
           "notes": []
         },
         {
-          "command_path": "health",
+          "command_path": "None",
           "module": "oneiric.cli.base",
           "function": "health",
           "short_help": "Probe this component's runtime health.",
@@ -1340,7 +1340,7 @@
           "notes": []
         },
         {
-          "command_path": "shell",
+          "command_path": "None",
           "module": "akosha.cli",
           "function": "shell",
           "short_help": "Launch Akosha admin shell for distributed intelligence operations.",
@@ -1360,7 +1360,7 @@
           "notes": []
         },
         {
-          "command_path": "start",
+          "command_path": "None",
           "module": "akosha.cli",
           "function": "start",
           "short_help": "Start Akosha MCP server in the specified mode.",
@@ -1380,7 +1380,7 @@
           "notes": []
         },
         {
-          "command_path": "version",
+          "command_path": "None",
           "module": "akosha.cli",
           "function": "version",
           "short_help": "Show Akosha version information.",
@@ -1400,7 +1400,7 @@
           "notes": []
         },
         {
-          "command_path": "info",
+          "command_path": "None",
           "module": "akosha.cli",
           "function": "info",
           "short_help": "Show Akosha system information.",
@@ -1420,7 +1420,7 @@
           "notes": []
         },
         {
-          "command_path": "modes",
+          "command_path": "None",
           "module": "akosha.cli",
           "function": "modes",
           "short_help": "List available operational modes.",
@@ -1444,11 +1444,11 @@
     },
     "crackerjack": {
       "repo": "crackerjack",
-      "version": "0.76.2",
+      "version": "0.75.8",
       "command_count": 32,
       "commands": [
         {
-          "command_path": "docs init",
+          "command_path": "docs None",
           "module": "crackerjack.cli.docs_cli",
           "function": "init",
           "short_help": "",
@@ -1468,7 +1468,7 @@
           "notes": []
         },
         {
-          "command_path": "docs build",
+          "command_path": "docs None",
           "module": "crackerjack.cli.docs_cli",
           "function": "build",
           "short_help": "",
@@ -1488,7 +1488,7 @@
           "notes": []
         },
         {
-          "command_path": "docs serve",
+          "command_path": "docs None",
           "module": "crackerjack.cli.docs_cli",
           "function": "serve",
           "short_help": "",
@@ -1508,7 +1508,7 @@
           "notes": []
         },
         {
-          "command_path": "docs deploy",
+          "command_path": "docs None",
           "module": "crackerjack.cli.docs_cli",
           "function": "deploy",
           "short_help": "",
@@ -1528,7 +1528,7 @@
           "notes": []
         },
         {
-          "command_path": "docs check",
+          "command_path": "docs None",
           "module": "crackerjack.cli.docs_cli",
           "function": "check",
           "short_help": "",
@@ -1568,7 +1568,7 @@
           "notes": []
         },
         {
-          "command_path": "docs validate",
+          "command_path": "docs None",
           "module": "crackerjack.cli.docs_cli",
           "function": "validate",
           "short_help": "",
@@ -1608,7 +1608,7 @@
           "notes": []
         },
         {
-          "command_path": "mcp start",
+          "command_path": "mcp None",
           "module": "crackerjack.cli.mcp_cli",
           "function": "start",
           "short_help": "",
@@ -1628,7 +1628,7 @@
           "notes": []
         },
         {
-          "command_path": "mcp stop",
+          "command_path": "mcp None",
           "module": "crackerjack.cli.mcp_cli",
           "function": "stop",
           "short_help": "",
@@ -1648,7 +1648,7 @@
           "notes": []
         },
         {
-          "command_path": "mcp status",
+          "command_path": "mcp None",
           "module": "crackerjack.cli.mcp_cli",
           "function": "status",
           "short_help": "",
@@ -1668,7 +1668,7 @@
           "notes": []
         },
         {
-          "command_path": "mcp restart",
+          "command_path": "mcp None",
           "module": "crackerjack.cli.mcp_cli",
           "function": "restart",
           "short_help": "",
@@ -1688,7 +1688,7 @@
           "notes": []
         },
         {
-          "command_path": "mcp health",
+          "command_path": "mcp None",
           "module": "crackerjack.cli.mcp_cli",
           "function": "health",
           "short_help": "",
@@ -1728,7 +1728,7 @@
           "notes": []
         },
         {
-          "command_path": "audit orphans",
+          "command_path": "audit None",
           "module": "crackerjack.cli.audit_cli",
           "function": "orphans",
           "short_help": "",
@@ -1748,7 +1748,7 @@
           "notes": []
         },
         {
-          "command_path": "audit locate",
+          "command_path": "audit None",
           "module": "crackerjack.cli.audit_cli",
           "function": "locate",
           "short_help": "",
@@ -1768,7 +1768,7 @@
           "notes": []
         },
         {
-          "command_path": "audit skills",
+          "command_path": "audit None",
           "module": "crackerjack.cli.audit_cli",
           "function": "skills",
           "short_help": "Show the Session-Buddy distilled-skill freshness report.",
@@ -1788,7 +1788,7 @@
           "notes": []
         },
         {
-          "command_path": "skills refresh",
+          "command_path": "skills None",
           "module": "crackerjack.cli.skills_cli",
           "function": "refresh",
           "short_help": "Call `distill_skills_now` on Session-Buddy. Cron-friendly.",
@@ -1808,7 +1808,7 @@
           "notes": []
         },
         {
-          "command_path": "coverage-ratchet init",
+          "command_path": "coverage-ratchet None",
           "module": "crackerjack.cli.coverage_ratchet_cli",
           "function": "init",
           "short_help": "Initialize the coverage ratchet at current coverage.",
@@ -1828,7 +1828,7 @@
           "notes": []
         },
         {
-          "command_path": "coverage-ratchet status",
+          "command_path": "coverage-ratchet None",
           "module": "crackerjack.cli.coverage_ratchet_cli",
           "function": "status",
           "short_help": "Show ratchet state.",
@@ -1848,7 +1848,7 @@
           "notes": []
         },
         {
-          "command_path": "coverage-ratchet lower",
+          "command_path": "coverage-ratchet None",
           "module": "crackerjack.cli.coverage_ratchet_cli",
           "function": "lower",
           "short_help": "Explicitly lower the ratchet (operator ack of regression).",
@@ -1868,7 +1868,7 @@
           "notes": []
         },
         {
-          "command_path": "version",
+          "command_path": "None",
           "module": "oneiric.cli.base",
           "function": "version",
           "short_help": "Print this component's version.",
@@ -1882,13 +1882,13 @@
           "doc_referenced": [],
           "subcommand_count": 0,
           "todo_markers": 0,
-          "last_activity_days": -1,
+          "last_activity_days": 18,
           "short_help_vs_impl_drift": "",
           "staleness_verdict": "current",
           "notes": []
         },
         {
-          "command_path": "doctor",
+          "command_path": "None",
           "module": "oneiric.cli.base",
           "function": "doctor",
           "short_help": "Run diagnostic checks against this component's runtime.",
@@ -1902,13 +1902,13 @@
           "doc_referenced": [],
           "subcommand_count": 0,
           "todo_markers": 0,
-          "last_activity_days": -1,
+          "last_activity_days": 18,
           "short_help_vs_impl_drift": "",
           "staleness_verdict": "current",
           "notes": []
         },
         {
-          "command_path": "health",
+          "command_path": "None",
           "module": "oneiric.cli.base",
           "function": "health",
           "short_help": "Probe this component's runtime health.",
@@ -1922,7 +1922,7 @@
           "doc_referenced": [],
           "subcommand_count": 0,
           "todo_markers": 0,
-          "last_activity_days": -1,
+          "last_activity_days": 18,
           "short_help_vs_impl_drift": "",
           "staleness_verdict": "current",
           "notes": []
@@ -1942,7 +1942,7 @@
           "doc_referenced": [],
           "subcommand_count": 0,
           "todo_markers": 0,
-          "last_activity_days": -1,
+          "last_activity_days": 5,
           "short_help_vs_impl_drift": "",
           "staleness_verdict": "current",
           "notes": []
@@ -1962,7 +1962,7 @@
           "doc_referenced": [],
           "subcommand_count": 0,
           "todo_markers": 0,
-          "last_activity_days": -1,
+          "last_activity_days": 5,
           "short_help_vs_impl_drift": "",
           "staleness_verdict": "current",
           "notes": []
@@ -1982,7 +1982,7 @@
           "doc_referenced": [],
           "subcommand_count": 0,
           "todo_markers": 0,
-          "last_activity_days": -1,
+          "last_activity_days": 5,
           "short_help_vs_impl_drift": "",
           "staleness_verdict": "current",
           "notes": []
@@ -2002,13 +2002,13 @@
           "doc_referenced": [],
           "subcommand_count": 0,
           "todo_markers": 0,
-          "last_activity_days": -1,
+          "last_activity_days": 5,
           "short_help_vs_impl_drift": "",
           "staleness_verdict": "current",
           "notes": []
         },
         {
-          "command_path": "run",
+          "command_path": "None",
           "module": "crackerjack.__main__",
           "function": "run",
           "short_help": "",
@@ -2028,7 +2028,7 @@
           "notes": []
         },
         {
-          "command_path": "run_tests",
+          "command_path": "None",
           "module": "crackerjack.__main__",
           "function": "run_tests",
           "short_help": "",
@@ -2048,7 +2048,7 @@
           "notes": []
         },
         {
-          "command_path": "qa_health",
+          "command_path": "None",
           "module": "crackerjack.__main__",
           "function": "qa_health",
           "short_help": "",
@@ -2068,7 +2068,7 @@
           "notes": []
         },
         {
-          "command_path": "shell",
+          "command_path": "None",
           "module": "crackerjack.__main__",
           "function": "shell",
           "short_help": "",
@@ -4896,7 +4896,7 @@
           "notes": []
         },
         {
-          "command_path": "version",
+          "command_path": "None",
           "module": "oneiric.cli.base",
           "function": "version",
           "short_help": "Print this component's version.",
@@ -4916,7 +4916,7 @@
           "notes": []
         },
         {
-          "command_path": "doctor",
+          "command_path": "None",
           "module": "oneiric.cli.base",
           "function": "doctor",
           "short_help": "Run diagnostic checks against this component's runtime.",
@@ -4936,7 +4936,7 @@
           "notes": []
         },
         {
-          "command_path": "health",
+          "command_path": "None",
           "module": "oneiric.cli.base",
           "function": "health",
           "short_help": "Probe this component's runtime health.",
@@ -5076,7 +5076,7 @@
           "notes": []
         },
         {
-          "command_path": "sweep",
+          "command_path": "None",
           "module": "mahavishnu._main_cli",
           "function": "sweep",
           "short_help": "",
@@ -5116,7 +5116,7 @@
           "notes": []
         },
         {
-          "command_path": "list_repos",
+          "command_path": "None",
           "module": "mahavishnu._main_cli",
           "function": "list_repos",
           "short_help": "",
@@ -5136,7 +5136,7 @@
           "notes": []
         },
         {
-          "command_path": "list_roles",
+          "command_path": "None",
           "module": "mahavishnu._main_cli",
           "function": "list_roles",
           "short_help": "",
@@ -5156,7 +5156,7 @@
           "notes": []
         },
         {
-          "command_path": "show_role",
+          "command_path": "None",
           "module": "mahavishnu._main_cli",
           "function": "show_role",
           "short_help": "",
@@ -5176,7 +5176,7 @@
           "notes": []
         },
         {
-          "command_path": "list_nicknames",
+          "command_path": "None",
           "module": "mahavishnu._main_cli",
           "function": "list_nicknames",
           "short_help": "",
@@ -5196,7 +5196,7 @@
           "notes": []
         },
         {
-          "command_path": "generate_claude_token",
+          "command_path": "None",
           "module": "mahavishnu._main_cli",
           "function": "generate_claude_token",
           "short_help": "",
@@ -5216,7 +5216,7 @@
           "notes": []
         },
         {
-          "command_path": "generate_codex_token",
+          "command_path": "None",
           "module": "mahavishnu._main_cli",
           "function": "generate_codex_token",
           "short_help": "",

@@ -164,7 +164,7 @@
       "notes": []
     },
     {
-      "command_path": "version",
+      "command_path": "None",
       "module": "oneiric.cli.base",
       "function": "version",
       "short_help": "Print this component's version.",
@@ -184,7 +184,7 @@
       "notes": []
     },
     {
-      "command_path": "doctor",
+      "command_path": "None",
       "module": "oneiric.cli.base",
       "function": "doctor",
       "short_help": "Run diagnostic checks against this component's runtime.",
@@ -204,7 +204,7 @@
       "notes": []
     },
     {
-      "command_path": "health",
+      "command_path": "None",
       "module": "oneiric.cli.base",
       "function": "health",
       "short_help": "Probe this component's runtime health.",
@@ -284,7 +284,7 @@
       "notes": []
     },
     {
-      "command_path": "explain",
+      "command_path": "None",
       "module": "oneiric.cli",
       "function": "explain",
       "short_help": "",
@@ -304,7 +304,7 @@
       "notes": []
     },
     {
-      "command_path": "swap",
+      "command_path": "None",
       "module": "oneiric.cli",
       "function": "swap",
       "short_help": "",
@@ -384,7 +384,7 @@
       "notes": []
     },
     {
-      "command_path": "orchestrate",
+      "command_path": "None",
       "module": "oneiric.cli",
       "function": "orchestrate",
       "short_help": "",
@@ -424,7 +424,7 @@
       "notes": []
     },
     {
-      "command_path": "status",
+      "command_path": "None",
       "module": "oneiric.cli",
       "function": "status",
       "short_help": "",
@@ -484,7 +484,7 @@
       "notes": []
     },
     {
-      "command_path": "health",
+      "command_path": "None",
       "module": "oneiric.cli",
       "function": "health",
       "short_help": "",
