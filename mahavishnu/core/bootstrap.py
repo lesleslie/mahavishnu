@@ -21,10 +21,61 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
+def _filter_to_model(data: dict[str, Any], model_cls: Any) -> dict[str, Any]:
+    """Recursively filter ``data`` to keep only fields that ``model_cls`` accepts.
+
+    OneiricSettings and MahavishnuSettings share some top-level keys
+    (``adapters``, ``services``, ``tasks``, ``workflows``, etc.) but their
+    nested schemas diverge. Nested models in MahavishnuSettings use
+    ``extra="forbid"``, so passing the OneiricSettings nested dict
+    unmodified trips the validator. This helper walks the model schema
+    and drops any nested field the target model doesn't declare.
+    """
+    if not isinstance(data, dict):
+        return {}
+    from pydantic import BaseModel as _BaseModel
+
+    result: dict[str, Any] = {}
+    for k, v in data.items():
+        if k not in model_cls.model_fields:
+            continue
+        field_info = model_cls.model_fields[k]
+        annotation = field_info.annotation
+        if isinstance(v, dict) and isinstance(annotation, type) and issubclass(annotation, _BaseModel):
+            v = _filter_to_model(v, annotation)
+        result[k] = v
+    return result
+
+
 def load_config() -> MahavishnuSettings:
-    """Load configuration from Oneiric-compatible sources."""
+    """Load configuration from Oneiric-compatible sources.
+
+    Uses ``oneiric.core.config.load_settings`` for the layered YAML/XDG
+    discovery, then constructs ``MahavishnuSettings`` from the merged
+    dict (filtering to ``MahavishnuSettings.model_fields`` so unknown
+    oneiric fields don't trip Pydantic's ``extra="forbid"`` validators).
+    Env vars (via ``MAHAVISHNU_*`` prefix) are still applied by
+    pydantic-settings when ``MahavishnuSettings(**data)`` is constructed.
+
+    The oneiric dependency is imported inside the function to avoid a
+    circular import at module load time (mahavishnu's bootstrap is
+    imported during oneiric configuration in some test paths).
+    """
+    from oneiric.core.config import load_settings as _oneiric_load
+
     try:
-        return MahavishnuSettings()
+        settings_obj = _oneiric_load(
+            path=None,
+            project_name="mahavishnu",
+            project_root=Path(__file__).resolve().parent.parent,
+        )
+        merged = {
+            k: v
+            for k, v in settings_obj.model_dump().items()
+            if k in MahavishnuSettings.model_fields and v is not None
+        }
+        relevant_data = _filter_to_model(merged, MahavishnuSettings)
+        return MahavishnuSettings(**relevant_data)
     except Exception as exc:
         raise ConfigurationError(
             message=f"Failed to load configuration: {exc}",
