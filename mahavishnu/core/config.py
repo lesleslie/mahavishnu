@@ -2328,6 +2328,13 @@ class MahavishnuSettings(BaseSettings):
         description="Review-gated learning pipeline configuration",
     )
 
+    # Phase 3a: capability tools kill-switch + scope allow-list
+    capability_enabled: bool = False
+    capability_scopes: list[str] = Field(default_factory=list)
+
+    # Phase 3b: legacy tool deprecation gate
+    legacy_tools: bool = False
+
     @field_validator("repos_path")
     @classmethod
     def validate_repos_path(cls, v: str) -> str:
