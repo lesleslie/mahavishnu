@@ -85,10 +85,23 @@ All three are addressed in one spec because they share a foundation (the capabil
 ```python
 # mahavishnu/core/capabilities.py (NEW)
 from __future__ import annotations
+from datetime import datetime
 from enum import StrEnum
-from typing import Any, Literal
-from pydantic import BaseModel, Field
+from typing import Annotated, Any
+from pydantic import BaseModel, ConfigDict, Field
 
+# ─── ID newtypes (pattern-enforced via Pydantic Field) ───────────────────────
+# Replaces plain `str` IDs that were untyped and unenforced.
+
+CapabilityId = Annotated[str, Field(pattern=r"^[a-z]+:[a-z0-9._-]+$")]
+"""Format: `kind:name` (e.g. `engine:prefect`, `worker:claude-tui`)."""
+
+EngineId = Annotated[str, Field(pattern=r"^[a-z][a-z0-9_-]{1,63}$")]
+EnvelopeId = Annotated[str, Field(pattern=r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$")]
+TraceId = Annotated[str, Field(pattern=r"^[0-9a-f]{32}$")]
+
+
+# ─── Enums ──────────────────────────────────────────────────────────────────
 
 class CapabilityKind(StrEnum):
     """Top-level capability dimensions. String-addressed as `kind:name`."""
@@ -103,18 +116,45 @@ class CapabilityState(StrEnum):
     STATELESS = "stateless"
     EPHEMERAL = "ephemeral"
     DURABLE = "durable"
+    INTERACTIVE = "interactive"  # Added per architecture-council H4 — interactive tmux workers
 
+
+class HealthStatus(StrEnum):
+    HEALTHY = "healthy"
+    DEGRADED = "degraded"
+    UNREACHABLE = "unreachable"
+
+
+class SelectorStrategy(StrEnum):
+    """Pluggable selector strategies. See Section 3."""
+    LEAST_LOADED = "least_loaded"
+    ROUND_ROBIN = "round_robin"
+    RANDOM = "random"
+    AFFINITY = "affinity"
+    PEER_AFFINITY = "peer_affinity"
+    CAPABILITY_SCORE = "capability_score"
+    LLM_SELECT = "llm_select"
+
+
+# ─── Core schemas ───────────────────────────────────────────────────────────
 
 class TypeSchema(BaseModel):
-    """Typed I/O contract for a capability."""
+    """Typed I/O contract for a capability.
+
+    `fields` MUST be a valid JSON Schema dict (validated at registration
+    via `jsonschema.Draft202012Validator.check_schema()`). Runtime envelope
+    writes validate payload against `fields` via `TypeAdapter(fields).validate_python(value)`.
+    """
+    model_config = ConfigDict(extra="forbid")
     fields: dict[str, Any] = Field(default_factory=dict)
 
     def matches(self, other: "TypeSchema") -> bool:
-        """Returns True if `other`'s fields are a subset of self's (structural subtyping)."""
+        """Structural subtyping: True if `other.fields` validates against self.fields."""
 
 
 class CostHint(BaseModel):
     """Best-effort cost/latency profile for routing decisions."""
+    model_config = ConfigDict(extra="forbid")
     latency_p50_ms: int | None = None
     latency_p99_ms: int | None = None
     tokens_per_call: int | None = None
@@ -123,14 +163,16 @@ class CostHint(BaseModel):
 
 class HealthRef(BaseModel):
     """Point-in-time health check for a capability implementation."""
-    last_check_at: str | None = None
-    last_status: Literal["healthy", "degraded", "unreachable"] | None = None
+    model_config = ConfigDict(extra="forbid")
+    last_check_at: datetime | None = None  # Was `str` — switched to AwareDatetime per python-pro H2
+    last_status: HealthStatus | None = None
     check_url: str | None = None
 
 
 class Capability(BaseModel):
     """A single capability that can be required or provided."""
-    id: str
+    model_config = ConfigDict(frozen=True, extra="forbid")
+    id: CapabilityId
     kind: CapabilityKind
     description: str
     io_in: TypeSchema
@@ -140,27 +182,107 @@ class Capability(BaseModel):
     cost_hint: CostHint = Field(default_factory=CostHint)
     health: HealthRef = Field(default_factory=HealthRef)
     tags: list[str] = Field(default_factory=list)
-    undo: str | None = None  # CapabilityId of compensating action
+    undo: CapabilityId | None = None  # Was `str | None` — typed per python-pro M2
+    deprecated_after: datetime | None = None  # Per orchestration L3 — capability rotation
 
 
 class EngineRegistration(BaseModel):
     """An engine's capability surface."""
-    engine_id: str
+    model_config = ConfigDict(frozen=True, extra="forbid")
+    engine_id: EngineId
     provides: list[Capability]
-    consumes: list[Capability]
+    consumes: list[CapabilityId] = Field(default_factory=list)  # Was `list[Capability]` — typed IDs prevent cyclic refs
     affinity: dict[str, str] = Field(default_factory=dict)
     enabled: bool = True
 
 
 class CapabilityEnvelope(BaseModel):
-    """Typed, serializable record handed between engines."""
-    envelope_id: str
-    capability_id: str
-    engine_id: str
-    io_out: dict[str, Any]
-    produced_at: str
-    trace_id: str
-    parent_envelope_ids: list[str] = Field(default_factory=list)
+    """Typed, serializable record handed between engines.
+
+    `io_out` is validated at write against the producing capability's `io_out: TypeSchema`.
+    """
+    model_config = ConfigDict(frozen=True, extra="forbid")
+    envelope_id: EnvelopeId
+    capability_id: CapabilityId
+    engine_id: EngineId
+    io_out: dict[str, Any]  # Validated against Capability.io_out at write time
+    produced_at: datetime
+    trace_id: TraceId
+    parent_envelope_ids: list[EnvelopeId] = Field(default_factory=list)
+
+
+class EnvelopeAddress(BaseModel):
+    """Typed Dhara storage address. Replaces magic-string path `envelopes/{trace_id}/{envelope_id}`."""
+    model_config = ConfigDict(frozen=True, extra="forbid")
+    trace_id: TraceId
+    envelope_id: EnvelopeId
+
+    def to_key(self) -> str:
+        return f"envelopes/{self.trace_id}/{self.envelope_id}"
+
+    @classmethod
+    def from_key(cls, key: str) -> "EnvelopeAddress":
+        prefix = "envelopes/"
+        if not key.startswith(prefix):
+            raise ValueError(f"Invalid envelope key: {key!r}")
+        parts = key[len(prefix):].split("/", 1)
+        if len(parts) != 2:
+            raise ValueError(f"Invalid envelope key: {key!r}")
+        return cls(trace_id=parts[0], envelope_id=parts[1])
+
+
+# ─── DAG + resolver types (previously referenced but undefined) ────────────
+
+class Candidate(BaseModel):
+    """Resolver output: one engine candidate for a required capability."""
+    model_config = ConfigDict(frozen=True, extra="forbid")
+    engine_id: EngineId
+    capability_id: CapabilityId
+    score: float = Field(ge=0.0, le=1.0)
+    reason: str
+
+
+class DAGNode(BaseModel):
+    """One node in an ExecutionDAG — a single engine invocation."""
+    model_config = ConfigDict(frozen=True, extra="forbid")
+    node_id: str
+    engine_id: EngineId
+    capability_id: CapabilityId
+    inputs: TypeSchema
+    outputs: TypeSchema
+
+
+class DAGEdge(BaseModel):
+    """Dependency edge: `from_node.outputs[field_path]` → `to_node.inputs`."""
+    model_config = ConfigDict(frozen=True, extra="forbid")
+    from_node: str
+    to_node: str
+    field_path: str
+
+
+class ExecutionDAG(BaseModel):
+    """Compiled binding plan: nodes + edges + trace_id. Immutable post-`plan()`."""
+    model_config = ConfigDict(frozen=True, extra="forbid")
+    nodes: tuple[DAGNode, ...]
+    edges: tuple[DAGEdge, ...]
+    trace_id: TraceId
+
+
+class CapabilitySpec(BaseModel):
+    """User-facing spec passed to `execute_capability`. Runtime tool-input model.
+
+    Distinct from `Capability` (which is the registration-time declaration). The spec
+    is what the caller wants; the capability is what an engine provides.
+    """
+    model_config = ConfigDict(frozen=True, extra="forbid")
+    requires: list[CapabilityId]
+    prompt: str
+    constraints: dict[str, Any] = Field(default_factory=dict)
+    repos: list[str] = Field(default_factory=list)
+    timeout: int = 300
+    selector: SelectorStrategy = SelectorStrategy.CAPABILITY_SCORE
+    trace_id: TraceId | None = None
+    idempotency_key: str | None = None
 ```
 
 **Why interface-style (not flat flags, not hierarchical):**
@@ -249,30 +371,55 @@ Three stages, each independently shippable but designed to compose. No stage req
 
 ### Stage 1 — Worker bootstrap fix (immediate hotfix)
 
-**Scope:** Fix `tmux_adapter.create_session` so `tmux new-session` exec's the launch command directly. Single-file change.
+**Scope:** Fix the broken worker launch path traced through two cooperating sites. `WorkerManager` constructs the argv; `tmux_adapter.create_session` passes it to tmux. Both must change together.
 
-**Files:**
-- `mahavishnu/workers/contract/tmux_adapter.py:152` — drop send-keys; pass command to `tmux new-session`.
+**Call chain (per `mahavishnu-specialist` review C1 + `feature-dev:code-architect` review H1):**
 
-**Exit criteria:** All 16 `terminal-*` worker types spawn functional tmux panes. Smoke test: `pool_spawn --worker-type terminal-claude` produces a pane with `claude --output-format stream-json ...` running, not a `zsh: command not found` error.
+1. `WorkerManager.create_worker()` reads `WorkerConfig.command` (a pre-quoted shell string like `sh -lc 'claude --output-format stream-json --permission-mode acceptEdits'`) and constructs `command=[WorkerConfig.command]` — a one-element argv containing the entire pre-quoted string.
+2. `tmux_adapter.create_session()` (`mahavishnu/workers/contract/tmux_adapter.py:112`) does `quoted = shlex.join(command)` on that list, producing doubly-quoted output like `'sh -lc '"'"'claude ...'"'"''`.
+3. The doubly-quoted text is `send-keys`'d into a fresh zsh pane via `tmux send-keys -t pane -- '<quoted>' Enter` (line 152).
+4. zsh parses the entire doubly-quoted string as one literal token and rejects it with `command not found`.
 
-**Reversibility:** Trivial. Revert the one-file change.
+**Fix:** Pass the command string directly to `tmux new-session`'s positional command argument (after `--`), not via `send-keys`. The exact diff:
+
+```python
+# mahavishnu/workers/contract/tmux_adapter.py — replace the create_session body
+quoted = shlex.join(command)  # DELETE this line
+proc = subprocess.run(
+    ["tmux", "-S", socket, "new-session", "-d",
+     "-s", session, "-n", window_name,
+     "-P", "-F", "#{session_name}:#{window_id}:#{pane_id}",
+     "--"] + list(command),  # ADD `--` then the argv
+    check=False, capture_output=True, text=True,
+)
+# DELETE the send-keys block (current lines 152)
+```
+
+WorkerManager's argv construction stays as-is. tmux's `--` separates tmux options from the command, so the shell-quoted string passes through to the pane's initial process intact.
+
+**Files (multi-file fix):**
+- `mahavishnu/workers/contract/tmux_adapter.py` — apply the diff above; delete lines 144-152 (send-keys + chmod tail).
+- `tests/unit/workers/contract/test_tmux_adapter.py:46,62,85` — three unit tests assert the old `send-keys` invocation. Update to assert the new `new-session -- <command>` shape.
+
+**Exit criteria:** All 16 `terminal-*` worker types spawn functional tmux panes. Smoke test: `pool_spawn --worker-type terminal-claude` produces a pane with `claude --output-format stream-json --permission-mode acceptEdits` running, not `zsh: command not found`.
+
+**Reversibility:** Trivial. Revert the two-file change.
 
 ### Stage 2 — Capability-driven registry
 
 **Scope:** Replace static registry with capability-driven registry. Workers and engines share one capability vocabulary.
 
 **Files (new):**
-- `mahavishnu/core/capabilities.py` — schema definitions.
-- `mahavishnu/workers/registry.py` (replaced) — yaml-driven loader.
+- `mahavishnu/core/capabilities.py` — schema definitions (Capability, CapabilitySpec, ExecutionDAG, etc.).
+- `WorkerRegistryConfig` Pydantic model added to `MahavishnuSettings` in `mahavishnu/core/config.py` — typed surface for the `workers:` config block.
 
 **Files (modified):**
-- `settings/workers.yaml` (new) — worker registrations.
-- `mahavishnu/core/bootstrap.py` — load workers via yaml.
+- `settings/mahavishnu.yaml` — add `workers:` block under existing config (per `oneiric-specialist` review C1: do **NOT** create a separate `settings/workers.yaml` — that bypasses `_settings_build_values` ordering and silently breaks `MAHAVISHNU_WORKERS__FOO` env-var overrides).
+- `mahavishnu/core/bootstrap.py` — load worker registry via existing `oneiric.core.config.load_settings()` (not a new bootstrap path; `oneiric` already supports XDG layering at `~/.config/mahavishnu/workers.yaml`).
 - All `mahavishnu/engines/*_adapter_impl.py` — declare `provides: list[Capability]`.
 
 **Files (deleted):**
-- `mahavishnu/workers/registry.py:WORKER_REGISTRY` (literal registry).
+- `mahavishnu/workers/registry.py:WORKER_REGISTRY` (literal registry, replaced by Oneiric-loaded `WorkerRegistryConfig`).
 - `mahavishnu/terminal/config.py` adapter references.
 
 **Exit criteria:** Same `pool_spawn --worker-type terminal-claude` works. New: `pool_spawn --worker-type <yaml-only-name>` works. Each worker's `provides` are discoverable via `list_capabilities(domain="worker")`.
@@ -281,27 +428,56 @@ Three stages, each independently shippable but designed to compose. No stage req
 
 ### Stage 3 — Engine composition layer
 
-**Scope:** Conductor resolves `CapabilitySpec → ExecutionDAG`, emits Prefect flow, routes envelopes via Dhara.
+**Scope:** Conductor + composition layer + envelope transport. Per the "no alias shims, no hard cutover" decision, this stage splits into additive (3a, ships new tools alongside existing ones) and deletive (3b, removes old tools after one release cycle of dual maintenance). No silent deletions; every removed tool has a documented migration path.
+
+#### Stage 3a — Additive composition (no deletions)
+
+**Scope:** Add `execute_capability`, `list_capabilities`, `explain_routing`, plus conductor + envelope transport. Existing tools untouched.
 
 **Files (new):**
 - `mahavishnu/core/conductor.py` — resolver + planner + emit_flow.
-- `mahavishnu/core/envelopes.py` — Dhara-backed transport.
+- `mahavishnu/core/envelopes.py` — Dhara-backed transport via `EnvelopeAddress.to_key()`.
 - `mahavishnu/mcp/tools/capability_tools.py` — `execute_capability`, `list_capabilities`, `explain_routing`.
+- `mahavishnu/mcp/tools/get_capability_result_tool.py` — async read-back (`get_capability_result(trace_id=...)`) per `mcp-integration-expert` H1; replaces deleted `workflow_result`.
 
 **Files (modified):**
 - `mahavishnu/engines/prefect_adapter_impl.py` — accept `ExecutionDAG` as flow definition.
 - All engine adapters — `execute()` accepts `CapabilitySpec`.
-- `mahavishnu/mcp/tools/profiles.py` — register 18th group `_register_capability_tools`.
+- `mahavishnu/mcp/tools/profiles.py` — register 18th group `_register_capability_tools` in `STANDARD_REGISTRATIONS` (per `mcp-integration-expert` M1: capability dispatch is daily-dev primitive, not FULL-only).
+
+**Pre-conditions for shipping 3a:**
+- All slash-command skills migrated: `.claude/skills/mahavishnu/SKILL.md`, `.claude/skills/mahavishnu-status/SKILL.md` (per `mcp-integration-expert` C1).
+- Orchestrator subagent `.claude/agents/mahavishnu-orchestrator.md` `tools:` frontmatter updated.
+- `/vishnu` skill description updated.
+- All `tests/unit/test_*pool*` and `test_*worker*` updated to use new tools.
+- CLI subcommands `_main_cli.py:1402,1469,1781` migrated to call `execute_capability` underneath (CLI surface preserved).
+
+**Exit criteria:** New tools work alongside existing tools. `execute_capability({"requires": ["rag.retrieve", "exec.terminal"]})` runs full DAG via Prefect with envelopes persisted to Dhara. Old `pool_*`, `worker_*`, `trigger_workflow` tools still work.
+
+**Reversibility:** Easy. New tools can be hidden via `MAHAVISHNU_TOOL_PROFILE=standard` (or removed entirely) without breaking old paths.
+
+#### Stage 3b — Deletive cleanup
+
+**Scope:** Remove old MCP tools after one release cycle of dual maintenance. This is the only step that deletes anything.
+
+**Pre-conditions (must all be true before 3b ships):**
+- 3a has been in production for ≥1 release cycle.
+- Slash commands / orchestrator subagent / `/vishnu` skill verified using new tools.
+- `MAHAVISHNU_LEGACY_TOOLS=true` env var honored by old tools for one final release (logs warning on every call).
+- Run `python scripts/audit_orphans.py` — zero callers of deleted tools.
 
 **Files (deleted):**
 - `mahavishnu/mcp/tools/pool_tools.py:pool_spawn`, `pool_execute`, `pool_route_execute`, `dispatch_to_pool`, `workflow_result`.
 - `mahavishnu/mcp/tools/worker_tools.py:worker_spawn`, `worker_execute`, `worker_close`, `worker_health`, `worker_list`.
-- `mahavishnu/mcp/tools/workflow_tools.py:trigger_workflow` (the engine-picker variant).
+- `mahavishnu/mcp/server_core.py:272` — `trigger_workflow` (registered inline here, NOT in `workflow_tools.py` per `mcp-integration-expert` C2).
 - `mahavishnu/pools/manager.py` if redundant after new dispatcher.
 
-**Exit criteria:** `execute_capability({"requires": ["rag.retrieve", "exec.terminal"]})` runs full DAG via Prefect with envelopes persisted to Dhara. Failure-injection tests pass. All 5 selector strategies covered by unit tests.
+**Files (preserved — operator-observability subset):**
+- `pool_list`, `pool_health`, `pool_monitor`, `pool_scale`, `pool_close`, `pool_close_all`, `pool_search_memory` — operator surfaces not duplicated by `execute_capability`.
 
-**Reversibility:** Hard. Stage 3 deletes MCP tools that production code may call. Coordinate with active deployments.
+**Exit criteria:** All pool/worker dispatch tools except the observability subset are deleted. `trigger_workflow` is gone. `MAHAVISHNU_LEGACY_TOOLS=true` no longer recognized.
+
+**Reversibility:** Hard. Stage 3b is the only irreversible step in the entire refactor. Coordinate with active deployments.
 
 ---
 
