@@ -6,9 +6,19 @@ from pathlib import Path
 import stat
 
 # Post-event hooks run the code-graph indexer.
+# Skip worktrees: the worktree path isn't registered in ecosystem.yaml
+# (which only lists canonical repo roots), and the index should reflect
+# canonical main-branch state, not transient feature-branch work.
+# Detection: a linked worktree's --git-dir differs from the main
+# checkout's --git-common-dir; the main checkout sees them equal.
 HOOK_CONTENT = """#!/bin/sh
 # Managed by mahavishnu index install-hooks
 # Remove with: mahavishnu index uninstall-hooks <path>
+GIT_DIR=$(git rev-parse --git-dir 2>/dev/null)
+GIT_COMMON_DIR=$(git rev-parse --git-common-dir 2>/dev/null)
+if [ -n "$GIT_DIR" ] && [ -n "$GIT_COMMON_DIR" ] && [ "$GIT_DIR" != "$GIT_COMMON_DIR" ]; then
+    exit 0
+fi
 mahavishnu index repo --trigger git-event "$(pwd)" &
 """
 
