@@ -10,6 +10,7 @@ import os
 from pathlib import Path
 from typing import Any
 from uuid import uuid4
+import warnings
 
 from mcp_common.fastmcp import FastMCP  # noqa: TC002
 
@@ -46,6 +47,34 @@ except Exception:  # pragma: no cover - optional import for test patching  # noq
     MemoryAggregator = None
 
 logger = logging.getLogger(__name__)
+
+
+# Phase 3b.1: legacy tool deprecation markers. Five pool/worker/dispatch
+# tools emit a ``DeprecationWarning`` on every call. The warning is
+# emitted unconditionally so that consumers running with the default
+# Python warnings filter (``PYTHONWARNINGS=default`` outside ``__main__``
+# suppresses DeprecationWarning) still see it once their tooling opts in
+# via ``warnings.simplefilter("always", DeprecationWarning)`` or
+# ``-W default``. Operators running with
+# ``MahavishnuSettings.legacy_tools = True`` can additionally register a
+# stricter filter in their bootstrap to surface the chatter at all times.
+# Removal target: Task 3b.3 (deletes the tools entirely). Replacement:
+# ``mcp__mahavishnu__execute_capability(spec=CapabilitySpec(...))``.
+def _warn_legacy_tool(tool_name: str) -> None:
+    """Emit a DeprecationWarning pointing at ``execute_capability``.
+
+    Args:
+        tool_name: The legacy tool's registered name (e.g. ``pool_spawn``).
+    """
+    warnings.warn(
+        (
+            f"{tool_name} is deprecated and slated for removal in Task 3b.3. "
+            "Use mcp__mahavishnu__execute_capability(spec=CapabilitySpec(...)) "
+            "instead."
+        ),
+        DeprecationWarning,
+        stacklevel=2,
+    )
 
 
 def _resolve_peer_affinity_allowlist_from_env() -> set[str] | None:
@@ -345,7 +374,14 @@ def register_pool_tools(
         max_workers: int = 10,
         worker_type: str = "terminal-claude",
     ) -> dict[str, Any]:
-        """Spawn a new worker pool."""
+        """Spawn a new worker pool.
+
+        .. deprecated::
+            Removal target: Task 3b.3. Replacement:
+            ``mcp__mahavishnu__execute_capability(spec=CapabilitySpec(...))``.
+        """
+        # Phase 3b.1: emit deprecation warning BEFORE any work runs.
+        _warn_legacy_tool("pool_spawn")
         from mahavishnu.pools.base import PoolConfig
 
         config = PoolConfig(
@@ -428,6 +464,8 @@ def register_pool_tools(
             )
             ```
         """
+        # Phase 3b.1: emit deprecation warning BEFORE any work runs.
+        _warn_legacy_tool("pool_execute")
         from mahavishnu.core.errors import RateLimitError
         from mahavishnu.pools.manager import coerce_caller_kind
 
@@ -557,6 +595,8 @@ def register_pool_tools(
             )
             ```
         """
+        # Phase 3b.1: emit deprecation warning BEFORE any work runs.
+        _warn_legacy_tool("pool_route_execute")
         # Durable-routing fast path: when the caller pins a ``worker_type``
         # in the explicit per-worker_type allowlist AND a
         # DurableWorkerManager is configured, spawn via the contract
@@ -785,6 +825,8 @@ def register_pool_tools(
             # Poll workflow-results/{workflow_id}/ later
             ```
         """
+        # Phase 3b.1: emit deprecation warning BEFORE any work runs.
+        _warn_legacy_tool("dispatch_to_pool")
         # Durable-routing fast path: when the caller pins a ``worker_type``
         # in the explicit per-worker_type allowlist AND supplies a
         # ``workflow_id``, spawn via the contract directly and persist
@@ -945,6 +987,8 @@ def register_pool_tools(
             the response is ``{"workflow_id": ..., "status": "invalid_workflow_id"}``
             and Dhara is never queried.
         """
+        # Phase 3b.1: emit deprecation warning BEFORE any work runs.
+        _warn_legacy_tool("workflow_result")
         # Path-traversal guard: caller-supplied workflow_id is spliced
         # into ``f"workflow-results/{workflow_id}/"`` below, so reject
         # anything outside the conservative regex BEFORE the Dhara read.
