@@ -33,6 +33,7 @@ from mcp_common.tools import ToolProfile
 
 from ..bootstrap import (
     _register_adapter_registry_tools,
+    _register_capability_tools,
     _register_clone_tools,
     _register_ecosystem_tools,
     _register_git_analytics_tools,
@@ -79,6 +80,7 @@ STANDARD_REGISTRATIONS: list[str] = MINIMAL_REGISTRATIONS + [
     "_register_openhands_tools",
     "_register_primitive_tools",
 ]
+STANDARD_REGISTRATIONS.append("_register_capability_tools")
 
 FULL_REGISTRATIONS: list[str] = STANDARD_REGISTRATIONS + [
     "_register_otel_tools",
@@ -150,6 +152,7 @@ REGISTRATION_MAP: dict[str, Callable] = {
     "_register_session_buddy_tools": lambda s: _register_session_buddy_tools(s._mhv_server),  # type: ignore[attr-defined]
     "_register_openhands_tools": lambda s: _register_openhands_tools(s._mhv_server),  # type: ignore[attr-defined]
     "_register_primitive_tools": lambda s: _register_primitive_tools(s._mhv_server),  # type: ignore[attr-defined]
+    "_register_capability_tools": lambda s: _register_capability_tools(s._mhv_server),  # type: ignore[attr-defined]
     # FULL-tier groups.
     "_register_otel_tools": lambda s: _register_otel_tools(s._mhv_server),  # type: ignore[attr-defined]
     "_register_self_improvement_tools": lambda s: _register_self_improvement_tools(s._mhv_server),  # type: ignore[attr-defined]

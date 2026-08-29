@@ -903,3 +903,18 @@ def _register_openhands_tools(server: FastMCPServer) -> None:
         logger.info("Registered 4 OpenHands integration tools with MCP server")
     except Exception as exc:  # noqa: BLE001 - defensive
         logger.warning("OpenHands tools not available: %s", exc)
+
+
+def _register_capability_tools(server: FastMCPServer) -> None:
+    """Register the capability resolver / planner / executor tool group.
+
+    Gated by ``settings.capability_enabled``; when the flag is off, the
+    four tools are still registered but every invocation short-circuits
+    with a ``FEATURE_DISABLED`` error. (We intentionally keep the tools
+    visible so operators can introspect the registry via
+    ``list_capabilities`` even when execution is gated.)
+    """
+    from ..mcp.tools.capability_tools import register_capability_tools
+
+    register_capability_tools(server.server, server.app.config)
+    logger.info("Registered 4 capability tools with MCP server")
