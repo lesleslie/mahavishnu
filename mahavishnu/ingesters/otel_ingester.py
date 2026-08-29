@@ -36,7 +36,7 @@ except ImportError:
     TextEmbedding: type[Any] | None = None  # type: ignore[no-redef]
 
 if TYPE_CHECKING:
-    from akosha.storage import HotStore
+    from akosha.storage import HotStore  # ty: ignore[unresolved-import]
 
 from mahavishnu.core.errors import ValidationError
 from mahavishnu.ingesters.turboquant_compressor import TQPackedVector, TurboQuantCompressor
@@ -627,7 +627,7 @@ class OtelIngester:
     async def _initialize_duckdb(self) -> None:
         """Initialize DuckDB (HotStore) storage backend."""
         if self._hot_store is None:
-            from akosha.storage import HotStore
+            from akosha.storage import HotStore  # ty: ignore[unresolved-import]
 
             self._hot_store = HotStore(database_path=self._duckdb_path)
             await self._hot_store.initialize()
@@ -755,7 +755,7 @@ class OtelIngester:
             }
 
             # Create HotRecord
-            from akosha.models import HotRecord
+            from akosha.models import HotRecord  # ty: ignore[unresolved-import]
 
             record = HotRecord(
                 system_id=system_id,
@@ -1341,7 +1341,7 @@ async def create_otel_ingester(
 
     # For DuckDB, create HotStore if path provided
     if storage_type == StorageType.DUCKDB and hot_store_path != ":memory:":
-        from akosha.storage import HotStore
+        from akosha.storage import HotStore  # ty: ignore[unresolved-import]
 
         hot_store = HotStore(database_path=hot_store_path)
         await hot_store.initialize()

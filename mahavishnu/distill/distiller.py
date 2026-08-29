@@ -4,7 +4,7 @@ import json
 import logging
 from typing import TYPE_CHECKING, Any, Protocol
 
-from ulid import ULID
+from ulid import ULID  # ty: ignore[unresolved-import]
 
 from mahavishnu.distill.provenance import TRUSTED_SOURCE_TYPE, check_source_purity
 

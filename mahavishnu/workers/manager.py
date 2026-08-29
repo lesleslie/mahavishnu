@@ -417,7 +417,7 @@ class WorkerManager:
                         )
                     else:
                         result = await worker.execute(task)
-                except asyncio.TimeoutError:
+                except TimeoutError:
                     logger.warning(
                         "Worker %s timed out after %ss; releasing semaphore slot",
                         worker_id,

@@ -13,7 +13,7 @@ import json
 import pathlib
 from typing import cast
 
-import duckdb
+import duckdb  # ty: ignore[unresolved-import]
 
 from mahavishnu.core.errors import DatabaseError
 

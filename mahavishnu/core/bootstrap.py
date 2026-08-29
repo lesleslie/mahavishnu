@@ -41,7 +41,11 @@ def _filter_to_model(data: dict[str, Any], model_cls: Any) -> dict[str, Any]:
             continue
         field_info = model_cls.model_fields[k]
         annotation = field_info.annotation
-        if isinstance(v, dict) and isinstance(annotation, type) and issubclass(annotation, _BaseModel):
+        if (
+            isinstance(v, dict)
+            and isinstance(annotation, type)
+            and issubclass(annotation, _BaseModel)
+        ):
             v = _filter_to_model(v, annotation)
         result[k] = v
     return result

@@ -268,7 +268,7 @@ class CapabilityDetector:
     def _check_pyautogui(self) -> BackendStatus:
         """Check if PyAutoGUI backend is available."""
         try:
-            import pyautogui  # noqa: F401
+            import pyautogui  # noqa: F401  # ty: ignore[unresolved-import]
 
             return BackendStatus(
                 name="pyautogui",

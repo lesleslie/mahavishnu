@@ -286,7 +286,7 @@ def register_otel_tools(server, app, mcp_client):
         try:
             from datetime import UTC, datetime, timedelta
 
-            from akosha.storage import HotStore
+            from akosha.storage import HotStore  # ty: ignore[unresolved-import]
 
             # Calculate start_time from time_range_minutes
             end_time = datetime.now(UTC)
@@ -356,7 +356,7 @@ def register_otel_tools(server, app, mcp_client):
     async def otel_ingester_stats() -> dict[str, Any]:
         """Get statistics about the OTel trace ingester."""
         try:
-            from akosha.storage import HotStore
+            from akosha.storage import HotStore  # ty: ignore[unresolved-import]
 
             # Initialize HotStore to query statistics
             hot_store = HotStore(database_path=app.config.otel_ingester.hot_store_path)
