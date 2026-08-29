@@ -282,25 +282,12 @@ TOOL_VERSIONS: dict[str, str] = {
     "pycharm_list_problems": "1.0.0",
     # Webhook replay tool (webhook_tools.py)
     "webhook_replay_tool": "1.0.0",
-}
-
-# ---------------------------------------------------------------------------
-# Deprecation registry
-# ---------------------------------------------------------------------------
-
-# These tools are still available for backward compatibility, but the
-# ecosystem should prefer the replacement tool where one exists.
-DEPRECATED_TOOLS: dict[str, str | None] = {
-    # Health surface consolidation
-    "health_check_service": "health_check_all",
-    "get_liveness": "ecosystem_status",
-    "get_readiness": "ecosystem_status",
-    "get_monitoring_dashboard": "ecosystem_status",
-    # Session-Buddy code-intel overlap
-    "index_code_graph": "code_index.index_repo",
-    "find_related_code": "treesitter_tools",
-    "index_documentation": "code_index.index_repo",
-    "search_documentation": "search_tools.hybrid_search",
+    # Capability resolver/planner/executor tools (capability_tools.py)
+    "execute_capability": "1.0.0",
+    "list_capabilities": "1.0.0",
+    "explain_routing": "1.0.0",
+    # Dhara envelope reader (get_capability_result_tool.py)
+    "get_capability_result": "1.0.0",
 }
 
 
@@ -319,6 +306,18 @@ def get_tool_version(tool_name: str) -> str | None:
 def get_all_tool_versions() -> dict[str, str]:
     """Return copy of the full version registry."""
     return dict(TOOL_VERSIONS)
+
+
+# ---------------------------------------------------------------------------
+# Deprecation registry (cleaned up in 2026-08-29 refactor)
+# ---------------------------------------------------------------------------
+
+# Tools that previously had a deprecation marker with a replacement tool
+# have been promoted to their replacement. This dict is intentionally
+# empty; the lookup functions are retained so existing call sites in
+# health_tools.py continue to import successfully while the ecosystem
+# fully migrates.
+DEPRECATED_TOOLS: dict[str, str | None] = {}
 
 
 def get_tool_deprecation(tool_name: str) -> str | None:
