@@ -432,6 +432,15 @@ reportMissingTypeStubs = "warning"
 pythonVersion = "3.14"
 typeCheckingMode = "strict"
 
+[tool.ty.rules]
+# Several modules are imported from optional PEP 735 dependency groups
+# (automation, hatchet, compression, ecosystem) or arrive only transitively
+# (duckdb, ulid). Those imports carry `# ty: ignore[unresolved-import]`, but
+# whether each directive is "used" depends on which groups happen to be synced
+# into the environment, so the unused-ignore lint flips between runs. Silence
+# it so the ty gate stays deterministic across sync states.
+unused-ignore-comment = "ignore"
+
 [tool.pylint.messages_control]
 disable = [
     "C0111",
