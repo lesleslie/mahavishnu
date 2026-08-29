@@ -100,7 +100,7 @@ async def test_read_envelope_roundtrip() -> None:
 
 @pytest.mark.asyncio
 async def test_list_envelopes_filters_by_trace_id() -> None:
-    """list_envelopes uses dhara.call_tool('list_keys', prefix=...) — NOT dhara.list_keys()."""
+    """list_envelopes uses dhara.call_tool('list_keys', {"prefix": ...}) — NOT dhara.list_keys()."""
     dhara = _dhara_stub()
     trace = TraceId("a" * 32)
     other_trace = TraceId("b" * 32)

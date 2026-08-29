@@ -8,7 +8,8 @@ field names whose values are scrubbed before dhara.put).
 All envelope operations are async (CLAUDE.md "all orchestration-layer I/O
 is async"). DharaAdapter is at mahavishnu/core/dhara_adapter.py:18; its
 public API is ``async def put(self, key, value, ttl=None)`` plus the
-``async def call_tool(self, name, **kwargs)`` shim used for get/list_keys.
+``async def call_tool(self, name, arguments: dict[str, Any])`` shim used
+for get/list_keys.
 """
 from __future__ import annotations
 
@@ -51,7 +52,7 @@ async def write_envelope(env: CapabilityEnvelope, *, dhara: "DharaAdapter") -> N
 
 async def read_envelope(addr: EnvelopeAddress, *, dhara: "DharaAdapter") -> CapabilityEnvelope:
     """Load an envelope from Dhara via call_tool('get', ...). Raises if missing."""
-    raw = await dhara.call_tool("get", key=addr.to_key())
+    raw = await dhara.call_tool("get", {"key": addr.to_key()})
     if raw is None:
         raise MahavishnuError(
             f"envelope not found at {addr.to_key()}",
@@ -68,7 +69,7 @@ async def list_envelopes(trace_id: TraceId, *, dhara: "DharaAdapter") -> list[En
     extras (e.g. a stub that ignores the prefix arg).
     """
     prefix = f"envelopes/{trace_id}/"
-    keys = await dhara.call_tool("list_keys", prefix=prefix)
+    keys = await dhara.call_tool("list_keys", {"prefix": prefix})
     return [EnvelopeAddress.from_key(k) for k in keys if k.startswith(prefix)]
 
 
