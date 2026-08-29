@@ -26,12 +26,20 @@ mahavishnu index repo --trigger git-event "$(pwd)" &
 # landing in any .mcp.json. No-op when the audit script is absent (so other
 # repos without scripts/audit_no_secrets_in_mcp.py can still install hooks).
 # `|| exit 1` propagates the audit's exit code so a violation blocks the commit.
+# Phase 2 gate (Plan Task 2.2): findings.md ≤ 250 lines + validate_findings.py
+# integrity check. Both gates are skipped when their inputs don't exist yet
+# (early repo state) so other repos without the audit can still install.
 PRE_COMMIT_CONTENT = """#!/bin/sh
 # Managed by mahavishnu index install-hooks
 # Remove with: mahavishnu index uninstall-hooks <path>
 # Enforces .claude/decisions/2026-08-24-bodai-mcp-routing-pattern.md §1.
 if [ -f "scripts/audit_no_secrets_in_mcp.py" ]; then
     python3 scripts/audit_no_secrets_in_mcp.py || exit 1
+fi
+# Phase 2 gate: findings.md ≤ 250 lines + validate_findings.py
+if [ -f "docs/audit-inventory/findings.md" ] && [ -f "scripts/validate_findings.py" ]; then
+    test "$(wc -l < docs/audit-inventory/findings.md)" -le 250 || { echo "findings.md exceeds 250-line budget"; exit 1; }
+    python3 scripts/validate_findings.py docs/audit-inventory/findings.md || exit 1
 fi
 """
 
