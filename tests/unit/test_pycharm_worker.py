@@ -1,9 +1,11 @@
 """Unit tests for PyCharm application worker and tools."""
 
+from mahavishnu.core.config import MahavishnuSettings
 from mahavishnu.workers.registry import (
     WORKER_REGISTRY,
     WorkerCategory,
     get_worker_config,
+    get_worker_entry,
     validate_worker_dependencies,
 )
 
@@ -41,8 +43,10 @@ class TestPyCharmWorkerRegistry:
 
     def test_registry_key_matches_worker_type(self):
         assert "application-pycharm" in WORKER_REGISTRY
-        config = WORKER_REGISTRY["application-pycharm"]
-        assert config.worker_type == "application-pycharm"
+        # Capability-driven lookup — verifies the new entry points find
+        # the same worker_type string the legacy dict exposes.
+        entry = get_worker_entry("application-pycharm", settings=MahavishnuSettings())
+        assert entry.worker_type == "application-pycharm"
 
 
 class TestPyCharmToolsFallback:

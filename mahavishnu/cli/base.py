@@ -97,13 +97,14 @@ class MahavishnuCLI(OneiricCLIBase):
 
         # Registry surface check (synchronous; uses the worker registry directly)
         try:
-            from mahavishnu.workers.registry import WORKER_REGISTRY
+            from mahavishnu.workers.registry import list_worker_types
 
-            total = len(WORKER_REGISTRY)
-            sample = sorted(WORKER_REGISTRY.keys())[:3]
+            types_ = list_worker_types()
+            total = len(types_)
+            sample = sorted(types_)[:3]
             checks["registry"] = {
                 "status": "healthy" if total > 0 else "degraded",
-                "detail": (f"WORKER_REGISTRY entries={total} sample={sample}"),
+                "detail": (f"registry entries={total} sample={sample}"),
                 "total": total,
                 "sample": sample,
             }

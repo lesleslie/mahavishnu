@@ -70,7 +70,7 @@ from .workers.capabilities import (
     WorkerCapabilityState,
     evaluate_worker_capabilities,
 )
-from .workers.registry import WORKER_REGISTRY
+from .workers.registry import WORKER_REGISTRY, get_worker_entry, list_worker_types
 
 # Import worktree management CLI
 from .worktree_cli import worktree_app
@@ -1399,7 +1399,7 @@ def workers_execute(
     async def _execute():
         from .terminal.manager import TerminalManager
         from .workers import WorkerManager
-        from .workers.registry import get_worker_config, resolve_worker_type
+        from .workers.registry import get_worker_entry, resolve_worker_type
 
         maha_app = MahavishnuApp()
         crow_client = _resolve_crow_mcp_client(maha_app.config)
@@ -1428,8 +1428,8 @@ def workers_execute(
             prompt=prompt,
         )
 
-        config = get_worker_config(resolved_worker_type)
-        if config is not None and config.one_shot:
+        config = get_worker_entry(resolved_worker_type)
+        if config.one_shot:
             typer.echo(f"🚀 Submitting one-shot prompt to {resolved_worker_type}...")
             worker_ids = await worker_mgr.submit_workers(
                 resolved_worker_type,

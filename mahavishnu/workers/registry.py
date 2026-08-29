@@ -2,10 +2,30 @@
 
 This module defines all available worker types and their configurations,
 making it easy to add new worker types without modifying core code.
+
+Capability-driven lookup (added in Task 2.5):
+
+- ``get_worker_entry(worker_type, *, settings=None) -> WorkerEntry`` —
+  look up a :class:`mahavishnu.core.config.WorkerEntry` by id; raises
+  :class:`MahavishnuError` (code ``RESOURCE_NOT_FOUND``) on miss, never
+  ``KeyError``.
+- ``list_worker_types(category=None, *, settings=None) -> list[str]`` —
+  merged capability-driven + legacy lookup. When ``settings`` is
+  supplied the capability-driven registry is used; otherwise the legacy
+  ``WORKER_REGISTRY`` dict is consulted (preserving the ``category=``
+  filter for back-compat).
 """
+
+from __future__ import annotations
 
 from dataclasses import dataclass, field
 from enum import Enum
+from typing import TYPE_CHECKING
+
+from mahavishnu.core.errors import ErrorCode, MahavishnuError
+
+if TYPE_CHECKING:
+    from mahavishnu.core.config import MahavishnuSettings, WorkerEntry
 
 
 class AuthKind(Enum):
@@ -765,18 +785,39 @@ def resolve_worker_type(
     return worker_type
 
 
-def list_worker_types(category: WorkerCategory | None = None) -> list[str]:
+def list_worker_types(
+    category: WorkerCategory | None = None,
+    *,
+    settings: "MahavishnuSettings | None" = None,
+) -> list[str]:
     """List available worker types, optionally filtered by category.
 
+    The capability-driven lookup (added in Task 2.5) is selected when
+    ``settings`` is supplied — the function then enumerates
+    ``settings.worker_registry.entries``. Otherwise it falls back to the
+    legacy ``WORKER_REGISTRY`` dict so existing callers keep working.
+
+    The ``category`` kwarg is honored on the legacy path only, since the
+    capability-driven ``WorkerEntry`` model does not carry a category
+    field. Unknown categories simply yield an empty list rather than
+    raising, which preserves the documented contract.
+
     Args:
-        category: Optional category filter
+        category: Optional category filter (legacy ``WORKER_REGISTRY`` path).
+        settings: Optional :class:`MahavishnuSettings` instance. When
+            supplied, the capability-driven registry is used and
+            ``category`` is ignored.
 
     Returns:
-        List of worker type identifiers
+        List of worker type identifiers (empty when nothing matches).
     """
-    if category is None:
-        return list(WORKER_REGISTRY.keys())
-    return [wt for wt, cfg in WORKER_REGISTRY.items() if cfg.category == category]
+    if settings is None:
+        # Legacy path: WORKER_REGISTRY dict supports the ``category`` filter.
+        if category is None:
+            return list(WORKER_REGISTRY.keys())
+        return [wt for wt, cfg in WORKER_REGISTRY.items() if cfg.category == category]
+    # Capability-driven path: enumerate WorkerEntry.worker_type strings.
+    return [entry.worker_type for entry in settings.worker_registry.entries]
 
 
 def get_workers_by_category() -> dict[WorkerCategory, list[WorkerConfig]]:
@@ -815,7 +856,48 @@ __all__ = [
     "WorkerCategory",
     "WorkerConfig",
     "get_worker_config",
+    "get_worker_entry",
     "get_workers_by_category",
     "list_worker_types",
     "validate_worker_dependencies",
 ]
+
+
+def get_worker_entry(
+    worker_type: str,
+    *,
+    settings: "MahavishnuSettings | None" = None,
+) -> "WorkerEntry":
+    """Look up a :class:`WorkerEntry` by its ``worker_type`` identifier.
+
+    The lookup is capability-driven: it enumerates
+    ``settings.worker_registry.entries`` (the Oneiric-loaded registry)
+    and returns the first entry whose ``worker_type`` matches. When no
+    ``settings`` is supplied a fresh :class:`MahavishnuSettings` is
+    constructed so caller-side configuration is preserved.
+
+    Args:
+        worker_type: Unique worker-type identifier (e.g.,
+            ``"terminal-shell"``).
+        settings: Optional :class:`MahavishnuSettings` instance. When
+            ``None``, a default-constructed settings object is used.
+
+    Returns:
+        The matching :class:`WorkerEntry`.
+
+    Raises:
+        MahavishnuError: When no entry exists for ``worker_type``,
+            carrying ``ErrorCode.RESOURCE_NOT_FOUND``. ``KeyError`` is
+            never raised — short-circuits on the public contract.
+    """
+    if settings is None:
+        from mahavishnu.core.config import MahavishnuSettings as _Settings
+
+        settings = _Settings()
+    for entry in settings.worker_registry.entries:
+        if entry.worker_type == worker_type:
+            return entry
+    raise MahavishnuError(
+        f"worker_type {worker_type!r} not found in registry",
+        ErrorCode.RESOURCE_NOT_FOUND,
+    )
