@@ -22,7 +22,7 @@ dependencies = [
     # CLI
     "typer>=0.27.1",
     # Oneiric ecosystem
-    "oneiric>=0.19.0",
+    "oneiric>=0.19.1",
     # Shared infrastructure (mcp-common)
     # 0.18.0+ required for `apply_tool_profile()` (ToolProfile dispatch helper).
     "mcp-common>=0.20.0",
