@@ -90,7 +90,7 @@ Commands with `deprecated: true` or `hidden: true` flags.
 
 | Command | Repo | Flags | Notes |
 |---|---|---|---|
-| [`db server`](../audit-inventory/dhara-cli-inventory.json#L127) | dhara | hidden | — |
+| [`db server`](../audit-inventory/dhara-cli-inventory.json#L125) | dhara | hidden | — |
 
 ## 5. Stale commands
 
@@ -106,16 +106,16 @@ Sorted by `last_modified_date` (most recent first). Since the inventory tool doe
 
 | Command | Repo | Last activity (days) | Module |
 |---|---|---|---|
-| [`checkpoint cleanup-snapshots`](../audit-inventory/session-buddy-cli-inventory.json#L107) | session-buddy | 1 | `session_buddy.cli.checkpoint_cli` |
-| [`workflow sweep`](../audit-inventory/mahavishnu-cli-inventory.json#L247) | mahavishnu | 1 | `mahavishnu._main_cli` |
-| [`workflow quality-check`](../audit-inventory/mahavishnu-cli-inventory.json#L267) | mahavishnu | 1 | `mahavishnu._main_cli` |
-| [`workflow heal`](../audit-inventory/mahavishnu-cli-inventory.json#L287) | mahavishnu | 1 | `mahavishnu._main_cli` |
-| [`workflow fix`](../audit-inventory/mahavishnu-cli-inventory.json#L307) | mahavishnu | 1 | `mahavishnu._main_cli` |
-| [`workflow review`](../audit-inventory/mahavishnu-cli-inventory.json#L327) | mahavishnu | 1 | `mahavishnu._main_cli` |
-| [`workflow prefect-list-deployments`](../audit-inventory/mahavishnu-cli-inventory.json#L347) | mahavishnu | 1 | `mahavishnu._main_cli` |
-| [`workflow prefect-get-deployment`](../audit-inventory/mahavishnu-cli-inventory.json#L367) | mahavishnu | 1 | `mahavishnu._main_cli` |
-| [`workflow prefect-list-flow-runs`](../audit-inventory/mahavishnu-cli-inventory.json#L387) | mahavishnu | 1 | `mahavishnu._main_cli` |
-| [`workflow prefect-cancel-flow-run`](../audit-inventory/mahavishnu-cli-inventory.json#L407) | mahavishnu | 1 | `mahavishnu._main_cli` |
+| [`checkpoint cleanup-snapshots`](../audit-inventory/session-buddy-cli-inventory.json#L105) | session-buddy | 1 | `session_buddy.cli.checkpoint_cli` |
+| [`workflow sweep`](../audit-inventory/mahavishnu-cli-inventory.json#L245) | mahavishnu | 1 | `mahavishnu._main_cli` |
+| [`workflow quality-check`](../audit-inventory/mahavishnu-cli-inventory.json#L265) | mahavishnu | 1 | `mahavishnu._main_cli` |
+| [`workflow heal`](../audit-inventory/mahavishnu-cli-inventory.json#L285) | mahavishnu | 1 | `mahavishnu._main_cli` |
+| [`workflow fix`](../audit-inventory/mahavishnu-cli-inventory.json#L305) | mahavishnu | 1 | `mahavishnu._main_cli` |
+| [`workflow review`](../audit-inventory/mahavishnu-cli-inventory.json#L325) | mahavishnu | 1 | `mahavishnu._main_cli` |
+| [`workflow prefect-list-deployments`](../audit-inventory/mahavishnu-cli-inventory.json#L345) | mahavishnu | 1 | `mahavishnu._main_cli` |
+| [`workflow prefect-get-deployment`](../audit-inventory/mahavishnu-cli-inventory.json#L365) | mahavishnu | 1 | `mahavishnu._main_cli` |
+| [`workflow prefect-list-flow-runs`](../audit-inventory/mahavishnu-cli-inventory.json#L385) | mahavishnu | 1 | `mahavishnu._main_cli` |
+| [`workflow prefect-cancel-flow-run`](../audit-inventory/mahavishnu-cli-inventory.json#L405) | mahavishnu | 1 | `mahavishnu._main_cli` |
 
 ---
 
