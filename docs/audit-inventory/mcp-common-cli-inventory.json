@@ -1,0 +1,9 @@
+{
+  "repo": "mcp-common",
+  "command_count": 0,
+  "commands": [],
+  "notes": [
+    "library-only; no CLI surface"
+  ],
+  "version": "0.20.4"
+}

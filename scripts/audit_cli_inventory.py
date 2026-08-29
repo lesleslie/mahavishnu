@@ -149,6 +149,7 @@ def inventory_one_repo(repo: str, repo_path: str, out_path: Path) -> dict[str, A
         if repo == "mcp-common":
             data = {
                 "repo": repo,
+                "command_count": 0,
                 "commands": [],
                 "notes": ["library-only; no CLI surface"],
                 "version": _safe_version(repo),
