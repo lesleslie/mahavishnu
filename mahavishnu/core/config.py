@@ -2091,6 +2091,18 @@ class WorktreeCacheSettings(BaseModel):
     default_ttl_seconds: int = Field(default=3600, ge=0)
 
 
+class EnginesConfig(BaseModel):
+    """Per-engine enablement toggles (Task 2.7.1).
+
+    Engines listed in ``disabled`` are skipped by
+    ``mahavishnu.engines.load_engine_registrations`` so the conductor
+    never surfaces their ``provides`` lists.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+    disabled: list[str] = Field(default_factory=list)
+
+
 class MahavishnuSettings(BaseSettings):
     """Mahavishnu configuration extending MCPServerSettings.
 
@@ -2356,6 +2368,13 @@ class MahavishnuSettings(BaseSettings):
     goal_teams: GoalTeamsConfig = Field(
         default_factory=GoalTeamsConfig,
         description="Goal-Driven Teams configuration",
+    )
+
+    # Engine enablement (Task 2.7.1) — list of engine_ids to omit from
+    # ``mahavishnu.engines.load_engine_registrations``.
+    engines: EnginesConfig = Field(
+        default_factory=EnginesConfig,
+        description="Engine enablement toggles (disabled engine_ids are skipped at registration time)",
     )
 
     # Health check configuration
