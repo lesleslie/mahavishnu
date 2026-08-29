@@ -19,13 +19,46 @@ from .capabilities import (
     evaluate_worker_capabilities,
     invalidate_capability,
 )
-from .registry import get_worker_config
+from .registry import get_worker_config, get_worker_entry
 
 if TYPE_CHECKING:
     from ..core.config import MahavishnuSettings
     from ..terminal.manager import TerminalManager
 
 logger = logging.getLogger(__name__)
+
+
+def _substitute_argv(
+    argv: list[str],
+    env: dict[str, str],
+    extra: dict[str, str],
+) -> list[str]:
+    """Replace {key} placeholders with env values, then $1..$9 with extra values.
+
+    Args:
+        argv: raw command_argv from settings, e.g. ["psql", "-U", "{user}", "$1"]
+        env: process environment (for placeholders matching {X})
+        extra: caller-supplied values for $1..$9 (positional args)
+
+    Returns:
+        New argv with placeholders substituted. $1..$9 are replaced in order
+        from `extra`; missing extras become empty strings.
+    """
+    import re
+
+    out: list[str] = []
+    positional = [extra.get(f"{i}", "") for i in range(1, 10)]
+    for arg in argv:
+        # {key} → os.environ[key] (case-sensitive)
+        def repl_brace(m: re.Match[str]) -> str:
+            return env.get(m.group(1), m.group(0))  # leave placeholder if missing
+
+        new = re.sub(r"\{([a-zA-Z_][a-zA-Z0-9_]*)\}", repl_brace, arg)
+        # $1..$9 → positional args (only outside double quotes; simple left-to-right)
+        for i in range(9, 0, -1):
+            new = new.replace(f"${i}", positional[i - 1])
+        out.append(new)
+    return out
 
 
 def _create_isolated_worker(
@@ -131,6 +164,43 @@ class WorkerManager:
                 message=report.safe_reason or "static prerequisites missing",
             )
 
+    def _validate_required_env(self, worker_type: str) -> None:
+        """Ensure all ``entry.required_env`` vars are set for this worker_type.
+
+        Looks up the worker via the new capability-driven registry (Task 2.5).
+        Raises :class:`MahavishnuError` with ``VALIDATION_ERROR`` when any
+        required environment variable is missing. Silently returns when the
+        worker is not in the new registry — those legacy-only workers have
+        their own env checks in their dedicated constructors.
+
+        Args:
+            worker_type: Worker-type identifier.
+        """
+        from ..core.config import MahavishnuSettings
+        from ..core.errors import ErrorCode, MahavishnuError
+
+        # Only use self.settings when it is a real MahavishnuSettings instance.
+        # Tests sometimes inject ``settings=object()`` as a sentinel; we ignore
+        # those and let ``get_worker_entry`` construct a default.
+        registry_settings = (
+            self.settings if isinstance(self.settings, MahavishnuSettings) else None
+        )
+
+        try:
+            entry = get_worker_entry(worker_type, settings=registry_settings)
+        except MahavishnuError:
+            # Legacy-only worker (container, application, gateway, etc.).
+            # Its constructor will perform any required-env checks.
+            return
+
+        missing = [var for var in entry.required_env if var not in os.environ]
+        if missing:
+            raise MahavishnuError(
+                f"Worker {worker_type!r} missing required env: {missing}",
+                ErrorCode.VALIDATION_ERROR,
+                details={"worker_type": worker_type, "missing_env": missing},
+            )
+
     async def submit_workers(
         self,
         worker_type: str,
@@ -219,6 +289,8 @@ class WorkerManager:
 
         Raises:
             ValueError: If worker_type is unknown
+            MahavishnuError: If ``required_env`` from the new registry is
+                missing from the process environment.
         """
         # Import registry for worker type lookup
         from .registry import WorkerCategory, get_worker_config
@@ -228,6 +300,12 @@ class WorkerManager:
 
         if config is None:
             raise ValueError(f"Unknown worker type: {worker_type}")
+
+        # Validate required_env against the new capability-driven registry.
+        # Skip silently for worker_types that live only in the legacy
+        # WORKER_REGISTRY (containers, applications, gateways); their env
+        # checks belong to their dedicated constructors below.
+        self._validate_required_env(worker_type)
 
         # Create worker based on category
         if config.category == WorkerCategory.CONTAINER:
