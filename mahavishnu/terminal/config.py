@@ -83,30 +83,3 @@ class TerminalSettings(BaseModel):
             "Prefect's local uvicorn."
         ),
     )
-    # Connection pooling settings (for iTerm2)
-    iterm2_pooling_enabled: bool = Field(
-        default=True,
-        description="Enable connection pooling for iTerm2 adapter",
-    )
-    iterm2_pool_max_size: int = Field(
-        default=3,
-        ge=1,
-        le=10,
-        description="Maximum number of iTerm2 connections to pool",
-    )
-    iterm2_pool_idle_timeout: float = Field(
-        default=300.0,
-        ge=30.0,
-        le=3600.0,
-        description="Close idle iTerm2 connections after N seconds",
-    )
-    # Profile settings
-    iterm2_default_profile: str | None = Field(
-        default=None,
-        description="Default iTerm2 profile name for new sessions",
-    )
-    # Window vs Tab settings
-    iterm2_new_window: bool = Field(
-        default=False,
-        description="Create new iTerm2 windows instead of tabs for each session",
-    )
