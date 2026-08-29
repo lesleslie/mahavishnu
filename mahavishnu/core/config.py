@@ -16,7 +16,7 @@ from __future__ import annotations
 from enum import StrEnum
 from pathlib import Path
 
-from pydantic import BaseModel, Field, field_validator, model_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 from pydantic._internal._utils import deep_update
 from pydantic_settings import BaseSettings, SettingsConfigDict, YamlConfigSettingsSource
 
@@ -1142,6 +1142,63 @@ class WorkerConfig(BaseModel):
     model_config = {"extra": "forbid"}
 
 
+_CAPABILITY_ID_PATTERN = r"^[a-z]+:[a-z0-9._-]+$"
+
+
+class WorkerEntry(BaseModel):
+    """One worker registration, loaded from ``settings/mahavishnu.yaml:worker_registry.entries[]``."""
+
+    model_config = ConfigDict(extra="forbid")
+    worker_type: str
+    name: str = ""  # default empty so the field is optional in YAML
+    description: str = ""
+    command_argv: list[str] = Field(default_factory=list)
+    completion_markers: list[str] = Field(default_factory=list)
+    provides: list[str] = Field(default_factory=list)  # CapabilityId strings
+    tags: list[str] = Field(default_factory=list)
+    requires_tool: str | None = None
+    required_env: list[str] = Field(default_factory=list)
+    auth_kind: str = "none"
+    runtime_kind: str = "shell"
+    one_shot: bool = False
+    default_timeout: int = 300
+
+    @field_validator("provides")
+    @classmethod
+    def _validate_provides(cls, v: list[str]) -> list[str]:
+        import re
+        pat = re.compile(_CAPABILITY_ID_PATTERN)
+        for cap_id in v:
+            if not pat.match(cap_id):
+                raise ValueError(
+                    f"provides entry {cap_id!r} does not match {_CAPABILITY_ID_PATTERN!r}"
+                )
+        return v
+
+    @field_validator("worker_type")
+    @classmethod
+    def _validate_worker_type(cls, v: str) -> str:
+        if not v:
+            raise ValueError("worker_type must be non-empty")
+        return v
+
+
+class WorkerRegistryConfig(BaseModel):
+    """Loaded from ``worker_registry:`` block in ``settings/mahavishnu.yaml``.
+
+    Each entry corresponds to one terminal-* worker type. The keys
+    here are the SAME string keys as the legacy ``WORKER_REGISTRY``,
+    so this is a drop-in replacement.
+
+    NOTE: The name is ``worker_registry`` (not ``workers``) because
+    ``MahavishnuSettings.workers`` is already taken by the runtime
+    WorkerConfig block at :2263 of core/config.py.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+    entries: list[WorkerEntry] = Field(default_factory=list)
+
+
 class AdapterConfig(BaseModel):
     """Orchestration adapter configuration."""
 
@@ -2251,6 +2308,12 @@ class MahavishnuSettings(BaseSettings):
     workers: WorkerConfig = Field(
         default_factory=WorkerConfig,
         description="Worker orchestration configuration",
+    )
+
+    # Worker registry (capability-bearing worker entries)
+    worker_registry: WorkerRegistryConfig = Field(
+        default_factory=WorkerRegistryConfig,
+        description="Capability-bearing worker registry entries",
     )
 
     # Adapters
