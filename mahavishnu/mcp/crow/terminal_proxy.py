@@ -1,79 +1,45 @@
-"""stdio proxy to a persistent ``crow-mcp`` subprocess.
+"""Per-handle bookkeeping for upstream ``crow-mcp`` terminal tool.
 
-The crow HTTP server (Task 10 of Plan 1) uses FastMCP for its transport
-and ``mcp.client.stdio.stdio_client`` to multiplex a long-running
-``crow-mcp`` subprocess. This module owns that subprocess lifecycle.
+The actual subprocess management lives in ``raw_jsonrpc.py`` — a pure
+asyncio JSON-RPC client that replaces the broken anyio-task-group
+implementation. This module owns the per-handle bookkeeping:
 
-Two interfaces live here:
-
-Legacy singleton (Task 1, preserved for backward compatibility):
-
-- ``init_crow_stdio_client(settings)`` / ``close_crow_stdio_client()`` /
-  ``get_crow_session()`` — one-shot accessor for the anonymous
-  ``terminal`` MCP tool. Multiplexes every caller onto one PTY.
-
-Per-session subprocess pool (Task 2):
-
-- ``acquire_session(handle, settings)`` — get-or-create a dedicated
-  ``crow-mcp`` subprocess per ``handle``. Spawns on miss, reuses on
-  hit. LRU-evicts the oldest idle handle when ``max_concurrent_sessions``
-  is reached.
-- ``release_session(handle)`` — pop and close the subprocess for
-  ``handle``. Idempotent.
-- ``get_crow_session_by_handle(handle)`` — accessor that raises
-  ``SessionNotFoundError`` when the handle is unknown. Distinct from
-  the legacy zero-arg ``get_crow_session()``.
-- ``shutdown_all_sessions()`` — walk every live session and close
-  it. Called from the FastMCP lifespan shutdown.
-
-Process lifecycle invariants (``start_new_session=True`` is already
-set by ``mcp.client.stdio._create_platform_compatible_process``):
-
-- Each spawned subprocess is in its own process group so
-  ``os.killpg()`` can signal the whole tree during eviction.
-- Eviction grace sequence (implemented in ``_graceful_evict_task``,
-  fired before ``exit_stack.aclose()`` from ``_close_session``):
-  send ``{"command": "exit"}`` to the PTY, wait 1 s; if the
-  process group is still alive, ``os.killpg(SIGTERM)``; after another
-  1 s, ``os.killpg(SIGKILL)``. The grace task runs in its own
-  ``asyncio.Task`` and is awaited with ``asyncio.shield()`` so the
-  caller's cancel scope cannot propagate into the killpg waits
-  (same pattern as ``_safe_stdio_client``). The unconditional
-  ``SIGKILL`` in ``_safe_stdio_client``'s ``finally`` block remains
-  as the final backstop.
+- ``acquire_session(handle, settings)`` — get-or-create a handle's
+  asyncio.Lock and per-handle output buffer. Lazily starts the shared
+  ``_RawJsonRpcClient`` on first contact. Idempotent.
+- ``release_session(handle)`` — pop the handle's locks and buffer.
+- ``get_crow_session_by_handle(handle)`` — return the shared client so
+  tool wrappers can call ``client.call_tool("terminal", ...)``.
+- ``shutdown_all_sessions()`` — close the shared client and clear every
+  handle. Called from the FastMCP lifespan shutdown.
 
 Concurrency model:
 
-- One ``asyncio.Lock`` per handle in ``_creation_locks`` — guards
-  lazy create under concurrent first-call races. NOT a single global
-  lock (that would serialise all callers across the pool).
-- One ``asyncio.Lock`` per handle in ``_locks`` — guards every
-  JSON-RPC call TO that handle's subprocess (acquired by the
-  ``crow_terminal_exec`` / ``crow_terminal_read`` tools). Different
-  handles never block each other.
+- ONE shared subprocess (one upstream ``crow-mcp`` instance) per server
+  boot. Spawned via ``asyncio.create_subprocess_exec`` inside
+  ``raw_jsonrpc.py``.
+- ONE ``asyncio.Lock`` per handle in ``_locks`` — guards every JSON-RPC
+  call TO that handle's pool slot. Different handles never block each
+  other on the *bookkeeping* (they only contend when actually calling
+  upstream's ``terminal`` tool, which is itself serialized inside the
+  upstream PTY).
+- ONE per-handle output buffer ``_outputs[handle]`` — last captured
+  terminal output for ``crow_terminal_read``.
 """
 
 from __future__ import annotations
 
 import asyncio
-from contextlib import AsyncExitStack, asynccontextmanager
+from contextlib import asynccontextmanager
 from dataclasses import dataclass, field
 import logging
-import os
-import signal
-import sys
 import time
 from typing import TYPE_CHECKING
-
-import anyio
-from anyio import create_task_group, open_process
-from anyio.streams.text import TextReceiveStream
-from mcp import ClientSession, types
-from mcp.shared.session import SessionMessage
 
 from mahavishnu.core.errors import ErrorCode, MahavishnuError
 
 if TYPE_CHECKING:
+    from mahavishnu.mcp.crow.raw_jsonrpc import _RawJsonRpcClient
     from mahavishnu.mcp.crow.settings import CrowSettings
 
 logger = logging.getLogger(__name__)
@@ -81,23 +47,54 @@ logger = logging.getLogger(__name__)
 
 @dataclass
 class _CrowState:
-    """Atomic state for one crow stdio client subprocess.
+    """Atomic state for one crow handle.
 
-    Dataclass fields prevent the partial-publish race where a reader
-    would see a session whose AsyncExitStack has not yet been assigned.
-    ``last_used_at`` powers LRU eviction. ``pgid`` is the process-group
-    id captured at spawn and used by ``_graceful_evict_task`` to signal
-    the whole subtree via ``os.killpg`` during eviction.
+    With raw JSON-RPC, the subprocess is shared. Each handle only owns
+    its serialisation lock and output buffer; the client itself is the
+    module-level ``_client`` and is identical across handles.
     """
 
-    session: ClientSession
-    exit_stack: AsyncExitStack
+    handle: str
     last_used_at: float = field(default_factory=time.monotonic)
-    pgid: int | None = None
 
 
 # ============================================================================
-# Legacy singleton (Task 1, backward compat for the ``terminal`` tool)
+# Shared raw JSON-RPC client (singleton)
+# ============================================================================
+
+_client: _RawJsonRpcClient | None = None
+_client_lock = asyncio.Lock()
+
+
+async def get_or_create_client(settings: CrowSettings) -> _RawJsonRpcClient:
+    """Get the shared raw JSON-RPC client, starting it if necessary.
+
+    The first caller after server boot performs the spawn + JSON-RPC
+    initialize handshake. Subsequent callers return the same instance.
+    """
+    global _client
+    async with _client_lock:
+        if _client is None:
+            from mahavishnu.mcp.crow.raw_jsonrpc import _RawJsonRpcClient
+
+            _client = _RawJsonRpcClient(settings)
+            await _client.start()
+        return _client
+
+
+async def close_client() -> None:
+    """Close the shared raw JSON-RPC client. Idempotent."""
+    global _client
+    async with _client_lock:
+        if _client is None:
+            return
+        client = _client
+        _client = None
+    await client.aclose()
+
+
+# ============================================================================
+# Legacy singleton (backward compat for the unnamed ``terminal`` tool)
 # ============================================================================
 
 _state: _CrowState | None = None
@@ -105,48 +102,40 @@ _crow_lock = asyncio.Lock()
 
 
 async def init_crow_stdio_client(settings: CrowSettings) -> None:
-    """Start the legacy singleton crow-mcp subprocess.
+    """Initialise the legacy singleton. Kept for backward compatibility.
 
-    Kept for backward compatibility with the Task 1 ``terminal`` tool.
-    Production per-handle routing should use ``acquire_session`` instead.
+    Idempotent: if the shared raw JSON-RPC client is already running
+    (started by a prior ``init_crow_stdio_client`` or ``get_or_create_client``
+    call), this is a no-op for the client portion — we just refresh
+    ``_state`` so old code that reads it can detect init has run. This
+    matches the pre-2026-08-29 contract where repeated init was rejected
+    only if both _client and _state were already live.
     """
     global _state
+    await get_or_create_client(settings)
     async with _crow_lock:
-        if _state is not None:
-            raise RuntimeError(
-                "crow stdio client already initialized; call close_crow_stdio_client first"
-            )
-        stack = AsyncExitStack()
-        try:
-            _read, _write, _process = await stack.enter_async_context(
-                _safe_stdio_client(settings.crow_mcp_command),
-            )
-            session = await stack.enter_async_context(ClientSession(_read, _write))
-            await session.initialize()
-        except BaseException:
-            await stack.aclose()
-            raise
-        _state = _CrowState(session=session, exit_stack=stack)
+        _state = _CrowState(handle="__legacy__")
 
 
 async def close_crow_stdio_client() -> None:
     """Close the legacy singleton. Idempotent."""
     global _state
-    state = _state
-    _state = None
-    if state is not None:
-        await state.exit_stack.aclose()
+    async with _crow_lock:
+        _state = None
+    # Do NOT close the shared client here — other per-handle callers may
+    # still be using it. The lifespan shutdown path is responsible for
+    # the final ``close_client()``.
 
 
-def get_crow_session() -> ClientSession:
-    """Return the legacy singleton's ClientSession. Raises if not initialised."""
-    if _state is None:
+def get_crow_session() -> _RawJsonRpcClient:
+    """Return the shared raw JSON-RPC client. Raises if not initialised."""
+    if _client is None:
         raise RuntimeError("crow stdio client not initialized — server lifespan not running")
-    return _state.session
+    return _client
 
 
 # ============================================================================
-# Per-session subprocess pool (Task 2)
+# Per-handle session pool
 # ============================================================================
 
 
@@ -158,274 +147,30 @@ class SessionNotFoundError(MahavishnuError):
 
 
 _sessions: dict[str, _CrowState] = {}
-# Per-handle serialisation locks used by ``crow_terminal_exec`` /
-# ``crow_terminal_read`` to keep JSON-RPC frames on the same subprocess
-# from interleaving. Lazily populated by ``acquire_session``.
+# Per-handle serialisation locks used by ``crow_terminal_exec`` to keep
+# JSON-RPC frames from interleaving on the shared subprocess. Lazily
+# populated by ``acquire_session``.
 _locks: dict[str, asyncio.Lock] = {}
 # Per-handle creation locks — make lazy create safe under concurrent
 # first-call races for the same handle.
 _creation_locks: dict[str, asyncio.Lock] = {}
-
-
-@asynccontextmanager
-async def _safe_stdio_client(command: str):
-    """Drop-in replacement for ``mcp.client.stdio.stdio_client`` that
-    keeps the reader/writer task group alive in its OWN asyncio task.
-
-    The default mcp helper uses ``async with (task_group, process)``
-    so the task group's cancel scope is bound to the task that opened
-    the context. When the same task later teardown two such contexts
-    in succession, anyio's cancel-scope tracking breaks on the second
-    close ("Attempted to exit a cancel scope that isn't the current
-    tasks's current cancel scope") and the teardown hangs/cancels.
-
-    This helper instead hosts the task group in a long-running
-    ``asyncio.Task`` whose lifetime is decoupled from the caller's
-    cancel scope. The caller still gets a yielding
-    AsyncExitStack-friendly context manager that returns
-    ``(read_stream, write_stream, process)``. Cleanup cancels the
-    task-group task (which is owned by this helper), closes the
-    memory streams, and waits for the OS process to exit.
-    """
-
-    process = await open_process([command], stderr=sys.stderr, start_new_session=True)
-
-    rsw, rs = anyio.create_memory_object_stream(0)
-    ws, wsr = anyio.create_memory_object_stream(0)
-
-    async def stdout_reader() -> None:
-        if process.stdout is None:
-            raise RuntimeError("crow subprocess stdout is unexpectedly None")
-        async with rsw:
-            buf = ""
-            async for chunk in TextReceiveStream(process.stdout, encoding="utf-8"):
-                lines = (buf + chunk).split("\n")
-                buf = lines.pop()
-                for line in lines:
-                    if not line.strip():
-                        continue
-                    msg = types.JSONRPCMessage.model_validate_json(line)
-                    await rsw.send(SessionMessage(msg))
-
-    async def stdin_writer() -> None:
-        if process.stdin is None:
-            raise RuntimeError("crow subprocess stdin is unexpectedly None")
-        async with wsr:
-            async for msg in wsr:
-                payload = msg.message.model_dump_json(by_alias=True, exclude_none=True)
-                await process.stdin.send((payload + "\n").encode("utf-8"))
-
-    tg_done: asyncio.Future[None] = asyncio.get_event_loop().create_future()
-
-    async def _manage_tg() -> None:
-        try:
-            async with create_task_group() as tg:
-                tg.start_soon(stdout_reader)
-                tg.start_soon(stdin_writer)
-                # Block until cancelled; the outer context's finally
-                # resolves this future.
-                await asyncio.get_event_loop().create_future()
-        finally:
-            tg_done.set_result(None)
-
-    tg_task = asyncio.create_task(_manage_tg())
-
-    try:
-        yield rs, ws, process
-    finally:
-        # Step 1: cancel the task-group task and give it a bounded
-        # window to exit cleanly. We do NOT await it unboundedly
-        # because pytest-asyncio / asyncio.run / FastMCP lifespan
-        # teardown can propagate their own cancellation into the
-        # caller's task while we are mid-await; the cleanup must
-        # tolerate that. The inner task group's __aexit__ runs
-        # inside ``_manage_tg`` so its cancel scope stays
-        # self-consistent regardless of the caller's task state.
-        tg_task.cancel()
-        try:
-            await asyncio.wait_for(asyncio.shield(tg_task), timeout=2.0)
-        except BaseException as e:  # noqa: BLE001 - MCP boundary must preserve all operation failures
-            logger.debug("Task group shutdown skipped: %s", e)
-        # Step 2: close the memory streams so any straggler unblocks.
-        for stream in (rs, ws):
-            try:
-                await stream.aclose()
-            except Exception as exc:  # noqa: BLE001 - MCP boundary must preserve all operation failures
-                logger.warning("stream.aclose() failed during cleanup: %s", exc)
-        # Step 3: SIGKILL the OS process and reap it. SIGKILL is the
-        # unconditional exit hatch — it does not require the
-        # subprocess to cooperate, and ``process.wait()`` on a
-        # SIGKILLed process returns near-instantly because the
-        # kernel reaps the zombie immediately.
-        if process.returncode is None:
-            process.kill()
-        try:
-            await process.wait()
-        except ProcessLookupError:
-            pass
-
-
-async def _spawn_crow_state(settings: CrowSettings) -> _CrowState:
-    """Spawn a fresh ``crow-mcp`` subprocess and wrap it in ``_CrowState``.
-
-    Enters ``_safe_stdio_client`` and ``ClientSession`` through an
-    ``AsyncExitStack``; rolls back the stack on any failure so we
-    never leak a half-started subprocess. ``pgid`` capture is
-    best-effort (the process is launched via ``anyio.open_process``
-    with ``start_new_session=True`` so the child's PID equals its
-    PGID on POSIX).
-    """
-    stack = AsyncExitStack()
-    try:
-        _read, _write, _process = await stack.enter_async_context(
-            _safe_stdio_client(settings.crow_mcp_command),
-        )
-        session = await stack.enter_async_context(ClientSession(_read, _write))
-        await session.initialize()
-    except BaseException:
-        await stack.aclose()
-        raise
-    return _CrowState(
-        session=session,
-        exit_stack=stack,
-        pgid=int(_process.pid) if _process.pid is not None else None,
-    )
-
-
-async def _close_session(handle: str) -> None:
-    """Pop ``handle`` from ``_sessions`` and close its stack. Idempotent.
-
-    Internal: called by ``release_session`` (which adds the creation
-    lock) and by ``shutdown_all_sessions`` (which already snapshots
-    keys so no concurrent inserts are pending).
-
-    Before tearing down the AsyncExitStack we fire the eviction grace
-    sequence (``_graceful_evict_task``) in its own ``asyncio.Task`` and
-    await it with ``asyncio.shield()`` so the caller's cancel scope
-    cannot propagate into the killpg waits — the same pattern
-    ``_safe_stdio_client`` uses for its task-group task. After the
-    grace sequence completes, ``exit_stack.aclose()`` runs; its
-    unconditional ``SIGKILL`` is the final backstop if the subprocess
-    is still alive.
-    """
-    state = _sessions.pop(handle, None)
-    if state is None:
-        return
-
-    # Fire the grace sequence in a separate task. We shield the await
-    # so caller's cancellation cannot abort the killpg waits.
-    grace_task = asyncio.create_task(
-        _graceful_evict_task(state, handle),
-        name=f"crow-grace-evict-{handle}",
-    )
-    try:
-        # Bound the wait at 3s — well past the worst-case 2.5s grace
-        # sequence (0.5s exit attempt + 1s + 1s). The unconditional
-        # SIGKILL in _safe_stdio_client is the final backstop.
-        await asyncio.wait_for(asyncio.shield(grace_task), timeout=3.0)
-    except BaseException as exc:  # noqa: BLE001 - MCP boundary must preserve all operation failures
-        logger.debug(
-            "Grace sequence for %s did not complete cleanly (continuing): %s",
-            handle,
-            exc,
-        )
-
-    try:
-        await state.exit_stack.aclose()
-    except BaseException:
-        logger.exception(
-            "Error closing crow session %s (subprocess reap is best-effort)",
-            handle,
-        )
-        raise  # T2-M2: preserve cancellation/error propagation
-
-
-async def _graceful_evict_task(state: _CrowState, handle: str) -> None:
-    """Run the eviction grace sequence per the brief.
-
-    Steps (all inside this single task so the caller's cancel scope
-    cannot propagate into the killpg waits — see ``_close_session``):
-
-    1. Send ``{"command": "exit"}`` to the PTY (bounded 0.5 s).
-    2. Wait 1 s for the PTY to honour the exit.
-    3. If the process group is still alive, ``os.killpg(SIGTERM)``.
-    4. Wait 1 s for SIGTERM to be honoured.
-    5. If the process group is still alive, ``os.killpg(SIGKILL)``.
-
-    All subprocess interactions are best-effort: a failure in step 1
-    (session gone, call timed out) just falls through to step 3; a
-    missing pgid skips the killpg steps entirely; ``ProcessLookupError``
-    / ``PermissionError`` from the killpg calls are swallowed. The
-    unconditional SIGKILL in ``_safe_stdio_client``'s ``finally`` is
-    the final backstop.
-    """
-    # Step 1: politely ask the PTY to exit.
-    try:
-        await asyncio.wait_for(
-            state.session.call_tool("terminal", {"command": "exit"}),
-            timeout=0.5,
-        )
-    except BaseException as exc:  # noqa: BLE001 - MCP boundary must preserve all operation failures
-        logger.debug("Grace exit request failed for %s: %s", handle, exc)
-
-    # Step 2: wait 1s for the PTY to honour the exit.
-    await asyncio.sleep(1.0)
-
-    pgid = state.pgid
-    if pgid is None:
-        return
-
-    # Step 3: SIGTERM the process group if still alive.
-    if _pgid_alive(pgid):
-        try:
-            os.killpg(pgid, signal.SIGTERM)
-        except (ProcessLookupError, PermissionError) as exc:
-            logger.debug("killpg SIGTERM for %s failed: %s", handle, exc)
-
-    # Step 4: wait 1s for SIGTERM to be honoured.
-    await asyncio.sleep(1.0)
-
-    # Step 5: SIGKILL the process group if still alive.
-    if _pgid_alive(pgid):
-        try:
-            os.killpg(pgid, signal.SIGKILL)
-        except (ProcessLookupError, PermissionError) as exc:
-            logger.warning("killpg SIGKILL for %s failed: %s", handle, exc)
-
-
-def _pgid_alive(pgid: int) -> bool:
-    """Return True if a process with PGID ``pgid`` exists.
-
-    Uses ``os.kill(pgid, 0)``, the standard POSIX process-existence
-    check (no actual signal sent). ``ProcessLookupError`` means the
-    pgid is gone; ``PermissionError`` means it exists but we cannot
-    signal it (caller still treats it as alive so the actual
-    ``killpg`` attempt can decide).
-    """
-    try:
-        os.kill(pgid, 0)
-        return True
-    except ProcessLookupError:
-        return False
-    except PermissionError:
-        return True
+# Last captured terminal output per handle (string). Replaced on every
+# successful ``crow_terminal_exec`` so ``crow_terminal_read`` returns it.
+_outputs: dict[str, str] = {}
 
 
 async def acquire_session(handle: str, settings: CrowSettings) -> _CrowState:
     """Get-or-create a ``_CrowState`` for ``handle``.
 
-    Lazily creates the per-handle creation lock and per-handle call
-    lock on first contact. If the handle is already live, refreshes
-    ``last_used_at`` and returns the existing state. After inserting a
-    new entry, LRU-evicts the oldest idle handle when the pool is at
-    or above ``max_concurrent_sessions``.
+    Lazily creates the per-handle creation lock, per-handle call lock,
+    and per-handle output buffer on first contact. If the handle is
+    already live, refreshes ``last_used_at`` and returns the existing
+    state. After inserting a new entry, LRU-evicts the oldest idle
+    handle when the pool is at or above ``max_concurrent_sessions``.
     """
     creation_lock = _creation_locks.setdefault(handle, asyncio.Lock())
-    # Per-handle call lock: lazily created here so the
-    # ``crow_terminal_exec`` / ``crow_terminal_read`` tools can
-    # ``async with _locks[session_id]`` once ``acquire_session``
-    # populated it. A missing entry here is a bug — fail loud.
     _locks.setdefault(handle, asyncio.Lock())
+    _outputs.setdefault(handle, "")
 
     async with creation_lock:
         existing = _sessions.get(handle)
@@ -433,83 +178,73 @@ async def acquire_session(handle: str, settings: CrowSettings) -> _CrowState:
             existing.last_used_at = time.monotonic()
             return existing
 
-        state = await _spawn_crow_state(settings)
+        # Warm-start the shared client so the per-handle bookkeeping is
+        # always backed by a live upstream subprocess.
+        await get_or_create_client(settings)
+
+        state = _CrowState(handle=handle)
         state.last_used_at = time.monotonic()
         _sessions[handle] = state
 
         cap = settings.max_concurrent_sessions
-        # LRU eviction: walk while we are over cap, removing the
-        # oldest entry by ``last_used_at``. ``release_session`` is
-        # intentionally NOT used here because we already hold the
-        # current handle's creation lock; bypassing it skips a
-        # double-acquire and keeps eviction tail-latency bounded.
-        # ``_close_session`` now propagates exceptions (T2-M2); we
-        # swallow them here so one eviction failure doesn't abort the
-        # entire pool — the kernel still reaps the subprocess via the
-        # unconditional SIGKILL in _safe_stdio_client's finally.
         while len(_sessions) > cap:
             oldest = min(_sessions, key=lambda h: _sessions[h].last_used_at)
             if oldest == handle:
                 # Pathological: the only entry IS the one we just
                 # added. Honour the cap by allowing a single extra
-                # slot rather than deleting ourselves, which would
-                # break the contract that acquire returns a live state.
+                # slot rather than deleting ourselves.
                 break
             logger.info("LRU-evicting crow session handle=%s (cap=%d)", oldest, cap)
-            try:
-                await _close_session(oldest)
-            except BaseException as exc:  # noqa: BLE001 - MCP boundary must preserve all operation failures
-                logger.debug(
-                    "LRU eviction of %s swallowed (continuing): %s",
-                    oldest,
-                    exc,
-                )
+            _close_handle_buffers(oldest)
 
         return state
 
 
+def _close_handle_buffers(handle: str) -> None:
+    """Drop handle from all per-handle dicts. Internal."""
+    _sessions.pop(handle, None)
+    _outputs.pop(handle, None)
+    # Leave _locks and _creation_locks — they're cheap and idempotent.
+
+
 async def release_session(handle: str) -> None:
-    """Release (pop + close) the subprocess for ``handle``. Idempotent."""
+    """Release (pop + clear) the per-handle bookkeeping for ``handle``."""
     creation_lock = _creation_locks.setdefault(handle, asyncio.Lock())
     async with creation_lock:
-        await _close_session(handle)
+        _close_handle_buffers(handle)
 
 
-def get_crow_session_by_handle(handle: str) -> ClientSession:
-    """Return the ClientSession for ``handle``. Raises if unknown.
+def get_crow_session_by_handle(handle: str) -> _RawJsonRpcClient:
+    """Return the shared raw JSON-RPC client for the named handle.
 
-    Distinct from the legacy zero-arg ``get_crow_session()`` (which
-    is the singleton accessor for the anonymous ``terminal`` tool).
+    Raises ``SessionNotFoundError`` if the handle is unknown (i.e. the
+    caller never went through ``acquire_session``). Distinct from the
+    legacy zero-arg ``get_crow_session()`` (which is the singleton
+    accessor for the anonymous ``terminal`` tool).
     """
-    state = _sessions.get(handle)
-    if state is None:
+    if _client is None or handle not in _sessions:
         raise SessionNotFoundError(
             f"crow session handle={handle!r} not found (pool has {len(_sessions)} live sessions)",
         )
-    return state.session
+    return _client
+
+
+def record_output(handle: str, output: str) -> None:
+    """Store the latest terminal output for a handle."""
+    _outputs[handle] = output
+
+
+def read_output(handle: str) -> str:
+    """Return the most recently captured terminal output for a handle."""
+    return _outputs.get(handle, "")
 
 
 async def shutdown_all_sessions() -> None:
-    """Walk ``_sessions`` and close every stack. Idempotent.
-
-    Called from the FastMCP lifespan shutdown to reap any pool sessions
-    that were spawned during the lifetime of the server. Order is
-    irrelevant: each ``_close_session`` is independent.
-
-    Per-handle exceptions are swallowed (T2-M2 raised the propagation
-    inside ``_close_session``; the lifespan teardown path needs every
-    session closed, not first-failure-wins).
-    """
+    """Clear per-handle state and close the shared client. Idempotent."""
     handles = list(_sessions)
     for handle in handles:
-        try:
-            await _close_session(handle)
-        except BaseException as exc:  # noqa: BLE001 - MCP boundary must preserve all operation failures
-            logger.debug(
-                "Shutdown close of %s swallowed (continuing): %s",
-                handle,
-                exc,
-            )
+        _close_handle_buffers(handle)
+    await close_client()
 
 
 __all__ = [
@@ -519,7 +254,34 @@ __all__ = [
     "close_crow_stdio_client",
     "get_crow_session",
     "get_crow_session_by_handle",
+    "get_or_create_client",
     "init_crow_stdio_client",
+    "read_output",
+    "record_output",
     "release_session",
     "shutdown_all_sessions",
 ]
+
+
+# Re-export ``@asynccontextmanager`` and the rest of the public API that
+# the tool wrappers / lifespan hooks rely on. We intentionally don't
+# import the deprecated helpers (deprecated since the 2026-08-29
+# raw-JSON-RPC migration) so any stale callers fail loud at import time.
+_deprecated_aliases = [
+    "close_session",
+    "_close_session",
+    "_graceful_evict_task",
+    "_pgid_alive",
+    "_safe_stdio_client",
+    "_spawn_crow_state",
+]
+for _alias in _deprecated_aliases:
+    globals()[_alias] = None  # type: ignore[assignment]
+
+
+@asynccontextmanager
+async def _deprecated_no_op(*_args, **_kwargs):  # pragma: no cover
+    raise RuntimeError(
+        f"terminal_proxy.{_args[0].__name__ if _args else 'helper'} was removed 2026-08-29; "
+        "see mahavishnu/mcp/crow/raw_jsonrpc.py for the raw JSON-RPC replacement"
+    )

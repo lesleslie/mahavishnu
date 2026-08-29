@@ -1,17 +1,23 @@
-"""FastMCP tool wrappers for the crow-mcp subprocess(es).
+"""FastMCP tool wrappers for the upstream ``crow-mcp`` PTY.
 
-Two flavours live here:
+Both the legacy singleton (``terminal``) and the per-handle
+(``crow_terminal_*``) tools route to a SHARED raw-JSON-RPC client that
+wraps a single upstream ``crow-mcp`` subprocess (see
+``raw_jsonrpc.py``). Per-handle state is just bookkeeping:
 
-Legacy ``terminal`` tool (Task 1): multiplexes every caller onto the
-single crow-mcp subprocess spawned by the FastMCP lifespan. Kept for
-backward compatibility with one-shot callers and CrowTerminalAdapter
-pre-Task-3.
+- ``acquire_session`` registers a handle in the per-handle dict + creates
+  the per-handle ``asyncio.Lock``.
+- ``crow_terminal_exec`` acquires the per-handle lock, sends a JSON-RPC
+  ``tools/call terminal(command)`` to the shared client, captures the
+  output via ``record_output`` so subsequent ``crow_terminal_read`` can
+  return it.
+- ``crow_terminal_read`` returns the last captured output for that
+  handle without sending another upstream call.
 
-Per-session ``crow_terminal_*`` tools (Task 2): each caller passes an
-explicit ``handle`` (== ``session_id``). ``acquire_session`` lazily
-allocates a dedicated crow-mcp subprocess per handle, and the new
-tools route to that subprocess through a per-handle ``asyncio.Lock``
-to prevent JSON-RPC frame interleaving.
+Why per-handle locks at all if there is only one subprocess? Multiple
+concurrent callers (e.g. several pool workers) on different handles MUST
+not interleave their JSON-RPC frames on the shared stdin pipe.
+The lock guarantees that.
 """
 
 from __future__ import annotations
@@ -23,6 +29,8 @@ from ..terminal_proxy import (
     acquire_session,
     get_crow_session,
     get_crow_session_by_handle,
+    read_output,
+    record_output,
     release_session,
 )
 
@@ -48,34 +56,33 @@ def _tool_decorator(server: FastMCP | StandardServer) -> Any:
     return server.tool
 
 
-def _extract_terminal_output(result: Any) -> dict[str, Any]:
-    """Coerce a crow-mcp terminal result into a serializable dict.
+def _extract_terminal_output(result: Any) -> str:
+    """Coerce a raw JSON-RPC tool result into a terminal-output string.
 
-    crow-mcp returns either an ``mcp.types.CallToolResult`` whose
-    ``content`` is a list of TextContent, or a plain mapping. Best-effort
+    ``_RawJsonRpcClient.call_tool`` returns ``{"content": [...], "isError": ...}``
+    shaped dicts (matching MCP SDK's ``CallToolResult.model_dump``). Best-effort
     shape extraction; any failure degrades to an empty string rather than
     raising, because callers rely on ``output`` being a str.
     """
-    if hasattr(result, "content") and result.content:
-        first = result.content[0]
-        text = getattr(first, "text", None)
-        if text:
-            return {"output": text}
     if isinstance(result, dict):
-        return {"output": str(result.get("output", ""))}
-    return {"output": ""}
+        content = result.get("content")
+        if isinstance(content, list) and content:
+            first = content[0]
+            if isinstance(first, dict):
+                text = first.get("text")
+                if text:
+                    return str(text)
+            elif hasattr(first, "text"):
+                return str(getattr(first, "text", ""))
+        if "output" in result:
+            return str(result["output"])
+        if "raw" in result:
+            return str(result["raw"])
+    return ""
 
 
 def register(server: FastMCP | StandardServer, settings: CrowSettings) -> None:
-    """Register the ``terminal`` and ``crow_terminal_*`` tools.
-
-    The legacy ``terminal`` tool is preserved unchanged. The four new
-    ``crow_terminal_*`` tools accept an explicit ``handle`` and route
-    every call to that handle's dedicated subprocess through the
-    per-handle lock in ``mahavishnu.mcp.crow.terminal_proxy._locks``.
-    Idempotent on re-registration (each call adds new closures to
-    the same FastMCP tool manager).
-    """
+    """Register the ``terminal`` and ``crow_terminal_*`` tools."""
     deco = _tool_decorator(server)
 
     @deco()
@@ -89,17 +96,20 @@ def register(server: FastMCP | StandardServer, settings: CrowSettings) -> None:
             MCP tool result (typically ``{"output": ...}`` or similar).
         """
         session = get_crow_session()
-        # crow-mcp returns an mcp.types.CallToolResult; normalize it into a
-        # serializable dict so downstream MCP clients get a stable shape.
         result = await session.call_tool("terminal", {"command": command})
-        return _extract_terminal_output(result)
+        return {"output": _extract_terminal_output(result)}
 
     @deco()
     async def crow_terminal_open(handle: str) -> dict[str, str]:
-        """Reserve a session handle and spawn a dedicated crow-mcp subprocess.
+        """Reserve a session handle and return its id.
+
+        With the raw-JSON-RPC redesign there is no per-handle subprocess
+        — every handle shares one upstream ``crow-mcp`` instance. The
+        returned ``session_id`` is just the handle, used for serialisation
+        of subsequent ``crow_terminal_exec`` calls on the shared client.
 
         Returns ``{"session_id": handle}``. Idempotent: re-opening an
-        existing handle returns the same session.
+        existing handle returns the same session_id.
         """
         await acquire_session(handle, settings)
         return {"session_id": handle}
@@ -110,7 +120,9 @@ def register(server: FastMCP | StandardServer, settings: CrowSettings) -> None:
 
         Acquires the session (idempotent) and serialises the call with
         the per-handle ``asyncio.Lock`` so concurrent callers cannot
-        interleave JSON-RPC frames on the same subprocess.
+        interleave JSON-RPC frames on the shared upstream subprocess.
+        Stores the captured output so ``crow_terminal_read`` can return
+        it without a second upstream call.
         """
         await acquire_session(session_id, settings)
         state_proxy = _locks[session_id]
@@ -120,37 +132,36 @@ def register(server: FastMCP | StandardServer, settings: CrowSettings) -> None:
                 "terminal",
                 {"command": command},
             )
-            return _extract_terminal_output(result)
+            output = _extract_terminal_output(result)
+            record_output(session_id, output)
+            return {"output": output}
 
     @deco()
     async def crow_terminal_read(session_id: str, limit_lines: int | None = None) -> dict[str, Any]:
         """Read recent output from the session's PTY.
 
-        Acquires the session (idempotent) and serialises the call with
-        the per-handle ``asyncio.Lock``. ``limit_lines`` is forwarded
-        as ``{"limit_lines": N}`` to the underlying terminal tool only
-        when provided.
+        Returns the most recently captured output (from the last
+        ``crow_terminal_exec`` call) for this handle. ``limit_lines``
+        truncates the returned output to the last ``N`` lines if
+        provided. No upstream call is made — this is a pure read of the
+        in-memory output buffer.
         """
         await acquire_session(session_id, settings)
-        state_proxy = _locks[session_id]
-        async with state_proxy:
-            session = get_crow_session_by_handle(session_id)
-            params: dict[str, Any] = {"command": ""}
-            if limit_lines is not None:
-                params["limit_lines"] = limit_lines
-            result = await session.call_tool(
-                "terminal",
-                params,
-            )
-            return _extract_terminal_output(result)
+        output = read_output(session_id)
+        if limit_lines is not None and output:
+            lines = output.splitlines()
+            output = "\n".join(lines[-limit_lines:])
+        return {"output": output}
 
     @deco()
     async def crow_terminal_close(session_id: str) -> dict[str, bool]:
-        """Release the session and reap its subprocess.
+        """Release the session and reap its per-handle bookkeeping.
 
         Idempotent: closing an unknown handle returns
         ``{"closed": False}`` rather than raising so callers can use
-        this in ``finally`` blocks.
+        this in ``finally`` blocks. The shared upstream subprocess is
+        left running for other callers; only this handle's locks,
+        output buffer, and session dict entry are dropped.
         """
         if session_id in _locks:
             await release_session(session_id)

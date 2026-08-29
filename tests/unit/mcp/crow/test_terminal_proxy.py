@@ -28,13 +28,20 @@ from mahavishnu.mcp.crow.settings import CrowSettings
 
 @pytest.fixture
 def reset_crow_state():
-    """Ensure the module-level session state is clean before/after."""
-    saved = terminal_proxy._state
+    """Ensure the module-level shared client + session dict are clean."""
+    saved_client = terminal_proxy._client
+    saved_state = terminal_proxy._state
+    saved_sessions = dict(terminal_proxy._sessions)
+    terminal_proxy._client = None
     terminal_proxy._state = None
+    terminal_proxy._sessions.clear()
     try:
         yield
     finally:
-        terminal_proxy._state = saved
+        terminal_proxy._client = saved_client
+        terminal_proxy._state = saved_state
+        terminal_proxy._sessions.clear()
+        terminal_proxy._sessions.update(saved_sessions)
 
 
 def test_get_crow_session_raises_before_init(reset_crow_state):
@@ -52,27 +59,34 @@ def test_close_is_idempotent_when_no_session(reset_crow_state):
     assert terminal_proxy._state is None
 
 
-def test_init_rejects_double_init(reset_crow_state):
-    """If a session is already initialised, init must reject rather than
-    silently overwriting state (which would leak the previous subprocess)."""
+def test_init_is_idempotent_when_client_already_live(reset_crow_state):
+    """If the shared client is already live, ``init_crow_stdio_client`` is a
+    no-op (does not raise) and leaves the existing client intact.
+
+    The 2026-08-29 raw-JSON-RPC redesign made init idempotent because
+    FastMCP's lifespan and any other entry point may both call
+    ``init_crow_stdio_client``; rejecting a duplicate would deadlock the
+    server. The legacy ``_state`` flag IS refreshed so old readers that
+    check it still see init as having run.
+    """
     import asyncio
 
-    fake_state = MagicMock()
-    fake_state.session = MagicMock()
-    fake_state.exit_stack = MagicMock()
-    terminal_proxy._state = fake_state
+    fake_client = MagicMock()
+    terminal_proxy._client = fake_client
     settings = CrowSettings(workspace_root=Path("/tmp"))
-    with pytest.raises(RuntimeError, match="already initialized"):
-        asyncio.run(terminal_proxy.init_crow_stdio_client(settings))
+    # Must not raise.
+    asyncio.run(terminal_proxy.init_crow_stdio_client(settings))
+    # Existing client preserved.
+    assert terminal_proxy._client is fake_client
+    # Legacy state flag refreshed.
+    assert terminal_proxy._state is not None
 
 
-def test_get_crow_session_returns_session_after_init(reset_crow_state):
-    """Inject a fake state directly and verify the accessor returns the session."""
-    fake_session = MagicMock()
-    fake_state = MagicMock()
-    fake_state.session = fake_session
-    terminal_proxy._state = fake_state
-    assert terminal_proxy.get_crow_session() is fake_session
+def test_get_crow_session_returns_client_after_init(reset_crow_state):
+    """Inject a fake client directly and verify the accessor returns it."""
+    fake_client = MagicMock()
+    terminal_proxy._client = fake_client
+    assert terminal_proxy.get_crow_session() is fake_client
 
 
 # ---- TerminalManager crow case ---------------------------------------------

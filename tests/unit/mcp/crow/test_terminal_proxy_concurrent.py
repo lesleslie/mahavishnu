@@ -40,12 +40,19 @@ async def test_terminal_tool_is_registered_on_server() -> None:
 
 
 @pytest.mark.unit
-async def test_acquire_session_returns_distinct_subprocesses() -> None:
-    """Two acquire_session calls return different _CrowState instances."""
+async def test_acquire_session_returns_distinct_states_sharing_one_client() -> None:
+    """Two acquire_session calls return distinct _CrowState instances.
+
+    With the 2026-08-29 raw-JSON-RPC redesign there is ONE shared upstream
+    subprocess; per-handle state is just bookkeeping. Two handles get
+    distinct _CrowState objects but share the same client (and therefore
+    the same underlying subprocess).
+    """
+    from mahavishnu.mcp.crow import terminal_proxy
     from mahavishnu.mcp.crow.terminal_proxy import (
         _CrowState,
         acquire_session,
-        shutdown_all_sessions,
+        get_crow_session_by_handle,
     )
 
     settings = CrowSettings(max_concurrent_sessions=4)
@@ -55,10 +62,17 @@ async def test_acquire_session_returns_distinct_subprocesses() -> None:
         assert isinstance(s1, _CrowState)
         assert isinstance(s2, _CrowState)
         assert s1 is not s2, "Two acquire_session calls must not return the same state"
-        # Different subprocess handles
-        assert s1.exit_stack is not s2.exit_stack
+        # Shared client (post-2026-08-29 raw-JSON-RPC architecture)
+        c1 = get_crow_session_by_handle("worker-A")
+        c2 = get_crow_session_by_handle("worker-B")
+        assert c1 is c2, "All handles must share the same raw JSON-RPC client"
+        # Module-level singleton is the same client
+        assert c1 is terminal_proxy._client
     finally:
-        await shutdown_all_sessions()
+        # Reset module state without trying to kill the live subprocess
+        # (it may outlive the test in a noisy environment).
+        terminal_proxy._sessions.clear()
+        terminal_proxy._outputs.clear()
 
 
 @pytest.mark.unit
