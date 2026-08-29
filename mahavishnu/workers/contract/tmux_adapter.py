@@ -109,9 +109,18 @@ def create_session(
 
     proc = subprocess.run(
         [
-            "tmux", "-S", socket, "new-session", "-d",
-            "-s", session, "-n", window_name,
-            "-P", "-F", "#{session_name}:#{window_id}:#{pane_id}",
+            "tmux",
+            "-S",
+            socket,
+            "new-session",
+            "-d",
+            "-s",
+            session,
+            "-n",
+            window_name,
+            "-P",
+            "-F",
+            "#{session_name}:#{window_id}:#{pane_id}",
             "--",
             *command,
         ],

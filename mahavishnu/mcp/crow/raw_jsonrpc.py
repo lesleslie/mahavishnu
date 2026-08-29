@@ -32,7 +32,7 @@ from __future__ import annotations
 
 import asyncio
 from contextlib import asynccontextmanager
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 import json
 import logging
 import sys
@@ -124,11 +124,13 @@ class _RawJsonRpcClient:
         )
 
         # Send ``initialized`` notification (no response expected).
-        await self._send_notification({
-            "jsonrpc": "2.0",
-            "method": "notifications/initialized",
-            "params": {},
-        })
+        await self._send_notification(
+            {
+                "jsonrpc": "2.0",
+                "method": "notifications/initialized",
+                "params": {},
+            }
+        )
 
     async def _read_loop(self) -> None:
         """Read stdout line-by-line, route responses to pending futures."""
@@ -201,11 +203,9 @@ class _RawJsonRpcClient:
                 raise RuntimeError(f"crow-mcp stdin closed: {exc}") from exc
         try:
             return await asyncio.wait_for(asyncio.shield(fut), timeout=timeout)
-        except asyncio.TimeoutError as exc:
+        except TimeoutError as exc:
             self._pending.pop(request["id"], None)
-            raise RuntimeError(
-                f"crow-mcp call_tool timed out after {timeout}s"
-            ) from exc
+            raise RuntimeError(f"crow-mcp call_tool timed out after {timeout}s") from exc
 
     async def _send_notification(self, notification: dict[str, Any]) -> None:
         """Send a notification (no response expected)."""
@@ -219,7 +219,9 @@ class _RawJsonRpcClient:
             except (BrokenPipeError, ConnectionResetError) as exc:
                 logger.warning("crow-mcp: notification write failed: %s", exc)
 
-    async def call_tool(self, name: str, arguments: dict[str, Any], timeout: float = 30.0) -> dict[str, Any]:
+    async def call_tool(
+        self, name: str, arguments: dict[str, Any], timeout: float = 30.0
+    ) -> dict[str, Any]:
         """Call a tool on the upstream crow-mcp and return the raw result."""
         if self._process is None:
             raise RuntimeError("raw_jsonrpc client not started")

@@ -4,6 +4,7 @@ Each `WorkerEntry.provides` becomes one Capability. Multiple worker entries
 can provide the same CapabilityId (e.g. 5 workers provide ``worker:ai-context``);
 we group by ID so the Conductor can choose between them.
 """
+
 from __future__ import annotations
 
 from collections import defaultdict
@@ -23,7 +24,7 @@ if TYPE_CHECKING:
 
 
 def load_capabilities_from_settings(
-    settings: "MahavishnuSettings",
+    settings: MahavishnuSettings,
 ) -> dict[str, list[Capability]]:
     """Convert ``settings.worker_registry.entries`` into a ``{capability_id: [Capability, ...]}`` map.
 

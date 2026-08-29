@@ -788,7 +788,7 @@ def resolve_worker_type(
 def list_worker_types(
     category: WorkerCategory | None = None,
     *,
-    settings: "MahavishnuSettings | None" = None,
+    settings: MahavishnuSettings | None = None,
 ) -> list[str]:
     """List available worker types, optionally filtered by category.
 
@@ -866,8 +866,8 @@ __all__ = [
 def get_worker_entry(
     worker_type: str,
     *,
-    settings: "MahavishnuSettings | None" = None,
-) -> "WorkerEntry":
+    settings: MahavishnuSettings | None = None,
+) -> WorkerEntry:
     """Look up a :class:`WorkerEntry` by its ``worker_type`` identifier.
 
     The lookup is capability-driven: it enumerates

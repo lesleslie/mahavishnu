@@ -203,7 +203,9 @@ async def _register_core_integration_tools(server: FastMCPServer, methods_set: s
     if server.terminal_manager is not None and "_register_terminal_tools" in methods_set:
         from ..mcp.tools.terminal_tools import register_terminal_tools
 
-        register_terminal_tools(server.server, server.terminal_manager, getattr(server, "mcp_client", None))
+        register_terminal_tools(
+            server.server, server.terminal_manager, getattr(server, "mcp_client", None)
+        )
         logger.info("Registered 12 terminal management tools with MCP server")
 
     if "_register_session_buddy_tools" in methods_set:
@@ -221,7 +223,9 @@ async def _register_core_integration_tools(server: FastMCPServer, methods_set: s
     if "_register_repository_messaging_tools" in methods_set:
         from ..mcp.tools.repository_messaging_tools import register_repository_messaging_tools
 
-        register_repository_messaging_tools(server.server, server.app, getattr(server, "mcp_client", None))
+        register_repository_messaging_tools(
+            server.server, server.app, getattr(server, "mcp_client", None)
+        )
         logger.info("Registered repository messaging tools with MCP server")
 
 
@@ -716,7 +720,9 @@ def _register_terminal_tools(server: FastMCPServer) -> None:
         return
     from ..mcp.tools.terminal_tools import register_terminal_tools
 
-    register_terminal_tools(server.server, server.terminal_manager, getattr(server, "mcp_client", None))
+    register_terminal_tools(
+        server.server, server.terminal_manager, getattr(server, "mcp_client", None)
+    )
     logger.info("Registered 12 terminal management tools with MCP server")
 
 
@@ -742,7 +748,9 @@ def _register_repository_messaging_tools(server: FastMCPServer) -> None:
         register_repository_messaging_tools,
     )
 
-    register_repository_messaging_tools(server.server, server.app, getattr(server, "mcp_client", None))
+    register_repository_messaging_tools(
+        server.server, server.app, getattr(server, "mcp_client", None)
+    )
     logger.info("Registered 7 repository messaging tools with MCP server")
 
 

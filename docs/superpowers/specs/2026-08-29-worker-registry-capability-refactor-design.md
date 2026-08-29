@@ -5,7 +5,7 @@
 **Author:** Claude (brainstorming session)
 **Scope:** Stages 1, 2, 3 from brainstorming — registry fix, capability-driven selection, engine composition
 
----
+______________________________________________________________________
 
 ## Context
 
@@ -19,15 +19,15 @@ The Mahavishnu worker subsystem has two interlocking defects and one architectur
 
 All three are addressed in one spec because they share a foundation (the capability schema) and the user has explicitly said no backward-compat shims are needed.
 
----
+______________________________________________________________________
 
 ## Goals
 
 1. **Fix the worker bootstrap bug** so all 16 `terminal-*` worker types actually spawn a working tmux pane. (Stage 1)
-2. **Replace the static registry** with a capability-driven registry where workers and engines share one capability vocabulary. (Stage 2)
-3. **Add a composition layer** that resolves a task's required capabilities into a DAG of engines and runs it via Prefect. (Stage 3)
-4. **Eliminate the dual-registry** (`WORKER_REGISTRY` + `app.adapters`) — both engines and workers live in one unified `CapabilityRegistry`.
-5. **Keep the MCP-first design intact** — the new shape fits as an 18th profile-gated tool group.
+1. **Replace the static registry** with a capability-driven registry where workers and engines share one capability vocabulary. (Stage 2)
+1. **Add a composition layer** that resolves a task's required capabilities into a DAG of engines and runs it via Prefect. (Stage 3)
+1. **Eliminate the dual-registry** (`WORKER_REGISTRY` + `app.adapters`) — both engines and workers live in one unified `CapabilityRegistry`.
+1. **Keep the MCP-first design intact** — the new shape fits as an 18th profile-gated tool group.
 
 ## Non-Goals
 
@@ -37,7 +37,7 @@ All three are addressed in one spec because they share a foundation (the capabil
 - **LLM model registry unification.** This spec covers engines and workers. Model selection (MiniMax vs Claude vs Ollama) remains in the existing `TaskRouter` and is referenced via `CapabilityKind.MODEL` if a task requires a specific model.
 - **Backward compat.** Old tools (`pool_spawn`, `pool_execute`, `pool_route_execute`, `dispatch_to_pool`, `trigger_workflow`, `worker_spawn`, `worker_execute`, `worker_close`, `worker_health`) are deleted. No shims, no aliases, no deprecation window.
 
----
+______________________________________________________________________
 
 ## Design
 
@@ -286,11 +286,13 @@ class CapabilitySpec(BaseModel):
 ```
 
 **Why interface-style (not flat flags, not hierarchical):**
+
 - Flat flags conflate identity with capability (`provides_rag: bool` AND `provides_durable_flow: bool` on the same engine).
 - Hierarchical taxonomy (`engine.durable`, `engine.agent`) fights cross-engine composition.
 - Typed I/O contracts (`io_in`, `io_out`) enable structural subtyping: "what engine produces X?" auto-matches "what engine consumes X?" without hard-coded wiring.
 
 **Why `kind:name` string addressing:**
+
 - Mirrors Vercel AI SDK's `providerId:modelId` shape — proven multi-vendor abstraction.
 - One namespace for engines, models, workers, adapters.
 - Operators request `engine:prefect` or `model:minimax-m3` or `worker:claude-tui` in the same syntax.
@@ -311,6 +313,7 @@ class CapabilitySpec(BaseModel):
 | **Tool cleanup** | `mahavishnu/mcp/tools/pool_tools.py`, `worker_tools.py`, `workflow_tools.py` | Old `pool_*`, `worker_*`, `trigger_workflow` tools deleted. |
 
 **Selector strategies (AutoGen-style pluggable):**
+
 - `least_loaded`, `round_robin`, `random` — current `route_task` behavior.
 - `affinity`, `peer_affinity` — ADR-014.
 - `capability_score` (NEW): weighted match on tags + cost + health.
@@ -321,18 +324,18 @@ class CapabilitySpec(BaseModel):
 ### Section 4: Data Flow
 
 1. **Operator** calls `execute_capability(spec={"requires": ["rag.retrieve", "exec.terminal"]}, prompt="...")`.
-2. **Conductor.resolve(spec, registry)** scores every engine that provides each required capability:
+1. **Conductor.resolve(spec, registry)** scores every engine that provides each required capability:
    - LlamaIndex provides `rag.retrieve` (score 0.92).
    - Worker pool provides `exec.terminal` (score 0.88, picks `worker-claude-tui` via capability submatch).
-3. **Conductor.plan(candidates, spec)** emits `ExecutionDAG`:
+1. **Conductor.plan(candidates, spec)** emits `ExecutionDAG`:
    - `n1=llamaindex.rag.retrieve`
    - `n2=worker-claude-tui.exec.terminal`
    - Edge: `n1.io_out.{retrieved_chunks} → n2.io_in.{context}` (structural subtyping match).
-4. **Conductor.emit_flow(DAG)** emits a Prefect flow definition. Each DAG node becomes a `@task`; the envelope handoff becomes the task's return value.
-5. **Prefect runs the flow** (durable, retried, scheduled):
+1. **Conductor.emit_flow(DAG)** emits a Prefect flow definition. Each DAG node becomes a `@task`; the envelope handoff becomes the task's return value.
+1. **Prefect runs the flow** (durable, retried, scheduled):
    - `n1` runs → envelope `envelope_001` written to `Dhara://envelopes/trace_xyz/envelope_001`.
    - `n2` reads envelope_001, runs, writes `envelope_002`.
-6. **Prefect returns final state**; conductor returns `{trace_id, envelopes, status}`.
+1. **Prefect returns final state**; conductor returns `{trace_id, envelopes, status}`.
 
 ### Section 5: Error Handling
 
@@ -363,7 +366,7 @@ class CapabilitySpec(BaseModel):
 
 **Coverage targets:** new code ≥89%; conductor ≥95% (high criticality). Existing engine adapters maintained at current levels.
 
----
+______________________________________________________________________
 
 ## Migration Plan
 
@@ -376,9 +379,9 @@ Three stages, each independently shippable but designed to compose. No stage req
 **Call chain (per `mahavishnu-specialist` review C1 + `feature-dev:code-architect` review H1):**
 
 1. `WorkerManager.create_worker()` reads `WorkerConfig.command` (a pre-quoted shell string like `sh -lc 'claude --output-format stream-json --permission-mode acceptEdits'`) and constructs `command=[WorkerConfig.command]` — a one-element argv containing the entire pre-quoted string.
-2. `tmux_adapter.create_session()` (`mahavishnu/workers/contract/tmux_adapter.py:112`) does `quoted = shlex.join(command)` on that list, producing doubly-quoted output like `'sh -lc '"'"'claude ...'"'"''`.
-3. The doubly-quoted text is `send-keys`'d into a fresh zsh pane via `tmux send-keys -t pane -- '<quoted>' Enter` (line 152).
-4. zsh parses the entire doubly-quoted string as one literal token and rejects it with `command not found`.
+1. `tmux_adapter.create_session()` (`mahavishnu/workers/contract/tmux_adapter.py:112`) does `quoted = shlex.join(command)` on that list, producing doubly-quoted output like `'sh -lc '"'"'claude ...'"'"''`.
+1. The doubly-quoted text is `send-keys`'d into a fresh zsh pane via `tmux send-keys -t pane -- '<quoted>' Enter` (line 152).
+1. zsh parses the entire doubly-quoted string as one literal token and rejects it with `command not found`.
 
 **Fix:** Pass the command string directly to `tmux new-session`'s positional command argument (after `--`), not via `send-keys`. The exact diff:
 
@@ -398,6 +401,7 @@ proc = subprocess.run(
 WorkerManager's argv construction stays as-is. tmux's `--` separates tmux options from the command, so the shell-quoted string passes through to the pane's initial process intact.
 
 **Files (multi-file fix):**
+
 - `mahavishnu/workers/contract/tmux_adapter.py` — apply the diff above; delete lines 144-152 (send-keys + chmod tail).
 - `tests/unit/workers/contract/test_tmux_adapter.py:46,62,85` — three unit tests assert the old `send-keys` invocation. Update to assert the new `new-session -- <command>` shape.
 
@@ -410,15 +414,18 @@ WorkerManager's argv construction stays as-is. tmux's `--` separates tmux option
 **Scope:** Replace static registry with capability-driven registry. Workers and engines share one capability vocabulary.
 
 **Files (new):**
+
 - `mahavishnu/core/capabilities.py` — schema definitions (Capability, CapabilitySpec, ExecutionDAG, etc.).
 - `WorkerRegistryConfig` Pydantic model added to `MahavishnuSettings` in `mahavishnu/core/config.py` — typed surface for the `workers:` config block.
 
 **Files (modified):**
+
 - `settings/mahavishnu.yaml` — add `workers:` block under existing config (per `oneiric-specialist` review C1: do **NOT** create a separate `settings/workers.yaml` — that bypasses `_settings_build_values` ordering and silently breaks `MAHAVISHNU_WORKERS__FOO` env-var overrides).
 - `mahavishnu/core/bootstrap.py` — load worker registry via existing `oneiric.core.config.load_settings()` (not a new bootstrap path; `oneiric` already supports XDG layering at `~/.config/mahavishnu/workers.yaml`).
 - All `mahavishnu/engines/*_adapter_impl.py` — declare `provides: list[Capability]`.
 
 **Files (deleted):**
+
 - `mahavishnu/workers/registry.py:WORKER_REGISTRY` (literal registry, replaced by Oneiric-loaded `WorkerRegistryConfig`).
 - `mahavishnu/terminal/config.py` adapter references.
 
@@ -435,17 +442,20 @@ WorkerManager's argv construction stays as-is. tmux's `--` separates tmux option
 **Scope:** Add `execute_capability`, `list_capabilities`, `explain_routing`, plus conductor + envelope transport. Existing tools untouched.
 
 **Files (new):**
+
 - `mahavishnu/core/conductor.py` — resolver + planner + emit_flow.
 - `mahavishnu/core/envelopes.py` — Dhara-backed transport via `EnvelopeAddress.to_key()`.
 - `mahavishnu/mcp/tools/capability_tools.py` — `execute_capability`, `list_capabilities`, `explain_routing`.
 - `mahavishnu/mcp/tools/get_capability_result_tool.py` — async read-back (`get_capability_result(trace_id=...)`) per `mcp-integration-expert` H1; replaces deleted `workflow_result`.
 
 **Files (modified):**
+
 - `mahavishnu/engines/prefect_adapter_impl.py` — accept `ExecutionDAG` as flow definition.
 - All engine adapters — `execute()` accepts `CapabilitySpec`.
 - `mahavishnu/mcp/tools/profiles.py` — register 18th group `_register_capability_tools` in `STANDARD_REGISTRATIONS` (per `mcp-integration-expert` M1: capability dispatch is daily-dev primitive, not FULL-only).
 
 **Pre-conditions for shipping 3a:**
+
 - All slash-command skills migrated: `.claude/skills/mahavishnu/SKILL.md`, `.claude/skills/mahavishnu-status/SKILL.md` (per `mcp-integration-expert` C1).
 - Orchestrator subagent `.claude/agents/mahavishnu-orchestrator.md` `tools:` frontmatter updated.
 - `/vishnu` skill description updated.
@@ -461,25 +471,28 @@ WorkerManager's argv construction stays as-is. tmux's `--` separates tmux option
 **Scope:** Remove old MCP tools after one release cycle of dual maintenance. This is the only step that deletes anything.
 
 **Pre-conditions (must all be true before 3b ships):**
+
 - 3a has been in production for ≥1 release cycle.
 - Slash commands / orchestrator subagent / `/vishnu` skill verified using new tools.
 - `MAHAVISHNU_LEGACY_TOOLS=true` env var honored by old tools for one final release (logs warning on every call).
 - Run `python scripts/audit_orphans.py` — zero callers of deleted tools.
 
 **Files (deleted):**
+
 - `mahavishnu/mcp/tools/pool_tools.py:pool_spawn`, `pool_execute`, `pool_route_execute`, `dispatch_to_pool`, `workflow_result`.
 - `mahavishnu/mcp/tools/worker_tools.py:worker_spawn`, `worker_execute`, `worker_close`, `worker_health`, `worker_list`.
 - `mahavishnu/mcp/server_core.py:272` — `trigger_workflow` (registered inline here, NOT in `workflow_tools.py` per `mcp-integration-expert` C2).
 - `mahavishnu/pools/manager.py` if redundant after new dispatcher.
 
 **Files (preserved — operator-observability subset):**
+
 - `pool_list`, `pool_health`, `pool_monitor`, `pool_scale`, `pool_close`, `pool_close_all`, `pool_search_memory` — operator surfaces not duplicated by `execute_capability`.
 
 **Exit criteria:** All pool/worker dispatch tools except the observability subset are deleted. `trigger_workflow` is gone. `MAHAVISHNU_LEGACY_TOOLS=true` no longer recognized.
 
 **Reversibility:** Hard. Stage 3b is the only irreversible step in the entire refactor. Coordinate with active deployments.
 
----
+______________________________________________________________________
 
 ## Risks
 
@@ -493,25 +506,25 @@ WorkerManager's argv construction stays as-is. tmux's `--` separates tmux option
 | Single-source-of-truth failure (yaml corruption) | Low | Bootstrap loads yaml from settings dir; Oneiric caches last-good config. |
 | Stage 3 deletes live MCP tools that production code calls | High | Notify deployments; provide one-PR-at-a-time staging. No backward compat = no soft rollout. |
 
----
+______________________________________________________________________
 
 ## Open Questions
 
 1. **Envelope persistence policy** — Should envelopes be retained indefinitely in Dhara, or TTL'd? Compliance may require TTL on certain content types. *Owner: conductor design.*
-2. **Cross-DAG traceability** — When two DAGs share a capability, can they share envelopes? *Decision: no for now; one DAG = one trace_id.*
-3. **Affinity semantics** — When two engines tie on capability_score, does `affinity: {repo_role: backend}` count more than `cost_hint`? *Tunable via binding_policy.yaml.*
-4. **Prefect as default conductor backend** — what if Prefect itself goes down? Hatchet as fallback? *Defer to a follow-up spec if needed.*
+1. **Cross-DAG traceability** — When two DAGs share a capability, can they share envelopes? *Decision: no for now; one DAG = one trace_id.*
+1. **Affinity semantics** — When two engines tie on capability_score, does `affinity: {repo_role: backend}` count more than `cost_hint`? *Tunable via binding_policy.yaml.*
+1. **Prefect as default conductor backend** — what if Prefect itself goes down? Hatchet as fallback? *Defer to a follow-up spec if needed.*
 
----
+______________________________________________________________________
 
 ## Acceptance Criteria
 
 The spec is complete when:
 
 1. All three stages have independent exit criteria met.
-2. `pytest tests/` passes with ≥89% coverage on new code, ≥95% on `mahavishnu/core/conductor.py`.
-3. `crackerjack run` passes with no new issues.
-4. The 16 original `terminal-*` worker types all spawn functional tmux panes.
-5. `execute_capability({"requires": ["rag.retrieve", "exec.terminal"]})` runs end-to-end via Prefect with envelopes persisted to Dhara.
-6. `list_capabilities` returns all registered capabilities across engines and workers.
-7. `explain_routing` returns a binding plan for a sample spec without executing.
+1. `pytest tests/` passes with ≥89% coverage on new code, ≥95% on `mahavishnu/core/conductor.py`.
+1. `crackerjack run` passes with no new issues.
+1. The 16 original `terminal-*` worker types all spawn functional tmux panes.
+1. `execute_capability({"requires": ["rag.retrieve", "exec.terminal"]})` runs end-to-end via Prefect with envelopes persisted to Dhara.
+1. `list_capabilities` returns all registered capabilities across engines and workers.
+1. `explain_routing` returns a binding plan for a sample spec without executing.

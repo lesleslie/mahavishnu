@@ -1167,6 +1167,7 @@ class WorkerEntry(BaseModel):
     @classmethod
     def _validate_provides(cls, v: list[str]) -> list[str]:
         import re
+
         pat = re.compile(_CAPABILITY_ID_PATTERN)
         for cap_id in v:
             if not pat.match(cap_id):

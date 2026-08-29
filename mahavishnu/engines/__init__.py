@@ -126,7 +126,7 @@ def _try_load_adapter(import_path: str, class_name: str, init_kwargs: dict[str, 
 
 
 def load_engine_registrations(
-    settings: "MahavishnuSettings",
+    settings: MahavishnuSettings,
 ) -> list[EngineRegistration]:
     """Materialize an ``EngineRegistration`` per enabled adapter.
 

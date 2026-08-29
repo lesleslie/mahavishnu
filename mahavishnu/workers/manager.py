@@ -182,9 +182,7 @@ class WorkerManager:
         # Only use self.settings when it is a real MahavishnuSettings instance.
         # Tests sometimes inject ``settings=object()`` as a sentinel; we ignore
         # those and let ``get_worker_entry`` construct a default.
-        registry_settings = (
-            self.settings if isinstance(self.settings, MahavishnuSettings) else None
-        )
+        registry_settings = self.settings if isinstance(self.settings, MahavishnuSettings) else None
 
         try:
             entry = get_worker_entry(worker_type, settings=registry_settings)

@@ -11,6 +11,7 @@
 **Spec:** `docs/superpowers/specs/2026-08-29-worker-registry-capability-refactor-design.md`
 
 **Related plans (complementary, not duplicative):**
+
 - `docs/plans/2026-08-29-orchestrator-research-synthesis.md` — the synthesis plan has `blocks_on: docs/superpowers/plans/2026-08-29-worker-registry-capability-refactor.md` (this plan). Synthesis Phases 0, 1, and 2 consume artifacts from this plan; see "Complementarity & sequencing rules" below for the two conflict points (Phases 3 and 4) that require coordination.
 
 ## Global Constraints
@@ -46,6 +47,7 @@ The synthesis plan (`docs/plans/2026-08-29-orchestrator-research-synthesis.md`) 
 These rules MUST hold or synthesis Phase 3 / Phase 4 will break. They're coordination constraints, not this plan's tasks.
 
 1. **Phase 3 (synthesis, budget enforcement) must ship BEFORE Stage 3b (this plan, deletes `pool_tools.py`).**
+
    - Synthesis Phase 3 adds `budget_enforce(...)` to `mahavishnu/mcp/tools/pool_tools.py` (Task 3 of synthesis Phase 3) and starts `budget_watchdog` in `core/app.py` lifespan.
    - This plan's Stage 3b (Task 3b.3) deletes `pool_spawn`, `pool_execute`, `pool_route_execute`, `dispatch_to_pool`, `workflow_result` from `pool_tools.py`.
    - **Conflict**: if synthesis Phase 3 lands AFTER Stage 3b's deletion, `budget_enforce` has no home in `pool_tools.py`.
@@ -54,13 +56,14 @@ These rules MUST hold or synthesis Phase 3 / Phase 4 will break. They're coordin
      - (b) **Relocate**: this plan's Stage 3b also creates `mahavishnu/mcp/tools/budget_tools.py` and moves `budget_enforce` there before deletion.
    - Either way: synthesis Phase 3's integration contract (Dhara record at `mahavishnu://budgets/{workflow_id}.json`, OTel span `budget.check`) is preserved.
 
-2. **Phase 4 (synthesis, Shepherd as worker backend) MUST register Shepherd via the new `worker_registry:` YAML block — NOT via the legacy `__init__.py:66-144` lazy-import table.**
+1. **Phase 4 (synthesis, Shepherd as worker backend) MUST register Shepherd via the new `worker_registry:` YAML block — NOT via the legacy `__init__.py:66-144` lazy-import table.**
+
    - Synthesis Phase 4 tasks 3-5 say: "Register `shepherd` as a worker type in `mahavishnu/workers/manager.py` and `mahavishnu/workers/__init__.py` lazy-import table" and "expose `worker_type="shepherd"` option in `mahavishnu/mcp/tools/worker_tools.py`."
    - This plan replaces both of those mechanisms: Task 2.3 moves worker registration to Oneiric-loaded YAML (`settings/mahavishnu.yaml:worker_registry:`); Stage 3b deletes `mahavishnu/mcp/tools/worker_tools.py`.
    - **Conflict**: if synthesis Phase 4 lands and adds Shepherd via the legacy path, it will hit the same ImportError cascade and field-shadowing this plan fixes in Task 2.5 / 2.6.
    - **Resolution** (mandatory before synthesis Phase 4 execution): Shepherd registers via:
      1. Add `pyproject.toml` `shepherd-ai` (optional worker backend dep).
-     2. Add a `worker_registry:` entry in `settings/mahavishnu.yaml`:
+     1. Add a `worker_registry:` entry in `settings/mahavishnu.yaml`:
         ```yaml
         - worker_type: shepherd
           name: "Shepherd Sandbox"
@@ -69,16 +72,16 @@ These rules MUST hold or synthesis Phase 3 / Phase 4 will break. They're coordin
           requires_tool: shepherd
           provides: ["worker:shepherd-sandbox", "worker:ai-context"]
         ```
-     3. Create `mahavishnu/workers/shepherd_backend.py` (the dispatch handler — out of scope for this plan; synthesis Phase 4 owns it).
-     4. Shepherd `provides: list[Capability]` lives in the new entry's resolution path (Task 2.7 pattern for engines; same shape for workers).
-     5. Stage 3b's `worker_tools.py` deletion already happens; Shepherd dispatch happens via the new `execute_capability(spec=CapabilitySpec(requires=["worker:shepherd-sandbox"], prompt=...))`.
+     1. Create `mahavishnu/workers/shepherd_backend.py` (the dispatch handler — out of scope for this plan; synthesis Phase 4 owns it).
+     1. Shepherd `provides: list[Capability]` lives in the new entry's resolution path (Task 2.7 pattern for engines; same shape for workers).
+     1. Stage 3b's `worker_tools.py` deletion already happens; Shepherd dispatch happens via the new `execute_capability(spec=CapabilitySpec(requires=["worker:shepherd-sandbox"], prompt=...))`.
 
 ### Other notes (not conflicts)
 
 - **Phase 2 (synthesis, settle ops)** lives in `mahavishnu/mcp/tools/worker_contract_tools.py` (existing file). This plan does not touch that file. The settle ops use `git merge-file` against bindings; the capability `provides:` for "settle operations" is implicit through `worker_run_with_settle` rather than a `Capability` entry. Synthesis can add a `CapabilityKind.ADAPTER` entry for settle if it wants settle ops in the capability registry — out of scope for both plans.
 - **Phase 5 (synthesis, charter wrapper)** lives in the Crackerjack repo, not Mahavishnu. No coordination needed.
 
----
+______________________________________________________________________
 
 ## Phase 1 — Stage 1: Worker Bootstrap Fix
 
@@ -91,10 +94,13 @@ The bug: `WorkerManager.create_worker()` constructs `command=[WorkerConfig.comma
 ### Task 1.1: Write failing test for new tmux invocation
 
 **Files:**
+
 - Modify: `tests/unit/workers/contract/test_tmux_adapter.py:46,62,85` (existing send-keys tests)
 
 **Interfaces:**
+
 - Consumes: `tmux_adapter.create_session(socket, session, window_name, command)` from `mahavishnu/workers/contract/tmux_adapter.py`
+
 - Produces: Updated tests asserting the new `tmux new-session -- <command>` shape
 
 - [ ] **Step 1: Read existing tests**
@@ -139,10 +145,13 @@ Co-Authored-By: Claude <noreply@anthropic.com>"
 ### Task 1.2: Implement the tmux_adapter fix
 
 **Files:**
+
 - Modify: `mahavishnu/workers/contract/tmux_adapter.py:111-152`
 
 **Interfaces:**
+
 - Consumes: `create_session(socket, session, window_name, command: Sequence[str])` signature unchanged
+
 - Produces: Same `TmuxSessionInfo` return type; passes command via `tmux new-session -- <cmd>` instead of post-creation `send-keys`
 
 - [ ] **Step 1: Replace the entire `create_session` function**
@@ -264,7 +273,7 @@ mcp__mahavishnu__pool_close --pool_id=<phase1-pool-id>
 
 **v3 reviewer note #9:** a programmatic smoke test for all 16 worker types lived here in v2 but depends on Phase 2 artifacts (`get_worker_entry`, `settings.worker_registry.entries`, etc.) and on a `PoolManager` API that doesn't exist (`PoolManager.from_settings()`, `spawn_worker()`, `capture_pane()`, `close_worker()` — real surface: `spawn_pool`, `execute_on_pool`, `route_task`, `close_pool`, `close_all`, `list_pools`, `health_check` per `pools/manager.py:286-1120`). That programmatic smoke test is now Task 2.9 at the end of Phase 2, where it has the dependencies it needs.
 
----
+______________________________________________________________________
 
 ### Task 1.4: Phase 1 done — tag the fix
 
@@ -276,9 +285,9 @@ git -c user.email="les@wedgwoodwebworks.com" tag -a v0.17.1 -m "Stage 1: fix tmu
 
 (Per `feedback-bodai-push-is-user-controlled.md`, NEVER push without explicit approval.)
 
----
+______________________________________________________________________
 
----
+______________________________________________________________________
 
 ## Phase 2 — Stage 2: Capability-Driven Registry
 
@@ -287,10 +296,13 @@ git -c user.email="les@wedgwoodwebworks.com" tag -a v0.17.1 -m "Stage 1: fix tmu
 This task exists because Phase 3a needs three settings before its MCP tools can be registered: a kill-switch for `execute_capability`, an auth-scope allow-list (so `MultiAuthHandler` can gate it), and the `MAHAVISHNU_LEGACY_TOOLS` flag for Phase 3b's deprecation gate.
 
 **Files:**
+
 - Modify: `mahavishnu/core/config.py` (add three fields to `MahavishnuSettings`)
 
 **Interfaces:**
+
 - Consumes: Oneiric-loaded env + YAML
+
 - Produces: `MahavishnuSettings.capability_enabled: bool`, `MahavishnuSettings.capability_scopes: list[str]`, `MahavishnuSettings.legacy_tools: bool`
 
 - [ ] **Step 1: Write failing test**
@@ -360,10 +372,12 @@ Co-Authored-By: Claude <noreply@anthropic.com>"
 ### Task 2.1: Create capabilities.py with all Pydantic schemas
 
 **Files:**
+
 - Create: `mahavishnu/core/capabilities.py`
 - Create: `tests/unit/test_core_capabilities_schema.py`
 
 **Interfaces:**
+
 - Produces: ID newtypes (`CapabilityId`, `EngineId`, `EnvelopeId`, `TraceId`) with regex validation; enums (`CapabilityKind`, `CapabilityState`, `HealthStatus`, `SelectorStrategy`); models (`TypeSchema`, `CostHint`, `HealthRef`, `Capability`, `EngineRegistration`, `CapabilityEnvelope`, `EnvelopeAddress`, `Candidate`, `DAGNode`, `DAGEdge`, `ExecutionDAG`, `CapabilitySpec`). All `frozen=True, extra="forbid"`.
 
 - [ ] **Step 1: Write failing test (TDD)**
@@ -729,9 +743,11 @@ Co-Authored-By: Claude <noreply@anthropic.com>"
 ### Task 2.2: Add WorkerRegistryConfig to MahavishnuSettings
 
 **Files:**
+
 - Modify: `mahavishnu/core/config.py` (near existing `WorkerConfig`)
 
 **Interfaces:**
+
 - Consumes: Existing `MahavishnuSettings`
 - Produces: New `WorkerRegistryConfig` Pydantic model registered on `MahavishnuSettings` as `worker_registry` (NOT `workers` — that name is already taken at `mahavishnu/core/config.py:2263` by `WorkerConfig` for runtime worker config: `enabled`, `max_concurrent`, `default_type`, `timeout_seconds`, `session_buddy_integration`, `container`; `extra="forbid"` at :1142). Using `workers` would silently break 8 existing readers (`_main_cli.py:1325,1408`, `core/bootstrap.py:225`, `core/health.py:679`, plus tests). `WorkerEntry` validates `provides` list at Pydantic layer.
 
@@ -898,9 +914,11 @@ Co-Authored-By: Claude <noreply@anthropic.com>"
 ### Task 2.3: Update settings/mahavishnu.yaml with worker_registry: block
 
 **Files:**
+
 - Modify: `settings/mahavishnu.yaml` (append a new top-level `worker_registry:` block)
 
 **Interfaces:**
+
 - Consumes: Existing `settings/mahavishnu.yaml`
 - Produces: Same yaml with a `worker_registry.entries:` list containing 16 entries (one per legacy `terminal-*` worker type)
 
@@ -1031,7 +1049,7 @@ worker_registry:
       provides: ["worker:ssh"]
 ```
 
-**Note:** `terminal-shell` previously lacked a `name` field per reviewer finding C1; the snippet above includes `name: "Bash Shell"`. The Pydantic layer now rejects entries with `name=""` (per WorkerEntry._validate_worker_type), but `name=""` is the field default and only `worker_type=""` is forbidden — both must be present.
+**Note:** `terminal-shell` previously lacked a `name` field per reviewer finding C1; the snippet above includes `name: "Bash Shell"`. The Pydantic layer now rejects entries with `name=""` (per WorkerEntry.\_validate_worker_type), but `name=""` is the field default and only `worker_type=""` is forbidden — both must be present.
 
 - [ ] **Step 3: Verify settings load via the project's settings factory**
 
@@ -1055,10 +1073,12 @@ Co-Authored-By: Claude <noreply@anthropic.com>"
 ### Task 2.4: Add Oneiric-driven capabilities loader (with duplicate detection)
 
 **Files:**
+
 - Create: `mahavishnu/core/capabilities_loader.py`
 - Create: `tests/unit/test_capabilities_loader.py`
 
 **Interfaces:**
+
 - Consumes: `WorkerRegistryConfig` from `MahavishnuSettings`
 - Produces: `dict[str, list[Capability]]` — capability_id to the list of Capabilities that provide it (since 5 workers provide `worker:ai-context`, the dict value is a list, not a single Capability). Raises `MahavishnuError` on invalid input (impossible now because `WorkerEntry.provides` is Pydantic-validated, but kept for defense-in-depth).
 
@@ -1183,6 +1203,7 @@ Co-Authored-By: Claude <noreply@anthropic.com>"
 ### Task 2.5: Replace WORKER_REGISTRY with WorkerEntry lookups
 
 **Files:**
+
 - Modify: `mahavishnu/workers/registry.py` (add new lookup functions alongside existing exports — DO NOT rewrite the file)
 - Modify: `mahavishnu/workers/__init__.py:40` (re-export new symbols)
 - Modify: `mahavishnu/_main_cli.py:73,1402` (use new lookup API)
@@ -1192,7 +1213,9 @@ Co-Authored-By: Claude <noreply@anthropic.com>"
 **v3 reviewer note:** `mahavishnu/workers/registry.py` exports far more than `WORKER_REGISTRY`: `AuthKind` (:11), `RuntimeKind` (:22), `WorkerCategory` (:31), `WorkerConfig` (:43), `get_worker_config` (:742), `resolve_worker_type` (:754), `list_worker_types(category=...)` (:768), `get_workers_by_category` (:782), `validate_worker_dependencies` (:794). `mahavishnu/workers/__init__.py:40-49` imports eight of them, and 8 production modules import the package. The legacy `list_worker_types(category=...)` signature must be preserved (callers depend on `category` kwarg). Rewriting the file is an ImportError cascade and silently breaks the existing signature.
 
 **Interfaces:**
+
 - Consumes: `MahavishnuSettings.worker_registry`
+
 - Produces: `get_worker_entry(worker_type, settings=None) -> WorkerEntry`, `list_worker_types(settings=None) -> list[str]`
 
 - [ ] **Step 1: Audit WORKER_REGISTRY production imports**
@@ -1320,8 +1343,11 @@ Note: there are now TWO functions named `list_worker_types` in this module. The 
 For each hit from Step 1 (use the new `get_worker_entry` from registry.py):
 
 - `mahavishnu/workers/__init__.py:40` — keep existing re-exports; add `get_worker_entry`.
+
 - `mahavishnu/_main_cli.py:73` and `:1402` — replace `WORKER_REGISTRY[name]` with `get_worker_entry(name)`.
+
 - `mahavishnu/cli/base.py:100` — same.
+
 - `mahavishnu/mcp/bootstrap.py` — same (only if it actually touches WORKER_REGISTRY).
 
 - [ ] **Step 6: Update test files**
@@ -1345,9 +1371,11 @@ Co-Authored-By: Claude <noreply@anthropic.com>"
 ### Task 2.6: Update WorkerManager to use new lookup
 
 **Files:**
+
 - Modify: `mahavishnu/workers/manager.py` (replace `WORKER_REGISTRY[name]` access with `get_worker_entry(name, settings=settings)`)
 
 **Interfaces:**
+
 - Consumes: `WorkerEntry` from new lookup
 - Produces: Same `WorkerManager` API; pass `command_argv` (from WorkerEntry) to `tmux_adapter.create_session` instead of the legacy `command` template
 
@@ -1426,6 +1454,7 @@ Co-Authored-By: Claude <noreply@anthropic.com>"
 ### Task 2.7: Engines declare `provides: list[Capability]`
 
 **Files:**
+
 - Modify: `mahavishnu/engines/prefect_adapter_impl.py:579` (real class: `PrefectAdapter`)
 - Modify: `mahavishnu/engines/llamaindex_adapter_impl.py:285` (real class: `LlamaIndexAdapter`)
 - Modify: `mahavishnu/engines/agno_adapter_impl.py:507` (real class: `AgnoAdapter`)
@@ -1436,6 +1465,7 @@ Co-Authored-By: Claude <noreply@anthropic.com>"
 **v3 reviewer note:** Real class names: `PrefectAdapter`, `LlamaIndexAdapter`, `AgnoAdapter`, `HatchetAdapterImpl`, `WorkerOrchestratorAdapter`. pydantic_ai lives at `mahavishnu/adapters/ai/pydantic_ai_adapter.py` behind the optional `ai` dependency group (`uv sync --group ai`) — `mahavishnu/engines/pydantic_ai_adapter_impl.py` does NOT exist. Lean installs without the `ai` group must not hard-fail; wrap the import in try/except ImportError.
 
 **Interfaces:**
+
 - Produces: Each engine's `AdapterCapabilities` (existing) PLUS a new `provides: list[Capability]` property.
 
 - [ ] **Step 1: Write failing test**
@@ -1516,10 +1546,15 @@ class PrefectAdapter:
 Engine-specific IDs (real class names):
 
 - **PrefectAdapter** (`prefect_adapter_impl.py`): `engine:durable-flow`, `engine:scheduled-task`, `engine:retry-with-backoff`
+
 - **LlamaIndexAdapter** (`llamaindex_adapter_impl.py`): `engine:rag-retrieve`, `engine:document-ingest`, `engine:semantic-search`
+
 - **AgnoAdapter** (`agno_adapter_impl.py`): `engine:multi-agent-team`, `engine:task-decomposition`, `engine:tool-use-loop`
+
 - **HatchetAdapterImpl** (`hatchet_adapter_impl.py`): `engine:durable-flow-alternative`
+
 - **WorkerOrchestratorAdapter** (`core/adapters/worker.py`): `engine:terminal-execution`
+
 - **pydantic_ai adapter** (`adapters/ai/pydantic_ai_adapter.py`, behind optional `ai` dep group): `engine:pydantic-ai-agent`, `engine:typed-tool-call` — wrap the import + property in try/except ImportError so lean installs skip it
 
 - [ ] **Step 4: Run tests**
@@ -1544,10 +1579,12 @@ Co-Authored-By: Claude <noreply@anthropic.com>"
 This task was missing from v1. The conductor needs a single entry point to load engine `provides` lists without each callsite importing the engine modules directly.
 
 **Files:**
+
 - Create: `mahavishnu/engines/__init__.py` (add `load_engine_registrations` function)
 - Create: `tests/unit/engines/test_load_engine_registrations.py`
 
 **Interfaces:**
+
 - Consumes: `MahavishnuSettings` (so we can gate disabled engines)
 - Produces: `list[EngineRegistration]` — one per enabled engine, populated from each adapter's `provides` property.
 
@@ -1742,9 +1779,11 @@ Co-Authored-By: Claude <noreply@anthropic.com>"
 ### Task 2.9: Programmatic smoke test for all 16 worker types
 
 **Files:**
+
 - Create: `tests/integration/workers/test_terminal_workers_smoke.py`
 
 **Interfaces:**
+
 - Consumes: `PoolManager`, `TerminalManager`, `MahavishnuSettings.worker_registry`
 - Produces: Confirmation that each registered `terminal-*` worker type spawns a functional tmux pane
 
@@ -1845,7 +1884,7 @@ git -c user.email="les@wedgwoodwebworks.com" commit -m "test(workers): smoke tes
 Co-Authored-By: Claude <noreply@anthropic.com>"
 ```
 
----
+______________________________________________________________________
 
 ## Phase 3 — Stage 3a: Additive Engine Composition
 
@@ -1854,10 +1893,13 @@ Co-Authored-By: Claude <noreply@anthropic.com>"
 This task was missing from v1; Task 3a.7 references `docker-compose -f tests/integration/docker-compose.yml up -d` but no file existed.
 
 **Files:**
+
 - Create: `tests/integration/docker-compose.yml`
 
 **Interfaces:**
+
 - Consumes: Local Docker engine
+
 - Produces: A compose stack with Prefect server + Dhara services for the integration test in Task 3a.7.
 
 - [ ] **Step 1: Write the compose file**
@@ -1913,10 +1955,12 @@ Co-Authored-By: Claude <noreply@anthropic.com>"
 ### Task 3a.1: Implement envelopes.py with redaction
 
 **Files:**
+
 - Create: `mahavishnu/core/envelopes.py`
 - Create: `tests/unit/test_envelopes.py`
 
 **Interfaces:**
+
 - Consumes: `EnvelopeAddress`, `CapabilityEnvelope`, `Dhara` client
 - Produces: `write_envelope(env, *, dhara)` (redacts secrets before persisting), `read_envelope(addr, *, dhara)`, `list_envelopes(trace_id: TraceId, *, dhara)`.
 
@@ -2121,21 +2165,25 @@ Co-Authored-By: Claude <noreply@anthropic.com>"
 ### Task 3a.2: Implement conductor.py — resolver, planner, emit_node, emit_flow
 
 This task had FOUR hard blockers in v1:
+
 1. `emit_node` referenced inside `emit_flow` but never defined.
-2. `plan()` emitted zero edges regardless of `TypeSchema.matches()`.
-3. `emit_flow()` used synchronous Prefect `@task` instead of typed Prefect futures.
-4. `engines = [] # TODO` placeholder.
+1. `plan()` emitted zero edges regardless of `TypeSchema.matches()`.
+1. `emit_flow()` used synchronous Prefect `@task` instead of typed Prefect futures.
+1. `engines = [] # TODO` placeholder.
 
 v2 fixes all four.
 
 **Files:**
+
 - Create: `mahavishnu/core/conductor.py`
 - Create: `tests/unit/test_conductor_resolver.py`
 - Create: `tests/unit/test_conductor_planner.py`
 - Create: `tests/unit/test_conductor_emit_flow.py`
 
 **Interfaces:**
+
 - Consumes: `CapabilitySpec`, capability registry, `load_engine_registrations(settings)`, Dhara client
+
 - Produces: `resolve(spec, engines) -> list[Candidate]`, `plan(spec, candidates, trace_id) -> ExecutionDAG`, `emit_node(node, trace_id, dhara) -> EnvelopeId`, `emit_flow(dag, *, prefect_factory=None) -> PrefectFlowDefinition`, `select_candidates(candidates, strategy) -> Candidate` (selector dispatch).
 
 - [ ] **Step 1: Write failing test for resolver**
@@ -2548,19 +2596,23 @@ Co-Authored-By: Claude <noreply@anthropic.com>"
 ### Task 3a.3: Add capability_tools.py with typed inputs + auth + feature flag
 
 This task had three crackerjack violations in v1:
+
 1. `execute_capability(spec: dict[str, Any])` — `Any` in tool input (forbidden).
-2. `register(server: FastMCP, settings: MahavishnuSettings)` — wrong signature; real registration uses `FastMCPServer`.
-3. `STANDARD_REGISTRATIONS` snippet showed a tuple list, but the real one is `list[str]` (key strings).
+1. `register(server: FastMCP, settings: MahavishnuSettings)` — wrong signature; real registration uses `FastMCPServer`.
+1. `STANDARD_REGISTRATIONS` snippet showed a tuple list, but the real one is `list[str]` (key strings).
 
 v2 fixes all three.
 
 **Files:**
+
 - Create: `mahavishnu/mcp/tools/capability_tools.py`
 - Create: `tests/unit/mcp/test_capability_tools.py`
 - Modify: `mahavishnu/mcp/tools/profiles.py` (register the new tools in the right group)
 
 **Interfaces:**
+
 - Consumes: `CapabilitySpec` (Pydantic-typed input), `CapabilityExecutionResult` (Pydantic-typed output), `MultiAuthHandler` (auth), `settings.capability_enabled` (feature flag), `settings.capability_scopes` (scope allow-list), `load_engine_registrations` (engine registry).
+
 - Produces: Four MCP tools with FastMCP registration: `execute_capability`, `list_capabilities`, `explain_routing`, `get_capability_result`.
 
 - [ ] **Step 1: Write failing test for `list_capabilities`**
@@ -2798,11 +2850,14 @@ Co-Authored-By: Claude <noreply@anthropic.com>"
 v1 had `...` placeholders. v2 inlines the body.
 
 **Files:**
+
 - Create: `mahavishnu/mcp/tools/get_capability_result_tool.py`
 - Create: `tests/unit/mcp/test_get_capability_result_tool.py`
 
 **Interfaces:**
+
 - Consumes: `trace_id: TraceId`, Dhara client
+
 - Produces: `dict[trace_id, status, envelopes, error]` — async read-back analogue of deleted `workflow_result`
 
 - [ ] **Step 1: Write failing test**
@@ -2886,9 +2941,13 @@ Co-Authored-By: Claude <noreply@anthropic.com>"
 ### Task 3a.5: Migrate slash-command skills, orchestrator subagent, CLI subcommands
 
 **Files:**
+
 - Modify: `.claude/skills/mahavishnu/SKILL.md:18-22`
+
 - Modify: `.claude/skills/mahavishnu-status/SKILL.md:49`
+
 - Modify: `.claude/agents/mahavishnu-orchestrator.md:50-52`
+
 - Modify: `mahavishnu/_main_cli.py:1402,1469,1781`
 
 - [ ] **Step 1: Update `mahavishnu/SKILL.md`**
@@ -2944,6 +3003,7 @@ Co-Authored-By: Claude <noreply@anthropic.com>"
 This task was missing from v1. `mahavishnu/mcp/tool_versions.py` has 11 deprecated tool entries that need cleanup, plus 4 new entries for `execute_capability`, `list_capabilities`, `explain_routing`, `get_capability_result`.
 
 **Files:**
+
 - Modify: `mahavishnu/mcp/tool_versions.py`
 
 - [ ] **Step 1: Read the current file**
@@ -2989,10 +3049,13 @@ Co-Authored-By: Claude <noreply@anthropic.com>"
 v1 had `...` placeholders. v2 inlines the body.
 
 **Files:**
+
 - Create: `tests/integration/conductor/test_end_to_end_dag.py`
 
 **Interfaces:**
+
 - Consumes: Live Mahavishnu MCP server with capability tools registered
+
 - Produces: Confirmation that `execute_capability(spec=CapabilitySpec(requires=["engine:durable-flow", "worker:ai-context"]))` returns a valid `CapabilityExecutionResult`
 
 - [ ] **Step 1: Write integration test**
@@ -3132,7 +3195,7 @@ mcp__mahavishnu__execute_capability spec='{"requires": ["engine:durable-flow", "
 
 Expected: returns `{status: "planned", trace_id: "..."}` with a 2-node DAG.
 
----
+______________________________________________________________________
 
 ## Phase 4 — Stage 3b: Deletive Cleanup (after one release cycle of dual maintenance)
 
@@ -3141,9 +3204,10 @@ Expected: returns `{status: "planned", trace_id: "..."}` with a 2-node DAG.
 Per the `e77dda66` fix and the 2026-08-12 mcpretentious removal: `terminal/config.py` still has a default + description that mentions mcpretentious. v1 didn't touch this; v2 does.
 
 **Files:**
+
 - Modify: `mahavishnu/terminal/config.py:50-53`
 
-- [ ] **Step 1: Remove the legacy iterm2_* fields**
+- [ ] **Step 1: Remove the legacy iterm2\_* fields*\*
 
 **v3 reviewer note #14:** the v2 task targeted the wrong lines. `mahavishnu/terminal/config.py:50-53` is `adapter_preference: str = Field(default="tmux", description="...")` — NO mcpretentious reference exists there, the field is not a `Literal`, and the current default is `"tmux"` (not `"mock"`). The actual mcpretentious leftovers are the `iterm2_*` fields at lines 86-111 (per `e77dda66`). Changing `adapter_preference` to `"crow"` would contradict CLAUDE.md's documented `tmux` default and undermine Phase 1's tmux fix.
 
@@ -3166,6 +3230,7 @@ Co-Authored-By: Claude <noreply@anthropic.com>"
 ### Task 3b.1: Mark old tools as deprecated
 
 **Files:**
+
 - Modify: All old tools in `mahavishnu/mcp/tools/pool_tools.py`, `worker_tools.py`, `mahavishnu/mcp/server_core.py:272`
 
 - [ ] **Step 1: Wrap old tools with deprecation warnings (gate registration on `legacy_tools`)**
@@ -3229,8 +3294,11 @@ If callers exist, STOP and create a follow-up task to migrate them before deleti
 ### Task 3b.3: Delete old tools
 
 **Files:**
+
 - Modify: `mahavishnu/mcp/tools/pool_tools.py` — delete `pool_spawn`, `pool_execute`, `pool_route_execute`, `dispatch_to_pool`, `workflow_result`
+
 - Modify: `mahavishnu/mcp/tools/worker_tools.py` — delete `worker_spawn`, `worker_execute`, `worker_close`, `worker_health`, `worker_list`
+
 - Modify: `mahavishnu/mcp/server_core.py:272` — delete `trigger_workflow` registration
 
 - [ ] **Step 1: Delete each tool, keep operator-observability subset**
@@ -3293,11 +3361,12 @@ git -c user.email="les@wedgwoodwebworks.com" tag -a v0.18.0 -m "Worker registry 
 
 (Per `feedback-bodai-push-is-user-controlled.md`, NEVER push without explicit approval.)
 
----
+______________________________________________________________________
 
 ## Self-Review Checklist (post-write)
 
 **Spec coverage:**
+
 - ✅ Stage 1 (worker bootstrap fix) — Phase 1, Tasks 1.1–1.4
 - ✅ Stage 2 (capability-driven registry) — Phase 2, Tasks 2.0–2.8 (added 2.0 scaffolding, 2.7.1 engine loader)
 - ✅ Stage 3a (additive composition) — Phase 3a, Tasks 3a.0–3a.8 (added 3a.0 docker-compose, 3a.6 tool_versions cleanup)
@@ -3317,6 +3386,7 @@ git -c user.email="les@wedgwoodwebworks.com" tag -a v0.18.0 -m "Worker registry 
 **No placeholders:** All Tasks have actual file paths, code snippets, or commands. The `...` placeholders in v1 (Tasks 1.3, 3a.4, 3a.7) are inlined in v2.
 
 **Type consistency:**
+
 - `Capability` model: defined in Task 2.1, used in Task 2.4, 2.7, 3a.2 — consistent.
 - `CapabilitySpec`: defined in Task 2.1, used in Task 3a.2 (conductor), 3a.3 (MCP tool) — consistent.
 - `EnvelopeAddress.to_key()`: defined in Task 2.1, used in Task 3a.1 — consistent.
@@ -3327,6 +3397,7 @@ git -c user.email="les@wedgwoodwebworks.com" tag -a v0.18.0 -m "Worker registry 
 - `EnginesConfig.disabled` field (Task 2.7.1) → `load_engine_registrations(settings)` honors it.
 
 **Crackerjack compliance:**
+
 - ✅ No `Any` in tool inputs (capability_tools uses `CapabilitySpec` Pydantic input).
 - ✅ `from __future__ import annotations` on every test snippet.
 - ✅ No `assert` in production code (`mahavishnu/core/errors.py` exceptions only).
@@ -3337,13 +3408,14 @@ git -c user.email="les@wedgwoodwebworks.com" tag -a v0.18.0 -m "Worker registry 
 **Phase numbering:** Phase 4 retained as "Stage 3b" label per the original 3-stage architecture. Internal Task numbers use `3a.x` and `3b.x` consistently.
 
 **Deferred to Phase 4+ (per spec Open Questions):**
+
 - `WorkflowRuntime` ABC for runtime swap (currently hardcoded to Prefect).
 - Decision node kind for SAGA compensation.
 - CapabilityState.INTERACTIVE worker handling (state added to enum; runtime handling deferred).
 - Sensitivity + TTL envelope lifecycle (sensitivity field added to CapabilityEnvelope; TTL logic deferred).
 - WebSocket DAG channel broadcasting.
 
----
+______________________________________________________________________
 
 ## v3 Known Limitations (post-review)
 
@@ -3371,6 +3443,6 @@ A single senior reviewer (confidence-filtered) reviewed v2 and flagged 23 findin
 Before `superpowers:subagent-driven-development` begins, the implementer should:
 
 1. Run `uv run pyright mahavishnu/core/conductor.py mahavishnu/core/capabilities.py` and confirm 0 errors.
-2. Run `uv run mypy --strict mahavishnu/core/` and confirm 0 errors.
-3. Verify the 6 engine class names actually resolve at import time (Prefect, LlamaIndex, Agno, HatchetAdapterImpl, WorkerOrchestratorAdapter; pydantic_ai is behind the optional `ai` group).
-4. Confirm `DharaAdapter` lives at `mahavishnu/core/dhara_adapter.py:18` with `async def put(self, key, value, ttl=None)` and `async def call_tool(self, name, **kwargs)`. If those signatures don't match, fix the envelope module before continuing.
+1. Run `uv run mypy --strict mahavishnu/core/` and confirm 0 errors.
+1. Verify the 6 engine class names actually resolve at import time (Prefect, LlamaIndex, Agno, HatchetAdapterImpl, WorkerOrchestratorAdapter; pydantic_ai is behind the optional `ai` group).
+1. Confirm `DharaAdapter` lives at `mahavishnu/core/dhara_adapter.py:18` with `async def put(self, key, value, ttl=None)` and `async def call_tool(self, name, **kwargs)`. If those signatures don't match, fix the envelope module before continuing.

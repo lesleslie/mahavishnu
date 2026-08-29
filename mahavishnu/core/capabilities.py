@@ -9,6 +9,7 @@ Schema rules:
 - Newtypes enforce ID patterns at the Pydantic layer (not just docstring).
 - No ``Any`` in tool inputs or orchestration state.
 """
+
 from __future__ import annotations
 
 from datetime import datetime
@@ -108,10 +109,7 @@ class TypeSchema(BaseModel):
         """
         if not self.fields:
             return True
-        return all(
-            other.fields.get(name) == ty
-            for name, ty in self.fields.items()
-        )
+        return all(other.fields.get(name) == ty for name, ty in self.fields.items())
 
 
 class CostHint(BaseModel):
@@ -241,6 +239,7 @@ class CapabilityExecutionResult(BaseModel):
 
 
 __all__ = [
+    "Candidate",
     "Capability",
     "CapabilityEnvelope",
     "CapabilityExecutionResult",
@@ -248,7 +247,6 @@ __all__ = [
     "CapabilityKind",
     "CapabilitySpec",
     "CapabilityState",
-    "Candidate",
     "CostHint",
     "DAGEdge",
     "DAGNode",

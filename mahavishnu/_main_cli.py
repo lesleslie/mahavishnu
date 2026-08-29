@@ -70,7 +70,7 @@ from .workers.capabilities import (
     WorkerCapabilityState,
     evaluate_worker_capabilities,
 )
-from .workers.registry import WORKER_REGISTRY, get_worker_entry, list_worker_types
+from .workers.registry import WORKER_REGISTRY, get_worker_entry
 
 # Import worktree management CLI
 from .worktree_cli import worktree_app
@@ -1399,7 +1399,7 @@ def workers_execute(
     async def _execute():
         from .terminal.manager import TerminalManager
         from .workers import WorkerManager
-        from .workers.registry import get_worker_entry, resolve_worker_type
+        from .workers.registry import resolve_worker_type
 
         maha_app = MahavishnuApp()
         crow_client = _resolve_crow_mcp_client(maha_app.config)
