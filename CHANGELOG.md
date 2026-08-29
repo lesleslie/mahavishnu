@@ -5,6 +5,34 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.18.1] - 2026-08-28
+
+### Added
+
+- mahavishnu: Migrate load_config() to oneiric.core.config.load_settings
+
+### Fixed
+
+- config: Anchor MahavishnuSettings yaml_file at package
+- Construct crow MCP client inside init_terminal_manager
+- Honor terminal.adapter_preference in MCP bootstrap
+- launcher: Discover venv python relative to script path
+- mahavishnu: Delete yaml_file workaround now that oneiric handles YAML
+- mahavishnu: Make ty gate deterministic across sync states
+- mahavishnu: Restore ty ignores on scripts/ imports
+- mahavishnu: Silence ty unresolved-import on optional deps
+- ports: Move bodai-crow HTTP off 8675 (Prefect) to 8693
+- workers: Bound execute_task timeout + wire CLI path's terminal manager
+
+### Documentation
+
+- CLAUDE: Add Bifrost LLM gateway to portmap (8471)
+- CLAUDE: Point portmap note at the crow-port-move commit
+
+### Internal
+
+- deps: Bump oneiric floor to >=0.19.1
+
 ## [0.18.0] - 2026-08-28
 
 ### Added
