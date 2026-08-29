@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Changed
+
+- **BREAKING**: Rename `BodaiCLIBase` to `OneiricCLIBase` across mahavishnu's CLI. The mahavishnu CLI base class (`mahavishnu.cli.base.MahavishnuCLI`) now subclasses `oneiric.cli.base.OneiricCLIBase` instead of the historical `BodaiCLIBase` (renamed upstream in oneiric 0.20). Oneiric dependency floor bumped to `>=0.20`. No deprecation alias — the old name no longer exists in oneiric.
+
 ## [0.18.1] - 2026-08-28
 
 ### Added

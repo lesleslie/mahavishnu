@@ -1,6 +1,6 @@
-"""MahavishnuCLI — BodaiCLIBase subclass for the mahavishnu CLI entrypoint.
+"""MahavishnuCLI — OneiricCLIBase subclass for the mahavishnu CLI entrypoint.
 
-Adopts oneiric 0.19.0's :class:`oneiric.cli.base.BodaiCLIBase` as the
+Adopts oneiric 0.20.0's :class:`oneiric.cli.base.OneiricCLIBase` as the
 foundation for the mahavishnu CLI. Adds REAL ``_doctor_checks()`` and
 ``_health_probe()`` implementations that call into mahavishnu's existing
 health surface (``mahavishnu.core.health`` and
@@ -16,15 +16,15 @@ from __future__ import annotations
 import logging
 from typing import Any
 
-from oneiric.cli.base import BodaiCLIBase
+from oneiric.cli.base import OneiricCLIBase
 
 logger = logging.getLogger(__name__)
 
 
-class MahavishnuCLI(BodaiCLIBase):
-    """BodaiCLIBase subclass for the mahavishnu CLI.
+class MahavishnuCLI(OneiricCLIBase):
+    """OneiricCLIBase subclass for the mahavishnu CLI.
 
-    Wires in version/doctor/health global commands from :class:`BodaiCLIBase`.
+    Wires in version/doctor/health global commands from :class:`OneiricCLIBase`.
     Doctor and health checks are real — they delegate to
     ``mahavishnu.workers.capabilities.evaluate_all_capabilities`` and the
     ``WorkerCapabilityReport`` surface instead of stubbing.
@@ -39,7 +39,7 @@ class MahavishnuCLI(BodaiCLIBase):
         super().__init__(component_name="mahavishnu", help=help, **kwargs)
 
     # ------------------------------------------------------------------
-    # BodaiCLIBase subclass hooks — REAL checks, not stubs.
+    # OneiricCLIBase subclass hooks — REAL checks, not stubs.
     # ------------------------------------------------------------------
     def _doctor_checks(self) -> dict[str, Any]:
         """Run doctor checks against mahavishnu's runtime surfaces.
@@ -146,7 +146,7 @@ class MahavishnuCLI(BodaiCLIBase):
         """Probe mahavishnu runtime health via the existing health surface.
 
         Returns a real snapshot (not the UNAVAILABLE-stub from
-        :class:`BodaiCLIBase`). The ``status`` field reflects whether the
+        :class:`OneiricCLIBase`). The ``status`` field reflects whether the
         underlying health endpoint reported ``ok``.
         """
         try:

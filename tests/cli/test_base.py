@@ -1,6 +1,6 @@
-"""Tests for :class:`mahavishnu.cli.base.MahavishnuCLI` BodaiCLIBase subclass.
+"""Tests for :class:`mahavishnu.cli.base.MahavishnuCLI` OneiricCLIBase subclass.
 
-Phase 3 Task 4.6 — BodaiCLIBase adoption for mahavishnu. These tests guard
+Phase 3 Task 4.6 — OneiricCLIBase adoption for mahavishnu. These tests guard
 that the subclass wires up version/doctor/health correctly and that the
 override hooks return real data (not ``{}`` or ``UNAVAILABLE`` stubs).
 """
@@ -23,14 +23,14 @@ def test_mahavishnucli_component_name() -> None:
 
 
 def test_mahavishnucli_inherits_typer() -> None:
-    """BodaiCLIBase inherits typer.Typer, so MahavishnuCLI must too."""
+    """OneiricCLIBase inherits typer.Typer, so MahavishnuCLI must too."""
     assert issubclass(MahavishnuCLI, typer.Typer)
 
 
 def test_doctor_checks_returns_real_entries() -> None:
     """_doctor_checks() must return a non-empty dict with real check entries.
 
-    Not a stub that returns {}. Per BodaiCLIBase contract, doctor must call
+    Not a stub that returns {}. Per OneiricCLIBase contract, doctor must call
     into the repo's existing health surface.
     """
     cli = MahavishnuCLI()
@@ -74,7 +74,7 @@ def test_version_command_runs() -> None:
 
 
 def test_doctor_command_runs_and_outputs_checks() -> None:
-    """`mahavishnu doctor` must run via BodaiCLIBase and emit check info."""
+    """`mahavishnu doctor` must run via OneiricCLIBase and emit check info."""
     cli = MahavishnuCLI()
     result = runner.invoke(cli, ["doctor"])
     # exit_code 0 (all healthy) or 1 (some unhealthy) both acceptable; the
@@ -86,7 +86,7 @@ def test_doctor_command_runs_and_outputs_checks() -> None:
 def test_doctor_command_json_output() -> None:
     """`mahavishnu --json doctor` must emit a JSON payload.
 
-    BodaiCLIBase wires `--json` as a global option on the root callback;
+    OneiricCLIBase wires `--json` as a global option on the root callback;
     typer requires the global option to come BEFORE the subcommand.
     """
     cli = MahavishnuCLI()
@@ -99,7 +99,7 @@ def test_doctor_command_json_output() -> None:
 
 
 def test_health_command_runs() -> None:
-    """`mahavishnu health` must run via BodaiCLIBase and emit a snapshot."""
+    """`mahavishnu health` must run via OneiricCLIBase and emit a snapshot."""
     cli = MahavishnuCLI()
     result = runner.invoke(cli, ["health"])
     # Should NOT be UNAVAILABLE (3) — _health_probe is real.
@@ -110,7 +110,7 @@ def test_health_command_runs() -> None:
 def test_health_command_json_output() -> None:
     """`mahavishnu --json health` must emit a JSON payload.
 
-    BodaiCLIBase wires `--json` as a global option; it must precede the
+    OneiricCLIBase wires `--json` as a global option; it must precede the
     subcommand for typer to dispatch correctly.
     """
     cli = MahavishnuCLI()
@@ -120,8 +120,8 @@ def test_health_command_json_output() -> None:
     assert payload.get("component") == "mahavishnu"
 
 
-def test_bodai_cli_base_run_wires_typer() -> None:
-    """BodaiCLIBase.run() wires up typer correctly.
+def test_oneiric_cli_base_run_wires_typer() -> None:
+    """OneiricCLIBase.run() wires up typer correctly.
 
     The base typer.Typer is callable. MahavishnuCLI inherits this
     behaviour, so invoking the cli with no args should NOT raise a
@@ -135,7 +135,7 @@ def test_bodai_cli_base_run_wires_typer() -> None:
 
 
 def test_mahavishnucli_detects_version() -> None:
-    """BodaiCLIBase._detect_version should resolve mahavishnu's metadata."""
+    """OneiricCLIBase._detect_version should resolve mahavishnu's metadata."""
     cli = MahavishnuCLI()
     # Either a real version or the "(not installed)" sentinel.
     assert isinstance(cli.component_version, str)
