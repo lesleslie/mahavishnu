@@ -474,8 +474,24 @@ class MahavishnuWebSocketServer(WebSocketServer):
         if channel.startswith("worker:"):
             return "worker:read" in permissions
 
+        # Phase 2: settle-run channels broadcast transitions for the
+        # ``worker_run_with_settle`` / ``worker_settle`` MCP tools.
+        # ``settle:`` is per-run (e.g. ``settle:settle-abcd1234``); ``run:``
+        # is the equivalent per-worker alias (e.g. ``run:w-xyz``).
+        # Both gate on ``worker:read`` so callers with worker visibility
+        # can observe settle lifecycles without a separate permission.
+        if channel.startswith(("settle:", "run:")):
+            return "worker:read" in permissions
+
         if channel.startswith("goal-teams"):
             return "team:read" in permissions
+
+        # Phase 1: cross-repo search live-streaming. Only admins may
+        # subscribe to ``cross-repo:{query_hash}`` channels because the
+        # search aggregates state from every Bodai component and could
+        # leak internal capability data to non-admin viewers.
+        if channel.startswith("cross-repo:"):
+            return "admin" in permissions or "cross_repo:read" in permissions
 
         # Default: deny
         return False
@@ -714,6 +730,51 @@ class MahavishnuWebSocketServer(WebSocketServer):
             room=f"pool:{normalized_pool_id}",
         )
         await self.broadcast_to_room(f"pool:{normalized_pool_id}", event)
+
+    # Phase 2: settle-run broadcasts. Phase 2 introduces the ``settle:`` and
+    # ``run:`` channels for the ``worker_run_with_settle`` /
+    # ``worker_settle`` MCP tool pair. ``settle:{run_ref}`` is the canonical
+    # per-run channel; ``run:{worker_id}`` is the per-worker alias for
+    # consumers that key on the underlying worker rather than the settle
+    # handle. Both fire on the same event so subscribers on either channel
+    # see the full lifecycle.
+    async def broadcast_settle_transition(
+        self,
+        run_ref: str,
+        worker_id: str,
+        from_state: str,
+        to_state: str,
+        action: str,
+        *,
+        merge: dict | None = None,
+    ) -> None:
+        """Broadcast a settle-run state transition to ``settle:`` and ``run:``.
+
+        Subscribers on either channel see the same payload. The
+        ``phase`` field is set to ``to_state`` so the canonical
+        idempotency contract (see ``docs/WEBSOCKET_CONSUMER_GUIDE.md``)
+        applies: consumers must treat ``phase=applied`` as terminal
+        and idempotent.
+        """
+        payload: dict[str, object] = {
+            "run_ref": run_ref,
+            "worker_id": worker_id,
+            "from_state": from_state,
+            "to_state": to_state,
+            "phase": to_state,
+            "action": action,
+            "timestamp": self._get_timestamp(),
+        }
+        if merge is not None:
+            payload["merge"] = merge
+
+        event = WebSocketProtocol.create_event(
+            "settle.transition",
+            payload,
+            room=f"settle:{run_ref}",
+        )
+        await self.broadcast_to_room(f"settle:{run_ref}", event)
+        await self.broadcast_to_room(f"run:{worker_id}", event)
 
     # Broadcast methods for Goal-Driven Teams events
 

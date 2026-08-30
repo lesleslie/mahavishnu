@@ -48,13 +48,17 @@ from mahavishnu.workers.registry import (
     resolve_worker_type,
     validate_worker_dependencies,
 )
+from mahavishnu.workers.shepherd_backend import (
+    ShepherdBackendError,
+    ShepherdBackendWorker,
+    ShepherdJailUnavailableError,
+    probe_host_capability,
+)
 
 __all__ = [
     "WORKER_REGISTRY",
-    # Workers
     "AppleContainerWorker",
     "ApplicationWorker",
-    # Base classes
     "BaseWorker",
     "CrowWorker",
     "E2BSandboxWorker",
@@ -67,13 +71,13 @@ __all__ = [
     "OpenClawGatewayWorker",
     "OpenClawTaskRequest",
     "OpenHandsWorker",
-    # Protocol
     "ProgressSnapshot",
+    "ShepherdBackendError",
+    "ShepherdBackendWorker",
+    "ShepherdJailUnavailableError",
     "TerminalWorkerProtocol",
-    # Registry
     "WorkerCategory",
     "WorkerConfig",
-    # Managers
     "WorkerManager",
     "WorkerResult",
     "WorkerStatus",
@@ -82,6 +86,7 @@ __all__ = [
     "get_workers_by_category",
     "is_terminal_worker",
     "list_worker_types",
+    "probe_host_capability",
     "resolve_worker_type",
     "validate_worker_dependencies",
 ]

@@ -13,7 +13,7 @@ if TYPE_CHECKING:
 
 
 def register_get_capability_result(
-    server: FastMCP, *, dhara: "DharaClient",
+    server: FastMCP, *, dhara: DharaClient,
 ) -> None:
     """Register ``get_capability_result(trace_id: TraceId)`` on ``server``."""
 
