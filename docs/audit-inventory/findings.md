@@ -9,12 +9,12 @@
 | Repo | Top-level | Sub-cmds | Total | Notes |
 |---|---|---|---|---|
 | mcp-common | 0 | 0 | 0 | library-only |
-| oneiric | 22 | 0 | 30 |  |
-| dhara | 6 | 0 | 15 |  |
-| session-buddy | 3 | 0 | 16 |  |
-| akosha | 8 | 0 | 9 |  |
-| crackerjack | 11 | 0 | 32 |  |
-| mahavishnu | 19 | 0 | 159 |  |
+| oneiric | 22 | 0 | 30 | |
+| dhara | 6 | 0 | 15 | |
+| session-buddy | 3 | 0 | 16 | |
+| akosha | 8 | 0 | 9 | |
+| crackerjack | 11 | 0 | 32 | |
+| mahavishnu | 19 | 0 | 159 | |
 
 ## 2. Cross-repo command-name duplications
 
@@ -22,45 +22,44 @@ Top-level command names appearing in 2+ repos. Coordinated-by-design duplication
 
 | Command name | Repos (count) | Notes |
 |---|---|---|
-| `adapter` | 1 (mahavishnu) |  |
-| `analytics` | 1 (session-buddy) |  |
-| `audit` | 1 (crackerjack) |  |
-| `backup` | 1 (mahavishnu) |  |
-| `coord` | 1 (mahavishnu) |  |
-| `coverage-ratchet` | 1 (crackerjack) |  |
-| `db` | 1 (dhara) |  |
-| `docs` | 2 (crackerjack, mahavishnu) |  |
+| `adapter` | 1 (mahavishnu) | |
+| `analytics` | 1 (session-buddy) | |
+| `audit` | 1 (crackerjack) | |
+| `backup` | 1 (mahavishnu) | |
+| `coord` | 1 (mahavishnu) | |
+| `coverage-ratchet` | 1 (crackerjack) | |
+| `db` | 1 (dhara) | |
+| `docs` | 2 (crackerjack, mahavishnu) | |
 | `doctor` | 6 (akosha, crackerjack, dhara, mahavishnu, oneiric, session-buddy) | coordinated (oneiric.cli.base inherited) |
-| `ecosystem` | 1 (mahavishnu) |  |
-| `events` | 1 (mahavishnu) |  |
-| `health` | 6 (akosha, crackerjack, dhara, mahavishnu, oneiric, session-buddy) |  |
-| `index` | 1 (mahavishnu) |  |
-| `ingest` | 1 (mahavishnu) |  |
-| `manifest` | 1 (oneiric) |  |
-| `mcp` | 4 (akosha, crackerjack, dhara, mahavishnu) |  |
-| `metrics` | 1 (mahavishnu) |  |
-| `monitor` | 1 (mahavishnu) |  |
-| `pool` | 1 (mahavishnu) |  |
-| `precommit` | 1 (mahavishnu) |  |
-| `production` | 1 (mahavishnu) |  |
-| `quality` | 1 (mahavishnu) |  |
-| `repo` | 1 (mahavishnu) |  |
-| `rollback` | 1 (mahavishnu) |  |
-| `routing` | 1 (mahavishnu) |  |
-| `scaffold` | 1 (mahavishnu) |  |
-| `server` | 1 (session-buddy) |  |
-| `shell` | 4 (akosha, crackerjack, mahavishnu, oneiric) |  |
-| `sop` | 1 (mahavishnu) |  |
-| `start` | 3 (akosha, crackerjack, oneiric) |  |
-| `status` | 2 (crackerjack, oneiric) |  |
-| `stop` | 2 (crackerjack, oneiric) |  |
-| `team` | 1 (mahavishnu) |  |
-| `terminal` | 1 (mahavishnu) |  |
-| `version` | 6 (akosha, crackerjack, dhara, mahavishnu, oneiric, session-buddy) |  |
-| `workers` | 1 (mahavishnu) |  |
-| `workflow` | 2 (mahavishnu, oneiric) |  |
-| `worktree` | 1 (mahavishnu) |  |
-
+| `ecosystem` | 1 (mahavishnu) | |
+| `events` | 1 (mahavishnu) | |
+| `health` | 6 (akosha, crackerjack, dhara, mahavishnu, oneiric, session-buddy) | |
+| `index` | 1 (mahavishnu) | |
+| `ingest` | 1 (mahavishnu) | |
+| `manifest` | 1 (oneiric) | |
+| `mcp` | 4 (akosha, crackerjack, dhara, mahavishnu) | |
+| `metrics` | 1 (mahavishnu) | |
+| `monitor` | 1 (mahavishnu) | |
+| `pool` | 1 (mahavishnu) | |
+| `precommit` | 1 (mahavishnu) | |
+| `production` | 1 (mahavishnu) | |
+| `quality` | 1 (mahavishnu) | |
+| `repo` | 1 (mahavishnu) | |
+| `rollback` | 1 (mahavishnu) | |
+| `routing` | 1 (mahavishnu) | |
+| `scaffold` | 1 (mahavishnu) | |
+| `server` | 1 (session-buddy) | |
+| `shell` | 4 (akosha, crackerjack, mahavishnu, oneiric) | |
+| `sop` | 1 (mahavishnu) | |
+| `start` | 3 (akosha, crackerjack, oneiric) | |
+| `status` | 2 (crackerjack, oneiric) | |
+| `stop` | 2 (crackerjack, oneiric) | |
+| `team` | 1 (mahavishnu) | |
+| `terminal` | 1 (mahavishnu) | |
+| `version` | 6 (akosha, crackerjack, dhara, mahavishnu, oneiric, session-buddy) | |
+| `workers` | 1 (mahavishnu) | |
+| `workflow` | 2 (mahavishnu, oneiric) | |
+| `worktree` | 1 (mahavishnu) | |
 
 ## 3. Orphan sub-CLI modules
 
@@ -117,7 +116,6 @@ Sorted by `last_modified_date` (most recent first). Since the inventory tool doe
 | [`workflow prefect-list-flow-runs`](../audit-inventory/mahavishnu-cli-inventory.json#L385) | mahavishnu | 1 | `mahavishnu._main_cli` |
 | [`workflow prefect-cancel-flow-run`](../audit-inventory/mahavishnu-cli-inventory.json#L405) | mahavishnu | 1 | `mahavishnu._main_cli` |
 
----
+______________________________________________________________________
 
 _Synthesis run completed: 7 repos, 261 total commands._
-

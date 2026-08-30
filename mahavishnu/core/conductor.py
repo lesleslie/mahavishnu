@@ -11,6 +11,7 @@ Three responsibilities:
    via typed ``submit()`` futures (so upstream output types flow into downstream
    inputs without serialization loss).
 """
+
 from __future__ import annotations
 
 import random
@@ -38,7 +39,8 @@ if TYPE_CHECKING:
 
 
 def resolve(
-    spec: CapabilitySpec, engines: list[EngineRegistration],
+    spec: CapabilitySpec,
+    engines: list[EngineRegistration],
 ) -> list[Candidate]:
     """For each required capability, list engines that provide it.
 
@@ -53,13 +55,15 @@ def resolve(
                 continue
             for cap in engine.provides:
                 if cap.id == required_id:
-                    out.append(Candidate(
-                        engine_id=engine.engine_id,
-                        capability_id=required_id,
-                        score=1.0,
-                        reason=f"engine {engine.engine_id} provides {required_id}",
-                        capability=cap,
-                    ))
+                    out.append(
+                        Candidate(
+                            engine_id=engine.engine_id,
+                            capability_id=required_id,
+                            score=1.0,
+                            reason=f"engine {engine.engine_id} provides {required_id}",
+                            capability=cap,
+                        )
+                    )
     return out
 
 
@@ -90,7 +94,9 @@ def select_candidates(
 
 
 def plan(
-    spec: CapabilitySpec, candidates: list[Candidate], trace_id: TraceId,
+    spec: CapabilitySpec,
+    candidates: list[Candidate],
+    trace_id: TraceId,
 ) -> ExecutionDAG:
     """Greedy fill: one node per required capability, top candidate wins.
 
@@ -114,13 +120,15 @@ def plan(
         winner = select_candidates(winners, spec.selector)
         # Populate node inputs/outputs from the resolved Capability so the
         # edge loop below can match io_out to io_in. (v3 reviewer note #5.)
-        nodes.append(DAGNode(
-            node_id=f"n{len(nodes)}",
-            engine_id=winner.engine_id,
-            capability_id=winner.capability_id,
-            inputs=winner.capability.io_in,
-            outputs=winner.capability.io_out,
-        ))
+        nodes.append(
+            DAGNode(
+                node_id=f"n{len(nodes)}",
+                engine_id=winner.engine_id,
+                capability_id=winner.capability_id,
+                inputs=winner.capability.io_in,
+                outputs=winner.capability.io_out,
+            )
+        )
 
     # Emit edges: for each downstream node n_i, look at every earlier node
     # n_j and emit an edge if n_j.outputs.matches(n_i.inputs) (true iff
@@ -130,18 +138,23 @@ def plan(
         for upstream in nodes[:i]:
             for field, ty in downstream.inputs.fields.items():
                 if upstream.outputs.fields.get(field) == ty:
-                    edges.append(DAGEdge(
-                        from_node=upstream.node_id,
-                        to_node=downstream.node_id,
-                        via_field=field,
-                    ))
+                    edges.append(
+                        DAGEdge(
+                            from_node=upstream.node_id,
+                            to_node=downstream.node_id,
+                            via_field=field,
+                        )
+                    )
                     break  # one edge per (upstream, downstream) pair
     return ExecutionDAG(nodes=tuple(nodes), edges=tuple(edges), trace_id=trace_id)
 
 
 async def emit_node(
-    node: DAGNode, *, trace_id: TraceId, dhara: "DharaAdapter",
-) -> "EnvelopeId":
+    node: DAGNode,
+    *,
+    trace_id: TraceId,
+    dhara: DharaAdapter,
+) -> EnvelopeId:
     """Dispatch one node to its engine. Returns the produced envelope id.
 
     Concrete dispatch lives in ``mahavishnu/engines/<engine>_dispatch.py`` —
@@ -149,13 +162,13 @@ async def emit_node(
     The dispatchers are out of scope for the conductor refactor plan
     (they land in Phase 4 alongside the WorkflowRuntime ABC).
     """
-    raise NotImplementedError(
-        "per-engine dispatch lands in Phase 4 — see plan §Open Questions"
-    )
+    raise NotImplementedError("per-engine dispatch lands in Phase 4 — see plan §Open Questions")
 
 
 def emit_flow(
-    dag: ExecutionDAG, *, prefect_factory: ModuleType | None = None,
+    dag: ExecutionDAG,
+    *,
+    prefect_factory: ModuleType | None = None,
 ) -> object:
     """Compile an ExecutionDAG into a Prefect flow definition.
 
@@ -166,6 +179,7 @@ def emit_flow(
     """
     if prefect_factory is None:
         import prefect as _prefect
+
         prefect_factory = _prefect
 
     # Prefect is a hard dependency; the lazy-import fallback above
@@ -183,7 +197,7 @@ def emit_flow(
         return f"envelope-of-{node_id}"
 
     @flow_decorator(name=f"mahavishnu-dag-{dag.trace_id}")
-    def _dag() -> dict[str, "object"]:
+    def _dag() -> dict[str, object]:
         futures: dict[str, object] = {}
         # First pass: submit every node with no upstream dependencies.
         upstream_of: dict[str, list[str]] = {n.node_id: [] for n in dag.nodes}
@@ -193,7 +207,9 @@ def emit_flow(
         for node in dag.nodes:
             wait_for = [futures[u] for u in upstream_of[node.node_id] if u in futures]
             futures[node.node_id] = _node.submit(
-                node.node_id, node.capability_id, wait_for=wait_for,
+                node.node_id,
+                node.capability_id,
+                wait_for=wait_for,
             )
         return {nid: str(f) for nid, f in futures.items()}
 

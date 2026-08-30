@@ -459,6 +459,30 @@ WORKER_REGISTRY: dict[str, WorkerConfig] = {
         one_shot=True,
         endpoint=None,
     ),
+    # Phase 4 (v2 plan): OS-level syscall-jail backend. Requires the
+    # optional ``shepherd-ai`` package (PEP 735 ``shepherd`` group).
+    # Macros: Seatbelt on macOS, Landlock on Linux (privileged container),
+    # copy / FUSE advisory fallback elsewhere. ``ShepherdBackendWorker``
+    # is fail-closed — host that cannot enforce ``placement="jail"``
+    # raises :class:`ShepherdJailUnavailable` instead of silently
+    # falling back to a less-secure runtime.
+    "shepherd": WorkerConfig(
+        name="Shepherd OS-jail",
+        worker_type="shepherd",
+        command="",  # Handled by ShepherdBackendWorker
+        category=WorkerCategory.CONTAINER,
+        description=(
+            "Shepherd OS-level syscall jail (Seatbelt on macOS, Landlock on "
+            "Linux). Bodyless task signatures, settle operations via the "
+            "substrate's WorkspaceRun.changeset(). Fail-closed."
+        ),
+        supports_interactive=False,
+        required_env=[],
+        auth_kind=AuthKind.NONE,
+        runtime_kind=RuntimeKind.NONE,
+        one_shot=True,
+        endpoint=None,
+    ),
     # Application Workers (via MCP)
     "application-gimp": WorkerConfig(
         name="GIMP Image Editor",

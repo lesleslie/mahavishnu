@@ -3,9 +3,13 @@ status: draft
 role: implementation
 date: 2026-08-29
 last_reviewed: 2026-08-29
+last_updated_phase_0: 2026-08-29
 superseded_by: null
-blocks_on:
-  - docs/superpowers/plans/2026-08-29-worker-registry-capability-refactor.md
+blocks_on: []
+blocks_resolved:
+  - docs/superpowers/plans/2026-08-29-worker-registry-capability-refactor.md  # shipped in v0.19.0 (commit bb51c537)
+phase_0_status: refactor-solved  # see §5 Phase 0 update 2026-08-29; bug structurally impossible in v0.19.0's new tool pair
+patch_doc_status: historical  # docs/fixes/2026-08-29-dispatch-to-pool-dead-letter-fallback.md — pattern reference only
 topic: routing-composition
 ---
 
@@ -15,7 +19,7 @@ topic: routing-composition
 **Status:** `draft`, `implementation`
 **Owner:** Core Eng
 **Scope:** Mahavishnu (control plane), with cross-repo coordination for Oneiric, Crackerjack, Akosha, Session-Buddy.
-**Purpose:** Adopt only what differentiates Bodai. Replace `dispatch_to_pool(async_callback=True)` at the root, observe before committing to charter work, ship the cross-repo capability search that competitors structurally cannot build, and adopt Shepherd as a worker backend rather than reimplementing its security boundary in-house.
+**Purpose:** Adopt only what differentiates Bodai. Verify that v0.19.0's worker-registry refactor resolved the `dispatch_to_pool`/`workflow_result` contract violation, observe before committing to charter work, ship the cross-repo capability search that competitors structurally cannot build, and adopt Shepherd as a worker backend rather than reimplementing its security boundary in-house.
 
 ---
 
@@ -35,7 +39,7 @@ v1 was a 6-phase feature list borrowed from four external projects (Shepherd, Pr
 
 When this plan ships, Bodai will have:
 
-1. **`dispatch_to_pool(async_callback=True)` root-caused and fixed** — `workflow_result` returns the right state. Bug fix is the prerequisite for any architectural change.
+1. **`dispatch_to_pool(async_callback=True)` / `workflow_result` contract violation structurally eliminated by v0.19.0's worker-registry refactor** — `execute_capability` + `get_capability_result(trace_id)` is the new pair; the silent-no-op pattern that produced `not_found` cannot recur. Verified via MCP server restart + smoke-test (Phase 0).
 2. **60-day Keystone observation window** completed with documented adoption data. Charter work is **conditional** on this observation, not committed.
 3. **Cross-repo capability search and ecosystem-wide run history** shipped over Dhara + Akosha + Session-Buddy. The only capability in reach that Shepherd, Prime Agent, and Keystone structurally cannot build.
 4. **Settle operations** shipped — "verify before trust," answering the 5 memories documenting unverified-agent-output failures (`agent-fix-verification.md`, `ty-small-fix-ghost-revert.md`, `drift-bundling-recovery.md`, `plumbing-commit-leaves-staged-revert.md`, `session-buddy-auto-checkpoint-bundling.md`).
@@ -44,7 +48,7 @@ When this plan ships, Bodai will have:
 
 ## 2. Goals
 
-1. Fix the actual root cause of `workflow_result: not_found` (not architectural replacement).
+1. Verify the v0.19.0 worker-registry refactor resolved `workflow_result: not_found` structurally (the bug-path code was deleted at commit `30ebc0f3`); restart the MCP server and smoke-test the new `execute_capability` / `get_capability_result(trace_id)` round-trip.
 2. Decide charter-framework investment based on 60 days of Keystone usage, not competitive analysis.
 3. Ship the cross-repo capability-search moat that competitors structurally cannot build.
 4. Adopt settle as a primitive that addresses documented failure modes, not as a Shepherd port.
@@ -91,28 +95,36 @@ Shepherd is per-workspace. Prime Agent is per-session. Keystone is explicitly pe
 
 ## 5. Implementation Phases
 
-### Phase 0: Investigate `workflow_result: not_found`; fix at root or switch callers
+### Phase 0: Verify v0.19.0's new tool pair resolves the `workflow_result: not_found` contract violation
 
-**Goal:** Stop `workflow_result: not_found` from blocking consumers. Decide whether the fix is a code patch or a caller switch — not both.
+**Goal:** Confirm that v0.19.0's worker-registry refactor (commit `bb51c537` / `30ebc0f3`) eliminated the silent-no-op + not_found bug pattern, and restart the running MCP server so the new tools are exposed. The dead-letter fallback pattern from `docs/fixes/2026-08-29-dispatch-to-pool-dead-letter-fallback.md` is kept as a *reference pattern* for future regressions of this shape — not a code patch to apply.
+
+**Why this Phase pivoted:** As of v0.19.0:
+- `dispatch_to_pool` and `workflow_result` are **deleted** (commit `30ebc0f3` "chore(mcp): remove deprecated pool/worker/dispatch tools (3b.3)"). The bug-path code no longer exists on `main`.
+- `execute_capability` lives at `mahavishnu/mcp/tools/capability_tools.py:347`. Returns `status: "planned"` with `trace_id` (dispatch is Phase 4).
+- `get_capability_result(trace_id)` lives at `mahavishnu/mcp/tools/get_capability_result_tool.py:21`. Reads Dhara envelopes via `mahavishnu/core/envelopes.py:list_envelopes`.
+- The new `get_capability_result` requires `dhara: DharaClient` at registration time — passing `None` would fail registration loudly, not silently return `not_found`. The structural contract violation that produced the original bug **cannot recur** in the v0.19.0 tool pair.
 
 **Tasks:**
-1. `[Mahavishnu]` Read `mahavishnu/mcp/tools/pool_tools.py:685` and trace the async path: handle persistence, queue, write-through, lookup.
-2. `[Mahavishnu]` Add structured logging at every step of the async handle path: `dispatch_to_pool.async.submit`, `dispatch_to_pool.async.persist`, `dispatch_to_pool.async.lookup`, `workflow_result.lookup`.
-3. `[Mahavishnu]` Reproduce the failure: dispatch a real task, observe which step returns `not_found`.
-4. `[Mahavishnu]` **Check whether the failure traces to the deprecated `dispatch_to_pool` path.** Worker-registry Task 3b.3 deletes `dispatch_to_pool`, `pool_route_execute`, and `workflow_result` after one release cycle of dual maintenance. Worker-registry Task 3a.4 ships `get_capability_result(trace_id: TraceId)` as the replacement. If the failing `workflow_result(workflow_id)` callsite can switch to `get_capability_result(trace_id)`, the right fix is **switching the caller, not patching the old tool** — patching produces dead code that Task 3b.3 will remove.
-5. `[Mahavishnu]` If the bug is in a path NOT slated for deletion (i.e., new code under worker-registry's conductor or fresh post-Stage-3b code), fix at root. Likely candidates: race condition between persist and lookup; Dhara key collision; handle TTL; subprocess timeout.
-6. `[Tests]` Add regression test that asserts the correct terminal state is returned by the path actually being shipped (either `workflow_result` for non-deprecated callers, or `get_capability_result` for migrated callers).
-7. `[Docs]` Update `docs/feature-tracking/2026-07-11-dispatch-to-pool.md` with root cause and chosen fix path.
+1. `[Mahavishnu]` Read `mahavishnu/mcp/tools/get_capability_result_tool.py:21` and `mahavishnu/core/envelopes.py:64` to confirm the new read path. Document the contract: returns `status: "completed"|"pending"` with `envelopes: [...]` keyed by `trace_id`. Verify no silent-no-op fallback.
+2. `[Mahavishnu]` Restart the running MCP server (PID 46863 is on a pre-v0.19.0 build per memory `2026-08-29-dispatch-to-pool-async-callback-root-cause.md`). Use `mahavishnu mcp stop && mahavishnu mcp start --background` or direct process replacement. Verify port 8680 responds to `discover_tools` and exposes `execute_capability` + `get_capability_result` (not the deleted pair).
+3. `[Mahavishnu]` Smoke-test the new round-trip: call `mcp__mahavishnu__execute_capability(requires=["CODE_GENERATION"], prompt="phase-0-verify", trace_id="phase-0-verify-<timestamp>")` and read back via `mcp__mahavishnu__get_capability_result(trace_id=...)`. Confirm `status: "planned"` returns with a trace_id; `get_capability_result` reads back envelopes keyed by that trace_id.
+4. `[Mahavishnu]` Verify failure-mode contract: if Dhara is intentionally disabled (`dhara_state.enabled=False`), `get_capability_result` should fail loudly (exception or `error` field), not silently return `pending`. Add a smoke test in `tests/integration/test_capability_result.py` for this scenario.
+5. `[Docs]` Update `docs/feature-tracking/2026-07-11-dispatch-to-pool.md` to reflect that the bug was structurally eliminated by the v0.19.0 refactor, with the patch doc reclassified as a "pattern reference for silent-failure regressions" rather than an active fix.
+6. `[Docs]` Add `docs/feature-tracking/2026-08-29-capability-tooling-migration.md` documenting the migration from `dispatch_to_pool`/`workflow_result` to `execute_capability`/`get_capability_result` for any external consumers.
 
-**Exit criteria:** No `workflow_result: not_found` returns within 30s of dispatch, OR all callers are migrated to `get_capability_result`.
+**Exit criteria:**
+- MCP server (port 8680) exposes `execute_capability` and `get_capability_result`; does not expose `dispatch_to_pool` or `workflow_result`.
+- Smoke-test round-trip in Task 3 returns `status: "planned"` on dispatch and reads back via `get_capability_result` with matching `trace_id`.
+- Dhara-disabled smoke test in Task 4 fails loudly (not `pending`).
 
 #### Integration Contract — Phase 0
 
-- **Triggered from:** Any Mahavishnu MCP client calling `dispatch_to_pool(async_callback=True)` followed by `workflow_result(workflow_id)`, OR `execute_capability(...)` followed by `get_capability_result(trace_id)`.
-- **Returns to / updates:** The chosen lookup tool returns the actual terminal state (`completed`, `failed`, `cancelled`) instead of `not_found`.
-- **Demonstrable by:** `pytest tests/integration/test_dispatch_async_roundtrip.py -v` (or `test_capability_result.py` if migrated) exits 0 after dispatching and waiting on a long-running task.
-- **Rollback signal:** Bug fix can be reverted via git. If fix introduces new failures, revert and re-diagnose.
-- **Observability added:** OTel span `dispatch.async.roundtrip` with `workflow_id`, `latency_ms`, `terminal_state`. Counter `dispatch.async.not_found_count` (target: 0 in 24h).
+- **Triggered from:** MCP server startup (port 8680); test suite invoking `execute_capability` + `get_capability_result`.
+- **Returns to / updates:** Tool registry on the running MCP server. Dhara envelope store at `akosha://envelopes/{trace_id}/*.json`.
+- **Demonstrable by:** `pytest tests/integration/test_capability_result.py -v` exits 0 after dispatch + read-back. `mahavishnu mcp call execute_capability '{"requires":["CODE_GENERATION"],"prompt":"ping"}'` returns a `trace_id`; subsequent `mahavishnu mcp call get_capability_result '{"trace_id":"<id>"}'` reads back.
+- **Rollback signal:** If `get_capability_result` returns `pending` instead of raising when Dhara is disabled, that means the silent-no-op pattern regressed. Apply the dead-letter fallback from `docs/fixes/2026-08-29-dispatch-to-pool-dead-letter-fallback.md` to the new code path (port the pattern, do not copy verbatim).
+- **Observability added:** OTel span `capability.execute` and `capability.result`. Counter `capability.result.not_found_count` (target: 0 in 24h post-restart).
 
 ### Phase 0.5: Keystone observation window (60 days)
 
@@ -269,10 +281,12 @@ Shepherd is per-workspace. Prime Agent is per-session. Keystone is explicitly pe
 ## 6. Required Code Changes
 
 ### Phase 0 (this repo: Mahavishnu)
-- [ ] `mahavishnu/mcp/tools/pool_tools.py` — add structured logging at async path steps
-- [ ] `mahavishnu/mcp/tools/pool_tools.py` — fix the lookup race / TTL / persistence issue
-- [ ] `tests/integration/test_dispatch_async_roundtrip.py` (new)
-- [ ] `docs/feature-tracking/2026-07-11-dispatch-to-pool.md` (update existing file)
+- [ ] `mahavishnu/mcp/tools/get_capability_result_tool.py` — verify Dhara-unavailable contract is loud (regression check on the new code path)
+- [ ] `mahavishnu/core/envelopes.py` — confirm `list_envelopes` raises on Dhara-unavailable (or document why it doesn't)
+- [ ] `tests/integration/test_capability_result.py` (new) — round-trip + Dhara-disabled failure-mode test
+- [ ] `docs/feature-tracking/2026-07-11-dispatch-to-pool.md` (update existing file) — reclassify as "resolved by v0.19.0 refactor"
+- [ ] `docs/feature-tracking/2026-08-29-capability-tooling-migration.md` (new) — migration guide for external consumers
+- [ ] MCP server restart on v0.19.0 (operational, not code)
 
 ### Phase 0.5 (no production code; observation log)
 - [ ] `docs/followups/2026-XX-XX-keystone-observation.md` (new)
@@ -324,7 +338,10 @@ Shepherd is per-workspace. Prime Agent is per-session. Keystone is explicitly pe
 
 | Tool / command | Expected outcome | Evidence location |
 |---|---|---|
-| `pytest tests/integration/test_dispatch_async_roundtrip.py -v` | Exit 0 after async dispatch + `workflow_result` | Phase 0 |
+| `pytest tests/integration/test_capability_result.py -v` | Exit 0 after `execute_capability` dispatch + `get_capability_result` read-back | Phase 0 |
+| `mahavishnu mcp call execute_capability '{"requires":["CODE_GENERATION"],"prompt":"phase-0-verify"}'` | Returns `{"status": "planned", "trace_id": "..."}` | Phase 0 |
+| `mahavishnu mcp call get_capability_result '{"trace_id":"<id>"}'` | Returns `{"status": "completed"|"pending", "envelopes": [...]}` | Phase 0 |
+| MCP server exposes `execute_capability` and `get_capability_result`; no `dispatch_to_pool` or `workflow_result` | Confirmed via `discover_tools` | Phase 0 |
 | `python scripts/audit_orphans.py --days 14 --root mahavishnu` | Exit 0; no orphans in phase-N modules | `reports/orphans-phase-{N}.md` |
 | `brew install tacoda/tap/keystone && keystone charter coverage` (Mahavishnu) | Exit 0; coverage report | Phase 0.5 |
 | `mahavishnu mcp call cross_repo_search '{"query": "code-review adapters"}'` | Aggregated list spanning ≥3 repos | Phase 1 |
@@ -356,7 +373,7 @@ Shepherd is per-workspace. Prime Agent is per-session. Keystone is explicitly pe
 
 This plan is "done enough" when:
 
-1. **Phase 0 ships and `dispatch_to_pool(async_callback=True)` returns the right state.** Bug fix first.
+1. **Phase 0 ships and the new `execute_capability` / `get_capability_result(trace_id)` round-trip is verified on the running MCP server (v0.19.0).** Refactor eliminated the bug; verification is the deliverable.
 2. **Phase 0.5 completes with a documented decision.** Charter work is conditional on evidence.
 3. **Phase 1 ships.** Cross-repo capability search is the moat. This is the strategic deliverable.
 4. **Phase 2 ships.** Settle addresses the 5 documented memory failures.
@@ -373,7 +390,11 @@ Phases 3, 4, 5 are sequenced by impact: budget enforcement (Phase 3) → Shepher
 - Temporal "Durable flexible multi-agent systems": https://temporal.io/blog/durable-flexible-multi-agent-systems
 - LangGraph vs Temporal: https://www.langchain.com/resources/langgraph-vs-temporal
 - Existing Mahavishnu files cited:
-  - `mahavishnu/mcp/tools/pool_tools.py:685` (dispatch_to_pool async path)
+  - `mahavishnu/mcp/tools/pool_tools.py:685` (deprecated; deleted in v0.19.0 commit `30ebc0f3`)
+  - `mahavishnu/mcp/tools/capability_tools.py:347` (`execute_capability` — Phase 0 read point)
+  - `mahavishnu/mcp/tools/get_capability_result_tool.py:21` (`get_capability_result` — Phase 0 write point)
+  - `mahavishnu/core/envelopes.py:64` (`list_envelopes` — Dhara envelope reader)
+  - `docs/fixes/2026-08-29-dispatch-to-pool-dead-letter-fallback.md` (historical pattern reference; bug path no longer exists)
   - `mahavishnu/mcp/tools/worker_contract_tools.py:33` (existing `_durable_manager` pattern)
   - `mahavishnu/workers/apple_container.py` (existing isolated worker)
   - `mahavishnu/workers/e2b_sandbox.py` (existing isolated worker)

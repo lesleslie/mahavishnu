@@ -11,6 +11,7 @@ public API is ``async def put(self, key, value, ttl=None)`` plus the
 ``async def call_tool(self, name, arguments: dict[str, Any])`` shim used
 for get/list_keys.
 """
+
 from __future__ import annotations
 
 import os
@@ -36,21 +37,18 @@ def _redact(env: CapabilityEnvelope) -> CapabilityEnvelope:
     redact = {f.strip() for f in raw.split(",") if f.strip()}
     if not redact:
         return env
-    scrubbed_io = {
-        k: (_REDACTED if k in redact else v)
-        for k, v in env.io_out.items()
-    }
+    scrubbed_io = {k: (_REDACTED if k in redact else v) for k, v in env.io_out.items()}
     return env.model_copy(update={"io_out": scrubbed_io})
 
 
-async def write_envelope(env: CapabilityEnvelope, *, dhara: "DharaClient") -> None:
+async def write_envelope(env: CapabilityEnvelope, *, dhara: DharaClient) -> None:
     """Persist a (redacted) envelope to Dhara. Awaits dhara.put()."""
     addr = EnvelopeAddress(trace_id=env.trace_id, envelope_id=env.envelope_id)
     scrubbed = _redact(env)
     await dhara.put(addr.to_key(), scrubbed.model_dump_json().encode())
 
 
-async def read_envelope(addr: EnvelopeAddress, *, dhara: "DharaClient") -> CapabilityEnvelope:
+async def read_envelope(addr: EnvelopeAddress, *, dhara: DharaClient) -> CapabilityEnvelope:
     """Load an envelope from Dhara via call_tool('get', ...). Raises if missing."""
     raw = await dhara.call_tool("get", {"key": addr.to_key()})
     if raw is None:
@@ -61,7 +59,7 @@ async def read_envelope(addr: EnvelopeAddress, *, dhara: "DharaClient") -> Capab
     return CapabilityEnvelope.model_validate_json(raw)
 
 
-async def list_envelopes(trace_id: TraceId, *, dhara: "DharaClient") -> list[EnvelopeAddress]:
+async def list_envelopes(trace_id: TraceId, *, dhara: DharaClient) -> list[EnvelopeAddress]:
     """Return every envelope address under ``envelopes/<trace_id>/``.
 
     The prefix filter is applied both at the storage call AND defensively in
@@ -73,4 +71,4 @@ async def list_envelopes(trace_id: TraceId, *, dhara: "DharaClient") -> list[Env
     return [EnvelopeAddress.from_key(k) for k in keys if k.startswith(prefix)]
 
 
-__all__ = ["write_envelope", "read_envelope", "list_envelopes"]
+__all__ = ["list_envelopes", "read_envelope", "write_envelope"]

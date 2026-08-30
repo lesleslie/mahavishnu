@@ -7,7 +7,7 @@ packages = ["mahavishnu"]
 
 [project]
 name = "mahavishnu"
-version = "0.19.0"
+version = "0.20.0"
 description = "Global orchestrator package for development workflows"
 authors = [
     {name = "Les Leslie", email = "les@wedgwoodwebworks.com"},
@@ -473,21 +473,6 @@ exclude_deps = [
     "opencv-python",  # desktop automation-vision group only
     "pytesseract",  # desktop automation-vision group only
     "llama-cpp-python",  # local LLM provider; lazy-loaded by LLM router
-    # uvicorn: FastMCP lazy-imports as ASGI server; never imported directly.
-    "uvicorn",
-    # prometheus-client: metrics are exported via OTel; prometheus_client only
-    # appears in the /metrics handler registered at app startup.
-    "prometheus-client",
-    # slowapi: rate-limit middleware registered on the FastMCP app; not imported
-    # from application code.
-    "slowapi",
-    # defusedxml: used by XML parsing utilities; transitive via feedparser/ebooklib.
-    "defusedxml",
-    # croniter: lazy-imported inside prefect_schedules.py:91 with a structural
-    # fallback (5-field length check). Redeclared as a runtime dep so ty can
-    # resolve the static import and the venv has croniter available for proper
-    # Prefect cron-schedule validation.
-    "croniter",
     "bandit",
     "complexipy",
     "creosote",
@@ -508,21 +493,19 @@ exclude_deps = [
     "pytest-timeout",
     "pytest-xdist",
     "respx",
-    "akosha",              # group=ecosystem
-    "crackerjack",         # group=ecosystem
-    "hatchet-sdk",         # group=hatchet
-    "openai",              # group=llm-providers
-    "pillow",              # group=automation (PEP 503 normalized lowercase)
-    "mss",                 # group=automation
-    "tree-sitter",         # group=treesitter (top-level; python/go already excluded above)
-    "turboquant-pro",      # group=compression
-    "turbovec",            # group=vector
-    "pydantic-ai-slim",    # group=ai - lazy in pydantic_ai_adapter.py:301,603
-    "runpod-flash",        # group=gpu - lazy in runpod_pool.py:21-30
-    "pypdf",               # group=content-ingest - lazy in content_ingester.py:898
-    "ebooklib",            # group=content-ingest - lazy in content_ingester.py:917
-    "trafilatura",         # group=content-ingest - lazy in web_extract.py:224
-    "pgvector",            # group=storage-pg - lazy in pgvector_adapter.py:477
+    # NOTE: optional-group deps that ARE imported (PEP 503-normalized) are no
+    # longer excluded — creosote's --include-deferred scan catches the lazy
+    # imports. Removing the redundant entries silences the "Redundant
+    # exclusion" warnings without losing import coverage. The groups themselves
+    # stay declared under [dependency-groups] below.
+    # shepherd-ai: PyPI distribution name installs a top-level `shepherd`
+    # package (also `commons_vcs`). Code does `from shepherd import ...` in
+    # workers/shepherd_backend.py:64,67. Creosote's distribution-vs-import-name
+    # matcher can't link the two, so it flags shepherd-ai as unused even though
+    # it is actively used. Excluding it silences the "Unused dependencies"
+    # warning without triggering "Redundant exclusion" (because creosote's
+    # import detection also can't see the link).
+    "shepherd-ai",
 ]
 
 [tool.refurb]

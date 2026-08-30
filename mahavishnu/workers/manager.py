@@ -71,9 +71,30 @@ def _create_isolated_worker(
     Tier 1 is the local Apple ``container`` runtime (Apple silicon only);
     when the host cannot run it, fall through to the E2B cloud sandbox
     tier. An explicit ``e2b-sandbox`` worker type skips tier 1 entirely.
+    An explicit ``shepherd`` worker type (Phase 4 v2 plan) routes to the
+    Shepherd OS-level syscall-jail backend; it is fail-closed and does
+    **not** fall through to a less-secure tier.
     """
-    from ..core.errors import AppleContainerUnsupported
+    from ..core.errors import AppleContainerUnsupported, ErrorCode, MahavishnuError
     from .e2b_sandbox import E2BSandboxWorker
+    from .shepherd_backend import ShepherdBackendWorker
+
+    if worker_type == "shepherd":
+        writable_root = kwargs.get("writable_root")
+        if writable_root is None:
+            raise MahavishnuError(
+                "ShepherdBackendWorker requires 'writable_root' kwarg; "
+                "refusing to start without an explicit write grant.",
+                ErrorCode.WORKER_UNAVAILABLE,
+                details={"worker_type": worker_type},
+            )
+        return ShepherdBackendWorker(
+            writable_root=writable_root,
+            workspace_cwd=kwargs.get("workspace_cwd"),
+            placement=kwargs.get("placement", "auto"),
+            default_timeout=kwargs.get("timeout", 300),
+            session_buddy_client=session_buddy_client,
+        )
 
     if worker_type != "e2b-sandbox":
         try:

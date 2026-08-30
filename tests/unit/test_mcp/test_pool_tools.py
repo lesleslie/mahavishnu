@@ -1,8 +1,9 @@
 """Unit tests for mahavishnu.mcp.tools.pool_tools.
 
-The module exposes ``register_pool_tools`` which attaches 7 FastMCP tools
+The module exposes ``register_pool_tools`` which attaches 8 FastMCP tools
 (``pool_list``, ``pool_monitor``, ``pool_scale``, ``pool_close``,
-``pool_close_all``, ``pool_health``, ``pool_search_memory``).
+``pool_close_all``, ``pool_health``, ``pool_search_memory``, and
+``budget_enforce``).
 
 The FastMCP API requires each tool function to be defined inline so the
 decorator can introspect the function name and signature. We therefore
@@ -98,6 +99,7 @@ EXPECTED_TOOL_NAMES = {
     "pool_close_all",
     "pool_health",
     "pool_search_memory",
+    "budget_enforce",
 }
 
 

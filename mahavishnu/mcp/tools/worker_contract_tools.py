@@ -1,6 +1,6 @@
 """MCP tools for the durable-worker contract.
 
-Exposes seven FastMCP tools that proxy to a :class:`DurableWorkerManager`:
+Exposes nine FastMCP tools that proxy to a :class:`DurableWorkerManager`:
 
 * ``launch_worker`` — spawn a worker backed by a tmux session.
 * ``send_input`` — type text into the worker's pane.
@@ -9,6 +9,14 @@ Exposes seven FastMCP tools that proxy to a :class:`DurableWorkerManager`:
 * ``wait_for_state`` — poll until a target lifecycle state is reached.
 * ``cancel_worker`` — soft-cancel the worker (with optional SIGKILL fallback).
 * ``worker_revoke`` — mark the worker reaped (optionally with force kill).
+* ``worker_run_with_settle`` — spawn a worker AND register a settle record
+  in state=``proposed`` BEFORE any file is written. The settle record is
+  persisted to Dhara (with dead-letter fallback) prior to launch so a
+  process crash cannot leave a worker writing files without an audit trail.
+* ``worker_settle`` — drive a settle run through its lifecycle:
+  ``select | apply | release | discard``. ``apply`` shells out to
+  ``git merge-file`` (never a hand-rolled algorithm); conflicts surface
+  as structured :class:`MergeConflictError` payloads.
 
 The functions are defined at module level (so tests can patch the global
 ``_durable_manager`` and call them directly), and the
@@ -19,18 +27,48 @@ via ``@app.tool()``.
 from __future__ import annotations
 
 import asyncio
+import logging
 import re
 from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
     from ...workers.contract.manager import DurableWorkerManager
 
+from mahavishnu.core.errors import ValidationError
 from mahavishnu.observability.worker_metrics import WorkerMetrics
+from mahavishnu.settle.merge import (
+    MergeConflictError,
+    MergeFailureError,
+    MergeResult,
+    merge_three_way,
+)
+from mahavishnu.settle.persistence import (
+    load_record,
+    persist_initial_async,
+    persist_transition,
+)
+from mahavishnu.settle.state_machine import (
+    Binding,
+    SettleAction,
+    SettleRunRecord,
+    SettleTransitionError,
+    initial_record,
+    legal_next,
+    transition,
+)
+
+logger = logging.getLogger(__name__)
 
 # Module-level reference set by ``register_worker_contract_tools`` and
 # patchable by tests. Reading from a module global keeps the FastMCP tool
 # functions free of bound state, which simplifies test isolation.
 _durable_manager: DurableWorkerManager | None = None
+
+# Optional Dhara backend for settle persistence. May be ``None`` in tests or
+# in deployments without Dhara configured — in which case the persistence
+# helpers fall back to the local dead-letter file (see
+# ``mahavishnu.settle.persistence``).
+_settle_dhara: Any = None
 
 # Spec §14 success-criteria instrumentation. Singleton per module; thread-safe.
 _metrics = WorkerMetrics()
@@ -308,7 +346,11 @@ async def worker_revoke(worker_id: str, *, force: bool = False) -> dict:
     }
 
 
-def register_worker_contract_tools(app: Any, durable_manager: DurableWorkerManager | None) -> None:
+def register_worker_contract_tools(
+    app: Any,
+    durable_manager: DurableWorkerManager | None,
+    settle_dhara: Any = None,
+) -> None:
     """Register the worker-contract tool group on a FastMCP ``app``.
 
     Each module-level tool function is attached to ``app`` via the
@@ -316,9 +358,16 @@ def register_worker_contract_tools(app: Any, durable_manager: DurableWorkerManag
     (rather than nested inside this register function) keeps the
     introspection signature intact and lets tests patch ``_durable_manager``
     and call the function directly without going through the FastMCP app.
+
+    ``settle_dhara`` is an optional :class:`DharaStateBackend` used for
+    settle-record persistence. When ``None``, settle writes fall through
+    to the local dead-letter file at
+    ``~/.mahavishnu/settle-dead-letter/{run_ref}.json``.
     """
     global _durable_manager
+    global _settle_dhara
     _durable_manager = durable_manager
+    _settle_dhara = settle_dhara
 
     app.tool()(launch_worker)
     app.tool()(send_input)
@@ -327,3 +376,311 @@ def register_worker_contract_tools(app: Any, durable_manager: DurableWorkerManag
     app.tool()(wait_for_state)
     app.tool()(cancel_worker)
     app.tool()(worker_revoke)
+    app.tool()(worker_run_with_settle)
+    app.tool()(worker_settle)
+
+
+# ---------------------------------------------------------------------------
+# Settle tools (Phase 2)
+# ---------------------------------------------------------------------------
+
+
+def _bindings_from_payload(raw_bindings: list[dict[str, str]]) -> tuple[Binding, ...]:
+    """Normalize the JSON-friendly ``bindings`` payload into ``Binding`` tuples."""
+    out: list[Binding] = []
+    for idx, raw in enumerate(raw_bindings):
+        if not isinstance(raw, dict):
+            raise TypeError(f"bindings[{idx}] must be a dict, got {type(raw).__name__}")
+        path_v = raw.get("path")
+        base_v = raw.get("base", "")
+        if not isinstance(path_v, str) or not path_v:
+            raise TypeError(f"bindings[{idx}].path must be a non-empty string")
+        if not isinstance(base_v, str):
+            raise TypeError(f"bindings[{idx}].base must be a string")
+        out.append(Binding(path=path_v, base=base_v))
+    return tuple(out)
+
+
+async def worker_run_with_settle(
+    task_signature: str,
+    bindings: list[dict[str, str]],
+    *,
+    worker_type: str = "terminal-claude",
+    backend: str = "claude_tui",
+    command: list[str] | None = None,
+    worker_id: str | None = None,
+    session_mode: str = "managed_tmux",
+    max_wait_ms: int = 30_000,
+    model: str | None = None,
+    metadata: dict | None = None,
+    run_ref: str | None = None,
+) -> dict:
+    """Spawn a durable worker AND register a settle record BEFORE any file write.
+
+    The settle record (state=``proposed``) is persisted to Dhara (with
+    local dead-letter fallback) before ``launch_worker`` is invoked, so
+    a process crash cannot leave a worker writing files without an
+    audit trail. The returned ``run_ref`` is the durable handle for
+    subsequent :func:`worker_settle` calls.
+
+    The ``bindings`` payload is a JSON-friendly list of ``{"path": str,
+    "base": str}`` dicts — ``path`` is the binding's location relative
+    to the worker repo, ``base`` is the pre-run content snapshot used
+    for the 3-way merge during ``apply``.
+    """
+    _metrics.record("worker_run_with_settle")
+    if not isinstance(task_signature, str) or not task_signature:
+        return {
+            "run_ref": None,
+            "worker_id": None,
+            "state": "manager_unconfigured",
+            "error": "task_signature must be a non-empty string",
+        }
+    if not isinstance(bindings, list) or not bindings:
+        return {
+            "run_ref": None,
+            "worker_id": None,
+            "state": "manager_unconfigured",
+            "error": "bindings must be a non-empty list",
+        }
+    if _durable_manager is None:
+        return {
+            "run_ref": None,
+            "worker_id": None,
+            "state": "manager_unconfigured",
+        }
+    try:
+        binding_tuple = _bindings_from_payload(bindings)
+    except (TypeError, ValidationError) as exc:
+        return {
+            "run_ref": None,
+            "worker_id": None,
+            "state": "invalid_bindings",
+            "error": str(exc),
+        }
+
+    import uuid
+
+    effective_run_ref = run_ref or f"settle-{uuid.uuid4().hex[:12]}"
+    record = initial_record(
+        run_ref=effective_run_ref,
+        worker_id=worker_id or "<pending>",
+        task_signature=task_signature,
+        bindings=binding_tuple,
+    )
+
+    # Persistence BEFORE any worker file write. Mirrors the
+    # ``dispatch_to_pool`` "persist before file write" contract from
+    # ``docs/fixes/2026-08-29-dispatch-to-pool-dead-letter-fallback.md``.
+    await persist_initial_async(record, dhara=_settle_dhara)
+
+    launch_result = await launch_worker(
+        prompt=task_signature,
+        worker_type=worker_type,
+        backend=backend,
+        command=command,
+        worker_id=worker_id,
+        session_mode=session_mode,
+        max_wait_ms=max_wait_ms,
+        model=model,
+        metadata=metadata,
+    )
+    # Re-stamp the record with the actual worker_id if it changed during launch.
+    if launch_result.get("worker_id") and launch_result["worker_id"] != record.worker_id:
+        restamped = SettleRunRecord(
+            run_ref=record.run_ref,
+            worker_id=str(launch_result["worker_id"]),
+            task_signature=record.task_signature,
+            bindings=record.bindings,
+            state=record.state,
+            created_at=record.created_at,
+            updated_at=record.updated_at,
+            transitions=record.transitions,
+        )
+        await persist_transition(restamped, dhara=_settle_dhara)
+        record = restamped
+
+    return {
+        "run_ref": record.run_ref,
+        "worker_id": record.worker_id,
+        "state": record.state.value,
+        "bindings": [b.path for b in record.bindings],
+        "task_signature": record.task_signature,
+        "launch": launch_result,
+    }
+
+
+async def worker_settle(
+    run_ref: str,
+    action: str,
+    *,
+    actor: str = "system",
+    bindings_content: dict[str, str] | None = None,
+    bindings_theirs: dict[str, str] | None = None,
+) -> dict:
+    """Drive a settle run through its lifecycle.
+
+    ``action`` is one of ``select | apply | release | discard``. The
+    state machine (:mod:`mahavishnu.settle.state_machine`) enforces
+    legal transitions and raises :class:`SettleTransitionError` for
+    illegal ones.
+
+    For ``apply``, callers must pass ``bindings_content`` — a mapping of
+    ``path -> ours`` (the worker's candidate content for each binding).
+    Each binding is 3-way merged with ``git merge-file`` against the
+    base snapshot captured at ``worker_run_with_settle`` time. Conflicts
+    surface as a structured :class:`MergeConflictError` payload (the
+    merged-with-markers text is returned so the caller can decide how
+    to proceed).
+
+    ``bindings_theirs`` is an optional mapping of ``path -> theirs`` for
+    the 3-way merge. When omitted, ``theirs`` defaults to the binding's
+    ``base`` (the "first apply" case — ours is adopted cleanly when it
+    differs from base in non-overlapping ways).
+    """
+    _metrics.record("worker_settle")
+    if not isinstance(run_ref, str) or not run_ref:
+        return {
+            "run_ref": run_ref,
+            "action": action,
+            "state": "invalid_run_ref",
+            "error": "run_ref must be a non-empty string",
+        }
+    try:
+        action_enum = SettleAction(action)
+    except ValueError:
+        return {
+            "run_ref": run_ref,
+            "action": action,
+            "state": "invalid_action",
+            "error": f"action must be one of {[a.value for a in SettleAction]}",
+        }
+
+    record = await load_record(run_ref, dhara=_settle_dhara)
+    if record is None:
+        return {
+            "run_ref": run_ref,
+            "action": action,
+            "state": "not_found",
+            "error": f"no settle record for run_ref={run_ref!r}",
+        }
+
+    # ``apply`` is special — it must run git merge-file BEFORE the state
+    # transition. We do the merge against a copy so a failed merge
+    # leaves the prior state intact.
+    merge_payload: dict[str, Any] | None = None
+    if action_enum == SettleAction.APPLY:
+        if not isinstance(bindings_content, dict) or not bindings_content:
+            return {
+                "run_ref": run_ref,
+                "action": action_enum.value,
+                "state": "missing_bindings_content",
+                "error": "apply requires bindings_content={path: ours}",
+            }
+        merge_payload = await _apply_merge(record, bindings_content, theirs=bindings_theirs)
+        if isinstance(merge_payload, dict) and merge_payload.get("error"):
+            return {
+                "run_ref": run_ref,
+                "action": action_enum.value,
+                "state": merge_payload["error"],
+                **merge_payload,
+            }
+
+    try:
+        new_record = transition(record, action_enum, actor=actor)
+    except SettleTransitionError as exc:
+        return {
+            "run_ref": run_ref,
+            "action": action_enum.value,
+            "state": "illegal_transition",
+            "error": str(exc),
+            "current_state": exc.details.get("current_state"),
+        }
+
+    await persist_transition(new_record, dhara=_settle_dhara)
+
+    response: dict[str, Any] = {
+        "run_ref": new_record.run_ref,
+        "action": action_enum.value,
+        "state": new_record.state.value,
+        "transitions": list(new_record.transitions),
+        "legal_next": [a.value for a in legal_next(new_record.state)],
+    }
+    if merge_payload is not None:
+        response["merge"] = merge_payload
+    return response
+
+
+async def _apply_merge(
+    record: SettleRunRecord,
+    bindings_content: dict[str, str],
+    *,
+    theirs: dict[str, str] | None = None,
+) -> dict[str, Any]:
+    """Run ``git merge-file`` for every binding in the record.
+
+    Returns ``{"merged": {path: merged_content}, "conflict_count": N}``
+    on full success. If ANY binding conflicts, returns
+    ``{"error": "merge_conflict", "conflicts": [{path, merged, conflict_count}, ...]}``
+    so the caller can see which paths failed.
+
+    Note: NO state transition is performed here. The caller
+    (:func:`worker_settle`) decides whether to commit the transition
+    after seeing the merge result. This keeps the audit trail honest —
+    a failed apply does NOT advance the state machine.
+
+    ``theirs`` is the optional third input to the 3-way merge. When a
+    path is missing from ``theirs`` (or ``theirs`` is None), ``theirs``
+    defaults to ``binding.base`` — the "first apply" case where ours is
+    adopted cleanly when it differs from base in non-overlapping ways.
+    Pass ``theirs`` to simulate concurrent edits that diverge from
+    base (the canonical conflict scenario).
+    """
+    merged_results: list[dict[str, Any]] = []
+    conflicts: list[dict[str, Any]] = []
+    fatal: list[dict[str, Any]] = []
+
+    theirs_map = theirs or {}
+
+    for binding in record.bindings:
+        ours = bindings_content.get(binding.path)
+        if ours is None:
+            fatal.append(
+                {
+                    "path": binding.path,
+                    "error": "missing_ours",
+                    "detail": "bindings_content must contain an entry for every binding.path",
+                }
+            )
+            continue
+        theirs_content = theirs_map.get(binding.path, binding.base)
+        try:
+            result: MergeResult = await merge_three_way(
+                base=binding.base,
+                ours=ours,
+                theirs=theirs_content,
+                label=binding.path,
+            )
+        except MergeConflictError as exc:
+            conflicts.append(
+                {
+                    "path": binding.path,
+                    "merged": exc.merged,
+                    "base": exc.base,
+                    "ours": exc.ours,
+                    "theirs": exc.theirs,
+                }
+            )
+        except MergeFailureError as exc:
+            fatal.append({"path": binding.path, "error": "merge_failure", "detail": str(exc)})
+        else:
+            merged_results.append({"path": binding.path, "merged": result.merged})
+
+    if fatal:
+        return {"error": "merge_failure", "failures": fatal, "conflicts": conflicts}
+    if conflicts:
+        return {"error": "merge_conflict", "conflicts": conflicts}
+    return {
+        "merged": {m["path"]: m["merged"] for m in merged_results},
+        "conflict_count": 0,
+    }

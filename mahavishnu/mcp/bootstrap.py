@@ -525,6 +525,56 @@ def _register_openhands_block(server: FastMCPServer) -> None:
         logger.warning("OpenHands tools not available: %s", exc)
 
 
+def _register_capability_block(server: FastMCPServer) -> None:
+    """Register capability tools + Dhara-backed get_capability_result reader.
+
+    Also wires ``get_capability_result(trace_id)`` when Dhara is reachable.
+    The Dhara-wired tool is skipped (with a WARN log) if the substrate is
+    not configured or the HTTP probe fails; the four core tools above
+    still register successfully in that mode.
+    """
+    from ..core.bootstrap import resolve_dhara_url
+    from ..core.dhara_adapter import DharaClient
+    from ..mcp.tools.capability_tools import register_capability_tools
+    from ..mcp.tools.get_capability_result_tool import register_get_capability_result
+
+    register_capability_tools(server.server, server.app.config)
+    logger.info("Registered 4 capability tools with MCP server")
+
+    # Wire get_capability_result against the Dhara substrate when reachable.
+    # Skipped silently (with WARN) when Dhara is offline so the other 4 tools
+    # still register; the call site at ``register_get_capability_result``
+    # raises TypeError on dhara=None, which is why we cannot default here.
+    try:
+        dhara_url = resolve_dhara_url(server.app.config)
+        dhara = DharaClient(base_url=dhara_url, timeout=10.0)
+    except Exception as exc:  # noqa: BLE001 - boundary: substrate may be unconfigured
+        logger.warning("Skipping get_capability_result registration: %s", exc)
+        return
+
+    try:
+        register_get_capability_result(server.server, dhara=dhara)
+        logger.info("Registered get_capability_result tool with MCP server")
+    except Exception as exc:  # noqa: BLE001 - boundary: Dhara may be offline
+        logger.warning("Skipping get_capability_result registration after Dhara init: %s", exc)
+
+
+def _register_search_block(server: FastMCPServer) -> None:
+    """Register the search-tools group (hybrid_search + cross_repo_search).
+
+    v1 plan Phase 1 ships ``cross_repo_search`` as a peer to the
+    pre-existing ``hybrid_search``. Both live in
+    ``mahavishnu/mcp/tools/search_tools.py``. The registration function
+    was wired into neither ``_OPTIONAL_TOOL_BLOCKS`` (CLI path) nor
+    ``REGISTRATION_MAP`` (W0 path), so the search tool group was never
+    registered on the running MCP server. This block restores it.
+    """
+    from ..mcp.tools.search_tools import register_search_tools
+
+    register_search_tools(server.server)
+    logger.info("Registered search-tools group (hybrid_search + cross_repo_search)")
+
+
 def _register_a2a_routes_block(server: FastMCPServer) -> None:
     """Mount the A2A server routes on the Starlette app when enabled.
 
@@ -649,6 +699,8 @@ _OPTIONAL_TOOL_BLOCKS: tuple[tuple[str, Callable[[FastMCPServer], None]], ...] =
     ("_register_pycharm_tools", _register_pycharm_block),
     ("_register_primitive_tools", _register_primitive_block),
     ("_register_openhands_tools", _register_openhands_block),
+    ("_register_capability_tools", _register_capability_block),
+    ("_register_search_tools", _register_search_block),
 )
 
 
@@ -906,15 +958,19 @@ def _register_openhands_tools(server: FastMCPServer) -> None:
 
 
 def _register_capability_tools(server: FastMCPServer) -> None:
-    """Register the capability resolver / planner / executor tool group.
+    """Per-group dispatch entry for the W0 ``REGISTRATION_MAP``.
 
-    Gated by ``settings.capability_enabled``; when the flag is off, the
-    four tools are still registered but every invocation short-circuits
-    with a ``FEATURE_DISABLED`` error. (We intentionally keep the tools
-    visible so operators can introspect the registry via
-    ``list_capabilities`` even when execution is gated.)
+    Delegates to ``_register_capability_block`` which holds the actual
+    registration logic. Kept as a thin wrapper so the W0 helper can wire
+    this group by name without knowing the implementation details.
     """
-    from ..mcp.tools.capability_tools import register_capability_tools
+    _register_capability_block(server)
 
-    register_capability_tools(server.server, server.app.config)
-    logger.info("Registered 4 capability tools with MCP server")
+
+def _register_search_tools(server: FastMCPServer) -> None:
+    """Per-group dispatch entry for the W0 ``REGISTRATION_MAP`` (search tools).
+
+    Delegates to ``_register_search_block`` which holds the actual
+    registration logic for the search-tools group.
+    """
+    _register_search_block(server)

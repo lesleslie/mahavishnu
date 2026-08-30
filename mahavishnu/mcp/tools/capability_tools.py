@@ -9,16 +9,17 @@ The internal helper ``_all_registrations()`` merges engine registrations
 ``settings.worker_registry.entries[]`` so the Conductor resolves against
 both engines and workers in one pass.
 """
+
 from __future__ import annotations
 
 import logging
-import uuid
 from typing import TYPE_CHECKING
+import uuid
 
 from mcp_common.auth.permissions import Permission as MCPPermission
 
-from ...mcp.auth import require_mcp_auth
 from ...core.capabilities import (
+    _TRACE_ID_ADAPTER,
     CapabilityExecutionResult,
     CapabilityKind,
     CapabilitySpec,
@@ -28,11 +29,10 @@ from ...core.capabilities import (
     SelectorStrategy,
     TraceId,
     TypeSchema,
-    _TRACE_ID_ADAPTER,
 )
-from ...core.capabilities_loader import load_capabilities_from_settings
 from ...core.conductor import plan, resolve
 from ...core.errors import AuthorizationError, ErrorCode, MahavishnuError
+from ...mcp.auth import require_mcp_auth
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -40,8 +40,7 @@ if TYPE_CHECKING:
     from fastmcp import FastMCP
 
     from ...core.capabilities import Capability
-    from ...core.config import MahavishnuSettings
-    from ...core.config import WorkerEntry
+    from ...core.config import MahavishnuSettings, WorkerEntry
 
 logger = logging.getLogger(__name__)
 
@@ -52,7 +51,7 @@ logger = logging.getLogger(__name__)
 
 
 def _worker_engine_registrations(
-    settings: "MahavishnuSettings",
+    settings: MahavishnuSettings,
 ) -> list[EngineRegistration]:
     """Convert ``settings.worker_registry.entries`` into EngineRegistrations.
 
@@ -90,8 +89,10 @@ def _worker_engine_registrations(
 
 
 def _build_worker_capability(
-    *, cap_id: str, entry: "WorkerEntry",
-) -> "Capability":
+    *,
+    cap_id: str,
+    entry: WorkerEntry,
+) -> Capability:
     """Build a Capability from a WorkerEntry.provides entry."""
     from ...core.capabilities import Capability
 
@@ -107,7 +108,7 @@ def _build_worker_capability(
     )
 
 
-def _all_registrations(settings: "MahavishnuSettings") -> list[EngineRegistration]:
+def _all_registrations(settings: MahavishnuSettings) -> list[EngineRegistration]:
     """Merge engine and worker registrations into the single list the Conductor resolves against.
 
     Engines come from ``mahavishnu.engines.load_engine_registrations`` (Prefect,
@@ -139,7 +140,7 @@ __all__ = [
 # ---------------------------------------------------------------------------
 
 
-def _check_capability_feature_flag(settings: "MahavishnuSettings") -> None:
+def _check_capability_feature_flag(settings: MahavishnuSettings) -> None:
     """Raise ``MahavishnuError`` if the capability toolset is feature-flagged off."""
     if getattr(settings, "capability_enabled", False):
         return
@@ -149,7 +150,7 @@ def _check_capability_feature_flag(settings: "MahavishnuSettings") -> None:
     )
 
 
-def _check_scope(user_id: str | None, settings: "MahavishnuSettings") -> None:
+def _check_scope(user_id: str | None, settings: MahavishnuSettings) -> None:
     """Verify ``user_id`` is in ``settings.capability_scopes`` allow-list.
 
     The allow-list is intentionally a closed set rather than a roles table —
@@ -177,8 +178,7 @@ def _coerce_selector(value: str) -> SelectorStrategy:
         return SelectorStrategy(value)
     except ValueError as exc:
         raise MahavishnuError(
-            f"unknown selector {value!r}; valid: "
-            f"{sorted(s.value for s in SelectorStrategy)}",
+            f"unknown selector {value!r}; valid: {sorted(s.value for s in SelectorStrategy)}",
             ErrorCode.VALIDATION_ERROR,
         ) from exc
 
@@ -194,8 +194,8 @@ def _new_trace_id() -> TraceId:
 
 
 def register_capability_tools(
-    server: "FastMCP",
-    settings: "MahavishnuSettings",
+    server: FastMCP,
+    settings: MahavishnuSettings,
 ) -> None:
     """Register the capability MCP toolset on ``server``.
 
@@ -204,7 +204,9 @@ def register_capability_tools(
     feature-flag preamble; only their body differs.
     """
 
-    @server.tool(name="list_capabilities", description="List every registered engine and its provides.")
+    @server.tool(
+        name="list_capabilities", description="List every registered engine and its provides."
+    )
     async def list_capabilities() -> dict[str, object]:
         """Ungated introspection tool: enumerate every engine + worker registration."""
         regs = _all_registrations(settings)
@@ -402,8 +404,8 @@ def register_capability_tools(
 
 
 def register_capability_tools_with_settings(
-    server: "FastMCP",
-    settings_getter: "Callable[[], MahavishnuSettings]",
+    server: FastMCP,
+    settings_getter: Callable[[], MahavishnuSettings],
 ) -> Callable[[], None]:
     """Lazy variant of ``register_capability_tools`` for tests and hot-reload.
 

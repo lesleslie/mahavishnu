@@ -1,4 +1,5 @@
 """Async read-back analogue of the deleted ``workflow_result`` tool."""
+
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
@@ -13,7 +14,9 @@ if TYPE_CHECKING:
 
 
 def register_get_capability_result(
-    server: FastMCP, *, dhara: DharaClient,
+    server: FastMCP,
+    *,
+    dhara: DharaClient,
 ) -> None:
     """Register ``get_capability_result(trace_id: TraceId)`` on ``server``."""
 

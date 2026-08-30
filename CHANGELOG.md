@@ -5,6 +5,23 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.20.0] - 2026-08-30
+
+### Fixed
+
+- docs: SHEPHERD_BACKEND.md relative link to ../mahavishnu/core/config.py
+- quality: Resolve pyscn/creosote/refurb failures on shepherd WIP
+- quality: Resolve ruff TC001-TC003/BLE001/PIE810/RUF022 + SHEPHERD_BACKEND link
+- repos+rate-limit: Import types at runtime so Pydantic and slowapi can resolve
+
+### Documentation
+
+- v2-plan: Diagnose dispatch_to_pool async-callback bug + design fix
+
+### Internal
+
+- gitignore: Ignore .claude/worktree-snapshots/
+
 ## [0.19.0] - 2026-08-29
 
 ### Added
@@ -82,10 +99,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - integration: Add docker-compose for end-to-end DAG test
 - integration: End-to-end execute_capability DAG
 - mcp: Remove orphan test files for deleted tools (3b.3 followup)
-- terminal: Prune stale iterm2_* assertions after 3b.0 field removal
+- terminal: Prune stale iterm2\_\* assertions after 3b.0 field removal
 - workers: Assert new tmux new-session invocation shape
 - workers: Fix WorkerResult import path (3b.4 cleanup)
-- workers: Smoke test all 16 terminal-* worker types
+- workers: Smoke test all 16 terminal-\* worker types
 
 ### Internal
 

@@ -70,7 +70,7 @@ from .workers.capabilities import (
     WorkerCapabilityState,
     evaluate_worker_capabilities,
 )
-from .workers.registry import WORKER_REGISTRY, get_worker_entry
+from .workers.registry import WORKER_REGISTRY
 
 # Import worktree management CLI
 from .worktree_cli import worktree_app
@@ -1412,9 +1412,7 @@ def workers_execute(
 
         # Map legacy worker_type to the worker capability namespace consumed
         # by the conductor. ``count`` becomes fan-out inside the DAG node.
-        worker_cap = (
-            f"worker:{worker_type.replace('terminal-', '').replace('-', '_')}-context"
-        )
+        worker_cap = f"worker:{worker_type.replace('terminal-', '').replace('-', '_')}-context"
         requires = [
             "engine:durable-flow",
             worker_cap,
@@ -1435,7 +1433,9 @@ def workers_execute(
         for n in dag.nodes:
             typer.echo(f"   • {n.node_id} → engine={n.engine_id} capability={n.capability_id}")
 
-        typer.echo("\n⚠️  Per-engine dispatch lands in Phase 4; this CLI now returns the planned DAG.")
+        typer.echo(
+            "\n⚠️  Per-engine dispatch lands in Phase 4; this CLI now returns the planned DAG."
+        )
 
     asyncio.run(_execute())
 

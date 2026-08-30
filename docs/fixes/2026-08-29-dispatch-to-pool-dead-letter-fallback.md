@@ -352,7 +352,7 @@ MCP server is restarted on the new build, the migration becomes the canonical pa
      `main` as a follow-up commit.
    - Cherry-pick the dead-letter helper into the worker-registry worktree directly
      (coordinate with that session; the helper is small).
-2. **Long term** — when the new MCP server build ships, complete the migration to
+1. **Long term** — when the new MCP server build ships, complete the migration to
    `execute_capability` + `get_capability_result(trace_id)` per plan Phase 0 task #4.
    The dead-letter fallback remains as a recovery layer for the new path too.
 

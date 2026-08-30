@@ -45,6 +45,7 @@ from ..bootstrap import (
     _register_primitive_tools,
     _register_pycharm_tools,
     _register_repository_messaging_tools,
+    _register_search_tools,
     _register_self_improvement_tools,
     _register_session_buddy_tools,
     _register_terminal_tools,
@@ -90,6 +91,7 @@ FULL_REGISTRATIONS: list[str] = STANDARD_REGISTRATIONS + [
     "_register_treesitter_tools",
     "_register_adapter_registry_tools",
     "_register_pycharm_tools",
+    "_register_search_tools",
 ]
 
 # Note: ``register_worktree_tools`` is async and conditionally registered
@@ -161,6 +163,7 @@ REGISTRATION_MAP: dict[str, Callable] = {
     "_register_treesitter_tools": lambda s: _register_treesitter_tools(s._mhv_server),  # type: ignore[attr-defined]
     "_register_adapter_registry_tools": lambda s: _register_adapter_registry_tools(s._mhv_server),  # type: ignore[attr-defined]
     "_register_pycharm_tools": lambda s: _register_pycharm_tools(s._mhv_server),  # type: ignore[attr-defined]
+    "_register_search_tools": lambda s: _register_search_tools(s._mhv_server),  # type: ignore[attr-defined]
 }
 
 
