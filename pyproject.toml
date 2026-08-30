@@ -174,9 +174,11 @@ hatchet = [
 # Desktop automation
 # Note: pyatomac removed — fails to build on newer macOS SDKs (missing conversion.h).
 # pyautogui provides cross-platform mouse/keyboard/screenshot automation.
+# Note: dep name is lowercase ``pillow`` (PEP 503 normalized) so creosote's
+# case-sensitive dist-info lookup matches the installed package.
 automation = [
     "pyautogui>=0.9.54",
-    "Pillow>=12.2.0",
+    "pillow>=12.2.0",
     "mss>=10.2.0",
 ]
 
@@ -209,6 +211,16 @@ gpu = [
 # E2B cloud sandbox tier for isolated worker execution (workers/e2b_sandbox.py)
 sandbox = [
     "e2b>=2.45.1",
+]
+
+# Phase 4 (Shepherd worker backend). shepherd-ai wraps the Shepherd OS-level
+# jail (Seatbelt on macOS, Landlock on Linux) and exposes ``shepherd.open()``
+# which discovers / activates a ``.vcscore`` workspace. The wrapper module
+# ``mahavishnu/workers/shepherd_backend.py`` lazy-imports the SDK so a lean
+# install (``uv sync``) does not pull pygit2 in.
+# https://github.com/shepherd-agents/shepherd — MIT, arXiv 2605.10913.
+shepherd = [
+    "shepherd-ai>=0.3.0",
 ]
 
 # Optional: Content ingestion — PDF, EPUB, and trafilatura readability
@@ -500,7 +512,7 @@ exclude_deps = [
     "crackerjack",         # group=ecosystem
     "hatchet-sdk",         # group=hatchet
     "openai",              # group=llm-providers
-    "Pillow",              # group=automation
+    "pillow",              # group=automation (PEP 503 normalized lowercase)
     "mss",                 # group=automation
     "tree-sitter",         # group=treesitter (top-level; python/go already excluded above)
     "turboquant-pro",      # group=compression

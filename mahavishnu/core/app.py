@@ -6,8 +6,58 @@ repository loading and adapter initialization using Oneiric patterns.
 
 import asyncio
 from asyncio import Semaphore
+import logging
 from typing import TYPE_CHECKING, Any
 import uuid
+
+logger = logging.getLogger(__name__)
+
+
+class _NoOpBudgetStore:
+    """No-op :class:`BudgetStore` used when Dhara is not configured.
+
+    Listed here (rather than imported) so the watchdog module does
+    not have to know about app-private types.
+    """
+
+    async def get(self, key: str) -> dict[str, Any] | None:
+        return None
+
+    async def put(
+        self,
+        key: str,
+        value: Any,
+        *,
+        ttl_seconds: int | None = None,
+    ) -> Any:
+        return None
+
+    async def list_keys(self, prefix: str) -> list[str]:
+        return []
+
+    async def try_acquire_lease(
+        self,
+        lease_key: str,
+        holder: str,
+        *,
+        ttl_seconds: int,
+    ) -> bool:
+        return True
+
+    async def release_lease(self, lease_key: str, holder: str) -> None:
+        return None
+
+
+def _log_budget_watchdog_done(task: asyncio.Task) -> None:
+    """Log the outcome of a budget-watchdog asyncio task (mostly for shutdown)."""
+    try:
+        exc = task.exception()
+    except (asyncio.CancelledError, Exception):  # noqa: BLE001
+        exc = None
+    if exc is not None:
+        logger.warning("budget.watchdog exited with error: %s", exc)
+    else:
+        logger.debug("budget.watchdog exited cleanly")
 
 from .bootstrap import init_health_endpoint as _init_health_endpoint_helper
 from .bootstrap import init_learning_pipeline as _init_learning_pipeline_helper
@@ -157,6 +207,10 @@ class MahavishnuApp:
     error_recovery_manager: Any
     monitoring_service: Any
     opensearch_integration: Any
+    budget_watchdog_task: asyncio.Task | None
+    budget_watchdog_stop: asyncio.Event | None
+    budget_watchdog_store: Any
+    budget_watchdog_metrics: Any
 
     @classmethod
     def load(cls) -> MahavishnuApp:
@@ -265,6 +319,107 @@ class MahavishnuApp:
             >>> await app.stop_poller()  # Stop polling
         """
         await _stop_poller_helper(self)
+
+    async def start_budget_watchdog(self) -> None:
+        """Start the Phase 3 budget watchdog as an asyncio background task.
+
+        Idempotent — calling twice is a no-op so the lifespan context
+        can call this on every cold-start. The watchdog polls once a
+        minute (60s) against Dhara and enforces per-run budget shapes
+        declared via the ``budget_enforce`` MCP tool.
+
+        Failures during startup are logged and swallowed — the
+        watchdog is allowed to be unhealthy without blocking the
+        rest of the app.
+        """
+        if getattr(self, "budget_watchdog_task", None) is not None:
+            return
+
+        # Lazy imports keep the ``mahavishnu.core`` module thin and let
+        # test code substitute the watchdog + store symbols.
+        from .budget_watchdog import (
+            DharaBudgetStore,
+            WatchdogConfig,
+            WatchdogMetrics,
+            run_watchdog,
+        )
+
+        store: Any = None
+        dhara_client = getattr(self, "_dhara_client", None) or getattr(
+            self, "dhara_client", None
+        )
+        if dhara_client is not None and hasattr(dhara_client, "call_tool"):
+            try:
+                store = DharaBudgetStore(dhara_client)
+            except Exception as exc:  # noqa: BLE001 - startup must not block
+                logger.warning(
+                    "budget.watchdog: failed to build DharaBudgetStore: %s",
+                    exc,
+                )
+                store = None
+
+        async def _noop_usage_source(_workflow_id: str) -> None:
+            """Default usage source — explicit no-op.
+
+            The real implementation reads the worker manager for the
+            latest tokens/turns and computes wallclock from
+            ``record.started_at``. With no worker registered yet, the
+            implicit ``None`` return lets the watchdog skip cycles cleanly.
+            """
+
+        stop_event = asyncio.Event()
+        metrics = WatchdogMetrics()
+        config = WatchdogConfig(
+            holder=f"mahavishni-{uuid.uuid4().hex[:8]}",
+        )
+        task = asyncio.create_task(
+            run_watchdog(
+                config=config,
+                store=store if store is not None else _NoOpBudgetStore(),
+                usage_source=_noop_usage_source,
+                metrics=metrics,
+                stop_event=stop_event,
+            ),
+            name="budget-watchdog",
+        )
+        # Quiet CancelledError on shutdown — re-raised through the task
+        # result in the supervisor.
+        task.add_done_callback(_log_budget_watchdog_done)
+
+        self.budget_watchdog_task = task
+        self.budget_watchdog_stop = stop_event
+        self.budget_watchdog_metrics = metrics
+        self.budget_watchdog_store = store
+        logger.info("budget.watchdog.started")
+
+    async def stop_budget_watchdog(self) -> None:
+        """Stop the budget watchdog and await its task to drain.
+
+        Cancels the underlying task and waits for it to exit; safe to
+        call when the watchdog was never started (no-op).
+        """
+        task: asyncio.Task | None = getattr(self, "budget_watchdog_task", None)
+        stop_event: asyncio.Event | None = getattr(self, "budget_watchdog_stop", None)
+        if task is None or stop_event is None:
+            return
+        stop_event.set()
+        try:
+            await asyncio.wait_for(task, timeout=5.0)
+        except TimeoutError:
+            logger.warning("budget.watchdog: task did not exit in time; cancelling")
+            task.cancel()
+            try:
+                await task
+            except asyncio.CancelledError:
+                logger.debug("budget.watchdog: shutdown acknowledged")
+            except Exception as exc:  # noqa: BLE001 - shutdown best-effort
+                logger.warning("budget.watchdog: shutdown error: %s", exc)
+        except asyncio.CancelledError:
+            logger.debug("budget.watchdog: stop cancelled before drain")
+        except Exception as exc:  # noqa: BLE001 - shutdown best-effort
+            logger.warning("budget.watchdog: unexpected shutdown error: %s", exc)
+        self.budget_watchdog_task = None
+        self.budget_watchdog_stop = None
 
     async def start_learning_pipeline(self) -> None:
         """Start the learning pipeline if configured.
