@@ -242,6 +242,7 @@ ingested/
 
 # Claude Code worktrees (runtime isolated sessions)
 .claude/worktrees/
+.claude/worktree-snapshots/
 
 # Tool caches (ephemeral, always regenerated)
 .lycheecache
