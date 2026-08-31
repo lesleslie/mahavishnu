@@ -381,7 +381,11 @@ class TestLifecycle:
 
         await server.start(host="127.0.0.1", port=4001)
 
-        server.server.run_http_async.assert_awaited_once_with(host="127.0.0.1", port=4001)
+        server.server.run_http_async.assert_awaited_once_with(
+            host="127.0.0.1",
+            port=4001,
+            uvicorn_config={"timeout_graceful_shutdown": 30},
+        )
 
     @pytest.mark.asyncio
     async def test_start_uses_default_host_and_port(self, server: FastMCPServer) -> None:
@@ -390,7 +394,11 @@ class TestLifecycle:
 
         await server.start()
 
-        server.server.run_http_async.assert_awaited_once_with(host="127.0.0.1", port=3000)
+        server.server.run_http_async.assert_awaited_once_with(
+            host="127.0.0.1",
+            port=3000,
+            uvicorn_config={"timeout_graceful_shutdown": 30},
+        )
 
     @pytest.mark.asyncio
     async def test_stop_is_noop_when_mcp_client_absent(self, server: FastMCPServer) -> None:

@@ -685,7 +685,11 @@ class TestServerLifecycle:
 
         await server.start(host="127.0.0.1", port=3000)
 
-        server.server.run_http_async.assert_called_once_with(host="127.0.0.1", port=3000)
+        server.server.run_http_async.assert_called_once_with(
+            host="127.0.0.1",
+            port=3000,
+            uvicorn_config={"timeout_graceful_shutdown": 30},
+        )
 
     @pytest.mark.asyncio
     async def test_server_stop(self, server):

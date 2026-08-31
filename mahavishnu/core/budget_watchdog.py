@@ -162,7 +162,7 @@ class DharaBudgetStore:
                 parsed = json.loads(raw)
                 if isinstance(parsed, dict):
                     return parsed
-            except (TypeError, ValueError):
+            except TypeError, ValueError:
                 return None
         return None
 
@@ -192,13 +192,13 @@ class DharaBudgetStore:
         if isinstance(raw, list):
             for entry in raw:
                 if isinstance(entry, str) and entry.startswith(self._record_prefix):
-                    names.append(entry[len(self._record_prefix):])
+                    names.append(entry[len(self._record_prefix) :])
         elif isinstance(raw, dict):
             keys = raw.get("keys") or []
             if isinstance(keys, list):
                 for entry in keys:
                     if isinstance(entry, str) and entry.startswith(self._record_prefix):
-                        names.append(entry[len(self._record_prefix):])
+                        names.append(entry[len(self._record_prefix) :])
         return names
 
     async def try_acquire_lease(
@@ -229,7 +229,7 @@ class DharaBudgetStore:
                 parsed = json.loads(current)
                 if isinstance(parsed, dict):
                     existing_holder = parsed.get("holder")
-            except (TypeError, ValueError):
+            except TypeError, ValueError:
                 existing_holder = None
         if existing_holder not in (None, "", holder):
             return False
@@ -467,9 +467,7 @@ async def _acquire_lease_or_failopen(
     caller surfaces ``dhara_unavailable=True`` on the cycle result.
     """
     try:
-        acquired = await store.try_acquire_lease(
-            lease_key, holder, ttl_seconds=lease_ttl_seconds
-        )
+        acquired = await store.try_acquire_lease(lease_key, holder, ttl_seconds=lease_ttl_seconds)
     except Exception as exc:  # noqa: BLE001 - watchdog must fail-open
         metrics.skipped_dhara_unavailable += 1
         logger.warning("budget.dhara_unavailable while acquiring lease: %s", exc)
@@ -566,9 +564,7 @@ async def _process_one_budget_record(
     dimension = sm.check(usage)
     if dimension is not None:
         sm.mark_exceeded(dimension, when=now_fn())
-        metrics.exceeded[dimension.value] = (
-            metrics.exceeded.get(dimension.value, 0) + 1
-        )
+        metrics.exceeded[dimension.value] = metrics.exceeded.get(dimension.value, 0) + 1
         emitter.increment("budget.exceeded.count", dimension=dimension.value)
     try:
         await store.put(
@@ -576,9 +572,7 @@ async def _process_one_budget_record(
             sm.record.to_dict(),
         )
     except Exception as exc:  # noqa: BLE001 - per-record persist failure
-        logger.warning(
-            "budget.dhara_unavailable persisting %s: %s", sm.record.workflow_id, exc
-        )
+        logger.warning("budget.dhara_unavailable persisting %s: %s", sm.record.workflow_id, exc)
     return dimension is not None
 
 
@@ -741,14 +735,18 @@ class InMemoryBudgetStore:
         if not isinstance(value, dict):
             value = {"value": value}
         if ttl_seconds is not None:
-            value = {**value, "ttl_seconds": ttl_seconds, "expires_at": (self._now() + timedelta(seconds=ttl_seconds)).isoformat()}
+            value = {
+                **value,
+                "ttl_seconds": ttl_seconds,
+                "expires_at": (self._now() + timedelta(seconds=ttl_seconds)).isoformat(),
+            }
         self._records[key] = value
         return value
 
     async def list_keys(self, prefix: str) -> list[str]:
         self._maybe_fail("list")
         return [
-            k[len(prefix):]
+            k[len(prefix) :]
             for k in self._records
             if k.startswith(prefix) and not k.endswith("/lease.json")
         ]
@@ -796,9 +794,7 @@ class InMemoryBudgetStore:
 
     def seed_record(self, record: BudgetRecord) -> None:
         """Place a record under the documented key shape."""
-        self._records[
-            f"mahavishni://budgets/{record.workflow_id}.json"
-        ] = record.to_dict()
+        self._records[f"mahavishni://budgets/{record.workflow_id}.json"] = record.to_dict()
 
     @property
     def leases(self) -> dict[str, dict[str, Any]]:

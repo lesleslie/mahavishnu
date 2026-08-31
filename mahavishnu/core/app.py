@@ -4,6 +4,8 @@ This module provides the main application class that manages configuration,
 repository loading and adapter initialization using Oneiric patterns.
 """
 
+from __future__ import annotations
+
 import asyncio
 from asyncio import Semaphore
 import logging
@@ -52,12 +54,13 @@ def _log_budget_watchdog_done(task: asyncio.Task) -> None:
     """Log the outcome of a budget-watchdog asyncio task (mostly for shutdown)."""
     try:
         exc = task.exception()
-    except (asyncio.CancelledError, Exception):  # noqa: BLE001
+    except asyncio.CancelledError, Exception:  # noqa: BLE001
         exc = None
     if exc is not None:
         logger.warning("budget.watchdog exited with error: %s", exc)
     else:
         logger.debug("budget.watchdog exited cleanly")
+
 
 from .bootstrap import init_health_endpoint as _init_health_endpoint_helper
 from .bootstrap import init_learning_pipeline as _init_learning_pipeline_helper
@@ -345,9 +348,7 @@ class MahavishnuApp:
         )
 
         store: Any = None
-        dhara_client = getattr(self, "_dhara_client", None) or getattr(
-            self, "dhara_client", None
-        )
+        dhara_client = getattr(self, "_dhara_client", None) or getattr(self, "dhara_client", None)
         if dhara_client is not None and hasattr(dhara_client, "call_tool"):
             try:
                 store = DharaBudgetStore(dhara_client)

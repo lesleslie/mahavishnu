@@ -11,6 +11,7 @@ Tests comprehensive worktree coordination with safety mechanisms:
 - Error handling for all failure scenarios
 """
 
+from __future__ import annotations
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest

@@ -1,5 +1,7 @@
 """Worktree backup manager for automatic backup creation (SECURITY-001 fix)."""
 
+from __future__ import annotations
+
 from datetime import UTC, datetime
 import logging
 from typing import TYPE_CHECKING, Any

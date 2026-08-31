@@ -1,5 +1,6 @@
 """Integration tests for the consolidated worktree MCP tool."""
 
+from __future__ import annotations
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest

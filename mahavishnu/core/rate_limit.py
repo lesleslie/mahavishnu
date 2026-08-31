@@ -4,6 +4,8 @@ Implements in-memory rate limiting with configurable limits and strategies.
 Supports IP-based, user-based, and token-based rate limiting.
 """
 
+from __future__ import annotations
+
 from collections import defaultdict
 from dataclasses import dataclass, field
 from functools import wraps

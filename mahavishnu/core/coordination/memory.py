@@ -4,6 +4,8 @@ Stores coordination events in Session-Buddy and Akosha for semantic search
 and analytics.
 """
 
+from __future__ import annotations
+
 from datetime import UTC, datetime
 import logging
 from typing import TYPE_CHECKING, Any, cast

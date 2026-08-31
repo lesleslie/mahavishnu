@@ -3,6 +3,8 @@
 Wraps existing WorkerManager to provide pool abstraction.
 """
 
+from __future__ import annotations
+
 import logging
 import time
 from typing import TYPE_CHECKING, Any

@@ -12,6 +12,8 @@ Version: 3.1
 Related: 4-Agent Opus Review P0 issue - async timeout handling
 """
 
+from __future__ import annotations
+
 import asyncio
 import builtins
 from contextlib import asynccontextmanager

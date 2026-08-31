@@ -1,5 +1,6 @@
 """Tests for Task Notification System - Real-time task event broadcasting."""
 
+from __future__ import annotations
 from datetime import UTC, datetime
 from typing import Any, TYPE_CHECKING
 from unittest.mock import MagicMock

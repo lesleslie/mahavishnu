@@ -1,6 +1,7 @@
 """Tests for RepositoryManager."""
 
 
+from __future__ import annotations
 import pytest
 import yaml
 

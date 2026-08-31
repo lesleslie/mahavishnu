@@ -1,5 +1,6 @@
 """Unit tests for pool management modules."""
 
+from __future__ import annotations
 import asyncio
 from unittest.mock import MagicMock, patch
 

@@ -431,9 +431,12 @@ def test_import_error_branch_defines_fallback_classes(monkeypatch: pytest.Monkey
         name for name in sys.modules if name == "opentelemetry" or name.startswith("opentelemetry.")
     ]:
         monkeypatch.delitem(sys.modules, module_name, raising=False)
-    namespace = runpy.run_module(
-        "mahavishnu.core.observability", run_name="__observability_fallback__"
-    )
+    # Reload via importlib so the module is registered in ``sys.modules``
+    # under its real name. ``runpy.run_module`` only registers under
+    # ``run_name``, which would cause dataclass's PEP 563 annotation
+    # resolver (``sys.modules[cls.__module__].__dict__``) to miss the entry
+    # and raise ``AttributeError: 'NoneType' object has no attribute '__dict__'``.
+    namespace = vars(importlib.reload(obs))
 
     assert namespace["OTEL_AVAILABLE"] is False
     counter = namespace["MockCounter"]()

@@ -1,5 +1,7 @@
 """Permissions and RBAC module for Mahavishnu."""
 
+from __future__ import annotations
+
 from datetime import UTC, datetime, timedelta
 from enum import StrEnum
 from typing import TYPE_CHECKING

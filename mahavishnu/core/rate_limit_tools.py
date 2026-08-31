@@ -4,6 +4,8 @@ Provides decorators and utilities for rate limiting individual MCP tools.
 Designed to work with FastMCP's tool-based architecture.
 """
 
+from __future__ import annotations
+
 from functools import wraps
 from logging import getLogger
 from typing import TYPE_CHECKING, Any, cast

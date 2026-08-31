@@ -1,5 +1,7 @@
 """Mock worktree provider for safe testing (TEST-001 fix)."""
 
+from __future__ import annotations
+
 import logging
 from typing import TYPE_CHECKING, Any
 

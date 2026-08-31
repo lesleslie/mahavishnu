@@ -27,6 +27,8 @@ Example usage:
     dhara_adapters = await engine.discover_from_dhara()
 """
 
+from __future__ import annotations
+
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from fnmatch import fnmatch

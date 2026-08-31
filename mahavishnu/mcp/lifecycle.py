@@ -25,7 +25,14 @@ async def start_server(server: Any, host: str = "127.0.0.1", port: int = 3000) -
 
     await _register_profile_tools_helper(server, methods_set)
     server._update_registered_tool_metrics()
-    await server.server.run_http_async(host=host, port=port)
+    # Override FastMCP's hardcoded 2s graceful-shutdown timeout so
+    # lifespan teardown can run cleanup (hooks, health snapshots, etc.)
+    # without being cancelled mid-shutdown.
+    await server.server.run_http_async(
+        host=host,
+        port=port,
+        uvicorn_config={"timeout_graceful_shutdown": 30},
+    )
 
 
 async def stop_server(server: Any) -> None:

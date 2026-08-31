@@ -4,6 +4,8 @@ Pool execution integration for cross-repository coordination.
 Executes todo items via worker pools with progress tracking.
 """
 
+from __future__ import annotations
+
 import asyncio
 from datetime import UTC, datetime
 import logging

@@ -16,6 +16,8 @@ Created: 2026-02-22
 Version: 1.0
 """
 
+from __future__ import annotations
+
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 import json

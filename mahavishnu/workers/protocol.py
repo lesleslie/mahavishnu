@@ -4,6 +4,8 @@ Defines the structural contract that all terminal-based workers must satisfy.
 Both GenericShellWorker and any compatibility shims conform to this protocol.
 """
 
+from __future__ import annotations
+
 from typing import TYPE_CHECKING, Any, Protocol, TypedDict, TypeGuard
 
 if TYPE_CHECKING:

@@ -119,9 +119,7 @@ class SettleRunRecord:
             "run_ref": self.run_ref,
             "worker_id": self.worker_id,
             "task_signature": self.task_signature,
-            "bindings": [
-                {"path": b.path, "base": b.base} for b in self.bindings
-            ],
+            "bindings": [{"path": b.path, "base": b.base} for b in self.bindings],
             "state": self.state.value,
             "created_at": self.created_at.isoformat(),
             "updated_at": self.updated_at.isoformat(),
@@ -142,9 +140,7 @@ class SettleRunRecord:
                 details={"payload_type": type(payload).__name__},
             )
         run_ref = _require_str_field(payload, "run_ref", run_ref=None, empty_required=True)
-        worker_id = _require_str_field(
-            payload, "worker_id", run_ref=run_ref, empty_required=True
-        )
+        worker_id = _require_str_field(payload, "worker_id", run_ref=run_ref, empty_required=True)
         task_signature = _require_str_field(
             payload, "task_signature", run_ref=run_ref, empty_required=False
         )
@@ -189,9 +185,7 @@ def _require_str_field(
     if is_valid:
         return value  # type: ignore[return-value]
     details = (
-        {"run_ref": run_ref}
-        if run_ref is not None
-        else {"payload_keys": sorted(payload.keys())}
+        {"run_ref": run_ref} if run_ref is not None else {"payload_keys": sorted(payload.keys())}
     )
     if empty_required:
         raise ValidationError(

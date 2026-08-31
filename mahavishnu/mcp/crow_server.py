@@ -145,7 +145,13 @@ class CrowServer(StandardServer):
         return self._mcp
 
     def run(self, **kwargs: Any) -> None:
-        """Forward ``run`` to the FastMCP instance."""
+        """Forward ``run`` to the FastMCP instance.
+
+        ``uvicorn_config`` (and any other FastMCP ``run`` kwargs) is
+        forwarded verbatim, so callers can pass
+        ``uvicorn_config={"timeout_graceful_shutdown": 30}`` to give
+        lifespan teardown more than FastMCP's hardcoded 2s default.
+        """
         self._mcp.run(**kwargs)
 
 
