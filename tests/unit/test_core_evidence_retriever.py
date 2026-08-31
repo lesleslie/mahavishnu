@@ -199,7 +199,7 @@ class TestFindSimilar:
         mock_client.__aenter__ = AsyncMock(return_value=mock_client)
         mock_client.__aexit__ = AsyncMock(return_value=None)
 
-        with patch("httpx.AsyncClient", return_value=mock_client):
+        with patch("httpx2.AsyncClient", return_value=mock_client):
             results = await retriever.find_similar(sample_evidence, limit=10)
 
         assert len(results) == 2
@@ -245,7 +245,7 @@ class TestFindSimilar:
         mock_client.__aenter__ = AsyncMock(return_value=mock_client)
         mock_client.__aexit__ = AsyncMock(return_value=None)
 
-        with patch("httpx.AsyncClient", return_value=mock_client):
+        with patch("httpx2.AsyncClient", return_value=mock_client):
             results = await retriever.find_similar(sample_evidence, limit=1)
 
         assert len(results) == 1
@@ -266,7 +266,7 @@ class TestSearchAkosha:
         mock_client.__aenter__ = AsyncMock(return_value=mock_client)
         mock_client.__aexit__ = AsyncMock(return_value=None)
 
-        with patch("httpx.AsyncClient", return_value=mock_client):
+        with patch("httpx2.AsyncClient", return_value=mock_client):
             results = await retriever._search_akosha("query", 5)
         assert results == []
 
@@ -285,7 +285,7 @@ class TestSearchAkosha:
         mock_client.__aenter__ = AsyncMock(return_value=mock_client)
         mock_client.__aexit__ = AsyncMock(return_value=None)
 
-        with patch("httpx.AsyncClient", return_value=mock_client):
+        with patch("httpx2.AsyncClient", return_value=mock_client):
             results = await retriever._search_akosha("q", 5)
         assert len(results) == 1
         assert results[0].evidence_id == "c1"
@@ -315,7 +315,7 @@ class TestSearchAkosha:
         mock_client.__aenter__ = AsyncMock(return_value=mock_client)
         mock_client.__aexit__ = AsyncMock(return_value=None)
 
-        with patch("httpx.AsyncClient", return_value=mock_client):
+        with patch("httpx2.AsyncClient", return_value=mock_client):
             results = await retriever._search_akosha("q", 5)
         assert results[0].outcome == "failure"
         assert results[0].observations == ["a", "b"]
@@ -358,7 +358,7 @@ class TestSearchSessionBuddy:
         mock_client.__aenter__ = AsyncMock(return_value=mock_client)
         mock_client.__aexit__ = AsyncMock(return_value=None)
 
-        with patch("httpx.AsyncClient", return_value=mock_client):
+        with patch("httpx2.AsyncClient", return_value=mock_client):
             results = await retriever._search_session_buddy("q", 10)
 
         assert len(results) == 1
@@ -373,12 +373,12 @@ class TestSearchSessionBuddy:
         mock_client.__aenter__ = AsyncMock(return_value=mock_client)
         mock_client.__aexit__ = AsyncMock(return_value=None)
 
-        with patch("httpx.AsyncClient", return_value=mock_client):
+        with patch("httpx2.AsyncClient", return_value=mock_client):
             results = await retriever._search_session_buddy("q", 10)
         assert results == []
 
     async def test_exception_returns_empty(self, retriever: EvidenceRetriever):
-        with patch("httpx.AsyncClient", side_effect=RuntimeError("boom")):
+        with patch("httpx2.AsyncClient", side_effect=RuntimeError("boom")):
             results = await retriever._search_session_buddy("q", 10)
         assert results == []
 

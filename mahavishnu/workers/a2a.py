@@ -5,7 +5,7 @@ import json
 from typing import TYPE_CHECKING
 import uuid
 
-import httpx
+import httpx2 as httpx
 from oneiric.core.logging import get_logger
 
 from mahavishnu.a2a import A2AError

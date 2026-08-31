@@ -362,7 +362,7 @@ class TestExceptionMapping:
 
     def test_map_connection_error(self):
         """Test mapping httpx connection error."""
-        import httpx
+        import httpx2 as httpx
 
         exc = httpx.ConnectError("Connection refused")
         error = _map_prefect_exception(exc, "connect", "http://localhost:4200")
@@ -372,7 +372,7 @@ class TestExceptionMapping:
 
     def test_map_timeout_error(self):
         """Test mapping httpx timeout error."""
-        import httpx
+        import httpx2 as httpx
 
         exc = httpx.ConnectTimeout("Connection timed out")
         error = _map_prefect_exception(exc, "connect", "http://localhost:4200")

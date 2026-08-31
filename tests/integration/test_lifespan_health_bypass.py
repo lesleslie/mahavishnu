@@ -51,7 +51,7 @@ import time
 from typing import TYPE_CHECKING
 from unittest.mock import Mock
 
-import httpx
+import httpx2 as httpx
 from oneiric.core.logging import get_logger
 import pytest
 import uvicorn

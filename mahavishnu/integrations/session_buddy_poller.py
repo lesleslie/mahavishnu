@@ -21,7 +21,7 @@ from datetime import UTC, datetime
 import logging
 from typing import TYPE_CHECKING, Any, ClassVar
 
-import httpx
+import httpx2 as httpx
 
 from monitoring.metrics import (
     bodai_bridge_freshness_seconds,

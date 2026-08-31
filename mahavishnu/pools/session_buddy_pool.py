@@ -7,7 +7,7 @@ import logging
 import time
 from typing import Any
 
-import httpx
+import httpx2 as httpx
 
 from .base import BasePool, PoolConfig, PoolMetrics, PoolStatus
 

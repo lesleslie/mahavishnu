@@ -15,13 +15,20 @@ import tempfile
 from typing import Any
 from unittest.mock import AsyncMock
 
-import httpx
+import httpx2 as httpx
 import pytest
-import respx
 import yaml
 
 from mahavishnu.core.coordination.manager import CoordinationManager, _run_command_safe
 from mahavishnu.core.coordination.memory import CoordinationMemory
+
+from tests.unit._httpx_test_helpers import (
+    make_recording_handler,
+    make_response_handler,
+    patch_async_client,
+)
+
+_AKOSHA_TARGET = "mahavishnu.core.coordination.memory"
 
 # ---------------------------------------------------------------------------
 # Helpers (mirrors test_coordination.py pattern)
@@ -183,54 +190,64 @@ class TestGetEcosystemStatus:
 
 
 class TestAkoshaIntegration:
-    @respx.mock
     async def test_push_to_akosha_on_store(self):
-        route = respx.post(_AKOSHA_TOOLS_URL).mock(
-            return_value=httpx.Response(200, json={"result": "ok"})
+        captured, handler = make_recording_handler(
+            httpx.Response(200, json={"result": "ok"})
         )
-        sb = AsyncMock()
-        memory = CoordinationMemory(session_buddy_client=sb, akosha_url="http://localhost:8682/mcp")
-        await memory._store_memory("test content", {"key": "val"})
-        assert route.called
+        with patch_async_client(handler, _AKOSHA_TARGET):
+            sb = AsyncMock()
+            memory = CoordinationMemory(
+                session_buddy_client=sb,
+                akosha_url="http://localhost:8682/mcp",
+            )
+            await memory._store_memory("test content", {"key": "val"})
+        assert len(captured) == 1
         import json
 
-        payload = json.loads(route.calls[0].request.content)
+        payload = json.loads(captured[0].content)
         assert payload["name"] == "store_memory"
         assert payload["arguments"]["content"] == "test content"
 
-    @respx.mock
     async def test_akosha_push_degrades_on_connect_error(self):
-        respx.post(_AKOSHA_TOOLS_URL).mock(side_effect=httpx.ConnectError("refused"))
-        sb = AsyncMock()
-        memory = CoordinationMemory(session_buddy_client=sb, akosha_url="http://localhost:8682/mcp")
-        # Should not raise
-        await memory._push_to_akosha("content", {})
+        def fail_handler(request: httpx.Request) -> httpx.Response:
+            raise httpx.ConnectError("refused")
 
-    @respx.mock
+        with patch_async_client(fail_handler, _AKOSHA_TARGET):
+            sb = AsyncMock()
+            memory = CoordinationMemory(
+                session_buddy_client=sb,
+                akosha_url="http://localhost:8682/mcp",
+            )
+            # Should not raise
+            await memory._push_to_akosha("content", {})
+
     async def test_akosha_push_skipped_when_no_url(self):
-        route = respx.post(_AKOSHA_TOOLS_URL).mock(
-            return_value=httpx.Response(200, json={"result": "ok"})
+        captured, handler = make_recording_handler(
+            httpx.Response(200, json={"result": "ok"})
         )
-        sb = AsyncMock()
-        memory = CoordinationMemory(session_buddy_client=sb, akosha_url=None)
-        await memory._push_to_akosha("content", {})
-        assert not route.called
+        with patch_async_client(handler, _AKOSHA_TARGET):
+            sb = AsyncMock()
+            memory = CoordinationMemory(session_buddy_client=sb, akosha_url=None)
+            await memory._push_to_akosha("content", {})
+        assert len(captured) == 0
 
-    @respx.mock
     async def test_search_semantic_returns_results(self):
-        respx.post(_AKOSHA_TOOLS_URL).mock(
-            return_value=httpx.Response(200, json={"results": [{"id": "r1", "score": 0.9}]})
+        handler = make_response_handler(
+            httpx.Response(200, json={"results": [{"id": "r1", "score": 0.9}]})
         )
-        memory = CoordinationMemory(akosha_url="http://localhost:8682/mcp")
-        results = await memory.search_semantic("test query")
+        with patch_async_client(handler, _AKOSHA_TARGET):
+            memory = CoordinationMemory(akosha_url="http://localhost:8682/mcp")
+            results = await memory.search_semantic("test query")
         assert len(results) == 1
         assert results[0]["id"] == "r1"
 
-    @respx.mock
     async def test_search_semantic_returns_empty_on_error(self):
-        respx.post(_AKOSHA_TOOLS_URL).mock(side_effect=httpx.ConnectError("refused"))
-        memory = CoordinationMemory(akosha_url="http://localhost:8682/mcp")
-        results = await memory.search_semantic("test query")
+        def fail_handler(request: httpx.Request) -> httpx.Response:
+            raise httpx.ConnectError("refused")
+
+        with patch_async_client(fail_handler, _AKOSHA_TARGET):
+            memory = CoordinationMemory(akosha_url="http://localhost:8682/mcp")
+            results = await memory.search_semantic("test query")
         assert results == []
 
     async def test_search_semantic_returns_empty_when_no_url(self):

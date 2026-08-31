@@ -5,7 +5,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-import httpx
+import httpx2 as httpx
 from oneiric.core.logging import get_logger
 
 from mahavishnu.core.errors import ErrorCode

@@ -1,11 +1,17 @@
 """Tests for session/checkpoint.py — SessionBuddy write-forward sink."""
 
+import json
 from unittest.mock import MagicMock
 
-import httpx
-import respx
+import httpx2 as httpx
 
 from mahavishnu.session.checkpoint import SessionBuddy
+
+from tests.unit._httpx_test_helpers import (
+    make_recording_handler,
+    make_response_handler,
+    patch_async_client,
+)
 
 
 def _mock_config(enabled=True, session_buddy_url="http://localhost:8678/mcp"):
@@ -22,6 +28,8 @@ _HEALTH_URL = "http://localhost:8678/health"
 _SUCCESS_RESPONSE = {
     "result": "✅ Conversation checkpoint stored successfully!\n📝 Conversation ID: abc-123"
 }
+
+_TARGET = "mahavishnu.session.checkpoint"
 
 
 class TestSessionBuddyInit:
@@ -41,53 +49,50 @@ class TestCreateCheckpoint:
         result = await sb.create_checkpoint("sess-1", {})
         assert result.startswith("checkpoint_disabled_sess-1")
 
-    @respx.mock
     async def test_enabled_returns_uuid(self):
-        respx.post(_TOOLS_URL).mock(return_value=httpx.Response(200, json=_SUCCESS_RESPONSE))
-        sb = SessionBuddy(_mock_config())
-        checkpoint_id = await sb.create_checkpoint("sess-1", {})
+        handler = make_response_handler(httpx.Response(200, json=_SUCCESS_RESPONSE))
+        with patch_async_client(handler, _TARGET):
+            sb = SessionBuddy(_mock_config())
+            checkpoint_id = await sb.create_checkpoint("sess-1", {})
         # UUID format: 8-4-4-4-12
         assert len(checkpoint_id) == 36
         assert checkpoint_id.count("-") == 4
 
-    @respx.mock
     async def test_calls_store_conversation_checkpoint(self):
-        route = respx.post(_TOOLS_URL).mock(
-            return_value=httpx.Response(200, json=_SUCCESS_RESPONSE)
+        captured, handler = make_recording_handler(
+            httpx.Response(200, json=_SUCCESS_RESPONSE)
         )
-        sb = SessionBuddy(_mock_config())
-        await sb.create_checkpoint("sess-1", {})
-        assert route.called
-        body = route.calls[0].request.content
-        import json
-
-        payload = json.loads(body)
+        with patch_async_client(handler, _TARGET):
+            sb = SessionBuddy(_mock_config())
+            await sb.create_checkpoint("sess-1", {})
+        assert len(captured) == 1
+        payload = json.loads(captured[0].content)
         assert payload["name"] == "store_conversation_checkpoint"
 
-    @respx.mock
     async def test_degraded_on_http_error_still_returns_uuid(self):
-        respx.post(_TOOLS_URL).mock(return_value=httpx.Response(500))
-        sb = SessionBuddy(_mock_config())
-        checkpoint_id = await sb.create_checkpoint("sess-1", {})
+        handler = make_response_handler(httpx.Response(500))
+        with patch_async_client(handler, _TARGET):
+            sb = SessionBuddy(_mock_config())
+            checkpoint_id = await sb.create_checkpoint("sess-1", {})
         assert len(checkpoint_id) == 36
 
-    @respx.mock
     async def test_degraded_on_connect_error_still_returns_uuid(self):
-        respx.post(_TOOLS_URL).mock(side_effect=httpx.ConnectError("refused"))
-        sb = SessionBuddy(_mock_config())
-        checkpoint_id = await sb.create_checkpoint("sess-1", {})
+        def fail_handler(request: httpx.Request) -> httpx.Response:
+            raise httpx.ConnectError("refused")
+
+        with patch_async_client(fail_handler, _TARGET):
+            sb = SessionBuddy(_mock_config())
+            checkpoint_id = await sb.create_checkpoint("sess-1", {})
         assert len(checkpoint_id) == 36
 
-    @respx.mock
     async def test_passes_quality_score_when_present(self):
-        route = respx.post(_TOOLS_URL).mock(
-            return_value=httpx.Response(200, json=_SUCCESS_RESPONSE)
+        captured, handler = make_recording_handler(
+            httpx.Response(200, json=_SUCCESS_RESPONSE)
         )
-        sb = SessionBuddy(_mock_config())
-        await sb.create_checkpoint("sess-1", {"quality_score": 85})
-        import json
-
-        payload = json.loads(route.calls[0].request.content)
+        with patch_async_client(handler, _TARGET):
+            sb = SessionBuddy(_mock_config())
+            await sb.create_checkpoint("sess-1", {"quality_score": 85})
+        payload = json.loads(captured[0].content)
         assert payload["arguments"]["quality_score"] == 85
 
 
@@ -96,41 +101,43 @@ class TestUpdateCheckpoint:
         sb = SessionBuddy(_mock_config(enabled=False))
         assert await sb.update_checkpoint("ckpt-1", "running") is True
 
-    @respx.mock
     async def test_non_terminal_does_not_call_service(self):
-        route = respx.post(_TOOLS_URL).mock(
-            return_value=httpx.Response(200, json=_SUCCESS_RESPONSE)
+        captured, handler = make_recording_handler(
+            httpx.Response(200, json=_SUCCESS_RESPONSE)
         )
-        sb = SessionBuddy(_mock_config())
-        result = await sb.update_checkpoint("ckpt-1", "running")
+        with patch_async_client(handler, _TARGET):
+            sb = SessionBuddy(_mock_config())
+            result = await sb.update_checkpoint("ckpt-1", "running")
         assert result is True
-        assert not route.called
+        assert len(captured) == 0
 
-    @respx.mock
     async def test_terminal_completed_calls_service(self):
-        route = respx.post(_TOOLS_URL).mock(
-            return_value=httpx.Response(200, json=_SUCCESS_RESPONSE)
+        captured, handler = make_recording_handler(
+            httpx.Response(200, json=_SUCCESS_RESPONSE)
         )
-        sb = SessionBuddy(_mock_config())
-        result = await sb.update_checkpoint("ckpt-1", "completed")
+        with patch_async_client(handler, _TARGET):
+            sb = SessionBuddy(_mock_config())
+            result = await sb.update_checkpoint("ckpt-1", "completed")
         assert result is True
-        assert route.called
+        assert len(captured) == 1
 
-    @respx.mock
     async def test_terminal_failed_calls_service(self):
-        route = respx.post(_TOOLS_URL).mock(
-            return_value=httpx.Response(200, json=_SUCCESS_RESPONSE)
+        captured, handler = make_recording_handler(
+            httpx.Response(200, json=_SUCCESS_RESPONSE)
         )
-        sb = SessionBuddy(_mock_config())
-        result = await sb.update_checkpoint("ckpt-1", "failed")
+        with patch_async_client(handler, _TARGET):
+            sb = SessionBuddy(_mock_config())
+            result = await sb.update_checkpoint("ckpt-1", "failed")
         assert result is True
-        assert route.called
+        assert len(captured) == 1
 
-    @respx.mock
     async def test_degraded_returns_false(self):
-        respx.post(_TOOLS_URL).mock(side_effect=httpx.ConnectError("refused"))
-        sb = SessionBuddy(_mock_config())
-        result = await sb.update_checkpoint("ckpt-1", "completed")
+        def fail_handler(request: httpx.Request) -> httpx.Response:
+            raise httpx.ConnectError("refused")
+
+        with patch_async_client(fail_handler, _TARGET):
+            sb = SessionBuddy(_mock_config())
+            result = await sb.update_checkpoint("ckpt-1", "completed")
         assert result is False
 
 
@@ -161,20 +168,22 @@ class TestCleanupCheckpoint:
 
 
 class TestIsHealthy:
-    @respx.mock
     async def test_healthy_when_200(self):
-        respx.get(_HEALTH_URL).mock(return_value=httpx.Response(200))
-        sb = SessionBuddy(_mock_config())
-        assert await sb.is_healthy() is True
+        handler = make_response_handler(httpx.Response(200))
+        with patch_async_client(handler, _TARGET):
+            sb = SessionBuddy(_mock_config())
+            assert await sb.is_healthy() is True
 
-    @respx.mock
     async def test_unhealthy_when_500(self):
-        respx.get(_HEALTH_URL).mock(return_value=httpx.Response(500))
-        sb = SessionBuddy(_mock_config())
-        assert await sb.is_healthy() is False
+        handler = make_response_handler(httpx.Response(500))
+        with patch_async_client(handler, _TARGET):
+            sb = SessionBuddy(_mock_config())
+            assert await sb.is_healthy() is False
 
-    @respx.mock
     async def test_unhealthy_on_connect_error(self):
-        respx.get(_HEALTH_URL).mock(side_effect=httpx.ConnectError("refused"))
-        sb = SessionBuddy(_mock_config())
-        assert await sb.is_healthy() is False
+        def fail_handler(request: httpx.Request) -> httpx.Response:
+            raise httpx.ConnectError("refused")
+
+        with patch_async_client(fail_handler, _TARGET):
+            sb = SessionBuddy(_mock_config())
+            assert await sb.is_healthy() is False

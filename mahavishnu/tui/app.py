@@ -523,7 +523,7 @@ _tui_log = logging.getLogger(__name__)
 
 async def _probe_service(base_url: str) -> bool:
     """Return True if the service responds to GET /health with status < 500."""
-    import httpx
+    import httpx2 as httpx
 
     try:
         async with httpx.AsyncClient(timeout=3.0) as client:
@@ -583,7 +583,7 @@ def _component_urls() -> dict[str, str | None]:
 
 async def _fetch_health(base_url: str) -> dict[str, Any]:
     """GET /health from *base_url*; return parsed JSON or a dict with ``available=False``."""
-    import httpx
+    import httpx2 as httpx
 
     try:
         async with httpx.AsyncClient(timeout=5.0) as client:

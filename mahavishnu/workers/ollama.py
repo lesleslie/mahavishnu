@@ -23,7 +23,7 @@ import re
 import time
 from typing import Any
 
-import httpx
+import httpx2 as httpx
 
 from mahavishnu.core.status import WorkerStatus
 

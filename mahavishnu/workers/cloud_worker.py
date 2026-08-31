@@ -16,7 +16,7 @@ import shutil
 import time
 from typing import Any
 
-import httpx
+import httpx2 as httpx
 from mcp_common.llm import FallbackChain, LLMSettings
 
 from mahavishnu.core.status import WorkerStatus

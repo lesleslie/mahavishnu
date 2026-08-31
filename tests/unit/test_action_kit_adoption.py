@@ -12,7 +12,7 @@ from __future__ import annotations
 import asyncio
 from typing import Any
 
-import httpx
+import httpx2 as httpx
 import pytest
 
 from mahavishnu.core.http_probe import _http_probe_action, service_probe
@@ -100,7 +100,7 @@ async def test_service_probe_returns_healthy_on_200() -> None:
     success path with an httpx MockTransport so the regression can't slip
     through again.
     """
-    import httpx
+    import httpx2 as httpx
 
     def handler(request: httpx.Request) -> httpx.Response:
         return httpx.Response(

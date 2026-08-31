@@ -1,11 +1,14 @@
 from __future__ import annotations
 
-import httpx
+import httpx2 as httpx
 import pytest
-import respx
 
 from mahavishnu.core.status import WorkerStatus
 from mahavishnu.workers.a2a import A2AAgentConfig, A2AWorker
+
+from tests.unit._httpx_test_helpers import patch_async_client
+
+_TARGET = "mahavishnu.workers.a2a"
 
 
 def _make_worker(*names_urls: tuple[str, str]) -> A2AWorker:
@@ -17,7 +20,7 @@ def _make_worker(*names_urls: tuple[str, str]) -> A2AWorker:
 
 
 @pytest.mark.unit
-async def test_happy_path_sse(monkeypatch: pytest.MonkeyPatch) -> None:
+async def test_happy_path_sse() -> None:
     """Agent supports streaming; sendSubscribe returns working→completed."""
     card_json = {
         "name": "coder",
@@ -33,15 +36,17 @@ async def test_happy_path_sse(monkeypatch: pytest.MonkeyPatch) -> None:
         '"final": true}\n\n'
     )
 
-    with respx.mock:
-        respx.get("http://coder.example.com/.well-known/agent.json").mock(
-            return_value=httpx.Response(200, json=card_json)
-        )
-        respx.post("http://coder.example.com/tasks/sendSubscribe").mock(
-            return_value=httpx.Response(
+    def handler(request: httpx.Request) -> httpx.Response:
+        url = str(request.url)
+        if url.endswith("/.well-known/agent.json"):
+            return httpx.Response(200, json=card_json)
+        if url.endswith("/tasks/sendSubscribe"):
+            return httpx.Response(
                 200, text=sse_body, headers={"content-type": "text/event-stream"}
             )
-        )
+        raise AssertionError(f"Unexpected URL: {url}")
+
+    with patch_async_client(handler, _TARGET):
         worker = _make_worker(("coder", "http://coder.example.com"))
         result = await worker.execute({"agent": "coder", "prompt": "say hello"})
 
@@ -69,13 +74,15 @@ async def test_non_streaming_fallback() -> None:
         "final": True,
     }
 
-    with respx.mock:
-        respx.get("http://simple.example.com/.well-known/agent.json").mock(
-            return_value=httpx.Response(200, json=card_json)
-        )
-        respx.post("http://simple.example.com/tasks/send").mock(
-            return_value=httpx.Response(200, json=task_response)
-        )
+    def handler(request: httpx.Request) -> httpx.Response:
+        url = str(request.url)
+        if url.endswith("/.well-known/agent.json"):
+            return httpx.Response(200, json=card_json)
+        if url.endswith("/tasks/send"):
+            return httpx.Response(200, json=task_response)
+        raise AssertionError(f"Unexpected URL: {url}")
+
+    with patch_async_client(handler, _TARGET):
         worker = _make_worker(("simple", "http://simple.example.com"))
         result = await worker.execute({"agent": "simple", "prompt": "run task"})
 
@@ -113,15 +120,17 @@ async def test_remote_agent_sse_error_event() -> None:
         '"quota exceeded"}, "final": true}\n\n'
     )
 
-    with respx.mock:
-        respx.get("http://erring.example.com/.well-known/agent.json").mock(
-            return_value=httpx.Response(200, json=card_json)
-        )
-        respx.post("http://erring.example.com/tasks/sendSubscribe").mock(
-            return_value=httpx.Response(
+    def handler(request: httpx.Request) -> httpx.Response:
+        url = str(request.url)
+        if url.endswith("/.well-known/agent.json"):
+            return httpx.Response(200, json=card_json)
+        if url.endswith("/tasks/sendSubscribe"):
+            return httpx.Response(
                 200, text=sse_body, headers={"content-type": "text/event-stream"}
             )
-        )
+        raise AssertionError(f"Unexpected URL: {url}")
+
+    with patch_async_client(handler, _TARGET):
         worker = _make_worker(("erring", "http://erring.example.com"))
         result = await worker.execute({"agent": "erring", "prompt": "run task"})
 
@@ -135,10 +144,10 @@ async def test_remote_agent_sse_error_event() -> None:
 @pytest.mark.unit
 async def test_card_fetch_503() -> None:
     """Agent card endpoint returns 503; worker returns FAILED."""
-    with respx.mock:
-        respx.get("http://down.example.com/.well-known/agent.json").mock(
-            return_value=httpx.Response(503, text="service unavailable")
-        )
+    def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(503, text="service unavailable")
+
+    with patch_async_client(handler, _TARGET):
         worker = _make_worker(("down", "http://down.example.com"))
         result = await worker.execute({"agent": "down", "prompt": "ping"})
 

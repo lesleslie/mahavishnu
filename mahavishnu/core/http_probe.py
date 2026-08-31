@@ -16,11 +16,11 @@ from functools import lru_cache
 import time
 from typing import TYPE_CHECKING, Any
 
-from httpx import HTTPError
+from httpx2 import HTTPError
 from oneiric.actions.http import HttpActionSettings, HttpFetchAction
 
 if TYPE_CHECKING:
-    from httpx import AsyncClient
+    from httpx2 import AsyncClient
 
 # Module-level settings so the client override path doesn't need to reach
 # into ``HttpFetchAction._settings`` (a private attribute).

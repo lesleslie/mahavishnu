@@ -32,7 +32,7 @@ import socket
 from typing import Any, Self, TypedDict, cast
 import urllib.parse
 
-import httpx
+import httpx2 as httpx
 import structlog
 
 from ..core.embeddings import EmbeddingProvider, EmbeddingService, get_embedding_service

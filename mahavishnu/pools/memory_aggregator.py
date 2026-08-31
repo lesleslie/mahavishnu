@@ -22,7 +22,7 @@ import pathlib
 import time
 from typing import TYPE_CHECKING, Any
 
-import httpx
+import httpx2 as httpx
 
 # Outbox (Q2 data-plane durability) is opt-in. Operators set the env vars
 # explicitly; the default behavior matches pre-Task-2 exactly.

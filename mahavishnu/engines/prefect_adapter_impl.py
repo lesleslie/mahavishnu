@@ -64,7 +64,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any, cast
 from unittest.mock import Mock
 
-import httpx
+import httpx2 as httpx
 from mcp_common.code_graph import CodeGraphAnalyzer, FunctionNode
 from prefect import flow, task
 from prefect.client.orchestration import get_client

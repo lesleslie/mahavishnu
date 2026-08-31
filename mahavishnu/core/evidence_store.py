@@ -5,7 +5,7 @@ import logging
 from typing import Any, Protocol, runtime_checkable
 from uuid import uuid4
 
-import httpx
+import httpx2 as httpx
 from pydantic import BaseModel, Field
 
 from mahavishnu.core.skill_governance import LearningEvidence

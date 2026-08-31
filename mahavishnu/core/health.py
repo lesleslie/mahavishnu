@@ -17,7 +17,7 @@ from enum import StrEnum
 import time
 from typing import Any
 
-import httpx
+import httpx2 as httpx
 from oneiric.actions.http import HttpActionSettings, HttpFetchAction
 from oneiric.adapters.httpx_base import HTTPXClientMixin
 from oneiric.core.logging import get_logger

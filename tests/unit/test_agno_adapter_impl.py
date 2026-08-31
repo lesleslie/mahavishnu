@@ -2303,7 +2303,7 @@ class TestCompatibilityAPI:
         mock_response.status_code = 200
         mock_response.json.return_value = {"result": "success"}
 
-        with patch("httpx.AsyncClient") as mock_client_class:
+        with patch("httpx2.AsyncClient") as mock_client_class:
             mock_client = AsyncMock()
             mock_client.__aenter__ = AsyncMock(return_value=mock_client)
             mock_client.__aexit__ = AsyncMock(return_value=None)
@@ -2322,7 +2322,7 @@ class TestCompatibilityAPI:
         mock_response.status_code = 500
         mock_response.json.return_value = {"error": "bad"}
 
-        with patch("httpx.AsyncClient") as mock_client_class:
+        with patch("httpx2.AsyncClient") as mock_client_class:
             mock_client = AsyncMock()
             mock_client.__aenter__ = AsyncMock(return_value=mock_client)
             mock_client.__aexit__ = AsyncMock(return_value=None)
@@ -2340,7 +2340,7 @@ class TestCompatibilityAPI:
         mock_response.status_code = 200
         mock_response.json.return_value = "not a dict"
 
-        with patch("httpx.AsyncClient") as mock_client_class:
+        with patch("httpx2.AsyncClient") as mock_client_class:
             mock_client = AsyncMock()
             mock_client.__aenter__ = AsyncMock(return_value=mock_client)
             mock_client.__aexit__ = AsyncMock(return_value=None)

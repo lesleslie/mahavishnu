@@ -9,7 +9,7 @@ from __future__ import annotations
 from typing import Any
 from unittest.mock import AsyncMock, MagicMock, patch
 
-import httpx
+import httpx2 as httpx
 import pytest
 
 from mahavishnu.core.coordination.manager import CoordinationManager

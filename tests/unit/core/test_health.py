@@ -113,7 +113,7 @@ class TestHealthChecker:
     @pytest.mark.asyncio
     async def test_check_connection_refused(self, checker):
         """Test handling connection refused."""
-        import httpx
+        import httpx2 as httpx
 
         with patch.object(
             checker._http_action,

@@ -26,7 +26,7 @@ import os
 from types import SimpleNamespace
 from typing import TYPE_CHECKING, Any, ClassVar, Literal, cast
 
-import httpx
+import httpx2 as httpx
 from tenacity import retry, stop_after_attempt, wait_exponential
 
 from ..core.adapters.base import AdapterCapabilities, AdapterType, OrchestratorAdapter

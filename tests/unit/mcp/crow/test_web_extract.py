@@ -1,7 +1,5 @@
 """Tests for mahavishnu.mcp.crow.tools.web_extract.
 
-RED phase: tests written before implementation.
-
 ESCALATION: trafilatura is not in the dep tree. This implementation
 uses a stdlib HTMLParser-based extractor that strips tags and returns
 text. The function signature mirrors what a trafilatura-backed version
@@ -13,64 +11,44 @@ The test suite focuses on:
 - Extraction quality (text stripped of tags, whitespace collapsed)
 - Max-length truncation
 - Failure isolation (network errors return structured error, not raise)
+
+Migrated from respx to httpx2.MockTransport via ``tests.unit.mcp.crow._http_mock``.
 """
 
 from __future__ import annotations
 
-import httpx
+import socket as _socket
+
+import httpx2 as httpx
 import pytest
 
-from mahavishnu.mcp.crow.tools.web_extract import web_extract
+from mahavishnu.mcp.crow.tools.web_extract import web_extract, web_extract_batch
+from tests.unit.mcp.crow._http_mock import _mock_http_client
 from tests.unit.mcp.crow.conftest import mock_settings
 
-
-@pytest.fixture
-def mock_http_client(monkeypatch):
-    """Replace ``get_http_client`` with a real httpx client that respx can
-    intercept. Also stubs DNS so validate_url() passes for respx-mocked URLs.
-    """
-    import respx
-
-    monkeypatch.setattr(
-        "socket.getaddrinfo",
-        lambda *_a, **_k: [(None, None, None, None, ("93.184.216.34", 0))],
-    )
-    with respx.mock(assert_all_called=False, assert_all_mocked=False) as router:
-        fake = httpx.AsyncClient()
-        monkeypatch.setattr(
-            "mahavishnu.mcp.crow.tools.web_extract.get_http_client",
-            lambda: fake,
-        )
-        try:
-            yield router
-        finally:
-            import asyncio
-
-            try:
-                loop = asyncio.get_event_loop()
-                if loop.is_closed():
-                    asyncio.run(fake.aclose())
-                else:
-                    loop.run_until_complete(fake.aclose())
-            except Exception:  # noqa: BLE001 - CLI entrypoint; converts unhandled errors to exit
-                pass
+_TARGET = "mahavishnu.mcp.crow.tools.web_extract"
 
 
 # ---- happy path -------------------------------------------------------------
 
 
 @pytest.mark.unit
-async def test_web_extract_returns_text_from_html(mock_http_client, tmp_path):
-    mock_http_client.get("https://example.com/").mock(
-        return_value=httpx.Response(
-            200,
-            text="<html><body><article><h1>Title</h1>"
-            "<p>This is the main content of the page.</p>"
-            "</article></body></html>",
-            headers={"content-type": "text/html"},
-        )
-    )
-    result = await web_extract("https://example.com/", mock_settings(tmp_path))
+async def test_web_extract_returns_text_from_html(tmp_path):
+    with _mock_http_client(
+        {
+            "https://example.com/": httpx.Response(
+                200,
+                text=(
+                    "<html><body><article><h1>Title</h1>"
+                    "<p>This is the main content of the page.</p>"
+                    "</article></body></html>"
+                ),
+                headers={"content-type": "text/html"},
+            )
+        },
+        target_module=_TARGET,
+    ):
+        result = await web_extract("https://example.com/", mock_settings(tmp_path))
     assert result["url"] == "https://example.com/"
     assert "Title" in result["content"]
     assert "main content" in result["content"]
@@ -79,24 +57,27 @@ async def test_web_extract_returns_text_from_html(mock_http_client, tmp_path):
 
 
 @pytest.mark.unit
-async def test_web_extract_drops_navigation_and_ads(mock_http_client, tmp_path):
+async def test_web_extract_drops_navigation_and_ads(tmp_path):
     """nav, aside, footer, header, script, style are stripped to content."""
-    mock_http_client.get("https://example.com/").mock(
-        return_value=httpx.Response(
-            200,
-            text=(
-                "<html><body>"
-                "<nav>Skip to content</nav>"
-                "<script>analytics()</script>"
-                "<article><p>Real article content</p></article>"
-                "<aside>Sidebar ads</aside>"
-                "<footer>Footer junk</footer>"
-                "</body></html>"
-            ),
-            headers={"content-type": "text/html"},
-        )
-    )
-    result = await web_extract("https://example.com/", mock_settings(tmp_path))
+    with _mock_http_client(
+        {
+            "https://example.com/": httpx.Response(
+                200,
+                text=(
+                    "<html><body>"
+                    "<nav>Skip to content</nav>"
+                    "<script>analytics()</script>"
+                    "<article><p>Real article content</p></article>"
+                    "<aside>Sidebar ads</aside>"
+                    "<footer>Footer junk</footer>"
+                    "</body></html>"
+                ),
+                headers={"content-type": "text/html"},
+            )
+        },
+        target_module=_TARGET,
+    ):
+        result = await web_extract("https://example.com/", mock_settings(tmp_path))
     assert "Real article content" in result["content"]
     assert "Skip to content" not in result["content"]
     assert "analytics()" not in result["content"]
@@ -105,12 +86,19 @@ async def test_web_extract_drops_navigation_and_ads(mock_http_client, tmp_path):
 
 
 @pytest.mark.unit
-async def test_web_extract_max_length_truncates(mock_http_client, tmp_path):
+async def test_web_extract_max_length_truncates(tmp_path):
     text = "<html><body><p>" + ("long content " * 100) + "</p></body></html>"
-    mock_http_client.get("https://example.com/").mock(
-        return_value=httpx.Response(200, text=text, headers={"content-type": "text/html"})
-    )
-    result = await web_extract("https://example.com/", mock_settings(tmp_path), max_length=50)
+    with _mock_http_client(
+        {
+            "https://example.com/": httpx.Response(
+                200, text=text, headers={"content-type": "text/html"}
+            )
+        },
+        target_module=_TARGET,
+    ):
+        result = await web_extract(
+            "https://example.com/", mock_settings(tmp_path), max_length=50
+        )
     assert len(result["content"]) <= 50
     assert result["truncated"] is True
 
@@ -136,8 +124,6 @@ async def test_web_extract_blocks_ssrf(tmp_path, monkeypatch):
 
 @pytest.mark.unit
 async def test_web_extract_dns_failure_raises_value_error(tmp_path, monkeypatch):
-    import socket as _socket
-
     def _raise(*_a, **_k):
         raise _socket.gaierror("no such host")
 
@@ -150,20 +136,31 @@ async def test_web_extract_dns_failure_raises_value_error(tmp_path, monkeypatch)
 
 
 @pytest.mark.unit
-async def test_web_extract_returns_error_on_404(mock_http_client, tmp_path):
-    mock_http_client.get("https://e.example/").mock(
-        return_value=httpx.Response(404, text="<html><body>Not found</body></html>")
-    )
-    result = await web_extract("https://e.example/", mock_settings(tmp_path))
+async def test_web_extract_returns_error_on_404(tmp_path):
+    with _mock_http_client(
+        {
+            "https://e.example/": httpx.Response(
+                404, text="<html><body>Not found</body></html>"
+            )
+        },
+        target_module=_TARGET,
+    ):
+        result = await web_extract("https://e.example/", mock_settings(tmp_path))
     assert result["error"] is not None
     assert "404" in result["error"]
     assert result["content"] == ""
 
 
 @pytest.mark.unit
-async def test_web_extract_returns_error_on_timeout(mock_http_client, tmp_path):
-    mock_http_client.get("https://e.example/").mock(side_effect=httpx.TimeoutException("timeout"))
-    result = await web_extract("https://e.example/", mock_settings(tmp_path))
+async def test_web_extract_returns_error_on_timeout(tmp_path):
+    def fail_handler(request: httpx.Request) -> httpx.Response:
+        raise httpx.TimeoutException("timeout")
+
+    with _mock_http_client(
+        {"https://e.example/": fail_handler},  # type: ignore[dict-item]
+        target_module=_TARGET,
+    ):
+        result = await web_extract("https://e.example/", mock_settings(tmp_path))
     assert result["error"] is not None
     assert result["content"] == ""
 
@@ -172,25 +169,25 @@ async def test_web_extract_returns_error_on_timeout(mock_http_client, tmp_path):
 
 
 @pytest.mark.unit
-async def test_web_extract_batch_returns_list(mock_http_client, tmp_path):
-    mock_http_client.get("https://a.example/").mock(
-        return_value=httpx.Response(
-            200,
-            text="<html><body><p>A</p></body></html>",
-            headers={"content-type": "text/html"},
+async def test_web_extract_batch_returns_list(tmp_path):
+    with _mock_http_client(
+        {
+            "https://a.example/": httpx.Response(
+                200,
+                text="<html><body><p>A</p></body></html>",
+                headers={"content-type": "text/html"},
+            ),
+            "https://b.example/": httpx.Response(
+                200,
+                text="<html><body><p>B</p></body></html>",
+                headers={"content-type": "text/html"},
+            ),
+        },
+        target_module=_TARGET,
+    ):
+        results = await web_extract_batch(
+            ["https://a.example/", "https://b.example/"], mock_settings(tmp_path)
         )
-    )
-    mock_http_client.get("https://b.example/").mock(
-        return_value=httpx.Response(
-            200,
-            text="<html><body><p>B</p></body></html>",
-            headers={"content-type": "text/html"},
-        )
-    )
-    results = await __import__(
-        "mahavishnu.mcp.crow.tools.web_extract",
-        fromlist=["web_extract_batch"],
-    ).web_extract_batch(["https://a.example/", "https://b.example/"], mock_settings(tmp_path))
     assert len(results) == 2
     assert "A" in results[0]["content"]
     assert "B" in results[1]["content"]

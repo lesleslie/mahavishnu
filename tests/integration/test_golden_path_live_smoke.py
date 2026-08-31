@@ -5,7 +5,7 @@ from __future__ import annotations
 import os
 from types import SimpleNamespace
 
-import httpx
+import httpx2 as httpx
 import pytest
 
 from mahavishnu.core.coordination.memory import CoordinationMemory

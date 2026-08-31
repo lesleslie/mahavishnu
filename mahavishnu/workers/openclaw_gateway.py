@@ -11,7 +11,7 @@ from dataclasses import dataclass, field
 from typing import Any, Protocol
 import uuid
 
-import httpx
+import httpx2 as httpx
 
 from .base import BaseWorker, WorkerResult, WorkerStatus
 from .capabilities._safe import safe_error_for_user

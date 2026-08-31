@@ -6,7 +6,7 @@ import logging
 from typing import TYPE_CHECKING, Any, cast
 import uuid
 
-import httpx
+import httpx2 as httpx
 
 from ..core.errors import ExternalServiceError, TimeoutError
 

@@ -7,7 +7,7 @@ import os
 import shutil
 from urllib.parse import urlparse
 
-import httpx
+import httpx2 as httpx
 
 from ._safe import safe_error_for_user
 from ._states import WorkerCheck

@@ -620,26 +620,26 @@ class TestProbeService:
     async def test_returns_true_on_200(self) -> None:
         from mahavishnu.tui.app import _probe_service
 
-        with patch("httpx.AsyncClient", return_value=self._make_client_mock(200)):
+        with patch("httpx2.AsyncClient", return_value=self._make_client_mock(200)):
             assert await _probe_service("http://localhost:8676") is True
 
     @pytest.mark.asyncio
     async def test_returns_true_on_404(self) -> None:
         from mahavishnu.tui.app import _probe_service
 
-        with patch("httpx.AsyncClient", return_value=self._make_client_mock(404)):
+        with patch("httpx2.AsyncClient", return_value=self._make_client_mock(404)):
             assert await _probe_service("http://localhost:8676") is True
 
     @pytest.mark.asyncio
     async def test_returns_false_on_500(self) -> None:
         from mahavishnu.tui.app import _probe_service
 
-        with patch("httpx.AsyncClient", return_value=self._make_client_mock(500)):
+        with patch("httpx2.AsyncClient", return_value=self._make_client_mock(500)):
             assert await _probe_service("http://localhost:8676") is False
 
     @pytest.mark.asyncio
     async def test_returns_false_on_connect_error(self) -> None:
-        import httpx
+        import httpx2 as httpx
 
         from mahavishnu.tui.app import _probe_service
 
@@ -647,12 +647,12 @@ class TestProbeService:
         client.__aenter__ = AsyncMock(return_value=client)
         client.__aexit__ = AsyncMock(return_value=None)
         client.get = AsyncMock(side_effect=httpx.ConnectError("refused"))
-        with patch("httpx.AsyncClient", return_value=client):
+        with patch("httpx2.AsyncClient", return_value=client):
             assert await _probe_service("http://localhost:9999") is False
 
     @pytest.mark.asyncio
     async def test_returns_false_on_timeout(self) -> None:
-        import httpx
+        import httpx2 as httpx
 
         from mahavishnu.tui.app import _probe_service
 
@@ -660,7 +660,7 @@ class TestProbeService:
         client.__aenter__ = AsyncMock(return_value=client)
         client.__aexit__ = AsyncMock(return_value=None)
         client.get = AsyncMock(side_effect=httpx.TimeoutException("timed out"))
-        with patch("httpx.AsyncClient", return_value=client):
+        with patch("httpx2.AsyncClient", return_value=client):
             assert await _probe_service("http://localhost:9999") is False
 
     @pytest.mark.asyncio
@@ -671,7 +671,7 @@ class TestProbeService:
         client.__aenter__ = AsyncMock(return_value=client)
         client.__aexit__ = AsyncMock(return_value=None)
         client.get = AsyncMock(side_effect=RuntimeError("unexpected"))
-        with patch("httpx.AsyncClient", return_value=client):
+        with patch("httpx2.AsyncClient", return_value=client):
             assert await _probe_service("http://localhost:9999") is False
 
 
@@ -698,7 +698,7 @@ class TestFetchHealth:
         from mahavishnu.tui.app import _fetch_health
 
         client, _ = self._make_json_response(200, {"status": "ok", "version": "1.2.3"})
-        with patch("httpx.AsyncClient", return_value=client):
+        with patch("httpx2.AsyncClient", return_value=client):
             data = await _fetch_health("http://localhost:8676")
 
         assert data["available"] is True
@@ -716,7 +716,7 @@ class TestFetchHealth:
         client.__aenter__ = AsyncMock(return_value=client)
         client.__aexit__ = AsyncMock(return_value=None)
         client.get = AsyncMock(return_value=resp)
-        with patch("httpx.AsyncClient", return_value=client):
+        with patch("httpx2.AsyncClient", return_value=client):
             data = await _fetch_health("http://localhost:8676")
 
         assert data["available"] is True
@@ -727,7 +727,7 @@ class TestFetchHealth:
         from mahavishnu.tui.app import _fetch_health
 
         client, _ = self._make_json_response(401, {})
-        with patch("httpx.AsyncClient", return_value=client):
+        with patch("httpx2.AsyncClient", return_value=client):
             data = await _fetch_health("http://localhost:8676")
 
         assert data["available"] is False
@@ -739,7 +739,7 @@ class TestFetchHealth:
         from mahavishnu.tui.app import _fetch_health
 
         client, _ = self._make_json_response(403, {})
-        with patch("httpx.AsyncClient", return_value=client):
+        with patch("httpx2.AsyncClient", return_value=client):
             data = await _fetch_health("http://localhost:8676")
 
         assert data["available"] is False
@@ -750,7 +750,7 @@ class TestFetchHealth:
         from mahavishnu.tui.app import _fetch_health
 
         client, _ = self._make_json_response(500, {})
-        with patch("httpx.AsyncClient", return_value=client):
+        with patch("httpx2.AsyncClient", return_value=client):
             data = await _fetch_health("http://localhost:8676")
 
         assert data["available"] is False
@@ -759,7 +759,7 @@ class TestFetchHealth:
 
     @pytest.mark.asyncio
     async def test_network_error_returns_unreachable(self) -> None:
-        import httpx
+        import httpx2 as httpx
 
         from mahavishnu.tui.app import _fetch_health
 
@@ -767,7 +767,7 @@ class TestFetchHealth:
         client.__aenter__ = AsyncMock(return_value=client)
         client.__aexit__ = AsyncMock(return_value=None)
         client.get = AsyncMock(side_effect=httpx.ConnectError("refused"))
-        with patch("httpx.AsyncClient", return_value=client):
+        with patch("httpx2.AsyncClient", return_value=client):
             data = await _fetch_health("http://localhost:9999")
 
         assert data["available"] is False
@@ -781,7 +781,7 @@ class TestFetchHealth:
         client.__aenter__ = AsyncMock(return_value=client)
         client.__aexit__ = AsyncMock(return_value=None)
         client.get = AsyncMock(side_effect=ValueError("boom"))
-        with patch("httpx.AsyncClient", return_value=client):
+        with patch("httpx2.AsyncClient", return_value=client):
             data = await _fetch_health("http://localhost:9999")
 
         assert data["available"] is False

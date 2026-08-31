@@ -19,8 +19,8 @@ async def test_crow_worker_execute_returns_completed_result() -> None:
     }
 
     with (
-        patch("httpx.AsyncClient.post", new_callable=AsyncMock) as mock_post,
-        patch("httpx.AsyncClient.get", new_callable=AsyncMock) as mock_get,
+        patch("httpx2.AsyncClient.post", new_callable=AsyncMock) as mock_post,
+        patch("httpx2.AsyncClient.get", new_callable=AsyncMock) as mock_get,
     ):
         post_resp = MagicMock()
         post_resp.json.return_value = {"session_id": "sess-abc"}

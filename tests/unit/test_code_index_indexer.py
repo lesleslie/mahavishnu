@@ -169,7 +169,7 @@ def test_upsert_to_session_buddy_sends_sse_accept_header(
     """
     from datetime import datetime
 
-    import httpx
+    import httpx2 as httpx
 
     from mahavishnu.core.code_index import indexer
     from mahavishnu.core.code_index.models import CodeGraphNode

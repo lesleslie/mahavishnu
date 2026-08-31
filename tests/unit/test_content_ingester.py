@@ -26,7 +26,7 @@ from pathlib import Path
 import socket
 from unittest.mock import AsyncMock, MagicMock, patch
 
-import httpx
+import httpx2 as httpx
 import pytest
 
 from mahavishnu.ingesters.content_ingester import (

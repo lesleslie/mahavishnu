@@ -539,7 +539,7 @@ class EcosystemStatusService:
         Checks each configured service URL via HTTP GET with timeout.
         Falls back to UNKNOWN for unreachable services.
         """
-        import httpx
+        import httpx2 as httpx
 
         services: dict[str, ServiceStatus] = {}
         for name, cfg in self._service_configs.items():

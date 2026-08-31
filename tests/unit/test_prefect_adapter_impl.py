@@ -16,7 +16,7 @@ from datetime import UTC, datetime
 from unittest.mock import AsyncMock, MagicMock, patch
 import uuid
 
-import httpx
+import httpx2 as httpx
 import prefect
 from prefect.exceptions import ObjectNotFound, PrefectHTTPStatusError
 import pytest

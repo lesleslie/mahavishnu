@@ -358,7 +358,7 @@ async def test_collect_alerts_with_no_provider():
 class TestEcosystemStatusServiceCollectionBranches:
     @pytest.mark.asyncio
     async def test_collect_services_success(self, monkeypatch):
-        import httpx
+        import httpx2 as httpx
 
         from mahavishnu.core.ecosystem_status import CanonicalStatus, EcosystemStatusService
 

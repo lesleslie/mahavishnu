@@ -47,7 +47,7 @@ async def test_prefect_adapter_initialize_success(prefect_config):
     """Test successful Prefect adapter initialization."""
     adapter = PrefectAdapter(prefect_config)
 
-    with patch("httpx.AsyncClient.get") as mock_get:
+    with patch("httpx2.AsyncClient.get") as mock_get:
         mock_get.return_value = MagicMock(status_code=200)
 
         await adapter.initialize()
@@ -79,7 +79,7 @@ async def test_prefect_adapter_health_check(prefect_config):
     """Test Prefect adapter health check."""
     adapter = PrefectAdapter(prefect_config)
 
-    with patch("httpx.AsyncClient.get") as mock_get:
+    with patch("httpx2.AsyncClient.get") as mock_get:
         mock_get.return_value = MagicMock(status_code=200)
 
         await adapter.initialize()
@@ -94,11 +94,11 @@ async def test_adapter_shutdown(prefect_config):
     """Test adapter shutdown."""
     adapter = PrefectAdapter(prefect_config)
 
-    with patch("httpx.AsyncClient.get") as mock_get:
+    with patch("httpx2.AsyncClient.get") as mock_get:
         mock_get.return_value = MagicMock(status_code=200)
         await adapter.initialize()
 
-    with patch("httpx.AsyncClient.aclose") as mock_close:
+    with patch("httpx2.AsyncClient.aclose") as mock_close:
         await adapter.shutdown()
 
         assert adapter._client is None
@@ -126,7 +126,7 @@ async def test_agno_adapter_initialize_success():
     """Test successful Agno adapter initialization."""
     adapter = AgnoAdapter(api_url="http://localhost:8000")
 
-    with patch("httpx.AsyncClient.get") as mock_get:
+    with patch("httpx2.AsyncClient.get") as mock_get:
         mock_get.return_value = MagicMock(status_code=200)
 
         await adapter.initialize()
@@ -161,7 +161,7 @@ async def test_agno_create_crew():
         "memory": True,
     }
 
-    with patch("httpx.AsyncClient.post") as mock_post:
+    with patch("httpx2.AsyncClient.post") as mock_post:
         mock_post.return_value = MagicMock(
             status_code=201,
             json={"crew_id": "test_crew_id"},
@@ -184,7 +184,7 @@ async def test_agno_execute_task():
 
     task = {"prompt": "Write a poem about AI"}
 
-    with patch("httpx.AsyncClient.post") as mock_post:
+    with patch("httpx2.AsyncClient.post") as mock_post:
         mock_post.return_value = MagicMock(
             status_code=201,
             json={"execution_id": "test_execution_id"},
@@ -206,7 +206,7 @@ async def test_agno_execute_task_batch():
 
     tasks = [{"prompt": f"Task {i}"} for i in range(5)]
 
-    with patch("httpx.AsyncClient.post") as mock_post:
+    with patch("httpx2.AsyncClient.post") as mock_post:
         mock_post.return_value = MagicMock(
             status_code=201,
             json={

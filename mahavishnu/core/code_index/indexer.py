@@ -148,7 +148,7 @@ def _upsert_to_session_buddy(
 ) -> bool:
     """Try to upsert to Session-Buddy via MCP. Returns True on success."""
     try:
-        import httpx
+        import httpx2 as httpx
 
         session_url = "http://localhost:8678/mcp"
         streamable_headers = {"Accept": "application/json, text/event-stream"}

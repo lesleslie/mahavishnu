@@ -41,7 +41,7 @@ import logging
 import time
 from typing import TYPE_CHECKING, Any
 
-import httpx
+import httpx2 as httpx
 
 if TYPE_CHECKING:
     from mahavishnu.core.embedding_cache import EmbeddingCache
