@@ -36,6 +36,13 @@ PRE_COMMIT_CONTENT = """#!/bin/sh
 if [ -f "scripts/audit_no_secrets_in_mcp.py" ]; then
     python3 scripts/audit_no_secrets_in_mcp.py || exit 1
 fi
+# TYPE_CHECKING → runtime reference gate (2026-08-31). Catches the latent
+# bug class where `from __future__ import annotations` + `if TYPE_CHECKING:`
+# imports a name that's then referenced at runtime, causing NameError.
+# Skipped when the audit script isn't present (early repo state).
+if [ -f "scripts/audit_type_checking_runtime_refs.py" ]; then
+    python3 scripts/audit_type_checking_runtime_refs.py "$(pwd)" || exit 1
+fi
 # Phase 2 gate: findings.md ≤ 250 lines + validate_findings.py
 if [ -f "docs/audit-inventory/findings.md" ] && [ -f "scripts/validate_findings.py" ]; then
     test "$(wc -l < docs/audit-inventory/findings.md)" -le 250 || { echo "findings.md exceeds 250-line budget"; exit 1; }
