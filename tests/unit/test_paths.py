@@ -2,12 +2,9 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from pathlib import Path
 
 from mahavishnu.core import paths
-
-if TYPE_CHECKING:
-    from pathlib import Path
 
 
 def test_path_helper_functions_join_components() -> None:
