@@ -1,15 +1,17 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any
+from typing import Any
 
 from mahavishnu.tui import TUI_AVAILABLE
 
-if TYPE_CHECKING:
-    # Provide a consistent Widget-compatible base to type-checkers in BOTH the
-    # TUI and non-TUI branches below. At runtime, ``_WidgetBase`` falls back
-    # to ``object`` so the non-TUI branch can safely inherit from it.
+# ``_WidgetBase`` provides a consistent Widget-compatible base class for the
+# non-TUI branch below. ``textual`` is an optional dependency, so we attempt
+# the import at runtime and fall back to ``object`` when textual isn't
+# installed. Type-checkers see the live ``Static`` class through the import;
+# runtime sees either ``Static`` (textual available) or ``object`` (fallback).
+try:
     from textual.widgets import Static as _WidgetBase
-else:
+except ImportError:
     _WidgetBase = object
 
 if TUI_AVAILABLE:
