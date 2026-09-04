@@ -229,14 +229,15 @@ class TestWorkerRegistry:
                 )
 
     def test_registry_size(self) -> None:
-        # 42 = baseline 48 minus terminal-aider, terminal-goose,
+        # 43 = baseline 48 minus terminal-aider, terminal-goose,
         # terminal-gemini, terminal-amp, terminal-openclaw, and
-        # terminal-zsh removed 2026-08. The three AI-assistant entries
+        # terminal-zsh removed 2026-08, plus terminal-qwen added 2026-09
+        # for the Qwen AI CLI backend. The three AI-assistant entries
         # (goose/gemini/amp) had zero production or test references and
         # only appeared in historical plans/specs.
         # If you add or remove a worker, update both this assertion and
         # ``test_registry_has_expected_keys``.
-        assert len(WORKER_REGISTRY) == 42
+        assert len(WORKER_REGISTRY) == 43
 
 
 # ---------------------------------------------------------------------------

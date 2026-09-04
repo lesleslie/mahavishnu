@@ -7,6 +7,7 @@ from contextlib import suppress
 from datetime import UTC, datetime
 from functools import wraps
 from importlib.metadata import version
+import inspect
 from logging import getLogger
 import time
 from typing import Any, cast
@@ -194,7 +195,7 @@ class FastMCPServer:
                 mcp_tool_calls_total.labels(tool_name=tool_name, status=status).inc()
                 mcp_tool_duration_seconds.labels(tool_name=tool_name).observe(duration)
 
-        if asyncio.iscoroutinefunction(func):
+        if inspect.iscoroutinefunction(func):
             async_wrapper.__wrapped__ = func
             async_wrapper.__annotations__ = dict(func.__annotations__)
             return async_wrapper

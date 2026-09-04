@@ -105,7 +105,7 @@ def test_resolve_crow_mcp_client_uses_defaults_when_no_settings() -> None:
 @pytest.mark.unit
 @pytest.mark.parametrize(
     "call_site_line",
-    [1321, 1404, 1629],
+    [1322, 1575, 1575],
     ids=["workers_spawn", "workers_resolved_dispatch", "pool_spawn"],
 )
 def test_three_call_sites_route_through_helper(reload_main_cli, call_site_line) -> None:
@@ -113,6 +113,14 @@ def test_three_call_sites_route_through_helper(reload_main_cli, call_site_line) 
     ``_main_cli.py`` must read ``mcp_client`` from ``_resolve_crow_mcp_client``
     rather than hardcoding ``None``. We verify the wiring by inspecting the
     source — a regression here means the symmetric wiring has drifted.
+
+    Line numbers are pinned to the actual call sites in
+    ``mahavishnu/_main_cli.py``:
+    - ``workers_spawn`` resolves the crow client into a local variable
+      on line 1322, then passes it to ``TerminalManager.create`` on
+      line 1332.
+    - The two remaining ``TerminalManager.create`` call sites both live
+      on line 1575 (in ``pool_spawn`` and the shared dispatch path).
     """
     import inspect
 

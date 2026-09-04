@@ -60,9 +60,7 @@ class TestInitAndIdentity:
         assert p._git_executable == "git"
 
     def test_provider_name(self):
-        # Static method
-        assert DirectGitWorktreeProvider.provider_name() == "DirectGitWorktreeProvider"
-        # Also accessible from instance
+        # Instance method (matches WorktreeProvider abstract signature)
         assert DirectGitWorktreeProvider().provider_name() == "DirectGitWorktreeProvider"
 
     def test_inherits_from_base(self):

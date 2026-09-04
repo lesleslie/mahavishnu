@@ -560,7 +560,11 @@ class TestCreateWorktreeHandleStreaming:
         """Bundle size > MAX_BUNDLE_BYTES_STOPGAP → MHV-221 WorktreeError."""
         from mahavishnu.core.errors import ErrorCode, WorktreeError
 
-        wt_dir = remote_mod.get_worktree_path(str(tmp_git_repo), "b")
+        # ``create_worktree_handle`` validates ``repo`` as a single path
+        # component (no separators) — it's used as a storage-key segment,
+        # not as a filesystem path. The fake factory only needs the
+        # git repo for the tmp bundle location, not for ``repo=``.
+        wt_dir = remote_mod.get_worktree_path("test-repo", "b")
         monkeypatch.setattr(
             remote_mod, "_create_worktree_via_git", _fake_create_wt_factory(wt_dir)
         )
@@ -584,7 +588,7 @@ class TestCreateWorktreeHandleStreaming:
 
         with pytest.raises(WorktreeError) as exc_info:
             await provider.create_worktree_handle(
-                repo=str(tmp_git_repo),
+                repo="test-repo",
                 branch="b",
                 base_ref="HEAD",
                 principal=_principal(),

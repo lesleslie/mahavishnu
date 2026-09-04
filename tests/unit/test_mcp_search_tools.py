@@ -86,15 +86,16 @@ def _reset_module_state(monkeypatch: pytest.MonkeyPatch):
 
 
 class TestRegistration:
-    """register_search_tools attaches the four tool functions."""
+    """register_search_tools attaches the five tool functions."""
 
-    def test_registers_all_four_tools(self, stub_mcp: _StubMCP) -> None:
+    def test_registers_all_five_tools(self, stub_mcp: _StubMCP) -> None:
         register_search_tools(stub_mcp)
         assert set(stub_mcp.tools) == {
             "hybrid_search",
             "index_document",
             "delete_document",
             "search_by_repository",
+            "cross_repo_search",
         }
 
     def test_module_exports_register(self) -> None:

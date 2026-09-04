@@ -14,13 +14,11 @@ Schema rules:
 
 from __future__ import annotations
 
+from datetime import datetime
 from enum import StrEnum
-from typing import TYPE_CHECKING, Annotated
+from typing import Annotated
 
 from pydantic import BaseModel, ConfigDict, Field, StringConstraints, TypeAdapter
-
-if TYPE_CHECKING:
-    from datetime import datetime
 
 # ---------------------------------------------------------------------------
 # ID patterns

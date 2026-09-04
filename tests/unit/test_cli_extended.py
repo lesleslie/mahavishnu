@@ -284,7 +284,15 @@ class TestWorkerCommands:
         assert result.exit_code != 0
 
     def test_workers_execute_with_prompt(self):
-        """Test workers execute accepts prompt parameter."""
+        """Test workers execute accepts prompt parameter.
+
+        Migrated to the capability-conductor path (Task 3a.5) — the CLI
+        now calls ``load_engine_registrations`` / ``resolve`` / ``plan``
+        instead of the legacy ``WorkerManager`` ``spawn_workers`` /
+        ``execute_batch`` chain. The output banners reflect the new DAG
+        planning surface ("Planning capability DAG", "Planned DAG with
+        N node(s)").
+        """
         runner = CliRunner()
 
         with patch("mahavishnu._main_cli.MahavishnuApp") as mock_app_class:
@@ -295,44 +303,47 @@ class TestWorkerCommands:
             mock_app.config.terminal.crow_enabled = False
             mock_app_class.return_value = mock_app
 
+            # Capability-conductor path: stub the engines + conductor so
+            # ``resolve`` returns a Candidate and ``plan`` returns a 1-node
+            # DAG. The CLI just plans + prints the DAG; per-engine dispatch
+            # is Phase 4 work.
+            from dataclasses import dataclass
+
+            @dataclass
+            class _FakeNode:
+                node_id: str
+                engine_id: str
+                capability_id: str
+
+            @dataclass
+            class _FakeDAG:
+                nodes: tuple
+                edges: tuple = ()
+
+            fake_node = _FakeNode(
+                node_id="node-1",
+                engine_id="engine:claude",
+                capability_id="worker:claude_context",
+            )
+            fake_dag = _FakeDAG(nodes=(fake_node,), edges=())
+
             with patch(
-                "mahavishnu.terminal.manager.TerminalManager.create", new_callable=AsyncMock
-            ) as mock_terminal_create:
-                mock_terminal_create.return_value = MagicMock()
-
-                with patch("mahavishnu.workers.WorkerManager") as mock_worker_mgr_class:
-                    mock_worker_mgr = MagicMock()
-                    mock_worker_mgr.spawn_workers = AsyncMock(
-                        return_value=["worker-1", "worker-2", "worker-3"]
-                    )
-                    mock_worker_mgr.close_worker = AsyncMock(return_value=True)
-
-                    def _result(worker_id: str) -> MagicMock:
-                        result = MagicMock()
-                        result.status.value = "completed"
-                        result.duration_seconds = 1.0
-                        result.output = f"{worker_id} ok"
-                        result.error = None
-                        result.is_success.return_value = True
-                        result.has_output.return_value = True
-                        return result
-
-                    mock_worker_mgr.execute_batch = AsyncMock(
-                        return_value={
-                            "worker-1": _result("worker-1"),
-                            "worker-2": _result("worker-2"),
-                            "worker-3": _result("worker-3"),
-                        }
-                    )
-                    mock_worker_mgr_class.return_value = mock_worker_mgr
-
-                    result = runner.invoke(
-                        app, ["workers", "execute", "--prompt", "Write Python code"]
-                    )
+                "mahavishnu.engines.load_engine_registrations",
+                return_value=[],
+            ), patch(
+                "mahavishnu.core.conductor.resolve",
+                return_value=[],
+            ), patch(
+                "mahavishnu.core.conductor.plan",
+                return_value=fake_dag,
+            ):
+                result = runner.invoke(
+                    app, ["workers", "execute", "--prompt", "Write Python code"]
+                )
 
         assert result.exit_code == 0
-        assert "Spawning" in result.stdout
-        assert "Results" in result.stdout
+        assert "Planning" in result.stdout
+        assert "Planned DAG" in result.stdout
 
 
 @pytest.mark.unit

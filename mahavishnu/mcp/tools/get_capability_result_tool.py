@@ -9,8 +9,12 @@ from mahavishnu.core.envelopes import list_envelopes
 if TYPE_CHECKING:
     from fastmcp import FastMCP
 
-    from mahavishnu.core.capabilities import TraceId
-    from mahavishnu.core.dhara_adapter import DharaClient
+# ``TraceId`` and ``DharaClient`` must be importable at runtime: Pydantic v2
+# evaluates forward refs (with ``from __future__ import annotations``) when
+# generating schemas, so types referenced from the tool signature need to
+# resolve outside ``TYPE_CHECKING``.
+from mahavishnu.core.capabilities import TraceId
+from mahavishnu.core.dhara_adapter import DharaClient
 
 
 def register_get_capability_result(

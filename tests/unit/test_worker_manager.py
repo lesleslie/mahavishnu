@@ -204,6 +204,7 @@ class TestCreateWorker:
                 "mahavishnu.workers.apple_container.is_apple_container_supported",
                 return_value=True,
             ),
+            patch.object(WorkerManager, "_validate_required_env", lambda self, x: None),
         ):
             worker = mgr._create_worker("e2b-sandbox")
             assert worker.worker_type == "e2b-sandbox"
@@ -334,6 +335,7 @@ class TestCreateWorker:
             patch(
                 "mahavishnu.workers.openclaw_gateway.OpenClawGatewayWorker", create=True
             ) as MockWorker,
+            patch.object(WorkerManager, "_validate_required_env", lambda self, x: None),
         ):
             worker = mgr._create_worker("gateway-openclaw")
             MockClient.assert_called_once()
@@ -392,7 +394,8 @@ def test_factory_dispatches_a2a(terminal_manager) -> None:
 def test_factory_dispatches_openhands(terminal_manager) -> None:
     """Factory should route openhands to OpenHandsWorker (GATEWAY branch)."""
     mgr = WorkerManager(terminal_manager=terminal_manager, settings=object())
-    worker = mgr._create_worker("openhands")
+    with patch.object(WorkerManager, "_validate_required_env", lambda self, x: None):
+        worker = mgr._create_worker("openhands")
     assert worker.__class__.__name__ == "OpenHandsWorker"
 
 

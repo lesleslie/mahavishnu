@@ -126,7 +126,7 @@ class WorktreeCoordinator:
             # Default allow-list covers:
             #  - <get_worktree_base_path()> : the canonical convention
             #    (resolved from MAHAVISHNU_WORKTREE_BASE_PATH or
-            #    MAHAVISHNU_AUTO_WORKTREE_ROOT or Path.home()/"worktrees")
+            #    MAHAVISHNU_AUTO_WORKTREE_ROOT or the user's home + 'worktrees')
             #  - <cwd>        : the current working directory
             #  - <repo>/.worktrees
             #  - <repo>/.claude/worktrees

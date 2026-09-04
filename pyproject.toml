@@ -7,7 +7,7 @@ packages = ["mahavishnu"]
 
 [project]
 name = "mahavishnu"
-version = "0.20.2"
+version = "0.20.3"
 description = "Global orchestrator package for development workflows"
 authors = [
     {name = "Les Leslie", email = "les@wedgwoodwebworks.com"},
@@ -343,6 +343,21 @@ force-sort-within-sections = true
     "B007", "B008", "E741",
     "SIM108", "SIM116", "SIM117", "TC003",
 ]
+# Pydantic v2 + ``from __future__ import annotations`` triplet: TC003/TC001
+# demand moving the imported type to TYPE_CHECKING, but Pydantic v2 cannot
+# resolve forward refs there at model-build time
+# (``PydanticUserError: class-not-fully-defined``). The runtime import is
+# required, so suppress the lint per-file. See the memory note
+# ``pydantic-future-annotations-forward-ref.md`` for the full pattern.
+# When adding a new Pydantic ``BaseModel`` field whose annotation is a
+# stdlib type (``datetime``, ``Path``, ``UUID``, ``Decimal`` ...) or an
+# app-level newtype, add the file here rather than moving the import.
+"mahavishnu/core/capabilities.py" = ["TC003"]
+"mahavishnu/core/repo_models.py" = ["TC003"]
+"mahavishnu/core/repositories/embeddings.py" = ["TC003"]
+"mahavishnu/core/repositories/events.py" = ["TC003"]
+"mahavishnu/engines/prefect_models.py" = ["TC003"]
+"mahavishnu/mcp/tools/get_capability_result_tool.py" = ["TC001"]
 
 [tool.ruff.lint.pycodestyle]
 max-doc-length = 100
@@ -459,6 +474,31 @@ max-line-length = 100
 # Both rules express the same idea (cyclomatic complexity). Keeping
 # them in sync means ruff local + crackerjack CI report the same limit.
 max-complexity = 15
+
+[tool.pip-audit]
+# Project-local pip-audit suppression. Merged with the global
+# ``IGNORED_VULNERABILITY_IDS`` in ``crackerjack.config.pip_audit_ignores``
+# at run time — each entry becomes a ``--ignore-vuln`` flag. Add only
+# CVEs that are (a) confirmed false positives against the installed
+# version, or (b) transitive deps with no patch yet where the attack
+# vector does not apply to our deployment surface. Re-evaluate on every
+# crackerjack run that surfaces a new advisory.
+ignore-vuln = [
+    # nltk 3.10.3 — OSV records ``fixed: 3.10.3`` as the patch
+    # version; we ARE on the patched release. pip-audit flags it
+    # because the OSV ``versions`` array includes the patched version
+    # alongside the vulnerable ones. Resolved: 2026-09-04 against
+    # api.osv.dev/v1/vulns/PYSEC-2026-3740.
+    "PYSEC-2026-3740",
+    # diskcache 5.6.3 — pickle-deserialization RCE; no patch released
+    # yet (latest PyPI version is 5.6.3, which is the vulnerable
+    # release per OSV ``last_affected: 5.6.3``). Transitive via
+    # ``llama_cpp_python`` and ``py-key-value-aio``; attack vector
+    # requires local write access to the cache directory, which is not
+    # exposed in our dev/test deployment surface. Revisit when a
+    # patched diskcache ships.
+    "PYSEC-2026-2447",
+]
 
 [tool.creosote]
 paths = ["mahavishnu"]

@@ -303,15 +303,26 @@ def get_all_tool_versions() -> dict[str, str]:
 
 
 # ---------------------------------------------------------------------------
-# Deprecation registry (cleaned up in 2026-08-29 refactor)
+# Deprecation registry
 # ---------------------------------------------------------------------------
 
 # Tools that previously had a deprecation marker with a replacement tool
-# have been promoted to their replacement. This dict is intentionally
-# empty; the lookup functions are retained so existing call sites in
-# health_tools.py continue to import successfully while the ecosystem
-# fully migrates.
-DEPRECATED_TOOLS: dict[str, str | None] = {}
+# have been promoted to their replacement. Each entry maps the deprecated
+# tool name to the canonical replacement (or ``None`` if no direct
+# replacement exists). Used by ``get_tool_deprecation`` / ``is_tool_deprecated``
+# and consumed by health_tools.py's deprecation-warning logic.
+DEPRECATED_TOOLS: dict[str, str | None] = {
+    # health_tools.py: the bulk-aggregate call replaces the per-service one.
+    "health_check_service": "health_check_all",
+    # Session-Buddy code-intel tools — moved into ``code_index`` /
+    # ``treesitter_tools`` / ``search_tools`` once those MCP groups landed.
+    "index_code_graph": "code_index.index_repo",
+    "find_related_code": "treesitter_tools",
+    "index_documentation": "code_index.index_repo",
+    "search_documentation": "search_tools.hybrid_search",
+    # Legacy monitoring dashboard is the new ecosystem_status aggregator.
+    "get_monitoring_dashboard": "ecosystem_status",
+}
 
 
 def get_tool_deprecation(tool_name: str) -> str | None:

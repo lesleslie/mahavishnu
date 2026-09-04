@@ -48,8 +48,8 @@ class TerminalSettings(BaseModel):
         description="Maximum number of concurrent terminal sessions",
     )
     adapter_preference: str = Field(
-        default="tmux",
-        description="Preferred adapter: mock, tmux, crow, or auto",
+        default="mock",
+        description="Preferred adapter: mock, tmux, crow, or auto. Default mock is safe — no external dependencies until iTerm2/tmux/crow is explicitly configured.",
     )
     fallback_on_probe_failure: bool = Field(
         default=False,

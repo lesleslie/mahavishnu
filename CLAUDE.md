@@ -40,7 +40,7 @@ Mahavishnu is repo-centric orchestration infrastructure optimized for the Bodai 
 - **Multi-pool orchestration**: Horizontal scaling across local, delegated, cloud workers
 - **WebSocket infrastructure**: Real-time workflow monitoring
 - **Content ingestion**: Webpages, blogs, books, OpenTelemetry traces
-- **MCP tools**: ~180 decorated tools across 17 profile-gated groups (plus inline core tools registered unconditionally)
+- **MCP tools**: ~180 decorated tools across 19 profile-gated groups (plus inline core tools registered unconditionally)
 
 **Product posture**: Internal-first. MCP-first. Control-plane scope.
 
@@ -341,15 +341,15 @@ All MCP tools are registered in `mahavishnu/mcp/tools/` using FastMCP decorators
 
 Tools are gated by the `MAHAVISHNU_TOOL_PROFILE` environment variable:
 
-- `full` (default): All 17 profile-gated groups (~180 decorated tools)
-- `standard`: Core 9 groups (terminal, pool, worker, messaging, git, session-buddy, coordination, ecosystem, health)
+- `full` (default): All 19 profile-gated groups (~180 decorated tools)
+- `standard`: Core 10 groups (terminal, pool, worker, messaging, git, session-buddy, coordination, ecosystem, health, capability)
 - `minimal`: Health probes only
 
 Profile configuration is in `mahavishnu/mcp/tools/profiles.py`. A `discover_tools(query)` meta-tool is always registered so Claude can find unloaded tools.
 
 ## Tool Preferences
 
-This project ships a Mahavishnu control plane with ~180 MCP tools across 17 profile-gated groups. For non-trivial work, prefer Mahavishnu workers over direct local invocations.
+This project ships a Mahavishnu control plane with ~180 MCP tools across 19 profile-gated groups. For non-trivial work, prefer Mahavishnu workers over direct local invocations.
 
 ### When to use Mahavishnu workers
 

@@ -674,7 +674,6 @@ ______________________________________________________________________
 1. [DataCamp: CrewAI vs LangGraph vs AutoGen](https://www.datacamp.com/tutorial/crewai-vs-langgraph-vs-autogen)
 1. [LangGraph: Multi-agent concepts](https://langchain-ai.github.io/langgraph/concepts/multi_agent/)
 1. Medium: LangGraph vs CrewAI Comparison
-1. [Xcelore: LangGraph vs CrewAI Production Guide](https://web.archive.org/web/*/https://xcelore.com/blog/langgraph-vs-crewai/)
 1. [Langwatch: Best AI Agent Frameworks 2025](https://langwatch.ai/blog/best-ai-agent-frameworks-in-2025-comparing-langgraph-dspy-crewai-agno-and-more)
 1. [Prefect vs Airflow Comparison](https://www.prefect.io/compare/airflow)
 1. Medium: Airflow vs Prefect vs Dagster

@@ -6,6 +6,7 @@ import asyncio
 from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta
 from enum import Enum
+import inspect
 import logging
 import random
 import time
@@ -286,7 +287,7 @@ class CircuitBreaker:
         try:
             result = (
                 await func(*args, **kwargs)
-                if asyncio.iscoroutinefunction(func)
+                if inspect.iscoroutinefunction(func)
                 else func(*args, **kwargs)
             )
             self.record_success()
@@ -320,7 +321,7 @@ def circuit_breaker(threshold: int = 5, timeout: int = 60, reset_timeout: int = 
         def sync_wrapper(*args, **kwargs):
             return cb.call_sync(func, *args, **kwargs)
 
-        return async_wrapper if asyncio.iscoroutinefunction(func) else sync_wrapper
+        return async_wrapper if inspect.iscoroutinefunction(func) else sync_wrapper
 
     return decorator
 

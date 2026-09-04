@@ -63,10 +63,10 @@ if TUI_AVAILABLE:
 
 else:
 
-    class PoolStatusWidget(_WidgetBase):  # type: ignore[misc,valid-type]
+    class PoolStatusWidget(_WidgetBase):  # ty: ignore[unsupported-base]
         def __init__(self, pool_data: dict[str, Any]) -> None:
             self._data = pool_data
 
-    class WorkerStatusWidget(_WidgetBase):  # type: ignore[misc,valid-type]
+    class WorkerStatusWidget(_WidgetBase):  # ty: ignore[unsupported-base]
         def __init__(self, worker_data: dict[str, Any]) -> None:
             self._data = worker_data

@@ -13,6 +13,7 @@ from __future__ import annotations
 from collections.abc import Callable
 from contextvars import ContextVar
 from functools import wraps
+from inspect import iscoroutinefunction
 from typing import Any, TypeVar
 
 from pydantic import BaseModel
@@ -222,9 +223,7 @@ def require_feature(feature_name: str) -> Callable[[F], F]:
             return func(*args, **kwargs)
 
         # Return appropriate wrapper based on function type
-        import asyncio
-
-        if asyncio.iscoroutinefunction(func):
+        if iscoroutinefunction(func):
             return async_wrapper  # type: ignore
         return sync_wrapper  # type: ignore
 

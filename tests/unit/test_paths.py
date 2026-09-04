@@ -119,7 +119,12 @@ def test_get_worktree_base_path_expanduser_on_tilde(
     """A leading ~ in the env var value is expanded to the user's home."""
     home = tmp_path / "home"
     (home / "worktrees").mkdir(parents=True)
-    monkeypatch.setattr(paths.Path, "home", staticmethod(lambda: home))
+    # ``Path.expanduser`` consults ``$HOME`` (and then ``Path.home()``),
+    # so we set HOME to redirect both. The previous test only patched
+    # ``paths.Path.home`` — that doesn't affect ``Path.expanduser``,
+    # which calls the global ``pathlib.Path.home``.
+    monkeypatch.setenv("HOME", str(home))
+    monkeypatch.delenv("MAHAVISHNU_WORKTREE_BASE_PATH", raising=False)
     monkeypatch.setenv("MAHAVISHNU_AUTO_WORKTREE_ROOT", "~/wt")
     assert paths.get_worktree_base_path() == (home / "wt").resolve()
 

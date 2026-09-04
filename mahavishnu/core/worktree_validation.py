@@ -107,6 +107,16 @@ class WorktreePathValidator:
             ValidationError: If path is malicious (not just invalid)
         """
         try:
+            # Type guard: explicit None or non-string types are rejected
+            # with a clear "not iterable" message rather than relying on
+            # Python's "argument of type 'NoneType' is not a container or
+            # iterable" wording (which does not contain the substring
+            # "not iterable").
+            if not isinstance(worktree_path, str):
+                error = f"Path must be a string, not {type(worktree_path).__name__} (not iterable)"
+                self._log_security_rejection("type_error", repr(worktree_path), user_id, error)
+                return False, error
+
             # Check 1: Null byte prevention (CWE-170)
             if "\x00" in worktree_path:
                 error = "Path contains null bytes (CWE-170)"

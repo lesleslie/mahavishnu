@@ -97,8 +97,13 @@ class FakeDharaClient:
         if sql_normalized.startswith("select * from mahavishnu_worktree_registry"):
             return list(self._registry.values())
 
-        # remove_handle pre-fetch: SELECT principal, principal_uid, repo
+        # remove_handle pre-fetch: SELECT principal, principal_uid [,
+        # repo] FROM mahavishnu_worktree_registry — accepts any combination
+        # of (principal, principal_uid, repo) columns so the production
+        # SELECT shape can evolve without breaking the fake.
         if sql_normalized.startswith(
+            "select principal, principal_uid from mahavishnu_worktree_registry"
+        ) or sql_normalized.startswith(
             "select principal, principal_uid, repo from mahavishnu_worktree_registry"
         ) or sql_normalized.startswith(
             "select principal, repo from mahavishnu_worktree_registry"

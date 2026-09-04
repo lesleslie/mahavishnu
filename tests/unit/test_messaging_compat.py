@@ -2,7 +2,12 @@
 
 from __future__ import annotations
 
-from messaging.types import MessageStatus, MessageType, Priority, ProjectMessage
+from mahavishnu.messaging.messaging.types import (
+    MessageStatus,
+    MessageType,
+    Priority,
+    ProjectMessage,
+)
 
 from mahavishnu.mcp.tools.repository_messaging_tools import (
     _coerce_message_type as coerce_repository_message_type,

@@ -157,9 +157,14 @@ class TestWorktreeManager:
         )
         assert manager._get_worktree_path("/repos/mahavishnu", "task-1") == "/repos/worktree-task-1"
 
-        default_manager = WorktreeManager(task_store=mock_task_store, git_runner=MagicMock())
+        # Passing base_path="" opts into the legacy "repo parent + worktree-{task_id}"
+        # layout. (When base_path is omitted entirely the constructor defaults
+        # to ``str(get_worktree_base_path())`` — see WorktreeManager docstring.)
+        legacy_manager = WorktreeManager(
+            task_store=mock_task_store, git_runner=MagicMock(), base_path=""
+        )
         assert (
-            default_manager._get_worktree_path("/repos/mahavishnu", "task-1")
+            legacy_manager._get_worktree_path("/repos/mahavishnu", "task-1")
             == "/repos/mahavishnu-worktree-task-1"
         )
 

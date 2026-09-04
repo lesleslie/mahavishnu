@@ -3,14 +3,12 @@
 from __future__ import annotations
 
 from datetime import UTC, datetime
-from typing import TYPE_CHECKING, Literal
+from pathlib import Path
+from typing import Literal
 
 from pydantic import BaseModel, Field, field_validator, model_validator
 
 from .repo_nicknames import normalize_nicknames
-
-if TYPE_CHECKING:
-    from pathlib import Path
 
 
 class RepositoryMetadata(BaseModel):

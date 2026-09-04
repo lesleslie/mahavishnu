@@ -312,16 +312,20 @@ class OneiricEmbeddingsAdapter:
         """Check if embeddings are available.
 
         Returns:
-            True if at least one embedding provider is available
+            True if at least one embedding provider is registered.
         """
-        # ``provider`` is accepted for backwards compatibility but ignored
-        # by the oneiric hybrid chain — backend selection now happens via
-        # ``EmbeddingService.initialize()``. ``is_available()`` reflects
-        # the post-initialize state; on a fresh uninitialized service it
-        # returns False. Callers that need a probed answer should use the
-        # async ``EmbeddingService.initialize()`` first.
-        service = EmbeddingService(provider=self.config.provider)
-        return service.is_available()
+        # Delegate to the service's ``get_available_providers()`` probe
+        # (truthy when ≥ 1 provider, falsy when the chain is empty).
+        # This matches the contract exercised by
+        # ``test_core_embeddings_oneiric.TestOneiricEmbeddingsAdapter``
+        # which wires a MagicMock with ``get_available_providers`` as the
+        # source of truth. The legacy ``service.is_available()`` shortcut
+        # returned a MagicMock object (always truthy) and broke the
+        # ``is True is False`` identity assertions.
+        if self._service is None:
+            self._service = EmbeddingService(provider=self.config.provider)
+        providers = self._service.get_available_providers()
+        return bool(providers)
 
 
 # MCP tool integration (optional)

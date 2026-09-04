@@ -15,12 +15,14 @@ from mahavishnu.core.approval.decision_writer import record_approval_decision
 @pytest.fixture
 def dhara_storage(monkeypatch: pytest.MonkeyPatch) -> MagicMock:
     """Stub dhara.put after module import so the substrate-compat guard sees it."""
-    # Ensure the writer module is importable for the substrate-compat guard to run.
-    import mahavishnu.core.approval.decision_writer as writer
+    import dhara
 
     captured: list[tuple[str, Any]] = []
     mock_put = MagicMock(side_effect=lambda key, value: captured.append((key, value)))
-    monkeypatch.setattr(writer.dhara, "put", mock_put, raising=False)
+    # decision_writer uses `_dhara_substrate_compat.dhara_calltime("put")` which
+    # resolves via `getattr(dhara, "put", None)`. Patch the attribute on the
+    # `dhara` module directly so the call-time lookup sees the mock.
+    monkeypatch.setattr(dhara, "put", mock_put, raising=False)
     return mock_put
 
 

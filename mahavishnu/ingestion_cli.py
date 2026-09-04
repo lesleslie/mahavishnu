@@ -15,6 +15,7 @@ from pathlib import Path
 import structlog
 import typer
 
+from .core.embeddings import EmbeddingProvider
 from .ingesters.content_ingester import create_content_ingester
 from .ingesters.turboquant_compressor import TURBOQUANT_AVAILABLE
 
@@ -24,6 +25,22 @@ _DEFAULT_TURBOQUANT_BITS: int | None = 4 if TURBOQUANT_AVAILABLE else None
 
 logger = structlog.get_logger()
 ingestion_app = typer.Typer(help="Content ingestion commands")
+
+
+def _resolve_provider(name: str | None) -> EmbeddingProvider | None:
+    """Map a CLI --provider string to the EmbeddingProvider enum.
+
+    Returns ``None`` when ``name`` is ``None`` (caller wants the default
+    oneiric probe-chain selection). Raises ``typer.BadParameter`` for
+    unrecognised values so Typer renders a nice error and exits non-zero.
+    """
+    if name is None:
+        return None
+    try:
+        return EmbeddingProvider(name)
+    except ValueError:
+        valid = ", ".join(p.value for p in EmbeddingProvider)
+        raise typer.BadParameter(f"Unknown --provider {name!r}. Valid: {valid}") from None
 
 
 def _format_result(result: dict) -> None:
@@ -61,6 +78,15 @@ def ingest_url(
         200, "--chunk-overlap", "-o", help="Character overlap between chunks"
     ),
     output_dir: str = typer.Option("ingested", "--output", "-d", help="Output directory"),
+    provider: str | None = typer.Option(
+        None,
+        "--provider",
+        "-p",
+        help=(
+            "Embedding provider: fastembed|ollama|openai. Default "
+            "(None) lets the oneiric probe chain auto-select."
+        ),
+    ),
 ):
     """Ingest content from a URL.
 
@@ -85,6 +111,7 @@ def ingest_url(
             chunk_overlap=chunk_overlap,
             output_dir=output_dir,
             turboquant_bits=_DEFAULT_TURBOQUANT_BITS,
+            embedding_provider=_resolve_provider(provider),
         )
 
         async with ingester:
@@ -104,6 +131,15 @@ def ingest_file(
     chunk_size: int = typer.Option(1000, "--chunk-size", "-c", help="Maximum characters per chunk"),
     chunk_overlap: int = typer.Option(
         200, "--chunk-overlap", "-o", help="Character overlap between chunks"
+    ),
+    provider: str | None = typer.Option(
+        None,
+        "--provider",
+        "-p",
+        help=(
+            "Embedding provider: fastembed|ollama|openai. Default "
+            "(None) lets the oneiric probe chain auto-select."
+        ),
     ),
 ):
     """Ingest content from a local file.
@@ -129,6 +165,7 @@ def ingest_file(
             chunk_size=chunk_size,
             chunk_overlap=chunk_overlap,
             turboquant_bits=_DEFAULT_TURBOQUANT_BITS,
+            embedding_provider=_resolve_provider(provider),
         )
 
         async with ingester:
@@ -146,6 +183,15 @@ def ingest_file(
 def ingest_batch(
     input_file: str = typer.Argument(..., help="File containing URLs (one per line)"),
     parallel: int = typer.Option(5, "--parallel", "-n", help="Number of parallel ingestions"),
+    provider: str | None = typer.Option(
+        None,
+        "--provider",
+        "-p",
+        help=(
+            "Embedding provider: fastembed|ollama|openai. Default "
+            "(None) lets the oneiric probe chain auto-select."
+        ),
+    ),
 ):
     """Ingest multiple URLs from a file.
 
@@ -176,6 +222,7 @@ def ingest_batch(
     async def _ingest():
         ingester = create_content_ingester(
             turboquant_bits=_DEFAULT_TURBOQUANT_BITS,
+            embedding_provider=_resolve_provider(provider),
         )
 
         async with ingester:
@@ -217,7 +264,17 @@ def ingest_batch(
 
 
 @ingestion_app.command("stats")
-def ingestion_stats() -> None:
+def ingestion_stats(
+    provider: str | None = typer.Option(
+        None,
+        "--provider",
+        "-p",
+        help=(
+            "Embedding provider: fastembed|ollama|openai. Default "
+            "(None) lets the oneiric probe chain auto-select."
+        ),
+    ),
+) -> None:
     """Show content ingestion system status.
 
     Displays:

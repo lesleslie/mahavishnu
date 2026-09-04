@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.20.3] - 2026-09-04
+
+### Added
+
+- scripts: Add audit_type_checking_runtime_refs + pre-commit hook integration
+- scripts: Audit v2 — Pattern B runtime-fallback detection + cluster summary
+
+### Fixed
+
+- Move TYPE_CHECKING-only imports to runtime scope
+
+### Internal
+
+- patterns: Drop github-actions pattern definition
+
 ## [0.20.0] - 2026-08-30
 
 ### Fixed

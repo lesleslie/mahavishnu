@@ -50,11 +50,23 @@ class MessageContent(BaseModel):
 
 
 class ProjectMessage(BaseModel):
-    """Compatibility model for project-to-project messages."""
+    """Compatibility model for project-to-project messages.
+
+    Historical shape (kept for callers that only know ``project_id`` + ``message``)
+    plus the explicit from/to/subject/content fields that
+    ``SessionBuddyIntegration.send_project_message`` actually passes. Fields
+    are defaulted so legacy callers can still construct with the minimal pair.
+    """
 
     id: str = Field(default_factory=lambda: f"msg_{uuid4().hex}")
-    project_id: str
-    message: dict[str, Any]
+    project_id: str = ""
+    message: dict[str, Any] = Field(default_factory=dict)
+    from_project: str = ""
+    to_project: str = ""
+    subject: str = ""
+    content_type: MessageType = MessageType.NOTIFICATION
+    content_message: str = ""
+    status: MessageStatus = MessageStatus.UNREAD
     priority: Priority = Priority.NORMAL
     timestamp: str = Field(default_factory=lambda: datetime.now(UTC).isoformat())
 

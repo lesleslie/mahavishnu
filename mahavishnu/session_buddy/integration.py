@@ -19,17 +19,26 @@ from mcp_common.code_graph import CodeGraphAnalyzer
 # ``test_mcp_git_analytics.py`` with
 # ``AttributeError: module 'mahavishnu.session_buddy' has no attribute 'integration'``.
 try:
-    # ``messaging.types`` lives in an optional Bodai-ecosystem package
-    # that is not always available (CI smoke jobs ship a minimal venv).
-    # Both mypy/ruff and ty need their own suppression directives to
-    # silence the missing-import report; keep both side-by-side on the
-    # import line so a single fix satisfies every checker.
-    from messaging.types import (  # type: ignore[import-not-found]  # ty: ignore[unresolved-import]
-        MessageStatus,
-        MessageType,
-        Priority,
-        ProjectMessage,
-    )
+    # ``messaging.types`` historically lives in an optional Bodai-ecosystem
+    # package that is not always available (CI smoke jobs ship a minimal venv).
+    # The actual symbols ship alongside this repo at
+    # ``mahavishnu.messaging.messaging.types``; fall back to legacy top-level
+    # ``messaging.types`` only when neither path resolves (truly minimal
+    # installs without ``mahavishnu.messaging.messaging``).
+    try:
+        from mahavishnu.messaging.messaging.types import (  # type: ignore[import-not-found]
+            MessageStatus,
+            MessageType,
+            Priority,
+            ProjectMessage,
+        )
+    except ImportError:  # pragma: no cover - exercised only on minimal installs
+        from messaging.types import (  # type: ignore[import-not-found]  # ty: ignore[unresolved-import]
+            MessageStatus,
+            MessageType,
+            Priority,
+            ProjectMessage,
+        )
 except ImportError:  # pragma: no cover - exercised only on minimal installs
 
     class MessageStatus(Enum):

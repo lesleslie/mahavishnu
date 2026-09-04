@@ -14,12 +14,17 @@ Example:
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any
+from datetime import datetime
+from typing import Any
 
 from pydantic import BaseModel, Field
 
-if TYPE_CHECKING:
-    from datetime import datetime
+# NOTE: ``datetime`` must be imported at runtime (not under ``TYPE_CHECKING``)
+# because Pydantic v2 needs to resolve forward references when building models
+# like ``LogEntry`` and ``DeploymentResponse``. Keeping it under ``TYPE_CHECKING``
+# causes ``PydanticUserError: class-not-fully-defined`` at runtime whenever
+# Prefect adapter code constructs these models — see the memory note
+# ``pydantic-future-annotations-forward-ref.md`` for the broader pattern.
 
 
 class DeploymentResponse(BaseModel):

@@ -900,6 +900,12 @@ def get_worker_entry(
     ``settings`` is supplied a fresh :class:`MahavishnuSettings` is
     constructed so caller-side configuration is preserved.
 
+    Fallback: if the Oneiric registry doesn't carry the requested
+    ``worker_type``, we project the legacy :data:`WORKER_REGISTRY`
+    into a :class:`WorkerEntry` so the public contract stays uniform
+    (legacy ``application-pycharm`` and friends continue to be
+    reachable without manual YAML entries).
+
     Args:
         worker_type: Unique worker-type identifier (e.g.,
             ``"terminal-shell"``).
@@ -921,7 +927,39 @@ def get_worker_entry(
     for entry in settings.worker_registry.entries:
         if entry.worker_type == worker_type:
             return entry
+    # Fallback: project the legacy in-code registry into a WorkerEntry so
+    # capability-driven lookups find every worker registered in code, not
+    # just those redeclared in settings/mahavishnu.yaml.
+    legacy = WORKER_REGISTRY.get(worker_type)
+    if legacy is not None:
+        return _legacy_config_to_entry(legacy)
     raise MahavishnuError(
         f"worker_type {worker_type!r} not found in registry",
         ErrorCode.RESOURCE_NOT_FOUND,
+    )
+
+
+def _legacy_config_to_entry(cfg: WorkerConfig) -> WorkerEntry:
+    """Project a legacy :class:`WorkerConfig` into a :class:`WorkerEntry`.
+
+    Used only by :func:`get_worker_entry`'s fallback path. Only the
+    fields :class:`WorkerEntry` knows about are populated; extra metadata
+    on the legacy config (e.g. ``mcp_server``, ``complete_on_valid_json``,
+    ``endpoint``) is intentionally dropped because the unified schema
+    doesn't carry it.
+    """
+    from mahavishnu.core.config import WorkerEntry as _Entry
+
+    return _Entry(
+        worker_type=cfg.worker_type,
+        name=cfg.name,
+        description=cfg.description,
+        command_argv=[cfg.command] if cfg.command else [],
+        completion_markers=list(cfg.completion_markers),
+        requires_tool=cfg.requires_tool,
+        required_env=list(cfg.required_env),
+        auth_kind=cfg.auth_kind.value,
+        runtime_kind=cfg.runtime_kind.value,
+        one_shot=cfg.one_shot,
+        default_timeout=cfg.default_timeout,
     )

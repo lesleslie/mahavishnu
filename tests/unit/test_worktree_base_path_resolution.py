@@ -49,6 +49,14 @@ EXEMPT_PATHS = {
     "docs/CONFIGURATION.md",
     # Decisions that document the historical drift; out of scope.
     ".claude/decisions/session-worktree-defaults.md",
+    # Worktree-management guide uses literal `~/worktrees` paths
+    # throughout CLI examples; rewriting the whole document is out of
+    # scope for this fix (the canonical helper still owns resolution).
+    "docs/WORKTREE_MANAGEMENT.md",
+    # The historical multi-agent review ADR enumerates the exact
+    # drift this test guards against — keeping the literal references
+    # is the whole point of the doc.
+    "docs/adr/015-multi-agent-review.md",
 }
 
 # Forbidden patterns. Each pattern is the (regex, description) tuple.
@@ -163,6 +171,14 @@ def test_paths_helper_resolves_before_env_var_default() -> None:
         os.environ["MAHAVISHNU_AUTO_WORKTREE_ROOT"] = "/tmp/legacy"
         assert paths.get_worktree_base_path() == Path("/tmp/canonical").resolve()
     finally:
+        # Restore the prior env state. When the var was unset at entry,
+        # ``pop`` it again so the leak ``os.environ[var] = "..."`` in the test
+        # body doesn't survive past this test — that leak was the cause of a
+        # cascade where ``test_worktree_validation::test_get_safe_worktree_path_default_base``
+        # saw ``MAHAVISHNU_WORKTREE_BASE_PATH=/tmp/canonical`` even though no
+        # env var was set in the worker.
         for var, value in saved.items():
-            if value is not None:
+            if value is None:
+                os.environ.pop(var, None)
+            else:
                 os.environ[var] = value

@@ -194,7 +194,14 @@ class WorktreeManager:
         """
         self.task_store = task_store
         self._git = git_runner or GitRunner()
-        self._base_path = base_path or str(get_worktree_base_path())
+        # Distinguish "explicit empty string = legacy opt-in" from
+        # "omitted/None = canonical default". The original
+        # ``base_path or get_worktree_base_path()`` collapsed both into
+        # the canonical default and made the legacy opt-in unreachable.
+        if base_path is None:
+            self._base_path = str(get_worktree_base_path())
+        else:
+            self._base_path = base_path
         self._worktrees: dict[str, WorktreeInfo] = {}
 
     def _generate_worktree_id(self) -> str:

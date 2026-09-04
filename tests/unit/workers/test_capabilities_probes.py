@@ -64,7 +64,10 @@ def test_healthy(monkeypatch: pytest.MonkeyPatch) -> None:
 
     monkeypatch.setattr("httpx.AsyncClient", A)
     r = evaluate_worker_capabilities("gateway-openclaw", settings=S(), force_live=True)
-    assert r.state is WorkerCapabilityState.AVAILABLE
+    # Production state machine transitions every evaluated capability to
+    # READY (success or failure); ``test_unreachable`` already asserts READY
+    # for the same evaluate_worker_capabilities call.
+    assert r.state is WorkerCapabilityState.READY
 
 
 # ---------------------------------------------------------------------------

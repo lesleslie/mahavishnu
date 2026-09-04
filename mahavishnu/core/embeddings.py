@@ -197,6 +197,30 @@ class EmbeddingService(_OneiricEmbeddingService):
             dimension=self.dimension(),
         )
 
+    def get_available_providers(self) -> list[EmbeddingProvider]:
+        """Return a list of currently available embedding providers.
+
+        Used by adapters (``OneiricEmbeddingsAdapter.is_available``)
+        to decide whether the chain has at least one working provider.
+        Returns an empty list when only the deterministic mock fallback
+        is active; otherwise maps the active oneiric backend to its
+        legacy ``EmbeddingProvider`` enum value so callers that
+        ``isinstance(...)`` the result still work.
+
+        The mapping is best-effort: ``ollama`` resolves to
+        ``EmbeddingProvider.OLLAMA``; every other real backend
+        (``llama_cpp``, ``minimax``, ``model2vec``) surfaces as
+        ``EmbeddingProvider.FASTEMBED``. Tests that need a specific
+        provider can ``MagicMock`` this method to return whatever
+        they want.
+        """
+        if not self.is_available():
+            return []
+        backend = self.backend_name()
+        if backend == "ollama":
+            return [EmbeddingProvider.OLLAMA]
+        return [EmbeddingProvider.FASTEMBED]
+
 
 # ---------------------------------------------------------------------------
 # Singleton factory (legacy API)

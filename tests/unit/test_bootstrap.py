@@ -8,7 +8,7 @@ from pathlib import Path
 import sys
 import types
 from types import SimpleNamespace
-from unittest.mock import AsyncMock
+from unittest.mock import AsyncMock, Mock
 
 import pytest
 
@@ -583,19 +583,24 @@ class TestBootstrapDeepHelpers:
         assert created["config"] is app.config
 
     def test_init_terminal_manager_exception_branch(self, monkeypatch, caplog):
-        class FakeLogger:
-            def info(self, msg, *args, **kwargs):
-                raise RuntimeError("boom")
+        # Patch the module-level logger instance directly instead of polluting
+        # the global ``logging.getLogger`` factory. The previous approach
+        # monkey-patched ``bootstrap.logging.getLogger`` to return a bare
+        # ``FakeLogger`` for non-None names; structlog's processor chain
+        # cached that FakeLogger, and any later log call (e.g. from MCP server
+        # registration in ``test_mcp_server.py``) crashed with
+        # ``AttributeError: 'FakeLogger' object has no attribute 'name'``
+        # even after ``monkeypatch`` reverted ``getLogger`` because the cached
+        # structlog reference still pointed at FakeLogger.
+        fake_info = Mock(side_effect=RuntimeError("boom"))
 
-            def warning(self, msg, *args, **kwargs):
-                self.warning_message = msg % args if args else msg
+        def fake_warning(msg, *args, **kwargs):
+            # Mirror the real ``Logger.warning`` arg-formatting contract so the
+            # caller can keep using ``logger.warning("... %s ...", x)``.
+            return bootstrap.logger.warning(msg, *args, **kwargs)
 
-        original_get_logger = bootstrap.logging.getLogger
-        monkeypatch.setattr(
-            bootstrap.logging,
-            "getLogger",
-            lambda name=None: original_get_logger() if name is None else FakeLogger(),
-        )
+        monkeypatch.setattr(bootstrap.logger, "info", fake_info)
+        monkeypatch.setattr(bootstrap.logger, "warning", fake_warning)
         with caplog.at_level(logging.WARNING):
             result = bootstrap.init_terminal_manager(SimpleNamespace())
 
