@@ -639,6 +639,24 @@ question explicitly before the work is considered done.
 The full policy lives in `.claude/decisions/wire-up-contract.md`. The
 canonical template lives in `docs/plans/TEMPLATE.md`.
 
+### MCP backend wiring discipline (Bodai-wide)
+
+`wire-up-contract.md` enforces integration at plan-time. The companion
+runtime rule is `.claude/decisions/mcp-backend-wiring-discipline.md`:
+every Bodai MCP server's `/health` must aggregate per-feed state and
+return 503 on degraded; every registered tool must have a working data
+feed (`feed.entities_count`, `feed.last_updated_timestamp`,
+`feed.errors_total`, `cycles_total`); every tool registration requires
+`tests/integration/test_<tool>_e2e.py` asserting non-empty results;
+end-to-end smoke tests in CI must spin up the server and assert
+non-empty responses per tool. Audit cadence: monthly Bodai-wide.
+
+Mahavishnu-specific guidance:
+- `mcp__mahavishnu__pool_health` and `/health` must both surface the
+  same feed-state aggregates; disagreement between them is a bug.
+- Worker pools with registered tools but no active workers must
+  return `degraded`, not `ok`.
+
 ## Key File Locations
 
 ### Core Application
