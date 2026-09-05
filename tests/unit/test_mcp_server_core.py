@@ -64,6 +64,25 @@ def mock_app(mock_settings: MahavishnuSettings) -> MagicMock:
     return app
 
 
+@pytest.fixture(autouse=True)
+def reset_all_metrics() -> None:
+    """Reset all prometheus metric values to ensure test isolation.
+
+    The parent conftest's clean_prometheus_registry only strips prefect
+    collectors, missing the mahavishnu monitoring metrics. Multiple
+    test files increment these counters; without this reset, tests
+    that depend on counter initial values fail in the full suite.
+    """
+    from prometheus_client import REGISTRY
+
+    for collector in list(REGISTRY._collector_to_names.keys()):
+        try:
+            collector._metrics.clear()
+        except AttributeError:
+            pass  # some collectors (like gauges) may not have _metrics
+    yield
+
+
 @pytest.fixture
 def server(mock_app: MagicMock) -> FastMCPServer:
     """Create a FastMCPServer bound to a mocked MahavishnuApp."""
@@ -137,7 +156,12 @@ class TestFastMCPServerInit:
 
     def test_init_with_tracing_enabled_adds_middleware(self, mock_app: MagicMock) -> None:
         """Telemetry middleware should be added when tracing is enabled."""
-        from mcp_common.server.telemetry import FastMCPOpenTelemetryMiddleware
+        # Import via mahavishnu.mcp.server_core (not mcp_common.server.telemetry)
+        # because test_fastmcp_version.py evicts mcp_common from sys.modules.
+        # Re-fetching from the already-loaded mahavishnu module namespace gives
+        # us the SAME class object the production code uses to build the
+        # middleware, so isinstance() matches after the eviction.
+        from mahavishnu.mcp.server_core import FastMCPOpenTelemetryMiddleware
 
         mock_app.config.observability = MagicMock(tracing_enabled=True, environment="testing")
 
@@ -188,7 +212,12 @@ class TestRegisterTelemetryMiddleware:
 
     def test_middleware_added_when_tracing_enabled(self, server: FastMCPServer) -> None:
         """Middleware is added with correct service name and environment."""
-        from mcp_common.server.telemetry import FastMCPOpenTelemetryMiddleware
+        # Import via mahavishnu.mcp.server_core (not mcp_common.server.telemetry)
+        # because test_fastmcp_version.py evicts mcp_common from sys.modules.
+        # Re-fetching from the already-loaded mahavishnu module namespace gives
+        # us the SAME class object the production code uses to build the
+        # middleware, so isinstance() matches after the eviction.
+        from mahavishnu.mcp.server_core import FastMCPOpenTelemetryMiddleware
 
         server.app.config.observability = MagicMock(tracing_enabled=True, environment="ci")
         server.app.config.server_name = "test-server"

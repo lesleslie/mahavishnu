@@ -4,6 +4,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
+from mahavishnu.core.errors import ErrorCode, MahavishnuError
 from mahavishnu.core.status import PoolStatus, WorkerStatus
 from mahavishnu.pools.base import PoolConfig
 from mahavishnu.pools.mahavishnu_pool import MahavishnuPool
@@ -53,6 +54,62 @@ class TestMahavishnuPool:
             await pool.start()
 
         assert pool._status == PoolStatus.FAILED
+
+    @pytest.mark.asyncio
+    async def test_start_swallows_resource_not_found_for_unknown_worker_type(
+        self, mock_terminal_manager, pool_config
+    ):
+        """Regression test: ``get_worker_entry`` raising ``RESOURCE_NOT_FOUND`` must
+        be swallowed by the requires_tool guard. Bug caught by ``ty``: the previous
+        code referenced ``exc.code`` which doesn't exist on ``MahavishnuError``
+        (the attribute is ``error_code``)."""
+        mock_wm = self._create_mock_worker_manager()
+
+        with patch(
+            "mahavishnu.pools.mahavishnu_pool.WorkerManager",
+            return_value=mock_wm,
+        ), patch(
+            "mahavishnu.workers.registry.get_worker_entry",
+            side_effect=MahavishnuError(
+                "unknown worker_type", ErrorCode.RESOURCE_NOT_FOUND
+            ),
+        ):
+            pool = MahavishnuPool(
+                config=pool_config,
+                terminal_manager=mock_terminal_manager,
+            )
+
+            pool_id = await pool.start()
+
+            assert pool_id == pool.pool_id
+            assert pool._status == PoolStatus.RUNNING
+
+    @pytest.mark.asyncio
+    async def test_start_reraises_non_resource_not_found_errors(
+        self, mock_terminal_manager, pool_config
+    ):
+        """``get_worker_entry`` raising a non-``RESOURCE_NOT_FOUND`` error must propagate
+        (e.g. CONFIGURATION_ERROR) — not be silently swallowed as a missing entry."""
+        mock_wm = self._create_mock_worker_manager()
+
+        with patch(
+            "mahavishnu.pools.mahavishnu_pool.WorkerManager",
+            return_value=mock_wm,
+        ), patch(
+            "mahavishnu.workers.registry.get_worker_entry",
+            side_effect=MahavishnuError(
+                "malformed config", ErrorCode.CONFIGURATION_ERROR
+            ),
+        ):
+            pool = MahavishnuPool(
+                config=pool_config,
+                terminal_manager=mock_terminal_manager,
+            )
+
+            with pytest.raises(MahavishnuError) as exc_info:
+                await pool.start()
+
+            assert exc_info.value.error_code is ErrorCode.CONFIGURATION_ERROR
 
     @pytest.mark.asyncio
     async def test_start_spawns_min_workers(self, mock_terminal_manager, pool_config):

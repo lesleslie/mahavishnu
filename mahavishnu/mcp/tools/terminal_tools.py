@@ -16,9 +16,15 @@ from ...observability.worker_metrics import WorkerMetrics
 from ...terminal.adapters.tmux import TmuxTerminalAdapter
 from ...terminal.manager import TerminalManager  # noqa: TC001
 
-# SECURITY: Define validation constraints for MCP tool inputs
+# SECURITY: Define validation constraints for MCP tool inputs.
+# SessionID allows ``.`` in addition to the conservative alphanumeric+``-``+``_``
+# set because some adapters (e.g. macOS Terminal sessions backed by
+# ``com.apple.Terminal``) emit IDs containing dots. The previous regex
+# rejected those IDs at the MCP boundary even though the underlying
+# adapter accepted them — see
+# ``docs/followups/2026-09-05-terminal-send-annotated-validator-mismatch.md``.
 SessionID = Annotated[
-    str, StringConstraints(pattern=r"^[a-zA-Z0-9_-]+$", min_length=1, max_length=100)
+    str, StringConstraints(pattern=r"^[a-zA-Z0-9._-]+$", min_length=1, max_length=100)
 ]
 
 Command = Annotated[str, StringConstraints(min_length=1, max_length=10000)]
@@ -169,7 +175,14 @@ def register_terminal_tools(
     async def terminal_close_all() -> dict:
         """Close all terminal sessions."""
         sessions = await terminal_manager.list_sessions()
-        session_ids = [s.get("id", s.get("terminal_id", "")) for s in sessions]
+        # Filter out sessions with missing/empty IDs before round-tripping
+        # to ``manager.close_all``. The previous shape coerced missing IDs
+        # to ``""`` and passed them through, which forced the manager to
+        # handle an invalid session ID on every call. See
+        # ``docs/followups/2026-09-05-terminal-close-all-empty-id-roundtrip.md``.
+        session_ids = [
+            sid for sid in (s.get("id", s.get("terminal_id", "")) for s in sessions) if sid
+        ]
         if session_ids:
             await terminal_manager.close_all(session_ids)
         return {"closed_count": len(session_ids)}

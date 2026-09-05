@@ -189,7 +189,7 @@ class TestRepositoryProperties:
         assert metadata.version == version
         assert metadata.language == language
         assert metadata.dependencies == dependencies
-        assert metadata.last_validated <= datetime.utcnow()
+        assert metadata.last_validated <= datetime.now(UTC)
         assert metadata.min_python is None or isinstance(metadata.min_python, str)
 
 

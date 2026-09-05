@@ -401,6 +401,7 @@ worker_registry:
       name: "Bash Shell"
       command_argv: ["bash", "--noediting"]
       completion_markers: ["$"]
+      requires_tool: bash
       provides: ["worker:bash"]
     - worker_type: terminal-python
       name: "Python REPL"

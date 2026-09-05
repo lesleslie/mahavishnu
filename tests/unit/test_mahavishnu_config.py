@@ -500,19 +500,17 @@ class TestAgnoMemoryConfig:
         assert config.num_history_runs == 10
 
     def test_connection_string_required_for_postgres(self, clean_env):
-        """Test connection_string required when backend is postgres.
+        """Postgres backend without connection_string must raise ValidationError.
 
-        Note: Due to pydantic field_validator execution order, this validation
-        may not work as expected in the current implementation. The backend field
-        may not be available in info.data when connection_string validator runs.
+        Regression: prior to the fix, ``AgnoMemoryConfig.validate_connection_string``
+        was a ``@field_validator`` that pydantic v2 skipped when the field
+        was omitted from input, so a postgres backend silently passed. The
+        fix swaps it for a ``@model_validator(mode="after")`` which runs
+        after all fields are populated — the omission now raises.
         """
-        # This test documents the intended behavior - may not actually raise
-        try:
+        with pytest.raises(ValidationError) as excinfo:
             AgnoMemoryConfig(backend=MemoryBackend.POSTGRES)
-            # If no error, that's the current (possibly buggy) behavior
-            # The connection_string validator check doesn't work due to field ordering
-        except ValidationError as e:
-            assert "connection_string must be set" in str(e)
+        assert "connection_string must be set" in str(excinfo.value)
 
     def test_num_history_runs_bounds(self):
         """Test num_history_runs validation (0-100)."""

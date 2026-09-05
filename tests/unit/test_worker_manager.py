@@ -394,7 +394,10 @@ def test_factory_dispatches_a2a(terminal_manager) -> None:
 def test_factory_dispatches_openhands(terminal_manager) -> None:
     """Factory should route openhands to OpenHandsWorker (GATEWAY branch)."""
     mgr = WorkerManager(terminal_manager=terminal_manager, settings=object())
-    with patch.object(WorkerManager, "_validate_required_env", lambda self, x: None):
+    with (
+        patch.object(WorkerManager, "_validate_required_env", lambda self, x: None),
+        patch.object(WorkerManager, "_validate_required_tool", lambda self, x: None),
+    ):
         worker = mgr._create_worker("openhands")
     assert worker.__class__.__name__ == "OpenHandsWorker"
 
@@ -402,7 +405,8 @@ def test_factory_dispatches_openhands(terminal_manager) -> None:
 def test_factory_dispatches_terminal_crow(terminal_manager) -> None:
     """Factory should route terminal-crow to CrowWorker (AI_ASSISTANT branch)."""
     mgr = WorkerManager(terminal_manager=terminal_manager, settings=object())
-    worker = mgr._create_worker("terminal-crow")
+    with patch.object(WorkerManager, "_validate_required_tool", lambda self, x: None):
+        worker = mgr._create_worker("terminal-crow")
     assert worker.__class__.__name__ == "CrowWorker"
 
 

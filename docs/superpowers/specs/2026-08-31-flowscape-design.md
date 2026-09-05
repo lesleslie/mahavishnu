@@ -14,9 +14,10 @@ Etherape (https://etherape.sourceforge.io/, GPLv2, unmaintained since 2015) is t
 We want a modern Etherape-shaped tool, modernized where it makes sense, faithful where it doesn't.
 
 **Three non-negotiables:**
+
 1. **macOS-only, signed `.app` bundle.** Distribution target.
-2. **3D rendering as a headline feature.** The "next-gen" angle.
-3. **Structural no-payload guarantee.** The wire format cannot carry packet payload bytes. This is an architectural commitment, not a behavioral claim — see [Architectural invariants](#architectural-invariants) #4.
+1. **3D rendering as a headline feature.** The "next-gen" angle.
+1. **Structural no-payload guarantee.** The wire format cannot carry packet payload bytes. This is an architectural commitment, not a behavioral claim — see [Architectural invariants](#architectural-invariants) #4.
 
 **macOS permission model is a real constraint.** `/dev/bpf*` access is not grantable through System Settings; the spec commits to a specific distribution strategy that works without Apple-granted entitlements — see [Distribution & packaging](#distribution--packaging).
 
@@ -27,13 +28,13 @@ ______________________________________________________________________
 ## Goals
 
 1. **Modern Etherape replacement** — same core UX (live packet capture, host/flow graph, protocol coloring, pause/resume, pcap file replay) with a modern stack and prettier rendering.
-2. **3D interactive scene** — orbit camera, click-a-host, hover-to-inspect, in-scene filtering. The headline differentiator.
-3. **SwiftUI + Metal on macOS** — native, sandbox-friendly, fast. Swift 6 strict concurrency throughout.
-4. **Python backend** — `dpkt` for parsing, `pcapy-ng` (with ctypes fallback) for live capture, numpy where helpful, Oneiric for config.
-5. **Single source of truth for IPC** — `.proto` files generating both Python (betterproto2) and Swift (SwiftProtobuf) types via two `SOCK_SEQPACKET` Unix-domain sockets (one for data, one for control).
-6. **Multi-channel distribution** — `pip install flowscape`, `uvx flowscape`, `brew install les/tap/flowscape`, signed `.app` bundle with launchd helper for `/dev/bpf*` ACL.
-7. **Heuristics for live traffic patterns** — beaconing, port-scan, top-N churn. v1 versions are simple statistical detectors with realistic thresholds (see [Out of scope](#out-of-scope--future-work) for ML deferral).
-8. **Structural no-payload guarantee** — packet bytes never leave the capture process. Wire format carries metadata + a 32-byte SHA-256 prefix per edge; no payload bytes, period.
+1. **3D interactive scene** — orbit camera, click-a-host, hover-to-inspect, in-scene filtering. The headline differentiator.
+1. **SwiftUI + Metal on macOS** — native, sandbox-friendly, fast. Swift 6 strict concurrency throughout.
+1. **Python backend** — `dpkt` for parsing, `pcapy-ng` (with ctypes fallback) for live capture, numpy where helpful, Oneiric for config.
+1. **Single source of truth for IPC** — `.proto` files generating both Python (betterproto2) and Swift (SwiftProtobuf) types via two `SOCK_SEQPACKET` Unix-domain sockets (one for data, one for control).
+1. **Multi-channel distribution** — `pip install flowscape`, `uvx flowscape`, `brew install les/tap/flowscape`, signed `.app` bundle with launchd helper for `/dev/bpf*` ACL.
+1. **Heuristics for live traffic patterns** — beaconing, port-scan, top-N churn. v1 versions are simple statistical detectors with realistic thresholds (see [Out of scope](#out-of-scope--future-work) for ML deferral).
+1. **Structural no-payload guarantee** — packet bytes never leave the capture process. Wire format carries metadata + a 32-byte SHA-256 prefix per edge; no payload bytes, period.
 
 ## Non-Goals
 
@@ -80,19 +81,19 @@ The Swift app spawns the embedded Python at launch. **Two SOCK_SEQPACKET Unix-do
 
 1. **Two-process split is the default.** Swift owns GPU and UI loop; Python owns capture, decode, aggregation, heuristics. Crossing the process boundary lets each side use its strongest tooling without GIL contention. **Collapse only with measurement and a written justification.**
 
-2. **`.proto` is the IPC contract's single source of truth.** Both Python (`betterproto2`) and Swift (`SwiftProtobuf`) generate types from `proto/flowscape.proto`. Drift is impossible. A CI check diffs regenerated files against committed copies.
+1. **`.proto` is the IPC contract's single source of truth.** Both Python (`betterproto2`) and Swift (`SwiftProtobuf`) generate types from `proto/flowscape.proto`. Drift is impossible. A CI check diffs regenerated files against committed copies.
 
-3. **Layout lives in Swift.** Python publishes graph *state*; Swift decides *where they go*. Layout runs on a dedicated `DispatchQueue` (QoS `.userInteractive`) producing positions into a triple-buffer; the render thread picks up the newest at frame start. Decoupling IPC is the layout budget.
+1. **Layout lives in Swift.** Python publishes graph *state*; Swift decides *where they go*. Layout runs on a dedicated `DispatchQueue` (QoS `.userInteractive`) producing positions into a triple-buffer; the render thread picks up the newest at frame start. Decoupling IPC is the layout budget.
 
-4. **Structural no-payload guarantee.** The wire format cannot carry packet payload bytes. `FlowEdge` exposes a `payload_sha256_prefix` (32 bytes) as the *only* payload-derived field allowed; this is computed by `decode.py` and the source buffer is zeroed immediately after hashing. CI lints for protobuf field names containing `payload`, `body`, `raw`, etc. (regex enforcement) and a runtime Oneiric log filter drops any record whose `extra` dict contains payload-shaped keys.
+1. **Structural no-payload guarantee.** The wire format cannot carry packet payload bytes. `FlowEdge` exposes a `payload_sha256_prefix` (32 bytes) as the *only* payload-derived field allowed; this is computed by `decode.py` and the source buffer is zeroed immediately after hashing. CI lints for protobuf field names containing `payload`, `body`, `raw`, etc. (regex enforcement) and a runtime Oneiric log filter drops any record whose `extra` dict contains payload-shaped keys.
 
-5. **Latest-wins backpressure on the data plane.** If Python's `socket.send` blocks for >50 ms (kernel buffer full), Python discards the *currently-prepared* `GraphSnapshot` and resumes on the next tick. Drop count is exposed via heartbeat. Control-plane alerts are exempt from the drop policy.
+1. **Latest-wins backpressure on the data plane.** If Python's `socket.send` blocks for >50 ms (kernel buffer full), Python discards the *currently-prepared* `GraphSnapshot` and resumes on the next tick. Drop count is exposed via heartbeat. Control-plane alerts are exempt from the drop policy.
 
-6. **Active consent gate.** On first launch (and on interface or SSID change, or after 30 days), the Swift app shows a blocking modal: "Confirm you own or are authorized to monitor this network. Unauthorized packet capture may violate federal law (18 U.S.C. §§ 2511, 1030) and state wiretap statutes." Acknowledge button disabled for 5 s to prevent misclick. Stored consent (`~/.flowscape/consent.json`) records timestamp + hashed network identifier.
+1. **Active consent gate.** On first launch (and on interface or SSID change, or after 30 days), the Swift app shows a blocking modal: "Confirm you own or are authorized to monitor this network. Unauthorized packet capture may violate federal law (18 U.S.C. §§ 2511, 1030) and state wiretap statutes." Acknowledge button disabled for 5 s to prevent misclick. Stored consent (`~/.flowscape/consent.json`) records timestamp + hashed network identifier.
 
-7. **No GPL/LGPL in our dep tree.** All direct deps are permissively licensed (BSD, MIT, Apache-2.0). `dpkt` for parsing, `pcapy-ng` for live capture, `betterproto2` (MIT), `protobuf` (BSD-3), `libpcap` (BSD), `py2app` (MIT), `SwiftProtobuf` (Apache-2.0). Verified in CI via `pip-licenses --fail-on="GPL;LGPL;AGPL"`.
+1. **No GPL/LGPL in our dep tree.** All direct deps are permissively licensed (BSD, MIT, Apache-2.0). `dpkt` for parsing, `pcapy-ng` for live capture, `betterproto2` (MIT), `protobuf` (BSD-3), `libpcap` (BSD), `py2app` (MIT), `SwiftProtobuf` (Apache-2.0). Verified in CI via `pip-licenses --fail-on="GPL;LGPL;AGPL"`.
 
-8. **Swift 6 strict concurrency from day one.** IPCSocket is an `actor`. Renderer is an `actor` (MTKView's delegate methods forward to it via `Task`). LayoutState is a `Sendable` struct with copy-on-write positions, triple-buffered across frames-in-flight. No `@unchecked Sendable` escapes.
+1. **Swift 6 strict concurrency from day one.** IPCSocket is an `actor`. Renderer is an `actor` (MTKView's delegate methods forward to it via `Task`). LayoutState is a `Sendable` struct with copy-on-write positions, triple-buffered across frames-in-flight. No `@unchecked Sendable` escapes.
 
 ### Repo placement
 
@@ -204,8 +205,8 @@ These are starting values exposed as settings. Tune empirically after we have a 
 Latest-wins on the data plane. The `publisher.py` keeps a **bounded ring buffer** (NOT `asyncio.Queue` — that gives backpressure-on-full, not drop-oldest). If `socket.send` blocks for >50 ms (kernel buffer full), Python:
 
 1. Discards the currently-prepared `GraphSnapshot`.
-2. Increments `dropped_snapshots` counter.
-3. Resumes publishing on the next tick.
+1. Increments `dropped_snapshots` counter.
+1. Resumes publishing on the next tick.
 
 Control-plane alerts are **exempt** from this drop policy (alerts are rare and important).
 
@@ -398,6 +399,7 @@ The publisher asserts `snapshot.schema_major == NEGOTIATED_SCHEMA_MAJOR` before 
 ### Control-plane methods
 
 **Swift → Python (JSON-RPC requests):**
+
 - `start_capture(iface: str, promiscuous: bool = true, bpf_filter: str = "")`
 - `stop_capture()`
 - `set_filter(bpf: str)`
@@ -408,6 +410,7 @@ The publisher asserts `snapshot.schema_major == NEGOTIATED_SCHEMA_MAJOR` before 
 - `quit()`
 
 **Python → Swift (JSON-RPC notifications, no id):**
+
 - `handshake(app_version, schema_major, schema_minor)`
 - `heartbeat(tick, dropped_snapshots, ps_drop, ps_ifdrop)`
 - `client_ping` (request; Swift responds)
@@ -416,12 +419,14 @@ The publisher asserts `snapshot.schema_major == NEGOTIATED_SCHEMA_MAJOR` before 
 - `resync_required(from_tick)`
 
 **Python → Swift (data-plane messages):**
+
 - `GraphSnapshot` (10 Hz)
 - `Alert` (event-driven; exempt from latest-wins drop)
 
 ### Heartbeat details
 
 Liveness uses **both** heartbeat AND data-plane activity:
+
 - Python is "dead" only when (3 missed heartbeats) AND (no data.sock activity) for ≥5 s.
 - Surface `ps_drop` (kernel buffer drops) and `ps_ifdrop` (NIC drops) separately in the heartbeat — different remediation for each.
 
@@ -595,10 +600,10 @@ mcp:
 ### Settings validation (`flowscape doctor --config`)
 
 1. Load YAML via Oneiric; fail loud with structured error on parse failure.
-2. For each `Literal`/`Enum` field, assert value is in canonical set.
-3. Validate BPF filter (if set) by asking libpcap to compile-no-link; raise on error.
-4. Resolve `default_interface`; confirm it's present in libpcap's interface list; warn (not fail) if absent.
-5. Confirm logging directory is writable.
+1. For each `Literal`/`Enum` field, assert value is in canonical set.
+1. Validate BPF filter (if set) by asking libpcap to compile-no-link; raise on error.
+1. Resolve `default_interface`; confirm it's present in libpcap's interface list; warn (not fail) if absent.
+1. Confirm logging directory is writable.
 
 ### Oneiric action kits — in-scope inventory
 
@@ -690,7 +695,7 @@ Apple Developer ID + App Store Connect API key are required for codesign + notar
 
 ### Homebrew formula (sketch)
 
-``````ruby
+````ruby
 class Flowscape < Formula
   desc "Modern network visualization tool"
   homepage "https://github.com/lesleslie/flowscape"
@@ -1100,3 +1105,4 @@ ______________________________________________________________________
 ______________________________________________________________________
 
 *Spec authored in a brainstorming session, revised after 8-agent multi-agent review. Next: user final review → `writing-plans`.*
+````

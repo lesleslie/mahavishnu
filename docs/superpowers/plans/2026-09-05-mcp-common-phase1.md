@@ -53,17 +53,20 @@
 
 Tasks 1-4 land on mcp-common first. Tasks 5-8 land on crackerjack. The mcp-common fixtures (Task 4) are committed to mcp-common's `tests/release_audit/fixtures/` but used by crackerjack's tests (Task 5) at runtime via path injection.
 
----
+______________________________________________________________________
 
 ## Task 1: Restore MCPServerCLIFactory Methods (Bug #1)
 
 **Files:**
+
 - Modify: `mcp-common/mcp_common/cli/factory.py` (insert ~35 lines at line 332-333)
 - Create: `mcp-common/tests/cli/test_factory_register_handlers.py` (32 lines)
 - Modify: `mcp-common/CHANGELOG.md` (add `## [0.24.4]` section above the existing `0.24.3` entry)
 
 **Interfaces:**
+
 - Produces: `MCPServerCLIFactory.create_handlers() -> dict[str, Callable]`
+
 - Produces: `MCPServerCLIFactory.register_lifecycle_handlers(app: typer.Typer) -> None`
 
 - [ ] **Step 1: Read current state of factory.py around the insertion point**
@@ -186,19 +189,23 @@ Restores:
 
 Expected: commit lands cleanly, no pre-commit hook failures.
 
----
+______________________________________________________________________
 
 ## Task 2: Hybrid Coverage Restoration + Ratchet Reset (Bug #2)
 
 **Files:**
+
 - Modify: `mcp-common/pyproject.toml` (add `[tool.coverage.run]` block; update `--cov-fail-under`)
 - Modify: `mcp-common/.coverage-ratchet.json` (update baseline + add history entry)
 - Create: `mcp-common/scripts/verify_coverage_baseline.py` (~30 lines)
 - Create: `mcp-common/docs/audits/2026-09-05-coverage-ratchet-memo.md` (~150 lines)
 
 **Interfaces:**
+
 - Consumes: `factory.py` from Task 1 (so the new test adds coverage)
+
 - Produces: `.coverage-ratchet.json` with `current_minimum=90.0`
+
 - Produces: `pyproject.toml --cov-fail-under=90.0`
 
 - [ ] **Step 1: Read current coverage state**
@@ -243,6 +250,7 @@ Find the line `--cov-fail-under=98.53479853479854` (or similar) in `[tool.pytest
 - [ ] **Step 4: Update `.coverage-ratchet.json`**
 
 Open `/Users/les/Projects/mcp-common/.coverage-ratchet.json`. Update:
+
 - `baseline`: from current value to `90.0`
 - `current_minimum`: from current value to `90.0`
 - Add new entry to `history`:
@@ -461,17 +469,22 @@ Path to 95% is documented in the memo (4-6 hours of test scaffolding
 on websocket + health + profiles). Tracked as Phase 2."
 ```
 
----
+______________________________________________________________________
 
 ## Task 3: Rewrite CLAUDE.md (Bug #3)
 
 **Files:**
+
 - Modify: `mcp-common/CLAUDE.md` (sweep 6 stale-claim categories)
 
 **Interfaces:**
+
 - Consumes: `pyproject.toml version=0.24.4` (set by user's manual bump, but for now reference current pre-bump version)
+
 - Consumes: `.coverage-ratchet.json current_minimum=90.0` (from Task 2)
+
 - Consumes: actual test count from `pytest --collect-only`
+
 - Consumes: actual package structure from `find`
 
 - [ ] **Step 1: Read the full current CLAUDE.md**
@@ -499,6 +512,7 @@ Replace with: `**Current Status:** v0.24.4 - **Oneiric-Native (Production Ready)
 
 Find: `- ✅ Comprehensive test suite with 90%+ coverage`
 Replace with:
+
 ```
 - ✅ Comprehensive test suite with **90% line, 80% branch** coverage (post optional-dep stub exclusion; see [coverage memo](docs/audits/2026-09-05-coverage-ratchet-memo.md))
 ```
@@ -506,20 +520,26 @@ Replace with:
 - [ ] **Step 6: Edit test count claims**
 
 Find (around line 120):
+
 ```
 | **Total** | **615** | 100% pass rate, 99%+ coverage |
 ```
+
 Replace `<NUMBER>` with the value from Step 2:
+
 ```
 | **Total** | **<NUMBER>** | 100% pass rate, 90%+ coverage |
 ```
 
 Also find (around line 460-461):
+
 ```
 - **Test Coverage:** 99%+ (up from 94% in v0.5.2)
   - 615 total tests (up from 564 in v0.5.2)
 ```
+
 Replace with:
+
 ```
 - **Test Coverage:** 90% line, 80% branch (up from unmeasurable in pre-omit era; ratchet floor matches other Bodai repos)
   - <NUMBER> total tests
@@ -528,19 +548,25 @@ Replace with:
 - [ ] **Step 7: Edit the ratchet requirement + "never reduce" lines**
 
 Find (around line 502):
+
 ```
 1. **Ignoring test coverage** - Must maintain 90%+ coverage (enforced by CI)
 ```
+
 Replace with:
+
 ```
 1. **Ignoring test coverage** - Must maintain ≥90% line coverage (enforced by CI ratchet at `.coverage-ratchet.json`). Exceptions require an audit memo in `docs/audits/`.
 ```
 
 Find (around line 698):
+
 ```
 - **Never reduce test coverage** - the ratchet system only allows improvements
 ```
+
 Replace with:
+
 ```
 - **Never reduce test coverage** - the ratchet system only allows improvements, except via documented audit memo (see `docs/audits/2026-09-05-coverage-ratchet-memo.md` for the canonical example)
 ```
@@ -555,7 +581,9 @@ Find the `## Package Structure` heading. Replace the entire section body with a 
 Generated from `find mcp_common -maxdepth 2 -type d -o -name "*.py" | sort` on 2026-09-05:
 
 ```
-<Paste the find output here, with brief annotations for each major subpackage>
+
+\<Paste the find output here, with brief annotations for each major subpackage>
+
 ```
 
 Key subpackages:
@@ -577,6 +605,7 @@ See `find mcp_common -maxdepth 2 -type d -o -name "*.py" | sort` for the full cu
 - [ ] **Step 9: Rewrite or remove the Implemented Components section (around line 507)**
 
 Find `## Implemented Components (v0.3.6)`. Two options:
+
 - **Option A (preferred):** Remove the section entirely. The version-stamped bullet list ("New in v0.3.6", "New in v0.3.3") is no longer useful for a project at v0.24.4.
 - **Option B:** Rewrite without version stamps, just listing current components.
 
@@ -629,15 +658,17 @@ The crackerjack release-audit check (forthcoming) will enforce ongoing
 consistency between CLAUDE.md claims and source reality."
 ```
 
----
+______________________________________________________________________
 
 ## Task 4: Add mcp-common Test Fixtures for Crackerjack's Audit Tests
 
 **Files:**
+
 - Create: `mcp-common/tests/release_audit/__init__.py` (empty)
 - Create: 9 fixture files in `mcp-common/tests/release_audit/fixtures/`
 
 **Interfaces:**
+
 - Produces: fixture files that crackerjack's `test_release_audit.py` will load via path injection
 
 - [ ] **Step 1: Create the test fixture directory**
@@ -811,6 +842,7 @@ Some prose about a thing that was added without backticks.
 The audit check needs a source directory to grep for symbols. Create:
 
 `mcp-common/tests/release_audit/fixtures/source_root/mymodule/MyClass.py`:
+
 ```python
 class MyClass:
     def new_method(self) -> None:
@@ -818,6 +850,7 @@ class MyClass:
 ```
 
 `mcp-common/tests/release_audit/fixtures/source_root/mymodule/helper.py`:
+
 ```python
 def helper_function() -> None:
     pass
@@ -837,11 +870,12 @@ rather than the actual mcp-common root, ensuring self-tests don't
 depend on the live repo state."
 ```
 
----
+______________________________________________________________________
 
 ## Task 5: Build the crackerjack Release-Audit Check (Bug #4 Part 1)
 
 **Files:**
+
 - Create: `crackerjack/crackerjack/checks/__init__.py` (empty)
 - Create: `crackerjack/crackerjack/checks/release_audit.py` (~300 lines, TDD)
 - Create: `crackerjack/crackerjack/tests/checks/__init__.py` (empty)
@@ -907,6 +941,7 @@ def check_release_audit(
 - [ ] **Step 1: Create the package directories**
 
 Run:
+
 ```bash
 mkdir -p /Users/les/Projects/crackerjack/crackerjack/checks
 mkdir -p /Users/les/Projects/crackerjack/crackerjack/tests/checks
@@ -1439,11 +1474,12 @@ of register_lifecycle_handlers in a 'chore: bump version' commit).
 Tests use fixture files in mcp-common/tests/release_audit/fixtures/."
 ```
 
----
+______________________________________________________________________
 
 ## Task 6: Register the New Check in crackerjack's --all Run
 
 **Files:**
+
 - Modify: `crackerjack/crackerjack/main.py` (or check-registration equivalent — discover by reading the file)
 
 - [ ] **Step 1: Find the check registration mechanism**
@@ -1477,9 +1513,11 @@ def release_audit() -> int:
 
 Run: `cd /Users/les/Projects/crackerjack && .venv/bin/python -m crackerjack --all --dry-run 2>&1 | grep release-audit`
 OR (if no dry-run flag):
+
 ```bash
 cd /Users/les/Projects/crackerjack && .venv/bin/python -m crackerjack --all 2>&1 | head -30
 ```
+
 Expected: see `release-audit` listed in the check output, and it runs.
 
 - [ ] **Step 5: Commit**
@@ -1494,7 +1532,7 @@ gate. Now runs on every `crackerjack --all` invocation, catching
 CHANGELOG/CLAUDE.md drift before releases ship."
 ```
 
----
+______________________________________________________________________
 
 ## Task 7: End-to-End Validation Against Current mcp-common
 
@@ -1517,6 +1555,7 @@ cd /Users/les/Projects/mcp-common && .venv/bin/python /Users/les/Projects/cracke
   --source-root /Users/les/Projects/mcp-common/mcp_common \
   --test-root /Users/les/Projects/mcp-common/tests
 ```
+
 Expected: exits 0, prints "Result: PASS (0 errors)".
 
 If FAIL: read the error messages, identify which Task 1-3 fix is incomplete, and patch it before continuing. (This is the validation that Bug #4 works against real state.)
@@ -1530,7 +1569,7 @@ Expected: see `release-audit` listed in the output, exits 0.
 
 If Task 1-3 fixes needed patching in Step 2, commit them now. No separate commit needed if everything passed.
 
----
+______________________________________________________________________
 
 ## Task 8: Killer Demo — Validate Against the Original 0.24.0 Broken State
 
@@ -1546,6 +1585,7 @@ Expected: clean working tree (no uncommitted changes).
 ```bash
 cd /Users/les/Projects/mcp-common && git checkout 3c90a53 -- mcp_common/cli/factory.py CHANGELOG.md
 ```
+
 Expected: working tree now has the broken state where `register_lifecycle_handlers` was removed but CHANGELOG still claimed it was added.
 
 - [ ] **Step 3: Run the audit — expect FAIL**
@@ -1560,7 +1600,9 @@ cd /Users/les/Projects/mcp-common && .venv/bin/python /Users/les/Projects/cracke
   --source-root /Users/les/Projects/mcp-common/mcp_common \
   --test-root /Users/les/Projects/mcp-common/tests
 ```
+
 Expected: exits 1, prints something like:
+
 ```
 [FAIL] CHANGELOG claims mcp_common.cli.factory.MCPServerCLIFactory.register_lifecycle_handlers was added but no definition found in source
 ```
@@ -1572,6 +1614,7 @@ If FAIL is missing or wrong: the check has a bug. Debug before proceeding.
 ```bash
 cd /Users/les/Projects/mcp-common && git checkout HEAD -- mcp_common/cli/factory.py CHANGELOG.md
 ```
+
 Expected: working tree back to clean state with Bug #1-3 in place.
 
 - [ ] **Step 5: Verify clean working tree**
@@ -1584,6 +1627,7 @@ Expected: clean.
 Write a short note (a one-line comment in a memory file or a note in the audit memo) capturing: "The release-audit check would have caught mcp-common 0.24.0. Verified via killer-demo against `3c90a53` state on 2026-09-05."
 
 Suggested: append to `docs/audits/2026-09-05-coverage-ratchet-memo.md`:
+
 ```markdown
 
 ## Verification: killer demo
@@ -1594,7 +1638,9 @@ commit `3c90a53` (where `register_lifecycle_handlers` was removed but CHANGELOG
 claimed it was added), the audit correctly produced:
 
 ```
+
 [FAIL] CHANGELOG claims mcp_common.cli.factory.MCPServerCLIFactory.register_lifecycle_handlers was added but no definition found in source
+
 ```
 
 This demonstrates the check works as designed.
@@ -1608,11 +1654,12 @@ git add docs/audits/2026-09-05-coverage-ratchet-memo.md
 git -c user.email=les@wedgwoodwebworks.com commit -m "docs(mcp-common): record killer-demo verification of release-audit check"
 ```
 
----
+______________________________________________________________________
 
 ## Done Criteria
 
 Phase 1 is complete when:
+
 - [ ] All 8 tasks merged to local `main` (mcp-common + crackerjack)
 - [ ] `.venv/bin/pytest tests/ -q` passes in mcp-common with ≥90% coverage
 - [ ] `.venv/bin/python crackerjack/checks/release_audit.py` against mcp-common returns PASS
@@ -1624,8 +1671,8 @@ Phase 1 is complete when:
 After all 8 tasks land on local `main`, the user does the release:
 
 1. **mcp-common**: `cd /Users/les/Projects/mcp-common && crackerjack -p patch` (bumps 0.24.3 → 0.24.4, commits, tags, publishes)
-2. **crackerjack**: review the new check, decide if `crackerjack -p minor` is warranted
-3. **Push**: `git push origin main` (in each repo)
+1. **crackerjack**: review the new check, decide if `crackerjack -p minor` is warranted
+1. **Push**: `git push origin main` (in each repo)
 
 The implementation work does NOT touch version numbers, does NOT push, does NOT publish.
 

@@ -294,12 +294,22 @@ def calculate_percentiles(
 ) -> dict[str, float | None]:
     """Calculate percentile values from latency data.
 
+    Uses nearest-rank (0-indexed) percentile formula: for input length ``n``
+    and percentile ``p``, returns the value at sorted index
+    ``min(int(n * p / 100), n - 1)``. For p50 this yields ``n // 2`` —
+    the textbook median (lower-of-two-middles for even-length input).
+    Percentile values outside ``[0, 100]`` raise ``ValueError``.
+
     Args:
         latencies: List of latency values in milliseconds
-        percentiles: Percentiles to calculate (default: p50, p95, p99)
+        percentiles: Percentiles to calculate (default: p50, p95, p99).
+            Each value must be in the closed interval ``[0, 100]``.
 
     Returns:
         Dictionary with percentile keys
+
+    Raises:
+        ValueError: If any percentile value is outside ``[0, 100]``.
     """
     if percentiles is None:
         percentiles = [50.0, 95.0, 99.0]
@@ -310,8 +320,10 @@ def calculate_percentiles(
     result = {}
 
     for p in percentiles:
+        if not 0 <= p <= 100:
+            raise ValueError(f"percentile must be in [0, 100], got {p}")
         if p == 50.0:
-            index = max(0, (len(sorted_latencies) - 1) // 2 - 1)
+            index = len(sorted_latencies) // 2
         elif p >= 99.0:
             index = len(sorted_latencies) - 1
         else:
@@ -322,6 +334,23 @@ def calculate_percentiles(
         result[f"p{int(p)}"] = sorted_latencies[index]
 
     return result
+
+
+# Minimum sample size for Wilson score interval to be meaningful. Below this,
+# the interval collapses to (0, 1) regardless of confidence level — there
+# isn't enough data to distinguish the true rate from the extremes.
+_MIN_SAMPLE_SIZE_FOR_CI = 10
+
+# Z-scores for common confidence levels (two-tailed). Used by
+# calculate_confidence_interval to honor the `confidence` parameter rather
+# than always using 1.96. Unknown values fall back to 1.96 (effectively 95%).
+_Z_SCORES: dict[float, float] = {
+    0.80: 1.282,
+    0.85: 1.440,
+    0.90: 1.645,
+    0.95: 1.960,
+    0.99: 2.576,
+}
 
 
 def calculate_confidence_interval(
@@ -336,12 +365,13 @@ def calculate_confidence_interval(
     Args:
         sample_size: Number of executions
         success_rate: Observed success rate
-        confidence: Confidence level (default: 0.95)
+        confidence: Confidence level (default: 0.95). Looked up against a
+            small table of common values; unknown levels fall back to 1.96.
 
     Returns:
         (lower_bound, upper_bound)
     """
-    if sample_size < 10:
+    if sample_size < _MIN_SAMPLE_SIZE_FOR_CI:
         # Not enough data for meaningful CI
         return (0.0, 1.0)
 
@@ -350,7 +380,7 @@ def calculate_confidence_interval(
     if success_rate <= 0.0:
         return (0.0, 0.0)
 
-    z = 1.96  # 95% confidence z-score
+    z = _Z_SCORES.get(confidence, 1.96)
 
     denominator = 1 + (z**2) / sample_size
     center = (success_rate + (z**2) / (2 * sample_size)) / denominator

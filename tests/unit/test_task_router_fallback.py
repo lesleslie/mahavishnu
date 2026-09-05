@@ -1,9 +1,35 @@
 """Tests for TaskRouter graceful fallback mechanism."""
 
+from __future__ import annotations
+
 import pytest
 
 from mahavishnu.core.adapters.base import AdapterCapabilities, AdapterType, OrchestratorAdapter
 from mahavishnu.core.task_router import AdapterManager, StateManager, TaskRouter
+
+
+@pytest.fixture(autouse=True)
+def isolate_state_manager_state_dir(tmp_path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """Redirect ``StateManager._DEFAULT_STATE_DIR`` to a tmp_path for each test.
+
+    ``StateManager._DEFAULT_STATE_DIR`` is a class-level attribute pointing at
+    ``data/workflow_state`` on disk. With no ``state_dir`` argument, every
+    test that constructs ``StateManager()`` (this file plus many others
+    across the suite) shares the same ``workflows.json`` file. That file
+    accumulates records from prior tests and prior test runs, and writes
+    from one worker can race with reads from another under pytest-xdist.
+
+    This autouse fixture mirrors the pattern in
+    ``tests/unit/test_mcp_server_core.py::reset_mcp_metrics`` and gives
+    each test a private state directory under ``tmp_path``, so this file
+    no longer participates in the shared on-disk state and cannot pollute
+    downstream tests reading ``data/workflow_state/workflows.json``.
+
+    Yielding ``None`` keeps the signature fixture-style for consistency with
+    the cluster-B reference; monkeypatch handles the automatic teardown.
+    """
+    monkeypatch.setattr(StateManager, "_DEFAULT_STATE_DIR", tmp_path)
+    yield None
 
 
 class MockAdapter(OrchestratorAdapter):

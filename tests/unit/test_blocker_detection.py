@@ -19,6 +19,7 @@ from mahavishnu.core.blocker_detection import (
     BlockerMetrics,
     analyze_blockers,
 )
+from mahavishnu.core.datetime_utils import now_utc
 from mahavishnu.models.pattern import PatternFrequency, PatternSeverity
 
 
@@ -99,7 +100,7 @@ class TestBlockerDetector:
     def sample_tasks(self) -> list[dict]:
         """Create sample tasks with blockers."""
         tasks = []
-        now = datetime.utcnow()
+        now = now_utc()
 
         # Create blocked tasks
         for i in range(8):
@@ -205,7 +206,7 @@ class TestBlockerDetector:
                 "id": f"task-{i}",
                 "title": f"Blocked by dependency {i}",
                 "status": "blocked",
-                "blocked_at": datetime.utcnow().isoformat(),
+                "blocked_at": now_utc().isoformat(),
             }
             for i in range(10)
         ]
@@ -235,7 +236,7 @@ class TestBlockerPatterns:
                 "title": f"Waiting for API dependency {i}",
                 "status": "blocked",
                 "repository": "test-repo",
-                "blocked_at": datetime.utcnow().isoformat(),
+                "blocked_at": now_utc().isoformat(),
             }
             for i in range(5)
         ]
@@ -288,7 +289,7 @@ class TestTrendCalculation:
 
     def test_trend_calculation(self, detector: BlockerDetector) -> None:
         """Test trend is calculated correctly."""
-        now = datetime.utcnow()
+        now = now_utc()
         tasks = []
 
         # Create tasks blocked on different days
@@ -328,7 +329,7 @@ class TestConvenienceFunction:
                 "id": f"task-{i}",
                 "title": f"Blocked by dependency {i}",
                 "status": "blocked",
-                "blocked_at": datetime.utcnow().isoformat(),
+                "blocked_at": now_utc().isoformat(),
             }
             for i in range(5)
         ]

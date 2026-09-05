@@ -23,9 +23,13 @@ class PermissionStatus(Enum):
     UNKNOWN = "unknown"
 
 
-@dataclass
+@dataclass(frozen=True)
 class PermissionInfo:
-    """Information about a permission."""
+    """Information about a permission.
+
+    Frozen so callers cannot mutate ``recovery_hint`` after construction —
+    shared instances stay consistent across permission-system consumers.
+    """
 
     name: str
     status: PermissionStatus
@@ -69,8 +73,6 @@ class PermissionChecker:
     def __init__(self) -> None:
         """Initialize the permission checker."""
         self._is_macos = sys.platform == "darwin"
-        self._cached_accessibility: PermissionStatus | None = None
-        self._cached_screen_recording: PermissionStatus | None = None
 
     def is_macos(self) -> bool:
         """Check if running on macOS."""
@@ -187,11 +189,20 @@ class PermissionChecker:
         ]
         return permissions
 
-    def request_accessibility(self) -> bool:
+    def request_accessibility(self, prompt: bool = True) -> bool:
         """Request accessibility permissions from the user.
 
         This will show a system dialog asking the user to grant accessibility
-        permissions. The user will need to manually add the app in System Settings.
+        permissions (when ``prompt=True``). The user will need to manually add
+        the app in System Settings.
+
+        Set ``prompt=False`` for non-interactive contexts (CI, automated checks)
+        to query the trusted status without spawning the system permission
+        dialog.
+
+        Args:
+            prompt: If True (default), show the system permission dialog. If
+                False, only check the trusted status silently.
 
         Returns:
             True if permissions are already granted or the prompt was shown.
@@ -204,8 +215,8 @@ class PermissionChecker:
                 AXIsProcessTrustedWithOptions,
             )
 
-            # Request accessibility with prompt
-            options = {"kAXTrustedCheckOptionPrompt": True}
+            # Request accessibility, optionally prompting the user.
+            options = {"kAXTrustedCheckOptionPrompt": prompt}
             return AXIsProcessTrustedWithOptions(options)  # type: ignore[no-any-return]
         except ImportError:
             return True

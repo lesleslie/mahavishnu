@@ -11,6 +11,7 @@ from datetime import datetime, timedelta, UTC
 from pydantic import ValidationError
 import pytest
 
+from mahavishnu.core.datetime_utils import now_utc
 from mahavishnu.core.workflow_models import (
     PoolExecution,
     WorkflowCheckpoint,
@@ -140,7 +141,7 @@ class TestWorkflowExecutionMethods:
 
     def test_duration_seconds_with_timedelta(self):
         """duration_seconds works with timedelta for end_time."""
-        start = datetime.utcnow()
+        start = now_utc()
         end = start + timedelta(seconds=45)
         wf = WorkflowExecution(
             workflow_name="test",

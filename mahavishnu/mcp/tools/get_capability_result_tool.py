@@ -26,6 +26,12 @@ def register_get_capability_result(
 
     @server.tool(name="get_capability_result", description="List envelopes for a trace.")
     async def get_capability_result(trace_id: TraceId) -> dict[str, object]:
+        """Read back persisted envelopes for a trace_id from Dhara.
+
+        Returns a structured payload with status="completed" when envelopes are
+        present and "pending" otherwise. The ``envelopes`` field carries
+        Dhara key references; ``error`` is always ``None`` on success.
+        """
         addrs = await list_envelopes(trace_id, dhara=dhara)
         return {
             "trace_id": trace_id,

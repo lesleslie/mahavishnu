@@ -175,7 +175,8 @@ def test_percentile_calculation():
 
     percentiles = calculate_percentiles(latencies, [50.0, 95.0, 99.0])
 
-    assert percentiles["p50"] == 250  # Median
+    # Nearest-rank (0-indexed): n=9, p50 → index 4 → sorted[4]=300
+    assert percentiles["p50"] == 300  # Median (lower-of-two-middles for even-length)
     assert percentiles["p95"] == 1000
     assert percentiles["p99"] == 2000
 
@@ -224,8 +225,9 @@ class TestCalculatePercentilesEdgeCases:
         assert result["p99"] == 42
 
     def test_two_latencies(self):
+        # n=2 → index 2//2=1 → sorted[1]=20 (textbook lower-of-two-middles median)
         result = calculate_percentiles([10, 20], [50.0])
-        assert result["p50"] == 10
+        assert result["p50"] == 20
 
     def test_custom_percentiles(self):
         latencies = list(range(1, 101))
@@ -239,10 +241,10 @@ class TestCalculatePercentilesEdgeCases:
         assert result["p99"] == 100
 
     def test_p50_median_odd(self):
+        # n=5 → index 5//2=2 → sorted[2]=3 (textbook median for odd-length input)
         latencies = [1, 2, 3, 4, 5]
         result = calculate_percentiles(latencies, [50.0])
-        # Custom formula: max(0, (5-1)//2 - 1) = max(0, 1) = 1, so value is 2
-        assert result["p50"] == 2
+        assert result["p50"] == 3
 
     def test_clamps_index_when_length_changes(self, monkeypatch):
         from mahavishnu.core import metrics_schema as ms
@@ -264,6 +266,11 @@ class TestCalculatePercentilesEdgeCases:
 
         result = ms.calculate_percentiles([30, 10, 20], [50.0])
 
+        # First len() call returns 3 → index = 3 // 2 = 1.
+        # The clamp check `if index >= len(...)` then calls len() again,
+        # which returns 0, so index gets set to len-1 = -1.
+        # sorted[-1] returns the last element of the original list = 30.
+        # This proves the safety net handles len() shrinking between calls.
         assert result["p50"] == 30
 
 

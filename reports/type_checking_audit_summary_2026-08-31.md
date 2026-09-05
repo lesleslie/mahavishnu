@@ -50,9 +50,9 @@ When the runtime path executes, those names are undefined and Python raises
 The fanout that motivated this audit surfaced three instances in 24 hours
 (2026-08-31):
 
-  - **opera-cloud-mcp** — 31 Pydantic test failures
-  - **graphics-mcp**   — runtime NameError in pillow result constructors
-  - **mailgun-mcp / excalidraw-mcp / mahavishnu itself** — various
+- **opera-cloud-mcp** — 31 Pydantic test failures
+- **graphics-mcp** — runtime NameError in pillow result constructors
+- **mailgun-mcp / excalidraw-mcp / mahavishnu itself** — various
 
 Now the audit shows the same pattern affects 153 files across 18 active Bodai
 repos. The pattern is endemic, not sporadic.
@@ -104,9 +104,9 @@ else:
 
 1. **Fix top offenders first** — opera-cloud-mcp, session-buddy, crackerjack,
    mahavishnu. Each is a multi-commit cleanup.
-2. **Wire the audit into crackerjack** as a pre-commit or quality gate to
+1. **Wire the audit into crackerjack** as a pre-commit or quality gate to
    prevent regressions.
-3. **Re-run periodically** as part of `crackerjack run` to surface new
+1. **Re-run periodically** as part of `crackerjack run` to surface new
    instances.
 
 ## Reproduction

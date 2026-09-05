@@ -214,17 +214,22 @@ async def worker_status(worker_id: str) -> dict:
     if record is None:
         return {"worker_id": worker_id, "state": "not_found"}
 
-    # uptime is best-effort: a malformed record (missing or None dates)
-    # should not crash the status call.
+    # uptime is best-effort: a malformed record (missing, None, or
+    # non-datetime ``last_seen_at`` / ``created_at``) must not crash the
+    # status call. The isoformat call below is in the same try block
+    # because the same malformed ``last_seen_at`` would also raise
+    # there (``str.isoformat()`` doesn't exist). One guard, one
+    # fallback path — keeps the contract uniform.
     uptime_seconds = 0
+    last_activity_iso: str | None = None
     try:
         delta = record.last_seen_at - record.created_at
         uptime_seconds = int(delta.total_seconds())
+        last_activity = getattr(record, "last_seen_at", None)
+        last_activity_iso = last_activity.isoformat() if last_activity is not None else None
     except AttributeError, TypeError, ValueError:
         uptime_seconds = 0
-
-    last_activity = getattr(record, "last_seen_at", None)
-    last_activity_iso = last_activity.isoformat() if last_activity is not None else None
+        last_activity_iso = None
 
     pane_command: str | None = None
     pane_fn = getattr(_durable_manager, "pane_command", None)

@@ -19,13 +19,14 @@ def _do_backup_create(backup_type: str) -> None:
 
         try:
             backup_info = await backup_manager.create_backup(backup_type)
-            typer.echo(f"✓ Backup created: {backup_info.backup_id}")
-            typer.echo(f"  Location: {backup_info.location}")
-            typer.echo(f"  Size: {backup_info.size_bytes / (1024 * 1024):.2f} MB")
-            typer.echo(f"  Time: {backup_info.timestamp.isoformat()}")
-        except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
+        except Exception as e:  # noqa: BLE001 - boundary handler catches backend errors to surface CLI message
             typer.echo(f"✗ Backup failed: {e}", err=True)
             raise typer.Exit(code=1) from None
+
+        typer.echo(f"✓ Backup created: {backup_info.backup_id}")
+        typer.echo(f"  Location: {backup_info.location}")
+        typer.echo(f"  Size: {backup_info.size_bytes / (1024 * 1024):.2f} MB")
+        typer.echo(f"  Time: {backup_info.timestamp.isoformat()}")
 
     asyncio.run(_create())
 
@@ -66,14 +67,16 @@ def _do_backup_restore(backup_id: str) -> None:
 
         try:
             success = await backup_manager.restore_backup(backup_id)
-            if success:
-                typer.echo(f"✓ Restored backup: {backup_id}")
-            else:
-                typer.echo(f"✗ Restore failed: {backup_id}", err=True)
-                raise typer.Exit(code=1)
-        except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
+        except Exception as e:  # noqa: BLE001 - boundary handler catches backend errors to surface CLI message
             typer.echo(f"✗ Restore error: {e}", err=True)
             raise typer.Exit(code=1) from None
+
+        if success:
+            typer.echo(f"✓ Restored backup: {backup_id}")
+            return
+
+        typer.echo(f"✗ Restore failed: {backup_id}", err=True)
+        raise typer.Exit(code=1)
 
     asyncio.run(_restore())
 

@@ -368,5 +368,3 @@ class TestSettlePersistence:
                 assert loaded is not None
                 assert loaded.run_ref == "run-3"
                 assert loaded.bindings[0].path == "src/a.py"
-
-

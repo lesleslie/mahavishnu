@@ -130,17 +130,24 @@ class AgnoMemoryConfig(BaseModel):
 
     model_config = {"extra": "forbid"}
 
-    @field_validator("connection_string")
-    @classmethod
-    def validate_connection_string(cls, v: str | None, info) -> str | None:
-        """Validate PostgreSQL connection string when using postgres backend."""
-        backend = info.data.get("backend")
-        if backend == MemoryBackend.POSTGRES and not v:
+    @model_validator(mode="after")
+    def validate_postgres_backend(self) -> AgnoMemoryConfig:
+        """Cross-field guard: postgres backend requires a connection string.
+
+        Implemented as ``@model_validator(mode="after")`` rather than
+        ``@field_validator("connection_string")`` because pydantic v2 does
+        NOT run per-field validators when the field is omitted from input —
+        which means a postgres backend configured without an explicit
+        ``connection_string`` would silently pass validation. The model-level
+        validator runs after all fields are populated and catches the
+        omission.
+        """
+        if self.backend == MemoryBackend.POSTGRES and not self.connection_string:
             raise ValueError(
                 "connection_string must be set via MAHAVISHNU_AGNO__MEMORY__CONNECTION_STRING "
                 "when using postgres backend"
             )
-        return v
+        return self
 
 
 class AgnoToolsConfig(BaseModel):

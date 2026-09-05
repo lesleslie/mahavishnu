@@ -62,8 +62,12 @@ async def start_websocket_server(
     Returns:
         MahavishnuWebSocketServer instance if enabled, None otherwise
     """
-    # Check if WebSocket is enabled in settings
-    websocket_enabled = getattr(settings, "websocket_enabled", True)
+    # Check if WebSocket is enabled in settings.
+    # Default to OFF when the setting is missing — fail-closed posture is
+    # safer for a system service (an unexpected WS server is more surprising
+    # than a missing one). See
+    # ``docs/followups/2026-09-05-websocket-integration-settings-default-broadcaster-positional.md``.
+    websocket_enabled = getattr(settings, "websocket_enabled", False)
 
     if not websocket_enabled:
         logger.info("WebSocket server disabled in settings")
@@ -300,7 +304,7 @@ class WebSocketBroadcaster:
         >>> await broadcaster.workflow_stage_completed("wf_123", "stage1", {})
     """
 
-    def __init__(self, server: MahavishnuWebSocketServer | None):
+    def __init__(self, server: MahavishnuWebSocketServer | None = None):
         """Initialize broadcaster.
 
         Args:

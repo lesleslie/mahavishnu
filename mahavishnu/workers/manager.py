@@ -220,6 +220,52 @@ class WorkerManager:
                 details={"worker_type": worker_type, "missing_env": missing},
             )
 
+    def _validate_required_tool(self, worker_type: str) -> None:
+        """Ensure ``entry.requires_tool`` is on PATH for this worker_type.
+
+        Mirrors :meth:`_validate_required_env`. Looks up the worker via the
+        capability-driven registry and raises :class:`MahavishnuError` with
+        ``VALIDATION_ERROR`` when the declared tool is not on ``PATH``. This
+        gives callers (and the spawn flow) a clear, named error instead of
+        letting the underlying ``Command failed`` / ``AttributeError`` bubble
+        up at runtime.
+
+        Silently returns when:
+        * the worker is not in the new registry (legacy-only workers have
+          their own checks), or
+        * the entry does not declare a ``requires_tool``.
+
+        Args:
+            worker_type: Worker-type identifier.
+        """
+        import shutil
+
+        from ..core.config import MahavishnuSettings
+        from ..core.errors import ErrorCode, MahavishnuError
+
+        registry_settings = self.settings if isinstance(self.settings, MahavishnuSettings) else None
+
+        try:
+            entry = get_worker_entry(worker_type, settings=registry_settings)
+        except MahavishnuError:
+            # Legacy-only worker (container, application, gateway, etc.).
+            # Its constructor will perform any required-tool checks.
+            return
+
+        required_tool = entry.requires_tool
+        if not required_tool:
+            return
+
+        if shutil.which(required_tool) is None:
+            raise MahavishnuError(
+                f"Worker {worker_type!r} requires tool {required_tool!r} which is not on PATH",
+                ErrorCode.VALIDATION_ERROR,
+                details={
+                    "worker_type": worker_type,
+                    "missing_tool": required_tool,
+                },
+            )
+
     async def submit_workers(
         self,
         worker_type: str,
@@ -325,6 +371,11 @@ class WorkerManager:
         # WORKER_REGISTRY (containers, applications, gateways); their env
         # checks belong to their dedicated constructors below.
         self._validate_required_env(worker_type)
+
+        # Validate required_tool against the new capability-driven registry.
+        # Mirrors _validate_required_env: surfaces a clear "missing tool"
+        # error before any terminal/shell machinery runs.
+        self._validate_required_tool(worker_type)
 
         # Create worker based on category
         if config.category == WorkerCategory.CONTAINER:

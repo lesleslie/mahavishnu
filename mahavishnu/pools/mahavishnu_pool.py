@@ -87,9 +87,39 @@ class MahavishnuPool(BasePool):
             pool_id: Unique pool identifier
 
         Raises:
-            RuntimeError: If terminal_manager is not available
+            RuntimeError: If terminal_manager is not available, or if the
+                worker_type's ``requires_tool`` is missing from ``PATH``.
+                The tool check runs first so callers see a clear, named
+                ``requires_tool`` error before the generic terminal_manager
+                unavailability error.
         """
         self._status = PoolStatus.INITIALIZING
+
+        # Reject early with a clear message when the worker_type's declared
+        # ``requires_tool`` is missing from PATH. Without this check, the
+        # underlying shell machinery raises an opaque error (e.g.
+        # ``Command failed`` / ``AttributeError: 'NoneType' object has no
+        # attribute 'X'``) far away from the actual misconfiguration.
+        worker_type = getattr(self.config, "worker_type", None)
+        if worker_type:
+            import shutil
+
+            from ..core.errors import ErrorCode, MahavishnuError
+            from ..workers.registry import get_worker_entry
+
+            try:
+                entry = get_worker_entry(worker_type)
+            except MahavishnuError as exc:
+                if exc.error_code is not ErrorCode.RESOURCE_NOT_FOUND:
+                    raise
+            else:
+                required_tool = entry.requires_tool
+                if required_tool and shutil.which(required_tool) is None:
+                    self._status = PoolStatus.FAILED
+                    raise RuntimeError(
+                        f"Worker {worker_type!r} requires tool "
+                        f"{required_tool!r} which is not on PATH"
+                    )
 
         # Verify terminal_manager is available before spawning workers
         if self.terminal_manager is None:

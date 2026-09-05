@@ -238,6 +238,7 @@ WORKER_REGISTRY: dict[str, WorkerConfig] = {
         description="Basic bash shell for general command execution",
         completion_markers=["$"],  # Prompt indicates ready
         stream_format="text",
+        requires_tool="bash",
         default_timeout=60,
         required_env=[],
         auth_kind=AuthKind.NONE,

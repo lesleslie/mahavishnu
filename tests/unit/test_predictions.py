@@ -13,6 +13,7 @@ from datetime import datetime, timedelta
 
 import pytest
 
+from mahavishnu.core.datetime_utils import now_utc
 from mahavishnu.core.predictions import (
     BlockerPrediction,
     BlockerPredictor,
@@ -290,7 +291,7 @@ class TestDurationEstimator:
     def historical_tasks(self) -> list[dict]:
         """Create sample historical tasks."""
         tasks = []
-        now = datetime.utcnow()
+        now = now_utc()
 
         for i in range(20):
             created = now - timedelta(days=10 - i, hours=4)

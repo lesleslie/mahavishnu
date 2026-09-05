@@ -7,7 +7,7 @@ packages = ["mahavishnu"]
 
 [project]
 name = "mahavishnu"
-version = "0.20.3"
+version = "0.20.4"
 description = "Global orchestrator package for development workflows"
 authors = [
     {name = "Les Leslie", email = "les@wedgwoodwebworks.com"},
@@ -313,7 +313,6 @@ force-sort-within-sections = true
 # they target are not yet implemented. Their bodies reference
 # undefined symbols; ruff lints them anyway and produces F821 noise.
 "tests/unit/test_core/test_validators_comprehensive.py" = ["ALL"]
-"tests/unit/test_session_buddy.py" = ["ALL"]
 # conftest.py uses ``try/except ImportError`` to re-export fixture
 # symbols from sibling modules for global pytest availability. The
 # imports appear unused to ruff but they're consumed via

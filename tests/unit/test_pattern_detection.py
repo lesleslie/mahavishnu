@@ -14,6 +14,7 @@ from datetime import datetime, timedelta
 
 import pytest
 
+from mahavishnu.core.datetime_utils import now_utc
 from mahavishnu.core.pattern_detection import (
     PatternDetectionConfig,
     PatternDetector,
@@ -68,7 +69,7 @@ class TestPatternDetector:
     @pytest.fixture
     def sample_tasks(self) -> list[dict]:
         """Create sample tasks for testing."""
-        base_time = datetime.utcnow()
+        base_time = now_utc()
         tasks = []
 
         for i in range(10):
@@ -347,8 +348,8 @@ class TestConvenienceFunction:
             {
                 "id": "1",
                 "status": "completed",
-                "created_at": (datetime.utcnow() - timedelta(days=1)).isoformat(),
-                "completed_at": datetime.utcnow().isoformat(),
+                "created_at": (now_utc() - timedelta(days=1)).isoformat(),
+                "completed_at": now_utc().isoformat(),
                 "repository": "test",
                 "status_history": [
                     {"status": "pending"},

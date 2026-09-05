@@ -174,6 +174,7 @@ Each omission has a justification (optional import or platform-restricted).
 **Change 2: ratchet reset with new achievable baseline (90%)**
 
 Update `.coverage-ratchet.json`:
+
 - `baseline` and `current_minimum`: **90.0**
 - New `history` entry: `commit: "audit-reset"`, `reason: "Reset baseline after excluding optional-dep adapters; see docs/audits/2026-09-05-coverage-ratchet-memo.md"`
 - Keep `target: 100.0`, `next_milestone: 95`
@@ -184,12 +185,13 @@ Update `.coverage-ratchet.json`:
 **Change 3: audit memo at `docs/audits/2026-09-05-coverage-ratchet-memo.md`**
 
 New file documenting:
+
 1. Why the previous 98.53% baseline was unachievable (49 modules absent because of optional deps)
-2. The full omit list with per-entry justification
-3. Why 90% is the right new floor
-4. Concrete path to 95% (which modules need new tests, estimated effort)
-5. Path to 100% (would require either mocking all optional deps or removing the adapter modules entirely — explicit tradeoff)
-6. Verification: re-run script (`scripts/verify_coverage_baseline.py`)
+1. The full omit list with per-entry justification
+1. Why 90% is the right new floor
+1. Concrete path to 95% (which modules need new tests, estimated effort)
+1. Path to 100% (would require either mocking all optional deps or removing the adapter modules entirely — explicit tradeoff)
+1. Verification: re-run script (`scripts/verify_coverage_baseline.py`)
 
 ### Files to touch
 
@@ -235,7 +237,7 @@ CLAUDE.md (24KB, 7 sections) has **6 categories of stale claims** that must be f
 | Category | Current claim | Fix to | Evidence |
 |---|---|---|---|
 | 1. Version header | "v0.3.6 - Oneiric-Native (Production Ready)" (line 11) | "v0.24.4 - Oneiric-Native (Production Ready)" | `pyproject.toml` post version bump |
-| 2. Coverage header | "Comprehensive test suite with 90%+ coverage" (line 21) | "Comprehensive test suite with **90% line, 80% branch** coverage (post optional-dep stub exclusion; see [coverage memo](docs/audits/2026-09-05-coverage-ratchet-memo.md))" | New ratchet floor + memo cross-ref |
+| 2. Coverage header | "Comprehensive test suite with 90%+ coverage" (line 21) | "Comprehensive test suite with **90% line, 80% branch** coverage (post optional-dep stub exclusion; see coverage memo at `docs/audits/2026-09-05-coverage-ratchet-memo.md`)" | New ratchet floor + memo cross-ref |
 | 3. Test count | "615 total tests, 99%+ coverage" (lines 120, 460-461) | Run `.venv/bin/pytest --collect-only -q \| tail -1` to get actual count, write into CLAUDE.md | `pytest` output at implementation time |
 | 4. Test coverage requirement | "Must maintain 90%+ coverage (enforced by CI)" (line 502) + "Never reduce test coverage - the ratchet system only allows improvements" (line 698) | "Must maintain ≥90% line coverage (enforced by CI ratchet at `.coverage-ratchet.json`). Exceptions require an audit memo in `docs/audits/`" | New ratchet mechanism with memo escape hatch |
 | 5. Package Structure section | Lists `mcp_common/adapters/http/client.py` and `mcp_common/security/api_keys.py` (no longer exist) (line 197+) | Run `find mcp_common -maxdepth 2 -type d -o -name "*.py" \| sort` to regenerate from filesystem | `find` output at implementation time |
@@ -367,7 +369,7 @@ Parser strategy: **accept both formats** for backward compatibility (prose "Add 
 | CLAUDE.md coverage doesn't match ratchet | Fixtures/wrong_coverage_claude.md | passed=False, error="coverage mismatch" |
 | CLAUDE.md test count doesn't match pytest output | Fixtures/wrong_count_claude.md | passed=False, error="test count mismatch" |
 | CLAUDE.md references non-existent path | Fixtures/missing_path_claude.md | passed=False, error="path not found" |
-| Empty changelog / claude.md (edge case) | Fixtures/empty_*.md | passed=True (no claims to verify) |
+| Empty changelog / claude.md (edge case) | Fixtures/empty\_\*.md | passed=True (no claims to verify) |
 | Malformed CHANGELOG (missing `###` headers) | Fixtures/malformed_changelog.md | passed=True with warnings (graceful degradation) |
 
 ### Output format
@@ -392,6 +394,7 @@ Exit code: 0 on PASS, 1 on FAIL.
 ### Self-enforcement value
 
 Once this check runs on every `crackerjack --all`:
+
 - If anyone adds a CHANGELOG `Added: X` claim without writing the code → **build fails**
 - If anyone removes a symbol that's still documented → **build fails**
 - If CLAUDE.md drifts from reality → **build fails**
@@ -452,6 +455,7 @@ git -C /Users/les/Projects/mcp-common checkout main -- mcp_common/cli/factory.py
 ### Inter-commit invariants
 
 Between every commit, the tree must be in a state where:
+
 - `pytest tests/cli/` passes (no regression from Bug #1)
 - `pytest --cov-fail-under=<current floor>` passes
 - `crackerjack --all` (after Bug #4) passes
@@ -482,8 +486,8 @@ Bug #4: `feat(crackerjack): add release-audit check for CHANGELOG/CLAUDE.md cons
 After all four commits land on local `main`:
 
 1. User runs `crackerjack --all` in mcp-common — new release-audit check runs as part of the standard suite
-2. User runs `crackerjack -p patch` — per project memory, this handles version bump (0.24.3 → 0.24.4), commit, tag, push, and PyPI publish when hooks pass
-3. User also bumps crackerjack's version if the new check merits its own minor (`feat:` commit → `crackerjack -p minor`)
+1. User runs `crackerjack -p patch` — per project memory, this handles version bump (0.24.3 → 0.24.4), commit, tag, push, and PyPI publish when hooks pass
+1. User also bumps crackerjack's version if the new check merits its own minor (`feat:` commit → `crackerjack -p minor`)
 
 The implementation work does **NOT** touch version numbers, does **NOT** push, does **NOT** publish. Those are manual per established pattern.
 
@@ -510,6 +514,7 @@ The implementation work does **NOT** touch version numbers, does **NOT** push, d
 ## Done Criteria
 
 Phase 1 is complete when:
+
 - [ ] All four fixes merged to local main in mcp-common + crackerjack
 - [ ] `.venv/bin/pytest tests/ -q` passes in mcp-common with ≥90% coverage
 - [ ] `.venv/bin/python -m crackerjack.checks.release_audit` against mcp-common returns PASSED: True
@@ -526,10 +531,11 @@ Phase 1 is complete when:
 ## Cross-repo Patterns Identified
 
 These appeared in both repos and may warrant propagation in future phases:
+
 1. CLAUDE.md / docs claim higher coverage than reality (both repos)
-2. Ratchet baseline is aspirational, not enforced (both repos)
-3. CLI base class uses `NotImplementedError` without `@abstractmethod` (oneiric + mcp-common profiles)
-4. Public API silently removed inside "chore: bump version" commit (mcp-common 0.23.0 and 0.24.0)
-5. GitHub issue tracker disabled (both repos)
+1. Ratchet baseline is aspirational, not enforced (both repos)
+1. CLI base class uses `NotImplementedError` without `@abstractmethod` (oneiric + mcp-common profiles)
+1. Public API silently removed inside "chore: bump version" commit (mcp-common 0.23.0 and 0.24.0)
+1. GitHub issue tracker disabled (both repos)
 
 The new release-audit check (Bug #4) addresses pattern #4 directly; patterns #1, #2, #5 are out of scope for Phase 1.
