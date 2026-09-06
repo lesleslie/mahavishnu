@@ -97,7 +97,7 @@ def _resolve_crow_mcp_client(config: Any) -> Any:
     ``terminal.crow_http_port`` (or the ``MAHAVISHNU_CROW_HTTP_HOST`` /
     ``MAHAVISHNU_CROW_HTTP_PORT`` env overrides).
 
-    Symmetric across all three ``TerminalManager.create(...)`` call sites
+    Symmetric across both ``TerminalManager.create(...)`` call sites
     in this module. See ``docs/followups/2026-06-29-crow-mcp-client-wiring.md``.
     """
     terminal_config = getattr(config, "terminal", None)
