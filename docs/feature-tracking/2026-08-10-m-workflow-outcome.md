@@ -1,36 +1,42 @@
----
+______________________________________________________________________
+
 name: m-workflow-outcome
-status: built
+status: wired
 date: 2026-08-10
-last_reviewed: 2026-08-10
+last_reviewed: 2026-09-06
 state_history:
-  - "2026-08-10: wired (initial v1 ship — Task 4)"
-  - "2026-08-10: built (multi-agent review surfaced missing feature flag + producer/consumer getattr gates)"
-owner: mahavishnu core
-role: canonical
----
+
+- "2026-08-10: wired (initial v1 ship — Task 4)"
+- "2026-08-10: built (multi-agent review surfaced missing feature flag + producer/consumer getattr gates)"
+- "2026-09-06: wired (verified all 3 critical gaps closed; tracker was stale)"
+  owner: mahavishnu core
+  role: canonical
+
+______________________________________________________________________
 
 # Feature: workflow-outcome pipeline (validate-on-write + validate-on-read)
 
 **Owner:** mahavishnu core
 **Created:** 2026-08-10
-**Last updated:** 2026-08-10
+**Last updated:** 2026-09-06
 **Repo(s):** /Users/les/Projects/mahavishnu
 **Plan:** `docs/superpowers/plans/2026-08-10-m-workflow-outcome.md`
 
 ## State — pick one
 
 - [x] **built** (code merged, no callers wired)
-- [ ] **wired** (entry-point exists; integration contract executed end-to-end)
+- [x] **wired** (entry-point exists; integration contract executed end-to-end)
 - [ ] **adopted** (in active use by ≥1 user/workflow/agent)
 
-> **State correction (2026-08-10):** flipped from `wired` to `built` per multi-agent review. Three Critical findings prevent the `wired` claim from holding:
+> **State correction (2026-09-06):** flipped from `built` back to `wired`. All three Critical gaps that prompted the original `built` re-flip have since closed in production code:
 >
-> 1. **`WORKFLOW_OUTCOME_V1_ENABLED` feature flag** — absent at `outcome_writer.py`. Plan's own global-constraint §24 mandated the flag (default `True`; rollback is "disable the flag, writer becomes no-op"). M-APPROVAL-LOG and M-WEBHOOK-DURABLE both ship their flag; this plan was the outlier.
-> 2. **`getattr(dhara, "put", None)` runtime gate in producer body** — absent at `outcome_writer.py:42`. The import-time hasattr stamp (`outcome_writer.py:20-21`) sets `dhara.put = None` if unbound, but the producer body calls `dhara.put(...)` directly; a substrate-unbound production deployment would raise `TypeError: 'NoneType' object is not callable` on every workflow completion rather than skip-and-warn.
-> 3. **`getattr(dhara, "get", None)` runtime gate in consumer body** — absent at `workflow_tools.py:42`. Same risk; a substrate-unbound MCP caller would 500.
+> 1. **`WORKFLOW_OUTCOME_V1_ENABLED` feature flag** — present at `mahavishnu/core/workflow/outcome_writer.py:57` (`_workflow_outcome_v1_enabled()` reads the env var with default 'true'; mirrors `_approval_log_v1_enabled`).
+> 1. **`getattr(dhara, "put", None)` runtime gate in producer body** — present at `mahavishnu/core/workflow/outcome_writer.py:78` (`put = dhara_calltime("put")` from the `_dhara_substrate_compat` helper; `if put is not None:` gates the actual call at line 80; logs `workflow_outcome_persistence_skipped` with `reason='dhara.put_unbound'` on the failure path).
+> 1. **`getattr(dhara, "get", None)` runtime gate in consumer body** — present at `mahavishnu/mcp/tools/workflow_tools.py:52` (`get_fn = getattr(dhara, "get", None)`; `if get_fn is None:` returns `None` and logs `workflow_outcome_read_skipped` with `reason='dhara.get_unbound'`).
 >
-> Once all three land (target: v1.1 hardening cycle), flip back to `wired`. Original ship evidence preserved below for audit.
+> The 2026-08-10 multi-agent-review gaps closed in subsequent commits (between 2026-08-10 and 2026-09-06) without a corresponding tracker update; the tracker was stale. Verified 2026-09-06 by re-reading the current source files.
+>
+> `wired` (now): production gate at `finalize_workflow_execution()` calls `record_workflow_outcome()` when `_workflow_outcome_v1_enabled()`; the consumer side (`workflow_get_outcome_tool`) reads back via `dhara.get` with the runtime gate; both gaps closed. Original ship evidence preserved below for audit.
 
 `wired` (original, pre-flip): reached when Task 3 production-gated `record_workflow_outcome()` inside `finalize_workflow_execution()` (`mahavishnu/core/workflow_execution.py:331`) and registered `workflow_get_outcome_tool` via FastMCP (`mahavishnu/mcp/bootstrap.py`). Task 4 round-trip test (5 passing tests) proves the end-to-end contract between producer and consumer.
 
@@ -54,11 +60,11 @@ yes — Task 4 round-trip test locks the validate-on-write + validate-on-read co
 ## Trigger path
 
 1. Workflow completes (success, failure, or cancellation) inside `finalize_workflow_execution()` at `mahavishnu/core/workflow_execution.py:331`.
-2. Boundary call to `record_workflow_outcome(workflow_id, status, started_at, finished_at, metadata=None)` constructs a `WorkflowOutcome` msgspec Struct, validates via `dhara.schema.validate("workflow_outcome", payload)`, and persists via `dhara.put(f"workflow-results/{workflow_id}/", validated)`.
-3. Status mapping at the boundary: `"completed"` → `"succeeded"`, `"partial"` → `"cancelled"` (see `workflow_execution.py:380-388`).
-4. MCP consumer side: any registered FastMCP caller invokes `mcp__mahavishnu__workflow_get_outcome(workflow_id)`.
-5. `validate_workflow_id(workflow_id)` from `mahavishnu/mcp/tools/_workflow_id_guard.py` gates against `^[A-Za-z0-9._-]{1,128}$` before touching Dhara; on mismatch returns `{"workflow_id": workflow_id, "status": "invalid_workflow_id"}` sentinel.
-6. `dhara.get(f"workflow-results/{workflow_id}/")` reads back the persisted dict; `None` propagates as `None` (no record → no validation); otherwise `from_dict("workflow_outcome", payload)` returns a typed `WorkflowOutcome`.
+1. Boundary call to `record_workflow_outcome(workflow_id, status, started_at, finished_at, metadata=None)` constructs a `WorkflowOutcome` msgspec Struct, validates via `dhara.schema.validate("workflow_outcome", payload)`, and persists via `dhara.put(f"workflow-results/{workflow_id}/", validated)`.
+1. Status mapping at the boundary: `"completed"` → `"succeeded"`, `"partial"` → `"cancelled"` (see `workflow_execution.py:380-388`).
+1. MCP consumer side: any registered FastMCP caller invokes `mcp__mahavishnu__workflow_get_outcome(workflow_id)`.
+1. `validate_workflow_id(workflow_id)` from `mahavishnu/mcp/tools/_workflow_id_guard.py` gates against `^[A-Za-z0-9._-]{1,128}$` before touching Dhara; on mismatch returns `{"workflow_id": workflow_id, "status": "invalid_workflow_id"}` sentinel.
+1. `dhara.get(f"workflow-results/{workflow_id}/")` reads back the persisted dict; `None` propagates as `None` (no record → no validation); otherwise `from_dict("workflow_outcome", payload)` returns a typed `WorkflowOutcome`.
 
 ## Integration point
 
@@ -78,10 +84,10 @@ yes — Task 4 round-trip test locks the validate-on-write + validate-on-read co
 Tests cover:
 
 1. `test_round_trip_succeeded_outcome_round_trips` — succeeded status, custom metadata, struct equality on all 5 fields.
-2. `test_round_trip_failed_outcome_round_trips` — failed status survives the boundary (no metadata provided).
-3. `test_round_trip_cancelled_outcome_round_trips` — cancelled status survives the boundary.
-4. `test_round_trip_default_metadata_round_trips` — default `metadata={}` is preserved through both validate calls.
-5. `test_round_trip_consumer_returns_none_when_writer_missing` — consumer pre-condition (no record) returns `None`, independent of producer.
+1. `test_round_trip_failed_outcome_round_trips` — failed status survives the boundary (no metadata provided).
+1. `test_round_trip_cancelled_outcome_round_trips` — cancelled status survives the boundary.
+1. `test_round_trip_default_metadata_round_trips` — default `metadata={}` is preserved through both validate calls.
+1. `test_round_trip_consumer_returns_none_when_writer_missing` — consumer pre-condition (no record) returns `None`, independent of producer.
 
 `tests/unit/mcp/tools/test_workflow_tools.py` adds 7 tests (5 from Task 2/3 + 2 RED→GREEN path-traversal tests from the Task 3 fix round). Combined with `tests/unit/workflow/test_outcome_writer.py` (2 tests) and `tests/unit/workflow/test_outcome_round_trip.py` (5 tests), the validate-on-write + validate-on-read contract is exercised by 14 tests on the producer/consumer pair.
 
@@ -102,11 +108,11 @@ None blocking. Three security findings from Task 3 review remain as `wired`-stat
 Owner: mahavishnu core. Target: v1.1 hardening cycle.
 
 1. **HIGH `missing-authorization`** — Add RBAC `user_id` + `Permission.VIEW_WORKFLOW_STATUS` check on `workflow_get_outcome_tool`. Currently any MCP caller can read any workflow's outcome.
-2. **MEDIUM `under-validated-sink-arg`** — Tighten `WORKFLOW_ID_PATTERN` from `^[A-Za-z0-9._-]{1,128}$` to producer shape `^wf_[0-9a-f]{8}_.+$` (per `workflow_execution.py:39`). Stops traversal but doesn't currently narrow to the producer's actual key format.
-3. **MEDIUM `sensitive-to-observability`** — `str(outcome_err)` in `workflow_execution.py:407-415` may leak sensitive data; log `type(outcome_err).__name__` only.
-4. **Minor** — Remove back-compat aliases (`_WORKFLOW_ID_PATTERN`, `_validate_workflow_id`) from `_workflow_id_guard.py:32-33` after one release cycle.
-5. **Minor** — Add docstring note that `started_at` is derived from `finished_at - timedelta(seconds=execution_time)` (approximate, not observed).
-6. **Minor** — Promote the C901 noqa to a per-file-ignore in `pyproject.toml`.
+1. **MEDIUM `under-validated-sink-arg`** — Tighten `WORKFLOW_ID_PATTERN` from `^[A-Za-z0-9._-]{1,128}$` to producer shape `^wf_[0-9a-f]{8}_.+$` (per `workflow_execution.py:39`). Stops traversal but doesn't currently narrow to the producer's actual key format.
+1. **MEDIUM `sensitive-to-observability`** — `str(outcome_err)` in `workflow_execution.py:407-415` may leak sensitive data; log `type(outcome_err).__name__` only.
+1. **Minor** — Remove back-compat aliases (`_WORKFLOW_ID_PATTERN`, `_validate_workflow_id`) from `_workflow_id_guard.py:32-33` after one release cycle.
+1. **Minor** — Add docstring note that `started_at` is derived from `finished_at - timedelta(seconds=execution_time)` (approximate, not observed).
+1. **Minor** — Promote the C901 noqa to a per-file-ignore in `pyproject.toml`.
 
 ## Related
 
