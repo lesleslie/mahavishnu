@@ -26,13 +26,13 @@ or higher.
 
 | Repo | Path | Current `requires-python` | Notes |
 |---|---|---|---|
-| mcp-common | /Users/les/Projects/mcp-common/ | >=3.13 | Leaf dep; Phase 0.1 |
+| mcp-common | /Users/les/Projects/mcp-common/ | >=3.13 | Leaf dep; Phase 0.1. **FastMCP ≥4.0.3** (`>=3.4.0,<5`) as of 2026-09-06. |
 | oneiric | /Users/les/Projects/oneiric/ | >=3.13 | Phase 0.2; needed by Phase A |
-| dhara | /Users/les/Projects/dhara/ | >=3.13 | Phase 0.3 |
-| session-buddy | /Users/les/Projects/session-buddy/ | >=3.13 | Phase 0.4 |
-| akosha | /Users/les/Projects/akosha/ | >=3.13 | Phase 0.5 |
-| crackerjack | /Users/les/Projects/crackerjack/ | >=3.13 | Phase 0.6 |
-| mahavishnu | /Users/les/Projects/mahavishnu/ | >=3.13, \<3.15 | Phase 0.N (last); needed for Phase D |
+| dhara | /Users/les/Projects/dhara/ | >=3.13 | Phase 0.3. **FastMCP ≥4.0.3** (`>=3.4.0,<5`) as of 2026-09-06. |
+| session-buddy | /Users/les/Projects/session-buddy/ | >=3.13 | Phase 0.4. **FastMCP ≥4.0.3** (`>=3.4.0,<5`) as of 2026-09-06. |
+| akosha | /Users/les/Projects/akosha/ | >=3.13 | Phase 0.5. **FastMCP ≥4.0.3** (`>=3.4.0,<5`) as of 2026-09-06 — required `akosha/mcp/client.py` transport-fix for `streamable_http_client` 2-tuple return. |
+| crackerjack | /Users/les/Projects/crackerjack/ | >=3.13 | Phase 0.6. FastMCP `>=3.4.2` (already open ceiling); already 4.0.3 capable. |
+| mahavishnu | /Users/les/Projects/mahavishnu/ | >=3.13, \<3.15 | Phase 0.N (last); needed for Phase D. **FastMCP ≥4.0.3** (`>=3.4.7,<5`) as of 2026-09-06. |
 
 ### Web / framework libraries
 
@@ -52,8 +52,8 @@ porkbun-dns, spline, synxis-crs, synxis-pms, unifi).
 
 | Repo | Path | Current `requires-python` | Notes |
 |---|---|---|---|
-| css-mcp | /Users/les/Projects/css-mcp/ | >=3.13 | Phase 0.8 |
-| graphics-mcp | /Users/les/Projects/graphics-mcp/ | >=3.13 | Phase 0.8 |
+| css-mcp | /Users/les/Projects/css-mcp/ | >=3.13 | Phase 0.8. **FastMCP ≥4.0.3** (`>=3.4.0,<5`) as of 2026-09-06. |
+| graphics-mcp | /Users/les/Projects/graphics-mcp/ | >=3.13 | Phase 0.8. **FastMCP ≥4.0.3** (`>=3.4.0,<5`) as of 2026-09-06; pulled in `httpcore2`/`httpx2` transitively. |
 | splashstand | /Users/les/Projects/splashstand/ | >=3.13 | Phase 0.8 |
 | porkbun-domain-mcp | /Users/les/Projects/porkbun-domain-mcp/ | >=3.13 | Phase 0.8 |
 | langsmith-mcp | /Users/les/Projects/langsmith-mcp/ | >=3.13 | Phase 0.8 |
