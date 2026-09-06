@@ -2,7 +2,7 @@
 status: active
 role: canonical
 date: 2026-08-31
-last_reviewed: 2026-08-31
+last_reviewed: 2026-09-06
 superseded_by: null
 topic: flowscape-v1-bootstrap
 ---
@@ -87,6 +87,7 @@ The default fallback is "ship something useful earlier." `.app` distribution is 
 9. Structural no-payload guarantee enforced at the wire-format level + runtime redact filter.
 10. Multi-channel distribution (PyPI + uvx + Homebrew + signed `.app`).
 11. Launchd helper for `/dev/bpf*` ACL (no Network Extensions entitlement required).
+12. **Pluggable enrichment hooks** for heuristics and graph snapshots (new in v1 per revision 5). `EnrichmentRegistry` mirrors the existing `CaptureSource` ABC pattern; v1 ships a scapy-mcp-backed `EnrichmentHook` implementation that runs as a client-side MCP call. See §"MCP integration scope" and ADR 0016.
 
 ## 3. Non-Goals (v1)
 
@@ -96,8 +97,8 @@ The default fallback is "ship something useful earlier." `.app` distribution is 
 - Time scrubber / historical replay (v2).
 - Drill-down beyond top-talkers + conversation table (v2).
 - sflow / NetFlow / OTel sources (v2).
-- MCP server activation (gated on legal review ADR + DPIA before enabling).
-- scapy-mcp / unifi-mcp integration (v2+).
+- **MCP server activation** (Flowscape *serving* an MCP surface; gated on legal review ADR 0007 + DPIA before enabling — see §"MCP integration scope" below). Client-side scapy-mcp enrichment is a different posture and is v1 in scope.
+- **unifi-mcp integration** (v2+). scapy-mcp enrichment moved from v2+ to v1; see §"MCP integration scope" below and ADR 0016.
 - TLS SNI extraction (v2).
 - MAC/OUI bundling (v2).
 - Network Extensions entitlement path (maybe v3).
@@ -426,6 +427,7 @@ The spec at `docs/superpowers/specs/2026-08-31-flowscape-design.md` was authored
 - [ ] Write failing test: `derive_snapshot(aggregator) -> GraphSnapshot`.
 - [ ] Implement pure transformation from `FlowAggregator` state to `GraphSnapshot`.
 - [ ] Validate `payload_sha256_prefix` length == 32 before serializing.
+- [ ] **v1 enrichment hook (per-tick batched, NOT per-edge — see ADR 0016 v2 §Architecture):** in `derive_snapshot()`, build the full list of `FlowEdge`s first, then call `EnrichmentRegistry.get_provider(name).enrich_batch(edges)` ONCE per tick (where `name` comes from `EnrichmentSettings.default_provider`). Use `asyncio.wait_for(..., timeout=enrichment.timeout_ms)` with `cancel=True` for the per-tick hard cap. On timeout, drop the entire snapshot via the publisher's existing 50ms backpressure policy (Phase 1 publisher work). Merge returned `EnrichmentMetadata` field-by-field (no `**spread`) into a `FlowEdge.enrichment` sub-message constructed explicitly per L2 I-3.5's `extra="forbid"` Pydantic model. Property test: `payload_sha256_prefix` length invariant still holds post-merge. Per-edge interface preserved as a synchronous shim for unit tests; production call site uses the batched interface. (See `docs/adr/0016-scapy-mcp-integration.md` §"Operational SLOs and Feed Observability" for the 4 mandatory feed-state metrics the registry must emit.)
 - [ ] Commit "feat(graph): derive GraphSnapshot from aggregator".
 
 #### Task 1.5a: CLI `flowscape replay`
@@ -827,6 +829,7 @@ The spec at `docs/superpowers/specs/2026-08-31-flowscape-design.md` was authored
 - [ ] Implement `BeaconingDetector` (jitter 20% slow-window periodicity).
 - [ ] Implement `PortScanDetector` (SYN packets/sec + distinct dst ports; vertical/horizontal distinction).
 - [ ] Wire heuristic alerts to `publisher.py` data plane (single channel).
+- [ ] **v1 enrichment hook:** inject `EnrichmentHook` into both detectors' constructors (`__init__(self, ..., enrichment: EnrichmentHook | None = None)`). Detector calls `self.enrichment.boost_confidence(event)` after threshold detection; if the hook returns a `confidence_boost: float in [0.0, 1.0]`, the alert is escalated/de-escalated accordingly. Default no-op hook leaves v0.x behavior intact.
 - [ ] **Top-N-churn deferred to v1.1** (was in earlier plan; removed per product-manager).
 - [ ] Commit "feat(heuristics): beaconing + port-scan".
 
@@ -1048,24 +1051,24 @@ The spec at `docs/superpowers/specs/2026-08-31-flowscape-design.md` was authored
 
 ### Phase 7b: README + MCP deferred decision (0.5 week, parallel with 6b)
 
-**Goal:** README covers v1 walkthrough; MCP activation explicitly deferred.
+**Goal:** README covers v1 walkthrough; **server-mode** MCP activation explicitly deferred; **client-mode** scapy-mcp enrichment is v1 in scope (see §"MCP integration scope" and ADR 0016).
 
 #### Task 7b.1: README
 **Files:** Modify: `README.md`
 
 **Steps:**
 - [ ] Author README with consent text at top (per spec §"Disclaimer docs").
-- [ ] Cover: install, first-launch consent, `flowscape live`, `flowscape replay`, `flowscape doctor`, settings, FAQ.
+- [ ] Cover: install, first-launch consent, `flowscape live`, `flowscape replay`, `flowscape doctor`, settings, FAQ, **enabling scapy-mcp enrichment via `flowscape config` (off by default; opt-in per ADR 0016)**.
 - [ ] Ships at end of Phase 5b (handoff to other developers).
 - [ ] Commit "feat(docs): README".
 
-#### Task 7b.2: MCP deferred decision note
+#### Task 7b.2: MCP deferred decision note (server-mode only)
 **Files:**
 - Create: `.claude/decisions/mcp-activation-deferred.md`
 
 **Steps:**
-- [ ] Write 4-line "deferred decision" note: MCP activation requires ADR + DPIA + CONTRIBUTING update; `mcp.enabled` stays `false`; no UI affordance to flip it; revisit when legal review starts.
-- [ ] Commit "feat(docs): MCP activation deferred decision note".
+- [ ] Write 5-line "deferred decision" note: **server-mode** MCP activation (Flowscape *serving* an MCP surface) requires ADR 0007 + DPIA + CONTRIBUTING update; `mcp.enabled` stays `false`; no UI affordance to flip it; revisit when legal review starts. **Client-mode scapy-mcp enrichment is a separate posture** (ADR 0016), unblocked for v1, and shipped behind `enrichment.scapy_mcp_enabled = false` default.
+- [ ] Commit "feat(docs): MCP server-mode activation deferred decision note".
 
 #### Integration Contract — Phase7b
 - **Triggered from:** Phase 5b ships (README) and Phase 6b-PyPI ships (MCP note).
@@ -1073,6 +1076,82 @@ The spec at `docs/superpowers/specs/2026-08-31-flowscape-design.md` was authored
 - **Demonstrable by:** Fresh macOS user can install + launch + capture + configure + understand errors via README.
 - **Rollback signal:** User feedback indicates major doc gap.
 - **Observability added:** None (docs phase).
+
+---
+
+## MCP integration scope (v1 client-mode; server-mode still gated)
+
+> Added in revision 5 (2026-09-06). Moves scapy-mcp from "v2+ future work" to **v1 in scope as a client-mode enrichment provider**. Companion decision: ADR 0016 (`docs/adr/0016-scapy-mcp-integration.md`).
+
+### Posture distinction (why client-mode and server-mode are different)
+
+| Surface | Direction | Regulatory posture | v1 status |
+|---|---|---|---|
+| **Flowscape serving an MCP surface** (`flowscape mcp` exposing tools to a client) | Outbound: client → Flowscape | Treated as a regulated *exposure* event. Requires ADR 0007 + DPIA (Art. 35) + `CONTRIBUTING.md` update before `mcp.enabled = true`. | **v1.x gated** (still off; deferred to Phase 7b.2). |
+| **Flowscape calling scapy-mcp** (enrichment provider) | Outbound: Flowscape → scapy-mcp | Treated as a *dependency*, not an exposure. The legal exposure surface is unchanged from a non-MCP `pip install scapy`; Flowscape never exposes packet data to a third party. ADR 0016 records the posture. | **v1 in scope**, opt-in via `enrichment.scapy_mcp_enabled = false` default. |
+
+The wire-format no-payload guarantee, the consent gate, and the `payload_sha256_prefix` ban are unchanged by scapy-mcp enrichment: the hook only receives `(FlowEdge|HeuristicEvent)` *metadata*, never packet bytes. The scapy-mcp server itself must respect its own safety controls (master kill-switch, L3 CIDR allowlist, L2 allow flag, broadcast opt-in per scapy-mcp plan §"Transmit safety model").
+
+### Architecture
+
+```
+src/flowscape/
+├── enrichment.py            (NEW) — EnrichmentRegistry, EnrichmentHook protocol
+├── enrichment_registry.py   (NEW) — module-level register_provider() mirroring capture_registry.py
+├── graph.py                 (MODIFIED) — call EnrichmentRegistry.default().enrich_edge() per edge
+├── heuristics.py            (MODIFIED) — detectors accept EnrichmentHook via DI
+└── settings.py              (MODIFIED) — EnrichmentSettings nested in FlowscapeSettings
+```
+
+The `EnrichmentHook` protocol mirrors the existing `CaptureSource` ABC pattern (lines 384-396 of this plan; spec A16). Module-level `register_provider(name, hook)` parallels `register_source(name, source)`. Default implementation is a pure-Python no-op so `pip install flowscape` works without scapy-mcp present.
+
+### Tasks added to existing phases (no new phase introduced)
+
+| Phase | Task | Effort | Description |
+|---|---|---|---|
+| **0a** | 0a.X | XS | Add `[project.optional-dependencies] mcp-enrichment = ["scapy-mcp", "mcp"]` to `pyproject.toml`. Extend `FlowscapeSettings` with `EnrichmentSettings(scapy_mcp_enabled: bool = False, scapy_mcp_host: str = "localhost", scapy_mcp_port: int = 3056, default_provider: str = "noop", enrichment: EnrichmentRetrySettings(max_attempts=2, base_delay_ms=10, multiplier=2.0, max_delay_ms=80, timeout_ms=100))`. (ADR 0016 v2: timeout is per-tick batch budget, composes with `oneiric.actions.workflow.WorkflowRetryAction`.) |
+| **0b** | 0b.X | S | Implement `enrichment.py` (`EnrichmentHook` ABC mirroring `CaptureSource`; `EnrichmentRegistry` with `get_provider(name)` — NO `default()` classmethod, name-driven lookup) + `enrichment_registry.py` (module-level `register_provider(name, hook)` mirroring `register_source`). Pure-Python no-op default; FastMCP-based scapy-mcp adapter (gated on `enrichment.scapy_mcp_enabled`). Emit 4 mandatory feed observability metrics: `flowscape.enrichment.{entities_count, last_updated_timestamp, errors_total, cycles_total}` + `flowscape.enrichment.timeout_total`. |
+| **1** | 1.4 (extended) | M | `graph.py:derive_snapshot()` builds the full list of `FlowEdge`s first, then calls `EnrichmentRegistry.get_provider(EnrichmentSettings.default_provider).enrich_batch(edges)` ONCE per tick (per-tick batched, NOT per-edge). Uses `asyncio.wait_for(..., timeout=enrichment.timeout_ms, cancel=True)`; on timeout drops entire snapshot via publisher's 50ms backpressure policy. Merges returned `EnrichmentMetadata` field-by-field (Pydantic `extra="forbid"` per L2 I-3.5) into a `FlowEdge.enrichment` sub-message. |
+| **5** | 5.1 (extended) | S | `BeaconingDetector` and `PortScanDetector` accept `enrichment: EnrichmentHook \| None` via DI; default `None` preserves v0.x behavior. When present, `boost_confidence(event)` adjusts the alert's confidence band. |
+| **7b** | 7b.2 (revised) | XS | Deferred-decision note clarifies server-mode only is gated. ADR 0016 v2 records the posture distinction (pre-1.0 internal-use scope; EU coverage deferred to v3). |
+
+### Settings surface (new `enrichment` block in `settings.yaml`)
+
+```yaml
+mcp:
+  enabled: false                  # v1: server mode (Flowscape serving an MCP surface). Gated on ADR 0007 + DPIA.
+  port: 8700
+enrichment:                       # v1 (ADR 0016 v2): CLIENT-MODE scapy-mcp enrichment. Pre-1.0 internal-use scope; EU coverage deferred to v3.
+  scapy_mcp_enabled: false        # off by default; user opts in via `flowscape config`
+  scapy_mcp_host: localhost
+  scapy_mcp_port: 3056            # aligns with plans/2026-09-06-port-bodai-reconciliation.md
+  default_provider: noop          # name-driven lookup (mirrors CaptureSettings.default_kind per spec A16)
+  enrichment:
+    timeout_ms: 100               # PER-TICK batch budget (NOT per-edge). On timeout drops entire snapshot via publisher backpressure.
+    retry:                        # composes with oneiric.actions.workflow.WorkflowRetryAction
+      max_attempts: 2
+      base_delay_ms: 10
+      multiplier: 2.0
+      max_delay_ms: 80
+```
+
+### Testing strategy
+
+- **Unit tests** for `EnrichmentRegistry`: empty registry returns no-op hook; `register_provider` adds correctly; duplicate name raises.
+- **Property tests**: enrichment never breaks the no-payload guarantee (`payload_sha256_prefix` length invariant still holds).
+- **Integration tests** with a FastMCP in-memory mock scapy-mcp server: assert enrichment scores flow through to `GraphSnapshot` and adjust heuristic confidence bands.
+- **Coverage gates**: new modules (`enrichment.py`, `enrichment_registry.py`) at the same 85% per-module gate as `graph.py` / `heuristics.py`.
+
+### Risk and rollback
+
+| Risk | Likelihood | Mitigation |
+|---|---|---|
+| scapy-mcp unavailable on host (port 3056 closed, package not installed) | high | Default `scapy_mcp_enabled = false`; no-op registry fallback; `flowscape doctor --enrichment` reports provider health. |
+| Hook latency blows past `enrichment_timeout_ms` | medium | Per-call hard cap; timeout returns no-op enrichment; `flowscape.enrichment.timeout_total` counter. |
+| Wire-format regression (enrichment breaks the no-payload guarantee) | low | Property test asserts `payload_sha256_prefix` length == 32 pre/post enrichment; CI lint rejects forbidden field names. |
+| Regulatory posture misread (server-mode and client-mode confused) | medium | ADR 0016 quotes the spec line; the spec's "MCP activation as regulatory event" section is softened to clarify server-mode scope only. |
+
+**Rollback signal:** false-positive rate on heuristic alerts jumps >5% with `scapy_mcp_enabled = true` AND no clear contributing cause — flip default back to `false` in a `flowscape` config patch, no rebuild required.
 
 ---
 
