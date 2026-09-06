@@ -87,3 +87,12 @@ class TestRegistryIntegrity:
         assert legacy_roles <= taxonomy, (
             f"legacy roles missing from taxonomy: {sorted(legacy_roles - taxonomy)}"
         )
+
+    def test_canonical_is_superset_of_legacy(self) -> None:
+        """Anything in the legacy file must also be in canonical, or it is
+        invisible to the runtime — which read canonical only."""
+        stranded = _names(LEGACY_PATH) - _names(ECOSYSTEM_PATH)
+        assert stranded == set(), (
+            f"{len(stranded)} repos are in repos.yaml but not ecosystem.yaml, so "
+            f"the runtime cannot see them: {sorted(stranded)}"
+        )
