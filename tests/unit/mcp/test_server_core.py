@@ -1156,7 +1156,7 @@ class TestMonitoringTools:
     async def test_trigger_test_alert_rejects_bad_severity(
         self, server: FastMCPServer, tool: Callable[[str], Any], mock_app: MagicMock
     ) -> None:
-        """An unparseable severity is rejected before the alert is created."""
+        """An unparsable severity is rejected before the alert is created."""
         mock_app.monitoring_service.alert_manager.trigger_alert = AsyncMock()
 
         fn = await tool("trigger_test_alert")
