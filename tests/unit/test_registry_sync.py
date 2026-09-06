@@ -49,3 +49,17 @@ class TestNewServerRegistration:
     def test_new_server_not_added_to_legacy(self, server_name: str) -> None:
         """repos.yaml is being deprecated; new entries must not be written there."""
         assert server_name not in _names(LEGACY_PATH)
+
+
+@pytest.mark.unit
+class TestRegistryIntegrity:
+    """Structural invariants over the canonical manifest."""
+
+    def test_every_path_exists(self) -> None:
+        """A registered repo whose path is gone will fail routing at runtime."""
+        missing = [
+            (repo["name"], repo["path"])
+            for repo in _repos(ECOSYSTEM_PATH)
+            if not Path(repo["path"]).expanduser().is_dir()
+        ]
+        assert missing == [], f"registered paths do not exist: {missing}"
