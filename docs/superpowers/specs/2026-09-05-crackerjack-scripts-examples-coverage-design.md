@@ -190,7 +190,9 @@ This avoids the "stale singleton across repo switches" gotcha that a module-leve
 | `PIE810` | Fix `*args, **kwargs` unpacking pattern |
 | `TRY004` | Replace `raise Exception(...)` with `raise TypeError(...)` |
 
-**Public API preserved verbatim:** `audit_file(path) -> list[Violation]`, `find_type_checking_runtime_usage(tree) -> list[Violation]`.
+**Public API (current as of v0.79.1):** `_scan_file(path: Path) -> FileResult`, `_scan_parsed_tree(tree: ast.Module, path: Path) -> FileResult`. `FileResult` has `path: Path`, `violations: list[Violation]`, `parse_error: str | None`. `Violation` has `file`, `lineno`, `col_offset`, `name`, `import_lineno`, `context`. Both functions are leading-underscore (module-private) but used as the canonical entry points by tests and the `tc-refs` tool.
+
+**Historical note:** Earlier versions of this audit tool exposed `audit_file(path) -> list[Violation]` and `find_type_checking_runtime_usage(tree) -> list[Violation]` as the public API. Those names are no longer present; the API was refactored to return `FileResult` containers (with embedded `violations` lists) to support cluster-summary reporting (added in commit `54ddc29b` Pattern B variants). The spec 4.5 description above reflects the CURRENT API; consumers should use `_scan_file()` and access `.violations` for the violation list.
 
 **Propagation:** Each of the 7 consumer repos syncs `scripts/audit_type_checking_runtime_refs.py` from crackerjack's canonical source. This is a follow-up task per consumer; this change does NOT gate on consumer-side syncing. Document-only propagation.
 

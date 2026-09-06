@@ -538,8 +538,10 @@ Expected: clean.
 Run:
 ```bash
 cd /Users/les/Projects/crackerjack
-.venv/bin/python -m crackerjack run --select ruff-check,ruff-format
+.venv/bin/python -m crackerjack run --fast
 ```
+
+Note: `--select` does not exist in crackerjack v0.79.1; only `--select-provider` and `--fast` are available. Use `--fast` to run the fast-hook set (includes ruff-check, ruff-format, codespell, tc-refs, etc.).
 
 Expected: Passes. (Or surfaces only the `**/*.bak[0-9]` files, which are now silenced.)
 
@@ -984,8 +986,10 @@ Capture output. Expected reductions:
 Run:
 ```bash
 cd /Users/les/Projects/mahavishnu
-.venv/bin/python -m crackerjack run --select ruff-check,ruff-format,codespell,tc-refs
+.venv/bin/python -m crackerjack run --fast
 ```
+
+Note: `--select` does not exist in crackerjack v0.79.1; use `--fast` to run the full fast-hook set (ruff-check, ruff-format, codespell, tc-refs all included).
 
 Expected: Passes (or surfaces only the per-repo remaining violations that the universal starter pack intentionally does NOT silence — UP034, DTZ005, RUF012, PLR1722, FURB162, etc.).
 

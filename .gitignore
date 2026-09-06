@@ -275,3 +275,10 @@ cron/jobs.json
 .superpowers/sdd/progress.md
 
 .superprofits/
+
+# Test artifacts: coverage JSONs from local pytest runs trip
+# check-added-large-files on the crackerjack fast hook. The historical
+# committed snapshot in docs/archive/test-artifacts/coverage__*.json
+# was an accidental inclusion in a version bump commit; future
+# coverage JSONs should never be tracked.
+docs/archive/test-artifacts/coverage*.json
