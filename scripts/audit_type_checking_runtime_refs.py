@@ -26,6 +26,7 @@ Usage:
     python scripts/audit_type_checking_runtime_refs.py [ROOT...] [--json]
     python scripts/audit_type_checking_runtime_refs.py --root /Users/les/Projects/mahavishnu
 """
+
 from __future__ import annotations
 
 import argparse
@@ -161,9 +162,7 @@ def _collect_type_checking_imports(tree: ast.Module) -> list[ImportedName]:
             for alias in node.names:
                 name = alias.asname or alias.name.split(".")[0]
                 if id(node) in tc_body_ids:
-                    tc_candidates.append(
-                        ImportedName(runtime_name=name, import_lineno=node.lineno)
-                    )
+                    tc_candidates.append(ImportedName(runtime_name=name, import_lineno=node.lineno))
         elif isinstance(node, ast.ImportFrom):
             for alias in node.names:
                 if alias.name == "*":
@@ -181,9 +180,7 @@ def _collect_type_checking_imports(tree: ast.Module) -> list[ImportedName]:
                     continue
                 name = alias.asname or alias.name
                 if id(node) in tc_body_ids:
-                    tc_candidates.append(
-                        ImportedName(runtime_name=name, import_lineno=node.lineno)
-                    )
+                    tc_candidates.append(ImportedName(runtime_name=name, import_lineno=node.lineno))
 
     # Collect runtime-bound names: any name imported outside TC body, OR
     # any name assigned in the else-branch of a TC If (Pattern B variants 2+3).
@@ -353,9 +350,7 @@ def _collect_annotation_node_ids(tree: ast.Module) -> set[int]:
     return annotation_ids
 
 
-def _collect_tc_body_node_ids(
-    tree: ast.Module, parents: dict[int, ast.AST]
-) -> set[int]:
+def _collect_tc_body_node_ids(tree: ast.Module, parents: dict[int, ast.AST]) -> set[int]:
     """Return ``{id(node)}`` for every node living in a TYPE_CHECKING If body.
 
     Walks the tree collecting every node that is inside the BODY of a TYPE_CHECKING
@@ -394,9 +389,7 @@ def _collect_tc_body_node_ids(
     return body_ids
 
 
-def _collect_type_erased_call_arg_ids(
-    tree: ast.Module, parents: dict[int, ast.AST]
-) -> set[int]:
+def _collect_type_erased_call_arg_ids(tree: ast.Module, parents: dict[int, ast.AST]) -> set[int]:
     """Return ``{id(node)}`` for every node that's the type arg of a type-erased call.
 
     Currently handles ``typing.cast(T, x)`` — the first positional arg is
@@ -422,9 +415,7 @@ def _collect_type_erased_call_arg_ids(
     return erased_ids
 
 
-def _collect_binding_node_ids(
-    tree: ast.Module, parents: dict[int, ast.AST]
-) -> set[int]:
+def _collect_binding_node_ids(tree: ast.Module, parents: dict[int, ast.AST]) -> set[int]:
     """Return ``{id(node)}`` for every Name/Attribute that is a binding site.
 
     Binding sites are positions where the name is being assigned to (not
@@ -611,15 +602,10 @@ def render_markdown(results: list[FileResult], root_label: str) -> str:
         lines.append("| Files | Import site | Name | Count |")
         lines.append("| --- | --- | --- | ---: |")
         # Sort by total count descending — biggest cluster first.
-        for key, members in sorted(
-            clusters.items(), key=lambda kv: -len(kv[1])
-        ):
+        for key, members in sorted(clusters.items(), key=lambda kv: -len(kv[1])):
             file_count = len({v.file for v in members})
             import_lineno, name = key
-            lines.append(
-                f"| {file_count} | line {import_lineno} | `{name}` | "
-                f"{len(members)} |"
-            )
+            lines.append(f"| {file_count} | line {import_lineno} | `{name}` | {len(members)} |")
         lines.append("")
 
     # Group violations by file for readability
@@ -636,9 +622,7 @@ def render_markdown(results: list[FileResult], root_label: str) -> str:
         lines.append("| --- | --- | --- | --- |")
         for v in result.violations:
             ctx = v.context.replace("|", "\\|").replace("\n", " ")
-            lines.append(
-                f"| {v.lineno} | `{v.name}` | line {v.import_lineno} | `{ctx}` |"
-            )
+            lines.append(f"| {v.lineno} | `{v.name}` | line {v.import_lineno} | `{ctx}` |")
         lines.append("")
 
     # Parse-error section

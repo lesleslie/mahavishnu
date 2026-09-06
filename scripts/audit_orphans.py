@@ -10,6 +10,7 @@ Usage:
     python scripts/audit_orphans.py --days 14 --root mahavishnu --json
     python scripts/audit_orphans.py --out reports/orphans.md
 """
+
 from __future__ import annotations
 
 import argparse
@@ -40,8 +41,14 @@ SHORT_NAME_MAX = 3
 # leading `@` (the `@` is Python syntax, not part of the AST node's
 # value), so the pattern is anchored on the function-call form
 # (`app.command(...)`) rather than `@app.command(...)`.
+#
+# FastAPI HTTP route handlers (`app.post`, `app.get`, `app.delete`,
+# `app.put`, `app.patch`) are also entry points even though the audit's
+# earlier regex skipped them. Without these, every FastAPI-mounted
+# route handler is reported as an orphan — a false positive that drowns
+# the real signal in noise.
 DECORATOR_REGISTRATION_PATTERN = re.compile(
-    r"^(?P<target>(?:[\w]+\.)*(?:tool|command|register_tool|app\.command|cli\.command))(?:\([^)]*\))?$"
+    r"^(?P<target>(?:[\w]+\.)*(?:tool|command|register_tool|app\.(?:command|post|get|delete|put|patch)|cli\.command|router\.(?:post|get|delete|put|patch)))(?:\([^)]*\))?$"
 )
 
 # Framework decorator *names* that mark a symbol as wired. These are matched
@@ -94,7 +101,7 @@ TEXTUAL_LIFECYCLE_NAMES: frozenset[str] = frozenset({"compose"})
 _TEXTUAL_PREFIX_PATTERNS: tuple[re.Pattern[str], ...] = (
     re.compile(r"^on_mount$"),
     re.compile(r"^on_unmount$"),
-    re.compile(r"^on_[A-Z]\w*$"),       # on_<Event>: on_button_pressed
+    re.compile(r"^on_[A-Z]\w*$"),  # on_<Event>: on_button_pressed
     re.compile(r"^watch_[A-Za-z_]\w*$"),  # watch_<reactive>: watch__status
     re.compile(r"^action_[A-Za-z_]\w*$"),  # action_<verb>: action_switch_tab
 )
@@ -143,7 +150,7 @@ def parse_args() -> argparse.Namespace:
         prog="audit_orphans",
         description=(
             "Find recently-added Python symbols with zero callers "
-            "(\"built but not wired\"). Combines git recency with "
+            '("built but not wired"). Combines git recency with '
             "AST call-graph analysis."
         ),
     )
@@ -229,9 +236,7 @@ def should_skip(path: Path, root: Path, excludes: list[str]) -> bool:
     return _has_excluded_component(rel.parts, excludes)
 
 
-def run_git_log(
-    root: Path, days: int
-) -> tuple[set[Path], dict[Path, datetime]]:
+def run_git_log(root: Path, days: int) -> tuple[set[Path], dict[Path, datetime]]:
     """Collect recently-changed Python files plus their last-modified time.
 
     Uses ``git log --since=<N> days ago`` when available. Falls back to
@@ -256,7 +261,7 @@ def run_git_log(
             capture_output=True,
             text=True,
         )
-    except (subprocess.CalledProcessError, FileNotFoundError):
+    except subprocess.CalledProcessError, FileNotFoundError:
         git_available = False
         result = None  # type: ignore[assignment]
 
@@ -301,7 +306,7 @@ def run_git_log(
                     text=True,
                 )
                 stamp = result.stdout.strip()
-            except (subprocess.CalledProcessError, FileNotFoundError, ValueError):
+            except subprocess.CalledProcessError, FileNotFoundError, ValueError:
                 stamp = None
         if stamp:
             try:
@@ -310,9 +315,7 @@ def run_git_log(
             except ValueError:
                 pass
         try:
-            last_modified[path] = datetime.fromtimestamp(
-                path.stat().st_mtime, tz=UTC
-            )
+            last_modified[path] = datetime.fromtimestamp(path.stat().st_mtime, tz=UTC)
         except OSError:
             pass
 
@@ -323,7 +326,7 @@ def _parse_file(path: Path) -> ast.Module | None:
     """Return the parsed AST for a Python source file, or None on failure."""
     try:
         source = path.read_text(encoding="utf-8")
-    except (OSError, UnicodeDecodeError):
+    except OSError, UnicodeDecodeError:
         return None
     try:
         return ast.parse(source, filename=str(path))
@@ -365,10 +368,7 @@ def extract_symbols(path: Path) -> list[Symbol]:
                 )
                 for child in node.body:
                     if isinstance(child, (ast.FunctionDef, ast.AsyncFunctionDef)):
-                        if (
-                            not child.name.startswith("_")
-                            and len(child.name) > SHORT_NAME_MAX
-                        ):
+                        if not child.name.startswith("_") and len(child.name) > SHORT_NAME_MAX:
                             symbols.append(
                                 Symbol(
                                     name=child.name,
@@ -403,14 +403,11 @@ def find_registrations(path: Path) -> set[str]:
 
     registered: set[str] = set()
     for node in ast.walk(tree):
-        if not isinstance(
-            node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)
-        ):
+        if not isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
             continue
         # Textual lifecycle methods are name-based (no decorator required).
-        if (
-            isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef))
-            and _is_textual_lifecycle(node.name)
+        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)) and _is_textual_lifecycle(
+            node.name
         ):
             registered.add(node.name)
             continue
@@ -491,9 +488,7 @@ def _collect_discriminated_union_members(
         for class_name, class_node in file_classes.items():
             enum_attrs: set[str] = set()
             for child in class_node.body:
-                if isinstance(child, ast.AnnAssign) and isinstance(
-                    child.target, ast.Name
-                ):
+                if isinstance(child, ast.AnnAssign) and isinstance(child.target, ast.Name):
                     ann = child.annotation
                     if isinstance(ann, ast.Name) and ann.id.endswith(
                         ("Type", "Enum", "Status", "Kind", "Mode")
@@ -505,12 +500,8 @@ def _collect_discriminated_union_members(
             # Pattern: Literal[Foo, Bar, Baz]
             if isinstance(node, ast.Subscript):
                 value = node.value
-                is_literal = (
-                    (isinstance(value, ast.Name) and value.id == "Literal")
-                    or (
-                        isinstance(value, ast.Attribute)
-                        and value.attr == "Literal"
-                    )
+                is_literal = (isinstance(value, ast.Name) and value.id == "Literal") or (
+                    isinstance(value, ast.Attribute) and value.attr == "Literal"
                 )
                 if is_literal:
                     members.update(_class_names_from_literal(node))
@@ -585,6 +576,23 @@ def collect_references(
                 refs[node.attr].add(path)
             elif isinstance(node, ast.arg):
                 refs[node.arg].add(path)
+            elif isinstance(node, ast.alias):
+                # ast.alias lives inside ast.ImportFrom nodes and
+                # carries the imported name (``node.name``) plus an
+                # optional rename (``node.asname``). Without this case
+                # the audit cannot see names brought into scope only by
+                # an import statement — most importantly:
+                #   * parenthesized ``from X import (A, B, C)`` (the
+                #     common __init__.py re-export form)
+                #   * aliased ``from X import A as B`` (covered via
+                #     the rename case)
+                # These re-exports are legitimate wiring per the
+                # wire-up-contract (the symbol has a public API surface
+                # even before the first consumer imports it).
+                if node.name:
+                    refs[node.name].add(path)
+                if node.asname:
+                    refs[node.asname].add(path)
     return refs
 
 
@@ -600,9 +608,7 @@ def classify_orphans(
     references = collect_references(root, excludes, include_tests)
     stub_members: set[str] = set()
     if include_stub_check:
-        stub_members = _collect_discriminated_union_members(
-            root, excludes, include_tests
-        )
+        stub_members = _collect_discriminated_union_members(root, excludes, include_tests)
 
     results: list[FileResult] = []
     for path in sorted(recent_files):
@@ -615,9 +621,7 @@ def classify_orphans(
 
         symbols = extract_symbols(path)
         if not symbols:
-            results.append(
-                FileResult(path=path, orphans=[], has_no_public_surface=True)
-            )
+            results.append(FileResult(path=path, orphans=[], has_no_public_surface=True))
             continue
 
         registered = find_registrations(path)
@@ -641,9 +645,7 @@ def classify_orphans(
                     )
                 )
 
-        results.append(
-            FileResult(path=path, orphans=orphans, has_no_public_surface=False)
-        )
+        results.append(FileResult(path=path, orphans=orphans, has_no_public_surface=False))
     return results
 
 

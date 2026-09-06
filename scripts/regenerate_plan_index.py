@@ -48,6 +48,7 @@ Exit codes:
     0 = success (file written or --dry-run)
     2 = bad CLI args or missing dependency
 """
+
 from __future__ import annotations
 
 import argparse
@@ -147,13 +148,13 @@ _FRONTMATTER_RE = re.compile(r"\A---\s*\n(.*?)\n---\s*(?:\n|$)", re.DOTALL)
 class Entry:
     """One row in the registry — a file with parsed frontmatter."""
 
-    rel: str           # repo-relative POSIX path
-    store: str         # e.g. "docs/adr/"
-    date: str          # ISO-8601 (YYYY-MM-DD), or "" if missing
-    status: str        # lifecycle value, or "unknown" if missing
-    role: str          # role value, or "unknown" if missing
-    topic: str         # topic slug, or "—" if missing
-    title: str         # one-line title derived from first H1 / filename
+    rel: str  # repo-relative POSIX path
+    store: str  # e.g. "docs/adr/"
+    date: str  # ISO-8601 (YYYY-MM-DD), or "" if missing
+    status: str  # lifecycle value, or "unknown" if missing
+    role: str  # role value, or "unknown" if missing
+    topic: str  # topic slug, or "—" if missing
+    title: str  # one-line title derived from first H1 / filename
 
 
 # ---------------------------------------------------------------------------
@@ -256,8 +257,7 @@ def discover_files(
         if _is_excluded(rel):
             continue
         if any(
-            ds != store_rel and rel.startswith(ds.rstrip("/") + "/")
-            for ds in skip_deeper_stores
+            ds != store_rel and rel.startswith(ds.rstrip("/") + "/") for ds in skip_deeper_stores
         ):
             continue
         out.append((path, rel))
@@ -360,9 +360,7 @@ def _label_for_store(store_rel: str) -> str:
 # ---------------------------------------------------------------------------
 
 
-def _entry_from_file(
-    abs_path: Path, rel: str, store: str, yaml_module: Any
-) -> Entry | None:
+def _entry_from_file(abs_path: Path, rel: str, store: str, yaml_module: Any) -> Entry | None:
     """Parse one file. Returns None when the file has no valid frontmatter
     or fails to read — those are silently skipped because PLAN_INDEX only
     indexes docs that have frontmatter (the validator's contract)."""
@@ -429,9 +427,7 @@ def _is_mahavishnu_layout(repo_root: Path) -> bool:
     ``docs/adr/`` and ``docs/superpowers/`` present). Used to switch the
     Authority Matrix between the rich Mahavishnu-specific table and the
     generic dynamic one."""
-    return (repo_root / "docs" / "adr").is_dir() and (
-        repo_root / "docs" / "superpowers"
-    ).is_dir()
+    return (repo_root / "docs" / "adr").is_dir() and (repo_root / "docs" / "superpowers").is_dir()
 
 
 def _authority_matrix(
@@ -492,9 +488,7 @@ def _authority_matrix(
             "| Frontmatter vocabulary and migration contract "
             "| `crackerjack docs validate --allow-nonstandard` |"
         )
-    rows.append("| Discovered stores | "
-                 + " ".join(f"`{s}`" for s in stores)
-                 + " |")
+    rows.append("| Discovered stores | " + " ".join(f"`{s}`" for s in stores) + " |")
     rows.append("")
 
     # Per-store status breakdown table.
@@ -521,9 +515,7 @@ def _authority_matrix(
         rows.append(
             f"| {_label_for_store(store).split(' (')[0]} "
             f"| `{store}` "
-            f"| {total} | "
-            + " | ".join(cells)
-            + " |"
+            f"| {total} | " + " | ".join(cells) + " |"
         )
     rows.append("")
     return "\n".join(rows)
@@ -570,7 +562,7 @@ def _entry_link(rel: str, store: str) -> str:
     - .claude/<x>             → up past plans/, up past docs/ → ../../.claude/<x>
     """
     if rel.startswith("docs/plans/"):
-        target = rel[len("docs/plans/"):]
+        target = rel[len("docs/plans/") :]
     elif rel.startswith("docs/") or rel.startswith(".claude/"):
         target = "../../" + rel
     else:
@@ -583,12 +575,8 @@ def _render_store_table(store: str, entries: list[Entry]) -> str:
     rows: list[str] = []
     rows.append(f"### {label}")
     rows.append("")
-    rows.append(
-        "| Path | Date | Status | Role | Topic | Title |"
-    )
-    rows.append(
-        "|---|---|---|---|---|---|"
-    )
+    rows.append("| Path | Date | Status | Role | Topic | Title |")
+    rows.append("|---|---|---|---|---|---|")
     if not entries:
         rows.append("| _no entries with valid frontmatter_ | | | | | |")
         rows.append("")
@@ -638,8 +626,10 @@ def _render_distribution(entries: list[Entry], store_count: int) -> str:
     rows: list[str] = []
     rows.append("## Lifecycle × Role Distribution")
     rows.append("")
-    rows.append(f"Counts of entries per (lifecycle, role) cell across all {store_count} stores. "
-                 "Useful as a sanity check that the registry above is internally consistent.")
+    rows.append(
+        f"Counts of entries per (lifecycle, role) cell across all {store_count} stores. "
+        "Useful as a sanity check that the registry above is internally consistent."
+    )
     rows.append("")
     # Build a header: blank corner + each lifecycle.
     header = "| Role \\\\ Lifecycle | " + " | ".join(LIFECYCLE_VALUES) + " | Total |"
@@ -665,9 +655,7 @@ def _render_distribution(entries: list[Entry], store_count: int) -> str:
         grand_total += col_sum
         col_totals.append(str(col_sum) if col_sum else "·")
     rows.append(
-        "| **Total** | "
-        + " | ".join(f"**{t}**" for t in col_totals)
-        + f" | **{grand_total}** |"
+        "| **Total** | " + " | ".join(f"**{t}**" for t in col_totals) + f" | **{grand_total}** |"
     )
     rows.append("")
     return "\n".join(rows)
@@ -689,9 +677,7 @@ def _render_index(
     frontmatter_date = generated_at if is_mahavishnu else generated_at
 
     purpose_subject = "Mahavishnu/Bodai plans" if is_mahavishnu else f"{repo_name} plans"
-    topic_value = (
-        "convergence-control-plane" if is_mahavishnu else "plan-registry"
-    )
+    topic_value = "convergence-control-plane" if is_mahavishnu else "plan-registry"
     blocks_on_value: str | None = (
         "docs/schemas/document-frontmatter-v1.md" if is_mahavishnu else None
     )
@@ -730,13 +716,9 @@ def _render_index(
     sections.append("")
     sections.append(STATUS_LEGEND.rstrip())
     sections.append("")
-    sections.append(
-        _authority_matrix(repo_root, stores, entries_by_store).rstrip()
-    )
+    sections.append(_authority_matrix(repo_root, stores, entries_by_store).rstrip())
     sections.append("")
-    sections.append(
-        _review_entry_points(generated_at, store_count=len(stores)).rstrip()
-    )
+    sections.append(_review_entry_points(generated_at, store_count=len(stores)).rstrip())
     sections.append("")
 
     sections.append("## Canonical and Active Plan Registry")
@@ -833,8 +815,7 @@ def build_parser() -> argparse.ArgumentParser:
         "--json-summary",
         action="store_true",
         help=(
-            "Emit a JSON summary of counts (per store + total) on stderr. "
-            "Useful for CI assertions."
+            "Emit a JSON summary of counts (per store + total) on stderr. Useful for CI assertions."
         ),
     )
     parser.add_argument(
@@ -939,15 +920,13 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.json_summary:
         import json
+
         summary = {
             "generated_at": generated_at,
             "discovered": total_discovered,
             "with_frontmatter": total_with_frontmatter,
             "stores": stores,
-            "per_store": {
-                store: len(entries_by_store.get(store, []))
-                for store in stores
-            },
+            "per_store": {store: len(entries_by_store.get(store, [])) for store in stores},
         }
         sys.stderr.write(json.dumps(summary, indent=2) + "\n")
 

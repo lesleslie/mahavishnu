@@ -5,6 +5,7 @@ Reads each file, prepends a uniform frontmatter block + adds a trailing HTML
 legacy comment on the existing Status line so the validator's --allow-nonstandard
 mode stays green.
 """
+
 from pathlib import Path
 
 PLAN_FM_TEMPLATE = (
@@ -22,42 +23,48 @@ PLAN_FM_TEMPLATE = (
 
 # Per-file status / role / topic assignment, derived from each file's body.
 ASSIGNMENTS = {
-    "docs/plans/2026-05-07-unified-config-design.md":
-        ("active", "canonical", "mcp-design"),
-    "docs/plans/2026-07-16-dlq-fail-closed-wiring.md":
-        ("shipped", "implementation", "persistence"),
-    "docs/plans/PREFECT_ADAPTER_COMPLETION_PLAN.md":
-        ("complete", "historical", "adapter-architecture"),
-    "docs/plans/PRE_IMPLEMENTATION_CHECKLIST.md":
-        ("complete", "historical", "convergence-control-plane"),
-    "docs/plans/REVIEW_architecture.md":
-        ("complete", "historical", "convergence-control-plane"),
-    "docs/plans/REVIEW_ecosystem.md":
-        ("complete", "historical", "convergence-control-plane"),
-    "docs/plans/REVIEW_implementation.md":
-        ("complete", "historical", "convergence-control-plane"),
-    "docs/plans/REVIEW_implementation_v3.md":
-        ("complete", "historical", "convergence-control-plane"),
-    "docs/plans/REVIEW_plan_coherence.md":
-        ("complete", "historical", "convergence-control-plane"),
-    "docs/plans/REVIEW_serverless.md":
-        ("complete", "historical", "convergence-control-plane"),
-    "docs/plans/TLS_IMPLEMENTATION_SUMMARY.md":
-        ("complete", "historical", "mcp-design"),
-    "docs/plans/llm-provider-reconfiguration-v2.md":
-        ("complete", "historical", "routing-composition"),
-    "docs/plans/mcp-connection-stability-plan.md":
-        ("complete", "historical", "mcp-design"),
-    "docs/plans/native-macos-automation-backend-plan.md":
-        ("draft", "implementation", "terminal"),
-    "docs/plans/reviews/config-review.md":
-        ("complete", "historical", "convergence-control-plane"),
-    "docs/plans/reviews/ops-review.md":
-        ("complete", "historical", "convergence-control-plane"),
-    "docs/plans/reviews/security-review.md":
-        ("complete", "historical", "convergence-control-plane"),
-    "docs/plans/session-buddy-llama-server-ollama-migration.md":
-        ("complete", "historical", "routing-composition"),
+    "docs/plans/2026-05-07-unified-config-design.md": ("active", "canonical", "mcp-design"),
+    "docs/plans/2026-07-16-dlq-fail-closed-wiring.md": ("shipped", "implementation", "persistence"),
+    "docs/plans/PREFECT_ADAPTER_COMPLETION_PLAN.md": (
+        "complete",
+        "historical",
+        "adapter-architecture",
+    ),
+    "docs/plans/PRE_IMPLEMENTATION_CHECKLIST.md": (
+        "complete",
+        "historical",
+        "convergence-control-plane",
+    ),
+    "docs/plans/REVIEW_architecture.md": ("complete", "historical", "convergence-control-plane"),
+    "docs/plans/REVIEW_ecosystem.md": ("complete", "historical", "convergence-control-plane"),
+    "docs/plans/REVIEW_implementation.md": ("complete", "historical", "convergence-control-plane"),
+    "docs/plans/REVIEW_implementation_v3.md": (
+        "complete",
+        "historical",
+        "convergence-control-plane",
+    ),
+    "docs/plans/REVIEW_plan_coherence.md": ("complete", "historical", "convergence-control-plane"),
+    "docs/plans/REVIEW_serverless.md": ("complete", "historical", "convergence-control-plane"),
+    "docs/plans/TLS_IMPLEMENTATION_SUMMARY.md": ("complete", "historical", "mcp-design"),
+    "docs/plans/llm-provider-reconfiguration-v2.md": (
+        "complete",
+        "historical",
+        "routing-composition",
+    ),
+    "docs/plans/mcp-connection-stability-plan.md": ("complete", "historical", "mcp-design"),
+    "docs/plans/native-macos-automation-backend-plan.md": ("draft", "implementation", "terminal"),
+    "docs/plans/reviews/config-review.md": ("complete", "historical", "convergence-control-plane"),
+    "docs/plans/reviews/ops-review.md": ("complete", "historical", "convergence-control-plane"),
+    "docs/plans/reviews/security-review.md": (
+        "complete",
+        "historical",
+        "convergence-control-plane",
+    ),
+    "docs/plans/session-buddy-llama-server-ollama-migration.md": (
+        "complete",
+        "historical",
+        "routing-composition",
+    ),
 }
 
 
@@ -91,9 +98,7 @@ def main() -> None:
         if original.lstrip().startswith("---\n"):
             print(f"SKIP (already has frontmatter): {rel_path}")
             continue
-        frontmatter = PLAN_FM_TEMPLATE.format(
-            status=status, role=role, topic=topic
-        )
+        frontmatter = PLAN_FM_TEMPLATE.format(status=status, role=role, topic=topic)
         body_with_comment = add_legacy_comment(original)
         new_content = frontmatter + body_with_comment
         path.write_text(new_content, encoding="utf-8")

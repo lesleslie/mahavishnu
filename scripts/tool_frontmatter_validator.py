@@ -84,6 +84,15 @@ class ToolFrontmatterValidator:
         "Automation Guild",
         "Security Guild",
         "Platform Engineering Guild",
+        # Added 2026-09-06 after audit surfaced 4 tools with reasonable but
+        # off-list owners. Each maps to the natural owner for the tool's
+        # domain: Compliance for privacy-impact-assessment, Customer
+        # Experience for support-readiness, Observability for distributed
+        # tracing setup, Backend Guild for message-queue integration.
+        "Compliance Office",
+        "Customer Experience",
+        "Observability Guild",
+        "Backend Guild",
     ]
 
     VALID_PLATFORMS = ["macOS", "Linux", "Windows", "Docker", "Web"]
@@ -121,21 +130,50 @@ class ToolFrontmatterValidator:
         re.DOTALL,
     )
 
+    # Repo house style: YAML block at top of file (no leading delimiter),
+    # followed by one or more blank lines, then 70+ underscores as the
+    # separator, then the markdown body. The YAML capture ends on a
+    # non-whitespace character (``[^\s]``) so we stop *after* the last
+    # key/value line; ``\n+`` (not fixed ``\n\n``) tolerates 1+ blank
+    # lines on either side of the separator. The trailing ``(.*)\Z`` is
+    # greedy, which causes the regex engine to back-track to the LAST
+    # ``\n+_{70,}\n+`` in the file — the canonical separator location.
+    FRONTMATTER_HOUSE_STYLE = re.compile(
+        r"\A(.+?[^\s])\n+_{70,}\n+(.*)\Z",
+        re.DOTALL,
+    )
+
     def parse_frontmatter(self, file_path: Path) -> tuple[dict | None, str]:
         """Parse YAML frontmatter from a markdown file.
 
-        Accepts both the standard ``---`` delimiter and the longer
-        underscore-line delimiter used in this repo's tool files. A
-        markdown file with no frontmatter returns ``(None, content)``.
+        Accepts three layouts:
+          1. YAML spec — ``---`` opener, YAML, ``---`` closer, body.
+          2. Agent-style — 70-underscore opener, YAML, 70-underscore
+             closer, body (the ``FRONTMATTER_DELIMITER`` paired form).
+          3. Repo house style — YAML at top of file (no opener), blank
+             line, 70-underscore separator, blank line, body.
+
+        A markdown file with no recognised frontmatter returns
+        ``(None, content)``. The two regexes are tried in order; the
+        paired-delimiter form is preferred because its semantics are
+        more constrained.
         """
         content = file_path.read_text()
 
         match = self.FRONTMATTER_DELIMITER.match(content)
         if not match:
+            match = self.FRONTMATTER_HOUSE_STYLE.match(content)
+        if not match:
             return None, content
 
-        frontmatter_text = match.group(2)
-        body = match.group(3)
+        # Paired-delimiter has 3 groups (opener, YAML, body);
+        # house-style has 2 groups (YAML, body).
+        if match.lastindex == 3:
+            frontmatter_text = match.group(2)
+            body = match.group(3)
+        else:
+            frontmatter_text = match.group(1)
+            body = match.group(2)
 
         try:
             frontmatter = yaml.safe_load(frontmatter_text)
@@ -195,7 +233,7 @@ class ToolFrontmatterValidator:
         # Check staleness
         try:
             review_date = datetime.strptime(date_value, "%Y-%m-%d").replace(tzinfo=UTC)
-            today = datetime.now((UTC))
+            today = datetime.now(UTC)
             age_days = (today - review_date).days
 
             if age_days > 365:
@@ -600,7 +638,7 @@ class ToolFrontmatterValidator:
         print("\nScanning for stale tools (not reviewed in 6+ months)...\n")
 
         stale_tools = []
-        today = datetime.now((UTC))
+        today = datetime.now(UTC)
 
         for md_file in self.tools_dir.rglob("*.md"):
             if not md_file.is_file():
@@ -611,12 +649,14 @@ class ToolFrontmatterValidator:
                 continue
 
             try:
-                review_date = datetime.strptime(frontmatter["last_reviewed"], "%Y-%m-%d").replace(tzinfo=UTC)
+                review_date = datetime.strptime(frontmatter["last_reviewed"], "%Y-%m-%d").replace(
+                    tzinfo=UTC
+                )
                 age_days = (today - review_date).days
 
                 if age_days > 180:
                     stale_tools.append((md_file, age_days, frontmatter.get("status", "unknown")))
-            except (ValueError, TypeError):
+            except ValueError, TypeError:
                 continue
 
         # Sort by age (oldest first)
@@ -684,7 +724,12 @@ def main():
         sys.exit(1)
 
     command = sys.argv[1]
-    tools_dir = Path(__file__).parent.parent / "commands" / "tools"
+    # Path fix: the tool-command convention lives under `.claude/commands/tools/`
+    # in this repo, not at the project root. Without the `.claude` segment the
+    # rglob() in validate_all_tools() returns 0 files and the validator reports
+    # "Total Tools: 0 — No tools found". Pinning the correct path here makes
+    # `validate-all` actually scan the 49 tool files at .claude/commands/tools/**/*.md
+    tools_dir = Path(__file__).parent.parent / ".claude" / "commands" / "tools"
 
     validator = ToolFrontmatterValidator(tools_dir)
 
