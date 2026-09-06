@@ -13,7 +13,9 @@ import subprocess
 import typer
 import yaml
 
-REPOS_CATALOG_PATH = Path("settings/repos.yaml")
+# Canonical manifest (settings/repos.yaml is deprecated — see
+# docs/superpowers/specs/2026-09-06-mcp-stub-activation-design.md §4.6).
+REPOS_CATALOG_PATH = Path("settings/ecosystem.yaml")
 
 repo_app = typer.Typer(help="Repository diff and PR creation commands")
 

@@ -137,3 +137,22 @@ class TestMigrationOutcome:
             if not required <= repo.keys()
         }
         assert offenders == {}, f"entries missing required keys: {offenders}"
+
+
+@pytest.mark.unit
+class TestRepoCLICatalogSource:
+    """repo_cli must read the canonical manifest, not the deprecated legacy file."""
+
+    def test_catalog_path_is_canonical(self) -> None:
+        from mahavishnu.repo_cli import REPOS_CATALOG_PATH
+
+        assert REPOS_CATALOG_PATH == Path("settings/ecosystem.yaml")
+
+    def test_catalog_resolves_a_migrated_repo(self) -> None:
+        """raindropio-mcp was stranded in the legacy file; repo_cli must now see it."""
+        from mahavishnu.repo_cli import _load_catalog
+
+        catalog = _load_catalog()
+        assert "raindropio-mcp" in catalog or any(
+            "raindropio-mcp" in str(key) for key in catalog
+        )
