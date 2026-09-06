@@ -1,12 +1,215 @@
 version: '1.0'
-# last_updated bumped to 2026-09-06; tools/agents/workflows/skills intentionally
-# absent here because their authoritative source is code (mahavishnu/mcp/tools/
-# profiles.py and the underlying @mcp.tool() decorations). This catalog covers
-# repos and roles only.
 last_updated: '2026-09-06'
 maintainer: les
 description: Bodai ecosystem repository and MCP configuration for Mahavishnu orchestration.
 repos:
+- name: akosha
+  package: akosha
+  path: /Users/les/Projects/akosha
+  nickname: ak
+  nicknames:
+  - ak
+  role: seer
+  tags:
+  - semantic
+  - search
+  - vector
+  - knowledge
+  description: Semantic search and knowledge aggregation
+  status: active
+- name: archive-org-mcp
+  package: archive_org_mcp
+  path: /Users/les/Projects/archive-org-mcp
+  nickname: ia
+  nicknames:
+  - ia
+  - archive
+  role: tool
+  tags:
+  - mcp
+  - archive
+  - wayback
+  - research
+  description: Internet Archive Wayback and catalog access via MCP
+  status: active
+  mcp: 3rd-party
+- name: bodai
+  package: bodai
+  path: /Users/les/Projects/bodai
+  nickname: orb
+  nicknames:
+  - orb
+  role: orb
+  tags:
+  - ecosystem
+  - config
+  - docs
+  - operations
+  - python
+  description: Central meta-project for the Bodai ecosystem
+  status: active
+  mcp: native
+- name: crackerjack
+  package: crackerjack
+  path: /Users/les/Projects/crackerjack
+  nickname: cj
+  nicknames:
+  - cj
+  role: inspector
+  tags:
+  - quality
+  - testing
+  description: Quality assurance and testing framework
+  status: active
+- name: css-mcp
+  package: css_mcp
+  path: /Users/les/Projects/css-mcp
+  nickname: css
+  nicknames:
+  - css
+  role: tool
+  tags:
+  - mcp
+  - css
+  - documentation
+  - analysis
+  - python
+  description: CSS analysis and documentation via MCP
+  status: active
+  mcp: 3rd-party
+- name: dhara
+  package: dhara
+  path: /Users/les/Projects/dhara
+  nickname: dh
+  nicknames:
+  - dh
+  role: curator
+  tags:
+  - workflow
+  - config
+  - distribution
+  description: Workflow configuration and Oneiric adapter distribution
+  status: active
+- name: excalidraw-mcp
+  package: excalidraw_mcp
+  path: /Users/les/Projects/excalidraw-mcp
+  nickname: excal
+  nicknames:
+  - excal
+  role: visualizer
+  tags:
+  - mcp
+  - diagram
+  - collaboration
+  - python
+  description: Excalidraw diagram integration via MCP
+  status: active
+  mcp: 3rd-party
+- name: fastblocks
+  package: fastblocks
+  path: /Users/les/Projects/fastblocks
+  nickname: blocks
+  nicknames:
+  - blocks
+  role: builder
+  tags:
+  - blocks
+  - ui
+  - python
+  - htmx
+  - starlette
+  description: "Starlette+HTMX UI building blocks framework \u2014 foundation for splashstand"
+  status: active
+- name: fastblocks-ui
+  package: fastblocks_ui
+  path: /Users/les/Projects/fastblocks-ui
+  nickname: blocks-ui
+  nicknames:
+  - blocks-ui
+  role: asset
+  tags:
+  - ui
+  - css
+  - web-components
+  - fastblocks
+  - frontend
+  description: "CSS and web components framework for fastblocks \u2014 styling and UI primitives"
+  status: active
+- name: graphics-mcp
+  package: graphics_mcp
+  path: /Users/les/Projects/graphics-mcp
+  nickname: graphics
+  nicknames:
+  - graphics
+  role: tool
+  tags:
+  - mcp
+  - graphics
+  - image
+  - pillow
+  - python
+  description: Image manipulation via Pillow/pilkit MCP server
+  status: active
+  mcp: 3rd-party
+- name: jinja2-async-environment
+  package: jinja2_async_environment
+  path: /Users/les/Projects/jinja2-async-environment
+  nickname: jinja2-async
+  nicknames:
+  - jinja2-async
+  role: extension
+  tags:
+  - jinja2
+  - async
+  - template
+  - python
+  description: Async Jinja2 environment for non-blocking templates
+  status: active
+- name: jinja2-custom-delimiters
+  package: jinja2_custom_delimiters
+  path: /Users/les/Projects/jinja2-custom-delimiters
+  nickname: jinja2-delimiters
+  nicknames:
+  - jinja2-delimiters
+  role: extension
+  tags:
+  - jinja2
+  - pycharm
+  - plugin
+  - custom-delimiters
+  - python
+  description: PyCharm plugin for custom Jinja2 delimiter syntax highlighting
+  status: active
+- name: jinja2-inflection
+  package: jinja2_inflection
+  path: /Users/les/Projects/jinja2-inflection
+  nickname: jinja2-inflection
+  nicknames:
+  - jinja2-inflection
+  role: extension
+  tags:
+  - jinja2
+  - inflection
+  - pluralization
+  - python
+  description: Jinja2 filter for inflection-based pluralization
+  status: active
+- name: langsmith-mcp
+  package: langsmith_mcp
+  path: /Users/les/Projects/langsmith-mcp
+  nickname: langsmith
+  nicknames:
+  - langsmith
+  role: tool
+  tags:
+  - mcp
+  - observability
+  - tracing
+  - llm
+  - python
+  description: LangSmith tracing and observability via MCP
+  status: active
+  mcp: 3rd-party
 - name: mahavishnu
   package: mahavishnu
   path: /Users/les/Projects/mahavishnu
@@ -21,42 +224,21 @@ repos:
   - main
   description: Multi-agent orchestration system
   status: active
-- name: crackerjack
-  package: crackerjack
-  path: /Users/les/Projects/crackerjack
-  nickname: cj
+- name: mailgun-mcp
+  package: mailgun_mcp
+  path: /Users/les/Projects/mailgun-mcp
+  nickname: mailgun
   nicknames:
-  - cj
-  role: inspector
+  - mailgun
+  role: tool
   tags:
-  - quality
-  - testing
-  description: Quality assurance and testing framework
+  - mcp
+  - email
+  - integration
+  - python
+  description: Mailgun email service integration via MCP
   status: active
-- name: session-buddy
-  package: session_buddy
-  path: /Users/les/Projects/session-buddy
-  nickname: sb
-  nicknames:
-  - sb
-  role: manager
-  tags:
-  - session-management
-  - memory
-  description: Session management and conversation tracking
-  status: active
-- name: oneiric
-  package: oneiric
-  path: /Users/les/Projects/oneiric
-  nickname: oc
-  nicknames:
-  - oc
-  role: resolver
-  tags:
-  - configuration
-  - lifecycle
-  description: Configuration and lifecycle management
-  status: active
+  mcp: 3rd-party
 - name: mcp-common
   package: mcp_common
   path: /Users/les/Projects/mcp-common
@@ -82,52 +264,8 @@ repos:
   - macos
   - swiftui
   - gui
-  description: macOS SwiftUI desktop app for markdown prompt management (IPC via Unix
-    socket)
+  description: macOS SwiftUI desktop app for markdown prompt management (IPC via Unix socket)
   status: active
-- name: akosha
-  package: akosha
-  path: /Users/les/Projects/akosha
-  nickname: ak
-  nicknames:
-  - ak
-  role: seer
-  tags:
-  - semantic
-  - search
-  - vector
-  - knowledge
-  description: Semantic search and knowledge aggregation
-  status: active
-- name: dhara
-  package: dhara
-  path: /Users/les/Projects/dhara
-  nickname: dh
-  nicknames:
-  - dh
-  role: curator
-  tags:
-  - workflow
-  - config
-  - distribution
-  description: Workflow configuration and Oneiric adapter distribution
-  status: active
-- name: archive-org-mcp
-  package: archive_org_mcp
-  path: /Users/les/Projects/archive-org-mcp
-  nickname: ia
-  nicknames:
-  - ia
-  - archive
-  role: tool
-  tags:
-  - mcp
-  - archive
-  - wayback
-  - research
-  description: Internet Archive Wayback and catalog access via MCP
-  status: active
-  mcp: 3rd-party
 - name: medium-mcp
   package: medium_mcp
   path: /Users/les/Projects/medium-mcp
@@ -143,6 +281,109 @@ repos:
   description: Medium content access via the unofficial medium2 API
   status: active
   mcp: 3rd-party
+- name: neo4j-mcp
+  package: neo4j_mcp
+  path: /Users/les/Projects/neo4j-mcp
+  nickname: neo4j
+  nicknames:
+  - neo4j
+  role: tool
+  tags:
+  - mcp
+  - graph
+  - database
+  - python
+  description: Unofficial Neo4j graph database via MCP
+  status: active
+  mcp: 3rd-party
+- name: oneiric
+  package: oneiric
+  path: /Users/les/Projects/oneiric
+  nickname: oc
+  nicknames:
+  - oc
+  role: resolver
+  tags:
+  - configuration
+  - lifecycle
+  description: Configuration and lifecycle management
+  status: active
+- name: opera-cloud-mcp
+  package: opera_cloud_mcp
+  path: /Users/les/Projects/opera-cloud-mcp
+  nickname: opera
+  nicknames:
+  - opera
+  role: tool
+  tags:
+  - mcp
+  - oracle
+  - hotel
+  - api
+  - python
+  description: Oracle OPERA Cloud API integration via MCP
+  status: active
+  mcp: 3rd-party
+- name: penpot-api-mcp
+  package: penpot_api_mcp
+  path: /Users/les/Projects/penpot-api-mcp
+  nickname: penpot
+  nicknames:
+  - penpot
+  role: tool
+  tags:
+  - mcp
+  - design
+  - penpot
+  - python
+  description: Penpot design platform API via MCP
+  status: active
+  mcp: 3rd-party
+- name: porkbun-dns-mcp
+  package: porkbun_dns_mcp
+  path: /Users/les/Projects/porkbun-dns-mcp
+  nickname: porkbun-dns
+  nicknames:
+  - porkbun-dns
+  role: tool
+  tags:
+  - mcp
+  - dns
+  - porkbun
+  - python
+  description: Unofficial Porkbun DNS record management via MCP
+  status: active
+  mcp: 3rd-party
+- name: porkbun-domain-mcp
+  package: porkbun_domain_mcp
+  path: /Users/les/Projects/porkbun-domain-mcp
+  nickname: porkbun-domain
+  nicknames:
+  - porkbun-domain
+  role: tool
+  tags:
+  - mcp
+  - domain
+  - porkbun
+  - python
+  description: Unofficial Porkbun domain management via MCP
+  status: active
+  mcp: 3rd-party
+- name: raindropio-mcp
+  package: raindropio_mcp
+  path: /Users/les/Projects/raindropio-mcp
+  nickname: raindrop
+  nicknames:
+  - raindrop
+  role: tool
+  tags:
+  - mcp
+  - bookmarks
+  - integration
+  - python
+  description: Raindrop.io bookmark management via MCP
+  status: active
+  mcp: 3rd-party
 - name: scapy-mcp
   package: scapy_mcp
   path: /Users/les/Projects/scapy-mcp
@@ -156,6 +397,123 @@ repos:
   - packets
   - pcap
   description: Scapy packet crafting, dissection, capture, and PCAP I/O via MCP
+  status: active
+  mcp: 3rd-party
+- name: session-buddy
+  package: session_buddy
+  path: /Users/les/Projects/session-buddy
+  nickname: sb
+  nicknames:
+  - sb
+  role: builder
+  tags:
+  - session-management
+  - memory
+  description: Session management and conversation tracking
+  status: active
+- name: splashstand
+  package: splashstand
+  path: /Users/les/Projects/splashstand
+  nickname: splash
+  nicknames:
+  - splash
+  role: app
+  tags:
+  - pwa
+  - cms
+  - fastblocks
+  - htmx
+  - python
+  description: PWA content management system built from fastblocks
+  status: active
+- name: spline-mcp
+  package: spline_mcp
+  path: /Users/les/Projects/spline-mcp
+  nickname: spline
+  nicknames:
+  - spline
+  role: tool
+  tags:
+  - mcp
+  - 3d
+  - graphics
+  - spline
+  - python
+  description: Unofficial Spline.design 3D scene orchestration via MCP
+  status: active
+  mcp: 3rd-party
+- name: starlette-async-jinja
+  package: starlette_async_jinja
+  path: /Users/les/Projects/starlette-async-jinja
+  nickname: starlette-jinja
+  nicknames:
+  - starlette-jinja
+  role: extension
+  tags:
+  - starlette
+  - async
+  - jinja
+  - python
+  description: Async Jinja templating integration for Starlette
+  status: active
+- name: synxis-crs-mcp
+  package: synxis_crs_mcp
+  path: /Users/les/Projects/synxis-crs-mcp
+  nickname: synxis-crs
+  nicknames:
+  - synxis-crs
+  role: tool
+  tags:
+  - mcp
+  - hotel
+  - reservation
+  - python
+  description: Unofficial SynXis Central Reservation System via MCP
+  status: active
+  mcp: 3rd-party
+- name: synxis-pms-mcp
+  package: synxis_pms_mcp
+  path: /Users/les/Projects/synxis-pms-mcp
+  nickname: synxis-pms
+  nicknames:
+  - synxis-pms
+  role: tool
+  tags:
+  - mcp
+  - hotel
+  - property
+  - python
+  description: Unofficial SynXis Property Management System via MCP
+  status: active
+  mcp: 3rd-party
+- name: unifi-mcp
+  package: unifi_mcp
+  path: /Users/les/Projects/unifi-mcp
+  nickname: unifi
+  nicknames:
+  - unifi
+  role: tool
+  tags:
+  - mcp
+  - network
+  - integration
+  - python
+  description: UniFi network management via MCP
+  status: active
+  mcp: 3rd-party
+- name: www-mcp-servers
+  package: www_mcp_servers
+  path: /Users/les/Projects/www-mcp-servers
+  nickname: www-mcp
+  nicknames:
+  - www-mcp
+  role: tool
+  tags:
+  - mcp
+  - web
+  - www
+  - python
+  description: Web-related MCP server utilities
   status: active
   mcp: 3rd-party
 roles:
@@ -395,8 +753,7 @@ coordination:
     - import-error
   - id: MHV-003
     title: No shutdown events in background loops
-    description: 'Four background loops lack shutdown events, preventing graceful
-      stops:
+    description: 'Four background loops lack shutdown events, preventing graceful stops:
 
       - resilience.py:705 - _circuit_breaker_loop
 
@@ -427,8 +784,7 @@ coordination:
     - graceful-stop
   - id: MHV-004
     title: N+1 HTTP pattern in batch insert
-    description: 'memory_aggregator.py:118-147 makes sequential HTTP requests for
-      each
+    description: 'memory_aggregator.py:118-147 makes sequential HTTP requests for each
 
       memory item in batch_insert_memories. Should use asyncio.gather()
 
@@ -527,8 +883,7 @@ coordination:
     - python-3.12
   - id: MHV-008
     title: Status enum proliferation
-    description: '20+ status enums with overlapping values (PENDING, IN_PROGRESS,
-      etc)
+    description: '20+ status enums with overlapping values (PENDING, IN_PROGRESS, etc)
 
       across multiple files. This creates maintenance burden and potential
 
@@ -622,26 +977,22 @@ coordination:
   todos:
   - id: TODO-001
     issue_id: MHV-003
-    task: Add shutdown event to resilience.py background loop (_circuit_breaker_loop
-      at line 705)
+    task: Add shutdown event to resilience.py background loop (_circuit_breaker_loop at line 705)
     status: pending
     created_at: 2026-02-20 12:00:00+00:00
   - id: TODO-002
     issue_id: MHV-003
-    task: Add shutdown event to monitoring.py background loop (_metrics_loop at line
-      200)
+    task: Add shutdown event to monitoring.py background loop (_metrics_loop at line 200)
     status: pending
     created_at: 2026-02-20 12:00:00+00:00
   - id: TODO-003
     issue_id: MHV-003
-    task: Add shutdown event to memory_aggregator.py background loop (_sync_loop at
-      line 165)
+    task: Add shutdown event to memory_aggregator.py background loop (_sync_loop at line 165)
     status: pending
     created_at: 2026-02-20 12:00:00+00:00
   - id: TODO-004
     issue_id: MHV-003
-    task: Add shutdown event to terminal/pool.py background loop (_pool_loop at line
-      201)
+    task: Add shutdown event to terminal/pool.py background loop (_pool_loop at line 201)
     status: pending
     created_at: 2026-02-20 12:00:00+00:00
   - id: TODO-005

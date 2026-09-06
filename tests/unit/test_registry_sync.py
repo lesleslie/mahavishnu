@@ -96,3 +96,44 @@ class TestRegistryIntegrity:
             f"{len(stranded)} repos are in repos.yaml but not ecosystem.yaml, so "
             f"the runtime cannot see them: {sorted(stranded)}"
         )
+
+
+@pytest.mark.unit
+class TestMigrationOutcome:
+    """Post-migration invariants on the canonical manifest."""
+
+    def test_entry_count_is_thirty_five(self) -> None:
+        assert len(_repos(ECOSYSTEM_PATH)) == 35
+
+    def test_no_duplicate_names(self) -> None:
+        names = [repo["name"] for repo in _repos(ECOSYSTEM_PATH)]
+        duplicates = {name for name in names if names.count(name) > 1}
+        assert duplicates == set(), f"duplicate names: {sorted(duplicates)}"
+
+    def test_entries_are_sorted_by_name(self) -> None:
+        names = [repo["name"] for repo in _repos(ECOSYSTEM_PATH)]
+        assert names == sorted(names)
+
+    def test_session_buddy_role_conflict_resolved_to_builder(self) -> None:
+        """repos.yaml wins on field conflicts (spec §7.1 rule 4)."""
+        entry = next(
+            repo for repo in _repos(ECOSYSTEM_PATH) if repo["name"] == "session-buddy"
+        )
+        assert entry["role"] == "builder"
+
+    def test_mcp_field_present_on_every_mcp_repo(self) -> None:
+        offenders = [
+            repo["name"]
+            for repo in _repos(ECOSYSTEM_PATH)
+            if repo["name"].endswith("-mcp") and "mcp" not in repo
+        ]
+        assert offenders == [], f"*-mcp repos missing the mcp: field: {offenders}"
+
+    def test_every_entry_has_required_keys(self) -> None:
+        required = {"name", "package", "path", "role", "tags", "description", "status"}
+        offenders = {
+            repo.get("name", "<unnamed>"): sorted(required - repo.keys())
+            for repo in _repos(ECOSYSTEM_PATH)
+            if not required <= repo.keys()
+        }
+        assert offenders == {}, f"entries missing required keys: {offenders}"
