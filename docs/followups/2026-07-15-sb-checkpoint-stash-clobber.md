@@ -1,16 +1,19 @@
----
-status: active
-role: implementation
-topic: persistence
-date: 2026-07-15
-last_reviewed: 2026-07-15
-superseded_by: null
-blocks_on: []
----
+______________________________________________________________________
+
+## status: active role: implementation topic: persistence date: 2026-07-15 last_reviewed: 2026-09-06 superseded_by: null blocks_on: []
 
 # Session-Buddy Checkpoint Stash-Clobber Pattern (Second Observation)
 
 ## **Created**: 2026-07-15 **Status**: Recurring defect — second observation; companion to parent memory **Parent memory**: `session-buddy-checkpoint-hooks-fire-during-subagent-sessions` (`~/.claude/projects/-Users-les-Projects-mahavishnu/memory/session-buddy-checkpoint-hooks-fire-during-subagent-sessions.md`) **Recorded in pickup prompt**: `docs/followups/2026-07-15-pickup-bodai-hooks-and-sb-debug.md` (Step 3e verification + acceptance criterion #6) **Originating session**: 2026-07-15 comprehensive-hooks-cleanup wave (checkpoint at `docs/followups/2026-07-15-comprehensive-hooks-cleanup-checkpoint.md`)
+
+> **Verification (2026-09-06):** *Partially resolved, NOT closed.*
+> The session-buddy SubagentDetector infrastructure (`session_buddy/checkpoint/subagent_detector.py`) is in place and wired into both `policy.py` and `orchestrator.py` — but only the **read side**. Per the docstring at `subagent_detector.py:33-41`:
+>
+> > "The `.write()` method has no in-codebase caller at present; the producer (creating `<working_dir>/.session-buddy/subagent.lock` when a subagent starts) is owned by the subagent-runtime team and tracked externally. Until the producer lands, the re-check branch (`subagent_active_during_capture`) is effectively a no-op; the primary `wait_until_idle` gate still protects end-of-task commits because it uses the same lockfile with fail-open → True semantics."
+>
+> In practical terms: `SubagentDetector.is_active()` returns False when the lockfile doesn't exist, and nothing in this codebase creates the lockfile. So the stash-clobber protection is **constructed but inert** — it would activate if/when an external producer creates the lockfile, but no such producer is wired today. The followup's "Option A" (detect-and-defer) is *structurally* in place but functionally dormant.
+>
+> Action: keep this followup `active`. Add a sibling note that the **producer half** (lockfile creation at subagent start, owned by the subagent-runtime team) is the actual remaining work. Plan reference: `docs/superpowers/plans/2026-08-10-auto-checkpoint-implementation-summary.md` (C-1).
 
 ## Summary
 
