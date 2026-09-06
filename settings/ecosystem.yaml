@@ -112,6 +112,52 @@ repos:
   - distribution
   description: Workflow configuration and Oneiric adapter distribution
   status: active
+- name: archive-org-mcp
+  package: archive_org_mcp
+  path: /Users/les/Projects/archive-org-mcp
+  nickname: ia
+  nicknames:
+  - ia
+  - archive
+  role: tool
+  tags:
+  - mcp
+  - archive
+  - wayback
+  - research
+  description: Internet Archive Wayback and catalog access via MCP
+  status: active
+  mcp: 3rd-party
+- name: medium-mcp
+  package: medium_mcp
+  path: /Users/les/Projects/medium-mcp
+  nickname: medium
+  nicknames:
+  - medium
+  role: tool
+  tags:
+  - mcp
+  - publishing
+  - content
+  - research
+  description: Medium content access via the unofficial medium2 API
+  status: active
+  mcp: 3rd-party
+- name: scapy-mcp
+  package: scapy_mcp
+  path: /Users/les/Projects/scapy-mcp
+  nickname: scapy
+  nicknames:
+  - scapy
+  role: tool
+  tags:
+  - mcp
+  - network
+  - packets
+  - pcap
+  description: Scapy packet crafting, dissection, capture, and PCAP I/O via MCP
+  status: active
+  mcp: 3rd-party
 roles:
 - name: orchestrator
   description: Coordinates workflows and manages cross-repository operations
