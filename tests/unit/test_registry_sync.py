@@ -97,6 +97,29 @@ class TestRegistryIntegrity:
             f"the runtime cannot see them: {sorted(stranded)}"
         )
 
+    # Pinned 2026-09-06 by Plan 0a. Raising this requires a matching
+    # ecosystem.yaml addition; lowering it requires deleting this assertion
+    # deliberately, with a reason in the commit message.
+    LEGACY_PINNED_COUNT = 32
+
+    def test_legacy_count_has_not_decreased(self) -> None:
+        """A one-directional superset assertion passes trivially if entries are
+        deleted from the legacy file. Pinning the count makes deletion explicit."""
+        actual = len(_repos(LEGACY_PATH))
+        assert actual >= self.LEGACY_PINNED_COUNT, (
+            f"settings/repos.yaml shrank from {self.LEGACY_PINNED_COUNT} to {actual}. "
+            "If this was deliberate, lower LEGACY_PINNED_COUNT in the same commit."
+        )
+
+    def test_no_credentials_in_registry(self) -> None:
+        """No api_key/token/secret/password/private_key fields in any manifest entry."""
+        secret_keys = {"api_key", "token", "secret", "password", "private_key"}
+        for manifest in (SETTINGS_DIR / "ecosystem.yaml", SETTINGS_DIR / "repos.yaml"):
+            data = yaml.safe_load(manifest.read_text())
+            # Walk all entries and assert no secret keys.
+            for entry in (data.get("repos") or []):
+                assert not (set(entry.keys()) & secret_keys), entry
+
 
 @pytest.mark.unit
 class TestMigrationOutcome:
