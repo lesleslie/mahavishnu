@@ -1,10 +1,6 @@
----
-status: complete
-role: implementation
-date: 2026-07-16
-last_reviewed: 2026-07-16
-topic: test-matrix-followups
----
+______________________________________________________________________
+
+## status: complete role: implementation date: 2026-07-16 last_reviewed: 2026-07-16 topic: test-matrix-followups
 
 # Deferred MEDIUM / LOW Findings — `scripts/test_matrix.py` review
 
@@ -520,6 +516,18 @@ The pre-existing `tool_frontmatter_validator.py` ZeroDivisionError on
 "Total Tools: 0" is unrelated to Group 3.
 
 ## Status <!-- legacy status: all groups RESOLVED — see YAML frontmatter -->
+
+> **Verification (2026-09-06):** All 4 groups confirmed RESOLVED in
+> current code. The file is a historical record of the test-matrix
+> review work; it remains in `.claude/decisions/` because there is
+> no `.archive/` convention for decisions (unlike `docs/followups/`
+> which has `.archive/` per the lifecycle policy). Per-item resolution
+> tables at the end of each group cite the post-resolution line
+> numbers in `scripts/test_matrix.py`, the smoke test file
+> `tests/unit/test_test_matrix.py`, and the agent/decisions docs.
+>
+> No further action. Anyone encountering this file should treat it as
+> read-only history.
 
 - **Group 1**: RESOLVED (10/10 items). Smoke test added. See the
   "Group 1 resolution notes" table inserted at the end of the

@@ -1,10 +1,6 @@
----
-status: active
-role: canonical
-date: 2026-07-26
-last_reviewed: 2026-07-26
-topic: decision-index
----
+______________________________________________________________________
+
+## status: active role: canonical date: 2026-07-26 last_reviewed: 2026-07-26 topic: decision-index
 
 # `.claude/decisions/` index
 
@@ -27,7 +23,7 @@ the topic, the third is the most recent state.
 | `agent-curation-strategy.md` | Rules for adding/archiving agents: mycelium-core deduplication, Bodai-stack relevance, 15k token limit. | Active. |
 | `skill-vs-agent-strategy.md` | When to write a skill vs. an agent: trigger-driven procedures → skill, domain persona → agent. | Active. |
 | `technical-debt-roadmap.md` | Side discoveries from the recent `.claude/agents/` and `scripts/test_matrix.py` cleanup work. 5 items, 3 size classes. | 4/5 RESOLVED (TD-1..TD-4 done; TD-5 open). |
-| `test-matrix-review-followups.md` | Deferred MEDIUM/LOW items from the `scripts/test_matrix.py` review. | All 4 groups RESOLVED. |
+| `test-matrix-review-followups.md` | Deferred MEDIUM/LOW items from the `scripts/test_matrix.py` review. | All 4 groups RESOLVED (verified 2026-09-06). Historical record only. |
 | `removed-scripts.md` | Policy for `required_scripts:` references in tool command frontmatter. | Active. |
 | `wire-up-contract.md` | Integration Contract template + orphan audit gate; prevents "built but not wired" deliveries. | Active. |
 | `mahavishnu-tool-preference-policy.md` | Tool-selection steering lives only in `MAHAVISHNU_TOOL_PROFILE` and `CLAUDE.md` `## Tool Preferences`; docstrings narrate, do not market. | Active. |
