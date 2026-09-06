@@ -1,15 +1,13 @@
 title: Maintenance Cadence Planner
 owner: Platform Reliability Guild
-last_reviewed: 2025-02-06
+last_reviewed: 2026-09-06
 supported_platforms:
-
 - macOS
 - Linux
-  risk: medium
-  id: 01K6EET6S9Y66WT3NVKJ6QTEWB
-  status: active
-  category: maintenance
-
+risk: medium
+id: 01K6EET6S9Y66WT3NVKJ6QTEWB
+status: active
+category: maintenance
 ______________________________________________________________________
 
 ## Maintenance Cadence Planner

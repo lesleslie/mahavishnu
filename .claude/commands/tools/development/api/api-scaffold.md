@@ -1,16 +1,14 @@
 title: Api Scaffold
 owner: Developer Enablement Guild
-last_reviewed: 2025-02-06
+last_reviewed: 2026-09-06
 supported_platforms:
-
 - macOS
 - Linux
-  required_scripts: []
-  risk: medium
-  status: active
-  id: 01K6EEXBYH3RM33J4VPZS2GTVY
-  category: development/api
-
+required_scripts: []
+risk: medium
+status: active
+id: 01K6EEXBYH3RM33J4VPZS2GTVY
+category: development/api
 ______________________________________________________________________
 
 ## API Scaffold Generator

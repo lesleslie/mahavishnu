@@ -1,16 +1,14 @@
 title: Terminal Automation
 owner: Automation Guild
-last_reviewed: 2025-02-06
+last_reviewed: 2026-09-06
 supported_platforms:
-
 - macOS
 - Linux
-  required_scripts: []
-  risk: medium
-  status: active
-  id: 01K6EEXBF8BZGCMEMWGYPQPB1Z
-  category: automation
-
+required_scripts: []
+risk: medium
+status: active
+id: 01K6EEXBF8BZGCMEMWGYPQPB1Z
+category: automation
 ______________________________________________________________________
 
 ## Terminal Automation

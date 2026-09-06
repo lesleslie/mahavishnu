@@ -1,16 +1,14 @@
 title: Data Validation
 owner: Developer Enablement Guild
-last_reviewed: 2025-02-06
+last_reviewed: 2026-09-06
 supported_platforms:
-
 - macOS
 - Linux
-  required_scripts: []
-  risk: medium
-  status: active
-  id: 01K6EEXC6CHWGA6M371A5K27RY
-  category: development/data
-
+required_scripts: []
+risk: medium
+status: active
+id: 01K6EEXC6CHWGA6M371A5K27RY
+category: development/data
 ______________________________________________________________________
 
 ## Data Validation Pipeline

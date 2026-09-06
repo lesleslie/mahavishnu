@@ -1,16 +1,14 @@
 title: Auth Implementation
 owner: Developer Enablement Guild
-last_reviewed: 2025-02-06
+last_reviewed: 2026-09-06
 supported_platforms:
-
 - macOS
 - Linux
-  required_scripts: []
-  risk: medium
-  status: active
-  id: 01K6EEXBZT6D7K1WJN0QS3MA0N
-  category: development/api
-
+required_scripts: []
+risk: medium
+status: active
+id: 01K6EEXBZT6D7K1WJN0QS3MA0N
+category: development/api
 ______________________________________________________________________
 
 ## Authentication Implementation

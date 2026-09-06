@@ -5,18 +5,18 @@ supported_platforms:
 
 - macOS
 - Linux
-  required_scripts:
+required_scripts:
 - scripts/agent_metadata_audit.py
-  risk: medium
-  status: active
-  id: 01K6EEP8QJFB1XTCXAWQ09YSAB
-  category: development/code-quality
-  agents:
+risk: medium
+status: active
+id: 01K6EEP8QJFB1XTCXAWQ09YSAB
+category: development/code-quality
+agents:
 - python-pro
 - javascript-pro
 - golang-pro
 - security-auditor
-  tags:
+tags:
 - dependencies
 - security
 - vulnerabilities

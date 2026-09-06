@@ -5,16 +5,16 @@ supported_platforms:
 
 - macOS
 - Linux
-  required_scripts: []
-  risk: medium
-  status: active
-  id: 01K6H9DJ3RDGFNDADS8GNG9523
-  category: development/api
-  agents:
+required_scripts: []
+risk: medium
+status: active
+id: 01K6H9DJ3RDGFNDADS8GNG9523
+category: development/api
+agents:
 - grpc-specialist
 - architecture-council
 - observability-incident-lead
-  tags:
+tags:
 - grpc
 - protobuf
 - microservices

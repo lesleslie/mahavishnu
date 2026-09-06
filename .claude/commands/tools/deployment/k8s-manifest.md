@@ -1,16 +1,14 @@
 title: K8S Manifest
 owner: Delivery Operations
-last_reviewed: 2025-02-06
+last_reviewed: 2026-09-06
 supported_platforms:
-
 - macOS
 - Linux
-  required_scripts: []
-  risk: medium
-  status: active
-  id: 01K6EEXBTQ0HH6Z3QYJMRYHN5J
-  category: deployment
-
+required_scripts: []
+risk: medium
+status: active
+id: 01K6EEXBTQ0HH6Z3QYJMRYHN5J
+category: deployment
 ______________________________________________________________________
 
 ## Kubernetes Manifest Generation

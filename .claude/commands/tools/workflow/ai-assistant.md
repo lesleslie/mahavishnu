@@ -1,16 +1,14 @@
 title: Ai Assistant
 owner: Operations Enablement Guild
-last_reviewed: 2025-02-06
+last_reviewed: 2026-09-06
 supported_platforms:
-
 - macOS
 - Linux
-  required_scripts: []
-  risk: medium
-  status: active
-  id: 01K6EEXCYB0FWPHMM9TEDXX00F
-  category: workflow
-
+required_scripts: []
+risk: medium
+status: active
+id: 01K6EEXCYB0FWPHMM9TEDXX00F
+category: workflow
 ______________________________________________________________________
 
 ## AI Assistant Development

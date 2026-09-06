@@ -1,17 +1,15 @@
 title: Quality Validation Toolkit
 owner: Quality Engineering Guild
-last_reviewed: 2025-02-06
+last_reviewed: 2026-09-06
 supported_platforms:
-
 - macOS
 - Linux
-  required_scripts:
+required_scripts:
 - scripts/test_matrix.py
-  risk: medium
-  id: 01K6EEQ3JBXJN4P7QMKN6SR58W
-  status: active
-  category: development/testing
-
+risk: medium
+id: 01K6EEQ3JBXJN4P7QMKN6SR58W
+status: active
+category: development/testing
 ______________________________________________________________________
 
 ## Quality Validation Toolkit

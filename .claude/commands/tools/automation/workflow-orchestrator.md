@@ -1,16 +1,14 @@
 title: Workflow Orchestrator
 owner: Automation Guild
-last_reviewed: 2025-02-06
+last_reviewed: 2026-09-06
 supported_platforms:
-
 - macOS
 - Linux
-  required_scripts: []
-  risk: medium
-  status: active
-  id: 01K6EEXBHJWEGWP6CKNXGW4D1B
-  category: automation
-
+required_scripts: []
+risk: medium
+status: active
+id: 01K6EEXBHJWEGWP6CKNXGW4D1B
+category: automation
 ______________________________________________________________________
 
 ## Workflow Orchestrator

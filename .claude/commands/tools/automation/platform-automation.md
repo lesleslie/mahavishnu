@@ -1,16 +1,14 @@
 title: Platform Automation
 owner: Automation Guild
-last_reviewed: 2025-02-06
+last_reviewed: 2026-09-06
 supported_platforms:
-
 - macOS
 - Linux
-  required_scripts: []
-  risk: medium
-  status: active
-  id: 01K6EEXBC3B1DS9WCRSBVY0SZG
-  category: automation
-
+required_scripts: []
+risk: medium
+status: active
+id: 01K6EEXBC3B1DS9WCRSBVY0SZG
+category: automation
 ______________________________________________________________________
 
 ## Platform Automation
