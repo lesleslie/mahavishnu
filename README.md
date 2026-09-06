@@ -144,7 +144,7 @@ The recommended path is to add that as a bounded ecosystem feature:
 1. retrieve similar prior work
 1. draft or update a skill
 1. require review before activation
-1. surface the review queue in the TUI
+1. surface the review queue to operators (TUI surface planned but still under construction)
 
 That gets the benefit of Hermes-style self-improvement without making the runtime self-modifying.
 
@@ -793,7 +793,6 @@ Important scope note: Mahavishnu is validated for multi-repo orchestration, asyn
 - Storage Consolidation — Dhara integration for workflow/pool state persistence
 - Config Consolidation — unified schema validation across all YAML config files
 - RunPod Pool subtasks — task-category routing and GPU handler subclass pattern (`GpuHandlerPool`)
-- TUI completion — command palette + skill drafts
 - Hatchet rate-limiting — sliding-window limiter wired into `cloud_worker.py`
 - OpenWebUI mcpo bridge — `uvx mcpo --type streamable-http` bridge to MCP surface; see [integration guide](docs/integrations/openwebui.md)
 - HatchetAdapter — durable workflow adapter with approval event bridge

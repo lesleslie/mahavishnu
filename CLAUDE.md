@@ -652,6 +652,7 @@ end-to-end smoke tests in CI must spin up the server and assert
 non-empty responses per tool. Audit cadence: monthly Bodai-wide.
 
 Mahavishnu-specific guidance:
+
 - `mcp__mahavishnu__pool_health` and `/health` must both surface the
   same feed-state aggregates; disagreement between them is a bug.
 - Worker pools with registered tools but no active workers must
