@@ -48,6 +48,7 @@
 | `crackerjack/tests/checks/__init__.py` | Create (empty) | Package marker for tests |
 | `crackerjack/tests/checks/test_release_audit.py` | Create (~200 lines) | Self-tests for the audit check |
 | `crackerjack/main.py` (or check-loader equivalent) | Modify (register new check) | Wire into `crackerjack --all` |
+| `crackerjack/managers/publish_manager.py` | Modify (hook release-audit into pre-publish validation) | Run the check before any bump/publish operation |
 
 ### Cross-repo dependency
 

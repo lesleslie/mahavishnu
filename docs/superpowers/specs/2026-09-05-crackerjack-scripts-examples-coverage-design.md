@@ -4,7 +4,7 @@
 **Status:** Approved for implementation
 **Path:** Architectural change to Crackerjack's fast-hook coverage
 
----
+______________________________________________________________________
 
 ## 1. Context
 
@@ -18,28 +18,28 @@ An audit of 14 Bodai repos revealed:
 - **7 universal rules** account for **63.7%** of all violations
 - **`audit_type_checking_runtime_refs.py`** itself ships in 7 repos with the same 10-12 violations per copy — a recurring source of 84 violations
 
----
+______________________________________________________________________
 
 ## 2. Goals
 
 1. **Add `scripts/` and `examples/` to Crackerjack's fast-hook coverage** for at least ruff-check, ruff-format, codespell, and tc-refs.
-2. **Universal compatibility**: a single Crackerjack change works across all 14 Bodai repos without per-repo `pyproject.toml` edits.
-3. **Silence ecosystem-wide noise** via a CLI-injected per-file-ignores starter pack.
-4. **Make the audit tool itself ruff-clean** so it stops generating 84 violations across 7 consumer repos.
-5. **Preserve the audit tool's detection behavior** through regression tests.
+1. **Universal compatibility**: a single Crackerjack change works across all 14 Bodai repos without per-repo `pyproject.toml` edits.
+1. **Silence ecosystem-wide noise** via a CLI-injected per-file-ignores starter pack.
+1. **Make the audit tool itself ruff-clean** so it stops generating 84 violations across 7 consumer repos.
+1. **Preserve the audit tool's detection behavior** through regression tests.
 
 ## 3. Non-Goals
 
 1. Modifying any per-repo `pyproject.toml` files.
-2. Changing pytest `testpaths` (stays `["tests"]`).
-3. Changing coverage `source` scope (stays `["crackerjack"]`).
-4. Fixing the `tc-refs` deal-breaker (crackerjack missing from oneiric/mdinject venvs) — separate issue.
-5. Fixing crackerjack native tools' silent failure in non-crackerjack CWDs — separate bug.
-6. Cleaning up stale `.bak2`/`.bak3` files in `crackerjack/scripts/` — separate PR.
-7. Refactoring mahavishnu's production-imported scripts (`collect_metrics`, etc.) out of `scripts/` — separate refactor.
-8. Per-repo cleanup of single-repo rules (DTZ005, UP034, RUF012, etc.) — follow-up issues.
+1. Changing pytest `testpaths` (stays `["tests"]`).
+1. Changing coverage `source` scope (stays `["crackerjack"]`).
+1. Fixing the `tc-refs` deal-breaker (crackerjack missing from oneiric/mdinject venvs) — separate issue.
+1. Fixing crackerjack native tools' silent failure in non-crackerjack CWDs — separate bug.
+1. Cleaning up stale `.bak2`/`.bak3` files in `crackerjack/scripts/` — separate PR.
+1. Refactoring mahavishnu's production-imported scripts (`collect_metrics`, etc.) out of `scripts/` — separate refactor.
+1. Per-repo cleanup of single-repo rules (DTZ005, UP034, RUF012, etc.) — follow-up issues.
 
----
+______________________________________________________________________
 
 ## 4. Design
 
@@ -118,6 +118,7 @@ def build_inline_per_file_ignores() -> str:
 ```
 
 **Critical ruff invocation detail** (verified empirically 2026-09-05):
+
 - Ruff's `--per-file-ignores` CLI flag accepts only inline `<FilePattern>:<RuleCode>` mappings (one rule per arg), and is **replacing**, not additive.
 - Ruff's `--config=<file.toml>` flag accepts a TOML config file BUT REPLACES auto-discovery entirely. Consumer's `pyproject.toml` is ignored when `--config=<file>` is passed. **DO NOT use this form.**
 - Ruff's `--config='<KEY> = <VALUE>'` (inline TOML key-value) PRESERVES auto-discovery. This is the correct invocation pattern.
@@ -125,6 +126,7 @@ def build_inline_per_file_ignores() -> str:
 - The `<VALUE>` is an inline-table TOML expression: `{"pat1" = ["rule1", ...], "pat2" = [...], ...}`
 
 The tool invocation uses:
+
 ```python
 "--config", f"lint.extend-per-file-ignores = {inline_table}",
 ```
@@ -136,6 +138,7 @@ This is what makes the change universally compatible: consumer repos with their 
 ### 4.4 `tool_commands.py` changes
 
 **ruff-check:** New command shape:
+
 ```python
 "ruff-check": _python_module_command(
     "ruff", "check", "--output-format", "json", "--fix",
@@ -147,6 +150,7 @@ This is what makes the change universally compatible: consumer repos with their 
 Note: uses `--config='<inline TOML>'`, NOT `--config=<file>` or `--per-file-ignores=<file>`. The inline form preserves consumer auto-discovery (verified empirically 2026-09-05).
 
 **ruff-format:** Add targets only (no `--per-file-ignores` for format):
+
 ```python
 "ruff-format": _python_module_command(
     "ruff", "format",
@@ -199,21 +203,24 @@ This avoids the "stale singleton across repo switches" gotcha that a module-leve
 ### 4.6 Test updates
 
 **Existing test updates** (`tests/config/test_tool_commands.py::test_target_directories_specified`):
+
 - Assert `ruff-check` and `ruff-format` commands include `crackerjack`, `scripts`, `examples`
 - Assert `ruff-check` includes `--per-file-ignores` flag pointing to existing file
 - Assert `ruff-format` does NOT include `--per-file-ignores` (only lint needs it)
 - New tests: `test_codespell_targets_include_scripts_and_examples`, `test_tc_refs_targets_include_scripts_and_examples`
 
 **New tests** (`tests/unit/config/test_per_file_ignores.py`):
+
 - 5 tests for `UNIVERSAL_PER_FILE_IGNORES` contents (correct rules, no TC003, examples extends scripts, etc.)
 - 5 tests for `ensure_per_file_ignores_file()` (creates file, creates cache dir, idempotent, valid TOML, ruff-compatible format)
 - 1 integration test verifying ruff accepts the generated file
 
 **New regression tests** (`tests/unit/test_audit_type_checking_runtime_refs.py`):
+
 - 3 tests for detection semantics preservation (runtime use detected, legitimate typing not flagged, multiline blocks)
 - 1 test verifying the rewritten file passes ruff (with starter pack applied)
 
----
+______________________________________________________________________
 
 ## 5. Verification & Rollout
 
@@ -267,10 +274,10 @@ diff /tmp/pre.txt /tmp/post.txt
 5 commits to local main (no PR per Bodai pre-1.0 policy):
 
 1. **Commit 1:** Add `crackerjack/config/per_file_ignores.py` + tests
-2. **Commit 2:** Update `tool_commands.py` — add `./scripts ./examples` to ruff-check + ruff-format; update tests
-3. **Commit 3:** Extend codespell + tc-refs to `./scripts ./examples`
-4. **Commit 4:** Audit tool rewrite (`chmod +x` + 9 surgical fixes)
-5. **Commit 5:** Verification report (post-deploy results from 5.2)
+1. **Commit 2:** Update `tool_commands.py` — add `./scripts ./examples` to ruff-check + ruff-format; update tests
+1. **Commit 3:** Extend codespell + tc-refs to `./scripts ./examples`
+1. **Commit 4:** Audit tool rewrite (`chmod +x` + 9 surgical fixes)
+1. **Commit 5:** Verification report (post-deploy results from 5.2)
 
 ### 5.5 Success criteria
 
@@ -288,19 +295,19 @@ diff /tmp/pre.txt /tmp/post.txt
 
 Each commit is independently revertable via `git revert <sha>`. The only persistent state change is `.crackerjack_cache/scripts_examples_per_file_ignores.toml` in each consumer repo — deleting it disables the new behavior.
 
----
+______________________________________________________________________
 
 ## 6. Out-of-band Follow-ups
 
 These surfaced during the audit but are NOT part of this change:
 
 1. **`tc-refs` missing in oneiric/mdinject** — Add crackerjack as dev-dep. Separate issue.
-2. **Crackerjack native tools' silent failure** in non-crackerjack CWDs (`check_ast`, `check_yaml`, `trailing_whitespace`). Bug in those tools.
-3. **`.bak2`/`.bak3` files** in `crackerjack/scripts/`. Cleanup PR.
-4. **Mahavishnu production-imported scripts** (`metrics_cli.py` imports `scripts.collect_metrics` etc.). Refactor to move out of `scripts/`.
-5. **Per-repo single-rule violations**: DTZ005 in session-buddy, UP034/RUF012 in mahavishnu, etc. Follow-up issues.
+1. **Crackerjack native tools' silent failure** in non-crackerjack CWDs (`check_ast`, `check_yaml`, `trailing_whitespace`). Bug in those tools.
+1. **`.bak2`/`.bak3` files** in `crackerjack/scripts/`. Cleanup PR.
+1. **Mahavishnu production-imported scripts** (`metrics_cli.py` imports `scripts.collect_metrics` etc.). Refactor to move out of `scripts/`.
+1. **Per-repo single-rule violations**: DTZ005 in session-buddy, UP034/RUF012 in mahavishnu, etc. Follow-up issues.
 
----
+______________________________________________________________________
 
 ## 7. References
 

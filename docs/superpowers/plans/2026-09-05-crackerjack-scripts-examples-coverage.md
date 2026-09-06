@@ -24,7 +24,7 @@
 - **No per-repo `pyproject.toml` edits** — the universal starter pack travels with crackerjack via CLI flag.
 - **All commits land on local main of `/Users/les/Projects/crackerjack`**, not mahavishnu.
 
----
+______________________________________________________________________
 
 ## File Structure
 
@@ -44,15 +44,17 @@
 | `tests/config/test_tool_commands.py` | Update `test_target_directories_specified`; add 2 new tests for codespell + tc-refs |
 | `tests/unit/test_audit_type_checking_runtime_refs.py` (or extend existing) | 4 regression tests for behavior preservation + ruff-clean verification |
 
----
+______________________________________________________________________
 
 ### Task 1: Add per_file_ignores module (Commit 1)
 
 **Files:**
+
 - Create: `crackerjack/config/per_file_ignores.py`
 - Create: `tests/unit/config/test_per_file_ignores.py`
 
 **Interfaces (consumed by Task 2, 3):**
+
 - `UNIVERSAL_PER_FILE_IGNORES: dict[str, list[str]]` — the 4-pattern starter pack
 - `build_inline_per_file_ignores() -> str` — returns an inline TOML string of the form `{"scripts/**/*.py" = [...], "examples/**/*.py" = [...], ...}` for use as `--config "lint.extend-per-file-ignores = <value>"`. May also write a copy to `.crackerjack_cache/scripts_examples_per_file_ignores.toml` for debug visibility (file is NOT used by the ruff invocation).
 
@@ -60,7 +62,7 @@
 
 Create `tests/unit/config/test_per_file_ignores.py`:
 
-```python
+````python
 """Tests for the universal per-file-ignores starter pack mechanism."""
 from __future__ import annotations
 
@@ -111,7 +113,7 @@ Run:
 ```bash
 cd /Users/les/Projects/crackerjack
 .venv/bin/pytest tests/unit/config/test_per_file_ignores.py -v
-```
+````
 
 Expected: `ImportError: cannot import name 'UNIVERSAL_PER_FILE_IGNORES' from 'crackerjack.config.per_file_ignores'` (or `ModuleNotFoundError` if file doesn't exist).
 
@@ -208,6 +210,7 @@ def build_inline_per_file_ignores(repo_root: Path | None = None) -> str:
 **Step 1.4: Run the starter pack tests to verify they pass**
 
 Run:
+
 ```bash
 cd /Users/les/Projects/crackerjack
 .venv/bin/pytest tests/unit/config/test_per_file_ignores.py::TestUniversalPerFileIgnores -v
@@ -344,6 +347,7 @@ class TestRuffAcceptsInlineConfig:
 **Step 1.6: Run tests to verify they pass**
 
 Run:
+
 ```bash
 cd /Users/les/Projects/crackerjack
 .venv/bin/pytest tests/unit/config/test_per_file_ignores.py -v
@@ -354,6 +358,7 @@ Expected: All 11 tests pass (5 + 5 + 1 integration).
 **Step 1.7: Verify full test suite still passes**
 
 Run:
+
 ```bash
 cd /Users/les/Projects/crackerjack
 .venv/bin/pytest tests/unit/ tests/config/ -x
@@ -364,6 +369,7 @@ Expected: All tests pass (no regressions).
 **Step 1.8: Verify ruff + mypy pass on the new file**
 
 Run:
+
 ```bash
 cd /Users/les/Projects/crackerjack
 .venv/bin/ruff check crackerjack/config/per_file_ignores.py tests/unit/config/test_per_file_ignores.py
@@ -376,6 +382,7 @@ Expected: clean.
 **Step 1.9: Commit**
 
 Run:
+
 ```bash
 cd /Users/les/Projects/crackerjack
 git add crackerjack/config/per_file_ignores.py tests/unit/config/test_per_file_ignores.py
@@ -398,15 +405,17 @@ EOF
 )"
 ```
 
----
+______________________________________________________________________
 
 ### Task 2: Update ruff-check + ruff-format targets (Commit 2)
 
 **Files:**
+
 - Modify: `crackerjack/config/tool_commands.py` (ruff-check, ruff-format entries; extract `_build_targets` helper)
 - Modify: `tests/config/test_tool_commands.py` (`test_target_directories_specified`)
 
 **Interfaces:**
+
 - Consumes: `build_inline_per_file_ignores() -> str` from Task 1
 
 **Step 2.1: Write failing test for new ruff-check + ruff-format targets**
@@ -456,6 +465,7 @@ Modify `tests/config/test_tool_commands.py` — replace `test_target_directories
 **Step 2.2: Run tests to verify they fail**
 
 Run:
+
 ```bash
 cd /Users/les/Projects/crackerjack
 .venv/bin/pytest tests/config/test_tool_commands.py::TestCommandStructureValidation::test_target_directories_specified tests/config/test_tool_commands.py::TestCommandStructureValidation::test_ruff_format_has_no_per_file_ignores_flag -v
@@ -504,6 +514,7 @@ Modify the two entries (per spec section 4.4):
 **Step 2.5: Run tests to verify they pass**
 
 Run:
+
 ```bash
 cd /Users/les/Projects/crackerjack
 .venv/bin/pytest tests/config/test_tool_commands.py::TestCommandStructureValidation::test_target_directories_specified tests/config/test_tool_commands.py::TestCommandStructureValidation::test_ruff_format_has_no_per_file_ignores_flag -v
@@ -514,6 +525,7 @@ Expected: 2 passed.
 **Step 2.6: Verify full tool_commands tests still pass**
 
 Run:
+
 ```bash
 cd /Users/les/Projects/crackerjack
 .venv/bin/pytest tests/config/ -x
@@ -524,6 +536,7 @@ Expected: All tests pass.
 **Step 2.7: Verify ruff + mypy on modified files**
 
 Run:
+
 ```bash
 cd /Users/les/Projects/crackerjack
 .venv/bin/ruff check crackerjack/config/tool_commands.py tests/config/test_tool_commands.py
@@ -536,6 +549,7 @@ Expected: clean.
 **Step 2.8: Smoke-test on crackerjack itself**
 
 Run:
+
 ```bash
 cd /Users/les/Projects/crackerjack
 .venv/bin/python -m crackerjack run --fast
@@ -548,6 +562,7 @@ Expected: Passes. (Or surfaces only the `**/*.bak[0-9]` files, which are now sil
 **Step 2.9: Commit**
 
 Run:
+
 ```bash
 cd /Users/les/Projects/crackerjack
 git add crackerjack/config/tool_commands.py tests/config/test_tool_commands.py
@@ -569,15 +584,17 @@ EOF
 )"
 ```
 
----
+______________________________________________________________________
 
 ### Task 3: Extend codespell + tc-refs targets (Commit 3)
 
 **Files:**
+
 - Modify: `crackerjack/config/tool_commands.py` (codespell, tc-refs entries)
 - Modify: `tests/config/test_tool_commands.py` (add 2 tests)
 
 **Interfaces:**
+
 - Consumes: `_build_targets(package_name: str) -> list[str]` from Task 2
 
 **Step 3.1: Write failing tests for codespell + tc-refs targets**
@@ -602,6 +619,7 @@ Add to `tests/config/test_tool_commands.py`:
 **Step 3.2: Run tests to verify they fail**
 
 Run:
+
 ```bash
 cd /Users/les/Projects/crackerjack
 .venv/bin/pytest tests/config/test_tool_commands.py::TestCommandStructureValidation::test_codespell_targets_include_scripts_and_examples tests/config/test_tool_commands.py::TestCommandStructureValidation::test_tc_refs_targets_include_scripts_and_examples -v
@@ -630,6 +648,7 @@ Same pattern for `tc-refs` (or `audit-type-checking-runtime-refs` — verify the
 **Step 3.4: Run tests to verify they pass**
 
 Run:
+
 ```bash
 cd /Users/les/Projects/crackerjack
 .venv/bin/pytest tests/config/test_tool_commands.py::TestCommandStructureValidation::test_codespell_targets_include_scripts_and_examples tests/config/test_tool_commands.py::TestCommandStructureValidation::test_tc_refs_targets_include_scripts_and_examples -v
@@ -640,6 +659,7 @@ Expected: 2 passed.
 **Step 3.5: Verify full test suite**
 
 Run:
+
 ```bash
 cd /Users/les/Projects/crackerjack
 .venv/bin/pytest tests/unit/ tests/config/ -x
@@ -650,6 +670,7 @@ Expected: All pass.
 **Step 3.6: Verify lint + types**
 
 Run:
+
 ```bash
 cd /Users/les/Projects/crackerjack
 .venv/bin/ruff check crackerjack/config/tool_commands.py tests/config/test_tool_commands.py
@@ -661,6 +682,7 @@ Expected: clean.
 **Step 3.7: Commit**
 
 Run:
+
 ```bash
 cd /Users/les/Projects/crackerjack
 git add crackerjack/config/tool_commands.py tests/config/test_tool_commands.py
@@ -678,11 +700,12 @@ EOF
 )"
 ```
 
----
+______________________________________________________________________
 
 ### Task 4: Rewrite audit_type_checking_runtime_refs.py (Commit 4)
 
 **Files:**
+
 - Modify: `crackerjack/audit_type_checking_runtime_refs.py` (surgical fixes for 12 violations)
 - Create: `tests/unit/test_audit_type_checking_runtime_refs.py` (4 regression tests)
 
@@ -797,6 +820,7 @@ class TestRewriteIsRuffClean:
 **Step 4.2: Run tests to verify behavior is preserved (baseline)**
 
 Run:
+
 ```bash
 cd /Users/les/Projects/crackerjack
 .venv/bin/pytest tests/unit/test_audit_type_checking_runtime_refs.py -v
@@ -807,6 +831,7 @@ Expected: All 4 tests PASS (this is the baseline before making changes).
 **Step 4.3: Capture pre-rewrite output for spot-check (later in step 4.10)**
 
 Run:
+
 ```bash
 cd /Users/les/Projects/mahavishnu
 .venv/bin/python -m crackerjack.tools.audit_type_checking_runtime_refs scripts/ > /tmp/audit_pre.txt
@@ -817,6 +842,7 @@ cd /Users/les/Projects/mahavishnu
 **Step 4.4: Apply fix 1 — `chmod +x` for EXE001**
 
 Run:
+
 ```bash
 chmod +x /Users/les/Projects/crackerjack/crackerjack/audit_type_checking_runtime_refs.py
 ```
@@ -840,12 +866,14 @@ Identify the longest function in the file (likely `audit_file` or similar). Extr
 **Step 4.7: Apply fixes 4-7 — SIM102, SIM103, SIM114, BLE001**
 
 For each:
+
 - **SIM103**: Replace `return True/return False` patterns with direct returns.
 - **SIM114**: Combine if-branches with identical bodies into one branch with `or` condition.
 - **SIM102**: Inline nested `if` statements where the outer condition is the same.
 - **BLE001**: Narrow `except Exception:` to `(OSError, UnicodeDecodeError)` (or whichever types the original code's intent indicates).
 
 After each fix, run regression tests:
+
 ```bash
 cd /Users/les/Projects/crackerjack
 .venv/bin/pytest tests/unit/test_audit_type_checking_runtime_refs.py -v
@@ -856,11 +884,13 @@ Expected: All 4 tests still pass after each fix. If any fails, revert that fix a
 **Step 4.8: Apply fixes 8-10 — D301, PIE810, TRY004**
 
 For each:
+
 - **D301**: Use raw string `r"..."` for any string literal containing backslashes.
 - **PIE810**: Fix `*args, **kwargs` unpacking patterns (e.g., `a, *b, c = something` → `a, b, c = something` if `b` is unused).
 - **TRY004**: Replace `raise Exception(...)` with `raise TypeError(...)` or appropriate specific exception.
 
 After each fix, run regression tests:
+
 ```bash
 cd /Users/les/Projects/crackerjack
 .venv/bin/pytest tests/unit/test_audit_type_checking_runtime_refs.py -v
@@ -871,6 +901,7 @@ Expected: All 4 tests still pass.
 **Step 4.9: Verify the rewritten file is ruff-clean**
 
 Run:
+
 ```bash
 cd /Users/les/Projects/crackerjack
 .venv/bin/ruff check crackerjack/audit_type_checking_runtime_refs.py
@@ -881,6 +912,7 @@ Expected: 0 violations. (Some violations may remain for the audit tool file itse
 **Step 4.10: Spot-check behavior preservation across real Bodai repos**
 
 Run:
+
 ```bash
 cd /Users/les/Projects/mahavishnu
 uv run --project /Users/les/Projects/crackerjack python -m crackerjack.tools.audit_type_checking_runtime_refs /Users/les/Projects/mahavishnu/scripts > /tmp/audit_post.txt
@@ -892,6 +924,7 @@ diff /tmp/audit_pre.txt /tmp/audit_post.txt
 Expected: empty diff. If non-empty diff shows MISSED detections (tool no longer flags something it used to), revert the rewrite.
 
 Repeat for session-buddy and oneiric:
+
 ```bash
 diff /tmp/audit_pre_sb.txt /tmp/audit_post_sb.txt
 diff /tmp/audit_pre_one.txt /tmp/audit_post_one.txt
@@ -902,6 +935,7 @@ diff /tmp/audit_pre_one.txt /tmp/audit_post_one.txt
 **Step 4.11: Verify full test suite + lint + types**
 
 Run:
+
 ```bash
 cd /Users/les/Projects/crackerjack
 .venv/bin/pytest tests/unit/ tests/config/ -x
@@ -914,6 +948,7 @@ Expected: All pass; no lint or type errors.
 **Step 4.12: Commit**
 
 Run:
+
 ```bash
 cd /Users/les/Projects/crackerjack
 git add crackerjack/audit_type_checking_runtime_refs.py tests/unit/test_audit_type_checking_runtime_refs.py
@@ -943,16 +978,18 @@ EOF
 )"
 ```
 
----
+______________________________________________________________________
 
 ### Task 5: Verification report (Commit 5)
 
 **Files:**
+
 - No code changes — verification-only task.
 
 **Step 5.1: Run full crackerjack fast-hook pipeline on crackerjack itself**
 
 Run:
+
 ```bash
 cd /Users/les/Projects/crackerjack
 .venv/bin/python -m crackerjack run
@@ -963,6 +1000,7 @@ Expected: Passes. Capture the output for the commit message.
 **Step 5.2: Run post-deploy verification on heavy-offender repos**
 
 Run:
+
 ```bash
 for repo in mahavishnu session-buddy oneiric fastblocks mcp-common; do
     cd /Users/les/Projects/$repo
@@ -984,6 +1022,7 @@ Capture output. Expected reductions:
 **Step 5.3: Run crackerjack fast-hook on mahavishnu (end-to-end check)**
 
 Run:
+
 ```bash
 cd /Users/les/Projects/mahavishnu
 .venv/bin/python -m crackerjack run --fast
@@ -1000,6 +1039,7 @@ Combine outputs from steps 5.1-5.3 into a verification report. This goes in the 
 **Step 5.5: Commit (verification report only)**
 
 Run:
+
 ```bash
 cd /Users/les/Projects/crackerjack
 git commit --allow-empty -m "$(cat <<'EOF'
@@ -1024,7 +1064,7 @@ EOF
 )"
 ```
 
----
+______________________________________________________________________
 
 ## Self-Review Checklist
 

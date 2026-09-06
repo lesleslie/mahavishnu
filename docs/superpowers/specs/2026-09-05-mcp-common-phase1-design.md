@@ -31,7 +31,7 @@ Four coupled fixes, single release 0.24.4, all merged directly to local `main`:
 | 1 | Restore `MCPServerCLIFactory.register_lifecycle_handlers` + `create_handlers` + deleted test | Code restoration | `mcp_common/cli/factory.py`, `tests/cli/test_factory_register_handlers.py` |
 | 2 | Hybrid coverage: restore where testable, exclude optional-dep stubs, reset ratchet with audit memo | Coverage work + config | `pyproject.toml`, `.coverage-ratchet.json`, `docs/audits/2026-09-05-coverage-ratchet-memo.md`, `scripts/verify_coverage_baseline.py` |
 | 3 | Rewrite CLAUDE.md header + verification section to match reality v0.24.4 | Docs | `CLAUDE.md` |
-| 4 | Add `crackerjack check release-audit` verifying CHANGELOG Added/Removed + CLAUDE.md claims | New tool | `crackerjack/checks/release_audit.py`, `crackerjack/tests/checks/test_release_audit.py`, `crackerjack/main.py` (or check-loader equivalent) |
+| 4 | Add `crackerjack check release-audit` verifying CHANGELOG Added/Removed + CLAUDE.md claims, hooked into publish_manager.py's pre-publish validation step | New tool | `crackerjack/checks/release_audit.py`, `crackerjack/tests/checks/test_release_audit.py`, `crackerjack/managers/publish_manager.py` (pre-publish validation hook) |
 
 ### How they interact
 
