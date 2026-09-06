@@ -614,11 +614,11 @@ One table per store. Entries are sorted by `date` DESC, with ties broken by path
 
 | Path | Date | Status | Role | Topic | Title |
 |---|---|---|---|---|---|
-| [`docs/superpowers/plans/2026-09-06-archive-org-mcp.md`](../../docs/superpowers/plans/2026-09-06-archive-org-mcp.md) | 2026-09-06 | `draft` | `implementation` | `mcp-stub-activation` | archive-org-mcp Implementation Plan |
-| [`docs/superpowers/plans/2026-09-06-medium-mcp.md`](../../docs/superpowers/plans/2026-09-06-medium-mcp.md) | 2026-09-06 | `draft` | `implementation` | `mcp-stub-activation` | Medium MCP Implementation Plan |
-| [`docs/superpowers/plans/2026-09-06-port-bodai-reconciliation.md`](../../docs/superpowers/plans/2026-09-06-port-bodai-reconciliation.md) | 2026-09-06 | `draft` | `implementation` | `mcp-stub-activation` | Port and Bodai Config Reconciliation (Plan 0b) Implementation Plan |
-| [`docs/superpowers/plans/2026-09-06-registry-manifest-migration.md`](../../docs/superpowers/plans/2026-09-06-registry-manifest-migration.md) | 2026-09-06 | `draft` | `implementation` | `mcp-stub-activation` | Registry Manifest Migration (Plan 0a) Implementation Plan |
-| [`docs/superpowers/plans/2026-09-06-scapy-mcp.md`](../../docs/superpowers/plans/2026-09-06-scapy-mcp.md) | 2026-09-06 | `draft` | `implementation` | `mcp-stub-activation` | Scapy MCP Implementation Plan |
+| [`docs/superpowers/plans/2026-09-06-archive-org-mcp.md`](../../docs/superpowers/plans/2026-09-06-archive-org-mcp.md) | 2026-09-06 | `active` | `implementation` | `mcp-stub-activation` | archive-org-mcp Implementation Plan |
+| [`docs/superpowers/plans/2026-09-06-medium-mcp.md`](../../docs/superpowers/plans/2026-09-06-medium-mcp.md) | 2026-09-06 | `active` | `implementation` | `mcp-stub-activation` | Medium MCP Implementation Plan |
+| [`docs/superpowers/plans/2026-09-06-port-bodai-reconciliation.md`](../../docs/superpowers/plans/2026-09-06-port-bodai-reconciliation.md) | 2026-09-06 | `active` | `implementation` | `mcp-stub-activation` | Port and Bodai Config Reconciliation (Plan 0b) Implementation Plan |
+| [`docs/superpowers/plans/2026-09-06-registry-manifest-migration.md`](../../docs/superpowers/plans/2026-09-06-registry-manifest-migration.md) | 2026-09-06 | `active` | `implementation` | `mcp-stub-activation` | Registry Manifest Migration (Plan 0a) Implementation Plan |
+| [`docs/superpowers/plans/2026-09-06-scapy-mcp.md`](../../docs/superpowers/plans/2026-09-06-scapy-mcp.md) | 2026-09-06 | `active` | `implementation` | `mcp-stub-activation` | Scapy MCP Implementation Plan |
 | [`docs/superpowers/plans/2026-08-31-flowscape.md`](../../docs/superpowers/plans/2026-08-31-flowscape.md) | 2026-08-31 | `active` | `canonical` | `flowscape-v1-bootstrap` | Plan: `flowscape` v1 Bootstrap |
 | [`docs/superpowers/plans/2026-08-31-zsh-modernization.md`](../../docs/superpowers/plans/2026-08-31-zsh-modernization.md) | 2026-08-31 | `active` | `canonical` | `developer-environment` | Plan: Zsh Stack Modernization (oh-my-zsh → Sheldon/Starship) |
 | [`docs/superpowers/plans/2026-08-23-oneiric-action-kit-promotion.md`](../../docs/superpowers/plans/2026-08-23-oneiric-action-kit-promotion.md) | 2026-08-23 | `active` | `implementation` | `oneiric-action-kit-promotion` | Oneiric Action-Kit Promotion Implementation Plan |
@@ -737,9 +737,9 @@ Counts of entries per (lifecycle, role) cell across all 21 stores. Useful as a s
 | Role \\ Lifecycle | draft | active | partial | shipped | complete | Total |
 |---|---|---|---|---|---|---|
 | `canonical` | 26 | 106 | · | 2 | 2 | **136** |
-| `implementation` | 138 | 54 | 2 | 34 | 21 | **249** |
+| `implementation` | 133 | 59 | 2 | 34 | 21 | **249** |
 | `umbrella` | · | 2 | · | · | 2 | **4** |
 | `historical` | 22 | 6 | · | 4 | 101 | **133** |
 | `superseded` | · | · | · | · | 12 | **12** |
 
-| **Total** | **186** | **168** | **2** | **40** | **138** | **534** |
+| **Total** | **181** | **173** | **2** | **40** | **138** | **534** |
