@@ -3,7 +3,6 @@ status: complete
 role: decision
 date: 2026-09-06
 last_reviewed: 2026-09-06
-# Note: last_reviewed advances to v3 revision date when committed; v2 + v3 both landed 2026-09-06
 superseded_by: null
 blocks_on: ["docs/superpowers/specs/2026-08-31-flowscape-design.md"]
 decision_date: 2026-09-06
