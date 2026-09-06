@@ -1114,7 +1114,8 @@ behaviour. **Task 1 must never be cut**: allocating ports without the widened au
 the 3051/3052 collision happened. Task 7 must never be cut — it is the assertion whose
 absence let `portmap.yaml` drift six entries out of true.
 
-Plan 0b does **not** gate the three server plans. They need only their
-`settings/ecosystem.yaml` entry from Plan 0a Task 1. If Plan 0b is delayed, the servers
-still build; they simply run on ports that are not yet registered, which Task 7's guard
-will flag when it lands.
+Plan 0b's guard test will fail loudly if a server plan registers before 0b confirms
+the port is free, but the server plans' Phase 0b gates (live upstream proof, RapidAPI
+key, committed pcap fixtures) are independent of 0b's ports. The execution order —
+0a → 0b → server plans — is the natural sequence, but a server plan's Phase 0b can
+run without 0b landing first.

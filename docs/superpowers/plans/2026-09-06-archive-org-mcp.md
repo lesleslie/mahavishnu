@@ -1986,6 +1986,11 @@ Task 9 first — the two tasks are independent apart from that import, and the c
 Step 10 will not be importable until Task 9 lands. If you prefer strict
 green-at-every-commit, execute Task 9 before Task 6 Step 9.
 
+If executor hits Task 6 before Task 9, write a minimal stub
+`FEEDS = {"cdx": FeedState(name="cdx"), "catalog": FeedState(name="catalog"), ...}`
+at the top of Task 1's `archive_org_mcp/__init__.py` and import it from there;
+Task 9 replaces the stub with the full implementation.
+
 ### Task 7: Catalog models, client, and the two catalog tools
 
 **Files:**
@@ -3285,10 +3290,34 @@ def _build_registration_map(
     }
 
 
-def register_all_tool_groups(server: FastMCP, clients: ClientBundle) -> None:
-    """Register every group, ignoring the profile. Used by register_all_fn."""
-    for register in _build_registration_map(clients).values():
-        register(server)
+def register_all_tool_groups(server: FastMCP, clients: ClientBundle) -> dict[str, list[str]]:
+    """Register every group, ignoring the profile. Used by register_all_fn.
+
+    Returns a ``{group_name: [tool_name, ...]}`` map so callers (tests, the
+    smoke gate) can assert which tools landed. Matches the medium-mcp and
+    scapy-mcp return shape — pinning all three plans to the same convention
+    lets a cross-repo audit script diff registrations without parsing each
+    per-server implementation.
+    """
+    from archive_org_mcp.tools.catalog import register_catalog_tools
+    from archive_org_mcp.tools.retrieval import register_retrieval_tools
+    from archive_org_mcp.tools.wayback import register_wayback_tools
+
+    catalog_tools = ["catalog_search", "catalog_metadata"]
+    wayback_tools = ["wayback_snapshots", "wayback_closest"]
+    retrieval_tools = ["retrieve_snapshot"]
+
+    _register_health_tools(server)
+    register_wayback_tools(server, clients.wayback)
+    register_catalog_tools(server, clients.catalog)
+    register_retrieval_tools(server, clients.retrieval)
+
+    return {
+        "health_tools": [],
+        "wayback_tools": wayback_tools,
+        "catalog_tools": catalog_tools,
+        "retrieval_tools": retrieval_tools,
+    }
 
 
 __all__ = [
@@ -4254,3 +4283,33 @@ Under scope pressure, cut the `catalog` domain (Tasks 7 and its e2e tests) — W
 the primary draw. **Never cut:** Task 1 (a broken wheel is worse than no wheel), Task 9
 (feed state is what distinguishes this from spec finding 4.3), Task 12 (the upstream
 proof), or Task 11's non-empty assertions.
+
+## Spec coverage checklist
+
+Mapping from spec sections to the tasks that implement them, so an executor can
+verify the plan covers the entire surface the spec asks for:
+
+- §4.4 (Findings) — Task 10 health routes surface `cdx` and `catalog` feed state.
+- §4.7 (git repo prereq) — Task 1 initializes git and the wheel scaffold.
+- §4.8 (wheel scaffold) — Task 1 produces the flat-layout wheel whose `RECORD`
+  contains `archive_org_mcp/__init__.py`.
+- §4.10 (mcp-common APIs) — Task 10 wires `mcp_common.bootstrap.bootstrap_baseline_tools`,
+  `mcp_common.health.register_http_health_route`, and `mcp_common.tools.dispatch._apply_tool_profile`.
+- §5.2 (flat layout) — Task 1 Step 2 moves from `src/` to flat.
+- §5.3 (config) — Task 4 defines `ArchiveOrgSettings` with every §13.1 key and default.
+- §5.4 (Phase 0 split) — Phases 0a/0b/1/2/3 mirror the spec's split (Tasks 1-3 are
+  0a; Task 10 is the wiring phase; Task 12 is the live upstream proof).
+- §5.5 (health routes) — Task 10 implements `/health` (always 200) and `/readyz`
+  (503 when required feeds degraded).
+- §5.6 (baseline tools) — Task 10 wires `seed_liveness_context` and the baseline
+  echo/health tools.
+- §5.7 (async discipline) — `create_app` is async; sync callers go through
+  `create_app_sync` / `_run_async_safely` in `server.py`.
+- §5.8 (retry) — `ArchiveOrgBaseClient` (Task 5) implements the
+  `retry_max_attempts` + `backoff_random_jitter` policy in async-only paths.
+- §6.1 (archive-org tools) — Tasks 6 and 7 register the five tools
+  (`wayback_snapshots`, `wayback_closest`, `catalog_search`, `catalog_metadata`,
+  `retrieve_snapshot`); Task 9 registers them with the feed-aware bookkeeping.
+- §8 (testing) — Task 11 asserts non-empty results per tool; Task 12 asserts
+  `≥1 real CDX row` from a live call.
+- §13.2 (settings) — Task 4 implements every §13.1 key and default verbatim.

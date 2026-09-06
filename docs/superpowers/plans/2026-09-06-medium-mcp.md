@@ -1633,7 +1633,7 @@ async def test_budget_exhausted_refuses_call(settings: MediumSettings, dhara: Dh
     assert successes == 3
     assert refusals == 7
     # A refused reservation must not have advanced the counter past the ceiling.
-    assert await dhara.get_counter(budget_key(client._period())) == 3
+    assert await dhara.get_counter(budget_key(client.current_period())) == 3
 
 
 async def test_headroom_check_happens_inside_the_lock(
@@ -1667,7 +1667,7 @@ async def test_headroom_check_happens_inside_the_lock(
 
     # The ceiling is handed down as max_value; the client computed nothing else.
     assert seen == [
-        {"key": budget_key(client._period()), "increment": 1, "max_value": 3},
+        {"key": budget_key(client.current_period()), "increment": 1, "max_value": 3},
     ]
 
 
@@ -1770,6 +1770,17 @@ class Medium2Client:
 
     def _period(self) -> str:
         return datetime.now(UTC).strftime("%Y-%m")
+
+    def current_period(self) -> str:
+        """Public accessor for the YYYY-MM budget period.
+
+        Wraps ``_period`` so external callers (tests, ``tools/budget.py``) do not
+        have to reach into a private attribute. Tests that need to assert against
+        the period key should call ``client.current_period()`` — the private
+        name is preserved for backward compatibility with any code that already
+        reached for ``client._period()``.
+        """
+        return self._period()
 
     def _resets_at(self) -> str:
         now = datetime.now(UTC)
@@ -2787,7 +2798,7 @@ git -c user.email=les@wedgwoodwebworks.com commit -m "feat(medium-mcp): 13 tools
 - Test: `/Users/les/Projects/medium-mcp/tests/unit/test_server_smoke.py`
 
 **Interfaces:**
-- Produces `medium_mcp.server.app: FastMCP` constructed via `mcp_common`'s `seed_liveness_context`, `bootstrap_baseline_tools`, `register_http_health_route`, `apply_tool_profile` — **in that order**, with the 13 domain tools registered by `apply_tool_profile` through `register_all_fn`. Custom `/readyz` returns 503 when Dhara is unreachable. Profile gating via `MEDIUM_MCP_TOOL_PROFILE`.
+- Produces `medium_mcp.server.get_app() -> FastMCP` (lazy accessor) — calling it constructs the FastMCP via `mcp_common`'s `seed_liveness_context`, `bootstrap_baseline_tools`, `register_http_health_route`, `apply_tool_profile` — **in that order**, with the 13 domain tools registered by `apply_tool_profile` through `register_all_fn`. Custom `/readyz` returns 503 when Dhara is unreachable. Profile gating via `MEDIUM_MCP_TOOL_PROFILE`. Importing `medium_mcp.server` no longer requires `MEDIUM_MCP_RAPIDAPI_KEY` to be present.
 - Produces `medium_mcp.tools.profiles.PROFILE_REGISTRATIONS: dict[str, list[str]]` mapping each profile value (`full`, `standard`, `minimal`) to its group list, plus `_build_registration_map(bundle)` returning group → tool names.
 - Produces `medium_mcp.utils.logging.configure_logging(level)` — oneiric logging, once per process, called from `build_runtime()`.
 - Produces `medium_mcp.feeds.FEEDS = {"medium2": FeedState}` carrying the four wiring-discipline signals. `mark_capability_unavailable()` raises on required feeds.
@@ -2803,7 +2814,7 @@ import pytest
 from pydantic import SecretStr
 
 from medium_mcp.config.settings import MediumSettings
-from medium_mcp.server import app, build_runtime
+from medium_mcp.server import build_runtime, get_app
 
 # The four tools mcp_common's bootstrap installs on every Bodai MCP server.
 # Mirrors archive-org-mcp. If this set shrinks, the wiring-discipline health
@@ -2827,7 +2838,8 @@ def settings() -> MediumSettings:
 def test_app_is_fastmcp_instance() -> None:
     from mcp.server.fastmcp import FastMCP
 
-    assert isinstance(app, FastMCP)
+    # Lazy accessor — avoids `validate_rapidapi_key` running at import time.
+    assert isinstance(get_app(), FastMCP)
 
 
 def test_build_runtime_with_in_memory_dhara(settings: MediumSettings) -> None:
@@ -3385,7 +3397,14 @@ def _get_runtime() -> Runtime:
     return _default_runtime
 
 
-app = _get_runtime().build_mcp_app()
+def get_app() -> FastMCP:
+    """Lazy accessor — avoids `validate_rapidapi_key` running at import time.
+
+    Importing `medium_mcp.server` no longer requires `MEDIUM_MCP_RAPIDAPI_KEY`
+    to be present in the environment. Callers that need the app (the CLI, the
+    FastMCP runner, integration tests) call `get_app()` explicitly.
+    """
+    return _get_runtime().build_mcp_app()
 ```
 
 - [ ] **Step 7: Implement `cli.py`**
@@ -3539,7 +3558,6 @@ import pytest
 from medium_mcp.tools.users import user_info
 
 
-@pytest.mark.asyncio
 async def test_user_info_returns_real_user(make_client) -> None:
     transport = stub_json(
         200,
@@ -3573,7 +3591,6 @@ import pytest
 from medium_mcp.tools.articles import article_metadata
 
 
-@pytest.mark.asyncio
 async def test_article_metadata_returns_full_record(make_client) -> None:
     transport = stub_json(
         200,
@@ -3612,7 +3629,6 @@ import pytest
 from medium_mcp.tools.search import search_articles
 
 
-@pytest.mark.asyncio
 async def test_search_articles_returns_page(make_client) -> None:
     transport = stub_json(
         200,
@@ -3651,7 +3667,6 @@ import pytest
 from medium_mcp.tools.budget import budget_remaining
 
 
-@pytest.mark.asyncio
 async def test_budget_remaining_returns_status(make_client) -> None:
     client, cache = make_client(stub_json(200, {}))
     status = await budget_remaining(
@@ -3672,7 +3687,6 @@ import pytest
 from medium_mcp.tools.articles import article_content
 
 
-@pytest.mark.asyncio
 async def test_article_content_without_flag_returns_no_full_text(make_client) -> None:
     transport = stub_json(
         200,
@@ -3690,7 +3704,6 @@ async def test_article_content_without_flag_returns_no_full_text(make_client) ->
     assert result.full_text is None
 
 
-@pytest.mark.asyncio
 async def test_article_content_with_flag_returns_full_text(make_client) -> None:
     transport = stub_json(
         200,
@@ -3751,6 +3764,7 @@ Create `tests/integration/test_upstream_proof.py`:
 from __future__ import annotations
 
 import json
+import os
 from pathlib import Path
 
 import httpx2
@@ -3767,7 +3781,10 @@ FIXTURES = Path(__file__).resolve().parent.parent / "fixtures"
 
 @pytest.mark.requires_network
 @pytest.mark.requires_auth
-@pytest.mark.asyncio
+@pytest.mark.skipif(
+    not os.environ.get("MEDIUM_MCP_RAPIDAPI_KEY"),
+    reason="requires MEDIUM_MCP_RAPIDAPI_KEY in env",
+)
 async def test_user_info_returns_real_medium_user() -> None:
     settings = MediumSettings(_env_file=None)
     settings.rapidapi_key = type(settings.rapidapi_key)(
@@ -3835,43 +3852,120 @@ Suggested structure:
 ```markdown
 ## Capabilities
 
-- user_info, user_articles
-- article_metadata, article_content (full text opt-in), article_responses
-- publication_info, publication_articles
-- tag_info, tag_latest
-- search_articles, search_users, search_publications
-- budget_remaining (local read, no upstream)
+13 tools + the free budget readout:
+
+- `user_info` (one-of `user_id` / `username`)
+- `user_articles`
+- `article_metadata`
+- `article_content` (full text opt-in, see Content policy below)
+- `article_responses`
+- `publication_info` (one-of `publication_id` / `slug`)
+- `publication_articles`
+- `tag_info`
+- `tag_latest`
+- `search_articles`
+- `search_users`
+- `search_publications`
+- `budget_remaining` — local read, never hits RapidAPI
 
 ## Source
 
-Data comes from the unofficial **medium2** API on RapidAPI. The official Medium API
-was archived March 2023 and does not accept new integrations.
+Data comes from the unofficial **medium2** API on RapidAPI. The official Medium
+API was archived March 2023 and does not accept new integrations; medium-mcp is
+the project that documents what shape the unofficial API returns and how the
+budget guard turns it into a metered-but-capped service.
 
 ## Setup
 
-1. Sign up at https://rapidapi.com and subscribe to medium2 (free tier: 150 calls/month).
+1. Sign up at https://rapidapi.com and subscribe to medium2 (free tier: 150
+   calls / month).
 2. Export the key:
    ```bash
    export MEDIUM_MCP_RAPIDAPI_KEY=<your-key>
    ```
-3. Run the server:
+3. Install + run:
    ```bash
    uv pip install -e ".[dev]"
    medium-mcp
    ```
 
+## Health
+
+Two routes, answering different questions:
+
+- **`/health`** — always HTTP 200. Reports per-feed detail in `components`.
+  For orchestrators and `curl` smoke probes.
+- **`/readyz`** — HTTP 503 when a required feed has not yet returned data,
+  200 otherwise. For readiness probes.
+
+`dhara` is a required feed (the budget counter rides on it), so a freshly
+started server returns 503 on `/readyz` until a tool call succeeds. That is
+intentional: a server whose counter has never been touched cannot guarantee
+its budget, and lies would defeat the only guard we have.
+
 ## Budget
 
-The server enforces a strict monthly budget. Once exhausted, metered calls are
-refused with a `budget_exhausted` error payload. `budget_remaining` is always free.
+The server enforces a strict monthly budget (`medium_mcp.budget.monthly_budget`,
+default **150 metered calls / period**) under a Dhara-backed advisory lock.
+Once exhausted, metered calls are refused with this payload:
+
+```json
+{
+  "error": "budget_exhausted",
+  "remaining_calls": 0,
+  "requested_calls": 1,
+  "period": "2026-09",
+  "resets_at": "2026-10-01T00:00:00Z",
+  "retryable": false,
+  "cached_alternatives": ["user_info", "article_metadata", "tag_info"]
+}
+```
+
+`budget_remaining` is always free; it reads the counter locally and reports
+`calls_used`, `remaining_calls`, `monthly_budget`, `period`, `resets_at` so
+the caller can decide whether to make the call themselves.
 
 ## Content policy
 
-`article_content` returns the full body only when `include_full_text=True`. By
-default, only metadata + excerpt is returned.
+`article_content` returns the full body only when the caller passes
+`include_full_text=True`. Five rules govern what the tool does and does not
+return, in order:
+
+1. **Default-deny.** `article_content` returns `excerpt` only when
+   `include_full_text=False`, regardless of cache state. The cache may hold
+   `full_text` under the `content_key` prefix; the gate is at the return
+   point, not the cache key.
+2. **Opt-in body.** Set `include_full_text=True` to receive `full_text`
+   alongside the excerpt. The cache hit path also honors the flag — a cached
+   body is *only* returned when the flag was set.
+3. **Truncation.** `excerpt` is capped at `excerpt_max_chars` (default 500,
+   max 2000) so a caller never receives an unbounded body. The
+   `truncated: bool` field tells the caller whether the cap fired.
+4. **Format.** `format` is one of `"markdown"`, `"html"`, or `"text"`. The
+   tool does not transcode between formats; what the upstream returned is
+   what the tool returns, gated only by the include flag.
+5. **No export.** `allow_content_export: bool` (default `false`) is a
+   hard-stop on writing full text to disk or to a downstream store. Treat
+   the body as in-memory-only; do not persist it.
+
+The settings section (`MEDIUM_MCP_*` env vars, prefix-defined) carries
+`excerpt_max_chars`, `allow_content_export`, `monthly_budget`, and the
+rest. See `settings/medium-mcp.yaml` for the full list.
+
+## License
+
+BSD-3-Clause.
 ```
 
-- [ ] **Step 2: Commit**
+- [ ] **Step 2: Ratchet the coverage floor**
+
+In `pyproject.toml`, raise `--cov-fail-under=70` to `--cov-fail-under=85` once
+Tasks 1-12 pass cleanly. Matches archive-org-mcp and scapy-mcp pattern — a
+brand-new repo starts at 70%, lands at 85% once the documented suite passes,
+and a later task in the sequence ratchets further toward the ecosystem
+target of 89%.
+
+- [ ] **Step 3: Commit**
 
 ```bash
 cd /Users/les/Projects/medium-mcp
