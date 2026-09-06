@@ -61,7 +61,7 @@ ______________________________________________________________________
    manifest, with all 35 repositories registered (the 32 in `repos.yaml`, which already
    subsume the canonical 8, plus the 3 new servers).
 1. `bodai/config/portmap.yaml` is reconciled with the ports repos actually bind.
-1. Registry and port drift fail CI instead of going silent.
+1. Registry and port drift fail `crackerjack run` instead of going silent.
 1. `medium-mcp`'s README is corrected to name its real upstream API.
 1. `scapy-mcp` cannot emit a frame onto a network without passing layer-appropriate
    controls.
@@ -202,9 +202,12 @@ no `mahavishnu repo list`.** Every exit criterion must use `mahavishnu list-repo
 `git init`'d: no commits, no remote, no GitHub repository. `crackerjack run` performs
 git operations, so this blocks every plan's exit criteria until resolved.
 
-Scaffold contents are stubs: `__init__.py` 7 lines (docstring + `__version__`),
-`__main__.py` 20 lines (`main()` prints a "not yet implemented" line), `server.py` 13
-lines (`mcp = FastMCP("<pkg>")` and a comment; **no tools registered**).
+Scaffold contents are stubs: `src/<pkg>/__init__.py` 7 lines (docstring +
+`__version__`), `src/<pkg>/__main__.py` 20 lines (`main()` prints a "not yet
+implemented" line), `src/<pkg>/server.py` 13 lines (`mcp = FastMCP("<pkg>")` and a
+comment; **no tools registered**). Each repo also carries a `.python-version` at the
+root, which stays put — the flat-layout move in Phase 0a relocates only the three files
+under `src/<pkg>/`.
 
 ### 4.8 All three build empty wheels — but the sdists are fine
 
@@ -268,7 +271,7 @@ exhaustively. Plan 0b widens the audit before allocating.
 | `_apply_tool_profile(...)` (async) / `apply_tool_profile(...)` (sync) | `mcp_common/tools/dispatch.py:253` | Kwargs: `profile_env_var`, `registrations: dict[ToolProfile, list \| ALL_TOOLS]`, `registration_map: dict[str, Callable]`, `register_all_fn`, `mandatory_groups`, `essential_tool_names`, `discovery_fn`, `yaml_loader`. Sync form wraps the async in `asyncio.run()`. |
 | `register_http_health_route(mcp, *, service_name, version, extra_components=None)` | `mcp_common/health.py:810` | **"The handler always returns HTTP 200"** — verbatim from its docstring. Body: `{status, service, version, components}`. There is no 503 path. |
 | `APIKeyValidator` | `mcp_common.security` | Imported under `suppress(ImportError)` with a `SECURITY_AVAILABLE` flag in `raindropio_mcp/config/settings.py:23-27`. |
-| `workflow.retry` action | `oneiric/oneiric/actions/workflow.py:521+` | `side_effect_free=True`. Returns **guidance**: `{attempt, max_attempts, status, next_attempt, delay_seconds}`. Computes a delay; does **not** perform the retry. Jitter is deterministic (`0.25 if attempt % 2 == 0 else 0.15`), **not** stochastic. |
+| `workflow.retry` action | `oneiric/oneiric/actions/workflow.py:516` (`WorkflowRetryAction`; `side_effect_free=True` at `:529`, `execute` at `:537`) | Returns **guidance**: `{attempt, max_attempts, status, next_attempt, delay_seconds}`. Computes a delay; does **not** perform the retry. Jitter is deterministic (`0.25 if attempt % 2 == 0 else 0.15`), **not** stochastic. |
 
 `raindropio-mcp/raindropio_mcp/server.py` is the worked precedent: it calls
 `register_http_health_route(app, service_name=..., version=...)` for `/health` **and
@@ -345,7 +348,7 @@ imported under `suppress(ImportError)` with a `SECURITY_AVAILABLE` flag, per
 Bundling a deterministic check with a network-dependent one means a network blip blocks
 the packaging fix. Two sub-phases, both required to exit:
 
-**Phase 0a — hermetic, runs in PR CI:**
+**Phase 0a — hermetic, runs on every `crackerjack run`:**
 
 1. `git init`, initial commit, remote configured (finding 4.7).
 1. Flat-layout move; `uv build` produces a wheel whose `unzip -l` contains
@@ -356,7 +359,8 @@ the packaging fix. Two sub-phases, both required to exit:
 1. The repo's entry added to `settings/ecosystem.yaml`; `mahavishnu list-repos | grep
    <name>` returns it.
 
-**Phase 0b — networked, marked `requires_network`, excluded from PR CI, run nightly:**
+**Phase 0b — networked, marked `requires_network`, deselected from the default
+`crackerjack run`, invoked deliberately:**
 
 | Server | Proof |
 |---|---|
@@ -364,8 +368,8 @@ the packaging fix. Two sub-phases, both required to exit:
 | `medium-mcp` | One live medium2 call returns a populated user object; **response recorded as a cassette**, so the test replays hermetically thereafter |
 | `scapy-mcp` | One committed pcap fixture read, known packet dissected to expected layers *(hermetic — belongs in 0a)* |
 
-`medium-mcp`'s live call runs **once, recorded, then replayed**. A live call per CI run
-would consume 30-60 of 150 monthly calls before any user request.
+`medium-mcp`'s live call runs **once, recorded, then replayed**. A live call on every
+`crackerjack run` would consume the monthly budget during ordinary development.
 
 Phase 0b proves one endpoint, not the whole surface. Each tool's own
 `test_<tool>_e2e.py` (§8) is what covers the rest; a green Phase 0b is necessary, not
@@ -476,19 +480,34 @@ CDX calls use `output=json`; the first row is the header and is consumed, not re
 `from_ts`/`to_ts` are 14-digit `YYYYMMDDhhmmss`, zero-padded from shorter input.
 Multi-value CDX fields are returned as lists, never joined strings.
 
-**Politeness settings** (IA enforces nothing, §4.4):
+**Politeness settings** (IA enforces nothing, §4.4). All four endpoint base URLs are
+configurable rather than hard-coded, so a mirror or a local replay proxy can be
+substituted without a code change:
 
 | Key | Default |
 |---|---|
+| `cdx_base_url` | `http://web.archive.org/cdx/search/cdx` |
+| `availability_base_url` | `https://archive.org/wayback/available` |
+| `search_base_url` | `https://archive.org/advancedsearch.php` |
+| `metadata_base_url` | `https://archive.org/metadata` |
 | `concurrency_limit` | `2` |
 | `max_response_bytes` | `5_242_880` (5 MiB) |
 | `retry_max_attempts` | `4` |
 | `backoff_base_seconds` | `1.0` |
 | `backoff_multiplier` | `2.0` |
 | `backoff_max_seconds` | `30.0` |
+| `backoff_random_jitter` | `True` |
 | `http_timeout_seconds` | `30.0` |
-| `user_agent` | `archive-org-mcp/{version} (+https://github.com/lesleslie/archive-org-mcp)` |
+| `user_agent` | `archive-org-mcp/{version}` + repo URL once a remote exists (§4.7) |
 | `cache_ttl_seconds` | `3600` |
+
+`backoff_random_jitter` adds a stochastic component on top of oneiric's deterministic
+delay (§5.8); it exists because archive.org is a shared public resource where
+synchronized retries across clients are the failure mode jitter prevents.
+
+`cache_ttl_seconds` applies to **CDX snapshot lists, availability lookups, and catalog
+metadata**. `retrieve_snapshot` bodies are **not** cached — archived pages are large and
+re-fetching is cheap relative to the storage.
 
 Backoff on 429/503 via §5.8. `retrieve_snapshot` streams and truncates at
 `max_response_bytes`, setting `truncated: true` rather than buffering unbounded.
@@ -501,13 +520,44 @@ behind attribute access, and implicit I/O is a liability when calls are metered.
 
 **Cache is the load-bearing component**, not an optimization — 150 calls/month.
 
+**Tools.** Every tool returns one page; none auto-follows pagination (see call-cost
+below). `next_cursor` is `None` when exhausted.
+
+| Tool | Inputs | Returns |
+|---|---|---|
+| `user_info` | `user_id: str \| None`, `username: str \| None` (exactly one required) | `UserInfo` — `{user_id, username, fullname, followers_count, following_count, bio, twitter_username}` |
+| `user_articles` | `user_id: str`, `cursor: str \| None = None` | `{articles: list[ArticleSummary], next_cursor}` |
+| `article_metadata` | `article_id: str` | `ArticleMetadata` — `{article_id, title, subtitle, author_id, published_at, reading_time, claps, voters, tags, url, excerpt}` |
+| `article_content` | `article_id: str`, `include_full_text: bool = False`, `format: Literal["markdown","html","text"] = "markdown"` | `{article_id, excerpt, full_text: str \| None, format, truncated: bool}` |
+| `article_responses` | `article_id: str`, `cursor: str \| None = None` | `{responses: list[ArticleSummary], next_cursor}` |
+| `publication_info` | `publication_id: str \| None`, `slug: str \| None` (exactly one required) | `PublicationInfo` |
+| `publication_articles` | `publication_id: str`, `cursor: str \| None = None` | `{articles: list[ArticleSummary], next_cursor}` |
+| `tag_info` | `tag: str` | `TagInfo` — `{tag, followers_count, related_tags}` |
+| `tag_latest` | `tag: str`, `cursor: str \| None = None` | `{articles: list[ArticleSummary], next_cursor}` |
+| `search_articles` | `query: str`, `cursor: str \| None = None` | `{articles: list[ArticleSummary], next_cursor}` |
+| `search_users` | `query: str`, `cursor: str \| None = None` | `{users: list[UserSummary], next_cursor}` |
+| `search_publications` | `query: str`, `cursor: str \| None = None` | `{publications: list[PublicationInfo], next_cursor}` |
+| `budget_remaining` | *(none)* | `BudgetStatus` — `{remaining_calls, monthly_budget, period, resets_at, cache_hit_rate, cached_entries}` |
+
+`ArticleSummary` never contains `full_text` — only `article_content` with
+`include_full_text=True` returns it, per the content policy below. `search_*` in the
+cost table means the three `search_` tools collectively.
+
 **Cache contract:**
 
 - Key: `medium2:v1:<endpoint>:<sorted-query-hash>` — `endpoint` is the medium2 path,
   `sorted-query-hash` is a SHA-256 of canonically-sorted params. Coalescing uses the
   same key.
-- Dhara namespace: `medium_mcp` (per `dhara-key-prefixes`, an isolated top-level
-  prefix).
+- Dhara namespace: `medium_mcp`, an isolated top-level prefix per
+  `.claude/decisions/dhara-key-prefixes-2026-07-15.md`. **Provisioning:** the namespace
+  is created on first write via Dhara's `put`; no migration or schema step is required.
+  Startup performs one `get` against a sentinel key to confirm reachability — this is the
+  probe that drives `dhara_required` below.
+- **Coalescing semantics:** concurrent in-flight requests sharing a cache key attach to
+  the first request's future rather than issuing their own upstream call.
+  `coalesce_window_seconds` (default `5.0`) bounds how long a follower waits before
+  giving up and returning a typed timeout error — it does **not** delay the leader. Only
+  one call is metered regardless of follower count.
 - Value: pydantic model `model_dump_json()`, with a `schema_version` field so a model
   change invalidates rather than mis-parses.
 - TTL: `user_info` 86400s · `user_articles` 3600s · `article_metadata` 604800s ·
@@ -515,17 +565,25 @@ behind attribute access, and implicit I/O is a liability when calls are metered.
   `tag_*` 21600s.
 - Eviction: LRU with `cache_max_entries` default `10_000`; `article_content` entries are
   additionally bounded by `cache_max_content_bytes` default `52_428_800` (50 MiB).
-- **Dhara unavailable at startup:** the server starts, logs at warning, reports the
-  `medium2` feed `degraded` (→ 503 on `/readyz`, §5.5), and **refuses all metered
-  calls**. It does not fall back to an in-memory counter — that risks silent overspend.
+- **Dhara unavailable at startup:** with `dhara_required=True` (default) the server
+  starts, logs at warning, reports the `medium2` feed `degraded` (→ 503 on `/readyz`,
+  §5.5), and **refuses all metered calls**. It does not fall back to an in-memory
+  counter — that risks silent overspend.
 
 **Budget guard:**
 
 - Counter key `medium2:v1:budget:<YYYY-MM>` in the same Dhara namespace, with **no
   TTL** — it must not evict. Distinct from the cache keyspace so cache eviction cannot
   reset it.
-- Mutation is a **single atomic compare-and-increment**, not read-then-write. A
-  concurrent pair at 149 must not both pass; the loser gets `BudgetExhaustedError`.
+- Mutation is a **single atomic compare-and-increment against Dhara**, not
+  read-then-write. Dhara's ACID guarantees are the serialization point — there is no
+  application-level lock, and no in-process counter that could diverge across workers. A
+  concurrent pair at 149 must not both pass; the loser gets `BudgetExhaustedError`. If
+  Dhara cannot service the CAS, the call is **refused**, never optimistically allowed.
+- `budget_reserve_headroom` (default `5`) is withheld from the usable budget: the guard
+  refuses once `remaining_calls <= budget_reserve_headroom`. This leaves a margin for
+  Phase 0b's recorded proof and for manual diagnosis after an agent exhausts the tier,
+  so the last few calls are not spent automatically.
 - **Failed calls count.** Any request that reaches RapidAPI is assumed metered
   regardless of status, because RapidAPI's metering behaviour on 4xx/5xx is
   undocumented. Retries therefore consume budget, so `medium-mcp` sets
@@ -586,8 +644,8 @@ the policy was incoherent. The rule now distinguishes fetch, cache, and return:
    `allow_content_export=True` in settings, default `False`, independent of the per-call
    flag.
 6. Recorded as `.claude/decisions/medium-content-policy.md`, structured as: context (the
-   mediumapi.com restriction verbatim), the five rules above, and the enforcement point
-   for each.
+   mediumapi.com restriction verbatim), rules 1-5 above, and the enforcement point for
+   each.
 
 **README correction is a deliverable.** The four capability bullets stay — they are
 achievable (§4.2) — but the README must state that the source is the unofficial medium2
@@ -642,7 +700,16 @@ that `tcpreplay` emits in one command; only the final wire step was gated. There
 | `read_pcap` | `path: str`, `limit: int = 100`, `offset: int = 0` | `pcap` | none |
 | `write_pcap` | `filename: str`, `packets: list[PacketSpec]` | `pcap` | none |
 | `capture_start` / `capture_stop` / `capture_read` | `iface`, `bpf_filter`, `packet_cap`, `duration_cap` | `capture` | `/dev/bpf*` |
-| `transmit_packet` | `packet: PacketSpec`, `iface: str`, `count: int = 1` | `transmit` | all controls above |
+| `transmit_packet` | `packet: PacketSpec`, `iface: str`, `count: int = 1` | `transmit` | all controls; L2 frames additionally need `transmit_allow_l2` |
+| `probe_packet` | `packet: PacketSpec`, `iface: str`, `targets: list[str]`, `timeout_seconds: float = 2.0` | `transmit` | all controls **plus** `transmit_max_probe_targets` |
+
+**`transmit_packet` wraps `send`/`sendp`; `probe_packet` wraps `sr1`/`srp`.** They are
+separate tools because they are separate risks: one-way emission is bounded by packets
+per second, while a request-response probe fans out across targets — a single `srp` can
+scan 65535 ports, which a packets-per-second cap does not constrain. `probe_packet` is
+therefore additionally bounded by `transmit_max_probe_targets`, and `len(targets)` is
+validated against it before any frame leaves. Both tools live in the `transmit` domain
+and share every control in the table above.
 
 `LayerSpec` is a discriminated pydantic union over supported layers (`Ether`, `ARP`,
 `IP`, `IPv6`, `TCP`, `UDP`, `ICMP`, `DNS`, `Raw`) — not a free-form dict, so no `Any`
@@ -658,12 +725,13 @@ enters a tool input.
 | `arp_request.pcap` | ARP who-has + is-at |
 | `icmp_echo.pcap` | ICMP echo request + reply |
 | `ipv6_tcp.pcap` | IPv6 + TCP/443 |
-| `malformed.pcap` | truncated IP header — dissection must fail gracefully |
+| `malformed.pcap` | truncated IP header — `dissect_bytes` must return a typed `DissectionError` payload (`{error: "dissection_failed", reason, offset, partial_layers}`), never raise or crash |
 
 Generated by `scripts/gen_pcap_fixtures.py` **committed to this repo** (not borrowed
 from flowscape, which would create a cross-repo dependency). Determinism: all packet and
 file-header timestamps set to the fixed epoch `1700000000.000000`; no `time.time()`, no
-unseeded RNG. CI regenerates and asserts byte-identity.
+unseeded RNG. A unit test regenerates the fixtures and asserts byte-identity, so it runs
+under `crackerjack run` like any other test.
 
 **e2e tests for privileged and gated tools.** `mcp-backend-wiring-discipline.md`
 requires a per-tool e2e test, and `capture`/`transmit` have no upstream:
@@ -813,7 +881,7 @@ failure and 200 otherwise; `mahavishnu list-repos | grep <name>` returns it; and
 
 ______________________________________________________________________
 
-## 11. Open Items
+## 11. Open Items and Resolved Prerequisites
 
 1. **`medium-mcp` needs a human prerequisite before Phase 0b:** a RapidAPI account, a
    medium2 subscription (free tier suffices), and `MEDIUM_MCP_RAPIDAPI_KEY` exported.
@@ -828,9 +896,15 @@ ______________________________________________________________________
 1. **`.crackerjack.yaml` provenance.** Whether the three new repos need one, and its
    initial contents, is unverified. Plan 0a resolves by copying `raindropio-mcp`'s or
    documenting that none is needed.
-1. **CI runner matrix.** `scapy-mcp` live capture is macOS-only; unit tests are
-   portable. Whether CI is Linux-only with a macOS exemption for `capture.py`, or a
-   matrix, is undecided.
+1. **CI is `crackerjack`, not a hosted runner.** Verified: zero `.github/workflows`
+   across `mahavishnu`, `crackerjack`, `raindropio-mcp`, `css-mcp`, `langsmith-mcp`,
+   `mcp-common`, `dhara`, and `akosha`. `crackerjack run` executes on the developer's
+   macOS machine, so there is no runner matrix, no PR gate, and no cross-platform
+   concern. Two consequences: `scapy-mcp`'s `capture` tests **can** exercise real BPF
+   when ChmodBPF is present (so the `capability_unavailable` branch and the live branch
+   are both reachable locally), and `requires_network` deselection is the only mechanism
+   separating metered tests from routine runs — there is no separate scheduled job to
+   put them in.
 
 ______________________________________________________________________
 
@@ -868,12 +942,14 @@ uppercased with the server prefix (`ARCHIVE_ORG_MCP_`, `MEDIUM_MCP_`, `SCAPY_MCP
 |---|---|---|
 | `tool_profile` | `Literal["full","standard","minimal"]` | `"full"` |
 | `log_level` | `str` | `"INFO"` |
-| `http_port` | `int \| None` | `3054` / `3055` / `3056` respectively |
+
+`http_port` is per-server and appears in each subsection below.
 
 ### 13.2 archive-org-mcp
 
 | Key | Type | Default |
 |---|---|---|
+| `http_port` | `int \| None` | `3054` |
 | `cdx_base_url` | `HttpUrl` | `http://web.archive.org/cdx/search/cdx` |
 | `availability_base_url` | `HttpUrl` | `https://archive.org/wayback/available` |
 | `search_base_url` | `HttpUrl` | `https://archive.org/advancedsearch.php` |
@@ -894,6 +970,7 @@ uppercased with the server prefix (`ARCHIVE_ORG_MCP_`, `MEDIUM_MCP_`, `SCAPY_MCP
 | Key | Type | Default |
 |---|---|---|
 | `rapidapi_base_url` | `HttpUrl` | `https://medium2.p.rapidapi.com` |
+| `http_port` | `int \| None` | `3055` |
 | `rapidapi_key` | `SecretStr` | *(required; env only)* |
 | `monthly_budget` | `int` | `150` |
 | `budget_reserve_headroom` | `int` | `5` |
@@ -918,6 +995,7 @@ uppercased with the server prefix (`ARCHIVE_ORG_MCP_`, `MEDIUM_MCP_`, `SCAPY_MCP
 | Key | Type | Default |
 |---|---|---|
 | `default_iface` | `str \| None` | `None` *(scapy default)* |
+| `http_port` | `int \| None` | `3056` |
 | `capture_packet_cap` | `int` | `10_000` |
 | `capture_duration_cap_seconds` | `int` | `60` |
 | `capture_default_bpf_filter` | `str \| None` | `None` |
