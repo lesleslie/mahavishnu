@@ -156,3 +156,19 @@ class TestRepoCLICatalogSource:
         assert "raindropio-mcp" in catalog or any(
             "raindropio-mcp" in str(key) for key in catalog
         )
+
+
+@pytest.mark.unit
+class TestLegacyDeprecation:
+    """The legacy file must announce its status to anyone who opens it."""
+
+    def test_legacy_file_has_deprecation_header(self) -> None:
+        head = LEGACY_PATH.read_text().split("\n", 12)[:12]
+        joined = "\n".join(head).upper()
+        assert "DEPRECATED" in joined
+        assert "ECOSYSTEM.YAML" in joined
+
+    def test_legacy_entries_unchanged_count(self) -> None:
+        """Deprecating must not mutate entries — the guard in Task 9 depends on
+        this file staying stable as the migration's reference point."""
+        assert len(_repos(LEGACY_PATH)) == 32
