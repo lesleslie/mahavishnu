@@ -6,7 +6,20 @@ through Akosha entities, Crackerjack tests, and Session-Buddy sessions.
 Note: Oneiric path is configured in tests/conftest.py
 """
 
+import importlib.util
+
 import pytest
+
+# session_buddy is a sibling Bodai repo, not a PyPI package on this
+# repo's deps. The cross-system ULID integration tests verify that
+# Mahavishnu + Akosha + Session-Buddy all emit byte-compatible ULIDs.
+# Only meaningful in a workspace where the sibling repo is installed
+# editable; otherwise skip rather than fail with ModuleNotFoundError.
+_SESSION_BUDDY_AVAILABLE = importlib.util.find_spec("session_buddy") is not None
+pytestmark = pytest.mark.skipif(
+    not _SESSION_BUDDY_AVAILABLE,
+    reason="session_buddy sibling repo not installed (only meaningful in workspace installs)",
+)
 
 
 @pytest.fixture

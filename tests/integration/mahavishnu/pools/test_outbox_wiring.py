@@ -14,6 +14,13 @@ import pytest
 
 pytestmark = pytest.mark.integration
 
+# The MemoryAggregator outbox writer hard-imports duckdb at
+# ``mahavishnu/pools/outbox/writer.py:16``. duckdb is not declared in
+# pyproject.toml — it arrives transitively in some venvs and is missing
+# in others. importorskip makes this file self-skip when duckdb is not
+# installed rather than failing collection with ModuleNotFoundError.
+pytest.importorskip("duckdb")
+
 
 def _fresh_aggregator() -> object:
     """Build a MemoryAggregator in the current process.

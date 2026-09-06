@@ -30,6 +30,13 @@ import textwrap
 
 import pytest
 
+# duckdb is imported inside the test body (line ~116) for a runtime
+# invariant check. It is not declared in pyproject.toml — it gets pulled
+# in transitively by some environments and is missing in others.
+# importorskip at module level makes the test gracefully skip in venvs
+# without duckdb instead of failing collection with ModuleNotFoundError.
+pytest.importorskip("duckdb")
+
 
 @pytest.fixture
 def fake_repo_with_distilled(tmp_path: Path) -> Path:

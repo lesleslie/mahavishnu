@@ -3,7 +3,21 @@
 Tests ULID generation functionality without cross-system dependencies.
 """
 
+import importlib.util
+
 import pytest
+
+# session_buddy is a sibling Bodai repo, not a PyPI package on this
+# repo's deps. The ULID integration tests cross-check that Mahavishnu's
+# ULID format is byte-compatible with session_buddy.core.ulid_generator.
+# They only make sense in a workspace where the sibling repo is
+# installed editable. find_spec() is a cheap presence-check that avoids
+# the ModuleNotFoundError that would otherwise fail collection.
+_SESSION_BUDDY_AVAILABLE = importlib.util.find_spec("session_buddy") is not None
+pytestmark = pytest.mark.skipif(
+    not _SESSION_BUDDY_AVAILABLE,
+    reason="session_buddy sibling repo not installed (only meaningful in workspace installs)",
+)
 
 _ULID_CHARS = "0123456789abcdefghjkmnpqrstvwxyz"
 

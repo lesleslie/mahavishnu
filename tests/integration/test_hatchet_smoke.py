@@ -11,6 +11,13 @@ import os
 
 import pytest
 
+# hatchet_sdk is declared in the optional ``[hatchet]`` group in
+# pyproject.toml. Operators who don't `uv sync --group hatchet` would
+# hit ``AttributeError: module 'hatchet_sdk' has no attribute ...`` or
+# ModuleNotFoundError at collection time. importorskip avoids the
+# collection-time crash and turns it into a clean skip.
+pytest.importorskip("hatchet_sdk")
+
 SKIP_REASON = "HATCHET_CLIENT_TOKEN not set — skipping live Hatchet test"
 
 
