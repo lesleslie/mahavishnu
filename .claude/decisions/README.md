@@ -26,5 +26,6 @@ the topic, the third is the most recent state.
 | `test-matrix-review-followups.md` | Deferred MEDIUM/LOW items from the `scripts/test_matrix.py` review. | All 4 groups RESOLVED (verified 2026-09-06). Historical record only. |
 | `removed-scripts.md` | Policy for `required_scripts:` references in tool command frontmatter. | Active. |
 | `wire-up-contract.md` | Integration Contract template + orphan audit gate; prevents "built but not wired" deliveries. | Active. |
+| `mcp-backend-wiring-discipline.md` | Required feed observability + `/health` aggregation + smoke tests for every Bodai MCP server. **Amended 2026-09-06 with §7**: extends coverage to consumer-side MCP aggregations (e.g., Flowscape calling scapy-mcp). Trigger: ADR 0016 L1 BLOCKER B4 in `docs/adr/0016-multi-agent-review.md`. | Active. |
 | `mahavishnu-tool-preference-policy.md` | Tool-selection steering lives only in `MAHAVISHNU_TOOL_PROFILE` and `CLAUDE.md` `## Tool Preferences`; docstrings narrate, do not market. | Active. |
 | `followups-lifecycle.md` | Lifecycle for `docs/followups/`: README index + `.archive/` on completion (never delete), Status-line convention. Mirrors this directory's conventions. | Active. |
