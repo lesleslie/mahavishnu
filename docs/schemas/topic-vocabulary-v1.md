@@ -86,6 +86,7 @@ contribution workflow below.
 | `mcp-deps-crackerjack-loop` | `*-mcp` dep refresh + crackerjack loop — refresh `oneiric`/`mcp-common` in `*-mcp` repos via `crackerjack run -p minor`; one-line annotated-tag patch in `publish_manager.py`. |
 | `mcp-lifespan-startup-ordering` | Mahavishnu MCP `/health` Lifespan Bypass — `/health` must respond before lifespan startup completes (regression test for ordering). |
 | `mcp-routing` | Bodai MCP routing pattern — secrets in shell env, MCP config in per-project `.mcp.json`, agents scoped to project, plugins preferred over bare URL (see `.claude/decisions/2026-08-24-bodai-mcp-routing-pattern.md`). |
+| `mcp-stub-activation` | MCP stub activation — turning PyPI name-reservation scaffolds (`archive-org-mcp`, `medium-mcp`, `scapy-mcp`) into working servers, plus the `ecosystem.yaml` registry consolidation that makes registration verifiable. |
 | `mcp-tool-profile-adoption` | MCP Tool Profile Adoption Across Bodai Ecosystem — tiered dynamic tool loading in `*-mcp` repos (`full`/`standard`/`minimal`). |
 | `mcpbase-migration` | MCP Server Family: MCPBaseSettings → OneiricMCPConfig Migration |
 | `mcpretentious-removed` | mcpretentious terminal adapter removed (2026-08-10 wave, commit `34f61672`) — bootstrap followup documenting the fallback chain. *Topic migrated — see `terminal-adapter-architecture` for the live tmux/mock/crow stack.* |
