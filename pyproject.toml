@@ -29,7 +29,7 @@ dependencies = [
     # Fast JSON serialization for the canonical event wire
     "msgspec>=0.21.1,<0.22",
     # MCP server
-    "fastmcp>=3.4.7,<4",
+    "fastmcp>=3.4.7,<5",
     "uvicorn[standard]>=0.52.4",
     # Configuration
     "pydantic>=2.13.4",
