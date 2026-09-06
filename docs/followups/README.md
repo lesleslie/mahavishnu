@@ -1,12 +1,6 @@
----
-status: active
-role: canonical
-topic: followups-index
-date: 2026-07-16
-last_reviewed: 2026-07-16
-superseded_by: null
-blocks_on: []
----
+______________________________________________________________________
+
+## status: active role: canonical topic: followups-index date: 2026-07-16 last_reviewed: 2026-07-16 superseded_by: null blocks_on: []
 
 # `docs/followups/` index
 
@@ -23,7 +17,7 @@ Sorted newest-first. **Verified state** is the state confirmed against the
 
 | File | Topic | Verified state (2026-07-16) |
 |------|-------|------------------------------|
-| `2026-07-27-acp-v15-followups.md` | 7 v1.5 items deferred from the ACP server build plan: session persistence (`session/load`), MCP-over-ACP tunnel, Remote ACP (Streamable HTTP), UUID v7 session IDs, additional session methods (`list`/`resume`/`set_mode`/`close`/`delete`/`logout`), license declaration reconciliation, Toad-integration smoke. | 🔴 **Open** — all 7 awaiting triggers; v1.5.6 (license reconciliation) can ship independently now (one-line fix; tracked in a separate GitHub issue). Other 6 ship in two contexts: persistence bundle (v1.5.1 + v1.5.4 + v1.5.5) when v1.0 is `adopted`; reactive (v1.5.2 MCP-over-ACP, v1.5.3 Remote ACP) when their respective upstream specs stabilize. |
+| `2026-07-27-acp-v15-followups.md` | 7 v1.5 items deferred from the ACP server build plan: session persistence (`session/load`), MCP-over-ACP tunnel, Remote ACP (Streamable HTTP), UUID v7 session IDs, additional session methods (`list`/`resume`/`set_mode`/`close`/`delete`/`logout`), license declaration reconciliation, Toad-integration smoke. | 🔴 **Open (6 of 8 items)** — v1.5.6 (license reconciliation) **resolved 2026-09-06** (was already fixed in commit `3b38eb24` quality checkpoint 2026-07-27; followup was filed against stale state). Remaining 6 ship in two contexts: persistence bundle (v1.5.1 + v1.5.4 + v1.5.5) when v1.0 is `adopted`; reactive (v1.5.2 MCP-over-ACP, v1.5.3 Remote ACP) when their respective upstream specs stabilize. v1.5.7 (Toad smoke) is adoption-gated on `docs/feature-tracking/tui.md`. |
 | `2026-07-15-sb-checkpoint-stash-clobber.md` | Recurring: auto-checkpoint hook re-applies a `git stash` over in-flight subagent edits. | 🔴 **Open** — second observation; fix only *proposed* (Options A/B/C). Culprit lives in external `session-buddy` repo. |
 | `2026-09-05-backup-cli-broad-typer-exit.md` | `_do_backup_restore`/`_do_backup_create` broad `except Exception` catches the `typer.Exit` raised on the False path → user sees both "Restore failed" and "Restore error:" on a benign failure. | ✅ **Resolved** — production fix at `mahavishnu/backup_cli.py:20-31,67-78`; regression test `test_backup_cli_extended.py::test_restore_command_handles_false_result` now asserts `"Restore error:" not in result.output`. |
 | `2026-09-05-agno-memory-field-validator-silent-skip.md` | `AgnoMemoryConfig.validate_connection_string` is a `@field_validator` that does NOT run when `connection_string` is omitted → postgres backend silently accepted without connection string. | ✅ **Resolved** — production fix at `mahavishnu/core/config.py:131-149` (model_validator); regression tests `test_mahavishnu_config.py::test_connection_string_required_for_postgres` (tightened) + `test_config_extended.py::TestAgnoMemoryConnectionString::test_postgres_backend_with_explicit_none_raises` (already pinned). |
@@ -44,7 +38,6 @@ Sorted newest-first. **Verified state** is the state confirmed against the
 | `2026-09-05-terminal-validate-command-safety.md` | `validate_command_safety` substring matching blocks legitimate ops (`pkill`, `killall`, `kill -9`, `&& rm`, `ncat` matching `concat`, etc.). | 🔴 **Open — behavioral decision required** — locked-in test suite at `tests/unit/mcp/tools/test_terminal_tools.py:273-300` enforces strict mode; changing it requires maintainer sign-off and an updated test parametrization. Note filed 2026-09-05; remediation deferred to a dedicated brief. |
 | `2026-09-05-mahavishnu-pool-error-code-attribute.md` | `MahavishnuPool.start()` referenced nonexistent `MahavishnuError.code` attribute (ty error). | ✅ **Resolved** — production fix at `mahavishnu/pools/mahavishnu_pool.py:113` (`exc.code` → `exc.error_code`); regression tests `test_mahavishnu_pool.py::test_start_swallows_resource_not_found_for_unknown_worker_type` + `::test_start_reraises_non_resource_not_found_errors` (both pass). |
 | `2026-09-05-ai-dep-group-transitive-bloat.md` | `pydantic-ai-slim[mcp,openai,anthropic,google,groq]` pulls 5 LLM SDKs plus 10+ `google-cloud-*` packages (incl. secret-manager, storage) and 3 overlapping MCP packages. | 🟡 **Documented; deferred** — `ai` is already opt-in. Bloat is cosmetic unless install footprint matters. Suggested remediation: split into per-provider sub-groups. |
-| `2026-09-05-integration-test-environmental-blockers.md` | 9 canonical-gate failures all environmental: `duckdb` not declared in deps (4), `session_buddy` cross-repo (5), `hatchet-sdk` opt-group (1), xdist state contamination in `test_worktree_mcp_tools` (4 — passes 9/9 in isolation). | 🟡 **Documented; not blocking** — confirmed each is environmental by running in isolation. Quick wins: add `pytest.importorskip("duckdb")` (4 fixes), `pytest.importorskip("hatchet_sdk")` (1 fix), `skipif` on session_buddy tests (5 fixes). |
 
 ## Archived (`.archive/`)
 
@@ -54,6 +47,7 @@ repo-wide `.archive/` ignore.
 
 | File | Topic | Why archived |
 |------|-------|--------------|
+| `.archive/2026-09-05-integration-test-environmental-blockers.md` | 9 canonical-gate failures all environmental: `duckdb` undeclared (4), `session_buddy` cross-repo (5), `hatchet-sdk` opt-group (1); xdist state contamination in `test_worktree_mcp_tools` (4) remains separately tracked. | ✅ 9 of 13 resolved — commit `d6809e5e` added `pytest.importorskip` / `pytest.mark.skipif` guards to 5 test files. The 4 xdist failures in `test_worktree_mcp_tools` remain open but are isolated to that one test class. Archived 2026-09-06 via `git mv`. |
 | `.archive/2026-07-15-comprehensive-hooks-cleanup-checkpoint.md` | Session checkpoint: 3-wave comprehensive-hooks cleanup (complexity refactor, ty/DRY fix, PEP 735 manifest reshuffle). | ✅ All described changes present in `HEAD` (audit-verified). |
 | `.archive/2026-07-15-bodai-hooks-sb-debug.md` | Pickup prompt: debug Session-Buddy MCP transport drops (`-32000`) + audit Bodai Claude Code hook firing. | ✅ **Resolved** — root cause is `.claude/settings.json` flat-layout (silently ignored) + multi-session MCP contention, not a server bug. Failing test pinned at `tests/unit/test_claude_settings_hooks_format.py`; fix documented in paired `.archive/2026-07-15-bodai-hooks-sb-debug-resolution.md` (not auto-applied per multi-session safety policy). |
 | `.archive/2026-07-15-bodai-hooks-sb-debug-resolution.md` | Paired resolution doc: root-cause + failing test + proposed fix for the flat-layout bug. | ✅ Resolution written and archived together with its pickup note (per lifecycle rule's "2026-07-15 style"). Open follow-up: multi-session MCP contention architectural fix tracked under new followup entry. |

@@ -1,10 +1,6 @@
----
-status: active
-role: canonical
-date: 2026-07-27
-last_reviewed: 2026-08-03
-topic: acp-v15-followups
----
+______________________________________________________________________
+
+## status: active role: canonical date: 2026-07-27 last_reviewed: 2026-08-03 topic: acp-v15-followups
 
 # 2026-07-27-acp-v15-followups — followup
 
@@ -92,6 +88,16 @@ context (standalone vs. bundled).
   in a separate GitHub issue (see "Action" below).
 - **Origin:** License/Compliance review, 2026-07-27.
 
+> **Status (2026-09-06):** **Resolved — superseded by commit `3b38eb24`.**
+> That quality checkpoint on 2026-07-27 already changed
+> `pyproject.toml:16` from `license = {text = "MIT"}` to
+> `license = {text = "BSD-3-Clause"}`, reconciling it with the
+> `LICENSE` file (BSD 3-Clause). Verified 2026-09-06:
+> `grep -n license pyproject.toml` returns `BSD-3-Clause`, and
+> `head -3 LICENSE` returns `BSD 3-Clause License`. No code change
+> needed; this item is closed. The "MIT" framing in the scope bullet
+> above is preserved for historical accuracy.
+
 ### v1.5.7 — Toad-integration smoke test
 
 - **Scope:** Manual smoke that wires Toad → Mahavishnu end-to-end,
@@ -131,17 +137,17 @@ context (standalone vs. bundled).
 1. **Independent ship (now, non-blocking):** v1.5.6 is a one-line
    fix. The GitHub issue is filed under the v1.5 followup
    umbrella; it resolves immediately when the issue closes.
-2. **Bundle ship (when v1.0 is `adopted`):** v1.5.1, v1.5.4,
+1. **Bundle ship (when v1.0 is `adopted`):** v1.5.1, v1.5.4,
    v1.5.5 form a coherent "persistence bundle" — ship them
    together as v1.5.0. Each item gets its own v1.5 plan file
    that inherits the v1.0 plan's structure (Integration Contracts,
    Validation Matrix, Decision Rule).
-3. **Reactive ship:** v1.5.2 (MCP-over-ACP), v1.5.3 (Remote
+1. **Reactive ship:** v1.5.2 (MCP-over-ACP), v1.5.3 (Remote
    ACP), and v1.5.8 (A2UI payload carrier) ship when their
    respective triggers fire — upstream-spec stabilization for
    v1.5.2 / v1.5.3, client demand for v1.5.8. Each gets its own
    plan file with a `blocks_on:` link to the trigger signal.
-4. **Adoption-gated ship:** v1.5.7 is the gate for the TUI
+1. **Adoption-gated ship:** v1.5.7 is the gate for the TUI
    tracker's `adopted` state. It ships as a test plan, not a
    feature plan, and resolves the TUI's adoption criterion.
 
