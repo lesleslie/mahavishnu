@@ -3,6 +3,7 @@ status: complete
 role: decision
 date: 2026-09-06
 last_reviewed: 2026-09-06
+# Note: last_reviewed advances to v3 revision date when committed; v2 + v3 both landed 2026-09-06
 superseded_by: null
 blocks_on: ["docs/superpowers/specs/2026-08-31-flowscape-design.md"]
 decision_date: 2026-09-06
@@ -256,14 +257,95 @@ class EnrichmentMetadata(BaseModel):
 
 The `extra="forbid"` setting is a structural guard against the wire-format regression class (CB-5 / L5 U-Op3): if scapy-mcp adds a new field to its response, Pydantic raises a validation error rather than silently merging it into `FlowEdge`. The runtime guard (regex-based field-name filter, deferred to v3) provides a second layer.
 
-## Deferred to v3
+## Deferred to v4+
 
-The following items require work that exceeds this ADR's scope. They are tracked in `docs/feature-tracking/scapy-mcp-enrichment.md` and the companion review file:
+The following items remain open after the v3 revision. They are tracked in `docs/feature-tracking/scapy-mcp-enrichment.md` and the companion review file:
 
-- **CB-3** (full GDPR reframe): see §Scope above. Creates `docs/legal/gdpr-posture.md`, reframes posture as controller/processor, commits to Article 35 DPIA scoping. Deferred to v3 because pre-1.0 internal use is not GDPR-triggered.
-- **CB-4** (phantom APIs in spec): spec lines 110 + 503 reference `oneiric.config.load_app_settings` and `MCPServerSettings.model_config_section()`, neither of which exists. Spec edits replace with `from oneiric.core.config import load_settings` and explicit `BaseModel` subclassing. Spec is a sibling repo to this ADR — edits live in `docs/superpowers/specs/2026-08-31-flowscape-design.md`.
-- **CB-5** (phantom proto types): `GraphEdge` and `HeuristicEvent` are referenced by plan §"MCP integration scope" but don't exist in `proto/flowscape.proto` (which itself doesn't exist yet — Phase 0b of the Flowscape plan). Deferred until Phase 0b lands.
-- **L5 B-Op6 wire-format guard**: the regex-based field-name filter over hook return values is specified here but the implementation requires the proto types from CB-5.
+- **L5 B-Op6 wire-format guard (runtime implementation)**: the regex-based field-name filter over `enrich_batch()` return values is specified in §"Proto contracts" above but the runtime implementation lands with Flowscape Phase 0b (proto codegen). When `proto/flowscape.proto` exists, the runtime guard emits `flowscape.enrichment.wire_format_violation_total` on any hook return value containing a field name matching `(payload|body|raw|bytes_data)` excluding `payload_sha256_prefix`.
+- **L1 B4 wiring-discipline policy amendment for consumer-side aggregation**: the policy at `.claude/decisions/mcp-backend-wiring-discipline.md` is scoped to MCP servers only. Consumer-side aggregation (Flowscape calling scapy-mcp) needs an explicit policy amendment to extend coverage. Filed as a `.claude/decisions/` follow-up, not an ADR edit.
+- **Remote-host scapy-mcp authorization**: when mcp-common ships authentication primitives (currently not designed), the GDPR posture document §"Connection to mcp-common Authentication Primitives" updates to assume authenticated transport; until then, same-host deployment is the only endorsed posture.
+- **v1.x-public-release prerequisites**: when Flowscape ships a v1.0 public release, the following must complete before going live — formal Article 35 DPIA (per gdpr-posture.md §7), consent-gate extension to enrichment activation (per gdpr-posture.md §5.3), and a v3-or-higher ADR 0016 re-review of the controller/processor analysis.
+
+## Proto contracts (v3 close of CB-5)
+
+```python
+from pydantic import BaseModel, ConfigDict, Field
+
+class GraphEdge(BaseModel):
+    """v1 wire-format edge after the enrich_batch() merge step.
+    Field-for-field compatibility with proto/flowscape.proto.GraphEdge (Phase 0b).
+    extra='forbid' prevents future-maintainer drift that would silently widen
+    the wire-format surface.
+    """
+    model_config = ConfigDict(extra="forbid")
+    id: str  # 5-tuple hash (src:port, dst:port, proto)
+    src: str  # HostNode.id (privacy-pseudonymous, see Phase 0b)
+    dst: str  # HostNode.id
+    bytes: int  # uint64 counter; LENGTH ONLY, no payload content
+    packets: int  # uint64 counter
+    protocol: str  # enum: tcp, udp, icmp, arp, igmp, sctp, esp, ah, other
+    port: int  # uint32
+    tcp_flags: int  # uint32; header fields, NOT payload
+    first_seen_ns: int  # uint64 epoch ns
+    last_seen_ns: int  # uint64 epoch ns
+    payload_sha256_prefix: bytes  # length MUST == 32 (the only payload-derived field allowed)
+    enrichment: "GraphEdgeEnrichment | None" = None  # new in v1; see ADR 0016 §Architecture
+
+class GraphEdgeEnrichment(BaseModel):
+    """enrich_batch() merge payload for a single edge. Field allow-list is
+    exhaustive; new fields require a Pydantic model revision + ADR update.
+    """
+    model_config = ConfigDict(extra="forbid")
+    top_n_rank: int | None = None  # 1-indexed; lower = more bytes
+    threat_score: float | None = Field(default=None, ge=0.0, le=1.0)
+    confidence_boost: float | None = Field(default=None, ge=-1.0, le=1.0)
+    provider_name: str | None = None  # which EnrichmentProvider filled this; for audit
+
+class HeuristicEvent(BaseModel):
+    """Input to BoostConfidence. Field-for-field compatibility with
+    proto/flowscape.proto.HeuristicEvent (Phase 0b).
+    """
+    model_config = ConfigDict(extra="forbid")
+    kind: str  # enum: beaconing, port_scan, top_n_churn
+    edge: GraphEdge  # the edge that triggered the heuristic
+    detail: "BeaconingDetail | PortScanDetail | TopNChurnDetail"
+    first_seen_ns: int
+    last_seen_ns: int
+
+class BeaconingDetail(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    peer_id: str  # HostNode.id of the beaconing peer
+    interval_seconds: float  # mean inter-packet interval
+    jitter_pct: float  # observed jitter (typically ≤20% per settings)
+    sample_count: int  # how many samples fed the periodicity estimate
+
+class PortScanDetail(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    syn_packets_per_second: float
+    distinct_dst_ports: int
+    distinct_dst_ips: int
+    window_seconds: float
+    scan_direction: str  # enum: vertical, horizontal
+
+class TopNChurnDetail(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    top_n: int
+    sustained_ticks: int
+    delta_threshold_pct: float
+    active_host_count: int
+```
+
+**Wire-format invariant** (preserved through Phase 0b proto translation):
+- `payload_sha256_prefix` is the ONLY payload-derived field. All other fields are header/counter metadata. The CI lint per spec line 88 (`check_proto_payload_ban.py`) rejects field names matching `(payload|body|raw|bytes_data)` excluding `payload_sha256_prefix`.
+- `enrichment: GraphEdgeEnrichment | None` is added in v1; proto Phase 0b MUST include this field with `optional` cardinality.
+- All `extra="forbid"` Pydantic guards become proto field-numbering discipline: never reuse a deleted field number; mark `[deprecated = true]` before removal per spec §"Schema evolution" (line 365-371).
+
+**Round-trip test** (closes L2 I-3.5 partial + L5 U-Op3): a property test that constructs a `GraphEdge` proto via the publisher, deserializes it, applies an arbitrary `enrich_batch()` result, re-serializes, and asserts:
+1. `payload_sha256_prefix` length == 32 (existing invariant)
+2. `enrichment` field carries exactly the values from the merge result (no `**spread`)
+3. Field count is `len(GraphEdge.DESCRIPTOR.fields)` ± 0 (no field drift)
+
+**Behavioral note on `enrichment` field cardinality** (L5 U-Op2 follow-up): the per-tick batched `enrich_batch(edges)` returns one `GraphEdgeEnrichment` per input edge in order; the publisher assigns them field-by-field (never `**spread`); a missing or None enrichment is preserved as `enrichment: None` in the proto.
 
 ## Cross-References
 
@@ -295,6 +377,11 @@ The following items require work that exceeds this ADR's scope. They are tracked
   - **L1 I.A2 (client-side primitive)**: replaced `apply_tool_profile` reference with `fastmcp.Client` against the streamable-HTTP endpoint.
   - **L1 I.A3 (`EXPECTED_BASELINE` gap)**: cited `BASELINE_TOOL_NAMES` from `mcp_common.baseline_tools`; flagged that `EXPECTED_BASELINE` does not exist as an mcp-common symbol and is a recurring import failure mode across the stub-activation sibling plans.
   - **Three BLOCKERs remain deferred to v3** because they require work outside this ADR: **CB-4** (phantom APIs in spec — spec lives in `docs/superpowers/specs/`), **CB-5** (phantom proto types — proto lives in `proto/flowscape.proto` which doesn't exist yet), and the full **CB-3 GDPR reframe + `docs/legal/gdpr-posture.md`** (pre-1.0 scope currently makes it a v1.0-public-release prerequisite).
+- 2026-09-06 — **v3 revision**. Closes the three BLOCKERs that remained deferred at v2 close:
+  - **CB-3 (GDPR full reframe + posture doc)**: created `docs/legal/gdpr-posture.md` capturing the controller/processor reframing (Article 4(7)+(8)), personal-data scope (heuristic event metadata IS personal data per Recital 30 + CJEU *Breyer*), lawful basis analysis (Article 6(1)(f) legitimate interests + Article 6(1)(a) consent for remote-host), Article 35 DPIA scope and v1.x-public-release prerequisites, Article 32 security baseline inheritance, Articles 44-50 international transfers, and the v1.x-public-release trigger. See ADR §Scope for cross-reference.
+  - **CB-4 (phantom APIs in spec)**: spec edits landed. Replaced `oneiric.config.load_app_settings` with `from oneiric.core.config import load_settings`. Replaced `MCPServerSettings.model_config_section(...)` (6 occurrences) with explicit `BaseModel` inheritance. Added `BaseModel` inheritance to `BeaconingSettings`/`PortScanSettings`/`TopNChurnSettings` (which were plain classes — pre-existing bug, now fixed). Replaced `assert` in `LayoutSettings._check_bounds` with `if not ... raise ValueError(...)` per crackerjack B101 production rule. Added new `EnrichmentSettings(BaseModel)` per ADR 0016 v2.
+  - **CB-5 (phantom proto types)**: added §"Proto contracts" specifying `GraphEdge`, `GraphEdgeEnrichment`, `HeuristicEvent`, `BeaconingDetail`, `PortScanDetail`, `TopNChurnDetail` as `BaseModel` with `extra="forbid"`. Wire-format invariant preserved (only `payload_sha256_prefix` is payload-derived; new `enrichment` field is opt-in). Round-trip property test specified. Phase 0b proto codegen lands the proto schema; field-for-field parity is required.
+  - **Four items remain open, deferred to v4+**: (1) runtime wire-format guard implementation (L5 B-Op6 — needs proto types which now exist), (2) `.claude/decisions/` policy amendment for consumer-side aggregation (L1 B4), (3) mcp-common authentication primitives when designed (ADR 0016 v2 §"Open Questions" #1), (4) v1.x-public-release prerequisites (formal Article 35 DPIA, consent-gate extension, ADR 0016 re-review).
 
 ---
 

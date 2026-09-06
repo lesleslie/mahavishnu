@@ -1,9 +1,9 @@
 # flowscape — Modern Network Visualization for macOS
 
-**Status:** Revision 2 — incorporates Tier-1 fixes from 8-agent multi-agent review (2026-08-31)
-**Date:** 2026-08-31
-**Author:** Claude (brainstorming session)
-**Scope:** v1 design — full repo, end-to-end architecture, IPC contract, distribution plan
+**Status:** Revision 3 — moves scapy-mcp from v2+ to v1 client-side enrichment; softens MCP regulatory gate for client-side scope only (2026-09-06)
+**Date:** 2026-09-06 (originally 2026-08-31)
+**Author:** Claude (brainstorming session; revised 2026-09-06 to integrate scapy-mcp enrichment in v1 per [ADR 0016](../../adr/0016-scapy-mcp-integration.md))
+**Scope:** v1 design — full repo, end-to-end architecture, IPC contract, distribution plan, enrichment integration
 
 ______________________________________________________________________
 
@@ -107,12 +107,13 @@ ______________________________________________________________________
 
 | Module | Purpose | LOC est. |
 |---|---|---|
-| `settings.py` | Oneiric settings model (Pydantic), `FlowscapeSettings(MCPServerSettings)`. Uses `oneiric.config.load_app_settings`. | 150 |
+| `settings.py` | Oneiric settings model (Pydantic), `FlowscapeSettings(MCPServerSettings)`. Loads via `from oneiric.core.config import load_settings` (the previous `oneiric.config.load_app_settings` reference was a phantom — see ADR 0016 v3 §"CB-4 close"). | 150 |
 | `capture.py` | Owns the pcap source via `pcapy-ng` (with ctypes fallback if wheels unavailable). Dedicated `pcap_thread` runs `pcap_loop` synchronously, posts packets to the asyncio loop via `loop.call_soon_threadsafe`. Emits raw packets on an asyncio queue. Implements `CaptureSource` ABC; registered via local capture registry (not Oneiric adapters — see Oneiric section). | 350 |
 | `decode.py` | Consumes raw packets via `dpkt`. Emits structured `FlowEvent`s with `tcp_flags`, `payload_sha256_prefix` (32 bytes; source buffer zeroed immediately). Zeroes buffer via context manager. | 350 |
 | `aggregate.py` | Stateful: per-flow rolling counters + per-host byte totals over 60s sliding window. Two-tier window: fast (10Hz, 60s) for visualization, slow (every 30s, 10min sparse timestamps) for periodicity heuristics. | 500 |
-| `graph.py` | Pure data: derives current `GraphState` from aggregator on tick. | 200 |
-| `heuristics.py` | Reads aggregator stream, emits `Alert` events. Beaconing (jitter 20%, slow window), port-scan (SYN packets/sec, distinct dst ports, vertical/horizontal distinction), top-N churn (sustained 3+ ticks, scaled with active host count). | 350 |
+| `graph.py` | Pure data: derives current `GraphState` from aggregator on tick; per-tick batched `EnrichmentRegistry.get_provider(EnrichmentSettings.default_provider).enrich_batch(edges)` layers enrichment metadata. (Was `EnrichmentRegistry.default().enrich_edge()` per edge — per-edge × 5000 edges/tick = broken timeout math; see ADR 0016 v2 §Architecture.) | 200 |
+| `heuristics.py` | Reads aggregator stream, emits `Alert` events. Beaconing (jitter 20%, slow window), port-scan (SYN packets/sec, distinct dst ports, vertical/horizontal distinction), top-N churn (sustained 3+ ticks, scaled with active host count). Optional `EnrichmentHook` (DI) boosts detector confidence via scapy-mcp call. | 350 |
+| `enrichment.py` (new in rev 3) | `EnrichmentRegistry`, `EnrichmentHook` protocol, scapy-mcp adapter. Mirrors `capture_registry.py` plug-in pattern (spec A16). Pure-Python no-op default. | 200 |
 | `publisher.py` | Encodes graph snapshots + alerts as protobuf on data.sock. Custom ring buffer (NOT `asyncio.Queue`) for drop-oldest semantics. | 200 |
 | `ipc_server.py` | Reads JSON-RPC on control.sock. JSON Schema validation via `oneiric.actions.schema_validation`. | 250 |
 | `app.py` | Oneiric-driven entrypoint; loads config, wires modules, handles signal/cleanup. | 150 |
@@ -153,7 +154,7 @@ flowscape replay capture.pcap [--speed 1x]                # offline replay
 flowscape interfaces                                      # list libpcap-discoverable interfaces
 flowscape doctor [--config] [--consent-check]            # config + permission validation
 flowscape version
-flowscape mcp                                              # v2: MCP server (gated on legal review)
+flowscape mcp                                              # v2: server-mode MCP server (Flowscape serving an MCP surface; gated on ADR 0007 + DPIA). v1 ships `flowscape doctor --enrichment` for the client-side scapy-mcp provider instead.
 ```
 
 ______________________________________________________________________
@@ -464,20 +465,20 @@ class HeuristicName(str, Enum):
     PORT_SCAN = "port_scan"
     TOP_N_CHURN = "top_n_churn"
 
-class CaptureSettings(MCPServerSettings.model_config_section("capture")):
+class CaptureSettings(BaseModel):
     default_kind: CaptureKind = CaptureKind.LIBPCAP_LIVE
     default_interface: str = "en0"  # flowscape doctor --validate-config can override
     promiscuous: bool = True
     ring_buffer_size_mb: PositiveInt = 32  # ≤32MB avoids privilege issues on macOS 13+
     bpf_filter: str = ""
 
-class AggregationSettings(MCPServerSettings.model_config_section("aggregation")):
+class AggregationSettings(BaseModel):
     tick_interval: Annotated[PeriodicLoad, "ms"] = 100   # 10 Hz
     window: Annotated[PeriodicLoad, "s"] = 60          # fast window
     slow_window: Annotated[PeriodicLoad, "s"] = 600    # slow window for periodicity
     slow_tick_interval: Annotated[PeriodicLoad, "s"] = 30
 
-class LayoutSettings(MCPServerSettings.model_config_section("layout")):
+class LayoutSettings(BaseModel):
     force_constant_repulsion: NonNegativeFloat = 1.0
     force_constant_spring: NonNegativeFloat = 0.5
     damping: float = Field(0.85, gt=0.0, le=1.0)
@@ -486,10 +487,14 @@ class LayoutSettings(MCPServerSettings.model_config_section("layout")):
     @model_validator(mode="after")
     def _check_bounds(self) -> "LayoutSettings":
         for a, b in zip(self.bounds_min, self.bounds_max, strict=True):
-            assert a < b, f"bounds_min must be < bounds_max per axis"
+            if not a < b:
+                raise ValueError(
+                    f"bounds_min must be < bounds_max per axis; got "
+                    f"bounds_min={self.bounds_min} bounds_max={self.bounds_max}"
+                )
         return self
 
-class RenderSettings(MCPServerSettings.model_config_section("renderer")):
+class RenderSettings(BaseModel):
     target_fps: PositiveInt = 60  # up to 120 supported for ProMotion
     background_color: PColor = PColor("#0a0e1a")
     protocol_colors: dict[Protocol, PColor] = Field(default_factory=lambda: {
@@ -499,31 +504,43 @@ class RenderSettings(MCPServerSettings.model_config_section("renderer")):
     })
     edge_thickness_scale: PositiveInt = 1
 
-class HeuristicSettings(MCPServerSettings.model_config_section("heuristics")):
+class HeuristicSettings(BaseModel):
     enabled: list[HeuristicName] = Field(default_factory=lambda: [
         HeuristicName.BEACONING, HeuristicName.PORT_SCAN, HeuristicName.TOP_N_CHURN,
     ])
-    beaconing: "BeaconingSettings"
-    port_scan: "PortScanSettings"
-    top_n_churn: "TopNChurnSettings"
+    beaconing: "BeaconingSettings" = Field(default_factory=lambda: BeaconingSettings())
+    port_scan: "PortScanSettings" = Field(default_factory=lambda: PortScanSettings())
+    top_n_churn: "TopNChurnSettings" = Field(default_factory=lambda: TopNChurnSettings())
 
-class BeaconingSettings:
+class BeaconingSettings(BaseModel):
     interval_min_seconds: PositiveInt = 30
     interval_max_seconds: PositiveInt = 1800
     jitter_tolerance_pct: float = Field(20.0, ge=0.0, le=100.0)
 
-class PortScanSettings:
+class PortScanSettings(BaseModel):
     syn_only_pps_threshold: PositiveInt = 100
     distinct_dst_ports_per_minute: PositiveInt = 50
     distinct_dst_ips_per_minute: PositiveInt = 30
 
-class TopNChurnSettings:
+class TopNChurnSettings(BaseModel):
     top_n: PositiveInt = 10
     sustained_ticks: PositiveInt = 3
     delta_threshold_pct: float = 50.0  # base; raised to 70% when active_host_count < min_active_hosts
     min_active_hosts: PositiveInt = 20
 
-class LoggingSettings(MCPServerSettings.model_config_section("logging")):
+class EnrichmentSettings(BaseModel):
+    """scapy-mcp client-mode enrichment (ADR 0016 v2 §Settings surface)."""
+    scapy_mcp_enabled: bool = False  # off by default; user opts in via `flowscape config`
+    scapy_mcp_host: str = "localhost"
+    scapy_mcp_port: int = 3056  # aligns with plans/2026-09-06-port-bodai-reconciliation.md
+    default_provider: str = "noop"  # name-driven lookup (mirrors CaptureSettings.default_kind)
+    timeout_ms: int = 100  # PER-TICK batch budget (NOT per-edge)
+    max_attempts: int = 2
+    base_delay_ms: int = 10
+    multiplier: float = 2.0
+    max_delay_ms: int = 80
+
+class LoggingSettings(BaseModel):
     level: str = "INFO"  # DEBUG, INFO, WARNING, ERROR
     directory: str = "${platform_log_dir}"  # resolved by Oneiric at load
     rotation_max_bytes_mb: PositiveInt = 10
@@ -593,8 +610,13 @@ logging:
 
 # mcp section is inherited from MCPServerSettings; do not redeclare.
 mcp:
-  enabled: false                  # v1; activation gated on legal review
+  enabled: false                  # v1: SERVER-MODE only (Flowscape serving an MCP surface). Gated on ADR 0007 + DPIA.
   port: 8700
+enrichment:                       # v1 (rev 3): CLIENT-MODE scapy-mcp enrichment. See ADR 0016. Different regulatory posture from `mcp.enabled`.
+  scapy_mcp_enabled: false        # off by default; user opts in via `flowscape config`
+  scapy_mcp_host: localhost
+  scapy_mcp_port: 3056            # aligns with plans/2026-09-06-port-bodai-reconciliation.md
+  enrichment_timeout_ms: 100      # per-call hard cap; on timeout the hook returns no-op enrichment
 ```
 
 ### Settings validation (`flowscape doctor --config`)
@@ -626,6 +648,7 @@ mcp:
 | `dev` | `pytest`, `hypothesis`, `ruff`, `mypy`, `pyright`, `bandit`, `complexipy`, `commitizen`, `betterproto2[cli]`, `pip-licenses` | full local development |
 | `macos` | `py2app`, `betterproto2[cli]`, `pcapy-ng` | macOS `.app` build only |
 | `runtime` (default) | `dpkt`, `numpy`, `betterproto2`, `protobuf`, `orjson` | bundled into wheel and `.app` |
+| `mcp-enrichment` (optional, new in rev 3) | `scapy-mcp`, `mcp` (Python SDK) | Enables `EnrichmentRegistry` to call scapy-mcp via MCP client. **Off by default** — user opts in via `flowscape config` setting `enrichment.scapy_mcp_enabled = true`. Aligns with scapy-mcp plan + ADR 0016. |
 
 So `uv sync` for CLI usage is small; `uv sync --group macos` is required for `.app` packaging; CI's Linux job can skip the macos group entirely.
 
@@ -913,8 +936,9 @@ ______________________________________________________________________
 | Time scrubber / historical replay | Buffered graph state | v2 |
 | Drill-down side panels (top talkers, conversation table) | UI scope | v2 |
 | sflow / NetFlow / OTel sources | Not Etherape-shaped | v2 |
-| MCP server (full) | `mcp-common` ready; activation is a future spec gated on legal review | v2+ |
-| scapy-mcp / unifi-mcp integration | Enrichment plugins for `heuristics.py` / `graph.py` | v2+ |
+| MCP server (full) | `mcp-common` ready; activation is a future spec gated on legal review (ADR 0007 + DPIA). **Server-mode (Flowscape serving an MCP surface) only.** | v2+ |
+| unifi-mcp integration | Enrichment plugin for `heuristics.py` | v2+ |
+| scapy-mcp client-mode enrichment | Enrichment plugin for `graph.py` / `heuristics.py` (Flowscape *calls* an external MCP server; different regulatory posture from server-mode). See ADR 0016. | **v1 in scope** (opt-in via `enrichment.scapy_mcp_enabled`) |
 | TLS SNI extraction (TCP/443 + QUIC ClientHello) | "Modernized" differentiator; multi-week research | v2 |
 | MAC/OUI bundling (5 MB IEEE OUI file) | LAN host identification UX win | v2 |
 | mDNS / SSDP / WS-Discovery port classification | LAN-visibility (AirPlay, Chromecast, Sonos) | v2 |
@@ -948,7 +972,7 @@ These are explicitly out of scope for v1; included here so future specs can pick
 - **Cloud / SaaS flow ingestion** (NetFlow, sFlow, OpenTelemetry, VPC flow logs) — local-pcap only in v1.
 - **Tauri / Electron port** — not aligned with the `.app` strategy.
 
-### MCP activation as regulatory event
+### MCP activation as regulatory event (server-mode only)
 
 `mcp.enabled` flips from `false` to `true` only after:
 
@@ -956,7 +980,9 @@ These are explicitly out of scope for v1; included here so future specs can pick
 2. `docs/legal/gdpr-posture.md` is updated with MCP-specific DPIA (Art. 35).
 3. `CONTRIBUTING.md` is updated with the MCP tool surface scope.
 
-This is process discipline; without it, MCP activation could ship without the legal review that the rest of the spec mandates.
+This gate covers **server-mode only** — Flowscape *serving* an MCP surface. It does NOT cover client-mode scapy-mcp enrichment (Flowscape *calling* an external MCP server), which has a different posture and is v1 in scope behind `enrichment.scapy_mcp_enabled = false` default. See ADR 0016 for the posture distinction.
+
+This is process discipline; without it, MCP server-mode activation could ship without the legal review that the rest of the spec mandates.
 
 ______________________________________________________________________
 
