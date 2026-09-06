@@ -105,21 +105,33 @@ A new module `crackerjack/config/per_file_ignores.py` provides:
 ```python
 UNIVERSAL_PER_FILE_IGNORES: dict[str, list[str]] = { ... }  # The 4 patterns above
 
-def ensure_per_file_ignores_file(repo_root: Path) -> Path:
-    """Write starter pack TOML to .crackerjack_cache/ if not present.
-    Returns the file path for use with `ruff --config=<path>`.
-    Idempotent — re-running is a no-op if file exists with same content.
+def build_inline_per_file_ignores() -> str:
+    """Build the inline TOML string for use with `ruff --config='<value>'`.
+
+    The returned string is a single TOML key=value pair:
+        lint.extend-per-file-ignores = {"scripts/**/*.py" = [...], ...}
+
+    Consumer auto-discovery is preserved because the value is injected as
+    a single config override (--config='KEY = VALUE' preserves auto-discovery
+    of pyproject.toml, ruff.toml, etc.; --config=<file.toml> REPLACES).
     """
 ```
 
-The file is written to `.crackerjack_cache/scripts_examples_per_file_ignores.toml` (deterministic — concurrent runs race-safely overwrite with the same content).
-
 **Critical ruff invocation detail** (verified empirically 2026-09-05):
 - Ruff's `--per-file-ignores` CLI flag accepts only inline `<FilePattern>:<RuleCode>` mappings (one rule per arg), and is **replacing**, not additive.
-- Ruff's `--config=<file.toml>` flag accepts a TOML config file with `[lint].extend-per-file-ignores = {...}` (the `extend-` prefix makes it additive, layering on top of the consumer's `pyproject.toml`).
-- File extension **must** be `.toml` (TEST 20 verified: `crackerjack_overrides.txt` rejected).
+- Ruff's `--config=<file.toml>` flag accepts a TOML config file BUT REPLACES auto-discovery entirely. Consumer's `pyproject.toml` is ignored when `--config=<file>` is passed. **DO NOT use this form.**
+- Ruff's `--config='<KEY> = <VALUE>'` (inline TOML key-value) PRESERVES auto-discovery. This is the correct invocation pattern.
+- The `<KEY>` is `lint.extend-per-file-ignores` (with the `extend-` prefix for additive behavior).
+- The `<VALUE>` is an inline-table TOML expression: `{"pat1" = ["rule1", ...], "pat2" = [...], ...}`
 
-The helper writes a TOML file with `[lint].extend-per-file-ignores = {...}` table, and the ruff invocation uses `--config=<path-to-file.toml>`. This is what makes the change universally compatible: consumer repos with their own per-file-ignores (e.g., mahavishnu's `scripts/**/*.py = [B007, B008, ...]`) retain those rules; the crackerjack starter pack adds on top.
+The tool invocation uses:
+```python
+"--config", f"lint.extend-per-file-ignores = {inline_table}",
+```
+
+This is what makes the change universally compatible: consumer repos with their own per-file-ignores (e.g., mahavishnu's `scripts/**/*.py = [B007, B008, ...]`) retain those rules; the crackerjack starter pack adds on top via `extend-per-file-ignores`.
+
+**Optional debug artifact**: The helper may also write the same inline TOML to `.crackerjack_cache/scripts_examples_per_file_ignores.toml` for users to inspect. The file is not used by the ruff invocation — only the inline string is.
 
 ### 4.4 `tool_commands.py` changes
 
@@ -127,12 +139,12 @@ The helper writes a TOML file with `[lint].extend-per-file-ignores = {...}` tabl
 ```python
 "ruff-check": _python_module_command(
     "ruff", "check", "--output-format", "json", "--fix",
-    "--config", str(_get_per_file_ignores_path()),
+    "--config", f"lint.extend-per-file-ignores = {build_inline_per_file_ignores()}",
     f"./{package_name}", "./scripts", "./examples",
 ),
 ```
 
-Note: uses `--config=<path>`, NOT `--per-file-ignores=<path>`. The flag accepts a TOML file path; ruff's `--per-file-ignores` CLI flag only takes inline `<FilePattern>:<RuleCode>` mappings and is replacing (not additive).
+Note: uses `--config='<inline TOML>'`, NOT `--config=<file>` or `--per-file-ignores=<file>`. The inline form preserves consumer auto-discovery (verified empirically 2026-09-05).
 
 **ruff-format:** Add targets only (no `--per-file-ignores` for format):
 ```python

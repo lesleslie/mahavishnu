@@ -4,11 +4,11 @@
 
 **Goal:** Add `scripts/` and `examples/` to Crackerjack's fast-hook ruff-check, ruff-format, codespell, and tc-refs coverage, with universal compatibility across all 14 Bodai repos via CLI-injected per-file-ignores. Also rewrite `audit_type_checking_runtime_refs.py` to be ruff-clean.
 
-**Architecture:** Modify `crackerjack/config/tool_commands.py` to add `./scripts ./examples` to ruff-check, ruff-format, codespell, and tc-refs target paths. Inject a hardcoded universal 9-rule starter pack via ruff's `--config=<path>` CLI flag (NOT `--per-file-ignores`, which only takes inline pattern:rule mappings). The starter pack file is a TOML with `[lint].extend-per-file-ignores` table, written lazily to `.crackerjack_cache/scripts_examples_per_file_ignores.toml` in the consumer repo. Rewrite `crackerjack/audit_type_checking_runtime_refs.py` to silence 12 violations through surgical rule-by-rule fixes.
+**Architecture:** Modify `crackerjack/config/tool_commands.py` to add `./scripts ./examples` to ruff-check, ruff-format, codespell, and tc-refs target paths. Inject a hardcoded universal 9-rule starter pack via ruff's `--config='<inline TOML>'` CLI flag (NOT `--config=<file>` which REPLACES auto-discovery; NOT `--per-file-ignores` which only takes inline pattern:rule mappings). The inline TOML is a single key-value pair: `lint.extend-per-file-ignores = {"pat1" = [...], ...}`. Auto-discovery of the consumer's `pyproject.toml` is preserved. Rewrite `crackerjack/audit_type_checking_runtime_refs.py` to silence 12 violations through surgical rule-by-rule fixes.
 
-**Critical ruff invocation note** (verified 2026-09-05): the file MUST have `.toml` extension. The `[lint].extend-per-file-ignores` key (with `extend-` prefix) makes the rule additions additive — consumer `pyproject.toml` per-file-ignores (e.g., mahavishnu's) are preserved.
+**Critical ruff invocation note** (verified 2026-09-05): use `--config='<inline TOML>'` (a single key=value pair), NOT `--config=<file.toml>` (REPLACES auto-discovery) and NOT `--per-file-ignores` (rejects file paths; replacing). The `--config='KEY = VALUE'` form preserves consumer auto-discovery.
 
-**Tech Stack:** Python 3.14, ruff (with `--config=<file.toml>` CLI flag for starter pack injection), pytest, mypy.
+**Tech Stack:** Python 3.14, ruff (with `--config='<inline TOML>'` CLI flag for starter pack injection), pytest, mypy.
 
 **Spec:** `docs/superpowers/specs/2026-09-05-crackerjack-scripts-examples-coverage-design.md`
 
@@ -32,14 +32,14 @@
 
 | File | Responsibility |
 |---|---|
-| `crackerjack/config/per_file_ignores.py` | Universal starter pack constants + idempotent file-creation helper (writes `[lint].extend-per-file-ignores` TOML, NOT flat pattern:rule file) |
+| `crackerjack/config/per_file_ignores.py` | Universal starter pack constants + `build_inline_per_file_ignores()` returning inline TOML string for `--config='...'` invocation |
 | `tests/unit/config/test_per_file_ignores.py` | 11 tests covering starter pack contents, file lifecycle, ruff acceptance |
 
 **Modified files (in `/Users/les/Projects/crackerjack`):**
 
 | File | Responsibility |
 |---|---|
-| `crackerjack/config/tool_commands.py` | Add `./scripts ./examples` to 4 tool commands; inject `--config=<path>` (NOT `--per-file-ignores`) for ruff-check; extract shared target-list helper |
+| `crackerjack/config/tool_commands.py` | Add `./scripts ./examples` to 4 tool commands; inject `--config='<inline TOML>'` for ruff-check; extract shared target-list helper |
 | `crackerjack/audit_type_checking_runtime_refs.py` | Rewrite to silence 12 violations via surgical fixes; `chmod +x` for EXE001 |
 | `tests/config/test_tool_commands.py` | Update `test_target_directories_specified`; add 2 new tests for codespell + tc-refs |
 | `tests/unit/test_audit_type_checking_runtime_refs.py` (or extend existing) | 4 regression tests for behavior preservation + ruff-clean verification |
@@ -54,7 +54,7 @@
 
 **Interfaces (consumed by Task 2, 3):**
 - `UNIVERSAL_PER_FILE_IGNORES: dict[str, list[str]]` — the 4-pattern starter pack
-- `ensure_per_file_ignores_file(repo_root: Path) -> Path` — writes a TOML with `[lint].extend-per-file-ignores = {...}` table to `.crackerjack_cache/scripts_examples_per_file_ignores.toml`. Returns the file path. The file MUST end in `.toml` (ruff's `--config` flag requires this extension).
+- `build_inline_per_file_ignores() -> str` — returns an inline TOML string of the form `{"scripts/**/*.py" = [...], "examples/**/*.py" = [...], ...}` for use as `--config "lint.extend-per-file-ignores = <value>"`. May also write a copy to `.crackerjack_cache/scripts_examples_per_file_ignores.toml` for debug visibility (file is NOT used by the ruff invocation).
 
 **Step 1.1: Write failing tests for the starter pack contents**
 
@@ -70,7 +70,7 @@ import pytest
 
 from crackerjack.config.per_file_ignores import (
     UNIVERSAL_PER_FILE_IGNORES,
-    ensure_per_file_ignores_file,
+    build_inline_per_file_ignores,
 )
 
 
@@ -120,16 +120,19 @@ Expected: `ImportError: cannot import name 'UNIVERSAL_PER_FILE_IGNORES' from 'cr
 Create `crackerjack/config/per_file_ignores.py`:
 
 ```python
-"""Universal per-file-ignores injected via ruff's --config=<file.toml> flag.
+"""Universal per-file-ignores injected via ruff's --config='<inline TOML>' flag.
 
 The starter pack silences ecosystem-wide patterns that fire too noisilyin admin/demo code to be worth enforcing repo-by-repo. Per-repo rules(intentionally) stay OUT of this module — they're addressed per-repo.
 
-The generated file is a ruff config file with [lint].extend-per-file-ignores
-(ADDITIVE — extends the consumer's per-file-ignores rather than replacing).
-Consumer repos with their own per-file-ignores (e.g., mahavishnu's
-"scripts/**/*.py = [B007, B008, ...]") keep those rules; this file adds on top.
+The returned string is an inline TOML value (an inline-table expression)
+used as the right-hand side of `lint.extend-per-file-ignores = <value>`.
+This preserves consumer auto-discovery (pyproject.toml, ruff.toml) —
+verified empirically 2026-09-05: --config=<file.toml> REPLACES auto-discovery,
+which would lose consumer per-file-ignores; --config='KEY = VALUE' PRESERVES it.
 
-The file MUST end in .toml — ruff's --config flag rejects other extensions.
+A copy of the inline TOML is also written to
+.crackerjack_cache/scripts_examples_per_file_ignores.toml for users to
+inspect; the file is NOT used by the ruff invocation (only the inline string).
 """
 from __future__ import annotations
 
@@ -169,32 +172,37 @@ UNIVERSAL_PER_FILE_IGNORES: dict[str, list[str]] = {
     "**/*.bak[0-9]": ["ALL"],  # stale backup files (crackerjack has 2)
 }
 
-# Cached file path (deterministic — concurrent runs race-safely overwrite).
-# MUST end in .toml — ruff's --config flag rejects other extensions.
-_PER_FILE_IGNORES_FILENAME = ".crackerjack_cache/scripts_examples_per_file_ignores.toml"
+# Optional debug artifact path (deterministic — concurrent runs race-safely
+# overwrite with the same content).
+_DEBUG_PER_FILE_IGNORES_FILENAME = ".crackerjack_cache/scripts_examples_per_file_ignores.toml"
 
 
-def ensure_per_file_ignores_file(repo_root: Path) -> Path:
-    """Write the starter pack TOML to .crackerjack_cache/ if not present.
+def build_inline_per_file_ignores(repo_root: Path | None = None) -> str:
+    """Build the inline TOML value for use with `ruff --config='<value>'`.
 
-    Returns the file path for use with `ruff --config=<path>`.
-    Idempotent — re-running is a no-op if file exists.
+    Returns an inline-table TOML expression:
+        {"scripts/**/*.py" = [...], "examples/**/*.py" = [...], ...}
+
+    Optionally writes a debug copy to .crackerjack_cache/ if repo_root given.
+    Idempotent — re-running produces the same string and overwrites the debug file.
     """
-    target = repo_root / _PER_FILE_IGNORES_FILENAME
-    target.parent.mkdir(parents=True, exist_ok=True)
-    if not target.exists():
-        entries: list[str] = []
-        for pattern, rules in UNIVERSAL_PER_FILE_IGNORES.items():
-            rule_str = ", ".join(f'"{r}"' for r in rules)
-            entries.append(f'  "{pattern}" = [{rule_str}]')
-        content = (
+    entries: list[str] = []
+    for pattern, rules in UNIVERSAL_PER_FILE_IGNORES.items():
+        rule_str = ", ".join(f'"{r}"' for r in rules)
+        entries.append(f'"{pattern}" = [{rule_str}]')
+    inline = "{" + ", ".join(entries) + "}"
+
+    if repo_root is not None:
+        target = repo_root / _DEBUG_PER_FILE_IGNORES_FILENAME
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_text(
             "[lint]\n"
-            "extend-per-file-ignores = {\n"
-            + ",\n".join(entries)
-            + "\n}\n"
+            "extend-per-file-ignores = "
+            + inline
+            + "\n"
         )
-        target.write_text(content)
-    return target
+
+    return inline
 ```
 
 **Step 1.4: Run the starter pack tests to verify they pass**
@@ -207,81 +215,128 @@ cd /Users/les/Projects/crackerjack
 
 Expected: 5 passed.
 
-**Step 1.5: Write failing tests for `ensure_per_file_ignores_file`**
+**Step 1.5: Write failing tests for `build_inline_per_file_ignores`**
 
 Append to `tests/unit/config/test_per_file_ignores.py`:
 
 ```python
-class TestEnsurePerFileIgnoresFile:
-    """The file lifecycle: create, idempotent, valid TOML."""
+class TestBuildInlinePerFileIgnores:
+    """The inline TOML string: returns the right shape and rules."""
 
-    def test_creates_file_with_correct_path(self, tmp_path: Path) -> None:
-        result = ensure_per_file_ignores_file(tmp_path)
-        assert result == tmp_path / ".crackerjack_cache" / "scripts_examples_per_file_ignores.toml"
-        assert result.exists()
+    def test_returns_inline_table_string(self) -> None:
+        result = build_inline_per_file_ignores()
+        assert result.startswith("{")
+        assert result.endswith("}")
 
-    def test_creates_cache_dir_if_missing(self, tmp_path: Path) -> None:
-        assert not (tmp_path / ".crackerjack_cache").exists()
-        ensure_per_file_ignores_file(tmp_path)
-        assert (tmp_path / ".crackerjack_cache").exists()
+    def test_contains_all_four_patterns(self) -> None:
+        result = build_inline_per_file_ignores()
+        assert '"scripts/**/*.py"' in result
+        assert '"examples/**/*.py"' in result
+        assert '"scripts/_*.py"' in result
+        assert '"**/*.bak[0-9]"' in result
 
-    def test_idempotent_on_repeat_calls(self, tmp_path: Path) -> None:
-        first = ensure_per_file_ignores_file(tmp_path)
-        first_mtime = first.stat().st_mtime_ns
-        second = ensure_per_file_ignores_file(tmp_path)
-        assert first == second
-        assert second.stat().st_mtime_ns == first_mtime
+    def test_contains_universal_rules(self) -> None:
+        result = build_inline_per_file_ignores()
+        for rule in [
+            "EXE001", "BLE001", "F541", "C901",
+            "SIM102", "SIM103", "SIM114", "S110", "PLW1510",
+        ]:
+            assert f'"{rule}"' in result
 
-    def test_generated_toml_parses_with_tomllib(self, tmp_path: Path) -> None:
-        import tomllib
-        result = ensure_per_file_ignores_file(tmp_path)
-        content = result.read_text()
-        parsed = tomllib.loads(content)
-        # New format: [lint].extend-per-file-ignores = { ... }
-        assert "lint" in parsed
-        assert "extend-per-file-ignores" in parsed["lint"]
-        mapping = parsed["lint"]["extend-per-file-ignores"]
-        assert "scripts/**/*.py" in mapping
-        assert "examples/**/*.py" in mapping
-        assert "scripts/_*.py" in mapping
-        assert "**/*.bak[0-9]" in mapping
+    def test_examples_includes_three_extra_rules(self) -> None:
+        result = build_inline_per_file_ignores()
+        assert '"N999"' in result
+        assert '"RUF100"' in result
+        assert '"FURB162"' in result
 
-    def test_generated_toml_has_ruff_compatible_format(self, tmp_path: Path) -> None:
-        """Ruff parses --config files as TOML with [lint] section."""
-        result = ensure_per_file_ignores_file(tmp_path)
-        content = result.read_text()
-        # First non-blank line must be the [lint] section header.
+    def test_optional_writes_debug_file_when_repo_root_given(
+        self, tmp_path: Path
+    ) -> None:
+        """If repo_root is provided, also write a debug copy."""
+        result = build_inline_per_file_ignores(tmp_path)
+        debug = tmp_path / ".crackerjack_cache" / "scripts_examples_per_file_ignores.toml"
+        assert debug.exists()
+        # The debug file is the inline expression wrapped in [lint] section.
+        content = debug.read_text()
         assert "[lint]" in content
-        # Must use the additive extend-per-file-ignores key.
-        assert "extend-per-file-ignores" in content
-        # Must NOT use the replacing per-file-ignores key.
-        assert "\nper-file-ignores" not in content
+        assert "extend-per-file-ignores = " in content
+        assert result in content
+
+    def test_no_repo_root_does_not_create_files(self, tmp_path: Path) -> None:
+        """If repo_root is None, do NOT touch the filesystem."""
+        # Run from a tmp cwd; ensure no .crackerjack_cache appears.
+        import os
+        original_cwd = os.getcwd()
+        try:
+            os.chdir(tmp_path)
+            build_inline_per_file_ignores()
+            assert not (tmp_path / ".crackerjack_cache").exists()
+        finally:
+            os.chdir(original_cwd)
 
 
 @pytest.mark.integration
-class TestRuffAcceptsGeneratedFile:
-    """Verify ruff actually parses our generated file correctly."""
+class TestRuffAcceptsInlineConfig:
+    """Verify ruff actually parses our inline TOML correctly AND preserves
+    consumer auto-discovery."""
 
-    def test_ruff_check_with_generated_ignores_does_not_error(
+    def test_ruff_check_with_inline_config_silences_shebang(
         self, tmp_path: Path
     ) -> None:
-        """If ruff rejects our generated TOML, the hook would fail loudly."""
+        """The inline config silences EXE001 on a shebang file."""
         import subprocess
-        per_file_ignores = ensure_per_file_ignores_file(tmp_path)
+        inline = build_inline_per_file_ignores()
         sample_dir = tmp_path / "scripts"
         sample_dir.mkdir()
         sample = sample_dir / "sample.py"
         sample.write_text("#!/usr/bin/env python3\nprint('hello')\n")
         result = subprocess.run(
-            ["ruff", "check",
- "--config", str(per_file_ignores),
-             "--no-fix", str(sample_dir)],
+            [
+                "ruff", "check", "--no-fix",
+                "--select", "EXE001",
+                "--config", f"lint.extend-per-file-ignores = {inline}",
+                str(sample_dir),
+            ],
             capture_output=True, text=True,
- cwd=tmp_path,
- check=False,
+            cwd=tmp_path,
+            check=False,
         )
         assert result.returncode == 0, (
-            f"ruff rejected our config file:\n"
+            f"ruff rejected our inline config:\n"
+            f"stdout={result.stdout}\nstderr={result.stderr}"
+        )
+
+    def test_inline_config_preserves_consumer_pyproject(
+        self, tmp_path: Path
+    ) -> None:
+        """The inline config must NOT replace consumer pyproject.toml."""
+        import subprocess
+        # Consumer pyproject.toml silences B007 in scripts/.
+        (tmp_path / "pyproject.toml").write_text(
+            '[tool.ruff.lint.per-file-ignores]\n'
+            '"scripts/**/*.py" = ["B007"]\n'
+        )
+        # Crackerjack's starter pack does NOT include B007.
+        scripts_dir = tmp_path / "scripts"
+        scripts_dir.mkdir()
+        (scripts_dir / "loop.py").write_text("for i in range(10): pass\n")
+        inline = build_inline_per_file_ignores()
+        result = subprocess.run(
+            [
+                "ruff", "check", "--no-fix",
+                "--select", "B007",
+                "--config", f"lint.extend-per-file-ignores = {inline}",
+                str(scripts_dir),
+            ],
+            capture_output=True, text=True,
+            cwd=tmp_path,
+            check=False,
+        )
+        # If auto-discovery is preserved, B007 (from consumer) stays silenced;
+        # ruff returns 0. If --config replaced auto-discovery, B007 would fire
+        # and return non-zero.
+        assert result.returncode == 0, (
+            f"inline --config replaced consumer auto-discovery:\n"
             f"stdout={result.stdout}\nstderr={result.stderr}"
         )
 ```
@@ -328,7 +383,7 @@ git commit -m "$(cat <<'EOF'
 feat(hooks): add universal per-file-ignores starter pack for scripts/examples
 
 Crackerjack's fast hooks now inject a 9-rule starter pack via ruff's
---config=<file.toml> CLI flag (with [lint].extend-per-file-ignores table
+--config='<inline TOML>' CLI flag (with lint.extend-per-file-ignores table
 for additive behavior), silencing ecosystem-wide patterns that fire too
 noisily in admin/demo code (EXE001, BLE001, F541, C901, SIM*).
 The starter pack travels with crackerjack; no per-repo config edits needed.
@@ -352,7 +407,7 @@ EOF
 - Modify: `tests/config/test_tool_commands.py` (`test_target_directories_specified`)
 
 **Interfaces:**
-- Consumes: `ensure_per_file_ignores_file(repo_root: Path) -> Path` from Task 1
+- Consumes: `build_inline_per_file_ignores() -> str` from Task 1
 
 **Step 2.1: Write failing test for new ruff-check + ruff-format targets**
 
@@ -381,16 +436,19 @@ Modify `tests/config/test_tool_commands.py` — replace `test_target_directories
         assert any("scripts" in arg for arg in ruff_format_cmd)
         assert any("examples" in arg for arg in ruff_format_cmd)
 
-        # NEW: ruff-check uses --config=<file.toml> pointing to the starter pack
+        # NEW: ruff-check uses --config='<inline TOML>' for the starter pack
         assert "--config" in ruff_check_cmd
         config_idx = ruff_check_cmd.index("--config")
-        config_path = Path(ruff_check_cmd[config_idx + 1])
-        assert config_path.exists()
-        assert config_path.suffix == ".toml"
-        assert config_path.name == "scripts_examples_per_file_ignores.toml"
+        config_value = ruff_check_cmd[config_idx + 1]
+        # The value MUST be inline TOML, not a file path
+        assert not config_value.endswith(".toml")
+        assert not config_value.endswith(".toml/")
+        assert config_value.startswith("lint.extend-per-file-ignores = {")
+        assert '"scripts/**/*.py"' in config_value
+        assert '"examples/**/*.py"' in config_value
 
     def test_ruff_format_has_no_config_flag(self) -> None:
-        """ruff-format has no --config flag for per-file-ignores — only lint does."""
+        """ruff-format has no --config flag — only lint does."""
         ruff_format_cmd = get_tool_command("ruff-format")
         assert "--config" not in ruff_format_cmd
 ```
@@ -412,7 +470,7 @@ In `crackerjack/config/tool_commands.py`, add an import at the top:
 ```python
 from pathlib import Path
 
-from crackerjack.config.per_file_ignores import ensure_per_file_ignores_file
+from crackerjack.config.per_file_ignores import build_inline_per_file_ignores
 ```
 
 Add the shared helper (place near other helpers):
@@ -434,7 +492,7 @@ Modify the two entries (per spec section 4.4):
 ```python
 "ruff-check": _python_module_command(
     "ruff", "check", "--output-format", "json", "--fix",
-    "--config", str(ensure_per_file_ignores_file(Path.cwd())),
+    "--config", f"lint.extend-per-file-ignores = {build_inline_per_file_ignores()}",
     *_build_targets(package_name),
 ),
 "ruff-format": _python_module_command(
@@ -494,9 +552,10 @@ git add crackerjack/config/tool_commands.py tests/config/test_tool_commands.py
 git commit -m "$(cat <<'EOF'
 feat(hooks): extend ruff-check + ruff-format to scripts/ and examples/
 
-ruff-check now invokes with --config=<path> pointing to the universal
-starter pack (added in previous commit). ruff-format gets the same target
-expansion without the --config flag (format doesn't need rule filtering).
+ruff-check now invokes with --config='<inline TOML>' injecting the universal
+starter pack (added in previous commit). The inline form preserves consumer
+auto-discovery — verified empirically 2026-09-05. ruff-format gets the same
+target expansion without the --config flag (format doesn't need rule filtering).
 Shared _build_targets() helper centralizes the canonical target list.
 
 Verified: fast-hook smoke passes on crackerjack itself.
@@ -704,7 +763,7 @@ class TestRewriteIsRuffClean:
         import tempfile
 
         from crackerjack.config.per_file_ignores import (
-            ensure_per_file_ignores_file,
+            build_inline_per_file_ignores,
         )
 
         with tempfile.TemporaryDirectory() as tmp:
@@ -717,15 +776,11 @@ class TestRewriteIsRuffClean:
             scripts_dir.mkdir()
             copy = scripts_dir / "audit_type_checking_runtime_refs.py"
             copy.write_text(audit_tool.read_text())
-            ensure_per_file_ignores_file(tmp_path)
+            inline = build_inline_per_file_ignores()
             result = subprocess.run(
                 [
                     "ruff", "check", "--no-fix",
-                    "--config",
-                    str(
-                        tmp_path / ".crackerjack_cache"
-                        / "scripts_examples_per_file_ignores.toml"
-                    ),
+                    "--config", f"lint.extend-per-file-ignores = {inline}",
                     str(copy),
                 ],
                 capture_output=True, text=True,
@@ -980,5 +1035,5 @@ Run these checks after the plan is complete (before handing to executor):
   - §4.6 Test updates → Tasks 1, 2, 3, 4 add tests
   - §5 Verification & Rollout → Task 5 implements
 - [ ] **No placeholders**: search for "TBD", "TODO", "implement later"
-- [ ] **Type consistency**: `UNIVERSAL_PER_FILE_IGNORES` and `ensure_per_file_ignores_file` defined in Task 1, used in Tasks 2-3 with matching signatures
+- [ ] **Type consistency**: `UNIVERSAL_PER_FILE_IGNORES` and `build_inline_per_file_ignores` defined in Task 1, used in Tasks 2-3 with matching signatures
 - [ ] **`_build_targets` defined in Task 2.3, used in Tasks 2.4, 3.3** with matching signature
