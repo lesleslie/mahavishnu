@@ -58,6 +58,9 @@ structure — if you diverge from it here, say why in the commit message.
   is a local alias, so patching global `httpx` patches the wrong library.
 - **Flat layout.** Package lives at `archive_org_mcp/` in the repo root, never `src/`.
 - Commit after every task. Never `git push`.
+- Plan 0a (registry migration) and Plan 0b (port reconciliation) must complete before
+  Phase 0b of this plan begins. If Plan 0b re-allocates the port, `settings/archive-org-mcp.yaml`
+  and `pyproject.toml`'s `http_port` must be updated in the same commit.
 
 ______________________________________________________________________
 
@@ -234,6 +237,14 @@ The crackerjack coverage gate is **opt-in** (`coverage_goal` defaults to `None`)
 this `pyproject.toml` has no coverage section at all. Add to `pyproject.toml`:
 
 ```toml
+[project.scripts]
+archive-org-mcp = "archive_org_mcp.__main__:main"
+
+[project.optional-dependencies]
+dev = [
+    "httpx>=0.27",
+]
+
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
 testpaths = ["tests"]
@@ -627,15 +638,14 @@ try:
 except PackageNotFoundError:  # editable install before metadata exists
     _VERSION = "0.0.0-dev"
 
-_REPO_URL = "https://github.com/lesleslie/archive-org-mcp"
-
 
 class ArchiveOrgSettings(BaseSettings):
     """Runtime configuration. Field bounds encode the politeness contract."""
 
     model_config = SettingsConfigDict(
         env_prefix="ARCHIVE_ORG_MCP_",
-        env_file=".env",
+        env_file=str(PROJECT_ROOT / ".env"),
+        env_file_encoding="utf-8",
         extra="ignore",
     )
 
@@ -658,7 +668,11 @@ class ArchiveOrgSettings(BaseSettings):
     http_timeout_seconds: float = Field(30.0, gt=0.0)
     cache_ttl_seconds: int = Field(3600, ge=0)
 
-    user_agent: str = f"archive-org-mcp/{_VERSION} (+{_REPO_URL})"
+    # The repo URL is intentionally not embedded in the default — the GitHub URL
+    # does not exist yet. Operators override user_agent in settings/archive-org-mcp.yaml
+    # or via ARCHIVE_ORG_MCP_USER_AGENT once the repo is pushed. The default still
+    # identifies the client and version per IA's politeness guidance.
+    user_agent: str = f"archive-org-mcp/{_VERSION}"
 
 
 @lru_cache(maxsize=1)
@@ -1923,7 +1937,7 @@ def register_wayback_tools(server: FastMCP, client: WaybackClient) -> None:
             feed.record_error()
             logger.exception("wayback-snapshots-failed", url=url)
             raise
-        feed.record_cycle(len(snapshots))
+        feed.record_cycle(entities=len(snapshots))
         return [snapshot.model_dump() | {"wayback_url": snapshot.wayback_url}
                 for snapshot in snapshots]
 
@@ -1942,7 +1956,7 @@ def register_wayback_tools(server: FastMCP, client: WaybackClient) -> None:
             feed.record_error()
             logger.exception("wayback-closest-failed", url=url)
             raise
-        feed.record_cycle(1 if snapshot is not None else 0)
+        feed.record_cycle(entities=1 if snapshot is not None else 0)
         if snapshot is None:
             return None
         return snapshot.model_dump() | {"wayback_url": snapshot.wayback_url}
@@ -2298,7 +2312,7 @@ def register_catalog_tools(server: FastMCP, client: CatalogClient) -> None:
             feed.record_error()
             logger.exception("catalog-search-failed", query=query)
             raise
-        feed.record_cycle(len(items))
+        feed.record_cycle(entities=len(items))
         return [item.model_dump() for item in items]
 
     @server.tool()
@@ -2315,7 +2329,7 @@ def register_catalog_tools(server: FastMCP, client: CatalogClient) -> None:
             feed.record_error()
             logger.exception("catalog-metadata-failed", identifier=identifier)
             raise
-        feed.record_cycle(1)
+        feed.record_cycle(entities=1)
         return result.model_dump()
 ```
 
@@ -2579,7 +2593,7 @@ def register_retrieval_tools(server: FastMCP, client: RetrievalClient) -> None:
             feed.record_error()
             logger.exception("retrieve-snapshot-failed", url=url)
             raise
-        feed.record_cycle(1 if result.fetched_bytes else 0)
+        feed.record_cycle(entities=1 if result.fetched_bytes else 0)
         return result.model_dump() | {"untrusted": True}
 ```
 
@@ -2613,11 +2627,13 @@ modules import `FEEDS`.
 **Interfaces:**
 
 - Consumes: nothing.
-- Produces: `class FeedState` with `record_cycle(entities: int) -> None`,
-  `record_error() -> None`, `mark_capability_unavailable() -> None`, and
-  `as_component() -> dict[str, object]`; plus `FEEDS: dict[str, FeedState]` containing
-  `cdx` and `catalog`, both `required=True`. Task 10's `/readyz` and every tool handler
-  consume it.
+- Produces: `class FeedState` with `record_cycle(*, entities: int = 0, error: str | None = None) -> None`
+  (keyword-only; medium-mcp/scapy-mcp pattern), `record_error() -> None`,
+  `mark_capability_unavailable(reason: str) -> None`, and a boolean `healthy` property
+  (the wiring-discipline contract key — True when the feed has returned data); plus
+  `as_components() -> list[dict[str, object]]` (module-level aggregator) and
+  `FEEDS: dict[str, FeedState]` containing `cdx` and `catalog`, both `required=True`.
+  Task 10's `/readyz` and every tool handler consume it.
 
 - [ ] **Step 1: Write the failing test**
 
@@ -2633,7 +2649,7 @@ from __future__ import annotations
 
 import pytest
 
-from archive_org_mcp.models.feed import FEEDS, FeedState
+from archive_org_mcp.models.feed import FEEDS, FeedState, as_components
 
 
 @pytest.mark.unit
@@ -2644,6 +2660,7 @@ class TestFreshFeed:
         feed = FeedState(name="cdx", required=True)
         assert feed.entities_count == 0
         assert feed.cycles_total == 0
+        assert feed.healthy is False
         assert feed.status == "degraded"
 
     def test_fresh_feed_has_no_timestamp(self) -> None:
@@ -2654,7 +2671,8 @@ class TestFreshFeed:
 class TestRecordCycle:
     def test_successful_cycle_marks_ok(self) -> None:
         feed = FeedState(name="cdx", required=True)
-        feed.record_cycle(3)
+        feed.record_cycle(entities=3)
+        assert feed.healthy is True
         assert feed.status == "ok"
         assert feed.entities_count == 3
         assert feed.cycles_total == 1
@@ -2662,8 +2680,8 @@ class TestRecordCycle:
 
     def test_cycles_accumulate(self) -> None:
         feed = FeedState(name="cdx", required=True)
-        feed.record_cycle(1)
-        feed.record_cycle(2)
+        feed.record_cycle(entities=1)
+        feed.record_cycle(entities=2)
         assert feed.cycles_total == 2
         assert feed.entities_count == 2, "entities_count is the latest, not a sum"
 
@@ -2672,16 +2690,25 @@ class TestRecordCycle:
         data. Registering tools against a working-but-empty upstream is exactly
         the illusion being guarded against."""
         feed = FeedState(name="cdx", required=True)
-        feed.record_cycle(0)
+        feed.record_cycle(entities=0)
         assert feed.cycles_total == 1
+        assert feed.healthy is False
         assert feed.status == "degraded"
+
+    def test_error_cycle_records_failure(self) -> None:
+        """Passing `error` increments errors_total without setting entities."""
+        feed = FeedState(name="cdx", required=True)
+        feed.record_cycle(error="boom")
+        assert feed.errors_total == 1
+        assert feed.cycles_total == 1
+        assert feed.healthy is False
 
 
 @pytest.mark.unit
 class TestRecordError:
     def test_error_increments_without_clearing_entities(self) -> None:
         feed = FeedState(name="cdx", required=True)
-        feed.record_cycle(5)
+        feed.record_cycle(entities=5)
         feed.record_error()
         assert feed.errors_total == 1
         assert feed.entities_count == 5, "a transient error is not data loss"
@@ -2689,6 +2716,7 @@ class TestRecordError:
     def test_error_on_a_fresh_feed_keeps_it_degraded(self) -> None:
         feed = FeedState(name="cdx", required=True)
         feed.record_error()
+        assert feed.healthy is False
         assert feed.status == "degraded"
 
 
@@ -2696,21 +2724,22 @@ class TestRecordError:
 class TestCapabilityUnavailable:
     def test_optional_feed_can_be_capability_unavailable(self) -> None:
         feed = FeedState(name="capture", required=False)
-        feed.mark_capability_unavailable()
+        feed.mark_capability_unavailable("feature flag off")
+        assert feed.healthy is False
         assert feed.status == "capability_unavailable"
 
     def test_required_feed_cannot_be_capability_unavailable(self) -> None:
         """A required feed being absent is a fault, not a configuration choice."""
         feed = FeedState(name="cdx", required=True)
         with pytest.raises(ValueError):
-            feed.mark_capability_unavailable()
+            feed.mark_capability_unavailable("env missing")
 
 
 @pytest.mark.unit
 class TestComponentPayload:
     def test_exposes_the_four_required_signals(self) -> None:
         feed = FeedState(name="cdx", required=True)
-        feed.record_cycle(2)
+        feed.record_cycle(entities=2)
         payload = feed.as_component()
         for key in (
             "feed.entities_count",
@@ -2720,7 +2749,22 @@ class TestComponentPayload:
         ):
             assert key in payload, f"wiring discipline requires {key}"
         assert payload["name"] == "cdx"
+        assert payload["healthy"] is True
         assert payload["status"] == "ok"
+
+
+@pytest.mark.unit
+class TestAsComponentsAggregate:
+    def test_module_level_as_components_returns_a_list(self) -> None:
+        """The module-level `as_components()` returns a list of component dicts
+        for every feed — used by /health and /readyz."""
+        components = as_components()
+        assert isinstance(components, list)
+        names = {component["name"] for component in components}
+        assert names == {"cdx", "catalog"}
+        for component in components:
+            assert "healthy" in component
+            assert isinstance(component["healthy"], bool)
 
 
 @pytest.mark.unit
@@ -2752,9 +2796,14 @@ feed.errors_total, and cycles_total, and /readyz must return 503 when a required
 feed is degraded.
 
 The important rule is that a feed which has never returned a non-empty result is
-`degraded`, never `ok`. A server can otherwise pass every test, answer 200 on
+`degraded`, not `ok`. A server can otherwise pass every test, answer 200 on
 /health, and list 30 tools while returning zero rows — the failure mode recorded
 as `mcp-surface-health-illusion`.
+
+Wiring-discipline contract: per-component payloads use the boolean key `healthy`,
+not the string `status` — orchestrators and the wiring audit pattern-match on
+`healthy` being `False` to flag degraded feeds. Matches the medium-mcp and
+scapy-mcp pattern.
 """
 
 from __future__ import annotations
@@ -2776,33 +2825,60 @@ class FeedState:
         self.errors_total = 0
         self.cycles_total = 0
         self._capability_unavailable = False
+        self._capability_unavailable_reason: str | None = None
+
+    @property
+    def healthy(self) -> bool:
+        """Boolean health flag for wiring-discipline consumers.
+
+        True only when the feed has returned at least one non-empty result and
+        is not marked capability_unavailable. A working transport over an empty
+        upstream is NOT healthy.
+        """
+        if self._capability_unavailable:
+            return False
+        return self.entities_count > 0
 
     @property
     def status(self) -> FeedStatus:
-        """Current health.
-
-        `degraded` until at least one cycle returned a non-empty result, because
-        a working transport over an empty upstream is not a healthy feed.
-        """
+        """Current health as a string (for legacy consumers that read it)."""
         if self._capability_unavailable:
             return "capability_unavailable"
         if self.entities_count > 0:
             return "ok"
         return "degraded"
 
-    def record_cycle(self, entities: int) -> None:
-        """Record a completed upstream call returning `entities` items."""
+    def record_cycle(self, *, entities: int = 0, error: str | None = None) -> None:
+        """Record a completed upstream call.
+
+        Keyword-only signature matches medium-mcp and scapy-mcp. Pass exactly one
+        of `entities` (success path) or `error` (failure path); if both are
+        passed, `error` wins.
+
+        Args:
+            entities: Number of items the upstream returned. > 0 marks the feed
+                healthy.
+            error: Error message when the cycle failed. Increments `errors_total`
+                without clearing `entities_count` (a transient error is not data
+                loss).
+        """
         self.cycles_total += 1
         self.last_updated_timestamp = time.time()
+        if error is not None:
+            self.errors_total += 1
+            return
         if entities > 0:
             self.entities_count = entities
 
     def record_error(self) -> None:
         """Record a failed upstream call. Does not clear `entities_count`."""
-        self.errors_total += 1
+        self.record_cycle(error="upstream failure")
 
-    def mark_capability_unavailable(self) -> None:
+    def mark_capability_unavailable(self, reason: str) -> None:
         """Mark this feed unavailable by environment rather than by fault.
+
+        Args:
+            reason: Human-readable explanation surfaced in the health payload.
 
         Raises:
             ValueError: If the feed is required. A required feed being absent is
@@ -2814,11 +2890,13 @@ class FeedState:
                 "capability_unavailable; it must report degraded"
             )
         self._capability_unavailable = True
+        self._capability_unavailable_reason = reason
 
     def as_component(self) -> dict[str, object]:
-        """Render for `register_http_health_route(extra_components=...)`."""
+        """Render one component dict. Exposed via the module-level `as_components`."""
         return {
             "name": self.name,
+            "healthy": self.healthy,
             "status": self.status,
             "required": self.required,
             "feed.entities_count": self.entities_count,
@@ -2834,9 +2912,19 @@ FEEDS: dict[str, FeedState] = {
 }
 
 
+def as_components() -> list[dict[str, object]]:
+    """Render every feed as a component dict for `extra_components=` callers.
+
+    Returns:
+        A list with one dict per registered feed, each carrying the boolean
+        `healthy` key required by the wiring-discipline contract.
+    """
+    return [feed.as_component() for feed in FEEDS.values()]
+
+
 def required_feeds_healthy() -> bool:
-    """True when every required feed reports `ok`. Drives /readyz."""
-    return all(feed.status == "ok" for feed in FEEDS.values() if feed.required)
+    """True when every required feed is healthy. Drives /readyz."""
+    return all(feed.healthy for feed in FEEDS.values() if feed.required)
 ```
 
 - [ ] **Step 4: Run test to verify it passes**
@@ -2889,10 +2977,11 @@ fault that must reach /readyz as 503."
 - **Rollback signal:** none independent of Phase 2 — nothing in production calls this code
   until Task 10 registers it. If `pytest tests/unit/` fails after a Phase 1 change, revert
   that task's commit; there is no deployed surface to degrade.
-- **Observability added:** `FeedState.as_component()` defines the four
-  wiring-discipline signals, and the oneiric logger is wired in each client. Neither is
-  *observable* until Task 10 exposes them through `/health` and `/readyz` — this phase
-  builds the instrument, Phase 2 attaches the dial.
+- **Observability added:** `FeedState.as_component()` (per-feed dict) and the
+  module-level `as_components()` (list aggregator) define the four wiring-discipline
+  signals including the boolean `healthy` key; the oneiric logger is wired in each
+  client. Neither is *observable* until Task 10 exposes them through `/health` and
+  `/readyz` — this phase builds the instrument, Phase 2 attaches the dial.
 
 ______________________________________________________________________
 
@@ -3077,19 +3166,19 @@ class TestReadyzRoute:
         assert body["status"] == "degraded"
 
     async def test_readyz_is_200_once_all_required_feeds_are_ok(self) -> None:
-        FEEDS["cdx"].record_cycle(3)
-        FEEDS["catalog"].record_cycle(1)
+        FEEDS["cdx"].record_cycle(entities=3)
+        FEEDS["catalog"].record_cycle(entities=1)
         status, body = await _call(await create_app(), "/readyz")
         assert status == 200
         assert body["status"] == "ok"
 
     async def test_readyz_is_503_when_only_one_required_feed_is_ok(self) -> None:
-        FEEDS["cdx"].record_cycle(3)
+        FEEDS["cdx"].record_cycle(entities=3)
         status, _ = await _call(await create_app(), "/readyz")
         assert status == 503
 
     async def test_readyz_exposes_the_four_signals_per_feed(self) -> None:
-        FEEDS["cdx"].record_cycle(2)
+        FEEDS["cdx"].record_cycle(entities=2)
         _, body = await _call(await create_app(), "/readyz")
         component = next(c for c in body["components"] if c["name"] == "cdx")
         for key in (
@@ -3259,7 +3348,7 @@ from archive_org_mcp.clients.catalog_client import CatalogClient
 from archive_org_mcp.clients.retrieval_client import RetrievalClient
 from archive_org_mcp.clients.wayback_client import WaybackClient
 from archive_org_mcp.config.settings import ArchiveOrgSettings, get_settings
-from archive_org_mcp.models.feed import FEEDS, required_feeds_healthy
+from archive_org_mcp.models.feed import FEEDS, as_components, required_feeds_healthy
 from archive_org_mcp.tools.profiles import (
     ARCHIVE_ORG_MANDATORY_GROUPS,
     PROFILE_REGISTRATIONS,
@@ -3303,7 +3392,7 @@ def _register_routes(app: FastMCP) -> None:
         app,
         service_name=APP_NAME,
         version=__version__,
-        extra_components=[feed.as_component() for feed in FEEDS.values()],
+        extra_components=as_components(),
     )
 
     @app.custom_route("/readyz", methods=["GET"])
@@ -3316,7 +3405,7 @@ def _register_routes(app: FastMCP) -> None:
                 "status": "ok" if healthy else "degraded",
                 "service": APP_NAME,
                 "version": __version__,
-                "components": [feed.as_component() for feed in FEEDS.values()],
+                "components": as_components(),
             },
             status_code=200 if healthy else 503,
         )
@@ -4051,9 +4140,10 @@ focused unit test in the existing test file for that module.
 
 - [ ] **Step 3: Ratchet the floor**
 
-Raise `--cov-fail-under` in `pyproject.toml` from `70` to the achieved figure rounded
-**down** to the nearest whole percent, capped at the ecosystem target of `89`. Record
-the achieved number in the commit message so the next ratchet has a baseline.
+Raise `--cov-fail-under` in `pyproject.toml` from `70` to **`85`** once Tasks 1-13
+pass cleanly. Matches the medium-mcp and scapy-mcp first-ratchet target — a brand-new
+repo starts at 70%, lands at 85% once the documented suite passes, and a later task
+in the sequence ratchets further toward the ecosystem target of 89%.
 
 - [ ] **Step 4: Run the full gate**
 

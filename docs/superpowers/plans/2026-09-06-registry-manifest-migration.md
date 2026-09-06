@@ -103,8 +103,9 @@ import pytest
 import yaml
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
-ECOSYSTEM_PATH = REPO_ROOT / "settings" / "ecosystem.yaml"
-LEGACY_PATH = REPO_ROOT / "settings" / "repos.yaml"
+SETTINGS_DIR = REPO_ROOT / "settings"
+ECOSYSTEM_PATH = SETTINGS_DIR / "ecosystem.yaml"
+LEGACY_PATH = SETTINGS_DIR / "repos.yaml"
 
 NEW_SERVERS = ("archive-org-mcp", "medium-mcp", "scapy-mcp")
 
@@ -453,6 +454,8 @@ ______________________________________________________________________
 **Reconciliation rules** — apply exactly, so nothing is invented:
 
 1. Copy all fields present in the `repos.yaml` entry verbatim.
+1. If `nicknames:` is absent and `nickname:` is present, derive `nicknames: [<nickname>]`.
+   This matches the worked example in Task 5 Step 3.
 1. Add `mcp:` where `repos.yaml` supplies it. Where it is absent: `3rd-party` for any
    `*-mcp` repo, and **omit the key entirely** for libraries and applications. Do not
    invent a third value.
@@ -899,6 +902,15 @@ Add to `TestRegistryIntegrity`:
             f"settings/repos.yaml shrank from {self.LEGACY_PINNED_COUNT} to {actual}. "
             "If this was deliberate, lower LEGACY_PINNED_COUNT in the same commit."
         )
+
+    def test_no_credentials_in_registry(self) -> None:
+        """No api_key/token/secret/password/private_key fields in any manifest entry."""
+        secret_keys = {"api_key", "token", "secret", "password", "private_key"}
+        for manifest in (SETTINGS_DIR / "ecosystem.yaml", SETTINGS_DIR / "repos.yaml"):
+            data = yaml.safe_load(manifest.read_text())
+            # Walk all entries and assert no secret keys.
+            for entry in (data.get("repos") or []):
+                assert not (set(entry.keys()) & secret_keys), entry
 ```
 
 - [ ] **Step 2: Run the whole guard suite**

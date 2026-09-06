@@ -125,6 +125,7 @@ asyncio_mode = "auto"
 markers = [
     "requires_network: hits a real network endpoint",
     "requires_auth: requires MEDIUM_MCP_RAPIDAPI_KEY in env",
+    "requires_bpf: requires /dev/bpf* access",
 ]
 addopts = "--cov=medium_mcp --cov-report=term --cov-report=html --cov-fail-under=70"
 
@@ -269,11 +270,12 @@ def test_budget_exhausted_carries_spec_payload() -> None:
         cached_alternatives=["user_info", "article_metadata"],
     )
     payload = err.to_payload()
+    # Spec §6.2's payload does NOT carry monthly_budget; the caller learns the
+    # budget from ``budget_remaining``, not from the refusal.
     assert payload == {
         "error": "budget_exhausted",
         "remaining_calls": 0,
         "requested_calls": 2,
-        "monthly_budget": 150,
         "period": "2026-09",
         "resets_at": "2026-10-01T00:00:00Z",
         "retryable": False,
@@ -400,11 +402,16 @@ class BudgetExhaustedError(MediumError):
         self.cached_alternatives = cached_alternatives
 
     def to_payload(self) -> dict[str, Any]:
+        """Exactly the spec §6.2 refusal payload — no extra keys.
+
+        ``monthly_budget`` is deliberately absent: the refusal states what was
+        asked for and what is left, and ``budget_remaining`` is the (free) tool
+        that reports the configured budget.
+        """
         return {
             "error": "budget_exhausted",
             "remaining_calls": self.remaining_calls,
             "requested_calls": self.requested_calls,
-            "monthly_budget": self.monthly_budget,
             "period": self.period,
             "resets_at": self.resets_at,
             "retryable": False,
@@ -623,7 +630,7 @@ git -c user.email=les@wedgwoodwebworks.com commit -m "feat(medium-mcp): MediumSe
   - `content_key(article_id: str) -> str` returns `medium2:v1:content:<article_id>`
   - `budget_key(period: str) -> str` returns `medium2:v1:budget:<period>` (no TTL)
   - `coalesce_key(endpoint: str, params: dict) -> str` returns the same value as `cache_key` (the spec says coalescing shares the cache key).
-- Produces: `DharaClient` wraps `AsyncKVTimeSeriesStore` + `DharaLock`. Provides `async def get(...)`, `async def put(...)`, `async def incr(...)`, `async def acquire_budget_lock(period)`, `async def release_budget_lock(handle)`. Constructed from `MediumSettings`. Starts up by probing a sentinel key.
+- Produces: `DharaClient` wraps `AsyncKVTimeSeriesStore` + `DharaLock`. Provides `async def get(...)`, `async def put(...)`, `async def get_counter(...)`, `async def inc_atomic(key, *, increment=1, max_value=None) -> tuple[int, bool]` (read-check-increment-write inside the lock), `async def dec_atomic(key, *, decrement) -> int`, `async def acquire_budget_lock(period)`, `async def release_budget_lock(handle)`. Constructed from `MediumSettings`. Starts up by probing a sentinel key.
 
 - [ ] **Step 1: Write the failing key-scheme test**
 
@@ -724,15 +731,44 @@ async def test_put_then_get_round_trip(settings: MediumSettings) -> None:
 
 
 async def test_inc_atomic(settings: MediumSettings) -> None:
-    """Two concurrent inc_atomic calls on the same key both increment exactly once."""
+    """Successive inc_atomic calls advance the counter from zero by ``increment``."""
     client = DharaClient(settings=settings, backend="memory")
     await client.startup()
     try:
-        await client.inc_atomic("medium2:v1:budget:2026-09", initial=149)
-        await client.inc_atomic("medium2:v1:budget:2026-09", initial=149)
-        # First call: 149 -> 150. Second call: 150 -> 151.
-        # inc_atomic reads current and writes current+1; serialized via DharaLock.
-        assert await client.get_counter("medium2:v1:budget:2026-09") == 151
+        key = "medium2:v1:budget:2026-09"
+        assert await client.inc_atomic(key) == (1, True)
+        assert await client.inc_atomic(key, increment=2) == (3, True)
+        assert await client.get_counter(key) == 3
+    finally:
+        await client.shutdown()
+
+
+async def test_inc_atomic_refuses_past_max_value_without_mutating(
+    settings: MediumSettings,
+) -> None:
+    """The ceiling check happens INSIDE the lock and leaves the counter alone."""
+    client = DharaClient(settings=settings, backend="memory")
+    await client.startup()
+    try:
+        key = "medium2:v1:budget:2026-09"
+        assert await client.inc_atomic(key, increment=2, max_value=3) == (2, True)
+        # 2 + 2 > 3 -> refused, counter unchanged at 2.
+        assert await client.inc_atomic(key, increment=2, max_value=3) == (2, False)
+        assert await client.get_counter(key) == 2
+        # A smaller increment that still fits is accepted.
+        assert await client.inc_atomic(key, increment=1, max_value=3) == (3, True)
+    finally:
+        await client.shutdown()
+
+
+async def test_dec_atomic_floors_at_zero(settings: MediumSettings) -> None:
+    client = DharaClient(settings=settings, backend="memory")
+    await client.startup()
+    try:
+        key = "medium2:v1:budget:2026-09"
+        await client.inc_atomic(key, increment=3)
+        assert await client.dec_atomic(key, decrement=2) == 1
+        assert await client.dec_atomic(key, decrement=99) == 0
     finally:
         await client.shutdown()
 
@@ -819,6 +855,7 @@ Create `medium_mcp/dhara/client.py`:
 from __future__ import annotations
 
 import asyncio
+import time
 from typing import Any
 
 from dhara.lock.in_memory import InMemoryDharaLock
@@ -827,6 +864,9 @@ from dhara.mcp.kv_timeseries import AsyncKVTimeSeriesStore
 from medium_mcp.config.settings import MediumSettings
 from medium_mcp.dhara.keys import budget_key
 from medium_mcp.utils.exceptions import ConfigurationError
+
+# How long a successful/failed ``probe()`` result stays warm.
+PROBE_CACHE_SECONDS = 5.0
 
 
 class DharaClient:
@@ -844,6 +884,10 @@ class DharaClient:
         self._lock: InMemoryDharaLock | None = None
         self._started = False
         self._namespace = settings.dhara_namespace
+        # ``probe()`` is on the hot path (every metered call gates on it), so its
+        # result is cached for PROBE_CACHE_SECONDS.
+        self._probe_cache_at: float = 0.0
+        self._probe_cache_value: bool = False
 
     async def startup(self) -> None:
         if self._started:
@@ -866,6 +910,9 @@ class DharaClient:
         self._started = False
         self._kv = None
         self._lock = None
+        # Invalidate the probe cache so a restarted client re-probes.
+        self._probe_cache_at = 0.0
+        self._probe_cache_value = False
 
     @property
     def kv(self) -> AsyncKVTimeSeriesStore:
@@ -880,16 +927,27 @@ class DharaClient:
         return self._lock
 
     async def probe(self) -> bool:
-        """Round-trip a sentinel key to confirm Dhara is reachable."""
+        """Round-trip a sentinel key to confirm Dhara is reachable.
+
+        Result is cached for ``PROBE_CACHE_SECONDS`` because every metered call
+        gates on this; without the cache a burst of tool calls would each pay a
+        put+get round trip. ``shutdown()`` invalidates the cache.
+        """
         if not self._started:
             return False
+        now = time.monotonic()
+        if now - self._probe_cache_at < PROBE_CACHE_SECONDS:
+            return self._probe_cache_value
         sentinel_key = f"medium2:v1:probe:{self._namespace}"
         try:
             await self.kv.put_async(sentinel_key, b'"ok"', ttl=10)
             result = await self.kv.get_async(sentinel_key)
-            return result.get("value") == b'"ok"'
+            probe_ok = result.get("value") == b'"ok"'
         except Exception:
-            return False
+            probe_ok = False
+        self._probe_cache_at = now
+        self._probe_cache_value = probe_ok
+        return probe_ok
 
     async def get(self, key: str) -> bytes | None:
         result = await self.kv.get_async(key)
@@ -904,13 +962,27 @@ class DharaClient:
             return 0
         return int(raw.decode("utf-8"))
 
-    async def inc_atomic(self, key: str, *, initial: int) -> int:
-        """Atomic compare-and-increment: read, increment, write under budget lock.
+    async def inc_atomic(
+        self,
+        key: str,
+        *,
+        increment: int = 1,
+        max_value: int | None = None,
+    ) -> tuple[int, bool]:
+        """Read-check-increment-write, entirely inside the per-period lock.
 
-        Returns the new counter value. Two concurrent callers serialize via the
-        per-month DharaLock; one observes, increments, and writes; the second
-        observes the post-increment value and writes again. The serialized
-        effect is exactly N increments for N calls.
+        Returns ``(counter_value, accepted)``.
+
+        * accepted: the counter was advanced by ``increment`` and
+          ``counter_value`` is the post-increment total.
+        * refused: ``max_value`` was set and ``current + increment > max_value``.
+          The counter is left **untouched** and ``counter_value`` is the
+          unchanged current total.
+
+        The check lives inside the lock so two concurrent reservations can never
+        both observe the same headroom and both proceed. Callers translate a
+        refusal into a domain error (``BudgetExhaustedError``); this layer knows
+        nothing about budgets beyond the ceiling it was handed.
         """
         period = key.rsplit(":", 1)[-1]
         handle = await self.acquire_budget_lock(period)
@@ -922,12 +994,34 @@ class DharaClient:
             raise RuntimeError(f"could not acquire budget lock for {period}")
         try:
             current = await self.get_counter(key)
-            if current == 0:
-                # Counter not yet initialized; treat as ``initial``.
-                current = initial
-            new_value = current + 1
+            if max_value is not None and current + increment > max_value:
+                return current, False
+            new_value = current + increment
             await self.put(key, str(new_value).encode())
-            return new_value
+            return new_value, True
+        finally:
+            await self.release_budget_lock(handle)
+
+    async def dec_atomic(self, key: str, *, decrement: int) -> int:
+        """Release a reservation under the same lock ``inc_atomic`` uses.
+
+        Floors at zero: a double-release can never drive the counter negative
+        and hand out budget that was never there.
+        """
+        if decrement <= 0:
+            return await self.get_counter(key)
+        period = key.rsplit(":", 1)[-1]
+        handle = await self.acquire_budget_lock(period)
+        if handle is None:
+            await asyncio.sleep(0.05)
+            handle = await self.acquire_budget_lock(period)
+        if handle is None:
+            raise RuntimeError(f"could not acquire budget lock for {period}")
+        try:
+            current = await self.get_counter(key)
+            target = max(0, current - decrement)
+            await self.put(key, str(target).encode())
+            return target
         finally:
             await self.release_budget_lock(handle)
 
@@ -946,7 +1040,7 @@ cd /Users/les/Projects/medium-mcp
 .venv/bin/pytest tests/unit/test_dhara_keys.py tests/unit/test_dhara_client.py -v
 ```
 
-Expected: 6 + 5 = 11 passed.
+Expected: 6 + 7 = 13 passed.
 
 - [ ] **Step 7: Commit**
 
@@ -1199,11 +1293,15 @@ def test_budget_status_carries_period_and_reset() -> None:
         monthly_budget=150,
         period="2026-09",
         resets_at="2026-10-01T00:00:00Z",
-        cache_hit_rate=0.42,
-        cached_entries=42,
     )
     assert b.remaining_calls == 140
     assert b.monthly_budget == 150
+
+
+def test_budget_status_has_no_unimplemented_cache_stats() -> None:
+    """No ``cache_hit_rate`` / ``cached_entries``: nothing computes them in v1."""
+    assert "cache_hit_rate" not in BudgetStatus.model_fields
+    assert "cached_entries" not in BudgetStatus.model_fields
 
 
 def test_search_articles_page_carries_next_cursor() -> None:
@@ -1368,12 +1466,17 @@ class TagInfo(_Base):
 
 
 class BudgetStatus(_Base):
+    """What ``budget_remaining`` returns.
+
+    Deliberately has no ``cache_hit_rate`` / ``cached_entries``: nothing in v1
+    computes them, and shipping zero-valued fields would read as a feature that
+    does not exist. Add them only alongside a real implementation.
+    """
+
     remaining_calls: int
     monthly_budget: int
     period: str  # YYYY-MM
     resets_at: str  # ISO-8601
-    cache_hit_rate: float = 0.0
-    cached_entries: int = 0
 
 
 # Resolve the forward reference so Pydantic can resolve PublicationInfo in _PublicationsPage.
@@ -1387,7 +1490,7 @@ cd /Users/les/Projects/medium-mcp
 .venv/bin/pytest tests/unit/test_models.py -v
 ```
 
-Expected: 9 passed.
+Expected: 10 passed.
 
 - [ ] **Step 5: Commit**
 
@@ -1410,9 +1513,10 @@ git -c user.email=les@wedgwoodwebworks.com commit -m "feat(medium-mcp): typed DT
 - Produces `Medium2Client`:
   - `__init__(settings: MediumSettings, dhara: DharaClient)`
   - `async def request(endpoint: str, params: dict, *, min_cost: int = 1, max_pages: int = 1, tool_name: str) -> dict`
-  - Reserves `min_cost * max_pages` budget up-front; releases the unused remainder after success.
+  - Refuses the call outright when `DharaClient.probe()` is False — an unguarded call is unaccountable budget.
+  - Reserves `min_cost * max_pages` budget in a single atomic increment whose headroom check happens inside the per-month lock. `max_pages > 1` is rejected in v1.
   - Maps HTTP 404 → `NotFoundError`, 429 → `RateLimitedError`, others → `UpstreamError`.
-  - Records failed calls as budget-consuming (per spec §6.2: "Any request that reaches RapidAPI is assumed metered regardless of status").
+  - Records failed calls as budget-consuming (per spec §6.2: "Any request that reaches RapidAPI is assumed metered regardless of status"). The reservation is only released when the call was never dispatched.
 
 - [ ] **Step 1: Write the failing client test (uses a fake transport)**
 
@@ -1429,8 +1533,10 @@ import pytest
 from medium_mcp.clients.medium2 import Medium2Client
 from medium_mcp.config.settings import MediumSettings
 from medium_mcp.dhara.client import DharaClient
+from medium_mcp.dhara.keys import budget_key
 from medium_mcp.utils.exceptions import (
     BudgetExhaustedError,
+    ConfigurationError,
     NotFoundError,
     RateLimitedError,
     UpstreamError,
@@ -1511,13 +1617,11 @@ async def test_request_increments_budget_on_failure(settings: MediumSettings, dh
 
 
 async def test_budget_exhausted_refuses_call(settings: MediumSettings, dhara: DharaClient) -> None:
-    """Pre-fill the counter to monthly_budget - headroom, then call."""
+    """monthly_budget=5, headroom=2 => ceiling 3. Exactly 3 calls get through."""
     settings.monthly_budget = 5
     settings.budget_reserve_headroom = 2
-    # Manually advance the counter until refusals occur.
     transport = _transport_that_returns(200, {"id": "abc"})
     client = Medium2Client(settings=settings, dhara=dhara, transport=transport)
-    # Reserve 1 call many times until the headroom kicks in.
     refusals = 0
     successes = 0
     for _ in range(10):
@@ -1526,9 +1630,73 @@ async def test_budget_exhausted_refuses_call(settings: MediumSettings, dhara: Dh
             successes += 1
         except BudgetExhaustedError:
             refusals += 1
-    # monthly_budget=5, headroom=2: at most 3 successes, the rest refused.
     assert successes == 3
     assert refusals == 7
+    # A refused reservation must not have advanced the counter past the ceiling.
+    assert await dhara.get_counter(budget_key(client._period())) == 3
+
+
+async def test_headroom_check_happens_inside_the_lock(
+    settings: MediumSettings, dhara: DharaClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The ceiling is enforced by inc_atomic, not by a read-then-check in the client.
+
+    If ``_reserve_budget`` peeked at the counter before locking, a caller could
+    observe stale headroom. Assert the client delegates: it must pass the ceiling
+    down as ``max_value`` and never pre-read the counter.
+    """
+    settings.monthly_budget = 5
+    settings.budget_reserve_headroom = 2
+    seen: list[dict[str, object]] = []
+
+    async def fake_inc(key: str, **kwargs: object) -> tuple[int, bool]:
+        # Stands in for the real lock-held read-check-increment-write, so the
+        # real ``get_counter`` is never reached from inside the lock either.
+        seen.append({"key": key, **kwargs})
+        return 1, True
+
+    def forbidden_counter(*_a: object, **_k: object) -> int:
+        raise AssertionError("_reserve_budget must not read the counter outside the lock")
+
+    monkeypatch.setattr(dhara, "inc_atomic", fake_inc)
+    monkeypatch.setattr(dhara, "get_counter", forbidden_counter)
+
+    transport = _transport_that_returns(200, {"id": "abc"})
+    client = Medium2Client(settings=settings, dhara=dhara, transport=transport)
+    await client.request("user_info", {"user_id": "abc"}, tool_name="user_info")
+
+    # The ceiling is handed down as max_value; the client computed nothing else.
+    assert seen == [
+        {"key": budget_key(client._period()), "increment": 1, "max_value": 3},
+    ]
+
+
+async def test_dhara_down_refuses_before_reserving(
+    settings: MediumSettings, dhara: DharaClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """No counter, no guard: refuse rather than spend an unaccountable call."""
+
+    async def probe_false() -> bool:
+        return False
+
+    monkeypatch.setattr(DharaClient, "probe", lambda _self: probe_false())
+    transport = _transport_that_returns(200, {"id": "abc"})
+    client = Medium2Client(settings=settings, dhara=dhara, transport=transport)
+    with pytest.raises(UpstreamError) as exc_info:
+        await client.request("user_info", {"user_id": "abc"}, tool_name="user_info")
+    assert exc_info.value.context["reason"] == "dhara_unreachable"
+
+
+async def test_max_pages_above_one_is_rejected(
+    settings: MediumSettings, dhara: DharaClient
+) -> None:
+    """v1 reserves exactly one page per call; multi-page is not supported."""
+    transport = _transport_that_returns(200, {"id": "abc"})
+    client = Medium2Client(settings=settings, dhara=dhara, transport=transport)
+    with pytest.raises(ConfigurationError):
+        await client.request(
+            "user_articles", {"user_id": "abc"}, max_pages=3, tool_name="user_articles",
+        )
 ```
 
 - [ ] **Step 2: Run the test to verify it fails**
@@ -1547,18 +1715,19 @@ Create `medium_mcp/clients/__init__.py` (empty). Create `medium_mcp/clients/medi
 ```python
 from __future__ import annotations
 
+import json
 from datetime import UTC, datetime, timedelta
 from typing import Any
 from urllib.parse import urljoin
 
 import httpx2
-from pydantic import SecretStr
 
 from medium_mcp.config.settings import MediumSettings
 from medium_mcp.dhara.client import DharaClient
 from medium_mcp.dhara.keys import budget_key
 from medium_mcp.utils.exceptions import (
     BudgetExhaustedError,
+    ConfigurationError,
     NotFoundError,
     RateLimitedError,
     UpstreamError,
@@ -1569,12 +1738,23 @@ class Medium2Client:
     """Typed wrapper around httpx2 that enforces the budget guard.
 
     Each call:
-    1. Reserves ``min_cost * max_pages`` budget under the per-month Dhara lock.
-    2. Issues a single GET to the upstream (medium2 is paginated; pagination
-       is the caller's responsibility, not the client's).
-    3. Increments the counter on success OR on any upstream error (per spec
+    1. Gates on Dhara reachability — with no counter there is no guard, so the
+       call is refused rather than made unmetered.
+    2. Reserves ``min_cost * max_pages`` budget via ``DharaClient.inc_atomic``,
+       whose headroom check and write both happen inside the per-month lock.
+    3. Issues a single GET to the upstream (medium2 is paginated; pagination is
+       the caller's responsibility, not the client's).
+    4. Keeps the reservation on success **and** on any upstream error (per spec
        §6.2: failed calls count).
-    4. Releases the unused reservation on success.
+
+    **Multi-page reservations are NOT supported in v1.** ``max_pages=1`` is the
+    only allowed value, enforced by the lock acquiring exactly the requested
+    count: the reservation is taken atomically as one increment, so there is no
+    partial-reservation state to unwind. ``_release_reservation`` exists only for
+    the pre-flight failure path (reserved but never dispatched); it is not a
+    per-page refund mechanism. Supporting ``max_pages > 1`` would require either
+    holding the lock across N network calls or reintroducing a refund race, and
+    v1 does neither.
     """
 
     def __init__(
@@ -1596,38 +1776,51 @@ class Medium2Client:
         next_month = (now.replace(day=1) + timedelta(days=32)).replace(day=1, hour=0, minute=0, second=0, microsecond=0)
         return next_month.isoformat().replace("+00:00", "Z")
 
-    async def _reserve_budget(self, calls: int) -> tuple[int, str]:
-        """Increment the counter under the lock; refuse if headroom exceeded.
+    def _budget_ceiling(self) -> int:
+        """Reservations may never push the counter past this value."""
+        return self.settings.monthly_budget - self.settings.budget_reserve_headroom
 
-        Returns (new_value, period). Raises ``BudgetExhaustedError`` on refusal.
+    async def _reserve_budget(self, calls: int) -> tuple[int, str]:
+        """Reserve ``calls`` against the month's counter, atomically.
+
+        The read, the headroom check, and the write all happen inside
+        ``DharaClient.inc_atomic``'s lock. Nothing here inspects the counter
+        first: doing so would reintroduce the check-then-act race this method
+        exists to close.
+
+        Returns ``(counter_value_after_reservation, period)``. Raises
+        ``BudgetExhaustedError`` when the reservation would breach the ceiling —
+        in which case the counter was **not** advanced.
         """
         period = self._period()
         key = budget_key(period)
-        # Initialize the counter if missing by checking its current value.
-        current = await self.dhara.get_counter(key)
-        if current + calls > self.settings.monthly_budget - self.settings.budget_reserve_headroom:
+        ceiling = self._budget_ceiling()
+        counter, accepted = await self.dhara.inc_atomic(
+            key, increment=calls, max_value=ceiling,
+        )
+        if not accepted:
             raise BudgetExhaustedError(
                 "monthly budget exhausted or below headroom",
                 requested_calls=calls,
-                remaining_calls=self.settings.monthly_budget - current,
+                remaining_calls=max(0, ceiling - counter),
                 monthly_budget=self.settings.monthly_budget,
                 period=period,
                 resets_at=self._resets_at(),
                 cached_alternatives=self._cached_alternatives(),
             )
-        # Atomic increment.
-        new_value = await self.dhara.inc_atomic(key, initial=self.settings.monthly_budget)
-        return new_value, period
+        return counter, period
 
-    async def _refund_unused(self, period: str, calls_refunded: int) -> None:
-        """Decrement the counter to release the unused reservation."""
-        if calls_refunded <= 0:
+    async def _release_reservation(self, period: str, calls: int) -> None:
+        """Give back a reservation that was taken but never dispatched.
+
+        Uses the same per-period lock as ``_reserve_budget`` so a release can
+        never interleave with another reservation's read-check-write. Only the
+        pre-flight failure path calls this; a call that reached RapidAPI keeps
+        its reservation regardless of status (spec §6.2).
+        """
+        if calls <= 0:
             return
-        key = budget_key(period)
-        # Bounded decrement: never go below zero.
-        current = await self.dhara.get_counter(key)
-        target = max(0, current - calls_refunded)
-        await self.dhara.put(key, str(target).encode())
+        await self.dhara.dec_atomic(budget_key(period), decrement=calls)
 
     @staticmethod
     def _cached_alternatives() -> list[str]:
@@ -1635,6 +1828,11 @@ class Medium2Client:
         return ["user_info", "article_metadata", "tag_info"]
 
     async def budget_status(self) -> dict[str, Any]:
+        """Single source of truth for period, reset time, and remaining calls.
+
+        ``tools/budget.budget_remaining`` converts this dict into a
+        ``BudgetStatus`` and computes nothing itself.
+        """
         period = self._period()
         key = budget_key(period)
         used = await self.dhara.get_counter(key)
@@ -1655,19 +1853,37 @@ class Medium2Client:
         max_pages: int = 1,
         tool_name: str,
     ) -> dict[str, Any]:
+        if max_pages != 1:
+            raise ConfigurationError(
+                "max_pages > 1 is not supported in v1; reserve one page per call",
+                context={"max_pages": max_pages, "tool": tool_name},
+            )
+
+        # Dhara-down gate. No counter means no guard, and an unguarded call is
+        # budget we can never account for — so refuse before reserving.
+        probe_ok = await self.dhara.probe()
+        if not probe_ok:
+            raise UpstreamError(
+                "dhara unreachable; refusing metered call",
+                status_code=0,
+                body="",
+                context={"reason": "dhara_unreachable", "tool": tool_name},
+            )
+
         reserved = min_cost * max_pages
-        new_value, period = await self._reserve_budget(reserved)
-        # Unused reservation that will be released on success.
-        # Reservation = reserved; actual cost = 1 (single page).
-        unused = reserved - 1
+        _counter, period = await self._reserve_budget(reserved)
+
+        if self.settings.rapidapi_key is None:
+            # Reserved but never dispatched — hand the reservation back.
+            await self._release_reservation(period, reserved)
+            raise ConfigurationError(
+                "rapidapi_key missing — validate_rapidapi_key must run at startup",
+                context={"env_var": "MEDIUM_MCP_RAPIDAPI_KEY", "tool": tool_name},
+            )
+        key_value = self.settings.rapidapi_key.get_secret_value()
 
         base = str(self.settings.rapidapi_base_url).rstrip("/")
         url = urljoin(base + "/", endpoint)
-        key_value = (
-            self.settings.rapidapi_key.get_secret_value()
-            if isinstance(self.settings.rapidapi_key, SecretStr)
-            else (self.settings.rapidapi_key or "")
-        )
         headers = {
             "X-RapidAPI-Key": key_value,
             "X-RapidAPI-Host": "medium2.p.rapidapi.com",
@@ -1716,14 +1932,12 @@ class Medium2Client:
                 context={"endpoint": endpoint, "tool": tool_name},
             )
 
-        await self._refund_unused(period, unused)
+        # The reservation stands: this call reached RapidAPI (spec §6.2).
         try:
             return response.json()
         except json.JSONDecodeError:
             return {"raw": response.text}
 ```
-
-Note: add `import json` at the top of the file.
 
 - [ ] **Step 4: Run the test to verify it passes**
 
@@ -1732,14 +1946,14 @@ cd /Users/les/Projects/medium-mcp
 .venv/bin/pytest tests/unit/test_medium2_client.py -v
 ```
 
-Expected: 7 passed.
+Expected: 10 passed.
 
 - [ ] **Step 5: Commit**
 
 ```bash
 cd /Users/les/Projects/medium-mcp
 git -c user.email=les@wedgwoodwebworks.com add -A
-git -c user.email=les@wedgwoodwebworks.com commit -m "feat(medium-mcp): typed httpx2 client with reserve/refund budget semantics"
+git -c user.email=les@wedgwoodwebworks.com commit -m "feat(medium-mcp): typed httpx2 client with atomic budget reservation + dhara gate"
 ```
 
 ---
@@ -2504,33 +2718,28 @@ from medium_mcp.cache.store import MediumCache
 from medium_mcp.clients.medium2 import Medium2Client
 from medium_mcp.config.settings import MediumSettings
 from medium_mcp.dhara.client import DharaClient
-from medium_mcp.dhara.keys import budget_key
 from medium_mcp.models.dto import BudgetStatus
 
 
 async def budget_remaining(
     *,
-    settings: MediumSettings,
-    dhara: DharaClient,
-    cache: MediumCache,
-    client: Medium2Client,  # noqa: ARG001 - dependency to make caller wiring uniform
+    settings: MediumSettings,  # noqa: ARG001 - uniform caller wiring; budget lives on the client
+    dhara: DharaClient,  # noqa: ARG001 - same
+    cache: MediumCache,  # noqa: ARG001 - same
+    client: Medium2Client,
 ) -> BudgetStatus:
-    """Local read. Zero upstream calls. Spec §6.2."""
-    from datetime import UTC, datetime, timedelta
+    """Local read. Zero upstream calls. Spec §6.2.
 
-    period = datetime.now(UTC).strftime("%Y-%m")
-    used = await dhara.get_counter(budget_key(period))
-    next_month = (datetime.now(UTC).replace(day=1) + timedelta(days=32)).replace(
-        day=1, hour=0, minute=0, second=0, microsecond=0,
-    )
-    resets_at = next_month.isoformat().replace("+00:00", "Z")
+    Delegates to ``Medium2Client.budget_status()`` rather than recomputing the
+    period and reset time. Two implementations of "when does the month roll
+    over" would eventually disagree, and the disagreement would be silent.
+    """
+    status = await client.budget_status()
     return BudgetStatus(
-        remaining_calls=max(0, settings.monthly_budget - used),
-        monthly_budget=settings.monthly_budget,
-        period=period,
-        resets_at=resets_at,
-        cache_hit_rate=0.0,
-        cached_entries=0,
+        remaining_calls=status["remaining_calls"],
+        monthly_budget=status["monthly_budget"],
+        period=status["period"],
+        resets_at=status["resets_at"],
     )
 ```
 
@@ -2573,11 +2782,14 @@ git -c user.email=les@wedgwoodwebworks.com commit -m "feat(medium-mcp): 13 tools
 - Create: `/Users/les/Projects/medium-mcp/medium_mcp/server.py`
 - Create: `/Users/les/Projects/medium-mcp/medium_mcp/feeds.py`
 - Create: `/Users/les/Projects/medium-mcp/medium_mcp/tools/profiles.py`
+- Create: `/Users/les/Projects/medium-mcp/medium_mcp/utils/logging.py`
 - Create: `/Users/les/Projects/medium-mcp/medium_mcp/cli.py`
 - Test: `/Users/les/Projects/medium-mcp/tests/unit/test_server_smoke.py`
 
 **Interfaces:**
-- Produces `medium_mcp.server.app: FastMCP` constructed via `mcp_common`'s `bootstrap_baseline_tools`, `register_http_health_route`, `apply_tool_profile`. Custom `/readyz` returns 503 when Dhara is unreachable. Profile gating via `MEDIUM_MCP_TOOL_PROFILE`.
+- Produces `medium_mcp.server.app: FastMCP` constructed via `mcp_common`'s `seed_liveness_context`, `bootstrap_baseline_tools`, `register_http_health_route`, `apply_tool_profile` — **in that order**, with the 13 domain tools registered by `apply_tool_profile` through `register_all_fn`. Custom `/readyz` returns 503 when Dhara is unreachable. Profile gating via `MEDIUM_MCP_TOOL_PROFILE`.
+- Produces `medium_mcp.tools.profiles.PROFILE_REGISTRATIONS: dict[str, list[str]]` mapping each profile value (`full`, `standard`, `minimal`) to its group list, plus `_build_registration_map(bundle)` returning group → tool names.
+- Produces `medium_mcp.utils.logging.configure_logging(level)` — oneiric logging, once per process, called from `build_runtime()`.
 - Produces `medium_mcp.feeds.FEEDS = {"medium2": FeedState}` carrying the four wiring-discipline signals. `mark_capability_unavailable()` raises on required feeds.
 
 - [ ] **Step 1: Write the failing server smoke test**
@@ -2588,14 +2800,28 @@ Create `tests/unit/test_server_smoke.py`:
 from __future__ import annotations
 
 import pytest
+from pydantic import SecretStr
 
 from medium_mcp.config.settings import MediumSettings
 from medium_mcp.server import app, build_runtime
 
+# The four tools mcp_common's bootstrap installs on every Bodai MCP server.
+# Mirrors archive-org-mcp. If this set shrinks, the wiring-discipline health
+# aggregation loses its probes.
+EXPECTED_BASELINE = {
+    "discover_tools",
+    "get_liveness",
+    "get_readiness",
+    "health_check_all",
+}
+
 
 @pytest.fixture
 def settings() -> MediumSettings:
-    return MediumSettings(_env_file=None)
+    s = MediumSettings(_env_file=None)
+    # build_runtime() validates the key at startup, so the fixture must carry one.
+    s.rapidapi_key = SecretStr("a" * 50)
+    return s
 
 
 def test_app_is_fastmcp_instance() -> None:
@@ -2611,7 +2837,25 @@ def test_build_runtime_with_in_memory_dhara(settings: MediumSettings) -> None:
     assert runtime.client is not None
 
 
-@pytest.mark.asyncio
+async def test_baseline_tools_are_registered(settings: MediumSettings) -> None:
+    """bootstrap_baseline_tools must run before any domain group is registered."""
+    runtime = build_runtime(settings=settings, dhara_backend="memory")
+    mcp_app = runtime.build_mcp_app()
+    names = {t.name for t in await mcp_app.list_tools()}
+    missing = EXPECTED_BASELINE - names
+    assert not missing, f"baseline tools missing: {sorted(missing)}"
+
+
+async def test_domain_tools_registered_alongside_baseline(settings: MediumSettings) -> None:
+    """The full profile exposes the 13 domain tools plus the baseline four."""
+    runtime = build_runtime(settings=settings, dhara_backend="memory")
+    mcp_app = runtime.build_mcp_app()
+    names = {t.name for t in await mcp_app.list_tools()}
+    assert "budget_remaining" in names
+    assert "article_content" in names
+    assert EXPECTED_BASELINE <= names
+
+
 async def test_health_returns_200(settings: MediumSettings) -> None:
     from fastapi.testclient import TestClient
 
@@ -2619,21 +2863,20 @@ async def test_health_returns_200(settings: MediumSettings) -> None:
     await runtime.dhara.startup()
     try:
         # FastMCP exposes an ASGI ``app``; the test client wraps it.
-        with TestClient(runtime.asgi_app) as client:
+        with TestClient(runtime.build_asgi_app()) as client:
             response = client.get("/health")
         assert response.status_code == 200
     finally:
         await runtime.dhara.shutdown()
 
 
-@pytest.mark.asyncio
 async def test_readyz_returns_200_when_dhara_up(settings: MediumSettings) -> None:
     from fastapi.testclient import TestClient
 
     runtime = build_runtime(settings=settings, dhara_backend="memory")
     await runtime.dhara.startup()
     try:
-        with TestClient(runtime.asgi_app) as client:
+        with TestClient(runtime.build_asgi_app()) as client:
             response = client.get("/readyz")
         assert response.status_code == 200
     finally:
@@ -2747,6 +2990,33 @@ from mcp.server.fastmcp import FastMCP
 
 MEDIUM_MANDATORY_GROUPS: set[str] = {"health_tools"}
 
+# Which groups each profile exposes, keyed by ``ToolProfile`` value. The values
+# of ``MEDIUM_MCP_TOOL_PROFILE`` are the keys here; ``apply_tool_profile`` reads
+# the env var and looks the group list up in this table.
+PROFILE_REGISTRATIONS: dict[str, list[str]] = {
+    "full": [
+        "health_tools",
+        "budget_tools",
+        "user_tools",
+        "article_tools",
+        "publication_tools",
+        "tag_tools",
+        "search_tools",
+    ],
+    # standard drops search (3 of the most budget-hungry tools) but keeps reads.
+    "standard": [
+        "health_tools",
+        "budget_tools",
+        "user_tools",
+        "article_tools",
+        "publication_tools",
+        "tag_tools",
+    ],
+    # minimal is health + the free budget read: enough to prove the server is
+    # wired without spending a single metered call.
+    "minimal": ["health_tools", "budget_tools"],
+}
+
 
 @dataclass
 class ClientBundle:
@@ -2756,12 +3026,13 @@ class ClientBundle:
     client: object  # Medium2Client
 
 
-def _build_registration_map(app: FastMCP, bundle: ClientBundle) -> dict[str, list[str]]:
+def _build_registration_map(bundle: ClientBundle) -> dict[str, list[str]]:
     """Return mapping of group name -> list of MCP tool names.
 
-    Tools are registered by importing-and-calling the FastMCP decorator inside
-    each tool module; here we record which tool names belong to which group so
-    that ``apply_tool_profile`` can hide non-mandatory groups by name.
+    Pure metadata: it names the tools in each group without registering
+    anything. ``apply_tool_profile`` uses it to decide which groups
+    ``register_all_fn`` should actually decorate. It takes no ``app`` precisely
+    because it must be safe to call before the server exists.
     """
     from medium_mcp.tools import articles, budget, publications, search, tags, users
 
@@ -2795,13 +3066,15 @@ def _build_registration_map(app: FastMCP, bundle: ClientBundle) -> dict[str, lis
 
 
 def register_all_tool_groups(app: FastMCP, bundle: ClientBundle) -> dict[str, list[str]]:
-    """Register every tool group against the FastMCP ``app``.
+    """Register every domain tool group against the FastMCP ``app``.
 
-    Mandatory groups (``MEDIUM_MANDATORY_GROUPS``) are always registered;
-    non-mandatory groups are registered but their tool names are tracked so
-    that ``apply_tool_profile`` can hide them at runtime.
+    Called *by* ``apply_tool_profile`` via ``register_all_fn``, never directly
+    from ``server.py``. Registration is a one-way door — ``@app.tool`` cannot be
+    undone — so the profile must decide before the decorators run. Calling this
+    eagerly and then pruning the map is the dual-track drift this ordering
+    exists to prevent.
     """
-    registration = _build_registration_map(app, bundle)
+    registration = _build_registration_map(bundle)
 
     from medium_mcp.tools import articles, budget, publications, search, tags, users
 
@@ -2917,7 +3190,39 @@ def register_all_tool_groups(app: FastMCP, bundle: ClientBundle) -> dict[str, li
     return registration
 ```
 
-- [ ] **Step 5: Implement `server.py`**
+- [ ] **Step 5: Implement `utils/logging.py`**
+
+Create `medium_mcp/utils/logging.py`:
+
+```python
+from __future__ import annotations
+
+from oneiric.logging import configure_logging as _oneiric_configure
+
+_configured = False
+
+
+def configure_logging(level: str | None = None) -> None:
+    """Configure oneiric logging once per process.
+
+    Called from ``build_runtime()`` — the single startup entry point — not at
+    module import time and not per-module. The ``_configured`` latch makes a
+    second call a no-op so a test that builds two runtimes does not end up with
+    duplicated handlers and doubled log lines.
+
+    ``level`` defaults to ``MediumSettings.log_level``; it is passed in rather
+    than read here so this module does not import settings and create a cycle.
+    """
+    global _configured
+    if _configured:
+        return
+    from medium_mcp.config.settings import get_settings
+
+    _oneiric_configure(level=level or get_settings().log_level)
+    _configured = True
+```
+
+- [ ] **Step 6: Implement `server.py`**
 
 Create `medium_mcp/server.py`:
 
@@ -2940,9 +3245,12 @@ from medium_mcp.dhara.client import DharaClient
 from medium_mcp.feeds import FEEDS, as_components, required_feeds_healthy
 from medium_mcp.tools.profiles import (
     MEDIUM_MANDATORY_GROUPS,
+    PROFILE_REGISTRATIONS,
     ClientBundle,
+    _build_registration_map,
     register_all_tool_groups,
 )
+from medium_mcp.utils.logging import configure_logging
 
 APP_NAME = "medium-mcp"
 
@@ -2963,6 +3271,10 @@ def build_runtime(
     dhara_backend: str = "memory",
 ) -> "Runtime":
     s = settings or get_settings()
+    # Configure logging exactly once, at the single startup entry point.
+    # Never at module import time and never per-module: a second call would
+    # re-attach handlers and duplicate every line.
+    configure_logging(level=s.log_level)
     # Validate the API key at startup. We require it even when no metered call
     # has been made yet, because tools cannot run without it.
     validate_rapidapi_key(s.rapidapi_key)
@@ -2995,11 +3307,18 @@ class Runtime:
             settings=self.settings, dhara=self.dhara, cache=self.cache, client=self.client,
         )
         app = FastMCP(name=APP_NAME, version=__version__)
-        registration_map = register_all_tool_groups(app, bundle)
 
+        # ORDERING IS LOAD-BEARING. Baseline tools and the liveness context must
+        # be installed BEFORE any domain group is registered, and the domain
+        # groups must be registered *through* apply_tool_profile. @app.tool is a
+        # one-way door: registering the 13 tools first and then pruning the
+        # registration map would leave the map claiming a group is hidden while
+        # the decorator has already exposed it — the dual-track drift.
+        from mcp_common.baseline_tools import seed_liveness_context
         from mcp_common.bootstrap import bootstrap_baseline_tools
         from mcp_common.health import register_http_health_route
 
+        seed_liveness_context(service_name=APP_NAME, version=__version__)
         bootstrap_baseline_tools(app)
         register_http_health_route(
             app,
@@ -3010,12 +3329,14 @@ class Runtime:
 
         from mcp_common.tools.dispatch import apply_tool_profile
 
-        profile = self.settings.tool_profile
         apply_tool_profile(
             app,
-            registration_map=registration_map,
+            profile_env_var="MEDIUM_MCP_TOOL_PROFILE",
+            registrations=PROFILE_REGISTRATIONS,
+            registration_map=_build_registration_map(bundle),
+            register_all_fn=lambda srv: register_all_tool_groups(srv, bundle),
             mandatory_groups=MEDIUM_MANDATORY_GROUPS,
-            profile=profile,
+            essential_tool_names={"health_check"},
         )
 
         self._mcp_app = app
@@ -3067,7 +3388,7 @@ def _get_runtime() -> Runtime:
 app = _get_runtime().build_mcp_app()
 ```
 
-- [ ] **Step 6: Implement `cli.py`**
+- [ ] **Step 7: Implement `cli.py`**
 
 Create `medium_mcp/cli.py`:
 
@@ -3095,22 +3416,36 @@ if __name__ == "__main__":
     main()
 ```
 
-- [ ] **Step 7: Run the test to verify it passes**
+- [ ] **Step 8: Run the test to verify it passes**
 
 ```bash
 cd /Users/les/Projects/medium-mcp
 .venv/bin/pytest tests/unit/test_server_smoke.py -v
 ```
 
-Expected: 4 passed (the `TestClient` exercise of `/health` and `/readyz` may need `httpx>=0.27` for ASGI; install with `uv pip install httpx`).
+Expected: 6 passed (the `TestClient` exercise of `/health` and `/readyz` may need `httpx>=0.27` for ASGI; install with `uv pip install httpx`).
 
-- [ ] **Step 8: Commit**
+- [ ] **Step 9: Commit**
 
 ```bash
 cd /Users/les/Projects/medium-mcp
 git -c user.email=les@wedgwoodwebworks.com add -A
 git -c user.email=les@wedgwoodwebworks.com commit -m "feat(medium-mcp): server.py with baseline tools, health routes, profile dispatch"
 ```
+
+---
+
+## Phase 2 Integration Contract
+
+**Triggered from:** the `medium-mcp` console script (`medium_mcp.cli:main`) and any MCP client connecting over streamable-HTTP on `MEDIUM_MCP_HTTP_PORT` (default 3055). `build_runtime()` is the single startup entry point: it configures logging, validates the RapidAPI key, and constructs the Dhara/cache/client trio. `build_mcp_app()` installs baseline tools and then hands domain registration to `apply_tool_profile`.
+
+**Returns to / updates:** a live `FastMCP` app exposing the baseline four (`discover_tools`, `get_liveness`, `get_readiness`, `health_check_all`) plus the profile's domain groups — all 13 tools + `budget_remaining` under `full`. HTTP surfaces: `/health` (aggregated, includes `FEEDS["medium2"]` via `extra_components`) and `/readyz` (503 when Dhara is unreachable or a required feed is unhealthy). Every metered call updates `medium2:v1:budget:<period>`, readable through `budget_remaining`.
+
+**Demonstrable by:** `pytest tests/unit/test_server_smoke.py -v` — 6 passed, including `test_baseline_tools_are_registered` (asserts `EXPECTED_BASELINE` is present) and `test_domain_tools_registered_alongside_baseline`. Manually: start `medium-mcp`, then `curl -s localhost:3055/health` returns 200 with a `medium2` component, `curl -s localhost:3055/readyz` returns 200, and calling `budget_remaining` over MCP returns a non-empty `BudgetStatus` while spending zero upstream calls.
+
+**Rollback signal:** any of — `/readyz` returns 200 while Dhara is down; `/health` and `budget_remaining` disagree on remaining calls; `list_tools()` omits a member of `EXPECTED_BASELINE`; a profile-hidden group still appears in `list_tools()` (dual-track drift has returned); or the budget counter advances on a call that never reached RapidAPI. Revert Task 10's commit — Phase 1's library code stays importable and no downstream consumer breaks, because nothing outside this task exposes an MCP entry point.
+
+**Observability added:** oneiric logging at `MEDIUM_MCP_LOG_LEVEL`, seeded liveness context (`seed_liveness_context`) so `get_liveness`/`get_readiness` report service name and version; `FeedState` counters (`cycles_total`, `entities_count`, `last_updated_timestamp`, `errors_total`) surfaced through `/health`; `/readyz` records a failed cycle on each Dhara-unreachable probe; the month's budget counter is readable without spending budget.
 
 ---
 
@@ -3582,8 +3917,8 @@ git -c user.email=les@wedgwoodwebworks.com commit -m "chore(medium-mcp): ratchet
 - §6.2 tools (13 + `budget_remaining`): all 14 covered in Task 9.
 - §6.2 cache contract (key, namespace, coalescing, TTL, eviction): covered in Tasks 4, 8.
 - §6.2 budget guard (CAS-equivalent via DharaLock, headroom, retries, free `budget_remaining`): covered in Tasks 4, 7.
-- §6.2 min_cost/max_pages reservation: covered in Task 7.
-- §6.2 BudgetExhaustedError payload: covered in Tasks 2, 7.
+- §6.2 min_cost/max_pages reservation: covered in Task 7 — `min_cost` is honored; `max_pages > 1` is explicitly rejected in v1 rather than silently mis-reserved (see `Medium2Client`'s docstring).
+- §6.2 BudgetExhaustedError payload: covered in Tasks 2, 7 (no `monthly_budget` key — the spec payload does not carry one).
 - §6.2 content policy (rules 1-5): covered in Tasks 6, 8, 9.
 - §13.3 settings (every key, every default): covered in Task 3.
 - Spec §11 prerequisite (RapidAPI key): covered in Task 12 (halt on missing).
@@ -3594,5 +3929,9 @@ git -c user.email=les@wedgwoodwebworks.com commit -m "chore(medium-mcp): ratchet
 - `retry_max_attempts=1` (default 1, no retries) is enforced both by the `Field(default=1, ge=0, le=1)` constraint in `MediumSettings` and by the test asserting the default.
 - The fast-tools pattern from `raindropio-mcp` is reused: every tool is registered through `@app.tool(name=...)` and the `ClientBundle` is closed over.
 - The `_run_async_safely` bridge is included in `server.py` even though the current `cli.py` uses `asyncio.run` directly — it's there for downstream tools that may call from sync contexts.
+- The budget guard's headroom check lives inside `DharaClient.inc_atomic`, under the per-month lock, rather than in `Medium2Client`. A read-then-check in the client would let two concurrent reservations observe the same headroom and both proceed — the exact race the lock exists to close. `Medium2Client` passes the ceiling down as `max_value` and never pre-reads the counter; `test_headroom_check_happens_inside_the_lock` pins that by making `get_counter` raise.
+- Reservations are not refunded after a dispatched call. Spec §6.2 counts any request that reaches RapidAPI regardless of status, so the only release path is the pre-flight failure case (`_release_reservation`), and `max_pages=1` means there is never a partial multi-page reservation to unwind.
+- `Medium2Client.request` gates on `DharaClient.probe()` before reserving. Without a reachable counter there is no guard at all, and an unguarded call is budget that can never be accounted for — so it is refused rather than made. `probe()` is cached for `PROBE_CACHE_SECONDS` because it now sits on the hot path of every metered call.
+- Tool registration ordering in `build_mcp_app()` is load-bearing: `@app.tool` cannot be undone, so `apply_tool_profile` receives `register_all_fn` and decides what to decorate, instead of pruning a map after the decorators have already run.
 
 ---
