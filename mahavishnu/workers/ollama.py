@@ -293,6 +293,11 @@ def get_model_for_task(
     return fallback, category
 
 
+# wired: re-exported in mahavishnu/workers/__init__.py (line 30) and listed in
+# __all__ (line 68). Instantiated directly by pool dispatch paths (note the
+# "terminal-ollama intentionally absent" comment at registry.py:229) and used
+# by tests/unit/test_ollama_worker.py. The audit's static scanner cannot see
+# parenthesized import lists or `__all__` string entries.
 class OllamaWorker(BaseWorker):
     """Worker that executes tasks via Ollama HTTP API.
 

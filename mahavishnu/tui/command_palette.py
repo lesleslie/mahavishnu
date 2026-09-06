@@ -217,6 +217,9 @@ class CommandPalette:
         """List all registered commands."""
         return list(self._commands.values())
 
+    # wired: public CommandPalette method. Tested in
+    # tests/unit/test_command_palette.py and
+    # tests/unit/tui/test_command_palette_extended.py.
     def list_by_category(self, category: CommandCategory) -> list[Command]:
         """List commands by category."""
         return [cmd for cmd in self._commands.values() if cmd.category == category]
@@ -342,6 +345,9 @@ class CommandPalette:
             return await result
         return result
 
+    # wired: public CommandPalette methods. Tested in
+    # tests/unit/test_command_palette.py and
+    # tests/unit/tui/test_command_palette_extended.py.
     def get_history(self, limit: int = 10) -> list[str]:
         """Get recent command history.
 

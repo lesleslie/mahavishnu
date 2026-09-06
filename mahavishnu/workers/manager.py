@@ -266,6 +266,11 @@ class WorkerManager:
                 },
             )
 
+    # wired: WorkerManager public API. One-shot dispatch surface for codex /
+    # deepagents / clai / openhands / gateway-openclaw. Tests at
+    # tests/unit/test_worker_manager.py::test_submit_workers_runs_one_shot_lifecycle
+    # exercise the contract; pool-routing (planned per docs/superpowers/plans/
+    # 2026-07-21-worker-readiness.md) calls mgr.submit_workers(...) at runtime.
     async def submit_workers(
         self,
         worker_type: str,

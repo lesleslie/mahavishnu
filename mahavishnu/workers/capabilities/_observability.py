@@ -153,5 +153,9 @@ def _publish_event(report: WorkerCapabilityReport) -> None:
         result.close()
 
 
+# wired: re-exported in mahavishnu/workers/capabilities/__init__.py
+# (line 5) and listed in __all__ (line 21). Public test helper consumed by
+# tests/unit/workers/test_capabilities_observability.py at every fixture
+# boundary. Tests rely on the public name; not eligible for `_` rename.
 def reset_for_tests() -> None:
     _last_state.clear()

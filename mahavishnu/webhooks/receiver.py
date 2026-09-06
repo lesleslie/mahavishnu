@@ -66,6 +66,13 @@ app = FastAPI(
 )
 
 
+# wired: FastAPI route registered on `app` via the @app.post(...) decorator
+# immediately above. Mounted at POST /durable-webhooks/webhook by
+# mahavishnu/webhooks/__init__.py::mount_durable_webhooks, which mounts
+# `app` as a Starlette sub-app at /durable-webhooks on the parent
+# FastAPI app. Covered by tests/unit/test_webhooks_mount.py. The audit's
+# DECORATOR_REGISTRATION_PATTERN matches `app.command` / `tool` but not
+# `app.post`, so it cannot see this wiring.
 @app.post("/webhook", status_code=status.HTTP_202_ACCEPTED, response_model=None)
 def receive_webhook(payload: dict[str, object]) -> JSONResponse | dict[str, str]:
     """Validate ``payload`` as a ``WebhookIngress`` and persist via ``dhara.put``.

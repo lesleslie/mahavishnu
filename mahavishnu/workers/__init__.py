@@ -23,6 +23,7 @@ Routing notes:
 from mahavishnu.workers.apple_container import AppleContainerWorker
 from mahavishnu.workers.application import ApplicationWorker
 from mahavishnu.workers.base import BaseWorker, WorkerResult, WorkerStatus
+from mahavishnu.workers.cloud_worker import CloudWorker, CloudWorkerConfig
 from mahavishnu.workers.crow import CrowWorker
 from mahavishnu.workers.e2b_sandbox import E2BSandboxWorker
 from mahavishnu.workers.generic_shell import GenericShellWorker
@@ -60,6 +61,8 @@ __all__ = [
     "AppleContainerWorker",
     "ApplicationWorker",
     "BaseWorker",
+    "CloudWorker",
+    "CloudWorkerConfig",
     "CrowWorker",
     "E2BSandboxWorker",
     "GenericShellWorker",

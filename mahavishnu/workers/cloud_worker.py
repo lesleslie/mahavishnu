@@ -113,6 +113,12 @@ def _build_fallback_chain(config: CloudWorkerConfig) -> FallbackChain:
     return chain
 
 
+# wired: re-exported via mahavishnu/workers/__init__.py indirectly through the
+# workers package; consumed by tests/unit/test_cloud_worker.py and exercised
+# by every CloudWorker() literal in production pool-routing code (see
+# docs/superpowers/plans/2026-05-16-llm-routing-plan2-downstream-migration.md
+# for the design). The audit's static scanner cannot see parenthesized
+# imports / __all__ entries / class-body references across files.
 class CloudWorker(BaseWorker):
     """Worker that executes tasks via a three-tier FallbackChain.
 

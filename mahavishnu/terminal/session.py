@@ -25,6 +25,8 @@ class TerminalSession:
         >>> await session.close()
     """
 
+    # wired via: mahavishnu/terminal/__init__.py:24 (lazy public API export)
+
     def __init__(
         self,
         session_id: str,
@@ -93,6 +95,8 @@ class TerminalSession:
             List of output strings in capture order
         """
         return self._output_buffer.copy()
+
+    # wired via: TerminalSession public method; reachable via mahavishnu.terminal.TerminalSession (see class wired comment above)
 
     def __repr__(self) -> str:
         """Return string representation of session."""

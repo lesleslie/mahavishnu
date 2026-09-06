@@ -217,6 +217,11 @@ class TerminalManager:
         self._session_migration_callback = callback
         logger.info("Migration callback registered")
 
+    # wire-up status: 1 caller in tests/unit/test_terminal_management.py:636;
+    # audit_orphans filters test paths so it shows as orphan. switch_adapter()
+    # uses the *_session_migration_callback attribute, not this setter. No
+    # production caller — surface as orphan-to-wire per wire-up-contract.md.
+
     def get_adapter_history(self) -> list[dict[str, Any]]:
         """Get history of adapter switches.
 

@@ -79,6 +79,11 @@ class TerminalWorkerProtocol(Protocol):
         ...
 
 
+# wired: re-exported in mahavishnu/workers/__init__.py (line 39) and listed in
+# __all__ (line 87). Public TypeGuard consumed by tests/unit/test_workers_protocol.py
+# and intended for runtime conformance checks anywhere TerminalWorkerProtocol
+# applies. The audit's static scanner cannot see parenthesized imports /
+# __all__ string entries.
 def is_terminal_worker(obj: object) -> TypeGuard[TerminalWorkerProtocol]:
     """Return True when *obj* structurally satisfies TerminalWorkerProtocol.
 

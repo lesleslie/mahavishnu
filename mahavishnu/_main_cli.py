@@ -28,6 +28,9 @@ from .cli.precommit_cli import precommit_app as precommit_app_obj
 # Import rollback CLI (audit H8: SLOs/rollback for Plan 1 + Plan 5)
 from .cli.rollback_cli import add_rollback_commands
 
+# Import settle CLI (wires orphan sync wrappers from mahavishnu/settle/)
+from .cli.settle_cli import add_settle_commands
+
 # Import scaffold CLI
 from .cli.scaffold_cli import app as scaffold_app
 
@@ -121,6 +124,9 @@ add_config_inventory_commands(app)
 
 # Add docs audit commands (docs audit)
 add_docs_commands(app)
+
+# Add settle run introspection commands (settle status, settle start)
+add_settle_commands(app)
 
 # Add quality evaluation commands (quality check, quality report)
 add_quality_commands(app)
