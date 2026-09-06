@@ -346,6 +346,8 @@ roles:
   - track
   - persist
   - recover
+- name: orb
+  description: Umbrella meta-project aggregating ecosystem configuration and docs
 coordination:
   issues:
   - id: MHV-001

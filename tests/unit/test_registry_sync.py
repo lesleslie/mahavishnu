@@ -37,6 +37,10 @@ def _names(path: Path) -> set[str]:
     return {repo["name"] for repo in _repos(path)}
 
 
+def _role_names(path: Path) -> set[str]:
+    return {role["name"] for role in _load(path).get("roles", [])}
+
+
 @pytest.mark.unit
 class TestNewServerRegistration:
     """The three new MCP servers must be registered in the canonical manifest."""
@@ -63,3 +67,23 @@ class TestRegistryIntegrity:
             if not Path(repo["path"]).expanduser().is_dir()
         ]
         assert missing == [], f"registered paths do not exist: {missing}"
+
+    def test_every_role_is_in_taxonomy(self) -> None:
+        """A repo with an unknown role matches no routing filter and is silently
+        unreachable — it neither errors nor appears in role-scoped sweeps."""
+        taxonomy = _role_names(ECOSYSTEM_PATH)
+        offenders = {
+            repo["name"]: repo["role"]
+            for repo in _repos(ECOSYSTEM_PATH)
+            if repo.get("role") not in taxonomy
+        }
+        assert offenders == {}, f"roles absent from taxonomy: {offenders}"
+
+    def test_legacy_roles_are_migratable(self) -> None:
+        """Every role used in the legacy file must exist in the canonical
+        taxonomy, or Task 5's migration will introduce unroutable entries."""
+        taxonomy = _role_names(ECOSYSTEM_PATH)
+        legacy_roles = {repo.get("role") for repo in _repos(LEGACY_PATH)}
+        assert legacy_roles <= taxonomy, (
+            f"legacy roles missing from taxonomy: {sorted(legacy_roles - taxonomy)}"
+        )
