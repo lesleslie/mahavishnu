@@ -138,9 +138,32 @@ The no-payload guarantee (spec §"Disclaimer docs") + runtime Oneiric log filter
 - **Wire-format regression detection** (L5 BLOCKER B-Op6): runtime regex-based field-name filter over `enrich_batch()` return values; emits WARN + increments `flowscape.enrichment.wire_format_violation_total` on hit. Closes the "silent regression" failure mode where a future maintainer adds a payload-shaped field to the merged proto.
 - **mcp-common authentication primitives** (when designed, per ADR 0016 v2 §"Open Questions" #1): when scapy-mcp supports authenticated connections, the remote-host deployment gains transport security + principal-bound audit trail.
 
-## 10. Connection to mcp-common Authentication Primitives
+## 10. Authentication posture
 
-The v1.x posture assumes scapy-mcp authentication is unavailable (ADR 0016 v2 §"Open Questions" #1 explicitly defers this). When mcp-common ships authentication primitives, this document's remote-host analysis (§4 §8) updates to assume authenticated transport. Until then, same-host (localhost) deployment is the only posture this document endorses.
+Bodai MCP servers authenticate inbound requests via `mcp_common.auth.BearerTokenMiddleware`,
+which reads `Authorization: Bearer <token>` from the ASGI scope and verifies via
+the configured `IdentityProvider` (inter-service JWT or Anthropic OAuth).
+
+Authentication state is observable via `/health`:
+
+- `entities_count`: verifications served since startup
+- `errors_total`: verification failures
+- `cycles_total`: provider-health polls
+- `last_updated_timestamp`: last cycle time
+
+This satisfies Article 32's "ongoing monitoring" requirement for production
+deployments: the auth surface is continuously observable. Degraded states are
+reported via `status: "degraded"` in the `/health` body (always 200) so
+monitoring systems can alert without breaking launchd probes across sibling
+servers. The 503 semantic is reserved for `/readyz` (future work).
+
+For pre-1.0 internal use, auth is opt-in (see §3). Production deployments must
+set `auth.enabled: true` and configure at least one provider in
+`MCPServerSettings.auth.identity_providers`.
+
+When mcp-common ships authentication primitives, this document's remote-host
+analysis (§4 §8) updates to assume authenticated transport; same-host
+(localhost) deployment remains the default for pre-1.0 internal use.
 
 ## 11. Cross-References
 
