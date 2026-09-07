@@ -5,6 +5,76 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.21.0] - 2026-09-06
+
+### Added
+
+- adr-0016: V2 revision + plan mirror
+- adr-0016: V3 revision closes CB-3/4/5
+- decisions: Amend wiring discipline policy with §7 consumer-side aggregation
+- mahavishnu: Complete orphan sweep (settle CLI + CloudWorker re-export)
+- registry: Add orb role; assert roles are in taxonomy
+- registry: Migrate 24 stranded repos into canonical manifest
+- registry: Register archive-org-mcp, medium-mcp, scapy-mcp
+- scapy-mcp: Feed registry (3 required, 2 optional) and wiring-discipline signals
+
+### Changed
+
+- mahavishnu: Remove orphan terminal/backends.py and grid module
+
+### Fixed
+
+- Add trailing newlines to 15 coverage test files
+- Importorskip/skipif for missing optional deps in integration tests
+- repo-cli: Read canonical ecosystem.yaml, not legacy repos.yaml
+- scripts: Audit_orphans detects FastAPI route decorators
+- Update test_crow_call_site_wiring.py for current TerminalManager.create call sites
+
+### Documentation
+
+- CLAUDE.md: Add MCP backend wiring discipline cross-reference
+- cleanup: F1+F2+F5 follow-ups from scripts/examples coverage plan
+- decisions: Add MCP backend wiring discipline rule
+- decisions: Mark test-matrix-review-followups complete (verified 2026-09-06)
+- feature-tracking: Flip m-workflow-outcome from built back to wired
+- followups: Audit sibling repos.yaml files in crackerjack and mcp-common
+- followups: Close integration-test blockers (9 of 13) and ACP v1.5.6 (license)
+- followups: Verification note — sb-checkpoint-stash-clobber is partial
+- mahavishnu: Record FastMCP ≥4 migration plan + registry update
+- Mark 5 mcp-stub-activation plans active and regenerate PLAN_INDEX
+- plans: Archive-org-mcp implementation plan at full step depth
+- plans: Plan 0a registry migration and Plan 0b port reconciliation
+- Regenerate PLAN_INDEX.md to include 5 mcp-stub-activation plans
+- spec: Final review pass — medium tool table, CI correction, probe split
+- spec: MCP stub activation design — archive-org, medium, scapy
+- spec: Revision 2 — four-lens review applied to MCP stub activation
+- superpowers: Add crackerjack scripts/examples coverage design spec
+- superpowers: Add crackerjack scripts/examples coverage plan
+- superpowers: Apply multi-agent review fixes (Round 2 — cross-plan consistency)
+- superpowers: Apply multi-agent review fixes across 4 plans
+- superpowers: Apply Round 2 review fixes (cross-plan consistency + Python idiom)
+- superpowers: Fix ruff --config to use inline TOML, not file path
+- superpowers: Fix ruff --per-file-ignores -> --config=<file.toml>
+- superpowers: Medium-mcp implementation plan (14 tasks, 70 steps)
+- superpowers: Scapy-mcp implementation plan (13 tasks, 60 steps)
+
+### Testing
+
+- registry: Assert canonical is a superset of legacy (currently failing)
+- registry: Assert every canonical manifest path exists on disk
+- registry: Assert settings/repos.yaml has deprecation header
+- registry: Pin legacy entry count against silent deletion
+
+### Build
+
+- deps: Lift fastmcp pin ceiling from <4 to <5
+
+### Internal
+
+- Bump last_reviewed dates and normalize agent/command frontmatter
+- Bump settings/ecosystem.yaml last_updated + add EOF newlines + clarify README
+- Clean ADR 0016 frontmatter + regen PLAN_INDEX
+
 ## [0.20.4] - 2026-09-05
 
 ### Documentation
@@ -57,7 +127,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - core: Dhara-backed envelope transport with secret redaction
 - engines: Add load_engine_registrations helper
 - engines: Declare provides: list[Capability] on all 6 adapters
-- mahavishnu: Add audit_cli_inventory.py for Core 7 CLI surface audit
+- mahavishnu: Add audit_cli_inventory script for Core 7 CLI surface audit
 - mahavishnu: Bugfix + first inventory (mcp-common) for CLI audit
 - mahavishnu: Close Phase 4/5 gaps — Bodai CLI contract + bodai.apps entry-point
 - mahavishnu: Migrate load_config() to oneiric.core.config.load_settings
@@ -390,8 +460,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- **Streaming `tar.zst` worktree bundles** for >100 MB worktrees (replaces the in-memory Phase 2 `tar.gz` path)
-- **Bounded queue producer/consumer handoff** in `RemoteWorktreeProvider.fetch` (`queue.Queue(maxsize=4)`) coordinating slow disk + fast network
+- **Streaming tar.zst worktree bundles** for >100 MB worktrees (replaces the in-memory Phase 2 tar.gz path)
+- **Bounded queue producer/consumer handoff** in RemoteWorktreeProvider.fetch (queue.Queue(maxsize=4)) coordinating slow disk + fast network
 - **MHV error codes 209–223** for streaming-specific failures (`MHV-209` `TEMP_CREATE_FAILED`, `MHV-210` `TEMP_WRITE_FAILED`, `MHV-211` `PATH_TRAVERSAL`, `MHV-212` `MALFORMED`, `MHV-213` `LEGACY_PHASE2`, `MHV-220` `STORAGE_KEY_TOO_LONG`, `MHV-221` `STOPGAP_TOO_LARGE`, `MHV-222` `NOT_FOUND`, `MHV-223` `CODEC_UNAVAILABLE`)
 - **Oneiric `compression-zstd` PEP 735 group** for the `zstandard` streaming codec
 - **SHA-256 streaming verification** via `verify_sha256_streaming` (no full-blob in memory) plus `streaming_op_total{op,backend,success}` OTel counter and `streaming_op_duration_seconds{op,backend}` histogram
@@ -1101,7 +1171,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Add A2ASettings config models and YAML block
 - Add CrowTerminalAdapter backed by crow-mcp PTY toolserver
 - Add inbound A2A server routes and bootstrap mount
-- Add mahavishnu.tui module with TUI_AVAILABLE, FallbackRichFormatter, get_console
+- Add TUI module with TUI_AVAILABLE, FallbackRichFormatter, get_console
 - Add MHV-307 error code; fix TerminalError to accept custom code
 - cli: Add 'monitor watch' Textual dashboard command with Rich fallback
 - cli: Replace quality_check stub with Rich-formatted Crackerjack integration

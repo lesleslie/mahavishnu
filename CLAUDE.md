@@ -585,14 +585,14 @@ Use `~=` (compatible release clause) for stable dependencies, `>=` only for earl
 
 The `examples/` directory contains runnable examples for key features:
 
-- `websocket_integration.py` - WebSocket server integration
-- `websocket_client_examples.py` - WebSocket client patterns
-- `pool_monitoring_demo.py` - Pool monitoring with WebSocket
-- `workflow_monitoring_demo.py` - Workflow status monitoring
-- `web_ingestion_example.py` - Webpage ingestion
-- `book_ingestion_example.py` - PDF/EPUB book ingestion
-- `otel_ingester_example.py` - OpenTelemetry trace ingestion
-- `oneiric_workflow_examples.py` - Oneiric workflow patterns
+- `examples/websocket_integration.py` - WebSocket server integration
+- `examples/websocket_client_examples.py` - WebSocket client patterns
+- `examples/pool_monitoring_demo.py` - Pool monitoring with WebSocket
+- `examples/workflow_monitoring_demo.py` - Workflow status monitoring
+- `examples/web_ingestion_example.py` - Webpage ingestion
+- `examples/book_ingestion_example.py` - PDF/EPUB book ingestion
+- `examples/otel_ingester_example.py` - OpenTelemetry trace ingestion
+- `examples/oneiric_workflow_examples.py` - Oneiric workflow patterns
 - `cli_ingestion_examples.sh` - CLI ingestion commands
 
 ## Important Implementation Notes
@@ -673,12 +673,12 @@ Mahavishnu-specific guidance:
 - **MCP server**: `mahavishnu/mcp/server_core.py` - FastMCP server (entry point; tool registration lives in `mahavishnu/mcp/tools/`)
 - **WebSocket server**: `mahavishnu/websocket/server.py` - Real-time updates
 - **MCP tools**: `mahavishnu/mcp/tools/` - Tool implementations
-  - `pool_tools.py` - Pool management (10 tools)
-  - `worker_tools.py` - Worker orchestration (8 tools)
-  - `coordination_tools.py` - Issues, todos, dependencies (13 tools)
-  - `repository_messaging_tools.py` - Inter-repo messaging (7 tools)
-  - `otel_tools.py` - OpenTelemetry trace ingestion (4 tools)
-  - `session_buddy_tools.py` - Session-Buddy integration (7 tools)
+  - `mahavishnu/mcp/tools/pool_tools.py` - Pool management (10 tools)
+  - `mahavishnu/mcp/tools/worker_tools.py` - Worker orchestration (8 tools)
+  - `mahavishnu/mcp/tools/coordination_tools.py` - Issues, todos, dependencies (13 tools)
+  - `mahavishnu/mcp/tools/repository_messaging_tools.py` - Inter-repo messaging (7 tools)
+  - `mahavishnu/mcp/tools/otel_tools.py` - OpenTelemetry trace ingestion (4 tools)
+  - `mahavishnu/mcp/tools/session_buddy_tools.py` - Session-Buddy integration (7 tools)
 
 ### Pool Management
 
@@ -699,10 +699,10 @@ Mahavishnu-specific guidance:
 - **Task router**: `mahavishnu/workers/task_router.py` - Task classification + model selection
 - **Terminal manager**: `mahavishnu/terminal/manager.py` - Terminal session management
 - **Terminal adapters**: `mahavishnu/terminal/adapters/`
-  - `base.py` - `TerminalAdapter` ABC + `TerminalError`/`SessionNotFoundError`
-  - `mock.py` - in-process adapter (always available; used by the test suite)
-  - `crow.py` - crow-mcp PTY adapter (requires `crow_enabled: true` + the crow-mcp MCP server)
-  - `tmux.py` - default terminal adapter (resolved via `adapter_preference: "tmux"`)
+  - `mahavishnu/terminal/adapters/base.py` - `TerminalAdapter` ABC + `TerminalError`/`SessionNotFoundError`
+  - `mahavishnu/terminal/adapters/mock.py` - in-process adapter (always available; used by the test suite)
+  - `mahavishnu/terminal/adapters/crow.py` - crow-mcp PTY adapter (requires `crow_enabled: true` + the crow-mcp MCP server)
+  - `mahavishnu/terminal/adapters/tmux.py` - default terminal adapter (resolved via `adapter_preference: "tmux"`)
 
 ### Data Ingestion
 
