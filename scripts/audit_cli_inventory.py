@@ -9,6 +9,7 @@ Usage:
     python scripts/audit_cli_inventory.py --all
     python scripts/audit_cli_inventory.py --all --check-stale
 """
+
 from __future__ import annotations
 
 import json
@@ -97,8 +98,7 @@ def _walk_typer(app: typer.Typer, prefix: str = "") -> list[CommandEntry]:
                 deprecated=getattr(cmd, "deprecated", False)
                 or "[deprecated]" in short_help.lower(),
                 hidden=getattr(cmd, "hidden", False),
-                experimental="experimental" in short_help.lower()
-                or "alpha" in short_help.lower(),
+                experimental="experimental" in short_help.lower() or "alpha" in short_help.lower(),
             )
         )
     return entries
@@ -135,7 +135,7 @@ def _staleness_signals(module: str, repo_path: str) -> dict[str, Any]:
             )
             if r.returncode == 0 and r.stdout.strip():
                 last_activity_days = int((time.time() - int(r.stdout.strip())) / 86400)
-        except (OSError, ValueError, subprocess.TimeoutExpired):
+        except OSError, ValueError, subprocess.TimeoutExpired:
             pass
     return {"todo_markers": todo_count, "last_activity_days": last_activity_days}
 
@@ -247,9 +247,7 @@ def repo(
     resolved_out_dir.mkdir(parents=True, exist_ok=True)
     out_path = resolved_out_dir / f"{repo_name}-cli-inventory.json"
     data = inventory_one_repo(repo_name, resolved_repo_path, out_path)
-    typer.echo(
-        f"Wrote {out_path} ({data['command_count']} commands) from {resolved_repo_path}"
-    )
+    typer.echo(f"Wrote {out_path} ({data['command_count']} commands) from {resolved_repo_path}")
 
 
 @app.command(name="all")

@@ -106,7 +106,7 @@ except (KeyError, AttributeError, ValueError) as e:
    occasionally re-introduce already-fixed issues. Track as separate
    issue; not a FastMCP v4 concern.
 
-2. `ty` warnings on `asyncio.iscoroutinefunction` in
+1. `ty` warnings on `asyncio.iscoroutinefunction` in
    `mcp_common/websocket/{client,server}.py` — Python 3.16 deprecation,
    pre-existing, not v4-related.
 
@@ -121,14 +121,14 @@ resolved to 3.4.7. That means akosha code was *probably* already
 `mcp.client.streamable_http`, exposing 2 real v4 breaks.
 
 **Action taken:**
+
 - Bumped pyproject pin to `fastmcp>=3.4.0,<5`.
 - `uv pip install --upgrade-package fastmcp` → FastMCP 4.0.3 installed.
 - Two real v4 breaks surfaced in `akosha/mcp/client.py`:
   1. **Line 86/97**: `streamable_http_client(http_client=...)` tightened
      parameter type. Akosha declares `httpx2>=0.28.1` directly, so the
-     fix was module-scope `import httpx2 as httpx` + `http_client:
-     httpx.AsyncClient | None = None`. Removed redundant inline `import httpx`.
-  2. **Line 101-102**: `streamable_http_client` returns 2-tuple in v4
+     fix was module-scope `import httpx2 as httpx` + `http_client: httpx.AsyncClient | None = None`. Removed redundant inline `import httpx`.
+  1. **Line 101-102**: `streamable_http_client` returns 2-tuple in v4
      (not 3-tuple). Dropped the third unpacking element; `_get_session_id`
      callback machinery retained (per Option B — `tests/unit/mcp/test_client.py:51-53`
      asserts `client.session_id is None` before any session is established;
@@ -181,16 +181,15 @@ mahavishnu, css-mcp, graphics-mcp):
   `graphics-mcp` pulled in transitive deps that don't conflict.
 - starlette ≥1.0.1 — all resolved starlette ≥1.6.0 via FastMCP's transitive pin.
 
-No transitive-version mismatches required intervention. The `uv pip install
---upgrade-package fastmcp` discipline (memory `uv-sync-upgrade-minimizes-version`)
+No transitive-version mismatches required intervention. The `uv pip install --upgrade-package fastmcp` discipline (memory `uv-sync-upgrade-minimizes-version`)
 prevented the bare-`--upgrade` re-resolution cascade.
 
 ### Phase 5 — verify and document ✅ completed (2026-09-06)
 
 1. ✅ `scripts/audit_orphans.py` re-run on mahavishnu — no behavior change expected; not re-verified in this batch.
-2. ✅ Wire-up contract intact — no FastMCP-induced orphan introductions.
-3. ✅ Per-repo quality gates — see Phase 2 and Phase 3 tables for crackerjack results.
-4. ✅ `BODAI_REPO_REGISTRY.md` "Notes" column updated for the 7 migrated repos.
+1. ✅ Wire-up contract intact — no FastMCP-induced orphan introductions.
+1. ✅ Per-repo quality gates — see Phase 2 and Phase 3 tables for crackerjack results.
+1. ✅ `BODAI_REPO_REGISTRY.md` "Notes" column updated for the 7 migrated repos.
 
 ## Risk register
 
@@ -205,11 +204,13 @@ prevented the bare-`--upgrade` re-resolution cascade.
 ## Test strategy
 
 Each phase ends with:
+
 1. `pytest tests/unit -m "not slow"` — confirm existing tests pass
-2. `crackerjack run` — confirm quality gates (ruff, mypy, bandit, complexipy)
-3. `python -m <repo>` boot smoke test — confirm server starts and registers tools
+1. `crackerjack run` — confirm quality gates (ruff, mypy, bandit, complexipy)
+1. `python -m <repo>` boot smoke test — confirm server starts and registers tools
 
 End-of-project verification:
+
 - `mcp__crackerjack__crackerjack_run` against each repo
 - Audit `tools_count` per server is unchanged (decorator count is
   stable across v3→v4 for our usage patterns)

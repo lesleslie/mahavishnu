@@ -55,7 +55,7 @@ def main():
     if embedding_count < 1000:
         print(f"\nGenerating {1000 - embedding_count} additional test records...")
 
-        now = datetime.now((UTC))
+        now = datetime.now(UTC)
         task_types = ["code_review", "testing", "deployment", "documentation", "optimization"]
         descriptions = [
             "Review pull request for authentication module",
@@ -143,7 +143,7 @@ def main():
     try:
         conn.execute("DROP INDEX IF EXISTS hnsw_embeddings")
         print("Dropped existing HNSW index for fair comparison")
-    except Exception:  # noqa: BLE001 - CLI entrypoint; converts unhandled errors to exit
+    except Exception:
         pass
 
     # Run exact search 10 times

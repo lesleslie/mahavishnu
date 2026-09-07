@@ -610,7 +610,7 @@ async def main():
     for name, step_func in steps:
         try:
             await step_func()
-        except Exception as e:  # noqa: BLE001 - CLI entrypoint; converts unhandled errors to exit
+        except Exception as e:
             logger.error(f"Step failed: {name} - {e}")
 
     print("\n" + "=" * 70)

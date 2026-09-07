@@ -205,7 +205,7 @@ def probe_lock(db_path: Path) -> LockProbe:
         con = duckdb.connect(str(db_path))
         con.close()
         return LockProbe(locked=False, holder_pid=None, stale=False)
-    except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
+    except Exception as e:
         msg = str(e)
         m = re.search(r"\(PID\s+(\d+)\)", msg)
         if "Conflicting lock" not in msg or not m:
@@ -261,7 +261,7 @@ def _find_session_buddy_pid() -> int | None:
             text=True,
             timeout=5,
         )
-    except (subprocess.TimeoutExpired, OSError):
+    except subprocess.TimeoutExpired, OSError:
         return None
     if result.returncode != 0 or not result.stdout.strip():
         return None
@@ -383,12 +383,12 @@ def _http_get_json(parsed_url, timeout: float) -> dict | None:
             return None
         body = resp.read().decode("utf-8", errors="replace")
         return json.loads(body)
-    except (TimeoutError, OSError, ValueError):
+    except TimeoutError, OSError, ValueError:
         return None
     finally:
         try:
             conn.close()  # type: ignore[possibly-undefined]
-        except (OSError, NameError, UnboundLocalError):
+        except OSError, NameError, UnboundLocalError:
             pass
 
 
@@ -446,7 +446,7 @@ def run_checkpoint(db_path: Path, log: Callable[[str], None] = print) -> bool:
     log(f"Opening {db_path} in write mode")
     try:
         con = duckdb.connect(str(db_path))
-    except Exception as e:  # noqa: BLE001
+    except Exception as e:
         log(f"  Failed to open: {e}")
         return False
 
@@ -456,7 +456,7 @@ def run_checkpoint(db_path: Path, log: Callable[[str], None] = print) -> bool:
         # specific error; we catch it, install+load vss, and retry.
         try:
             con.execute("CHECKPOINT")
-        except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
+        except Exception as e:
             msg = str(e)
             if "HNSW" not in msg and "vss" not in msg.lower():
                 raise
@@ -464,19 +464,19 @@ def run_checkpoint(db_path: Path, log: Callable[[str], None] = print) -> bool:
             try:
                 con.execute("INSTALL vss")
                 con.execute("LOAD vss")
-            except Exception as inner:  # noqa: BLE001
+            except Exception as inner:
                 log(f"  Failed to install/load vss: {inner}")
                 return False
             con.execute("CHECKPOINT")
         log("  CHECKPOINT complete, lock record refreshed")
         return True
-    except Exception as e:  # noqa: BLE001
+    except Exception as e:
         log(f"  CHECKPOINT failed: {e}")
         return False
     finally:
         try:
             con.close()
-        except Exception:  # noqa: BLE001, S110
+        except Exception:
             pass
 
 

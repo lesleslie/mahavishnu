@@ -35,7 +35,7 @@ def count_todo_markers(root: Path) -> int:
             continue
         try:
             text = path.read_text(encoding="utf-8", errors="ignore")
-        except Exception:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
+        except Exception:
             continue
         for line in text.splitlines():
             if TODO_PAT.search(line):
@@ -46,14 +46,14 @@ def count_todo_markers(root: Path) -> int:
 def count_lines(path: Path) -> int:
     try:
         return len(path.read_text(encoding="utf-8", errors="ignore").splitlines())
-    except Exception:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
+    except Exception:
         return 0
 
 
 def build_metrics() -> Metrics:
     adapter_lines = [(str(p.relative_to(ROOT)), count_lines(p)) for p in ADAPTERS]
     todo_markers = count_todo_markers(ROOT / "mahavishnu")
-    generated_at = datetime.now((UTC)).strftime("%Y-%m-%d %H:%M:%S")
+    generated_at = datetime.now(UTC).strftime("%Y-%m-%d %H:%M:%S")
     return Metrics(
         generated_at=generated_at,
         todo_markers=todo_markers,

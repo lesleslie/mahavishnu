@@ -29,7 +29,7 @@ print(f"\nCurrent records with embeddings: {count}")
 if count < 1000:
     print(f"\nGenerating {1000 - count} test records...")
 
-    now = datetime.now((UTC))
+    now = datetime.now(UTC)
     task_types = ["code_review", "testing", "deployment", "documentation", "optimization"]
     descriptions = [
         "Review pull request for authentication module",
@@ -125,7 +125,7 @@ print("-" * 60)
 try:
     conn.execute("DROP INDEX IF EXISTS hnsw_embeddings")
     print("Dropped existing HNSW index")
-except Exception:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
+except Exception:
     pass
 
 times = []

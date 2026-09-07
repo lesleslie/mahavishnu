@@ -2,13 +2,15 @@ title: Tech Debt
 owner: Platform Reliability Guild
 last_reviewed: 2026-09-06
 supported_platforms:
+
 - macOS
 - Linux
-required_scripts: []
-risk: medium
-status: active
-id: 01K6EEXCPYXGEWZ0VAB5PB63DD
-category: maintenance
+  required_scripts: []
+  risk: medium
+  status: active
+  id: 01K6EEXCPYXGEWZ0VAB5PB63DD
+  category: maintenance
+
 ______________________________________________________________________
 
 ## Technical Debt Analysis and Remediation

@@ -21,7 +21,7 @@ import logging
 from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
-    from collections.abc import Callable
+    import httpx2
 
     from mcp.client.session import ClientSession
 
@@ -57,21 +57,11 @@ class BodaiComponentMCPClient:
         self._token = token
         self._session: ClientSession | None = None
         self._transport_context: Any = None
-        self._get_session_id: Callable[[], str | None] | None = (
-            None  # Stores the session ID callback
-        )
 
     @property
     def tools_url(self) -> str:
         """Return the tool invocation endpoint."""
         return self.base_url
-
-    @property
-    def session_id(self) -> str | None:
-        """Return the current MCP session ID, or None if not established."""
-        if self._get_session_id is not None:
-            return self._get_session_id()
-        return None
 
     async def _ensure_session(self) -> None:
         """Establish MCP session using official client transport."""
@@ -81,9 +71,9 @@ class BodaiComponentMCPClient:
         from mcp.client.session import ClientSession
         from mcp.client.streamable_http import streamable_http_client
 
-        http_client: Any = None
+        http_client: httpx2.AsyncClient | None = None
         if self._token:
-            import httpx
+            import httpx2 as httpx
 
             http_client = httpx.AsyncClient(
                 timeout=self.timeout,
@@ -96,14 +86,14 @@ class BodaiComponentMCPClient:
             terminate_on_close=True,
         )
 
-        rs, ws, self._get_session_id = await self._transport_context.__aenter__()
+        rs, ws = await self._transport_context.__aenter__()
         self._session = ClientSession(rs, ws)
         # Must enter session context BEFORE initialize - this starts the _receive_loop
         # task which is required for response routing (matching request IDs to responses)
         await self._session.__aenter__()
         await self._session.initialize()
 
-        logger.debug("MCP session established: %s", self.session_id)
+        logger.debug("MCP session established")
 
     async def call_tool(self, name: str, arguments: dict[str, Any]) -> Any:
         """Call an MCP tool over HTTP.
@@ -189,5 +179,3 @@ class BodaiComponentMCPClient:
                 else:
                     raise
             self._transport_context = None
-
-        self._get_session_id = None

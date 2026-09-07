@@ -143,7 +143,7 @@ def should_keep_file(filepath: Path) -> bool:
     # Keep recent checkpoint files (last 7 days)
     if "CHECKPOINT" in filename.upper():
         file_mtime = datetime.fromtimestamp(filepath.stat().st_mtime, tz=UTC)
-        if (datetime.now((UTC)) - file_mtime).days < 7:
+        if (datetime.now(UTC) - file_mtime).days < 7:
             return True
 
     return False

@@ -2,13 +2,15 @@ title: Code Explain
 owner: Developer Enablement Guild
 last_reviewed: 2026-09-06
 supported_platforms:
+
 - macOS
 - Linux
-required_scripts: []
-risk: medium
-status: active
-id: 01K6EEXC16AA2JCZ8H8ZQZ1T9M
-category: development/code-quality
+  required_scripts: []
+  risk: medium
+  status: active
+  id: 01K6EEXC16AA2JCZ8H8ZQZ1T9M
+  category: development/code-quality
+
 ______________________________________________________________________
 
 ## Code Explanation and Analysis

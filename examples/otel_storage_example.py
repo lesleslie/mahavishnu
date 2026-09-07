@@ -325,7 +325,7 @@ async def main():
         print("All examples completed successfully!")
         print("=" * 60 + "\n")
 
-    except Exception as e:  # noqa: BLE001 - CLI entrypoint; converts unhandled errors to exit
+    except Exception as e:
         print(f"\nERROR: {e}")
         print("\nTroubleshooting:")
         print("  1. Ensure PostgreSQL is running")

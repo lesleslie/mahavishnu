@@ -101,7 +101,7 @@ def probe_service(service: dict[str, Any], timeout: float) -> dict[str, Any]:
             failure_reasons.append(f"{probe_url} -> http_error: {exc.code}")
         except URLError as exc:
             failure_reasons.append(f"{probe_url} -> url_error: {exc.reason}")
-        except Exception as exc:  # pragma: no cover - defensive guard  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
+        except Exception as exc:  # pragma: no cover - defensive guard
             failure_reasons.append(f"{probe_url} -> error: {exc}")
 
     result["reason"] = (

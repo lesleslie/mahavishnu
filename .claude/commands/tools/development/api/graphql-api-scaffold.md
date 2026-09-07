@@ -5,16 +5,16 @@ supported_platforms:
 
 - macOS
 - Linux
-required_scripts: []
-risk: medium
-status: active
-id: 01K6H9DJ3RDGFNDADS8GNG9522
-category: development/api
-agents:
+  required_scripts: []
+  risk: medium
+  status: active
+  id: 01K6H9DJ3RDGFNDADS8GNG9522
+  category: development/api
+  agents:
 - graphql-architect
 - architecture-council
 - qa-strategist
-tags:
+  tags:
 - graphql
 - api
 - schema

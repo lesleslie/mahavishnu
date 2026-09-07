@@ -2,13 +2,15 @@ title: Automated Research
 owner: Automation Guild
 last_reviewed: 2026-09-06
 supported_platforms:
+
 - macOS
 - Linux
-required_scripts: []
-risk: medium
-status: active
-id: 01K6EEXB73KRFRXFH5YFM4ARY5
-category: automation
+  required_scripts: []
+  risk: medium
+  status: active
+  id: 01K6EEXB73KRFRXFH5YFM4ARY5
+  category: automation
+
 ______________________________________________________________________
 
 ## Automated Research System

@@ -105,7 +105,7 @@ class AgentMetricsDB:
 
     def get_metrics(self, agent_name: str | None = None, days: int = 30) -> list[dict]:
         """Retrieve metrics with optional filtering"""
-        cutoff = datetime.now((UTC)) - timedelta(days=days)
+        cutoff = datetime.now(UTC) - timedelta(days=days)
 
         query = """
             SELECT * FROM agent_metrics
@@ -203,7 +203,7 @@ class AgentAnalyzer:
             "period_days": days,
             "total_invocations": len(metrics),
             "agents": report,
-            "generated_at": datetime.now((UTC)).isoformat(),
+            "generated_at": datetime.now(UTC).isoformat(),
         }
 
     def identify_optimization_opportunities(self, days: int = 30) -> dict:
@@ -315,7 +315,7 @@ def log(
     metric = AgentMetric(
         agent_name=agent_name,
         task_type=task,
-        timestamp=datetime.now((UTC)),
+        timestamp=datetime.now(UTC),
         tokens_used=tokens,
         success=success,
         execution_time_ms=time_ms,

@@ -208,15 +208,15 @@ def health() -> dict[str, Any]:
             {
                 "status": "ok",
                 "database": "connected",
-                "timestamp": datetime.now((UTC)).isoformat(),
+                "timestamp": datetime.now(UTC).isoformat(),
             }
         )
-    except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
+    except Exception as e:
         return jsonify(
             {
                 "status": "error",
                 "message": str(e),
-                "timestamp": datetime.now((UTC)).isoformat(),
+                "timestamp": datetime.now(UTC).isoformat(),
             }
         ), 503
 
@@ -267,7 +267,7 @@ def query() -> dict[str, Any]:
             }
         )
 
-    except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
+    except Exception as e:
         logger.error(f"Query failed: {e}")
         return jsonify({"error": str(e)}), 500
 
@@ -308,7 +308,7 @@ def columns() -> dict[str, Any]:
 
         return jsonify(columns)
 
-    except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
+    except Exception as e:
         logger.error(f"Failed to get columns: {e}")
         return jsonify({"error": str(e)}), 500
 
@@ -361,7 +361,7 @@ def main() -> int:
         result = db_connection.execute("SELECT COUNT(*) FROM executions").fetchone()
         logger.info(f"Database connected successfully ({result[0]} execution records)")
 
-    except Exception as e:  # noqa: BLE001 - CLI entrypoint; converts unhandled errors to exit
+    except Exception as e:
         logger.error(f"Failed to connect to database: {e}")
         return 1
 

@@ -138,7 +138,7 @@ def _git_tracked_files(repo: Path, subpath: str) -> list[str]:
             timeout=10,
             check=False,
         )
-    except (subprocess.TimeoutExpired, FileNotFoundError, OSError):
+    except subprocess.TimeoutExpired, FileNotFoundError, OSError:
         return []
     if result.returncode != 0:
         return []
@@ -443,9 +443,7 @@ def evaluate_repo(name: str, repo: Path) -> Verdict:
             if claude_state.runtime_entries:
                 claude_dir = repo / ".claude"
                 runtime_dirs = [
-                    entry
-                    for entry in claude_state.runtime_entries
-                    if (claude_dir / entry).is_dir()
+                    entry for entry in claude_state.runtime_entries if (claude_dir / entry).is_dir()
                 ]
                 if not runtime_dirs:
                     return Verdict(
@@ -488,9 +486,8 @@ def evaluate_repo(name: str, repo: Path) -> Verdict:
                 section=_find_section_for(ignore_state.sections, rule),
                 issue=None,
             )
-        if (
-            ignore_state.has_blanket
-            and _catalog_has_tracked_content(repo, claude_state.shared_subdirs)
+        if ignore_state.has_blanket and _catalog_has_tracked_content(
+            repo, claude_state.shared_subdirs
         ):
             # Blanket rule is present and the catalog files are already
             # tracked by git — tracked files remain visible regardless

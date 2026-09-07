@@ -35,9 +35,7 @@ MCP_ARGS = ("-m", "mahavishnu", "mcp", "start")
 
 # Matches: optional `export `, KEY, =, then a quoted or unquoted value.
 # Captures: (1) key, (2) quote char or empty, (3) value
-_LINE_RE = re.compile(
-    r"""^\s*(?:export\s+)?([A-Z0-9_]+)\s*=\s*(['"]?)(.*?)\2\s*$"""
-)
+_LINE_RE = re.compile(r"""^\s*(?:export\s+)?([A-Z0-9_]+)\s*=\s*(['"]?)(.*?)\2\s*$""")
 
 
 def _strip_comment(value: str) -> str:

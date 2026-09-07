@@ -82,7 +82,7 @@ class AgentVersionManager:
         # Add new changelog entry
         new_entry = {
             "version": version,
-            "date": datetime.now((UTC)).strftime("%Y-%m-%d"),
+            "date": datetime.now(UTC).strftime("%Y-%m-%d"),
             "changes": changes,
         }
 
@@ -121,7 +121,7 @@ class AgentVersionManager:
                 changelog=changelog,
             )
 
-        except Exception as e:  # noqa: BLE001 - event handler; logs and continues
+        except Exception as e:
             click.echo(f"Error reading {agent_file}: {e}", err=True)
             return None
 
@@ -163,7 +163,7 @@ class AgentVersionManager:
                 else:
                     results["unversioned"] += 1
 
-            except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
+            except Exception as e:
                 click.echo(f"Error validating {agent_file.name}: {e}", err=True)
 
         return results

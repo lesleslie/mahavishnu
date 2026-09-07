@@ -61,7 +61,7 @@ db.backup.to_s3(
 - **Hybrid search**: Vector + keyword + full-text
 - **Serverless**: Can run entirely on your Mac
 
-**Documentation**: [lancedb.com](https://lancedb.com/)
+**Documentation**: [lancedb.com](https://www.lancedb.com/)
 
 **Pricing**: 100% free (self-hosted)
 

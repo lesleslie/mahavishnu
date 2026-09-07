@@ -32,11 +32,11 @@ def get_session_start_time():
             with open(session_file) as f:
                 data = json.load(f)
                 return datetime.fromisoformat(data.get("start_time"))
-        except (json.JSONDecodeError, KeyError, ValueError):
+        except json.JSONDecodeError, KeyError, ValueError:
             pass
 
     # Create new session file
-    start_time = datetime.now((UTC))
+    start_time = datetime.now(UTC)
     session_file.parent.mkdir(parents=True, exist_ok=True)
     with open(session_file, "w") as f:
         json.dump({"start_time": start_time.isoformat()}, f)
@@ -67,7 +67,7 @@ def format_end_time(start_time: datetime) -> str:
 def main():
     try:
         start_time = get_session_start_time()
-        now = datetime.now((UTC))
+        now = datetime.now(UTC)
         elapsed = (now - start_time).total_seconds()
 
         # Calculate progress
@@ -115,7 +115,7 @@ def main():
         output = f"{status} │ {bar} {percentage:.1f}% │ {time_left}"
         print(output)
 
-    except Exception as e:  # noqa: BLE001 - CLI entrypoint; converts unhandled errors to exit
+    except Exception as e:
         # Fallback output on error
         print(f"⚠️  Error: {e!s}", file=sys.stderr)
         print("🟢 Claude Code Active")

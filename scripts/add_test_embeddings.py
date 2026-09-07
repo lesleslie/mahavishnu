@@ -20,7 +20,7 @@ result = conn.execute("SELECT COUNT(*) FROM executions").fetchone()
 print(f"Current record count: {result[0]}")
 
 # Generate 1000 test records
-now = datetime.now((UTC))
+now = datetime.now(UTC)
 task_types = ["code_review", "testing", "deployment", "documentation", "optimization"]
 descriptions = [
     "Review pull request for authentication module",

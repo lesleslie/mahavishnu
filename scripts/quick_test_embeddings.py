@@ -16,7 +16,7 @@ conn.execute("LOAD vss")
 conn.execute("SET hnsw_enable_experimental_persistence=true")
 
 # Generate 1000 test records using executemany with proper formatting
-now = datetime.now((UTC))
+now = datetime.now(UTC)
 task_types = ["code_review", "testing", "deployment", "documentation", "optimization"]
 descriptions = [
     "Review pull request for authentication module",

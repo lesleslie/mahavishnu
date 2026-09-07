@@ -106,17 +106,17 @@ def load_cache() -> tuple[dict | None, float]:
         if not block:
             return None, float("inf")
 
-        age = datetime.now((UTC)).timestamp() - cached_at
+        age = datetime.now(UTC).timestamp() - cached_at
         return block, age
 
-    except (json.JSONDecodeError, OSError, KeyError):
+    except json.JSONDecodeError, OSError, KeyError:
         return None, float("inf")
 
 
 def save_cache(block: dict) -> None:
     """Save block data to cache with current timestamp."""
     try:
-        cache = {"timestamp": datetime.now((UTC)).timestamp(), "block": block}
+        cache = {"timestamp": datetime.now(UTC).timestamp(), "block": block}
         with open(CACHE_FILE, "w") as f:
             json.dump(cache, f)
     except OSError:
@@ -233,7 +233,7 @@ def main():
         )
         print(output)
 
-    except Exception as e:  # noqa: BLE001 - CLI entrypoint; converts unhandled errors to exit
+    except Exception as e:
         # Ultimate fallback
         print(f"⚠️  Status error: {e!s}", file=sys.stderr)
         print("Session active")

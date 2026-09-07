@@ -6,19 +6,19 @@ supported_platforms:
 - macOS
 - Linux
 - Windows
-required_scripts:
+  required_scripts:
 - scripts/test_matrix.py
-agents:
+  agents:
 - qa-strategist
 - python-pro
 - javascript-pro
 - golang-pro
 - observability-incident-lead
-risk: medium
-status: active
-id: 01K6EEQRQ3BDHZ1H0CJT2XC8S7
-category: development/testing
-tags:
+  risk: medium
+  status: active
+  id: 01K6EEQRQ3BDHZ1H0CJT2XC8S7
+  category: development/testing
+  tags:
 - testing
 - qa
 - automation

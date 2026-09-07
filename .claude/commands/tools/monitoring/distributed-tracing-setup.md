@@ -5,15 +5,15 @@ supported_platforms:
 
 - macOS
 - Linux
-required_scripts: []
-risk: low
-status: active
-id: 01K6HDRW9VMXPQ3K7N8YJHZ2T6
-category: monitoring
-agents:
+  required_scripts: []
+  risk: low
+  status: active
+  id: 01K6HDRW9VMXPQ3K7N8YJHZ2T6
+  category: monitoring
+  agents:
 - observability-incident-lead
 - architecture-council
-tags:
+  tags:
 - tracing
 - opentelemetry
 - jaeger

@@ -80,7 +80,7 @@ class AgentMetricsStore:
             try:
                 with open(self.store_path) as f:
                     return json.load(f)
-            except (json.JSONDecodeError, FileNotFoundError):
+            except json.JSONDecodeError, FileNotFoundError:
                 return []
         return []
 
@@ -134,7 +134,7 @@ class TranscriptParser:
 
                     if name_match and model_match:
                         mapping[name_match] = model_match
-            except Exception:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
+            except Exception:
                 continue
 
         return mapping

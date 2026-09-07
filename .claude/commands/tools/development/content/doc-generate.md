@@ -2,13 +2,15 @@ title: Doc Generate
 owner: Developer Enablement Guild
 last_reviewed: 2026-09-06
 supported_platforms:
+
 - macOS
 - Linux
-required_scripts: []
-risk: medium
-status: active
-id: 01K6EEXC9K3GGBXB846FK2NJ8E
-category: development/content
+  required_scripts: []
+  risk: medium
+  status: active
+  id: 01K6EEXC9K3GGBXB846FK2NJ8E
+  category: development/content
+
 ______________________________________________________________________
 
 ## Automated Documentation Generation

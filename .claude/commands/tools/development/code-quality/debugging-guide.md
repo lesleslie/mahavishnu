@@ -6,19 +6,19 @@ supported_platforms:
 - macOS
 - Linux
 - Windows
-agents:
+  agents:
 - devops-troubleshooter
 - python-pro
 - javascript-pro
 - golang-pro
 - rust-pro
 - observability-incident-lead
-required_scripts: []
-risk: low
-status: active
-id: 01K6H7DBKXPATNET8YV0JQGZX7
-category: development
-tags:
+  required_scripts: []
+  risk: low
+  status: active
+  id: 01K6H7DBKXPATNET8YV0JQGZX7
+  category: development
+  tags:
 - debugging
 - troubleshooting
 - observability

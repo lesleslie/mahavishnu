@@ -158,7 +158,7 @@ def generate_test_data(
     logger.info(f"Generating {count} test records...")
 
     # Generate timestamps over the last 90 days
-    now = datetime.now((UTC))
+    now = datetime.now(UTC)
     start_time = time.time()
 
     for i in range(count):
@@ -305,7 +305,7 @@ def main() -> int:
         finally:
             conn.close()
 
-    except Exception as e:  # noqa: BLE001 - CLI entrypoint; converts unhandled errors to exit
+    except Exception as e:
         logger.error(f"Failed to generate test data: {e}")
         import traceback
 

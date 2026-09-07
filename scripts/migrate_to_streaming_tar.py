@@ -29,6 +29,7 @@ Limit by the ``--max-bytes`` stopgap (defaults to ``MAX_BUNDLE_BYTES_STOPGAP = 2
 
     python scripts/migrate_to_streaming_tar.py --base-path . --max-bytes 134217728
 """
+
 from __future__ import annotations
 
 import argparse

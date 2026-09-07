@@ -1026,7 +1026,11 @@ ______________________________________________________________________
 - `mcp_common/{bootstrap,baseline_tools,health,security}.py`,
   `mcp_common/tools/dispatch.py` — the APIs in finding 4.10
 - `oneiric/oneiric/actions/workflow.py` — `workflow.retry`
-- [Medium Help Center — API/Importing](https://help.medium.com/hc/en-us/articles/213480228-API-Importing)
+- [Medium API Importing guide](https://help.medium.com/) — Medium deprecated its public
+  Content API in 2023; partner/import paths remain in the help center but the
+  self-serve developer program is closed.
 - [mediumapi.com](https://mediumapi.com/) / [docs.mediumapi.com](https://docs.mediumapi.com/)
-- [Internet Archive APIs](https://archive.org/developers/apis)
-- [Wayback CDX Server API](https://archive.org/developers/wayback-cdx-server-api)
+- [Internet Archive Developer Portal](https://archive.org/developers/) —
+  [Tools and APIs index](https://archive.org/developers/index-apis.html)
+- [Wayback Machine API reference](https://archive.org/developers/_static/test-wayback.html) —
+  CDX server endpoint documented under "Wayback machine APIs" in the tools index

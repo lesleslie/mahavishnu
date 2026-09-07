@@ -15,6 +15,7 @@ Exit codes:
 Usage:
   python3 scripts/validate_findings.py docs/audit-inventory/findings.md
 """
+
 from __future__ import annotations
 
 import re
@@ -83,9 +84,7 @@ def validate(findings_path: Path) -> int:
             print(f"  {entry}", file=sys.stderr)
         return 1
 
-    print(
-        f"OK: findings.md ({line_count} lines, ≤ {LINE_BUDGET}); all links resolve to commands"
-    )
+    print(f"OK: findings.md ({line_count} lines, ≤ {LINE_BUDGET}); all links resolve to commands")
     return 0
 
 

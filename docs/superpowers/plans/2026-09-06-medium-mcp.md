@@ -17,7 +17,7 @@ topic: mcp-stub-activation
 
 **Tech Stack:** Python 3.14, FastMCP 2.12+, httpx2 0.28+, pydantic 2.5+, pydantic-settings 2.1+, `mcp-common>=0.18.0`, `oneiric>=0.16.0`, Dhara (lock + AsyncKVTimeSeriesStore).
 
-**Spec:** [2026-09-06-mcp-stub-activation-design.md](2026-09-06-mcp-stub-activation-design.md) §6.2 (medium-mcp), §13.3 (settings). The plan argues from the spec; the spec travels with it.
+**Spec:** [2026-09-06-mcp-stub-activation-design.md](../specs/2026-09-06-mcp-stub-activation-design.md) §6.2 (medium-mcp), §13.3 (settings). The plan argues from the spec; the spec travels with it.
 
 ## Global Constraints
 

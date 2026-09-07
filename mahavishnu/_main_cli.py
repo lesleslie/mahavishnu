@@ -28,11 +28,11 @@ from .cli.precommit_cli import precommit_app as precommit_app_obj
 # Import rollback CLI (audit H8: SLOs/rollback for Plan 1 + Plan 5)
 from .cli.rollback_cli import add_rollback_commands
 
-# Import settle CLI (wires orphan sync wrappers from mahavishnu/settle/)
-from .cli.settle_cli import add_settle_commands
-
 # Import scaffold CLI
 from .cli.scaffold_cli import app as scaffold_app
+
+# Import settle CLI (wires orphan sync wrappers from mahavishnu/settle/)
+from .cli.settle_cli import add_settle_commands
 
 # Import SOP evolution CLI (Spec #7)
 from .cli.sop_cli import add_sop_commands

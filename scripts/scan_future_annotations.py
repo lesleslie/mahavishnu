@@ -97,7 +97,7 @@ def scan_file(path: Path) -> dict[str, list[int]] | None:
     in annotations. ``None`` when the file is not an offender."""
     try:
         source = path.read_text(encoding="utf-8")
-    except (OSError, UnicodeDecodeError):
+    except OSError, UnicodeDecodeError:
         return None
     try:
         tree = ast.parse(source)
@@ -132,7 +132,11 @@ def scan_file(path: Path) -> dict[str, list[int]] | None:
                 root = sub
                 while isinstance(root, ast.Attribute):
                     root = root.value
-                if isinstance(root, ast.Name) and root.id == name and _is_in_annotation_context(root):
+                if (
+                    isinstance(root, ast.Name)
+                    and root.id == name
+                    and _is_in_annotation_context(root)
+                ):
                     lines.append(root.lineno)
         if lines:
             offenders[name] = sorted(set(lines))

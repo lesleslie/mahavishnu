@@ -47,9 +47,7 @@ def add_settle_commands(app: typer.Typer) -> None:
     def start(
         run_ref: str = typer.Argument(..., help="Settle run reference"),
         worker_id: str = typer.Option(..., "--worker", "-w", help="Worker ID"),
-        task_signature: str = typer.Option(
-            ..., "--task", "-t", help="Task signature for the run"
-        ),
+        task_signature: str = typer.Option(..., "--task", "-t", help="Task signature for the run"),
     ) -> None:
         """Persist a newly-created (state=PROPOSED) record for *run_ref*.
 

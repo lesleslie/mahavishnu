@@ -13,7 +13,7 @@ input_data = sys.stdin.read()
 # Write to debug log
 debug_log = "/tmp/statusline_debug.log"
 with open(debug_log, "w") as f:
-    f.write(f"=== StatusLine Input Debug - {datetime.now((UTC))} ===\n\n")
+    f.write(f"=== StatusLine Input Debug - {datetime.now(UTC)} ===\n\n")
     f.write("RAW INPUT:\n")
     f.write(input_data)
     f.write("\n\n")

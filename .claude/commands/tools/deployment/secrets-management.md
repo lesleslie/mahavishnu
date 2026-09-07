@@ -5,17 +5,17 @@ supported_platforms:
 
 - macOS
 - Linux
-required_scripts: []
-risk: high
-status: active
-id: 01K6HDST4YKZQV8PX3NMWJ7HG2
-category: deployment
-agents:
+  required_scripts: []
+  risk: high
+  status: active
+  id: 01K6HDST4YKZQV8PX3NMWJ7HG2
+  category: deployment
+  agents:
 - security-auditor
 - devops-troubleshooter
 - architecture-council
 - terraform-specialist
-tags:
+  tags:
 - secrets
 - vault
 - aws-secrets-manager

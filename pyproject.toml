@@ -328,7 +328,21 @@ force-sort-within-sections = true
 # correctness; suppressing them keeps the gate focused on real bugs.
 "scripts/**/*.py" = [
     "B007", "B008", "E741", "F401", "F841", "I001",
-    "SIM108", "SIM116", "SIM117", "TC003",
+    "SIM103", "SIM108", "SIM110", "SIM114", "SIM116", "SIM117", "TC003",
+    "BLE001",  # broad Exception catch in one-shot admin paths
+    "EXE001",  # shebang without executable bit — invoked via `python scripts/X.py`
+    "F541",  # f-string without placeholders — stylistic, scripts print diagnostics
+    "FURB162",  # unnecessary tzinfo replacement (refurb stylistic)
+    "N999",  # hyphenated CLI script filenames (bifrost-gateway.py, etc.) are not importable modules
+    "PERF102",  # dict.values()/keys() micro-perf (stdlib already returns view in 3.14)
+    "PIE810",  # startswith/strip tuple-call stylistic
+    "PLR1722",  # sys.exit() vs exit() — both fine for one-shot CLI scripts
+    "PLW1510",  # subprocess.run without explicit check — explicit defaults differ per script
+    "RUF012",  # mutable class defaults — these are immutable validator constants (EXPECTED_TABLES, etc.)
+    "RUF013",  # implicit Optional in ad-hoc helpers
+    "RUF034",  # useless if-else stylistic
+    "S110",  # try-except-pass in best-effort admin cleanup
+    "S112",  # try-except-continue in best-effort admin loops
 ]
 "monitoring/**/*.py" = [
     "B007", "B008", "E741", "F841",
@@ -337,6 +351,11 @@ force-sort-within-sections = true
 "examples/**/*.py" = [
     "B007", "B008", "E722", "E741", "F401", "F841",
     "I001", "SIM108", "SIM116", "SIM117", "TC003",
+    "ASYNC230",  # example scripts may block briefly inside async for didactic clarity
+    "BLE001",  # broad Exception catch — keeps existing `# noqa: BLE001` directives valid
+    "EXE001",  # shebang without executable bit — examples invoked via `python examples/X.py`
+    "FURB162",  # unnecessary tzinfo replacement (refurb stylistic)
+    "S110",  # try-except-pass in best-effort demo cleanup
 ]
 "migrations/**/*.py" = [
     "B007", "B008", "E741",

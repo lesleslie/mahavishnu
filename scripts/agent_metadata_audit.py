@@ -19,9 +19,17 @@ def extract_frontmatter(content):
 
     where the body is everything after the frontmatter line.
     """
-    match = re.match(r"^---\n(.*?)\n---\n(.*)$", content, re.DOTALL)
+    # Frontmatter delimiter: a line of 3+ dashes OR underscores.
+    # Matches both standard YAML (``---``) and the 70-underscore house
+    # style used by some agent files (e.g. ``.claude/agents/mahavishnu-orchestrator.md``).
+    # The backreference ``\1`` ensures the closer matches the opener
+    # character — ``---`` cannot be closed by ``___`` or vice versa.
+    match = re.match(r"^([-_]{3,})\n(.*?)\n\1\n(.*)$", content, re.DOTALL)
     if match:
-        yaml_str, body = match.groups()
+        # Three capture groups: delimiter, YAML body, post-frontmatter body.
+        # Group 1 (the delimiter) is unused here.
+        yaml_str = match.group(2)
+        body = match.group(3)
         metadata = {}
         for line in yaml_str.split("\n"):
             if ":" in line:

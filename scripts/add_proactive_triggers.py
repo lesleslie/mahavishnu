@@ -113,7 +113,7 @@ def main():
                 skipped += 1
         except FileNotFoundError:
             print(f"✗ {filename}: File not found")
-        except Exception as e:  # noqa: BLE001 - CLI entrypoint; converts unhandled errors to exit
+        except Exception as e:
             print(f"✗ {filename}: Error - {e}")
 
     print("\n=== Summary ===")

@@ -143,7 +143,7 @@ def _read_header(path: Path, line_limit: int = HEADER_SCAN_LINE_LIMIT) -> str:
     """Read the first ``line_limit`` lines of ``path`` for header parsing."""
     try:
         text = path.read_text(encoding="utf-8")
-    except (UnicodeDecodeError, OSError):
+    except UnicodeDecodeError, OSError:
         # On read failure, return empty so all required-header checks fail
         # with a deterministic message rather than crashing the CI run.
         return ""

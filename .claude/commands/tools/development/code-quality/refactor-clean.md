@@ -2,13 +2,15 @@ title: Refactor Clean
 owner: Developer Enablement Guild
 last_reviewed: 2026-09-06
 supported_platforms:
+
 - macOS
 - Linux
-required_scripts: []
-risk: medium
-status: active
-id: 01K6EEXCN73FQQPMWXV7B8Q37N
-category: development/code-quality
+  required_scripts: []
+  risk: medium
+  status: active
+  id: 01K6EEXCN73FQQPMWXV7B8Q37N
+  category: development/code-quality
+
 ______________________________________________________________________
 
 ## Refactor and Clean Code

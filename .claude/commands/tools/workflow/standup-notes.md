@@ -2,13 +2,15 @@ title: Standup Notes
 owner: Operations Enablement Guild
 last_reviewed: 2026-09-06
 supported_platforms:
+
 - macOS
 - Linux
-required_scripts: []
-risk: medium
-status: active
-id: 01K6EEXD6MCN877PT1FXX166AQ
-category: workflow
+  required_scripts: []
+  risk: medium
+  status: active
+  id: 01K6EEXD6MCN877PT1FXX166AQ
+  category: workflow
+
 ______________________________________________________________________
 
 ## Standup Notes Generator

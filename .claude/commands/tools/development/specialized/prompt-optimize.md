@@ -2,13 +2,15 @@ title: Prompt Optimize
 owner: Developer Enablement Guild
 last_reviewed: 2026-09-06
 supported_platforms:
+
 - macOS
 - Linux
-required_scripts: []
-risk: medium
-status: active
-id: 01K6EEXCJRHXPEFEE8HW0Z751Z
-category: development/specialized
+  required_scripts: []
+  risk: medium
+  status: active
+  id: 01K6EEXCJRHXPEFEE8HW0Z751Z
+  category: development/specialized
+
 ______________________________________________________________________
 
 ## AI Prompt Optimization

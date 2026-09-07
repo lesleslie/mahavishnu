@@ -1,0 +1,31 @@
+# osv-scanner project config
+#
+# Mirrors the pip-audit suppression entries in pyproject.toml
+# ([tool.pip-audit] ignore-vuln). Both tools consult the same OSV.dev
+# backend and report the same advisory IDs; without these entries the
+# fast_hooks osv-scanner step exits 1 and the workflow wrapper's failure
+# rendering can crash Rich with
+# "closing tag '[/.../uv.lock]' at position 134 doesn't match any open tag"
+# (memory: rich-markup-content-escape).
+#
+# Reference: https://google.github.io/osv-scanner/configuration/
+
+# diskcache 5.6.3 — pickle-deserialization RCE; no patch released
+# yet (latest PyPI version is 5.6.3, which is the vulnerable
+# release per OSV ``last_affected: 5.6.3``). Transitive via
+# ``llama_cpp_python`` and ``py-key-value-aio``; attack vector
+# requires local write access to the cache directory, which is not
+# exposed in our dev/test deployment surface. Revisit when a
+# patched diskcache ships.
+[[IgnoredVulns]]
+id = "PYSEC-2026-2447"
+reason = "Transitive diskcache 5.6.3 pickle-deserialization RCE; no patch; attack vector requires local cache-dir write access (not exposed in our deployment surface)."
+
+# nltk 3.10.3 — OSV records ``fixed: 3.10.3`` as the patch
+# version; we ARE on the patched release. pip-audit flags it
+# because the OSV ``versions`` array includes the patched version
+# alongside the vulnerable ones. Resolved: 2026-09-04 against
+# api.osv.dev/v1/vulns/PYSEC-2026-3740.
+[[IgnoredVulns]]
+id = "PYSEC-2026-3740"
+reason = "nltk 3.10.3 — running patched version; OSV versions array includes the patch release alongside vulnerable ones, causing false-positive flags."

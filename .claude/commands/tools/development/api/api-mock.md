@@ -2,13 +2,15 @@ title: Api Mock
 owner: Developer Enablement Guild
 last_reviewed: 2026-09-06
 supported_platforms:
+
 - macOS
 - Linux
-required_scripts: []
-risk: medium
-status: active
-id: 01K6EEXBWVGNARGXR4N6YW90TW
-category: development/api
+  required_scripts: []
+  risk: medium
+  status: active
+  id: 01K6EEXBWVGNARGXR4N6YW90TW
+  category: development/api
+
 ______________________________________________________________________
 
 ## API Mocking Framework
