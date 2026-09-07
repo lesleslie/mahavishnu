@@ -63,20 +63,29 @@ break is cheaper than a migration release.
 - **Define `IdentityProvider` Protocol** with `verify_token` and `health` methods.
 - **Implement `JWTIdentityProvider`** by extracting the existing `verify_token` core
   (the existing inter-service JWT path stays).
-- **Implement `AnthropicIdentityProvider`** using PKCE + refresh tokens + `offline_access`
-  scope (the first human-facing IdP, unblocking remote-host scapy-mcp).
+- **Implement `AnthropicIdentityProvider` (5a)** for **JWKS verification of
+  Anthropic-issued access tokens**. The OAuth authorization-code flow, PKCE
+  `code_verifier` generation, refresh-token rotation, and `offline_access` scope
+  are **deferred to Task 5b (follow-up spec)**.
 - **Add `Principal` model** with `issuer`, `subject`, `permissions`, `expires_at`,
   `raw_claims`, and `has_permission()`.
-- **Extend `@require_auth`** with `allow_anonymous` and `integrate_with_readyz` parameters.
-  Read Principal from Context. No kwarg transport — clean break.
+- **Extend `@require_auth`** with `allow_anonymous` and `audit_logger` parameters.
+  Read Principal from Context. No kwarg transport — clean break. The previous
+  `integrate_with_readyz` parameter is **dropped** (was accepted but never
+  consulted — shipping a parameter that lies to callers is worse than no parameter).
 - **Replace `KNOWN_SERVICES` frozenset** with per-server `trusted_issuers` declaration
-  in `AuthConfig`.
-- **Integrate `AuthConfig` into `OneiricMCPConfig`** so auth is part of the standard
-  settings surface.
+  in `AuthConfig` (default-deny semantics: empty list rejects ALL issuers; a startup
+  check `validate_auth_config()` fails loud if `enabled=True` with empty `trusted_issuers`).
+- **Integrate `AuthConfig` into `MCPServerSettings`** so auth is part of the standard
+  settings surface. (Note: this spec's earlier draft said `OneiricMCPConfig`; the
+  actual class is `MCPServerSettings` at `mcp_common/cli/settings.py:15`. The
+  `OneiricMCPConfig` was an early working title that never landed.)
 - **Define `AuthHealth` model** with the wiring-discipline §3 four signals
   (`entities_count`, `last_updated_timestamp`, `errors_total`, `cycles_total`).
 - **Aggregate `AuthHealth` into `/health`** via the existing
-  `register_http_health_route` helper (extend `extra_components` shape).
+  `register_http_health_route` helper (extend `extra_components` shape). The `/health`
+  route **keeps 200-only**; the `status: "degraded"` field in the body signals
+  degraded state. The 503 semantic is reserved for `/readyz` (future work).
 - **Add JWKS rotation logic** to providers that need it (Anthropic). Cached-fallback
   semantics on rotation failure.
 - **Add `seed_principal(principal)` context-var injection helper** for tests and
@@ -85,7 +94,8 @@ break is cheaper than a migration release.
   `BearerTokenMiddleware` in their lifespan and surface auth state in `/health`.
 - **Update `gdpr-posture.md` §10** with the auth section.
 - **Re-review ADR 0016 v3** against the new posture; close the "mcp-common auth primitives"
-  deferred item.
+  deferred item. **Requires a parallel reviewer (architecture-council or
+  mcp-integration-expert) before the status bump lands.**
 
 ## Non-Goals
 
@@ -99,21 +109,23 @@ break is cheaper than a migration release.
 - Backward-compat kwarg transport for `@require_auth` — clean break.
 - Public-API graduation in this spec (the package remains deep-imports only; graduation
   happens after usage anchors the contract).
+- **OAuth authorization-code flow, PKCE, refresh tokens, and `offline_access` scope**
+  (deferred to Task 5b follow-up spec; the current spec is JWKS-verification only).
 
 ## Design Decisions
 
 | # | Decision | Rationale |
 |---|---|---|
-| 1 | **One decorator: `@require_auth`** with `allow_anonymous` and `integrate_with_readyz` parameters | Smallest API surface change; no alias; consistent with existing convention |
-| 2 | **Trust on declaration** — per-server `trusted_issuers` list; no central allow-list | New Bodai services self-declare; no mcp-common edits per server; aligns with OAuth/OIDC RP semantics |
-| 3 | **FastMCP middleware, ASGI scope → Context** for token transport | OAuth/OIDC uses HTTP `Authorization` header; kwarg-only transport can't reach OAuth; centralizes the verification path |
+| 1 | **One decorator: `@require_auth`** with `allow_anonymous` and `audit_logger` parameters (the previous `integrate_with_readyz` parameter is dropped — was accepted but never consulted) | Smallest API surface change; no alias; consistent with existing convention |
+| 2 | **Trust on declaration** — per-server `trusted_issuers` list (default-deny); no central allow-list | New Bodai services self-declare; no mcp-common edits per server; aligns with OAuth/OIDC RP semantics |
+| 3 | **FastMCP middleware, headers via `get_http_headers()` → Context** for token transport | OAuth/OIDC uses HTTP `Authorization` header; `MiddlewareContext.scope` doesn't exist; `get_http_headers()` is the FastMCP-native path |
 | 4 | **Provider-agnostic Protocol + Anthropic concrete** | Future IdPs drop in as Protocol implementations; minimal viable surface for remote-host unblock |
-| 5 | **PKCE + refresh tokens + `offline_access`** for Anthropic OAuth | Standard for long-lived MCP server sessions; matches Anthropic's documented OAuth flow |
+| 5 | **Anthropic 5a: JWKS verification only**. 5b (PKCE + refresh tokens + `offline_access` scope) deferred to follow-up spec | Standard for long-lived MCP server sessions; matches Anthropic's documented OAuth flow; honest scope-bounding |
 | 6 | **Phased graduation** — keep package internal (deep imports only) until usage anchors API commitment | Avoids premature public-API lock-in; defers the contract decision until we have real callers |
 | 7 | **No backward-compat bridge** — clean break; `@require_auth` reads from Context only | Package has zero production users; bridge is overhead with no benefit; tests migrate simultaneously with the new shape |
-| 8 | **Middleware 401 short-circuit by default**; tools opt out via `@require_auth(allow_anonymous=True)` | Default-deny security posture; per-tool override for tools that must accept anonymous |
+| 8 | **Middleware 401 short-circuit by default**; tools opt out via `@require_auth(allow_anonymous=True)`; missing Principal raises `AuthenticationRequiredError` (401, not 403) | Default-deny security posture; 401 vs 403 distinction matters for OAuth client retry behavior |
 | 9 | **Spec lives in mahavishnu**, not mcp-common | Cross-repo coordination implications; orchestrator owns the dependency graph |
-| 10 | **`AuthConfig` reads env vars + YAML via OneiricMCPConfig**; `mcp_common.security.api_keys` stays separate | API-key validation is a different concern (external-provider keys); JWT/auth is the new block |
+| 10 | **`AuthConfig` reads env vars + YAML via `MCPServerSettings`**; `mcp_common.security.api_keys` stays separate | API-key validation is a different concern (external-provider keys); JWT/auth is the new block |
 
 ## Architecture
 
@@ -202,7 +214,25 @@ from __future__ import annotations
 
 from typing import Any
 
+from fastmcp.server.dependencies import get_http_headers  # B1 fix
 from fastmcp.server.middleware import Middleware, MiddlewareContext
+
+from mcp_common.auth.exceptions import AuthError  # B2 fix
+from mcp_common.auth.context import (
+    _clear_principal,
+    _current_principal,
+    seed_principal,
+)
+
+
+# MCP methods that bypass auth (handshake + lifecycle)
+_AUTH_BYPASS_METHODS = frozenset({
+    "initialize",
+    "notifications/initialized",
+    "ping",
+    "notifications/cancelled",
+    "notifications/progress",
+})
 
 
 class BearerTokenMiddleware(Middleware):
@@ -214,38 +244,69 @@ class BearerTokenMiddleware(Middleware):
     ) -> None:
         self._config = auth_config
         self._providers = providers
+        # I-4 fix: counter store. Middleware increments on every verification.
+        # Sibling servers wire this to the same AuthHealth surface.
+        self._verifications_total = 0
+        self._errors_total = 0
 
     async def on_request(
         self,
         context: MiddlewareContext,
         call_next: Any,
     ) -> Any:
-        # 1. Idempotency: test injection or internal hop already set a Principal
+        # I-1 fix: skip auth on MCP handshake and notifications
+        if context.method in _AUTH_BYPASS_METHODS:
+            return await call_next(context)
+
+        # Idempotency: test injection or internal hop already set a Principal
         if (existing := _current_principal()) is not None:
             return await call_next(context)
 
-        # 2. Read Authorization header from ASGI scope
-        token = _extract_bearer_token(context)
+        # B1 fix: read headers via FastMCP's get_http_headers() (NOT
+        # MiddlewareContext.scope — that attribute does not exist per
+        # FastMCP source verification at middleware.py:47-61).
+        try:
+            headers = get_http_headers() or {}
+        except Exception:
+            # get_http_headers() raises in non-HTTP transports (stdio).
+            # In that case, Bearer auth is meaningless — pass through.
+            return await call_next(context)
+
+        # 2. Read Authorization header from headers
+        token = _extract_bearer_token(headers)
         if token is None:
-            # Anonymous path; defer to per-tool allow_anonymous
             return await call_next(context)
 
         # 3. Determine provider by issuer hint or default_provider
         provider = self._select_provider(token)
 
-        # 4. Verify token
-        principal = await provider.verify_token(token, expected_audience=self._config.service_name)
+        # 4. Verify token. B4 fix: catch AuthError only; programming errors
+        # propagate. B2 fix: raise AuthError (not HTTPException).
+        try:
+            principal = await provider.verify_token(
+                token, expected_audience=self._config.service_name
+            )
+        except AuthError:
+            self._errors_total += 1
+            raise  # error_handling middleware translates to JSON-RPC -32001
+
+        self._verifications_total += 1
 
         # 5. Stash Principal on context
-        _set_principal(principal)
+        token_handle = seed_principal(principal)
         try:
             return await call_next(context)
         finally:
             _clear_principal()
 
 
-def _extract_bearer_token(context: MiddlewareContext) -> str | None:
-    """Extract "Authorization: Bearer <token>" from the ASGI scope."""
+def _extract_bearer_token(headers: dict[str, str]) -> str | None:
+    """Extract "Authorization: Bearer <token>" from a headers dict.
+
+    B1 fix: takes a dict[str, str] (from get_http_headers()), not a MiddlewareContext.
+    Reject tokens longer than 8192 bytes to prevent memory exhaustion via huge
+    Authorization headers.
+    """
     ...
 
 
@@ -312,12 +373,25 @@ def require_auth(
     permission: Permission = Permission.READ,
     *,
     allow_anonymous: bool = False,
-    integrate_with_readyz: bool = True,
+    audit_logger: AuditLogger | None = None,
 ) -> Callable:
     """Decorator: enforce permission on the calling tool.
 
     Reads Principal from request-scoped Context.
     No kwarg transport — clean break with prior convention.
+
+    Error semantics (B10 fix):
+    - No Principal + allow_anonymous=False → AuthenticationRequiredError (401)
+    - No Principal + allow_anonymous=True → proceed
+    - Principal lacks permission → InsufficientPermissionError (403)
+
+    B10 fix: emits AuthAuditEvent (not a new AuditEvent class). The
+    existing AuthAuditEvent fields are timestamp, service, caller_service,
+    caller_id, action, result, reason. We map our concerns onto these.
+
+    I-2 fix: integrate_with_readyz parameter dropped. The /readyz aggregation
+    semantics are deferred to a follow-up spec when there's an actual
+    aggregation point.
     """
     ...
 ```
@@ -380,8 +454,8 @@ The shape mirrors wiring-discipline §3: `entities_count` (verifications served)
 1. HTTP `GET /health` hits `register_http_health_route`.
 2. Each `IdentityProvider.health()` is called (in parallel via `asyncio.gather`).
 3. `AuthHealth.as_components()` is appended to the `components` array.
-4. Server returns 200 + `{"status": "ok", "service": ..., "version": ..., "components": [...]}`.
-5. If any provider reports `state != "healthy"`, server returns 503 (per wiring discipline §1).
+4. Server returns **200** + `{"status": "ok"|"degraded", "service": ..., "version": ..., "components": [...]}`.
+5. If any provider reports `state != "healthy"`, `status` is `"degraded"` (B3 + I-7 fix: route stays 200; the 503 semantic is reserved for `/readyz`).
 
 ## Error Handling
 
@@ -391,12 +465,15 @@ The shape mirrors wiring-discipline §3: `entities_count` (verifications served)
 | Malformed token (not a JWT, wrong format) | `TokenInvalidError` | 401 |
 | Expired token | `TokenExpiredError` | 401 + `WWW-Authenticate: Bearer error="invalid_token"` |
 | Wrong audience | `AudienceMismatchError` | 401 |
-| Unknown issuer (not in `trusted_issuers`) | `UnknownIssuerError` | 401 |
+| Unknown issuer (not in `trusted_issuers`, B6 default-deny) | `UnknownIssuerError` | 401 |
 | IdP unreachable | `ProviderUnavailableError` | 503 + `Retry-After` |
 | JWKS rotation failure | Cached JWKS continues; alarm via `AuthHealth` | 200 with degraded component |
-| Missing `AuthConfig` when `enabled=True` | Startup failure | n/a (fail-loud) |
-| Permission denied at tool | `InsufficientPermissionError` | 403 |
+| Missing `AuthConfig` when `enabled=True` | Startup failure (B6: `validate_auth_config()` fails loud) | n/a (fail-loud) |
+| Trusted-issuers empty + `enabled=True` | Startup failure (B6 default-deny) | n/a (fail-loud) |
+| Tool called without Principal, `allow_anonymous=False` | `AuthenticationRequiredError` (B10 fix) | 401 |
+| Tool called with Principal, lacks permission | `InsufficientPermissionError` | 403 |
 | Test injection (via `seed_principal`) | Middleware skips verification | 200 |
+| MCP handshake (`initialize`, `notifications/initialized`, `ping`) | Bypass auth (I-1 fix) | n/a |
 
 ## Implementation
 
@@ -406,22 +483,36 @@ This is a single-phase implementation. No Phase 1 / Phase 2 split; all work land
 
 1. **Add `Principal` model** to `mcp_common/auth/principal.py`.
 2. **Add `IdentityProvider` Protocol** to `mcp_common/auth/provider.py`.
-3. **Extract `JWTIdentityProvider`** from `mcp_common/auth/core.py` (rename existing
-   `verify_token` to `JWTIdentityProvider.verify_token`).
-4. **Add `AnthropicIdentityProvider`** to `mcp_common/auth/providers/anthropic.py`.
-   Implements PKCE + refresh tokens + `offline_access` per Anthropic's documented OAuth flow.
-5. **Add `BearerTokenMiddleware`** to `mcp_common/auth/middleware.py`. Use `contextvars` for
-   request-scoped Principal storage.
+3. **Extract `JWTIdentityProvider`** from `mcp_common/auth/core.py`. B5 fix: `jwt.decode`
+   pins `algorithms=["HS256"]` and requires `exp`/`iat`/`iss`/`aud` claims. B9 fix:
+   rename `TokenPayload.raw` to `raw_claims`.
+4. **Add `AnthropicIdentityProvider` (5a)** to `mcp_common/auth/providers/anthropic.py`.
+   B7 fix: `_extract_permissions` returns `[]` on empty scope (default-deny). I-3 fix:
+   enforce `trusted_issuers`. PKCE + refresh tokens + `offline_access` are deferred
+   to Task 5b (follow-up spec).
+5. **Add `BearerTokenMiddleware`** to `mcp_common/auth/middleware.py`. B1 fix: uses
+   `get_http_headers()` from `fastmcp.server.dependencies` (NOT `MiddlewareContext.scope`).
+   B2 fix: raises `AuthError` (not `HTTPException`). B4 fix: catches `AuthError` only.
+   I-1 fix: skips MCP handshake methods.
 6. **Add `seed_principal(principal)` and `_current_principal()` helpers** to
    `mcp_common/auth/context.py`.
-7. **Extend `@require_auth`** with `allow_anonymous` and `integrate_with_readyz` parameters.
-   Reads from Context. No kwarg transport.
-8. **Replace `KNOWN_SERVICES`** with per-server `trusted_issuers` check.
-9. **Integrate `AuthConfig` into `OneiricMCPConfig`** as a typed field. Update
-   `mcp_common/cli/settings.py` to support `auth` block in YAML.
-10. **Define `AuthHealth` and `ProviderHealth`** in `mcp_common/auth/health.py`.
-11. **Extend `register_http_health_route`** to include `AuthHealth` components in the
-    envelope (extend `extra_components` parameter shape).
+7. **Extend `@require_auth`** with `allow_anonymous` and `audit_logger` parameters.
+   I-2 fix: `integrate_with_readyz` parameter dropped. B10 fix: uses `AuthAuditEvent`
+   fields. B10 fix: distinguishes `AuthenticationRequiredError` (401) from
+   `InsufficientPermissionError` (403).
+8. **Replace `KNOWN_SERVICES`** with per-server `trusted_issuers` check. B6 fix:
+   default-deny semantics. `validate_auth_config()` startup helper fails loud.
+9. **Integrate `AuthConfig` into `MCPServerSettings`** as a typed field. B8 fix:
+   the integration is split into 8a (Pydantic conversion, BEFORE Task 6) + 8b
+   (new fields, AFTER). Update `mcp_common/cli/settings.py` to support `auth` block
+   in YAML.
+10. **Define `AuthHealth` and `ProviderHealth`** in `mcp_common/auth/health.py`. I-4
+    fix: include counter store references so `verifications_total` and
+    `errors_total` actually increment.
+11. **Extend `register_http_health_route`** to include `AuthHealth` components via
+    a `auth_health_provider: Callable[[], AuthHealth | None]` parameter. B3 fix:
+    `is_degraded` is recomputed per request (not captured at registration). I-7
+    fix: route stays 200; `status: "degraded"` in body.
 12. **Add JWKS rotation logic** to providers that need it (Anthropic). Cached-fallback
     semantics on rotation failure.
 13. **Wire sibling servers** (scapy-mcp, archive-org-mcp, medium-mcp) to construct
@@ -502,13 +593,62 @@ This is a single-phase implementation. No Phase 1 / Phase 2 split; all work land
   (`entities_count`, `last_updated_timestamp`, `errors_total`, `cycles_total`) is the
   model `AuthHealth` implements.
 - `mcp_common/auth/exceptions.py` — existing exception hierarchy is reused; new addition
-  `ProviderUnavailableError` for IdP reachability failures.
-- `mcp_common/cli/settings.py` — `OneiricMCPConfig` integration point.
+  `ProviderUnavailableError` for IdP reachability failures. New addition
+  `AuthenticationRequiredError` for the 401 case (no Principal + `allow_anonymous=False`).
+- `mcp_common/cli/settings.py` — `MCPServerSettings` integration point (the
+  `OneiricMCPConfig` referenced in earlier drafts was an early working title
+  that never landed; the actual class is `MCPServerSettings`).
 
 ## Open Questions
 
-None. All architectural decisions resolved during the 2026-09-06 brainstorm.
+None at the architectural level. Implementation-plan concerns (not design
+decisions) include: exact JWKS cache TTL, exact PKCE code-verifier generation
+strategy (deferred to Task 5b follow-up spec), and Oneiric settings integration
+deferred until `MCPServerSettings` is migrated into Oneiric.
 
-The remaining details (e.g., exact JWKS cache TTL, Anthropic OAuth endpoint URLs, exact
-PKCE code-verifier generation strategy) are implementation-plan concerns, not design
-decisions.
+## Spec amendments (post 2026-09-07 multi-agent review)
+
+This spec was reviewed by 7 subagents (5 domain-relevant + 2 orthogonal). The
+review report is at `docs/superpowers/plans/2026-09-07-mcp-common-auth-primitives-multi-agent-review.md`.
+The following amendments were applied based on the review's 12 distinct BLOCKERs
+and 22 distinct cross-cutting IMPORTANTs:
+
+| ID | Change | Source |
+|---|---|---|
+| B1 | `BearerTokenMiddleware` uses `get_http_headers()` from `fastmcp.server.dependencies` (not `MiddlewareContext.scope` — that attribute doesn't exist) | mcp-integration-expert |
+| B2 | Middleware raises `AuthError` (not `HTTPException`); sibling's `error_handling` middleware translates to JSON-RPC `-32001` with `WWW-Authenticate: Bearer` data | mcp-integration-expert |
+| B3 | `is_degraded` recomputed per request via `auth_health_provider` callable (not captured at registration) | python-pro, architecture, mcp-integration, audit (4 reviewers) |
+| B4 | Middleware catches `AuthError` only (no bare `except Exception`) | python-pro, auth cross-cutting |
+| B5 | `jwt.decode` pins `algorithms=["HS256"]`; required claims `exp`/`iat`/`iss`/`aud` | api-security |
+| B6 | `trusted_issuers` default-deny; `validate_auth_config()` startup check fails loud | api-security, auth |
+| B7 | `_extract_permissions` returns `[]` on empty scope; exact-match scope checking (no substring `in`) | api-security, architecture |
+| B8 | Task 8 split into 8a (Pydantic, BEFORE Task 6) + 8b (new fields, AFTER) | architecture |
+| B9 | `TokenPayload.raw` renamed to `raw_claims`; no `hasattr` guard | architecture, api-security |
+| B10 | `@require_auth` uses `AuthAuditEvent` fields (not a new `AuditEvent`); distinguishes `AuthenticationRequiredError` (401) from `InsufficientPermissionError` (403) | architecture, auth |
+| B11 | Task 5 split into 5a (JWKS verification only) + 5b (OAuth flow, follow-up spec) | auth, documentation |
+| B12 | Integration Contract blocks added for all 4 phases in the implementation plan | audit |
+| I-1 | `BearerTokenMiddleware` skips `context.method in {"initialize", "notifications/initialized", "ping", "notifications/cancelled", "notifications/progress"}` | mcp-integration |
+| I-2 | `integrate_with_readyz` parameter dropped from `@require_auth` | auth, audit, mcp-integration (3 reviewers) |
+| I-3 | `AnthropicIdentityProvider.verify_token` enforces `trusted_issuers` (mirror JWT) | audit, auth |
+| I-4 | `BearerTokenMiddleware` carries `_verifications_total` and `_errors_total` counter properties; sibling servers wire these to `AuthHealth.from_providers(...)` | audit |
+| I-5 | Task 14 sibling integration tests use concrete assertions (401 on unauthenticated; tool body runs on valid token) — not the registration-illusion pattern | audit, architecture |
+| I-7 | `/health` keeps 200-only; `status: "degraded"` in body. 503 reserved for `/readyz` (future work) | mcp-integration, audit |
+| I-8 | HS256 limitation noted; JWKS support is a future enhancement | auth |
+| I-9 | Embedded `auth-design.md` example guards `auth_config.secret` before `.get_secret_value()` | documentation |
+| I-10 | Task 16 requires parallel reviewer (architecture-council or mcp-integration-expert) before ADR status bump | audit |
+| I-1 (drift) | `OneiricMCPConfig` → `MCPServerSettings` throughout (the spec's earlier draft used `OneiricMCPConfig`; the actual class is `MCPServerSettings` at `mcp_common/cli/settings.py:15`) | audit, documentation |
+
+**Spec-side amendments applied in this commit:**
+
+- Goals list updated for B1, B6, B7, B8, B10, B11, I-2, I-7, I-10.
+- Non-Goals list gained the explicit "OAuth flow, PKCE, refresh tokens, `offline_access`" exclusion (deferred to 5b).
+- Design Decisions table updated for #1, #2, #3, #5, #8, #10.
+- BearerTokenMiddleware code block updated for B1, B2, B4, I-1, I-4.
+- `@require_auth` code block updated for I-2, B10.
+- Data Flow → `/health` aggregation updated for B3, I-7.
+- Error Handling table updated for B6, B10.
+- Tasks list updated for B1, B2, B3, B4, B5, B6, B7, B8, B9, B10, B11, I-1, I-2, I-3, I-4, I-7.
+- Cross-references updated for `AuthenticationRequiredError` and `MCPServerSettings`.
+
+The plan (`docs/superpowers/plans/2026-09-07-mcp-common-auth-primitives.md`) was
+revised simultaneously (commit `682bbb7f`); spec and plan now agree.
