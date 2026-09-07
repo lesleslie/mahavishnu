@@ -1,12 +1,20 @@
 ---
 status: complete
-role: decision
+role: canonical
 date: 2026-09-06
-last_reviewed: 2026-09-06
+last_reviewed: 2026-09-07
+reviewed_by: "i10-parallel-reviewer (architecture-council lens) 2026-09-07"
 superseded_by: null
 blocks_on: ["docs/superpowers/specs/2026-08-31-flowscape-design.md"]
 decision_date: 2026-09-06
 topic: mcp-enrichment-posture
+rev: 4
+rev_note: "Closed mcp-common authentication primitives v4+ deferred item (item 3) — auth surface now designed and shipped in mcp-common 0.25.0 (2026-09-07)."
+related_artefacts:
+  - "docs/superpowers/specs/2026-09-06-mcp-common-auth-primitives-design.md (canonical spec, 2026-09-06)"
+  - "docs/superpowers/plans/2026-09-07-mcp-common-auth-primitives.md (implementation plan, 17 tasks closed)"
+  - "mcp-common/mcp_common/auth/{principal,provider,context,middleware,health,config,identity}.py"
+  - "docs/legal/gdpr-posture.md (added §10 in this revision)"
 related:
   - "docs/superpowers/plans/2026-08-31-flowscape.md"
   - "docs/superpowers/specs/2026-08-31-flowscape-design.md"
@@ -233,7 +241,7 @@ Data-driven thresholds (closes L5 BLOCKER B-Op2; supersedes the v1 operator-judg
 
 ## Open Questions
 
-1. **Multi-host scapy-mcp**: what happens when scapy-mcp is on a remote host? Currently `scapy_mcp_host = localhost` is the default. Remote requires explicit user opt-in AND mcp-common's authentication primitives (not yet designed). Closely tied to v3 GDPR reframe (remote hosting changes the controller/processor analysis).
+1. **Multi-host scapy-mcp**: what happens when scapy-mcp is on a remote host? Currently `scapy_mcp_host = localhost` is the default. Remote requires explicit user opt-in AND mcp-common's authentication primitives — now designed and shipped in mcp-common 0.25.0 (2026-09-07, see `docs/superpowers/specs/2026-09-06-mcp-common-auth-primitives-design.md` and `docs/superpowers/plans/2026-09-07-mcp-common-auth-primitives.md`). Remote-host deployment now flows through `BearerTokenMiddleware` + `JWTIdentityProvider` + `AnthropicIdentityProvider` (JWKS-only) with per-request trusted-issuers default-deny enforcement. v4 revision (this one) closes the auth-primitive gate.
 2. **Bidirectional enrichment**: should Flowscape expose its own heuristics back to scapy-mcp as MCP tools (server-mode for THIS specific surface)? Out of scope for this ADR; revisit if unifi-mcp or similar wants Flowscape's heuristic events.
 3. **Wire-format regression detection** (L5 BLOCKER B-Op6, partial close): the runtime wire-format guard is specified (regex-based field-name filter over `enrich_batch()` return values; emit WARN + increment `flowscape.enrichment.wire_format_violation_total` on hit) but the implementation is deferred to v3 alongside the proto type definitions (`GraphEdge`, `HeuristicEvent`). Without those types, the merge step itself is a phantom — see §Deferred to v3 below.
 
@@ -262,7 +270,7 @@ The following items remain open after the v3 revision. They are tracked in `docs
 
 - **L5 B-Op6 wire-format guard (runtime implementation)**: the regex-based field-name filter over `enrich_batch()` return values is specified in §"Proto contracts" above but the runtime implementation lands with Flowscape Phase 0b (proto codegen). When `proto/flowscape.proto` exists, the runtime guard emits `flowscape.enrichment.wire_format_violation_total` on any hook return value containing a field name matching `(payload|body|raw|bytes_data)` excluding `payload_sha256_prefix`.
 - **L1 B4 wiring-discipline policy amendment for consumer-side aggregation**: the policy at `.claude/decisions/mcp-backend-wiring-discipline.md` is scoped to MCP servers only. Consumer-side aggregation (Flowscape calling scapy-mcp) needs an explicit policy amendment to extend coverage. Filed as a `.claude/decisions/` follow-up, not an ADR edit.
-- **Remote-host scapy-mcp authorization**: when mcp-common ships authentication primitives (currently not designed), the GDPR posture document §"Connection to mcp-common Authentication Primitives" updates to assume authenticated transport; until then, same-host deployment is the only endorsed posture.
+- **Remote-host scapy-mcp authorization**: mcp-common now ships authentication primitives (`mcp_common.auth.BearerTokenMiddleware` + `JWTIdentityProvider` + `AnthropicIdentityProvider`). The GDPR posture document §10 (added in this v4 revision) describes the authenticated transport posture. Same-host remains the only endorsed deployment for pre-1.0 internal use; remote-host deployment is now technically possible but requires the v1.x-public-release gate (Article 35 DPIA + consent-gate extension).
 - **v1.x-public-release prerequisites**: when Flowscape ships a v1.0 public release, the following must complete before going live — formal Article 35 DPIA (per gdpr-posture.md §7), consent-gate extension to enrichment activation (per gdpr-posture.md §5.3), and a v3-or-higher ADR 0016 re-review of the controller/processor analysis.
 
 ## Proto contracts (v3 close of CB-5)
@@ -381,6 +389,10 @@ class TopNChurnDetail(BaseModel):
   - **CB-4 (phantom APIs in spec)**: spec edits landed. Replaced `oneiric.config.load_app_settings` with `from oneiric.core.config import load_settings`. Replaced `MCPServerSettings.model_config_section(...)` (6 occurrences) with explicit `BaseModel` inheritance. Added `BaseModel` inheritance to `BeaconingSettings`/`PortScanSettings`/`TopNChurnSettings` (which were plain classes — pre-existing bug, now fixed). Replaced `assert` in `LayoutSettings._check_bounds` with `if not ... raise ValueError(...)` per crackerjack B101 production rule. Added new `EnrichmentSettings(BaseModel)` per ADR 0016 v2.
   - **CB-5 (phantom proto types)**: added §"Proto contracts" specifying `GraphEdge`, `GraphEdgeEnrichment`, `HeuristicEvent`, `BeaconingDetail`, `PortScanDetail`, `TopNChurnDetail` as `BaseModel` with `extra="forbid"`. Wire-format invariant preserved (only `payload_sha256_prefix` is payload-derived; new `enrichment` field is opt-in). Round-trip property test specified. Phase 0b proto codegen lands the proto schema; field-for-field parity is required.
   - **Four items remain open, deferred to v4+**: (1) runtime wire-format guard implementation (L5 B-Op6 — needs proto types which now exist), (2) `.claude/decisions/` policy amendment for consumer-side aggregation (L1 B4), (3) mcp-common authentication primitives when designed (ADR 0016 v2 §"Open Questions" #1), (4) v1.x-public-release prerequisites (formal Article 35 DPIA, consent-gate extension, ADR 0016 re-review).
+- 2026-09-07 — **v4 revision**. Closes deferred item (3) — mcp-common authentication primitives now designed and shipped.
+  - **Closed deferred item (3) — mcp-common authentication primitives**: spec at `docs/superpowers/specs/2026-09-06-mcp-common-auth-primitives-design.md` (canonical) and implementation plan at `docs/superpowers/plans/2026-09-07-mcp-common-auth-primitives.md` (17 tasks, all closed) shipped `mcp_common.auth.*` surface in mcp-common 0.25.0 (2026-09-07). Components: `Principal` model, `IdentityProvider` Protocol, `JWTIdentityProvider` (HS256, algorithms pinned, default-deny issuers, leeway=30), `AnthropicIdentityProvider` (JWKS verification only — OAuth flow deferred to Task 5b follow-up spec), `BearerTokenMiddleware` (FastMCP, uses `get_http_headers()`, bypass set for MCP handshake methods), `AuthErrorTranslationMiddleware` (JSON-RPC `-32001`), `@require_auth` decorator (reads Principal from request-scoped Context), `AuthConfig` Pydantic v2 surface (with `trusted_issuers`, `identity_providers`, `default_provider`, `allow_anonymous_paths`), `AuthHealth` Pydantic model (4-signal wiring-discipline shape, R2-2 redaction default). Sibling servers (scapy-mcp, archive-org-mcp, medium-mcp) wired via `Runtime._build_auth_middleware()` + `_build_auth_health_provider()`. `gdpr-posture.md` §10 added in this revision cycle to document Article 32 alignment.
+  - **Open Question #1 (Multi-host scapy-mcp)**: updated to reflect that the auth gate is now open — remote-host deployment is technically possible (bearer + trusted-issuers), but the v1.x-public-release gate (Article 35 DPIA + consent-gate extension, item 4) remains the policy-level barrier for shipping to non-internal users.
+  - **Three items remain open, deferred to v5+**: (1) runtime wire-format guard implementation (L5 B-Op6), (2) `.claude/decisions/` policy amendment for consumer-side aggregation (L1 B4), (3) v1.x-public-release prerequisites (formal Article 35 DPIA, consent-gate extension, ADR 0016 re-review).
 
 ---
 
