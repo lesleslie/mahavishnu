@@ -294,10 +294,16 @@ class BearerTokenMiddleware(Middleware):
 
         # 5. Stash Principal on context
         token_handle = seed_principal(principal)
+        # M-R2-4 spec note: BearerTokenMiddleware also calls
+        # `fastmcp_context.set_state("principal", principal)` for FastMCP-native
+        # consumers. contextvars remains the source of truth for @require_auth;
+        # set_state is a parallel surface for any FastMCP tool that reads the
+        # FastMCP Context object directly. Both must be reset in `finally`
+        # (token_handle.var.reset + fmcp_ctx.reset_state(token)).
         try:
             return await call_next(context)
         finally:
-            _clear_principal()
+            token_handle.var.reset(token_handle)
 
 
 def _extract_bearer_token(headers: dict[str, str]) -> str | None:
