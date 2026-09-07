@@ -918,7 +918,12 @@ class AnthropicIdentityProvider:
             jwks_url, cache_keys=True, lifespan=jwks_cache_seconds
         )
         self._last_error: str | None = None
-        self._last_state: ProviderHealth.__annotations__["state"] = "healthy"
+        # LOW-5 fix (Task 5): import ProviderState directly instead of
+        # reaching into ProviderHealth.__annotations__["state"] at runtime.
+        # Mirrors the Task 12 fix so both providers use the same type for
+        # the _last_state field.
+        from mcp_common.auth.provider import ProviderState
+        self._last_state: ProviderState = "healthy"
 
     async def verify_token(
         self,
@@ -1246,7 +1251,6 @@ from fastmcp.server.middleware import Middleware, MiddlewareContext
 from mcp_common.auth.audit import AuditLogger
 from mcp_common.auth.config import AuthConfig
 from mcp_common.auth.context import (
-    _clear_principal,
     _current_principal,
     seed_principal,
 )

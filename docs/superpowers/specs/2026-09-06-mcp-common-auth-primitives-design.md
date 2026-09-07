@@ -5,7 +5,7 @@ status: proposed
 author: brainstormed 2026-09-06
 blocks_on:
   - mcp-common repo (foundation library; this spec designs modules there)
-  - Oneiric settings surface (AuthConfig integrates into OneiricMCPConfig)
+  - MCPServerSettings surface (AuthConfig integrates into `MCPServerSettings` at `mcp_common/cli/settings.py:15`)
 blocks:
   - ADR 0016 v3 v4+ deferred items (this spec closes the "mcp-common authentication primitives" item)
   - Flowscape v1 remote-host scapy-mcp (this spec unblocks that path)
@@ -225,13 +225,17 @@ from mcp_common.auth.context import (
 )
 
 
-# MCP methods that bypass auth (handshake + lifecycle)
+# MCP methods that bypass auth (handshake + lifecycle).
+# M-R2-2 fix: `notifications/progress` is server→client per the MCP spec and
+# never reaches middleware as an inbound message, so it is intentionally
+# excluded from the bypass set. The bypass covers the MCP handshake
+# (`initialize` + client→server `notifications/initialized`), the `ping`
+# keepalive, and client→server `notifications/cancelled`.
 _AUTH_BYPASS_METHODS = frozenset({
     "initialize",
     "notifications/initialized",
     "ping",
     "notifications/cancelled",
-    "notifications/progress",
 })
 
 
@@ -633,7 +637,7 @@ and 22 distinct cross-cutting IMPORTANTs:
 | B10 | `@require_auth` uses `AuthAuditEvent` fields (not a new `AuditEvent`); distinguishes `AuthenticationRequiredError` (401) from `InsufficientPermissionError` (403) | architecture, auth |
 | B11 | Task 5 split into 5a (JWKS verification only) + 5b (OAuth flow, follow-up spec) | auth, documentation |
 | B12 | Integration Contract blocks added for all 4 phases in the implementation plan | audit |
-| I-1 | `BearerTokenMiddleware` skips `context.method in {"initialize", "notifications/initialized", "ping", "notifications/cancelled", "notifications/progress"}` | mcp-integration |
+| I-1 | `BearerTokenMiddleware` skips `context.method in {"initialize", "notifications/initialized", "ping", "notifications/cancelled"}` (`notifications/progress` removed per M-R2-2 — server→client per MCP spec, never reaches middleware as inbound) | mcp-integration |
 | I-2 | `integrate_with_readyz` parameter dropped from `@require_auth` | auth, audit, mcp-integration (3 reviewers) |
 | I-3 | `AnthropicIdentityProvider.verify_token` enforces `trusted_issuers` (mirror JWT) | audit, auth |
 | I-4 | `BearerTokenMiddleware` carries `_verifications_total` and `_errors_total` counter properties; sibling servers wire these to `AuthHealth.from_providers(...)` | audit |
