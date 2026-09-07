@@ -33,6 +33,20 @@ Use these rules before writing or modifying Python code so it passes the main qu
 - Prefer explicit errors over assertions.
 - Remove unused imports and dead code immediately.
 
+## Traceable Spec IDs (REQ-NNN) — D2 wire-up discipline
+
+Plans declare IDs in `## 4.5 Requirements` (YAML list under `requirements:`).
+Code references them via one of:
+
+- **Inline marker** (preferred): `# req: REQ-001` (or comma-separated: `# req: REQ-001, REQ-002`)
+- **Docstring marker**: `# Implements: REQ-001` (used for class/function headers)
+- **Test marker**: `@pytest.mark.req(["REQ-001"])` — registered in `pyproject.toml [tool.pytest] markers`
+
+Audit: `python scripts/audit_requirements.py [--json]`. Exit codes: 0 clean / 1
+orphans or phantoms / 2 missing root / 3 internal error. CI: weekly advisory
+run in `.github/workflows/audit-requirements-weekly.yml` (hard gate promoted
+after 30 days per the traceable-specs plan).
+
 ## Type checker specifics (ty, since Phase I)
 
 Crackerjack uses **ty** as the default type checker (replaces zuban).

@@ -52,6 +52,22 @@ observability:
 #   crow_http_host: "127.0.0.1"
 #   crow_http_port: 8675
 
+# --- Goose Terminal Adapter (D3) ---
+# Block's goose serve over HTTP. Operator must run:
+#   goose serve --port 8694 --auth-token "$GOOSE_SECRET"
+# in a separate shell BEFORE starting mahavishnu with adapter_preference=goose.
+# goose_enabled defaults false (opt-in); when true, goose_secret_key is required.
+# The bearer is a SecretStr — read from env var MAHAVISHNU_TERMINAL__GOOSE_SECRET_KEY
+# or set the goose_secret_key value below (gitignored local.yaml only — never commit).
+# See: docs/plans/2026-09-07-goose-terminal-adapter.md
+# terminal:
+#   adapter_preference: "goose"
+#   goose_enabled: true   # OPT IN to enable the goose adapter
+#   goose_http_host: "127.0.0.1"
+#   goose_http_port: 8694
+#   goose_secret_key: ${MAHAVISHNU_TERMINAL__GOOSE_SECRET_KEY}  # OR set literal — never commit
+#   goose_poll_interval: 0.5
+
 # --- OpenSearch Observability Backend ---
 # Auto-detected: the integration tries to connect at startup and falls back to
 # in-memory storage if OpenSearch is unreachable. No dev/prod decision needed —

@@ -466,7 +466,16 @@ class TestPoolManager:
         config = PoolConfig(name="test", pool_type="mahavishnu")
         mock_pool = MockPool(config, "test_pool")
 
-        with patch("mahavishnu.pools.manager.MahavishnuPool", return_value=mock_pool):
+        # D0 refactor: dispatch goes through the pool registry, so we patch the
+        # registry entry rather than the class symbol. The factory function
+        # stored in the registry captures its references at registration time,
+        # so patching the module attribute doesn't affect the stored callable.
+        from mahavishnu.pools import _registry
+
+        with patch.dict(
+            _registry._POOL_FACTORIES,
+            {"mahavishnu": lambda *a, **kw: mock_pool},
+        ):
             pool_id = await pool_manager.spawn_pool("mahavishnu", config)
 
         assert pool_id == "test_pool"

@@ -1539,10 +1539,19 @@ def pool_spawn(
         # The order matters: cheap string comparisons before any I/O.
         # See mahavishnu/pools/manager.py for the runtime enforcement
         # in PoolConfig and PoolManager.spawn_pool().
-        if pool_type not in {"mahavishnu", "session_buddy", "runpod"}:
+        # D0 refactor: whitelist is registry-driven. The CLI accepts both the canonical
+        # hyphen form ("session-buddy") and the legacy underscore form ("session_buddy")
+        # for backward compatibility; the registry uses canonical hyphens.
+        from mahavishnu.pools._registry import canonicalize_pool_type, list_pool_types
+
+        canonical_pool_type = canonicalize_pool_type(pool_type)
+        if canonical_pool_type not in list_pool_types():
             typer.echo(f"ERROR: Unsupported pool type: {pool_type!r}", err=True)
-            typer.echo("Supported types: mahavishnu, session_buddy, runpod", err=True)
+            typer.echo(f"Supported types: {', '.join(list_pool_types())}", err=True)
             raise typer.Exit(code=1)
+        # Don't reassign pool_type (it's a closure variable; rebinding would
+        # make it locally unbound for the earlier canonicalize_pool_type read).
+        # Use the canonicalized form below.
         if min_workers < 1 or max_workers > 100:
             typer.echo("ERROR: Worker count must be 1 <= min <= max <= 100", err=True)
             raise typer.Exit(code=1)
@@ -1594,7 +1603,7 @@ def pool_spawn(
         # Create pool config
         config = PoolConfig(
             name=name,
-            pool_type=pool_type,
+            pool_type=canonical_pool_type,
             min_workers=min_workers,
             max_workers=max_workers,
             worker_type=worker_type,
@@ -1602,8 +1611,8 @@ def pool_spawn(
 
         # Spawn pool
         try:
-            pool_id = await pool_mgr.spawn_pool(pool_type, config)
-            typer.echo(f"✅ Spawned {pool_type} pool: {pool_id}")
+            pool_id = await pool_mgr.spawn_pool(canonical_pool_type, config)
+            typer.echo(f"✅ Spawned {canonical_pool_type} pool: {pool_id}")
             typer.echo(f"   Name: {name}")
             typer.echo(f"   Workers: {min_workers}-{max_workers}")
             typer.echo(f"   Worker type: {worker_type}")

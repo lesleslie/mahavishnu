@@ -375,3 +375,21 @@ class SessionBuddyPool(BasePool):
             await self._mcp_client.aclose()
             self._status = PoolStatus.STOPPED
             logger.info(f"SessionBuddyPool {self.pool_id} stopped")
+
+
+# Registry integration: SessionBuddyPool reads session_buddy_url from config.get()
+# (matching the original manager dispatch). It does not need terminal_manager or
+# session_buddy_client kwargs — they are ignored if forwarded.
+def _build_session_buddy_pool(
+    config: PoolConfig,
+    **_unused_kwargs: Any,
+) -> SessionBuddyPool:
+    return SessionBuddyPool(
+        config=config,
+        session_buddy_url=config.get("session_buddy_url", "http://localhost:8678/mcp"),
+    )
+
+
+from ._registry import register_pool_type
+
+register_pool_type("session-buddy", _build_session_buddy_pool)

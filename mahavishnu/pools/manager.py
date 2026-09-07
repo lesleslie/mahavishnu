@@ -15,11 +15,16 @@ from monitoring.metrics import pool_workers_active
 
 from ..core.errors import RateLimitError
 from ..mcp.protocols.message_bus import MessageBus
-from .mahavishnu_pool import MahavishnuPool
+from ._registry import get_pool_factory, list_pool_types
+
+# These imports trigger the pool-type registration side effect in each module
+# (register_pool_type at module load). The dispatch itself uses the registry
+# (get_pool_factory) rather than these classes directly — see spawn_pool.
+from .mahavishnu_pool import MahavishnuPool  # noqa: F401  — registry side-effect
 from .peer_routing import DEFAULT_ACL_PROVIDER, PeerRouteResolver
 from .routing_fitness import RoutingFitnessReader
-from .runpod_pool import RunPodPool
-from .session_buddy_pool import SessionBuddyPool
+from .runpod_pool import RunPodPool  # noqa: F401  — registry side-effect
+from .session_buddy_pool import SessionBuddyPool  # noqa: F401  — registry side-effect
 
 if TYPE_CHECKING:
     from .base import BasePool
@@ -167,6 +172,7 @@ class PoolManager:
         # Heap stores tuples of (worker_count, pool_id) for efficient min lookup
         self._worker_count_heap: list[tuple[int, str]] = []
 
+        # req: REQ-ORC-001, REQ-ORC-004
         # Phase 4: Routing fitness reader — reads signals from Dhara
         self._routing_fitness_reader = RoutingFitnessReader(dhara_state=dhara_state)
 
@@ -279,10 +285,11 @@ class PoolManager:
             if pool is not None:
                 worker_counts.setdefault(pool.config.pool_type, 0)
 
-        known_types = {"mahavishnu", "session-buddy", "runpod"} | set(worker_counts.keys())
+        known_types = set(list_pool_types()) | set(worker_counts.keys())
         for pool_type in known_types:
             pool_workers_active.labels(pool_type=pool_type).set(worker_counts.get(pool_type, 0))
 
+    # req: REQ-ORC-001, REQ-ORC-002, REQ-ORC-003, REQ-ORC-005
     async def spawn_pool(
         self,
         pool_type: str,
@@ -315,21 +322,22 @@ class PoolManager:
         logger.info(f"Spawning {pool_type} pool: {config.name}")
 
         try:
-            if pool_type == "mahavishnu":
-                pool = MahavishnuPool(
-                    config=config,
-                    terminal_manager=self.terminal_manager,
-                    session_buddy_client=self.session_buddy_client,
-                )
-            elif pool_type == "session-buddy":
-                pool = SessionBuddyPool(
-                    config=config,
-                    session_buddy_url=config.get("session_buddy_url", "http://localhost:8678/mcp"),
-                )
-            elif pool_type == "runpod":
-                pool = RunPodPool(config=config)
-            else:
-                raise ValueError(f"Unknown pool type: {pool_type}")
+            # Dispatch via the registry (D0 refactor). Each pool module registers
+            # itself on import — adding a new pool type is now one
+            # ``register_pool_type`` call, not a three-place edit. Canonical keys
+            # are hyphen-separated ("session-buddy"); the CLI normalizes
+            # underscore input to hyphen form before reaching this code path.
+            try:
+                factory = get_pool_factory(pool_type)
+            except KeyError as exc:
+                # Convert registry KeyError to ValueError for the manager's
+                # public API (caller contract: ValueError on unknown type).
+                raise ValueError(str(exc)) from None
+            pool = factory(
+                config=config,
+                terminal_manager=self.terminal_manager,
+                session_buddy_client=self.session_buddy_client,
+            )
 
             # Start the pool
             pool_id = await pool.start()

@@ -7,7 +7,7 @@ packages = ["mahavishnu"]
 
 [project]
 name = "mahavishnu"
-version = "0.21.0"
+version = "0.22.0"
 description = "Global orchestrator package for development workflows"
 authors = [
     {name = "Les Leslie", email = "les@wedgwoodwebworks.com"},
@@ -437,6 +437,7 @@ markers = [
     "chaos: Chaos and failure-injection tests",
     "requires_network: Tests requiring network access",
     "requires_auth: Tests requiring authentication credentials",
+    "req: Traceable spec ID marker. Carries a list of REQ-NNN IDs (D2 traceable specs).",
 ]
 timeout = "300"
 timeout_method = "thread"

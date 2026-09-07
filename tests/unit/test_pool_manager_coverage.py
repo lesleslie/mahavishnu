@@ -371,7 +371,10 @@ async def test_spawn_pool_mahavishnu_success() -> None:
     config = PoolConfig(name="local", pool_type="mahavishnu", min_workers=2, max_workers=5)
     pool = _make_pool("local", n_workers=2)
 
-    with patch("mahavishnu.pools.manager.MahavishnuPool", return_value=pool):
+    with patch.dict(
+        "mahavishnu.pools._registry._POOL_FACTORIES",
+        {"mahavishnu": lambda *a, **kw: pool},
+    ):
         pool_id = await mgr.spawn_pool("mahavishnu", config)
     assert pool_id == "local"
     assert pool_id in mgr._pools
@@ -392,11 +395,22 @@ async def test_spawn_pool_session_buddy() -> None:
         )
     config = PoolConfig(name="sb", pool_type="session-buddy", min_workers=1, max_workers=3)
     pool = _make_pool("sb", pool_type="session-buddy", n_workers=1)
-    with patch("mahavishnu.pools.manager.SessionBuddyPool", return_value=pool) as mcls:
+    # D0 refactor: the manager passes (config, terminal_manager, session_buddy_client)
+    # to the factory. The factory is responsible for reading session_buddy_url
+    # from config. Verify the pool received the URL correctly.
+    with patch.dict(
+        "mahavishnu.pools._registry._POOL_FACTORIES",
+        {"session-buddy": lambda *a, **kw: pool},
+    ):
         await mgr.spawn_pool("session-buddy", config)
-    args = mcls.call_args
-    # Session-buddy URL default
-    assert args.kwargs["session_buddy_url"] == "http://localhost:8678/mcp"
+    # Session-buddy URL default — the factory's session_buddy_pool.py applies
+    # the default "http://localhost:8678/mcp" when config lacks the key.
+    # We can't introspect factory call args on a lambda, so verify via the
+    # session-buddy_url field on the real SessionBuddyPool class.
+    from mahavishnu.pools.session_buddy_pool import _build_session_buddy_pool
+
+    real_pool = _build_session_buddy_pool(config=config)
+    assert real_pool.session_buddy_url == "http://localhost:8678/mcp"
 
 
 @pytest.mark.unit
@@ -410,9 +424,18 @@ async def test_spawn_pool_runpod() -> None:
         )
     config = PoolConfig(name="rp", pool_type="runpod", min_workers=1, max_workers=2)
     pool = _make_pool("rp", pool_type="runpod", n_workers=1)
-    with patch("mahavishnu.pools.manager.RunPodPool", return_value=pool) as mcls:
+    called: dict[str, bool] = {"runpod_called": False}
+
+    def _record_factory(*a: Any, **kw: Any) -> Any:
+        called["runpod_called"] = True
+        return pool
+
+    with patch.dict(
+        "mahavishnu.pools._registry._POOL_FACTORIES",
+        {"runpod": _record_factory},
+    ):
         await mgr.spawn_pool("runpod", config)
-    assert mcls.called
+    assert called["runpod_called"]
 
 
 @pytest.mark.unit
@@ -445,7 +468,10 @@ async def test_spawn_pool_propagates_pool_start_error() -> None:
         raise RuntimeError("startup failure")
 
     pool.start = _bad_start
-    with patch("mahavishnu.pools.manager.MahavishnuPool", return_value=pool):
+    with patch.dict(
+        "mahavishnu.pools._registry._POOL_FACTORIES",
+        {"mahavishnu": lambda *a, **kw: pool},
+    ):
         with pytest.raises(RuntimeError, match="startup failure"):
             await mgr.spawn_pool("mahavishnu", config)
 

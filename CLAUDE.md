@@ -15,6 +15,7 @@ Mahavishnu is the control plane for the **Bodai Ecosystem**:
 | [Session-Buddy WebSocket](https://github.com/lesleslie/session-buddy) | Real-time metrics | 8765 |
 | [Crackerjack](https://github.com/lesleslie/crackerjack) | Inspector (Quality) | 8676 |
 | **Bodai Crow** | Browser/automation MCP bridge | 8693 |
+| **Goose serve** | Block's `goose` HTTP backend (D3 terminal adapter) | 8694 |
 | **Prefect API** | Workflow orchestration backend (`uvicorn prefect.server.api.server`) | 8675 |
 | **Mahavishnu WebSocket** | Real-time workflow events | 8690 |
 | **Mahavishnu Pool WebSocket** | Pool status events | 8691 |
@@ -129,14 +130,21 @@ Mahavishnu supports a **multi-pool orchestration architecture** that enables hor
 - Auto-scales worker pods on demand
 - Use for: GPU/ML workloads in cloud
 
+**PiPool** (Model-agnostic agent):
+
+- Single subprocess bridge to `npx @earendil-works/pi-coding-agent --rpc`
+- Content-Length framed JSON-RPC 2.0 over stdio
+- Stripped subprocess env (allowlist only); `scale(n>1)` raises `NotImplementedError`
+- Use for: model-agnostic agent execution via Bifrost routing
+
 ### Pool and Terminal Architecture
 
 Mahavishnu has three independent pool/executor abstractions with distinct ownership:
 
 | Module | Location | Purpose | Scope |
 |--------|----------|---------|-------|
-| **Multi-pool orchestration** | `mahavishnu/pools/` | Production task distribution across MahavishnuPool, SessionBuddyPool, RunPodPool | Cross-server, auto-scaling |
-| **Terminal adapter registry** | `mahavishnu/terminal/adapters/` | Terminal backend adapters (`crow`, `mock`, `tmux`) resolved via `get_adapter_class()` | Local development only |
+| **Multi-pool orchestration** | `mahavishnu/pools/` | Production task distribution across MahavishnuPool, PiPool, SessionBuddyPool, RunPodPool | Cross-server, auto-scaling |
+| **Terminal adapter registry** | `mahavishnu/terminal/adapters/` | Terminal backend adapters (`crow`, `goose`, `mock`, `tmux`) resolved via `get_adapter_class()` | Local development only |
 | **Process pool executor** | `mahavishnu/core/process_pool_executor.py` | Generic ProcessPoolExecutor for blocking CPU-bound operations | Single-process offload |
 
 These modules share no imports or state. `pools/` is the production orchestration layer. `terminal/adapters/` resolves the active terminal backend (`adapter_preference` in settings; default is `tmux`). `process_pool_executor.py` is a low-level utility for event loop unblocking.
@@ -275,7 +283,7 @@ websocket:
 
 # Pool management
 pools_enabled: true
-default_pool_type: "mahavishnu"  # mahavishnu, session_buddy, runpod
+default_pool_type: "mahavishnu"  # mahavishnu, pi, session_buddy, runpod
 
 # Content ingestion
 ingestion:

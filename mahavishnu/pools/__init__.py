@@ -149,3 +149,24 @@ def __getattr__(name: str) -> Any:
     if importer := _LAZY_IMPORTERS.get(name):
         return importer()
     raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
+
+
+def _load_all_pool_types() -> None:
+    """Force-load all built-in pool type modules so they register themselves.
+
+    Called by ``_ensure_pool_registry_loaded`` (below) and by tests. Each pool
+    module calls ``register_pool_type(...)`` at import time. Without this
+    trigger, the registry stays empty until ``PoolManager`` is imported, which
+    itself imports each pool module. By calling this at package init time we
+    make the registry available to early-bootstrap callers (CLI, MCP bootstrap).
+    """
+    from . import (
+        gpu_handler_pool,  # noqa: F401  — registry side-effect
+        mahavishnu_pool,  # noqa: F401  — registry side-effect
+        pi_pool,  # noqa: F401  — registry side-effect (D1)
+        runpod_pool,  # noqa: F401  — registry side-effect
+        session_buddy_pool,  # noqa: F401  — registry side-effect
+    )
+
+
+_load_all_pool_types()

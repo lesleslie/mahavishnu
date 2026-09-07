@@ -1,7 +1,10 @@
 ---
 title: mcp-common Authentication Primitives — Design Spec
 date: 2026-09-06
-status: proposed
+last_reviewed: 2026-09-06
+status: draft
+role: implementation
+topic: mcp-common-auth-primitives
 author: brainstormed 2026-09-06
 blocks_on:
   - mcp-common repo (foundation library; this spec designs modules there)

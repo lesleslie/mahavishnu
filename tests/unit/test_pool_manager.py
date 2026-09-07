@@ -2,6 +2,7 @@
 
 import asyncio
 import heapq
+from typing import Any
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -547,25 +548,31 @@ class TestSpawnPoolTypes:
             max_workers=5,
         )
 
-        # Patch at class level so we don't actually start the pool
-        with patch("mahavishnu.pools.manager.MahavishnuPool") as mock_pool_class:
-            mock_pool_instance = MagicMock()
-            mock_pool_instance.pool_id = "test-pool-id"
-            mock_pool_instance.config = config
-            mock_pool_instance._workers = {}
-            mock_pool_instance.start = AsyncMock(return_value="test-pool-id")
-            mock_pool_instance.stop = AsyncMock()
-            mock_pool_class.return_value = mock_pool_instance
+        # Patch via the registry: a recording factory captures call args so we can
+        # verify the manager dispatched the expected kwargs.
+        mock_pool_instance = MagicMock()
+        mock_pool_instance.pool_id = "test-pool-id"
+        mock_pool_instance.config = config
+        mock_pool_instance._workers = {}
+        mock_pool_instance.start = AsyncMock(return_value="test-pool-id")
+        mock_pool_instance.stop = AsyncMock()
+        captured_factory_kwargs: dict[str, Any] = {}
 
+        def _recording_factory(*a: Any, **kw: Any) -> Any:
+            captured_factory_kwargs.update(kw)
+            return mock_pool_instance
+
+        with patch.dict(
+            "mahavishnu.pools._registry._POOL_FACTORIES",
+            {"mahavishnu": _recording_factory},
+        ):
             pool_id = await pool_manager.spawn_pool("mahavishnu", config)
 
-            # Verify pool was created with correct arguments
-            mock_pool_class.assert_called_once()
-            call_kwargs = mock_pool_class.call_args[1]
-            assert call_kwargs["config"] == config
-            assert "terminal_manager" in call_kwargs
+        # Verify pool was created with correct arguments via captured factory kwargs
+        assert captured_factory_kwargs["config"] == config
+        assert "terminal_manager" in captured_factory_kwargs
 
-            assert pool_id == "test-pool-id"
+        assert pool_id == "test-pool-id"
 
     @pytest.mark.asyncio
     async def test_spawn_pool_creates_session_buddy_pool_type(
@@ -586,22 +593,27 @@ class TestSpawnPoolTypes:
         )
         config.extra_config["session_buddy_url"] = "http://localhost:8678/mcp"
 
-        with patch("mahavishnu.pools.manager.SessionBuddyPool") as mock_pool_class:
-            mock_pool_instance = MagicMock()
-            mock_pool_instance.pool_id = "session-buddy-pool-id"
-            mock_pool_instance.config = config
-            mock_pool_instance._workers = {}
-            mock_pool_instance.start = AsyncMock(return_value="session-buddy-pool-id")
-            mock_pool_instance.stop = AsyncMock()
-            mock_pool_class.return_value = mock_pool_instance
+        mock_pool_instance = MagicMock()
+        mock_pool_instance.pool_id = "session-buddy-pool-id"
+        mock_pool_instance.config = config
+        mock_pool_instance._workers = {}
+        mock_pool_instance.start = AsyncMock(return_value="session-buddy-pool-id")
+        mock_pool_instance.stop = AsyncMock()
+        captured_factory_kwargs: dict[str, Any] = {}
 
+        def _recording_factory(*a: Any, **kw: Any) -> Any:
+            captured_factory_kwargs.update(kw)
+            return mock_pool_instance
+
+        with patch.dict(
+            "mahavishnu.pools._registry._POOL_FACTORIES",
+            {"session-buddy": _recording_factory},
+        ):
             pool_id = await pool_manager.spawn_pool("session-buddy", config)
 
-            mock_pool_class.assert_called_once()
-            call_kwargs = mock_pool_class.call_args[1]
-            assert call_kwargs["config"] == config
+        assert captured_factory_kwargs["config"] == config
+        assert pool_id == "session-buddy-pool-id"
 
-            assert pool_id == "session-buddy-pool-id"
 
     @pytest.mark.asyncio
     async def test_spawn_pool_creates_runpod_pool_type(
@@ -623,22 +635,26 @@ class TestSpawnPoolTypes:
         config.extra_config["gpu_type"] = "NVIDIA_GEFORCE_RTX_4090"
         config.extra_config["endpoint_name"] = "test-endpoint"
 
-        with patch("mahavishnu.pools.manager.RunPodPool") as mock_pool_class:
-            mock_pool_instance = MagicMock()
-            mock_pool_instance.pool_id = "runpod-pool-id"
-            mock_pool_instance.config = config
-            mock_pool_instance._workers = {}
-            mock_pool_instance.start = AsyncMock(return_value="runpod-pool-id")
-            mock_pool_instance.stop = AsyncMock()
-            mock_pool_class.return_value = mock_pool_instance
+        mock_pool_instance = MagicMock()
+        mock_pool_instance.pool_id = "runpod-pool-id"
+        mock_pool_instance.config = config
+        mock_pool_instance._workers = {}
+        mock_pool_instance.start = AsyncMock(return_value="runpod-pool-id")
+        mock_pool_instance.stop = AsyncMock()
+        captured_factory_kwargs: dict[str, Any] = {}
 
+        def _recording_factory(*a: Any, **kw: Any) -> Any:
+            captured_factory_kwargs.update(kw)
+            return mock_pool_instance
+
+        with patch.dict(
+            "mahavishnu.pools._registry._POOL_FACTORIES",
+            {"runpod": _recording_factory},
+        ):
             pool_id = await pool_manager.spawn_pool("runpod", config)
 
-            mock_pool_class.assert_called_once()
-            call_kwargs = mock_pool_class.call_args[1]
-            assert call_kwargs["config"] == config
-
-            assert pool_id == "runpod-pool-id"
+        assert captured_factory_kwargs["config"] == config
+        assert pool_id == "runpod-pool-id"
 
     @pytest.mark.asyncio
     async def test_spawn_pool_unknown_type_raises_value_error(

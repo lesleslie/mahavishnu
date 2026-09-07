@@ -238,3 +238,16 @@ class RunPodPool(BasePool):
         self._task_results.clear()
         self._status = PoolStatus.STOPPED
         logger.info("RunPodPool %s stopped", self.pool_id)
+
+
+# Registry integration: RunPodPool is a simple factory — only needs config.
+def _build_runpod_pool(
+    config: PoolConfig,
+    **_unused_kwargs: Any,
+) -> RunPodPool:
+    return RunPodPool(config=config)
+
+
+from ._registry import register_pool_type
+
+register_pool_type("runpod", _build_runpod_pool)

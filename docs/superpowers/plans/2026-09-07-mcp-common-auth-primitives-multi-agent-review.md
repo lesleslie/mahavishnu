@@ -1,7 +1,10 @@
 ---
 title: mcp-common Auth Primitives Plan — Multi-Agent Review
 date: 2026-09-07
-status: review-complete
+last_reviewed: 2026-09-07
+status: complete
+role: implementation
+topic: mcp-common-auth-primitives
 reviewers:
   - python-pro
   - authentication-specialist

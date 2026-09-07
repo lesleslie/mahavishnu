@@ -27,6 +27,23 @@ topic: routing-composition
 \<numbered list of explicitly-out-of-scope items — preempts feature creep>
 ## 4. Current Findings
 \<prompt: what did we discover? citations to files, issues, metrics>
+
+## 4.5 Requirements
+
+Declare every requirement ID this plan introduces. The `audit_requirements.py`
+script validates traceability — declared IDs must appear in code via
+`# req: REQ-NNN` (inline comment), `# Implements: REQ-NNN` (docstring), or
+`@pytest.mark.req(["REQ-NNN"])` (test marker). Every Phase's Integration Contract
+block MUST link back to the requirement IDs it fulfils.
+
+```yaml
+requirements:
+  - id: REQ-001
+    title: "Short noun-phrase"
+  - id: REQ-002
+    title: "..."
+```
+
 ## 5. Implementation Phases
 ### Phase N: <name>
 **Goal:**

@@ -5,6 +5,32 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.22.0] - 2026-09-07
+
+### Changed
+
+- 7-agent review of mcp-common auth primitives plan — 12 distinct BLOCKERs
+- Amend mcp-common auth primitives design per 7-agent review
+- auth: Fix 12 BLOCKERs + cross-cutting IMPORTANTs from 7-agent review
+- Mcp-common auth primitives design — middleware, IdentityProvider, AuthHealth
+- Mcp-common auth primitives — 17-task implementation plan
+
+### Fixed
+
+- plan+spec: Apply Round 2 multi-agent review fixes (BLOCKER + IMPORTANT + selective MINOR)
+- plan+spec: Close 3 spec drift + 2 plan consistency issues from final pass
+
+### Documentation
+
+- adr: 0016 v4 — close mcp-common authentication primitives deferred item
+- gdpr: Remove 'when designed' leftover in §10 + correct header-access description
+- gdpr: §10 — describe auth posture and Article 32 alignment
+- plan-index: Regenerate after auth primitives execution
+
+### Internal
+
+- gitignore: Apply Bodai canonical snippet
+
 ## [0.21.0] - 2026-09-06
 
 ### Added
@@ -54,7 +80,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - superpowers: Apply multi-agent review fixes across 4 plans
 - superpowers: Apply Round 2 review fixes (cross-plan consistency + Python idiom)
 - superpowers: Fix ruff --config to use inline TOML, not file path
-- superpowers: Fix ruff --per-file-ignores -> --config=<file.toml>
+- superpowers: Fix ruff --per-file-ignores -> --config=\<file.toml>
 - superpowers: Medium-mcp implementation plan (14 tasks, 70 steps)
 - superpowers: Scapy-mcp implementation plan (13 tasks, 60 steps)
 
@@ -67,7 +93,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Build
 
-- deps: Lift fastmcp pin ceiling from <4 to <5
+- deps: Lift fastmcp pin ceiling from \<4 to \<5
 
 ### Internal
 

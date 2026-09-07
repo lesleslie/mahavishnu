@@ -47,19 +47,23 @@ From the spec (every task implicitly includes these):
 
 Tasks 1–13 land in `mcp-common` as a coherent vertical slice. Task 14 wires sibling servers in their own repos (use the standard cross-repo dispatch pattern — `cd <repo>` before any tool calls, `unset VIRTUAL_ENV UV_ACTIVE` before `uv pip install`). Tasks 15–16 update cross-repo docs in mahavishnu. Task 17 is the final verification gate.
 
----
+______________________________________________________________________
 
 ### Task 1: Principal model + IdentityProvider Protocol + ProviderHealth
 
 **Files:**
+
 - Create: `/Users/les/Projects/mcp-common/mcp_common/auth/principal.py`
 - Create: `/Users/les/Projects/mcp-common/mcp_common/auth/provider.py`
 - Create: `/Users/les/Projects/mcp-common/tests/auth/test_principal.py`
 - Create: `/Users/les/Projects/mcp-common/tests/auth/test_provider.py`
 
 **Interfaces:**
+
 - Consumes: `mcp_common.auth.permissions.Permission` (existing)
+
 - Produces:
+
   - `Principal(issuer: str, subject: str, permissions: frozenset[Permission], expires_at: datetime, raw_claims: dict[str, Any])` with `has_permission(permission: Permission) -> bool`
   - `IdentityProvider` Protocol with `name: str`, `async verify_token(token: str, *, expected_audience: str | None = None) -> Principal`, `async health() -> ProviderHealth`
   - `ProviderHealth(name: str, state: Literal["healthy", "degraded", "dead"], last_check_at: datetime | None = None, last_error: str | None = None)`
@@ -286,16 +290,19 @@ Expected: PASS (4 tests)
 cd /Users/les/Projects/mcp-common && git add mcp_common/auth/principal.py mcp_common/auth/provider.py tests/auth/test_principal.py tests/auth/test_provider.py && git -c user.email=les@wedgwoodwebworks.com -c user.name=les commit -m "feat(auth): add Principal model, IdentityProvider Protocol, ProviderHealth"
 ```
 
----
+______________________________________________________________________
 
 ### Task 2: ProviderUnavailableError exception
 
 **Files:**
+
 - Modify: `/Users/les/Projects/mcp-common/mcp_common/auth/exceptions.py`
 - Modify: `/Users/les/Projects/mcp-common/tests/auth/test_exceptions.py`
 
 **Interfaces:**
+
 - Consumes: existing exception hierarchy
+
 - Produces: `ProviderUnavailableError(AuthError)` raised when an IdP cannot be reached
 
 - [ ] **Step 2.1: Write failing test**
@@ -353,17 +360,21 @@ Expected: PASS (existing + 2 new tests)
 cd /Users/les/Projects/mcp-common && git add mcp_common/auth/exceptions.py tests/auth/test_exceptions.py && git -c user.email=les@wedgwoodwebworks.com -c user.name=les commit -m "feat(auth): add ProviderUnavailableError for IdP reachability failures"
 ```
 
----
+______________________________________________________________________
 
-### Task 3: Context-var helpers (seed_principal, _current_principal)
+### Task 3: Context-var helpers (seed_principal, \_current_principal)
 
 **Files:**
+
 - Create: `/Users/les/Projects/mcp-common/mcp_common/auth/context.py`
 - Create: `/Users/les/Projects/mcp-common/tests/auth/test_context.py`
 
 **Interfaces:**
+
 - Consumes: `Principal` (from Task 1)
+
 - Produces:
+
   - `seed_principal(principal: Principal) -> Token[Principal]` (sets contextvar, returns token for cleanup)
   - `_current_principal() -> Principal | None` (reads contextvar)
   - `_clear_principal() -> None` (resets contextvar)
@@ -473,17 +484,21 @@ Expected: PASS (3 tests)
 cd /Users/les/Projects/mcp-common && git add mcp_common/auth/context.py tests/auth/test_context.py && git -c user.email=les@wedgwoodwebworks.com -c user.name=les commit -m "feat(auth): add context-var helpers for request-scoped Principal"
 ```
 
----
+______________________________________________________________________
 
 ### Task 4: Extract JWTIdentityProvider from existing core.py
 
 **Files:**
+
 - Modify: `/Users/les/Projects/mcp-common/mcp_common/auth/core.py`
 - Modify: `/Users/les/Projects/mcp-common/tests/auth/test_core.py`
 
 **Interfaces:**
+
 - Consumes: `Principal`, `IdentityProvider`, `ProviderHealth`, `JWT_ALGORITHM`, `DEFAULT_TOKEN_TTL_SECONDS` (existing)
+
 - Produces:
+
   - `JWTIdentityProvider(name="jwt", secret: SecretStr, *, trusted_issuers: list[str] | None = None)` implementing `IdentityProvider`
   - **B5 fix**: `jwt.decode` pins `algorithms=["HS256"]` directly — does NOT delegate to the free-function `verify_token()` (avoids `alg=none` / HS256-RSA confusion attacks).
   - **B9 fix**: `TokenPayload.raw` is renamed to `TokenPayload.raw_claims` to match the new spec; the free functions `create_service_token()` and `verify_token()` are kept but rewritten to populate `raw_claims`.
@@ -721,12 +736,19 @@ class JWTIdentityProvider:
 ```
 
 Add imports at the top of `core.py` if not already present:
+
 - `from datetime import UTC, datetime, timedelta` (if not present)
+
 - `from pydantic import SecretStr`
+
 - `from mcp_common.auth.exceptions import TokenInvalidError, UnknownIssuerError`
+
 - `from mcp_common.auth.permissions import Permission`
+
 - `from mcp_common.auth.principal import Principal`
+
 - `from mcp_common.auth.provider import IdentityProvider, ProviderHealth`
+
 - `import jwt` (PyJWT)
 
 - [ ] **Step 4.4: Run test to verify it passes**
@@ -740,17 +762,19 @@ Expected: PASS (existing + 3 new tests, ≥90% branch coverage maintained)
 cd /Users/les/Projects/mcp-common && git add mcp_common/auth/core.py tests/auth/test_core.py && git -c user.email=les@wedgwoodwebworks.com -c user.name=les commit -m "refactor(auth): extract JWTIdentityProvider class from verify_token free function"
 ```
 
----
+______________________________________________________________________
 
 ### Task 5a: AnthropicIdentityProvider — JWKS verification only
 
 **Files:**
+
 - Create: `/Users/les/Projects/mcp-common/mcp_common/auth/providers/__init__.py`
 - Create: `/Users/les/Projects/mcp-common/mcp_common/auth/providers/anthropic.py`
 - Create: `/Users/les/Projects/mcp-common/tests/auth/test_providers/__init__.py`
 - Create: `/Users/les/Projects/mcp-common/tests/auth/test_providers/test_anthropic.py`
 
 **Interfaces:**
+
 - Consumes: `IdentityProvider`, `Principal`, `ProviderHealth`, `ProviderUnavailableError`, `UnknownIssuerError`, `TokenInvalidError`, `httpx`
 - Produces:
   - `AnthropicIdentityProvider(*, name: str = "anthropic", client_id: str, client_secret: str, oauth_token_url: str, jwks_url: str, audience: str, trusted_issuers: list[str] | None = None, jwks_cache_seconds: int = 3600)` implementing `IdentityProvider`
@@ -840,6 +864,7 @@ async def test_anthropic_provider_records_health_degraded_on_jwks_failure(provid
 ```
 
 Add `respx` to dev dependencies if not already present:
+
 ```bash
 cd /Users/les/Projects/mcp-common && unset VIRTUAL_ENV UV_ACTIVE && uv add --dev respx
 ```
@@ -1023,19 +1048,23 @@ Expected: PASS (4 tests). Coverage on this module may be partial; that's OK — 
 cd /Users/les/Projects/mcp-common && git add mcp_common/auth/providers/ tests/auth/test_providers/ pyproject.toml uv.lock && git -c user.email=les@wedgwoodwebworks.com -c user.name=les commit -m "feat(auth): add AnthropicIdentityProvider (5a: JWKS verification only)"
 ```
 
----
+______________________________________________________________________
 
 ### Task 6: BearerTokenMiddleware + extend @require_auth
 
 **Files:**
+
 - Create: `/Users/les/Projects/mcp-common/mcp_common/auth/middleware.py`
 - Modify: `/Users/les/Projects/mcp-common/mcp_common/auth/decorator.py`
 - Create: `/Users/les/Projects/mcp-common/tests/auth/test_middleware.py`
 - Modify: `/Users/les/Projects/mcp-common/tests/auth/test_decorator.py`
 
 **Interfaces:**
+
 - Consumes: `BearerTokenMiddleware(auth_config, providers)`, `IdentityProvider.verify_token`
+
 - Produces:
+
   - `BearerTokenMiddleware(Middleware)` with `async on_request(context, call_next)`. **B1 fix**: uses `get_http_headers()` from `fastmcp.server.dependencies` (NOT `MiddlewareContext.scope` — that attribute does not exist per FastMCP source verification). **B2 fix**: raises `AuthError` (not `HTTPException`) so `error_handling` middleware can translate to JSON-RPC error code `-32001` with OAuth error codes in `data`. **B4 fix**: catches `AuthError` only (not bare `Exception`). **I-1 fix**: skips `context.method == "initialize"` so the MCP handshake is not 401'd.
   - `@require_auth(permission, *, allow_anonymous=False, audit_logger=None)` — **I-2 fix**: `integrate_with_readyz` parameter dropped (was accepted but never consulted; shipping a parameter that lies to callers is worse than no parameter).
   - Principal storage: `BearerTokenMiddleware` stashes the Principal via `context.fastmcp_context.set_state("principal", principal)` (FastMCP-native, per-request scoped); `@require_auth` reads via `context.fastmcp_context.get_state("principal")`. The `contextvars` approach (Task 3) is retained as a fallback for non-FastMCP consumers.
@@ -1653,7 +1682,7 @@ Expected: PASS for all auth tests. Coverage must remain ≥90%.
 
 - [ ] **Step 6.8: Commit**
 
-```bash
+````bash
 cd /Users/les/Projects/mcp-common && git add mcp_common/auth/middleware.py mcp_common/auth/decorator.py tests/auth/test_middleware.py tests/auth/test_decorator.py && git -c user.email=les@wedgwoodwebworks.com -c user.name=les commit -m "feat(auth): add BearerTokenMiddleware and rewrite @require_auth to read from Context"
 
 ---
@@ -1716,7 +1745,7 @@ async def test_translates_token_invalid_to_jsonrpc_error():
     payload = mw._translate(error)
     assert payload["code"] == -32001
     assert payload["data"]["error"] == "invalid_token"
-```
+````
 
 - [ ] **Step 6b.2: Run test to verify it fails**
 
@@ -1809,7 +1838,8 @@ Expected: PASS (3 tests).
 ```bash
 cd /Users/les/Projects/mcp-common && git add mcp_common/auth/error_middleware.py tests/auth/test_error_middleware.py && git -c user.email=les@wedgwoodwebworks.com -c user.name=les commit -m "feat(auth): add AuthErrorTranslationMiddleware for JSON-RPC -32001 mapping"
 ```
-```
+
+````
 
 ---
 
@@ -1879,7 +1909,7 @@ async def test_trusted_issuer_accepted():
     )
     principal = await provider.verify_token(token, expected_audience="test-service")
     assert principal.issuer == "session-buddy"
-```
+````
 
 - [ ] **Step 7.2: Run test to verify it fails**
 
@@ -1903,6 +1933,7 @@ The same check is added to `AnthropicIdentityProvider.verify_token` in Task 5 (I
 - [ ] **Step 7.4: Remove `KNOWN_SERVICES` from `identity.py` and add startup check**
 
 Edit `mcp_common/auth/identity.py`:
+
 - Delete the `KNOWN_SERVICES` frozenset.
 - Delete or rewrite `verify_issuer()` to be a no-op (no callers should remain after Task 4's refactor).
 - Delete or rewrite `ServiceIdentity` if it's only used by `verify_issuer()`.
@@ -1966,6 +1997,7 @@ def validate_auth_config(auth_config: AuthConfig) -> None:
 Call this from the sibling server's lifespan before constructing `BearerTokenMiddleware`.
 
 Verify no callers remain:
+
 ```bash
 cd /Users/les/Projects/mcp-common && unset VIRTUAL_ENV UV_ACTIVE && grep -rn "KNOWN_SERVICES\|verify_issuer\|ServiceIdentity" mcp_common/ tests/ --include="*.py"
 ```
@@ -2009,18 +2041,21 @@ Expected: PASS for all auth tests. The new `test_anthropic_unknown_issuer_reject
 cd /Users/les/Projects/mcp-common && git add mcp_common/auth/identity.py mcp_common/auth/core.py mcp_common/auth/providers/anthropic.py tests/auth/test_trusted_issuers.py tests/auth/test_identity.py tests/auth/test_providers/test_anthropic.py && git -c user.email=les@wedgwoodwebworks.com -c user.name=les commit -m "refactor(auth): remove KNOWN_SERVICES frozenset; default-deny trusted_issuers; startup check"
 ```
 
----
+______________________________________________________________________
 
 ### Task 8a: Convert AuthConfig to Pydantic (BEFORE Task 6)
 
 **Files:**
+
 - Modify: `/Users/les/Projects/mcp-common/mcp_common/auth/config.py`
 - Modify: `/Users/les/Projects/mcp-common/tests/auth/test_config.py`
 
 **B8 fix:** Task 8a is a Pydantic conversion of the existing `AuthConfig` only. It does NOT add the new fields (`trusted_issuers`, `identity_providers`, `default_provider`) — those land in Task 8b. This ordering lets Task 6 use the Pydantic shape without breaking the dependency chain.
 
 **Interfaces:**
+
 - Consumes: existing `AuthConfig` (plain Python class with env-var loading)
+
 - Produces: `AuthConfig(BaseModel)` with the same fields, plus a `model_validator` that preserves env-var loading semantics (per I-6 — don't silently drop `_load_secret`, `_PLACEHOLDER_SECRETS`, `_MIN_SECRET_LENGTH`).
 
 - [ ] **Step 8a.1: Write failing test**
@@ -2136,11 +2171,14 @@ cd /Users/les/Projects/mcp-common && git add mcp_common/auth/config.py tests/aut
 ### Task 8b: Add trusted_issuers + identity_providers fields (AFTER Task 6)
 
 **Files:**
+
 - Modify: `/Users/les/Projects/mcp-common/mcp_common/auth/config.py` (extends Task 8a)
 - Modify: `/Users/les/Projects/mcp-common/tests/auth/test_config.py`
 
 **Interfaces:**
+
 - Consumes: `AuthConfig` from Task 8a
+
 - Produces: extended `AuthConfig` with `trusted_issuers: list[str]`, `identity_providers: dict[str, IdentityProviderConfig]`, `default_provider: str | None`, `allow_anonymous_paths: list[str]`
 
 - [ ] **Step 8b.1: Write failing test**
@@ -2246,16 +2284,19 @@ cd /Users/les/Projects/mcp-common && git add mcp_common/auth/config.py tests/aut
 
 - [ ] **NOTE: The original (pre-split) Task 8 block was removed in the Round 2 multi-agent review.** A duplicate of the original Step 8.1-8.5 existed after the post-split Task 8a/8b section, with `type: str` (reverting the M-2 Literal fix). Deleting that duplicate block left only Task 8a (Pydantic conversion) and Task 8b (new fields). Implementers follow Tasks 8a then 8b in document order — no other Step 8 remains.
 
----
+______________________________________________________________________
 
 ### Task 9: Integrate AuthConfig into MCPServerSettings (settings surface)
 
 **Files:**
+
 - Modify: `/Users/les/Projects/mcp-common/mcp_common/cli/settings.py`
 - Modify: `/Users/les/Projects/mcp-common/tests/cli/test_settings.py` (or wherever settings tests live)
 
 **Interfaces:**
+
 - Consumes: existing `MCPServerSettings`, extended `AuthConfig`
+
 - Produces: `MCPServerSettings.auth: AuthConfig | None = None` field with YAML merge
 
 - [ ] **Step 9.1: Write failing test**
@@ -2324,17 +2365,21 @@ Expected: PASS
 cd /Users/les/Projects/mcp-common && git add mcp_common/cli/settings.py tests/cli/test_settings.py && git -c user.email=les@wedgwoodwebworks.com -c user.name=les commit -m "feat(settings): integrate AuthConfig into MCPServerSettings"
 ```
 
----
+______________________________________________________________________
 
 ### Task 10: AuthHealth model + ProviderHealth aggregation
 
 **Files:**
+
 - Create: `/Users/les/Projects/mcp-common/mcp_common/auth/health.py`
 - Create: `/Users/les/Projects/mcp-common/tests/auth/test_health.py`
 
 **Interfaces:**
+
 - Consumes: `ProviderHealth`, `IdentityProvider`, `IdentityProvider.health()`
+
 - Produces:
+
   - `AuthHealth(providers, verifications_total, errors_total, last_successful_verification_at, last_updated_timestamp, cycles_total)`
   - `AuthHealth.from_providers(providers, counters)` classmethod
   - `AuthHealth.as_components()` returns list[dict] for /health envelope
@@ -2557,16 +2602,19 @@ Expected: PASS (3 tests)
 cd /Users/les/Projects/mcp-common && git add mcp_common/auth/health.py tests/auth/test_health.py && git -c user.email=les@wedgwoodwebworks.com -c user.name=les commit -m "feat(auth): add AuthHealth model with wiring-discipline §3 four-signal shape"
 ```
 
----
+______________________________________________________________________
 
 ### Task 11: Extend register_http_health_route with AuthHealth
 
 **Files:**
+
 - Modify: `/Users/les/Projects/mcp-common/mcp_common/health.py`
 - Modify: `/Users/les/Projects/mcp-common/tests/unit/test_server_telemetry.py` (or wherever health tests live)
 
 **Interfaces:**
+
 - Consumes: existing `register_http_health_route(mcp, *, service_name, version, extra_components)`, new `AuthHealth.as_components()`
+
 - Produces: extended route that includes AuthHealth when an auth_provider_registry is registered
 
 - [ ] **Step 11.1: Write failing test**
@@ -2662,6 +2710,7 @@ def register_http_health_route(
 ```
 
 Add the import at the top of `health.py`:
+
 ```python
 from collections.abc import Callable
 from mcp_common.auth.health import AuthHealth
@@ -2684,16 +2733,19 @@ Expected: PASS for all health-related tests
 cd /Users/les/Projects/mcp-common && git add mcp_common/health.py tests/ && git -c user.email=les@wedgwoodwebworks.com -c user.name=les commit -m "feat(health): include AuthHealth in /health envelope; keep 200-only with degraded in body"
 ```
 
----
+______________________________________________________________________
 
 ### Task 12: JWKS rotation logic for AnthropicIdentityProvider
 
 **Files:**
+
 - Modify: `/Users/les/Projects/mcp-common/mcp_common/auth/providers/anthropic.py`
 - Create: `/Users/les/Projects/mcp-common/tests/auth/test_jwks_rotation.py`
 
 **Interfaces:**
+
 - Consumes: existing `AnthropicIdentityProvider`, `PyJWKClient`
+
 - Produces: rotation logic with cached-fallback semantics
 
 - [ ] **Step 12.1: Write failing test**
@@ -2856,16 +2908,17 @@ Expected: PASS (2 tests)
 cd /Users/les/Projects/mcp-common && git add mcp_common/auth/providers/anthropic.py tests/auth/test_jwks_rotation.py && git -c user.email=les@wedgwoodwebworks.com -c user.name=les commit -m "feat(auth): add JWKS rotation logic with cached-fallback to AnthropicIdentityProvider"
 ```
 
----
+______________________________________________________________________
 
 ### Task 13: Internal auth doc at mcp_common/docs/auth-design.md
 
 **Files:**
+
 - Create: `/Users/les/Projects/mcp-common/docs/auth-design.md`
 
 - [ ] **Step 13.1: Write the doc**
 
-```markdown
+````markdown
 ---
 title: mcp-common Auth Design
 date: 2026-09-07
@@ -2948,7 +3001,7 @@ def build_middleware(auth_config: AuthConfig) -> BearerTokenMiddleware:
             trusted_issuers=auth_config.trusted_issuers,
         )
     return BearerTokenMiddleware(auth_config=auth_config, providers=providers)
-```
+````
 
 ### Decorating a tool
 
@@ -2998,25 +3051,28 @@ Prior versions of `@require_auth` accepted a `__auth_token__` kwarg for token
 injection. This convention is gone. New code uses `seed_principal(...)` for tests
 and middleware for production traffic. There is no deprecation window — the
 package had zero production consumers at the time of this change.
-```
+
+````
 
 - [ ] **Step 13.2: Commit**
 
 ```bash
 cd /Users/les/Projects/mcp-common && git add docs/auth-design.md && git -c user.email=les@wedgwoodwebworks.com -c user.name=les commit -m "docs(auth): add internal design doc for mcp_common.auth package"
-```
+````
 
----
+______________________________________________________________________
 
 ### Task 14: Wire sibling servers (scapy-mcp, archive-org-mcp, medium-mcp)
 
 **Files:**
+
 - Modify: `/Users/les/Projects/scapy-mcp/scapy_mcp/server.py`
 - Modify: `/Users/les/Projects/archive-org-mcp/src/.../server.py` (or wherever its server lives)
 - Modify: `/Users/les/Projects/medium-mcp/.../server.py`
 - Create/Modify: integration test in each sibling repo
 
 **Interfaces:**
+
 - Each sibling server constructs a `BearerTokenMiddleware` in its lifespan and registers `AuthHealth` in its `/health` envelope.
 
 Cross-repo dispatch: enter each sibling repo separately. Use `git -C` or worktree isolation per mahavishnu dispatch policy. Strip `VIRTUAL_ENV`/`UV_ACTIVE` before any `uv pip install`.
@@ -3109,13 +3165,15 @@ Same shape as 14.1, applied to medium-mcp's server entry point.
 - [ ] **Step 14.4: Add integration test in each sibling repo**
 
 **I-5 fix:** The placeholder `...` body is replaced with concrete assertions that verify the wiring, not just registration. Per `mcp-surface-health-illusion.md`, the test must:
+
 1. Construct the server with auth enabled.
-2. Send an unauthenticated tool call → assert 401 / `AuthenticationRequiredError`.
-3. Send a tool call with a valid token → assert the tool body runs.
-4. Hit `/health` → assert the `auth` component is present.
-5. (Supplementary) Hit `/health` after a JWKS-style failure on the auth provider → assert `status: "degraded"` is in the body.
+1. Send an unauthenticated tool call → assert 401 / `AuthenticationRequiredError`.
+1. Send a tool call with a valid token → assert the tool body runs.
+1. Hit `/health` → assert the `auth` component is present.
+1. (Supplementary) Hit `/health` after a JWKS-style failure on the auth provider → assert `status: "degraded"` is in the body.
 
 In scapy-mcp:
+
 ```python
 # tests/integration/test_auth_wiring.py
 from __future__ import annotations
@@ -3201,6 +3259,7 @@ def test_scapy_mcp_health_envelope_includes_auth_component():
 - [ ] **Step 14.5: Run sibling server tests**
 
 For each sibling:
+
 ```bash
 cd /Users/les/Projects/scapy-mcp && unset VIRTUAL_ENV UV_ACTIVE && uv run pytest tests/integration/test_auth_wiring.py -v
 cd /Users/les/Projects/archive-org-mcp && unset VIRTUAL_ENV UV_ACTIVE && uv run pytest tests/ -v -k auth
@@ -3212,15 +3271,17 @@ Expected: PASS
 - [ ] **Step 14.6: Commit each sibling**
 
 For each:
+
 ```bash
 cd /Users/les/Projects/<sibling> && git add scapy_mcp/server.py tests/integration/test_auth_wiring.py && git -c user.email=les@wedgwoodwebworks.com -c user.name=les commit -m "feat(auth): wire BearerTokenMiddleware into server lifespan"
 ```
 
----
+______________________________________________________________________
 
 ### Task 15: Update gdpr-posture.md §10 with auth section
 
 **Files:**
+
 - Modify: `/Users/les/Projects/mahavishnu/docs/legal/gdpr-posture.md`
 
 - [ ] **Step 15.1: Read the current gdpr-posture.md to find §10**
@@ -3268,12 +3329,14 @@ set `auth.enabled: true` and configure at least one provider in
 cd /Users/les/Projects/mahavishnu && git add docs/legal/gdpr-posture.md && git -c user.email=les@wedgwoodwebworks.com -c user.name=les commit -m "docs(gdpr): §10 — describe auth posture and Article 32 alignment"
 ```
 
----
+______________________________________________________________________
 
 ### Task 16: Re-review ADR 0016 v3, close deferred item
 
 **Files:**
+
 - Modify: `/Users/les/Projects/mahavishnu/docs/adr/0016-scapy-mcp-integration.md`
+
 - Modify: `/Users/les/Projects/mahavishnu/docs/adr/0016-multi-agent-review.md` (if applicable)
 
 - [ ] **Step 16.1: Read ADR 0016 v3**
@@ -3287,8 +3350,11 @@ Look for the "Deferred to v4+" section and the "v4+ ADR 0016 deferred" items.
 - [ ] **Step 16.2: Close the "mcp-common authentication primitives" deferred item**
 
 Find the item in the ADR's "Deferred to v4+" list. Mark it as closed by:
+
 - Adding a "Closed: 2026-09-07 via spec `2026-09-06-mcp-common-auth-primitives-design.md` and plan `2026-09-07-mcp-common-auth-primitives.md`" annotation, OR
+
 - Moving it to a "Closed deferred items" subsection, OR
+
 - Removing it if the deferral list is now empty
 
 - [ ] **Step 16.3: Re-review remaining deferred items**
@@ -3300,6 +3366,7 @@ If any v4+ items remain after closing auth, note them as still deferred.
 **I-10 fix:** Closing the "mcp-common authentication primitives" deferred item in an ADR is a significant governance action. The wire-up contract §4 says features must transition through `built → wired → adopted`; this is the wired → adopted transition. Self-author closure is insufficient.
 
 Before bumping the status (Step 16.5) and committing (Step 16.6):
+
 - Dispatch a subagent (e.g., `architecture-council`, `mcp-integration-expert`, or `critical-audit-specialist`) to validate the new posture vs. the spec.
 - Require ≥1 non-author approval.
 - Capture the approval in the ADR's frontmatter (`reviewed_by:` field).
@@ -3316,7 +3383,7 @@ If all v4+ items are now closed, bump the ADR's status from "complete" to "compl
 cd /Users/les/Projects/mahavishnu && git add docs/adr/0016-scapy-mcp-integration.md && git -c user.email=les@wedgwoodwebworks.com -c user.name=les commit -m "docs(adr): 0016 — close mcp-common auth primitives deferred item"
 ```
 
----
+______________________________________________________________________
 
 ### Task 17: Final verification
 
@@ -3341,6 +3408,7 @@ Expected: All pass, no regressions.
 - [ ] **Step 17.3: Run crackerjack quality gates**
 
 In mcp-common:
+
 ```bash
 cd /Users/les/Projects/mcp-common && unset VIRTUAL_ENV UV_ACTIVE && uv run crackerjack run
 ```
@@ -3359,7 +3427,7 @@ Expected: PLAN_INDEX.md updates to include the new plan.
 
 If anything in PLAN_INDEX or any spec was missed, commit the fix. Otherwise report completion.
 
----
+______________________________________________________________________
 
 ## Integration Contract (per phase)
 
@@ -3433,7 +3501,7 @@ Per the wire-up contract (`.claude/decisions/wire-up-contract.md`), every phase 
 - **Rollback signal:** Coverage < 90% in `mcp_common/auth/*`, or `crackerjack run` fails on any sibling.
 - **Observability added:** None (verification only).
 
----
+______________________________________________________________________
 
 ## Self-Review Checklist
 
@@ -3503,6 +3571,6 @@ Plan complete and saved to `docs/superpowers/plans/2026-09-07-mcp-common-auth-pr
 
 1. **Subagent-Driven (recommended)** — I dispatch a fresh subagent per task, review between tasks, fast iteration. Best for cross-repo work like this where each repo needs its own context.
 
-2. **Inline Execution** — Execute tasks in this session using executing-plans, batch execution with checkpoints for review. Faster turnaround but harder to debug cross-repo issues.
+1. **Inline Execution** — Execute tasks in this session using executing-plans, batch execution with checkpoints for review. Faster turnaround but harder to debug cross-repo issues.
 
 **Which approach?**

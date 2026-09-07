@@ -359,3 +359,24 @@ class MahavishnuPool(BasePool):
         await self.worker_manager.close_all()
         self._status = PoolStatus.STOPPED
         logger.info(f"MahavishnuPool {self.pool_id} stopped")
+
+
+# Registry integration: factory consumes kwargs forwarded by PoolManager.spawn_pool.
+# The MahavishnuPool constructor needs terminal_manager and session_buddy_client from
+# the enclosing PoolManager instance.
+def _build_mahavishnu_pool(
+    config: PoolConfig,
+    *,
+    terminal_manager: TerminalManager,
+    session_buddy_client: Any = None,
+) -> MahavishnuPool:
+    return MahavishnuPool(
+        config=config,
+        terminal_manager=terminal_manager,
+        session_buddy_client=session_buddy_client,
+    )
+
+
+from ._registry import register_pool_type
+
+register_pool_type("mahavishnu", _build_mahavishnu_pool)

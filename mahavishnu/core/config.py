@@ -423,6 +423,173 @@ class PoolConfig(BaseModel):
     model_config = {"extra": "forbid"}
 
 
+class PiPoolSettings(BaseModel):
+    """Configuration for the Pi coding-agent pool (D1).
+
+    Mounted as the top-level ``pi_pool`` sibling on :class:`MahavishnuSettings`.
+    Env var override pattern: ``MAHAVISHNU_PI_POOL__<FIELD>``.
+
+    Security: the ``npx_command`` and ``env_allowlist`` are intentionally
+    narrow — see ``_npx_command_allowlist`` and the docs/feature-tracking
+    entry for the threat model. The allowlist excludes every parent
+    environment key whose name starts with ``MAHAVISHNU_``, ``MINIMAX_``,
+    ``ZAI_``, ``DHARA_``, ``AKOSHA_``, or ``SESSION_BUDDY_`` (handled in
+    :class:`mahavishnu.core.json_rpc_stdio.JSONRPCStdioClient`).
+
+    Req: REQ-PI-001 (npx-command allowlist),
+    REQ-PI-003 (env-stripping contract).
+    """
+
+    npx_command: tuple[str, ...] = Field(
+        default=("npx", "-y", "@earendil-works/pi-coding-agent", "--rpc"),
+        description=(
+            "Literal-constrained. Must contain 'npx', '--rpc', and the "
+            "@earendil-works/pi-coding-agent package. Override only for "
+            "testing; production should pin to the package version tested."
+        ),
+    )
+    rpc_timeout_seconds: float = Field(
+        default=30.0,
+        ge=1.0,
+        le=600.0,
+        description="Per-request JSON-RPC timeout in seconds (1-600).",
+    )
+    default_model: str = Field(
+        default="claude-sonnet-4-5",
+        description="Default model identifier passed to Pi's RPC layer.",
+    )
+    probe_timeout_seconds: float = Field(
+        default=3.0,
+        ge=0.1,
+        le=30.0,
+        description="Subprocess startup probe timeout in seconds (0.1-30).",
+    )
+    heartbeat_interval_seconds: float = Field(
+        default=30.0,
+        ge=5.0,
+        le=300.0,
+        description="Watchdog heartbeat interval in seconds (5-300).",
+    )
+    enabled: bool = Field(
+        default=False,
+        description="Enable Pi pool type. Off by default — opt-in per environment.",
+    )
+    recipe_path: str | None = Field(
+        default=None,
+        description="Optional path to a Pi recipe file (forwarded to --rpc on startup).",
+    )
+    env_allowlist: tuple[str, ...] = Field(
+        default=("PATH", "HOME", "LANG", "NODE_PATH", "NODE_ENV", "TMPDIR"),
+        description=(
+            "Env vars forwarded to the Pi subprocess. MAHAVISHNU_AUTH_SECRET, "
+            "MINIMAX_API_KEY, MAHAVISHNU_*, MINIMAX_*, ZAI_*, DHARA_*, "
+            "AKOSHA_*, SESSION_BUDDY_* are NEVER included."
+        ),
+    )
+    pinned_version: str = Field(
+        default="@earendil-works/pi-coding-agent@^1.0.0",
+        description="npm pinned-version range. Catches silent breaking changes from upstream.",
+    )
+
+    model_config = {"extra": "forbid"}
+
+    @model_validator(mode="after")
+    def _env_allowlist_denylist(self) -> PiPoolSettings:
+        """Reject any ``env_allowlist`` entry that matches a sensitive prefix.
+
+        This is the model-level counterpart to the runtime denylist in
+        ``JSONRPCStdioClient._build_subprocess_env``. Validator rejects
+        at construction time (fail-fast); runtime strips defensively.
+
+        Req: REQ-PI-003
+        """  # req: REQ-PI-003
+        sensitive_prefixes: tuple[str, ...] = (
+            "MAHAVISHNU_",
+            "MINIMAX_",
+            "ZAI_",
+            "DHARA_",
+            "AKOSHA_",
+            "SESSION_BUDDY_",
+        )
+        for key in self.env_allowlist:
+            if any(key.startswith(prefix) for prefix in sensitive_prefixes):
+                from .errors import ConfigurationError
+
+                raise ConfigurationError(
+                    f"pi_pool.env_allowlist contains sensitive key {key!r}; "
+                    f"prefixes MAHAVISHNU_/MINIMAX_/ZAI_/DHARA_/AKOSHA_/SESSION_BUDDY_ "
+                    f"are never forwarded to the subprocess."
+                )
+        return self
+
+    @model_validator(mode="after")
+    def _npx_command_allowlist(self) -> PiPoolSettings:
+        """Reject arbitrary-binary NPX invocations.
+
+        Req: REQ-PI-001
+        """  # req: REQ-PI-001
+        cmd = list(self.npx_command)
+        if not cmd:
+            from .errors import ConfigurationError
+
+            raise ConfigurationError(
+                "pi_pool.npx_command must be a non-empty sequence",
+            )
+        if cmd[0] not in {"npx", "/usr/local/bin/npx", "/usr/bin/env"}:
+            from .errors import ConfigurationError
+
+            raise ConfigurationError(
+                f"pi_pool.npx_command[0] must be npx, /usr/bin/env, or "
+                f"/usr/local/bin/npx; got {cmd[0]!r}. "
+                f"Refusing to start PiPool to prevent arbitrary-binary execution."
+            )
+        # /usr/bin/env is only safe when it wraps npx directly — otherwise
+        # ``/usr/bin/env sh -c 'evil' --rpc <pkg>`` would bypass the validator
+        # because ``asyncio.create_subprocess_exec`` does not shell-interpret
+        # argv. If env is used, the next argv element must be ``npx``.
+        if cmd[0] == "/usr/bin/env" and len(cmd) >= 2 and cmd[1] != "npx":
+            from .errors import ConfigurationError
+
+            raise ConfigurationError(
+                f"pi_pool.npx_command[1] must be 'npx' when cmd[0] is "
+                f"'/usr/bin/env' (got {cmd[1]!r}). '/usr/bin/env <other>' would "
+                f"spawn <other> directly and bypass the binary allowlist."
+            )
+        # Belt-and-suspenders: reject any argv that contains a shell-interpreter
+        # binary or a shell-flag, even if it slipped through cmd[0]. Catches
+        # ``npx sh -c 'evil'`` style attempts via ``pinned_version`` overrides.
+        # We only reject the specific shell-bypass shapes — not arbitrary
+        # ``-flag`` arguments, since npx legitimately takes ``-y``, ``--rpc``,
+        # package names, etc.
+        _FORBIDDEN_SHELL_BINARIES: frozenset[str] = frozenset(
+            {"sh", "bash", "zsh", "fish", "dash", "ksh", "csh", "tcsh"}
+        )
+        _FORBIDDEN_SHELL_FLAGS: frozenset[str] = frozenset({"-c", "-i"})
+        for idx, arg in enumerate(cmd):
+            if idx == 0:
+                continue
+            base = arg.split("=", 1)[0]
+            if arg in _FORBIDDEN_SHELL_BINARIES or base in _FORBIDDEN_SHELL_FLAGS:
+                from .errors import ConfigurationError
+
+                raise ConfigurationError(
+                    f"pi_pool.npx_command[{idx}] = {arg!r} is a shell-binary or "
+                    f"shell-flag and is not permitted in the argv. Refusing to "
+                    f"start PiPool to prevent shell injection."
+                )
+        if "--rpc" not in cmd:
+            from .errors import ConfigurationError
+
+            raise ConfigurationError("pi_pool.npx_command must include '--rpc'")
+        if "@earendil-works/pi-coding-agent" not in " ".join(cmd):
+            from .errors import ConfigurationError
+
+            raise ConfigurationError(
+                "pi_pool.npx_command must reference @earendil-works/pi-coding-agent"
+            )
+        return self
+
+
 class HNSWIndexConfig(BaseModel):
     """HNSW index configuration for high-performance vector search.
 
@@ -2230,6 +2397,13 @@ class MahavishnuSettings(BaseSettings):
     pools: PoolConfig = Field(
         default_factory=PoolConfig,
         description="Pool management configuration",
+    )
+
+    # Pi coding-agent pool (D1). Sibling of `pools` so each pool type can
+    # be enabled independently. See PiPoolSettings for the full contract.
+    pi_pool: PiPoolSettings = Field(
+        default_factory=PiPoolSettings,
+        description="Pi coding-agent pool configuration (D1).",
     )
 
     # OpenTelemetry storage

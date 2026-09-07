@@ -11,6 +11,17 @@ blocks_resolved:
 phase_0_status: refactor-solved  # see §5 Phase 0 update 2026-08-29; bug structurally impossible in v0.19.0's new tool pair
 patch_doc_status: historical  # docs/fixes/2026-08-29-dispatch-to-pool-dead-letter-fallback.md — pattern reference only
 topic: routing-composition
+requirements:
+  - id: REQ-ORC-001
+    title: "Routing fitness scoring respects affinity classes"
+  - id: REQ-ORC-002
+    title: "Pool routing strategies cover affinity, peer affinity, least-loaded, round-robin, random"
+  - id: REQ-ORC-003
+    title: "Multi-pool orchestration routes work across heterogeneous backends"
+  - id: REQ-ORC-004
+    title: "Cross-component orchestration includes Akosha, Dhara, Session-Buddy, Crackerjack integrations"
+  - id: REQ-ORC-005
+    title: "Health-aware pool selection can mark degraded pools unavailable"
 ---
 
 # Orchestrator Research Synthesis & Adoption Plan (v2 — Pivot)

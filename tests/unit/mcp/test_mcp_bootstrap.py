@@ -187,21 +187,27 @@ class TestResolveTerminalAdapter:
     def test_crow_preference_delegates_to_crow_builder(
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        """``adapter_preference='crow'`` routes through ``_build_crow_adapter``."""
+        """``adapter_preference='crow'`` routes through the adapter registry (D0 refactor)."""
         sentinel = MockTerminalAdapter()
         called: list[Any] = []
 
-        def _fake_builder(config: Any, mcp_client: Any) -> Any:
-            called.append((config, mcp_client))
+        def _fake_crow_factory(*a: Any, **kw: Any) -> Any:
+            called.append((a, kw))
             return sentinel
 
-        monkeypatch.setattr(bootstrap, "_build_crow_adapter", _fake_builder)
+        monkeypatch.setattr(
+            "mahavishnu.terminal.adapters._ADAPTER_REGISTRY",
+            {"crow": _fake_crow_factory, "mock": lambda *a, **kw: MockTerminalAdapter()},
+        )
         config = TerminalSettings(adapter_preference="crow")
 
         adapter = bootstrap._resolve_terminal_adapter(config, mcp_client="client")
 
         assert adapter is sentinel
-        assert called == [(config, "client")]
+        assert called == [((), {
+            "config": config,
+            "mcp_client": "client",
+        })]
 
     def test_iterm2_preference_warns_and_falls_back_to_mock(self) -> None:
         """The removed iTerm2 adapter emits DeprecationWarning, returns mock."""

@@ -99,6 +99,21 @@ runpod_pool:
     - "torch"
     - "transformers"
 
+# Pi coding-agent pool configuration
+# Set pi_pool.enabled: true in settings/local.yaml to opt in.
+# Operators must ensure `npx` is on PATH and the @earendil-works/pi-coding-agent
+# package is reachable. See docs/plans/2026-09-07-pi-pool-backend.md for the
+# threat model and Integration Contract.
+pi_pool:
+  enabled: false
+  default_model: "claude-sonnet-4-5"
+  rpc_timeout_seconds: 30
+  probe_timeout_seconds: 3
+  heartbeat_interval_seconds: 30
+  pinned_version: "@earendil-works/pi-coding-agent@^1.0.0"
+  # npx_command and env_allowlist intentionally not in defaults — must be
+  # overridden per environment via settings/local.yaml.
+
 # Worker orchestration for headless AI execution
 workers:
   enabled: true  # Enable worker orchestration
@@ -194,6 +209,16 @@ terminal:
   # operator opt-in. Crow remains selectable via adapter_preference: "crow".
   adapter_preference: "tmux"
   fallback_on_probe_failure: false
+
+  # Goose adapter (Block's goose serve over HTTP)
+  # Operators must run `goose serve --port 8694 --auth-token $GOOSE_SECRET` separately.
+  # Defaults to disabled — opt in by setting goose_enabled=true (and either
+  # goose_secret_key in local.yaml or MAHAVISHNU_TERMINAL__GOOSE_SECRET_KEY in env).
+  goose_enabled: false
+  goose_http_host: "127.0.0.1"
+  goose_http_port: 8694
+  goose_poll_interval: 0.5
+  # goose_secret_key: read from env var MAHAVISHNU_TERMINAL__GOOSE_SECRET_KEY only — never commit
 
 openhands:
   enabled: true

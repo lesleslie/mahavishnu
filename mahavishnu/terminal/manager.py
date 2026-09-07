@@ -5,7 +5,6 @@ from __future__ import annotations
 import asyncio
 from datetime import UTC, datetime
 from logging import getLogger
-import pathlib
 from typing import TYPE_CHECKING, Any
 import warnings
 
@@ -478,91 +477,41 @@ class TerminalManager:
             ConfigurationError: No suitable adapter available
         """
         from ..core.errors import ConfigurationError
-        from .adapters.mock import MockTerminalAdapter
+        from .adapters import get_adapter_factory, list_adapter_names
 
         terminal_config = config.terminal
         preference = terminal_config.adapter_preference
 
-        # Mock adapter - always works, use by default
-        if preference in ("mock", "auto"):
-            logger.info("Using mock terminal adapter (no external dependencies)")
-            adapter = MockTerminalAdapter()
-            return cls(adapter, terminal_config)
+        # "auto" is documented as an alias for "mock" — preserve the legacy behavior.
+        if preference == "auto":
+            preference = "mock"
 
-        # crow adapter (requires crow_enabled + MCP client pointing at Bodai crow HTTP server)
-        if preference == "crow":
-            crow_enabled = getattr(terminal_config, "crow_enabled", False)
-            if not crow_enabled:
-                # Crow preference requested but the adapter is disabled in settings.
-                # Fall through to the mock adapter (the documented default behavior).
-                # This addresses MHV-001: stock installs with adapter_preference="crow"
-                # no longer crash on missing mcp_client — operators opt in by setting
-                # terminal.crow_enabled=true once the CLI call sites are wired.
-                # See: docs/followups/2026-06-29-crow-mcp-client-wiring.md
-                logger.info(
-                    "Crow adapter preference set but crow_enabled=false; "
-                    "using mock adapter. Set terminal.crow_enabled=true to enable "
-                    "the bundled crow adapter."
-                )
-                adapter = MockTerminalAdapter()
-                return cls(adapter, terminal_config)
-            if mcp_client is None:
-                raise ConfigurationError(
-                    message=(
-                        "crow adapter is enabled (crow_enabled=true) but no "
-                        "mcp_client was provided to TerminalManager.create(). "
-                        "Either provide an mcp_client pointing at the Bodai crow "
-                        "HTTP server, or set terminal.crow_enabled=false to use "
-                        "the mock adapter."
-                    ),
-                    details={
-                        "adapter_preference": "crow",
-                        "crow_enabled": True,
-                        "crow_http_endpoint": f"{getattr(terminal_config, 'crow_http_host', '127.0.0.1')}:"
-                        f"{getattr(terminal_config, 'crow_http_port', 8675)}",
-                    },
-                )
-            from .adapters.crow import CrowTerminalAdapter
-
-            adapter = CrowTerminalAdapter(mcp_client)
-            logger.info("Using crow terminal adapter")
-            return cls(adapter, terminal_config)
-
-        if preference == "tmux":
-            # The tmux backend lives in the new durable-worker contract
-            # (mahavishnu/workers/contract/). It owns its own socket dir
-            # and record store; the manager wires it as the terminal
-            # adapter so that existing pool/worker call sites get the
-            # new behavior with no additional plumbing.
-            from ..workers.contract.manager import DurableWorkerManager
-            from ..workers.contract.store import WorkerRecordStore
-            from .adapters.tmux import TmuxTerminalAdapter
-
-            store = WorkerRecordStore(pathlib.Path.home() / ".mahavishnu" / "worker-sessions")
-            publisher = _ManagerEventPublisher(_enqueue_to_eventbridge)
-            manager = DurableWorkerManager(
-                store=store,
-                publisher=publisher,
-                socket_dir=pathlib.Path.home() / ".mahavishnu" / "tmux",
-            )
-            adapter = TmuxTerminalAdapter(manager)
-            return cls(adapter, terminal_config)
-
+        # Deprecation warning for iTerm2 — fall through to mock.
         if preference == "iterm2":
             warnings.warn(
                 "adapter_preference='iterm2' is deprecated and has been removed. "
-                "Use 'tmux' or 'crow' instead.",
+                "Use 'tmux', 'crow', or 'goose' instead.",
                 DeprecationWarning,
                 stacklevel=2,
             )
-            adapter = MockTerminalAdapter()
-            return cls(adapter, terminal_config)
+            preference = "mock"
 
-        # No suitable adapter found
-        raise ConfigurationError(
-            message=f"No suitable terminal adapter found for preference '{preference}'",
-            details={
-                "adapter_preference": preference,
-                "mcp_client_provided": mcp_client is not None,
-            },
-        )
+        # D0 refactor: dispatch via the adapter registry. Each adapter module
+        # registers itself on import. Adding a new adapter is one
+        # ``register_adapter(name, factory)`` call, not a new branch here.
+        try:
+            factory = get_adapter_factory(preference)
+        except KeyError as exc:
+            raise ConfigurationError(
+                message=f"No suitable terminal adapter found for preference '{preference}'",
+                details={
+                    "adapter_preference": preference,
+                    "available_adapters": list(list_adapter_names()),
+                    "mcp_client_provided": mcp_client is not None,
+                    "registry_error": str(exc),
+                },
+            ) from None
+
+        adapter = factory(config=terminal_config, mcp_client=mcp_client)
+        logger.info("Using %s terminal adapter", adapter.adapter_name)
+        return cls(adapter, terminal_config)

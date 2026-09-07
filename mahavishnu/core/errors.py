@@ -20,7 +20,9 @@ from typing import ClassVar
 
 _REDACT_PATTERN = re.compile(
     r"(?i)(?:sk-[a-z0-9-]{8,}|ghp_[a-z0-9]{8,}|xox[ab]-[a-z0-9-]{8,}|"
-    r"ya29\.[a-z0-9_-]{4,}|bearer\s+[a-z0-9._-]{8,})"
+    r"ya29\.[a-z0-9_-]{4,}|bearer\s+[a-z0-9._-]{8,}|"
+    r"(?:secret|token|key|authorization)\s*[=:]\s*[a-z0-9._\-]{8,}|"
+    r"(?:secret|token|key|authorization)\s+[a-z0-9._\-]{12,})"
 )
 
 
@@ -1778,3 +1780,297 @@ class WorktreeIntegrityError(WorktreeError):
     unauthorized substitution. The worktree is NOT materialized
     in this case (fail-closed).
     """
+
+
+# Sentinel regex used by Pi-error repr/str to redact credential-shaped fields.
+# Matches any field name that looks like a secret/token/key/bearer/authorization.
+_PI_SECRET_FIELD_RE = re.compile(
+    r"(?i)(secret|token|key|bearer|authorization)",
+)
+
+
+def _redact_sensitive_details(details: dict | None) -> dict | None:
+    """Return a copy of ``details`` with any sensitive-looking field redacted.
+
+    Used by the Pi error classes to ensure ``__repr__`` and ``__str__`` never
+    leak credential-shaped values. The redaction is field-name based (matches
+    ``secret|token|key|bearer|authorization`` case-insensitively) and replaces
+    the value with ``"<redacted>"``.
+    """
+    if not details:
+        return details
+    redacted: dict[str, object] = {}
+    for k, v in details.items():
+        if isinstance(k, str) and _PI_SECRET_FIELD_RE.search(k):
+            redacted[k] = "<redacted>"
+        else:
+            redacted[k] = v
+    return redacted
+
+
+class PiUnavailable(MahavishnuError):  # noqa: N818
+    """Raised when the Pi coding-agent runtime cannot be reached.
+
+    Covers:
+    - ``npx`` binary missing from ``$PATH``
+    - ``@earendil-works/pi-coding-agent --rpc`` not supported by the package
+    - Subprocess failed to spawn (permission denied, OOM)
+
+    The ``details`` dict carries an ``install_hint`` field with operator-facing
+    remediation (e.g. ``"npm i -g npx && npx -y @earendil-works/pi-coding-agent"``).
+
+    Req: REQ-PI-002
+    """  # req: REQ-PI-002
+
+    def __init__(
+        self,
+        message: str,
+        *,
+        install_hint: str = "",
+        details: dict | None = None,
+    ) -> None:
+        merged_details: dict[str, object] = {
+            "runtime": "pi",
+            "install_hint": install_hint,
+            **(details or {}),
+        }
+        super().__init__(
+            _redact_message(message),
+            ErrorCode.WORKER_UNAVAILABLE,
+            details=_redact_sensitive_details(merged_details),
+        )
+
+    def __repr__(self) -> str:
+        return f"PiUnavailable({self.message!r}, install_hint={self.details.get('install_hint', '')!r})"
+
+    def __str__(self) -> str:
+        install_hint = self.details.get("install_hint", "")
+        if install_hint:
+            return f"[{self.error_code.value}] {self.message} (install_hint={install_hint!r})"
+        return f"[{self.error_code.value}] {self.message}"
+
+
+class PiRPCTimeout(MahavishnuError):  # noqa: N818
+    """Raised when a JSON-RPC request to the Pi subprocess times out.
+
+    Distinct from the generic :class:`TimeoutError` because the Pi subprocess
+    may still be alive — the timeout only covers the request round-trip.
+    Pending requests on stop are translated to this error so the caller can
+    distinguish a normal timeout from a pool-wide failure.
+    """
+
+    def __init__(
+        self,
+        message: str = "Pi RPC request timed out",
+        *,
+        method: str = "",
+        timeout_seconds: float = 0.0,
+        details: dict | None = None,
+    ) -> None:
+        merged_details: dict[str, object] = {
+            "runtime": "pi",
+            "method": method,
+            "timeout_seconds": timeout_seconds,
+            **(details or {}),
+        }
+        super().__init__(
+            _redact_message(message),
+            ErrorCode.TIMEOUT_ERROR,
+            details=_redact_sensitive_details(merged_details),
+        )
+
+    def __repr__(self) -> str:
+        method = self.details.get("method", "")
+        timeout = self.details.get("timeout_seconds", 0.0)
+        return f"PiRPCTimeout(method={method!r}, timeout_seconds={timeout})"
+
+    def __str__(self) -> str:
+        method = self.details.get("method", "")
+        timeout = self.details.get("timeout_seconds", 0.0)
+        if method:
+            return (
+                f"[{self.error_code.value}] {self.message} (method={method!r}, timeout={timeout}s)"
+            )
+        return f"[{self.error_code.value}] {self.message}"
+
+
+class PiProtocolError(MahavishnuError):
+    """Raised when the Pi subprocess violates the JSON-RPC framing or schema.
+
+    Distinct from :class:`JSONRPCError` (which represents a parsed error
+    response from the peer). This error signals that the peer sent
+    malformed Content-Length framing, a non-JSON body, or an out-of-spec
+    notification. Indicates either an upstream Pi bug or version drift
+    (the ``pinned_version`` mismatch).
+    """
+
+    def __init__(
+        self,
+        message: str,
+        *,
+        frame_excerpt: str = "",
+        details: dict | None = None,
+    ) -> None:
+        # Truncate frame excerpt to keep error logs bounded.
+        bounded_excerpt = frame_excerpt[:512] if frame_excerpt else ""
+        merged_details: dict[str, object] = {
+            "runtime": "pi",
+            "frame_excerpt": bounded_excerpt,
+            **(details or {}),
+        }
+        super().__init__(
+            _redact_message(message),
+            ErrorCode.INTERNAL_ERROR,
+            details=_redact_sensitive_details(merged_details),
+        )
+
+    def __repr__(self) -> str:
+        excerpt = self.details.get("frame_excerpt", "")
+        if excerpt:
+            return f"PiProtocolError({self.message!r}, frame_excerpt={excerpt!r})"
+        return f"PiProtocolError({self.message!r})"
+
+    def __str__(self) -> str:
+        excerpt = self.details.get("frame_excerpt", "")
+        if excerpt:
+            return f"[{self.error_code.value}] {self.message} (frame_excerpt={excerpt!r})"
+        return f"[{self.error_code.value}] {self.message}"
+
+
+# ---------------------------------------------------------------------------
+# Goose terminal-adapter errors (D3)
+# ---------------------------------------------------------------------------
+
+
+class GooseUnavailable(MahavishnuError):  # noqa: N818
+    """Raised when the ``goose serve`` HTTP backend cannot be reached.
+
+    Covers:
+    - ``goose serve`` subprocess not running
+    - TCP connection refused (wrong port, host down)
+    - DNS failure on ``goose_http_host``
+
+    The ``details`` dict carries an ``install_hint`` field with operator-facing
+    remediation (e.g. ``"Install Block's goose CLI: curl -fsSL https://github.com/block/goose/releases/latest/download/goose.sh | sh"``).
+
+    Req: REQ-GOO-001, REQ-GOO-006
+    """  # req: REQ-GOO-001, REQ-GOO-006
+
+    def __init__(
+        self,
+        message: str,
+        *,
+        install_hint: str = "",
+        details: dict | None = None,
+    ) -> None:
+        merged_details: dict[str, object] = {
+            "adapter": "goose",
+            "install_hint": install_hint,
+            **(details or {}),
+        }
+        super().__init__(
+            _redact_message(message),
+            ErrorCode.WORKER_UNAVAILABLE,
+            details=_redact_sensitive_details(merged_details),
+        )
+
+    def __repr__(self) -> str:
+        install_hint = self.details.get("install_hint", "")
+        return f"GooseUnavailable({self.message!r}, install_hint={install_hint!r})"
+
+    def __str__(self) -> str:
+        install_hint = self.details.get("install_hint", "")
+        if install_hint:
+            return f"[{self.error_code.value}] {self.message} (install_hint={install_hint!r})"
+        return f"[{self.error_code.value}] {self.message}"
+
+
+class GooseAuthError(MahavishnuError):
+    """Raised when the Goose bearer token is rejected or missing.
+
+    Distinguishes a 401/403 from a generic ``GooseUnavailable`` so operators
+    can debug ``goose_secret_key`` wiring separately from connectivity issues.
+
+    ``__repr__`` and ``__str__`` are redacting: any field whose key matches
+    ``secret|token|key|bearer|authorization`` (case-insensitive) is replaced
+    with ``<redacted>`` to prevent credential leakage via structured logs.
+
+    Req: REQ-GOO-002, REQ-GOO-006
+    """  # req: REQ-GOO-002, REQ-GOO-006
+
+    def __init__(
+        self,
+        message: str,
+        *,
+        status_code: int | None = None,
+        details: dict | None = None,
+    ) -> None:
+        merged_details: dict[str, object] = {
+            "adapter": "goose",
+            "status_code": status_code,
+            **(details or {}),
+        }
+        super().__init__(
+            _redact_message(message),
+            ErrorCode.AUTHENTICATION_ERROR,
+            details=_redact_sensitive_details(merged_details),
+        )
+
+    def __repr__(self) -> str:
+        return f"GooseAuthError({self.message!r}, status_code={self.details.get('status_code')!r})"
+
+    def __str__(self) -> str:
+        status_code = self.details.get("status_code")
+        if status_code:
+            return f"[{self.error_code.value}] {self.message} (status_code={status_code})"
+        return f"[{self.error_code.value}] {self.message}"
+
+
+class GooseTimeoutError(MahavishnuError):
+    """Raised when a Goose HTTP request exceeds the configured timeout.
+
+    Distinct from :class ``TimeoutError`` because the failure mode is a
+    Goose-side reachability issue (network, server, slow capture) rather
+    than a generic pool timeout.
+
+    Req: REQ-GOO-003, REQ-GOO-006
+    """  # req: REQ-GOO-003, REQ-GOO-006
+
+    def __init__(
+        self,
+        message: str,
+        *,
+        method: str = "",
+        path: str = "",
+        timeout_seconds: float = 0.0,
+        details: dict | None = None,
+    ) -> None:
+        merged_details: dict[str, object] = {
+            "adapter": "goose",
+            "method": method,
+            "path": path,
+            "timeout_seconds": timeout_seconds,
+            **(details or {}),
+        }
+        super().__init__(
+            _redact_message(message),
+            ErrorCode.TIMEOUT_ERROR,
+            details=_redact_sensitive_details(merged_details),
+        )
+
+    def __repr__(self) -> str:
+        method = self.details.get("method", "")
+        path = self.details.get("path", "")
+        timeout = self.details.get("timeout_seconds", 0.0)
+        return f"GooseTimeoutError(method={method!r}, path={path!r}, timeout_seconds={timeout})"
+
+    def __str__(self) -> str:
+        method = self.details.get("method", "")
+        path = self.details.get("path", "")
+        timeout = self.details.get("timeout_seconds", 0.0)
+        if method or path:
+            return (
+                f"[{self.error_code.value}] {self.message} "
+                f"(method={method!r}, path={path!r}, timeout={timeout}s)"
+            )
+        return f"[{self.error_code.value}] {self.message}"

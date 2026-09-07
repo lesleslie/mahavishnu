@@ -22,7 +22,6 @@ from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
     import httpx2
-
     from mcp.client.session import ClientSession
 
 logger = logging.getLogger(__name__)

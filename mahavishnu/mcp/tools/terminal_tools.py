@@ -274,25 +274,27 @@ def register_terminal_tools(
     @mcp.tool()
     async def terminal_list_adapters() -> dict:
         """List all available terminal adapters."""
-        # Built dynamically from the live terminal manager + crow_enabled flag.
-        # tmux and mock are always available; crow is opt-in via crow_enabled.
-        config = getattr(terminal_manager, "config", None)
-        crow_enabled = bool(getattr(config, "crow_enabled", False))
+        # Built dynamically from the adapter registry (D0 refactor). Each
+        # adapter module registers itself on import; the registry is the
+        # single source of truth. Adapter descriptions are static metadata
+        # keyed by adapter name.
+        from mahavishnu.terminal.adapters import list_adapter_names
 
-        adapters: dict[str, dict[str, str]] = {
-            "tmux": {
-                "status": "available",
-                "description": "Durable-worker terminal via local tmux subprocess",
-            },
-            "mock": {
-                "status": "available",
-                "description": "Simulated terminal for tests and offline fallbacks",
-            },
+        _ADAPTER_DESCRIPTIONS = {
+            "mock": "Simulated terminal for tests and offline fallbacks",
+            "tmux": "Durable-worker terminal via local tmux subprocess",
+            "crow": "PTY via bodai-crow HTTP MCP bridge",
+            "goose": "Block's goose serve over HTTP (Rust-fast; 70+ MCP extensions)",
         }
-        if crow_enabled:
-            adapters["crow"] = {
+
+        adapters: dict[str, dict[str, str]] = {}
+        for name in list_adapter_names():
+            adapters[name] = {
                 "status": "available",
-                "description": "PTY via bodai-crow HTTP MCP bridge",
+                "description": _ADAPTER_DESCRIPTIONS.get(
+                    name,
+                    "Registered adapter (no description in terminal_tools.py)",
+                ),
             }
 
         return {

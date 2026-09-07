@@ -124,43 +124,51 @@ def _build_crow_adapter(config: Any, mcp_client: Any) -> TerminalAdapter:
 def _resolve_terminal_adapter(config: Any, mcp_client: Any) -> TerminalAdapter:
     """Select the terminal adapter named by ``terminal.adapter_preference``.
 
-    Previously this function ignored the preference entirely and always
-    returned the mock adapter, which made every pool a silent no-op: the mock
-    emits canned output that never contains the completion marker
-    ``GenericShellWorker._monitor_completion`` waits for, so ``pool_execute``
-    hung until its timeout.
+    Dispatches via the adapter registry (D0 refactor). All known adapters
+    (mock, tmux, crow, goose) are constructed by their factories in
+    ``mahavishnu.terminal.adapters.__init__``. Adding a new adapter is one
+    ``register_adapter`` call, not a new branch here.
+
+    The iTerm2 deprecation warning is preserved for backward compatibility.
     """
+    from ..core.errors import ConfigurationError
+    from ..terminal.adapters import get_adapter_factory, list_adapter_names
+
     preference = config.adapter_preference.lower()
 
-    if preference in ("mock", "auto"):
-        logger.info("Using mock terminal adapter (adapter_preference=%s)", preference)
-        return MockTerminalAdapter()
-
-    if preference == "tmux":
-        logger.info("Using tmux durable-worker terminal adapter")
-        return _build_tmux_adapter()
-
-    if preference == "crow":
-        return _build_crow_adapter(config, mcp_client)
+    if preference == "auto":
+        preference = "mock"
 
     if preference == "iterm2":
         import warnings
 
         warnings.warn(
             "adapter_preference='iterm2' is deprecated and has been removed. "
-            "Use 'tmux' or 'crow' instead.",
+            "Use 'tmux', 'crow', or 'goose' instead.",
             DeprecationWarning,
             stacklevel=2,
         )
-        logger.warning("iTerm2 adapter removed; falling back to mock adapter")
+        preference = "mock"
+
+    try:
+        factory = get_adapter_factory(preference)
+    except KeyError:
+        logger.warning(
+            "Unknown or unavailable adapter_preference=%r; falling back to mock adapter. "
+            "Pools will NOT execute real work. Valid values: %s",
+            preference,
+            ", ".join(list_adapter_names()),
+        )
         return MockTerminalAdapter()
 
-    logger.warning(
-        "Unknown adapter_preference=%r; falling back to mock adapter. "
-        "Pools will NOT execute real work. Valid values: mock, auto, tmux, crow.",
-        preference,
-    )
-    return MockTerminalAdapter()
+    try:
+        return factory(config=config, mcp_client=mcp_client)
+    except ConfigurationError:  # noqa: TRY203 - re-raise marker
+        # Crow-disabled falls through to mock; let other errors propagate.
+        # The Crow factory handles crow_enabled internally; it returns Mock
+        # when disabled. So this except branch is for genuine configuration
+        # errors (e.g. crow_enabled but no mcp_client).
+        raise
 
 
 def init_terminal_manager(server: FastMCPServer) -> TerminalManager | None:
