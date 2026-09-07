@@ -136,13 +136,15 @@ For the remote-host scapy-mcp case (covered in ADR 0016 v2 §"Open Questions" #1
 The no-payload guarantee (spec §"Disclaimer docs") + runtime Oneiric log filter (spec line 88) + scapy-mcp's own safety controls (master kill-switch, L3 CIDR allowlist, L2 allow flag, broadcast opt-in per scapy-mcp plan §"Transmit safety model") form the Article 32 security baseline. The v1.x enrichment integration inherits this baseline; the v1.x-public-release work adds:
 
 - **Wire-format regression detection** (L5 BLOCKER B-Op6): runtime regex-based field-name filter over `enrich_batch()` return values; emits WARN + increments `flowscape.enrichment.wire_format_violation_total` on hit. Closes the "silent regression" failure mode where a future maintainer adds a payload-shaped field to the merged proto.
-- **mcp-common authentication primitives** (when designed, per ADR 0016 v2 §"Open Questions" #1): when scapy-mcp supports authenticated connections, the remote-host deployment gains transport security + principal-bound audit trail.
+- **mcp-common authentication primitives** (per ADR 0016 v2 §"Open Questions" #1): when scapy-mcp supports authenticated connections, the remote-host deployment gains transport security + principal-bound audit trail.
 
 ## 10. Authentication posture
 
 Bodai MCP servers authenticate inbound requests via `mcp_common.auth.BearerTokenMiddleware`,
-which reads `Authorization: Bearer <token>` from the ASGI scope and verifies via
-the configured `IdentityProvider` (inter-service JWT or Anthropic OAuth).
+which reads `Authorization: Bearer <token>` via FastMCP's `get_http_headers()`
+(not the ASGI scope — the FastMCP `MiddlewareContext` does not expose
+`scope`) and verifies via the configured `IdentityProvider` (inter-service JWT
+or Anthropic OAuth).
 
 Authentication state is observable via `/health`:
 
@@ -160,10 +162,6 @@ servers. The 503 semantic is reserved for `/readyz` (future work).
 For pre-1.0 internal use, auth is opt-in (see §3). Production deployments must
 set `auth.enabled: true` and configure at least one provider in
 `MCPServerSettings.auth.identity_providers`.
-
-When mcp-common ships authentication primitives, this document's remote-host
-analysis (§4 §8) updates to assume authenticated transport; same-host
-(localhost) deployment remains the default for pre-1.0 internal use.
 
 ## 11. Cross-References
 
