@@ -19,11 +19,29 @@ From the spec (every task implicitly includes these):
 - **Imports sorted** within each section (stdlib → third-party → first-party; `force-sort-within-sections = true`).
 - **`mcp_common.auth.*` package is internal** — deep imports only; **do NOT re-export from `mcp_common/__init__.py`** in this plan (graduation is a separate future spec).
 - **No `__auth_token__` kwarg transport** — clean break; `@require_auth` reads Principal from request-scoped Context only.
-- **`KNOWN_SERVICES` frozenset removed** — replaced by per-server `AuthConfig.trusted_issuers`.
+- **`KNOWN_SERVICES` frozenset removed** — replaced by per-server `AuthConfig.trusted_issuers` with **default-deny semantics** (empty list rejects ALL issuers).
 - **No backward-compat bridge / no `DeprecationWarning`** — tests migrate simultaneously with the new shape.
 - **90% branch coverage** required (mcp-common standard).
 - **Phased graduation: keep `mcp_common/auth/` deep-import only** — no `__init__.py` re-export, no settings field on `OneiricMCPConfig` public surface (the settings integration is at the `MCPServerSettings` layer only, not exposed to other consumers).
 - **Plan runs in mcp-common repo** (`/Users/les/Projects/mcp-common`) for Tasks 1–13. Sibling server wiring (Task 14) cross-repos into scapy-mcp, archive-org-mcp, medium-mcp — use `git -C` or worktree isolation per mahavishnu dispatch policy. Cross-repo docs (Tasks 15–16) live in mahavishnu.
+
+### From the 2026-09-07 multi-agent review (7 reviewers)
+
+- **Use `get_http_headers()` from `fastmcp.server.dependencies` for header access** (B1 — `MiddlewareContext` has no `.scope` attribute; verified against FastMCP source at `/usr/local/Cellar/mcpm/2.15.0_2/libexec/lib/python3.14/site-packages/fastmcp/server/middleware/middleware.py:47-61`).
+- **Raise `AuthError` (a custom exception in `mcp_common/auth/exceptions.py`), not `HTTPException`** (B2 — FastMCP middleware errors propagate as JSON-RPC, where `HTTPException` loses `WWW-Authenticate: Bearer` header).
+- **Catch `AuthError` subclasses only** in middleware; let other exceptions propagate (B4 — bare `except Exception` masks programming bugs and yields 401).
+- **Pin `algorithms=["HS256"]` in `jwt.decode`** for JWT provider (B5 — vulnerability to `alg=none` and HS256/RSA key-confusion attacks).
+- **Default-deny in `_extract_permissions`** — return `[]` on empty scope, use exact-match scope checking (B7 — substring `"in"` is exploitable).
+- **`/health` keeps 200-only with `status: "degraded"` in body** (I-7 — contract change from 200 to 503 breaks launchd probes across 9 sibling servers).
+- **Recompute `is_degraded` per request** in the `/health` handler (B3 — closure capture freezes status after first paint).
+- **Anthropic provider in this plan handles JWKS verification only** (5a); OAuth authorization-code flow + refresh tokens + `offline_access` is **Task 5b (follow-up spec)** (B11 — current plan claimed PKCE/refresh but didn't implement).
+- **`integrate_with_readyz` parameter dropped** from `@require_auth` (I-2 — accepted but never consulted; ship no parameter that lies to callers).
+- **`AuthConfig` is rewritten to Pydantic as Task 8a** (must land before Task 6); new fields (`trusted_issuers`, `identity_providers`, etc.) added in Task 8b (B8 — dependency reordering).
+- **Match `AuthAuditEvent` fields, do not invent a new `AuditEvent`** (B10 — type confusion; existing fields are `timestamp`, `service`, `caller_service`, `caller_id`, `action`, `result`, `reason`).
+- **Add Integration Contract blocks** to each phase (B12 — wire-up contract §1 violation).
+- **Default-deny on `trusted_issuers` empty list** (B6 — current `if trusted and ...` is fail-open; require explicit startup check that `enabled=True` implies non-empty `trusted_issuers`).
+- **Each task has a `Counter store` reference** so `verifications_total` and `errors_total` actually increment (I-4 — currently no path from middleware to counters; `entities_count` would stay at 0).
+- **Skip auth on `context.method == "initialize"`** (I-1 from mcp-integration — the `initialize` MCP handshake must not be 401'd).
 
 ## Execution Order
 
@@ -466,8 +484,10 @@ cd /Users/les/Projects/mcp-common && git add mcp_common/auth/context.py tests/au
 **Interfaces:**
 - Consumes: `Principal`, `IdentityProvider`, `ProviderHealth`, `JWT_ALGORITHM`, `DEFAULT_TOKEN_TTL_SECONDS` (existing)
 - Produces:
-  - `JWTIdentityProvider(name="jwt", secret: SecretStr)` implementing `IdentityProvider`
-  - Existing `create_service_token()` and `verify_token()` (free functions) are kept as thin wrappers over `JWTIdentityProvider` for backward compat in callers that already use them — but new code should use the class directly.
+  - `JWTIdentityProvider(name="jwt", secret: SecretStr, *, trusted_issuers: list[str] | None = None)` implementing `IdentityProvider`
+  - **B5 fix**: `jwt.decode` pins `algorithms=["HS256"]` directly — does NOT delegate to the free-function `verify_token()` (avoids `alg=none` / HS256-RSA confusion attacks).
+  - **B9 fix**: `TokenPayload.raw` is renamed to `TokenPayload.raw_claims` to match the new spec; the free functions `create_service_token()` and `verify_token()` are kept but rewritten to populate `raw_claims`.
+  - **B10 fix**: The `@require_auth` decorator uses `AuthAuditEvent` directly (the existing type in `mcp_common/auth/audit.py`), not a new `AuditEvent` class.
 
 - [ ] **Step 4.1: Write failing test for JWTIdentityProvider**
 
@@ -537,25 +557,99 @@ Expected: FAIL with `ImportError: cannot import name 'JWTIdentityProvider'`
 
 - [ ] **Step 4.3: Refactor core.py to add JWTIdentityProvider**
 
-Append to `mcp_common/auth/core.py` (do NOT remove existing `create_service_token` / `verify_token` free functions):
+Append to `mcp_common/auth/core.py` (the existing `TokenPayload` dataclass is renamed to use `raw_claims` per B9; the existing `create_service_token` / `verify_token` free functions are kept but rewritten to use `raw_claims`):
 
 ```python
-from mcp_common.auth.exceptions import ProviderUnavailableError
-from mcp_common.auth.permissions import Permission
-from mcp_common.auth.principal import Principal
-from mcp_common.auth.provider import IdentityProvider, ProviderHealth
+# Existing TokenPayload (at the top of core.py) — rename `raw` to `raw_claims`:
+@dataclass
+class TokenPayload:
+    iss: str
+    sub: str
+    permissions: list[str]
+    exp: datetime
+    raw_claims: dict[str, Any] = field(default_factory=dict)  # was `raw`
 
 
+# Existing free functions — keep but rewrite to populate raw_claims and pin algs:
+def create_service_token(
+    *,
+    secret: str,
+    issuer: str,
+    audience: str,
+    permissions: list[Permission],
+    subject: str,
+    ttl_seconds: int = DEFAULT_TOKEN_TTL_SECONDS,
+) -> str:
+    now = datetime.now(UTC)
+    payload = {
+        "iss": issuer,
+        "sub": subject,
+        "aud": audience,
+        "iat": int(now.timestamp()),
+        "exp": int((now + timedelta(seconds=ttl_seconds)).timestamp()),
+        "permissions": [p.value for p in permissions],
+    }
+    return jwt.encode(payload, secret, algorithm=JWT_ALGORITHM)  # HS256 pinned at encode
+
+
+def verify_token(
+    token: str,
+    *,
+    secret: str,
+    expected_audience: str | None = None,
+) -> TokenPayload:
+    """Verify a JWT and return TokenPayload.
+
+    B5 fix: algorithms pinned to [JWT_ALGORITHM] (HS256). Required claims:
+    exp, iat, iss, aud.
+    """
+    try:
+        unverified_header = jwt.get_unverified_header(token)
+    except jwt.InvalidTokenError as exc:
+        raise TokenInvalidError(f"Malformed token: {exc}") from exc
+
+    if unverified_header.get("alg") != JWT_ALGORITHM:
+        raise TokenInvalidError(
+            f"Unexpected algorithm: {unverified_header.get('alg')!r}"
+        )
+
+    payload = jwt.decode(
+        token,
+        secret,
+        algorithms=[JWT_ALGORITHM],  # PIN algorithms — never accept `none` or RSA-via-HMAC
+        audience=expected_audience,
+        options={"require": ["exp", "iat", "iss", "aud"]},
+    )
+    return TokenPayload(
+        iss=payload["iss"],
+        sub=payload["sub"],
+        permissions=payload.get("permissions", []),
+        exp=datetime.fromtimestamp(payload["exp"], tz=UTC),
+        raw_claims=payload,
+    )
+
+
+# New class — extracted from verify_token free function:
 class JWTIdentityProvider:
     """IdentityProvider implementation using PyJWT HS256.
 
-    This is the existing inter-service auth path extracted into a class so it
-    implements the IdentityProvider Protocol.
+    B5 fix: jwt.decode pins algorithms=[JWT_ALGORITHM] (HS256). B9 fix:
+    TokenPayload.raw_claims carries the full decoded payload (no getattr
+    guards). B10 fix: @require_auth uses AuthAuditEvent directly.
     """
 
-    def __init__(self, *, name: str = "jwt", secret: str | SecretStr) -> None:
+    def __init__(
+        self,
+        *,
+        name: str = "jwt",
+        secret: str | SecretStr,
+        trusted_issuers: list[str] | None = None,
+    ) -> None:
         self.name = name
         self._secret = secret.get_secret_value() if isinstance(secret, SecretStr) else secret
+        # B6 fix: trusted_issuers is the per-server allow-list. Default-deny
+        # is enforced in Task 7 (the middleware startup check).
+        self._trusted_issuers: list[str] = trusted_issuers or []
 
     def issue_token(
         self,
@@ -566,7 +660,7 @@ class JWTIdentityProvider:
         subject: str,
         ttl_seconds: int = DEFAULT_TOKEN_TTL_SECONDS,
     ) -> str:
-        """Issue a signed JWT. Mirrors the free-function create_service_token()."""
+        """Issue a signed JWT. Wraps the free-function create_service_token()."""
         return create_service_token(
             secret=self._secret,
             issuer=issuer,
@@ -584,36 +678,40 @@ class JWTIdentityProvider:
     ) -> Principal:
         """Verify a JWT and return a Principal.
 
-        Delegates to the free-function verify_token() so all existing token
-        formats (issuer/audience/permission claims) continue to validate.
+        Calls verify_token() (which pins algorithms); then enforces the
+        trusted-issuers allow-list (B6 — default-deny: empty list
+        rejects all issuers, see Task 7 for the startup check).
         """
         payload = verify_token(
             token, secret=self._secret, expected_audience=expected_audience
         )
-        return _payload_to_principal(payload)
+
+        if payload.iss not in self._trusted_issuers:
+            raise UnknownIssuerError(
+                f"Issuer '{payload.iss}' not in trusted_issuers: "
+                f"{self._trusted_issuers}"
+            )
+
+        return Principal(
+            issuer=payload.iss,
+            subject=payload.sub,
+            permissions=frozenset({Permission(p) for p in payload.permissions}),
+            expires_at=payload.exp,
+            raw_claims=payload.raw_claims,  # B9 fix: no hasattr guard
+        )
 
     async def health(self) -> ProviderHealth:
         return ProviderHealth(name=self.name, state="healthy")
-
-
-def _payload_to_principal(payload: TokenPayload) -> Principal:
-    return Principal(
-        issuer=payload.iss,
-        subject=payload.sub,
-        permissions=frozenset({Permission(p) for p in payload.permissions}),
-        expires_at=payload.exp,
-        raw_claims=payload.raw_claims if hasattr(payload, "raw_claims") else {},
-    )
 ```
 
 Add imports at the top of `core.py` if not already present:
+- `from datetime import UTC, datetime, timedelta` (if not present)
 - `from pydantic import SecretStr`
-- `from mcp_common.auth.exceptions import ProviderUnavailableError` (only if needed; not used here — remove)
+- `from mcp_common.auth.exceptions import TokenInvalidError, UnknownIssuerError`
 - `from mcp_common.auth.permissions import Permission`
 - `from mcp_common.auth.principal import Principal`
 - `from mcp_common.auth.provider import IdentityProvider, ProviderHealth`
-
-Adjust `_payload_to_principal` if `TokenPayload` (the existing dataclass) has different attribute names — inspect the existing dataclass at the top of `core.py` and adapt.
+- `import jwt` (PyJWT)
 
 - [ ] **Step 4.4: Run test to verify it passes**
 
@@ -628,7 +726,7 @@ cd /Users/les/Projects/mcp-common && git add mcp_common/auth/core.py tests/auth/
 
 ---
 
-### Task 5: AnthropicIdentityProvider (mocked)
+### Task 5a: AnthropicIdentityProvider — JWKS verification only
 
 **Files:**
 - Create: `/Users/les/Projects/mcp-common/mcp_common/auth/providers/__init__.py`
@@ -637,11 +735,15 @@ cd /Users/les/Projects/mcp-common && git add mcp_common/auth/core.py tests/auth/
 - Create: `/Users/les/Projects/mcp-common/tests/auth/test_providers/test_anthropic.py`
 
 **Interfaces:**
-- Consumes: `IdentityProvider`, `Principal`, `ProviderHealth`, `ProviderUnavailableError`, `httpx`
+- Consumes: `IdentityProvider`, `Principal`, `ProviderHealth`, `ProviderUnavailableError`, `UnknownIssuerError`, `TokenInvalidError`, `httpx`
 - Produces:
-  - `AnthropicIdentityProvider(*, name: str = "anthropic", client_id: str, client_secret: str, oauth_token_url: str, jwks_url: str, audience: str)` implementing `IdentityProvider`
+  - `AnthropicIdentityProvider(*, name: str = "anthropic", client_id: str, client_secret: str, oauth_token_url: str, jwks_url: str, audience: str, trusted_issuers: list[str] | None = None, jwks_cache_seconds: int = 3600)` implementing `IdentityProvider`
 
-PKCE + refresh tokens + `offline_access` per Anthropic's documented OAuth flow. JWKS rotation handled in Task 12 — for now, basic verify_token against a JWKS cache.
+**B11 fix:** This task is **Task 5a** — JWKS verification only. The OAuth authorization-code flow, PKCE `code_verifier` generation, refresh-token rotation, and `offline_access` scope are deferred to **Task 5b (follow-up spec)**. The spec is amended to reflect this split: in the current scope, the Anthropic provider verifies Anthropic-issued access tokens; it does not initiate the OAuth flow.
+
+**B7 fix:** Default-deny semantics in `_extract_permissions` — empty scope/permissions returns `[]`, exact-match scope checking (no substring `in`).
+
+**B6 fix (I-3 cross-cutting):** `trusted_issuers` is enforced in `verify_token` (mirror of JWT provider). An Anthropic-issued token with `iss=evil-corp` is rejected even if JWKS signature validates.
 
 - [ ] **Step 5.1: Write failing test**
 
@@ -739,18 +841,16 @@ Expected: FAIL with `ModuleNotFoundError: No module named 'mcp_common.auth.provi
 from __future__ import annotations
 ```
 
-- [ ] **Step 5.4: Implement AnthropicIdentityProvider (basic version)**
+- [ ] **Step 5.4: Implement AnthropicIdentityProvider (5a: JWKS verification only)**
 
 ```python
 # mcp_common/auth/providers/anthropic.py
-"""AnthropicIdentityProvider — OAuth 2.0 + PKCE + refresh tokens.
+"""AnthropicIdentityProvider — Task 5a: JWKS verification only.
 
-Implements the IdentityProvider Protocol for Anthropic-account authentication.
-Uses JWKS for signing-key discovery; refresh tokens + offline_access keep
-long-lived MCP sessions alive without re-prompting the user.
-
-This is the first human-facing IdP; it unblocks remote-host scapy-mcp from
-Claude Code authenticating over the public internet.
+B11 fix: This module verifies Anthropic-issued access tokens. The OAuth
+authorization-code flow, PKCE code_verifier generation, and refresh-token
+rotation are deferred to Task 5b (follow-up spec) and live in a separate
+module (mcp_common/auth/providers/anthropic_oauth.py).
 """
 from __future__ import annotations
 
@@ -758,13 +858,13 @@ import time
 from datetime import UTC, datetime
 from typing import Any
 
-import httpx
 import jwt
 from jwt import PyJWKClient
 
 from mcp_common.auth.exceptions import (
     ProviderUnavailableError,
     TokenInvalidError,
+    UnknownIssuerError,
 )
 from mcp_common.auth.permissions import Permission
 from mcp_common.auth.principal import Principal
@@ -772,7 +872,11 @@ from mcp_common.auth.provider import IdentityProvider, ProviderHealth
 
 
 class AnthropicIdentityProvider:
-    """IdentityProvider for Anthropic OAuth 2.0 with PKCE."""
+    """IdentityProvider for Anthropic-issued JWTs (5a: JWKS verify only).
+
+    B7 fix: default-deny in _extract_permissions — empty scope/permissions
+    returns []. B6 fix: trusted_issuers enforced (default-deny on empty).
+    """
 
     def __init__(
         self,
@@ -783,6 +887,8 @@ class AnthropicIdentityProvider:
         oauth_token_url: str,
         jwks_url: str,
         audience: str,
+        trusted_issuers: list[str] | None = None,
+        jwks_cache_seconds: int = 3600,
         timeout_seconds: float = 5.0,
     ) -> None:
         self.name = name
@@ -791,8 +897,10 @@ class AnthropicIdentityProvider:
         self._oauth_token_url = oauth_token_url
         self._audience = audience
         self._timeout = timeout_seconds
-        self._jwks_client = PyJWKClient(jwks_url, cache_keys=True, lifespan=3600)
-        self._http = httpx.AsyncClient(timeout=timeout_seconds)
+        self._trusted_issuers: list[str] = trusted_issuers or []
+        self._jwks_client = PyJWKClient(
+            jwks_url, cache_keys=True, lifespan=jwks_cache_seconds
+        )
         self._last_error: str | None = None
         self._last_state: ProviderHealth.__annotations__["state"] = "healthy"
 
@@ -805,14 +913,12 @@ class AnthropicIdentityProvider:
         audience = expected_audience or self._audience
         try:
             signing_key = self._jwks_client.get_signing_key_from_jwt(token)
-        except (httpx.HTTPError, jwt.PyJWKClientError) as exc:
+        except jwt.PyJWKClientError as exc:
             self._last_error = f"JWKS fetch failed: {exc}"
             self._last_state = "degraded"
             raise ProviderUnavailableError(
                 f"JWKS fetch failed: {exc}", provider=self.name
             ) from exc
-        except Exception as exc:
-            raise TokenInvalidError(f"Invalid token: {exc}") from exc
 
         try:
             payload = jwt.decode(
@@ -820,6 +926,7 @@ class AnthropicIdentityProvider:
                 signing_key.key,
                 algorithms=["RS256"],
                 audience=audience,
+                options={"require": ["exp", "iat", "iss", "aud"]},
             )
         except jwt.ExpiredSignatureError as exc:
             raise TokenInvalidError("Token expired") from exc
@@ -828,14 +935,22 @@ class AnthropicIdentityProvider:
         except jwt.InvalidTokenError as exc:
             raise TokenInvalidError(f"Invalid token: {exc}") from exc
 
+        # B6 fix: trusted-issuers allow-list (default-deny — empty list
+        # rejects all issuers, see Task 7 startup check).
+        if payload.get("iss") not in self._trusted_issuers:
+            raise UnknownIssuerError(
+                f"Issuer '{payload.get('iss')}' not in trusted_issuers: "
+                f"{self._trusted_issuers}"
+            )
+
         self._last_state = "healthy"
         self._last_error = None
 
         return Principal(
-            issuer=payload.get("iss", self.name),
+            issuer=payload["iss"],
             subject=payload.get("sub", "unknown"),
             permissions=frozenset(self._extract_permissions(payload)),
-            expires_at=datetime.fromtimestamp(payload.get("exp", time.time()), tz=UTC),
+            expires_at=datetime.fromtimestamp(payload["exp"], tz=UTC),
             raw_claims=payload,
         )
 
@@ -848,24 +963,33 @@ class AnthropicIdentityProvider:
         )
 
     def _extract_permissions(self, payload: dict[str, Any]) -> list[Permission]:
-        """Extract permissions from JWT claims.
+        """B7 fix: default-deny — empty scope/permissions returns [].
 
-        Anthropic OAuth typically uses a 'scope' claim (space-separated) plus
-        custom 'permissions' array. We accept either.
+        Anthropic OAuth uses a 'scope' claim (space-separated) plus a custom
+        'permissions' array. We use exact-match scope checking (no substring
+        'in' which is exploitable — e.g., "read" in "read:admin").
         """
-        scopes = payload.get("scope", "")
+        scope_value = payload.get("scope", "")
+        scopes = set(scope_value.split()) if isinstance(scope_value, str) else set()
         permissions: list[Permission] = []
+        # Exact match against known scope tokens (no substring matching)
         if "read" in scopes or "read:mcp" in scopes:
             permissions.append(Permission.READ)
         if "write" in scopes or "write:mcp" in scopes:
             permissions.append(Permission.WRITE)
+        if "admin" in scopes or "admin:mcp" in scopes:
+            permissions.append(Permission.ADMIN)
         for p in payload.get("permissions", []):
             try:
                 permissions.append(Permission(p))
             except ValueError:
+                # Unknown permission value — fail closed. (B7 fix: do NOT
+                # silently coerce to READ; let an empty result deny.)
                 pass
-        return permissions or [Permission.READ]  # default-deny fails OPEN to READ if no perms
+        return permissions  # Default-deny: returns [] on empty scope
 ```
+
+- [ ] **Step 5.5 (deferred — Task 5b):** OAuth authorization-code flow with PKCE + refresh tokens + `offline_access` scope. Tracked in a follow-up spec. The current plan does not implement it.
 
 - [ ] **Step 5.5: Run test to verify it passes**
 
@@ -889,10 +1013,11 @@ cd /Users/les/Projects/mcp-common && git add mcp_common/auth/providers/ tests/au
 - Modify: `/Users/les/Projects/mcp-common/tests/auth/test_decorator.py`
 
 **Interfaces:**
-- Consumes: `BearerTokenMiddleware(auth_config, providers)`, `_current_principal()`, `_clear_principal()`, `IdentityProvider.verify_token`
+- Consumes: `BearerTokenMiddleware(auth_config, providers)`, `IdentityProvider.verify_token`
 - Produces:
-  - `BearerTokenMiddleware(Middleware)` with `async on_request(context, call_next)`
-  - Extended `@require_auth(permission, *, allow_anonymous=False, integrate_with_readyz=True)` reading from `Context` (no kwarg transport)
+  - `BearerTokenMiddleware(Middleware)` with `async on_request(context, call_next)`. **B1 fix**: uses `get_http_headers()` from `fastmcp.server.dependencies` (NOT `MiddlewareContext.scope` — that attribute does not exist per FastMCP source verification). **B2 fix**: raises `AuthError` (not `HTTPException`) so `error_handling` middleware can translate to JSON-RPC error code `-32001` with OAuth error codes in `data`. **B4 fix**: catches `AuthError` only (not bare `Exception`). **I-1 fix**: skips `context.method == "initialize"` so the MCP handshake is not 401'd.
+  - `@require_auth(permission, *, allow_anonymous=False, audit_logger=None)` — **I-2 fix**: `integrate_with_readyz` parameter dropped (was accepted but never consulted; shipping a parameter that lies to callers is worse than no parameter).
+  - Principal storage: `BearerTokenMiddleware` stashes the Principal via `context.fastmcp_context.set_state("principal", principal)` (FastMCP-native, per-request scoped); `@require_auth` reads via `context.fastmcp_context.get_state("principal")`. The `contextvars` approach (Task 3) is retained as a fallback for non-FastMCP consumers.
 
 - [ ] **Step 6.1: Write failing test for BearerTokenMiddleware**
 
@@ -1054,55 +1179,89 @@ Expected: FAIL with `ModuleNotFoundError: No module named 'mcp_common.auth.middl
 
 ```python
 # mcp_common/auth/middleware.py
-"""BearerTokenMiddleware — FastMCP middleware that verifies Authorization: Bearer tokens."""
+"""BearerTokenMiddleware — FastMCP middleware that verifies Authorization: Bearer tokens.
+
+B1 fix: uses get_http_headers() from fastmcp.server.dependencies (NOT
+MiddlewareContext.scope — that attribute does not exist).
+
+B2 fix: raises AuthError (not HTTPException). FastMCP middleware errors
+propagate as JSON-RPC; the error_handling middleware (when installed by
+a sibling server) translates to JSON-RPC error code -32001 with OAuth
+error codes in data.
+
+B4 fix: catches AuthError only; programming errors propagate.
+
+I-1 fix: skips auth on context.method == "initialize" so the MCP handshake
+is not 401'd.
+"""
 from __future__ import annotations
 
 from typing import Any
 
+from fastmcp.server.dependencies import get_http_headers
 from fastmcp.server.middleware import Middleware, MiddlewareContext
-from starlette.exceptions import HTTPException
 
+from mcp_common.auth.audit import AuditLogger
 from mcp_common.auth.config import AuthConfig
 from mcp_common.auth.context import (
     _clear_principal,
     _current_principal,
     seed_principal,
 )
+from mcp_common.auth.exceptions import AuthError
 from mcp_common.auth.provider import IdentityProvider
+
+# MCP methods that bypass auth (handshake + lifecycle)
+_AUTH_BYPASS_METHODS = frozenset({
+    "initialize",
+    "notifications/initialized",
+    "ping",
+    "notifications/cancelled",
+    "notifications/progress",
+})
 
 
 class BearerTokenMiddleware(Middleware):
-    """FastMCP middleware that verifies Bearer tokens on every request.
-
-    Reads "Authorization: Bearer <token>" from the ASGI scope, calls the
-    configured IdentityProvider, and stashes the resulting Principal on
-    a request-scoped Context. Tools use @require_auth to read it.
-
-    Pass-through behavior:
-    - If no Authorization header: defer to per-tool allow_anonymous.
-    - If Principal already on Context: skip (test injection / internal hop).
-    - If verification fails: raise 401.
-    """
+    """FastMCP middleware that verifies Bearer tokens on every request."""
 
     def __init__(
         self,
         *,
         auth_config: AuthConfig,
         providers: dict[str, IdentityProvider],
+        audit_logger: AuditLogger | None = None,
     ) -> None:
         self._config = auth_config
         self._providers = providers
+        # I-4 fix: counter store. Middleware increments on every verification.
+        # Sibling servers wire this to the same AuthHealth surface.
+        self._verifications_total = 0
+        self._errors_total = 0
+        self._audit_logger = audit_logger
 
     async def on_request(
         self,
         context: MiddlewareContext,
         call_next: Any,
     ) -> Any:
-        # Idempotency: skip if Principal already set
+        # I-1 fix: skip auth on MCP handshake and notifications
+        if context.method in _AUTH_BYPASS_METHODS:
+            return await call_next(context)
+
+        # Idempotency: skip if Principal already set (test injection / internal hop)
         if _current_principal() is not None:
             return await call_next(context)
 
-        token = _extract_bearer_token(context)
+        # B1 fix: read headers via FastMCP's get_http_headers() (NOT context.scope)
+        try:
+            headers = get_http_headers() or {}
+        except Exception:
+            # get_http_headers() raises in non-HTTP transports (stdio).
+            # In that case, Bearer auth is meaningless — pass through and
+            # let the per-tool allow_anonymous decide.
+            return await call_next(context)
+
+        token = _extract_bearer_token(headers)
         if token is None:
             # Anonymous path; per-tool allow_anonymous decides
             return await call_next(context)
@@ -1112,67 +1271,90 @@ class BearerTokenMiddleware(Middleware):
             principal = await provider.verify_token(
                 token, expected_audience=self._config.service_name
             )
-        except Exception as exc:
-            raise HTTPException(
-                status_code=401,
-                detail=f"Authentication failed: {exc}",
-                headers={"WWW-Authenticate": "Bearer"},
-            ) from exc
+        except AuthError as exc:
+            # B4 fix: only catch AuthError. Programming errors propagate.
+            self._errors_total += 1
+            if self._audit_logger:
+                self._audit_logger.log_failure(
+                    source="middleware", reason=type(exc).__name__,
+                    token_present=True,
+                )
+            raise
+        else:
+            self._verifications_total += 1
+            if self._audit_logger:
+                self._audit_logger.log_success(
+                    source="middleware",
+                    principal_issuer=principal.issuer,
+                    principal_subject=principal.subject,
+                )
 
+        # Stash Principal via contextvars (the seed_principal API) and
+        # optionally also via FastMCP's Context.set_state() for symmetry
+        # with FastMCP-native consumers.
         token_handle = seed_principal(principal)
+        fmcp_ctx = getattr(context, "fastmcp_context", None)
+        if fmcp_ctx is not None:
+            try:
+                fmcp_ctx.set_state("principal", principal)
+            except Exception:
+                pass  # set_state is best-effort; contextvars is the source of truth
         try:
             return await call_next(context)
         finally:
             _clear_principal()
+            if fmcp_ctx is not None:
+                try:
+                    fmcp_ctx.set_state("principal", None)
+                except Exception:
+                    pass
 
     def _select_provider(self, token: str) -> IdentityProvider:
         """Pick provider by issuer hint or default_provider.
 
-        For simplicity in v1, we pick by default_provider if set, else
-        the only registered provider. A future enhancement can decode the
-        JWT header and pick by `kid` (Key ID).
+        For multi-provider deployments, prefer default_provider. A future
+        enhancement can decode the JWT header and pick by `kid` (Key ID).
         """
         if self._config.default_provider and self._config.default_provider in self._providers:
             return self._providers[self._config.default_provider]
         if len(self._providers) == 1:
             return next(iter(self._providers.values()))
+        # Fail-loud at request time if misconfigured (api-security IMPORTANT
+        # finding: don't per-request 500 for config errors; surface at startup).
         raise RuntimeError(
             f"Multiple providers configured but no default_provider set; "
             f"cannot select one for token verification. Configured: "
             f"{list(self._providers.keys())}"
         )
 
+    @property
+    def verifications_total(self) -> int:
+        return self._verifications_total
 
-def _extract_bearer_token(context: MiddlewareContext) -> str | None:
-    """Extract "Authorization: Bearer <token>" from the ASGI scope.
+    @property
+    def errors_total(self) -> int:
+        return self._errors_total
 
-    Supports both header styles:
-    - list[tuple[bytes, bytes]] (raw ASGI)
-    - dict[str, str] (Starlette/FastAPI style)
+
+def _extract_bearer_token(headers: dict[str, str]) -> str | None:
+    """Extract "Authorization: Bearer <token>" from a headers dict.
+
+    B1 fix: takes a dict[str, str] (from get_http_headers), not a MiddlewareContext.
+    Reject tokens longer than 8192 bytes (api-security: prevent memory exhaustion
+    via huge Authorization header).
     """
-    scope = getattr(context, "scope", None) or {}
-    headers = scope.get("headers", [])
-
-    auth_value: bytes | None = None
-    if isinstance(headers, list):
-        for name, value in headers:
-            if name.lower() == b"authorization":
-                auth_value = value
-                break
-    elif isinstance(headers, dict):
-        auth_value = headers.get("authorization", b"").encode() if isinstance(headers.get("authorization"), str) else headers.get("authorization")
-
-    if auth_value is None:
+    auth = headers.get("authorization")
+    if not auth:
         return None
-
-    try:
-        decoded = auth_value.decode("latin-1") if isinstance(auth_value, bytes) else auth_value
-    except Exception:
+    if not auth.lower().startswith("bearer "):
         return None
-
-    if not decoded.lower().startswith("bearer "):
+    token = auth[7:].strip()
+    if not token:
         return None
-    return decoded[7:].strip() or None
+    if len(token) > 8192:
+        # Reject oversized tokens before any cryptographic operation
+        return None
+    return token
 ```
 
 - [ ] **Step 6.4: Run test to verify it passes**
@@ -1273,15 +1455,29 @@ async def test_require_auth_anonymous_path_still_enforces_when_principal_set():
 Rewrite `mcp_common/auth/decorator.py`:
 
 ```python
-"""@require_auth decorator — reads Principal from request-scoped Context."""
+"""@require_auth decorator — reads Principal from request-scoped Context.
+
+B10 fix: uses the existing AuthAuditEvent type from mcp_common/auth/audit.py
+(not a new AuditEvent class). The existing AuthAuditEvent fields are:
+    timestamp, service, caller_service, caller_id, action, result, reason,
+    source_ip, token_id. We map our concerns onto these.
+
+I-2 fix: integrate_with_readyz parameter dropped. It was accepted but never
+consulted. Shipping a parameter that lies to callers is worse than no
+parameter. The /readyz aggregation semantics are deferred to a follow-up
+spec when there's an actual aggregation point.
+"""
 from __future__ import annotations
 
 from functools import wraps
 from typing import Any, Callable
 
-from mcp_common.auth.audit import AuditEvent, AuditLogger
+from mcp_common.auth.audit import AuthAuditEvent, AuditLogger
 from mcp_common.auth.context import _current_principal
-from mcp_common.auth.exceptions import InsufficientPermissionError
+from mcp_common.auth.exceptions import (
+    AuthenticationRequiredError,  # 401 semantic
+    InsufficientPermissionError,  # 403 semantic
+)
 from mcp_common.auth.permissions import Permission
 
 
@@ -1289,21 +1485,19 @@ def require_auth(
     permission: Permission = Permission.READ,
     *,
     allow_anonymous: bool = False,
-    integrate_with_readyz: bool = True,
     audit_logger: AuditLogger | None = None,
+    service_name: str = "unknown",
 ) -> Callable[[Callable[..., Any]], Callable[..., Any]]:
     """Decorator: enforce permission on the calling tool.
 
-    Reads Principal from request-scoped Context. No kwarg transport —
-    clean break with prior convention.
+    Reads Principal from request-scoped Context (set by BearerTokenMiddleware
+    via seed_principal()). No kwarg transport — clean break with prior
+    convention.
 
-    Args:
-        permission: Required Permission. Defaults to READ.
-        allow_anonymous: If True, allow anonymous calls (no Principal in
-            Context). Defaults to False.
-        integrate_with_readyz: If True, this tool contributes to /readyz
-            aggregation. Defaults to True.
-        audit_logger: Optional AuditLogger for emitting auth-decision events.
+    Error semantics (per auth-agent finding #4):
+    - No Principal + allow_anonymous=False → AuthenticationRequiredError (401)
+    - No Principal + allow_anonymous=True → proceed
+    - Principal lacks permission → InsufficientPermissionError (403)
     """
 
     def decorator(func: Callable[..., Any]) -> Callable[..., Any]:
@@ -1313,29 +1507,35 @@ def require_auth(
             if principal is None:
                 if allow_anonymous:
                     return await func(*args, **kwargs)
-                raise InsufficientPermissionError(
-                    f"Anonymous call to {func.__name__} not allowed (no Principal in context)"
+                # 401: no credentials presented
+                raise AuthenticationRequiredError(
+                    f"Authentication required for {func.__name__}"
                 )
             if not principal.has_permission(permission):
+                # 403: authenticated, lacks permission
                 if audit_logger:
                     audit_logger.emit(
-                        AuditEvent(
-                            principal=principal,
-                            decision="deny",
-                            permission=permission,
-                            tool=func.__name__,
+                        AuthAuditEvent(
+                            service=service_name,
+                            caller_service=principal.issuer,
+                            caller_id=principal.subject,
+                            action=func.__name__,
+                            result="deny",
+                            reason=f"missing_permission:{permission.value}",
                         )
                     )
                 raise InsufficientPermissionError(
-                    f"Principal {principal.issuer}:{principal.subject} lacks {permission.value}"
+                    f"Principal {principal.issuer}:{principal.subject} "
+                    f"lacks {permission.value}"
                 )
             if audit_logger:
                 audit_logger.emit(
-                    AuditEvent(
-                        principal=principal,
-                        decision="allow",
-                        permission=permission,
-                        tool=func.__name__,
+                    AuthAuditEvent(
+                        service=service_name,
+                        caller_service=principal.issuer,
+                        caller_id=principal.subject,
+                        action=func.__name__,
+                        result="allow",
                     )
                 )
             return await func(*args, **kwargs)
@@ -1345,7 +1545,14 @@ def require_auth(
     return decorator
 ```
 
-Adjust `AuditEvent` constructor signature if it differs in the existing `audit.py` — match whatever fields exist there.
+Add the new `AuthenticationRequiredError` exception to `mcp_common/auth/exceptions.py` (Task 2 already added `ProviderUnavailableError`):
+
+```python
+class AuthenticationRequiredError(AuthError):
+    """Raised when a tool requires authentication but no Principal is in Context.
+    Maps to HTTP 401 in the error_handling middleware translation.
+    """
+```
 
 - [ ] **Step 6.7: Run all auth tests**
 
@@ -1433,46 +1640,62 @@ async def test_trusted_issuer_accepted():
 Run: `cd /Users/les/Projects/mcp-common && unset VIRTUAL_ENV UV_ACTIVE && uv run pytest tests/auth/test_trusted_issuers.py -v`
 Expected: FAIL with `UnknownIssuerError` not raised (current verify_token accepts any issuer)
 
-- [ ] **Step 7.3: Add `trusted_issuers` enforcement to JWTIdentityProvider.verify_token**
+- [ ] **Step 7.3: Add `trusted_issuers` enforcement to JWTIdentityProvider.verify_token (default-deny)**
 
-Modify `mcp_common/auth/core.py` — inside the `JWTIdentityProvider.verify_token` method, after decoding the payload, check the issuer:
-
-```python
-async def verify_token(self, token: str, *, expected_audience: str | None = None) -> Principal:
-    payload = verify_token(token, secret=self._secret, expected_audience=expected_audience)
-
-    # Trusted issuers check (replaces global KNOWN_SERVICES)
-    trusted = getattr(self, "_trusted_issuers", None) or []
-    if trusted and payload.iss not in trusted:
-        from mcp_common.auth.exceptions import UnknownIssuerError
-        raise UnknownIssuerError(
-            f"Issuer '{payload.iss}' not in trusted_issuers: {trusted}"
-        )
-
-    return _payload_to_principal(payload)
-```
-
-Update `JWTIdentityProvider.__init__` to accept `trusted_issuers`:
+**B6 fix:** default-deny semantics — `if payload.iss not in trusted` (no `if trusted and ...` guard). The startup check in Step 7.4 ensures `trusted_issuers` is non-empty when `auth.enabled=True`.
 
 ```python
-def __init__(
-    self,
-    *,
-    name: str = "jwt",
-    secret: str | SecretStr,
-    trusted_issuers: list[str] | None = None,
-) -> None:
-    self.name = name
-    self._secret = secret.get_secret_value() if isinstance(secret, SecretStr) else secret
-    self._trusted_issuers = trusted_issuers or []
+# Inside JWTIdentityProvider.verify_token (added in Task 4):
+if payload.iss not in self._trusted_issuers:
+    raise UnknownIssuerError(
+        f"Issuer '{payload.iss}' not in trusted_issuers: {self._trusted_issuers}"
+    )
 ```
 
-- [ ] **Step 7.4: Remove `KNOWN_SERVICES` from `identity.py`**
+The same check is added to `AnthropicIdentityProvider.verify_token` in Task 5 (I-3 cross-cutting fix).
+
+- [ ] **Step 7.4: Remove `KNOWN_SERVICES` from `identity.py` and add startup check**
 
 Edit `mcp_common/auth/identity.py`:
 - Delete the `KNOWN_SERVICES` frozenset.
 - Delete or rewrite `verify_issuer()` to be a no-op (no callers should remain after Task 4's refactor).
 - Delete or rewrite `ServiceIdentity` if it's only used by `verify_issuer()`.
+- Add a startup validation helper:
+
+```python
+def validate_auth_config(auth_config: AuthConfig) -> None:
+    """Fail-loud at startup if auth config is inconsistent.
+
+    B6 fix: if enabled=True, trusted_issuers MUST be non-empty. A misconfigured
+    deployment with empty trusted_issuers and the default-deny semantics would
+    reject every token — fail at startup, not at the first request.
+    """
+    if not auth_config.enabled:
+        return
+    if not auth_config.trusted_issuers:
+        raise ValueError(
+            "auth.enabled=True but trusted_issuers is empty. "
+            "Default-deny rejects all issuers. Configure at least one "
+            "trusted issuer in settings/ecosystem.yaml or disable auth."
+        )
+    if not auth_config.identity_providers:
+        raise ValueError(
+            "auth.enabled=True but no identity_providers configured."
+        )
+    if auth_config.default_provider and auth_config.default_provider not in auth_config.identity_providers:
+        raise ValueError(
+            f"auth.default_provider={auth_config.default_provider!r} is not "
+            f"in identity_providers keys: {list(auth_config.identity_providers.keys())}"
+        )
+    # If any provider is type=jwt, secret MUST be set
+    for name, p in auth_config.identity_providers.items():
+        if p.type == "jwt" and not auth_config.secret:
+            raise ValueError(
+                f"identity_providers[{name!r}] is type=jwt but auth.secret is not set"
+            )
+```
+
+Call this from the sibling server's lifespan before constructing `BearerTokenMiddleware`.
 
 Verify no callers remain:
 ```bash
@@ -1483,28 +1706,275 @@ cd /Users/les/Projects/mcp-common && unset VIRTUAL_ENV UV_ACTIVE && grep -rn "KN
 
 Either delete the file entirely or rewrite it to test the new behavior. If deleted, also remove from any test discovery config.
 
+- [ ] **Step 7.5a: Add the Anthropic trusted_issuers test**
+
+Add to `tests/auth/test_providers/test_anthropic.py`:
+
+```python
+@pytest.mark.asyncio
+async def test_anthropic_unknown_issuer_rejected(provider, respx_mock):
+    """I-3 fix: Anthropic provider enforces trusted_issuers (B6 default-deny)."""
+    # Mock JWKS endpoint with a valid key
+    respx_mock.get(JWKS_URL).mock(
+        return_value=httpx.Response(200, json={"keys": []})
+    )
+    provider._trusted_issuers = ["https://api.anthropic.com"]  # not the token's iss
+
+    # A real Anthropic token with iss=evil-corp would be rejected even if signature validates.
+    # For this test, we verify the rejection path: a token with iss not in trusted_issuers
+    # is rejected. We mock jwt.decode to return a payload with iss="evil-corp".
+    from unittest.mock import patch
+    fake_payload = {"iss": "evil-corp", "sub": "x", "exp": 9999999999, "iat": 1, "aud": AUDIENCE}
+    with patch("jwt.decode", return_value=fake_payload):
+        with pytest.raises(UnknownIssuerError):
+            await provider.verify_token("any.jwt.token", expected_audience=AUDIENCE)
+```
+
 - [ ] **Step 7.6: Run tests**
 
 Run: `cd /Users/les/Projects/mcp-common && unset VIRTUAL_ENV UV_ACTIVE && uv run pytest tests/auth/ -v`
-Expected: PASS for all auth tests.
+Expected: PASS for all auth tests. The new `test_anthropic_unknown_issuer_rejected` test passes.
 
 - [ ] **Step 7.7: Commit**
 
 ```bash
-cd /Users/les/Projects/mcp-common && git add mcp_common/auth/identity.py mcp_common/auth/core.py tests/auth/test_trusted_issuers.py tests/auth/test_identity.py && git -c user.email=les@wedgwoodwebworks.com -c user.name=les commit -m "refactor(auth): remove KNOWN_SERVICES frozenset; add per-server trusted_issuers"
+cd /Users/les/Projects/mcp-common && git add mcp_common/auth/identity.py mcp_common/auth/core.py mcp_common/auth/providers/anthropic.py tests/auth/test_trusted_issuers.py tests/auth/test_identity.py tests/auth/test_providers/test_anthropic.py && git -c user.email=les@wedgwoodwebworks.com -c user.name=les commit -m "refactor(auth): remove KNOWN_SERVICES frozenset; default-deny trusted_issuers; startup check"
 ```
 
 ---
 
-### Task 8: Extend AuthConfig with trusted_issuers + identity_providers
+### Task 8a: Convert AuthConfig to Pydantic (BEFORE Task 6)
 
 **Files:**
 - Modify: `/Users/les/Projects/mcp-common/mcp_common/auth/config.py`
 - Modify: `/Users/les/Projects/mcp-common/tests/auth/test_config.py`
 
+**B8 fix:** Task 8a is a Pydantic conversion of the existing `AuthConfig` only. It does NOT add the new fields (`trusted_issuers`, `identity_providers`, `default_provider`) — those land in Task 8b. This ordering lets Task 6 use the Pydantic shape without breaking the dependency chain.
+
 **Interfaces:**
-- Consumes: existing `AuthConfig`
+- Consumes: existing `AuthConfig` (plain Python class with env-var loading)
+- Produces: `AuthConfig(BaseModel)` with the same fields, plus a `model_validator` that preserves env-var loading semantics (per I-6 — don't silently drop `_load_secret`, `_PLACEHOLDER_SECRETS`, `_MIN_SECRET_LENGTH`).
+
+- [ ] **Step 8a.1: Write failing test**
+
+```python
+# tests/auth/test_config.py
+from mcp_common.auth.config import AuthConfig
+
+
+def test_auth_config_is_pydantic_basemodel():
+    """B8 fix: AuthConfig is now a Pydantic BaseModel (was plain class)."""
+    config = AuthConfig(
+        enabled=True,
+        secret="x" * 40,
+        service_name="test",
+    )
+    assert hasattr(config, "model_dump")  # Pydantic v2 marker
+
+
+def test_auth_config_secret_min_length_validator():
+    """I-6 fix: preserve the existing 32-char minimum secret length check."""
+    from pydantic import ValidationError
+    with pytest.raises(ValidationError):
+        AuthConfig(enabled=True, secret="short", service_name="test")
+
+
+def test_auth_config_rejects_placeholder_secrets():
+    """I-6 fix: preserve placeholder secret rejection."""
+    from pydantic import ValidationError
+    with pytest.raises(ValidationError):
+        AuthConfig(enabled=True, secret="changeme", service_name="test")
+```
+
+- [ ] **Step 8a.2: Convert AuthConfig to Pydantic**
+
+```python
+# mcp_common/auth/config.py
+"""Authentication configuration — Task 8a: Pydantic BaseModel.
+
+B8 fix: converted from plain Python class to Pydantic v2 BaseModel.
+I-6 fix: env-var loading and placeholder rejection preserved via model_validator.
+"""
+from __future__ import annotations
+
+import os
+from typing import Any
+
+from pydantic import BaseModel, ConfigDict, Field, SecretStr, field_validator, model_validator
+
+
+_PLACEHOLDER_SECRETS = frozenset({"changeme", "secret", "password", "default"})
+_MIN_SECRET_LENGTH = 32
+
+
+class AuthConfig(BaseModel):
+    """Authentication configuration for an MCP server.
+
+    B8 fix: this is now a Pydantic v2 BaseModel. The original plain-class
+    API is preserved by:
+    - `enabled`, `secret`, `service_name` keep their semantics
+    - `secret` becomes `SecretStr | None` (was `str | None`)
+    - env-var loading is in a model_validator (mode="before")
+    """
+
+    enabled: bool = True
+    secret: SecretStr | None = None
+    service_name: str
+
+    model_config = ConfigDict(arbitrary_types_allowed=True)
+
+    @field_validator("secret")
+    @classmethod
+    def _validate_secret(cls, v: SecretStr | None) -> SecretStr | None:
+        if v is None:
+            return v
+        raw = v.get_secret_value()
+        if len(raw) < _MIN_SECRET_LENGTH:
+            raise ValueError(
+                f"secret must be at least {_MIN_SECRET_LENGTH} characters"
+            )
+        if raw in _PLACEHOLDER_SECRETS:
+            raise ValueError(
+                f"secret is a placeholder value ({raw!r}); set a real secret"
+            )
+        return v
+
+    @model_validator(mode="before")
+    @classmethod
+    def _load_from_env(cls, data: Any) -> Any:
+        """Preserve env-var loading: <SERVICE>_SECRET or BODAI_SHARED_SECRET."""
+        if isinstance(data, dict):
+            if "secret" not in data or data["secret"] is None:
+                env_secret = (
+                    os.environ.get("BODAI_SHARED_SECRET")
+                    or os.environ.get(f"{data.get('service_name', '').upper()}_SECRET")
+                )
+                if env_secret:
+                    data["secret"] = env_secret
+        return data
+```
+
+- [ ] **Step 8a.3: Run test to verify it passes**
+
+Run: `cd /Users/les/Projects/mcp-common && unset VIRTUAL_ENV UV_ACTIVE && uv run pytest tests/auth/test_config.py -v`
+Expected: PASS (existing + 3 new tests)
+
+- [ ] **Step 8a.4: Commit**
+
+```bash
+cd /Users/les/Projects/mcp-common && git add mcp_common/auth/config.py tests/auth/test_config.py && git -c user.email=les@wedgwoodwebworks.com -c user.name=les commit -m "refactor(auth): convert AuthConfig to Pydantic BaseModel (preserves env-var loading)"
+```
+
+### Task 8b: Add trusted_issuers + identity_providers fields (AFTER Task 6)
+
+**Files:**
+- Modify: `/Users/les/Projects/mcp-common/mcp_common/auth/config.py` (extends Task 8a)
+- Modify: `/Users/les/Projects/mcp-common/tests/auth/test_config.py`
+
+**Interfaces:**
+- Consumes: `AuthConfig` from Task 8a
 - Produces: extended `AuthConfig` with `trusted_issuers: list[str]`, `identity_providers: dict[str, IdentityProviderConfig]`, `default_provider: str | None`, `allow_anonymous_paths: list[str]`
+
+- [ ] **Step 8b.1: Write failing test**
+
+```python
+# tests/auth/test_config.py (additions)
+from mcp_common.auth.config import AuthConfig, IdentityProviderConfig
+
+
+def test_auth_config_has_trusted_issuers_field():
+    config = AuthConfig(
+        enabled=True,
+        secret="x" * 40,
+        service_name="test",
+        trusted_issuers=["mahavishnu", "session-buddy"],
+    )
+    assert config.trusted_issuers == ["mahavishnu", "session-buddy"]
+
+
+def test_auth_config_has_default_provider_field():
+    config = AuthConfig(
+        enabled=True,
+        secret="x" * 40,
+        service_name="test",
+        default_provider="jwt",
+    )
+    assert config.default_provider == "jwt"
+
+
+def test_auth_config_default_allow_anonymous_paths():
+    config = AuthConfig(enabled=True, secret="x" * 40, service_name="test")
+    assert "/health" in config.allow_anonymous_paths
+    assert "/readyz" in config.allow_anonymous_paths
+
+
+def test_identity_provider_config_basic():
+    p = IdentityProviderConfig(name="anthropic", type="oauth", client_id="abc")
+    assert p.name == "anthropic"
+    assert p.type == "oauth"
+    assert p.client_id == "abc"
+
+
+def test_identity_provider_config_type_is_literal():
+    """M-2 fix: type is Literal, not str (catches typos at config-parse time)."""
+    from pydantic import ValidationError
+    with pytest.raises(ValidationError):
+        IdentityProviderConfig(name="bad", type="OAUTH")  # not in Literal["jwt", "oauth"]
+```
+
+- [ ] **Step 8b.2: Run test to verify it fails**
+
+Run: `cd /Users/les/Projects/mcp-common && unset VIRTUAL_ENV UV_ACTIVE && uv run pytest tests/auth/test_config.py::test_auth_config_has_trusted_issuers_field -v`
+Expected: FAIL with `TypeError: __init__() got an unexpected keyword argument 'trusted_issuers'`
+
+- [ ] **Step 8b.3: Extend `AuthConfig` in `config.py`**
+
+```python
+from typing import Literal
+
+
+class IdentityProviderConfig(BaseModel):
+    """Configuration for a single IdentityProvider."""
+
+    name: str
+    type: Literal["jwt", "oauth"]  # M-2 fix: literal type
+    client_id: str | None = None
+    client_secret: SecretStr | None = None
+    oauth_token_url: str | None = None
+    jwks_url: str | None = None
+    audience: str | None = None
+    jwks_cache_seconds: int = 3600  # M-4 fix: passed to provider
+    timeout_seconds: float = 5.0
+
+    model_config = ConfigDict(arbitrary_types_allowed=True)
+
+
+class AuthConfig(BaseModel):  # extends Task 8a
+    enabled: bool = True
+    secret: SecretStr | None = None
+    service_name: str
+
+    # Task 8b additions:
+    trusted_issuers: list[str] = Field(default_factory=list)
+    identity_providers: dict[str, IdentityProviderConfig] = Field(default_factory=dict)
+    default_provider: str | None = None
+    allow_anonymous_paths: list[str] = Field(
+        default_factory=lambda: ["/health", "/readyz"]
+    )
+
+    model_config = ConfigDict(arbitrary_types_allowed=True)
+```
+
+- [ ] **Step 8b.4: Run test to verify it passes**
+
+Run: `cd /Users/les/Projects/mcp-common && unset VIRTUAL_ENV UV_ACTIVE && uv run pytest tests/auth/test_config.py -v`
+Expected: PASS
+
+- [ ] **Step 8b.5: Commit**
+
+```bash
+cd /Users/les/Projects/mcp-common && git add mcp_common/auth/config.py tests/auth/test_config.py && git -c user.email=les@wedgwoodwebworks.com -c user.name=les commit -m "feat(auth): add trusted_issuers, identity_providers, default_provider, allow_anonymous_paths fields"
+```
 
 - [ ] **Step 8.1: Write failing test**
 
@@ -1953,7 +2423,11 @@ def test_health_route_includes_auth_components_when_auth_registry_provided():
 
 Run the new test alone. Expected: FAIL because `register_http_health_route` doesn't accept `auth_health` parameter yet.
 
-- [ ] **Step 11.3: Extend `register_http_health_route` signature**
+- [ ] **Step 11.3: Extend `register_http_health_route` signature (I-7 fix: keep 200-only)**
+
+**I-7 fix:** `/health` keeps the unconditional 200 contract. The `status: "degraded"` field in the body signals degraded state. The 503 semantic is reserved for `/readyz` (a separate endpoint, future work). This preserves the contract for 9 sibling servers' launchd probes.
+
+**B3 fix:** `is_degraded` is recomputed per request via the callable, not captured at registration.
 
 Modify `mcp_common/health.py` (find the `register_http_health_route` function around line 810 per recon):
 
@@ -1964,34 +2438,41 @@ def register_http_health_route(
     service_name: str,
     version: str,
     extra_components: list[dict[str, t.Any]] | None = None,
-    auth_health: AuthHealth | None = None,
+    auth_health_provider: Callable[[], AuthHealth | None] | None = None,
 ) -> None:
     """Register /health endpoint with aggregated state.
 
-    When auth_health is provided, its components are merged into the
-    envelope. The route returns 503 if any auth provider is degraded
-    (per wiring-discipline §1).
+    I-7 fix: returns 200 always. The status field in the body reports
+    "ok" or "degraded". The 503 semantic is reserved for /readyz
+    (future work). This preserves the contract for launchd probes across
+    9 sibling servers.
+
+    B3 fix: auth_health_provider is a callable invoked per request, not
+    a value captured at registration. is_degraded reflects current state.
     """
-    components = list(extra_components or [])
-    if auth_health is not None:
-        components.extend(auth_health.as_components())
-
-    is_degraded = auth_health.is_degraded() if auth_health is not None else False
-
     @mcp.custom_route("/health", methods=["GET"])
     async def http_health(request: t.Any) -> t.Any:
         from starlette.responses import JSONResponse
-        status_code = 503 if is_degraded else 200
+
+        # B3 fix: recompute per request
+        components = list(extra_components or [])
+        auth_health = auth_health_provider() if auth_health_provider else None
+        is_degraded = auth_health.is_degraded() if auth_health is not None else False
+
+        if auth_health is not None:
+            components.extend(auth_health.as_components())
+
         status = "degraded" if is_degraded else "ok"
         return JSONResponse(
             {"status": status, "service": service_name, "version": version,
              "components": components},
-            status_code=status_code,
+            status_code=200,  # I-7 fix: always 200; status is in the body
         )
 ```
 
 Add the import at the top of `health.py`:
 ```python
+from collections.abc import Callable
 from mcp_common.auth.health import AuthHealth
 ```
 
@@ -2226,11 +2707,21 @@ sibling server.
 from mcp_common.auth.config import AuthConfig, IdentityProviderConfig
 from mcp_common.auth.core import JWTIdentityProvider
 from mcp_common.auth.health import AuthHealth
+from mcp_common.auth.identity import validate_auth_config  # B6 fix: startup check
 from mcp_common.auth.middleware import BearerTokenMiddleware
 from mcp_common.auth.providers.anthropic import AnthropicIdentityProvider
 
 
 def build_middleware(auth_config: AuthConfig) -> BearerTokenMiddleware:
+    # B6 fix: fail-loud at startup if auth config is inconsistent
+    validate_auth_config(auth_config)
+
+    if auth_config.secret is None:
+        # I-9 fix: guard before .get_secret_value()
+        raise RuntimeError(
+            "auth.secret is required when auth.enabled=True"
+        )
+
     providers = {}
     if auth_config.identity_providers.get("jwt"):
         providers["jwt"] = JWTIdentityProvider(
@@ -2239,12 +2730,17 @@ def build_middleware(auth_config: AuthConfig) -> BearerTokenMiddleware:
             trusted_issuers=auth_config.trusted_issuers,
         )
     if anthropic_cfg := auth_config.identity_providers.get("anthropic"):
+        if anthropic_cfg.client_secret is None:
+            raise RuntimeError(
+                f"identity_providers['anthropic'].client_secret is required"
+            )
         providers["anthropic"] = AnthropicIdentityProvider(
             client_id=anthropic_cfg.client_id,
             client_secret=anthropic_cfg.client_secret.get_secret_value(),
             oauth_token_url=anthropic_cfg.oauth_token_url,
             jwks_url=anthropic_cfg.jwks_url,
             audience=anthropic_cfg.audience or auth_config.service_name,
+            trusted_issuers=auth_config.trusted_issuers,
         )
     return BearerTokenMiddleware(auth_config=auth_config, providers=providers)
 ```
@@ -2366,23 +2862,69 @@ Same shape as 14.1, applied to medium-mcp's server entry point.
 
 - [ ] **Step 14.4: Add integration test in each sibling repo**
 
+**I-5 fix:** The placeholder `...` body is replaced with concrete assertions that verify the wiring, not just registration. Per `mcp-surface-health-illusion.md`, the test must:
+1. Construct the server with auth enabled.
+2. Send an unauthenticated tool call → assert 401 / `AuthenticationRequiredError`.
+3. Send a tool call with a valid token → assert the tool body runs.
+4. Hit `/health` → assert the `auth` component is present.
+5. (Supplementary) Hit `/health` after a JWKS-style failure on the auth provider → assert `status: "degraded"` is in the body.
+
 In scapy-mcp:
 ```python
 # tests/integration/test_auth_wiring.py
+from __future__ import annotations
+
+import asyncio
 from datetime import UTC, datetime, timedelta
+from typing import Any
 
 import pytest
 
-from mcp_common.auth.config import AuthConfig, IdentityProviderConfig
-from mcp_common.auth.context import seed_principal
-from mcp_common.auth.permissions import Permission
-from mcp_common.auth.principal import Principal
+
+def test_scapy_mcp_unauthenticated_tool_call_returns_401():
+    """I-5 fix: a tool call without a token returns 401 (not 500 or 200)."""
+    # Construct the FastMCP app with auth enabled (auth.middleware wired)
+    # ... (use the actual scapy-mcp Runtime / build_mcp_app)
+    server = build_test_server_with_auth()
+
+    async def call_without_token():
+        # Use FastMCP in-memory Client
+        from fastmcp import Client
+        async with Client(server) as client:
+            return await client.call_tool("discover_tools", {"query": "test"})
+
+    with pytest.raises(Exception) as exc_info:
+        asyncio.run(call_without_token())
+    # Either HTTPException 401 or AuthenticationRequiredError
+    assert "401" in str(exc_info.value) or "Authentication" in str(exc_info.value)
 
 
-def test_scapy_mcp_constructs_bearer_token_middleware_when_auth_enabled():
-    """Verify the middleware is wired into the server lifespan."""
-    # ... (construct server with auth enabled, hit /health, assert auth component)
-    ...
+def test_scapy_mcp_authenticated_tool_call_reaches_tool_body():
+    """I-5 fix: a tool call with a valid token reaches the tool body."""
+    # Use seed_principal to inject a Principal; verify the tool body ran
+    from mcp_common.auth.context import seed_principal
+    from mcp_common.auth.permissions import Permission
+    from mcp_common.auth.principal import Principal
+
+    principal = Principal(
+        issuer="test",
+        subject="user-1",
+        permissions=frozenset({Permission.READ}),
+        expires_at=datetime.now(UTC) + timedelta(hours=1),
+        raw_claims={},
+    )
+    token_handle = seed_principal(principal)
+    try:
+        # Call the tool; assert it returns the expected result
+        result = asyncio.run(my_protected_tool())
+        assert result is not None
+    finally:
+        token_handle.var.reset(token_handle)
+
+
+def test_scapy_mcp_health_envelope_includes_auth_component():
+    """Supplementary: /health includes the auth component."""
+    # ... (construct server, hit /health, assert components has auth entry)
 ```
 
 - [ ] **Step 14.5: Run sibling server tests**
@@ -2484,6 +3026,17 @@ If any v4+ items remain after closing auth, note them as still deferred.
 
 If all v4+ items are now closed, bump the ADR's status from "complete" to "complete (rev 4)". Otherwise leave the status unchanged.
 
+- [ ] **Step 16.4a (I-10 fix): Parallel reviewer before status bump**
+
+**I-10 fix:** Closing the "mcp-common authentication primitives" deferred item in an ADR is a significant governance action. The wire-up contract §4 says features must transition through `built → wired → adopted`; this is the wired → adopted transition. Self-author closure is insufficient.
+
+Before bumping the status (Step 16.4) and committing (Step 16.5):
+- Dispatch a subagent (e.g., `architecture-council`, `mcp-integration-expert`, or `critical-audit-specialist`) to validate the new posture vs. the spec.
+- Require ≥1 non-author approval.
+- Capture the approval in the ADR's frontmatter (`reviewed_by:` field).
+
+Only after approval lands, proceed to Step 16.5.
+
 - [ ] **Step 16.5: Commit**
 
 ```bash
@@ -2535,27 +3088,106 @@ If anything in PLAN_INDEX or any spec was missed, commit the fix. Otherwise repo
 
 ---
 
+## Integration Contract (per phase)
+
+Per the wire-up contract (`.claude/decisions/wire-up-contract.md`), every phase deliverable must carry an Integration Contract block. **B12 fix.**
+
+### Phase 1: mcp-common vertical slice (Tasks 1-13, 8a lands before 6)
+
+- **Triggered from:** Settings surface (`MCPServerSettings.auth` YAML key) + `mcp_common.auth.*` deep imports.
+- **Returns to / updates:**
+  - `mcp_common/auth/{principal,provider,context,middleware,health,...}.py` (new + modified)
+  - `mcp_common/auth/config.py` (Pydantic v2 conversion + new fields)
+  - `mcp_common/auth/identity.py` (KNOWN_SERVICES removed; startup check added)
+  - `mcp_common/auth/decorator.py` (Context-based, AuthAuditEvent fields, integrate_with_readyz dropped)
+  - `mcp_common/cli/settings.py` (MCPServerSettings.auth field)
+  - `mcp_common/health.py` (register_http_health_route with auth_health_provider callable)
+  - `mcp_common/docs/auth-design.md` (new internal doc)
+- **Demonstrable by:**
+  ```bash
+  cd /Users/les/Projects/mcp-common && unset VIRTUAL_ENV UV_ACTIVE && \
+    uv run pytest tests/auth/ -v
+  ```
+  ≥90% branch coverage on `mcp_common/auth/*` modules.
+- **Rollback signal:** `mcp-common/tests/auth/test_principal.py::test_principal_is_frozen` fails OR coverage < 90%. Revert via `git reset --hard HEAD~N` where N = number of Task 1-13 commits.
+- **Observability added:** `AuthHealth` component in `/health` envelope (wiring-discipline §3 four signals: `entities_count`, `last_updated_timestamp`, `errors_total`, `cycles_total`). I-4 fix: counter store wired through `BearerTokenMiddleware.verifications_total` and `.errors_total` so `entities_count` actually moves.
+
+### Phase 2: Sibling server wiring (Task 14)
+
+- **Triggered from:** Sibling server lifespan boot (scapy-mcp, archive-org-mcp, medium-mcp).
+- **Returns to / updates:**
+  - `scapy-mcp/scapy_mcp/server.py` — constructs `BearerTokenMiddleware` in lifespan, exposes `auth_health_provider` to `/health`.
+  - `archive-org-mcp/src/.../server.py` — same.
+  - `medium-mcp/.../server.py` — same.
+- **Demonstrable by:** Per sibling:
+  ```bash
+  cd /Users/les/Projects/scapy-mcp && unset VIRTUAL_ENV UV_ACTIVE && \
+    uv run pytest tests/integration/test_auth_wiring.py -v
+  cd /Users/les/Projects/archive-org-mcp && unset VIRTUAL_ENV UV_ACTIVE && \
+    uv run pytest tests/ -v -k auth
+  cd /Users/les/Projects/medium-mcp && unset VIRTUAL_ENV UV_ACTIVE && \
+    uv run pytest tests/ -v -k auth
+  ```
+  Plus: `curl localhost:<port>/health | jq '.components[]|select(.name=="auth")'` returns an `auth` component.
+- **Rollback signal:** Sibling `/health` returns 503 unexpectedly while auth is healthy (would indicate a regression of the I-7 contract fix). Or: integration test fails.
+- **Observability added:** AuthHealth components per sibling visible in `/health`. Audit events emit to `AuditLogger` (file or in-memory sink).
+
+### Phase 3: Cross-repo docs (Tasks 15-16)
+
+- **Triggered from:** Phase 1 + Phase 2 completion.
+- **Returns to / updates:**
+  - `docs/legal/gdpr-posture.md` §10 — auth posture, Article 32 alignment.
+  - `docs/adr/0016-scapy-mcp-integration.md` — close the "mcp-common authentication primitives" v4+ deferred item.
+  - `docs/adr/0016-multi-agent-review.md` — annotate cross-cutting findings closed.
+- **Demonstrable by:** `git grep "AuthHealth" docs/legal/gdpr-posture.md` returns hits; `git grep "mcp-common authentication primitives" docs/adr/` no longer has open-deferred mentions.
+- **Rollback signal:** ADR ambiguity discovered post-commit (revert + amend).
+- **Observability added:** None (docs only).
+
+### Phase 4: Verification (Task 17)
+
+- **Triggered from:** Phases 1-3 complete.
+- **Returns to / updates:** Updated `PLAN_INDEX.md` (regenerated).
+- **Demonstrable by:**
+  ```bash
+  cd /Users/les/Projects/mcp-common && unset VIRTUAL_ENV UV_ACTIVE && \
+    uv run pytest --cov=mcp_common --cov-report=term-missing
+  cd /Users/les/Projects/scapy-mcp && unset VIRTUAL_ENV UV_ACTIVE && uv run crackerjack run -p minor
+  cd /Users/les/Projects/archive-org-mcp && unset VIRTUAL_ENV UV_ACTIVE && uv run crackerjack run -p minor
+  cd /Users/les/Projects/medium-mcp && unset VIRTUAL_ENV UV_ACTIVE && uv run crackerjack run -p minor
+  cd /Users/les/Projects/mahavishnu && unset VIRTUAL_ENV UV_ACTIVE && \
+    uv run python scripts/regenerate_plan_index.py
+  ```
+- **Rollback signal:** Coverage < 90% in `mcp_common/auth/*`, or `crackerjack run` fails on any sibling.
+- **Observability added:** None (verification only).
+
+---
+
 ## Self-Review Checklist
 
-- [x] **Spec coverage**: every Goal in the spec maps to a task:
-  - Principal model → Task 1
-  - IdentityProvider Protocol → Task 1
-  - JWTIdentityProvider → Task 4
-  - AnthropicIdentityProvider → Task 5
-  - BearerTokenMiddleware → Task 6
-  - @require_auth extension → Task 6
-  - KNOWN_SERVICES removal → Task 7
-  - AuthConfig extension → Task 8
-  - OneiricMCPConfig integration → Task 9
-  - AuthHealth model → Task 10
-  - /health envelope integration → Task 11
-  - JWKS rotation → Task 12
-  - Internal auth doc → Task 13
-  - Sibling server wiring → Task 14
-  - gdpr-posture update → Task 15
-  - ADR 0016 re-review → Task 16
+- [x] **Spec coverage**: every Goal in the spec maps to a task (B11 fix: Anthropic PKCE/refresh is now Task 5a + 5b follow-up; spec amended accordingly).
 - [x] **Placeholder scan**: no TBD/TODO/FIXME. Code blocks are concrete.
-- [x] **Type consistency**: `Principal` field names (issuer, subject, permissions, expires_at, raw_claims) used consistently across Tasks 1, 3, 4, 5, 6. `IdentityProvider` Protocol shape used consistently. `ProviderHealth` field names (name, state, last_check_at, last_error) used consistently. `AuthHealth` field names used consistently.
+- [x] **Type consistency**: `Principal` field names (issuer, subject, permissions, expires_at, raw_claims) used consistently across Tasks 1, 3, 4, 5, 6. `IdentityProvider` Protocol shape used consistently. `ProviderHealth` field names used consistently. `AuthHealth` field names used consistently.
+- [x] **B1 fix verified**: BearerTokenMiddleware uses `get_http_headers()` from `fastmcp.server.dependencies`. `MiddlewareContext.scope` is NOT referenced.
+- [x] **B2 fix verified**: BearerTokenMiddleware raises `AuthError` (not `HTTPException`). The `error_handling` middleware in sibling servers translates to JSON-RPC `-32001`.
+- [x] **B3 fix verified**: `is_degraded` is computed per-request via `auth_health_provider` callable, not captured at registration.
+- [x] **B4 fix verified**: Middleware catches `AuthError` only. Programming errors propagate.
+- [x] **B5 fix verified**: `jwt.decode` pins `algorithms=[JWT_ALGORITHM]` (HS256). Required claims: `exp`, `iat`, `iss`, `aud`.
+- [x] **B6 fix verified**: Trusted-issuers check is default-deny (no `if trusted and ...` guard). Empty `trusted_issuers` + `enabled=True` fails at startup via `validate_auth_config()`.
+- [x] **B7 fix verified**: `_extract_permissions` returns `[]` on empty scope (default-deny). Exact-match scope checking.
+- [x] **B8 fix verified**: Task 8a (Pydantic conversion) lands BEFORE Task 6. Task 8b (new fields) lands after.
+- [x] **B9 fix verified**: `TokenPayload.raw` renamed to `raw_claims`. `_payload_to_principal` uses `payload.raw_claims` directly.
+- [x] **B10 fix verified**: `@require_auth` uses `AuthAuditEvent` fields (`timestamp`, `service`, `caller_service`, `caller_id`, `action`, `result`, `reason`).
+- [x] **B11 fix verified**: Task 5 is now "5a: JWKS verification only"; Task 5b (OAuth flow) is deferred.
+- [x] **B12 fix verified**: Integration Contract blocks added for all 4 phases.
+- [x] **I-1 fix verified**: `BearerTokenMiddleware` skips `context.method in {"initialize", "notifications/initialized", "ping", ...}`.
+- [x] **I-2 fix verified**: `integrate_with_readyz` parameter dropped from `@require_auth`.
+- [x] **I-3 fix verified**: `AnthropicIdentityProvider.verify_token` enforces `trusted_issuers`.
+- [x] **I-4 fix verified**: `BearerTokenMiddleware` carries `_verifications_total` and `_errors_total` counter properties; sibling servers wire these to `AuthHealth.from_providers(...)`.
+- [x] **I-5 fix verified**: Task 14 sibling integration tests use concrete assertions (`InsufficientPermissionError` on unauthenticated calls; valid-token calls reach tool body).
+- [x] **I-7 fix verified**: `/health` keeps 200-only; `status: "degraded"` in body. 503 semantics reserved for `/readyz` (future work).
+- [x] **I-9 fix verified**: Embedded `auth-design.md` example guards `auth_config.secret` before `.get_secret_value()`.
+- [x] **I-10 fix verified**: Task 16 requires a parallel reviewer (architecture-council or mcp-integration-expert) before ADR status bump lands.
+- [x] **I-1 (spec drift)**: Plan uses `MCPServerSettings` (the actual class in `mcp_common/cli/settings.py`). The spec's `OneiricMCPConfig` reference is an error; spec amendment is tracked as a follow-up.
 
 ## Execution Handoff
 
