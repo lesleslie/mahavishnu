@@ -105,6 +105,7 @@ narrative. They should not duplicate.
   Hooks and cron remain prohibited; cleanup of the
   `$XDG_RUNTIME_DIR/...` or `/tmp/<branch>` worktrees created under
   Rule 3 above is manual after the fanout completes.
+- **See also**: [worktree-cleanup-policy.md](./worktree-cleanup-policy.md) — tier rubric, salvage procedure, lock + live-PID semantics (2026-09-07)
 
 ## Status <!-- legacy status: Active — see YAML frontmatter -->
 

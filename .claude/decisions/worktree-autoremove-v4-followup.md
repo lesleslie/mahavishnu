@@ -109,3 +109,7 @@ a **new** decision must be written that:
 - supersedes this doc with a final-ratified status
 - adds explicit acceptance criteria (gating, scope, rate limits)
 - ships the prerequisite `RemoteWorktreeProvider` production-ready
+
+---
+
+**See also**: [worktree-cleanup-policy.md](./worktree-cleanup-policy.md) — tier rubric, salvage procedure, lock + live-PID semantics (2026-09-07)
