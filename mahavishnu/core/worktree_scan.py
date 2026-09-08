@@ -477,8 +477,14 @@ def _get_lock_pid_liveness(
     except subprocess.TimeoutExpired:
         return (pid_int, None, "unknown")
     if result.returncode == 0:
-        # PID-reuse identity check (A21)
-        cmd_result = _run_ps(pid_str, "-o", "command=", timeout=2)
+        # PID-reuse identity check (A21). Wrap the second _run_ps call
+        # because a hung `ps -p <pid> -o command=` would otherwise raise
+        # subprocess.TimeoutExpired and abort the whole scan mid-loop
+        # (final-review L2). Treat timeout as "unknown" identity.
+        try:
+            cmd_result = _run_ps(pid_str, "-o", "command=", timeout=2)
+        except subprocess.TimeoutExpired:
+            return (pid_int, None, "unknown")
         cmd = cmd_result.stdout.strip() if cmd_result.returncode == 0 else ""
         if any(cmd.startswith(prefix) for prefix in _LOCKED_COMMAND_PREFIXES):
             return (pid_int, cmd, "alive")
