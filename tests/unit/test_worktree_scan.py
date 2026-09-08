@@ -771,6 +771,62 @@ class TestClassifierReuse:
         )
 
 
+class TestScanWorktreesObservability:
+    """F-QA-4 / F-QA-5 / F-QA-6 — scan_worktrees emits the spec's three
+    observability signals on completion:
+
+    (a) counter `mahavishnu.worktree_scan.scans_total` (+1 per call)
+    (b) histogram `mahavishnu.worktree_scan.duration_seconds`
+    (c) INFO log line carrying tier counts, duration, and counts.
+
+    The module-level OTel handles are no-op fallbacks when opentelemetry
+    isn't installed; we still verify they're called (counters/histograms
+    are duck-typed objects with .add / .record methods)."""
+    NOQA_ATTR = "_SCANS_COUNTER_DUMMY"
+
+    def test_counter_and_histogram_are_called_per_scan(self, tmp_path, caplog):
+        from mahavishnu.core import worktree_scan
+        repo = tmp_path / "r"
+        repo.mkdir()
+        (repo / ".git").mkdir()
+        with patch.object(worktree_scan, "_SCANS_COUNTER") as counter, \
+             patch.object(worktree_scan, "_DURATION_HISTOGRAM") as hist, \
+             patch.object(worktree_scan, "_run_git_scanned") as git, \
+             patch.object(worktree_scan, "_run_ps"):
+            git.return_value = MagicMock(returncode=0, stdout="", stderr="")
+            with caplog.at_level("INFO", logger="mahavishnu.core.worktree_scan"):
+                report = worktree_scan.scan_worktrees(
+                    repo_paths=[repo],
+                    classify_merge_status_fn=lambda _p: "not_merged",
+                    output_format="text",
+                )
+        assert isinstance(report, str)
+        # Counter incremented exactly once for the one scan call.
+        assert counter.add.call_count == 1
+        assert counter.add.call_args[0] == (1,)
+        # Histogram recorded a positive float duration.
+        assert hist.record.call_count == 1
+        rec_arg = hist.record.call_args[0][0]
+        assert isinstance(rec_arg, float)
+        assert rec_arg >= 0.0
+        # INFO log carries the canonical completion message and tier summary.
+        matching = [
+            rec for rec in caplog.records
+            if rec.message.startswith("mahavishnu.worktree_scan.completed")
+        ]
+        assert matching, (
+            "expected at least one INFO record beginning with "
+            "'mahavishnu.worktree_scan.completed'"
+        )
+        log_msg = matching[-1].getMessage()
+        assert "repos_input=1" in log_msg
+        assert "repos_scanned=1" in log_msg
+        assert "candidates=0" in log_msg
+        assert "duration_s=" in log_msg
+        assert "format=text" in log_msg
+        assert "tiers=" in log_msg
+
+
 class TestNoDuplicateHelpers:
     """Spec A56 / F26 — worktree_scan.py must not redefine `validate_path`,
     `get_worktree_base_path`, or `_validate_path`. The first two come from

@@ -9,9 +9,11 @@ from collections import defaultdict
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 import json
+import logging
 from pathlib import Path
 import re
 import subprocess
+import time
 from typing import Literal
 
 from mahavishnu.core.paths import get_worktree_base_path
@@ -23,6 +25,43 @@ _PS_TIMEOUT_DEFAULT = 2
 _LOCK_FILE_REGEX = re.compile(
     r"^claude agent \S+ \(pid (\d+) start (\d{4}-\d{2}-\d{2})\)$"
 )
+
+# OpenTelemetry (lazy-import + noop fallback mirrors the pattern in
+# `mahavishnu/core/observability.py`). When OTel isn't installed the
+# counter / histogram are no-ops, so test environments stay green without
+# the extra dependency.
+try:
+    from opentelemetry import metrics as _otel_metrics
+
+    _OTEL_AVAILABLE = True
+except ImportError:  # pragma: no cover — exercised only when otel absent
+    _OTEL_AVAILABLE = False
+
+    class _NoopCounter:
+        def add(self, *args, **kwargs) -> None:
+            return None
+
+    class _NoopHistogram:
+        def record(self, *args, **kwargs) -> None:
+            return None
+
+
+if _OTEL_AVAILABLE:
+    _METER = _otel_metrics.get_meter("mahavishnu.worktree_scan")
+    _SCANS_COUNTER = _METER.create_counter(
+        "mahavishnu.worktree_scan.scans_total",
+        description="Total number of completed worktree scans",
+    )
+    _DURATION_HISTOGRAM = _METER.create_histogram(
+        "mahavishnu.worktree_scan.duration_seconds",
+        unit="s",
+        description="Wall-clock duration of completed worktree scans",
+    )
+else:
+    _SCANS_COUNTER = _NoopCounter()
+    _DURATION_HISTOGRAM = _NoopHistogram()
+
+_LOGGER = logging.getLogger(__name__)
 
 # Lock-file command identity patterns (per spec A21: PID-reuse identity check).
 # Match `claude` or `python` running mahavishnu. A recycled PID running
@@ -283,7 +322,14 @@ def scan_worktrees(
     - JSON: `scan_metadata.failed_repos` (list of {path, reason})
     - Text: footer `Scan complete: N candidates; M scan failures; ...`
     Task 2.7's CLI exit-code-1 path consumes these.
+
+    F-QA-4/5/6: emits the spec's three observability signals on completion:
+    (a) counter `mahavishnu.worktree_scan.scans_total` (+1 per call)
+    (b) histogram `mahavishnu.worktree_scan.duration_seconds` (record)
+    (c) INFO log line with repo/repo_scanned/tier-count/duration metrics.
+    All three are no-ops when opentelemetry isn't installed.
     """
+    started = time.perf_counter()
     # Pass 1: collect (with per-repo failure tracking — F19)
     raw_entries: list[dict] = []
     failed_repos: list[dict] = []
@@ -316,11 +362,59 @@ def scan_worktrees(
 
     # Format
     if output_format == "json":
-        return _format_json(
+        report = _format_json(
             classifications, failed_repos=failed_repos, repos_scanned=repos_scanned
         )
-    return _format_text(
-        classifications, failed_repos=failed_repos, repos_scanned=repos_scanned
+    else:
+        report = _format_text(
+            classifications, failed_repos=failed_repos, repos_scanned=repos_scanned
+        )
+
+    _record_scan_metrics(
+        started_at=started,
+        repos_input=len(repo_paths),
+        repos_scanned=repos_scanned,
+        failed_repo_count=len(failed_repos),
+        classifications=classifications,
+        output_format=output_format,
+    )
+    return report
+
+
+def _record_scan_metrics(
+    *,
+    started_at: float,
+    repos_input: int,
+    repos_scanned: int,
+    failed_repo_count: int,
+    classifications: list[WorktreeClassification],
+    output_format: str,
+) -> None:
+    """F-QA-4/5/6 — emit OTel counter + histogram + INFO completion log.
+
+    Centralised so `scan_worktrees_with_status()` can share the same
+    observability surface without re-instrumenting the pipeline.
+    """
+    elapsed = time.perf_counter() - started_at
+    _SCANS_COUNTER.add(1)
+    _DURATION_HISTOGRAM.record(elapsed)
+    tier_counts: dict[str, int] = {tier: 0 for tier in _TIER_ORDER}
+    for c in classifications:
+        tier_counts[c.tier] = tier_counts.get(c.tier, 0) + 1
+    # Keep the tier-counts dict ordered + stable for log parsers.
+    tier_summary = "{" + ", ".join(
+        f"{tier}={tier_counts[tier]}" for tier in _TIER_ORDER
+    ) + "}"
+    _LOGGER.info(
+        "mahavishnu.worktree_scan.completed repos_input=%d repos_scanned=%d "
+        "failed=%d candidates=%d duration_s=%.3f format=%s tiers=%s",
+        repos_input,
+        repos_scanned,
+        failed_repo_count,
+        len(classifications),
+        elapsed,
+        output_format,
+        tier_summary,
     )
 
 
