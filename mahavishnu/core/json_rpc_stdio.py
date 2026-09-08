@@ -143,11 +143,39 @@ class JSONRPCStdioClient:
         heartbeat_interval: float = 30.0,
         watchdog_timeout_multiplier: float = 2.0,
         on_protocol_error: Callable[[JSONRPCError], None] | None = None,
+        on_heartbeat_missed: Callable[[], None] | None = None,
         logger: Any | None = None,
         stream_factory: StreamFactory | None = None,
         max_frame_bytes: int = 16 * 1024 * 1024,
     ) -> None:
-        """Initialize client. No subprocess is spawned until ``start()``."""
+        """Initialize client. No subprocess is spawned until ``start()``.
+
+        Args:
+            command: Subprocess argv.
+            env: Explicit env-allowlist map for the subprocess.
+            request_timeout: Default per-request timeout (seconds).
+            heartbeat_interval: Watchdog heartbeat cadence (seconds).
+            watchdog_timeout_multiplier: Watchdog fires when no inbound
+                frame is observed for ``heartbeat_interval *
+                watchdog_timeout_multiplier`` seconds.
+            on_protocol_error: Optional callback invoked on every
+                JSON-RPC protocol violation (errors total returned by
+                :attr:`protocol_errors`).
+            on_heartbeat_missed: Optional callback invoked exactly once
+                when the watchdog detects a heartbeat miss. Default
+                ``None`` is a no-op; PiPool passes its own callback to
+                emit the ``mahavishnu.pi.heartbeat.missed_total`` counter.
+                The callback seam exists so this ``core`` module does
+                not import the ``pools`` observability module — the
+                dependency direction stays ``pools -> core``.
+            logger: Optional logger override (defaults to ``oneiric``'s
+                structured logger for this module).
+            stream_factory: Optional test seam for injecting doubled
+                pipes.
+            max_frame_bytes: Hard upper bound on a single Content-Length
+                frame (bytes). Frames exceeding this raise
+                :class:`PiProtocolError` rather than allocating memory.
+        """
         if not command:
             raise ValueError("command must be a non-empty sequence")
         self._command = tuple(command)
@@ -157,6 +185,7 @@ class JSONRPCStdioClient:
         self._heartbeat_interval = heartbeat_interval
         self._watchdog_timeout_multiplier = watchdog_timeout_multiplier
         self._on_protocol_error = on_protocol_error
+        self._on_heartbeat_missed = on_heartbeat_missed
         self._logger = logger or get_logger(__name__)
         self._stream_factory = stream_factory
         self._max_frame_bytes = max_frame_bytes
@@ -593,6 +622,8 @@ class JSONRPCStdioClient:
                         threshold,
                     )
                     self._watchdog.failed = True
+                    if self._on_heartbeat_missed is not None:
+                        self._on_heartbeat_missed()
                     self._fail_pending_requests(
                         PiRPCTimeout(
                             f"watchdog: no frame for {now - self._watchdog.last_frame_at:.1f}s",

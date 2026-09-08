@@ -154,9 +154,7 @@ class GooseHTTPClient:
         url = path if path.startswith("/") else f"/{path}"
         request_timeout = timeout if timeout is not None else self._timeout
         try:
-            response = await self._client.request(
-                method, url, json=json, timeout=request_timeout
-            )
+            response = await self._client.request(method, url, json=json, timeout=request_timeout)
         except httpx.HTTPError as exc:
             self._raise_for_http_error(exc, method=method, url=url, timeout=request_timeout)
         return self._parse_response(response, method=method, url=url)

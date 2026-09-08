@@ -101,7 +101,7 @@ class TestCommandResult:
 
     def test_success_result(self) -> None:
         """Create a success result."""
-        result = CommandResult.success(
+        result = CommandResult.ok(
             data={"id": "task-123"},
             message="Task retrieved",
         )
@@ -122,7 +122,7 @@ class TestCommandResult:
 
     def test_result_to_dict(self) -> None:
         """Convert result to dictionary."""
-        result = CommandResult.success(
+        result = CommandResult.ok(
             data={"tasks": []},
             message="Success",
         )

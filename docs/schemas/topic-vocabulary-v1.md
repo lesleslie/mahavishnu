@@ -58,6 +58,7 @@ contribution workflow below.
 | `bodai-crow-http-server` | Bodai Crow HTTP MCP Server |
 | `bodai-observability` | Bodai observability pattern — one subscriber, one bus; cross-component OTel correlation. |
 | `claude-env-remediation` | Claude Code environment audit remediation — drift/dead-config/bloat cleanup across `~/.claude/` and per-project `.claude/` (see `docs/plans/2026-08-24-claude-env-audit-remediation.md`). |
+| `gitignore-conformance` | Shared Bodai `.gitignore` snippet — canonical pattern set covering oneiric caches, `.crackerjack/`, `.bak`, `coverage.json` and other runtime artifacts that should be excluded from every Bodai component. |
 | `bodai-mcp-surface-standardization` | Bodai Core MCP Surface Standardization — uniform MCP tool surface across the Mahavishnu core ecosystem. |
 | `code-indexing-integration` | Code Indexing Integration Plan |
 | `completion-report-schema` | Completion Report Schema v1 Implementation Plan |

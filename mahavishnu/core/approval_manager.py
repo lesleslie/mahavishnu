@@ -197,8 +197,9 @@ class ApprovalManager:
         metadata: dict[str, Any] = {}
         if selected_option is not None:
             metadata["selected_option"] = selected_option
-        if request.approval_type:
-            metadata["approval_type"] = request.approval_type
+        # approval_type is `Literal["version_bump", "publish"]` — always non-empty,
+        # so the previous `if request.approval_type:` guard was dead. Assign directly.
+        metadata["approval_type"] = request.approval_type
 
         record_approval_decision(
             approval_id=request.id,

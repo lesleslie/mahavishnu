@@ -39,7 +39,7 @@ async def test_dict_params_passed_as_kwargs() -> None:
     async def handler(params: Any) -> CommandResult:
         captured["task_id"] = params.task_id
         captured["type"] = type(params).__name__
-        return CommandResult.success(data={"ok": True})
+        return CommandResult.ok(data={"ok": True})
 
     registry = CommandRegistry(name="cov")
     registry.command("dict_cmd", params_model=_ParamsDict)(handler)
@@ -56,7 +56,7 @@ async def test_list_params_passed_as_positional() -> None:
     async def handler(params: Any) -> CommandResult:
         captured["task_id"] = params.task_id
         captured["type"] = type(params).__name__
-        return CommandResult.success(data={"ok": True})
+        return CommandResult.ok(data={"ok": True})
 
     registry = CommandRegistry(name="cov")
     registry.command("list_cmd", params_model=_ParamsPositional)(handler)
@@ -73,7 +73,7 @@ async def test_scalar_params_passed_as_single_arg() -> None:
     async def handler(params: Any) -> CommandResult:
         captured["task_id"] = params.task_id
         captured["type"] = type(params).__name__
-        return CommandResult.success(data={"ok": True})
+        return CommandResult.ok(data={"ok": True})
 
     registry = CommandRegistry(name="cov")
     registry.command("scalar_cmd", params_model=_ParamsPositional)(handler)
@@ -87,7 +87,7 @@ async def test_handler_returning_command_result_is_returned_as_is() -> None:
     """When handler returns CommandResult, invoke returns it untouched; covers line 185."""
 
     async def handler(params: Any) -> CommandResult:
-        return CommandResult.success(data={"preset": True})
+        return CommandResult.ok(data={"preset": True})
 
     ch = CommandHandler(name="inline", handler=handler)
     result = await ch.invoke({})

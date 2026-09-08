@@ -2,7 +2,7 @@
 name: pi-pool-backend
 status: wired
 date: 2026-09-07
-last_reviewed: 2026-09-07
+last_reviewed: 2026-09-08
 owner: Core Eng
 role: canonical
 ---
@@ -26,7 +26,7 @@ role: canonical
 - [x] Trigger path identified (who calls this, and from where)
 - [x] Returns / state updates land in expected destination
 - [x] End-to-end smoke check documented (one command that proves it works)
-- [x] Observability hook in place — **structured logs only** (`pool.pi.spawned`, `pool.pi.subprocess_died`, `pool.pi.task.failed`); OTel counters `mahavishnu.pi.tasks.executed{status}`, `mahavishnu.pi.task.duration`, `mahavishnu.pi.heartbeat.missed_total` are **promised in `pi_pool.py` docstring but NOT yet emitted** — deferred to the C1 follow-up batch
+- [x] Observability hook in place — structured logs (`pool.pi.spawned`, `pool.pi.subprocess_died`, `pool.pi.task.failed`) **and** OTel counters `mahavishnu.pi.tasks.executed{status}`, `mahavishnu.pi.task.duration`, `mahavishnu.pi.heartbeat.missed_total` (emitted via `mahavishnu.pools.pi_observability`; lazy `@cache`-d instruments so the test fixture can swap MeterProviders). C1 follow-up closed 2026-09-08.
 - [x] Rollback signal defined
 
 ## Built (yes/no)

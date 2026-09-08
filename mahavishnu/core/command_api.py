@@ -89,22 +89,28 @@ class CommandResult:
     timestamp: datetime = field(default_factory=lambda: datetime.now(UTC))
 
     @classmethod
-    def success(  # type: ignore[no-redef]
+    def ok(
         cls,
         data: Any = None,
         message: str = "Success",
     ) -> CommandResult:
-        """Create a success result.
+        """Create a successful result.
+
+        Renamed from ``success`` to ``ok`` so ``self.success`` reads the
+        dataclass field unambiguously. (Pre-rename, ``self.success`` on
+        an instance resolved to the bound method — a method object is
+        always truthy, so the ``if self.success:`` check in ``to_dict``
+        silently took the truthy branch and dropped the error path.)
 
         Args:
             data: Result data
             message: Success message
 
         Returns:
-            Success CommandResult
+            Successful CommandResult
         """
         return cls(
-            success=True,  # ty: ignore[unknown-argument]
+            success=True,
             data=data,
             message=message,
         )
@@ -183,7 +189,7 @@ class CommandHandler:
             # Handle different return types
             if isinstance(result, CommandResult):
                 return result
-            return CommandResult.success(data=result)
+            return CommandResult.ok(data=result)
 
         except Exception as e:
             # Handle validation errors

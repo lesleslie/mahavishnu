@@ -47,6 +47,7 @@ from mahavishnu.core.errors import (
 )
 from mahavishnu.core.json_rpc_stdio import JSONRPCStdioClient
 
+from . import pi_observability
 from .base import BasePool, PoolConfig, PoolMetrics, PoolStatus
 
 if TYPE_CHECKING:
@@ -285,6 +286,7 @@ class PiPool(BasePool):
             duration = time.monotonic() - start_time
             self._tasks_completed += 1
             self._task_durations.append(duration)
+            pi_observability.record_task_completed(duration)
             return {
                 "pool_id": self.pool_id,
                 "worker_id": worker_id,
@@ -297,13 +299,16 @@ class PiPool(BasePool):
             duration = time.monotonic() - start_time
             self._task_durations.append(duration)
             mapped = _map_rpc_error_to_pool_error(exc, method=_PI_EXECUTE_METHOD)
-            if mapped["status"] == "timeout":
+            timed_out = mapped["status"] == "timeout"
+            if timed_out:
                 self._tasks_timed_out += 1
             else:
                 self._tasks_failed += 1
+            pi_observability.record_task_failed(duration, timed_out=timed_out)
             if self._client.watchdog_failed:
                 self._heartbeats_missed += 1
                 self._status = PoolStatus.FAILED
+                pi_observability.record_heartbeat_missed()
             logger.warning(
                 "pool.pi.task_failed pool_id=%s worker_id=%s status=%s error=%s",
                 self.pool_id,
@@ -425,15 +430,15 @@ class PiPool(BasePool):
     async def get_metrics(self) -> PoolMetrics:
         """Aggregate pool-level metrics.
 
-        TODO(C1-followup): Emit OTel counters
-        ``mahavishnu.pi.tasks.executed{status}``,
-        ``mahavishnu.pi.task.duration``,
-        ``mahavishnu.pi.heartbeat.missed_total`` from this method (or
-        via the ``metrics_collector`` hook on each counter mutation).
-        Currently the metric names are documented in the module docstring
-        but never emitted — operators building Grafana dashboards on
-        the documented names will see empty panels until this is wired.
-        See ``docs/feature-tracking/pi-pool-backend.md`` for tracking.
+        OTel counters ``mahavishnu.pi.tasks.executed{status}``,
+        ``mahavishnu.pi.task.duration``, and
+        ``mahavishnu.pi.heartbeat.missed_total`` are emitted
+        incrementally at the mutation sites in :meth:`execute_task` and
+        :meth:`JSONRPCStdioClient._watchdog_loop`; see
+        :mod:`mahavishnu.pools.pi_observability` for the wire-up.
+        Dashboards pulling those counter names will populate
+        immediately on the next task, not on each ``get_metrics()``
+        scrape.
         """
         status = self._status
         active_workers = 1 if status == PoolStatus.RUNNING else 0
@@ -483,12 +488,13 @@ class PiPool(BasePool):
         env: tuple[str, ...],
         logger: Any,
     ) -> JSONRPCStdioClient:
-        """Default factory — wires the env allowlist into the client."""
+        """Default factory — wires the env allowlist + heartbeat callback."""
         env_map = {k: os.environ[k] for k in env if k in os.environ}
         return JSONRPCStdioClient(
             command=command,
             env=env_map,
             logger=logger,
+            on_heartbeat_missed=pi_observability.record_heartbeat_missed,
         )
 
     def _resolve_npx_command(self) -> tuple[str, ...]:
