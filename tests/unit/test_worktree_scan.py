@@ -485,7 +485,6 @@ class TestScanMetadataReposScanned:
                 output_format="json",
             )
         parsed = json.loads(report)
-        # 2 inputs, 1 failure → 1 successful scan.
         assert parsed["scan_metadata"]["repos_scanned"] == 1
 
     def test_repos_scanned_equals_all_when_no_failures(self, tmp_path):
@@ -508,6 +507,119 @@ class TestScanMetadataReposScanned:
             )
         parsed = json.loads(report)
         assert parsed["scan_metadata"]["repos_scanned"] == 2
+
+
+class TestFormatTextSections:
+    """F-QA-12 — `_format_text` emits LOCKED / DIRTY / SCAN-FAILURES sections
+    and an exit-code-aware footer. Tests build `WorktreeClassification`
+    fixtures directly so each section is exercised in isolation.
+    """
+
+    def _make_cls(self, **overrides) -> WorktreeClassification:
+        kwargs: dict = dict(
+            tier="C",
+            is_dirty=False,
+            is_locked=False,
+            pid_liveness=None,
+            stash_count=0,
+            modified_count=0,
+            untracked_count=0,
+            cross_repo_group_id=None,
+            lock_pid=None,
+            lock_command=None,
+            repo_nickname=None,
+            branch=None,
+            worktree_path=None,
+        )
+        kwargs.update(overrides)
+        return WorktreeClassification(**kwargs)
+
+    def test_locked_live_section_renders_with_pid_and_command(self):
+        from mahavishnu.core import worktree_scan
+        cls = self._make_cls(
+            is_locked=True,
+            pid_liveness="alive",
+            lock_pid=74005,
+            lock_command="claude agent foo",
+            branch="feat/locked",
+        )
+        out = worktree_scan._format_text([cls])
+        assert "LOCKED-live (cannot remove without verification, 1):" in out
+        assert "pid=74005" in out
+        assert "'claude agent foo'" in out
+
+    def test_locked_orphan_section_renders_when_pid_dead(self):
+        from mahavishnu.core import worktree_scan
+        cls = self._make_cls(
+            is_locked=True,
+            pid_liveness="dead",
+            lock_pid=99999,
+            lock_command=None,
+            branch="feat/orphan",
+        )
+        out = worktree_scan._format_text([cls])
+        assert "LOCKED-orphan (PID dead, can unlock+remove, 1):" in out
+        # Dead PID is discoverable via the dataclass repr (lock_pid=...).
+        assert "lock_pid=99999" in out
+        assert "feat/orphan" in out
+
+    def test_locked_unknown_section_renders_when_pid_unknown(self):
+        from mahavishnu.core import worktree_scan
+        cls = self._make_cls(
+            is_locked=True,
+            pid_liveness="unknown",
+            lock_pid=None,
+            lock_command=None,
+        )
+        out = worktree_scan._format_text([cls])
+        assert "LOCKED-unknown (lock parse failed, manual review, 1):" in out
+
+    def test_dirty_section_emits_aggregate_counts(self):
+        from mahavishnu.core import worktree_scan
+        cls1 = self._make_cls(
+            is_dirty=True, modified_count=2, stash_count=1, untracked_count=3,
+            tier="A-merged-dirty", repo_nickname="r1",
+        )
+        cls2 = self._make_cls(
+            is_dirty=True, modified_count=0, stash_count=0, untracked_count=0,
+            tier="C", repo_nickname="r2",
+        )
+        out = worktree_scan._format_text([cls1, cls2])
+        assert "DIRTY (2 modified, 1 stashes, 3 untracked" in out
+        assert ", 2):" in out
+
+    def test_scan_failures_section_renders_failures(self):
+        from mahavishnu.core import worktree_scan
+        out = worktree_scan._format_text(
+            [],
+            failed_repos=[
+                {"path": "/nonexistent/a", "reason": "path does not exist"},
+                {"path": "/broken/repo", "reason": "git worktree list returned 128"},
+            ],
+        )
+        assert "SCAN-FAILURES (2 repo(s) failed):" in out
+        assert "/nonexistent/a: path does not exist" in out
+        assert "/broken/repo: git worktree list returned 128" in out
+
+    def test_footer_reports_exit_1_when_failures(self):
+        from mahavishnu.core import worktree_scan
+        out = worktree_scan._format_text(
+            [], failed_repos=[{"path": "/x", "reason": "missing"}]
+        )
+        assert "Scan complete: 0 candidates; 1 scan failures; exit 1." in out
+
+    def test_footer_reports_exit_0_when_clean(self):
+        from mahavishnu.core import worktree_scan
+        out = worktree_scan._format_text([])
+        assert "Scan complete: 0 candidates; 0 scan failures; exit 0." in out
+
+    def test_locked_sections_emit_even_when_empty(self):
+        """F20 — every section header is always emitted (possibly empty)."""
+        from mahavishnu.core import worktree_scan
+        out = worktree_scan._format_text([])
+        assert "LOCKED-live (cannot remove without verification, 0):" in out
+        assert "LOCKED-orphan (PID dead, can unlock+remove, 0):" in out
+        assert "LOCKED-unknown (lock parse failed, manual review, 0):" in out
 
 
 class TestFormatJsonLockedLiveRealValues:
