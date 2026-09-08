@@ -57,7 +57,7 @@ A guard test (`tests/unit/test_worktree_scan.py::TestPlanOrphanPatternsSync`) as
 
 Before `--force` on any worktree with untracked files, copy untracked files to `~/.mahavishnu/salvage/<YYYY-MM-DD>-<sanitized-worktree-name>/` where `<sanitized-worktree-name>` is `Path(p).name`, then rejected if it equals `.`, `..`, empty, or contains characters outside `[A-Za-z0-9._-]`. Stashes survive `git worktree remove` (they live in the branch reflog, not the worktree directory) and need no salvage. Modified tracked files are recoverable from git history; no salvage.
 
-The new `mahavishnu/core/worktree_scan.py::safe_worktree_name()` enforces the character class. The new code reuses `mahavishnu/core/worktree_validation.py::WorktreePathValidator` for path traversal and `mahavishnu/core/paths.py::get_worktree_base_path()` for the worktree base path.
+Path traversal and base-path resolution reuse `mahavishnu/core/worktree_validation.py::WorktreePathValidator` and `mahavishnu/core/paths.py::get_worktree_base_path()`.
 
 ## Lock + live-PID semantics
 

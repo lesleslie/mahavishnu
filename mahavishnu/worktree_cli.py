@@ -625,35 +625,10 @@ def scan_worktrees_cli(
         case_sensitive=False,
         help="Output format: text or json",
     ),
-    include_dirty: bool = typer.Option(
-        False,
-        "--include-dirty/--no-include-dirty",
-        help="Include per-worktree dirty detail (modified/stash/untracked counts)",
-    ),
-    include_locked: bool = typer.Option(
-        False,
-        "--include-locked/--no-include-locked",
-        help="Include lock reason + ps -p <pid> liveness + command identity check",
-    ),
     age_threshold_days: str = typer.Option(
         "30,9",
         "--age-threshold-days",
         help="Two comma-separated values: Tier A minimum, Tier C minimum",
-    ),
-    no_cross_repo_grouping: bool = typer.Option(
-        False,
-        "--no-cross-repo-grouping/--cross-repo-grouping",
-        help="Skip the Tier X cross-repo grouping pass",
-    ),
-    yes_delete_detached: bool = typer.Option(
-        False,
-        "--yes-delete-detached/--no-yes-delete-detached",
-        help="Confirm intent to remove detached-HEAD worktrees without a branch check",
-    ),
-    user_id: str = typer.Option(
-        "anonymous",
-        "--user-id",
-        help="Operator ID for audit log attribution (forward-compat)",
     ),
 ) -> None:
     """Scan Bodai repos for stale worktrees; emit a tier-grouped report."""
@@ -724,8 +699,6 @@ def scan_worktrees_cli(
         output_format=output_format,
         age_threshold_a=a_thresh,
         age_threshold_c=c_thresh,
-        include_dirty=include_dirty,
-        include_locked=include_locked,
     )
     typer.echo(report)
     # Exit 1 if any repos failed; exit 0 if all succeeded.

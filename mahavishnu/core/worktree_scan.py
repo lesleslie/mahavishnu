@@ -83,22 +83,6 @@ _TIER_ORDER: tuple[Tier, ...] = (
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
-def safe_worktree_name(name: str) -> str:
-    """Sanitize a worktree basename for use in salvage paths.
-
-    Rules: basename-only, reject '.' / '..' / empty / '..' segments /
-    characters outside [A-Za-z0-9._-]. Raises ValueError on invalid input.
-    """
-    if not name or name in (".", ".."):
-        raise ValueError(f"unsafe worktree name: {name!r}")
-    if "/" in name or "\\" in name or name.startswith("."):
-        raise ValueError(f"unsafe worktree name: {name!r}")
-    for ch in name:
-        if not (ch.isalnum() or ch in "._-"):
-            raise ValueError(f"unsafe worktree name: {name!r}")
-    return name
-
-
 def _run_git_scanned(
     path: Path,
     *args: str,
@@ -288,8 +272,6 @@ def scan_worktrees(
     output_format: Literal["text", "json"] = "text",
     age_threshold_a: float = 30.0,
     age_threshold_c: float = 9.0,
-    include_dirty: bool = False,  # full dirty detail (counts) in report
-    include_locked: bool = False,  # ps -p + command for locked worktrees
     get_worktree_base_path_fn=get_worktree_base_path,
 ) -> str:
     """3-pass pipeline: collect, group cross-repo orphans, classify.
@@ -323,8 +305,6 @@ def scan_worktrees(
             classify_merge_status_fn,
             age_threshold_a,
             age_threshold_c,
-            include_dirty,
-            include_locked,
             get_worktree_base_path_fn,
         )
         for entry in raw_entries
@@ -528,8 +508,6 @@ def _classify_entry(
     classify_merge_status_fn,
     age_threshold_a: float,
     age_threshold_c: float,
-    include_dirty: bool,
-    include_locked: bool,
     get_worktree_base_path_fn,
 ) -> WorktreeClassification:
     """Pass 3: classify a single collected entry."""
@@ -758,6 +736,5 @@ __all__ = [
     "_run_git_scanned",
     "_run_ps",
     "classify_worktree",
-    "safe_worktree_name",
     "scan_worktrees",
 ]

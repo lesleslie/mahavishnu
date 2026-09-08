@@ -7,44 +7,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 # Module under test
-from mahavishnu.core.worktree_scan import (
-    WorktreeClassification,
-    safe_worktree_name,
-)
-
-
-class TestSafeWorktreeName:
-    """safe_worktree_name: character class sanitizer."""
-
-    def test_simple_name_passes_through(self):
-        assert safe_worktree_name("agent-abc123") == "agent-abc123"
-
-    def test_dots_in_name_allowed(self):
-        assert safe_worktree_name("foo.bar") == "foo.bar"
-
-    def test_rejects_dot_only(self):
-        with pytest.raises(ValueError, match="unsafe worktree name"):
-            safe_worktree_name(".")
-
-    def test_rejects_double_dot(self):
-        with pytest.raises(ValueError, match="unsafe worktree name"):
-            safe_worktree_name("..")
-
-    def test_rejects_empty_string(self):
-        with pytest.raises(ValueError, match="unsafe worktree name"):
-            safe_worktree_name("")
-
-    def test_rejects_path_traversal(self):
-        with pytest.raises(ValueError, match="unsafe worktree name"):
-            safe_worktree_name("../etc/passwd")
-
-    def test_rejects_shell_metacharacters(self):
-        with pytest.raises(ValueError, match="unsafe worktree name"):
-            safe_worktree_name("foo;rm -rf /")
-
-    def test_rejects_slash(self):
-        with pytest.raises(ValueError, match="unsafe worktree name"):
-            safe_worktree_name("foo/bar")
+from mahavishnu.core.worktree_scan import WorktreeClassification
 
 
 class TestRunGitScanned:

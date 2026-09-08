@@ -28,6 +28,7 @@ def _write_minimal_ecosystem_yaml(tmp_path: Path, repo_entry: dict[str, str]) ->
 
 
 @pytest.mark.integration
+@pytest.mark.slow
 def test_scan_text_format(tmp_path: Path) -> None:
     """Scan a single-repo fixture; assert text report has expected sections."""
     repo = tmp_path / "repo1"
@@ -55,6 +56,7 @@ def test_scan_text_format(tmp_path: Path) -> None:
 
 
 @pytest.mark.integration
+@pytest.mark.slow
 def test_scan_json_format(tmp_path: Path) -> None:
     """Scan a single-repo fixture; assert JSON output is valid."""
     repo = tmp_path / "repo1"

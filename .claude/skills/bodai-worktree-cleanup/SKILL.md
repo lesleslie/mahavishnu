@@ -34,7 +34,6 @@ python -m mahavishnu.worktree_cli scan --repo=ALL --format=text
 python /Users/les/Projects/mahavishnu/.claude/skills/bodai-worktree-cleanup/scripts/cli_scan.py --repo=ALL --format=text
 ```
 
-Add `--include-dirty` and/or `--include-locked` for per-worktree detail.
 Add `--format=json` for machine-readable output. The default
 `--age-threshold-days 30,9` matches the v4 rubric (Tier A ≥ 30d,
 Tier C 9-30d, Tier D < 9d).
