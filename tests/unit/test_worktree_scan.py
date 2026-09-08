@@ -459,6 +459,57 @@ class TestFormatJsonTierXShape:
             assert entry["branch"] == "wave8-diagram-corrections-2026-08-16"
 
 
+class TestScanMetadataReposScanned:
+    """L4 — `scan_metadata.repos_scanned` reflects input minus driver failures."""
+
+    def test_repos_scanned_equals_input_minus_failed(self, tmp_path):
+        import json
+
+        from mahavishnu.core import worktree_scan
+        good_repo = tmp_path / "good"
+        good_repo.mkdir()
+        (good_repo / ".git").mkdir()
+        bad_repo = tmp_path / "bad"
+
+        def fake_git(path, *args, **kwargs):
+            if args and args[0] == "worktree":
+                if "bad" in str(path):
+                    return MagicMock(returncode=128, stdout="", stderr="fatal")
+                return MagicMock(returncode=0, stdout="", stderr="")
+            return MagicMock(returncode=0, stdout="0", stderr="")
+
+        with patch.object(worktree_scan, "_run_git_scanned", side_effect=fake_git):
+            report = worktree_scan.scan_worktrees(
+                repo_paths=[good_repo, bad_repo],
+                classify_merge_status_fn=lambda _p: "not_merged",
+                output_format="json",
+            )
+        parsed = json.loads(report)
+        # 2 inputs, 1 failure → 1 successful scan.
+        assert parsed["scan_metadata"]["repos_scanned"] == 1
+
+    def test_repos_scanned_equals_all_when_no_failures(self, tmp_path):
+        import json
+
+        from mahavishnu.core import worktree_scan
+        repo_a = tmp_path / "a"
+        repo_a.mkdir()
+        (repo_a / ".git").mkdir()
+        repo_b = tmp_path / "b"
+        repo_b.mkdir()
+        (repo_b / ".git").mkdir()
+
+        with patch.object(worktree_scan, "_run_git_scanned") as mock_git:
+            mock_git.return_value = MagicMock(returncode=0, stdout="", stderr="")
+            report = worktree_scan.scan_worktrees(
+                repo_paths=[repo_a, repo_b],
+                classify_merge_status_fn=lambda _p: "not_merged",
+                output_format="json",
+            )
+        parsed = json.loads(report)
+        assert parsed["scan_metadata"]["repos_scanned"] == 2
+
+
 class TestFormatJsonLockedLiveRealValues:
     """F21 §2 — locked_live[] emits real PID + command for entries where
     `pid_liveness == "alive" AND lock_pid is not None` (formatter-level test).

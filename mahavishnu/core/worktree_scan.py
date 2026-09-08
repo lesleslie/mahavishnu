@@ -294,6 +294,10 @@ def scan_worktrees(
             continue
         raw_entries.extend(entries)
 
+    # L4: repos_scanned reflects what was actually scanned (input minus
+    # the driver-level failures). Exposed in scan_metadata for callers.
+    repos_scanned = len(repo_paths) - len(failed_repos)
+
     # Pass 2: group cross-repo orphans
     plan_orphan_groups = _group_plan_orphans(raw_entries)
 
@@ -312,8 +316,12 @@ def scan_worktrees(
 
     # Format
     if output_format == "json":
-        return _format_json(classifications, failed_repos=failed_repos)
-    return _format_text(classifications, failed_repos=failed_repos)
+        return _format_json(
+            classifications, failed_repos=failed_repos, repos_scanned=repos_scanned
+        )
+    return _format_text(
+        classifications, failed_repos=failed_repos, repos_scanned=repos_scanned
+    )
 
 
 def _collect_repo(
@@ -535,6 +543,7 @@ def _format_text(
     classifications: list[WorktreeClassification],
     *,
     failed_repos: list[dict] | None = None,
+    repos_scanned: int = 0,
 ) -> str:
     """Group by tier; emit text report.
 
@@ -617,6 +626,7 @@ def _format_json(
     classifications: list[WorktreeClassification],
     *,
     failed_repos: list[dict] | None = None,
+    repos_scanned: int = 0,
 ) -> str:
     """Group by tier; emit JSON report per spec § Output (JSON).
 
@@ -696,7 +706,7 @@ def _format_json(
     output = {
         "scan_metadata": {
             "started_at": datetime.now(UTC).isoformat(),
-            "repos_scanned": 0,  # count of successful repos; can be derived
+            "repos_scanned": repos_scanned,
             "thresholds": {"tier_a_min_days": 30.0, "tier_c_min_days": 9.0},
             "failed_repos": failed_repos,
         },
