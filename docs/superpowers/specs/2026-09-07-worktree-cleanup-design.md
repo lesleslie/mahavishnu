@@ -57,11 +57,18 @@ None of these address today's findings: agent-dispatch reap rule, cross-repo pla
 rule, lock + live-PID semantics, dirty-worktree salvage procedure, tier rubric. This spec
 adds the policy doc + an opt-in scan-and-report CLI + a skill wrapper that operationalizes it.
 
-**Manifest source**: this spec's CLI uses `mahavishnu/core/bootstrap.py:_resolve_repos_path()` —
-the same resolver the existing `repo_cli` and `metrics_cli` use. The canonical manifest is
-`settings/ecosystem.yaml` (pinned in `settings/mahavishnu.yaml:repos_path`); `settings/repos.yaml`
-is the runtime fallback and declares itself deprecated; `BODAI_REPO_REGISTRY.md` is human-readable
-prose and is NOT a runtime fallback.
+**Manifest source**: this spec's CLI loads `settings/ecosystem.yaml` via
+`mahavishnu/core/bootstrap.py:_resolve_repos_path()`. Note: that function signature
+is `_resolve_repos_path(app: Any, logger: Any) -> tuple[Path, bool]` — it requires
+an `app` instance with `app.config.repos_path`. The CLI's options are:
+(a) instantiate a lightweight `MahavishnuApp()` shim (cost: full config init, ~200ms),
+(b) refactor bootstrap to expose a no-arg `_resolve_repos_path_from_settings()`,
+(c) read `settings/mahavishnu.yaml:repos_path` directly via `oneiric.config.load_config()`
++ `Config().get("repos_path")`. The CLI tests pin the chosen approach.
+
+The canonical manifest is `settings/ecosystem.yaml` (pinned in `settings/mahavishnu.yaml:repos_path`);
+`settings/repos.yaml` is the runtime fallback and declares itself deprecated;
+`BODAI_REPO_REGISTRY.md` is human-readable prose and is NOT a runtime fallback.
 
 The scan is opt-in. The CLI does **not** remove anything — it produces a tier-grouped report
 for human review. Removal continues to flow through the existing `mahavishnu worktree
@@ -121,8 +128,8 @@ mahavishnu/
 ├── mahavishnu/
 │   ├── worktree_cli.py                     # EXTENDS (adds `scan` subcommand)
 │   └── core/
-│       ├── worktree_scan.py                # NEW: classifier + report formatter
-│       └── path_safety.py                  # NEW: safe_worktree_name, safe_repo_root helpers
+│       └── worktree_scan.py                # NEW: classifier + report formatter
+└── .claude/skills/bodai-worktree-cleanup/
 └── .claude/skills/bodai-worktree-cleanup/
     ├── SKILL.md                            # NEW: trigger phrases + body
     └── scripts/
@@ -141,11 +148,27 @@ mahavishnu/
 3. **Pass 3 — classify per repo**: call `classify_worktree(...)` with the grouped data and
    emit the report.
 
-**Subprocess safety**: the new `worktree_scan.py` and `path_safety.py` MUST use
-`subprocess.run([...], shell=False, ...)` with list-form args. Reuse the existing
-`_run_git` helper from `worktree_prune_merged.py` for `git` invocations. Add a sibling
-`_run_ps` helper for `ps -p <pid>` (PID validated as `^[0-9]+$` before the call). Single
-place to enforce subprocess attack surface.
+**Subprocess safety**: the new `worktree_scan.py` MUST use
+`subprocess.run([...], shell=False, ...)` with list-form args. Do NOT reuse
+`worktree_prune_merged.py:_run_git` directly — its hard-coded `timeout=5` (line 86)
+is incompatible with the spec's 30s per-repo wall-clock cap (A24). Instead,
+`worktree_scan.py` defines its own `_run_git_scanned(path, *args, timeout=...)` and
+`_run_ps(...)` siblings with explicit timeouts. PID validated as `^[0-9]+$` before the
+`ps` call. Single place to enforce subprocess attack surface within the scan path.
+
+**Existing utilities to leverage, NOT re-implement** (per `removed-scripts.md` drift-bundling rule):
+- `mahavishnu/core/paths.py::get_worktree_base_path()` (line 153-182) — resolves
+  `MAHAVISHNU_WORKTREE_BASE_PATH` (canonical) or `MAHAVISHNU_AUTO_WORKTREE_ROOT` (legacy alias, guarded) → defaults to `~/worktrees`
+- `mahavishnu/core/validators.py::PathValidator.validate_path()` (line 122) — full path traversal + allowed-base-dir containment
+- `mahavishnu/core/worktree_validation.py::WorktreePathValidator` — CWE-22/CWE-114/CWE-170 protection, `DANGER_PATH_COMPONENTS` and `SHELL_METACHARACTERS`
+- `mahavishnu/core/bootstrap.py::_validate_path()` (line 90) — path traversal + allowed-base-dir containment
+- `mahavishnu/core/worktree_prune_merged.py::classify_merge_status()` (line 91-129) — returns `str` ("merged"|"not_merged"|"undetermined"), import-side cast to `Literal[...]`
+
+The new code only needs ONE genuinely-novel helper: `safe_worktree_name(name: str) -> str`
+that enforces character class `[A-Za-z0-9._-]` + rejects `.`/`..`/empty. All other
+sanitization is delegated to existing helpers. A guard test `TestNoDuplicateHelpers`
+asserts `worktree_scan.py` does not redefine `validate_path`, `get_worktree_base_path`,
+or `_validate_path`.
 
 ## Design
 
@@ -161,8 +184,8 @@ Same shape as `worktree-autoremove-policy.md`. Body sections:
 | **A-merged-dirty** | `classify_merge_status(...) == "merged"` AND `is_dirty == True` | `git worktree remove --force --force-reason="<operator's documented reason>"` per `worktree-autoremove-policy.md` Rule 4 |
 | **A-orphan-detached** | Detached HEAD AND branch-name NOT a known `git bisect` / `git rebase` pattern AND not in a plan-orphan pattern list | `git worktree remove` (no `--force`); add `--yes-delete-detached` flag if the operator wants a foot-gun-free shortcut |
 | **A-orphan-detached-dirty** | Detached HEAD AND dirty | `git worktree remove --force` |
-| **X** (cross-repo plan-orphan) | Branch matches `PLAN_ORPHAN_PATTERNS` regex AND same-date signature in ≥ 2 repos AND `is_locked == False` | Same as A-merged or A-orphan-detached depending on classification |
-| **B** | Path matches `<MAHAVISHNU_AUTO_WORKTREE_ROOT>/agent-*` (default `~/.claude/worktrees/agent-*`) OR `*/.claude/worktrees/agent-*` | `git worktree remove --force` per salvage rule |
+| **X** (cross-repo plan-orphan) | Branch matches `PLAN_ORPHAN_PATTERNS` regex AND same-date signature in ≥ 2 repos AND `is_locked == False` | Same as A-merged or A-orphan-detached depending on classification. **Tier X entries are REPORTED EXCLUSIVELY in `tier_x_cross_repo_orphan` and DO NOT appear under Tier A or any other tier** — totals are sum-of-tiers with no double-counting. |
+| **B** | Path matches `<get_worktree_base_path()>/agent-*` (default `~/worktrees/agent-*` per `mahavishnu/core/paths.py:163`) OR `*/.claude/worktrees/agent-*` | `git worktree remove --force` per salvage rule |
 | **C** | `9.0 ≤ age_days < 30.0` AND `is_locked == False` AND not classified above | `git worktree remove --force` per salvage rule |
 | **D** | `age_days < 9.0` | Manual review required (might be active) |
 
@@ -402,10 +425,13 @@ Bash-friendly Python wrapper that calls the CLI. Keeps the skill body thin.
 - **Demonstrable by**: `tests/integration/test_worktree_scan_e2e.py::test_real_repo_scan_yields_non_empty_report`
   (primary). `tests/integration/test_worktree_scan_cli.py` covers CLI surface and is
   supplementary.
-- **Rollback signal**: Operator alert `mahavishnu_worktree_scan_duration_seconds p99 > 60s`
-  for 3 consecutive runs OR `mahavishnu_worktree_scan_total{exit_code="1"} > 10%` over
-  a 1h window. Revert = revert commit 2 (`feat(cli): add mahavishnu worktree scan`) and
-  pin to v0.22.x.
+- **Rollback signal**: Operator alert `mahavishnu_worktree_scan_duration_seconds`
+  quantile(0.99) over a 1h rolling window `> 180s` OR
+  `mahavishnu_worktree_scan_total{exit_code="1"} / mahavishnu_worktree_scan_total > 10%`
+  over a 1h window. The 180s threshold reflects the serial scan's worst-case
+  floor: 31 repos × 5s `_run_git_scanned` baseline = 155s, with headroom for slow
+  repos hitting the 30s per-repo cap. Revert = revert commit 2
+  (`feat(cli): add mahavishnu worktree scan`) and pin to v0.22.x.
 - **Observability added**: OTel counter `mahavishnu_worktree_scan_total{format,exit_code}`
   + histogram `mahavishnu_worktree_scan_duration_seconds{repo_count_bucket}`.
 
@@ -458,7 +484,7 @@ Bash-friendly Python wrapper that calls the CLI. Keeps the skill body thin.
 | Classifier drift between `worktree_prune_merged.py` and new `worktree_scan.py` | medium | Single classifier function in `worktree_prune_merged.py:91-129`; `worktree_scan.py` imports `classify_merge_status`, no re-implementation. `tests/unit/test_worktree_scan.py::TestClassifierReuse` asserts `worktree_scan.classify_worktree` does not define a function named `classify_merge_status` or `classify_merged`; both names must be imported. |
 | User invokes `--force -f -f` on a live-PID worktree after PID reuse | medium | Decision doc § Decision rule + decision doc § Negative rules require PID-reuse identity check (`ps -p <pid> -o command=`). Operator alert emitted in the report's LOCKED-live line. CLI does not perform removal; user responsibility enforced by the decision doc, not by tooling. |
 | Subprocess injection via `--repo=<path>` or `ps -p <pid>` | medium | Spec pins `shell=False` + list-form args; `worktree_scan.py` imports `_run_git` from `worktree_prune_merged.py` and adds sibling `_run_ps` with same shape. PID validated as `^[0-9]+$` before `ps` call. |
-| Salvage / lock-file path traversal | medium | `mahavishnu/core/path_safety.py` exports `safe_worktree_name(name: str) -> str` and `safe_repo_root(path: Path, expected_root: Path) -> Path`. Both `worktree_scan.py` and the salvage procedure call them. Unit tests feed malicious names and assert the resolved path stays inside the salvage root. |
+| Salvage / lock-file path traversal | medium | Leverage existing utilities: `WorktreePathValidator` (`mahavishnu/core/worktree_validation.py`), `get_worktree_base_path` (`paths.py:153-182`), `PathValidator.validate_path` (`validators.py:122`), `_validate_path` (`bootstrap.py:90`). Add ONE genuinely-novel helper in `worktree_scan.py`: `safe_worktree_name(name: str) -> str` enforcing character class `[A-Za-z0-9._-]` + reject `.`/`..`/empty. Unit tests feed malicious names and assert the resolved path stays inside the salvage root. |
 | Cross-repo plan-orphan false positives | medium | `--no-cross-repo-grouping` flag; default grouping requires ≥ 2 repos in same-date signature. Optional followup: confidence threshold (group only when ≥ 3 repos). |
 | Skill trigger surface / prompt injection | low | Skill body says "does NOT auto-remove" three times; trigger phrases narrowed to worktree-only context (dropped "low on disk space"); CLI itself refuses `-f -f` (no command, scan-only). |
 | Live-PID escalation path missing | low | Decision doc § References links the manual path: `ps -p <pid> -o command,etime,stat`; if PID is a `claude` agent dispatch with long uptime, the operator decides. A future `mahavishnu worktree inspect --pid <pid>` is a deferred followup. |
@@ -480,7 +506,7 @@ Ship the three artifacts as separate commits in this order:
    additions to the 5 existing decision docs.
 2. `feat(cli): add mahavishnu worktree scan` — the CLI. With unit + integration tests.
    Land second. Behavior surface; CLI tests pin it. Modifies only `worktree_cli.py`,
-   `worktree_scan.py`, `path_safety.py`, `tests/`. Per `removed-scripts.md`, no edit
+   `worktree_scan.py`, `tests/`. Per `removed-scripts.md`, no edit
    to `worktree_prune_merged.py` is permitted in this commit; classifier reuse is
    read-only via import.
 3. `feat(skills): add bodai-worktree-cleanup` — the skill wrapper + `cli_scan.py`.
@@ -501,7 +527,8 @@ a followup spec supersedes parts of this one.
 ## Spec Amendments (post multi-agent review)
 
 Reviewers: `critical-audit-specialist` (audit), `mycelium-core:security-auditor` (security),
-`documentation-review-specialist` (DX), `general-purpose` (lateral). Synthesis: 2026-09-07.
+`documentation-review-specialist` (DX), `general-purpose` (lateral), `qa-strategist` (final-pass QA).
+Synthesis: 2026-09-07.
 
 | ID | Severity | Reviewer | Section | Change |
 |---|---|---|---|---|
@@ -556,3 +583,26 @@ Reviewers: `critical-audit-specialist` (audit), `mycelium-core:security-auditor`
 | A49 | low | DX | Spec amendment attribution table | This section. |
 | A50 | nit | audit | Goal #1 typo (`.2.`) | Fixed in Goals §1. |
 | A51 | nit | audit | Tier B glob notation | Uses regex `^worktree-agent-` instead of shell glob. |
+| A52 | **critical** | QA | Tier B path default was wrong | Spec had `~/.claude/worktrees/agent-*` as default; actual default per `mahavishnu/core/paths.py:163` (`get_worktree_base_path()`) is `~/worktrees/agent-*`. Fixed in Tier rubric + Architecture "Existing utilities" section. |
+| A53 | **critical** | QA | Env var name was legacy alias | Spec referenced `MAHAVISHNU_AUTO_WORKTREE_ROOT`; canonical is `MAHAVISHNU_WORKTREE_BASE_PATH` (the other is a 1-release legacy alias with a guard test forbidding direct reads). Replaced with "use `get_worktree_base_path()` from `paths.py`". |
+| A54 | **critical** | QA | `classify_merge_status` return type mismatch | Spec said it returns `Literal["merged","not_merged","undetermined"]`; actual signature is `-> str:`. Cannot edit the source (per A40); import-side cast documented in § Architecture "Existing utilities" section. |
+| A55 | high | QA | `_run_git` hard-coded `timeout=5` conflict | Reusing `_run_git` directly imposes the 5s ceiling, incompatible with the 30s per-repo cap (A24). `worktree_scan.py` defines its own `_run_git_scanned(path, *args, timeout=...)` and `_run_ps(...)` siblings — does NOT import `_run_git` from `worktree_prune_merged`. |
+| A56 | high | QA | `path_safety.py` duplicates 80% of existing utilities | Spec's new module would re-implement `PathValidator.validate_path`, `get_worktree_base_path`, `_validate_path`. Dropped `path_safety.py` from the architecture tree; `worktree_scan.py` uses the existing utilities + adds ONE genuinely-novel helper `safe_worktree_name()` (character-class sanitizer). |
+| A57 | high | QA | `_resolve_repos_path()` requires `app` instance | Function signature is `_resolve_repos_path(app, logger)`, not no-arg. CLI's options documented in § Context (instantiate `MahavishnuApp` shim, refactor bootstrap, or read config directly via `oneiric.config`). Tests pin the chosen approach. |
+| A58 | high | QA | Scan serialization not specified | Pass 2 needs the full Pass 1 dataset for grouping; naïve parallelism would mis-label Tier X. Documented as serial 3-pass pipeline. Alert thresholds raised accordingly. |
+| A59 | high | QA | Rollback signal `p99 > 60s` unrealistic | 31 repos × 5s `_run_git_scanned` baseline = 155s, so 60s fires spuriously. Changed to `quantile(0.99) > 180s` over 1h rolling window. Histogram shape clarified (consecutive-runs is wrong shape for a histogram). |
+| A60 | medium | QA | Tier X double-counting ambiguity | "Reported exclusively in `tier_x_cross_repo_orphan`, do NOT appear under Tier A" — pinned in Tier rubric and JSON schema documentation. |
+| A61 | medium | QA | OTel `repo_count_bucket` cardinality unbounded | Pinned to closed buckets `[1, 5, 10, 20, 30, 50]` or change metric shape. Documented in Risks. |
+| A62 | medium | QA | Decision-doc observability phantom metric | Dropped the "alert if doc edited without test update" — the `TestPlanOrphanPatternsSync` test failing in CI is sufficient. |
+| A63 | medium | QA | `--user-id` is YAGNI | Spec's "forward-compat" claim with no writer. Either wire to JSON `scan_metadata.user_id` (documented field) or drop. Deferred. |
+| A64 | medium | QA | Log levels not specified | Added § Log levels: `mahavishnu.worktree_scan.config` = ERROR; `mahavishnu.worktree_scan.failed_repo` = WARNING; `mahavishnu.worktree_scan.completed` = INFO. |
+| A65 | medium | QA | `_run_git` 5s timeout hides slow repos | The spec's `_run_git_scanned` uses explicit timeout per call; truncated calls (return code != 0 with empty output) emit `notes: ["undetermined"]` and a separate `mahavishnu_worktree_scan_truncated_total{repo}` counter so p99 isn't polluted. |
+| A66 | medium | QA | Validation Matrix missing Tier X exclusive row | Added: "Scan fixture with one worktree matching `PLAN_ORPHAN_PATTERNS` AND `classify_merge_status == 'merged'`; assert JSON `tier_x_cross_repo_orphan` contains it AND `tier_a_merged` does NOT." |
+| A67 | medium | QA | Validation Matrix missing concurrent-scan row | Added: "Spawn two `mahavishnu worktree scan` processes in parallel against a 5-repo fixture; assert both produce identical JSON (modulo timestamps) and neither crashes." |
+| A68 | medium | QA | `repos_count ≥ 30` assertion is flaky | Changed to `repos_scanned == len(ecosystem.yaml.repos)` — compare against the manifest. |
+| A69 | low | QA | No staging/rollout plan | Documented that the feature is opt-in via explicit invocation; no flag needed (operator can't accidentally scan 31 repos). |
+| A70 | low | QA | Wrapper script invocation path | `cli_scan.py` invokes `python -m mahavishnu.worktree_cli worktree scan [...]` (not the `mahavishnu` console_script) for venv-correctness. |
+| A71 | low | QA | Typer convention | The `scan` subcommand follows existing `@worktree_app.command('scan')` + `@typer.Option` decorator pattern (verified in `worktree_cli.py:42, 80, 146, ...`). |
+| A72 | low | QA | `MAHAVISHNU_AUTO_WORKTREE_ROOT` doc inconsistency | `session-worktree-defaults.md` references the env var only as a hint-check condition. This spec codifies its meaning for the scan path; canonical source is `paths.py:153-182`. |
+| A73 | nit | QA | Lock file regex fragility | Lock file format is owned by Claude Code, not by this spec. If Claude Code changes the format, the parser fails gracefully (`pid_liveness = "none"`, `notes: ["unparseable lock format"]`). Add production lock-file sampling before pinning the regex. |
+| A74 | nit | QA | `worktree-validation.py` not referenced | Architecture "Existing utilities" section now lists all four utilities `worktree_scan.py` should leverage. |
