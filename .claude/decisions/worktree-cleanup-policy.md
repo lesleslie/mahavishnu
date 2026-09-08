@@ -105,3 +105,4 @@ What NOT to do:
 - Tests: `tests/unit/test_decision_doc_sync.py` (doc/code parity)
 
 > **Note on the back-link target list**: `mahavishnu-tool-preference-policy.md` (tool-steering channels) is intentionally not cross-referenced — it relates to tool-docstring marketing copy, not to worktree lifecycle. (Per plan amendment F43.)
+

@@ -30,10 +30,14 @@ def _write_minimal_ecosystem_yaml(tmp_path: Path, repo_entry: dict[str, str]) ->
 @pytest.mark.integration
 @pytest.mark.slow
 def test_scan_text_format(tmp_path: Path) -> None:
-    """Scan a single-repo fixture; assert text report has expected sections."""
+    """Scan a single-repo fixture; assert text report has tier section
+    headers AND a scan-complete footer (F-QA-9 vacuous-assertion tightening)."""
     repo = tmp_path / "repo1"
     repo.mkdir()
-    (repo / ".git").mkdir()
+    subprocess.run(
+        ["git", "init", "--initial-branch=main", str(repo)],
+        check=True, capture_output=True, timeout=15,
+    )
 
     _write_minimal_ecosystem_yaml(
         tmp_path, {"name": "repo1", "path": str(repo)}
@@ -49,19 +53,38 @@ def test_scan_text_format(tmp_path: Path) -> None:
         timeout=60,
         cwd=str(tmp_path),
     )
-    assert result.returncode in (0, 1), (
+    # Successful single-repo scan must exit 0 (no failed repos).
+    assert result.returncode == 0, (
         f"unexpected exit {result.returncode}; stderr: {result.stderr}"
     )
-    assert "Tier" in result.stdout or "scan" in result.stdout.lower()
+    # Every tier section header must be present (text is always emitted,
+    # even when the corresponding bucket is empty).
+    for tier in (
+        "Tier A-merged",
+        "Tier A-merged-dirty",
+        "Tier A-orphan-detached",
+        "Tier A-orphan-detached-dirty",
+        "Tier X",
+        "Tier B",
+        "Tier C",
+        "Tier D",
+    ):
+        assert tier in result.stdout, f"missing section: {tier}"
+    assert "Scan complete:" in result.stdout
+    assert "exit 0." in result.stdout
 
 
 @pytest.mark.integration
 @pytest.mark.slow
 def test_scan_json_format(tmp_path: Path) -> None:
-    """Scan a single-repo fixture; assert JSON output is valid."""
+    """Scan a single-repo fixture; assert JSON output is valid AND contains
+    every expected tier key (F-QA-10 vacuous-assertion tightening)."""
     repo = tmp_path / "repo1"
     repo.mkdir()
-    (repo / ".git").mkdir()
+    subprocess.run(
+        ["git", "init", "--initial-branch=main", str(repo)],
+        check=True, capture_output=True, timeout=15,
+    )
 
     _write_minimal_ecosystem_yaml(
         tmp_path, {"name": "repo1", "path": str(repo)}
@@ -77,10 +100,30 @@ def test_scan_json_format(tmp_path: Path) -> None:
         timeout=60,
         cwd=str(tmp_path),
     )
-    if result.returncode == 0:
-        parsed = json.loads(result.stdout)
-        assert "scan_metadata" in parsed
-        assert "tier_a_merged" in parsed
+    # Successful single-repo scan must exit 0.
+    assert result.returncode == 0, (
+        f"unexpected exit {result.returncode}; stderr: {result.stderr}"
+    )
+    parsed = json.loads(result.stdout)
+    assert "scan_metadata" in parsed
+    for key in (
+        "scan_metadata",
+        "tier_a_merged",
+        "tier_a_merged_dirty",
+        "tier_a_orphan_detached",
+        "tier_a_orphan_detached_dirty",
+        "tier_x_cross_repo_orphan",
+        "tier_b",
+        "tier_c",
+        "tier_d",
+        "locked_live",
+        "locked_orphan",
+        "locked_unknown",
+        "dirty",
+    ):
+        assert key in parsed, f"missing tier array in JSON: {key}"
+    # L4 followup: single-repo success -> repos_scanned == 1.
+    assert parsed["scan_metadata"]["repos_scanned"] == 1
 
 
 @pytest.mark.integration
@@ -151,7 +194,10 @@ def test_repo_all_format_text_smoke(tmp_path: Path) -> None:
     """
     repo = tmp_path / "repo1"
     repo.mkdir()
-    (repo / ".git").mkdir()
+    subprocess.run(
+        ["git", "init", "--initial-branch=main", str(repo)],
+        check=True, capture_output=True, timeout=15,
+    )
     _write_minimal_ecosystem_yaml(
         tmp_path, {"name": "repo1", "path": str(repo)}
     )
@@ -165,8 +211,9 @@ def test_repo_all_format_text_smoke(tmp_path: Path) -> None:
         timeout=60,
         cwd=str(tmp_path),
     )
-    assert result.returncode in (0, 1)
-    # Text report always emits tier headers (even if zero matches).
+    assert result.returncode == 0, (
+        f"unexpected exit {result.returncode}; stderr: {result.stderr}"
+    )
     assert "Tier A-merged" in result.stdout
     assert "Scan complete" in result.stdout
 
