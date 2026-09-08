@@ -324,6 +324,56 @@ def scan_worktrees(
     )
 
 
+def scan_worktrees_with_status(
+    *,
+    repo_paths: list[Path],
+    classify_merge_status_fn,
+    output_format: Literal["text", "json"] = "text",
+    age_threshold_a: float = 30.0,
+    age_threshold_c: float = 9.0,
+    get_worktree_base_path_fn=get_worktree_base_path,
+) -> tuple[str, list[dict]]:
+    """L3 — like `scan_worktrees`, but also returns the driver-failure list.
+
+    Use this when the caller needs exit-code semantics: a non-empty
+    `failed_repos` should drive exit 1 alongside any path-existence failures
+    the caller already tracks.
+    """
+    # Pass 1: collect (mirrors scan_worktrees; would be DRY-er if extracted)
+    raw_entries: list[dict] = []
+    failed_repos: list[dict] = []
+    for repo in repo_paths:
+        entries, reason = _collect_repo(repo, age_threshold_a, age_threshold_c)
+        if reason is not None:
+            failed_repos.append({"path": str(repo), "reason": reason})
+            continue
+        raw_entries.extend(entries)
+    repos_scanned = len(repo_paths) - len(failed_repos)
+
+    plan_orphan_groups = _group_plan_orphans(raw_entries)
+    classifications = [
+        _classify_entry(
+            entry,
+            plan_orphan_groups,
+            classify_merge_status_fn,
+            age_threshold_a,
+            age_threshold_c,
+            get_worktree_base_path_fn,
+        )
+        for entry in raw_entries
+    ]
+
+    if output_format == "json":
+        report = _format_json(
+            classifications, failed_repos=failed_repos, repos_scanned=repos_scanned
+        )
+    else:
+        report = _format_text(
+            classifications, failed_repos=failed_repos, repos_scanned=repos_scanned
+        )
+    return report, failed_repos
+
+
 def _collect_repo(
     repo: Path, age_threshold_a: float, age_threshold_c: float
 ) -> tuple[list[dict], str | None]:
@@ -747,4 +797,5 @@ __all__ = [
     "_run_ps",
     "classify_worktree",
     "scan_worktrees",
+    "scan_worktrees_with_status",
 ]

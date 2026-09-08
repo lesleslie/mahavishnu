@@ -16,7 +16,7 @@ from .core.worktree_prune_merged import (
     classify_merge_status,
     find_merged_worktrees,
 )
-from .core.worktree_scan import scan_worktrees
+from .core.worktree_scan import scan_worktrees_with_status
 from .core.worktree_session_registry import SessionWorktreeRegistry
 
 __all__ = [
@@ -693,16 +693,24 @@ def scan_worktrees_cli(
                 err=True,
             )
 
-    report = scan_worktrees(
+    report, driver_failed_repos = scan_worktrees_with_status(
         repo_paths=repo_paths,
         classify_merge_status_fn=classify_merge_status,
         output_format=output_format,
         age_threshold_a=a_thresh,
         age_threshold_c=c_thresh,
     )
+    # L3: emit driver-level scan failures to stderr before the report body so
+    # operators see them regardless of output_format.
+    for failure in driver_failed_repos:
+        typer.echo(
+            f"mahavishnu.worktree_scan.driver_failure: {failure['path']}: "
+            f"{failure['reason']}",
+            err=True,
+        )
     typer.echo(report)
-    # Exit 1 if any repos failed; exit 0 if all succeeded.
-    raise typer.Exit(code=1 if failed_repos else 0)
+    # Exit 1 if EITHER path-existence failures OR driver-level scan failures.
+    raise typer.Exit(code=1 if (failed_repos or driver_failed_repos) else 0)
 
 
 if __name__ == "__main__":
