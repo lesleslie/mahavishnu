@@ -5,19 +5,19 @@ last_reviewed: 2026-09-07
 status: draft
 role: implementation
 topic: worktree-cleanup
-author: brainstormed 2026-09-07 (revised after multi-agent review: security, audit, DX, lateral)
+author: "brainstormed 2026-09-07 (revised after multi-agent review: security, audit, DX, lateral)"
 blocks_on: []
 blocks: []
 supersedes: null
 related:
-  - ../../.claude/decisions/session-worktree-defaults.md (Rule 2: never auto-remove)
-  - ../../.claude/decisions/worktree-autoremove-policy.md (Rule 2 amendment: prune-merged CLI; Rule 4: --force-reason for dirty merged)
-  - ../../.claude/decisions/worktree-autoremove-v4-followup.md (deferred automation; not a permission grant)
-  - ../../.claude/decisions/2026-08-28-cross-repo-fanout-cwd-isolation.md (cross-repo fanout + manual cleanup of /tmp/<branch>)
-  - ../../.claude/decisions/wire-up-contract.md (Integration Contract template; one contract per artifact)
-  - ../../.claude/decisions/removed-scripts.md (drift-bundling risk: do NOT duplicate prune-merged classifier)
-  - ../../.claude/decisions/bodai-pre-1.0-merge-policy.md (Bodai components merge directly to main pre-1.0)
-  - ../../adr/ (no ADR specific to worktrees; rules live in decisions/)
+  - "../../.claude/decisions/session-worktree-defaults.md (Rule 2: never auto-remove)"
+  - "../../.claude/decisions/worktree-autoremove-policy.md (Rule 2 amendment: prune-merged CLI; Rule 4: --force-reason for dirty merged)"
+  - "../../.claude/decisions/worktree-autoremove-v4-followup.md (deferred automation; not a permission grant)"
+  - "../../.claude/decisions/2026-08-28-cross-repo-fanout-cwd-isolation.md (cross-repo fanout + manual cleanup of /tmp/<branch>)"
+  - "../../.claude/decisions/wire-up-contract.md (Integration Contract template; one contract per artifact)"
+  - "../../.claude/decisions/removed-scripts.md (drift-bundling risk: do NOT duplicate prune-merged classifier)"
+  - "../../.claude/decisions/bodai-pre-1.0-merge-policy.md (Bodai components merge directly to main pre-1.0)"
+  - "../../adr/ (no ADR specific to worktrees; rules live in decisions/)"
 target_repo: mahavishnu
 scope_note: |
   Three artifacts: (a) `.claude/decisions/worktree-cleanup-policy.md` codifying the 2026-09-07
@@ -217,7 +217,7 @@ Modified tracked files are recoverable from git history; no salvage.
    behavior in the decision doc § References with a link to git source.
 6. **Lock file parser**: extract PID via fixed regex
    `^claude agent \S+ \(pid (\d+) start (\d{4}-\d{2}-\d{2})\)$`. No `eval`, no
-   `exec`, no shell. Invalid format → `pid_alive = None` + `notes: ["unparseable lock format"]`.
+   `exec`, no shell. Invalid format → `pid_alive = None` + `notes: ["unparsable lock format"]`.
 
 **§ Agent-dispatch reap rule**: `EnterWorktree` and dispatched agents SHOULD reap on
 completion. The CLI emits a list of `agent-*` dispatch leftovers and the user invokes
@@ -604,5 +604,5 @@ Synthesis: 2026-09-07.
 | A70 | low | QA | Wrapper script invocation path | `cli_scan.py` invokes `python -m mahavishnu.worktree_cli worktree scan [...]` (not the `mahavishnu` console_script) for venv-correctness. |
 | A71 | low | QA | Typer convention | The `scan` subcommand follows existing `@worktree_app.command('scan')` + `@typer.Option` decorator pattern (verified in `worktree_cli.py:42, 80, 146, ...`). |
 | A72 | low | QA | `MAHAVISHNU_AUTO_WORKTREE_ROOT` doc inconsistency | `session-worktree-defaults.md` references the env var only as a hint-check condition. This spec codifies its meaning for the scan path; canonical source is `paths.py:153-182`. |
-| A73 | nit | QA | Lock file regex fragility | Lock file format is owned by Claude Code, not by this spec. If Claude Code changes the format, the parser fails gracefully (`pid_liveness = "none"`, `notes: ["unparseable lock format"]`). Add production lock-file sampling before pinning the regex. |
+| A73 | nit | QA | Lock file regex fragility | Lock file format is owned by Claude Code, not by this spec. If Claude Code changes the format, the parser fails gracefully (`pid_liveness = "none"`, `notes: ["unparsable lock format"]`). Add production lock-file sampling before pinning the regex. |
 | A74 | nit | QA | `worktree-validation.py` not referenced | Architecture "Existing utilities" section now lists all four utilities `worktree_scan.py` should leverage. |
