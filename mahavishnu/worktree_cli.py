@@ -6,14 +6,17 @@ import json
 from pathlib import Path
 
 import typer
+import yaml
 
 from .core.app import MahavishnuApp
+from .core.config import MahavishnuSettings
 from .core.worktree_prune_merged import (
     WorktreePruner,
     WorktreePruneResult,
     classify_merge_status,
     find_merged_worktrees,
 )
+from .core.worktree_scan import scan_worktrees
 from .core.worktree_session_registry import SessionWorktreeRegistry
 
 __all__ = [
@@ -609,3 +612,125 @@ def prune_abandoned(
         "⚠️  The git worktrees themselves are still on disk. To remove them, run:\n"
         "    mahavishnu worktree remove <repo_nickname> <worktree_path>"
     )
+
+
+@worktree_app.command("scan")
+def scan_worktrees_cli(
+    repo: str = typer.Option(
+        "ALL", "--repo", help="ALL or path to a single repo to scan"
+    ),
+    output_format: str = typer.Option(
+        "text",
+        "--format",
+        case_sensitive=False,
+        help="Output format: text or json",
+    ),
+    include_dirty: bool = typer.Option(
+        False,
+        "--include-dirty/--no-include-dirty",
+        help="Include per-worktree dirty detail (modified/stash/untracked counts)",
+    ),
+    include_locked: bool = typer.Option(
+        False,
+        "--include-locked/--no-include-locked",
+        help="Include lock reason + ps -p <pid> liveness + command identity check",
+    ),
+    age_threshold_days: str = typer.Option(
+        "30,9",
+        "--age-threshold-days",
+        help="Two comma-separated values: Tier A minimum, Tier C minimum",
+    ),
+    no_cross_repo_grouping: bool = typer.Option(
+        False,
+        "--no-cross-repo-grouping/--cross-repo-grouping",
+        help="Skip the Tier X cross-repo grouping pass",
+    ),
+    yes_delete_detached: bool = typer.Option(
+        False,
+        "--yes-delete-detached/--no-yes-delete-detached",
+        help="Confirm intent to remove detached-HEAD worktrees without a branch check",
+    ),
+    user_id: str = typer.Option(
+        "anonymous",
+        "--user-id",
+        help="Operator ID for audit log attribution (forward-compat)",
+    ),
+) -> None:
+    """Scan Bodai repos for stale worktrees; emit a tier-grouped report."""
+    try:
+        a_thresh_str, c_thresh_str = age_threshold_days.split(",", 1)
+        a_thresh = float(a_thresh_str)
+        c_thresh = float(c_thresh_str)
+    except ValueError:
+        typer.echo(
+            f"mahavishnu.worktree_scan.config: invalid --age-threshold-days: {age_threshold_days}",
+            err=True,
+        )
+        raise typer.Exit(code=2) from None
+
+    # Resolve manifest path via MahavishnuSettings (per spec A57 option c)
+    cfg = MahavishnuSettings()
+    repos_path = Path(cfg.repos_path)
+    if not repos_path.exists():
+        fallback = Path("settings/repos.yaml")
+        if fallback.exists():
+            repos_path = fallback
+        else:
+            typer.echo(
+                "mahavishnu.worktree_scan.config: both ecosystem.yaml and repos.yaml missing",
+                err=True,
+            )
+            raise typer.Exit(code=2)
+
+    # Read manifest; catch YAML errors and schema-invalid per spec exit-code table
+    try:
+        with repos_path.open() as f:
+            manifest = yaml.safe_load(f)
+        if not isinstance(manifest, dict) or not isinstance(manifest.get("repos"), list):
+            typer.echo(
+                f"mahavishnu.worktree_scan.config: {repos_path} has invalid schema "
+                "(repos must be a list)",
+                err=True,
+            )
+            raise typer.Exit(code=2)
+    except yaml.YAMLError as e:
+        typer.echo(
+            f"mahavishnu.worktree_scan.config: {repos_path} parse error: {e}",
+            err=True,
+        )
+        raise typer.Exit(code=2) from None
+
+    all_repos = [Path(entry["path"]) for entry in manifest.get("repos", [])]
+
+    if repo != "ALL":
+        all_repos = [Path(repo)]
+
+    # Filter to existing paths; surface per-repo failures to stderr per spec § Exit codes
+    repo_paths: list[Path] = []
+    failed_repos: list[tuple[Path, str]] = []
+    for r in all_repos:
+        if r.exists():
+            repo_paths.append(r)
+        else:
+            failed_repos.append((r, "path does not exist"))
+            typer.echo(
+                f"mahavishnu.worktree_scan.failed_repo: {r} (path does not exist)",
+                err=True,
+            )
+
+    report = scan_worktrees(
+        repo_paths=repo_paths,
+        classify_merge_status_fn=classify_merge_status,
+        output_format=output_format,
+        age_threshold_a=a_thresh,
+        age_threshold_c=c_thresh,
+        include_dirty=include_dirty,
+        include_locked=include_locked,
+    )
+    typer.echo(report)
+    # Exit 1 if any repos failed; exit 0 if all succeeded.
+    raise typer.Exit(code=1 if failed_repos else 0)
+
+
+if __name__ == "__main__":
+    worktree_app()
