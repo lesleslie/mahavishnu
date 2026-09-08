@@ -509,6 +509,70 @@ class TestScanMetadataReposScanned:
         assert parsed["scan_metadata"]["repos_scanned"] == 2
 
 
+class TestGroupPlanOrphans:
+    """F-QA-14 — `_group_plan_orphans` must only return groups with >= 2 repos."""
+
+    def test_single_repo_match_is_excluded(self):
+        from mahavishnu.core import worktree_scan
+        entries = [
+            {
+                "branch": "wave8-diagram-corrections-2026-08-16",
+                "path": Path("/tmp/akosha/.worktrees/x"),
+                "repo_nickname": "akosha",
+            },
+        ]
+        result = worktree_scan._group_plan_orphans(entries)
+        # Only one repo matching -> no cross-repo group.
+        assert result == {}
+
+    def test_two_repo_match_yields_one_group(self):
+        from mahavishnu.core import worktree_scan
+        entries = [
+            {
+                "branch": "wave8-diagram-corrections-2026-08-16",
+                "path": Path("/tmp/akosha/.worktrees/x"),
+                "repo_nickname": "akosha",
+            },
+            {
+                "branch": "wave8-diagram-corrections-2026-08-16",
+                "path": Path("/tmp/mahavishnu/.worktrees/x"),
+                "repo_nickname": "mahavishnu",
+            },
+        ]
+        result = worktree_scan._group_plan_orphans(entries)
+        assert "2026-08-16-wave8-diagram-corrections" in result
+        assert len(result["2026-08-16-wave8-diagram-corrections"]) == 2
+
+    def test_branch_without_date_suffix_is_excluded(self):
+        from mahavishnu.core import worktree_scan
+        entries = [
+            {
+                "branch": "wave8-diagram-corrections",
+                "path": Path("/tmp/r/.worktrees/x"),
+                "repo_nickname": "r",
+            },
+            {
+                "branch": "wave8-diagram-corrections",
+                "path": Path("/tmp/m/.worktrees/x"),
+                "repo_nickname": "m",
+            },
+        ]
+        result = worktree_scan._group_plan_orphans(entries)
+        assert result == {}
+
+    def test_detached_branch_is_skipped(self):
+        from mahavishnu.core import worktree_scan
+        entries = [
+            {
+                "branch": None,
+                "path": Path("/tmp/r/.worktrees/x"),
+                "repo_nickname": "r",
+            },
+        ]
+        result = worktree_scan._group_plan_orphans(entries)
+        assert result == {}
+
+
 class TestFormatTextSections:
     """F-QA-12 — `_format_text` emits LOCKED / DIRTY / SCAN-FAILURES sections
     and an exit-code-aware footer. Tests build `WorktreeClassification`
