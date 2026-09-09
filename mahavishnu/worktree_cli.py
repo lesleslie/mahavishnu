@@ -4,6 +4,7 @@ import asyncio
 import inspect
 import json
 from pathlib import Path
+from typing import Literal, cast
 
 import typer
 import yaml
@@ -616,9 +617,7 @@ def prune_abandoned(
 
 @worktree_app.command("scan")
 def scan_worktrees_cli(
-    repo: str = typer.Option(
-        "ALL", "--repo", help="ALL or path to a single repo to scan"
-    ),
+    repo: str = typer.Option("ALL", "--repo", help="ALL or path to a single repo to scan"),
     output_format: str = typer.Option(
         "text",
         "--format",
@@ -631,86 +630,143 @@ def scan_worktrees_cli(
         help="Two comma-separated values: Tier A minimum, Tier C minimum",
     ),
 ) -> None:
-    """Scan Bodai repos for stale worktrees; emit a tier-grouped report."""
+    """Scan Bodai repos for stale worktrees; emit a tier-grouped report.
+
+    Per-function cyclomatic complexity is kept under the project gate by
+    delegating each phase to a focused helper (validation, manifest load,
+    repo resolution, output emission).
+    """
     try:
-        a_thresh_str, c_thresh_str = age_threshold_days.split(",", 1)
-        a_thresh = float(a_thresh_str)
-        c_thresh = float(c_thresh_str)
-    except ValueError:
-        typer.echo(
-            f"mahavishnu.worktree_scan.config: invalid --age-threshold-days: {age_threshold_days}",
-            err=True,
-        )
+        a_thresh, c_thresh = _scan_parse_age_thresholds(age_threshold_days)
+    except ValueError as exc:
+        typer.echo(str(exc), err=True)
         raise typer.Exit(code=2) from None
 
-    # Resolve manifest path via MahavishnuSettings (per spec A57 option c)
-    cfg = MahavishnuSettings()
-    repos_path = Path(cfg.repos_path)
-    if not repos_path.exists():
-        fallback = Path("settings/repos.yaml")
-        if fallback.exists():
-            repos_path = fallback
-        else:
-            typer.echo(
-                "mahavishnu.worktree_scan.config: both ecosystem.yaml and repos.yaml missing",
-                err=True,
-            )
-            raise typer.Exit(code=2)
+    repos_path = _scan_resolve_repos_path()
+    if repos_path is None:
+        raise typer.Exit(code=2)
 
-    # Read manifest; catch YAML errors and schema-invalid per spec exit-code table
-    try:
-        with repos_path.open() as f:
-            manifest = yaml.safe_load(f)
-        if not isinstance(manifest, dict) or not isinstance(manifest.get("repos"), list):
-            typer.echo(
-                f"mahavishnu.worktree_scan.config: {repos_path} has invalid schema "
-                "(repos must be a list)",
-                err=True,
-            )
-            raise typer.Exit(code=2)
-    except yaml.YAMLError as e:
+    manifest = _scan_load_manifest(repos_path)
+    if manifest is None:
+        raise typer.Exit(code=2)
+
+    repo_paths, failed_repos = _scan_resolve_repo_paths(
+        manifest.get("repos", []), repo
+    )
+    for path, reason in failed_repos:
         typer.echo(
-            f"mahavishnu.worktree_scan.config: {repos_path} parse error: {e}",
+            f"mahavishnu.worktree_scan.failed_repo: {path} ({reason})",
             err=True,
         )
-        raise typer.Exit(code=2) from None
 
-    all_repos = [Path(entry["path"]) for entry in manifest.get("repos", [])]
-
-    if repo != "ALL":
-        all_repos = [Path(repo)]
-
-    # Filter to existing paths; surface per-repo failures to stderr per spec § Exit codes
-    repo_paths: list[Path] = []
-    failed_repos: list[tuple[Path, str]] = []
-    for r in all_repos:
-        if r.exists():
-            repo_paths.append(r)
-        else:
-            failed_repos.append((r, "path does not exist"))
-            typer.echo(
-                f"mahavishnu.worktree_scan.failed_repo: {r} (path does not exist)",
-                err=True,
-            )
+    typed_format = _scan_validate_output_format(output_format)
+    if typed_format is None:
+        typer.echo(
+            f"mahavishnu.worktree_scan.config: invalid --format: {output_format!r} "
+            "(expected text|json)",
+            err=True,
+        )
+        raise typer.Exit(code=2)
 
     report, driver_failed_repos = scan_worktrees_with_status(
         repo_paths=repo_paths,
         classify_merge_status_fn=classify_merge_status,
-        output_format=output_format,
+        output_format=typed_format,
         age_threshold_a=a_thresh,
         age_threshold_c=c_thresh,
     )
-    # L3: emit driver-level scan failures to stderr before the report body so
-    # operators see them regardless of output_format.
+    _scan_emit_result(report, driver_failed_repos)
+    raise typer.Exit(code=1 if (failed_repos or driver_failed_repos) else 0)
+
+
+def _scan_parse_age_thresholds(raw: str) -> tuple[float, float]:
+    """Parse '30,9' → (30.0, 9.0). Raises ValueError with the canonical stderr message."""
+    try:
+        a_str, c_str = raw.split(",", 1)
+        return float(a_str), float(c_str)
+    except ValueError:
+        raise ValueError(
+            f"mahavishnu.worktree_scan.config: invalid --age-threshold-days: {raw}"
+        ) from None
+
+
+def _scan_resolve_repos_path() -> Path | None:
+    """Resolve the manifest path via MahavishnuSettings; fall back to settings/repos.yaml.
+
+    Emits the canonical stderr message and returns None when neither exists.
+    """
+    cfg = MahavishnuSettings()
+    repos_path = Path(cfg.repos_path)
+    if repos_path.exists():
+        return repos_path
+    fallback = Path("settings/repos.yaml")
+    if fallback.exists():
+        return fallback
+    typer.echo(
+        "mahavishnu.worktree_scan.config: both ecosystem.yaml and repos.yaml missing",
+        err=True,
+    )
+    return None
+
+
+def _scan_load_manifest(path: Path) -> dict | None:
+    """Parse the YAML manifest, emitting stderr on parse/schema error; None on failure."""
+    try:
+        with path.open() as f:
+            manifest = yaml.safe_load(f)
+    except yaml.YAMLError as exc:
+        typer.echo(
+            f"mahavishnu.worktree_scan.config: {path} parse error: {exc}",
+            err=True,
+        )
+        return None
+    if not isinstance(manifest, dict) or not isinstance(manifest.get("repos"), list):
+        typer.echo(
+            f"mahavishnu.worktree_scan.config: {path} has invalid schema "
+            "(repos must be a list)",
+            err=True,
+        )
+        return None
+    return manifest
+
+
+def _scan_resolve_repo_paths(
+    entries: list[dict],
+    repo_override: str,
+) -> tuple[list[Path], list[tuple[Path, str]]]:
+    """Pick which repos to scan; split into existing vs. missing-with-reason."""
+    all_repos = (
+        [Path(repo_override)]
+        if repo_override != "ALL"
+        else [Path(entry["path"]) for entry in entries]
+    )
+    existing: list[Path] = []
+    failed: list[tuple[Path, str]] = []
+    for candidate in all_repos:
+        if candidate.exists():
+            existing.append(candidate)
+        else:
+            failed.append((candidate, "path does not exist"))
+    return existing, failed
+
+
+def _scan_validate_output_format(raw: str) -> Literal["text", "json"] | None:
+    """Coerce the CLI string (case-insensitive) into the typed literal; None if invalid."""
+    normalized = raw.lower()
+    if normalized in ("text", "json"):
+        return cast(Literal["text", "json"], normalized)
+    return None
+
+
+def _scan_emit_result(report: str, driver_failed_repos: list[dict]) -> None:
+    """Print driver-level failures to stderr, then the report body to stdout."""
     for failure in driver_failed_repos:
         typer.echo(
-            f"mahavishnu.worktree_scan.driver_failure: {failure['path']}: "
-            f"{failure['reason']}",
+            f"mahavishnu.worktree_scan.driver_failure: "
+            f"{failure['path']}: {failure['reason']}",
             err=True,
         )
     typer.echo(report)
-    # Exit 1 if EITHER path-existence failures OR driver-level scan failures.
-    raise typer.Exit(code=1 if (failed_repos or driver_failed_repos) else 0)
 
 
 if __name__ == "__main__":
