@@ -4,7 +4,7 @@ import asyncio
 import inspect
 import json
 from pathlib import Path
-from typing import Literal, cast
+from typing import Literal
 
 import typer
 import yaml
@@ -751,10 +751,17 @@ def _scan_resolve_repo_paths(
 
 
 def _scan_validate_output_format(raw: str) -> Literal["text", "json"] | None:
-    """Coerce the CLI string (case-insensitive) into the typed literal; None if invalid."""
-    normalized = raw.lower()
-    if normalized in ("text", "json"):
-        return cast(Literal["text", "json"], normalized)
+    """Coerce the CLI string (case-insensitive) into the typed literal; None if invalid.
+
+    Uses explicit equality rather than a tuple-membership `in` check so both
+    ty and mypy narrow the return type to the literal without an explicit
+    `cast()` (which ty reports as redundant after the narrowing).
+    """
+    lowered = raw.lower()
+    if lowered == "text":
+        return "text"
+    if lowered == "json":
+        return "json"
     return None
 
 
