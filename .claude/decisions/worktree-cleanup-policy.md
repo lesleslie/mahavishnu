@@ -66,7 +66,7 @@ Path traversal and base-path resolution reuse `mahavishnu/core/worktree_validati
 3. **`ps -p` is checked at scan time only**; re-check at removal time is the operator's responsibility (the CLI does not perform removal).
 4. **PID reuse validation**: before trusting `ps -p <pid>` liveness, also call `ps -p <pid> -o command=` and verify the command starts with a known pattern (`claude`, `python.*mahavishnu`). Mismatch → treat as `unknown`, not `alive`. PID recycling is real.
 5. **`--force -f -f` is the unlock-equivalent** for confirmed-dead PID cases. `git worktree remove --force` alone does NOT bypass locks. (`git worktree remove --help` documents `-f` as repeated-force; the unlock-equivalent uses two `-f` flags.)
-6. **Lock file parser**: extract PID via fixed regex `^claude agent \S+ \(pid (\d+) start (\d{4}-\d{2}-\d{2})\)$`. No `eval`, no `exec`, no shell. Invalid format → `pid_liveness = "none"` + `notes: ["unparseable lock format"]`.
+6. **Lock file parser**: extract PID via fixed regex `^claude agent \S+ \(pid (\d+) start (\d{4}-\d{2}-\d{2})\)$`. No `eval`, no `exec`, no shell. Invalid format → `pid_liveness = "none"` + `notes: ["unparsable lock format"]`.
 
 ## Agent-dispatch reap rule
 
@@ -105,4 +105,3 @@ What NOT to do:
 - Tests: `tests/unit/test_decision_doc_sync.py` (doc/code parity)
 
 > **Note on the back-link target list**: `mahavishnu-tool-preference-policy.md` (tool-steering channels) is intentionally not cross-referenced — it relates to tool-docstring marketing copy, not to worktree lifecycle. (Per plan amendment F43.)
-

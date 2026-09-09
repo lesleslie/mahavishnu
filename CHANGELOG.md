@@ -5,6 +5,45 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.23.0] - 2026-09-09
+
+### Added
+
+- cli: Add mahavishnu worktree scan + tests
+- decisions: Add worktree-cleanup-policy + 4 back-links
+- decisions: Add worktree-cleanup-policy decision doc (skeleton)
+- Instrument scan_worktrees with OTel counter + histogram + INFO log (F-QA-4/5/6)
+- skills: Add bodai-worktree-cleanup skill wrapper
+
+### Changed
+
+- worktree-scan: Drop cyclomatic complexity under 15 in _format_text + scan_worktrees_cli
+
+### Fixed
+
+- Exit 1 on driver-level scan failures + 4 new CLI tests
+- plan-index: Drop 4 entries for files deleted in 561d9d2a refactor
+- plan-index: Strip stale 'fix-search-tools-wiring-v2/' worktree prefix from 264 links
+- scan: Drop 5 dead CLI flags + unused safe_worktree_name + slow markers
+- scan: Wrap _run_ps identity check in TimeoutExpired handler
+- spec: Quote YAML frontmatter values containing ': ' (crackerjack parse)
+- Wire repos_scanned counter to actual successful repo count (L4)
+- worktree-cli: Drop redundant cast() in _scan_validate_output_format
+
+### Documentation
+
+- Add worktree-cleanup implementation plan (3 commits)
+- plan: Post-review amendments (F1-F50)
+- spec: Add worktree-cleanup-policy design (post 4-agent review)
+- spec: Worktree-cleanup-policy post-QA amendments (A52-A74)
+
+### Testing
+
+- cli: Tighten vacuous assertions + index decision doc + trailing newline
+- scan: Add 8 _format_text section tests (F-QA-12) + restore L4 tests
+- scan: Add _group_plan_orphans 4-test coverage set (F-QA-14)
+- skill: Add 3 trigger-phrase + wrapper smoke tests (F-QA-15)
+
 ## [0.22.0] - 2026-09-07
 
 ### Changed

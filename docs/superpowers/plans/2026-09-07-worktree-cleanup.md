@@ -33,7 +33,7 @@ Every task's requirements implicitly include these:
 - **Classifier reuse**: `classify_merge_status()` is imported from `mahavishnu/core/worktree_prune_merged.py:91-129` (returns plain `str`, NOT `Literal[...]`). Import-side cast to `Literal["merged","not_merged","undetermined"]` is documented in the spec. NO edits to `worktree_prune_merged.py` are permitted in this commit (per spec A40).
 - **Manifest source**: `settings/ecosystem.yaml` is canonical (pinned in `settings/mahavishnu.yaml:repos_path`). `settings/repos.yaml` is the runtime fallback. `BODAI_REPO_REGISTRY.md` is human-readable prose and NOT a runtime fallback.
 - **Tier B path matcher**: use `get_worktree_base_path()` from `mahavishnu/core/paths.py:153-182` (resolves `MAHAVISHNU_WORKTREE_BASE_PATH` canonical env var, with `MAHAVISHNU_AUTO_WORKTREE_ROOT` as legacy alias).
-- **Lock file parser**: fixed regex `^claude agent \S+ \(pid (\d+) start (\d{4}-\d{2}-\d{2})\)$`. No `eval`, `exec`, `shell`. Invalid format → `pid_liveness = "none"` + `notes: ["unparseable lock format"]`.
+- **Lock file parser**: fixed regex `^claude agent \S+ \(pid (\d+) start (\d{4}-\d{2}-\d{2})\)$`. No `eval`, `exec`, `shell`. Invalid format → `pid_liveness = "none"` + `notes: ["unparsable lock format"]`.
 - **Tier X exclusive enumeration**: Tier X entries are reported EXCLUSIVELY in `tier_x_cross_repo_orphan` and DO NOT appear under Tier A or any other tier.
 - **Process safety**: `git worktree remove --force` does NOT bypass locks. Use `git worktree remove --force -f -f` (or `git worktree unlock` first) only after verifying the lock's PID is dead via `ps -p <pid>` + `ps -p <pid> -o command=` (PID reuse validation).
 - **Branch policy**: per `.claude/decisions/bodai-pre-1.0-merge-policy.md`, all three commits land directly to main. No PR. Squash forbidden.
@@ -190,7 +190,7 @@ The new `mahavishnu/core/worktree_scan.py::safe_worktree_name()` enforces the ch
 3. **`ps -p` is checked at scan time only**; re-check at removal time is the operator's responsibility (the CLI does not perform removal).
 4. **PID reuse validation**: before trusting `ps -p <pid>` liveness, also call `ps -p <pid> -o command=` and verify the command starts with a known pattern (`claude`, `python.*mahavishnu`). Mismatch → treat as `unknown`, not `alive`. PID recycling is real.
 5. **`--force -f -f` is the unlock-equivalent** for confirmed-dead PID cases. `git worktree remove --force` alone does NOT bypass locks. (`git worktree remove --help` documents `-f` as repeated-force; the unlock-equivalent uses two `-f` flags.)
-6. **Lock file parser**: extract PID via fixed regex `^claude agent \S+ \(pid (\d+) start (\d{4}-\d{2}-\d{2})\)$`. No `eval`, no `exec`, no shell. Invalid format → `pid_liveness = "none"` + `notes: ["unparseable lock format"]`.
+6. **Lock file parser**: extract PID via fixed regex `^claude agent \S+ \(pid (\d+) start (\d{4}-\d{2}-\d{2})\)$`. No `eval`, no `exec`, no shell. Invalid format → `pid_liveness = "none"` + `notes: ["unparsable lock format"]`.
 ```
 
 - [ ] **Step 3: Verify both sections present**
@@ -2182,4 +2182,3 @@ Synthesis after plan commit `a8a9c221`. Critical fixes applied inline; remaining
 - **12 high-priority items pending** (F22–F33): mostly missing tests for spec amendments A20, A56, A66, A67, A10, A34, A38
 - **10 medium + 7 low items pending** (F34–F50): refinements, lint, validation
 - **Test count corrections** documented for accurate expected-pass claims
-
