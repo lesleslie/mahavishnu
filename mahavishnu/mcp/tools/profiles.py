@@ -33,8 +33,10 @@ from mcp_common.tools import ToolProfile
 
 from ..bootstrap import (
     _register_adapter_registry_tools,
+    _register_agents_tools,
     _register_capability_tools,
     _register_clone_tools,
+    _register_dispatch_specialist_tools,
     _register_ecosystem_tools,
     _register_git_analytics_tools,
     _register_goal_team_tools,
@@ -48,16 +50,15 @@ from ..bootstrap import (
     _register_search_tools,
     _register_self_improvement_tools,
     _register_session_buddy_tools,
+    _register_skills_signer_tools,
     _register_terminal_tools,
     _register_treesitter_tools,
     _register_webhook_tools,
     _register_worker_contract_tools,
     _register_worker_tools,
     _register_workflow_tools,
-    _register_skills_signer_tools,
-    _register_agents_tools,
-    _register_dispatch_specialist_tools,
 )
+from .jot_tools import register as _register_jot_tools
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -99,6 +100,17 @@ FULL_REGISTRATIONS: list[str] = STANDARD_REGISTRATIONS + [
     "_register_adapter_registry_tools",
     "_register_pycharm_tools",
     "_register_search_tools",
+    # Jot inbox tools (8 tools; Task 13). Each key in REGISTRATION_MAP
+    # delegates to the same ``register`` callable which is idempotent
+    # (re-decorates all 8 tools against the FastMCP server).
+    "jot_list",
+    "jot_show",
+    "jot_add",
+    "jot_edit",
+    "jot_done",
+    "jot_reopen",
+    "jot_vitals",
+    "jot_search",
 ]
 
 # Note: ``register_worktree_tools`` is async and conditionally registered
@@ -184,6 +196,18 @@ REGISTRATION_MAP: dict[str, Callable] = {
     "_register_adapter_registry_tools": lambda s: _register_adapter_registry_tools(s._mhv_server),  # type: ignore[attr-defined]
     "_register_pycharm_tools": lambda s: _register_pycharm_tools(s._mhv_server),  # type: ignore[attr-defined]
     "_register_search_tools": lambda s: _register_search_tools(s._mhv_server),  # type: ignore[attr-defined]
+    # Jot inbox tools (Task 13). Each key delegates to the same
+    # ``_register_jot_tools`` callable (imported from .jot_tools) which
+    # is idempotent — the first call wraps the 8 tools against the
+    # server, subsequent calls re-bind the wrappers harmlessly.
+    "jot_list": lambda s: _register_jot_tools(s._mhv_server),  # type: ignore[attr-defined]
+    "jot_show": lambda s: _register_jot_tools(s._mhv_server),  # type: ignore[attr-defined]
+    "jot_add": lambda s: _register_jot_tools(s._mhv_server),  # type: ignore[attr-defined]
+    "jot_edit": lambda s: _register_jot_tools(s._mhv_server),  # type: ignore[attr-defined]
+    "jot_done": lambda s: _register_jot_tools(s._mhv_server),  # type: ignore[attr-defined]
+    "jot_reopen": lambda s: _register_jot_tools(s._mhv_server),  # type: ignore[attr-defined]
+    "jot_vitals": lambda s: _register_jot_tools(s._mhv_server),  # type: ignore[attr-defined]
+    "jot_search": lambda s: _register_jot_tools(s._mhv_server),  # type: ignore[attr-defined]
 }
 
 
