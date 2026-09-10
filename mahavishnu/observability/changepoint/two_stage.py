@@ -13,7 +13,14 @@ State machine:
     idle  --[warn fires]-->  warning_pending
     warning_pending  --[confirm fires within window]-->  confirmed
     warning_pending  --[window expires without confirm]-->  idle
+    warning_pending  --[warn fires again (LATEST captured)]-->  warning_pending
     confirmed  --[next update() after alert emission]-->  idle
+
+If ``warn_detector`` fires again while in ``warning_pending``, the
+latest warning result captures in ``_last_warning_result`` and the
+warn detector resets; the next confirm carries the LATEST warning
+score, not the first. (See ``update()`` lines for the in-loop
+``if warn_fired:`` branch under ``warning_pending``.)
 
 Mathematical reference: see ``docs/plans/2026-09-10-bodai-math-initiatives-tier1.md``
 §1 (success metrics) and the calibration sweep table in
