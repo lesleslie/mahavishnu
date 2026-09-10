@@ -1298,6 +1298,11 @@ from .cli.jot_cli import app as jot_app
 
 app.add_typer(jot_app, name="jot")
 
+# Plan index CLI (mirror mcp__mahavishnu__plan_* tools)
+from .cli.plan_cli import plan_app
+
+app.add_typer(plan_app, name="plan")
+
 # Worker management
 workers_app = typer.Typer(help="Worker orchestration and management")
 app.add_typer(workers_app, name="workers")
