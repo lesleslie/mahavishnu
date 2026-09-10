@@ -113,7 +113,11 @@ Operator action by signal:
   are precursors to confirmed alerts within a few hundred samples.
   Use `mahavishnu.observability.drift_warning_total` (Prometheus) to
   monitor the warning rate. If it spikes on stationary traffic, the
-  warn threshold may be too sensitive for the workload.
+  warn threshold may be too sensitive for the workload. ~30
+  warnings per 10,080 is the design point at `warn_threshold=8.0`
+  on stationary Gaussian noise; sustained rates > 2× that on
+  stationary traffic suggest a mis-tuned warn threshold or
+  non-stationary input.
 - **`drift_detected`** — page-worthy. The detector is saying "two
   independent tests agree the metric has shifted." Open an incident
   per the L2/L3 escalation paths below.
