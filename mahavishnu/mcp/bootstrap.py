@@ -1081,3 +1081,31 @@ def _register_search_tools(server: FastMCPServer) -> None:
     registration logic for the search-tools group.
     """
     _register_search_block(server)
+
+
+def _register_plan_tools(server: FastMCPServer) -> None:
+    """Register plan_* tools with the FastMCP server.
+
+    The store_provider is constructed at registration time from the
+    real Dhara client on MahavishnuApp. Tests inject a FakeDhara-
+    backed provider at this same call site (see tests/integration/
+    mcp/test_plan_tools_e2e.py).
+    """
+    from ..mcp.tools.plan_tools import register_plan_tools
+    from ..plan_index.store import PlanIndexStore
+
+    def _store_provider() -> PlanIndexStore:
+        # Production wiring: real Dhara-backed store.
+        return PlanIndexStore(_resolve_dhara_client(server))
+
+    register_plan_tools(server.server, store_provider=_store_provider)
+
+
+def _resolve_dhara_client(server: FastMCPServer) -> object:
+    """Return the configured Dhara client from MahavishnuApp.
+
+    Production: reads from ``server.app.state.dhara`` or equivalent.
+    Tests: a FakeDhara stand-in is acceptable for the smoke test;
+    the integration test for this lives in tests/integration/mcp/.
+    """
+    return server.app.state.dhara  # type: ignore[attr-defined]

@@ -43,6 +43,7 @@ from ..bootstrap import (
     _register_health_tools,
     _register_openhands_tools,
     _register_otel_tools,
+    _register_plan_tools,
     _register_pool_tools,
     _register_primitive_tools,
     _register_pycharm_tools,
@@ -100,6 +101,10 @@ FULL_REGISTRATIONS: list[str] = STANDARD_REGISTRATIONS + [
     "_register_adapter_registry_tools",
     "_register_pycharm_tools",
     "_register_search_tools",
+    # Plan index tools (5 tools; Task 12). Delegates to the W0 helper via
+    # ``_register_plan_tools`` which constructs a Dhara-backed store from
+    # ``MahavishnuApp`` and binds all five ``plan_*`` tools in one call.
+    "_register_plan_tools",
     # Jot inbox tools (8 tools; Task 13). Each key in REGISTRATION_MAP
     # delegates to the same ``register`` callable which is idempotent
     # (re-decorates all 8 tools against the FastMCP server).
@@ -196,6 +201,11 @@ REGISTRATION_MAP: dict[str, Callable] = {
     "_register_adapter_registry_tools": lambda s: _register_adapter_registry_tools(s._mhv_server),  # type: ignore[attr-defined]
     "_register_pycharm_tools": lambda s: _register_pycharm_tools(s._mhv_server),  # type: ignore[attr-defined]
     "_register_search_tools": lambda s: _register_search_tools(s._mhv_server),  # type: ignore[attr-defined]
+    # Plan index tools (Task 12). ``_register_plan_tools`` resolves the
+    # Dhara client from ``MahavishnuApp`` and registers the five
+    # ``plan_*`` tools in one call. The store is constructed fresh per
+    # registration, matching the per-tool closure pattern.
+    "_register_plan_tools": lambda s: _register_plan_tools(s._mhv_server),  # type: ignore[attr-defined]
     # Jot inbox tools (Task 13). Each key delegates to the same
     # ``_register_jot_tools`` callable (imported from .jot_tools) which
     # is idempotent — the first call wraps the 8 tools against the
