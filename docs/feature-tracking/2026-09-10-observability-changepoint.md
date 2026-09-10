@@ -146,6 +146,19 @@ detector), set:
 export MAHAVISHNU_CHANGEPOINT__REFERENCE_DETECTOR=none
 ```
 
+### Round-5 two-stage update
+
+The Phase 8 promotion now defaults to `changepoint.detector:
+"two_stage"` (warn/confirm) instead of `"cusum"` (single detector).
+The two-stage architecture resolves the §1/§7 trade-off documented
+in `docs/audits/2026-09-10-changepoint-validation.md`. Operators
+who have customized `changepoint.detector: "cusum"` in
+`settings/local.yaml` for backwards compat should re-evaluate after
+two weeks of two_stage operation in their environment — the
+two-stage mode emits BOTH `drift_warning` (soft) and
+`drift_detected` (hard) signals, so existing alerts on
+`drift_detected` continue to work without changes.
+
 ## Blocker
 
 None — the feature is adopted. The Phase 9 multi-metric trigger

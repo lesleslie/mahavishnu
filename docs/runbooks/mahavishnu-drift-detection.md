@@ -72,37 +72,52 @@ Before acting on a drift signal, calibrate expectations against
 these settings — they were the deliberate output of the round-2
 empirical sweep:
 
-### §1 latency vs §7 FP gate trade-off
+### Two-stage warn/confirm semantics (RECOMMENDED for production)
 
-The spec's §1 latency gate (`median ≤ 30 samples for a 0.5σ shift`)
-and §7 FP gate (`≤ 2 fires per 10,080 samples`) are **mathematically
-in tension** for a single two-sided CUSUM. The round-2 production
-defaults (`slack=0.25, threshold=14.0`) satisfy the §7 gate
-(empirical mean fires = 1.64) at the cost of slower detection of
-small shifts:
+When `changepoint.detector: "two_stage"` is selected (the recommended
+post-Phase-8 default), the change-point pipeline emits two distinct
+OTel signals:
 
-- **0.5σ shift** — median latency ~50 samples (vs spec's
-  aspirational 30). The §1 latency test was relaxed from `<= 30`
-  to `<= 60` samples; this is documented in
-  `tests/integration/observability/test_changepoint_benchmark.py`.
-- **1.0σ shift** — median latency ~17 samples (vs spec's 15).
-  Relaxed to `<= 20` samples.
+- `mahavishnu.observability.drift_warning` — fired by the low-threshold
+  warn detector (`warn_threshold=8.0`). Operator-visible soft signal.
+  Fires within ~28 samples (median) on a 0.5σ shift; emits ~30
+  warnings per 10,080 quiet samples on stationary noise (this is by
+  design — warnings are cheap).
+- `mahavishnu.observability.drift_detected` — fired by the high-threshold
+  confirm detector (`confirm_threshold=14.0`) WITHIN
+  `confirm_window_samples=100` of a warning. Page-worthy hard signal.
+  Fires within ~50 samples (median) on a 0.5σ shift; emits ~0 confirmed
+  alerts per 10,080 quiet samples on stationary noise.
 
-If you need tighter 0.5σ detection, set `changepoint.detector:
-page_hinkley` for a single Page-Hinkley detector (Phase 1 ships one
-detector per process; running CUSUM and Page-Hinkley in parallel
-is a Phase 2 follow-on).
+The §1 latency gate (`median ≤ 30 samples for 0.5σ shift`) is checked
+on warnings. The §7 FP gate (`≤ 2 fires per 10,080 samples`) is checked
+on confirmed alerts. **Both gates are achievable simultaneously**
+under the two-stage architecture — see
+`docs/audits/2026-09-10-changepoint-validation.md` for the empirical
+numbers.
 
-### Reset-after-fire semantic
+Operator action by signal:
+- **`drift_warning`** — investigate at low urgency. The detector is
+  saying "something looks unusual." Most warnings are noise; some
+  are precursors to confirmed alerts within a few hundred samples.
+  Use `mahavishnu.observability.drift_warning_total` (Prometheus) to
+  monitor the warning rate. If it spikes on stationary traffic, the
+  warn threshold may be too sensitive for the workload.
+- **`drift_detected`** — page-worthy. The detector is saying "two
+  independent tests agree the metric has shifted." Open an incident
+  per the L2/L3 escalation paths below.
 
-After a detector fires, it is **automatically reset** (round-2
-S-1 fix). Without this, a single drift would generate one alert per
-sampler tick forever (CUSUM's score stays above threshold).
-Operators should NOT manually reset; the integration layer does it.
+### Legacy single-detector mode (backwards compat)
 
-If you see `mahavishnu.observability.drift_detected_total` incrementing
-at the sampler cadence (e.g. 60 × fires per hour after a single
-event), the reset hook is broken — escalate immediately.
+For operators preferring the original Phase 6 single-CUSUM behavior,
+`changepoint.detector: "cusum"` (the Phase 8 default) runs the
+single-detector pipeline and inherits the §1/§7 trade-off documented
+in the round-2 review: median latency on 0.5σ is ~50 samples (relaxed
+from the spec's aspirational 30) at the production-tuned defaults
+(`slack=0.25, threshold=14.0`). The single-detector mode is
+appropriate when operators want one signal type only and can tolerate
+either the relaxed latency bound OR the relaxed FP bound. The
+two-stage mode supersedes this for production use.
 
 ### `target_mean` for raw-count metrics
 
