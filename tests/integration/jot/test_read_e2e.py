@@ -6,10 +6,13 @@ HOME pointed at tmp_path so the jot log resolves under an isolated
 directory (the existing `python -m mahavishnu.cli` form does not work
 because `mahavishnu.cli` is a package, not a module — and the jot
 subcommands do not expose `--log-path`).
+
+The subprocess env is a strict whitelist (HOME + PATH + PYTHONPATH) so
+host-set vars like MAHAVISHNU_LOG_PATH / XDG_CONFIG_HOME cannot mask the
+HOME redirect.
 """
 from __future__ import annotations
 
-import json
 import os
 import subprocess
 import sys
@@ -18,6 +21,11 @@ from pathlib import Path
 import pytest
 
 from mahavishnu.jot.events import HLC, JotEvent, serialize
+
+# Repo root derived from this file: tests/integration/jot/ -> tests/integration/
+# -> tests/ -> <repo_root>. Avoids hardcoding `/Users/les/Projects/mahavishnu`
+# so the suite is portable to CI, worktrees, and other developers.
+REPO_ROOT = Path(__file__).resolve().parents[3]
 
 
 def _seed(log: Path, events: list[JotEvent]) -> None:
@@ -39,19 +47,47 @@ def isolated_home(tmp_path: Path) -> Path:
     return tmp_path
 
 
+def _subprocess_env(home: Path) -> dict[str, str]:
+    """Whitelist the env so host vars cannot mask the HOME redirect."""
+    return {
+        "HOME": str(home),
+        "PATH": os.environ.get("PATH", ""),
+        "PYTHONPATH": str(REPO_ROOT),
+    }
+
+
 def _run_jot_cli(args: list[str], home: Path) -> subprocess.CompletedProcess:
     """Invoke `python -m mahavishnu jot <args>` with HOME pointed at `home`."""
     return subprocess.run(
         [sys.executable, "-m", "mahavishnu", "jot", *args],
         check=False, capture_output=True, text=True,
-        cwd="/Users/les/Projects/mahavishnu",
-        env={**os.environ, "HOME": str(home)},
+        cwd=str(REPO_ROOT),
+        env=_subprocess_env(home),
         timeout=30,
     )
 
 
-def test_capture_then_cli_list_round_trip(isolated_home: Path) -> None:
+def _assert_resolved_log(home: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """Sanity check: confirm `paths.log_path()` actually resolves under HOME.
+
+    Pins the convention so future refactors of `paths.log_path()` that drift
+    away from `~/.mahavishnu/jot/log.jsonl` fail loudly instead of silently
+    masking the HOME redirect.
+    """
+    expected_log = home / ".mahavishnu" / "jot" / "log.jsonl"
+    from mahavishnu.jot import paths as paths_module
+
+    paths_module._jot_dir_cache = None
+    monkeypatch.setattr(Path, "home", lambda: home)
+    resolved = paths_module.log_path()
+    assert resolved == expected_log, f"log_path drifted: {resolved} != {expected_log}"
+
+
+def test_capture_then_cli_list_round_trip(
+    isolated_home: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
     """The pipeline: capture -> fold -> CLI list."""
+    _assert_resolved_log(isolated_home, monkeypatch)
     log = isolated_home / ".mahavishnu" / "jot" / "log.jsonl"
     _seed(log, [_capture("a" * 32, "refactor", wall_ms=1)])
     result = _run_jot_cli(["list"], isolated_home)
@@ -59,8 +95,11 @@ def test_capture_then_cli_list_round_trip(isolated_home: Path) -> None:
     assert "refactor" in result.stdout
 
 
-def test_cli_vitals_returns_counts(isolated_home: Path) -> None:
+def test_cli_vitals_returns_counts(
+    isolated_home: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
     """Vitals surfaces total/open/done counts from the fold."""
+    _assert_resolved_log(isolated_home, monkeypatch)
     log = isolated_home / ".mahavishnu" / "jot" / "log.jsonl"
     _seed(log, [
         _capture("a" * 32, "open", wall_ms=1),
