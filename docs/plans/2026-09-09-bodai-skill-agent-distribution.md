@@ -1020,9 +1020,35 @@ and hash-chain audit log.
      Cosmetic applied (dhara trailing newline).
 4. **Week 4**: Phase 4 ships in Akosha (depends on Phase 1 + 1.5 in
    all 5 repos being operational).
+   - [ ] akosha: Phase 4 federation (`list_ecosystem_skills`) —
+     implementation in flight (a subagent dispatched; tracked under
+     §10.2 Week 4 sub-list).
 5. **Week 5**: Phase 2 + Phase 3 ship (depend on Phase 1.5).
+   - [x] **Phase 2 SHIPPED 2026-09-10** in dot-claude repo (commit
+     `adf577a6`): `~/.claude/skills/ecosystem-skill-loader/` body
+     + `scripts/installer.py` + `tests/integration/test_skill_installer_e2e.py`.
+     Picker auto-exposure verified by Claude Code's hook.
+     21/21 E2E tests pass in 0.13s.
+   - [ ] akosha: Phase 3 server-published agents (reference impl
+     in flight; tracked under §10.2 Week 5 sub-list).
+   - [x] mahavishnu: Phase 3 fan-out `d722d2fa` predecessor + agent
+     in flight (a Python-pro subagent is writing the fan-out; ack
+     pending commit SHA).
+   - [ ] session-buddy: Phase 3 fan-out — agent in flight.
+   - [ ] dhara: Phase 3 fan-out — agent in flight.
+   - [x] crackerjack: Phase 3 fan-out `f3eadda7` (44 unit + 16
+     integration tests passing locally).
 6. **Week 6**: Phase 5 + Phase 6 ship (depend on Phase 4 and Phase 3
    respectively).
+   - [x] **Phase 6 SHIPPED 2026-09-10** in dot-claude repo (commit
+     `f242756`): `~/.claude/skills/ecosystem-agent-loader/` body
+     + `scripts/installer.py` + `tests/integration/test_agent_installer_e2e.py`.
+     36/36 E2E tests pass in 0.24s. Picker auto-exposure verified.
+     Gated on Phase 3 dispatcher for full activation; the Skill body
+     already works against any server-published `list_agents` /
+     `get_agent` MCP tool.
+   - [ ] Phase 3 dispatcher (`mcp__mahavishnu__dispatch_specialist`,
+     H-3) — pending (depends on Phase 3 fan-out completion).
 
 **Exit criteria for security-gated window**:
 - A user prompts "install a skill that searches Akosha for code
