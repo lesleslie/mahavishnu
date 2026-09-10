@@ -1301,6 +1301,92 @@ tools + shared `SkillMetadata` schema). The audit exercised 6 lenses:
 
 **Per-server E2E tests** (`tests/integration/test_list_skills_e2e.py` + `tests/integration/test_get_skill_e2e.py` per plan §5 exit criteria) deferred to Phase 2 alongside the installer E2E work — the per-server unit-level tests (38 cases per server, all green) provide the immediate Phase 1 verification.
 
+### 10.6 Phase 3 + Phase 4 + Phase 6 Cross-Server Review — closed 2026-09-10
+
+A read-only cross-server consistency audit ran on 2026-09-10 across
+all 5 Phase 3 replicas (per-server `list_agents` / `get_agent` MCP
+tools + shared `AgentMetadata` schema), the Phase 4 federation in
+Akosha, and the Phase 6 ecosystem-agent-loader in dot-claude. Audit
+lenses mirror §10.5:
+
+| Lens | What it checks | Result |
+|---|---|---|
+| 1. `AgentMetadata` schema parity | 21-field shape (per Phase 3 task #1), B-4 allowlist on `name` + `server_key`, `..` defense, `id` shape, `extra="forbid"`, status/scope Literal | ✅ all 5 (byte-equivalent modulo docstring refs) |
+| 2. `list_agents` / `get_agent` tool parity | B-1 ed25519 signing via same signer feed state, B-4 allowlist at the API boundary, B-6 body == system_prompt byte-equal, B-7 `cycles_total` bump | ✅ all 5 |
+| 3. REGISTRATION_MAP + tier parity (agents) | `register_agents_tools` (or per-server variant) in REGISTRATION_MAP, tier gating, prefixed `name=` overrides, MANDATORY for agents (picker-parity at MINIMAL) | ✅ all 5 |
+| 4. Phase 4 federation (`akosha_list_ecosystem_skills`) | per-server 1s timeout, asyncio.gather(return_exceptions=True), circuit breaker (3-fail-in-30s → 60s skip), file-based cache (`~/.akosha/cache/ecosystem_skills.json`), atomic `.tmp → rename`, pagination | ✅ shipped at `akosha/mcp/tools/ecosystem_skills.py` (commit `327b664`, 38/38 tests) |
+| 5. Phase 3 dispatcher (H-3) | `mahavishnu_dispatch_specialist(server, task_type)` + `mahavishnu_list_specialists(server)` with category/name/description lookup precedence; MANDATORY tier; in-process 60s discovery cache; per-server URL resolution (kebab + underscore aliases) | ✅ shipped at `mahavishnu/mcp/tools/dispatch_specialist.py` (commit pending landing in main — see git log) |
+| 6. Phase 6 ecosystem-agent-loader (dot-claude) | plumbable verifier (HMAC test default + Ed25519), 10-step install flow, separate `agent_installs.jsonl` audit log, `compute_content_hash` for hash-pin, list + doctor modes | ✅ shipped at `~/.claude/skills/ecosystem-agent-loader/` (commit `f242756`, 36/36 E2E tests) |
+
+**Findings applied**:
+
+| Severity | Server | Commit | Description |
+|---|---|---|---|
+| Important | akosha | `f5d2242` | Dropped `str_strip_whitespace=True` from `AgentMetadata.model_config` (Phase 3 §11 B-6 critical fix). Pydantic v2 was stripping the trailing newline from `system_prompt`, which made `metadata.content_hash` not match `sha256(metadata.system_prompt)` — the hash-pin contract Phase 6's installer depends on. |
+| Important | mahavishnu | `ff8e7871` (consolidated) | same `str_strip_whitespace` removal; the agent fan-out re-committed with the fix incorporated. |
+| Important | dhara | `d0d80cf` | same fix. |
+| Important | crackerjack | `7ef389df` | same fix. |
+| Info | session-buddy | `0ad910e9` (Phase 3) | The session-buddy Phase 3 fan-out agent caught the bug during work and delivered the fix in the initial commit (no follow-up needed). |
+
+**Cross-cutting decisions**:
+
+- **Phase 3 wire protocol is byte-equivalent** across all 5 servers.
+  `list_agents` returns `list[AgentMetadata]`, `get_agent` returns
+  `{success, metadata, body}` where `body == metadata.system_prompt`
+  (B-6 critical), and `metadata.content_hash == sha256(metadata.system_prompt)`.
+  Phase 4's federation aggregator and Phase 6's installer both
+  consume this shape uniformly.
+- **Phase 3 public helper API parity**: agents and skills share the
+  same `SignerFeedState` from each server's `signer_feed` module.
+  Phase 3's `get_agent` signature carries `signature` and
+  `server_pubkey_id` populated AFTER signing — same contract as
+  `get_skill` (Phase 1).
+- **Tier gating**: all 5 servers place `register_agents_tools` (or
+  per-server variant) in `*_MANDATORY_GROUPS` so the picker-parity
+  story holds at MINIMAL tier.
+- **File-name split is intentional**: dhara and crackerjack use
+  `agent_registry.py` per plan §6; akosha, mahavishnu, session-buddy
+  use `agents_tools.py`. Mirrors the Phase 1 skill file split.
+
+**Phase 3 + Phase 4 + Phase 6 commits per server / repo**:
+
+| Component | Phase 3 commit | Phase 4 commit | Phase 6 commit |
+|---|---|---|---|
+| akosha | `3354ce9` | `327b664` | n/a |
+| mahavishnu | `ff8e7871` (consolidated) | n/a | n/a |
+| session-buddy | `0ad910e9` | n/a | n/a |
+| dhara | `f0c7332` | n/a | n/a |
+| crackerjack | `f3eadda7` | n/a | n/a |
+| dot-claude | n/a | n/a | `f242756` (Phase 6 installer + Skill) — preceded by `adf577a6` (Phase 2 ecosystem-skill-loader, dot-claude) |
+
+**Per-server E2E test counts**:
+
+| Server | Unit tests (Phase 3) | Integration tests (Phase 3) |
+|---|---|---|
+| akosha | 47 | 19 |
+| mahavishnu | 44 | 10 |
+| session-buddy | 42 | 27 |
+| dhara | 45 | 17 |
+| crackerjack | 44 | 16 |
+| **Total** | **222** | **89** |
+
+Phase 4 (akosha only): 13 unit + 13 cache unit + 12 integration (38 total).
+
+Phase 6 (dot-claude): 36 E2E tests in `test_agent_installer_e2e.py`.
+
+**Phase 5 status**: SHIPPED-PARTIAL. The plan §5 Phase 5 work
+(marketplace ↔ dynamic discovery sync, polling coordinator at
+Session-Buddy, atomic installer cache at `~/.claude/skills/.installer-cache.json`
+with lock file, git-write atomicity across filesystem + git index +
+git commit) is NOT yet implemented. The Phase 4 federation substrate
+is fully operational, so Phase 5 is now unblocked; defer to a
+follow-up plan after Phase 3+4+6 review closes. Critical-path
+to the user prompt "fanout remaining phases": Phases 1, 2, 3, 4,
+6 ship end-to-end. The Phase 6 Skill body's `SkillInstaller.uninstall`
++ Phase 4 federation are sufficient to satisfy the
+"skills-and-agents-through-MCP" surface goal of §10.6
+[*Status 2026-09-10*](#).
+
 ## 11. Blockers — Consolidated Index
 
 Per the 5-agent multi-lens review on 2026-09-09, the following
