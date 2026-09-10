@@ -114,21 +114,28 @@ def _enrich_ctx(
     break in Lambda/Worker environments where .git/ doesn't exist).
 
     All three git calls are fail-open independently — a missing `git`
-    binary OR a non-git directory OR a failing rev-parse each return None
-    rather than raising.
+    binary OR a non-git directory OR a stalled git (timeout) each return
+    None rather than raising.
+
+    Catch tuple: `subprocess.SubprocessError` covers both
+    `CalledProcessError` (non-zero exit, constructed by `_git`) and
+    `TimeoutExpired` (5s timeout hit before git returned) plus any future
+    SubprocessError subclass. `OSError` and `FileNotFoundError` are kept
+    for self-documentation — they are harmless and overlap with
+    `SubprocessError`'s hierarchy in some Python versions.
     """
     enriched: dict[str, str | list[str] | None] = dict(ctx)
     try:
         enriched["repo"] = _git(current_dir, "rev-parse", "--show-toplevel")
-    except (FileNotFoundError, subprocess.CalledProcessError, OSError):
+    except (FileNotFoundError, subprocess.SubprocessError, OSError):
         enriched["repo"] = None
     try:
         enriched["branch"] = _git(current_dir, "rev-parse", "--abbrev-ref", "HEAD")
-    except (FileNotFoundError, subprocess.CalledProcessError, OSError):
+    except (FileNotFoundError, subprocess.SubprocessError, OSError):
         enriched["branch"] = None
     try:
         enriched["sha"] = _git(current_dir, "rev-parse", "HEAD")
-    except (FileNotFoundError, subprocess.CalledProcessError, OSError):
+    except (FileNotFoundError, subprocess.SubprocessError, OSError):
         enriched["sha"] = None
     return enriched
 
@@ -153,6 +160,10 @@ def build_states(
         enrich: when True (default), run git enrichment via subprocess
             (Task 5). Tests should pass enrich=False for log-idempotency.
         current_dir: directory for git enrichment; defaults to cwd.
+
+    Note: ctx_by_id is an observability side-channel — populated ONLY when
+    enrich=True. With enrich=False the data structure is empty (per F4
+    wire-up contract).
     """
     sorted_events = sorted(events, key=_hlc_sort_key)
 
@@ -170,7 +181,8 @@ def build_states(
                     status="open",
                     last_modified_ms=ev.hlc.wall_ms,
                 )
-                ctx_by_id[ev.id] = dict(ev.ctx) if ev.ctx else {}
+                if enrich:
+                    ctx_by_id[ev.id] = dict(ev.ctx) if ev.ctx else {}
             case "edit":
                 if ev.id not in states_by_id:
                     parked.append(ev)
@@ -183,7 +195,8 @@ def build_states(
                         status=s.status,
                         last_modified_ms=ev.hlc.wall_ms,
                     )
-                    ctx_by_id[ev.id] = dict(ev.ctx) if ev.ctx else {}
+                    if enrich:
+                        ctx_by_id[ev.id] = dict(ev.ctx) if ev.ctx else {}
             case "done" | "reopen":
                 if ev.id not in states_by_id:
                     parked.append(ev)
@@ -196,7 +209,8 @@ def build_states(
                         status="done" if ev.op == "done" else "open",
                         last_modified_ms=ev.hlc.wall_ms,
                     )
-                    ctx_by_id[ev.id] = dict(ev.ctx) if ev.ctx else {}
+                    if enrich:
+                        ctx_by_id[ev.id] = dict(ev.ctx) if ev.ctx else {}
 
     errors: list[JotEvent] = []
     for ev in parked:
@@ -213,7 +227,8 @@ def build_states(
                     status=s.status,
                     last_modified_ms=max(s.last_modified_ms, ev.hlc.wall_ms),
                 )
-                ctx_by_id[ev.id] = dict(ev.ctx) if ev.ctx else {}
+                if enrich:
+                    ctx_by_id[ev.id] = dict(ev.ctx) if ev.ctx else {}
             case "done" | "reopen":
                 states_by_id[ev.id] = JotSummary(
                     id=s.id,
@@ -222,7 +237,8 @@ def build_states(
                     status="done" if ev.op == "done" else "open",
                     last_modified_ms=max(s.last_modified_ms, ev.hlc.wall_ms),
                 )
-                ctx_by_id[ev.id] = dict(ev.ctx) if ev.ctx else {}
+                if enrich:
+                    ctx_by_id[ev.id] = dict(ev.ctx) if ev.ctx else {}
 
     final_states = sorted(
         states_by_id.values(),
@@ -236,8 +252,14 @@ def build_states(
 
     if enrich:
         dir_for_git = current_dir if current_dir is not None else Path.cwd()
+        # F2: hoist the 3 git spawns out of the per-state loop. The git
+        # result depends only on `dir_for_git`, which is constant across
+        # all states. Spawning 3 git processes per state would have
+        # multiplied the cost by N; with F1's 5s timeout that's a worst
+        # case of 3*5s = 15s per call even when git is stalled.
+        git_ctx = _enrich_ctx({}, dir_for_git)
         ctx_by_id = {
-            sid: _enrich_ctx(ctx, dir_for_git) for sid, ctx in ctx_by_id.items()
+            sid: {**ctx, **git_ctx} for sid, ctx in ctx_by_id.items()
         }
 
     return FoldResult(

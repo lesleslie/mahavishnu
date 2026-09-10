@@ -244,15 +244,73 @@ def test_enrich_ctx_fail_open_on_git_not_found(monkeypatch: pytest.MonkeyPatch) 
     assert enriched["sha"] is None
 
 
-def test_enrich_ctx_fail_open_on_subprocess_error(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_enrich_ctx_fail_open_on_non_zero_exit(monkeypatch: pytest.MonkeyPatch) -> None:
+    """F3: real-world failure mode is non-zero exit (e.g. non-git directory
+    → git exits 128), not a raised CalledProcessError. `_git` uses
+    `check=False` so subprocess.run returns the result; `_git` then
+    constructs and raises CalledProcessError itself. This test stubs the
+    real exit-code path, not the impossible "subprocess.run raises"
+    path.
+    """
     from mahavishnu.jot.fold import _enrich_ctx
 
     def fake_run(*args, **kwargs):  # type: ignore[no-untyped-def]
-        raise subprocess.CalledProcessError(128, args[0] if args else "git")
+        return subprocess.CompletedProcess(
+            args=args, returncode=128, stdout="",
+            stderr="fatal: not a git repository",
+        )
 
     monkeypatch.setattr(subprocess, "run", fake_run)
     enriched = _enrich_ctx({}, Path("/tmp"))
     assert enriched["repo"] is None
+    assert enriched["branch"] is None
+    assert enriched["sha"] is None
+
+
+def test_enrich_ctx_fail_open_on_timeout(monkeypatch: pytest.MonkeyPatch) -> None:
+    """F1: TimeoutExpired (subprocess.run with timeout=5) inherits from
+    SubprocessError, NOT from OSError. Widen catch to subprocess.SubprocessError
+    so a stalled git (NFS repo, credential prompt, index lock) doesn't take
+    down the entire build_states call.
+    """
+    from mahavishnu.jot.fold import _enrich_ctx
+
+    def fake_run(*args, **kwargs):  # type: ignore[no-untyped-def]
+        raise subprocess.TimeoutExpired(cmd=args[0] if args else "git", timeout=5)
+
+    monkeypatch.setattr(subprocess, "run", fake_run)
+    enriched = _enrich_ctx({}, Path("/tmp"))
+    assert enriched["repo"] is None
+    assert enriched["branch"] is None
+    assert enriched["sha"] is None
+
+
+def test_enrich_ctx_spawns_three_git_calls_not_per_state() -> None:
+    """F2: _enrich_ctx spawns 3 git subprocesses (one per rev-parse) — NOT
+    3 per state. Verify the call count is bounded. Integration is tested
+    separately in test_build_states_enrich_populates_ctx_by_id which
+    asserts the hoisted git_ctx is reused across all states.
+    """
+    from mahavishnu.jot.fold import _enrich_ctx
+    calls: list[tuple[str, ...]] = []
+
+    def fake_run(args, **kwargs):  # type: ignore[no-untyped-def]
+        calls.append(tuple(args))
+        return subprocess.CompletedProcess(
+            args=args, returncode=0,
+            stdout="/r\n" if "show-toplevel" in args else "x",
+            stderr="",
+        )
+
+    import unittest.mock
+    with unittest.mock.patch.object(subprocess, "run", side_effect=fake_run):
+        _enrich_ctx({"cwd": "/x"}, Path("/r"))
+
+    # Exactly 3 git calls regardless of how large the input ctx is.
+    assert len(calls) == 3
+    assert any("--show-toplevel" in c for c in calls)
+    assert any("--abbrev-ref" in c for c in calls)
+    assert any(c == ("git", "rev-parse", "HEAD") for c in calls)
 
 
 def test_enrich_ctx_preserves_existing_keys() -> None:
@@ -260,3 +318,57 @@ def test_enrich_ctx_preserves_existing_keys() -> None:
     enriched = _enrich_ctx({"cwd": "/x", "session_id": "s"}, Path("/x"))
     assert enriched["cwd"] == "/x"
     assert enriched["session_id"] == "s"
+
+
+def test_build_states_enrich_populates_ctx_by_id(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path,
+) -> None:
+    """F4 wire-up: enrich=True wires _enrich_ctx output into FoldResult.ctx_by_id.
+
+    Verifies:
+    - Original capture ctx keys (cwd, session_id) are preserved.
+    - Repo / branch / sha are populated from the git subprocess.
+    - With enrich=False (default in tests), ctx_by_id is empty.
+    """
+    import unittest.mock
+
+    fake = {
+        "rev-parse --show-toplevel": "/r",
+        "rev-parse --abbrev-ref HEAD": "m",
+        "rev-parse HEAD": "abc1234",
+    }
+
+    def fake_run(args, **kwargs):  # type: ignore[no-untyped-def]
+        return subprocess.CompletedProcess(
+            args=args, returncode=0,
+            stdout=fake[" ".join(args[1:])], stderr="",
+        )
+
+    cap = _event("a" * 32, "capture", "v1", wall_ms=1)
+    cap_with_ctx = JotEvent(
+        id=cap.id, op=cap.op, hlc=cap.hlc, text=cap.text,
+        ctx={"cwd": "/x", "session_id": "s"},
+        created_ms=cap.created_ms,
+    )
+
+    with unittest.mock.patch.object(subprocess, "run", side_effect=fake_run):
+        result = build_states(
+            [cap_with_ctx], enrich=True, current_dir=tmp_path,
+        )
+
+    assert result.ctx_by_id[cap.id]["cwd"] == "/x"
+    assert result.ctx_by_id[cap.id]["session_id"] == "s"
+    assert result.ctx_by_id[cap.id]["repo"] == "/r"
+    assert result.ctx_by_id[cap.id]["branch"] == "m"
+    assert result.ctx_by_id[cap.id]["sha"] == "abc1234"
+
+
+def test_build_states_enrich_false_leaves_ctx_by_id_empty() -> None:
+    """F4: enrich=False (the default in tests) leaves ctx_by_id empty.
+
+    Per the brief, ctx_by_id is an observability side-channel — only
+    populated when the caller explicitly opts in to git subprocess cost.
+    """
+    cap = _event("a" * 32, "capture", "v1", wall_ms=1)
+    result = build_states([cap], enrich=False)
+    assert result.ctx_by_id == {}
