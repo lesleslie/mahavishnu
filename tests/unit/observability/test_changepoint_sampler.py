@@ -152,7 +152,9 @@ class TestChangepointConfig:
         from mahavishnu.core.config import PoolConfig
 
         cfg = PoolConfig()
-        assert cfg.changepoint_enabled is False
+        # Phase 8 flipped changepoint_enabled to True; the other
+        # fields are still at their Phase 6 defaults.
+        assert cfg.changepoint_enabled is True
         assert cfg.changepoint_target_metric == "pool_queue_depth"
         assert cfg.changepoint_detector == "cusum"
         assert cfg.changepoint_slack == 0.25
@@ -164,7 +166,7 @@ class TestChangepointConfig:
         from mahavishnu.core.config import PoolConfig
 
         cfg = PoolConfig(
-            changepoint_enabled=True,
+            changepoint_enabled=False,
             changepoint_target_metric="workflow_duration_p99",
             changepoint_detector="page_hinkley",
             changepoint_slack=0.5,
@@ -172,7 +174,7 @@ class TestChangepointConfig:
             changepoint_reference_detector="none",
             changepoint_sampler_cadence_seconds=30.0,
         )
-        assert cfg.changepoint_enabled is True
+        assert cfg.changepoint_enabled is False
         assert cfg.changepoint_target_metric == "workflow_duration_p99"
         assert cfg.changepoint_detector == "page_hinkley"
         assert cfg.changepoint_reference_detector == "none"
@@ -230,13 +232,13 @@ class TestObservabilityManagerDriftDetection:
             pass
 
         mgr.config = _Stub()
-        mgr.config.pools = PoolConfig()  # changepoint_enabled defaults False
+        mgr.config.pools = PoolConfig(changepoint_enabled=False)  # explicitly off
         mgr.logger = None  # type: ignore[attr-defined]
         result = mgr._evaluate_change_point("pool_queue_depth", 5.0)
         assert result.detected is False
         assert result.score == 0.0
 
-    def test_changepoint_enabled_with_no_data_returns_noop(self) -> None:
+    def test_changepoint_enabled_first_observation_below_threshold(self) -> None:
         from mahavishnu.core.config import PoolConfig
         from mahavishnu.core.observability import ObservabilityManager
 
@@ -246,15 +248,26 @@ class TestObservabilityManagerDriftDetection:
             pass
 
         mgr.config = _Stub()
-        mgr.config.pools = PoolConfig(changepoint_enabled=True)
+        mgr.config.pools = PoolConfig(changepoint_enabled=True)  # explicit opt-in
         mgr.logger = None  # type: ignore[attr-defined]
-        # No data in sampler → target_mean defaults to 0.0
-        result = mgr._evaluate_change_point("pool_queue_depth", 5.0)
         # First observation at value 5 against target 0 with
         # slack 0.25 threshold 8 → CUSUM accumulates
         # (5 - 0 - 0.25) = 4.75. Below threshold 8 → not detected.
+        result = mgr._evaluate_change_point("pool_queue_depth", 5.0)
         assert result.detected is False
         assert result.samples_since_reset == 1
+        # Default-enabled (Phase 8) also runs the detector
+        mgr_default = ObservabilityManager.__new__(ObservabilityManager)
+
+        class _Stub2:
+            pass
+
+        mgr_default.config = _Stub2()
+        mgr_default.config.pools = PoolConfig()  # default-on
+        mgr_default.logger = None  # type: ignore[attr-defined]
+        r2 = mgr_default._evaluate_change_point("pool_queue_depth", 5.0)
+        assert r2.detected is False
+        assert r2.samples_since_reset == 1
 
     def test_changepoint_fires_on_persistent_shift(self) -> None:
         from mahavishnu.core.config import PoolConfig
@@ -266,7 +279,7 @@ class TestObservabilityManagerDriftDetection:
             pass
 
         mgr.config = _Stub()
-        mgr.config.pools = PoolConfig(changepoint_enabled=True)
+        mgr.config.pools = PoolConfig(changepoint_enabled=True)  # explicit opt-in
         mgr.logger = None  # type: ignore[attr-defined]
         detected_at = None
         for i in range(200):
