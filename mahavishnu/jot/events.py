@@ -3,14 +3,20 @@
 Wire format: one event per line, compact JSON, trailing \\n.
 See spec §"Data Model" for field semantics.
 """
+
 from __future__ import annotations
 
 from dataclasses import asdict, dataclass
 import json
 from typing import Any, Literal, TypedDict
 
-# v1 only writes "capture"; other ops are reserved for sub-plan 2 (fold/edit/done/reopen).
-Op = Literal["capture", "edit", "done", "reopen"]
+# Sub-plan 3 (drain) extends with 6 new ops: dispatch, dispatch_done,
+# dispatch_failed, defer, defer_expired, delete. See spec §4.1.
+Op = Literal[
+    "capture", "edit", "done", "reopen",                  # sub-plan 1+2
+    "dispatch", "dispatch_done", "dispatch_failed",       # NEW (sub-plan 3)
+    "defer", "defer_expired", "delete",                    # NEW (sub-plan 3)
+]
 
 
 class CaptureCtx(TypedDict, total=False):
