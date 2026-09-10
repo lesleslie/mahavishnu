@@ -738,7 +738,9 @@ class PoolManager:
             queueing_affected,
         ) = self._apply_queueing_penalty(pool_id, selector, caller_pool_allowlist)
 
-        pool_id, reason = self._apply_gpu_category_override(pool_id, reason, task)
+        pool_id, reason = self._apply_gpu_category_override(
+            pool_id, reason, task, caller_pool_allowlist
+        )
 
         # REQ-008: record the inter-arrival time for this routing
         # call so the per-pool observation buffer can fit an
@@ -890,8 +892,19 @@ class PoolManager:
                 predicted_waits[pid] = wait
 
         # No predictions available: fall back to the inner pick with
-        # no predicted-wait label.
+        # no predicted-wait label. Defensive check (round-2 security
+        # review): if caller_pool_allowlist is set and the inner pick
+        # isn't in it, raise rather than silently bypass the allowlist.
         if not predicted_waits:
+            if (
+                caller_pool_allowlist is not None
+                and inner_pool_id not in caller_pool_allowlist
+            ):
+                raise RuntimeError(
+                    f"Queueing fallback would route to pool "
+                    f"{inner_pool_id!r} which is not in caller_pool_allowlist "
+                    f"{sorted(caller_pool_allowlist)}"
+                )
             return inner_pool_id, None, selector.value, False
 
         best_pool = min(predicted_waits, key=predicted_waits.get)
@@ -1127,8 +1140,16 @@ class PoolManager:
         pool_id: str,
         reason: str,
         task: dict[str, Any],
+        caller_pool_allowlist: set[str] | None = None,
     ) -> tuple[str, str]:
-        """Prefer a RunPod pool for GPU-bound task categories; no-op otherwise."""
+        """Prefer a RunPod pool for GPU-bound task categories; no-op otherwise.
+
+        Security (round-2 fix): honor ``caller_pool_allowlist``.
+        If a RunPod pool exists but is NOT in the caller's allowlist,
+        the GPU override is skipped — the caller has not declared
+        authorization to dispatch into the RunPod pool. Symmetric to
+        the S-4 fix in ``_apply_queueing_penalty``.
+        """
         task_category = task.get("category", "")
         if task_category not in {"vision", "ml_inference", "embedding"}:
             return pool_id, reason
@@ -1136,7 +1157,10 @@ class PoolManager:
             (pid for pid, p in self._pools.items() if p.config.pool_type == "runpod"),
             None,
         )
-        if runpod_pool_id:
+        if (
+            runpod_pool_id
+            and (caller_pool_allowlist is None or runpod_pool_id in caller_pool_allowlist)
+        ):
             logger.debug(
                 "GPU task category=%r — routing to runpod pool %s",
                 task_category,
