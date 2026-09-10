@@ -177,6 +177,14 @@ class ObservabilityManager:
                 description="Cumulative sample-age-at-fire across all fires, per metric and detector. R4 fix: UpDownCounter -> Counter so a future caller cannot subtract and silently break dashboards; cumulative monotonic matches the documented semantic (R3-H2: renamed from detector_age_samples for cumulative semantic clarity).",
             )
 
+            # Tier 1 Phase 6+ (two-stage extension): drift warning counter
+            # (only emitted when changepoint.detector == "two_stage").
+            # R4-M5: routed through _validate_labels at emit time.
+            self.drift_warning_counter = self.meter.create_counter(
+                "mahavishnu.observability.drift_warning_total",
+                description="Drift warning events from the warn detector (only emitted when changepoint.detector == 'two_stage'). Confirmed alerts emit drift_detected_total separately.",
+            )
+
         except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
             self.logger.warning(f"Failed to initialize OpenTelemetry: {e}")
             self._init_fallback_components()
@@ -204,6 +212,12 @@ class ObservabilityManager:
         )
         self.detector_age_gauge = self.meter.create_counter(
             "mahavishnu.observability.detector_age_samples_total"
+        )
+        # Tier 1 Phase 6+ (two-stage extension): drift warning counter
+        # (only emitted when changepoint.detector == "two_stage").
+        # R4-M5: routed through _validate_labels at emit time.
+        self.drift_warning_counter = self.meter.create_counter(
+            "mahavishnu.observability.drift_warning_total"
         )
 
     def create_workflow_counter(self):
@@ -437,6 +451,23 @@ class ObservabilityManager:
             )
         result = detector.update(value)
 
+        # Two-stage (warn/confirm) dispatch. The single-detector path is
+        # unchanged for backward compat with detector="cusum" / "page_hinkley".
+        from mahavishnu.observability.changepoint.two_stage import TwoStageResult
+
+        if isinstance(result, TwoStageResult):
+            if result.state == "warning_pending" and result.warning_result is not None:
+                # Soft event: operator-visible but not page-worthy.
+                self._on_drift_warning(metric_name, value, result)
+            if result.state == "confirmed" and result.confirm_result is not None:
+                # Hard event: page-worthy. Emit the existing drift_detected
+                # OTel span + counter so dashboards/alerts keep working.
+                self._on_drift_detected_two_stage(
+                    metric_name, value, result
+                )
+            return result
+
+        # Single-detector path (unchanged from R4).
         if result.detected:
             # C4: pass current_value so the OTel span can carry it.
             self._on_drift_detected(metric_name, value, result)
@@ -632,6 +663,33 @@ class ObservabilityManager:
             detector = PageHinkleyDetector(
                 target_mean=target_mean, slack=slack, threshold=threshold, delta=0.0
             )
+        elif algo == "two_stage":
+            warn_threshold = float(
+                getattr(changepoint_cfg, "warn_threshold", defaults.warn_threshold)
+            )
+            confirm_threshold = float(
+                getattr(changepoint_cfg, "confirm_threshold", defaults.confirm_threshold)
+            )
+            confirm_window = int(
+                getattr(changepoint_cfg, "confirm_window_samples", defaults.confirm_window_samples)
+            )
+            # The warn and confirm detectors both use the production slack
+            # but different thresholds. Phase 8 may promote the warn detector
+            # to PageHinkleyDetector for directional diversity; for now both
+            # are CUSUM (consistent with the §7 calibration sweep).
+            warn = CUSUMDetector(
+                target_mean=target_mean, slack=slack, threshold=warn_threshold, two_sided=True
+            )
+            confirm = CUSUMDetector(
+                target_mean=target_mean, slack=slack, threshold=confirm_threshold, two_sided=True
+            )
+            from mahavishnu.observability.changepoint.two_stage import TwoStageDetector
+
+            detector = TwoStageDetector(
+                warn_detector=warn,
+                confirm_detector=confirm,
+                confirm_window_samples=confirm_window,
+            )
         else:
             detector = CUSUMDetector(
                 target_mean=target_mean, slack=slack, threshold=threshold, two_sided=True
@@ -698,6 +756,8 @@ class ObservabilityManager:
             if detector_class == "CUSUMDetector"
             else "page_hinkley"
             if detector_class == "PageHinkleyDetector"
+            else "two_stage"
+            if detector_class == "TwoStageDetector"
             else detector_class.lower()
         )
         severity = self._classify_drift_severity(result.score, result.threshold)
@@ -750,6 +810,16 @@ class ObservabilityManager:
             "runbook_url": _resolve_runbook_url(),
         }
 
+        # Two-stage extension: include the correlation window info when the
+        # detector is a TwoStageDetector that just produced a "confirmed"
+        # result. The single-detector path leaves this attribute unset.
+        two_stage_result = getattr(self, "_last_two_stage_result", None)
+        if two_stage_result is not None:
+            span_attributes["samples_since_warning"] = int(
+                two_stage_result.samples_since_warning
+            )
+            span_attributes["confirm_detector"] = two_stage_result.detector_confirm
+
         # C6: Prometheus counter — the §7 stage-1 gate's source-of-truth.
         # R3-H2 (rename): the gauge is now detector_age_samples_total
         # (cumulative semantic). The original R3-H2 commit left a
@@ -792,6 +862,12 @@ class ObservabilityManager:
         except Exception as exc:  # noqa: BLE001 - boundary handler
             self._log_debug("drift counter increment failed: %s", exc)
 
+        # Two-stage extension: clear the cache after the Prometheus counter
+        # has consumed it. Keeping the cache around after the OTel span /
+        # counter emission would risk leaking it into the next single-detector
+        # emission on the next call.
+        self._last_two_stage_result = None  # type: ignore[attr-defined]
+
         # S-1 (round-2 review): reset the detector after fire so
         # subsequent samples don't continuously re-fire on the same
         # drift event. Without this, the first drift produces one
@@ -833,6 +909,126 @@ class ObservabilityManager:
             trace_id_str or "-",
             span_attributes["host"],
         )
+
+    def _on_drift_warning(
+        self, metric_name: str, value: float, result
+    ) -> None:
+        """OTel span + counter emission for a drift WARNING (warn detector fired).
+
+        Two-stage extension of REQ-005: when changepoint.detector ==
+        "two_stage", the warn detector emits a soft "warning" event.
+        The operator-visible OTel span is ``mahavishnu.observability.drift_warning``
+        (distinct from the page-worthy ``drift_detected`` span). The Prometheus
+        counter ``mahavishnu.observability.drift_warning_total`` tracks the
+        rate; if this rate spikes on stationary traffic, the operator should
+        re-tune the warn threshold (lower = more sensitive, more warnings).
+        """
+        from mahavishnu.observability.changepoint.two_stage import TwoStageResult
+        from mahavishnu.observability.metrics import _validate_labels
+
+        if not isinstance(result, TwoStageResult):
+            return
+
+        detector_name = (
+            "cusum"
+            if result.detector_warn == "cusumdetector"
+            else "page_hinkley"
+            if result.detector_warn == "pagehinkleydetector"
+            else result.detector_warn
+        )
+        warn_result = result.warning_result
+        if warn_result is None:
+            return
+
+        _validate_labels(
+            {
+                "metric_name": metric_name,
+                "detector": detector_name,
+            }
+        )
+        try:
+            counter = getattr(self, "drift_warning_counter", None)
+            if counter is not None:
+                counter.add(
+                    1,
+                    attributes={
+                        "metric_name": metric_name,
+                        "detector": detector_name,
+                    },
+                )
+        except Exception as exc:  # noqa: BLE001 - boundary handler
+            self._log_debug("drift warning counter increment failed: %s", exc)
+
+        # OTel span + structured log (best-effort)
+        try:
+            span_attributes = {
+                "metric_name": metric_name,
+                "detector": detector_name,
+                "score_high": float(warn_result.score_high),
+                "score_low": float(warn_result.score_low),
+                "score": float(warn_result.score),
+                "threshold": float(warn_result.threshold),
+                "samples_since_reset": int(warn_result.samples_since_reset),
+                "direction": str(warn_result.direction),
+                "current_value": float(value),
+            }
+            if OTEL_AVAILABLE and getattr(self, "tracer", None) is not None:
+                with self.tracer.start_as_current_span(  # type: ignore[union-attr]
+                    "mahavishnu.observability.drift_warning",
+                    attributes=span_attributes,
+                ):
+                    pass
+        except Exception as exc:  # noqa: BLE001
+            self._log_debug("drift warning span emission failed: %s", exc)
+
+        self._log_warning(
+            "drift_warning metric=%s detector=%s value=%.3f score=%.3f threshold=%.3f direction=%s",
+            metric_name,
+            detector_name,
+            value,
+            warn_result.score,
+            warn_result.threshold,
+            warn_result.direction,
+        )
+
+    def _on_drift_detected_two_stage(
+        self, metric_name: str, value: float, result
+    ) -> None:
+        """OTel span + counter emission for a CONFIRMED drift alert.
+
+        Two-stage extension of REQ-005: when the confirm detector fires
+        within the correlation window of a warn, we emit the page-worthy
+        ``mahavishnu.observability.drift_detected`` span (same name as the
+        single-detector path so existing dashboards/alerts keep working).
+        The span carries an extra attribute ``samples_since_warning`` so
+        operators can see how long the warn was pending before confirm.
+        """
+        from mahavishnu.observability.changepoint.cusum import ChangePointResult
+        from mahavishnu.observability.changepoint.two_stage import TwoStageResult
+
+        if not isinstance(result, TwoStageResult):
+            return
+        confirm_result = result.confirm_result
+        if confirm_result is None or result.severity is None:
+            return
+
+        # Reuse the single-detector emission path with the confirm
+        # detector's score/threshold + the warning's correlation info.
+        # Construct a synthetic ChangePointResult view for the existing
+        # _on_drift_detected helper.
+        synthetic = ChangePointResult(
+            detected=True,
+            score_high=confirm_result.score_high,
+            score_low=confirm_result.score_low,
+            score=confirm_result.score,
+            threshold=confirm_result.threshold,
+            samples_since_reset=confirm_result.samples_since_reset,
+            direction=confirm_result.direction,
+        )
+        # Cache the TwoStageResult for _on_drift_detected to read if needed
+        # (e.g., for the samples_since_warning span attribute).
+        self._last_two_stage_result = result  # type: ignore[attr-defined]
+        self._on_drift_detected(metric_name, value, synthetic)
 
     def _on_anomaly_detected(self, metric_name: str, result) -> None:
         """OTel span + log for a 3-sigma reference detector fire."""
