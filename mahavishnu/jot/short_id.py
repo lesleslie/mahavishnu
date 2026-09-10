@@ -1,17 +1,16 @@
-"""Short identifier for human-facing display of jot events.
+"""short_id derivation (UD5).
 
-The short_id is the first 6 hex chars of the 32-char UUID v4 event ID.
-It's used only for capture echoes — the log stores the full ID.
+UD5: 6-hex short_id is the LAST 6 chars of the UUID v4 ID. The last 6 chars
+encode the random node field — stable across rapid same-millisecond captures
+(low collision probability). The first 6 chars encode the timestamp + version
+portion of UUID v4, which is predictable and can collide.
 """
 from __future__ import annotations
 
 
 def short_id(event_id: str) -> str:
-    """Return the first 6 characters of the event ID.
+    """Return the last 6 hex chars of the UUID v4 event ID.
 
-    No validation: garbage in, garbage out. Designed for human display only;
-    real event resolution always uses the full 32-char ID stored in the log.
-
-    See spec §"Short ID (echo only)".
+    UD5 spec invariant: result is always exactly 6 chars from event_id[-6:].
     """
-    return event_id[:6]
+    return event_id[-6:]
