@@ -1,5 +1,5 @@
 ---
-status: built
+status: wired
 role: canonical
 date: 2026-09-10
 last_reviewed: 2026-09-10
@@ -9,7 +9,7 @@ topic: plan-index-dhara
 
 # Feature: Plan Index Dhara-canonical metadata layer
 
-Status: **built**
+Status: **wired**
 
 ## What this tracks
 
