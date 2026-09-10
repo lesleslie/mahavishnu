@@ -79,11 +79,23 @@ class QueueingObservationBuffer:
     input are derived by the caller from this field, NOT from
     ``last_fit_monotonic`` (which would only update after a fit and
     produce wrong deltas between fits — audit CRITICAL #4).
+
+    C7: arrivals are recorded in :meth:`record_arrival` (called from
+    :func:`PoolManager._record_arrival`). The (inter_arrival, service)
+    pair is appended on task completion via :meth:`complete_observation`,
+    using the actual observed service duration. The first arrival is
+    recorded but cannot be paired with an inter-arrival delta yet, so
+    it is paired on the SECOND arrival's completion (which sees both
+    arrival timestamps).
     """
 
     pool_id: str
     arrivals: deque[float] = field(default_factory=lambda: deque(maxlen=1024))
     services: deque[float] = field(default_factory=lambda: deque(maxlen=1024))
+    _pending_arrival_timestamps: deque[float] = field(
+        default_factory=lambda: deque(maxlen=64),
+        repr=False,
+    )
     last_arrival_monotonic: float = 0.0
     last_fit_monotonic: float = 0.0
     min_observations: int = DEFAULT_WARMUP_MIN_OBSERVATIONS
@@ -91,17 +103,82 @@ class QueueingObservationBuffer:
     num_workers: int = 1
     fitted_model: MmcQueue | None = None
 
+    def record_arrival(self) -> bool:
+        """Mark an arrival timestamp. Returns True if a timestamp was queued.
+
+        The (inter_arrival, service) pair is appended later via
+        :meth:`complete_observation` when the task finishes. Arrival
+        timestamps are stored in a deque so concurrent arrivals
+        (one in flight, one queued) are paired with completions in
+        FIFO order.
+        """
+        now = time.monotonic()
+        if self.last_arrival_monotonic > 0.0:
+            self._pending_arrival_timestamps.append(now)
+            return True
+        # First arrival — just stamp the timestamp; the inter-arrival
+        # delta will be computable on the next arrival.
+        self.last_arrival_monotonic = now
+        return False
+
+    def complete_observation(self, service: float) -> bool:
+        """Pair the oldest pending arrival with the observed service duration.
+
+        Returns True when a (inter_arrival, service) pair was appended;
+        False when there are no arrivals to pair or the service value
+        is invalid.
+
+        Concurrency: pops the oldest pending timestamp. If a task
+        completes out of arrival order, the inter-arrival delta is
+        computed against the prior completed observation's arrival
+        timestamp, not the prior arrival's raw timestamp. This is a
+        small approximation in pathological cases but is correct for
+        the dominant case of one-in-flight per pool.
+        """
+        if not _is_valid_observation(service):
+            return False
+        # No pending arrivals yet: the only arrival in flight is the
+        # unmarked first arrival (whose timestamp is in
+        # last_arrival_monotonic, but with no prior arrival to compute
+        # the delta against). Skip this observation.
+        if not self._pending_arrival_timestamps:
+            # First observation: we have no inter-arrival. Mark that
+            # arrival as completed so subsequent arrivals have a
+            # baseline; no observation is appended.
+            if self.last_arrival_monotonic > 0.0 and len(self.arrivals) == 0:
+                # Bootstrap: record last_arrival_monotonic as the
+                # arrival time of this (unpaired) observation; no
+                # pair is appended because inter-arrival is undefined.
+                # The NEXT arrival's delta will use this timestamp.
+                return False
+            # Otherwise (post-bootstrap) we're missing a queued arrival
+            # timestamp — fall back to the same skip.
+            return False
+        arrival_ts = self._pending_arrival_timestamps.popleft()
+        if self.last_arrival_monotonic == 0.0:
+            # No prior arrival to compute delta against — skip.
+            # This case is rare since record_arrival() sets
+            # last_arrival_monotonic on the very first call.
+            self.last_arrival_monotonic = arrival_ts
+            return False
+        inter_arrival = arrival_ts - self.last_arrival_monotonic
+        if inter_arrival <= 0.0:
+            # Clock skew or two arrivals in the same monotonic tick —
+            # record arrival but skip the degenerate pair.
+            self.last_arrival_monotonic = arrival_ts
+            return False
+        self.arrivals.append(inter_arrival)
+        self.services.append(service)
+        self.last_arrival_monotonic = arrival_ts
+        return True
+
     def append(self, inter_arrival: float, service: float) -> None:
-        """Record one (inter_arrival, service) pair.
+        """Direct append path. Use :meth:`complete_observation` for
+        the standard route_task → execute_on_pool flow.
 
-        NaN/Inf are silently dropped (the upstream caller may have
-        produced them when the task completed instantaneously or
-        had a clock anomaly; failing the whole routing path on
-        bad observation is worse than missing one sample).
-
-        Updates ``last_arrival_monotonic`` to ``time.monotonic()`` on
-        every successful append so the next caller can compute the
-        next inter-arrival delta against this timestamp.
+        NaN/Inf are silently dropped. Updates ``last_arrival_monotonic``
+        to ``time.monotonic()`` on every successful append so the
+        next caller can compute the next inter-arrival delta.
         """
         if not _is_valid_observation(inter_arrival):
             return
@@ -112,7 +189,7 @@ class QueueingObservationBuffer:
         self.last_arrival_monotonic = time.monotonic()
 
     def seconds_since_last_arrival(self) -> float:
-        """Return wall-clock seconds since the last successful append.
+        """Return wall-clock seconds since the last successful arrival.
 
         Useful for the caller to detect long idle periods (e.g. a
         cold pool that hasn't seen traffic for the warmup window).

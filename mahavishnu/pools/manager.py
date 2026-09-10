@@ -548,7 +548,29 @@ class PoolManager:
 
         logger.info(f"Executing task on pool {pool_id}")
 
+        # C7: measure real service time so the M/M/c fit is meaningful.
+        # Before C7 the per-pool buffer was populated with a hardcoded
+        # service=1.0 placeholder; without real measurements the
+        # service_rate was always 1.0 and wait-time predictions were
+        # wrong by a constant factor. Now: start_mono is captured at
+        # the moment execute_task is invoked, service_duration is the
+        # wall-clock delta on completion, and the buffer is paired
+        # with the arrival timestamp queued in _record_arrival.
+        start_mono = time.monotonic()
         result = await pool.execute_task(task)
+        service_duration = time.monotonic() - start_mono
+
+        # Pair the arrival (queued in _record_arrival) with the
+        # observed service duration. Triggers a refit when warmup
+        # is complete and the cadence timer has elapsed.
+        buffer = self._queueing_buffers.get(pool_id)
+        if buffer is not None and service_duration > 0.0:
+            appended = buffer.complete_observation(service=service_duration)
+            if appended and buffer.ready_to_fit() and (
+                buffer.fitted_model is None or buffer.due_for_refit()
+            ):
+                num_workers = max(1, len(pool._workers))
+                buffer.fit(num_workers=num_workers)
 
         # Update worker count in heap if task changed it
         new_count = len(pool._workers)
@@ -747,16 +769,17 @@ class PoolManager:
         """Record one arrival timestamp on the per-pool observation buffer.
 
         REQ-008: arrival-timestamp recording at the route boundary.
-        Pairs with the observed service time in execute_on_pool's
-        task_completed branch to produce (inter_arrival, service)
-        pairs that MmcQueue.fit_from_observations consumes.
 
-        S2: inter_arrival is computed against ``buffer.last_arrival_monotonic``
-        (updated on every successful append), NOT against
-        ``last_fit_monotonic`` (which only advances on fit, producing
-        wrong deltas between fits — audit CRITICAL #4). The first
-        arrival uses a 1.0s placeholder; subsequent arrivals use the
-        actual delta since the previous valid arrival.
+        C7: does NOT append a placeholder (inter_arrival, 1.0) pair
+        anymore. The real service time is observed and paired with
+        this arrival in :func:`execute_on_pool`'s task_completed
+        branch via :meth:`QueueingObservationBuffer.complete_observation`.
+        Without C7 the M/M/c fit always saw service_rate=1.0, which
+        produced meaningless wait-time predictions on real traffic.
+
+        S2: arrival timestamps are stored in the buffer's pending
+        deque (per pool) so concurrent arrivals are paired with
+        completions in FIFO order.
         """
         from mahavishnu.pools.queueing.scorer import QueueingObservationBuffer
 
@@ -772,24 +795,9 @@ class PoolManager:
             )
             self._queueing_buffers[pool_id] = buffer
 
-        now_mono = time.monotonic()
-        if buffer.last_arrival_monotonic > 0.0:
-            inter_arrival = now_mono - buffer.last_arrival_monotonic
-        else:
-            inter_arrival = 1.0  # first-arrival placeholder; the fit
-            # will skip until real deltas accumulate (C7 will
-            # backfill real service times from execute_on_pool).
-        # Service time is paired later in execute_on_pool; record
-        # a placeholder of 1.0 for the warmup buffer. Real service
-        # times are appended in the C7 follow-on.
-        buffer.append(inter_arrival=inter_arrival, service=1.0)
-
-        # Refit when warmup is complete OR the cadence timer fires.
-        if buffer.ready_to_fit() and (
-            buffer.fitted_model is None or buffer.due_for_refit()
-        ):
-            num_workers = max(1, len(self._pools[pool_id]._workers))
-            buffer.fit(num_workers=num_workers)
+        # Record arrival timestamp; the (inter_arrival, service) pair
+        # is appended in execute_on_pool when the task completes.
+        buffer.record_arrival()
 
     def _get_queueing_settings(self) -> dict[str, Any]:
         """Return the queueing settings from the active config.
