@@ -11,6 +11,7 @@ review_notes:
   - "Phase 1.5 (ed25519 signing core) implemented in akosha commit 09cef76 on 2026-09-09. Closes B-1 and partially addresses B-7 (4 mandatory feed signals + /health aggregation). 49/49 unit tests passing; lint + types clean; live /health verified; key_id persists across launchd restart."
   - "Second 2-reviewer pass (D2) requested 2026-09-09 after Phase 1.5 commit; findings folded into plan on 2026-09-10 — §10.3 Per-Server Wiring Contract added; §5/§6/§10.1/§10.2 completion-state markers added; package name + test path corrections (§10.1, §6); B-7 E2E test contract refactored to §10.3.7."
   - "Phase 1.5 cross-server consistency review completed 2026-09-10 across all 5 replicas (akosha, mahavishnu, session-buddy, dhara, crackerjack). 5 lenses audited: __all__ parity, canonicalize parity, manifest parity, signer_feed 9-key payload parity, production-lifespan parity. Result: 0 blockers; 1 Important (session-buddy redundant-init guard, commit 86d70f5f); 1 Cosmetic applied (akosha raise format, commit 223101d); 2 Cosmetic skipped (false-positive import-order; by-design signer_feed API surface). New §10.4 documents the review and decisions; §10.1/§10.2/§11 updated to reflect 5/5 server completion. Phase 1.5 is now fully closed in code across the ecosystem."
+  - "Phase 1 (per-server list_skills/get_skill MCP tools + shared SkillMetadata schema) shipped 2026-09-10 across all 5 servers. Commits: akosha 4951ee8, mahavishnu d722d2fa, session-buddy 02235271 (H-6 rename) + 987c3096, dhara 2e3a65fa, crackerjack e99edb6a. Cross-server review §10.5 ran 6 lenses (SkillMetadata schema, signing integration, lifespan/singleton helpers, REGISTRATION_MAP+tier, API surface, H-6 collision). Result: 0 Blockers; 1 Important applied (akosha signature alignment commit 0dd7176 — collapsed param-accepting init_signer_feed_state to parameterless to match the other 4 servers); 1 Cosmetic applied (dhara trailing newline commit 9e81d98). Phase 1 wire protocol and public helper API now byte-equivalent across all 5 servers; Phase 2 installer is unblocked."
 ---
 
 # Bodai Skill + Agent Distribution Plan
@@ -756,26 +757,26 @@ collisions — see R-7).
     └── agent_installs.jsonl                         # NEW — Phase 6 (B-3, hash-chained)
 
 /Users/les/Projects/akosha/akosha/mcp/tools/
-├── skill_tools.py                                    # NEW — Phase 1
+├── skill_tools.py                                    # SHIPPED 2026-09-10 — Phase 1 (commit 4951ee8)
 ├── ecosystem_skills.py                               # NEW — Phase 4
 └── agents/                                           # NEW — Phase 3
     └── (specialist definitions)
 
 /Users/les/Projects/mahavishnu/mahavishnu/mcp/tools/
-├── skill_tools.py                                    # NEW — Phase 1, 3
+├── skill_tools.py                                    # SHIPPED 2026-09-10 — Phase 1 (commit d722d2fa)
 ├── ecosystem_skills.py                               # OPTIONAL cross-link
 └── dispatch_specialist.py                            # NEW — Phase 3 (H-3, dispatcher)
 
 /Users/les/Projects/session-buddy/session_buddy/mcp/tools/
-├── list_workflow_patterns.py                         # NEW — Phase 1 (H-6, rename existing)
+├── list_workflow_patterns.py                         # SHIPPED 2026-09-10 — Phase 1 (H-6, rename existing; commit 02235271)
 └── skills_loader_extension.py                        # NEW — Phase 2
     # (list_skills already exists; this adds installer hooks)
 
 /Users/les/Projects/dhara/dhara/mcp/tools/
-└── skill_registry.py                                 # NEW — Phase 1
+└── skill_registry.py                                 # SHIPPED 2026-09-10 — Phase 1 (commit 2e3a65fa)
 
 /Users/les/Projects/crackerjack/crackerjack/mcp/tools/
-└── skill_registry.py                                 # NEW — Phase 1
+└── skill_registry.py                                 # SHIPPED 2026-09-10 — Phase 1 (commit e99edb6a)
 
 ~/.akosha/cache/
 └── ecosystem_skills.json                             # NEW — Phase 4 (cache move from HotStore)
@@ -1008,6 +1009,15 @@ and hash-chain audit log.
      2026-09-10 review fix (commit `86d70f5f`).
    - [x] dhara: shipped 2026-09-10 (commit `c604efe`).
    - [x] crackerjack: shipped 2026-09-10 (commit `6c9eff2f`).
+   - [x] akosha: Phase 1 `4951ee8` (list_skills + get_skill + shared
+     SkillMetadata schema) + `0dd7176` (signature alignment per §10.5).
+   - [x] mahavishnu: Phase 1 `d722d2fa`.
+   - [x] session-buddy: Phase 1 `02235271` (H-6 rename) + `987c3096`.
+   - [x] dhara: Phase 1 `2e3a65fa` + `9e81d98` (trailing newline).
+   - [x] crackerjack: Phase 1 `e99edb6a`.
+   - [x] Cross-server review: §10.5 closed 2026-09-10; 0 Blockers, 0
+     Important; 1 Important applied (akosha signature alignment), 1
+     Cosmetic applied (dhara trailing newline).
 4. **Week 4**: Phase 4 ships in Akosha (depends on Phase 1 + 1.5 in
    all 5 repos being operational).
 5. **Week 5**: Phase 2 + Phase 3 ship (depend on Phase 1.5).
@@ -1223,6 +1233,47 @@ all 5 Phase 1.5 replicas. The audit exercised 5 lenses:
 - **No other server has the redundant-init pattern.** Grep across all 5 servers confirms each has exactly ONE `init_signer_feed_state()` call site on its production path. Session-buddy's pattern (lifespan wrapper re-running init) was unique to its `_lifespan_with_dhara_cleanup` architecture. The other 4 servers initialize once and are done.
 - **Phase 1.5 wire protocol is byte-equivalent** across all 5 servers. Phase 2/6 installers that read `/health` and parse `pubkeys[]` + `key_count` will see identical shape from any of the 5.
 - **Per-server E2E test (`tests/integration/test_health_aggregator_e2e.py`) deferred to Phase 2** — single-instance servers (mahavishnu, crackerjack, akosha's lifespan-closure pattern) lack the pre-lifespan 503 case the §10.3.7 contract specifies; the unit-level `TestSignerFeedState::test_503_payload_shape` covers the empty-manifest path. Full E2E lands with the Phase 2 installer.
+
+### 10.5 Phase 1 Cross-Server Review — closed 2026-09-10
+
+A read-only cross-server consistency audit ran on 2026-09-10 across
+all 5 Phase 1 replicas (the per-server `list_skills` / `get_skill` MCP
+tools + shared `SkillMetadata` schema). The audit exercised 6 lenses:
+
+| Lens | What it checks | Result |
+|---|---|---|
+| 1. `SkillMetadata` schema parity | 16-field shape, B-4 allowlist, `..` defense, `id` shape, `extra="forbid"` | ✅ all 5 (byte-equivalent modulo docstring refs) |
+| 2. Signing integration parity | `signer.sign(canonical_payload_for_signing(metadata_dict))`, `record_cycle()` bumping, `content_hash` derivation, `body_size` | ✅ all 5 |
+| 3. Lifespan / singleton helper parity | `SignerFeedState.signer` field, `init_signer_feed_state` constructs signer, init/get/reset helpers, init wiring site | ✅ all 5 |
+| 4. REGISTRATION_MAP + tier parity | `register_skill_tools`/`register_skill_registry` in REGISTRATION_MAP, tier (STANDARD vs MANDATORY), prefixed `name=` overrides | ✅ all 5 (3 STANDARD + 2 MANDATORY-style) |
+| 5. API surface parity | `init_signer_feed_state()` signature (param-accepting vs parameterless), singleton helpers | ✅ all 5 (after the akosha alignment; was 4-of-5) |
+| 6. H-6 collision | session-buddy's rename + reclaim of `list_skills` | ✅ clean |
+
+**Findings applied**:
+
+| Severity | Server | Commit | Description |
+|---|---|---|---|
+| Important | akosha | `0dd7176` | Aligned `init_signer_feed_state` from param-accepting `(state)` to parameterless `() -> SignerFeedState`. Restored byte-equivalent helper API across all 5 servers. 2-file refactor (signer_feed.py + server.py lifespan closure). |
+| Cosmetic | dhara | `9e81d98` | Added missing trailing newline to `__all__` line in `dhara/mcp/skill_schema.py`. Single-byte change. |
+
+**Cross-cutting decisions**:
+
+- **Phase 1 wire protocol is byte-equivalent** across all 5 servers. `SignerFeedState.as_dict()` returns the same 9-key payload (`ok`, `feed`, `feed_entities_count`, `feed_last_updated_timestamp`, `cycles_total`, `errors_total`, `generation`, `key_count`, `pubkeys`) for any of the 5. Phase 2's installer that reads `/health` and parses `pubkeys[]` + `key_count` will see identical shape from any server.
+- **Phase 1 public helper API is byte-equivalent** after the akosha alignment: all 5 servers expose parameterless `init_signer_feed_state() -> SignerFeedState`, plus `get_signer_feed_state()` and `reset_signer_feed_state()`. Phase 3+ callers can use one helper API across the ecosystem.
+- **Tier gating has 3 STANDARD + 2 MANDATORY-style**: akosha, session-buddy, crackerjack gate `register_skill_tools` at STANDARD tier. Mahavishnu wires `_register_skills_signer_tools` through both MINIMAL_REGISTRATIONS and MANDATORY_GROUPS (belt-and-suspenders). Dhara puts `register_skill_registry_group` in `DHARA_MANDATORY_GROUPS` only (always-on, since dhara has only 7 total tools vs akosha's 29).
+- **File-name split is intentional**: dhara and crackerjack use `skill_registry.py` per plan §6; akosha, mahavishnu, session-buddy use `skill_tools.py`. Both names are valid; matches the per-server REGISTRATION_MAP key naming.
+
+**Phase 1 commits per server**:
+
+| Server | Phase 1 commit(s) | On top of |
+|---|---|---|
+| akosha | `4951ee8` + `0dd7176` (signature alignment) | `223101d` |
+| mahavishnu | `d722d2fa` | `24e410c8` |
+| session-buddy | `02235271` (H-6) + `987c3096` | `86d70f5f` |
+| dhara | `2e3a65fa` + `9e81d98` (trailing newline) | `c604efe` |
+| crackerjack | `e99edb6a` | `6c9eff2f` |
+
+**Per-server E2E tests** (`tests/integration/test_list_skills_e2e.py` + `tests/integration/test_get_skill_e2e.py` per plan §5 exit criteria) deferred to Phase 2 alongside the installer E2E work — the per-server unit-level tests (38 cases per server, all green) provide the immediate Phase 1 verification.
 
 ## 11. Blockers — Consolidated Index
 
