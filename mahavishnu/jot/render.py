@@ -10,7 +10,6 @@ if TYPE_CHECKING:
 STATUS_WIDTH = 4
 SHORT_ID_WIDTH = 6
 TEXT_TRUNCATE = 50
-MOD_WIDTH = 16  # "YYYY-MM-DD HH:MM"
 
 
 def _format_ms(ms: int) -> str:
