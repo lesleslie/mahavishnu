@@ -88,7 +88,10 @@ def redact_text(text: str) -> str:
     """
     out = text
     for pattern, tier in _PATTERNS:
-        # Capture tier via default argument to avoid B023 (late binding closure)
-        replacement = (lambda t: (lambda m: _make_replacement(m, t)))(tier)
+        # Capture tier via default argument to avoid B023 (late binding closure).
+        # The IIFE pattern (immediate lambda call) is intentional: each redaction
+        # callback needs a unique closure over `tier`. PLC3002 flags the IIFE; the
+        # B023 workaround is the reason the lambda is called rather than passed.
+        replacement = (lambda t: (lambda m: _make_replacement(m, t)))(tier)  # noqa: PLC3002
         out = pattern.sub(replacement, out)
     return out
