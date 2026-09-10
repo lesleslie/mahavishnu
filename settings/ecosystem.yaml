@@ -501,21 +501,6 @@ repos:
   description: UniFi network management via MCP
   status: active
   mcp: 3rd-party
-- name: www-mcp-servers
-  package: www_mcp_servers
-  path: /Users/les/Projects/www-mcp-servers
-  nickname: www-mcp
-  nicknames:
-  - www-mcp
-  role: tool
-  tags:
-  - mcp
-  - web
-  - www
-  - python
-  description: Web-related MCP server utilities
-  status: active
-  mcp: 3rd-party
 roles:
 - name: orchestrator
   description: Coordinates workflows and manages cross-repository operations
