@@ -2,14 +2,14 @@
 status: active
 role: canonical
 date: 2026-09-09
-last_reviewed: 2026-09-09
+last_reviewed: 2026-09-10
 superseded_by: null
 blocks_on: []
 topic: skill-agent-distribution-via-mcp
 review_notes:
   - "5-agent multi-lens review completed 2026-09-09. See §10 Split Plan and consolidated review report."
   - "Phase 1.5 (ed25519 signing core) implemented in akosha commit 09cef76 on 2026-09-09. Closes B-1 and partially addresses B-7 (4 mandatory feed signals + /health aggregation). 49/49 unit tests passing; lint + types clean; live /health verified; key_id persists across launchd restart."
-  - "Second 2-reviewer pass (D2) requested 2026-09-09 after Phase 1.5 commit, to validate the plan-doc updates against the committed code before proceeding with mahavishnu replication."
+  - "Second 2-reviewer pass (D2) requested 2026-09-09 after Phase 1.5 commit; findings folded into plan on 2026-09-10 — §10.3 Per-Server Wiring Contract added; §5/§6/§10.1/§10.2 completion-state markers added; package name + test path corrections (§10.1, §6); B-7 E2E test contract refactored to §10.3.7."
 ---
 
 # Bodai Skill + Agent Distribution Plan
@@ -276,8 +276,10 @@ returning JSON metadata for at least 3 server-defined skills.
    rejection of `"../../foo"`, `"foo/bar"`, `".hidden"`, `"FOO"`.
 5. **Signing infrastructure** (B-1): each server ships an ed25519
    keypair; public key pinned in `/health` response; private key
-   signs every `get_skill` response. New sub-package
-   `bodai_skills_signer` ships alongside Phase 1.
+   signs every `get_skill` response. Sub-package
+   `<server>/skills_signer/` ships alongside Phase 1 per-server.
+   Akosha shipped this in commit `09cef76` (2026-09-09);
+   mahavishnu / session-buddy / dhara / crackerjack are pending.
 6. Fulfils REQ-003.
 
 **Exit criteria**:
@@ -777,16 +779,36 @@ collisions — see R-7).
 ~/.akosha/cache/
 └── ecosystem_skills.json                             # NEW — Phase 4 (cache move from HotStore)
 
-bodai_skills_signer/                                  # NEW package — Phase 1.5 (B-1)
-├── __init__.py
-├── keys.py                                           # ed25519 keypair generation
-├── verify.py                                         # signature verification
-└── pubkey_manifest.py                                # public-key manifest in /health
+# Replicated per server: <server>/skills_signer/            # NEW per-server package — Phase 1.5 (B-1)
+#   - akosha/skills_signer/                              # SHIPPED 2026-09-09 (commit 09cef76)
+#   - mahavishnu/skills_signer/                          # pending — next replication
+#   - session_buddy/skills_signer/                       # pending
+#   - dhara/skills_signer/                               # pending
+#   - crackerjack/skills_signer/                         # pending
+#
+# Package contents (identical across all 5 servers — sed-replace the
+# module path `akosha.skills_signer.X` -> `<server>.skills_signer.X`):
+├── __init__.py                                        # public surface
+├── canonicalize.py                                    # deterministic JSON (B-2 Pydantic mode='json')
+├── keys.py                                            # ed25519 keypair + load_or_create_keypair (R2-H1 persistence)
+├── manifest.py                                        # PubkeyManifest + multi-entry rotation (R2-M1)
+├── sign.py                                            # SkillsSigner + pubkey_manifest() method (R1-H1)
+├── verify.py                                          # raises UnknownKeyIdError (R1-H6)
+├── errors.py                                          # SkillsSignerError hierarchy
+└── (one mcp module per server) signer_feed.py          # closure-owned SignerFeedState — 4 mandatory feed signals
+
+# Per-server MCP wiring:
+akosha/mcp/signer_feed.py                              # SHIPPED 2026-09-09
+mahavishnu/mcp/signer_feed.py                          # NEW for Phase 1.5 replication
+session_buddy/mcp/signer_feed.py                       # NEW for Phase 1.5 replication
+dhara/mcp/signer_feed.py                               # NEW for Phase 1.5 replication
+crackerjack/mcp/signer_feed.py                         # NEW for Phase 1.5 replication
 
 tests/
 ├── unit/test_skill_metadata_schema.py                # NEW — Phase 1 (B-4 path-traversal)
 ├── unit/test_agent_metadata_schema.py                # NEW — Phase 3
-├── unit/test_skills_signer_e2e.py                    # NEW — Phase 1.5 (B-1 signing)
+├── test_skills_signer.py                              # NEW per server — Phase 1.5 (B-1 signing) [akosha: SHIPPED 49 tests]
+├── integration/test_health_aggregator_e2e.py          # NEW per server — Phase 1.5 (B-7 four mandatory signals)
 ├── integration/test_picker_friendly_names_e2e.py     # MOVED from tests/manual/ (Phase 0)
 ├── integration/test_list_skills_e2e.py               # NEW — Phase 1
 ├── integration/test_get_skill_e2e.py                 # NEW — Phase 1 (B-1 hash-pin)
@@ -884,22 +906,47 @@ sequence, not a separate plan.
 real work for that component. Phase 0 + Phase 1 + Phase 1.5 (signing
 infra) plus the per-server `list_skills` data feeds.
 
-**Phases**: 0, 1, 1.5 (NEW — signing infrastructure that gates
-everything downstream).
+**Phases**: 0, 1, 1.5 (signing infrastructure that gates everything
+downstream). **Status 2026-09-10**: Phase 1.5 implemented in akosha
+(commit `09cef76`); mahavishnu / session-buddy / dhara / crackerjack
+replications are pending — the MVP window is therefore 1/5 servers
+shipped. The plan's exit criteria apply per-server; only when all
+5 are shipped is the MVP window complete.
 
-**Phase 1.5 — bodai_skills_signer infrastructure** (NEW):
-1. New package `bodai_skills_signer/` ships with ed25519 keypair
-   generation, signature verification, public-key manifest.
+**Phase 1.5 — skills_signer infrastructure**:
+
+1. **Per-server sub-package** `<server>/skills_signer/` ships with
+   ed25519 keypair generation, signature verification, and
+   public-key manifest. Package layout is identical across all 5
+   servers; replication is sed-replace of `akosha.skills_signer.X`
+   → `<server>.skills_signer.X`. The `<server>/skills_signer/`
+   package is pure data + cryptography (no MCP wiring); the
+   per-server wiring lives in `<server>/mcp/signer_feed.py`.
+
+   **Per-server status**:
+   - akosha: SHIPPED 2026-09-09 (commit `09cef76`) — 49 unit tests
+     passing; live `/health` verified.
+   - mahavishnu: PENDING — next replication.
+   - session-buddy: PENDING.
+   - dhara: PENDING.
+   - crackerjack: PENDING.
+
 2. Each Bodai server ships a keypair; public key pinned in `/health`
-   response under `feed.signing_pubkey_id`.
-3. `get_skill` and `get_agent` MCP responses carry `signature` and
-   `server_pubkey_id` fields.
-4. The installer (Phase 2/6) verifies signature before any write.
-5. Until Phase 1.5 lands, `get_skill` and `get_agent` responses
-   carry `signature=null` and clients reject them — clients surface
-   "Signing infrastructure pending" rather than fail-open.
-6. Tests: `tests/unit/test_skills_signer_e2e.py` covers keypair
-   generation, signature round-trip, tampering rejection.
+   under `checks.skills_signer` (the 4 mandatory feed signals +
+   computed `ok`).
+3. `get_skill` and `get_agent` MCP responses (Phase 1) carry
+   `signature` and `server_pubkey_id` fields.
+4. The installer (Phase 2/6) verifies signature against the
+   server's `/health` manifest before any write.
+5. **Until Phase 1.5 ships in a given server**, that server's
+   `get_skill` / `get_agent` responses carry `signature=null` and
+   clients reject them — clients surface "Signing infrastructure
+   pending" rather than fail-open.
+6. Tests: per server, `tests/test_skills_signer.py` (not
+   `tests/unit/test_skills_signer_e2e.py`) covers keypair
+   generation, signature round-trip, tampering rejection. Plus
+   per-server `tests/integration/test_health_aggregator_e2e.py`
+   for the 4-signal `/health` assertion.
 
 **Exit criteria for MVP window**:
 - All 6 Bodai prefixes return ≥3 entries in the picker (Phase 0).
@@ -944,6 +991,11 @@ and hash-chain audit log.
 1. **Week 1**: Phase 0 ships in all 5 repos (independent per repo).
 2. **Week 2**: Phase 1 ships in all 5 repos (independent per repo).
 3. **Week 3**: Phase 1.5 ships in all 5 repos (independent per repo).
+   - [x] akosha: shipped 2026-09-09 (commit `09cef76`).
+   - [ ] mahavishnu: pending — next.
+   - [ ] session-buddy: pending.
+   - [ ] dhara: pending.
+   - [ ] crackerjack: pending.
 4. **Week 4**: Phase 4 ships in Akosha (depends on Phase 1 + 1.5 in
    all 5 repos being operational).
 5. **Week 5**: Phase 2 + Phase 3 ship (depend on Phase 1.5).
@@ -968,6 +1020,169 @@ at `~/.claude/audit/skill_installs.jsonl` is append-only and
 hash-chained, so retroactive modification is detectable — the
 rollback path is honest about what was installed and what was
 uninstalled.
+
+### 10.3 Per-Server Wiring Contract — Phase 1.5 replication
+
+Replicating `<server>/skills_signer/` is the easy part
+(sed-replace). **The wiring** — lifespan-or-equivalent,
+`/health` aggregation, MANDATORY_GROUPS, persistence path,
+schema ownership, route collision, tool group split — is the
+hard part, and each server's shape differs. This section is the
+authoritative contract; a developer reading only this section
+plus the package source can replicate Phase 1.5 without re-reading
+the akosha code.
+
+#### 10.3.1 MANDATORY_GROUPS — every replica
+
+The new tool group (`_register_skills_signer_tools`) MUST be added
+to the server's mandatory-groups list (always-registered regardless
+of profile tier). Reasoning: signing verification is on every
+Phase 2/6 install; a MINIMAL-profile deployment that loses the
+signer feed fails B-7's partial-closure test. Per server:
+
+- akosha: already in `AKOSHA_MANDATORY_GROUPS` (Phase 1.5 ships).
+- mahavishnu: add to `MAHAVISHNU_MANDATORY_GROUPS` at
+  `mahavishnu/mcp/tools/profiles.py:182-187`.
+- session-buddy: equivalent constant in
+  `session_buddy/mcp/tools/profiles.py`.
+- dhara: equivalent constant in `dhara/mcp/tools/profiles.py`.
+- crackerjack: equivalent constant in
+  `crackerjack/mcp/tools/profiles.py`.
+
+The same applies to `list_skills` and `get_skill` MCP tools
+(Phase 1) — they MUST be in the mandatory group so the picker
+parity story holds at MINIMAL tier.
+
+#### 10.3.2 Lifespan / wiring model — per server
+
+The akosha model uses an async `@asynccontextmanager async def
+lifespan(server)` with `yield`, initializing the keypair and
+signer feed state before the probe is registered. The other 4
+servers have different shapes:
+
+- **akosha**: async lifespan (already wired; reference impl).
+- **mahavishnu**: **sync `__init__`**, NO async lifespan. Health
+  endpoint registered in `__init__` for launchd's early-probe
+  (per `mahavishnu/mcp/server_core.py:59-69`). The launchd wrapper
+  (`launch_with_healthcheck.sh`) tolerates up to 120s startup.
+  
+  **Mandated contract for mahavishnu**: do NOT add a
+  FastMCP `lifespan=` kwarg (breaks the early-`/health` design).
+  Instead, **defer signer init into `start()`** (after FastMCP
+  app is built). During the brief warm-up window, `/health`
+  returns 503 (no signer feed yet). Keypair load is sub-second,
+  so the warm-up window is brief. This is option (c) of the
+  mcp-integration-expert's 2026-09-09 analysis.
+  
+- **session-buddy**: has async lifespan — replicate akosha's
+  pattern.
+- **dhara**: instance-based with `_runtime_status` at
+  `dhara/mcp/server_core.py:380-396`; add signer state to
+  the instance `_runtime_status` and surface it in the
+  health aggregator.
+- **crackerjack**: **static 200 `/health` route** at
+  `crackerjack/mcp/server_core.py:126-141` with no lifespan.
+  Convert the static route to a feed-aggregating closure OR
+  surface the signer feed in a separate `/health/skills_signer`
+  endpoint (less ideal but matches the existing static pattern).
+
+#### 10.3.3 `/health` route aggregation — extend, don't replace
+
+Every server except crackerjack has an existing `/health` route
+body that returns static content (akosha now has a feed-aggregating
+one; the others do not). The replicator MUST **extend the existing
+closure**, not register a second `@server.custom_route("/health")`.
+Starlette raises `AssertionError` on duplicate route registration.
+
+Per server:
+
+- akosha: already feed-aggregating; reference impl at
+  `akosha/mcp/server.py:1026-1063`.
+- mahavishnu: extend the existing closure at
+  `mahavishnu/mcp/bootstrap.py:195-197`. Consult the feed
+  aggregator state; return 503 when any feed reports `ok=False`.
+  During the warm-up window before `start()` completes, return
+  503 with `checks.skills_signer.error = "awaiting start()"`.
+- session-buddy: extend the existing closure.
+- dhara: extend `_runtime_status` aggregation.
+- crackerjack: convert static-200 to feed-aggregating, OR
+  add separate `/health/skills_signer` endpoint.
+
+The MCP `get_health` tool (where one exists) MUST also include
+`checks.skills_signer` in its return shape — mahavishnu has
+both an HTTP `/health` route and an MCP `get_health` tool at
+`mahavishnu/mcp/server_core.py:1072`; both must surface the
+signer feed.
+
+#### 10.3.4 Persistence path — per server
+
+The private key persists at `<server_home>/state/skills_signer/private_key.pem`
+with 0o700 parent and 0o600 file permissions. Override via env
+var `<SERVER>_SKILLS_SIGNER_KEY_PATH` for tests / non-standard
+locations.
+
+| Server | Default path | Override env var |
+|---|---|---|
+| akosha | `~/.akosha/state/skills_signer/private_key.pem` | `AKOSHA_SKILLS_SIGNER_KEY_PATH` |
+| mahavishnu | `~/.mahavishnu/state/skills_signer/private_key.pem` | `MAHAVISHNU_SKILLS_SIGNER_KEY_PATH` |
+| session-buddy | `~/.session_buddy/state/skills_signer/private_key.pem` | `SESSION_BUDDY_SKILLS_SIGNER_KEY_PATH` |
+| dhara | `~/.dhara/state/skills_signer/private_key.pem` | `DHARA_SKILLS_SIGNER_KEY_PATH` |
+| crackerjack | `~/.crackerjack/state/skills_signer/private_key.pem` | `CRACKERJACK_SKILLS_SIGNER_KEY_PATH` |
+
+The path is resolved at lifespan (or `start()`) entry, NOT at
+import time, so tests can override before the path is computed.
+
+#### 10.3.5 Schema ownership — `SkillMetadata`
+
+`SkillMetadata` (and `AgentMetadata` in Phase 3) is canonical
+across all 5 servers. Two valid ownership models:
+
+- **Cross-repo import** (recommended for the MVP window):
+  each server adds `akosha>=0.15.1` to its ecosystem dep group
+  and `from akosha.mcp.skill_schema import SkillMetadata`.
+  Simplest path; matches the existing `akosha>=0.12.0` pin in
+  mahavishnu's pyproject.toml ecosystem group.
+- **Per-server copy** (acceptable, more drift risk): each server
+  owns `mahavishnu/mcp/skill_schema.py` (etc.) with identical
+  content; updates must land in all 5.
+
+The plan does NOT pick — both are valid. The cross-repo import
+is the lowest-friction path and the existing ecosystem dep
+already supports it.
+
+#### 10.3.6 Tool group split — REGISTRATION_MAP path
+
+The new tools (`list_skills`, `get_skill`, signer feed registration)
+MUST go through the server's `REGISTRATION_MAP` (profile-gated
+group registration), not the inline `_register_tools()` block.
+This matches akosha's pattern and makes the MANDATORY_GROUPS
+decision in §10.3.1 meaningful. Mahavishnu-specific: the new
+group's lambda follows the existing `_mhv_server` back-reference
+convention at `mahavishnu/mcp/server_core.py:74`:
+
+```python
+PROFILE_REGISTRATIONS[MAHAVISHNU_MANDATORY_GROUPS].extend([
+    lambda s: _register_skills_signer_tools(s._mhv_server),
+])
+```
+
+#### 10.3.7 E2E test contract (B-7 closure)
+
+Per server, the per-server E2E test
+`tests/integration/test_health_aggregator_e2e.py` MUST assert:
+
+- pre-lifespan / pre-`start()`: `/health` returns 503 with
+  `checks.skills_signer.error = "not initialized"` (or
+  equivalent per-server sentinel).
+- post-lifespan / post-`start()`: `/health` returns 200, all 4
+  mandatory feed signals present in `checks.skills_signer`,
+  `ok` computed true (manifest non-empty).
+- post-teardown: `/health` returns 503 (probe unregistered).
+- Empty manifest: `checks.skills_signer.ok = False` → 503.
+
+These four assertions per server are the gating artifacts for
+B-7's full closure. Until they land in each replica, B-7 stays
+"partially closed" per server.
 
 ## 11. Blockers — Consolidated Index
 
@@ -1061,10 +1276,10 @@ install feeds) MUST expose `feed.entities_count`,
 **Partially closed 2026-09-09** — the `skills_signer` feed in
 akosha's `/health` (commit `09cef76`) exposes all four signals
 plus computed `ok` from manifest invariants. Replication to the
-other 4 servers is pending. The per-server E2E test
-(`tests/integration/test_health_aggregator_e2e.py`) for each
-replica must assert pre-lifespan / post-lifespan / post-teardown
-states before B-7 is fully closed.
+other 4 servers is pending. The per-server E2E test contract is
+specified in §10.3.7 — `tests/integration/test_health_aggregator_e2e.py`
+per server must assert pre-lifespan / post-lifespan / post-teardown /
+empty-manifest states before B-7 is fully closed.
 
 ### High-priority amendments (must fix before specific phases ship)
 
