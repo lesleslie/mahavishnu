@@ -88,15 +88,23 @@ def test_parse_events_raises_log_corrupt_on_unreadable_file(tmp_path: Path) -> N
         parse_events(tmp_path)  # tmp_path is a directory
 
 
-def _event(event_id: str, op: str, text: str, wall_ms: int, created_ms: int | None = None) -> JotEvent:
+def _event(
+    event_id: str,
+    op: str,
+    text: str,
+    wall_ms: int,
+    created_ms: int | None = None,
+    ctr: int = 0,
+    node: str = "a" * 8,
+) -> JotEvent:
     return JotEvent(
         id=event_id, op=op,
-        hlc=HLC(wall_ms=wall_ms, ctr=0, node="a" * 8),
+        hlc=HLC(wall_ms=wall_ms, ctr=ctr, node=node),
         text=text, ctx={}, created_ms=created_ms if created_ms is not None else wall_ms,
     )
 
 
-def test_build_states_handles_single_capture(tmp_path: Path) -> None:
+def test_build_states_handles_single_capture() -> None:
     e = _event("a" * 32, "capture", "hello", wall_ms=1)
     result = build_states([e], enrich=False)
     assert len(result.states) == 1
@@ -104,7 +112,7 @@ def test_build_states_handles_single_capture(tmp_path: Path) -> None:
     assert result.states[0].status == "open"
 
 
-def test_build_states_applies_edit_over_capture(tmp_path: Path) -> None:
+def test_build_states_applies_edit_over_capture() -> None:
     """Latest edit wins; last_modified_ms reflects the edit's HLC."""
     cap = _event("a" * 32, "capture", "v1", wall_ms=1)
     edit = _event("a" * 32, "edit", "v2", wall_ms=2)
@@ -114,14 +122,14 @@ def test_build_states_applies_edit_over_capture(tmp_path: Path) -> None:
     assert result.states[0].last_modified_ms == 2
 
 
-def test_build_states_applies_done(tmp_path: Path) -> None:
+def test_build_states_applies_done() -> None:
     cap = _event("a" * 32, "capture", "x", wall_ms=1)
     done = _event("a" * 32, "done", "", wall_ms=2)
     result = build_states([cap, done], enrich=False)
     assert result.states[0].status == "done"
 
 
-def test_build_states_applies_reopen(tmp_path: Path) -> None:
+def test_build_states_applies_reopen() -> None:
     cap = _event("a" * 32, "capture", "x", wall_ms=1)
     done = _event("a" * 32, "done", "", wall_ms=2)
     reopen = _event("a" * 32, "reopen", "", wall_ms=3)
@@ -129,7 +137,7 @@ def test_build_states_applies_reopen(tmp_path: Path) -> None:
     assert result.states[0].status == "open"
 
 
-def test_build_states_done_then_done_is_noop(tmp_path: Path) -> None:
+def test_build_states_done_then_done_is_noop() -> None:
     cap = _event("a" * 32, "capture", "x", wall_ms=1)
     done1 = _event("a" * 32, "done", "", wall_ms=2)
     done2 = _event("a" * 32, "done", "", wall_ms=3)
@@ -154,3 +162,51 @@ def test_build_states_sorts_by_last_modified_desc() -> None:
 def test_build_states_returns_empty_result_for_empty_input() -> None:
     result = build_states([], enrich=False)
     assert result == FoldResult(states=[], parked=[], errors=[])
+
+
+def test_build_states_hlc_tiebreak_by_ctr() -> None:
+    """UD4: same wall_ms → ctr ascending breaks the tie."""
+    earlier = _event("a" * 32, "capture", "ctr0", wall_ms=5, ctr=0)
+    later = _event("a" * 32, "edit", "ctr1", wall_ms=5, ctr=1)
+    # File order is reversed; HLC sort must place ctr=0 first.
+    result = build_states([later, earlier], enrich=False)
+    assert result.states[0].text == "ctr1"
+    assert result.states[0].last_modified_ms == 5
+
+
+def test_build_states_hlc_tiebreak_by_node() -> None:
+    """UD4: same (wall_ms, ctr) → lex on node."""
+    a = _event("a" * 32, "capture", "node-a", wall_ms=5, ctr=0, node="aaaaaaaa")
+    b = _event("b" * 32, "capture", "node-b", wall_ms=5, ctr=0, node="bbbbbbbb")
+    # Reverse the input order; lex on node places node-a first, then node-b.
+    result = build_states([b, a], enrich=False)
+    assert [s.text for s in result.states] == ["node-a", "node-b"]
+
+
+def test_build_states_orphan_edit_lands_in_errors() -> None:
+    """Edit with no matching capture (replayed through full log) → errors."""
+    orphan = _event("a" * 32, "edit", "v1", wall_ms=1)
+    result = build_states([orphan], enrich=False)
+    assert result.states == []
+    assert result.parked == []
+    assert len(result.errors) == 1
+    assert result.errors[0].id == "a" * 32
+
+
+def test_build_states_parked_edit_replay_clamps_last_modified() -> None:
+    """Parking replay must clamp last_modified_ms to non-decreasing (R9).
+
+    Edit arrives before capture (parked in pass 1), capture arrives later
+    (creates state in pass 1), pass 2 replays edit. State must reflect the
+    edit's text but last_modified_ms = max(capture.wall_ms, edit.wall_ms).
+    """
+    edit = _event("a" * 32, "edit", "v2", wall_ms=2)
+    capture = _event("a" * 32, "capture", "v1", wall_ms=5)
+    # Both in pass 1: edit is parked (no capture yet); capture creates state.
+    # Pass 2: replay edit → text=v2, last_modified_ms = max(5, 2) = 5.
+    result = build_states([edit, capture], enrich=False)
+    assert len(result.states) == 1
+    assert result.states[0].text == "v2"
+    assert result.states[0].status == "open"
+    assert result.states[0].last_modified_ms == 5
+    assert result.parked == []

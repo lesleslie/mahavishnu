@@ -157,7 +157,7 @@ def build_states(
                     short_id=s.short_id,
                     text=ev.text,
                     status=s.status,
-                    last_modified_ms=ev.hlc.wall_ms,
+                    last_modified_ms=max(s.last_modified_ms, ev.hlc.wall_ms),
                 )
             case "done" | "reopen":
                 states_by_id[ev.id] = JotSummary(
@@ -165,12 +165,17 @@ def build_states(
                     short_id=s.short_id,
                     text=s.text,
                     status="done" if ev.op == "done" else "open",
-                    last_modified_ms=ev.hlc.wall_ms,
+                    last_modified_ms=max(s.last_modified_ms, ev.hlc.wall_ms),
                 )
 
     final_states = sorted(
         states_by_id.values(),
         key=lambda s: (-s.last_modified_ms, s.id),
     )
+
+    # TD-B3: parked tracks "still unresolved" events. After pass 2 every parked
+    # event is either successfully replayed (now in states) or moved to errors.
+    # The final parked list is therefore empty by construction.
+    parked = []
 
     return FoldResult(states=final_states, parked=parked, errors=errors)
