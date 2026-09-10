@@ -27,6 +27,7 @@ class Permission(StrEnum):
     MANAGE_TERMINALS = "manage_terminals"
     READ_APPROVAL = "read_approval"
     READ_WEBHOOK = "read_webhook"
+    READ_PLAN_INDEX = "read_plan_index"
 
 
 class Role(BaseModel):
