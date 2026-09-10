@@ -87,6 +87,14 @@ pools:
   memory_sync_interval: 60  # Memory sync interval in seconds (10-600)
   session_buddy_url: "http://localhost:8678/mcp"  # Session-Buddy MCP server URL for delegated pools
   akosha_url: "http://localhost:8682/mcp"  # Akosha MCP server URL for cross-pool analytics
+  # Tier 1 Phase 4: M/M/c wait-time scoring (REQ-002).
+  # Default-on after Phase 3 validation passed; per-environment
+  # opt-out via settings/local.yaml (queueing_enabled: false) or
+  # MAHAVISHNU_POOLS__QUEUEING_ENABLED=false during the first
+  # 7-day monitoring window.
+  queueing_enabled: true
+  queueing_warmup_min_observations: 100
+  queueing_warmup_min_seconds: 600.0
 
 # RunPod Flash pool configuration
 # Set RUNPOD_API_KEY env var before spawning runpod pools
@@ -166,13 +174,16 @@ observability:
   tracing_enabled: true  # Enable distributed tracing
   otlp_endpoint: "http://localhost:4317"  # OTLP endpoint for metrics/traces
 
-# Tier 1 Phase 6: change-point detector on observability metrics.
+# Tier 1 Phase 8: change-point detector on observability metrics.
 # Top-level block (matches pi_pool:, runpod_pool:, caller_quota:,
 # verification:, worktree_providers: precedent). REQ-005, REQ-006.
-# Phase 8 of the Tier 1 plan flips `enabled` to `true` after
-# Phase 7 validation passes.
+# Phase 8 flipped `enabled` to `true` after Phase 7 validation
+# passed. Staged rollout: per-environment opt-out via
+# settings/local.yaml (changepoint.enabled: false) or env var
+# MAHAVISHNU_CHANGEPOINT__ENABLED=false during the first
+# 7-day monitoring window.
 changepoint:
-  enabled: false
+  enabled: true
   target_metric: "pool_queue_depth"  # REQ-005 — default per spec §12 Q3
   detector: "cusum"  # "cusum" or "page_hinkley"
   slack: 0.25  # CUSUM k in σ units (0.25σ for two-sided CUSUM, ARL₀ ≈ 10,000)

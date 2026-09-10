@@ -411,12 +411,15 @@ class PoolConfig(BaseModel):
         le=600,
         description="Memory sync interval in seconds (10-600)",
     )
-    # Tier 1 Phase 2: per-pool queueing model. REQ-002.
-    # Default `False` so the new feature ships opt-in; Phase 4 of
-    # the Tier 1 plan flips the default to `True` after validation.
+    # Tier 1 Phase 4: per-pool queueing model. REQ-002.
+    # Default `True` after Phase 3 validation passed. Phase 4
+    # staged rollout: per-environment opt-out via
+    # settings/local.yaml or env var
+    # MAHAVISHNU_POOLS__QUEUEING_ENABLED=false during the first
+    # 7-day monitoring window.
     queueing_enabled: bool = Field(
-        default=False,
-        description="Enable M/M/c wait-time scoring as an additive routing signal",
+        default=True,
+        description="Enable M/M/c wait-time scoring as an additive routing signal (Phase 4 default-on)",
     )
     queueing_warmup_min_observations: int = Field(
         default=100,
@@ -431,15 +434,18 @@ class PoolConfig(BaseModel):
         description="Wall-clock seconds before a refit is forced (warmup cadence)",
     )
 
-    # Tier 1 Phase 6: change-point detector. REQ-005.
-    # Default `False` so the new feature ships opt-in; Phase 8 of
-    # the Tier 1 plan flips the default to `True` after validation.
+    # Tier 1 Phase 8: change-point detector. REQ-005.
+    # Default `True` after Phase 7 validation passed. Phase 8
+    # staged rollout: per-environment opt-out via
+    # settings/local.yaml (changepoint.enabled: false) or env var
+    # MAHAVISHNU_CHANGEPOINT__ENABLED=false during the first
+    # 7-day monitoring window.
     # Top-level `changepoint:` block (not nested under observability:)
     # to match the precedent of `pi_pool:`, `runpod_pool:`,
     # `caller_quota:`, `verification:`, etc.
     changepoint_enabled: bool = Field(
-        default=False,
-        description="Enable CUSUM/Page-Hinkley change-point detector on observability metrics",
+        default=True,
+        description="Enable CUSUM/Page-Hinkley change-point detector on observability metrics (Phase 8 default-on)",
     )
     changepoint_target_metric: str = Field(
         default="pool_queue_depth",
