@@ -6,13 +6,16 @@ from __future__ import annotations
 
 import hashlib
 import os
-from pathlib import Path
 import re
 import secrets
 import socket
 import time
+from typing import TYPE_CHECKING
 
 from .events import HLC, deserialize
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 # Size of the tail read when looking for the last HLC. See spec §"HLC continuity".
 TAIL_SIZE = 65536

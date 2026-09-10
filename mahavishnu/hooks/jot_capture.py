@@ -28,8 +28,8 @@ import os
 import sys
 import time
 import traceback
-import uuid
 from typing import TYPE_CHECKING, Any
+import uuid
 
 from mahavishnu.jot.capture_echo import format_echo
 from mahavishnu.jot.events import JotEvent, serialize
@@ -176,7 +176,7 @@ def _log_error(op: str, exc: BaseException, ctx: dict[str, Any], jot_dir_path: P
         if jot_dir_path is None:
             try:
                 jot_dir_path = jot_dir()
-            except Exception:
+            except Exception:  # noqa: BLE001 - fail-open: any failure to resolve dir means we cannot write errors.log
                 return  # Cannot resolve dir — silently drop.
 
         errors_log = errors_log_path()
@@ -192,8 +192,7 @@ def _log_error(op: str, exc: BaseException, ctx: dict[str, Any], jot_dir_path: P
         }
         line = json.dumps(record, separators=(",", ":"), ensure_ascii=False) + "\n"
         _write_errors_line(errors_log, line)
-    except Exception:
-        # errors.log must be silent-on-failure (per spec §"Errors log writes fail-open")
+    except Exception:  # noqa: BLE001, S110 - errors.log must be silent-on-failure (spec §"Errors log writes fail-open")
         pass
 
 
@@ -239,7 +238,7 @@ def _do_capture(body: str, stdin_payload: dict[str, Any]) -> int:
     # Step 1: Ensure directory exists
     try:
         pre_resolved_dir = jot_dir()
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001 - fail-open: any I/O failure means we cannot capture
         _log_error("mkdir", exc, prompt_prefix, jot_dir_path=None)
         return 0
 
@@ -252,14 +251,14 @@ def _do_capture(body: str, stdin_payload: dict[str, Any]) -> int:
         _log_error("node_init", exc, prompt_prefix, pre_resolved_dir)
         from mahavishnu.jot.hlc import _generate_node_id
         node = _generate_node_id()
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001 - fail-open: NodePersistError is the only expected exception; any other is a bug we swallow
         _log_error("node_init", exc, prompt_prefix, pre_resolved_dir)
         return 0
 
     # Step 3: Read last HLC (B4 scans all lines for last valid)
     try:
         last_hlc = read_tail_hlc(log_path())
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001 - fail-open: tail-read failure falls back to None
         _log_error("hdl_tail", exc, prompt_prefix, pre_resolved_dir)
         last_hlc = None
 
@@ -285,7 +284,7 @@ def _do_capture(body: str, stdin_payload: dict[str, Any]) -> int:
     echo = format_echo(event.id, text)
     try:
         sys.stderr.write(echo + "\n")
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001 - fail-open: stderr closure/redirect → no log entry (B6 split-brain prevention)
         _log_error("stderr_echo", exc, {**ctx, **prompt_prefix}, pre_resolved_dir)
         return 0
 
@@ -293,7 +292,7 @@ def _do_capture(body: str, stdin_payload: dict[str, Any]) -> int:
     line = serialize(event)
     try:
         _write_log_line(line)
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001 - fail-open: log write failure → user sees echo but capture didn't persist
         _log_error("log_write", exc, {**ctx, **prompt_prefix}, pre_resolved_dir)
         return 0
 

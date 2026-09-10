@@ -88,5 +88,7 @@ def redact_text(text: str) -> str:
     """
     out = text
     for pattern, tier in _PATTERNS:
-        out = pattern.sub(lambda m: _make_replacement(m, tier), out)
+        # Capture tier via default argument to avoid B023 (late binding closure)
+        replacement = (lambda t: (lambda m: _make_replacement(m, t)))(tier)
+        out = pattern.sub(replacement, out)
     return out
