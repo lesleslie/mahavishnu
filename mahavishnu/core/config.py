@@ -15,6 +15,7 @@ from __future__ import annotations
 
 from enum import StrEnum
 from pathlib import Path
+from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 from pydantic._internal._utils import deep_update
@@ -472,9 +473,9 @@ class ChangepointConfig(BaseModel):
         default="pool_queue_depth",
         description="Metric name to monitor for change-point detection",
     )
-    detector: str = Field(
+    detector: Literal["cusum", "page_hinkley", "two_stage"] = Field(
         default="cusum",
-        description="Detector algorithm: 'cusum' or 'page_hinkley'",
+        description="Detector family: single (cusum/page_hinkley) or two_stage (warn+confirm)",
     )
     slack: float = Field(
         default=0.25,
@@ -502,6 +503,24 @@ class ChangepointConfig(BaseModel):
         gt=0.0,
         le=100.0,
         description="CUSUM/Page-Hinkley decision interval (h); default 14.0 (empirically tuned for ARL_0 ~7,200 on Gaussian(0,1))",
+    )
+    warn_threshold: float = Field(
+        default=8.0,
+        gt=0.0,
+        le=50.0,
+        description="Threshold for the warning detector (only used when detector == 'two_stage'); lower = faster warnings, more noise",
+    )
+    confirm_threshold: float = Field(
+        default=14.0,
+        gt=0.0,
+        le=50.0,
+        description="Threshold for the confirm detector (only used when detector == 'two_stage'); higher = fewer confirmed alerts, slower",
+    )
+    confirm_window_samples: int = Field(
+        default=100,
+        gt=0,
+        le=10_000,
+        description="Max samples between warning and confirmation; if exceeded the state resets to idle",
     )
     reference_detector: str = Field(
         default="three_sigma",
