@@ -157,9 +157,11 @@ The Phase 8 promotion recommends `two_stage` as the operator choice post-Phase-8
 The two-stage architecture resolves the §1/§7 trade-off documented
 in `docs/audits/2026-09-10-changepoint-validation.md`. Operators
 who have customized `changepoint.detector: "cusum"` in
-`settings/local.yaml` for backwards compat should re-evaluate after
-two weeks of two_stage operation in their environment — the
-two-stage mode emits BOTH `drift_warning` (soft) and
+`settings/local.yaml` for backwards compat should re-evaluate
+within the [Phase 8 promotion migration window](../plans/2026-09-10-bodai-math-initiatives-tier1.md)
+(typically two weeks of `two_stage` operation in their
+environment; see also the [runbook's two-stage migration section](../runbooks/mahavishnu-drift-detection.md))
+— the two-stage mode emits BOTH `drift_warning` (soft) and
 `drift_detected` (hard) signals, so existing alerts on
 `drift_detected` continue to work without changes.
 
