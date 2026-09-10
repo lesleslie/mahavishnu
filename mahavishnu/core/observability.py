@@ -706,6 +706,31 @@ class ObservabilityManager:
         except Exception:  # noqa: BLE001
             return "pool_queue_depth"
 
+    @staticmethod
+    def _canonical_detector_name(detector_or_name) -> str:
+        """Return the canonical lowercase detector token used in logs/labels.
+
+        Accepts either a detector instance (uses class name) or a string
+        (e.g., ``result.detector_warn``). Maps CUSUMDetector→cusum,
+        PageHinkleyDetector→page_hinkley, TwoStageDetector→two_stage;
+        unknown inputs are lowercased.
+
+        Centralized so new detector classes only need to be added in one
+        place (LOW-9 polish — R6 changepoint two-stage review).
+        """
+        if isinstance(detector_or_name, str):
+            raw = detector_or_name
+        else:
+            raw = type(detector_or_name).__name__
+        raw_lower = raw.lower()
+        if raw_lower == "cusumdetector":
+            return "cusum"
+        if raw_lower == "pagehinkleydetector":
+            return "page_hinkley"
+        if raw_lower == "twostagedetector":
+            return "two_stage"
+        return raw_lower
+
     def _on_drift_detected(self, metric_name: str, value: float, result) -> None:
         """OTel span + Prometheus counter emission for a drift detection.
 
@@ -750,15 +775,8 @@ class ObservabilityManager:
 
         # R3-M5: lowercase detector name so dashboards written against
         # the documented "cusum" / "page_hinkley" tokens work.
-        detector_class = type(getattr(self, "_changepoint_detector", None)).__name__
-        detector_name = (
-            "cusum"
-            if detector_class == "CUSUMDetector"
-            else "page_hinkley"
-            if detector_class == "PageHinkleyDetector"
-            else "two_stage"
-            if detector_class == "TwoStageDetector"
-            else detector_class.lower()
+        detector_name = self._canonical_detector_name(
+            getattr(self, "_changepoint_detector", None)
         )
         severity = self._classify_drift_severity(result.score, result.threshold)
 
@@ -932,13 +950,7 @@ class ObservabilityManager:
         if not isinstance(result, TwoStageResult):
             return
 
-        detector_name = (
-            "cusum"
-            if result.detector_warn == "cusumdetector"
-            else "page_hinkley"
-            if result.detector_warn == "pagehinkleydetector"
-            else result.detector_warn
-        )
+        detector_name = self._canonical_detector_name(result.detector_warn)
         warn_result = result.warning_result
         if warn_result is None:
             return
