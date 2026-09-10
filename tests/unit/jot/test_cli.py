@@ -236,3 +236,29 @@ def test_cmd_search_no_results_prints_nothing(
     _seed_log(jot, [_capture("a" * 32, "hello", wall_ms=1)])
     cmd_search(query="nonexistent", limit=20)
     assert capsys.readouterr().out == ""
+
+
+from typer.testing import CliRunner
+
+from mahavishnu.cli.jot_cli import app as jot_app
+
+
+def test_typer_app_lists_subcommands() -> None:
+    runner = CliRunner()
+    result = runner.invoke(jot_app, ["--help"])
+    assert result.exit_code == 0
+    assert "list" in result.output
+    assert "show" in result.output
+    assert "add" in result.output
+    assert "edit" in result.output
+    assert "done" in result.output
+    assert "reopen" in result.output
+    assert "vitals" in result.output
+    assert "search" in result.output
+
+
+def test_typer_app_has_no_install_hook() -> None:
+    """R2 — install-hook moved to plugin manifest."""
+    runner = CliRunner()
+    result = runner.invoke(jot_app, ["--help"])
+    assert "install-hook" not in result.output

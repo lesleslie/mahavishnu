@@ -1293,6 +1293,11 @@ app.add_typer(precommit_app_obj, name="precommit")
 # Add SOP evolution CLI (Spec #7)
 add_sop_commands(app)
 
+# Jot inbox CLI (R2) — quick-capture scratchpad for humans and AI agents
+from .cli.jot_cli import app as jot_app
+
+app.add_typer(jot_app, name="jot")
+
 # Worker management
 workers_app = typer.Typer(help="Worker orchestration and management")
 app.add_typer(workers_app, name="workers")
