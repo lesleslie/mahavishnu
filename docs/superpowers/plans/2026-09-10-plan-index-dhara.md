@@ -1,6 +1,8 @@
 # Plan Index Dhara-Canonical Metadata Layer Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+>
+> **v2 changelog (post 4-agent plan review):** Applied BLOCKER + HIGH fixes from a 4-agent rotated-angle review (implementation order, test coverage, migration safety, code-correctness). Critical fixes: (a) `Permission.READ_PLAN_INDEX` case corrected to lowercase `"read_plan_index"` to match `RBACManager.check_permission`'s `.lower()` coercion; (b) `derive_plan_id` now normalizes repo internally so the spec test passes; (c) `register_plan_tools` call site in bootstrap.py uses correct `store_provider=` injection; (d) `discover_stores` arity fixed (was missing `yaml_module` arg); (e) cron `run_rebuild_cycle` no longer a no-op — reads filesystem via the orchestrator helper; (f) `PlanIndexFeedState.as_dict()` keys prefixed with `feed_` to match `SignerFeedState` precedent and the wiring discipline's strict 4-signal contract; (g) ~25 missing spec-mandated test files added as Task 11.5. Migration tasks 18-20 collapsed into a Makefile-driven runbook plus explicit test artifacts.
 
 **Goal:** Replace filesystem-scanned `docs/plans/PLAN_INDEX.md` with a Dhara-canonical metadata index — same read substrate topology as jot, but with git as the only write path. Cross-machine visibility, serverless compatibility, and a queryable substrate for the math plan's `scripts/feature_eligibility.py`.
 
@@ -1462,11 +1464,21 @@ class PlanIndexRebuilder:
     def derive_plan_id(self, repo: str, path: str) -> PlanId:
         """Derive plan_id from NORMALIZED repo + path.
 
-        Caller is responsible for normalizing repo via normalize_repo_url()
-        before calling. The repo URL here is expected to already be
-        normalized (host/<path_hash>).
+        Normalizes the repo internally (REQ-PLAN-011). Raises if the
+        raw repo URL is rejected by normalize_repo_url — better to fail
+        fast at the boundary than to silently let an unnormalized URL
+        pollute the id space.
+
+        The repo parameter is documented as already-normalized for
+        callers that have pre-normalized (e.g., from `upsert_all`);
+        for callers that have not, the function transparently
+        normalizes.
         """
-        composite = f"{repo}:{path}"
+        from mahavishnu.plan_index.url import normalize_repo_url
+        normalized = normalize_repo_url(repo)
+        if normalized is None:
+            raise ValueError(f"cannot normalize repo for plan_id: {repo!r}")
+        composite = f"{normalized}:{path}"
         h = hashlib.sha256(composite.encode()).hexdigest()[:PLAN_ID_LEN]
         return PlanId(h)  # type: ignore[return-value]
 
@@ -1766,7 +1778,15 @@ class TestAsDictContract:
             cycles_total=10,
         )
         d = state.as_dict()
-        assert set(d.keys()) == {"ok", "entities_count", "last_updated_timestamp", "errors_total", "cycles_total"}
+        # MUST match SignerFeedState.as_dict() shape (mahavishnu/mcp/signer_feed.py:203).
+        # The discipline doc mandates the feed_ prefix.
+        assert set(d.keys()) == {
+            "ok",
+            "feed_entities_count",
+            "feed_last_updated_timestamp",
+            "feed_errors_total",
+            "feed_cycles_total",
+        }
         # CRITICAL: 4-signal contract. successful_cycles_total is NOT here.
 
     def test_ok_present_and_boolean(self) -> None:
@@ -1874,13 +1894,18 @@ class PlanIndexFeedState:
         return (now_ms - self.last_updated_timestamp) < threshold_ms
 
     def as_dict(self) -> dict[str, int | bool]:
-        """Return the 4-signal feed-state dict plus ok. STRICT 5 keys."""
+        """Return the 4-signal feed-state dict plus ok. STRICT 5 keys.
+
+        The keys are PREFIXED with `feed_` per the canonical
+        mcp-backend-wiring-discipline.md 4-signal contract. Mirrors
+        SignerFeedState.as_dict() (mahavishnu/mcp/signer_feed.py:203).
+        """
         return {
             "ok": self.is_ok(),
-            "entities_count": self.entities_count,
-            "last_updated_timestamp": self.last_updated_timestamp,
-            "errors_total": self.errors_total,
-            "cycles_total": self.cycles_total,
+            "feed_entities_count": self.entities_count,
+            "feed_last_updated_timestamp": self.last_updated_timestamp,
+            "feed_errors_total": self.errors_total,
+            "feed_cycles_total": self.cycles_total,
         }
 ```
 
@@ -1938,24 +1963,27 @@ class TestReadPlanIndexPermission:
 Run: `pytest tests/unit/core/test_permissions_plan_index.py -v`
 Expected: AttributeError: type object 'Permission' has no attribute 'READ_PLAN_INDEX'.
 
-- [ ] **Step 4: Add `READ_PLAN_INDEX` to the enum**
+- [ ] **Step 4: Add `READ_PLAN_INDEX` to the enum** (round-2 fix: lowercase value)
 
-Edit `mahavishnu/core/permissions.py`. Find the existing `Permission` enum and add:
+Edit `mahavishnu/core/permissions.py`. Find the existing `Permission` enum (StrEnum with lowercase string values, e.g. `READ_REPO = "read_repo"`) and add the new member AFTER the read-permissions group (after `READ_WEBHOOK`):
 
 ```python
-class Permission(StrEnum):  # or whatever the existing base class is
+class Permission(StrEnum):
     """Existing permissions ..."""
-    READ_REPO = "READ_REPO"
+    READ_REPO = "read_repo"
     # ... other existing values ...
-    READ_PLAN_INDEX = "READ_PLAN_INDEX"  # for mcp__mahavishnu__plan_* tools
+    READ_WEBHOOK = "read_webhook"
+    READ_PLAN_INDEX = "read_plan_index"  # for mcp__mahavishnu__plan_* tools
 ```
 
-(Skip if the existing code uses a different format; preserve the existing structure and add the new member.)
+**CRITICAL**: the value MUST be lowercase. `RBACManager.check_permission` (verified at `mahavishnu/core/permissions.py:108-114`) calls `Permission(permission.lower())` to coerce incoming strings — an uppercase value would cause silent runtime check failure.
 
 - [ ] **Step 5: Run test to verify it passes**
 
 Run: `pytest tests/unit/core/test_permissions_plan_index.py -v`
 Expected: 2 tests pass.
+
+(Note: the test asserts `Permission.READ_PLAN_INDEX == "READ_PLAN_INDEX"`; this is the NAME (uppercase, always). The lowercase constraint is on the `.value` attribute, not the name.)
 
 - [ ] **Step 6: Commit**
 
@@ -2203,7 +2231,8 @@ class TestRegisterPlanTools:
                 def decorator(fn):
                     return fn
                 return decorator
-        register_plan_tools(FakeMCP())  # type: ignore[arg-type]
+        provider = lambda: PlanIndexStore(FakeDhara())  # type: ignore[arg-type]
+        register_plan_tools(FakeMCP(), store_provider=provider)  # type: ignore[arg-type]
 
     def test_decorators_callable(self) -> None:
         captured: dict[str, Any] = {}
@@ -2213,7 +2242,8 @@ class TestRegisterPlanTools:
                     captured[name or fn.__name__] = fn
                     return fn
                 return decorator
-        register_plan_tools(FakeMCP())  # type: ignore[arg-type]
+        provider = lambda: PlanIndexStore(FakeDhara())  # type: ignore[arg-type]
+        register_plan_tools(FakeMCP(), store_provider=provider)  # type: ignore[arg-type]
         # 5 tools registered
         assert len(captured) == 5
         assert "plan_list" in captured
@@ -2398,7 +2428,10 @@ Run:
 ```bash
 grep -n "_register_search_tools\|_register_treesitter_tools\|_register_pycharm_tools" mahavishnu/mcp/bootstrap.py | head -10
 grep -n "_register_search_tools" mahavishnu/mcp/tools/profiles.py | head -10
+grep -n "_resolve_yaml_module\|def discover_stores" scripts/regenerate_plan_index.py | head -5
 ```
+
+The last grep confirms `_resolve_yaml_module()` exists (Task 15 must preserve it as a top-level callable, since both `audit_plan_index.py` and `regenerate_plan_index.py` import it).
 
 - [ ] **Step 2: Add `_register_plan_tools` to bootstrap.py**
 
@@ -2406,9 +2439,31 @@ In `mahavishnu/mcp/bootstrap.py`, after the existing `_register_*_tools` definit
 
 ```python
 def _register_plan_tools(server: FastMCPServer) -> None:
-    """Register plan_* tools with the FastMCP server."""
+    """Register plan_* tools with the FastMCP server.
+
+    The store_provider is constructed at registration time from the
+    real Dhara client on MahavishnuApp. Tests inject a FakeDhara-
+    backed provider at this same call site (see tests/integration/
+    mcp/test_plan_tools_e2e.py).
+    """
     from ..mcp.tools.plan_tools import register_plan_tools
-    register_plan_tools(server.server, server.app)
+    from ..plan_index.store import PlanIndexStore
+
+    def _store_provider() -> PlanIndexStore:
+        # Production wiring: real Dhara-backed store.
+        return PlanIndexStore(_resolve_dhara_client(server))
+
+    register_plan_tools(server.server, store_provider=_store_provider)
+
+
+def _resolve_dhara_client(server: FastMCPServer) -> object:
+    """Return the configured Dhara client from MahavishnuApp.
+
+    Production: reads from `server.app.state.dhara` or equivalent.
+    Tests: a FakeDhara stand-in is acceptable for the smoke test;
+    the integration test for this lives in tests/integration/mcp/.
+    """
+    return server.app.state.dhara  # type: ignore[attr-defined]  # noqa: SLF001
 ```
 
 - [ ] **Step 3: Add to FULL_REGISTRATIONS**
@@ -3062,7 +3117,14 @@ def main() -> int:
     index_paths: set[str] = set(re.findall(r"\| \d{4}-\d{2}-\d{2} \| ([^ |]+) \|", index_text))
 
     # 2. Walk filesystem (auto-discovered stores)
-    discovered = discover_stores(repo_root)
+    # discover_stores signature is preserved by Task 15:
+    #   discover_stores(repo_root: Path, yaml_module: Any) -> list[str]
+    # yaml_module is resolved the same way `regenerate_plan_index.py:856` does it
+    # (importlib chain: try pyyaml, fallback to yaml). Both callers share the same
+    # helper. If Task 15 changes the signature, this is a plan_index call site
+    # that breaks silently — the audit returns empty results, but doesn't crash.
+    from scripts.regenerate_plan_index import _resolve_yaml_module
+    discovered = discover_stores(repo_root, _resolve_yaml_module())
     disk_paths: set[str] = set()
     for store_path in discovered:
         for md_file in store_path.rglob("*.md"):
