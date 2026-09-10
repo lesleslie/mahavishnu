@@ -1,15 +1,13 @@
 """Fold layer: FoldResult dataclass + parse_events (I/O only) + build_states."""
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from pathlib import Path
+import subprocess
 
 import pytest
 
 from mahavishnu.jot.events import HLC, JotEvent
 from mahavishnu.jot.fold import FoldResult, JotSummary, build_states, parse_events
-
-if TYPE_CHECKING:
-    from pathlib import Path
 
 
 def test_fold_result_is_a_dataclass_with_three_fields() -> None:
@@ -210,3 +208,55 @@ def test_build_states_parked_edit_replay_clamps_last_modified() -> None:
     assert result.states[0].status == "open"
     assert result.states[0].last_modified_ms == 5
     assert result.parked == []
+
+
+def test_enrich_ctx_returns_repo_branch_sha(monkeypatch: pytest.MonkeyPatch) -> None:
+    from mahavishnu.jot.fold import _enrich_ctx
+    fake = {
+        "rev-parse --show-toplevel": "/Users/les/Projects/mahavishnu",
+        "rev-parse --abbrev-ref HEAD": "main",
+        "rev-parse HEAD": "a3f9c2b1e8d74f6a9c1b2e3f4a5b6c7d",
+    }
+
+    def fake_run(args, **kwargs):  # type: ignore[no-untyped-def]
+        return subprocess.CompletedProcess(
+            args=args, returncode=0,
+            stdout=fake[" ".join(args[1:])], stderr="",
+        )
+
+    monkeypatch.setattr(subprocess, "run", fake_run)
+    enriched = _enrich_ctx({}, Path("/Users/les/Projects/mahavishnu"))
+    assert enriched["repo"] == "/Users/les/Projects/mahavishnu"
+    assert enriched["branch"] == "main"
+    assert enriched["sha"] == "a3f9c2b1e8d74f6a9c1b2e3f4a5b6c7d"
+
+
+def test_enrich_ctx_fail_open_on_git_not_found(monkeypatch: pytest.MonkeyPatch) -> None:
+    from mahavishnu.jot.fold import _enrich_ctx
+
+    def fake_run(*args, **kwargs):  # type: ignore[no-untyped-def]
+        raise FileNotFoundError("git not installed")
+
+    monkeypatch.setattr(subprocess, "run", fake_run)
+    enriched = _enrich_ctx({}, Path("/tmp"))
+    assert enriched["repo"] is None
+    assert enriched["branch"] is None
+    assert enriched["sha"] is None
+
+
+def test_enrich_ctx_fail_open_on_subprocess_error(monkeypatch: pytest.MonkeyPatch) -> None:
+    from mahavishnu.jot.fold import _enrich_ctx
+
+    def fake_run(*args, **kwargs):  # type: ignore[no-untyped-def]
+        raise subprocess.CalledProcessError(128, args[0] if args else "git")
+
+    monkeypatch.setattr(subprocess, "run", fake_run)
+    enriched = _enrich_ctx({}, Path("/tmp"))
+    assert enriched["repo"] is None
+
+
+def test_enrich_ctx_preserves_existing_keys() -> None:
+    from mahavishnu.jot.fold import _enrich_ctx
+    enriched = _enrich_ctx({"cwd": "/x", "session_id": "s"}, Path("/x"))
+    assert enriched["cwd"] == "/x"
+    assert enriched["session_id"] == "s"
