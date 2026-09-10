@@ -107,7 +107,10 @@ When this plan ships, the Mahavishnu orchestrator has two math-informed signals 
   - **§1 latency gate**: time-to-first-warning ≤ 30 samples on median (p95 ≤ 100 samples)
     for a planted 0.5-σ mean shift. Measured on the warn detector's
     fire; the integration layer emits `mahavishnu.observability.drift_warning`
-    at this point. Operator-visible but not page-worthy.
+    at this point and increments the `mahavishnu.observability.drift_warning_total`
+    Prometheus counter. Operator-visible but not page-worthy — see
+    `docs/runbooks/mahavishnu-drift-detection.md` for the operator
+    response when this signal fires.
   - **§7 FP gate**: confirmed alerts ≤ 2 per 10,080 quiet samples (1 week
     at 1-min cadence). Measured on the confirmed-alert stream — a
     warning that is not corroborated by the confirm detector within

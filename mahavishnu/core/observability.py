@@ -923,6 +923,9 @@ class ObservabilityManager:
         rate; if this rate spikes on stationary traffic, the operator should
         re-tune the warn threshold (lower = more sensitive, more warnings).
         """
+        import os
+        import socket
+
         from mahavishnu.observability.changepoint.two_stage import TwoStageResult
         from mahavishnu.observability.metrics import _validate_labels
 
@@ -959,6 +962,45 @@ class ObservabilityManager:
         except Exception as exc:  # noqa: BLE001 - boundary handler
             self._log_debug("drift warning counter increment failed: %s", exc)
 
+        # Compute baseline statistics from the recent sampler window so the
+        # operator can compare the warning's current value against the
+        # in-control mean + std without leaving the trace viewer. Mirrors
+        # the drift_detected emission so both signals carry the same context.
+        baseline_mean = 0.0
+        baseline_std = 0.0
+        try:
+            recent = self._get_metric_sampler().values(metric_name)[-60:]
+            if recent:
+                baseline_mean = sum(recent) / len(recent)
+                if len(recent) >= 2:
+                    variance = sum((v - baseline_mean) ** 2 for v in recent) / (len(recent) - 1)
+                    baseline_std = math.sqrt(variance) if variance > 0 else 0.0
+        except Exception:  # noqa: BLE001 - boundary handler
+            pass
+
+        # Resolve the runbook URL the same way as the drift_detected path
+        # so the warning span advertises the operator-handling doc.
+        def _resolve_runbook_url() -> str:
+            default = "docs/runbooks/mahavishnu-drift-detection.md"
+            try:
+                cfg = getattr(self.config, "observability", None)
+                override = getattr(cfg, "drift_runbook_url", None)
+            except Exception:  # noqa: BLE001
+                override = None
+            return override or default
+
+        trace_id_str = ""
+        if OTEL_AVAILABLE:
+            try:
+                from opentelemetry import trace as _otel_trace
+
+                ctx_span = _otel_trace.get_current_span()
+                ctx = ctx_span.get_span_context() if ctx_span else None
+                if ctx and ctx.trace_id:
+                    trace_id_str = _otel_trace.format_trace_id(ctx.trace_id)
+            except Exception:  # noqa: BLE001 - OTel not initialized
+                pass
+
         # OTel span + structured log (best-effort)
         try:
             span_attributes = {
@@ -971,6 +1013,12 @@ class ObservabilityManager:
                 "samples_since_reset": int(warn_result.samples_since_reset),
                 "direction": str(warn_result.direction),
                 "current_value": float(value),
+                "baseline_mean": float(baseline_mean),
+                "baseline_std": float(baseline_std),
+                "host": socket.gethostname(),
+                "instance_id": os.environ.get("MAHAVISHNU_INSTANCE_ID", "default"),
+                "trace_id": trace_id_str,
+                "runbook_url": _resolve_runbook_url(),
             }
             if OTEL_AVAILABLE and getattr(self, "tracer", None) is not None:
                 with self.tracer.start_as_current_span(  # type: ignore[union-attr]
@@ -982,13 +1030,17 @@ class ObservabilityManager:
             self._log_debug("drift warning span emission failed: %s", exc)
 
         self._log_warning(
-            "drift_warning metric=%s detector=%s value=%.3f score=%.3f threshold=%.3f direction=%s",
+            "drift_warning metric=%s detector=%s value=%.3f baseline_mean=%.3f baseline_std=%.3f score=%.3f threshold=%.3f direction=%s trace_id=%s host=%s",
             metric_name,
             detector_name,
             value,
+            baseline_mean,
+            baseline_std,
             warn_result.score,
             warn_result.threshold,
             warn_result.direction,
+            trace_id_str or "-",
+            socket.gethostname(),
         )
 
     def _on_drift_detected_two_stage(
@@ -1056,12 +1108,14 @@ class ObservabilityManager:
         minor: score < 2*threshold (typical 0.5-σ shift detection)
         moderate: 2*threshold <= score < 4*threshold
         critical: score >= 4*threshold (>1-σ shift territory)
+
+        Delegates to :func:`mahavishnu.observability.changepoint.severity.classify_severity`
+        so the changepoint package and the orchestrator share one source
+        of truth.
         """
-        if score >= 4 * threshold:
-            return "critical"
-        if score >= 2 * threshold:
-            return "moderate"
-        return "minor"
+        from mahavishnu.observability.changepoint.severity import classify_severity
+
+        return classify_severity(score, threshold)
 
     async def flush_metrics(self):
         """Flush any pending metrics to exporters."""

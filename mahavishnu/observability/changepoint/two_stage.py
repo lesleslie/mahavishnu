@@ -28,6 +28,7 @@ from dataclasses import dataclass
 from typing import Literal
 
 from mahavishnu.observability.changepoint.cusum import ChangePointDetector, ChangePointResult
+from mahavishnu.observability.changepoint.severity import classify_severity
 
 TwoStageState = Literal["idle", "warning_pending", "confirmed"]
 
@@ -63,24 +64,6 @@ class TwoStageResult:
     detector_confirm: str
 
 
-def _classify_severity(score: float, threshold: float) -> Literal["minor", "moderate", "critical"]:
-    """Re-export of ObservabilityManager._classify_drift_severity.
-
-    Duplicated here to avoid a circular import (the changepoint
-    module should not depend on the observability orchestrator).
-    The logic matches ``ObservabilityManager._classify_drift_severity``:
-    score < 2*threshold → "minor"; 2*threshold ≤ score < 4*threshold → "moderate";
-    score ≥ 4*threshold → "critical". A drift in either ``score_high`` or
-    ``score_low`` past the threshold produces the same severity tag
-    because the score field of ChangePointResult is the max of both.
-    """
-    if score >= 4 * threshold:
-        return "critical"
-    if score >= 2 * threshold:
-        return "moderate"
-    return "minor"
-
-
 class TwoStageDetector:
     """Two-stage warn/confirm change-point detector.
 
@@ -94,10 +77,13 @@ class TwoStageDetector:
             slack=0.25, threshold=14.0 or PageHinkleyDetector with
             threshold=10.0; median 0.5σ latency ~50 samples, ~1.64
             FP / 10,080 samples).
-        confirm_window_samples: max samples between a warn and confirm
-            fire. If the confirm detector doesn't fire within this window,
-            the state machine returns to ``idle`` and the warning is
-            discarded (treated as a transient).
+        confirm_window_samples: confirm must fire within N samples
+            AFTER the warn (inclusive of the Nth sample). On the Nth
+            sample, the confirm check runs before the window-expiry
+            check, so a confirm at exactly the boundary still emits
+            the alert. If the confirm detector doesn't fire within
+            this window, the state machine returns to ``idle`` and the
+            warning is discarded (treated as a transient).
 
     Req: REQ-005 (extension)
     """
@@ -211,7 +197,7 @@ class TwoStageDetector:
             self._last_warning_result = warn_result
             self.warn_detector.reset()
         if confirm_fired:
-            severity = _classify_severity(
+            severity = classify_severity(
                 confirm_result.score, confirm_result.threshold
             )
             self._state = "confirmed"
@@ -231,6 +217,10 @@ class TwoStageDetector:
             )
 
         if self._samples_since_warning >= self._confirm_window_samples:
+            # Ordering invariant: the confirm-fire check above runs BEFORE
+            # this window-expiry check on every observation, so a confirm
+            # at exactly the Nth sample (the boundary) still emits the
+            # alert rather than being silently discarded.
             # Window expired without confirm — discard the warning.
             self._state = "idle"
             self._samples_since_warning = 0

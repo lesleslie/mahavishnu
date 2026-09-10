@@ -148,8 +148,7 @@ export MAHAVISHNU_CHANGEPOINT__REFERENCE_DETECTOR=none
 
 ### Round-5 two-stage update
 
-The Phase 8 promotion now defaults to `changepoint.detector:
-"two_stage"` (warn/confirm) instead of `"cusum"` (single detector).
+The Phase 8 promotion recommends `two_stage` as the operator choice post-Phase-8; the code default for `changepoint.detector` remains `cusum` for backwards compat with the Phase 6/7 single-detector baseline. Operators opt in via `changepoint.detector: "two_stage"` in `settings/mahavishnu.yaml` or `MAHAVISHNU_CHANGEPOINT__DETECTOR=two_stage`.
 The two-stage architecture resolves the §1/§7 trade-off documented
 in `docs/audits/2026-09-10-changepoint-validation.md`. Operators
 who have customized `changepoint.detector: "cusum"` in

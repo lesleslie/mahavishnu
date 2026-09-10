@@ -15,8 +15,14 @@ fires, you see:
 - An OTel span `mahavishnu.observability.drift_detected` with
   attributes `metric_name`, `detector`, `score_high`,
   `score_low`, `score`, `threshold`, `samples_since_reset`,
-  `direction` (`up` / `down`), and `severity` (`minor` /
-  `moderate` / `critical`).
+  `direction` (`up` / `down`), `severity` (`minor` /
+  `moderate` / `critical`), plus (for two-stage confirmed alerts)
+  `samples_since_warning` and `confirm_detector`.
+  `samples_since_warning` is the operator's only direct measure
+  of how stale the warning was before confirmation;
+  `confirm_detector` indicates whether the underlying confirm
+  detector is CUSUM (`"cusumdetector"`) or Page-Hinkley
+  (`"pagehinkleydetector"`).
 - A structured log line at WARNING level on the same shape.
 - When the 3-sigma reference detector is enabled (default), an
   independent `three_sigma_anomaly` log line for the same
@@ -72,11 +78,11 @@ Before acting on a drift signal, calibrate expectations against
 these settings — they were the deliberate output of the round-2
 empirical sweep:
 
-### Two-stage warn/confirm semantics (RECOMMENDED for production)
+### Two-stage warn/confirm semantics (RECOMMENDED operator choice post-Phase-8)
 
 When `changepoint.detector: "two_stage"` is selected (the recommended
-post-Phase-8 default), the change-point pipeline emits two distinct
-OTel signals:
+operator choice post-Phase-8; opt-in via `changepoint.detector: "two_stage"`),
+the change-point pipeline emits two distinct OTel signals:
 
 - `mahavishnu.observability.drift_warning` — fired by the low-threshold
   warn detector (`warn_threshold=8.0`). Operator-visible soft signal.
