@@ -28,14 +28,17 @@ fires, you see:
    `mahavishnu.observability.metric_samples` (Dhara table) for
    the last 60 minutes of the affected metric. A real drift is
    sustained; a transient is a single spike that recovered.
-1. **What is the severity?**
-   - `minor` (score < 2 × threshold, default score < 16): typical
-     0.5-σ shift. Safe to investigate at low urgency.
-   - `moderate` (2 × threshold ≤ score < 4 × threshold, score 16-32):
-     a 0.7-σ shift territory. Investigate within an hour.
-   - `critical` (score ≥ 4 × threshold, score ≥ 32): a 1-σ or
-     larger shift. Page the on-call; the metric is materially
-     off-baseline.
+1. **What is the severity?** (R3-H4: thresholds are symbolic and
+   follow `changepoint.threshold`. With the round-2 default of
+   `threshold=14.0` the actual boundaries are `minor < 28`,
+   `moderate 28-56`, `critical >= 56`. The runbook uses
+   symbolic bands so they auto-track any future threshold change.)
+   - `minor` (score < 2 × threshold): typical 0.5-σ shift. Safe
+     to investigate at low urgency.
+   - `moderate` (2 × threshold ≤ score < 4 × threshold): a 0.7-σ
+     shift territory. Investigate within an hour.
+   - `critical` (score ≥ 4 × threshold): a 1-σ or larger shift.
+     Page the on-call; the metric is materially off-baseline.
 1. **Is the threshold current?** Check
    `changepoint.target_metric` and the recent
    `effective_selector` field on the routing-decision record.

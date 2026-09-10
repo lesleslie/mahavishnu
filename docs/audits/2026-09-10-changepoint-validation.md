@@ -3,7 +3,7 @@
 **Date:** 2026-09-10 (updated 2026-09-10 with round-2 empirical measurements)
 **Spec:** [`docs/plans/2026-09-10-bodai-math-initiatives-tier1.md` §6 Phase 7](../plans/2026-09-10-bodai-math-initiatives-tier1.md)
 **Integration tests:** `tests/integration/observability/test_changepoint_detection.py`, `test_changepoint_benchmark.py`
-**Status:** Pass — `pytest tests/integration/observability/ -v --no-cov` → 6/6
+**Status:** Pass — `pytest tests/integration/observability/ -v --no-cov` → 10/10
 
 ## Summary
 
@@ -32,11 +32,11 @@ samples each produced this calibration:
 
 | slack | threshold | median ARL₀ | mean fires / 10,080 | 0.5σ med latency | 1.0σ med latency |
 |-------|-----------|------------|--------------------|------------------|------------------|
-| 0.25  | 8.0       | 333        | 30.24              | 28               | 9                |
-| 0.25  | **14.0**  | **7,162**  | **1.64**           | 50               | 17               |
-| 0.25  | 16.0      | 8,815      | 1.14              | 57               | 21               |
-| 0.30  | 12.0      | 7,665      | 1.50              | 50               | 15               |
-| 0.35  | 10.0      | 4,723      | 1.92              | 46               | 14               |
+| 0.25 | 8.0 | 333 | 30.24 | 28 | 9 |
+| 0.25 | **14.0** | **7,162** | **1.64** | 50 | 17 |
+| 0.25 | 16.0 | 8,815 | 1.14 | 57 | 21 |
+| 0.30 | 12.0 | 7,665 | 1.50 | 50 | 15 |
+| 0.35 | 10.0 | 4,723 | 1.92 | 46 | 14 |
 
 **Production defaults are now `slack=0.25, threshold=14.0`** (the
 row in bold). The §7 gate `cusum_fp_per_10080_quiet_samples ≤ 2`
@@ -58,8 +58,7 @@ shift is ~50 samples (vs spec's aspirational 30). The §1 latency
 test was relaxed from `<= 30` to `<= 60` with this trade-off
 explicitly documented in the test docstring. Operators needing
 tighter 0.5σ detection should run a parallel
-`PageHinkleyDetector` (configured via `changepoint.detector:
-page_hinkley`).
+`PageHinkleyDetector` (configured via `changepoint.detector: page_hinkley`).
 
 ## Calibration note: ARL₀ vs spec claim
 
@@ -120,7 +119,8 @@ complementary (online sequential) to Akosha's pytrendy
 
 ## Integration test status
 
-`pytest tests/integration/observability/` — 6 tests pass.
+`pytest tests/integration/observability/` — 10 tests pass (4 in
+`test_changepoint_detection.py` + 6 in `test_changepoint_benchmark.py`).
 
 ## What ships to Phase 8
 
@@ -147,18 +147,18 @@ pass (commit `0e4d2dce`). Key changes:
 
 1. **CR-1 (CRITICAL, math+arch+audit):** `route_task` was
    calling `execute_on_pool` twice. Now called exactly once.
-2. **CR-2 (CRITICAL, math+arch+audit):** `_record_arrival` was
+1. **CR-2 (CRITICAL, math+arch+audit):** `_record_arrival` was
    called twice per routing. Now called once.
-3. **S-1 (HIGH, observability):** Detector resets after fire so
+1. **S-1 (HIGH, observability):** Detector resets after fire so
    subsequent samples don't continuously re-fire.
-4. **S-4 (CRITICAL, arch):** `_apply_queueing_penalty` honors
+1. **S-4 (CRITICAL, arch):** `_apply_queueing_penalty` honors
    `caller_pool_allowlist`.
-5. **S-5 (CRITICAL, arch):** Queueing re-rank runs before
+1. **S-5 (CRITICAL, arch):** Queueing re-rank runs before
    `_apply_gpu_category_override` per spec.
-6. **S-6 (CRITICAL, math):** PageHinkleyDetector is now genuinely
+1. **S-6 (CRITICAL, math):** PageHinkleyDetector is now genuinely
    two-sided (high + low cumulative deviations).
-7. **CAL-1 (CRITICAL, math+arch+obs+audit):** Detector defaults
+1. **CAL-1 (CRITICAL, math+arch+obs+audit):** Detector defaults
    re-tuned from (slack=0.25, h=8.0) → (slack=0.25, h=14.0) so the
    §7 gate passes.
-8. **CAL-2 (CRITICAL, arch):** Phase 6 pipeline wired into
+1. **CAL-2 (CRITICAL, arch):** Phase 6 pipeline wired into
    app startup via `ObservabilityManager.start_change_point_tick_loop`.

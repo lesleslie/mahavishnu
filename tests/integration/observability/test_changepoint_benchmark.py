@@ -34,6 +34,15 @@ def _production_detector_factory() -> CUSUMDetector:
     )
 
 
+# R3-H1 (round-3 review): the stale "threshold=18.0 / ARL_0 ~10,358 /
+# fires ~0.97" numbers in the docstring below describe a tuning that
+# was abandoned during the round-2 calibration sweep. The current
+# production defaults are threshold=14.0 with empirical ARL_0 ~7,162
+# and ~1.64 fires per 10,080 samples (see the validation audit and
+# the test_cusum_fp_per_10080_quiet_samples test docstring for the
+# most current numbers).
+
+
 def _quantile(sorted_values: list[float], q: float) -> float:
     if not sorted_values:
         return float("nan")
