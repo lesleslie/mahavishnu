@@ -3,7 +3,7 @@
 **Date:** 2026-09-10 (updated 2026-09-10 with round-2 empirical measurements)
 **Spec:** [`docs/plans/2026-09-10-bodai-math-initiatives-tier1.md` §6 Phase 7](../plans/2026-09-10-bodai-math-initiatives-tier1.md)
 **Integration tests:** `tests/integration/observability/test_changepoint_detection.py`, `test_changepoint_benchmark.py`
-**Status:** Pass (two-stage architecture) — `pytest tests/integration/observability/ tests/unit/observability/ -v --no-cov` → 113 tests collected across 7 .py files (4 detection integration + 6 benchmark integration + 4 two_stage benchmark integration + 39 CUSUM unit + 47 sampler unit + 9 two_stage unit + 4 worker_metrics unit). Two-stage gates (§1 warning latency ≤ 30 samples, §7 confirmed alert FP ≤ 2 per 10,080) both pass at the production defaults `warn_threshold=8.0`, `confirm_threshold=14.0`, `confirm_window_samples=100`.
+**Status:** Pass (two-stage architecture) — `pytest tests/integration/observability/ tests/unit/observability/ -v --no-cov` → 115 tests collected across 8 .py files (4 detection integration + 6 benchmark integration + 4 two_stage benchmark integration + 2 two_stage dispatch integration + 39 CUSUM unit + 47 sampler unit + 9 two_stage unit + 4 worker_metrics unit). Two-stage gates (§1 warning latency ≤ 30 samples, §7 confirmed alert FP ≤ 2 per 10,080) both pass at the production defaults `warn_threshold=8.0`, `confirm_threshold=14.0`, `confirm_window_samples=100`.
 
 ## Summary
 
