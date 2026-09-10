@@ -54,6 +54,7 @@ from ..bootstrap import (
     _register_worker_contract_tools,
     _register_worker_tools,
     _register_workflow_tools,
+    _register_skills_signer_tools,
 )
 
 if TYPE_CHECKING:
@@ -68,6 +69,10 @@ if TYPE_CHECKING:
 
 MINIMAL_REGISTRATIONS: list[str] = [
     "_register_health_tools",
+    # Phase 1.5 — skills_signer is infrastructure-critical (signing
+    # verification is on every Phase 2/6 install). Per plan §10.3.1
+    # it MUST be visible from MINIMAL upward.
+    "_register_skills_signer_tools",
 ]
 
 STANDARD_REGISTRATIONS: list[str] = MINIMAL_REGISTRATIONS + [
@@ -142,6 +147,9 @@ REGISTRATION_MAP: dict[str, Callable] = {
     "_register_ecosystem_tools": lambda s: _register_ecosystem_tools(s._mhv_server),  # type: ignore[attr-defined]
     "_register_workflow_tools": lambda s: _register_workflow_tools(s._mhv_server),  # type: ignore[attr-defined]
     "_register_webhook_tools": lambda s: _register_webhook_tools(s._mhv_server),  # type: ignore[attr-defined]
+    # Phase 1.5 — skills_signer (per plan §10.3.1). The actual signer
+    # init runs in start() because mahavishnu has no async lifespan.
+    "_register_skills_signer_tools": lambda s: _register_skills_signer_tools(s._mhv_server),  # type: ignore[attr-defined]
     # STANDARD-tier groups.
     "_register_terminal_tools": lambda s: _register_terminal_tools(s._mhv_server),  # type: ignore[attr-defined]
     "_register_pool_tools": lambda s: _register_pool_tools(s._mhv_server),  # type: ignore[attr-defined]
@@ -184,6 +192,8 @@ MAHAVISHNU_MANDATORY_GROUPS: set[str] = {
     "_register_ecosystem_tools",
     "_register_workflow_tools",
     "_register_webhook_tools",
+    # Phase 1.5 — see §10.3.1.
+    "_register_skills_signer_tools",
 }
 
 

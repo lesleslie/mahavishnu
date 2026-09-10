@@ -25,6 +25,22 @@ async def start_server(server: Any, host: str = "127.0.0.1", port: int = 3000) -
 
     await _register_profile_tools_helper(server, methods_set)
     server._update_registered_tool_metrics()
+
+    # Phase 1.5 — initialize the skills_signer feed state BEFORE
+    # ``run_http_async`` so the /health route (already registered in
+    # register_health_endpoint during __init__) can see the populated
+    # singleton. Per plan §10.3.2 option c: mahavishnu has no async
+    # lifespan so this init runs after the tool profile is applied.
+    # The launchd wrapper tolerates up to 120s of startup.
+    from .signer_feed import init_signer_feed_state
+
+    try:
+        init_signer_feed_state()
+    except Exception as exc:  # noqa: BLE001 - MCP boundary must preserve all operation failures
+        logger.error("Failed to initialize skills_signer feed state: %s", exc)
+        # Don't crash the server — the /health route will report
+        # skills_signer as degraded with the error message.
+
     # Override FastMCP's hardcoded 2s graceful-shutdown timeout so
     # lifespan teardown can run cleanup (hooks, health snapshots, etc.)
     # without being cancelled mid-shutdown.
@@ -37,6 +53,13 @@ async def start_server(server: Any, host: str = "127.0.0.1", port: int = 3000) -
 
 async def stop_server(server: Any) -> None:
     """Stop the MCP server and cleanup resources."""
+    # Phase 1.5 — clear the skills_signer feed state singleton so
+    # the next start() gets a fresh module-level state (and so a
+    # test calling stop_server → start_server sees a clean slate).
+    from .signer_feed import reset_signer_feed_state
+
+    reset_signer_feed_state()
+
     if hasattr(server, "mcp_client") and hasattr(server.mcp_client, "_client"):
         try:
             await server.mcp_client._client.stop()

@@ -189,12 +189,59 @@ def init_terminal_manager(server: FastMCPServer) -> TerminalManager | None:
         return None
 
 
+def _register_skills_signer_tools(server: FastMCPServer) -> None:
+    """Phase 1.5 — register the skills_signer tools group.
+
+    Phase 1.5 itself only wires the feed state (the actual signer
+    init runs in ``start()`` per §10.3.2 option c — mahavishnu has no
+    async lifespan). Phase 1 will add ``list_skills`` / ``get_skill``
+    MCP tools here. Per plan §10.3.6 the new group goes through
+    REGISTRATION_MAP rather than the inline _register_tools() block.
+
+    Args:
+        server: the FastMCPServer wrapper. The /health route is
+            already registered at __init__ time (early-probe design);
+            the singleton signer feed state lives in
+            ``mahavishnu.mcp.signer_feed`` and is constructed by
+            ``start()`` after the FastMCP app is built.
+    """
+    # No-op at registration time. The feed state singleton is
+    # initialized by init_signer_feed_state() inside start() — see
+    # mahavishnu/mcp/lifecycle.py. During the brief warm-up window
+    # before that runs, /health returns 503 with
+    # checks.skills_signer.error = "awaiting start()".
+    logger.debug("skills_signer tools group registered (init deferred to start())")
+
+
 def register_health_endpoint(server: FastMCPServer, version: str) -> None:
     """Register HTTP health endpoints on the FastMCP server."""
 
     @server.server.custom_route("/health", methods=["GET"])
     async def health_check(request=None) -> JSONResponse:
-        return JSONResponse({"status": "ok", "service": "mahavishnu", "version": version})
+        # Phase 1.5 — extend the static body with the skills_signer feed
+        # (per plan §10.3.3). During the brief warm-up window before
+        # start() completes init_signer_feed_state(), report degraded
+        # so launchd's healthcheck wrapper sees the failure surface.
+        from mahavishnu.mcp.signer_feed import get_signer_feed_state
+
+        checks: dict[str, dict[str, object]] = {}
+        state = get_signer_feed_state()
+        if state is None:
+            checks["skills_signer"] = {
+                "ok": False,
+                "error": "awaiting start()",
+            }
+        else:
+            checks["skills_signer"] = state.as_dict()
+
+        all_ok = all(bool(c.get("ok")) for c in checks.values())
+        body = {
+            "status": "ok" if all_ok else "degraded",
+            "service": "mahavishnu",
+            "version": version,
+            "checks": checks,
+        }
+        return JSONResponse(body, status_code=200 if all_ok else 503)
 
     @server.server.custom_route("/healthz", methods=["GET"])
     async def healthz_check(request=None) -> JSONResponse:
