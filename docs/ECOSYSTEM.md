@@ -4,13 +4,10 @@
 
 The `ecosystem.yaml` file is the **single source of truth** for your entire development ecosystem. It tracks:
 
-- **8 git repositories** with roles, tags, and audit timestamps
-- **0 MCP servers** in the current local catalog
-- **0 Claude agents** in the current local catalog
-- **0 workflows** in the current local catalog
-- **0 skills** in the current local catalog
-- **0 tools** in the current local catalog
-- **15 role definitions** for repository classification
+- **35 git repositories** with roles, tags, and audit timestamps
+- **16 role definitions** for repository classification
+
+> **Note:** Earlier drafts of `ecosystem.yaml` separated `mcp_servers`, `agents`, `workflows`, `skills`, and `tools` into dedicated sections. The current schema has collapsed those into the unified `repos:` section — every component is a repo entry with a `role:` field. See [Role Taxonomy](#role-taxonomy) for what each role covers.
 
 Legacy consumers may still read `settings/repos.yaml`, but new configuration and
 documentation should treat `settings/ecosystem.yaml` as canonical.
@@ -56,7 +53,7 @@ mahavishnu/
 ### Relationship to repos.yaml
 
 The `repos.yaml` file is a legacy compatibility path. The `repos` section in
-`ecosystem.yaml` now contains the 8 repositories currently defined in this
+`ecosystem.yaml` now contains the 35 repositories currently defined in this
 checkout with enhanced audit tracking:
 
 For day-to-day Bodai work:
@@ -217,6 +214,25 @@ Categories for MCP servers and repositories:
 | `worker` | Executes tasks and workflows under orchestrator direction | execute, report, retry, timeout, capture |
 | `seer` | Semantic search and knowledge aggregation | aggregate, search, detect, correlate, graph |
 | `curator` | Durable operational state and recovery coordination | capture, restore, track, persist, recover |
+
+## Canonical Catalogs
+
+Authoritative source-of-truth files for ecosystem sub-catalogs. Counts are
+current as of the last regeneration; for live counts run `mahavishnu pool health`
+or `mahavishnu ecosystem list`.
+
+| Catalog | Authoritative source | Count |
+|---------|---------------------|-------|
+| Bodai repositories | [`BODAI_REPO_REGISTRY.md`](../BODAI_REPO_REGISTRY.md) | 35 active |
+| MCP tools (registered) | [`docs/MCP_TOOLS_REFERENCE.md`](MCP_TOOLS_REFERENCE.md) and [`docs/MCP_TOOLS_SPECIFICATION.md`](MCP_TOOLS_SPECIFICATION.md) | 197 (170 decorated + 27 inline core) |
+| MCP tool profiles | [`mahavishnu/mcp/tools/profiles.py`](../mahavishnu/mcp/tools/profiles.py) | 19 profile-gated groups |
+| Claude Code agents | `.claude/agents/*.md` (active; `.archive/` excluded) | 48 active |
+| Claude Code skills | `.claude/skills/<name>/SKILL.md` | 19 active |
+| Claude Code workflows | `.claude/commands/workflows/*.md` | 3 active (catalog + 2 procedures) |
+| Claude Code slash commands | `.claude/commands/*.md` | 7 active |
+
+When counts change, update this table alongside the canonical source — do not
+maintain separate per-document counts that can drift.
 
 ## Repository Management
 

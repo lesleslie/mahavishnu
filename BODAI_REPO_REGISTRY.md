@@ -144,7 +144,7 @@ Allowed exception: `*_HOST`, `*_URL`, `*_PORT` (non-secret config).
 - Meta: 2 (discovered)
 - Deprecated: 1 (excluded from scope)
 
-**Total active Bodai repos: 31** (14 from brief + 17 newly-discovered)
+**Total active Bodai repos: 35** (14 from brief + 21 newly-discovered)
 
 ## Excluded from scope (verified non-Bodai or non-Python)
 

@@ -16,7 +16,7 @@ Mahavishnu is the control plane for the **Bodai Ecosystem**:
 | [Crackerjack](https://github.com/lesleslie/crackerjack) | Inspector (Quality) | 8676 |
 | **Bodai Crow** | Browser/automation MCP bridge | 8693 |
 | **Goose serve** | Block's `goose` HTTP backend (D3 terminal adapter) | 8694 |
-| **Prefect API** | Workflow orchestration backend (`uvicorn prefect.server.api.server`) | 8675 |
+| **Prefect API** | Workflow orchestration backend (`uvicorn prefect.server.api.server`) | 4200 |
 | **Mahavishnu WebSocket** | Real-time workflow events | 8690 |
 | **Mahavishnu Pool WebSocket** | Pool status events | 8691 |
 | **Akosha Pattern WS** | Pattern detection | 8692 |
@@ -41,7 +41,7 @@ Mahavishnu is repo-centric orchestration infrastructure optimized for the Bodai 
 - **Multi-pool orchestration**: Horizontal scaling across local, delegated, cloud workers
 - **WebSocket infrastructure**: Real-time workflow monitoring
 - **Content ingestion**: Webpages, blogs, books, OpenTelemetry traces
-- **MCP tools**: ~180 decorated tools across 19 profile-gated groups (plus inline core tools registered unconditionally)
+- **MCP tools**: 170 decorated tools across 19 profile-gated groups + 27 inline core tools registered unconditionally (197 total)
 
 **Product posture**: Internal-first. MCP-first. Control-plane scope.
 
@@ -349,15 +349,15 @@ All MCP tools are registered in `mahavishnu/mcp/tools/` using FastMCP decorators
 
 Tools are gated by the `MAHAVISHNU_TOOL_PROFILE` environment variable:
 
-- `full` (default): All 19 profile-gated groups (~180 decorated tools)
-- `standard`: Core 10 groups (terminal, pool, worker, messaging, git, session-buddy, coordination, ecosystem, health, capability)
+- `full` (default): All 19 profile-gated groups (170 decorated tools) + 27 inline core tools = 197 total
+- `standard`: Core 11 groups (terminal, pool, worker, messaging, git, session-buddy, coordination, ecosystem, health, capability, ...)
 - `minimal`: Health probes only
 
 Profile configuration is in `mahavishnu/mcp/tools/profiles.py`. A `discover_tools(query)` meta-tool is always registered so Claude can find unloaded tools.
 
 ## Tool Preferences
 
-This project ships a Mahavishnu control plane with ~180 MCP tools across 19 profile-gated groups. For non-trivial work, prefer Mahavishnu workers over direct local invocations.
+This project ships a Mahavishnu control plane with 197 MCP tools (170 decorated + 27 inline core) across 19 profile-gated groups. For non-trivial work, prefer Mahavishnu workers over direct local invocations.
 
 ### When to use Mahavishnu workers
 
@@ -452,7 +452,7 @@ See `.claude/decisions/mahavishnu-tool-preference-policy.md` for the full operat
 
 ## Security
 
-See `SECURITY_CHECKLIST.md` for comprehensive security guidelines. Key points:
+See `docs/security/SECURITY_CHECKLIST.md` for comprehensive security guidelines. Key points:
 
 - All inputs must use Pydantic models for validation
 - Secrets loaded from environment variables only

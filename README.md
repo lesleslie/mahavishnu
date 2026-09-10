@@ -204,7 +204,7 @@ Mahavishnu follows a modular, async-first architecture with these core component
 | |  Pools   |         | Workers  |                |Coord    |   |
 | | - Local  |         | - Claude |                |- Issues |   |
 | | - Deleg  |         | - MiniMax|                |- Todos  |   |
-| | - K8s    |         | - Session-Buddy          |- Deps   |   |
+| | - Pi     |         | - Session-Buddy          |- Deps   |   |
 | | - RunPod |         | - OpenClaw               |-Messages|   |
 | +----------+         +----------+                +---------+   |
 |                                                                |
@@ -234,7 +234,7 @@ This table clarifies current maturity so multi-engine expectations match impleme
 |-----------|--------|-------|
 | Multi-repo orchestration | Implemented | Repository manifest (`settings/ecosystem.yaml`), cross-repo coordination, dependency/status tooling |
 | Async orchestration runtime | Implemented | Async-first core, async messaging, concurrent worker and pool execution |
-| Multi-pool execution (local/delegated/K8s/RunPod) | Implemented | Routing strategies and pool health/monitoring are implemented; RunPod GPU pool added 2026-05-01 |
+| Multi-pool execution (local/delegated/Pi/RunPod) | Implemented | Routing strategies and pool health/monitoring are implemented; RunPod GPU pool added 2026-05-01 |
 | LlamaIndex engine adapter | Implemented | RAG pipeline integration is implemented |
 | Prefect engine adapter | Implemented | Full Prefect 3.x SDK integration with flows, deployments, schedules, and task orchestration (1,974 LOC) |
 | Agno engine adapter | Implemented | Multi-agent teams with MCP tools, MiniMax/Claude/Ollama/OpenAI support, and agent lifecycle management (1,627 LOC) |
@@ -355,7 +355,7 @@ mahavishnu show-role orchestrator
 mahavishnu mcp start
 ```
 
-The MCP server starts on `http://127.0.0.1:8680` by default and exposes ~180 FastMCP-decorated tools organized into 19 profile-gated groups (plus inline core tools registered unconditionally). Tool exposure is gated by the `MAHAVISHNU_TOOL_PROFILE` environment variable: `full` (default, all 19 groups), `standard` (core 10 groups), `minimal` (health probes only).
+The MCP server starts on `http://127.0.0.1:8680` by default and exposes 170 FastMCP-decorated tools organized into 19 profile-gated groups (plus 27 inline core tools registered unconditionally; 197 total). Tool exposure is gated by the `MAHAVISHNU_TOOL_PROFILE` environment variable: `full` (default, all 19 groups), `standard` (core 11 groups), `minimal` (health probes only).
 
 ### 5. Use Admin Shell
 
@@ -527,7 +527,7 @@ See **[Goal-Driven Teams Documentation](docs/GOAL_DRIVEN_TEAMS.md)** for complet
 
 ## MCP Tools
 
-Mahavishnu's MCP server exposes **~180 tools** across 19 profile-gated groups plus inline core tools (see `MAHAVISHNU_TOOL_PROFILE` for gating). Core tool groups:
+Mahavishnu's MCP server exposes **197 tools** (170 profile-gated + 27 inline core) across 19 profile-gated groups (see `MAHAVISHNU_TOOL_PROFILE` for gating). Core tool groups:
 
 ### Pool Management (10 tools)
 
@@ -616,10 +616,6 @@ export MAHAVISHNU_AUTH__SECRET="your-32-character-secret"
 # Primary LLM provider (MiniMax — OpenAI-compatible)
 export MINIMAX_API_KEY="your-minimax-api-key"
 export MINIMAX_BASE_URL="https://api.minimax.io/v1"  # optional override
-
-# Optional compatibility for older z.ai call sites
-export ZAI_API_KEY="your-zai-api-key"
-export ZAI_BASE_URL="https://api.z.ai/api/coding/paas/v4"  # optional compatibility override
 
 # RunPod GPU pool (optional)
 export RUNPOD_API_KEY="your-runpod-api-key"
@@ -769,8 +765,8 @@ Important scope note: Mahavishnu is validated for multi-repo orchestration, asyn
 
 - Security hardening (JWT auth, mcp-common canonical JWT package across Bodai)
 - Async base adapter architecture
-- FastMCP-based MCP server (~180 tools across 19 profile-gated groups plus inline core tools)
-- Multi-pool orchestration (local, delegated, K8s, RunPod GPU)
+- FastMCP-based MCP server (197 tools: 170 across 19 profile-gated groups + 27 inline core)
+- Multi-pool orchestration (local, delegated, Pi, RunPod GPU)
 - Worker orchestration (Claude, MiniMax, OpenClaw terminal/gateway)
 - Cross-repository coordination (issues, todos, dependencies, messaging)
 - OpenTelemetry integration (DuckDB + semantic search)
