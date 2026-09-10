@@ -1266,6 +1266,25 @@ class ObservabilityConfig(BaseModel):
         default="http://localhost:4317",
         description="OTLP endpoint for metrics/traces",
     )
+    # R3-L2 (round-4 observability review): the field was claimed in
+    # the runbook and code but never declared on ObservabilityConfig.
+    # extra: forbid caused the env-var override to raise ValidationError
+    # at startup, leaving operators with the broken repo-relative
+    # default. Declaring the field with default=None makes the override
+    # actually work.
+    drift_runbook_url: str | None = Field(
+        default=None,
+        description=(
+            "Override the absolute URL emitted on the "
+            "mahavishnu.observability.drift_detected OTel span as "
+            "the runbook_url attribute. Default is the repo-relative "
+            "path 'docs/runbooks/mahavishnu-drift-detection.md' (works "
+            "for offline / local-only deployments). Set to an absolute "
+            "https:// URL in production so on-call operators can follow "
+            "the link from a trace viewer at 3 a.m. Env var override: "
+            "MAHAVISHNU_OBSERVABILITY__DRIFT_RUNBOOK_URL."
+        ),
+    )
 
     model_config = {"extra": "forbid"}
 
@@ -2733,6 +2752,40 @@ class MahavishnuSettings(BaseSettings):
 
     # Phase 3b: legacy tool deprecation gate
     legacy_tools: bool = False
+
+    # Phase 4 (settle-semantic-merge plan): mergiraf opt-in default.
+    # ``merge_driver_default`` is the global strategy pick — ``"line"`` (Phase 0/1/2/3
+    # default; line-level ``git merge-file``) or ``"mergiraf"`` (entity-aware
+    # ``mergiraf merge``; requires the binary on ``$PATH``). The default stays
+    # ``"line"`` for the next release cycle; the follow-up plan
+    # ``2026-09-10-settle-semantic-merge-default-flip.md`` will flip this once
+    # telemetry gate passes. See §9 Decision Rule #6 of the plan.
+    #
+    # Configurable via env var ``MAHAVISHNU_MERGE_DRIVER_DEFAULT``.
+    merge_driver_default: str = Field(
+        default="line",
+        description=(
+            "Global merge driver strategy. 'line' (line-level git merge-file, "
+            "Phase 0 default) or 'mergiraf' (entity-aware mergiraf merge, "
+            "Phase 2 driver). Stays 'line' for one release cycle; the follow-up "
+            "plan flips to 'mergiraf' after 30-day telemetry gate."
+        ),
+    )
+
+    # Phase 4 (settle-semantic-merge plan REQ-005): when True, the app
+    # startup guard in ``MahavishnuApp._init_observability`` hard-fails if
+    # ``mergiraf`` is missing. Loud-failure per R3 #2 Critical — operator
+    # sees the failure at process start, NOT deferred to first apply.
+    #
+    # Configurable via env var ``MAHAVISHNU_MERGE_DRIVER_REQUIRED``.
+    merge_driver_required: bool = Field(
+        default=False,
+        description=(
+            "Hard-fail at startup if mergiraf is required (per merge_driver_default "
+            "or per-binding strategy) but the binary is missing. Loud-failure "
+            "semantics: the app refuses to boot rather than crash on first apply."
+        ),
+    )
 
     @field_validator("repos_path")
     @classmethod

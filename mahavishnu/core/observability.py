@@ -173,8 +173,8 @@ class ObservabilityManager:
                 description="CUSUM/Page-Hinkley drift detection events (per metric, detector, severity)",
             )
             self.detector_age_gauge = self.meter.create_up_down_counter(
-                "mahavishnu.observability.detector_age_samples",
-                description="Sample count since last detector reset (per metric, detector)",
+                "mahavishnu.observability.detector_age_samples_total",
+                description="Cumulative sample-age-at-fire across all fires, per metric and detector (R3-H2: renamed from detector_age_samples for cumulative semantic clarity)",
             )
 
         except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
@@ -203,7 +203,7 @@ class ObservabilityManager:
             "mahavishnu.observability.drift_detected_total"
         )
         self.detector_age_gauge = self.meter.create_up_down_counter(
-            "mahavishnu.observability.detector_age_samples"
+            "mahavishnu.observability.detector_age_samples_total"
         )
 
     def create_workflow_counter(self):
@@ -420,6 +420,21 @@ class ObservabilityManager:
         sampler.observe(metric_name, value)
 
         detector = self._get_or_create_changepoint_detector()
+        if detector is None:
+            # R3-M2: target_mean_auto=True with insufficient warmup.
+            # Return a synthetic "no-op" result so the call path
+            # works without firing.
+            from mahavishnu.observability.changepoint.cusum import ChangePointResult
+
+            return ChangePointResult(
+                detected=False,
+                score_high=0.0,
+                score_low=0.0,
+                score=0.0,
+                threshold=0.0,
+                samples_since_reset=0,
+                direction="unknown",
+            )
         result = detector.update(value)
 
         if result.detected:
@@ -537,14 +552,43 @@ class ObservabilityManager:
             return detector
         try:
             changepoint_cfg = getattr(self.config, "changepoint", None)
-            slack = float(getattr(changepoint_cfg, "slack", 0.25))
-            threshold = float(getattr(changepoint_cfg, "threshold", 8.0))
-            algo = str(getattr(changepoint_cfg, "detector", "cusum"))
-            explicit_target = float(getattr(changepoint_cfg, "target_mean", 0.0))
-            use_auto = bool(getattr(changepoint_cfg, "target_mean_auto", False))
-            auto_window = int(getattr(changepoint_cfg, "target_mean_auto_window", 60))
+            # R3-M1: import the production defaults from the Pydantic
+            # model rather than duplicating literals. A trimmed config
+            # object (e.g. a test stub with only a few attributes) used
+            # to silently fall back to the LEGACY threshold=8.0 — the
+            # 30x-too-sensitive value the round-2 sweep explicitly
+            # replaced. ChangepointConfig() defaults are the same as
+            # the documented production values.
+            from mahavishnu.core.config import ChangepointConfig
+
+            defaults = ChangepointConfig()
+            slack = float(getattr(changepoint_cfg, "slack", defaults.slack))
+            threshold = float(
+                getattr(changepoint_cfg, "threshold", defaults.threshold)
+            )
+            algo = str(getattr(changepoint_cfg, "detector", defaults.detector))
+            explicit_target = float(
+                getattr(changepoint_cfg, "target_mean", defaults.target_mean)
+            )
+            use_auto = bool(
+                getattr(changepoint_cfg, "target_mean_auto", defaults.target_mean_auto)
+            )
+            auto_window = int(
+                getattr(
+                    changepoint_cfg,
+                    "target_mean_auto_window",
+                    defaults.target_mean_auto_window,
+                )
+            )
         except Exception:  # noqa: BLE001
-            slack, threshold, algo = 0.25, 8.0, "cusum"
+            from mahavishnu.core.config import ChangepointConfig
+
+            defaults = ChangepointConfig()
+            slack, threshold, algo = (
+                defaults.slack,
+                defaults.threshold,
+                defaults.detector,
+            )
             explicit_target, use_auto, auto_window = 0.0, False, 60
 
         # CUSUM's ``target_mean`` is the in-control process mean, not
@@ -563,8 +607,26 @@ class ObservabilityManager:
                 recent = sampler.values(metric_name)[-auto_window:]
                 if len(recent) >= max(10, auto_window // 2):
                     target_mean = sum(recent) / len(recent)
+                else:
+                    # R3-M2: when target_mean_auto=True and the
+                    # sampler hasn't accumulated enough samples, defer
+                    # detector construction entirely. Without this
+                    # guard the detector was created on the first
+                    # sample with target_mean=0.0 (the auto-bootstrap
+                    # guard at len(recent) >= max(10, auto_window//2)
+                    # fails with only 1 sample), then cached forever.
+                    # Operators who set target_mean_auto=True got a
+                    # permanently-broken detector with no warning.
+                    self._log_warning(
+                        "target_mean_auto=True but sampler has only %d "
+                        "samples (need %d). Deferring detector creation; "
+                        "the §7 gate is silent until the warmup window fills.",
+                        len(recent),
+                        max(10, auto_window // 2),
+                    )
+                    return None
             except Exception:  # noqa: BLE001 - sampler may not be initialized
-                pass
+                return None
 
         if algo == "page_hinkley":
             detector = PageHinkleyDetector(
@@ -589,11 +651,12 @@ class ObservabilityManager:
     def _on_drift_detected(self, metric_name: str, value: float, result) -> None:
         """OTel span + Prometheus counter emission for a drift detection.
 
-        C6: increment mahavishnu.observability.drift_detected_total with
-        labels {metric_name, detector, severity}. Update the
-        detector_age_samples gauge to reflect the sample count since
-        last reset (resets on next non-fire evaluation; this gauge
-        records the age at the moment of fire).
+        C6: increment ``mahavishnu.observability.drift_detected_total``
+        with labels ``{metric_name, detector, severity}``. Add
+        ``result.samples_since_reset`` to
+        ``mahavishnu.observability.detector_age_samples_total``
+        (cumulative across fires — the metric name was renamed in
+        R3-H2 to make the cumulative semantic explicit).
 
         C4: OTel span carries the spec §6 Phase 6 attributes:
         metric_name, detector, score_high, score_low, score,
@@ -607,7 +670,36 @@ class ObservabilityManager:
         import os
         import socket
 
-        detector_name = type(getattr(self, "_changepoint_detector", None)).__name__
+        def _resolve_runbook_url() -> str:
+            """Resolve the runbook URL for OTel span emission.
+
+            R3-L2 (round-3 review): a repo-relative path is not a
+            URL — operators following it from a trace viewer at 3 a.m.
+            hit a 404 because the path is not absolute. Operators can
+            override via ``settings/mahavishnu.yaml`` under
+            ``observability.drift_runbook_url`` or via the
+            ``MAHAVISHNU_OBSERVABILITY__DRIFT_RUNBOOK_URL`` env var.
+            Defaults to the repo-relative path (kept for offline /
+            local-only deployments).
+            """
+            default = "docs/runbooks/mahavishnu-drift-detection.md"
+            try:
+                cfg = getattr(self.config, "observability", None)
+                override = getattr(cfg, "drift_runbook_url", None)
+            except Exception:  # noqa: BLE001
+                override = None
+            return override or default
+
+        # R3-M5: lowercase detector name so dashboards written against
+        # the documented "cusum" / "page_hinkley" tokens work.
+        detector_class = type(getattr(self, "_changepoint_detector", None)).__name__
+        detector_name = (
+            "cusum"
+            if detector_class == "CUSUMDetector"
+            else "page_hinkley"
+            if detector_class == "PageHinkleyDetector"
+            else detector_class.lower()
+        )
         severity = self._classify_drift_severity(result.score, result.threshold)
 
         # Compute baseline statistics from the recent sampler window
@@ -655,10 +747,15 @@ class ObservabilityManager:
             "host": socket.gethostname(),
             "instance_id": os.environ.get("MAHAVISHNU_INSTANCE_ID", "default"),
             "trace_id": trace_id_str,
-            "runbook_url": "docs/runbooks/mahavishnu-drift-detection.md",
+            "runbook_url": _resolve_runbook_url(),
         }
 
         # C6: Prometheus counter — the §7 stage-1 gate's source-of-truth.
+        # R3-H2 (rename): the gauge is now detector_age_samples_total
+        # (cumulative semantic). The original R3-H2 commit left a
+        # duplicate except handler below that the round-4 observability
+        # review caught as a CRITICAL UnboundLocalError hazard; cleaned
+        # up here.
         try:
             counter = getattr(self, "drift_detected_counter", None)
             if counter is not None:
@@ -863,9 +960,7 @@ class ObservabilityManager:
         tick task on shutdown. Callers should retain the task and
         cancel it here from ``MahavishnuApp.shutdown()``.
         """
-        target = task if task is not None else getattr(
-            self, "_change_point_tick_task", None
-        )
+        target = task if task is not None else getattr(self, "_change_point_tick_task", None)
         if target is None:
             return
         try:

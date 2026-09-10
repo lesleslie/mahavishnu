@@ -804,3 +804,72 @@ class TestDetectorResetAfterFire:
         r3 = d.update(1.0)
         assert r3.detected is False
         assert r3.samples_since_reset == 1
+
+
+@pytest.mark.unit
+class TestTargetMeanAutoColdPath:
+    """R3-M2 + round-4 audit finding: regression test for the cold-path.
+
+    When ``target_mean_auto=True`` and the sampler has fewer than
+    ``auto_window/2`` samples, ``_get_or_create_changepoint_detector``
+    returns ``None`` and ``_evaluate_change_point`` returns a synthetic
+    no-op result. This pins R3-M2 so a future refactor cannot silently
+    create the detector with ``target_mean=0.0`` on the first sample.
+    """
+
+    def _build_manager(self):  # type: ignore[no-untyped-def]
+        from mahavishnu.core.observability import ObservabilityManager
+        from mahavishnu.core.config import ChangepointConfig
+
+        mgr = ObservabilityManager.__new__(ObservabilityManager)
+
+        class _Stub:
+            pass
+
+        mgr.config = _Stub()
+        mgr.config.changepoint = ChangepointConfig(
+            enabled=True,
+            target_mean_auto=True,
+            target_mean_auto_window=60,  # need 30 samples to bootstrap
+            threshold=4.0,
+        )
+        mgr.logger = None  # type: ignore[attr-defined]
+        mgr._init_fallback_components()
+        return mgr
+
+    def test_cold_path_returns_no_op(self) -> None:
+        """With zero samples and target_mean_auto=True, detector creation is deferred."""
+        from mahavishnu.observability.changepoint.cusum import ChangePointResult
+
+        mgr = self._build_manager()
+        # Zero samples in the sampler
+        result = mgr._evaluate_change_point("pool_queue_depth", 5.0)
+        assert isinstance(result, ChangePointResult)
+        assert result.detected is False
+        assert result.score == 0.0
+        assert result.samples_since_reset == 0
+        assert result.direction == "unknown"
+
+    def test_cold_path_does_not_create_detector(self) -> None:
+        """Detector is not created until the sampler has enough samples."""
+        mgr = self._build_manager()
+        # Verify the detector attribute is unset on cold start
+        assert getattr(mgr, "_changepoint_detector", None) is None
+        mgr._evaluate_change_point("pool_queue_depth", 5.0)
+        # Still unset after the call (deferred)
+        assert getattr(mgr, "_changepoint_detector", None) is None
+
+    def test_cold_path_skips_drift_counter(self) -> None:
+        """The drift counter is NOT incremented in the cold path."""
+        mgr = self._build_manager()
+        added = []
+
+        class _Spy:
+            def add(self, amount, attributes=None):
+                added.append((amount, attributes))
+
+        mgr.drift_detected_counter = _Spy()  # type: ignore[assignment]
+        # Drive a sustained 5.0 shift
+        for _ in range(50):
+            mgr._evaluate_change_point("pool_queue_depth", 5.0)
+        assert added == [], "Cold-path detector must NOT fire (target_mean_auto deferred)"

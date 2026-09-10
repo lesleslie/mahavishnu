@@ -28,11 +28,11 @@ fires, you see:
    `mahavishnu.observability.metric_samples` (Dhara table) for
    the last 60 minutes of the affected metric. A real drift is
    sustained; a transient is a single spike that recovered.
-1. **What is the severity?** (R3-H4: thresholds are symbolic and
-   follow `changepoint.threshold`. With the round-2 default of
-   `threshold=14.0` the actual boundaries are `minor < 28`,
-   `moderate 28-56`, `critical >= 56`. The runbook uses
-   symbolic bands so they auto-track any future threshold change.)
+1. **What is the severity?** (R3-H4 / round-4 L6: thresholds are
+   symbolic — `2 × changepoint.threshold` and `4 × changepoint.threshold`.
+   Severity classifier is `_classify_drift_severity(score, threshold)`
+   in `mahavishnu/core/observability.py`. The OTel span attribute is
+   authoritative; this runbook states the policy.)
    - `minor` (score < 2 × threshold): typical 0.5-σ shift. Safe
      to investigate at low urgency.
    - `moderate` (2 × threshold ≤ score < 4 × threshold): a 0.7-σ
@@ -88,9 +88,10 @@ small shifts:
 - **1.0σ shift** — median latency ~17 samples (vs spec's 15).
   Relaxed to `<= 20` samples.
 
-If you need tighter 0.5σ detection, run a parallel
-`PageHinkleyDetector` (set `changepoint.detector: page_hinkley` for a
-single detector, or run both side-by-side via the `enabled` flag).
+If you need tighter 0.5σ detection, set `changepoint.detector:
+page_hinkley` for a single Page-Hinkley detector (Phase 1 ships one
+detector per process; running CUSUM and Page-Hinkley in parallel
+is a Phase 2 follow-on).
 
 ### Reset-after-fire semantic
 

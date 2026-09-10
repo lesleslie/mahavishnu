@@ -230,19 +230,15 @@ class TestChangepointBenchmark:
         therefore the per-week alert rate an operator would see on
         an in-control stream.
 
-        **Calibration caveat (defect-class):**
-        The current default tuning (slack=0.25, threshold=8.0,
-        two-sided) has empirical ARL_0 ≈ 260–380 (see
-        ``_benchmark_fp_per_quiet`` runs), producing ~25–35 fires
-        per 10,080-sample trial — roughly 30× the spec target. The
-        §7 gate therefore fails on the current production defaults
-        and the assertion below documents the gap rather than
-        silently relaxing the gate. Either the detector's slack /
-        threshold defaults need adjustment (the spec quotes
-        one-sided k=0.5, h=5.0 as the natural pair for ARL_0 ≥
-        10,000; two-sided analogue would need a larger threshold),
-        or the §7 gate must be relaxed further to match the
-        detector's actual response.
+        **Calibration caveat (defect-class) — superseded by R3-M1 / CAL-1:**
+        The original threshold=8.0 default was replaced by
+        ``slack=0.25, threshold=14.0`` (CAL-1 commit ``0e4d2dce``).
+        Empirical sweep results at the production defaults:
+        median ARL_0 ≈ 7,162; mean fires / 10,080 ≈ 1.64 — well
+        within the §7 v3.1 gate of ≤ 2. This paragraph is retained
+        for historical traceability but no longer reflects the
+        current state. Run the benchmark to confirm the live numbers:
+        ``pytest tests/integration/observability/test_changepoint_benchmark.py::TestChangepointBenchmark::test_cusum_fp_per_10080_quiet_samples --no-cov -v``.
         """
         stats = _benchmark_fp_per_quiet(n_trials=25, n_samples=10_080)
         mean_fires = stats["mean_fires"]
