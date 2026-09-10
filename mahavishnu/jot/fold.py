@@ -3,6 +3,7 @@
 Public surface:
 - FoldResult: states, parked, errors, ctx_by_id dataclass
 - JotSummary: list-view state (5 fields, R9)
+- JotDetail: show-view state (R9 — composition over JotSummary)
 - parse_events(): file I/O, returns list[JotEvent]
 - build_states(): pure transform, returns FoldResult
 - _enrich_ctx(): git subprocess enrichment (R4)
@@ -22,7 +23,7 @@ if TYPE_CHECKING:
     from collections.abc import Mapping
 
 # Public re-export so callers do `from mahavishnu.jot.fold import JotSummary`.
-__all__ = ["FoldResult", "JotSummary", "build_states", "parse_events"]
+__all__ = ["FoldResult", "JotDetail", "JotSummary", "build_states", "parse_events"]
 
 
 @dataclass(frozen=True, slots=True)
@@ -55,6 +56,19 @@ class FoldResult:
     ctx_by_id: dict[str, Mapping[str, str | list[str] | None]] = field(
         default_factory=dict,
     )
+
+
+@dataclass(frozen=True, slots=True)
+class JotDetail:
+    """Show-view state: summary + HLC + capture time + ctx.
+
+    R9 — composition (not inheritance). render_show consumes this.
+    """
+
+    summary: JotSummary
+    hlc: str  # serialized "{wall_ms}-{ctr}-{node}"
+    created_ms: int
+    ctx: Mapping[str, str | list[str] | None]  # read-only contract
 
 
 def parse_events(log_path: Path) -> list[JotEvent]:
