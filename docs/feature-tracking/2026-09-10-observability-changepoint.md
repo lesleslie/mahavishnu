@@ -188,6 +188,38 @@ and unchanged by Round-6; LOW items now parked in the followups doc).
 115 tests pass across 8 .py files (live `pytest collect-only` confirmed
 in audit-honesty re-review on 2026-09-10).
 
+### Round-7 polish knockouts (shipped 2026-09-10)
+
+Eleven LOW items parked in
+`docs/followups/2026-09-10-changepoint-two-stage-polish.md` after
+Round-6 were dispatched as three parallel SDD implementer batches
+(Batch A: `mahavishnu/core/observability.py`; Batch B: `mahavishnu/observability/changepoint/two_stage.py` + its test file; Batch C: three docs files). 10 clean per-item commits landed. LOW-3 intentionally skipped per the followups doc's "Document but don't change" status. 116 tests pass post-knockout (115 baseline + 1 new boundary test from LOW-8). None of the LOW items changed observable behavior; all are parity, dedup, doc, or test-coverage polish.
+
+- `3578991b` — LOW-1: `mahavishnu/core/observability.py` (+3 −1). Add `severity=warning` sentinel and `samples=%d` to `_on_drift_warning`'s log format for parity with `_on_drift_detected`.
+- `1e7f82ab` — LOW-2: `docs/runbooks/mahavishnu-drift-detection.md` (+5). Document the dual-attribute convention (warn span carries the warn detector's class name; confirm span carries `detector="two_stage"`); correlate via `samples_since_warning` on the confirmed span.
+- `f6c96b67` — LOW-4: `docs/superpowers/plans/2026-09-10-changepoint-two-stage-warn-confirm.md` (+1637). Correct Status-line test count from "108 tests collected across 4 files" to "115 tests collected across 8 .py files". This is the plan file's first tracked commit (was untracked scratch from prior session).
+- `c8b73d3a` — LOW-5: `docs/runbooks/mahavishnu-drift-detection.md` (+5 −1). Add `~30/10,080` design-point + `>2×` heuristic for `mahavishnu.observability.drift_warning_total` on stationary Gaussian noise.
+- `4cf5b4c7` — LOW-6: this file (+5 −3). Cross-link `docs/plans/2026-09-10-bodai-math-initiatives-tier1.md §6 Phase 8` and the runbook's two-stage migration section as the migration window.
+- `378844e0` — LOW-7: `mahavishnu/observability/changepoint/two_stage.py` (+7). Module docstring state diagram now documents the `warning_pending → warning_pending` re-fire transition that updates `_last_warning_result` and resets the warn detector.
+- `1aadb297` — LOW-8: `tests/unit/observability/test_changepoint_two_stage.py` (+78). Add `test_confirm_fires_on_boundary_sample` pinning the `<= N` inclusive-boundary semantics on the exact `confirm_window_samples`-th sample after a warn.
+- `4c5b308a` — LOW-9: `mahavishnu/core/observability.py` (+28 −16). Extract `_canonical_detector_name` helper that normalizes both `type(detector).__name__` and `TwoStageResult.detector_warn` inputs to canonical lowercase tokens; both call sites use it.
+- `e3922054` — LOW-10: `mahavishnu/core/observability.py` (+4 −1). Two-stage dispatch `if` → `elif` for mutually exclusive `TwoStageResult.state` (`Literal["idle", "warning_pending", "confirmed"]`).
+- `301d9273` — LOW-11: `mahavishnu/core/observability.py` (+4). Add a one-line comment above the defensive `isinstance(result, TwoStageResult)` guard in `_on_drift_warning` documenting that the guard preserves the property if the method is called from elsewhere.
+- LOW-3 — SKIPPED per followups doc status ("Document but don't change" per ops-UX reviewer recommendation).
+
+**Recovery operation:** LOW-1 and LOW-5 initially landed bundled in
+`cb7b9ee9` due to a dirty-tree race: Batch A and Batch C both staged
+their files in the index simultaneously, and Batch A's `git commit`
+swept up both into one commit carrying LOW-1's message. Per
+`drift-bundling-recovery.md`: stashed the 57 parallel-agent dirty
+files, ran `git rebase -i 1e7f82ab` with `edit` on the bundle, split
+into two clean commits (`3578991b` and `c8b73d3a`) at the edit stop,
+continued the rebase to replay the other 5 LOW commits + 2 parallel
+commits cleanly, popped the stash back with no conflicts. The 5 LOW
+commits after the bundle got new SHAs from the replay but identical
+content. Live `pytest tests/unit/observability/ tests/integration/observability/ --no-cov`
+re-confirmed 116 passed after the rebase.
+
 ## Blocker
 
 None — the feature is adopted. The Phase 9 multi-metric trigger
