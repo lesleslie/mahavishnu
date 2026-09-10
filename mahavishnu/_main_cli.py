@@ -815,6 +815,16 @@ def health_command(
         "--json",
         help="Emit structured JSON output instead of human-readable text",
     ),
+    section: str | None = typer.Option(
+        None,
+        "--section",
+        "-s",
+        help=(
+            "Print only the named section (e.g. 'merge_driver'). "
+            "Combine with --json for machine-readable output. "
+            "Supported keys: liveness, readiness, dependencies, merge_driver."
+        ),
+    ),
 ) -> None:
     """Check the current Mahavishnu service health."""
 
@@ -828,6 +838,15 @@ def health_command(
                 "status": HealthStatus.UNHEALTHY.value,
                 "reason": "Health checks are disabled in configuration",
             }
+            if section is not None and section != "status":
+                # The endpoint is disabled, so any requested section except
+                # the envelope status is unavailable. Surface the envelope
+                # itself so the user can still see why.
+                typer.echo(
+                    f"section '{section}' unavailable: health checks are disabled",
+                    err=True,
+                )
+                raise typer.Exit(code=1)
             if json_output:
                 typer.echo(json.dumps(payload, indent=2))
             else:
@@ -837,6 +856,15 @@ def health_command(
 
         liveness = await endpoint.liveness()
         readiness = await endpoint.readiness()
+
+        # Section lookup: ``merge_driver`` is sourced from the canonical
+        # ``merge_driver_health()`` probe (the same one surfaced on the
+        # ``/ready`` HTTP endpoint) rather than the bare ``readiness``
+        # method. The other keys come straight from the payload built
+        # above. Allowing callers to ask for the merged ``payload`` key
+        # shape makes the CLI match what `/health` returns.
+        from .core.health import merge_driver_health
+        merge_driver_payload: dict[str, object] = merge_driver_health()
 
         dependency_details = {
             name: {
@@ -863,7 +891,35 @@ def health_command(
             "liveness": liveness.model_dump(),
             "readiness": readiness.model_dump(),
             "dependencies": dependency_details,
+            "merge_driver": merge_driver_payload,
         }
+
+        if section is not None:
+            if section == "status":
+                # ``status`` is a 3-key envelope summary, not a single value
+                # even though ``payload["status"]`` is the bare string. The
+                # envelope is the operator-friendly "is everything ok?" view.
+                typer.echo(
+                    json.dumps(
+                        {
+                            "service": payload["service"],
+                            "version": payload["version"],
+                            "status": payload["status"],
+                        },
+                        indent=2,
+                        default=str,
+                    )
+                )
+                return
+            if section not in payload:
+                typer.echo(
+                    f"unknown section '{section}'. Supported: "
+                    f"{', '.join(sorted(payload.keys()))}",
+                    err=True,
+                )
+                raise typer.Exit(code=2)
+            typer.echo(json.dumps(payload[section], indent=2, default=str))
+            return
 
         if json_output:
             typer.echo(json.dumps(payload, indent=2, default=str))
