@@ -166,6 +166,20 @@ observability:
   tracing_enabled: true  # Enable distributed tracing
   otlp_endpoint: "http://localhost:4317"  # OTLP endpoint for metrics/traces
 
+# Tier 1 Phase 6: change-point detector on observability metrics.
+# Top-level block (matches pi_pool:, runpod_pool:, caller_quota:,
+# verification:, worktree_providers: precedent). REQ-005, REQ-006.
+# Phase 8 of the Tier 1 plan flips `enabled` to `true` after
+# Phase 7 validation passes.
+changepoint:
+  enabled: false
+  target_metric: "pool_queue_depth"  # REQ-005 — default per spec §12 Q3
+  detector: "cusum"  # "cusum" or "page_hinkley"
+  slack: 0.25  # CUSUM k in σ units (0.25σ for two-sided CUSUM, ARL₀ ≈ 10,000)
+  threshold: 8.0  # CUSUM h (decision interval)
+  reference_detector: "three_sigma"  # "three_sigma" or "none" (REQ-006)
+  sampler_cadence_seconds: 60.0  # MetricSampler tick cadence
+
 # Authentication settings
 auth:
   enabled: false  # Set to true in production

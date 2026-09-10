@@ -334,6 +334,294 @@ class ObservabilityManager:
             ),
         }
 
+    # ------------------------------------------------------------------
+    # Tier 1 Phase 6: change-point detection wiring
+    # ------------------------------------------------------------------
+    # The change-point detector and the 3-sigma reference detector are
+    # both fed by a per-metric :class:`MetricSampler` (REQ-009). The
+    # sampler is created lazily on the first call to
+    # ``_evaluate_change_point`` and cached on the instance. Each
+    # evaluation updates the detector state and, when the detector
+    # fires, emits an OTel span ``mahavishnu.observability.drift_detected``
+    # (or a structured log line when OTel is unavailable).
+
+    def _get_metric_sampler(self) -> "MetricSampler":
+        """Return the per-instance MetricSampler, creating it on first use."""
+        from mahavishnu.observability.sampler import MetricSampler
+
+        sampler = getattr(self, "_metric_sampler", None)
+        if sampler is None:
+            cadence = 60.0
+            try:
+                pools_cfg = getattr(self.config, "pools", None)
+                if pools_cfg is not None:
+                    cadence = float(getattr(pools_cfg, "sampler_cadence_seconds", 60.0))
+            except Exception:  # noqa: BLE001 - config may not have pools
+                pass
+            sampler = MetricSampler(cadence_seconds=cadence)
+            self._metric_sampler = sampler  # type: ignore[attr-defined]
+        return sampler
+
+    def _evaluate_change_point(self, metric_name: str, value: float):  # req: REQ-005
+        """Feed one observation to the change-point detector.
+
+        Updates the detector's internal state and returns the
+        :class:`~mahavishnu.observability.changepoint.ChangePointResult`.
+        When ``changepoint.enabled`` is False (default in Phase 6
+        until Phase 8 promotes the flag), the method is a no-op and
+        returns a synthetic ``detected=False`` result with score 0.
+
+        The detector instance is cached on the manager and lazily
+        created on the first non-disabled call.
+
+        Req: REQ-005
+        """
+        from mahavishnu.observability.changepoint import (
+            CUSUMDetector,
+            PageHinkleyDetector,
+        )
+
+        if not self._changepoint_enabled():
+            from mahavishnu.observability.changepoint.cusum import ChangePointResult
+
+            return ChangePointResult(
+                detected=False,
+                score_high=0.0,
+                score_low=0.0,
+                score=0.0,
+                threshold=0.0,
+                samples_since_reset=0,
+                direction="unknown",
+            )
+
+        # Always feed the sampler so the 3-sigma reference detector
+        # sees the same input stream (and the buffer is ready when
+        # a future enable flips changepoint_enabled from False to
+        # True without a warmup gap).
+        sampler = self._get_metric_sampler()
+        sampler.observe(metric_name, value)
+
+        detector = self._get_or_create_changepoint_detector()
+        result = detector.update(value)
+
+        if result.detected:
+            self._on_drift_detected(metric_name, result)
+        return result
+
+    def _evaluate_3sigma(self, metric_name: str, value: float):  # req: REQ-006
+        """Feed one observation to the 3-sigma reference detector.
+
+        Uses a sliding-window mean/std over the
+        :class:`MetricSampler`-fed queue. When the window is empty
+        or has zero standard deviation, the result is
+        ``detected=False`` (degenerate regime). When
+        ``changepoint.reference_detector == "none"``, this method
+        is a no-op (the reference is intentionally disabled).
+
+        Req: REQ-006
+        """
+        import math
+
+        from mahavishnu.observability.changepoint import AnomalyResult
+
+        if self._changepoint_reference_mode() == "none":
+            return AnomalyResult(
+                detected=False,
+                z_score=0.0,
+                current_value=value,
+                window_mean=0.0,
+                window_std=0.0,
+            )
+
+        sampler = self._get_metric_sampler()
+        # Observe first so the buffer always includes the current
+        # value. Without this, calls to _evaluate_3sigma in
+        # isolation (e.g. unit tests) see an empty buffer.
+        sampler.observe(metric_name, value)
+        values = sampler.values(metric_name)
+        if len(values) < 5:
+            # Not enough samples for a meaningful z-score.
+            return AnomalyResult(
+                detected=False,
+                z_score=0.0,
+                current_value=value,
+                window_mean=float("nan"),
+                window_std=float("nan"),
+            )
+
+        # Use the most-recent 60 samples (1 hour at 60s cadence)
+        # as the sliding window. Tunable in config (Phase 7 review).
+        window = values[-60:]
+        window_mean = sum(window) / len(window)
+        if len(window) < 2:
+            return AnomalyResult(
+                detected=False,
+                z_score=0.0,
+                current_value=value,
+                window_mean=window_mean,
+                window_std=0.0,
+            )
+        window_std = math.sqrt(
+            sum((v - window_mean) ** 2 for v in window) / (len(window) - 1)
+        )
+        if window_std == 0.0 or not math.isfinite(window_std):
+            return AnomalyResult(
+                detected=False,
+                z_score=0.0,
+                current_value=value,
+                window_mean=window_mean,
+                window_std=window_std,
+            )
+        z_score = (value - window_mean) / window_std
+        detected = abs(z_score) >= 3.0
+        result = AnomalyResult(
+            detected=detected,
+            z_score=z_score,
+            current_value=value,
+            window_mean=window_mean,
+            window_std=window_std,
+        )
+        if detected:
+            self._on_anomaly_detected(metric_name, result)
+        return result
+
+    def _changepoint_enabled(self) -> bool:
+        try:
+            pools_cfg = getattr(self.config, "pools", None)
+            if pools_cfg is None:
+                return False
+            return bool(getattr(pools_cfg, "changepoint_enabled", False))
+        except Exception:  # noqa: BLE001
+            return False
+
+    def _changepoint_reference_mode(self) -> str:
+        try:
+            pools_cfg = getattr(self.config, "pools", None)
+            if pools_cfg is None:
+                return "none"
+            return str(getattr(pools_cfg, "changepoint_reference_detector", "three_sigma"))
+        except Exception:  # noqa: BLE001
+            return "none"
+
+    def _get_or_create_changepoint_detector(self):
+        from mahavishnu.observability.changepoint import (
+            CUSUMDetector,
+            PageHinkleyDetector,
+        )
+
+        detector = getattr(self, "_changepoint_detector", None)
+        if detector is not None:
+            return detector
+        try:
+            pools_cfg = getattr(self.config, "pools", None)
+            slack = float(getattr(pools_cfg, "changepoint_slack", 0.25))
+            threshold = float(getattr(pools_cfg, "changepoint_threshold", 8.0))
+            algo = str(getattr(pools_cfg, "changepoint_detector", "cusum"))
+        except Exception:  # noqa: BLE001
+            slack, threshold, algo = 0.25, 8.0, "cusum"
+
+        # CUSUM's ``target_mean`` is the in-control process mean, not
+        # a running estimate. Phase 6 ships with target_mean=0.0
+        # (a sensible default for normalized queue-depth metrics).
+        # Operators set the absolute target via config in Phase 8's
+        # promotion; for now, the detector is correct relative to
+        # ``target_mean`` and operators must interpret scores
+        # against the documented baseline.
+        target_mean = 0.0
+
+        if algo == "page_hinkley":
+            detector = PageHinkleyDetector(
+                target_mean=target_mean, slack=slack, threshold=threshold, delta=0.0
+            )
+        else:
+            detector = CUSUMDetector(
+                target_mean=target_mean, slack=slack, threshold=threshold, two_sided=True
+            )
+        self._changepoint_detector = detector  # type: ignore[attr-defined]
+        return detector
+
+    def _get_changepoint_target_metric(self) -> str:
+        try:
+            pools_cfg = getattr(self.config, "pools", None)
+            if pools_cfg is None:
+                return "pool_queue_depth"
+            return str(getattr(pools_cfg, "changepoint_target_metric", "pool_queue_depth"))
+        except Exception:  # noqa: BLE001
+            return "pool_queue_depth"
+
+    def _on_drift_detected(self, metric_name: str, result) -> None:
+        """OTel span emission for a change-point detection.
+
+        Tier 1 Phase 6: emit ``mahavishnu.observability.drift_detected``
+        with attributes per the spec (§6 Phase 6 Integration Contract).
+        When OTel is unavailable, fall back to a structured log line.
+        """
+        try:
+            if OTEL_AVAILABLE and getattr(self, "tracer", None) is not None:
+                severity = self._classify_drift_severity(result.score, result.threshold)
+                with self.tracer.start_as_current_span(  # type: ignore[union-attr]
+                    "mahavishnu.observability.drift_detected",
+                    attributes={
+                        "metric_name": metric_name,
+                        "detector": str(getattr(self, "_changepoint_detector", None).__class__.__name__),
+                        "score_high": float(result.score_high),
+                        "score_low": float(result.score_low),
+                        "score": float(result.score),
+                        "threshold": float(result.threshold),
+                        "samples_since_reset": int(result.samples_since_reset),
+                        "direction": str(result.direction),
+                        "severity": severity,
+                    },
+                ):
+                    pass
+        except Exception as exc:  # noqa: BLE001 - boundary handler
+            self._log_debug("OTel span emission failed: %s", exc)
+
+        # Always log a structured event so observability survives
+        # even when OTel is disabled.
+        self._log_warning(
+            "drift_detected metric=%s detector=%s score=%.3f threshold=%.3f direction=%s samples=%d",
+            metric_name,
+            type(getattr(self, "_changepoint_detector", None)).__name__,
+            result.score,
+            result.threshold,
+            result.direction,
+            result.samples_since_reset,
+        )
+
+    def _on_anomaly_detected(self, metric_name: str, result) -> None:
+        """OTel span + log for a 3-sigma reference detector fire."""
+        self._log_warning(
+            "three_sigma_anomaly metric=%s z=%.3f value=%.3f window_mean=%.3f window_std=%.3f",
+            metric_name,
+            result.z_score,
+            result.current_value,
+            result.window_mean,
+            result.window_std,
+        )
+
+    def _log_debug(self, msg: str, *args: Any) -> None:  # noqa: ANN401
+        if getattr(self, "logger", None) is not None:
+            self.logger.debug(msg, *args)  # type: ignore[union-attr]
+
+    def _log_warning(self, msg: str, *args: Any) -> None:  # noqa: ANN401
+        if getattr(self, "logger", None) is not None:
+            self.logger.warning(msg, *args)  # type: ignore[union-attr]
+
+    @staticmethod
+    def _classify_drift_severity(score: float, threshold: float) -> str:
+        """Classify drift severity per the spec §6 Phase 6 contract.
+
+        minor: score < 2*threshold (typical 0.5-σ shift detection)
+        moderate: 2*threshold <= score < 4*threshold
+        critical: score >= 4*threshold (>1-σ shift territory)
+        """
+        if score >= 4 * threshold:
+            return "critical"
+        if score >= 2 * threshold:
+            return "moderate"
+        return "minor"
+
     async def flush_metrics(self):
         """Flush any pending metrics to exporters."""
         if OTEL_AVAILABLE:

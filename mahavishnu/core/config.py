@@ -430,6 +430,47 @@ class PoolConfig(BaseModel):
         le=86400.0,
         description="Wall-clock seconds before a refit is forced (warmup cadence)",
     )
+
+    # Tier 1 Phase 6: change-point detector. REQ-005.
+    # Default `False` so the new feature ships opt-in; Phase 8 of
+    # the Tier 1 plan flips the default to `True` after validation.
+    # Top-level `changepoint:` block (not nested under observability:)
+    # to match the precedent of `pi_pool:`, `runpod_pool:`,
+    # `caller_quota:`, `verification:`, etc.
+    changepoint_enabled: bool = Field(
+        default=False,
+        description="Enable CUSUM/Page-Hinkley change-point detector on observability metrics",
+    )
+    changepoint_target_metric: str = Field(
+        default="pool_queue_depth",
+        description="Metric name to monitor for change-point detection",
+    )
+    changepoint_detector: str = Field(
+        default="cusum",
+        description="Detector algorithm: 'cusum' or 'page_hinkley'",
+    )
+    changepoint_slack: float = Field(
+        default=0.25,
+        ge=0.0,
+        le=5.0,
+        description="CUSUM slack (k) in standard deviation units; 0.25σ for two-sided CUSUM",
+    )
+    changepoint_threshold: float = Field(
+        default=8.0,
+        gt=0.0,
+        le=100.0,
+        description="CUSUM/Page-Hinkley decision interval (h); default 8.0 targets ARL₀ ≈ 10,000",
+    )
+    changepoint_reference_detector: str = Field(
+        default="three_sigma",
+        description="Reference detector running in parallel: 'three_sigma' or 'none'",
+    )
+    changepoint_sampler_cadence_seconds: float = Field(
+        default=60.0,
+        ge=1.0,
+        le=3600.0,
+        description="MetricSampler tick cadence in seconds (default 60 matches fitness_analyzer)",
+    )
     session_buddy_url: str = Field(
         default="http://localhost:8678/mcp",
         description="Session-Buddy MCP server URL for delegated pools",
