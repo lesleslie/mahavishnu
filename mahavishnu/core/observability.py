@@ -1030,7 +1030,7 @@ class ObservabilityManager:
             self._log_debug("drift warning span emission failed: %s", exc)
 
         self._log_warning(
-            "drift_warning metric=%s detector=%s value=%.3f baseline_mean=%.3f baseline_std=%.3f score=%.3f threshold=%.3f direction=%s trace_id=%s host=%s",
+            "drift_warning metric=%s detector=%s value=%.3f baseline_mean=%.3f baseline_std=%.3f score=%.3f threshold=%.3f severity=%s direction=%s samples=%d trace_id=%s host=%s",
             metric_name,
             detector_name,
             value,
@@ -1038,7 +1038,9 @@ class ObservabilityManager:
             baseline_std,
             warn_result.score,
             warn_result.threshold,
+            "warning",  # sentinel — warn detector has no severity classification
             warn_result.direction,
+            0,  # warn detector's samples_since_reset is 0 post-reset
             trace_id_str or "-",
             socket.gethostname(),
         )
