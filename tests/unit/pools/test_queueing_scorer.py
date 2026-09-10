@@ -344,3 +344,198 @@ class TestAllowedLabelKeys:
         from mahavishnu.observability.metrics import _ALLOWED_LABEL_KEYS
 
         assert "effective_selector" in _ALLOWED_LABEL_KEYS
+
+
+# ---------------------------------------------------------------------------
+# C1: PoolManager._apply_queueing_penalty wiring
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.unit
+class TestApplyQueueingPenalty:
+    """C1: the queueing penalty must actually influence pool selection.
+
+    Before C1, _apply_queueing_penalty (or its inline equivalent in
+    route_task) computed predicted_wait_s for the inner-selected pool
+    and used it only as a label suffix on the routing-decision record.
+    The selected pool was always the inner selector's pick. C1 fixes
+    this: for multi-candidate selectors (LEAST_LOADED, ROUND_ROBIN,
+    RANDOM) the candidate with the lowest predicted wait wins once
+    at least one pool has a fitted model.
+    """
+
+    def _build_manager(self):  # type: ignore[no-untyped-def]
+        """Minimal PoolManager construction with two pools."""
+        from mahavishnu.pools.manager import PoolManager, PoolSelector
+
+        # Real constructor (no __new__) so internal dicts are set.
+        try:
+            return PoolManager(message_bus=None)
+        except Exception:
+            # The test environment may not have a configured
+            # MahavishnuSettings; the apply_queueing_penalty tests
+            # only touch _queueing_buffers and _pools, which are
+            # both set in __init__.
+            from unittest.mock import MagicMock
+
+            mgr = PoolManager.__new__(PoolManager)
+            mgr._pools = {}
+            mgr._queueing_buffers = {}
+            return mgr
+
+    def test_no_predictions_returns_inner_pick(self) -> None:
+        """Without predictions, the inner pick is unchanged."""
+        from mahavishnu.pools.manager import PoolSelector
+
+        mgr = self._build_manager()
+        mgr._pools["pool_a"] = object()
+        mgr._pools["pool_b"] = object()
+
+        chosen, wait, effective, affected = mgr._apply_queueing_penalty(
+            "pool_a", PoolSelector.LEAST_LOADED
+        )
+        assert chosen == "pool_a"
+        assert wait is None
+        assert effective == "least_loaded"
+        assert affected is False
+
+    def test_lowest_wait_wins_for_multi_candidate_selectors(self) -> None:
+        """pool_b has lower predicted wait — should be chosen over pool_a."""
+        from mahavishnu.pools.manager import PoolSelector
+        from mahavishnu.pools.queueing import MmcQueue
+
+        mgr = self._build_manager()
+        mgr._pools["pool_a"] = object()
+        mgr._pools["pool_b"] = object()
+
+        buf_a = QueueingObservationBuffer(
+            pool_id="pool_a", min_observations=2, min_seconds=0.0
+        )
+        # Fit pool_a with high arrival rate (more load)
+        buf_a.arrivals = deque([0.1] * 10)  # arrival_rate = 10/s
+        buf_a.services = deque([0.1] * 10)  # service_rate = 10/s
+        m = MmcQueue.fit_from_observations(
+            list(buf_a.arrivals), list(buf_a.services), num_workers=1
+        )
+        assert m is not None
+        buf_a.fitted_model = m
+        buf_a.last_arrival_monotonic = 1.0  # suppress refit trigger
+        mgr._queueing_buffers["pool_a"] = buf_a
+
+        buf_b = QueueingObservationBuffer(
+            pool_id="pool_b", min_observations=2, min_seconds=0.0
+        )
+        buf_b.arrivals = deque([10.0] * 10)  # arrival_rate = 0.1/s (idle)
+        buf_b.services = deque([0.1] * 10)  # service_rate = 10/s
+        m2 = MmcQueue.fit_from_observations(
+            list(buf_b.arrivals), list(buf_b.services), num_workers=1
+        )
+        assert m2 is not None
+        buf_b.fitted_model = m2
+        buf_b.last_arrival_monotonic = 1.0
+        mgr._queueing_buffers["pool_b"] = buf_b
+
+        # Inner selector picked pool_a (high load). Queueing re-ranks
+        # to pool_b (idle).
+        chosen, wait, effective, affected = mgr._apply_queueing_penalty(
+            "pool_a", PoolSelector.LEAST_LOADED
+        )
+        assert chosen == "pool_b"
+        assert wait is not None and wait >= 0.0
+        assert effective == "least_loaded+queueing"
+        assert affected is True
+
+    def test_affinity_selector_does_not_swap(self) -> None:
+        """AFFINITY is a single-candidate selector — no swap, only advise."""
+        from mahavishnu.pools.manager import PoolSelector
+        from mahavishnu.pools.queueing import MmcQueue
+
+        mgr = self._build_manager()
+        mgr._pools["pool_a"] = object()
+        mgr._pools["pool_b"] = object()
+
+        # Even with pool_b being idle, AFFINITY should still pick
+        # pool_a (the affinity target). Use rho=0.5 so the model
+        # returns a finite predicted wait (safe_expected_wait_time
+        # treats rho >= 0.95 as inf).
+        buf_a = QueueingObservationBuffer(pool_id="pool_a", min_observations=2, min_seconds=0.0)
+        buf_a.arrivals = deque([2.0] * 10)  # arrival_rate=0.5/s
+        buf_a.services = deque([1.0] * 10)  # service_rate=1/s -> rho=0.5
+        buf_a.fitted_model = MmcQueue.fit_from_observations(
+            list(buf_a.arrivals), list(buf_a.services), num_workers=1
+        )
+        buf_a.last_arrival_monotonic = 1.0
+        mgr._queueing_buffers["pool_a"] = buf_a
+
+        chosen, wait, effective, affected = mgr._apply_queueing_penalty(
+            "pool_a", PoolSelector.AFFINITY
+        )
+        assert chosen == "pool_a"
+        assert affected is False
+        assert effective == "affinity"
+        # The predicted wait is still reported for the audit trail.
+        assert wait is not None
+
+    def test_inner_pick_already_lowest_no_swap(self) -> None:
+        """If the inner pick has the lowest wait, no swap occurs."""
+        from mahavishnu.pools.manager import PoolSelector
+        from mahavishnu.pools.queueing import MmcQueue
+
+        mgr = self._build_manager()
+        mgr._pools["pool_a"] = object()
+        mgr._pools["pool_b"] = object()
+
+        # pool_a is idle; pool_b is overloaded. Inner picked pool_a.
+        buf_a = QueueingObservationBuffer(pool_id="pool_a", min_observations=2, min_seconds=0.0)
+        buf_a.arrivals = deque([10.0] * 10)
+        buf_a.services = deque([0.1] * 10)
+        buf_a.fitted_model = MmcQueue.fit_from_observations(
+            list(buf_a.arrivals), list(buf_a.services), num_workers=1
+        )
+        buf_a.last_arrival_monotonic = 1.0
+        mgr._queueing_buffers["pool_a"] = buf_a
+
+        buf_b = QueueingObservationBuffer(pool_id="pool_b", min_observations=2, min_seconds=0.0)
+        buf_b.arrivals = deque([0.1] * 10)
+        buf_b.services = deque([0.1] * 10)
+        buf_b.fitted_model = MmcQueue.fit_from_observations(
+            list(buf_b.arrivals), list(buf_b.services), num_workers=1
+        )
+        buf_b.last_arrival_monotonic = 1.0
+        mgr._queueing_buffers["pool_b"] = buf_b
+
+        chosen, _, effective, affected = mgr._apply_queueing_penalty(
+            "pool_a", PoolSelector.LEAST_LOADED
+        )
+        assert chosen == "pool_a"
+        assert affected is False
+        assert effective == "least_loaded"
+
+    def test_safe_predicted_wait_filters_inf_and_negative(self) -> None:
+        """_compute_predicted_wait returns None for inf/negative results."""
+        from unittest.mock import MagicMock
+
+        mgr = self._build_manager()
+
+        # Model whose safe_expected_wait_time returns inf
+        class _InfModel:
+            def safe_expected_wait_time(self, *args, **kwargs):
+                return float("inf")
+
+        buf = MagicMock()
+        buf.fitted_model = _InfModel()
+        assert mgr._compute_predicted_wait(buf) is None
+
+        # Model that raises — boundary handler swallows
+        class _BoomModel:
+            def safe_expected_wait_time(self, *args, **kwargs):
+                raise RuntimeError("model corrupt")
+
+        buf2 = MagicMock()
+        buf2.fitted_model = _BoomModel()
+        assert mgr._compute_predicted_wait(buf2) is None
+
+        # No fitted model
+        buf3 = MagicMock()
+        buf3.fitted_model = None
+        assert mgr._compute_predicted_wait(buf3) is None

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import math
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from enum import Enum, StrEnum
@@ -722,25 +723,36 @@ class PoolManager:
 
         pool_id, reason = self._apply_gpu_category_override(pool_id, reason, task)
 
-        # Tier 1 Phase 2: apply the QueueingScorer as an additive
-        # penalty on top of the inner selector's score. The scorer
-        # is composed between the fitness override and the GPU
-        # category override (already applied above); the
-        # ``effective_selector`` field captures what the routing
-        # layer actually chose. REQ-002.
-        predicted_wait_s: float | None = None
-        effective_selector_str = selector.value
-        try:
-            buffer = self._queueing_buffers.get(pool_id)
-            if buffer is not None and buffer.fitted_model is not None:
-                predicted_wait_s = buffer.fitted_model.safe_expected_wait_time()
-                if predicted_wait_s != float("inf") and predicted_wait_s > 0:
-                    # effective_selector reports "selector+queueing"
-                    # so dashboards distinguish raw vs composed.
-                    effective_selector_str = f"{selector.value}+queueing"
-        except Exception as exc:  # noqa: BLE001 - boundary handler catches all errors
-            logger.debug("QueueingScorer failed for %s: %s", pool_id, exc)
-            predicted_wait_s = None
+        # Tier 1 Phase 2: apply the QueueingScorer's M/M/c prediction
+        # as a re-ranking signal. The composable scorer sits between
+        # the GPU category override (above) and the actual execution
+        # (below); for multi-candidate selectors (LEAST_LOADED /
+        # ROUND_ROBIN / RANDOM) the candidate with the lowest
+        # predicted wait wins once predictions are warmed up. For
+        # single-candidate selectors (AFFINITY / PEER_AFFINITY) the
+        # queueing signal can only advise — we report the predicted
+        # wait but do not switch the candidate. REQ-002.
+        (
+            pool_id,
+            predicted_wait_s,
+            effective_selector_str,
+            queueing_affected,
+        ) = self._apply_queueing_penalty(pool_id, selector)
+
+        # REQ-008: record the inter-arrival time for this routing
+        # call so the per-pool observation buffer can fit an
+        # MmcQueue. Pair with the observed service time on the
+        # task_completed event downstream (see execute_on_pool
+        # hook in C7).
+        if pool_id in self._pools:
+            self._record_arrival(pool_id)
+
+        # C1: measure observed wait = wall-clock between routing and
+        # task completion. Predicted wait is from the queueing model;
+        # observed wait is the ground truth for the §1 success gate.
+        route_start_mono = time.monotonic()
+        result = await self.execute_on_pool(pool_id, task)
+        observed_wait_s = time.monotonic() - route_start_mono
 
         await self._persist_routing_decision(
             task,
@@ -751,6 +763,7 @@ class PoolManager:
             caller_kind=caller_kind,
             parent_session_id=parent_session_id,
             predicted_wait_s=predicted_wait_s,
+            observed_wait_s=observed_wait_s,
             effective_selector=effective_selector_str,
         )
 
@@ -798,6 +811,86 @@ class PoolManager:
         # Record arrival timestamp; the (inter_arrival, service) pair
         # is appended in execute_on_pool when the task completes.
         buffer.record_arrival()
+
+    def _compute_predicted_wait(self, buffer) -> float | None:
+        """Return the buffer's predicted wait time, or None if unavailable.
+
+        Returns None when:
+          - buffer is None (pool hasn't been seen yet)
+          - buffer.fitted_model is None (warmup not complete)
+          - the model returns inf or a negative number (degenerate)
+          - any exception (boundary handler — failing the routing
+            path on a model error is worse than missing one prediction)
+        """
+        if buffer is None or buffer.fitted_model is None:
+            return None
+        try:
+            wait = buffer.fitted_model.safe_expected_wait_time()
+        except Exception:  # noqa: BLE001 - boundary handler
+            return None
+        if wait == float("inf") or wait < 0.0 or not math.isfinite(wait):
+            return None
+        return wait
+
+    def _apply_queueing_penalty(
+        self,
+        inner_pool_id: str,
+        selector: PoolSelector,
+    ) -> tuple[str, float | None, str, bool]:
+        """Re-rank candidates by M/M/c predicted wait time.
+
+        C1: the previous Tier 1 implementation computed
+        ``predicted_wait_s`` for the inner-selected pool and used it
+        only as a label suffix (``effective_selector = "+queueing"``).
+        Per spec §6 Phase 2 the queueing signal must actually
+        influence pool selection. This method re-ranks:
+
+          - AFFINITY / PEER_AFFINITY: single-candidate selectors
+            cannot re-rank; queueing can only advise (we still
+            report predicted_wait for the audit trail).
+          - LEAST_LOADED / ROUND_ROBIN / RANDOM: pick the
+            candidate with the lowest predicted wait across all
+            registered pools when at least one has a fitted model.
+
+        Returns:
+            (pool_id, predicted_wait_s, effective_selector_str,
+             queueing_affected)
+        """
+        try:
+            from mahavishnu.pools.status import PoolStatus
+        except ImportError:  # pragma: no cover - status module is always present
+            PoolStatus = None  # type: ignore[assignment,misc]
+
+        # Single-candidate selectors: no re-rank. Report the inner
+        # pick's predicted wait (if any) so the audit trail is honest.
+        if selector in (PoolSelector.AFFINITY, PoolSelector.PEER_AFFINITY):
+            buffer = self._queueing_buffers.get(inner_pool_id)
+            wait = self._compute_predicted_wait(buffer)
+            return inner_pool_id, wait, selector.value, False
+
+        # Multi-candidate selectors: rank by predicted_wait across
+        # every registered pool that has a fitted model.
+        predicted_waits: dict[str, float] = {}
+        for pid in self._pools:
+            buffer = self._queueing_buffers.get(pid)
+            wait = self._compute_predicted_wait(buffer)
+            if wait is not None:
+                predicted_waits[pid] = wait
+
+        # No predictions available: fall back to the inner pick with
+        # no predicted-wait label.
+        if not predicted_waits:
+            return inner_pool_id, None, selector.value, False
+
+        best_pool = min(predicted_waits, key=predicted_waits.get)
+        best_wait = predicted_waits[best_pool]
+
+        if best_pool == inner_pool_id:
+            return best_pool, best_wait, selector.value, False
+
+        # Queueing produced a different pick. The effective_selector
+        # string captures the composition (audit-trail signal).
+        return best_pool, best_wait, f"{selector.value}+queueing", True
 
     def _get_queueing_settings(self) -> dict[str, Any]:
         """Return the queueing settings from the active config.
