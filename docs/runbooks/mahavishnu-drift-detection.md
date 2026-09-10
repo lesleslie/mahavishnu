@@ -20,6 +20,11 @@ fires, you see:
   `samples_since_warning` and `confirm_detector`.
   `samples_since_warning` is the operator's only direct measure
   of how stale the warning was before confirmation;
+  When `detector == "two_stage"` on a confirmed alert, the
+  corresponding warning carries `detector == "cusum"` (or
+  `"page_hinkley"`) because each signal names its own underlying
+  detector class. To correlate, match `samples_since_warning` on
+  the confirmed span to the warning span's timestamp.
   `confirm_detector` indicates whether the underlying confirm
   detector is CUSUM (`"cusumdetector"`) or Page-Hinkley
   (`"pagehinkleydetector"`).
