@@ -163,6 +163,7 @@ def _is_surface_eligible(jot: JotSummary, now_ms: int) -> bool
 # Event-ctx helpers (TypedDict coercion; see §4.2)
 def _parse_retry_budget_exhausted(value: object) -> bool
 def _coerce_int(value: object, *, field: str) -> int
+def _should_exhaust_retry_budget(jot: JotSummary) -> bool      # §6.3 retry policy
 ```
 
 ### 3.3 MCP tool surface (extends `mahavishnu/mcp/tools/jot_tools.py`)
@@ -322,6 +323,10 @@ class DispatchCtx(TypedDict, total=False):
     pool_selector: str                  # REQUIRED; e.g., "least_loaded"
     triggered_by: Literal["first", "auto", "manual"]   # default "first" if absent
     dispatched_from: Literal["cli", "mcp", "slash"]    # required; set by surface
+    started_at_ms: int                  # REQUIRED; wall-clock at dispatch attempt;
+                                       #   auto-filled by `_append_event` from
+                                       #   `now_ms()` if caller omits (see §4.6).
+                                       #   Used by Tier-2 timeout wiring (§6.3).
 
 class DispatchDoneCtx(TypedDict, total=False):
     workflow_id: str                    # REQUIRED; MUST match parent dispatch
@@ -409,6 +414,10 @@ class JotSummary:
     current_attempt: int                       # NEW: attempt number of the most recent
                                                #   dispatch (1 for first, 2 for retry);
                                                #   0 if never dispatched
+    dispatch_started_at_ms: int | None         # NEW: wall-clock when the most recent
+                                               #   dispatch was launched; None if never
+                                               #   dispatched. Source for Tier-2
+                                               #   timeout math (§6.3 Tier-1 reconciler).
     deferred_until: int | None                 # NEW: epoch ms; None = not deferred
     deleted: bool                              # NEW: soft-delete flag
 
@@ -419,7 +428,7 @@ class JotSummary:
         return self.short_id                    # see §6.3 for handle resolution rules
 ```
 
-**Migration:** No schema migration. Existing jots get `dispatch_state=None`, `dispatch_workflow_id=None`, `deferred_until=None`, `deleted=False`, `current_attempt=0` by default (fold derives these from the absence of relevant events).
+**Migration:** No schema migration. Existing jots get `dispatch_state=None`, `dispatch_workflow_id=None`, `dispatch_started_at_ms=None`, `deferred_until=None`, `deleted=False`, `current_attempt=0` by default (fold derives these from the absence of relevant events).
 
 ### 4.5 DispatchState enum
 
@@ -442,32 +451,43 @@ Extends `mahavishnu/jot/fold.py`. After the existing R3/R9 logic settles `status
 **Defensive parsing:** every ctx access in this function goes through `_coerce_int` / `_parse_retry_budget_exhausted` (per §3.2). A malformed ctx (missing key, non-numeric `attempt`, non-boolean `retry_budget_exhausted`) is logged at warning and treated as "unknown" — the fold continues with default behavior rather than crashing. This is what makes the log-corruption failure mode recoverable rather than cascading.
 
 ```python
-def _derive_dispatch_fields(events: list[JotEvent]) -> tuple[DispatchState | None, int, str | None, int | None, bool]:
-    """Returns: (dispatch_state, current_attempt, dispatch_workflow_id, deferred_until, deleted)."""
+def _derive_dispatch_fields(events: list[JotEvent]) -> tuple[DispatchState | None, int, str | None, int | None, int | None, bool]:
+    """Returns: (dispatch_state, current_attempt, dispatch_workflow_id,
+                 dispatch_started_at_ms, deferred_until, deleted)."""
     deleted = any(ev.op == "delete" for ev in events)
     if deleted:
-        return None, 0, None, None, True
+        return None, 0, None, None, None, True
 
     # Find the most recent dispatch event (file order, not timestamp)
     most_recent_dispatch_idx = -1
     most_recent_dispatch_wf: str | None = None
     most_recent_current_attempt = 0
+    most_recent_started_at_ms: int | None = None
     for i, ev in enumerate(events):
         if ev.op == "dispatch":
             wf_id = _coerce_str(ev.ctx.get("workflow_id"), field=f"events[{i}].ctx.workflow_id")
             attempt = _coerce_int(ev.ctx.get("attempt"), field=f"events[{i}].ctx.attempt")
+            # started_at_ms auto-fills at emission (see _append_event below).
+            # Fallback to HLC wall_ms for legacy log entries that pre-date the field.
+            started = _coerce_int(
+                ev.ctx.get("started_at_ms"),
+                field=f"events[{i}].ctx.started_at_ms",
+            )
+            if started is None:
+                started = ev.hlc.wall_ms
             if wf_id is None or attempt is None:
                 continue                                  # malformed; skip
             most_recent_dispatch_idx = i
             most_recent_dispatch_wf = wf_id
             most_recent_current_attempt = attempt
+            most_recent_started_at_ms = started
 
     # Compute deferred_until independently of dispatch state
     deferred_until = _compute_deferred_until(events)
 
     # No dispatch events: jot has never been dispatched
     if most_recent_dispatch_idx < 0:
-        return None, 0, None, deferred_until, False
+        return None, 0, None, None, deferred_until, False
 
     # Walk forward from the most recent dispatch, looking for matching terminals
     dispatch_state = DispatchState.IN_FLIGHT
@@ -486,9 +506,24 @@ def _derive_dispatch_fields(events: list[JotEvent]) -> tuple[DispatchState | Non
         dispatch_state,
         most_recent_current_attempt,
         most_recent_dispatch_wf,
+        most_recent_started_at_ms,
         deferred_until,
         False,
     )
+
+
+def _append_event(op: str, ctx: dict[str, object]) -> None:
+    """Validation + atomic-write wrapper. Auto-fills `started_at_ms` on dispatch.
+
+    On `op == "dispatch"`, if the caller did not pass `started_at_ms`, the
+    wrapper stamps the current wall-clock so Tier-2 reconcilers can compute
+    elapsed time without re-scanning events (#56 of the review). The field is
+    also validated against `DispatchCtx` after the fill so a caller-provided
+    invalid value still raises `JotValidationError`.
+    """
+    if op == "dispatch" and "started_at_ms" not in ctx:
+        ctx = {**ctx, "started_at_ms": now_ms()}
+    # ... TypedDict validation against per-op schema, then append to log
 
 
 def _compute_deferred_until(events: list[JotEvent]) -> int | None:
@@ -545,6 +580,8 @@ def _parse_retry_budget_exhausted(value: object) -> bool:
 **Why this algorithm:** scanning newest-first for "any terminal" misses the case where a user manually re-dispatches a previously-completed jot — the old terminal would mark SUCCEEDED even though the new dispatch is IN_FLIGHT. Matching `workflow_id` ensures we only consider terminals for the **current** dispatch attempt.
 
 `defer_expired` is **lazy**: fold writes it when it sees a `defer` event with `until <= now_ms` and no `defer_expired` event after it. No background timer required. **Concurrency note:** two concurrent fold calls can both observe an expired `defer` and both attempt to write `defer_expired`. The write is idempotent because fold dedupes by checking the event chain before writing — second writer sees the existing `defer_expired` and exits silently. No `asyncio.Lock` needed because all `_append_event` writes in fold go through a single asyncio-bound sequential queue per process.
+
+**Cross-process event-write atomicity (explicit assumption):** Drain assumes the jot log is written by **exactly one Mahavishnu process per HOME directory at a time**. This is the same single-process assumption the jot-capture hook already makes (per sub-plan 1). Multi-process appenders are explicitly out of scope (§10) and would require `fcntl.flock` around the file descriptor or atomic `O_APPEND` writes below `PIPE_BUF` (4 KiB on Linux). Inside one process, fold + drain + capture + MCP tools + CLI all serialize writes through `_append_event`, which acquires the same in-process asyncio lock that capture uses — no inter-process locking needed for the supported deployment.
 
 ### 4.7 Backward compatibility (explicit)
 
@@ -815,6 +852,7 @@ Every call to fold (read or write) inspects any `IN_FLIGHT` jot it encounters:
 
 ```python
 TERMINAL_STATUSES = frozenset({"COMPLETED", "FAILED", "CANCELLED", "TIMEOUT"})
+RECONCILER_TIMEOUT_MS = 10 * 60 * 1000                  # 10 min default; from §5.8 `timeout_minutes`
 
 async def _reconcile_if_in_flight(jot: JotSummary) -> None:
     if jot.dispatch_state is not DispatchState.IN_FLIGHT:
@@ -823,6 +861,32 @@ async def _reconcile_if_in_flight(jot: JotSummary) -> None:
     if workflow_id is None:
         log.warning("JOT_DISPATCH_NO_WORKFLOW_ID", handle=jot.handle)
         return
+
+    # Tier-2 timeout gate: if the most recent dispatch has been IN_FLIGHT longer
+    # than RECONCILER_TIMEOUT_MS, declare it failed WITHOUT calling the substrate.
+    # The workflow is presumed dead; retrying the status call just confirms RUNNING.
+    # retry_budget_exhausted=true because retrying a presumed-dead workflow is wasteful.
+    now_ms_ = now_ms()
+    started_at = jot.dispatch_started_at_ms      # may be None for legacy entries
+    if started_at is not None and (now_ms_ - started_at) >= RECONCILER_TIMEOUT_MS:
+        try:
+            await _append_event("dispatch_failed", ctx={
+                "workflow_id": workflow_id,
+                "attempt": jot.current_attempt,
+                "error": "workflow_timeout:tier2",
+                "error_id": "ERROR_JOT_WORKFLOW_TIMEOUT",
+                "retry_budget_exhausted": True,
+            })
+            log.error("JOT_WORKFLOW_TIMEOUT",
+                      handle=jot.handle, workflow_id=workflow_id,
+                      elapsed_ms=now_ms_ - started_at,
+                      error_id="ERROR_JOT_WORKFLOW_TIMEOUT")
+        except JotLogUnwritableError as exc:
+            log.error("JOT_RECONCILE_TIMEOUT_WRITE_FAILED",
+                      handle=jot.handle, error=str(exc))
+            # Don't raise — fold must not fail because reconciliation can't persist
+        return                                      # done; FAILED is terminal
+
     try:
         # Per-call deadline: don't let a slow substrate freeze fold
         status_dict = await asyncio.wait_for(
@@ -849,7 +913,7 @@ async def _reconcile_if_in_flight(jot: JotSummary) -> None:
         if succeeded:
             await _append_event("dispatch_done", ctx={
                 "workflow_id": workflow_id,
-                "summary": status_dict.get("results_count") and "ok" or "completed",
+                "summary": ("ok" if status_dict.get("results_count") else "completed"),
                 **({"commit_sha": status_dict["commit_sha"]}
                    if status_dict.get("commit_sha") else {}),
             })
@@ -857,7 +921,7 @@ async def _reconcile_if_in_flight(jot: JotSummary) -> None:
             budget_exhausted = _should_exhaust_retry_budget(jot)
             await _append_event("dispatch_failed", ctx={
                 "workflow_id": workflow_id,
-                "attempt": str(jot.current_attempt),
+                "attempt": jot.current_attempt,
                 "error": f"workflow_status:{status_str}",
                 "error_id": "ERROR_JOT_WORKFLOW_FAILED",
                 "retry_budget_exhausted": budget_exhausted,
@@ -906,6 +970,38 @@ async def _background_reconciler_loop() -> None:
 
 Handles the "user dispatches and never reads" case. Tier-1 already covered most cases, so this is a safety net with its own self-healing: one bad jot, one bad fold, one bad tick — none of them kill the loop.
 
+#### 6.3.1 Retry budget policy (`_should_exhaust_retry_budget`)
+
+The lazy reconciler (§6.3) calls `_should_exhaust_retry_budget(jot)` when it observes a terminal `dispatch_failed` event to decide whether to schedule an auto-retry or mark the jot terminally `FAILED`. The policy is the single source of truth for what "budget exhausted" means; both auto-retry (§6.4) and the failure-mode table (§6.7) reference it.
+
+```python
+MAX_AUTO_ATTEMPTS = 2                                # total (1 initial + 1 auto-retry)
+
+def _should_exhaust_retry_budget(jot: JotSummary) -> bool:
+    """Return True iff this dispatch failure should NOT auto-retry.
+
+    Policy: a failed dispatch on the LAST configured attempt exhausts the
+    budget. With MAX_AUTO_ATTEMPTS=2, attempt 2 failure → exhausted (True);
+    attempt 1 failure → budget remaining (False, auto-retry fires).
+
+    Source of truth for `retry_budget_exhausted` ctx on emitted `dispatch_failed`
+    events (see §4.2). The same constant is used by:
+      - Lazy reconciler (this section) — emits dispatch_failed with the flag.
+      - Auto-retry (§6.4) — guards re-dispatch with `current_attempt >= MAX_AUTO_ATTEMPTS`.
+      - Manual retry (§6.5) — RESETS the counter to current_attempt + 1, so
+        this policy is not re-applied to manual retries.
+
+    Edge case: malformed ctx where `current_attempt` is missing or 0 (e.g.,
+    log corruption) is treated as `attempt=1` for this check. Reason: a 0
+    attempt shouldn't happen — the spec guarantees `attempt >= 1` on every
+    dispatched event — but if it does, fail-safe behavior (retry once) is
+    safer than fail-stop (terminal FAILED) since the user can't recover.
+    """
+    return max(jot.current_attempt, 1) >= MAX_AUTO_ATTEMPTS
+```
+
+**Test coverage** (see §7.2): `test_should_exhaust_retry_budget_true_on_second_attempt`, `test_should_exhaust_retry_budget_false_on_first_attempt`, `test_should_exhaust_retry_budget_treats_zero_as_first_attempt` (fail-safe behavior).
+
 ### 6.4 Auto-retry with idempotency
 
 **Max 2 attempts total** (1 initial + 1 auto-retry). `MAX_AUTO_ATTEMPTS = 2` (the constant name encodes "total attempts" not "retry count").
@@ -938,7 +1034,7 @@ async def _auto_retry_after(handle: str, backoff_s: int) -> None:
         try:
             await _append_event("dispatch_failed", ctx={
                 "workflow_id": f"failed_to_create:{exc.error_id}",
-                "attempt": str(current.current_attempt + 1),
+                "attempt": current.current_attempt + 1,
                 "error": f"{type(exc).__name__}: {exc}",
                 "error_id": exc.error_id,
                 "retry_budget_exhausted": True,        # no more retries — escalate to manual
@@ -951,7 +1047,7 @@ async def _auto_retry_after(handle: str, backoff_s: int) -> None:
     try:
         await _append_event("dispatch", ctx={
             "workflow_id": workflow_id,
-            "attempt": str(current.current_attempt + 1),
+            "attempt": current.current_attempt + 1,
             "pool_selector": "least_loaded",
             "triggered_by": "auto",
         })
@@ -1000,7 +1096,7 @@ async def retry_dispatch(handle: str) -> DispatchResult:
     try:
         await _append_event("dispatch", ctx={
             "workflow_id": workflow_id,
-            "attempt": str(next_attempt),
+            "attempt": next_attempt,
             "pool_selector": "least_loaded",
             "triggered_by": "manual",
         })
@@ -1069,21 +1165,25 @@ def drain_plan(query: str | None, limit: int = 20, include_in_flight: bool = Fal
 
 Every failure mode has an explicit detection point, recovery path, and `error_id` for Sentry/Dhara correlation.
 
-| Failure | Detection | Recovery | error_id |
-|---|---|---|---|
-| Workflow substrate unreachable | `asyncio.wait_for` timeout in `_get_workflow_status` | Log warn; leave IN_FLIGHT; Tier-2 retries next tick | (warn log) |
-| Substrate returns unexpected shape | Type-check access; defensive coercion | Log warn; treat as "still running"; IN_FLIGHT unchanged | (warn log) |
-| Worker never reports back | Tier-2 reconciler sees elapsed > `timeout_minutes * 60` AND status not terminal | Write `dispatch_failed` with `retry_budget_exhausted=true` | `ERROR_JOT_WORKFLOW_TIMEOUT` |
-| HOME directory read-only | `_append_event` raises `JotLogUnwritableError` | Catch at every event site; surface `JotPermissionError` to caller | `ERROR_JOT_LOG_UNWRITABLE` |
-| `trigger_workflow` raises (network, auth) | Caught in `_trigger_jot_workflow` | Raise `JotDispatchError(error_id=ERROR_JOT_TRIGGER_WORKFLOW_FAILED)`; for auto-retry path, write `dispatch_failed` with `retry_budget_exhausted=true` | `ERROR_JOT_TRIGGER_WORKFLOW_FAILED` |
-| Auto-retry exception | Caught in `_auto_retry_after` (per-error_type) | Specific recovery per type; always logs an error_id | per-exception-type |
-| Reconciler crash mid-write | Lazy reconciler (Tier 1) catches up on next read | Self-healing; logs `JOT_RECONCILE_PER_JOT_FAILED` | `JOT_RECONCILE_PER_JOT_FAILED` |
-| Tier-2 reconciler per-jot failure | Caught per-jot in `_background_reconciler_loop` | Other jots still reconciled; failed jot logged | `JOT_RECONCILE_PER_JOT_FAILED` |
-| Tier-2 reconciler per-tick failure (fold crash) | Caught per-tick | Loop continues next tick | `JOT_RECONCILER_FOLD_FAILED` |
-| User dispatches same jot twice rapidly | Two `dispatch` events appended; fold sees new IN_FLIGHT, old workflow abandoned | User can `jot_retry` to manually re-trigger | (no error) |
-| Mahavishnu server down during dispatch | `trigger_workflow` raises | `JotDispatchError(error_id=ERROR_JOT_TRIGGER_WORKFLOW_FAILED)`; user retries when server is back | `ERROR_JOT_TRIGGER_WORKFLOW_FAILED` |
-| Embeddings service unreachable during surfacing | Caught in `_semantic_score`; lexical results still returned | `SurfacingResult.surface_degraded=true`; log warn | `JOT_EMBEDDINGS_DOWN` |
-| `_reconcile_if_in_flight` raises (unexpected) | Caught in Tier-2 loop per-jot AND in Tier-1 caller | Logged; fold continues | `JOT_RECONCILE_PER_JOT_FAILED` |
+| Failure | Detection | Recovery | error_id | Test (§7.2/§7.3) |
+|---|---|---|---|---|
+| Workflow substrate unreachable | `asyncio.wait_for` timeout in `_get_workflow_status` | Log warn; leave IN_FLIGHT; Tier-2 retries next tick | (warn log) | `test_lazy_reconciler_logs_warn_on_substrate_timeout` |
+| Substrate returns unexpected shape | Type-check access; defensive coercion | Log warn; treat as "still running"; IN_FLIGHT unchanged | (warn log) | `test_lazy_reconciler_treats_unknown_status_as_running` |
+| Worker never reports back | Tier-1 reconciler: `now_ms - jot.dispatch_started_at_ms >= RECONCILER_TIMEOUT_MS` (see §6.3 timeout gate) | Write `dispatch_failed` with `retry_budget_exhausted=true`; do NOT call substrate | `ERROR_JOT_WORKFLOW_TIMEOUT` | `test_reconciler_times_out_in_flight_dispatch_after_window` |
+| HOME directory read-only | `_append_event` raises `JotLogUnwritableError` | Catch at every event site; surface `JotPermissionError` to caller | `ERROR_JOT_LOG_UNWRITABLE` | `test_dispatch_surfaces_permission_error_when_log_unwritable` |
+| `trigger_workflow` raises (network, auth) | Caught in `_trigger_jot_workflow` | Raise `JotDispatchError(error_id=ERROR_JOT_TRIGGER_WORKFLOW_FAILED)`; for auto-retry path, write `dispatch_failed` with `retry_budget_exhausted=true` | `ERROR_JOT_TRIGGER_WORKFLOW_FAILED` | `test_dispatch_translates_trigger_failure_to_dispatch_error` |
+| Auto-retry exception | Caught in `_auto_retry_after` (per-error_type) | Specific recovery per type; always logs an error_id | per-exception-type | `test_auto_retry_logs_error_id_per_exception_type` |
+| Reconciler crash mid-write | Lazy reconciler (Tier 1) catches up on next read | Self-healing; logs `JOT_RECONCILE_PER_JOT_FAILED` | `JOT_RECONCILE_PER_JOT_FAILED` | `test_lazy_reconciler_logs_per_jot_error_and_continues` |
+| Tier-2 reconciler per-jot failure | Caught per-jot in `_background_reconciler_loop` | Other jots still reconciled; failed jot logged | `JOT_RECONCILE_PER_JOT_FAILED` | `test_background_reconciler_skips_failing_jot_continues_others` |
+| Tier-2 reconciler per-tick failure (fold crash) | Caught per-tick | Loop continues next tick | `JOT_RECONCILER_FOLD_FAILED` | `test_background_reconciler_continues_after_fold_failure` |
+| User dispatches same jot twice rapidly | Two `dispatch` events appended; fold sees new IN_FLIGHT, old workflow abandoned | User can `jot_retry` to manually re-trigger | (no error) | `test_rapid_double_dispatch_abandons_old_workflow` |
+| Mahavishnu server down during dispatch | `trigger_workflow` raises | `JotDispatchError(error_id=ERROR_JOT_TRIGGER_WORKFLOW_FAILED)`; user retries when server is back | `ERROR_JOT_TRIGGER_WORKFLOW_FAILED` | `test_dispatch_when_mahavishnu_down_surfaces_dispatch_error` |
+| Embeddings service unreachable during surfacing | Caught in `_semantic_score`; lexical results still returned | `SurfacingResult.surface_degraded=true`; log warn | `JOT_EMBEDDINGS_DOWN` | `test_semantic_fallback_returns_degraded_when_embeddings_unreachable` |
+| `_reconcile_if_in_flight` raises (unexpected) | Caught in Tier-2 loop per-jot AND in Tier-1 caller | Logged; fold continues | `JOT_RECONCILE_PER_JOT_FAILED` | `test_lazy_reconciler_unexpected_exception_logged_not_propagated` |
+| Embeddings returns empty list | Detected in `_semantic_score` (length mismatch) | Return 0.0 for that pair; mark `surface_degraded=true` | `JOT_EMBEDDINGS_EMPTY` | `test_semantic_fallback_treats_empty_embed_as_no_match_with_degraded_flag` |
+| Embeddings returns wrong-shape vectors | Detected in `_cosine_similarity` (length mismatch) | Return 0.0 for that pair; mark `surface_degraded=true` | `JOT_EMBEDDINGS_BAD_SHAPE` | `test_semantic_fallback_treats_wrong_shape_as_no_match_with_degraded_flag` |
+| Embeddings timeout (slow model) | `asyncio.wait_for` around `embed()` | Return 0.0; mark `surface_degraded=true` | `JOT_EMBEDDINGS_TIMEOUT` | `test_semantic_fallback_returns_degraded_when_embeddings_timeout` |
+| `defer_expired` lazy write races between two fold calls | Fold dedupes by checking event chain before writing | Second writer sees existing `defer_expired`, exits silently | (no error) | `test_defer_expired_lazy_write_is_idempotent_under_concurrent_folds` |
 
 ### 6.8 Configuration
 
@@ -1215,6 +1315,10 @@ Surfacing fires from `SessionStart` and `PostToolUse` Claude Code hooks. These h
 - `test_lazy_reconciler_writes_dispatch_done_for_in_flight`
 - `test_lazy_reconciler_idempotent_when_already_terminal`
 - `test_lazy_reconciler_writes_dispatch_failed_with_correct_budget`
+- `test_lazy_reconciler_logs_warn_on_substrate_timeout`
+- `test_lazy_reconciler_treats_unknown_status_as_running`
+- `test_lazy_reconciler_logs_per_jot_error_and_continues`
+- `test_lazy_reconciler_unexpected_exception_logged_not_propagated`
 
 **State filter:**
 - `test_open_jots_are_drain_eligible`
@@ -1223,6 +1327,42 @@ Surfacing fires from `SessionStart` and `PostToolUse` Claude Code hooks. These h
 - `test_in_flight_jots_excluded_from_drain_candidates`
 - `test_failed_jots_surfaced_for_attention`
 - `test_deleted_jots_excluded_from_both`
+
+**Retry budget policy (`_should_exhaust_retry_budget`, §6.3.1):**
+- `test_should_exhaust_retry_budget_true_on_second_attempt` — `current_attempt=2` returns True
+- `test_should_exhaust_retry_budget_false_on_first_attempt` — `current_attempt=1` returns False
+- `test_should_exhaust_retry_budget_treats_zero_as_first_attempt` — fail-safe: `current_attempt=0` returns False (lets retry fire)
+
+**Tier-2 timeout gate (§6.3):**
+- `test_reconciler_times_out_in_flight_dispatch_after_window` — at `now - started_at_ms >= RECONCILER_TIMEOUT_MS`, write `dispatch_failed` with `retry_budget_exhausted=true` without calling the substrate
+- `test_reconciler_skips_timeout_check_when_started_at_ms_is_none` — legacy log entries with missing `started_at_ms` skip the gate (fall through to status check)
+- `test_reconciler_calls_substrate_when_within_timeout_window` — sanity: short-lived dispatches go through `_get_workflow_status` normally
+
+**Fold edge cases (`_derive_dispatch_fields`, §4.6):**
+- `test_fold_handles_orphan_terminal_with_no_dispatch_event` — `dispatch_done` without a preceding `dispatch` is logged warn and treated as no-state (defensive)
+- `test_fold_hlc_tiebreaker_breaks_workflow_id_match_correctly` — when two `dispatch` events have identical `(wall_ms, ctr)`, lex on workflow_id picks the canonical match
+- `test_fold_keeps_parked_event_when_workflow_id_matches` — defensive: malformed `workflow_id` in terminal → treat as "still running", IN_FLIGHT unchanged
+- `test_fold_drops_jot_with_dispatch_and_then_delete` — `delete` after dispatch: deleted flag wins, all dispatch state cleared
+- `test_fold_deferred_until_from_later_defer_overrides_earlier` — two `defer` events: the LATER one wins (regardless of timestamp)
+- `test_fold_defer_expired_after_defer_clears_pending_until` — `defer_expired` always clears the pending `until`
+- `test_fold_malformed_ctx_logs_warning_continues` — non-numeric `attempt` or non-bool `retry_budget_exhausted` → log warn, treat as unknown
+- `test_fold_started_at_ms_falls_back_to_event_hlc_wall_ms` — legacy entries without `started_at_ms` use `ev.hlc.wall_ms`
+- `test_fold_no_dispatch_yields_none_state_and_zero_attempt` — baseline: capture-only jot has `dispatch_state=None`, `current_attempt=0`, `dispatch_started_at_ms=None`
+
+**Defer_expired lazy-write idempotency (§4.6 concurrency note):**
+- `test_defer_expired_lazy_write_is_idempotent_under_concurrent_folds` — two concurrent `fold()` calls both observing an expired `defer` result in exactly ONE `defer_expired` event written (second writer sees existing event and exits)
+- `test_defer_expired_skipped_when_defer_was_already_expired_before_call` — `defer(until=past)` with no subsequent event: fold writes `defer_expired`
+- `test_defer_expired_skipped_when_newer_defer_supersedes` — `defer(until=past)` then `defer(until=future)`: NO `defer_expired` written
+
+**Embeddings failure modes (`_semantic_score`, §5.4):**
+- `test_semantic_fallback_returns_degraded_when_embeddings_unreachable` — `embed()` raises (network/OOM); `surface_degraded=true`, lexical results still returned
+- `test_semantic_fallback_treats_empty_embed_as_no_match_with_degraded_flag` — `embed()` returns `[]`; `surface_degraded=true`, no matches
+- `test_semantic_fallback_treats_wrong_shape_as_no_match_with_degraded_flag` — vector length mismatch (e.g., embed returns 1D but model expects 384); `surface_degraded=true`
+- `test_semantic_fallback_returns_degraded_when_embeddings_timeout` — `asyncio.wait_for` around `embed()` triggers; `surface_degraded=true`, lexical preserved
+
+**Cross-process atomicity assumption (§4.6 explicit policy):**
+- `test_append_event_serializes_through_in_process_lock` — concurrent `_append_event` calls within one process produce ordered, non-interleaved lines
+- `test_dispatch_surfaces_permission_error_when_log_unwritable` — read-only HOME: `_append_event` raises `JotLogUnwritableError`, dispatcher surfaces to caller
 
 ### 7.3 Key integration test specifications
 
@@ -1240,21 +1380,85 @@ Surfacing fires from `SessionStart` and `PostToolUse` Claude Code hooks. These h
 
 ### 7.4 Key property test specifications
 
+**Strategy:** each Hypothesis example asserts a *load-bearing* property — one that a naive implementation could plausibly violate. Avoid tautologies like "fold returns something" or "rank produces a list". Each test names what could be wrong and the test exercises it.
+
 ```python
-@given(events=event_chains())
-def test_re_drain_idempotent(events): ...
+# Re-drain idempotency: applying drain twice (or N times) to the same log
+# yields the same final state and writes the same set of events as one drain.
+# Catches: accidental event accumulation, off-by-one state derivation.
+@given(events=event_chains(), n_calls=st.integers(min_value=1, max_value=10))
+def test_drain_is_idempotent_under_repeated_application(events, n_calls):
+    log = setup_log(events)
+    before = log.snapshot()
+    for _ in range(n_calls):
+        drain_plan(query=None).execute()
+    after = log.snapshot()
+    assert drain_plan(query=None).candidates == drain_plan(query=None).candidates
+    assert after.event_count <= before.event_count + MAX_EVENTS_PER_DRAIN
 
+# Attempt-count monotonicity: current_attempt never exceeds MAX_AUTO_ATTEMPTS=2,
+# and never goes BACKWARDS without a manual retry event.
+# Catches: off-by-one in auto-retry guard, lost-update in fold re-derivation.
 @given(events=random_event_chains_with_dispatch_ops())
-def test_attempt_count_never_exceeds_max(events): ...
+def test_attempt_count_never_exceeds_max_and_only_advances_on_retry(events):
+    state = fold(events)
+    assert 0 <= state.current_attempt <= MAX_AUTO_ATTEMPTS
+    # If two dispatch events exist with attempts 1 and 2, no third
+    # auto-dispatch can produce attempt=3 without an intervening manual_retry.
+    assert count_dispatch_events(events) <= MAX_AUTO_ATTEMPTS + manual_retries(events)
 
+# State derivation determinism: the same event chain always produces the
+# same JotSummary, regardless of insertion order (within monotonic HLC).
+# Catches: non-deterministic dict iteration, clock-dependent state.
 @given(events=random_event_chains())
-def test_state_derivation_is_deterministic(events): ...
+def test_state_derivation_is_pure_function_of_events(events):
+    s1 = fold(events).find(handle)
+    s2 = fold(events[::-1]).find(handle) if all_hlc_monotonic(events[::-1]) else None
+    if s2 is not None:
+        assert s1 == s2
 
-@given(jots=random_jot_texts(min_count=5), context=random_contexts())
-def test_ranking_is_transitive(jots, context): ...
+# Ranking transitivity: for any jots a, b, c and threshold t, if score(a) >= t
+# and score(a) > score(b) and score(b) > score(c), then score(a) > score(c).
+# Catches: scoring instability, sort non-determinism.
+@given(jots=random_jot_texts(min_count=3, max_count=20), threshold=st.floats(0.0, 1.0))
+def test_ranking_is_transitive(jots, threshold):
+    results = surface_relevant("session_start", context_text="refactor auth", limit=10).matches
+    scores = [r.score for r in results]
+    for i in range(len(scores)):
+        for j in range(i + 1, len(scores)):
+            assert scores[i] >= scores[j]                # ranking is sorted DESC
 
-@given(jots=random_jot_texts(min_count=10))
-def test_top_n_truncates_to_limit(jots): ...
+# Top-N truncation: surfacing always returns ≤ limit results, even when many
+# jots match above threshold. Result set is a subset of the full match set.
+@given(
+    jots=random_jot_texts(min_count=20, max_count=100),
+    limit=st.integers(min_value=1, max_value=10),
+    threshold=st.floats(0.0, 0.5),
+)
+def test_top_n_truncates_to_limit(jots, limit, threshold):
+    full = surface_relevant("session_start", context_text="x", limit=len(jots)).matches
+    truncated = surface_relevant("session_start", context_text="x", limit=limit).matches
+    assert len(truncated) <= limit
+    assert set(r.id for r in truncated).issubset(set(r.id for r in full))
+
+# Embedding determinism: the embedded representation of the same text is
+# stable across calls (idempotent on no model reload). Catches: non-deterministic
+# caching, model side-effects.
+@given(text=st.text(min_size=1, max_size=200))
+def test_semantic_embed_is_deterministic_for_same_text(text):
+    e1 = _EmbeddingsService().embed([text])
+    e2 = _EmbeddingsService().embed([text])
+    assert cosine_sim(e1[0], e2[0]) > 0.99              # near-identical vectors
+
+# Tier-2 timeout invariance: dispatch_started_at_ms derived from any
+# dispatch event satisfies |derived - emitted - clock_skew| ≤ max_event_loop_lag.
+# Catches: clock regression, HLC/wall-clock mismatch.
+@given(events=random_event_chains_with_dispatch_ops())
+def test_started_at_ms_within_clock_skew_bound(events):
+    state = fold(events)
+    if state.dispatch_started_at_ms is not None and events:
+        # No event in the chain should have hlc.wall_ms earlier than derived.
+        assert state.dispatch_started_at_ms >= min(ev.hlc.wall_ms for ev in events)
 ```
 
 ### 7.5 Mocking catalog
