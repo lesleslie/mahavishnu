@@ -132,6 +132,84 @@ class TestTwoStageStateMachine:
                 break
             last_state = r.state
 
+    def test_confirm_fires_on_boundary_sample(self) -> None:
+        """Pin the ordering invariant: confirm at exactly the
+        ``confirm_window_samples``-th sample after warn still emits the
+        alert rather than being silently discarded as window-expiry.
+
+        The state-machine code checks ``confirm_fired`` BEFORE the
+        ``samples_since_warning >= confirm_window_samples`` window-expiry
+        check on every observation. This test pins that invariant by
+        constructing a deterministic CUSUM scenario where confirm fires
+        at exactly the boundary sample.
+
+        With constant ``x=1.5`` input (no noise; CUSUM scoring is
+        deterministic given the slack=0.25, threshold=8.0/14.0 settings):
+
+        - warn (h=8.0) fires at sample 7 of the shift (``S_H`` = 8.75 > 8.0)
+        - confirm (h=14.0) fires at sample 12 (``S_H`` = 15.0 > 14.0)
+        - Samples between warn and confirm: 5 (samples 8..12)
+        - With ``confirm_window_samples=5``, ``samples_since_warning``
+          reaches 5 at the same call where confirm fires — this is the
+          boundary case. If the window-expiry check ran BEFORE the
+          confirm check, the state would be discarded (``idle``) instead
+          of emitting ``confirmed``.
+        """
+        import random
+
+        rng = random.Random(47)
+        warn = CUSUMDetector(target_mean=0.0, slack=0.25, threshold=8.0, two_sided=True)
+        confirm = CUSUMDetector(target_mean=0.0, slack=0.25, threshold=14.0, two_sided=True)
+        # Tighter window pins the boundary deterministically.
+        ts = TwoStageDetector(warn, confirm, confirm_window_samples=5)
+
+        # Burn-in (then reset clears CUSUM accumulators to 0).
+        for _ in range(200):
+            ts.update(rng.gauss(0.0, 1.0))
+        ts.reset()
+
+        # Constant shift — no noise — so CUSUM scoring is deterministic.
+        warn_fired_at: int | None = None
+        confirm_fired_at: int | None = None
+        warn_to_confirm_distance: int | None = None
+        confirmed_seen = False
+        for i in range(20):
+            r = ts.update(1.5)
+            if r.state == "warning_pending" and warn_fired_at is None:
+                warn_fired_at = i
+            if r.state == "confirmed":
+                confirm_fired_at = i
+                assert warn_fired_at is not None  # for type checkers
+                warn_to_confirm_distance = confirm_fired_at - warn_fired_at
+                confirmed_seen = True
+                # Boundary-case assertions on the confirmed TwoStageResult:
+                assert r.warning_result is not None, (
+                    "warning_result must carry the latest warning result"
+                )
+                assert r.confirm_result is not None, (
+                    "confirm_result must carry the confirm fire"
+                )
+                assert r.samples_since_warning == 5, (
+                    f"samples_since_warning should equal the boundary (5); "
+                    f"got {r.samples_since_warning}"
+                )
+                break
+
+        assert warn_fired_at is not None, "warn should have fired within 20 shift samples"
+        assert confirmed_seen, (
+            f"confirm should have fired at the boundary; "
+            f"warn@{warn_fired_at}, confirm@{confirm_fired_at}, "
+            f"distance={warn_to_confirm_distance}"
+        )
+        # Pin the boundary invariant: confirm fires at warn + window_samples.
+        # If the window-expiry check ran BEFORE the confirm check, this
+        # would be silently discarded (state="idle") instead of emitting
+        # "confirmed".
+        assert warn_to_confirm_distance == 5, (
+            f"confirm should fire at warn+window_samples (boundary); "
+            f"got distance={warn_to_confirm_distance}"
+        )
+
 
 @pytest.mark.unit
 class TestTwoStageWithPageHinkley:
