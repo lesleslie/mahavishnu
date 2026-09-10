@@ -13,9 +13,15 @@ class FakeDhara:
 
     def __init__(self) -> None:
         self._store: dict[str, str] = {}
+        self._ttls: dict[str, int | None] = {}
 
     async def put(self, key: str, value: str, *, ttl: int | None = None) -> None:
         self._store[key] = value
+        self._ttls[key] = ttl
+
+    def get_ttl(self, key: str) -> int | None:
+        """Test-only inspection hook: the TTL recorded for ``key``."""
+        return self._ttls.get(key)
 
     async def get(self, key: str) -> str | None:
         return self._store.get(key)
@@ -25,3 +31,4 @@ class FakeDhara:
 
     async def delete(self, key: str) -> None:
         self._store.pop(key, None)
+        self._ttls.pop(key, None)
