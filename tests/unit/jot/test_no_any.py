@@ -31,6 +31,10 @@ def test_tool_signature_has_no_any(tool) -> None:  # type: ignore[no-untyped-def
             pytest.fail(f"{tool.name}: parameter {name!r} has no annotation")
         if "Any" in str(param.annotation):
             pytest.fail(f"{tool.name}: parameter {name!r} annotated with Any")
+    if sig.return_annotation is inspect.Signature.empty:
+        pytest.fail(f"{tool.name}: missing return annotation")
+    if "Any" in str(sig.return_annotation):
+        pytest.fail(f"{tool.name}: return type annotated with Any: {sig.return_annotation}")
 
 
 def test_no_any_in_jot_tools_source() -> None:
