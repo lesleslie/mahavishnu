@@ -1,4 +1,4 @@
-"""CLI subcommand handlers — 7 read+write commands (Task 10 adds cmd_search).
+"""CLI subcommand handlers — 8 commands mirror the 8 MCP tools (R2).
 
 Typer wiring lives in mahavishnu/cli/jot_cli.py (Task 11). This module
 exposes plain Python functions so the Typer app just delegates.
@@ -162,6 +162,18 @@ def cmd_add(*, log_path: Path | None = None, text: str) -> None:
     ev = _make_event("capture", text, path, ctx={"cwd": str(Path.cwd())})
     _write_event(path, ev)
     print(f"added: {ev.id[-6:]}")
+
+
+def cmd_search(
+    *, log_path: Path | None = None, query: str, limit: int = 20,
+) -> None:
+    """Lexical substring search (fallback when Session-Buddy is unavailable)."""
+    path = log_path or default_log_path()
+    events = _read_log(path)
+    result = build_states(events, enrich=False)
+    matches = [s for s in result.states if query.lower() in s.text.lower()][:limit]
+    if matches:
+        print(render_list(matches, limit=limit))
 
 
 # --- helpers ---

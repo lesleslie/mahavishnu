@@ -21,6 +21,7 @@ from mahavishnu.jot.cli import (
     cmd_edit,
     cmd_list,
     cmd_reopen,
+    cmd_search,
     cmd_show,
     cmd_vitals,
 )
@@ -199,3 +200,39 @@ def test_cmd_done_ambiguous_handle_exits_1(
     with pytest.raises(SystemExit) as exc_info:
         cmd_done(handle="f9c2")
     assert exc_info.value.code == 1
+
+
+def test_cmd_search_lexical_substring_match(
+    capsys: pytest.CaptureFixture[str], tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """No Session-Buddy in tests — falls back to lexical substring match."""
+    jot = _redirect_to_tmp(monkeypatch, tmp_path)
+    _seed_log(jot, [
+        _capture("a" * 32, "refactor fold", wall_ms=1),
+        _capture("b" * 32, "investigate redaction", wall_ms=2),
+    ])
+    cmd_search(query="fold", limit=20)
+    out = capsys.readouterr().out
+    assert "refactor fold" in out
+    assert "investigate redaction" not in out
+
+
+def test_cmd_search_respects_limit(
+    capsys: pytest.CaptureFixture[str], tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    jot = _redirect_to_tmp(monkeypatch, tmp_path)
+    _seed_log(jot, [
+        _capture(f"{i:032x}", f"match {i}", wall_ms=i) for i in range(5)
+    ])
+    cmd_search(query="match", limit=2)
+    out_lines = capsys.readouterr().out.splitlines()
+    assert len(out_lines) == 2
+
+
+def test_cmd_search_no_results_prints_nothing(
+    capsys: pytest.CaptureFixture[str], tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    jot = _redirect_to_tmp(monkeypatch, tmp_path)
+    _seed_log(jot, [_capture("a" * 32, "hello", wall_ms=1)])
+    cmd_search(query="nonexistent", limit=20)
+    assert capsys.readouterr().out == ""
