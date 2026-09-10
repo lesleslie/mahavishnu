@@ -68,6 +68,9 @@ porkbun-dns, spline, synxis-crs, synxis-pms, unifi).
 | synxis-crs-mcp | /Users/les/Projects/synxis-crs-mcp/ | >=3.13 | Discovered |
 | synxis-pms-mcp | /Users/les/Projects/synxis-pms-mcp/ | >=3.13 | Discovered |
 | unifi-mcp | /Users/les/Projects/unifi-mcp/ | >=3.13 | Discovered |
+| archive-org-mcp | /Users/les/Projects/archive-org-mcp/ | >=3.14 | Discovered |
+| medium-mcp | /Users/les/Projects/medium-mcp/ | >=3.14 | Discovered |
+| scapy-mcp | /Users/les/Projects/scapy-mcp/ | >=3.14 | Discovered |
 
 ### Desktop / GUI
 
@@ -139,12 +142,12 @@ Allowed exception: `*_HOST`, `*_URL`, `*_PORT` (non-secret config).
 
 - Core 7 (streaming-tar Phase 3 in-scope)
 - Web/framework libraries: 5 (1 from brief + 4 transitive)
-- Bodai MCP servers: 16 (6 from brief + 10 discovered)
+- Bodai MCP servers: 19 (6 from brief + 13 discovered)
 - Desktop/GUI: 1 (discovered)
 - Meta: 2 (discovered)
 - Deprecated: 1 (excluded from scope)
 
-**Total active Bodai repos: 35** (14 from brief + 21 newly-discovered)
+**Total active Bodai repos: 38** (14 from brief + 24 newly-discovered)
 
 ## Excluded from scope (verified non-Bodai or non-Python)
 
