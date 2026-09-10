@@ -51,18 +51,25 @@ def _write_event(log_path: Path, event: JotEvent) -> None:
 
 def _make_event(
     op: Op, text: str, log_path: Path, *, ctx: dict[str, str] | None = None,
+    event_id: str | None = None,
 ) -> JotEvent:
     """Build a JotEvent with HLC continuity from log tail.
 
     The node ID comes from `get_node(node_path())` — tests rely on the
     `tmp_jot_dir` fixture (sub-plan 1 conftest.py) to make this return a
     fixed value.
+
+    ``event_id`` defaults to a fresh uuid (used by ``capture``). Edit/done/
+    reopen callers MUST pass the parent jot's id so the fold can associate
+    the new event with the existing JotSummary state (R3, R9 — fold by id).
+    Without this, the new event is parked and dropped to errors, leaving
+    the JotSummary state unchanged — a silent no-op.
     """
     last = read_tail_hlc(log_path)
     node = get_node(_node_path())
     hlc = hlc_now(node, last)
     return JotEvent(
-        id=uuid.uuid4().hex,
+        id=event_id or uuid.uuid4().hex,
         op=op,
         hlc=hlc,
         text=text,
@@ -118,7 +125,7 @@ def cmd_done(*, log_path: Path | None = None, handle: str) -> None:
     if s.status == "done":
         print(f"already done: {s.short_id}")
         return
-    ev = _make_event("done", "", path)
+    ev = _make_event("done", "", path, event_id=s.id)
     _write_event(path, ev)
     print(f"done: {s.short_id}")
 
@@ -136,7 +143,7 @@ def cmd_reopen(*, log_path: Path | None = None, handle: str) -> None:
     if s.status == "open":
         print(f"already open: {s.short_id}")
         return
-    ev = _make_event("reopen", "", path)
+    ev = _make_event("reopen", "", path, event_id=s.id)
     _write_event(path, ev)
     print(f"reopened: {s.short_id}")
 
@@ -151,7 +158,7 @@ def cmd_edit(*, log_path: Path | None = None, handle: str, new_text: str) -> Non
     except JotError as exc:
         print(f"error: {exc}", file=sys.stderr)
         raise SystemExit(1) from exc
-    ev = _make_event("edit", new_text, path)
+    ev = _make_event("edit", new_text, path, event_id=s.id)
     _write_event(path, ev)
     print(f"edited: {s.short_id}")
 

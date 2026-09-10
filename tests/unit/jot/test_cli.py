@@ -238,6 +238,59 @@ def test_cmd_search_no_results_prints_nothing(
     assert capsys.readouterr().out == ""
 
 
+def test_cmd_done_actually_transitions_state(
+    capsys: pytest.CaptureFixture[str], tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Regression: cmd_done must transition state, not just emit an event."""
+    from mahavishnu.jot.fold import build_states, parse_events
+    jot = _redirect_to_tmp(monkeypatch, tmp_path)
+    _seed_log(jot, [_capture("a" * 32, "hello", wall_ms=1)])
+    cmd_done(handle="a" * 6)
+    # After cmd_done, the state should actually be "done"
+    result = build_states(parse_events(default_log_path()), enrich=False)
+    assert len(result.states) == 1
+    assert result.states[0].status == "done"
+    assert result.errors == []  # No orphans!
+    assert result.parked == []  # No parking!
+
+
+def test_cmd_reopen_actually_transitions_state(
+    capsys: pytest.CaptureFixture[str], tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Regression: cmd_reopen must transition state, not just emit an event."""
+    from mahavishnu.jot.fold import build_states, parse_events
+    jot = _redirect_to_tmp(monkeypatch, tmp_path)
+    _seed_log(jot, [
+        _capture("a" * 32, "hello", wall_ms=1),
+        JotEvent(
+            id="a" * 32, op="done",
+            hlc=HLC(wall_ms=2, ctr=0, node="a" * 8),
+            text="", ctx={}, created_ms=2,
+        ),
+    ])
+    cmd_reopen(handle="a" * 6)
+    result = build_states(parse_events(default_log_path()), enrich=False)
+    assert len(result.states) == 1
+    assert result.states[0].status == "open"
+    assert result.errors == []
+    assert result.parked == []
+
+
+def test_cmd_edit_actually_transitions_text(
+    capsys: pytest.CaptureFixture[str], tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Regression: cmd_edit must update the JotSummary text, not just emit."""
+    from mahavishnu.jot.fold import build_states, parse_events
+    jot = _redirect_to_tmp(monkeypatch, tmp_path)
+    _seed_log(jot, [_capture("a" * 32, "v1", wall_ms=1)])
+    cmd_edit(handle="a" * 6, new_text="v2")
+    result = build_states(parse_events(default_log_path()), enrich=False)
+    assert len(result.states) == 1
+    assert result.states[0].text == "v2"
+    assert result.errors == []
+    assert result.parked == []
+
+
 from typer.testing import CliRunner
 
 from mahavishnu.cli.jot_cli import app as jot_app
