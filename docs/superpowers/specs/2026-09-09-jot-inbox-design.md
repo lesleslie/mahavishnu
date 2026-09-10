@@ -13,7 +13,8 @@ by meaning through Session-Buddy.
 
 **Revision note.** This spec was revised after a six-lens review (architecture,
 security, Crackerjack compliance, MCP integration, test strategy, human
-factors). Findings that changed the design are marked **[R]** inline.
+factors), a round-2 implementability/display review, and a cut decision
+applied by the user. Findings that changed the design are marked **[R]** inline.
 
 ## Problem
 
@@ -54,7 +55,7 @@ design is defended on the remaining merits.
 | 3 | Terminal state is `done` | Locked (reaffirmed post-review) |
 | 4 | Local-first capture **and** Mahavishnu MCP tools, both in v1 | Locked |
 | 5 | Pull-only review, **plus a capture-time echo [R]** | Amended |
-| 6 | Session-Buddy semantic recall in v1 | Locked |
+| 6 | `/jot relevant` uses local ranking in v1; Session-Buddy semantic recall ships in v1.1 | Locked |
 | 7 | Dispatch is manual handoff only | Locked |
 | 8 | Dhara canonical; Session-Buddy derived **from Dhara [R]** | Amended |
 | 9 | **`jot_add` fires only on explicit "jot that" [R]** | New |
@@ -73,7 +74,7 @@ already exists and already reads the log — carries three extra signals:
 ```
 ,,pool affinity vs peer routing?
 
-  jotted a3f2 · "pool affinity vs peer rou…" · 3rd time · 17 open · 6 here
+  jotted a3f2 · "pool affinity vs peer rou…" · 3rd time · 17 open · oldest 41d
 ```
 
 This is not push. It rides on a capture the user initiated, and self-regulates:
@@ -84,9 +85,18 @@ forget. Duplicate detection uses stdlib `difflib.SequenceMatcher` over the last
 **The exit criterion is now observable. [R]** The original revisit condition
 ("if the capture habit forms and the review habit does not") could never fire,
 because `jot_sync` reported only write-side metrics. Feed state now includes
-`last_review_ts`, `reviews_30d`, and `capture_review_ratio`. Pre-committed
-trip-wire: **if `capture_review_ratio` exceeds 10:1 for two consecutive weeks,
-Decision 5 is unlocked.**
+`last_review_ts`, `reviews_30d`, and `capture_review_ratio`.
+
+**Vitals thresholds.** `capture_review_ratio` is rendered in the vitals footer:
+
+| Ratio (last 7d) | Glyph | Meaning |
+|---|---|---|
+| `≤ 3:1` | (none) | Healthy capture:review balance |
+| `3:1 – 10:1` | `· ⚠` | Review cadence lagging; surface hint, do not nag |
+| `> 10:1` for 2 consecutive weeks | `· ⚠⚠` | Pre-committed trip-wire — Decision 5 unlocked |
+
+Pre-committed trip-wire: **if `capture_review_ratio` exceeds 10:1 for two
+consecutive weeks, Decision 5 is unlocked.**
 
 ### Decision 9 — agent capture is explicit-only
 
@@ -199,7 +209,8 @@ Two triggers can otherwise overlap.
 ```
 
 Three ops: **`add`**, **`done`**, **`reopen`**. State is a fold; last op per ID
-wins. No stored `status` field — a stored status can disagree with the log.
+wins. **Open** = `last op ∈ {add, reopen}`. No stored `status` field — a stored
+status can disagree with the log.
 
 ### Ordering: hybrid logical clock [R]
 
@@ -225,11 +236,13 @@ mutations, including parked ones.
 The original design conflated *identity* with *handle*, then rejected the handle
 on identity's grounds. Taskwarrior has both.
 
-- **Identity:** UUIDv7 via `uuid.uuid7()` (Python 3.14 stdlib — confirm in
-  spike). Fallback `time.time_ns()` + `secrets.token_hex()`.
+- **Identity:** v1 uses `uuid.uuid4()` (universally available, stdlib).
+  UUIDv7 (`uuid.uuid7()`, Python 3.14) is deferred to a v1.1 spike; its
+  time-orderable property simplifies the cache invalidate path but is not
+  required for correctness in v1.
 - **Primary handle: display-time ordinals.** `/jot` numbers its output 1..N and
-  caches the mapping per `session_id`. You type `/jot done 3`. Batch forms:
-  `/jot done 1-4`, `/jot drop 2,5`.
+  caches the mapping per `session_id`. You type `/jot done 3`. Batch form:
+  `/jot done 1-4`.
 - **Stable handle:** last **6** hex characters, for cross-session and scripted
   use. Any unambiguous substring resolves; ambiguity raises `AmbiguousJotId`.
 
@@ -265,10 +278,10 @@ every worktree ever created.
 | Component | Location | Depends on |
 |---|---|---|
 | Capture hook | `mahavishnu/hooks/jot_capture.py` **[R]** | **stdlib only** |
-| Event codec | `mahavishnu/jot/events.py` | msgspec |
+| Event codec | `mahavishnu/jot/events.py` | stdlib `json.dumps` |
 | Fold | `mahavishnu/jot/fold.py` | events |
 | Handle resolution | `mahavishnu/jot/short_id.py` | — |
-| Context types | `mahavishnu/jot/ctx.py` | msgspec |
+| Context types | `mahavishnu/jot/ctx.py` | stdlib `json.dumps` |
 | Drain core (pure) | `mahavishnu/jot/drain_core.py` | — |
 | Drain sync | `mahavishnu/jot/drain_sync.py` | urllib |
 | Drain async | `mahavishnu/jot/drain_async.py` | httpx2 |
@@ -306,7 +319,7 @@ the sync path; `jot_sync` takes its own timeout parameter, default 30 s.
 
 ```
 ,,pool affinity vs peer routing?
-    →  jotted a3f2 · "pool affinity vs peer rou…" · 3rd time · 17 open · 6 here
+    →  jotted a3f2 · "pool affinity vs peer rou…" · 3rd time · 17 open · oldest 41d
 ```
 
 **Prefix `,,` [R].** Single-comma was rejected: copied JSON, YAML flow
@@ -331,15 +344,27 @@ non-alphanumeric symbol. An empty prefix would silently swallow every prompt.
 ```
 
 **Default listing is bounded to 5 [R]** with a vitals header
-(`17 open · 6 here · oldest 41d · 3 seen twice`). An unbounded list is a
+(`17 open · oldest 41d · 3 seen 3×`). An unbounded list is a
 monument to things undone, and nobody scrolls it. The *log* remains
 append-only; only the *view* is horizoned.
 
+**List row layout [R].** Every row carries the ID column (always present, never
+truncated), a 4-character status glyph (`OPEN ` / `DONE ` / `REOP `), the
+capture-time age (`2d`, `3h`, `12m`), the seen count when > 1 (`3×`), and the
+truncated text. Columns are space-aligned, not `·`-separated — bullets make
+parsing harder in a TTY and break programmatic parsing. Text truncation uses
+U+2026 and shrinks the text column on narrow terminals rather than wrapping or
+ellipsizing the whole row. No ANSI color when `not sys.stdout.isatty()` so
+output remains grep-friendly.
+
 **`/jot relevant` replaces `/jot here` [R].** `here` was adverb-shaped in a
 verb-shaped namespace, collided with `/jot "here"`, and would barely narrow —
-most jots in this workflow will carry `repo: mahavishnu`. Ranking against
-current subject matter using Session-Buddy embeddings is pull-shaped, so
-Decision 5 is untouched.
+most jots in this workflow will carry `repo: mahavishnu`. Ranking is performed
+**locally** against the fold (text overlap with the current session's repo,
+branch, recent files, and recent prompts), so `/jot relevant` works whether or
+not the drain has reached Session-Buddy. A v1.1 upgrade replaces this with
+Session-Buddy embeddings once drain freshness is proven — the command name,
+output shape, and pull semantics are unchanged.
 
 ### MCP tool group
 
@@ -351,7 +376,7 @@ Registered as function names (no `name=` override needed); the full MCP name is
 same shape as existing `pool_*` tools and does not hit the Akosha/Dhara naming
 gap.
 
-**Registration requires four edits, not one [R].** `PROFILE_REGISTRATIONS` and
+**Registration requires five edits, not one [R].** `PROFILE_REGISTRATIONS` and
 `REGISTRATION_MAP` in `profiles.py` are parallel structures; a group present in
 the first but absent from the second raises `ValueError` and **crashes the
 server at boot** (`mcp_common/tools/dispatch.py`). Required:
@@ -361,10 +386,9 @@ server at boot** (`mcp_common/tools/dispatch.py`). Required:
 2. `profiles.py` — import and add to `REGISTRATION_MAP`
 3. `bootstrap.py` — define `_register_jot_tools(server)`
 4. `jot_tools.py` — define `register_jot_tools(mcp, …)`
-
-**CI guard:** a test asserting every `PROFILE_REGISTRATIONS` key has a
-`REGISTRATION_MAP` entry, modeled on `TestYAMLRoutingSync`. This closes a
-documented recurring failure class and is worth more than this feature.
+5. **CI guard test** asserting every `PROFILE_REGISTRATIONS` key has a
+   `REGISTRATION_MAP` entry, modeled on `TestYAMLRoutingSync`. This closes a
+   documented recurring failure class and is worth more than this feature.
 
 ### `jot_draft` — manual handoff
 
@@ -403,8 +427,9 @@ directory.
 
 Users will jot secrets — "check why `MINIMAX_API_KEY` rotation broke pool
 routing" is exactly the shape of thought this tool exists to capture. Without
-redaction that lands in plaintext on disk, in Dhara, and as a **vector embedding
-in Session-Buddy**, where deletion is not reliably reversible.
+redaction that lands in plaintext on disk, in Dhara, and as a vector embedding
+in Session-Buddy. Capture-time redaction prevents the leak at write; the
+operator removal procedure handles the rare after-the-fact case.
 
 `session-buddy/session_buddy/ingesters/redaction.py` already provides a
 stdlib-only, ReDoS-guarded `redact()` (AKIA, `ghp_`, JWTs, `password=`,
@@ -421,13 +446,23 @@ The hook cannot import session-buddy. Defense in depth:
 
 The echo reports what happened: `jotted a3f2 · redacted:1 (AKIA)`.
 
-### Deletion [R]
+### Removal (no code)
 
-Add a **`redact` op** that overwrites the original `add` line **in place, same
-length** (space-padded). Byte offsets are preserved, so the append-only
-invariant holds — that invariant is about offsets not shifting, not about bytes
-being immutable. The drain issues a tombstone to Dhara and a delete-by-ID to
-Session-Buddy. Surfaced as `jot_redact`.
+**v1 has no removal primitive.** Capture-time and drain-time redaction protect
+secrets from reaching Dhara and Session-Buddy; vector embeddings of redacted
+text still exist but hold no signal. If a captured event must be removed after
+the fact (mis-capture, accidental sensitive content that slipped past
+redaction, compliance):
+
+> **Operator procedure.** Stop the drain (close the active MCP session or kill
+> the hook process). Edit the log line in place to an obvious placeholder of
+> the same byte length. Reset `~/.mahavishnu/jot/dhara.offset` to `0`. The
+> drain re-replicates from the start; idempotency makes this safe. Manually
+> delete the corresponding Session-Buddy embedding by ID.
+
+This preserves capability without code: the four-subsystem sprawl (op enum,
+in-place rewrite, Dhara tombstone, Session-Buddy delete-by-ID) is deferred
+until there is real demand for it.
 
 ## Error handling
 
@@ -474,7 +509,7 @@ line drops the event; not advancing blocks forward progress forever.
 | Disk full / log unwritable | `exit 0`, prompt passes through |
 | Short `write()` return | Treated as failure → `exit 0` |
 | Git detection fails | Capture proceeds, `ctx` fields `null` |
-| Text > 300 chars or multi-line | Capture **and** `exit 0` — prompt still runs |
+| Text > `MAX_JOT_TEXT_CHARS` (300) or multi-line | Capture **and** `exit 0` — prompt still runs |
 | Concurrent capture, N sessions | No interleaving within a single `write()` |
 | Malformed / partial line | Read stops at last complete newline; fold skips, counts |
 | Dhara 503 mid-drain | Offset advances only to last confirmed event |
@@ -488,12 +523,16 @@ line drops the event; not advancing blocks forward progress forever.
 
 ### Stated invariants
 
-1. **Byte offsets must never shift.** Appends and same-length in-place redaction
-   are permitted; compaction and rotation are forbidden.
+1. **Byte offsets must never shift.** Appends are the only operation that
+   extends the log; compaction and rotation are forbidden. The operator
+   removal procedure edits lines in place at the **same byte length**.
 2. **The capture path performs no network I/O and spawns no subprocess.**
 3. **Session-Buddy holds no authoritative state.**
-4. **One `serialize_event()` definition [R]** — the hook vendors a copy, with a
-   test asserting byte-identical output against the package version.
+4. **One `serialize_event()` definition [R]** — the hook vendors a copy of the
+   codec, both using stdlib `json.dumps` with explicit `sort_keys=True,
+   separators=(",", ":")` and a fixed key set, with a test asserting
+   byte-identical output against the package version. The hook never imports
+   from `mahavishnu.jot.*`.
 
 ## Health and observability
 
@@ -511,8 +550,11 @@ the Decision 5 read-side metrics (`last_review_ts`, `reviews_30d`,
 `capture_review_ratio`).
 
 **Scope note:** extending `/health` aggregation is arguably beyond "add a jot
-inbox" and is tracked as a separable deliverable. If cut, the wiring-discipline
-claim must be removed from this spec rather than left unbacked.
+inbox" and is **tracked as a separate commit and PR**, not bundled into the
+inbox delivery. If that work does not land in the same release, the wiring-
+discipline claim above must be removed from this spec rather than left
+unbacked — an unbacked compliance claim is worse than an acknowledged gap
+(see `.claude/decisions/mcp-surface-health-illusion.md`).
 
 ## Testing strategy
 
@@ -569,7 +611,9 @@ registration validated per `tests/unit/test_claude_settings_hooks_format.py:103`
 
 Stub Dhara with the existing `MockDharaRegistry`
 (`tests/fixtures/adapter_mocks.py:498`). **A `MockSessionBuddy` analog does not
-exist and is part of this work** (~50 lines, same file).
+exist and is part of this work** (~50 lines, same file); it lives in the search
+test suite (not the drain tests) because Session-Buddy indexing is exercised
+through the search path, not the drain path.
 
 `partial_batch_failure_advances_to_last_confirmed` ·
 `hang_returns_within_2p5s` (`@pytest.mark.timeout(5)`) ·
@@ -604,9 +648,14 @@ four required feed signals.
   surrounding lines in `/jot show`. **[R] Reviewed as the cheapest high-value
   feature in the review** and deliberately deferred by the user; it is the first
   thing to reach for if "what did I mean?" becomes the dominant review failure.
-- **`drop` verb and `cold` view** — considered and deferred; `done` remains the
-  sole terminal state per Decision 3.
+- **`/jot relevant` upgrade to Session-Buddy embeddings** — v1 ranks locally
+  (text overlap with current session). v1.1 swaps in embeddings once drain
+  freshness is proven; the command name and pull semantics are unchanged.
 - **`/jot ask`** — inject a jot as a prompt in the current session.
+- **`jot_redact` / removal tool** — when there's real demand. Today the
+  operator procedure (see "Removal (no code)") is the documented escape hatch.
+- **UUIDv7 (`uuid.uuid7()`)** — Python 3.14's time-orderable identity.
+  Optional; cache-invalidate path benefits but v1 uses `uuid.uuid4()`.
 - **Push surfaces** — unlocked automatically if `capture_review_ratio` exceeds
   10:1 for two consecutive weeks.
 - **Autonomous dispatch** — revisit after ~50 real jots exist.
