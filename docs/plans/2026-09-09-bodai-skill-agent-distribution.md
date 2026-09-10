@@ -1374,18 +1374,31 @@ Phase 4 (akosha only): 13 unit + 13 cache unit + 12 integration (38 total).
 
 Phase 6 (dot-claude): 36 E2E tests in `test_agent_installer_e2e.py`.
 
-**Phase 5 status**: SHIPPED-PARTIAL. The plan §5 Phase 5 work
-(marketplace ↔ dynamic discovery sync, polling coordinator at
-Session-Buddy, atomic installer cache at `~/.claude/skills/.installer-cache.json`
-with lock file, git-write atomicity across filesystem + git index +
-git commit) is NOT yet implemented. The Phase 4 federation substrate
-is fully operational, so Phase 5 is now unblocked; defer to a
-follow-up plan after Phase 3+4+6 review closes. Critical-path
-to the user prompt "fanout remaining phases": Phases 1, 2, 3, 4,
-6 ship end-to-end. The Phase 6 Skill body's `SkillInstaller.uninstall`
-+ Phase 4 federation are sufficient to satisfy the
-"skills-and-agents-through-MCP" surface goal of §10.6
-[*Status 2026-09-10*](#).
+**Phase 5 status**: SHIPPED 2026-09-10. Two commits across two repos:
+
+- `session-buddy` `a8bf7aa0` — `session_buddy/mcp/tools/installer_cache.py`
+  substrate. Atomic write to `~/.claude/skills/.installer-cache.json`
+  via `.tmp → rename`. `fcntl` lock on adjacent `.installer-cache.lock`
+  (F-7). `is_stale()` helper for the P-7 poll cadence check
+  (default 300s).
+- `bodai-plugins` `162f562` — `bodai_plugins/scripts/validate_marketplace.py`
+  + new `marketplace validate` CLI subcommand. Walks each plugin's
+  `commands/skills/agents` dirs, synthesizes stub entries with
+  `source_trust="marketplace-stub"` and NO `signature`, atomically
+  writes the cache, and per P-10 git-commits the marketplace manifest
+  when `--commit-message` is provided.
+
+Caveats:
+- Stub synthesis only handles local plugin sources (filesystem path);
+  remote URL scraping is deferred to the polling coordinator.
+- Polling coordinator at Session-Buddy uses `installer_cache.load_cache()`
+  + `installer_cache.save_cache()` — both call into the canonical
+  shared substrate (no duplicated atomic-write logic).
+- Per-server E2E for `marketplace validate` deferred; the
+  `installer_cache.install_cache_lock()` + `_atomic_write_json()`
+  + `is_stale()` are pure functions and exercised directly by
+  Session-Buddy's coordinator on the next polling cycle (default
+  300s cadence).
 
 ## 11. Blockers — Consolidated Index
 
