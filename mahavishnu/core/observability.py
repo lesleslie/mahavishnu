@@ -950,6 +950,10 @@ class ObservabilityManager:
         from mahavishnu.observability.changepoint.two_stage import TwoStageResult
         from mahavishnu.observability.metrics import _validate_labels
 
+        # Defensive guard (LOW-11): the only known call site (the two-stage
+        # dispatch in update_metric) already enforces this precondition, but
+        # preserving the check here keeps the property intact if the method
+        # is ever invoked from elsewhere.
         if not isinstance(result, TwoStageResult):
             return
 
