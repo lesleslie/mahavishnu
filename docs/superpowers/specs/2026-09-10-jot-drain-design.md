@@ -864,28 +864,36 @@ async def _reconcile_if_in_flight(jot: JotSummary) -> None:
 
     # Tier-2 timeout gate: if the most recent dispatch has been IN_FLIGHT longer
     # than RECONCILER_TIMEOUT_MS, declare it failed WITHOUT calling the substrate.
-    # The workflow is presumed dead; retrying the status call just confirms RUNNING.
-    # retry_budget_exhausted=true because retrying a presumed-dead workflow is wasteful.
+    # The status call would just confirm RUNNING (or hang); skipping it saves
+    # STATUS_CALL_TIMEOUT_SECONDS per stuck workflow per tick. The retry budget
+    # is decided by `_should_exhaust_retry_budget(jot)` per §2's locked decision
+    # ("Max 2 attempts total") — a timeout on attempt 1 still allows attempt 2.
     now_ms_ = now_ms()
     started_at = jot.dispatch_started_at_ms      # may be None for legacy entries
     if started_at is not None and (now_ms_ - started_at) >= RECONCILER_TIMEOUT_MS:
+        budget_exhausted = _should_exhaust_retry_budget(jot)
         try:
             await _append_event("dispatch_failed", ctx={
                 "workflow_id": workflow_id,
                 "attempt": jot.current_attempt,
                 "error": "workflow_timeout:tier2",
                 "error_id": "ERROR_JOT_WORKFLOW_TIMEOUT",
-                "retry_budget_exhausted": True,
+                "retry_budget_exhausted": budget_exhausted,
             })
             log.error("JOT_WORKFLOW_TIMEOUT",
                       handle=jot.handle, workflow_id=workflow_id,
                       elapsed_ms=now_ms_ - started_at,
+                      attempt=jot.current_attempt,
                       error_id="ERROR_JOT_WORKFLOW_TIMEOUT")
-        except JotLogUnwritableError as exc:
+            if not budget_exhausted:
+                asyncio.create_task(
+                    _auto_retry_after(jot.handle, backoff_s=RETRY_BACKOFF_SECONDS)
+                )
+        except (JotLogUnwritableError, JotValidationError) as exc:
             log.error("JOT_RECONCILE_TIMEOUT_WRITE_FAILED",
                       handle=jot.handle, error=str(exc))
             # Don't raise — fold must not fail because reconciliation can't persist
-        return                                      # done; FAILED is terminal
+        return                                      # done; FAILED is terminal if budget exhausted
 
     try:
         # Per-call deadline: don't let a slow substrate freeze fold
@@ -930,7 +938,7 @@ async def _reconcile_if_in_flight(jot: JotSummary) -> None:
                 asyncio.create_task(
                     _auto_retry_after(jot.handle, backoff_s=RETRY_BACKOFF_SECONDS)
                 )
-    except JotLogUnwritableError as exc:
+    except (JotLogUnwritableError, JotValidationError) as exc:
         log.error("JOT_RECONCILE_WRITE_FAILED",
                   handle=jot.handle, error=str(exc))
         # Don't raise — fold must not fail because reconciliation can't persist
@@ -1169,7 +1177,7 @@ Every failure mode has an explicit detection point, recovery path, and `error_id
 |---|---|---|---|---|
 | Workflow substrate unreachable | `asyncio.wait_for` timeout in `_get_workflow_status` | Log warn; leave IN_FLIGHT; Tier-2 retries next tick | (warn log) | `test_lazy_reconciler_logs_warn_on_substrate_timeout` |
 | Substrate returns unexpected shape | Type-check access; defensive coercion | Log warn; treat as "still running"; IN_FLIGHT unchanged | (warn log) | `test_lazy_reconciler_treats_unknown_status_as_running` |
-| Worker never reports back | Tier-1 reconciler: `now_ms - jot.dispatch_started_at_ms >= RECONCILER_TIMEOUT_MS` (see §6.3 timeout gate) | Write `dispatch_failed` with `retry_budget_exhausted=true`; do NOT call substrate | `ERROR_JOT_WORKFLOW_TIMEOUT` | `test_reconciler_times_out_in_flight_dispatch_after_window` |
+| Worker never reports back | Tier-1 reconciler: `now_ms - jot.dispatch_started_at_ms >= RECONCILER_TIMEOUT_MS` (see §6.3 timeout gate) | Write `dispatch_failed` with `retry_budget_exhausted=_should_exhaust_retry_budget(jot)` (per §2's locked "Max 2 attempts total" — timeout on attempt 1 still allows attempt 2); skip substrate call | `ERROR_JOT_WORKFLOW_TIMEOUT` | `test_reconciler_times_out_in_flight_dispatch_after_window`, `test_reconciler_timeout_attempt_one_preserves_retry_budget`, `test_reconciler_timeout_attempt_two_exhausts_retry_budget` |
 | HOME directory read-only | `_append_event` raises `JotLogUnwritableError` | Catch at every event site; surface `JotPermissionError` to caller | `ERROR_JOT_LOG_UNWRITABLE` | `test_dispatch_surfaces_permission_error_when_log_unwritable` |
 | `trigger_workflow` raises (network, auth) | Caught in `_trigger_jot_workflow` | Raise `JotDispatchError(error_id=ERROR_JOT_TRIGGER_WORKFLOW_FAILED)`; for auto-retry path, write `dispatch_failed` with `retry_budget_exhausted=true` | `ERROR_JOT_TRIGGER_WORKFLOW_FAILED` | `test_dispatch_translates_trigger_failure_to_dispatch_error` |
 | Auto-retry exception | Caught in `_auto_retry_after` (per-error_type) | Specific recovery per type; always logs an error_id | per-exception-type | `test_auto_retry_logs_error_id_per_exception_type` |
@@ -1207,7 +1215,16 @@ The Oneiric loader exposes these via a new `JotSettings` pydantic model nested i
 
 ### 6.9 Hook wiring (precondition for surfacing)
 
-Surfacing fires from `SessionStart` and `PostToolUse` Claude Code hooks. These hooks **are not currently wired** in `.claude/settings.json`. Drain's implementation plan includes the following wiring as a precondition (no surfacing fires until this is in place):
+Surfacing fires from `SessionStart` and `PostToolUse` Claude Code hooks. These hooks **are not currently wired** in `.claude/settings.json`. Drain's implementation plan creates the wrapper scripts AND wires the hooks in a single atomic commit; surfacing stays disabled until the plan completes.
+
+**Preconditions** (all must land before the wiring commit can merge):
+
+1. `mahavishnu/jot/drain.py` must exist with `surface_relevant(trigger, context_text, limit)` callable. The wrappers import this; without it the wiring fails with `ModuleNotFoundError`.
+2. `.claude/hooks/jot-session-start.py` — thin wrapper: `from mahavishnu.jot.drain import surface_relevant; print(json.dumps({"hookSpecificOutput": {"hookEventName": "SessionStart", "additionalContext": ...}}))`
+3. `.claude/hooks/jot-post-tool-use.py` — thin wrapper: same import, gated by `_Throttle.should_fire()` (§5.5).
+4. `.claude/hooks/jot-capture.py` — thin wrapper around the existing `mahavishnu/hooks/jot_capture.py::capture_hook` (sub-plan 1 already shipped the capture hook logic).
+
+**Wiring** (`.claude/settings.json` additions — added verbatim at implementation time):
 
 ```json
 {
@@ -1216,8 +1233,7 @@ Surfacing fires from `SessionStart` and `PostToolUse` Claude Code hooks. These h
       {
         "matcher": "startup",
         "hooks": [
-          {"type": "command", "command": "python .claude/hooks/jot-session-start.py"},
-          {"type": "command", "command": "python .claude/hooks/jot-capture.py"}
+          {"type": "command", "command": "/Users/les/Projects/mahavishnu/.venv/bin/python3 .claude/hooks/jot-session-start.py"}
         ]
       }
     ],
@@ -1225,15 +1241,14 @@ Surfacing fires from `SessionStart` and `PostToolUse` Claude Code hooks. These h
       {
         "matcher": "mcp__*",
         "hooks": [
-          {"type": "command", "command": "python .claude/hooks/jot-post-tool-use.py"}
+          {"type": "command", "command": "/Users/les/Projects/mahavishnu/.venv/bin/python3 .claude/hooks/jot-post-tool-use.py"}
         ]
       }
     ],
     "UserPromptSubmit": [
       {
-        "matcher": "",
         "hooks": [
-          {"type": "command", "command": "python .claude/hooks/jot-capture.py"}
+          {"type": "command", "command": "/Users/les/Projects/mahavishnu/.venv/bin/python3 .claude/hooks/jot-capture.py"}
         ]
       }
     ]
@@ -1241,9 +1256,16 @@ Surfacing fires from `SessionStart` and `PostToolUse` Claude Code hooks. These h
 }
 ```
 
-**Note:** The existing `mahavishnu/hooks/jot_capture.py` is the capture hook logic. `.claude/hooks/jot-capture.py` is a thin wrapper that invokes it. Similarly `.claude/hooks/jot-session-start.py` and `jot-post-tool-use.py` are wrappers around the surfacing logic in `mahavishnu/jot/drain.py::surface_relevant`.
+**Notes on the JSON literal above** (review-fixed):
 
-**Tests required:** `tests/unit/test_claude_settings_hooks_format.py` (existing) must pass after the wiring change. `tests/integration/jot/test_drain_hooks_e2e.py` exercises the actual hook scripts in isolation.
+- **No `jot-capture.py` under SessionStart.** `capture_hook` reads `prompt` from the stdin payload; SessionStart events carry no `prompt`, so a SessionStart→capture hook is a no-op. Capture belongs only on UserPromptSubmit.
+- **No `"matcher"` key on UserPromptSubmit.** Per Claude Code's hook schema, matchers apply to PreToolUse / PostToolUse / PermissionRequest / etc. UserPromptSubmit fires on every prompt unconditionally; the empty matcher key would be silently ignored and signals a misunderstanding of the schema.
+- **Absolute venv path, not bare `python`.** The existing `.claude/settings.json` entries (lines 7, 18, 22, 33, 37) use `/Users/les/Projects/mahavishnu/.venv/bin/python3`. Bare `python` resolves against the parent shell's PATH; if `.venv/bin` isn't on PATH, the hooks fail with `ModuleNotFoundError` on `mahavishnu.*`. The hook wrappers must use the same absolute path as the rest of the project's hooks.
+
+**Tests required:**
+
+- `tests/unit/test_claude_settings_hooks_format.py::test_project_settings_hook_commands_resolve` (existing) — asserts every command path resolves on disk. **Will fail until the wrapper scripts (§6.9 preconditions 2-4) exist.** Implementation must land all four preconditions before this test can pass.
+- `tests/integration/jot/test_drain_hooks_e2e.py` — NEW, exercised by the implementation plan. Subprocess-imports each wrapper, feeds it a synthetic hook payload, asserts the `additionalContext` output. Created as part of this work, not pre-existing.
 
 ## 7. Testing Strategy
 
@@ -1254,7 +1276,7 @@ Surfacing fires from `SessionStart` and `PostToolUse` Claude Code hooks. These h
 | Unit (state machine) | `tests/unit/jot/test_drain.py::TestStateMachine` | Pure logic | None (pure fold tests; uses `_coerce_int`/`_parse_retry_budget_exhausted` directly) |
 | Unit (retry) | `tests/unit/jot/test_drain.py::TestRetry` | Retry orchestration | `fake_trigger_workflow`, `fast_backoff`, `no_async_sleep` |
 | Unit (scorer) | `tests/unit/jot/test_drain_surfacing.py` | Lexical + semantic scoring | `fake_embeddings_service` |
-| Unit (reconciler) | `tests/unit/jot/test_drain_reconciler.py` (renamed `*_async.py` or moved to integration per §7.7) | Lazy reconciler | `fake_get_workflow_status` |
+| Unit (reconciler, async) | `tests/unit/jot/test_drain_reconciler.py` | Lazy reconciler — `async def` tests run under `pytest-asyncio` (`asyncio_mode = "auto"` per CLAUDE.md). No real workflow calls; uses `fake_get_workflow_status`. | `fake_get_workflow_status`, `clock` |
 | Unit (filters) | `tests/unit/jot/test_drain_filters.py` | State eligibility | None |
 | Unit (helpers) | `tests/unit/jot/test_drain_helpers.py` | Tokenizer, coercion, budget math | None |
 | Unit (MCP wrappers) | `tests/unit/jot/test_drain_mcp_tools.py` | 6 new MCP tool wrappers | `fake_trigger_workflow`, fold fixture |
@@ -1334,7 +1356,9 @@ Surfacing fires from `SessionStart` and `PostToolUse` Claude Code hooks. These h
 - `test_should_exhaust_retry_budget_treats_zero_as_first_attempt` — fail-safe: `current_attempt=0` returns False (lets retry fire)
 
 **Tier-2 timeout gate (§6.3):**
-- `test_reconciler_times_out_in_flight_dispatch_after_window` — at `now - started_at_ms >= RECONCILER_TIMEOUT_MS`, write `dispatch_failed` with `retry_budget_exhausted=true` without calling the substrate
+- `test_reconciler_times_out_in_flight_dispatch_after_window` — at `now - started_at_ms >= RECONCILER_TIMEOUT_MS`, write `dispatch_failed` and skip the substrate call
+- `test_reconciler_timeout_attempt_one_preserves_retry_budget` — timeout on attempt 1: `_should_exhaust_retry_budget` returns False → auto-retry scheduled, jot returns to IN_FLIGHT
+- `test_reconciler_timeout_attempt_two_exhausts_retry_budget` — timeout on attempt 2: `_should_exhaust_retry_budget` returns True → terminal FAILED, no auto-retry
 - `test_reconciler_skips_timeout_check_when_started_at_ms_is_none` — legacy log entries with missing `started_at_ms` skip the gate (fall through to status check)
 - `test_reconciler_calls_substrate_when_within_timeout_window` — sanity: short-lived dispatches go through `_get_workflow_status` normally
 
@@ -1441,14 +1465,19 @@ def test_top_n_truncates_to_limit(jots, limit, threshold):
     assert len(truncated) <= limit
     assert set(r.id for r in truncated).issubset(set(r.id for r in full))
 
-# Embedding determinism: the embedded representation of the same text is
-# stable across calls (idempotent on no model reload). Catches: non-deterministic
-# caching, model side-effects.
+# Embedding determinism via fake: drain's surfacing logic should be
+# deterministic when the embeddings service is deterministic. This test
+# exercises drain's `_semantic_score` against a deterministic fake; a
+# non-deterministic real-model test would belong in `tests/unit/test_embeddings_*`
+# (drain's contract is "given a deterministic embeddings service, surface
+# deterministically" — NOT "guarantee model determinism", which is an
+# embeddings-service concern, not drain).
 @given(text=st.text(min_size=1, max_size=200))
-def test_semantic_embed_is_deterministic_for_same_text(text):
-    e1 = _EmbeddingsService().embed([text])
-    e2 = _EmbeddingsService().embed([text])
-    assert cosine_sim(e1[0], e2[0]) > 0.99              # near-identical vectors
+def test_semantic_fallback_is_deterministic_when_embeddings_deterministic(text):
+    fake = fake_embeddings_service(deterministic=True)    # per §7.1 mocking catalog
+    e1 = _semantic_score(jot_text=text, ctx_text=text, embeddings=fake)
+    e2 = _semantic_score(jot_text=text, ctx_text=text, embeddings=fake)
+    assert e1 == e2                                       # exact equality — fake is deterministic
 
 # Tier-2 timeout invariance: dispatch_started_at_ms derived from any
 # dispatch event satisfies |derived - emitted - clock_skew| ≤ max_event_loop_lag.
