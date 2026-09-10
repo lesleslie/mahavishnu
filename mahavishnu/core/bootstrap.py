@@ -338,27 +338,41 @@ def init_observability(app: Any):
     from .observability import init_observability as _init_observability
 
     manager = _init_observability(app.config)
-    # CAL-2: start the change-point tick loop in the background.
-    # Operators wanting a real data source (e.g. pool_queue_depth
-    # pulled from PoolManager) can pass ``metric_source=...`` to
-    # this method; the default stub returns 0.0 which exercises
-    # the wiring without firing the detector.
+    # R3-C1 (round-3 review): the tick loop cannot start here
+    # because ``__init__`` is sync — ``asyncio.get_running_loop()``
+    # raises ``RuntimeError``. Operators must call the manager's
+    # ``start_change_point_tick_loop`` from an async startup path
+    # (e.g. ``MahavishnuApp.start_change_point_tick_loop``). When
+    # not started, the §7 stage-1 gate is vacuously zero; the runbook
+    # escalation policy explicitly assumes the loop is running. Log
+    # loudly so operators see the gap.
     try:
+        __import__("asyncio").get_running_loop()
+        # A loop IS running — start the tick loop immediately.
+        app._change_point_tick_task = manager.start_change_point_tick_loop(
+            metric_source=lambda: (
+                app.pool_manager.get_pool_queue_depths()
+                if hasattr(app, "pool_manager") and app.pool_manager is not None
+                else {}
+            ),
+        )
+    except RuntimeError:
+        # Sync bootstrap path — the tick loop will be started from
+        # MahavishnuApp.start_change_point_tick_loop (async). Until
+        # that runs, the detector is silent: this is operationally
+        # identical to the spec's Phase 6 default, but the §7 stage-1
+        # rollout gate will see zero drift events. Surface this loudly.
+        from oneiric.logging import get_logger
+
+        logger = get_logger(__name__)
+        logger.warning(
+            "change-point detector tick loop NOT started in init_observability "
+            "(sync bootstrap path). Operators must call "
+            "MahavishnuApp.start_change_point_tick_loop() from an async startup "
+            "path. Until then, drift_detected_total stays at zero and the §7 "
+            "stage-1 gate is vacuously satisfied."
+        )
         app._change_point_tick_task = None
-        loop = None
-        try:
-            loop = __import__("asyncio").get_running_loop()
-        except RuntimeError:
-            # No running loop in this bootstrap path — defer to a
-            # later start. The TaskCreate below is a no-op until the
-            # app's main loop is running.
-            pass
-        if loop is not None:
-            app._change_point_tick_task = manager.start_change_point_tick_loop()
-    except Exception:  # noqa: BLE001 - boundary handler
-        # The tick loop is best-effort; if it fails to start the
-        # wiring path is still validated by tests/integration.
-        pass
     return manager
 
 

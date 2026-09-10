@@ -455,13 +455,20 @@ class TestObservabilityManagerDriftDetection:
         mgr.config = _Stub()
         mgr.config.changepoint = ChangepointConfig(enabled=True)
         mgr.logger = None  # type: ignore[attr-defined]
-        # Feed 30 constant values to build a stable window
+        # R3-M-1: with the new window that EXCLUDES the current value
+        # from the baseline, a constant baseline has std=0.0 and we
+        # early-return without detection. Feed small Gaussian noise
+        # so the baseline has non-zero std.
+        import random
+
+        rng = random.Random(42)
         for _ in range(30):
-            mgr._evaluate_3sigma("pool_queue_depth", 10.0)
+            mgr._evaluate_3sigma("pool_queue_depth", 10.0 + rng.gauss(0, 0.5))
         # Inject a >3-σ spike
         result = mgr._evaluate_3sigma("pool_queue_depth", 100.0)
-        # The spike is 90 units above mean 10 — when std is small,
-        # z-score is well above 3.
+        # The spike is ~90 units above the noisy mean (~10) — z-score
+        # is well above 3 even with the new "exclude current value"
+        # window.
         assert result.detected is True
         assert result.z_score > 3.0
 
@@ -702,3 +709,98 @@ class TestDriftLabelAllowlist:
         from mahavishnu.observability.metrics import _ALLOWED_LABEL_KEYS
 
         assert "severity" in _ALLOWED_LABEL_KEYS
+
+
+@pytest.mark.unit
+class TestDetectorResetAfterFire:
+    """R3-H5 (round-3 review): regression test for S-1 reset-after-fire.
+
+    Without the reset call in _on_drift_detected, a single drift
+    event produces one alert per sampler tick forever (CUSUM's
+    score stays above threshold until reset). The round-2 fix
+    added the reset call but no test pins this invariant; a future
+    refactor that drops the reset would silently regress.
+    """
+
+    def _build_manager(self):  # type: ignore[no-untyped-def]
+        from mahavishnu.core.observability import ObservabilityManager
+        from mahavishnu.core.config import ChangepointConfig
+
+        mgr = ObservabilityManager.__new__(ObservabilityManager)
+
+        class _Stub:
+            pass
+
+        mgr.config = _Stub()
+        mgr.config.changepoint = ChangepointConfig(enabled=True, threshold=4.0)
+        mgr.logger = None  # type: ignore[attr-defined]
+        mgr._init_fallback_components()
+        return mgr
+
+    def test_detector_resets_after_fire(self) -> None:
+        """Drive a persistent shift, assert fire, then assert samples_since_reset is small post-fire.
+
+        Without the S-1 reset, a single drift event would generate one
+        alert per sampler tick forever (CUSUM's score stays above
+        threshold). With the reset, the accumulator is cleared
+        immediately after fire, so the next sample starts a fresh
+        accumulation that does NOT immediately re-fire.
+
+        Note: ``samples_since_reset`` is incremented by the *next*
+        detector.update() call, so the post-fire value is 1 (not 0).
+        """
+        mgr = self._build_manager()
+        # Drive a 1.0 shift — CUSUM should fire within ~5-10 samples at threshold=4.0
+        detected_at = None
+        for i in range(50):
+            result = mgr._evaluate_change_point("pool_queue_depth", 1.0)
+            if result.detected:
+                detected_at = i + 1
+                break
+        assert detected_at is not None
+        # S-1: after fire, the next sample must NOT immediately re-fire
+        # (the score was cleared by the reset). If reset were absent,
+        # this next_result would have detected=True because the score
+        # remained above threshold from the previous drift.
+        next_result = mgr._evaluate_change_point("pool_queue_depth", 1.0)
+        assert next_result.detected is False, (
+            "S-1 violation: detector re-fired on next sample after the "
+            "first fire. Reset-after-fire is broken."
+        )
+        # And samples_since_reset is small (just 1: the new
+        # accumulation started) — not the original detected_at-1.
+        assert next_result.samples_since_reset <= 5, (
+            f"S-1 violation: samples_since_reset={next_result.samples_since_reset} "
+            f"suggests reset did not happen (would be ~{detected_at} otherwise)"
+        )
+
+    def test_no_reset_no_false_consecutive_fires(self) -> None:
+        """If reset is bypassed, every subsequent sample re-fires.
+
+        This test simulates the regression by manually calling detector.update()
+        without calling reset() between fires. We assert that this DOES
+        re-fire (so the test correctly identifies the broken state), then
+        verify the production code path (with reset) does NOT.
+        """
+        from mahavishnu.observability.changepoint.cusum import CUSUMDetector
+
+        # Simulate the broken state: no reset between fires
+        d = CUSUMDetector(target_mean=0.0, slack=0.25, threshold=4.0, two_sided=True)
+        r1 = d.update(1.0)
+        for _ in range(20):
+            r1 = d.update(1.0)
+            if r1.detected:
+                break
+        assert r1.detected
+        # Without reset, the next sample still has score >= threshold
+        # because the accumulator was never cleared.
+        r2 = d.update(1.0)
+        assert r2.detected, (
+            "Without reset, the detector stays fired (this is the "
+            "regression S-1 fixes in production code)"
+        )
+        # With reset, the next sample starts fresh
+        d.reset()
+        r3 = d.update(1.0)
+        assert r3.detected is False
+        assert r3.samples_since_reset == 1

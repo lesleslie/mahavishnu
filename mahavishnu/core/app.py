@@ -422,6 +422,48 @@ class MahavishnuApp:
         self.budget_watchdog_task = None
         self.budget_watchdog_stop = None
 
+    async def start_change_point_tick_loop(self) -> Any:
+        """Start the change-point detector tick loop from an async path.
+
+        R3-C1 (round-3 review): the bootstrap was calling
+        ``manager.start_change_point_tick_loop`` from a sync path
+        where ``asyncio.get_running_loop()`` raises ``RuntimeError``,
+        so the tick loop never started. This async method is the
+        authoritative call site — start it from ``app.start()``
+        or any other async lifecycle hook.
+
+        Returns the asyncio.Task; callers should retain it for
+        cancellation via ``stop_change_point_tick_loop``.
+        """
+        if not hasattr(self, "observability") or self.observability is None:
+            raise RuntimeError(
+                "ObservabilityManager not initialized; call init_observability first."
+            )
+        # R3-C2: pass a real metric_source that reads pool queue depths
+        # from PoolManager (proxy: worker counts until real queue depth
+        # signal lands).
+        def _pool_depths() -> dict[str, float]:
+            manager = getattr(self, "pool_manager", None)
+            if manager is None:
+                return {}
+            return manager.get_pool_queue_depths()
+
+        self._change_point_tick_task = (
+            self.observability.start_change_point_tick_loop(
+                metric_source=_pool_depths,
+            )
+        )
+        return self._change_point_tick_task
+
+    async def stop_change_point_tick_loop(self) -> None:
+        """Cancel the change-point tick loop task."""
+        if not hasattr(self, "observability") or self.observability is None:
+            return
+        await self.observability.stop_change_point_tick_loop(
+            task=getattr(self, "_change_point_tick_task", None),
+        )
+        self._change_point_tick_task = None
+
     async def start_learning_pipeline(self) -> None:
         """Start the learning pipeline if configured.
 

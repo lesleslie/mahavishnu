@@ -469,8 +469,14 @@ class ObservabilityManager:
             )
 
         # Use the most-recent 60 samples (1 hour at 60s cadence)
-        # as the sliding window. Tunable in config (Phase 7 review).
-        window = values[-60:]
+        # as the sliding window, EXCLUDING the current value.
+        # Including the current value in the baseline inflates the
+        # std in proportion to the spike size and masks true 3-σ
+        # events. R3-M-1 (round-3 review): this was flagged in
+        # round-1 and not addressed in round-2. Fixed by slicing
+        # values[-61:-1] so the current observation is compared
+        # against the in-control regime, not part of it.
+        window = values[-61:-1]
         window_mean = sum(window) / len(window)
         if len(window) < 2:
             return AnomalyResult(
@@ -781,6 +787,14 @@ class ObservabilityManager:
         on the configured cadence (default 60s) for the configured
         ``changepoint.target_metric``.
 
+        R3-C1+C2 (round-3 review): must be called from a *running*
+        asyncio loop (i.e. an async startup path). The synchronous
+        ``__init__`` path cannot start the task because
+        ``asyncio.get_running_loop()`` raises ``RuntimeError`` when
+        no loop is active. Bootstrap callers should defer the call
+        to ``MahavishnuApp.start_change_point_tick_loop()`` (the app's
+        async lifecycle method) or any other coroutine context.
+
         Args:
             metric_source: optional callable returning
                 ``{metric_name: value}`` for the current tick.
@@ -793,6 +807,15 @@ class ObservabilityManager:
             The asyncio.Task (callers can cancel it on shutdown).
         """
         import asyncio
+
+        try:
+            asyncio.get_running_loop()
+        except RuntimeError as exc:
+            raise RuntimeError(
+                "start_change_point_tick_loop requires a running asyncio loop. "
+                "Call this method from an async startup path (e.g. "
+                "MahavishnuApp.start_change_point_tick_loop), not from sync __init__."
+            ) from exc
 
         cadence = float(
             getattr(
@@ -808,21 +831,51 @@ class ObservabilityManager:
                 "pool_queue_depth",
             )
         )
+        reference_mode = self._changepoint_reference_mode()
+        enabled = self._changepoint_enabled()
 
         async def _loop() -> None:
             while True:
+                # Round-3 H3: drive both the change-point detector AND
+                # the 3-sigma reference detector from the same tick so
+                # the runbook's "if the reference suddenly starts firing"
+                # gate is falsifiable.
                 try:
                     snapshot: dict[str, float] = {}
                     if metric_source is not None:
                         snapshot = metric_source()
                     value = float(snapshot.get(target_metric, 0.0))
-                    self._evaluate_change_point(target_metric, value)
+                    if enabled:
+                        self._evaluate_change_point(target_metric, value)
+                    if reference_mode != "none":
+                        self._evaluate_3sigma(target_metric, value)
                 except Exception as exc:  # noqa: BLE001 - boundary handler
                     self._log_debug("change-point tick failed: %s", exc)
                 await asyncio.sleep(cadence)
 
         task = asyncio.create_task(_loop())
         return task
+
+    async def stop_change_point_tick_loop(self, task: Any | None = None) -> None:
+        """Cancel the change-point tick loop task if one was started.
+
+        R3-C1 (round-3 review): the bootstrap originally leaked the
+        tick task on shutdown. Callers should retain the task and
+        cancel it here from ``MahavishnuApp.shutdown()``.
+        """
+        target = task if task is not None else getattr(
+            self, "_change_point_tick_task", None
+        )
+        if target is None:
+            return
+        try:
+            target.cancel()
+        except Exception:  # noqa: BLE001 - boundary handler
+            pass
+        try:
+            await target
+        except Exception:  # noqa: BLE001 - boundary handler (CancelledError is expected)
+            pass
 
     def shutdown(self):
         """Shutdown observability components."""

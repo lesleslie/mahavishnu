@@ -539,3 +539,96 @@ class TestApplyQueueingPenalty:
         buf3 = MagicMock()
         buf3.fitted_model = None
         assert mgr._compute_predicted_wait(buf3) is None
+
+
+# ---------------------------------------------------------------------------
+# CR-1 / CR-2 integration test (R3-CRIT-TEST from round-3 review)
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.unit
+class TestRouteTaskExecutionInvariants:
+    """R3-CRIT-TEST: pin the round-1 regression invariants.
+
+    CR-1: ``route_task`` must call ``execute_on_pool`` exactly once
+    per routing decision. Round-1 review caught a CRITICAL regression
+    where two execute calls ran every task twice.
+    CR-2: ``route_task`` must call ``_record_arrival`` exactly once.
+    Round-1 caught a CRITICAL regression where two arrivals polluted
+    the M/M/c fit buffer at 2x the real rate.
+
+    These tests pin both invariants so a future refactor cannot silently
+    re-introduce either regression without explicit test failure.
+    """
+
+    def _build_manager(self):  # type: ignore[no-untyped-def]
+        """Minimal PoolManager construction for the invariant test."""
+        from unittest.mock import MagicMock
+        from mahavishnu.pools.manager import PoolManager, PoolSelector
+
+        mgr = PoolManager.__new__(PoolManager)
+        mgr._pools = {"pool_a": MagicMock(_workers=[1])}
+        mgr._queueing_buffers = {}
+        mgr._pool_worker_counts = {"pool_a": 1}
+        mgr._pool_selector = PoolSelector.LEAST_LOADED
+        mgr._round_robin_index = 0
+        mgr._worker_count_heap = []
+        mgr._caller_quota = {}
+        mgr._resilience_monitoring_task = None
+        mgr._dhara_state = None
+        # Async lock for heap operations (used in _update_pool_worker_count)
+        mgr._heap_lock = __import__("asyncio").Lock()
+        return mgr
+
+    @pytest.mark.asyncio
+    async def test_route_task_calls_execute_once(self) -> None:
+        """CR-1:execute_on_pool called exactly once per routing decision."""
+        from unittest.mock import AsyncMock, MagicMock
+        from mahavishnu.pools.manager import PoolSelector
+
+        mgr = self._build_manager()
+        mgr.execute_on_pool = AsyncMock(return_value={"result": "ok"})
+        mgr._apply_fitness_aware_routing = AsyncMock(  # type: ignore[method-assign]
+            return_value=PoolSelector.LEAST_LOADED
+        )
+        mgr._apply_gpu_category_override = MagicMock(  # type: ignore[method-assign]
+            return_value=("pool_a", "least_loaded")
+        )
+        mgr._apply_queueing_penalty = MagicMock(  # type: ignore[method-assign]
+            return_value=("pool_a", None, "least_loaded", False)
+        )
+        mgr._record_arrival = MagicMock()  # type: ignore[method-assign]
+        mgr._persist_routing_decision = AsyncMock()  # type: ignore[method-assign]
+
+        result = await mgr.route_task({"prompt": "test"})
+        assert result == {"result": "ok"}
+        assert mgr.execute_on_pool.await_count == 1, (
+            f"CR-1 violated: execute_on_pool called {mgr.execute_on_pool.await_count} times, "
+            "expected exactly 1"
+        )
+
+    @pytest.mark.asyncio
+    async def test_route_task_calls_record_arrival_once(self) -> None:
+        """CR-2: _record_arrival called exactly once per routing decision."""
+        from unittest.mock import AsyncMock, MagicMock
+        from mahavishnu.pools.manager import PoolSelector
+
+        mgr = self._build_manager()
+        mgr.execute_on_pool = AsyncMock(return_value={"result": "ok"})
+        mgr._apply_fitness_aware_routing = AsyncMock(  # type: ignore[method-assign]
+            return_value=PoolSelector.LEAST_LOADED
+        )
+        mgr._apply_gpu_category_override = MagicMock(  # type: ignore[method-assign]
+            return_value=("pool_a", "least_loaded")
+        )
+        mgr._apply_queueing_penalty = MagicMock(  # type: ignore[method-assign]
+            return_value=("pool_a", None, "least_loaded", False)
+        )
+        mgr._record_arrival = MagicMock()  # type: ignore[method-assign]
+        mgr._persist_routing_decision = AsyncMock()  # type: ignore[method-assign]
+
+        await mgr.route_task({"prompt": "test"})
+        assert mgr._record_arrival.call_count == 1, (
+            f"CR-2 violated: _record_arrival called {mgr._record_arrival.call_count} times, "
+            "expected exactly 1"
+        )

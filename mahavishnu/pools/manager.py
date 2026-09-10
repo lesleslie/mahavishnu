@@ -869,7 +869,22 @@ class PoolManager:
         """
         # Single-candidate selectors: no re-rank. Report the inner
         # pick's predicted wait (if any) so the audit trail is honest.
+        # Defensive allowlist check (round-2 security review):
+        # even though the inner selectors (_route_by_affinity,
+        # _route_by_peer_affinity) are allowlist-gated, the queueing
+        # code must independently verify this invariant — otherwise a
+        # future refactor of those inner selectors could silently
+        # bypass the allowlist.
         if selector in (PoolSelector.AFFINITY, PoolSelector.PEER_AFFINITY):
+            if (
+                caller_pool_allowlist is not None
+                and inner_pool_id not in caller_pool_allowlist
+            ):
+                raise RuntimeError(
+                    f"Queueing fallback would route to pool "
+                    f"{inner_pool_id!r} which is not in caller_pool_allowlist "
+                    f"{sorted(caller_pool_allowlist)}"
+                )
             buffer = self._queueing_buffers.get(inner_pool_id)
             wait = self._compute_predicted_wait(buffer)
             return inner_pool_id, wait, selector.value, False
@@ -942,6 +957,25 @@ class PoolManager:
             }
         except Exception:  # noqa: BLE001
             return {"queueing_enabled": False}
+
+    def get_pool_queue_depths(self) -> dict[str, float]:
+        """Return current pool queue depths for the change-point detector.
+
+        R3-C2 (round-3 review): CAL-2's tick loop default
+        ``metric_source`` was ``None`` which fed the detector a
+        constant 0.0 — the detector could never fire on baseline
+        traffic. This method provides a real data source so the
+        detector can react to actual pool workload.
+
+        Currently returns the active worker count per pool as a
+        proxy for queue depth (deeper queues = more workers
+        engaged). When a true task-queue depth signal lands, this
+        method is the swap point.
+        """
+        snapshot: dict[str, float] = {}
+        for pid, count in self._pool_worker_counts.items():
+            snapshot[pid] = float(count)
+        return snapshot
 
     def pool_queueing_observations(self, pool_id: str, window_seconds: int = 600) -> dict[str, Any]:
         """Return the per-pool queueing observation buffer for ops/debugging.
