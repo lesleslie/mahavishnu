@@ -2587,7 +2587,7 @@ Expected: All quality gates pass (bandit, ruff, mypy, pytest).
 | Atomicity (single os.write) | Task 8 (_do_capture) |
 | Failure taxonomy | Task 8 (_do_capture + _log_error + fail-open tests) |
 | Errors log format | Task 8 (_log_error) |
-| Errors log rotation | Not in v1 (deferred — see spec §"Errors log rotation" — "If errors.log exceeds 1 MB... rename to errors.log.1, start fresh"). NOTE: not implemented in this plan; deferred to sub-plan 2 or 3. |
+| Errors log rotation | Task 8 (`_rotate_errors_log` helper, 1 MB threshold, 2-gen max). **Implemented** (not deferred). |
 | Stdlib hygiene | Task 8 (imports) |
 | Components table | All tasks |
 | Testing strategy (unit) | Tasks 2-8 each have test files |
@@ -2597,4 +2597,36 @@ Expected: All quality gates pass (bandit, ruff, mypy, pytest).
 | Done criteria 1-10 | All satisfied by Tasks 1-9 |
 | NOT done (sub-plan 2/3 items) | N/A — explicitly deferred |
 
-**Coverage gap noted:** Errors log rotation (1 MB threshold + 2-generation max) is in the spec but not in this plan. **Decision:** defer rotation to sub-plan 2 (which adds the read surface) or sub-plan 3 (which adds the drain). The plan documents this gap explicitly so it's not lost.
+## Implementation Notes (post-review)
+
+After the plan was written, a pre-implementation review found 8 BLOCKERs + 5 HIGHs. All were addressed in commit `8f8a90ea`. Key implementation divergences from this plan:
+
+- **B2**: hostname is now sha256-hashed (not raw hostname[:4]). The `,,` capture-time path requires that the node field be exactly 8 hex chars regardless of hostname content. Raw hostname slicing could include letters like `y`, `s`, `t` that aren't valid hex.
+- **B3**: `node` is lazily initialized via `get_node()` module global, not at module import. Spec said "module import"; implementation defers to first call so tests can reset cleanly via the conftest fixture.
+- **B6**: `_do_capture` echoes to stderr BEFORE writing to log. If stderr fails, no log entry is written (prevents split-brain: event in log but Claude saw passthrough).
+- **B7**: `_log_error` accepts a pre-resolved `jot_dir_path` argument. Without it, the recursive failure path (log_error fails because jot_dir fails) could swallow all errors.
+- **B8**: 300-char shape gate implemented: bodies > 300 chars OR containing `\\n` are captured AND exit 0 (passthrough). User sees the Claude response AND has a record.
+- **H2**: errors.log rotation implemented inline (1 MB threshold, 2-gen max). See `_rotate_errors_log` helper.
+- **H3**: `_do_capture` uses per-step try/except blocks with distinct `op` values for errors.log. Operator can tell whether mkdir, node_init, hdl_tail, stderr_echo, or log_write failed.
+- **H5**: `_write_log_line` loops `os.write()` to handle kernel short-writes on regular files. Spec's "atomic write" claim is illusory for >4 KB bodies.
+- **H4**: regex patterns compiled defensively in `_compile_patterns()`. A bad pattern logs to stderr and is skipped — module load never crashes.
+
+The plan's Task 8 implementation block (lines 2307-2491) shows the ORIGINAL implementation; the actual code in `mahavishnu/hooks/jot_capture.py` reflects the post-review fixes. The tests in `tests/unit/jot/test_capture_hook.py` were extended to cover the new behavior (shape gate classes, echo-before-log, mkdir/ENOSPC failure modes).
+
+### Pre-Implementation Review Findings (all addressed)
+
+| Severity | # | Finding | Fix |
+|---|---|---|---|
+| BLOCKER | 1 | `_jot_dir_cache` global leaks between tests | Autouse conftest fixture |
+| BLOCKER | 2 | `_generate_node_id` could produce 7 chars (not 8) for short hostnames | sha256-hash hostname |
+| BLOCKER | 3 | Spec mandates "node read at module import"; plan defers | Lazy module global via `get_node()` |
+| BLOCKER | 4 | `read_tail_hlc` returns None on truncated last line, breaking HLC monotonicity | Scan all lines, return last valid parse |
+| BLOCKER | 5 | `node_init` silently swallows OSError on write failure | Raise typed `NodePersistError` |
+| BLOCKER | 6 | Stderr failure after log write causes split-brain | Echo BEFORE log write |
+| BLOCKER | 7 | `jot_dir()` chmod failure causes invisible cascade | Pre-resolved `jot_dir_path` arg |
+| BLOCKER | 8 | Union spec's 300-char shape gate missing | Implemented per user decision |
+| HIGH | 1 | Failure modes 5 (mkdir perm) and 7 (ENOSPC) untested | Added dedicated tests |
+| HIGH | 2 | Errors log rotation deferred | Implemented inline |
+| HIGH | 3 | `op` field always "capture" | Per-step try/except blocks |
+| HIGH | 4 | Regex compile failure crashes hook | Defensive per-pattern compile |
+| HIGH | 5 | `os.write` short write non-atomic | Loop until full write |
