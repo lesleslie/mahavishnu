@@ -58,6 +58,14 @@ class PoolMetrics:
         tasks_failed: Total tasks failed by pool
         avg_task_duration: Average task duration in seconds
         memory_usage_mb: Memory usage in MB
+        wait_time_estimate: Optional M/M/c predicted wait time in
+            seconds. Set by the :class:`~mahavishnu.pools.queueing.scorer.QueueingScorer`
+            when queueing is enabled for the pool (Tier 1 Phase 2,
+            REQ-002). ``None`` when the scorer is in warmup or
+            queueing is disabled.
+        queueing_model: Optional reference to the fitted
+            :class:`~mahavishnu.pools.queueing.mmc.MmcQueue` for
+            the pool. ``None`` when no model has been fit yet.
     """
 
     pool_id: str
@@ -68,6 +76,9 @@ class PoolMetrics:
     tasks_failed: int = 0
     avg_task_duration: float = 0.0
     memory_usage_mb: float = 0.0
+    # Tier 1 Phase 2 fields (REQ-002, REQ-003):
+    wait_time_estimate: float | None = None
+    queueing_model: object | None = None  # MmcQueue | None; avoid runtime import cycle
 
 
 class BasePool(ABC):

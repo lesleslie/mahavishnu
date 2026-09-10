@@ -411,6 +411,25 @@ class PoolConfig(BaseModel):
         le=600,
         description="Memory sync interval in seconds (10-600)",
     )
+    # Tier 1 Phase 2: per-pool queueing model. REQ-002.
+    # Default `False` so the new feature ships opt-in; Phase 4 of
+    # the Tier 1 plan flips the default to `True` after validation.
+    queueing_enabled: bool = Field(
+        default=False,
+        description="Enable M/M/c wait-time scoring as an additive routing signal",
+    )
+    queueing_warmup_min_observations: int = Field(
+        default=100,
+        ge=10,
+        le=10000,
+        description="Minimum observations before the M/M/c model is fit (warmup window)",
+    )
+    queueing_warmup_min_seconds: float = Field(
+        default=600.0,
+        ge=10.0,
+        le=86400.0,
+        description="Wall-clock seconds before a refit is forced (warmup cadence)",
+    )
     session_buddy_url: str = Field(
         default="http://localhost:8678/mcp",
         description="Session-Buddy MCP server URL for delegated pools",

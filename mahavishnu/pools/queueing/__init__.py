@@ -1,4 +1,4 @@
-"""Queueing-theory primitives for Mahavishnu pool routing (Tier 1 Phase 1).
+"""Queueing-theory primitives for Mahavishnu pool routing (Tier 1 Phase 1 + 2).
 
 # Implements: REQ-001
 
@@ -15,5 +15,17 @@ existing :class:`~mahavishnu.pools.manager.PoolSelector` strategy.
 from __future__ import annotations
 
 from mahavishnu.pools.queueing.mmc import MmcQueue
+from mahavishnu.pools.queueing.scorer import (
+    DEFAULT_WARMUP_MIN_OBSERVATIONS,
+    DEFAULT_WARMUP_MIN_SECONDS,
+    QueueingObservationBuffer,
+    QueueingScorer,
+)
 
-__all__ = ["MmcQueue"]
+__all__ = [
+    "DEFAULT_WARMUP_MIN_OBSERVATIONS",
+    "DEFAULT_WARMUP_MIN_SECONDS",
+    "MmcQueue",
+    "QueueingObservationBuffer",
+    "QueueingScorer",
+]

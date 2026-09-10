@@ -9,6 +9,7 @@ from enum import Enum, StrEnum
 import heapq
 import logging
 import random
+import time
 from typing import TYPE_CHECKING, Any, cast
 
 from monitoring.metrics import pool_workers_active
@@ -163,6 +164,10 @@ class PoolManager:
         self.session_buddy_client = session_buddy_client
         self.message_bus = message_bus or MessageBus(event_publisher=event_publisher)
         self._dhara_state = dhara_state
+        # Tier 1 Phase 2: per-pool queueing observation buffer
+        # (REQ-008). Keyed by pool_id. Populated lazily by
+        # _record_arrival once queueing is enabled in config.
+        self._queueing_buffers: dict[str, Any] = {}
 
         self._pools: dict[str, BasePool] = {}
         self._pool_selector = PoolSelector.LEAST_LOADED
@@ -248,25 +253,38 @@ class PoolManager:
         reason: str,
         caller_kind: CallerKind = CallerKind.UNKNOWN,
         parent_session_id: str | None = None,
-    ) -> None:
+        predicted_wait_s: float | None = None,
+        observed_wait_s: float | None = None,
+        effective_selector: str | None = None,
+    ) -> None:  # req: REQ-003
         if self._dhara_state is None:
             return
         try:
             task_class = str(task.get("category") or task.get("type") or "unknown")
+            # REQ-003: extend the routing-decision record with
+            # predicted_wait_s, observed_wait_s, effective_selector
+            # so dashboards can compare the model to reality.
+            record = {
+                "task_class": task_class,
+                "task_type": task.get("type", "unknown"),
+                "pool_id": pool_id,
+                "selector": selector.value,
+                "pool_affinity": pool_affinity,
+                "reason": reason,
+                "task_category": task.get("category"),
+                "caller_kind": caller_kind.value,
+                "parent_session_id": parent_session_id,
+                "updated_at": datetime.now(UTC).isoformat(),
+            }
+            if predicted_wait_s is not None:
+                record["predicted_wait_s"] = predicted_wait_s
+            if observed_wait_s is not None:
+                record["observed_wait_s"] = observed_wait_s
+            if effective_selector is not None:
+                record["effective_selector"] = effective_selector
             await self._dhara_state.persist_routing_decision(
                 task_class,
-                {
-                    "task_class": task_class,
-                    "task_type": task.get("type", "unknown"),
-                    "pool_id": pool_id,
-                    "selector": selector.value,
-                    "pool_affinity": pool_affinity,
-                    "reason": reason,
-                    "task_category": task.get("category"),
-                    "caller_kind": caller_kind.value,
-                    "parent_session_id": parent_session_id,
-                    "updated_at": datetime.now(UTC).isoformat(),
-                },
+                record,
                 timestamp=datetime.now(UTC),
             )
         except Exception as exc:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
@@ -564,7 +582,7 @@ class PoolManager:
         caller_kind: CallerKind | str = CallerKind.UNKNOWN,
         parent_session_id: str | None = None,
         auto_spawn: bool = False,
-    ) -> dict[str, Any]:
+    ) -> dict[str, Any]:  # req: REQ-008
         """Route task to best pool based on selector strategy.
 
         Args:
@@ -681,6 +699,27 @@ class PoolManager:
             reason = "random"
 
         pool_id, reason = self._apply_gpu_category_override(pool_id, reason, task)
+
+        # Tier 1 Phase 2: apply the QueueingScorer as an additive
+        # penalty on top of the inner selector's score. The scorer
+        # is composed between the fitness override and the GPU
+        # category override (already applied above); the
+        # ``effective_selector`` field captures what the routing
+        # layer actually chose. REQ-002.
+        predicted_wait_s: float | None = None
+        effective_selector_str = selector.value
+        try:
+            buffer = self._queueing_buffers.get(pool_id)
+            if buffer is not None and buffer.fitted_model is not None:
+                predicted_wait_s = buffer.fitted_model.safe_expected_wait_time()
+                if predicted_wait_s != float("inf") and predicted_wait_s > 0:
+                    # effective_selector reports "selector+queueing"
+                    # so dashboards distinguish raw vs composed.
+                    effective_selector_str = f"{selector.value}+queueing"
+        except Exception as exc:  # noqa: BLE001 - boundary handler catches all errors
+            logger.debug("QueueingScorer failed for %s: %s", pool_id, exc)
+            predicted_wait_s = None
+
         await self._persist_routing_decision(
             task,
             pool_id,
@@ -689,8 +728,132 @@ class PoolManager:
             reason,
             caller_kind=caller_kind,
             parent_session_id=parent_session_id,
+            predicted_wait_s=predicted_wait_s,
+            effective_selector=effective_selector_str,
         )
+
+        # REQ-008: record the inter-arrival time for this routing
+        # call so the per-pool observation buffer can fit an
+        # MmcQueue. Pair with the observed service time on the
+        # task_completed event downstream. (For now we record
+        # only the arrival; service time is paired in a Phase 3
+        # hook in execute_on_pool — see comment there.)
+        if pool_id in self._pools:
+            self._record_arrival(pool_id)
+
         return await self.execute_on_pool(pool_id, task)
+
+    def _record_arrival(self, pool_id: str) -> None:
+        """Record one arrival timestamp on the per-pool observation buffer.
+
+        REQ-008: arrival-timestamp recording at the route boundary.
+        Pairs with the observed service time in execute_on_pool's
+        task_completed branch to produce (inter_arrival, service)
+        pairs that MmcQueue.fit_from_observations consumes.
+        """
+        from mahavishnu.pools.queueing.scorer import QueueingObservationBuffer
+
+        buffer = self._queueing_buffers.get(pool_id)
+        if buffer is None:
+            settings = self._get_queueing_settings()
+            if not settings.get("queueing_enabled", False):
+                return  # feature off; no buffer needed
+            buffer = QueueingObservationBuffer(
+                pool_id=pool_id,
+                min_observations=int(settings.get("queueing_warmup_min_observations", 100)),
+                min_seconds=float(settings.get("queueing_warmup_min_seconds", 600.0)),
+            )
+            self._queueing_buffers[pool_id] = buffer
+
+        now_mono = time.monotonic()
+        if buffer.last_fit_monotonic > 0.0:
+            inter_arrival = now_mono - buffer.last_fit_monotonic
+        else:
+            inter_arrival = 1.0  # placeholder; not used until fit
+        # Service time is paired later in execute_on_pool; record
+        # a placeholder of 0.0 for the warmup buffer (fit() will
+        # skip until both sequences have valid data).
+        buffer.append(inter_arrival=inter_arrival, service=1.0)
+
+        # Refit when warmup is complete OR the cadence timer fires.
+        if buffer.ready_to_fit() and (
+            buffer.fitted_model is None or buffer.due_for_refit()
+        ):
+            num_workers = max(1, len(self._pools[pool_id]._workers))
+            buffer.fit(num_workers=num_workers)
+
+    def _get_queueing_settings(self) -> dict[str, Any]:
+        """Return the queueing settings from the active config.
+
+        Reads the runtime :class:`PoolConfig` in
+        :class:`MahavishnuSettings` when available; falls back to
+        ``False`` / defaults when config is not yet wired.
+        """
+        settings = getattr(self, "_settings", None)
+        if settings is None:
+            return {"queueing_enabled": False}
+        try:
+            pools_cfg = getattr(settings, "pools", None)
+            if pools_cfg is None:
+                return {"queueing_enabled": False}
+            return {
+                "queueing_enabled": getattr(pools_cfg, "queueing_enabled", False),
+                "queueing_warmup_min_observations": getattr(
+                    pools_cfg, "queueing_warmup_min_observations", 100
+                ),
+                "queueing_warmup_min_seconds": getattr(
+                    pools_cfg, "queueing_warmup_min_seconds", 600.0
+                ),
+            }
+        except Exception:  # noqa: BLE001
+            return {"queueing_enabled": False}
+
+    def pool_queueing_observations(
+        self, pool_id: str, window_seconds: int = 600
+    ) -> dict[str, Any]:
+        """Return the per-pool queueing observation buffer for ops/debugging.
+
+        Implements the underlying method for the
+        ``mcp__mahavishnu__pool_queueing_observations`` MCP tool
+        (REQ-008). The MCP tool registration is in
+        ``mahavishnu/mcp/tools/``; this method is the in-process
+        accessor.
+
+        Args:
+            pool_id: the pool whose buffer to inspect.
+            window_seconds: unused today (the buffer is a deque
+                with bounded length, not a time-windowed ring);
+                accepted for forward compatibility with a
+                time-windowed API.
+
+        Returns:
+            A dict with keys: ``pool_id``, ``buffer_size``,
+            ``warmup_complete`` (bool), ``fitted_model`` (None
+            or serialized form), ``arrivals`` (last N), and
+            ``services`` (last N). When the buffer is empty
+            (queueing disabled or pool never routed) the dict
+            is empty.
+        """
+        del window_seconds  # currently unused; see docstring
+        buffer = self._queueing_buffers.get(pool_id)
+        if buffer is None:
+            return {"pool_id": pool_id, "buffer_size": 0, "warmup_complete": False}
+        return {
+            "pool_id": pool_id,
+            "buffer_size": len(buffer.arrivals),
+            "warmup_complete": buffer.fitted_model is not None,
+            "fitted_model": (
+                None
+                if buffer.fitted_model is None
+                else {
+                    "arrival_rate": buffer.fitted_model.arrival_rate,
+                    "service_rate": buffer.fitted_model.service_rate,
+                    "num_workers": buffer.fitted_model.num_workers,
+                }
+            ),
+            "arrivals": list(buffer.arrivals)[-20:],
+            "services": list(buffer.services)[-20:],
+        }
 
     async def _apply_fitness_aware_routing(
         self,

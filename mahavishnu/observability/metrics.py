@@ -88,6 +88,15 @@ _ALLOWED_LABEL_KEYS: Final[frozenset[str]] = frozenset(
         # and streaming_op_total{op,backend,success}.
         "op",
         "success",
+        # Tier 1 Phase 2 — queueing routing. REQ-003.
+        # Added to the allowlist so the
+        # mahavishnu_routing_decisions_total counter at
+        # mahavishnu/core/routing_metrics.py:164 can accept the
+        # new labels. The set is Final[frozenset[str]] (closed at
+        # import time); without these entries the counter
+        # silently drops the labels at emission.
+        "predicted_wait_bucket",
+        "effective_selector",
     }
 )
 
