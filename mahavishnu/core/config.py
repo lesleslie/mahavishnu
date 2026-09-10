@@ -2440,6 +2440,55 @@ class EnginesConfig(BaseModel):
     disabled: list[str] = Field(default_factory=list)
 
 
+class JotSurfacingSettings(BaseModel):
+    """Ambient surfacing config (spec §5.8). Surfacing injects relevant
+    jots into Claude's context as `additionalContext` at SessionStart
+    and after PostToolUse events.
+    """
+
+    enabled: bool = True
+    session_start: bool = True
+    tool_result: bool = True
+    throttle_ms: int = 5000
+    lexical_threshold: float = 0.20
+    semantic_threshold: float = 0.55
+    semantic_enabled: bool = True
+    semantic_max_jots: int = 30
+    max_results: int = 3
+    short_context_min_tokens: int = 50
+
+
+class JotRetrySettings(BaseModel):
+    """Drain retry policy (spec §5.8, §6.4). Max 2 attempts total."""
+
+    max_attempts: int = 2
+    backoff_seconds: int = 30
+
+
+class JotReconcilerSettings(BaseModel):
+    """Tier-2 background reconciler config (spec §5.8, §6.3)."""
+
+    background_interval_seconds: int = 30
+    timeout_minutes: int = 10
+    status_call_timeout_seconds: int = 30
+
+
+class JotDrainSettings(BaseModel):
+    """Drain dispatch orchestration config (spec §5.8, §6)."""
+
+    retry: JotRetrySettings = Field(default_factory=JotRetrySettings)
+    reconciler: JotReconcilerSettings = Field(default_factory=JotReconcilerSettings)
+    default_pool_selector: str = "least_loaded"
+    default_workflow_adapter: str = "prefect"
+
+
+class JotSettings(BaseModel):
+    """Top-level jot config (spec §5.8). Nested under MahavishnuSettings.jot."""
+
+    surfacing: JotSurfacingSettings = Field(default_factory=JotSurfacingSettings)
+    drain: JotDrainSettings = Field(default_factory=JotDrainSettings)
+
+
 class MahavishnuSettings(BaseSettings):
     """Mahavishnu configuration extending MCPServerSettings.
 
@@ -2527,6 +2576,12 @@ class MahavishnuSettings(BaseSettings):
     shell_enabled: bool = Field(
         default=True,
         description="Enable admin shell (mahavishnu shell command)",
+    )
+
+    # Jot inbox (drain sub-plan 3) — see spec §5.8 for field semantics.
+    jot: JotSettings = Field(
+        default_factory=JotSettings,
+        description="Jot inbox surfacing + drain config. Access via get_settings().jot.surfacing.* / .drain.*",
     )
 
     # Cross-project authentication (for Session Buddy integration)

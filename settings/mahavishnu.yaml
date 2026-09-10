@@ -554,3 +554,27 @@ worker_registry:
       requires_tool: ssh
       default_timeout: 600
       provides: ["worker:ssh"]
+
+# Jot inbox (sub-plan 3: Drain) — see docs/superpowers/specs/2026-09-10-jot-drain-design.md §5.8
+jot:
+  surfacing:
+    enabled: true
+    session_start: true
+    tool_result: true
+    throttle_ms: 5000
+    lexical_threshold: 0.20
+    semantic_threshold: 0.55
+    semantic_enabled: true
+    semantic_max_jots: 30
+    max_results: 3
+    short_context_min_tokens: 50
+  drain:
+    retry:
+      max_attempts: 2
+      backoff_seconds: 30
+    reconciler:
+      background_interval_seconds: 30
+      timeout_minutes: 10
+      status_call_timeout_seconds: 30
+    default_pool_selector: "least_loaded"
+    default_workflow_adapter: "prefect"
