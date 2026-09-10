@@ -2,2101 +2,1732 @@
 
 ## Overview
 
-Mahavishnu's MCP server provides a comprehensive set of tools for managing workflows, repositories, and orchestration engines. All tools are implemented using FastMCP with async/await patterns, comprehensive error handling, and observability.
+Mahavishnu's MCP server exposes **197 tools** split across two layers:
+
+- **27 inline core tools** registered in `mahavishnu/mcp/server_core.py` (always loaded)
+- **170 decorated/profile-gated tools** registered across 26 modules under `mahavishnu/mcp/tools/` (loaded per the active profile — `minimal`, `standard`, or `full`)
+
+This document is **generated from source**. The inventory script extracts `@mcp.tool`, `@server.tool`, `@app.tool`, and `mcp.tool()(name)` registrations; see `mahavishnu/mcp/tools/__init__.py` for the module list.
+
+## Tool Profile Gating
+
+Tools are gated by the `MAHAVISHNU_TOOL_PROFILE` environment variable:
+
+- `full` (default): all 197 tools loaded
+- `standard`: core 11 groups (terminal, pool, worker, messaging, git, session-buddy, coordination, ecosystem, health, capability, ...)
+- `minimal`: health probes only
+
+Profile configuration: `mahavishnu/mcp/tools/profiles.py`. A `discover_tools(query)` meta-tool is always registered so Claude can find unloaded tools.
 
 ## Tool Categories
 
-### 1. Repository Management Tools
+### 1. Repository & Catalog
 
-Tools for listing, filtering, and managing repositories.
-
-### 2. Workflow Execution Tools
-
-Tools for triggering, monitoring, and managing workflows.
-
-### 3. Adapter Management Tools
-
-Tools for managing and querying orchestration adapters.
-
-### 4. Quality Control Tools
-
-Tools for running and managing Crackerjack QC checks.
-
-### 5. Worker Management Tools
-
-Tools for orchestrating headless AI workers across terminals and containers.
-
-### 6. Session Management Tools
-
-Tools for managing Session-Buddy checkpoints and state.
-
-### 7. Pool Management Tools
-
-Tools for multi-pool orchestration, routing, and scaling across local, delegated, and cloud workers.
-
-### 8. OpenTelemetry Tools
-
-Tools for ingesting and searching OpenTelemetry traces using Akosha HotStore (DuckDB).
-
-______________________________________________________________________
-
-## Tool Specifications
-
-### Repository Management Tools
+_7 tool(s)_
 
 #### `list_repos`
 
-List repositories with optional tag filtering.
+**Signature:** `async def list_repos(tag: str | None, limit: int | None, offset: int | None, user_id: str | None)`
 
-**Signature:**
+**Source:** `mahavishnu/mcp/server_core.py:241`
 
-```python
-async def list_repos(
-    tag: str | None = None,
-    limit: int | None = None,
-    offset: int = 0,
-) -> list[dict[str, Any]]
-```
+**Description:** List repositories with optional filtering and pagination.
 
-**Parameters:**
+#### `get_git_velocity_dashboard`
 
-- `tag` (optional): Filter repositories by tag. Example: "backend", "python"
-- `limit` (optional): Maximum number of repositories to return. Default: no limit
-- `offset` (optional): Number of repositories to skip. Default: 0
+**Signature:** `async def get_git_velocity_dashboard(repo_paths: list[str], days_back: int, user_id: str | None)`
 
-**Returns:**
+**Source:** `mahavishnu/mcp/tools/git_analytics.py:42`
 
-```python
-[
-    {
-        "path": "/path/to/repo",
-        "tags": ["backend", "python"],
-        "description": "Backend services repository",
-        "metadata": {
-            "owner": "team-backend",
-            "language": "python",
-        }
-    },
-    # ... more repos
-]
-```
+**Description:** Get git velocity dashboard across multiple repositories.
 
-**Errors:**
+#### `get_repository_health`
 
-- `ValueError`: If `repos.yaml` is not found or invalid
-- `PermissionError`: If `repos.yaml` is not readable
+**Signature:** `async def get_repository_health(repo_path: str, user_id: str | None)`
 
-**Example:**
+**Source:** `mahavishnu/mcp/tools/git_analytics.py:119`
 
-```python
-# List all backend repositories
-repos = await list_repos(tag="backend")
+**Description:** Get repository health metrics including PRs and branches.
 
-# List first 10 repositories
-repos = await list_repos(limit=10)
+#### `get_cross_project_patterns`
 
-# Pagination
-repos = await list_repos(limit=10, offset=20)
-```
+**Signature:** `async def get_cross_project_patterns(days_back: int, min_occurrences: int, detect_until_dry: bool, k_empty_rounds: int, max_iterations: int, user_id: str | None)`
 
-______________________________________________________________________
+**Source:** `mahavishnu/mcp/tools/git_analytics.py:181`
 
-#### `get_repo_health`
+**Description:** Detect patterns across all repositories in the ecosystem.
 
-Get health status for a specific repository.
+#### `ecosystem_status`
 
-**Signature:**
+**Signature:** `async def ecosystem_status(sections: list[str] | None, include_details: bool, timeout_per_section_ms: int)`
 
-```python
-async def get_repo_health(
-    repo_path: str,
-) -> dict[str, Any]
-```
+**Source:** `mahavishnu/mcp/tools/ecosystem_tools.py:30`
 
-**Parameters:**
+**Description:** Get canonical ecosystem health status across all services and adapters.
 
-- `repo_path`: Path to repository (must be in `repos.yaml`)
+#### `ecosystem_capabilities`
 
-**Returns:**
+**Signature:** `async def ecosystem_capabilities(capability: str | None)`
 
-```python
-{
-    "path": "/path/to/repo",
-    "healthy": true,
-    "git_status": "clean",
-    "branch": "main",
-    "ahead_by": 0,
-    "behind_by": 0,
-    "open_prs": 3,
-    "open_issues": 5,
-    "last_commit": "2025-01-22T12:34:56Z",
-    "last_commit_author": "user@example.com",
-    "metadata": {
-        "size_bytes": 1048576,
-        "file_count": 42,
-    }
-}
-```
+**Source:** `mahavishnu/mcp/tools/ecosystem_tools.py:76`
 
-**Errors:**
+**Description:** Query ecosystem capabilities by name or list all.
 
-- `ValueError`: If repo is not found in `repos.yaml`
-- `GitError`: If repo is not a valid git repository
+#### `ecosystem_routing_readiness`
 
-**Checks Performed:**
+**Signature:** `async def ecosystem_routing_readiness(task_class: str)`
 
-- Git status (clean/dirty)
-- Branch status (ahead/behind remote)
-- Open PRs (via GitHub/GitLab API if configured)
-- Open issues (via GitHub/GitLab API if configured)
-- Recent activity (last commit time)
+**Source:** `mahavishnu/mcp/tools/ecosystem_tools.py:101`
 
-______________________________________________________________________
+**Description:** Check routing readiness for a given task class.
 
-#### `search_repos`
 
-Search repositories by path, tag, or description.
+### 2. Workflow & Execution
 
-**Signature:**
-
-```python
-async def search_repos(
-    query: str,
-    search_fields: list[str] = ["path", "tags", "description"],
-) -> list[dict[str, Any]]
-```
-
-**Parameters:**
-
-- `query`: Search query (case-insensitive substring match)
-- `search_fields`: Fields to search in. Default: ["path", "tags", "description"]
-
-**Returns:**
-
-```python
-[
-    {
-        "path": "/path/to/python-repo",
-        "tags": ["backend", "python"],
-        "description": "Python backend services",
-        "match_score": 0.95,
-    },
-    # ... more matching repos
-]
-```
-
-______________________________________________________________________
-
-### Workflow Execution Tools
+_6 tool(s)_
 
 #### `trigger_workflow`
 
-Trigger a new workflow execution.
+**Signature:** `async def trigger_workflow(adapter: str, task_type: str, params: dict[str, Any] | None, tag: str | None, repos: list[str] | None, timeout: int | None, user_id: str | None)`
 
-**Signature:**
+**Source:** `mahavishnu/mcp/server_core.py:273`
 
-```python
-async def trigger_workflow(
-    task_type: str,
-    task_params: dict[str, Any],
-    adapter: str,
-    tag: str | None = None,
-    repos: list[str] | None = None,
-    checkpoint_enabled: bool = True,
-    qc_enabled: bool = True,
-) -> dict[str, Any]
-```
-
-**Parameters:**
-
-- `task_type`: Type of task ("code_sweep", "dependency_audit", "test_generation")
-- `task_params`: Task-specific parameters
-- `adapter`: Orchestrator adapter to use ("prefect", "agno", "llamaindex")
-- `tag` (optional): Filter repositories by tag
-- `repos` (optional): Specific repositories to process (overrides tag)
-- `checkpoint_enabled`: Enable Session-Buddy checkpoints. Default: true
-- `qc_enabled`: Enable Crackerjack QC after execution. Default: true
-
-**Returns:**
-
-```python
-{
-    "workflow_id": "wf-abc123",
-    "status": "running",
-    "adapter": "prefect",
-    "task_type": "code_sweep",
-    "repos": ["/path/to/repo1", "/path/to/repo2"],
-    "started_at": "2025-01-22T12:34:56Z",
-    "estimated_completion": "2025-01-22T12:44:56Z",
-    "checkpoint_path": "/path/to/checkpoint.json",
-}
-```
-
-**Errors:**
-
-- `ValueError`: If adapter is not enabled or invalid
-- `ValidationError`: If task parameters are invalid
-- `ResourceError`: If system is at capacity
-
-**Example:**
-
-```python
-# Trigger code sweep on all backend repos
-workflow = await trigger_workflow(
-    task_type="code_sweep",
-    task_params={
-        "focus": ["security", "performance"],
-    },
-    adapter="prefect",
-    tag="backend",
-)
-
-# Trigger dependency audit on specific repos
-workflow = await trigger_workflow(
-    task_type="dependency_audit",
-    task_params={
-        "check_updates": True,
-        "check_vulnerabilities": True,
-    },
-    adapter="agno",
-    repos=["/path/to/repo1", "/path/to/repo2"],
-)
-```
-
-______________________________________________________________________
+**Description:** Trigger a durable workflow execution through a named adapter
 
 #### `get_workflow_status`
 
-Get status of a running or completed workflow.
+**Signature:** `async def get_workflow_status(workflow_id: str, user_id: str | None)`
 
-**Signature:**
+**Source:** `mahavishnu/mcp/server_core.py:432`
 
-```python
-async def get_workflow_status(
-    workflow_id: str,
-) -> dict[str, Any]
-```
-
-**Parameters:**
-
-- `workflow_id`: Workflow identifier (from `trigger_workflow`)
-
-**Returns:**
-
-```python
-{
-    "workflow_id": "wf-abc123",
-    "status": "running",  # "running", "completed", "failed", "cancelled"
-    "adapter": "prefect",
-    "task_type": "code_sweep",
-    "started_at": "2025-01-22T12:34:56Z",
-    "completed_at": None,
-    "progress": {
-        "total_repos": 10,
-        "completed_repos": 5,
-        "failed_repos": 1,
-        "percentage": 50,
-    },
-    "repos": [
-        {
-            "path": "/path/to/repo1",
-            "status": "completed",
-            "duration_seconds": 45.2,
-        },
-        {
-            "path": "/path/to/repo2",
-            "status": "running",
-            "duration_seconds": 23.1,
-        },
-        # ... more repos
-    ],
-    "qc_results": {
-        "enabled": true,
-        "completed_checks": 5,
-        "total_checks": 10,
-        "average_score": 85,
-    },
-}
-```
-
-**Errors:**
-
-- `ValueError`: If workflow_id is not found
-
-______________________________________________________________________
-
-#### `cancel_workflow`
-
-Cancel a running workflow.
-
-**Signature:**
-
-```python
-async def cancel_workflow(
-    workflow_id: str,
-    reason: str | None = None,
-) -> dict[str, Any]
-```
-
-**Parameters:**
-
-- `workflow_id`: Workflow identifier
-- `reason` (optional): Reason for cancellation
-
-**Returns:**
-
-```python
-{
-    "workflow_id": "wf-abc123",
-    "status": "cancelled",
-    "cancelled_at": "2025-01-22T12:40:00Z",
-    "reason": "User requested cancellation",
-    "progress": {
-        "total_repos": 10,
-        "completed_repos": 5,
-        "failed_repos": 0,
-    },
-    "checkpoint_saved": True,
-}
-```
-
-**Errors:**
-
-- `ValueError`: If workflow_id is not found
-- `StateError`: If workflow is already completed
-
-______________________________________________________________________
+**Description:** Get status of a workflow execution.
 
 #### `list_workflows`
 
-List workflow executions with optional filtering.
+**Signature:** `async def list_workflows(status: str | None, limit: int, offset: int, user_id: str | None)`
 
-**Signature:**
+**Source:** `mahavishnu/mcp/server_core.py:483`
 
-```python
-async def list_workflows(
-    status: str | None = None,
-    adapter: str | None = None,
-    limit: int = 50,
-    offset: int = 0,
-) -> list[dict[str, Any]]
-```
+**Description:** List workflows with optional filtering.
 
-**Parameters:**
+#### `cancel_workflow`
 
-- `status` (optional): Filter by status ("running", "completed", "failed", "cancelled")
-- `adapter` (optional): Filter by adapter
-- `limit`: Maximum number of workflows to return. Default: 50
-- `offset`: Number of workflows to skip. Default: 0
+**Signature:** `async def cancel_workflow(workflow_id: str, user_id: str | None)`
 
-**Returns:**
+**Source:** `mahavishnu/mcp/server_core.py:547`
 
-```python
-[
-    {
-        "workflow_id": "wf-abc123",
-        "status": "completed",
-        "adapter": "prefect",
-        "task_type": "code_sweep",
-        "started_at": "2025-01-22T12:34:56Z",
-        "completed_at": "2025-01-22T12:44:56Z",
-        "duration_seconds": 600,
-        "repos_count": 10,
-        "success_count": 9,
-        "failure_count": 1,
-    },
-    # ... more workflows
-]
-```
+**Description:** Cancel a running workflow.
 
-______________________________________________________________________
+#### `get_workflow_statistics`
 
-### Adapter Management Tools
+**Signature:** `async def get_workflow_statistics()`
 
-#### `list_adapters`
+**Source:** `mahavishnu/mcp/server_core.py:762`
 
-List available orchestration adapters.
+**Description:** Get workflow statistics and analytics.
 
-**Signature:**
+#### `workflow_get_outcome_tool`
 
-```python
-async def list_adapters() -> list[dict[str, Any]]
-```
+**Signature:** `async def workflow_get_outcome_tool(workflow_id: str, user_id: str | None)`
 
-**Returns:**
+**Source:** `mahavishnu/mcp/tools/workflow_tools.py:84`
 
-```python
-[
-    {
-        "name": "prefect",
-        "enabled": true,
-        "healthy": true,
-        "version": "0.0.40",
-        "capabilities": [
-            "stateful_workflows",
-            "checkpointing",
-            "conditional_routing",
-        ],
-        "stats": {
-            "executions": 42,
-            "successes": 40,
-            "failures": 2,
-        },
-    },
-    {
-        "name": "crewai",
-        "enabled": true,
-        "healthy": true,
-        "version": "0.28.0",
-        "capabilities": [
-            "multi_agent_coordination",
-            "tool_integration",
-        ],
-        "stats": {
-            "executions": 15,
-            "successes": 14,
-            "failures": 1,
-        },
-    },
-    # ... more adapters
-]
-```
+**Description:** Read back the persisted WorkflowOutcome for ``workflow_id``.
 
-______________________________________________________________________
 
-#### `get_adapter_health`
+### 3. Pool Management
 
-Get health status for a specific adapter.
-
-**Signature:**
-
-```python
-async def get_adapter_health(
-    adapter_name: str,
-) -> dict[str, Any]
-```
-
-**Parameters:**
-
-- `adapter_name`: Name of adapter ("prefect", "agno", "llamaindex")
-
-**Returns:**
-
-```python
-{
-    "name": "prefect",
-    "healthy": true,
-    "status": "operational",
-    "version": "0.0.40",
-    "dependencies": {
-        "llm_provider": "healthy",
-        "database": "healthy",
-        "checkpoint_dir": "accessible",
-    },
-    "stats": {
-        "executions": 42,
-        "successes": 40,
-        "failures": 2,
-        "average_duration_seconds": 450,
-    },
-    "last_health_check": "2025-01-22T12:34:56Z",
-}
-```
-
-**Errors:**
-
-- `ValueError`: If adapter_name is not found
-
-______________________________________________________________________
-
-#### `enable_adapter / disable_adapter`
-
-Enable or disable an adapter.
-
-**Signature:**
-
-```python
-async def enable_adapter(adapter_name: str) -> dict[str, Any]
-async def disable_adapter(adapter_name: str) -> dict[str, Any]
-```
-
-**Parameters:**
-
-- `adapter_name`: Name of adapter
-
-**Returns:**
-
-```python
-{
-    "adapter_name": "langgraph",
-    "enabled": True,
-    "message": "Adapter enabled successfully",
-    "requires_restart": False,
-}
-```
-
-**Errors:**
-
-- `ValueError`: If adapter_name is not found
-- `StateError`: If adapter is already in target state
-
-______________________________________________________________________
-
-### Quality Control Tools
-
-#### `run_qc`
-
-Run Crackerjack QC checks on a repository.
-
-**Signature:**
-
-```python
-async def run_qc(
-    repo_path: str,
-    checks: list[str] | None = None,
-    autofix: bool = False,
-) -> dict[str, Any]
-```
-
-**Parameters:**
-
-- `repo_path`: Path to repository
-- `checks` (optional): List of checks to run. Default: from config
-- `autofix`: Enable automatic fixes. Default: false
-
-**Returns:**
-
-```python
-{
-    "repo_path": "/path/to/repo",
-    "score": 85,
-    "passed": true,
-    "checks": [
-        {
-            "name": "linting",
-            "enabled": true,
-            "score": 90,
-            "passed": true,
-            "issues_found": 5,
-            "issues_fixed": 3 if autofix else 0,
-            "duration_seconds": 30,
-        },
-        {
-            "name": "type_checking",
-            "enabled": true,
-            "score": 80,
-            "passed": true,
-            "issues_found": 3,
-            "issues_fixed": 0,
-            "duration_seconds": 45,
-        },
-        {
-            "name": "security_scan",
-            "enabled": true,
-            "score": 85,
-            "passed": true,
-            "issues_found": 2,
-            "issues_fixed": 0,
-            "duration_seconds": 20,
-        },
-    ],
-    "total_duration_seconds": 95,
-    "threshold": 80,
-}
-```
-
-**Available Checks:**
-
-- `linting`: Code style linting (flake8, black, isort)
-- `type_checking`: Static type checking (mypy)
-- `security_scan`: Security vulnerability scanning (bandit)
-- `complexity`: Code complexity analysis (mccabe)
-- `formatting`: Code formatting (black, prettier)
-
-______________________________________________________________________
-
-#### `get_qc_thresholds`
-
-Get QC threshold configuration.
-
-**Signature:**
-
-```python
-async def get_qc_thresholds() -> dict[str, Any]
-```
-
-**Returns:**
-
-```python
-{
-    "min_score": 80,
-    "checks": {
-        "linting": {
-            "enabled": true,
-            "weight": 30,
-            "threshold": 75,
-        },
-        "type_checking": {
-            "enabled": true,
-            "weight": 30,
-            "threshold": 80,
-        },
-        "security_scan": {
-            "enabled": true,
-            "weight": 40,
-            "threshold": 90,
-        },
-    },
-}
-```
-
-______________________________________________________________________
-
-#### `set_qc_thresholds`
-
-Set QC threshold configuration.
-
-**Signature:**
-
-```python
-async def set_qc_thresholds(
-    min_score: int | None = None,
-    check_thresholds: dict[str, dict[str, Any]] | None = None,
-) -> dict[str, Any]
-```
-
-**Parameters:**
-
-- `min_score` (optional): Overall minimum score (0-100)
-- `check_thresholds` (optional): Per-check thresholds
-
-**Returns:**
-
-```python
-{
-    "min_score": 80,
-    "checks": {
-        "linting": {
-            "enabled": true,
-            "weight": 30,
-            "threshold": 75,
-        },
-        # ... more checks
-    },
-    "message": "Thresholds updated successfully",
-}
-```
-
-**Errors:**
-
-- `ValueError`: If thresholds are out of range (0-100)
-
-______________________________________________________________________
-
-### Session Management Tools
-
-#### `list_checkpoints`
-
-List Session-Buddy checkpoints.
-
-**Signature:**
-
-```python
-async def list_checkpoints(
-    workflow_id: str | None = None,
-) -> list[dict[str, Any]]
-```
-
-**Parameters:**
-
-- `workflow_id` (optional): Filter by workflow ID
-
-**Returns:**
-
-```python
-[
-    {
-        "workflow_id": "wf-abc123",
-        "checkpoint_path": "/path/to/checkpoint.json",
-        "created_at": "2025-01-22T12:34:56Z",
-        "state": {
-            "task": {...},
-            "repos": ["/path/to/repo1", "/path/to/repo2"],
-            "completed_repos": ["/path/to/repo1"],
-            "failed_repos": [],
-            "current_step": "processing_repo_2",
-        },
-    },
-    # ... more checkpoints
-]
-```
-
-______________________________________________________________________
-
-#### `resume_workflow`
-
-Resume a workflow from checkpoint.
-
-**Signature:**
-
-```python
-async def resume_workflow(
-    workflow_id: str,
-) -> dict[str, Any]
-```
-
-**Parameters:**
-
-- `workflow_id`: Workflow identifier
-
-**Returns:**
-
-```python
-{
-    "workflow_id": "wf-abc123",
-    "status": "running",
-    "resumed_at": "2025-01-22T12:40:00Z",
-    "remaining_repos": ["/path/to/repo2", "/path/to/repo3"],
-    "completed_repos": ["/path/to/repo1"],
-    "failed_repos": [],
-    "current_step": "processing_repo_2",
-    "checkpoint_used": "/path/to/checkpoint.json",
-}
-```
-
-**Errors:**
-
-- `ValueError`: If checkpoint is not found
-
-______________________________________________________________________
-
-#### `delete_checkpoint`
-
-Delete a workflow checkpoint.
-
-**Signature:**
-
-```python
-async def delete_checkpoint(
-    workflow_id: str,
-) -> dict[str, Any]
-```
-
-**Parameters:**
-
-- `workflow_id`: Workflow identifier
-
-**Returns:**
-
-```python
-{
-    "workflow_id": "wf-abc123",
-    "deleted": True,
-    "deleted_at": "2025-01-22T12:40:00Z",
-}
-```
-
-**Errors:**
-
-- `ValueError`: If checkpoint is not found
-
-______________________________________________________________________
-
-### Worker Management Tools
-
-#### `worker_spawn`
-
-Spawn worker instances for task execution.
-
-**Signature:**
-
-```python
-async def worker_spawn(
-    worker_type: str = "terminal-claude",
-    count: int = 1,
-) -> list[str]
-```
-
-**Parameters:**
-
-- `worker_type`: Type of worker to spawn. Options:
-  - `"terminal-claude"`: Headless Claude Code CLI execution
-  - `"terminal-qwen"`: Headless Qwen CLI execution (supported non-default worker type)
-  - `"container-executor"`: Containerized task execution
-- `count`: Number of workers to spawn (1-50). Default: 1
-
-**Returns:**
-
-```python
-[
-    "term_abc123",
-    "term_def456",
-    "term_ghi789",
-    # ... more worker IDs
-]
-```
-
-**Errors:**
-
-- `ValueError`: If worker_type is unknown
-- `RuntimeError`: If worker fails to start
-- `ResourceError`: If system is at capacity (max concurrent workers)
-
-**Example:**
-
-```python
-# Spawn 5 Claude workers
-worker_ids = await worker_spawn(worker_type="terminal-claude", count=5)
-
-# Spawn 3 Qwen workers
-worker_ids = await worker_spawn(worker_type="terminal-qwen", count=3)
-
-# Spawn 2 container workers
-worker_ids = await worker_spawn(worker_type="container-executor", count=2)
-```
-
-______________________________________________________________________
-
-#### `worker_execute`
-
-Execute task on a specific worker.
-
-**Signature:**
-
-```python
-async def worker_execute(
-    worker_id: str,
-    prompt: str,
-    timeout: int = 300,
-) -> dict[str, Any]
-```
-
-**Parameters:**
-
-- `worker_id`: Worker identifier (from `worker_spawn`)
-- `prompt`: Task prompt for AI workers
-- `timeout`: Execution timeout in seconds (30-3600). Default: 300
-
-**Returns:**
-
-```python
-{
-    "worker_id": "term_abc123",
-    "status": "completed",  # "pending", "running", "completed", "failed", "timeout", "cancelled"
-    "output": "Task completed successfully",
-    "error": None,
-    "exit_code": 0,
-    "duration_seconds": 45.2,
-    "metadata": {
-        "worker_type": "terminal-qwen",  # supported non-default worker type
-        "last_output": "Final response",
-        "output_lines": 10,
-    },
-}
-```
-
-**Errors:**
-
-- `ValueError`: If worker_id not found
-- `TimeoutError`: If task execution exceeds timeout
-- `RuntimeError`: If worker fails during execution
-
-**Example:**
-
-```python
-# Execute task on specific worker
-result = await worker_execute(
-    worker_id="term_abc123",
-    prompt="Implement a REST API with FastAPI",
-    timeout=600,
-)
-```
-
-______________________________________________________________________
-
-#### `worker_execute_batch`
-
-Execute tasks on multiple workers concurrently.
-
-**Signature:**
-
-```python
-async def worker_execute_batch(
-    worker_ids: list[str],
-    prompts: list[str],
-    timeout: int = 300,
-) -> dict[str, dict[str, Any]]
-```
-
-**Parameters:**
-
-- `worker_ids`: List of worker identifiers
-- `prompts`: List of prompts (same length as worker_ids)
-- `timeout`: Execution timeout in seconds (30-3600). Default: 300
-
-**Returns:**
-
-```python
-{
-    "term_abc123": {
-        "worker_id": "term_abc123",
-        "status": "completed",
-        "output": "Task completed",
-        "duration_seconds": 42.1,
-    },
-    "term_def456": {
-        "worker_id": "term_def456",
-        "status": "completed",
-        "output": "Task completed",
-        "duration_seconds": 43.8,
-    },
-    "term_ghi789": {
-        "worker_id": "term_ghi789",
-        "status": "failed",
-        "error": "Task failed",
-        "duration_seconds": 12.5,
-    },
-}
-```
-
-**Errors:**
-
-- `ValueError`: If worker_ids and prompts length mismatch
-- `ValueError`: If any worker_id not found
-
-**Example:**
-
-```python
-# Execute different tasks on multiple workers
-results = await worker_execute_batch(
-    worker_ids=["term_abc123", "term_def456", "term_ghi789"],
-    prompts=[
-        "Implement user authentication",
-        "Implement database models",
-        "Write API documentation",
-    ],
-)
-```
-
-______________________________________________________________________
-
-#### `worker_list`
-
-List all active workers.
-
-**Signature:**
-
-```python
-async def worker_list() -> list[dict[str, Any]]
-```
-
-**Returns:**
-
-```python
-[
-    {
-        "worker_id": "term_abc123",
-        "worker_type": "terminal-qwen",  # supported non-default worker type
-        "status": "running",
-    },
-    {
-        "worker_id": "term_def456",
-        "worker_type": "terminal-claude",
-        "status": "completed",
-    },
-    {
-        "worker_id": "container_ghi789",
-        "worker_type": "container-executor",
-        "status": "running",
-    },
-]
-```
-
-**Example:**
-
-```python
-# List all active workers
-workers = await worker_list()
-```
-
-______________________________________________________________________
-
-#### `worker_monitor`
-
-Monitor status of multiple workers.
-
-**Signature:**
-
-```python
-async def worker_monitor(
-    worker_ids: list[str],
-    interval: float = 1.0,
-) -> dict[str, str]
-```
-
-**Parameters:**
-
-- `worker_ids`: List of worker identifiers to monitor
-- `interval`: Polling interval in seconds. Default: 1.0
-
-**Returns:**
-
-```python
-{
-    "term_abc123": "running",
-    "term_def456": "completed",
-    "term_ghi789": "failed",
-}
-```
-
-**Errors:**
-
-- `ValueError`: If any worker_id not found
-
-**Example:**
-
-```python
-# Monitor multiple workers
-statuses = await worker_monitor(
-    worker_ids=["term_abc123", "term_def456"],
-    interval=0.5,
-)
-```
-
-______________________________________________________________________
-
-#### `worker_collect_results`
-
-Collect results from completed workers.
-
-**Signature:**
-
-```python
-async def worker_collect_results(
-    worker_ids: list[str] | None = None,
-) -> dict[str, dict[str, Any]]
-```
-
-**Parameters:**
-
-- `worker_ids` (optional): List of worker identifiers. Default: all workers
-
-**Returns:**
-
-```python
-{
-    "term_abc123": {
-        "worker_id": "term_abc123",
-        "status": "completed",
-        "output": "Full worker output...",
-        "duration_seconds": 45.2,
-        "progress": {...},
-    },
-    "term_def456": {
-        "worker_id": "term_def456",
-        "status": "completed",
-        "output": "Full worker output...",
-        "duration_seconds": 43.8,
-        "progress": {...},
-    },
-}
-```
-
-**Example:**
-
-```python
-# Collect results from specific workers
-results = await worker_collect_results(
-    worker_ids=["term_abc123", "term_def456"]
-)
-
-# Collect results from all workers
-results = await worker_collect_results()
-```
-
-______________________________________________________________________
-
-#### `worker_close`
-
-Close a specific worker.
-
-**Signature:**
-
-```python
-async def worker_close(
-    worker_id: str,
-) -> dict[str, Any]
-```
-
-**Parameters:**
-
-- `worker_id`: Worker identifier to close
-
-**Returns:**
-
-```python
-{
-    "worker_id": "term_abc123",
-    "closed": True,
-    "message": "Worker closed successfully",
-}
-```
-
-**Errors:**
-
-- `ValueError`: If worker_id not found
-
-**Example:**
-
-```python
-# Close a specific worker
-result = await worker_close(worker_id="term_abc123")
-```
-
-______________________________________________________________________
-
-#### `worker_close_all`
-
-Close all active workers.
-
-**Signature:**
-
-```python
-async def worker_close_all() -> dict[str, Any]
-```
-
-**Returns:**
-
-```python
-{
-    "closed_count": 5,
-    "failed_count": 0,
-    "workers_closed": ["term_abc123", "term_def456", "term_ghi789", "container_jkl012", "term_mno345"],
-}
-```
-
-**Example:**
-
-```python
-# Close all workers
-result = await worker_close_all()
-```
-
-______________________________________________________________________
-
-#### `worker_health`
-
-Get worker system health.
-
-**Signature:**
-
-```python
-async def worker_health() -> dict[str, Any]
-```
-
-**Returns:**
-
-```python
-{
-    "status": "healthy",
-    "workers_active": 3,
-    "max_concurrent": 10,
-    "debug_mode": false,
-    "debug_monitor_active": false,
-    "workers": [
-        {
-            "worker_id": "term_abc123",
-            "worker_type": "terminal-qwen",  # supported non-default worker type
-            "status": "running",
-        },
-        {
-            "worker_id": "term_def456",
-            "worker_type": "terminal-claude",
-            "status": "running",
-        },
-        {
-            "worker_id": "container_ghi789",
-            "worker_type": "container-executor",
-            "status": "running",
-        },
-    ],
-}
-```
-
-**Example:**
-
-```python
-# Get worker system health
-health = await worker_health()
-```
-
-### Pool Management Tools
-
-#### `pool_spawn`
-
-Spawn a new worker pool of specified type.
-
-**Signature:**
-
-```python
-async def pool_spawn(
-    pool_type: str = "mahavishnu",
-    name: str = "default",
-    min_workers: int = 1,
-    max_workers: int = 10,
-    worker_type: str = "terminal-claude",
-) -> dict[str, Any]
-```
-
-**Parameters:**
-
-- `pool_type`: Type of pool to spawn. Options: "mahavishnu", "session-buddy", "runpod"
-- `name`: Human-readable pool name
-- `min_workers`: Minimum number of workers (1-10)
-- `max_workers`: Maximum number of workers (1-100)
-- `worker_type`: Worker type. Options: "terminal-claude", "terminal-qwen" (supported non-default), "container"
-
-**Returns:**
-
-```python
-{
-    "pool_id": "mahavishnu_abc123",
-    "pool_type": "mahavishnu",
-    "name": "local-pool",
-    "status": "created",
-    "min_workers": 1,
-    "max_workers": 10,
-}
-```
-
-**Errors:**
-
-- `ValueError`: If pool_type is unknown
-- `RuntimeError`: If pool fails to start
-- `ValueError`: If target worker count outside range [min_workers, max_workers]
-
-**Example:**
-
-```python
-# Spawn local Mahavishnu pool
-pool = await pool_spawn(
-    pool_type="mahavishnu",
-    name="local",
-    min_workers=2,
-    max_workers=5,
-)
-
-# Spawn Session-Buddy delegated pool
-pool = await pool_spawn(
-    pool_type="session-buddy",
-    name="delegated",
-)
-```
-
-______________________________________________________________________
-
-#### `pool_execute`
-
-Execute task on specific pool.
-
-**Signature:**
-
-```python
-async def pool_execute(
-    pool_id: str,
-    prompt: str,
-    timeout: int = 300,
-) -> dict[str, Any]
-```
-
-**Parameters:**
-
-- `pool_id`: Target pool identifier
-- `prompt`: Task prompt for workers
-- `timeout`: Execution timeout in seconds (30-3600). Default: 300
-
-**Returns:**
-
-```python
-{
-    "pool_id": "mahavishnu_abc123",
-    "worker_id": "worker_xyz789",
-    "status": "completed",
-    "output": "Task output here...",
-    "error": None,
-    "duration": 5.2,
-}
-```
-
-**Errors:**
-
-- `ValueError`: If pool_id not found
-- `RuntimeError`: If no workers available in pool
-
-**Example:**
-
-```python
-# Execute task on specific pool
-result = await pool_execute(
-    pool_id="mahavishnu_abc123",
-    prompt="Implement a REST API endpoint",
-    timeout=300,
-)
-```
-
-______________________________________________________________________
-
-#### `pool_route_execute`
-
-Execute task with automatic pool routing.
-
-**Signature:**
-
-```python
-async def pool_route_execute(
-    prompt: str,
-    pool_selector: str = "least_loaded",
-    timeout: int = 300,
-) -> dict[str, Any]
-```
-
-**Parameters:**
-
-- `prompt`: Task prompt for workers
-- `pool_selector`: Pool selection strategy. Options: "round_robin", "least_loaded", "random"
-- `timeout`: Execution timeout in seconds (30-3600). Default: 300
-
-**Returns:**
-
-```python
-{
-    "pool_id": "mahavishnu_abc123",
-    "worker_id": "worker_xyz789",
-    "status": "completed",
-    "output": "Task output here...",
-    "error": None,
-    "duration": 5.2,
-}
-```
-
-**Errors:**
-
-- `RuntimeError`: If no pools available
-- `ValueError`: If pool_selector is invalid
-
-**Example:**
-
-```python
-# Route to least loaded pool
-result = await pool_route_execute(
-    prompt="Implement API endpoint",
-    pool_selector="least_loaded",
-)
-
-# Route using round-robin
-result = await pool_route_execute(
-    prompt="Write tests",
-    pool_selector="round_robin",
-)
-```
-
-______________________________________________________________________
+_8 tool(s)_
 
 #### `pool_list`
 
-List all active pools.
+**Signature:** `async def pool_list()`
 
-**Signature:**
+**Source:** `mahavishnu/mcp/tools/pool_tools.py:55`
 
-```python
-async def pool_list() -> list[dict[str, Any]]
-```
-
-**Returns:**
-
-```python
-[
-    {
-        "pool_id": "mahavishnu_abc123",
-        "pool_type": "mahavishnu",
-        "name": "local",
-        "status": "running",
-        "workers": 5,
-        "min_workers": 2,
-        "max_workers": 10,
-    },
-    {
-        "pool_id": "session_buddy_def456",
-        "pool_type": "session-buddy",
-        "name": "delegated",
-        "status": "running",
-        "workers": 3,
-        "min_workers": 3,
-        "max_workers": 3,
-    },
-]
-```
-
-**Example:**
-
-```python
-# List all active pools
-pools = await pool_list()
-
-for pool in pools:
-    print(f"{pool['pool_id']}: {pool['status']} ({pool['workers']} workers)")
-```
-
-______________________________________________________________________
+**Description:** List all active pools.
 
 #### `pool_monitor`
 
-Monitor pool status and metrics.
+**Signature:** `async def pool_monitor(pool_ids: list[str] | None)`
 
-**Signature:**
+**Source:** `mahavishnu/mcp/tools/pool_tools.py:64`
 
-```python
-async def pool_monitor(
-    pool_ids: list[str] | None = None,
-) -> dict[str, dict[str, Any]]
-```
-
-**Parameters:**
-
-- `pool_ids`: Optional list of pool IDs to monitor. None = all pools
-
-**Returns:**
-
-```python
-{
-    "mahavishnu_abc123": {
-        "memory_count": 15,
-        "status": "running",
-        "metrics": {
-            "active_workers": 5,
-            "tasks_completed": 100,
-            "tasks_failed": 2,
-        },
-    },
-    "session_buddy_def456": {
-        "memory_count": 8,
-        "status": "running",
-    },
-}
-```
-
-**Example:**
-
-```python
-# Monitor all pools
-metrics = await pool_monitor()
-
-# Monitor specific pools
-metrics = await pool_monitor(pool_ids=["mahavishnu_abc123"])
-```
-
-______________________________________________________________________
+**Description:** Monitor pool status and metrics.
 
 #### `pool_scale`
 
-Scale pool to target worker count.
+**Signature:** `async def pool_scale(pool_id: str, target_workers: int)`
 
-**Signature:**
+**Source:** `mahavishnu/mcp/tools/pool_tools.py:75`
 
-```python
-async def pool_scale(
-    pool_id: str,
-    target_workers: int,
-) -> dict[str, Any]
-```
-
-**Parameters:**
-
-- `pool_id`: Pool identifier to scale
-- `target_workers`: Target worker count (1-100)
-
-**Returns:**
-
-```python
-{
-    "pool_id": "mahavishnu_abc123",
-    "target_workers": 10,
-    "actual_workers": 10,
-    "status": "scaled",
-}
-```
-
-**Errors:**
-
-- `ValueError`: If pool_id not found
-- `ValueError`: If target_workers outside [min_workers, max_workers]
-- `NotImplementedError`: If pool doesn't support scaling (e.g., SessionBuddyPool)
-
-**Example:**
-
-```python
-# Scale pool to 10 workers
-result = await pool_scale(
-    pool_id="mahavishnu_abc123",
-    target_workers=10,
-)
-```
-
-______________________________________________________________________
+**Description:** Scale pool to target worker count.
 
 #### `pool_close`
 
-Close a specific pool.
+**Signature:** `async def pool_close(pool_id: str)`
 
-**Signature:**
+**Source:** `mahavishnu/mcp/tools/pool_tools.py:112`
 
-```python
-async def pool_close(
-    pool_id: str,
-) -> dict[str, Any]
-```
-
-**Parameters:**
-
-- `pool_id`: Pool identifier to close
-
-**Returns:**
-
-```python
-{
-    "pool_id": "mahavishnu_abc123",
-    "status": "closed",
-}
-```
-
-**Errors:**
-
-- `ValueError`: If pool_id not found
-
-**Example:**
-
-```python
-# Close specific pool
-result = await pool_close(pool_id="mahavishnu_abc123")
-```
-
-______________________________________________________________________
+**Description:** Close a specific pool.
 
 #### `pool_close_all`
 
-Close all active pools.
+**Signature:** `async def pool_close_all()`
 
-**Signature:**
+**Source:** `mahavishnu/mcp/tools/pool_tools.py:132`
 
-```python
-async def pool_close_all() -> dict[str, Any]
-```
-
-**Returns:**
-
-```python
-{
-    "pools_closed": 3,
-    "status": "all_closed",
-}
-```
-
-**Example:**
-
-```python
-# Close all pools
-result = await pool_close_all()
-print(f"Closed {result['pools_closed']} pools")
-```
-
-______________________________________________________________________
+**Description:** Close all active pools.
 
 #### `pool_health`
 
-Get health status of all pools.
+**Signature:** `async def pool_health()`
 
-**Signature:**
+**Source:** `mahavishnu/mcp/tools/pool_tools.py:153`
 
-```python
-async def pool_health() -> dict[str, Any]
-```
-
-**Returns:**
-
-```python
-{
-    "status": "healthy",
-    "pools_active": 3,
-    "pools": [
-        {
-            "pool_id": "mahavishnu_abc123",
-            "pool_type": "mahavishnu",
-            "status": "running",
-            "workers": 5,
-        },
-        {
-            "pool_id": "session_buddy_def456",
-            "pool_type": "session-buddy",
-            "status": "running",
-            "workers": 3,
-        },
-    ],
-}
-```
-
-**Example:**
-
-```python
-# Get pool health
-health = await pool_health()
-
-print(f"Overall status: {health['status']}")
-print(f"Active pools: {health['pools_active']}")
-
-for pool in health["pools"]:
-    print(f"  {pool['pool_id']}: {pool['status']} ({pool['workers']} workers)")
-```
-
-______________________________________________________________________
+**Description:** Get health status of all pools.
 
 #### `pool_search_memory`
 
-Search memory across all pools.
+**Signature:** `async def pool_search_memory(query: str, limit: int)`
 
-**Signature:**
+**Source:** `mahavishnu/mcp/tools/pool_tools.py:165`
 
-```python
-async def pool_search_memory(
-    query: str,
-    limit: int = 100,
-) -> list[dict[str, Any]]
-```
+**Description:** Search memory across all pools.
 
-**Parameters:**
+#### `budget_enforce`
 
-- `query`: Search query string
-- `limit`: Maximum results to return. Default: 100
+**Signature:** `async def budget_enforce(workflow_id: str, budget_tokens: int | None, budget_turns: int | None, budget_wallclock_seconds: float | None, declared_by: str | None)`
 
-**Returns:**
+**Source:** `mahavishnu/mcp/tools/pool_tools.py:188`
 
-```python
-[
-    {
-        "content": "API implementation code...",
-        "metadata": {
-            "pool_id": "mahavishnu_abc123",
-            "pool_type": "mahavishnu",
-            "worker_id": "worker_xyz789",
-            "timestamp": 1234567890.0,
-        },
-    },
-    {
-        "content": "Test code...",
-        "metadata": {
-            "pool_id": "session_buddy_def456",
-            "pool_type": "session-buddy",
-            "timestamp": 1234567890.0,
-        },
-    },
-]
-```
+**Description:** Declare a per-workflow budget; the watchdog enforces it.
 
-**Errors:**
 
-- `RuntimeError`: If search fails
+### 4. Worker Management
 
-**Example:**
+_9 tool(s)_
 
-```python
-# Search across all pools
-results = await pool_search_memory(
-    query="API implementation",
-    limit=50,
-)
+#### `worker_spawn`
 
-for result in results:
-    print(f"Pool: {result['metadata']['pool_id']}")
-    print(f"Content: {result['content'][:100]}...")
-```
+**Signature:** `async def worker_spawn()`
 
-______________________________________________________________________
+**Source:** `mahavishnu/mcp/tools/worker_tools.py:392`
 
-### OpenTelemetry Tools
+**Description:** (no docstring)
 
-Tools for ingesting and searching OpenTelemetry traces using Akosha HotStore (DuckDB).
+#### `worker_execute`
+
+**Signature:** `async def worker_execute()`
+
+**Source:** `mahavishnu/mcp/tools/worker_tools.py:398`
+
+**Description:** (no docstring)
+
+#### `worker_execute_batch`
+
+**Signature:** `async def worker_execute_batch()`
+
+**Source:** `mahavishnu/mcp/tools/worker_tools.py:399`
+
+**Description:** (no docstring)
+
+#### `worker_list`
+
+**Signature:** `async def worker_list()`
+
+**Source:** `mahavishnu/mcp/tools/worker_tools.py:400`
+
+**Description:** (no docstring)
+
+#### `worker_monitor`
+
+**Signature:** `async def worker_monitor()`
+
+**Source:** `mahavishnu/mcp/tools/worker_tools.py:393`
+
+**Description:** (no docstring)
+
+#### `worker_collect_results`
+
+**Signature:** `async def worker_collect_results()`
+
+**Source:** `mahavishnu/mcp/tools/worker_tools.py:394`
+
+**Description:** (no docstring)
+
+#### `worker_close`
+
+**Signature:** `async def worker_close()`
+
+**Source:** `mahavishnu/mcp/tools/worker_tools.py:395`
+
+**Description:** (no docstring)
+
+#### `worker_close_all`
+
+**Signature:** `async def worker_close_all()`
+
+**Source:** `mahavishnu/mcp/tools/worker_tools.py:396`
+
+**Description:** (no docstring)
+
+#### `worker_health`
+
+**Signature:** `async def worker_health()`
+
+**Source:** `mahavishnu/mcp/tools/worker_tools.py:397`
+
+**Description:** (no docstring)
+
+
+### 5. Worker Contract (durable)
+
+_9 tool(s)_
+
+#### `launch_worker`
+
+**Signature:** `async def launch_worker()`
+
+**Source:** `mahavishnu/mcp/tools/worker_contract_tools.py:377`
+
+**Description:** (no docstring)
+
+#### `send_input`
+
+**Signature:** `async def send_input()`
+
+**Source:** `mahavishnu/mcp/tools/worker_contract_tools.py:378`
+
+**Description:** (no docstring)
+
+#### `capture_output`
+
+**Signature:** `async def capture_output()`
+
+**Source:** `mahavishnu/mcp/tools/worker_contract_tools.py:379`
+
+**Description:** (no docstring)
+
+#### `worker_status`
+
+**Signature:** `async def worker_status()`
+
+**Source:** `mahavishnu/mcp/tools/worker_contract_tools.py:380`
+
+**Description:** (no docstring)
+
+#### `wait_for_state`
+
+**Signature:** `async def wait_for_state()`
+
+**Source:** `mahavishnu/mcp/tools/worker_contract_tools.py:381`
+
+**Description:** (no docstring)
+
+#### `cancel_worker`
+
+**Signature:** `async def cancel_worker()`
+
+**Source:** `mahavishnu/mcp/tools/worker_contract_tools.py:382`
+
+**Description:** (no docstring)
+
+#### `worker_revoke`
+
+**Signature:** `async def worker_revoke()`
+
+**Source:** `mahavishnu/mcp/tools/worker_contract_tools.py:383`
+
+**Description:** (no docstring)
+
+#### `worker_run_with_settle`
+
+**Signature:** `async def worker_run_with_settle()`
+
+**Source:** `mahavishnu/mcp/tools/worker_contract_tools.py:384`
+
+**Description:** (no docstring)
+
+#### `worker_settle`
+
+**Signature:** `async def worker_settle()`
+
+**Source:** `mahavishnu/mcp/tools/worker_contract_tools.py:385`
+
+**Description:** (no docstring)
+
+
+### 6. Terminal
+
+_10 tool(s)_
+
+#### `terminal_launch`
+
+**Signature:** `async def terminal_launch(command: Command, count: int, columns: int, rows: int)`
+
+**Source:** `mahavishnu/mcp/tools/terminal_tools.py:116`
+
+**Description:** Launch terminal sessions running a command.
+
+#### `terminal_send`
+
+**Signature:** `async def terminal_send(session_id: SessionID, command: Command)`
+
+**Source:** `mahavishnu/mcp/tools/terminal_tools.py:136`
+
+**Description:** Send command to a terminal session.
+
+#### `terminal_capture`
+
+**Signature:** `async def terminal_capture(session_id: str, lines: int | None)`
+
+**Source:** `mahavishnu/mcp/tools/terminal_tools.py:149`
+
+**Description:** Capture output from terminal session.
+
+#### `terminal_capture_all`
+
+**Signature:** `async def terminal_capture_all(session_ids: list[str], lines: int | None)`
+
+**Source:** `mahavishnu/mcp/tools/terminal_tools.py:157`
+
+**Description:** Capture output from multiple terminal sessions concurrently.
+
+#### `terminal_list`
+
+**Signature:** `async def terminal_list()`
+
+**Source:** `mahavishnu/mcp/tools/terminal_tools.py:165`
+
+**Description:** List all active terminal sessions.
+
+#### `terminal_close`
+
+**Signature:** `async def terminal_close(session_id: str)`
+
+**Source:** `mahavishnu/mcp/tools/terminal_tools.py:170`
+
+**Description:** Close a terminal session.
+
+#### `terminal_close_all`
+
+**Signature:** `async def terminal_close_all()`
+
+**Source:** `mahavishnu/mcp/tools/terminal_tools.py:175`
+
+**Description:** Close all terminal sessions.
+
+#### `terminal_switch_adapter`
+
+**Signature:** `async def terminal_switch_adapter(adapter_name: str, migrate_sessions: bool)`
+
+**Source:** `mahavishnu/mcp/tools/terminal_tools.py:191`
+
+**Description:** Hot-switch to a different terminal adapter without restart.
+
+#### `terminal_current_adapter`
+
+**Signature:** `async def terminal_current_adapter()`
+
+**Source:** `mahavishnu/mcp/tools/terminal_tools.py:267`
+
+**Description:** Get information about the current terminal adapter.
+
+#### `terminal_list_adapters`
+
+**Signature:** `async def terminal_list_adapters()`
+
+**Source:** `mahavishnu/mcp/tools/terminal_tools.py:275`
+
+**Description:** List all available terminal adapters.
+
+
+### 7. Worktree
+
+_1 tool(s)_
+
+#### `worktree_manage`
+
+**Signature:** `async def worktree_manage()`
+
+**Source:** `mahavishnu/mcp/tools/worktree_tools.py:155`
+
+**Description:** (no docstring)
+
+
+### 8. Code Analysis (Tree-sitter)
+
+_7 tool(s)_
+
+#### `treesitter_parse`
+
+**Signature:** `async def treesitter_parse(file_path: str, language: str | None)`
+
+**Source:** `mahavishnu/mcp/tools/treesitter_tools.py:65`
+
+**Description:** Parse a source code file with caching.
+
+#### `treesitter_extract_symbols`
+
+**Signature:** `async def treesitter_extract_symbols(file_path: str, symbol_kinds: list[str] | None)`
+
+**Source:** `mahavishnu/mcp/tools/treesitter_tools.py:114`
+
+**Description:** Extract symbols from a parsed file.
+
+#### `treesitter_find_usages`
+
+**Signature:** `async def treesitter_find_usages(file_path: str, symbol_name: str, search_directory: str | None)`
+
+**Source:** `mahavishnu/mcp/tools/treesitter_tools.py:178`
+
+**Description:** Find usages of a symbol across files.
+
+#### `treesitter_query`
+
+**Signature:** `async def treesitter_query(file_path: str, query: str)`
+
+**Source:** `mahavishnu/mcp/tools/treesitter_tools.py:272`
+
+**Description:** Run a custom tree-sitter query (S-expression format).
+
+#### `treesitter_batch_analyze`
+
+**Signature:** `async def treesitter_batch_analyze(directory: str, file_pattern: str, max_files: int)`
+
+**Source:** `mahavishnu/mcp/tools/treesitter_tools.py:321`
+
+**Description:** Batch analyze multiple files in a directory.
+
+#### `treesitter_cache_stats`
+
+**Signature:** `async def treesitter_cache_stats()`
+
+**Source:** `mahavishnu/mcp/tools/treesitter_tools.py:403`
+
+**Description:** Get cache statistics for the tree-sitter parser.
+
+#### `treesitter_clear_cache`
+
+**Signature:** `async def treesitter_clear_cache()`
+
+**Source:** `mahavishnu/mcp/tools/treesitter_tools.py:419`
+
+**Description:** Clear the tree-sitter parse cache.
+
+
+### 9. Session-Buddy
+
+_9 tool(s)_
+
+#### `index_code_graph`
+
+**Signature:** `async def index_code_graph(project_path: str, include_docs: bool, user_id: str | None)`
+
+**Source:** `mahavishnu/mcp/tools/session_buddy_tools.py:61`
+
+**Description:** Index codebase structure for better context in Session Buddy.
+
+#### `get_function_context`
+
+**Signature:** `async def get_function_context(project_path: str, function_name: str, user_id: str | None)`
+
+**Source:** `mahavishnu/mcp/tools/session_buddy_tools.py:88`
+
+**Description:** Get caller/callee context for a function for Session Buddy.
+
+#### `find_related_code`
+
+**Signature:** `async def find_related_code(project_path: str, file_path: str, user_id: str | None)`
+
+**Source:** `mahavishnu/mcp/tools/session_buddy_tools.py:112`
+
+**Description:** Find code related by imports/calls for Session Buddy.
+
+#### `index_documentation`
+
+**Signature:** `async def index_documentation(project_path: str, user_id: str | None)`
+
+**Source:** `mahavishnu/mcp/tools/session_buddy_tools.py:137`
+
+**Description:** Extract docstrings and index for semantic search in Session Buddy.
+
+#### `search_documentation`
+
+**Signature:** `async def search_documentation(query: str, user_id: str | None)`
+
+**Source:** `mahavishnu/mcp/tools/session_buddy_tools.py:156`
+
+**Description:** Search through indexed documentation in Session Buddy.
+
+#### `send_project_message`
+
+**Signature:** `async def send_project_message(from_project: str, to_project: str, subject: str, message: str, priority: str, user_id: str | None)`
+
+**Source:** `mahavishnu/mcp/tools/session_buddy_tools.py:175`
+
+**Description:** Send message between projects for Session Buddy.
+
+#### `list_project_messages`
+
+**Signature:** `async def list_project_messages(project: str, user_id: str | None)`
+
+**Source:** `mahavishnu/mcp/tools/session_buddy_tools.py:211`
+
+**Description:** List messages for a project in Session Buddy.
+
+#### `track_channel_session`
+
+**Signature:** `async def track_channel_session(event_type: str, channel_type: str, channel_id: str, sender_id: str, session_scope: str, thread_id: str | None, component_name: str, workspace: str | None, platform: str | None, message_preview: str | None, message_count: int, metadata: dict[str, Any] | None, user_id: str | None)`
+
+**Source:** `mahavishnu/mcp/tools/session_buddy_tools.py:229`
+
+**Description:** Track a channel session event (start / end / heartbeat) in Session-Buddy.
+
+#### `get_channel_sessions`
+
+**Signature:** `async def get_channel_sessions(channel_type: str | None, channel_id: str | None, sender_id: str | None, session_scope: str | None, limit: int, user_id: str | None)`
+
+**Source:** `mahavishnu/mcp/tools/session_buddy_tools.py:294`
+
+**Description:** Query active or recent channel sessions tracked in Session-Buddy.
+
+
+### 10. OpenTelemetry Trace
+
+_5 tool(s)_
 
 #### `ingest_otel_traces`
 
-Ingest OTel trace log files into HotStore with semantic embeddings.
+**Signature:** `async def ingest_otel_traces(log_files: list[str] | None, trace_data: list[dict] | None, system_id: str)`
 
-**Signature:**
+**Source:** `mahavishnu/mcp/tools/otel_tools.py:44`
 
-```python
-async def ingest_otel_traces(
-    log_files: list[str],
-    batch_size: int | None = None,
-) -> dict[str, Any]
-```
-
-**Parameters:**
-
-- `log_files` (required): List of log file paths to ingest
-- `batch_size` (optional): Batch size for ingestion. Default: 100
-
-**Returns:**
-
-```python
-{
-    "status": "success",
-    "traces_ingested": 127,
-    "storage_backend": "duckdb_hotstore",
-    "ingestion_time_seconds": 0.45,
-    "files_processed": 2,
-}
-```
-
-**Errors:**
-
-- `FileNotFoundError`: If log file doesn't exist
-- `json.JSONDecodeError`: If file is not valid JSON
-- `ValueError`: If file is not in expected OTel format
-- `RuntimeError`: If embedding generation fails
-
-**Example:**
-
-```python
-# Ingest single file
-result = await ingest_otel_traces(
-    log_files=["/path/to/claude/session.json"],
-)
-
-# Ingest multiple files with custom batch size
-result = await ingest_otel_traces(
-    log_files=[
-        "/path/to/claude/session_1.json",
-        "/path/to/qwen/session_1.json",
-    ],
-    batch_size=200,
-)
-
-print(f"Ingested {result['traces_ingested']} traces in {result['ingestion_time_seconds']:.2f}s")
-```
-
-______________________________________________________________________
+**Description:** Ingest OpenTelemetry traces from log files or direct trace data.
 
 #### `search_otel_traces`
 
-Perform semantic search over ingested traces.
-
-**Signature:**
-
-```python
-async def search_otel_traces(
-    query: str,
-    limit: int = 10,
-    threshold: float | None = None,
-    filters: dict[str, Any] | None = None,
-) -> list[dict[str, Any]]
-```
-
-**Parameters:**
-
-- `query` (required): Natural language search query
-- `limit` (optional): Maximum results to return. Default: 10
-- `threshold` (optional): Minimum similarity score (0-1). Default: 0.75
-- `filters` (optional): Attribute filters (e.g., `{"kind": "CLIENT"}`)
-
-**Returns:**
-
-```python
-[
-    {
-        "trace_id": "trace-abc123",
-        "span_id": "span-def456",
-        "similarity": 0.892,
-        "name": "http.client.request",
-        "summary": "HTTP POST request to /api/users endpoint",
-        "timestamp": "2025-01-31T14:23:45Z",
-        "kind": "CLIENT",
-        "status": "OK",
-        "duration_ms": 1234,
-        "attributes": {
-            "http.method": "POST",
-            "http.url": "https://api.example.com/users",
-        },
-    },
-    # ... more results
-]
-```
-
-**Errors:**
-
-- `ValueError`: If query is empty or limit \<= 0
-- `ValueError`: If threshold not in range [0.0, 1.0]
-
-**Example:**
-
-```python
-# Basic search
-results = await search_otel_traces(
-    query="authentication error when accessing API",
-)
-
-# Search with high similarity threshold
-results = await search_otel_traces(
-    query="memory usage spike",
-    threshold=0.80,
-)
-
-# Search with filters
-results = await search_otel_traces(
-    query="database connection",
-    filters={
-        "kind": "CLIENT",
-        "status": "ERROR",
-    },
-)
-
-# Process results
-for result in results:
-    print(f"{result['trace_id']}: {result['summary'][:80]}...")
-    print(f"  Similarity: {result['similarity']:.3f}")
-```
-
-______________________________________________________________________
-
-#### `get_trace_by_id`
-
-Retrieve a specific trace by ID.
-
-**Signature:**
-
-```python
-async def get_trace_by_id(
-    trace_id: str,
-) -> dict[str, Any] | None
-```
-
-**Parameters:**
-
-- `trace_id` (required): Trace identifier (hex string)
-
-**Returns:**
-
-```python
-{
-    "trace_id": "trace-abc123",
-    "span_id": "span-def456",
-    "parent_span_id": "span-ghi789",  # If nested
-    "name": "http.client.request",
-    "kind": "CLIENT",
-    "status": "OK",
-    "start_time": "2025-01-31T14:23:45.123456Z",
-    "end_time": "2025-01-31T14:23:46.567890Z",
-    "duration_ms": 1444,
-    "attributes": {
-        "http.method": "POST",
-        "http.url": "https://api.example.com/users",
-        "http.status_code": 201,
-    },
-    "events": [
-        {
-            "time": "2025-01-31T14:23:45.500000Z",
-            "name": "connection.opened",
-        },
-    ],
-    "summary": "HTTP POST request to /api/users endpoint",
-    "created_at": "2025-01-31T14:23:45Z",
-}
-```
-
-Returns `None` if trace not found.
-
-**Errors:**
-
-- `ValueError`: If trace_id is empty or invalid
-
-**Example:**
-
-```python
-# Get specific trace
-trace = await get_trace_by_id(trace_id="abc123def456")
-
-if trace:
-    print(f"Trace: {trace['name']}")
-    print(f"Duration: {trace['duration_ms']}ms")
-    print(f"Status: {trace['status']}")
-    print(f"Summary: {trace['summary']}")
-else:
-    print("Trace not found")
-```
-
-______________________________________________________________________
-
-#### `get_otel_statistics`
-
-Get statistics about ingested traces.
-
-**Signature:**
-
-```python
-async def get_otel_statistics() -> dict[str, Any]
-```
-
-**Parameters:** None
-
-**Returns:**
-
-```python
-{
-    "total_traces": 12458,
-    "total_spans": 45623,
-    "unique_names": 234,
-    "avg_duration_ms": 234.5,
-    "min_duration_ms": 1.2,
-    "max_duration_ms": 15234.5,
-    "by_status": {
-        "OK": 11200,
-        "ERROR": 892,
-        "UNSET": 366,
-    },
-    "by_kind": {
-        "INTERNAL": 5423,
-        "SERVER": 3211,
-        "CLIENT": 3456,
-        "PRODUCER": 234,
-        "CONSUMER": 134,
-    },
-    "storage_backend": "duckdb_hotstore",
-    "database_size_mb": 48.2,
-    "index_size_mb": 12.3,
-    "cache_hit_rate": 0.85,
-}
-```
-
-**Example:**
-
-```python
-# Get statistics
-stats = await get_otel_statistics()
-
-print(f"Total traces: {stats['total_traces']}")
-print(f"Average duration: {stats['avg_duration_ms']:.2f}ms")
-print(f"Traces by status:")
-for status, count in stats['by_status'].items():
-    print(f"  {status}: {count}")
-
-# Calculate success rate
-success_rate = stats['by_status']['OK'] / stats['total_traces'] * 100
-print(f"Success rate: {success_rate:.1f}%")
-```
-
-______________________________________________________________________
-
-## Authentication
-
-All MCP tools require authentication via JWT bearer token.
-
-### Token Format
-
-```json
-{
-  "sub": "user@example.com",
-  "name": "John Doe",
-  "roles": ["operator"],
-  "exp": 1706945696,
-  "iat": 1706942096
-}
-```
-
-### Authorization
-
-- **Admin**: Full access to all tools
-- **Operator**: Can trigger/view workflows, list repos, run QC
-- **Viewer**: Read-only access (list tools only)
-
-______________________________________________________________________
-
-## Rate Limiting
-
-- **Default**: 100 requests per minute per client
-- **Burst capacity**: 20 requests
-- **Configurable**: Per-client rate limits
-
-Rate limit headers are included in responses:
-
-```
-X-RateLimit-Limit: 100
-X-RateLimit-Remaining: 95
-X-RateLimit-Reset: 1706945696
-```
-
-______________________________________________________________________
-
-## Error Handling
-
-All tools use consistent error handling with `ServerPanels`:
-
-```python
-try:
-    result = await some_operation()
-    return result
-except FileNotFoundError as e:
-    ServerPanels.error(
-        title="Configuration Error",
-        message=f"Configuration file not found",
-        suggestion="Create repos.yaml with repository definitions",
-        error_type=type(e).__name__,
-    )
-    raise
-except Exception as e:
-    ServerPanels.error(
-        title="Unexpected Error",
-        message=f"An unexpected error occurred",
-        suggestion="Check logs for details",
-        error_type=type(e).__name__,
-    )
-    raise
-```
-
-______________________________________________________________________
-
-## Observability
-
-All tools include:
-
-- **Metrics**: Execution time, success/failure counts
-- **Tracing**: OpenTelemetry span for each tool call
-- **Logging**: Structured logs with correlation IDs
-
-Example span attributes:
-
-```
-tool.name: "list_repos"
-tool.tag: "backend"
-tool.status: "success"
-tool.duration_ms: 45
-```
-
-______________________________________________________________________
-
-## Worker Contract Tools
-
-The worker contract tool group is the durable, tmux-aware replacement
-for the legacy `worker_execute` and `dispatch_to_pool` async path.
-
-| Tool | Purpose |
-|---|---|
-| `launch_worker` | Create a durable local worker. Returns `worker_id` and tmux metadata. |
-| `send_input` | Send text input to a running worker. |
-| `capture_output` | Incremental output capture with byte-offset cursor. |
-| `worker_status` | Authoritative lifecycle state. |
-| `wait_for_state` | Block until a worker reaches a target state. |
-| `cancel_worker` | Two-phase graceful cancellation. |
-| `worker_revoke` | Mark a worker record as `reaped`; with `force=true` also kill the pane. |
-
-Workers are durable across Mahavishnu controller restarts; the
-`worker_id` is the stable identity. See
-`docs/superpowers/specs/2026-07-26-durable-local-workers-design.md`
-for the design and `docs/superpowers/plans/2026-07-26-durable-local-workers.md`
-for the implementation plan.
+**Signature:** `async def search_otel_traces(query: str, system_id: str | None, limit: int, threshold: float | None)`
+
+**Source:** `mahavishnu/mcp/tools/otel_tools.py:170`
+
+**Description:** Semantic search over OTel traces using vector embeddings.
+
+#### `get_otel_trace`
+
+**Signature:** `async def get_otel_trace(trace_id: str)`
+
+**Source:** `mahavishnu/mcp/tools/otel_tools.py:216`
+
+**Description:** Retrieve a specific OTel trace by ID.
+
+#### `query_local_traces`
+
+**Signature:** `async def query_local_traces(task_class: str, time_range_minutes: int, system_id: str | None, limit: int)`
+
+**Source:** `mahavishnu/mcp/tools/otel_tools.py:251`
+
+**Description:** Query OTel traces by task_class and time range.
+
+#### `otel_ingester_stats`
+
+**Signature:** `async def otel_ingester_stats()`
+
+**Source:** `mahavishnu/mcp/tools/otel_tools.py:356`
+
+**Description:** Get statistics about the OTel trace ingester.
+
+
+### 11. Coordination (Issues, Todos, Plans)
+
+_15 tool(s)_
+
+#### `coord_list_issues`
+
+**Signature:** `async def coord_list_issues(status: str | None, priority: str | None, repo: str | None, assignee: str | None)`
+
+**Source:** `mahavishnu/mcp/tools/coordination_tools.py:30`
+
+**Description:** List cross-repository issues with optional filtering.
+
+#### `coord_get_issue`
+
+**Signature:** `async def coord_get_issue(issue_id: str)`
+
+**Source:** `mahavishnu/mcp/tools/coordination_tools.py:54`
+
+**Description:** Get detailed information about a specific issue.
+
+#### `coord_create_issue`
+
+**Signature:** `async def coord_create_issue(title: str, description: str, repos: list[str], priority: str, severity: str, assignee: str | None, target: str | None, labels: list[str] | None)`
+
+**Source:** `mahavishnu/mcp/tools/coordination_tools.py:66`
+
+**Description:** Create a new cross-repository issue.
+
+#### `coord_update_issue`
+
+**Signature:** `async def coord_update_issue(issue_id: str, status: str | None, priority: str | None)`
+
+**Source:** `mahavishnu/mcp/tools/coordination_tools.py:119`
+
+**Description:** Update an existing issue.
+
+#### `coord_close_issue`
+
+**Signature:** `async def coord_close_issue(issue_id: str)`
+
+**Source:** `mahavishnu/mcp/tools/coordination_tools.py:153`
+
+**Description:** Close an issue.
+
+#### `coord_list_todos`
+
+**Signature:** `async def coord_list_todos(status: str | None, repo: str | None, assignee: str | None)`
+
+**Source:** `mahavishnu/mcp/tools/coordination_tools.py:164`
+
+**Description:** List todo items with optional filtering.
+
+#### `coord_get_todo`
+
+**Signature:** `async def coord_get_todo(todo_id: str)`
+
+**Source:** `mahavishnu/mcp/tools/coordination_tools.py:187`
+
+**Description:** Get detailed information about a specific todo.
+
+#### `coord_create_todo`
+
+**Signature:** `async def coord_create_todo(task: str, description: str, repo: str, estimate_hours: float, priority: str, assignee: str | None, blocked_by: list[str] | None, labels: list[str] | None, acceptance_criteria: list[str] | None)`
+
+**Source:** `mahavishnu/mcp/tools/coordination_tools.py:199`
+
+**Description:** Create a new todo item.
+
+#### `coord_complete_todo`
+
+**Signature:** `async def coord_complete_todo(todo_id: str)`
+
+**Source:** `mahavishnu/mcp/tools/coordination_tools.py:254`
+
+**Description:** Mark a todo as completed.
+
+#### `coord_get_blocking_issues`
+
+**Signature:** `async def coord_get_blocking_issues(repo: str)`
+
+**Source:** `mahavishnu/mcp/tools/coordination_tools.py:272`
+
+**Description:** Get all issues blocking a specific repository.
+
+#### `coord_check_dependencies`
+
+**Signature:** `async def coord_check_dependencies(consumer: str | None)`
+
+**Source:** `mahavishnu/mcp/tools/coordination_tools.py:280`
+
+**Description:** Validate inter-repository dependencies.
+
+#### `coord_get_repo_status`
+
+**Signature:** `async def coord_get_repo_status(repo: str)`
+
+**Source:** `mahavishnu/mcp/tools/coordination_tools.py:290`
+
+**Description:** Get comprehensive coordination status for a repository.
+
+#### `coord_list_plans`
+
+**Signature:** `async def coord_list_plans(status: str | None, repo: str | None)`
+
+**Source:** `mahavishnu/mcp/tools/coordination_tools.py:311`
+
+**Description:** List cross-repository plans with optional filtering.
+
+#### `coord_list_dependencies`
+
+**Signature:** `async def coord_list_dependencies(consumer: str | None, provider: str | None, dependency_type: str | None)`
+
+**Source:** `mahavishnu/mcp/tools/coordination_tools.py:322`
+
+**Description:** List inter-repository dependencies with optional filtering.
+
+#### `coord_get_ecosystem_status`
+
+**Signature:** `async def coord_get_ecosystem_status()`
+
+**Source:** `mahavishnu/mcp/tools/coordination_tools.py:336`
+
+**Description:** Get unified ecosystem coordination status.
+
+
+### 12. Repository Messaging
+
+_7 tool(s)_
+
+#### `send_repository_message`
+
+**Signature:** `async def send_repository_message(sender_repo: str, receiver_repo: str, message_type: str, content: dict[str, Any], priority: str)`
+
+**Source:** `mahavishnu/mcp/tools/repository_messaging_tools.py:35`
+
+**Description:** Send a message from one repository to another.
+
+#### `broadcast_repository_message`
+
+**Signature:** `async def broadcast_repository_message(sender_repo: str, message_type: str, content: dict[str, Any], target_repos: list[str] | None, priority: str)`
+
+**Source:** `mahavishnu/mcp/tools/repository_messaging_tools.py:81`
+
+**Description:** Broadcast a message to multiple repositories.
+
+#### `get_repository_messages`
+
+**Signature:** `async def get_repository_messages(receiver_repo: str, message_type: str | None, limit: int, since: str | None)`
+
+**Source:** `mahavishnu/mcp/tools/repository_messaging_tools.py:127`
+
+**Description:** Get messages for a specific repository.
+
+#### `acknowledge_repository_message`
+
+**Signature:** `async def acknowledge_repository_message(message_id: str, receiver_repo: str)`
+
+**Source:** `mahavishnu/mcp/tools/repository_messaging_tools.py:183`
+
+**Description:** Acknowledge receipt of a message.
+
+#### `notify_repository_changes`
+
+**Signature:** `async def notify_repository_changes(repo_path: str, changes: list[dict[str, Any]])`
+
+**Source:** `mahavishnu/mcp/tools/repository_messaging_tools.py:203`
+
+**Description:** Notify other repositories about changes in a repository.
+
+#### `notify_workflow_status`
+
+**Signature:** `async def notify_workflow_status(workflow_id: str, status: str, repo_path: str, target_repos: list[str] | None)`
+
+**Source:** `mahavishnu/mcp/tools/repository_messaging_tools.py:219`
+
+**Description:** Notify other repositories about workflow status changes.
+
+#### `send_quality_alert`
+
+**Signature:** `async def send_quality_alert(repo_path: str, alert_type: str, description: str, severity: str)`
+
+**Source:** `mahavishnu/mcp/tools/repository_messaging_tools.py:237`
+
+**Description:** Send a quality alert to other repositories.
+
+
+### 13. Hybrid Search
+
+_5 tool(s)_
+
+#### `hybrid_search`
+
+**Signature:** `async def hybrid_search(query: str, repository: str | None, limit: int, semantic_weight: float, lexical_weight: float, min_score: float)`
+
+**Source:** `mahavishnu/mcp/tools/search_tools.py:63`
+
+**Description:** Search across documents using hybrid semantic + lexical search.
+
+#### `index_document`
+
+**Signature:** `async def index_document(doc_id: str, title: str, content: str, repository: str | None, source_type: str, metadata: dict[str, Any] | None)`
+
+**Source:** `mahavishnu/mcp/tools/search_tools.py:107`
+
+**Description:** Index a document for hybrid search.
+
+#### `delete_document`
+
+**Signature:** `async def delete_document(doc_id: str)`
+
+**Source:** `mahavishnu/mcp/tools/search_tools.py:157`
+
+**Description:** Delete a document from the search index.
+
+#### `search_by_repository`
+
+**Signature:** `async def search_by_repository(repository: str, query: str, limit: int)`
+
+**Source:** `mahavishnu/mcp/tools/search_tools.py:190`
+
+**Description:** Search documents within a specific repository.
+
+#### `cross_repo_search`
+
+**Signature:** `async def cross_repo_search(query: str, scope: str, repo_filter: str | None, limit: int, stream_channel: bool)`
+
+**Source:** `mahavishnu/mcp/tools/search_tools.py:222`
+
+**Description:** Fan-out search across Akosha + Session-Buddy and aggregate results.
+
+
+### 14. Capability Resolution
+
+_5 tool(s)_
+
+#### `list_capabilities`
+
+**Signature:** `async def list_capabilities()`
+
+**Source:** `mahavishnu/mcp/tools/capability_tools.py:210`
+
+**Description:** Ungated introspection tool: enumerate every engine + worker registration.
+
+#### `resolve_capabilities`
+
+**Signature:** `async def resolve_capabilities(requires: list[str], prompt: str, selector: str, user_id: str | None)`
+
+**Source:** `mahavishnu/mcp/tools/capability_tools.py:234`
+
+**Description:** Resolve which engines/workers can satisfy each required capability.
+
+#### `plan_capability`
+
+**Signature:** `async def plan_capability(requires: list[str], prompt: str, selector: str, trace_id: str | None, user_id: str | None)`
+
+**Source:** `mahavishnu/mcp/tools/capability_tools.py:286`
+
+**Description:** Plan the DAG; returns the ExecutionDAG JSON (no engine dispatch).
+
+#### `execute_capability`
+
+**Signature:** `async def execute_capability(requires: list[str], prompt: str, selector: str, trace_id: str | None, user_id: str | None)`
+
+**Source:** `mahavishnu/mcp/tools/capability_tools.py:349`
+
+**Description:** Plan the DAG and return a CapabilityExecutionResult.
+
+#### `get_capability_result`
+
+**Signature:** `async def get_capability_result(trace_id: TraceId)`
+
+**Source:** `mahavishnu/mcp/tools/get_capability_result_tool.py:28`
+
+**Description:** Read back persisted envelopes for a trace_id from Dhara.
+
+
+### 15. Clone Detection & Refactor
+
+_4 tool(s)_
+
+#### `clone_detect_ecosystem`
+
+**Signature:** `async def clone_detect_ecosystem(repos: list[str] | None, min_similarity: float, detect_until_dry: bool, k_empty_rounds: int, max_iterations: int)`
+
+**Source:** `mahavishnu/mcp/tools/clone_tools.py:318`
+
+**Description:** Fan out clone detection across the ecosystem; returns job-id immediately.
+
+#### `clone_refactor_group`
+
+**Signature:** `async def clone_refactor_group(cluster_id: str, extraction_target: str | None)`
+
+**Source:** `mahavishnu/mcp/tools/clone_tools.py:342`
+
+**Description:** Trigger cross-repo clone refactor DAG; returns job-id immediately.
+
+#### `clone_refactor_status`
+
+**Signature:** `async def clone_refactor_status(limit: int)`
+
+**Source:** `mahavishnu/mcp/tools/clone_tools.py:359`
+
+**Description:** List open clone clusters with confidence tier and PR status.
+
+#### `get_verification_result`
+
+**Signature:** `async def get_verification_result(proposal_id: str)`
+
+**Source:** `mahavishnu/mcp/tools/clone_tools.py:366`
+
+**Description:** Return the stored ``VerificationResult`` for a given ``proposal_id``.
+
+
+### 16. Learning Pipeline
+
+_5 tool(s)_
+
+#### `get_pipeline_status`
+
+**Signature:** `async def get_pipeline_status()`
+
+**Source:** `mahavishnu/mcp/tools/learning_pipeline_tools.py:53`
+
+**Description:** Get current learning pipeline status including running state, cycle count, and last result.
+
+#### `list_evidence`
+
+**Signature:** `async def list_evidence(query: str, limit: int)`
+
+**Source:** `mahavishnu/mcp/tools/learning_pipeline_tools.py:58`
+
+**Description:** List stored learning evidence, optionally filtered by a search query.
+
+#### `trigger_synthesis`
+
+**Signature:** `async def trigger_synthesis()`
+
+**Source:** `mahavishnu/mcp/tools/learning_pipeline_tools.py:74`
+
+**Description:** Trigger a single learning pipeline cycle manually. Returns cycle result.
+
+#### `list_pending_drafts`
+
+**Signature:** `async def list_pending_drafts()`
+
+**Source:** `mahavishnu/mcp/tools/learning_pipeline_tools.py:89`
+
+**Description:** List all active skill drafts in the registry.
+
+#### `get_promotion_history`
+
+**Signature:** `async def get_promotion_history(skill_id: str)`
+
+**Source:** `mahavishnu/mcp/tools/learning_pipeline_tools.py:113`
+
+**Description:** Get version and promotion history for a specific skill.
+
+
+### 17. Self-Improvement & Approvals
+
+_7 tool(s)_
+
+#### `review_and_fix`
+
+**Signature:** `async def review_and_fix(scope: str, auto_fix: bool, dry_run: bool)`
+
+**Source:** `mahavishnu/mcp/tools/self_improvement_tools.py:718`
+
+**Description:** Run comprehensive review and optionally fix issues.
+
+#### `request_approval`
+
+**Signature:** `async def request_approval(approval_type: str, context: dict[str, Any])`
+
+**Source:** `mahavishnu/mcp/tools/self_improvement_tools.py:732`
+
+**Description:** Request manual approval for version bump or publish.
+
+#### `respond_to_approval`
+
+**Signature:** `async def respond_to_approval(approval_id: str, approved: bool, selected_option: int | None, rejection_reason: str | None)`
+
+**Source:** `mahavishnu/mcp/tools/self_improvement_tools.py:743`
+
+**Description:** Respond to a pending approval request.
+
+#### `get_pending_approvals`
+
+**Signature:** `async def get_pending_approvals()`
+
+**Source:** `mahavishnu/mcp/tools/self_improvement_tools.py:758`
+
+**Description:** Get all pending approval requests.
+
+#### `self_improvement_analyze_failures`
+
+**Signature:** `async def self_improvement_analyze_failures(repo: str | None, hook: str | None, time_window_days: int)`
+
+**Source:** `mahavishnu/mcp/tools/self_improvement_tools.py:763`
+
+**Description:** Query Dhara for accumulated fix-failure records and surface patterns.
+
+#### `self_improvement_generate`
+
+**Signature:** `async def self_improvement_generate(fingerprint: str, pattern_description: str)`
+
+**Source:** `mahavishnu/mcp/tools/self_improvement_tools.py:776`
+
+**Description:** Trigger improvement generation for a failure pattern (returns job-id immediately).
+
+#### `self_improvement_status`
+
+**Signature:** `async def self_improvement_status(limit: int)`
+
+**Source:** `mahavishnu/mcp/tools/self_improvement_tools.py:787`
+
+**Description:** List recent self-improvement records with before/after failure rates.
+
+
+### 18. Goal Team
+
+_3 tool(s)_
+
+#### `team_from_goal`
+
+**Signature:** `async def team_from_goal(goal: str, name: str | None, mode: str | None, auto_run: bool, task: str | None, user_id: str | None)`
+
+**Source:** `mahavishnu/mcp/tools/goal_team_tools.py:52`
+
+**Description:** Create an agent team from a natural language goal.
+
+#### `parse_goal`
+
+**Signature:** `async def parse_goal(goal: str, user_id: str | None)`
+
+**Source:** `mahavishnu/mcp/tools/goal_team_tools.py:441`
+
+**Description:** Parse a goal to see what team would be created.
+
+#### `list_team_skills`
+
+**Signature:** `async def list_team_skills()`
+
+**Source:** `mahavishnu/mcp/tools/goal_team_tools.py:632`
+
+**Description:** List all available skills for goal-driven team creation.
+
+
+### 19. OpenHands
+
+_4 tool(s)_
+
+#### `openhands_run`
+
+**Signature:** `async def openhands_run(prompt: str, timeout: int, run_quality_check: bool)`
+
+**Source:** `mahavishnu/mcp/tools/openhands_tools.py:86`
+
+**Description:** Submit an autonomous development task to OpenHands.
+
+#### `openhands_status`
+
+**Signature:** `async def openhands_status(conv_id: str)`
+
+**Source:** `mahavishnu/mcp/tools/openhands_tools.py:103`
+
+**Description:** Get the status of a running OpenHands conversation.
+
+#### `openhands_cancel`
+
+**Signature:** `async def openhands_cancel(conv_id: str)`
+
+**Source:** `mahavishnu/mcp/tools/openhands_tools.py:115`
+
+**Description:** Cancel a running OpenHands conversation.
+
+#### `openhands_health`
+
+**Signature:** `async def openhands_health()`
+
+**Source:** `mahavishnu/mcp/tools/openhands_tools.py:127`
+
+**Description:** Check whether the OpenHands service is reachable.
+
+
+### 20. PyCharm Integration
+
+_8 tool(s)_
+
+#### `pycharm_health`
+
+**Signature:** `async def pycharm_health()`
+
+**Source:** `mahavishnu/mcp/tools/pycharm_tools.py:106`
+
+**Description:** Check PyCharm MCP connectivity and health status.
+
+#### `pycharm_run_diagnostics`
+
+**Signature:** `async def pycharm_run_diagnostics(file_path: str, errors_only: bool)`
+
+**Source:** `mahavishnu/mcp/tools/pycharm_tools.py:151`
+
+**Description:** Run diagnostics on a file using PyCharm's code inspection.
+
+#### `pycharm_open_file`
+
+**Signature:** `async def pycharm_open_file(file_path: str, line: int | None)`
+
+**Source:** `mahavishnu/mcp/tools/pycharm_tools.py:189`
+
+**Description:** Open a file in PyCharm editor, optionally at a specific line.
+
+#### `pycharm_search_in_project`
+
+**Signature:** `async def pycharm_search_in_project(pattern: str, file_pattern: str | None)`
+
+**Source:** `mahavishnu/mcp/tools/pycharm_tools.py:219`
+
+**Description:** Search files in project using PyCharm's search index.
+
+#### `pycharm_replace_in_file`
+
+**Signature:** `async def pycharm_replace_in_file(file_path: str, search_text: str, replace_text: str)`
+
+**Source:** `mahavishnu/mcp/tools/pycharm_tools.py:247`
+
+**Description:** Find and replace text in a file via PyCharm.
+
+#### `pycharm_reformat_file`
+
+**Signature:** `async def pycharm_reformat_file(file_path: str)`
+
+**Source:** `mahavishnu/mcp/tools/pycharm_tools.py:285`
+
+**Description:** Reformat a file using PyCharm's code formatter.
+
+#### `pycharm_refactor_symbol`
+
+**Signature:** `async def pycharm_refactor_symbol(symbol_name: str, new_name: str, scope: str)`
+
+**Source:** `mahavishnu/mcp/tools/pycharm_tools.py:312`
+
+**Description:** Rename/refactor a symbol across project files via PyCharm.
+
+#### `pycharm_list_problems`
+
+**Signature:** `async def pycharm_list_problems(file_path: str, severity: str | None)`
+
+**Source:** `mahavishnu/mcp/tools/pycharm_tools.py:353`
+
+**Description:** List code inspections and problems for a file via PyCharm.
+
+
+### 21. Desktop Automation
+
+_23 tool(s)_
+
+#### `automation_check_permissions`
+
+**Signature:** `async def automation_check_permissions()`
+
+**Source:** `mahavishnu/mcp/tools/desktop_automation_tools.py:67`
+
+**Description:** Check automation permissions (accessibility, screen recording).
+
+#### `automation_status`
+
+**Signature:** `async def automation_status()`
+
+**Source:** `mahavishnu/mcp/tools/desktop_automation_tools.py:76`
+
+**Description:** Get automation manager status and statistics.
+
+#### `automation_launch_app`
+
+**Signature:** `async def automation_launch_app(bundle_id: Annotated[str, Field(description='Application bundle identifier')], dry_run: Annotated[bool, Field(description='Simulate without executing')])`
+
+**Source:** `mahavishnu/mcp/tools/desktop_automation_tools.py:94`
+
+**Description:** Launch an application by bundle identifier.
+
+#### `automation_quit_app`
+
+**Signature:** `async def automation_quit_app(bundle_id: Annotated[str, Field(description='Application bundle identifier')], force: Annotated[bool, Field(description='Force quit')])`
+
+**Source:** `mahavishnu/mcp/tools/desktop_automation_tools.py:106`
+
+**Description:** Quit an application.
+
+#### `automation_activate_app`
+
+**Signature:** `async def automation_activate_app(bundle_id: Annotated[str, Field(description='Application bundle identifier')])`
+
+**Source:** `mahavishnu/mcp/tools/desktop_automation_tools.py:118`
+
+**Description:** Activate (bring to front) an application.
+
+#### `automation_list_apps`
+
+**Signature:** `async def automation_list_apps()`
+
+**Source:** `mahavishnu/mcp/tools/desktop_automation_tools.py:129`
+
+**Description:** List all running applications.
+
+#### `automation_get_active_app`
+
+**Signature:** `async def automation_get_active_app()`
+
+**Source:** `mahavishnu/mcp/tools/desktop_automation_tools.py:138`
+
+**Description:** Get the currently active (frontmost) application.
+
+#### `automation_list_windows`
+
+**Signature:** `async def automation_list_windows(bundle_id: Annotated[str, Field(description='Application bundle identifier')])`
+
+**Source:** `mahavishnu/mcp/tools/desktop_automation_tools.py:151`
+
+**Description:** List all windows for an application.
+
+#### `automation_resize_window`
+
+**Signature:** `async def automation_resize_window(window_id: Annotated[str, Field(description='Window identifier')], width: Annotated[int, Field(description='New width in pixels')], height: Annotated[int, Field(description='New height in pixels')])`
+
+**Source:** `mahavishnu/mcp/tools/desktop_automation_tools.py:162`
+
+**Description:** Resize a window.
+
+#### `automation_move_window`
+
+**Signature:** `async def automation_move_window(window_id: Annotated[str, Field(description='Window identifier')], x: Annotated[int, Field(description='New X position')], y: Annotated[int, Field(description='New Y position')])`
+
+**Source:** `mahavishnu/mcp/tools/desktop_automation_tools.py:175`
+
+**Description:** Move a window to a new position.
+
+#### `automation_close_window`
+
+**Signature:** `async def automation_close_window(window_id: Annotated[str, Field(description='Window identifier')])`
+
+**Source:** `mahavishnu/mcp/tools/desktop_automation_tools.py:188`
+
+**Description:** Close a window.
+
+#### `automation_click_menu`
+
+**Signature:** `async def automation_click_menu(bundle_id: Annotated[str, Field(description='Application bundle identifier')], menu_path: Annotated[list[str], Field(description="Menu path (e.g., ['File', 'Save'])")])`
+
+**Source:** `mahavishnu/mcp/tools/desktop_automation_tools.py:203`
+
+**Description:** Navigate menu and click an item.
+
+#### `automation_list_menus`
+
+**Signature:** `async def automation_list_menus(bundle_id: Annotated[str, Field(description='Application bundle identifier')])`
+
+**Source:** `mahavishnu/mcp/tools/desktop_automation_tools.py:215`
+
+**Description:** List all menus for an application.
+
+#### `automation_type_text`
+
+**Signature:** `async def automation_type_text(text: Annotated[str, Field(description='Text to type')], interval: Annotated[float, Field(description='Delay between keystrokes')], dry_run: Annotated[bool, Field(description='Simulate')])`
+
+**Source:** `mahavishnu/mcp/tools/desktop_automation_tools.py:230`
+
+**Description:** Type text at current cursor position.
+
+#### `automation_press_key`
+
+**Signature:** `async def automation_press_key(key: Annotated[str, Field(description='Key to press')], modifiers: Annotated[list[str] | None, Field(description="Modifiers (e.g., ['cmd', 'shift'])")])`
+
+**Source:** `mahavishnu/mcp/tools/desktop_automation_tools.py:243`
+
+**Description:** Press a key with optional modifiers.
+
+#### `automation_click`
+
+**Signature:** `async def automation_click(x: Annotated[int, Field(description='X coordinate')], y: Annotated[int, Field(description='Y coordinate')], button: Annotated[str, Field(description='Mouse button (left/right/middle)')], clicks: Annotated[int, Field(description='Number of clicks')])`
+
+**Source:** `mahavishnu/mcp/tools/desktop_automation_tools.py:257`
+
+**Description:** Click at coordinates.
+
+#### `automation_drag`
+
+**Signature:** `async def automation_drag(start_x: Annotated[int, Field(description='Starting X coordinate')], start_y: Annotated[int, Field(description='Starting Y coordinate')], end_x: Annotated[int, Field(description='Ending X coordinate')], end_y: Annotated[int, Field(description='Ending Y coordinate')], duration: Annotated[float, Field(description='Duration in seconds')])`
+
+**Source:** `mahavishnu/mcp/tools/desktop_automation_tools.py:271`
+
+**Description:** Drag from one point to another.
+
+#### `automation_scroll`
+
+**Signature:** `async def automation_scroll(x: Annotated[int, Field(description='X coordinate')], y: Annotated[int, Field(description='Y coordinate')], dx: Annotated[int, Field(description='Horizontal scroll amount')], dy: Annotated[int, Field(description='Vertical scroll amount')])`
+
+**Source:** `mahavishnu/mcp/tools/desktop_automation_tools.py:286`
+
+**Description:** Scroll at coordinates.
+
+#### `automation_screenshot`
+
+**Signature:** `async def automation_screenshot(region: Annotated[list[int] | None, Field(description='Region [x, y, width, height] or None for full screen')])`
+
+**Source:** `mahavishnu/mcp/tools/desktop_automation_tools.py:304`
+
+**Description:** Capture a screenshot.
+
+#### `automation_list_screens`
+
+**Signature:** `async def automation_list_screens()`
+
+**Source:** `mahavishnu/mcp/tools/desktop_automation_tools.py:336`
+
+**Description:** List all connected displays.
+
+#### `automation_get_ui_elements`
+
+**Signature:** `async def automation_get_ui_elements(bundle_id: Annotated[str, Field(description='Application bundle identifier')], window_id: Annotated[str | None, Field(description='Window identifier or None for all')])`
+
+**Source:** `mahavishnu/mcp/tools/desktop_automation_tools.py:349`
+
+**Description:** Get UI elements for an application.
+
+#### `automation_get_security_config`
+
+**Signature:** `async def automation_get_security_config()`
+
+**Source:** `mahavishnu/mcp/tools/desktop_automation_tools.py:367`
+
+**Description:** Get security configuration (blocklist, allowlist, etc.).
+
+#### `automation_close`
+
+**Signature:** `async def automation_close()`
+
+**Source:** `mahavishnu/mcp/tools/desktop_automation_tools.py:375`
+
+**Description:** Close the automation manager and release resources.
+
+
+### 22. Adapter Management
+
+_8 tool(s)_
+
+#### `adapter_list`
+
+**Signature:** `async def adapter_list(domain: str | None, capabilities: list[str] | None, healthy_only: bool)`
+
+**Source:** `mahavishnu/mcp/tools/adapter_registry_tools.py:38`
+
+**Description:** List all registered adapters with optional filters.
+
+#### `adapter_resolve`
+
+**Signature:** `async def adapter_resolve(task_type: str, required_capabilities: list[str], domain: str)`
+
+**Source:** `mahavishnu/mcp/tools/adapter_registry_tools.py:83`
+
+**Description:** Resolve the best adapter for task requirements.
+
+#### `adapter_health`
+
+**Signature:** `async def adapter_health(adapter_name: str | None)`
+
+**Source:** `mahavishnu/mcp/tools/adapter_registry_tools.py:129`
+
+**Description:** Check health of adapters.
+
+#### `adapter_enable`
+
+**Signature:** `async def adapter_enable(adapter_name: str, enabled: bool, reason: str | None)`
+
+**Source:** `mahavishnu/mcp/tools/adapter_registry_tools.py:178`
+
+**Description:** Enable or disable an adapter.
+
+#### `adapter_metadata`
+
+**Signature:** `async def adapter_metadata(adapter_name: str)`
+
+**Source:** `mahavishnu/mcp/tools/adapter_registry_tools.py:220`
+
+**Description:** Get metadata for a specific adapter.
+
+#### `adapter_cache_invalidate`
+
+**Signature:** `async def adapter_cache_invalidate(source: str | None)`
+
+**Source:** `mahavishnu/mcp/tools/adapter_registry_tools.py:255`
+
+**Description:** Invalidate adapter registry caches.
+
+#### `adapter_discover`
+
+**Signature:** `async def adapter_discover(force_refresh: bool)`
+
+**Source:** `mahavishnu/mcp/tools/adapter_registry_tools.py:294`
+
+**Description:** Discover adapters from all sources.
+
+#### `list_adapters`
+
+**Signature:** `async def list_adapters()`
+
+**Source:** `mahavishnu/mcp/server_core.py:1023`
+
+**Description:** List available adapters.
+
+
+### 23. Health & Liveness
+
+_10 tool(s)_
+
+#### `get_health`
+
+**Signature:** `async def get_health()`
+
+**Source:** `mahavishnu/mcp/server_core.py:1073`
+
+**Description:** Get overall health status of the system.
+
+#### `get_liveness`
+
+**Signature:** `async def get_liveness()`
+
+**Source:** `mahavishnu/mcp/tools/health_tools.py:393`
+
+**Description:** Get liveness status for this service.
+
+#### `get_readiness`
+
+**Signature:** `async def get_readiness()`
+
+**Source:** `mahavishnu/mcp/tools/health_tools.py:413`
+
+**Description:** Get readiness status for this service.
+
+#### `health_check_service`
+
+**Signature:** `async def health_check_service(service_name: str, host: str, port: int, timeout: int, use_tls: bool)`
+
+**Source:** `mahavishnu/mcp/tools/health_tools.py:120`
+
+**Description:** Check health of a specific service.
+
+#### `health_check_all`
+
+**Signature:** `async def health_check_all()`
+
+**Source:** `mahavishnu/mcp/tools/health_tools.py:241`
+
+**Description:** Check health of all configured services.
+
+#### `wait_for_dependency`
+
+**Signature:** `async def wait_for_dependency(service_name: str, host: str, port: int, timeout: int, required: bool, use_tls: bool)`
+
+**Source:** `mahavishnu/mcp/tools/health_tools.py:297`
+
+**Description:** Wait for a specific dependency to become healthy.
+
+#### `wait_for_all_dependencies`
+
+**Signature:** `async def wait_for_all_dependencies()`
+
+**Source:** `mahavishnu/mcp/tools/health_tools.py:346`
+
+**Description:** Wait for all configured dependencies to become healthy.
+
+#### `mcp_list_tools`
+
+**Signature:** `async def mcp_list_tools()`
+
+**Source:** `mahavishnu/mcp/tools/health_tools.py:155`
+
+**Description:** List all registered MCP tools with their metadata.
+
+#### `mcp_test_connection`
+
+**Signature:** `async def mcp_test_connection(service_name: str, host: str, port: int, timeout: int, use_tls: bool, health_path: str)`
+
+**Source:** `mahavishnu/mcp/tools/health_tools.py:176`
+
+**Description:** Ping a specific server to verify MCP connectivity.
+
+#### `mcp_get_metrics`
+
+**Signature:** `async def mcp_get_metrics()`
+
+**Source:** `mahavishnu/mcp/tools/health_tools.py:212`
+
+**Description:** Return a metrics snapshot for the running MCP server.
+
+
+### 24. Observability & Backup
+
+_15 tool(s)_
+
+#### `get_observability_metrics`
+
+**Signature:** `async def get_observability_metrics()`
+
+**Source:** `mahavishnu/mcp/server_core.py:649`
+
+**Description:** Get current observability metrics from the system.
+
+#### `search_logs`
+
+**Signature:** `async def search_logs(query: str | None, level: str | None, workflow_id: str | None, repo_path: str | None, start_time: str | None, end_time: str | None, size: int)`
+
+**Source:** `mahavishnu/mcp/server_core.py:680`
+
+**Description:** Search logs with various filters.
+
+#### `search_workflows`
+
+**Signature:** `async def search_workflows(workflow_id: str | None, adapter: str | None, task_type: str | None, status: str | None, start_time: str | None, end_time: str | None, size: int)`
+
+**Source:** `mahavishnu/mcp/server_core.py:719`
+
+**Description:** Search workflows with various filters.
+
+#### `get_log_statistics`
+
+**Signature:** `async def get_log_statistics()`
+
+**Source:** `mahavishnu/mcp/server_core.py:776`
+
+**Description:** Get log statistics and analytics.
+
+#### `get_recovery_metrics`
+
+**Signature:** `async def get_recovery_metrics()`
+
+**Source:** `mahavishnu/mcp/server_core.py:790`
+
+**Description:** Get metrics about error recovery and resilience operations.
+
+#### `flush_metrics`
+
+**Signature:** `async def flush_metrics()`
+
+**Source:** `mahavishnu/mcp/server_core.py:1007`
+
+**Description:** Force flush all pending metrics to exporters.
+
+#### `get_active_alerts`
+
+**Signature:** `async def get_active_alerts()`
+
+**Source:** `mahavishnu/mcp/server_core.py:925`
+
+**Description:** Get all active (non-acknowledged) alerts.
+
+#### `acknowledge_alert`
+
+**Signature:** `async def acknowledge_alert(alert_id: str, user: str)`
+
+**Source:** `mahavishnu/mcp/server_core.py:953`
+
+**Description:** Acknowledge an alert.
+
+#### `trigger_test_alert`
+
+**Signature:** `async def trigger_test_alert(severity: str, title: str, description: str)`
+
+**Source:** `mahavishnu/mcp/server_core.py:969`
+
+**Description:** Trigger a test alert for testing purposes.
+
+#### `get_monitoring_dashboard`
+
+**Signature:** `async def get_monitoring_dashboard()`
+
+**Source:** `mahavishnu/mcp/server_core.py:903`
+
+**Description:** Get comprehensive monitoring dashboard data.
+
+#### `run_disaster_recovery_check`
+
+**Signature:** `async def run_disaster_recovery_check()`
+
+**Source:** `mahavishnu/mcp/server_core.py:876`
+
+**Description:** Run a disaster recovery check.
+
+#### `heal_workflows`
+
+**Signature:** `async def heal_workflows()`
+
+**Source:** `mahavishnu/mcp/server_core.py:893`
+
+**Description:** Manually trigger healing of failed workflows.
+
+#### `create_backup`
+
+**Signature:** `async def create_backup(backup_type: str, backup_id: str | None)`
+
+**Source:** `mahavishnu/mcp/server_core.py:804`
+
+**Description:** Create a backup of the system.
+
+#### `list_backups`
+
+**Signature:** `async def list_backups()`
+
+**Source:** `mahavishnu/mcp/server_core.py:827`
+
+**Description:** List all available backups.
+
+#### `restore_backup`
+
+**Signature:** `async def restore_backup(backup_id: str)`
+
+**Source:** `mahavishnu/mcp/server_core.py:858`
+
+**Description:** Restore from a backup.
+
+
+### 25. User & Auth
+
+_2 tool(s)_
+
+#### `create_user`
+
+**Signature:** `async def create_user(user_id: str, roles: list[str], allowed_repos: list[str] | None, user_id_caller: str | None)`
+
+**Source:** `mahavishnu/mcp/server_core.py:582`
+
+**Description:** Create a new user with specified roles.
+
+#### `check_permission`
+
+**Signature:** `async def check_permission(user_id: str, repo: str, permission: str)`
+
+**Source:** `mahavishnu/mcp/server_core.py:617`
+
+**Description:** Check if a user has a specific permission for a repository.
+
+
+### 26. Tool Discovery
+
+_4 tool(s)_
+
+#### `discover_tools`
+
+**Signature:** `async def discover_tools(query: str | None, capability: str | None)`
+
+**Source:** `mahavishnu/mcp/server_core.py:1185`
+
+**Description:** Search for available MCP tools by name or capability.
+
+#### `get_tool_versions`
+
+**Signature:** `async def get_tool_versions(tool_name: str | None)`
+
+**Source:** `mahavishnu/mcp/server_core.py:1157`
+
+**Description:** Get version metadata for MCP tools.
+
+#### `list_primitives_tool`
+
+**Signature:** `async def list_primitives_tool(category: str | None)`
+
+**Source:** `mahavishnu/mcp/tools/primitive_tools.py:166`
+
+**Description:** List primitives (MCP tools) registered on this server.
+
+#### `show_primitive_tool`
+
+**Signature:** `async def show_primitive_tool(name: str)`
+
+**Source:** `mahavishnu/mcp/tools/primitive_tools.py:183`
+
+**Description:** Show full detail (docstring + input schema) for one primitive.
+
+
+### 27. Webhook
+
+_1 tool(s)_
+
+#### `webhook_replay_tool`
+
+**Signature:** `async def webhook_replay_tool(webhook_id: str, user_id: str | None, token: str | None)`
+
+**Source:** `mahavishnu/mcp/tools/webhook_tools.py:49`
+
+**Description:** Read back a stored ``WebhookIngress`` for ``webhook_id``.
+

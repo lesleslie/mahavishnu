@@ -1,2215 +1,1727 @@
 # MCP Tools Reference
 
-Complete reference for all Mahavishnu MCP server tools with status indicators, signatures, parameters, return values, and usage examples.
+Quick lookup for all **197 Mahavishnu MCP tools** organized by category. Each entry shows the tool name, one-line description, and source location. For full signatures, parameters, return values, and usage examples, see [`MCP_TOOLS_SPECIFICATION.md`](MCP_TOOLS_SPECIFICATION.md).
 
-## Quick Reference
+**Composition**: 27 inline core tools (always loaded, in `mahavishnu/mcp/server_core.py`) + 170 decorated/profile-gated tools across 26 modules under `mahavishnu/mcp/tools/`.
 
-- **[Pool Management Tools](#pool-management-tools)** - 10 tools for multi-pool orchestration
-- **[Worker Tools](#worker-tools)** - 8 tools for headless AI worker orchestration
-- **[Coordination Tools](#coordination-tools)** - 13 tools for cross-repository coordination
-- **[Repository Messaging Tools](#repository-messaging-tools)** - 7 tools for inter-repo communication
-- **[Session Buddy Tools](#session-buddy-tools)** - 7 tools for session management integration
-- **[OpenTelemetry Tools](#opentelemetry-tools)** - 4 tools for trace ingestion and search
+## Quick Reference Index
+
+- **[Repository & Catalog](#repository-and-catalog)** — 7 tool(s)
+- **[Workflow & Execution](#workflow-and-execution)** — 6 tool(s)
+- **[Pool Management](#pool-management)** — 8 tool(s)
+- **[Worker Management](#worker-management)** — 9 tool(s)
+- **[Worker Contract (durable)](#worker-contract-durable)** — 9 tool(s)
+- **[Terminal](#terminal)** — 10 tool(s)
+- **[Worktree](#worktree)** — 1 tool(s)
+- **[Code Analysis (Tree-sitter)](#code-analysis-tree-sitter)** — 7 tool(s)
+- **[Session-Buddy](#session-buddy)** — 9 tool(s)
+- **[OpenTelemetry Trace](#opentelemetry-trace)** — 5 tool(s)
+- **[Coordination (Issues, Todos, Plans)](#coordination-issues-todos-plans)** — 15 tool(s)
+- **[Repository Messaging](#repository-messaging)** — 7 tool(s)
+- **[Hybrid Search](#hybrid-search)** — 5 tool(s)
+- **[Capability Resolution](#capability-resolution)** — 5 tool(s)
+- **[Clone Detection & Refactor](#clone-detection-and-refactor)** — 4 tool(s)
+- **[Learning Pipeline](#learning-pipeline)** — 5 tool(s)
+- **[Self-Improvement & Approvals](#self-improvement-and-approvals)** — 7 tool(s)
+- **[Goal Team](#goal-team)** — 3 tool(s)
+- **[OpenHands](#openhands)** — 4 tool(s)
+- **[PyCharm Integration](#pycharm-integration)** — 8 tool(s)
+- **[Desktop Automation](#desktop-automation)** — 23 tool(s)
+- **[Adapter Management](#adapter-management)** — 8 tool(s)
+- **[Health & Liveness](#health-and-liveness)** — 10 tool(s)
+- **[Observability & Backup](#observability-and-backup)** — 15 tool(s)
+- **[User & Auth](#user-and-auth)** — 2 tool(s)
+- **[Tool Discovery](#tool-discovery)** — 4 tool(s)
+- **[Webhook](#webhook)** — 1 tool(s)
 
 **Legend:**
 
-- ✅ **Production Ready** - Fully implemented and tested
-- 🚧 **In Development** - Partially implemented, may have limitations
-- ⚠️ **Deprecated** - Planned for removal, use alternatives
+- ✅ **Production Ready** — fully implemented and tested
+- 🚧 **In Development** — partial; verify before relying
+- ⚠️ **Deprecated** — planned for removal, use alternative
 
 ______________________________________________________________________
 
-## Pool Management Tools
+## Repository & Catalog
 
-Manage multi-pool orchestration across local, delegated, and cloud workers.
+### `list_repos` ✅
 
-### `pool_spawn` ✅
+**Signature:** `async def list_repos(tag: str | None, limit: int | None, offset: int | None, user_id: str | None)`
 
-Spawn a new worker pool.
+**Source:** `server_core.py:241`
 
-**Signature:**
+List repositories with optional filtering and pagination.
 
-```python
-async def pool_spawn(
-    pool_type: str = "mahavishnu",
-    name: str = "default",
-    min_workers: int = 1,
-    max_workers: int = 10,
-    worker_type: str = "terminal-claude",
-) -> dict[str, Any]
-```
+### `get_git_velocity_dashboard` ✅
 
-**Parameters:**
+**Signature:** `async def get_git_velocity_dashboard(repo_paths: list[str], days_back: int, user_id: str | None)`
 
-- `pool_type` - Pool type: `"mahavishnu"`, `"session-buddy"`, `"runpod"`
-- `name` - Pool name for identification
-- `min_workers` - Minimum worker count (1-10)
-- `max_workers` - Maximum worker count (1-100)
-- `worker_type` - Worker type: `"terminal-claude"`, `"terminal-qwen"` (supported configurable, non-default), `"container"`
+**Source:** `git_analytics.py:42`
 
-**Returns:**
+Get git velocity dashboard across multiple repositories.
 
-```python
-{
-    "pool_id": "pool_abc123",
-    "pool_type": "mahavishnu",
-    "name": "local-pool",
-    "status": "created",
-    "min_workers": 2,
-    "max_workers": 5
-}
-```
+### `get_repository_health` ✅
 
-**Example:**
+**Signature:** `async def get_repository_health(repo_path: str, user_id: str | None)`
 
-```python
-result = await pool_spawn(
-    pool_type="mahavishnu",
-    name="local-pool",
-    min_workers=2,
-    max_workers=5
-)
-print(f"Created pool: {result['pool_id']}")
-```
+**Source:** `git_analytics.py:119`
 
-______________________________________________________________________
+Get repository health metrics including PRs and branches.
 
-### `pool_execute` ✅
+### `get_cross_project_patterns` ✅
 
-Execute task on specific pool.
+**Signature:** `async def get_cross_project_patterns(days_back: int, min_occurrences: int, detect_until_dry: bool, k_empty_rounds: int, max_iterations: int, user_id: str | None)`
 
-**Signature:**
+**Source:** `git_analytics.py:181`
 
-```python
-async def pool_execute(
-    pool_id: str,
-    prompt: str,
-    timeout: int = 300,
-) -> dict[str, Any]
-```
+Detect patterns across all repositories in the ecosystem.
 
-**Parameters:**
+### `ecosystem_status` ✅
 
-- `pool_id` - Target pool ID (from `pool_spawn`)
-- `prompt` - Task prompt for AI worker
-- `timeout` - Execution timeout in seconds (30-3600)
+**Signature:** `async def ecosystem_status(sections: list[str] | None, include_details: bool, timeout_per_section_ms: int)`
 
-**Returns:**
+**Source:** `ecosystem_tools.py:30`
 
-```python
-{
-    "pool_id": "pool_abc123",
-    "worker_id": "term_xyz789",
-    "status": "completed",
-    "output": "Task output here...",
-    "duration": 45.2
-}
-```
+Get canonical ecosystem health status across all services and adapters.
 
-**Example:**
+### `ecosystem_capabilities` ✅
 
-```python
-result = await pool_execute(
-    pool_id="pool_abc123",
-    prompt="Write a Python REST API with FastAPI",
-    timeout=600
-)
-print(f"Output: {result['output']}")
-```
+**Signature:** `async def ecosystem_capabilities(capability: str | None)`
+
+**Source:** `ecosystem_tools.py:76`
+
+Query ecosystem capabilities by name or list all.
+
+### `ecosystem_routing_readiness` ✅
+
+**Signature:** `async def ecosystem_routing_readiness(task_class: str)`
+
+**Source:** `ecosystem_tools.py:101`
+
+Check routing readiness for a given task class.
 
 ______________________________________________________________________
 
-### `pool_route_execute` ✅
+## Workflow & Execution
 
-Execute task with automatic pool routing.
+### `trigger_workflow` ✅
 
-**Signature:**
+**Signature:** `async def trigger_workflow(adapter: str, task_type: str, params: dict[str, Any] | None, tag: str | None, repos: list[str] | None, timeout: int | None, user_id: str | None)`
 
-```python
-async def pool_route_execute(
-    prompt: str,
-    pool_selector: str = "least_loaded",
-    timeout: int = 300,
-) -> dict[str, Any]
-```
+**Source:** `server_core.py:273`
 
-**Parameters:**
+Trigger a durable workflow execution through a named adapter.
 
-- `prompt` - Task prompt
-- `pool_selector` - Selection strategy: `"round_robin"`, `"least_loaded"`, `"random"`, `"affinity"`
-- `timeout` - Execution timeout in seconds
+### `get_workflow_status` ✅
 
-**Returns:**
+**Signature:** `async def get_workflow_status(workflow_id: str, user_id: str | None)`
 
-```python
-{
-    "pool_id": "pool_abc123",
-    "status": "completed",
-    "output": "Task output...",
-    "routing_strategy": "least_loaded"
-}
-```
+**Source:** `server_core.py:432`
 
-**Example:**
+Get status of a workflow execution.
 
-```python
-result = await pool_route_execute(
-    prompt="Refactor database layer",
-    pool_selector="least_loaded",
-    timeout=300
-)
-print(f"Executed on: {result['pool_id']}")
-```
+### `list_workflows` ✅
+
+**Signature:** `async def list_workflows(status: str | None, limit: int, offset: int, user_id: str | None)`
+
+**Source:** `server_core.py:483`
+
+List workflows with optional filtering.
+
+### `cancel_workflow` ✅
+
+**Signature:** `async def cancel_workflow(workflow_id: str, user_id: str | None)`
+
+**Source:** `server_core.py:547`
+
+Cancel a running workflow.
+
+### `get_workflow_statistics` ✅
+
+**Signature:** `async def get_workflow_statistics()`
+
+**Source:** `server_core.py:762`
+
+Get workflow statistics and analytics.
+
+### `workflow_get_outcome_tool` ✅
+
+**Signature:** `async def workflow_get_outcome_tool(workflow_id: str, user_id: str | None)`
+
+**Source:** `workflow_tools.py:84`
+
+Read back the persisted WorkflowOutcome for ``workflow_id``.
 
 ______________________________________________________________________
+
+## Pool Management
 
 ### `pool_list` ✅
 
+**Signature:** `async def pool_list()`
+
+**Source:** `pool_tools.py:55`
+
 List all active pools.
-
-**Signature:**
-
-```python
-async def pool_list() -> list[dict[str, Any]]
-```
-
-**Returns:**
-
-```python
-[
-    {
-        "pool_id": "pool_abc123",
-        "pool_type": "mahavishnu",
-        "name": "local-pool",
-        "status": "running",
-        "workers_active": 3,
-        "workers_total": 5
-    }
-]
-```
-
-**Example:**
-
-```python
-pools = await pool_list()
-for pool in pools:
-    print(f"{pool['pool_id']}: {pool['pool_type']} - {pool['status']}")
-```
-
-______________________________________________________________________
 
 ### `pool_monitor` ✅
 
+**Signature:** `async def pool_monitor(pool_ids: list[str] | None)`
+
+**Source:** `pool_tools.py:64`
+
 Monitor pool status and metrics.
-
-**Signature:**
-
-```python
-async def pool_monitor(
-    pool_ids: list[str] | None = None,
-) -> dict[str, dict[str, Any]]
-```
-
-**Parameters:**
-
-- `pool_ids` - List of pool IDs (None = all pools)
-
-**Returns:**
-
-```python
-{
-    "pool_abc123": {
-        "status": "healthy",
-        "workers_active": 3,
-        "tasks_completed": 42,
-        "tasks_failed": 1,
-        "average_latency": 2.3
-    }
-}
-```
-
-**Example:**
-
-```python
-metrics = await pool_monitor(pool_ids=["pool_abc", "pool_def"])
-for pool_id, pool_metrics in metrics.items():
-    print(f"{pool_id}: {pool_metrics['status']}")
-```
-
-______________________________________________________________________
 
 ### `pool_scale` ✅
 
+**Signature:** `async def pool_scale(pool_id: str, target_workers: int)`
+
+**Source:** `pool_tools.py:75`
+
 Scale pool to target worker count.
-
-**Signature:**
-
-```python
-async def pool_scale(
-    pool_id: str,
-    target_workers: int,
-) -> dict[str, Any]
-```
-
-**Parameters:**
-
-- `pool_id` - Pool ID to scale
-- `target_workers` - Target worker count
-
-**Returns:**
-
-```python
-{
-    "pool_id": "pool_abc123",
-    "target_workers": 10,
-    "actual_workers": 10,
-    "status": "scaled"
-}
-```
-
-**Error Cases:**
-
-- Returns error if pool doesn't support scaling (e.g., SessionBuddyPool is fixed at 3 workers)
-
-**Example:**
-
-```python
-result = await pool_scale(pool_id="pool_abc123", target_workers=10)
-print(f"Scaled to {result['actual_workers']} workers")
-```
-
-______________________________________________________________________
 
 ### `pool_close` ✅
 
+**Signature:** `async def pool_close(pool_id: str)`
+
+**Source:** `pool_tools.py:112`
+
 Close a specific pool.
-
-**Signature:**
-
-```python
-async def pool_close(
-    pool_id: str,
-) -> dict[str, Any]
-```
-
-**Parameters:**
-
-- `pool_id` - Pool ID to close
-
-**Returns:**
-
-```python
-{
-    "pool_id": "pool_abc123",
-    "status": "closed"
-}
-```
-
-**Example:**
-
-```python
-result = await pool_close(pool_id="pool_abc123")
-print(f"Pool {result['pool_id']} closed")
-```
-
-______________________________________________________________________
 
 ### `pool_close_all` ✅
 
+**Signature:** `async def pool_close_all()`
+
+**Source:** `pool_tools.py:132`
+
 Close all active pools.
-
-**Signature:**
-
-```python
-async def pool_close_all() -> dict[str, Any]
-```
-
-**Returns:**
-
-```python
-{
-    "pools_closed": 3,
-    "status": "all_closed"
-}
-```
-
-**Example:**
-
-```python
-result = await pool_close_all()
-print(f"Closed {result['pools_closed']} pools")
-```
-
-______________________________________________________________________
 
 ### `pool_health` ✅
 
+**Signature:** `async def pool_health()`
+
+**Source:** `pool_tools.py:153`
+
 Get health status of all pools.
-
-**Signature:**
-
-```python
-async def pool_health() -> dict[str, Any]
-```
-
-**Returns:**
-
-```python
-{
-    "status": "healthy",
-    "pools_active": 3,
-    "pools_total": 3,
-    "workers_active": 12,
-    "details": {
-        "pool_abc123": {"status": "healthy"},
-        "pool_def456": {"status": "healthy"}
-    }
-}
-```
-
-**Example:**
-
-```python
-health = await pool_health()
-print(f"Overall: {health['status']}, Active: {health['pools_active']}")
-```
-
-______________________________________________________________________
 
 ### `pool_search_memory` ✅
 
+**Signature:** `async def pool_search_memory(query: str, limit: int)`
+
+**Source:** `pool_tools.py:165`
+
 Search memory across all pools.
 
-**Signature:**
+### `budget_enforce` ✅
 
-```python
-async def pool_search_memory(
-    query: str,
-    limit: int = 100,
-) -> list[dict[str, Any]]
-```
+**Signature:** `async def budget_enforce(workflow_id: str, budget_tokens: int | None, budget_turns: int | None, budget_wallclock_seconds: float | None, declared_by: str | None)`
 
-**Parameters:**
+**Source:** `pool_tools.py:188`
 
-- `query` - Semantic search query
-- `limit` - Maximum results to return
-
-**Returns:**
-
-```python
-[
-    {
-        "content": "Task output or memory content...",
-        "pool_id": "pool_abc123",
-        "worker_id": "term_xyz789",
-        "timestamp": "2025-01-22T12:34:56Z",
-        "similarity": 0.92
-    }
-]
-```
-
-**Example:**
-
-```python
-results = await pool_search_memory(query="API implementation", limit=50)
-for result in results:
-    print(f"{result['content'][:100]}... (similarity: {result['similarity']})")
-```
+Declare a per-workflow budget; the watchdog enforces it.
 
 ______________________________________________________________________
 
-## Worker Tools
-
-Orchestrate headless AI workers for parallel task execution.
+## Worker Management
 
 ### `worker_spawn` ✅
 
-Spawn worker instances for task execution.
+**Signature:** `async def worker_spawn()`
 
-**Signature:**
+**Source:** `worker_tools.py:392`
 
-```python
-async def worker_spawn(
-    worker_type: str = "terminal-claude",
-    count: int = 1,
-) -> list[str]
-```
-
-**Parameters:**
-
-- `worker_type` - Worker type: `"terminal-claude"`, `"terminal-qwen"` (supported configurable, non-default), `"container-executor"`
-- `count` - Number of workers to spawn (1-50)
-
-**Returns:**
-
-```python
-["term_abc123", "term_def456", "term_ghi789"]
-```
-
-**Example:**
-
-```python
-worker_ids = await worker_spawn(worker_type="terminal-claude", count=3)
-print(f"Spawned {len(worker_ids)} workers")
-```
-
-______________________________________________________________________
+(no docstring).
 
 ### `worker_execute` ✅
 
-Execute task on specific worker.
+**Signature:** `async def worker_execute()`
 
-**Signature:**
+**Source:** `worker_tools.py:398`
 
-```python
-async def worker_execute(
-    worker_id: str,
-    prompt: str,
-    timeout: int = 300,
-) -> dict
-```
-
-**Parameters:**
-
-- `worker_id` - Worker ID (from `worker_spawn`)
-- `prompt` - Task prompt
-- `timeout` - Timeout in seconds (30-3600)
-
-**Returns:**
-
-```python
-{
-    "worker_id": "term_abc123",
-    "status": "completed",
-    "output": "Task output here...",
-    "error": None,
-    "duration": 45.2,
-    "has_output": true
-}
-```
-
-**Example:**
-
-```python
-result = await worker_execute(
-    worker_id="term_abc123",
-    prompt="Implement a REST API with FastAPI",
-    timeout=600
-)
-print(f"Status: {result['status']}")
-```
-
-______________________________________________________________________
+(no docstring).
 
 ### `worker_execute_batch` ✅
 
-Execute tasks on multiple workers concurrently.
+**Signature:** `async def worker_execute_batch()`
 
-**Signature:**
+**Source:** `worker_tools.py:399`
 
-```python
-async def worker_execute_batch(
-    worker_ids: list[str],
-    prompts: list[str],
-    timeout: int = 300,
-) -> dict
-```
-
-**Parameters:**
-
-- `worker_ids` - List of worker IDs
-- `prompts` - List of prompts (same length as worker_ids)
-- `timeout` - Timeout for all tasks
-
-**Returns:**
-
-```python
-{
-    "term_abc123": {
-        "status": "completed",
-        "output": "Output from worker 1...",
-        "duration": 42.1
-    },
-    "term_def456": {
-        "status": "completed",
-        "output": "Output from worker 2...",
-        "duration": 38.7
-    }
-}
-```
-
-**Example:**
-
-```python
-results = await worker_execute_batch(
-    worker_ids=["term_abc", "term_def"],
-    prompts=["Task 1", "Task 2"],
-    timeout=600
-)
-for wid, result in results.items():
-    print(f"{wid}: {result['status']}")
-```
-
-______________________________________________________________________
+(no docstring).
 
 ### `worker_list` ✅
 
-List all active workers.
+**Signature:** `async def worker_list()`
 
-**Signature:**
+**Source:** `worker_tools.py:400`
 
-```python
-async def worker_list() -> list[dict]
-```
-
-**Returns:**
-
-```python
-[
-    {
-        "worker_id": "term_abc123",
-        "worker_type": "terminal-qwen",  # supported configurable, non-default worker type
-        "status": "running",
-        "pool_id": "pool_xyz789"
-    }
-]
-```
-
-**Example:**
-
-```python
-workers = await worker_list()
-print(f"Active workers: {len(workers)}")
-```
-
-______________________________________________________________________
+(no docstring).
 
 ### `worker_monitor` ✅
 
-Monitor worker status in real-time.
+**Signature:** `async def worker_monitor()`
 
-**Signature:**
+**Source:** `worker_tools.py:393`
 
-```python
-async def worker_monitor(
-    worker_ids: list[str] | None = None,
-    interval: float = 1.0,
-) -> dict
-```
-
-**Parameters:**
-
-- `worker_ids` - List of worker IDs (None = all workers)
-- `interval` - Polling interval in seconds (0.1-10.0)
-
-**Returns:**
-
-```python
-{
-    "term_abc123": "running",
-    "term_def456": "idle",
-    "term_ghi789": "completed"
-}
-```
-
-**Example:**
-
-```python
-statuses = await worker_monitor(interval=0.5)
-for wid, status in statuses.items():
-    print(f"{wid}: {status}")
-```
-
-______________________________________________________________________
+(no docstring).
 
 ### `worker_collect_results` ✅
 
-Collect results from completed workers.
+**Signature:** `async def worker_collect_results()`
 
-**Signature:**
+**Source:** `worker_tools.py:394`
 
-```python
-async def worker_collect_results(
-    worker_ids: list[str] | None = None,
-) -> dict
-```
-
-**Parameters:**
-
-- `worker_ids` - List of worker IDs (None = all workers)
-
-**Returns:**
-
-```python
-{
-    "term_abc123": {
-        "status": "completed",
-        "output": "Full output here...",
-        "error": None,
-        "duration": 45.2,
-        "has_output": true
-    }
-}
-```
-
-**Example:**
-
-```python
-results = await worker_collect_results(["term_abc", "term_def"])
-for wid, result in results.items():
-    if result["status"] == "completed":
-        print(f"{wid}: {result['output'][:100]}...")
-```
-
-______________________________________________________________________
+(no docstring).
 
 ### `worker_close` ✅
 
-Close a specific worker.
+**Signature:** `async def worker_close()`
 
-**Signature:**
+**Source:** `worker_tools.py:395`
 
-```python
-async def worker_close(worker_id: str) -> dict
-```
-
-**Parameters:**
-
-- `worker_id` - Worker ID to close
-
-**Returns:**
-
-```python
-{
-    "success": true,
-    "worker_id": "term_abc123"
-}
-```
-
-**Example:**
-
-```python
-result = await worker_close("term_abc123")
-print(f"Closed: {result['success']}")
-```
-
-______________________________________________________________________
+(no docstring).
 
 ### `worker_close_all` ✅
 
-Close all active workers.
+**Signature:** `async def worker_close_all()`
 
-**Signature:**
+**Source:** `worker_tools.py:396`
 
-```python
-async def worker_close_all() -> dict
-```
-
-**Returns:**
-
-```python
-{
-    "closed_count": 5
-}
-```
-
-**Example:**
-
-```python
-result = await worker_close_all()
-print(f"Closed {result['closed_count']} workers")
-```
-
-______________________________________________________________________
+(no docstring).
 
 ### `worker_health` ✅
 
-Get worker system health.
+**Signature:** `async def worker_health()`
 
-**Signature:**
+**Source:** `worker_tools.py:397`
 
-```python
-async def worker_health() -> dict
-```
-
-**Returns:**
-
-```python
-{
-    "status": "healthy",
-    "workers_active": 5,
-    "max_concurrent": 10,
-    "details": {
-        "pools_healthy": 2,
-        "workers_idle": 3,
-        "workers_busy": 2
-    }
-}
-```
-
-**Example:**
-
-```python
-health = await worker_health()
-print(f"Status: {health['status']}, Active: {health['workers_active']}")
-```
+(no docstring).
 
 ______________________________________________________________________
 
-## Coordination Tools
+## Worker Contract (durable)
 
-Track and coordinate work across multiple repositories.
+### `launch_worker` ✅
 
-### `coord_list_issues` ✅
+**Signature:** `async def launch_worker()`
 
-List cross-repository issues with optional filtering.
+**Source:** `worker_contract_tools.py:377`
 
-**Signature:**
+(no docstring).
 
-```python
-async def coord_list_issues(
-    status: str | None = None,
-    priority: str | None = None,
-    repo: str | None = None,
-    assignee: str | None = None,
-) -> list[dict[str, Any]]
-```
+### `send_input` ✅
 
-**Parameters:**
+**Signature:** `async def send_input()`
 
-- `status` - Filter by status: `"pending"`, `"in_progress"`, `"blocked"`, `"resolved"`, `"closed"`
-- `priority` - Filter by priority: `"critical"`, `"high"`, `"medium"`, `"low"`
-- `repo` - Filter by repository nickname
-- `assignee` - Filter by assignee username
+**Source:** `worker_contract_tools.py:378`
 
-**Returns:**
+(no docstring).
 
-```python
-[
-    {
-        "id": "ISSUE-001",
-        "title": "Add authentication to API",
-        "status": "in_progress",
-        "priority": "high",
-        "repos": ["my-api", "auth-service"],
-        "assignee": "user@example.com"
-    }
-]
-```
+### `capture_output` ✅
 
-**Example:**
+**Signature:** `async def capture_output()`
 
-```python
-issues = await coord_list_issues(status="in_progress", priority="high")
-for issue in issues:
-    print(f"{issue['id']}: {issue['title']}")
-```
+**Source:** `worker_contract_tools.py:379`
 
-______________________________________________________________________
+(no docstring).
 
-### `coord_get_issue` ✅
+### `worker_status` ✅
 
-Get detailed information about a specific issue.
+**Signature:** `async def worker_status()`
 
-**Signature:**
+**Source:** `worker_contract_tools.py:380`
 
-```python
-async def coord_get_issue(
-    issue_id: str,
-) -> dict[str, Any]
-```
+(no docstring).
 
-**Parameters:**
+### `wait_for_state` ✅
 
-- `issue_id` - Issue identifier (e.g., `"ISSUE-001"`)
+**Signature:** `async def wait_for_state()`
 
-**Returns:**
+**Source:** `worker_contract_tools.py:381`
 
-```python
-{
-    "id": "ISSUE-001",
-    "title": "Add authentication to API",
-    "description": "Implement JWT authentication...",
-    "status": "in_progress",
-    "priority": "high",
-    "repos": ["my-api", "auth-service"],
-    "dependencies": ["ISSUE-002"],
-    "blocking": ["ISSUE-003"],
-    "assignee": "user@example.com",
-    "created": "2025-01-22T12:00:00Z",
-    "updated": "2025-01-23T09:30:00Z"
-}
-```
+(no docstring).
 
-**Example:**
+### `cancel_worker` ✅
 
-```python
-issue = await coord_get_issue("ISSUE-001")
-print(f"Issue: {issue['title']}")
-print(f"Blocking {len(issue['blocking'])} other issues")
-```
+**Signature:** `async def cancel_worker()`
+
+**Source:** `worker_contract_tools.py:382`
+
+(no docstring).
+
+### `worker_revoke` ✅
+
+**Signature:** `async def worker_revoke()`
+
+**Source:** `worker_contract_tools.py:383`
+
+(no docstring).
+
+### `worker_run_with_settle` ✅
+
+**Signature:** `async def worker_run_with_settle()`
+
+**Source:** `worker_contract_tools.py:384`
+
+(no docstring).
+
+### `worker_settle` ✅
+
+**Signature:** `async def worker_settle()`
+
+**Source:** `worker_contract_tools.py:385`
+
+(no docstring).
 
 ______________________________________________________________________
 
-### `coord_create_issue` ✅
+## Terminal
 
-Create a new cross-repository issue.
+### `terminal_launch` ✅
 
-**Signature:**
+**Signature:** `async def terminal_launch(command: Command, count: int, columns: int, rows: int)`
 
-```python
-async def coord_create_issue(
-    title: str,
-    description: str,
-    repos: list[str],
-    priority: str = "medium",
-    severity: str = "normal",
-    assignee: str | None = None,
-    target: str | None = None,
-    labels: list[str] | None = None,
-) -> dict[str, Any]
-```
+**Source:** `terminal_tools.py:116`
 
-**Parameters:**
+Launch terminal sessions running a command.
 
-- `title` - Issue title
-- `description` - Detailed issue description
-- `repos` - List of repository nicknames affected
-- `priority` - Priority level: `"critical"`, `"high"`, `"medium"`, `"low"`
-- `severity` - Severity level (e.g., `"bug"`, `"feature"`, `"migration"`)
-- `assignee` - Assignee username (optional)
-- `target` - Target completion date (ISO 8601 format, optional)
-- `labels` - Labels for categorization (optional)
+### `terminal_send` ✅
 
-**Returns:**
+**Signature:** `async def terminal_send(session_id: SessionID, command: Command)`
 
-```python
-{
-    "id": "ISSUE-001",
-    "title": "Add authentication to API",
-    "status": "pending",
-    "priority": "high",
-    "repos": ["my-api", "auth-service"]
-}
-```
+**Source:** `terminal_tools.py:136`
 
-**Example:**
+Send command to a terminal session.
 
-```python
-issue = await coord_create_issue(
-    title="Add authentication",
-    description="Implement JWT authentication for all API endpoints",
-    repos=["my-api", "auth-service"],
-    priority="high",
-    assignee="user@example.com"
-)
-print(f"Created {issue['id']}")
-```
+### `terminal_capture` ✅
 
-______________________________________________________________________
+**Signature:** `async def terminal_capture(session_id: str, lines: int | None)`
 
-### `coord_update_issue` ✅
+**Source:** `terminal_tools.py:149`
 
-Update an existing issue.
+Capture output from terminal session.
 
-**Signature:**
+### `terminal_capture_all` ✅
 
-```python
-async def coord_update_issue(
-    issue_id: str,
-    status: str | None = None,
-    priority: str | None = None,
-) -> dict[str, Any]
-```
+**Signature:** `async def terminal_capture_all(session_ids: list[str], lines: int | None)`
 
-**Parameters:**
+**Source:** `terminal_tools.py:157`
 
-- `issue_id` - Issue identifier
-- `status` - New status: `"pending"`, `"in_progress"`, `"blocked"`, `"resolved"`, `"closed"`
-- `priority` - New priority: `"critical"`, `"high"`, `"medium"`, `"low"`
+Capture output from multiple terminal sessions concurrently.
 
-**Returns:**
+### `terminal_list` ✅
 
-```python
-{
-    "id": "ISSUE-001",
-    "status": "in_progress",
-    "priority": "high",
-    "updated": "2025-01-23T10:00:00Z"
-}
-```
+**Signature:** `async def terminal_list()`
 
-**Example:**
+**Source:** `terminal_tools.py:165`
 
-```python
-issue = await coord_update_issue(
-    issue_id="ISSUE-001",
-    status="in_progress"
-)
-print(f"Updated {issue['id']} to {issue['status']}")
-```
+List all active terminal sessions.
+
+### `terminal_close` ✅
+
+**Signature:** `async def terminal_close(session_id: str)`
+
+**Source:** `terminal_tools.py:170`
+
+Close a terminal session.
+
+### `terminal_close_all` ✅
+
+**Signature:** `async def terminal_close_all()`
+
+**Source:** `terminal_tools.py:175`
+
+Close all terminal sessions.
+
+### `terminal_switch_adapter` ✅
+
+**Signature:** `async def terminal_switch_adapter(adapter_name: str, migrate_sessions: bool)`
+
+**Source:** `terminal_tools.py:191`
+
+Hot-switch to a different terminal adapter without restart.
+
+### `terminal_current_adapter` ✅
+
+**Signature:** `async def terminal_current_adapter()`
+
+**Source:** `terminal_tools.py:267`
+
+Get information about the current terminal adapter.
+
+### `terminal_list_adapters` ✅
+
+**Signature:** `async def terminal_list_adapters()`
+
+**Source:** `terminal_tools.py:275`
+
+List all available terminal adapters.
 
 ______________________________________________________________________
 
-### `coord_close_issue` ✅
+## Worktree
 
-Close an issue.
+### `worktree_manage` ✅
 
-**Signature:**
+**Signature:** `async def worktree_manage()`
 
-```python
-async def coord_close_issue(
-    issue_id: str,
-) -> dict[str, Any]
-```
+**Source:** `worktree_tools.py:155`
 
-**Parameters:**
-
-- `issue_id` - Issue identifier
-
-**Returns:**
-
-```python
-{
-    "id": "ISSUE-001",
-    "status": "closed",
-    "updated": "2025-01-23T11:00:00Z"
-}
-```
-
-**Example:**
-
-```python
-issue = await coord_close_issue("ISSUE-001")
-print(f"Closed {issue['id']}")
-```
+(no docstring).
 
 ______________________________________________________________________
 
-### `coord_list_todos` ✅
+## Code Analysis (Tree-sitter)
 
-List todo items with optional filtering.
+### `treesitter_parse` ✅
 
-**Signature:**
+**Signature:** `async def treesitter_parse(file_path: str, language: str | None)`
 
-```python
-async def coord_list_todos(
-    status: str | None = None,
-    repo: str | None = None,
-    assignee: str | None = None,
-) -> list[dict[str, Any]]
-```
+**Source:** `treesitter_tools.py:65`
 
-**Parameters:**
+Parse a source code file with caching.
 
-- `status` - Filter by status: `"pending"`, `"in_progress"`, `"blocked"`, `"completed"`, `"cancelled"`
-- `repo` - Filter by repository nickname
-- `assignee` - Filter by assignee username
+### `treesitter_extract_symbols` ✅
 
-**Returns:**
+**Signature:** `async def treesitter_extract_symbols(file_path: str, symbol_kinds: list[str] | None)`
 
-```python
-[
-    {
-        "id": "TODO-001",
-        "task": "Write unit tests for auth module",
-        "repo": "my-api",
-        "status": "in_progress",
-        "priority": "medium",
-        "estimate_hours": 4.0
-    }
-]
-```
+**Source:** `treesitter_tools.py:114`
 
-**Example:**
+Extract symbols from a parsed file.
 
-```python
-todos = await coord_list_todos(repo="my-api", status="pending")
-for todo in todos:
-    print(f"{todo['id']}: {todo['task']}")
-```
+### `treesitter_find_usages` ✅
 
-______________________________________________________________________
+**Signature:** `async def treesitter_find_usages(file_path: str, symbol_name: str, search_directory: str | None)`
 
-### `coord_get_todo` ✅
+**Source:** `treesitter_tools.py:178`
 
-Get detailed information about a specific todo.
+Find usages of a symbol across files.
 
-**Signature:**
+### `treesitter_query` ✅
 
-```python
-async def coord_get_todo(
-    todo_id: str,
-) -> dict[str, Any]
-```
+**Signature:** `async def treesitter_query(file_path: str, query: str)`
 
-**Parameters:**
+**Source:** `treesitter_tools.py:272`
 
-- `todo_id` - Todo identifier (e.g., `"TODO-001"`)
+Run a custom tree-sitter query (S-expression format).
 
-**Returns:**
+### `treesitter_batch_analyze` ✅
 
-```python
-{
-    "id": "TODO-001",
-    "task": "Write unit tests for auth module",
-    "description": "Add comprehensive unit tests...",
-    "repo": "my-api",
-    "status": "in_progress",
-    "priority": "medium",
-    "estimated_hours": 4.0,
-    "acceptance_criteria": [
-        "Test all authentication endpoints",
-        "Achieve 80% code coverage"
-    ]
-}
-```
+**Signature:** `async def treesitter_batch_analyze(directory: str, file_pattern: str, max_files: int)`
 
-**Example:**
+**Source:** `treesitter_tools.py:321`
 
-```python
-todo = await coord_get_todo("TODO-001")
-print(f"Task: {todo['task']}")
-print(f"Estimate: {todo['estimated_hours']} hours")
-```
+Batch analyze multiple files in a directory.
+
+### `treesitter_cache_stats` ✅
+
+**Signature:** `async def treesitter_cache_stats()`
+
+**Source:** `treesitter_tools.py:403`
+
+Get cache statistics for the tree-sitter parser.
+
+### `treesitter_clear_cache` ✅
+
+**Signature:** `async def treesitter_clear_cache()`
+
+**Source:** `treesitter_tools.py:419`
+
+Clear the tree-sitter parse cache.
 
 ______________________________________________________________________
 
-### `coord_create_todo` ✅
+## Session-Buddy
 
-Create a new todo item.
+### `index_code_graph` ✅
 
-**Signature:**
+**Signature:** `async def index_code_graph(project_path: str, include_docs: bool, user_id: str | None)`
 
-```python
-async def coord_create_todo(
-    task: str,
-    description: str,
-    repo: str,
-    estimate_hours: float,
-    priority: str = "medium",
-    assignee: str | None = None,
-    blocked_by: list[str] | None = None,
-    labels: list[str] | None = None,
-    acceptance_criteria: list[str] | None = None,
-) -> dict[str, Any]
-```
+**Source:** `session_buddy_tools.py:61`
 
-**Parameters:**
+Index codebase structure for better context in Session Buddy.
 
-- `task` - Task description
-- `description` - Detailed task description
-- `repo` - Repository nickname
-- `estimate_hours` - Estimated time to complete (in hours)
-- `priority` - Priority level: `"critical"`, `"high"`, `"medium"`, `"low"`
-- `assignee` - Assignee username (optional)
-- `blocked_by` - List of issue/todo IDs blocking this task (optional)
-- `labels` - Labels for categorization (optional)
-- `acceptance_criteria` - Criteria for completion (optional)
+### `get_function_context` ✅
 
-**Returns:**
+**Signature:** `async def get_function_context(project_path: str, function_name: str, user_id: str | None)`
 
-```python
-{
-    "id": "TODO-001",
-    "task": "Write unit tests for auth module",
-    "repo": "my-api",
-    "status": "pending",
-    "priority": "medium",
-    "estimated_hours": 4.0
-}
-```
+**Source:** `session_buddy_tools.py:88`
 
-**Example:**
+Get caller/callee context for a function for Session Buddy.
 
-```python
-todo = await coord_create_todo(
-    task="Write unit tests",
-    description="Add comprehensive unit tests for auth module",
-    repo="my-api",
-    estimate_hours=4.0,
-    priority="high",
-    acceptance_criteria=["Test all endpoints", "80% coverage"]
-)
-print(f"Created {todo['id']}")
-```
+### `find_related_code` ✅
 
-______________________________________________________________________
+**Signature:** `async def find_related_code(project_path: str, file_path: str, user_id: str | None)`
 
-### `coord_complete_todo` ✅
+**Source:** `session_buddy_tools.py:112`
 
-Mark a todo as completed.
+Find code related by imports/calls for Session Buddy.
 
-**Signature:**
+### `index_documentation` ✅
 
-```python
-async def coord_complete_todo(
-    todo_id: str,
-) -> dict[str, Any]
-```
+**Signature:** `async def index_documentation(project_path: str, user_id: str | None)`
 
-**Parameters:**
+**Source:** `session_buddy_tools.py:137`
 
-- `todo_id` - Todo identifier
+Extract docstrings and index for semantic search in Session Buddy.
 
-**Returns:**
+### `search_documentation` ✅
 
-```python
-{
-    "id": "TODO-001",
-    "status": "completed",
-    "updated": "2025-01-23T12:00:00Z"
-}
-```
+**Signature:** `async def search_documentation(query: str, user_id: str | None)`
 
-**Example:**
+**Source:** `session_buddy_tools.py:156`
 
-```python
-todo = await coord_complete_todo("TODO-001")
-print(f"Completed {todo['id']}")
-```
+Search through indexed documentation in Session Buddy.
 
-______________________________________________________________________
+### `send_project_message` ✅
 
-### `coord_get_blocking_issues` ✅
+**Signature:** `async def send_project_message(from_project: str, to_project: str, subject: str, message: str, priority: str, user_id: str | None)`
 
-Get all issues blocking a specific repository.
-
-**Signature:**
-
-```python
-async def coord_get_blocking_issues(
-    repo: str,
-) -> list[dict[str, Any]]
-```
-
-**Parameters:**
-
-- `repo` - Repository nickname
-
-**Returns:**
-
-```python
-[
-    {
-        "id": "ISSUE-001",
-        "title": "Add authentication",
-        "status": "in_progress",
-        "priority": "high"
-    }
-]
-```
-
-**Example:**
-
-```python
-blocking = await coord_get_blocking_issues("my-api")
-print(f"Blocking issues: {len(blocking)}")
-```
-
-______________________________________________________________________
-
-### `coord_check_dependencies` ✅
-
-Validate inter-repository dependencies.
-
-**Signature:**
-
-```python
-async def coord_check_dependencies(
-    consumer: str | None = None,
-) -> dict[str, Any]
-```
-
-**Parameters:**
-
-- `consumer` - Optional consumer repository to filter by
-
-**Returns:**
-
-```python
-{
-    "total": 10,
-    "satisfied": 8,
-    "unsatisfied": 2,
-    "dependencies": [
-        {
-            "consumer": "my-api",
-            "provider": "auth-service",
-            "type": "runtime",
-            "satisfied": true
-        }
-    ]
-}
-```
-
-**Example:**
-
-```python
-results = await coord_check_dependencies(consumer="my-api")
-print(f"Dependencies: {results['satisfied']}/{results['total']} satisfied")
-```
-
-______________________________________________________________________
-
-### `coord_get_repo_status` ✅
-
-Get comprehensive coordination status for a repository.
-
-**Signature:**
-
-```python
-async def coord_get_repo_status(
-    repo: str,
-) -> dict[str, Any]
-```
-
-**Parameters:**
-
-- `repo` - Repository nickname
-
-**Returns:**
-
-```python
-{
-    "issues": [...],
-    "todos": [...],
-    "dependencies_outgoing": [...],
-    "dependencies_incoming": [...],
-    "blocking": [...],
-    "blocked_by": [...]
-}
-```
-
-**Example:**
-
-```python
-status = await coord_get_repo_status("my-api")
-print(f"Issues: {len(status['issues'])}")
-print(f"Todos: {len(status['todos'])}")
-```
-
-______________________________________________________________________
-
-### `coord_list_plans` ✅
-
-List cross-repository plans with optional filtering.
-
-**Signature:**
-
-```python
-async def coord_list_plans(
-    status: str | None = None,
-    repo: str | None = None,
-) -> list[dict[str, Any]]
-```
-
-**Parameters:**
-
-- `status` - Filter by status: `"draft"`, `"active"`, `"on_hold"`, `"completed"`, `"cancelled"`
-- `repo` - Filter by repository nickname
-
-**Returns:**
-
-```python
-[
-    {
-        "id": "PLAN-001",
-        "title": "Q1 Feature Sprint",
-        "status": "active",
-        "repos": ["my-api", "my-frontend"]
-    }
-]
-```
-
-**Example:**
-
-```python
-plans = await coord_list_plans(status="active")
-for plan in plans:
-    print(f"{plan['id']}: {plan['title']}")
-```
-
-______________________________________________________________________
-
-### `coord_list_dependencies` ✅
-
-List inter-repository dependencies with optional filtering.
-
-**Signature:**
-
-```python
-async def coord_list_dependencies(
-    consumer: str | None = None,
-    provider: str | None = None,
-    dependency_type: str | None = None,
-) -> list[dict[str, Any]]
-```
-
-**Parameters:**
-
-- `consumer` - Filter by consumer repository
-- `provider` - Filter by provider repository
-- `dependency_type` - Filter by type: `"runtime"`, `"development"`, `"mcp"`, `"test"`, `"documentation"`
-
-**Returns:**
-
-```python
-[
-    {
-        "consumer": "my-api",
-        "provider": "auth-service",
-        "type": "runtime",
-        "satisfied": true
-    }
-]
-```
-
-**Example:**
-
-```python
-deps = await coord_list_dependencies(consumer="my-api", type="runtime")
-for dep in deps:
-    print(f"{dep['consumer']} -> {dep['provider']}")
-```
-
-______________________________________________________________________
-
-## Repository Messaging Tools
-
-Send and receive messages between repositories.
-
-### `send_repository_message` ✅
-
-Send a message from one repository to another.
-
-**Signature:**
-
-```python
-async def send_repository_message(
-    sender_repo: str,
-    receiver_repo: str,
-    message_type: str,
-    content: dict[str, Any],
-    priority: str = "NORMAL",
-) -> dict[str, Any]
-```
-
-**Parameters:**
-
-- `sender_repo` - Repository sending the message
-- `receiver_repo` - Repository receiving the message
-- `message_type` - Type: `"CODE_CHANGE_NOTIFICATION"`, `"WORKFLOW_STATUS_UPDATE"`, etc.
-- `content` - Message content as dictionary
-- `priority` - Priority: `"LOW"`, `"NORMAL"`, `"HIGH"`, `"CRITICAL"`
-
-**Returns:**
-
-```python
-{
-    "status": "success",
-    "message_id": "msg_abc123",
-    "sent_at": "2025-01-23T12:00:00Z",
-    "priority": "NORMAL"
-}
-```
-
-**Example:**
-
-```python
-result = await send_repository_message(
-    sender_repo="my-api",
-    receiver_repo="my-frontend",
-    message_type="CODE_CHANGE_NOTIFICATION",
-    content={"file": "auth.py", "change": "Added JWT endpoint"},
-    priority="HIGH"
-)
-print(f"Sent: {result['message_id']}")
-```
-
-______________________________________________________________________
-
-### `broadcast_repository_message` ✅
-
-Broadcast a message to multiple repositories.
-
-**Signature:**
-
-```python
-async def broadcast_repository_message(
-    sender_repo: str,
-    message_type: str,
-    content: dict[str, Any],
-    target_repos: list[str] | None = None,
-    priority: str = "NORMAL",
-) -> dict[str, Any]
-```
-
-**Parameters:**
-
-- `sender_repo` - Repository sending the message
-- `message_type` - Type of message
-- `content` - Message content
-- `target_repos` - List of target repositories (None = all repositories)
-- `priority` - Message priority
-
-**Returns:**
-
-```python
-{
-    "status": "success",
-    "messages_sent": 3,
-    "message_ids": ["msg_abc", "msg_def", "msg_ghi"],
-    "target_repos": ["repo1", "repo2", "repo3"]
-}
-```
-
-**Example:**
-
-```python
-result = await broadcast_repository_message(
-    sender_repo="my-api",
-    message_type="WORKFLOW_STATUS_UPDATE",
-    content={"workflow_id": "wf_123", "status": "completed"},
-    target_repos=["my-frontend", "my-docs"]
-)
-print(f"Broadcast to {result['messages_sent']} repos")
-```
-
-______________________________________________________________________
-
-### `get_repository_messages` ✅
-
-Get messages for a specific repository.
-
-**Signature:**
-
-```python
-async def get_repository_messages(
-    receiver_repo: str,
-    message_type: str | None = None,
-    limit: int = 50,
-    since: str | None = None,
-) -> dict[str, Any]
-```
-
-**Parameters:**
-
-- `receiver_repo` - Repository to get messages for
-- `message_type` - Optional message type filter
-- `limit` - Maximum messages to return
-- `since` - Optional ISO datetime string filter
-
-**Returns:**
-
-```python
-{
-    "status": "success",
-    "messages": [
-        {
-            "id": "msg_abc123",
-            "sender_repo": "my-api",
-            "receiver_repo": "my-frontend",
-            "message_type": "CODE_CHANGE_NOTIFICATION",
-            "content": {"file": "auth.py"},
-            "priority": "NORMAL",
-            "timestamp": "2025-01-23T12:00:00Z"
-        }
-    ],
-    "count": 1
-}
-```
-
-**Example:**
-
-```python
-result = await get_repository_messages(
-    receiver_repo="my-frontend",
-    message_type="CODE_CHANGE_NOTIFICATION",
-    limit=10
-)
-print(f"Messages: {result['count']}")
-```
-
-______________________________________________________________________
-
-### `acknowledge_repository_message` ✅
-
-Acknowledge receipt of a message.
-
-**Signature:**
-
-```python
-async def acknowledge_repository_message(
-    message_id: str,
-    receiver_repo: str,
-) -> dict[str, Any]
-```
-
-**Parameters:**
-
-- `message_id` - ID of the message to acknowledge
-- `receiver_repo` - Repository acknowledging the message
-
-**Returns:**
-
-```python
-{
-    "status": "success",
-    "message_id": "msg_abc123",
-    "acknowledged_by": "my-frontend",
-    "success": true
-}
-```
-
-**Example:**
-
-```python
-result = await acknowledge_repository_message(
-    message_id="msg_abc123",
-    receiver_repo="my-frontend"
-)
-print(f"Acknowledged: {result['success']}")
-```
-
-______________________________________________________________________
-
-### `notify_repository_changes` ✅
-
-Notify other repositories about changes in a repository.
-
-**Signature:**
-
-```python
-async def notify_repository_changes(
-    repo_path: str,
-    changes: list[dict[str, Any]],
-) -> dict[str, Any]
-```
-
-**Parameters:**
-
-- `repo_path` - Path of the repository with changes
-- `changes` - List of changes to notify about
-
-**Returns:**
-
-```python
-{
-    "status": "success",
-    "messages_sent": 2,
-    "changes_notified": 2
-}
-```
-
-**Example:**
-
-```python
-result = await notify_repository_changes(
-    repo_path="/path/to/my-api",
-    changes=[
-        {"type": "file_modified", "path": "auth.py"},
-        {"type": "file_added", "path": "tests/test_auth.py"}
-    ]
-)
-print(f"Notified {result['messages_sent']} repos")
-```
-
-______________________________________________________________________
-
-### `notify_workflow_status` ✅
-
-Notify other repositories about workflow status changes.
-
-**Signature:**
-
-```python
-async def notify_workflow_status(
-    workflow_id: str,
-    status: str,
-    repo_path: str,
-    target_repos: list[str] | None = None,
-) -> dict[str, Any]
-```
-
-**Parameters:**
-
-- `workflow_id` - ID of the workflow
-- `status` - New status of the workflow
-- `repo_path` - Repository where workflow is running
-- `target_repos` - Optional list of target repositories
-
-**Returns:**
-
-```python
-{
-    "status": "success",
-    "messages_sent": 3,
-    "workflow_id": "wf_abc123"
-}
-```
-
-**Example:**
-
-```python
-result = await notify_workflow_status(
-    workflow_id="wf_abc123",
-    status="completed",
-    repo_path="/path/to/my-api",
-    target_repos=["my-frontend"]
-)
-print(f"Notified {result['messages_sent']} repos")
-```
-
-______________________________________________________________________
-
-### `send_quality_alert` ✅
-
-Send a quality alert to other repositories.
-
-**Signature:**
-
-```python
-async def send_quality_alert(
-    repo_path: str,
-    alert_type: str,
-    description: str,
-    severity: str = "medium",
-) -> dict[str, Any]
-```
-
-**Parameters:**
-
-- `repo_path` - Repository sending the alert
-- `alert_type` - Type of quality alert
-- `description` - Description of the quality issue
-- `severity` - Severity: `"low"`, `"medium"`, `"high"`, `"critical"`
-
-**Returns:**
-
-```python
-{
-    "status": "success",
-    "messages_sent": 3,
-    "alert_type": "security_vulnerability",
-    "severity": "high"
-}
-```
-
-**Example:**
-
-```python
-result = await send_quality_alert(
-    repo_path="/path/to/my-api",
-    alert_type="security_vulnerability",
-    description="SQL injection vulnerability in auth.py",
-    severity="critical"
-)
-print(f"Alert sent to {result['messages_sent']} repos")
-```
-
-______________________________________________________________________
-
-## Session Buddy Tools
-
-Integration with Session Buddy for session management and code analysis.
-
-> Canonical note: the Session-Buddy code-intel tools below are compatibility
-> shims. For new work, prefer `code_index.index_repo` for indexing,
-> `treesitter_tools` for structural parsing, and `search_tools.hybrid_search`
-> for retrieval. Keep using the Session-Buddy messaging/session tools for
-> channel and project coordination.
-
-### `index_code_graph` 🚧
-
-Legacy shim for codebase indexing in Session Buddy.
-
-**Signature:**
-
-```python
-async def index_code_graph(
-    project_path: str,
-    include_docs: bool = True,
-) -> dict[str, Any]
-```
-
-**Parameters:**
-
-- `project_path` - Path to the project to analyze
-- `include_docs` - Whether to include documentation indexing
-
-**Returns:**
-
-```python
-{
-    "status": "success",
-    "result": {
-        "files_indexed": 42,
-        "functions_indexed": 156,
-        "classes_indexed": 23
-    }
-}
-```
-
-**Example:**
-
-```python
-result = await index_code_graph(
-    project_path="/path/to/my-project",
-    include_docs=True
-)
-print(f"Indexed {result['result']['functions_indexed']} functions")
-```
-
-______________________________________________________________________
-
-### `get_function_context` 🚧
-
-Get caller/callee context for a function.
-
-**Signature:**
-
-```python
-async def get_function_context(
-    project_path: str,
-    function_name: str,
-) -> dict[str, Any]
-```
-
-**Parameters:**
-
-- `project_path` - Path to the project
-- `function_name` - Name of the function to analyze
-
-**Returns:**
-
-```python
-{
-    "status": "success",
-    "result": {
-        "function": "authenticate_user",
-        "callers": ["login", "verify_token"],
-        "callees": ["validate_password", "generate_jwt"]
-    }
-}
-```
-
-**Example:**
-
-```python
-result = await get_function_context(
-    project_path="/path/to/my-project",
-    function_name="authenticate_user"
-)
-print(f"Called by: {result['result']['callers']}")
-```
-
-______________________________________________________________________
-
-### `find_related_code` 🚧
-
-Legacy shim for related-code lookup.
-
-**Signature:**
-
-```python
-async def find_related_code(
-    project_path: str,
-    file_path: str,
-) -> dict[str, Any]
-```
-
-**Parameters:**
-
-- `project_path` - Path to the project
-- `file_path` - Path to the file to analyze
-
-**Returns:**
-
-```python
-{
-    "status": "success",
-    "result": {
-        "imports": ["auth", "database"],
-        "imported_by": ["api", "tests"],
-        "related_files": ["auth.py", "models.py"]
-    }
-}
-```
-
-**Example:**
-
-```python
-result = await find_related_code(
-    project_path="/path/to/my-project",
-    file_path="api/auth.py"
-)
-print(f"Related files: {result['result']['related_files']}")
-```
-
-______________________________________________________________________
-
-### `index_documentation` 🚧
-
-Legacy shim for documentation indexing.
-
-**Signature:**
-
-```python
-async def index_documentation(
-    project_path: str,
-) -> dict[str, Any]
-```
-
-**Parameters:**
-
-- `project_path` - Path to the project
-
-**Returns:**
-
-```python
-{
-    "status": "success",
-    "result": {
-        "docstrings_indexed": 87,
-        "modules_indexed": 12
-    }
-}
-```
-
-**Example:**
-
-```python
-result = await index_documentation(project_path="/path/to/my-project")
-print(f"Indexed {result['result']['docstrings_indexed']} docstrings")
-```
-
-______________________________________________________________________
-
-### `search_documentation` 🚧
-
-Legacy shim for documentation search.
-
-**Signature:**
-
-```python
-async def search_documentation(
-    query: str,
-) -> dict[str, Any]
-```
-
-**Parameters:**
-
-- `query` - Search query
-
-**Returns:**
-
-```python
-{
-    "status": "success",
-    "result": [
-        {
-            "content": "Function docstring...",
-            "file": "auth.py",
-            "line": 42,
-            "score": 0.95
-        }
-    ]
-}
-```
-
-**Example:**
-
-```python
-result = await search_documentation(query="authentication function")
-for match in result['result']:
-    print(f"{match['file']}:{match['line']} - {match['content'][:50]}...")
-```
-
-______________________________________________________________________
-
-### `send_project_message` 🚧
+**Source:** `session_buddy_tools.py:175`
 
 Send message between projects for Session Buddy.
 
-**Signature:**
+### `list_project_messages` ✅
 
-```python
-async def send_project_message(
-    from_project: str,
-    to_project: str,
-    subject: str,
-    message: str,
-    priority: str = "NORMAL",
-) -> dict[str, Any]
-```
+**Signature:** `async def list_project_messages(project: str, user_id: str | None)`
 
-**Parameters:**
-
-- `from_project` - Source project identifier
-- `to_project` - Destination project identifier
-- `subject` - Message subject
-- `message` - Message content
-- `priority` - Priority: `"NORMAL"`, `"HIGH"`, `"CRITICAL"`
-
-**Returns:**
-
-```python
-{
-    "status": "success",
-    "result": {
-        "message_id": "proj_msg_abc123",
-        "sent_at": "2025-01-23T12:00:00Z"
-    }
-}
-```
-
-**Example:**
-
-```python
-result = await send_project_message(
-    from_project="my-api",
-    to_project="my-frontend",
-    subject="API breaking change",
-    message="JWT endpoint signature changed",
-    priority="HIGH"
-)
-print(f"Sent: {result['result']['message_id']}")
-```
-
-______________________________________________________________________
-
-### `list_project_messages` 🚧
+**Source:** `session_buddy_tools.py:211`
 
 List messages for a project in Session Buddy.
 
-**Signature:**
+### `track_channel_session` ✅
 
-```python
-async def list_project_messages(
-    project: str,
-) -> dict[str, Any]
-```
+**Signature:** `async def track_channel_session(event_type: str, channel_type: str, channel_id: str, sender_id: str, session_scope: str, thread_id: str | None, component_name: str, workspace: str | None, platform: str | None, message_preview: str | None, message_count: int, metadata: dict[str, Any] | None, user_id: str | None)`
 
-**Parameters:**
+**Source:** `session_buddy_tools.py:229`
 
-- `project` - Project identifier
+Track a channel session event (start / end / heartbeat) in Session-Buddy.
 
-**Returns:**
+### `get_channel_sessions` ✅
 
-```python
-{
-    "status": "success",
-    "result": [
-        {
-            "message_id": "proj_msg_abc123",
-            "from_project": "my-api",
-            "subject": "API breaking change",
-            "timestamp": "2025-01-23T12:00:00Z"
-        }
-    ]
-}
-```
+**Signature:** `async def get_channel_sessions(channel_type: str | None, channel_id: str | None, sender_id: str | None, session_scope: str | None, limit: int, user_id: str | None)`
 
-**Example:**
+**Source:** `session_buddy_tools.py:294`
 
-```python
-result = await list_project_messages(project="my-frontend")
-for msg in result['result']:
-    print(f"{msg['subject']} from {msg['from_project']}")
-```
+Query active or recent channel sessions tracked in Session-Buddy.
 
 ______________________________________________________________________
 
-## OpenTelemetry Tools
-
-Ingest and search OpenTelemetry traces using Akosha HotStore (DuckDB).
+## OpenTelemetry Trace
 
 ### `ingest_otel_traces` ✅
 
+**Signature:** `async def ingest_otel_traces(log_files: list[str] | None, trace_data: list[dict] | None, system_id: str)`
+
+**Source:** `otel_tools.py:44`
+
 Ingest OpenTelemetry traces from log files or direct trace data.
-
-**Signature:**
-
-```python
-async def ingest_otel_traces(
-    log_files: list[str] | None = None,
-    trace_data: list[dict] | None = None,
-    system_id: str = "unknown",
-) -> dict[str, Any]
-```
-
-**Parameters:**
-
-- `log_files` - Optional list of log file paths to ingest (JSON format)
-- `trace_data` - Optional list of trace dictionaries to ingest directly
-- `system_id` - System identifier (e.g., `"claude"`, `"qwen"`, or custom name)
-
-**Returns:**
-
-```python
-{
-    "status": "success",
-    "traces_ingested": 150,
-    "files_processed": 2,
-    "errors": [],
-    "system_id": "claude",
-    "storage_backend": "duckdb_hotstore"
-}
-```
-
-**Example:**
-
-```python
-result = await ingest_otel_traces(
-    log_files=["/path/to/claude_session.json"],
-    system_id="claude"
-)
-print(f"Ingested {result['traces_ingested']} traces")
-```
-
-______________________________________________________________________
 
 ### `search_otel_traces` ✅
 
+**Signature:** `async def search_otel_traces(query: str, system_id: str | None, limit: int, threshold: float | None)`
+
+**Source:** `otel_tools.py:170`
+
 Semantic search over OTel traces using vector embeddings.
-
-**Signature:**
-
-```python
-async def search_otel_traces(
-    query: str,
-    system_id: str | None = None,
-    limit: int = 10,
-    threshold: float | None = None,
-) -> list[dict[str, Any]]
-```
-
-**Parameters:**
-
-- `query` - Natural language search query (e.g., `"RAG pipeline timeout"`)
-- `system_id` - Optional system filter (e.g., `"claude"`, `"qwen"`)
-- `limit` - Maximum results to return
-- `threshold` - Optional minimum similarity score (0.0-1.0)
-
-**Returns:**
-
-```python
-[
-    {
-        "conversation_id": "conv_abc123",
-        "system_id": "claude",
-        "content": "Discussion about RAG pipeline...",
-        "timestamp": "2025-01-23T12:00:00Z",
-        "similarity": 0.92,
-        "metadata": {...}
-    }
-]
-```
-
-**Example:**
-
-```python
-results = await search_otel_traces(
-    query="RAG pipeline failed with timeout",
-    system_id="claude",
-    limit=5,
-    threshold=0.75
-)
-for result in results:
-    print(f"{result['content'][:100]}... (similarity: {result['similarity']})")
-```
-
-______________________________________________________________________
 
 ### `get_otel_trace` ✅
 
+**Signature:** `async def get_otel_trace(trace_id: str)`
+
+**Source:** `otel_tools.py:216`
+
 Retrieve a specific OTel trace by ID.
 
-**Signature:**
+### `query_local_traces` ✅
 
-```python
-async def get_otel_trace(
-    trace_id: str,
-) -> dict[str, Any] | None
-```
+**Signature:** `async def query_local_traces(task_class: str, time_range_minutes: int, system_id: str | None, limit: int)`
 
-**Parameters:**
+**Source:** `otel_tools.py:251`
 
-- `trace_id` - Unique trace identifier (conversation_id in HotStore)
-
-**Returns:**
-
-```python
-{
-    "conversation_id": "conv_abc123",
-    "system_id": "claude",
-    "content": "Full trace content...",
-    "timestamp": "2025-01-23T12:00:00Z",
-    "metadata": {...}
-}
-```
-
-Returns `None` if trace not found.
-
-**Example:**
-
-```python
-trace = await get_otel_trace(trace_id="conv_abc123")
-if trace:
-    print(f"Found trace from {trace['timestamp']}")
-else:
-    print("Trace not found")
-```
-
-______________________________________________________________________
+Query OTel traces by task_class and time range.
 
 ### `otel_ingester_stats` ✅
 
+**Signature:** `async def otel_ingester_stats()`
+
+**Source:** `otel_tools.py:356`
+
 Get statistics about the OTel trace ingester.
-
-**Signature:**
-
-```python
-async def otel_ingester_stats() -> dict[str, Any]
-```
-
-**Returns:**
-
-```python
-{
-    "storage_backend": "duckdb_hotstore",
-    "hot_store_path": ":memory:",
-    "embedding_model": "all-MiniLM-L6-v2",
-    "cache_size": 1000,
-    "similarity_threshold": 0.7,
-    "status": "healthy",
-    "total_traces": "unknown",
-    "traces_by_system": {}
-}
-```
-
-**Example:**
-
-```python
-stats = await otel_ingester_stats()
-print(f"Storage: {stats['storage_backend']}")
-print(f"Status: {stats['status']}")
-```
 
 ______________________________________________________________________
 
-## Summary
+## Coordination (Issues, Todos, Plans)
 
-**Total MCP Tools: 49**
+### `coord_list_issues` ✅
 
-- **Pool Management:** 10 tools (✅ Production Ready)
-- **Worker Orchestration:** 8 tools (✅ Production Ready)
-- **Coordination:** 13 tools (✅ Production Ready)
-- **Repository Messaging:** 7 tools (✅ Production Ready)
-- **Session Buddy:** 7 tools (🚧 In Development)
-- **OpenTelemetry:** 4 tools (✅ Production Ready)
+**Signature:** `async def coord_list_issues(status: str | None, priority: str | None, repo: str | None, assignee: str | None)`
 
-For more detailed specifications, see [MCP_TOOLS_SPECIFICATION.md](MCP_TOOLS_SPECIFICATION.md).
+**Source:** `coordination_tools.py:30`
 
-For usage examples, see [GETTING_STARTED.md](GETTING_STARTED.md).
+List cross-repository issues with optional filtering.
+
+### `coord_get_issue` ✅
+
+**Signature:** `async def coord_get_issue(issue_id: str)`
+
+**Source:** `coordination_tools.py:54`
+
+Get detailed information about a specific issue.
+
+### `coord_create_issue` ✅
+
+**Signature:** `async def coord_create_issue(title: str, description: str, repos: list[str], priority: str, severity: str, assignee: str | None, target: str | None, labels: list[str] | None)`
+
+**Source:** `coordination_tools.py:66`
+
+Create a new cross-repository issue.
+
+### `coord_update_issue` ✅
+
+**Signature:** `async def coord_update_issue(issue_id: str, status: str | None, priority: str | None)`
+
+**Source:** `coordination_tools.py:119`
+
+Update an existing issue.
+
+### `coord_close_issue` ✅
+
+**Signature:** `async def coord_close_issue(issue_id: str)`
+
+**Source:** `coordination_tools.py:153`
+
+Close an issue.
+
+### `coord_list_todos` ✅
+
+**Signature:** `async def coord_list_todos(status: str | None, repo: str | None, assignee: str | None)`
+
+**Source:** `coordination_tools.py:164`
+
+List todo items with optional filtering.
+
+### `coord_get_todo` ✅
+
+**Signature:** `async def coord_get_todo(todo_id: str)`
+
+**Source:** `coordination_tools.py:187`
+
+Get detailed information about a specific todo.
+
+### `coord_create_todo` ✅
+
+**Signature:** `async def coord_create_todo(task: str, description: str, repo: str, estimate_hours: float, priority: str, assignee: str | None, blocked_by: list[str] | None, labels: list[str] | None, acceptance_criteria: list[str] | None)`
+
+**Source:** `coordination_tools.py:199`
+
+Create a new todo item.
+
+### `coord_complete_todo` ✅
+
+**Signature:** `async def coord_complete_todo(todo_id: str)`
+
+**Source:** `coordination_tools.py:254`
+
+Mark a todo as completed.
+
+### `coord_get_blocking_issues` ✅
+
+**Signature:** `async def coord_get_blocking_issues(repo: str)`
+
+**Source:** `coordination_tools.py:272`
+
+Get all issues blocking a specific repository.
+
+### `coord_check_dependencies` ✅
+
+**Signature:** `async def coord_check_dependencies(consumer: str | None)`
+
+**Source:** `coordination_tools.py:280`
+
+Validate inter-repository dependencies.
+
+### `coord_get_repo_status` ✅
+
+**Signature:** `async def coord_get_repo_status(repo: str)`
+
+**Source:** `coordination_tools.py:290`
+
+Get comprehensive coordination status for a repository.
+
+### `coord_list_plans` ✅
+
+**Signature:** `async def coord_list_plans(status: str | None, repo: str | None)`
+
+**Source:** `coordination_tools.py:311`
+
+List cross-repository plans with optional filtering.
+
+### `coord_list_dependencies` ✅
+
+**Signature:** `async def coord_list_dependencies(consumer: str | None, provider: str | None, dependency_type: str | None)`
+
+**Source:** `coordination_tools.py:322`
+
+List inter-repository dependencies with optional filtering.
+
+### `coord_get_ecosystem_status` ✅
+
+**Signature:** `async def coord_get_ecosystem_status()`
+
+**Source:** `coordination_tools.py:336`
+
+Get unified ecosystem coordination status.
+
+______________________________________________________________________
+
+## Repository Messaging
+
+### `send_repository_message` ✅
+
+**Signature:** `async def send_repository_message(sender_repo: str, receiver_repo: str, message_type: str, content: dict[str, Any], priority: str)`
+
+**Source:** `repository_messaging_tools.py:35`
+
+Send a message from one repository to another.
+
+### `broadcast_repository_message` ✅
+
+**Signature:** `async def broadcast_repository_message(sender_repo: str, message_type: str, content: dict[str, Any], target_repos: list[str] | None, priority: str)`
+
+**Source:** `repository_messaging_tools.py:81`
+
+Broadcast a message to multiple repositories.
+
+### `get_repository_messages` ✅
+
+**Signature:** `async def get_repository_messages(receiver_repo: str, message_type: str | None, limit: int, since: str | None)`
+
+**Source:** `repository_messaging_tools.py:127`
+
+Get messages for a specific repository.
+
+### `acknowledge_repository_message` ✅
+
+**Signature:** `async def acknowledge_repository_message(message_id: str, receiver_repo: str)`
+
+**Source:** `repository_messaging_tools.py:183`
+
+Acknowledge receipt of a message.
+
+### `notify_repository_changes` ✅
+
+**Signature:** `async def notify_repository_changes(repo_path: str, changes: list[dict[str, Any]])`
+
+**Source:** `repository_messaging_tools.py:203`
+
+Notify other repositories about changes in a repository.
+
+### `notify_workflow_status` ✅
+
+**Signature:** `async def notify_workflow_status(workflow_id: str, status: str, repo_path: str, target_repos: list[str] | None)`
+
+**Source:** `repository_messaging_tools.py:219`
+
+Notify other repositories about workflow status changes.
+
+### `send_quality_alert` ✅
+
+**Signature:** `async def send_quality_alert(repo_path: str, alert_type: str, description: str, severity: str)`
+
+**Source:** `repository_messaging_tools.py:237`
+
+Send a quality alert to other repositories.
+
+______________________________________________________________________
+
+## Hybrid Search
+
+### `hybrid_search` ✅
+
+**Signature:** `async def hybrid_search(query: str, repository: str | None, limit: int, semantic_weight: float, lexical_weight: float, min_score: float)`
+
+**Source:** `search_tools.py:63`
+
+Search across documents using hybrid semantic + lexical search.
+
+### `index_document` ✅
+
+**Signature:** `async def index_document(doc_id: str, title: str, content: str, repository: str | None, source_type: str, metadata: dict[str, Any] | None)`
+
+**Source:** `search_tools.py:107`
+
+Index a document for hybrid search.
+
+### `delete_document` ✅
+
+**Signature:** `async def delete_document(doc_id: str)`
+
+**Source:** `search_tools.py:157`
+
+Delete a document from the search index.
+
+### `search_by_repository` ✅
+
+**Signature:** `async def search_by_repository(repository: str, query: str, limit: int)`
+
+**Source:** `search_tools.py:190`
+
+Search documents within a specific repository.
+
+### `cross_repo_search` ✅
+
+**Signature:** `async def cross_repo_search(query: str, scope: str, repo_filter: str | None, limit: int, stream_channel: bool)`
+
+**Source:** `search_tools.py:222`
+
+Fan-out search across Akosha + Session-Buddy and aggregate results.
+
+______________________________________________________________________
+
+## Capability Resolution
+
+### `list_capabilities` ✅
+
+**Signature:** `async def list_capabilities()`
+
+**Source:** `capability_tools.py:210`
+
+Ungated introspection tool: enumerate every engine + worker registration.
+
+### `resolve_capabilities` ✅
+
+**Signature:** `async def resolve_capabilities(requires: list[str], prompt: str, selector: str, user_id: str | None)`
+
+**Source:** `capability_tools.py:234`
+
+Resolve which engines/workers can satisfy each required capability.
+
+### `plan_capability` ✅
+
+**Signature:** `async def plan_capability(requires: list[str], prompt: str, selector: str, trace_id: str | None, user_id: str | None)`
+
+**Source:** `capability_tools.py:286`
+
+Plan the DAG; returns the ExecutionDAG JSON (no engine dispatch).
+
+### `execute_capability` ✅
+
+**Signature:** `async def execute_capability(requires: list[str], prompt: str, selector: str, trace_id: str | None, user_id: str | None)`
+
+**Source:** `capability_tools.py:349`
+
+Plan the DAG and return a CapabilityExecutionResult.
+
+### `get_capability_result` ✅
+
+**Signature:** `async def get_capability_result(trace_id: TraceId)`
+
+**Source:** `get_capability_result_tool.py:28`
+
+Read back persisted envelopes for a trace_id from Dhara.
+
+______________________________________________________________________
+
+## Clone Detection & Refactor
+
+### `clone_detect_ecosystem` ✅
+
+**Signature:** `async def clone_detect_ecosystem(repos: list[str] | None, min_similarity: float, detect_until_dry: bool, k_empty_rounds: int, max_iterations: int)`
+
+**Source:** `clone_tools.py:318`
+
+Fan out clone detection across the ecosystem; returns job-id immediately.
+
+### `clone_refactor_group` ✅
+
+**Signature:** `async def clone_refactor_group(cluster_id: str, extraction_target: str | None)`
+
+**Source:** `clone_tools.py:342`
+
+Trigger cross-repo clone refactor DAG; returns job-id immediately.
+
+### `clone_refactor_status` ✅
+
+**Signature:** `async def clone_refactor_status(limit: int)`
+
+**Source:** `clone_tools.py:359`
+
+List open clone clusters with confidence tier and PR status.
+
+### `get_verification_result` ✅
+
+**Signature:** `async def get_verification_result(proposal_id: str)`
+
+**Source:** `clone_tools.py:366`
+
+Return the stored ``VerificationResult`` for a given ``proposal_id``.
+
+______________________________________________________________________
+
+## Learning Pipeline
+
+### `get_pipeline_status` ✅
+
+**Signature:** `async def get_pipeline_status()`
+
+**Source:** `learning_pipeline_tools.py:53`
+
+Get current learning pipeline status including running state, cycle count, and last result.
+
+### `list_evidence` ✅
+
+**Signature:** `async def list_evidence(query: str, limit: int)`
+
+**Source:** `learning_pipeline_tools.py:58`
+
+List stored learning evidence, optionally filtered by a search query.
+
+### `trigger_synthesis` ✅
+
+**Signature:** `async def trigger_synthesis()`
+
+**Source:** `learning_pipeline_tools.py:74`
+
+Trigger a single learning pipeline cycle manually. Returns cycle result.
+
+### `list_pending_drafts` ✅
+
+**Signature:** `async def list_pending_drafts()`
+
+**Source:** `learning_pipeline_tools.py:89`
+
+List all active skill drafts in the registry.
+
+### `get_promotion_history` ✅
+
+**Signature:** `async def get_promotion_history(skill_id: str)`
+
+**Source:** `learning_pipeline_tools.py:113`
+
+Get version and promotion history for a specific skill.
+
+______________________________________________________________________
+
+## Self-Improvement & Approvals
+
+### `review_and_fix` ✅
+
+**Signature:** `async def review_and_fix(scope: str, auto_fix: bool, dry_run: bool)`
+
+**Source:** `self_improvement_tools.py:718`
+
+Run comprehensive review and optionally fix issues.
+
+### `request_approval` ✅
+
+**Signature:** `async def request_approval(approval_type: str, context: dict[str, Any])`
+
+**Source:** `self_improvement_tools.py:732`
+
+Request manual approval for version bump or publish.
+
+### `respond_to_approval` ✅
+
+**Signature:** `async def respond_to_approval(approval_id: str, approved: bool, selected_option: int | None, rejection_reason: str | None)`
+
+**Source:** `self_improvement_tools.py:743`
+
+Respond to a pending approval request.
+
+### `get_pending_approvals` ✅
+
+**Signature:** `async def get_pending_approvals()`
+
+**Source:** `self_improvement_tools.py:758`
+
+Get all pending approval requests.
+
+### `self_improvement_analyze_failures` ✅
+
+**Signature:** `async def self_improvement_analyze_failures(repo: str | None, hook: str | None, time_window_days: int)`
+
+**Source:** `self_improvement_tools.py:763`
+
+Query Dhara for accumulated fix-failure records and surface patterns.
+
+### `self_improvement_generate` ✅
+
+**Signature:** `async def self_improvement_generate(fingerprint: str, pattern_description: str)`
+
+**Source:** `self_improvement_tools.py:776`
+
+Trigger improvement generation for a failure pattern (returns job-id immediately).
+
+### `self_improvement_status` ✅
+
+**Signature:** `async def self_improvement_status(limit: int)`
+
+**Source:** `self_improvement_tools.py:787`
+
+List recent self-improvement records with before/after failure rates.
+
+______________________________________________________________________
+
+## Goal Team
+
+### `team_from_goal` ✅
+
+**Signature:** `async def team_from_goal(goal: str, name: str | None, mode: str | None, auto_run: bool, task: str | None, user_id: str | None)`
+
+**Source:** `goal_team_tools.py:52`
+
+Create an agent team from a natural language goal.
+
+### `parse_goal` ✅
+
+**Signature:** `async def parse_goal(goal: str, user_id: str | None)`
+
+**Source:** `goal_team_tools.py:441`
+
+Parse a goal to see what team would be created.
+
+### `list_team_skills` ✅
+
+**Signature:** `async def list_team_skills()`
+
+**Source:** `goal_team_tools.py:632`
+
+List all available skills for goal-driven team creation.
+
+______________________________________________________________________
+
+## OpenHands
+
+### `openhands_run` ✅
+
+**Signature:** `async def openhands_run(prompt: str, timeout: int, run_quality_check: bool)`
+
+**Source:** `openhands_tools.py:86`
+
+Submit an autonomous development task to OpenHands.
+
+### `openhands_status` ✅
+
+**Signature:** `async def openhands_status(conv_id: str)`
+
+**Source:** `openhands_tools.py:103`
+
+Get the status of a running OpenHands conversation.
+
+### `openhands_cancel` ✅
+
+**Signature:** `async def openhands_cancel(conv_id: str)`
+
+**Source:** `openhands_tools.py:115`
+
+Cancel a running OpenHands conversation.
+
+### `openhands_health` ✅
+
+**Signature:** `async def openhands_health()`
+
+**Source:** `openhands_tools.py:127`
+
+Check whether the OpenHands service is reachable.
+
+______________________________________________________________________
+
+## PyCharm Integration
+
+### `pycharm_health` ✅
+
+**Signature:** `async def pycharm_health()`
+
+**Source:** `pycharm_tools.py:106`
+
+Check PyCharm MCP connectivity and health status.
+
+### `pycharm_run_diagnostics` ✅
+
+**Signature:** `async def pycharm_run_diagnostics(file_path: str, errors_only: bool)`
+
+**Source:** `pycharm_tools.py:151`
+
+Run diagnostics on a file using PyCharm's code inspection.
+
+### `pycharm_open_file` ✅
+
+**Signature:** `async def pycharm_open_file(file_path: str, line: int | None)`
+
+**Source:** `pycharm_tools.py:189`
+
+Open a file in PyCharm editor, optionally at a specific line.
+
+### `pycharm_search_in_project` ✅
+
+**Signature:** `async def pycharm_search_in_project(pattern: str, file_pattern: str | None)`
+
+**Source:** `pycharm_tools.py:219`
+
+Search files in project using PyCharm's search index.
+
+### `pycharm_replace_in_file` ✅
+
+**Signature:** `async def pycharm_replace_in_file(file_path: str, search_text: str, replace_text: str)`
+
+**Source:** `pycharm_tools.py:247`
+
+Find and replace text in a file via PyCharm.
+
+### `pycharm_reformat_file` ✅
+
+**Signature:** `async def pycharm_reformat_file(file_path: str)`
+
+**Source:** `pycharm_tools.py:285`
+
+Reformat a file using PyCharm's code formatter.
+
+### `pycharm_refactor_symbol` ✅
+
+**Signature:** `async def pycharm_refactor_symbol(symbol_name: str, new_name: str, scope: str)`
+
+**Source:** `pycharm_tools.py:312`
+
+Rename/refactor a symbol across project files via PyCharm.
+
+### `pycharm_list_problems` ✅
+
+**Signature:** `async def pycharm_list_problems(file_path: str, severity: str | None)`
+
+**Source:** `pycharm_tools.py:353`
+
+List code inspections and problems for a file via PyCharm.
+
+______________________________________________________________________
+
+## Desktop Automation
+
+### `automation_check_permissions` ✅
+
+**Signature:** `async def automation_check_permissions()`
+
+**Source:** `desktop_automation_tools.py:67`
+
+Check automation permissions (accessibility, screen recording).
+
+### `automation_status` ✅
+
+**Signature:** `async def automation_status()`
+
+**Source:** `desktop_automation_tools.py:76`
+
+Get automation manager status and statistics.
+
+### `automation_launch_app` ✅
+
+**Signature:** `async def automation_launch_app(bundle_id: Annotated[str, Field(description='Application bundle identifier')], dry_run: Annotated[bool, Field(description='Simulate without executing')])`
+
+**Source:** `desktop_automation_tools.py:94`
+
+Launch an application by bundle identifier.
+
+### `automation_quit_app` ✅
+
+**Signature:** `async def automation_quit_app(bundle_id: Annotated[str, Field(description='Application bundle identifier')], force: Annotated[bool, Field(description='Force quit')])`
+
+**Source:** `desktop_automation_tools.py:106`
+
+Quit an application.
+
+### `automation_activate_app` ✅
+
+**Signature:** `async def automation_activate_app(bundle_id: Annotated[str, Field(description='Application bundle identifier')])`
+
+**Source:** `desktop_automation_tools.py:118`
+
+Activate (bring to front) an application.
+
+### `automation_list_apps` ✅
+
+**Signature:** `async def automation_list_apps()`
+
+**Source:** `desktop_automation_tools.py:129`
+
+List all running applications.
+
+### `automation_get_active_app` ✅
+
+**Signature:** `async def automation_get_active_app()`
+
+**Source:** `desktop_automation_tools.py:138`
+
+Get the currently active (frontmost) application.
+
+### `automation_list_windows` ✅
+
+**Signature:** `async def automation_list_windows(bundle_id: Annotated[str, Field(description='Application bundle identifier')])`
+
+**Source:** `desktop_automation_tools.py:151`
+
+List all windows for an application.
+
+### `automation_resize_window` ✅
+
+**Signature:** `async def automation_resize_window(window_id: Annotated[str, Field(description='Window identifier')], width: Annotated[int, Field(description='New width in pixels')], height: Annotated[int, Field(description='New height in pixels')])`
+
+**Source:** `desktop_automation_tools.py:162`
+
+Resize a window.
+
+### `automation_move_window` ✅
+
+**Signature:** `async def automation_move_window(window_id: Annotated[str, Field(description='Window identifier')], x: Annotated[int, Field(description='New X position')], y: Annotated[int, Field(description='New Y position')])`
+
+**Source:** `desktop_automation_tools.py:175`
+
+Move a window to a new position.
+
+### `automation_close_window` ✅
+
+**Signature:** `async def automation_close_window(window_id: Annotated[str, Field(description='Window identifier')])`
+
+**Source:** `desktop_automation_tools.py:188`
+
+Close a window.
+
+### `automation_click_menu` ✅
+
+**Signature:** `async def automation_click_menu(bundle_id: Annotated[str, Field(description='Application bundle identifier')], menu_path: Annotated[list[str], Field(description="Menu path (e.g., ['File', 'Save'])")])`
+
+**Source:** `desktop_automation_tools.py:203`
+
+Navigate menu and click an item.
+
+### `automation_list_menus` ✅
+
+**Signature:** `async def automation_list_menus(bundle_id: Annotated[str, Field(description='Application bundle identifier')])`
+
+**Source:** `desktop_automation_tools.py:215`
+
+List all menus for an application.
+
+### `automation_type_text` ✅
+
+**Signature:** `async def automation_type_text(text: Annotated[str, Field(description='Text to type')], interval: Annotated[float, Field(description='Delay between keystrokes')], dry_run: Annotated[bool, Field(description='Simulate')])`
+
+**Source:** `desktop_automation_tools.py:230`
+
+Type text at current cursor position.
+
+### `automation_press_key` ✅
+
+**Signature:** `async def automation_press_key(key: Annotated[str, Field(description='Key to press')], modifiers: Annotated[list[str] | None, Field(description="Modifiers (e.g., ['cmd', 'shift'])")])`
+
+**Source:** `desktop_automation_tools.py:243`
+
+Press a key with optional modifiers.
+
+### `automation_click` ✅
+
+**Signature:** `async def automation_click(x: Annotated[int, Field(description='X coordinate')], y: Annotated[int, Field(description='Y coordinate')], button: Annotated[str, Field(description='Mouse button (left/right/middle)')], clicks: Annotated[int, Field(description='Number of clicks')])`
+
+**Source:** `desktop_automation_tools.py:257`
+
+Click at coordinates.
+
+### `automation_drag` ✅
+
+**Signature:** `async def automation_drag(start_x: Annotated[int, Field(description='Starting X coordinate')], start_y: Annotated[int, Field(description='Starting Y coordinate')], end_x: Annotated[int, Field(description='Ending X coordinate')], end_y: Annotated[int, Field(description='Ending Y coordinate')], duration: Annotated[float, Field(description='Duration in seconds')])`
+
+**Source:** `desktop_automation_tools.py:271`
+
+Drag from one point to another.
+
+### `automation_scroll` ✅
+
+**Signature:** `async def automation_scroll(x: Annotated[int, Field(description='X coordinate')], y: Annotated[int, Field(description='Y coordinate')], dx: Annotated[int, Field(description='Horizontal scroll amount')], dy: Annotated[int, Field(description='Vertical scroll amount')])`
+
+**Source:** `desktop_automation_tools.py:286`
+
+Scroll at coordinates.
+
+### `automation_screenshot` ✅
+
+**Signature:** `async def automation_screenshot(region: Annotated[list[int] | None, Field(description='Region [x, y, width, height] or None for full screen')])`
+
+**Source:** `desktop_automation_tools.py:304`
+
+Capture a screenshot.
+
+### `automation_list_screens` ✅
+
+**Signature:** `async def automation_list_screens()`
+
+**Source:** `desktop_automation_tools.py:336`
+
+List all connected displays.
+
+### `automation_get_ui_elements` ✅
+
+**Signature:** `async def automation_get_ui_elements(bundle_id: Annotated[str, Field(description='Application bundle identifier')], window_id: Annotated[str | None, Field(description='Window identifier or None for all')])`
+
+**Source:** `desktop_automation_tools.py:349`
+
+Get UI elements for an application.
+
+### `automation_get_security_config` ✅
+
+**Signature:** `async def automation_get_security_config()`
+
+**Source:** `desktop_automation_tools.py:367`
+
+Get security configuration (blocklist, allowlist, etc.).
+
+### `automation_close` ✅
+
+**Signature:** `async def automation_close()`
+
+**Source:** `desktop_automation_tools.py:375`
+
+Close the automation manager and release resources.
+
+______________________________________________________________________
+
+## Adapter Management
+
+### `adapter_list` ✅
+
+**Signature:** `async def adapter_list(domain: str | None, capabilities: list[str] | None, healthy_only: bool)`
+
+**Source:** `adapter_registry_tools.py:38`
+
+List all registered adapters with optional filters.
+
+### `adapter_resolve` ✅
+
+**Signature:** `async def adapter_resolve(task_type: str, required_capabilities: list[str], domain: str)`
+
+**Source:** `adapter_registry_tools.py:83`
+
+Resolve the best adapter for task requirements.
+
+### `adapter_health` ✅
+
+**Signature:** `async def adapter_health(adapter_name: str | None)`
+
+**Source:** `adapter_registry_tools.py:129`
+
+Check health of adapters.
+
+### `adapter_enable` ✅
+
+**Signature:** `async def adapter_enable(adapter_name: str, enabled: bool, reason: str | None)`
+
+**Source:** `adapter_registry_tools.py:178`
+
+Enable or disable an adapter.
+
+### `adapter_metadata` ✅
+
+**Signature:** `async def adapter_metadata(adapter_name: str)`
+
+**Source:** `adapter_registry_tools.py:220`
+
+Get metadata for a specific adapter.
+
+### `adapter_cache_invalidate` ✅
+
+**Signature:** `async def adapter_cache_invalidate(source: str | None)`
+
+**Source:** `adapter_registry_tools.py:255`
+
+Invalidate adapter registry caches.
+
+### `adapter_discover` ✅
+
+**Signature:** `async def adapter_discover(force_refresh: bool)`
+
+**Source:** `adapter_registry_tools.py:294`
+
+Discover adapters from all sources.
+
+### `list_adapters` ✅
+
+**Signature:** `async def list_adapters()`
+
+**Source:** `server_core.py:1023`
+
+List available adapters.
+
+______________________________________________________________________
+
+## Health & Liveness
+
+### `get_health` ✅
+
+**Signature:** `async def get_health()`
+
+**Source:** `server_core.py:1073`
+
+Get overall health status of the system.
+
+### `get_liveness` ✅
+
+**Signature:** `async def get_liveness()`
+
+**Source:** `health_tools.py:393`
+
+Get liveness status for this service.
+
+### `get_readiness` ✅
+
+**Signature:** `async def get_readiness()`
+
+**Source:** `health_tools.py:413`
+
+Get readiness status for this service.
+
+### `health_check_service` ✅
+
+**Signature:** `async def health_check_service(service_name: str, host: str, port: int, timeout: int, use_tls: bool)`
+
+**Source:** `health_tools.py:120`
+
+Check health of a specific service.
+
+### `health_check_all` ✅
+
+**Signature:** `async def health_check_all()`
+
+**Source:** `health_tools.py:241`
+
+Check health of all configured services.
+
+### `wait_for_dependency` ✅
+
+**Signature:** `async def wait_for_dependency(service_name: str, host: str, port: int, timeout: int, required: bool, use_tls: bool)`
+
+**Source:** `health_tools.py:297`
+
+Wait for a specific dependency to become healthy.
+
+### `wait_for_all_dependencies` ✅
+
+**Signature:** `async def wait_for_all_dependencies()`
+
+**Source:** `health_tools.py:346`
+
+Wait for all configured dependencies to become healthy.
+
+### `mcp_list_tools` ✅
+
+**Signature:** `async def mcp_list_tools()`
+
+**Source:** `health_tools.py:155`
+
+List all registered MCP tools with their metadata.
+
+### `mcp_test_connection` ✅
+
+**Signature:** `async def mcp_test_connection(service_name: str, host: str, port: int, timeout: int, use_tls: bool, health_path: str)`
+
+**Source:** `health_tools.py:176`
+
+Ping a specific server to verify MCP connectivity.
+
+### `mcp_get_metrics` ✅
+
+**Signature:** `async def mcp_get_metrics()`
+
+**Source:** `health_tools.py:212`
+
+Return a metrics snapshot for the running MCP server.
+
+______________________________________________________________________
+
+## Observability & Backup
+
+### `get_observability_metrics` ✅
+
+**Signature:** `async def get_observability_metrics()`
+
+**Source:** `server_core.py:649`
+
+Get current observability metrics from the system.
+
+### `search_logs` ✅
+
+**Signature:** `async def search_logs(query: str | None, level: str | None, workflow_id: str | None, repo_path: str | None, start_time: str | None, end_time: str | None, size: int)`
+
+**Source:** `server_core.py:680`
+
+Search logs with various filters.
+
+### `search_workflows` ✅
+
+**Signature:** `async def search_workflows(workflow_id: str | None, adapter: str | None, task_type: str | None, status: str | None, start_time: str | None, end_time: str | None, size: int)`
+
+**Source:** `server_core.py:719`
+
+Search workflows with various filters.
+
+### `get_log_statistics` ✅
+
+**Signature:** `async def get_log_statistics()`
+
+**Source:** `server_core.py:776`
+
+Get log statistics and analytics.
+
+### `get_recovery_metrics` ✅
+
+**Signature:** `async def get_recovery_metrics()`
+
+**Source:** `server_core.py:790`
+
+Get metrics about error recovery and resilience operations.
+
+### `flush_metrics` ✅
+
+**Signature:** `async def flush_metrics()`
+
+**Source:** `server_core.py:1007`
+
+Force flush all pending metrics to exporters.
+
+### `get_active_alerts` ✅
+
+**Signature:** `async def get_active_alerts()`
+
+**Source:** `server_core.py:925`
+
+Get all active (non-acknowledged) alerts.
+
+### `acknowledge_alert` ✅
+
+**Signature:** `async def acknowledge_alert(alert_id: str, user: str)`
+
+**Source:** `server_core.py:953`
+
+Acknowledge an alert.
+
+### `trigger_test_alert` ✅
+
+**Signature:** `async def trigger_test_alert(severity: str, title: str, description: str)`
+
+**Source:** `server_core.py:969`
+
+Trigger a test alert for testing purposes.
+
+### `get_monitoring_dashboard` ✅
+
+**Signature:** `async def get_monitoring_dashboard()`
+
+**Source:** `server_core.py:903`
+
+Get comprehensive monitoring dashboard data.
+
+### `run_disaster_recovery_check` ✅
+
+**Signature:** `async def run_disaster_recovery_check()`
+
+**Source:** `server_core.py:876`
+
+Run a disaster recovery check.
+
+### `heal_workflows` ✅
+
+**Signature:** `async def heal_workflows()`
+
+**Source:** `server_core.py:893`
+
+Manually trigger healing of failed workflows.
+
+### `create_backup` ✅
+
+**Signature:** `async def create_backup(backup_type: str, backup_id: str | None)`
+
+**Source:** `server_core.py:804`
+
+Create a backup of the system.
+
+### `list_backups` ✅
+
+**Signature:** `async def list_backups()`
+
+**Source:** `server_core.py:827`
+
+List all available backups.
+
+### `restore_backup` ✅
+
+**Signature:** `async def restore_backup(backup_id: str)`
+
+**Source:** `server_core.py:858`
+
+Restore from a backup.
+
+______________________________________________________________________
+
+## User & Auth
+
+### `create_user` ✅
+
+**Signature:** `async def create_user(user_id: str, roles: list[str], allowed_repos: list[str] | None, user_id_caller: str | None)`
+
+**Source:** `server_core.py:582`
+
+Create a new user with specified roles.
+
+### `check_permission` ✅
+
+**Signature:** `async def check_permission(user_id: str, repo: str, permission: str)`
+
+**Source:** `server_core.py:617`
+
+Check if a user has a specific permission for a repository.
+
+______________________________________________________________________
+
+## Tool Discovery
+
+### `discover_tools` ✅
+
+**Signature:** `async def discover_tools(query: str | None, capability: str | None)`
+
+**Source:** `server_core.py:1185`
+
+Search for available MCP tools by name or capability.
+
+### `get_tool_versions` ✅
+
+**Signature:** `async def get_tool_versions(tool_name: str | None)`
+
+**Source:** `server_core.py:1157`
+
+Get version metadata for MCP tools.
+
+### `list_primitives_tool` ✅
+
+**Signature:** `async def list_primitives_tool(category: str | None)`
+
+**Source:** `primitive_tools.py:166`
+
+List primitives (MCP tools) registered on this server.
+
+### `show_primitive_tool` ✅
+
+**Signature:** `async def show_primitive_tool(name: str)`
+
+**Source:** `primitive_tools.py:183`
+
+Show full detail (docstring + input schema) for one primitive.
+
+______________________________________________________________________
+
+## Webhook
+
+### `webhook_replay_tool` ✅
+
+**Signature:** `async def webhook_replay_tool(webhook_id: str, user_id: str | None, token: str | None)`
+
+**Source:** `webhook_tools.py:49`
+
+Read back a stored ``WebhookIngress`` for ``webhook_id``.
+
+______________________________________________________________________
