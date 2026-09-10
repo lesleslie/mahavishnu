@@ -167,7 +167,7 @@ class AgnoToolsConfig(BaseModel):
     """
 
     mcp_server_url: str = Field(
-        default="http://localhost:8677/mcp",
+        default="http://localhost:8680/mcp",
         description="Mahavishnu MCP server URL for native tool integration",
     )
     mcp_transport: str = Field(

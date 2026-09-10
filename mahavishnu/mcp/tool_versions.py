@@ -235,8 +235,6 @@ TOOL_VERSIONS: dict[str, str] = {
     "workflow_get_outcome_tool": "1.0.0",
     # Coordination ecosystem status (coordination_tools.py)
     "coord_get_ecosystem_status": "1.0.0",
-    # Eventbridge tools (eventbridge_tools.py)
-    "publish_to_eventbridge": "1.0.0",
     # Learning pipeline tools (learning_pipeline_tools.py)
     "get_pipeline_status": "1.0.0",
     "list_evidence": "1.0.0",

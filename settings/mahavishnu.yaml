@@ -347,7 +347,7 @@ health:
       use_tls: false
     crow_mcp:
       host: "localhost"
-      port: 8675
+      port: 8693
       required: false
       timeout_seconds: 10
       use_tls: false
