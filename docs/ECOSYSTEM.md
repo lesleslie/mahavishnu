@@ -157,7 +157,6 @@ Follow these guidelines:
 **Tools & Integrations (3032-3039)**:
 
 - 3032: excalidraw (visualizer)
-- 3033: mermaid (visualizer)
 - 3034: raindropio (tool)
 - 3038: unifi (tool)
 - 3039: mailgun (tool)

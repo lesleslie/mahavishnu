@@ -62,50 +62,7 @@ ______________________________________________________________________
 
 ______________________________________________________________________
 
-## Method 2: Command-Line with mermaid-mcp (Advanced)
-
-### Prerequisites:
-
-```bash
-# Install mermaid-mcp package (if not already installed)
-pip install mermaid-mcp
-
-# Or using uv
-uv pip install mermaid-mcp
-```
-
-### Steps:
-
-1. **Install CLI tool**:
-
-   ```bash
-   npm install -g @mermaid-cli/mermaid-cli
-   ```
-
-1. **Generate PNG**:
-
-   ````bash
-   cd /Users/les/Projects/mahavishnu
-
-   # Extract Mermaid code
-   sed -n '/```mermaid/,/```/p' ARCHITECTURE.md | sed '1d;$d' > /tmp/arch_diagram.mmd
-
-   # Generate PNG
-   mermaid-cli -i /tmp/arch_diagram.mmd -o docs/diagrams/system-architecture.png
-
-   # Generate SVG (optional, for better quality)
-   mermaid-cli -i /tmp/arch_diagram.mmd -o docs/diagrams/system-architecture.svg
-   ````
-
-1. **Set dimensions** (optional):
-
-   ```bash
-   mermaid-cli -i /tmp/arch_diagram.mmd -o docs/diagrams/system-architecture.png -w 1600 -H 1200
-   ```
-
-______________________________________________________________________
-
-## Method 3: Python with kaleido (Developer Friendly)
+## Method 2: Python with kaleido (Developer Friendly)
 
 ### Prerequisites:
 
@@ -142,7 +99,7 @@ pip install kaleido
 
 ______________________________________________________________________
 
-## Method 4: Docker with mermaid-cli (Isolated)
+## Method 3: Docker with mermaid-cli (Isolated)
 
 ### Steps:
 
@@ -162,7 +119,7 @@ ______________________________________________________________________
 
 ______________________________________________________________________
 
-## Method 5: Online API (Automated)
+## Method 4: Online API (Automated)
 
 ### Using mermaid.ink API:
 
@@ -299,16 +256,23 @@ ______________________________________________________________________
 
 ## Regeneration Method Used (2026-01-24)
 
-**Tools**:
+**Tools (at the time)**:
 
-- Mermaid MCP server (localhost:3033)
+- Mermaid MCP server (localhost:3033) — **since uninstalled 2026-09-09**
 - rsvg-convert for SVG→PNG conversion
 
-**Process**:
+**Process (as run)**:
 
 1. Extracted Mermaid code from ARCHITECTURE.md (lines 197-275)
 1. Generated SVG via `mcp__mermaid__generate_mermaid_diagram` (outputType: svg)
 1. Converted to PNG using `rsvg-convert -w 1600 -h 1200`
+
+**Note**: With the MCP server removed, regenerate via Method 3 (mermaid-cli):
+
+```bash
+mermaid-cli -i /tmp/arch_diagram.mmd -o docs/diagrams/system-architecture.svg
+rsvg-convert -w 1600 -h 1200 docs/diagrams/system-architecture.svg -o docs/diagrams/system-architecture.png
+```
 
 **Result**:
 

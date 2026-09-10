@@ -602,8 +602,7 @@ cat repos.yaml
    cd /Users/les/Projects/excalidraw-mcp
    excalidraw mcp start
 
-   cd /Users/les/Projects/mermaid-mcp
-   mermaid mcp start
+   # Note: mermaid-mcp was uninstalled 2026-09-09; example removed
 
    # ... etc
    ```
@@ -616,7 +615,7 @@ cat repos.yaml
 
 ```bash
 # Health checks
-for port in 8680 8678 8682 8676 3032 3033 3034 3038 3039; do
+for port in 8680 8678 8682 8676 3032 3034 3038 3039; do
     echo "Checking port $port..."
     curl -s http://localhost:$port/health && echo "✓ OK" || echo "✗ FAIL"
 done

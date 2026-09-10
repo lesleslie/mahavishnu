@@ -15,7 +15,7 @@ Mahavishnu uses a role-based taxonomy to organize repositories and enable intell
 | **app** | End-user applications with graphical interfaces | mdinject, splashstand |
 | **asset** | UI libraries, component collections, and style guides | fastbulma |
 | **foundation** | Foundational utilities, libraries, and shared code | mcp-common |
-| **visualizer** | Creates visual diagrams and documentation | excalidraw-mcp, mermaid-mcp |
+| **visualizer** | Creates visual diagrams and documentation | excalidraw-mcp |
 | **extension** | Extends framework capabilities with pluggable modules | jinja2-inflection |
 | **tool** | Specialized tools and integrations via MCP protocol | mailgun-mcp, raindropio-mcp |
 

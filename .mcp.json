@@ -43,10 +43,6 @@
       "type": "http",
       "url": "http://localhost:8680/mcp"
     },
-    "mermaid": {
-      "type": "http",
-      "url": "http://localhost:3033/mcp"
-    },
     "minimax-coding-plan": {
       "args": [
         "--from",
