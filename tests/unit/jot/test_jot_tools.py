@@ -9,7 +9,7 @@ import pytest
 
 from mahavishnu.jot import hlc as hlc_module
 from mahavishnu.jot.events import HLC, JotEvent, serialize
-from mahavishnu.jot.fold import parse_events
+from mahavishnu.jot.fold import build_states, parse_events
 from mahavishnu.jot.paths import log_path as default_log_path
 
 # Load jot_tools directly to bypass mahavishnu/mcp/tools/__init__.py (which
@@ -112,3 +112,9 @@ def test_jot_edit_done_reopen_round_trip(tmp_path: Path) -> None:
     jot_tools.jot_reopen.fn(handle="a" * 6)
     events = parse_events(default_log_path())
     assert [e.op for e in events] == ["capture", "edit", "done", "reopen"]
+    result = build_states(events, enrich=False)
+    assert len(result.states) == 1
+    assert result.states[0].text == "v2"
+    assert result.states[0].status == "open"
+    assert result.errors == []
+    assert result.parked == []

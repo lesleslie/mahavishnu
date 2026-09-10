@@ -16,7 +16,7 @@ import uuid
 
 from mahavishnu.jot.cli import _detail_from_summary
 from mahavishnu.jot.events import JotEvent, serialize
-from mahavishnu.jot.fold import build_states
+from mahavishnu.jot.fold import JotSummary, build_states
 from mahavishnu.jot.handle import resolve_handle
 from mahavishnu.jot.hlc import hlc_now, read_tail_hlc
 from mahavishnu.jot.paths import log_path as _log_path_default
@@ -93,7 +93,7 @@ def _emit(
         os.close(fd)
 
 
-def _summary_dict(s) -> JotSummaryDict:  # type: ignore[no-untyped-def]
+def _summary_dict(s: JotSummary) -> JotSummaryDict:
     return JotSummaryDict(
         id=s.id,
         short_id=s.short_id,
@@ -103,7 +103,7 @@ def _summary_dict(s) -> JotSummaryDict:  # type: ignore[no-untyped-def]
     )
 
 
-def _detail_dict(s, events) -> JotDetailDict:  # type: ignore[no-untyped-def]
+def _detail_dict(s: JotSummary, events: list[JotEvent]) -> JotDetailDict:
     d = _detail_from_summary(s, events)
     return JotDetailDict(
         id=s.id,
