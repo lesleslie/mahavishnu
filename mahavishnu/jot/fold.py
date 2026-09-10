@@ -76,3 +76,101 @@ def parse_events(log_path: Path) -> list[JotEvent]:
             # Caller can check errors.log if diagnostics are needed.
             continue
     return events
+
+
+def _hlc_sort_key(ev: JotEvent) -> tuple[int, int, str]:
+    """UD4 tiebreaker: lex on (wall_ms, ctr, node)."""
+    return (ev.hlc.wall_ms, ev.hlc.ctr, ev.hlc.node)
+
+
+def build_states(
+    events: list[JotEvent],
+    *,
+    enrich: bool = True,
+    current_dir: Path | None = None,
+) -> FoldResult:
+    """Pure fold: events -> FoldResult.
+
+    Two-pass with parking (R3). Pass 1 scans events in HLC order; pass 2
+    replays parked events. Genuine orphans (parked through full scan) move
+    to errors.
+
+    HLC tiebreaker (UD4): lex on (wall_ms, ctr, node); same (wall_ms, node)
+    breaks by ctr ascending. Python's tuple sort already does this.
+
+    Args:
+        events: list of JotEvent in log order (file order, not HLC order).
+        enrich: when True (default), run git enrichment via subprocess
+            (Task 5). Tests should pass enrich=False for log-idempotency.
+        current_dir: directory for git enrichment; defaults to cwd.
+    """
+    sorted_events = sorted(events, key=_hlc_sort_key)
+
+    states_by_id: dict[str, JotSummary] = {}
+    parked: list[JotEvent] = []
+
+    for ev in sorted_events:
+        match ev.op:
+            case "capture":
+                states_by_id[ev.id] = JotSummary(
+                    id=ev.id,
+                    short_id=ev.id[-6:],
+                    text=ev.text,
+                    status="open",
+                    last_modified_ms=ev.hlc.wall_ms,
+                )
+            case "edit":
+                if ev.id not in states_by_id:
+                    parked.append(ev)
+                else:
+                    s = states_by_id[ev.id]
+                    states_by_id[ev.id] = JotSummary(
+                        id=s.id,
+                        short_id=s.short_id,
+                        text=ev.text,
+                        status=s.status,
+                        last_modified_ms=ev.hlc.wall_ms,
+                    )
+            case "done" | "reopen":
+                if ev.id not in states_by_id:
+                    parked.append(ev)
+                else:
+                    s = states_by_id[ev.id]
+                    states_by_id[ev.id] = JotSummary(
+                        id=s.id,
+                        short_id=s.short_id,
+                        text=s.text,
+                        status="done" if ev.op == "done" else "open",
+                        last_modified_ms=ev.hlc.wall_ms,
+                    )
+
+    errors: list[JotEvent] = []
+    for ev in parked:
+        if ev.id not in states_by_id:
+            errors.append(ev)
+            continue
+        s = states_by_id[ev.id]
+        match ev.op:
+            case "edit":
+                states_by_id[ev.id] = JotSummary(
+                    id=s.id,
+                    short_id=s.short_id,
+                    text=ev.text,
+                    status=s.status,
+                    last_modified_ms=ev.hlc.wall_ms,
+                )
+            case "done" | "reopen":
+                states_by_id[ev.id] = JotSummary(
+                    id=s.id,
+                    short_id=s.short_id,
+                    text=s.text,
+                    status="done" if ev.op == "done" else "open",
+                    last_modified_ms=ev.hlc.wall_ms,
+                )
+
+    final_states = sorted(
+        states_by_id.values(),
+        key=lambda s: (-s.last_modified_ms, s.id),
+    )
+
+    return FoldResult(states=final_states, parked=parked, errors=errors)
