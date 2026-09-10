@@ -73,11 +73,18 @@ class QueueingObservationBuffer:
     on the warmup cadence. When fewer than
     ``min_observations`` pairs are present, the buffer is in warmup
     mode and the scorer returns the inner selector's score unchanged.
+
+    S2: ``last_arrival_monotonic`` is the timestamp of the last valid
+    :meth:`append` call. ``inter_arrival`` deltas in :meth:`append`'s
+    input are derived by the caller from this field, NOT from
+    ``last_fit_monotonic`` (which would only update after a fit and
+    produce wrong deltas between fits — audit CRITICAL #4).
     """
 
     pool_id: str
     arrivals: deque[float] = field(default_factory=lambda: deque(maxlen=1024))
     services: deque[float] = field(default_factory=lambda: deque(maxlen=1024))
+    last_arrival_monotonic: float = 0.0
     last_fit_monotonic: float = 0.0
     min_observations: int = DEFAULT_WARMUP_MIN_OBSERVATIONS
     min_seconds: float = DEFAULT_WARMUP_MIN_SECONDS
@@ -91,6 +98,10 @@ class QueueingObservationBuffer:
         produced them when the task completed instantaneously or
         had a clock anomaly; failing the whole routing path on
         bad observation is worse than missing one sample).
+
+        Updates ``last_arrival_monotonic`` to ``time.monotonic()`` on
+        every successful append so the next caller can compute the
+        next inter-arrival delta against this timestamp.
         """
         if not _is_valid_observation(inter_arrival):
             return
@@ -98,6 +109,17 @@ class QueueingObservationBuffer:
             return
         self.arrivals.append(inter_arrival)
         self.services.append(service)
+        self.last_arrival_monotonic = time.monotonic()
+
+    def seconds_since_last_arrival(self) -> float:
+        """Return wall-clock seconds since the last successful append.
+
+        Useful for the caller to detect long idle periods (e.g. a
+        cold pool that hasn't seen traffic for the warmup window).
+        """
+        if self.last_arrival_monotonic == 0.0:
+            return 0.0
+        return time.monotonic() - self.last_arrival_monotonic
 
     def ready_to_fit(self) -> bool:
         """True iff the buffer has enough observations to fit an MmcQueue."""

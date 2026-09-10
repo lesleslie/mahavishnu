@@ -750,6 +750,13 @@ class PoolManager:
         Pairs with the observed service time in execute_on_pool's
         task_completed branch to produce (inter_arrival, service)
         pairs that MmcQueue.fit_from_observations consumes.
+
+        S2: inter_arrival is computed against ``buffer.last_arrival_monotonic``
+        (updated on every successful append), NOT against
+        ``last_fit_monotonic`` (which only advances on fit, producing
+        wrong deltas between fits — audit CRITICAL #4). The first
+        arrival uses a 1.0s placeholder; subsequent arrivals use the
+        actual delta since the previous valid arrival.
         """
         from mahavishnu.pools.queueing.scorer import QueueingObservationBuffer
 
@@ -766,13 +773,15 @@ class PoolManager:
             self._queueing_buffers[pool_id] = buffer
 
         now_mono = time.monotonic()
-        if buffer.last_fit_monotonic > 0.0:
-            inter_arrival = now_mono - buffer.last_fit_monotonic
+        if buffer.last_arrival_monotonic > 0.0:
+            inter_arrival = now_mono - buffer.last_arrival_monotonic
         else:
-            inter_arrival = 1.0  # placeholder; not used until fit
+            inter_arrival = 1.0  # first-arrival placeholder; the fit
+            # will skip until real deltas accumulate (C7 will
+            # backfill real service times from execute_on_pool).
         # Service time is paired later in execute_on_pool; record
-        # a placeholder of 0.0 for the warmup buffer (fit() will
-        # skip until both sequences have valid data).
+        # a placeholder of 1.0 for the warmup buffer. Real service
+        # times are appended in the C7 follow-on.
         buffer.append(inter_arrival=inter_arrival, service=1.0)
 
         # Refit when warmup is complete OR the cadence timer fires.

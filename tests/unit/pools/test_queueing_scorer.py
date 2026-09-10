@@ -54,6 +54,44 @@ class TestQueueingObservationBuffer:
         time.sleep(0.15)
         assert buf.due_for_refit() is True
 
+    def test_last_arrival_monotonic_updates_on_append(self) -> None:
+        """S2: last_arrival_monotonic is updated on every successful append."""
+        buf = QueueingObservationBuffer(pool_id="test")
+        assert buf.last_arrival_monotonic == 0.0
+        buf.append(inter_arrival=0.5, service=0.1)
+        first = buf.last_arrival_monotonic
+        assert first > 0.0
+        time.sleep(0.02)
+        buf.append(inter_arrival=0.5, service=0.1)
+        second = buf.last_arrival_monotonic
+        assert second > first
+        # The delta between last_arrival_monotonic values is the
+        # actual wall-clock between calls (~20ms sleep + overhead).
+        assert (second - first) >= 0.02
+
+    def test_last_arrival_monotonic_unchanged_on_invalid_append(self) -> None:
+        """Invalid (NaN/Inf/zero/negative) appends do NOT update last_arrival_monotonic."""
+        buf = QueueingObservationBuffer(pool_id="test")
+        buf.append(inter_arrival=0.5, service=0.1)
+        first = buf.last_arrival_monotonic
+        time.sleep(0.01)
+        buf.append(inter_arrival=float("nan"), service=0.1)
+        buf.append(inter_arrival=1.0, service=float("inf"))
+        buf.append(inter_arrival=0.0, service=0.5)
+        # last_arrival_monotonic did not advance on the dropped inputs
+        assert buf.last_arrival_monotonic == first
+
+    def test_seconds_since_last_arrival(self) -> None:
+        buf = QueueingObservationBuffer(pool_id="test")
+        # Cold buffer: returns 0.0 sentinel (no arrival yet).
+        assert buf.seconds_since_last_arrival() == 0.0
+        buf.append(inter_arrival=0.5, service=0.1)
+        time.sleep(0.05)
+        elapsed = buf.seconds_since_last_arrival()
+        assert elapsed >= 0.05
+        # Bounded above: time.sleep + Python overhead is well under 1s.
+        assert elapsed < 1.0
+
     def test_fit_returns_model_with_min_observations(self) -> None:
         buf = QueueingObservationBuffer(pool_id="test", min_observations=2)
         buf.append(inter_arrival=1.0, service=0.5)
@@ -227,17 +265,20 @@ class TestPoolMetricsWaitTimeEstimate:
 
 @pytest.mark.unit
 class TestPydanticPoolConfigQueueing:
-    def test_default_is_disabled(self) -> None:
+    def test_default_is_enabled_after_phase_4(self) -> None:
         from mahavishnu.core.config import PoolConfig
 
         cfg = PoolConfig()
-        assert cfg.queueing_enabled is False
+        # Phase 4 flipped queueing_enabled to True; per-environment
+        # opt-out is via settings/local.yaml or env var
+        # MAHAVISHNU_POOLS__QUEUEING_ENABLED=false.
+        assert cfg.queueing_enabled is True
 
-    def test_can_be_enabled(self) -> None:
+    def test_can_be_disabled(self) -> None:
         from mahavishnu.core.config import PoolConfig
 
-        cfg = PoolConfig(queueing_enabled=True)
-        assert cfg.queueing_enabled is True
+        cfg = PoolConfig(queueing_enabled=False)
+        assert cfg.queueing_enabled is False
 
     def test_extra_forbid_still_enforced(self) -> None:
         from pydantic import ValidationError
