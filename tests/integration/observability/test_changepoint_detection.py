@@ -61,7 +61,7 @@ class TestChangePointIntegration:
 
     def test_sampler_to_cusum_pipeline(self) -> None:
         """Sampler → CUSUMDetector wired end-to-end via ObservabilityManager."""
-        from mahavishnu.core.config import PoolConfig
+        from mahavishnu.core.config import ChangepointConfig
         from mahavishnu.core.observability import ObservabilityManager
 
         mgr = ObservabilityManager.__new__(ObservabilityManager)
@@ -70,7 +70,7 @@ class TestChangePointIntegration:
             pass
 
         mgr.config = _Stub()
-        mgr.config.pools = PoolConfig(changepoint_enabled=True)
+        mgr.config.changepoint = ChangepointConfig(enabled=True)
         mgr.logger = None  # type: ignore[attr-defined]
 
         # A constant stream at value 0 (the target) should not fire

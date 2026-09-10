@@ -353,10 +353,12 @@ class ObservabilityManager:
         if sampler is None:
             cadence = 60.0
             try:
-                pools_cfg = getattr(self.config, "pools", None)
-                if pools_cfg is not None:
-                    cadence = float(getattr(pools_cfg, "sampler_cadence_seconds", 60.0))
-            except Exception:  # noqa: BLE001 - config may not have pools
+                changepoint_cfg = getattr(self.config, "changepoint", None)
+                if changepoint_cfg is not None:
+                    cadence = float(
+                        getattr(changepoint_cfg, "sampler_cadence_seconds", 60.0)
+                    )
+            except Exception:  # noqa: BLE001 - config may not have changepoint
                 pass
             sampler = MetricSampler(cadence_seconds=cadence)
             self._metric_sampler = sampler  # type: ignore[attr-defined]
@@ -487,19 +489,19 @@ class ObservabilityManager:
 
     def _changepoint_enabled(self) -> bool:
         try:
-            pools_cfg = getattr(self.config, "pools", None)
-            if pools_cfg is None:
+            changepoint_cfg = getattr(self.config, "changepoint", None)
+            if changepoint_cfg is None:
                 return False
-            return bool(getattr(pools_cfg, "changepoint_enabled", False))
+            return bool(getattr(changepoint_cfg, "enabled", False))
         except Exception:  # noqa: BLE001
             return False
 
     def _changepoint_reference_mode(self) -> str:
         try:
-            pools_cfg = getattr(self.config, "pools", None)
-            if pools_cfg is None:
+            changepoint_cfg = getattr(self.config, "changepoint", None)
+            if changepoint_cfg is None:
                 return "none"
-            return str(getattr(pools_cfg, "changepoint_reference_detector", "three_sigma"))
+            return str(getattr(changepoint_cfg, "reference_detector", "three_sigma"))
         except Exception:  # noqa: BLE001
             return "none"
 
@@ -513,10 +515,10 @@ class ObservabilityManager:
         if detector is not None:
             return detector
         try:
-            pools_cfg = getattr(self.config, "pools", None)
-            slack = float(getattr(pools_cfg, "changepoint_slack", 0.25))
-            threshold = float(getattr(pools_cfg, "changepoint_threshold", 8.0))
-            algo = str(getattr(pools_cfg, "changepoint_detector", "cusum"))
+            changepoint_cfg = getattr(self.config, "changepoint", None)
+            slack = float(getattr(changepoint_cfg, "slack", 0.25))
+            threshold = float(getattr(changepoint_cfg, "threshold", 8.0))
+            algo = str(getattr(changepoint_cfg, "detector", "cusum"))
         except Exception:  # noqa: BLE001
             slack, threshold, algo = 0.25, 8.0, "cusum"
 
@@ -542,10 +544,10 @@ class ObservabilityManager:
 
     def _get_changepoint_target_metric(self) -> str:
         try:
-            pools_cfg = getattr(self.config, "pools", None)
-            if pools_cfg is None:
+            changepoint_cfg = getattr(self.config, "changepoint", None)
+            if changepoint_cfg is None:
                 return "pool_queue_depth"
-            return str(getattr(pools_cfg, "changepoint_target_metric", "pool_queue_depth"))
+            return str(getattr(changepoint_cfg, "target_metric", "pool_queue_depth"))
         except Exception:  # noqa: BLE001
             return "pool_queue_depth"
 

@@ -433,50 +433,6 @@ class PoolConfig(BaseModel):
         le=86400.0,
         description="Wall-clock seconds before a refit is forced (warmup cadence)",
     )
-
-    # Tier 1 Phase 8: change-point detector. REQ-005.
-    # Default `True` after Phase 7 validation passed. Phase 8
-    # staged rollout: per-environment opt-out via
-    # settings/local.yaml (changepoint.enabled: false) or env var
-    # MAHAVISHNU_CHANGEPOINT__ENABLED=false during the first
-    # 7-day monitoring window.
-    # Top-level `changepoint:` block (not nested under observability:)
-    # to match the precedent of `pi_pool:`, `runpod_pool:`,
-    # `caller_quota:`, `verification:`, etc.
-    changepoint_enabled: bool = Field(
-        default=True,
-        description="Enable CUSUM/Page-Hinkley change-point detector on observability metrics (Phase 8 default-on)",
-    )
-    changepoint_target_metric: str = Field(
-        default="pool_queue_depth",
-        description="Metric name to monitor for change-point detection",
-    )
-    changepoint_detector: str = Field(
-        default="cusum",
-        description="Detector algorithm: 'cusum' or 'page_hinkley'",
-    )
-    changepoint_slack: float = Field(
-        default=0.25,
-        ge=0.0,
-        le=5.0,
-        description="CUSUM slack (k) in standard deviation units; 0.25σ for two-sided CUSUM",
-    )
-    changepoint_threshold: float = Field(
-        default=8.0,
-        gt=0.0,
-        le=100.0,
-        description="CUSUM/Page-Hinkley decision interval (h); default 8.0 targets ARL₀ ≈ 10,000",
-    )
-    changepoint_reference_detector: str = Field(
-        default="three_sigma",
-        description="Reference detector running in parallel: 'three_sigma' or 'none'",
-    )
-    changepoint_sampler_cadence_seconds: float = Field(
-        default=60.0,
-        ge=1.0,
-        le=3600.0,
-        description="MetricSampler tick cadence in seconds (default 60 matches fitness_analyzer)",
-    )
     session_buddy_url: str = Field(
         default="http://localhost:8678/mcp",
         description="Session-Buddy MCP server URL for delegated pools",
@@ -484,6 +440,63 @@ class PoolConfig(BaseModel):
     akosha_url: str = Field(
         default="http://localhost:8682/mcp",
         description="Akosha MCP server URL for cross-pool analytics",
+    )
+
+    model_config = {"extra": "forbid"}
+
+
+class ChangepointConfig(BaseModel):
+    """Tier 1 Phase 6/8: change-point detector on observability metrics.
+
+    Top-level ``changepoint:`` block (matches ``pi_pool:``, ``runpod_pool:``,
+    ``caller_quota:``, ``verification:``, ``worktree_providers:`` precedent)
+    so the env-var name documented in the runbook
+    (``MAHAVISHNU_CHANGEPOINT__<FIELD>``) actually binds.
+
+    Env var override: ``MAHAVISHNU_CHANGEPOINT__<FIELD>``.
+
+    Req: REQ-005 (CUSUM/Page-Hinkley change-point detection),
+    REQ-006 (3-sigma reference detector), REQ-009 (continuous metric
+    sample stream via MetricSampler).
+    """
+
+    enabled: bool = Field(
+        # Phase 6 ships with default OFF; Phase 8 promotes to True.
+        # The committed settings/mahavishnu.yaml carries
+        # `enabled: true` (the Phase 8 promotion), but a fresh
+        # operator that deletes the YAML line gets the safe default.
+        default=False,
+        description="Enable CUSUM/Page-Hinkley change-point detector on observability metrics (Phase 6 default OFF; flip to true in Phase 8 promotion)",
+    )
+    target_metric: str = Field(
+        default="pool_queue_depth",
+        description="Metric name to monitor for change-point detection",
+    )
+    detector: str = Field(
+        default="cusum",
+        description="Detector algorithm: 'cusum' or 'page_hinkley'",
+    )
+    slack: float = Field(
+        default=0.25,
+        ge=0.0,
+        le=5.0,
+        description="CUSUM slack (k) in standard deviation units; 0.25σ for two-sided CUSUM",
+    )
+    threshold: float = Field(
+        default=8.0,
+        gt=0.0,
+        le=100.0,
+        description="CUSUM/Page-Hinkley decision interval (h); default 8.0",
+    )
+    reference_detector: str = Field(
+        default="three_sigma",
+        description="Reference detector running in parallel: 'three_sigma' or 'none'",
+    )
+    sampler_cadence_seconds: float = Field(
+        default=60.0,
+        ge=1.0,
+        le=3600.0,
+        description="MetricSampler tick cadence in seconds (default 60 matches fitness_analyzer TTL)",
     )
 
     model_config = {"extra": "forbid"}
@@ -2472,6 +2485,17 @@ class MahavishnuSettings(BaseSettings):
         description="Pi coding-agent pool configuration (D1).",
     )
 
+    # Tier 1 Phase 6/8: change-point detector on observability metrics.
+    # Top-level `changepoint:` block (matches pi_pool:, runpod_pool:,
+    # caller_quota:, verification:, worktree_providers: precedent)
+    # so the documented env-var name MAHAVISHNU_CHANGEPOINT__<FIELD>
+    # actually binds.
+    # Req: REQ-005, REQ-006, REQ-009
+    changepoint: ChangepointConfig = Field(
+        default_factory=ChangepointConfig,
+        description="Change-point detection (CUSUM/Page-Hinkley + 3-sigma reference) on observability metrics.",
+    )
+
     # OpenTelemetry storage
     otel_storage: OTelStorageConfig = Field(
         default_factory=OTelStorageConfig,
@@ -2834,6 +2858,7 @@ __all__ = [
     "AgnoMemoryConfig",
     "AgnoToolsConfig",
     "AuthConfig",
+    "ChangepointConfig",
     "DLQConfig",
     # Health check configuration
     "DependencyConfig",
