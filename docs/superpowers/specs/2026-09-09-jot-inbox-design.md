@@ -74,7 +74,7 @@ already exists and already reads the log — carries three extra signals:
 ```
 ,,pool affinity vs peer routing?
 
-  jotted a3f2 · "pool affinity vs peer rou…" · 3rd time · 17 open · oldest 41d
+  jotted 4YB0CD · "pool affinity vs peer rou…" · 3rd time · 17 open · oldest 41d
 ```
 
 This is not push. It rides on a capture the user initiated, and self-regulates:
@@ -145,6 +145,14 @@ Session-Buddy now indexes **from Dhara**, making the pipeline linear. The index
 can lag but can never lead, so search may miss something recent and can never
 return a phantom. `sb.offset` is deleted entirely.
 
+**Session-Buddy indexing trigger.** Dhara exposes a change-feed (per Dhara
+documentation; spike to confirm contract name and shape at implementation
+time). Session-Buddy subscribes to that feed and re-indexes on each event.
+Polling is the fallback if the feed is unavailable; polling interval is a
+configurable setting (default 60 s) and is bounded — search freshness is
+always at most one polling interval behind Dhara. The drain does not push to
+Session-Buddy; it only pushes to Dhara. This is what makes the index derived.
+
 **Terminology [R]:** this is *not* "single master." The write path is
 multi-master — every machine appends to its own log with no coordinator. Dhara
 is the **single canonical store for reads**. Conflict resolution is specified
@@ -167,12 +175,15 @@ Three triggers, no daemon: **`SessionStart`**, **`SessionEnd`**, and
 **[R]** `SessionStart` was added because staleness was otherwise unbounded — a
 machine that captured jots and was never reopened never replicated them.
 
-**Budget chain [R]:** per-hook `timeout: 5` raises the `SessionEnd` budget from
-its 1.5 s default to 5 s. The drain's internal hard limit is 2 s, leaving 3 s of
-slack. If the internal limit fires, the offset does not advance and the drain
-retries at next `SessionStart` or first MCP read. Note that a hook exceeding its
-budget is cancelled with its output **discarded silently** — the offset file is
-the only durable record of progress.
+**Budget chain [R]:** per-hook `timeout: 5` raises the `SessionEnd` budget to
+5 s. The drain's internal hard limit is 2 s, leaving 3 s of slack. If the
+internal limit fires, the offset does not advance and the drain retries at
+next `SessionStart` or first MCP read. Note that a hook exceeding its budget
+is cancelled with its output **discarded silently** — the offset file is the
+only durable record of progress. (The default Claude Code SessionEnd budget
+is platform-defined and not pinned in this spec; the 5 s figure here is the
+configurable per-hook override — verify against Claude Code hook documentation
+at implementation time.)
 
 **Rejected:** spawning a detached drain from the capture hook.
 `claude-code-bun-hardened-runtime-stop-hook-enoent` documents `posix_spawn` of
@@ -180,6 +191,13 @@ the only durable record of progress.
 
 **Concurrency [R]:** drains serialize via `drain.lock` with stale-PID detection.
 Two triggers can otherwise overlap.
+
+**Drain path assignment.** All three triggers (`SessionStart`, `SessionEnd`,
+drain-before-read on every MCP tool call) use `drain_sync` (urllib, 2 s hard
+limit). `drain_async` is reserved for explicit `jot_sync` calls (the user-
+invoked MCP tool) where the operator accepts the higher latency for richer
+progress. `jot_sync` does **not** self-trigger a drain on entry — calling
+`jot_sync` is itself the drain operation in that path.
 
 ### Degradation ladder
 
@@ -319,7 +337,7 @@ the sync path; `jot_sync` takes its own timeout parameter, default 30 s.
 
 ```
 ,,pool affinity vs peer routing?
-    →  jotted a3f2 · "pool affinity vs peer rou…" · 3rd time · 17 open · oldest 41d
+    →  jotted 4YB0CD · "pool affinity vs peer rou…" · 3rd time · 17 open · oldest 41d
 ```
 
 **Prefix `,,` [R].** Single-comma was rejected: copied JSON, YAML flow
@@ -335,11 +353,12 @@ non-alphanumeric symbol. An empty prefix would silently swallow every prompt.
 
 ```
 /jot              5 most recent open jots + vitals line
-/jot all          full list
+/jot all          full list (capped at terminal height, --page N to scroll)
 /jot relevant     ranked against the current session's subject matter  [R]
 /jot "routing"    semantic search via Session-Buddy
 /jot show 3       full text + captured context
 /jot done 1-4     terminal state, batch  [R]
+/jot reopen 3     undoes a done, restores to open
 /jot draft 3      compose a dispatch prompt for review
 ```
 
@@ -347,6 +366,25 @@ non-alphanumeric symbol. An empty prefix would silently swallow every prompt.
 (`17 open · oldest 41d · 3 seen 3×`). An unbounded list is a
 monument to things undone, and nobody scrolls it. The *log* remains
 append-only; only the *view* is horizoned.
+
+**Listing scope — local fold only.** `/jot`, `/jot all`, and `/jot relevant`
+all read **the local fold** (the `~/.mahavishnu/jot/log.jsonl` on this
+machine), not Dhara. The fold is rebuilt lazily by applying ops in `(wall,
+ctr, node)` order, parking unknowns, and resolving duplicate IDs by HLC.
+Consequences:
+- A fresh machine that hasn't drained shows an empty list — even if 100 jots
+  exist in Dhara from another machine.
+- `/jot all` reads as "all jots *on this machine*."
+- The pre-statement claim "`/jot relevant` works whether or not the drain
+  has reached Session-Buddy" is precise: it works against the local fold
+  regardless of Session-Buddy state, and against only the local fold
+  regardless of Dhara state.
+
+This is intentional. The MCP read surface is local-first because global
+aggregation in v1 would require either (a) per-call Dhara round-trips with
+their latency and offline behavior, or (b) a denormalized global index that
+contradicts the linear pipeline topology. v1.1 may add a global view; v1
+reads the local fold.
 
 **List row layout [R].** Every row carries the ID column (always present, never
 truncated), a 4-character status glyph (`OPEN ` / `DONE ` / `REOP `), the
@@ -356,6 +394,55 @@ parsing harder in a TTY and break programmatic parsing. Text truncation uses
 U+2026 and shrinks the text column on narrow terminals rather than wrapping or
 ellipsizing the whole row. No ANSI color when `not sys.stdout.isatty()` so
 output remains grep-friendly.
+
+**Truncation rule (shared).** Both echo and list use U+2026 (`…`) for text
+truncation. The rule lives in one place (here) and both surfaces reference
+it. Echo shows the truncated text; list shows the truncated text in the text
+column.
+
+**Narrow-terminal collapse priority.** When the terminal cannot fit the full
+row, columns drop in this priority order:
+1. **Seen count** (`3×`) — drops first.
+2. **Age** (`2d`) — drops second.
+3. **Text column** shrinks to a minimum of 8 chars before further ellipsis
+   (`text…`).
+4. **Status glyph** — never drops.
+5. **ID** — never drops.
+
+The absolute minimum is `ID + status + "…"` = 11 columns. Below that, render
+only the ID column with a `(terminal too narrow)` footer.
+
+**`·` vs space rule.** Summary lines (echo confirmation, vitals footer) use
+`·` for human skim. Row lines (list, `/jot all`) use space-aligned columns
+for fixed-width alignment and grep-friendliness.
+
+**`/jot relevant` output shape.** Same row layout as `/jot`, with one
+additional right-aligned 4-character score column (`0.82`) inserted between
+the seen-count and the text. Ranked descending by score. Score reflects the
+local text-overlap heuristic — **not** a probability — and is presented
+without explanation in the row; the heuristic is documented once in the
+slash-command help text, not per-row.
+
+**`/jot show N` rendering.** Three-section fixed format:
+- Line 1: `<6-char-id> <4-char-status> <age>` (always present, never wrapped)
+- Line 2: `repo:<repo> branch:<branch> sha:<7-char-sha>`
+- Lines 3+: full text, **never truncated**. Multi-line text preserved
+  verbatim (newlines escaped as `\n` for one-line terminal display).
+
+**Echo merge rule for redaction.** When the capture-time redaction fires, the
+echo replaces the text-segment with `redacted:N (T1, T2, …)` and drops the
+snippet and the per-jot seen-count segment:
+`jotted <6-char-id> · redacted:1 (AKIA) · 17 open · oldest 41d`
+Suppressed entirely when `N = 0` (so the normal echo shape never carries an
+empty redaction segment).
+
+**TTY detection (full rule).** Color is suppressed when any of:
+- `not sys.stdout.isatty()`
+- `os.environ.get("NO_COLOR")` is set (any value)
+- `os.environ.get("TERM") == "dumb"`
+- `os.environ.get("CI")` is set (recordings, scripted logs)
+Honor `| less -R` semantics by detecting a `LESS` env var with `R` in it
+when output is piped — pass-through ANSI in that case.
 
 **`/jot relevant` replaces `/jot here` [R].** `here` was adverb-shaped in a
 verb-shaped namespace, collided with `/jot "here"`, and would barely narrow —
@@ -379,16 +466,30 @@ gap.
 **Registration requires five edits, not one [R].** `PROFILE_REGISTRATIONS` and
 `REGISTRATION_MAP` in `profiles.py` are parallel structures; a group present in
 the first but absent from the second raises `ValueError` and **crashes the
-server at boot** (`mcp_common/tools/dispatch.py`). Required:
+server at boot** (`mcp_common/tools/dispatch.py:181-186`). Required:
 
-1. `profiles.py` — add `"_register_jot_tools"` to `STANDARD_REGISTRATIONS`
-   (inherits into `FULL` via the existing `+=`)
+1. `profiles.py` — add `"_register_jot_tools"` to `FULL_REGISTRATIONS`
+   directly (do **not** append to `STANDARD_REGISTRATIONS`; `FULL_REGISTRATIONS`
+   is built by `+` list-concat at module load (`profiles.py:86`), so any
+   `STANDARD_REGISTRATIONS.append(...)` after that line is silently invisible
+   to FULL — the documented `2026-08-29-mcp-tool-registration-dual-track-drift-pattern`
+   failure class).
 2. `profiles.py` — import and add to `REGISTRATION_MAP`
-3. `bootstrap.py` — define `_register_jot_tools(server)`
+3. `bootstrap.py` — define `_register_jot_tools(server)` (sync, matching
+   `s._mhv_server` convention from `bootstrap.py:74`); the
+   `methods_set`-gated async-conditional pattern at `bootstrap.py:210` is
+   reserved for tools that need terminal-manager or app-init sequencing, which
+   jot does not.
 4. `jot_tools.py` — define `register_jot_tools(mcp, …)`
 5. **CI guard test** asserting every `PROFILE_REGISTRATIONS` key has a
    `REGISTRATION_MAP` entry, modeled on `TestYAMLRoutingSync`. This closes a
    documented recurring failure class and is worth more than this feature.
+   The guard must also assert that `FULL_REGISTRATIONS ⊇ STANDARD_REGISTRATIONS`
+   to catch the `STANDARD.append`-after-snapshot pattern.
+
+**Profile tier placement:** jot tools ship in FULL and STANDARD. MINIMAL has
+neither, and `MAHAVISHNU_MANDATORY_GROUPS` does not include jot — these are
+not core probes and must not be load-bearing for the server to start.
 
 ### `jot_draft` — manual handoff
 
@@ -444,7 +545,7 @@ The hook cannot import session-buddy. Defense in depth:
 - **Drain time:** the full `redact()` before anything reaches Dhara or
   Session-Buddy.
 
-The echo reports what happened: `jotted a3f2 · redacted:1 (AKIA)`.
+The echo reports what happened: `jotted 4YB0CD · redacted:1 (AKIA)`.
 
 ### Removal (no code)
 
@@ -454,15 +555,43 @@ text still exist but hold no signal. If a captured event must be removed after
 the fact (mis-capture, accidental sensitive content that slipped past
 redaction, compliance):
 
-> **Operator procedure.** Stop the drain (close the active MCP session or kill
-> the hook process). Edit the log line in place to an obvious placeholder of
-> the same byte length. Reset `~/.mahavishnu/jot/dhara.offset` to `0`. The
-> drain re-replicates from the start; idempotency makes this safe. Manually
-> delete the corresponding Session-Buddy embedding by ID.
+> **Operator procedure — gating.** This procedure assumes **Dhara upserts by
+> ID** (see Open Question #2). If OQ2 resolves to "append," the procedure is
+> **unsafe** — the operator must instead delete the affected rows from Dhara
+> directly, delete the corresponding Session-Buddy embeddings by ID, and skip
+> the re-drain. The procedure below is gated on OQ2 being resolved to upsert
+> before this is run.
+>
+> **Operator procedure — execution.**
+> 1. **Drain to completion first.** Close all active MCP sessions and confirm
+>    no capture hook is mid-write (`pgrep -f jot_capture` empty). Wait one
+>    drain cycle after last activity. This avoids partial-batch state where
+>    some events have replicated and some haven't.
+> 2. **Edit the log line in place.** Replace the original `add` line with a
+>    canonical placeholder: `[REDACTED-by-operator YYYY-MM-DDTHH:MM:SSZ]` (or
+>    similar), padded with spaces to the **original byte length** of the line.
+>    Verify with `wc -c` after the edit; abort if the byte count drifted (a
+>    multi-byte UTF-8 mis-edit would silently corrupt the offset invariant).
+> 3. **Reset the offset field only.** Open `~/.mahavishnu/jot/dhara.offset`
+>    and zero the offset; preserve the inode and size fields so the integrity
+>    guard (line 411-415) does not falsely trigger. Do not delete the file —
+>    that would blow away the inode/size the guard reads.
+> 4. **Re-drain.** The next `SessionStart`, `SessionEnd`, or drain-before-read
+>    trigger will re-replicate from byte 0. Under upsert-by-ID semantics the
+>    placeholder overwrites the original in Dhara; the fold then presents the
+>    placeholder. Under append, abort and follow the OQ2-append path above.
+> 5. **Delete the Session-Buddy embedding by ID.** Even with upsert-by-ID,
+>    the original embedding is not guaranteed to be re-indexed into a no-op
+>    state; the operator must call the Session-Buddy delete-by-ID directly.
+>    (A v1.1 Session-Buddy re-indexer that drops embeddings whose source event
+>    text matches the placeholder is the right fix; v1 ships the manual
+>    procedure.)
 
 This preserves capability without code: the four-subsystem sprawl (op enum,
 in-place rewrite, Dhara tombstone, Session-Buddy delete-by-ID) is deferred
-until there is real demand for it.
+until there is real demand for it. **This procedure is operator-only
+emergency compliance/redaction, not a user-facing feature** — see the
+"Editing jot text" non-goal (line 47).
 
 ## Error handling
 
@@ -516,6 +645,7 @@ line drops the event; not advancing blocks forward progress forever.
 | Dhara hangs | 2 s hard timeout; offset unchanged; retry next trigger |
 | Session-Buddy down | Index lags Dhara; search degrades, never phantoms |
 | `done` on two machines | Idempotent by construction |
+| Cross-machine `done` + `reopen` race | HLC `(wall, ctr, node)` order wins; later event overwrites earlier in the fold regardless of arrival order |
 | Orphan `done`/`reopen` | Parked, re-applied in fold pass two |
 | Clock skew | **Resolved by HLC** |
 | Log inode/size mismatch | Reset offsets, re-drain (idempotent) |
@@ -595,7 +725,13 @@ with deliberately skewed `wall` values and assert HLC ordering wins.
 Also: `done` idempotent · `reopen` inverts `done` · orphan ops parked and
 re-applied · malformed lines never reduce recovered valid jots ·
 `offset_monotonic_never_decreases` · `drain_redelivery_idempotent` ·
-short-ID resolution total.
+short-ID resolution exhaustive at 6 chars (asserts no collisions across
+1,000 fixture IDs per the ~3% birthday bound cited at lines 250-252) ·
+**`test_serialize_event_byte_identical_to_vendored_copy`** — the hook
+vendors a copy of `serialize_event()`; this test asserts the vendored copy
+and the package version produce identical bytes for a fixed-input fixture
+(set of 50 events covering all three ops, all context shapes, edge strings).
+This is the test that makes Invariant 4 enforceable.
 
 xdist-safe async helper: `tests/property/test_properties.py:25`.
 
@@ -621,6 +757,24 @@ through the search path, not the drain path.
 `concurrent_invocation_serializes_via_lock` ·
 `inode_mismatch_resets_offsets`
 
+**Operator removal procedure test** (gated on Open Question #2 = upsert):
+`tests/integration/test_jot_operator_removal.py` — same-byte-length
+in-place rewrite preserves offset monotonicity, reset to offset=0 preserves
+inode+size, drain re-replication produces the expected fold. Marked
+`@pytest.mark.skipif(not dhara_upsert_id)` until OQ2 lands.
+
+**Vitals renderer tests:** `tests/unit/jot/test_vitals_render.py` — covers
+all three `capture_review_ratio` bands, the `· ⚠` vs `· ⚠⚠` glyph selection,
+and the trip-wire persistence (count consecutive weeks above 10:1).
+
+**Echo format test:** `tests/unit/jot/test_capture_echo_format.py` — golden
+file against the normal echo, redacted echo, and redaction-suppressed echo
+shapes (lines 76, 446, and the merge rule added in this revision).
+
+**List row layout test:** `tests/unit/jot/test_list_row_layout.py` — column
+presence in order, truncation with U+2026, narrow-terminal collapse priority
+order, no-ANSI branch when `not sys.stdout.isatty()`.
+
 ### Integration (wiring discipline)
 
 `tests/integration/test_jot_tools_e2e.py` — capture, drain, and assert every
@@ -634,8 +788,10 @@ four required feed signals.
    The other: those are `PreToolUse`-only, and `UserPromptSubmit` uses
    `decision: "block"`. `exit 2` blocks either way, so only the user-visible
    string is at risk. **Blocking spike:** register a throwaway `jq -c .` hook,
-   run `claude --debug`, and settle it empirically. Also confirm the exact stdin
-   payload and that `uuid.uuid7()` exists in the runtime Python.
+   run `claude --debug`, and settle it empirically. Also confirm the exact
+   stdin payload and that `uuid.uuid4()` is available in the runtime Python.
+   (`uuid.uuid7()` is a v1.1 spike — see Future Work — and is not on the
+   v1 critical path.)
 2. **Dhara idempotency mechanism.** Replay safety is asserted but ungrounded.
    Determine whether Dhara upserts by ID or appends, and specify it.
 3. **Drain p99 latency.** If it exceeds 2 s under healthy Dhara, split into two
@@ -650,10 +806,14 @@ four required feed signals.
   thing to reach for if "what did I mean?" becomes the dominant review failure.
 - **`/jot relevant` upgrade to Session-Buddy embeddings** — v1 ranks locally
   (text overlap with current session). v1.1 swaps in embeddings once drain
-  freshness is proven; the command name and pull semantics are unchanged.
+  freshness is proven; the command name, output shape, and pull semantics are
+  unchanged (per body lines 366-367).
 - **`/jot ask`** — inject a jot as a prompt in the current session.
-- **`jot_redact` / removal tool** — when there's real demand. Today the
-  operator procedure (see "Removal (no code)") is the documented escape hatch.
+- **`jot_remove` / removal tool** — when there's real demand. Today the
+  operator procedure (see "Removal (no code)") is the documented escape
+  hatch. Named `jot_remove` (not `jot_redact`) to disambiguate from the
+  in-scope **capture-time + drain-time secret redaction**, which keeps its
+  vocabulary.
 - **UUIDv7 (`uuid.uuid7()`)** — Python 3.14's time-orderable identity.
   Optional; cache-invalidate path benefits but v1 uses `uuid.uuid4()`.
 - **Push surfaces** — unlocked automatically if `capture_review_ratio` exceeds
