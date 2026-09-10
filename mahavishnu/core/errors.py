@@ -170,6 +170,12 @@ class ErrorCode(StrEnum):
     # Distill reviewer trust root (480-489 reserved for Learning System)
     REVIEWER_NOT_TRUSTED = "MHV-483"
 
+    # Math signal errors (Tier 1 — queueing + change-point libraries).
+    # Req: REQ-001 (MmcQueue) and REQ-004 (CUSUM/PH) — the error contract
+    # shared by both pure-Python libraries.
+    QUEUEING_MODEL_ERROR = "MHV-490"
+    CHANGE_POINT_ERROR = "MHV-491"
+
 
 class MahavishnuError(Exception):
     """
@@ -685,6 +691,18 @@ class MahavishnuError(Exception):
             "Set MAHAVISHNU_USER_ID and add it to MAHAVISHNU_PUBLISHER_ALLOWLIST",
             "Verify the env var is set in the shell, not just as a CLI flag",
             "Contact an administrator to add the reviewer to the allowlist",
+        ],
+        ErrorCode.QUEUEING_MODEL_ERROR: [
+            "The M/M/c queueing model rejected an input",
+            "Verify the arrival_rate, service_rate, and num_workers are valid",
+            "If the model was fit from observations, ensure the sequences are non-empty and contain no NaN/Inf",
+            "Reduce utilization if the model refused to evaluate at the current regime",
+        ],
+        ErrorCode.CHANGE_POINT_ERROR: [
+            "The change-point detector rejected an input or update",
+            "Verify target_mean, slack, and threshold are valid positive numbers",
+            "Ensure observations are finite (no NaN/Inf) before calling update()",
+            "Call reset() if the detector state is in an unexpected regime",
         ],
     }
 
@@ -2074,3 +2092,59 @@ class GooseTimeoutError(MahavishnuError):
                 f"(method={method!r}, path={path!r}, timeout={timeout}s)"
             )
         return f"[{self.error_code.value}] {self.message}"
+
+
+# ---------------------------------------------------------------------------
+# Math signal errors (Tier 1 — queueing + change-point libraries).
+# Req: REQ-001 (MmcQueue) and REQ-004 (CUSUM/PH) — shared contract for
+# both pure-Python libraries under mahavishnu/pools/queueing/ and
+# mahavishnu/observability/changepoint/.
+# ---------------------------------------------------------------------------
+
+
+class QueueingModelError(MahavishnuError):
+    """Raised when the M/M/c queueing model rejects an input or update.
+
+    Distinct from :class:`ValidationError` because the inputs (rates,
+    worker counts) are typically numeric, well-formed, and
+    well-bounded; the failure mode is *model-specific* (e.g. ρ ≥ 1,
+    empty observation sequence, NaN/Inf observation).
+
+    Req: REQ-001
+    """  # req: REQ-001
+
+    def __init__(
+        self,
+        message: str,
+        *,
+        details: dict | None = None,
+    ) -> None:
+        super().__init__(
+            message,
+            ErrorCode.QUEUEING_MODEL_ERROR,
+            details=details,
+        )
+
+
+class ChangePointError(MahavishnuError):
+    """Raised when the CUSUM / Page-Hinkley detector rejects an input or update.
+
+    Distinct from :class:`QueueingModelError` so callers can route
+    math-signal failures to a single fixable category without
+    re-raising. Both inherit from :class:`MahavishnuError` and share
+    the math-signal recovery guidance in ``RECOVERY_GUIDANCE``.
+
+    Req: REQ-004
+    """  # req: REQ-004
+
+    def __init__(
+        self,
+        message: str,
+        *,
+        details: dict | None = None,
+    ) -> None:
+        super().__init__(
+            message,
+            ErrorCode.CHANGE_POINT_ERROR,
+            details=details,
+        )
