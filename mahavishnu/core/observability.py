@@ -164,6 +164,19 @@ class ObservabilityManager:
                 unit="s",
             )
 
+            # Tier 1 Phase 8: drift detection counter + detector-age gauge.
+            # REQ-005. Without these the §7 stage-1 gate has no
+            # source-of-truth metric to query. See audit CRITICAL #1 /
+            # observability CRITICAL #1.
+            self.drift_detected_counter = self.meter.create_counter(
+                "mahavishnu.observability.drift_detected_total",
+                description="CUSUM/Page-Hinkley drift detection events (per metric, detector, severity)",
+            )
+            self.detector_age_gauge = self.meter.create_up_down_counter(
+                "mahavishnu.observability.detector_age_samples",
+                description="Sample count since last detector reset (per metric, detector)",
+            )
+
         except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
             self.logger.warning(f"Failed to initialize OpenTelemetry: {e}")
             self._init_fallback_components()
@@ -182,6 +195,15 @@ class ObservabilityManager:
         )
         self.repo_processing_duration_histogram = self.meter.create_histogram(
             "mahavishnu.repo.processing.duration"
+        )
+        # Tier 1 Phase 8: drift detection counter + detector-age gauge.
+        # REQ-005. Without these the §7 stage-1 gate has no source-of-truth
+        # metric to query. See audit CRITICAL #1 / observability CRITICAL #1.
+        self.drift_detected_counter = self.meter.create_counter(
+            "mahavishnu.observability.drift_detected_total"
+        )
+        self.detector_age_gauge = self.meter.create_up_down_counter(
+            "mahavishnu.observability.detector_age_samples"
         )
 
     def create_workflow_counter(self):
@@ -345,7 +367,7 @@ class ObservabilityManager:
     # fires, emits an OTel span ``mahavishnu.observability.drift_detected``
     # (or a structured log line when OTel is unavailable).
 
-    def _get_metric_sampler(self) -> "MetricSampler":
+    def _get_metric_sampler(self) -> MetricSampler:
         """Return the per-instance MetricSampler, creating it on first use."""
         from mahavishnu.observability.sampler import MetricSampler
 
@@ -355,9 +377,7 @@ class ObservabilityManager:
             try:
                 changepoint_cfg = getattr(self.config, "changepoint", None)
                 if changepoint_cfg is not None:
-                    cadence = float(
-                        getattr(changepoint_cfg, "sampler_cadence_seconds", 60.0)
-                    )
+                    cadence = float(getattr(changepoint_cfg, "sampler_cadence_seconds", 60.0))
             except Exception:  # noqa: BLE001 - config may not have changepoint
                 pass
             sampler = MetricSampler(cadence_seconds=cadence)
@@ -378,10 +398,6 @@ class ObservabilityManager:
 
         Req: REQ-005
         """
-        from mahavishnu.observability.changepoint import (
-            CUSUMDetector,
-            PageHinkleyDetector,
-        )
 
         if not self._changepoint_enabled():
             from mahavishnu.observability.changepoint.cusum import ChangePointResult
@@ -407,7 +423,8 @@ class ObservabilityManager:
         result = detector.update(value)
 
         if result.detected:
-            self._on_drift_detected(metric_name, result)
+            # C4: pass current_value so the OTel span can carry it.
+            self._on_drift_detected(metric_name, value, result)
         return result
 
     def _evaluate_3sigma(self, metric_name: str, value: float):  # req: REQ-006
@@ -463,9 +480,7 @@ class ObservabilityManager:
                 window_mean=window_mean,
                 window_std=0.0,
             )
-        window_std = math.sqrt(
-            sum((v - window_mean) ** 2 for v in window) / (len(window) - 1)
-        )
+        window_std = math.sqrt(sum((v - window_mean) ** 2 for v in window) / (len(window) - 1))
         if window_std == 0.0 or not math.isfinite(window_std):
             return AnomalyResult(
                 detected=False,
@@ -519,17 +534,31 @@ class ObservabilityManager:
             slack = float(getattr(changepoint_cfg, "slack", 0.25))
             threshold = float(getattr(changepoint_cfg, "threshold", 8.0))
             algo = str(getattr(changepoint_cfg, "detector", "cusum"))
+            explicit_target = float(getattr(changepoint_cfg, "target_mean", 0.0))
+            use_auto = bool(getattr(changepoint_cfg, "target_mean_auto", False))
+            auto_window = int(getattr(changepoint_cfg, "target_mean_auto_window", 60))
         except Exception:  # noqa: BLE001
             slack, threshold, algo = 0.25, 8.0, "cusum"
+            explicit_target, use_auto, auto_window = 0.0, False, 60
 
         # CUSUM's ``target_mean`` is the in-control process mean, not
-        # a running estimate. Phase 6 ships with target_mean=0.0
-        # (a sensible default for normalized queue-depth metrics).
-        # Operators set the absolute target via config in Phase 8's
-        # promotion; for now, the detector is correct relative to
-        # ``target_mean`` and operators must interpret scores
-        # against the documented baseline.
-        target_mean = 0.0
+        # a running estimate. If ``target_mean_auto=True`` and the
+        # sampler has accumulated enough samples, prefer the rolling
+        # baseline (slowly-drifting in-control mean). Otherwise honour
+        # the operator's explicit value (default 0.0 — only valid for
+        # normalized metrics; raw counts like pool_queue_depth need an
+        # explicit per-deployment value). See the changepoint config
+        # docstring and docs/runbooks/mahavishnu-drift-detection.md.
+        target_mean = explicit_target
+        if use_auto:
+            try:
+                sampler = self._get_metric_sampler()
+                metric_name = self._get_changepoint_target_metric()
+                recent = sampler.values(metric_name)[-auto_window:]
+                if len(recent) >= max(10, auto_window // 2):
+                    target_mean = sum(recent) / len(recent)
+            except Exception:  # noqa: BLE001 - sampler may not be initialized
+                pass
 
         if algo == "page_hinkley":
             detector = PageHinkleyDetector(
@@ -551,29 +580,108 @@ class ObservabilityManager:
         except Exception:  # noqa: BLE001
             return "pool_queue_depth"
 
-    def _on_drift_detected(self, metric_name: str, result) -> None:
-        """OTel span emission for a change-point detection.
+    def _on_drift_detected(self, metric_name: str, value: float, result) -> None:
+        """OTel span + Prometheus counter emission for a drift detection.
 
-        Tier 1 Phase 6: emit ``mahavishnu.observability.drift_detected``
-        with attributes per the spec (§6 Phase 6 Integration Contract).
-        When OTel is unavailable, fall back to a structured log line.
+        C6: increment mahavishnu.observability.drift_detected_total with
+        labels {metric_name, detector, severity}. Update the
+        detector_age_samples gauge to reflect the sample count since
+        last reset (resets on next non-fire evaluation; this gauge
+        records the age at the moment of fire).
+
+        C4: OTel span carries the spec §6 Phase 6 attributes:
+        metric_name, detector, score_high, score_low, score,
+        threshold, samples_since_reset, direction, severity,
+        current_value, baseline_mean, baseline_std, host,
+        instance_id, trace_id, runbook_url.
+
+        When OTel is unavailable, fall back to a structured log line
+        so observability survives without OTel.
         """
+        import os
+        import socket
+
+        detector_name = type(getattr(self, "_changepoint_detector", None)).__name__
+        severity = self._classify_drift_severity(result.score, result.threshold)
+
+        # Compute baseline statistics from the recent sampler window
+        # (60-sample default) so the on-call can compare the fire's
+        # value against the in-control mean + std without leaving
+        # the trace viewer.
+        baseline_mean = 0.0
+        baseline_std = 0.0
         try:
-            if OTEL_AVAILABLE and getattr(self, "tracer", None) is not None:
-                severity = self._classify_drift_severity(result.score, result.threshold)
-                with self.tracer.start_as_current_span(  # type: ignore[union-attr]
-                    "mahavishnu.observability.drift_detected",
+            recent = self._get_metric_sampler().values(metric_name)[-60:]
+            if recent:
+                baseline_mean = sum(recent) / len(recent)
+                if len(recent) >= 2:
+                    variance = sum((v - baseline_mean) ** 2 for v in recent) / (len(recent) - 1)
+                    baseline_std = math.sqrt(variance) if variance > 0 else 0.0
+        except Exception:  # noqa: BLE001 - boundary handler
+            pass
+
+        trace_id_str = ""
+        if OTEL_AVAILABLE:
+            try:
+                from opentelemetry import trace as _otel_trace
+
+                ctx_span = _otel_trace.get_current_span()
+                ctx = ctx_span.get_span_context() if ctx_span else None
+                if ctx and ctx.trace_id:
+                    trace_id_str = _otel_trace.format_trace_id(ctx.trace_id)
+            except Exception:  # noqa: BLE001 - OTel not initialized
+                pass
+
+        span_attributes = {
+            "metric_name": metric_name,
+            "detector": detector_name,
+            "score_high": float(result.score_high),
+            "score_low": float(result.score_low),
+            "score": float(result.score),
+            "threshold": float(result.threshold),
+            "samples_since_reset": int(result.samples_since_reset),
+            "direction": str(result.direction),
+            "severity": severity,
+            # C4 attributes added below
+            "current_value": float(value),
+            "baseline_mean": float(baseline_mean),
+            "baseline_std": float(baseline_std),
+            "host": socket.gethostname(),
+            "instance_id": os.environ.get("MAHAVISHNU_INSTANCE_ID", "default"),
+            "trace_id": trace_id_str,
+            "runbook_url": "docs/runbooks/mahavishnu-drift-detection.md",
+        }
+
+        # C6: Prometheus counter — the §7 stage-1 gate's source-of-truth.
+        try:
+            counter = getattr(self, "drift_detected_counter", None)
+            if counter is not None:
+                counter.add(
+                    1,
                     attributes={
                         "metric_name": metric_name,
-                        "detector": str(getattr(self, "_changepoint_detector", None).__class__.__name__),
-                        "score_high": float(result.score_high),
-                        "score_low": float(result.score_low),
-                        "score": float(result.score),
-                        "threshold": float(result.threshold),
-                        "samples_since_reset": int(result.samples_since_reset),
-                        "direction": str(result.direction),
+                        "detector": detector_name,
                         "severity": severity,
                     },
+                )
+            gauge = getattr(self, "detector_age_gauge", None)
+            if gauge is not None:
+                gauge.add(
+                    int(result.samples_since_reset),
+                    attributes={
+                        "metric_name": metric_name,
+                        "detector": detector_name,
+                    },
+                )
+        except Exception as exc:  # noqa: BLE001 - boundary handler
+            self._log_debug("drift counter increment failed: %s", exc)
+
+        # OTel span emission (best-effort).
+        try:
+            if OTEL_AVAILABLE and getattr(self, "tracer", None) is not None:
+                with self.tracer.start_as_current_span(  # type: ignore[union-attr]
+                    "mahavishnu.observability.drift_detected",
+                    attributes=span_attributes,
                 ):
                     pass
         except Exception as exc:  # noqa: BLE001 - boundary handler
@@ -582,13 +690,19 @@ class ObservabilityManager:
         # Always log a structured event so observability survives
         # even when OTel is disabled.
         self._log_warning(
-            "drift_detected metric=%s detector=%s score=%.3f threshold=%.3f direction=%s samples=%d",
+            "drift_detected metric=%s detector=%s value=%.3f baseline_mean=%.3f baseline_std=%.3f score=%.3f threshold=%.3f severity=%s direction=%s samples=%d trace_id=%s host=%s",
             metric_name,
-            type(getattr(self, "_changepoint_detector", None)).__name__,
+            detector_name,
+            value,
+            baseline_mean,
+            baseline_std,
             result.score,
             result.threshold,
+            severity,
             result.direction,
             result.samples_since_reset,
+            trace_id_str or "-",
+            span_attributes["host"],
         )
 
     def _on_anomaly_detected(self, metric_name: str, result) -> None:
@@ -602,11 +716,11 @@ class ObservabilityManager:
             result.window_std,
         )
 
-    def _log_debug(self, msg: str, *args: Any) -> None:  # noqa: ANN401
+    def _log_debug(self, msg: str, *args: Any) -> None:
         if getattr(self, "logger", None) is not None:
             self.logger.debug(msg, *args)  # type: ignore[union-attr]
 
-    def _log_warning(self, msg: str, *args: Any) -> None:  # noqa: ANN401
+    def _log_warning(self, msg: str, *args: Any) -> None:
         if getattr(self, "logger", None) is not None:
             self.logger.warning(msg, *args)  # type: ignore[union-attr]
 

@@ -97,6 +97,16 @@ _ALLOWED_LABEL_KEYS: Final[frozenset[str]] = frozenset(
         # silently drops the labels at emission.
         "predicted_wait_bucket",
         "effective_selector",
+        # Tier 1 Phase 8 — drift detection counters. REQ-005.
+        # Labels for mahavishnu.observability.drift_detected_total
+        # and mahavishnu.observability.detector_age_samples. Closed
+        # cardinality: metric_name is the operator-supplied target
+        # metric (e.g. 'pool_queue_depth'); detector is one of
+        # {'cusum', 'page_hinkley'}; severity is one of
+        # {'minor', 'moderate', 'critical'}.
+        "metric_name",
+        "detector",
+        "severity",
     }
 )
 

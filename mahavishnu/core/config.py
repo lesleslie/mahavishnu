@@ -498,6 +498,36 @@ class ChangepointConfig(BaseModel):
         le=3600.0,
         description="MetricSampler tick cadence in seconds (default 60 matches fitness_analyzer TTL)",
     )
+    target_mean: float = Field(
+        default=0.0,
+        description=(
+            "In-control process mean for the target metric. "
+            "Default 0.0 is only valid for normalized/residual metrics. "
+            "For raw counts like 'pool_queue_depth' operators MUST set this "
+            "to the steady-state value (e.g. 4.0 for a typical workload) or "
+            "the detector will accumulate on baseline traffic and fire "
+            "within ~30 samples. See docs/runbooks/mahavishnu-drift-detection.md."
+        ),
+    )
+    target_mean_auto: bool = Field(
+        default=False,
+        description=(
+            "When True, override target_mean with a rolling mean of the "
+            "last `target_mean_auto_window` samples after the sampler has "
+            "warmed up. Useful when the in-control mean drifts slowly. "
+            "Setting both target_mean and target_mean_auto=True falls back "
+            "to the explicit value until the auto window fills."
+        ),
+    )
+    target_mean_auto_window: int = Field(
+        default=60,
+        ge=10,
+        le=7200,
+        description=(
+            "Number of recent samples used to derive target_mean when "
+            "target_mean_auto=True (default 60 ≈ 1h at 60s cadence)."
+        ),
+    )
 
     model_config = {"extra": "forbid"}
 

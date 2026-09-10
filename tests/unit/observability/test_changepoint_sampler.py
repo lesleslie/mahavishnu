@@ -206,6 +206,90 @@ class TestChangepointConfig:
         assert settings.changepoint.enabled is True
         assert settings.changepoint.target_metric == "pool_queue_depth"
 
+    def test_target_mean_defaults_to_zero(self) -> None:
+        """target_mean defaults to 0.0; valid only for normalized metrics.
+
+        Raw-count metrics like pool_queue_depth require operators to
+        set an explicit baseline. See docs/runbooks/mahavishnu-drift-detection.md.
+        """
+        from mahavishnu.core.config import ChangepointConfig
+
+        cfg = ChangepointConfig()
+        assert cfg.target_mean == 0.0
+        assert cfg.target_mean_auto is False
+        assert cfg.target_mean_auto_window == 60
+
+    def test_target_mean_can_be_set_explicitly(self) -> None:
+        """Operators set target_mean explicitly for raw-count metrics."""
+        from mahavishnu.core.config import ChangepointConfig
+
+        cfg = ChangepointConfig(target_mean=4.0)
+        assert cfg.target_mean == 4.0
+
+    def test_target_mean_auto_window_validated(self) -> None:
+        """target_mean_auto_window must be in [10, 7200]."""
+        from pydantic import ValidationError
+
+        from mahavishnu.core.config import ChangepointConfig
+
+        with pytest.raises(ValidationError):
+            ChangepointConfig(target_mean_auto_window=5)  # too small
+
+        # 7200 is the upper bound (matches sampler default max_samples).
+        cfg = ChangepointConfig(target_mean_auto_window=7200)
+        assert cfg.target_mean_auto_window == 7200
+
+    def test_target_mean_passed_to_detector(self) -> None:
+        """target_mean from config is forwarded to CUSUMDetector/PageHinkleyDetector.
+
+        Without this, the detector accumulates on baseline traffic for
+        raw-count metrics and fires within ~30 samples. (Math CRITICAL #4.)
+        """
+        from mahavishnu.core.config import ChangepointConfig
+        from mahavishnu.core.observability import ObservabilityManager
+
+        mgr = ObservabilityManager.__new__(ObservabilityManager)
+
+        class _Stub:
+            pass
+
+        mgr.config = _Stub()
+        mgr.config.changepoint = ChangepointConfig(
+            enabled=True,
+            target_mean=4.0,  # explicit baseline for raw-count pool_queue_depth
+            detector="cusum",
+        )
+        mgr.logger = None  # type: ignore[attr-defined]
+        detector = mgr._get_or_create_changepoint_detector()
+        assert detector.target_mean == 4.0
+
+    def test_target_mean_auto_overrides_explicit(self) -> None:
+        """target_mean_auto=True with a warm sampler uses the rolling baseline."""
+        from mahavishnu.core.config import ChangepointConfig
+        from mahavishnu.core.observability import ObservabilityManager
+
+        mgr = ObservabilityManager.__new__(ObservabilityManager)
+
+        class _Stub:
+            pass
+
+        mgr.config = _Stub()
+        mgr.config.changepoint = ChangepointConfig(
+            enabled=True,
+            target_mean=0.0,
+            target_mean_auto=True,
+            target_mean_auto_window=10,
+            target_metric="test_metric",
+        )
+        mgr.logger = None  # type: ignore[attr-defined]
+        # Feed 50 samples around value=7.0
+        sampler = mgr._get_metric_sampler()
+        for _ in range(50):
+            sampler.observe("test_metric", 7.0)
+        detector = mgr._get_or_create_changepoint_detector()
+        # Rolling baseline ≈ 7.0 (not the explicit 0.0)
+        assert detector.target_mean == pytest.approx(7.0, abs=0.01)
+
 
 # ---------------------------------------------------------------------------
 # ObservabilityManager drift detection methods
@@ -429,3 +513,186 @@ class TestObservabilityManagerDriftDetection:
         mgr2.config.changepoint = ChangepointConfig(sampler_cadence_seconds=10.0)
         mgr2.logger = None  # type: ignore[attr-defined]
         assert mgr2._get_metric_sampler().cadence_seconds == 10.0
+
+
+# ---------------------------------------------------------------------------
+# C4 + C6: drift counter, gauge, and span attributes
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.unit
+class TestDriftCounterEmission:
+    """C6: drift_detected_total counter + detector_age_samples gauge.
+
+    The §7 stage-1 gate depends on the drift_detected_total counter.
+    Without registration, the gate is unenforced even though the
+    detector logic runs. See audit CRITICAL #1 / observability #1 / HIGH #10.
+    """
+
+    def _build_manager(self):  # type: ignore[no-untyped-def]
+        from mahavishnu.core.observability import ObservabilityManager
+        from mahavishnu.core.config import ChangepointConfig
+
+        mgr = ObservabilityManager.__new__(ObservabilityManager)
+
+        class _Stub:
+            pass
+
+        mgr.config = _Stub()
+        mgr.config.changepoint = ChangepointConfig(enabled=True, threshold=4.0)
+        mgr.logger = None  # type: ignore[attr-defined]
+        return mgr
+
+    def test_observability_manager_has_drift_counter(self) -> None:
+        """After construction, the manager must have a drift_detected_counter."""
+        mgr = self._build_manager()
+        # Call the real init to wire fallback instruments
+        mgr._init_fallback_components()
+        assert hasattr(mgr, "drift_detected_counter")
+        assert mgr.drift_detected_counter is not None
+
+    def test_observability_manager_has_detector_age_gauge(self) -> None:
+        mgr = self._build_manager()
+        mgr._init_fallback_components()
+        assert hasattr(mgr, "detector_age_gauge")
+        assert mgr.detector_age_gauge is not None
+
+    def test_drift_counter_called_on_persistent_shift(self) -> None:
+        """A persistent shift must invoke drift_detected_counter.add(1)."""
+        from mahavishnu.core.observability import ObservabilityManager
+        from mahavishnu.core.config import ChangepointConfig
+
+        mgr = ObservabilityManager.__new__(ObservabilityManager)
+
+        class _Stub:
+            pass
+
+        mgr.config = _Stub()
+        mgr.config.changepoint = ChangepointConfig(enabled=True, threshold=4.0)
+        mgr.logger = None  # type: ignore[attr-defined]
+        mgr._init_fallback_components()
+
+        # Spy on the counter
+        added = []
+
+        class _Spy:
+            def add(self, amount, attributes=None):
+                added.append((amount, attributes))
+
+        mgr.drift_detected_counter = _Spy()  # type: ignore[assignment]
+
+        # Drive a persistent shift
+        detected = False
+        for _ in range(100):
+            r = mgr._evaluate_change_point("pool_queue_depth", 1.0)
+            if r.detected:
+                detected = True
+                break
+        assert detected, "Detector should fire on a 1.0-sigma shift"
+        assert len(added) >= 1, "drift_detected_counter.add was never called"
+        # Verify the labels are correct
+        amount, attrs = added[0]
+        assert amount == 1
+        assert attrs["metric_name"] == "pool_queue_depth"
+        assert "cusum" in attrs["detector"].lower() or "page" in attrs["detector"].lower()
+        assert attrs["severity"] in {"minor", "moderate", "critical"}
+
+    def test_drift_span_attributes_complete(self) -> None:
+        """C4: OTel span carries all 16 spec attributes."""
+        from unittest.mock import patch
+
+        from mahavishnu.core.observability import ObservabilityManager
+        from mahavishnu.core.config import ChangepointConfig
+
+        mgr = ObservabilityManager.__new__(ObservabilityManager)
+
+        class _Stub:
+            pass
+
+        mgr.config = _Stub()
+        mgr.config.changepoint = ChangepointConfig(enabled=True, threshold=4.0)
+        mgr.logger = None  # type: ignore[attr-defined]
+        mgr._init_fallback_components()
+
+        # Capture span attributes via a spy tracer
+        captured_attrs: list[dict] = []
+
+        class _SpySpan:
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *args):
+                return False
+
+            def set_attribute(self, key, value):
+                captured_attrs.append((key, value))
+
+        class _SpyTracer:
+            def start_as_current_span(self, name, attributes=None):
+                captured_attrs.extend(list((attributes or {}).items()))
+                return _SpySpan()
+
+        mgr.tracer = _SpyTracer()  # type: ignore[assignment]
+
+        # Patch OTEL_AVAILABLE so the OTel branch in _on_drift_detected
+        # executes even in CI where the OTel SDK is not installed.
+        with patch("mahavishnu.core.observability.OTEL_AVAILABLE", True):
+            # Drive a drift
+            for _ in range(200):
+                r = mgr._evaluate_change_point("pool_queue_depth", 1.0)
+                if r.detected:
+                    break
+
+        # Inspect captured attributes
+        attr_keys = {k for k, _ in captured_attrs}
+        # Spec §6 Phase 6 Integration Contract — 16 attributes
+        required = {
+            "metric_name",
+            "detector",
+            "score_high",
+            "score_low",
+            "score",
+            "threshold",
+            "samples_since_reset",
+            "direction",
+            "severity",
+            "current_value",
+            "baseline_mean",
+            "baseline_std",
+            "host",
+            "instance_id",
+            "trace_id",
+            "runbook_url",
+        }
+        missing = required - attr_keys
+        assert not missing, f"Missing OTel span attributes: {missing}"
+
+
+# ---------------------------------------------------------------------------
+# C6: ALLOWED_LABEL_KEYS includes the new drift labels
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.unit
+class TestDriftLabelAllowlist:
+    """C6: metric_name, detector, severity labels must be allowlisted.
+
+    Without these entries, the counter emission in _on_drift_detected
+    raises ValueError("Unknown metric label keys: ...") at runtime
+    and the counter is silently dropped. See audit HIGH #24 / obs HIGH #1.
+    """
+
+    def test_metric_name_allowed(self) -> None:
+        from mahavishnu.observability.metrics import _ALLOWED_LABEL_KEYS
+
+        assert "metric_name" in _ALLOWED_LABEL_KEYS
+
+    def test_detector_allowed(self) -> None:
+        from mahavishnu.observability.metrics import _ALLOWED_LABEL_KEYS
+
+        assert "detector" in _ALLOWED_LABEL_KEYS
+
+    def test_severity_allowed(self) -> None:
+        from mahavishnu.observability.metrics import _ALLOWED_LABEL_KEYS
+
+        assert "severity" in _ALLOWED_LABEL_KEYS
