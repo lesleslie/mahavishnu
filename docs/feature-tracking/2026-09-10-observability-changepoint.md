@@ -1,6 +1,6 @@
 ---
 name: observability-changepoint
-status: adopted
+status: wired
 date: 2026-09-10
 last_reviewed: 2026-09-10
 owner: bodai-orchestrator
@@ -16,11 +16,16 @@ role: canonical
 
 ## State — pick one
 
-- [x] **adopted** (in active use by ≥1 user/workflow/agent)
+- [x] **wired** (built + integrated; awaiting operator adoption of the two-stage extension)
 
-Default `changepoint.enabled: true` after Phase 7 validation
-passed on 2026-09-10. Phase 8 staged rollout playbook is in the
-"Staged rollout" section below.
+The original CUSUM/Page-Hinkley detector has been adopted since
+Phase 7. The two-stage warn/confirm extension shipped 2026-09-10
+in commits `3f61fa3a` + `b758ebba` + `40cd2315`; the code default
+for `changepoint.detector` remains `cusum`, so operators opt into
+`two_stage` explicitly via `changepoint.detector: "two_stage"` in
+`settings/mahavishnu.yaml` or `MAHAVISHNU_CHANGEPOINT__DETECTOR=two_stage`.
+Status moves back to `adopted` once operators begin the staged
+rollout below.
 
 ## Wiring checklist
 
@@ -157,6 +162,29 @@ two weeks of two_stage operation in their environment — the
 two-stage mode emits BOTH `drift_warning` (soft) and
 `drift_detected` (hard) signals, so existing alerts on
 `drift_detected` continue to work without changes.
+
+### Round-6 review fixes (shipped 2026-09-10)
+
+Three commits landed to close the Task 7 4-agent review's
+CRITICAL + HIGH + MEDIUM findings:
+
+- `3f61fa3a` — `docs+test(changepoint): round-6 fixes per task-7 review` (8 files, +287/−38). Bundle of F1–F10: test-count correction, `drift_warning` OTel span parity with `drift_detected` (added `instance_id`, `host`, `trace_id`, `runbook_url`, `baseline_mean`, `baseline_std`), severity-classifier factored to `mahavishnu/observability/changepoint/severity.py` to remove the `two_stage.py` ⇄ `observability.py` circular-import hazard, `confirm_window_samples` boundary docstring clarified, runbook "RECOMMENDED for production" reworded to "RECOMMENDED operator choice post-Phase-8", feature-tracking default-detector claim corrected, runbook `drift_detected` attribute list extended with `samples_since_warning` + `confirm_detector`, spec §1 names `mahavishnu.observability.drift_warning_total` counter + links runbook, dispatch-seam integration test (`tests/integration/observability/test_changepoint_two_stage_dispatch.py`).
+- `b758ebba` — `docs(audit): correct changepoint test count to 115 across 8 files (post-F10 dispatch seam test)` (1 line). Audit doc's status header corrected from 113/7 to 115/8 to match the post-F10 reality.
+- `40cd2315` — `docs(followups): park 11 LOW polish items from changepoint two-stage review (round-7/8)` (1 file). 11 LOW items parked for the next docs/code sweep; full list at `docs/followups/2026-09-10-changepoint-two-stage-polish.md`.
+
+Both affected re-reviewers (ops-UX + audit-honesty) reported clean for
+shipping. Ops-UX verdict: "ready to ship, 3 new LOWs (no regressions)."
+Audit-honesty verdict: "CLEAN — All three Round-5 audit-honesty
+findings are resolved. The fix layer landed the test-count correction
+in both `3f61fa3a` (initial 113/7) AND `b758ebba` (corrected to
+115/8 to match post-F10 state), and the detector-default narrative is
+now consistent across all 5 doc surfaces."
+
+Math + arch reviewers not re-dispatched (their findings were MEDIUM/LOW
+and unchanged by Round-6; LOW items now parked in the followups doc).
+
+115 tests pass across 8 .py files (live `pytest collect-only` confirmed
+in audit-honesty re-review on 2026-09-10).
 
 ## Blocker
 
