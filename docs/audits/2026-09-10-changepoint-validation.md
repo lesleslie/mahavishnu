@@ -3,7 +3,7 @@
 **Date:** 2026-09-10 (updated 2026-09-10 with round-2 empirical measurements)
 **Spec:** [`docs/plans/2026-09-10-bodai-math-initiatives-tier1.md` §6 Phase 7](../plans/2026-09-10-bodai-math-initiatives-tier1.md)
 **Integration tests:** `tests/integration/observability/test_changepoint_detection.py`, `test_changepoint_benchmark.py`
-**Status:** Pass — `pytest tests/integration/observability/ -v --no-cov` → 10/10
+**Status:** Pass — `pytest tests/integration/observability/ tests/unit/observability/ -v --no-cov` → 100 tests collected across 2 files (4 detection integration + 6 benchmark integration + 90 unit; pre-round-2 claim of 10/10 was the benchmark file alone before unit tests expanded)
 
 ## Summary
 
@@ -119,8 +119,10 @@ complementary (online sequential) to Akosha's pytrendy
 
 ## Integration test status
 
-`pytest tests/integration/observability/` — 10 tests pass (4 in
-`test_changepoint_detection.py` + 6 in `test_changepoint_benchmark.py`).
+`pytest tests/integration/observability/ tests/unit/observability/`
+— 100 tests pass (4 in `test_changepoint_detection.py` + 6 in
+`test_changepoint_benchmark.py` + 90 in `test_changepoint_sampler.py` /
+`test_changepoint.py` / `test_changepoint_3sigma.py` etc.).
 
 ## What ships to Phase 8
 
@@ -137,8 +139,10 @@ seed. The integration test uses `random.Random(42)` for
 reproducibility. Operators running the benchmark against production
 traffic should expect the ARL₀ to vary by ±50% depending on the
 in-control distribution. Phase 8's monitoring includes the
-`mahavishnu.observability.detector_age_samples` gauge so operators
-can see the detector state per metric.
+`mahavishnu.observability.detector_age_samples_total` gauge so
+operators can see the detector state per metric. (R3-H2 renamed
+this from `detector_age_samples` to make the cumulative semantic
+explicit.)
 
 ## Round-2 fixes summary
 

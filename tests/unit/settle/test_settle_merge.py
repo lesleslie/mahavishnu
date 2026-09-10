@@ -18,8 +18,14 @@ from mahavishnu.settle.merge import (
     MergeConflictError,
     MergeFailureError,
     MergeResult,
+    MergeStrategy,
     merge_three_way,
     merge_three_way_sync,
+)
+from mahavishnu.settle.state_machine import (
+    Binding,
+    SettleRunRecord,
+    initial_record,
 )
 
 
@@ -69,7 +75,12 @@ async def test_merge_three_way_clean_merge_returns_result(
         "asyncio.create_subprocess_exec",
         AsyncMock(return_value=proc),
     ):
-        result = await merge_three_way(base=base, ours=ours, theirs=theirs)
+        result = await merge_three_way(
+            base=base,
+            ours=ours,
+            theirs=theirs,
+            strategy=MergeStrategy.LINE,
+        )
     assert isinstance(result, MergeResult)
     assert result.merged == merged_text
     assert result.conflict_count == 0
@@ -94,6 +105,7 @@ async def test_merge_three_way_conflict_raises_with_markers() -> None:
                 ours="ours-line\n",
                 theirs="theirs-line\n",
                 label="binding-A.py",
+                strategy=MergeStrategy.LINE,
             )
     err = excinfo.value
     assert err.path == "binding-A.py"
@@ -118,7 +130,12 @@ async def test_merge_three_way_conflict_counts_multiple_hunks() -> None:
         AsyncMock(return_value=proc),
     ):
         with pytest.raises(MergeConflictError) as excinfo:
-            await merge_three_way(base="A\nB\n", ours="A\nB\n", theirs="A\nB\n")
+            await merge_three_way(
+                base="A\nB\n",
+                ours="A\nB\n",
+                theirs="A\nB\n",
+                strategy=MergeStrategy.LINE,
+            )
     assert "<<<<<<< " in excinfo.value.merged
 
 
@@ -139,6 +156,7 @@ async def test_merge_three_way_fatal_exit_raises_failure(returncode: int) -> Non
                 ours="y",
                 theirs="z",
                 label="binding-X",
+                strategy=MergeStrategy.LINE,
             )
     assert f"exit={returncode}" in str(excinfo.value)
     assert "binding-X" in str(excinfo.value)
@@ -154,6 +172,7 @@ async def test_merge_three_way_passes_label_and_git_binary() -> None:
             theirs="z",
             label="custom-label",
             git_merge_file="/opt/custom/git",
+            strategy=MergeStrategy.LINE,
         )
     # First positional arg should be the overridden git binary.
     args, kwargs = create_mock.call_args
@@ -168,7 +187,12 @@ async def test_merge_three_way_empty_inputs_clean() -> None:
         "asyncio.create_subprocess_exec",
         AsyncMock(return_value=proc),
     ):
-        result = await merge_three_way(base="", ours="", theirs="")
+        result = await merge_three_way(
+            base="",
+            ours="",
+            theirs="",
+            strategy=MergeStrategy.LINE,
+        )
     assert result.merged == ""
     assert result.conflict_count == 0
 
@@ -271,3 +295,148 @@ def test_merge_conflict_error_carries_all_payload() -> None:
     assert err.base == "b"
     assert err.ours == "o"
     assert err.theirs == "t"
+
+
+# ---------------------------------------------------------------------------
+# Phase 3 exit criterion: mixed-strategy per-binding apply
+# ---------------------------------------------------------------------------
+
+
+def _mixed_strategy_record() -> SettleRunRecord:
+    """Build a SettleRunRecord with one LINE binding and one SEMANTIC binding."""
+    return initial_record(
+        run_ref="r-mixed",
+        worker_id="w",
+        task_signature="sig",
+        bindings=(
+            Binding(path="line.py", base="x", merge_strategy=MergeStrategy.LINE),
+            Binding(path="semantic.py", base="y", merge_strategy=MergeStrategy.SEMANTIC),
+        ),
+    )
+
+
+async def test_mixed_strategy_apply_routes_per_binding() -> None:
+    """Phase 3 exit criterion: per-binding strategy routes correctly.
+
+    Binding A (merge_strategy=LINE) and binding B (merge_strategy=SEMANTIC)
+    in the same SettleRunRecord must each invoke ``merge_three_way`` with
+    the corresponding ``strategy`` argument. The wiring at
+    ``worker_contract_tools.py:664-681`` is what Phase 3 adds; this test
+    pins that contract.
+
+    Patches ``merge_three_way`` directly so the test doesn't depend on
+    whether ``mergiraf`` is installed — the Phase 3 contract is about
+    argument forwarding, not driver behavior.
+    """
+    from mahavishnu.mcp.tools.worker_contract_tools import _apply_merge
+
+    record = _mixed_strategy_record()
+    bindings_content = {"line.py": "L", "semantic.py": "S"}
+
+    async def fake_merge(
+        *,
+        base: str,
+        ours: str,
+        theirs: str,
+        label: str,
+        strategy: MergeStrategy | None = None,
+        git_merge_file: str = "git",
+    ) -> MergeResult:
+        return MergeResult(merged=f"merged-{label}", conflict_count=0)
+
+    with patch(
+        "mahavishnu.mcp.tools.worker_contract_tools.merge_three_way",
+        side_effect=fake_merge,
+    ):
+        result = await _apply_merge(record, bindings_content)
+
+    assert "merged" in result
+    assert result["merged"]["line.py"] == "merged-line.py"
+    assert result["merged"]["semantic.py"] == "merged-semantic.py"
+
+
+async def test_mixed_strategy_apply_forwards_per_binding_strategy_arg() -> None:
+    """The ``strategy`` keyword passed to ``merge_three_way`` matches the binding.
+
+    Patches ``merge_three_way`` directly to inspect the call signatures.
+    The wiring at ``worker_contract_tools.py:664-681`` translates the
+    binding's ``merge_strategy`` (str | None) into a ``MergeStrategy`` enum
+    (or ``None``) before passing to ``merge_three_way``.
+    """
+    from mahavishnu.mcp.tools.worker_contract_tools import _apply_merge
+
+    record = _mixed_strategy_record()
+    bindings_content = {"line.py": "L", "semantic.py": "S"}
+
+    # Capture call args via a wrapping AsyncMock.
+    captured_strategies: list[MergeStrategy | None] = []
+    captured_labels: list[str] = []
+
+    async def fake_merge(
+        *,
+        base: str,
+        ours: str,
+        theirs: str,
+        label: str,
+        strategy: MergeStrategy | None = None,
+        git_merge_file: str = "git",
+    ) -> MergeResult:
+        captured_strategies.append(strategy)
+        captured_labels.append(label)
+        return MergeResult(merged=f"merged-{label}", conflict_count=0)
+
+    with patch(
+        "mahavishnu.mcp.tools.worker_contract_tools.merge_three_way",
+        side_effect=fake_merge,
+    ):
+        result = await _apply_merge(record, bindings_content)
+
+    assert captured_labels == ["line.py", "semantic.py"]
+    assert captured_strategies == [MergeStrategy.LINE, MergeStrategy.SEMANTIC]
+    assert result["merged"]["line.py"] == "merged-line.py"
+    assert result["merged"]["semantic.py"] == "merged-semantic.py"
+
+
+async def test_mixed_strategy_apply_default_resolution_when_binding_omits() -> None:
+    """Bindings without ``merge_strategy`` use the default resolution path.
+
+    Phase 3 REQ-SM-004 lets a record mix explicit and default-strategy
+    bindings. A binding with ``merge_strategy=None`` (the dataclass default)
+    forwards ``strategy=None`` to ``merge_three_way``, which then resolves
+    via the Phase 1 default-resolution matrix (SEMANTIC when mergiraf on
+    PATH, else LINE).
+    """
+    from mahavishnu.mcp.tools.worker_contract_tools import _apply_merge
+
+    record = initial_record(
+        run_ref="r-default",
+        worker_id="w",
+        task_signature="sig",
+        bindings=(
+            Binding(path="default.py", base="x"),  # merge_strategy defaults to None
+            Binding(path="line.py", base="y", merge_strategy=MergeStrategy.LINE),
+        ),
+    )
+    bindings_content = {"default.py": "D", "line.py": "L"}
+
+    captured: list[MergeStrategy | None] = []
+
+    async def fake_merge(
+        *,
+        base: str,
+        ours: str,
+        theirs: str,
+        label: str,
+        strategy: MergeStrategy | None = None,
+        git_merge_file: str = "git",
+    ) -> MergeResult:
+        captured.append(strategy)
+        return MergeResult(merged=f"m-{label}", conflict_count=0)
+
+    with patch(
+        "mahavishnu.mcp.tools.worker_contract_tools.merge_three_way",
+        side_effect=fake_merge,
+    ):
+        await _apply_merge(record, bindings_content)
+
+    assert captured == [None, MergeStrategy.LINE]

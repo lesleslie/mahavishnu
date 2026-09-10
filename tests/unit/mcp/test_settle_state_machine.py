@@ -14,6 +14,7 @@ rationale.
 
 from __future__ import annotations
 
+from datetime import UTC, datetime
 import itertools
 
 from hypothesis import given, settings
@@ -23,6 +24,7 @@ import pytest
 pytestmark = pytest.mark.unit
 
 
+from mahavishnu.settle.merge import MergeStrategy
 from mahavishnu.settle.state_machine import (
     Binding,
     SettleAction,
@@ -207,6 +209,164 @@ def test_to_dict_round_trip() -> None:
     assert restored.transitions == selected.transitions
 
 
+# ---------------------------------------------------------------------------
+# Phase 3 REQ-SM-004 / REQ-SM-007: per-binding merge_strategy field
+# ---------------------------------------------------------------------------
+
+
+def test_binding_merge_strategy_defaults_to_none() -> None:
+    """The ``merge_strategy`` field defaults to ``None`` for backward compat.
+
+    Records written before Phase 3 (no ``merge_strategy`` key in the
+    Dhara payload) deserialize cleanly because the dataclass field
+    defaults to ``None`` and ``_parse_bindings`` accepts absence.
+    """
+    binding = Binding(path="p", base="b")
+    assert binding.merge_strategy is None
+
+
+def test_binding_accepts_merge_strategy_enum() -> None:
+    """The field accepts ``MergeStrategy`` directly.
+
+    ``StrEnum`` values are plain strings, so ``MergeStrategy.SEMANTIC``
+    is equivalent to passing ``"semantic"``. The dataclass field is
+    typed ``str | None``; passing the enum satisfies the bound because
+    ``MergeStrategy`` IS a ``str`` (via ``StrEnum``). The wire format
+    round-trip (covered by ``test_binding_strategy_roundtrip``) is what
+    pins the REQ-SM-007 serialization contract — the dataclass stores the
+    enum directly and ``to_dict`` emits its ``str(...)`` form.
+    """
+    binding = Binding(
+        path="p",
+        base="b",
+        merge_strategy=MergeStrategy.SEMANTIC,
+    )
+    assert binding.merge_strategy == "semantic"
+    assert binding.merge_strategy == MergeStrategy.SEMANTIC
+    assert isinstance(binding.merge_strategy, str)
+
+
+def test_binding_strategy_roundtrip() -> None:
+    """REQ-SM-007: ``Binding.merge_strategy`` round-trips through Dhara shape.
+
+    ``Binding(merge_strategy=MergeStrategy.SEMANTIC) → to_dict() → from_dict()
+    → Binding(merge_strategy="semantic")``. The wire format is the raw
+    string, NOT the enum repr — this is the contract that keeps Phase 3
+    payloads readable by older records (which lacked the field).
+    """
+    original = Binding(
+        path="src/foo.py",
+        base="def foo(): pass\n",
+        merge_strategy=MergeStrategy.SEMANTIC,
+    )
+    record = SettleRunRecord(
+        run_ref="r",
+        worker_id="w",
+        task_signature="sig",
+        bindings=(original,),
+        state=SettleState.PROPOSED,
+        created_at=datetime.now(UTC),
+        updated_at=datetime.now(UTC),
+    )
+    payload = record.to_dict()
+    # Sanity: wire format is the raw string, not the enum repr.
+    assert payload["bindings"][0]["merge_strategy"] == "semantic"
+
+    restored = SettleRunRecord.from_dict(payload)
+    assert len(restored.bindings) == 1
+    assert restored.bindings[0].merge_strategy == "semantic"
+
+
+def test_binding_strategy_roundtrip_pydantic_v2_compat() -> None:
+    """REQ-SM-007 + REQ-SM-004: ``SettleRunRecord`` Dhara payload round-trip.
+
+    Belt-and-suspenders: a full ``SettleRunRecord`` with bindings of mixed
+    strategies round-trips through ``to_dict`` / ``from_dict`` with
+    ``merge_strategy`` preserved on every binding.
+    """
+    bindings = (
+        Binding(path="a.py", base="x", merge_strategy=MergeStrategy.LINE),
+        Binding(path="b.py", base="y", merge_strategy=MergeStrategy.SEMANTIC),
+        Binding(path="c.py", base="z"),  # default None
+    )
+    record = SettleRunRecord(
+        run_ref="r-mixed",
+        worker_id="w",
+        task_signature="sig",
+        bindings=bindings,
+        state=SettleState.PROPOSED,
+        created_at=datetime.now(UTC),
+        updated_at=datetime.now(UTC),
+    )
+    payload = record.to_dict()
+    wire_strategies = [b["merge_strategy"] for b in payload["bindings"]]
+    assert wire_strategies == ["line", "semantic", None]
+
+    restored = SettleRunRecord.from_dict(payload)
+    restored_strategies = [b.merge_strategy for b in restored.bindings]
+    assert restored_strategies == ["line", "semantic", None]
+
+
+def test_binding_legacy_record_without_merge_strategy() -> None:
+    """Legacy records (no ``merge_strategy`` field) deserialize cleanly.
+
+    Records written before Phase 3 lack the ``merge_strategy`` key in
+    the binding payload. ``_parse_bindings`` must tolerate the absence
+    (REQ-SM-004 forward-compat) — ``_require_str_field`` would reject this
+    because that helper is strict on missing fields.
+    """
+    legacy_payload = {
+        "run_ref": "r-legacy",
+        "worker_id": "w",
+        "task_signature": "sig",
+        "bindings": [
+            {"path": "a.py", "base": "x"},
+            {"path": "b.py", "base": "y", "merge_strategy": None},
+        ],
+    }
+    rec = SettleRunRecord.from_dict(legacy_payload)
+    assert rec.bindings[0].merge_strategy is None
+    assert rec.bindings[1].merge_strategy is None
+
+
+def test_binding_invalid_merge_strategy_raises() -> None:
+    """Non-enum string for ``merge_strategy`` raises ``ValidationError``.
+
+    A typo like ``{"merge_strategy": "Semantic"}`` (capital S) would
+    pass a naive ``isinstance(str)`` check. ``MergeStrategy(raw)`` raises
+    ``ValueError`` for unknown values; ``_parse_bindings`` translates to
+    ``ValidationError`` with a structured diagnostic.
+    """
+    from mahavishnu.core.errors import ValidationError
+
+    bad_payload = {
+        "run_ref": "r-bad",
+        "worker_id": "w",
+        "task_signature": "sig",
+        "bindings": [{"path": "a.py", "base": "x", "merge_strategy": "Semantic"}],
+    }
+    with pytest.raises(ValidationError) as excinfo:
+        SettleRunRecord.from_dict(bad_payload)
+    assert "Semantic" in str(excinfo.value)
+
+
+def test_binding_non_string_merge_strategy_raises() -> None:
+    """Non-string ``merge_strategy`` raises ``ValidationError``.
+
+    Guards against integer / bool / dict sneaking into the wire format.
+    """
+    from mahavishnu.core.errors import ValidationError
+
+    bad_payload = {
+        "run_ref": "r-bad",
+        "worker_id": "w",
+        "task_signature": "sig",
+        "bindings": [{"path": "a.py", "base": "x", "merge_strategy": 42}],
+    }
+    with pytest.raises(ValidationError):
+        SettleRunRecord.from_dict(bad_payload)
+
+
 def test_from_dict_tolerates_missing_optional_fields() -> None:
     payload = {
         "run_ref": "r",
@@ -230,9 +390,7 @@ def test_from_dict_rejects_missing_bindings() -> None:
     from mahavishnu.core.errors import ValidationError
 
     with pytest.raises(ValidationError):
-        SettleRunRecord.from_dict(
-            {"run_ref": "r", "worker_id": "w", "bindings": "not-a-list"}
-        )
+        SettleRunRecord.from_dict({"run_ref": "r", "worker_id": "w", "bindings": "not-a-list"})
 
 
 # ---------------------------------------------------------------------------

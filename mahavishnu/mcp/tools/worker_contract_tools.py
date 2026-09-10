@@ -38,8 +38,10 @@ from mahavishnu.core.errors import ValidationError
 from mahavishnu.observability.worker_metrics import WorkerMetrics
 from mahavishnu.settle.merge import (
     MergeConflictError,
+    MergeDriverUnavailableError,
     MergeFailureError,
     MergeResult,
+    MergeStrategy,
     merge_three_way,
 )
 from mahavishnu.settle.persistence import (
@@ -659,12 +661,21 @@ async def _apply_merge(
             )
             continue
         theirs_content = theirs_map.get(binding.path, binding.base)
+        # Per-binding strategy (REQ-SM-004 / Phase 3). The wire format on
+        # the binding is ``str | None`` (raw wire value, validated by
+        # ``SettleRunRecord.from_dict``). ``MergeStrategy(raw)`` is a no-op
+        # because ``StrEnum`` values ARE plain strings — the constructor
+        # just confirms the value is a known enum member.
+        binding_strategy = (
+            MergeStrategy(binding.merge_strategy) if binding.merge_strategy is not None else None
+        )
         try:
             result: MergeResult = await merge_three_way(
                 base=binding.base,
                 ours=ours,
                 theirs=theirs_content,
                 label=binding.path,
+                strategy=binding_strategy,
             )
         except MergeConflictError as exc:
             conflicts.append(
@@ -674,6 +685,19 @@ async def _apply_merge(
                     "base": exc.base,
                     "ours": exc.ours,
                     "theirs": exc.theirs,
+                }
+            )
+        except MergeDriverUnavailableError as exc:
+            # Loud-failure per REQ-SM-003 / R3 #1: mergiraf required but
+            # not on $PATH. Surface as a fatal per-binding error with a
+            # stable error_code so the MCP caller can distinguish this
+            # from a normal ``MergeFailureError``.
+            fatal.append(
+                {
+                    "path": binding.path,
+                    "error": "merge_driver_unavailable",
+                    "error_code": "MHV-313",
+                    "detail": str(exc),
                 }
             )
         except MergeFailureError as exc:

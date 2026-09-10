@@ -14,6 +14,8 @@ import asyncio
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from enum import StrEnum
+import shutil
+import subprocess
 import time
 from typing import Any
 
@@ -107,6 +109,16 @@ class ReadyResponse(BaseModel):
         default_factory=dict, description="Status of each dependency"
     )
     checks: dict[str, str] = Field(default_factory=dict, description="Status of internal checks")
+    # Phase 4 / Round-4 review M1 fix: surface the mergiraf merge
+    # driver probe on the HTTP /ready endpoint, not just on the MCP
+    # ``get_readiness`` tool. Load balancers and Kubernetes probes need
+    # the same payload the MCP layer sees. ``None`` when the merge
+    # driver probe is disabled or fails in a way that can't recover
+    # the payload (defensive — see ``merge_driver_health`` C3 wrap).
+    merge_driver: dict[str, Any] | None = Field(
+        default=None,
+        description="Mergiraf merge driver probe (REQ-SM-009 payload shape)",
+    )
 
     model_config = {
         "json_schema_extra": {
@@ -120,6 +132,13 @@ class ReadyResponse(BaseModel):
                         "dhara": {"status": "ok", "latency_ms": 2},
                     },
                     "checks": {"database": "ok", "cache": "ok"},
+                    "merge_driver": {
+                        "available": True,
+                        "binary": "/usr/local/bin/mergiraf",
+                        "version": "0.19.1",
+                        "grammars": ["Python", "Rust"],
+                        "degraded_since": None,
+                    },
                 }
             ]
         }
@@ -717,4 +736,169 @@ async def readiness(
         "status": status.value,
         "default_worker": default_type,
         "worker_reports": {k: v.state.value for k, v in reports.items()},
+        "merge_driver": merge_driver_health(),
     }
+
+
+# ---------------------------------------------------------------------------
+# Phase 4 (settle-semantic-merge plan REQ-SM-009): merge_driver health probe.
+# Wired into the ``readiness`` aggregate above. Operators run
+# ``mahavishnu health --section merge_driver`` (or hit ``/health``) to
+# see the same payload.
+# ---------------------------------------------------------------------------
+
+# Module-level timestamp tracking runtime fallback events. Set by
+# ``merge.fallback_total`` increments (via :func:`mark_merge_driver_fallback`)
+# and cleared by the next healthy probe in :func:`merge_driver_health`.
+# Process-lifetime state — cleared on restart.
+_DEGRADED_SINCE: datetime | None = None
+
+
+def mark_merge_driver_fallback() -> None:
+    """Stamp ``_DEGRADED_SINCE`` when the merge driver falls back.
+
+    Called from :func:`mahavishnu.settle.merge._resolve_default_strategy`
+    when ``merge_driver_default == "mergiraf"`` but the binary is missing.
+    The OTel counter increment happens at the call site; this function
+    exists for the timestamp side-effect.
+    """
+    global _DEGRADED_SINCE
+    if _DEGRADED_SINCE is None:
+        _DEGRADED_SINCE = datetime.now(UTC)
+
+
+def merge_driver_health() -> dict[str, Any]:
+    """Probe the mergiraf merge driver and return the ``merge_driver`` payload.
+
+    Shape (per REQ-SM-009 + wire-up contract):
+        ``available`` (bool): binary present AND version parses
+        ``binary`` (path or null)
+        ``version`` (string or null)
+        ``grammars`` (list of available tree-sitter languages)
+        ``degraded_since`` (ISO timestamp or null) — set when
+        :func:`mark_merge_driver_fallback` fired since the last healthy
+        probe; cleared here on every healthy probe only — NOT when the
+        binary disappears (Round-4 review M2 fix; clearing on
+        binary-missing defeated operator-trust because a healthy past
+        degraded stamp was wiped before the operator could see it).
+
+    Cheap to compute — runs once per ``/health`` call (not per request).
+    Catches all subprocess errors so a transient ``mergiraf`` crash
+    never brings down the health endpoint (Round-4 review C3 fix —
+    the docstring used to claim this but the body didn't actually
+    wrap the probe helpers).
+    """
+    global _DEGRADED_SINCE  # must precede any read; Python evaluates the
+    # module-global name lazily and the read-only references below also
+    # resolve through this binding
+    try:
+        binary = shutil.which("mergiraf")
+        if binary is None:
+            # M2: do NOT clear ``_DEGRADED_SINCE`` here. The degraded
+            # stamp records "we fell back at some point in this
+            # process"; clearing it when the binary disappears would
+            # wipe evidence the operator may still want to see (the
+            # binary could be back in a moment, the fallback history
+            # should still be visible). Only a successful probe clears
+            # the stamp (see below).
+            return {
+                "available": False,
+                "binary": None,
+                "version": None,
+                "grammars": [],
+                "degraded_since": (
+                    _DEGRADED_SINCE.isoformat() if _DEGRADED_SINCE is not None else None
+                ),
+            }
+        version = _probe_mergiraf_version(binary)
+        grammars = _probe_mergiraf_grammars(binary)
+        available = version is not None
+        if available and _DEGRADED_SINCE is not None:
+            # Healthy probe — clear stale degradation stamp. This is the
+            # ONLY branch that clears ``_DEGRADED_SINCE``; binary-missing
+            # preserves the stamp per M2.
+            _DEGRADED_SINCE = None
+        return {
+            "available": available,
+            "binary": binary,
+            "version": version,
+            "grammars": grammars,
+            "degraded_since": (
+                _DEGRADED_SINCE.isoformat() if _DEGRADED_SINCE is not None else None
+            ),
+        }
+    except Exception as exc:  # noqa: BLE001 — /health must never propagate
+        # C3: the function used to claim "catches all subprocess errors"
+        # but the body didn't actually wrap the probe helpers, so any
+        # ``TypeError``/``AttributeError`` (e.g. on a malformed binary
+        # path that survived ``shutil.which``) would propagate and break
+        # the entire ``/health`` endpoint. Wrap the whole body and
+        # return the canonical empty payload so the health endpoint
+        # always serves a well-formed response.
+        logger.warning(
+            "merge_driver_health.unhandled_error: "
+            "type=%s message=%s — returning empty payload",
+            type(exc).__name__,
+            exc,
+        )
+        return {
+            "available": False,
+            "binary": None,
+            "version": None,
+            "grammars": [],
+            "degraded_since": (
+                _DEGRADED_SINCE.isoformat() if _DEGRADED_SINCE is not None else None
+            ),
+        }
+
+
+def _probe_mergiraf_version(binary: str) -> str | None:
+    """Parse ``mergiraf --version`` output. Returns ``None`` on failure."""
+    try:
+        result = subprocess.run(
+            [binary, "--version"],
+            capture_output=True,
+            text=True,
+            check=False,
+            timeout=5,
+        )
+    except (subprocess.TimeoutExpired, OSError):
+        return None
+    import re
+
+    match = re.search(r"mergiraf\s+(\d+\.\d+\.\d+)", result.stdout or result.stderr)
+    return match.group(1) if match else None
+
+
+def _probe_mergiraf_grammars(binary: str) -> list[str]:
+    """Return the list of language names from ``mergiraf languages``.
+
+    Failure modes (timeout, non-zero exit, missing binary) return ``[]``
+    — the aggregate still surfaces ``available`` based on the version
+    probe. Operators can drill in via ``scripts/check_merge_driver.py``
+    for the detailed breakdown.
+    """
+    try:
+        result = subprocess.run(
+            [binary, "languages"],
+            capture_output=True,
+            text=True,
+            check=False,
+            timeout=10,
+        )
+    except (subprocess.TimeoutExpired, OSError):
+        return []
+    if result.returncode != 0:
+        return []
+    lines = (result.stdout or "").splitlines()
+    # Output shape: ``Language Name (*.ext)`` per line; strip the
+    # extension glob for a clean payload.
+    languages: list[str] = []
+    for line in lines:
+        line = line.strip()
+        if not line:
+            continue
+        name = line.split(" ", 1)[0]
+        if name and name not in languages:
+            languages.append(name)
+    return languages

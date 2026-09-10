@@ -334,7 +334,21 @@ def init_observability(app: Any):
     The tick loop runs at the configured cadence (default 60s)
     and feeds ``_evaluate_change_point(target_metric, value)`` per
     tick. Without this the detector wiring existed only in tests.
+
+    Phase 4 (settle-semantic-merge plan): runs the mergiraf startup
+    guard BEFORE the observability manager is constructed. Loud-
+    failure semantics per R3 #2 Critical: operator sees the failure
+    at process start, NOT deferred to first apply.
     """
+    # Phase 4: install the Oneiric settings into the merge module's
+    # runtime config and run the startup guard. This MUST run before
+    # the observability manager is constructed — the guard raises
+    # ``MergeDriverUnavailableError`` to halt boot when the operator
+    # configured ``merge_driver_required=True`` but ``mergiraf`` is
+    # missing. The runtime config drives the default-resolution matrix
+    # in ``mahavishnu.settle.merge._resolve_default_strategy``.
+    _install_merge_driver_runtime_config(app)
+
     from .observability import init_observability as _init_observability
 
     manager = _init_observability(app.config)
@@ -374,6 +388,70 @@ def init_observability(app: Any):
         )
         app._change_point_tick_task = None
     return manager
+
+
+def _install_merge_driver_runtime_config(app: Any) -> None:
+    """Install the merge driver config and run the startup guard.
+
+    Phase 4 (settle-semantic-merge plan REQ-SM-005, R3 #2 Critical):
+    when ``merge_driver_required=True`` and the mergiraf binary is
+    missing, refuse to boot. The default-resolution matrix in
+    :func:`mahavishnu.settle.merge._resolve_default_strategy` reads
+    these settings on every call.
+
+    Loud-failure semantics: the guard raises
+    :class:`mahavishnu.settle.merge.MergeDriverUnavailableError` at
+    process start. Operators see the failure in the boot log, NOT
+    on the first ``worker_settle`` action — that would crash mid-
+    workflow and leave the audit trail half-written.
+
+    Round-4 review (C2): the guard fires whenever ``cfg_required=True``
+    regardless of ``cfg_default``. An operator on the Phase 4 default
+    ``"line"`` who flips ``merge_driver_required=True`` (e.g. to opt
+    into a future default) would otherwise get zero boot-time protection
+    against a missing mergiraf. The runtime fallback path (Phase 4 R3
+    #3 mitigation) is unaffected: it still falls back to LINE when
+    ``required=False``.
+    """
+    from mahavishnu.settle.merge import (
+        MergeDriverUnavailableError,
+        set_merge_driver_runtime_config,
+    )
+
+    cfg = getattr(app, "config", None)
+    if cfg is None:
+        return  # No config yet — bootstrap hasn't reached load_config.
+
+    cfg_default = getattr(cfg, "merge_driver_default", "line")
+    cfg_required = getattr(cfg, "merge_driver_required", False)
+
+    # Install the runtime config BEFORE the guard — the runtime
+    # fallback path reads from it on every ``merge_three_way`` call.
+    set_merge_driver_runtime_config(default=cfg_default, required=cfg_required)
+
+    # Startup guard: hard-fail at boot when mergiraf is required but
+    # missing. We deliberately do NOT defer this check to ``merge_three_way``
+    # because that would mean the app boots green and crashes on first
+    # apply — operator-trust erosion per R3 #2 Critical.
+    #
+    # Round-4 review fix (C2): the guard fires whenever ``cfg_required=True``
+    # — the prior conjunction with ``cfg_default == "mergiraf"`` left an
+    # operator on the default ``"line"`` flag with no boot-time protection.
+    # Probe the binary now (populates the process-lifetime cache).
+    if cfg_required:
+        from mahavishnu.settle.merge import _resolve_mergiraf_binary
+
+        binary = _resolve_mergiraf_binary()
+        if binary is None:
+            raise MergeDriverUnavailableError(
+                f"merge_driver_required=True but mergiraf binary not found "
+                f"on $PATH (merge_driver_default={cfg_default!r}). The app "
+                f"refuses to boot because loud-failure at process start is "
+                f"preferred over deferred crash on first apply (R3 #2 "
+                f"Critical). Install mergiraf (brew install mergiraf bundles "
+                f"tree-sitter grammars; cargo binstall mergiraf ships only "
+                f"the binary) or set merge_driver_required=False."
+            )
 
 
 def init_health_endpoint(app: Any):

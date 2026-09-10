@@ -23,6 +23,7 @@ from mahavishnu.core.errors import (
     MahavishnuError,
     ValidationError,
 )
+from mahavishnu.settle.merge import MergeStrategy
 
 
 class SettleState(StrEnum):
@@ -88,10 +89,18 @@ class Binding:
     and carries the pre-run ``base`` content (snapshot before the worker
     ran) so the 3-way merge can be performed by an external tool
     (``git merge-file`` is the canonical implementer).
+
+    The ``merge_strategy`` field (REQ-SM-004, Phase 3) overrides the global
+    default for this binding only. Stored as the raw wire string
+    (``"line"``, ``"semantic"``, or ``None``) so Dhara payload round-trips
+    are version-stable. The dataclass accepts a :class:`MergeStrategy`
+    enum directly because ``StrEnum`` values are plain strings — passing
+    ``MergeStrategy.SEMANTIC`` is equivalent to passing ``"semantic"``.
     """
 
     path: str
     base: str
+    merge_strategy: str | None = None
 
 
 @dataclass(frozen=True)
@@ -119,7 +128,16 @@ class SettleRunRecord:
             "run_ref": self.run_ref,
             "worker_id": self.worker_id,
             "task_signature": self.task_signature,
-            "bindings": [{"path": b.path, "base": b.base} for b in self.bindings],
+            "bindings": [
+                {
+                    "path": b.path,
+                    "base": b.base,
+                    "merge_strategy": (
+                        b.merge_strategy if isinstance(b.merge_strategy, str) else None
+                    ),
+                }
+                for b in self.bindings
+            ],
             "state": self.state.value,
             "created_at": self.created_at.isoformat(),
             "updated_at": self.updated_at.isoformat(),
@@ -224,7 +242,34 @@ def _parse_bindings(raw_bindings: object, run_ref: str) -> list[Binding]:
                 f"SettleRunRecord.from_dict: binding #{idx} base must be str",
                 details={"run_ref": run_ref},
             )
-        bindings.append(Binding(path=path_v, base=base_v))
+        # ``merge_strategy`` is REQ-SM-004 (Phase 3) — per-binding override.
+        # Tolerant of absence / None: legacy records (Phase 0/1/2) deserialize
+        # cleanly via ``None`` default. ``_require_str_field`` is intentionally
+        # NOT used here because that helper rejects missing fields, which
+        # would break forward-compat with records written before Phase 3.
+        merge_strategy_v = raw.get("merge_strategy")
+        if merge_strategy_v is None:
+            merge_strategy_str: str | None = None
+        elif isinstance(merge_strategy_v, str):
+            # Validate that the wire string is a known enum value.
+            # ``MergeStrategy(merge_strategy_v)`` raises ``ValueError`` if
+            # not; we translate to ``ValidationError`` so the caller sees a
+            # structured diagnostic instead of an opaque exception.
+            try:
+                MergeStrategy(merge_strategy_v)
+            except ValueError as exc:
+                raise ValidationError(
+                    f"SettleRunRecord.from_dict: binding #{idx} "
+                    f"merge_strategy {merge_strategy_v!r} is not a known value",
+                    details={"run_ref": run_ref},
+                ) from exc
+            merge_strategy_str = merge_strategy_v
+        else:
+            raise ValidationError(
+                f"SettleRunRecord.from_dict: binding #{idx} merge_strategy must be string or null",
+                details={"run_ref": run_ref},
+            )
+        bindings.append(Binding(path=path_v, base=base_v, merge_strategy=merge_strategy_str))
     return bindings
 
 

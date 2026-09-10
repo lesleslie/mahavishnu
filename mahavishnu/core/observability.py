@@ -172,9 +172,9 @@ class ObservabilityManager:
                 "mahavishnu.observability.drift_detected_total",
                 description="CUSUM/Page-Hinkley drift detection events (per metric, detector, severity)",
             )
-            self.detector_age_gauge = self.meter.create_up_down_counter(
+            self.detector_age_gauge = self.meter.create_counter(
                 "mahavishnu.observability.detector_age_samples_total",
-                description="Cumulative sample-age-at-fire across all fires, per metric and detector (R3-H2: renamed from detector_age_samples for cumulative semantic clarity)",
+                description="Cumulative sample-age-at-fire across all fires, per metric and detector. R4 fix: UpDownCounter -> Counter so a future caller cannot subtract and silently break dashboards; cumulative monotonic matches the documented semantic (R3-H2: renamed from detector_age_samples for cumulative semantic clarity).",
             )
 
         except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
@@ -202,7 +202,7 @@ class ObservabilityManager:
         self.drift_detected_counter = self.meter.create_counter(
             "mahavishnu.observability.drift_detected_total"
         )
-        self.detector_age_gauge = self.meter.create_up_down_counter(
+        self.detector_age_gauge = self.meter.create_counter(
             "mahavishnu.observability.detector_age_samples_total"
         )
 
@@ -756,6 +756,19 @@ class ObservabilityManager:
         # duplicate except handler below that the round-4 observability
         # review caught as a CRITICAL UnboundLocalError hazard; cleaned
         # up here.
+        # R4-M5: route through _validate_labels BEFORE calling add() so
+        # unknown label keys raise at emit time rather than spawning
+        # unbounded series. The previous implementation called
+        # counter.add() directly, bypassing the allowlist guard.
+        from mahavishnu.observability.metrics import _validate_labels
+
+        _validate_labels(
+            {
+                "metric_name": metric_name,
+                "detector": detector_name,
+                "severity": severity,
+            }
+        )
         try:
             counter = getattr(self, "drift_detected_counter", None)
             if counter is not None:

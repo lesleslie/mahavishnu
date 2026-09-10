@@ -120,6 +120,22 @@ def create_health_app(
             checks["workers"] = "ok"
             checks["workers_default"] = "ok"
 
+        # Round-4 review fix (M1): surface the mergiraf merge driver
+        # probe on the HTTP /ready endpoint. The MCP ``get_readiness``
+        # tool already exposes the payload via the module-level
+        # ``readiness()`` aggregator; load balancers and Kubernetes
+        # probes now see the same shape. The probe is sync (subprocess
+        # call) — cheap enough to run on every readiness check.
+        merge_driver_payload: dict[str, Any] | None = None
+        try:
+            from .core.health import merge_driver_health
+
+            merge_driver_payload = merge_driver_health()
+            checks["merge_driver"] = "ok" if merge_driver_payload.get("available") else "degraded"
+        except Exception:  # noqa: BLE001 — /ready must never crash on merge_driver
+            logger.exception("readiness merge_driver probe failed")
+            checks["merge_driver"] = "unknown"
+
         all_ready = all(status == "ok" for status in checks.values())
 
         return ReadinessResponse(
@@ -127,6 +143,7 @@ def create_health_app(
             service=server_name,
             dependencies={},
             checks=checks,
+            merge_driver=merge_driver_payload,
         )
 
     @app.get("/metrics", tags=["health"])
