@@ -14,13 +14,52 @@ but NOT in as_dict(); compute success ratio in dashboards as
 from __future__ import annotations
 
 from dataclasses import dataclass
+import threading
 import time
 from typing import Final
 
-__all__ = ["PlanIndexFeedState"]
+__all__ = [
+    "PlanIndexFeedState",
+    "get_plan_index_feed_state",
+    "reset_plan_index_feed_state",
+    "set_plan_index_feed_state",
+]
 
 DEFAULT_CRON_EVERY_SECONDS: Final[int] = 3600
 STALENESS_MULTIPLIER: Final[int] = 5
+
+#: Module-level singleton — the cron cycle calls set_plan_index_feed_state
+#: after each rebuild; the /health endpoint reads get_plan_index_feed_state().
+#: Mirror of ``_signer_feed_state`` in mahavishnu/mcp/signer_feed.py.
+_plan_index_feed_state: PlanIndexFeedState | None = None
+_plan_index_feed_state_lock = threading.Lock()
+
+
+def set_plan_index_feed_state(state: PlanIndexFeedState) -> None:
+    """Replace the module-level feed state (called by the cron cycle).
+
+    Acquires ``_plan_index_feed_state_lock`` so concurrent ``set_`` and
+    ``get_`` calls do not race on a torn read.
+    """
+    global _plan_index_feed_state
+    with _plan_index_feed_state_lock:
+        _plan_index_feed_state = state
+
+
+def get_plan_index_feed_state() -> PlanIndexFeedState | None:
+    """Return the current :class:`PlanIndexFeedState` or ``None``.
+
+    None means no rebuild cycle has run yet on this process.
+    """
+    with _plan_index_feed_state_lock:
+        return _plan_index_feed_state
+
+
+def reset_plan_index_feed_state() -> None:
+    """Clear the module singleton (test helper)."""
+    global _plan_index_feed_state
+    with _plan_index_feed_state_lock:
+        _plan_index_feed_state = None
 
 
 @dataclass(frozen=True, slots=True)
