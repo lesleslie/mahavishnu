@@ -405,6 +405,12 @@ def _install_merge_driver_runtime_config(app: Any) -> None:
     on the first ``worker_settle`` action — that would crash mid-
     workflow and leave the audit trail half-written.
 
+    Phase 4 deferred review (M4): registers the
+    ``mark_merge_driver_fallback`` callback so the settle module no
+    longer needs to import from ``mahavishnu.core.health``. The
+    dependency direction is now settle ← core (bootstrap wires it)
+    rather than settle → core.health (the prior inversion).
+
     Round-4 review (C2): the guard fires whenever ``cfg_required=True``
     regardless of ``cfg_default``. An operator on the Phase 4 default
     ``"line"`` who flips ``merge_driver_required=True`` (e.g. to opt
@@ -415,6 +421,7 @@ def _install_merge_driver_runtime_config(app: Any) -> None:
     """
     from mahavishnu.settle.merge import (
         MergeDriverUnavailableError,
+        register_mark_fallback_callback,
         set_merge_driver_runtime_config,
     )
 
@@ -425,9 +432,18 @@ def _install_merge_driver_runtime_config(app: Any) -> None:
     cfg_default = getattr(cfg, "merge_driver_default", "line")
     cfg_required = getattr(cfg, "merge_driver_required", False)
 
-    # Install the runtime config BEFORE the guard — the runtime
-    # fallback path reads from it on every ``merge_three_way`` call.
+    # Phase 4 deferred review (M3): capture the returned snapshot so
+    # callers/tests can compare against expectations. The frozen
+    # contract means the module global is also replaced atomically.
     set_merge_driver_runtime_config(default=cfg_default, required=cfg_required)
+
+    # Phase 4 deferred review (M4): wire the health-module timestamp
+    # callback. The settle module imports nothing from core.health;
+    # instead the bootstrap owns the wiring. Tests can install their
+    # own callback via ``register_mark_fallback_callback`` later.
+    from .health import mark_merge_driver_fallback
+
+    register_mark_fallback_callback(mark_merge_driver_fallback)
 
     # Startup guard: hard-fail at boot when mergiraf is required but
     # missing. We deliberately do NOT defer this check to ``merge_three_way``

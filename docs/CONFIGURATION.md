@@ -546,6 +546,29 @@ These are storage- and workflow-control YAML compatibility blocks. The values be
 - `evidence_threshold` — `int`, default `3`; minimum tool-call count for a candidate.
 - `require_reviewer` — `bool`, default `True`; rejects sessions without reviewer identity.
 
+### `merge_driver.*` — mergiraf merge driver (Phase 4)
+
+Top-level fields on `MahavishnuSettings` (NOT a nested block — the names are flat on the model). See `mahavishnu/core/config.py:2756-2788` for the field declarations and `mahavishnu/settle/merge.py` for the runtime resolution matrix.
+
+- `merge_driver_default` — `str`, default `"line"`; global merge strategy. `"line"` uses `git merge-file` (Phase 0 default); `"mergiraf"` uses entity-aware `mergiraf merge`. Stays `"line"` for one release cycle; the follow-up plan (`docs/plans/2026-09-10-settle-semantic-merge-default-flip.md`) flips to `"mergiraf"` after a 30-day telemetry gate. Override via env `MAHAVISHNU_MERGE_DRIVER_DEFAULT`.
+- `merge_driver_required` — `bool`, default `False`; when `True`, the startup guard in `MahavishnuApp._init_observability` raises `MergeDriverUnavailableError` if `mergiraf` is missing from `$PATH`. Loud-failure semantics: the app refuses to boot rather than crash on first apply. Override via env `MAHAVISHNU_MERGE_DRIVER_REQUIRED`.
+
+Environment variables (transitional alias for `merge_driver_required` only, removed after one release cycle): `MAHAVISHNU_REQUIRE_MERGE_DRIVER` is a legacy single-underscore form for the same flag — `MAHAVISHNU_MERGE_DRIVER_REQUIRED` is the canonical dotted form.
+
+## Merge Driver Rollback
+
+If `mahavishnu` refuses to boot with `MergeDriverUnavailableError: ... mergiraf binary not found ...`, the following escape paths restore service without code changes. Pick the one that matches the operator's environment and constraints.
+
+1. **Quick disable**: set `MAHAVISHNU_MERGE_DRIVER_REQUIRED=false` and restart. This is the fastest unblock for fresh installs and container builds; the default fallback (Phase 4 R3 #3 mitigation) emits a `WARNING merge.semantic.unavailable` log per call and stamps `merge_driver.degraded_since` on the `/health` payload so operators can see the degradation.
+2. **Install mergiraf**: `brew install mergiraf`. Homebrew bundles the `tree-sitter-python` and other language grammars by default; `cargo binstall mergiraf` and most CI images ship only the binary (R4 #C: missing grammars silently fatal-error on files of that language). For CI/container deployments use the Homebrew install path, a custom container image with the grammars baked in, or run `mergiraf install-grammar python` post-install.
+3. **Switch to LINE-only**: set `MAHAVISHNU_MERGE_DRIVER_DEFAULT=line`. With `default="line"` the default-resolution matrix always picks `git merge-file` regardless of whether `mergiraf` is installed. Per-binding requests that explicitly pass `strategy=MergeStrategy.SEMANTIC` still fail loudly with `MergeDriverUnavailableError` when the binary is missing — that is intentional, not a bug (silently falling back would mask worker contract violations). Use this when the cluster won't have mergiraf for the foreseeable future.
+4. **Verify install**: `python scripts/check_merge_driver.py --json`. Exit code 0 with `passed == total` means every probe (binary, version, python grammar, git version ≥ 2.38) passed. Non-zero exit codes include a remediation hint per failure. `check_merge_driver.py` is the REQ-SM-008 operator-facing pre-flight; it's safe to run in CI before `mahavishnu mcp start`.
+5. **Pre-flight in CI**: add `python scripts/check_merge_driver.py` to the CI job that boots the MCP server. The script's exit code propagates and blocks the deploy — surface the failure on the same CI step that runs `mahavishnu mcp start`, not as a separate check.
+
+The startup guard fires whenever `merge_driver_required=True` regardless of `merge_driver_default`. An operator on the default `"line"` who flips `merge_driver_required=True` (e.g. to opt into a future default) gets the same boot-time protection as a `"mergiraf"` operator (Round-4 review fix C2).
+
+See `scripts/check_merge_driver.py` for the full pre-flight matrix (binary PATH probe, version parse, tree-sitter-python grammar check, `git --version ≥ 2.38` requirement for `git merge-tree --write-tree` in Phase 6).
+
 ## LLM Provider Configuration
 
 See `settings/models.yaml` for the provider registry and task-based model routing. MiniMax M3 is the primary cloud provider; MiniMax M2.7 and M2.7-highspeed are fallback models. Local `llama_server` (qwen3.5) and `ollama` (qwen2.5-coder) remain secondary fallbacks.

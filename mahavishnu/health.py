@@ -81,7 +81,8 @@ def create_health_app(
         Returns:
             ReadinessResponse with readiness status and component checks.
             The ``checks`` mapping now also carries the aggregated worker
-            capability component from :func:`mahavishnu.core.health.readiness`.
+            capability component from
+            :func:`mahavishnu.core.health.aggregate_readiness`.
         """
         # Perform readiness checks
         checks: dict[str, str] = {
@@ -123,9 +124,10 @@ def create_health_app(
         # Round-4 review fix (M1): surface the mergiraf merge driver
         # probe on the HTTP /ready endpoint. The MCP ``get_readiness``
         # tool already exposes the payload via the module-level
-        # ``readiness()`` aggregator; load balancers and Kubernetes
-        # probes now see the same shape. The probe is sync (subprocess
-        # call) — cheap enough to run on every readiness check.
+        # ``aggregate_readiness()`` aggregator; load balancers and
+        # Kubernetes probes now see the same shape. The probe is sync
+        # (subprocess call) — cheap enough to run on every readiness
+        # check.
         merge_driver_payload: dict[str, Any] | None = None
         try:
             from .core.health import merge_driver_health
@@ -230,20 +232,22 @@ def _check_adapters() -> bool:
 async def get_readiness() -> dict[str, Any]:
     """Aggregate readiness including worker capability reports.
 
-    Wraps :func:`mahavishnu.core.health.readiness` so the MCP ``get_readiness``
-    tool and the ``/ready`` HTTP endpoint can share a single source of truth
-    for the worker component. Settings are resolved up-front because the
-    readiness aggregator expects a fully-built :class:`MahavishnuSettings`.
+    Wraps :func:`mahavishnu.core.health.aggregate_readiness` so the MCP
+    ``get_readiness`` tool and the ``/ready`` HTTP endpoint can share a
+    single source of truth for the worker component. Settings are
+    resolved up-front because the readiness aggregator expects a
+    fully-built :class:`MahavishnuSettings`.
 
     Returns:
-        Dict from :func:`mahavishnu.core.health.readiness` describing
-        status, default worker type, and per-worker capability states.
+        Dict from :func:`mahavishnu.core.health.aggregate_readiness`
+        describing status, default worker type, and per-worker
+        capability states.
     """
     from .core.config import MahavishnuSettings
-    from .core.health import readiness as _readiness_async
+    from .core.health import aggregate_readiness
 
     settings = MahavishnuSettings()
-    return await _readiness_async(settings=settings)
+    return await aggregate_readiness(settings=settings)
 
 
 async def run_health_server(

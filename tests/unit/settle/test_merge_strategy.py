@@ -21,15 +21,19 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
+import mahavishnu.settle.merge
 from mahavishnu.settle.merge import (
     MergeConflictError,
+    MergeDriverRuntimeConfig,
     MergeDriverUnavailableError,
     MergeFailureError,
     MergeResult,
     MergeStrategy,
     _merge_via_mergiraf,
+    _resolve_default_strategy,
     merge_three_way,
     merge_three_way_sync,
+    register_mark_fallback_callback,
     set_merge_driver_runtime_config,
 )
 
@@ -660,3 +664,281 @@ async def test_merge_conflict_error_strategy_used_set_for_semantic() -> None:
                 binary="/usr/local/bin/mergiraf",
             )
     assert excinfo.value.strategy_used == MergeStrategy.SEMANTIC
+
+
+# ---------------------------------------------------------------------------
+# Phase 4 deferred review Group A: M3 (frozen config), M4 (callback),
+# m1 (counter on line+missing), m2 (env-var-driven config).
+# ---------------------------------------------------------------------------
+
+
+def test_merge_driver_runtime_config_is_frozen_dataclass() -> None:
+    """M3: ``MergeDriverRuntimeConfig`` is ``frozen=True``.
+
+    Phase 4 deferred review (M3) replaced the mutable
+    ``_MERGE_DRIVER_RUNTIME_CONFIG: dict[str, object]`` with a frozen
+    dataclass so the runtime config is immutable and the type contract
+    is explicit. Frozen-ness is the test: if a future maintainer drops
+    ``frozen=True`` and starts mutating the dataclass in place, the
+    bootstrap's "replace the singleton" pattern stops being defensive
+    and the dependency-direction fix from M4 starts leaking state.
+    """
+    cfg = MergeDriverRuntimeConfig(default=MergeStrategy.LINE, required=False)
+    with pytest.raises((AttributeError, Exception)) as excinfo:
+        cfg.default = MergeStrategy.SEMANTIC  # type: ignore[misc]
+    # Frozen dataclasses raise FrozenInstanceError (a subclass of
+    # AttributeError). The bare ``Exception`` arm catches the broader
+    # typeshed signature in older Python builds.
+    assert excinfo.value  # any exception is the point.
+
+
+def test_set_merge_driver_runtime_config_returns_new_dataclass_instance() -> None:
+    """M3: ``set_merge_driver_runtime_config`` returns the new snapshot.
+
+    Tests can capture the returned ``MergeDriverRuntimeConfig`` and
+    compare against expectations without re-reading the module global
+    or fishing through ``set()`` output. The "returns new instance"
+    contract is also what makes M4's callback-reregistration safe —
+    the bootstrap snapshots the result and can confirm it without
+    cross-importing the module global.
+    """
+    snapshot = set_merge_driver_runtime_config(default="mergiraf", required=True)
+    assert isinstance(snapshot, MergeDriverRuntimeConfig)
+    assert snapshot.default == MergeStrategy.SEMANTIC
+    assert snapshot.required is True
+
+    # Subsequent calls return a new instance (frozen dataclass identity).
+    snapshot2 = set_merge_driver_runtime_config(default="line", required=False)
+    assert snapshot2 is not snapshot
+    assert snapshot2.default == MergeStrategy.LINE
+    assert snapshot2.required is False
+
+
+def test_register_mark_fallback_callback_fires_on_default_mergiraf_missing() -> None:
+    """M4: registered callback fires on runtime fallback (default=mergiraf).
+
+    Phase 4 deferred review (M4) flipped the dependency direction: the
+    settle module no longer imports from ``mahavishnu.core.health``;
+    instead the bootstrap (or a test) registers a callback via
+    :func:`register_mark_fallback_callback`. This test pins that the
+    callback fires when the runtime fallback path executes.
+    """
+    set_merge_driver_runtime_config(default="mergiraf", required=False)
+    callback = MagicMock()
+    register_mark_fallback_callback(callback)
+    try:
+        with patch(
+            "mahavishnu.settle.merge._resolve_mergiraf_binary",
+            return_value=None,
+        ):
+            resolved = _resolve_default_strategy()
+    finally:
+        # Reset to default no-op so we don't leak across tests.
+        register_mark_fallback_callback(None)
+    assert resolved == MergeStrategy.LINE
+    callback.assert_called_once()
+
+
+def test_register_mark_fallback_callback_fires_on_default_line_missing() -> None:
+    """M4 + m1: callback fires even when default=='line' AND binary missing.
+
+    The Phase 4 deferred review (m1) fix extended the runtime fallback
+    path to also fire when ``default='line'`` AND the binary is
+    missing — pre-m1 the counter was silent in this case, hiding
+    telemetry the 30-day gate needs. M4's callback must fire too:
+    the operator's fallback history should be visible regardless of
+    which default they configured.
+    """
+    set_merge_driver_runtime_config(default="line", required=False)
+    callback = MagicMock()
+    register_mark_fallback_callback(callback)
+    try:
+        with patch(
+            "mahavishnu.settle.merge._resolve_mergiraf_binary",
+            return_value=None,
+        ):
+            resolved = _resolve_default_strategy()
+    finally:
+        register_mark_fallback_callback(None)
+    assert resolved == MergeStrategy.LINE
+    callback.assert_called_once()
+
+
+def test_register_mark_fallback_callback_clear_restores_noop() -> None:
+    """M4: ``register_mark_fallback_callback(None)`` restores the no-op.
+
+    Test cleanup: passing ``None`` to the registration resets the
+    callback to the default no-op. Production callers don't need to
+    deregister on shutdown (the default is already no-op) but tests
+    need a clean teardown so cross-test state doesn't leak.
+    """
+    callback = MagicMock()
+    register_mark_fallback_callback(callback)
+    register_mark_fallback_callback(None)
+
+    # The fallback path now uses the no-op (no exception, no log noise).
+    set_merge_driver_runtime_config(default="mergiraf", required=False)
+    with patch(
+        "mahavishnu.settle.merge._resolve_mergiraf_binary",
+        return_value=None,
+    ):
+        resolved = _resolve_default_strategy()
+    assert resolved == MergeStrategy.LINE
+    callback.assert_not_called()
+
+
+def test_runtime_fallback_increments_counter_even_when_default_line() -> None:
+    """m1: counter fires when default=='line' AND binary is missing.
+
+    Phase 4 deferred review (m1). Pre-m1 the OTel counter only ticked
+    when ``default=='mergiraf'`` AND binary missing — operators who
+    set ``default='line'`` AND had no mergiraf installed produced a
+    perpetually-zero counter, hiding the exposure the 30-day telemetry
+    gate needs to confirm adoption is tracking.
+
+    The fix: counter increments in BOTH branches. The ``reason``
+    attribute distinguishes them so the Phase 5 telemetry gate can
+    filter by ``reason`` to see "what fraction of line-default
+    operators are missing mergiraf".
+    """
+    set_merge_driver_runtime_config(default="line", required=False)
+
+    # Spy on the counter. We can't easily capture the OTel counter's
+    # ``.add`` attribute dict (the counter is opaque); we patch the
+    # module-level counter reference and assert .add was called.
+    counter = MagicMock()
+    with (
+        patch(
+            "mahavishnu.settle.merge._resolve_mergiraf_binary",
+            return_value=None,
+        ),
+        patch("mahavishnu.settle.merge._merge_fallback_counter", counter),
+    ):
+        resolved = _resolve_default_strategy()
+    assert resolved == MergeStrategy.LINE
+    counter.add.assert_called_once()
+    # The reason label distinguishes line-default fallback from
+    # mergiraf-default fallback.
+    kwargs_or_args = counter.add.call_args
+    attrs = (
+        kwargs_or_args.kwargs.get("attributes")
+        or kwargs_or_args.args[1]
+        if len(kwargs_or_args.args) > 1
+        else kwargs_or_args.kwargs.get("attributes", {})
+    )
+    assert attrs.get("reason") == "mergiraf_missing_default_line"
+
+
+def test_runtime_fallback_increments_counter_default_mergiraf() -> None:
+    """m1: counter uses reason ``mergiraf_missing_default_mergiraf`` for default='mergiraf'.
+
+    Counterpart of the previous test for the default='mergiraf' path.
+    The two branches share the counter wiring but emit distinct
+    ``reason`` labels so telemetry can filter.
+    """
+    set_merge_driver_runtime_config(default="mergiraf", required=False)
+
+    counter = MagicMock()
+    with (
+        patch(
+            "mahavishnu.settle.merge._resolve_mergiraf_binary",
+            return_value=None,
+        ),
+        patch("mahavishnu.settle.merge._merge_fallback_counter", counter),
+    ):
+        resolved = _resolve_default_strategy()
+    assert resolved == MergeStrategy.LINE
+    counter.add.assert_called_once()
+    kwargs_or_args = counter.add.call_args
+    attrs = (
+        kwargs_or_args.kwargs.get("attributes")
+        or kwargs_or_args.args[1]
+        if len(kwargs_or_args.args) > 1
+        else kwargs_or_args.kwargs.get("attributes", {})
+    )
+    assert attrs.get("reason") == "mergiraf_missing_default_mergiraf"
+
+
+def test_env_var_driven_config_without_bootstrap(monkeypatch: pytest.MonkeyPatch) -> None:
+    """m2: env vars update the singleton when no bootstrap ran.
+
+    Phase 4 deferred review (m2). CLI tools that import
+    ``mahavishnu.settle.merge`` but skip
+    ``_install_merge_driver_runtime_config`` (one-shot scripts, dry-run
+    probes) need a way to pick up env-var overrides without restarting
+    the process. ``reset_runtime_config_from_env`` is the test-only
+    helper for that — production still goes through the bootstrap
+    (``set_merge_driver_runtime_config``).
+
+    Earlier revisions of this test called ``importlib.reload`` to
+    re-derive the singleton. That was structurally wrong: reload
+    rebinds every class object in the module, so subsequent
+    ``isinstance(result, MergeResult)`` checks in other test files
+    saw a stale class identity and failed. The reload-free helper
+    avoids the cascading pollution.
+    """
+    monkeypatch.setenv("MAHAVISHNU_MERGE_DRIVER_DEFAULT", "mergiraf")
+    monkeypatch.setenv("MAHAVISHNU_MERGE_DRIVER_REQUIRED", "true")
+    try:
+        cfg = mahavishnu.settle.merge.reset_runtime_config_from_env()
+        assert isinstance(cfg, MergeDriverRuntimeConfig)
+        assert cfg.default == MergeStrategy.SEMANTIC
+        assert cfg.required is True
+    finally:
+        monkeypatch.delenv("MAHAVISHNU_MERGE_DRIVER_DEFAULT", raising=False)
+        monkeypatch.delenv("MAHAVISHNU_MERGE_DRIVER_REQUIRED", raising=False)
+        mahavishnu.settle.merge.reset_runtime_config_from_env()
+
+
+def test_env_var_driven_config_truthy_values() -> None:
+    """m2: required env var accepts the standard truthy spellings.
+
+    Operators set ``MAHAVISHNU_MERGE_DRIVER_REQUIRED=1`` /
+    ``=true`` / ``=yes`` / ``=on`` interchangeably. The module-level
+    reader must accept all four; ``=0`` / ``=false`` / unset
+    default to False. Pinning the truthy spellings guards against a
+    future maintainer tightening to ``==\"true\"`` and breaking
+    operators on the other common shapes.
+    """
+    from mahavishnu.settle.merge import _read_runtime_config_from_env
+
+    import os
+
+    for truthy in ("1", "true", "yes", "on", "TRUE", "Yes"):
+        os.environ["MAHAVISHNU_MERGE_DRIVER_REQUIRED"] = truthy
+        cfg = _read_runtime_config_from_env()
+        assert cfg.required is True, f"truthy={truthy!r} did not parse as True"
+
+    for falsy in ("0", "false", "no", "off", ""):
+        os.environ["MAHAVISHNU_MERGE_DRIVER_REQUIRED"] = falsy
+        cfg = _read_runtime_config_from_env()
+        assert cfg.required is False, f"falsy={falsy!r} did not parse as False"
+
+    # Unset (default).
+    os.environ.pop("MAHAVISHNU_MERGE_DRIVER_REQUIRED", None)
+    cfg = _read_runtime_config_from_env()
+    assert cfg.required is False
+
+
+def test_env_var_driven_config_unknown_default_falls_back_to_line() -> None:
+    """m2: unknown ``MAHAVISHNU_MERGE_DRIVER_DEFAULT`` falls back to LINE.
+
+    Defensive read: the env-var parser accepts only ``"line"`` /
+    ``"mergiraf"`` (case-insensitive). Anything else falls back to
+    ``LINE`` rather than crashing the module import — operators
+    who typo the env var still get a working merge driver.
+    """
+    from mahavishnu.settle.merge import _read_runtime_config_from_env
+
+    import os
+
+    os.environ["MAHAVISHNU_MERGE_DRIVER_DEFAULT"] = "mergiraf"
+    cfg = _read_runtime_config_from_env()
+    assert cfg.default == MergeStrategy.SEMANTIC
+
+    for unknown in ("", "auto", "ruby", "  "):
+        os.environ["MAHAVISHNU_MERGE_DRIVER_DEFAULT"] = unknown
+        cfg = _read_runtime_config_from_env()
+        assert cfg.default == MergeStrategy.LINE, (
+            f"unknown={unknown!r} did not fall back to LINE"
+        )

@@ -28,11 +28,12 @@ import asyncio
 from dataclasses import dataclass
 from enum import StrEnum
 import logging
+import os
 from pathlib import Path
 import shutil
 import tempfile
 import time
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Callable
 import warnings
 
 if TYPE_CHECKING:
@@ -95,11 +96,13 @@ logger = logging.getLogger(__name__)
 
 __all__ = [
     "MergeConflictError",
+    "MergeDriverRuntimeConfig",
     "MergeDriverUnavailableError",
     "MergeFailureError",
     "MergeResult",
     "MergeStrategy",
     "merge_three_way",
+    "register_mark_fallback_callback",
     # NOTE: `merge_three_way_sync` is intentionally absent — deprecated in
     # Phase 1; kept importable as a shim for backward compat with Phase 0 callers.
 ]
@@ -214,19 +217,103 @@ class MergeStrategy(StrEnum):
 _MERGIRAF_BIN: str | None = None
 
 
-# Phase 4: Oneiric settings snapshot installed by the bootstrap. Mutable
-# module-level state so ``merge_three_way`` doesn't need a parameter for
-# every config knob — the bootstrap calls
-# :func:`set_merge_driver_runtime_config` once during
-# ``MahavishnuApp._init_observability`` and the default-resolution
-# matrix reads from here on every call.
-_MERGE_DRIVER_RUNTIME_CONFIG: dict[str, object] = {
-    "default": "line",
-    "required": False,
-}
+# Phase 4 deferred review (M3): frozen dataclass replaces the previous
+# mutable ``dict[str, object]`` so the runtime config is immutable and
+# the type contract is explicit. The bootstrap installs a new instance
+# via :func:`set_merge_driver_runtime_config` (which returns it for
+# callers that want to capture the snapshot).
+#
+# Phase 4 deferred review (m2): the module-level singleton is populated
+# at import from ``MAHAVISHNU_MERGE_DRIVER_DEFAULT`` and
+# ``MAHAVISHNU_MERGE_DRIVER_REQUIRED`` env vars. CLI tools that import
+# this module but skip the bootstrap (e.g. one-shot scripts) get the
+# env-var-driven defaults; the bootstrap call overrides these on app
+# start. Both env vars are also bound at the Pydantic-settings layer in
+# :mod:`mahavishnu.core.config` — the env-var read here is a defense in
+# depth for non-bootstrap importers.
+@dataclass(frozen=True)
+class MergeDriverRuntimeConfig:
+    """Immutable snapshot of the Oneiric ``merge_driver_*`` settings.
+
+    ``default`` is the operator's configured strategy ("line" or
+    "mergiraf"). ``required`` is the operator's opt-in to hard-fail at
+    boot when the mergiraf binary is missing. Both fields are stored
+    as the typed values the bootstrap installs — the env-var read at
+    module import normalizes the strings to ``MergeStrategy`` before
+    constructing the dataclass so downstream code never needs to
+    validate ``"mergiraf"`` vs ``MergeStrategy.MERGIRAF`` shape.
+    """
+
+    default: MergeStrategy
+    required: bool
 
 
-def set_merge_driver_runtime_config(*, default: str, required: bool) -> None:
+def _read_runtime_config_from_env() -> MergeDriverRuntimeConfig:
+    """Build a ``MergeDriverRuntimeConfig`` from the operator env vars.
+
+    Recognizes ``MAHAVISHNU_MERGE_DRIVER_DEFAULT`` ("line" / "mergiraf";
+    anything else falls back to ``LINE`` defensively) and
+    ``MAHAVISHNU_MERGE_DRIVER_REQUIRED`` (truthy = "1"/"true"/"yes",
+    falsy = "0"/"false"/"no" or unset). Mirrors the Pydantic-settings
+    layer in :mod:`mahavishnu.core.config` — the duplication is
+    intentional for non-bootstrap importers.
+    """
+    raw_default = os.environ.get("MAHAVISHNU_MERGE_DRIVER_DEFAULT", "line").strip().lower()
+    strategy = MergeStrategy.SEMANTIC if raw_default == "mergiraf" else MergeStrategy.LINE
+    raw_required = os.environ.get("MAHAVISHNU_MERGE_DRIVER_REQUIRED", "false").strip().lower()
+    required = raw_required in {"1", "true", "yes", "on"}
+    return MergeDriverRuntimeConfig(default=strategy, required=required)
+
+
+# Module-level singleton. Bootstrap overrides via
+# :func:`set_merge_driver_runtime_config` (replaced wholesale rather
+# than mutated, so the frozen contract holds).
+_RUNTIME_CONFIG: MergeDriverRuntimeConfig = _read_runtime_config_from_env()
+
+
+# Phase 4 deferred review (M4): callback registration replaces the
+# previous ``from mahavishnu.core.health import mark_merge_driver_fallback``
+# import inside ``_resolve_default_strategy``. Settle is a low-level
+# module and core.health is higher in the dependency direction; the
+# bootstrap owns the wire-up and registers the callback here. Tests
+# install fakes via this hook.
+#
+# The callable slot defaults to a no-op so the runtime fallback path
+# never needs a None check; ``register_mark_fallback_callback`` swaps
+# it (and accepts ``None`` to restore the no-op).
+def _noop() -> None:
+    """Empty callback used when no fallback handler is registered.
+
+    Avoids a None check at every fallback site — registering this
+    default at import time keeps the runtime path branch-free.
+    """
+
+
+_mark_fallback_callback: Callable[[], None] = _noop
+
+
+def register_mark_fallback_callback(callback: Callable[[], None] | None) -> None:
+    """Install or remove the callback fired on runtime fallback.
+
+    The settle module cannot import from ``mahavishnu.core.health``
+    directly — that would invert the dependency direction (settle is
+    low-level; health is higher). The bootstrap registers
+    ``mark_merge_driver_fallback`` here once during
+    ``MahavishnuApp._init_observability``; tests can install a fake.
+
+    Pass ``None`` (or the no-op) to clear the registration. The
+    default state is already no-op so production callers don't need
+    to deregister on shutdown.
+    """
+    global _mark_fallback_callback
+    _mark_fallback_callback = _noop if callback is None else callback
+
+
+def set_merge_driver_runtime_config(
+    *,
+    default: MergeStrategy | str,
+    required: bool,
+) -> MergeDriverRuntimeConfig:
     """Install the Oneiric ``merge_driver_*`` settings for runtime use.
 
     Called by ``MahavishnuApp._init_observability`` during app bootstrap.
@@ -234,9 +321,37 @@ def set_merge_driver_runtime_config(*, default: str, required: bool) -> None:
     reads these values on every call. Process-lifetime state — changing
     it at runtime requires a process restart (the startup guard runs
     once per process; tmux panes are out of scope per R4 #D).
+
+    Returns the new :class:`MergeDriverRuntimeConfig` so callers
+    (especially tests) can capture the snapshot without re-reading the
+    module global. Accepts ``str`` for ``default`` to preserve the
+    bootstrap signature; ``MergeStrategy`` is preferred for new code.
     """
-    _MERGE_DRIVER_RUNTIME_CONFIG["default"] = default
-    _MERGE_DRIVER_RUNTIME_CONFIG["required"] = required
+    global _RUNTIME_CONFIG
+    if isinstance(default, str):
+        normalized = default.strip().lower()
+        strategy = MergeStrategy.SEMANTIC if normalized == "mergiraf" else MergeStrategy.LINE
+    else:
+        strategy = default
+    _RUNTIME_CONFIG = MergeDriverRuntimeConfig(default=strategy, required=required)
+    return _RUNTIME_CONFIG
+
+
+def reset_runtime_config_from_env() -> MergeDriverRuntimeConfig:
+    """Re-read ``MAHAVISHNU_MERGE_DRIVER_*`` env vars into the singleton.
+
+    Test-only helper. Production code paths should call
+    :func:`set_merge_driver_runtime_config` from the bootstrap (which
+    sources from the Oneiric ``merge_driver_*`` settings rather than the
+    raw env). This function exists so tests can exercise the env-var
+    branch of :func:`_read_runtime_config_from_env` without reloading
+    the module — a reload creates a fresh ``MergeDriverRuntimeConfig``
+    class object that breaks ``isinstance`` checks elsewhere in the
+    process.
+    """
+    global _RUNTIME_CONFIG
+    _RUNTIME_CONFIG = _read_runtime_config_from_env()
+    return _RUNTIME_CONFIG
 
 
 def _resolve_mergiraf_binary() -> str | None:
@@ -261,64 +376,88 @@ def _resolve_default_strategy() -> MergeStrategy:
        :class:`MergeStrategy.SEMANTIC`.
     2. ``merge_driver_default == "mergiraf"`` and binary missing →
        **Runtime fallback**: log ``merge.semantic.unavailable`` WARNING,
-       increment ``merge.fallback_total`` OTel counter, return
-       :class:`MergeStrategy.LINE`. The fallback is **NOT** silent —
-       the OTel counter and the ``MergeResult.driver_warning`` field
-       surface the degradation.
-    3. ``merge_driver_default == "line"`` → :class:`MergeStrategy.LINE`
-       (Phase 0/1/2/3 behavior). The legacy PATH-probe fallback (SEMANTIC
-       when ``mergiraf`` is on $PATH even though default is "line") is
-       kept for backward compatibility with operators who set
-       ``merge_driver_default="line"`` but install ``mergiraf`` — the
-       follow-up default-flip plan re-evaluates this.
+       increment ``merge.fallback_total`` OTel counter with reason
+       ``mergiraf_missing_default_mergiraf``, fire the registered
+       fallback callback, return :class:`MergeStrategy.LINE`. The
+       fallback is **NOT** silent — the OTel counter and the
+       ``MergeResult.driver_warning`` field surface the degradation.
+    3. ``merge_driver_default == "line"`` and binary missing →
+       :class:`MergeStrategy.LINE` (Phase 0/1/2/3 behavior) but the
+       Phase 4 deferred review (m1) fix ALSO logs ``merge.semantic.unavailable``
+       and increments the counter with reason
+       ``mergiraf_missing_default_line``. Pre-m1 the counter was silent
+       when the operator explicitly chose ``"line"``, hiding telemetry
+       the Phase 5 30-day gate needs to confirm that mergiraf
+       installations are tracking adoption. The fallback callback still
+       fires (the runtime degradation is real, the operator just
+       expected it). The legacy PATH-probe path (SEMANTIC when
+       ``mergiraf`` is on $PATH even though default is "line") is kept
+       for backward compatibility — the follow-up default-flip plan
+       re-evaluates this.
     """
-    cfg_default = _MERGE_DRIVER_RUNTIME_CONFIG.get("default", "line")
+    cfg_default = _RUNTIME_CONFIG.default
     binary = _resolve_mergiraf_binary()
-    if cfg_default == "mergiraf":
+    if cfg_default == MergeStrategy.SEMANTIC:
         if binary is not None:
             return MergeStrategy.SEMANTIC
-        # Runtime fallback (R3 #3 mitigation: never silent).
-        logger.warning(
-            "merge.semantic.unavailable: merge_driver_default='mergiraf' "
-            "but binary missing on $PATH. Falling back to LINE strategy. "
-            "Install mergiraf (brew install mergiraf) or set "
-            "merge_driver_default='line' to silence this warning. "
-            "/health merge_driver.degraded_since will be set."
+        return _runtime_fallback(
+            cfg_default=cfg_default,
+            log_message=(
+                "merge.semantic.unavailable: merge_driver_default='mergiraf' "
+                "but binary missing on $PATH. Falling back to LINE strategy. "
+                "Install mergiraf (brew install mergiraf) or set "
+                "merge_driver_default='line' to silence this warning. "
+                "/health merge_driver.degraded_since will be set."
+            ),
+            reason="mergiraf_missing_default_mergiraf",
         )
-        # Round-4 review fix (C4): wrap the OTel counter increment AND
-        # the health-module timestamp stamp in a single try/except so
-        # the runtime fallback path never crashes the merge call. The
-        # prior code only protected the ``mark_merge_driver_fallback``
-        # call against ImportError; if the OTel counter raised (SDK in
-        # a bad state, attribute error on the noop fallback, etc.),
-        # the function would propagate and the user's merge request
-        # would crash mid-flight. State divergence (counter ticks without
-        # stamp, or stamp without counter) is logged and tolerated —
-        # observability is best-effort, the fallback decision is what
-        # matters for the user's request.
-        try:
-            _merge_fallback_counter.add(1, {"reason": "mergiraf_missing"})
-            # Stamp the ``merge_driver.degraded_since`` timestamp on the
-            # ``/health`` aggregate. Lazy import — ``core.health`` is in the
-            # boot path; pulling it eagerly would invert the dependency
-            # direction (settle is a low-level module; health is higher).
-            from mahavishnu.core.health import mark_merge_driver_fallback
-
-            mark_merge_driver_fallback()
-        except ImportError:  # pragma: no cover — core.health unavailable
-            pass
-        except Exception as exc:  # noqa: BLE001 — observability must never crash merge
-            logger.warning(
-                "merge.semantic.fallback_observability_error: "
-                "type=%s message=%s — fallback decision stands, "
-                "/health signal may be partial.",
-                type(exc).__name__,
-                exc,
-            )
-        return MergeStrategy.LINE
-    # cfg_default == "line" (or unknown — defensive)
+    # cfg_default == "line"
     if binary is not None:
         return MergeStrategy.SEMANTIC
+    # m1: counter fires even when default is "line" so the 30-day
+    # telemetry gate sees real-world missing-binary exposure instead of
+    # a misleading zero. Log + counter + callback must NEVER raise.
+    return _runtime_fallback(
+        cfg_default=cfg_default,
+        log_message=(
+            "merge.semantic.unavailable: merge_driver_default='line' but "
+            "mergiraf binary missing on $PATH. Recording exposure so the "
+            "30-day telemetry gate can see adoption signal. Falling back "
+            "to LINE strategy."
+        ),
+        reason="mergiraf_missing_default_line",
+    )
+
+
+def _runtime_fallback(
+    *,
+    cfg_default: MergeStrategy,
+    log_message: str,
+    reason: str,
+) -> MergeStrategy:
+    """Shared body for both runtime-fallback branches.
+
+    The two matrix branches (``default=='mergiraf' AND missing`` and
+    ``default=='line' AND missing``) share the log + counter + callback
+    fan-out; only the log message and counter ``reason`` differ. The
+    try/except keeps observability best-effort: a broken OTel SDK or
+    a callback that raises must never crash the user's merge request.
+    """
+    logger.warning(log_message)
+    try:
+        _merge_fallback_counter.add(1, {"reason": reason})
+        # Phase 4 deferred review (M4): fire the callback registered by
+        # the bootstrap (or a test fake). The default no-op keeps the
+        # hot path branch-free for non-bootstrap importers.
+        _mark_fallback_callback()
+    except Exception as exc:  # noqa: BLE001 — observability must never crash merge
+        logger.warning(
+            "merge.semantic.fallback_observability_error: "
+            "type=%s message=%s — fallback decision stands, "
+            "/health signal may be partial.",
+            type(exc).__name__,
+            exc,
+        )
     return MergeStrategy.LINE
 
 
@@ -538,10 +677,12 @@ async def merge_three_way(
     # operator's Oneiric default is ``"mergiraf"`` but the binary is
     # missing; we silently fall back to LINE per R3 #3 but mark the
     # result so the operator can detect the degradation.
-    cfg_default = _MERGE_DRIVER_RUNTIME_CONFIG.get("default", "line")
+    cfg_default = _RUNTIME_CONFIG.default
     binary_available = _resolve_mergiraf_binary() is not None
     runtime_fallback = (
-        effective == MergeStrategy.LINE and cfg_default == "mergiraf" and not binary_available
+        effective == MergeStrategy.LINE
+        and cfg_default == MergeStrategy.SEMANTIC
+        and not binary_available
     )
     driver_warning = "mergiraf missing" if runtime_fallback else None
 

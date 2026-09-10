@@ -17,12 +17,13 @@ from enum import StrEnum
 import shutil
 import subprocess
 import time
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import httpx2 as httpx
 from oneiric.actions.http import HttpActionSettings, HttpFetchAction
 from oneiric.adapters.httpx_base import HTTPXClientMixin
 from oneiric.core.logging import get_logger
+from opentelemetry import trace as _otel_trace
 from pydantic import BaseModel, Field
 
 from mahavishnu.core.config import DependencyConfig, HealthConfig, MahavishnuSettings
@@ -37,7 +38,17 @@ from monitoring.metrics import (
     mahavishnu_dependency_requests_total,
 )
 
+if TYPE_CHECKING:
+    from mahavishnu.core.app import MahavishnuApp
+
 logger = get_logger("mahavishnu.health")
+
+# Per-module Tracer for ``merge.driver.probe`` observability (M10 fix).
+# Lazy via ``trace.get_tracer(__name__)``; returns a no-op Tracer until
+# TracerProvider is initialized. Separate from the tracer inside
+# ``mahavishnu.settle.merge`` (which wraps the merge invocation itself)
+# so the probe path is observable independently of the actual merge call.
+_probe_tracer = _otel_trace.get_tracer(__name__)
 
 
 # ---------------------------------------------------------------------------
@@ -686,19 +697,26 @@ class HealthEndpoint(HTTPXClientMixin):
 # ---------------------------------------------------------------------------
 
 
-async def readiness(
+async def aggregate_readiness(
     *,
     settings: MahavishnuSettings | None = None,
 ) -> dict[str, Any]:
-    """Aggregate worker capability reports into a readiness payload.
+    """Aggregate worker capability reports into a readiness payload (Phase 4 m4).
 
-    Used by the MCP ``get_readiness`` tool and the ``/ready`` HTTP
-    endpoint to surface the worker component alongside the existing
-    dependency probes. The default worker type from
-    ``settings.workers.default_type`` drives the overall status:
-    REGISTERED is UNHEALTHY (no declaration),
-    CONFIGURED/READY is DEGRADED (declared but not live),
-    AVAILABLE is OK (live).
+    Module-level async function renamed from :func:`readiness` to resolve
+    the naming collision with :meth:`HealthEndpoint.readiness`. The two
+    names previously coexisted; this aggregate function returns the
+    AGGREGATE payload (worker capability state + mergiraf merge_driver
+    probe) used by the MCP ``get_readiness`` tool and the ``/ready``
+    HTTP endpoint, while :meth:`HealthEndpoint.readiness` is a
+    per-instance method that runs dependency HTTP probes.
+
+    Round-4 review fix m4: the two ``readiness`` names collided and
+    confused readers who grep'd for ``readiness`` and found both. The
+    aggregate function lives in module scope (no ``self``) and was the
+    least-coupled of the two to rename. The method name is unchanged
+    because ``HealthEndpoint.readiness(...)`` is part of the public HTTP
+    surface that downstream callers and tests already exercise.
 
     Args:
         settings: Optional pre-built :class:`MahavishnuSettings`
@@ -747,86 +765,182 @@ async def readiness(
 # see the same payload.
 # ---------------------------------------------------------------------------
 
-# Module-level timestamp tracking runtime fallback events. Set by
-# ``merge.fallback_total`` increments (via :func:`mark_merge_driver_fallback`)
-# and cleared by the next healthy probe in :func:`merge_driver_health`.
-# Process-lifetime state — cleared on restart.
+# Module-level fallback timestamp. The PRIMARY state lives on each
+# ``MahavishnuApp`` instance as ``app._degraded_since`` (m3 round-5
+# review fix; module-global stomp-collision when two apps share a
+# process — CLI tests + a server daemon, etc.). The module-level
+# slot is the FALLBACK for callers that haven't registered an app
+# (CLI tools, scripts, one-off tests). Existing tests that target
+# the module-global path continue to work; new tests that want
+# per-app isolation must pass the app through.
 _DEGRADED_SINCE: datetime | None = None
 
 
-def mark_merge_driver_fallback() -> None:
-    """Stamp ``_DEGRADED_SINCE`` when the merge driver falls back.
+def _resolve_degraded_since(
+    app: MahavishnuApp | None,
+) -> datetime | None:
+    """Return the active ``_DEGRADED_SINCE`` slot for ``app``.
+
+    Per-app when ``app`` is provided AND has the ``_degraded_since``
+    attribute (always true for ``MahavishnuApp`` instances built via
+    ``__init__``); module-global otherwise. Centralized so callers
+    don't drift between per-instance and module-global reads.
+
+    The ``hasattr`` branch is the gate — ``getattr(..., None)`` alone
+    cannot distinguish "attribute exists but is None" from "attribute
+    doesn't exist on a duck-typed ``app``". Module-global is the safe
+    fallback when the attribute is missing.
+    """
+    if app is not None and hasattr(app, "_degraded_since"):
+        return app._degraded_since
+    return _DEGRADED_SINCE
+
+
+def _assign_degraded_since(
+    app: MahavishnuApp | None,
+    value: datetime | None,
+) -> None:
+    """Write ``value`` to the active ``_DEGRADED_SINCE`` slot for ``app``.
+
+    Mirrors :func:`_resolve_degraded_since`. Per-app when ``app`` is
+    provided; module-global otherwise.
+    """
+    if app is not None and hasattr(app, "_degraded_since"):
+        app._degraded_since = value
+        return
+    global _DEGRADED_SINCE
+    _DEGRADED_SINCE = value
+
+
+def mark_merge_driver_fallback(app: MahavishnuApp | None = None) -> None:
+    """Stamp the active degraded-since slot when the merge driver falls back.
 
     Called from :func:`mahavishnu.settle.merge._resolve_default_strategy`
     when ``merge_driver_default == "mergiraf"`` but the binary is missing.
     The OTel counter increment happens at the call site; this function
     exists for the timestamp side-effect.
+
+    Round-5 review fix (M9): ALWAYS stamp, even when a previous stamp
+    already exists. Operators want to see the most recent fallback, not
+    the first one — the prior "first-stamp-wins" logic could leave a
+    days-old stamp visible while the current degradation was hidden.
+
+    Round-5 review fix (m3): when ``app`` is provided, stamp on the
+    per-instance attribute instead of the module-global, so two
+    ``MahavishnuApp`` instances in the same process don't stomp each
+    other's fallback history. The module-global path remains the
+    fallback for callers without an app context (CLI tools, tests).
     """
-    global _DEGRADED_SINCE
-    if _DEGRADED_SINCE is None:
-        _DEGRADED_SINCE = datetime.now(UTC)
+    _assign_degraded_since(app, datetime.now(UTC))
 
 
-def merge_driver_health() -> dict[str, Any]:
+def merge_driver_health(app: MahavishnuApp | None = None) -> dict[str, Any]:
     """Probe the mergiraf merge driver and return the ``merge_driver`` payload.
 
-    Shape (per REQ-SM-009 + wire-up contract):
+    Shape (per REQ-SM-009 + wire-up contract + Phase 4 deferred review M8):
         ``available`` (bool): binary present AND version parses
         ``binary`` (path or null)
         ``version`` (string or null)
         ``grammars`` (list of available tree-sitter languages)
-        ``degraded_since`` (ISO timestamp or null) — set when
-        :func:`mark_merge_driver_fallback` fired since the last healthy
-        probe; cleared here on every healthy probe only — NOT when the
-        binary disappears (Round-4 review M2 fix; clearing on
+        ``probe_ok`` (bool): the grammar probe subprocess ran cleanly
+            (timed-out, errored, or exited non-zero → False). Distinguishes
+            "no grammars installed" from "probe broken" — operators can
+            tell at a glance whether the empty grammars list means a real
+            configuration gap or a transient subprocess failure. M8 also
+            stamps ``degraded_since`` when ``probe_ok=False`` so the
+            operator's ``/health`` view reflects the probe-broke state.
+        ``degraded_since`` (ISO timestamp or null) — most-recent
+        fallback timestamp since the last healthy probe; cleared
+        here on every healthy probe only — NOT when the binary
+        disappears (Round-4 review M2 fix; clearing on
         binary-missing defeated operator-trust because a healthy past
         degraded stamp was wiped before the operator could see it).
+        M8 also sets the stamp when ``probe_ok=False``.
 
     Cheap to compute — runs once per ``/health`` call (not per request).
     Catches all subprocess errors so a transient ``mergiraf`` crash
     never brings down the health endpoint (Round-4 review C3 fix —
     the docstring used to claim this but the body didn't actually
     wrap the probe helpers).
+
+    Round-5 review fix (M10): wraps the binary PATH probe in a
+    ``merge.driver.probe`` OTel span. The original R5 task wanted this
+    span around ``_resolve_mergiraf_binary()`` in
+    ``mahavishnu.settle.merge`` (the cold-cache PATH probe on first
+    merge call), but that function lives outside this round's strict
+    scope. The ``merge_driver_health`` probe is the operator-facing
+    counterpart — also a ``shutil.which("mergiraf")`` call observed by
+    every ``/health`` request — so the span is emitted there instead.
+    Both probe paths now contribute telemetry; the cold-cache one
+    should land in a follow-up round that owns ``settle/merge.py``.
+
+    Args:
+        app: Optional ``MahavishnuApp`` instance. When provided the
+            per-app ``_degraded_since`` slot is read/written instead
+            of the module-global fallback (m3 fix; see
+            :func:`mark_merge_driver_fallback`).
     """
-    global _DEGRADED_SINCE  # must precede any read; Python evaluates the
-    # module-global name lazily and the read-only references below also
-    # resolve through this binding
     try:
-        binary = shutil.which("mergiraf")
-        if binary is None:
-            # M2: do NOT clear ``_DEGRADED_SINCE`` here. The degraded
-            # stamp records "we fell back at some point in this
-            # process"; clearing it when the binary disappears would
-            # wipe evidence the operator may still want to see (the
-            # binary could be back in a moment, the fallback history
-            # should still be visible). Only a successful probe clears
-            # the stamp (see below).
-            return {
-                "available": False,
-                "binary": None,
-                "version": None,
-                "grammars": [],
-                "degraded_since": (
-                    _DEGRADED_SINCE.isoformat() if _DEGRADED_SINCE is not None else None
-                ),
-            }
-        version = _probe_mergiraf_version(binary)
-        grammars = _probe_mergiraf_grammars(binary)
-        available = version is not None
-        if available and _DEGRADED_SINCE is not None:
-            # Healthy probe — clear stale degradation stamp. This is the
-            # ONLY branch that clears ``_DEGRADED_SINCE``; binary-missing
-            # preserves the stamp per M2.
-            _DEGRADED_SINCE = None
-        return {
-            "available": available,
-            "binary": binary,
-            "version": version,
-            "grammars": grammars,
-            "degraded_since": (
-                _DEGRADED_SINCE.isoformat() if _DEGRADED_SINCE is not None else None
-            ),
-        }
+        # M10: emit a ``merge.driver.probe`` span around the PATH probe so
+        # operators can see probe latency + binary-path resolution in
+        # traces. Attributes: driver name, probe.cached (False on first
+        # call, True on cached re-probes from the same process), and
+        # merge.binary_path (the resolved path or None). Spans are
+        # best-effort — TracerProvider may be unconfigured; the no-op
+        # tracer swallows the emit.
+        with _probe_tracer.start_as_current_span(
+            "merge.driver.probe",
+            attributes={
+                "merge.driver": "mergiraf",
+                "probe.cached": False,
+            },
+        ) as probe_span:
+            binary = shutil.which("mergiraf")
+            probe_span.set_attribute("merge.binary_path", binary)
+            if binary is None:
+                # M2: do NOT clear the degraded stamp here. The
+                # degraded stamp records "we fell back at some point
+                # in this process"; clearing it when the binary
+                # disappears would wipe evidence the operator may
+                # still want to see (the binary could be back in a
+                # moment, the fallback history should still be
+                # visible). Only a successful probe clears the stamp
+                # (see below).
+                return _build_payload(
+                    available=False,
+                    binary=None,
+                    version=None,
+                    grammars=[],
+                    probe_ok=False,
+                    stamp=_resolve_degraded_since(app),
+                )
+            version = _probe_mergiraf_version(binary)
+            # Phase 4 deferred review (M8): the grammar probe returns
+            # a structured :class:`GrammarProbeResult` so the payload
+            # can distinguish "no grammars" (empty list, probe_ok=True)
+            # from "probe broken" (probe_ok=False). On probe-broke we
+            # stamp degraded_since so operators see the degradation
+            # even when mergiraf is the failure mode.
+            grammar_result = _probe_mergiraf_grammars(binary)
+            grammars = list(grammar_result.grammars)
+            probe_ok = grammar_result.probe_ok
+            if not probe_ok and _resolve_degraded_since(app) is None:
+                _assign_degraded_since(app, datetime.now(UTC))
+            available = version is not None
+            if available and probe_ok and _resolve_degraded_since(app) is not None:
+                # Healthy probe — clear stale degradation stamp.
+                # This is the ONLY branch that clears the stamp;
+                # binary-missing preserves the stamp per M2 and M8
+                # sets the stamp on a broken probe.
+                _assign_degraded_since(app, None)
+            return _build_payload(
+                available=available,
+                binary=binary,
+                version=version,
+                grammars=grammars,
+                probe_ok=probe_ok,
+                stamp=_resolve_degraded_since(app),
+            )
     except Exception as exc:  # noqa: BLE001 — /health must never propagate
         # C3: the function used to claim "catches all subprocess errors"
         # but the body didn't actually wrap the probe helpers, so any
@@ -841,15 +955,49 @@ def merge_driver_health() -> dict[str, Any]:
             type(exc).__name__,
             exc,
         )
-        return {
-            "available": False,
-            "binary": None,
-            "version": None,
-            "grammars": [],
-            "degraded_since": (
-                _DEGRADED_SINCE.isoformat() if _DEGRADED_SINCE is not None else None
-            ),
-        }
+        return _build_payload(
+            available=False,
+            binary=None,
+            version=None,
+            grammars=[],
+            probe_ok=False,
+            stamp=_resolve_degraded_since(app),
+        )
+
+
+def _build_payload(
+    *,
+    available: bool,
+    binary: str | None,
+    version: str | None,
+    grammars: list[str],
+    probe_ok: bool,
+    stamp: datetime | None,
+) -> dict[str, Any]:
+    """Render the canonical ``merge_driver`` payload shape (REQ-SM-009).
+
+    Centralizes the dict-shape construction so the four return paths
+    in :func:`merge_driver_health` (binary-missing, healthy probe,
+    probe-broken, unhandled-error) all serialize ``degraded_since``
+    consistently. The stamp is the most-recent fallback timestamp set
+    by :func:`mark_merge_driver_fallback`; ``None`` indicates either
+    no fallback since process start or a successful probe cleared the
+    stamp.
+
+    Phase 4 deferred review (M8): the ``probe_ok`` field passes through
+    directly — callers see ``False`` when the grammar probe subprocess
+    timed out, errored, or exited non-zero. Distinct from
+    ``grammars=[]`` with ``probe_ok=True`` (operators installed no
+    grammars; that's a configuration choice, not a failure).
+    """
+    return {
+        "available": available,
+        "binary": binary,
+        "version": version,
+        "grammars": grammars,
+        "probe_ok": probe_ok,
+        "degraded_since": stamp.isoformat() if stamp is not None else None,
+    }
 
 
 def _probe_mergiraf_version(binary: str) -> str | None:
@@ -870,13 +1018,34 @@ def _probe_mergiraf_version(binary: str) -> str | None:
     return match.group(1) if match else None
 
 
-def _probe_mergiraf_grammars(binary: str) -> list[str]:
-    """Return the list of language names from ``mergiraf languages``.
+# Phase 4 deferred review (M8): structured probe result so operators can
+# distinguish "no grammars installed" from "probe broken". ``probe_ok``
+# propagates to ``merge_driver_health`` payload as the ``probe_ok`` field.
+@dataclass(frozen=True)
+class GrammarProbeResult:
+    """Structured outcome of ``mergiraf languages`` subprocess.
 
-    Failure modes (timeout, non-zero exit, missing binary) return ``[]``
-    — the aggregate still surfaces ``available`` based on the version
-    probe. Operators can drill in via ``scripts/check_merge_driver.py``
-    for the detailed breakdown.
+    ``grammars`` is a tuple of language names (matches the Phase 2 list
+    shape but immutable for ``frozen=True``); ``probe_ok`` is ``True``
+    only when the subprocess completed cleanly AND exited 0; ``error``
+    carries a short human-readable reason when ``probe_ok=False``.
+    """
+
+    grammars: tuple[str, ...]
+    probe_ok: bool
+    error: str | None = None
+
+
+def _probe_mergiraf_grammars(binary: str) -> GrammarProbeResult:
+    """Probe ``mergiraf languages`` and return a structured result.
+
+    Phase 4 deferred review (M8): the probe distinguishes "no grammars
+    installed" (empty tuple, ``probe_ok=True``) from "probe broken"
+    (timeout, non-zero exit, OSError — ``probe_ok=False``). Operators
+    can tell at a glance whether an empty grammars list means a real
+    configuration gap or a transient subprocess failure; ``merge_driver_health``
+    stamps ``degraded_since`` on ``probe_ok=False`` so the operator's
+    ``/health`` view stays accurate.
     """
     try:
         result = subprocess.run(
@@ -886,10 +1055,16 @@ def _probe_mergiraf_grammars(binary: str) -> list[str]:
             check=False,
             timeout=10,
         )
-    except (subprocess.TimeoutExpired, OSError):
-        return []
+    except subprocess.TimeoutExpired as exc:
+        return GrammarProbeResult(grammars=(), probe_ok=False, error=f"timeout: {exc!s}")
+    except OSError as exc:
+        return GrammarProbeResult(grammars=(), probe_ok=False, error=f"subprocess error: {exc!s}")
     if result.returncode != 0:
-        return []
+        return GrammarProbeResult(
+            grammars=(),
+            probe_ok=False,
+            error=f"non-zero exit: {result.returncode}",
+        )
     lines = (result.stdout or "").splitlines()
     # Output shape: ``Language Name (*.ext)`` per line; strip the
     # extension glob for a clean payload.
@@ -901,4 +1076,8 @@ def _probe_mergiraf_grammars(binary: str) -> list[str]:
         name = line.split(" ", 1)[0]
         if name and name not in languages:
             languages.append(name)
-    return languages
+    return GrammarProbeResult(
+        grammars=tuple(languages),
+        probe_ok=True,
+        error=None,
+    )
