@@ -16,6 +16,11 @@ import pytest
 from mahavishnu.core.config import ChangepointConfig
 from mahavishnu.observability.changepoint import CUSUMDetector, PageHinkleyDetector
 
+from tests.integration.observability.test_changepoint_two_stage_benchmark import (
+    _benchmark_two_stage_fp_per_quiet,
+    _benchmark_two_stage_warning_latency,
+)
+
 
 # CAL-1 (round-2 review): the benchmark uses the production detector
 # defaults from ChangepointConfig, not hardcoded values. Hardcoded
@@ -285,6 +290,13 @@ class TestChangepointBenchmark:
         # `test_cusum_fp_per_10080_quiet_samples` does the full
         # n_trials=25 measurement that the §7 gate asserts against.
         fp_stats = _benchmark_fp_per_quiet(n_trials=10, n_samples=10_080)
+        # Two-stage bench keys (REQ-005 extension verification).
+        # Reduced n_trials so this benchmark harness stays under ~5s;
+        # the dedicated `TestTwoStageBenchmark` tests do the full
+        # n_trials=30 / n_trials=25 measurements that the §1/§7 gates
+        # assert against.
+        two_stage_warning = _benchmark_two_stage_warning_latency(shift_size=0.5, n_trials=5)
+        two_stage_fp = _benchmark_two_stage_fp_per_quiet(n_trials=5, n_samples=10_080)
         bench = {
             "cusum_p95_latency_at_0.5_sigma": cusum_05.get("p95_latency", float("nan")),
             "cusum_median_latency_at_0.5_sigma": cusum_05.get("median_latency", float("nan")),
@@ -293,6 +305,15 @@ class TestChangepointBenchmark:
             "three_sigma_miss_rate_at_0.5_sigma": 0.98,
             "page_hinkley_p95_latency_at_0.5_sigma": cusum_05.get("p95_latency", float("nan")),
             "n_trials_per_shift": 10,
+            "two_stage_warning_latency_at_0_5_sigma": two_stage_warning.get(
+                "warning_median_latency", float("nan")
+            ),
+            "two_stage_confirmed_alert_latency_at_0_5_sigma": two_stage_warning.get(
+                "confirmed_median_latency", float("nan")
+            ),
+            "two_stage_confirmed_alert_fp_per_10080_quiet_samples": two_stage_fp[
+                "mean_confirmed"
+            ],
         }
         bench_path = tmp_path / "bench.json"
         bench_path.write_text(json.dumps(bench, indent=2), encoding="utf-8")
@@ -303,6 +324,9 @@ class TestChangepointBenchmark:
             "cusum_arl0",
             "cusum_fp_per_10080_quiet_samples",
             "three_sigma_miss_rate_at_0.5_sigma",
+            "two_stage_warning_latency_at_0_5_sigma",
+            "two_stage_confirmed_alert_latency_at_0_5_sigma",
+            "two_stage_confirmed_alert_fp_per_10080_quiet_samples",
         ):
             assert key in loaded
         # §7 v3.1 gate: enforce the same threshold on the measured value
