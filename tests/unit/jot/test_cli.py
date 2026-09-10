@@ -16,11 +16,17 @@ import pytest
 
 from mahavishnu.jot import hlc as hlc_module
 from mahavishnu.jot.cli import (
+    cmd_add,
+    cmd_done,
+    cmd_edit,
     cmd_list,
+    cmd_reopen,
     cmd_show,
     cmd_vitals,
 )
 from mahavishnu.jot.events import HLC, JotEvent, serialize
+from mahavishnu.jot.fold import parse_events
+from mahavishnu.jot.paths import log_path as default_log_path
 
 
 def _redirect_to_tmp(
@@ -110,3 +116,86 @@ def test_cmd_vitals_prints_counts(
     cmd_vitals()
     out = capsys.readouterr().out
     assert "Total:   1" in out
+
+
+def test_cmd_done_marks_done(
+    capsys: pytest.CaptureFixture[str], tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    jot = _redirect_to_tmp(monkeypatch, tmp_path)
+    _seed_log(jot, [_capture("a" * 32, "x", wall_ms=1)])
+    cmd_done(handle="a" * 6)
+    out = capsys.readouterr().out
+    assert "done: a" in out  # short_id of the id
+    events = parse_events(default_log_path())
+    assert len(events) == 2
+    assert events[1].op == "done"
+
+
+def test_cmd_done_noop_when_already_done(
+    capsys: pytest.CaptureFixture[str], tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    jot = _redirect_to_tmp(monkeypatch, tmp_path)
+    _seed_log(jot, [
+        _capture("a" * 32, "x", wall_ms=1),
+        JotEvent(
+            id="a" * 32, op="done",
+            hlc=HLC(wall_ms=2, ctr=0, node="a" * 8),
+            text="", ctx={}, created_ms=2,
+        ),
+    ])
+    cmd_done(handle="a" * 6)
+    events = parse_events(default_log_path())
+    assert len(events) == 2  # no new event written
+
+
+def test_cmd_reopen_marks_open(
+    capsys: pytest.CaptureFixture[str], tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    jot = _redirect_to_tmp(monkeypatch, tmp_path)
+    _seed_log(jot, [
+        _capture("a" * 32, "x", wall_ms=1),
+        JotEvent(
+            id="a" * 32, op="done",
+            hlc=HLC(wall_ms=2, ctr=0, node="a" * 8),
+            text="", ctx={}, created_ms=2,
+        ),
+    ])
+    cmd_reopen(handle="a" * 6)
+    events = parse_events(default_log_path())
+    assert events[-1].op == "reopen"
+
+
+def test_cmd_edit_writes_edit_event(
+    capsys: pytest.CaptureFixture[str], tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    jot = _redirect_to_tmp(monkeypatch, tmp_path)
+    _seed_log(jot, [_capture("a" * 32, "v1", wall_ms=1)])
+    cmd_edit(handle="a" * 6, new_text="v2")
+    events = parse_events(default_log_path())
+    assert events[-1].op == "edit"
+    assert events[-1].text == "v2"
+
+
+def test_cmd_add_writes_capture_event(
+    capsys: pytest.CaptureFixture[str], tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _redirect_to_tmp(monkeypatch, tmp_path)
+    cmd_add(text="new jot")
+    events = parse_events(default_log_path())
+    assert len(events) == 1
+    assert events[0].op == "capture"
+    assert events[0].text == "new jot"
+
+
+def test_cmd_done_ambiguous_handle_exits_1(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    # Two captures with overlapping handle substrings.
+    jot = _redirect_to_tmp(monkeypatch, tmp_path)
+    _seed_log(jot, [
+        _capture("f9c2" + "a" * 28, "first", wall_ms=1),
+        _capture("0" * 26 + "f9c2", "second", wall_ms=2),
+    ])
+    with pytest.raises(SystemExit) as exc_info:
+        cmd_done(handle="f9c2")
+    assert exc_info.value.code == 1

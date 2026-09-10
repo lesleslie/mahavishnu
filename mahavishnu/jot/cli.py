@@ -1,4 +1,4 @@
-"""CLI subcommand handlers — 8 commands mirror the 8 MCP tools (R2).
+"""CLI subcommand handlers — 7 read+write commands (Task 10 adds cmd_search).
 
 Typer wiring lives in mahavishnu/cli/jot_cli.py (Task 11). This module
 exposes plain Python functions so the Typer app just delegates.
