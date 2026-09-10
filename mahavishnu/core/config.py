@@ -483,10 +483,25 @@ class ChangepointConfig(BaseModel):
         description="CUSUM slack (k) in standard deviation units; 0.25σ for two-sided CUSUM",
     )
     threshold: float = Field(
-        default=8.0,
+        # CAL-1 (round-2 review): empirically tuned for ARL_0 ~10,000
+        # on a Gaussian(0, 1) stream with slack=0.25 two-sided CUSUM.
+        # The previous default of 8.0 produced ARL_0 ~333 (~30x too
+        # sensitive). At threshold=14.0 the sweep shows:
+        #   - median ARL_0 ~ 7,162 (vs spec's ~10,000 aspiration)
+        #   - mean fires / 10,080 samples ~ 1.64 (well within the §7
+        #     v3.1 gate of <= 2)
+        #   - median latency on a 0.5-σ shift ~ 50 samples (vs spec's
+        #     aspirational <= 30)
+        # The §1 latency and §7 FP gates are mathematically in tension
+        # for a single two-sided CUSUM — raising threshold to improve
+        # ARL_0 makes the 0.5-σ latency worse. We optimize for the §7
+        # gate (which gates the rollout playbook) over the §1 latency
+        # aspiration. Operators needing tighter 0.5-σ detection should
+        # run a parallel Page-Hinkley detector.
+        default=14.0,
         gt=0.0,
         le=100.0,
-        description="CUSUM/Page-Hinkley decision interval (h); default 8.0",
+        description="CUSUM/Page-Hinkley decision interval (h); default 14.0 (empirically tuned for ARL_0 ~7,200 on Gaussian(0,1))",
     )
     reference_detector: str = Field(
         default="three_sigma",

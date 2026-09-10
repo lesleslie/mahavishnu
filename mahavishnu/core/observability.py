@@ -676,6 +676,19 @@ class ObservabilityManager:
         except Exception as exc:  # noqa: BLE001 - boundary handler
             self._log_debug("drift counter increment failed: %s", exc)
 
+        # S-1 (round-2 review): reset the detector after fire so
+        # subsequent samples don't continuously re-fire on the same
+        # drift event. Without this, the first drift produces one
+        # alert per sampler tick forever (the CUSUM score stays
+        # above threshold). The reset mirrors the production
+        # §6 Phase 6 "reset_after_fire" semantic.
+        try:
+            detector_obj = getattr(self, "_changepoint_detector", None)
+            if detector_obj is not None and hasattr(detector_obj, "reset"):
+                detector_obj.reset()
+        except Exception as exc:  # noqa: BLE001 - boundary handler
+            self._log_debug("detector reset failed: %s", exc)
+
         # OTel span emission (best-effort).
         try:
             if OTEL_AVAILABLE and getattr(self, "tracer", None) is not None:
@@ -753,6 +766,63 @@ class ObservabilityManager:
                 get_tracer_provider().force_flush()  # ty: ignore[unresolved-attribute]
             except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
                 self.logger.warning(f"Failed to flush metrics: {e}")
+
+    async def start_change_point_tick_loop(
+        self,
+        metric_source: Any | None = None,
+    ) -> Any:
+        """Drive the change-point detector on a fixed cadence.
+
+        CAL-2 (round-2 review): the Phase 6 pipeline
+        (``MetricSampler.tick()`` → ``_evaluate_change_point``) had
+        zero production callers — the wiring path between the
+        sampler and the detector ran only in tests. This method
+        starts an asyncio task that calls ``_evaluate_change_point``
+        on the configured cadence (default 60s) for the configured
+        ``changepoint.target_metric``.
+
+        Args:
+            metric_source: optional callable returning
+                ``{metric_name: value}`` for the current tick.
+                Defaults to a stub that returns ``0.0`` (the wiring
+                path is exercised; operators wanting real data should
+                inject a source that reads pool queue depths from
+                ``PoolManager.get_pool_queue_depths()``).
+
+        Returns:
+            The asyncio.Task (callers can cancel it on shutdown).
+        """
+        import asyncio
+
+        cadence = float(
+            getattr(
+                getattr(self.config, "changepoint", None),
+                "sampler_cadence_seconds",
+                60.0,
+            )
+        )
+        target_metric = str(
+            getattr(
+                getattr(self.config, "changepoint", None),
+                "target_metric",
+                "pool_queue_depth",
+            )
+        )
+
+        async def _loop() -> None:
+            while True:
+                try:
+                    snapshot: dict[str, float] = {}
+                    if metric_source is not None:
+                        snapshot = metric_source()
+                    value = float(snapshot.get(target_metric, 0.0))
+                    self._evaluate_change_point(target_metric, value)
+                except Exception as exc:  # noqa: BLE001 - boundary handler
+                    self._log_debug("change-point tick failed: %s", exc)
+                await asyncio.sleep(cadence)
+
+        task = asyncio.create_task(_loop())
+        return task
 
     def shutdown(self):
         """Shutdown observability components."""

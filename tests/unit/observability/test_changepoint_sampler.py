@@ -160,7 +160,13 @@ class TestChangepointConfig:
         assert cfg.target_metric == "pool_queue_depth"
         assert cfg.detector == "cusum"
         assert cfg.slack == 0.25
-        assert cfg.threshold == 8.0
+        # CAL-1 (round-2 review): threshold default raised from 8.0 to
+        # 14.0 to satisfy the §7 FP gate (was producing ARL_0 ~333,
+        # ~30 fires per 10,080 samples). New default passes the §7
+        # gate with ~1.64 fires per 10,080 samples and gives
+        # ARL_0 ~7,200. See the empirical sweep and the validation
+        # audit for the §1/§7 trade-off discussion.
+        assert cfg.threshold == 14.0
         assert cfg.reference_detector == "three_sigma"
         assert cfg.sampler_cadence_seconds == 60.0
 

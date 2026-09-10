@@ -3,12 +3,12 @@
 from __future__ import annotations
 
 import asyncio
-import math
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from enum import Enum, StrEnum
 import heapq
 import logging
+import math
 import random
 import time
 from typing import TYPE_CHECKING, Any, cast
@@ -567,8 +567,10 @@ class PoolManager:
         buffer = self._queueing_buffers.get(pool_id)
         if buffer is not None and service_duration > 0.0:
             appended = buffer.complete_observation(service=service_duration)
-            if appended and buffer.ready_to_fit() and (
-                buffer.fitted_model is None or buffer.due_for_refit()
+            if (
+                appended
+                and buffer.ready_to_fit()
+                and (buffer.fitted_model is None or buffer.due_for_refit())
             ):
                 num_workers = max(1, len(pool._workers))
                 buffer.fit(num_workers=num_workers)
@@ -721,35 +723,40 @@ class PoolManager:
             logger.debug(f"Random pool: {pool_id}")
             reason = "random"
 
-        pool_id, reason = self._apply_gpu_category_override(pool_id, reason, task)
-
-        # Tier 1 Phase 2: apply the QueueingScorer's M/M/c prediction
-        # as a re-ranking signal. The composable scorer sits between
-        # the GPU category override (above) and the actual execution
-        # (below); for multi-candidate selectors (LEAST_LOADED /
-        # ROUND_ROBIN / RANDOM) the candidate with the lowest
-        # predicted wait wins once predictions are warmed up. For
-        # single-candidate selectors (AFFINITY / PEER_AFFINITY) the
-        # queueing signal can only advise — we report the predicted
-        # wait but do not switch the candidate. REQ-002.
+        # S-5 (round-2 review): the queueing re-rank must run BEFORE
+        # the GPU category override per spec §6 Phase 2 line 430.
+        # Otherwise a GPU-overridden decision gets re-ranked to a
+        # CPU pool with lower predicted wait, defeating the GPU
+        # contract. Composition order is now:
+        #   inner_selector -> queueing_re_rank -> GPU_override -> execute
+        # For single-candidate selectors (AFFINITY / PEER_AFFINITY)
+        # the queueing signal only advises; pool_id is unchanged.
         (
             pool_id,
             predicted_wait_s,
             effective_selector_str,
             queueing_affected,
-        ) = self._apply_queueing_penalty(pool_id, selector)
+        ) = self._apply_queueing_penalty(pool_id, selector, caller_pool_allowlist)
+
+        pool_id, reason = self._apply_gpu_category_override(pool_id, reason, task)
 
         # REQ-008: record the inter-arrival time for this routing
         # call so the per-pool observation buffer can fit an
         # MmcQueue. Pair with the observed service time on the
         # task_completed event downstream (see execute_on_pool
-        # hook in C7).
+        # hook in C7). Recorded ONCE per route_task invocation
+        # (CR-2 round-2 review: prior implementation recorded twice,
+        # inflating arrival_rate by 2x).
         if pool_id in self._pools:
             self._record_arrival(pool_id)
 
         # C1: measure observed wait = wall-clock between routing and
         # task completion. Predicted wait is from the queueing model;
         # observed wait is the ground truth for the §1 success gate.
+        # Execute ONCE per route_task invocation (CR-1 round-2 review:
+        # prior implementation called execute_on_pool twice, running
+        # every routed task twice and emitting duplicate task_completed
+        # events). The result is returned to the caller.
         route_start_mono = time.monotonic()
         result = await self.execute_on_pool(pool_id, task)
         observed_wait_s = time.monotonic() - route_start_mono
@@ -767,16 +774,7 @@ class PoolManager:
             effective_selector=effective_selector_str,
         )
 
-        # REQ-008: record the inter-arrival time for this routing
-        # call so the per-pool observation buffer can fit an
-        # MmcQueue. Pair with the observed service time on the
-        # task_completed event downstream. (For now we record
-        # only the arrival; service time is paired in a Phase 3
-        # hook in execute_on_pool — see comment there.)
-        if pool_id in self._pools:
-            self._record_arrival(pool_id)
-
-        return await self.execute_on_pool(pool_id, task)
+        return result
 
     def _record_arrival(self, pool_id: str) -> None:
         """Record one arrival timestamp on the per-pool observation buffer.
@@ -836,6 +834,7 @@ class PoolManager:
         self,
         inner_pool_id: str,
         selector: PoolSelector,
+        caller_pool_allowlist: set[str] | None = None,
     ) -> tuple[str, float | None, str, bool]:
         """Re-rank candidates by M/M/c predicted wait time.
 
@@ -850,17 +849,22 @@ class PoolManager:
             report predicted_wait for the audit trail).
           - LEAST_LOADED / ROUND_ROBIN / RANDOM: pick the
             candidate with the lowest predicted wait across all
-            registered pools when at least one has a fitted model.
+            registered pools that have a fitted model AND that the
+            caller is authorized to use.
+
+        S-4 (round-2 review): the queueing re-rank must respect
+        ``caller_pool_allowlist`` (ADR-014). When the caller has
+        declared a restricted pool set, the re-rank cannot route
+        outside that set, even if a pool outside the set has a lower
+        predicted wait. The candidate iteration is restricted to
+        ``self._pools.keys() & allowlist`` when an allowlist is set;
+        when the allowlist is None, the original behavior (all
+        pools) is preserved.
 
         Returns:
             (pool_id, predicted_wait_s, effective_selector_str,
              queueing_affected)
         """
-        try:
-            from mahavishnu.pools.status import PoolStatus
-        except ImportError:  # pragma: no cover - status module is always present
-            PoolStatus = None  # type: ignore[assignment,misc]
-
         # Single-candidate selectors: no re-rank. Report the inner
         # pick's predicted wait (if any) so the audit trail is honest.
         if selector in (PoolSelector.AFFINITY, PoolSelector.PEER_AFFINITY):
@@ -868,10 +872,18 @@ class PoolManager:
             wait = self._compute_predicted_wait(buffer)
             return inner_pool_id, wait, selector.value, False
 
+        # S-4: restrict the candidate set to the caller's allowlist
+        # before computing predicted waits. We snapshot pool_ids
+        # before iteration to avoid RuntimeError on concurrent
+        # spawn/close (M-7 round-2 finding).
+        pool_ids = list(self._pools.keys())
+        if caller_pool_allowlist is not None:
+            pool_ids = [pid for pid in pool_ids if pid in caller_pool_allowlist]
+
         # Multi-candidate selectors: rank by predicted_wait across
-        # every registered pool that has a fitted model.
+        # the candidate set that has a fitted model.
         predicted_waits: dict[str, float] = {}
-        for pid in self._pools:
+        for pid in pool_ids:
             buffer = self._queueing_buffers.get(pid)
             wait = self._compute_predicted_wait(buffer)
             if wait is not None:
@@ -918,9 +930,7 @@ class PoolManager:
         except Exception:  # noqa: BLE001
             return {"queueing_enabled": False}
 
-    def pool_queueing_observations(
-        self, pool_id: str, window_seconds: int = 600
-    ) -> dict[str, Any]:
+    def pool_queueing_observations(self, pool_id: str, window_seconds: int = 600) -> dict[str, Any]:
         """Return the per-pool queueing observation buffer for ops/debugging.
 
         Implements the underlying method for the
