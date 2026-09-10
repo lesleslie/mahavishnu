@@ -13,16 +13,15 @@ ______________________________________________________________________
 
 ## Current Diagram Status
 
+> **Cleanup (2026-09-09):** All pre-rendered PNGs were removed from `docs/diagrams/`.
+> They had no references from any active markdown documentation — only from this
+> regen guide and the mermaid sources in `ARCHITECTURE.md`. PNGs can be
+> regenerated on demand via the methods below; storing stale bitmaps is no
+> longer useful.
+
 | Diagram | Created | Status | Action Needed |
 |---------|---------|--------|--------------|
-| `system-architecture.png` | Jan 24 | ✅ **REGENERATED** | None |
-| `system-architecture.svg` | Jan 24 | ✅ **CREATED** | None |
-| `workflow-execution.png` | Jan 22 | ⚠️ May be outdated | Review & regenerate |
-| `workflow-process.png` | Jan 22 | ⚠️ May be outdated | Review & regenerate |
-| `entity-relationships.png` | Jan 22 | ⚠️ May be outdated | Review & regenerate |
-| `authentication-flow.png` | Jan 22 | ✅ Still accurate | No action needed |
-| `circuit-breaker-states.png` | Jan 22 | ✅ Still accurate | No action needed |
-| `configuration-loading.png` | Jan 22 | ✅ Still accurate | No action needed |
+| (no committed PNGs) | — | — | Regenerate from `ARCHITECTURE.md` mermaid sources when needed |
 
 ______________________________________________________________________
 
@@ -282,13 +281,17 @@ ______________________________________________________________________
 - Shows actual 3 adapters (not deprecated 6)
 - Clear status indicators with color coding
 - Single source of truth for architecture
-- **Regenerated system-architecture.png** (1600x1200, 61KB)
-- **Created system-architecture.svg** (vector format)
+
+**✅ Cleanup (2026-09-09)**:
+
+- Removed 8 stale PNG bitmaps from `docs/diagrams/` (no active doc referenced them)
+- Removed `git-branching-strategy.png` (never tracked in any regen manifest)
+- Mermaid source remains in `ARCHITECTURE.md`; regenerate on demand via methods below
 
 **📋 To Do**:
 
-- Review other diagrams for accuracy (workflow-execution, workflow-process, entity-relationships)
-- Update outdated diagrams or mark them as deprecated
+- If a PNG is needed for a doc/PR, regenerate it from the mermaid source in `ARCHITECTURE.md`
+- Otherwise, leave only the mermaid sources in version control
 
 **Note**: The old PNG diagrams have been replaced with the corrected architecture diagram showing the actual 3 adapters.
 

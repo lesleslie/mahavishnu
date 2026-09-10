@@ -10,15 +10,16 @@
 
 ## MCP & WebSocket
 
-- `mahavishnu/mcp/server.py` — FastMCP server
+- `mahavishnu/mcp/server_core.py` — FastMCP server (the canonical entry point)
+- `mahavishnu/mcp/server.py` — Thin re-export wrapper around `server_core.py` (exposes `build_mahavishnu_mcp_server` for in-process use)
 - `mahavishnu/websocket/server.py` — Real-time updates
 - `mahavishnu/mcp/tools/` — Tool implementations
-  - `pool_tools.py` — Pool management (10 tools)
-  - `worker_tools.py` — Worker orchestration (8 tools)
-  - `coordination_tools.py` — Issues, todos, dependencies (13 tools)
+  - `pool_tools.py` — Pool management (8 tools)
+  - `worker_tools.py` — Worker orchestration (9 tools)
+  - `coordination_tools.py` — Issues, todos, dependencies (15 tools)
   - `repository_messaging_tools.py` — Inter-repo messaging (7 tools)
-  - `otel_tools.py` — OpenTelemetry trace ingestion (4 tools)
-  - `session_buddy_tools.py` — Session-Buddy integration (7 tools)
+  - `otel_tools.py` — OpenTelemetry trace ingestion (5 tools)
+  - `session_buddy_tools.py` — Session-Buddy integration (9 tools)
 
 ## Pool Management
 
@@ -38,7 +39,7 @@
 - `mahavishnu/workers/cloud_worker.py` — OpenAI-compatible cloud worker (MiniMax defaults)
 - `mahavishnu/workers/task_router.py` — Task classification + model selection
 - `mahavishnu/terminal/manager.py` — Terminal session management
-- `mahavishnu/terminal/adapters/` — Terminal adapter implementations (tmux, mock, crow, base)
+- `mahavishnu/terminal/adapters/` — Terminal adapter implementations (tmux, mock, crow, goose, base)
 
 ## Data Ingestion
 
@@ -60,9 +61,8 @@
 
 ## Routing System
 
-- `mahavishnu/core/routing_metrics.py` — Prometheus metrics collection
+- `mahavishnu/core/routing_metrics.py` — Prometheus metrics collection (`RoutingMetrics` singleton + collection)
 - `mahavishnu/core/routing_alerts.py` — Alert generation and handling
-- `mahavishnu/core/routing_metrics.py` — RoutingMetrics singleton
 
 ## Configuration & Architecture
 

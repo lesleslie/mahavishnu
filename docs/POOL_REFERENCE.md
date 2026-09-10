@@ -13,7 +13,7 @@
 | Module | Location | Purpose | Scope |
 |--------|----------|---------|-------|
 | **Multi-pool orchestration** | `mahavishnu/pools/` | Task distribution across pool types | Cross-server, auto-scaling |
-| **iTerm2 session pool** | `mahavishnu/terminal/adapters/` | Terminal adapter implementations (tmux, mock, crow) | Local development only |
+| **iTerm2 session pool** | `mahavishnu/terminal/adapters/` | Terminal adapter implementations (tmux, mock, crow, goose) | Local development only |
 | **Process pool executor** | `mahavishnu/core/process_pool_executor.py` | CPU-bound operation offload | Single-process |
 
 ## Configuration
@@ -21,13 +21,19 @@
 Enable in `settings/mahavishnu.yaml`:
 
 ```yaml
-pools_enabled: true
-default_pool_type: "mahavishnu"
-pool_routing_strategy: "least_loaded"  # round_robin, least_loaded, random, affinity
-memory_aggregation_enabled: true
-memory_sync_interval: 60
-session_buddy_pool_url: "http://localhost:8678/mcp"
-akosha_url: "http://localhost:8682/mcp"
+# Pool management (nested under pools:)
+pools:
+  enabled: true
+  default_type: "mahavishnu"
+  routing_strategy: "least_loaded"  # round_robin, least_loaded, random, affinity
+  min_workers: 1
+  max_workers: 10
+  memory_aggregation_enabled: true
+  memory_sync_interval: 60
+  session_buddy_url: "http://localhost:8678/mcp"
+  akosha_url: "http://localhost:8682/mcp"
+
+# Pool WebSocket broadcasting (flat, read by websocket integration)
 pool_websocket_enabled: true
 pool_websocket_port: 8691
 ```

@@ -27,7 +27,7 @@ This doc fills the gap: when those services are added, operators know which endp
 | Dhara | 8683 | `/health` (via `mcp__dhara__get_liveness`) | Dhara |
 | Session-Buddy | 8678 | `/health` (via `mcp__session-buddy__get_liveness`) | Session-Buddy |
 | Crackerjack | 8676 | `/health` (via `mcp__crackerjack__get_liveness`) | Crackerjack |
-| Bodai Crow (HTTP MCP) | 8675 | `/health` (planned; not yet live) | Mahavishnu |
+| Bodai Crow (HTTP MCP) | 8693 | `/health` (planned; not yet live) | Mahavishnu |
 | Oneiric | N/A | N/A (foundation library, no service) | Oneiric |
 
 ### WebSocket servers (existing)
@@ -86,7 +86,7 @@ curl -fsS http://localhost:8682/health
 curl -fsS http://localhost:8683/health
 curl -fsS http://localhost:8678/health
 curl -fsS http://localhost:8676/health
-curl -fsS http://localhost:8675/health  # Bodai Crow (when live)
+curl -fsS http://localhost:8693/health  # Bodai Crow (when live)
 
 # Via MCP tool
 mcp__mahavishnu__get_health
