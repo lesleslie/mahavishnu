@@ -55,7 +55,7 @@ and reproduced here for index readability.
 ## Review Entry Points
 
 This file is regenerated mechanically from the per-file YAML frontmatter
-across the 21 auto-discovered stores. The registry tables below
+across the 24 auto-discovered stores. The registry tables below
 are sorted by `date` DESC within each store and group entries by store.
 The lifecycle × role distribution at the bottom is a quick consistency
 check — it should match the counts of the registry rows modulo files in
@@ -481,10 +481,21 @@ One table per store. Entries are sorted by `date` DESC, with ties broken by path
 | [`docs/adr/013-mahavishnu-dhara-adapter-tool-boundary.md`](../../docs/adr/013-mahavishnu-dhara-adapter-tool-boundary.md) | 2026-07-16 | `active` | `canonical` | `adapter-tool-boundary` | ADR 013: Adapter Tool Boundary Between Mahavishnu and Dhara |
 | [`docs/adr/014-honcho-peer-model-routing-precedence.md`](../../docs/adr/014-honcho-peer-model-routing-precedence.md) | 2026-07-16 | `active` | `canonical` | `honcho-routing` | ADR 014: Honcho Peer-Model Routing Precedence |
 
+### Audits (`docs/audits/`)
+
+| Path | Date | Status | Role | Topic | Title |
+|---|---|---|---|---|---|
+| [`docs/audits/2026-09-10-math-spec-review.md`](../../docs/audits/2026-09-10-math-spec-review.md) | 2026-09-10 | `complete` | `reference` | `math-spec-review` | Math Spec Multi-Agent Review — 2026-09-10 |
+| [`docs/audits/2026-09-10-math-spec-verification.md`](../../docs/audits/2026-09-10-math-spec-verification.md) | 2026-09-10 | `complete` | `reference` | `math-spec-verification` | Math Spec Verification Audit — 2026-09-10 |
+
 ### Feature Tracking (`docs/feature-tracking/`)
 
 | Path | Date | Status | Role | Topic | Title |
 |---|---|---|---|---|---|
+| [`docs/feature-tracking/2026-09-10-observability-changepoint.md`](../../docs/feature-tracking/2026-09-10-observability-changepoint.md) | 2026-09-10 | `wired` | `canonical` | `—` | Feature: observability-changepoint |
+| [`docs/feature-tracking/2026-09-10-pool-queueing-routing.md`](../../docs/feature-tracking/2026-09-10-pool-queueing-routing.md) | 2026-09-10 | `adopted` | `canonical` | `—` | Feature: pool-queueing-routing |
+| [`docs/feature-tracking/2026-09-10-tier2-math-deferred.md`](../../docs/feature-tracking/2026-09-10-tier2-math-deferred.md) | 2026-09-10 | `deferred` | `deferred` | `—` | Feature: tier2-math-deferred |
+| [`docs/feature-tracking/plan-index-dhara.md`](../../docs/feature-tracking/plan-index-dhara.md) | 2026-09-10 | `built` | `canonical` | `plan-index-dhara` | Feature: Plan Index Dhara-canonical metadata layer |
 | [`docs/feature-tracking/goose-terminal-adapter.md`](../../docs/feature-tracking/goose-terminal-adapter.md) | 2026-09-07 | `wired` | `canonical` | `—` | Feature: goose-terminal-adapter |
 | [`docs/feature-tracking/pi-pool-backend.md`](../../docs/feature-tracking/pi-pool-backend.md) | 2026-09-07 | `wired` | `canonical` | `—` | Feature: pi-pool-backend |
 | [`docs/feature-tracking/2026-09-06-orphan-sweep.md`](../../docs/feature-tracking/2026-09-06-orphan-sweep.md) | 2026-09-06 | `built` | `canonical` | `—` | Orphan Sweep — settle sync wrappers + CloudWorker + check_prerequisites |
@@ -525,7 +536,9 @@ One table per store. Entries are sorted by `date` DESC, with ties broken by path
 
 | Path | Date | Status | Role | Topic | Title |
 |---|---|---|---|---|---|
-| [`docs/plans/2026-09-09-bodai-skill-agent-distribution.md`](2026-09-09-bodai-skill-agent-distribution.md) | 2026-09-09 | `needs-revision` | `canonical` | `skill-agent-distribution-via-mcp` | Bodai Skill + Agent Distribution Plan |
+| [`docs/plans/2026-09-10-bodai-math-initiatives-tier1.md`](2026-09-10-bodai-math-initiatives-tier1.md) | 2026-09-10 | `active` | `implementation` | `mathematical-paradigms-orchestration` | Bodai Math Initiatives — Tier 1 Implementation Plan (v3) |
+| [`docs/plans/2026-09-10-settle-semantic-merge.md`](2026-09-10-settle-semantic-merge.md) | 2026-09-10 | `active` | `implementation` | `settle-semantic-merge` | Settle Semantic Merge — mergiraf opt-in + git-merge-tree diagnostics |
+| [`docs/plans/2026-09-09-bodai-skill-agent-distribution.md`](2026-09-09-bodai-skill-agent-distribution.md) | 2026-09-09 | `active` | `canonical` | `skill-agent-distribution-via-mcp` | Bodai Skill + Agent Distribution Plan |
 | [`docs/plans/2026-09-09-bodai-slash-command-tui-discoverability.md`](2026-09-09-bodai-slash-command-tui-discoverability.md) | 2026-09-09 | `superseded` | `canonical` | `slash-command-discoverability` | Bodai Slash-Command TUI Discoverability Plan |
 | [`docs/plans/2026-09-07-goose-terminal-adapter.md`](2026-09-07-goose-terminal-adapter.md) | 2026-09-07 | `active` | `implementation` | `terminal-adapter-goose` | Goose Terminal Adapter (D3) |
 | [`docs/plans/2026-09-07-pi-pool-backend.md`](2026-09-07-pi-pool-backend.md) | 2026-09-07 | `active` | `implementation` | `pool-backend-pi` | Pi Pool Backend (D1) |
@@ -710,6 +723,7 @@ One table per store. Entries are sorted by `date` DESC, with ties broken by path
 
 | Path | Date | Status | Role | Topic | Title |
 |---|---|---|---|---|---|
+| [`docs/superpowers/specs/2026-09-10-plan-index-dhara-design.md`](../../docs/superpowers/specs/2026-09-10-plan-index-dhara-design.md) | 2026-09-10 | `draft` | `implementation` | `dhara-substrate-extension` | Plan Index — Dhara-Canonical Metadata Layer |
 | [`docs/superpowers/specs/2026-09-07-worktree-cleanup-design.md`](../../docs/superpowers/specs/2026-09-07-worktree-cleanup-design.md) | 2026-09-07 | `draft` | `implementation` | `worktree-cleanup` | Bodai Worktree Cleanup Policy — Design Spec |
 | [`docs/superpowers/specs/2026-09-06-mcp-common-auth-primitives-design.md`](../../docs/superpowers/specs/2026-09-06-mcp-common-auth-primitives-design.md) | 2026-09-06 | `draft` | `implementation` | `mcp-common-auth-primitives` | mcp-common Authentication Primitives — Design Spec |
 | [`docs/superpowers/specs/2026-09-06-mcp-stub-activation-design.md`](../../docs/superpowers/specs/2026-09-06-mcp-stub-activation-design.md) | 2026-09-06 | `draft` | `implementation` | `mcp-stub-activation` | MCP Stub Activation — archive-org-mcp, medium-mcp, scapy-mcp |
@@ -755,17 +769,34 @@ One table per store. Entries are sorted by `date` DESC, with ties broken by path
 | [`docs/superpowers/specs/2026-07-15-sb-checkpoint-stash-clobber-fix-design.md`](../../docs/superpowers/specs/2026-07-15-sb-checkpoint-stash-clobber-fix-design.md) | 2026-07-16 | `active` | `implementation` | `convergence-control-plane` | Session-Buddy Checkpoint Stash-Clobber Fix Design |
 | [`docs/superpowers/specs/2026-07-16-bodai-plugin-standardization-design.md`](../../docs/superpowers/specs/2026-07-16-bodai-plugin-standardization-design.md) | 2026-07-16 | `draft` | `canonical` | `plugin-standardization` | Bodai Plugin Standardization — Design Spec |
 | [`docs/superpowers/specs/2026-07-16-frontmatter-validator-wiring-design.md`](../../docs/superpowers/specs/2026-07-16-frontmatter-validator-wiring-design.md) | 2026-07-16 | `draft` | `canonical` | `lifecycle` | Frontmatter Validator Wiring — Design (2026-07-16) |
+| [`docs/superpowers/specs/2026-09-09-jot-inbox-design.md`](../../docs/superpowers/specs/2026-09-09-jot-inbox-design.md) | — | `draft` | `spec` | `jot-inbox` | Jot — zero-turn quick-capture inbox |
+
+### Agents (`mahavishnu/mcp/agents/`)
+
+| Path | Date | Status | Role | Topic | Title |
+|---|---|---|---|---|---|
+| [`mahavishnu/mcp/agents/mahavishnu-specialist.md`](../../mahavishnu/mcp/agents/mahavishnu-specialist.md) | — | `unknown` | `unknown` | `—` | mahavishnu-specialist |
+| [`mahavishnu/mcp/agents/pool-router-agent.md`](../../mahavishnu/mcp/agents/pool-router-agent.md) | — | `unknown` | `unknown` | `—` | pool-router-agent |
+| [`mahavishnu/mcp/agents/workflow-monitor.md`](../../mahavishnu/mcp/agents/workflow-monitor.md) | — | `unknown` | `unknown` | `—` | workflow-monitor |
+
+### Skills Catalog (`mahavishnu/mcp/skills_catalog/`)
+
+| Path | Date | Status | Role | Topic | Title |
+|---|---|---|---|---|---|
+| [`mahavishnu/mcp/skills_catalog/ecosystem-status.md`](../../mahavishnu/mcp/skills_catalog/ecosystem-status.md) | — | `unknown` | `unknown` | `—` | ecosystem-status |
+| [`mahavishnu/mcp/skills_catalog/pool-route.md`](../../mahavishnu/mcp/skills_catalog/pool-route.md) | — | `unknown` | `unknown` | `—` | pool-route |
+| [`mahavishnu/mcp/skills_catalog/workflow-status.md`](../../mahavishnu/mcp/skills_catalog/workflow-status.md) | — | `unknown` | `unknown` | `—` | workflow-status |
 
 ## Lifecycle × Role Distribution
 
-Counts of entries per (lifecycle, role) cell across all 21 stores. Useful as a sanity check that the registry above is internally consistent.
+Counts of entries per (lifecycle, role) cell across all 24 stores. Useful as a sanity check that the registry above is internally consistent.
 
 | Role \\ Lifecycle | draft | active | partial | shipped | complete | Total |
 |---|---|---|---|---|---|---|
-| `canonical` | 22 | 107 | · | 2 | 3 | **134** |
-| `implementation` | 135 | 62 | 2 | 34 | 22 | **255** |
+| `canonical` | 22 | 108 | · | 2 | 3 | **135** |
+| `implementation` | 136 | 64 | 2 | 34 | 22 | **258** |
 | `umbrella` | · | 2 | · | · | 2 | **4** |
 | `historical` | 21 | 5 | · | 4 | 115 | **145** |
 | `superseded` | · | · | · | · | 12 | **12** |
 
-| **Total** | **178** | **176** | **2** | **40** | **154** | **550** |
+| **Total** | **179** | **179** | **2** | **40** | **154** | **554** |

@@ -834,6 +834,7 @@ def mark_merge_driver_fallback(app: MahavishnuApp | None = None) -> None:
     _assign_degraded_since(app, datetime.now(UTC))
 
 
+# req: REQ-SM-009
 def merge_driver_health(app: MahavishnuApp | None = None) -> dict[str, Any]:
     """Probe the mergiraf merge driver and return the ``merge_driver`` payload.
 

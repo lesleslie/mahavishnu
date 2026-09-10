@@ -390,6 +390,7 @@ def init_observability(app: Any):
     return manager
 
 
+# req: REQ-SM-005
 def _install_merge_driver_runtime_config(app: Any) -> None:
     """Install the merge driver config and run the startup guard.
 

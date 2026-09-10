@@ -82,6 +82,7 @@ _TERMINAL_STATES: frozenset[SettleState] = frozenset(
 
 
 @dataclass(frozen=True)
+# req: REQ-SM-004
 class Binding:
     """A file targeted by the settle run.
 
@@ -122,6 +123,7 @@ class SettleRunRecord:
     updated_at: datetime
     transitions: tuple[dict[str, str], ...] = ()
 
+    # req: REQ-SM-007
     def to_dict(self) -> dict[str, object]:
         """Return a JSON-serializable dict suitable for Dhara persistence."""
         return {

@@ -156,6 +156,7 @@ class MergeFailureError(Exception):
     parse error)."""
 
 
+# req: REQ-SM-003
 class MergeDriverUnavailableError(Exception):
     """Raised when ``mergiraf`` is required (or default-resolved) but the
     binary is not on ``$PATH``.
@@ -189,6 +190,7 @@ class MergeResult:
     driver_warning: str | None = None
 
 
+# req: REQ-SM-001
 class MergeStrategy(StrEnum):
     """Pluggable 3-way merge strategy.
 
@@ -395,6 +397,9 @@ def _resolve_default_strategy() -> MergeStrategy:
        for backward compatibility — the follow-up default-flip plan
        re-evaluates this.
     """
+    # req: REQ-SM-006 (Phase 5 git-merge-tree --name-only — DEFERRED per §9 Decision Rule #2)
+    # The diagnostic subprocess will land in this module when the
+    # 30-day telemetry gate unblocks it.
     cfg_default = _RUNTIME_CONFIG.default
     binary = _resolve_mergiraf_binary()
     if cfg_default == MergeStrategy.SEMANTIC:
@@ -461,6 +466,7 @@ def _runtime_fallback(
     return MergeStrategy.LINE
 
 
+# req: REQ-SM-002
 async def _merge_via_mergiraf(
     *,
     base: str,
