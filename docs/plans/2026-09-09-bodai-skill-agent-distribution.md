@@ -10,6 +10,7 @@ review_notes:
   - "5-agent multi-lens review completed 2026-09-09. See §10 Split Plan and consolidated review report."
   - "Phase 1.5 (ed25519 signing core) implemented in akosha commit 09cef76 on 2026-09-09. Closes B-1 and partially addresses B-7 (4 mandatory feed signals + /health aggregation). 49/49 unit tests passing; lint + types clean; live /health verified; key_id persists across launchd restart."
   - "Second 2-reviewer pass (D2) requested 2026-09-09 after Phase 1.5 commit; findings folded into plan on 2026-09-10 — §10.3 Per-Server Wiring Contract added; §5/§6/§10.1/§10.2 completion-state markers added; package name + test path corrections (§10.1, §6); B-7 E2E test contract refactored to §10.3.7."
+  - "Phase 1.5 cross-server consistency review completed 2026-09-10 across all 5 replicas (akosha, mahavishnu, session-buddy, dhara, crackerjack). 5 lenses audited: __all__ parity, canonicalize parity, manifest parity, signer_feed 9-key payload parity, production-lifespan parity. Result: 0 blockers; 1 Important (session-buddy redundant-init guard, commit 86d70f5f); 1 Cosmetic applied (akosha raise format, commit 223101d); 2 Cosmetic skipped (false-positive import-order; by-design signer_feed API surface). New §10.4 documents the review and decisions; §10.1/§10.2/§11 updated to reflect 5/5 server completion. Phase 1.5 is now fully closed in code across the ecosystem."
 ---
 
 # Bodai Skill + Agent Distribution Plan
@@ -907,11 +908,13 @@ real work for that component. Phase 0 + Phase 1 + Phase 1.5 (signing
 infra) plus the per-server `list_skills` data feeds.
 
 **Phases**: 0, 1, 1.5 (signing infrastructure that gates everything
-downstream). **Status 2026-09-10**: Phase 1.5 implemented in akosha
-(commit `09cef76`); mahavishnu / session-buddy / dhara / crackerjack
-replications are pending — the MVP window is therefore 1/5 servers
-shipped. The plan's exit criteria apply per-server; only when all
-5 are shipped is the MVP window complete.
+downstream). **Status 2026-09-10**: Phase 1.5 implemented and shipped in all 5
+servers (commit `09cef76` akosha → `24e410c8` mahavishnu → fan-out
+agents `6b0bcd9b` session-buddy, `c604efe` dhara, `6c9eff2f`
+crackerjack). The MVP window is **5/5 servers shipped**. The
+post-fan-out cross-server consistency review (2026-09-10) closed
+the only Important finding (session-buddy redundant-init) and applied
+a single Cosmetic finding; see §10.4 for details.
 
 **Phase 1.5 — skills_signer infrastructure**:
 
@@ -924,12 +927,19 @@ shipped. The plan's exit criteria apply per-server; only when all
    per-server wiring lives in `<server>/mcp/signer_feed.py`.
 
    **Per-server status**:
-   - akosha: SHIPPED 2026-09-09 (commit `09cef76`) — 49 unit tests
+   - akosha: SHIPPED 2026-09-09 (commit `09cef76`) + 2026-09-10 review
+     fix (commit `223101d` cosmetic raise-format); 49 unit tests
      passing; live `/health` verified.
-   - mahavishnu: PENDING — next replication.
-   - session-buddy: PENDING.
-   - dhara: PENDING.
-   - crackerjack: PENDING.
+   - mahavishnu: SHIPPED 2026-09-10 (commit `24e410c8`); 49 unit tests
+     passing; live `/health` verified.
+   - session-buddy: SHIPPED 2026-09-10 (commit `6b0bcd9b`) + review
+     fix (commit `86d70f5f` redundant-init guard); 49 unit tests
+     passing; live `/health` verified.
+   - dhara: SHIPPED 2026-09-10 (commit `c604efe`); 49 unit tests
+     passing; live `/health` verified.
+   - crackerjack: SHIPPED 2026-09-10 (commit `6c9eff2f`) + 8 `name=`
+     overrides for H-8 naming hygiene; 49 unit tests passing; live
+     `/health` verified.
 
 2. Each Bodai server ships a keypair; public key pinned in `/health`
    under `checks.skills_signer` (the 4 mandatory feed signals +
@@ -991,11 +1001,13 @@ and hash-chain audit log.
 1. **Week 1**: Phase 0 ships in all 5 repos (independent per repo).
 2. **Week 2**: Phase 1 ships in all 5 repos (independent per repo).
 3. **Week 3**: Phase 1.5 ships in all 5 repos (independent per repo).
-   - [x] akosha: shipped 2026-09-09 (commit `09cef76`).
-   - [ ] mahavishnu: pending — next.
-   - [ ] session-buddy: pending.
-   - [ ] dhara: pending.
-   - [ ] crackerjack: pending.
+   - [x] akosha: shipped 2026-09-09 (commit `09cef76`) + 2026-09-10 review
+     fix (commit `223101d`).
+   - [x] mahavishnu: shipped 2026-09-10 (commit `24e410c8`).
+   - [x] session-buddy: shipped 2026-09-10 (commit `6b0bcd9b`) +
+     2026-09-10 review fix (commit `86d70f5f`).
+   - [x] dhara: shipped 2026-09-10 (commit `c604efe`).
+   - [x] crackerjack: shipped 2026-09-10 (commit `6c9eff2f`).
 4. **Week 4**: Phase 4 ships in Akosha (depends on Phase 1 + 1.5 in
    all 5 repos being operational).
 5. **Week 5**: Phase 2 + Phase 3 ship (depend on Phase 1.5).
@@ -1184,6 +1196,34 @@ These four assertions per server are the gating artifacts for
 B-7's full closure. Until they land in each replica, B-7 stays
 "partially closed" per server.
 
+### 10.4 Phase 1.5 Cross-Server Review — closed 2026-09-10
+
+A read-only cross-server consistency audit ran on 2026-09-10 across
+all 5 Phase 1.5 replicas. The audit exercised 5 lenses:
+
+| Lens | What it checks | Result |
+|---|---|---|
+| 1. `__all__` parity | `skills_signer/__init__.py` exports identical 22-symbol list in identical order | ✅ all 5 |
+| 2. `canonicalize.py` parity | `SIGNATURE_FIELDS_TO_STRIP` field set, `model_dump(mode="json")` pin, `extra_exclude_keys` handling | ✅ all 5 |
+| 3. `manifest.py` parity | `as_dict()` shape, `SUPPORTED_ALGORITHM = "ed25519"`, `InvalidManifestAlgorithmError` exception type | ✅ all 5 |
+| 4. `signer_feed.py` 9-key payload | `feed_entities_count`, `feed_last_updated_timestamp`, `cycles_total`, `errors_total`, `ok`, `feed`, `key_count`, `pubkeys`, `generation` in identical order | ✅ all 5 (akosha's module API surface differs but `as_dict()` output is byte-equivalent) |
+| 5. **Production-lifespan parity** | Each server's actual `python -m server start` path calls `init_signer_feed_state()` on production (not just tests) | ⚠️ 4/5, session-buddy had a redundant second init |
+
+**Findings applied:**
+
+| Severity | Server | File:line | Fix |
+|---|---|---|---|
+| Important | session-buddy | `session_buddy/mcp/server.py:344` | Added `if get_signer_feed_state() is None:` guard so the wrapper becomes a no-op when the wrapped `session_lifecycle` has already initialized. Defense-in-depth preserved. Commit `86d70f5f`. **Verified at runtime:** restart produces `generation=0` (single init); without the guard, would have been 1. |
+| Cosmetic | akosha | `akosha/skills_signer/manifest.py:216` | Reformatted raise from 1-line to 2-line to match the other 4 servers. Commit `223101d`. |
+| Cosmetic | akosha | `akosha/skills_signer/manifest.py:23-25` | **False positive** — akosha's import order is `import base64`, `import time`, `from dataclasses`, `from typing`; ruff `I001` is satisfied (verified). The audit's "match the other 4 servers" guidance was based on incorrect reconnaissance (mahavishnu has `import time` AFTER `from dataclasses` — both orderings pass ruff). No fix applied. |
+| Cosmetic | akosha | `akosha/mcp/signer_feed.py` module API | **By design** — akosha constructs `SignerFeedState` inline in the lifespan closure; the other 4 export the full `init_/get_/reset_signer_feed_state` helper set because they lazily initialize. Both are valid implementations; the bar is byte-equivalent `as_dict()` output, not byte-equivalent module API surface. No fix applied. |
+
+**Cross-cutting decisions:**
+
+- **No other server has the redundant-init pattern.** Grep across all 5 servers confirms each has exactly ONE `init_signer_feed_state()` call site on its production path. Session-buddy's pattern (lifespan wrapper re-running init) was unique to its `_lifespan_with_dhara_cleanup` architecture. The other 4 servers initialize once and are done.
+- **Phase 1.5 wire protocol is byte-equivalent** across all 5 servers. Phase 2/6 installers that read `/health` and parse `pubkeys[]` + `key_count` will see identical shape from any of the 5.
+- **Per-server E2E test (`tests/integration/test_health_aggregator_e2e.py`) deferred to Phase 2** — single-instance servers (mahavishnu, crackerjack, akosha's lifespan-closure pattern) lack the pre-lifespan 503 case the §10.3.7 contract specifies; the unit-level `TestSignerFeedState::test_503_payload_shape` covers the empty-manifest path. Full E2E lands with the Phase 2 installer.
+
 ## 11. Blockers — Consolidated Index
 
 Per the 5-agent multi-lens review on 2026-09-09, the following
@@ -1191,17 +1231,19 @@ amendments are blockers (B-1 through B-7) before the plan promotes
 from `needs-revision` to `active`. High/medium/low priority items
 follow.
 
-**Status update 2026-09-09**: B-1 is closed in code (akosha commit
-`09cef76`). B-7 is partially addressed — the skills_signer feed
-in akosha's `/health` exposes the four mandatory signals and
-computed `ok`. Replication of B-7 to mahavishnu / session-buddy /
-dhara / crackerjack is pending; the per-server E2E tests
-specified in B-7's source citation must land before B-7 is fully
-closed. The remaining blockers (B-2, B-3, B-4, B-5, B-6) are
-implementation work that follows naturally from a successful
-mahavishnu replication.
+**Status update 2026-09-10**: B-1 is **fully closed across all 5
+servers** (commits: akosha `09cef76` + `223101d`, mahavishnu
+`24e410c8`, session-buddy `6b0bcd9b` + `86d70f5f`, dhara `c604efe`,
+crackerjack `6c9eff2f`). The cross-server consistency review
+(§10.4) verified the wire payload, manifest shape, and
+production-lifespan wiring on all 5 replicas. B-7 is still
+"partially closed per server" — the per-server E2E tests
+specified in §10.3.7's contract are deferred to Phase 2, where
+the installer primitives provide the test scaffolding. The
+remaining blockers (B-2, B-3, B-4, B-5, B-6) are implementation
+work that follows naturally from the now-unblocked Phase 1.5.
 
-### B-1: Signing infrastructure (Phase 1.5) — **CLOSED 2026-09-09**
+### B-1: Signing infrastructure (Phase 1.5) — **CLOSED 2026-09-10 (all 5 servers)**
 
 ed25519 keypair per server; public-key manifest pinned in `/health`;
 `get_skill` / `get_agent` responses carry `signature` +
@@ -1209,21 +1251,22 @@ ed25519 keypair per server; public-key manifest pinned in `/health`;
 primitive on `~/.claude/skills/` and `~/.claude/agents/`. **Source**:
 MCP §3 S-3, governance §1.
 
-**Closed in akosha commit `09cef76`** (2026-09-09). Implemented in
-`akosha/skills_signer/` (canonicalize, keys, manifest, sign,
-verify, errors, `__init__`) and wired into `akosha/mcp/server.py`
-lifespan + `akosha/mcp/signer_feed.py`. `load_or_create_keypair`
-persists the private key at `~/.akosha/state/skills_signer/private_key.pem`
-(0o700 parent, 0o600 file); key_id is stable across restarts. Live
-verified: `/health` returns all four mandatory feed signals
-(`feed_entities_count`, `feed_last_updated_timestamp`,
+**Closed in akosha commit `09cef76`** (2026-09-09); replicated to
+mahavishnu `24e410c8`, session-buddy `6b0bcd9b`, dhara `c604efe`,
+crackerjack `6c9eff2f` on 2026-09-10. Implemented in
+`<server>/skills_signer/` (canonicalize, keys, manifest, sign,
+verify, errors, `__init__`) and wired into each server's lifespan
++ `<server>/mcp/signer_feed.py`. `load_or_create_keypair`
+persists the private key at `~/.{server}/state/skills_signer/private_key.pem`
+(0o700 parent, 0o600 file); key_id is stable across restarts on
+all 5 servers. Live verified: `/health` returns all four mandatory
+feed signals (`feed_entities_count`, `feed_last_updated_timestamp`,
 `cycles_total`, `errors_total`) plus `ok` computed from manifest
-invariants.
-
-Replication to the other 4 Bodai servers (mahavishnu next, then
-session-buddy, dhara, crackerjack) is the natural next step;
-the package is pure-data + cryptography and replicates by sed-replace
-of `akosha.skills_signer.X` → `<server>.skills_signer.X`.
+invariants on each replica. Cross-server consistency review
+(§10.4) confirmed byte-equivalent wire payload across the 5 servers;
+session-buddy's redundant-init issue (commit `86d70f5f`) and
+akosha's cosmetic raise format (commit `223101d`) are the only
+post-replication adjustments.
 
 ### B-2: Two-phase install confirmation
 
