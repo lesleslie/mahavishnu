@@ -57,6 +57,16 @@ class TestRejection:
         with pytest.raises(Exception):
             normalize_repo_url("git@github.com:foo/bar\x00.git")
 
+    def test_unicode_line_separator_rejected(self) -> None:
+        with pytest.raises(RepoUrlRejectedError) as exc_info:
+            normalize_repo_url("git@github.com:foo/bar .git")
+        assert "control characters" in exc_info.value.reason
+
+    def test_unicode_paragraph_separator_rejected(self) -> None:
+        with pytest.raises(RepoUrlRejectedError) as exc_info:
+            normalize_repo_url("git@github.com:foo/bar .git")
+        assert "control characters" in exc_info.value.reason
+
     def test_ftp_protocol_rejected(self) -> None:
         assert normalize_repo_url("ftp://github.com/foo/bar.git") is None
 
