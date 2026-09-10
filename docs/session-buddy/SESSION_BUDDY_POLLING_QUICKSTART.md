@@ -303,7 +303,6 @@ ______________________________________________________________________
 
 ### Documentation
 
-- `/Users/les/Projects/mahavishnu/SESSION_BUDDY_POLLING_PLAN.md`
 - `/Users/les/Projects/mahavishnu/SESSION_BUDDY_POLLING_USAGE.md`
 - `/Users/les/Projects/mahavishnu/SESSION_BUDDY_POLLING_SUMMARY.md`
 - `/Users/les/Projects/mahavishnu/SESSION_BUDDY_POLLING_QUICKSTART.md` (this file)
@@ -337,7 +336,7 @@ ______________________________________________________________________
 
 1. **Quick Issues**: Check this guide
 1. **Usage Examples**: See `SESSION_BUDDY_POLLING_USAGE.md`
-1. **Architecture**: See `SESSION_BUDDY_POLLING_PLAN.md`
+1. **Architecture**: See `SESSION_BUDDY_POLLING_USAGE.md`
 1. **Full Details**: See `SESSION_BUDDY_POLLING_SUMMARY.md`
 1. **Source Code**: Check `session_buddy_poller.py` docstrings
 

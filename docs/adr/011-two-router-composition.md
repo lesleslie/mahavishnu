@@ -46,14 +46,16 @@ Neither router imports the other. The composition is implicit: the Task Router s
 | `BATCH_TASK` | Prefect | Agno → LlamaIndex |
 | `INTERACTIVE_TASK` | Agno | Prefect → LlamaIndex |
 
-## TaskCategory → Model Mapping (ZAI provider)
+## TaskCategory → Model Mapping (MiniMax provider)
 
-| TaskCategory | Cloud Model | Local Model |
+The MiniMax routing below mirrors `settings/models.yaml` (provider chain: minimax → llama_server → ollama). M3 is the quality-sensitive primary; M3-highspeed is used for high-volume categories; M2.7/M2.7-highspeed are retained as the final fallback when M3 is unavailable.
+
+| TaskCategory | Cloud Model (MiniMax) | Local Model |
 |-------------|-------------|-------------|
-| `CODE_GENERATION`, `CODE_REVIEW`, `DEBUGGING` | glm-4.7 | qwen2.5-coder:7b |
-| `REASONING`, `ARCHITECTURE` | glm-5.1 | llama3:8b |
-| `SWARM`, `QUICK`, `DOCUMENTATION` | glm-4.5-air | qwen2.5-coder:7b |
-| `VISION` | GLM-4.5V | N/A |
+| `CODE_GENERATION`, `CODE_REVIEW`, `DEBUGGING`, `REFACTORING`, `TESTING`, `REASONING`, `ANALYSIS`, `DOCUMENTATION`, `VISION`, `ML_INFERENCE` | `MiniMax-M3` | qwen3.5 (llama_server) / qwen2.5-coder:7b (ollama) |
+| `SWARM`, `QUICK`, `AGENT_LOOP`, `CREATIVE`, `GENERAL` | `MiniMax-M3-highspeed` | qwen3.5 (llama_server) / qwen2.5-coder:7b (ollama) |
+| `FALLBACK` (any category, when M3 unavailable) | `MiniMax-M2.7` | llama3:8b |
+| `FALLBACK_HIGHSPEED` (high-volume, when M3 unavailable) | `MiniMax-M2.7-highspeed` | qwen2.5-coder:7b |
 
 ## Key Constraints
 

@@ -30,7 +30,7 @@
 ```
 ┌──────────────────────────────────────────────────────────────┐
 │                     MCP Server (e.g., mahavishnu)             │
-│                         Version: 0.2.0                        │
+│                         Version: 0.23.0                       │
 ├──────────────────────────────────────────────────────────────┤
 │                                                                │
 │  ┌─────────────────────────────────────────────────────┐     │
@@ -167,7 +167,7 @@ Result: from ...core.permissions import Permission
 ```
 ┌─────────────────┐
 │ pyproject.toml  │
-│ version = 0.2.0 │
+│ version = 0.23.0 │
 └────────┬────────┘
          │
          │ Build & Install
@@ -185,7 +185,7 @@ Result: from ...core.permissions import Permission
 │  │ __version__ = pkg_version(  │    │
 │  │   "mahavishnu"              │    │
 │  │ )                           │    │
-│  │ # Returns: "0.2.0"          │    │
+│  │ # Returns: "0.23.0"         │    │
 │  └─────────────────────────────┘    │
 │           │                           │
 │           ▼                           │
@@ -201,7 +201,7 @@ Result: from ...core.permissions import Permission
          ▼
 ┌─────────────────────────────────────┐
 │  Server Banner Displayed             │
-│  Mahavishnu Orchestrator, 0.2.0     │
+│  Mahavishnu Orchestrator, 0.23.0    │
 └─────────────────────────────────────┘
 ```
 

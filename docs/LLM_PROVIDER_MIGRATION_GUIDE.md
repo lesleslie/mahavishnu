@@ -97,20 +97,20 @@ if not config["providers"].get("new_provider"):
 
 ```python
 llm_fallback_chain: list[str] = Field(
-    default=["zai", "new_provider", "ollama"],
+    default=["minimax", "new_provider", "ollama"],
     description="Ordered list of LLM providers for fallback",
 )
 ```
 
 ### Step 5: Add Tests
 
-Follow the pattern in `tests/integration/test_zai_fallback_chain.py`:
+Follow the pattern in `tests/integration/test_minimax_fallback_chain.py`:
 
 ```python
 class TestNewProviderFallback:
     @pytest.mark.asyncio
-    async def test_fallback_to_new_provider_when_zai_unavailable(self, messages):
-        # Mock ZAI as unavailable
+    async def test_fallback_to_new_provider_when_minimax_unavailable(self, messages):
+        # Mock MiniMax as unavailable
         # Mock new_provider as available
         # Verify fallback works
         ...

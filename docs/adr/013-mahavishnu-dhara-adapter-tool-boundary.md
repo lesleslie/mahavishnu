@@ -1,8 +1,8 @@
 ---
-status: draft
+status: active
 role: canonical
 date: 2026-07-16
-last_reviewed: 2026-07-16
+last_reviewed: 2026-09-09
 superseded_by: null
 blocks_on: []
 decision_date: 2026-06-03
@@ -15,7 +15,16 @@ topic: adapter-tool-boundary
 
 <!-- legacy status: **Proposed** — see YAML frontmatter -->
 
-**Proposed**
+**Accepted** on 2026-09-09 (ratified retroactively after SLA expiry; rationale below).
+
+The 2026-06-03 proposal recommended **Option B** ("document the boundary, keep both"). The maintainer follow-up SLA was 2026-06-17; no objection was raised during that window or afterwards. The de facto boundary has held in practice for the intervening three months: `mcp__dhara__*` is used for catalog/state queries (per the agent catalog and ADR-015 v4 storage story), while `mcp__mahavishnu__adapter_list` / `adapter_metadata` continue to serve orchestration-time queries against the live `HybridAdapterRegistry` in-process. The four Open Questions in the proposal are noted as low-impact:
+
+1. **External consumers** — none surfaced; the only known callers are internal CLI, compatibility contract checks, and the agent catalog.
+2. **Deprecation timeline** — no deprecation needed under Option B (both surfaces remain).
+3. **Field reconciliation** — deferred (deliberately disjoint shapes preserve intent).
+4. **`get_adapter_health` parallel** — same boundary applies; treated consistently.
+
+This ratification does not change code or tool versions.
 
 **Date:** 2026-06-03
 

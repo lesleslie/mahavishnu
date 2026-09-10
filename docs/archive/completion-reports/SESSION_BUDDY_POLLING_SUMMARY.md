@@ -105,9 +105,8 @@ session_buddy_polling_metrics_to_collect:
 ### 5. Documentation
 
 **Files Created:**
-1. `SESSION_BUDDY_POLLING_PLAN.md` - Implementation plan
-2. `SESSION_BUDDY_POLLING_USAGE.md` - Usage examples and guide
-3. `SESSION_BUDDY_POLLING_SUMMARY.md` - This file
+1. `SESSION_BUDDY_POLLING_USAGE.md` - Usage examples and guide
+2. `SESSION_BUDDY_POLLING_SUMMARY.md` - This file
 
 ## OTel Metric Mapping
 
@@ -440,7 +439,6 @@ settings/
 └── mahavishnu.yaml                     # UPDATED - Polling configuration
 
 Documentation:
-├── SESSION_BUDDY_POLLING_PLAN.md       # NEW - Implementation plan
 ├── SESSION_BUDDY_POLLING_USAGE.md      # NEW - Usage guide
 └── SESSION_BUDDY_POLLING_SUMMARY.md    # NEW - This file
 ```
@@ -473,5 +471,5 @@ The Session-Buddy polling integration is **production-ready** and provides a rob
 
 **Support:**
 - See `SESSION_BUDDY_POLLING_USAGE.md` for detailed examples
-- See `SESSION_BUDDY_POLLING_PLAN.md` for architecture details
+- See `SESSION_BUDDY_POLLING_USAGE.md` for architecture details
 - Check source code: `/Users/les/Projects/mahavishnu/mahavishnu/integrations/session_buddy_poller.py`

@@ -79,7 +79,7 @@ async def my_tool(
 |-------|-------|-----|
 | `ModuleNotFoundError: package.mcp.core` | Wrong dot count | Use `...core` not `..core` |
 | `ImportError: require_mcp_auth` | Wrong module | Use `...mcp.auth` not `...core.auth` |
-| Version shows `1.0.0` not `0.2.0` | Hardcoded version | Use `importlib.metadata` |
+| Version shows `1.0.0` not `0.23.0` | Hardcoded version | Use `importlib.metadata` |
 | Port already in use | Process on port | `lsof -i :8680` then `kill <PID>` |
 
 ## Server Ports

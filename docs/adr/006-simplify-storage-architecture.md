@@ -1,8 +1,8 @@
 ---
-status: active
-role: canonical
+status: superseded
+role: archive
 date: 2026-07-16
-last_reviewed: 2026-07-16
+last_reviewed: 2026-09-09
 superseded_by: null
 blocks_on: []
 decision_date: 2026-02-18
@@ -11,7 +11,11 @@ topic: storage-consolidation
 
 # ADR 006: Simplify Storage Architecture from 4-System to 2-System
 
-**Status**: Accepted
+**Status**: Superseded (2026-09-09) — See YAML frontmatter
+
+<!-- legacy status: **Status**: Accepted — superseded by 2026-09-09 audit -->
+
+**Superseded** on 2026-09-09. ADR 006 was written for the "Task Orchestration v1.0" system (Task Orchestration Master Plan v3.0), which was never built. The PostgreSQL + Session-Buddy simplification it describes is not the path that was actually taken; Mahavishnu's current storage story uses Oneiric's adapter abstraction (LocalStorageAdapter / S3StorageAdapter / Dhara / Redis) per ADR 015 v4 rather than a 2-system PostgreSQL+Session-Buddy stack.
 
 <!-- legacy status: **Status**: Accepted — see YAML frontmatter -->
 

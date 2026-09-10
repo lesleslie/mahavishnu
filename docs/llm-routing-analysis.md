@@ -19,7 +19,7 @@ The Bodai ecosystem uses a **unified OpenAI-compatible API approach** across all
 - **Bifrost integration:**
   - Detects `BIFROST_OPENAI_BASE_URL` and `BIFROST_ANTHROPIC_BASE_URL`
   - Uses Bifrost API keys when available
-  - Models: `zai-openai/glm-5-turbo` (Bifrost) vs `gpt-4` (direct)
+  - Models: `minimax/MiniMax-M3` (Bifrost) vs `gpt-4` (direct)
 
 **Key characteristics:**
 

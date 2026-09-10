@@ -26,7 +26,7 @@ ______________________________________________________________________
 
 This document captures the architectural patterns and best practices for Model Context Protocol (MCP) servers across the mahavishnu ecosystem. These patterns have been validated across three production MCP servers:
 
-- **Mahavishnu Orchestrator** (v0.2.0) - Multi-agent coordination
+- **Mahavishnu Orchestrator** (v0.23.0) - Multi-agent coordination
 - **Session-Buddy** (v0.14.1) - Session management & memory
 - **Crackerjack** (v0.53.3) - Quality assurance & testing
 
@@ -898,7 +898,7 @@ ______________________________________________________________________
 **Symptom:**
 
 ```
-MCP Server: Mahavishnu Orchestrator, 1.0.0  # But pyproject.toml says 0.2.0
+MCP Server: Mahavishnu Orchestrator, 1.0.0  # But pyproject.toml says 0.23.0
 ```
 
 **Cause:** Hardcoded version in FastMCP initialization.

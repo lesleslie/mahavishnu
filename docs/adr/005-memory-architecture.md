@@ -1,8 +1,8 @@
 ---
-status: active
-role: canonical
+status: superseded
+role: archive
 date: 2026-07-16
-last_reviewed: 2026-07-16
+last_reviewed: 2026-09-09
 superseded_by: null
 blocks_on: []
 decision_date: 2025-01-24
@@ -11,7 +11,11 @@ topic: memory-architecture
 
 # ADR 005: Unified Memory Architecture
 
-**Status:** Accepted
+**Status:** Superseded (2026-09-09) — See YAML frontmatter
+
+<!-- legacy status: **Status:** Accepted — superseded by 2026-09-09 audit -->
+
+**Superseded** on 2026-09-09. The proposed `MahavishnuMemoryIntegration` class was never implemented; the unified memory story was actually built from `mahavishnu.workers.memory`, `mahavishnu.pools.memory_aggregator`, and Session-Buddy reflection storage rather than a single façade. The three-backend architecture (Session-Buddy + Dhara + LlamaIndex) remains valid, but the unification layer specified here does not exist in the codebase.
 
 <!-- legacy status: **Status:** Accepted — see YAML frontmatter -->
 

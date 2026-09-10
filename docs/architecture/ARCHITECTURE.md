@@ -2,14 +2,25 @@
 
 **Single Source of Truth for Mahavishnu Architecture**
 
-**Last Updated**: 2026-05-14
-**Status**: Historical snapshot — architecture sections are accurate as of 2026-05-14; earlier stubs for Prefect/Agno are superseded by the full implementations in `mahavishnu/engines/`.
+**Last Updated**: 2026-09-09
+**Status**: Historical snapshot — architecture sections below describe the legacy adapter-stub narrative (Jan 2026); the current adapter maturity is summarized at the top and superseded by the full implementations in `mahavishnu/engines/*_impl.py`.
 
 > **Document status**
 >
 > This file contains useful architectural background, but parts of it no longer match the current codebase.
-> In particular, the adapter maturity summary below predates the current `*_impl.py` implementations for Prefect, Agno, and LlamaIndex.
+> The historical "LlamaIndex ✅ / Prefect 🟡 / Agno 🟡" adapter summary at the bottom predates the current `*_impl.py` implementations for Prefect, Agno, LlamaIndex, and Hatchet — all four are now production-ready (see **Current adapter status** below).
 > For current product posture and top-level capability framing, prefer `README.md`, `CLAUDE.md`, and the code under `mahavishnu/engines/`, `mahavishnu/mcp/`, and `mahavishnu/core/`.
+
+## Current adapter status (verified 2026-09-09)
+
+| Adapter | Status | Implementation |
+|---------|--------|----------------|
+| **LlamaIndex** | ✅ Production-ready | `mahavishnu/engines/llamaindex_adapter_impl.py` |
+| **Prefect** | ✅ Production-ready | `mahavishnu/engines/prefect_adapter_impl.py` |
+| **Agno** | ✅ Production-ready | `mahavishnu/engines/agno_adapter_impl.py` |
+| **Hatchet** | ✅ Production-ready | `mahavishnu/engines/hatchet_adapter_impl.py` |
+
+> **Note on line counts.** Line counts rot fast; rely on the production-ready status above. For a current measure at any time, run `wc -l mahavishnu/engines/*_impl.py`.
 
 ______________________________________________________________________
 
@@ -98,9 +109,10 @@ Mahavishnu
 │
 ├── Adapters (mahavishnu/engines/)
 │   ├── base.py                 # Abstract base adapter
-│   ├── llamaindex_adapter.py   # ✅ Fully implemented (348 lines)
-│   ├── prefect_adapter.py      # 🟡 Stub only (143 lines)
-│   └── agno_adapter.py         # 🟡 Stub only (116 lines)
+│   ├── llamaindex_adapter_impl.py   # ✅ Production-ready
+│   ├── prefect_adapter_impl.py      # ✅ Production-ready
+│   ├── agno_adapter_impl.py         # ✅ Production-ready
+│   └── hatchet_adapter_impl.py      # ✅ Production-ready
 │
 ├── MCP Server (mahavishnu/mcp/)
 │   ├── server_core.py          # FastMCP server
@@ -119,11 +131,10 @@ ______________________________________________________________________
 
 ## Adapter Architecture
 
-### 1. LlamaIndex Adapter (Fully Implemented)
+### 1. LlamaIndex Adapter
 
-**File**: `mahavishnu/engines/llamaindex_adapter.py`
-**Lines**: 348
-**Status**: Production Ready
+**File**: `mahavishnu/engines/llamaindex_adapter_impl.py`
+**Status**: ✅ Production-ready (RAG pipelines, semantic search)
 
 **Capabilities**:
 
@@ -141,66 +152,26 @@ from llama_index.embeddings.ollama import OllamaEmbedding
 from llama_index.llms.ollama import Ollama
 ```
 
-**Usage**:
+### 2. Prefect Adapter
 
-```python
-from mahavishnu.engines import LlamaIndexAdapter
+**File**: `mahavishnu/engines/prefect_adapter_impl.py`
+**Status**: ✅ Production-ready (durable Prefect flows, retries, scheduling, observability)
 
-adapter = LlamaIndexAdapter(
-    config={"llm_model": "nomic-embed-text", "ollama_base_url": "http://localhost:11434"}
-)
+The historical "stub only" narrative was superseded when the full implementation landed. See the current implementation in `prefect_adapter_impl.py` for deployed flow orchestration, retries, and observability hooks.
 
-# Fully functional
-result = await adapter.ingest_documents(repo_path="/path/to/repo")
-results = await adapter.query_documents(query="authentication patterns")
-```
+### 3. Agno Adapter
 
-### 2. Prefect Adapter (Stub Implementation)
+**File**: `mahavishnu/engines/agno_adapter_impl.py`
+**Status**: ✅ Production-ready (multi-agent crews, tool integration, multi-LLM routing)
 
-**File**: `mahavishnu/engines/prefect_adapter.py`
-**Lines**: 143
-**Status**: Framework Skeleton Only
+The historical "stub only" narrative was superseded when the full implementation landed. See the current implementation in `agno_adapter_impl.py` for crew lifecycle, tool integration, and provider factory.
 
-**Current State**:
+### 4. Hatchet Adapter
 
-- Uses Prefect decorators (`@flow`, `@task`)
-- Returns simulated/hardcoded results
-- No actual flow construction or execution
-- No state management or checkpointing
+**File**: `mahavishnu/engines/hatchet_adapter_impl.py`
+**Status**: ✅ Production-ready (durable Hatchet workflows)
 
-**Missing**:
-
-- LLM integration for dynamic workflows
-- Real flow construction logic
-- State management and checkpointing
-- Progress tracking and streaming
-- Error handling and timeouts
-
-**Estimated Completion**: 2 weeks
-
-### 3. Agno Adapter (Stub Implementation)
-
-**File**: `mahavishnu/engines/agno_adapter.py`
-**Lines**: 116
-**Status**: Framework Skeleton Only
-
-**Current State**:
-
-- Returns simulated results
-- No Agno framework imports
-- No agent lifecycle management
-- No tool integration
-
-**Missing**:
-
-- Agno v2.0 integration
-- Agent lifecycle management
-- Tool integration
-- Multi-LLM routing (Ollama, Claude, configurable non-default providers)
-- Memory and context management
-- Agent coordination
-
-**Estimated Completion**: 2-3 weeks (waiting for Agno v2.0 stable release)
+Hatchet provides an alternative durable workflow runtime; see the implementation for current capabilities and supported task classes.
 
 ______________________________________________________________________
 
@@ -239,17 +210,20 @@ ______________________________________________________________________
 
 ### Phase 3: Current Architecture (2026-01-24)
 
-**Active Adapters**:
+**Active Adapters** (status snapshot at 2026-01-24 — **superseded** by the 2026-09-09 verification above):
 
 1. **LlamaIndex**: Fully implemented with Ollama integration
 1. **Prefect**: Stub implementation, needs real orchestration logic
 1. **Agno**: Stub implementation, needs agent framework integration
 
-**Recommendations**:
+> This Phase 3 snapshot reflects the codebase state on 2026-01-24. The "stub" labels for Prefect and Agno were true then but are no longer accurate — see the **Current adapter status** block at the top of this document for the verified 2026-09-09 status.
 
-- Use LlamaIndex for RAG pipelines and semantic search (production ready)
-- Wait to use Prefect adapter until implementation complete (2 weeks)
-- Wait to use Agno adapter until v2.0 stable release + implementation (2-3 weeks)
+**Recommendations** (updated 2026-09-09):
+
+- LlamaIndex for RAG pipelines and semantic search
+- Prefect for durable workflow orchestration
+- Agno for multi-agent crews
+- Hatchet as the alternative durable runtime
 
 ______________________________________________________________________
 
@@ -271,9 +245,10 @@ graph TB
     end
 
     subgraph "Adapters"
-        LlamaIndex[LlamaIndexAdapter<br/>✅ Fully Implemented<br/>348 lines]
-        Prefect[PrefectAdapter<br/>🟡 Stub Only<br/>143 lines]
-        Agno[AgnoAdapter<br/>🟡 Stub Only<br/>116 lines]
+        LlamaIndex[LlamaIndexAdapter<br/>✅ Production-ready]
+        Prefect[PrefectAdapter<br/>✅ Production-ready]
+        Agno[AgnoAdapter<br/>✅ Production-ready]
+        Hatchet[HatchetAdapter<br/>✅ Production-ready]
     end
 
     subgraph "Terminal Management (post-2026-08)"
@@ -315,6 +290,7 @@ graph TB
     App --> LlamaIndex
     App --> Prefect
     App --> Agno
+    App --> Hatchet
 
     %% Terminal Management
     App --> Terminal
@@ -341,12 +317,13 @@ graph TB
     style LlamaIndex fill:#90EE90,stroke:#2E7D32,stroke-width:3px
     style Prefect fill:#90EE90,stroke:#2E7D32,stroke-width:3px
     style Agno fill:#90EE90,stroke:#2E7D32,stroke-width:3px
+    style Hatchet fill:#90EE90,stroke:#2E7D32,stroke-width:3px
 ```
 
 **Legend**:
 
-- ✅ **Green**: Fully implemented and functional
-- 🟡 **Yellow**: Stub implementation (framework skeleton only)
+- ✅ **Green**: Fully implemented and functional (production-ready)
+- 🟡 **Yellow**: Stub implementation (framework skeleton only) — none currently
 - ❌ **Red**: Not implemented (deprecated)
 
 ______________________________________________________________________
@@ -376,9 +353,10 @@ repos_path: "~/ecosystem.yaml"
 
 # Adapters
 adapters:
-  prefect: true     # Stub implementation
-  llamaindex: true  # Fully implemented
-  agno: true        # Stub implementation
+  prefect: true     # Production-ready
+  llamaindex: true  # Production-ready
+  agno: true        # Production-ready
+  hatchet: true     # Production-ready
 
 # LLM Configuration
 llm_model: "nomic-embed-text"  # Ollama embedding model
@@ -687,9 +665,10 @@ ______________________________________________________________________
 | `mahavishnu/core/app.py` | Main application class | Complete |
 | `mahavishnu/core/config.py` | Configuration with Oneiric | Complete |
 | `mahavishnu/core/adapters/base.py` | Abstract adapter interface | Complete |
-| `mahavishnu/engines/llamaindex_adapter.py` | LlamaIndex adapter | Complete |
-| `mahavishnu/engines/prefect_adapter.py` | Prefect adapter | Stub |
-| `mahavishnu/engines/agno_adapter.py` | Agno adapter | Stub |
+| `mahavishnu/engines/llamaindex_adapter_impl.py` | LlamaIndex adapter | Complete (production-ready) |
+| `mahavishnu/engines/prefect_adapter_impl.py` | Prefect adapter | Complete (production-ready) |
+| `mahavishnu/engines/agno_adapter_impl.py` | Agno adapter | Complete (production-ready) |
+| `mahavishnu/engines/hatchet_adapter_impl.py` | Hatchet adapter | Complete (production-ready) |
 | `mahavishnu/mcp/server_core.py` | MCP server | Complete |
 | `mahavishnu/mcp/tools/terminal_tools.py` | Terminal management | Complete |
 | `mahavishnu/cli.py` | CLI application | Complete |
@@ -711,24 +690,25 @@ ______________________________________________________________________
 
 ## Summary
 
-Mahavishnu provides a unified interface to multiple orchestration engines through a common adapter pattern. The architecture is modular and extensible, with one production-ready adapter (LlamaIndex) and two stub adapters (Prefect, Agno) that require implementation.
+Mahavishnu provides a unified interface to multiple orchestration engines through a common adapter pattern. All four adapters — LlamaIndex, Prefect, Agno, and Hatchet — are production-ready; see the **Current adapter status** block at the top for the verified 2026-09-09 snapshot.
 
 **Key Points**:
 
-- LlamaIndex is the only fully functional adapter (real Ollama integration)
-- Prefect and Agno are framework skeletons that need implementation
+- LlamaIndex, Prefect, Agno, and Hatchet adapters are all production-ready
 - MCP terminal tools are complete and functional
 - MCP core orchestration tools are not yet implemented
 - Estimated 8-11 weeks to production-ready v1.0
 
 **For Production Use Today**:
 
-- Use LlamaIndex adapter for RAG pipelines and semantic search
-- Use MCP terminal management tools
-- Wait for Prefect and Agno adapter implementation before using for orchestration
+- LlamaIndex for RAG pipelines and semantic search
+- Prefect for durable workflow orchestration
+- Agno for multi-agent crews
+- Hatchet for alternative durable runtime
+- MCP terminal management tools for terminal sessions
 
 ______________________________________________________________________
 
 **Document Status**: Single source of truth for Mahavishnu architecture
-**Last Reviewed**: 2026-01-24
-**Next Review**: After Phase 3 completion (adapter implementations)
+**Last Reviewed**: 2026-09-09 (adapter status table at top; rest is historical snapshot)
+**Next Review**: After Phase 4 completion (production observability + error recovery)
