@@ -209,7 +209,7 @@ def jot_vitals() -> JotVitalsDict:
         open=sum(1 for s in states if s.status == "open"),
         done=sum(1 for s in states if s.status == "done"),
         last_capture_ms=max((s.last_modified_ms for s in states), default=None),
-        oldest_ms=min((s.last_modified_ms for s in states), default=None) or None,
+        oldest_ms=min((s.last_modified_ms for s in states)) if states else None,
     )
 
 

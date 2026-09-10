@@ -118,3 +118,27 @@ def test_jot_edit_done_reopen_round_trip(tmp_path: Path) -> None:
     assert result.states[0].status == "open"
     assert result.errors == []
     assert result.parked == []
+
+
+def test_jot_vitals_preserves_epoch_zero_oldest_ms(tmp_path: Path) -> None:
+    """Final-review #1: `or None` collapsed legitimate 0 to None.
+
+    A state with ``last_modified_ms=0`` (epoch) is a legitimate data point,
+    not "missing" — vitals must preserve it.
+    """
+    _seed([
+        _capture("a" * 32, "epoch jot", wall_ms=0),
+        _capture("b" * 32, "later", wall_ms=1),
+    ])
+    result = jot_tools.jot_vitals.fn()
+    assert result["oldest_ms"] == 0
+    assert result["last_capture_ms"] == 1
+
+
+def test_jot_vitals_returns_none_when_no_states(tmp_path: Path) -> None:
+    """When the log has no captured states, oldest_ms and last_capture_ms are None."""
+    _seed([])
+    result = jot_tools.jot_vitals.fn()
+    assert result["total"] == 0
+    assert result["oldest_ms"] is None
+    assert result["last_capture_ms"] is None
