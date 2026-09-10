@@ -456,10 +456,13 @@ class ObservabilityManager:
         from mahavishnu.observability.changepoint.two_stage import TwoStageResult
 
         if isinstance(result, TwoStageResult):
+            # state is Literal["idle", "warning_pending", "confirmed"] —
+            # the two emission branches are mutually exclusive, so elif
+            # is correct (LOW-10 polish).
             if result.state == "warning_pending" and result.warning_result is not None:
                 # Soft event: operator-visible but not page-worthy.
                 self._on_drift_warning(metric_name, value, result)
-            if result.state == "confirmed" and result.confirm_result is not None:
+            elif result.state == "confirmed" and result.confirm_result is not None:
                 # Hard event: page-worthy. Emit the existing drift_detected
                 # OTel span + counter so dashboards/alerts keep working.
                 self._on_drift_detected_two_stage(
