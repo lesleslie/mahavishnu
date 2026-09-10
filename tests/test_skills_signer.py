@@ -626,14 +626,22 @@ class TestEndToEndFlow:
 class TestSignerFeedState:
     """The SignerFeedState is the lifespan's single source of truth for
     what the skills_signer feed reports to /health. It bundles the manifest
-    + the four mandatory feed signals (entities_count,
-    last_updated_timestamp, cycles_total, errors_total) + a generation
-    token for ownership checks.
+    + the lifespan-owned :class:`SkillsSigner` + the four mandatory feed
+    signals (entities_count, last_updated_timestamp, cycles_total,
+    errors_total) + a generation token for ownership checks.
+
+    Phase 1 (2026-09-10): the ``signer`` field is now required (mirrors
+    the akosha reference impl) so ``get_skill`` / ``get_agent`` MCP tools
+    can produce signatures without re-reading the PEM from disk. Each
+    test below constructs a real :class:`SkillsSigner` from a fresh
+    keypair alongside the manifest.
     """
 
     def test_ok_true_when_manifest_has_entries(self) -> None:
-        manifest = build_pubkey_manifest(generate_keypair())
-        state = SignerFeedState(manifest=manifest)
+        kp = generate_keypair()
+        manifest = build_pubkey_manifest(kp)
+        signer = SkillsSigner.from_keypair(kp)
+        state = SignerFeedState(manifest=manifest, signer=signer)
         assert state.is_ok() is True
 
     def test_ok_false_when_manifest_is_empty(self) -> None:
@@ -641,8 +649,15 @@ class TestSignerFeedState:
 
         Fixes review R3-H2: ``ok`` is computed from manifest invariants,
         not hardcoded. An empty manifest is a degraded state.
+
+        A real :class:`SkillsSigner` is constructed for the empty-manifest
+        case so the dataclass field satisfies the required ``signer``
+        argument; the signer's identity does not affect ``is_ok()`` which
+        only inspects the manifest.
         """
-        state = SignerFeedState(manifest=PubkeyManifest())
+        kp = generate_keypair()
+        signer = SkillsSigner.from_keypair(kp)
+        state = SignerFeedState(manifest=PubkeyManifest(), signer=signer)
         assert state.is_ok() is False
 
     def test_as_dict_exposes_all_four_mandatory_signals(self) -> None:
@@ -653,8 +668,10 @@ class TestSignerFeedState:
         ``mcp-backend-wiring-discipline.md``; the previous
         ``manifest.as_dict()`` exposed only ``key_count`` + ``pubkeys[]``.
         """
-        manifest = build_pubkey_manifest(generate_keypair())
-        state = SignerFeedState(manifest=manifest)
+        kp = generate_keypair()
+        manifest = build_pubkey_manifest(kp)
+        signer = SkillsSigner.from_keypair(kp)
+        state = SignerFeedState(manifest=manifest, signer=signer)
         payload = state.as_dict()
 
         assert "feed_entities_count" in payload
@@ -665,8 +682,10 @@ class TestSignerFeedState:
         assert payload["feed"] == "skills_signer"
 
     def test_record_cycle_bumps_counter_and_timestamp(self) -> None:
-        manifest = build_pubkey_manifest(generate_keypair())
-        state = SignerFeedState(manifest=manifest)
+        kp = generate_keypair()
+        manifest = build_pubkey_manifest(kp)
+        signer = SkillsSigner.from_keypair(kp)
+        state = SignerFeedState(manifest=manifest, signer=signer)
 
         before_ts = state.last_updated_timestamp
         before_cycles = state.cycles_total
@@ -676,8 +695,10 @@ class TestSignerFeedState:
         assert state.last_updated_timestamp >= before_ts
 
     def test_record_error_bumps_errors_total(self) -> None:
-        manifest = build_pubkey_manifest(generate_keypair())
-        state = SignerFeedState(manifest=manifest)
+        kp = generate_keypair()
+        manifest = build_pubkey_manifest(kp)
+        signer = SkillsSigner.from_keypair(kp)
+        state = SignerFeedState(manifest=manifest, signer=signer)
 
         state.record_error()
         state.record_error()
@@ -685,8 +706,10 @@ class TestSignerFeedState:
 
     def test_503_payload_shape(self) -> None:
         """The /health endpoint expects ``bool(c.get("ok"))`` — verify shape."""
-        manifest = build_pubkey_manifest(generate_keypair())
-        state = SignerFeedState(manifest=manifest)
+        kp = generate_keypair()
+        manifest = build_pubkey_manifest(kp)
+        signer = SkillsSigner.from_keypair(kp)
+        state = SignerFeedState(manifest=manifest, signer=signer)
         payload = state.as_dict()
         # The /health endpoint uses ``all(bool(c.get("ok")) for c in checks.values())``
         # so the dict must have a top-level ``ok`` key that's truthy/falsy.
@@ -694,6 +717,7 @@ class TestSignerFeedState:
         assert isinstance(payload["ok"], bool)
         assert payload["ok"] is True
 
-        empty_state = SignerFeedState(manifest=PubkeyManifest())
+        empty_signer = SkillsSigner.from_keypair(generate_keypair())
+        empty_state = SignerFeedState(manifest=PubkeyManifest(), signer=empty_signer)
         empty_payload = empty_state.as_dict()
         assert empty_payload["ok"] is False

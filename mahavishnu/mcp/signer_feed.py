@@ -7,6 +7,9 @@ for what the skills_signer feed reports to ``/health``. It bundles:
 - the four mandatory feed signals required by
   ``mcp-backend-wiring-discipline.md`` (``feed_entities_count``,
   ``feed_last_updated_timestamp``, ``cycles_total``, ``errors_total``)
+- the lifespan-owned :class:`SkillsSigner` so Phase 1 ``list_skills`` /
+  ``get_skill`` MCP tools can produce signatures without re-reading
+  the PEM from disk
 - a ``generation`` token so concurrent-app teardown checks can
   verify ownership before clearing state
 
@@ -34,27 +37,32 @@ from dataclasses import dataclass, field
 import logging
 import os
 from pathlib import Path
+import threading
 import time
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from mahavishnu.skills_signer import PubkeyManifest
+    from mahavishnu.skills_signer import PubkeyManifest, SkillsSigner
 
 logger = logging.getLogger(__name__)
 
-# Module-level singleton for the SignerFeedState. Initialized lazily
-# inside ``start()`` because mahavishnu registers ``/health`` before
-# ``start()`` runs (early-probe design). Concurrent app instances
-# (tests, hot reload) overwrite this; the launchd wrapper tolerates
-# up to 120s of warm-up before considering the process failed.
+
+# ---------------------------------------------------------------------------
+# Module-level singleton (Phase 1 helper surface).
+#
+# Mahavishnu's ``start()`` constructs the SignerFeedState after the
+# FastMCP app is built (per plan §10.3.2 option c — mahavishnu has no
+# async lifespan). Concurrent app instances (tests, hot reload)
+# overwrite this; the launchd wrapper tolerates up to 120s of warm-up
+# before considering the process failed.
+#
+# The lock pattern mirrors the akosha reference impl byte-for-byte:
+# a ``threading.Lock`` guards the singleton swap so concurrent calls
+# to ``init_signer_feed_state()`` cannot tear the singleton.
+# ---------------------------------------------------------------------------
+
 _signer_feed_state: SignerFeedState | None = None
-
-
-def get_signer_feed_state() -> SignerFeedState | None:
-    """Return the current :class:`SignerFeedState` or ``None`` if not
-    yet initialized (start() hasn't completed the signer init step).
-    """
-    return _signer_feed_state
+_signer_state_lock = threading.Lock()
 
 
 def init_signer_feed_state() -> SignerFeedState:
@@ -65,12 +73,17 @@ def init_signer_feed_state() -> SignerFeedState:
     overwrite the singleton, bumping the generation token). Tests
     that want a clean slate call :func:`reset_signer_feed_state`.
 
+    The :class:`SkillsSigner` is constructed from the persisted keypair
+    (no separate disk read) so Phase 1 ``list_skills`` / ``get_skill``
+    MCP tools can produce signatures without re-reading the PEM.
+
     Raises:
         OSError: when the persistence path cannot be created.
         ValueError: when the persisted file is not a valid ed25519
             PEM private key.
     """
     from mahavishnu.skills_signer import (
+        SkillsSigner,
         build_pubkey_manifest,
         load_or_create_keypair,
     )
@@ -80,18 +93,24 @@ def init_signer_feed_state() -> SignerFeedState:
     key_path = _resolve_signer_key_path()
     keypair = load_or_create_keypair(key_path)
     manifest = build_pubkey_manifest(keypair)
+    server_signer = SkillsSigner.from_keypair(keypair)
 
-    if _signer_feed_state is not None:
-        # Re-init: bump the generation token so the old probe's
-        # captured state is invalidated.
-        new_state = SignerFeedState(
-            manifest=manifest,
-            generation=_signer_feed_state.generation + 1,
-        )
-    else:
-        new_state = SignerFeedState(manifest=manifest)
+    with _signer_state_lock:
+        if _signer_feed_state is not None:
+            # Re-init: bump the generation token so the old probe's
+            # captured state is invalidated.
+            new_state = SignerFeedState(
+                manifest=manifest,
+                signer=server_signer,
+                generation=_signer_feed_state.generation + 1,
+            )
+        else:
+            new_state = SignerFeedState(
+                manifest=manifest,
+                signer=server_signer,
+            )
+        _signer_feed_state = new_state
 
-    _signer_feed_state = new_state
     logger.info(
         "skills_signer feed state initialized key_id=%s key_path=%s",
         keypair.key_id,
@@ -100,10 +119,22 @@ def init_signer_feed_state() -> SignerFeedState:
     return new_state
 
 
+def get_signer_feed_state() -> SignerFeedState | None:
+    """Return the current :class:`SignerFeedState` or ``None`` if not
+    yet initialized (start() hasn't completed the signer init step).
+    """
+    return _signer_feed_state
+
+
 def reset_signer_feed_state() -> None:
-    """Clear the module singleton (test helper)."""
+    """Clear the module singleton (test helper).
+
+    Acquires ``_signer_state_lock`` so a concurrent ``init_signer_feed_state``
+    call cannot race the reset and leave a stale singleton behind.
+    """
     global _signer_feed_state
-    _signer_feed_state = None
+    with _signer_state_lock:
+        _signer_feed_state = None
 
 
 def _resolve_signer_key_path() -> Path:
@@ -130,6 +161,8 @@ class SignerFeedState:
 
     Attributes:
         manifest: the :class:`PubkeyManifest` published in ``/health``.
+        signer: the :class:`SkillsSigner` for producing Phase 1
+            ``get_skill`` / ``get_agent`` response signatures.
         last_updated_timestamp: unix timestamp of the most recent update
             (initial creation or last :meth:`record_cycle`).
         cycles_total: count of successful feed update cycles since startup.
@@ -140,6 +173,7 @@ class SignerFeedState:
     """
 
     manifest: PubkeyManifest
+    signer: SkillsSigner
     last_updated_timestamp: float = field(default_factory=time.time)
     cycles_total: int = 0
     errors_total: int = 0
@@ -170,10 +204,11 @@ class SignerFeedState:
         """Serialize for the ``/health`` payload.
 
         Returns a flat dict compatible with the other Mahavishnu feed
-        entries (``ok``, ``feed_entities_count``, ``feed_last_updated_timestamp``,
-        ``cycles_total``, ``errors_total``). The manifest data is
-        nested under ``key_count`` / ``pubkeys`` for backwards compat
-        with Phase 2/6 installers that already parse those fields.
+        entries (``ok``, ``feed_entities_count``,
+        ``feed_last_updated_timestamp``, ``cycles_total``,
+        ``errors_total``). The manifest data is nested under
+        ``key_count`` / ``pubkeys`` for backwards compat with Phase 2/6
+        installers that already parse those fields.
         """
         manifest_dict = self.manifest.as_dict()
         return {
