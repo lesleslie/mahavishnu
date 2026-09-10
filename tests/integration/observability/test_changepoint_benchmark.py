@@ -84,6 +84,52 @@ def _benchmark_arl0(detector_factory, n_trials: int = 30, n_samples: int = 5000,
     return {"arl0": sum(arls) / len(arls), "n_trials": n_trials, "n_fires": len(arls)}
 
 
+def _benchmark_fp_per_quiet(
+    n_trials: int = 25, n_samples: int = 10_080, seed: int = 2026_09_10
+) -> dict:
+    """§7 v3.1 gate helper: count false positives across N independent quiet streams.
+
+    Each trial is an independent Gaussian(0, 1) stream of ``n_samples``
+    observations fed to a fresh two-sided CUSUMDetector (slack=0.25,
+    threshold=8.0). Reset-after-fire matches the production operational
+    pattern: an alert is generated, the operator (or integration layer)
+    resets the detector, and the next observation begins a clean
+    accumulation. ``mean_fires`` is the per-trial average the §7 gate
+    asserts against (``<= 2`` per spec v3.1).
+
+    The expected mean under a correctly-tuned detector (ARL_0 ≈ 10,000)
+    is ~1.008 (Poisson with rate 10080/10000). With ARL_0 ≈ 300 the
+    detector fires ~33 times per trial and the §7 gate fails — see
+    the docstring on :meth:`TestChangepointBenchmark.test_cusum_fp_per_10080_quiet_samples`
+    for the operator-facing interpretation.
+    """
+    import random
+
+    rng = random.Random(seed)
+    fires_per_trial: list[int] = []
+    for trial in range(n_trials):
+        rng_trial = random.Random(rng.random() * 1e9 + trial)
+        detector = CUSUMDetector(
+            target_mean=0.0, slack=0.25, threshold=8.0, two_sided=True
+        )
+        fires = 0
+        for _ in range(n_samples):
+            r = detector.update(rng_trial.gauss(0.0, 1.0))
+            if r.detected:
+                fires += 1
+                detector.reset()
+        fires_per_trial.append(fires)
+    return {
+        "n_trials": n_trials,
+        "n_samples": n_samples,
+        "mean_fires": sum(fires_per_trial) / n_trials,
+        "median_fires": _quantile(sorted(fires_per_trial), 0.5),
+        "max_fires": max(fires_per_trial),
+        "min_fires": min(fires_per_trial),
+        "fires_per_trial": fires_per_trial,
+    }
+
+
 @pytest.mark.integration
 @pytest.mark.slow
 class TestChangepointBenchmark:
@@ -110,23 +156,54 @@ class TestChangepointBenchmark:
         assert stats["arl0"] != float("inf")
 
     def test_cusum_fp_per_10080_quiet_samples(self) -> None:
-        """§7 spec gate (relaxed): cusum_fp_per_10080_quiet_samples <= 2.
+        """§7 spec gate (relaxed in v3.1): cusum_fp_per_10080_quiet_samples <= 2.
 
-        The spec's strict 0-FP gate would fail ~63% of the time on
-        a correctly-tuned detector (P(zero FPs in 10,080 samples)
-        ≈ 36.5% with Poisson FP process at ARL₀ = 10,000). The
-        integration test asserts the detector is responsive.
+        Runs ``n_trials >= 20`` independent quiet Gaussian(0, 1)
+        streams of 10,080 observations each and asserts the mean
+        fires per trial is at most 2.
+
+        **Spec gate history (v3.1 relaxation):**
+        The original v3.0 gate was ``cusum_fp_per_10080_quiet_samples
+        == 0``. With a correctly-tuned detector (ARL_0 ≈ 10,000),
+        the expected FP count over 10,080 samples is ~1.008 (Poisson
+        with rate 10080/10000), so P(zero FPs) ≈ 36.5% and the strict
+        ``== 0`` gate would fail ~63% of validation runs. Spec v3.1
+        relaxed the gate to ``<= 2``, which is satisfied in ~90% of
+        runs (Poisson CDF at k=2 with mean 1.008). See
+        ``docs/audits/2026-09-10-changepoint-validation.md`` for the
+        calibration rationale.
+
+        **Operational semantics:**
+        Reset-after-fire matches production: an alert is generated,
+        the integration layer resets the detector, and the next
+        observation begins a clean accumulation. ``mean_fires`` is
+        therefore the per-week alert rate an operator would see on
+        an in-control stream.
+
+        **Calibration caveat (defect-class):**
+        The current default tuning (slack=0.25, threshold=8.0,
+        two-sided) has empirical ARL_0 ≈ 260–380 (see
+        ``_benchmark_fp_per_quiet`` runs), producing ~25–35 fires
+        per 10,080-sample trial — roughly 30× the spec target. The
+        §7 gate therefore fails on the current production defaults
+        and the assertion below documents the gap rather than
+        silently relaxing the gate. Either the detector's slack /
+        threshold defaults need adjustment (the spec quotes
+        one-sided k=0.5, h=5.0 as the natural pair for ARL_0 ≥
+        10,000; two-sided analogue would need a larger threshold),
+        or the §7 gate must be relaxed further to match the
+        detector's actual response.
         """
-        import random
-
-        rng = random.Random(2026_09_10)
-        detector = CUSUMDetector(target_mean=0.0, slack=0.25, threshold=8.0, two_sided=True)
-        first_fire, total_fires = _run_trial(
-            detector,
-            [rng.gauss(0.0, 1.0) for _ in range(10_080)],
-            reset_after_fire=True,
+        stats = _benchmark_fp_per_quiet(n_trials=25, n_samples=10_080)
+        mean_fires = stats["mean_fires"]
+        assert mean_fires <= 2, (
+            f"§7 v3.1 gate: cusum_fp_per_10080_quiet_samples <= 2 "
+            f"(got mean={mean_fires:.2f} across {stats['n_trials']} trials; "
+            f"min={stats['min_fires']}, median={stats['median_fires']:.1f}, "
+            f"max={stats['max_fires']}). Detector ARL_0 is ~{10080 / mean_fires:.0f} "
+            f"samples, far below the ~10,000 the spec assumes. "
+            f"See _benchmark_fp_per_quiet docstring for calibration."
         )
-        assert total_fires >= 0  # sanity
 
     def test_three_sigma_miss_rate_on_0_5_sigma(self) -> None:
         import random
@@ -156,11 +233,17 @@ class TestChangepointBenchmark:
             lambda: CUSUMDetector(target_mean=0.0, slack=0.25, threshold=8.0, two_sided=True),
             n_trials=5, n_samples=2000,
         )
+        # Re-measure FP rate so bench.json records the actual measured
+        # value, not a hardcoded literal. n_trials is reduced here so
+        # this benchmark harness stays under ~5s; the dedicated
+        # `test_cusum_fp_per_10080_quiet_samples` does the full
+        # n_trials=25 measurement that the §7 gate asserts against.
+        fp_stats = _benchmark_fp_per_quiet(n_trials=10, n_samples=10_080)
         bench = {
             "cusum_p95_latency_at_0.5_sigma": cusum_05.get("p95_latency", float("nan")),
             "cusum_median_latency_at_0.5_sigma": cusum_05.get("median_latency", float("nan")),
             "cusum_arl0": arl0.get("arl0", float("inf")),
-            "cusum_fp_per_10080_quiet_samples": 1,
+            "cusum_fp_per_10080_quiet_samples": fp_stats["mean_fires"],
             "three_sigma_miss_rate_at_0.5_sigma": 0.98,
             "page_hinkley_p95_latency_at_0.5_sigma": cusum_05.get("p95_latency", float("nan")),
             "n_trials_per_shift": 10,
@@ -176,3 +259,12 @@ class TestChangepointBenchmark:
             "three_sigma_miss_rate_at_0.5_sigma",
         ):
             assert key in loaded
+        # §7 v3.1 gate: enforce the same threshold on the measured value
+        # emitted to bench.json. This catches drift between the
+        # dedicated FP test and the bench artifact (e.g. if someone
+        # re-hardcodes the literal in the future).
+        assert loaded["cusum_fp_per_10080_quiet_samples"] <= 2, (
+            f"§7 v3.1 gate: bench.json cusum_fp_per_10080_quiet_samples <= 2 "
+            f"(got {loaded['cusum_fp_per_10080_quiet_samples']:.2f}). "
+            f"See test_cusum_fp_per_10080_quiet_samples for calibration caveat."
+        )
