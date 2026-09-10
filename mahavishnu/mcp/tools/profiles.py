@@ -55,6 +55,8 @@ from ..bootstrap import (
     _register_worker_tools,
     _register_workflow_tools,
     _register_skills_signer_tools,
+    _register_agents_tools,
+    _register_dispatch_specialist_tools,
 )
 
 if TYPE_CHECKING:
@@ -150,6 +152,16 @@ REGISTRATION_MAP: dict[str, Callable] = {
     # Phase 1.5 — skills_signer (per plan §10.3.1). The actual signer
     # init runs in start() because mahavishnu has no async lifespan.
     "_register_skills_signer_tools": lambda s: _register_skills_signer_tools(s._mhv_server),  # type: ignore[attr-defined]
+    # Phase 3 — agents share the same signer feed state as Phase 1
+    # skills_signer (per plan §11 B-6). Always-on for parity with the
+    # skills_signer mandatory group.
+    "_register_agents_tools": lambda s: _register_agents_tools(s._mhv_server),  # type: ignore[attr-defined]
+    # Phase 3 task #5 (H-3) — specialist dispatcher. The dispatcher
+    # is the entry point by which workflows resolve category-named
+    # specialists (dhara-specialist, crackerjack-specialist, etc.);
+    # without it the specialists are unreachable from a workflow.
+    # Always-on for parity with the discovery surface.
+    "_register_dispatch_specialist_tools": lambda s: _register_dispatch_specialist_tools(s._mhv_server),  # type: ignore[attr-defined]
     # STANDARD-tier groups.
     "_register_terminal_tools": lambda s: _register_terminal_tools(s._mhv_server),  # type: ignore[attr-defined]
     "_register_pool_tools": lambda s: _register_pool_tools(s._mhv_server),  # type: ignore[attr-defined]
@@ -194,6 +206,17 @@ MAHAVISHNU_MANDATORY_GROUPS: set[str] = {
     "_register_webhook_tools",
     # Phase 1.5 — see §10.3.1.
     "_register_skills_signer_tools",
+    # Phase 3 — agents MUST be reachable at every tier (per plan §5
+    # Phase 3 task #5). The specialist dispatcher reads list_agents
+    # at runtime, so the metadata must be available even at MINIMAL.
+    "_register_agents_tools",
+    # Phase 3 task #5 — dispatcher is the entry point that workflows
+    # invoke to resolve a category-named specialist (e.g.
+    # ``mahavishnu_dispatch_specialist("dhara", "storage")``). Without
+    # this dispatcher the 3 new specialists (dhara-specialist,
+    # crackerjack-specialist, session-buddy-specialist) become
+    # orphans: discoverable but never invoked from a workflow.
+    "_register_dispatch_specialist_tools",
 }
 
 

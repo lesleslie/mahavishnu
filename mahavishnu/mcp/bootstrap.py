@@ -214,6 +214,57 @@ def _register_skills_signer_tools(server: FastMCPServer) -> None:
     )
 
 
+def _register_agents_tools(server: FastMCPServer) -> None:
+    """Phase 3 — register the agents tools group.
+
+    Adds ``mahavishnu_list_agents`` / ``mahavishnu_get_agent`` MCP tools.
+    Per plan §10.3.6 the new group goes through REGISTRATION_MAP rather
+    than the inline _register_tools() block.
+
+    Agents share the same signer feed state as Phase 1 skills_signer
+    (per plan §11 B-6 — agents are an even larger RCE surface than
+    skills because the body IS the system prompt; same ed25519
+    verification chain applies).
+
+    Args:
+        server: the FastMCPServer wrapper. The /health route is
+            already registered at __init__ time (early-probe design);
+            the singleton signer feed state lives in
+            ``mahavishnu.mcp.signer_feed`` and is constructed by
+            ``init_signer_feed_state()`` inside ``start()`` after the
+            FastMCP app is built.
+    """
+    from ..mcp.tools.agents_tools import register_agents_tools
+
+    register_agents_tools(server.server)
+    logger.info(
+        "Registered agents_tools (mahavishnu_list_agents + mahavishnu_get_agent)"
+    )
+
+
+def _register_dispatch_specialist_tools(server: FastMCPServer) -> None:
+    """Phase 3 task #5 (H-3) — register the dispatcher MCP tools.
+
+    Adds ``mahavishnu_dispatch_specialist(server, task_type)`` and
+    ``mahavishnu_list_specialists(server)`` so workflows can resolve
+    a specialist agent by category without hard-coding the canonical
+    name. Without this dispatcher the new Phase 3 specialists
+    (dhara-specialist, crackerjack-specialist, session-buddy-specialist)
+    are discoverable but never invoked from a workflow.
+
+    Args:
+        server: the FastMCPServer wrapper (see ``_register_agents_tools``
+            for the lifespan design).
+    """
+    from ..mcp.tools.dispatch_specialist import register_dispatch_specialist
+
+    register_dispatch_specialist(server.server)
+    logger.info(
+        "Registered dispatch_specialist "
+        "(mahavishnu_dispatch_specialist + mahavishnu_list_specialists)"
+    )
+
+
 def register_health_endpoint(server: FastMCPServer, version: str) -> None:
     """Register HTTP health endpoints on the FastMCP server."""
 
