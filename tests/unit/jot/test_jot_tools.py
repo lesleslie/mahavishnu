@@ -142,3 +142,51 @@ def test_jot_vitals_returns_none_when_no_states(tmp_path: Path) -> None:
     assert result["total"] == 0
     assert result["oldest_ms"] is None
     assert result["last_capture_ms"] is None
+
+
+def test_jot_tools_module_importable_without_fastmcp(tmp_path: Path) -> None:
+    """Final-review #3: lean CLI-only installs lack FastMCP.
+
+    The top-level ``_wrap_at_import()`` call must not raise when
+    ``fastmcp.tools.function_tool`` cannot be imported. CLI callers
+    (``mahavishnu/jot/cli.py``) don't need FastMCP and should still work.
+    """
+    import importlib.util as _ilu
+
+    jot_tools_path = (
+        Path(__file__).resolve().parents[3]
+        / "mahavishnu" / "mcp" / "tools" / "jot_tools.py"
+    )
+    module_name = "jot_tools_no_fastmcp_under_test"
+    spec = _ilu.spec_from_file_location(module_name, jot_tools_path)
+    if spec is None or spec.loader is None:
+        raise RuntimeError("could not build spec for jot_tools.py")  # pragma: no cover
+
+    # Simulate "fastmcp not installed" by overriding the submodule used by
+    # ``_wrap_at_import``. The ImportError inside that helper must be
+    # caught so the rest of the module loads cleanly.
+    saved_module = sys.modules.get("fastmcp.tools.function_tool")
+    sys.modules.pop("fastmcp.tools.function_tool", None)
+
+    class _Blocked:
+        def __getattr__(self, name: str) -> object:
+            raise ImportError("fastmcp blocked for test")
+
+    sys.modules["fastmcp.tools.function_tool"] = _Blocked()  # type: ignore[assignment]
+
+    try:
+        mod = _ilu.module_from_spec(spec)
+        sys.modules[module_name] = mod
+        # Must NOT raise ImportError (or any exception) when fastmcp is missing.
+        spec.loader.exec_module(mod)
+    finally:
+        # Restore the original module state so subsequent tests aren't affected.
+        if saved_module is not None:
+            sys.modules["fastmcp.tools.function_tool"] = saved_module
+        else:
+            sys.modules.pop("fastmcp.tools.function_tool", None)
+        sys.modules.pop(module_name, None)
+
+    # Sanity: the module's plain functions are accessible (no .fn shim needed
+    # because the wrap failed gracefully and the plain callable remains).
+    assert callable(mod.jot_list)

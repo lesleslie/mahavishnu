@@ -246,8 +246,17 @@ def register(mcp) -> None:  # type: ignore[no-untyped-def]
 # ``register(mcp)`` call above rebinds the module attrs against the live server
 # (and the ``.fn`` accessor continues to work).
 def _wrap_at_import() -> None:
-    """Bind each ``jot_*`` function to a FunctionTool for testability."""
-    from fastmcp.tools.function_tool import FunctionTool
+    """Bind each ``jot_*`` function to a FunctionTool for testability.
+
+    Best-effort: if FastMCP is not installed (lean CLI-only installs) or its
+    public API has drifted, leave the plain callables in place so the CLI and
+    other callers can still use the module. FastMCP registration itself is
+    performed by ``register(mcp)`` against a live server.
+    """
+    try:
+        from fastmcp.tools.function_tool import FunctionTool
+    except ImportError:
+        return
 
     names = [
         "jot_list", "jot_show", "jot_add", "jot_edit",
