@@ -155,8 +155,8 @@ class JotSummary:
 @dataclass(frozen=True, slots=True)
 class JotDetail:
     summary: JotSummary           # composition
-    hlc: HLC                      # latest HLC for this jot
-    created_ms: int               # original capture time
+    hlc: HLC                      # *latest* HLC for this jot (post-edit/done/reopen)
+    created_ms: int               # original capture time (anchor)
     ctx: Mapping[str, str | list[str] | None]  # read-only contract
 ```
 

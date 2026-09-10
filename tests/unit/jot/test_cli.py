@@ -315,3 +315,58 @@ def test_typer_app_has_no_install_hook() -> None:
     runner = CliRunner()
     result = runner.invoke(jot_app, ["--help"])
     assert "install-hook" not in result.output
+
+
+def test_detail_from_summary_uses_latest_hlc_not_capture(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path,
+) -> None:
+    """Final-review #2: JotDetail.hlc must be the *latest* HLC, not capture.
+
+    Spec R9: ``JotDetail.hlc`` is described as "latest HLC for this jot".
+    Before this fix the code emitted the capture event's HLC even after
+    edit/done/reopen advanced to a later (wall_ms, ctr). AI agents consuming
+    ``jot_show`` would see stale anchor HLC and misread causal order.
+    """
+    from mahavishnu.jot.cli import _detail_from_summary
+    from mahavishnu.jot.events import HLC, JotEvent
+    from mahavishnu.jot.fold import JotSummary
+
+    jot_id = "a" * 32
+    node = "n" * 8
+    capture = JotEvent(
+        id=jot_id, op="capture", hlc=HLC(wall_ms=100, ctr=0, node=node),
+        text="v1", ctx={}, created_ms=100,
+    )
+    edit = JotEvent(
+        id=jot_id, op="edit", hlc=HLC(wall_ms=200, ctr=0, node=node),
+        text="v2", ctx={}, created_ms=200,
+    )
+    done = JotEvent(
+        id=jot_id, op="done", hlc=HLC(wall_ms=300, ctr=0, node=node),
+        text="", ctx={}, created_ms=300,
+    )
+
+    summary = JotSummary(
+        id=jot_id, short_id=jot_id[-6:],
+        text="v2", status="done", last_modified_ms=300,
+    )
+
+    detail = _detail_from_summary(summary, [capture, edit, done])
+    # hlc string format is "{wall_ms}-{ctr}-{node}"
+    assert detail.hlc == "300-0-" + node
+    # created_ms still anchors at capture time
+    assert detail.created_ms == 100
+
+
+def test_detail_from_summary_fallback_when_no_events() -> None:
+    """When events is empty, hlc is "" and created_ms falls back to summary."""
+    from mahavishnu.jot.cli import _detail_from_summary
+    from mahavishnu.jot.fold import JotSummary
+
+    summary = JotSummary(
+        id="a" * 32, short_id="aaaaaa",
+        text="v1", status="open", last_modified_ms=42,
+    )
+    detail = _detail_from_summary(summary, [])
+    assert detail.hlc == ""
+    assert detail.created_ms == 42

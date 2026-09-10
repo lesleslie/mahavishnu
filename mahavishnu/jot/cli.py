@@ -189,16 +189,31 @@ def cmd_search(
 def _detail_from_summary(
     s: JotSummary, events: list[JotEvent],
 ) -> JotDetail:
-    """Build a JotDetail from a JotSummary by finding the matching event."""
+    """Build a JotDetail from a JotSummary by finding the matching event.
+
+    Spec R9: ``JotDetail.hlc`` is the **latest** HLC for this jot (after any
+    later edits/done/reopen ops). The capture HLC is the anchor; the
+    latest HLC is the most-recent event for the same jot id.
+    """
     capture_ev = next(
         (e for e in events if e.id == s.id and e.op == "capture"),
         None,
+    )
+    latest_ev = max(
+        (e for e in events if e.id == s.id),
+        key=lambda e: (e.hlc.wall_ms, e.hlc.ctr),
+        default=None,
     )
     hlc_str = ""
     created_ms = s.last_modified_ms
     ctx: dict[str, str | list[str] | None] = {}
     if capture_ev:
-        hlc_str = f"{capture_ev.hlc.wall_ms}-{capture_ev.hlc.ctr}-{capture_ev.hlc.node}"
         created_ms = capture_ev.created_ms
         ctx = dict(capture_ev.ctx) if capture_ev.ctx else {}
+    # HLC string comes from the latest event (R9), NOT the capture.
+    source_hlc = latest_ev.hlc if latest_ev is not None else (
+        capture_ev.hlc if capture_ev is not None else None
+    )
+    if source_hlc is not None:
+        hlc_str = f"{source_hlc.wall_ms}-{source_hlc.ctr}-{source_hlc.node}"
     return JotDetail(summary=s, hlc=hlc_str, created_ms=created_ms, ctx=ctx)
