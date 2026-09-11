@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import re
 import time
 from dataclasses import dataclass
 from pathlib import Path
@@ -14,9 +15,15 @@ from typing import Any, Literal, TypedDict
 
 from oneiric.core.logging import get_logger
 
-from mahavishnu.jot.errors import JotLogUnwritableError, JotValidationError
+from mahavishnu.jot.errors import (
+    JotDeferError,
+    JotDispatchError,
+    JotLogUnwritableError,
+    JotRetryError,
+    JotValidationError,
+)
 from mahavishnu.jot.events import JotEvent, serialize
-from mahavishnu.jot.fold import DispatchState  # re-export target
+from mahavishnu.jot.fold import DispatchState, JotSummary  # re-export target
 from mahavishnu.jot.hlc import get_node, hlc_now, read_tail_hlc
 from mahavishnu.jot.paths import log_path, node_path
 
@@ -567,6 +574,531 @@ async def _background_reconciler_loop() -> None:
                 )
 
 
+# =============================================================================
+# Public drain primitives (Task 12 surface; Task 9 will refine semantics)
+# =============================================================================
+#
+# These functions form the CLI handler surface in `mahavishnu/jot/cli.py`.
+# Task 9 owns the detailed semantics (concurrent-dispatch guards, full
+# async drain, retry-budget orchestration). Task 12 ships the minimal
+# synchronous, single-process implementations sufficient for the Typer
+# subcommands to exercise the basic happy-path + bad-args behaviour.
+#
+# Return shapes follow the TypedDicts declared above (spec §3.3).
+
+JotSummaryDict = dict[str, object]
+DeferResultDict = dict[str, object]
+DeleteResultDict = dict[str, object]
+
+
+def _resolve_handle(handle: str) -> JotSummary:
+    """Resolve a handle against the current fold, raising JotError on miss."""
+    from mahavishnu.jot.fold import build_states, parse_events
+    from mahavishnu.jot.handle import resolve_handle as _resolve
+
+    events = parse_events(log_path())
+    states = build_states(events, enrich=False).states
+    return _resolve(states, handle)
+
+
+def _to_summary_dict(jot: JotSummary) -> JotSummaryDict:
+    """Serialize a JotSummary to a JSON-safe dict for TypedDicts."""
+    return {
+        "id": jot.id,
+        "short_id": jot.short_id,
+        "text": jot.text,
+        "status": jot.status,
+        "last_modified_ms": jot.last_modified_ms,
+        "dispatch_state": jot.dispatch_state.value if jot.dispatch_state else None,
+        "dispatch_workflow_id": jot.dispatch_workflow_id,
+        "current_attempt": jot.current_attempt,
+        "dispatch_started_at_ms": jot.dispatch_started_at_ms,
+        "deferred_until": jot.deferred_until,
+        "deleted": jot.deleted,
+    }
+
+
+def _propose_action(jot: JotSummary) -> ActionProposalDict:
+    """Decide the best next action for a drain-eligible jot."""
+    if jot.dispatch_state is DispatchState.FAILED:
+        return ActionProposalDict(
+            handle=jot.short_id,
+            suggested_action="retry",
+            reason="previous dispatch failed",
+        )
+    if jot.deferred_until is not None and jot.deferred_until > _now_ms():
+        return ActionProposalDict(
+            handle=jot.short_id,
+            suggested_action="skip",
+            reason="deferred until later",
+        )
+    return ActionProposalDict(
+        handle=jot.short_id,
+        suggested_action="dispatch",
+        reason="open and ready",
+    )
+
+
+def drain_plan(
+    query: str | None = None,
+    limit: int = 20,
+    include_in_flight: bool = False,
+) -> DrainPlanDict:
+    """Build the bulk-action candidate list (spec §3.2, §5.2).
+
+    Filters open jots through ``_is_drain_eligible`` then optionally drops
+    IN_FLIGHT (since "dispatch" is a no-op on an IN_FLIGHT jot — the CLI
+    flag ``--include-in-flight`` overrides the second filter).
+    """
+    from mahavishnu.jot.fold import build_states, parse_events
+
+    events = parse_events(log_path())
+    states = build_states(events, enrich=False).states
+    now = _now_ms()
+
+    candidates: list[JotSummaryDict] = []
+    proposals: list[ActionProposalDict] = []
+    for jot in states:
+        if not _is_drain_eligible(jot, now):
+            continue
+        if (
+            not include_in_flight
+            and jot.dispatch_state is DispatchState.IN_FLIGHT
+        ):
+            continue
+        if query and query.lower() not in jot.text.lower():
+            continue
+        candidates.append(_to_summary_dict(jot))
+        proposals.append(_propose_action(jot))
+
+    # Newest first, cap to limit
+    pairs = sorted(
+        zip(candidates, proposals, strict=False),
+        key=lambda p: int(p[0]["last_modified_ms"]),  # type: ignore[arg-type]
+        reverse=True,
+    )[:limit]
+    candidates_out = [c for c, _ in pairs]
+    proposals_out = [p for _, p in pairs]
+    return DrainPlanDict(
+        query=query,
+        candidates=candidates_out,
+        action_proposals=proposals_out,
+    )
+
+
+def dispatch_jot(handle: str) -> DispatchResultDict:
+    """Dispatch an open jot to the workflow runtime.
+
+    Triggers a Prefect ``jot_dispatch`` workflow with the jot text as the
+    prompt, then appends a ``dispatch`` event with the returned
+    ``workflow_id``.
+    """
+    from mahavishnu.jot.handle import resolve_handle as _resolve
+
+    # Eagerly resolve the handle up-front so bad-args surface as SystemExit
+    # before we touch the workflow runtime.
+    jot = _resolve_handle(handle)
+    if jot.deleted or jot.status == "done":
+        raise JotValidationError(
+            f"cannot dispatch {jot.short_id}: status={jot.status} deleted={jot.deleted}",
+            field="handle",
+        )
+
+    async def _run() -> DispatchResultDict:
+        from mahavishnu.jot.fold import build_states, parse_events
+
+        try:
+            wf_result = await _mcp_trigger_workflow(
+                adapter="prefect",
+                task_type="jot_dispatch",
+                params={"prompt": jot.text},
+            )
+            wf_id_raw = wf_result.get("workflow_id")
+            workflow_id = str(wf_id_raw) if wf_id_raw is not None else ""
+        except JotDispatchError as exc:
+            await _append_event("dispatch_failed", {
+                "workflow_id": f"failed_to_create:{exc.error_id}",
+                "attempt": jot.current_attempt + 1,
+                "error": f"{type(exc).__name__}: {exc}",
+                "error_id": exc.error_id,
+                "retry_budget_exhausted": True,
+            })
+            raise
+
+        # Re-resolve to compute the next attempt number.
+        events = parse_events(log_path())
+        current = _resolve(
+            build_states(events, enrich=False).states,
+            handle,
+        )
+        attempt = current.current_attempt + 1
+        await _append_event("dispatch", {
+            "workflow_id": workflow_id,
+            "attempt": attempt,
+            "pool_selector": "least_loaded",
+            "triggered_by": "manual",
+            "dispatched_from": "cli",
+        })
+        return DispatchResultDict(
+            handle=jot.short_id,
+            workflow_id=workflow_id,
+            attempt=attempt,
+            status="in_flight",
+            dispatched_from="cli",
+        )
+
+    try:
+        return asyncio.run(_run())
+    except (JotDispatchError, JotValidationError, JotLogUnwritableError) as exc:
+        log.error(
+            "JOT_DISPATCH_FAILED",
+            handle=handle, error=str(exc),
+        )
+        raise
+
+
+def retry_dispatch(handle: str) -> DispatchResultDict:
+    """Manual retry of a FAILED-dispatched jot (spec §3.2).
+
+    Raises JotRetryError when the jot is not in FAILED state.
+    """
+    jot = _resolve_handle(handle)
+    if jot.dispatch_state is not DispatchState.FAILED:
+        raise JotRetryError(
+            f"cannot retry {jot.short_id}: dispatch_state={jot.dispatch_state}",
+        )
+
+    async def _run() -> DispatchResultDict:
+        from mahavishnu.jot.fold import build_states, parse_events
+        from mahavishnu.jot.handle import resolve_handle as _resolve
+
+        try:
+            wf_result = await _mcp_trigger_workflow(
+                adapter="prefect",
+                task_type="jot_dispatch",
+                params={"prompt": jot.text},
+            )
+            wf_id_raw = wf_result.get("workflow_id")
+            workflow_id = str(wf_id_raw) if wf_id_raw is not None else ""
+        except JotDispatchError as exc:
+            await _append_event("dispatch_failed", {
+                "workflow_id": f"failed_to_create:{exc.error_id}",
+                "attempt": jot.current_attempt + 1,
+                "error": f"{type(exc).__name__}: {exc}",
+                "error_id": exc.error_id,
+                "retry_budget_exhausted": True,
+            })
+            raise
+
+        events = parse_events(log_path())
+        current = _resolve(
+            build_states(events, enrich=False).states,
+            handle,
+        )
+        await _append_event("dispatch", {
+            "workflow_id": workflow_id,
+            "attempt": current.current_attempt + 1,
+            "pool_selector": "least_loaded",
+            "triggered_by": "manual",
+            "dispatched_from": "cli",
+        })
+        return DispatchResultDict(
+            handle=jot.short_id,
+            workflow_id=workflow_id,
+            attempt=current.current_attempt + 1,
+            status="in_flight",
+            dispatched_from="cli",
+        )
+
+    try:
+        return asyncio.run(_run())
+    except (JotRetryError, JotDispatchError, JotLogUnwritableError) as exc:
+        log.error(
+            "JOT_RETRY_FAILED",
+            handle=handle, error=str(exc),
+        )
+        raise
+
+
+def defer_jot(
+    handle: str,
+    until_ms: int,
+    reason: str | None = None,
+) -> DeferResultDict:
+    """Defer a jot until ``until_ms`` (epoch ms). Spec §3.2.
+
+    Raises JotDeferError when ``until_ms <= now_ms`` (would immediately expire).
+    """
+    jot = _resolve_handle(handle)
+    now = _now_ms()
+    if until_ms <= now:
+        raise JotDeferError(
+            f"until_ms={until_ms} <= now={now}; defer would immediately expire",
+        )
+
+    async def _run() -> DeferResultDict:
+        ctx: dict[str, object] = {"until": until_ms}
+        if reason is not None:
+            ctx["reason"] = reason
+        await _append_event("defer", ctx)
+        return DeferResultDict(handle=jot.short_id, until_ms=until_ms)
+
+    try:
+        return asyncio.run(_run())
+    except (JotDeferError, JotValidationError, JotLogUnwritableError) as exc:
+        log.error(
+            "JOT_DEFER_FAILED",
+            handle=handle, error=str(exc),
+        )
+        raise
+
+
+def delete_jot(handle: str, reason: str | None = None) -> DeleteResultDict:
+    """Soft-delete a jot (audit trail preserved via the JSONL log)."""
+    jot = _resolve_handle(handle)
+
+    async def _run() -> DeleteResultDict:
+        ctx: dict[str, object] = {}
+        if reason is not None:
+            ctx["reason"] = reason
+        await _append_event("delete", ctx)
+        return DeleteResultDict(handle=jot.short_id)
+
+    try:
+        return asyncio.run(_run())
+    except (JotValidationError, JotLogUnwritableError) as exc:
+        log.error(
+            "JOT_DELETE_FAILED",
+            handle=handle, error=str(exc),
+        )
+        raise
+
+
+# =============================================================================
+# Surfacing scorers + throttle (Task 8 — spec §5.1-§5.6)
+# =============================================================================
+
+
+LEXICAL_THRESHOLD: float = 0.2
+
+
+def _tokenize(text: str) -> set[str]:
+    """Lowercase word tokens, len >= 2, Unicode-aware via re.\\w+."""
+    return {t for t in re.findall(r"\w+", text.lower()) if len(t) >= 2}
+
+
+def _lexical_score(jot_tokens: set[str], ctx_tokens: set[str]) -> float:
+    """Coverage ratio: how much of the context does the jot cover?"""
+    if not jot_tokens or not ctx_tokens:
+        return 0.0
+    overlap = jot_tokens & ctx_tokens
+    if not overlap:
+        return 0.0
+    return len(overlap) / len(ctx_tokens)
+
+
+def _cosine_similarity(a: list[float], b: list[float]) -> float:
+    if not a or not b or len(a) != len(b):
+        return 0.0
+    dot = sum(x * y for x, y in zip(a, b))
+    na = sum(x * x for x in a) ** 0.5
+    nb = sum(x * x for x in b) ** 0.5
+    if na == 0 or nb == 0:
+        return 0.0
+    return dot / (na * nb)
+
+
+# Module-level flag — set by _semantic_score on any error path so
+# surface_relevant can surface 'embeddings_down' without a return-value
+# channel. Reset at every surface_relevant entry.
+_last_surface_degraded: bool = False
+
+
+def _semantic_score(jot_text: str, ctx_text: str, embeddings: Any) -> float:
+    """Batch cosine via EmbeddingsService. Returns 0.0 on any error or
+    empty/wrong-shape result; sets _last_surface_degraded=True on errors.
+    """
+    global _last_surface_degraded
+    try:
+        emb = embeddings.embed([jot_text, ctx_text])
+    except (asyncio.TimeoutError, Exception):
+        _last_surface_degraded = True
+        return 0.0
+    # Defensive: OneiricEmbeddingsAdapter.embed is async; a sync caller
+    # receives a coroutine here. Treat that (and any non-list result) as
+    # a degraded embeddings path rather than crashing the fold.
+    try:
+        if (
+            not emb
+            or len(emb) < 2
+            or not emb[0]
+            or not emb[1]
+            or len(emb[0]) != len(emb[1])
+        ):
+            _last_surface_degraded = True
+            return 0.0
+    except TypeError:
+        _last_surface_degraded = True
+        return 0.0
+    return _cosine_similarity(emb[0], emb[1])
+
+
+@dataclass(frozen=True, slots=True)
+class SurfacingResult:
+    """Spec §5.6 — output of surface_relevant."""
+
+    matches: list[JotSummary]
+    score_threshold_used: float
+    surface_degraded: bool
+    surface_reason: str  # "matches" | "no_context" | "no_match" | "throttled" | "embeddings_down"
+
+
+@dataclass
+class _Throttle:
+    """Per-process surfacing throttle. Spec §5.5.
+
+    State persists across calls (last_fire_ms). Two skip reasons:
+    - 'short_context': context_tokens < 50 (don't fire on tiny contexts).
+    - 'throttled': called again within min_interval_ms of last fire.
+    """
+
+    last_fire_ms: int = 0
+    min_interval_ms: int = 5000
+    last_skip_reason: str | None = None
+
+    def should_fire(
+        self, now_ms: int, context_tokens: int,
+    ) -> tuple[bool, str | None]:
+        if context_tokens < 50:
+            self.last_skip_reason = "short_context"
+            return False, self.last_skip_reason
+        if now_ms - self.last_fire_ms < self.min_interval_ms:
+            self.last_skip_reason = "throttled"
+            return False, self.last_skip_reason
+        self.last_fire_ms = now_ms
+        self.last_skip_reason = None
+        return True, None
+
+
+# Module-level throttle singleton — a fresh `_Throttle()` per call would
+# never enforce the min_interval_ms gate (last_fire_ms resets to 0).
+_THROTTLE: _Throttle = _Throttle()
+
+
+def surface_relevant(
+    trigger: str,
+    context_text: str,
+    limit: int = 3,
+) -> SurfacingResult:
+    """Lexical primary, semantic fallback. Spec §5.1-§5.6.
+
+    `trigger` is captured by hook wrappers for downstream routing; not used
+    inside this algorithm.
+    """
+    from mahavishnu.jot.fold import build_states, parse_events
+
+    global _last_surface_degraded
+    _last_surface_degraded = False
+
+    # Parse + fold the log. enrich=False keeps this off the git subprocess
+    # path — surfacing is a pure text-comparison operation.
+    try:
+        events = parse_events(log_path())
+        states = build_states(events, enrich=False).states
+    except Exception as exc:
+        log.warning(
+            "JOT_SURFACE_FOLD_FAILED",
+            error=f"{type(exc).__name__}: {exc}",
+        )
+        return SurfacingResult(
+            matches=[],
+            score_threshold_used=LEXICAL_THRESHOLD,
+            surface_degraded=True,
+            surface_reason="embeddings_down",
+        )
+
+    now_ms = _now_ms()
+    eligible = [j for j in states if _is_surface_eligible(j, now_ms)]
+
+    ctx_tokens = _tokenize(context_text)
+    # Raw word count (whitespace split) for the throttle's minimum-context
+    # gate. Using tokenized-set length would under-count short prompts;
+    # this matches the spec's intent of "non-trivial context only".
+    ctx_word_count = len(context_text.split())
+
+    # Throttle — module-level singleton; skip_reason is captured in the
+    # SurfacingResult when not firing.
+    fire, skip_reason = _THROTTLE.should_fire(now_ms, ctx_word_count)
+    if not fire:
+        return SurfacingResult(
+            matches=[],
+            score_threshold_used=LEXICAL_THRESHOLD,
+            surface_degraded=False,
+            surface_reason=skip_reason if skip_reason else "throttled",
+        )
+
+    if not eligible:
+        return SurfacingResult(
+            matches=[],
+            score_threshold_used=LEXICAL_THRESHOLD,
+            surface_degraded=False,
+            surface_reason="no_match",
+        )
+
+    # Lexical scoring pass.
+    scored: list[tuple[JotSummary, float]] = []
+    for jot in eligible:
+        jot_tokens = _tokenize(jot.text)
+        score = _lexical_score(jot_tokens, ctx_tokens)
+        scored.append((jot, score))
+
+    lexical_hits = [
+        (j, s) for j, s in scored if s >= LEXICAL_THRESHOLD
+    ]
+
+    if lexical_hits:
+        lexical_hits.sort(key=lambda x: (-x[1], x[0].last_modified_ms))
+        return SurfacingResult(
+            matches=[j for j, _ in lexical_hits[:limit]],
+            score_threshold_used=LEXICAL_THRESHOLD,
+            surface_degraded=False,
+            surface_reason="matches",
+        )
+
+    # Semantic fallback — only when zero lexical hits. Failures inside
+    # _semantic_score set _last_surface_degraded so the caller learns the
+    # embeddings layer was the cause.
+    embeddings = _build_embeddings_adapter()
+    sem_scored: list[tuple[JotSummary, float]] = []
+    for jot in eligible:
+        score = _semantic_score(jot.text, context_text, embeddings)
+        sem_scored.append((jot, score))
+
+    sem_scored.sort(key=lambda x: (-x[1], x[0].last_modified_ms))
+    sem_matches = [j for j, s in sem_scored if s >= LEXICAL_THRESHOLD][:limit]
+
+    degraded = _last_surface_degraded
+    return SurfacingResult(
+        matches=sem_matches,
+        score_threshold_used=LEXICAL_THRESHOLD,
+        surface_degraded=degraded,
+        surface_reason="matches" if sem_matches else (
+            "embeddings_down" if degraded else "no_match"
+        ),
+    )
+
+
+def _build_embeddings_adapter() -> Any:
+    """Instantiate the embeddings adapter lazily (heavy import).
+
+    Returns the OneiricEmbeddingsAdapter instance. Tests monkeypatch this
+    to provide a sync stub matching the embed() contract.
+    """
+    from mahavishnu.core.embeddings_oneiric import OneiricEmbeddingsAdapter
+
+    return OneiricEmbeddingsAdapter()
+
+
 __all__ = [
     "DispatchState", "_append_event",
     "DispatchCtx", "DispatchDoneCtx", "DispatchFailedCtx",
@@ -576,4 +1108,13 @@ __all__ = [
     "MAX_AUTO_ATTEMPTS", "_should_exhaust_retry_budget",
     "_auto_retry_after", "_reconcile_if_in_flight",
     "_background_reconciler_loop",
+    "SurfacingResult", "_Throttle", "surface_relevant",
+    "_tokenize", "_lexical_score", "_cosine_similarity",
+    "_semantic_score", "_build_embeddings_adapter",
+    "LEXICAL_THRESHOLD",
+    # Task 12 — public drain primitives consumed by cli.py handlers.
+    # Task 9 may refine these; the surface (signature + return TypedDicts)
+    # is part of the public contract.
+    "drain_plan", "dispatch_jot", "retry_dispatch",
+    "defer_jot", "delete_jot",
 ]
