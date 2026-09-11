@@ -30,6 +30,7 @@ from .bootstrap import register_health_endpoint as _register_health_endpoint_hel
 from .lifecycle import register_worktree_tools as _register_worktree_tools_helper
 from .lifecycle import start_server as _start_server_helper
 from .lifecycle import stop_server as _stop_server_helper
+from .middleware.auth_context import AuthContextMiddleware
 from .tools.profiles import (
     MAHAVISHNU_MANDATORY_GROUPS,
     PROFILE_REGISTRATIONS,
@@ -81,6 +82,7 @@ class FastMCPServer:
         self._registered_tool_count = 0
         self._instrument_server_tool_registration()
         self._register_telemetry_middleware()
+        self._register_auth_context_middleware()
 
         # Initialize terminal manager if enabled
         self.terminal_manager = None
@@ -128,6 +130,18 @@ class FastMCPServer:
             "Registered FastMCP OpenTelemetry middleware",
             extra={"service_name": service_name, "environment": environment},
         )
+
+    def _register_auth_context_middleware(self) -> None:
+        """Attach the Bearer-token -> Context-state middleware.
+
+        Task 11.9 — production callers authenticate via the request's
+        ``Authorization`` header. The middleware extracts the user_id
+        and stores it under the namespaced Context-state key
+        ``"mahavishnu.user_id"``; the ``@require_mcp_auth`` decorator
+        prefers that key over kwargs at gate time.
+        """
+        self.server.add_middleware(AuthContextMiddleware())
+        logger.info("Registered FastMCP AuthContextMiddleware")
 
     def _instrument_server_tool_registration(self) -> None:
         """Wrap FastMCP tool registration so all tool handlers emit shared metrics."""

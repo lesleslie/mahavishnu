@@ -95,7 +95,32 @@ def require_mcp_auth(
                     "error_code": "AUTH_NOT_CONFIGURED",
                 }
 
+            # Defense-in-depth user_id resolution (Task 11.9):
+            #
+            # 1. Production path: ``AuthContextMiddleware`` reads the
+            #    request's ``Authorization`` header and stores the
+            #    extracted user_id in FastMCP Context state. We prefer
+            #    that trusted channel when ``ctx`` is supplied (FastMCP
+            #    injects Context when the tool type-annotates ``ctx``)
+            #    AND Context state holds a value — a spoofed kwargs
+            #    ``user_id`` cannot bypass the trusted middleware value.
+            # 2. Test path: kwargs ``user_id`` is the fallback when
+            #    Context state is missing or empty. The existing test
+            #    suite (no middleware running) keeps passing.
+            # 3. Deny.
             user_id = kwargs.get("user_id")
+            ctx = kwargs.get("ctx")
+            if ctx is not None:
+                try:
+                    ctx_user_id = await ctx.get_state("mahavishnu.user_id")
+                    if ctx_user_id:
+                        user_id = ctx_user_id
+                except Exception:
+                    logger.debug(
+                        "require_mcp_auth: ctx.get_state failed; falling back to kwargs",
+                        exc_info=True,
+                    )
+
             if not user_id:
                 _audit_logger.emit(
                     AuthAuditEvent(
