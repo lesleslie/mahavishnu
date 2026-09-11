@@ -65,8 +65,17 @@ async def workflow_get_outcome(
     return from_dict("workflow_outcome", payload)  # ty: ignore[invalid-return-type]
 
 
-def register_workflow_tools(mcp: FastMCP) -> None:
+def register_workflow_tools(
+    mcp: FastMCP, rbac_manager: Any | None = None
+) -> None:
     """Register workflow outcome tools with the FastMCP server.
+
+    ``rbac_manager`` is keyword-friendly and defaults to ``None``; production
+    wiring at :func:`mahavishnu.mcp.bootstrap._register_workflow_tools` injects
+    the real :class:`~mahavishnu.core.permissions.RBACManager` so the
+    :func:`~mahavishnu.mcp.auth.require_mcp_auth` gate is enforced. Tests
+    may omit it; the decorator will deny with
+    ``error_code == "AUTH_NOT_CONFIGURED"`` rather than silently allow.
 
     Structural C901 suppression: FastMCP's ``@mcp.tool()`` decorator
     requires each tool function to be defined inline so it can introspect
@@ -80,7 +89,9 @@ def register_workflow_tools(mcp: FastMCP) -> None:
     """
 
     @mcp.tool()
-    @require_mcp_auth(required_permission=Permission.VIEW_WORKFLOW_STATUS)
+    @require_mcp_auth(
+        rbac_manager=rbac_manager, required_permission=Permission.VIEW_WORKFLOW_STATUS
+    )
     async def workflow_get_outcome_tool(
         workflow_id: str,
         user_id: str | None = None,
