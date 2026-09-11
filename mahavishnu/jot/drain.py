@@ -302,3 +302,278 @@ __all__ = [
 class _Placeholder:
     """Marker for future modules to import. Will be removed in later tasks."""
     pass
+
+
+# =============================================================================
+# Two-tier reconciliation (Tasks 6, 7, 10 — spec §6.3, §6.4)
+# =============================================================================
+
+
+TERMINAL_STATUSES: frozenset[str] = frozenset(
+    {"COMPLETED", "FAILED", "CANCELLED", "TIMEOUT"}
+)
+STATUS_CALL_TIMEOUT_SECONDS: int = 30
+RECONCILER_TIMEOUT_MS: int = 10 * 60 * 1000  # 10 min
+RECONCILER_INTERVAL_SECONDS: int = 30
+RETRY_BACKOFF_SECONDS: int = 30
+
+
+async def _mcp_trigger_workflow(
+    adapter: str, task_type: str, params: dict[str, object]
+) -> dict[str, object]:
+    """Thin wrapper over mahavishnu.mcp.server_core.trigger_workflow.
+
+    Raises JotDispatchError on failure so callers can decide retry vs fail-fast.
+    """
+    try:
+        # Imported lazily to avoid module-load cost when drain is unused.
+        from mahavishnu.mcp.server_core import trigger_workflow
+        result: dict[str, object] = await trigger_workflow(
+            adapter=adapter, task_type=task_type, params=params,
+        )
+        return result
+    except Exception as exc:
+        raise JotDispatchError(
+            f"{type(exc).__name__}: {exc}",
+            error_id="ERROR_JOT_TRIGGER_WORKFLOW_FAILED",
+        ) from exc
+
+
+async def _mcp_get_workflow_status(workflow_id: str) -> dict[str, object]:
+    """Thin wrapper over mahavishnu.mcp.server_core.get_workflow_status."""
+    try:
+        from mahavishnu.mcp.server_core import get_workflow_status
+        result: dict[str, object] = await get_workflow_status(workflow_id=workflow_id)
+        return result
+    except Exception as exc:
+        raise JotDispatchError(
+            f"{type(exc).__name__}: {exc}",
+            error_id="ERROR_JOT_RECONCILE_STATUS",
+        ) from exc
+
+
+async def _auto_retry_after(handle: str, backoff_s: int) -> None:
+    """Auto-retry a FAILED-dispatched jot after backoff. Spec §6.4.
+
+    Pre-conditions checked after the sleep:
+      - jot still FAILED-eligible (manual retry may have won the race)
+      - current_attempt < MAX_AUTO_ATTEMPTS (budget remaining)
+    """
+    try:
+        await asyncio.sleep(backoff_s)
+    except asyncio.CancelledError:
+        raise
+
+    try:
+        from mahavishnu.jot.fold import build_states, parse_events
+        from mahavishnu.jot.handle import resolve_handle
+        events = parse_events(log_path())
+        states = build_states(events, enrich=False).states
+        current = resolve_handle(states, handle)
+    except Exception as exc:
+        log.error(
+            "JOT_AUTO_RETRY_FOLD_FAILED",
+            handle=handle,
+            error=f"{type(exc).__name__}: {exc}",
+        )
+        return
+
+    if current.dispatch_state is not DispatchState.FAILED:
+        return  # user retried manually; auto-retry exits
+
+    if current.current_attempt >= MAX_AUTO_ATTEMPTS:
+        return  # budget exhausted before this sleep completed
+
+    try:
+        result = await _mcp_trigger_workflow(
+            adapter="prefect",
+            task_type="jot_dispatch",
+            params={"prompt": current.text},
+        )
+        wf_id_raw = result.get("workflow_id")
+        workflow_id = str(wf_id_raw) if wf_id_raw is not None else ""
+    except JotDispatchError as exc:
+        try:
+            await _append_event("dispatch_failed", {
+                "workflow_id": f"failed_to_create:{exc.error_id}",
+                "attempt": current.current_attempt + 1,
+                "error": f"{type(exc).__name__}: {exc}",
+                "error_id": exc.error_id,
+                "retry_budget_exhausted": True,
+            })
+        except (JotLogUnwritableError, JotValidationError) as log_exc:
+            log.error(
+                "JOT_AUTO_RETRY_LOG_FAILED",
+                handle=handle, error=str(log_exc),
+            )
+        return
+
+    try:
+        await _append_event("dispatch", {
+            "workflow_id": workflow_id,
+            "attempt": current.current_attempt + 1,
+            "pool_selector": "least_loaded",
+            "triggered_by": "auto",
+        })
+    except (JotLogUnwritableError, JotValidationError) as exc:
+        log.error(
+            "JOT_AUTO_RETRY_EVENT_APPEND_FAILED",
+            handle=handle, workflow_id=workflow_id,
+            error_id="ERROR_JOT_DISPATCH_EVENT_APPEND",
+            error=f"{type(exc).__name__}: {exc}",
+        )
+
+
+async def _reconcile_if_in_flight(jot: JotSummary) -> None:
+    """Tier-1 lazy reconciler — runs on every fold. Spec §6.3.
+
+    Order of operations:
+      1. Tier-2 timeout gate: if IN_FLIGHT > RECONCILER_TIMEOUT_MS, write
+         dispatch_failed with `_should_exhaust_retry_budget(jot)` flag (per
+         locked decision "max 2 attempts total" — attempt 1 timeout still
+         allows attempt 2).
+      2. Substrate status check (with asyncio.wait_for timeout).
+      3. Emit dispatch_done / dispatch_failed based on terminal status.
+      4. Schedule auto-retry when budget remains.
+
+    All exceptions caught; fold must not crash because reconciliation
+    can't persist.
+    """
+    if jot.dispatch_state is not DispatchState.IN_FLIGHT:
+        return
+    workflow_id = jot.dispatch_workflow_id
+    if workflow_id is None:
+        log.warning("JOT_DISPATCH_NO_WORKFLOW_ID", handle=jot.handle)
+        return
+
+    # Tier-2 timeout gate
+    now_ms_ = _now_ms()
+    started_at = jot.dispatch_started_at_ms
+    if started_at is not None and (now_ms_ - started_at) >= RECONCILER_TIMEOUT_MS:
+        budget_exhausted = _should_exhaust_retry_budget(jot)
+        try:
+            await _append_event("dispatch_failed", {
+                "workflow_id": workflow_id,
+                "attempt": jot.current_attempt,
+                "error": "workflow_timeout:tier2",
+                "error_id": "ERROR_JOT_WORKFLOW_TIMEOUT",
+                "retry_budget_exhausted": budget_exhausted,
+            })
+            log.error(
+                "JOT_WORKFLOW_TIMEOUT",
+                handle=jot.handle, workflow_id=workflow_id,
+                elapsed_ms=now_ms_ - started_at,
+                attempt=jot.current_attempt,
+                error_id="ERROR_JOT_WORKFLOW_TIMEOUT",
+            )
+            if not budget_exhausted:
+                asyncio.create_task(
+                    _auto_retry_after(jot.handle, backoff_s=RETRY_BACKOFF_SECONDS)
+                )
+        except (JotLogUnwritableError, JotValidationError) as exc:
+            log.error(
+                "JOT_RECONCILE_TIMEOUT_WRITE_FAILED",
+                handle=jot.handle, error=str(exc),
+            )
+        return
+
+    # Substrate status check
+    try:
+        status_dict = await asyncio.wait_for(
+            _mcp_get_workflow_status(workflow_id),
+            timeout=STATUS_CALL_TIMEOUT_SECONDS,
+        )
+    except asyncio.TimeoutError:
+        log.warning(
+            "JOT_RECONCILE_STATUS_TIMEOUT",
+            handle=jot.handle, workflow_id=workflow_id,
+        )
+        return
+    except Exception as exc:
+        log.error(
+            "JOT_RECONCILE_STATUS_FAILED",
+            handle=jot.handle, workflow_id=workflow_id,
+            error_id="ERROR_JOT_RECONCILE_STATUS",
+            error=f"{type(exc).__name__}: {exc}",
+        )
+        return
+
+    status_str = str(status_dict.get("status", "UNKNOWN"))
+    if status_str not in TERMINAL_STATUSES:
+        return  # still RUNNING/PENDING
+
+    succeeded = status_str == "COMPLETED"
+    try:
+        if succeeded:
+            await _append_event("dispatch_done", {
+                "workflow_id": workflow_id,
+                "summary": (
+                    "ok" if status_dict.get("results_count") else "completed"
+                ),
+                **(
+                    {"commit_sha": status_dict["commit_sha"]}
+                    if status_dict.get("commit_sha") else {}
+                ),
+            })
+        else:
+            budget_exhausted = _should_exhaust_retry_budget(jot)
+            await _append_event("dispatch_failed", {
+                "workflow_id": workflow_id,
+                "attempt": jot.current_attempt,
+                "error": f"workflow_status:{status_str}",
+                "error_id": "ERROR_JOT_WORKFLOW_FAILED",
+                "retry_budget_exhausted": budget_exhausted,
+            })
+            if not budget_exhausted:
+                asyncio.create_task(
+                    _auto_retry_after(jot.handle, backoff_s=RETRY_BACKOFF_SECONDS)
+                )
+    except (JotLogUnwritableError, JotValidationError) as exc:
+        log.error(
+            "JOT_RECONCILE_WRITE_FAILED",
+            handle=jot.handle, error=str(exc),
+        )
+
+
+async def _background_reconciler_loop() -> None:
+    """Tier-2 background reconciler. Spec §6.3.
+
+    Runs forever (started at Mahavishnu server boot). Idempotent with Tier 1.
+    Per-jot and per-tick exception handling — a single bad jot or fold
+    must not crash the loop.
+    """
+    while True:
+        await asyncio.sleep(RECONCILER_INTERVAL_SECONDS)
+        try:
+            from mahavishnu.jot.fold import build_states, parse_events
+            events = parse_events(log_path())
+            jots = build_states(events, enrich=False).states
+        except Exception as exc:
+            log.error(
+                "JOT_RECONCILER_FOLD_FAILED",
+                error=f"{type(exc).__name__}: {exc}",
+            )
+            continue
+        for jot in jots:
+            if jot.dispatch_state is not DispatchState.IN_FLIGHT:
+                continue
+            try:
+                await _reconcile_if_in_flight(jot)
+            except Exception as exc:
+                log.error(
+                    "JOT_RECONCLE_PER_JOT_FAILED",
+                    handle=jot.handle,
+                    error=f"{type(exc).__name__}: {exc}",
+                )
+
+
+__all__ = [
+    "DispatchState", "_append_event",
+    "DispatchCtx", "DispatchDoneCtx", "DispatchFailedCtx",
+    "DeferCtx", "DeferExpiredCtx", "DeleteCtx",
+    "DrainPlanDict", "ActionProposalDict", "DispatchResultDict",
+    "_is_surface_eligible", "_is_drain_eligible",
+    "MAX_AUTO_ATTEMPTS", "_should_exhaust_retry_budget",
+    "_auto_retry_after", "_reconcile_if_in_flight",
+    "_background_reconciler_loop",
+]
