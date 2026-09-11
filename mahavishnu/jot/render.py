@@ -1,11 +1,25 @@
-"""Terminal-friendly render layer (R9)."""
+"""Terminal-friendly render layer (R9).
+
+Drain sub-plan 3 (§3.3) — TypedDict surfaces for MCP tools and CLI handlers:
+- ``JotSummaryDict``: 5 base fields + 6 drain fields (extends sub-plan 2).
+- ``JotVitalsDict``: 2 base count fields + 5 drain-derived counts.
+- ``_summary_dict(jot)``: dataclass -> dict, with all dispatch fields.
+- ``_vitals_dict(states, log_event_count)``: counts across states.
+
+All TypedDicts are total=False (drain fields optional) or explicitly allow
+``None`` where the spec mandates it. No ``Any`` per TD-H5 / R11.
+"""
+
 from __future__ import annotations
 
 import datetime
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Literal, TypedDict
+
+from .fold import DispatchState
 
 if TYPE_CHECKING:
     from .fold import FoldResult, JotDetail, JotSummary
+
 
 STATUS_WIDTH = 4
 SHORT_ID_WIDTH = 6
@@ -14,8 +28,117 @@ TEXT_TRUNCATE = 50
 
 def _format_ms(ms: int) -> str:
     """ms epoch -> 'YYYY-MM-DD HH:MM' (UTC)."""
-    return datetime.datetime.fromtimestamp(ms / 1000, tz=datetime.UTC).strftime(
-        "%Y-%m-%d %H:%M"
+    return datetime.datetime.fromtimestamp(ms / 1000, tz=datetime.UTC).strftime("%Y-%m-%d %H:%M")
+
+
+# =============================================================================
+# TypedDicts — sub-plan 3 §3.3. Used by MCP tools (Task 14) and CLI (Task 12).
+# =============================================================================
+
+
+class JotSummaryDict(TypedDict, total=False):
+    """Surface shape returned by MCP tools / CLI list handlers.
+
+    Base 5 fields (sub-plan 2) + 6 drain fields (sub-plan 3 §3.3, §4.4).
+    ``total=False`` because every drain field is absent or None for jots
+    that have no dispatch chain.
+    """
+
+    # Base fields (unchanged)
+    id: str
+    short_id: str
+    text: str
+    status: Literal["open", "done"]
+    last_modified_ms: int
+    # NEW (drain sub-plan 3) — absent or None for jots with no dispatch history
+    dispatch_state: Literal["in_flight", "succeeded", "failed"]
+    dispatch_workflow_id: str | None
+    current_attempt: int
+    dispatch_started_at_ms: int | None
+    deferred_until: int | None
+    deleted: bool
+
+
+class JotVitalsDict(TypedDict):
+    """Aggregate counters for inbox monitoring (sub-plan 3 §3.3).
+
+    Base 2 fields (open/done) + 5 drain-derived counts. All fields required
+    (no ``total=False``) — callers can rely on every key being present.
+    """
+
+    open: int
+    done: int
+    dispatch_in_flight: int
+    dispatch_failed: int
+    deferred: int
+    deleted: int
+    log_event_count: int
+
+
+def _summary_dict(jot: JotSummary) -> JotSummaryDict:
+    """Project a ``JotSummary`` dataclass to its MCP/CLI dict surface.
+
+    All 6 drain fields are emitted unconditionally (literal ``"in_flight"``
+    for ``DispatchState.IN_FLIGHT``, etc.). ``None`` propagates as ``None``
+    for optional fields. ``deleted`` is always emitted as a bool.
+    """
+    state_literal = (
+        jot.dispatch_state.value if jot.dispatch_state is not None else None
+    )
+    return JotSummaryDict(
+        id=jot.id,
+        short_id=jot.short_id,
+        text=jot.text,
+        status=jot.status,
+        last_modified_ms=jot.last_modified_ms,
+        dispatch_state=state_literal,  # type: ignore[typeddict-item]
+        dispatch_workflow_id=jot.dispatch_workflow_id,
+        current_attempt=jot.current_attempt,
+        dispatch_started_at_ms=jot.dispatch_started_at_ms,
+        deferred_until=jot.deferred_until,
+        deleted=jot.deleted,
+    )
+
+
+def _vitals_dict(
+    states: list[JotSummary],
+    log_event_count: int,
+) -> JotVitalsDict:
+    """Aggregate ``JotSummary`` states into the vitals surface.
+
+    Args:
+        states: per-id ``JotSummary`` list (typically from ``FoldResult.states``).
+        log_event_count: total JSONL events on disk, supplied by the caller
+            (the caller has the file handle; ``render`` stays I/O-free).
+    """
+    open_count = 0
+    done_count = 0
+    dispatch_in_flight = 0
+    dispatch_failed = 0
+    deferred = 0
+    deleted = 0
+    for s in states:
+        if s.status == "open":
+            open_count += 1
+        else:
+            done_count += 1
+        if s.deleted:
+            deleted += 1
+        if s.deferred_until is not None:
+            deferred += 1
+        if s.dispatch_state is not None:
+            if s.dispatch_state is DispatchState.IN_FLIGHT:
+                dispatch_in_flight += 1
+            elif s.dispatch_state is DispatchState.FAILED:
+                dispatch_failed += 1
+    return JotVitalsDict(
+        open=open_count,
+        done=done_count,
+        dispatch_in_flight=dispatch_in_flight,
+        dispatch_failed=dispatch_failed,
+        deferred=deferred,
+        deleted=deleted,
+        log_event_count=log_event_count,
     )
 
 
