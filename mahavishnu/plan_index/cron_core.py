@@ -29,6 +29,7 @@ import re
 import socket
 import subprocess
 from typing import TYPE_CHECKING, Any
+import uuid
 
 from mahavishnu.plan_index.errors import PlanRebuildLockedError
 from mahavishnu.plan_index.paths import errors_log_path
@@ -59,6 +60,10 @@ RECENT_ERRORS_KEY = "plan_index/meta/recent_errors"
 REBUILD_LOCK_HOLDER_KEY = "plan_index/meta/rebuild_lock/holder"
 REBUILD_LOCK_ACQUIRED_KEY = "plan_index/meta/rebuild_lock/acquired_at_ms"
 REBUILD_LOCK_TTL_SECONDS = 60
+# Round-3 follow-up (Task 14.7): retain lock-history keys on stale takeover
+# so observability can show "Cycle B took over from stale Cycle A at T".
+REBUILD_LOCK_HISTORY_KEY_PREFIX = "plan_index/meta/rebuild_lock/history/"
+REBUILD_LOCK_HISTORY_TTL_SECONDS = 7 * 86400
 
 _FRONTMATTER_RE = re.compile(
     r"\A---\s*\n(?P<fm>.*?)\n---\s*(?:\n|$)", re.DOTALL
@@ -427,6 +432,20 @@ async def run_rebuild_cycle(
         _logger.warning(
             "rebuild lock holder=%s is stale (age_ms=%d > ttl=%d); taking over",
             holder_raw, age_ms, REBUILD_LOCK_TTL_SECONDS * 1000,
+        )
+        # Retain provenance: write a history key with takeover context.
+        # The finally block must NOT delete these history keys (only the
+        # active holder), so observability can later surface who took over
+        # from whom at what timestamp.
+        history_key = f"{REBUILD_LOCK_HISTORY_KEY_PREFIX}{uuid.uuid4().hex}"
+        await dhara.put(
+            history_key,
+            json.dumps({
+                "previous_holder": holder_raw,
+                "took_over_at_ms": now_ms_for_lock,
+                "took_over_by": new_holder,
+            }),
+            ttl=REBUILD_LOCK_HISTORY_TTL_SECONDS,
         )
 
     # Write (or overwrite) our own holder entry.
