@@ -1,11 +1,22 @@
-"""MCP tools for the jot inbox (8 tools, TypedDict returns).
+"""MCP tools for the jot inbox (14 tools, TypedDict returns).
 
 R1: CRUD-only. R11 / TD-B1 / TD-H5: every return type is a TypedDict, no Any.
+
+Sub-plan 3 (Drain) adds 6 tools: ``jot_drain``, ``jot_dispatch``, ``jot_defer``,
+``jot_delete``, ``jot_retry``, ``jot_resurface``. They live alongside the
+8 CRUD tools from sub-plan 2.
+
+The ``JotSummaryDict`` / ``JotVitalsDict`` / ``_summary_dict`` / ``_vitals_dict``
+projections are NOT defined here — they live in ``mahavishnu.jot.render``
+(sub-plan 3 §3.3). This module re-imports them so the wrapper layer stays
+thin. ``JotDetailDict`` is the only TypedDict that remains local because it
+is built from a CLI helper, not the render layer.
 
 These functions are decorated with @mcp.tool() in the registration
 function below; tests access the underlying function via `.fn` (the
 FastMCP convention).
 """
+
 from __future__ import annotations
 
 import os
@@ -15,25 +26,24 @@ from typing import Literal, TypedDict
 import uuid
 
 from mahavishnu.jot.cli import _detail_from_summary
+from mahavishnu.jot.drain import DispatchResultDict, DrainPlanDict
 from mahavishnu.jot.events import JotEvent, serialize
 from mahavishnu.jot.fold import JotSummary, build_states
 from mahavishnu.jot.handle import resolve_handle
 from mahavishnu.jot.hlc import hlc_now, read_tail_hlc
 from mahavishnu.jot.paths import log_path as _log_path_default
+from mahavishnu.jot.render import (
+    JotSummaryDict,
+    JotVitalsDict,
+    _summary_dict,
+    _vitals_dict,
+)
 
 # Re-import the default for monkeypatching in tests.
 _log_path = _log_path_default
 
 
 # --- TypedDicts (R11 / TD-H5) ---
-
-
-class JotSummaryDict(TypedDict):
-    id: str
-    short_id: str
-    text: str
-    status: Literal["open", "done"]
-    last_modified_ms: int
 
 
 class JotDetailDict(TypedDict):
@@ -47,14 +57,6 @@ class JotDetailDict(TypedDict):
     ctx: dict[str, str | list[str] | None]
 
 
-class JotVitalsDict(TypedDict):
-    total: int
-    open: int
-    done: int
-    last_capture_ms: int | None
-    oldest_ms: int | None
-
-
 # --- helpers ---
 
 
@@ -66,7 +68,9 @@ def _read_events(path: Path | None = None) -> list[JotEvent]:
 
 
 def _emit(
-    op: str, text: str, ctx: dict[str, str] | None = None,
+    op: str,
+    text: str,
+    ctx: dict[str, str] | None = None,
     event_id: str | None = None,
 ) -> None:
     """Append one event to the log.
@@ -79,11 +83,16 @@ def _emit(
     last = read_tail_hlc(path)
     from mahavishnu.jot.hlc import get_node
     from mahavishnu.jot.paths import node_path as _node_path_fn
+
     node = get_node(_node_path_fn())
     hlc = hlc_now(node, last)
     ev = JotEvent(
-        id=event_id or uuid.uuid4().hex, op=op, hlc=hlc, text=text,
-        ctx=ctx or {}, created_ms=hlc.wall_ms,
+        id=event_id or uuid.uuid4().hex,
+        op=op,
+        hlc=hlc,
+        text=text,
+        ctx=ctx or {},
+        created_ms=hlc.wall_ms,
     )
     line = serialize(ev) + "\n"
     fd = os.open(str(path), os.O_WRONLY | os.O_APPEND | os.O_CREAT, 0o600)
@@ -91,16 +100,6 @@ def _emit(
         os.write(fd, line.encode("utf-8"))
     finally:
         os.close(fd)
-
-
-def _summary_dict(s: JotSummary) -> JotSummaryDict:
-    return JotSummaryDict(
-        id=s.id,
-        short_id=s.short_id,
-        text=s.text,
-        status=s.status,
-        last_modified_ms=s.last_modified_ms,
-    )
 
 
 def _detail_dict(s: JotSummary, events: list[JotEvent]) -> JotDetailDict:
@@ -121,7 +120,8 @@ def _detail_dict(s: JotSummary, events: list[JotEvent]) -> JotDetailDict:
 
 
 def jot_list(
-    status: str | None = None, limit: int = 50,
+    status: str | None = None,
+    limit: int = 50,
 ) -> list[JotSummaryDict]:
     """List jots, newest first. status filter: 'open' | 'done' | None for all."""
     events = _read_events()
@@ -200,17 +200,11 @@ def jot_reopen(handle: str) -> JotDetailDict:
 
 
 def jot_vitals() -> JotVitalsDict:
-    """Return counts: total, open, done, last_capture_ms, oldest_ms."""
+    """Return counts: open, done, dispatch_in_flight, dispatch_failed,
+    deferred, deleted, log_event_count (render sub-plan 3 §3.3 shape)."""
     events = _read_events()
     result = build_states(events, enrich=False)
-    states = result.states
-    return JotVitalsDict(
-        total=len(states),
-        open=sum(1 for s in states if s.status == "open"),
-        done=sum(1 for s in states if s.status == "done"),
-        last_capture_ms=max((s.last_modified_ms for s in states), default=None),
-        oldest_ms=min(s.last_modified_ms for s in states) if states else None,
-    )
+    return _vitals_dict(result.states, log_event_count=len(events))
 
 
 def jot_search(query: str, limit: int = 20) -> list[JotSummaryDict]:
@@ -221,16 +215,121 @@ def jot_search(query: str, limit: int = 20) -> list[JotSummaryDict]:
     return [_summary_dict(s) for s in matches]
 
 
+# --- 6 drain tools (sub-plan 3 §3.3) ---
+
+
+def jot_drain(
+    query: str | None = None,
+    limit: int = 20,
+    include_in_flight: bool = False,
+) -> DrainPlanDict:
+    """Build a bulk-action plan over open jots.
+
+    Lazy import keeps module-load cost down when drain is unused (per
+    sub-plan 3 §3.7 separation). Returns the plan but performs NO
+    dispatch — callers invoke ``jot_dispatch`` per selected candidate.
+    """
+    from mahavishnu.jot import drain as _drain
+
+    plan = _drain.drain_plan(
+        query=query, limit=limit, include_in_flight=include_in_flight,
+    )
+    return DrainPlanDict(
+        query=plan.query,
+        candidates=[_summary_dict(s) for s in plan.candidates],
+        action_proposals=[],
+    )
+
+
+def jot_dispatch(handle: str) -> DispatchResultDict:
+    """Dispatch a single jot as a Mahavishnu workflow.
+
+    Stamps ``dispatched_from="mcp"`` so the fold records the entry surface.
+    """
+    from mahavishnu.jot import drain as _drain
+
+    res = _drain.dispatch_jot(handle=handle)
+    return DispatchResultDict(
+        handle=res.handle,
+        workflow_id=res.workflow_id,
+        attempt=res.attempt,
+        status=res.status,
+        dispatched_from="mcp",
+    )
+
+
+def jot_defer(
+    handle: str, until_ms: int, reason: str | None = None,
+) -> JotSummaryDict:
+    """Snooze a jot until ``until_ms``. Rejects ``until_ms <= now_ms``."""
+    from mahavishnu.jot import drain as _drain
+
+    return _summary_dict(
+        _drain.defer_jot(handle=handle, until_ms=until_ms, reason=reason),
+    )
+
+
+def jot_delete(handle: str, reason: str | None = None) -> JotSummaryDict:
+    """Soft delete (audit log retained)."""
+    from mahavishnu.jot import drain as _drain
+
+    return _summary_dict(_drain.delete_jot(handle=handle, reason=reason))
+
+
+def jot_retry(handle: str) -> DispatchResultDict:
+    """Manual retry of a FAILED-dispatched jot."""
+    from mahavishnu.jot import drain as _drain
+
+    res = _drain.retry_dispatch(handle=handle)
+    return DispatchResultDict(
+        handle=res.handle,
+        workflow_id=res.workflow_id,
+        attempt=res.attempt,
+        status=res.status,
+        dispatched_from="mcp",
+    )
+
+
+def jot_resurface(
+    trigger: Literal["session_start", "tool_result"],
+    context_text: str,
+    limit: int = 3,
+) -> list[JotSummaryDict]:
+    """Surface jots relevant to the given trigger + context.
+
+    Internal hook entrypoint — invoked by ``jot-session-start`` and
+    ``jot-post-tool-use``. Lexical primary, semantic fallback per spec §5.
+    """
+    from mahavishnu.jot import drain as _drain
+
+    result = _drain.surface_relevant(
+        trigger=trigger, context_text=context_text, limit=limit,
+    )
+    return [_summary_dict(s) for s in result.matches]
+
+
 def register(mcp) -> None:  # type: ignore[no-untyped-def]
-    """Register all 8 tools on the FastMCP instance.
+    """Register all 14 tools on the FastMCP instance.
 
     Re-decorates each module-level tool with the real FastMCP server,
     rebinding the module attribute to a FunctionTool bound to ``mcp``.
     Idempotent: re-calling replaces prior wrappers.
     """
     names = [
-        "jot_list", "jot_show", "jot_add", "jot_edit",
-        "jot_done", "jot_reopen", "jot_vitals", "jot_search",
+        "jot_list",
+        "jot_show",
+        "jot_add",
+        "jot_edit",
+        "jot_done",
+        "jot_reopen",
+        "jot_vitals",
+        "jot_search",
+        "jot_drain",
+        "jot_dispatch",
+        "jot_defer",
+        "jot_delete",
+        "jot_retry",
+        "jot_resurface",
     ]
     module = sys.modules[__name__]
     for name in names:
@@ -259,8 +358,20 @@ def _wrap_at_import() -> None:
         return
 
     names = [
-        "jot_list", "jot_show", "jot_add", "jot_edit",
-        "jot_done", "jot_reopen", "jot_vitals", "jot_search",
+        "jot_list",
+        "jot_show",
+        "jot_add",
+        "jot_edit",
+        "jot_done",
+        "jot_reopen",
+        "jot_vitals",
+        "jot_search",
+        "jot_drain",
+        "jot_dispatch",
+        "jot_defer",
+        "jot_delete",
+        "jot_retry",
+        "jot_resurface",
     ]
     module = sys.modules[__name__]
     for name in names:

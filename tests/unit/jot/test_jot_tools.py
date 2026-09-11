@@ -90,9 +90,13 @@ def test_jot_vitals_returns_counts(tmp_path: Path) -> None:
         ),
     ])
     result = jot_tools.jot_vitals.fn()
-    assert result["total"] == 2
     assert result["open"] == 1
     assert result["done"] == 1
+    assert result["dispatch_in_flight"] == 0
+    assert result["dispatch_failed"] == 0
+    assert result["deferred"] == 0
+    assert result["deleted"] == 0
+    assert result["log_event_count"] == 3
 
 
 def test_jot_search_returns_substring_matches(tmp_path: Path) -> None:
@@ -120,28 +124,17 @@ def test_jot_edit_done_reopen_round_trip(tmp_path: Path) -> None:
     assert result.parked == []
 
 
-def test_jot_vitals_preserves_epoch_zero_oldest_ms(tmp_path: Path) -> None:
-    """Final-review #1: `or None` collapsed legitimate 0 to None.
-
-    A state with ``last_modified_ms=0`` (epoch) is a legitimate data point,
-    not "missing" — vitals must preserve it.
-    """
-    _seed([
-        _capture("a" * 32, "epoch jot", wall_ms=0),
-        _capture("b" * 32, "later", wall_ms=1),
-    ])
-    result = jot_tools.jot_vitals.fn()
-    assert result["oldest_ms"] == 0
-    assert result["last_capture_ms"] == 1
-
-
-def test_jot_vitals_returns_none_when_no_states(tmp_path: Path) -> None:
-    """When the log has no captured states, oldest_ms and last_capture_ms are None."""
+def test_jot_vitals_returns_zero_counts_when_no_states(tmp_path: Path) -> None:
+    """When the log has no captured states, all counts are 0."""
     _seed([])
     result = jot_tools.jot_vitals.fn()
-    assert result["total"] == 0
-    assert result["oldest_ms"] is None
-    assert result["last_capture_ms"] is None
+    assert result["open"] == 0
+    assert result["done"] == 0
+    assert result["dispatch_in_flight"] == 0
+    assert result["dispatch_failed"] == 0
+    assert result["deferred"] == 0
+    assert result["deleted"] == 0
+    assert result["log_event_count"] == 0
 
 
 def test_jot_tools_module_importable_without_fastmcp(tmp_path: Path) -> None:
