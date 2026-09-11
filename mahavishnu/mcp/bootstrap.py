@@ -655,7 +655,9 @@ def _register_capability_block(server: FastMCPServer) -> None:
     from ..mcp.tools.capability_tools import register_capability_tools
     from ..mcp.tools.get_capability_result_tool import register_get_capability_result
 
-    register_capability_tools(server.server, server.app.config)
+    register_capability_tools(
+        server.server, server.app.config, rbac_manager=getattr(server.app, "rbac_manager", None)
+    )
     logger.info("Registered 4 capability tools with MCP server")
 
     # Wire get_capability_result against the Dhara substrate when reachable.
@@ -871,7 +873,8 @@ def _register_workflow_tools(server: FastMCPServer) -> None:
     """Register workflow outcome tools (always-on)."""
     from ..mcp.tools.workflow_tools import register_workflow_tools
 
-    register_workflow_tools(server.server)
+    rbac_manager = getattr(server.app, "rbac_manager", None)
+    register_workflow_tools(server.server, rbac_manager=rbac_manager)
     logger.info("Registered workflow outcome tools with MCP server")
 
 
@@ -879,7 +882,8 @@ def _register_webhook_tools(server: FastMCPServer) -> None:
     """Register webhook replay tools (always-on)."""
     from ..mcp.tools.webhook_tools import register_webhook_tools
 
-    register_webhook_tools(server.server)
+    rbac_manager = getattr(server.app, "rbac_manager", None)
+    register_webhook_tools(server.server, rbac_manager=rbac_manager)
     logger.info("Registered webhook replay tools with MCP server")
 
 
@@ -899,7 +903,10 @@ def _register_session_buddy_tools(server: FastMCPServer) -> None:
     """Register Session Buddy integration tools."""
     from ..mcp.tools.session_buddy_tools import register_session_buddy_tools
 
-    register_session_buddy_tools(server.server, server.app, getattr(server, "mcp_client", None))
+    rbac_manager = getattr(server.app, "rbac_manager", None)
+    register_session_buddy_tools(
+        server.server, server.app, getattr(server, "mcp_client", None), rbac_manager=rbac_manager
+    )
     logger.info("Registered 9 Session Buddy integration tools with MCP server")
 
 
@@ -907,7 +914,10 @@ def _register_git_analytics_tools(server: FastMCPServer) -> None:
     """Register Git analytics tools."""
     from ..mcp.tools.git_analytics import register_git_analytics_tools
 
-    register_git_analytics_tools(server.server, getattr(server, "mcp_client", None))
+    rbac_manager = getattr(server.app, "rbac_manager", None)
+    register_git_analytics_tools(
+        server.server, getattr(server, "mcp_client", None), rbac_manager=rbac_manager
+    )
     logger.info("Registered 3 Git analytics tools with MCP server")
 
 
