@@ -28,7 +28,8 @@ from pathlib import Path
 import re
 import socket
 import subprocess
-from typing import TYPE_CHECKING, Any
+import time
+from typing import TYPE_CHECKING, Any, Protocol
 import uuid
 
 from mahavishnu.plan_index.errors import PlanRebuildLockedError
@@ -64,6 +65,10 @@ REBUILD_LOCK_TTL_SECONDS = 60
 # so observability can show "Cycle B took over from stale Cycle A at T".
 REBUILD_LOCK_HISTORY_KEY_PREFIX = "plan_index/meta/rebuild_lock/history/"
 REBUILD_LOCK_HISTORY_TTL_SECONDS = 7 * 86400
+# Task 14.6: transient, per-attempt claim keys used to arbitrate concurrent
+# acquisitions. Claim keys are unique (never overwritten) and are deleted as
+# soon as arbitration resolves, so they never accumulate across cycles.
+REBUILD_LOCK_CLAIM_KEY_PREFIX = "plan_index/meta/rebuild_lock/claim/"
 
 _FRONTMATTER_RE = re.compile(
     r"\A---\s*\n(?P<fm>.*?)\n---\s*(?:\n|$)", re.DOTALL
@@ -91,6 +96,90 @@ def _hostname_hash() -> str:
 def _lock_holder() -> str:
     """Return the canonical `hostname_hash[:8]/pid` lock-holder string."""
     return f"{_hostname_hash()}/{os.getpid()}"
+
+
+class _LockStore(Protocol):
+    """The Dhara KV surface the rebuild lock needs. No compare-and-swap."""
+
+    async def put(self, key: str, value: str, *, ttl: int | None = ...) -> None: ...
+    async def get(self, key: str) -> str | None: ...
+    async def list_prefix(self, prefix: str) -> list[tuple[str, str]]: ...
+    async def delete(self, key: str) -> None: ...
+
+
+def _new_claim_key() -> str:
+    """Unique, time-ordered claim key for one acquisition attempt.
+
+    The microsecond prefix makes claim keys sort in (approximate)
+    acquisition order; the uuid4 suffix guarantees uniqueness so that two
+    concurrent cycles can never overwrite each other's claim.
+    """
+    return (
+        f"{REBUILD_LOCK_CLAIM_KEY_PREFIX}"
+        f"{time.time_ns() // 1000:020d}-{uuid.uuid4().hex}"
+    )
+
+
+def _claim_is_active(value: str, now_ms: int) -> bool:
+    """True when a claim was written within the lock TTL window."""
+    try:
+        claimed_ms = int(value)
+    except ValueError:
+        return False
+    return now_ms - claimed_ms < REBUILD_LOCK_TTL_SECONDS * 1000
+
+
+async def _live_lock_holder(dhara: _LockStore, now_ms: int) -> tuple[str, int] | None:
+    """Return `(holder, age_ms)` when a non-stale holder is published."""
+    holder_raw = await dhara.get(REBUILD_LOCK_HOLDER_KEY)
+    acquired_raw = await dhara.get(REBUILD_LOCK_ACQUIRED_KEY)
+    if holder_raw is None or acquired_raw is None:
+        return None
+    try:
+        acquired_ms = int(acquired_raw)
+    except ValueError:
+        return None
+    age_ms = now_ms - acquired_ms
+    if age_ms >= REBUILD_LOCK_TTL_SECONDS * 1000:
+        return None
+    return holder_raw, age_ms
+
+
+async def _acquire_rebuild_lock(
+    dhara: _LockStore, new_holder: str, now_ms: int
+) -> None:
+    """Claim the rebuild lock, or raise `PlanRebuildLockedError`.
+
+    A plain `get`-then-`put` on the holder key is a TOCTOU race: two
+    concurrent cycles both read `holder is None`, both write their own
+    holder, and neither sees the other. The Dhara KV surface exposed to
+    plan_index has no compare-and-swap, so acquisition is arbitrated with
+    unique claim keys instead:
+
+      1. Write a claim key that no other cycle can overwrite.
+      2. List every claim; the lexicographically smallest *active* claim
+         wins. Because claims are never overwritten, any cycle that lists
+         after a rival's write is guaranteed to see that rival and defer.
+      3. Re-read the holder key before publishing, to close the window
+         where a rival won arbitration and published while we listed.
+      4. Publish our holder, then drop our claim (in `finally`, on every
+         path). From here on the holder key provides mutual exclusion, so
+         claims never linger between cycles.
+    """
+    claim_key = _new_claim_key()
+    await dhara.put(claim_key, str(now_ms), ttl=REBUILD_LOCK_TTL_SECONDS)
+    try:
+        pairs = await dhara.list_prefix(REBUILD_LOCK_CLAIM_KEY_PREFIX)
+        active = sorted(k for k, v in pairs if _claim_is_active(v, now_ms))
+        if active and active[0] != claim_key:
+            raise PlanRebuildLockedError(active[0], 0)
+        live = await _live_lock_holder(dhara, now_ms)
+        if live is not None:
+            raise PlanRebuildLockedError(*live)
+        await dhara.put(REBUILD_LOCK_HOLDER_KEY, new_holder)
+        await dhara.put(REBUILD_LOCK_ACQUIRED_KEY, str(now_ms))
+    finally:
+        await dhara.delete(claim_key)
 
 
 @dataclass(frozen=True, slots=True)
@@ -448,9 +537,9 @@ async def run_rebuild_cycle(
             ttl=REBUILD_LOCK_HISTORY_TTL_SECONDS,
         )
 
-    # Write (or overwrite) our own holder entry.
-    await dhara.put(REBUILD_LOCK_HOLDER_KEY, new_holder)
-    await dhara.put(REBUILD_LOCK_ACQUIRED_KEY, str(now_ms_for_lock))
+    # Atomically claim the lock (Task 14.6). Replaces the previous
+    # unconditional `put`, which let concurrent cycles clobber each other.
+    await _acquire_rebuild_lock(dhara, new_holder, now_ms_for_lock)
 
     try:
         records: list[PlanRecord] = (
