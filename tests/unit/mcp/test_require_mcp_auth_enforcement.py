@@ -101,8 +101,17 @@ class TestRequireMCPAuthEnforcement:
     async def test_rbac_manager_none_returns_auth_not_configured(
         self, _swap_audit_logger: _SpyAuditLogger
     ) -> None:
-        """rbac_manager is None → fail-closed AUTH_NOT_CONFIGURED, even with user_id."""
-        decorator = require_mcp_auth(rbac_manager=None)
+        """rbac_manager is None → fail-closed AUTH_NOT_CONFIGURED, even with user_id.
+
+        Task 11.10: ``@require_mcp_auth`` raises ``ConfigurationError`` at
+        decoration time when ``required_permission`` is omitted, so the
+        rbac_manager=None path is only reachable when an explicit permission
+        is supplied.
+        """
+        decorator = require_mcp_auth(
+            rbac_manager=None,
+            required_permission=Permission.READ_PLAN_INDEX,
+        )
 
         @decorator
         async def sample_tool(arg: str, user_id: str | None = None) -> dict[str, Any]:
