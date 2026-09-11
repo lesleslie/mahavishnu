@@ -105,9 +105,12 @@ FULL_REGISTRATIONS: list[str] = STANDARD_REGISTRATIONS + [
     # ``_register_plan_tools`` which constructs a Dhara-backed store from
     # ``MahavishnuApp`` and binds all five ``plan_*`` tools in one call.
     "_register_plan_tools",
-    # Jot inbox tools (8 tools; Task 13). Each key in REGISTRATION_MAP
-    # delegates to the same ``register`` callable which is idempotent
-    # (re-decorates all 8 tools against the FastMCP server).
+    # Jot inbox tools (14 tools; Task 13 + drain). Each key in
+    # REGISTRATION_MAP delegates to the same ``register`` callable which is
+    # idempotent (re-decorates all 14 tools against the FastMCP server).
+    # The 6 drain tools (``jot_drain``, ``jot_dispatch``, ``jot_defer``,
+    # ``jot_delete``, ``jot_retry``, ``jot_resurface``) were added by
+    # sub-plan 3; they share the same registration lambda trampoline.
     "jot_list",
     "jot_show",
     "jot_add",
@@ -116,6 +119,12 @@ FULL_REGISTRATIONS: list[str] = STANDARD_REGISTRATIONS + [
     "jot_reopen",
     "jot_vitals",
     "jot_search",
+    "jot_drain",
+    "jot_dispatch",
+    "jot_defer",
+    "jot_delete",
+    "jot_retry",
+    "jot_resurface",
 ]
 
 # Note: ``register_worktree_tools`` is async and conditionally registered
@@ -206,10 +215,11 @@ REGISTRATION_MAP: dict[str, Callable] = {
     # ``plan_*`` tools in one call. The store is constructed fresh per
     # registration, matching the per-tool closure pattern.
     "_register_plan_tools": lambda s: _register_plan_tools(s._mhv_server),  # type: ignore[attr-defined]
-    # Jot inbox tools (Task 13). Each key delegates to the same
-    # ``_register_jot_tools`` callable (imported from .jot_tools) which
-    # is idempotent — the first call wraps the 8 tools against the
-    # server, subsequent calls re-bind the wrappers harmlessly.
+    # Jot inbox tools (Task 13 + sub-plan 3 Drain). Each key delegates to
+    # the same ``_register_jot_tools`` callable (imported from
+    # .jot_tools) which is idempotent — the first call wraps all 14
+    # tools against the server, subsequent calls re-bind the wrappers
+    # harmlessly.
     "jot_list": lambda s: _register_jot_tools(s._mhv_server),  # type: ignore[attr-defined]
     "jot_show": lambda s: _register_jot_tools(s._mhv_server),  # type: ignore[attr-defined]
     "jot_add": lambda s: _register_jot_tools(s._mhv_server),  # type: ignore[attr-defined]
@@ -218,6 +228,12 @@ REGISTRATION_MAP: dict[str, Callable] = {
     "jot_reopen": lambda s: _register_jot_tools(s._mhv_server),  # type: ignore[attr-defined]
     "jot_vitals": lambda s: _register_jot_tools(s._mhv_server),  # type: ignore[attr-defined]
     "jot_search": lambda s: _register_jot_tools(s._mhv_server),  # type: ignore[attr-defined]
+    "jot_drain": lambda s: _register_jot_tools(s._mhv_server),  # type: ignore[attr-defined]
+    "jot_dispatch": lambda s: _register_jot_tools(s._mhv_server),  # type: ignore[attr-defined]
+    "jot_defer": lambda s: _register_jot_tools(s._mhv_server),  # type: ignore[attr-defined]
+    "jot_delete": lambda s: _register_jot_tools(s._mhv_server),  # type: ignore[attr-defined]
+    "jot_retry": lambda s: _register_jot_tools(s._mhv_server),  # type: ignore[attr-defined]
+    "jot_resurface": lambda s: _register_jot_tools(s._mhv_server),  # type: ignore[attr-defined]
 }
 
 
