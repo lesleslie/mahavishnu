@@ -152,7 +152,10 @@ def register_session_buddy_tools(
             return {"status": "error", "error": f"Failed to index documentation: {e}"}
 
     @server.tool()
-    @require_mcp_auth(rbac_manager=rbac_manager)  # No repo permission needed for search
+    @require_mcp_auth(
+        rbac_manager=rbac_manager,
+        required_permission=MCPPermission.READ,
+    )  # No repo permission needed for search
     async def search_documentation(query: str, user_id: str | None = None) -> dict[str, Any]:
         """Search through indexed documentation in Session Buddy."""
         _warn_code_intel_deprecation("search_documentation", "search_tools.hybrid_search")
@@ -171,7 +174,10 @@ def register_session_buddy_tools(
             return {"status": "error", "error": f"Failed to search documentation: {e}"}
 
     @server.tool()
-    @require_mcp_auth(rbac_manager=rbac_manager)
+    @require_mcp_auth(
+        rbac_manager=rbac_manager,
+        required_permission=MCPPermission.WRITE,
+    )
     async def send_project_message(
         from_project: str,
         to_project: str,
@@ -207,7 +213,10 @@ def register_session_buddy_tools(
             return {"status": "error", "error": f"Failed to send project message: {e}"}
 
     @server.tool()
-    @require_mcp_auth(rbac_manager=rbac_manager)
+    @require_mcp_auth(
+        rbac_manager=rbac_manager,
+        required_permission=MCPPermission.READ,
+    )
     async def list_project_messages(project: str, user_id: str | None = None) -> dict[str, Any]:
         """List messages for a project in Session Buddy."""
         try:
@@ -225,7 +234,10 @@ def register_session_buddy_tools(
             return {"status": "error", "error": f"Failed to list project messages: {e}"}
 
     @server.tool()
-    @require_mcp_auth(rbac_manager=rbac_manager)
+    @require_mcp_auth(
+        rbac_manager=rbac_manager,
+        required_permission=MCPPermission.WRITE,
+    )
     async def track_channel_session(
         event_type: str,
         channel_type: str,
@@ -290,7 +302,10 @@ def register_session_buddy_tools(
             }
 
     @server.tool()
-    @require_mcp_auth(rbac_manager=rbac_manager)
+    @require_mcp_auth(
+        rbac_manager=rbac_manager,
+        required_permission=MCPPermission.READ,
+    )
     async def get_channel_sessions(
         channel_type: str | None = None,
         channel_id: str | None = None,
