@@ -104,6 +104,14 @@ def test_jot_drain_returns_drain_plan_dict() -> None:
     )
 
 
+# ---------------------------------------------------------------------------
+# NOTE: assert_called_once_with assertions for the drain primitives that
+# Task 9 turned async now include the new ``dispatched_from`` keyword arg
+# (``jot_dispatch`` / ``jot_retry`` set it to ``"mcp"`` to stamp the
+# entry surface, as documented in drain.dispatch_jot). Pre-existing tests
+# also check ``handle=...`` only.
+
+
 def test_jot_drain_default_query_is_none() -> None:
     import mahavishnu.jot.drain as drain_module
 
@@ -142,7 +150,7 @@ def test_jot_dispatch_returns_dispatch_result_dict_with_dispatched_from_mcp() ->
         "status": "in_flight",
         "dispatched_from": "mcp",
     }
-    mp.assert_called_once_with(handle="a3f9c2")
+    mp.assert_called_once_with(handle="a3f9c2", dispatched_from="mcp")
 
 
 # ---------------------------------------------------------------------------
@@ -219,7 +227,7 @@ def test_jot_retry_returns_dispatch_result_dict_with_dispatched_from_mcp() -> No
         "status": "queued",
         "dispatched_from": "mcp",
     }
-    mp.assert_called_once_with(handle="f8c0b3")
+    mp.assert_called_once_with(handle="f8c0b3", dispatched_from="mcp")
 
 
 # ---------------------------------------------------------------------------

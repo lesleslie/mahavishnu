@@ -9,7 +9,7 @@ import asyncio
 import json
 import re
 import time
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Literal, TypedDict
 
@@ -30,7 +30,17 @@ from mahavishnu.jot.paths import log_path, node_path
 log = get_logger(__name__)
 
 # Re-export DispatchState (canonical location is fold.py to avoid cycle)
-__all__ = ["DispatchState", "_append_event"]
+__all__ = [
+    "DispatchState",
+    "_append_event",
+    "DrainPlan",
+    "DispatchResult",
+    "drain_plan",
+    "dispatch_jot",
+    "retry_dispatch",
+    "defer_jot",
+    "delete_jot",
+]
 
 
 # =============================================================================
@@ -575,303 +585,249 @@ async def _background_reconciler_loop() -> None:
 
 
 # =============================================================================
-# Public drain primitives (Task 12 surface; Task 9 will refine semantics)
+# Public drain primitives (Task 9 — spec §3.3)
 # =============================================================================
 #
-# These functions form the CLI handler surface in `mahavishnu/jot/cli.py`.
-# Task 9 owns the detailed semantics (concurrent-dispatch guards, full
-# async drain, retry-budget orchestration). Task 12 ships the minimal
-# synchronous, single-process implementations sufficient for the Typer
-# subcommands to exercise the basic happy-path + bad-args behaviour.
+# These functions form the CLI handler / MCP-tool surface in
+# `mahavishnu/jot/cli.py` and `mahavishnu/mcp/tools/jot_tools.py`. The
+# 4 action primitives (`dispatch_jot`, `retry_dispatch`, `defer_jot`,
+# `delete_jot`) are async — sync callers wrap them via ``asyncio.run``.
+# ``drain_plan`` stays sync so the CLI handler can render results
+# without an event-loop round trip.
 #
-# Return shapes follow the TypedDicts declared above (spec §3.3).
-
-JotSummaryDict = dict[str, object]
-DeferResultDict = dict[str, object]
-DeleteResultDict = dict[str, object]
-
-
-def _resolve_handle(handle: str) -> JotSummary:
-    """Resolve a handle against the current fold, raising JotError on miss."""
-    from mahavishnu.jot.fold import build_states, parse_events
-    from mahavishnu.jot.handle import resolve_handle as _resolve
-
-    events = parse_events(log_path())
-    states = build_states(events, enrich=False).states
-    return _resolve(states, handle)
+# Return shapes:
+#   - ``drain_plan`` → ``DrainPlan`` (frozen dataclass)
+#   - ``dispatch_jot`` / ``retry_dispatch`` → ``DispatchResult`` (frozen)
+#   - ``defer_jot`` / ``delete_jot`` → ``JotSummary`` (frozen, with new
+#     `deferred_until` / `deleted` reflected via re-fold)
 
 
-def _to_summary_dict(jot: JotSummary) -> JotSummaryDict:
-    """Serialize a JotSummary to a JSON-safe dict for TypedDicts."""
-    return {
-        "id": jot.id,
-        "short_id": jot.short_id,
-        "text": jot.text,
-        "status": jot.status,
-        "last_modified_ms": jot.last_modified_ms,
-        "dispatch_state": jot.dispatch_state.value if jot.dispatch_state else None,
-        "dispatch_workflow_id": jot.dispatch_workflow_id,
-        "current_attempt": jot.current_attempt,
-        "dispatch_started_at_ms": jot.dispatch_started_at_ms,
-        "deferred_until": jot.deferred_until,
-        "deleted": jot.deleted,
-    }
+# =============================================================================
+# High-level drain result dataclasses (Task 9 — spec §3.3)
+# =============================================================================
 
 
-def _propose_action(jot: JotSummary) -> ActionProposalDict:
-    """Decide the best next action for a drain-eligible jot."""
-    if jot.dispatch_state is DispatchState.FAILED:
-        return ActionProposalDict(
-            handle=jot.short_id,
-            suggested_action="retry",
-            reason="previous dispatch failed",
-        )
-    if jot.deferred_until is not None and jot.deferred_until > _now_ms():
-        return ActionProposalDict(
-            handle=jot.short_id,
-            suggested_action="skip",
-            reason="deferred until later",
-        )
-    return ActionProposalDict(
-        handle=jot.short_id,
-        suggested_action="dispatch",
-        reason="open and ready",
-    )
+@dataclass(frozen=True, slots=True)
+class DrainPlan:
+    """Bulk-action candidate list returned by ``drain_plan``.
+
+    `query` is the search string passed in (None when no query filter).
+    `candidates` is the JotSummary list (already filtered + limited).
+    `error` carries a fold failure as a structured value (None on success)
+    so callers don't have to catch exceptions just to know the log was
+    unreadable.
+    """
+
+    query: str | None
+    candidates: list[JotSummary] = field(default_factory=list)
+    error: str | None = None
+
+
+@dataclass(frozen=True, slots=True)
+class DispatchResult:
+    """Outcome of ``dispatch_jot`` / ``retry_dispatch``.
+
+    `status` is the literal workflow-substrate state — "in_flight" when the
+    runtime has accepted the workflow, "queued" when the substrate accepted
+    but hasn't promoted to in_flight yet.
+    """
+
+    handle: str
+    workflow_id: str
+    attempt: int
+    status: Literal["in_flight", "queued"]
 
 
 def drain_plan(
     query: str | None = None,
     limit: int = 20,
     include_in_flight: bool = False,
-) -> DrainPlanDict:
-    """Build the bulk-action candidate list (spec §3.2, §5.2).
+) -> DrainPlan:
+    """Build candidate list for bulk drain (spec §6.6 / Task 9).
 
     Filters open jots through ``_is_drain_eligible`` then optionally drops
     IN_FLIGHT (since "dispatch" is a no-op on an IN_FLIGHT jot — the CLI
-    flag ``--include-in-flight`` overrides the second filter).
+    flag ``--include-in-flight`` overrides the second filter). Applies a
+    lexical-score threshold (>=0.20) when ``query`` is provided. Newest
+    first, capped to ``limit``.
+
+    Returns a structured ``DrainPlan`` dataclass; fold failures are
+    captured in ``error`` rather than raised so callers can render
+    partial results.
     """
     from mahavishnu.jot.fold import build_states, parse_events
 
-    events = parse_events(log_path())
-    states = build_states(events, enrich=False).states
-    now = _now_ms()
+    try:
+        events = parse_events(log_path())
+        states = build_states(events, enrich=False).states
+    except Exception as exc:
+        log.error("JOT_DRAIN_PLAN_FOLD_FAILED", error=f"{type(exc).__name__}: {exc}")
+        return DrainPlan(query=query, candidates=[], error=str(exc))
 
-    candidates: list[JotSummaryDict] = []
-    proposals: list[ActionProposalDict] = []
-    for jot in states:
-        if not _is_drain_eligible(jot, now):
-            continue
-        if (
-            not include_in_flight
-            and jot.dispatch_state is DispatchState.IN_FLIGHT
-        ):
-            continue
-        if query and query.lower() not in jot.text.lower():
-            continue
-        candidates.append(_to_summary_dict(jot))
-        proposals.append(_propose_action(jot))
-
-    # Newest first, cap to limit
-    pairs = sorted(
-        zip(candidates, proposals, strict=False),
-        key=lambda p: int(p[0]["last_modified_ms"]),  # type: ignore[arg-type]
-        reverse=True,
-    )[:limit]
-    candidates_out = [c for c, _ in pairs]
-    proposals_out = [p for _, p in pairs]
-    return DrainPlanDict(
+    now_ms_ = _now_ms()
+    eligible = [s for s in states if _is_drain_eligible(s, now_ms=now_ms_)]
+    if not include_in_flight:
+        eligible = [
+            c for c in eligible if c.dispatch_state is not DispatchState.IN_FLIGHT
+        ]
+    if query:
+        q_tokens = _tokenize(query)
+        eligible = [
+            c for c in eligible
+            if _lexical_score(_tokenize(c.text), q_tokens) >= 0.20
+        ]
+    # Newest first, then truncate.
+    eligible_sorted = sorted(
+        eligible, key=lambda s: (-s.last_modified_ms, s.id),
+    )
+    return DrainPlan(
         query=query,
-        candidates=candidates_out,
-        action_proposals=proposals_out,
+        candidates=eligible_sorted[:limit],
     )
 
 
-def dispatch_jot(handle: str) -> DispatchResultDict:
-    """Dispatch an open jot to the workflow runtime.
+async def dispatch_jot(
+    handle: str, *, dispatched_from: str = "mcp",
+) -> DispatchResult:
+    """Dispatch a jot to the workflow substrate (spec §6.2 / Task 9).
 
-    Triggers a Prefect ``jot_dispatch`` workflow with the jot text as the
-    prompt, then appends a ``dispatch`` event with the returned
-    ``workflow_id``.
+    Resolves the handle, rejects already-IN_FLIGHT / SUCCEEDED / DONE jots
+    before touching the runtime, then triggers a Prefect ``jot_dispatch``
+    workflow via the MCP wrapper. Re-folds the log to compute the next
+    attempt number, then appends the ``dispatch`` event.
+
+    `dispatched_from` is one of {"cli", "mcp", "slash"} and stamps the
+    ``DispatchCtx.dispatched_from`` field for downstream surface tracking.
     """
-    from mahavishnu.jot.handle import resolve_handle as _resolve
+    from mahavishnu.jot.fold import build_states, parse_events
+    from mahavishnu.jot.handle import resolve_handle
 
-    # Eagerly resolve the handle up-front so bad-args surface as SystemExit
-    # before we touch the workflow runtime.
-    jot = _resolve_handle(handle)
-    if jot.deleted or jot.status == "done":
-        raise JotValidationError(
-            f"cannot dispatch {jot.short_id}: status={jot.status} deleted={jot.deleted}",
-            field="handle",
+    events = parse_events(log_path())
+    states = build_states(events, enrich=False).states
+    jot = resolve_handle(states, handle)
+
+    if jot.dispatch_state is DispatchState.IN_FLIGHT:
+        raise JotDispatchError(
+            f"jot {jot.short_id} is already IN_FLIGHT",
+            error_id="ERROR_JOT_ALREADY_DISPATCHED",
+        )
+    if jot.dispatch_state is DispatchState.SUCCEEDED:
+        raise JotDispatchError(
+            f"jot {jot.short_id} already SUCCEEDED — user must mark done first",
+            error_id="ERROR_JOT_ALREADY_SUCCEEDED",
+        )
+    if jot.status == "done":
+        raise JotDispatchError(
+            f"jot {jot.short_id} is already done",
+            error_id="ERROR_JOT_DONE",
         )
 
-    async def _run() -> DispatchResultDict:
-        from mahavishnu.jot.fold import build_states, parse_events
-
-        try:
-            wf_result = await _mcp_trigger_workflow(
-                adapter="prefect",
-                task_type="jot_dispatch",
-                params={"prompt": jot.text},
-            )
-            wf_id_raw = wf_result.get("workflow_id")
-            workflow_id = str(wf_id_raw) if wf_id_raw is not None else ""
-        except JotDispatchError as exc:
-            await _append_event("dispatch_failed", {
-                "workflow_id": f"failed_to_create:{exc.error_id}",
-                "attempt": jot.current_attempt + 1,
-                "error": f"{type(exc).__name__}: {exc}",
-                "error_id": exc.error_id,
-                "retry_budget_exhausted": True,
-            })
-            raise
-
-        # Re-resolve to compute the next attempt number.
-        events = parse_events(log_path())
-        current = _resolve(
-            build_states(events, enrich=False).states,
-            handle,
-        )
-        attempt = current.current_attempt + 1
-        await _append_event("dispatch", {
-            "workflow_id": workflow_id,
-            "attempt": attempt,
-            "pool_selector": "least_loaded",
-            "triggered_by": "manual",
-            "dispatched_from": "cli",
-        })
-        return DispatchResultDict(
-            handle=jot.short_id,
-            workflow_id=workflow_id,
-            attempt=attempt,
-            status="in_flight",
-            dispatched_from="cli",
-        )
-
+    next_attempt = (jot.current_attempt or 0) + 1
     try:
-        return asyncio.run(_run())
-    except (JotDispatchError, JotValidationError, JotLogUnwritableError) as exc:
-        log.error(
-            "JOT_DISPATCH_FAILED",
-            handle=handle, error=str(exc),
+        result = await _mcp_trigger_workflow(
+            adapter="prefect",
+            task_type="jot_dispatch",
+            params={"prompt": jot.text},
         )
+        wf_id_raw = result.get("workflow_id")
+        workflow_id = str(wf_id_raw) if wf_id_raw is not None else ""
+    except JotDispatchError:
         raise
 
+    await _append_event("dispatch", {
+        "workflow_id": workflow_id,
+        "attempt": next_attempt,
+        "pool_selector": "least_loaded",
+        "dispatched_from": dispatched_from,
+        "triggered_by": (
+            "manual" if jot.dispatch_state is DispatchState.FAILED else "first"
+        ),
+    })
+    return DispatchResult(
+        handle=jot.short_id,
+        workflow_id=workflow_id,
+        attempt=next_attempt,
+        status="in_flight",
+    )
 
-def retry_dispatch(handle: str) -> DispatchResultDict:
-    """Manual retry of a FAILED-dispatched jot (spec §3.2).
+
+async def retry_dispatch(
+    handle: str, *, dispatched_from: str = "mcp",
+) -> DispatchResult:
+    """Manual retry of a FAILED jot (spec §6.2 / Task 9).
 
     Raises JotRetryError when the jot is not in FAILED state.
     """
-    jot = _resolve_handle(handle)
+    from mahavishnu.jot.fold import build_states, parse_events
+    from mahavishnu.jot.handle import resolve_handle
+
+    events = parse_events(log_path())
+    states = build_states(events, enrich=False).states
+    jot = resolve_handle(states, handle)
     if jot.dispatch_state is not DispatchState.FAILED:
+        current_state: Any = (
+            jot.dispatch_state.value if jot.dispatch_state else "none"
+        )
         raise JotRetryError(
-            f"cannot retry {jot.short_id}: dispatch_state={jot.dispatch_state}",
+            f"jot {jot.short_id} is not in FAILED state (current: {current_state})"
         )
-
-    async def _run() -> DispatchResultDict:
-        from mahavishnu.jot.fold import build_states, parse_events
-        from mahavishnu.jot.handle import resolve_handle as _resolve
-
-        try:
-            wf_result = await _mcp_trigger_workflow(
-                adapter="prefect",
-                task_type="jot_dispatch",
-                params={"prompt": jot.text},
-            )
-            wf_id_raw = wf_result.get("workflow_id")
-            workflow_id = str(wf_id_raw) if wf_id_raw is not None else ""
-        except JotDispatchError as exc:
-            await _append_event("dispatch_failed", {
-                "workflow_id": f"failed_to_create:{exc.error_id}",
-                "attempt": jot.current_attempt + 1,
-                "error": f"{type(exc).__name__}: {exc}",
-                "error_id": exc.error_id,
-                "retry_budget_exhausted": True,
-            })
-            raise
-
-        events = parse_events(log_path())
-        current = _resolve(
-            build_states(events, enrich=False).states,
-            handle,
-        )
-        await _append_event("dispatch", {
-            "workflow_id": workflow_id,
-            "attempt": current.current_attempt + 1,
-            "pool_selector": "least_loaded",
-            "triggered_by": "manual",
-            "dispatched_from": "cli",
-        })
-        return DispatchResultDict(
-            handle=jot.short_id,
-            workflow_id=workflow_id,
-            attempt=current.current_attempt + 1,
-            status="in_flight",
-            dispatched_from="cli",
-        )
-
-    try:
-        return asyncio.run(_run())
-    except (JotRetryError, JotDispatchError, JotLogUnwritableError) as exc:
-        log.error(
-            "JOT_RETRY_FAILED",
-            handle=handle, error=str(exc),
-        )
-        raise
+    return await dispatch_jot(handle, dispatched_from=dispatched_from)
 
 
-def defer_jot(
-    handle: str,
-    until_ms: int,
-    reason: str | None = None,
-) -> DeferResultDict:
-    """Defer a jot until ``until_ms`` (epoch ms). Spec §3.2.
+async def defer_jot(
+    handle: str, *, until_ms: int, reason: str | None = None,
+) -> JotSummary:
+    """Defer a jot until a future timestamp (spec §6.2 / Task 9).
 
-    Raises JotDeferError when ``until_ms <= now_ms`` (would immediately expire).
+    Raises JotDeferError when ``until_ms <= now_ms``. Re-folds the log
+    after appending the defer event so the caller receives the updated
+    JotSummary (with the new ``deferred_until`` field).
     """
-    jot = _resolve_handle(handle)
-    now = _now_ms()
-    if until_ms <= now:
+    if until_ms <= _now_ms():
         raise JotDeferError(
-            f"until_ms={until_ms} <= now={now}; defer would immediately expire",
+            f"until_ms must be > now_ms; got {until_ms}",
         )
+    from mahavishnu.jot.fold import build_states, parse_events
+    from mahavishnu.jot.handle import resolve_handle
 
-    async def _run() -> DeferResultDict:
-        ctx: dict[str, object] = {"until": until_ms}
-        if reason is not None:
-            ctx["reason"] = reason
-        await _append_event("defer", ctx)
-        return DeferResultDict(handle=jot.short_id, until_ms=until_ms)
+    events = parse_events(log_path())
+    states = build_states(events, enrich=False).states
+    jot = resolve_handle(states, handle)
 
-    try:
-        return asyncio.run(_run())
-    except (JotDeferError, JotValidationError, JotLogUnwritableError) as exc:
-        log.error(
-            "JOT_DEFER_FAILED",
-            handle=handle, error=str(exc),
-        )
-        raise
+    ctx: dict[str, object] = {"until": until_ms}
+    if reason is not None:
+        ctx["reason"] = reason
+    await _append_event("defer", ctx)
+
+    # Re-fold to surface the new deferred_until.
+    refolded = build_states(parse_events(log_path()), enrich=False).states
+    refolded_by_id = {s.id: s for s in refolded}
+    return refolded_by_id[jot.id]
 
 
-def delete_jot(handle: str, reason: str | None = None) -> DeleteResultDict:
-    """Soft-delete a jot (audit trail preserved via the JSONL log)."""
-    jot = _resolve_handle(handle)
+async def delete_jot(
+    handle: str, *, reason: str | None = None,
+) -> JotSummary:
+    """Soft delete a jot — audit trail preserved in the log.
 
-    async def _run() -> DeleteResultDict:
-        ctx: dict[str, object] = {}
-        if reason is not None:
-            ctx["reason"] = reason
-        await _append_event("delete", ctx)
-        return DeleteResultDict(handle=jot.short_id)
+    Appends the ``delete`` event then re-folds the log so the caller
+    receives the updated JotSummary (with ``deleted=True``).
+    """
+    from mahavishnu.jot.fold import build_states, parse_events
+    from mahavishnu.jot.handle import resolve_handle
 
-    try:
-        return asyncio.run(_run())
-    except (JotValidationError, JotLogUnwritableError) as exc:
-        log.error(
-            "JOT_DELETE_FAILED",
-            handle=handle, error=str(exc),
-        )
-        raise
+    events = parse_events(log_path())
+    states = build_states(events, enrich=False).states
+    jot = resolve_handle(states, handle)
+
+    ctx: dict[str, object] = {}
+    if reason is not None:
+        ctx["reason"] = reason
+    await _append_event("delete", ctx)
+
+    refolded = build_states(parse_events(log_path()), enrich=False).states
+    refolded_by_id = {s.id: s for s in refolded}
+    return refolded_by_id[jot.id]
 
 
 # =============================================================================

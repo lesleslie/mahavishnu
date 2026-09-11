@@ -19,6 +19,7 @@ FastMCP convention).
 
 from __future__ import annotations
 
+import asyncio
 import os
 from pathlib import Path
 import sys
@@ -248,7 +249,7 @@ def jot_dispatch(handle: str) -> DispatchResultDict:
     """
     from mahavishnu.jot import drain as _drain
 
-    res = _drain.dispatch_jot(handle=handle)
+    res = asyncio.run(_drain.dispatch_jot(handle=handle, dispatched_from="mcp"))
     return DispatchResultDict(
         handle=res.handle,
         workflow_id=res.workflow_id,
@@ -265,7 +266,9 @@ def jot_defer(
     from mahavishnu.jot import drain as _drain
 
     return _summary_dict(
-        _drain.defer_jot(handle=handle, until_ms=until_ms, reason=reason),
+        asyncio.run(
+            _drain.defer_jot(handle=handle, until_ms=until_ms, reason=reason)
+        )
     )
 
 
@@ -273,14 +276,16 @@ def jot_delete(handle: str, reason: str | None = None) -> JotSummaryDict:
     """Soft delete (audit log retained)."""
     from mahavishnu.jot import drain as _drain
 
-    return _summary_dict(_drain.delete_jot(handle=handle, reason=reason))
+    return _summary_dict(
+        asyncio.run(_drain.delete_jot(handle=handle, reason=reason))
+    )
 
 
 def jot_retry(handle: str) -> DispatchResultDict:
     """Manual retry of a FAILED-dispatched jot."""
     from mahavishnu.jot import drain as _drain
 
-    res = _drain.retry_dispatch(handle=handle)
+    res = asyncio.run(_drain.retry_dispatch(handle=handle, dispatched_from="mcp"))
     return DispatchResultDict(
         handle=res.handle,
         workflow_id=res.workflow_id,
