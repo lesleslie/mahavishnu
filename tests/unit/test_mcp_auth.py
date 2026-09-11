@@ -30,8 +30,22 @@ def test_get_audit_logger_returns_logger():
 
 @pytest.mark.asyncio
 async def test_require_mcp_auth_passes_with_user_id():
-    """Test that decorator passes with user_id provided."""
-    decorator = require_mcp_auth()
+    """Test that decorator passes with user_id AND a real RBAC manager.
+
+    Task 11.7: the decorator is fail-closed — when ``rbac_manager`` is
+    ``None`` (the default) the gate denies with
+    ``error_code == "AUTH_NOT_CONFIGURED"``. The test wires a permissive
+    fake so the wrapped function runs and returns the greeting.
+    """
+    from mahavishnu.core.permissions import Permission  # noqa: TC001  # annotation-only
+
+    class _AlwaysAllow:
+        async def check_permission(
+            self, user_id: str, repo: str, permission: Permission
+        ) -> bool:
+            return True
+
+    decorator = require_mcp_auth(rbac_manager=_AlwaysAllow())
 
     @decorator
     async def test_function(user_id: str | None = None) -> str:
@@ -43,8 +57,21 @@ async def test_require_mcp_auth_passes_with_user_id():
 
 @pytest.mark.asyncio
 async def test_require_mcp_auth_no_user_id():
-    """Test that decorator denies access without user_id."""
-    decorator = require_mcp_auth()
+    """Test that decorator denies access without user_id.
+
+    Task 11.7: a real RBAC manager is wired so the decorator reaches
+    the ``user_id`` check (AUTH_NOT_CONFIGURED fires first when no
+    manager is supplied; the brief's fail-closed contract).
+    """
+    from mahavishnu.core.permissions import Permission  # noqa: TC001  # annotation-only
+
+    class _AlwaysAllow:
+        async def check_permission(
+            self, user_id: str, repo: str, permission: Permission
+        ) -> bool:
+            return True
+
+    decorator = require_mcp_auth(rbac_manager=_AlwaysAllow())
 
     @decorator
     async def test_function(param1: str) -> dict:
@@ -59,19 +86,27 @@ async def test_require_mcp_auth_no_user_id():
 
 
 @pytest.mark.asyncio
-async def test_require_mcp_auth_auth_only_no_rbac():
-    """Test authentication-only mode (no RBAC)."""
+async def test_require_mcp_auth_no_rbac_manager_fails_closed():
+    """Task 11.7: ``rbac_manager=None`` is a configuration error.
+
+    The decorator denies with ``error_code == "AUTH_NOT_CONFIGURED"``
+    rather than silently allowing the call through. The old
+    "authentication-only mode (no RBAC)" behavior was a security defect
+    (any caller passing a non-empty ``user_id`` reached the wrapped
+    function); it is intentionally removed.
+    """
     decorator = require_mcp_auth(rbac_manager=None)
 
     @decorator
     async def test_function(param1: str, user_id: str | None = None) -> dict:
         return {"status": "success", "result": param1}
 
-    # Call with user_id (no permission check)
+    # Call with user_id — gate still denies because rbac_manager is None.
     result = await test_function(param1="test", user_id="test_user")
 
-    assert result["status"] == "success"
-    assert result["result"] == "test"
+    assert result["status"] == "error"
+    assert result["error_code"] == "AUTH_NOT_CONFIGURED"
+    assert "RBAC manager" in result["error"]
 
 
 # =============================================================================

@@ -52,12 +52,24 @@ def plan_tools_default_store_provider() -> PlanIndexStore:
     return PlanIndexStore(FakeDhara())
 
 
-def register_plan_tools(mcp: FastMCP, *, store_provider: StoreProvider) -> None:
+def register_plan_tools(
+    mcp: FastMCP,
+    *,
+    store_provider: StoreProvider,
+    rbac_manager: Any | None = None,
+) -> None:
     """Register the five ``plan_*`` tools with the FastMCP server.
 
     ``store_provider`` is keyword-only and required: ``MahavishnuApp`` injects
     the real Dhara-backed store at startup. Tests pass
     :func:`plan_tools_default_store_provider`.
+
+    ``rbac_manager`` is keyword-only and defaults to ``None``. Production
+    wiring at :func:`mahavishnu.mcp.bootstrap._register_plan_tools` injects
+    the real :class:`~mahavishnu.core.permissions.RBACManager` so the
+    :func:`~mahavishnu.mcp.auth.require_mcp_auth` gate is enforced.
+    Tests may omit it; the decorator will deny with
+    ``error_code == "AUTH_NOT_CONFIGURED"`` rather than silently allow.
 
     Structural note: FastMCP's ``@mcp.tool()`` decorator introspects each
     function's name and signature to build the MCP tool schema, so the tool
@@ -68,7 +80,9 @@ def register_plan_tools(mcp: FastMCP, *, store_provider: StoreProvider) -> None:
     provider = store_provider
 
     @mcp.tool(name="plan_list")
-    @require_mcp_auth(required_permission=Permission.READ_PLAN_INDEX)
+    @require_mcp_auth(
+        rbac_manager=rbac_manager, required_permission=Permission.READ_PLAN_INDEX
+    )
     async def plan_list(
         status: str | None = None,
         topic: str | None = None,
@@ -98,7 +112,9 @@ def register_plan_tools(mcp: FastMCP, *, store_provider: StoreProvider) -> None:
         }
 
     @mcp.tool(name="plan_show")
-    @require_mcp_auth(required_permission=Permission.READ_PLAN_INDEX)
+    @require_mcp_auth(
+        rbac_manager=rbac_manager, required_permission=Permission.READ_PLAN_INDEX
+    )
     async def plan_show(plan_id: str, user_id: str | None = None) -> dict[str, Any]:
         """Show one plan by ``plan_id``. Raises ``PlanNotFoundError`` if absent."""
         store = provider()
@@ -108,7 +124,9 @@ def register_plan_tools(mcp: FastMCP, *, store_provider: StoreProvider) -> None:
         return cast("dict[str, Any]", record)
 
     @mcp.tool(name="plan_search")
-    @require_mcp_auth(required_permission=Permission.READ_PLAN_INDEX)
+    @require_mcp_auth(
+        rbac_manager=rbac_manager, required_permission=Permission.READ_PLAN_INDEX
+    )
     async def plan_search(
         query: str,
         limit: int = 20,
@@ -121,14 +139,18 @@ def register_plan_tools(mcp: FastMCP, *, store_provider: StoreProvider) -> None:
         return cast("list[dict[str, Any]]", await store.search(query, limit=limit))
 
     @mcp.tool(name="plan_vitals")
-    @require_mcp_auth(required_permission=Permission.READ_PLAN_INDEX)
+    @require_mcp_auth(
+        rbac_manager=rbac_manager, required_permission=Permission.READ_PLAN_INDEX
+    )
     async def plan_vitals(user_id: str | None = None) -> dict[str, Any]:
         """Aggregate counters, per-status/role/topic breakdowns, and tripwire state."""
         store = provider()
         return cast("dict[str, Any]", await store.vitals())
 
     @mcp.tool(name="plan_rebuild_status")
-    @require_mcp_auth(required_permission=Permission.READ_PLAN_INDEX)
+    @require_mcp_auth(
+        rbac_manager=rbac_manager, required_permission=Permission.READ_PLAN_INDEX
+    )
     async def plan_rebuild_status(user_id: str | None = None) -> dict[str, Any]:
         """Rebuild cycle counters, staleness flag, and (redacted) lock holder."""
         store = provider()

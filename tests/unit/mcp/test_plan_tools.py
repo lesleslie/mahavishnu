@@ -18,6 +18,9 @@ from typing import Any
 
 import pytest
 
+from mahavishnu.core.permissions import (
+    Permission,  # noqa: TC001  # annotation-only with __future__ annotations
+)
 from mahavishnu.mcp.tools.plan_tools import (
     plan_tools_default_store_provider,
     register_plan_tools,
@@ -34,6 +37,25 @@ TOOL_NAMES = (
     "plan_vitals",
     "plan_rebuild_status",
 )
+
+
+class _FakeRBAC:
+    """Permissive fake RBAC manager for the per-tool tests.
+
+    ``alice`` (the user_id every per-tool test passes) is granted
+    ``READ_PLAN_INDEX`` on every repo. Other users are denied by
+    default, so the missing-user_id test still observes AUTH_REQUIRED
+    rather than silently passing through.
+    """
+
+    def __init__(self) -> None:
+        self.calls: list[tuple[str, str, Permission]] = []
+
+    async def check_permission(
+        self, user_id: str, repo: str, permission: Permission
+    ) -> bool:
+        self.calls.append((user_id, repo, permission))
+        return user_id == "alice"
 
 
 class FakeMCP:
@@ -76,13 +98,19 @@ def store() -> PlanIndexStore:
 
 @pytest.fixture
 def tools(store: PlanIndexStore) -> dict[str, Any]:
-    """Register the five tools against a shared store and return them by name."""
+    """Register the five tools against a shared store and return them by name.
+
+    A permissive fake RBAC manager is wired (Task 11.7) so the auth
+    gate fires ``check_permission``. Tests that exercise the
+    missing-user_id path still observe AUTH_REQUIRED because the
+    manager is in place.
+    """
     mcp = FakeMCP()
 
     def provider() -> PlanIndexStore:
         return store
 
-    register_plan_tools(mcp, store_provider=provider)
+    register_plan_tools(mcp, store_provider=provider, rbac_manager=_FakeRBAC())
     return mcp.tools
 
 

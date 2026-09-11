@@ -40,13 +40,49 @@ def require_mcp_auth(
     required_permission: Any | None = None,
     require_repo_param: str | None = None,
 ) -> Callable[..., Any]:
+    """Decorator that gates an MCP tool on RBAC-managed permission.
+
+    Behavior (Task 11.7 — fail-closed):
+
+    * When ``rbac_manager`` is ``None``, the decorator denies with
+      ``error_code == "AUTH_NOT_CONFIGURED"``. This is a configuration
+      error, not "open by default" — production wiring MUST inject a real
+      :class:`~mahavishnu.core.permissions.RBACManager`.
+    * When ``user_id`` is missing from kwargs, the decorator denies with
+      ``error_code == "AUTH_REQUIRED"``.
+    * When ``rbac_manager.check_permission(user_id, repo, perm)`` returns
+      ``False``, the decorator denies with
+      ``error_code == "PERMISSION_DENIED"``.
+    * Otherwise the wrapped function runs and an ``allowed`` audit event
+      is emitted.
+
+    ``user_id`` is read from kwargs (caller-controlled). Production
+    callers should override this by injecting ``user_id`` from FastMCP
+    session context. The RBAC check still runs and is the binding
+    authority — a spoofed ``user_id`` without the required permission
+    will be denied.
+
+    The ``repo`` argument to ``check_permission`` is taken from the
+    wrapped tool's ``repo`` kwarg when present, otherwise ``"*"``.
+    """
     def decorator(func: Callable[..., Any]) -> Callable[..., Any]:
         @wraps(func)
         async def wrapper(*args: Any, **kwargs: Any) -> Any:
-            user_id = kwargs.get("user_id")
             perm = (
                 cast("Permission", required_permission) if required_permission else Permission.READ
             )
+
+            # Fail-closed: missing rbac_manager is a configuration error,
+            # not "allow". Treat it like a deny with a distinct error code
+            # so operators can surface it in observability.
+            if rbac_manager is None:
+                return {
+                    "status": "error",
+                    "error": "RBAC manager not configured",
+                    "error_code": "AUTH_NOT_CONFIGURED",
+                }
+
+            user_id = kwargs.get("user_id")
             if not user_id:
                 _audit_logger.emit(
                     AuthAuditEvent(
@@ -67,6 +103,31 @@ def require_mcp_auth(
                     "error": "Authentication required: user_id parameter missing",
                     "error_code": "AUTH_REQUIRED",
                 }
+
+            repo = kwargs.get("repo", "*") or "*"
+
+            allowed = await rbac_manager.check_permission(user_id, repo, perm)
+            if not allowed:
+                _audit_logger.emit(
+                    AuthAuditEvent(
+                        timestamp=datetime.now(UTC),
+                        service="mahavishnu",
+                        caller_service="unknown",
+                        caller_id=user_id,
+                        action=cast("Any", func).__name__,
+                        permission=perm,
+                        result="denied",
+                        reason=f"RBAC denied for repo={repo}",
+                        source_ip=None,
+                        token_id=None,
+                    )
+                )
+                return {
+                    "status": "error",
+                    "error": f"Permission denied: {perm.value}",
+                    "error_code": "PERMISSION_DENIED",
+                }
+
             _audit_logger.emit(
                 AuthAuditEvent(
                     timestamp=datetime.now(UTC),

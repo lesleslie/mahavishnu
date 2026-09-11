@@ -40,9 +40,34 @@ from fastmcp import FastMCP
 from fastmcp.exceptions import ToolError
 import pytest
 
+from mahavishnu.core.permissions import Permission
 from mahavishnu.mcp.tools.plan_tools import register_plan_tools
 from mahavishnu.plan_index.store import PlanIndexStore
 from mahavishnu.plan_index.testing import FakeDhara
+
+
+class _FakeRBAC:
+    """Permissive fake RBAC manager used by the plan_index e2e suite.
+
+    Default-deny with a wildcard grant for callers the suite treats
+    as trusted (the ``test-user`` default and a few named accounts
+    used by negative tests). Tests that want to exercise the
+    PERMISSION_DENIED path pass a user_id NOT in the grant map.
+    """
+
+    def __init__(self) -> None:
+        # (user_id, repo, permission) -> allowed
+        self.grants: dict[tuple[str, str, str], bool] = {
+            ("test-user", "*", Permission.READ_PLAN_INDEX.value): True,
+            ("alice", "*", Permission.READ_PLAN_INDEX.value): True,
+        }
+        self.calls: list[tuple[str, str, Permission]] = []
+
+    async def check_permission(
+        self, user_id: str, repo: str, permission: Permission
+    ) -> bool:
+        self.calls.append((user_id, repo, permission))
+        return bool(self.grants.get((user_id, repo, permission.value)))
 
 
 @pytest.fixture
@@ -58,19 +83,28 @@ def store() -> PlanIndexStore:
 
 
 @pytest.fixture
-def mcp(store: PlanIndexStore) -> FastMCP:
+def rbac() -> _FakeRBAC:
+    """A fresh permissive fake RBAC manager for each test."""
+    return _FakeRBAC()
+
+
+@pytest.fixture
+def mcp(store: PlanIndexStore, rbac: _FakeRBAC) -> FastMCP:
     """A real FastMCP server with the five ``plan_*`` tools registered.
 
     ``register_plan_tools`` requires a keyword-only ``store_provider`` —
     we pass the per-test ``store`` fixture so any tools written by one
-    test are visible to that same test only.
+    test are visible to that same test only. A :class:`_FakeRBAC`
+    manager is wired by default so the auth gate fires
+    ``check_permission`` (Task 11.7). Tests that want to exercise the
+    missing-rbac-manager path build their own server inline.
     """
     server = FastMCP("plan_index-test")
 
     def provider() -> PlanIndexStore:
         return store
 
-    register_plan_tools(server, store_provider=provider)
+    register_plan_tools(server, store_provider=provider, rbac_manager=rbac)
     return server
 
 

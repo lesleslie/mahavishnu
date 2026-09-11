@@ -209,9 +209,7 @@ def _register_skills_signer_tools(server: FastMCPServer) -> None:
     from ..mcp.tools.skill_tools import register_skill_tools
 
     register_skill_tools(server.server)
-    logger.info(
-        "Registered skill_tools (mahavishnu_list_skills + mahavishnu_get_skill)"
-    )
+    logger.info("Registered skill_tools (mahavishnu_list_skills + mahavishnu_get_skill)")
 
 
 def _register_agents_tools(server: FastMCPServer) -> None:
@@ -237,9 +235,7 @@ def _register_agents_tools(server: FastMCPServer) -> None:
     from ..mcp.tools.agents_tools import register_agents_tools
 
     register_agents_tools(server.server)
-    logger.info(
-        "Registered agents_tools (mahavishnu_list_agents + mahavishnu_get_agent)"
-    )
+    logger.info("Registered agents_tools (mahavishnu_list_agents + mahavishnu_get_agent)")
 
 
 def _register_dispatch_specialist_tools(server: FastMCPServer) -> None:
@@ -1104,6 +1100,16 @@ def _register_plan_tools(server: FastMCPServer) -> None:
     real Dhara client on MahavishnuApp. Tests inject a FakeDhara-
     backed provider at this same call site (see tests/integration/
     mcp/test_plan_tools_e2e.py).
+
+    The :class:`~mahavishnu.core.permissions.RBACManager` is read from
+    ``server.app.rbac_manager`` (the same attribute the rest of the
+    MCP server uses; see :class:`~mahavishnu.core.app.MahavishnuApp`).
+    It is forwarded to :func:`register_plan_tools` so each tool's
+    :func:`~mahavishnu.mcp.auth.require_mcp_auth` gate can call
+    ``check_permission(user_id, repo, Permission.READ_PLAN_INDEX)``.
+    When the manager is missing (defensive; should not happen in
+    production), the gate fails closed with
+    ``error_code == "AUTH_NOT_CONFIGURED"``.
     """
     from ..mcp.tools.plan_tools import register_plan_tools
     from ..plan_index.store import PlanIndexStore
@@ -1112,7 +1118,10 @@ def _register_plan_tools(server: FastMCPServer) -> None:
         # Production wiring: real Dhara-backed store.
         return PlanIndexStore(_resolve_dhara_client(server))
 
-    register_plan_tools(server.server, store_provider=_store_provider)
+    rbac_manager = getattr(server.app, "rbac_manager", None)
+    register_plan_tools(
+        server.server, store_provider=_store_provider, rbac_manager=rbac_manager
+    )
 
 
 def _resolve_dhara_client(server: FastMCPServer) -> object:
