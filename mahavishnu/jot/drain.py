@@ -102,6 +102,59 @@ def _now_ms() -> int:
     return int(time.time() * 1000)
 
 
+# =============================================================================
+# Filter helpers + retry budget (spec §5.2, §6.3.1)
+# =============================================================================
+
+
+def _is_surface_eligible(jot: JotSummary, now_ms: int) -> bool:
+    """Used by ambient surfacing. See spec §5.2.
+
+    Surfaced candidates: open + not-deleted + not-deferred-or-expired
+    + (not-dispatched OR failed-dispatch).
+
+    IN_FLIGHT is excluded because the user already sees these in /jot vitals.
+    FAILED is included because it requires user action (manual retry).
+    """
+    return (
+        jot.status == "open"
+        and not jot.deleted
+        and (jot.deferred_until is None or jot.deferred_until <= now_ms)
+        and (jot.dispatch_state is None or jot.dispatch_state == DispatchState.FAILED)
+    )
+
+
+def _is_drain_eligible(jot: JotSummary, now_ms: int) -> bool:
+    """Used by drain_plan to build the bulk-action candidates list.
+
+    Differs from _is_surface_eligible by INCLUDING IN_FLIGHT and SUCCEEDED
+    jots. drain_plan applies a SECOND filter to drop IN_FLIGHT (since the
+    action "dispatch" is a no-op on an IN_FLIGHT jot). The CLI flag
+    --include-in-flight overrides the second filter.
+    """
+    return (
+        jot.status == "open"
+        and not jot.deleted
+        and (jot.deferred_until is None or jot.deferred_until <= now_ms)
+    )
+
+
+MAX_AUTO_ATTEMPTS: int = 2    # total (1 initial + 1 auto-retry)
+
+
+def _should_exhaust_retry_budget(jot: JotSummary) -> bool:
+    """Return True iff this dispatch failure should NOT auto-retry.
+
+    Policy: a failed dispatch on the LAST configured attempt exhausts the
+    budget. With MAX_AUTO_ATTEMPTS=2, attempt 2 failure → exhausted (True);
+    attempt 1 failure → budget remaining (False, auto-retry fires).
+
+    Edge case: malformed ctx where current_attempt is 0 is treated as
+    attempt=1 (fail-safe — retry-once is safer than terminal FAILED).
+    """
+    return max(jot.current_attempt, 1) >= MAX_AUTO_ATTEMPTS
+
+
 def _validate_ctx(op: str, ctx: dict[str, object]) -> None:
     """Hard-fail validation against per-op TypedDict + required keys.
 
