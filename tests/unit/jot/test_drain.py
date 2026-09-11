@@ -47,7 +47,7 @@ async def test_append_event_dispatch_autofills_started_at_ms(isolated_log: Path)
     await _append_event("dispatch", {
         "workflow_id": "wf-1", "attempt": 1,
         "pool_selector": "least_loaded", "dispatched_from": "mcp",
-    })
+    }, jot_id="e1")
     lines = isolated_log.read_text().strip().split("\n")
     assert len(lines) == 1
     parsed = json.loads(lines[0])
@@ -61,7 +61,7 @@ async def test_append_event_does_not_overwrite_caller_started_at(isolated_log: P
         "workflow_id": "wf-1", "attempt": 1,
         "pool_selector": "least_loaded", "dispatched_from": "mcp",
         "started_at_ms": 1234567890,
-    })
+    }, jot_id="e1")
     parsed = json.loads(isolated_log.read_text().strip())
     assert parsed["ctx"]["started_at_ms"] == 1234567890
 
@@ -71,7 +71,7 @@ async def test_append_event_validates_typeddict_rejects_missing_required(isolate
     with pytest.raises(JotValidationError):
         await _append_event("dispatch", {
             "attempt": 1, "pool_selector": "least_loaded", "dispatched_from": "mcp",
-        })
+        }, jot_id="e1")
     assert isolated_log.exists() is False or isolated_log.read_text() == ""
 
 
@@ -81,7 +81,7 @@ async def test_append_event_validates_typeddict_rejects_wrong_type(isolated_log:
         await _append_event("dispatch", {
             "workflow_id": "wf-1", "attempt": "1",  # str instead of int
             "pool_selector": "least_loaded", "dispatched_from": "mcp",
-        })
+        }, jot_id="e1")
     assert isolated_log.exists() is False or isolated_log.read_text() == ""
 
 
@@ -94,7 +94,7 @@ async def test_append_event_validates_retry_budget_exhausted_must_be_bool(
             "workflow_id": "wf-1", "attempt": 1,
             "error": "x", "error_id": "E",
             "retry_budget_exhausted": "true",  # string, not bool
-        })
+        }, jot_id="e1")
 
 
 @pytest.mark.asyncio
@@ -111,7 +111,7 @@ async def test_append_event_accepts_all_op_types(isolated_log: Path) -> None:
         ("delete", {"reason": "user cleanup"}),
     ]
     for op, ctx in valid:
-        await _append_event(op, ctx)
+        await _append_event(op, ctx, jot_id="e1")
     assert len(isolated_log.read_text().strip().split("\n")) == 5
 
 
@@ -124,7 +124,7 @@ async def test_append_event_raises_log_unwritable_on_read_only(
         lambda: Path("/nonexistent/readonly/log.jsonl"),
     )
     with pytest.raises(JotLogUnwritableError) as excinfo:
-        await _append_event("defer", {"until": 9999999999999})
+        await _append_event("defer", {"until": 9999999999999}, jot_id="e1")
     assert excinfo.value.path  # carries path
 
 
@@ -135,7 +135,7 @@ async def test_append_event_validates_literal_triggered_by(isolated_log: Path) -
             "workflow_id": "wf-1", "attempt": 1,
             "pool_selector": "least_loaded", "dispatched_from": "mcp",
             "triggered_by": "scheduler",  # not in {first, auto, manual}
-        })
+        }, jot_id="e1")
 
 
 @pytest.mark.asyncio
@@ -144,7 +144,7 @@ async def test_append_event_validates_literal_dispatched_from(isolated_log: Path
         await _append_event("dispatch", {
             "workflow_id": "wf-1", "attempt": 1,
             "pool_selector": "least_loaded", "dispatched_from": "bogus",
-        })
+        }, jot_id="e1")
 
 
 # =============================================================================

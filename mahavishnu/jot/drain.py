@@ -260,13 +260,20 @@ class DispatchResultDict(TypedDict):
 # =============================================================================
 
 
-async def _append_event(op: str, ctx: dict[str, object]) -> None:
+async def _append_event(
+    op: str, ctx: dict[str, object], *, jot_id: str,
+) -> None:
     """Validate ctx, auto-fill started_at_ms on dispatch, append to log.
 
     Single write path for all drain events. Validation happens BEFORE
     the lock is acquired, so malformed ctx cannot tie up the lock.
     Raises JotValidationError for malformed ctx (NOT written); raises
     JotLogUnwritableError on disk failure (also NOT written).
+
+    `jot_id` is required (kw-only): every drain event must carry the
+    parent jot's id so the fold groups it under the originating jot's
+    bucket, updating `dispatch_state` / `deleted` / `deferred_until`
+    rather than spawning a phantom empty-id jot.
 
     On `op == "dispatch"`, if the caller did not pass `started_at_ms`,
     the wrapper stamps the current wall-clock so Tier-2 reconcilers can
@@ -283,7 +290,7 @@ async def _append_event(op: str, ctx: dict[str, object]) -> None:
     last_hlc = read_tail_hlc(log_path())
     hlc = hlc_now(node, last_hlc)
     event = JotEvent(
-        id="",  # filled by serialize from HLC + node
+        id=jot_id,
         op=op,  # type: ignore[arg-type]
         text="",  # drain events have no user-text payload
         ctx=ctx,
@@ -417,7 +424,7 @@ async def _auto_retry_after(handle: str, backoff_s: int) -> None:
                 "error": f"{type(exc).__name__}: {exc}",
                 "error_id": exc.error_id,
                 "retry_budget_exhausted": True,
-            })
+            }, jot_id=current.id)
         except (JotLogUnwritableError, JotValidationError) as log_exc:
             log.error(
                 "JOT_AUTO_RETRY_LOG_FAILED",
@@ -430,8 +437,9 @@ async def _auto_retry_after(handle: str, backoff_s: int) -> None:
             "workflow_id": workflow_id,
             "attempt": current.current_attempt + 1,
             "pool_selector": "least_loaded",
+            "dispatched_from": "mcp",
             "triggered_by": "auto",
-        })
+        }, jot_id=current.id)
     except (JotLogUnwritableError, JotValidationError) as exc:
         log.error(
             "JOT_AUTO_RETRY_EVENT_APPEND_FAILED",
@@ -460,7 +468,7 @@ async def _reconcile_if_in_flight(jot: JotSummary) -> None:
         return
     workflow_id = jot.dispatch_workflow_id
     if workflow_id is None:
-        log.warning("JOT_DISPATCH_NO_WORKFLOW_ID", handle=jot.handle)
+        log.warning("JOT_DISPATCH_NO_WORKFLOW_ID", handle=jot.short_id)
         return
 
     # Tier-2 timeout gate
@@ -475,22 +483,22 @@ async def _reconcile_if_in_flight(jot: JotSummary) -> None:
                 "error": "workflow_timeout:tier2",
                 "error_id": "ERROR_JOT_WORKFLOW_TIMEOUT",
                 "retry_budget_exhausted": budget_exhausted,
-            })
+            }, jot_id=jot.id)
             log.error(
                 "JOT_WORKFLOW_TIMEOUT",
-                handle=jot.handle, workflow_id=workflow_id,
+                handle=jot.short_id, workflow_id=workflow_id,
                 elapsed_ms=now_ms_ - started_at,
                 attempt=jot.current_attempt,
                 error_id="ERROR_JOT_WORKFLOW_TIMEOUT",
             )
             if not budget_exhausted:
-                asyncio.create_task(
-                    _auto_retry_after(jot.handle, backoff_s=RETRY_BACKOFF_SECONDS)
+                await _auto_retry_after(
+                    jot.short_id, backoff_s=RETRY_BACKOFF_SECONDS,
                 )
         except (JotLogUnwritableError, JotValidationError) as exc:
             log.error(
                 "JOT_RECONCILE_TIMEOUT_WRITE_FAILED",
-                handle=jot.handle, error=str(exc),
+                handle=jot.short_id, error=str(exc),
             )
         return
 
@@ -503,13 +511,13 @@ async def _reconcile_if_in_flight(jot: JotSummary) -> None:
     except asyncio.TimeoutError:
         log.warning(
             "JOT_RECONCILE_STATUS_TIMEOUT",
-            handle=jot.handle, workflow_id=workflow_id,
+            handle=jot.short_id, workflow_id=workflow_id,
         )
         return
     except Exception as exc:
         log.error(
             "JOT_RECONCILE_STATUS_FAILED",
-            handle=jot.handle, workflow_id=workflow_id,
+            handle=jot.short_id, workflow_id=workflow_id,
             error_id="ERROR_JOT_RECONCILE_STATUS",
             error=f"{type(exc).__name__}: {exc}",
         )
@@ -531,7 +539,7 @@ async def _reconcile_if_in_flight(jot: JotSummary) -> None:
                     {"commit_sha": status_dict["commit_sha"]}
                     if status_dict.get("commit_sha") else {}
                 ),
-            })
+            }, jot_id=jot.id)
         else:
             budget_exhausted = _should_exhaust_retry_budget(jot)
             await _append_event("dispatch_failed", {
@@ -540,15 +548,15 @@ async def _reconcile_if_in_flight(jot: JotSummary) -> None:
                 "error": f"workflow_status:{status_str}",
                 "error_id": "ERROR_JOT_WORKFLOW_FAILED",
                 "retry_budget_exhausted": budget_exhausted,
-            })
+            }, jot_id=jot.id)
             if not budget_exhausted:
-                asyncio.create_task(
-                    _auto_retry_after(jot.handle, backoff_s=RETRY_BACKOFF_SECONDS)
+                await _auto_retry_after(
+                    jot.short_id, backoff_s=RETRY_BACKOFF_SECONDS,
                 )
     except (JotLogUnwritableError, JotValidationError) as exc:
         log.error(
             "JOT_RECONCILE_WRITE_FAILED",
-            handle=jot.handle, error=str(exc),
+            handle=jot.short_id, error=str(exc),
         )
 
 
@@ -579,7 +587,7 @@ async def _background_reconciler_loop() -> None:
             except Exception as exc:
                 log.error(
                     "JOT_RECONCLE_PER_JOT_FAILED",
-                    handle=jot.handle,
+                    handle=jot.short_id,
                     error=f"{type(exc).__name__}: {exc}",
                 )
 
@@ -613,6 +621,11 @@ class DrainPlan:
 
     `query` is the search string passed in (None when no query filter).
     `candidates` is the JotSummary list (already filtered + limited).
+    `action_proposals` mirrors `candidates` with a heuristic suggested
+    action per jot (spec §3.3) — derived from each candidate's
+    `dispatch_state`. The mapping is intentionally narrow (no semantic
+    ranking); callers may override or re-pick before invoking
+    `execute_action`.
     `error` carries a fold failure as a structured value (None on success)
     so callers don't have to catch exceptions just to know the log was
     unreadable.
@@ -620,6 +633,7 @@ class DrainPlan:
 
     query: str | None
     candidates: list[JotSummary] = field(default_factory=list)
+    action_proposals: list[ActionProposalDict] = field(default_factory=list)
     error: str | None = None
 
 
@@ -680,9 +694,44 @@ def drain_plan(
     eligible_sorted = sorted(
         eligible, key=lambda s: (-s.last_modified_ms, s.id),
     )
+    truncated = eligible_sorted[:limit]
     return DrainPlan(
         query=query,
-        candidates=eligible_sorted[:limit],
+        candidates=truncated,
+        action_proposals=[_propose_action(s) for s in truncated],
+    )
+
+
+def _propose_action(jot: JotSummary) -> ActionProposalDict:
+    """Heuristic suggested action for a drain candidate (spec §3.3).
+
+    Mapping (locked policy — see task-19-brief):
+
+      - IN_FLIGHT  → "skip"  (already running; dispatch is a no-op)
+      - FAILED     → "dispatch" (retry via dispatch_jot — budget exhausted)
+      - SUCCEEDED  → "done" (workflow done; user should mark the jot done)
+      - None       → "dispatch" (never dispatched; first attempt)
+
+    `reason` is a short human-readable string the CLI/MCP can render.
+    `handle` is the 6-hex short_id so callers can resolve without an
+    additional id field on the proposal.
+    """
+    if jot.dispatch_state is DispatchState.IN_FLIGHT:
+        action: Literal["dispatch", "defer", "done", "delete", "skip"] = "skip"
+        reason = "already in flight"
+    elif jot.dispatch_state is DispatchState.FAILED:
+        action = "dispatch"
+        reason = "retry failed dispatch"
+    elif jot.dispatch_state is DispatchState.SUCCEEDED:
+        action = "done"
+        reason = "workflow succeeded; mark done"
+    else:
+        action = "dispatch"
+        reason = "never dispatched"
+    return ActionProposalDict(
+        handle=jot.short_id,
+        suggested_action=action,
+        reason=reason,
     )
 
 
@@ -742,7 +791,7 @@ async def dispatch_jot(
         "triggered_by": (
             "manual" if jot.dispatch_state is DispatchState.FAILED else "first"
         ),
-    })
+    }, jot_id=jot.id)
     return DispatchResult(
         handle=jot.short_id,
         workflow_id=workflow_id,
@@ -797,7 +846,7 @@ async def defer_jot(
     ctx: dict[str, object] = {"until": until_ms}
     if reason is not None:
         ctx["reason"] = reason
-    await _append_event("defer", ctx)
+    await _append_event("defer", ctx, jot_id=jot.id)
 
     # Re-fold to surface the new deferred_until.
     refolded = build_states(parse_events(log_path()), enrich=False).states
@@ -823,7 +872,7 @@ async def delete_jot(
     ctx: dict[str, object] = {}
     if reason is not None:
         ctx["reason"] = reason
-    await _append_event("delete", ctx)
+    await _append_event("delete", ctx, jot_id=jot.id)
 
     refolded = build_states(parse_events(log_path()), enrich=False).states
     refolded_by_id = {s.id: s for s in refolded}

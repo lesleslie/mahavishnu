@@ -235,10 +235,11 @@ def jot_drain(
     plan = _drain.drain_plan(
         query=query, limit=limit, include_in_flight=include_in_flight,
     )
+    proposals = list(plan.action_proposals) if hasattr(plan, "action_proposals") else []
     return DrainPlanDict(
         query=plan.query,
         candidates=[_summary_dict(s) for s in plan.candidates],
-        action_proposals=[],
+        action_proposals=proposals,
     )
 
 

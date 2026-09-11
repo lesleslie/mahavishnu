@@ -6,6 +6,10 @@
           {
             "command": "/Users/les/Projects/mahavishnu/.venv/bin/python3 .claude/hooks/bodai-activity-post-tool-use.py",
             "type": "command"
+          },
+          {
+            "command": "/Users/les/Projects/mahavishnu/.venv/bin/python3 .claude/hooks/jot-post-tool-use.py",
+            "type": "command"
           }
         ],
         "matcher": "mcp__*"
@@ -36,9 +40,23 @@
           {
             "command": "/Users/les/Projects/mahavishnu/.venv/bin/python3 .claude/hooks/worktree-session-isolation.py session-start",
             "type": "command"
+          },
+          {
+            "command": "/Users/les/Projects/mahavishnu/.venv/bin/python3 .claude/hooks/jot-session-start.py",
+            "type": "command"
           }
         ],
         "matcher": "startup"
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "command": "/Users/les/Projects/mahavishnu/.venv/bin/python3 .claude/hooks/jot-capture.py",
+            "type": "command"
+          }
+        ]
       }
     ]
   },

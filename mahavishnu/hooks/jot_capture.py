@@ -21,6 +21,7 @@ Fixes applied (per pre-implementation review):
 - H3: per-step op tags via separate try/except blocks in _do_capture.
 - H5: _write_log_line loops os.write() to handle short writes.
 """
+
 from __future__ import annotations
 
 import json
@@ -73,7 +74,9 @@ def _is_capture(prompt: str) -> tuple[bool, str]:
 # ---------------------------------------------------------------------------
 
 
-def _build_capture_ctx(stdin_payload: dict[str, Any], env: dict[str, str], cwd: str) -> dict[str, Any]:
+def _build_capture_ctx(
+    stdin_payload: dict[str, Any], env: dict[str, str], cwd: str
+) -> dict[str, Any]:
     """Assemble the capture-time ambient context."""
     return {
         "cwd": cwd,
@@ -123,7 +126,7 @@ def _rotate_errors_log(errors_log: Path) -> None:
     """
     try:
         size = errors_log.stat().st_size
-    except (FileNotFoundError, OSError):
+    except FileNotFoundError, OSError:
         return
     if size <= MAX_ERRORS_LOG_SIZE:
         return
@@ -250,6 +253,7 @@ def _do_capture(body: str, stdin_payload: dict[str, Any]) -> int:
         # Log the failure and continue with a fresh in-memory ID.
         _log_error("node_init", exc, prompt_prefix, pre_resolved_dir)
         from mahavishnu.jot.hlc import _generate_node_id
+
         node = _generate_node_id()
     except Exception as exc:  # noqa: BLE001 - fail-open: NodePersistError is the only expected exception; any other is a bug we swallow
         _log_error("node_init", exc, prompt_prefix, pre_resolved_dir)
@@ -298,6 +302,43 @@ def _do_capture(body: str, stdin_payload: dict[str, Any]) -> int:
 
     # Step 7: Shape gate determines exit code (B8)
     return 0 if is_long else 2
+
+
+# ---------------------------------------------------------------------------
+# Public programmatic entry point (used by .claude/hooks/jot-capture.py)
+# ---------------------------------------------------------------------------
+
+
+def capture_hook(
+    text: str, *, session_id: str = "", files: list[str] | None = None,
+) -> int:
+    """Capture a prompt as a jot without going through stdin.
+
+    Thin programmatic entry point for callers (notably the
+    ``.claude/hooks/jot-capture.py`` wrapper) that already have the prompt
+    text in hand. Builds the same stdin payload shape the hook expects and
+    delegates to :func:`_do_capture` (or mirrors :func:`_do_hook` for the
+    passthrough path). Bypasses stdin manipulation because
+    ``contextlib.redirect_stdin`` was removed in Python 3.14 and we don't
+    want the wrapper to shell out via subprocess.
+
+    Returns the same exit code as the hook (``0`` for passthrough,
+    ``2`` for capture-and-block). All failures are absorbed by the hook's
+    fail-open policy — callers should treat non-zero exit codes as "do
+    not block Claude".
+    """
+    payload: dict[str, Any] = {
+        "prompt": text,
+        "session_id": session_id,
+        "files": list(files) if files else [],
+    }
+    is_cap, body = _is_capture(text)
+    if not is_cap:
+        # Passthrough mirrors _do_hook: write the original payload back to
+        # stdout so Claude Code can reparse it as if the hook had not run.
+        sys.stdout.write(json.dumps(payload))
+        return 0
+    return _do_capture(body, payload)
 
 
 # ---------------------------------------------------------------------------

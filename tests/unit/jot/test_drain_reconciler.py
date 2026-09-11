@@ -35,7 +35,9 @@ def isolated_log(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
 
 def _capture_event(op: str, status: str, *, text: str = "x", workflow_id: str | None = None,
                   attempt: int | None = None, ms: int = 0,
-                  dispatch_started_at_ms: int | None = None) -> dict[str, object]:
+                  dispatch_started_at_ms: int | None = None,
+                  jot_id: str = "",
+                  retry_budget_exhausted: bool | None = None) -> dict[str, object]:
     from mahavishnu.jot.events import HLC, JotEvent
     ctx: dict[str, object] = {}
     if workflow_id is not None:
@@ -44,8 +46,10 @@ def _capture_event(op: str, status: str, *, text: str = "x", workflow_id: str | 
         ctx["attempt"] = attempt
     if dispatch_started_at_ms is not None:
         ctx["started_at_ms"] = dispatch_started_at_ms
+    if retry_budget_exhausted is not None:
+        ctx["retry_budget_exhausted"] = retry_budget_exhausted
     return {
-        "id": "", "op": op, "text": text, "ctx": ctx,
+        "id": jot_id, "op": op, "text": text, "ctx": ctx,
         "hlc": {"wall_ms": ms, "ctr": 0, "node": "n1"},
         "node": "n1",
         "created_ms": ms,
@@ -251,7 +255,7 @@ async def test_reconcile_catches_validation_error_propagation(
     from mahavishnu.jot.drain import _append_event as real_append
     from mahavishnu.jot.errors import JotValidationError
 
-    async def broken_append(op, ctx):
+    async def broken_append(op, ctx, *, jot_id):
         raise JotValidationError("test forced", field="ctx.retry_budget_exhausted")
 
     with patch("mahavishnu.jot.drain._mcp_get_workflow_status", fake_status), \
@@ -324,12 +328,15 @@ async def test_auto_retry_appends_dispatch_event_when_trigger_succeeds(
     """Successful trigger writes dispatch event with attempt=current+1."""
     _write_log(
         isolated_log,
-        _capture_event("capture", "ok", text="hello", ms=0),
+        _capture_event("capture", "ok", text="hello", ms=0,
+                       jot_id="x" * 32),
         _capture_event("dispatch", "ok", workflow_id="wf-old", attempt=1, ms=1000,
-                       dispatch_started_at_ms=1000),
+                       dispatch_started_at_ms=1000,
+                       jot_id="x" * 32),
         _capture_event(
             "dispatch_failed", "ok", workflow_id="wf-old", attempt=1,
-            ms=2000,
+            ms=2000, jot_id="x" * 32,
+            retry_budget_exhausted=True,
         ),
     )
     # Patch ctx to include retry_budget_exhausted=False (so state is FAILED-eligible)
@@ -359,10 +366,14 @@ async def test_auto_retry_writes_failed_event_when_trigger_raises(
     from mahavishnu.jot.errors import JotDispatchError
     _write_log(
         isolated_log,
-        _capture_event("capture", "ok", text="x", ms=0),
+        _capture_event("capture", "ok", text="x", ms=0,
+                       jot_id="x" * 32),
         _capture_event("dispatch", "ok", workflow_id="wf-old", attempt=1, ms=1000,
-                       dispatch_started_at_ms=1000),
-        _capture_event("dispatch_failed", "ok", workflow_id="wf-old", attempt=1, ms=2000),
+                       dispatch_started_at_ms=1000,
+                       jot_id="x" * 32),
+        _capture_event("dispatch_failed", "ok", workflow_id="wf-old", attempt=1, ms=2000,
+                       jot_id="x" * 32,
+                       retry_budget_exhausted=True),
     )
     monkeypatch.setattr("asyncio.sleep", AsyncMock())
 
