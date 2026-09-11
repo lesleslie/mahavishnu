@@ -136,3 +136,109 @@ def pytest_collection_modifyitems(items, config):
         # Mark tests in tests/property/ directory as property tests
         elif "/tests/property/" in str(item.fspath):
             item.add_marker(pytest.mark.property)
+
+
+# ---------------------------------------------------------------------------
+# Task 18 — jot-drain property-test fixtures
+# ---------------------------------------------------------------------------
+#
+# These six fixtures are the canonical fixtures for hypothesis-driven property
+# tests in tests/property/jot/. Each one targets a specific seam in
+# mahavishnu.jot.drain so property tests can compose them without manual
+# monkeypatching per-test.
+#
+# Naming convention: no ``_drain_`` prefix is needed because none of the names
+# collide with the rich fixture catalogue already exposed from
+# tests/fixtures/*.py (workflow_fixtures, shell_fixtures, conftest fixtures).
+
+
+@pytest.fixture
+def fake_workflow_substrate(monkeypatch):
+    """Fake ``_mcp_trigger_workflow`` + ``_mcp_get_workflow_status``.
+
+    ``fake_trigger`` issues monotonically incrementing workflow IDs
+    (``wf-1``, ``wf-2``, ...) and tracks every call. ``fake_status`` returns
+    the recorded status for each ID (default ``{"status": "UNKNOWN"}``).
+    """
+    from mahavishnu.jot import drain
+
+    calls = {"trigger": [], "status": {}}
+
+    async def fake_trigger(adapter, task_type, params):
+        wf_id = f"wf-{len(calls['trigger']) + 1}"
+        calls["trigger"].append(
+            {"adapter": adapter, "task_type": task_type, "params": params},
+        )
+        calls["status"][wf_id] = {"status": "RUNNING"}
+        return {"workflow_id": wf_id}
+
+    async def fake_status(workflow_id):
+        return calls["status"].get(workflow_id, {"status": "UNKNOWN"})
+
+    monkeypatch.setattr(drain, "_mcp_trigger_workflow", fake_trigger)
+    monkeypatch.setattr(drain, "_mcp_get_workflow_status", fake_status)
+    return calls
+
+
+@pytest.fixture
+def fake_embeddings_service(monkeypatch):
+    """Deterministic embeddings stub; ``.deterministic`` flag is True.
+
+    Patches ``_build_embeddings_adapter`` to return a sync stub that hashes
+    each input string and projects the first 8 bytes into ``[0.0, 1.0]``.
+    Identical inputs produce identical vectors.
+    """
+    from mahavishnu.jot import drain
+
+    class FakeEmbeddings:
+        deterministic = True
+
+        async def embed(self, texts):
+            import hashlib
+
+            return [
+                [(hashlib.md5(t.encode()).digest()[i] / 255.0) for i in range(8)]
+                for t in texts
+            ]
+
+    fake = FakeEmbeddings()
+    monkeypatch.setattr(drain, "_build_embeddings_adapter", lambda: fake)
+    return fake
+
+
+@pytest.fixture
+def fast_backoff(monkeypatch):
+    """Zero out ``RETRY_BACKOFF_SECONDS`` so auto-retry paths run instantly."""
+    from mahavishnu.jot import drain
+
+    monkeypatch.setattr(drain, "RETRY_BACKOFF_SECONDS", 0)
+
+
+@pytest.fixture
+def no_async_sleep(monkeypatch):
+    """Replace ``asyncio.sleep`` with a no-op (yield to loop, but no delay).
+
+    Useful when tests don't want to drive the auto-retry path through a real
+    wall-clock sleep. Combined with ``fast_backoff`` this makes the retry
+    path fully synchronous for testing.
+    """
+    import asyncio
+
+    async def fake_sleep(_):
+        return None
+
+    monkeypatch.setattr(asyncio, "sleep", fake_sleep)
+
+
+@pytest.fixture
+def clock(monkeypatch):
+    """Replace ``time.time()`` with a controllable clock.
+
+    Returns a ``state`` dict so the test can advance the clock between
+    phases. Default initial value is 2023-11-14 epoch ms.
+    """
+    import time
+
+    state = {"now_ms": 1_700_000_000_000}
+    monkeypatch.setattr(time, "time", lambda: state["now_ms"] / 1000)
+    return state
