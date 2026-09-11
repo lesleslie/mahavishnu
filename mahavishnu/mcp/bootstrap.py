@@ -275,6 +275,7 @@ def register_health_endpoint(server: FastMCPServer, version: str) -> None:
         # start() completes init_signer_feed_state(), report degraded
         # so launchd's healthcheck wrapper sees the failure surface.
         from mahavishnu.mcp.signer_feed import get_signer_feed_state
+        from mahavishnu.plan_index.health import get_plan_index_feed_state
 
         checks: dict[str, dict[str, object]] = {}
         state = get_signer_feed_state()
@@ -285,6 +286,19 @@ def register_health_endpoint(server: FastMCPServer, version: str) -> None:
             }
         else:
             checks["skills_signer"] = state.as_dict()
+
+        # Task 13 — plan_index feed (mcp-backend-wiring-discipline 4-signal
+        # contract). None means no rebuild cycle has run on this process yet,
+        # so report degraded rather than silently omitting the feed.
+        plan_state = get_plan_index_feed_state()
+        if plan_state is None:
+            checks["plan_index"] = {
+                "ok": False,
+                "error": "awaiting start()",
+            }
+        else:
+            plan_check: dict[str, object] = dict(plan_state.as_dict())
+            checks["plan_index"] = plan_check
 
         all_ok = all(bool(c.get("ok")) for c in checks.values())
         body = {
