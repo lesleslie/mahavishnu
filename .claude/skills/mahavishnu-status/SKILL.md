@@ -53,6 +53,17 @@ canonical fallback wording.
 If the user says "run X on Mahavishnu" → use the `mcp__mahavishnu__*` dispatch tools.
 If the user says "what's running on Mahavishnu" → this skill → `/mahavishnu:status`.
 
+## Plan Index reads
+
+When the user asks about plan-level activity (e.g., "what plans are
+in flight?", "show me the plan index"), the skill calls
+`mcp__mahavishnu__plan_list({status: "active"})` (FULL profile only,
+auth-gated). On degraded Dhara response, fall back to filesystem
+read of `docs/plans/PLAN_INDEX.md`.
+
+See `docs/superpowers/specs/2026-09-10-plan-index-dhara-design.md` §Read
+paths for the full read-path contract.
+
 ## Where to find more
 
 - Slash command body: `.claude/commands/mahavishnu-status.md` (Phase 5 Task 5.1).

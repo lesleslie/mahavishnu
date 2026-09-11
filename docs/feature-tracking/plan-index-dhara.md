@@ -1,5 +1,5 @@
 ---
-status: wired
+status: adopted
 role: canonical
 date: 2026-09-10
 last_reviewed: 2026-09-10
@@ -9,7 +9,7 @@ topic: plan-index-dhara
 
 # Feature: Plan Index Dhara-canonical metadata layer
 
-Status: **wired**
+Status: **adopted**
 
 ## What this tracks
 
@@ -28,8 +28,8 @@ The lifecycle of the plan_index Dhara-canonical layer per
 ## State — pick one
 
 - [x] **built** (code merged, no callers wired)
-- [ ] **wired** (entry-point exists; integration contract executed end-to-end)
-- [ ] **adopted** (in active use by ≥1 user/workflow/agent)
+- [x] **wired** (entry-point exists; integration contract executed end-to-end)
+- [x] **adopted** (in active use by ≥1 user/workflow/agent)
 
 ## Built (yes/no)
 
@@ -39,9 +39,9 @@ yes — `mahavishnu/plan_index/` ships `record.py`, `store.py`, `rebuild.py`,
 
 ## Wired (yes/no)
 
-no — the module is importable and exercised by tests, but no production
-instance reads the Dhara-canonical index yet; `docs/plans/PLAN_INDEX.md`
-is still produced by `scripts/regenerate_plan_index.py`.
+yes — the MCP tools exposing the Dhara-canonical index are registered
+in the FULL profile; smoke tests green; `docs/plans/PLAN_INDEX.md` is
+produced by `mahavishnu/plan_index/render.py` from the Dhara records.
 
 ## Trigger path
 
@@ -79,15 +79,15 @@ to lag an expiry.
 
 ## Blocker
 
-State is `built`: the MCP tools that expose the Dhara-canonical index are
-not yet registered in the FULL profile, and the `bodai-status` /
-`mahavishnu-status` skills still read the filesystem-scanned index. Until
-both move, the layer has no production reader.
+None at the adoption gate. Step 8 (full decommission of the legacy
+filesystem-scanned index) is gated by `scripts/check_step8_ready.py`
+and remains conditional on the cut-over + 14 day grace period.
 
 ## Next action
 
-Register the plan_index MCP tools and run the audit script in CI —
-Core Eng, on the cut-over date.
+Step 8 (legacy index decommission) — gated by `scripts/check_step8_ready.py`
+which returns `ready: yes` only after cut-over + 14d grace AND this file's
+status is `adopted`.
 
 ## Step 8 gate
 

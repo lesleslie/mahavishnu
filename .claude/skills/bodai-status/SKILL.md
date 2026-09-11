@@ -43,6 +43,17 @@ Mahavishnu" (Mahavishnu-only view). Use `/bodai-status` for "what has anyone
 done recently" — the cross-component view that captures Akosha aggregations,
 Crackerjack test runs, and Mahavishnu workflows in one timeline.
 
+## Plan Index reads
+
+When the user asks about plan-level activity (e.g., "what plans are
+in flight?", "show me the plan index"), the skill calls
+`mcp__mahavishnu__plan_list({status: "active"})` (FULL profile only,
+auth-gated). On degraded Dhara response, fall back to filesystem
+read of `docs/plans/PLAN_INDEX.md`.
+
+See `docs/superpowers/specs/2026-09-10-plan-index-dhara-design.md` §Read
+paths for the full read-path contract.
+
 ## Where to find more
 
 - Slash command body: `.claude/commands/bodai-status.md` (Phase 6 Task 6B.3).
