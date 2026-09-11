@@ -27,6 +27,7 @@ import os
 from pathlib import Path
 import re
 import socket
+import subprocess
 from typing import TYPE_CHECKING, Any
 
 from mahavishnu.plan_index.errors import PlanRebuildLockedError
@@ -99,21 +100,141 @@ class RebuildOutcome:
     last_success_ms: int | None
 
 
-def _parse_frontmatter(text: str) -> dict[str, str]:
-    """Parse a small `key: value` YAML subset. Avoids the PyYAML dep at scan time."""
+def _parse_frontmatter(text: str) -> dict[str, Any]:
+    """Parse a small `key: value` YAML subset. Avoids the PyYAML dep at scan time.
+
+    Supports:
+      - bare scalars: `key: value`
+      - quoted scalars: `key: "value"` / `key: 'value'`
+      - null scalars: `key: null` / `key: ~`
+      - empty scalars: `key:` (treated as null)
+      - block lists under a key: `key:` followed by indented `- item` lines
+    """
     match = _FRONTMATTER_RE.match(text)
     if not match:
         return {}
-    out: dict[str, str] = {}
-    for line in match.group("fm").splitlines():
-        line = line.strip()
+    lines = match.group("fm").splitlines()
+    out: dict[str, Any] = {}
+    i = 0
+    while i < len(lines):
+        raw_line = lines[i]
+        line = raw_line.strip()
         if not line or line.startswith("#"):
+            i += 1
             continue
         if ":" not in line:
+            i += 1
             continue
         key, _, value = line.partition(":")
-        out[key.strip()] = value.strip().strip('"').strip("'")
+        key = key.strip()
+        value = value.strip()
+        if value in {"", "null", "~"}:
+            # Empty / null scalar OR start of a block list. Look ahead to
+            # the next non-blank line to decide.
+            j = i + 1
+            while j < len(lines) and not lines[j].strip():
+                j += 1
+            if j < len(lines):
+                next_stripped = lines[j].strip()
+                next_indented = lines[j].startswith((" ", "\t"))
+                if next_indented and next_stripped.startswith("- "):
+                    # Block list: collect items until the indentation level
+                    # changes or the next top-level key.
+                    items: list[str] = []
+                    k = j
+                    while k < len(lines):
+                        candidate = lines[k]
+                        cand_stripped = candidate.strip()
+                        if not cand_stripped:
+                            k += 1
+                            continue
+                        if not candidate.startswith((" ", "\t")):
+                            break
+                        if cand_stripped.startswith("- "):
+                            items.append(
+                                cand_stripped[2:].strip().strip('"').strip("'")
+                            )
+                            k += 1
+                            continue
+                        # Indented but not a list item — bail out.
+                        break
+                    out[key] = items
+                    i = k
+                    continue
+            # No list follows — treat as null scalar.
+            out[key] = None if value in {"null", "~"} else ""
+            i += 1
+            continue
+        out[key] = value.strip('"').strip("'")
+        i += 1
     return out
+
+
+def _coerce_date(value: Any) -> str:
+    """Coerce a YAML-parsed date (datetime.date or str) to YYYY-MM-DD.
+
+    Returns "" if the value is missing, unparseable, or empty.
+    """
+    if value is None or value == "" or value == "null" or value == "~":
+        return ""
+    if isinstance(value, datetime):
+        return value.date().isoformat()
+    import datetime as _dt
+
+    if isinstance(value, _dt.date):
+        return value.isoformat()
+    if isinstance(value, str):
+        return value
+    return ""
+
+
+def _coerce_str(value: Any) -> str:
+    """Coerce a YAML scalar to a stripped string. Treats null/~ as ""."""
+    if value is None or value == "" or value == "null" or value == "~":
+        return ""
+    if isinstance(value, str):
+        return value
+    return str(value)
+
+
+def _coerce_blocks_on(value: Any) -> list[str]:
+    """Coerce frontmatter `blocks_on` to a list of plan_id strings."""
+    if value is None or value == "" or value == "null" or value == "~":
+        return []
+    if isinstance(value, list):
+        return [str(item).strip() for item in value if str(item).strip()]
+    if isinstance(value, str):
+        # Comma-separated fallback for hand-written frontmatter.
+        items = [part.strip() for part in value.split(",")]
+        return [item for item in items if item]
+    return []
+
+
+def _git_blob_sha(repo_root: Path, rel_path: str) -> str:
+    """Return `git rev-parse HEAD:<rel_path>` if available, else empty string.
+
+    Empty string (rather than a placeholder hash) signals "sha unknown" — the
+    PlanRecord sha field is allowed to be any string, so consumers can detect
+    missing SHAs by length.
+    """
+    try:
+        result = subprocess.run(
+            ["git", "rev-parse", f"HEAD:{rel_path}"],
+            cwd=str(repo_root),
+            capture_output=True,
+            text=True,
+            timeout=5,
+            check=False,
+        )
+    except (OSError, subprocess.TimeoutExpired):
+        return ""
+    if result.returncode != 0:
+        return ""
+    sha = result.stdout.strip()
+    # Guard against pathological whitespace output.
+    if not re.match(r"^[0-9a-f]{40}$", sha):
+        return ""
+    return sha
 
 
 def _derive_plan_id(rel_path: str) -> str:
@@ -157,12 +278,28 @@ def discover_records(repo_root: Path) -> list[PlanRecord]:
     Importable so the CLI orchestrator (Task 15) can reuse this.
     Mirrors `scripts/regenerate_plan_index.py` Phase A — auto-discover
     stores (skipping system dirs), parse each .md file's frontmatter,
-    return a `PlanRecord` per file.
+    return a `PlanRecord` per file with ALL 14 fields populated.
+
+    Defaults for fields missing from frontmatter:
+      - role: "implementation" (most plans are implementation specs)
+      - topic: "" (no vocabulary)
+      - date: falls back to last_reviewed, then ""
+      - last_reviewed: falls back to date, then ""
+      - superseded_by: None (the literal string "null" or "~" is treated as None)
+      - blocks_on: [] (empty list)
+      - sha: `git rev-parse HEAD:<rel>` if available, else "" (signals "unknown")
+      - lifecycle_state: None (no frontmatter source; status is the surface)
+      - updated_at_ms: int(datetime.now(tz=UTC).timestamp() * 1000)
+
+    A file whose status is not in PlanRecord's accepted vocabulary is skipped
+    (the frozen dataclass's __post_init__ would otherwise raise ValueError).
     """
     repo_root = Path(repo_root).resolve()
     records: list[PlanRecord] = []
     if not repo_root.is_dir():
         return records
+
+    accepted_statuses = frozenset({"draft", "active", "partial", "shipped", "complete"})
 
     for directory in sorted(repo_root.rglob("*")):
         if not directory.is_dir():
@@ -183,17 +320,49 @@ def discover_records(repo_root: Path) -> list[PlanRecord]:
             except OSError:
                 continue
             fm = _parse_frontmatter(text)
-            if "status" not in fm or "title" not in fm:
+            status = _coerce_str(fm.get("status"))
+            title = _coerce_str(fm.get("title"))
+            if not status or not title or status not in accepted_statuses:
                 continue
-            repo = _normalize_repo_url(fm.get("repo", ""))
+            repo = _normalize_repo_url(_coerce_str(fm.get("repo")))
             plan_id = _derive_plan_id(rel)
+
+            role = _coerce_str(fm.get("role")) or "implementation"
+            topic = _coerce_str(fm.get("topic"))
+
+            date = _coerce_date(fm.get("date"))
+            last_reviewed = _coerce_date(fm.get("last_reviewed"))
+            # Cross-fallback: prefer last_reviewed if date is empty, and vice-versa.
+            if not date and last_reviewed:
+                date = last_reviewed
+            if not last_reviewed and date:
+                last_reviewed = date
+
+            superseded_by_raw = _coerce_str(fm.get("superseded_by"))
+            superseded_by: str | None = (
+                superseded_by_raw if superseded_by_raw and superseded_by_raw not in {"null", "~"} else None
+            )
+
+            blocks_on = _coerce_blocks_on(fm.get("blocks_on"))
+            sha = _git_blob_sha(repo_root, rel)
+            updated_at_ms = int(datetime.now(tz=UTC).timestamp() * 1000)
+
             records.append(
                 PlanRecord(
                     plan_id=plan_id,
                     path=rel,
-                    title=fm["title"],
-                    status=fm["status"],
+                    title=title,
+                    status=status,  # type: ignore[arg-type]
+                    role=role,  # type: ignore[arg-type]
+                    topic=topic,
+                    date=date,
+                    last_reviewed=last_reviewed,
+                    superseded_by=superseded_by,
+                    blocks_on=blocks_on,
+                    sha=sha,
                     repo=repo,
+                    lifecycle_state=None,
+                    updated_at_ms=updated_at_ms,
                 )
             )
     return records

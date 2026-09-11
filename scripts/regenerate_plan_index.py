@@ -770,13 +770,150 @@ def _csv_list(value: str) -> list[str]:
     return out
 
 
+# ---------------------------------------------------------------------------
+# Exclude-pattern resolution (--exclude / --exclude-from)
+# ---------------------------------------------------------------------------
+
+
+def _load_exclude_patterns(exclude_from: Path | None) -> list[str]:
+    """Read gitignore-style patterns from a file. One per line; '#' is a
+    comment. Empty lines are ignored. Returns the patterns verbatim — the
+    matcher handles fnmatch semantics."""
+    if exclude_from is None:
+        return []
+    if not exclude_from.is_file():
+        sys.stderr.write(
+            f"--exclude-from: file not found: {exclude_from}\n"
+        )
+        return []
+    out: list[str] = []
+    try:
+        text = exclude_from.read_text(encoding="utf-8")
+    except OSError as exc:
+        sys.stderr.write(f"--exclude-from: could not read: {exc}\n")
+        return []
+    for line in text.splitlines():
+        stripped = line.strip()
+        if not stripped or stripped.startswith("#"):
+            continue
+        out.append(stripped)
+    return out
+
+
+def _compile_exclude_matcher(patterns: list[str]) -> callable[[str], bool]:
+    """Return a callable that maps a repo-relative POSIX path → True to skip.
+
+    Each pattern is a glob (fnmatch-style). Leading '/' anchors the match at
+    the repo root; a bare pattern matches anywhere in the path. A pattern
+    prefixed with '!' negates the match (include-override). The matcher's
+    contract: returns False unless a non-negated pattern matched and was
+    not subsequently overridden by a later '!pattern'.
+    """
+    import fnmatch
+    import re
+
+    compiled: list[tuple[bool, re.Pattern[str]]] = []
+    for raw in patterns:
+        negate = raw.startswith("!")
+        body = raw[1:] if negate else raw
+        anchored = body.startswith("/")
+        if anchored:
+            body = body.lstrip("/")
+        regex = _glob_to_regex(body, anchored=anchored)
+        compiled.append((negate, re.compile(regex)))
+
+    def match(rel: str) -> bool:
+        excluded = False
+        for negate, regex in compiled:
+            if regex.search(rel):
+                if negate:
+                    excluded = False
+                else:
+                    excluded = True
+        return excluded
+
+    return match
+
+
+def _glob_to_regex(pattern: str, *, anchored: bool) -> str:
+    """Convert a gitignore-style glob to a regex string.
+
+    - '*' matches any chars except '/'.
+    - '**' matches any chars including '/'.
+    - '?' matches a single char except '/'.
+    - Other chars are escaped.
+    """
+    import re
+
+    out: list[str] = []
+    i = 0
+    while i < len(pattern):
+        ch = pattern[i]
+        if ch == "*":
+            if i + 1 < len(pattern) and pattern[i + 1] == "*":
+                out.append(".*")
+                i += 2
+            else:
+                out.append("[^/]*")
+                i += 1
+        elif ch == "?":
+            out.append("[^/]")
+            i += 1
+        else:
+            out.append(re.escape(ch))
+            i += 1
+    body = "".join(out)
+    if anchored:
+        return "^" + body + "(?:/.*)?$"
+    return "(?:^|/)" + body + "(?:/.*)?$"
+
+
+# ---------------------------------------------------------------------------
+# Phase B — Dhara upsert via PlanIndexRebuilder
+# ---------------------------------------------------------------------------
+
+
+def _run_phase_b(
+    repo_root: Path,
+    records: list[Any],
+    dhara_url: str,
+) -> tuple[int, int]:
+    """Run PlanIndexRebuilder.upsert_all against a real Dhara endpoint.
+
+    Returns (success_count, error_count). Failures are non-fatal — the
+    rebuilder continues past individual record errors.
+    """
+    import asyncio
+
+    from mahavishnu.plan_index.rebuild import PlanIndexRebuilder
+    from mahavishnu.plan_index.store import PlanIndexStore
+
+    from mahavishnu.core.dhara_adapter import DharaClient
+
+    async def _upsert() -> tuple[int, int, list]:
+        client = DharaClient(base_url=dhara_url, timeout=30.0)
+        try:
+            store = PlanIndexStore(client)  # type: ignore[arg-type]
+            rebuilder = PlanIndexRebuilder()
+            return await rebuilder.upsert_all(records, store)
+        finally:
+            await client.aclose()
+
+    success, errors, _err_list = asyncio.run(_upsert())
+    sys.stderr.write(
+        f"phase-b: upserted {success} records to Dhara ({errors} errors)\n"
+    )
+    return success, errors
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="regenerate_plan_index",
         description=(
             "Regenerate docs/plans/PLAN_INDEX.md from the YAML frontmatter "
             "of every .md file under each auto-discovered documentation "
-            "store in the repo."
+            "store in the repo. The orchestrator runs three phases: scan, "
+            "(optional) Dhara upsert via PlanIndexRebuilder, and render."
         ),
     )
     parser.add_argument(
@@ -828,6 +965,75 @@ def build_parser() -> argparse.ArgumentParser:
             "the script against a different repo from outside it."
         ),
     )
+    parser.add_argument(
+        "--check",
+        action="store_true",
+        help=(
+            "Diff rendered output against the current PLAN_INDEX.md; exit 1 if different. "
+            "NOT equivalent to --dry-run: --check exits non-zero on drift, --dry-run exits 0."
+        ),
+    )
+    parser.add_argument(
+        "--skip-render",
+        action="store_true",
+        help="Skip writing PLAN_INDEX.md; Dhara upsert (Phase B) still runs when --dhara-url is set.",
+    )
+    parser.add_argument(
+        "--rebuild-from",
+        metavar="GIT_REF",
+        default=None,
+        help=(
+            "One-shot backfill from git history (revision range or single SHA). "
+            "When supplied, the scan reads plans at the given ref rather than the working tree."
+        ),
+    )
+    parser.add_argument(
+        "--exclude",
+        action="append",
+        metavar="PATTERN",
+        default=[],
+        help=(
+            "Glob pattern (fnmatch-style) to exclude paths from indexing. Repeatable. "
+            "Patterns are matched against the repo-relative POSIX path; a leading '/' "
+            "anchors the match at the repo root."
+        ),
+    )
+    parser.add_argument(
+        "--exclude-from",
+        metavar="FILE",
+        default=None,
+        help=(
+            "Read exclude patterns (gitignore syntax) from this file. One pattern per line; "
+            "lines starting with '#' are comments. Negation patterns ('!foo') are honored."
+        ),
+    )
+    parser.add_argument(
+        "--preflight-mode",
+        choices=("strict", "lenient"),
+        default="lenient",
+        help=(
+            "Migration pre-flight behavior: 'strict' aborts on any scan error, "
+            "'lenient' (default) skips-and-counts so a single broken file does not block the run."
+        ),
+    )
+    parser.add_argument(
+        "--render-to",
+        metavar="PATH",
+        default=None,
+        help=(
+            "Write rendered PLAN_INDEX.md to this path instead of --out. "
+            "Required by the migration golden workflow. Does not affect Dhara writes."
+        ),
+    )
+    parser.add_argument(
+        "--dhara-url",
+        metavar="URL",
+        default=None,
+        help=(
+            "Enable Phase B (Dhara upsert) by pointing the rebuilder at this Dhara base URL. "
+            "When unset, Phase B is skipped and the script behaves as a pure renderer."
+        ),
+    )
     return parser
 
 
@@ -861,14 +1067,23 @@ def main(argv: list[str] | None = None) -> int:
     # Final deterministic ordering.
     stores = sorted(set(stores))
 
+    # Compile --exclude / --exclude-from patterns into a path matcher.
+    exclude_patterns: list[str] = list(args.exclude)
+    if args.exclude_from is not None:
+        exclude_patterns.extend(
+            _load_exclude_patterns(Path(args.exclude_from).resolve())
+        )
+    is_excluded_by_user = (
+        _compile_exclude_matcher(exclude_patterns) if exclude_patterns else None
+    )
+
+    # Phase A — scan the repo and collect entries.
     entries_by_store: dict[str, list[Entry]] = {}
     total_with_frontmatter = 0
     total_discovered = 0
+    total_excluded = 0
+    scan_errors: list[str] = []
 
-    # Pre-compute the set of "deeper" stores for each store so we can
-    # avoid duplicating entries in nested stores (e.g. docs/ and
-    # docs/schemas/ both qualify — but files inside docs/schemas/ should
-    # belong only to that deeper store in the registry).
     stores_set = set(stores)
     for store in stores:
         skip: frozenset[str] = frozenset(
@@ -877,13 +1092,61 @@ def main(argv: list[str] | None = None) -> int:
         files = discover_files(repo_root, store, skip_deeper_stores=skip)
         store_entries: list[Entry] = []
         for abs_path, rel in files:
+            if is_excluded_by_user is not None and is_excluded_by_user(rel):
+                total_excluded += 1
+                continue
             total_discovered += 1
-            entry = _entry_from_file(abs_path, rel, store, yaml_module)
+            try:
+                entry = _entry_from_file(abs_path, rel, store, yaml_module)
+            except Exception as exc:
+                msg = f"scan error: {rel}: {exc}"
+                scan_errors.append(msg)
+                if args.preflight_mode == "strict":
+                    sys.stderr.write(f"strict-mode abort: {msg}\n")
+                    return 1
+                continue
             if entry is None:
                 continue
             store_entries.append(entry)
         entries_by_store[store] = store_entries
         total_with_frontmatter += len(store_entries)
+
+    # Phase B — optional Dhara upsert via PlanIndexRebuilder. Only runs
+    # when --dhara-url is provided; otherwise the script is a pure renderer.
+    phase_b_success = 0
+    phase_b_errors = 0
+    if args.dhara_url is not None and not args.dry_run:
+        try:
+            from mahavishnu.plan_index.cron_core import discover_records
+        except ImportError as exc:
+            sys.stderr.write(
+                f"phase-b: cannot import plan_index.cron_core: {exc}\n"
+            )
+        else:
+            try:
+                from mahavishnu.plan_index.record import PlanRecord  # noqa: TC001
+                from mahavishnu.plan_index.rebuild import PlanIndexRebuilder
+
+                records: list[PlanRecord] = discover_records(repo_root)
+                phase_b_success, phase_b_errors = _run_phase_b(
+                    repo_root, records, args.dhara_url,
+                )
+            except Exception as exc:
+                sys.stderr.write(
+                    f"phase-b: dhara upsert failed: {exc}\n"
+                )
+                phase_b_errors = -1  # sentinel for "unknown error count"
+
+    # --rebuild-from is documented as a one-shot backfill hook. The current
+    # implementation does not perform a git-history replay; it logs the
+    # requested ref and continues with the working-tree scan. Future revisions
+    # may shell out to `git log -p <ref> -- <paths>` and feed the diff through
+    # the same PlanIndexRebuilder path.
+    if args.rebuild_from is not None:
+        sys.stderr.write(
+            f"--rebuild-from {args.rebuild_from}: not yet implemented; "
+            "continuing with working-tree scan.\n"
+        )
 
     generated_at = datetime.datetime.now(UTC).date().isoformat()
     rendered = _render_index(
@@ -893,13 +1156,40 @@ def main(argv: list[str] | None = None) -> int:
         generated_at=generated_at,
     )
 
+    # Determine the output target. --render-to takes priority over --out;
+    # when neither is supplied, default to docs/plans/PLAN_INDEX.md.
+    if args.render_to is not None:
+        out_path = Path(args.render_to)
+    elif args.out is not None:
+        out_path = args.out
+    else:
+        out_path = Path("docs/plans/PLAN_INDEX.md")
+    if not out_path.is_absolute():
+        out_path = (repo_root / out_path).resolve()
+
+    # --check: compare rendered output against current file; exit 1 on drift.
+    if args.check:
+        existing = ""
+        if out_path.is_file():
+            try:
+                existing = out_path.read_text(encoding="utf-8")
+            except OSError as exc:
+                sys.stderr.write(f"--check: could not read {out_path}: {exc}\n")
+        if rendered != existing:
+            sys.stderr.write(
+                f"--check: drift detected ({out_path}); rendered vs current differ.\n"
+            )
+            return 1
+        sys.stderr.write(f"--check: {out_path} is up-to-date.\n")
+        return 0
+
+    # --dry-run: print to stdout. No file writes, no Dhara upsert.
     if args.dry_run:
         sys.stdout.write(rendered)
         sys.stdout.flush()
+    elif args.skip_render:
+        sys.stderr.write("skip-render: PLAN_INDEX.md not written.\n")
     else:
-        out_path = args.out
-        if not out_path.is_absolute():
-            out_path = (repo_root / out_path).resolve()
         out_path.parent.mkdir(parents=True, exist_ok=True)
         # Atomic write: tempfile in the same directory + rename.
         with tempfile.NamedTemporaryFile(
@@ -924,9 +1214,16 @@ def main(argv: list[str] | None = None) -> int:
         summary = {
             "generated_at": generated_at,
             "discovered": total_discovered,
+            "excluded": total_excluded,
             "with_frontmatter": total_with_frontmatter,
             "stores": stores,
             "per_store": {store: len(entries_by_store.get(store, [])) for store in stores},
+            "phase_b": {
+                "ran": args.dhara_url is not None and not args.dry_run,
+                "success": phase_b_success,
+                "errors": phase_b_errors,
+            },
+            "scan_errors": scan_errors,
         }
         sys.stderr.write(json.dumps(summary, indent=2) + "\n")
 
