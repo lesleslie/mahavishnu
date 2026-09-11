@@ -13,7 +13,7 @@ both engines and workers in one pass.
 from __future__ import annotations
 
 import logging
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 import uuid
 
 from mcp_common.auth.permissions import Permission as MCPPermission
@@ -196,8 +196,16 @@ def _new_trace_id() -> TraceId:
 def register_capability_tools(
     server: FastMCP,
     settings: MahavishnuSettings,
+    rbac_manager: Any | None = None,
 ) -> None:
     """Register the capability MCP toolset on ``server``.
+
+    ``rbac_manager`` is keyword-friendly and defaults to ``None``; production
+    wiring at :func:`mahavishnu.mcp.bootstrap._register_capability_block` injects
+    the real :class:`~mahavishnu.core.permissions.RBACManager` so the
+    :func:`~mahavishnu.mcp.auth.require_mcp_auth` gate is enforced. Tests
+    may omit it; the decorator will deny with
+    ``error_code == "AUTH_NOT_CONFIGURED"`` rather than silently allow.
 
     All four tools are defined inline so FastMCP's introspection sees the
     intended schema. The three gated tools share the same auth + scope +
@@ -228,7 +236,7 @@ def register_capability_tools(
         description="Resolve CapabilitySpec.requires into Candidate engines.",
     )
     @require_mcp_auth(
-        rbac_manager=None,
+        rbac_manager=rbac_manager,
         required_permission=MCPPermission.READ,
     )
     async def resolve_capabilities(
@@ -280,7 +288,7 @@ def register_capability_tools(
         description="Plan an ExecutionDAG from a CapabilitySpec.",
     )
     @require_mcp_auth(
-        rbac_manager=None,
+        rbac_manager=rbac_manager,
         required_permission=MCPPermission.WRITE,
     )
     async def plan_capability(
@@ -343,7 +351,7 @@ def register_capability_tools(
         description="Plan and queue an ExecutionDAG (emits the envelopes — dispatch is Phase 4).",
     )
     @require_mcp_auth(
-        rbac_manager=None,
+        rbac_manager=rbac_manager,
         required_permission=MCPPermission.WRITE,
     )
     async def execute_capability(
