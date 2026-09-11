@@ -11,6 +11,7 @@ from mcp_common.auth.permissions import Permission
 from pydantic import SecretStr
 
 from ..core.auth import AuthenticationError
+from ..core.errors import ConfigurationError
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -66,12 +67,24 @@ def require_mcp_auth(
     wrapped tool's ``repo`` kwarg when present, otherwise ``"*"``.
     """
     def decorator(func: Callable[..., Any]) -> Callable[..., Any]:
+        # Task 11.10: the Permission.READ fallback is removed. Every tool
+        # that uses @require_mcp_auth MUST pass an explicit
+        # ``required_permission``. Undeclared permission is a misconfiguration,
+        # not "fall back to read" — fail-fast at decorator-application time so
+        # the offender surfaces as a hard import error rather than silently
+        # granting the broad ``read`` namespace.
+        if required_permission is None:
+            raise ConfigurationError(
+                message=(
+                    f"@require_mcp_auth on {func.__name__!r} requires explicit "
+                    "required_permission; Permission.READ fallback is removed."
+                ),
+                details={"function": func.__name__},
+            )
+        perm = cast("Permission", required_permission)
+
         @wraps(func)
         async def wrapper(*args: Any, **kwargs: Any) -> Any:
-            perm = (
-                cast("Permission", required_permission) if required_permission else Permission.READ
-            )
-
             # Fail-closed: missing rbac_manager is a configuration error,
             # not "allow". Treat it like a deny with a distinct error code
             # so operators can surface it in observability.
@@ -106,7 +119,46 @@ def require_mcp_auth(
 
             repo = kwargs.get("repo", "*") or "*"
 
-            allowed = await rbac_manager.check_permission(user_id, repo, perm)
+            # Task 11.10: defense-in-depth. A buggy RBAC (Dhara network down,
+            # JSONDecodeError on stored user data, etc.) must NEVER propagate
+            # out of the gate — that would bypass the audit trail and either
+            # 500 to the caller or accidentally allow through whatever
+            # fallback the framework picks. Wrap the check; on any exception,
+            # log via ``logger.exception`` (crackerjack convention) and emit a
+            # denied audit with the exception class + message embedded in the
+            # reason, then return PERMISSION_DENIED so the request fails
+            # closed.
+            try:
+                allowed = await rbac_manager.check_permission(user_id, repo, perm)
+            except Exception as rbac_exc:
+                logger.exception(
+                    "rbac check raised; denying request to fail closed",
+                    extra={
+                        "user_id": user_id,
+                        "repo": repo,
+                        "permission": perm.value if hasattr(perm, "value") else str(perm),
+                        "function": cast("Any", func).__name__,
+                    },
+                )
+                _audit_logger.emit(
+                    AuthAuditEvent(
+                        timestamp=datetime.now(UTC),
+                        service="mahavishnu",
+                        caller_service="unknown",
+                        caller_id=user_id,
+                        action=cast("Any", func).__name__,
+                        permission=cast("Any", perm),
+                        result="denied",
+                        reason=f"RBAC raised: {type(rbac_exc).__name__}: {rbac_exc}",
+                        source_ip=None,
+                        token_id=None,
+                    )
+                )
+                return {
+                    "status": "error",
+                    "error": f"Permission denied: {perm.value}",
+                    "error_code": "PERMISSION_DENIED",
+                }
             if not allowed:
                 _audit_logger.emit(
                     AuthAuditEvent(
