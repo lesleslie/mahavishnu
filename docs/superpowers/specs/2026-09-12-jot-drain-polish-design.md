@@ -55,7 +55,7 @@ These decisions were resolved during brainstorming and are not revisitable durin
 | Production-revert authority | Reconciler change (item 2) requires adversarial tests first | Restore `asyncio.create_task` only after tests prove observability without `await` |
 | `_validate_ctx` tightening | Reject **unknown** keys per op (whitelist), not constrain values | Existing Literal/Int/Bool/Str checks already constrain values |
 | Bundle-defensive note location | `.claude/decisions/sdd-bundling-defensive-pattern.md` | Repo-local decision file (per CLAUDE.md); not architectural, so not `docs/adr/` |
-| Spec-lock format for item 5 | Tables in parent spec §3.2 mapping `(dispatch_state, deleted) → suggested_action` | Locks current heuristic as policy without changing behavior |
+| Spec-lock format for item 5 | Table in parent spec §3.3.4 mapping `dispatch_state → suggested_action` (single input dimension; `deleted` is filtered upstream by `_is_drain_eligible`, NOT by `_propose_action`) | Locks current heuristic as policy without changing behavior |
 
 ## 3. The Six Polish Items
 
@@ -69,7 +69,7 @@ These decisions were resolved during brainstorming and are not revisitable durin
 |---|---|
 | `mahavishnu/commands/jot.md` | Add second command (after `/jot vitals`) for `/jot drain`. Mirror the existing `--query` / `--limit` / `--include-in-flight` flags from `mahavishnu jot drain`. Document the surface as "shows top-N drain candidates with suggested actions" |
 | `mahavishnu/jot/cli.py` | No code change — `cmd_drain` already supports the query/limit/include-in-flight flag set |
-| `tests/integration/jot/test_drain_cli.py` | Add 1 test asserting `/jot drain` appears in the rendered `mahavishnu commands list` output (when listing slash commands) |
+| `tests/integration/jot/test_drain_slash_command.py` (NEW) | Add 1 static-content test asserting `mahavishnu/commands/jot.md` contains a `/jot drain` block with the correct frontmatter (`description`, `allowed-tools`). Distinct from `test_drain_cli.py` (which exercises the Typer surface) because slash commands aren't Typer |
 | `docs/superpowers/specs/2026-09-10-jot-drain-design.md` §3.5 | Update from "deferred" to "shipped" with the new artifact path |
 
 **Command contract.**
@@ -89,7 +89,7 @@ Defaults: limit=5, include_in_flight=false. Pass `--query` to scope by surface t
 
 **Rollback.** Remove the slash command block from `jot.md`. Revert the spec status line. No code revert needed (primitive is shared with CLI/MCP).
 
-**Tests.** Single integration test asserting the command file contains a `/jot drain` block with the correct frontmatter (`description`, `allowed-tools`). The bash-runner surface (which already exists for `/jot vitals`) is unchanged.
+**Tests.** Single integration test asserting the command file contains a `/jot drain` block with the correct frontmatter (`description`, `allowed-tools`). The bash-runner surface (which already exists for `/jot vitals`) is unchanged. Test file: `tests/integration/jot/test_drain_slash_command.py` (NEW), distinct from the Typer-CLI tests in `test_drain_cli.py`.
 
 ### Item 2: Reconciler production-revert + adversarial tests
 
@@ -99,18 +99,18 @@ Defaults: limit=5, include_in_flight=false. Pass `--query` to scope by surface t
 
 | File | Change |
 |---|---|
-| `mahavishnu/jot/drain.py` lines 495, 553 | Replace `await _auto_retry_after(...)` with `asyncio.create_task(_auto_retry_after(...))`; capture task in a local var `task = asyncio.create_task(...)`; do NOT `await task`. Add a module-level `_pending_retries: set[asyncio.Task] = set()` to keep strong refs (otherwise GC reaps the task before it runs) |
-| `tests/unit/jot/test_drain_reconciler.py` | Replace the 9 patched-fake `_auto_retry_after` tests with adversarial tests that observe the call via the new `_pending_retries` set or a queue |
+| `mahavishnu/jot/drain.py` lines 495, 553 | Replace `await _auto_retry_after(...)` with `asyncio.create_task(_auto_retry_after(...))`; capture task in a local var `task = asyncio.create_task(...)`; do NOT `await task`. Add a module-level `_retry_waiters: dict[str, asyncio.Event] = {}` — `_auto_retry_after` sets the event after `asyncio.sleep` returns; tests `await _retry_waiters[handle]` to observe (pattern 2 — per-jot waiter dict). Cleanup is per-key after test observation. |
+| `tests/unit/jot/test_drain_reconciler.py` | Rewrite in place the 9 patched-fake `_auto_retry_after` tests as adversarial tests that observe the call via `_retry_waiters` (NOT delete-and-recreate — the existing test function names stay so `tests/unit/jot/test_drain.py::test_drain_reconciler` lookup keeps working) |
 | `tests/integration/jot/test_drain_auto_retry_e2e.py` | Add 1 adversarial test: dispatch fails → reconciler picks up the failure → reconciler schedules retry → reconciler moves on to next jot **without waiting 30s** |
 | `docs/superpowers/specs/2026-09-10-jot-drain-design.md` §6.3 | Update reconciler diagram: "Auto-retry scheduled as background task (fire-and-forget) via `asyncio.create_task`" |
 
-**The new observability pattern.** Adversarial tests need to observe `_auto_retry_after` running without blocking the reconciler. Three patterns acceptable; pick one in the plan:
+**Observability pattern (locked: pattern 2).** Adversarial tests observe `_auto_retry_after` running without blocking the reconciler via a per-jot waiter dict:
 
-1. **Module-level set** — `_pending_retries: set[asyncio.Task]`. Test does `for task in _pending_retries: await task`. After completion, test calls `_pending_retries.clear()`. Risk: tests that don't clean up leak.
-2. **Per-jot waiter dict** — `_retry_waiters: dict[str, asyncio.Event]`. `_auto_retry_after` sets the event after `asyncio.sleep` returns. Test does `await _retry_waiters[handle]`. Cleanup is per-key.
-3. **Patched fake (status quo)** — keep the patched-fake path, but only at one call site so the production code reverts. Tests observe the patch directly.
+- `_retry_waiters: dict[str, asyncio.Event]` is module-level state.
+- `_auto_retry_after(handle, backoff_s)` records `event = asyncio.Event()` keyed by handle before sleeping, then `event.set()` after the post-sleep fold/validate path completes (success or failure — set unconditionally so tests aren't sensitive to the failure path).
+- Tests do `await _retry_waiters[handle]` to observe. Per-key cleanup after observation: `del _retry_waiters[handle]`.
 
-The plan must select one and commit. **Default recommendation: pattern 2 (per-jot waiter dict)** — most testable, least leakage, observable without blocking production.
+Alternative patterns (module-level set; patched fake) were considered and rejected: module-level set has GC lifecycle risk; patched fake re-introduces the observation hack that created the original bug.
 
 **Rollback signal.** If adversarial tests fail or flake, the revert is blocked — revert the revert and re-investigate. A 5%+ flake rate over 100 runs is the rollback threshold.
 
@@ -124,18 +124,11 @@ The plan must select one and commit. **Default recommendation: pattern 2 (per-jo
 
 | File | Change |
 |---|---|
-| `mahavishnu/jot/drain.py` line 89 | After `_REQUIRED_KEYS`, add `_KNOWN_KEYS_PER_OP: dict[str, frozenset[str]] = {op: frozenset(_REQUIRED_KEYS[op]) | _INT_KEYS | _BOOL_KEYS | _STR_KEYS | _LITERAL_KEYS.keys() for op in _REQUIRED_KEYS}`. Compute as a module-level constant. |
+| `mahavishnu/jot/drain.py` line 89 (after `_REQUIRED_KEYS`) | Add `_AUTO_FILLED_KEYS: tuple[str, ...] = ("started_at_ms",)` (currently auto-filled by `_append_event` line 285 — must be in the whitelist or dispatch breaks at runtime). Then add `_KNOWN_KEYS_PER_OP: dict[str, frozenset[str]] = {op: frozenset(_REQUIRED_KEYS[op]).union(_INT_KEYS, _BOOL_KEYS, _STR_KEYS, _AUTO_FILLED_KEYS, _LITERAL_KEYS.keys()) for op in _REQUIRED_KEYS}`. Note the `.union(...)` form — `frozenset.__or__` rejects tuples, the bare `|` chain raises `TypeError`. |
 | `mahavishnu/jot/drain.py` line 188 | In `_validate_ctx`, after the required-keys check, add: `unknown = set(ctx) - _KNOWN_KEYS_PER_OP[op]; if unknown: raise JotValidationError(f"unknown keys for op={op!r}: {sorted(unknown)}", ...)` |
-| `tests/unit/jot/test_drain.py` | Add 4 tests: (1) extra key on `dispatch` raises; (2) extra key on `dispatch_failed` raises; (3) extra key on `defer` raises; (4) all current callers pass (regression guard — fail loudly if a caller accidentally drops a key) |
+| `tests/unit/jot/test_drain.py` | Add 4 tests: (1) extra key on `dispatch` raises; (2) extra key on `dispatch_failed` raises; (3) extra key on `defer` raises; (4) all current callers pass (regression guard — fail loudly if a caller accidentally drops a key, including the auto-fill path for `started_at_ms`) |
 
-**Compatibility.** Per-op `_REQUIRED_KEYS` declares what each op MUST have. `_INT_KEYS` / `_BOOL_KEYS` / `_STR_KEYS` / `_LITERAL_KEYS.keys()` are the optional keys. Together they form the whitelist. **A regression risk: existing callers passing optional keys not in the whitelist.** Audit before merging the change:
-
-- `dispatch` optional: `started_at_ms` (auto-filled), `triggered_by` (in `_LITERAL_KEYS`). Whitelist needs `started_at_ms` added.
-- `dispatch_done` optional: `commit_sha` (in `_STR_KEYS`). Already whitelisted.
-- `dispatch_failed` optional: `retry_budget_exhausted` (in `_BOOL_KEYS`). Already whitelisted.
-- `defer` / `defer_expired` / `delete`: no optionals observed in code.
-
-The whitelist must include `started_at_ms` as a known optional for `dispatch`. (It is auto-filled but a caller could pass it; current code accepts it.)
+**Compatibility.** Per-op `_REQUIRED_KEYS` declares what each op MUST have. `_INT_KEYS` / `_BOOL_KEYS` / `_STR_KEYS` / `_AUTO_FILLED_KEYS` / `_LITERAL_KEYS.keys()` are the optional keys. Together they form the whitelist. The `_AUTO_FILLED_KEYS` tuple is a new constant — it captures keys that `_append_event` injects before `_validate_ctx` runs (currently just `started_at_ms` for `op == "dispatch"`). **Without this constant in the whitelist, dispatch from every surface (CLI, MCP, slash, auto-retry, reconciler) raises `JotValidationError("unknown keys for op='dispatch': ['started_at_ms']")` at runtime — this is BLOCKING, not a lint.**
 
 **Rollback.** Delete the `_KNOWN_KEYS_PER_OP` lookup and the unknown-key branch in `_validate_ctx`. The rest of the validation is unchanged.
 
@@ -195,13 +188,13 @@ Active. First rule for any new SDD plan run on this repo.
 
 | File | Change |
 |---|---|
-| `docs/superpowers/specs/2026-09-10-jot-drain-design.md` §3.3 | Insert subsection "_propose_action policy" with the exact 4-row table from drain.py line 706-714, plus the rationale for each row. Reference the current implementation file:line for traceability |
-| `mahavishnu/jot/drain.py` line 706 | Update the docstring to point to the spec section: "Heuristic suggested action for a drain candidate (spec §3.3.X — locked policy). Local implementation MUST match the spec table; spec changes require brainstorming re-open." |
+| `docs/superpowers/specs/2026-09-10-jot-drain-design.md` §3.3 (insert §3.3.4) | Insert subsection "_propose_action policy (locked)" with the exact 4-row table below, with `reason` strings copied verbatim from drain.py lines 710-713. Reference the implementation at `mahavishnu/jot/drain.py:705` for traceability |
+| `mahavishnu/jot/drain.py` line 706 | Update the docstring to point to the spec section: "Suggested action for a drain candidate (spec §3.3.4 — locked policy). Local implementation MUST match the spec table; spec changes require brainstorming re-open." Note: the word "heuristic" is removed — the policy is locked, not heuristic. |
 
 **Spec content to insert** (parent spec §3.3, after the existing surface definitions):
 
 ```markdown
-#### 3.3.X `_propose_action` policy (locked)
+#### 3.3.4 `_propose_action` policy (locked)
 
 For each `JotSummary` in a `DrainPlan.candidates` list, the
 `DrainPlan.action_proposals` field is computed by the following
@@ -211,13 +204,13 @@ change requires a brainstorming re-open.
 | `jot.dispatch_state` | `suggested_action` | `reason` |
 |---|---|---|
 | `IN_FLIGHT` | `skip` | already in flight |
-| `FAILED` | `dispatch` | retry failed dispatch |
+| `FAILED` | `dispatch` | retry via dispatch_jot — budget exhausted |
 | `SUCCEEDED` | `done` | workflow succeeded; mark done |
 | `None` (never dispatched) | `dispatch` | never dispatched |
 
 The `handle` field of each proposal is `jot.short_id` (6-hex), so
 callers can resolve it without an extra id field. Implementation:
-`mahavishnu/jot/drain.py` `_propose_action`.
+`mahavishnu/jot/drain.py:705` (`_propose_action`).
 ```
 
 **Rollback.** Revert the docstring. Remove the spec section. No code behavior change.
@@ -230,8 +223,8 @@ callers can resolve it without an extra id field. Implementation:
 
 | File | Change |
 |---|---|
-| `mahavishnu/jot/drain.py` line 624-636 | Replace the existing 1-line comment with a full docstring on `DrainPlan.action_proposals` field, documenting: (a) the 1:1 correspondence with `candidates` (same length, same order), (b) the element shape via `ActionProposalDict`, (c) the policy source (spec §3.3.X from item 5), (d) a 1-line JSON-schema-style snippet |
-| `mahavishnu/jot/drain.py` line 244 (`ActionProposalDict`) | Add a 4-line docstring: "Suggested action for one drain candidate. See spec §3.3.X for policy. Locked — behavior change requires brainstorming re-open." |
+| `mahavishnu/jot/drain.py` line 636 (the field declaration) | Add a field-level docstring on `DrainPlan.action_proposals` documenting: (a) the 1:1 correspondence with `candidates` (same length, same order), (b) the element shape via `ActionProposalDict`, (c) the policy source (spec §3.3.4 from item 5), (d) a 1-line JSON-schema-style snippet. **Note:** the existing class-level docstring at `drain.py` lines 620-631 (which documents the `error` field) stays intact — only the field-level docstring is added at line 636 |
+| `mahavishnu/jot/drain.py` line 244 (`ActionProposalDict`) | Add a 4-line docstring: "Suggested action for one drain candidate. See spec §3.3.4 for policy. Locked — behavior change requires brainstorming re-open." |
 | `docs/MCP_TOOLS_SPECIFICATION.md` | Add a 6-line section under the `jot_drain` MCP tool entry documenting the `action_proposals` field shape (handle / suggested_action / reason) |
 
 **Docstring draft** (final wording in the plan's brief):
@@ -247,11 +240,11 @@ length, same order). Each element is an `ActionProposalDict` with:
     "reason": str,           # short human-readable rationale
   }
 
-Policy is locked in spec §3.3.X (see `_propose_action`).
+Policy is locked in spec §3.3.4 (see `_propose_action`).
 """
 ```
 
-**Rollback.** Restore the original 1-line comment. Remove the MCP_TOOLS_SPECIFICATION.md addition. No behavior change.
+**Rollback.** Remove the field-level docstring. Remove the MCP_TOOLS_SPECIFICATION.md addition. No behavior change.
 
 ## 4. Cross-Cutting Concerns
 
@@ -261,7 +254,7 @@ All polish items are additive or tightening — no spec-level rewrite. The test 
 
 | Item | New tests | Modified tests | Total |
 |---|---|---|---|
-| 1. `/jot drain` slash command | 1 integration | 0 | 1 |
+| 1. `/jot drain` slash command | 1 integration (`tests/integration/jot/test_drain_slash_command.py`) | 0 | 1 |
 | 2. Reconciler revert + adversarial | 2 (1 unit + 1 e2e) | 9 (patched-fake replacement) | 11 |
 | 3. `_validate_ctx` unknown-key | 4 | 0 | 4 |
 | 4. SDD bundling defensive note | 0 (doc-only) | 0 | 0 |
@@ -273,9 +266,11 @@ All new tests use existing fixtures (`tests/conftest.py`) — no new fixture wor
 
 ### 4.2 Coverage impact
 
-drain.py is at 85.54% (above lower-bound 85%, below aspirational 90%). Item 2's adversarial tests directly target `_reconcile_if_in_flight`'s auto-retry branch, which is currently under-covered because Task 19's patched-fake tests bypassed the real code path. Expected post-polish: drain.py 88-92% (back to aspirational band).
+drain.py is currently 85.54%. Project-wide pytest gate is **89.02%** per `pyproject.toml` (also referenced in CLAUDE.md). Polish target: **drain.py reaches the gate** — i.e., ≥ 89% — by item 2's adversarial tests. Item 2's adversarial tests target `_reconcile_if_in_flight`'s auto-retry branch directly, which is currently under-covered because Task 19's patched-fake tests bypassed the real code path. Expected post-polish: drain.py 89-92%.
 
 fold.py is at 96.06% — no polish items touch fold.py.
+
+**Coverage non-goal for polish.** Item 3 (whitelist tightening) does not move coverage materially — its 4 new tests cover an existing branch with new scenarios. Items 1, 4, 5, 6 are doc/slash-command additions.
 
 ### 4.3 No new dependencies
 
@@ -289,14 +284,15 @@ All polish items use existing imports. No `pyproject.toml` changes.
 | `mahavishnu/commands/jot.md` | 1 |
 | `tests/unit/jot/test_drain.py` | 3 |
 | `tests/unit/jot/test_drain_reconciler.py` | 2 |
-| `tests/integration/jot/test_drain_cli.py` | 1 |
+| `tests/integration/jot/test_drain_cli.py` | (no polish touch — Typer CLI tests; item 1's slash-command test is in a new file, not this one) |
+| `tests/integration/jot/test_drain_slash_command.py` | 1 (NEW, item 1 — slash-command frontmatter test) |
 | `tests/integration/jot/test_drain_auto_retry_e2e.py` | 2 |
 | `docs/superpowers/specs/2026-09-10-jot-drain-design.md` | 1, 2, 5 |
 | `docs/MCP_TOOLS_SPECIFICATION.md` | 6 |
 | `.claude/decisions/sdd-bundling-defensive-pattern.md` | 4 (NEW) |
 | `.claude/decisions/README.md` | 4 (index entry) |
 
-10 files. No new file except the one decision note.
+11 files touched. 2 NEW: `tests/integration/jot/test_drain_slash_command.py` (item 1) and `.claude/decisions/sdd-bundling-defensive-pattern.md` (item 4). The 9 others are modifications or spec updates.
 
 ### 4.5 Commit hygiene (carried from parent plan)
 
@@ -313,7 +309,7 @@ All polish items use existing imports. No `pyproject.toml` changes.
 | Item 2 revert introduces reconciler regression (retry no longer fires) | Low (adversarial tests catch it) | High (silent retry loss) | 5% flake budget over 100 runs is rollback signal; integration test asserts retry actually completes |
 | Item 3 unknown-key check breaks a caller passing `started_at_ms` | Low (audited above) | Medium (validation rejects auto-fill) | Add `started_at_ms` to `_KNOWN_KEYS_PER_OP["dispatch"]` whitelist before merge |
 | Item 5 spec-lock makes future heuristic tweaks require brainstorming | Intentional | Low (locked decisions have explicit re-open path) | None — this is the goal |
-| Items 1, 5, 6 doc changes ship with no test verification | By design | None (doc-only items) | Each item has a precise pre/post condition in the spec |
+| Items 5, 6 doc changes ship with no test verification | By design | None (doc-only items) | Each item has a precise pre/post condition in the spec; item 1 has its own integration test, NOT in this risk class |
 | Polish set itself runs out of session tokens | Inherited from parent's risk register | Medium (spec/plan artifacts ship, execution deferred) | Execution is explicitly future-session per user decision |
 
 ## 6. Acceptance Criteria
@@ -324,9 +320,9 @@ The polish set is complete when ALL of the following hold:
 2. `drain.py` reconciler uses `asyncio.create_task(_auto_retry_after(...))` (fire-and-forget), NOT `await`. Adversarial tests prove the retry still runs.
 3. `_validate_ctx` rejects unknown ctx keys per op. New tests cover this. All existing tests still pass.
 4. `.claude/decisions/sdd-bundling-defensive-pattern.md` exists and is indexed.
-5. Parent spec §3.3.X documents the `_propose_action` policy table verbatim.
-6. `DrainPlan.action_proposals` field has a full docstring + `ActionProposalDict` has a docstring + `MCP_TOOLS_SPECIFICATION.md` documents the field.
-7. drain.py coverage is ≥ 88% (within aspirational band).
-8. All 413 pre-polish tests still pass + the 7 net-new tests (1 + 2 + 4) and the 9 replacement tests in item 2 = **420 tests pass**.
+5. Parent spec §3.3.4 documents the `_propose_action` policy table with `reason` strings copied verbatim from drain.py lines 710-713 (not paraphrased).
+6. `DrainPlan.action_proposals` field has a full docstring at line 636 + `ActionProposalDict` has a docstring at line 244 + `MCP_TOOLS_SPECIFICATION.md` documents the field. The existing class-level docstring at drain.py lines 620-631 is preserved.
+7. drain.py coverage is ≥ 89% (project-wide pytest gate per `pyproject.toml` / CLAUDE.md).
+8. All 413 pre-polish tests still pass (with 9 rewritten-in-place in item 2) + 7 net-new tests (1 + 2 + 4) = **420 tests pass**.
 9. `crackerjack run` does not regress (per Bodai pre-1.0 direct-to-main policy; `crackerjack` is informational, not blocking).
 10. The change graph lands on `main` with no `git push` and no PR.
