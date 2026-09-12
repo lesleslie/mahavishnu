@@ -1,13 +1,12 @@
 ---
-status: active
+status: complete
 role: implementation
 topic: terminal
 date: 2026-07-16
-last_reviewed: 2026-07-16
+last_reviewed: '2026-09-12'
 superseded_by: null
 blocks_on: []
 ---
-
 # Multi-Backend PTY Toolservers for Mahavishnu
 
 **Status:** Approved (design phase complete, awaiting plan) <!-- legacy status: Approved (awaiting plan) — see YAML frontmatter -->

@@ -1,27 +1,28 @@
 ---
-status: active
+status: complete
 role: implementation
 date: 2026-09-07
-last_reviewed: 2026-09-07
+last_reviewed: '2026-09-12'
 superseded_by: null
 topic: terminal-adapter-goose
 requirements:
-  - id: REQ-GOO-001
-    title: "Goose adapter speaks v1 HTTP (POST /sessions, GET /sessions/{id}/output, DELETE /sessions/{id})"
-  - id: REQ-GOO-002
-    title: "Goose bearer token is a pydantic SecretStr; never appears in repr/str/log dumps"
-  - id: REQ-GOO-003
-    title: "httpx event_hooks strip Authorization from any retry request"
-  - id: REQ-GOO-004
-    title: "GooseHTTPClient factory resolves args > env vars > 127.0.0.1:8694"
-  - id: REQ-GOO-005
-    title: "Goose session IDs default to full UUID4 (avoids 8-char prefix collisions)"
-  - id: REQ-GOO-006
-    title: "Goose error classes redact any details field whose name matches secret|token|key|bearer|authorization"
-  - id: REQ-GOO-007
-    title: "GooseTerminalAdapter integrates with the D0 terminal adapter registry"
+- id: REQ-GOO-001
+  title: Goose adapter speaks v1 HTTP (POST /sessions, GET /sessions/{id}/output,
+    DELETE /sessions/{id})
+- id: REQ-GOO-002
+  title: Goose bearer token is a pydantic SecretStr; never appears in repr/str/log
+    dumps
+- id: REQ-GOO-003
+  title: httpx event_hooks strip Authorization from any retry request
+- id: REQ-GOO-004
+  title: GooseHTTPClient factory resolves args > env vars > 127.0.0.1:8694
+- id: REQ-GOO-005
+  title: Goose session IDs default to full UUID4 (avoids 8-char prefix collisions)
+- id: REQ-GOO-006
+  title: Goose error classes redact any details field whose name matches secret|token|key|bearer|authorization
+- id: REQ-GOO-007
+  title: GooseTerminalAdapter integrates with the D0 terminal adapter registry
 ---
-
 # Goose Terminal Adapter (D3)
 
 **Date:** 2026-09-07

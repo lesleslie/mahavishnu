@@ -1,15 +1,15 @@
 ---
-status: active
+status: complete
 role: implementation
 date: 2026-08-25
-last_reviewed: 2026-08-25
+last_reviewed: '2026-09-12'
 owner: les
 topic: bodai-cli-audit
 scope: bodai-cli
-purpose: comprehensive critical audit of CLI commands across the Bodai Core 7, plus phased standardization via BodaiCLIBase and bodai-as-umbrella composition
+purpose: comprehensive critical audit of CLI commands across the Bodai Core 7, plus
+  phased standardization via BodaiCLIBase and bodai-as-umbrella composition
 superseded_by: null
 ---
-
 # Bodai Core 7 CLI Audit & Standardization
 
 ## What & Why (for the human reviewer)

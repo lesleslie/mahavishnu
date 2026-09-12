@@ -1,14 +1,13 @@
 ---
-status: active
+status: complete
 role: implementation
 date: 2026-09-06
-last_reviewed: 2026-09-06
+last_reviewed: '2026-09-12'
 superseded_by: null
 blocks_on:
-  - docs/superpowers/specs/2026-09-06-mcp-stub-activation-design.md
+- docs/superpowers/specs/2026-09-06-mcp-stub-activation-design.md
 topic: mcp-stub-activation
 ---
-
 # Registry Manifest Migration (Plan 0a) Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.

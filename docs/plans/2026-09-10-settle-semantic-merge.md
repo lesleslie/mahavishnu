@@ -1,31 +1,31 @@
 ---
-status: active
+status: partial
 role: implementation
 date: 2026-09-10
-last_reviewed: 2026-09-10
+last_reviewed: '2026-09-12'
 superseded_by: null
 topic: settle-semantic-merge
 requirements:
-  - id: REQ-SM-001
-    title: "Pluggable MergeStrategy enum on MahavishnuSettle.apply path"
-  - id: REQ-SM-002
-    title: "Mergiraf shell-out driver with lazy first-call PATH probe"
-  - id: REQ-SM-003
-    title: "Loud-failure MergeDriverUnavailableError when mergiraf missing under SEMANTIC"
-  - id: REQ-SM-004
-    title: "Per-binding merge_strategy field in SettleRunRecord (Dhara-persisted)"
-  - id: REQ-SM-005
-    title: "MahavishnuSettings.merge_driver_required startup guard (MahavishnuApp._init_observability)"
-  - id: REQ-SM-006
-    title: "git-merge-tree --name-only diagnostic subprocess for SEMANTIC strategy (deferred)"
-  - id: REQ-SM-007
-    title: "MergeStrategy serialization round-trip (to_dict → from_dict → equal)"
-  - id: REQ-SM-008
-    title: "scripts/check_merge_driver.py probes binary + tree-sitter grammars + git version"
-  - id: REQ-SM-009
-    title: "/health merge_driver.{available, binary, version, grammars, degraded_since}"
+- id: REQ-SM-001
+  title: Pluggable MergeStrategy enum on MahavishnuSettle.apply path
+- id: REQ-SM-002
+  title: Mergiraf shell-out driver with lazy first-call PATH probe
+- id: REQ-SM-003
+  title: Loud-failure MergeDriverUnavailableError when mergiraf missing under SEMANTIC
+- id: REQ-SM-004
+  title: Per-binding merge_strategy field in SettleRunRecord (Dhara-persisted)
+- id: REQ-SM-005
+  title: MahavishnuSettings.merge_driver_required startup guard (MahavishnuApp._init_observability)
+- id: REQ-SM-006
+  title: git-merge-tree --name-only diagnostic subprocess for SEMANTIC strategy (deferred)
+- id: REQ-SM-007
+  title: MergeStrategy serialization round-trip (to_dict → from_dict → equal)
+- id: REQ-SM-008
+  title: scripts/check_merge_driver.py probes binary + tree-sitter grammars + git
+    version
+- id: REQ-SM-009
+  title: /health merge_driver.{available, binary, version, grammars, degraded_since}
 ---
-
 # Settle Semantic Merge — mergiraf opt-in + git-merge-tree diagnostics
 
 **Date:** 2026-09-10

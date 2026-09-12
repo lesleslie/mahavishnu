@@ -1,12 +1,11 @@
 ---
-status: active
+status: complete
 role: implementation
 date: 2026-08-23
-last_reviewed: 2026-08-23
+last_reviewed: '2026-09-12'
 superseded_by: null
 topic: oneiric-action-kit-promotion
 ---
-
 # Oneiric Action-Kit Promotion Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.

@@ -1,13 +1,12 @@
 ---
-status: active
+status: complete
 role: implementation
 topic: adapter-architecture
 date: 2026-07-16
-last_reviewed: 2026-07-16
+last_reviewed: '2026-09-12'
 superseded_by: null
 blocks_on: []
 ---
-
 # External Integrations Design: crow-cli, OpenHands, Toad TUI
 
 ## **Date:** 2026-06-19 **Status:** Approved — ready for implementation planning (rev 3: +TurboVec Track 4) <!-- legacy status: Approved rev 3 — see YAML frontmatter --> **Tracks:** 3 parallel, independent

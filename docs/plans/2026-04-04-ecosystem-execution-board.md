@@ -1,12 +1,11 @@
 ---
-status: active
+status: complete
 role: umbrella
 date: 2026-07-16
-last_reviewed: 2026-07-16
+last_reviewed: '2026-09-12'
 superseded_by: null
 topic: convergence-control-plane
 ---
-
 # Bodai Ecosystem Execution Board (Prioritized)
 
 **Date**: 2026-04-04

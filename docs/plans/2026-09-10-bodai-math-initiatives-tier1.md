@@ -1,33 +1,34 @@
 ---
-status: active
+status: complete
 role: implementation
 date: 2026-09-10
-last_reviewed: 2026-09-10
+last_reviewed: '2026-09-12'
 superseded_by: null
 blocks_on: []
 topic: mathematical-paradigms-orchestration
 review_status: ready-for-ship-v3.1
 requirements:
-  - id: REQ-001
-    title: "Queueing library exposes M/M/c fit and Kingman/Erlang-C wait-time prediction"
-  - id: REQ-002
-    title: "Queueing-theoretic wait estimate is an additive routing signal"
-  - id: REQ-003
-    title: "Predicted vs. observed wait time persisted alongside the routing-decision record"
-  - id: REQ-004
-    title: "Change-point library exposes CUSUM and Page-Hinkley with ARL₀ ≥ 10,000"
-  - id: REQ-005
-    title: "Change-point detector integrates with mahavishnu/core/observability.py"
-  - id: REQ-006
-    title: "Reference 3-sigma detector remains available as gated fallback alongside change-point"
-  - id: REQ-007
-    title: "Tier 2 and Phase D re-evaluation triggers implemented in scripts/feature_eligibility.py"
-  - id: REQ-008
-    title: "Per-pool arrival timestamps recorded at the route boundary"
-  - id: REQ-009
-    title: "Continuous metric sample stream available via new fixed-cadence sampler"
+- id: REQ-001
+  title: Queueing library exposes M/M/c fit and Kingman/Erlang-C wait-time prediction
+- id: REQ-002
+  title: Queueing-theoretic wait estimate is an additive routing signal
+- id: REQ-003
+  title: Predicted vs. observed wait time persisted alongside the routing-decision
+    record
+- id: REQ-004
+  title: Change-point library exposes CUSUM and Page-Hinkley with ARL₀ ≥ 10,000
+- id: REQ-005
+  title: Change-point detector integrates with mahavishnu/core/observability.py
+- id: REQ-006
+  title: Reference 3-sigma detector remains available as gated fallback alongside
+    change-point
+- id: REQ-007
+  title: Tier 2 and Phase D re-evaluation triggers implemented in scripts/feature_eligibility.py
+- id: REQ-008
+  title: Per-pool arrival timestamps recorded at the route boundary
+- id: REQ-009
+  title: Continuous metric sample stream available via new fixed-cadence sampler
 ---
-
 # Bodai Math Initiatives — Tier 1 Implementation Plan (v3)
 
 > **v3.2 changelog** (2026-09-10): the §1/§7 single-CUSUM trade-off is resolved

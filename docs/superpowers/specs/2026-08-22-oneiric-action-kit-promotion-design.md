@@ -1,13 +1,12 @@
 ---
-status: active
+status: complete
 role: implementation
 topic: oneiric-action-kit-adoption
 date: 2026-08-22
-last_reviewed: 2026-08-22
+last_reviewed: '2026-09-12'
 superseded_by: null
 blocks_on: []
 ---
-
 # Oneiric Action-Kit Adoption: Promotion Infrastructure
 
 **Status:** Approved

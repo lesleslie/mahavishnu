@@ -1,29 +1,28 @@
 ---
-status: active
+status: complete
 role: implementation
 date: 2026-09-07
-last_reviewed: 2026-09-07
+last_reviewed: '2026-09-12'
 superseded_by: null
 topic: pool-backend-pi
 requirements:
-  - id: REQ-PI-001
-    title: "PiPool npx_command allowlist (rejects arbitrary binaries)"
-  - id: REQ-PI-002
-    title: "PiPool implements BasePool ABC contract"
-  - id: REQ-PI-003
-    title: "PiPool subprocess env stripping (sensitive keys never leaked)"
-  - id: REQ-PI-004
-    title: "PiPool.scale raises NotImplementedError for n>1 (matches SessionBuddyPool)"
-  - id: REQ-PI-005
-    title: "PiPool.start runs startup_self_test and records version"
-  - id: REQ-PI-006
-    title: "PiPool.health_check exposes rpc_latency_ms and startup_self_test block"
-  - id: REQ-PI-007
-    title: "PiPool.execute_task maps RPC errors to pool result shape"
-  - id: REQ-PI-008
-    title: "PiPool unit tests cover scale, env-stripping, npx-allowlist, and registry"
+- id: REQ-PI-001
+  title: PiPool npx_command allowlist (rejects arbitrary binaries)
+- id: REQ-PI-002
+  title: PiPool implements BasePool ABC contract
+- id: REQ-PI-003
+  title: PiPool subprocess env stripping (sensitive keys never leaked)
+- id: REQ-PI-004
+  title: PiPool.scale raises NotImplementedError for n>1 (matches SessionBuddyPool)
+- id: REQ-PI-005
+  title: PiPool.start runs startup_self_test and records version
+- id: REQ-PI-006
+  title: PiPool.health_check exposes rpc_latency_ms and startup_self_test block
+- id: REQ-PI-007
+  title: PiPool.execute_task maps RPC errors to pool result shape
+- id: REQ-PI-008
+  title: PiPool unit tests cover scale, env-stripping, npx-allowlist, and registry
 ---
-
 # Pi Pool Backend (D1)
 
 **Date:** 2026-09-07

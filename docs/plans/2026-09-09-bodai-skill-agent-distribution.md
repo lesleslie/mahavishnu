@@ -1,19 +1,41 @@
 ---
-status: active
+status: complete
 role: canonical
 date: 2026-09-09
-last_reviewed: 2026-09-10
+last_reviewed: '2026-09-12'
 superseded_by: null
 blocks_on: []
 topic: skill-agent-distribution-via-mcp
 review_notes:
-  - "5-agent multi-lens review completed 2026-09-09. See §10 Split Plan and consolidated review report."
-  - "Phase 1.5 (ed25519 signing core) implemented in akosha commit 09cef76 on 2026-09-09. Closes B-1 and partially addresses B-7 (4 mandatory feed signals + /health aggregation). 49/49 unit tests passing; lint + types clean; live /health verified; key_id persists across launchd restart."
-  - "Second 2-reviewer pass (D2) requested 2026-09-09 after Phase 1.5 commit; findings folded into plan on 2026-09-10 — §10.3 Per-Server Wiring Contract added; §5/§6/§10.1/§10.2 completion-state markers added; package name + test path corrections (§10.1, §6); B-7 E2E test contract refactored to §10.3.7."
-  - "Phase 1.5 cross-server consistency review completed 2026-09-10 across all 5 replicas (akosha, mahavishnu, session-buddy, dhara, crackerjack). 5 lenses audited: __all__ parity, canonicalize parity, manifest parity, signer_feed 9-key payload parity, production-lifespan parity. Result: 0 blockers; 1 Important (session-buddy redundant-init guard, commit 86d70f5f); 1 Cosmetic applied (akosha raise format, commit 223101d); 2 Cosmetic skipped (false-positive import-order; by-design signer_feed API surface). New §10.4 documents the review and decisions; §10.1/§10.2/§11 updated to reflect 5/5 server completion. Phase 1.5 is now fully closed in code across the ecosystem."
-  - "Phase 1 (per-server list_skills/get_skill MCP tools + shared SkillMetadata schema) shipped 2026-09-10 across all 5 servers. Commits: akosha 4951ee8, mahavishnu d722d2fa, session-buddy 02235271 (H-6 rename) + 987c3096, dhara 2e3a65fa, crackerjack e99edb6a. Cross-server review §10.5 ran 6 lenses (SkillMetadata schema, signing integration, lifespan/singleton helpers, REGISTRATION_MAP+tier, API surface, H-6 collision). Result: 0 Blockers; 1 Important applied (akosha signature alignment commit 0dd7176 — collapsed param-accepting init_signer_feed_state to parameterless to match the other 4 servers); 1 Cosmetic applied (dhara trailing newline commit 9e81d98). Phase 1 wire protocol and public helper API now byte-equivalent across all 5 servers; Phase 2 installer is unblocked."
+- 5-agent multi-lens review completed 2026-09-09. See §10 Split Plan and consolidated
+  review report.
+- Phase 1.5 (ed25519 signing core) implemented in akosha commit 09cef76 on 2026-09-09.
+  Closes B-1 and partially addresses B-7 (4 mandatory feed signals + /health aggregation).
+  49/49 unit tests passing; lint + types clean; live /health verified; key_id persists
+  across launchd restart.
+- Second 2-reviewer pass (D2) requested 2026-09-09 after Phase 1.5 commit; findings
+  folded into plan on 2026-09-10 — §10.3 Per-Server Wiring Contract added; §5/§6/§10.1/§10.2
+  completion-state markers added; package name + test path corrections (§10.1, §6);
+  B-7 E2E test contract refactored to §10.3.7.
+- 'Phase 1.5 cross-server consistency review completed 2026-09-10 across all 5 replicas
+  (akosha, mahavishnu, session-buddy, dhara, crackerjack). 5 lenses audited: __all__
+  parity, canonicalize parity, manifest parity, signer_feed 9-key payload parity,
+  production-lifespan parity. Result: 0 blockers; 1 Important (session-buddy redundant-init
+  guard, commit 86d70f5f); 1 Cosmetic applied (akosha raise format, commit 223101d);
+  2 Cosmetic skipped (false-positive import-order; by-design signer_feed API surface).
+  New §10.4 documents the review and decisions; §10.1/§10.2/§11 updated to reflect
+  5/5 server completion. Phase 1.5 is now fully closed in code across the ecosystem.'
+- 'Phase 1 (per-server list_skills/get_skill MCP tools + shared SkillMetadata schema)
+  shipped 2026-09-10 across all 5 servers. Commits: akosha 4951ee8, mahavishnu d722d2fa,
+  session-buddy 02235271 (H-6 rename) + 987c3096, dhara 2e3a65fa, crackerjack e99edb6a.
+  Cross-server review §10.5 ran 6 lenses (SkillMetadata schema, signing integration,
+  lifespan/singleton helpers, REGISTRATION_MAP+tier, API surface, H-6 collision).
+  Result: 0 Blockers; 1 Important applied (akosha signature alignment commit 0dd7176
+  — collapsed param-accepting init_signer_feed_state to parameterless to match the
+  other 4 servers); 1 Cosmetic applied (dhara trailing newline commit 9e81d98). Phase
+  1 wire protocol and public helper API now byte-equivalent across all 5 servers;
+  Phase 2 installer is unblocked.'
 ---
-
 # Bodai Skill + Agent Distribution Plan
 
 > **Why this plan exists**: Across two investigations (the slash-command
@@ -839,7 +861,7 @@ tests/
 | Federation partial-failure surfaces errors | killing one server mid-call populates `errors[<server>]` | tests/integration/test_ecosystem_skills_partial_failure.py (H-1) |
 | No duplicate skill names across installs | 100% uniqueness with `<server>-` prefix | tests/integration/test_skill_installer_e2e.py |
 | Specialist agents have non-empty `system_prompt` field | body text is present in metadata | tests/integration/test_list_agents_e2e.py (B-6) |
-| Specialist agents are invokable via dispatcher | `mcp__mahavishnu__dispatch_specialist(server, task_type)` returns matching agent | tests/integration/test_dispatch_specialist.py (H-3) |
+| Specialist agents are invocable via dispatcher | `mcp__mahavishnu__dispatch_specialist(server, task_type)` returns matching agent | tests/integration/test_dispatch_specialist.py (H-3) |
 | All four mandatory feed signals present per feed | `entities_count`, `last_updated_timestamp`, `errors_total`, `cycles_total` | tests/integration/test_health_aggregator_e2e.py (B-7) |
 | `/health` returns 503 when any feed degraded | simulated degraded feed triggers 503 | tests/integration/test_health_aggregator_e2e.py (B-7) |
 
@@ -1113,7 +1135,7 @@ servers have different shapes:
   endpoint registered in `__init__` for launchd's early-probe
   (per `mahavishnu/mcp/server_core.py:59-69`). The launchd wrapper
   (`launch_with_healthcheck.sh`) tolerates up to 120s startup.
-  
+
   **Mandated contract for mahavishnu**: do NOT add a
   FastMCP `lifespan=` kwarg (breaks the early-`/health` design).
   Instead, **defer signer init into `start()`** (after FastMCP
@@ -1121,7 +1143,7 @@ servers have different shapes:
   returns 503 (no signer feed yet). Keypair load is sub-second,
   so the warm-up window is brief. This is option (c) of the
   mcp-integration-expert's 2026-09-09 analysis.
-  
+
 - **session-buddy**: has async lifespan — replicate akosha's
   pattern.
 - **dhara**: instance-based with `_runtime_status` at

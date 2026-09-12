@@ -1,13 +1,12 @@
 ---
-status: active
+status: partial
 role: implementation
 topic: routing-composition
 date: 2026-07-16
-last_reviewed: 2026-07-16
+last_reviewed: '2026-09-12'
 superseded_by: null
 blocks_on: []
 ---
-
 # LLM Routing Standardization — Design Spec
 
 ## **Date:** 2026-05-16 **Status:** Approved (rev 2 — post multi-agent review) <!-- legacy status: Approved (rev 2 — post multi-agent review) — see YAML frontmatter --> **Scope:** crackerjack, session-buddy, mahavishnu, akosha, dhara (all Bodai components)
