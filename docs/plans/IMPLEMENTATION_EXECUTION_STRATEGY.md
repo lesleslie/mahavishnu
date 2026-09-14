@@ -1,8 +1,8 @@
 ---
-status: draft
+status: complete
 role: canonical
 date: 2026-04-02
-last_reviewed: 2026-07-16
+last_reviewed: 2026-08-29
 superseded_by: null
 topic: convergence-control-plane
 ---

@@ -1,3 +1,14 @@
+---
+status: active
+role: implementation
+kind: plan
+date: 2026-08-19
+last_reviewed: 2026-09-13
+superseded_by: null
+blocks_on: []
+topic: mcp-plugin-poc-scope
+---
+
 # 2-Repo Plugin POC Scope: graphics-mcp + css-mcp
 
 **Status:** Draft for review
