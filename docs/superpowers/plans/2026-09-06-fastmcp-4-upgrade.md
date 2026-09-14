@@ -1,6 +1,21 @@
+---
+status: complete
+role: implementation
+kind: plan
+date: 2026-09-06
+last_reviewed: 2026-09-13
+superseded_by: null
+blocks_on: []
+topic: fastmcp-upgrade
+related:
+  - 2026-09-06-archive-org-mcp.md
+  - 2026-09-06-medium-mcp.md
+  - 2026-09-06-scapy-mcp.md
+  - 2026-09-06-port-bodai-reconciliation.md
+---
+
 # FastMCP ≥4 Upgrade Plan — Bodai Ecosystem
 
-**Date:** 2026-09-06
 **Author:** Claude (Mahavishnu session continuation)
 **Scope:** mahavishnu (vish), mcp-common, akosha, dhara, session-buddy, crackerjack, css-mcp, graphics-mcp, excalidraw-mcp
 

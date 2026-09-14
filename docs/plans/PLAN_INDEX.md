@@ -658,6 +658,7 @@ One table per store. Entries are sorted by `date` DESC, with ties broken by path
 | [`docs/superpowers/plans/2026-09-07-mcp-common-auth-primitives-multi-agent-review.md`](../../docs/superpowers/plans/2026-09-07-mcp-common-auth-primitives-multi-agent-review.md) | 2026-09-07 | `complete` | `implementation` |  | `mcp-common-auth-primitives` | mcp-common Auth Primitives Plan — Multi-Agent Review |
 | [`docs/superpowers/plans/2026-09-07-worktree-cleanup.md`](../../docs/superpowers/plans/2026-09-07-worktree-cleanup.md) | 2026-09-07 | `draft` | `implementation` |  | `worktree-cleanup` | Bodai Worktree Cleanup Policy — Implementation Plan |
 | [`docs/superpowers/plans/2026-09-06-archive-org-mcp.md`](../../docs/superpowers/plans/2026-09-06-archive-org-mcp.md) | 2026-09-06 | `complete` | `implementation` |  | `mcp-stub-activation` | archive-org-mcp Implementation Plan |
+| [`docs/superpowers/plans/2026-09-06-fastmcp-4-upgrade.md`](../../docs/superpowers/plans/2026-09-06-fastmcp-4-upgrade.md) | 2026-09-06 | `complete` | `implementation` |  | `fastmcp-upgrade` | FastMCP ≥4 Upgrade Plan — Bodai Ecosystem |
 | [`docs/superpowers/plans/2026-09-06-medium-mcp.md`](../../docs/superpowers/plans/2026-09-06-medium-mcp.md) | 2026-09-06 | `complete` | `implementation` |  | `mcp-stub-activation` | Medium MCP Implementation Plan |
 | [`docs/superpowers/plans/2026-09-06-port-bodai-reconciliation.md`](../../docs/superpowers/plans/2026-09-06-port-bodai-reconciliation.md) | 2026-09-06 | `complete` | `implementation` |  | `mcp-stub-activation` | Port and Bodai Config Reconciliation (Plan 0b) Implementation Plan |
 | [`docs/superpowers/plans/2026-09-06-scapy-mcp.md`](../../docs/superpowers/plans/2026-09-06-scapy-mcp.md) | 2026-09-06 | `complete` | `implementation` |  | `mcp-stub-activation` | Scapy MCP Implementation Plan |
@@ -860,7 +861,7 @@ Durable decision records — covers both ADRs in `docs/adr/` and repo-local poli
 | [`docs/adr/013-mahavishnu-dhara-adapter-tool-boundary.md`](../../docs/adr/013-mahavishnu-dhara-adapter-tool-boundary.md) | 2026-07-16 | ADR 013: Adapter Tool Boundary Between Mahavishnu and Dhara |
 | [`docs/adr/014-honcho-peer-model-routing-precedence.md`](../../docs/adr/014-honcho-peer-model-routing-precedence.md) | 2026-07-16 | ADR 014: Honcho Peer-Model Routing Precedence |
 
-### `plan` (545 entries)
+### `plan` (546 entries)
 
 Work items. The bulk of the registry — see the per-store tables above for full detail with status/role/topic.
 
@@ -873,9 +874,9 @@ Counts of entries per (lifecycle, role) cell across all 24 stores. Useful as a s
 | Role \\ Lifecycle | draft | active | partial | shipped | complete | Total |
 |---|---|---|---|---|---|---|
 | `canonical` | 19 | 102 | 1 | 2 | 13 | **137** |
-| `implementation` | 134 | 37 | 15 | 34 | 29 | **249** |
+| `implementation` | 134 | 37 | 15 | 34 | 30 | **250** |
 | `umbrella` | · | 1 | · | · | 2 | **3** |
 | `historical` | 11 | 3 | · | 4 | 129 | **147** |
 | `superseded` | · | · | · | · | 12 | **12** |
 
-| **Total** | **164** | **143** | **16** | **40** | **185** | **548** |
+| **Total** | **164** | **143** | **16** | **40** | **186** | **549** |

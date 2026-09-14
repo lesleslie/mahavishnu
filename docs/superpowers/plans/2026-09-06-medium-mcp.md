@@ -4,6 +4,8 @@ role: implementation
 date: 2026-09-06
 last_reviewed: 2026-09-13
 superseded_by: null
+related:
+  - 2026-09-06-fastmcp-4-upgrade.md
 topic: mcp-stub-activation
 blocks_on:
 - 2026-09-06-port-bodai-reconciliation.md

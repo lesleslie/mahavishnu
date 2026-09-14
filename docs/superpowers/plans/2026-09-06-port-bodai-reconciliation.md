@@ -6,6 +6,8 @@ last_reviewed: 2026-09-13
 superseded_by: null
 blocks_on:
   - docs/superpowers/specs/2026-09-06-mcp-stub-activation-design.md
+related:
+  - 2026-09-06-fastmcp-4-upgrade.md
 topic: mcp-stub-activation
 ---
 
