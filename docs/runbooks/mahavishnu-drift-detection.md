@@ -123,6 +123,43 @@ Operator action by signal:
   independent tests agree the metric has shifted." Open an incident
   per the L2/L3 escalation paths below.
 
+### Opting into the two-stage detector (operator setup)
+
+The two-stage warn/confirm detector is **opt-in** as of 2026-09-14
+(commit history in `docs/feature-tracking/2026-09-10-observability-changepoint.md`).
+The Mahavishnu default remains `cusum` (single-detector, Phase 7) until
+the staged rollout completes.
+
+**Step 1 — Enable in your environment.** Add to `settings/local.yaml`:
+
+```yaml
+changepoint:
+  detector: "two_stage"
+```
+
+Or set the env var (Oneiric layered config, takes precedence over YAML):
+
+```bash
+export MAHAVISHNU_CHANGEPOINT__DETECTOR=two_stage
+```
+
+The tracked template at `settings/mahavishnu.yaml.example` documents
+all four settings under `changepoint:` (`detector`,
+`warn_window_samples`, `confirm_window_samples`, `cooldown_seconds`)
+with the production defaults.
+
+**Step 2 — Verify the rollout signal.** Every drift span now carries
+the OTel attribute `changepoint.detector` (value: `cusum` |
+`two_stage` | `page_hinkley`). After the next `drift_warning` or
+`drift_detected` span, query your OTel backend for the attribute and
+confirm `changepoint.detector="two_stage"` is present.
+
+**Step 3 — Watch the rollback signal.** The Phase 8 design point is
+~30 `drift_warning_total` per 10,080 samples on stationary Gaussian
+noise at `warn_threshold=8.0`. If you observe sustained rates >5× that
+on stationary traffic over a 24h window, revert via
+`changepoint.detector: "cusum"` (single-detector mode documented below).
+
 ### Legacy single-detector mode (backwards compat)
 
 For operators preferring the original Phase 6 single-CUSUM behavior,

@@ -6,10 +6,13 @@ from dataclasses import dataclass
 from datetime import UTC, datetime
 from enum import Enum
 import logging
+import math
 import time
 from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
+    from mahavishnu.observability.sampler import MetricSampler
+
     from ..core.config import MahavishnuSettings
 
 # Try to import OpenTelemetry components
@@ -393,7 +396,7 @@ class ObservabilityManager:
                 if changepoint_cfg is not None:
                     cadence = float(getattr(changepoint_cfg, "sampler_cadence_seconds", 60.0))
             except Exception:  # noqa: BLE001 - config may not have changepoint
-                pass
+                self.logger.debug("config has no changepoint block; using default cadence")
             sampler = MetricSampler(cadence_seconds=cadence)
             self._metric_sampler = sampler  # type: ignore[attr-defined]
         return sampler
@@ -465,9 +468,7 @@ class ObservabilityManager:
             elif result.state == "confirmed" and result.confirm_result is not None:
                 # Hard event: page-worthy. Emit the existing drift_detected
                 # OTel span + counter so dashboards/alerts keep working.
-                self._on_drift_detected_two_stage(
-                    metric_name, value, result
-                )
+                self._on_drift_detected_two_stage(metric_name, value, result)
             return result
 
         # Single-detector path (unchanged from R4).
@@ -597,16 +598,10 @@ class ObservabilityManager:
 
             defaults = ChangepointConfig()
             slack = float(getattr(changepoint_cfg, "slack", defaults.slack))
-            threshold = float(
-                getattr(changepoint_cfg, "threshold", defaults.threshold)
-            )
+            threshold = float(getattr(changepoint_cfg, "threshold", defaults.threshold))
             algo = str(getattr(changepoint_cfg, "detector", defaults.detector))
-            explicit_target = float(
-                getattr(changepoint_cfg, "target_mean", defaults.target_mean)
-            )
-            use_auto = bool(
-                getattr(changepoint_cfg, "target_mean_auto", defaults.target_mean_auto)
-            )
+            explicit_target = float(getattr(changepoint_cfg, "target_mean", defaults.target_mean))
+            use_auto = bool(getattr(changepoint_cfg, "target_mean_auto", defaults.target_mean_auto))
             auto_window = int(
                 getattr(
                     changepoint_cfg,
@@ -778,9 +773,7 @@ class ObservabilityManager:
 
         # R3-M5: lowercase detector name so dashboards written against
         # the documented "cusum" / "page_hinkley" tokens work.
-        detector_name = self._canonical_detector_name(
-            getattr(self, "_changepoint_detector", None)
-        )
+        detector_name = self._canonical_detector_name(getattr(self, "_changepoint_detector", None))
         severity = self._classify_drift_severity(result.score, result.threshold)
 
         # Compute baseline statistics from the recent sampler window
@@ -796,8 +789,8 @@ class ObservabilityManager:
                 if len(recent) >= 2:
                     variance = sum((v - baseline_mean) ** 2 for v in recent) / (len(recent) - 1)
                     baseline_std = math.sqrt(variance) if variance > 0 else 0.0
-        except Exception:  # noqa: BLE001 - boundary handler
-            pass
+        except Exception:
+            self.logger.debug("baseline stddev calculation failed; using 0.0", exc_info=True)
 
         trace_id_str = ""
         if OTEL_AVAILABLE:
@@ -808,12 +801,13 @@ class ObservabilityManager:
                 ctx = ctx_span.get_span_context() if ctx_span else None
                 if ctx and ctx.trace_id:
                     trace_id_str = _otel_trace.format_trace_id(ctx.trace_id)
-            except Exception:  # noqa: BLE001 - OTel not initialized
-                pass
+            except Exception:
+                self.logger.debug("OTel trace context unavailable", exc_info=True)
 
         span_attributes = {
             "metric_name": metric_name,
             "detector": detector_name,
+            "changepoint.detector": detector_name,
             "score_high": float(result.score_high),
             "score_low": float(result.score_low),
             "score": float(result.score),
@@ -836,9 +830,7 @@ class ObservabilityManager:
         # result. The single-detector path leaves this attribute unset.
         two_stage_result = getattr(self, "_last_two_stage_result", None)
         if two_stage_result is not None:
-            span_attributes["samples_since_warning"] = int(
-                two_stage_result.samples_since_warning
-            )
+            span_attributes["samples_since_warning"] = int(two_stage_result.samples_since_warning)
             span_attributes["confirm_detector"] = two_stage_result.detector_confirm
 
         # C6: Prometheus counter — the §7 stage-1 gate's source-of-truth.
@@ -931,9 +923,7 @@ class ObservabilityManager:
             span_attributes["host"],
         )
 
-    def _on_drift_warning(
-        self, metric_name: str, value: float, result
-    ) -> None:
+    def _on_drift_warning(self, metric_name: str, value: float, result) -> None:
         """OTel span + counter emission for a drift WARNING (warn detector fired).
 
         Two-stage extension of REQ-005: when changepoint.detector ==
@@ -994,8 +984,8 @@ class ObservabilityManager:
                 if len(recent) >= 2:
                     variance = sum((v - baseline_mean) ** 2 for v in recent) / (len(recent) - 1)
                     baseline_std = math.sqrt(variance) if variance > 0 else 0.0
-        except Exception:  # noqa: BLE001 - boundary handler
-            pass
+        except Exception:
+            self.logger.debug("baseline stddev calculation failed; using 0.0", exc_info=True)
 
         # Resolve the runbook URL the same way as the drift_detected path
         # so the warning span advertises the operator-handling doc.
@@ -1017,14 +1007,15 @@ class ObservabilityManager:
                 ctx = ctx_span.get_span_context() if ctx_span else None
                 if ctx and ctx.trace_id:
                     trace_id_str = _otel_trace.format_trace_id(ctx.trace_id)
-            except Exception:  # noqa: BLE001 - OTel not initialized
-                pass
+            except Exception:
+                self.logger.debug("OTel trace context unavailable", exc_info=True)
 
         # OTel span + structured log (best-effort)
         try:
             span_attributes = {
                 "metric_name": metric_name,
                 "detector": detector_name,
+                "changepoint.detector": detector_name,
                 "score_high": float(warn_result.score_high),
                 "score_low": float(warn_result.score_low),
                 "score": float(warn_result.score),
@@ -1064,9 +1055,7 @@ class ObservabilityManager:
             socket.gethostname(),
         )
 
-    def _on_drift_detected_two_stage(
-        self, metric_name: str, value: float, result
-    ) -> None:
+    def _on_drift_detected_two_stage(self, metric_name: str, value: float, result) -> None:
         """OTel span + counter emission for a CONFIRMED drift alert.
 
         Two-stage extension of REQ-005: when the confirm detector fires
@@ -1249,12 +1238,12 @@ class ObservabilityManager:
             return
         try:
             target.cancel()
-        except Exception:  # noqa: BLE001 - boundary handler
-            pass
+        except Exception:
+            self.logger.debug("change-point tick cancel raised; ignoring", exc_info=True)
         try:
             await target
-        except Exception:  # noqa: BLE001 - boundary handler (CancelledError is expected)
-            pass
+        except Exception:
+            self.logger.debug("change-point tick await raised; ignoring", exc_info=True)
 
     def shutdown(self):
         """Shutdown observability components."""

@@ -1,8 +1,8 @@
 ---
 name: observability-changepoint
-status: wired
+status: adopted
 date: 2026-09-10
-last_reviewed: 2026-09-10
+last_reviewed: 2026-09-14
 owner: bodai-orchestrator
 role: canonical
 ---
@@ -11,21 +11,28 @@ role: canonical
 
 **Owner:** bodai-orchestrator
 **Created:** 2026-09-10
-**Last updated:** 2026-09-10
+**Last updated:** 2026-09-14 (Phase 1 operator opt-in shipped — flip wired → adopted)
 **Repo(s):** `/Users/les/Projects/mahavishnu`
 
 ## State — pick one
 
-- [x] **wired** (built + integrated; awaiting operator adoption of the two-stage extension)
+- [x] **adopted** (operator opt-in path shipped; drift spans carry `changepoint.detector` attribute for Grafana split-by-detector dashboards)
 
 The original CUSUM/Page-Hinkley detector has been adopted since
 Phase 7. The two-stage warn/confirm extension shipped 2026-09-10
-in commits `3f61fa3a` + `b758ebba` + `40cd2315`; the code default
-for `changepoint.detector` remains `cusum`, so operators opt into
-`two_stage` explicitly via `changepoint.detector: "two_stage"` in
-`settings/mahavishnu.yaml` or `MAHAVISHNU_CHANGEPOINT__DETECTOR=two_stage`.
-Status moves back to `adopted` once operators begin the staged
-rollout below.
+in commits `3f61fa3a` + `b758ebba` + `40cd2315`. Phase 1 of the
+meta-plan `2026-09-12-finish-partial-implementations.md` (commit landed
+2026-09-14) flipped this tracker from `wired` → `adopted` by shipping
+the operator opt-in path: a tracked `changepoint:` block in
+`settings/mahavishnu.yaml.example`, the `MAHAVISHNU_CHANGEPOINT__DETECTOR`
+env var, an explicit runbook opt-in section, and the
+`changepoint.detector` OTel span attribute on every emitted drift
+span.
+
+Operators who opt into two-stage set
+`changepoint.detector: "two_stage"` in `settings/local.yaml` or
+`MAHAVISHNU_CHANGEPOINT__DETECTOR=two_stage` in the shell env. Default
+remains `cusum` until the staged rollout completes.
 
 ## Wiring checklist
 

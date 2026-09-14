@@ -36,3 +36,38 @@ terminal:
   max_concurrent_sessions: 20
   # Adapter preference: "auto", "mock", "crow", "tmux", or "mcpretentious".
   adapter_preference: "auto"
+
+# =============================================================================
+# Drift detection / change-point detector
+# =============================================================================
+# Default detector: "cusum" (CUSUM/Page-Hinkley from Phase 7, in production
+# since 2026-09-09).
+#
+# Opt-in two-stage warn/confirm extension shipped 2026-09-10 (commits
+# 3f61fa3a + b758ebba + 40cd2315). Operators enable it explicitly via:
+#
+#   changepoint:
+#     detector: "two_stage"
+#   (or unquoted YAML: `detector: two_stage` — both forms work)
+#
+# OR via env var:
+#
+#   MAHAVISHNU_CHANGEPOINT__DETECTOR=two_stage
+#
+# Four settings operators can change (all under `changepoint:`):
+#   detector:   "cusum" | "page_hinkley" | "two_stage"  (default: "cusum")
+#   warn_window_samples:    int   (two_stage only; samples before warning)
+#   confirm_window_samples: int   (two_stage only; samples before confirm)
+#   cooldown_seconds:       int   (post-confirm backoff; default 300)
+#
+# Rollout signal: every drift span now includes the OTel attribute
+# "changepoint.detector" (value: cusum | two_stage | page_hinkley). Grafana
+# dashboards can split by detector. If two-stage shows >5x sustained
+# drift_warning rate over 24h vs the cusum baseline, revert via
+# `changepoint.detector: "cusum"` per the runbook rollback signal.
+# =============================================================================
+changepoint:
+  detector: "cusum"  # Set to "two_stage" to opt into the warn/confirm extension
+  warn_window_samples: 5
+  confirm_window_samples: 5
+  cooldown_seconds: 300
