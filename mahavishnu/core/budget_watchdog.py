@@ -141,10 +141,6 @@ class DharaBudgetStore:
         self._record_prefix = record_prefix
         self._lease_key = lease_key
 
-    @staticmethod
-    def record_key(workflow_id: str) -> str:
-        return f"mahavishni://budgets/{workflow_id}.json"
-
     async def get(self, key: str) -> dict[str, Any] | None:
         raw = await self._client.call_tool(
             "get",

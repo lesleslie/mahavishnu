@@ -1,5 +1,5 @@
 ---
-status: active
+status: part-implemented
 role: implementation
 kind: plan
 date: 2026-09-14
@@ -13,82 +13,112 @@ topic: audit-orphans-residual-caller-detection
 
 **Date:** 2026-09-14
 **Originating plan:** `docs/plans/2026-09-12-finish-partial-implementations.md` (Phase 5 OTel counter liveness check, Decision Rule condition 2)
-**Status:** OPEN — surfaces during Phase 5 audit gate. The `__all__`-aware reference-collection fix already shipped this session (loop 1 of audit cycle). Remaining items listed below.
+**Status:** PART-IMPLEMENTED (2026-09-14 loop-3). `__all__`-aware reference collection shipped (loop-2 commit `2c95070c`); pytest-test-target recognition shipped (loop-3 commit `7ed0745c`); `record_key` static method deleted. Remaining work: per-symbol decisions for 16 production-code symbols across 12 files (3 examples + 9 mahavishnu/ singletons + TypedDicts in jot/drain.py).
 
-## What the residual gap is
+## What shipped
 
-`scripts/audit_orphans.py --root . --include-tests --exclude scripts`
-still exits 1 after the `__all__`-aware reference collector shipped
-this session. Per-dir breakdown of orphan-row files after the fix:
+### Loop-2 (`2c95070c`) — `__all__` as a reference
 
-| Directory | Files with orphan rows | Nature |
-|---|---|---|
-| `mahavishnu/` | 11 | Production-code methods/classes. Some are truly orphan (no callers); some are intra-class dispatch (`self.method()`) or instance-method call (`app.method()`) that the audit's intra-file search whiffs on because the regex shape looks for top-level call sites, not arbitrary expression receivers. |
-| `tests/` | 293 | Test functions whose only caller is pytest. The audit's notion of "caller" doesn't recognize pytest test discovery. |
-| `examples/` | 3 | Demo modules with helper methods; same instance-method pattern as `mahavishnu/`. |
+`scripts/audit_orphans.py::collect_references` walks `Assign` nodes
+whose target is `__all__` and records each string-literal element as
+a `Name` reference. The wire-up-contract declares `__all__` the
+canonical public-API surface; symbols listed there are NOT orphans
+even if no other `Name`/`Attribute` reference exists.
 
-True-orphan candidates spotted in the Phase 5 audit (these are the
-ones with no callers at all, intra-module or inter-module):
+**Impact**: mahavishnu/ orphan files 14 → 11.
 
-| File | Symbol | Date | Status |
+### Loop-3 (`7ed0745c`) — pytest-test-target recognition
+
+`scripts/audit_orphans.py`:
+- New `--treat-tests-as-wired` flag (BooleanOptionalAction, default `True`).
+- New `_is_pytest_test_target(symbol_name, kind)` matches pytest
+  collection rules: `function`/`method` starting with `test_` (length > 5),
+  `class` starting with `Test` (length > 4).
+- New `_is_in_tests_path(path, root)` returns True when any
+  relative-segment matches `tests`.
+- `classify_orphans` checks the rule before flagging an orphan.
+
+**Impact**: `--include-tests --exclude scripts` orphan-files 307 → 26
+(per-dir: 12 tests/ + 11 mahavishnu + 3 examples).
+
+### Loop-3 (this commit) — `record_key` deletion
+
+`mahavishnu/core/budget_watchdog.py::BudgetWatchdog.record_key`
+was a static method with no callers anywhere (no `BudgetWatchdog.record_key(...)`,
+no module-level `record_key` import). Deleted.
+
+## Remaining orphans (audit still exits 1)
+
+After loops 1-3, `audit_orphans.py --root . --include-tests --exclude scripts`
+returns 26 files with 30+ orphan rows. Per-symbol triage:
+
+### KEEP + DEFER (intentional API surfaces awaiting wiring)
+
+These are public API methods on classes that exist for upcoming CLI/MCP
+tool calls. The audit reports them as orphan because nothing invokes
+them yet — but the next session that wires the corresponding CLI or MCP
+tool will resolve them automatically.
+
+| File | Symbol | Class context | Trigger condition |
 |---|---|---|---|
-| `mahavishnu/auth.py` | `has_scope` | 2026-08-25 | method |
-| `mahavishnu/core/app.py` | `start_budget_watchdog` | 2026-09-10 | method |
-| `mahavishnu/core/app.py` | `stop_budget_watchdog` | 2026-09-10 | method |
-| `mahavishnu/core/budget_watchdog.py` | `record_key` | 2026-08-30 | method |
-| `mahavishnu/core/cross_repo_aggregator.py` | `get_repos_needing_attention` | 2026-08-19 | method |
-| `mahavishnu/core/ecosystem_status.py` | `AdapterProvider` | 2026-08-31 | class |
-| `mahavishnu/core/evidence_store.py` | `store_evidence` | 2026-08-31 | method |
-| `mahavishnu/core/worktree_coordination.py` | `start_health_check_loop` | 2026-09-04 | method |
-| `mahavishnu/core/worktree_coordination.py` | `fetch_worktree_handle` | 2026-09-04 | method |
-| `mahavishnu/jot/drain.py` | `DispatchCtx` + 5 more event-payload dataclasses | 2026-09-10 | class |
-| `mahavishnu/mcp/tools/capability_tools.py` | (one symbol, see audit dump) | recent | method |
-| `mahavishnu/pools/manager.py` | (one symbol, see audit dump) | recent | method |
-| `mahavishnu/websocket/server.py` | (one symbol, see audit dump) | recent | method |
+| `mahavishnu/auth.py:96` | `Principal.has_scope` | Principal | When the next MCP tool requiring scope-based authorization lands; `dhara_registry.py:336` documents this exact deprecation pattern (uses raw `in caller.scopes` because `has_scope()` treats empty scopes as "all" which is wrong for security). |
+| `mahavishnu/core/app.py:340` | `MahavishnuApp.start_budget_watchdog` | MahavishnuApp | When the next CLI command or MCP tool needs to start/stop the budget watchdog (currently only the lifespan hooks call it on startup; test fixtures don't invoke these methods directly). |
+| `mahavishnu/core/app.py` | `MahavishniApp.stop_budget_watchdog` | MahavishnuApp | Same as above. |
+| `mahavishnu/core/cross_repo_aggregator.py` | `CrossRepoAggregator.get_repos_needing_attention` | CrossRepoAggregator | When the next CLI command that needs attention-based filtering lands. |
+| `mahavishnu/core/ecosystem_status.py` | `AdapterProvider` | (class for adapter health) | When `mahavishnu ecosystem status` reaches the adapter-health reporting surface. |
+| `mahavishnu/core/evidence_store.py` | `EvidenceStore.store_evidence` | EvidenceStore | When the next MCP tool that persists evidence lands. |
+| `mahavishnu/core/worktree_coordination.py` | `start_health_check_loop`, `fetch_worktree_handle`, `remove_worktree_handle`, `list_worktree_handles` | WorktreeCoordinationManager | When the next `mahavishnu worktree` CLI subcommand reaches production. |
+| `mahavishnu/mcp/tools/capability_tools.py` | `register_capability_tools_with_settings` | (MCP capability tools registration) | When the next MCP server bootstrap reaches capability-tool registration. |
+| `mahavishnu/pools/manager.py` | `PoolManager.pool_queueing_observations` | PoolManager | When `mcp__mahavishnu__pool_queueing_observations` tool lands (currently a docstring reference only). |
+| `mahavishnu/websocket/server.py` | `WebSocketServer.broadcast_settle_transition` | WebSocketServer | When the WebSocket event-stream reader subscribes to settle transitions. |
 
-## Proposed fixes (acceptance criteria)
+### KEEP (used via `__all__` + as documented types — NOT actually orphan)
 
-1. **Audit script improvements** — make `audit_orphans.py` recognize:
-   - **Pytest test functions** — every `test_*` function in `tests/` should be treated as having pytest as an implicit caller. Easiest mechanism: a `--treat-tests-as-wired` flag (default `True` for `tests/` paths), or a `pytest.discover` AST walk that detects classes/functions whose name matches pytest's collection rules.
-   - **Typed-discriminator forward-references** — Pydantic `Literal["a", "b"]` and `Field(discriminator=...)` arguments reference classes by string name; the audit should skip those classes from the orphan count. (The script already has `--include-stub-check` for Pydantic discriminated unions; widen it to cover more cases.)
-   - **Methods called only via attribute dispatch** — for symbols where the audit can't find any caller, attempt to recognize `method(...)` patterns inside class bodies and trace them up to the class hierarchy. This is the most invasive change and may not be worth it; a `--treat-intra-class-dispatch-as-wired` opt-in flag is the safer scope.
-   - **MCP tool/CLI decorator variants** the existing regex misses — `app.command`, `cli.command`, `mcp.tool`, etc. (the audit already has `DECORATOR_REGISTRATION_PATTERN`; audit whether it actually catches all variants in production usage).
-2. **Production-code orphan wiring OR removal** — for each of the 11 `mahavishnu/` orphans listed above, decide:
-   - Wire it (add a real caller — likely in `app.py` or a CLI subcommand).
-   - Remove it (delete the symbol + its tests).
-   - Mark deferred (file `docs/followups/<date>-<symbol>-deferred.md` with a concrete re-evaluation trigger).
-3. **Test-folder-only audit mode** — the `tests/` orphans aren't real orphans (pytest calls them). Add a `--exclude-tests-default` mode that the meta-plan's audit invocation can opt into, so a "production orphan sweep" doesn't drown in test scaffolding.
+These ARE used (in `__all__` literal lists or docstring cross-refs)
+but the audit's `__all__`-recognition only catches self-references
+within the defining module. Cross-module `__all__` listings like
+`"DispatchCtx",` strings aren't picked up. The audit will continue
+to report these as orphan until a caller uses one directly.
 
-## Estimated size
+| File | Symbol | Use site |
+|---|---|---|
+| `mahavishnu/jot/drain.py` | `DispatchCtx`, `DispatchDoneCtx`, `DispatchFailedCtx`, `DeferCtx`, `DeferExpiredCtx`, `DeleteCtx` | Listed as string literals in `drain.py`'s own `__all__` (lines 331-336, 1152-1153) and referenced in docstring at `drain.py:794`. |
 
-- Audit script improvements: 50-200 lines depending on scope. The
-  pytest-as-caller flag is the single highest-leverage change.
-- Production wiring: 1-3 lines per orphan (or deletion). 11 orphans
-  × ~5 lines = ~55 lines + tests.
-- The audit script fix is reviewable as a single PR; the production
-  wiring may cluster by file.
+### UNCERTAIN — coupled to tests, deletion risky without test refactor
 
-## Why this is a followup, not part of Phase 5
+| File | Symbol | Note |
+|---|---|---|
+| `examples/pool_monitoring_demo.py:238` | `unsubscribe_from_pool` | The symmetric `subscribe_to_pool` at line 206 IS called in the demo, but `unsubscribe_from_pool` has no callers anywhere. The method exists for API symmetry. Deleting it would orphan the API; keeping it means audit reports it forever for a demo file. **Recommended: leave intact** (demonstrations want symmetric APIs; the audit's complaint here is a measure-of-the-demo-cost not a real bug). |
+| `examples/websocket_client_examples.py:90` | `unsubscribe_from_channel` | Has a coupled test at `tests/unit/test_websocket_server.py:655::test_unsubscribe_from_channel`. Deletion would orphan the test. **Recommended: leave intact** (test verifies the demo's API contract). |
+| `examples/workflow_monitoring_demo.py:235` | `unsubscribe_from_workflow` | Same reasoning as pool/websocket. **Recommended: leave intact**. |
 
-Phase 5 is the post-close audit. Its deliverable is decision-rule
-verification + audit-summary commit + filing of followups for any
-non-closing gaps. Filing this followup IS the deliverable. The
-meta-plan can flip to `complete` once (a) the audit improvement lands
-+ (b) the production orphans are wired/removed + (c) the audit
-re-runs exit 0.
+### ALREADY ADDRESSED
 
-## Why not just delete the missing callers
+`mahavishnu/core/budget_watchdog.py::BudgetWatchdog.record_key` — DELETED
+in this commit's loop-3. Confirmed no callers (grep `record_key\(` in
+`mahavishnu/` and `tests/` returned only the def at line 145).
 
-Several of these (especially the `jot/drain.py` dataclasses and
-the `start_budget_watchdog` / `stop_budget_watchdog` methods) are
-intentional API surfaces awaiting one of:
-- The next CLI command that calls them
-- The MCP tool registration that wires them
-- The CLI command that wires them (e.g. `mahavishnu monitor
-  budget` if it doesn't exist yet)
+## Audit script improvements still pending
 
-Deletion without confirming the API surface intent risks
-re-introducing the methods in the next sprint. Wire-first or
-deferred-with-trigger is safer than delete.
+- **Cross-module `__all__` string references** — e.g. `mahavishnu/jot/drain.py`'s `__all__` lists `DispatchCtx` etc as string literals; the audit doesn't currently resolve these as references because it walks per-file rather than cross-module. ~50 lines to add: walk all modules' `__all__` lists and union the references for the named symbols.
+- **Class-method dispatch via Attribute** — methods called as `instance.method()` are caught by the Attribute walker, but methods that take a different name argument (e.g. `getattr(obj, attr_name)(args)`) aren't. Out of scope (requires name resolution at runtime).
+- **Instance methods on classes that are exported but not directly imported** — methods like `MahavishnuApp.start_budget_watchdog` are reachable through class-instance holders, but the audit only counts direct module imports. Would require building a class-instance reachability graph; significantly more complex.
 
-______________________________________________________________________
+## Acceptance criteria for closing this followup
+
+The Decision Rule condition 2 (`audit_orphans.py` exit 0) is closed
+when ALL of:
+
+1. The audit script improvements above (cross-module `__all__` resolution at minimum) ship.
+2. The KEEP+DEFER production symbols are either wired (preferred — adds real functionality) or filed as individual followups with concrete triggers per the table above.
+3. The audit re-run exits 0 with `--include-tests --exclude scripts`.
+
+If condition 2 cannot be closed by the next quarterly audit (2026-12), file a followup-to-the-followup with the realized scope and adjust the meta-plan's Decision Rule accordingly. Per the meta-plan's own playbook: "keeping the orphan out of the 'closed' claim is more honest than claiming closure on unwired code."
+
+## Estimated remaining effort
+
+- Cross-module `__all__` resolution (audit script): ~50-100 lines of walker logic + ~50 lines of tests.
+- Per-symbol wiring: 1-3 lines per API-surface method (~12 methods × ~2 lines = ~25 lines + tests).
+- Total: ~150-200 lines across multiple commits.
+
+This is best done as 2-3 focused PRs over the next month, not in a single session.
