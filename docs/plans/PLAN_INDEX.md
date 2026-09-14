@@ -512,6 +512,8 @@ One table per store. Entries are sorted by `date` DESC, with ties broken by path
 
 | Path | Date | Status | Role | Kind | Topic | Title |
 |---|---|---|---|---|---|---|
+| [`docs/followups/2026-09-14-akosha-hnsw-on-duckdb.md`](../../docs/followups/2026-09-14-akosha-hnsw-on-duckdb.md) | 2026-09-14 | `draft` | `historical` | `audit` | `akosha-hnsw-on-duckdb` | Akosha: HNSW Index Creation Fails on DuckDB |
+| [`docs/followups/2026-09-10-changepoint-two-stage-polish.md`](../../docs/followups/2026-09-10-changepoint-two-stage-polish.md) | 2026-09-10 | `active` | `implementation` |  | `changepoint-two-stage-polish` | Followups — Tier 1 changepoint two-stage polish |
 | [`docs/followups/2026-09-10-tier2-hyperbolic-embeddings.md`](../../docs/followups/2026-09-10-tier2-hyperbolic-embeddings.md) | 2026-09-10 | `active` | `deferred` |  | `tier2-hyperbolic-embeddings` | Tier 2 Follow-up: Hyperbolic Embeddings for Session-Buddy Code Graphs |
 | [`docs/followups/2026-09-10-tier2-multi-metric-drift.md`](../../docs/followups/2026-09-10-tier2-multi-metric-drift.md) | 2026-09-10 | `active` | `deferred` |  | `tier2-multi-metric-drift` | Tier 2 Follow-up: Multi-Metric Drift Detection |
 | [`docs/followups/2026-09-10-tier2-optimal-transport.md`](../../docs/followups/2026-09-10-tier2-optimal-transport.md) | 2026-09-10 | `active` | `deferred` |  | `tier2-optimal-transport` | Tier 2 Follow-up: Optimal Transport for Akosha Pattern Comparison |
@@ -545,16 +547,18 @@ One table per store. Entries are sorted by `date` DESC, with ties broken by path
 
 | Path | Date | Status | Role | Kind | Topic | Title |
 |---|---|---|---|---|---|---|
-| [`docs/plans/2026-09-13-migrate-no-frontmatter-plans.md`](2026-09-13-migrate-no-frontmatter-plans.md) | 2026-09-13 | `active` | `implementation` |  | `frontmatter-migration-completion` | Migrate 40 No-Frontmatter Plans to Schema v1.1 |
+| [`docs/plans/2026-09-14-common-mcp-client-transport-unification.md`](2026-09-14-common-mcp-client-transport-unification.md) | 2026-09-14 | `active` | `umbrella` |  | `mcp-transport-unification` | CommonMCPClient Transport Unification Across Bodai (v2) |
+| [`docs/plans/2026-09-13-migrate-no-frontmatter-plans.md`](2026-09-13-migrate-no-frontmatter-plans.md) | 2026-09-13 | `complete` | `implementation` |  | `frontmatter-migration-completion` | Migrate 39 No-Frontmatter Plans to Schema v1.1 |
 | [`docs/plans/2026-09-12-finish-partial-implementations.md`](2026-09-12-finish-partial-implementations.md) | 2026-09-12 | `partial` | `implementation` |  | `close-genuine-partial-implementations` | Plan: Finish Genuine Partial Implementations (revision 3, post-re-review) |
 | [`docs/plans/PLAN_AUDIT_2026-09-12.md`](PLAN_AUDIT_2026-09-12.md) | 2026-09-12 | `active` | `implementation` | `audit` | `plan-audit-2026-09-12` | Plan Audit — 2026-09-12 |
-| [`docs/plans/2026-09-10-settle-semantic-merge.md`](2026-09-10-settle-semantic-merge.md) | 2026-09-10 | `partial` | `implementation` |  | `settle-semantic-merge` | Settle Semantic Merge — mergiraf opt-in + git-merge-tree diagnostics |
+| [`docs/plans/2026-09-10-settle-semantic-merge.md`](2026-09-10-settle-semantic-merge.md) | 2026-09-10 | `shipped` | `implementation` |  | `settle-semantic-merge` | Settle Semantic Merge — mergiraf opt-in + git-merge-tree diagnostics |
 | [`docs/plans/2026-09-09-bodai-slash-command-tui-discoverability.md`](2026-09-09-bodai-slash-command-tui-discoverability.md) | 2026-09-09 | `superseded` | `canonical` |  | `slash-command-discoverability` | Bodai Slash-Command TUI Discoverability Plan |
 | [`docs/plans/2026-08-29-orchestrator-research-synthesis.md`](2026-08-29-orchestrator-research-synthesis.md) | 2026-08-29 | `draft` | `implementation` |  | `routing-composition` | Orchestrator Research Synthesis & Adoption Plan (v2 — Pivot) |
 | [`docs/plans/2026-08-25-bodai-tui-shell-surface-implementation.md`](2026-08-25-bodai-tui-shell-surface-implementation.md) | 2026-08-25 | `active` | `implementation` |  | `bodai-tui-shell-surface` | Bodai TUI & Admin Shell Surface Implementation Plan |
 | [`docs/plans/2026-08-25-bodai-tui-shell-surface.md`](2026-08-25-bodai-tui-shell-surface.md) | 2026-08-25 | `active` | `implementation` |  | `bodai-tui-shell-surface` | Bodai TUI & Admin Shell Surface |
-| [`docs/plans/2026-08-24-claude-env-audit-remediation.md`](2026-08-24-claude-env-audit-remediation.md) | 2026-08-24 | `partial` | `implementation` |  | `claude-env-remediation` | Claude Environment Audit Remediation |
+| [`docs/plans/2026-08-24-claude-env-audit-remediation.md`](2026-08-24-claude-env-audit-remediation.md) | 2026-08-24 | `complete` | `implementation` |  | `claude-env-remediation` | Claude Environment Audit Remediation |
 | [`docs/plans/2026-08-20-mahavishnu-lifespan-health-bypass.md`](2026-08-20-mahavishnu-lifespan-health-bypass.md) | 2026-08-20 | `complete` | `canonical` |  | `mcp-lifespan-startup-ordering` | Mahavishnu MCP `/health` Lifespan Bypass |
+| [`docs/plans/2026-08-19-mcp-plugin-poc-scope.md`](2026-08-19-mcp-plugin-poc-scope.md) | 2026-08-19 | `active` | `implementation` |  | `mcp-plugin-poc-scope` | 2-Repo Plugin POC Scope: graphics-mcp + css-mcp |
 | [`docs/plans/2026-07-26-mahavishnu-acp-server.md`](2026-07-26-mahavishnu-acp-server.md) | 2026-07-26 | `draft` | `implementation` |  | `acp-server` | Mahavishnu ACP Server — Build Plan |
 | [`docs/plans/2026-04-02-storage-consolidation-and-akosha-role.md`](2026-04-02-storage-consolidation-and-akosha-role.md) | 2026-07-16 | `complete` | `canonical` |  | `storage-consolidation` | Storage Consolidation And Akosha Role Plan |
 | [`docs/plans/2026-04-25-ecosystem-docs-canonicalization-plan.md`](2026-04-25-ecosystem-docs-canonicalization-plan.md) | 2026-07-16 | `complete` | `implementation` |  | `convergence-control-plane` | Ecosystem Docs Canonicalization Plan |
@@ -577,7 +581,7 @@ One table per store. Entries are sorted by `date` DESC, with ties broken by path
 | [`docs/plans/2026-06-04-checkpoint.md`](2026-06-04-checkpoint.md) | 2026-07-16 | `complete` | `historical` |  | `observability` | Checkpoint — 2026-06-04 |
 | [`docs/plans/2026-06-07-checkpoint.md`](2026-06-07-checkpoint.md) | 2026-07-16 | `complete` | `historical` |  | `observability` | Mahavishnu Quality Checkpoint — 2026-06-07 |
 | [`docs/plans/2026-07-11-phase-6-bodai-observability.md`](2026-07-11-phase-6-bodai-observability.md) | 2026-07-16 | `draft` | `implementation` |  | `observability` | Phase 6 — Bodai-Wide Observability Surfacing |
-| [`docs/plans/2026-07-11-ultracode-integration-wiring.md`](2026-07-11-ultracode-integration-wiring.md) | 2026-07-16 | `partial` | `implementation` |  | `verification-gate` | Ultracode Integration Wiring — Implementation Plan |
+| [`docs/plans/2026-07-11-ultracode-integration-wiring.md`](2026-07-11-ultracode-integration-wiring.md) | 2026-07-16 | `complete` | `implementation` |  | `verification-gate` | Ultracode Integration Wiring — Implementation Plan |
 | [`docs/plans/2026-07-14-oneiric-event-envelope-wire-standardization.md`](2026-07-14-oneiric-event-envelope-wire-standardization.md) | 2026-07-16 | `shipped` | `implementation` |  | `oneiric-config` | Oneiric EventEnvelope Wire Standardization Implementation Plan |
 | [`docs/plans/2026-07-16-dlq-fail-closed-wiring.md`](2026-07-16-dlq-fail-closed-wiring.md) | 2026-07-16 | `shipped` | `implementation` |  | `persistence` | DLQ Fail-Closed Wiring + Observability (Full #3) |
 | [`docs/plans/PREFECT_ADAPTER_COMPLETION_PLAN.md`](PREFECT_ADAPTER_COMPLETION_PLAN.md) | 2026-07-16 | `complete` | `historical` |  | `adapter-architecture` | Prefect Adapter Completion Plan |
@@ -654,24 +658,46 @@ One table per store. Entries are sorted by `date` DESC, with ties broken by path
 | Path | Date | Status | Role | Kind | Topic | Title |
 |---|---|---|---|---|---|---|
 | [`docs/superpowers/plans/2026-09-12-jot-drain-polish.md`](../../docs/superpowers/plans/2026-09-12-jot-drain-polish.md) | 2026-09-12 | `partial` | `implementation` |  | `convergence-control-plane` | Jot Drain Polish Implementation Plan |
+| [`docs/superpowers/plans/2026-09-10-changepoint-two-stage-warn-confirm.md`](../../docs/superpowers/plans/2026-09-10-changepoint-two-stage-warn-confirm.md) | 2026-09-10 | `active` | `implementation` |  | `changepoint-two-stage-warn-confirm` | Two-Stage Warn/Confirm Drift Detector Implementation Plan |
+| [`docs/superpowers/plans/2026-09-10-jot-capture.md`](../../docs/superpowers/plans/2026-09-10-jot-capture.md) | 2026-09-10 | `active` | `implementation` |  | `jot-capture` | Jot Inbox: Capture Sub-Plan Implementation Plan |
 | [`docs/superpowers/plans/2026-09-10-jot-drain.md`](../../docs/superpowers/plans/2026-09-10-jot-drain.md) | 2026-09-10 | `partial` | `implementation` |  | `convergence-control-plane` | Jot Inbox: Drain Sub-Plan Implementation Plan |
+| [`docs/superpowers/plans/2026-09-10-jot-inbox.md`](../../docs/superpowers/plans/2026-09-10-jot-inbox.md) | 2026-09-10 | `active` | `implementation` |  | `jot-inbox` | Jot Inbox Implementation Plan |
+| [`docs/superpowers/plans/2026-09-10-jot-read.md`](../../docs/superpowers/plans/2026-09-10-jot-read.md) | 2026-09-10 | `active` | `implementation` |  | `jot-read` | Jot Inbox: Read Sub-Plan Implementation Plan |
+| [`docs/superpowers/plans/2026-09-10-plan-index-dhara.md`](../../docs/superpowers/plans/2026-09-10-plan-index-dhara.md) | 2026-09-10 | `active` | `implementation` |  | `plan-index-dhara` | Plan Index Dhara-Canonical Metadata Layer Implementation Plan |
 | [`docs/superpowers/plans/2026-09-07-mcp-common-auth-primitives-multi-agent-review.md`](../../docs/superpowers/plans/2026-09-07-mcp-common-auth-primitives-multi-agent-review.md) | 2026-09-07 | `complete` | `implementation` |  | `mcp-common-auth-primitives` | mcp-common Auth Primitives Plan — Multi-Agent Review |
+| [`docs/superpowers/plans/2026-09-07-mcp-common-auth-primitives.md`](../../docs/superpowers/plans/2026-09-07-mcp-common-auth-primitives.md) | 2026-09-07 | `active` | `implementation` |  | `mcp-common-auth-primitives` | mcp-common Authentication Primitives Implementation Plan |
 | [`docs/superpowers/plans/2026-09-07-worktree-cleanup.md`](../../docs/superpowers/plans/2026-09-07-worktree-cleanup.md) | 2026-09-07 | `draft` | `implementation` |  | `worktree-cleanup` | Bodai Worktree Cleanup Policy — Implementation Plan |
 | [`docs/superpowers/plans/2026-09-06-archive-org-mcp.md`](../../docs/superpowers/plans/2026-09-06-archive-org-mcp.md) | 2026-09-06 | `complete` | `implementation` |  | `mcp-stub-activation` | archive-org-mcp Implementation Plan |
 | [`docs/superpowers/plans/2026-09-06-fastmcp-4-upgrade.md`](../../docs/superpowers/plans/2026-09-06-fastmcp-4-upgrade.md) | 2026-09-06 | `complete` | `implementation` |  | `fastmcp-upgrade` | FastMCP ≥4 Upgrade Plan — Bodai Ecosystem |
 | [`docs/superpowers/plans/2026-09-06-medium-mcp.md`](../../docs/superpowers/plans/2026-09-06-medium-mcp.md) | 2026-09-06 | `complete` | `implementation` |  | `mcp-stub-activation` | Medium MCP Implementation Plan |
 | [`docs/superpowers/plans/2026-09-06-port-bodai-reconciliation.md`](../../docs/superpowers/plans/2026-09-06-port-bodai-reconciliation.md) | 2026-09-06 | `complete` | `implementation` |  | `mcp-stub-activation` | Port and Bodai Config Reconciliation (Plan 0b) Implementation Plan |
 | [`docs/superpowers/plans/2026-09-06-scapy-mcp.md`](../../docs/superpowers/plans/2026-09-06-scapy-mcp.md) | 2026-09-06 | `complete` | `implementation` |  | `mcp-stub-activation` | Scapy MCP Implementation Plan |
+| [`docs/superpowers/plans/2026-09-05-crackerjack-scripts-examples-coverage.md`](../../docs/superpowers/plans/2026-09-05-crackerjack-scripts-examples-coverage.md) | 2026-09-05 | `active` | `implementation` |  | `crackerjack-scripts-examples-coverage` | Crackerjack scripts/examples coverage Implementation Plan |
+| [`docs/superpowers/plans/2026-09-05-mcp-common-phase1.md`](../../docs/superpowers/plans/2026-09-05-mcp-common-phase1.md) | 2026-09-05 | `active` | `implementation` |  | `mcp-common-phase1` | mcp-common Phase 1 Implementation Plan |
 | [`docs/superpowers/plans/2026-08-31-flowscape.md`](../../docs/superpowers/plans/2026-08-31-flowscape.md) | 2026-08-31 | `draft` | `canonical` |  | `flowscape-v1-bootstrap` | Plan: `flowscape` v1 Bootstrap |
 | [`docs/superpowers/plans/2026-08-31-zsh-modernization.md`](../../docs/superpowers/plans/2026-08-31-zsh-modernization.md) | 2026-08-31 | `draft` | `canonical` |  | `developer-environment` | Plan: Zsh Stack Modernization (oh-my-zsh → Sheldon/Starship) |
+| [`docs/superpowers/plans/2026-08-29-worker-registry-capability-refactor.md`](../../docs/superpowers/plans/2026-08-29-worker-registry-capability-refactor.md) | 2026-08-29 | `active` | `implementation` |  | `worker-registry-capability-refactor` | Worker Registry Capability Refactor Implementation Plan |
+| [`docs/superpowers/plans/2026-08-23-phase3-streaming-tar-plan.md`](../../docs/superpowers/plans/2026-08-23-phase3-streaming-tar-plan.md) | 2026-08-23 | `active` | `implementation` |  | `phase3-streaming-tar-plan` | Phase 3 Streaming Tar.zst + Bodai 3.14 Migration Implementation Plan |
+| [`docs/superpowers/plans/2026-08-20-mcp-deps-crackerjack-loop.md`](../../docs/superpowers/plans/2026-08-20-mcp-deps-crackerjack-loop.md) | 2026-08-20 | `active` | `implementation` |  | `mcp-deps-crackerjack-loop` | `*-mcp` Dep Refresh + Crackerjack Loop Implementation Plan |
+| [`docs/superpowers/plans/2026-08-18-mcp-tool-profile-adoption.md`](../../docs/superpowers/plans/2026-08-18-mcp-tool-profile-adoption.md) | 2026-08-18 | `active` | `implementation` |  | `mcp-tool-profile-adoption` | MCP Tool Profile Adoption Implementation Plan |
 | [`docs/superpowers/plans/2026-08-12-bodai-conformance.md`](../../docs/superpowers/plans/2026-08-12-bodai-conformance.md) | 2026-08-12 | `draft` | `implementation` |  | `bodai-conformance` | Bodai Ecosystem Conformance — Implementation Plan |
+| [`docs/superpowers/plans/2026-08-10-auto-checkpoint-implementation-summary.md`](../../docs/superpowers/plans/2026-08-10-auto-checkpoint-implementation-summary.md) | 2026-08-10 | `active` | `implementation` |  | `auto-checkpoint-implementation-summary` | Auto-Checkpoint Implementation — Summary |
+| [`docs/superpowers/plans/2026-08-10-auto-checkpoint-safety-and-trigger.md`](../../docs/superpowers/plans/2026-08-10-auto-checkpoint-safety-and-trigger.md) | 2026-08-10 | `active` | `implementation` |  | `auto-checkpoint-safety-and-trigger` | Auto-Checkpoint Safety + Auto-Trigger Implementation Plan |
+| [`docs/superpowers/plans/2026-08-10-m-approval-log.md`](../../docs/superpowers/plans/2026-08-10-m-approval-log.md) | 2026-08-10 | `active` | `implementation` |  | `m-approval-log` | M-APPROVAL-LOG Implementation Plan |
+| [`docs/superpowers/plans/2026-08-10-m-webhook-durable.md`](../../docs/superpowers/plans/2026-08-10-m-webhook-durable.md) | 2026-08-10 | `active` | `implementation` |  | `m-webhook-durable` | M-WEBHOOK-DURABLE Implementation Plan |
+| [`docs/superpowers/plans/2026-08-10-m-workflow-outcome.md`](../../docs/superpowers/plans/2026-08-10-m-workflow-outcome.md) | 2026-08-10 | `active` | `implementation` |  | `m-workflow-outcome` | M-WORKFLOW-OUTCOME Implementation Plan |
+| [`docs/superpowers/plans/2026-08-04-d-lock.md`](../../docs/superpowers/plans/2026-08-04-d-lock.md) | 2026-08-04 | `active` | `implementation` |  | `d-lock` | D-LOCK Implementation Plan |
+| [`docs/superpowers/plans/2026-08-03-crackerjack-c-wire-plan.md`](../../docs/superpowers/plans/2026-08-03-crackerjack-c-wire-plan.md) | 2026-08-03 | `active` | `implementation` |  | `crackerjack-c-wire-plan` | Crackerjack C-WIRE Implementation Plan |
+| [`docs/superpowers/plans/2026-07-29-ruff-cleanup-waves.md`](../../docs/superpowers/plans/2026-07-29-ruff-cleanup-waves.md) | 2026-07-29 | `active` | `implementation` |  | `ruff-cleanup-waves` | Ruff Cleanup Wave-Plan (2026-07-29) |
 | [`docs/superpowers/plans/2026-07-29-session-buddy-extension.md`](../../docs/superpowers/plans/2026-07-29-session-buddy-extension.md) | 2026-07-29 | `draft` | `implementation` |  | `session-buddy-extension` | Session-Buddy Extension Implementation Plan (Mahavishnu seam hardening) |
+| [`docs/superpowers/plans/2026-07-26-durable-local-workers.md`](../../docs/superpowers/plans/2026-07-26-durable-local-workers.md) | 2026-07-26 | `active` | `implementation` |  | `durable-local-workers` | Durable Local Workers Implementation Plan |
 | [`docs/superpowers/plans/2026-07-26-session-buddy-worktree-tools.md`](../../docs/superpowers/plans/2026-07-26-session-buddy-worktree-tools.md) | 2026-07-26 | `draft` | `implementation` |  | `session-buddy-worktree-tools` | Session-Buddy MCP worktree tools — Implementation Plan |
 | [`docs/superpowers/plans/2026-07-26-shared-frontmatter-validator.md`](../../docs/superpowers/plans/2026-07-26-shared-frontmatter-validator.md) | 2026-07-26 | `draft` | `implementation` |  | `shared-frontmatter-validator` | Shared Frontmatter Validator Implementation Plan |
 | [`docs/superpowers/plans/2026-07-26-worktree-autoremove.md`](../../docs/superpowers/plans/2026-07-26-worktree-autoremove.md) | 2026-07-26 | `draft` | `implementation` |  | `worktree-autoremove` | Worktree Prune-Merged CLI — Implementation Plan |
 | [`docs/superpowers/plans/2026-07-25-license-false-intent-postmortem.md`](../../docs/superpowers/plans/2026-07-25-license-false-intent-postmortem.md) | 2026-07-25 | `complete` | `historical` |  | `license-false-intent-postmortem` | 2026-07-20 LICENSE False-Intent Incident: Postmortem and Forward Rules |
 | [`docs/superpowers/plans/2026-07-25-mcp-common-http-health-route-helper.md`](../../docs/superpowers/plans/2026-07-25-mcp-common-http-health-route-helper.md) | 2026-07-25 | `draft` | `implementation` |  | `mcp-common-http-health-route-helper` | mcp-common `register_http_health_route` Helper — Implementation Plan |
 | [`docs/superpowers/plans/2026-07-17-pypi-auth-redesign.md`](../../docs/superpowers/plans/2026-07-17-pypi-auth-redesign.md) | 2026-07-21 | `draft` | `implementation` |  | `lifecycle` | PyPI Auth Redesign Implementation Plan |
+| [`docs/superpowers/plans/2026-07-21-worker-readiness.md`](../../docs/superpowers/plans/2026-07-21-worker-readiness.md) | 2026-07-21 | `active` | `implementation` |  | `worker-readiness` | Worker Readiness Repair — Implementation Plan |
 | [`docs/superpowers/plans/2026-04-14-akosha-skills.md`](../../docs/superpowers/plans/2026-04-14-akosha-skills.md) | 2026-07-16 | `draft` | `implementation` |  | `akosha-skills` | Akosha Skills Implementation Plan |
 | [`docs/superpowers/plans/2026-04-14-bodai-radar.md`](../../docs/superpowers/plans/2026-04-14-bodai-radar.md) | 2026-07-16 | `draft` | `implementation` |  | `bodai-radar` | Bodai Radar Implementation Plan |
 | [`docs/superpowers/plans/2026-04-14-session-archaeologist.md`](../../docs/superpowers/plans/2026-04-14-session-archaeologist.md) | 2026-07-16 | `draft` | `implementation` |  | `session-archaeologist` | Session Archaeologist Implementation Plan |
@@ -685,7 +711,7 @@ One table per store. Entries are sorted by `date` DESC, with ties broken by path
 | [`docs/superpowers/plans/2026-05-07-bodai-phase1-harden-control-plane.md`](../../docs/superpowers/plans/2026-05-07-bodai-phase1-harden-control-plane.md) | 2026-07-16 | `shipped` | `implementation` |  | `convergence-control-plane` | Phase 1: Harden the Control Plane |
 | [`docs/superpowers/plans/2026-05-07-bodai-phase3-cross-repo-coordination.md`](../../docs/superpowers/plans/2026-05-07-bodai-phase3-cross-repo-coordination.md) | 2026-07-16 | `shipped` | `implementation` |  | `convergence-control-plane` | Phase 3: Cross-Repo Coordination — Gap Closure |
 | [`docs/superpowers/plans/2026-05-08-hatchet-adapter.md`](../../docs/superpowers/plans/2026-05-08-hatchet-adapter.md) | 2026-07-16 | `complete` | `implementation` |  | `hatchet-adapter` | HatchetAdapter (P10) Implementation Plan |
-| [`docs/superpowers/plans/2026-05-14-doc-sync-and-channel-phase2.md`](../../docs/superpowers/plans/2026-05-14-doc-sync-and-channel-phase2.md) | 2026-07-16 | `partial` | `implementation` |  | `convergence-control-plane` | Doc Status Sync and Session-Buddy Channel Phase 2 Implementation Plan |
+| [`docs/superpowers/plans/2026-05-14-doc-sync-and-channel-phase2.md`](../../docs/superpowers/plans/2026-05-14-doc-sync-and-channel-phase2.md) | 2026-07-16 | `complete` | `implementation` |  | `convergence-control-plane` | Doc Status Sync and Session-Buddy Channel Phase 2 Implementation Plan |
 | [`docs/superpowers/plans/2026-05-16-llm-routing-plan1-mcp-common.md`](../../docs/superpowers/plans/2026-05-16-llm-routing-plan1-mcp-common.md) | 2026-07-16 | `complete` | `implementation` |  | `llm-routing-plan1` | LLM Routing Standardization — Plan 1: mcp-common LLM Module |
 | [`docs/superpowers/plans/2026-05-16-llm-routing-plan2-downstream-migration.md`](../../docs/superpowers/plans/2026-05-16-llm-routing-plan2-downstream-migration.md) | 2026-07-16 | `complete` | `implementation` |  | `llm-routing-plan2` | LLM Routing Standardization — Plan 2: Downstream Migration |
 | [`docs/superpowers/plans/2026-05-22-terminal-grid-plan.md`](../../docs/superpowers/plans/2026-05-22-terminal-grid-plan.md) | 2026-07-16 | `complete` | `historical` |  | `terminal-grid` | Terminal Grid Orchestration Implementation Plan |
@@ -694,7 +720,7 @@ One table per store. Entries are sorted by `date` DESC, with ties broken by path
 | [`docs/superpowers/plans/2026-06-01-dhara-crackerjack-critical-bug-fixes.md`](../../docs/superpowers/plans/2026-06-01-dhara-crackerjack-critical-bug-fixes.md) | 2026-07-16 | `draft` | `implementation` |  | `dhara-crackerjack-bug-fixes` | Dhara-Crackerjack Critical Bug Fixes Implementation Plan |
 | [`docs/superpowers/plans/2026-06-19-track1-terminal-gap.md`](../../docs/superpowers/plans/2026-06-19-track1-terminal-gap.md) | 2026-07-16 | `complete` | `historical` |  | `track1-terminal-gap` | Track 1 — Terminal Gap Implementation Plan |
 | [`docs/superpowers/plans/2026-06-19-track2-openhands.md`](../../docs/superpowers/plans/2026-06-19-track2-openhands.md) | 2026-07-16 | `draft` | `implementation` |  | `track2-openhands` | Track 2 — OpenHands Integration Implementation Plan |
-| [`docs/superpowers/plans/2026-06-19-track3-toad-tui.md`](../../docs/superpowers/plans/2026-06-19-track3-toad-tui.md) | 2026-07-16 | `partial` | `implementation` |  | `track3-toad-tui` | Track 3 — Toad TUI (Textual + Rich) Implementation Plan |
+| [`docs/superpowers/plans/2026-06-19-track3-toad-tui.md`](../../docs/superpowers/plans/2026-06-19-track3-toad-tui.md) | 2026-07-16 | `complete` | `implementation` |  | `track3-toad-tui` | Track 3 — Toad TUI (Textual + Rich) Implementation Plan |
 | [`docs/superpowers/plans/2026-06-19-track4-turbovec.md`](../../docs/superpowers/plans/2026-06-19-track4-turbovec.md) | 2026-07-16 | `draft` | `implementation` |  | `track4-turbovec` | Track 4 — TurboVec Integration Implementation Plan |
 | [`docs/superpowers/plans/2026-06-19-wave2b-a2a-worker.md`](../../docs/superpowers/plans/2026-06-19-wave2b-a2a-worker.md) | 2026-07-16 | `draft` | `implementation` |  | `wave2b-a2a-worker` | Wave 2b: A2A Worker & Server Implementation Plan |
 | [`docs/superpowers/plans/2026-06-22-adapter-runtime-observability.md`](../../docs/superpowers/plans/2026-06-22-adapter-runtime-observability.md) | 2026-07-16 | `draft` | `implementation` |  | `adapter-runtime-observability` | Adapter Runtime Observability v1.0 Implementation Plan |
@@ -719,7 +745,7 @@ One table per store. Entries are sorted by `date` DESC, with ties broken by path
 | [`docs/superpowers/plans/2026-07-14-multi-backend-pty.md`](../../docs/superpowers/plans/2026-07-14-multi-backend-pty.md) | 2026-07-16 | `complete` | `historical` |  | `multi-backend-pty` | Multi-Backend PTY Implementation Plan |
 | [`docs/superpowers/plans/2026-07-15-constellation-tui.md`](../../docs/superpowers/plans/2026-07-15-constellation-tui.md) | 2026-07-16 | `draft` | `implementation` |  | `constellation-tui` | Constellation TUI Implementation Plan |
 | [`docs/superpowers/plans/2026-07-15-sb-checkpoint-stash-clobber-fix.md`](../../docs/superpowers/plans/2026-07-15-sb-checkpoint-stash-clobber-fix.md) | 2026-07-16 | `partial` | `implementation` |  | `sb-checkpoint-stash-clobber-fix` | Session-Buddy Checkpoint Stash-Clobber Fix Implementation Plan |
-| [`docs/superpowers/plans/2026-07-16-bodai-plugin-standardization.md`](../../docs/superpowers/plans/2026-07-16-bodai-plugin-standardization.md) | 2026-07-16 | `partial` | `implementation` |  | `mcp-design` | Bodai Plugin Standardization Implementation Plan |
+| [`docs/superpowers/plans/2026-07-16-bodai-plugin-standardization.md`](../../docs/superpowers/plans/2026-07-16-bodai-plugin-standardization.md) | 2026-07-16 | `complete` | `implementation` |  | `mcp-design` | Bodai Plugin Standardization Implementation Plan |
 | [`docs/superpowers/plans/2026-07-16-frontmatter-validator-wiring-plan.md`](../../docs/superpowers/plans/2026-07-16-frontmatter-validator-wiring-plan.md) | 2026-07-16 | `draft` | `implementation` |  | `lifecycle` | Frontmatter Validator Wiring + P7 Cross-Repo Implementation Plan |
 | [`docs/superpowers/plans/2026-07-16-plan-lifecycle-unification.md`](../../docs/superpowers/plans/2026-07-16-plan-lifecycle-unification.md) | 2026-07-16 | `draft` | `implementation` |  | `convergence-control-plane` | Plan Lifecycle Unification — Frontmatter Standardization Across Documentation Stores |
 
@@ -727,19 +753,33 @@ One table per store. Entries are sorted by `date` DESC, with ties broken by path
 
 | Path | Date | Status | Role | Kind | Topic | Title |
 |---|---|---|---|---|---|---|
+| [`docs/superpowers/specs/2026-09-12-jot-drain-polish-design.md`](../../docs/superpowers/specs/2026-09-12-jot-drain-polish-design.md) | 2026-09-12 | `draft` | `implementation` |  | `jot-drain-polish` | Jot Drain Polish Spec |
+| [`docs/superpowers/specs/2026-09-10-jot-drain-design.md`](../../docs/superpowers/specs/2026-09-10-jot-drain-design.md) | 2026-09-10 | `draft` | `implementation` |  | `jot-drain` | Jot Drain Sub-plan Design |
 | [`docs/superpowers/specs/2026-09-10-plan-index-dhara-design.md`](../../docs/superpowers/specs/2026-09-10-plan-index-dhara-design.md) | 2026-09-10 | `draft` | `implementation` |  | `dhara-substrate-extension` | Plan Index — Dhara-Canonical Metadata Layer |
+| [`docs/superpowers/specs/2026-09-09-jot-capture-design.md`](../../docs/superpowers/specs/2026-09-09-jot-capture-design.md) | 2026-09-09 | `draft` | `implementation` |  | `jot-capture` | Jot Inbox: Capture Sub-Plan Design |
+| [`docs/superpowers/specs/2026-09-09-jot-read-design.md`](../../docs/superpowers/specs/2026-09-09-jot-read-design.md) | 2026-09-09 | `draft` | `implementation` |  | `jot-read` | Jot Inbox: Read Sub-Plan Design |
 | [`docs/superpowers/specs/2026-09-07-worktree-cleanup-design.md`](../../docs/superpowers/specs/2026-09-07-worktree-cleanup-design.md) | 2026-09-07 | `draft` | `implementation` |  | `worktree-cleanup` | Bodai Worktree Cleanup Policy — Design Spec |
 | [`docs/superpowers/specs/2026-09-06-mcp-common-auth-primitives-design.md`](../../docs/superpowers/specs/2026-09-06-mcp-common-auth-primitives-design.md) | 2026-09-06 | `draft` | `implementation` |  | `mcp-common-auth-primitives` | mcp-common Authentication Primitives — Design Spec |
 | [`docs/superpowers/specs/2026-09-06-mcp-stub-activation-design.md`](../../docs/superpowers/specs/2026-09-06-mcp-stub-activation-design.md) | 2026-09-06 | `draft` | `implementation` |  | `mcp-stub-activation` | MCP Stub Activation — archive-org-mcp, medium-mcp, scapy-mcp |
+| [`docs/superpowers/specs/2026-09-05-crackerjack-scripts-examples-coverage-design.md`](../../docs/superpowers/specs/2026-09-05-crackerjack-scripts-examples-coverage-design.md) | 2026-09-05 | `draft` | `implementation` |  | `crackerjack-scripts-examples-coverage` | Crackerjack: scripts/ and examples/ Coverage in Fast Hooks |
+| [`docs/superpowers/specs/2026-09-05-mcp-common-phase1-design.md`](../../docs/superpowers/specs/2026-09-05-mcp-common-phase1-design.md) | 2026-09-05 | `draft` | `implementation` |  | `mcp-common-phase1` | mcp-common Phase 1: Critical Bugs + Release-Audit Subsystem |
+| [`docs/superpowers/specs/2026-08-31-flowscape-design.md`](../../docs/superpowers/specs/2026-08-31-flowscape-design.md) | 2026-08-31 | `draft` | `implementation` |  | `flowscape` | flowscape — Modern Network Visualization for macOS |
 | [`docs/superpowers/specs/2026-08-31-zsh-modernization-design.md`](../../docs/superpowers/specs/2026-08-31-zsh-modernization-design.md) | 2026-08-31 | `draft` | `canonical` |  | `developer-environment` | Spec: Zsh Stack Modernization (oh-my-zsh → Sheldon/Starship) |
+| [`docs/superpowers/specs/2026-08-29-worker-registry-capability-refactor-design.md`](../../docs/superpowers/specs/2026-08-29-worker-registry-capability-refactor-design.md) | 2026-08-29 | `draft` | `implementation` |  | `worker-registry-capability-refactor` | Worker Registry Capability Refactor + Engine Composition Layer |
+| [`docs/superpowers/specs/2026-08-23-streaming-tar-phase3-design.md`](../../docs/superpowers/specs/2026-08-23-streaming-tar-phase3-design.md) | 2026-08-23 | `draft` | `implementation` |  | `streaming-tar-phase3` | Streaming tar.zst bundles for worktree providers — Phase 3 design |
 | [`docs/superpowers/specs/2026-08-20-mcp-deps-crackerjack-loop-design.md`](../../docs/superpowers/specs/2026-08-20-mcp-deps-crackerjack-loop-design.md) | 2026-08-20 | `active` | `canonical` |  | `mcp-deps-crackerjack-loop` | Design: `*-mcp` dep refresh + crackerjack loop (2026-08-20, rev2) |
 | [`docs/superpowers/specs/2026-08-18-mcp-tool-profile-adoption-design.md`](../../docs/superpowers/specs/2026-08-18-mcp-tool-profile-adoption-design.md) | 2026-08-18 | `active` | `canonical` |  | `mcp-tool-profile-adoption` | MCP Tool Profile Adoption Across Bodai Ecosystem — Design Spec |
 | [`docs/superpowers/specs/2026-08-12-bodai-ecosystem-consistency-design.md`](../../docs/superpowers/specs/2026-08-12-bodai-ecosystem-consistency-design.md) | 2026-08-12 | `active` | `canonical` |  | `bodai-conformance` | Bodai Ecosystem Consistency Mechanisms — Design Spec |
 | [`docs/superpowers/specs/2026-08-10-m-approval-log-design.md`](../../docs/superpowers/specs/2026-08-10-m-approval-log-design.md) | 2026-08-10 | `draft` | `implementation` |  | `m-approval-log` | M-APPROVAL-LOG Design Spec |
 | [`docs/superpowers/specs/2026-08-10-m-webhook-durable-design.md`](../../docs/superpowers/specs/2026-08-10-m-webhook-durable-design.md) | 2026-08-10 | `draft` | `implementation` |  | `m-webhook-durable` | M-WEBHOOK-DURABLE Design Spec |
 | [`docs/superpowers/specs/2026-08-10-m-workflow-outcome-design.md`](../../docs/superpowers/specs/2026-08-10-m-workflow-outcome-design.md) | 2026-08-10 | `draft` | `implementation` |  | `m-workflow-outcome` | M-WORKFLOW-OUTCOME Design Spec |
+| [`docs/superpowers/specs/2026-08-03-bodai-openclaw-hermes-inspired-portfolio-design.md`](../../docs/superpowers/specs/2026-08-03-bodai-openclaw-hermes-inspired-portfolio-design.md) | 2026-08-03 | `draft` | `implementation` |  | `bodai-openclaw-hermes-inspired-portfolio` | Bodai OpenClaw/Hermes-Inspired Follow-Ups — Portfolio Design |
+| [`docs/superpowers/specs/2026-07-29-session-buddy-extension-design.md`](../../docs/superpowers/specs/2026-07-29-session-buddy-extension-design.md) | 2026-07-29 | `draft` | `implementation` |  | `session-buddy-extension` | Session-Buddy Extension Design (Mahavishnu seam hardening) |
+| [`docs/superpowers/specs/2026-07-26-durable-local-workers-design.md`](../../docs/superpowers/specs/2026-07-26-durable-local-workers-design.md) | 2026-07-26 | `draft` | `implementation` |  | `durable-local-workers` | Durable Local Workers — Design Spec |
 | [`docs/superpowers/specs/2026-07-26-shared-frontmatter-validator-design.md`](../../docs/superpowers/specs/2026-07-26-shared-frontmatter-validator-design.md) | 2026-07-26 | `complete` | `canonical` |  | `shared-frontmatter-validator` | Shared Frontmatter Validator |
+| [`docs/superpowers/specs/2026-07-21-worker-readiness-design.md`](../../docs/superpowers/specs/2026-07-21-worker-readiness-design.md) | 2026-07-21 | `draft` | `implementation` |  | `worker-readiness` | Worker Readiness Repair — Design |
 | [`docs/superpowers/specs/2026-07-17-pypi-auth-redesign-design.md`](../../docs/superpowers/specs/2026-07-17-pypi-auth-redesign-design.md) | 2026-07-17 | `complete` | `canonical` |  | `crackerjack-publish-auth` | PyPI Auth Redesign in Crackerjack — Design (2026-07-17) |
+| [`docs/superpowers/specs/2026-04-09-tui-design.md`](../../docs/superpowers/specs/2026-04-09-tui-design.md) | 2026-07-16 | `draft` | `implementation` |  | `tui` | Bodai TUI: Claude Code-Style Terminal Application |
 | [`docs/superpowers/specs/2026-04-14-akosha-skills-design.md`](../../docs/superpowers/specs/2026-04-14-akosha-skills-design.md) | 2026-07-16 | `draft` | `implementation` |  | `learning-pipeline` | Akosha Skills Design: Code Archaeologist & Quality Pulse |
 | [`docs/superpowers/specs/2026-04-14-bodai-radar-design.md`](../../docs/superpowers/specs/2026-04-14-bodai-radar-design.md) | 2026-07-16 | `draft` | `implementation` |  | `observability` | Bodai Radar Design |
 | [`docs/superpowers/specs/2026-04-14-session-archaeologist-design.md`](../../docs/superpowers/specs/2026-04-14-session-archaeologist-design.md) | 2026-07-16 | `draft` | `implementation` |  | `learning-pipeline` | Session Archaeologist Design |
@@ -749,7 +789,7 @@ One table per store. Entries are sorted by `date` DESC, with ties broken by path
 | [`docs/superpowers/specs/2026-04-26-pattern-learning-scaffolding-design.md`](../../docs/superpowers/specs/2026-04-26-pattern-learning-scaffolding-design.md) | 2026-07-16 | `draft` | `implementation` |  | `learning-pipeline` | Pattern Learning & Scaffolding Design |
 | [`docs/superpowers/specs/2026-04-26-splashstand-oneiric-migration-design.md`](../../docs/superpowers/specs/2026-04-26-splashstand-oneiric-migration-design.md) | 2026-07-16 | `draft` | `implementation` |  | `oneiric-config` | Splashstand ACB → Oneiric Migration Design |
 | [`docs/superpowers/specs/2026-04-27-bodai-auth-standardization-design.md`](../../docs/superpowers/specs/2026-04-27-bodai-auth-standardization-design.md) | 2026-07-16 | `complete` | `implementation` |  | `auth` | Bodai Inter-Service Authentication Standardization |
-| [`docs/superpowers/specs/2026-05-16-llm-routing-standardization-design.md`](../../docs/superpowers/specs/2026-05-16-llm-routing-standardization-design.md) | 2026-07-16 | `partial` | `implementation` |  | `routing-composition` | LLM Routing Standardization — Design Spec |
+| [`docs/superpowers/specs/2026-05-16-llm-routing-standardization-design.md`](../../docs/superpowers/specs/2026-05-16-llm-routing-standardization-design.md) | 2026-07-16 | `complete` | `superseded` |  | `routing-composition` | LLM Routing Standardization — Design Spec |
 | [`docs/superpowers/specs/2026-05-23-unified-iterm2-applescript-design.md`](../../docs/superpowers/specs/2026-05-23-unified-iterm2-applescript-design.md) | 2026-07-16 | `draft` | `implementation` |  | `terminal` | Unified iTerm2 AppleScript Integration — Design Spec |
 | [`docs/superpowers/specs/2026-05-24-dhara-serverless-design.md`](../../docs/superpowers/specs/2026-05-24-dhara-serverless-design.md) | 2026-07-16 | `draft` | `implementation` |  | `storage-consolidation` | Dhara Serverless Architecture — Design Specification |
 | [`docs/superpowers/specs/2026-06-21-bodai-crow-server-design.md`](../../docs/superpowers/specs/2026-06-21-bodai-crow-server-design.md) | 2026-07-16 | `draft` | `implementation` |  | `mcp-design` | Bodai Crow MCP Server — Design Spec |
@@ -763,7 +803,7 @@ One table per store. Entries are sorted by `date` DESC, with ties broken by path
 | [`docs/superpowers/specs/2026-06-22-project-scoped-sop-evolution-design.md`](../../docs/superpowers/specs/2026-06-22-project-scoped-sop-evolution-design.md) | 2026-07-16 | `draft` | `implementation` |  | `convergence-control-plane` | Project-Scoped SOP Evolution v1.0 — Design |
 | [`docs/superpowers/specs/2026-06-22-three-layer-self-heal-design.md`](../../docs/superpowers/specs/2026-06-22-three-layer-self-heal-design.md) | 2026-07-16 | `draft` | `implementation` |  | `convergence-control-plane` | Three-Layer Self-Heal v1.0 — Design |
 | [`docs/superpowers/specs/2026-06-22-three-zone-skill-pipeline-design.md`](../../docs/superpowers/specs/2026-06-22-three-zone-skill-pipeline-design.md) | 2026-07-16 | `draft` | `implementation` |  | `convergence-control-plane` | Three-Zone Skill Pipeline v1.0 — Design |
-| [`docs/superpowers/specs/2026-07-15-constellation-tui-design.md`](../../docs/superpowers/specs/2026-07-15-constellation-tui-design.md) | 2026-07-16 | `partial` | `implementation` |  | `terminal` | Constellation TUI: Three-Surface Dashboard for Claude Code |
+| [`docs/superpowers/specs/2026-07-15-constellation-tui-design.md`](../../docs/superpowers/specs/2026-07-15-constellation-tui-design.md) | 2026-07-16 | `complete` | `design` |  | `terminal` | Constellation TUI: Three-Surface Dashboard for Claude Code |
 | [`docs/superpowers/specs/2026-07-15-mahavishnu-acp-server-design.md`](../../docs/superpowers/specs/2026-07-15-mahavishnu-acp-server-design.md) | 2026-07-16 | `active` | `implementation` |  | `mcp-design` | Mahavishnu ACP Server — Design Spec |
 | [`docs/superpowers/specs/2026-07-15-sb-checkpoint-stash-clobber-fix-design.md`](../../docs/superpowers/specs/2026-07-15-sb-checkpoint-stash-clobber-fix-design.md) | 2026-07-16 | `active` | `implementation` |  | `convergence-control-plane` | Session-Buddy Checkpoint Stash-Clobber Fix Design |
 | [`docs/superpowers/specs/2026-07-16-bodai-plugin-standardization-design.md`](../../docs/superpowers/specs/2026-07-16-bodai-plugin-standardization-design.md) | 2026-07-16 | `complete` | `canonical` |  | `plugin-standardization` | Bodai Plugin Standardization — Design Spec |
@@ -808,12 +848,13 @@ Index pages or reference docs (README files). Permanent fixtures; never a work i
 | [`docs/followups/README.md`](../../docs/followups/README.md) | 2026-07-16 | `docs/followups/` index |
 | [`docs/plans/README.md`](README.md) | 2026-07-16 | Plans README |
 
-### `audit` (1 entry)
+### `audit` (2 entries)
 
 Reports on past work (e.g., plan-audit documents). The audit itself is not a work item.
 
 | Path | Date | Title |
 |---|---|---|
+| [`docs/followups/2026-09-14-akosha-hnsw-on-duckdb.md`](../../docs/followups/2026-09-14-akosha-hnsw-on-duckdb.md) | 2026-09-14 | Akosha: HNSW Index Creation Fails on DuckDB |
 | [`docs/plans/PLAN_AUDIT_2026-09-12.md`](PLAN_AUDIT_2026-09-12.md) | 2026-09-12 | Plan Audit — 2026-09-12 |
 
 ### `decision` (38 entries)
@@ -861,7 +902,7 @@ Durable decision records — covers both ADRs in `docs/adr/` and repo-local poli
 | [`docs/adr/013-mahavishnu-dhara-adapter-tool-boundary.md`](../../docs/adr/013-mahavishnu-dhara-adapter-tool-boundary.md) | 2026-07-16 | ADR 013: Adapter Tool Boundary Between Mahavishnu and Dhara |
 | [`docs/adr/014-honcho-peer-model-routing-precedence.md`](../../docs/adr/014-honcho-peer-model-routing-precedence.md) | 2026-07-16 | ADR 014: Honcho Peer-Model Routing Precedence |
 
-### `plan` (546 entries)
+### `plan` (585 entries)
 
 Work items. The bulk of the registry — see the per-store tables above for full detail with status/role/topic.
 
@@ -874,9 +915,9 @@ Counts of entries per (lifecycle, role) cell across all 24 stores. Useful as a s
 | Role \\ Lifecycle | draft | active | partial | shipped | complete | Total |
 |---|---|---|---|---|---|---|
 | `canonical` | 19 | 102 | 1 | 2 | 13 | **137** |
-| `implementation` | 134 | 37 | 15 | 34 | 30 | **250** |
-| `umbrella` | · | 1 | · | · | 2 | **3** |
-| `historical` | 11 | 3 | · | 4 | 129 | **147** |
-| `superseded` | · | · | · | · | 12 | **12** |
+| `implementation` | 148 | 60 | 7 | 35 | 36 | **286** |
+| `umbrella` | · | 2 | · | · | 2 | **4** |
+| `historical` | 12 | 3 | · | 4 | 129 | **148** |
+| `superseded` | · | · | · | · | 13 | **13** |
 
-| **Total** | **164** | **143** | **16** | **40** | **186** | **549** |
+| **Total** | **179** | **167** | **8** | **41** | **193** | **588** |
