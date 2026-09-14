@@ -451,3 +451,52 @@ class TestModulePublicAPI:
         assert "AnomalyResult" in changepoint.__all__
         assert "ChangePointResult" in changepoint.__all__
         assert "ChangePointDetector" in changepoint.__all__
+
+
+@pytest.mark.unit
+class TestIsFiniteRound4:
+    """R4-MEDIUM-1: _is_finite must accept ints, not just floats.
+
+    YAML operators write ``target_mean: 0`` (an int) for zero-centered
+    metrics. The previous ``isinstance(x, float)`` check raised
+    ``ChangePointError`` for ints, sending the detector dormant.
+    """
+
+    def test_int_zero_is_finite(self) -> None:
+        from mahavishnu.observability.changepoint.cusum import _is_finite
+
+        assert _is_finite(0) is True
+        assert _is_finite(1) is True
+        assert _is_finite(-1) is True
+        assert _is_finite(0.0) is True
+
+    def test_bool_is_rejected(self) -> None:
+        from mahavishnu.observability.changepoint.cusum import _is_finite
+
+        # bool is a subclass of int; the explicit bool-rejection
+        # guards against accidental ``_is_finite(True) is True``
+        # meaning "True is a valid value".
+        assert _is_finite(True) is False  # type: ignore[arg-type]
+        assert _is_finite(False) is False  # type: ignore[arg-type]
+
+    def test_nan_inf_rejected(self) -> None:
+        from mahavishnu.observability.changepoint.cusum import _is_finite
+
+        assert _is_finite(float("nan")) is False
+        assert _is_finite(float("inf")) is False
+        assert _is_finite(float("-inf")) is False
+
+    def test_cusum_detector_accepts_int_target_mean(self) -> None:
+        """End-to-end: passing target_mean=0 (an int) must not raise."""
+        from mahavishnu.observability.changepoint.cusum import CUSUMDetector
+
+        d = CUSUMDetector(
+            target_mean=0,  # int, not float
+            slack=0.25,
+            threshold=4.0,
+            two_sided=True,
+        )
+        # Detector must accept the value and run normally
+        result = d.update(1.0)
+        assert result is not None
+        assert result.score >= 0.0

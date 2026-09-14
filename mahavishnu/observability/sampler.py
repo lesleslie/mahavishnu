@@ -33,12 +33,13 @@ Req: REQ-009
 from __future__ import annotations
 
 from collections import defaultdict, deque
-from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import UTC, datetime
 import time
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
+if TYPE_CHECKING:
+    from collections.abc import Callable
 
 DEFAULT_CADENCE_SECONDS = 60.0
 DEFAULT_MAX_SAMPLES = 7_200  # 2 hours at 60s cadence; matches fitness_analyzer TTL=7200s

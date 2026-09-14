@@ -9,6 +9,7 @@ Mirrors ``ObservabilityManager._classify_drift_severity`` contract:
 ``score >= 4*threshold`` → ``"critical"``; ``>= 2*threshold`` →
 ``"moderate"``; otherwise ``"minor"``.
 """
+
 from __future__ import annotations
 
 

@@ -29,13 +29,19 @@ ARL₀ / latency numbers at the production defaults.
 
 Req: REQ-005 (extension — composes existing CUSUMDetector + PageHinkleyDetector).
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Literal
+from typing import TYPE_CHECKING, Literal
 
-from mahavishnu.observability.changepoint.cusum import ChangePointDetector, ChangePointResult
 from mahavishnu.observability.changepoint.severity import classify_severity
+
+if TYPE_CHECKING:
+    from mahavishnu.observability.changepoint.cusum import (
+        ChangePointDetector,
+        ChangePointResult,
+    )
 
 TwoStageState = Literal["idle", "warning_pending", "confirmed"]
 
@@ -111,9 +117,7 @@ class TwoStageDetector:
         confirm_window_samples: int = DEFAULT_CONFIRM_WINDOW,
     ) -> None:
         if confirm_window_samples <= 0:
-            raise ValueError(
-                f"confirm_window_samples must be > 0, got {confirm_window_samples}"
-            )
+            raise ValueError(f"confirm_window_samples must be > 0, got {confirm_window_samples}")
         self.warn_detector: ChangePointDetector = warn_detector
         self.confirm_detector: ChangePointDetector = confirm_detector
         self._confirm_window_samples: int = confirm_window_samples
@@ -204,9 +208,7 @@ class TwoStageDetector:
             self._last_warning_result = warn_result
             self.warn_detector.reset()
         if confirm_fired:
-            severity = classify_severity(
-                confirm_result.score, confirm_result.threshold
-            )
+            severity = classify_severity(confirm_result.score, confirm_result.threshold)
             self._state = "confirmed"
             # The integration layer reads the "confirmed" result and
             # emits the alert; on the NEXT update() we'll see state ==
