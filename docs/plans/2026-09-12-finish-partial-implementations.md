@@ -452,6 +452,6 @@ unanimous issues. v1 changes:
 |---|---|---|---|
 | Phase 1 | REQ-CLOSE-001 (observability-changepoint operator opt-in) | `3ec11483 feat(observability): ship changepoint operator opt-in (finish-partial Phase 1)` | DONE |
 | Phase 2 | REQ-CLOSE-002 (settle-semantic-merge frontmatter flip) | `55dae7fc docs(plans): flip 2026-09-10-settle-semantic-merge to status: shipped` | DONE |
-| Phase 3 | REQ-CLOSE-003 (orphan-sweep feature tracker refresh) | — | PENDING |
-| Phase 4 | REQ-CLOSE-004 (tier1-math plan → shipped) | — | PENDING |
+| Phase 3 | REQ-CLOSE-003 (orphan-sweep feature tracker refresh) | `1d12ea5e docs(feature-tracking): flip orphan-sweep to status: wired (5/5 resolved)` | DONE |
+| Phase 4 | REQ-CLOSE-004 (tier1-math plan → shipped) | (this commit, see body) | DONE |
 | Phase 5 | REQ-CLOSE-005 (post-close audit) | — | PENDING (gates plan flip to complete) |

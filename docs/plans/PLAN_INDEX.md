@@ -494,13 +494,13 @@ One table per store. Entries are sorted by `date` DESC, with ties broken by path
 
 | Path | Date | Status | Role | Kind | Topic | Title |
 |---|---|---|---|---|---|---|
-| [`docs/feature-tracking/2026-09-10-observability-changepoint.md`](../../docs/feature-tracking/2026-09-10-observability-changepoint.md) | 2026-09-10 | `wired` | `canonical` |  | `—` | Feature: observability-changepoint |
+| [`docs/feature-tracking/2026-09-10-observability-changepoint.md`](../../docs/feature-tracking/2026-09-10-observability-changepoint.md) | 2026-09-10 | `adopted` | `canonical` |  | `—` | Feature: observability-changepoint |
 | [`docs/feature-tracking/2026-09-10-pool-queueing-routing.md`](../../docs/feature-tracking/2026-09-10-pool-queueing-routing.md) | 2026-09-10 | `adopted` | `canonical` |  | `—` | Feature: pool-queueing-routing |
 | [`docs/feature-tracking/2026-09-10-tier2-math-deferred.md`](../../docs/feature-tracking/2026-09-10-tier2-math-deferred.md) | 2026-09-10 | `deferred` | `deferred` |  | `—` | Feature: tier2-math-deferred |
 | [`docs/feature-tracking/plan-index-dhara.md`](../../docs/feature-tracking/plan-index-dhara.md) | 2026-09-10 | `adopted` | `canonical` |  | `plan-index-dhara` | Feature: Plan Index Dhara-canonical metadata layer |
 | [`docs/feature-tracking/goose-terminal-adapter.md`](../../docs/feature-tracking/goose-terminal-adapter.md) | 2026-09-07 | `wired` | `canonical` |  | `—` | Feature: goose-terminal-adapter |
 | [`docs/feature-tracking/pi-pool-backend.md`](../../docs/feature-tracking/pi-pool-backend.md) | 2026-09-07 | `wired` | `canonical` |  | `—` | Feature: pi-pool-backend |
-| [`docs/feature-tracking/2026-09-06-orphan-sweep.md`](../../docs/feature-tracking/2026-09-06-orphan-sweep.md) | 2026-09-06 | `built` | `canonical` |  | `—` | Orphan Sweep — settle sync wrappers + CloudWorker + check_prerequisites |
+| [`docs/feature-tracking/2026-09-06-orphan-sweep.md`](../../docs/feature-tracking/2026-09-06-orphan-sweep.md) | 2026-09-06 | `wired` | `canonical` |  | `—` | Orphan Sweep — settle sync wrappers + CloudWorker + check_prerequisites |
 | [`docs/feature-tracking/scapy-mcp-enrichment.md`](../../docs/feature-tracking/scapy-mcp-enrichment.md) | 2026-09-06 | `built` | `canonical` |  | `—` | Feature: scapy-mcp-enrichment |
 | [`docs/feature-tracking/2026-08-10-m-approval-log.md`](../../docs/feature-tracking/2026-08-10-m-approval-log.md) | 2026-08-10 | `wired` | `canonical` |  | `—` | Feature: approval-log pipeline (validate-on-write + validate-on-read) |
 | [`docs/feature-tracking/2026-08-10-m-webhook-durable.md`](../../docs/feature-tracking/2026-08-10-m-webhook-durable.md) | 2026-08-10 | `built` | `canonical` |  | `—` | Feature: webhook durable ingress (validate-on-write + validate-on-read) |
