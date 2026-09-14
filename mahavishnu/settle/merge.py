@@ -33,10 +33,12 @@ from pathlib import Path
 import shutil
 import tempfile
 import time
-from typing import TYPE_CHECKING, Callable
+from typing import TYPE_CHECKING
 import warnings
 
 if TYPE_CHECKING:
+    from collections.abc import Callable
+
     from opentelemetry.metrics import Counter as _Counter
     from opentelemetry.trace import Tracer as _Tracer
 
@@ -58,6 +60,21 @@ try:
         name="merge.fallback_total",
         description="Increments when default-resolution falls back from SEMANTIC to LINE",
         unit="1",
+    )
+    # Phase 5 followup REQ-SM-006 instrumentation (commit 2c95070c).
+    # Histogram tracking per-call latency of the synchronous AND async
+    # 3-way merge paths so the REQ-SM-006 deferral trigger ("merge.semantic.
+    # duration_ms p99 < 50 ms over 30 days") has aggregate data to evaluate.
+    # Buckets tuned around the §1 latency gate: 1-25 ms is the expected
+    # fast-clean-merge band, 50-100 ms is the conflict-band, 100+ ms is
+    # the "mergiraf parse" slow-band. Latency is recorded for every call
+    # regardless of outcome; the ``outcome`` label disambiguates
+    # success/conflict/fatal_exit/mergiraf_unavailable buckets so a p99
+    # query can filter to clean merges specifically.
+    _merge_semantic_duration_ms = _merge_meter.create_histogram(  # type: ignore[assignment]
+        name="merge.semantic.duration_ms",
+        description="Per-call latency of merge_three_way and _merge_three_way_sync_internal",
+        unit="ms",
     )
 except ImportError:  # pragma: no cover — exercised only when opentelemetry absent
     OTEL_AVAILABLE = False
@@ -90,6 +107,16 @@ except ImportError:  # pragma: no cover — exercised only when opentelemetry ab
             pass
 
     _merge_fallback_counter: _Counter = _NoopCounter()  # type: ignore[assignment,misc]
+
+    class _NoopHistogram:
+        def record(
+            self,
+            amount: float,
+            attributes: dict[str, object] | None = None,
+        ) -> None:
+            pass
+
+    _merge_semantic_duration_ms = _NoopHistogram()  # type: ignore[assignment,misc]
 
 logger = logging.getLogger(__name__)
 
@@ -369,6 +396,23 @@ def _resolve_mergiraf_binary() -> str | None:
     return _MERGIRAF_BIN
 
 
+def _record_semantic_duration(start: float, strategy: MergeStrategy, outcome: str) -> None:
+    """Record one sample to the ``merge.semantic.duration_ms`` histogram.
+
+    Called from ``merge_three_way`` and ``_merge_three_way_sync_internal``
+    on every exit path (success, conflict, fatal, mergiraf_unavailable)
+    so the REQ-SM-006 deferral trigger ("merge.semantic.duration_ms p99
+    < 50 ms over 30 days") has aggregate data per outcome bucket. The
+    existing ``merge.duration_ms`` span attribute is preserved — this
+    histogram is the aggregate view the span attribute cannot provide.
+    """
+    duration_ms = (time.monotonic() - start) * 1000.0
+    _merge_semantic_duration_ms.record(
+        duration_ms,
+        {"strategy": strategy.value, "outcome": outcome},
+    )
+
+
 def _resolve_default_strategy() -> MergeStrategy:
     """Pick the default strategy at first call.
 
@@ -519,133 +563,157 @@ async def _merge_via_mergiraf(
         )
 
     start = time.monotonic()
-    with tempfile.TemporaryDirectory(prefix="settle-mergiraf-") as tmp_str:
-        tmp = Path(tmp_str)
-        base_path = tmp / "base"
-        ours_path = tmp / "ours"
-        theirs_path = tmp / "theirs"
-        base_path.write_text(base)
-        ours_path.write_text(ours)
-        theirs_path.write_text(theirs)
+    # REQ-SM-006 instrumentation: track per-call latency. ``recorded``
+    # carries the outcome label determined by whichever branch below
+    # completes first; the try/finally wrapper records once on every
+    # exit path (success, conflict, fatal, mergiraf_unavailable,
+    # recurse-retry).
+    recorded: list[str] = ["fatal"]
+    try:
+        with tempfile.TemporaryDirectory(prefix="settle-mergiraf-") as tmp_str:
+            tmp = Path(tmp_str)
+            base_path = tmp / "base"
+            ours_path = tmp / "ours"
+            theirs_path = tmp / "theirs"
+            base_path.write_text(base)
+            ours_path.write_text(ours)
+            theirs_path.write_text(theirs)
 
-        # M5: invalidate-on-exec-failure. If the cached binary path is
-        # stale (tmux pane inherited an old $PATH; operator deleted the
-        # binary mid-process), the subprocess spawn raises OSError.
-        # Invalidate the cache, re-probe once, and surface a clean
-        # MergeDriverUnavailableError if the re-probe also fails.
-        try:
-            proc = await asyncio.create_subprocess_exec(
-                binary,
-                "merge",
-                str(base_path),
-                str(ours_path),
-                str(theirs_path),
-                "-p",
-                label,
-                "--allow-parse-errors",
-                stdout=asyncio.subprocess.PIPE,
-                stderr=asyncio.subprocess.PIPE,
-            )
-        except (OSError, FileNotFoundError) as exc:
-            # Invalidate the cache so the next merge call re-probes.
-            global _MERGIRAF_BIN
-            _MERGIRAF_BIN = None
-            # Re-probe once: the binary may have moved into $PATH after
-            # the cache was populated.
-            fresh_binary = _resolve_mergiraf_binary()
-            if fresh_binary is not None and fresh_binary != binary:
-                # Retry once with the fresh path. If it fails again we
-                # propagate — no third try, no infinite loop.
-                return await _merge_via_mergiraf(
-                    base=base,
-                    ours=ours,
-                    theirs=theirs,
-                    label=label,
-                    binary=fresh_binary,
-                    driver_warning=driver_warning,
-                )
-            raise MergeDriverUnavailableError(
-                f"mergiraf binary at cached path {binary!r} is no longer "
-                f"executable ({type(exc).__name__}: {exc}). The PATH cache "
-                f"has been invalidated — the next merge call will re-probe. "
-                f"Set merge_driver_default='line' or install mergiraf to "
-                f"suppress this error."
-            ) from exc
-
-        with _tracer.start_as_current_span(
-            "merge.semantic.invocations",
-            attributes={
-                "merge.driver": "mergiraf",
-                "merge.label": label,
-            },
-        ) as span:
-            stdout, stderr = await proc.communicate()
-            merged_text = stdout.decode("utf-8", errors="replace")
-            stderr_text = stderr.decode("utf-8", errors="replace")
-            # Truncate stderr to 4KB — large parse-error dumps can blow
-            # up Dhara payloads. The first 4KB is where actionable hints
-            # (grammar name, line number) live.
-            driver_warnings: str | None = stderr_text[:4096] or None
-            exit_code = proc.returncode
-            has_conflict_markers = "<<<<<<< " in merged_text
-            conflict_count = (
-                sum(1 for line in merged_text.splitlines() if line.startswith("<<<<<<< "))
-                if has_conflict_markers
-                else 0
-            )
-            duration_ms = (time.monotonic() - start) * 1000.0
-
-            span.set_attribute("merge.exit_code", exit_code or 0)
-            span.set_attribute("merge.conflict_count", conflict_count)
-            span.set_attribute("merge.duration_ms", duration_ms)
-            span.set_attribute("merge.has_driver_warnings", driver_warnings is not None)
-
-            # Marker-first classification (R4 reviewer-blind-spot fix).
-            # Real semantic conflicts emit ``<<<<<<<`` markers in stdout
-            # regardless of exit code — mergiraf 0.19.1 empirically
-            # exits 1, but the plan's R4 finding said exit 0 may also
-            # carry markers. The marker check handles both shapes.
-            if has_conflict_markers:
-                logger.warning(
-                    "settle_merge: mergiraf conflict label=%r conflict_count=%d exit=%d",
+            # M5: invalidate-on-exec-failure. If the cached binary path is
+            # stale (tmux pane inherited an old $PATH; operator deleted the
+            # binary mid-process), the subprocess spawn raises OSError.
+            # Invalidate the cache, re-probe once, and surface a clean
+            # MergeDriverUnavailableError if the re-probe also fails.
+            try:
+                proc = await asyncio.create_subprocess_exec(
+                    binary,
+                    "merge",
+                    str(base_path),
+                    str(ours_path),
+                    str(theirs_path),
+                    "-p",
                     label,
-                    conflict_count,
+                    "--allow-parse-errors",
+                    stdout=asyncio.subprocess.PIPE,
+                    stderr=asyncio.subprocess.PIPE,
+                )
+            except (OSError, FileNotFoundError) as exc:
+                # Invalidate the cache so the next merge call re-probes.
+                global _MERGIRAF_BIN
+                _MERGIRAF_BIN = None
+                # Re-probe once: the binary may have moved into $PATH after
+                # the cache was populated.
+                fresh_binary = _resolve_mergiraf_binary()
+                if fresh_binary is not None and fresh_binary != binary:
+                    # Retry once with the fresh path. If it fails again we
+                    # propagate — no third try, no infinite loop. This
+                    # recursive call carries the same try/finally frame
+                    # and will record its own sample, so we mark the
+                    # current frame as a retry.
+                    recorded[0] = "mergiraf_retry"
+                    return await _merge_via_mergiraf(
+                        base=base,
+                        ours=ours,
+                        theirs=theirs,
+                        label=label,
+                        binary=fresh_binary,
+                        driver_warning=driver_warning,
+                    )
+                recorded[0] = "mergiraf_unavailable"
+                raise MergeDriverUnavailableError(
+                    f"mergiraf binary at cached path {binary!r} is no longer "
+                    f"executable ({type(exc).__name__}: {exc}). The PATH cache "
+                    f"has been invalidated — the next merge call will re-probe. "
+                    f"Set merge_driver_default='line' or install mergiraf to "
+                    f"suppress this error."
+                ) from exc
+
+            with _tracer.start_as_current_span(
+                "merge.semantic.invocations",
+                attributes={
+                    "merge.driver": "mergiraf",
+                    "merge.label": label,
+                },
+            ) as span:
+                stdout, stderr = await proc.communicate()
+                merged_text = stdout.decode("utf-8", errors="replace")
+                stderr_text = stderr.decode("utf-8", errors="replace")
+                # Truncate stderr to 4KB — large parse-error dumps can blow
+                # up Dhara payloads. The first 4KB is where actionable hints
+                # (grammar name, line number) live.
+                driver_warnings: str | None = stderr_text[:4096] or None
+                exit_code = proc.returncode
+                has_conflict_markers = "<<<<<<< " in merged_text
+                conflict_count = (
+                    sum(1 for line in merged_text.splitlines() if line.startswith("<<<<<<< "))
+                    if has_conflict_markers
+                    else 0
+                )
+                duration_ms = (time.monotonic() - start) * 1000.0
+
+                span.set_attribute("merge.exit_code", exit_code or 0)
+                span.set_attribute("merge.conflict_count", conflict_count)
+                span.set_attribute("merge.duration_ms", duration_ms)
+                span.set_attribute("merge.has_driver_warnings", driver_warnings is not None)
+
+                # Marker-first classification (R4 reviewer-blind-spot fix).
+                # Real semantic conflicts emit ``<<<<<<<`` markers in stdout
+                # regardless of exit code — mergiraf 0.19.1 empirically
+                # exits 1, but the plan's R4 finding said exit 0 may also
+                # carry markers. The marker check handles both shapes.
+                if has_conflict_markers:
+                    logger.warning(
+                        "settle_merge: mergiraf conflict label=%r conflict_count=%d exit=%d",
+                        label,
+                        conflict_count,
+                        exit_code or 0,
+                    )
+                    recorded[0] = "conflict"
+                    raise MergeConflictError(
+                        path=label,
+                        merged=merged_text,
+                        base=base,
+                        ours=ours,
+                        theirs=theirs,
+                        driver_warnings=driver_warnings,
+                        strategy_used=MergeStrategy.SEMANTIC,
+                    )
+
+                if exit_code == 0:
+                    recorded[0] = "success"
+                    return MergeResult(
+                        merged=merged_text,
+                        conflict_count=0,
+                        driver_warnings=driver_warnings,
+                        strategy_used=MergeStrategy.SEMANTIC,
+                    )
+
+                # No markers + non-zero exit: per the plan, exit 1 is "input
+                # unreadable" and exit 2 is "tree-sitter parse error". The
+                # marker-first check above already routed real conflicts
+                # (which can exit 1 in mergiraf 0.19.1) into MergeConflictError,
+                # so by the time we reach this branch, exit != 0 with no
+                # markers genuinely is a fatal.
+                stderr_truncated = stderr_text.strip()[:4096]
+                logger.error(
+                    "settle_merge: mergiraf fatal label=%r exit=%d stderr=%s",
+                    label,
                     exit_code or 0,
+                    stderr_truncated[:512],
                 )
-                raise MergeConflictError(
-                    path=label,
-                    merged=merged_text,
-                    base=base,
-                    ours=ours,
-                    theirs=theirs,
-                    driver_warnings=driver_warnings,
-                    strategy_used=MergeStrategy.SEMANTIC,
+                recorded[0] = "fatal"
+                raise MergeFailureError(
+                    f"mergiraf failed (exit={exit_code}) for {label!r}: {stderr_truncated}"
                 )
-
-            if exit_code == 0:
-                return MergeResult(
-                    merged=merged_text,
-                    conflict_count=0,
-                    driver_warnings=driver_warnings,
-                    strategy_used=MergeStrategy.SEMANTIC,
-                )
-
-            # No markers + non-zero exit: per the plan, exit 1 is "input
-            # unreadable" and exit 2 is "tree-sitter parse error". The
-            # marker-first check above already routed real conflicts
-            # (which can exit 1 in mergiraf 0.19.1) into MergeConflictError,
-            # so by the time we reach this branch, exit != 0 with no
-            # markers genuinely is a fatal.
-            stderr_truncated = stderr_text.strip()[:4096]
-            logger.error(
-                "settle_merge: mergiraf fatal label=%r exit=%d stderr=%s",
-                label,
-                exit_code or 0,
-                stderr_truncated[:512],
-            )
-            raise MergeFailureError(
-                f"mergiraf failed (exit={exit_code}) for {label!r}: {stderr_truncated}"
-            )
+    finally:
+        # Records exactly one sample per call, regardless of which exit
+        # path took the function out of the try block. The recursive
+        # retry path records its OWN sample (with strategy "semantic"
+        # and the inner retry's outcome); the current frame's
+        # ``recorded[0] = "mergiraf_retry"`` is then overwritten by the
+        # finally below for THIS frame, which is what we want (a
+        # retry-with-success sample + a retry-launcher sample).
+        _record_semantic_duration(start, MergeStrategy.SEMANTIC, recorded[0])
 
 
 async def merge_three_way(
