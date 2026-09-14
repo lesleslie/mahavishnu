@@ -1,8 +1,8 @@
 ---
-status: partial
+status: shipped
 role: implementation
 date: 2026-09-10
-last_reviewed: '2026-09-13'
+last_reviewed: '2026-09-14'
 superseded_by: null
 topic: settle-semantic-merge
 requirements:
@@ -346,3 +346,18 @@ Implementation progress against the plan's REQ-SM-001..REQ-SM-009 and phase deli
 - `.claude/decisions/wire-up-contract.md` — policy this plan fulfills.
 - `docs/plans/TEMPLATE.md` — plan template.
 - Session-Buddy reflection stored 2026-09-10, tags `merge-driver`, `mergiraf`, `decision` — recovery anchor for "have we ever decided to use mergiraf?" archaeology queries.
+
+## Re-Review Status (2026-09-14)
+
+**Status**: `shipped` — Phases 1-4 landed end-to-end per §15 Progress Log (commits verified 2026-09-10). Phase 5 (`REQ-SM-006 git-merge-tree --name-only` diagnostic channel) explicitly **deferred** per §9 Decision Rule #2 (gated on 30 days of `merge.fallback_total` + `merge.semantic.duration_ms` p99 < 50 ms telemetry).
+
+**Phase 1-4 deliverables landed:**
+
+- Phase 1 — `MergeStrategy(StrEnum)`, lazy `_MERGIRAF_BIN` probe, `merge_three_way(strategy=...)` parameter; `_merge_three_way_sync_internal` rename + deprecation shim
+- Phase 2 — `MergeDriverUnavailableError`, `driver_warnings` capture, `_merge_via_mergiraf` subprocess with marker-first conflict detection (R4 fix), `MHV-313` `MERGE_DRIVER_UNAVAILABLE` error code
+- Phase 3 — `Binding.merge_strategy` field with both edit sites wired (R1 fix); `_parse_bindings` accepts the new field without breaking legacy records
+- Phase 4 — `MahavishnuSettings.merge_driver_default` / `merge_driver_required`; `_install_merge_driver_runtime_config` startup guard (R3 #2 Critical); `merge.fallback_total` OTel counter; `merge_driver.{available,binary,version,grammars,degraded_since}` `/health` aggregate; `scripts/check_merge_driver.py` operator pre-flight
+
+**Phase 5 (deferred) trigger conditions** (per §9 #2): 30 days of telemetry AND `merge.semantic.duration_ms` p99 < 50 ms AND Phase-6 candidate swap to `git merge-tree --write-tree` evaluated. The follow-up plan `2026-09-10-settle-semantic-merge-default-flip.md` is its own precondition (mirrors `minimax27` plan's M1→M2 deprecation cycle).
+
+**Meta-plan link**: `docs/plans/2026-09-12-finish-partial-implementations.md` Phase 2 (§REQ-CLOSE-002) explicitly directs this flip.
