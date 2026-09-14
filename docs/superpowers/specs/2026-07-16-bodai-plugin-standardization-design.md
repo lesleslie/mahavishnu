@@ -1,12 +1,14 @@
 ---
-status: draft
+status: complete
 role: canonical
 topic: plugin-standardization
 date: 2026-07-16
-last_reviewed: 2026-07-16
+last_reviewed: 2026-08-29
 superseded_by: null
 blocks_on: []
 ---
+
+> **Status note (2026-08-29):** Spec was "Draft (pending user review)" on 2026-07-16; user review has since occurred (implementation plan `docs/superpowers/plans/2026-07-16-bodai-plugin-standardization.md` is now `active`, plus 4 plugin commits ship: `b96b24d0` mahavishnu plugin manifest, `44e39c5e` remove old flat slash commands, `9c0f4111` remove old flat session-buddy commands, `f17bd030` normalize mcpServers path). Design phase complete; this spec remains the authoritative reference. Re-classified from `active` to `complete + canonical` to reflect "design approved and implementation in flight."
 
 # Bodai Plugin Standardization — Design Spec
 

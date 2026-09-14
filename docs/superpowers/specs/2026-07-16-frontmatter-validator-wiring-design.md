@@ -1,9 +1,9 @@
 ---
-status: draft
+status: complete
 role: canonical
 topic: lifecycle
 date: 2026-07-16
-last_reviewed: 2026-07-16
+last_reviewed: 2026-08-29
 superseded_by: null
 blocks_on: []
 ---

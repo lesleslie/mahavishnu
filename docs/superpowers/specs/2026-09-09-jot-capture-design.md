@@ -1,3 +1,14 @@
+---
+status: draft
+role: implementation
+kind: plan
+date: 2026-09-09
+last_reviewed: 2026-09-13
+superseded_by: null
+blocks_on: []
+topic: jot-capture
+---
+
 # Jot Inbox: Capture Sub-Plan Design
 
 > **Sub-plan 1 of 3.** This spec covers only the **capture** layer (write path).
@@ -11,31 +22,35 @@
 
 **Tech Stack:** Python 3.12+ stdlib only. No `logging`, no `oneiric`, no Mahavishnu runtime imports inside the hook. Reuses Mahavishnu's `from __future__ import annotations` + bandit B101 conventions.
 
----
+______________________________________________________________________
 
 ## Decisions (this sub-plan)
 
 ### D1. Hook delivery
+
 **Decision:** Mahavishnu plugin install. Hook file `mahavishnu/hooks/jot_capture.py` ships with the package. `mahavishnu jot install-hook` (sub-plan 2's CLI) copies it to `~/.claude/hooks/jot_capture.py` and writes a `UserPromptSubmit` entry in `~/.claude/settings.json`.
 **Why:** Simpler than standalone vendoring. Users who use jot already have Mahavishnu installed. Captures do not need to work without Mahavishnu — the "capture cannot fail" goal is met by the hook being fail-open, not by decoupling from Mahavishnu.
 **Rejected:** (a) Standalone vendored script — adds dual codec maintenance for an edge case. (b) Both standalone + Mahavishnu-managed — extra work, extra test surface.
 
 ### D2. Redaction scope (capture-time)
+
 **Decision:** Moderate. ~20 regex patterns across 3 tiers — secrets (AWS, GitHub PATs, OpenAI/Anthropic, Slack tokens, JWTs, Bearer tokens, high-entropy strings), credentials (emails, US phone numbers, IPv4 addresses), URLs + env-style (HTTP(S) URLs, `.env` references, SSH private key headers).
 **Why:** Defensive against accidental secret leakage without excessive false positives. Capture-time redaction is the *first* line; drain-time redaction (sub-plan 3) is the second line using the full Session-Buddy redaction.
 **Rejected:** (a) Minimal — too narrow, real leaks slip through. (b) Aggressive opt-in — annoying false positives for the common case.
 
 ### D3. Ambient context (capture-time)
+
 **Decision:** Cheap sources only at write-time. Capture: `cwd`, `session_id`, `files` (from Claude stdin), `env_repo` + `env_branch` (from env vars). Defer git context (`repo`, `branch`, `sha`) to read-time (sub-plan 2's fold enriches via `git rev-parse` when needed).
 **Why:** Subprocess git calls add 50-200ms per prompt. The hook must cost nothing. Read-time git is paid only when the user actually lists/shows jots, not on every prompt.
 **Rejected:** (a) Always git — conflicts with the "capture costs nothing" goal. (b) Cached git — extra file, more complexity, marginal benefit.
 
 ### D4. Failure logging
+
 **Decision:** Always-on debug file at `~/.mahavishnu/jot/errors.log`, mode `0o600`. Hook writes structured error records on every captured exception. Sub-plan 2's read surface shows error count + last error message.
 **Why:** Failures must be debuggable without explicit opt-in. A user who notices "my jots stopped being captured" needs a way to find out why.
 **Rejected:** (a) Opt-in via env var — fails silently when the env isn't set, which is when you most need the log. (b) No logging — debugging is impossible.
 
----
+______________________________________________________________________
 
 ## Locked Decisions (from the union spec, inherited)
 
@@ -51,14 +66,14 @@ These are *not* sub-plan-1 decisions but are referenced by this sub-plan and rem
 - **UD8.** `from __future__ import annotations` first non-comment line of every source file.
 - **UD9.** Mypy strict (Python 3.14 target), Ruff line-length 100, function args ≤ 10.
 
----
+______________________________________________________________________
 
 ## Goals (this sub-plan)
 
 1. **Capture costs nothing** — hook overhead < 10ms per prompt on the success path.
-2. **Capture cannot fail** — every failure mode is detected, logged, and converted to passthrough (exit 0).
-3. **No organization required at capture time** — the user just types `,, <text>`.
-4. **Stdlib-only hook** — the hook script runs without importing Mahavishnu runtime; the only `mahavishnu/*` modules it loads are the `mahavishnu/jot/*` modules, which are themselves stdlib-only.
+1. **Capture cannot fail** — every failure mode is detected, logged, and converted to passthrough (exit 0).
+1. **No organization required at capture time** — the user just types `,, <text>`.
+1. **Stdlib-only hook** — the hook script runs without importing Mahavishnu runtime; the only `mahavishnu/*` modules it loads are the `mahavishnu/jot/*` modules, which are themselves stdlib-only.
 
 ## Non-goals (deferred)
 
@@ -71,7 +86,7 @@ These are *not* sub-plan-1 decisions but are referenced by this sub-plan and rem
 - ❌ `redact` operation — v1 only writes redacted text; no edit-redaction in place
 - ❌ Cross-machine sync — local-only; replication is sub-plan 3
 
----
+______________________________________________________________________
 
 ## Architecture
 
@@ -107,7 +122,7 @@ Claude Code (terminal)
 | MCP tools + CLI | 2 | 8 tools, `mahavishnu jot ...`, `install-hook` |
 | Drain | 3 | Replication to Dhara, offset bookkeeping, integrity |
 
----
+______________________________________________________________________
 
 ## Data Model
 
@@ -184,6 +199,7 @@ def hlc_now(node: str, last: HLC | None) -> HLC:
 **`node` initialization:** `~/.mahavishnu/jot/node` is read at module import. If the file doesn't exist, generate `f"{hostname_short[:4]}{secrets.token_hex(2)}"` (8 hex chars total) and write it. Failures during node init are logged to errors.log; the hook proceeds with an in-memory random node (no persistence) — drift in that session only.
 
 **HLC continuity across captures:**
+
 - Open log in read mode, seek to `max(0, file_size - 65536)`, read to EOF
 - Parse last complete JSON line → extract `hlc`
 - If parse fails or log doesn't exist, treat as `None`
@@ -199,24 +215,27 @@ def short_id(event_id: str) -> str:
 
 Used only in the capture echo. Real IDs (32 hex) are stored in the log. Collision in the echo is acceptable because the echo is human-facing; real IDs are what matter for the log.
 
----
+______________________________________________________________________
 
 ## Capture Surface (Hook Contract)
 
 ### Claude Code UserPromptSubmit contract
 
 **Input (stdin):** JSON object with at minimum:
+
 - `prompt: str` — the user's prompt text
 - `session_id: str` — Claude Code session identifier
 - `files: list[str]` (optional) — modified files
 
 **Output (stdout):**
+
 - **Passthrough:** original JSON unchanged
 - **Capture:** empty (exit 2 erases the prompt)
 
 **Output (stderr):** capture echo (visible in foreground TUI, lost in non-TTY)
 
 **Exit codes:**
+
 - `0` — passthrough (prompt proceeds normally)
 - `2` — capture (prompt erased, event written)
 
@@ -239,6 +258,7 @@ def is_capture(prompt: str) -> tuple[bool, str]:
 ```
 
 Edge cases:
+
 - `" ,,"` (space before comma-comma) → capture (leading whitespace stripped)
 - `",, "` (trailing whitespace after prefix) → capture, empty body after lstrip → NO, passthrough (empty body check)
 - `"text ,, more text"` → NOT a capture (no leading `,,`)
@@ -306,13 +326,14 @@ Single line. `print(..., file=sys.stderr)` adds the trailing newline.
 
 The hook script is *not* executable; invoked via `python3` explicitly. This avoids shebang issues and works regardless of where Python is installed.
 
----
+______________________________________________________________________
 
 ## Redaction
 
 ### Scope (moderate, ~20 patterns across 3 tiers)
 
 **Tier 1 — Secrets (always redact):**
+
 - AWS access keys: `AKIA[0-9A-Z]{16}`
 - GitHub PATs: `ghp_[a-zA-Z0-9]{36}`, `gho_[a-zA-Z0-9]{36}`, `ghu_[a-zA-Z0-9]{36}`, `ghs_[a-zA-Z0-9]{36}`, `ghr_[a-zA-Z0-9]{36}`
 - OpenAI/Anthropic keys: `sk-[a-zA-Z0-9]{20,}`, `sk-ant-[a-zA-Z0-9-]{20,}`
@@ -322,16 +343,19 @@ The hook script is *not* executable; invoked via `python3` explicitly. This avoi
 - Generic high-entropy strings (32+ chars): heuristic with entropy threshold
 
 **Tier 2 — Credentials:**
+
 - Email addresses: `[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}`
 - Phone numbers (US): `\b\d{3}[-.]?\d{3}[-.]?\d{4}\b`
 - IP addresses (IPv4): `\b\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}\b`
 
 **Tier 3 — URLs + env-style:**
+
 - HTTP(S) URLs: `https?://[^\s]+`
 - `.env`-style references: `\.env(\.\w+)?` in path context
 - SSH private key headers: `-----BEGIN [A-Z ]+PRIVATE KEY-----`
 
 **Replacement format:** `[REDACTED:<tier>:<hash>]` where `<hash>` is the first 8 hex chars of `sha256(match.encode()).hexdigest()`. The hash allows:
+
 - Detecting that two redactions were of the same secret (correlation)
 - NOT reversing the redaction (one-way)
 
@@ -358,7 +382,7 @@ Patterns are compiled once at module import (not per-call). Single pass per patt
 
 **No false-positive suppression** in v1. If users complain, add an `allowlist` env var in v2.
 
----
+______________________________________________________________________
 
 ## Permissions
 
@@ -392,7 +416,7 @@ finally:
 
 Always close. `try/finally` is acceptable for resource cleanup (bandit B101 forbids `assert`, not `try/finally`).
 
----
+______________________________________________________________________
 
 ## Failure Modes
 
@@ -442,6 +466,7 @@ if __name__ == "__main__":
 ```
 
 Fields:
+
 - `ts_ms` — when the error occurred (Unix ms)
 - `hook` — which hook (`"jot_capture"`)
 - `op` — which operation (`"capture"`, `"node_init"`, `"hdl_tail"`, etc.)
@@ -466,7 +491,7 @@ Fields:
 - A failed capture is lost. No write retry, no background queue.
 - Rationale: retry/queue adds complexity that defeats the "capture cannot fail" goal. A hung queue is worse than a lost jot. The user can always type the jot again.
 
----
+______________________________________________________________________
 
 ## Stdlib Hygiene
 
@@ -495,7 +520,7 @@ import dataclasses
 
 **The hook imports `mahavishnu/jot/*` modules.** Those modules are themselves stdlib-only and live under `mahavishnu/jot/` (e.g., `mahavishnu/jot/events.py`, `mahavishnu/jot/paths.py`). The hook does NOT import the Mahavishnu app/runtime — only these data-only helper modules.
 
----
+______________________________________________________________________
 
 ## Components
 
@@ -536,7 +561,7 @@ import dataclasses
 - `mahavishnu/jot/drain_core.py` — sub-plan 3
 - `mahavishnu/jot/offsets.py` — sub-plan 3
 
----
+______________________________________________________________________
 
 ## Testing Strategy
 
@@ -583,30 +608,31 @@ In `test_capture_hook.py` and `test_capture_e2e.py`:
 - After sub-plan 2 ships: `mahavishnu jot install-hook` writes `~/.claude/settings.json` correctly
 - After sub-plan 2 ships: type `,, test jot from TUI` in Claude Code → see capture echo, jot appears in `mahavishnu jot list`
 
----
+______________________________________________________________________
 
 ## Done Criteria
 
 A reviewer can mark sub-plan 1 complete when:
 
 1. ✅ All unit tests pass (target coverage ≥ 95% for `mahavishnu/jot/*` + `mahavishnu/hooks/jot_capture.py`)
-2. ✅ All property tests pass (≥ 100 examples each)
-3. ✅ Integration test passes: subprocess invocation captures a jot, writes log, exits 2
-4. ✅ Failure injection tests pass: stdin-not-JSON, permission-denied, disk-full all passthrough cleanly with errors.log entry
-5. ✅ Bandit clean (`B101` no-assert enforced on `mahavishnu/jot/`, `mahavishnu/hooks/`)
-6. ✅ Ruff clean (per `pyproject.toml` config, line length 100)
-7. ✅ Mypy strict clean (with `from __future__ import annotations` on every file)
-8. ✅ Manual verification: synthetic stdin invocation writes the expected event and exits 2
-9. ✅ Spec is committed to git at `docs/superpowers/specs/2026-09-09-jot-capture-design.md`
-10. ✅ Implementation plan exists at `docs/superpowers/plans/YYYY-MM-DD-jot-capture.md` (after writing-plans skill)
+1. ✅ All property tests pass (≥ 100 examples each)
+1. ✅ Integration test passes: subprocess invocation captures a jot, writes log, exits 2
+1. ✅ Failure injection tests pass: stdin-not-JSON, permission-denied, disk-full all passthrough cleanly with errors.log entry
+1. ✅ Bandit clean (`B101` no-assert enforced on `mahavishnu/jot/`, `mahavishnu/hooks/`)
+1. ✅ Ruff clean (per `pyproject.toml` config, line length 100)
+1. ✅ Mypy strict clean (with `from __future__ import annotations` on every file)
+1. ✅ Manual verification: synthetic stdin invocation writes the expected event and exits 2
+1. ✅ Spec is committed to git at `docs/superpowers/specs/2026-09-09-jot-capture-design.md`
+1. ✅ Implementation plan exists at `docs/superpowers/plans/YYYY-MM-DD-jot-capture.md` (after writing-plans skill)
 
 **NOT done in sub-plan 1 (must remain NOT-done):**
+
 - ❌ Folding / reading jots (sub-plan 2)
 - ❌ MCP tools / CLI (sub-plan 2)
 - ❌ Drain to Dhara (sub-plan 3)
 - ❌ `mahavishnu jot install-hook` command itself (sub-plan 2 — installs the hook we ship here)
 
----
+______________________________________________________________________
 
 ## Open Questions
 
@@ -614,11 +640,12 @@ A reviewer can mark sub-plan 1 complete when:
 **OQ2.** (Sub-plan 2's concern) Does the hook need to write a synthetic `error` event to the main log on capture failure, so sub-plan 2's read surface can show "5 jots failed to capture last session" without reading errors.log? Current decision: no, errors.log is separate. Sub-plan 2 reads errors.log directly.
 **OQ3.** (Sub-plan 3's concern) What happens to errors.log entries on drain? Are they drained too? Out of scope for sub-plan 1; sub-plan 3 decides.
 
----
+______________________________________________________________________
 
 ## Future Work / Handoff to Sub-plan 2
 
 **Sub-plan 2 (Read) consumes:**
+
 - `mahavishnu/jot/events.py` — `JotEvent`, `serialize`, `deserialize`
 - `mahavishnu/jot/hlc.py` — `HLC` ordering + tail HLC reader
 - `mahavishnu/jot/short_id.py` — `short_id` for display
@@ -627,6 +654,7 @@ A reviewer can mark sub-plan 1 complete when:
 - `mahavishnu/hooks/jot_capture.py` — installed via `mahavishnu jot install-hook`
 
 **Sub-plan 2 (Read) adds:**
+
 - `mahavishnu/jot/fold.py` — two-pass fold with HLC + parking
 - `mahavishnu/jot/render.py` — vitals, list, show, echo formatting
 - `mahavishnu/jot/cli.py` — `mahavishnu jot ...` CLI
@@ -637,11 +665,12 @@ A reviewer can mark sub-plan 1 complete when:
 - Plugin manifest updates (CI guard test as 5th edit)
 
 **Sub-plan 3 (Drain) consumes:**
+
 - All sub-plan 1 deliverables + sub-plan 2 deliverables
 - Adds `drain_core.py`, `drain_sync.py`, `drain_async.py`, `offsets.py`
 - Adds drain-time redaction (full Session-Buddy `redact()`)
 
----
+______________________________________________________________________
 
 ## Spec Metadata
 

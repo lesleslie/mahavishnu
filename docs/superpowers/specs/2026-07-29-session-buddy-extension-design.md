@@ -1,3 +1,14 @@
+---
+status: draft
+role: implementation
+kind: plan
+date: 2026-07-29
+last_reviewed: 2026-09-13
+superseded_by: null
+blocks_on: []
+topic: session-buddy-extension
+---
+
 # Session-Buddy Extension Design (Mahavishnu seam hardening)
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this design task-by-task. The implementation plan will live at `docs/superpowers/plans/2026-07-29-session-buddy-extension.md` once the writing-plans skill runs.

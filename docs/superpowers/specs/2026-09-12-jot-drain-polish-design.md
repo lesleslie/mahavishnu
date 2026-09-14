@@ -1,3 +1,14 @@
+---
+status: draft
+role: implementation
+kind: plan
+date: 2026-09-12
+last_reviewed: 2026-09-13
+superseded_by: null
+blocks_on: []
+topic: jot-drain-polish
+---
+
 # Jot Drain Polish Spec
 
 > **Status:** Draft — pending user review before plan handoff.
@@ -188,7 +199,7 @@ Active. First rule for any new SDD plan run on this repo.
 
 | File | Change |
 |---|---|
-| `docs/superpowers/specs/2026-09-10-jot-drain-design.md` §3.3 (insert §3.3.4) | Insert subsection "_propose_action policy (locked)" with the exact 4-row table below, with `reason` strings copied verbatim from drain.py lines 710-713. Reference the implementation at `mahavishnu/jot/drain.py:705` for traceability |
+| `docs/superpowers/specs/2026-09-10-jot-drain-design.md` §3.3 (insert §3.3.4) | Insert subsection "\_propose_action policy (locked)" with the exact 4-row table below, with `reason` strings copied verbatim from drain.py lines 710-713. Reference the implementation at `mahavishnu/jot/drain.py:705` for traceability |
 | `mahavishnu/jot/drain.py` line 706 | Update the docstring to point to the spec section: "Suggested action for a drain candidate (spec §3.3.4 — locked policy). Local implementation MUST match the spec table; spec changes require brainstorming re-open." Note: the word "heuristic" is removed — the policy is locked, not heuristic. |
 
 **Spec content to insert** (parent spec §3.3, after the existing surface definitions):
@@ -317,12 +328,12 @@ All polish items use existing imports. No `pyproject.toml` changes.
 The polish set is complete when ALL of the following hold:
 
 1. `/jot drain` slash command is documented in `mahavishnu/commands/jot.md` with the contract in §3 item 1.
-2. `drain.py` reconciler uses `asyncio.create_task(_auto_retry_after(...))` (fire-and-forget), NOT `await`. Adversarial tests prove the retry still runs.
-3. `_validate_ctx` rejects unknown ctx keys per op. New tests cover this. All existing tests still pass.
-4. `.claude/decisions/sdd-bundling-defensive-pattern.md` exists and is indexed.
-5. Parent spec §3.3.4 documents the `_propose_action` policy table with `reason` strings copied verbatim from drain.py lines 710-713 (not paraphrased).
-6. `DrainPlan.action_proposals` field has a full docstring at line 636 + `ActionProposalDict` has a docstring at line 244 + `MCP_TOOLS_SPECIFICATION.md` documents the field. The existing class-level docstring at drain.py lines 620-631 is preserved.
-7. drain.py coverage is ≥ 89% (project-wide pytest gate per `pyproject.toml` / CLAUDE.md).
-8. All 413 pre-polish tests still pass (with 9 rewritten-in-place in item 2) + 7 net-new tests (1 + 2 + 4) = **420 tests pass**.
-9. `crackerjack run` does not regress (per Bodai pre-1.0 direct-to-main policy; `crackerjack` is informational, not blocking).
-10. The change graph lands on `main` with no `git push` and no PR.
+1. `drain.py` reconciler uses `asyncio.create_task(_auto_retry_after(...))` (fire-and-forget), NOT `await`. Adversarial tests prove the retry still runs.
+1. `_validate_ctx` rejects unknown ctx keys per op. New tests cover this. All existing tests still pass.
+1. `.claude/decisions/sdd-bundling-defensive-pattern.md` exists and is indexed.
+1. Parent spec §3.3.4 documents the `_propose_action` policy table with `reason` strings copied verbatim from drain.py lines 710-713 (not paraphrased).
+1. `DrainPlan.action_proposals` field has a full docstring at line 636 + `ActionProposalDict` has a docstring at line 244 + `MCP_TOOLS_SPECIFICATION.md` documents the field. The existing class-level docstring at drain.py lines 620-631 is preserved.
+1. drain.py coverage is ≥ 89% (project-wide pytest gate per `pyproject.toml` / CLAUDE.md).
+1. All 413 pre-polish tests still pass (with 9 rewritten-in-place in item 2) + 7 net-new tests (1 + 2 + 4) = **420 tests pass**.
+1. `crackerjack run` does not regress (per Bodai pre-1.0 direct-to-main policy; `crackerjack` is informational, not blocking).
+1. The change graph lands on `main` with no `git push` and no PR.

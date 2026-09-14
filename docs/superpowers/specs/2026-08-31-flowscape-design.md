@@ -1,3 +1,14 @@
+---
+status: draft
+role: implementation
+kind: plan
+date: 2026-08-31
+last_reviewed: 2026-09-13
+superseded_by: null
+blocks_on: []
+topic: flowscape
+---
+
 # flowscape — Modern Network Visualization for macOS
 
 **Status:** Revision 3 — moves scapy-mcp from v2+ to v1 client-side enrichment; softens MCP regulatory gate for client-side scope only (2026-09-06)

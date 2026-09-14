@@ -1,3 +1,14 @@
+---
+status: draft
+role: implementation
+kind: plan
+date: 2026-09-10
+last_reviewed: 2026-09-13
+superseded_by: null
+blocks_on: []
+topic: jot-drain
+---
+
 # Jot Drain Sub-plan Design
 
 > **Status:** Draft — pending user review before plan handoff.
@@ -13,7 +24,7 @@
 Drain turns the jot inbox from a passive log into an active workflow tool. It does two things:
 
 1. **Bulk drain command** — process multiple open jots in one interactive session, choosing actions per jot (dispatch / defer / done / delete / skip).
-2. **Ambient surfacing** — at session start and after tool results, inject relevant jots into Claude's context as `additionalContext`.
+1. **Ambient surfacing** — at session start and after tool results, inject relevant jots into Claude's context as `additionalContext`.
 
 The original brainstormed commitment was:
 
@@ -837,7 +848,7 @@ jot:
 | `FAILED` | user calls `jot_retry` | `IN_FLIGHT` | New `dispatch` event (attempt=N+1, `triggered_by=manual`) |
 | `SUCCEEDED` | user calls `jot_done` | `status=done`, `dispatch_state=None` | `done` event appended |
 | `open` | user calls `jot_defer` | `status=open`, `deferred_until=<ts>` | `defer` event with `until` |
-| `open` (deferred, until<=now) | fold runs | `deferred_until=None` | `defer_expired` event auto-written |
+| `open` (deferred, until\<=now) | fold runs | `deferred_until=None` | `defer_expired` event auto-written |
 | any | user calls `jot_delete` | `deleted=True` | `delete` event appended; hidden from default lists |
 
 `status` (`open` ↔ `done`) and `dispatch_state` are orthogonal. A SUCCEEDED jot can still be `done`-flipped via `jot_done`. A FAILED jot can be re-dispatched via `jot_retry`. There is no transition from `dispatch_state` back to `None` automatically — only `done`/`reopen`/`delete` reset the lifecycle.
@@ -1220,9 +1231,9 @@ Surfacing fires from `SessionStart` and `PostToolUse` Claude Code hooks. These h
 **Preconditions** (all must land before the wiring commit can merge):
 
 1. `mahavishnu/jot/drain.py` must exist with `surface_relevant(trigger, context_text, limit)` callable. The wrappers import this; without it the wiring fails with `ModuleNotFoundError`.
-2. `.claude/hooks/jot-session-start.py` — thin wrapper: `from mahavishnu.jot.drain import surface_relevant; print(json.dumps({"hookSpecificOutput": {"hookEventName": "SessionStart", "additionalContext": ...}}))`
-3. `.claude/hooks/jot-post-tool-use.py` — thin wrapper: same import, gated by `_Throttle.should_fire()` (§5.5).
-4. `.claude/hooks/jot-capture.py` — thin wrapper around the existing `mahavishnu/hooks/jot_capture.py::capture_hook` (sub-plan 1 already shipped the capture hook logic).
+1. `.claude/hooks/jot-session-start.py` — thin wrapper: `from mahavishnu.jot.drain import surface_relevant; print(json.dumps({"hookSpecificOutput": {"hookEventName": "SessionStart", "additionalContext": ...}}))`
+1. `.claude/hooks/jot-post-tool-use.py` — thin wrapper: same import, gated by `_Throttle.should_fire()` (§5.5).
+1. `.claude/hooks/jot-capture.py` — thin wrapper around the existing `mahavishnu/hooks/jot_capture.py::capture_hook` (sub-plan 1 already shipped the capture hook logic).
 
 **Wiring** (`.claude/settings.json` additions — added verbatim at implementation time):
 
@@ -1305,6 +1316,7 @@ Surfacing fires from `SessionStart` and `PostToolUse` Claude Code hooks. These h
 ### 7.2 Key unit test specifications
 
 **State machine:**
+
 - `test_dispatch_appends_event_with_workflow_id`
 - `test_dispatch_done_transitions_to_succeeded`
 - `test_dispatch_failed_with_budget_remaining_keeps_in_flight`
@@ -1316,6 +1328,7 @@ Surfacing fires from `SessionStart` and `PostToolUse` Claude Code hooks. These h
 - `test_deleted_jots_excluded_from_default_lists`
 
 **Retry:**
+
 - `test_auto_retry_after_first_failure_with_fast_backoff`
 - `test_auto_retry_exhausted_marks_terminal_failure`
 - `test_manual_retry_after_failed_resets_attempt_count`
@@ -1323,6 +1336,7 @@ Surfacing fires from `SessionStart` and `PostToolUse` Claude Code hooks. These h
 - `test_retry_state_guard_raises_on_non_failed`
 
 **Surfacing scorer:**
+
 - `test_lexical_score_zero_on_no_overlap`
 - `test_lexical_score_proportional_to_overlap`
 - `test_short_tokens_filtered`
@@ -1334,6 +1348,7 @@ Surfacing fires from `SessionStart` and `PostToolUse` Claude Code hooks. These h
 - `test_surfacing_skips_short_context`
 
 **Lazy reconciler:**
+
 - `test_lazy_reconciler_writes_dispatch_done_for_in_flight`
 - `test_lazy_reconciler_idempotent_when_already_terminal`
 - `test_lazy_reconciler_writes_dispatch_failed_with_correct_budget`
@@ -1343,6 +1358,7 @@ Surfacing fires from `SessionStart` and `PostToolUse` Claude Code hooks. These h
 - `test_lazy_reconciler_unexpected_exception_logged_not_propagated`
 
 **State filter:**
+
 - `test_open_jots_are_drain_eligible`
 - `test_done_jots_excluded_from_drain`
 - `test_deferred_jots_excluded_until_expiry`
@@ -1351,11 +1367,13 @@ Surfacing fires from `SessionStart` and `PostToolUse` Claude Code hooks. These h
 - `test_deleted_jots_excluded_from_both`
 
 **Retry budget policy (`_should_exhaust_retry_budget`, §6.3.1):**
+
 - `test_should_exhaust_retry_budget_true_on_second_attempt` — `current_attempt=2` returns True
 - `test_should_exhaust_retry_budget_false_on_first_attempt` — `current_attempt=1` returns False
 - `test_should_exhaust_retry_budget_treats_zero_as_first_attempt` — fail-safe: `current_attempt=0` returns False (lets retry fire)
 
 **Tier-2 timeout gate (§6.3):**
+
 - `test_reconciler_times_out_in_flight_dispatch_after_window` — at `now - started_at_ms >= RECONCILER_TIMEOUT_MS`, write `dispatch_failed` and skip the substrate call
 - `test_reconciler_timeout_attempt_one_preserves_retry_budget` — timeout on attempt 1: `_should_exhaust_retry_budget` returns False → auto-retry scheduled, jot returns to IN_FLIGHT
 - `test_reconciler_timeout_attempt_two_exhausts_retry_budget` — timeout on attempt 2: `_should_exhaust_retry_budget` returns True → terminal FAILED, no auto-retry
@@ -1363,6 +1381,7 @@ Surfacing fires from `SessionStart` and `PostToolUse` Claude Code hooks. These h
 - `test_reconciler_calls_substrate_when_within_timeout_window` — sanity: short-lived dispatches go through `_get_workflow_status` normally
 
 **Fold edge cases (`_derive_dispatch_fields`, §4.6):**
+
 - `test_fold_handles_orphan_terminal_with_no_dispatch_event` — `dispatch_done` without a preceding `dispatch` is logged warn and treated as no-state (defensive)
 - `test_fold_hlc_tiebreaker_breaks_workflow_id_match_correctly` — when two `dispatch` events have identical `(wall_ms, ctr)`, lex on workflow_id picks the canonical match
 - `test_fold_keeps_parked_event_when_workflow_id_matches` — defensive: malformed `workflow_id` in terminal → treat as "still running", IN_FLIGHT unchanged
@@ -1374,32 +1393,38 @@ Surfacing fires from `SessionStart` and `PostToolUse` Claude Code hooks. These h
 - `test_fold_no_dispatch_yields_none_state_and_zero_attempt` — baseline: capture-only jot has `dispatch_state=None`, `current_attempt=0`, `dispatch_started_at_ms=None`
 
 **Defer_expired lazy-write idempotency (§4.6 concurrency note):**
+
 - `test_defer_expired_lazy_write_is_idempotent_under_concurrent_folds` — two concurrent `fold()` calls both observing an expired `defer` result in exactly ONE `defer_expired` event written (second writer sees existing event and exits)
 - `test_defer_expired_skipped_when_defer_was_already_expired_before_call` — `defer(until=past)` with no subsequent event: fold writes `defer_expired`
 - `test_defer_expired_skipped_when_newer_defer_supersedes` — `defer(until=past)` then `defer(until=future)`: NO `defer_expired` written
 
 **Embeddings failure modes (`_semantic_score`, §5.4):**
+
 - `test_semantic_fallback_returns_degraded_when_embeddings_unreachable` — `embed()` raises (network/OOM); `surface_degraded=true`, lexical results still returned
 - `test_semantic_fallback_treats_empty_embed_as_no_match_with_degraded_flag` — `embed()` returns `[]`; `surface_degraded=true`, no matches
 - `test_semantic_fallback_treats_wrong_shape_as_no_match_with_degraded_flag` — vector length mismatch (e.g., embed returns 1D but model expects 384); `surface_degraded=true`
 - `test_semantic_fallback_returns_degraded_when_embeddings_timeout` — `asyncio.wait_for` around `embed()` triggers; `surface_degraded=true`, lexical preserved
 
 **Cross-process atomicity assumption (§4.6 explicit policy):**
+
 - `test_append_event_serializes_through_in_process_lock` — concurrent `_append_event` calls within one process produce ordered, non-interleaved lines
 - `test_dispatch_surfaces_permission_error_when_log_unwritable` — read-only HOME: `_append_event` raises `JotLogUnwritableError`, dispatcher surfaces to caller
 
 ### 7.3 Key integration test specifications
 
 **Full dispatch flow:**
+
 - `test_full_dispatch_to_succeeded`
 - `test_full_dispatch_to_failed_then_succeeded`
 - `test_concurrent_drain_plan_excludes_in_flight`
 
 **Surfacing paths:**
+
 - `test_lexical_hit_skips_semantic`
 - `test_zero_lexical_triggers_semantic_fallback`
 
 **Concurrent drain:**
+
 - `test_two_concurrent_drain_plans_dont_double_dispatch`
 
 ### 7.4 Key property test specifications

@@ -1,4 +1,15 @@
 ---
+status: draft
+role: implementation
+kind: plan
+date: 2026-09-07
+last_reviewed: 2026-09-13
+superseded_by: null
+blocks_on: []
+topic: worktree-cleanup
+---
+
+---
 title: Bodai Worktree Cleanup Policy — Design Spec
 date: 2026-09-07
 last_reviewed: 2026-09-07

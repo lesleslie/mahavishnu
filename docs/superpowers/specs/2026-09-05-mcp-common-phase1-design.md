@@ -1,3 +1,14 @@
+---
+status: draft
+role: implementation
+kind: plan
+date: 2026-09-05
+last_reviewed: 2026-09-13
+superseded_by: null
+blocks_on: []
+topic: mcp-common-phase1
+---
+
 # mcp-common Phase 1: Critical Bugs + Release-Audit Subsystem
 
 **Date:** 2026-09-05

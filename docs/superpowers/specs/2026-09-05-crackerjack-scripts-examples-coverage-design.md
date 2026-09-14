@@ -1,3 +1,14 @@
+---
+status: draft
+role: implementation
+kind: plan
+date: 2026-09-05
+last_reviewed: 2026-09-13
+superseded_by: null
+blocks_on: []
+topic: crackerjack-scripts-examples-coverage
+---
+
 # Crackerjack: scripts/ and examples/ Coverage in Fast Hooks
 
 **Date:** 2026-09-05

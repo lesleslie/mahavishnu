@@ -745,7 +745,7 @@ Mirrors the jot spec's "never erase text you failed to store."
 | Failure | Behavior | Recovery |
 |---|---|---|
 | Git working tree has uncommitted changes | Rebuild aborts; Dhara unchanged | Commit, re-run |
-| Unparseable `.md` (bad YAML, missing field) | Logged to errors; rebuild continues | Fix frontmatter, re-run |
+| Unparsable `.md` (bad YAML, missing field) | Logged to errors; rebuild continues | Fix frontmatter, re-run |
 | Dhara write fails for one record | Logged to errors (`path_hash`, no raw path); `errors_total` incremented | `mcp__mahavishnu__plan_rebuild_status` exposes last errors; re-run |
 | Dhara write fails for **all** records | Rebuild aborts; `cycles_total` incremented; `successful_cycles_total` NOT incremented; partial Dhara state preserved | `/health` 503 within 5h (poll_silent); investigate; re-run |
 | Dhara unreachable on read | Tool raises `PlanIndexUnavailableError`; caller may fall back to `plan_show_safe` which returns `PlanDegradedDict` | Operator checks `/health` |

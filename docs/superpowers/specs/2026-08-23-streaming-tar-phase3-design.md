@@ -1,3 +1,14 @@
+---
+status: draft
+role: implementation
+kind: plan
+date: 2026-08-23
+last_reviewed: 2026-09-13
+superseded_by: null
+blocks_on: []
+topic: streaming-tar-phase3
+---
+
 # Streaming tar.zst bundles for worktree providers — Phase 3 design
 
 **Status:** approved (brainstorming complete; ready for writing-plans)

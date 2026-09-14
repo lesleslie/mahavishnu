@@ -1,9 +1,9 @@
 ---
-status: draft
+status: complete
 role: canonical
 topic: crackerjack-publish-auth
 date: 2026-07-17
-last_reviewed: 2026-07-17
+last_reviewed: 2026-08-29
 superseded_by: null
 blocks_on: []
 ---

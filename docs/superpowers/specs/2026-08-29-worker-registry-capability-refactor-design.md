@@ -1,3 +1,14 @@
+---
+status: draft
+role: implementation
+kind: plan
+date: 2026-08-29
+last_reviewed: 2026-09-13
+superseded_by: null
+blocks_on: []
+topic: worker-registry-capability-refactor
+---
+
 # Worker Registry Capability Refactor + Engine Composition Layer
 
 **Status:** Draft for multi-agent review

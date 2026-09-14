@@ -1,3 +1,14 @@
+---
+status: draft
+role: implementation
+kind: plan
+date: 2026-08-03
+last_reviewed: 2026-09-13
+superseded_by: null
+blocks_on: []
+topic: bodai-openclaw-hermes-inspired-portfolio
+---
+
 # Bodai OpenClaw/Hermes-Inspired Follow-Ups — Portfolio Design
 
 Date: 2026-08-03
