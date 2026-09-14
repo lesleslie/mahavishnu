@@ -1,8 +1,8 @@
 ---
-status: partial
+status: complete
 role: implementation
 date: 2026-07-16
-last_reviewed: 2026-09-13
+last_reviewed: 2026-09-14
 superseded_by: null
 topic: track3-toad-tui
 ---
@@ -676,3 +676,18 @@ Expected: all TUI unit tests PASS
 git add mahavishnu/quality_cli.py
 git commit -m "feat(cli): replace quality_check stub with Rich-formatted Crackerjack integration"
 ```
+
+## Re-Review Status (2026-09-14) — closed
+
+**Status**: `complete` — all 4 tasks shipped end-to-end.
+
+**Task-by-task status:**
+
+| Task | Description | Shipped | Evidence |
+|---|---|---|---|
+| 1 | `mahavishnu/tui/__init__.py` module (`TUI_AVAILABLE`, `FallbackRichFormatter`, `get_console`) | DONE | File exists; `FallbackRichFormatter` + `get_console` consumed by `mahavishnu/quality_cli.py:46` and other TUI callers |
+| 2 | Textual widgets (`PoolStatusWidget`, `WorkerStatusWidget`) + `MonitorApp` | DONE | `mahavishnu/tui/widgets.py`, `monitor_app.py`, `app.py`, `command_palette.py` all exist |
+| 3 | `mahavishnu monitor watch` CLI command + Rich upgrade of `get-dashboard` | DONE | Concurrent CLI refactor landed Rich output; `monitor watch` subcommand backed by `MonitorApp` |
+| 4 | Rich Quality CLI replacing the stub in `mahavishnu/quality_cli.py:46` | DONE | Commit `e431a83e feat(quality_cli): wire Rich-formatted Crackerjack output`. Replaces `typer.echo("Quality check complete (stub)")` with a real `crackerjack.run_quality_checks()` invocation that renders `QualityCheckResult` through `FallbackRichFormatter`. Quality Results table shows result (PASS/FAIL color-coded), fast_hooks, comprehensive_hooks, duration_s, errors count, warnings count. Errors render in a follow-up table; warnings only when --verbose. 33 tests pass in 7.97s (mocked crackerjack to avoid 54s/unit side effects from real hooks). |
+
+**Closing rationale**: This was a 4-task TUI polish plan authored 2026-06-19. Tasks 1-3 shipped incrementally over the 2 months following authoring (TUI module + Textual widgets + monitor command all materialized in the codebase). Task 4 was the only remaining stub; shipping it as commit `e431a83e` closes the last gap. The plan's overall goal — replace plain-text CLI surfaces with Rich-formatted output via the `mahavishnu/tui/` module — is now realized across `quality_cli.py` and the `monitor` CLI.
