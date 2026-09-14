@@ -791,3 +791,36 @@ async def test_remove_handle_not_found_returns_false() -> None:
     admin = Principal(uid=9999, name="uid:9999", scopes=frozenset({"worktree:remove"}))
     removed = await remove_handle(client, "nonexistent-id", caller=admin)
     assert removed is False
+
+
+# ---------------------------------------------------------------------------
+# Principal.has_scope (Phase 6 closure: audit_orphans finding for has_scope)
+# ---------------------------------------------------------------------------
+
+
+def test_principal_has_scope_returns_true_when_scope_in_set() -> None:
+    """has_scope returns True for a scope explicitly granted."""
+    p = Principal(uid=1000, name="uid:1000", scopes=frozenset({"worktree:register"}))
+    assert p.has_scope("worktree:register") is True
+
+
+def test_principal_has_scope_returns_false_when_scope_missing() -> None:
+    """has_scope returns False when the scope is not in the principal's set."""
+    p = Principal(uid=1000, name="uid:1000", scopes=frozenset({"worktree:register"}))
+    assert p.has_scope("worktree:remove") is False
+
+
+def test_principal_has_scope_treats_empty_scopes_as_all() -> None:
+    """Empty (or unspecified) scopes mean "all scopes" per the wire-up contract.
+
+    Note: this is the documented behaviour that
+    mahavishnu/core/state_backends/dhara_registry.py:336 explicitly works
+    around with a raw ``in caller.scopes`` check rather than has_scope(),
+    because for security-sensitive checks the "empty = all" semantics is
+    unsafe. Both paths remain in the codebase; has_scope() is the
+    ergonomic accessor for non-security gates.
+    """
+    p_empty = Principal(uid=1000, name="uid:1000", scopes=frozenset())
+    assert p_empty.has_scope("anything") is True
+    p_no_scopes = Principal(uid=1000, name="uid:1000")
+    assert p_no_scopes.has_scope("anything") is True
