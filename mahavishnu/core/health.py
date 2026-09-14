@@ -951,8 +951,7 @@ def merge_driver_health(app: MahavishnuApp | None = None) -> dict[str, Any]:
         # return the canonical empty payload so the health endpoint
         # always serves a well-formed response.
         logger.warning(
-            "merge_driver_health.unhandled_error: "
-            "type=%s message=%s — returning empty payload",
+            "merge_driver_health.unhandled_error: type=%s message=%s — returning empty payload",
             type(exc).__name__,
             exc,
         )
@@ -1011,7 +1010,7 @@ def _probe_mergiraf_version(binary: str) -> str | None:
             check=False,
             timeout=5,
         )
-    except (subprocess.TimeoutExpired, OSError):
+    except subprocess.TimeoutExpired, OSError:
         return None
     import re
 

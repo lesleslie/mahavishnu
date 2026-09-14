@@ -743,10 +743,12 @@ def _format_text_dirty_section(
     """Emit the DIRTY summary block from F20."""
     dirty = [c for c in classifications if c.is_dirty]
     lines: list[str] = [
-        f"DIRTY ({sum(c.modified_count for c in dirty)} modified, "
-        f"{sum(c.stash_count for c in dirty)} stashes, "
-        f"{sum(c.untracked_count for c in dirty)} untracked; "
-        f"full detail with --include-dirty, {len(dirty)}):",
+        (
+            f"DIRTY ({sum(c.modified_count for c in dirty)} modified, "
+            f"{sum(c.stash_count for c in dirty)} stashes, "
+            f"{sum(c.untracked_count for c in dirty)} untracked; "
+            f"full detail with --include-dirty, {len(dirty)}):"
+        ),
     ]
     for c in dirty:
         lines.append(f"  {c}")

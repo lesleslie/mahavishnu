@@ -864,6 +864,7 @@ def health_command(
         # above. Allowing callers to ask for the merged ``payload`` key
         # shape makes the CLI match what `/health` returns.
         from .core.health import merge_driver_health
+
         merge_driver_payload: dict[str, object] = merge_driver_health()
 
         dependency_details = {
@@ -913,8 +914,7 @@ def health_command(
                 return
             if section not in payload:
                 typer.echo(
-                    f"unknown section '{section}'. Supported: "
-                    f"{', '.join(sorted(payload.keys()))}",
+                    f"unknown section '{section}'. Supported: {', '.join(sorted(payload.keys()))}",
                     err=True,
                 )
                 raise typer.Exit(code=2)

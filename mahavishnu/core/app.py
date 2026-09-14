@@ -12,6 +12,9 @@ import logging
 from typing import TYPE_CHECKING, Any
 import uuid
 
+if TYPE_CHECKING:
+    from datetime import datetime
+
 logger = logging.getLogger(__name__)
 
 
@@ -246,6 +249,17 @@ class MahavishnuApp:
         self._load_repos()
         self._initialize_adapters()
 
+        # Round-5 review fix (m3): per-instance fallback timestamp for
+        # ``core.health.merge_driver_health()``. Previously this was a
+        # module-global in ``mahavishnu.core.health`` — two ``MahavishnuApp``
+        # instances in the same process (CLI test + server daemon,
+        # ``unittest.TestCase`` fixtures with shared state, etc.) would
+        # stomp each other's fallback history. Stamp reads/writes go
+        # through ``_resolve_degraded_since`` / ``_assign_degraded_since``
+        # which transparently fall back to the module-global when this
+        # attribute is missing (preserves CLI / script callers).
+        self._degraded_since: datetime | None = None
+
         # Set application context for dependency injection
         self._set_app_context()
 
@@ -439,6 +453,7 @@ class MahavishnuApp:
             raise RuntimeError(
                 "ObservabilityManager not initialized; call init_observability first."
             )
+
         # R3-C2: pass a real metric_source that reads pool queue depths
         # from PoolManager (proxy: worker counts until real queue depth
         # signal lands).
@@ -448,10 +463,8 @@ class MahavishnuApp:
                 return {}
             return manager.get_pool_queue_depths()
 
-        self._change_point_tick_task = (
-            self.observability.start_change_point_tick_loop(
-                metric_source=_pool_depths,
-            )
+        self._change_point_tick_task = self.observability.start_change_point_tick_loop(
+            metric_source=_pool_depths,
         )
         return self._change_point_tick_task
 

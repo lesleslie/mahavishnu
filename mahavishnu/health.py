@@ -134,7 +134,7 @@ def create_health_app(
 
             merge_driver_payload = merge_driver_health()
             checks["merge_driver"] = "ok" if merge_driver_payload.get("available") else "degraded"
-        except Exception:  # noqa: BLE001 — /ready must never crash on merge_driver
+        except Exception:
             logger.exception("readiness merge_driver probe failed")
             checks["merge_driver"] = "unknown"
 

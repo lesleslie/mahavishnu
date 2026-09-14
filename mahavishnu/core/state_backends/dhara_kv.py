@@ -59,9 +59,7 @@ class DharaKvClient:
     rather than crashing the server on a Dhara outage.
     """
 
-    def __init__(
-        self, base_url: str, config: DharaKvConfig | None = None
-    ) -> None:
+    def __init__(self, base_url: str, config: DharaKvConfig | None = None) -> None:
         self._client = DharaClient(base_url=base_url)
         self._config = config or DharaKvConfig()
 
@@ -82,23 +80,19 @@ class DharaKvClient:
         # json-encoded form so callers always see a str | None contract.
         return value if isinstance(value, str) else _encode_non_string(value)
 
-    async def put(
-        self, key: str, value: str, *, ttl: int | None = None
-    ) -> None:
+    async def put(self, key: str, value: str, *, ttl: int | None = None) -> None:
         if not self._config.enabled:
             return
         try:
             await self._client.put(key, value, ttl=ttl)
         except Exception:  # noqa: BLE001 - KV boundary never raises
-            return None
+            return
 
     async def list_prefix(self, prefix: str) -> list[tuple[str, str]]:
         if not self._config.enabled:
             return []
         try:
-            envelope = await self._client.call_tool(
-                "list_prefix", {"prefix": prefix}
-            )
+            envelope = await self._client.call_tool("list_prefix", {"prefix": prefix})
         except Exception:  # noqa: BLE001 - KV boundary never raises
             return []
         if not isinstance(envelope, dict):
@@ -131,7 +125,7 @@ class DharaKvClient:
         try:
             await self._client.call_tool("delete", {"key": key})
         except Exception:  # noqa: BLE001 - KV boundary never raises
-            return None
+            return
 
     async def aclose(self) -> None:
         await self._client.aclose()

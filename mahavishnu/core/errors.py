@@ -124,6 +124,7 @@ class ErrorCode(StrEnum):
     # NOTE: brief specified "MHV-310" but that value is owned by A2A_AGENT_NOT_FOUND;
     # the next free slot in the external-integration range is MHV-312.
     WORKER_UNAVAILABLE = "MHV-312"
+    MERGE_DRIVER_UNAVAILABLE = "MHV-313"  # mergiraf binary required but missing
 
     # Prefect/Orchestration errors (400-449)
     PREFECT_CONNECTION_ERROR = "MHV-400"

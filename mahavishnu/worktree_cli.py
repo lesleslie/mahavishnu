@@ -650,9 +650,7 @@ def scan_worktrees_cli(
     if manifest is None:
         raise typer.Exit(code=2)
 
-    repo_paths, failed_repos = _scan_resolve_repo_paths(
-        manifest.get("repos", []), repo
-    )
+    repo_paths, failed_repos = _scan_resolve_repo_paths(manifest.get("repos", []), repo)
     for path, reason in failed_repos:
         typer.echo(
             f"mahavishnu.worktree_scan.failed_repo: {path} ({reason})",
@@ -722,8 +720,7 @@ def _scan_load_manifest(path: Path) -> dict | None:
         return None
     if not isinstance(manifest, dict) or not isinstance(manifest.get("repos"), list):
         typer.echo(
-            f"mahavishnu.worktree_scan.config: {path} has invalid schema "
-            "(repos must be a list)",
+            f"mahavishnu.worktree_scan.config: {path} has invalid schema (repos must be a list)",
             err=True,
         )
         return None
@@ -769,8 +766,7 @@ def _scan_emit_result(report: str, driver_failed_repos: list[dict]) -> None:
     """Print driver-level failures to stderr, then the report body to stdout."""
     for failure in driver_failed_repos:
         typer.echo(
-            f"mahavishnu.worktree_scan.driver_failure: "
-            f"{failure['path']}: {failure['reason']}",
+            f"mahavishnu.worktree_scan.driver_failure: {failure['path']}: {failure['reason']}",
             err=True,
         )
     typer.echo(report)

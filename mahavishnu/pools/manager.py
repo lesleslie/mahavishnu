@@ -735,7 +735,7 @@ class PoolManager:
             pool_id,
             predicted_wait_s,
             effective_selector_str,
-            queueing_affected,
+            _queueing_affected,
         ) = self._apply_queueing_penalty(pool_id, selector, caller_pool_allowlist)
 
         pool_id, reason = self._apply_gpu_category_override(
@@ -876,10 +876,7 @@ class PoolManager:
         # future refactor of those inner selectors could silently
         # bypass the allowlist.
         if selector in (PoolSelector.AFFINITY, PoolSelector.PEER_AFFINITY):
-            if (
-                caller_pool_allowlist is not None
-                and inner_pool_id not in caller_pool_allowlist
-            ):
+            if caller_pool_allowlist is not None and inner_pool_id not in caller_pool_allowlist:
                 raise RuntimeError(
                     f"Queueing fallback would route to pool "
                     f"{inner_pool_id!r} which is not in caller_pool_allowlist "
@@ -911,10 +908,7 @@ class PoolManager:
         # review): if caller_pool_allowlist is set and the inner pick
         # isn't in it, raise rather than silently bypass the allowlist.
         if not predicted_waits:
-            if (
-                caller_pool_allowlist is not None
-                and inner_pool_id not in caller_pool_allowlist
-            ):
+            if caller_pool_allowlist is not None and inner_pool_id not in caller_pool_allowlist:
                 raise RuntimeError(
                     f"Queueing fallback would route to pool "
                     f"{inner_pool_id!r} which is not in caller_pool_allowlist "
@@ -1191,9 +1185,8 @@ class PoolManager:
             (pid for pid, p in self._pools.items() if p.config.pool_type == "runpod"),
             None,
         )
-        if (
-            runpod_pool_id
-            and (caller_pool_allowlist is None or runpod_pool_id in caller_pool_allowlist)
+        if runpod_pool_id and (
+            caller_pool_allowlist is None or runpod_pool_id in caller_pool_allowlist
         ):
             logger.debug(
                 "GPU task category=%r — routing to runpod pool %s",
