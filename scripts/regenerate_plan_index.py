@@ -687,7 +687,7 @@ _KIND_DESCRIPTIONS: dict[str, str] = {
     "template": "Scaffolding docs (TEMPLATE.md files). Permanent fixtures; never a work item.",
     "reference": "Index pages or reference docs (README files). Permanent fixtures; never a work item.",
     "audit": "Reports on past work (e.g., plan-audit documents). The audit itself is not a work item.",
-    "decision": "Durable decision records (separate from ADRs in `docs/adr/`).",
+    "decision": "Durable decision records — covers both ADRs in `docs/adr/` and repo-local policies in `.claude/decisions/`.",
 }
 
 
