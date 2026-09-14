@@ -81,25 +81,27 @@ One table per store. Entries are sorted by `date` DESC, with ties broken by path
 
 | Path | Date | Status | Role | Kind | Topic | Title |
 |---|---|---|---|---|---|---|
-| [`.claude/decisions/worktree-cleanup-policy.md`](../../.claude/decisions/worktree-cleanup-policy.md) | 2026-09-07 | `active` | `canonical` |  | `worktree-cleanup` | Worktree Cleanup Policy |
-| [`.claude/decisions/mcp-backend-wiring-discipline.md`](../../.claude/decisions/mcp-backend-wiring-discipline.md) | 2026-09-05 | `active` | `canonical` |  | `mcp-backend-wiring-discipline` | MCP Backend Wiring Discipline |
-| [`.claude/decisions/2026-08-28-cross-repo-fanout-cwd-isolation.md`](../../.claude/decisions/2026-08-28-cross-repo-fanout-cwd-isolation.md) | 2026-08-28 | `active` | `canonical` |  | `cross-repo-fanout-cwd-isolation` | Cross-repo fanout CWD isolation |
-| [`.claude/decisions/2026-08-24-bodai-mcp-routing-pattern.md`](../../.claude/decisions/2026-08-24-bodai-mcp-routing-pattern.md) | 2026-08-24 | `active` | `canonical` |  | `mcp-routing` | Bodai MCP and agent routing pattern |
-| [`.claude/decisions/promote-oneiric-action-kits.md`](../../.claude/decisions/promote-oneiric-action-kits.md) | 2026-08-23 | `active` | `canonical` |  | `oneiric-action-kit-promotion` | Promote Oneiric Action Kits Across Bodai |
-| [`.claude/decisions/worktree-autoremove-v4-followup.md`](../../.claude/decisions/worktree-autoremove-v4-followup.md) | 2026-08-23 | `draft` | `canonical` |  | `worktree-autoremove-v4-followup` | Worktree auto-remove v4 follow-up — deferred |
-| [`.claude/decisions/ty-ignore-codes.md`](../../.claude/decisions/ty-ignore-codes.md) | 2026-07-26 | `active` | `canonical` |  | `ty-ignore-codes` | `ty: ignore[...]` policy for `*-mcp` |
-| [`.claude/decisions/worktree-autoremove-policy.md`](../../.claude/decisions/worktree-autoremove-policy.md) | 2026-07-26 | `active` | `canonical` |  | `worktree-autoremove` | Worktree prune-merged — explicit CLI exception |
-| [`.claude/decisions/session-worktree-defaults.md`](../../.claude/decisions/session-worktree-defaults.md) | 2026-07-17 | `active` | `canonical` |  | `session-worktree-defaults` | Per-session worktree isolation — defaults & safety |
-| [`.claude/decisions/agent-curation-strategy.md`](../../.claude/decisions/agent-curation-strategy.md) | 2026-07-16 | `active` | `canonical` |  | `agent-curation` | agent curation strategy |
-| [`.claude/decisions/bodai-observability-pattern.md`](../../.claude/decisions/bodai-observability-pattern.md) | 2026-07-16 | `active` | `canonical` |  | `bodai-observability` | Bodai Observability Pattern — One Subscriber, One Bus |
-| [`.claude/decisions/component-health-cli-gap.md`](../../.claude/decisions/component-health-cli-gap.md) | 2026-07-16 | `active` | `canonical` |  | `component-health` | Component-Health CLI Gap |
-| [`.claude/decisions/dhara-key-prefixes-2026-07-15.md`](../../.claude/decisions/dhara-key-prefixes-2026-07-15.md) | 2026-07-16 | `active` | `canonical` |  | `dhara-key-prefixes` | Dhara Key Prefixes for Ultracode Integration |
-| [`.claude/decisions/followups-lifecycle.md`](../../.claude/decisions/followups-lifecycle.md) | 2026-07-16 | `active` | `canonical` |  | `followups-lifecycle` | `docs/followups/` lifecycle |
-| [`.claude/decisions/mahavishnu-tool-preference-policy.md`](../../.claude/decisions/mahavishnu-tool-preference-policy.md) | 2026-07-16 | `active` | `canonical` |  | `tool-preference` | Mahavishnu Tool Preference Policy |
-| [`.claude/decisions/removed-scripts.md`](../../.claude/decisions/removed-scripts.md) | 2026-07-16 | `active` | `canonical` |  | `removed-scripts` | Removed Scripts — `required_scripts:` policy |
-| [`.claude/decisions/skill-vs-agent-strategy.md`](../../.claude/decisions/skill-vs-agent-strategy.md) | 2026-07-16 | `active` | `canonical` |  | `skill-vs-agent` | skill vs agent strategy |
-| [`.claude/decisions/technical-debt-roadmap.md`](../../.claude/decisions/technical-debt-roadmap.md) | 2026-07-16 | `complete` | `implementation` |  | `technical-debt` | Technical Debt Roadmap |
-| [`.claude/decisions/wire-up-contract.md`](../../.claude/decisions/wire-up-contract.md) | 2026-07-16 | `active` | `canonical` |  | `wire-up-contract` | Wire-up contract |
+| [`.claude/decisions/worktree-cleanup-policy.md`](../../.claude/decisions/worktree-cleanup-policy.md) | 2026-09-07 | `active` | `canonical` | `decision` | `worktree-cleanup` | Worktree Cleanup Policy |
+| [`.claude/decisions/mcp-backend-wiring-discipline.md`](../../.claude/decisions/mcp-backend-wiring-discipline.md) | 2026-09-05 | `active` | `canonical` | `decision` | `mcp-backend-wiring-discipline` | MCP Backend Wiring Discipline |
+| [`.claude/decisions/2026-08-28-cross-repo-fanout-cwd-isolation.md`](../../.claude/decisions/2026-08-28-cross-repo-fanout-cwd-isolation.md) | 2026-08-28 | `active` | `canonical` | `decision` | `cross-repo-fanout-cwd-isolation` | Cross-repo fanout CWD isolation |
+| [`.claude/decisions/2026-08-24-bodai-mcp-routing-pattern.md`](../../.claude/decisions/2026-08-24-bodai-mcp-routing-pattern.md) | 2026-08-24 | `active` | `canonical` | `decision` | `mcp-routing` | Bodai MCP and agent routing pattern |
+| [`.claude/decisions/promote-oneiric-action-kits.md`](../../.claude/decisions/promote-oneiric-action-kits.md) | 2026-08-23 | `active` | `canonical` | `decision` | `oneiric-action-kit-promotion` | Promote Oneiric Action Kits Across Bodai |
+| [`.claude/decisions/worktree-autoremove-v4-followup.md`](../../.claude/decisions/worktree-autoremove-v4-followup.md) | 2026-08-23 | `draft` | `canonical` | `decision` | `worktree-autoremove-v4-followup` | Worktree auto-remove v4 follow-up — deferred |
+| [`.claude/decisions/README.md`](../../.claude/decisions/README.md) | 2026-07-26 | `active` | `canonical` |  | `decision-index` | `.claude/decisions/` index |
+| [`.claude/decisions/ty-ignore-codes.md`](../../.claude/decisions/ty-ignore-codes.md) | 2026-07-26 | `active` | `canonical` | `decision` | `ty-ignore-codes` | `ty: ignore[...]` policy for `*-mcp` |
+| [`.claude/decisions/worktree-autoremove-policy.md`](../../.claude/decisions/worktree-autoremove-policy.md) | 2026-07-26 | `active` | `canonical` | `decision` | `worktree-autoremove` | Worktree prune-merged — explicit CLI exception |
+| [`.claude/decisions/session-worktree-defaults.md`](../../.claude/decisions/session-worktree-defaults.md) | 2026-07-17 | `active` | `canonical` | `decision` | `session-worktree-defaults` | Per-session worktree isolation — defaults & safety |
+| [`.claude/decisions/agent-curation-strategy.md`](../../.claude/decisions/agent-curation-strategy.md) | 2026-07-16 | `active` | `canonical` | `decision` | `agent-curation` | agent curation strategy |
+| [`.claude/decisions/bodai-observability-pattern.md`](../../.claude/decisions/bodai-observability-pattern.md) | 2026-07-16 | `active` | `canonical` | `decision` | `bodai-observability` | Bodai Observability Pattern — One Subscriber, One Bus |
+| [`.claude/decisions/component-health-cli-gap.md`](../../.claude/decisions/component-health-cli-gap.md) | 2026-07-16 | `active` | `canonical` | `decision` | `component-health` | Component-Health CLI Gap |
+| [`.claude/decisions/dhara-key-prefixes-2026-07-15.md`](../../.claude/decisions/dhara-key-prefixes-2026-07-15.md) | 2026-07-16 | `active` | `canonical` | `decision` | `dhara-key-prefixes` | Dhara Key Prefixes for Ultracode Integration |
+| [`.claude/decisions/followups-lifecycle.md`](../../.claude/decisions/followups-lifecycle.md) | 2026-07-16 | `active` | `canonical` | `decision` | `followups-lifecycle` | `docs/followups/` lifecycle |
+| [`.claude/decisions/mahavishnu-tool-preference-policy.md`](../../.claude/decisions/mahavishnu-tool-preference-policy.md) | 2026-07-16 | `active` | `canonical` | `decision` | `tool-preference` | Mahavishnu Tool Preference Policy |
+| [`.claude/decisions/removed-scripts.md`](../../.claude/decisions/removed-scripts.md) | 2026-07-16 | `active` | `canonical` | `decision` | `removed-scripts` | Removed Scripts — `required_scripts:` policy |
+| [`.claude/decisions/skill-vs-agent-strategy.md`](../../.claude/decisions/skill-vs-agent-strategy.md) | 2026-07-16 | `active` | `canonical` | `decision` | `skill-vs-agent` | skill vs agent strategy |
+| [`.claude/decisions/technical-debt-roadmap.md`](../../.claude/decisions/technical-debt-roadmap.md) | 2026-07-16 | `complete` | `implementation` | `decision` | `technical-debt` | Technical Debt Roadmap |
+| [`.claude/decisions/test-matrix-review-followups.md`](../../.claude/decisions/test-matrix-review-followups.md) | 2026-07-16 | `complete` | `implementation` |  | `test-matrix-followups` | Deferred MEDIUM / LOW Findings — `scripts/test_matrix.py` review |
+| [`.claude/decisions/wire-up-contract.md`](../../.claude/decisions/wire-up-contract.md) | 2026-07-16 | `active` | `canonical` | `decision` | `wire-up-contract` | Wire-up contract |
 
 ### Workflows (`.claude/decisions/workflows/`)
 
@@ -461,25 +463,25 @@ One table per store. Entries are sorted by `date` DESC, with ties broken by path
 
 | Path | Date | Status | Role | Kind | Topic | Title |
 |---|---|---|---|---|---|---|
-| [`docs/adr/0016-multi-agent-review.md`](../../docs/adr/0016-multi-agent-review.md) | 2026-09-06 | `complete` | `historical` |  | `scapy-mcp-integration-review` | ADR 0016 Multi-Agent Review — Findings |
-| [`docs/adr/0016-scapy-mcp-integration.md`](../../docs/adr/0016-scapy-mcp-integration.md) | 2026-09-06 | `complete` | `canonical` |  | `mcp-enrichment-posture` | ADR 0016 scapy-mcp Client-Mode Enrichment Integration |
-| [`docs/adr/015-multi-agent-review.md`](../../docs/adr/015-multi-agent-review.md) | 2026-08-23 | `complete` | `historical` |  | `storage-abstraction-review` | ADR 015 Multi-Agent Review — Findings |
-| [`docs/adr/015-worktree-and-cache-storage-v4.md`](../../docs/adr/015-worktree-and-cache-storage-v4.md) | 2026-08-23 | `draft` | `canonical` |  | `storage-abstraction` | ADR 015: Worktree and Cache Storage Architecture (Revised v4) |
-| [`docs/adr/016-phase-4-streaming-tar-evolution.md`](../../docs/adr/016-phase-4-streaming-tar-evolution.md) | 2026-08-23 | `draft` | `canonical` |  | `streaming-tar-evolution` | ADR 016: Phase 4 — Python 3.15 ecosystem migration + streaming tar evolution |
-| [`docs/adr/001-use-oneiric.md`](../../docs/adr/001-use-oneiric.md) | 2026-07-16 | `active` | `canonical` |  | `oneiric-config` | ADR 001: Use Oneiric for Configuration and Logging |
-| [`docs/adr/002-mcp-first-design.md`](../../docs/adr/002-mcp-first-design.md) | 2026-07-16 | `active` | `canonical` |  | `mcp-design` | ADR 002: MCP-First Design with FastMCP + mcp-common |
-| [`docs/adr/003-error-handling-strategy.md`](../../docs/adr/003-error-handling-strategy.md) | 2026-07-16 | `active` | `canonical` |  | `error-handling` | ADR 003: Error Handling and Resilience Strategy |
-| [`docs/adr/004-adapter-architecture.md`](../../docs/adr/004-adapter-architecture.md) | 2026-07-16 | `active` | `canonical` |  | `adapter-architecture` | ADR 004: Adapter Architecture and Engine Integration |
-| [`docs/adr/005-memory-architecture.md`](../../docs/adr/005-memory-architecture.md) | 2026-07-16 | `superseded` | `archive` |  | `memory-architecture` | ADR 005: Unified Memory Architecture |
-| [`docs/adr/006-simplify-storage-architecture.md`](../../docs/adr/006-simplify-storage-architecture.md) | 2026-07-16 | `superseded` | `archive` |  | `storage-consolidation` | ADR 006: Simplify Storage Architecture from 4-System to 2-System |
-| [`docs/adr/007-saga-coordinator-pattern.md`](../../docs/adr/007-saga-coordinator-pattern.md) | 2026-07-16 | `superseded` | `archive` |  | `saga-pattern` | ADR 007: Implement Saga Coordinator for Distributed Transactions |
-| [`docs/adr/008-zero-downtime-migration.md`](../../docs/adr/008-zero-downtime-migration.md) | 2026-07-16 | `superseded` | `archive` |  | `zero-downtime-migration` | ADR 008: Zero-Downtime SQLite to PostgreSQL Migration |
-| [`docs/adr/009-hybrid-adapter-registry.md`](../../docs/adr/009-hybrid-adapter-registry.md) | 2026-07-16 | `active` | `canonical` |  | `adapter-registry` | ADR 009: Hybrid Adapter Registry with Dynamic Discovery |
-| [`docs/adr/010-adapter-security.md`](../../docs/adr/010-adapter-security.md) | 2026-07-16 | `active` | `canonical` |  | `adapter-security` | ADR 010: Adapter Security Specification |
-| [`docs/adr/011-two-router-composition.md`](../../docs/adr/011-two-router-composition.md) | 2026-07-16 | `active` | `canonical` |  | `routing-composition` | ADR 011: Two-Router Composition |
-| [`docs/adr/012-learning-pipeline-runtime-owner.md`](../../docs/adr/012-learning-pipeline-runtime-owner.md) | 2026-07-16 | `active` | `canonical` |  | `learning-pipeline` | ADR 012: Learning Pipeline Runtime Owner |
-| [`docs/adr/013-mahavishnu-dhara-adapter-tool-boundary.md`](../../docs/adr/013-mahavishnu-dhara-adapter-tool-boundary.md) | 2026-07-16 | `active` | `canonical` |  | `adapter-tool-boundary` | ADR 013: Adapter Tool Boundary Between Mahavishnu and Dhara |
-| [`docs/adr/014-honcho-peer-model-routing-precedence.md`](../../docs/adr/014-honcho-peer-model-routing-precedence.md) | 2026-07-16 | `active` | `canonical` |  | `honcho-routing` | ADR 014: Honcho Peer-Model Routing Precedence |
+| [`docs/adr/0016-multi-agent-review.md`](../../docs/adr/0016-multi-agent-review.md) | 2026-09-06 | `complete` | `historical` | `decision` | `scapy-mcp-integration-review` | ADR 0016 Multi-Agent Review — Findings |
+| [`docs/adr/0016-scapy-mcp-integration.md`](../../docs/adr/0016-scapy-mcp-integration.md) | 2026-09-06 | `complete` | `canonical` | `decision` | `mcp-enrichment-posture` | ADR 0016 scapy-mcp Client-Mode Enrichment Integration |
+| [`docs/adr/015-multi-agent-review.md`](../../docs/adr/015-multi-agent-review.md) | 2026-08-23 | `complete` | `historical` | `decision` | `storage-abstraction-review` | ADR 015 Multi-Agent Review — Findings |
+| [`docs/adr/015-worktree-and-cache-storage-v4.md`](../../docs/adr/015-worktree-and-cache-storage-v4.md) | 2026-08-23 | `draft` | `canonical` | `decision` | `storage-abstraction` | ADR 015: Worktree and Cache Storage Architecture (Revised v4) |
+| [`docs/adr/016-phase-4-streaming-tar-evolution.md`](../../docs/adr/016-phase-4-streaming-tar-evolution.md) | 2026-08-23 | `draft` | `canonical` | `decision` | `streaming-tar-evolution` | ADR 016: Phase 4 — Python 3.15 ecosystem migration + streaming tar evolution |
+| [`docs/adr/001-use-oneiric.md`](../../docs/adr/001-use-oneiric.md) | 2026-07-16 | `active` | `canonical` | `decision` | `oneiric-config` | ADR 001: Use Oneiric for Configuration and Logging |
+| [`docs/adr/002-mcp-first-design.md`](../../docs/adr/002-mcp-first-design.md) | 2026-07-16 | `active` | `canonical` | `decision` | `mcp-design` | ADR 002: MCP-First Design with FastMCP + mcp-common |
+| [`docs/adr/003-error-handling-strategy.md`](../../docs/adr/003-error-handling-strategy.md) | 2026-07-16 | `active` | `canonical` | `decision` | `error-handling` | ADR 003: Error Handling and Resilience Strategy |
+| [`docs/adr/004-adapter-architecture.md`](../../docs/adr/004-adapter-architecture.md) | 2026-07-16 | `active` | `canonical` | `decision` | `adapter-architecture` | ADR 004: Adapter Architecture and Engine Integration |
+| [`docs/adr/005-memory-architecture.md`](../../docs/adr/005-memory-architecture.md) | 2026-07-16 | `superseded` | `archive` | `decision` | `memory-architecture` | ADR 005: Unified Memory Architecture |
+| [`docs/adr/006-simplify-storage-architecture.md`](../../docs/adr/006-simplify-storage-architecture.md) | 2026-07-16 | `superseded` | `archive` | `decision` | `storage-consolidation` | ADR 006: Simplify Storage Architecture from 4-System to 2-System |
+| [`docs/adr/007-saga-coordinator-pattern.md`](../../docs/adr/007-saga-coordinator-pattern.md) | 2026-07-16 | `superseded` | `archive` | `decision` | `saga-pattern` | ADR 007: Implement Saga Coordinator for Distributed Transactions |
+| [`docs/adr/008-zero-downtime-migration.md`](../../docs/adr/008-zero-downtime-migration.md) | 2026-07-16 | `superseded` | `archive` | `decision` | `zero-downtime-migration` | ADR 008: Zero-Downtime SQLite to PostgreSQL Migration |
+| [`docs/adr/009-hybrid-adapter-registry.md`](../../docs/adr/009-hybrid-adapter-registry.md) | 2026-07-16 | `active` | `canonical` | `decision` | `adapter-registry` | ADR 009: Hybrid Adapter Registry with Dynamic Discovery |
+| [`docs/adr/010-adapter-security.md`](../../docs/adr/010-adapter-security.md) | 2026-07-16 | `active` | `canonical` | `decision` | `adapter-security` | ADR 010: Adapter Security Specification |
+| [`docs/adr/011-two-router-composition.md`](../../docs/adr/011-two-router-composition.md) | 2026-07-16 | `active` | `canonical` | `decision` | `routing-composition` | ADR 011: Two-Router Composition |
+| [`docs/adr/012-learning-pipeline-runtime-owner.md`](../../docs/adr/012-learning-pipeline-runtime-owner.md) | 2026-07-16 | `active` | `canonical` | `decision` | `learning-pipeline` | ADR 012: Learning Pipeline Runtime Owner |
+| [`docs/adr/013-mahavishnu-dhara-adapter-tool-boundary.md`](../../docs/adr/013-mahavishnu-dhara-adapter-tool-boundary.md) | 2026-07-16 | `active` | `canonical` | `decision` | `adapter-tool-boundary` | ADR 013: Adapter Tool Boundary Between Mahavishnu and Dhara |
+| [`docs/adr/014-honcho-peer-model-routing-precedence.md`](../../docs/adr/014-honcho-peer-model-routing-precedence.md) | 2026-07-16 | `active` | `canonical` | `decision` | `honcho-routing` | ADR 014: Honcho Peer-Model Routing Precedence |
 
 ### Audits (`docs/audits/`)
 
@@ -510,6 +512,10 @@ One table per store. Entries are sorted by `date` DESC, with ties broken by path
 
 | Path | Date | Status | Role | Kind | Topic | Title |
 |---|---|---|---|---|---|---|
+| [`docs/followups/2026-09-10-tier2-hyperbolic-embeddings.md`](../../docs/followups/2026-09-10-tier2-hyperbolic-embeddings.md) | 2026-09-10 | `active` | `deferred` |  | `tier2-hyperbolic-embeddings` | Tier 2 Follow-up: Hyperbolic Embeddings for Session-Buddy Code Graphs |
+| [`docs/followups/2026-09-10-tier2-multi-metric-drift.md`](../../docs/followups/2026-09-10-tier2-multi-metric-drift.md) | 2026-09-10 | `active` | `deferred` |  | `tier2-multi-metric-drift` | Tier 2 Follow-up: Multi-Metric Drift Detection |
+| [`docs/followups/2026-09-10-tier2-optimal-transport.md`](../../docs/followups/2026-09-10-tier2-optimal-transport.md) | 2026-09-10 | `active` | `deferred` |  | `tier2-optimal-transport` | Tier 2 Follow-up: Optimal Transport for Akosha Pattern Comparison |
+| [`docs/followups/2026-09-10-tier2-phase-d-cross-repo.md`](../../docs/followups/2026-09-10-tier2-phase-d-cross-repo.md) | 2026-09-10 | `active` | `deferred` |  | `tier2-phase-d-cross-repo` | Tier 2 Follow-up: Phase D Cross-Repo Akosha Detector Wiring |
 | [`docs/followups/2026-09-06-sibling-repos-yaml-audit.md`](../../docs/followups/2026-09-06-sibling-repos-yaml-audit.md) | 2026-09-06 | `complete` | `historical` |  | `mcp-stub-activation` | Sibling `repos.yaml` Audit |
 | [`docs/followups/2026-09-05-agno-memory-field-validator-silent-skip.md`](../../docs/followups/2026-09-05-agno-memory-field-validator-silent-skip.md) | 2026-09-05 | `complete` | `historical` |  | `agno-memory-field-validator-silent-skip` | AgnoMemoryConfig `@field_validator` silently skips when connection_string omitted |
 | [`docs/followups/2026-09-05-ai-dep-group-transitive-bloat.md`](../../docs/followups/2026-09-05-ai-dep-group-transitive-bloat.md) | 2026-09-05 | `active` | `implementation` |  | `ai-dep-group-transitive-bloat` | `ai` optional dep group pulls 5 LLM providers + heavy `google-cloud-*` chain |
@@ -528,9 +534,12 @@ One table per store. Entries are sorted by `date` DESC, with ties broken by path
 | [`docs/followups/2026-09-05-websocket-broadcaster-default.md`](../../docs/followups/2026-09-05-websocket-broadcaster-default.md) | 2026-09-05 | `complete` | `historical` |  | `websocket-broadcaster-default` | `websocket/integration.py` — settings default + `WebSocketBroadcaster` positional arg |
 | [`docs/followups/2026-09-05-worker-status-isoformat-crash.md`](../../docs/followups/2026-09-05-worker-status-isoformat-crash.md) | 2026-09-05 | `complete` | `historical` |  | `worker-status-isoformat-crash` | `worker_status` isoformat crash on malformed `last_seen_at` |
 | [`docs/followups/2026-08-12-mcpretentious-removed.md`](../../docs/followups/2026-08-12-mcpretentious-removed.md) | 2026-08-12 | `complete` | `historical` |  | `mcpretentious-removed` | Mcpretentious Terminal Adapter Removed — Bootstrap Followup |
+| [`docs/followups/2026-07-27-acp-v15-followups.md`](../../docs/followups/2026-07-27-acp-v15-followups.md) | 2026-07-27 | `partial` | `canonical` |  | `acp-v15-followups` | 2026-07-27-acp-v15-followups — followup |
 | [`docs/followups/TEMPLATE.md`](../../docs/followups/TEMPLATE.md) | 2026-07-21 | `active` | `canonical` | `template` | `lifecycle` | YYYY-MM-DD-<name> — followup |
 | [`docs/followups/2026-06-29-crow-mcp-client-wiring.md`](../../docs/followups/2026-06-29-crow-mcp-client-wiring.md) | 2026-07-16 | `complete` | `historical` |  | `crow-mcp-client` | Crow Adapter `mcp_client=None` Wiring — Bootstrap Followup |
 | [`docs/followups/2026-06-29-opensearch-diverged-flags.md`](../../docs/followups/2026-06-29-opensearch-diverged-flags.md) | 2026-07-16 | `complete` | `historical` |  | `opensearch-diverged-flags` | Diverged `OPENSEARCH_AVAILABLE` Flags — Architecture Followup |
+| [`docs/followups/README.md`](../../docs/followups/README.md) | 2026-07-16 | `active` | `canonical` | `reference` | `followups-index` | `docs/followups/` index |
+| [`docs/followups/2026-07-15-sb-checkpoint-stash-clobber.md`](../../docs/followups/2026-07-15-sb-checkpoint-stash-clobber.md) | 2026-07-15 | `partial` | `implementation` |  | `persistence` | Session-Buddy Checkpoint Stash-Clobber Pattern (Second Observation) |
 
 ### Plans & Specifications (`docs/plans/`)
 
@@ -541,6 +550,7 @@ One table per store. Entries are sorted by `date` DESC, with ties broken by path
 | [`docs/plans/2026-09-10-settle-semantic-merge.md`](2026-09-10-settle-semantic-merge.md) | 2026-09-10 | `partial` | `implementation` |  | `settle-semantic-merge` | Settle Semantic Merge — mergiraf opt-in + git-merge-tree diagnostics |
 | [`docs/plans/2026-09-09-bodai-slash-command-tui-discoverability.md`](2026-09-09-bodai-slash-command-tui-discoverability.md) | 2026-09-09 | `superseded` | `canonical` |  | `slash-command-discoverability` | Bodai Slash-Command TUI Discoverability Plan |
 | [`docs/plans/2026-08-29-orchestrator-research-synthesis.md`](2026-08-29-orchestrator-research-synthesis.md) | 2026-08-29 | `draft` | `implementation` |  | `routing-composition` | Orchestrator Research Synthesis & Adoption Plan (v2 — Pivot) |
+| [`docs/plans/2026-08-25-bodai-tui-shell-surface-implementation.md`](2026-08-25-bodai-tui-shell-surface-implementation.md) | 2026-08-25 | `active` | `implementation` |  | `bodai-tui-shell-surface` | Bodai TUI & Admin Shell Surface Implementation Plan |
 | [`docs/plans/2026-08-25-bodai-tui-shell-surface.md`](2026-08-25-bodai-tui-shell-surface.md) | 2026-08-25 | `active` | `implementation` |  | `bodai-tui-shell-surface` | Bodai TUI & Admin Shell Surface |
 | [`docs/plans/2026-08-24-claude-env-audit-remediation.md`](2026-08-24-claude-env-audit-remediation.md) | 2026-08-24 | `partial` | `implementation` |  | `claude-env-remediation` | Claude Environment Audit Remediation |
 | [`docs/plans/2026-08-20-mahavishnu-lifespan-health-bypass.md`](2026-08-20-mahavishnu-lifespan-health-bypass.md) | 2026-08-20 | `active` | `canonical` |  | `mcp-lifespan-startup-ordering` | Mahavishnu MCP `/health` Lifespan Bypass |
@@ -787,12 +797,13 @@ Scaffolding docs (TEMPLATE.md files). Permanent fixtures; never a work item.
 | [`docs/followups/TEMPLATE.md`](../../docs/followups/TEMPLATE.md) | 2026-07-21 | YYYY-MM-DD-<name> — followup |
 | [`docs/plans/TEMPLATE.md`](TEMPLATE.md) | 2026-07-16 | Plan Template — Integration-Contract Required |
 
-### `reference` (1 entry)
+### `reference` (2 entries)
 
 Index pages or reference docs (README files). Permanent fixtures; never a work item.
 
 | Path | Date | Title |
 |---|---|---|
+| [`docs/followups/README.md`](../../docs/followups/README.md) | 2026-07-16 | `docs/followups/` index |
 | [`docs/plans/README.md`](README.md) | 2026-07-16 | Plans README |
 
 ### `audit` (1 entry)
@@ -803,7 +814,52 @@ Reports on past work (e.g., plan-audit documents). The audit itself is not a wor
 |---|---|---|
 | [`docs/plans/PLAN_AUDIT_2026-09-12.md`](PLAN_AUDIT_2026-09-12.md) | 2026-09-12 | Plan Audit — 2026-09-12 |
 
-### `plan` (573 entries)
+### `decision` (38 entries)
+
+Durable decision records — covers both ADRs in `docs/adr/` and repo-local policies in `.claude/decisions/`.
+
+| Path | Date | Title |
+|---|---|---|
+| [`.claude/decisions/worktree-cleanup-policy.md`](../../.claude/decisions/worktree-cleanup-policy.md) | 2026-09-07 | Worktree Cleanup Policy |
+| [`docs/adr/0016-multi-agent-review.md`](../../docs/adr/0016-multi-agent-review.md) | 2026-09-06 | ADR 0016 Multi-Agent Review — Findings |
+| [`docs/adr/0016-scapy-mcp-integration.md`](../../docs/adr/0016-scapy-mcp-integration.md) | 2026-09-06 | ADR 0016 scapy-mcp Client-Mode Enrichment Integration |
+| [`.claude/decisions/mcp-backend-wiring-discipline.md`](../../.claude/decisions/mcp-backend-wiring-discipline.md) | 2026-09-05 | MCP Backend Wiring Discipline |
+| [`.claude/decisions/2026-08-28-cross-repo-fanout-cwd-isolation.md`](../../.claude/decisions/2026-08-28-cross-repo-fanout-cwd-isolation.md) | 2026-08-28 | Cross-repo fanout CWD isolation |
+| [`.claude/decisions/2026-08-24-bodai-mcp-routing-pattern.md`](../../.claude/decisions/2026-08-24-bodai-mcp-routing-pattern.md) | 2026-08-24 | Bodai MCP and agent routing pattern |
+| [`.claude/decisions/promote-oneiric-action-kits.md`](../../.claude/decisions/promote-oneiric-action-kits.md) | 2026-08-23 | Promote Oneiric Action Kits Across Bodai |
+| [`.claude/decisions/worktree-autoremove-v4-followup.md`](../../.claude/decisions/worktree-autoremove-v4-followup.md) | 2026-08-23 | Worktree auto-remove v4 follow-up — deferred |
+| [`docs/adr/015-multi-agent-review.md`](../../docs/adr/015-multi-agent-review.md) | 2026-08-23 | ADR 015 Multi-Agent Review — Findings |
+| [`docs/adr/015-worktree-and-cache-storage-v4.md`](../../docs/adr/015-worktree-and-cache-storage-v4.md) | 2026-08-23 | ADR 015: Worktree and Cache Storage Architecture (Revised v4) |
+| [`docs/adr/016-phase-4-streaming-tar-evolution.md`](../../docs/adr/016-phase-4-streaming-tar-evolution.md) | 2026-08-23 | ADR 016: Phase 4 — Python 3.15 ecosystem migration + streaming tar evolution |
+| [`.claude/decisions/ty-ignore-codes.md`](../../.claude/decisions/ty-ignore-codes.md) | 2026-07-26 | `ty: ignore[...]` policy for `*-mcp` |
+| [`.claude/decisions/worktree-autoremove-policy.md`](../../.claude/decisions/worktree-autoremove-policy.md) | 2026-07-26 | Worktree prune-merged — explicit CLI exception |
+| [`.claude/decisions/session-worktree-defaults.md`](../../.claude/decisions/session-worktree-defaults.md) | 2026-07-17 | Per-session worktree isolation — defaults & safety |
+| [`.claude/decisions/agent-curation-strategy.md`](../../.claude/decisions/agent-curation-strategy.md) | 2026-07-16 | agent curation strategy |
+| [`.claude/decisions/bodai-observability-pattern.md`](../../.claude/decisions/bodai-observability-pattern.md) | 2026-07-16 | Bodai Observability Pattern — One Subscriber, One Bus |
+| [`.claude/decisions/component-health-cli-gap.md`](../../.claude/decisions/component-health-cli-gap.md) | 2026-07-16 | Component-Health CLI Gap |
+| [`.claude/decisions/dhara-key-prefixes-2026-07-15.md`](../../.claude/decisions/dhara-key-prefixes-2026-07-15.md) | 2026-07-16 | Dhara Key Prefixes for Ultracode Integration |
+| [`.claude/decisions/followups-lifecycle.md`](../../.claude/decisions/followups-lifecycle.md) | 2026-07-16 | `docs/followups/` lifecycle |
+| [`.claude/decisions/mahavishnu-tool-preference-policy.md`](../../.claude/decisions/mahavishnu-tool-preference-policy.md) | 2026-07-16 | Mahavishnu Tool Preference Policy |
+| [`.claude/decisions/removed-scripts.md`](../../.claude/decisions/removed-scripts.md) | 2026-07-16 | Removed Scripts — `required_scripts:` policy |
+| [`.claude/decisions/skill-vs-agent-strategy.md`](../../.claude/decisions/skill-vs-agent-strategy.md) | 2026-07-16 | skill vs agent strategy |
+| [`.claude/decisions/technical-debt-roadmap.md`](../../.claude/decisions/technical-debt-roadmap.md) | 2026-07-16 | Technical Debt Roadmap |
+| [`.claude/decisions/wire-up-contract.md`](../../.claude/decisions/wire-up-contract.md) | 2026-07-16 | Wire-up contract |
+| [`docs/adr/001-use-oneiric.md`](../../docs/adr/001-use-oneiric.md) | 2026-07-16 | ADR 001: Use Oneiric for Configuration and Logging |
+| [`docs/adr/002-mcp-first-design.md`](../../docs/adr/002-mcp-first-design.md) | 2026-07-16 | ADR 002: MCP-First Design with FastMCP + mcp-common |
+| [`docs/adr/003-error-handling-strategy.md`](../../docs/adr/003-error-handling-strategy.md) | 2026-07-16 | ADR 003: Error Handling and Resilience Strategy |
+| [`docs/adr/004-adapter-architecture.md`](../../docs/adr/004-adapter-architecture.md) | 2026-07-16 | ADR 004: Adapter Architecture and Engine Integration |
+| [`docs/adr/005-memory-architecture.md`](../../docs/adr/005-memory-architecture.md) | 2026-07-16 | ADR 005: Unified Memory Architecture |
+| [`docs/adr/006-simplify-storage-architecture.md`](../../docs/adr/006-simplify-storage-architecture.md) | 2026-07-16 | ADR 006: Simplify Storage Architecture from 4-System to 2-System |
+| [`docs/adr/007-saga-coordinator-pattern.md`](../../docs/adr/007-saga-coordinator-pattern.md) | 2026-07-16 | ADR 007: Implement Saga Coordinator for Distributed Transactions |
+| [`docs/adr/008-zero-downtime-migration.md`](../../docs/adr/008-zero-downtime-migration.md) | 2026-07-16 | ADR 008: Zero-Downtime SQLite to PostgreSQL Migration |
+| [`docs/adr/009-hybrid-adapter-registry.md`](../../docs/adr/009-hybrid-adapter-registry.md) | 2026-07-16 | ADR 009: Hybrid Adapter Registry with Dynamic Discovery |
+| [`docs/adr/010-adapter-security.md`](../../docs/adr/010-adapter-security.md) | 2026-07-16 | ADR 010: Adapter Security Specification |
+| [`docs/adr/011-two-router-composition.md`](../../docs/adr/011-two-router-composition.md) | 2026-07-16 | ADR 011: Two-Router Composition |
+| [`docs/adr/012-learning-pipeline-runtime-owner.md`](../../docs/adr/012-learning-pipeline-runtime-owner.md) | 2026-07-16 | ADR 012: Learning Pipeline Runtime Owner |
+| [`docs/adr/013-mahavishnu-dhara-adapter-tool-boundary.md`](../../docs/adr/013-mahavishnu-dhara-adapter-tool-boundary.md) | 2026-07-16 | ADR 013: Adapter Tool Boundary Between Mahavishnu and Dhara |
+| [`docs/adr/014-honcho-peer-model-routing-precedence.md`](../../docs/adr/014-honcho-peer-model-routing-precedence.md) | 2026-07-16 | ADR 014: Honcho Peer-Model Routing Precedence |
+
+### `plan` (544 entries)
 
 Work items. The bulk of the registry — see the per-store tables above for full detail with status/role/topic.
 
@@ -815,10 +871,10 @@ Counts of entries per (lifecycle, role) cell across all 24 stores. Useful as a s
 
 | Role \\ Lifecycle | draft | active | partial | shipped | complete | Total |
 |---|---|---|---|---|---|---|
-| `canonical` | 19 | 104 | · | 2 | 9 | **134** |
-| `implementation` | 132 | 46 | 11 | 34 | 22 | **245** |
+| `canonical` | 19 | 106 | 1 | 2 | 9 | **137** |
+| `implementation` | 132 | 47 | 12 | 34 | 23 | **248** |
 | `umbrella` | · | 1 | · | · | 2 | **3** |
 | `historical` | 11 | 3 | · | 4 | 129 | **147** |
 | `superseded` | · | · | · | · | 12 | **12** |
 
-| **Total** | **162** | **154** | **11** | **40** | **174** | **541** |
+| **Total** | **162** | **157** | **13** | **40** | **175** | **547** |
