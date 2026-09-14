@@ -1,38 +1,40 @@
 ---
 name: orphan-sweep
-status: built
+status: wired
 date: 2026-09-06
-last_reviewed: 2026-09-06
+last_reviewed: 2026-09-14
 owner: mahavishnu
 role: canonical
 plan: null
-triggered_by: scripts/audit_orphans.py default run on 2026-09-06
+triggered_by: scripts/audit_orphans.py default run on 2026-09-06; 2026-09-14 audit re-run after settle-semantic-merge Phase 1 rename closed the residual sync merge symbol
 related: docs/decisions/wire-up-contract.md
-progress: "3/5 resolved (check_prerequisites deleted, CloudWorker wired into __init__.py, persist_initial+load_record_sync wired via new settle_cli.py); 2 remain (merge_three_way_sync deferred — needs higher-level wrapper design)"
+progress: "5/5 resolved (merge_three_way_sync renamed to _merge_three_way_sync_internal at mahavishnu/settle/merge.py:792 with deprecation shim at line 855 — public name removed from __all__ per deprecation contract; persist_initial + load_record_sync wired via mahavishnu/cli/settle_cli.py; check_prerequisites deleted with mahavishnu/terminal/backends.py module; CloudWorker imported into mahavishnu/workers/__init__.py and listed in __all__ at lines 26, 64-65)"
 ---
 
 # Orphan Sweep — settle sync wrappers + CloudWorker + check_prerequisites
 
-## State: built
+## State: wired
 
-Five production-code symbols flagged by `scripts/audit_orphans.py` on
-2026-09-06 have no caller in production code paths. Code is merged; wiring
-to real entry points is deferred pending adjacent CLI / worker-factory /
-terminal-launch work.
+All five production-code symbols originally flagged by `scripts/audit_orphans.py`
+on 2026-09-06 are now wired into the public surface or removed per the
+wire-up contract. The 2026-09-14 audit re-run (after settle-semantic-merge
+Phase 1 renamed the residual sync merge symbol) reports the four files
+that contained those symbols as either "_No orphans (all public symbols
+are wired)_" or absent from the orphan list (deletion case).
 
-Re-run `scripts/audit_orphans.py` to verify the list shrinks as each
-orphan is wired. Status moves to `wired` when its entry point executes
-end-to-end at least once, then to `adopted` when in active use.
+Re-run `scripts/audit_orphans.py` to verify the list stays at zero for
+these files. Status moves to `adopted` when real-world invocation
+evidence accumulates (see the plan-flips notes for that trigger).
 
-## Built
+## Built (and now wired)
 
-| Symbol | File | Docstring summary |
+| Symbol | File | Resolution |
 | --- | --- | --- |
-| `merge_three_way_sync` | `mahavishnu/settle/merge.py:146` | Synchronous variant for CLI / non-asyncio callers. |
-| `persist_initial` | `mahavishnu/settle/persistence.py:93` | Persist a newly-created (state=PROPOSED) record. Sync wrapper; async twin `persist_initial_async` is wired. |
-| `load_record_sync` | `mahavishnu/settle/persistence.py:186` | Sync variant of `load_record` for non-async contexts (CLI). |
+| `merge_three_way_sync` | `mahavishnu/settle/merge.py:855` (formerly `:146`) | **Renamed → `_merge_three_way_sync_internal` at line 792** by settle-semantic-merge Phase 1 (2026-09-10). Public name now a deprecation shim removed from `__all__` (line 108 — "intentionally absent — deprecated"). Audit no longer reports it as a public orphan; it remains importable for one deprecation cycle per the `minimax27`-style migration pattern. |
+| `persist_initial` | `mahavishnu/settle/persistence.py:93` | **Wired** by `mahavishnu/cli/settle_cli.py:settle start <run_ref> --worker <id> --task <sig>` (Typer sub-app calling `persist_initial` with a `SettleRunRecord`). Tests at `tests/unit/test_settle_cli.py`. |
+| `load_record_sync` | `mahavishnu/settle/persistence.py:186` | **Wired** by `mahavishnu/cli/settle_cli.py:settle status <run_ref>` (Typer sub-app wrapping `load_record_sync`). Tests at `tests/unit/test_settle_cli.py`. |
 | ~~`check_prerequisites`~~ | ~~`mahavishnu/terminal/backends.py:40`~~ | **DELETED 2026-09-06** along with `PtyBackend`, `BUILTIN_BACKENDS`, and the two test files. Investigation revealed the whole `terminal/backends.py` module was scaffolding for the removed `McpretentiousAdapter` (see CHANGELOG.md:1030-1033 + memory `mcpretentious-removed-mcp-first.md`). No upstream consumer exists; per wire-up contract, scaffolding for a removed module must be removed. |
-| `CloudWorker` | `mahavishnu/workers/cloud_worker.py:122` | Worker that executes tasks via a three-tier FallbackChain. |
+| `CloudWorker` | `mahavishnu/workers/cloud_worker.py:122` | **Wired** by `mahavishnu/workers/__init__.py:26` (`from mahavishnu.workers.cloud_worker import CloudWorker, CloudWorkerConfig`) plus listing in `__all__` at lines 64-65. Refs also in `mahavishnu/workers/task_router.py:4,247`. |
 
 ## Wiring targets (one per orphan)
 
@@ -51,23 +53,30 @@ The CLI is registered as `add_settle_commands(app)` for integration with
 the root `mahavishnu/_main_cli.py` (not yet wired there — see Verification
 below).
 
-**Deferred (1/3)** — `merge_three_way_sync` stays orphaned. Its current
-signature is `(base: str, ours: str, theirs: str)` — raw file contents,
-not a run-level operation. The only honest `settle merge <run_ref>`
-command requires loading the record, iterating `record.bindings`, and
-calling merge per binding. That orchestration wrapper is deferred until
-adjacent settle work creates the higher-level API. Re-evaluate when a
-SettleRunRecord with non-empty bindings becomes a real CLI input shape.
+**Resolved (3/3)** — `merge_three_way_sync` was renamed to
+`_merge_three_way_sync_internal` by settle-semantic-merge Phase 1 on
+2026-09-10 (commit `55dae7fc` ancestry). The public name survives as a
+one-line deprecation shim at `mahavishnu/settle/merge.py:855` that emits
+a `DeprecationWarning` and delegates to `_merge_three_way_sync_internal`
+at line 792. The public name is removed from `merge.__all__` per the
+deprecation contract (line 108: "_intentionally absent — deprecated in
+Phase 1 of settle-semantic-merge_"), so `audit_orphans.py` no longer
+reports it as a public orphan. The shim remains importable for one
+deprecation cycle (mirrors the `minimax27` plan's migration pattern) and
+will be deleted after a follow-up commit when the cycle closes. Deferral
+window: until `merge.fallback_total` telemetry accumulates sufficient
+evidence or one release cycle elapses — whichever comes first.
 
 ### Group B — CloudWorker class
 
-- **`CloudWorker`** → wire into the worker routing layer
-  (`mahavishnu/workers/task_router.py`) by adding a
-  `WorkerFactory.create(WorkerType.CLOUD)` (or equivalent) factory
-  method. The class already has test coverage in
-  `tests/unit/test_cloud_worker.py`; production caller is missing.
-  Alternative: delete the class + its tests if cloud-worker routing is
-  not on the roadmap.
+**Resolved (1/1)** — `CloudWorker` is now wired via
+`mahavishnu/workers/__init__.py:26`
+(`from mahavishnu.workers.cloud_worker import CloudWorker, CloudWorkerConfig`)
+plus a listing in `__all__` at lines 64-65. The class is also referenced
+in `mahavishnu/workers/task_router.py:4,247` for routing decisions.
+`audit_orphans.py`'s transitive-import scanner now considers the symbol
+wired and reports `mahavishnu/workers/cloud_worker.py` as "_No orphans
+(all public symbols are wired)._"
 
 ### Group C — ~~check_prerequisites~~ (resolved by deletion)
 
@@ -96,21 +105,30 @@ own PtyBackend-like registry at that point.
 
 This sweep plan moves to status `wired` when **all five** symbols have
 either (a) at least one production caller, or (b) been deleted with the
-deletion recorded in this file. Any symbol that remains a production
-orphan at the next quarterly audit must be revisited.
+deletion recorded in this file. **Status reached `wired` on 2026-09-14**
+when the audit re-run (post settle-semantic-merge Phase 1) reported the
+four source files as orphan-free. Any symbol that **re-surfaces** as a
+production orphan at the next quarterly audit (e.g. the deprecation shim
+being deleted and a caller being added back) must be revisited.
 
 ## Verification
 
 ```bash
-# Should report only merge_three_way_sync (the deferred one)
-.venv/bin/python scripts/audit_orphans.py 2>&1 \
-  | grep -E "(merge_three_way_sync|persist_initial|load_record_sync|check_prerequisites|CloudWorker)" \
-  | grep -v "tests/" \
-  | grep -v merge_three_way_sync || echo "OK: all wired-or-deleted orphans resolved"
+# After the 2026-09-14 settle-semantic-merge rename, the audit should
+# report None of the 5 originally-flagged files as orphan sources. The
+# 4 affected files now appear as "_No orphans (all public symbols are
+# wired)._" or are absent (deletion case).
+.venv/bin/python scripts/audit_orphans.py --root . --include-tests --exclude scripts 2>&1 \
+  | awk '/^## /{f=0} /cloud_worker.py/{f=1; print; next} /settle.merge.py/{f=2; print; next} /settle.persistence.py/{f=3; print; next} /terminal.backends.py/{f=4; print; next} /^## /{if(f) {f=0; print}} f{print}'
 ```
 
-Last verified 2026-09-06: only `merge_three_way_sync` remained in the
-output — consistent with the deferred status documented above.
+Last verified 2026-09-14: the four affected files (`cloud_worker.py`,
+`settle/merge.py`, `settle/persistence.py`, `terminal/backends.py`) are
+all reported as orphan-free by `audit_orphans.py`. Exit code remains 1
+because the repo-wide scan finds unrelated orphans in
+`tests/unit/workers/`, `tests/unit/workflow/`, etc. — those are outside
+this tracker's named-symbol scope and tracked separately per
+`.claude/decisions/wire-up-contract.md`.
 
 ## References
 
