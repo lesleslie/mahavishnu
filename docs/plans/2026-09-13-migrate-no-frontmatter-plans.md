@@ -8,7 +8,7 @@ superseded_by: null
 topic: frontmatter-migration-completion
 ---
 
-# Migrate 38 No-Frontmatter Plans to Schema v1.1
+# Migrate 39 No-Frontmatter Plans to Schema v1.1
 
 ## 1. Outcome
 
@@ -19,7 +19,7 @@ result, `scripts/regenerate_plan_index.py` lists them all in `docs/plans/PLAN_IN
 
 **Success signal**: `uv run python scripts/regenerate_plan_index.py` runs
 cleanly (no `ScannerError`), the per-store tables grow from the current
-counts to include all 38, and a second `regenerate_plan_index.py` run
+counts to include all 39, and a second `regenerate_plan_index.py` run
 on a clean checkout produces an identical `PLAN_INDEX.md` byte-for-byte.
 
 ## 2. Goals
@@ -31,7 +31,7 @@ on a clean checkout produces an identical `PLAN_INDEX.md` byte-for-byte.
    `blocks_on`, `superseded_by` set where discoverable.
 3. `regenerate_plan_index.py` enumerates every migrated file in the
    appropriate store table (post-migration count: 73+69+42+28 plus
-   the 38 newly-migrated = 250 in-scope files).
+   the 39 newly-migrated = 251 in-scope files).
 4. Each migrated file's `status:` reflects its lifecycle stage as
    best we can determine from body content (no "**Status:** Approved"
    inside a code block mistaken for a real status, no schematic
@@ -55,14 +55,14 @@ on a clean checkout produces an identical `PLAN_INDEX.md` byte-for-byte.
 
 ## 4. Current Findings
 
-### Inventory — 38 files without parseable `---\n...\n---` frontmatter
+### Inventory — 39 files without parseable `---\n...\n---` frontmatter
 
-Distribution by store (verified 2026-09-13):
+Distribution by store (verified 2026-09-13, via `scripts/migrate_frontmatter.py`):
 
 | Store                          | Count |
 |--------------------------------|-------|
 | `docs/superpowers/plans/`      | 22    |
-| `docs/superpowers/specs/`      | 14    |
+| `docs/superpowers/specs/`      | 15    |
 | `docs/plans/`                  | 1     |
 | `docs/followups/`              | 1     |
 
@@ -85,7 +85,7 @@ status:
 docs/superpowers/specs/2026-08-03-bodai-openclaw-hermes-inspired-portfolio-design.md: Draft
 ```
 
-The other 37 require status inference from contextual signals (date,
+The other 38 require status inference from contextual signals (date,
 body content, sibling designs).
 
 ### Single-line frontmatter — already resolved
@@ -99,7 +99,7 @@ of any kind, not the single-line layout variant.
 
 ### Common body patterns
 
-Three templates are visible across these 38 files:
+Three templates are visible across these 39 files:
 
 1. **"Implementation Plan" template** (the most common, ~22 files):
    ```
@@ -114,7 +114,7 @@ Three templates are visible across these 38 files:
    marks phases complete (Phase 1/2/3 done) or references a shipped
    version → `status: complete`.
 
-2. **"Design Spec" template** (~14 files in `docs/superpowers/specs/`):
+2. **"Design Spec" template** (~15 files in `docs/superpowers/specs/`):
    ```
    # <Title>
    Status: Draft (or Approved, or absent)
@@ -215,7 +215,7 @@ a per-file report of proposed changes without writing.
 
 ### Phase 2: apply the migration, store-by-store
 
-**Goal:** Each store's 38 files migrate cleanly with batched
+**Goal:** Each store's 39 files migrate cleanly with batched
 rationale-per-store.
 
 **Tasks:**
@@ -224,7 +224,7 @@ rationale-per-store.
    (22 files). Commit as
    `docs(scripts): migrate 22 superpowers/plans/ to v1 schema`,
    body listing each filename + heuristic result.
-2. Run against `docs/superpowers/specs/` (14 files). Same.
+2. Run against `docs/superpowers/specs/` (15 files). Same.
 3. Run against `docs/plans/` (1 file). Same.
 4. Run against `docs/followups/` (1 file). Same.
 
@@ -305,8 +305,8 @@ pick `draft` if uncertain. `active` is a downward-promotion from
 "implicit active" but our schema doesn't carry "implicit."
 
 The migration is considered "done enough" when:
-1. Inventory count = 0 (all 38 migrated).
-2. `regenerate_plan_index.py` lists all 38 in the appropriate store
+1. Inventory count = 0 (all 39 migrated).
+2. `regenerate_plan_index.py` lists all 39 in the appropriate store
    table.
 3. PLAN_INDEX regen is byte-stable across two runs.
 
