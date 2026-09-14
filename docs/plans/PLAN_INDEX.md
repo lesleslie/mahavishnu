@@ -552,6 +552,7 @@ One table per store. Entries are sorted by `date` DESC, with ties broken by path
 | [`docs/plans/2026-09-13-migrate-no-frontmatter-plans.md`](2026-09-13-migrate-no-frontmatter-plans.md) | 2026-09-13 | `complete` | `implementation` |  | `frontmatter-migration-completion` | Migrate 39 No-Frontmatter Plans to Schema v1.1 |
 | [`docs/plans/2026-09-12-finish-partial-implementations.md`](2026-09-12-finish-partial-implementations.md) | 2026-09-12 | `complete` | `implementation` |  | `close-genuine-partial-implementations` | Plan: Finish Genuine Partial Implementations (revision 3, post-re-review) |
 | [`docs/plans/PLAN_AUDIT_2026-09-12.md`](PLAN_AUDIT_2026-09-12.md) | 2026-09-12 | `active` | `implementation` | `audit` | `plan-audit-2026-09-12` | Plan Audit — 2026-09-12 |
+| [`docs/plans/2026-09-10-bodai-math-initiatives-tier1.md`](2026-09-10-bodai-math-initiatives-tier1.md) | 2026-09-10 | `shipped` | `implementation` |  | `mathematical-paradigms-orchestration` | Bodai Math Initiatives — Tier 1 Implementation Plan (v3) |
 | [`docs/plans/2026-09-10-settle-semantic-merge.md`](2026-09-10-settle-semantic-merge.md) | 2026-09-10 | `shipped` | `implementation` |  | `settle-semantic-merge` | Settle Semantic Merge — mergiraf opt-in + git-merge-tree diagnostics |
 | [`docs/plans/2026-09-09-bodai-slash-command-tui-discoverability.md`](2026-09-09-bodai-slash-command-tui-discoverability.md) | 2026-09-09 | `superseded` | `canonical` |  | `slash-command-discoverability` | Bodai Slash-Command TUI Discoverability Plan |
 | [`docs/plans/2026-08-29-orchestrator-research-synthesis.md`](2026-08-29-orchestrator-research-synthesis.md) | 2026-08-29 | `draft` | `implementation` |  | `routing-composition` | Orchestrator Research Synthesis & Adoption Plan (v2 — Pivot) |
@@ -903,7 +904,7 @@ Durable decision records — covers both ADRs in `docs/adr/` and repo-local poli
 | [`docs/adr/013-mahavishnu-dhara-adapter-tool-boundary.md`](../../docs/adr/013-mahavishnu-dhara-adapter-tool-boundary.md) | 2026-07-16 | ADR 013: Adapter Tool Boundary Between Mahavishnu and Dhara |
 | [`docs/adr/014-honcho-peer-model-routing-precedence.md`](../../docs/adr/014-honcho-peer-model-routing-precedence.md) | 2026-07-16 | ADR 014: Honcho Peer-Model Routing Precedence |
 
-### `plan` (586 entries)
+### `plan` (587 entries)
 
 Work items. The bulk of the registry — see the per-store tables above for full detail with status/role/topic.
 
@@ -916,9 +917,9 @@ Counts of entries per (lifecycle, role) cell across all 24 stores. Useful as a s
 | Role \\ Lifecycle | draft | active | partial | shipped | complete | Total |
 |---|---|---|---|---|---|---|
 | `canonical` | 19 | 102 | 1 | 2 | 13 | **137** |
-| `implementation` | 148 | 61 | 6 | 35 | 37 | **287** |
+| `implementation` | 148 | 61 | 6 | 36 | 37 | **288** |
 | `umbrella` | · | 2 | · | · | 2 | **4** |
 | `historical` | 12 | 3 | · | 4 | 129 | **148** |
 | `superseded` | · | · | · | · | 13 | **13** |
 
-| **Total** | **179** | **168** | **7** | **41** | **194** | **589** |
+| **Total** | **179** | **168** | **7** | **42** | **194** | **590** |

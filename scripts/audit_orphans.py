@@ -593,7 +593,94 @@ def collect_references(
                     refs[node.name].add(path)
                 if node.asname:
                     refs[node.asname].add(path)
+            elif isinstance(node, ast.Assign):
+                # `__all__` is the canonical Python declaration of a
+                # module's public API surface — listing a name in
+                # __all__ is itself a wire-up declaration per the
+                # wire-up-contract. Without this case, every symbol
+                # declared in a module whose re-export goes through
+                # `__all__ = [...]` would be flagged as orphan even
+                # though it has an explicit public-surface declaration.
+                # Recognise both
+                #   __all__ = ["foo", "bar"]
+                #   __all__ += ["baz"]
+                # forms; skip non-string entries (constants like
+                # `__all__ = ["foo", MAX_LEN]` would be a misfeature
+                # — best to ignore the symbolic-name form).
+                for target in node.targets:
+                    target_name = (
+                        target.id
+                        if isinstance(target, ast.Name)
+                        else None
+                    )
+                    if target_name != "__all__":
+                        continue
+                    value = node.value
+                    container = (
+                        value.elts
+                        if isinstance(value, (ast.List, ast.Tuple))
+                        else value.values
+                        if isinstance(value, ast.Set)
+                        else None
+                    )
+                    if not container:
+                        continue
+                    for elt in container:
+                        if (
+                            isinstance(elt, ast.Constant)
+                            and isinstance(elt.value, str)
+                        ):
+                            refs[elt.value].add(path)
     return refs
+
+
+def _has_intra_file_call_site(path: Path, symbol_name: str) -> bool:
+    """Return True when ``symbol_name`` is called from within ``path``.
+
+    Phase 4 / Round-4 review M12 fix: a recently-added function may
+    only be called from intra-module call sites (``foo()`` from inside
+    the same file it's defined in). The AST-level
+    :func:`collect_references` walker records that reference under the
+    symbol's name, but the subsequent filter
+    ``{f for f in ref_files if f != path}`` removes same-file refs as
+    part of its definition-lookup guard — producing false-positive
+    orphans for ``merge_driver_health`` (called only by
+    ``aggregate_readiness`` in the same file) and similar.
+
+    Best-effort regex search: ``\\b<name>\\s*\\(`` on every line of the
+    file except the definition line. Skipping the ``def`` line avoids
+    counting the function header as a call site (regex would otherwise
+    match ``def merge_driver_health():``). The regex shape
+    intentionally matches both top-level calls and ``await`` / ``return``
+    callees; multi-line continuation is rare for bare-name calls.
+
+    Args:
+        path: Absolute path of the file containing the definition.
+        symbol_name: Top-level public function/class/method name being
+            checked (e.g. ``"merge_driver_health"``).
+
+    Returns:
+        ``True`` when a call site exists somewhere in the file.
+        ``False`` on read errors (the audit never lets a probe failure
+        override the symbol's wired status — the conservative default
+        is to keep the audit's prior behaviour for unreadable files).
+    """
+    try:
+        source = path.read_text(encoding="utf-8")
+    except OSError, UnicodeDecodeError:
+        return False
+    # Definition line patterns to skip: ``def foo(``, ``async def foo(``,
+    # and the class version ``class foo(``. Methods inside classes can
+    # be defined as ``def foo(self, ...)`` — the def header line still
+    # matches the regex against the symbol name and must be skipped.
+    def_header_pat = re.compile(rf"^\s*(?:async\s+)?(?:def|class)\s+{re.escape(symbol_name)}\s*\(")
+    call_pat = re.compile(rf"\b{re.escape(symbol_name)}\s*\(")
+    for line in source.splitlines():
+        if def_header_pat.match(line):
+            continue
+        if call_pat.search(line):
+            return True
+    return False
 
 
 def classify_orphans(
@@ -636,6 +723,15 @@ def classify_orphans(
             ref_files = references.get(sym.name, set())
             other_files = {f for f in ref_files if f != path}
             if not other_files:
+                # M12: same-file intra-module call sites also count as
+                # wired. Without this check, helpers like
+                # ``merge_driver_health`` (called only by
+                # ``aggregate_readiness`` in the same file) get flagged
+                # as orphans even though every shipped call site lives
+                # in the same module. The regex probe is intentionally
+                # local — cross-file wiring is the AST walker's job.
+                if _has_intra_file_call_site(path, sym.name):
+                    continue
                 orphans.append(
                     CandidateInfo(
                         symbol=sym,
