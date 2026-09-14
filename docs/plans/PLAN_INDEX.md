@@ -682,7 +682,7 @@ One table per store. Entries are sorted by `date` DESC, with ties broken by path
 | [`docs/superpowers/plans/2026-06-01-dhara-crackerjack-critical-bug-fixes.md`](../../docs/superpowers/plans/2026-06-01-dhara-crackerjack-critical-bug-fixes.md) | 2026-07-16 | `draft` | `implementation` | `dhara-crackerjack-bug-fixes` | Dhara-Crackerjack Critical Bug Fixes Implementation Plan |
 | [`docs/superpowers/plans/2026-06-19-track1-terminal-gap.md`](../../docs/superpowers/plans/2026-06-19-track1-terminal-gap.md) | 2026-07-16 | `complete` | `historical` | `track1-terminal-gap` | Track 1 — Terminal Gap Implementation Plan |
 | [`docs/superpowers/plans/2026-06-19-track2-openhands.md`](../../docs/superpowers/plans/2026-06-19-track2-openhands.md) | 2026-07-16 | `draft` | `implementation` | `track2-openhands` | Track 2 — OpenHands Integration Implementation Plan |
-| [`docs/superpowers/plans/2026-06-19-track3-toad-tui.md`](../../docs/superpowers/plans/2026-06-19-track3-toad-tui.md) | 2026-07-16 | `draft` | `implementation` | `track3-toad-tui` | Track 3 — Toad TUI (Textual + Rich) Implementation Plan |
+| [`docs/superpowers/plans/2026-06-19-track3-toad-tui.md`](../../docs/superpowers/plans/2026-06-19-track3-toad-tui.md) | 2026-07-16 | `active` | `implementation` | `track3-toad-tui` | Track 3 — Toad TUI (Textual + Rich) Implementation Plan |
 | [`docs/superpowers/plans/2026-06-19-track4-turbovec.md`](../../docs/superpowers/plans/2026-06-19-track4-turbovec.md) | 2026-07-16 | `draft` | `implementation` | `track4-turbovec` | Track 4 — TurboVec Integration Implementation Plan |
 | [`docs/superpowers/plans/2026-06-19-wave2b-a2a-worker.md`](../../docs/superpowers/plans/2026-06-19-wave2b-a2a-worker.md) | 2026-07-16 | `draft` | `implementation` | `wave2b-a2a-worker` | Wave 2b: A2A Worker & Server Implementation Plan |
 | [`docs/superpowers/plans/2026-06-22-adapter-runtime-observability.md`](../../docs/superpowers/plans/2026-06-22-adapter-runtime-observability.md) | 2026-07-16 | `draft` | `implementation` | `adapter-runtime-observability` | Adapter Runtime Observability v1.0 Implementation Plan |
@@ -705,7 +705,7 @@ One table per store. Entries are sorted by `date` DESC, with ties broken by path
 | [`docs/superpowers/plans/2026-06-27-dhara-substrate-implementation.md`](../../docs/superpowers/plans/2026-06-27-dhara-substrate-implementation.md) | 2026-07-16 | `draft` | `implementation` | `dhara-substrate-implementation` | Dhara Substrate Implementation Plan |
 | [`docs/superpowers/plans/2026-07-13-mcp-server-family-mcpbase-migration.md`](../../docs/superpowers/plans/2026-07-13-mcp-server-family-mcpbase-migration.md) | 2026-07-16 | `draft` | `implementation` | `mcpbase-migration` | MCP Server Family: MCPBaseSettings → OneiricMCPConfig Migration |
 | [`docs/superpowers/plans/2026-07-14-multi-backend-pty.md`](../../docs/superpowers/plans/2026-07-14-multi-backend-pty.md) | 2026-07-16 | `complete` | `historical` | `multi-backend-pty` | Multi-Backend PTY Implementation Plan |
-| [`docs/superpowers/plans/2026-07-15-constellation-tui.md`](../../docs/superpowers/plans/2026-07-15-constellation-tui.md) | 2026-07-16 | `draft` | `implementation` | `constellation-tui` | Constellation TUI Implementation Plan |
+| [`docs/superpowers/plans/2026-07-15-constellation-tui.md`](../../docs/superpowers/plans/2026-07-15-constellation-tui.md) | 2026-07-16 | `active` | `implementation` | `constellation-tui` | Constellation TUI Implementation Plan |
 | [`docs/superpowers/plans/2026-07-15-sb-checkpoint-stash-clobber-fix.md`](../../docs/superpowers/plans/2026-07-15-sb-checkpoint-stash-clobber-fix.md) | 2026-07-16 | `active` | `implementation` | `sb-checkpoint-stash-clobber-fix` | Session-Buddy Checkpoint Stash-Clobber Fix Implementation Plan |
 | [`docs/superpowers/plans/2026-07-16-bodai-plugin-standardization.md`](../../docs/superpowers/plans/2026-07-16-bodai-plugin-standardization.md) | 2026-07-16 | `partial` | `implementation` | `mcp-design` | Bodai Plugin Standardization Implementation Plan |
 | [`docs/superpowers/plans/2026-07-16-frontmatter-validator-wiring-plan.md`](../../docs/superpowers/plans/2026-07-16-frontmatter-validator-wiring-plan.md) | 2026-07-16 | `draft` | `implementation` | `lifecycle` | Frontmatter Validator Wiring + P7 Cross-Repo Implementation Plan |
@@ -781,9 +781,9 @@ Counts of entries per (lifecycle, role) cell across all 24 stores. Useful as a s
 | Role \\ Lifecycle | draft | active | partial | shipped | complete | Total |
 |---|---|---|---|---|---|---|
 | `canonical` | 16 | 107 | · | 2 | 9 | **134** |
-| `implementation` | 134 | 44 | 11 | 34 | 22 | **245** |
+| `implementation` | 132 | 46 | 11 | 34 | 22 | **245** |
 | `umbrella` | · | 1 | · | · | 2 | **3** |
 | `historical` | 11 | 3 | · | 4 | 129 | **147** |
 | `superseded` | · | · | · | · | 12 | **12** |
 
-| **Total** | **161** | **155** | **11** | **40** | **174** | **541** |
+| **Total** | **159** | **157** | **11** | **40** | **174** | **541** |
