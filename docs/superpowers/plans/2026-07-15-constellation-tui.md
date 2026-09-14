@@ -1,5 +1,5 @@
 ---
-status: active
+status: draft
 role: implementation
 date: 2026-07-16
 last_reviewed: 2026-09-13

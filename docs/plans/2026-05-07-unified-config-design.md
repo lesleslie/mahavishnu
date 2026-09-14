@@ -1,5 +1,5 @@
 ---
-status: active
+status: complete
 role: canonical
 topic: mcp-design
 date: 2026-07-16

@@ -1,5 +1,5 @@
 ---
-status: active
+status: complete
 role: canonical
 date: 2026-05-07
 last_reviewed: 2026-09-13
