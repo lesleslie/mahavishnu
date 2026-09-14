@@ -153,6 +153,7 @@ class Entry:
     date: str  # ISO-8601 (YYYY-MM-DD), or "" if missing
     status: str  # lifecycle value, or "unknown" if missing
     role: str  # role value, or "unknown" if missing
+    kind: str  # document kind, or "plan" if missing (per schema v1.1 default)
     topic: str  # topic slug, or "—" if missing
     title: str  # one-line title derived from first H1 / filename
 
@@ -377,6 +378,7 @@ def _entry_from_file(abs_path: Path, rel: str, store: str, yaml_module: Any) -> 
     date = _coerce_date(front.get("date"))
     status = front.get("status") if isinstance(front.get("status"), str) else "unknown"
     role = front.get("role") if isinstance(front.get("role"), str) else "unknown"
+    kind = front.get("kind") if isinstance(front.get("kind"), str) else "plan"
     topic = front.get("topic") if isinstance(front.get("topic"), str) else "—"
     fallback_title = abs_path.stem.replace("-", " ").replace("_", " ")
     title = _title_from_text(text, fallback=fallback_title)
@@ -387,6 +389,7 @@ def _entry_from_file(abs_path: Path, rel: str, store: str, yaml_module: Any) -> 
         date=date,
         status=status,
         role=role,
+        kind=kind,
         topic=topic,
         title=title,
     )

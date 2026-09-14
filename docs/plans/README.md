@@ -1,8 +1,9 @@
 ---
 status: active
 role: canonical
+kind: reference
 date: 2026-07-16
-last_reviewed: 2026-07-16
+last_reviewed: 2026-09-13
 superseded_by: null
 topic: convergence-control-plane
 ---

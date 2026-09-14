@@ -28,6 +28,18 @@ Five values, applied to the `role` field. A file carries exactly one role. Role 
 - **`historical`** — Records decisions or outcomes after they have been acted upon; preserved for traceability, not for current action.
 - **`superseded`** — Replaced by a newer document; retained for the chain. Always paired with a populated `superseded_by` field.
 
+## Vocabulary — Kind
+
+Five values, applied to the optional `kind` field. `kind` is **orthogonal to `status` and `role`**: it describes *what kind of document this is*, while `status` describes its lifecycle stage and `role` describes its disposition. When `kind` is omitted, the document is treated as `plan` (the default). The field exists so scaffolding documents (templates, READMEs, audit reports) can be distinguished from real plans without abusing `status:` or `role:` values.
+
+- **`plan`** (default) — A plan to be implemented; the document describes work to be done.
+- **`template`** — A template document used to scaffold new files (e.g., `TEMPLATE.md` files in the plan stores). Permanent fixtures; never a work item.
+- **`reference`** — A reference document for reading, not for execution (e.g., `README.md` index pages, design specs whose purpose is to inform).
+- **`audit`** — An audit, analysis, or retrospective report. Describes work that has already happened; the document itself is not a work item.
+- **`decision`** — A durable decision record separate from ADRs (kept here for forward compatibility; ADRs continue to live in `docs/adr/`).
+
+Future additions (e.g., `rfc`, `post-mortem`) are added by editing this vocabulary file.
+
 ## Full Schema
 
 Applied to `docs/adr/`, `docs/plans/`, `docs/superpowers/specs/`, `docs/superpowers/plans/`, and `docs/followups/`.
@@ -48,6 +60,7 @@ id: 014-honcho-peer-model-routing-precedence
 |---|---|---|---|
 | `status` | yes | one of the five lifecycle values | |
 | `role` | yes | one of the five role values | |
+| `kind` | optional | one of the five kind values | Orthogonal to `status` and `role`. When omitted, defaults to `plan`. Used to distinguish templates, reference docs, audits, and other non-plan files from real plans. |
 | `date` | yes | ISO-8601 `YYYY-MM-DD` | The document's authoring or last substantive update date. |
 | `last_reviewed` | yes | ISO-8601 `YYYY-MM-DD` | When the frontmatter was last verified accurate. |
 | `superseded_by` | when `role: superseded` | repo-relative path or `ext:<id>` | Resolves to an existing file at validation time. |
@@ -141,6 +154,7 @@ Two open questions were resolved before migration began. Both are binding for Ph
 ## Change History
 
 - **2026-07-16** — v1. Initial schema covering the 178 in-scope files across six stores; full and lite variants; legacy mapping table.
+- **2026-09-13** — v1.1. Added optional `kind` field (orthogonal to `status` and `role`) with five-value vocabulary: `plan | template | reference | audit | decision`. Defaults to `plan` when omitted (backward compatible). Resolves the overloading of `status: active` for scaffolding documents (TEMPLATE.md, README.md, audit reports).
 
 ## Crackerjack Surface
 

@@ -1,8 +1,9 @@
 ---
 status: active
 role: canonical
+kind: template
 date: 2026-07-16
-last_reviewed: 2026-07-16
+last_reviewed: 2026-09-13
 superseded_by: null
 topic: routing-composition
 ---
@@ -136,6 +137,10 @@ ______________________________________________________________________
   one of `draft`, `active`, `partial`, `shipped`, `complete`; role is
   one of `canonical`, `implementation`, `umbrella`, `historical`,
   `superseded`. A new plan starts as `draft, planning` until accepted.
+- New in schema v1.1 (2026-09-13): an optional `kind` field distinguishes
+  plans from scaffolding docs. Values: `plan` (default), `template`,
+  `reference`, `audit`, `decision`. Templates, READMEs, and audit reports
+  set their kind accordingly. Plans omit the field (default `plan`).
 - Add the new plan to `docs/plans/PLAN_INDEX.md` once promoted out of
   `draft`.
 
