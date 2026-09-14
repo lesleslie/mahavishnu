@@ -2,7 +2,7 @@
 status: active
 role: canonical
 date: 2026-05-07
-last_reviewed: 2026-07-16
+last_reviewed: 2026-09-13
 superseded_by: null
 topic: storage-consolidation
 ---
