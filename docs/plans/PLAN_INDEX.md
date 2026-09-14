@@ -593,7 +593,7 @@ One table per store. Entries are sorted by `date` DESC, with ties broken by path
 | [`docs/plans/TEMPLATE.md`](TEMPLATE.md) | 2026-07-16 | `active` | `canonical` | `template` | `routing-composition` | Plan Template — Integration-Contract Required |
 | [`docs/plans/TLS_IMPLEMENTATION_SUMMARY.md`](TLS_IMPLEMENTATION_SUMMARY.md) | 2026-07-16 | `complete` | `historical` |  | `mcp-design` | TLS/WSS Implementation Summary |
 | [`docs/plans/claw-inspired-orchestration-proposal.md`](claw-inspired-orchestration-proposal.md) | 2026-07-16 | `complete` | `superseded` |  | `routing-composition` | Claw-Inspired Orchestration Enhancements for Mahavishnu |
-| [`docs/plans/dhara-outstanding-items-plan.md`](dhara-outstanding-items-plan.md) | 2026-07-16 | `active` | `implementation` |  | `storage-consolidation` | Dhara AsyncStorage Bug Fix + Outstanding Items Plan |
+| [`docs/plans/dhara-outstanding-items-plan.md`](dhara-outstanding-items-plan.md) | 2026-07-16 | `complete` | `implementation` |  | `storage-consolidation` | Dhara AsyncStorage Bug Fix + Outstanding Items Plan |
 | [`docs/plans/mcp-connection-stability-plan.md`](mcp-connection-stability-plan.md) | 2026-07-16 | `complete` | `historical` |  | `mcp-design` | MCP Server Connection Stability Plan |
 | [`docs/plans/native-macos-automation-backend-plan.md`](native-macos-automation-backend-plan.md) | 2026-07-16 | `draft` | `implementation` |  | `terminal` | Plan: Native macOS Automation Backend |
 | [`docs/plans/session-buddy-llama-server-ollama-migration.md`](session-buddy-llama-server-ollama-migration.md) | 2026-07-16 | `complete` | `historical` |  | `routing-composition` | Plan: Replace ONNX + Transformers with llama-server + Ollama in Bodai Ecosystem |
@@ -873,9 +873,9 @@ Counts of entries per (lifecycle, role) cell across all 24 stores. Useful as a s
 | Role \\ Lifecycle | draft | active | partial | shipped | complete | Total |
 |---|---|---|---|---|---|---|
 | `canonical` | 19 | 106 | 1 | 2 | 9 | **137** |
-| `implementation` | 132 | 48 | 12 | 34 | 23 | **249** |
+| `implementation` | 132 | 47 | 12 | 34 | 24 | **249** |
 | `umbrella` | · | 1 | · | · | 2 | **3** |
 | `historical` | 11 | 3 | · | 4 | 129 | **147** |
 | `superseded` | · | · | · | · | 12 | **12** |
 
-| **Total** | **162** | **158** | **13** | **40** | **175** | **548** |
+| **Total** | **162** | **157** | **13** | **40** | **176** | **548** |
