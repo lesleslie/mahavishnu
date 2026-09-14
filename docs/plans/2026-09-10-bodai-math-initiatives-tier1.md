@@ -709,7 +709,7 @@ and Phase D (cross-repo Akosha wiring) move from deferred to active.
 - Wire into CI: `make tier2-eligibility` target that runs the script on a monthly schedule and fails the build if any trigger fires without a follow-on plan
 - Add `docs/followups/2026-09-10-tier2-optimal-transport.md`, `docs/followups/2026-09-10-tier2-hyperbolic-embeddings.md`, `docs/followups/2026-09-10-tier2-phase-d-cross-repo.md` per `.claude/decisions/followups-lifecycle.md`
 - Add `docs/feature-tracking/2026-09-10-tier2-math-deferred.md` tracking all three in `deferred` state
-- Update `docs/plans/PLAN_INDEX.md` for this spec's row to `status: partial` until all required phases land
+- Update `docs/plans/PLAN_INDEX.md` for this spec's row to `status: shipped` once all required phases land
 
 #### Integration Contract — Phase 9 deliverable
 - **Triggered from**: `python scripts/feature_eligibility.py` (manual or CI); the monthly CI run via the `make tier2-eligibility` target.
@@ -929,9 +929,12 @@ This plan is "done enough" when:
    is referenced by code or tests.
 6. `audit_orphans.py` reports zero orphans for the new modules.
 
-If any of these is false at scope-cut time, the plan ships partial
-and the missing phase is documented in `docs/plans/PLAN_INDEX.md` as
-`status: partial`. We do not silently cut phases.
+If any of these is false at scope-cut time, the plan ships with the
+missing phase documented in `docs/plans/PLAN_INDEX.md` as
+`status: shipped` plus a followup. We do not silently cut phases
+(this historical text was written when the plan was `partial`; the
+plan was flipped to `shipped` per Phase 4 of the finish-partial
+meta-plan in commit `671611ff`).
 
 ## 12. Open Questions for Reviewers
 
