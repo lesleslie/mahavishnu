@@ -12,7 +12,8 @@ import logging
 from typing import Any, Protocol, runtime_checkable
 from uuid import uuid4
 
-import httpx2 as httpx
+from mcp_common.clients.common_mcp_client import CommonMCPClient
+from mcp_common.exceptions import MCPServerError
 
 from mahavishnu.core.skill_governance import LearningEvidence
 
@@ -34,22 +35,20 @@ class _SessionBuddyEvidenceSource:
         self._timeout = store_timeout
 
     async def get_recent_outcomes(self, limit: int) -> list[dict[str, Any]]:
-        async with httpx.AsyncClient(timeout=self._timeout) as client:
-            resp = await client.post(
-                f"{self._url}/tools/call",
-                json={
-                    "jsonrpc": "2.0",
-                    "id": str(uuid4()),
-                    "method": "tools/call",
-                    "params": {
-                        "name": "search_conversations",
-                        "arguments": {"query": "outcome", "limit": limit},
-                    },
-                },
+        client = CommonMCPClient(base_url=self._url, timeout=self._timeout)
+        try:
+            result = await client.call_tool(
+                "search_conversations",
+                {"query": "outcome", "limit": limit},
             )
-            resp.raise_for_status()
-            result = resp.json().get("result", {})
-            return result.get("conversations", []) if isinstance(result, dict) else []
+        finally:
+            await client.aclose()
+
+        if isinstance(result, dict):
+            return result.get("conversations", [])
+        if isinstance(result, list):
+            return result
+        return []
 
 
 class EvidenceCollector:
@@ -73,7 +72,7 @@ class EvidenceCollector:
     async def collect_recent_outcomes(self) -> list[LearningEvidence]:
         try:
             raw = await self._source.get_recent_outcomes(self._max_per_cycle)
-        except (httpx.HTTPError, OSError, TimeoutError) as exc:
+        except (MCPServerError, OSError, TimeoutError) as exc:
             logger.warning("evidence_collection_failed: returning empty list: %s", exc)
             return []
 

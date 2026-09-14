@@ -17,6 +17,8 @@ import logging
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Protocol, Self, cast, runtime_checkable
 
+from mcp_common.clients.common_mcp_client import CommonMCPClient
+
 # Feature detection for embedding backends
 # Try sentence-transformers first (best quality), then fastembed (cross-platform)
 try:
@@ -206,17 +208,15 @@ class AkoshaEmbedder:
         self._akosha_url = akosha_url
         self._timeout = timeout
         self._dimension = dimension
-        self._client: Any = None  # httpx.AsyncClient, lazy loaded
+        self._client: CommonMCPClient | None = None  # lazy loaded
         self._available: bool | None = None
 
-    async def _get_client(self) -> Any:
-        """Get or create HTTP client."""
+    def _get_client(self) -> CommonMCPClient:
+        """Get or create the CommonMCPClient."""
         if self._client is None:
-            import httpx
-
-            self._client = httpx.AsyncClient(
+            self._client = CommonMCPClient(
                 base_url=self._akosha_url,
-                timeout=httpx.Timeout(self._timeout, connect=10.0),
+                timeout=self._timeout,
             )
         return self._client
 
@@ -229,20 +229,15 @@ class AkoshaEmbedder:
         if self._available is not None:
             return self._available
 
+        client = self._get_client()
         try:
-            client = await self._get_client()
-            # Try to generate a test embedding
-            response = await client.post(
-                "/tools/call",
-                json={
-                    "name": "generate_embedding",
-                    "arguments": {"text": "test"},
-                },
+            await client.call_tool(
+                "generate_embedding",
+                {"text": "test"},
             )
-            self._available = response.status_code == 200
-            if self._available:
-                logger.info("akosha_embedding_service_available")
-            return self._available
+            self._available = True
+            logger.info("akosha_embedding_service_available")
+            return True
         except Exception as e:  # noqa: BLE001 - remote service availability probe; any failure means unavailable
             logger.warning(f"akosha_embedding_service_unavailable: {e}")
             self._available = False
@@ -284,26 +279,16 @@ class AkoshaEmbedder:
             Embedding vector
         """
         try:
-            client = await self._get_client()
-            response = await client.post(
-                "/tools/call",
-                json={
-                    "name": "generate_embedding",
-                    "arguments": {"text": text},
-                },
+            client = self._get_client()
+            result = await client.call_tool(
+                "generate_embedding",
+                {"text": text},
             )
-            response.raise_for_status()
-
-            result = response.json()
-            # Parse MCP response format
-            if "content" in result and len(result["content"]) > 0:
-                content = result["content"][0]
-                if content.get("type") == "text":
-                    import json
-
-                    data = json.loads(content["text"])
-                    return data.get("embedding", [0.0] * self._dimension)  # type: ignore[no-any-return]
-
+            # CommonMCPClient surfaces the tool result payload directly.
+            if isinstance(result, dict) and "embedding" in result:
+                return result["embedding"]  # type: ignore[no-any-return]
+            if isinstance(result, list):
+                return result  # type: ignore[no-any-return]
             logger.warning(f"unexpected_akosha_response: {result}")
             return [0.0] * self._dimension
 
@@ -321,25 +306,15 @@ class AkoshaEmbedder:
             List of embedding vectors
         """
         try:
-            client = await self._get_client()
-            response = await client.post(
-                "/tools/call",
-                json={
-                    "name": "generate_batch_embeddings",
-                    "arguments": {"texts": texts},
-                },
+            client = self._get_client()
+            result = await client.call_tool(
+                "generate_batch_embeddings",
+                {"texts": texts},
             )
-            response.raise_for_status()
-
-            result = response.json()
-            if "content" in result and len(result["content"]) > 0:
-                content = result["content"][0]
-                if content.get("type") == "text":
-                    import json
-
-                    data = json.loads(content["text"])
-                    return data.get("embeddings", [[0.0] * self._dimension] * len(texts))  # type: ignore[no-any-return]
-
+            if isinstance(result, dict) and isinstance(result.get("embeddings"), list):
+                return result["embeddings"]  # type: ignore[no-any-return]
+            if isinstance(result, list):
+                return result  # type: ignore[no-any-return]
             return [[0.0] * self._dimension] * len(texts)
 
         except Exception as e:  # noqa: BLE001 - remote embedding service; degrade to zero-vector on any failure
@@ -352,7 +327,7 @@ class AkoshaEmbedder:
         return self._dimension
 
     async def close(self) -> None:
-        """Close HTTP client."""
+        """Close MCP client."""
         if self._client is not None:
             await self._client.aclose()
             self._client = None

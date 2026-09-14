@@ -17,7 +17,8 @@ import logging
 from typing import TYPE_CHECKING, Any
 from uuid import UUID
 
-import httpx  # exposed for tests via patch()
+from mcp_common.clients.common_mcp_client import CommonMCPClient
+from mcp_common.exceptions import MCPServerError
 from mcp_common.websocket import (  # exposed for tests via patch()
     MessageType,
     WebSocketMessage,
@@ -273,7 +274,8 @@ def register_search_tools(mcp: FastMCP) -> None:
 
         # ---- Akosha capability search ----
         try:
-            async with httpx.AsyncClient(timeout=10.0) as client:
+            akosha_client = CommonMCPClient(base_url=akosha_url, timeout=10.0)
+            try:
                 if scope == "capabilities":
                     akosha_args: dict[str, Any] = {
                         "query": query,
@@ -281,35 +283,33 @@ def register_search_tools(mcp: FastMCP) -> None:
                     }
                     if repo_filter:
                         akosha_args["repo_filter"] = repo_filter
-                    akosha_resp = await client.post(
-                        f"{akosha_url}/tools/call",
-                        json={
-                            "name": "cross_repo_capability_search",
-                            "arguments": akosha_args,
-                        },
+                    akosha_payload = await akosha_client.call_tool(
+                        "cross_repo_capability_search",
+                        akosha_args,
                     )
-                    akosha_resp.raise_for_status()
-                    akosha_payload = akosha_resp.json()
-                    akosha_results = (
-                        akosha_payload.get("result", {}).get("results", [])
-                        if isinstance(akosha_payload.get("result"), dict)
-                        else akosha_payload.get("results", [])
-                    )
+                    if isinstance(akosha_payload, dict):
+                        # CommonMCPClient unwraps the JSON-RPC envelope, so
+                        # the payload may be the bare dict OR a wrapper
+                        # ``{"result": {"results": [...]}}``. Handle both.
+                        akosha_results = (
+                            akosha_payload.get("results", [])
+                            or akosha_payload.get("result", {}).get("results", [])
+                        )
+                    elif isinstance(akosha_payload, list):
+                        akosha_results = akosha_payload
+                    else:
+                        akosha_results = []
                 else:  # scope == "runs"
-                    akosha_resp = await client.post(
-                        f"{akosha_url}/tools/call",
-                        json={
-                            "name": "search_all_systems",
-                            "arguments": {"query": query, "limit": limit},
-                        },
+                    akosha_payload = await akosha_client.call_tool(
+                        "search_all_systems",
+                        {"query": query, "limit": limit},
                     )
-                    akosha_resp.raise_for_status()
-                    akosha_payload = akosha_resp.json()
-                    akosha_results = (
-                        akosha_payload.get("results", [])
-                        if isinstance(akosha_payload, dict)
-                        else []
-                    )
+                    if isinstance(akosha_payload, dict):
+                        akosha_results = akosha_payload.get("results", []) or []
+                    elif isinstance(akosha_payload, list):
+                        akosha_results = akosha_payload
+                    else:
+                        akosha_results = []
                 sources.append(
                     {
                         "name": "akosha",
@@ -322,6 +322,8 @@ def register_search_tools(mcp: FastMCP) -> None:
                     r = dict(r)
                     r["source"] = "akosha"
                     combined.append(r)
+            finally:
+                await akosha_client.aclose()
         except Exception as exc:  # noqa: BLE001 - external service fan-out must not break the search response
             logger.warning("cross_repo_search: akosha fan-out failed: %s", exc)
             sources.append(
@@ -336,7 +338,8 @@ def register_search_tools(mcp: FastMCP) -> None:
 
         # ---- Session-Buddy run history ----
         try:
-            async with httpx.AsyncClient(timeout=10.0) as client:
+            sb_client = CommonMCPClient(base_url=session_buddy_url, timeout=10.0)
+            try:
                 if scope == "runs":
                     sb_args: dict[str, Any] = {
                         "workflow_id": query,
@@ -350,13 +353,11 @@ def register_search_tools(mcp: FastMCP) -> None:
                     }
                     sb_tool = "ecosystem_run_history"
 
-                sb_resp = await client.post(
-                    f"{session_buddy_url}/tools/call",
-                    json={"name": sb_tool, "arguments": sb_args},
-                )
-                sb_resp.raise_for_status()
-                sb_payload = sb_resp.json()
-                sb_result = sb_payload.get("result", {})
+                sb_payload = await sb_client.call_tool(sb_tool, sb_args)
+                if isinstance(sb_payload, dict):
+                    sb_result = sb_payload.get("result", {})
+                else:
+                    sb_result = {}
                 if isinstance(sb_result, str):
                     import json as _json
 
@@ -379,6 +380,8 @@ def register_search_tools(mcp: FastMCP) -> None:
                     c = dict(c)
                     c["source"] = "session-buddy"
                     combined.append(c)
+            finally:
+                await sb_client.aclose()
         except Exception as exc:  # noqa: BLE001 - external service fan-out must not break the search response
             logger.warning("cross_repo_search: session-buddy fan-out failed: %s", exc)
             sources.append(

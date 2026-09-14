@@ -4,11 +4,12 @@ from __future__ import annotations
 
 import asyncio
 from contextlib import suppress
+from typing import Any
 from unittest.mock import AsyncMock, MagicMock, patch
 
-import httpx2 as httpx
 import pytest
 
+from mcp_common.exceptions import MCPServerError
 from mahavishnu.core.config import MahavishnuSettings
 from mahavishnu.integrations.session_buddy_poller import SessionBuddyPoller
 from monitoring.metrics import (
@@ -53,14 +54,9 @@ def disabled_config() -> MahavishnuSettings:
     )
 
 
-def _ok_response(payload: dict | None = None) -> MagicMock:
-    """Build a successful httpx response mock."""
-    response = MagicMock()
-    response.raise_for_status.return_value = None
-    response.json.return_value = (
-        payload if payload is not None else {"result": {"active_sessions": 1, "total_sessions": 2}}
-    )
-    return response
+def _ok_response(payload: Any | None = None) -> dict[str, Any]:
+    """Build a successful MCP tool return payload."""
+    return payload if payload is not None else {"result": {"active_sessions": 1, "total_sessions": 2}}
 
 
 class TestSessionBuddyPoller:
@@ -101,10 +97,10 @@ class TestSessionBuddyPoller:
     async def test_poll_once_records_bridge_metrics(self, poller_config: MahavishnuSettings):
         """Successful polls should emit bridge metrics on the shared registry."""
         poller = SessionBuddyPoller(config=poller_config)
-        poller._http_client = AsyncMock()
-
-        mock_response = _ok_response({"result": {"active_sessions": 2, "total_sessions": 5}})
-        poller._http_client.post.return_value = mock_response
+        poller._mcp = MagicMock()
+        poller._mcp.call_tool = AsyncMock(
+            return_value={"result": {"active_sessions": 2, "total_sessions": 5}}
+        )
 
         result = await poller.poll_once()
 
@@ -134,7 +130,7 @@ class TestPollerLifecycle:
 
         status = await poller.get_status()
         assert status.running is False
-        assert poller._http_client is None
+        assert poller._mcp is None
         assert poller._poll_task is None
 
     @pytest.mark.asyncio
@@ -152,8 +148,8 @@ class TestPollerLifecycle:
     async def test_start_twice_does_not_respawn(self, poller_config: MahavishnuSettings) -> None:
         """Calling start() while running should log a warning and not spawn again."""
         poller = SessionBuddyPoller(config=poller_config)
-        poller._http_client = AsyncMock()
-        poller._http_client.aclose = AsyncMock()
+        poller._mcp = MagicMock()
+        poller._mcp.aclose = AsyncMock()
 
         first_task = asyncio.create_task(asyncio.sleep(0.05))
         poller._running = True
@@ -168,13 +164,13 @@ class TestPollerLifecycle:
             await first_task
 
     @pytest.mark.asyncio
-    async def test_stop_closes_http_client(self, poller_config: MahavishnuSettings) -> None:
-        """stop() should close the active httpx client and clear the task."""
+    async def test_stop_closes_mcp_client(self, poller_config: MahavishnuSettings) -> None:
+        """stop() should close the active MCP client and clear the task."""
         poller = SessionBuddyPoller(config=poller_config)
         poller._running = True
         client = AsyncMock()
         client.aclose = AsyncMock()
-        poller._http_client = client
+        poller._mcp = client
 
         async def _noop_loop() -> None:
             await asyncio.sleep(10)
@@ -184,7 +180,7 @@ class TestPollerLifecycle:
 
         await poller.stop()
 
-        assert poller._http_client is None
+        assert poller._mcp is None
         assert poller._poll_task is None
         assert poller._running is False
         client.aclose.assert_awaited()
@@ -231,8 +227,8 @@ class TestPollOnceErrorPaths:
     ) -> None:
         """A persistent HTTP failure should record errors and not crash the cycle."""
         poller = SessionBuddyPoller(config=poller_config)
-        poller._http_client = AsyncMock()
-        poller._http_client.post.side_effect = httpx.ConnectError("connection refused")
+        poller._mcp = MagicMock()
+        poller._mcp.call_tool = AsyncMock(side_effect=MCPServerError("connection refused"))
 
         result = await poller.poll_once()
 
@@ -255,8 +251,8 @@ class TestPollOnceErrorPaths:
     ) -> None:
         """A failing poll should mark the polls_total counter as 'error'."""
         poller = SessionBuddyPoller(config=poller_config)
-        poller._http_client = AsyncMock()
-        poller._http_client.post.side_effect = httpx.ConnectError("oops")
+        poller._mcp = MagicMock()
+        poller._mcp.call_tool = AsyncMock(side_effect=MCPServerError("oops"))
 
         before = bodai_bridge_polls_total.labels(
             source_service="session_buddy",
@@ -277,8 +273,8 @@ class TestPollOnceErrorPaths:
     ) -> None:
         """A successful call returning unparsable data should still set freshness."""
         poller = SessionBuddyPoller(config=poller_config)
-        poller._http_client = AsyncMock()
-        poller._http_client.post.return_value = _ok_response({"result": "not-a-dict"})
+        poller._mcp = MagicMock()
+        poller._mcp.call_tool = AsyncMock(return_value={"result": "not-a-dict"})
 
         await poller.poll_once()
 
@@ -301,10 +297,8 @@ class TestPollOnceErrorPaths:
             }
         )
         poller = SessionBuddyPoller(config=config)
-        poller._http_client = AsyncMock()
-        poller._http_client.post.return_value = _ok_response(
-            {"result": {"active_sessions": 1, "total_sessions": 1}}
-        )
+        poller._mcp = MagicMock()
+        poller._mcp.call_tool = AsyncMock(return_value={"result": {"active_sessions": 1, "total_sessions": 1}})
 
         result = await poller.poll_once()
 
@@ -323,16 +317,14 @@ class TestPollOnceErrorPaths:
             }
         )
         poller = SessionBuddyPoller(config=config)
-        poller._http_client = AsyncMock()
-        poller._http_client.post.return_value = _ok_response(
-            {
+        poller._mcp = MagicMock()
+        poller._mcp.call_tool = AsyncMock(return_value={
                 "result": {
                     "workflows_completed": 4,
                     "workflows_failed": 1,
                     "avg_duration": 12.5,
                 }
-            }
-        )
+            })
 
         result = await poller.poll_once()
 
@@ -351,16 +343,14 @@ class TestPollOnceErrorPaths:
             }
         )
         poller = SessionBuddyPoller(config=config)
-        poller._http_client = AsyncMock()
-        poller._http_client.post.return_value = _ok_response(
-            {
+        poller._mcp = MagicMock()
+        poller._mcp.call_tool = AsyncMock(return_value={
                 "result": {
                     "total_checkpoints": 9,
                     "avg_checkpoint_size": 64.0,
                     "avg_session_duration": 600.0,
                 }
-            }
-        )
+            })
 
         result = await poller.poll_once()
 
@@ -379,16 +369,14 @@ class TestPollOnceErrorPaths:
             }
         )
         poller = SessionBuddyPoller(config=config)
-        poller._http_client = AsyncMock()
-        poller._http_client.post.return_value = _ok_response(
-            {
+        poller._mcp = MagicMock()
+        poller._mcp.call_tool = AsyncMock(return_value={
                 "result": {
                     "cpu_usage": 23.5,
                     "memory_usage": 1024.0,
                     "response_time": 250.0,
                 }
-            }
-        )
+            })
 
         result = await poller.poll_once()
 
@@ -401,8 +389,8 @@ class TestPollOnceErrorPaths:
     ) -> None:
         """A JSON list payload should not crash — it should be recorded as error."""
         poller = SessionBuddyPoller(config=poller_config)
-        poller._http_client = AsyncMock()
-        poller._http_client.post.return_value = _ok_response([1, 2, 3])
+        poller._mcp = MagicMock()
+        poller._mcp.call_tool = AsyncMock(return_value=[1, 2, 3])
 
         result = await poller.poll_once()
 
@@ -412,14 +400,32 @@ class TestPollOnceErrorPaths:
         assert "Invalid response type" in result["errors"][0]
 
     @pytest.mark.asyncio
-    async def test_call_mcp_tool_without_client_raises(
+    async def test_call_mcp_tool_lazy_initializes_client(
         self, poller_config: MahavishnuSettings
     ) -> None:
-        """_call_mcp_tool before start() should raise a clear RuntimeError."""
-        poller = SessionBuddyPoller(config=poller_config)
+        """_call_mcp_tool lazy-creates a CommonMCPClient when none exists.
 
-        with pytest.raises(RuntimeError, match="HTTP client not initialized"):
+        Phase 3 contract: callers no longer need to ``start()`` before
+        issuing a tool call — the poller instantiates a transport on
+        first use and reuses it for the lifetime of the poller.
+        """
+        poller = SessionBuddyPoller(config=poller_config)
+        assert poller._mcp is None
+
+        with patch(
+            "mahavishnu.integrations.session_buddy_poller.CommonMCPClient"
+        ) as mock_cls:
+            mock_client = MagicMock()
+
+            async def call_tool(name, arguments):
+                return {"result": {"ok": True}}
+
+            mock_client.call_tool = AsyncMock(side_effect=call_tool)
+            mock_cls.return_value = mock_client
             await poller._call_mcp_tool("get_activity_summary")
+
+        assert poller._mcp is mock_client
+        mock_cls.assert_called_once()
 
     @pytest.mark.asyncio
     async def test_call_mcp_tool_invalid_response_raises_value_error(
@@ -427,8 +433,8 @@ class TestPollOnceErrorPaths:
     ) -> None:
         """Non-dict response from server should raise a ValueError via retry_async."""
         poller = SessionBuddyPoller(config=poller_config)
-        poller._http_client = AsyncMock()
-        poller._http_client.post.return_value = _ok_response("not-a-dict")
+        poller._mcp = MagicMock()
+        poller._mcp.call_tool = AsyncMock(return_value="not-a-dict")
 
         with pytest.raises(ValueError, match="Invalid response type"):
             await poller._call_mcp_tool("get_activity_summary")
@@ -439,12 +445,8 @@ class TestPollOnceErrorPaths:
         from mahavishnu.core.resilience import RetryExhaustedError
 
         poller = SessionBuddyPoller(config=poller_config)
-        poller._http_client = AsyncMock()
-        response = MagicMock()
-        response.raise_for_status.side_effect = httpx.HTTPStatusError(
-            "500", request=MagicMock(), response=MagicMock()
-        )
-        poller._http_client.post.return_value = response
+        poller._mcp = MagicMock()
+        poller._mcp.call_tool = AsyncMock(side_effect=MCPServerError("500"))
 
         with pytest.raises(RetryExhaustedError):
             await poller._call_mcp_tool("get_activity_summary")
@@ -455,10 +457,8 @@ class TestPollOnceErrorPaths:
     ) -> None:
         """A successful poll should observe the poll_duration_seconds histogram."""
         poller = SessionBuddyPoller(config=poller_config)
-        poller._http_client = AsyncMock()
-        poller._http_client.post.return_value = _ok_response(
-            {"result": {"active_sessions": 1, "total_sessions": 1}}
-        )
+        poller._mcp = MagicMock()
+        poller._mcp.call_tool = AsyncMock(return_value={"result": {"active_sessions": 1, "total_sessions": 1}})
 
         # The histogram has no _value.get(); it has internal samples. We just
         # verify no error is raised while observing.
@@ -481,8 +481,8 @@ class TestCircuitBreaker:
     ) -> None:
         """Consecutive failures >= threshold should open the circuit breaker."""
         poller = SessionBuddyPoller(config=poller_config)
-        poller._http_client = AsyncMock()
-        poller._http_client.post.side_effect = httpx.ConnectError("down")
+        poller._mcp = MagicMock()
+        poller._mcp.call_tool = AsyncMock(side_effect=MCPServerError("down"))
 
         for _ in range(poller.circuit_breaker_threshold):
             await poller.poll_once()
@@ -787,8 +787,8 @@ class TestStartStopIntegration:
     ) -> None:
         """start() should leave the existing _poll_task alone when already running."""
         poller = SessionBuddyPoller(config=poller_config)
-        poller._http_client = AsyncMock()
-        poller._http_client.aclose = AsyncMock()
+        poller._mcp = MagicMock()
+        poller._mcp.aclose = AsyncMock()
 
         async def _long_sleep() -> None:
             await asyncio.sleep(0.5)

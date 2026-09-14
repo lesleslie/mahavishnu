@@ -1,4 +1,8 @@
-"""Tests for core/dhara_adapter.py — DharaClient and DharaAdapter."""
+"""Tests for core/dhara_adapter.py — DharaClient and DharaAdapter.
+
+Phase 3 (REQ-004): mocked at the CommonMCPClient.call_tool boundary
+instead of httpx2.AsyncClient.post.
+"""
 
 from unittest.mock import AsyncMock, MagicMock
 
@@ -30,90 +34,73 @@ class TestDharaClientInit:
 
 
 class TestDharaClientToolsUrl:
-    def test_tools_url(self):
+    def test_tools_url_matches_base_url(self):
+        """After Phase 3 migration, tools_url is an alias for base_url.
+
+        CommonMCPClient's streamable-HTTP transport serves both
+        ``initialize`` and ``tools/call`` from the same endpoint.
+        """
         client = DharaClient("http://localhost:8683")
-        assert client.tools_url == "http://localhost:8683/tools/call"
+        assert client.tools_url == "http://localhost:8683"
 
 
 @pytest.mark.asyncio
 class TestDharaClientCallTool:
     async def test_call_tool_returns_result(self):
         client = DharaClient("http://localhost")
-        mock_response = MagicMock()
-        mock_response.status_code = 200
-        mock_response.json.return_value = {"result": {"key": "value"}}
-        mock_response.raise_for_status = MagicMock()
-
-        client._client = AsyncMock()
-        client._client.post = AsyncMock(return_value=mock_response)
+        client._mcp = MagicMock()
+        client._mcp.call_tool = AsyncMock(return_value={"key": "value"})
 
         result = await client.call_tool("get", {"key": "test"})
         assert result == {"key": "value"}
-        client._client.post.assert_called_once()
+        client._mcp.call_tool.assert_awaited_once_with("get", {"key": "test"})
 
     async def test_call_tool_returns_raw_payload(self):
-        """When response doesn't have 'result' key, return full payload."""
+        """When transport returns a list, the wrapper passes it through."""
         client = DharaClient("http://localhost")
-        mock_response = MagicMock()
-        mock_response.status_code = 200
-        mock_response.json.return_value = {"data": [1, 2, 3]}
-        mock_response.raise_for_status = MagicMock()
-
-        client._client = AsyncMock()
-        client._client.post = AsyncMock(return_value=mock_response)
+        client._mcp = MagicMock()
+        client._mcp.call_tool = AsyncMock(return_value={"data": [1, 2, 3]})
 
         result = await client.call_tool("list", {})
         assert result == {"data": [1, 2, 3]}
 
-    async def test_call_tool_sends_correct_payload(self):
+    async def test_call_tool_passes_arguments(self):
         client = DharaClient("http://localhost")
-        mock_response = MagicMock()
-        mock_response.json.return_value = {"result": None}
-        mock_response.raise_for_status = MagicMock()
-
-        client._client = AsyncMock()
-        client._client.post = AsyncMock(return_value=mock_response)
+        client._mcp = MagicMock()
+        client._mcp.call_tool = AsyncMock(return_value=None)
 
         await client.call_tool("my_tool", {"arg1": "val1"})
 
-        call_kwargs = client._client.post.call_args
-        assert call_kwargs[1]["json"]["name"] == "my_tool"
-        assert call_kwargs[1]["json"]["arguments"] == {"arg1": "val1"}
+        client._mcp.call_tool.assert_awaited_once_with("my_tool", {"arg1": "val1"})
 
 
 @pytest.mark.asyncio
 class TestDharaClientPut:
     async def test_put_without_ttl(self):
         client = DharaClient("http://localhost")
-        mock_response = MagicMock()
-        mock_response.json.return_value = {"result": "ok"}
-        mock_response.raise_for_status = MagicMock()
-
-        client._client = AsyncMock()
-        client._client.post = AsyncMock(return_value=mock_response)
+        client._mcp = MagicMock()
+        client._mcp.call_tool = AsyncMock(return_value="ok")
 
         result = await client.put("mykey", {"data": 42})
         assert result == "ok"
 
-        call_kwargs = client._client.post.call_args
-        args = call_kwargs[1]["json"]["arguments"]
+        call_kwargs = client._mcp.call_tool.await_args
+        assert call_kwargs.args[0] == "put"
+        args = call_kwargs.args[1]
         assert args["key"] == "mykey"
         assert args["value"] == {"data": 42}
         assert "ttl" not in args
 
     async def test_put_with_ttl(self):
         client = DharaClient("http://localhost")
-        mock_response = MagicMock()
-        mock_response.json.return_value = {"result": "ok"}
-        mock_response.raise_for_status = MagicMock()
-
-        client._client = AsyncMock()
-        client._client.post = AsyncMock(return_value=mock_response)
+        client._mcp = MagicMock()
+        client._mcp.call_tool = AsyncMock(return_value="ok")
 
         await client.put("key", "val", ttl=3600)
 
-        call_kwargs = client._client.post.call_args
-        args = call_kwargs[1]["json"]["arguments"]
+        call_args = client._mcp.call_tool.await_args
+        assert call_args.args[0] == "put"
+        args = call_args.args[1]
         assert args["ttl"] == 3600
 
 
@@ -121,9 +108,10 @@ class TestDharaClientPut:
 class TestDharaClientClose:
     async def test_aclose(self):
         client = DharaClient("http://localhost")
-        client._client = AsyncMock()
+        client._mcp = MagicMock()
+        client._mcp.aclose = AsyncMock()
         await client.aclose()
-        client._client.aclose.assert_called_once()
+        client._mcp.aclose.assert_awaited_once()
 
 
 # ---------------------------------------------------------------------------

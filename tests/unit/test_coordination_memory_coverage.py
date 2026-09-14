@@ -9,7 +9,8 @@ from __future__ import annotations
 from typing import Any
 from unittest.mock import AsyncMock, MagicMock, patch
 
-import httpx2 as httpx
+from mcp_common.clients.common_mcp_client import CommonMCPClient
+from mcp_common.exceptions import MCPServerError
 import pytest
 
 from mahavishnu.core.coordination.manager import CoordinationManager
@@ -120,109 +121,96 @@ class TestSessionBuddyMemoryClient:
     @pytest.mark.asyncio
     async def test_store_memory_returns_result_field(self) -> None:
         client = SessionBuddyMemoryClient(base_url="http://x")
-        mock_response = MagicMock()
-        mock_response.json.return_value = {"result": {"id": "abc"}}
-        mock_response.raise_for_status = MagicMock()
+        mock_response = {"id": "abc"}
 
-        with patch.object(client._client, "post", new=AsyncMock(return_value=mock_response)):
+        with patch.object(client._client, "call_tool", new=AsyncMock(return_value=mock_response)):
             result = await client.store_memory("c1", "hello", {"k": "v"})
         assert result == {"id": "abc"}
 
     @pytest.mark.asyncio
     async def test_store_memory_returns_payload_when_no_result(self) -> None:
         client = SessionBuddyMemoryClient(base_url="http://x")
-        mock_response = MagicMock()
-        mock_response.json.return_value = ["raw", "payload"]
-        mock_response.raise_for_status = MagicMock()
+        mock_response = ["raw", "payload"]
 
-        with patch.object(client._client, "post", new=AsyncMock(return_value=mock_response)):
+        with patch.object(client._client, "call_tool", new=AsyncMock(return_value=mock_response)):
             result = await client.store_memory("c1", "hello", {})
         assert result == ["raw", "payload"]
 
     @pytest.mark.asyncio
     async def test_store_memory_raises_on_http_error(self) -> None:
         client = SessionBuddyMemoryClient(base_url="http://x")
-        mock_response = MagicMock()
-        mock_response.raise_for_status.side_effect = httpx.HTTPError("boom")
 
-        with patch.object(client._client, "post", new=AsyncMock(return_value=mock_response)):
-            with pytest.raises(httpx.HTTPError):
+        with patch.object(
+            client._client,
+            "call_tool",
+            new=AsyncMock(side_effect=MCPServerError("boom")),
+        ):
+            with pytest.raises(MCPServerError):
                 await client.store_memory("c1", "hello", {})
 
     @pytest.mark.asyncio
     async def test_search_returns_list_result(self) -> None:
         client = SessionBuddyMemoryClient(base_url="http://x")
-        mock_response = MagicMock()
-        mock_response.json.return_value = {"result": [{"id": "x"}, {"id": "y"}]}
-        mock_response.raise_for_status = MagicMock()
+        mock_response = [{"id": "x"}, {"id": "y"}]
 
-        with patch.object(client._client, "post", new=AsyncMock(return_value=mock_response)):
+        with patch.object(client._client, "call_tool", new=AsyncMock(return_value=mock_response)):
             results = await client.search("query", filters={"a": 1}, limit=5)
         assert results == [{"id": "x"}, {"id": "y"}]
 
     @pytest.mark.asyncio
     async def test_search_returns_results_key_in_dict(self) -> None:
         client = SessionBuddyMemoryClient(base_url="http://x")
-        mock_response = MagicMock()
-        mock_response.json.return_value = {"result": {"results": [{"id": "a"}]}}
-        mock_response.raise_for_status = MagicMock()
+        mock_response = {"results": [{"id": "a"}]}
 
-        with patch.object(client._client, "post", new=AsyncMock(return_value=mock_response)):
+        with patch.object(client._client, "call_tool", new=AsyncMock(return_value=mock_response)):
             results = await client.search("q", filters={}, limit=10)
         assert results == [{"id": "a"}]
 
     @pytest.mark.asyncio
     async def test_search_returns_items_key_in_dict(self) -> None:
         client = SessionBuddyMemoryClient(base_url="http://x")
-        mock_response = MagicMock()
-        mock_response.json.return_value = {"result": {"items": [{"id": "a"}]}}
-        mock_response.raise_for_status = MagicMock()
+        mock_response = {"items": [{"id": "a"}]}
 
-        with patch.object(client._client, "post", new=AsyncMock(return_value=mock_response)):
+        with patch.object(client._client, "call_tool", new=AsyncMock(return_value=mock_response)):
             results = await client.search("q", filters={}, limit=10)
         assert results == [{"id": "a"}]
 
     @pytest.mark.asyncio
     async def test_search_returns_conversations_key_in_dict(self) -> None:
         client = SessionBuddyMemoryClient(base_url="http://x")
-        mock_response = MagicMock()
-        mock_response.json.return_value = {"result": {"conversations": [{"id": "c"}]}}
-        mock_response.raise_for_status = MagicMock()
+        mock_response = {"conversations": [{"id": "c"}]}
 
-        with patch.object(client._client, "post", new=AsyncMock(return_value=mock_response)):
+        with patch.object(client._client, "call_tool", new=AsyncMock(return_value=mock_response)):
             results = await client.search("q", filters={}, limit=10)
         assert results == [{"id": "c"}]
 
     @pytest.mark.asyncio
     async def test_search_returns_empty_on_unrecognised_payload(self) -> None:
         client = SessionBuddyMemoryClient(base_url="http://x")
-        mock_response = MagicMock()
-        mock_response.json.return_value = {"result": {"unknown_key": "stuff"}}
-        mock_response.raise_for_status = MagicMock()
+        mock_response = {"unknown_key": "stuff"}
 
-        with patch.object(client._client, "post", new=AsyncMock(return_value=mock_response)):
+        with patch.object(client._client, "call_tool", new=AsyncMock(return_value=mock_response)):
             results = await client.search("q", filters={}, limit=10)
         assert results == []
 
     @pytest.mark.asyncio
     async def test_search_returns_empty_on_top_level_non_dict(self) -> None:
         client = SessionBuddyMemoryClient(base_url="http://x")
-        mock_response = MagicMock()
-        mock_response.json.return_value = "string payload"
-        mock_response.raise_for_status = MagicMock()
+        mock_response = "string payload"
 
-        with patch.object(client._client, "post", new=AsyncMock(return_value=mock_response)):
+        with patch.object(client._client, "call_tool", new=AsyncMock(return_value=mock_response)):
             results = await client.search("q", filters={}, limit=10)
         assert results == []
 
     @pytest.mark.asyncio
     async def test_search_raises_on_http_error(self) -> None:
         client = SessionBuddyMemoryClient(base_url="http://x")
-        mock_response = MagicMock()
-        mock_response.raise_for_status.side_effect = httpx.HTTPError("bad")
-
-        with patch.object(client._client, "post", new=AsyncMock(return_value=mock_response)):
-            with pytest.raises(httpx.HTTPError):
+        with patch.object(
+            client._client,
+            "call_tool",
+            new=AsyncMock(side_effect=MCPServerError("bad")),
+        ):
+            with pytest.raises(MCPServerError):
                 await client.search("q", filters={}, limit=10)
 
     @pytest.mark.asyncio
@@ -245,13 +233,13 @@ class TestCoordinationMemoryInit:
         assert mem.session_buddy is None
         assert mem.collection == "mahavishnu_coordination"
         assert mem._akosha_url is None
-        assert mem._http is None
+        assert mem._mcp is None
 
     def test_init_with_akosha_url_creates_http(self) -> None:
         mem = CoordinationMemory(akosha_url="http://akosha:8682/mcp")
         assert mem._akosha_url == "http://akosha:8682/mcp"
-        assert mem._http is not None
-        assert isinstance(mem._http, httpx.AsyncClient)
+        assert mem._mcp is not None
+        assert isinstance(mem._mcp, CommonMCPClient)
 
 
 @pytest.mark.unit
@@ -594,40 +582,36 @@ class TestCoordinationMemoryAkoshaPush:
     @pytest.mark.asyncio
     async def test_push_to_akosha_with_http(self) -> None:
         mem = CoordinationMemory(akosha_url="http://akosha:8682/mcp")
-        mock_response = MagicMock()
-        mock_response.raise_for_status = MagicMock()
 
         with patch.object(
-            mem._http, "post", new=AsyncMock(return_value=mock_response)
-        ) as mock_post:
+            mem._mcp, "call_tool", new=AsyncMock(return_value=None)
+        ) as mock_call_tool:
             await mem._push_to_akosha("c", {"m": 1})
 
-        mock_post.assert_awaited_once()
-        url = mock_post.await_args.args[0]
-        assert url == "http://akosha:8682/mcp/tools/call"
-        body = mock_post.await_args.kwargs["json"]
-        assert body["name"] == "store_memory"
-        assert body["arguments"]["content"] == "c"
-        assert body["arguments"]["metadata"] == {"m": 1}
-        assert body["arguments"]["collection"] == "mahavishnu_coordination"
+        mock_call_tool.assert_awaited_once()
+        assert mock_call_tool.await_args.args[0] == "store_memory"
+        arguments = mock_call_tool.await_args.args[1]
+        assert arguments["content"] == "c"
+        assert arguments["metadata"] == {"m": 1}
+        assert arguments["collection"] == "mahavishnu_coordination"
 
     @pytest.mark.asyncio
     async def test_push_to_akosha_http_error_logged(self) -> None:
         mem = CoordinationMemory(akosha_url="http://akosha:8682/mcp")
-        with patch.object(mem._http, "post", new=AsyncMock(side_effect=httpx.TransportError("x"))):
+        with patch.object(mem._mcp, "call_tool", new=AsyncMock(side_effect=MCPServerError("x"))):
             # Should not raise
             await mem._push_to_akosha("c", {})
 
     @pytest.mark.asyncio
     async def test_push_to_akosha_httperror_logged(self) -> None:
         mem = CoordinationMemory(akosha_url="http://akosha:8682/mcp")
-        with patch.object(mem._http, "post", new=AsyncMock(side_effect=httpx.HTTPError("bad"))):
+        with patch.object(mem._mcp, "call_tool", new=AsyncMock(side_effect=MCPServerError("bad"))):
             await mem._push_to_akosha("c", {})
 
     @pytest.mark.asyncio
     async def test_close_closes_http(self) -> None:
         mem = CoordinationMemory(akosha_url="http://akosha:8682/mcp")
-        with patch.object(mem._http, "aclose", new=AsyncMock()) as mock_aclose:
+        with patch.object(mem._mcp, "aclose", new=AsyncMock()) as mock_aclose:
             await mem.close()
         mock_aclose.assert_awaited_once()
 
@@ -653,11 +637,9 @@ class TestCoordinationMemorySearchSemantic:
     @pytest.mark.asyncio
     async def test_search_semantic_returns_results_key(self) -> None:
         mem = CoordinationMemory(akosha_url="http://akosha:8682/mcp")
-        mock_response = MagicMock()
-        mock_response.json.return_value = {"results": [{"id": "a"}]}
-        mock_response.raise_for_status = MagicMock()
+        mock_response = {"results": [{"id": "a"}]}
 
-        with patch.object(mem._http, "post", new=AsyncMock(return_value=mock_response)):
+        with patch.object(mem._mcp, "call_tool", new=AsyncMock(return_value=mock_response)):
             results = await mem.search_semantic("q", limit=3)
 
         assert results == [{"id": "a"}]
@@ -665,11 +647,9 @@ class TestCoordinationMemorySearchSemantic:
     @pytest.mark.asyncio
     async def test_search_semantic_returns_result_key(self) -> None:
         mem = CoordinationMemory(akosha_url="http://akosha:8682/mcp")
-        mock_response = MagicMock()
-        mock_response.json.return_value = {"result": [{"id": "b"}]}
-        mock_response.raise_for_status = MagicMock()
+        mock_response = [{"id": "b"}]
 
-        with patch.object(mem._http, "post", new=AsyncMock(return_value=mock_response)):
+        with patch.object(mem._mcp, "call_tool", new=AsyncMock(return_value=mock_response)):
             results = await mem.search_semantic("q", limit=3)
 
         assert results == [{"id": "b"}]
@@ -677,34 +657,30 @@ class TestCoordinationMemorySearchSemantic:
     @pytest.mark.asyncio
     async def test_search_semantic_empty_results(self) -> None:
         mem = CoordinationMemory(akosha_url="http://akosha:8682/mcp")
-        mock_response = MagicMock()
-        mock_response.json.return_value = {"results": []}
-        mock_response.raise_for_status = MagicMock()
+        mock_response = {"results": []}
 
-        with patch.object(mem._http, "post", new=AsyncMock(return_value=mock_response)):
+        with patch.object(mem._mcp, "call_tool", new=AsyncMock(return_value=mock_response)):
             assert await mem.search_semantic("q") == []
 
     @pytest.mark.asyncio
     async def test_search_semantic_non_list_results(self) -> None:
         mem = CoordinationMemory(akosha_url="http://akosha:8682/mcp")
-        mock_response = MagicMock()
-        mock_response.json.return_value = {"results": "not a list"}
-        mock_response.raise_for_status = MagicMock()
+        mock_response = {"results": "not a list"}
 
-        with patch.object(mem._http, "post", new=AsyncMock(return_value=mock_response)):
+        with patch.object(mem._mcp, "call_tool", new=AsyncMock(return_value=mock_response)):
             assert await mem.search_semantic("q") == []
 
     @pytest.mark.asyncio
     async def test_search_semantic_http_error_returns_empty(self) -> None:
         mem = CoordinationMemory(akosha_url="http://akosha:8682/mcp")
-        with patch.object(mem._http, "post", new=AsyncMock(side_effect=httpx.HTTPError("bad"))):
+        with patch.object(mem._mcp, "call_tool", new=AsyncMock(side_effect=MCPServerError("bad"))):
             assert await mem.search_semantic("q") == []
 
     @pytest.mark.asyncio
     async def test_search_semantic_transport_error_returns_empty(self) -> None:
         mem = CoordinationMemory(akosha_url="http://akosha:8682/mcp")
         with patch.object(
-            mem._http, "post", new=AsyncMock(side_effect=httpx.TransportError("net"))
+            mem._mcp, "call_tool", new=AsyncMock(side_effect=MCPServerError("net"))
         ):
             assert await mem.search_semantic("q") == []
 

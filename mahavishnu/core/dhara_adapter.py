@@ -1,8 +1,14 @@
 """Minimal Dhara MCP client and analytics adapter.
 
-This module provides a small async HTTP client for Dhara's MCP HTTP transport.
+This module provides a small async MCP client for Dhara's HTTP transport.
 Mahavishnu uses it for health persistence and git analytics until a richer
 service-specific SDK exists.
+
+Phase 3 (REQ-004) of the common-mcp-client transport unification plan:
+rewired to :class:`mcp_common.clients.common_mcp_client.CommonMCPClient`,
+which manages its own session lifecycle over streamable-HTTP. The thin
+wrapper preserves the prior public surface (``base_url``, ``timeout``,
+``tools_url``, ``call_tool``, ``put``, ``aclose``) so callers don't change.
 """
 
 from __future__ import annotations
@@ -10,39 +16,36 @@ from __future__ import annotations
 import logging
 from typing import Any
 
-import httpx2 as httpx
+from mcp_common.clients.common_mcp_client import CommonMCPClient
 
 logger = logging.getLogger(__name__)
 
 
 class DharaClient:
-    """Async client for Dhara's MCP HTTP tool endpoint."""
+    """Async MCP client for Dhara's tool endpoint via CommonMCPClient."""
 
     def __init__(self, base_url: str, timeout: float = 30.0, token: str | None = None) -> None:
         self.base_url = base_url.rstrip("/")
         self.timeout = timeout
-        headers = {"Authorization": f"Bearer {token}"} if token else None
-        self._client = httpx.AsyncClient(timeout=timeout, headers=headers)
+        self._mcp = CommonMCPClient(
+            base_url=self.base_url, timeout=timeout, token=token
+        )
 
     @property
     def tools_url(self) -> str:
-        """Return the tool invocation endpoint."""
-        return f"{self.base_url}/tools/call"
+        """Return the tool invocation endpoint (alias for ``base_url``).
+
+        CommonMCPClient's streamable-HTTP transport serves both
+        ``initialize`` and ``tools/call`` from the same URL, so this
+        property now mirrors :attr:`base_url` (matches
+        ``CommonMCPClient.tools_url``). Kept for API compatibility with
+        callers that still read the property.
+        """
+        return self.base_url
 
     async def call_tool(self, name: str, arguments: dict[str, Any]) -> Any:
-        """Call a Dhara MCP tool over HTTP."""
-        response = await self._client.post(
-            self.tools_url,
-            json={
-                "name": name,
-                "arguments": arguments,
-            },
-        )
-        response.raise_for_status()
-        payload = response.json()
-        if isinstance(payload, dict) and "result" in payload:
-            return payload["result"]
-        return payload
+        """Call a Dhara MCP tool over streamable-HTTP."""
+        return await self._mcp.call_tool(name, arguments)
 
     async def put(self, key: str, value: Any, ttl: int | None = None) -> Any:
         """Persist a key/value record if the server exposes a storage tool."""
@@ -55,8 +58,8 @@ class DharaClient:
         return await self.call_tool("put", arguments)
 
     async def aclose(self) -> None:
-        """Close the underlying HTTP client."""
-        await self._client.aclose()
+        """Close the underlying MCP session."""
+        await self._mcp.aclose()
 
 
 class DharaAdapter:
@@ -112,3 +115,6 @@ class DharaAdapter:
                 return patterns
         logger.debug("Unexpected Dhara pattern response shape: %r", result)
         return []
+
+
+__all__ = ["DharaAdapter", "DharaClient"]

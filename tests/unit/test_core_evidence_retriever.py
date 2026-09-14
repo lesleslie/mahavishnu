@@ -1,12 +1,13 @@
 """Unit tests for mahavishnu/core/evidence_retriever.py.
 
-The EvidenceRetriever uses httpx.AsyncClient for HTTP calls to Akosha
-and Session-Buddy; these are mocked so no network calls happen.
+Phase 3 (REQ-004): mocked at the CommonMCPClient.call_tool boundary
+instead of httpx2.AsyncClient.post.
 """
 
 from __future__ import annotations
 
 from datetime import datetime
+from typing import Any
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -50,33 +51,53 @@ def sample_evidence() -> LearningEvidence:
 
 
 @pytest.fixture
-def akosha_success_response() -> MagicMock:
-    """A 200 OK Akosha response with two items."""
-    resp = MagicMock()
-    resp.status_code = 200
-    resp.json = MagicMock(
-        return_value={
-            "result": {
-                "results": [
-                    {
-                        "id": "ev-1",
-                        "score": 0.91,
-                        "text": "Add HNSW index",
-                        "outcome": "success",
-                        "observations": ["x", "y"],
-                    },
-                    {
-                        "id": "ev-2",
-                        "score": 0.55,
-                        "text": "Tune ef_search",
-                        "outcome": "partial_success",
-                        "observations": [],
-                    },
-                ]
-            }
-        }
-    )
-    return resp
+def akosha_success_payload() -> dict:
+    """The unwrapped Akosha payload returned by ``CommonMCPClient.call_tool``.
+
+    CommonMCPClient strips the JSON-RPC envelope, so the production code
+    reads the bare ``results`` list directly.
+    """
+    return {
+        "results": [
+            {
+                "id": "ev-1",
+                "score": 0.91,
+                "text": "Add HNSW index",
+                "outcome": "success",
+                "observations": ["x", "y"],
+            },
+            {
+                "id": "ev-2",
+                "score": 0.55,
+                "text": "Tune ef_search",
+                "outcome": "partial_success",
+                "observations": [],
+            },
+        ]
+    }
+
+
+def _patch_common_mcp_client(
+    payload: Any, *, fail: bool = False, fail_calls: int | None = None
+) -> MagicMock:
+    """Patch ``CommonMCPClient`` to return a stub instance with a canned
+    payload (or raise ``MCPServerError``).
+    """
+    call_count = 0
+
+    async def call_tool(name: str, arguments: dict[str, Any]) -> Any:
+        nonlocal call_count
+        call_count += 1
+        if fail or (fail_calls is not None and call_count <= fail_calls):
+            from mcp_common.exceptions import MCPServerError
+
+            raise MCPServerError("upstream down")
+        return payload
+
+    instance = MagicMock()
+    instance.call_tool = AsyncMock(side_effect=call_tool)
+    instance.aclose = AsyncMock()
+    return MagicMock(return_value=instance)
 
 
 # ============================== Pydantic models ==============================
@@ -192,14 +213,12 @@ class TestFindSimilar:
         self,
         retriever: EvidenceRetriever,
         sample_evidence: LearningEvidence,
-        akosha_success_response: MagicMock,
+        akosha_success_payload: dict,
     ):
-        mock_client = AsyncMock()
-        mock_client.post = AsyncMock(return_value=akosha_success_response)
-        mock_client.__aenter__ = AsyncMock(return_value=mock_client)
-        mock_client.__aexit__ = AsyncMock(return_value=None)
-
-        with patch("httpx2.AsyncClient", return_value=mock_client):
+        with patch(
+            "mahavishnu.core.evidence_retriever.CommonMCPClient",
+            _patch_common_mcp_client(akosha_success_payload),
+        ):
             results = await retriever.find_similar(sample_evidence, limit=10)
 
         assert len(results) == 2
@@ -238,14 +257,12 @@ class TestFindSimilar:
         self,
         retriever: EvidenceRetriever,
         sample_evidence: LearningEvidence,
-        akosha_success_response: MagicMock,
+        akosha_success_payload: dict,
     ):
-        mock_client = AsyncMock()
-        mock_client.post = AsyncMock(return_value=akosha_success_response)
-        mock_client.__aenter__ = AsyncMock(return_value=mock_client)
-        mock_client.__aexit__ = AsyncMock(return_value=None)
-
-        with patch("httpx2.AsyncClient", return_value=mock_client):
+        with patch(
+            "mahavishnu.core.evidence_retriever.CommonMCPClient",
+            _patch_common_mcp_client(akosha_success_payload),
+        ):
             results = await retriever.find_similar(sample_evidence, limit=1)
 
         assert len(results) == 1
@@ -258,64 +275,46 @@ class TestSearchAkosha:
     """Direct unit tests for the private _search_akosha helper."""
 
     async def test_http_error_returns_empty(self, retriever: EvidenceRetriever):
-        resp = MagicMock()
-        resp.status_code = 500
-        resp.json = MagicMock(return_value={})
-        mock_client = AsyncMock()
-        mock_client.post = AsyncMock(return_value=resp)
-        mock_client.__aenter__ = AsyncMock(return_value=mock_client)
-        mock_client.__aexit__ = AsyncMock(return_value=None)
-
-        with patch("httpx2.AsyncClient", return_value=mock_client):
+        with patch(
+            "mahavishnu.core.evidence_retriever.CommonMCPClient",
+            _patch_common_mcp_client(payload=None, fail=True),
+        ):
             results = await retriever._search_akosha("query", 5)
         assert results == []
 
     async def test_handles_content_key_fallback(self, retriever: EvidenceRetriever):
-        resp = MagicMock()
-        resp.status_code = 200
-        resp.json = MagicMock(
-            return_value={
-                "result": {
-                    "content": [{"id": "c1", "score": 0.3, "text": "foo", "outcome": "success"}]
-                }
-            }
-        )
-        mock_client = AsyncMock()
-        mock_client.post = AsyncMock(return_value=resp)
-        mock_client.__aenter__ = AsyncMock(return_value=mock_client)
-        mock_client.__aexit__ = AsyncMock(return_value=None)
-
-        with patch("httpx2.AsyncClient", return_value=mock_client):
+        # Production code falls back to ``content`` when ``results`` is missing.
+        payload = {
+            "content": [
+                {"id": "c1", "score": 0.3, "text": "foo", "outcome": "success"}
+            ]
+        }
+        with patch(
+            "mahavishnu.core.evidence_retriever.CommonMCPClient",
+            _patch_common_mcp_client(payload),
+        ):
             results = await retriever._search_akosha("q", 5)
         assert len(results) == 1
         assert results[0].evidence_id == "c1"
 
     async def test_handles_metadata_observations(self, retriever: EvidenceRetriever):
-        resp = MagicMock()
-        resp.status_code = 200
-        resp.json = MagicMock(
-            return_value={
-                "result": {
-                    "results": [
-                        {
-                            "id": "x",
-                            "score": 0.5,
-                            "goal": "g",
-                            "metadata": {
-                                "outcome": "failure",
-                                "observations": ["a", "b"],
-                            },
-                        }
-                    ]
+        payload = {
+            "results": [
+                {
+                    "id": "x",
+                    "score": 0.5,
+                    "goal": "g",
+                    "metadata": {
+                        "outcome": "failure",
+                        "observations": ["a", "b"],
+                    },
                 }
-            }
-        )
-        mock_client = AsyncMock()
-        mock_client.post = AsyncMock(return_value=resp)
-        mock_client.__aenter__ = AsyncMock(return_value=mock_client)
-        mock_client.__aexit__ = AsyncMock(return_value=None)
-
-        with patch("httpx2.AsyncClient", return_value=mock_client):
+            ]
+        }
+        with patch(
+            "mahavishnu.core.evidence_retriever.CommonMCPClient",
+            _patch_common_mcp_client(payload),
+        ):
             results = await retriever._search_akosha("q", 5)
         assert results[0].outcome == "failure"
         assert results[0].observations == ["a", "b"]
@@ -328,37 +327,29 @@ class TestSearchSessionBuddy:
     """Direct unit tests for _search_session_buddy."""
 
     async def test_returns_only_learning_evidence(self, retriever: EvidenceRetriever):
-        resp = MagicMock()
-        resp.status_code = 200
-        resp.json = MagicMock(
-            return_value={
-                "result": {
-                    "conversations": [
-                        {
-                            "id": "sb1",
-                            "summary": "real evidence",
-                            "score": 0.8,
-                            "metadata": {
-                                "artifact_type": "learning_evidence",
-                                "outcome": "success",
-                                "observations": ["o1"],
-                            },
-                        },
-                        {
-                            "id": "sb2",
-                            "summary": "not evidence",
-                            "metadata": {"artifact_type": "chat"},
-                        },
-                    ]
-                }
-            }
-        )
-        mock_client = AsyncMock()
-        mock_client.post = AsyncMock(return_value=resp)
-        mock_client.__aenter__ = AsyncMock(return_value=mock_client)
-        mock_client.__aexit__ = AsyncMock(return_value=None)
-
-        with patch("httpx2.AsyncClient", return_value=mock_client):
+        payload = {
+            "conversations": [
+                {
+                    "id": "sb1",
+                    "summary": "real evidence",
+                    "score": 0.8,
+                    "metadata": {
+                        "artifact_type": "learning_evidence",
+                        "outcome": "success",
+                        "observations": ["o1"],
+                    },
+                },
+                {
+                    "id": "sb2",
+                    "summary": "not evidence",
+                    "metadata": {"artifact_type": "chat"},
+                },
+            ]
+        }
+        with patch(
+            "mahavishnu.core.evidence_retriever.CommonMCPClient",
+            _patch_common_mcp_client(payload),
+        ):
             results = await retriever._search_session_buddy("q", 10)
 
         assert len(results) == 1
@@ -366,19 +357,18 @@ class TestSearchSessionBuddy:
         assert results[0].source == "session_buddy"
 
     async def test_http_error_returns_empty(self, retriever: EvidenceRetriever):
-        resp = MagicMock()
-        resp.status_code = 500
-        mock_client = AsyncMock()
-        mock_client.post = AsyncMock(return_value=resp)
-        mock_client.__aenter__ = AsyncMock(return_value=mock_client)
-        mock_client.__aexit__ = AsyncMock(return_value=None)
-
-        with patch("httpx2.AsyncClient", return_value=mock_client):
+        with patch(
+            "mahavishnu.core.evidence_retriever.CommonMCPClient",
+            _patch_common_mcp_client(payload=None, fail=True),
+        ):
             results = await retriever._search_session_buddy("q", 10)
         assert results == []
 
     async def test_exception_returns_empty(self, retriever: EvidenceRetriever):
-        with patch("httpx2.AsyncClient", side_effect=RuntimeError("boom")):
+        with patch(
+            "mahavishnu.core.evidence_retriever.CommonMCPClient",
+            side_effect=RuntimeError("boom"),
+        ):
             results = await retriever._search_session_buddy("q", 10)
         assert results == []
 

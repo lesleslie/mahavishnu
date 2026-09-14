@@ -22,7 +22,8 @@ import pathlib
 import time
 from typing import TYPE_CHECKING, Any
 
-import httpx2 as httpx
+from mcp_common.clients.common_mcp_client import CommonMCPClient
+from mcp_common.exceptions import MCPServerError
 
 # Outbox (Q2 data-plane durability) is opt-in. Operators set the env vars
 # explicitly; the default behavior matches pre-Task-2 exactly.
@@ -158,7 +159,8 @@ class MemoryAggregator:
         self.akosha_url = akosha_url
         self.sync_interval = sync_interval
 
-        self._mcp_client = httpx.AsyncClient(timeout=300.0)
+        self._mcp_client = CommonMCPClient(base_url=self.session_buddy_url, timeout=300.0)
+        self._akosha_mcp = CommonMCPClient(base_url=self.akosha_url, timeout=300.0)
         self._sync_task: asyncio.Task | None = None
         self._shutdown_event = asyncio.Event()
 
@@ -362,21 +364,12 @@ class MemoryAggregator:
         async def store_single_item(memory_item: dict[str, Any]) -> bool:
             """Store a single memory item, returning success status."""
             try:
-                response = await self._mcp_client.post(
-                    f"{self.session_buddy_url}/tools/call",
-                    json={
-                        "name": "store_memory",
-                        "arguments": memory_item,
-                    },
+                await self._mcp_client.call_tool(
+                    "store_memory",
+                    memory_item,
                 )
-
-                if response.status_code == 200:
-                    return True
-                else:
-                    logger.warning(f"Failed to store memory: {response.text[:200]}")
-                    return False
-
-            except httpx.HTTPError as e:
+                return True
+            except MCPServerError as e:
                 logger.error(f"Error storing memory: {e}")
                 return False
 
@@ -459,6 +452,7 @@ class MemoryAggregator:
                     await self._sync_task
 
         await self._mcp_client.aclose()
+        await self._akosha_mcp.aclose()
         logger.info("MemoryAggregator stopped")
 
     async def collect_and_sync(
@@ -564,22 +558,13 @@ class MemoryAggregator:
             return
 
         try:
-            response = await self._mcp_client.post(
-                f"{self.akosha_url}/tools/call",
-                json={
-                    "name": "aggregate_metrics",
-                    "arguments": summary,
-                },
+            await self._akosha_mcp.call_tool(
+                "aggregate_metrics",
+                summary,
             )
-
-            if response.status_code == 200:
-                self._akosha_breaker.record_success()
-                logger.info("Synced summary to Akosha")
-            else:
-                self._akosha_breaker.record_failure()
-                logger.warning(f"Failed to sync to Akosha: {response.text[:200]}")
-
-        except httpx.HTTPError as e:
+            self._akosha_breaker.record_success()
+            logger.info("Synced summary to Akosha")
+        except MCPServerError as e:
             self._akosha_breaker.record_failure()
             logger.warning(f"Failed to sync to Akosha: {e}")
 
@@ -636,36 +621,32 @@ class MemoryAggregator:
 
         try:
             # Use Session-Buddy search
-            response = await self._mcp_client.post(
-                f"{self.session_buddy_url}/tools/call",
-                json={
-                    "name": "search_conversations",
-                    "arguments": {
-                        "query": query,
-                        "limit": limit,
-                    },
+            result = await self._mcp_client.call_tool(
+                "search_conversations",
+                {
+                    "query": query,
+                    "limit": limit,
                 },
             )
 
-            if response.status_code == 200:
-                self._sb_breaker.record_success()
-                result = response.json()
-                conversations = result.get("result", {}).get("conversations", [])
-                logger.info(f"Found {len(conversations)} results for query: {query}")
-
-                # Store in cache
-                self._search_cache[cache_key] = {
-                    "results": conversations,
-                    "cached_at": datetime.now(UTC),
-                }
-
-                return conversations  # type: ignore[no-any-return]
+            self._sb_breaker.record_success()
+            if isinstance(result, dict):
+                conversations = result.get("conversations", [])
+            elif isinstance(result, list):
+                conversations = result
             else:
-                self._sb_breaker.record_failure()
-                logger.warning(f"Search failed: {response.text[:200]}")
-                return []
+                conversations = []
+            logger.info(f"Found {len(conversations)} results for query: {query}")
 
-        except httpx.HTTPError as e:
+            # Store in cache
+            self._search_cache[cache_key] = {
+                "results": conversations,
+                "cached_at": datetime.now(UTC),
+            }
+
+            return conversations  # type: ignore[no-any-return]
+
+        except MCPServerError as e:
             self._sb_breaker.record_failure()
             logger.error(f"Search error: {e}")
             return []

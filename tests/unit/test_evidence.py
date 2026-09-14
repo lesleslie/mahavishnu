@@ -9,6 +9,8 @@ Tests cover:
 
 from __future__ import annotations
 
+from mcp_common.exceptions import MCPServerError
+
 from datetime import UTC, datetime
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -85,12 +87,13 @@ class TestEvidenceStoreStore:
         async def mock_post(*args, **kwargs):
             return mock_response
 
-        with patch("mahavishnu.core.evidence_store.httpx.AsyncClient") as mock_client:
+        with patch("mahavishnu.core.evidence_store.CommonMCPClient") as mock_client:
             instance = MagicMock()
-            instance.post = mock_post
-            instance.__aenter__ = AsyncMock(return_value=instance)
-            instance.__aexit__ = AsyncMock()
+            instance.call_tool = mock_post
+            # was instance.__aenter__ = AsyncMock(return_value=instance)
+            # was instance.__aexit__ = AsyncMock()
             mock_client.return_value = instance
+            instance.aclose = AsyncMock()
 
             result = await store.store(evidence)
 
@@ -110,12 +113,13 @@ class TestEvidenceStoreStoreBatch:
         async def mock_post(*args, **kwargs):
             return mock_response
 
-        with patch("mahavishnu.core.evidence_store.httpx.AsyncClient") as mock_client:
+        with patch("mahavishnu.core.evidence_store.CommonMCPClient") as mock_client:
             instance = MagicMock()
-            instance.post = mock_post
-            instance.__aenter__ = AsyncMock(return_value=instance)
-            instance.__aexit__ = AsyncMock()
+            instance.call_tool = mock_post
+            # was instance.__aenter__ = AsyncMock(return_value=instance)
+            # was instance.__aexit__ = AsyncMock()
             mock_client.return_value = instance
+            instance.aclose = AsyncMock()
 
             result = await store.store_batch(evidences)
 
@@ -128,21 +132,23 @@ class TestEvidenceStoreStoreBatch:
         store = EvidenceStore("http://localhost:8678/mcp")
         evidences = [make_evidence(f"le_{i}") for i in range(3)]
 
-        # First call succeeds, second fails
-        success_response = MagicMock(status_code=200)
-        fail_response = MagicMock(status_code=500)
+        # First call succeeds, second fails, third succeeds. The MCP
+        # transport surfaces failures as raised MCPServerError rather
+        # than a non-2xx response payload.
+        call_count = 0
 
-        responses = [success_response, fail_response, success_response]
+        async def mock_call_tool(name, arguments):
+            nonlocal call_count
+            call_count += 1
+            if call_count == 2:
+                raise MCPServerError("upstream 500")
+            return None
 
-        async def mock_post(*args, **kwargs):
-            return responses.pop(0)
-
-        with patch("mahavishnu.core.evidence_store.httpx.AsyncClient") as mock_client:
+        with patch("mahavishnu.core.evidence_store.CommonMCPClient") as mock_client:
             instance = MagicMock()
-            instance.post = mock_post
-            instance.__aenter__ = AsyncMock(return_value=instance)
-            instance.__aexit__ = AsyncMock()
+            instance.call_tool = mock_call_tool
             mock_client.return_value = instance
+            instance.aclose = AsyncMock()
 
             result = await store.store_batch(evidences)
 
@@ -161,12 +167,13 @@ class TestEvidenceStoreQuery:
             resp.status_code = 500
             return resp
 
-        with patch("mahavishnu.core.evidence_store.httpx.AsyncClient") as mock_client:
+        with patch("mahavishnu.core.evidence_store.CommonMCPClient") as mock_client:
             instance = MagicMock()
-            instance.post = mock_post
-            instance.__aenter__ = AsyncMock(return_value=instance)
-            instance.__aexit__ = AsyncMock()
+            instance.call_tool = mock_post
+            # was instance.__aenter__ = AsyncMock(return_value=instance)
+            # was instance.__aexit__ = AsyncMock()
             mock_client.return_value = instance
+            instance.aclose = AsyncMock()
 
             result = await store.query_evidence("test query")
             assert result == []
@@ -175,46 +182,42 @@ class TestEvidenceStoreQuery:
     async def test_query_evidence_filters_non_evidence_artifacts(self):
         store = EvidenceStore("http://localhost:8678/mcp")
 
-        async def mock_post(*args, **kwargs):
-            resp = MagicMock()
-            resp.status_code = 200
-            resp.json = MagicMock(
-                return_value={
-                    "result": {
-                        "conversations": [
-                            {
-                                "evidence_id": "le_1",
-                                "session_id": "sess-1",
-                                "goal": "test goal",
-                                "outcome": "success",
-                                "metadata": {"artifact_type": "learning_evidence"},
-                            },
-                            {
-                                "evidence_id": "le_2",
-                                "session_id": "sess-2",
-                                "goal": "test goal 2",
-                                "outcome": "success",
-                                "metadata": {"artifact_type": "other_type"},
-                            },
-                            {
-                                "evidence_id": "le_3",
-                                "session_id": "sess-3",
-                                "goal": "test goal 3",
-                                "outcome": "success",
-                                "metadata": {},
-                            },
-                        ]
-                    }
-                }
-            )
-            return resp
+        sb_payload = {
+            "conversations": [
+                {
+                    "evidence_id": "le_1",
+                    "session_id": "sess-1",
+                    "goal": "test goal",
+                    "outcome": "success",
+                    "metadata": {"artifact_type": "learning_evidence"},
+                },
+                {
+                    "evidence_id": "le_2",
+                    "session_id": "sess-2",
+                    "goal": "test goal 2",
+                    "outcome": "success",
+                    "metadata": {"artifact_type": "other_type"},
+                },
+                {
+                    "evidence_id": "le_3",
+                    "session_id": "sess-3",
+                    "goal": "test goal 3",
+                    "outcome": "success",
+                    "metadata": {},
+                },
+            ]
+        }
 
-        with patch("mahavishnu.core.evidence_store.httpx.AsyncClient") as mock_client:
+        async def mock_call_tool(*args, **kwargs):
+            return sb_payload
+
+        with patch("mahavishnu.core.evidence_store.CommonMCPClient") as mock_client:
             instance = MagicMock()
-            instance.post = mock_post
-            instance.__aenter__ = AsyncMock(return_value=instance)
-            instance.__aexit__ = AsyncMock()
+            instance.call_tool = mock_call_tool
+            # was instance.__aenter__ = AsyncMock(return_value=instance)
+            # was instance.__aexit__ = AsyncMock()
             mock_client.return_value = instance
+            instance.aclose = AsyncMock()
 
             result = await store.query_evidence("test query", limit=10)
 
@@ -291,7 +294,7 @@ class TestEvidenceCollectorCollectRecentOutcomes:
     @pytest.mark.asyncio
     async def test_collect_recent_outcomes_returns_empty_on_source_failure(self):
         mock_source = MagicMock(spec=EvidenceSource)
-        mock_source.get_recent_outcomes = AsyncMock(side_effect=httpx.HTTPError("boom"))
+        mock_source.get_recent_outcomes = AsyncMock(side_effect=MCPServerError("boom"))
 
         collector = EvidenceCollector(source=mock_source)
 
@@ -394,12 +397,13 @@ class TestEvidenceRetrieverFindSimilar:
             resp.status_code = 500
             return resp
 
-        with patch("mahavishnu.core.evidence_retriever.httpx.AsyncClient") as mock_client:
+        with patch("mahavishnu.core.evidence_retriever.CommonMCPClient") as mock_client:
             instance = MagicMock()
-            instance.post = mock_post
-            instance.__aenter__ = AsyncMock(return_value=instance)
-            instance.__aexit__ = AsyncMock()
+            instance.call_tool = mock_post
+            # was instance.__aenter__ = AsyncMock(return_value=instance)
+            # was instance.__aexit__ = AsyncMock()
             mock_client.return_value = instance
+            instance.aclose = AsyncMock()
 
             retriever = EvidenceRetriever(
                 akosha_url="http://localhost:8682/mcp",
@@ -414,26 +418,23 @@ class TestEvidenceRetrieverFindSimilar:
     async def test_find_similar_sorts_by_similarity_descending(self):
         evidence = make_evidence(goal="test goal")
 
-        mock_response = MagicMock()
-        mock_response.status_code = 200
-        mock_response.json = MagicMock(
-            return_value={
-                "result": {
-                    "results": [
-                        {"id": "r1", "score": 0.3, "text": "low score"},
-                        {"id": "r2", "score": 0.9, "text": "high score"},
-                        {"id": "r3", "score": 0.6, "text": "medium score"},
-                    ]
-                }
-            }
-        )
+        # CommonMCPClient unwraps the JSON-RPC envelope, so the call_tool
+        # mock returns the bare results payload.
+        akosha_payload = {
+            "results": [
+                {"id": "r1", "score": 0.3, "text": "low score"},
+                {"id": "r2", "score": 0.9, "text": "high score"},
+                {"id": "r3", "score": 0.6, "text": "medium score"},
+            ]
+        }
 
-        with patch("mahavishnu.core.evidence_retriever.httpx.AsyncClient") as mock_client:
+        with patch("mahavishnu.core.evidence_retriever.CommonMCPClient") as mock_client:
             instance = MagicMock()
-            instance.post = AsyncMock(return_value=mock_response)
-            instance.__aenter__ = AsyncMock(return_value=instance)
-            instance.__aexit__ = AsyncMock()
+            instance.call_tool = AsyncMock(return_value=akosha_payload)
+            # was instance.__aenter__ = AsyncMock(return_value=instance)
+            # was instance.__aexit__ = AsyncMock()
             mock_client.return_value = instance
+            instance.aclose = AsyncMock()
 
             retriever = EvidenceRetriever(
                 akosha_url="http://localhost:8682/mcp",
@@ -449,25 +450,20 @@ class TestEvidenceRetrieverFindSimilar:
     async def test_find_similar_respects_limit(self):
         evidence = make_evidence(goal="test")
 
-        mock_response = MagicMock()
-        mock_response.status_code = 200
-        mock_response.json = MagicMock(
-            return_value={
-                "result": {
-                    "results": [
-                        {"id": f"r{i}", "score": 1.0 - i * 0.1, "text": f"result {i}"}
-                        for i in range(20)
-                    ]
-                }
-            }
-        )
+        akosha_payload = {
+            "results": [
+                {"id": f"r{i}", "score": 1.0 - i * 0.1, "text": f"result {i}"}
+                for i in range(20)
+            ]
+        }
 
-        with patch("mahavishnu.core.evidence_retriever.httpx.AsyncClient") as mock_client:
+        with patch("mahavishnu.core.evidence_retriever.CommonMCPClient") as mock_client:
             instance = MagicMock()
-            instance.post = AsyncMock(return_value=mock_response)
-            instance.__aenter__ = AsyncMock(return_value=instance)
-            instance.__aexit__ = AsyncMock()
+            instance.call_tool = AsyncMock(return_value=akosha_payload)
+            # was instance.__aenter__ = AsyncMock(return_value=instance)
+            # was instance.__aexit__ = AsyncMock()
             mock_client.return_value = instance
+            instance.aclose = AsyncMock()
 
             retriever = EvidenceRetriever(
                 akosha_url="http://localhost:8682/mcp",
@@ -656,8 +652,11 @@ class TestEvidenceStoreErrors:
     async def test_store_returns_false_on_exception(self):
         store = EvidenceStore("http://localhost:8678/mcp")
 
-        with patch("mahavishnu.core.evidence_store.httpx.AsyncClient") as mock_client:
-            mock_client.side_effect = Exception("network error")
+        with patch("mahavishnu.core.evidence_store.CommonMCPClient") as mock_client:
+            instance = MagicMock()
+            instance.call_tool = AsyncMock(side_effect=Exception("network error"))
+            instance.aclose = AsyncMock()
+            mock_client.return_value = instance
             result = await store.store(make_evidence())
 
         assert result is False
@@ -666,8 +665,11 @@ class TestEvidenceStoreErrors:
     async def test_query_evidence_returns_empty_on_exception(self):
         store = EvidenceStore("http://localhost:8678/mcp")
 
-        with patch("mahavishnu.core.evidence_store.httpx.AsyncClient") as mock_client:
-            mock_client.side_effect = Exception("connection refused")
+        with patch("mahavishnu.core.evidence_store.CommonMCPClient") as mock_client:
+            instance = MagicMock()
+            instance.call_tool = AsyncMock(side_effect=Exception("connection refused"))
+            instance.aclose = AsyncMock()
+            mock_client.return_value = instance
             result = await store.query_evidence("test")
 
         assert result == []
@@ -694,12 +696,13 @@ class TestEvidenceRetrieverErrors:
                 return akosha_error
             return sb_success
 
-        with patch("mahavishnu.core.evidence_retriever.httpx.AsyncClient") as mock_client:
+        with patch("mahavishnu.core.evidence_retriever.CommonMCPClient") as mock_client:
             instance = MagicMock()
-            instance.post = mock_post
-            instance.__aenter__ = AsyncMock(return_value=instance)
-            instance.__aexit__ = AsyncMock()
+            instance.call_tool = mock_post
+            # was instance.__aenter__ = AsyncMock(return_value=instance)
+            # was instance.__aexit__ = AsyncMock()
             mock_client.return_value = instance
+            instance.aclose = AsyncMock()
 
             retriever = EvidenceRetriever(
                 akosha_url="http://localhost:8682/mcp",
@@ -714,21 +717,21 @@ class TestEvidenceRetrieverErrors:
 class TestSessionBuddyEvidenceSource:
     @pytest.mark.asyncio
     async def test_get_recent_outcomes_raises_on_request_exception(self):
-        """When httpx raises an exception during the request, it propagates."""
+        """When the MCP transport raises an exception during the request, it propagates."""
         source = _SessionBuddyEvidenceSource(
             session_buddy_url="http://localhost:8678/mcp",
             store_timeout=10,
         )
 
-        async def mock_post(*args, **kwargs):
-            raise httpx.RequestError("connection failed")
+        async def mock_call_tool(*args, **kwargs):
+            raise MCPServerError("connection failed")
 
         mock_client_instance = MagicMock()
-        mock_client_instance.post = mock_post
+        mock_client_instance.call_tool = mock_call_tool
+        mock_client_instance.aclose = AsyncMock()
 
-        with patch("mahavishnu.core.evidence_collector.httpx.AsyncClient") as mock_client_cls:
-            mock_client_cls.return_value.__aenter__.return_value = mock_client_instance
-            mock_client_cls.return_value.__aexit__ = AsyncMock(return_value=None)
+        with patch("mahavishnu.core.evidence_collector.CommonMCPClient") as mock_client_cls:
+            mock_client_cls.return_value = mock_client_instance
 
-            with pytest.raises(httpx.RequestError):
+            with pytest.raises(MCPServerError):
                 await source.get_recent_outcomes(limit=10)

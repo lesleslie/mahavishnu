@@ -1,11 +1,16 @@
-"""Tests for mahavishnu/pools/session_buddy_pool.py."""
+"""Tests for mahavishnu/pools/session_buddy_pool.py.
+
+Phase 3 (REQ-004): mocked at the CommonMCPClient.call_tool boundary
+instead of httpx2.AsyncClient.post.
+"""
 
 from __future__ import annotations
 
 from unittest.mock import AsyncMock, MagicMock
 
-import httpx2 as httpx
 import pytest
+
+from mcp_common.exceptions import MCPServerError
 
 from mahavishnu.pools.base import PoolConfig, PoolStatus
 from mahavishnu.pools.session_buddy_pool import SessionBuddyPool, _await_if_needed
@@ -26,6 +31,13 @@ def _make_pool(
         max_workers=max_workers,
     )
     return SessionBuddyPool(config=config, session_buddy_url=url, max_workers=max_workers)
+
+
+def _stub_mcp(pool: SessionBuddyPool) -> None:
+    """Install a MagicMock CommonMCPClient on ``pool`` for transport mocking."""
+    mock_client = MagicMock()
+    mock_client.aclose = AsyncMock()
+    pool._mcp = mock_client
 
 
 # ---------------------------------------------------------------------------
@@ -73,25 +85,20 @@ class TestCallMcpTool:
     @pytest.mark.asyncio
     async def test_posts_and_returns_json(self) -> None:
         pool = _make_pool()
-        mock_response = MagicMock()
-        mock_response.raise_for_status = MagicMock()
-        mock_response.json = MagicMock(return_value={"result": ["w1", "w2"]})
-        pool._mcp_client.post = AsyncMock(return_value=mock_response)
+        _stub_mcp(pool)
+        pool._mcp.call_tool = AsyncMock(return_value={"result": ["w1", "w2"]})
 
         result = await pool._call_mcp_tool("worker_spawn", {"count": 2})
         assert result == {"result": ["w1", "w2"]}
-        pool._mcp_client.post.assert_called_once()
+        pool._mcp.call_tool.assert_awaited_once_with("worker_spawn", {"count": 2})
 
     @pytest.mark.asyncio
-    async def test_raises_http_error_on_bad_status(self) -> None:
+    async def test_raises_server_error(self) -> None:
         pool = _make_pool()
-        mock_response = MagicMock()
-        mock_response.raise_for_status = MagicMock(
-            side_effect=httpx.HTTPStatusError("404", request=MagicMock(), response=MagicMock())
-        )
-        pool._mcp_client.post = AsyncMock(return_value=mock_response)
+        _stub_mcp(pool)
+        pool._mcp.call_tool = AsyncMock(side_effect=MCPServerError("404"))
 
-        with pytest.raises(httpx.HTTPStatusError):
+        with pytest.raises(MCPServerError):
             await pool._call_mcp_tool("worker_spawn", {})
 
 
@@ -121,11 +128,11 @@ class TestStart:
         assert pool._status == PoolStatus.RUNNING
 
     @pytest.mark.asyncio
-    async def test_start_http_error_sets_failed_status(self) -> None:
+    async def test_start_server_error_sets_failed_status(self) -> None:
         pool = _make_pool()
-        pool._call_mcp_tool = AsyncMock(side_effect=httpx.HTTPError("connection refused"))
+        pool._call_mcp_tool = AsyncMock(side_effect=MCPServerError("connection refused"))
 
-        with pytest.raises(httpx.HTTPError):
+        with pytest.raises(MCPServerError):
             await pool.start()
         assert pool._status == PoolStatus.FAILED
 
@@ -170,10 +177,10 @@ class TestExecuteTask:
         assert pool._tasks_failed == 1
 
     @pytest.mark.asyncio
-    async def test_http_error_returns_failed_dict(self) -> None:
+    async def test_server_error_returns_failed_dict(self) -> None:
         pool = _make_pool()
         pool._workers = {"w0": "worker_w0"}
-        pool._call_mcp_tool = AsyncMock(side_effect=httpx.HTTPError("network error"))
+        pool._call_mcp_tool = AsyncMock(side_effect=MCPServerError("network error"))
 
         result = await pool.execute_task({"prompt": "x"})
         assert result["status"] == "failed"
@@ -208,10 +215,10 @@ class TestExecuteBatch:
         assert pool._tasks_failed == 1
 
     @pytest.mark.asyncio
-    async def test_http_error_returns_all_failed(self) -> None:
+    async def test_server_error_returns_all_failed(self) -> None:
         pool = _make_pool()
         pool._workers = {"w0": "worker_w0"}
-        pool._call_mcp_tool = AsyncMock(side_effect=httpx.HTTPError("batch error"))
+        pool._call_mcp_tool = AsyncMock(side_effect=MCPServerError("batch error"))
 
         tasks = [{"prompt": "x"}, {"prompt": "y"}]
         results = await pool.execute_batch(tasks)
@@ -258,9 +265,9 @@ class TestHealthCheck:
         assert result["status"] in ("degraded", "unhealthy")
 
     @pytest.mark.asyncio
-    async def test_http_error_returns_unhealthy(self) -> None:
+    async def test_server_error_returns_unhealthy(self) -> None:
         pool = _make_pool()
-        pool._call_mcp_tool = AsyncMock(side_effect=httpx.HTTPError("health check failed"))
+        pool._call_mcp_tool = AsyncMock(side_effect=MCPServerError("health check failed"))
 
         result = await pool.health_check()
         assert result["status"] == "unhealthy"
@@ -312,9 +319,9 @@ class TestCollectMemory:
         assert result[0]["id"] == "conv1"
 
     @pytest.mark.asyncio
-    async def test_http_error_returns_empty_list(self) -> None:
+    async def test_server_error_returns_empty_list(self) -> None:
         pool = _make_pool()
-        pool._call_mcp_tool = AsyncMock(side_effect=httpx.HTTPError("memory error"))
+        pool._call_mcp_tool = AsyncMock(side_effect=MCPServerError("memory error"))
 
         result = await pool.collect_memory()
         assert result == []
@@ -330,16 +337,16 @@ class TestStop:
     async def test_stop_sets_stopped_status(self) -> None:
         pool = _make_pool()
         pool._call_mcp_tool = AsyncMock(return_value={"result": "ok"})
-        pool._mcp_client.aclose = AsyncMock()
+        pool._mcp.aclose = AsyncMock()
 
         await pool.stop()
         assert pool._status == PoolStatus.STOPPED
 
     @pytest.mark.asyncio
-    async def test_stop_handles_http_error(self) -> None:
+    async def test_stop_handles_server_error(self) -> None:
         pool = _make_pool()
-        pool._call_mcp_tool = AsyncMock(side_effect=httpx.HTTPError("close error"))
-        pool._mcp_client.aclose = AsyncMock()
+        pool._call_mcp_tool = AsyncMock(side_effect=MCPServerError("close error"))
+        pool._mcp.aclose = AsyncMock()
 
         await pool.stop()  # should not raise
         assert pool._status == PoolStatus.STOPPED

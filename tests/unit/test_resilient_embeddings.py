@@ -237,21 +237,14 @@ class TestResilientEmbeddingClientAkosha:
         client._embedding_cache = cache
 
         embedding = [0.1] * STANDARD_EMBEDDING_DIMENSION
-        fake_response = MagicMock()
-        fake_response.json.return_value = {
-            "content": [
-                {
-                    "type": "text",
-                    "text": '{"embedding": ' + str(embedding).replace("'", '"') + "}",
-                }
-            ]
-        }
-        fake_response.raise_for_status = MagicMock()
+        # CommonMCPClient unwraps the JSON-RPC envelope, so call_tool returns
+        # the bare ``{"embedding": [...]}`` payload.
+        payload = {"embedding": embedding}
 
         with patch.object(
             client,
             "_get_client",
-            AsyncMock(return_value=MagicMock(post=AsyncMock(return_value=fake_response))),
+            MagicMock(return_value=MagicMock(call_tool=AsyncMock(return_value=payload))),
         ):
             result = await client.generate_embedding("hello", use_cache=True)
 
@@ -270,7 +263,7 @@ class TestResilientEmbeddingClientAkosha:
         with patch.object(
             client,
             "_get_client",
-            AsyncMock(side_effect=httpx.HTTPError("connection failed")),
+            MagicMock(side_effect=httpx.HTTPError("connection failed")),
         ):
             result = await client.generate_embedding("hi", use_cache=False)
 
@@ -283,14 +276,13 @@ class TestResilientEmbeddingClientAkosha:
         client = ResilientEmbeddingClient(circuit_breaker_threshold=10)
         client._embedding_service = None
 
-        fake_response = MagicMock()
-        fake_response.json.return_value = {"unexpected": "shape"}
-        fake_response.raise_for_status = MagicMock()
+        # CommonMCPClient unwraps the envelope, so call_tool returns the bare dict.
+        payload = {"unexpected": "shape"}
 
         with patch.object(
             client,
             "_get_client",
-            AsyncMock(return_value=MagicMock(post=AsyncMock(return_value=fake_response))),
+            MagicMock(return_value=MagicMock(call_tool=AsyncMock(return_value=payload))),
         ):
             result = await client.generate_embedding("hi", use_cache=False)
 
@@ -306,21 +298,12 @@ class TestResilientEmbeddingClientAkosha:
         client._embedding_service = None
 
         bad_embedding = [0.5] * 10  # Wrong dim
-        fake_response = MagicMock()
-        fake_response.json.return_value = {
-            "content": [
-                {
-                    "type": "text",
-                    "text": '{"embedding": ' + str(bad_embedding) + "}",
-                }
-            ]
-        }
-        fake_response.raise_for_status = MagicMock()
+        payload = {"embedding": bad_embedding}
 
         with patch.object(
             client,
             "_get_client",
-            AsyncMock(return_value=MagicMock(post=AsyncMock(return_value=fake_response))),
+            MagicMock(return_value=MagicMock(call_tool=AsyncMock(return_value=payload))),
         ):
             result = await client.generate_embedding("hi", use_cache=False)
 
@@ -335,13 +318,17 @@ class TestResilientEmbeddingClientAkosha:
         client._circuit_breaker._is_open = True
         client._circuit_breaker.last_failure_time = time.monotonic()
 
-        post_mock = AsyncMock()
-        with patch.object(client, "_get_client", AsyncMock()) as client_mock:
-            client_mock.return_value.post = post_mock
+        with patch.object(
+            client,
+            "_get_client",
+            MagicMock(),
+        ) as client_mock:
+            call_tool_mock = AsyncMock()
+            client_mock.return_value.call_tool = call_tool_mock
             await client._try_akosha("anything")
 
         # No HTTP call should have been made
-        post_mock.assert_not_called()
+        call_tool_mock.assert_not_called()
 
     @pytest.mark.asyncio
     async def test_try_local_service_none_when_service_unset(self) -> None:
@@ -440,7 +427,7 @@ class TestResilientEmbeddingClientAkosha:
         with patch.object(
             client,
             "_get_client",
-            AsyncMock(side_effect=httpx.HTTPError("nope")),
+            MagicMock(side_effect=httpx.HTTPError("nope")),
         ):
             result = await client.generate_embedding("hello", use_cache=False)
 
@@ -500,8 +487,8 @@ class TestResilientEmbeddingClientAkosha:
         """_get_client should reuse the same client across calls."""
         client = ResilientEmbeddingClient()
         try:
-            c1 = await client._get_client()
-            c2 = await client._get_client()
+            c1 = client._get_client()
+            c2 = client._get_client()
             assert c1 is c2
         finally:
             await client.close()

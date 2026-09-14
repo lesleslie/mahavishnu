@@ -6,7 +6,8 @@ import logging
 from typing import Protocol, runtime_checkable
 from uuid import uuid4
 
-import httpx2 as httpx
+from mcp_common.clients.common_mcp_client import CommonMCPClient
+from mcp_common.exceptions import MCPServerError
 from pydantic import BaseModel, Field
 
 from mahavishnu.core.skill_governance import LearningEvidence
@@ -120,29 +121,24 @@ class EvidenceRetriever:
         )
 
     async def _search_akosha(self, query: str, limit: int) -> list[RetrievedEvidence]:
-        async with httpx.AsyncClient(timeout=self._timeout) as client:
-            resp = await client.post(
-                f"{self._akosha_url}/tools/call",
-                json={
-                    "jsonrpc": "2.0",
-                    "id": str(uuid4()),
-                    "method": "tools/call",
-                    "params": {
-                        "name": "search_all_systems",
-                        "arguments": {"query": query, "limit": limit},
-                    },
-                },
-            )
-            if resp.status_code != 200:
-                logger.warning("akosha_search_http_error: status=%s", resp.status_code)
+        client = CommonMCPClient(base_url=self._akosha_url, timeout=self._timeout)
+        try:
+            try:
+                result = await client.call_tool(
+                    "search_all_systems",
+                    {"query": query, "limit": limit},
+                )
+            except MCPServerError as exc:
+                logger.warning("akosha_search_failed: %s", exc)
                 return []
 
-            data = resp.json()
-            items = data.get("result", {}).get("results", [])
-            if not items:
-                items = data.get("result", {}).get("content", [])
-            if isinstance(items, dict):
-                items = items.get("items", [])
+            items: list[dict[str, object]] = []
+            if isinstance(result, dict):
+                items = result.get("results") or result.get("content") or result.get("items") or []
+                if isinstance(items, dict):
+                    items = items.get("items", [])  # type: ignore[assignment]
+            elif isinstance(result, list):
+                items = result  # type: ignore[assignment]
 
             results: list[RetrievedEvidence] = []
             for item in items:
@@ -164,28 +160,31 @@ class EvidenceRetriever:
                         )
                     )
             return results
+        finally:
+            await client.aclose()
 
     async def _search_session_buddy(self, query: str, limit: int) -> list[RetrievedEvidence]:
         try:
-            async with httpx.AsyncClient(timeout=self._timeout) as client:
-                resp = await client.post(
-                    f"{self._session_buddy_url}/tools/call",
-                    json={
-                        "jsonrpc": "2.0",
-                        "id": str(uuid4()),
-                        "method": "tools/call",
-                        "params": {
-                            "name": "search_conversations",
-                            "arguments": {"query": query, "limit": limit},
-                        },
-                    },
-                )
-                if resp.status_code != 200:
-                    logger.warning("session_buddy_search_http_error: status=%s", resp.status_code)
+            client = CommonMCPClient(
+                base_url=self._session_buddy_url, timeout=self._timeout
+            )
+            try:
+                try:
+                    result = await client.call_tool(
+                        "search_conversations",
+                        {"query": query, "limit": limit},
+                    )
+                except MCPServerError as exc:
+                    logger.warning("session_buddy_search_failed: %s", exc)
                     return []
 
-                data = resp.json()
-                items = data.get("result", {}).get("conversations", [])
+                if isinstance(result, dict):
+                    items: list[dict[str, object]] = result.get("conversations", [])
+                elif isinstance(result, list):
+                    items = result  # type: ignore[assignment]
+                else:
+                    items = []
+
                 results: list[RetrievedEvidence] = []
                 for item in items:
                     meta = item.get("metadata", {})
@@ -204,6 +203,8 @@ class EvidenceRetriever:
                         )
                     )
                 return results
+            finally:
+                await client.aclose()
         except Exception:
             logger.warning("session_buddy_search_failed: returning empty", exc_info=True)
             return []

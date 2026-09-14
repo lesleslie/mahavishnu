@@ -5,6 +5,9 @@ Covers:
 * ``_can_subscribe_to_channel`` allowlist update for ``cross-repo:``
 * Query hashing + dedup
 * Stub-mode behavior when Akosha / Session-Buddy are unreachable
+
+Phase 3 (REQ-004): mocked at the CommonMCPClient.call_tool boundary
+instead of httpx2.AsyncClient.post.
 """
 
 from __future__ import annotations
@@ -42,14 +45,6 @@ def _make_settings(akosha_url: str, session_buddy_url: str) -> MagicMock:
     return settings
 
 
-def _make_httpx_response(payload: dict[str, Any]) -> MagicMock:
-    resp = MagicMock()
-    resp.status_code = 200
-    resp.raise_for_status = MagicMock()
-    resp.json = MagicMock(return_value=payload)
-    return resp
-
-
 # ---------------------------------------------------------------------------
 # Tool registration
 # ---------------------------------------------------------------------------
@@ -76,6 +71,48 @@ class TestRegisterSearchTools:
 # ---------------------------------------------------------------------------
 # Tool invocation
 # ---------------------------------------------------------------------------
+
+
+class _FakeCommonMCPClient:
+    """In-process CommonMCPClient that returns canned payloads keyed by tool name."""
+
+    def __init__(self, payloads: dict[str, Any], *, fail_tools: set[str] | None = None) -> None:
+        self._payloads = payloads
+        self._fail_tools = fail_tools or set()
+
+    async def call_tool(self, name: str, arguments: dict[str, Any]) -> Any:
+        if name in self._fail_tools:
+            raise RuntimeError(f"fake {name} offline")
+        return self._payloads.get(name)
+
+    async def aclose(self) -> None:
+        return None
+
+
+def _akosha_capability_payload() -> dict[str, Any]:
+    return {
+        "results": [
+            {"repo": "mahavishnu", "kind": "tool", "name": "pool_route_execute", "score": 0.92},
+            {"repo": "akosha", "kind": "tool", "name": "search_all_systems", "score": 0.81},
+            {"repo": "session-buddy", "kind": "tool", "name": "quick_search", "score": 0.77},
+            {"repo": "crackerjack", "kind": "tool", "name": "crackerjack_run", "score": 0.65},
+        ]
+    }
+
+
+def _session_buddy_runs_payload() -> dict[str, Any]:
+    return {
+        "result": {
+            "workflow_id": "wf-1",
+            "components": [
+                {"repo": "mahavishnu", "workflow_id": "wf-1", "status": "succeeded"},
+                {"repo": "akosha", "workflow_id": "wf-1", "status": "running"},
+                {"repo": "session-buddy", "workflow_id": "wf-1", "status": "succeeded"},
+            ],
+            "summary": {},
+            "mode": "phase1_stub",
+        }
+    }
 
 
 class TestCrossRepoSearchInvocation:
@@ -108,82 +145,12 @@ class TestCrossRepoSearchInvocation:
         register_search_tools(app)  # type: ignore[arg-type]
         fn = app.registered["cross_repo_search"]
 
-        akosha_resp = _make_httpx_response(
+        fake_client = _FakeCommonMCPClient(
             {
-                "result": {
-                    "results": [
-                        {
-                            "repo": "mahavishnu",
-                            "kind": "tool",
-                            "name": "pool_route_execute",
-                            "score": 0.92,
-                        },
-                        {
-                            "repo": "akosha",
-                            "kind": "tool",
-                            "name": "search_all_systems",
-                            "score": 0.81,
-                        },
-                        {
-                            "repo": "session-buddy",
-                            "kind": "tool",
-                            "name": "quick_search",
-                            "score": 0.77,
-                        },
-                        {
-                            "repo": "crackerjack",
-                            "kind": "tool",
-                            "name": "crackerjack_run",
-                            "score": 0.65,
-                        },
-                    ]
-                }
+                "cross_repo_capability_search": _akosha_capability_payload(),
+                "ecosystem_run_history": _session_buddy_runs_payload(),
             }
         )
-        sb_resp = _make_httpx_response(
-            {
-                "result": json_dumps(
-                    {
-                        "workflow_id": "wf-1",
-                        "components": [
-                            {
-                                "repo": "mahavishnu",
-                                "workflow_id": "wf-1",
-                                "status": "succeeded",
-                            },
-                            {
-                                "repo": "akosha",
-                                "workflow_id": "wf-1",
-                                "status": "running",
-                            },
-                            {
-                                "repo": "session-buddy",
-                                "workflow_id": "wf-1",
-                                "status": "succeeded",
-                            },
-                        ],
-                        "summary": {},
-                        "mode": "phase1_stub",
-                    }
-                )
-            }
-        )
-
-        class _FakeAsyncClient:
-            def __init__(self, *args: Any, **kwargs: Any) -> None:
-                pass
-
-            async def __aenter__(self) -> Any:
-                return self
-
-            async def __aexit__(self, *args: Any) -> None:
-                return None
-
-            async def post(self, url: str, json: dict[str, Any] | None = None) -> MagicMock:
-                # Differentiate by URL string.
-                if "akosha" in url or "8682" in url:
-                    return akosha_resp
-                return sb_resp
 
         with (
             patch(
@@ -194,8 +161,8 @@ class TestCrossRepoSearchInvocation:
                 ),
             ),
             patch(
-                "mahavishnu.mcp.tools.search_tools.httpx.AsyncClient",
-                _FakeAsyncClient,
+                "mahavishnu.mcp.tools.search_tools.CommonMCPClient",
+                return_value=fake_client,
             ),
         ):
             result = await fn(
@@ -228,38 +195,12 @@ class TestCrossRepoSearchInvocation:
         register_search_tools(app)  # type: ignore[arg-type]
         fn = app.registered["cross_repo_search"]
 
-        sb_resp = _make_httpx_response(
+        fake_client = _FakeCommonMCPClient(
             {
-                "result": json_dumps(
-                    {
-                        "workflow_id": "wf-2",
-                        "components": [
-                            {"repo": "mahavishnu", "workflow_id": "wf-2", "status": "succeeded"},
-                            {"repo": "akosha", "workflow_id": "wf-2", "status": "succeeded"},
-                            {"repo": "session-buddy", "workflow_id": "wf-2", "status": "succeeded"},
-                        ],
-                        "summary": {},
-                        "mode": "phase1_stub",
-                    }
-                )
-            }
+                "ecosystem_run_history": _session_buddy_runs_payload(),
+            },
+            fail_tools={"cross_repo_capability_search", "search_all_systems"},
         )
-
-        class _FakeAsyncClient:
-            def __init__(self, *args: Any, **kwargs: Any) -> None:
-                pass
-
-            async def __aenter__(self) -> Any:
-                return self
-
-            async def __aexit__(self, *args: Any) -> None:
-                return None
-
-            async def post(self, url: str, json: dict[str, Any] | None = None) -> MagicMock:
-                # Akosha down — only Session-Buddy reachable.
-                if "akosha" in url or "8682" in url:
-                    raise RuntimeError("akosha offline")
-                return sb_resp
 
         with (
             patch(
@@ -270,8 +211,8 @@ class TestCrossRepoSearchInvocation:
                 ),
             ),
             patch(
-                "mahavishnu.mcp.tools.search_tools.httpx.AsyncClient",
-                _FakeAsyncClient,
+                "mahavishnu.mcp.tools.search_tools.CommonMCPClient",
+                return_value=fake_client,
             ),
         ):
             result = await fn(query="wf-2", scope="runs")
@@ -290,51 +231,23 @@ class TestCrossRepoSearchInvocation:
         register_search_tools(app)  # type: ignore[arg-type]
         fn = app.registered["cross_repo_search"]
 
-        akosha_resp = _make_httpx_response(
+        akosha_payload = {"results": [{"repo": "mahavishnu", "kind": "tool", "name": "pool_route_execute", "score": 0.5}]}
+        sb_payload = {
+            "result": {
+                "workflow_id": "wf-3",
+                "components": [
+                    {"repo": "mahavishnu", "workflow_id": "wf-3", "status": "succeeded"}
+                ],
+                "summary": {},
+                "mode": "phase1_stub",
+            }
+        }
+        fake_client = _FakeCommonMCPClient(
             {
-                "result": {
-                    "results": [
-                        {
-                            "repo": "mahavishnu",
-                            "kind": "tool",
-                            "name": "pool_route_execute",
-                            "score": 0.5,
-                        }
-                    ]
-                }
+                "cross_repo_capability_search": akosha_payload,
+                "ecosystem_run_history": sb_payload,
             }
         )
-        sb_resp = _make_httpx_response(
-            {
-                "result": json_dumps(
-                    {
-                        "workflow_id": "wf-3",
-                        "components": [
-                            {
-                                "repo": "mahavishnu",
-                                "workflow_id": "wf-3",
-                                "status": "succeeded",
-                            }
-                        ],
-                        "summary": {},
-                        "mode": "phase1_stub",
-                    }
-                )
-            }
-        )
-
-        class _FakeAsyncClient:
-            def __init__(self, *args: Any, **kwargs: Any) -> None:
-                pass
-
-            async def __aenter__(self) -> Any:
-                return self
-
-            async def __aexit__(self, *args: Any) -> None:
-                return None
-
-            async def post(self, url: str, json: dict[str, Any] | None = None) -> MagicMock:
-                return akosha_resp if "akosha" in url or "8682" in url else sb_resp
 
         with (
             patch(
@@ -345,8 +258,8 @@ class TestCrossRepoSearchInvocation:
                 ),
             ),
             patch(
-                "mahavishnu.mcp.tools.search_tools.httpx.AsyncClient",
-                _FakeAsyncClient,
+                "mahavishnu.mcp.tools.search_tools.CommonMCPClient",
+                return_value=fake_client,
             ),
         ):
             result = await fn(query="anything", scope="capabilities", limit=10)
@@ -437,45 +350,23 @@ class TestStreamChannelBroadcast:
         register_search_tools(app)  # type: ignore[arg-type]
         fn = app.registered["cross_repo_search"]
 
-        akosha_resp = _make_httpx_response(
+        akosha_payload = {
+            "results": [{"repo": "mahavishnu", "kind": "tool", "name": "pool_route_execute", "score": 0.9}]
+        }
+        sb_payload = {
+            "result": {
+                "workflow_id": "wf-stream",
+                "components": [],
+                "summary": {},
+                "mode": "phase1_stub",
+            }
+        }
+        fake_client = _FakeCommonMCPClient(
             {
-                "result": {
-                    "results": [
-                        {
-                            "repo": "mahavishnu",
-                            "kind": "tool",
-                            "name": "pool_route_execute",
-                            "score": 0.9,
-                        }
-                    ]
-                }
+                "cross_repo_capability_search": akosha_payload,
+                "ecosystem_run_history": sb_payload,
             }
         )
-        sb_resp = _make_httpx_response(
-            {
-                "result": json_dumps(
-                    {
-                        "workflow_id": "wf-stream",
-                        "components": [],
-                        "summary": {},
-                        "mode": "phase1_stub",
-                    }
-                )
-            }
-        )
-
-        class _FakeAsyncClient:
-            def __init__(self, *args: Any, **kwargs: Any) -> None:
-                pass
-
-            async def __aenter__(self) -> Any:
-                return self
-
-            async def __aexit__(self, *args: Any) -> None:
-                return None
-
-            async def post(self, url: str, json: dict[str, Any] | None = None) -> MagicMock:
-                return akosha_resp if "akosha" in url or "8682" in url else sb_resp
 
         broadcast_mock = AsyncMock()
         fake_server = MagicMock()
@@ -490,8 +381,8 @@ class TestStreamChannelBroadcast:
                 ),
             ),
             patch(
-                "mahavishnu.mcp.tools.search_tools.httpx.AsyncClient",
-                _FakeAsyncClient,
+                "mahavishnu.mcp.tools.search_tools.CommonMCPClient",
+                return_value=fake_client,
             ),
             patch(
                 "mahavishnu.mcp.tools.search_tools._get_websocket_server",
@@ -526,23 +417,19 @@ class TestQueryHashStability:
         register_search_tools(app)  # type: ignore[arg-type]
         fn = app.registered["cross_repo_search"]
 
-        akosha_resp = _make_httpx_response({"result": {"results": []}})
-        sb_resp = _make_httpx_response(
-            {"result": json_dumps({"workflow_id": "x", "components": [], "summary": {}, "mode": "phase1_stub"})}
+        fake_client = _FakeCommonMCPClient(
+            {
+                "cross_repo_capability_search": {"results": []},
+                "ecosystem_run_history": {
+                    "result": {
+                        "workflow_id": "x",
+                        "components": [],
+                        "summary": {},
+                        "mode": "phase1_stub",
+                    }
+                },
+            }
         )
-
-        class _FakeAsyncClient:
-            def __init__(self, *args: Any, **kwargs: Any) -> None:
-                pass
-
-            async def __aenter__(self) -> Any:
-                return self
-
-            async def __aexit__(self, *args: Any) -> None:
-                return None
-
-            async def post(self, url: str, json: dict[str, Any] | None = None) -> MagicMock:
-                return akosha_resp if "akosha" in url or "8682" in url else sb_resp
 
         with (
             patch(
@@ -553,8 +440,8 @@ class TestQueryHashStability:
                 ),
             ),
             patch(
-                "mahavishnu.mcp.tools.search_tools.httpx.AsyncClient",
-                _FakeAsyncClient,
+                "mahavishnu.mcp.tools.search_tools.CommonMCPClient",
+                return_value=fake_client,
             ),
         ):
             r1 = await fn(query="foo", scope="capabilities")
@@ -572,23 +459,19 @@ class TestQueryHashStability:
         register_search_tools(app)  # type: ignore[arg-type]
         fn = app.registered["cross_repo_search"]
 
-        akosha_resp = _make_httpx_response({"result": {"results": []}})
-        sb_resp = _make_httpx_response(
-            {"result": json_dumps({"workflow_id": "x", "components": [], "summary": {}, "mode": "phase1_stub"})}
+        fake_client = _FakeCommonMCPClient(
+            {
+                "cross_repo_capability_search": {"results": []},
+                "ecosystem_run_history": {
+                    "result": {
+                        "workflow_id": "x",
+                        "components": [],
+                        "summary": {},
+                        "mode": "phase1_stub",
+                    }
+                },
+            }
         )
-
-        class _FakeAsyncClient:
-            def __init__(self, *args: Any, **kwargs: Any) -> None:
-                pass
-
-            async def __aenter__(self) -> Any:
-                return self
-
-            async def __aexit__(self, *args: Any) -> None:
-                return None
-
-            async def post(self, url: str, json: dict[str, Any] | None = None) -> MagicMock:
-                return akosha_resp if "akosha" in url or "8682" in url else sb_resp
 
         with (
             patch(
@@ -599,8 +482,8 @@ class TestQueryHashStability:
                 ),
             ),
             patch(
-                "mahavishnu.mcp.tools.search_tools.httpx.AsyncClient",
-                _FakeAsyncClient,
+                "mahavishnu.mcp.tools.search_tools.CommonMCPClient",
+                return_value=fake_client,
             ),
         ):
             r1 = await fn(query="foo", scope="capabilities")

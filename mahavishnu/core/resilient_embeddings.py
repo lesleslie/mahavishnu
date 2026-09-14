@@ -41,7 +41,7 @@ import logging
 import time
 from typing import TYPE_CHECKING, Any
 
-import httpx2 as httpx
+from mcp_common.clients.common_mcp_client import CommonMCPClient
 
 if TYPE_CHECKING:
     from mahavishnu.core.embedding_cache import EmbeddingCache
@@ -182,7 +182,7 @@ class ResilientEmbeddingClient:
         self._embedding_service = embedding_service
         self._embedding_cache = embedding_cache
 
-        self._client: httpx.AsyncClient | None = None
+        self._client: CommonMCPClient | None = None
         self._circuit_breaker = CircuitBreaker(
             failure_threshold=circuit_breaker_threshold,
             recovery_timeout=circuit_breaker_recovery,
@@ -192,12 +192,12 @@ class ResilientEmbeddingClient:
         self._source_counts: dict[EmbeddingSource, int] = dict.fromkeys(EmbeddingSource, 0)
         self._dimension_mismatches = 0
 
-    async def _get_client(self) -> httpx.AsyncClient:
-        """Get or create HTTP client."""
+    def _get_client(self) -> CommonMCPClient:
+        """Get or create the CommonMCPClient."""
         if self._client is None:
-            self._client = httpx.AsyncClient(
+            self._client = CommonMCPClient(
                 base_url=self._akosha_url,
-                timeout=httpx.Timeout(self._timeout, connect=2.0),
+                timeout=self._timeout,
             )
         return self._client
 
@@ -267,28 +267,21 @@ class ResilientEmbeddingClient:
             return None
 
         try:
-            client = await self._get_client()
-            response = await client.post(
-                "/tools/call",
-                json={
-                    "name": "generate_embedding",
-                    "arguments": {"text": text},
-                },
+            client = self._get_client()
+            result = await client.call_tool(
+                "generate_embedding",
+                {"text": text},
             )
-            response.raise_for_status()
-
-            result = response.json()
-            if "content" in result and len(result["content"]) > 0:
-                content = result["content"][0]
-                if content.get("type") == "text":
-                    import json
-
-                    data = json.loads(content["text"])
-                    embedding = data.get("embedding", [])
-
-                    if embedding and self._validate_dimension(embedding, "akosha"):
-                        self._circuit_breaker.record_success()
-                        return embedding  # type: ignore[no-any-return]
+            if isinstance(result, dict) and isinstance(result.get("embedding"), list):
+                embedding = result["embedding"]
+                if embedding and self._validate_dimension(embedding, "akosha"):
+                    self._circuit_breaker.record_success()
+                    return embedding  # type: ignore[no-any-return]
+            if isinstance(result, list):
+                embedding = result
+                if embedding and self._validate_dimension(embedding, "akosha"):
+                    self._circuit_breaker.record_success()
+                    return embedding  # type: ignore[no-any-return]
 
             self._circuit_breaker.record_failure()
             return None
@@ -547,30 +540,21 @@ class ResilientEmbeddingClient:
             return None
 
         try:
-            client = await self._get_client()
-            response = await client.post(
-                "/tools/call",
-                json={
-                    "name": "generate_batch_embeddings",
-                    "arguments": {"texts": texts},
-                },
+            client = self._get_client()
+            result = await client.call_tool(
+                "generate_batch_embeddings",
+                {"texts": texts},
             )
-            response.raise_for_status()
+            embeddings: list[list[float]] = []
+            if isinstance(result, dict) and isinstance(result.get("embeddings"), list):
+                embeddings = result["embeddings"]  # type: ignore[assignment]
+            elif isinstance(result, list):
+                embeddings = result  # type: ignore[assignment]
 
-            result = response.json()
-            if "content" in result and len(result["content"]) > 0:
-                content = result["content"][0]
-                if content.get("type") == "text":
-                    import json
-
-                    data = json.loads(content["text"])
-                    embeddings = data.get("embeddings", [])
-
-                    # Validate dimensions
-                    valid = all(self._validate_dimension(emb, "akosha_batch") for emb in embeddings)
-                    if valid and len(embeddings) == len(texts):
-                        self._circuit_breaker.record_success()
-                        return embeddings  # type: ignore[no-any-return]
+            valid = all(self._validate_dimension(emb, "akosha_batch") for emb in embeddings)
+            if valid and len(embeddings) == len(texts):
+                self._circuit_breaker.record_success()
+                return embeddings  # type: ignore[no-any-return]
 
             self._circuit_breaker.record_failure()
             return None

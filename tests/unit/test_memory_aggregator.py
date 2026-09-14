@@ -1,4 +1,8 @@
-"""Tests for mahavishnu.pools.memory_aggregator."""
+"""Tests for mahavishnu.pools.memory_aggregator.
+
+Phase 3 (REQ-004): mocked at the CommonMCPClient.call_tool boundary
+instead of httpx2.AsyncClient.post.
+"""
 
 from __future__ import annotations
 
@@ -8,7 +12,7 @@ from datetime import datetime, timedelta, UTC
 import time
 from unittest.mock import AsyncMock, MagicMock, patch
 
-import httpx2 as httpx
+from mcp_common.exceptions import MCPServerError
 import pytest
 
 from mahavishnu.pools.memory_aggregator import (
@@ -303,14 +307,7 @@ class TestInsertBatchToSessionBuddy:
 
     @pytest.mark.asyncio
     async def test_all_succeed(self, aggregator: MemoryAggregator):
-        mock_response = MagicMock()
-        mock_response.status_code = 200
-
-        async def mock_post(url, json):
-            return mock_response
-
-        aggregator._mcp_client = AsyncMock()
-        aggregator._mcp_client.post = mock_post
+        aggregator._mcp_client.call_tool = AsyncMock(return_value=None)
 
         items = [{"text": "a"}, {"text": "b"}]
         result = await aggregator._insert_batch_to_session_buddy(items)
@@ -321,15 +318,15 @@ class TestInsertBatchToSessionBuddy:
     async def test_partial_failure(self, aggregator: MemoryAggregator):
         call_count = 0
 
-        async def mock_post(url, json):
+        async def mock_call_tool(name, arguments):
             nonlocal call_count
             call_count += 1
-            resp = MagicMock()
-            resp.status_code = 200 if call_count <= 1 else 500
-            return resp
+            if call_count <= 1:
+                return None  # success
+            raise MCPServerError("upstream 500")
 
-        aggregator._mcp_client = AsyncMock()
-        aggregator._mcp_client.post = mock_post
+        aggregator._mcp_client = MagicMock()
+        aggregator._mcp_client.call_tool = mock_call_tool
 
         items = [{"text": "a"}, {"text": "b"}]
         result = await aggregator._insert_batch_to_session_buddy(items)
@@ -338,8 +335,7 @@ class TestInsertBatchToSessionBuddy:
 
     @pytest.mark.asyncio
     async def test_http_error_buffers(self, aggregator: MemoryAggregator):
-        aggregator._mcp_client = AsyncMock()
-        aggregator._mcp_client.post.side_effect = httpx.HTTPError("connection refused")
+        aggregator._mcp_client.call_tool = AsyncMock(side_effect=MCPServerError("connection refused"))
 
         items = [{"text": "a"}]
         result = await aggregator._insert_batch_to_session_buddy(items)
@@ -422,9 +418,9 @@ class TestSinkToSessionBuddy:
             aggregator,
             "_insert_batch_to_session_buddy",
             new_callable=AsyncMock,
-            side_effect=httpx.HTTPError("connection refused"),
+            side_effect=MCPServerError("connection refused"),
         ):
-            with pytest.raises(httpx.HTTPError):
+            with pytest.raises(MCPServerError):
                 await aggregator._sink_to_session_buddy(
                     "reflection:abc", {"text": "hello", "tags": []}
                 )
@@ -469,6 +465,14 @@ class TestBatchInsertToSessionBuddy:
 class TestStartPeriodicSync:
     @pytest.mark.asyncio
     async def test_creates_task(self, aggregator: MemoryAggregator):
+        # Phase 3: stub the MCP clients so the loop doesn't reach out to a
+        # real Session-Buddy / Akosha. Without this, the underlying
+        # streamable-HTTP transport is the surfaces a GeneratorExit at the
+        # first cancel.
+        aggregator._mcp_client = MagicMock()
+        aggregator._mcp_client.aclose = AsyncMock()
+        aggregator._akosha_mcp = MagicMock()
+        aggregator._akosha_mcp.aclose = AsyncMock()
         mock_pm = AsyncMock()
         mock_pm.list_pools.return_value = []
         await aggregator.start_periodic_sync(mock_pm)
@@ -478,6 +482,10 @@ class TestStartPeriodicSync:
 
     @pytest.mark.asyncio
     async def test_sync_loop_calls_collect_and_sync(self, aggregator: MemoryAggregator):
+        aggregator._mcp_client = MagicMock()
+        aggregator._mcp_client.aclose = AsyncMock()
+        aggregator._akosha_mcp = MagicMock()
+        aggregator._akosha_mcp.aclose = AsyncMock()
         mock_pm = AsyncMock()
         mock_pm.list_pools.return_value = []
         with patch.object(aggregator, "collect_and_sync", new_callable=AsyncMock):
@@ -494,10 +502,14 @@ class TestStop:
         assert aggregator._shutdown_event.is_set()
 
     @pytest.mark.asyncio
-    async def test_closes_http_client(self, aggregator: MemoryAggregator):
-        aggregator._mcp_client = AsyncMock()
+    async def test_closes_http_clients(self, aggregator: MemoryAggregator):
+        aggregator._mcp_client = MagicMock()
+        aggregator._mcp_client.aclose = AsyncMock()
+        aggregator._akosha_mcp = MagicMock()
+        aggregator._akosha_mcp.aclose = AsyncMock()
         await aggregator.stop()
         aggregator._mcp_client.aclose.assert_awaited_once()
+        aggregator._akosha_mcp.aclose.assert_awaited_once()
 
     @pytest.mark.asyncio
     async def test_cancels_stuck_task(self, aggregator: MemoryAggregator):
@@ -527,37 +539,24 @@ class TestSyncToAkosha:
 
     @pytest.mark.asyncio
     async def test_success_records_success(self, aggregator: MemoryAggregator):
-        mock_response = MagicMock()
-        mock_response.status_code = 200
-
-        async def mock_post(url, json):
-            return mock_response
-
-        aggregator._mcp_client = AsyncMock()
-        aggregator._mcp_client.post = mock_post
+        aggregator._akosha_mcp = MagicMock()
+        aggregator._akosha_mcp.call_tool = AsyncMock(return_value=None)
 
         await aggregator._sync_to_akosha({"pools_count": 2, "memory_items_count": 10})
         assert aggregator._akosha_breaker._failure_count == 0
 
     @pytest.mark.asyncio
     async def test_failure_records_failure(self, aggregator: MemoryAggregator):
-        mock_response = MagicMock()
-        mock_response.status_code = 500
-        mock_response.text = "internal error"
-
-        async def mock_post(url, json):
-            return mock_response
-
-        aggregator._mcp_client = AsyncMock()
-        aggregator._mcp_client.post = mock_post
+        aggregator._akosha_mcp = MagicMock()
+        aggregator._akosha_mcp.call_tool = AsyncMock(side_effect=MCPServerError("upstream 500"))
 
         await aggregator._sync_to_akosha({"pools_count": 2})
         assert aggregator._akosha_breaker._failure_count == 1
 
     @pytest.mark.asyncio
     async def test_http_error_records_failure(self, aggregator: MemoryAggregator):
-        aggregator._mcp_client = AsyncMock()
-        aggregator._mcp_client.post.side_effect = httpx.HTTPError("timeout")
+        aggregator._akosha_mcp = MagicMock()
+        aggregator._akosha_mcp.call_tool = AsyncMock(side_effect=MCPServerError("timeout"))
         await aggregator._sync_to_akosha({"pools_count": 1})
         assert aggregator._akosha_breaker._failure_count == 1
 
@@ -699,15 +698,7 @@ class TestCrossPoolSearch:
             "results": [{"text": "old"}],
             "cached_at": datetime.now((UTC)) - timedelta(minutes=10),
         }
-        mock_response = MagicMock()
-        mock_response.status_code = 200
-        mock_response.json.return_value = {"result": {"conversations": [{"text": "fresh"}]}}
-
-        async def mock_post(url, json):
-            return mock_response
-
-        aggregator._mcp_client = AsyncMock()
-        aggregator._mcp_client.post = mock_post
+        aggregator._mcp_client.call_tool = AsyncMock(return_value={"conversations": [{"text": "fresh"}]})
 
         mock_pm = MagicMock()
         result = await aggregator.cross_pool_search("old_query", mock_pm)
@@ -715,15 +706,7 @@ class TestCrossPoolSearch:
 
     @pytest.mark.asyncio
     async def test_cache_miss_fetches_from_sb(self, aggregator: MemoryAggregator):
-        mock_response = MagicMock()
-        mock_response.status_code = 200
-        mock_response.json.return_value = {"result": {"conversations": [{"text": "new"}]}}
-
-        async def mock_post(url, json):
-            return mock_response
-
-        aggregator._mcp_client = AsyncMock()
-        aggregator._mcp_client.post = mock_post
+        aggregator._mcp_client.call_tool = AsyncMock(return_value={"conversations": [{"text": "new"}]})
 
         mock_pm = MagicMock()
         result = await aggregator.cross_pool_search("new query", mock_pm)
@@ -743,38 +726,23 @@ class TestCrossPoolSearch:
 
     @pytest.mark.asyncio
     async def test_search_failure_returns_empty(self, aggregator: MemoryAggregator):
-        aggregator._mcp_client = AsyncMock()
-        aggregator._mcp_client.post.side_effect = httpx.HTTPError("error")
+        aggregator._mcp_client.call_tool = AsyncMock(side_effect=MCPServerError("error"))
         mock_pm = MagicMock()
         result = await aggregator.cross_pool_search("test", mock_pm)
         assert result == []
 
     @pytest.mark.asyncio
-    async def test_search_non_200_returns_empty(self, aggregator: MemoryAggregator):
-        mock_response = MagicMock()
-        mock_response.status_code = 500
-        mock_response.text = "error"
-
-        async def mock_post(url, json):
-            return mock_response
-
-        aggregator._mcp_client = AsyncMock()
-        aggregator._mcp_client.post = mock_post
+    async def test_search_server_error_returns_empty(self, aggregator: MemoryAggregator):
+        """A server error from the underlying transport yields empty results."""
+        aggregator._mcp_client = MagicMock()
+        aggregator._mcp_client.call_tool = AsyncMock(side_effect=MCPServerError("upstream 500"))
         mock_pm = MagicMock()
         result = await aggregator.cross_pool_search("test", mock_pm)
         assert result == []
 
     @pytest.mark.asyncio
     async def test_empty_conversations_in_response(self, aggregator: MemoryAggregator):
-        mock_response = MagicMock()
-        mock_response.status_code = 200
-        mock_response.json.return_value = {"result": {"conversations": []}}
-
-        async def mock_post(url, json):
-            return mock_response
-
-        aggregator._mcp_client = AsyncMock()
-        aggregator._mcp_client.post = mock_post
+        aggregator._mcp_client.call_tool = AsyncMock(return_value={"conversations": []})
         mock_pm = MagicMock()
         result = await aggregator.cross_pool_search("test", mock_pm)
         assert result == []

@@ -21,7 +21,8 @@ from datetime import UTC, datetime
 import logging
 from typing import TYPE_CHECKING, Any, ClassVar
 
-import httpx2 as httpx
+from mcp_common.clients.common_mcp_client import CommonMCPClient
+from mcp_common.exceptions import MCPServerError
 
 from monitoring.metrics import (
     bodai_bridge_freshness_seconds,
@@ -111,7 +112,7 @@ class SessionBuddyPoller:
         # Polling state
         self._running = False
         self._poll_task: asyncio.Task | None = None
-        self._http_client: httpx.AsyncClient | None = None
+        self._mcp: CommonMCPClient | None = None
         self._poll_cycles = 0
         self._errors = 0
         self._consecutive_failures = 0
@@ -146,7 +147,8 @@ class SessionBuddyPoller:
             return
 
         self._running = True
-        self._http_client = httpx.AsyncClient(timeout=self.timeout)
+        if self._mcp is None:
+            self._mcp = CommonMCPClient(base_url=self.endpoint, timeout=self.timeout)
 
         # Start polling loop
         self._poll_task = asyncio.create_task(self._polling_loop())
@@ -171,10 +173,10 @@ class SessionBuddyPoller:
                 await self._poll_task
             self._poll_task = None
 
-        # Close HTTP client
-        if self._http_client:
-            await self._http_client.aclose()
-            self._http_client = None
+        # Close MCP client
+        if self._mcp is not None:
+            await self._mcp.aclose()
+            self._mcp = None
 
         self.logger.info("SessionBuddyPoller stopped")
 
@@ -235,8 +237,8 @@ class SessionBuddyPoller:
             Dictionary with poll results including metrics collected
             and any errors encountered
         """
-        if not self._http_client:
-            raise RuntimeError("Poller is not started (HTTP client not initialized)")
+        if self._mcp is None:
+            raise RuntimeError("Poller is not started (MCP client not initialized)")
 
         poll_start = datetime.now(UTC)
         self._poll_cycles += 1
@@ -312,7 +314,7 @@ class SessionBuddyPoller:
         tool_name: str,
         arguments: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
-        """Call a Session-Buddy MCP tool via HTTP.
+        """Call a Session-Buddy MCP tool via CommonMCPClient.
 
         Args:
             tool_name: Name of the MCP tool to call
@@ -322,15 +324,13 @@ class SessionBuddyPoller:
             Tool result dictionary
 
         Raises:
-            httpx.HTTPError: If HTTP request fails
+            MCPServerError: If MCP transport fails
             ValueError: If response is invalid
         """
-        if not self._http_client:
-            raise RuntimeError("HTTP client not initialized")
+        if self._mcp is None:
+            self._mcp = CommonMCPClient(base_url=self.endpoint, timeout=self.timeout)
 
-        url = f"{self.endpoint}/tools/call"
-        payload = {"name": tool_name, "arguments": arguments or {}}
-
+        payload = arguments or {}
         self.logger.debug(f"Calling MCP tool: {tool_name}")
 
         policy = RetryPolicy(
@@ -340,14 +340,11 @@ class SessionBuddyPoller:
             max_delay_seconds=max(
                 self.retry_delay * (2 ** max(self.max_retries - 1, 0)), self.retry_delay
             ),
-            retryable_exceptions=(httpx.HTTPError,),
+            retryable_exceptions=(MCPServerError,),
         )
 
         async def _post_tool() -> dict[str, Any]:
-            response = await self._http_client.post(url, json=payload)  # ty: ignore[unresolved-attribute]
-            response.raise_for_status()
-
-            result = response.json()
+            result = await self._mcp.call_tool(tool_name, payload)  # type: ignore[union-attr]
             if not isinstance(result, dict):
                 # ValueError is handled below as the invalid-response contract.
                 raise ValueError(f"Invalid response type: {type(result)}")  # noqa: TRY004

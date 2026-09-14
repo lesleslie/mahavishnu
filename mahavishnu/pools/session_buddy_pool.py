@@ -1,13 +1,18 @@
 """Session-Buddy delegated pool management.
 
 Each Session-Buddy instance manages 3 workers directly.
+
+Phase 3 (REQ-004): rewired to ``mcp_common.clients.common_mcp_client.CommonMCPClient``.
+The ``httpx2.AsyncClient`` POST path is replaced with ``CommonMCPClient.call_tool``
+so all Bodai clients share the same streamable-HTTP transport.
 """
 
 import logging
 import time
 from typing import Any
 
-import httpx2 as httpx
+from mcp_common.clients.common_mcp_client import CommonMCPClient
+from mcp_common.exceptions import MCPServerError
 
 from .base import BasePool, PoolConfig, PoolMetrics, PoolStatus
 
@@ -15,6 +20,12 @@ logger = logging.getLogger(__name__)
 
 
 async def _await_if_needed(value: Any) -> Any:
+    """Await ``value`` if it is awaitable, otherwise return as-is.
+
+    Kept for API compatibility with the test suite (see
+    ``tests/unit/test_session_buddy_pool.py::TestAwaitIfNeeded`` and
+    ``tests/unit/test_pool_manager.py::TestAwaitIfNeededHelper``).
+    """
     if hasattr(value, "__await__"):
         return await value
     return value
@@ -35,12 +46,12 @@ class SessionBuddyPool(BasePool):
     Architecture:
     ┌─────────────────────────────────────┐
     │      SessionBuddyPool              │
-    │  • HTTP MCP client                 │
+    │  • CommonMCPClient                 │
     │  • worker_spawn (3 workers)        │
     │  • worker_execute                  │
     │  • worker_monitor                  │
     └─────────────────────────────────────┘
-            │ HTTP (MCP)
+            │ HTTP (MCP streamable)
             ↓
     ┌───────────────────────┐
     │  Session-Buddy MCP    │
@@ -68,7 +79,7 @@ class SessionBuddyPool(BasePool):
         super().__init__(config)
         self.session_buddy_url = session_buddy_url
         self.max_workers = max_workers
-        self._mcp_client = httpx.AsyncClient(timeout=300.0)
+        self._mcp = CommonMCPClient(base_url=session_buddy_url, timeout=300.0)
 
         # Track task statistics
         self._tasks_completed = 0
@@ -90,19 +101,14 @@ class SessionBuddyPool(BasePool):
             Tool result dictionary
 
         Raises:
-            httpx.HTTPError: If MCP call fails
+            MCPServerError: If MCP call fails
         """
-        response = await _await_if_needed(
-            self._mcp_client.post(
-                f"{self.session_buddy_url}/tools/call",
-                json={
-                    "name": tool_name,
-                    "arguments": arguments,
-                },
-            )
-        )
-        response.raise_for_status()
-        return response.json()  # type: ignore[no-any-return]
+        result = await self._mcp.call_tool(tool_name, arguments)
+        if isinstance(result, dict):
+            return result
+        # Non-dict results are unusual for Session-Buddy tool responses;
+        # wrap so callers that read ``.get("result", ...)`` keep working.
+        return {"result": result}
 
     async def start(self) -> str:
         """Initialize Session-Buddy pool via MCP.
@@ -134,7 +140,7 @@ class SessionBuddyPool(BasePool):
                 f"(via {self.session_buddy_url})"
             )
 
-        except httpx.HTTPError as e:
+        except MCPServerError as e:
             logger.error(f"Failed to start SessionBuddyPool: {e}")
             self._status = PoolStatus.FAILED
             raise
@@ -186,7 +192,7 @@ class SessionBuddyPool(BasePool):
                 "duration": duration,
             }
 
-        except httpx.HTTPError as e:
+        except MCPServerError as e:
             logger.error(f"Failed to execute task on SessionBuddyPool: {e}")
             self._tasks_failed += 1
             return {
@@ -230,7 +236,7 @@ class SessionBuddyPool(BasePool):
                     self._tasks_completed += 1
                 else:
                     self._tasks_failed += 1
-                self._task_durations.append(duration / len(tasks))
+            self._task_durations.append(duration / len(tasks))
 
             # Add pool_id to each result
             task_results = {}
@@ -246,7 +252,7 @@ class SessionBuddyPool(BasePool):
 
             return task_results
 
-        except httpx.HTTPError as e:
+        except MCPServerError as e:
             logger.error(f"Failed to execute batch on SessionBuddyPool: {e}")
             self._tasks_failed += len(tasks)
             return {
@@ -299,7 +305,7 @@ class SessionBuddyPool(BasePool):
                 "session_buddy_url": self.session_buddy_url,
             }
 
-        except httpx.HTTPError as e:
+        except MCPServerError as e:
             logger.error(f"Failed health check for SessionBuddyPool: {e}")
             return {
                 "pool_id": self.pool_id,
@@ -357,7 +363,7 @@ class SessionBuddyPool(BasePool):
 
             return conversations  # type: ignore[no-any-return]
 
-        except httpx.HTTPError as e:
+        except MCPServerError as e:
             logger.error(f"Failed to collect memory from SessionBuddyPool: {e}")
             return []
 
@@ -368,11 +374,11 @@ class SessionBuddyPool(BasePool):
         try:
             await self._call_mcp_tool("worker_close_all", {})
 
-        except httpx.HTTPError as e:
+        except MCPServerError as e:
             logger.warning(f"Failed to properly close SessionBuddyPool workers: {e}")
 
         finally:
-            await self._mcp_client.aclose()
+            await self._mcp.aclose()
             self._status = PoolStatus.STOPPED
             logger.info(f"SessionBuddyPool {self.pool_id} stopped")
 

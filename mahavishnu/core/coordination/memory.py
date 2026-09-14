@@ -8,9 +8,10 @@ from __future__ import annotations
 
 from datetime import UTC, datetime
 import logging
-from typing import TYPE_CHECKING, Any, cast
+from typing import TYPE_CHECKING, Any
 
-import httpx2 as httpx
+from mcp_common.clients.common_mcp_client import CommonMCPClient
+from mcp_common.exceptions import MCPServerError
 
 if TYPE_CHECKING:
     from mahavishnu.core.coordination.models import (
@@ -30,7 +31,7 @@ class SessionBuddyMemoryClient:
 
     def __init__(self, base_url: str, timeout: float = 10.0) -> None:
         self._base_url = base_url.rstrip("/")
-        self._client = httpx.AsyncClient(timeout=timeout)
+        self._client = CommonMCPClient(base_url=self._base_url, timeout=timeout)
 
     async def store_memory(
         self,
@@ -38,22 +39,15 @@ class SessionBuddyMemoryClient:
         content: str,
         metadata: dict[str, Any],
     ) -> Any:
-        response = await self._client.post(
-            f"{self._base_url}/tools/call",
-            json={
-                "name": "store_memory",
-                "arguments": {
-                    "collection": collection,
-                    "content": content,
-                    "metadata": metadata,
-                },
+        result = await self._client.call_tool(
+            "store_memory",
+            {
+                "collection": collection,
+                "content": content,
+                "metadata": metadata,
             },
         )
-        response.raise_for_status()
-        payload = response.json()
-        if isinstance(payload, dict) and "result" in payload:
-            return payload["result"]
-        return payload
+        return result
 
     async def search(
         self,
@@ -61,27 +55,20 @@ class SessionBuddyMemoryClient:
         filters: dict[str, Any],
         limit: int,
     ) -> list[dict[str, Any]]:
-        response = await self._client.post(
-            f"{self._base_url}/tools/call",
-            json={
-                "name": "search_all_systems",
-                "arguments": {
-                    "query": query,
-                    "filters": filters,
-                    "limit": limit,
-                },
+        result = await self._client.call_tool(
+            "search_all_systems",
+            {
+                "query": query,
+                "filters": filters,
+                "limit": limit,
             },
         )
-        response.raise_for_status()
-        payload = response.json()
-        if isinstance(payload, dict):
-            result = payload.get("result")
-            if isinstance(result, list):
-                return result
-            if isinstance(result, dict):
-                items = result.get("results") or result.get("items") or result.get("conversations")
-                if isinstance(items, list):
-                    return items
+        if isinstance(result, list):
+            return result
+        if isinstance(result, dict):
+            items = result.get("results") or result.get("items") or result.get("conversations")
+            if isinstance(items, list):
+                return items
         return []
 
     async def aclose(self) -> None:
@@ -113,8 +100,8 @@ class CoordinationMemory:
         self.session_buddy = session_buddy_client
         self.collection = "mahavishnu_coordination"
         self._akosha_url = akosha_url
-        self._http: httpx.AsyncClient | None = (
-            httpx.AsyncClient(timeout=10.0) if akosha_url else None
+        self._mcp: CommonMCPClient | None = (
+            CommonMCPClient(base_url=akosha_url, timeout=10.0) if akosha_url else None
         )
 
     async def store_issue_event(
@@ -353,22 +340,18 @@ class CoordinationMemory:
 
         Degrades silently — Akosha unavailability never blocks coordination.
         """
-        if not self._http or not self._akosha_url:
+        if not self._mcp or not self._akosha_url:
             return
         try:
-            response = await self._http.post(
-                f"{self._akosha_url}/tools/call",
-                json={
-                    "name": "store_memory",
-                    "arguments": {
-                        "content": content,
-                        "metadata": metadata,
-                        "collection": self.collection,
-                    },
+            await self._mcp.call_tool(
+                "store_memory",
+                {
+                    "content": content,
+                    "metadata": metadata,
+                    "collection": self.collection,
                 },
             )
-            response.raise_for_status()
-        except (httpx.HTTPError, httpx.TransportError) as exc:
+        except MCPServerError as exc:
             logger.warning("Akosha coordination push degraded: %s", exc)
 
     async def search_semantic(self, query: str, limit: int = 10) -> list[dict[str, Any]]:
@@ -381,28 +364,27 @@ class CoordinationMemory:
         Returns:
             List of matching coordination records, empty on error or no Akosha.
         """
-        if not self._http or not self._akosha_url:
+        if not self._mcp or not self._akosha_url:
             return []
         try:
-            response = await self._http.post(
-                f"{self._akosha_url}/tools/call",
-                json={
-                    "name": "search_all_systems",
-                    "arguments": {"query": query, "limit": limit},
-                },
+            result = await self._mcp.call_tool(
+                "search_all_systems",
+                {"query": query, "limit": limit},
             )
-            response.raise_for_status()
-            raw = cast("dict[str, Any]", response.json())
-            results = raw.get("results") or raw.get("result") or []  # type: ignore[var-annotated]
-            return results if isinstance(results, list) else []
-        except (httpx.HTTPError, httpx.TransportError) as exc:
+        except MCPServerError as exc:
             logger.warning("Akosha semantic search degraded: %s", exc)
             return []
+        if isinstance(result, list):
+            return result
+        if isinstance(result, dict):
+            results = result.get("results") or result.get("result") or []
+            return results if isinstance(results, list) else []
+        return []
 
     async def close(self) -> None:
         """Close the memory integration and cleanup resources."""
-        if self._http:
-            await self._http.aclose()
+        if self._mcp:
+            await self._mcp.aclose()
 
 
 # Extended manager with memory integration

@@ -3,9 +3,9 @@ from __future__ import annotations
 import asyncio
 import logging
 from typing import Any, Protocol, runtime_checkable
-from uuid import uuid4
 
-import httpx2 as httpx
+from mcp_common.clients.common_mcp_client import CommonMCPClient
+from mcp_common.exceptions import MCPServerError
 from pydantic import BaseModel, Field
 
 from mahavishnu.core.skill_governance import LearningEvidence
@@ -38,45 +38,35 @@ class EvidenceStore:
         self._timeout = timeout_seconds
 
     async def store(self, evidence: LearningEvidence) -> bool:
+        client = CommonMCPClient(base_url=self._url, timeout=self._timeout)
         try:
-            async with httpx.AsyncClient(timeout=self._timeout) as client:
-                resp = await client.post(
-                    f"{self._url}/tools/call",
-                    json={
-                        "jsonrpc": "2.0",
-                        "id": str(uuid4()),
-                        "method": "tools/call",
-                        "params": {
-                            "name": "store_memory",
-                            "arguments": {
-                                "memory_id": evidence.evidence_id,
-                                "text": evidence.goal,
-                                "metadata": {
-                                    "artifact_type": "learning_evidence",
-                                    "evidence_id": evidence.evidence_id,
-                                    "session_id": evidence.session_id,
-                                    "outcome": evidence.outcome,
-                                    "repo_paths": evidence.repo_paths,
-                                    "tool_calls": evidence.tool_calls,
-                                    "collected_at": evidence.collected_at.isoformat(),
-                                },
-                            },
+            try:
+                await client.call_tool(
+                    "store_memory",
+                    {
+                        "memory_id": evidence.evidence_id,
+                        "text": evidence.goal,
+                        "metadata": {
+                            "artifact_type": "learning_evidence",
+                            "evidence_id": evidence.evidence_id,
+                            "session_id": evidence.session_id,
+                            "outcome": evidence.outcome,
+                            "repo_paths": evidence.repo_paths,
+                            "tool_calls": evidence.tool_calls,
+                            "collected_at": evidence.collected_at.isoformat(),
                         },
                     },
                 )
-            if resp.status_code == 200:
                 logger.debug("evidence_stored: id=%s", evidence.evidence_id)
                 return True
-            logger.warning(
-                "evidence_store_failed: id=%s status=%s body=%s",
-                evidence.evidence_id,
-                resp.status_code,
-                resp.text[:200],
-            )
-            return False
-        except Exception:
-            logger.exception("evidence_store_error: id=%s", evidence.evidence_id)
-            return False
+            except MCPServerError as exc:
+                logger.warning("evidence_store_failed: id=%s err=%s", evidence.evidence_id, exc)
+                return False
+            except Exception:
+                logger.exception("evidence_store_error: id=%s", evidence.evidence_id)
+                return False
+        finally:
+            await client.aclose()
 
     async def store_batch(self, evidences: list[LearningEvidence]) -> StoreBatchResult:
         results = await asyncio.gather(
@@ -96,25 +86,27 @@ class EvidenceStore:
         return StoreBatchResult(stored_count=stored, failed_count=failed, errors=errors)
 
     async def query_evidence(self, query: str, limit: int = 20) -> list[LearningEvidence]:
+        client = CommonMCPClient(base_url=self._url, timeout=self._timeout)
         try:
-            async with httpx.AsyncClient(timeout=self._timeout) as client:
-                resp = await client.post(
-                    f"{self._url}/tools/call",
-                    json={
-                        "jsonrpc": "2.0",
-                        "id": str(uuid4()),
-                        "method": "tools/call",
-                        "params": {
-                            "name": "search_conversations",
-                            "arguments": {"query": query, "limit": limit},
-                        },
-                    },
+            try:
+                result = await client.call_tool(
+                    "search_conversations",
+                    {"query": query, "limit": limit},
                 )
-            if resp.status_code != 200:
-                logger.warning("evidence_query_failed: status=%s", resp.status_code)
+            except MCPServerError as exc:
+                logger.warning("evidence_query_failed: err=%s", exc)
                 return []
-            data = resp.json()
-            items = data.get("result", {}).get("conversations", [])
+            except Exception:
+                logger.exception("evidence_query_error: query=%s", query)
+                return []
+
+            if isinstance(result, dict):
+                items = result.get("conversations", [])
+            elif isinstance(result, list):
+                items = result
+            else:
+                items = []
+
             evidences: list[LearningEvidence] = []
             for item in items:
                 meta = item.get("metadata", {})
@@ -125,9 +117,8 @@ class EvidenceStore:
                 except ValueError, TypeError:
                     logger.debug("evidence_parse_skipped: id=%s", item.get("id"))
             return evidences
-        except Exception:
-            logger.exception("evidence_query_error: query=%s", query)
-            return []
+        finally:
+            await client.aclose()
 
     async def prune_expired(self, retention_days: int) -> int:
         logger.warning(

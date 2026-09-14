@@ -12,10 +12,17 @@ Design constraints (from 2026-06-27-dhara-substrate-implementation.md):
   ``query`` are additive.
 * Connection pooling: if a ``DharaClient`` (or ``DharaAdapter``-shaped
   object exposing ``call_tool``) is supplied, reuse it. Otherwise this
-  module opens its own ``httpx.AsyncClient`` (one per instance).
-* All I/O is async (``httpx.AsyncClient``).
+  module opens its own ``CommonMCPClient`` (one per instance).
+* All I/O is async.
 * Connection-level failures raise ``DharaSQLProxyError`` so callers can
   handle transport failures separately from semantic SQL errors.
+
+Phase 3 (REQ-004) of the common-mcp-client transport unification plan:
+the underlying transport was rewired from ``httpx.AsyncClient.post``
+to ``CommonMCPClient.call_tool``. Behaviour is preserved end-to-end:
+``MCPClientError``/``MCPServerError`` exceptions raised by the new
+transport are mapped to ``DharaSQLProxyError`` so callers don't need to
+catch the new hierarchy.
 
 Mahavishnu conventions honored:
 
@@ -32,7 +39,8 @@ from __future__ import annotations
 import logging
 from typing import Any
 
-import httpx2 as httpx
+from mcp_common.clients.common_mcp_client import CommonMCPClient
+from mcp_common.exceptions import MCPServerError
 
 logger = logging.getLogger(__name__)
 
@@ -77,10 +85,10 @@ class DharaThinClient:
         self._adapter = adapter
         self._owns_client = adapter is None
         if self._owns_client:
-            headers = {"Authorization": f"Bearer {token}"} if token else None
-            self._client: httpx.AsyncClient | None = httpx.AsyncClient(
+            self._client: CommonMCPClient | None = CommonMCPClient(
+                base_url=self.base_url,
                 timeout=timeout,
-                headers=headers,
+                token=token,
             )
         else:
             self._client = None
@@ -174,27 +182,21 @@ class DharaThinClient:
             raise DharaSQLProxyError(f"{tool_name} failed via adapter: {exc}") from exc
 
     async def _invoke_via_http(self, tool_name: str, arguments: dict[str, Any]) -> Any:
-        """Call the tool through the direct HTTP client."""
+        """Call the tool through the direct MCP client."""
         if self._client is None:
             # Defensive: someone called after aclose(). Re-open on demand.
-            self._client = httpx.AsyncClient(timeout=self.timeout)
+            self._client = CommonMCPClient(
+                base_url=self.base_url, timeout=self.timeout, token=None
+            )
 
-        url = f"{self.base_url}/tools/call"
-        body = {"name": tool_name, "arguments": arguments}
         try:
-            response = await self._client.post(url, json=body)
-            response.raise_for_status()
-            payload = response.json()
-        except httpx.HTTPError as exc:
+            return await self._client.call_tool(tool_name, arguments)
+        except MCPServerError as exc:
             logger.warning("dhara sql_proxy transport failure: %s", exc)
             raise DharaSQLProxyError(f"{tool_name} transport failure: {exc}") from exc
         except Exception as exc:
             logger.exception("dhara sql_proxy unexpected failure")
             raise DharaSQLProxyError(f"{tool_name} unexpected failure: {exc}") from exc
-
-        if isinstance(payload, dict) and "result" in payload:
-            return payload["result"]
-        return payload
 
 
 __all__ = ["DharaSQLProxyError", "DharaThinClient"]
