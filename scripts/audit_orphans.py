@@ -558,6 +558,131 @@ def _collect_discriminated_union_members(
     return members
 
 
+def _iter_top_level_public_names(path: Path):
+    """Yield top-level public function/class/method names defined in ``path``.
+
+    Mirrors the visibility rules in :func:`extract_symbols` so the
+    cross-module resolver sees the same set of names a candidate symbol
+    could collide with. Method names are yielded qualified by their
+    parent class (``ClassName.method_name``) so they don't shadow
+    top-level functions or sibling classes.
+    """
+    tree = _parse_file(path)
+    if tree is None:
+        return
+    for node in tree.body:
+        if isinstance(node, ast.FunctionDef):
+            if not node.name.startswith("_") and len(node.name) > SHORT_NAME_MAX:
+                yield node.name
+        elif isinstance(node, ast.ClassDef):
+            if not node.name.startswith("_") and len(node.name) > SHORT_NAME_MAX:
+                yield node.name
+            for child in node.body:
+                if isinstance(child, (ast.FunctionDef, ast.AsyncFunctionDef)):
+                    if not child.name.startswith("_") and len(child.name) > SHORT_NAME_MAX:
+                        yield f"{node.name}.{child.name}"
+
+
+def _build_defining_file_map(
+    root: Path, excludes: list[str], include_tests: bool
+) -> dict[str, Path]:
+    """Return ``{symbol_name -> defining_file}`` for top-level public names.
+
+    The cross-module ``__all__`` resolver needs to know where each name
+    is *defined* so it can decide whether an ``__all__`` entry is a
+    same-file reference (already counted) or a cross-module re-export
+    (the gap this resolver closes).
+
+    Names colliding across modules resolve last-write-wins. In practice
+    public names are unique within a tree; collisions fall out as
+    "the last definition scanned wins," which the audit treats as
+    canonical. Method names are qualified (``Class.method``) so they
+    can't shadow top-level symbols.
+    """
+    defining: dict[str, Path] = {}
+    for path in root.rglob("*.py"):
+        if should_skip(path, root, excludes):
+            continue
+        if not include_tests and "tests" in path.relative_to(root).parts:
+            continue
+        for name in _iter_top_level_public_names(path):
+            defining[name] = path
+    return defining
+
+
+def _all_string_entries(node: ast.Assign) -> Iterable[str]:
+    """Yield string-literal elements of an ``__all__ = [...]`` assignment.
+
+    Mirrors the same-file loop-2 walker but is extracted so the
+    cross-module resolver can reuse it without duplicating the AST
+    shape recognition. Skips non-string entries (e.g.
+    ``__all__ = ["foo", MAX_LEN]``) and unknown container shapes.
+    """
+    for target in node.targets:
+        if not isinstance(target, ast.Name) or target.id != "__all__":
+            continue
+        value = node.value
+        container = (
+            value.elts
+            if isinstance(value, (ast.List, ast.Tuple))
+            else value.values
+            if isinstance(value, ast.Set)
+            else None
+        )
+        if not container:
+            continue
+        for elt in container:
+            if isinstance(elt, ast.Constant) and isinstance(elt.value, str):
+                yield elt.value
+
+
+def _add_cross_module_all_refs(
+    root: Path,
+    excludes: list[str],
+    include_tests: bool,
+    defining_files: dict[str, Path],
+    refs: dict[str, set[Path]],
+) -> None:
+    """Attach cross-module ``__all__`` references to ``refs`` in place.
+
+    A module's ``__all__`` is the canonical public-API declaration per
+    the wire-up-contract. When module A's ``__all__`` lists a symbol
+    defined in module B, that listing is itself a wire-up declaration
+    for B. Without this resolution, the audit flags the symbol in B as
+    orphan: A's ``__all__`` reference is recorded by the main walker
+    but the cross-file filter ``{f for f in ref_files if f != path}``
+    still treats same-file refs as definition-only.
+
+    The resolver skips two cases:
+
+    - Names with no top-level public definition (external imports,
+      private symbols re-exported by mistake) — no defining file to
+      attach the reference to.
+    - Names defined in the same file as the ``__all__`` — already
+      recorded by the main walker and intentionally filtered out by
+      the cross-file guard.
+
+    Net effect: ``__all__ = ["Foo"]`` in ``pkg_a/mod.py`` adds ``pkg_a/mod.py``
+    to the reference set for the symbol ``Foo`` defined in ``pkg_b/mod.py``.
+    """
+    for path in root.rglob("*.py"):
+        if should_skip(path, root, excludes):
+            continue
+        if not include_tests and "tests" in path.relative_to(root).parts:
+            continue
+        tree = _parse_file(path)
+        if tree is None:
+            continue
+        for node in ast.walk(tree):
+            if not isinstance(node, ast.Assign):
+                continue
+            for name in _all_string_entries(node):
+                defining = defining_files.get(name)
+                if defining is None or defining == path:
+                    continue
+                refs[name].add(path)
+
+
 def collect_references(
     root: Path, excludes: list[str], include_tests: bool
 ) -> dict[str, set[Path]]:
@@ -572,6 +697,11 @@ def collect_references(
     Re-exports such as ``from .x import Y as Z`` surface ``Z`` as a name
     wherever it is consumed, satisfying the "record Z as a reference"
     edge case in the spec.
+
+    After the main walk, a cross-module ``__all__`` resolver attaches
+    references for symbols listed in another module's ``__all__``
+    (re-export declarations per the wire-up-contract). See
+    :func:`_add_cross_module_all_refs`.
     """
     refs: dict[str, set[Path]] = defaultdict(set)
     for path in root.rglob("*.py"):
@@ -644,6 +774,16 @@ def collect_references(
                             and isinstance(elt.value, str)
                         ):
                             refs[elt.value].add(path)
+
+    # Cross-module __all__ resolution: a module's __all__ is the canonical
+    # public-API declaration per the wire-up-contract, and re-exports of
+    # symbols defined in another module count as a wire-up for that
+    # symbol. Without this pass, those symbols are reported as orphan
+    # because the main walker's cross-file filter treats the same-file
+    # reference as definition-only.
+    defining_files = _build_defining_file_map(root, excludes, include_tests)
+    _add_cross_module_all_refs(root, excludes, include_tests, defining_files, refs)
+
     return refs
 
 
