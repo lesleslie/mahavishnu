@@ -551,6 +551,7 @@ One table per store. Entries are sorted by `date` DESC, with ties broken by path
 | Path | Date | Status | Role | Kind | Topic | Title |
 |---|---|---|---|---|---|---|
 | [`docs/plans/2026-09-14-bodai-serverless-readiness-and-component-substitution.md`](2026-09-14-bodai-serverless-readiness-and-component-substitution.md) | 2026-09-14 | `active` | `implementation` |  | `serverless-readiness-and-substitution` | Revisions (2026-09-14, post-research) |
+| [`docs/plans/2026-09-14-bodai-serverless-readiness-phase-1-fixes.md`](2026-09-14-bodai-serverless-readiness-phase-1-fixes.md) | 2026-09-14 | `active` | `implementation` |  | `serverless-readiness-precondition-fixes` | Phase-1 Precondition Fixes — Serverless-Readiness Plan |
 | [`docs/plans/2026-09-14-common-mcp-client-transport-unification.md`](2026-09-14-common-mcp-client-transport-unification.md) | 2026-09-14 | `active` | `umbrella` |  | `mcp-transport-unification` | CommonMCPClient Transport Unification Across Bodai (v2) |
 | [`docs/plans/2026-09-13-migrate-no-frontmatter-plans.md`](2026-09-13-migrate-no-frontmatter-plans.md) | 2026-09-13 | `complete` | `implementation` |  | `frontmatter-migration-completion` | Migrate 39 No-Frontmatter Plans to Schema v1.1 |
 | [`docs/plans/2026-09-12-finish-partial-implementations.md`](2026-09-12-finish-partial-implementations.md) | 2026-09-12 | `complete` | `implementation` |  | `close-genuine-partial-implementations` | Plan: Finish Genuine Partial Implementations (revision 3, post-re-review) |
@@ -908,7 +909,7 @@ Durable decision records — covers both ADRs in `docs/adr/` and repo-local poli
 | [`docs/adr/013-mahavishnu-dhara-adapter-tool-boundary.md`](../../docs/adr/013-mahavishnu-dhara-adapter-tool-boundary.md) | 2026-07-16 | ADR 013: Adapter Tool Boundary Between Mahavishnu and Dhara |
 | [`docs/adr/014-honcho-peer-model-routing-precedence.md`](../../docs/adr/014-honcho-peer-model-routing-precedence.md) | 2026-07-16 | ADR 014: Honcho Peer-Model Routing Precedence |
 
-### `plan` (589 entries)
+### `plan` (590 entries)
 
 Work items. The bulk of the registry — see the per-store tables above for full detail with status/role/topic.
 
@@ -921,9 +922,9 @@ Counts of entries per (lifecycle, role) cell across all 24 stores. Useful as a s
 | Role \\ Lifecycle | draft | active | partial | shipped | complete | Total |
 |---|---|---|---|---|---|---|
 | `canonical` | 19 | 102 | 1 | 2 | 13 | **137** |
-| `implementation` | 148 | 61 | 6 | 36 | 38 | **289** |
+| `implementation` | 148 | 62 | 6 | 36 | 38 | **290** |
 | `umbrella` | · | 2 | · | · | 2 | **4** |
 | `historical` | 12 | 3 | · | 4 | 129 | **148** |
 | `superseded` | · | · | · | · | 13 | **13** |
 
-| **Total** | **179** | **168** | **7** | **42** | **195** | **591** |
+| **Total** | **179** | **169** | **7** | **42** | **195** | **592** |
