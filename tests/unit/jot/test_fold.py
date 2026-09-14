@@ -79,7 +79,7 @@ def test_parse_events_returns_events_in_file_order(tmp_path: Path) -> None:
 
 
 def test_parse_events_raises_log_corrupt_on_unreadable_file(tmp_path: Path) -> None:
-    """JotLogCorruptError for unreadable (vs unparseable) log."""
+    """JotLogCorruptError for unreadable (vs unparsable) log."""
     from mahavishnu.jot.errors import JotLogCorruptError
     # Directory instead of file -> read_text raises IsADirectoryError
     with pytest.raises(JotLogCorruptError):

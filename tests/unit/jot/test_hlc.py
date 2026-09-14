@@ -235,7 +235,7 @@ def test_read_tail_hlc_returns_last_valid_when_final_line_truncated(tmp_path: Pa
         ctx={},
         created_ms=1000,
     )
-    # Append a truncated (unparseable) line after a valid line
+    # Append a truncated (unparsable) line after a valid line
     log.write_text(serialize(valid_event) + '{"id":"b","op":"capture","hlc":{"wall_ms":2000,"ctr":0,"nod')
     # Should return the valid event's HLC, NOT None
     last_hlc = read_tail_hlc(log)
