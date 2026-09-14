@@ -782,6 +782,16 @@ async def merge_three_way(
             driver_warning=driver_warning,
         )
 
+    # Phase 5 followup (commit pending): thread the LINE branch through
+    # the same try/finally outcome tracker that ``_merge_via_mergiraf``
+    # uses, so the ``merge.semantic.duration_ms`` histogram aggregates
+    # over BOTH strategies. The REQ-SM-006 30-day gate ("p99 < 50 ms
+    # over 30 days") needs the LINE p99 alongside the SEMANTIC p99 to
+    # evaluate deferral. ``recorded`` carries the outcome label; the
+    # default ``"fatal"`` covers any uncaught exception (the finally
+    # block records once even on ``except`` paths).
+    start = time.monotonic()
+    recorded: list[str] = ["fatal"]
     with tempfile.TemporaryDirectory(prefix="settle-merge-") as tmp_str:
         tmp = Path(tmp_str)
         base_path = tmp / "base"
@@ -791,68 +801,77 @@ async def merge_three_way(
         ours_path.write_text(ours)
         theirs_path.write_text(theirs)
 
-        # ``git merge-file`` exit codes:
-        #   0 — clean merge (no conflicts)
-        #   1 — conflicts; ``ours`` is now the merged-with-markers file
-        # >=2 — fatal error (bad invocation, I/O, etc.)
-        proc = await asyncio.create_subprocess_exec(
-            git_merge_file,
-            "merge-file",
-            "-p",  # write merged result to stdout
-            "-L",
-            "base",
-            "-L",
-            "ours",
-            "-L",
-            "theirs",
-            str(ours_path),
-            str(base_path),
-            str(theirs_path),
-            stdout=asyncio.subprocess.PIPE,
-            stderr=asyncio.subprocess.PIPE,
-        )
-        stdout, stderr = await proc.communicate()
-        merged = stdout.decode("utf-8", errors="replace")
-
-        if proc.returncode == 0:
-            return MergeResult(
-                merged=merged,
-                conflict_count=0,
-                strategy_used=MergeStrategy.LINE,
-                driver_warning=driver_warning,
+        try:
+            # ``git merge-file`` exit codes:
+            #   0 — clean merge (no conflicts)
+            #   1 — conflicts; ``ours`` is now the merged-with-markers file
+            # >=2 — fatal error (bad invocation, I/O, etc.)
+            proc = await asyncio.create_subprocess_exec(
+                git_merge_file,
+                "merge-file",
+                "-p",  # write merged result to stdout
+                "-L",
+                "base",
+                "-L",
+                "ours",
+                "-L",
+                "theirs",
+                str(ours_path),
+                str(base_path),
+                str(theirs_path),
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.PIPE,
             )
+            stdout, stderr = await proc.communicate()
+            merged = stdout.decode("utf-8", errors="replace")
 
-        if proc.returncode == 1:
-            # Count conflict regions by counting "<<<<<<< " markers.
-            # git emits three markers per conflict hunk: <<<<<<<,
-            # =======, >>>>>>>. Counting the leading ones is the
-            # canonical heuristic used by git-merge-file consumers.
-            conflict_count = sum(1 for line in merged.splitlines() if line.startswith("<<<<<<< "))
-            logger.warning(
-                "settle_merge: conflict for label=%r conflict_count=%d",
+            if proc.returncode == 0:
+                recorded[0] = "success"
+                return MergeResult(
+                    merged=merged,
+                    conflict_count=0,
+                    strategy_used=MergeStrategy.LINE,
+                    driver_warning=driver_warning,
+                )
+
+            if proc.returncode == 1:
+                # Count conflict regions by counting "<<<<<<< " markers.
+                # git emits three markers per conflict hunk: <<<<<<<,
+                # =======, >>>>>>>. Counting the leading ones is the
+                # canonical heuristic used by git-merge-file consumers.
+                conflict_count = sum(
+                    1 for line in merged.splitlines() if line.startswith("<<<<<<< ")
+                )
+                logger.warning(
+                    "settle_merge: conflict for label=%r conflict_count=%d",
+                    label,
+                    conflict_count,
+                )
+                recorded[0] = "conflict"
+                raise MergeConflictError(
+                    path=label,
+                    merged=merged,
+                    base=base,
+                    ours=ours,
+                    theirs=theirs,
+                    strategy_used=MergeStrategy.LINE,
+                    driver_warning=driver_warning,
+                )
+
+            # Exit >=2 — fatal.
+            stderr_text = stderr.decode("utf-8", errors="replace")
+            logger.error(
+                "settle_merge: git merge-file fatal label=%r stderr=%s",
                 label,
-                conflict_count,
+                stderr_text.strip(),
             )
-            raise MergeConflictError(
-                path=label,
-                merged=merged,
-                base=base,
-                ours=ours,
-                theirs=theirs,
-                strategy_used=MergeStrategy.LINE,
-                driver_warning=driver_warning,
+            recorded[0] = "fatal"
+            raise MergeFailureError(
+                f"git merge-file failed (exit={proc.returncode}) for {label!r}: "
+                f"{stderr_text.strip()}"
             )
-
-        # Exit >=2 — fatal.
-        stderr_text = stderr.decode("utf-8", errors="replace")
-        logger.error(
-            "settle_merge: git merge-file fatal label=%r stderr=%s",
-            label,
-            stderr_text.strip(),
-        )
-        raise MergeFailureError(
-            f"git merge-file failed (exit={proc.returncode}) for {label!r}: {stderr_text.strip()}"
-        )
+        finally:
+            _record_semantic_duration(start, effective, recorded[0])
 
 
 def _merge_three_way_sync_internal(
@@ -871,6 +890,16 @@ def _merge_three_way_sync_internal(
     is the canonical surface), so this internal helper intentionally
     keeps the Phase 0 ``git merge-file`` semantics unchanged.
     """
+    # Phase 5 followup (commit pending): same try/finally outcome tracker
+    # as the async LINE branch above. Records one sample per call
+    # regardless of which exit path (success / conflict / fatal) takes
+    # the function out of the try block. ``strategy`` is hardcoded to
+    # ``MergeStrategy.LINE`` because this internal helper intentionally
+    # keeps the Phase 0 git-merge-file semantics (the async public
+    # ``merge_three_way`` is the canonical surface for strategy
+    # selection; see docstring).
+    start = time.monotonic()
+    recorded: list[str] = ["fatal"]
     with tempfile.TemporaryDirectory(prefix="settle-merge-") as tmp_str:
         tmp = Path(tmp_str)
         base_path = tmp / "base"
@@ -880,42 +909,48 @@ def _merge_three_way_sync_internal(
         ours_path.write_text(ours)
         theirs_path.write_text(theirs)
 
-        import subprocess
+        try:
+            import subprocess
 
-        result = subprocess.run(
-            [
-                git_merge_file,
-                "merge-file",
-                "-p",
-                "-L",
-                "base",
-                "-L",
-                "ours",
-                "-L",
-                "theirs",
-                str(ours_path),
-                str(base_path),
-                str(theirs_path),
-            ],
-            capture_output=True,
-            check=False,
-            text=True,
-        )
-        merged = result.stdout
-        if result.returncode == 0:
-            return MergeResult(merged=merged, conflict_count=0)
-        if result.returncode == 1:
-            raise MergeConflictError(
-                path=label,
-                merged=merged,
-                base=base,
-                ours=ours,
-                theirs=theirs,
+            result = subprocess.run(
+                [
+                    git_merge_file,
+                    "merge-file",
+                    "-p",
+                    "-L",
+                    "base",
+                    "-L",
+                    "ours",
+                    "-L",
+                    "theirs",
+                    str(ours_path),
+                    str(base_path),
+                    str(theirs_path),
+                ],
+                capture_output=True,
+                check=False,
+                text=True,
             )
-        raise MergeFailureError(
-            f"git merge-file failed (exit={result.returncode}) for {label!r}: "
-            f"{result.stderr.strip()}"
-        )
+            merged = result.stdout
+            if result.returncode == 0:
+                recorded[0] = "success"
+                return MergeResult(merged=merged, conflict_count=0)
+            if result.returncode == 1:
+                recorded[0] = "conflict"
+                raise MergeConflictError(
+                    path=label,
+                    merged=merged,
+                    base=base,
+                    ours=ours,
+                    theirs=theirs,
+                )
+            recorded[0] = "fatal"
+            raise MergeFailureError(
+                f"git merge-file failed (exit={result.returncode}) for {label!r}: "
+                f"{result.stderr.strip()}"
+            )
+        finally:
+            _record_semantic_duration(start, MergeStrategy.LINE, recorded[0])
 
 
 def merge_three_way_sync(

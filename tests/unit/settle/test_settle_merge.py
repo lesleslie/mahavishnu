@@ -198,6 +198,115 @@ async def test_merge_three_way_empty_inputs_clean() -> None:
 
 
 # ---------------------------------------------------------------------------
+# Phase 5 followup: merge.semantic.duration_ms histogram on LINE + sync
+# ---------------------------------------------------------------------------
+
+
+async def test_merge_semantic_duration_ms_histogram_registered() -> None:
+    """The ``merge.semantic.duration_ms`` histogram is registered at module import.
+
+    Pinned so a future migration to a different meter provider (or a
+    refactor that drops the ``_merge_meter`` module global) cannot
+    silently disable the histogram. The meter is an OTel abstraction;
+    we only assert the local handle is present and that recording
+    succeeds without raising — downstream aggregation is the OTel
+    SDK's responsibility.
+    """
+    import mahavishnu.settle.merge as merge_module
+
+    assert hasattr(merge_module, "_merge_semantic_duration_ms")
+    # Noop or real histogram — both expose ``record(amount, attributes)``.
+    merge_module._merge_semantic_duration_ms.record(0.0, {"strategy": "line", "outcome": "noop"})
+
+
+async def test_merge_three_way_line_records_success_sample() -> None:
+    """A clean LINE merge records exactly one sample with strategy="line", outcome="success".
+
+    The Phase 5 followup extends the try/finally outcome tracker that
+    ``_merge_via_mergiraf`` already uses into the LINE branch of
+    ``merge_three_way`` and into ``_merge_three_way_sync_internal``.
+    This test pins the success-path recording for the LINE branch.
+    """
+    proc = _make_process_mock(returncode=0, stdout="merged\n")
+    histogram = MagicMock()
+    with patch(
+        "asyncio.create_subprocess_exec",
+        AsyncMock(return_value=proc),
+    ), patch("mahavishnu.settle.merge._merge_semantic_duration_ms", histogram):
+        result = await merge_three_way(
+            base="b",
+            ours="o",
+            theirs="t",
+            strategy=MergeStrategy.LINE,
+        )
+    assert isinstance(result, MergeResult)
+    histogram.record.assert_called_once()
+    # Sample carries strategy="line" and outcome="success" for clean merges.
+    call_args = histogram.record.call_args
+    attrs = call_args.args[1] if len(call_args.args) > 1 else call_args.kwargs.get("attributes", {})
+    assert attrs.get("strategy") == "line"
+    assert attrs.get("outcome") == "success"
+    # Duration is a float in milliseconds; > 0 because time.monotonic advances.
+    duration = call_args.args[0] if call_args.args else call_args.kwargs["amount"]
+    assert duration >= 0
+
+
+async def test_merge_three_way_line_records_conflict_sample() -> None:
+    """A LINE conflict records exactly one sample with outcome="conflict".
+
+    Pins the conflict-path recording: the ``recorded[0] = "conflict"``
+    mutation must run before the MergeConflictError raise so the
+    finally block records the right label. Skipping it would tag
+    conflicts as "fatal" and break the Phase 5 30-day gate's per-
+    outcome latency breakdown.
+    """
+    merged_with_markers = "<<<<<<< ours\nA\n=======\nB\n>>>>>>> theirs\n"
+    proc = _make_process_mock(returncode=1, stdout=merged_with_markers)
+    histogram = MagicMock()
+    with patch(
+        "asyncio.create_subprocess_exec",
+        AsyncMock(return_value=proc),
+    ), patch("mahavishnu.settle.merge._merge_semantic_duration_ms", histogram):
+        with pytest.raises(MergeConflictError):
+            await merge_three_way(
+                base="orig\n",
+                ours="A\n",
+                theirs="B\n",
+                strategy=MergeStrategy.LINE,
+            )
+    histogram.record.assert_called_once()
+    call_args = histogram.record.call_args
+    attrs = call_args.args[1] if len(call_args.args) > 1 else call_args.kwargs.get("attributes", {})
+    assert attrs.get("strategy") == "line"
+    assert attrs.get("outcome") == "conflict"
+
+
+def test_merge_three_way_sync_internal_records_success_sample() -> None:
+    """The sync internal helper records one sample per call (LINE-only).
+
+    ``_merge_three_way_sync_internal`` always uses ``MergeStrategy.LINE``
+    (the docstring says the strategy parameter is intentionally absent
+    to keep Phase 0 semantics — the async public surface is the
+    canonical strategy selector). The histogram call uses strategy=
+    "line" accordingly.
+    """
+    import mahavishnu.settle.merge as merge_module
+
+    completed = _make_completed_proc(returncode=0, stdout="ok\n")
+    histogram = MagicMock()
+    with patch("subprocess.run", return_value=completed), patch.object(
+        merge_module, "_merge_semantic_duration_ms", histogram
+    ):
+        result = merge_module._merge_three_way_sync_internal(base="b", ours="o", theirs="t")
+    assert isinstance(result, MergeResult)
+    histogram.record.assert_called_once()
+    call_args = histogram.record.call_args
+    attrs = call_args.args[1] if len(call_args.args) > 1 else call_args.kwargs.get("attributes", {})
+    assert attrs.get("strategy") == "line"
+    assert attrs.get("outcome") == "success"
+
+
+# ---------------------------------------------------------------------------
 # Sync merge_three_way_sync
 # ---------------------------------------------------------------------------
 
