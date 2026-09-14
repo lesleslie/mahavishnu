@@ -913,6 +913,12 @@ class TestBroadcastHelpers:
                 EventTypes.POOL_STATUS_CHANGED,
                 {"pool_id": "p1"},
             ),
+            (
+                "broadcast_settle_transition",
+                "settle:r1",
+                "settle.transition",
+                {"run_ref": "r1"},
+            ),
         ],
     )
     async def test_broadcast_methods_target_correct_room(
@@ -938,14 +944,24 @@ class TestBroadcastHelpers:
                 await method("w1", "boom")
             elif method_name == "broadcast_pool_status_changed":
                 await method("p1", {"workers": 3})
+            elif method_name == "broadcast_settle_transition":
+                await method("r1", "w1", "proposed", "applied", "select")
             else:
                 await method("w1", {"metadata": "x"})
 
-        broadcast.assert_awaited_once()
-        call_args = broadcast.await_args
-        assert call_args.args[0] == room
+        # broadcast_settle_transition fans out to two rooms (settle: and run:);
+        # others broadcast to a single room.
+        if method_name == "broadcast_settle_transition":
+            assert broadcast.await_count == 2
+            first_call = broadcast.call_args_list[0]
+            assert first_call.args[0] == room
+            sent_event = first_call.args[1]
+        else:
+            broadcast.assert_awaited_once()
+            call_args = broadcast.await_args
+            assert call_args.args[0] == room
+            sent_event = call_args.args[1]
         # The event payload should match the event_type
-        sent_event = call_args.args[1]
         assert sent_event.event == event_type
 
     @pytest.mark.asyncio
