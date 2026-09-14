@@ -31,15 +31,17 @@ Notes:
   M/M/1 result ``W_q = rho / (mu * (1 - rho))``; the implementation
   uses the same general code path for any ``c >= 1``.
 """
+
 from __future__ import annotations
 
-from collections.abc import Sequence
 from dataclasses import dataclass
 import math
-from typing import Literal
+from typing import TYPE_CHECKING, Literal
 
 from mahavishnu.core.errors import QueueingModelError
 
+if TYPE_CHECKING:
+    from collections.abc import Sequence
 
 # Default utilization cap used by :func:`safe_expected_wait_time` when
 # the caller does not pass an explicit cap. Chosen so that a single
@@ -104,7 +106,9 @@ def _expected_wait_time_kingman(rho: float, service_rate: float) -> float:
 
 
 def _expected_wait_time_erlang_c(
-    num_workers: int, rho: float, service_rate: float,
+    num_workers: int,
+    rho: float,
+    service_rate: float,
 ) -> float:
     """Return ``W_q`` using the exact M/M/c Erlang-C formula.
 
@@ -185,7 +189,7 @@ class MmcQueue:
         arrivals: Sequence[float],
         services: Sequence[float],
         num_workers: int,
-    ) -> "MmcQueue":
+    ) -> MmcQueue:
         """Fit an :class:`MmcQueue` from observed inter-arrival and service times.
 
         Args:
