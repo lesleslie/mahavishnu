@@ -945,6 +945,10 @@ class TestBroadcastHelpers:
             elif method_name == "broadcast_pool_status_changed":
                 await method("p1", {"workers": 3})
             elif method_name == "broadcast_settle_transition":
+                # Direct Attribute access so the audit walker counts this
+                # as a reference to broadcast_settle_transition; the
+                # parametrize string literal alone wouldn't.
+                method = server.broadcast_settle_transition
                 await method("r1", "w1", "proposed", "applied", "select")
             else:
                 await method("w1", {"metadata": "x"})
