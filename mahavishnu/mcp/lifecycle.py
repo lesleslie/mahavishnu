@@ -41,6 +41,94 @@ async def start_server(server: Any, host: str = "127.0.0.1", port: int = 3000) -
         # Don't crash the server — the /health route will report
         # skills_signer as degraded with the error message.
 
+    # Wire managers that ``initialize_runtime_services`` sets up for the
+    # CLI/start path but NOT for the ``mahavishnu mcp start`` path.
+    # Without these, ``_register_pool_block`` short-circuits with
+    # "Pool manager not initialized, skipping pool tools" and 19 pool +
+    # worker tools are missing from the MCP surface. Mirrors the
+    # defensive ``init_pool_manager`` try/except shape so an outage
+    # in one subsystem never blocks the server from binding the port.
+    if getattr(server.app, "pool_manager", None) is None and getattr(
+        server.app.config, "pools_enabled", True
+    ):
+        try:
+            from ..core.bootstrap import init_pool_manager
+
+            server.app.pool_manager = init_pool_manager(server.app)
+        except Exception as exc:  # noqa: BLE001 - MCP boundary
+            logger.error("Failed to initialize pool manager: %s", exc)
+
+    if getattr(server.app, "memory_aggregator", None) is None and getattr(
+        server.app.config, "memory_aggregation_enabled", False
+    ):
+        try:
+            from ..core.bootstrap import init_memory_aggregator
+
+            server.app.memory_aggregator = init_memory_aggregator(server.app)
+        except Exception as exc:  # noqa: BLE001 - MCP boundary
+            logger.error("Failed to initialize memory aggregator: %s", exc)
+
+    # Phase 3 — start the plan_index periodic rebuild loop BEFORE
+    # ``run_http_async`` so the /health route can read populated feed
+    # state. Mirrors the signer_init pattern: ``PeriodicTaskRunner``
+    # exposes ``force_run()`` (async) and ``start()`` (schedules the
+    # periodic loop). We await ``force_run()`` once synchronously so
+    # the feed state is populated immediately — calling only
+    # ``start()`` would defer the first cycle to a background task
+    # that may not get scheduled before FastMCP's lifespan scope
+    # reshuffles the event loop.
+    #
+    # The cron calls ``dhara.get/.put/.list_prefix`` via
+    # ``PlanIndexStore`` — that interface (string KV) is implemented
+    # by ``DharaKvClient``, which unwraps Dhara's
+    # ``{ok,key,value}`` wire envelope so ``cron_core`` can do
+    # ``int(await store._dhara.get(KEY))`` and ``json.loads(...)``
+    # against the raw stored string. ``DharaStateBackend`` (the
+    # workflow/pool/approval substrate) returns the envelope dict
+    # on purpose and would crash every cycle with
+    # ``int() argument must be ... not 'dict'``.
+    try:
+        from pathlib import Path
+
+        from ..core.bootstrap import resolve_dhara_url
+        from ..core.state_backends.dhara_kv import DharaKvClient, DharaKvConfig
+        from ..plan_index.cron import PeriodicTaskRunner
+        from ..plan_index.store import PlanIndexStore
+
+        dhara_url = resolve_dhara_url(server.app.config)
+        kv_backend = DharaKvClient(
+            base_url=dhara_url,
+            config=DharaKvConfig(enabled=True),
+        )
+        server._plan_index_dhara_kv = kv_backend
+        store = PlanIndexStore(kv_backend)
+        # ``Path.cwd()`` is the mahavishnu repo root when launched via
+        # the launchd plist (``WorkingDirectory`` is set), so
+        # ``discover_records`` finds the real ``docs/plans/*.md``.
+        # Falls back to ``None`` (zero-record cycle that still flips
+        # ``is_ok``) when cwd isn't the repo.
+        repo_root = Path.cwd() if Path("docs/plans").is_dir() else None
+        runner = PeriodicTaskRunner(store=store, repo_root=repo_root)
+        outcome = await runner.force_run()
+        runner.start()  # schedule the periodic loop for subsequent cycles
+        server._plan_index_runner = runner
+        logger.info(
+            "plan_index cycle complete: success=%d errors=%d entities=%d (repo_root=%s)",
+            outcome.success,
+            outcome.errors,
+            outcome.entities_count,
+            repo_root or "<none — empty cycle>",
+        )
+    except Exception as exc:  # noqa: BLE001 - MCP boundary
+        logger.error("Failed to start plan_index subsystem: %s", exc)
+        # Don't crash — /health will report plan_index degraded with
+        # the prior "awaiting start()" error message.
+        # Note: a previous version of this code synthesized a fake
+        # feed-state here so /health flipped even when the live cycle
+        # crashed. That hid the int(dict) wire-envelope bug; now that
+        # ``DharaKvClient`` solves the seam, the live cycle should
+        # succeed and a real failure is worth surfacing.
+
     # Override FastMCP's hardcoded 2s graceful-shutdown timeout so
     # lifespan teardown can run cleanup (hooks, health snapshots, etc.)
     # without being cancelled mid-shutdown.
@@ -53,6 +141,17 @@ async def start_server(server: Any, host: str = "127.0.0.1", port: int = 3000) -
 
 async def stop_server(server: Any) -> None:
     """Stop the MCP server and cleanup resources."""
+    # Phase 3 — stop the plan_index rebuild loop so the periodic task
+    # closes cleanly. Mirrors the signer reset pattern below. Skipped
+    # silently when the runner was never started (e.g. init raised).
+    runner = getattr(server, "_plan_index_runner", None)
+    if runner is not None:
+        try:
+            await runner.stop()
+            logger.info("plan_index runner stopped")
+        except Exception as exc:  # noqa: BLE001 - MCP boundary
+            logger.warning("Error stopping plan_index runner: %s", exc)
+
     # Phase 1.5 — clear the skills_signer feed state singleton so
     # the next start() gets a fresh module-level state (and so a
     # test calling stop_server → start_server sees a clean slate).
