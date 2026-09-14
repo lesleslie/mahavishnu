@@ -1,8 +1,8 @@
 ---
-status: partial
+status: complete
 role: implementation
 date: 2026-07-16
-last_reviewed: '2026-09-12'
+last_reviewed: '2026-09-14'
 superseded_by: null
 topic: mcp-design
 ---
@@ -1949,3 +1949,25 @@ Two execution options:
 
 1. **Subagent-Driven (recommended)** — dispatch a fresh subagent per task, review between tasks, fast iteration.
 1. **Inline Execution** — execute tasks in this session using executing-plans, batch execution with checkpoints.
+
+## Re-Review Status (2026-09-14)
+
+**Status**: `complete` (path-not-taken). The Bodai ecosystem chose bare MCP URLs over Claude Code plugins; the `bodai-plugins` marketplace repo was never created, the Phase 2-3 plugin migrations never ran, and Phase 4 workflow lifecycle was implemented directly without the bodai-plugins scaffolding.
+
+**Why the plugin approach was abandoned:**
+
+- Each Bodai MCP server (`mahavishnu-mcp`, `session-buddy-mcp`, `crackerjack-mcp`, `akosha-mcp`, `dhara-mcp`) is a standalone repo with its own `pyproject.toml` and PyPI release. The plugin model adds a `plugin.json` + `.claude-plugin/marketplace.json` distribution layer that doesn't fit this topology — each server IS its own plugin-equivalent unit.
+- Session memory `mcpretentious-removed-mcp-first.md`: *"mcpretentious-open is gone; new wiring must expose FastMCP tools"*. The bodai ecosystem standardizes on bare MCP URLs in per-repo `.mcp.json`, not Claude Code marketplace distribution.
+- Session memory `bodai-mcp-servers-not-mycelium-core.md`: css-mcp, graphics-mcp, etc. are standalone Bodai-ecosystem projects (not mycelium-core). This is the structural pattern; Claude Code plugin packaging doesn't add value when the units are already self-contained repos.
+
+**What's left (no actionable items):**
+
+- Phase 1 (build `bodai-plugins` repo) — never created
+- Phase 2 (pilot mahavishnu migration to plugin) — never ran
+- Phase 3 (migrate remaining 4 MCP servers) — never ran
+- Phase 4 (workflow lifecycle decisions + audit script) — partially implemented directly without the marketplace scaffolding (`docs/feature-tracking/` exists, audit scripts landed)
+- Phase 5 (publish + announce) — never reached
+
+**Closing rationale**: marking `complete` (rather than leaving as `partial`) prevents the plan from indefinitely occupying the partial-plan queue while no work is actually pending. The Re-Review Status block above is the audit trail explaining *why* the plan's described work is no longer applicable — anyone reviewing this file in the future can immediately see the decision rationale and the ecosystem pattern that superseded the plugin-distribution approach.
+
+**No follow-up needed.** If a future requirement emerges for unified plugin distribution (e.g., non-Bodai Claude Code users want a one-stop marketplace install), that ships as a fresh plan with explicit decision rationale recorded at authoring time.
