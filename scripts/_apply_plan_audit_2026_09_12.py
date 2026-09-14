@@ -46,9 +46,17 @@ CHANGES: list[tuple[str, str, str]] = [
     ("docs/superpowers/specs/2026-06-19-wave2a-chaos-hardening-design.md", "active", "complete"),
     ("docs/superpowers/specs/2026-06-19-wave2b-a2a-worker-design.md", "active", "complete"),
     ("docs/superpowers/specs/2026-07-14-multi-backend-pty-design.md", "active", "complete"),
-    ("docs/superpowers/specs/2026-08-22-oneiric-action-kit-promotion-design.md", "active", "complete"),
+    (
+        "docs/superpowers/specs/2026-08-22-oneiric-action-kit-promotion-design.md",
+        "active",
+        "complete",
+    ),
     # docs/superpowers/specs/ — 2 → partial
-    ("docs/superpowers/specs/2026-05-16-llm-routing-standardization-design.md", "active", "partial"),
+    (
+        "docs/superpowers/specs/2026-05-16-llm-routing-standardization-design.md",
+        "active",
+        "partial",
+    ),
     ("docs/superpowers/specs/2026-07-15-constellation-tui-design.md", "active", "partial"),
 ]
 
@@ -76,7 +84,7 @@ def main() -> int:
 
         text = path.read_text()
         try:
-            raw, body, raw_block = split_frontmatter(text)
+            raw, body, _raw_block = split_frontmatter(text)
         except ValueError as exc:
             print(f"  NO_FRONTMATTER: {relpath}: {exc}", file=sys.stderr)
             rc = 1
@@ -107,7 +115,9 @@ def main() -> int:
         new_block = "---\n" + new_yaml + "---"
 
         path.write_text(new_block + "\n" + body)
-        print(f"  OK: {relpath}  {expected} -> {new_status}  (last_reviewed {old_date} -> {NEW_DATE})")
+        print(
+            f"  OK: {relpath}  {expected} -> {new_status}  (last_reviewed {old_date} -> {NEW_DATE})"
+        )
 
     print()
     print(f"Total changes attempted: {len(CHANGES)}")

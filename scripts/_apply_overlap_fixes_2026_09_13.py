@@ -70,7 +70,9 @@ def action_ultracode() -> None:
     print(f"  OK: {path.relative_to(REPO)}  topic -> verification-gate")
 
 
-def action_stub_mcp(path_rel: str, port_plan: str = "2026-09-06-port-bodai-reconciliation.md") -> None:
+def action_stub_mcp(
+    path_rel: str, port_plan: str = "2026-09-06-port-bodai-reconciliation.md"
+) -> None:
     path = REPO / path_rel
     raw, body = split_frontmatter(path.read_text())
     fm = yaml.safe_load(raw)

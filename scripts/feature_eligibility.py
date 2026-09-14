@@ -43,6 +43,7 @@ CLI flags:
     --plan-root    repo root for followups/feature-tracking discovery
                    (default: parent of this script's directory)
 """
+
 from __future__ import annotations
 
 import argparse
@@ -178,7 +179,7 @@ def _safe_int(value: Any) -> int | None:
         return None
     try:
         return int(value)
-    except (TypeError, ValueError):
+    except TypeError, ValueError:
         return None
 
 
@@ -187,7 +188,7 @@ def _safe_float(value: Any) -> float | None:
         return None
     try:
         return float(value)
-    except (TypeError, ValueError):
+    except TypeError, ValueError:
         return None
 
 
@@ -230,7 +231,10 @@ def fetch_session_buddy_graph_stats(
         coverage = _safe_float(mcp_config.get("session_buddy_code_graph_coverage"))
         if node_count is None or coverage is None:
             return None, None, "unknown"
-        if node_count >= HYPERBOLIC_EMBEDDINGS_NODE_THRESHOLD and coverage >= HYPERBOLIC_EMBEDDINGS_COVERAGE_THRESHOLD:
+        if (
+            node_count >= HYPERBOLIC_EMBEDDINGS_NODE_THRESHOLD
+            and coverage >= HYPERBOLIC_EMBEDDINGS_COVERAGE_THRESHOLD
+        ):
             return node_count, coverage, "above"
         return node_count, coverage, "below"
     env_count = os.environ.get("MAHAVISHNU_SB_CODE_GRAPH_NODE_COUNT")
@@ -240,7 +244,10 @@ def fetch_session_buddy_graph_stats(
         coverage = _safe_float(env_cov)
         if node_count is None or coverage is None:
             return None, None, "unknown"
-        if node_count >= HYPERBOLIC_EMBEDDINGS_NODE_THRESHOLD and coverage >= HYPERBOLIC_EMBEDDINGS_COVERAGE_THRESHOLD:
+        if (
+            node_count >= HYPERBOLIC_EMBEDDINGS_NODE_THRESHOLD
+            and coverage >= HYPERBOLIC_EMBEDDINGS_COVERAGE_THRESHOLD
+        ):
             return node_count, coverage, "above"
         return node_count, coverage, "below"
     return None, None, "unknown"
@@ -429,8 +436,7 @@ def format_human_report(report: EligibilityReport) -> str:
     lines: list[str] = []
     for t in report.triggers:
         lines.append(
-            f"{t.name}: state={t.state} threshold={t.threshold} "
-            f"current={t.current} fired={t.fired}"
+            f"{t.name}: state={t.state} threshold={t.threshold} current={t.current} fired={t.fired}"
         )
     lines.append(
         f"triggers_fired={report.triggers_fired} "
@@ -511,7 +517,7 @@ def main(argv: list[str] | None = None) -> int:
 
     try:
         report = build_report(plan_root, requests_log, mcp_config)
-    except Exception as exc:  # noqa: BLE001 - we want exit code 2 on any I/O surprise
+    except Exception as exc:
         print(f"feature_eligibility.py: internal error: {exc}", file=sys.stderr)
         return 2
 

@@ -68,7 +68,7 @@ def test_check_version_parses_semver(monkeypatch: pytest.MonkeyPatch) -> None:
 
 
 def test_check_version_malformed(monkeypatch: pytest.MonkeyPatch) -> None:
-    """check_version returns error on unparseable output."""
+    """check_version returns error on unparsable output."""
     monkeypatch.setattr("shutil.which", lambda _: "/usr/local/bin/mergiraf")
     completed = MagicMock(spec=subprocess.CompletedProcess)
     completed.returncode = 0

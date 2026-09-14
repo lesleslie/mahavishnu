@@ -30,6 +30,7 @@ The generator intentionally does not write the "Per-project MCP server and
 agent scoping" section or the "Phase 4 reuse" footer; those are hand-maintained
 because they reference decisions that the generator cannot infer.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -76,21 +77,21 @@ NAME_SECTION: dict[str, str] = {
 
 # Role-based default for repos not in NAME_SECTION
 ROLE_SECTION: dict[str, str] = {
-    "tool":         "mcp_server",
-    "asset":        "web_framework",
-    "extension":    "extensions",
-    "app":          "desktop",
-    "orb":          "meta",
-    "builder":      "web_framework",
-    "visualizer":   "extensions",
+    "tool": "mcp_server",
+    "asset": "web_framework",
+    "extension": "extensions",
+    "app": "desktop",
+    "orb": "meta",
+    "builder": "web_framework",
+    "visualizer": "extensions",
     # Roles that always go to core (rare; mostly covered by NAME_SECTION above)
     "orchestrator": "core",
-    "seer":         "core",
-    "curator":      "core",
-    "inspector":    "core",
-    "resolver":     "core",
-    "foundation":   "core",
-    "aggregator":   "core",
+    "seer": "core",
+    "curator": "core",
+    "inspector": "core",
+    "resolver": "core",
+    "foundation": "core",
+    "aggregator": "core",
 }
 
 
@@ -100,19 +101,25 @@ def resolve_section(name: str, role: str) -> str:
         return NAME_SECTION[name]
     return ROLE_SECTION.get(role, "meta")
 
+
 SECTION_ORDER: list[tuple[str, str]] = [
-    ("core",          "Core 7 (in-scope for streaming tar Phase 3)"),
+    ("core", "Core 7 (in-scope for streaming tar Phase 3)"),
     ("web_framework", "Web / framework libraries"),
-    ("mcp_server",    "Bodai MCP servers (standalone; per `bodai-mcp-servers-not-mycelium-core.md`)"),
-    ("extensions",    "Extensions"),
-    ("desktop",       "Desktop / GUI"),
-    ("meta",          "Meta"),
+    ("mcp_server", "Bodai MCP servers (standalone; per `bodai-mcp-servers-not-mycelium-core.md`)"),
+    ("extensions", "Extensions"),
+    ("desktop", "Desktop / GUI"),
+    ("meta", "Meta"),
 ]
 
 # Core 7 explicit ordering (the streaming-tar rollout phases)
 CORE_ORDER = [
-    "mcp-common", "oneiric", "dhara", "session-buddy", "akosha",
-    "crackerjack", "mahavishnu",
+    "mcp-common",
+    "oneiric",
+    "dhara",
+    "session-buddy",
+    "akosha",
+    "crackerjack",
+    "mahavishnu",
 ]
 
 
@@ -156,9 +163,13 @@ def render_repo_row(repo: dict, overlay: dict) -> str:
     if o.get("registry_notes"):
         notes_bits.append(o["registry_notes"])
     if o.get("fastmcp_pin") and not o.get("phase"):
-        notes_bits.append(f"FastMCP **{o['fastmcp_pin']}** as of {o.get('fastmcp_pin_as_of', 'unknown')}")
+        notes_bits.append(
+            f"FastMCP **{o['fastmcp_pin']}** as of {o.get('fastmcp_pin_as_of', 'unknown')}"
+        )
     if o.get("fastmcp_pin") and o.get("phase"):
-        notes_bits.append(f"FastMCP **{o['fastmcp_pin']}** (`{o.get('fastmcp_pin_as_of', 'unknown')}`)")
+        notes_bits.append(
+            f"FastMCP **{o['fastmcp_pin']}** (`{o.get('fastmcp_pin_as_of', 'unknown')}`)"
+        )
     if not notes_bits:
         notes_bits.append(o.get("provenance", "active"))
     notes = ". ".join(notes_bits)
@@ -167,9 +178,11 @@ def render_repo_row(repo: dict, overlay: dict) -> str:
 
 def render_core_section(repos: list[dict], overlay: dict) -> str:
     by_name = {r["name"]: r for r in repos}
-    out = ["### Core 7 (in-scope for streaming tar Phase 3)\n",
-           "| Repo | Path | Current `requires-python` | Notes |",
-           "|---|---|---|---|"]
+    out = [
+        "### Core 7 (in-scope for streaming tar Phase 3)\n",
+        "| Repo | Path | Current `requires-python` | Notes |",
+        "|---|---|---|---|",
+    ]
     for name in CORE_ORDER:
         if name not in by_name:
             continue
@@ -179,9 +192,11 @@ def render_core_section(repos: list[dict], overlay: dict) -> str:
 
 
 def render_section(title: str, repos: list[dict], overlay: dict) -> str:
-    out = [f"### {title}\n",
-           "| Repo | Path | Current `requires-python` | Notes |",
-           "|---|---|---|---|"]
+    out = [
+        f"### {title}\n",
+        "| Repo | Path | Current `requires-python` | Notes |",
+        "|---|---|---|---|",
+    ]
     for r in sorted(repos, key=lambda r: r["name"]):
         out.append(render_repo_row(r, overlay))
     out.append("")
@@ -189,9 +204,11 @@ def render_section(title: str, repos: list[dict], overlay: dict) -> str:
 
 
 def render_archived_section(archived: dict) -> str:
-    out = ["### Deprecated / Archived (moved to `~/Projects/ARCHIVED/`)\n",
-           "| Repo | Archive path | `requires-python` | Notes |",
-           "|---|---|---|---|"]
+    out = [
+        "### Deprecated / Archived (moved to `~/Projects/ARCHIVED/`)\n",
+        "| Repo | Archive path | `requires-python` | Notes |",
+        "|---|---|---|---|",
+    ]
     for name in sorted(archived):
         info = archived[name]
         out.append(
@@ -207,7 +224,9 @@ def render_excluded_section(excluded: dict) -> str:
         info = excluded[name]
         out.append(f"- `{name}/` — {info.get('exclusion_reason', 'excluded')}")
         if info.get("removed_from_ecosystem_yaml"):
-            out.append(f"  Removed from `settings/ecosystem.yaml` {info['removed_from_ecosystem_yaml']}.")
+            out.append(
+                f"  Removed from `settings/ecosystem.yaml` {info['removed_from_ecosystem_yaml']}."
+            )
         if info.get("archive_path"):
             out.append(f"  Archived at: `{info['archive_path']}`.")
     out.append("")
@@ -344,14 +363,22 @@ def generate(ecosystem_path: Path, overlay_path: Path) -> str:
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--check", action="store_true",
-                        help="Exit non-zero if generated content differs from existing file")
-    parser.add_argument("--ecosystem", default="settings/ecosystem.yaml",
-                        help="Path to ecosystem.yaml")
-    parser.add_argument("--overlay", default="settings/registry_metadata.yaml",
-                        help="Path to registry_metadata.yaml")
-    parser.add_argument("--output", default="BODAI_REPO_REGISTRY.md",
-                        help="Path to write generated registry doc")
+    parser.add_argument(
+        "--check",
+        action="store_true",
+        help="Exit non-zero if generated content differs from existing file",
+    )
+    parser.add_argument(
+        "--ecosystem", default="settings/ecosystem.yaml", help="Path to ecosystem.yaml"
+    )
+    parser.add_argument(
+        "--overlay",
+        default="settings/registry_metadata.yaml",
+        help="Path to registry_metadata.yaml",
+    )
+    parser.add_argument(
+        "--output", default="BODAI_REPO_REGISTRY.md", help="Path to write generated registry doc"
+    )
     args = parser.parse_args()
 
     eco = Path(args.ecosystem)

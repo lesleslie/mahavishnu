@@ -256,7 +256,7 @@ def _required_grammars_for_repo(repo_path: Path) -> list[str]:
     """
     seen: list[str] = []
     seen_set: set[str] = set()
-    for ext in _EXTENSION_GRAMMAR:
+    for ext, grammar in _EXTENSION_GRAMMAR.items():
         for candidate in repo_path.rglob(f"*{ext}"):
             try:
                 if not candidate.is_file():
@@ -268,7 +268,6 @@ def _required_grammars_for_repo(repo_path: Path) -> list[str]:
             except OSError:
                 # Permission denied, broken symlink, race with delete.
                 continue
-            grammar = _EXTENSION_GRAMMAR[ext]
             if grammar not in seen_set:
                 seen.append(grammar)
                 seen_set.add(grammar)
