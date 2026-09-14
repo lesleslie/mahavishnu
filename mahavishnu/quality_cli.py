@@ -8,6 +8,8 @@ import subprocess
 from oneiric.core.logging import get_logger
 import typer
 
+from mahavishnu.tui import FallbackRichFormatter, get_console
+
 logger = get_logger(__name__)
 quality_app = typer.Typer(help="Quality management commands")
 
@@ -39,11 +41,65 @@ def quality_check(
     path: Path = typer.Argument(Path(), help="Path to check (file or directory)"),
     verbose: bool = typer.Option(False, "--verbose", "-v", help="Enable verbose output"),
 ) -> None:
-    """Run quality checks on a path."""
-    typer.echo(f"Quality check for {path}")
+    """Run quality checks on a path with Rich-formatted output."""
+    console = get_console()
+    formatter = FallbackRichFormatter(console=console)
+
+    console.print(f"\n[bold cyan]Quality Check:[/bold cyan] {path}\n")
+
     if verbose:
-        typer.echo("Verbose output enabled")
-    typer.echo("Quality check complete (stub)")
+        console.print("[dim]Verbose output enabled[/dim]")
+
+    try:
+        import crackerjack  # type: ignore[import-not-found]
+
+        result = crackerjack.run_quality_checks(project_path=path)
+    except ImportError:
+        console.print(
+            "[yellow]crackerjack not installed.[/yellow] Install: [cyan]uv add crackerjack[/cyan]"
+        )
+        return
+    except Exception as e:
+        logger.warning("Quality check failed: %s", e)
+        formatter.format_dict(
+            {"status": "[red]ERROR[/red]", "error": str(e)},
+            title="Quality Check Failed",
+        )
+        return
+
+    color = "green" if result.success else "red"
+    status = "PASS" if result.success else "FAIL"
+    formatter.format_dict(
+        {
+            "result": f"[{color}]{status}[/]",
+            "fast_hooks": (
+                f"[{'green' if result.fast_hooks_passed else 'red'}]"
+                f"{'PASS' if result.fast_hooks_passed else 'FAIL'}[/]"
+            ),
+            "comprehensive_hooks": (
+                f"[{'green' if result.comprehensive_hooks_passed else 'red'}]"
+                f"{'PASS' if result.comprehensive_hooks_passed else 'FAIL'}[/]"
+            ),
+            "duration_s": f"{result.duration:.2f}",
+            "errors": len(result.errors),
+            "warnings": len(result.warnings),
+        },
+        title="Quality Results",
+    )
+
+    if result.errors:
+        formatter.format_list(
+            [{"message": e} for e in result.errors],
+            columns=["message"],
+            title="Errors",
+        )
+
+    if verbose and result.warnings:
+        formatter.format_list(
+            [{"message": w} for w in result.warnings],
+            columns=["message"],
+            title="Warnings",
+        )
 
 
 @quality_app.command(name="fix")
