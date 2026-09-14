@@ -1,3 +1,16 @@
+---
+status: active
+role: implementation
+date: 2026-08-25
+last_reviewed: 2026-09-13
+owner: les
+topic: bodai-tui-shell-surface
+scope: bodai-tui-shell
+purpose: verify and polish the bodai shell + dashboard TUIs and the mahavishnu monitor --tui; standardize the AdminShell subclass pattern across Core 7
+superseded_by: null
+blocks_on: [2026-08-25-bodai-tui-shell-surface.md]
+---
+
 # Bodai TUI & Admin Shell Surface Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
