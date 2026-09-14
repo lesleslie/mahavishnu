@@ -2,11 +2,13 @@
 status: partial
 role: implementation
 date: 2026-09-12
-last_reviewed: '2026-09-12'
+last_reviewed: '2026-09-13'
 superseded_by: null
 blocks_on: []
 topic: convergence-control-plane
 title: Jot Drain Polish
+related:
+- 2026-09-10-jot-drain.md
 ---
 # Jot Drain Polish Implementation Plan
 

@@ -2,11 +2,10 @@
 status: partial
 role: implementation
 date: 2026-07-16
-last_reviewed: 2026-07-16
+last_reviewed: '2026-09-13'
 superseded_by: null
-topic: routing-composition
+topic: verification-gate
 ---
-
 # Ultracode Integration Wiring — Implementation Plan
 
 ## **Date:** 2026-07-11 **Status:** partial, implementation — many Phase 1/2/3 symbols shipped; remaining work is wiring, settings, CLI metrics, and Phase 4/5 deliverables <!-- legacy status: partial, implementation — see YAML frontmatter --> **Owner:** mahavishnu core **Drift-sync note (2026-07-15):** Audit verified 11 stale-done items already shipped. Plan checkboxes updated; remaining work items preserved. **Scope:** Wire Mahavishnu's existing primitives to better support ultracode-style multi-agent composition. Deliver three concrete capabilities: (1) diverse-refuter adversarial verification gate, (2) opt-in loop-until-dry for pattern detection, (3) MCP bridge completion for ultracode subagents. **Purpose:** Reduce the failure modes that emerge when Mahavishnu's control-plane primitives are composed with ultracode's reasoning-plane primitives. The two planes meet at MCP boundaries and approval flows; this plan hardens both.

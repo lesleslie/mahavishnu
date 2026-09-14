@@ -2,7 +2,7 @@
 status: partial
 role: implementation
 date: 2026-09-10
-last_reviewed: '2026-09-12'
+last_reviewed: '2026-09-13'
 superseded_by: null
 topic: settle-semantic-merge
 requirements:
@@ -25,6 +25,8 @@ requirements:
     version
 - id: REQ-SM-009
   title: /health merge_driver.{available, binary, version, grammars, degraded_since}
+related:
+- 2026-09-12-finish-partial-implementations.md
 ---
 # Settle Semantic Merge — mergiraf opt-in + git-merge-tree diagnostics
 
