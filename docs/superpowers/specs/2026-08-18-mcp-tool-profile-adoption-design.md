@@ -2,7 +2,7 @@
 status: active
 role: canonical
 date: 2026-08-18
-last_reviewed: 2026-08-18
+last_reviewed: 2026-09-13
 topic: mcp-tool-profile-adoption
 title: MCP Tool Profile Adoption Across Bodai Ecosystem
 ---

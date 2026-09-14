@@ -1,5 +1,5 @@
 ---
-status: active
+status: complete
 role: implementation
 topic: auth
 date: 2026-07-16

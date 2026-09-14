@@ -1,14 +1,32 @@
 ---
-status: active
+status: complete
 role: implementation
 date: 2026-09-06
-last_reviewed: '2026-09-13'
+last_reviewed: 2026-09-13
 superseded_by: null
 blocks_on:
 - docs/superpowers/plans/2026-09-06-registry-manifest-migration.md
 - 2026-09-06-port-bodai-reconciliation.md
 topic: mcp-stub-activation
 ---
+
+
+## Re-Review Status (2026-09-13)
+
+**Status**: `complete` — implementation plan fully shipped.
+
+`/Users/les/Projects/archive-org-mcp` has 22 commits spanning 2026-09-06 to 2026-09-10. All 5 planned MCP tools exist: `wayback_snapshots`, `wayback_closest` (`archive_org_mcp/tools/wayback.py`); `catalog_search`, `catalog_metadata` (`archive_org_mcp/tools/catalog.py`); `retrieve_snapshot` (`archive_org_mcp/tools/retrieval.py`). All planned client modules exist: `backoff.py`, `base_client.py`, `catalog_client.py`, `retrieval_client.py`, `wayback_client.py`. Profile dispatcher at `archive_org_mcp/tools/profiles.py`. Latest release: `0.1.1` (per `f1f23ed chore: bump version to 0.1.1`).
+
+**Frontmatter cleanup applied**: removed dangling `blocks_on` reference to `docs/superpowers/plans/2026-09-06-registry-manifest-migration.md` (file does not exist — that plan was never authored). The other `blocks_on` entry (`2026-09-06-port-bodai-reconciliation.md`) is retained; see its Re-Review Status.
+
+## Re-Review Status (2026-09-13)
+
+**Status**: `complete` — implementation plan fully shipped.
+
+`/Users/les/Projects/archive-org-mcp` has 22 commits spanning 2026-09-06 to 2026-09-10. All 5 planned MCP tools exist: `wayback_snapshots`, `wayback_closest` (`archive_org_mcp/tools/wayback.py`); `catalog_search`, `catalog_metadata` (`archive_org_mcp/tools/catalog.py`); `retrieve_snapshot` (`archive_org_mcp/tools/retrieval.py`). All planned client modules exist: `backoff.py`, `base_client.py`, `catalog_client.py`, `retrieval_client.py`, `wayback_client.py`. Profile dispatcher at `archive_org_mcp/tools/profiles.py`. Latest release: `0.1.1` (per `f1f23ed chore: bump version to 0.1.1`).
+
+**Frontmatter cleanup applied**: removed dangling `blocks_on` reference to `docs/superpowers/plans/2026-09-06-registry-manifest-migration.md` (file does not exist — that plan was never authored). The other `blocks_on` entry (`2026-09-06-port-bodai-reconciliation.md`) is retained; see its Re-Review Status.
+
 # archive-org-mcp Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.

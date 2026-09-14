@@ -1,13 +1,27 @@
 ---
-status: active
+status: complete
 role: implementation
 date: 2026-09-06
-last_reviewed: '2026-09-13'
+last_reviewed: 2026-09-13
 superseded_by: null
 topic: mcp-stub-activation
 blocks_on:
 - 2026-09-06-port-bodai-reconciliation.md
 ---
+
+
+## Re-Review Status (2026-09-13)
+
+**Status**: `complete` — implementation plan fully shipped.
+
+`/Users/les/Projects/medium-mcp` has 25 commits spanning 2026-09-06 to 2026-09-10. Three version bumps landed: `0.1.1`, `0.1.2`, `0.1.3` (per `b9d6e2a chore: bump version to 0.1.3`). `medium_mcp/` package present with full module layout; `tests/`, `docs/`, `dist/` all shipped. `blocks_on: port-bodai-reconciliation.md` is now itself complete (see its Re-Review Status).
+
+## Re-Review Status (2026-09-13)
+
+**Status**: `complete` — implementation plan fully shipped.
+
+`/Users/les/Projects/medium-mcp` has 25 commits spanning 2026-09-06 to 2026-09-10. Three version bumps landed: `0.1.1`, `0.1.2`, `0.1.3` (per `b9d6e2a chore: bump version to 0.1.3`). `medium_mcp/` package present with full module layout; `tests/`, `docs/`, `dist/` all shipped. `blocks_on: port-bodai-reconciliation.md` is now itself complete (see its Re-Review Status).
+
 # Medium MCP Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.

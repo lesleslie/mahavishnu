@@ -2,7 +2,7 @@
 status: active
 role: canonical
 date: 2026-08-12
-last_reviewed: 2026-08-12
+last_reviewed: 2026-09-13
 topic: bodai-conformance
 title: Bodai Ecosystem Consistency Mechanisms
 ---

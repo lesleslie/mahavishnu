@@ -657,10 +657,10 @@ One table per store. Entries are sorted by `date` DESC, with ties broken by path
 | [`docs/superpowers/plans/2026-09-10-jot-drain.md`](../../docs/superpowers/plans/2026-09-10-jot-drain.md) | 2026-09-10 | `partial` | `implementation` |  | `convergence-control-plane` | Jot Inbox: Drain Sub-Plan Implementation Plan |
 | [`docs/superpowers/plans/2026-09-07-mcp-common-auth-primitives-multi-agent-review.md`](../../docs/superpowers/plans/2026-09-07-mcp-common-auth-primitives-multi-agent-review.md) | 2026-09-07 | `complete` | `implementation` |  | `mcp-common-auth-primitives` | mcp-common Auth Primitives Plan — Multi-Agent Review |
 | [`docs/superpowers/plans/2026-09-07-worktree-cleanup.md`](../../docs/superpowers/plans/2026-09-07-worktree-cleanup.md) | 2026-09-07 | `draft` | `implementation` |  | `worktree-cleanup` | Bodai Worktree Cleanup Policy — Implementation Plan |
-| [`docs/superpowers/plans/2026-09-06-archive-org-mcp.md`](../../docs/superpowers/plans/2026-09-06-archive-org-mcp.md) | 2026-09-06 | `active` | `implementation` |  | `mcp-stub-activation` | archive-org-mcp Implementation Plan |
-| [`docs/superpowers/plans/2026-09-06-medium-mcp.md`](../../docs/superpowers/plans/2026-09-06-medium-mcp.md) | 2026-09-06 | `active` | `implementation` |  | `mcp-stub-activation` | Medium MCP Implementation Plan |
-| [`docs/superpowers/plans/2026-09-06-port-bodai-reconciliation.md`](../../docs/superpowers/plans/2026-09-06-port-bodai-reconciliation.md) | 2026-09-06 | `active` | `implementation` |  | `mcp-stub-activation` | Port and Bodai Config Reconciliation (Plan 0b) Implementation Plan |
-| [`docs/superpowers/plans/2026-09-06-scapy-mcp.md`](../../docs/superpowers/plans/2026-09-06-scapy-mcp.md) | 2026-09-06 | `active` | `implementation` |  | `mcp-stub-activation` | Scapy MCP Implementation Plan |
+| [`docs/superpowers/plans/2026-09-06-archive-org-mcp.md`](../../docs/superpowers/plans/2026-09-06-archive-org-mcp.md) | 2026-09-06 | `complete` | `implementation` |  | `mcp-stub-activation` | archive-org-mcp Implementation Plan |
+| [`docs/superpowers/plans/2026-09-06-medium-mcp.md`](../../docs/superpowers/plans/2026-09-06-medium-mcp.md) | 2026-09-06 | `complete` | `implementation` |  | `mcp-stub-activation` | Medium MCP Implementation Plan |
+| [`docs/superpowers/plans/2026-09-06-port-bodai-reconciliation.md`](../../docs/superpowers/plans/2026-09-06-port-bodai-reconciliation.md) | 2026-09-06 | `complete` | `implementation` |  | `mcp-stub-activation` | Port and Bodai Config Reconciliation (Plan 0b) Implementation Plan |
+| [`docs/superpowers/plans/2026-09-06-scapy-mcp.md`](../../docs/superpowers/plans/2026-09-06-scapy-mcp.md) | 2026-09-06 | `complete` | `implementation` |  | `mcp-stub-activation` | Scapy MCP Implementation Plan |
 | [`docs/superpowers/plans/2026-08-31-flowscape.md`](../../docs/superpowers/plans/2026-08-31-flowscape.md) | 2026-08-31 | `draft` | `canonical` |  | `flowscape-v1-bootstrap` | Plan: `flowscape` v1 Bootstrap |
 | [`docs/superpowers/plans/2026-08-31-zsh-modernization.md`](../../docs/superpowers/plans/2026-08-31-zsh-modernization.md) | 2026-08-31 | `draft` | `canonical` |  | `developer-environment` | Plan: Zsh Stack Modernization (oh-my-zsh → Sheldon/Starship) |
 | [`docs/superpowers/plans/2026-08-12-bodai-conformance.md`](../../docs/superpowers/plans/2026-08-12-bodai-conformance.md) | 2026-08-12 | `draft` | `implementation` |  | `bodai-conformance` | Bodai Ecosystem Conformance — Implementation Plan |
@@ -747,7 +747,7 @@ One table per store. Entries are sorted by `date` DESC, with ties broken by path
 | [`docs/superpowers/specs/2026-04-26-config-consolidation-design.md`](../../docs/superpowers/specs/2026-04-26-config-consolidation-design.md) | 2026-07-16 | `draft` | `implementation` |  | `oneiric-config` | Config Consolidation: Mahavishnu as Self-Contained Dev Environment |
 | [`docs/superpowers/specs/2026-04-26-pattern-learning-scaffolding-design.md`](../../docs/superpowers/specs/2026-04-26-pattern-learning-scaffolding-design.md) | 2026-07-16 | `draft` | `implementation` |  | `learning-pipeline` | Pattern Learning & Scaffolding Design |
 | [`docs/superpowers/specs/2026-04-26-splashstand-oneiric-migration-design.md`](../../docs/superpowers/specs/2026-04-26-splashstand-oneiric-migration-design.md) | 2026-07-16 | `draft` | `implementation` |  | `oneiric-config` | Splashstand ACB → Oneiric Migration Design |
-| [`docs/superpowers/specs/2026-04-27-bodai-auth-standardization-design.md`](../../docs/superpowers/specs/2026-04-27-bodai-auth-standardization-design.md) | 2026-07-16 | `active` | `implementation` |  | `auth` | Bodai Inter-Service Authentication Standardization |
+| [`docs/superpowers/specs/2026-04-27-bodai-auth-standardization-design.md`](../../docs/superpowers/specs/2026-04-27-bodai-auth-standardization-design.md) | 2026-07-16 | `complete` | `implementation` |  | `auth` | Bodai Inter-Service Authentication Standardization |
 | [`docs/superpowers/specs/2026-05-16-llm-routing-standardization-design.md`](../../docs/superpowers/specs/2026-05-16-llm-routing-standardization-design.md) | 2026-07-16 | `partial` | `implementation` |  | `routing-composition` | LLM Routing Standardization — Design Spec |
 | [`docs/superpowers/specs/2026-05-23-unified-iterm2-applescript-design.md`](../../docs/superpowers/specs/2026-05-23-unified-iterm2-applescript-design.md) | 2026-07-16 | `draft` | `implementation` |  | `terminal` | Unified iTerm2 AppleScript Integration — Design Spec |
 | [`docs/superpowers/specs/2026-05-24-dhara-serverless-design.md`](../../docs/superpowers/specs/2026-05-24-dhara-serverless-design.md) | 2026-07-16 | `draft` | `implementation` |  | `storage-consolidation` | Dhara Serverless Architecture — Design Specification |
@@ -873,9 +873,9 @@ Counts of entries per (lifecycle, role) cell across all 24 stores. Useful as a s
 | Role \\ Lifecycle | draft | active | partial | shipped | complete | Total |
 |---|---|---|---|---|---|---|
 | `canonical` | 19 | 102 | 1 | 2 | 13 | **137** |
-| `implementation` | 134 | 42 | 15 | 34 | 24 | **249** |
+| `implementation` | 134 | 37 | 15 | 34 | 29 | **249** |
 | `umbrella` | · | 1 | · | · | 2 | **3** |
 | `historical` | 11 | 3 | · | 4 | 129 | **147** |
 | `superseded` | · | · | · | · | 12 | **12** |
 
-| **Total** | **164** | **148** | **16** | **40** | **180** | **548** |
+| **Total** | **164** | **143** | **16** | **40** | **185** | **548** |

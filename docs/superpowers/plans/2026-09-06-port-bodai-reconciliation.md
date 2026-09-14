@@ -1,13 +1,25 @@
 ---
-status: active
+status: complete
 role: implementation
 date: 2026-09-06
-last_reviewed: 2026-09-06
+last_reviewed: 2026-09-13
 superseded_by: null
 blocks_on:
   - docs/superpowers/specs/2026-09-06-mcp-stub-activation-design.md
 topic: mcp-stub-activation
 ---
+
+
+## Re-Review Status (2026-09-13)
+
+**Status**: `complete` — Plan 0b (port/bodai reconciliation) fully shipped.
+
+`/Users/les/Projects/bodai`'s git log walks Plan 0b's task list 7→9 in reverse chronological order:
+- `042fae7 chore(ports): quality gate fixes from Plan 0b` (Task 9)
+- `2cc0be4 docs(ecosystem): register-or-exclude decision for four unregistered repos` (Task 8)
+- `26e4b57 test(ports): assert agreement across portmap, ecosystem, and repo settings` (Task 7)
+
+Plan 0a's sibling (`docs/superpowers/plans/2026-09-06-mcp-stub-activation-design.md`) is referenced in `blocks_on` and is itself shipped per Cluster A flips above.
 
 # Port and Bodai Config Reconciliation (Plan 0b) Implementation Plan
 
