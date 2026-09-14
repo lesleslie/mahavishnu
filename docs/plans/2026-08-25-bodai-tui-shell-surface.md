@@ -2,12 +2,13 @@
 status: active
 role: implementation
 date: 2026-08-25
-last_reviewed: 2026-08-25
+last_reviewed: 2026-09-13
 owner: les
 topic: bodai-tui-shell-surface
 scope: bodai-tui-shell
 purpose: verify and polish the bodai shell + dashboard TUIs and the mahavishnu monitor --tui; standardize the AdminShell subclass pattern across Core 7
 superseded_by: null
+blocks_on: 2026-06-19-track3-toad-tui.md
 ---
 
 # Bodai TUI & Admin Shell Surface

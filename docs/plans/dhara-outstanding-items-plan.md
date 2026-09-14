@@ -3,9 +3,12 @@ status: active
 role: implementation
 topic: storage-consolidation
 date: 2026-07-16
-last_reviewed: 2026-07-16
+last_reviewed: 2026-09-13
 superseded_by: null
 blocks_on: []
+related:
+  - 2026-04-02-storage-consolidation-and-akosha-role.md
+  - 2026-05-07-dhara-state-backend-addendum.md
 ---
 
 # Dhara AsyncStorage Bug Fix + Outstanding Items Plan

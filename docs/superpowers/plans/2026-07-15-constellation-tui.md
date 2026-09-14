@@ -2,8 +2,10 @@
 status: active
 role: implementation
 date: 2026-07-16
-last_reviewed: 2026-07-16
+last_reviewed: 2026-09-13
 superseded_by: null
+blocks_on: []
+related: 2026-07-15-constellation-tui-design.md
 topic: constellation-tui
 ---
 

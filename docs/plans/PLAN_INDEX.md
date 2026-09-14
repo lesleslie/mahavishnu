@@ -650,8 +650,8 @@ One table per store. Entries are sorted by `date` DESC, with ties broken by path
 | [`docs/superpowers/plans/2026-09-06-medium-mcp.md`](../../docs/superpowers/plans/2026-09-06-medium-mcp.md) | 2026-09-06 | `active` | `implementation` | `mcp-stub-activation` | Medium MCP Implementation Plan |
 | [`docs/superpowers/plans/2026-09-06-port-bodai-reconciliation.md`](../../docs/superpowers/plans/2026-09-06-port-bodai-reconciliation.md) | 2026-09-06 | `active` | `implementation` | `mcp-stub-activation` | Port and Bodai Config Reconciliation (Plan 0b) Implementation Plan |
 | [`docs/superpowers/plans/2026-09-06-scapy-mcp.md`](../../docs/superpowers/plans/2026-09-06-scapy-mcp.md) | 2026-09-06 | `active` | `implementation` | `mcp-stub-activation` | Scapy MCP Implementation Plan |
-| [`docs/superpowers/plans/2026-08-31-flowscape.md`](../../docs/superpowers/plans/2026-08-31-flowscape.md) | 2026-08-31 | `active` | `canonical` | `flowscape-v1-bootstrap` | Plan: `flowscape` v1 Bootstrap |
-| [`docs/superpowers/plans/2026-08-31-zsh-modernization.md`](../../docs/superpowers/plans/2026-08-31-zsh-modernization.md) | 2026-08-31 | `active` | `canonical` | `developer-environment` | Plan: Zsh Stack Modernization (oh-my-zsh → Sheldon/Starship) |
+| [`docs/superpowers/plans/2026-08-31-flowscape.md`](../../docs/superpowers/plans/2026-08-31-flowscape.md) | 2026-08-31 | `draft` | `canonical` | `flowscape-v1-bootstrap` | Plan: `flowscape` v1 Bootstrap |
+| [`docs/superpowers/plans/2026-08-31-zsh-modernization.md`](../../docs/superpowers/plans/2026-08-31-zsh-modernization.md) | 2026-08-31 | `draft` | `canonical` | `developer-environment` | Plan: Zsh Stack Modernization (oh-my-zsh → Sheldon/Starship) |
 | [`docs/superpowers/plans/2026-08-12-bodai-conformance.md`](../../docs/superpowers/plans/2026-08-12-bodai-conformance.md) | 2026-08-12 | `draft` | `implementation` | `bodai-conformance` | Bodai Ecosystem Conformance — Implementation Plan |
 | [`docs/superpowers/plans/2026-07-29-session-buddy-extension.md`](../../docs/superpowers/plans/2026-07-29-session-buddy-extension.md) | 2026-07-29 | `draft` | `implementation` | `session-buddy-extension` | Session-Buddy Extension Implementation Plan (Mahavishnu seam hardening) |
 | [`docs/superpowers/plans/2026-07-26-session-buddy-worktree-tools.md`](../../docs/superpowers/plans/2026-07-26-session-buddy-worktree-tools.md) | 2026-07-26 | `draft` | `implementation` | `session-buddy-worktree-tools` | Session-Buddy MCP worktree tools — Implementation Plan |
@@ -719,7 +719,7 @@ One table per store. Entries are sorted by `date` DESC, with ties broken by path
 | [`docs/superpowers/specs/2026-09-07-worktree-cleanup-design.md`](../../docs/superpowers/specs/2026-09-07-worktree-cleanup-design.md) | 2026-09-07 | `draft` | `implementation` | `worktree-cleanup` | Bodai Worktree Cleanup Policy — Design Spec |
 | [`docs/superpowers/specs/2026-09-06-mcp-common-auth-primitives-design.md`](../../docs/superpowers/specs/2026-09-06-mcp-common-auth-primitives-design.md) | 2026-09-06 | `draft` | `implementation` | `mcp-common-auth-primitives` | mcp-common Authentication Primitives — Design Spec |
 | [`docs/superpowers/specs/2026-09-06-mcp-stub-activation-design.md`](../../docs/superpowers/specs/2026-09-06-mcp-stub-activation-design.md) | 2026-09-06 | `draft` | `implementation` | `mcp-stub-activation` | MCP Stub Activation — archive-org-mcp, medium-mcp, scapy-mcp |
-| [`docs/superpowers/specs/2026-08-31-zsh-modernization-design.md`](../../docs/superpowers/specs/2026-08-31-zsh-modernization-design.md) | 2026-08-31 | `active` | `canonical` | `developer-environment` | Spec: Zsh Stack Modernization (oh-my-zsh → Sheldon/Starship) |
+| [`docs/superpowers/specs/2026-08-31-zsh-modernization-design.md`](../../docs/superpowers/specs/2026-08-31-zsh-modernization-design.md) | 2026-08-31 | `draft` | `canonical` | `developer-environment` | Spec: Zsh Stack Modernization (oh-my-zsh → Sheldon/Starship) |
 | [`docs/superpowers/specs/2026-08-20-mcp-deps-crackerjack-loop-design.md`](../../docs/superpowers/specs/2026-08-20-mcp-deps-crackerjack-loop-design.md) | 2026-08-20 | `active` | `canonical` | `mcp-deps-crackerjack-loop` | Design: `*-mcp` dep refresh + crackerjack loop (2026-08-20, rev2) |
 | [`docs/superpowers/specs/2026-08-18-mcp-tool-profile-adoption-design.md`](../../docs/superpowers/specs/2026-08-18-mcp-tool-profile-adoption-design.md) | 2026-08-18 | `active` | `canonical` | `mcp-tool-profile-adoption` | MCP Tool Profile Adoption Across Bodai Ecosystem — Design Spec |
 | [`docs/superpowers/specs/2026-08-12-bodai-ecosystem-consistency-design.md`](../../docs/superpowers/specs/2026-08-12-bodai-ecosystem-consistency-design.md) | 2026-08-12 | `active` | `canonical` | `bodai-conformance` | Bodai Ecosystem Consistency Mechanisms — Design Spec |
@@ -780,10 +780,10 @@ Counts of entries per (lifecycle, role) cell across all 24 stores. Useful as a s
 
 | Role \\ Lifecycle | draft | active | partial | shipped | complete | Total |
 |---|---|---|---|---|---|---|
-| `canonical` | 16 | 107 | · | 2 | 9 | **134** |
+| `canonical` | 19 | 104 | · | 2 | 9 | **134** |
 | `implementation` | 132 | 46 | 11 | 34 | 22 | **245** |
 | `umbrella` | · | 1 | · | · | 2 | **3** |
 | `historical` | 11 | 3 | · | 4 | 129 | **147** |
 | `superseded` | · | · | · | · | 12 | **12** |
 
-| **Total** | **159** | **157** | **11** | **40** | **174** | **541** |
+| **Total** | **162** | **154** | **11** | **40** | **174** | **541** |
