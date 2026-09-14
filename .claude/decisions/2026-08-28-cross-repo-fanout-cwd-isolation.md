@@ -1,6 +1,7 @@
 ---
 status: active
 role: canonical
+kind: decision
 date: 2026-08-28
 last_reviewed: 2026-08-28
 superseded_by: null

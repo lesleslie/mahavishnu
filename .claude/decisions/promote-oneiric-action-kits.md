@@ -1,6 +1,7 @@
 ---
 status: active
 role: canonical
+kind: decision
 date: 2026-08-23
 last_reviewed: 2026-08-23
 topic: oneiric-action-kit-promotion
