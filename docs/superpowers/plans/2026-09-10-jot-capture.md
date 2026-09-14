@@ -1,3 +1,14 @@
+---
+status: active
+role: implementation
+kind: plan
+date: 2026-09-10
+last_reviewed: 2026-09-13
+superseded_by: null
+blocks_on: []
+topic: jot-capture
+---
+
 # Jot Inbox: Capture Sub-Plan Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
@@ -10,25 +21,25 @@
 
 **Spec:** [`docs/superpowers/specs/2026-09-09-jot-capture-design.md`](../specs/2026-09-09-jot-capture-design.md) (commit `14cb30d2`).
 
----
+______________________________________________________________________
 
 ## Global Constraints
 
 The following constraints apply to **every task** unless explicitly overridden in that task's "Notes" section.
 
 1. **Every source file** starts with `from __future__ import annotations` as the first non-comment line (after any module docstring).
-2. **No `assert` in production code** (`mahavishnu/jot/**`, `mahavishnu/hooks/**`) — bandit B101 enforced. Tests may use `assert`.
-3. **Stdlib only** in `mahavishnu/hooks/jot_capture.py`. The hook may import from `mahavishnu.jot.*` but those modules must themselves be stdlib-only.
-4. **No `logging` module** anywhere in `mahavishnu/jot/**` or `mahavishnu/hooks/**` — uses `print(..., file=sys.stderr)` and writes to `errors.log` directly.
-5. **Mypy strict** — `disallow_untyped_defs`, `no_implicit_optional`, `warn_unused_ignores`, `warn_return_any`, `strict_optional`.
-6. **Ruff** — line-length 100, function args ≤ 10 (excludes `self`, `cls`, `*args`, `**kwargs`).
-7. **File permissions** — log file `0o600`, jot dir `0o700`, errors log `0o600`, node file `0o600`.
-8. **Single-syscall writes** — `os.write(fd, line.encode("utf-8"))` exactly once per event.
-9. **Coverage target** — ≥ 95% line coverage for `mahavishnu/jot/*` + `mahavishnu/hooks/jot_capture.py`.
-10. **Today's date** — 2026-09-10 (use this in commit messages when the date matters).
-11. **Commit author** — always `git -c user.email="les@wedgwoodwebworks.com" -c user.name="les" commit`. Never `git push` without explicit user approval.
+1. **No `assert` in production code** (`mahavishnu/jot/**`, `mahavishnu/hooks/**`) — bandit B101 enforced. Tests may use `assert`.
+1. **Stdlib only** in `mahavishnu/hooks/jot_capture.py`. The hook may import from `mahavishnu.jot.*` but those modules must themselves be stdlib-only.
+1. **No `logging` module** anywhere in `mahavishnu/jot/**` or `mahavishnu/hooks/**` — uses `print(..., file=sys.stderr)` and writes to `errors.log` directly.
+1. **Mypy strict** — `disallow_untyped_defs`, `no_implicit_optional`, `warn_unused_ignores`, `warn_return_any`, `strict_optional`.
+1. **Ruff** — line-length 100, function args ≤ 10 (excludes `self`, `cls`, `*args`, `**kwargs`).
+1. **File permissions** — log file `0o600`, jot dir `0o700`, errors log `0o600`, node file `0o600`.
+1. **Single-syscall writes** — `os.write(fd, line.encode("utf-8"))` exactly once per event.
+1. **Coverage target** — ≥ 95% line coverage for `mahavishnu/jot/*` + `mahavishnu/hooks/jot_capture.py`.
+1. **Today's date** — 2026-09-10 (use this in commit messages when the date matters).
+1. **Commit author** — always `git -c user.email="les@wedgwoodwebworks.com" -c user.name="les" commit`. Never `git push` without explicit user approval.
 
----
+______________________________________________________________________
 
 ## File Structure
 
@@ -66,11 +77,12 @@ tests/
 ```
 
 **Layer boundaries:**
+
 - Tasks 1-7: pure data + I/O primitives, no Claude Code coupling
 - Task 8: orchestrator that wires primitives into the UserPromptSubmit hook
 - Task 9: integration test that spawns Task 8's hook as a real subprocess
 
----
+______________________________________________________________________
 
 ## Task Sequencing
 
@@ -88,17 +100,20 @@ tests/
 
 **Total:** ~1,700 lines. Tasks 1-7 are independently shippable. Task 8 wires everything. Task 9 proves it works end-to-end.
 
----
+______________________________________________________________________
 
 ## Task 1: Package Marker
 
 **Files:**
+
 - Create: `mahavishnu/jot/__init__.py`
 
 **Why this task first:** All other tasks import from `mahavishnu.jot.*`. The package must exist before any submodule can be imported.
 
 **Interfaces:**
+
 - Consumes: nothing
+
 - Produces: empty `mahavishnu.jot` package
 
 - [ ] **Step 1: Create the package directory**
@@ -133,11 +148,12 @@ git -c user.email="les@wedgwoodwebworks.com" -c user.name="les" add mahavishnu/j
 git -c user.email="les@wedgwoodwebworks.com" -c user.name="les" commit -m "feat(jot): add jot inbox package marker"
 ```
 
----
+______________________________________________________________________
 
 ## Task 2: events.py — JotEvent + HLC + codec
 
 **Files:**
+
 - Create: `mahavishnu/jot/events.py`
 - Create: `tests/unit/jot/__init__.py` (empty)
 - Create: `tests/property/jot/__init__.py` (empty)
@@ -145,6 +161,7 @@ git -c user.email="les@wedgwoodwebworks.com" -c user.name="les" commit -m "feat(
 - Create: `tests/property/jot/test_codec_roundtrip.py`
 
 **Interfaces:**
+
 - Consumes: nothing (pure data module)
 - Produces:
   - `Op = Literal["capture", "edit", "done", "reopen"]`
@@ -509,15 +526,17 @@ git -c user.email="les@wedgwoodwebworks.com" -c user.name="les" add mahavishnu/j
 git -c user.email="les@wedgwoodwebworks.com" -c user.name="les" commit -m "feat(jot): add JotEvent, HLC dataclasses and JSONL codec"
 ```
 
----
+______________________________________________________________________
 
 ## Task 3: hlc.py — HLC generation + node init + tail read
 
 **Files:**
+
 - Create: `mahavishnu/jot/hlc.py`
 - Create: `tests/unit/jot/test_hlc.py`
 
 **Interfaces:**
+
 - Consumes: `HLC` from `mahavishnu.jot.events`
 - Produces:
   - `def hlc_now(node: str, last: HLC | None) -> HLC` — pure function
@@ -1037,15 +1056,17 @@ git -c user.email="les@wedgwoodwebworks.com" -c user.name="les" add mahavishnu/j
 git -c user.email="les@wedgwoodwebworks.com" -c user.name="les" commit -m "feat(jot): add HLC generation, node init, tail-HLC read"
 ```
 
----
+______________________________________________________________________
 
 ## Task 4: short_id.py
 
 **Files:**
+
 - Create: `mahavishnu/jot/short_id.py`
 - Create: `tests/unit/jot/test_short_id.py`
 
 **Interfaces:**
+
 - Consumes: nothing
 - Produces: `def short_id(event_id: str) -> str` — first 6 chars
 
@@ -1167,15 +1188,17 @@ git -c user.email="les@wedgwoodwebworks.com" -c user.name="les" add mahavishnu/j
 git -c user.email="les@wedgwoodwebworks.com" -c user.name="les" commit -m "feat(jot): add short_id for capture echo"
 ```
 
----
+______________________________________________________________________
 
 ## Task 5: paths.py — directory + file path resolution
 
 **Files:**
+
 - Create: `mahavishnu/jot/paths.py`
 - Create: `tests/unit/jot/test_paths.py`
 
 **Interfaces:**
+
 - Consumes: nothing
 - Produces:
   - `def jot_dir() -> Path` — returns `~/.mahavishnu/jot`, creating dir with mode 0o700 if missing
@@ -1361,15 +1384,17 @@ git -c user.email="les@wedgwoodwebworks.com" -c user.name="les" add mahavishnu/j
 git -c user.email="les@wedgwoodwebworks.com" -c user.name="les" commit -m "feat(jot): add path resolution and directory creation"
 ```
 
----
+______________________________________________________________________
 
 ## Task 6: redact.py — ~20 patterns in 3 tiers
 
 **Files:**
+
 - Create: `mahavishnu/jot/redact.py`
 - Create: `tests/unit/jot/test_redact.py`
 
 **Interfaces:**
+
 - Consumes: nothing
 - Produces:
   - `def redact_text(text: str) -> str` — applies all patterns, returns redacted text
@@ -1642,18 +1667,20 @@ git -c user.email="les@wedgwoodwebworks.com" -c user.name="les" add mahavishnu/j
 git -c user.email="les@wedgwoodwebworks.com" -c user.name="les" commit -m "feat(jot): add moderate-scope redaction (3 tiers, ~17 patterns)"
 ```
 
----
+______________________________________________________________________
 
 ## Task 7: capture_echo.py — format the human-facing echo
 
 **Files:**
+
 - Create: `mahavishnu/jot/capture_echo.py`
 - Create: `tests/unit/jot/test_capture_echo.py`
 
 **Interfaces:**
+
 - Consumes: `short_id` from `mahavishnu.jot.short_id`
 - Produces:
-  - `def format_echo(event_id: str, text: str) -> str` — returns "jot <short_id> captured (<wc> words, <cc> chars)"
+  - `def format_echo(event_id: str, text: str) -> str` — returns "jot \<short_id> captured (<wc> words, <cc> chars)"
 
 **Why this task seventh:** Pure formatter. No I/O. Needed before the hook (Task 8) can produce the capture echo.
 
@@ -1773,15 +1800,17 @@ git -c user.email="les@wedgwoodwebworks.com" -c user.name="les" add mahavishnu/j
 git -c user.email="les@wedgwoodwebworks.com" -c user.name="les" commit -m "feat(jot): add capture echo formatter"
 ```
 
----
+______________________________________________________________________
 
 ## Task 8: jot_capture.py — the UserPromptSubmit hook
 
 **Files:**
+
 - Create: `mahavishnu/hooks/jot_capture.py`
 - Create: `tests/unit/jot/test_capture_hook.py`
 
 **Interfaces:**
+
 - Consumes: all of `mahavishnu.jot.*`
 - Produces:
   - `def main() -> int` — top-level entry, returns exit code (0 or 2)
@@ -2321,15 +2350,17 @@ git -c user.email="les@wedgwoodwebworks.com" -c user.name="les" add mahavishnu/h
 git -c user.email="les@wedgwoodwebworks.com" -c user.name="les" commit -m "feat(jot): add UserPromptSubmit hook with fail-open behavior"
 ```
 
----
+______________________________________________________________________
 
 ## Task 9: Integration test — spawn the hook as a subprocess
 
 **Files:**
+
 - Create: `tests/integration/jot/__init__.py` (empty)
 - Create: `tests/integration/jot/test_capture_e2e.py`
 
 **Interfaces:**
+
 - Consumes: `mahavishnu.hooks.jot_capture` (invoked via subprocess)
 - Produces: nothing (test only)
 
@@ -2496,20 +2527,21 @@ git -c user.email="les@wedgwoodwebworks.com" -c user.name="les" add tests/integr
 git -c user.email="les@wedgwoodwebworks.com" -c user.name="les" commit -m "test(jot): add end-to-end subprocess integration tests"
 ```
 
----
+______________________________________________________________________
 
 ## Self-Review
 
 After completing all tasks, run the spec self-review checklist:
 
 - [ ] **1. Spec coverage:** Walk through each section of the spec and confirm a task implements it:
+
   - §"Decisions (this sub-plan)" D1-D4 → no specific task (decisions are design constraints applied across all tasks)
   - §"Locked Decisions" UD1-UD9 → distributed across tasks (UD1→Task 8, UD3→Task 2, UD4→Task 3, UD5→Task 4, UD6→Task 5, UD7→Tasks 1-8, UD8→Tasks 1-8, UD9→Tasks 1-8)
   - §"Data Model" → Task 2 (events.py), Task 3 (hlc.py)
   - §"Capture Surface" → Task 8 (hook), Task 7 (echo), Task 4 (short_id)
   - §"Redaction" → Task 6 (redact.py)
   - §"Permissions" → Task 5 (paths.py), Task 8 (hook)
-  - §"Failure Modes" → Task 8 (hook + _log_error)
+  - §"Failure Modes" → Task 8 (hook + \_log_error)
   - §"Stdlib Hygiene" → Task 8 (only stdlib imports), Task 2-7 (no logging)
   - §"Testing Strategy" → Tasks 2-9 (each has unit/integration/property tests)
   - §"Done Criteria" → Tasks 1-9 collectively satisfy the 10 done criteria
@@ -2517,6 +2549,7 @@ After completing all tasks, run the spec self-review checklist:
 - [ ] **2. Placeholder scan:** No "TBD", "TODO", "fill in", "implement later" in any task step. All code is concrete.
 
 - [ ] **3. Type consistency:** Verify all referenced types match across tasks:
+
   - `HLC` from `mahavishnu.jot.events` → consumed by `hlc_now`, `read_tail_hlc` (Task 3), produced by `_do_capture` (Task 8)
   - `JotEvent` from `mahavishnu.jot.events` → consumed by `serialize`/`deserialize` (Task 2), `format_echo` (Task 7 via event_id)
   - `short_id` from `mahavishnu.jot.short_id` → consumed by `format_echo` (Task 7)
@@ -2526,7 +2559,7 @@ After completing all tasks, run the spec self-review checklist:
 
 All types consistent across tasks.
 
----
+______________________________________________________________________
 
 ## Verification at the End
 
@@ -2563,7 +2596,7 @@ cd /Users/les/Projects/mahavishnu && uv run crackerjack run -p minor
 
 Expected: All quality gates pass (bandit, ruff, mypy, pytest).
 
----
+______________________________________________________________________
 
 ## Spec Coverage Summary
 
@@ -2578,15 +2611,15 @@ Expected: All quality gates pass (bandit, ruff, mypy, pytest).
 | Wire format | Task 2 (serialize/deserialize) |
 | HLC generation | Task 3 (hlc_now) |
 | Short ID | Task 4 |
-| Capture Surface pattern detection | Task 8 (_is_capture) |
+| Capture Surface pattern detection | Task 8 (\_is_capture) |
 | Capture echo | Task 7 |
-| Capture flow | Task 8 (_do_capture) |
+| Capture flow | Task 8 (\_do_capture) |
 | Hook delivery | Task 8 (file shipped) |
 | Redaction tiers | Task 6 |
 | Permissions (0o600/0o700) | Task 5 (paths), Task 8 (open flags) |
-| Atomicity (single os.write) | Task 8 (_do_capture) |
-| Failure taxonomy | Task 8 (_do_capture + _log_error + fail-open tests) |
-| Errors log format | Task 8 (_log_error) |
+| Atomicity (single os.write) | Task 8 (\_do_capture) |
+| Failure taxonomy | Task 8 (\_do_capture + \_log_error + fail-open tests) |
+| Errors log format | Task 8 (\_log_error) |
 | Errors log rotation | Task 8 (`_rotate_errors_log` helper, 1 MB threshold, 2-gen max). **Implemented** (not deferred). |
 | Stdlib hygiene | Task 8 (imports) |
 | Components table | All tasks |

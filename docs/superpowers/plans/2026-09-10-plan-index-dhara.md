@@ -1,3 +1,14 @@
+---
+status: active
+role: implementation
+kind: plan
+date: 2026-09-10
+last_reviewed: 2026-09-13
+superseded_by: null
+blocks_on: []
+topic: plan-index-dhara
+---
+
 # Plan Index Dhara-Canonical Metadata Layer Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
@@ -30,11 +41,12 @@ These apply to every task. Failure to honor them is a BLOCKER on merge.
 - **Errors log redaction**: `PlanRebuildErrorDict.ctx` is a TypedDict; never contains raw `path` or `repo` — only `path_hash = sha256(path)[:12]`.
 - **Wire-up discipline**: `PlanIndexFeedState.as_dict()` returns EXACTLY `{ok, entities_count, last_updated_timestamp, errors_total, cycles_total}` plus nothing — the 4-signal contract is strict.
 
----
+______________________________________________________________________
 
 ## Task 1: Foundation — PlanId, errors, TypedDicts
 
 **Files:**
+
 - Create: `mahavishnu/plan_index/__init__.py`
 - Create: `mahavishnu/plan_index/paths.py`
 - Create: `mahavishnu/plan_index/errors.py`
@@ -43,8 +55,11 @@ These apply to every task. Failure to honor them is a BLOCKER on merge.
 - Test: `tests/unit/plan_index/test_errors.py`
 
 **Interfaces:**
+
 - Consumes: nothing (foundation)
+
 - Produces:
+
   - `PlanId = NewType("PlanId", str)`
   - `errors_log_path() -> Path`, `jot_dir() -> Path`, `log_path() -> Path`, `node_path() -> Path` (mirrors `mahavishnu/jot/paths.py`)
   - `class PlanIndexError(Exception)` + `PlanNotFoundError(PlanIndexError)` + `PlanIndexUnavailableError(PlanIndexError)` + `PlanRebuildLockedError(PlanIndexError)`
@@ -260,17 +275,21 @@ git add mahavishnu/plan_index/ tests/unit/plan_index/
 git commit -m "feat(plan_index): foundation — PlanId, errors hierarchy, paths"
 ```
 
----
+______________________________________________________________________
 
 ## Task 2: TypedDicts — plan surface types
 
 **Files:**
+
 - Create: `mahavishnu/plan_index/types.py`
 - Test: `tests/unit/plan_index/test_types.py`
 
 **Interfaces:**
+
 - Consumes: PlanId from `mahavishnu/plan_index/__init__.py`
+
 - Produces:
+
   - `PlanRecordDict`, `RebuildErrorCtx`, `PlanVitalsDict`, `PlanRebuildStatusDict`, `PlanRebuildErrorDict`, `PlanListResultDict`, `PlanDegradedDict`
   - `Literal["ok", "no_recent_edits", "no_recent_reads", "review_cadence_lagging"]` (4 distinct states)
 
@@ -483,17 +502,21 @@ git add mahavishnu/plan_index/types.py tests/unit/plan_index/test_types.py
 git commit -m "feat(plan_index): TypedDicts for MCP surface"
 ```
 
----
+______________________________________________________________________
 
 ## Task 3: PlanRecord dataclass
 
 **Files:**
+
 - Create: `mahavishnu/plan_index/record.py`
 - Test: `tests/unit/plan_index/test_record.py`
 
 **Interfaces:**
+
 - Consumes: `PlanId` from `mahavishnu/plan_index/__init__.py`
+
 - Produces:
+
   - `@dataclass(frozen=True, slots=True, kw_only=True) class PlanRecord` with the 13 fields from spec §Data Model
 
 - [ ] **Step 1: Write the failing record test**
@@ -628,17 +651,21 @@ git add mahavishnu/plan_index/record.py tests/unit/plan_index/test_record.py
 git commit -m "feat(plan_index): PlanRecord dataclass with Literal enums"
 ```
 
----
+______________________________________________________________________
 
 ## Task 4: normalize_repo_url — security-critical helper
 
 **Files:**
+
 - Create: `mahavishnu/plan_index/url.py`
 - Test: `tests/unit/plan_index/test_url.py`
 
 **Interfaces:**
+
 - Consumes: nothing (pure function)
+
 - Produces:
+
   - `normalize_repo_url(raw: str) -> str | None` — returns normalized form, or `None` if rejected
   - `class RepoUrlRejectedError(ValueError)` — raised when caller wants the rejection reason
   - The normalized form is what gets persisted AND fed into the `plan_id` SHA
@@ -886,17 +913,21 @@ git add mahavishnu/plan_index/url.py tests/unit/plan_index/test_url.py
 git commit -m "feat(plan_index): normalize_repo_url helper (REQ-PLAN-011)"
 ```
 
----
+______________________________________________________________________
 
 ## Task 5: PlanIndexStore — Dhara-backed CRUD
 
 **Files:**
+
 - Create: `mahavishnu/plan_index/store.py`
 - Test: `tests/unit/plan_index/test_store.py`
 
 **Interfaces:**
+
 - Consumes: `PlanRecord`, Dhara client (mockable via DI)
+
 - Produces:
+
   - `class PlanIndexStore` with methods:
     - `__init__(self, dhara: AsyncClient | None = None)` — DI for testing
     - `async def upsert(self, record: PlanRecord) -> None`
@@ -1301,17 +1332,21 @@ git add mahavishnu/plan_index/testing.py mahavishnu/plan_index/store.py tests/un
 git commit -m "feat(plan_index): PlanIndexStore Dhara-backed CRUD with vitals"
 ```
 
----
+______________________________________________________________________
 
 ## Task 6: PlanIndexRebuilder — pure function
 
 **Files:**
+
 - Create: `mahavishnu/plan_index/rebuild.py`
 - Test: `tests/unit/plan_index/test_rebuild.py`
 
 **Interfaces:**
+
 - Consumes: `PlanRecord`, `normalize_repo_url`, an injectable `sha_provider: Callable[[Path], str]`
+
 - Produces:
+
   - `class PlanIndexRebuilder` with:
     - `__init__(self, *, sha_provider: Callable[[Path], str] = lambda p: "0" * 40)` — DI for sha
     - `def derive_plan_id(self, repo: str, path: str) -> PlanId` — uses normalized_repo + normalized_path
@@ -1542,19 +1577,23 @@ git add mahavishnu/plan_index/rebuild.py tests/unit/plan_index/test_rebuild.py
 git commit -m "feat(plan_index): PlanIndexRebuilder with normalize_repo_url integration"
 ```
 
----
+______________________________________________________________________
 
 ## Task 7: PlanIndexRenderer + PlanIndexWriter — render and I/O split
 
 **Files:**
+
 - Create: `mahavishnu/plan_index/render.py`
 - Create: `mahavishnu/plan_index/writer.py`
 - Test: `tests/unit/plan_index/test_render.py`
 - Test: `tests/unit/plan_index/test_writer.py`
 
 **Interfaces:**
+
 - Consumes: `list[PlanRecordDict]`
+
 - Produces:
+
   - `def render(records: list[PlanRecordDict]) -> str` — pure function, emits staleness-header
   - `def write(rendered: str, path: Path) -> None` — I/O wrapper, mode 0o644 on new files
 
@@ -1741,17 +1780,21 @@ git add mahavishnu/plan_index/render.py mahavishnu/plan_index/writer.py tests/un
 git commit -m "feat(plan_index): Renderer (pure) + Writer (I/O)"
 ```
 
----
+______________________________________________________________________
 
 ## Task 8: PlanIndexFeedState — 4-signal wire-up discipline
 
 **Files:**
+
 - Create: `mahavishnu/plan_index/health.py`
 - Test: `tests/unit/plan_index/test_health.py`
 
 **Interfaces:**
+
 - Consumes: time source (injectable for test)
+
 - Produces:
+
   - `@dataclass(frozen=True, slots=True) class PlanIndexFeedState` with `entities_count`, `last_updated_timestamp`, `errors_total`, `cycles_total`
   - `is_ok(self, *, cron_every_seconds: int = 3600) -> bool` — checks 5× cron interval
   - `as_dict(self) -> dict[str, int | bool]` — returns EXACTLY `{ok, entities_count, last_updated_timestamp, errors_total, cycles_total}`. NO `successful_cycles_total` (kept as Dhara meta only).
@@ -1921,16 +1964,19 @@ git add mahavishnu/plan_index/health.py tests/unit/plan_index/test_health.py
 git commit -m "feat(plan_index): PlanIndexFeedState with strict 4-signal contract"
 ```
 
----
+______________________________________________________________________
 
 ## Task 9: Permission.READ_PLAN_INDEX + auth helper
 
 **Files:**
+
 - Modify: `mahavishnu/core/permissions.py` (add `READ_PLAN_INDEX`)
 - Test: `tests/unit/core/test_permissions_plan_index.py`
 
 **Interfaces:**
+
 - Consumes: existing `Permission` enum
+
 - Produces: `Permission.READ_PLAN_INDEX = "READ_PLAN_INDEX"`
 
 - [ ] **Step 1: Read the current permissions module**
@@ -1992,17 +2038,20 @@ git add mahavishnu/core/permissions.py tests/unit/core/test_permissions_plan_ind
 git commit -m "feat(permissions): add READ_PLAN_INDEX for plan_index MCP tools"
 ```
 
----
+______________________________________________________________________
 
 ## Task 10: CLI module — `mahavishnu plan …`
 
 **Files:**
+
 - Create: `mahavishnu/cli/plan_cli.py`
 - Modify: `mahavishnu/cli.py` (register the new subcommand)
 - Test: `tests/unit/cli/test_plan_cli.py`
 
 **Interfaces:**
+
 - Consumes: `PlanIndexStore`, `PlanIndexRebuilder`
+
 - Produces: typer sub-app `plan_app` with commands: `list`, `show`, `vitals`, `search`, `purge`
 
 - [ ] **Step 1: Write the failing CLI test**
@@ -2171,25 +2220,28 @@ git add mahavishnu/cli/plan_cli.py mahavishnu/cli.py tests/unit/cli/test_plan_cl
 git commit -m "feat(cli): `mahavishnu plan` subcommand (list/show/vitals/search/purge)"
 ```
 
----
+______________________________________________________________________
 
 ## Task 11: MCP tools — 5 tools with `@require_mcp_auth`
 
 **Files:**
+
 - Create: `mahavishnu/mcp/tools/plan_tools.py`
 - Test: `tests/unit/mcp/test_plan_tools.py`
 
 **Interfaces:**
+
 - Consumes: `PlanIndexStore`, `PlanIndexRebuilder`
 - Produces:
   - `def register_plan_tools(mcp, *, store_provider=None) -> None` — wires the 5 tools
 
 The 5 tools:
+
 1. `plan_list({status, topic, date_from, date_to, limit}) -> PlanListResultDict`
-2. `plan_show(plan_id) -> PlanRecordDict` — raises `PlanNotFoundError`
-3. `plan_search(query, limit) -> list[PlanRecordDict]`
-4. `plan_vitals() -> PlanVitalsDict`
-5. `plan_rebuild_status() -> PlanRebuildStatusDict`
+1. `plan_show(plan_id) -> PlanRecordDict` — raises `PlanNotFoundError`
+1. `plan_search(query, limit) -> list[PlanRecordDict]`
+1. `plan_vitals() -> PlanVitalsDict`
+1. `plan_rebuild_status() -> PlanRebuildStatusDict`
 
 - [ ] **Step 1: Write the failing tools test**
 
@@ -2409,11 +2461,12 @@ git add mahavishnu/mcp/tools/plan_tools.py tests/unit/mcp/test_plan_tools.py tes
 git commit -m "feat(mcp): plan_* tools with @require_mcp_auth (REQ-PLAN-010)"
 ```
 
----
+______________________________________________________________________
 
 ## Task 11.5: Round-2 security & auth-gate test coverage (REQ-PLAN-010, REQ-PLAN-011, REQ-PLAN-012)
 
 **Files (test stubs — implementation already in Tasks 4-11):**
+
 - Create: `tests/unit/plan_index/test_plan_id_normalize_repo_url.py` (REQ-PLAN-011 round-2 fix)
 - Create: `tests/unit/plan_index/test_errors_log_redaction.py` (REQ-PLAN-012 round-2 BLOCKER)
 - Create: `tests/unit/plan_index/test_security_exclude_patterns.py` (round-2 fix)
@@ -2421,6 +2474,7 @@ git commit -m "feat(mcp): plan_* tools with @require_mcp_auth (REQ-PLAN-010)"
 - Create: `tests/integration/plan_index/test_auth_gate_e2e.py` (REQ-PLAN-010 round-2 BLOCKER)
 
 **Interfaces:**
+
 - All five test files are STUBS that will be expanded once the implementation files (`url.py`, `rebuild.py`, `errors.py`, `plan_tools.py`, plus the CLI orchestrator) are in place. Each test verifies a single security/auth invariant and is independent.
 
 - [ ] **Step 1: Create `test_plan_id_normalize_repo_url.py` (REQ-PLAN-011)**
@@ -2870,11 +2924,12 @@ git add tests/unit/plan_index/test_plan_id_normalize_repo_url.py \
 git commit -m "test(plan_index): round-2 security & auth-gate coverage (REQ-PLAN-010/011/012)"
 ```
 
----
+______________________________________________________________________
 
 ## Task 11.6: Per-tool e2e tests + smoke test (mcp-backend-wiring-discipline §2 + §4)
 
 **Files:**
+
 - Create: `tests/integration/plan_index/__init__.py`
 - Create: `tests/integration/plan_index/conftest.py`
 - Create: `tests/integration/plan_index/test_plan_index_e2e_smoke.py` (§2 gate)
@@ -2888,14 +2943,16 @@ git commit -m "test(plan_index): round-2 security & auth-gate coverage (REQ-PLAN
 - Create: `tests/integration/plan_index/test_dhara_unreachable_degrades.py`
 
 **Interfaces:**
+
 - Consumes: `register_plan_tools` from Task 11, `FakeDhara` from Task 5
 - Produces: 9 e2e test files covering the 5 `mcp__mahavishnu__plan_*` tools per `mcp-backend-wiring-discipline.md` §2 (CI smoke) and §4 (per-tool e2e). The auth-gate and FastMCP-error-serialization e2e tests live in Task 11.5 — this task does NOT duplicate them.
 
 All e2e tests follow the pattern from `tests/integration/jot/test_jot_capture_e2e.py`:
+
 1. Subprocess the MCP server (`mahavishnu mcp start --port <port> --profile full`).
-2. Wait for `/health` warmup (max 30s).
-3. Call each tool via the FastMCP JSON-RPC endpoint.
-4. Assert non-empty result + TypedDict shape contract.
+1. Wait for `/health` warmup (max 30s).
+1. Call each tool via the FastMCP JSON-RPC endpoint.
+1. Assert non-empty result + TypedDict shape contract.
 
 - [ ] **Step 1: Create the e2e conftest with subprocess MCP server fixture**
 
@@ -3469,22 +3526,26 @@ git add tests/integration/plan_index/
 git commit -m "test(plan_index): per-tool e2e + smoke + missing record + degraded (§2/§4)"
 ```
 
----
+______________________________________________________________________
 
 ## Task 12: 5-edit registration dance
 
 **Files:**
+
 - Modify: `mahavishnu/mcp/bootstrap.py` (add `_register_plan_tools`)
 - Modify: `mahavishnu/mcp/tools/profiles.py` (3 edits)
 - Create: `tests/unit/mcp/test_tool_profile_drift_plan_index.py` (CI guard test)
 
 **Interfaces:**
+
 - Consumes: `register_plan_tools` from Task 11
+
 - Produces: `mcp__mahavishnu__plan_*` tools registered in FULL profile
 
 - [ ] **Step 1: Read existing patterns**
 
 Run:
+
 ```bash
 grep -n "_register_search_tools\|_register_treesitter_tools\|_register_pycharm_tools" mahavishnu/mcp/bootstrap.py | head -10
 grep -n "_register_search_tools" mahavishnu/mcp/tools/profiles.py | head -10
@@ -3575,17 +3636,20 @@ git add mahavishnu/mcp/bootstrap.py mahavishnu/mcp/tools/profiles.py tests/unit/
 git commit -m "feat(mcp): register plan_* tools in FULL profile (5-edit dance)"
 ```
 
----
+______________________________________________________________________
 
 ## Task 13: Health aggregation — `/health` reports plan_index feed
 
 **Files:**
+
 - Modify: `mahavishnu/mcp/bootstrap.py` (extend `register_health_endpoint`)
 - Modify: `mahavishnu/plan_index/health.py` (add `get_plan_index_feed_state()` accessor)
 - Test: `tests/integration/mcp/test_plan_index_health.py`
 
 **Interfaces:**
+
 - Consumes: `PlanIndexFeedState`
+
 - Produces: `checks["plan_index"]` branch in `/health` aggregator
 
 - [ ] **Step 1: Add the accessor to `mahavishnu/plan_index/health.py`**
@@ -3670,16 +3734,19 @@ git add mahavishnu/plan_index/health.py mahavishnu/mcp/bootstrap.py tests/integr
 git commit -m "feat(plan_index,health): wire plan_index feed into /health aggregator"
 ```
 
----
+______________________________________________________________________
 
 ## Task 14: PeriodicTaskRunner — cron + lock + DLQ
 
 **Files:**
+
 - Create: `mahavishnu/plan_index/cron.py`
 - Test: `tests/unit/plan_index/test_cron.py`
 
 **Interfaces:**
+
 - Consumes: `PlanIndexRebuilder`, `PlanIndexStore`, `PlanIndexHealth`
+
 - Produces: `class PeriodicTaskRunner` with `start()`, `stop()`, `force_run()` methods
 
 - [ ] **Step 1: Write the failing cron test**
@@ -3965,11 +4032,12 @@ Note: A future task will replace `records: list[PlanRecord] = []` with the files
 - [ ] **Step 4a: Replace the no-op placeholder with a real filesystem scan (TDD)**
 
 The current `run_rebuild_cycle` is a counter incrementer that ships green tests but does zero real work. Replace it with a cycle that:
+
 1. Calls `discover_records(repo_root)` to get the list of records (importable so Task 15's CLI orchestrator can reuse it).
-2. For each record, normalizes the repo URL, derives the plan_id, upserts to Dhara via `PlanIndexRebuilder.upsert_all`.
-3. On failure, appends to `recent_errors` (bounded at 20) and writes a structured line to `errors.log` (via `errors_log_path()` from Task 1).
-4. Updates all six meta keys including the explicit `entities_count` (write to `plan_index/meta/entities_count`).
-5. Truncates `recent_errors` to 20 entries.
+1. For each record, normalizes the repo URL, derives the plan_id, upserts to Dhara via `PlanIndexRebuilder.upsert_all`.
+1. On failure, appends to `recent_errors` (bounded at 20) and writes a structured line to `errors.log` (via `errors_log_path()` from Task 1).
+1. Updates all six meta keys including the explicit `entities_count` (write to `plan_index/meta/entities_count`).
+1. Truncates `recent_errors` to 20 entries.
 
 - [ ] **Step 4a.1: Write the failing test**
 
@@ -4419,11 +4487,12 @@ git add mahavishnu/plan_index/cron.py mahavishnu/plan_index/cron_core.py tests/u
 git commit -m "feat(plan_index): PeriodicTaskRunner with cron_core filesystem scan"
 ```
 
----
+______________________________________________________________________
 
 ## Task 14.5: Concurrency, lock-takeover, DLQ, OTel, health-aggregation tests
 
 **Files:**
+
 - Create: `tests/integration/plan_index/test_concurrent_rebuilds_serialize.py`
 - Create: `tests/integration/plan_index/test_stale_pid_takeover.py`
 - Create: `tests/integration/plan_index/test_periodic_runner_dlq.py`
@@ -4432,7 +4501,9 @@ git commit -m "feat(plan_index): PeriodicTaskRunner with cron_core filesystem sc
 - Create: `tests/integration/plan_index/test_health_check_aggregates.py`
 
 **Interfaces:**
+
 - Consumes: `run_rebuild_cycle` from Task 14, `PeriodicTaskRunner` from Task 14, `PlanIndexFeedState` from Task 8, `register_health_endpoint` from Task 13
+
 - Produces: 6 integration tests covering lock acquisition under contention, stale-PID takeover, DLQ bounded growth, OTel migration flag, lock-holder format, and /health aggregation
 
 - [ ] **Step 1: Create `test_concurrent_rebuilds_serialize.py`**
@@ -4843,16 +4914,19 @@ git add tests/integration/plan_index/test_concurrent_rebuilds_serialize.py \
 git commit -m "test(plan_index): concurrency, DLQ, OTel flag, lock format, /health aggregation"
 ```
 
----
+______________________________________________________________________
 
 ## Task 15: CLI orchestrator rewrite — `scripts/regenerate_plan_index.py`
 
 **Files:**
+
 - Modify: `scripts/regenerate_plan_index.py` (replace filesystem-scanner with three-phase orchestrator)
 - Test: `tests/integration/regenerate_plan_index/test_orchestrator.py`
 
 **Interfaces:**
+
 - Consumes: `PlanIndexStore`, `PlanIndexRebuilder`, `PlanIndexRenderer`, `PlanIndexWriter`
+
 - Produces: CLI with flags `--dry-run`, `--out`, `--stores`, `--extra-stores`, `--json-summary`, `--repo-root` (preserved) + `--check`, `--skip-render`, `--rebuild-from`, `--exclude`, `--exclude-from` (new)
 
 - [ ] **Step 1: Read existing CLI structure**
@@ -4988,18 +5062,21 @@ git add scripts/regenerate_plan_index.py tests/integration/regenerate_plan_index
 git commit -m "feat(scripts): regenerate_plan_index rewritten as 3-phase orchestrator"
 ```
 
----
+______________________________________________________________________
 
 ## Task 16: Feature tracking file + audit script
 
 **Files:**
+
 - Create: `docs/feature-tracking/plan-index-dhara.md`
 - Create: `scripts/audit_plan_index.py`
 - Create: `scripts/check_step8_ready.py`
 - Test: `tests/unit/scripts/test_audit_plan_index.py`
 
 **Interfaces:**
+
 - `scripts/audit_plan_index.py` reads `PLAN_INDEX.md`, scans `.md` files in discovered stores, asserts the three are in sync
+
 - `scripts/check_step8_ready.py` reads feature-tracking status + date arithmetic, prints "ready: yes/no"
 
 - [ ] **Step 1: Create the feature-tracking file**
@@ -5237,14 +5314,16 @@ git add docs/feature-tracking/plan-index-dhara.md scripts/audit_plan_index.py sc
 git commit -m "feat(plan_index): feature-tracking + audit + step8-ready scripts"
 ```
 
----
+______________________________________________________________________
 
 ## Task 17: CI integration — wire all gates
 
 **Files:**
+
 - Test: `tests/integration/test_ci_gates.py`
 
 **Interfaces:**
+
 - Validates that all four CI gates listed in spec §CI integration can be invoked and produce expected exit codes on a known-good state.
 
 - [ ] **Step 1: Write the CI gates integration test**
@@ -5295,13 +5374,14 @@ git add tests/integration/test_ci_gates.py
 git commit -m "test: CI gate integration coverage"
 ```
 
----
+______________________________________________________________________
 
 ## Task 18: Migration run — steps 1-5
 
 This task executes the migration plan from spec §Migration. It runs after all component tasks (1-17) are complete and merged.
 
 **Files:**
+
 - Modify: `docs/feature-tracking/plan-index-dhara.md` (flip `status: built` → `wired` after step 6)
 
 **Steps:**
@@ -5358,11 +5438,12 @@ git add docs/feature-tracking/plan-index-dhara.md scripts/regenerate_plan_index.
 git commit -m "chore(plan_index): migration step 5 complete — golden render committed"
 ```
 
----
+______________________________________________________________________
 
 ## Task 18.5: Migration artifact tests (render, golden, feature-tracking, partial-failure, dict-roundtrip)
 
 **Files:**
+
 - Create: `tests/integration/plan_index/fixtures/PLAN_INDEX.golden.md`
 - Create: `tests/integration/plan_index/test_render_matches_old_scanner.py`
 - Create: `tests/integration/plan_index/test_golden_first_run.py`
@@ -5371,7 +5452,9 @@ git commit -m "chore(plan_index): migration step 5 complete — golden render co
 - Create: `tests/integration/plan_index/test_plan_record_dict_14_field_roundtrip.py`
 
 **Interfaces:**
+
 - Consumes: `render` from Task 7, `PlanRecordDict` from Task 2, `PlanIndexStore.upsert` from Task 5, `docs/feature-tracking/plan-index-dhara.md` from Task 16, `normalize_repo_url` from Task 4
+
 - Produces: 6 integration tests covering golden-snapshot diffing, first-run creation, feature-tracking frontmatter, partial-failure error logging, and TypedDict 14-field round-trip serialization
 
 - [ ] **Step 1: Create the golden render fixture**
@@ -5383,7 +5466,7 @@ git commit -m "chore(plan_index): migration step 5 complete — golden render co
 
 # Plan Index
 
-**Date:** 2026-09-15  
+**Date:** 2026-09-15
 **Last regenerated:** 2026-09-15 UTC
 **Purpose:** Navigation map for Mahavishnu/Bodai plans. Generated by `scripts/regenerate_plan_index.py`. Do not edit by hand.
 
@@ -5770,11 +5853,12 @@ git add tests/integration/plan_index/fixtures/PLAN_INDEX.golden.md \
 git commit -m "test(plan_index): golden render + feature-tracking + partial failure + dict roundtrip"
 ```
 
----
+______________________________________________________________________
 
 ## Task 19: Migration step 6 — wire MCP tools (single commit)
 
 **Files:**
+
 - (No new files; this is the verification step.)
 
 - [ ] **Step 1: Run the auth-gate e2e test**
@@ -5805,11 +5889,12 @@ git add docs/feature-tracking/plan-index-dhara.md
 git commit -m "chore(plan_index): migration step 6 complete — MCP tools wired"
 ```
 
----
+______________________________________________________________________
 
 ## Task 20: Migration steps 7-8 — skill cut-over and conditional decommission
 
 **Files:**
+
 - Modify: `.claude/skills/bodai-status/SKILL.md`
 - Modify: `.claude/skills/mahavishnu-status/SKILL.md`
 - Modify: `docs/feature-tracking/plan-index-dhara.md` (flip to `adopted`)
@@ -5860,30 +5945,30 @@ git add .claude/skills/bodai-status/SKILL.md .claude/skills/mahavishnu-status/SK
 git commit -m "chore(plan_index): migration steps 7-8 — skill cut-over + adopted"
 ```
 
----
+______________________________________________________________________
 
 ## Done Criteria
 
 The implementation is complete when **all** of the following are true:
 
 1. **All 20 tasks merged** with green CI.
-2. **Migration steps 1-5 complete**: Dhara populated, golden render
+1. **Migration steps 1-5 complete**: Dhara populated, golden render
    snapshot test passes.
-3. **`/health` reports `plan_index` feed**: 4 mandatory signals plus
+1. **`/health` reports `plan_index` feed**: 4 mandatory signals plus
    `ok` key, computed correctly.
-4. **5 per-tool e2e tests pass + §2 smoke test green**.
-5. **5-edit registration dance in single commit; CI guard tests pass**.
-6. **Round-2 security fixes applied**: `normalize_repo_url()` runs
+1. **5 per-tool e2e tests pass + §2 smoke test green**.
+1. **5-edit registration dance in single commit; CI guard tests pass**.
+1. **Round-2 security fixes applied**: `normalize_repo_url()` runs
    before `plan_id` derivation (REQ-PLAN-011); `errors.log` contains
    only `path_hash`, never raw `path` or `repo` (REQ-PLAN-012); the
    `@require_mcp_auth` decorator is on all five tools (REQ-PLAN-010).
-7. **`docs/feature-tracking/plan-index-dhara.md` records `adopted`**.
-8. **All 12 REQ-PLAN-IDs are referenced** by code or test markers
+1. **`docs/feature-tracking/plan-index-dhara.md` records `adopted`**.
+1. **All 12 REQ-PLAN-IDs are referenced** by code or test markers
    (`scripts/audit_requirements.py --include-tests` passes).
-9. **`audit_orphans.py` reports zero orphans** under
+1. **`audit_orphans.py` reports zero orphans** under
    `mahavishnu/plan_index/`.
-10. **Step 8 readiness check** returns `ready: yes` only when both
-    conditions met.
+1. **Step 8 readiness check** returns `ready: yes` only when both
+   conditions met.
 
 ## References
 

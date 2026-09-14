@@ -1,8 +1,8 @@
 ---
-status: draft
-role: implementation
+status: complete
+role: historical
 date: 2026-07-16
-last_reviewed: 2026-07-16
+last_reviewed: 2026-08-29
 superseded_by: null
 topic: track1-terminal-gap
 ---

@@ -1,3 +1,14 @@
+---
+status: active
+role: implementation
+kind: plan
+date: 2026-08-10
+last_reviewed: 2026-09-13
+superseded_by: null
+blocks_on: []
+topic: auto-checkpoint-implementation-summary
+---
+
 # Auto-Checkpoint Implementation — Summary
 
 > One-screen summary for the greenlight decision. Companion to `2026-08-10-auto-checkpoint-safety-and-trigger.md`.

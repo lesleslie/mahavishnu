@@ -1,3 +1,14 @@
+---
+status: active
+role: implementation
+kind: plan
+date: 2026-08-23
+last_reviewed: 2026-09-13
+superseded_by: null
+blocks_on: []
+topic: phase3-streaming-tar-plan
+---
+
 # Phase 3 Streaming Tar.zst + Bodai 3.14 Migration Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.

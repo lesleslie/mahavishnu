@@ -1,3 +1,14 @@
+---
+status: active
+role: implementation
+kind: plan
+date: 2026-07-29
+last_reviewed: 2026-09-13
+superseded_by: null
+blocks_on: []
+topic: ruff-cleanup-waves
+---
+
 # Ruff Cleanup Wave-Plan (2026-07-29)
 
 > **For agentic workers:** This is a triage + strategy document, not a
