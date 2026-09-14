@@ -4,7 +4,7 @@
 **Created:** 2026-09-10
 **Last updated:** 2026-09-10
 **Triggered by:** `mahavishnu.observability.drift_detected` OTel span
-**Spec:** [`docs/plans/2026-09-10-bodai-math-initiatives-tier1.md` §6 Phase 6](../plans/2026-09-10-bodai-math-initiatives-tier1.md)
+**Spec:** [`docs/plans/2026-09-10-bodai-math-initiatives-tier1.md` §6 Phase 6](../plans/.archive/2026-09-10-bodai-math-initiatives-tier1.md)
 
 ## What this runbook is for
 
@@ -108,6 +108,7 @@ under the two-stage architecture — see
 numbers.
 
 Operator action by signal:
+
 - **`drift_warning`** — investigate at low urgency. The detector is
   saying "something looks unusual." Most warnings are noise; some
   are precursors to confirmed alerts within a few hundred samples.
@@ -171,7 +172,7 @@ shared multi-tenant backend, hash or override this via
 ## Cross-repo gap-period guidance
 
 Until Phase D (the cross-repo Akosha wiring per
-[`docs/plans/2026-09-10-bodai-math-initiatives-tier1.md` §7](../plans/2026-09-10-bodai-math-initiatives-tier1.md))
+[`docs/plans/2026-09-10-bodai-math-initiatives-tier1.md` §7](../plans/.archive/2026-09-10-bodai-math-initiatives-tier1.md))
 lands, the Mahavishnu drift signal and Akosha's
 `akosha_detect_anomalies` are independent control planes for the
 same conceptual metric. When `mahavishnu.observability.drift_detected`
@@ -222,6 +223,6 @@ drift entirely. Operators can either:
 
 ## Related
 
-- Tier 1 plan §6 Phase 6: [`docs/plans/2026-09-10-bodai-math-initiatives-tier1.md`](../plans/2026-09-10-bodai-math-initiatives-tier1.md) §6
+- Tier 1 plan §6 Phase 6: [`docs/plans/2026-09-10-bodai-math-initiatives-tier1.md`](../plans/.archive/2026-09-10-bodai-math-initiatives-tier1.md) §6
 - Feature tracking: [`docs/feature-tracking/2026-09-10-observability-changepoint.md`](../feature-tracking/) (added in Phase 8)
 - Eligibility script: [`scripts/feature_eligibility.py`](../../scripts/feature_eligibility.py) (Phase 9 — fires when the multi-metric trigger accumulates ≥ 3 distinct operator requests in 30 days)

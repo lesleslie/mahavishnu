@@ -158,7 +158,7 @@ The two-stage architecture resolves the §1/§7 trade-off documented
 in `docs/audits/2026-09-10-changepoint-validation.md`. Operators
 who have customized `changepoint.detector: "cusum"` in
 `settings/local.yaml` for backwards compat should re-evaluate
-within the [Phase 8 promotion migration window](../plans/2026-09-10-bodai-math-initiatives-tier1.md)
+within the [Phase 8 promotion migration window](../plans/.archive/2026-09-10-bodai-math-initiatives-tier1.md)
 (typically two weeks of `two_stage` operation in their
 environment; see also the [runbook's two-stage migration section](../runbooks/mahavishnu-drift-detection.md))
 — the two-stage mode emits BOTH `drift_warning` (soft) and
@@ -239,7 +239,7 @@ plan, NOT a rollback of this feature.
 
 ## Related
 
-* Plan: [`docs/plans/2026-09-10-bodai-math-initiatives-tier1.md`](../plans/2026-09-10-bodai-math-initiatives-tier1.md) §6 Phase 8
+* Plan: [`docs/plans/2026-09-10-bodai-math-initiatives-tier1.md`](../plans/.archive/2026-09-10-bodai-math-initiatives-tier1.md) §6 Phase 8
 * Library: `mahavishnu/observability/changepoint/`
 * Sampler: `mahavishnu/observability/sampler.py`
 * Runbook: [`docs/runbooks/mahavishnu-drift-detection.md`](../runbooks/mahavishnu-drift-detection.md)

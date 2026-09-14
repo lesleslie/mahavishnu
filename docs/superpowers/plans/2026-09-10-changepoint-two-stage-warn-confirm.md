@@ -8,7 +8,7 @@
 
 **Tech Stack:** Python 3.14+, stdlib dataclasses, existing `mahavishnu.observability.changepoint` module (`CUSUMDetector`, `PageHinkleyDetector`), OpenTelemetry (existing), Prometheus (existing), Oneiric config (existing).
 
-**Spec:** [`docs/plans/2026-09-10-bodai-math-initiatives-tier1.md`](../plans/2026-09-10-bodai-math-initiatives-tier1.md) §1 (success metrics) and §6 Phase 6 (change-point integration). The plan argues from §1's "median ≤ 30 samples for 0.5σ shift" and §7's "≤ 2 fires per 10,080 quiet samples" success metrics; both travel together.
+**Spec:** [`docs/plans/2026-09-10-bodai-math-initiatives-tier1.md`](../../plans/.archive/2026-09-10-bodai-math-initiatives-tier1.md) §1 (success metrics) and §6 Phase 6 (change-point integration). The plan argues from §1's "median ≤ 30 samples for 0.5σ shift" and §7's "≤ 2 fires per 10,080 quiet samples" success metrics; both travel together.
 
 ## Global Constraints
 
@@ -70,6 +70,7 @@ ______________________________________________________________________
 ## Task 1: `TwoStageDetector` + config fields + unit tests
 
 **Files:**
+
 - Create: `mahavishnu/observability/changepoint/two_stage.py` (~140 LOC)
 - Modify: `mahavishnu/observability/changepoint/__init__.py:35-41` (add `TwoStageDetector` and `TwoStageResult` to `__all__` and import)
 - Modify: `mahavishnu/core/config.py:448` (extend `ChangepointConfig` with `detector: Literal`, `warn_threshold`, `confirm_threshold`, `confirm_window`)
@@ -675,6 +676,7 @@ ______________________________________________________________________
 ## Task 2: Wire `TwoStageDetector` into `ObservabilityManager._evaluate_change_point`
 
 **Files:**
+
 - Modify: `mahavishnu/core/observability.py:544-640` (extend `_get_or_create_changepoint_detector` to handle `detector == "two_stage"`)
 - Modify: `mahavishnu/core/observability.py:387-443` (extend `_evaluate_change_point` to dispatch on `isinstance(detector, TwoStageDetector)`; emit `drift_warning` OTel span + counter on warn fire)
 - Modify: `mahavishnu/core/observability.py:651-835` (extend `_on_drift_detected` to accept a `TwoStageResult` and emit the `samples_since_warning` attribute on confirmed alerts)
@@ -943,6 +945,7 @@ ______________________________________________________________________
 ## Task 3: Integration tests for warn/confirm pipeline + §1/§7 gates
 
 **Files:**
+
 - Create: `tests/integration/observability/test_changepoint_two_stage_benchmark.py` (~120 LOC)
 - Modify: `tests/integration/observability/test_changepoint_benchmark.py:288-298` (extend `bench.json` schema with two_stage keys)
 
@@ -1190,6 +1193,7 @@ ______________________________________________________________________
 ## Task 4: Update spec §1 and §7 wording
 
 **Files:**
+
 - Modify: `docs/plans/2026-09-10-bodai-math-initiatives-tier1.md:96-103` (the success metrics block for change-point detection)
 
 - [ ] **Step 4.1: Locate the §1 success metrics block**
@@ -1262,6 +1266,7 @@ ______________________________________________________________________
 ## Task 5: Update runbook to document the two-stage semantics
 
 **Files:**
+
 - Modify: `docs/runbooks/mahavishnu-drift-detection.md:75-94` (replace the "§1 latency vs §7 FP gate trade-off" section)
 
 - [ ] **Step 5.1: Replace the §1/§7 trade-off section**
@@ -1333,7 +1338,9 @@ ______________________________________________________________________
 ## Task 6: Update validation report + feature-tracking
 
 **Files:**
+
 - Modify: `docs/audits/2026-09-10-changepoint-validation.md` (Status header + Results + Calibration caveat + Round-2 fixes summary)
+
 - Modify: `docs/feature-tracking/2026-09-10-observability-changepoint.md` (rollout playbook note about `two_stage` promotion)
 
 - [ ] **Step 6.1: Update the validation report Status header**
@@ -1473,11 +1480,7 @@ window? (4) does the warn detector's reset-after-fire behavior
 match the production semantics in `_on_drift_detected`? Report any
 CRITICAL/HIGH/MEDIUM findings."
 
-Run: `mcp__mahavishnu__pool_route_execute(
-  prompt=<above>,
-  pool_selector="affinity",
-  timeout=300,
-)`
+Run: `mcp__mahavishnu__pool_route_execute(   prompt=<above>,   pool_selector="affinity",   timeout=300, )`
 
 Wait for the result.
 
@@ -1499,11 +1502,7 @@ on `drift_warning` and `drift_detected` consistent (same
 attribute keys for `metric_name`, `detector`, etc.)? Report any
 CRITICAL/HIGH/MEDIUM findings."
 
-Run: `mcp__mahavishnu__pool_route_execute(
-  prompt=<above>,
-  pool_selector="affinity",
-  timeout=300,
-)`
+Run: `mcp__mahavishnu__pool_route_execute(   prompt=<above>,   pool_selector="affinity",   timeout=300, )`
 
 Wait for the result.
 
@@ -1524,11 +1523,7 @@ that doesn't require reading the spec? (4) is the
 runbook (so operators know it exists)? Report any
 CRITICAL/HIGH/MEDIUM findings."
 
-Run: `mcp__mahavishnu__pool_route_execute(
-  prompt=<above>,
-  pool_selector="affinity",
-  timeout=300,
-)`
+Run: `mcp__mahavishnu__pool_route_execute(   prompt=<above>,   pool_selector="affinity",   timeout=300, )`
 
 Wait for the result.
 
@@ -1548,11 +1543,7 @@ the v3.1 → v3.2 changelog entries honest about what changed? (4)
 does the feature-tracking rollout note accurately describe the
 two_stage promotion? Report any CRITICAL/HIGH/MEDIUM findings."
 
-Run: `mcp__mahavishnu__pool_route_execute(
-  prompt=<above>,
-  pool_selector="affinity",
-  timeout=300,
-)`
+Run: `mcp__mahavishnu__pool_route_execute(   prompt=<above>,   pool_selector="affinity",   timeout=300, )`
 
 Wait for the result.
 

@@ -11,7 +11,7 @@ blocks_on:
 
 **Created**: 2026-09-10
 **Status**: Active — **deferred work, NOT a defect**
-**Originating plan**: [`docs/plans/2026-09-10-bodai-math-initiatives-tier1.md`](../plans/2026-09-10-bodai-math-initiatives-tier1.md) (Tier 1 Phase 9)
+**Originating plan**: [`docs/plans/2026-09-10-bodai-math-initiatives-tier1.md`](../plans/.archive/2026-09-10-bodai-math-initiatives-tier1.md) (Tier 1 Phase 9)
 
 ## Why deferred
 
@@ -48,7 +48,7 @@ When the trigger fires, open `docs/plans/YYYY-MM-DD-tier2-optimal-transport.md` 
 4. **Rollback path**: the new scoring path lives behind
    `akosha.patterns.optimal_transport_enabled` config flag
    (default `false`) so the cosine path remains the default until
-   the OT path is independently validated.
+   the optimal-transport path is independently validated.
 
 ## Out-of-scope for this followup
 
@@ -57,10 +57,10 @@ When the trigger fires, open `docs/plans/YYYY-MM-DD-tier2-optimal-transport.md` 
   trigger fires.
 - The Akosha Z-score and pytrendy detectors are NOT replaced by
   optimal transport — they answer different questions (see
-  [`docs/plans/2026-09-10-bodai-math-initiatives-tier1.md` §4.6](../plans/2026-09-10-bodai-math-initiatives-tier1.md)).
+  [`docs/plans/2026-09-10-bodai-math-initiatives-tier1.md` §4.6](../plans/.archive/2026-09-10-bodai-math-initiatives-tier1.md)).
 
 ## Related
 
-- Tier 1 plan: [`docs/plans/2026-09-10-bodai-math-initiatives-tier1.md`](../plans/2026-09-10-bodai-math-initiatives-tier1.md) §4.7, §6 Phase 9
+- Tier 1 plan: [`docs/plans/2026-09-10-bodai-math-initiatives-tier1.md`](../plans/.archive/2026-09-10-bodai-math-initiatives-tier1.md) §4.7, §6 Phase 9
 - Eligibility script: [`scripts/feature_eligibility.py`](../../scripts/feature_eligibility.py)
 - Feature tracking: [`docs/feature-tracking/2026-09-10-tier2-math-deferred.md`](../feature-tracking/2026-09-10-tier2-math-deferred.md)

@@ -40,37 +40,37 @@ Completion rule for this master checklist:
 
 - An initiative can be checked complete only when all of its work package checkboxes are complete in the linked initiative doc and that initiative's exit criteria are met.
 
-- [x] [Initiative 0: Phase 0 Cleanup](./initiatives/00-phase0-cleanup.md)
+- [x] **Initiative 0: Phase 0 Cleanup**
 
-- [x] [Initiative 1: Health/Readiness/Metrics Contract + `mahavishnu health`](./initiatives/01-health-contract-and-command.md)
+- [x] **Initiative 1: Health/Readiness/Metrics Contract + `mahavishnu health`**
 
-- [x] [Initiative 2: Config Unification + Validation CLI](./initiatives/02-config-unification-validation-cli.md)
+- [x] **Initiative 2: Config Unification + Validation CLI**
 
-- [x] [Initiative 3: MCP Lifecycle Formalization](./initiatives/03-mcp-lifecycle-formalization.md)
+- [x] **Initiative 3: MCP Lifecycle Formalization**
 
-- [x] [Initiative 4: MCP Utility Tools](./initiatives/04-mcp-utility-tools.md)
+- [x] **Initiative 4: MCP Utility Tools**
 
-- [x] [Initiative 5: Ecosystem Contract Tests](./initiatives/05-ecosystem-contract-tests.md)
+- [x] **Initiative 5: Ecosystem Contract Tests**
 
-- [x] [Initiative 6: Retry/Circuit-Breaker Centralization](./initiatives/06-retry-circuit-centralization.md)
+- [x] **Initiative 6: Retry/Circuit-Breaker Centralization**
 
-- [x] [Initiative 7: Chaos Tests v1](./initiatives/07-chaos-tests-v1.md)
+- [x] **Initiative 7: Chaos Tests v1**
 
-- [x] [Initiative 8: Engine Adapter Decomposition](./initiatives/08-engine-adapter-decomposition.md)
+- [x] **Initiative 8: Engine Adapter Decomposition**
 
-- [ ] [Initiative 9: Typed Event Envelope + Governance](./initiatives/09-typed-event-envelope-governance.md)
+- [ ] **Initiative 9: Typed Event Envelope + Governance**
 
-- [ ] [Initiative 10: Low-Value Tool Retirement](./initiatives/10-low-value-tool-retirement.md)
+- [ ] **Initiative 10: Low-Value Tool Retirement**
 
-- [ ] [Initiative 11: Cache + Tiered Retrieval Defaults](./initiatives/11-cache-tiered-retrieval-defaults.md)
+- [ ] **Initiative 11: Cache + Tiered Retrieval Defaults**
 
-- [ ] [Initiative 12: Golden Paths for Top Workflows](./initiatives/12-golden-paths-workflows.md)
+- [ ] **Initiative 12: Golden Paths for Top Workflows**
 
-- [ ] [Initiative 13: Dashboard Phase 2 (Textual, Conditional)](./initiatives/13-dashboard-phase2-textual.md)
+- [ ] **Initiative 13: Dashboard Phase 2 (Textual, Conditional)**
 
-- [ ] [Initiative 14: Dashboard Phase 3 (Grafana Alignment)](./initiatives/14-dashboard-phase3-grafana-alignment.md)
+- [ ] **Initiative 14: Dashboard Phase 3 (Grafana Alignment)**
 
-- [ ] [Initiative 15: Content Quality ML Enhancements](./initiatives/15-content-quality-ml-enhancements.md)
+- [ ] **Initiative 15: Content Quality ML Enhancements**
 
 ## 1.2) Current Execution Slice
 

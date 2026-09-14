@@ -156,7 +156,7 @@ hyperbolic embeddings, multi-metric drift) are tracked under
 
 ## Related
 
-* Plan: [`docs/plans/2026-09-10-bodai-math-initiatives-tier1.md`](../plans/2026-09-10-bodai-math-initiatives-tier1.md) §6 Phase 4
+* Plan: [`docs/plans/2026-09-10-bodai-math-initiatives-tier1.md`](../plans/.archive/2026-09-10-bodai-math-initiatives-tier1.md) §6 Phase 4
 * Library: `mahavishnu/pools/queueing/`
 * Integration: `mahavishnu/pools/queueing/scorer.py`
 * Validation: [`docs/audits/2026-09-10-queueing-validation.md`](../audits/2026-09-10-queueing-validation.md)

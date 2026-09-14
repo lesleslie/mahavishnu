@@ -8,7 +8,7 @@ topic: bodai-mcp-surface-standardization
 ---
 # Bodai Core MCP Surface Standardization
 
-> **Companion to:** [`2026-08-20-mahavishnu-lifespan-health-bypass.md`](./2026-08-20-mahavishnu-lifespan-health-bypass.md)
+> **Companion to:** [`2026-08-20-mahavishnu-lifespan-health-bypass.md`](../2026-08-20-mahavishnu-lifespan-health-bypass.md)
 > Phase 4 of that plan was promoted to this standalone plan during review on 2026-08-20.
 > **Lifecycle:** This plan is non-blocking on Phases 1-3 of the lifespan plan; ships in
 > Session-Buddy + mcp-common as a follow-up commit on the same plan branch.
@@ -386,7 +386,7 @@ commit on the same plan branch. Do not squash — reviewers need to
 trace each phase independently.
 
 **Relationship to the lifespan plan:** This plan was promoted from
-Phase 4 of [`2026-08-20-mahavishnu-lifespan-health-bypass.md`](./2026-08-20-mahavishnu-lifespan-health-bypass.md)
+Phase 4 of [`2026-08-20-mahavishnu-lifespan-health-bypass.md`](../2026-08-20-mahavishnu-lifespan-health-bypass.md)
 during review on 2026-08-20. It is non-blocking on Phases 1-3 of
 that plan and can ship independently in Session-Buddy + mcp-common.
 

@@ -12,7 +12,7 @@ blocks_on:
 
 **Created**: 2026-09-10
 **Status**: Active — **deferred work, NOT a defect**
-**Originating plan**: [`docs/plans/2026-09-10-bodai-math-initiatives-tier1.md`](../plans/2026-09-10-bodai-math-initiatives-tier1.md) (Tier 1 §7 cross-repo stub + Phase 9)
+**Originating plan**: [`docs/plans/2026-09-10-bodai-math-initiatives-tier1.md`](../plans/.archive/2026-09-10-bodai-math-initiatives-tier1.md) (Tier 1 §7 cross-repo stub + Phase 9)
 
 ## Why deferred
 
@@ -77,6 +77,6 @@ When the trigger fires, open
 ## Related
 
 - Tier 1 plan §7 cross-repo stub:
-  [`docs/plans/2026-09-10-bodai-math-initiatives-tier1.md`](../plans/2026-09-10-bodai-math-initiatives-tier1.md) §7
+  [`docs/plans/2026-09-10-bodai-math-initiatives-tier1.md`](../plans/.archive/2026-09-10-bodai-math-initiatives-tier1.md) §7
 - Eligibility script: [`scripts/feature_eligibility.py`](../../scripts/feature_eligibility.py)
 - Feature tracking: [`docs/feature-tracking/2026-09-10-tier2-math-deferred.md`](../feature-tracking/2026-09-10-tier2-math-deferred.md)

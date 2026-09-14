@@ -1,7 +1,7 @@
 # Phase 3 — Queueing Validation Report
 
 **Date:** 2026-09-10
-**Spec:** [`docs/plans/2026-09-10-bodai-math-initiatives-tier1.md` §6 Phase 3](../plans/2026-09-10-bodai-math-initiatives-tier1.md)
+**Spec:** [`docs/plans/2026-09-10-bodai-math-initiatives-tier1.md` §6 Phase 3](../plans/.archive/2026-09-10-bodai-math-initiatives-tier1.md)
 **Integration test:** `tests/integration/pools/test_queueing_routing.py`
 **Status:** Pass — `pytest tests/integration/pools/test_queueing_routing.py -v --no-cov` → 6/6
 

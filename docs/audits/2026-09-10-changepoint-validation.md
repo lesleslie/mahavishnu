@@ -1,7 +1,7 @@
 # Phase 7 — Change-Point Validation Report
 
 **Date:** 2026-09-10 (updated 2026-09-10 with round-2 empirical measurements)
-**Spec:** [`docs/plans/2026-09-10-bodai-math-initiatives-tier1.md` §6 Phase 7](../plans/2026-09-10-bodai-math-initiatives-tier1.md)
+**Spec:** [`docs/plans/2026-09-10-bodai-math-initiatives-tier1.md` §6 Phase 7](../plans/.archive/2026-09-10-bodai-math-initiatives-tier1.md)
 **Integration tests:** `tests/integration/observability/test_changepoint_detection.py`, `test_changepoint_benchmark.py`
 **Status:** Pass (two-stage architecture) — `pytest tests/integration/observability/ tests/unit/observability/ -v --no-cov` → 115 tests collected across 8 .py files (4 detection integration + 6 benchmark integration + 4 two_stage benchmark integration + 2 two_stage dispatch integration + 39 CUSUM unit + 47 sampler unit + 9 two_stage unit + 4 worker_metrics unit). Two-stage gates (§1 warning latency ≤ 30 samples, §7 confirmed alert FP ≤ 2 per 10,080) both pass at the production defaults `warn_threshold=8.0`, `confirm_threshold=14.0`, `confirm_window_samples=100`.
 
@@ -213,17 +213,17 @@ Key changes:
    `CUSUMDetector(confirm_threshold=14.0)` via a 3-state machine
    (`idle` → `warning_pending` → `confirmed` → `idle`). Lives at
    `mahavishnu/observability/changepoint/two_stage.py`.
-2. **`ObservabilityManager._evaluate_change_point` dispatch**:
+1. **`ObservabilityManager._evaluate_change_point` dispatch**:
    branches on `isinstance(detector, TwoStageDetector)`; emits
    `mahavishnu.observability.drift_warning` on warn fires and
    `mahavishnu.observability.drift_detected` on confirm fires.
-3. **`drift_warning_total` Prometheus counter**: separate from
+1. **`drift_warning_total` Prometheus counter**: separate from
    `drift_detected_total` so dashboards can show both rates
    (warn rate ~30 / 10,080; confirmed rate ~0.02 / 10,080).
-4. **Config defaults**: `ChangepointConfig.detector` accepts
+1. **Config defaults**: `ChangepointConfig.detector` accepts
    `"cusum" | "page_hinkley" | "two_stage"`; the two_stage-only
    fields `warn_threshold`, `confirm_threshold`,
    `confirm_window_samples` default to 8.0 / 14.0 / 100.
-5. **Spec §1/§7 wording updated** (v3.2): §1 latency is measured
+1. **Spec §1/§7 wording updated** (v3.2): §1 latency is measured
    on warnings; §7 FP is measured on confirmed alerts; both
    gates pass empirically.

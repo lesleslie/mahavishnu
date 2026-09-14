@@ -22,7 +22,7 @@ role: deferred
 
 This entry tracks the three Tier 2 / Phase D initiatives deferred
 from
-[`docs/plans/2026-09-10-bodai-math-initiatives-tier1.md`](../plans/2026-09-10-bodai-math-initiatives-tier1.md):
+[`docs/plans/2026-09-10-bodai-math-initiatives-tier1.md`](../plans/.archive/2026-09-10-bodai-math-initiatives-tier1.md):
 
 | Sub-initiative | Trigger | Activation criteria |
 |----------------|---------|---------------------|
@@ -102,7 +102,7 @@ the table above) and update this entry to `built`.
 
 ## Related
 
-- Plan: [`docs/plans/2026-09-10-bodai-math-initiatives-tier1.md`](../plans/2026-09-10-bodai-math-initiatives-tier1.md) (Tier 1 §4.7, Phase 9)
+- Plan: [`docs/plans/2026-09-10-bodai-math-initiatives-tier1.md`](../plans/.archive/2026-09-10-bodai-math-initiatives-tier1.md) (Tier 1 §4.7, Phase 9)
 - Eligibility script: [`scripts/feature_eligibility.py`](../../scripts/feature_eligibility.py)
 - Followups: `docs/followups/2026-09-10-tier2-*.md`
 - Top-level Makefile: `Makefile` (target: `tier2-eligibility`)

@@ -11,7 +11,7 @@ blocks_on:
 
 **Created**: 2026-09-10
 **Status**: Active — **deferred work, NOT a defect**
-**Originating plan**: [`docs/plans/2026-09-10-bodai-math-initiatives-tier1.md`](../plans/2026-09-10-bodai-math-initiatives-tier1.md) (Tier 1 Phase 9 — operational follow-on trigger)
+**Originating plan**: [`docs/plans/2026-09-10-bodai-math-initiatives-tier1.md`](../plans/.archive/2026-09-10-bodai-math-initiatives-tier1.md) (Tier 1 Phase 9 — operational follow-on trigger)
 
 ## Why deferred
 
@@ -71,8 +71,8 @@ When the trigger fires, open `docs/plans/YYYY-MM-DD-tier2-multi-metric-drift.md`
 ## Related
 
 - Tier 1 plan Phase 6 single-metric gate:
-  [`docs/plans/2026-09-10-bodai-math-initiatives-tier1.md`](../plans/2026-09-10-bodai-math-initiatives-tier1.md) §6 Phase 6
+  [`docs/plans/2026-09-10-bodai-math-initiatives-tier1.md`](../plans/.archive/2026-09-10-bodai-math-initiatives-tier1.md) §6 Phase 6
 - Tier 1 v3.1 changelog (this trigger added):
-  [`docs/plans/2026-09-10-bodai-math-initiatives-tier1.md`](../plans/2026-09-10-bodai-math-initiatives-tier1.md) top of file
+  [`docs/plans/2026-09-10-bodai-math-initiatives-tier1.md`](../plans/.archive/2026-09-10-bodai-math-initiatives-tier1.md) top of file
 - Eligibility script: [`scripts/feature_eligibility.py`](../../scripts/feature_eligibility.py)
 - Feature tracking: [`docs/feature-tracking/2026-09-10-tier2-math-deferred.md`](../feature-tracking/2026-09-10-tier2-math-deferred.md)

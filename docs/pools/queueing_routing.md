@@ -3,7 +3,7 @@
 **Owner:** bodai-orchestrator
 **Created:** 2026-09-10
 **Last updated:** 2026-09-10
-**Spec:** [`docs/plans/2026-09-10-bodai-math-initiatives-tier1.md` §1-§3](../plans/2026-09-10-bodai-math-initiatives-tier1.md)
+**Spec:** [`docs/plans/2026-09-10-bodai-math-initiatives-tier1.md` §1-§3](../plans/.archive/2026-09-10-bodai-math-initiatives-tier1.md)
 **Library:** `mahavishnu.pools.queueing` (Tier 1 Phase 1)
 **Integration:** `mahavishnu.pools.queueing.scorer` (Tier 1 Phase 2)
 
@@ -24,11 +24,11 @@ The library exposes :class:`~mahavishnu.pools.queueing.mmc.MmcQueue`
 inter-arrival and service times and produces expected-wait-time
 estimates using one of two formulas:
 
-* **`kingman`** (default) — Kingman's heavy-traffic approximation.
+- **`kingman`** (default) — Kingman's heavy-traffic approximation.
   For M/M/c with Poisson arrivals and exponential service, this
   simplifies to `W_q ≈ (ρ / (1 − ρ)) · (1 / μ)`. Tight in heavy
   traffic; O(1); the router's hot path uses this.
-* **`erlang_c`** — the exact M/M/c Erlang-C formula. Tight for
+- **`erlang_c`** — the exact M/M/c Erlang-C formula. Tight for
   small `c` (single-worker pools); preferred for safety-critical
   workloads where the Kingman over-estimate is too coarse.
 
@@ -42,12 +42,12 @@ Both require `ρ < 1`. The router-friendly entry
 The Phase 3 integration test (`tests/integration/pools/test_queueing_routing.py`)
 validates against the §1 success criteria:
 
-* Poisson workload: median error on conditional-on-wait tasks < 25%.
-* Bursty workload: documented (p95 of relative error can be looser
+- Poisson workload: median error on conditional-on-wait tasks < 25%.
+- Bursty workload: documented (p95 of relative error can be looser
   at high burstiness; the router's pool-fit estimator remains
   meaningful but the per-task relative error is sensitive to which
   tasks waited).
-* Hyperexponential service: documented; M/M/c is a worse fit at
+- Hyperexponential service: documented; M/M/c is a worse fit at
   high CV²; the validation report
   (`docs/audits/2026-09-10-queueing-validation.md`) tabulates the
   per-shift-size error budget.
@@ -88,36 +88,36 @@ MAHAVISHNU_POOLS__QUEUEING_ENABLED=false
 
 The new signal is observable via:
 
-* `mahavishnu.pool.routing_decision` OTel span (predicted_wait_s,
+- `mahavishnu.pool.routing_decision` OTel span (predicted_wait_s,
   observed_wait_s, effective_selector).
-* `mahavishnu_routing_decisions_total` Prometheus counter
+- `mahavishnu_routing_decisions_total` Prometheus counter
   (extended with `predicted_wait_bucket` and `effective_selector`
   labels; both labels added to `_ALLOWED_LABEL_KEYS` in
   `mahavishnu/observability/metrics.py`).
-* `mahavishnu.pool.queueing_prediction_error` Prometheus histogram.
-* `mahavishnu.pool.queueing_warmup_pending` debug log line (one
+- `mahavishnu.pool.queueing_prediction_error` Prometheus histogram.
+- `mahavishnu.pool.queueing_warmup_pending` debug log line (one
   per `route_task` invocation while the buffer is in warmup).
-* The Dhara `routing_decision` record extended with
+- The Dhara `routing_decision` record extended with
   `predicted_wait_s`, `observed_wait_s`, `effective_selector`.
 
 ## Limitations
 
-* M/M/c assumes exponential service. Real Mahavishnu traffic is
+- M/M/c assumes exponential service. Real Mahavishnu traffic is
   closer to bursty/hyperexponential; the Kingman formula degrades
   gracefully (its error scales with `(CV_a² + CV_s²)/2`), but
   operators should expect a 50-100% error budget on bursty
   workloads.
-* The fit is per-pool. Operators wanting global optimization need
+- The fit is per-pool. Operators wanting global optimization need
   a different formulation.
-* Slow drifts in service time are invisible to the queueing
+- Slow drifts in service time are invisible to the queueing
   model (which assumes the in-control mean is fixed). Cross-pool
   drift detection is the change-point detector's job (Phase 6).
 
 ## References
 
-* Tier 1 plan §1-§3, §6 Phase 1, §6 Phase 2: [`docs/plans/2026-09-10-bodai-math-initiatives-tier1.md`](../plans/2026-09-10-bodai-math-initiatives-tier1.md)
-* Validation report: [`docs/audits/2026-09-10-queueing-validation.md`](../audits/2026-09-10-queueing-validation.md)
-* Feature tracking: [`docs/feature-tracking/2026-09-10-pool-queueing-routing.md`](../feature-tracking/) (added in Phase 4)
-* Library code: `mahavishnu/pools/queueing/`
-* Integration test: `tests/integration/pools/test_queueing_routing.py`
-* Unit tests: `tests/unit/pools/test_queueing.py`, `tests/unit/pools/test_queueing_scorer.py`
+- Tier 1 plan §1-§3, §6 Phase 1, §6 Phase 2: [`docs/plans/2026-09-10-bodai-math-initiatives-tier1.md`](../plans/.archive/2026-09-10-bodai-math-initiatives-tier1.md)
+- Validation report: [`docs/audits/2026-09-10-queueing-validation.md`](../audits/2026-09-10-queueing-validation.md)
+- Feature tracking: [`docs/feature-tracking/2026-09-10-pool-queueing-routing.md`](../feature-tracking/) (added in Phase 4)
+- Library code: `mahavishnu/pools/queueing/`
+- Integration test: `tests/integration/pools/test_queueing_routing.py`
+- Unit tests: `tests/unit/pools/test_queueing.py`, `tests/unit/pools/test_queueing_scorer.py`

@@ -1563,7 +1563,7 @@ empty-manifest states before B-7 is fully closed.
 
 ## Appendix A — Why the prior plan was superseded
 
-[docs/plans/2026-09-09-bodai-slash-command-tui-discoverability.md](2026-09-09-bodai-slash-command-tui-discoverability.md)
+[docs/plans/2026-09-09-bodai-slash-command-tui-discoverability.md](../2026-09-09-bodai-slash-command-tui-discoverability.md)
 documented the original hypothesis (slash-command files in
 `.claude/commands/` plus a packaged marketplace plugin). Live
 `tools/list` probes on 2026-09-09 disproved that hypothesis: the
