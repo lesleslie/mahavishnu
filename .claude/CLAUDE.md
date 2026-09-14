@@ -9,6 +9,7 @@ For repo-local editing rules, layout, and validation entry points, see AGENTS.md
 - Prefer the workflow catalog when you need help choosing a multi-step process.
 - Use specialized agents and tools only when they materially reduce risk or coordination cost.
 - Keep changes aligned with the repo-local guidance in `AGENTS.md`.
+- **MiniMax-modeled sessions lack `TodoWrite`, `Grep`, `Glob`, `MultiEdit`, `BashOutput`, `KillShell`, `NotebookRead`, and `SlashCommand`** (the upstream proxy doesn't advertise them). See `../CLAUDE.md` § "Missing built-in tools in MiniMax-modeled sessions" for the substitution table (`mcp__crackerjack__search_code`, `mcp__akosha__search_code_patterns`, etc.).
 
 ## Session Notes
 

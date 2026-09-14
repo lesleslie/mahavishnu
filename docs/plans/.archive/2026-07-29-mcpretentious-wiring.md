@@ -1,11 +1,13 @@
 ---
-status: active
-role: implementation
+status: complete
+role: historical
 date: 2026-07-29
-last_reviewed: 2026-07-29
+last_reviewed: 2026-08-29
 superseded_by: null
 topic: mcpretentious-runtime-wiring
 ---
+
+> **Historical note (2026-08-29):** This plan is preserved for traceability. The `mcpretentious` terminal adapter it was meant to wire was **removed** before this plan was executed — see commits `fe3c27d0 fix(mcp): remove remaining mcpretentious references + make crow switchable`, `e77dda66 fix(mcp): remove McpretentiousMCPClient wrapper so Crow adapter reaches bodai-crow`, and the docs rewrites `d312c445` and `5e2d017a`. The plan was never executed; the underlying problem (`pool_spawn` failing with `MHV-007`) was resolved by switching to live adapters (tmux/crow/mock) rather than wiring the abandoned backend. No replacement plan is needed.
 
 # Mcpretentious Runtime Wiring Implementation Plan
 

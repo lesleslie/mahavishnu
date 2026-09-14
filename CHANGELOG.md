@@ -17,7 +17,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- worktree-scan: Drop cyclomatic complexity under 15 in _format_text + scan_worktrees_cli
+- worktree-scan: Drop cyclomatic complexity under 15 in \_format_text + scan_worktrees_cli
 
 ### Fixed
 
@@ -25,10 +25,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - plan-index: Drop 4 entries for files deleted in 561d9d2a refactor
 - plan-index: Strip stale 'fix-search-tools-wiring-v2/' worktree prefix from 264 links
 - scan: Drop 5 dead CLI flags + unused safe_worktree_name + slow markers
-- scan: Wrap _run_ps identity check in TimeoutExpired handler
+- scan: Wrap \_run_ps identity check in TimeoutExpired handler
 - spec: Quote YAML frontmatter values containing ': ' (crackerjack parse)
 - Wire repos_scanned counter to actual successful repo count (L4)
-- worktree-cli: Drop redundant cast() in _scan_validate_output_format
+- worktree-cli: Drop redundant cast() in \_scan_validate_output_format
 
 ### Documentation
 
@@ -40,8 +40,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Testing
 
 - cli: Tighten vacuous assertions + index decision doc + trailing newline
-- scan: Add 8 _format_text section tests (F-QA-12) + restore L4 tests
-- scan: Add _group_plan_orphans 4-test coverage set (F-QA-14)
+- scan: Add 8 \_format_text section tests (F-QA-12) + restore L4 tests
+- scan: Add \_group_plan_orphans 4-test coverage set (F-QA-14)
 - skill: Add 3 trigger-phrase + wrapper smoke tests (F-QA-15)
 
 ## [0.22.0] - 2026-09-07

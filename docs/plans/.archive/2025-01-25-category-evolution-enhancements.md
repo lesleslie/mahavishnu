@@ -1,8 +1,8 @@
 ---
-status: draft
+status: complete
 role: historical
 date: 2025-01-25
-last_reviewed: 2026-07-16
+last_reviewed: 2026-08-29
 superseded_by: null
 topic: memory-architecture
 ---

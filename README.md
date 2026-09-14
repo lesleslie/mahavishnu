@@ -12,7 +12,7 @@
 
 **Mahavishnu** is the internal control plane for the Bodai ecosystem: a multi-repo, multi-engine, async-first orchestration system for coordinating work across our own repositories, MCP services, and AI-capable backends. It enables workflow routing, cross-repository coordination, operational tooling, and headless worker orchestration.
 
-Mahavishnu is maintained first as ecosystem infrastructure for Bodai-owned repos. Some parts are reusable and may have future commercial value, but the current product posture is internal orchestration rather than a polished general-purpose external platform.
+Mahavishnu is maintained as ecosystem infrastructure for Bodai-owned repos.
 
 ## Bodai Ecosystem Role
 
@@ -39,8 +39,6 @@ Crackerjack is the standard quality-control and CI/CD gate across Mahavishnu and
 
 Mahavishnu is best understood as an ecosystem control plane, not as a general-purpose coding agent. Its current sweet spot is coordinating repo-centric workflows, tools, and services across the Bodai stack.
 
-Commercially, the most plausible future niche is a narrow B2B control plane for AI-native engineering teams managing many repos, tools, and agent workflows. That is a possible direction, not the current primary product shape.
-
 ## Capabilities
 
 ### Implemented and actively used
@@ -53,18 +51,8 @@ Commercially, the most plausible future niche is a narrow B2B control plane for 
 - **Goal-driven teams** - Create multi-agent teams from natural-language goals
 - **OpenTelemetry ingestion and search** - Ingest traces and search them semantically
 - **Role-based organization and routing** - Classify repos and route work by role and task type
-
-### Implemented but uneven in maturity
-
-- **Multi-pool execution** - Local and delegated pools are real; some cloud-oriented paths are less mature than the core local control plane
-- **Multiple orchestration adapters** - Prefect, Agno, and LlamaIndex integrations exist, but operator maturity varies by workflow and deployment context
-- **Observability and monitoring** - Present across metrics, health, and WebSocket surfaces, but some surrounding docs and dashboards are still catching up
-- **Durable operational state** - Dhara owns restart/recovery checkpoints for workflows, pools, routing decisions, and approvals; Session-Buddy remains the session-local context store
-
-### Experimental or planned edges
-
-- **Broader cloud pool execution** - Treat specialized cloud/GPU paths as experimental unless validated for the target workflow
-- **Autonomous skill synthesis / self-improvement loops** - Supporting pieces exist, but fully autonomous self-modification is not the current operating model
+- **Jot inbox and workflow dispatch** - Capture, search, defer, and dispatch durable jots
+- **Plan index and agent surfaces** - Inspect Dhara-backed plans and registered specialist agents
 
 ## Orchestrator Landscape
 
@@ -82,7 +70,11 @@ Legend:
 | Mahavishnu | Control plane / orchestrator | Canonical internal control plane | shipped | You want to orchestrate work across many Bodai repos and services |
 | Agno | Interactive agent engine | Canonical runtime adapter behind Mahavishnu | shipped | You want an embedded agent runtime inside your own system |
 | Prefect | Durable workflow engine | Canonical workflow engine | shipped | You need reliable batch or scheduled automation |
+| Hatchet | Durable workflow engine | Optional durable workflow adapter behind Mahavishnu | shipped | You need event-driven agent loops or a Prefect alternative |
 | LlamaIndex | Retrieval / knowledge engine | Canonical retrieval engine | shipped | You need knowledge-grounded responses or RAG |
+
+Hatchet is disabled by default and requires the optional `hatchet` dependency
+group plus `HATCHET_CLIENT_TOKEN` when enabled.
 
 Practical guidance:
 
@@ -91,23 +83,8 @@ Practical guidance:
 - Use **Mahavishnu** if the product is cross-repo orchestration and control.
 - Use **Agno** if the product needs an agent loop inside a system you already own.
 - Use **Prefect** if the product needs dependable workflows, schedules, and retries.
+- Use **Hatchet** if the product needs durable event-driven workflows or agent loops.
 - Use **LlamaIndex** if the product needs a retrieval and knowledge plane.
-
-Core Bodai control-plane components today are:
-
-- Mahavishnu
-- Agno
-- Prefect
-- LlamaIndex
-
-Supporting delivery and ecosystem components include:
-
-- OpenClaw
-- Hermes-style entry points as a reference pattern
-- Session-Buddy
-- Akosha
-- Crackerjack
-- Oneiric
 
 ### Symbiotic usage
 
@@ -121,36 +98,35 @@ That gives the system a clean split:
 
 - Hermes and OpenClaw handle entry points and delivery
 - Mahavishnu handles orchestration and policy
-- Agno, Prefect, and LlamaIndex handle specialized execution backends
+- Agno, Prefect, Hatchet, and LlamaIndex handle specialized execution backends
 
 ### Learning and skills
 
-Hermes advertises a built-in learning loop: it persists useful context, searches prior conversations, and refines skills over time. In Bodai today, we have supporting pieces, not a finished autonomous loop.
+Mahavishnu includes an opt-in, review-gated learning pipeline that turns
+recurring execution patterns into governed skill proposals:
 
-Supporting pieces today:
+1. **Observe** - Collect task outcomes and execution evidence from Session-Buddy.
+1. **Store** - Persist evidence for later retrieval and analysis.
+1. **Retrieve** - Use Akosha and Session-Buddy to find related goals, repositories, and prior evidence.
+1. **Synthesize** - Cluster recurring patterns and produce sanitized `SkillDraft` artifacts.
+1. **Review** - Run metadata, trigger-condition, security, and optional Crackerjack quality checks.
+1. **Promote** - Human-approved drafts can be activated, deprecated, or rolled back through the skill governance registry.
 
-- Session-Buddy for checkpoints and session lifecycle
-- `mahavishnu/memory/MEMORY.md` for durable memory
-- Akosha-backed semantic search and cross-system retrieval
-- skill-oriented specs and recovery workflows in `docs/superpowers/specs/`
+The pipeline is disabled by default; enable it with `learning.enabled: true` or
+`MAHAVISHNU_LEARNING__ENABLED=true`. It never auto-activates a skill: automated
+checks can approve a draft for review, but activation still requires an explicit
+human approval under the governance policy.
 
-Planned piece:
-
-- a fully automatic skill synthesis loop that drafts, validates, and activates new skills on its own
-
-The recommended path is to add that as a bounded ecosystem feature:
-
-1. capture successful sessions and outcomes
-1. retrieve similar prior work
-1. draft or update a skill
-1. require review before activation
-1. surface the review queue to operators (TUI surface planned but still under construction)
-
-That gets the benefit of Hermes-style self-improvement without making the runtime self-modifying.
+Operators can inspect and trigger the pipeline through the learning MCP tools:
+`get_pipeline_status`, `list_evidence`, `trigger_synthesis`,
+`list_pending_drafts`, and `get_promotion_history`. The TUI also exposes a
+skill-draft review screen. See the [MCP Tools Reference](docs/MCP_TOOLS_REFERENCE.md)
+for the tool contracts.
 
 ## Quick Links
 
 - [Getting Started Guide](docs/GETTING_STARTED.md)
+- [CLI Reference](docs/CLI_REFERENCE.md)
 - [MCP Tools Reference](docs/MCP_TOOLS_REFERENCE.md)
 - [Architecture Documentation](docs/architecture/ARCHITECTURE.md)
 - [Visual Guide](docs/VISUAL_GUIDE.md)
@@ -170,7 +146,6 @@ That gets the benefit of Hermes-style self-improvement without making the runtim
 - [Configuration](#configuration)
 - [Development](#development)
 - [Documentation](#documentation)
-- [Project Status](#project-status)
 - [Contributing](#contributing)
 - [License](#license)
 
@@ -226,20 +201,6 @@ Mahavishnu follows a modular, async-first architecture with these core component
 - Pluggable adapters for LlamaIndex (RAG), Prefect (flows), Agno (agents), Hatchet (durable workflows)
 - Easy to add new orchestration backends
 
-### Capability Maturity Snapshot
-
-This table clarifies current maturity so multi-engine expectations match implementation status.
-
-| Capability | Status | Notes |
-|-----------|--------|-------|
-| Multi-repo orchestration | Implemented | Repository manifest (`settings/ecosystem.yaml`), cross-repo coordination, dependency/status tooling |
-| Async orchestration runtime | Implemented | Async-first core, async messaging, concurrent worker and pool execution |
-| Multi-pool execution (local/delegated/Pi/RunPod) | Implemented | Routing strategies and pool health/monitoring are implemented; RunPod GPU pool added 2026-05-01 |
-| LlamaIndex engine adapter | Implemented | RAG pipeline integration is implemented |
-| Prefect engine adapter | Implemented | Full Prefect 3.x SDK integration with flows, deployments, schedules, and task orchestration (1,974 LOC) |
-| Agno engine adapter | Implemented | Multi-agent teams with MCP tools, MiniMax/Claude/Ollama/OpenAI support, and agent lifecycle management (1,627 LOC) |
-| Hatchet engine adapter | Implemented | Durable workflow execution with human-in-the-loop approval events, `send_approval_event`, and `AGENT_LOOP` task routing |
-
 **Configuration System**
 
 - Oneiric-based layered configuration (defaults -> YAML -> env vars)
@@ -262,7 +223,7 @@ This table clarifies current maturity so multi-engine expectations match impleme
 
 ### Prerequisites
 
-- Python 3.13 or later
+- Python 3.14 or later
 - uv (recommended) or pip
 - git
 
@@ -273,15 +234,11 @@ This table clarifies current maturity so multi-engine expectations match impleme
 git clone https://github.com/lesleslie/mahavishnu.git
 cd mahavishnu
 
-# Create virtual environment
-uv venv
-source .venv/bin/activate  # On Windows: .venv\Scripts\activate
-
-# Install with development dependencies
-uv pip install -e ".[dev]"
+# Install the package and development dependency group
+uv sync --group dev
 
 # Verify installation
-mahavishnu --help
+uv run mahavishnu --help
 ```
 
 See [Getting Started Guide](docs/GETTING_STARTED.md) for detailed installation instructions.
@@ -355,7 +312,7 @@ mahavishnu show-role orchestrator
 mahavishnu mcp start
 ```
 
-The MCP server starts on `http://127.0.0.1:8680` by default and exposes 170 FastMCP-decorated tools organized into 19 profile-gated groups (plus 27 inline core tools registered unconditionally; 197 total). Tool exposure is gated by the `MAHAVISHNU_TOOL_PROFILE` environment variable: `full` (default, all 19 groups), `standard` (core 11 groups), `minimal` (health probes only).
+The CLI starts the MCP server on `http://127.0.0.1:8680` by default. The lower-level `FastMCPServer.start()` API defaults to port 3000 unless a port is supplied. The server currently exposes 197 tools: 27 inline core tools plus 170 profile-gated tools across 26 modules. Tool exposure is controlled by `MAHAVISHNU_TOOL_PROFILE`: `full` (default), `standard`, or `minimal`.
 
 ### 5. Use Admin Shell
 
@@ -427,22 +384,33 @@ Mahavishnu uses a role-based taxonomy to organize repositories:
 - Remote execution via MCP protocol
 - Use for: distributed workloads, multi-server deployments
 
+**PiPool** (Pi coding-agent)
+
+- Runs the Pi coding agent through its JSON-RPC subprocess interface
+- Fixed at one worker per pool; spawn additional pools for more capacity
+- Requires the Pi runtime configuration and is disabled by default
+
 **RunPodPool** (GPU Cloud)
 
 - Serverless GPU execution via RunPod Flash API
 - Register with `pool_type="runpod"`, requires `RUNPOD_API_KEY`
+- Disabled by default; enable the RunPod pool in local configuration before spawning it
 - Subclass `RunPodPool` and override `_build_endpoint()` for a concrete GPU handler (`GpuHandlerPool`)
 - Use for: vision and ML inference workloads
 
 ### Worker Types
 
-- **terminal-claude** - Headless Claude Code CLI execution
-- **terminal-qwen** - Headless Qwen CLI execution (supported non-default worker type)
-- **terminal-codex** - Headless Codex CLI execution in one-shot mode with marker-based completion
-- **terminal-deepagents** - Headless DeepAgents CLI execution in one-shot mode with marker-based completion
-- **terminal-clai** - Headless CLAI CLI execution in one-shot mode with marker-based completion
-- **gateway-openclaw** - Preferred OpenClaw gateway worker over HTTP JSON-RPC for channel-aware communication tasks
-- **container-executor** - Containerized task execution (Phase 3)
+All workers implement the `BaseWorker` contract. Most registered worker types are
+built from a small set of worker families:
+
+- **`GenericShellWorker`** - Terminal, CLI, shell, REPL, remote, database, WebAssembly, and infrastructure workers. AI CLI extensions include `terminal-claude`, `terminal-qwen` (supported non-default), `terminal-codex`, `terminal-deepagents`, and `terminal-clai`.
+- **`ApplicationWorker`** - MCP-backed application integrations exposed as `application-*` worker types.
+- **Gateway workers** - Dedicated protocol workers including `gateway-openclaw`, `openhands`, `a2a`, and `terminal-crow`.
+- **Isolated workers** - `apple-container`, `e2b-sandbox`, and the optional `shepherd` backend. The compatibility names `container` and `container-executor` select the automatic Apple-container-to-E2B isolation path; they are not separate container implementations.
+
+Use `mahavishnu workers list-types --all` to inspect the complete registry and
+`mahavishnu workers list-types --ready --explain` to see which types are ready
+in the current environment.
 
 Worker selection policy:
 
@@ -453,26 +421,33 @@ Worker selection policy:
 - Communication-style tasks such as notifications, handoffs, replies, inbox triage, and channel delivery prefer **gateway-openclaw** when `OPENCLAW_GATEWAY_URL` is configured. There is no CLI fallback — operators who want local OpenClaw execution must configure the gateway URL or run OpenClaw externally (e.g., via `cc-connect` with Claude Code).
 - Coding tasks remain on coding workers such as Claude or the configured cloud provider unless you explicitly request OpenClaw.
 
-### Optional Worker CLI Profiles
+### Worker Availability and Optional Backends
 
-These worker CLIs are optional and can be enabled via extras:
+Inspect worker availability and capability readiness with:
 
 ```bash
-# Enable metadata profiles for alternate CLI workers
-uv sync --extra worker-alt-cli
+# List every registered worker type
+uv run mahavishnu workers list-types --all
 
-# Or enable specific profiles
-uv sync --extra worker-deepagents --extra worker-clai
+# Show only workers currently ready to route
+uv run mahavishnu workers list-types --ready --explain
 ```
 
-Important: these extras are profile flags only. You must install the actual CLI binaries
-(`deepagents-cli`, `clai`) so they are available on your `PATH`.
+Optional runtime groups are installed with PEP 735 dependency groups, not project extras:
+
+```bash
+uv sync --group ai        # Pydantic AI adapter
+uv sync --group gpu       # RunPod GPU pool
+uv sync --group sandbox   # E2B sandbox worker
+uv sync --group shepherd  # Shepherd worker backend
+```
+
+External worker CLIs must still be installed separately and available on `PATH`.
 
 Structured output note:
 
 - `terminal-codex` uses `codex exec --json` and completes on an explicit sentinel marker.
-- `terminal-deepagents` uses `deepagents-cli --non-interactive --quiet --no-stream` and completes on an explicit sentinel marker because the verified task-run path is plain text.
-- `terminal-clai` uses `clai --no-stream` and completes on an explicit sentinel marker because the verified one-shot path is plain text.
+- `terminal-qwen` remains available as a supported non-default worker type.
 
 ## Goal-Driven Teams
 
@@ -517,17 +492,17 @@ result = await adapter.run_team(team_id, "Analyze the auth module")
 
 ```bash
 # Parse a goal to see detected intent and skills
-mahavishnu goal parse "Build a REST API with authentication"
+mahavishnu team parse "Build a REST API with authentication"
 
 # Create and run a team from a goal
-mahavishnu goal run "Review code for security issues" --repo ./myproject
+mahavishnu team create --goal "Review code for security issues" --run
 ```
 
 See **[Goal-Driven Teams Documentation](docs/GOAL_DRIVEN_TEAMS.md)** for complete guide with examples, skill reference, and collaboration modes.
 
 ## MCP Tools
 
-Mahavishnu's MCP server exposes **197 tools** (170 profile-gated + 27 inline core) across 19 profile-gated groups (see `MAHAVISHNU_TOOL_PROFILE` for gating). Core tool groups:
+Mahavishnu's MCP server exposes **197 tools** (170 profile-gated + 27 inline core) across 26 tool modules (see `MAHAVISHNU_TOOL_PROFILE` for gating). The detailed inventory is maintained in the [MCP Tools Reference](docs/MCP_TOOLS_REFERENCE.md).
 
 ### Pool Management (10 tools)
 
@@ -605,7 +580,16 @@ Mahavishnu uses a layered configuration system:
 1. Default values in Pydantic models
 1. `settings/mahavishnu.yaml` (committed to git)
 1. `settings/local.yaml` (gitignored, local overrides)
+1. `$XDG_CONFIG_HOME/mahavishnu/config.yaml` (user configuration)
+1. `$XDG_CONFIG_HOME/mahavishnu/local.yaml` (user-local overrides)
 1. Environment variables: `MAHAVISHNU_{GROUP}__{FIELD}`
+
+Oneiric uses `~/.config` when `XDG_CONFIG_HOME` is not set, so the default
+user configuration locations are `~/.config/mahavishnu/config.yaml` and
+`~/.config/mahavishnu/local.yaml`. User-level files override the repository
+configuration; environment variables have higher priority than all layered
+files. An explicit `MAHAVISHNU_CONFIG` path takes precedence over these
+layers.
 
 ### Environment Variables
 
@@ -670,42 +654,27 @@ otel_ingester:
 ### Running Tests
 
 ```bash
-# Run all tests
-pytest
+# Run the test suite through the ecosystem quality gate
+crackerjack run --run-tests
 
-# Run unit tests only
-pytest tests/unit/
+# Run with verbose progress
+crackerjack run --run-tests --verbose
 
-# Run with coverage
-pytest --cov=mahavishnu --cov-report=html
-
-# Run specific test file
-pytest tests/unit/test_config.py -v
-
-# Property-based tests
-pytest tests/property/
+# Preview the validation workflow without applying fixes
+crackerjack run --run-tests --dry-run
 ```
 
 ### Code Quality
 
 ```bash
-# Format code
-ruff format mahavishnu/
-
-# Lint code
-ruff check mahavishnu/
-
-# Type checking
-mypy mahavishnu/
-
-# Security scan
-bandit -r mahavishnu/
-
-# Run all checks via Crackerjack
+# Run the repository quality gates
 crackerjack run
+
+# Run quality gates with verbose progress
+crackerjack run --verbose
 ```
 
-Note: Crackerjack is the **ecosystem-wide CI/quality gate runner** for Bodai/Mahavishnu repos. Use it as the authoritative source of CI results across components.
+Crackerjack is the **ecosystem-wide CI/quality gate runner** for Bodai/Mahavishnu repos and the authoritative source of validation results across components.
 
 ### Project Structure
 
@@ -721,12 +690,16 @@ mahavishnu/
 |   |   +-- goal_team_factory.py  # Goal-driven team creation
 |   |   +-- agno_teams/           # Team configuration and management
 |   |   +-- agno_tools/           # Native Agno tools
-|   +-- mcp/            # MCP server and tools
+|   +-- mcp/            # MCP server, tools, agents, and profiles
 |   |   +-- server_core.py
 |   |   +-- tools/      # MCP tool implementations
+|   |   +-- agents/     # Registered specialist agents
 |   +-- pools/          # Pool management
 |   +-- workers/        # Worker orchestration
-|   +-- cli.py          # CLI commands
+|   +-- cli/            # Typer subcommands (teams, jots, plans, monitoring, etc.)
+|   +-- jot/            # Durable Jot inbox and workflow dispatch
+|   +-- plan_index/     # Dhara-backed plan index
+|   +-- _main_cli.py    # CLI entrypoint
 +-- tests/              # Test suite
 +-- docs/               # Documentation
 +-- examples/           # Example scripts
@@ -755,44 +728,6 @@ mahavishnu/
 - **[Bifrost Reactivation Runbook](docs/bifrost-reactivation-runbook.md)** - How to bring the dormant local gateway back later
 - **[Bifrost Gateway Plan](docs/plans/2026-04-08-bifrost-gateway-plan.md)** - Implementation history, milestones, and paused cutover status
 
-## Project Status
-
-### Current Implementation
-
-Important scope note: Mahavishnu is validated for multi-repo orchestration, async coordination, and pool/worker routing. Engine adapter maturity varies by adapter (see Capability Maturity Snapshot).
-
-**Completed:**
-
-- Security hardening (JWT auth, mcp-common canonical JWT package across Bodai)
-- Async base adapter architecture
-- FastMCP-based MCP server (197 tools: 170 across 19 profile-gated groups + 27 inline core)
-- Multi-pool orchestration (local, delegated, Pi, RunPod GPU)
-- Worker orchestration (Claude, MiniMax, OpenClaw terminal/gateway)
-- Cross-repository coordination (issues, todos, dependencies, messaging)
-- OpenTelemetry integration (DuckDB + semantic search)
-- Configuration system (Oneiric patterns)
-- CLI with authentication framework
-- Admin shell (IPython-based)
-- Routing observability (StatisticalRouter, RoutingDecisionBuffer, Prometheus metrics)
-- Ecosystem status surface (EcosystemStatusService, MCP tools, CLI commands)
-
-**Engine Adapters (all fully implemented):**
-
-- LlamaIndex adapter — RAG pipelines, Ollama embeddings (1,800+ LOC)
-- Prefect adapter — flows, deployments, schedules, task orchestration (1,974 LOC)
-- Agno adapter — multi-agent teams, MCP tools, MiniMax/Anthropic/Ollama/OpenAI support (1,627 LOC)
-- Hatchet adapter — durable agentic workflows, human-in-the-loop approval events, `AGENT_LOOP` task routing
-
-**Recently delivered (see [Master Backlog](docs/plans/2026-05-07-mahavishnu-master-backlog.md)):**
-
-- Session-Buddy Multi-Channel tracking — `track_channel_session` MCP tool + 19 tests
-- Storage Consolidation — Dhara integration for workflow/pool state persistence
-- Config Consolidation — unified schema validation across all YAML config files
-- RunPod Pool subtasks — task-category routing and GPU handler subclass pattern (`GpuHandlerPool`)
-- Hatchet rate-limiting — sliding-window limiter wired into `cloud_worker.py`
-- OpenWebUI mcpo bridge — `uvx mcpo --type streamable-http` bridge to MCP surface; see [integration guide](docs/integrations/openwebui.md)
-- HatchetAdapter — durable workflow adapter with approval event bridge
-
 ## Contributing
 
 We welcome contributions! Please follow these steps:
@@ -800,30 +735,27 @@ We welcome contributions! Please follow these steps:
 1. Fork the repository
 1. Create a feature branch: `git checkout -b feature/amazing-feature`
 1. Make your changes
-1. Run tests: `pytest`
-1. Run quality checks: `ruff check mahavishnu/` and `mypy mahavishnu/`
+1. Run validation with [Crackerjack](https://github.com/lesleslie/crackerjack): `crackerjack run --run-tests`
 1. Commit your changes: `git commit -m 'Add amazing feature'`
 1. Push to branch: `git push origin feature/amazing-feature`
 1. Submit a pull request
 
-### Development Guidelines
-
-- Follow PEP 8 style guide
-- Add tests for new features
-- Update documentation as needed
-- Keep PRs focused and small
-- Write clear commit messages
-
 ## License
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+This project is licensed under the BSD 3-Clause License - see the [LICENSE](LICENSE) file for details.
 
 ## Acknowledgments
 
-- **Oneiric** - Platform foundation: component resolution, lifecycle management, adapter system, action kits, domain bridges, runtime orchestration, remote delivery
-- **FastMCP** - MCP server implementation
-- **mcp-common** - Shared MCP types and contracts
-- **Crackerjack** - Quality control and testing
+Mahavishnu is built on the work of the open-source projects and infrastructure
+providers below:
+
+- **FastMCP** - MCP server framework
+- **Pydantic** - Typed configuration and request validation
+- **Typer** - Command-line interface framework
+- **OpenTelemetry** - Tracing, metrics, and observability conventions
+- **Apple Container** - Local microVM isolation on supported Apple silicon hosts
+- **E2B** - Cloud sandbox isolation fallback
+- **RunPod** - Serverless GPU execution backend
 
 ______________________________________________________________________
 

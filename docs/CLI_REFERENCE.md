@@ -393,8 +393,7 @@ crackerjack run
 - The bare top-level command **`mahavishnu websocket start --port <port>`**
   shown in earlier revisions of this doc is **not a real command**. The
   WebSocket server is started as part of `mahavishnu mcp start` and
-  inspected via the MCP server status commands. There is no `monitor
-  pools` / `monitor workflows` command either — the `monitor` sub-app only
+  inspected via the MCP server status commands. There is no `monitor pools` / `monitor workflows` command either — the `monitor` sub-app only
   exposes `get-dashboard`, `get-alerts`, `acknowledge-alert`,
   `trigger-test-alert`, and `watch`.
 - The bare top-level command **`mahavishnu routing recalculate`,

@@ -67,7 +67,7 @@ ______________________________________________________________________
 
 Before you begin, ensure you have the following installed:
 
-- **Python 3.11+** - Mahavishnu requires Python 3.11 or later
+- **Python 3.14+** - Mahavishnu requires Python 3.14 or later
 - **uv** (recommended) or **pip** - For package management
 - **git** - For repository operations
 - **Optional dependencies**:
@@ -79,7 +79,7 @@ Before you begin, ensure you have the following installed:
 
 ```bash
 # Check Python version
-python --version  # Should be 3.11+
+python --version  # Should be 3.14+
 
 # Check if uv is installed (recommended)
 uv --version
@@ -96,7 +96,7 @@ git --version
 ### Step 1: Clone the Repository
 
 ```bash
-git clone https://github.com/yourusername/mahavishnu.git
+git clone https://github.com/lesleslie/mahavishnu.git
 cd mahavishnu
 ```
 
@@ -121,16 +121,16 @@ source .venv/bin/activate  # On Windows: .venv\Scripts\activate
 **With uv:**
 
 ```bash
-uv pip install -e ".[dev]"
+uv sync --group dev
 ```
 
 **With pip:**
 
 ```bash
-pip install -e ".[dev]"
+pip install -e .
 ```
 
-The `[dev]` extra includes development tools like pytest, ruff, and mypy.
+The `dev` dependency group includes development tools such as pytest, ruff, and pyright. For a runtime-only pip install, use `pip install -e .`; pip does not install PEP 735 dependency groups.
 
 ### Step 4: Verify Installation
 
@@ -161,10 +161,10 @@ log_level: INFO
 # Repository manifest
 repos_path: settings/ecosystem.yaml
 
-# Adapters (currently stub implementations)
+# Adapter configuration
 adapters:
   prefect_enabled: true
-  llamaindex_enabled: false
+  llamaindex_enabled: true
   agno_enabled: true
 
 # LLM configuration
@@ -294,7 +294,7 @@ Available roles (12):
 mahavishnu mcp start
 ```
 
-The MCP server will start on `http://127.0.0.1:3000` by default.
+The CLI starts the MCP server on `http://127.0.0.1:8680` by default. The lower-level `FastMCPServer.start()` API defaults to port 3000 unless a port is supplied.
 
 **Output:**
 
@@ -304,7 +304,7 @@ MCP Server: Terminal management disabled
 INFO:     Started server process [12345]
 INFO:     Waiting for application startup.
 INFO:     Application startup complete.
-INFO:     Uvicorn running on http://127.0.0.1:3000
+INFO:     Uvicorn running on http://127.0.0.1:8680
 ```
 
 ### Start the Admin Shell
@@ -499,11 +499,11 @@ mahavishnu generate-claude-token
 **Solution:** Check if the port is already in use.
 
 ```bash
-# Check what's using port 3000
-lsof -i :3000
+# Check what's using port 8680
+lsof -i :8680
 
 # Kill the process or use a different port
-mahavishnu mcp start --port 3001
+mahavishnu mcp start --port 8681
 ```
 
 ### Issue: "Pool spawn failed"

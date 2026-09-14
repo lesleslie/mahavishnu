@@ -81,7 +81,6 @@ _7 tool(s)_
 
 **Description:** Check routing readiness for a given task class.
 
-
 ### 2. Workflow & Execution
 
 _6 tool(s)_
@@ -132,8 +131,7 @@ _6 tool(s)_
 
 **Source:** `mahavishnu/mcp/tools/workflow_tools.py:84`
 
-**Description:** Read back the persisted WorkflowOutcome for ``workflow_id``.
-
+**Description:** Read back the persisted WorkflowOutcome for `workflow_id`.
 
 ### 3. Pool Management
 
@@ -202,7 +200,6 @@ _8 tool(s)_
 **Source:** `mahavishnu/mcp/tools/pool_tools.py:188`
 
 **Description:** Declare a per-workflow budget; the watchdog enforces it.
-
 
 ### 4. Worker Management
 
@@ -280,7 +277,6 @@ _9 tool(s)_
 
 **Description:** (no docstring)
 
-
 ### 5. Worker Contract (durable)
 
 _9 tool(s)_
@@ -356,7 +352,6 @@ _9 tool(s)_
 **Source:** `mahavishnu/mcp/tools/worker_contract_tools.py:385`
 
 **Description:** (no docstring)
-
 
 ### 6. Terminal
 
@@ -442,7 +437,6 @@ _10 tool(s)_
 
 **Description:** List all available terminal adapters.
 
-
 ### 7. Worktree
 
 _1 tool(s)_
@@ -454,7 +448,6 @@ _1 tool(s)_
 **Source:** `mahavishnu/mcp/tools/worktree_tools.py:155`
 
 **Description:** (no docstring)
-
 
 ### 8. Code Analysis (Tree-sitter)
 
@@ -515,7 +508,6 @@ _7 tool(s)_
 **Source:** `mahavishnu/mcp/tools/treesitter_tools.py:419`
 
 **Description:** Clear the tree-sitter parse cache.
-
 
 ### 9. Session-Buddy
 
@@ -593,7 +585,6 @@ _9 tool(s)_
 
 **Description:** Query active or recent channel sessions tracked in Session-Buddy.
 
-
 ### 10. OpenTelemetry Trace
 
 _5 tool(s)_
@@ -637,7 +628,6 @@ _5 tool(s)_
 **Source:** `mahavishnu/mcp/tools/otel_tools.py:356`
 
 **Description:** Get statistics about the OTel trace ingester.
-
 
 ### 11. Coordination (Issues, Todos, Plans)
 
@@ -763,7 +753,6 @@ _15 tool(s)_
 
 **Description:** Get unified ecosystem coordination status.
 
-
 ### 12. Repository Messaging
 
 _7 tool(s)_
@@ -824,7 +813,6 @@ _7 tool(s)_
 
 **Description:** Send a quality alert to other repositories.
 
-
 ### 13. Hybrid Search
 
 _5 tool(s)_
@@ -868,7 +856,6 @@ _5 tool(s)_
 **Source:** `mahavishnu/mcp/tools/search_tools.py:222`
 
 **Description:** Fan-out search across Akosha + Session-Buddy and aggregate results.
-
 
 ### 14. Capability Resolution
 
@@ -914,7 +901,6 @@ _5 tool(s)_
 
 **Description:** Read back persisted envelopes for a trace_id from Dhara.
 
-
 ### 15. Clone Detection & Refactor
 
 _4 tool(s)_
@@ -949,8 +935,7 @@ _4 tool(s)_
 
 **Source:** `mahavishnu/mcp/tools/clone_tools.py:366`
 
-**Description:** Return the stored ``VerificationResult`` for a given ``proposal_id``.
-
+**Description:** Return the stored `VerificationResult` for a given `proposal_id`.
 
 ### 16. Learning Pipeline
 
@@ -995,7 +980,6 @@ _5 tool(s)_
 **Source:** `mahavishnu/mcp/tools/learning_pipeline_tools.py:113`
 
 **Description:** Get version and promotion history for a specific skill.
-
 
 ### 17. Self-Improvement & Approvals
 
@@ -1057,7 +1041,6 @@ _7 tool(s)_
 
 **Description:** List recent self-improvement records with before/after failure rates.
 
-
 ### 18. Goal Team
 
 _3 tool(s)_
@@ -1085,7 +1068,6 @@ _3 tool(s)_
 **Source:** `mahavishnu/mcp/tools/goal_team_tools.py:632`
 
 **Description:** List all available skills for goal-driven team creation.
-
 
 ### 19. OpenHands
 
@@ -1122,7 +1104,6 @@ _4 tool(s)_
 **Source:** `mahavishnu/mcp/tools/openhands_tools.py:127`
 
 **Description:** Check whether the OpenHands service is reachable.
-
 
 ### 20. PyCharm Integration
 
@@ -1191,7 +1172,6 @@ _8 tool(s)_
 **Source:** `mahavishnu/mcp/tools/pycharm_tools.py:353`
 
 **Description:** List code inspections and problems for a file via PyCharm.
-
 
 ### 21. Desktop Automation
 
@@ -1381,7 +1361,6 @@ _23 tool(s)_
 
 **Description:** Close the automation manager and release resources.
 
-
 ### 22. Adapter Management
 
 _8 tool(s)_
@@ -1449,7 +1428,6 @@ _8 tool(s)_
 **Source:** `mahavishnu/mcp/server_core.py:1023`
 
 **Description:** List available adapters.
-
 
 ### 23. Health & Liveness
 
@@ -1534,7 +1512,6 @@ _10 tool(s)_
 **Source:** `mahavishnu/mcp/tools/health_tools.py:212`
 
 **Description:** Return a metrics snapshot for the running MCP server.
-
 
 ### 24. Observability & Backup
 
@@ -1660,7 +1637,6 @@ _15 tool(s)_
 
 **Description:** Restore from a backup.
 
-
 ### 25. User & Auth
 
 _2 tool(s)_
@@ -1680,7 +1656,6 @@ _2 tool(s)_
 **Source:** `mahavishnu/mcp/server_core.py:617`
 
 **Description:** Check if a user has a specific permission for a repository.
-
 
 ### 26. Tool Discovery
 
@@ -1718,7 +1693,6 @@ _4 tool(s)_
 
 **Description:** Show full detail (docstring + input schema) for one primitive.
 
-
 ### 27. Webhook
 
 _1 tool(s)_
@@ -1729,5 +1703,4 @@ _1 tool(s)_
 
 **Source:** `mahavishnu/mcp/tools/webhook_tools.py:49`
 
-**Description:** Read back a stored ``WebhookIngress`` for ``webhook_id``.
-
+**Description:** Read back a stored `WebhookIngress` for `webhook_id`.

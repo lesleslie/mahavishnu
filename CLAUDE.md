@@ -450,6 +450,29 @@ For inline visibility from inside this Claude session, the `.claude/hooks/mahavi
 
 See `.claude/decisions/mahavishnu-tool-preference-policy.md` for the full operational rule on where tool-selection steering may live.
 
+### Missing built-in tools in MiniMax-modeled sessions
+
+When the active model is a `MiniMax-M*` family model proxied through `https://api.minimax.io/anthropic` (the default for this project), the upstream API does not advertise `TodoWrite` or `Grep` in its tool schema, so the parent Claude Code session lacks them. Subagents that declare these tools in their `tools:` frontmatter (`feature-dev:*`, `Explore`, `claude-security:*`) still receive them via Claude Code's harness.
+
+Use these substitutes for the missing built-ins:
+
+| Missing | Use instead |
+|---|---|
+| `Grep` (regex, single repo) | `mcp__crackerjack__search_code(pattern=..., file_pattern=...)` |
+| `Grep` (semantic) | `mcp__crackerjack__search_semantic(query=..., min_similarity=...)` |
+| `Grep` (cross-repo, Bodai) | `mcp__akosha__search_code_patterns(pattern=..., scope="all", limit=100)` |
+| `Grep` (symbol-aware) | `mcp__akosha__find_function_usage(function_name=...)` |
+| `TodoWrite` (task tracking) | Maintain a markdown checklist in the response, OR `Write` to `/tmp/todos-{session-id}.md`, OR dispatch the `Explore` subagent (has `TodoWrite`) |
+| `TodoWrite` (cross-session) | `mcp__session-buddy__store_reflection(content, tags=["todo", "<topic>"])` |
+| `Glob` (file pattern match) | `Bash(find <root> -type f -name '<pattern>' ...)` — already permitted via `Bash(find *)` in settings. For indexed/Bodai-wide search use `mcp__akosha__search_code_patterns(pattern="*.py", scope="all")`. |
+| `MultiEdit` (atomic multi-file edit) | Sequential `Edit(...)` calls. Claude Code's harness serializes them in the order given; there is no atomicity guarantee across files, so review diffs between calls. |
+| `BashOutput` (tail background bash) | Avoid backgrounding: run `Bash(...)` synchronously and let output flow inline. For long-running watchers, use `mcp__mahavishnu__terminal_launch` (returns `session_id`) + `mcp__mahavishnu__terminal_capture(session_id=...)` instead. |
+| `KillShell` / `KillBash` | `Bash(kill <PID>)` or `Bash(pkill -f '<pattern>')` — both permitted via the existing `Bash(kill *)` / `Bash(pkill *)` allowlist in `~/.claude/settings.json`. |
+| `NotebookRead` (`.ipynb`) | `Bash(jupyter nbconvert --to script <path>.ipynb --stdout)` to get the code cells, then `Read` for raw JSON. For semantic search of notebook contents, use `mcp__akosha__search_code_patterns`. |
+| `SlashCommand` (programmatic `/<cmd>`) | Invoke via the `Skill` tool with the slash command name as `skill` (e.g. `Skill(skill="crack", args={...})`), or call the underlying MCP server directly (most slash commands have an MCP equivalent under `mcp__crackerjack__*` or `mcp__mahavishnu__*`). |
+
+The MCP search tools return ranked, scored results across an indexed knowledge graph — a strict upgrade over plain `Grep` for cross-repo work. For single-file, single-line inspection, `Read` + targeted `Bash(rg ...)` is fine. To restore `TodoWrite`, `Grep`, `Glob`, `MultiEdit`, `BashOutput`, `KillShell`, `NotebookRead`, and `SlashCommand` natively, override `ANTHROPIC_MODEL` in `.claude/settings.local.json` to a native Anthropic model ID (e.g. `claude-opus-5`) at the cost of losing MiniMax routing.
+
 ## Security
 
 See `docs/security/SECURITY_CHECKLIST.md` for comprehensive security guidelines. Key points:

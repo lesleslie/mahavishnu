@@ -150,7 +150,7 @@ Get workflow statistics and analytics.
 
 **Source:** `workflow_tools.py:84`
 
-Read back the persisted WorkflowOutcome for ``workflow_id``.
+Read back the persisted WorkflowOutcome for `workflow_id`.
 
 ______________________________________________________________________
 
@@ -954,7 +954,7 @@ List open clone clusters with confidence tier and PR status.
 
 **Source:** `clone_tools.py:366`
 
-Return the stored ``VerificationResult`` for a given ``proposal_id``.
+Return the stored `VerificationResult` for a given `proposal_id`.
 
 ______________________________________________________________________
 
@@ -1722,6 +1722,6 @@ ______________________________________________________________________
 
 **Source:** `webhook_tools.py:49`
 
-Read back a stored ``WebhookIngress`` for ``webhook_id``.
+Read back a stored `WebhookIngress` for `webhook_id`.
 
 ______________________________________________________________________
