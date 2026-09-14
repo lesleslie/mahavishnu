@@ -192,6 +192,19 @@ def parse_args() -> argparse.Namespace:
         ),
     )
     parser.add_argument(
+        "--treat-tests-as-wired",
+        action=argparse.BooleanOptionalAction,
+        default=True,
+        help=(
+            "When --include-tests is set, treat pytest-discoverable "
+            "symbols in tests/ paths as wired (pytest collects them; "
+            "they don't need explicit Name references in the scanned "
+            "tree). Default: True. Use --no-treat-tests-as-wired to "
+            "revert to the legacy behaviour where every tests/ symbol "
+            "must be Name-referenced to count as wired."
+        ),
+    )
+    parser.add_argument(
         "--exclude",
         nargs="*",
         default=[
@@ -683,6 +696,56 @@ def _has_intra_file_call_site(path: Path, symbol_name: str) -> bool:
     return False
 
 
+def _is_pytest_test_target(symbol_name: str, kind: str) -> bool:
+    """Return True when ``symbol_name`` matches pytest's collection rules.
+
+    Phase 5 loop-2: pytest discovers tests via name patterns at module
+    import time — tests don't need Name references in the scanned
+    tree, so calling them "orphan" by the audit's AST-walker is a
+    false-positive. The rules:
+
+    - Top-level function/method: ``def test_xxx(...)``
+    - Top-level class: ``class TestXxx:``
+
+    Method parents are NOT resolved here (the audit's Symbol.kind for
+    methods is just ``"method"``; the parent class name is in the AST
+    but not surfaced). This is acceptable because pytest's
+    class-collection rule is "name starts with ``Test``" — methods
+    whose name starts with ``test_`` inside any class would still be
+    expected to be wired via the class. For safety, the check is
+    conservative: it requires the ``test_`` prefix regardless of
+    parent, which matches the dominant pytest collection pattern.
+    Class-method-shape false negatives (a ``def helper(self)`` inside
+    a ``class TestFoo`` that is itself a test class) are not flagged
+    as test targets; they correctly fall through to the audit's
+    AST-walker for actual reference detection.
+    """
+    if kind == "class":
+        return symbol_name.startswith("Test") and len(symbol_name) > 4
+    if kind in ("function", "method"):
+        return symbol_name.startswith("test_") and len(symbol_name) > 5
+    return False
+
+
+def _is_in_tests_path(path: Path, root: Path) -> bool:
+    """Return True if any segment of the path relative to root is ``tests``.
+
+    Tests can live in ``tests/`` directories at any depth (``tests/foo.py``,
+    ``pkg/tests/foo.py``, ``tests/integration/foo.py``, etc.). The audit
+    default (``--no-include-tests``) skips these entirely; the
+    ``--include-tests`` flag enables scanning. The pytest-test-target
+    recognition only kicks in when ``--include-tests`` is set, so we
+    don't need to worry about ``tests/``-named top-level dirs that
+    aren't pytest rootdir (e.g. ``docs/`` or ``src/``).
+    """
+    try:
+        relative = path.relative_to(root)
+    except ValueError:
+        # path is outside root — treat as not in tests.
+        return False
+    return "tests" in relative.parts
+
+
 def classify_orphans(
     recent_files: set[Path],
     last_modified: dict[Path, datetime],
@@ -690,6 +753,7 @@ def classify_orphans(
     excludes: list[str],
     include_tests: bool,
     include_stub_check: bool = False,
+    treat_tests_as_wired: bool = True,
 ) -> list[FileResult]:
     """For each recently-changed file, decide which candidates are orphans."""
     references = collect_references(root, excludes, include_tests)
@@ -731,6 +795,19 @@ def classify_orphans(
                 # in the same module. The regex probe is intentionally
                 # local — cross-file wiring is the AST walker's job.
                 if _has_intra_file_call_site(path, sym.name):
+                    continue
+                # Phase 5 loop-2: pytest test functions/classes in
+                # tests/ paths are discovered by pytest, not by
+                # Name references in the scanned tree. Treating them
+                # as orphan is a false positive. Default is to skip;
+                # opt out via --no-treat-tests-as-wired for legacy
+                # behaviour.
+                if (
+                    include_tests
+                    and treat_tests_as_wired
+                    and _is_in_tests_path(path, root)
+                    and _is_pytest_test_target(sym.name, sym.kind)
+                ):
                     continue
                 orphans.append(
                     CandidateInfo(
@@ -838,6 +915,7 @@ def main() -> int:
         args.exclude,
         args.include_tests,
         include_stub_check=args.include_stub_check,
+        treat_tests_as_wired=args.treat_tests_as_wired,
     )
 
     if args.json:
