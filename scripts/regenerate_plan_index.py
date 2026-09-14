@@ -80,6 +80,16 @@ ROLE_VALUES: tuple[str, ...] = (
     "historical",
     "superseded",
 )
+# Vocabulary added in schema v1.1 (2026-09-13). `plan` is the default and
+# is omitted from the registry table to keep the column readable — the
+# per-kind section below surfaces it explicitly.
+KIND_VALUES: tuple[str, ...] = (
+    "plan",
+    "template",
+    "reference",
+    "audit",
+    "decision",
+)
 
 # Directories skipped wholesale during auto-discovery. Compared against any
 # path segment so a nested ``node_modules`` is still skipped. ``archive`` /
@@ -578,10 +588,10 @@ def _render_store_table(store: str, entries: list[Entry]) -> str:
     rows: list[str] = []
     rows.append(f"### {label}")
     rows.append("")
-    rows.append("| Path | Date | Status | Role | Topic | Title |")
-    rows.append("|---|---|---|---|---|---|")
+    rows.append("| Path | Date | Status | Role | Kind | Topic | Title |")
+    rows.append("|---|---|---|---|---|---|---|")
     if not entries:
-        rows.append("| _no entries with valid frontmatter_ | | | | | |")
+        rows.append("| _no entries with valid frontmatter_ | | | | | | |")
         rows.append("")
         return "\n".join(rows)
 
@@ -590,11 +600,14 @@ def _render_store_table(store: str, entries: list[Entry]) -> str:
     sorted_entries = sorted(entries, key=lambda e: (-_date_sort_key(e.date), e.rel))
     for entry in sorted_entries:
         link = _entry_link(entry.rel, entry.store)
+        # `plan` is the default; omit the column value to keep rows readable.
+        kind_cell = "" if entry.kind == "plan" else f"`{entry.kind}`"
         rows.append(
             f"| {link} "
             f"| {entry.date or '—'} "
             f"| `{entry.status}` "
             f"| `{entry.role}` "
+            f"| {kind_cell} "
             f"| `{entry.topic}` "
             f"| {entry.title} |"
         )
@@ -661,6 +674,81 @@ def _render_distribution(entries: list[Entry], store_count: int) -> str:
         "| **Total** | " + " | ".join(f"**{t}**" for t in col_totals) + f" | **{grand_total}** |"
     )
     rows.append("")
+    return "\n".join(rows)
+
+
+# ---------------------------------------------------------------------------
+# Rendering — by-kind section
+# ---------------------------------------------------------------------------
+
+
+_KIND_DESCRIPTIONS: dict[str, str] = {
+    "plan": "Work items. The bulk of the registry — see the per-store tables above for full detail with status/role/topic.",
+    "template": "Scaffolding docs (TEMPLATE.md files). Permanent fixtures; never a work item.",
+    "reference": "Index pages or reference docs (README files). Permanent fixtures; never a work item.",
+    "audit": "Reports on past work (e.g., plan-audit documents). The audit itself is not a work item.",
+    "decision": "Durable decision records (separate from ADRs in `docs/adr/`).",
+}
+
+
+def _render_by_kind(entries: list[Entry]) -> str:
+    """Group entries by `kind` so scaffolding/audit/reference docs surface
+    explicitly. `plan` (the default) is listed last to keep the focus on
+    non-default kinds — readers looking for "is this doc actually a plan
+    to be done?" find the answer here.
+    """
+    # Group; preserve KIND_VALUES ordering, put unknown kinds last.
+    by_kind: dict[str, list[Entry]] = {k: [] for k in KIND_VALUES}
+    for entry in entries:
+        by_kind.setdefault(entry.kind, []).append(entry)
+
+    rows: list[str] = []
+    rows.append("## By Kind")
+    rows.append("")
+    rows.append(
+        "Documents grouped by their `kind:` value. Templates, references, "
+        "and audits appear here even if their `status:` is `active` — they "
+        "are scaffolding or analysis documents, not work items. Use this "
+        "section when answering 'is this an active plan to be done?'"
+    )
+    rows.append("")
+
+    # Render non-default kinds first (more useful), then plan (the bulk).
+    order = [k for k in KIND_VALUES if k != "plan"] + ["plan"]
+    for kind in order:
+        kind_entries = by_kind.get(kind, [])
+        # Skip rendering empty sections (other than plan, which is the bulk
+        # and we always render to keep the count visible).
+        if not kind_entries and kind != "plan":
+            continue
+        count = len(kind_entries)
+        noun = "entry" if count == 1 else "entries"
+        rows.append(f"### `{kind}` ({count} {noun})")
+        rows.append("")
+        rows.append(_KIND_DESCRIPTIONS.get(kind, ""))
+        rows.append("")
+        if kind == "plan":
+            # Plans are exhaustively listed in the per-store tables above;
+            # don't repeat them here.
+            rows.append(
+                "Full per-store detail (with status, role, topic, date) is "
+                "in the **Canonical and Active Plan Registry** section above."
+            )
+            rows.append("")
+            continue
+        if not kind_entries:
+            rows.append("_No entries._")
+            rows.append("")
+            continue
+        rows.append("| Path | Date | Title |")
+        rows.append("|---|---|---|")
+        for entry in sorted(kind_entries, key=lambda e: (-_date_sort_key(e.date), e.rel)):
+            link = _entry_link(entry.rel, entry.store)
+            rows.append(
+                f"| {link} | {entry.date or '—'} | {entry.title} |"
+            )
+        rows.append("")
+
     return "\n".join(rows)
 
 
@@ -741,6 +829,8 @@ def _render_index(
         sections.append(_render_store_table(store, store_entries).rstrip())
         sections.append("")
 
+    sections.append(_render_by_kind(all_entries).rstrip())
+    sections.append("")
     sections.append(_render_distribution(all_entries, store_count=len(stores)).rstrip())
 
     return "\n".join(sections) + "\n"
