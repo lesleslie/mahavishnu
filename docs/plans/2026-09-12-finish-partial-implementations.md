@@ -445,3 +445,13 @@ unanimous issues. v1 changes:
 - Tier 2 math initiatives (`2026-09-10-tier2-math-deferred.md`) — those
   have re-evaluation triggers; their work belongs in their own plans when
   triggered.
+
+## Phase Status (live)
+
+| Phase | REQ | Commit | Status |
+|---|---|---|---|
+| Phase 1 | REQ-CLOSE-001 (observability-changepoint operator opt-in) | `3ec11483 feat(observability): ship changepoint operator opt-in (finish-partial Phase 1)` | DONE |
+| Phase 2 | REQ-CLOSE-002 (settle-semantic-merge frontmatter flip) | `55dae7fc docs(plans): flip 2026-09-10-settle-semantic-merge to status: shipped` | DONE |
+| Phase 3 | REQ-CLOSE-003 (orphan-sweep feature tracker refresh) | — | PENDING |
+| Phase 4 | REQ-CLOSE-004 (tier1-math plan → shipped) | — | PENDING |
+| Phase 5 | REQ-CLOSE-005 (post-close audit) | — | PENDING (gates plan flip to complete) |
