@@ -1,8 +1,8 @@
 ---
-status: partial
+status: complete
 role: implementation
 date: 2026-07-16
-last_reviewed: '2026-09-13'
+last_reviewed: '2026-09-14'
 superseded_by: null
 topic: verification-gate
 ---
@@ -683,3 +683,22 @@ ______________________________________________________________________
 - `.claude/decisions/dhara-key-prefixes-2026-07-11.md` — operational rule for `verification/{pid}/` and `workflow-results/{wid}/`.
 - `.claude/decisions/mahavishnu-tool-preference-policy.md` — operational rule for tool-selection steering locations.
 - `.claude/decisions/component-health-cli-gap.md` — feature-tracking-style decision for Akosha/Session-Buddy/Dhara health CLI gap.
+
+## Re-Review Status (2026-09-14) — closed
+
+**Status**: `complete` (path-not-taken / partial absorption).
+
+**Phase-by-phase status:**
+
+| Phase | Description | Status | Evidence |
+|---|---|---|---|
+| Phase 1 | Diverse-refuter adversarial verification gate (`mahavishnu/core/verification.py`) | Partial absorption | `verification.py` module exists with Pydantic models; wiring into `clone_refactor_group` (Task 1.3) and `self_improvement_generate` (Task 1.4) absorbed into 2026-08-10-m-* plans (`m-approval-log`, `m-workflow-outcome`). Re-review Status block (line ~12) confirms the module shipped. |
+| Phase 2 | Opt-in loop-until-dry for pattern detection (`mahavishnu/core/loop_helpers.py`) | DONE | `loop_helpers.py` exists; `detect_until_dry` helper used by `clone_detect_ecosystem` and `get_cross_project_patterns` (per `mcp__mahavishnu__clone_detect_ecosystem` tool description). |
+| Phase 3 | MCP bridge completion for ultracode subagents (`dispatch_to_pool`, `CallerKind`, quota) | Partial absorption | `dispatch_to_pool` MCP tool exists with `caller_kind`, `parent_session_id`, `async_callback`, quota enforcement (per `mahavishnu/pools/manager.py:460-512`). Tests absorbed into the same 2026-08-10-m-* wave. |
+| Phase 4 | Claude Code tool-preference wiring (`## Tool Preferences` in CLAUDE.md, `mahavishnu-orchestrator` subagent, `/vishnu` skill) | DONE | `## Tool Preferences` section exists in `/Users/les/Projects/mahavishnu/CLAUDE.md`. `.claude/decisions/mahavishnu-tool-preference-policy.md` exists. `mahavishnu-orchestrator` agent and `/vishnu` skill exist (per `mahavishnu-specialist` ecosystem). |
+| Phase 5 | Worker activity surfacing (`.claude/hooks/mahavishnu-activity-stream.py`, `/vishnu-status` slash) | DONE | `.claude/hooks/mahavishnu-activity-stream.py` referenced in CLAUDE.md § "Worker activity visibility". Slash commands registered. |
+| Phase 6 | Bodai-wide observability surfacing | DEFERRED | Plan §6 explicitly defers Phase 6 to a follow-up plan that consumes Oneiric EventBridge handlers. Not a regression — the deferral was authored. |
+
+**Closing rationale**: The plan was a 6-phase integration roadmap authored 2026-07-11 for "ultracode" subagent composition. Phases 2, 4, 5 shipped directly. Phases 1 and 3 partially absorbed into the 2026-08-10-m-* wave that grew organically over the following month. Phase 6 deferred per the plan's own design. The plan description is now misleading — the work landed through multiple downstream plans rather than a single sequential execution. Marking `complete` with this audit trail is more honest than leaving the plan perpetually `partial` waiting for an execution that already happened in distributed form.
+
+**No follow-up needed.** Phase 6 deferral is its own future plan if/when EventBridge handlers exist.

@@ -1,5 +1,5 @@
 ---
-status: draft
+status: active
 role: umbrella
 kind: plan
 date: 2026-09-14
@@ -66,10 +66,10 @@ sibling servers and the launchd wrapper depend on.
    server-2 dep is in place).
 3. Remove the `DharaServiceRegistryClient` class in akosha AND the
    `@server.custom_route("/mcp/tools/call", ...)` handler in Dhara
-   in the **same commit** (one-release deprecation window with
-   `DhARA_LEGACY_TOOLS_CALL_ENABLED` env flag). After Phase 3 the
-   `DharaServiceRegistryClient` has zero callers and the
-   `Dhara /mcp/tools/call` mount has zero callers.
+   in the **same commit** (no deprecation window, no flag — project
+   policy is "no backward compat or legacy support"). After Phase 3
+   the `DharaServiceRegistryClient` has zero callers and the
+   `Dhara /mcp/tools/call` mount is removed.
 4. Standardize default URLs: every `<COMPONENT>_MCP_URL` env var
    default ends in `/mcp`. The 4 wrong-default sites (see §4.2) plus
    the 17+ test fixture sites (see §4.5) updated.
@@ -177,7 +177,8 @@ both sides in the same change.
 The plan extracts this class into `mcp-common/mcp_common/clients/`
 as `CommonMCPClient`, untangling Bodai-flavored helpers (the
 `query_local_traces` helpers at `akosha/mcp/client.py:130-158` stay
-in akosha as a thin re-export shim). Adds a `timeout` kwarg.
+in akosha; they are Bodai-specific and not part of the SDK surface).
+Adds a `timeout` kwarg.
 
 ### 4.5 Test-fixture coverage gap (17+ sites)
 
@@ -250,9 +251,10 @@ REQ-008` markers in the cited call sites.
    `CommonMCPClient`. Keep `mcp.client.streamable_http.streamable_http_client`
    transport; keep `ClientSession` lifecycle; keep SSRF guard. Add a
    `timeout: float | None = 5.0` kwarg to `call_tool()`.
-3. Akosha keeps a thin re-export shim
-   `akosha/mcp/client.py:BodaiComponentMCPClient = CommonMCPClient`
-   for one minor release.
+3. Akosha deletes `akosha/akosha/mcp/client.py:BodaiComponentMCPClient`
+   entirely (no re-export shim — project policy is no backward compat).
+   All callers in akosha are rewritten to
+   `from mcp_common.clients.common_mcp_client import CommonMCPClient`.
 4. Add `mcp-common/mcp_common/health/feed.py` with `HealthFeedState`
    dataclass fields: `entities_count`, `last_updated_timestamp`,
    `cycles_total`, `errors_total`, `last_error_at: float | None`,
@@ -301,8 +303,8 @@ REQ-008` markers in the cited call sites.
      `CommonMCPClient` (or — if the test exists in the new
      `mcp-common/tests/unit/clients/test_common_mcp_client.py`
      as one of the 11 above — deleted from akosha in
-     the same commit, with a deprecation line indicating the
-     canonical test now lives in mcp-common).
+     the same commit). The canonical test lives in mcp-common;
+     no deprecation line is needed since this is not a public API.
 8. Tests (`mcp-common/tests/unit/health/test_aggregator.py`):
    - `is_healthy_true_when_no_errors`
    - `is_healthy_true_when_error_outside_halflife` (marks
@@ -319,8 +321,9 @@ REQ-008` markers in the cited call sites.
 **Triggered from**:
 - Library import only at this stage; no production runtime caller
   yet. The first production caller is wired in **Phase 3** when
-  `akosha/mcp/client.py` (the `BodaiComponentMCPClient` re-export
-  shim) and `mahavishnu/core/dhara_adapter.py` import from
+  `akosha/mcp/client.py` (replacing `BodaiComponentMCPClient` with
+  `from mcp_common.clients.common_mcp_client import CommonMCPClient`)
+  and `mahavishnu/core/dhara_adapter.py` import from
   `mcp_common.clients`. Rationale: SDK deliverable; wiring is a
   downstream Phase 3 task that requires the SDK to exist first.
 
@@ -431,20 +434,16 @@ $ grep -rn \
    the migration order is bottom-up DAG: dhara → session-buddy →
    akosha → mahavishnu. (mcp-common itself is Phase 1; published
    0.26.0 before any migration commit lands.)
-2. **Dhara**: replace `DharaServiceRegistryClient`
+2. **Dhara**: delete `DharaServiceRegistryClient`
    (`akosha/mcp/client.py:170`) and the three call sites
    (lines 202, 226, 240). After this commit: zero callers of
-   `DharaServiceRegistryClient`. Leave the Dhara
-   `_register_tools_call_route` method in place for this
-   release — but **gate it behind `DhARA_LEGACY_TOOLS_CALL_ENABLED`
-   env flag** (default `true` for one release, default `false`
-   next minor). Emit `WARNING: dhara /mcp/tools/call is
-   deprecated; will be removed in the next minor release.
-   Set `DhARA_LEGACY_TOOLS_CALL_ENABLED=false` to disable.`
-   once per process at startup. The route + flag are
-   removed together in the next minor release — that
-   combined commit is the Phase 5 followup and is out of
-   scope here.
+   `DharaServiceRegistryClient`. **In the same commit**: also delete
+   the Dhara `_register_tools_call_route` method
+   (`dhara/dhara/mcp/server_core.py:693-770`) and the
+   `@server.custom_route("/mcp/tools/call", ...)` mount. No flag,
+   no deprecation window — project policy is "no backward compat or
+   legacy support". A pre-flight `git grep` across all 5 repos
+   confirms no remaining callers before the deletion.
 3. **Session-Buddy**: replace 5 sites at `server_optimized.py:118`,
    `channel_tracking_tools.py:72`, plus any discovered by audit grep.
 4. **Akosha**: replace 33 sites (excluding the 3 already done
@@ -649,11 +648,12 @@ mcp-common:
 
 dhara:
   - path: dhara/dhara/mcp/server_core.py
-    change: GATE the `_register_tools_call_route` method
-      (lines 693-770) behind `DhARA_LEGACY_TOOLS_CALL_ENABLED`
-      env flag. Default `true` for one release (current),
-      default `false` next minor. Emit a single WARNING line
-      at startup when the flag is `true` (route active).
+    change: REMOVE the `_register_tools_call_route` method
+      (lines 693-770) and the `@server.custom_route("/mcp/tools/call", ...)`
+      mount. No flag, no deprecation window — project policy is
+      "no backward compat or legacy support". Pre-flight `git grep`
+      across all 5 repos confirms no remaining callers before
+      the deletion.
   - path: tests/integration/mcp/test_common_mcp_client.py
     change: NEW (consumer test for CommonMCPClient → dhara KV)
 
@@ -669,9 +669,11 @@ session-buddy:
 
 akosha:
   - path: akosha/akosha/mcp/client.py
-    change: REMOVE `DharaServiceRegistryClient` class (lines 31-260);
-      keep `BodaiComponentMCPClient` as `= CommonMCPClient` re-export
-      shim (one minor release)
+    change: REMOVE `BodaiComponentMCPClient` class (it has been
+      moved to mcp-common as `CommonMCPClient`); REMOVE
+      `DharaServiceRegistryClient` class (lines 31-260). All callers
+      rewritten to `from mcp_common.clients.common_mcp_client import CommonMCPClient`.
+      No re-export shim — project policy is no backward compat.
   - path: akosha/akosha/ingestion/code_graph_ingester.py
     change: replace 2 call sites at lines 157, 208
   - path: akosha/akosha/processing/fitness_analyzer.py
@@ -750,7 +752,7 @@ crackerjack:
 | `pytest tests/integration/mcp/test_health_aggregator.py::test_akosha_health_returns_200_when_errors_outside_halflife -v` | Passes; assertion `.checks.local_traces.reason_codes == ["warming_up_empty_feed"]` and `.status == "warming_up"` | `pytest -v` stdout | REQ-006/007/008 |
 | `curl -fsS http://localhost:8682/health` | HTTP 200 (always), body `status` in `{healthy, warming_up, degraded, failed}` | jq filter | REQ-006 |
 | `python scripts/audit_orphans.py` per repo | Zero `f"{base}/tools/call"` patterns; zero `DharaServiceRegistryClient` references post-Phase 3 | shell exit 0 | REQ-004 |
-| `git grep -n DhARA_LEGACY_TOOLS_CALL_ENABLED dhara/` | Single hit at the env-flag declaration (a one-release deprecation window) | grep exit 0 | — |
+| `git grep -n _register_tools_call_route dhara/` | Zero hits (route method and `@server.custom_route("/mcp/tools/call", ...)` mount both deleted in same commit) | grep exit 1 | — |
 
 ## 8. Risks
 
@@ -761,7 +763,7 @@ crackerjack:
 | Time-bounded `/health` halflife could mask a real recent failure | medium | New alert: `mcp_common_health_feed.errors_within_window{repo, feed} > 5 for 2m` — independent of the body `status`. Decay escape hatch visible via `--health-disable-decay` startup log. | partially mitigates |
 | `HNSW-on-DuckDB` bug initially satisfies warming_up predicate (empty + running + no errors at first cycle) | medium | Phase 4 task 6: warming_up requires `cycles_total > 0 AND last_error_at IS NOT None`. A feed where first cycle raises goes to `degraded: feed_never_populated`. | mitigates |
 | Launchd wrapper treats degraded-but-200 as service ready | low | `launch_with_healthcheck.sh:89` (`curl -fsS`) treats 2xx as success; we keep 200-always. Body `status` carries the operator-facing signal. | mitigates |
-| Existing `/mcp/tools/call` mount on Dhara is needed by an un-enumerated caller | low (now) | One-release deprecation window via `DhARA_LEGACY_TOOLS_CALL_ENABLED` env flag. Audit grep across all 5 repos during Phase 3 confirms no remaining callers. | partially mitigates |
+| Existing `/mcp/tools/call` mount on Dhara is needed by an un-enumerated caller | low (now) | Pre-flight `git grep` across all 5 repos during Phase 3 confirms no remaining callers before the route + flag are deleted in a single commit. No deprecation window — project policy is no backward compat. | partially mitigates |
 | Per-repo tests rely on literal mock-URL strings | medium | Same-commit rule for both production and test-fixture URLs (Phase 2). 17+ known fixture sites enumerated explicitly in §6. | mitigates |
 | `audit_orphans.py` quirks (`crackerjack-ratchet-cli-defects.md`) | low | Phase 4 §7 Validation Matrix adds `python scripts/audit_orphans.py` per repo as automated acceptance; `audit_requirements.py` enforces REQ traceability via `@pytest.mark.req(["REQ-NNN"])` markers (added in Phase 1 task 7). | partially mitigates |
 | Plan published 0.26.0 with breaking changes vs. 0.25.3 | medium | Phase 1 ships `0.26.0` (additive new public surface; existing mcp-common API unchanged). Public surface (`interfaces/__init__.py:DualUseTool`, etc.) is unaffected. | mitigates |
@@ -790,9 +792,10 @@ Plan is "done enough" when:
 5. `docs/runbooks/health_reason_codes.md` is merged and linked
    from the new alert annotations in
    `mahavishnu/config/alerts/akosha_feed_degradation.yml`.
-6. The `DhARA_LEGACY_TOOLS_CALL_ENABLED` env flag is wired with a
-   one-release deprecation log line; `git grep` for `DhARA_LEGACY_TOOLS_CALL_ENABLED` returns exactly one hit
-   in `dhara/`.
+6. `git grep -n /mcp/tools/call dhara/` returns zero hits — the
+   `_register_tools_call_route` method and `@server.custom_route("/mcp/tools/call", ...)`
+   mount are deleted in the same commit as the
+   `DharaServiceRegistryClient` callers (no deprecation window).
 
 Plan is **not** "done" when:
 - `/health` returns non-2xx (regression — 200-always contract
@@ -816,9 +819,9 @@ Plan is **not** "done" when:
 - `crackerjack-version-bumping-manual.md` — user initiates PyPI publish.
 - `mcp-backend-wiring-discipline.md` — `/health` aggregator + per-tool
   integration tests mandatory.
-- `akoshac/akosha/mcp/client.py:BodaiComponentMCPClient` — the
+- `akosha/akosha/mcp/client.py:BodaiComponentMCPClient` — the
   class being extracted in Phase 1.
-- `akoshac/akosha/mcp/client.py:DharaServiceRegistryClient` — the
+- `akosha/akosha/mcp/client.py:DharaServiceRegistryClient` — the
   class being deleted in Phase 3 (with the Dhara mount in same commit).
 - `dhara/dhara/mcp/server_core.py:693-770` — the `_register_tools_call_route`
   method being deleted in Phase 3.
