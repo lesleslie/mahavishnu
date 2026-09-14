@@ -1,9 +1,9 @@
 ---
-status: partial
-role: implementation
+status: complete
+role: design
 topic: terminal
 date: 2026-07-16
-last_reviewed: '2026-09-12'
+last_reviewed: '2026-09-14'
 superseded_by: null
 blocks_on: []
 ---
@@ -349,3 +349,28 @@ Each step is independently mergeable. Steps 1, 2, 3 are independent scripts that
 ## Status
 
 Approved 2026-07-15. Locked design is v8 (three-surface split) per the visual companion iteration. Ready for the writing-plans phase to produce the implementation plan.
+
+## Re-Review Status (2026-09-14)
+
+**Status**: `complete` (role `design`). The spec's purpose — produce a
+design that drives an implementation plan — has been fulfilled:
+
+- Implementation plan: `docs/plans/2026-08-25-bodai-tui-shell-surface-implementation.md`
+  (active, dated 2026-08-25).
+- Surface spec continuation: `docs/plans/2026-08-25-bodai-tui-shell-surface.md`
+  (active, same date).
+- Deliverable 3 (`.claude/hooks/mahavishnu-activity-stream.py`) is wired
+  and referenced in CLAUDE.md § "Worker activity visibility":
+  *"For inline visibility from inside this Claude session, the
+  `.claude/hooks/mahavishnu-activity-stream.py` hook surfaces a compact
+  stream of worker events directly in the conversation so you can
+  correlate them with the work you dispatched."*
+
+**Role fix**: frontmatter previously read `role: implementation`
+(migrator heuristic glitch — the body discusses implementation
+deliverables, so the heuristic picked that). This is a design spec in
+`docs/superpowers/specs/`; corrected to `role: design` for consistency
+with the other 56 specs in that store.
+
+**Not `superseded`**: the impl plan stands on its own merit; it
+*implements* this design rather than *replacing* it.
