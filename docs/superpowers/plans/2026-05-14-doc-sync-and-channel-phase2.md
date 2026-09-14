@@ -1,8 +1,8 @@
 ---
-status: partial
+status: complete
 role: implementation
 date: 2026-07-16
-last_reviewed: '2026-09-12'
+last_reviewed: '2026-09-14'
 superseded_by: null
 topic: convergence-control-plane
 ---
@@ -846,3 +846,19 @@ Clean — all code steps show complete implementations with no TBD/TODO/placehol
 - `DharaChannelPublisher.publish(metric_type: str, entity_id: str, record: dict[str, Any])` — used identically in Task 6 (implementation) and Task 6 (test mock assertion).
 - `register_channel_tracking_tools(mcp_server: FastMCP, dhara_publisher: DharaChannelPublisher | None = None)` — signature defined in Task 6, called with keyword arg in Task 7.
 - `_make_dhara_publisher() -> DharaChannelPublisher | None` — defined and tested in Task 7 independently.
+
+## Re-Review Status (2026-09-14)
+
+**Status**: `complete` — Track A documentation house-keeping landed (PLAN_INDEX entries, hatchet checkboxes, P2 deferred items, ARCHITECTURE.md Dhara persistence section). Track B's `DharaChannelPublisher` path was superseded by the actual session-buddy checkpoint subsubsystem architecture that landed in `docs/superpowers/plans/2026-07-15-sb-checkpoint-stash-clobber-fix.md`.
+
+**Track A deliverables landed** (verified via `last_reviewed: 2026-09-12`):
+
+- `docs/plans/PLAN_INDEX.md` — Remaining Work / Terminal Worker / Hatchet entries updated to `complete, historical`
+- `docs/superpowers/plans/2026-05-08-hatchet-adapter.md` — all 8 task checkboxes ticked
+- `docs/plans/2026-05-07-mahavishnu-master-backlog.md` — P2 deferred items (PoolManager, RoutingDecisionBuffer, arch doc) marked delivered
+- `docs/superpowers/plans/2026-04-26-config-consolidation.md` — all checkboxes ticked + delivered header
+- `docs/architecture/ARCHITECTURE.md` — Last Updated 2026-05-14; Dhara Persistence Layer section added
+
+**Track B path-not-taken**: The plan's `DharaChannelPublisher` (httpx-based fire-and-forget to Dhara's `record_time_series`) was a 2026-05-14-era design. The actual session-buddy channel tracking shipped under a different architecture — `track_channel_session` MCP tool + `_ChannelSessionStore` in-memory store + checkpoint subsubsystem (SubagentDetector, SnapshotMechanism, CheckpointPolicy, CheckpointOrchestrator) — per `docs/superpowers/plans/2026-07-15-sb-checkpoint-stash-clobber-fix.md`. The architectural shape is materially different: in-memory store + checkpoint orchestrator vs. the original plan's httpx fire-and-forget pattern. Closing this plan to `complete` reflects that the work landed through the orchestrator path, not the publisher path.
+
+**No follow-up needed.** The original Track B intent (Dhara time-series visibility for channel events) is now satisfied indirectly by the checkpoint orchestrator's structured logging; if explicit Dhara time-series publishing becomes a future requirement, that ships as a separate plan.
