@@ -16,7 +16,6 @@
 
 from .adapter_registry_tools import register_adapter_registry_tools
 from .agents_tools import register_agents_tools
-from .dispatch_specialist import register_dispatch_specialist
 from .goal_team_tools import register_goal_team_tools
 from .primitive_tools import register_primitive_tools
 from .search_tools import register_search_tools

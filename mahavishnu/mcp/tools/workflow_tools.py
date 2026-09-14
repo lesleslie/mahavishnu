@@ -65,9 +65,7 @@ async def workflow_get_outcome(
     return from_dict("workflow_outcome", payload)  # ty: ignore[invalid-return-type]
 
 
-def register_workflow_tools(
-    mcp: FastMCP, rbac_manager: Any | None = None
-) -> None:
+def register_workflow_tools(mcp: FastMCP, rbac_manager: Any | None = None) -> None:
     """Register workflow outcome tools with the FastMCP server.
 
     ``rbac_manager`` is keyword-friendly and defaults to ``None``; production

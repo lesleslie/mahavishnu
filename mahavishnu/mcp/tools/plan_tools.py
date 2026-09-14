@@ -80,9 +80,7 @@ def register_plan_tools(
     provider = store_provider
 
     @mcp.tool(name="plan_list")
-    @require_mcp_auth(
-        rbac_manager=rbac_manager, required_permission=Permission.READ_PLAN_INDEX
-    )
+    @require_mcp_auth(rbac_manager=rbac_manager, required_permission=Permission.READ_PLAN_INDEX)
     async def plan_list(
         status: str | None = None,
         topic: str | None = None,
@@ -112,9 +110,7 @@ def register_plan_tools(
         }
 
     @mcp.tool(name="plan_show")
-    @require_mcp_auth(
-        rbac_manager=rbac_manager, required_permission=Permission.READ_PLAN_INDEX
-    )
+    @require_mcp_auth(rbac_manager=rbac_manager, required_permission=Permission.READ_PLAN_INDEX)
     async def plan_show(plan_id: str, user_id: str | None = None) -> dict[str, Any]:
         """Show one plan by ``plan_id``. Raises ``PlanNotFoundError`` if absent."""
         store = provider()
@@ -124,9 +120,7 @@ def register_plan_tools(
         return cast("dict[str, Any]", record)
 
     @mcp.tool(name="plan_search")
-    @require_mcp_auth(
-        rbac_manager=rbac_manager, required_permission=Permission.READ_PLAN_INDEX
-    )
+    @require_mcp_auth(rbac_manager=rbac_manager, required_permission=Permission.READ_PLAN_INDEX)
     async def plan_search(
         query: str,
         limit: int = 20,
@@ -139,18 +133,14 @@ def register_plan_tools(
         return cast("list[dict[str, Any]]", await store.search(query, limit=limit))
 
     @mcp.tool(name="plan_vitals")
-    @require_mcp_auth(
-        rbac_manager=rbac_manager, required_permission=Permission.READ_PLAN_INDEX
-    )
+    @require_mcp_auth(rbac_manager=rbac_manager, required_permission=Permission.READ_PLAN_INDEX)
     async def plan_vitals(user_id: str | None = None) -> dict[str, Any]:
         """Aggregate counters, per-status/role/topic breakdowns, and tripwire state."""
         store = provider()
         return cast("dict[str, Any]", await store.vitals())
 
     @mcp.tool(name="plan_rebuild_status")
-    @require_mcp_auth(
-        rbac_manager=rbac_manager, required_permission=Permission.READ_PLAN_INDEX
-    )
+    @require_mcp_auth(rbac_manager=rbac_manager, required_permission=Permission.READ_PLAN_INDEX)
     async def plan_rebuild_status(user_id: str | None = None) -> dict[str, Any]:
         """Rebuild cycle counters, staleness flag, and (redacted) lock holder."""
         store = provider()

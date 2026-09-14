@@ -171,9 +171,7 @@ def _read_body(filename: str) -> str:
     """
     path = _CATALOG_DIR / filename
     if not path.is_file():
-        raise FileNotFoundError(
-            f"Skill body {filename!r} missing from catalog at {path}"
-        )
+        raise FileNotFoundError(f"Skill body {filename!r} missing from catalog at {path}")
     return path.read_text(encoding="utf-8")
 
 
@@ -275,7 +273,7 @@ def register_skill_tools(app: FastMCP) -> None:
         for entry in _STATIC_SKILLS:
             try:
                 metadata = _build_unsigned_metadata(entry["name"])
-            except (FileNotFoundError, ValidationError, KeyError):
+            except FileNotFoundError, ValidationError, KeyError:
                 # ``logger.exception`` already attaches the exception info;
                 # passing ``exc`` separately would be redundant (TRY401).
                 logger.exception(

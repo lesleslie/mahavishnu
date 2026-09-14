@@ -1129,9 +1129,7 @@ def _register_plan_tools(server: FastMCPServer) -> None:
         return PlanIndexStore(_resolve_dhara_client(server))
 
     rbac_manager = getattr(server.app, "rbac_manager", None)
-    register_plan_tools(
-        server.server, store_provider=_store_provider, rbac_manager=rbac_manager
-    )
+    register_plan_tools(server.server, store_provider=_store_provider, rbac_manager=rbac_manager)
 
 
 def _resolve_dhara_client(server: FastMCPServer) -> object:

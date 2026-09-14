@@ -187,7 +187,9 @@ REGISTRATION_MAP: dict[str, Callable] = {
     # specialists (dhara-specialist, crackerjack-specialist, etc.);
     # without it the specialists are unreachable from a workflow.
     # Always-on for parity with the discovery surface.
-    "_register_dispatch_specialist_tools": lambda s: _register_dispatch_specialist_tools(s._mhv_server),  # type: ignore[attr-defined]
+    "_register_dispatch_specialist_tools": lambda s: _register_dispatch_specialist_tools(
+        s._mhv_server
+    ),  # type: ignore[attr-defined]
     # STANDARD-tier groups.
     "_register_terminal_tools": lambda s: _register_terminal_tools(s._mhv_server),  # type: ignore[attr-defined]
     "_register_pool_tools": lambda s: _register_pool_tools(s._mhv_server),  # type: ignore[attr-defined]

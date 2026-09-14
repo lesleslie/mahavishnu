@@ -7,7 +7,6 @@ from typing import TYPE_CHECKING, Any, cast
 
 from mcp_common.auth.audit import AuditLogger, AuthAuditEvent
 from mcp_common.auth.config import AuthConfig
-from mcp_common.auth.permissions import Permission
 from pydantic import SecretStr
 
 from ..core.auth import AuthenticationError
@@ -15,6 +14,8 @@ from ..core.errors import ConfigurationError
 
 if TYPE_CHECKING:
     from collections.abc import Callable
+
+    from mcp_common.auth.permissions import Permission
 
 logger = logging.getLogger(__name__)
 
@@ -66,6 +67,7 @@ def require_mcp_auth(
     The ``repo`` argument to ``check_permission`` is taken from the
     wrapped tool's ``repo`` kwarg when present, otherwise ``"*"``.
     """
+
     def decorator(func: Callable[..., Any]) -> Callable[..., Any]:
         # Task 11.10: the Permission.READ fallback is removed. Every tool
         # that uses @require_mcp_auth MUST pass an explicit

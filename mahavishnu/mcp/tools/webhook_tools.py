@@ -30,9 +30,7 @@ if TYPE_CHECKING:
 logger = get_logger(__name__)
 
 
-def register_webhook_tools(
-    mcp: FastMCP, rbac_manager: Any | None = None
-) -> None:
+def register_webhook_tools(mcp: FastMCP, rbac_manager: Any | None = None) -> None:
     """Register webhook MCP tools with the FastMCP server.
 
     ``rbac_manager`` is keyword-friendly and defaults to ``None``; production
@@ -54,9 +52,7 @@ def register_webhook_tools(
     """
 
     @mcp.tool()
-    @require_mcp_auth(
-        rbac_manager=rbac_manager, required_permission=Permission.READ_WEBHOOK
-    )
+    @require_mcp_auth(rbac_manager=rbac_manager, required_permission=Permission.READ_WEBHOOK)
     async def webhook_replay_tool(
         webhook_id: str,
         user_id: str | None = None,

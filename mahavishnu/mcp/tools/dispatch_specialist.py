@@ -81,8 +81,7 @@ def _resolve_server_url(server_key: str) -> str:
     if kebab in _DEFAULT_SERVER_URLS:
         return _DEFAULT_SERVER_URLS[kebab]
     raise ValueError(
-        f"unknown server_key {server_key!r}; "
-        f"valid keys are {sorted(_DEFAULT_SERVER_URLS.keys())}"
+        f"unknown server_key {server_key!r}; valid keys are {sorted(_DEFAULT_SERVER_URLS.keys())}"
     )
 
 
@@ -110,9 +109,7 @@ def _match_agent(agent: dict[str, Any], task_type: str) -> bool:
         return True
     if needle in (agent.get("name") or "").lower():
         return True
-    if needle in (agent.get("description") or "").lower():
-        return True
-    return False
+    return needle in (agent.get("description") or "").lower()
 
 
 async def _call_list_agents(
@@ -127,8 +124,8 @@ async def _call_list_agents(
     ``{"result": {"content": [{"type": "text", "text": "<json>"}]}}``.
     Raises on timeout, connection error, or non-2xx.
     """
-    import httpx
     from fastmcp.client import Client  # type: ignore[import-not-found]
+    import httpx
 
     try:
         async with Client(server_url) as client:
@@ -136,15 +133,9 @@ async def _call_list_agents(
                 client.call_tool("list_agents", {}),
                 timeout=timeout_seconds,
             )
-    except (
-        asyncio.TimeoutError,
-        httpx.HTTPError,
-        ConnectionError,
-        OSError,
-    ) as exc:
+    except (TimeoutError, httpx.HTTPError, ConnectionError, OSError) as exc:
         raise RuntimeError(
-            f"call_tool(list_agents) on {server_url} failed: "
-            f"{type(exc).__name__}: {exc}"
+            f"call_tool(list_agents) on {server_url} failed: {type(exc).__name__}: {exc}"
         ) from exc
 
     # Unwrap the JSON-RPC response. fastmcp's Client returns a
@@ -179,8 +170,8 @@ async def _call_get_agent(
 
     Returns the unwrapped ``{metadata, body}`` envelope, or raises.
     """
-    import httpx
     from fastmcp.client import Client  # type: ignore[import-not-found]
+    import httpx
 
     try:
         async with Client(server_url) as client:
@@ -188,15 +179,9 @@ async def _call_get_agent(
                 client.call_tool("get_agent", {"name": agent_name}),
                 timeout=timeout_seconds,
             )
-    except (
-        asyncio.TimeoutError,
-        httpx.HTTPError,
-        ConnectionError,
-        OSError,
-    ) as exc:
+    except (TimeoutError, httpx.HTTPError, ConnectionError, OSError) as exc:
         raise RuntimeError(
-            f"call_tool(get_agent) on {server_url} failed: "
-            f"{type(exc).__name__}: {exc}"
+            f"call_tool(get_agent) on {server_url} failed: {type(exc).__name__}: {exc}"
         ) from exc
 
     content = getattr(result, "content", None)
@@ -353,9 +338,7 @@ def register_dispatch_specialist(mcp: FastMCP) -> None:
                 envelope = await _call_get_agent(server_url, agent_name)
                 full_agents.append(envelope)
             except RuntimeError as exc:
-                errors.append(
-                    f"get_agent({agent_name!r}) failed: {exc}"
-                )
+                errors.append(f"get_agent({agent_name!r}) failed: {exc}")
 
         return {
             "success": True,
