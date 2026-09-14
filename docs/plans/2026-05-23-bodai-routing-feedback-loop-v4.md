@@ -1,15 +1,15 @@
 ---
-status: partial
+status: complete
 role: implementation
 date: 2026-07-16
-last_reviewed: 2026-09-13
+last_reviewed: 2026-09-14
 superseded_by: null
 topic: routing-composition
 ---
 
-## Re-Review Status (2026-09-13)
+## Re-Review Status (2026-09-14)
 
-**Status**: `partial` — `query_local_traces` MCP tool shipped on 4 of 5 Bodai ecosystem components; **dhara is missing it.**
+**Status**: `complete` — `query_local_traces` MCP tool now ships on all 5 Bodai ecosystem components. Dhara's tool was added on `2026-09-14` (commit `1d12fe4`, merged to main as `d7b8abd`).
 
 | Component | `query_local_traces` MCP tool | Location |
 |-----------|-------------------------------|----------|
@@ -17,11 +17,11 @@ topic: routing-composition
 | akosha | ✅ | `akosha/mcp/tools/otel_tools.py:30-31` (registered as `akosha_query_local_traces`) |
 | session-buddy | ✅ | `session_buddy/mcp/tools/memory/otel_trace_tools.py:78` |
 | crackerjack | ✅ | `crackerjack/mcp/tools/otel_tools.py:65` |
-| **dhara** | ❌ | not present (`grep -rn "def query_local_traces" /Users/les/Projects/dhara/dhara` returns no match) |
+| dhara | ✅ | `dhara/mcp/tools/otel_traces.py:55` (registered as `dhara_query_local_traces`) |
 
-**Why this matters**: Plan §6.1 `KNOWN_SERVICES` lists `{"mahavishnu", "session-buddy", "akosha", "dhara", "crackerjack"}` as the canonical inter-service registry. The Akosha fitness analyzer polls each registered component's `query_local_traces` to aggregate traces; a missing tool on dhara silently degrades the feedback loop with no signal. The plan's Phase 1 Step 2.3 explicitly enumerates "Add `query_local_traces` to Akosha, Session-Buddy, Crackerjack" — but is silent on dhara. The omission is a Phase 1 scope-bug, not an architectural blocker.
+**Why this matters**: Plan §6.1 `KNOWN_SERVICES` lists `{"mahavishnu", "session-buddy", "akosha", "dhara", "crackerjack"}` as the canonical inter-service registry. The Akosha fitness analyzer polls each registered component's `query_local_traces` to aggregate traces. As of `2026-09-14` all 5 components respond, so the fitness loop now has uniform polling coverage. The plan's Phase 1 Step 2.3 enumerated "Add `query_local_traces` to Akosha, Session-Buddy, Crackerjack" — the omission of Dhara in that enumeration was a Phase 1 scope-bug now closed.
 
-**Residual to close**: Add `query_local_traces` to dhara's MCP server, with the same attribute-based time-range filtering that the other 4 components implement.
+**Dhara implementation notes**: registered as `otel_traces` group at STANDARD profile (parity with Akosha/Mahavishnu byte-for-byte shape). Dhara has no OtelIngester and no trace data today — the tool returns `[]` until a component's OtelIngester points at the configured DuckDB file. The point is uniform registration, not new data. The Akosha HotStore SQL filter on `metadata->>'task_class'` triggers a DuckDB optimiser bug (`ConversionException: Failed to cast value to numerical`) on the OR-with-attributes branch — this latent bug is shipped byte-for-byte across all 5 components; fixing it is out of scope for this plan and belongs in a follow-up Akosha PR.
 
 # Bodai Ecosystem Feedback Loop — Routing Intelligence via OTel
 

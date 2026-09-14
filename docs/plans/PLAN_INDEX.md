@@ -580,7 +580,7 @@ One table per store. Entries are sorted by `date` DESC, with ties broken by path
 | [`docs/plans/2026-05-11-worktree-manage-consolidation-plan.md`](2026-05-11-worktree-manage-consolidation-plan.md) | 2026-07-16 | `complete` | `historical` |  | `worktree-management` | Worktree Manage Consolidation Plan |
 | [`docs/plans/2026-05-23-bodai-routing-feedback-loop-v2.md`](2026-05-23-bodai-routing-feedback-loop-v2.md) | 2026-07-16 | `complete` | `superseded` |  | `routing-composition` | Bodai Ecosystem Feedback Loop — Routing Intelligence via OTel |
 | [`docs/plans/2026-05-23-bodai-routing-feedback-loop-v3.md`](2026-05-23-bodai-routing-feedback-loop-v3.md) | 2026-07-16 | `complete` | `superseded` |  | `routing-composition` | Bodai Ecosystem Feedback Loop — Routing Intelligence via OTel |
-| [`docs/plans/2026-05-23-bodai-routing-feedback-loop-v4.md`](2026-05-23-bodai-routing-feedback-loop-v4.md) | 2026-07-16 | `partial` | `implementation` |  | `routing-composition` | Bodai Ecosystem Feedback Loop — Routing Intelligence via OTel |
+| [`docs/plans/2026-05-23-bodai-routing-feedback-loop-v4.md`](2026-05-23-bodai-routing-feedback-loop-v4.md) | 2026-07-16 | `complete` | `implementation` |  | `routing-composition` | Bodai Ecosystem Feedback Loop — Routing Intelligence via OTel |
 | [`docs/plans/2026-05-23-bodai-routing-feedback-loop.md`](2026-05-23-bodai-routing-feedback-loop.md) | 2026-07-16 | `complete` | `superseded` |  | `routing-composition` | Bodai Ecosystem Feedback Loop — Routing Intelligence via OTel |
 | [`docs/plans/2026-05-23-unified-exception-logging.md`](2026-05-23-unified-exception-logging.md) | 2026-07-16 | `complete` | `implementation` |  | `error-handling` | Unified Exception Logging Across Bodai — Design Doc |
 | [`docs/plans/2026-05-24-bodai-deployment-guide.md`](2026-05-24-bodai-deployment-guide.md) | 2026-07-16 | `complete` | `implementation` |  | `convergence-control-plane` | Bodai Deployment Guide: Local vs Serverless |
@@ -922,9 +922,9 @@ Counts of entries per (lifecycle, role) cell across all 24 stores. Useful as a s
 | Role \\ Lifecycle | draft | active | partial | shipped | complete | Total |
 |---|---|---|---|---|---|---|
 | `canonical` | 19 | 102 | 1 | 2 | 13 | **137** |
-| `implementation` | 148 | 62 | 6 | 36 | 38 | **290** |
+| `implementation` | 148 | 62 | 5 | 36 | 39 | **290** |
 | `umbrella` | · | 2 | · | · | 2 | **4** |
 | `historical` | 12 | 3 | · | 4 | 129 | **148** |
 | `superseded` | · | · | · | · | 13 | **13** |
 
-| **Total** | **179** | **169** | **7** | **42** | **195** | **592** |
+| **Total** | **179** | **169** | **6** | **42** | **196** | **592** |
