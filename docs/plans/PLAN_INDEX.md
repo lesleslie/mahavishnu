@@ -545,6 +545,7 @@ One table per store. Entries are sorted by `date` DESC, with ties broken by path
 
 | Path | Date | Status | Role | Kind | Topic | Title |
 |---|---|---|---|---|---|---|
+| [`docs/plans/2026-09-13-migrate-no-frontmatter-plans.md`](2026-09-13-migrate-no-frontmatter-plans.md) | 2026-09-13 | `active` | `implementation` |  | `frontmatter-migration-completion` | Migrate 40 No-Frontmatter Plans to Schema v1.1 |
 | [`docs/plans/2026-09-12-finish-partial-implementations.md`](2026-09-12-finish-partial-implementations.md) | 2026-09-12 | `partial` | `implementation` |  | `close-genuine-partial-implementations` | Plan: Finish Genuine Partial Implementations (revision 3, post-re-review) |
 | [`docs/plans/PLAN_AUDIT_2026-09-12.md`](PLAN_AUDIT_2026-09-12.md) | 2026-09-12 | `active` | `implementation` | `audit` | `plan-audit-2026-09-12` | Plan Audit — 2026-09-12 |
 | [`docs/plans/2026-09-10-settle-semantic-merge.md`](2026-09-10-settle-semantic-merge.md) | 2026-09-10 | `partial` | `implementation` |  | `settle-semantic-merge` | Settle Semantic Merge — mergiraf opt-in + git-merge-tree diagnostics |
@@ -859,7 +860,7 @@ Durable decision records — covers both ADRs in `docs/adr/` and repo-local poli
 | [`docs/adr/013-mahavishnu-dhara-adapter-tool-boundary.md`](../../docs/adr/013-mahavishnu-dhara-adapter-tool-boundary.md) | 2026-07-16 | ADR 013: Adapter Tool Boundary Between Mahavishnu and Dhara |
 | [`docs/adr/014-honcho-peer-model-routing-precedence.md`](../../docs/adr/014-honcho-peer-model-routing-precedence.md) | 2026-07-16 | ADR 014: Honcho Peer-Model Routing Precedence |
 
-### `plan` (544 entries)
+### `plan` (545 entries)
 
 Work items. The bulk of the registry — see the per-store tables above for full detail with status/role/topic.
 
@@ -872,9 +873,9 @@ Counts of entries per (lifecycle, role) cell across all 24 stores. Useful as a s
 | Role \\ Lifecycle | draft | active | partial | shipped | complete | Total |
 |---|---|---|---|---|---|---|
 | `canonical` | 19 | 106 | 1 | 2 | 9 | **137** |
-| `implementation` | 132 | 47 | 12 | 34 | 23 | **248** |
+| `implementation` | 132 | 48 | 12 | 34 | 23 | **249** |
 | `umbrella` | · | 1 | · | · | 2 | **3** |
 | `historical` | 11 | 3 | · | 4 | 129 | **147** |
 | `superseded` | · | · | · | · | 12 | **12** |
 
-| **Total** | **162** | **157** | **13** | **40** | **175** | **547** |
+| **Total** | **162** | **158** | **13** | **40** | **175** | **548** |

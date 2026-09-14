@@ -1,0 +1,299 @@
+---
+status: active
+role: implementation
+kind: plan
+date: 2026-09-13
+last_reviewed: 2026-09-13
+superseded_by: null
+topic: frontmatter-migration-completion
+---
+
+# Migrate 40 No-Frontmatter Plans to Schema v1.1
+
+## 1. Outcome
+
+Every `.md` file in the four plan stores (`docs/plans/`, `docs/superpowers/plans/`,
+`docs/superpowers/specs/`, `docs/followups/`) carries a parseable `---\n...\n---`
+YAML frontmatter matching `docs/schemas/document-frontmatter-v1.md`. As a
+result, `scripts/regenerate_plan_index.py` lists them all in `docs/plans/PLAN_INDEX.md`.
+
+**Success signal**: `uv run python scripts/regenerate_plan_index.py` runs
+cleanly (no `ScannerError`), the per-store tables grow from the current
+counts to include all 40, and a second `regenerate_plan_index.py` run
+on a clean checkout produces an identical `PLAN_INDEX.md` byte-for-byte.
+
+## 2. Goals
+
+1. Every file in the inventory below has a `---\n...\n---` block at the
+   top, matching the schema.
+2. The block contains at minimum: `status`, `role`, `kind` (or omitted
+   for default `plan`), `date`, `last_reviewed`. Optional `topic`,
+   `blocks_on`, `superseded_by` set where discoverable.
+3. `regenerate_plan_index.py` enumerates every migrated file in the
+   appropriate store table.
+4. Each migrated file's `status:` reflects its lifecycle stage as
+   best we can determine from body content (no "**Status:** Approved"
+   inside a code block mistaken for a real status, no schematic
+   `status: active` for a `complete` plan).
+5. Migration is idempotent: re-running on a previously migrated file
+   produces no changes.
+
+## 3. Non-Goals
+
+* **Not** changing `status` values that the 2026-09-12 audit
+  (`docs/plans/PLAN_AUDIT_2026-09-12.md`) already approved. If a
+  legacy-status-looking line conflicts with the audit verdict, the
+  audit wins.
+* **Not** rewriting prose bodies. The migration is frontmatter-only.
+* **Not** addressing `.md` files outside the four plan stores
+  (`.claude/agents/`, `docs/adr/`, `docs/papers/`, etc. are out of
+  scope; `.claude/decisions/` already has `kind: decision` from the
+  earlier kind-tag commit).
+* **Not** introducing a new frontmatter field beyond what the v1.1
+  schema already documents. Stay within the existing vocabulary.
+
+## 4. Current Findings
+
+### Inventory — 40 files without parseable `---\n...\n---` frontmatter
+
+Distribution by store (verified 2026-09-13):
+
+| Store                          | Count |
+|--------------------------------|-------|
+| `docs/superpowers/plans/`      | 23    |
+| `docs/superpowers/specs/`      | 14    |
+| `docs/plans/`                  | 1     |
+| `docs/followups/`              | 1     |
+
+These files were missed by commit `0a3ec0b0 feat(frontmatter): migrate
+217 docs to v1 schema` — that migration was incomplete (a known drift:
+see session memory `drift-bundling-recovery.md`).
+
+### Detectable inline status
+
+A regex sweep for legacy markers (`**Status:** <word>`) found **1** file
+with an explicit legacy status:
+
+```
+docs/superpowers/specs/2026-08-03-bodai-openclaw-hermes-inspired-portfolio-design.md: Draft
+```
+
+The other 39 require status inference from contextual signals (date,
+body content, sibling designs).
+
+### Common body patterns
+
+Three templates are visible across these 40 files:
+
+1. **"Implementation Plan" template** (the most common, ~30 files):
+   ```
+   # <Title>
+   > **For agentic workers:** REQUIRED SUB-KILL: Use superpowers:subagent-driven-development
+   **Goal:** …
+   **Architecture:** …
+   **Tech Stack:** …
+   ```
+   Status heuristic: in code body discussing implementation phases
+   that are not yet executed → `status: active`.
+
+2. **"Design Spec" template** (~7 files in `docs/superpowers/specs/`):
+   ```
+   # <Title>
+   **Status:** Draft (or Approved, or absent)
+   **Date:** YYYY-MM-DD
+   **Author:** …
+   ```
+   The `**Status:**` field is the most reliable signal here; default
+   to `status: active` if the status line says "Draft (awaiting user
+   review)" or is missing.
+
+3. **"Note/Prose" template** (1-2 files):
+   ```
+   # <Title>
+   One-line summary: …
+   ```
+   Default to `status: draft` unless body content indicates shipped
+   work.
+
+## 4.5 Requirements
+
+```yaml
+requirements:
+  - id: REQ-MIG-001
+    title: "Every migrated file parses with yaml.safe_load without error."
+  - id: REQ-MIG-002
+    title: "PLAN_INDEX.md byte-stable after migration + regen (idempotent)."
+  - id: REQ-MIG-003
+    title: "Each migration logs decision rationale inline (commit body
+      per file or batched per store) so the status choice is auditable."
+  - id: REQ-MIG-004
+    title: "No new field introduced; existing v1.1 schema respected."
+```
+
+## 5. Implementation Phases
+
+### Phase 1: write the migrator
+
+**Goal:** A Python script `scripts/migrate_frontmatter.py` that:
+
+* Walks the 4 plan stores.
+* For each `.md` file, parses `---\n...\n---` if present (skip if
+  already valid).
+* Otherwise extracts legacy fields using:
+  - `**Status:** <word>` (Status line within first 50 lines, not
+    inside a code block)
+  - `**Date:** YYYY-MM-DD`
+  - `**Author:** <name>`
+  - The H1 title (becomes the title in PLAN_INDEX, already inferable)
+* Applies heuristic status mapping:
+  - `**Status:** Approved (brainstorming complete; ready for writing-plans)`
+    → `status: active` (audit-stamp equivalent)
+  - `**Status:** Draft (awaiting user review)`
+    → `status: draft`
+  - `**Status:** Shipped` or `Implemented`
+    → `status: complete`
+  - absent
+    → `status: active` for `docs/superpowers/plans/` (implementation
+      default); `status: draft` for `docs/superpowers/specs/`
+      (specs awaiting design approval); `status: active` for
+      `docs/plans/`; `status: active` for `docs/followups/`.
+* Renders the new frontmatter block above existing body content,
+  preserving all original body bytes after.
+* Writes back; if no change needed, leaves the file untouched.
+
+**Tasks:**
+
+1. Read `docs/schemas/document-frontmatter-v1.md` to confirm the
+   vocabulary.
+2. Skeleton `migrate_frontmatter.py` with `migrate_file(path) ->
+   (status, message)`.
+3. Heuristic engine for legacy field detection.
+4. Drive it from a list of `record-id` so it can be re-run
+   incrementally.
+
+**Exit criteria:** script can be invoked with `--dry-run` and emits
+a per-file report of proposed changes without writing.
+
+#### Integration Contract — Phase 1
+
+- **Triggered from**: `uv run python scripts/migrate_frontmatter.py --dry-run`
+  (CLI); user (operator) review of report before applying.
+- **Returns to / updates**: each proposed file's frontmatter (when
+  applied).
+- **Demonstrable by**: dry-run output showing each file's proposed
+  status decision, parsed by a single review pass.
+- **Rollback signal**: per-file dry-run flag — if run committed but a
+  reviewer objects to a specific status, `git revert <commit>` plus a
+  follow-up edit.
+- **Observability added**: log line per file with proposed status and
+  short rationale.
+
+### Phase 2: apply the migration, store-by-store
+
+**Goal:** Each store's 40 files migrate cleanly with batched
+rationale-per-store.
+
+**Tasks:**
+
+1. Run `migrate_frontmatter.py` against `docs/superpowers/plans/`
+   (23 files). Commit as
+   `docs(scripts): migrate 23 superpowers/plans/ to v1 schema`,
+   body listing each filename + heuristic result.
+2. Run against `docs/superpowers/specs/` (14 files). Same.
+3. Run against `docs/plans/` (1 file). Same.
+4. Run against `docs/followups/` (1 file). Same.
+
+**Exit criteria:** every file in the inventory has a parseable
+frontmatter; `regenerate_plan_index.py` lists them all; the PLAN_INDEX
+byte-stable across two regen runs.
+
+#### Integration Contract — Phase 2
+
+- **Triggered from**: per-store invocation of the migrator script.
+- **Returns to / updates**: each target file's frontmatter block.
+- **Demonstrable by**: `git diff` showing per-file added `---\n...\n---`
+  block + `uv run python scripts/regenerate_plan_index.py` listing
+  the file in the appropriate store table.
+- **Rollback signal**: per-file revert via `git checkout HEAD -- <path>`.
+- **Observability added**: per-file migration log line in stdout.
+
+### Phase 3: validate
+
+**Goal:** No regressions in PLAN_INDEX, audit-orphans, or frontmatter
+validator.
+
+**Tasks:**
+
+1. Run `python scripts/audit_orphans.py` — must report 0 newly-orphaned
+   symbols.
+2. Run `python scripts/tool_frontmatter_validator.py` if it exists —
+   must not flag the migrated files for missing fields.
+3. Run `uv run python scripts/regenerate_plan_index.py` twice in a row,
+   diff the outputs — must be empty.
+
+**Exit criteria:** all three pass.
+
+#### Integration Contract — Phase 3
+
+- **Triggered from**: `pytest`, `crackerjack`, or session-end
+  pre-commit checks.
+- **Returns to / updates**: validation reports in stdout.
+- **Demonstrable by**: zero newly-orphaned symbols + zero frontmatter
+  errors + diff-clean regen.
+- **Rollback signal**: any test failure triggers git-revert of the
+  Phase 2 commits for the offending store.
+- **Observability added**: a `migration_2026-09-13_validation` script
+  that re-runs the three checks on demand.
+
+## 6. Required Code Changes
+
+* `scripts/migrate_frontmatter.py` (new)
+* `docs/plans/PLAN_INDEX.md` (regenerated; no manual edit)
+* `scripts/regenerate_plan_index.py` (no change — should already handle
+  the migrated files)
+
+## 7. Validation Matrix
+
+| Tool/command | Expected outcome | Evidence location |
+|---|---|---|
+| `python scripts/migrate_frontmatter.py --dry-run` | per-file proposal, no writes | stdout |
+| `uv run python scripts/regenerate_plan_index.py` | exit 0, new entries listed | shell exit + grep on PLAN_INDEX |
+| `uv run python scripts/regenerate_plan_index.py` (twice) | identical bytes | shell `diff <(run1) <(run2)` |
+| `python scripts/audit_orphans.py` | no newly-orphaned symbols | stdout |
+| `python scripts/tool_frontmatter_validator.py` | exit 0 | shell exit |
+
+## 8. Risks
+
+| Risk | Likelihood | Mitigation |
+|---|---|---|
+| Inline `Status:` line inside a code-block mistaken for real status | Medium | Code-block-aware regex; flag every match in dry-run output for human review |
+| Migration script overwrites important existing frontmatter | Low | Idempotent: skip files with `---\n...---` already |
+| Plan body's literal `**Status:** active` from a tutorial becomes `status: active` inadvertently | Low | Restrict detection to first 50 lines; in-doc contexts past line 50 are unreviewed |
+| Status inflation — promoting files to `active` when intent was `draft` | Medium | Conservative default for `docs/superpowers/specs/` is `draft`, not `active`. Audit trail in commit body. |
+| Scripted field values that are later hand-edited could diverge from truth | Low | Regenerate tracker doesn't enforce; just lists. Audit catches during review. |
+| Re-running on `## status: ...` single-line files (existing 9) | Low | The pre-existing reflow script (commit 99dbb966) already handles those; the migrator only touches files lacking `---\n...---` |
+
+## 9. Decision Rule
+
+When in doubt on a single file's `status:`: **review the body once**, then
+pick `draft` if uncertain. `active` is a downward-promotion from
+"implicit active" but our schema doesn't carry "implicit."
+
+The migration is considered "done enough" when:
+1. Inventory count = 0 (all 40 migrated).
+2. `regenerate_plan_index.py` lists all 40 in the appropriate store
+   table.
+3. PLAN_INDEX regen is byte-stable across two runs.
+
+## References
+
+* `docs/schemas/document-frontmatter-v1.md` — schema definition.
+* `docs/plans/TEMPLATE.md` — plan template.
+* `docs/followups/README.md` — the verified-state index that this
+  migration's per-file status decisions must remain consistent with.
+* `docs/plans/PLAN_AUDIT_2026-09-12.md` — 2026-09-12 audit verdicts.
+* `scripts/regenerate_plan_index.py` — the consumer of frontmatter.
+* commit `0a3ec0b0 feat(frontmatter): migrate 217 docs to v1 schema` —
+  the prior partial migration this plan completes.
+* commit `99dbb966 docs(plans): reflow 9 single-line-after-heading frontmatter blocks (2026-09-13)`
+  — companion fix to single-line layout (separate from this plan).
