@@ -538,24 +538,14 @@ One table per store. Entries are sorted by `date` DESC, with ties broken by path
 |---|---|---|---|---|---|
 | [`docs/plans/2026-09-12-finish-partial-implementations.md`](2026-09-12-finish-partial-implementations.md) | 2026-09-12 | `partial` | `implementation` | `close-genuine-partial-implementations` | Plan: Finish Genuine Partial Implementations (revision 3, post-re-review) |
 | [`docs/plans/PLAN_AUDIT_2026-09-12.md`](PLAN_AUDIT_2026-09-12.md) | 2026-09-12 | `active` | `implementation` | `plan-audit-2026-09-12` | Plan Audit — 2026-09-12 |
-| [`docs/plans/2026-09-10-bodai-math-initiatives-tier1.md`](2026-09-10-bodai-math-initiatives-tier1.md) | 2026-09-10 | `complete` | `implementation` | `mathematical-paradigms-orchestration` | Bodai Math Initiatives — Tier 1 Implementation Plan (v3) |
 | [`docs/plans/2026-09-10-settle-semantic-merge.md`](2026-09-10-settle-semantic-merge.md) | 2026-09-10 | `partial` | `implementation` | `settle-semantic-merge` | Settle Semantic Merge — mergiraf opt-in + git-merge-tree diagnostics |
-| [`docs/plans/2026-09-09-bodai-skill-agent-distribution.md`](2026-09-09-bodai-skill-agent-distribution.md) | 2026-09-09 | `complete` | `canonical` | `skill-agent-distribution-via-mcp` | Bodai Skill + Agent Distribution Plan |
 | [`docs/plans/2026-09-09-bodai-slash-command-tui-discoverability.md`](2026-09-09-bodai-slash-command-tui-discoverability.md) | 2026-09-09 | `superseded` | `canonical` | `slash-command-discoverability` | Bodai Slash-Command TUI Discoverability Plan |
-| [`docs/plans/2026-09-07-goose-terminal-adapter.md`](2026-09-07-goose-terminal-adapter.md) | 2026-09-07 | `complete` | `implementation` | `terminal-adapter-goose` | Goose Terminal Adapter (D3) |
-| [`docs/plans/2026-09-07-pi-pool-backend.md`](2026-09-07-pi-pool-backend.md) | 2026-09-07 | `complete` | `implementation` | `pool-backend-pi` | Pi Pool Backend (D1) |
 | [`docs/plans/2026-08-29-orchestrator-research-synthesis.md`](2026-08-29-orchestrator-research-synthesis.md) | 2026-08-29 | `draft` | `implementation` | `routing-composition` | Orchestrator Research Synthesis & Adoption Plan (v2 — Pivot) |
-| [`docs/plans/2026-08-25-bodai-cli-audit-implementation.md`](2026-08-25-bodai-cli-audit-implementation.md) | 2026-08-25 | `complete` | `implementation` | `convergence-control-plane` | Bodai Core 7 CLI Audit & Standardization Implementation Plan |
-| [`docs/plans/2026-08-25-bodai-cli-audit.md`](2026-08-25-bodai-cli-audit.md) | 2026-08-25 | `complete` | `implementation` | `bodai-cli-audit` | Bodai Core 7 CLI Audit & Standardization |
 | [`docs/plans/2026-08-25-bodai-tui-shell-surface.md`](2026-08-25-bodai-tui-shell-surface.md) | 2026-08-25 | `active` | `implementation` | `bodai-tui-shell-surface` | Bodai TUI & Admin Shell Surface |
 | [`docs/plans/2026-08-24-claude-env-audit-remediation.md`](2026-08-24-claude-env-audit-remediation.md) | 2026-08-24 | `partial` | `implementation` | `claude-env-remediation` | Claude Environment Audit Remediation |
-| [`docs/plans/2026-08-20-bodai-mcp-surface-standardization.md`](2026-08-20-bodai-mcp-surface-standardization.md) | 2026-08-20 | `complete` | `implementation` | `bodai-mcp-surface-standardization` | Bodai Core MCP Surface Standardization |
 | [`docs/plans/2026-08-20-mahavishnu-lifespan-health-bypass.md`](2026-08-20-mahavishnu-lifespan-health-bypass.md) | 2026-08-20 | `active` | `canonical` | `mcp-lifespan-startup-ordering` | Mahavishnu MCP `/health` Lifespan Bypass |
-| [`docs/plans/2026-07-29-mcpretentious-wiring.md`](2026-07-29-mcpretentious-wiring.md) | 2026-07-29 | `complete` | `historical` | `mcpretentious-runtime-wiring` | Mcpretentious Runtime Wiring Implementation Plan |
-| [`docs/plans/2026-07-29-pyscn-ty-quality-repair.md`](2026-07-29-pyscn-ty-quality-repair.md) | 2026-07-29 | `complete` | `implementation` | `quality-gate-repair` | Pyscn and Ty Quality Gate Repair Implementation Plan |
 | [`docs/plans/2026-07-26-mahavishnu-acp-server.md`](2026-07-26-mahavishnu-acp-server.md) | 2026-07-26 | `active` | `implementation` | `acp-server` | Mahavishnu ACP Server — Build Plan |
 | [`docs/plans/2026-04-02-storage-consolidation-and-akosha-role.md`](2026-04-02-storage-consolidation-and-akosha-role.md) | 2026-07-16 | `active` | `canonical` | `storage-consolidation` | Storage Consolidation And Akosha Role Plan |
-| [`docs/plans/2026-04-04-ecosystem-execution-board.md`](2026-04-04-ecosystem-execution-board.md) | 2026-07-16 | `complete` | `umbrella` | `convergence-control-plane` | Bodai Ecosystem Execution Board (Prioritized) |
 | [`docs/plans/2026-04-25-ecosystem-docs-canonicalization-plan.md`](2026-04-25-ecosystem-docs-canonicalization-plan.md) | 2026-07-16 | `complete` | `implementation` | `convergence-control-plane` | Ecosystem Docs Canonicalization Plan |
 | [`docs/plans/2026-04-25-mahavishnu-ecosystem-control-plane-update-plan.md`](2026-04-25-mahavishnu-ecosystem-control-plane-update-plan.md) | 2026-07-16 | `shipped` | `implementation` | `observability` | Mahavishnu Ecosystem Control Plane Update Plan |
 | [`docs/plans/2026-05-07-mahavishnu-master-backlog.md`](2026-05-07-mahavishnu-master-backlog.md) | 2026-07-16 | `complete` | `implementation` | `convergence-control-plane` | Mahavishnu Master Backlog |
@@ -612,8 +602,6 @@ One table per store. Entries are sorted by `date` DESC, with ties broken by path
 | [`docs/plans/2026-04-03-metrics-remediation-plan.md`](2026-04-03-metrics-remediation-plan.md) | 2026-04-03 | `complete` | `historical` | `observability` | Metrics Remediation Plan |
 | [`docs/plans/IMPLEMENTATION_EXECUTION_STRATEGY.md`](IMPLEMENTATION_EXECUTION_STRATEGY.md) | 2026-04-02 | `complete` | `canonical` | `convergence-control-plane` | Implementation Execution Strategy |
 | [`docs/plans/2026-02-27-health-check-implementation-plan.md`](2026-02-27-health-check-implementation-plan.md) | 2026-02-27 | `complete` | `historical` | `observability` | Health Check System Implementation Plan |
-| [`docs/plans/2026-02-27-health-check-system-design.md`](2026-02-27-health-check-system-design.md) | 2026-02-27 | `complete` | `historical` | `observability` | Health Check System Design |
-| [`docs/plans/2026-02-20-self-improvement-design.md`](2026-02-20-self-improvement-design.md) | 2026-02-20 | `complete` | `historical` | `learning-pipeline` | Mahavishnu Self-Improvement System Design |
 | [`docs/plans/2026-02-20-self-improvement-implementation.md`](2026-02-20-self-improvement-implementation.md) | 2026-02-20 | `complete` | `historical` | `learning-pipeline` | Self-Improvement System Implementation Plan |
 | [`docs/plans/2026-02-20-status-enum-consolidation.md`](2026-02-20-status-enum-consolidation.md) | 2026-02-20 | `complete` | `historical` | `adapter-architecture` | Status Enum Consolidation Plan for Mahavishnu (MHV-008) |
 | [`docs/plans/2026-02-10-pool-websocket-integration.md`](2026-02-10-pool-websocket-integration.md) | 2026-02-10 | `complete` | `historical` | `observability` | Pool WebSocket Integration & Production Hardening Plan |
@@ -661,11 +649,9 @@ One table per store. Entries are sorted by `date` DESC, with ties broken by path
 | [`docs/superpowers/plans/2026-09-06-archive-org-mcp.md`](../../docs/superpowers/plans/2026-09-06-archive-org-mcp.md) | 2026-09-06 | `active` | `implementation` | `mcp-stub-activation` | archive-org-mcp Implementation Plan |
 | [`docs/superpowers/plans/2026-09-06-medium-mcp.md`](../../docs/superpowers/plans/2026-09-06-medium-mcp.md) | 2026-09-06 | `active` | `implementation` | `mcp-stub-activation` | Medium MCP Implementation Plan |
 | [`docs/superpowers/plans/2026-09-06-port-bodai-reconciliation.md`](../../docs/superpowers/plans/2026-09-06-port-bodai-reconciliation.md) | 2026-09-06 | `active` | `implementation` | `mcp-stub-activation` | Port and Bodai Config Reconciliation (Plan 0b) Implementation Plan |
-| [`docs/superpowers/plans/2026-09-06-registry-manifest-migration.md`](../../docs/superpowers/plans/2026-09-06-registry-manifest-migration.md) | 2026-09-06 | `complete` | `implementation` | `mcp-stub-activation` | Registry Manifest Migration (Plan 0a) Implementation Plan |
 | [`docs/superpowers/plans/2026-09-06-scapy-mcp.md`](../../docs/superpowers/plans/2026-09-06-scapy-mcp.md) | 2026-09-06 | `active` | `implementation` | `mcp-stub-activation` | Scapy MCP Implementation Plan |
 | [`docs/superpowers/plans/2026-08-31-flowscape.md`](../../docs/superpowers/plans/2026-08-31-flowscape.md) | 2026-08-31 | `active` | `canonical` | `flowscape-v1-bootstrap` | Plan: `flowscape` v1 Bootstrap |
 | [`docs/superpowers/plans/2026-08-31-zsh-modernization.md`](../../docs/superpowers/plans/2026-08-31-zsh-modernization.md) | 2026-08-31 | `active` | `canonical` | `developer-environment` | Plan: Zsh Stack Modernization (oh-my-zsh → Sheldon/Starship) |
-| [`docs/superpowers/plans/2026-08-23-oneiric-action-kit-promotion.md`](../../docs/superpowers/plans/2026-08-23-oneiric-action-kit-promotion.md) | 2026-08-23 | `complete` | `implementation` | `oneiric-action-kit-promotion` | Oneiric Action-Kit Promotion Implementation Plan |
 | [`docs/superpowers/plans/2026-08-12-bodai-conformance.md`](../../docs/superpowers/plans/2026-08-12-bodai-conformance.md) | 2026-08-12 | `draft` | `implementation` | `bodai-conformance` | Bodai Ecosystem Conformance — Implementation Plan |
 | [`docs/superpowers/plans/2026-07-29-session-buddy-extension.md`](../../docs/superpowers/plans/2026-07-29-session-buddy-extension.md) | 2026-07-29 | `draft` | `implementation` | `session-buddy-extension` | Session-Buddy Extension Implementation Plan (Mahavishnu seam hardening) |
 | [`docs/superpowers/plans/2026-07-26-session-buddy-worktree-tools.md`](../../docs/superpowers/plans/2026-07-26-session-buddy-worktree-tools.md) | 2026-07-26 | `draft` | `implementation` | `session-buddy-worktree-tools` | Session-Buddy MCP worktree tools — Implementation Plan |
@@ -734,7 +720,6 @@ One table per store. Entries are sorted by `date` DESC, with ties broken by path
 | [`docs/superpowers/specs/2026-09-06-mcp-common-auth-primitives-design.md`](../../docs/superpowers/specs/2026-09-06-mcp-common-auth-primitives-design.md) | 2026-09-06 | `draft` | `implementation` | `mcp-common-auth-primitives` | mcp-common Authentication Primitives — Design Spec |
 | [`docs/superpowers/specs/2026-09-06-mcp-stub-activation-design.md`](../../docs/superpowers/specs/2026-09-06-mcp-stub-activation-design.md) | 2026-09-06 | `draft` | `implementation` | `mcp-stub-activation` | MCP Stub Activation — archive-org-mcp, medium-mcp, scapy-mcp |
 | [`docs/superpowers/specs/2026-08-31-zsh-modernization-design.md`](../../docs/superpowers/specs/2026-08-31-zsh-modernization-design.md) | 2026-08-31 | `active` | `canonical` | `developer-environment` | Spec: Zsh Stack Modernization (oh-my-zsh → Sheldon/Starship) |
-| [`docs/superpowers/specs/2026-08-22-oneiric-action-kit-promotion-design.md`](../../docs/superpowers/specs/2026-08-22-oneiric-action-kit-promotion-design.md) | 2026-08-22 | `complete` | `implementation` | `oneiric-action-kit-adoption` | Oneiric Action-Kit Adoption: Promotion Infrastructure |
 | [`docs/superpowers/specs/2026-08-20-mcp-deps-crackerjack-loop-design.md`](../../docs/superpowers/specs/2026-08-20-mcp-deps-crackerjack-loop-design.md) | 2026-08-20 | `active` | `canonical` | `mcp-deps-crackerjack-loop` | Design: `*-mcp` dep refresh + crackerjack loop (2026-08-20, rev2) |
 | [`docs/superpowers/specs/2026-08-18-mcp-tool-profile-adoption-design.md`](../../docs/superpowers/specs/2026-08-18-mcp-tool-profile-adoption-design.md) | 2026-08-18 | `active` | `canonical` | `mcp-tool-profile-adoption` | MCP Tool Profile Adoption Across Bodai Ecosystem — Design Spec |
 | [`docs/superpowers/specs/2026-08-12-bodai-ecosystem-consistency-design.md`](../../docs/superpowers/specs/2026-08-12-bodai-ecosystem-consistency-design.md) | 2026-08-12 | `active` | `canonical` | `bodai-conformance` | Bodai Ecosystem Consistency Mechanisms — Design Spec |
@@ -755,9 +740,6 @@ One table per store. Entries are sorted by `date` DESC, with ties broken by path
 | [`docs/superpowers/specs/2026-05-16-llm-routing-standardization-design.md`](../../docs/superpowers/specs/2026-05-16-llm-routing-standardization-design.md) | 2026-07-16 | `partial` | `implementation` | `routing-composition` | LLM Routing Standardization — Design Spec |
 | [`docs/superpowers/specs/2026-05-23-unified-iterm2-applescript-design.md`](../../docs/superpowers/specs/2026-05-23-unified-iterm2-applescript-design.md) | 2026-07-16 | `draft` | `implementation` | `terminal` | Unified iTerm2 AppleScript Integration — Design Spec |
 | [`docs/superpowers/specs/2026-05-24-dhara-serverless-design.md`](../../docs/superpowers/specs/2026-05-24-dhara-serverless-design.md) | 2026-07-16 | `draft` | `implementation` | `storage-consolidation` | Dhara Serverless Architecture — Design Specification |
-| [`docs/superpowers/specs/2026-06-19-external-integrations-design.md`](../../docs/superpowers/specs/2026-06-19-external-integrations-design.md) | 2026-07-16 | `complete` | `implementation` | `adapter-architecture` | External Integrations Design: crow-cli, OpenHands, Toad TUI |
-| [`docs/superpowers/specs/2026-06-19-wave2a-chaos-hardening-design.md`](../../docs/superpowers/specs/2026-06-19-wave2a-chaos-hardening-design.md) | 2026-07-16 | `complete` | `implementation` | `observability` | Wave 2a: Chaos Hardening Design |
-| [`docs/superpowers/specs/2026-06-19-wave2b-a2a-worker-design.md`](../../docs/superpowers/specs/2026-06-19-wave2b-a2a-worker-design.md) | 2026-07-16 | `complete` | `implementation` | `routing-composition` | Wave 2b: A2A Worker & Server Design |
 | [`docs/superpowers/specs/2026-06-21-bodai-crow-server-design.md`](../../docs/superpowers/specs/2026-06-21-bodai-crow-server-design.md) | 2026-07-16 | `draft` | `implementation` | `mcp-design` | Bodai Crow MCP Server — Design Spec |
 | [`docs/superpowers/specs/2026-06-22-adapter-runtime-observability-design.md`](../../docs/superpowers/specs/2026-06-22-adapter-runtime-observability-design.md) | 2026-07-16 | `draft` | `implementation` | `observability` | Adapter Runtime Observability v1.0 — Design |
 | [`docs/superpowers/specs/2026-06-22-anti-ai-flavor-style-sop-design.md`](../../docs/superpowers/specs/2026-06-22-anti-ai-flavor-style-sop-design.md) | 2026-07-16 | `draft` | `implementation` | `convergence-control-plane` | Anti-AI-Flavor Style SOP v1.0 — Design |
@@ -769,7 +751,6 @@ One table per store. Entries are sorted by `date` DESC, with ties broken by path
 | [`docs/superpowers/specs/2026-06-22-project-scoped-sop-evolution-design.md`](../../docs/superpowers/specs/2026-06-22-project-scoped-sop-evolution-design.md) | 2026-07-16 | `draft` | `implementation` | `convergence-control-plane` | Project-Scoped SOP Evolution v1.0 — Design |
 | [`docs/superpowers/specs/2026-06-22-three-layer-self-heal-design.md`](../../docs/superpowers/specs/2026-06-22-three-layer-self-heal-design.md) | 2026-07-16 | `draft` | `implementation` | `convergence-control-plane` | Three-Layer Self-Heal v1.0 — Design |
 | [`docs/superpowers/specs/2026-06-22-three-zone-skill-pipeline-design.md`](../../docs/superpowers/specs/2026-06-22-three-zone-skill-pipeline-design.md) | 2026-07-16 | `draft` | `implementation` | `convergence-control-plane` | Three-Zone Skill Pipeline v1.0 — Design |
-| [`docs/superpowers/specs/2026-07-14-multi-backend-pty-design.md`](../../docs/superpowers/specs/2026-07-14-multi-backend-pty-design.md) | 2026-07-16 | `complete` | `implementation` | `terminal` | Multi-Backend PTY Toolservers for Mahavishnu |
 | [`docs/superpowers/specs/2026-07-15-constellation-tui-design.md`](../../docs/superpowers/specs/2026-07-15-constellation-tui-design.md) | 2026-07-16 | `partial` | `implementation` | `terminal` | Constellation TUI: Three-Surface Dashboard for Claude Code |
 | [`docs/superpowers/specs/2026-07-15-mahavishnu-acp-server-design.md`](../../docs/superpowers/specs/2026-07-15-mahavishnu-acp-server-design.md) | 2026-07-16 | `active` | `implementation` | `mcp-design` | Mahavishnu ACP Server — Design Spec |
 | [`docs/superpowers/specs/2026-07-15-sb-checkpoint-stash-clobber-fix-design.md`](../../docs/superpowers/specs/2026-07-15-sb-checkpoint-stash-clobber-fix-design.md) | 2026-07-16 | `active` | `implementation` | `convergence-control-plane` | Session-Buddy Checkpoint Stash-Clobber Fix Design |
@@ -799,10 +780,10 @@ Counts of entries per (lifecycle, role) cell across all 24 stores. Useful as a s
 
 | Role \\ Lifecycle | draft | active | partial | shipped | complete | Total |
 |---|---|---|---|---|---|---|
-| `canonical` | 16 | 107 | · | 2 | 10 | **135** |
-| `implementation` | 134 | 44 | 11 | 34 | 36 | **259** |
-| `umbrella` | · | 1 | · | · | 3 | **4** |
-| `historical` | 11 | 3 | · | 4 | 132 | **150** |
+| `canonical` | 16 | 107 | · | 2 | 9 | **134** |
+| `implementation` | 134 | 44 | 11 | 34 | 22 | **245** |
+| `umbrella` | · | 1 | · | · | 2 | **3** |
+| `historical` | 11 | 3 | · | 4 | 129 | **147** |
 | `superseded` | · | · | · | · | 12 | **12** |
 
-| **Total** | **161** | **155** | **11** | **40** | **193** | **560** |
+| **Total** | **161** | **155** | **11** | **40** | **174** | **541** |
