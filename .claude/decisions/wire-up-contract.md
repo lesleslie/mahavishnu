@@ -51,6 +51,50 @@ to wiring evidence.
 1. **Follow the `feature-delivery-lifecycle` workflow** which now
    includes a Wiring phase between Design and Validate.
 
+## Integration contract — additional requirements (added 2026-09-14)
+
+These requirements are co-delivered with every active plan's REQ
+entries. They were added in response to the convergent pattern
+("file:line citation drift + governance doc gaps + wire-up-vs-prod
+drift") surfaced during the
+`2026-09-14-bodai-serverless-readiness-and-component-substitution`
+reviewer fanout. Reviewers flagged these as structural, not cosmetic.
+
+1. **Exact file:line citations are verified at plan-promotion time.**
+   Every `REQ-XXX-NNN` entry that references code must cite a path
+   and line number. The audit invariant is: "the file path resolves
+   AND the cited symbol is within 5 lines of the cited position."
+   Drift past 5 lines is a plan-doc bug; fix the plan, not the code
+   (unless the cited code has legitimately moved, in which case
+   update both atomically).
+
+   **CI guard test** (added Phase 9 of the serverless-readiness
+   plan): `pytest tests/test_plan_citations.py` greps every active
+   plan's REQ citations, asserts the file exists, and asserts the
+   symbol is near the cited line. Failure on promotion gates the
+   `status: draft → active` transition.
+
+2. **Cross-component imports must show direction of dependency.**
+   Every REQ that touches state shared between Bodai components
+   (Mahavishnu, Akosha, Dhara, Session-Buddy, Crackerjack) must
+   include a one-line dependency diagram (`A → B (MCP)` or
+   `A → B (Oneiric adapter)`). Akosha → Mahavishnu imports (the
+   inverted case) are forbidden except via MCP/HTTP. Phase 6 of
+   the serverless-readiness plan verifies this for every remaining
+   cross-component import.
+
+3. **Governance doc amendments are co-delivered, not follow-up.**
+   If a REQ changes a decision in `.claude/decisions/` or
+   `docs/adr/`, the amendment is part of the REQ's exit criteria.
+   The plan must include the inline diff for the amendment and the
+   amendment lands in the same commit as the REQ implementation.
+
+4. **Audit scripts are runnable end-to-end.** Every audit script
+   in `scripts/audit_*.py` must (a) run in <60s on the Mahavishnu
+   repo, (b) exit non-zero on violations, (c) emit structured
+   output with `file:line + description`. Disabled or stub audit
+   scripts are treated as missing audit posture.
+
 ## Examples
 
 **Bad** (built but not wired):

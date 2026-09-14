@@ -165,3 +165,35 @@ If Option C is later adopted (remove):
 - **SLA:** maintainer follow-up within 14 days of the proposal date. If there is no objection, the ADR moves to **Accepted**; if objections are raised, the proposal is revised or moved to **Rejected** with rationale recorded in the *Open Questions* section above.
 - **Action requested:** maintainer to address the four *Open Questions* (external consumers, deprecation timeline, field reconciliation, `get_adapter_health` parallel) before ratifying this ADR.
 - **This section is a process artifact, not a re-litigation of the decision.** Do not re-debate the options here — use the *Open Questions* list above for that.
+
+## Amendment (2026-09-14)
+
+The serverless-readiness plan (`docs/plans/2026-09-14-bodai-serverless-readiness-and-component-substitution.md`,
+status: active) extends the storage substrate with Oneiric
+adapter-based selection. ADR-013's "Option B keeps both surfaces,
+each answers a different question" framing is preserved, but the
+underlying persistence substrate assumed by Option B (Mahavishnu's
+in-process `HybridAdapterRegistry` + Dhara's durable
+`AsyncAdapterRegistry`) is now wrapped by Oneiric's
+`adapters.registry` / `adapters.storage` / `adapters.queue` layers.
+
+**Specifically:**
+- The cross-component import direction (`Mahavishnu → Dhara` for
+  state) is preserved. Option C (remove Mahavishnu's surface) is
+  not chosen by this amendment.
+- The "boundary" now sits between Mahavishnu and Oneiric (which
+  delegates to Dhara for durable state), not directly between
+  Mahavishnu and Dhara.
+- A future amendment will document the Oneiric-mediated path in a
+  follow-up ADR; ADR-013 is left as-is for the audit trail.
+
+**No code changes are required by this amendment.** The amendment
+extends the decision's *context* without changing the *decision*.
+The two surfaces (Mahavishnu's `adapter_list` / `adapter_metadata`
++ Dhara's `list_adapters` / `get_adapter`) continue to coexist
+under Option B. The Oneiric layer is additive infrastructure, not
+a replacement.
+
+See ADR 017 (proposed, `docs/adr/017-oneiric-shared-persistence-substrate.md`)
+for the cross-substrate persistence architecture this amendment
+anticipates.

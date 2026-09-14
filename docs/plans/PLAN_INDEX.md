@@ -463,6 +463,7 @@ One table per store. Entries are sorted by `date` DESC, with ties broken by path
 
 | Path | Date | Status | Role | Kind | Topic | Title |
 |---|---|---|---|---|---|---|
+| [`docs/adr/017-oneiric-shared-persistence-substrate.md`](../../docs/adr/017-oneiric-shared-persistence-substrate.md) | 2026-09-14 | `proposed` | `canonical` | `decision` | `persistence-substrate` | ADR 017: Oneiric as the shared persistence substrate for Bodai |
 | [`docs/adr/0016-multi-agent-review.md`](../../docs/adr/0016-multi-agent-review.md) | 2026-09-06 | `complete` | `historical` | `decision` | `scapy-mcp-integration-review` | ADR 0016 Multi-Agent Review — Findings |
 | [`docs/adr/0016-scapy-mcp-integration.md`](../../docs/adr/0016-scapy-mcp-integration.md) | 2026-09-06 | `complete` | `canonical` | `decision` | `mcp-enrichment-posture` | ADR 0016 scapy-mcp Client-Mode Enrichment Integration |
 | [`docs/adr/015-multi-agent-review.md`](../../docs/adr/015-multi-agent-review.md) | 2026-08-23 | `complete` | `historical` | `decision` | `storage-abstraction-review` | ADR 015 Multi-Agent Review — Findings |
@@ -514,7 +515,7 @@ One table per store. Entries are sorted by `date` DESC, with ties broken by path
 |---|---|---|---|---|---|---|
 | [`docs/followups/2026-09-14-akosha-hnsw-on-duckdb.md`](../../docs/followups/2026-09-14-akosha-hnsw-on-duckdb.md) | 2026-09-14 | `draft` | `historical` | `audit` | `akosha-hnsw-on-duckdb` | Akosha: HNSW Index Creation Fails on DuckDB |
 | [`docs/followups/2026-09-14-audit-orphans-residual-caller-detection.md`](../../docs/followups/2026-09-14-audit-orphans-residual-caller-detection.md) | 2026-09-14 | `part-implemented` | `implementation` |  | `audit-orphans-residual-caller-detection` | Followup — `audit_orphans.py` residual caller-detection coverage |
-| [`docs/followups/2026-09-14-merge-semantic-duration-ms-instrumentation.md`](../../docs/followups/2026-09-14-merge-semantic-duration-ms-instrumentation.md) | 2026-09-14 | `part-implemented` | `implementation` |  | `merge-semantic-duration-ms-instrumentation` | Followup — `merge.semantic.duration_ms` OTel histogram |
+| [`docs/followups/2026-09-14-merge-semantic-duration-ms-instrumentation.md`](../../docs/followups/2026-09-14-merge-semantic-duration-ms-instrumentation.md) | 2026-09-14 | `complete` | `implementation` |  | `merge-semantic-duration-ms-instrumentation` | Followup — `merge.semantic.duration_ms` OTel histogram |
 | [`docs/followups/2026-09-10-changepoint-two-stage-polish.md`](../../docs/followups/2026-09-10-changepoint-two-stage-polish.md) | 2026-09-10 | `active` | `implementation` |  | `changepoint-two-stage-polish` | Followups — Tier 1 changepoint two-stage polish |
 | [`docs/followups/2026-09-10-tier2-hyperbolic-embeddings.md`](../../docs/followups/2026-09-10-tier2-hyperbolic-embeddings.md) | 2026-09-10 | `active` | `deferred` |  | `tier2-hyperbolic-embeddings` | Tier 2 Follow-up: Hyperbolic Embeddings for Session-Buddy Code Graphs |
 | [`docs/followups/2026-09-10-tier2-multi-metric-drift.md`](../../docs/followups/2026-09-10-tier2-multi-metric-drift.md) | 2026-09-10 | `active` | `deferred` |  | `tier2-multi-metric-drift` | Tier 2 Follow-up: Multi-Metric Drift Detection |
@@ -549,9 +550,10 @@ One table per store. Entries are sorted by `date` DESC, with ties broken by path
 
 | Path | Date | Status | Role | Kind | Topic | Title |
 |---|---|---|---|---|---|---|
+| [`docs/plans/2026-09-14-bodai-serverless-readiness-and-component-substitution.md`](2026-09-14-bodai-serverless-readiness-and-component-substitution.md) | 2026-09-14 | `active` | `implementation` |  | `serverless-readiness-and-substitution` | Revisions (2026-09-14, post-research) |
 | [`docs/plans/2026-09-14-common-mcp-client-transport-unification.md`](2026-09-14-common-mcp-client-transport-unification.md) | 2026-09-14 | `active` | `umbrella` |  | `mcp-transport-unification` | CommonMCPClient Transport Unification Across Bodai (v2) |
 | [`docs/plans/2026-09-13-migrate-no-frontmatter-plans.md`](2026-09-13-migrate-no-frontmatter-plans.md) | 2026-09-13 | `complete` | `implementation` |  | `frontmatter-migration-completion` | Migrate 39 No-Frontmatter Plans to Schema v1.1 |
-| [`docs/plans/2026-09-12-finish-partial-implementations.md`](2026-09-12-finish-partial-implementations.md) | 2026-09-12 | `partial` | `implementation` |  | `close-genuine-partial-implementations` | Plan: Finish Genuine Partial Implementations (revision 3, post-re-review) |
+| [`docs/plans/2026-09-12-finish-partial-implementations.md`](2026-09-12-finish-partial-implementations.md) | 2026-09-12 | `complete` | `implementation` |  | `close-genuine-partial-implementations` | Plan: Finish Genuine Partial Implementations (revision 3, post-re-review) |
 | [`docs/plans/PLAN_AUDIT_2026-09-12.md`](PLAN_AUDIT_2026-09-12.md) | 2026-09-12 | `active` | `implementation` | `audit` | `plan-audit-2026-09-12` | Plan Audit — 2026-09-12 |
 | [`docs/plans/2026-09-10-bodai-math-initiatives-tier1.md`](2026-09-10-bodai-math-initiatives-tier1.md) | 2026-09-10 | `shipped` | `implementation` |  | `mathematical-paradigms-orchestration` | Bodai Math Initiatives — Tier 1 Implementation Plan (v3) |
 | [`docs/plans/2026-09-10-settle-semantic-merge.md`](2026-09-10-settle-semantic-merge.md) | 2026-09-10 | `shipped` | `implementation` |  | `settle-semantic-merge` | Settle Semantic Merge — mergiraf opt-in + git-merge-tree diagnostics |
@@ -860,12 +862,13 @@ Reports on past work (e.g., plan-audit documents). The audit itself is not a wor
 | [`docs/followups/2026-09-14-akosha-hnsw-on-duckdb.md`](../../docs/followups/2026-09-14-akosha-hnsw-on-duckdb.md) | 2026-09-14 | Akosha: HNSW Index Creation Fails on DuckDB |
 | [`docs/plans/PLAN_AUDIT_2026-09-12.md`](PLAN_AUDIT_2026-09-12.md) | 2026-09-12 | Plan Audit — 2026-09-12 |
 
-### `decision` (38 entries)
+### `decision` (39 entries)
 
 Durable decision records — covers both ADRs in `docs/adr/` and repo-local policies in `.claude/decisions/`.
 
 | Path | Date | Title |
 |---|---|---|
+| [`docs/adr/017-oneiric-shared-persistence-substrate.md`](../../docs/adr/017-oneiric-shared-persistence-substrate.md) | 2026-09-14 | ADR 017: Oneiric as the shared persistence substrate for Bodai |
 | [`.claude/decisions/worktree-cleanup-policy.md`](../../.claude/decisions/worktree-cleanup-policy.md) | 2026-09-07 | Worktree Cleanup Policy |
 | [`docs/adr/0016-multi-agent-review.md`](../../docs/adr/0016-multi-agent-review.md) | 2026-09-06 | ADR 0016 Multi-Agent Review — Findings |
 | [`docs/adr/0016-scapy-mcp-integration.md`](../../docs/adr/0016-scapy-mcp-integration.md) | 2026-09-06 | ADR 0016 scapy-mcp Client-Mode Enrichment Integration |
@@ -905,7 +908,7 @@ Durable decision records — covers both ADRs in `docs/adr/` and repo-local poli
 | [`docs/adr/013-mahavishnu-dhara-adapter-tool-boundary.md`](../../docs/adr/013-mahavishnu-dhara-adapter-tool-boundary.md) | 2026-07-16 | ADR 013: Adapter Tool Boundary Between Mahavishnu and Dhara |
 | [`docs/adr/014-honcho-peer-model-routing-precedence.md`](../../docs/adr/014-honcho-peer-model-routing-precedence.md) | 2026-07-16 | ADR 014: Honcho Peer-Model Routing Precedence |
 
-### `plan` (588 entries)
+### `plan` (589 entries)
 
 Work items. The bulk of the registry — see the per-store tables above for full detail with status/role/topic.
 
@@ -918,9 +921,9 @@ Counts of entries per (lifecycle, role) cell across all 24 stores. Useful as a s
 | Role \\ Lifecycle | draft | active | partial | shipped | complete | Total |
 |---|---|---|---|---|---|---|
 | `canonical` | 19 | 102 | 1 | 2 | 13 | **137** |
-| `implementation` | 148 | 60 | 7 | 36 | 36 | **287** |
+| `implementation` | 148 | 61 | 6 | 36 | 38 | **289** |
 | `umbrella` | · | 2 | · | · | 2 | **4** |
 | `historical` | 12 | 3 | · | 4 | 129 | **148** |
 | `superseded` | · | · | · | · | 13 | **13** |
 
-| **Total** | **179** | **167** | **8** | **42** | **193** | **589** |
+| **Total** | **179** | **168** | **7** | **42** | **195** | **591** |
