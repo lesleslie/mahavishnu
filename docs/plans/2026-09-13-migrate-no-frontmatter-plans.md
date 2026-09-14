@@ -1,5 +1,5 @@
 ---
-status: active
+status: complete
 role: implementation
 kind: plan
 date: 2026-09-13
@@ -322,3 +322,57 @@ The migration is considered "done enough" when:
   the prior partial migration this plan completes.
 * commit `99dbb966 docs(plans): reflow 9 single-line-after-heading frontmatter blocks (2026-09-13)`
   — companion fix to single-line layout (separate from this plan).
+
+## Re-Review Status (2026-09-13)
+
+**Status**: `complete` — every file in the inventory migrated; PLAN_INDEX
+byte-stable across two regenerator runs; no newly-orphaned symbols.
+
+**Phase 1 — migrator landed.** `scripts/migrate_frontmatter.py` (commit
+`8d12cad8`) walks the four plan stores, detects legacy `**Status:** <word>`
+and bare `Status: <word>` markers (code-block-aware, first 50 lines),
+falls back to filename date, and applies the schema's § Legacy Mapping
+table. Idempotent (`has_frontmatter` looks for the closing `---` fence
+in the first 2000 chars — was 200, fixed during Phase 1 because the
+Cluster A plans have frontmatter that closes at char ~280).
+
+**Phase 2 — apply landed per-store**, four commits:
+
+| Commit | Store | Files |
+|---|---|---|
+| `5307fbab` | `docs/superpowers/plans/` | 22 (all `status: active`) |
+| `76b7bacf` | `docs/superpowers/specs/` | 15 (all `status: draft`) |
+| `d56651a2` | `docs/plans/` | 1 (`status: active`) |
+| `c3d5f513` | `docs/followups/` | 1 (`status: active`) |
+
+**39 files migrated, total**. The single detectable legacy status
+(`Status: Draft (pending user review)` on
+`2026-08-03-bodai-openclaw-hermes-inspired-portfolio-design.md`) was
+correctly mapped to `status: draft`. The other 38 took store defaults
+per the heuristic in the plan.
+
+**Phase 3 — validation landed**:
+
+* `scripts/audit_orphans.py` — no newly-orphaned symbols.
+* `scripts/regenerate_plan_index.py` (×2) — byte-stable diff. PLAN_INDEX
+  now lists all 39 newly-migrated files in their appropriate store tables.
+* Crackerjack `documentation_cleanup` hook — passed on every Phase 2
+  commit (crackerjack auto-modified some files during the commit run;
+  those `create mode 100644` lines in commits `5307fbab` and `d56651a2`
+  reflect pre-existing dirty files in the working tree that the hook
+  auto-staged, not migration artifacts).
+
+**Inventory delta**. The plan was authored against a 40-file estimate.
+Two reductions happened before the migrator ran: fastmcp-4-upgrade.md
+got full frontmatter during the Cluster A audit (commit `fab7cf1a`,
+removing 1 from `docs/superpowers/plans/`), and the companion
+single-line reflow (commit `99dbb966`) cleared 9 single-line
+`## status:` files (already out of scope, but worth noting). One
+addition: `2026-09-07-worktree-cleanup-design.md` was created between
+the plan authoring and the migrator build (sibling of the
+already-migrated `2026-09-07-worktree-cleanup.md`). Net: 38 → 39.
+
+**No follow-ups filed.** Every migrated file has parseable
+`---\n...\n---` frontmatter; `regenerate_plan_index.py` is now the
+single source of truth for the index; the schema's v1.1 lifecycle
+vocabulary is uniformly applied across the four plan stores.
