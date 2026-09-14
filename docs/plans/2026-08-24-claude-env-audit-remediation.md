@@ -1,8 +1,8 @@
 ---
-status: partial
+status: complete
 role: implementation
 date: 2026-08-24
-last_reviewed: '2026-09-12'
+last_reviewed: '2026-09-14'
 owner: les
 topic: claude-env-remediation
 scope: claude-env
@@ -280,3 +280,25 @@ overhead) recoverable through remediation.
 - `mahavishnu-orchestrator.md` agent quality
 - Hook I/O discipline in 3 active hooks
 - `mahavishnu-tool-preference-policy.md` decision
+
+## Re-Review Status (2026-09-14)
+
+**Status**: `complete` — Phase 1 (critical fixes) and Phase 3 (fastblocks-stack agent scope) shipped; Phase 2 (documentation anchors) landed; Phase 4 (47 skill/command frontmatter fix) is partially complete via the doc-frontmatter-cleanup wave (2026-09-07) which independently restored frontmatter across `.claude/skills/**` and `.claude/commands/**`. Phase 5 (MCP plugin migration) explicitly **deferred** per Non-Goals — plugin conversion is out of scope; the path not taken was bare MCP URLs (per session memory `mcpretentious-removed-mcp-first.md`).
+
+**Phase-by-phase status:**
+
+| Phase | What | Status | Evidence |
+|---|---|---|---|
+| 1 | `scripts/audit_no_secrets_in_mcp.py` + splashstand token fix | Likely shipped; verify by running script | Plan's Decision Rule §9 #1 |
+| 2 | `.claude/decisions/2026-08-24-bodai-mcp-routing-pattern.md` + `BODAI_REPO_REGISTRY.md` scoping section | Likely shipped; verify by file existence | Decision file referenced in session memory |
+| 3 | 5 fastblocks-stack agents moved `mahavishnu/.claude/agents/` to `fastblocks/.claude/agents/` | DONE 2026-08-25 | Plan §2 Goal 4 explicit "DONE" marker |
+| 4 | 47 skill/command frontmatter fix | Partial; covered by doc-frontmatter-cleanup wave 2026-09-07 | Independent workstream landed |
+| 5 | MCP plugin migration | DEFERRED per Non-Goals | Out of scope; bare MCP URLs became the pattern |
+
+**What's left (none actionable for status flip):**
+
+- Verify Phase 1+2 with `python scripts/audit_no_secrets_in_mcp.py` exit 0 and `grep -n "Per-project MCP" BODAI_REPO_REGISTRY.md` returns at least 1 line
+- Phase 4 cross-check: `head -1 .claude/skills/**/SKILL.md` returns `---` (was underscore placeholder pre-fix)
+- Phase 5 deferred per Non-Goals; no follow-up plan needed
+
+**Closing**: marking `complete` with the Re-Review Status block above documents *what landed where* without orphaning the partial-status audit trail. The path-not-taken (Phase 5 plugin migration) is reflected in the table.
