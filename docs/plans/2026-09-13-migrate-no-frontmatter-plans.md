@@ -8,7 +8,7 @@ superseded_by: null
 topic: frontmatter-migration-completion
 ---
 
-# Migrate 40 No-Frontmatter Plans to Schema v1.1
+# Migrate 38 No-Frontmatter Plans to Schema v1.1
 
 ## 1. Outcome
 
@@ -19,7 +19,7 @@ result, `scripts/regenerate_plan_index.py` lists them all in `docs/plans/PLAN_IN
 
 **Success signal**: `uv run python scripts/regenerate_plan_index.py` runs
 cleanly (no `ScannerError`), the per-store tables grow from the current
-counts to include all 40, and a second `regenerate_plan_index.py` run
+counts to include all 38, and a second `regenerate_plan_index.py` run
 on a clean checkout produces an identical `PLAN_INDEX.md` byte-for-byte.
 
 ## 2. Goals
@@ -30,7 +30,8 @@ on a clean checkout produces an identical `PLAN_INDEX.md` byte-for-byte.
    for default `plan`), `date`, `last_reviewed`. Optional `topic`,
    `blocks_on`, `superseded_by` set where discoverable.
 3. `regenerate_plan_index.py` enumerates every migrated file in the
-   appropriate store table.
+   appropriate store table (post-migration count: 73+69+42+28 plus
+   the 38 newly-migrated = 250 in-scope files).
 4. Each migrated file's `status:` reflects its lifecycle stage as
    best we can determine from body content (no "**Status:** Approved"
    inside a code block mistaken for a real status, no schematic
@@ -54,16 +55,21 @@ on a clean checkout produces an identical `PLAN_INDEX.md` byte-for-byte.
 
 ## 4. Current Findings
 
-### Inventory — 40 files without parseable `---\n...\n---` frontmatter
+### Inventory — 38 files without parseable `---\n...\n---` frontmatter
 
 Distribution by store (verified 2026-09-13):
 
 | Store                          | Count |
 |--------------------------------|-------|
-| `docs/superpowers/plans/`      | 23    |
+| `docs/superpowers/plans/`      | 22    |
 | `docs/superpowers/specs/`      | 14    |
 | `docs/plans/`                  | 1     |
 | `docs/followups/`              | 1     |
+
+Note: 2026-09-06 fastmcp-4-upgrade.md was migrated (added full v1.1
+frontmatter with status: complete) as part of the Cluster A audit
+work that landed in commit `fab7cf1a`. So this plan's original
+estimate of 23 superpowers/plans/ files is now 22.
 
 These files were missed by commit `0a3ec0b0 feat(frontmatter): migrate
 217 docs to v1 schema` — that migration was incomplete (a known drift:
@@ -71,21 +77,31 @@ see session memory `drift-bundling-recovery.md`).
 
 ### Detectable inline status
 
-A regex sweep for legacy markers (`**Status:** <word>`) found **1** file
-with an explicit legacy status:
+A regex sweep for legacy markers (`**Status:** <word>` and bare
+`Status: <word>` variants) found **1** file with an explicit legacy
+status:
 
 ```
 docs/superpowers/specs/2026-08-03-bodai-openclaw-hermes-inspired-portfolio-design.md: Draft
 ```
 
-The other 39 require status inference from contextual signals (date,
+The other 37 require status inference from contextual signals (date,
 body content, sibling designs).
+
+### Single-line frontmatter — already resolved
+
+The companion reflow of "single-line-after-heading" `## status: ...`
+files (originally 9, tracked as a separate concern) has already
+landed in commit `99dbb966 docs(plans): reflow 9 single-line-after-heading
+frontmatter blocks (2026-09-13)`. Live count: 0 such files remain.
+The migrator therefore only needs to handle files with no frontmatter
+of any kind, not the single-line layout variant.
 
 ### Common body patterns
 
-Three templates are visible across these 40 files:
+Three templates are visible across these 38 files:
 
-1. **"Implementation Plan" template** (the most common, ~30 files):
+1. **"Implementation Plan" template** (the most common, ~22 files):
    ```
    # <Title>
    > **For agentic workers:** REQUIRED SUB-KILL: Use superpowers:subagent-driven-development
@@ -94,26 +110,31 @@ Three templates are visible across these 40 files:
    **Tech Stack:** …
    ```
    Status heuristic: in code body discussing implementation phases
-   that are not yet executed → `status: active`.
+   that are not yet executed → `status: active`. If body explicitly
+   marks phases complete (Phase 1/2/3 done) or references a shipped
+   version → `status: complete`.
 
-2. **"Design Spec" template** (~7 files in `docs/superpowers/specs/`):
+2. **"Design Spec" template** (~14 files in `docs/superpowers/specs/`):
    ```
    # <Title>
-   **Status:** Draft (or Approved, or absent)
-   **Date:** YYYY-MM-DD
-   **Author:** …
+   Status: Draft (or Approved, or absent)
+   Date: YYYY-MM-DD
+   Author: …
    ```
-   The `**Status:**` field is the most reliable signal here; default
-   to `status: active` if the status line says "Draft (awaiting user
-   review)" or is missing.
+   The `Status:` field (with or without `**` markers) is the most
+   reliable signal here; default to `status: draft` if the status
+   line says "Draft (awaiting user review)" or is missing. The
+   `-design.md` suffix is a strong hint that this file is the design
+   peer of an implementation plan; specs default to `draft` until
+   their paired implementation migrates with `active` or `complete`.
 
-3. **"Note/Prose" template** (1-2 files):
+3. **"Note/Prose" template** (1-2 files, mostly the followup):
    ```
    # <Title>
    One-line summary: …
    ```
-   Default to `status: draft` unless body content indicates shipped
-   work.
+   Default to `status: active` (most followups track active work) unless
+   body content indicates shipped work, in which case `complete`.
 
 ## 4.5 Requirements
 
@@ -140,18 +161,22 @@ requirements:
 * For each `.md` file, parses `---\n...\n---` if present (skip if
   already valid).
 * Otherwise extracts legacy fields using:
-  - `**Status:** <word>` (Status line within first 50 lines, not
-    inside a code block)
-  - `**Date:** YYYY-MM-DD`
-  - `**Author:** <name>`
+  - `**Status:** <word>` or `Status: <word>` (Status line within first
+    50 lines, not inside a code block — both marker styles are seen
+    in the corpus; e.g., `2026-08-03-bodai-openclaw-hermes-inspired-portfolio-design.md`
+    uses bare `Status: Draft` without `**`)
+  - `**Date:** YYYY-MM-DD` or `Date: YYYY-MM-DD`
+  - `**Author:** <name>` or `Author: <name>`
   - The H1 title (becomes the title in PLAN_INDEX, already inferable)
-* Applies heuristic status mapping:
-  - `**Status:** Approved (brainstorming complete; ready for writing-plans)`
-    → `status: active` (audit-stamp equivalent)
-  - `**Status:** Draft (awaiting user review)`
-    → `status: draft`
-  - `**Status:** Shipped` or `Implemented`
-    → `status: complete`
+* Applies heuristic status mapping per the schema's legacy table
+  (`docs/schemas/document-frontmatter-v1.md` § Legacy Mapping):
+  - `Accepted` / `Approved` / `In progress` / `active` → `status: active`
+  - `Proposed` / `Draft` / `brainstormed` / `DEFERRED` → `status: draft`
+  - `Complete` / `completed` / `Delivered` → `status: complete` (or
+    `shipped` if body verifies production deployment)
+  - `Shipped` / `SHIPPED` → `status: shipped`
+  - `Resolved` → `status: complete`, role `historical`
+  - `Superseded` → `status: complete`, role `superseded`
   - absent
     → `status: active` for `docs/superpowers/plans/` (implementation
       default); `status: draft` for `docs/superpowers/specs/`
@@ -190,14 +215,14 @@ a per-file report of proposed changes without writing.
 
 ### Phase 2: apply the migration, store-by-store
 
-**Goal:** Each store's 40 files migrate cleanly with batched
+**Goal:** Each store's 38 files migrate cleanly with batched
 rationale-per-store.
 
 **Tasks:**
 
 1. Run `migrate_frontmatter.py` against `docs/superpowers/plans/`
-   (23 files). Commit as
-   `docs(scripts): migrate 23 superpowers/plans/ to v1 schema`,
+   (22 files). Commit as
+   `docs(scripts): migrate 22 superpowers/plans/ to v1 schema`,
    body listing each filename + heuristic result.
 2. Run against `docs/superpowers/specs/` (14 files). Same.
 3. Run against `docs/plans/` (1 file). Same.
@@ -271,7 +296,7 @@ validator.
 | Plan body's literal `**Status:** active` from a tutorial becomes `status: active` inadvertently | Low | Restrict detection to first 50 lines; in-doc contexts past line 50 are unreviewed |
 | Status inflation — promoting files to `active` when intent was `draft` | Medium | Conservative default for `docs/superpowers/specs/` is `draft`, not `active`. Audit trail in commit body. |
 | Scripted field values that are later hand-edited could diverge from truth | Low | Regenerate tracker doesn't enforce; just lists. Audit catches during review. |
-| Re-running on `## status: ...` single-line files (existing 9) | Low | The pre-existing reflow script (commit 99dbb966) already handles those; the migrator only touches files lacking `---\n...---` |
+| Re-running on `## status: ...` single-line files | n/a | The pre-existing reflow script (commit 99dbb966) already handled those; live count is 0 such files. Migrator only touches files lacking `---\n...---` of any kind. |
 
 ## 9. Decision Rule
 
@@ -280,8 +305,8 @@ pick `draft` if uncertain. `active` is a downward-promotion from
 "implicit active" but our schema doesn't carry "implicit."
 
 The migration is considered "done enough" when:
-1. Inventory count = 0 (all 40 migrated).
-2. `regenerate_plan_index.py` lists all 40 in the appropriate store
+1. Inventory count = 0 (all 38 migrated).
+2. `regenerate_plan_index.py` lists all 38 in the appropriate store
    table.
 3. PLAN_INDEX regen is byte-stable across two runs.
 
