@@ -626,3 +626,30 @@ class TestAggregationFilterBehavior:
         assert filter.status == TaskStatus.IN_PROGRESS
         assert filter.priority == TaskPriority.HIGH
         assert filter.exclude_completed is True
+
+
+# ---------------------------------------------------------------------------
+# CrossRepoAggregator.get_repos_needing_attention (Phase 6 closure)
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_get_repos_needing_attention_returns_empty_when_no_repos(
+    mock_task_store: AsyncMock, mock_repo_manager: MagicMock
+) -> None:
+    """Empty task list yields no attention-needing repos."""
+    mock_task_store.list.return_value = []
+    aggregator = CrossRepoAggregator(mock_task_store, mock_repo_manager)
+    assert await aggregator.get_repos_needing_attention() == []
+
+
+@pytest.mark.asyncio
+async def test_get_repos_needing_attention_respects_limit(
+    mock_task_store: AsyncMock, mock_repo_manager: MagicMock
+) -> None:
+    """Limit argument caps the returned list length."""
+    mock_task_store.list.return_value = []
+    aggregator = CrossRepoAggregator(mock_task_store, mock_repo_manager)
+    result = await aggregator.get_repos_needing_attention(limit=3)
+    assert isinstance(result, list)
+    assert len(result) <= 3
