@@ -21,6 +21,7 @@ from scripts.audit_orphans import (
     _add_cross_module_all_refs,
     _build_defining_file_map,
     collect_references,
+    find_registrations,
 )
 
 if TYPE_CHECKING:
@@ -183,3 +184,50 @@ def test_collect_references_respects_excludes(tmp_path: Path) -> None:
     assert foo_defining not in refs["FooBar"]
     # scripts/ is excluded so neither walker nor resolver touches it.
     assert scripts_other not in refs["FooBar"]
+
+
+# ---------------------------------------------------------------------------
+# pytest fixture recognition (Phase 6 closure for test-finder noise)
+# ---------------------------------------------------------------------------
+
+
+def test_find_registrations_includes_pytest_fixture(tmp_path: Path) -> None:
+    """A function decorated with @pytest.fixture is registered.
+
+    Phase 6: pytest fixtures are discovered by pytest, not by Name
+    references in the scanned tree. Treating them as orphan is a
+    false positive that floods the report with every fixture named
+    ``fake_*``, ``sample_*``, ``seed_*``, etc.
+    """
+    _write(
+        tmp_path,
+        "tests/conftest.py",
+        (
+            "import pytest\n"
+            "\n"
+            "@pytest.fixture\n"
+            "def fake_embeddings_service():\n"
+            "    return object()\n"
+        ),
+    )
+
+    registered = find_registrations(tmp_path / "tests" / "conftest.py")
+    assert "fake_embeddings_service" in registered
+
+
+def test_find_registrations_includes_pytest_fixture_with_args(tmp_path: Path) -> None:
+    """Qualified ``@pytest.fixture(scope="module")`` also counts."""
+    _write(
+        tmp_path,
+        "tests/conftest.py",
+        (
+            "import pytest\n"
+            "\n"
+            "@pytest.fixture(scope=\"module\")\n"
+            "def shared_resource():\n"
+            "    return object()\n"
+        ),
+    )
+
+    registered = find_registrations(tmp_path / "tests" / "conftest.py")
+    assert "shared_resource" in registered

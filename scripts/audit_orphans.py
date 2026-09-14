@@ -84,6 +84,18 @@ FRAMEWORK_DECORATORS: frozenset[str] = frozenset(
         "compose",
         "property",
         "cached_property",
+        # pytest fixtures (Phase 6 closure for audit_orphans test-finder
+        # noise): @pytest.fixture on a function in a tests/ path makes
+        # pytest discover it without explicit Name references in the
+        # scanned tree, so the same anti-orphan reasoning that loop-3
+        # applied to test_ functions applies here. Without this, every
+        # fixture named e.g. ``fake_embeddings_service`` or
+        # ``sample_event_data`` is reported as orphan when --include-tests
+        # is set. Bare ``@fixture`` (pytest-decorator-as-attribute on a
+        # pytest fixture subclass) and qualified forms
+        # ``@pytest.fixture(scope="module")`` both match via the
+        # ``_FRAMEWORK_DECORATOR_TAIL`` regex below.
+        "fixture",
     }
 )
 
