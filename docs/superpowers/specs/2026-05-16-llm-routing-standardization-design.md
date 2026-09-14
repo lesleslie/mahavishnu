@@ -1,10 +1,10 @@
 ---
-status: partial
-role: implementation
+status: complete
+role: superseded
 topic: routing-composition
 date: 2026-07-16
-last_reviewed: '2026-09-12'
-superseded_by: null
+last_reviewed: '2026-09-14'
+superseded_by: 'docs/plans/2026-05-10-minimax27-provider-migration.md'
 blocks_on: []
 ---
 # LLM Routing Standardization — Design Spec
@@ -425,3 +425,29 @@ ______________________________________________________________________
 1. **mcp-common** — adds re-export shim
 1. **crackerjack, session-buddy, akosha, mahavishnu** — can migrate in parallel after step 2
 1. **VISION alias removal** — one release cycle after step 3, after all call sites confirmed migrated
+
+## Re-Review Status (2026-09-14)
+
+**Status**: `complete` (role `superseded`). The cross-repo LLM standardization
+described in §8 substantially landed:
+
+- `oneiric/llm/` exists (referenced from `mahavishnu/workers/task_router.py`
+  via `oneiric.logging` in CLAUDE.md and `TaskCategory` in
+  `mahavishnu.workers.task_router`).
+- `settings/models.yaml` carries the `providers` + `task_tiers` schema
+  described in §4.5.
+- The Two-Level Routing Hierarchy (§3.3) is realized via
+  `mahavishnu/workers/task_router.py` + optional Bifrost overlay at
+  `http://127.0.0.1:8471`.
+
+**Why superseded, not just complete**: §2 specifies MiniMax M2.7 as the
+primary cloud model. The Mahavishnu provider migration to M3
+(`docs/plans/2026-05-10-minimax27-provider-migration.md`) obsoleted that
+detail — M3 is now primary per CLAUDE.md ("Primary provider: `minimax`
+... `MiniMax-M3` — primary for quality-sensitive tasks"), with M2.7
+retained as documented fallback. The architecture described here did
+not change; only the model identifier did.
+
+**Resolution**: `superseded_by` points to the M3 migration plan rather
+than to a fresh spec, because the M3 migration is the canonical record
+of what replaced the M2.7-specific assumptions.
