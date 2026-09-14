@@ -5,6 +5,7 @@ encode the random node field — stable across rapid same-millisecond captures
 (low collision probability). The first 6 chars encode the timestamp + version
 portion of UUID v4, which is predictable and can collide.
 """
+
 from __future__ import annotations
 
 

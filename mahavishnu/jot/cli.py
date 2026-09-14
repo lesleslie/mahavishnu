@@ -216,7 +216,9 @@ def cmd_drain(
 
     path = log_path or default_log_path()
     plan = drain_module.drain_plan(
-        query=query, limit=limit, include_in_flight=include_in_flight,
+        query=query,
+        limit=limit,
+        include_in_flight=include_in_flight,
     )
     if plan.error is not None:
         print(
@@ -231,14 +233,18 @@ def cmd_drain(
         sid = cand.short_id
         text = cand.text[:60]
         action = (
-            "retry" if cand.dispatch_state is DispatchState.FAILED else
-            "skip" if cand.deferred_until is not None and cand.deferred_until > now_ms_ else
-            "dispatch"
+            "retry"
+            if cand.dispatch_state is DispatchState.FAILED
+            else "skip"
+            if cand.deferred_until is not None and cand.deferred_until > now_ms_
+            else "dispatch"
         )
         reason = (
-            "previous dispatch failed" if action == "retry" else
-            "deferred until later" if action == "skip" else
-            "open and ready"
+            "previous dispatch failed"
+            if action == "retry"
+            else "deferred until later"
+            if action == "skip"
+            else "open and ready"
         )
         print(f"  {sid}  [{action}]  {text}  ({reason})")
     # Note: log_path is unused here since drain_plan reads from the default
@@ -259,9 +265,7 @@ def cmd_dispatch(*, log_path: Path | None = None, handle: str) -> None:
         print(f"error: {exc}", file=sys.stderr)
         raise SystemExit(1) from exc
     try:
-        asyncio.run(
-            drain_module.dispatch_jot(s.short_id, dispatched_from="cli")
-        )
+        asyncio.run(drain_module.dispatch_jot(s.short_id, dispatched_from="cli"))
     except JotError as exc:
         print(f"error: {exc}", file=sys.stderr)
         raise SystemExit(1) from exc
@@ -289,7 +293,9 @@ def cmd_defer(
     try:
         asyncio.run(
             drain_module.defer_jot(
-                s.short_id, until_ms=until_ms, reason=reason,
+                s.short_id,
+                until_ms=until_ms,
+                reason=reason,
             )
         )
     except JotError as exc:
@@ -316,9 +322,7 @@ def cmd_delete(
         print(f"error: {exc}", file=sys.stderr)
         raise SystemExit(1) from exc
     try:
-        asyncio.run(
-            drain_module.delete_jot(s.short_id, reason=reason)
-        )
+        asyncio.run(drain_module.delete_jot(s.short_id, reason=reason))
     except JotError as exc:
         print(f"error: {exc}", file=sys.stderr)
         raise SystemExit(1) from exc
@@ -338,9 +342,7 @@ def cmd_retry(*, log_path: Path | None = None, handle: str) -> None:
         print(f"error: {exc}", file=sys.stderr)
         raise SystemExit(1) from exc
     try:
-        asyncio.run(
-            drain_module.retry_dispatch(s.short_id, dispatched_from="cli")
-        )
+        asyncio.run(drain_module.retry_dispatch(s.short_id, dispatched_from="cli"))
     except JotError as exc:
         print(f"error: {exc}", file=sys.stderr)
         raise SystemExit(1) from exc

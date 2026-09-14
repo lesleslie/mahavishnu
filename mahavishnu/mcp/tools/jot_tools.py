@@ -233,7 +233,9 @@ def jot_drain(
     from mahavishnu.jot import drain as _drain
 
     plan = _drain.drain_plan(
-        query=query, limit=limit, include_in_flight=include_in_flight,
+        query=query,
+        limit=limit,
+        include_in_flight=include_in_flight,
     )
     proposals = list(plan.action_proposals) if hasattr(plan, "action_proposals") else []
     return DrainPlanDict(
@@ -261,15 +263,15 @@ def jot_dispatch(handle: str) -> DispatchResultDict:
 
 
 def jot_defer(
-    handle: str, until_ms: int, reason: str | None = None,
+    handle: str,
+    until_ms: int,
+    reason: str | None = None,
 ) -> JotSummaryDict:
     """Snooze a jot until ``until_ms``. Rejects ``until_ms <= now_ms``."""
     from mahavishnu.jot import drain as _drain
 
     return _summary_dict(
-        asyncio.run(
-            _drain.defer_jot(handle=handle, until_ms=until_ms, reason=reason)
-        )
+        asyncio.run(_drain.defer_jot(handle=handle, until_ms=until_ms, reason=reason))
     )
 
 
@@ -277,9 +279,7 @@ def jot_delete(handle: str, reason: str | None = None) -> JotSummaryDict:
     """Soft delete (audit log retained)."""
     from mahavishnu.jot import drain as _drain
 
-    return _summary_dict(
-        asyncio.run(_drain.delete_jot(handle=handle, reason=reason))
-    )
+    return _summary_dict(asyncio.run(_drain.delete_jot(handle=handle, reason=reason)))
 
 
 def jot_retry(handle: str) -> DispatchResultDict:
@@ -309,7 +309,9 @@ def jot_resurface(
     from mahavishnu.jot import drain as _drain
 
     result = _drain.surface_relevant(
-        trigger=trigger, context_text=context_text, limit=limit,
+        trigger=trigger,
+        context_text=context_text,
+        limit=limit,
     )
     return [_summary_dict(s) for s in result.matches]
 

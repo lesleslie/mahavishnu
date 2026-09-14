@@ -88,7 +88,8 @@ def drain(
     query: str | None = typer.Option(None, "--query", help="Substring filter"),
     limit: int = typer.Option(20, "--limit", help="Max candidates to show"),
     include_in_flight: bool = typer.Option(
-        False, "--include-in-flight/--no-include-in-flight",
+        False,
+        "--include-in-flight/--no-include-in-flight",
         help="Include jots with an in-flight dispatch",
     ),
 ) -> None:
@@ -108,7 +109,9 @@ def dispatch(
 def defer(
     handle: str = typer.Argument(..., help="Jot handle"),
     until_ms: int = typer.Option(
-        ..., "--until-ms", help="Epoch ms timestamp to defer until",
+        ...,
+        "--until-ms",
+        help="Epoch ms timestamp to defer until",
     ),
     reason: str | None = typer.Option(None, "--reason", help="Why deferred"),
 ) -> None:
@@ -136,11 +139,14 @@ def retry(
 @app.command()
 def resurface(
     trigger: str = typer.Option(
-        "session_start", "--trigger",
+        "session_start",
+        "--trigger",
         help="session_start | tool_result",
     ),
     context_text: str = typer.Option(
-        "", "--context-text", help="Context text for tool_result trigger",
+        "",
+        "--context-text",
+        help="Context text for tool_result trigger",
     ),
 ) -> None:
     """Surface relevant jots for the given context."""

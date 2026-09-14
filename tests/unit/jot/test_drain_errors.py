@@ -5,15 +5,13 @@ that catch JotError will not silently swallow them.
 """
 from __future__ import annotations
 
-import pytest
-
 from mahavishnu.jot.errors import (
     JotDeferError,
     JotDispatchError,
     JotError,
     JotLogUnwritableError,
     JotRetryError,
-    JotSurfaceThrottled,
+    JotSurfaceThrottledError,
     JotValidationError,
 )
 
@@ -28,7 +26,7 @@ def test_drain_errors_inherit_from_jot_error() -> None:
         JotDeferError,
         JotValidationError,
         JotLogUnwritableError,
-        JotSurfaceThrottled,
+        JotSurfaceThrottledError,
     ):
         assert issubclass(cls, JotError)
 

@@ -2,6 +2,7 @@
 
 See spec §"HLC generation" and §"HLC continuity across captures".
 """
+
 from __future__ import annotations
 
 import hashlib
@@ -134,7 +135,7 @@ def read_tail_hlc(log_path: Path) -> HLC | None:
     """
     try:
         file_size = log_path.stat().st_size
-    except (FileNotFoundError, OSError):
+    except FileNotFoundError, OSError:
         return None
 
     if file_size == 0:
@@ -142,7 +143,7 @@ def read_tail_hlc(log_path: Path) -> HLC | None:
 
     try:
         fd = os.open(str(log_path), os.O_RDONLY)
-    except (FileNotFoundError, OSError):
+    except FileNotFoundError, OSError:
         return None
 
     try:
@@ -165,7 +166,7 @@ def read_tail_hlc(log_path: Path) -> HLC | None:
         try:
             event = deserialize(stripped)
             return event.hlc
-        except (ValueError, KeyError, TypeError):
+        except ValueError, KeyError, TypeError:
             continue  # Skip malformed lines (truncated or corrupt)
 
     return None

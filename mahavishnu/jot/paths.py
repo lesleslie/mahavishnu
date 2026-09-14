@@ -4,6 +4,7 @@ All paths resolve under ~/.mahavishnu/jot/ which is created with mode 0o700 on
 first access. Individual files (log, errors, node) are NOT created by these
 helpers — only the directory is. File creation happens lazily in the hook.
 """
+
 from __future__ import annotations
 
 import os

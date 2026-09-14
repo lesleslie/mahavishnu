@@ -6,6 +6,7 @@ H4 fix: each pattern is compiled defensively (try/except). Patterns that fail
 to compile are skipped (logged via the standard Python warnings module at
 module load). A bad pattern must never crash the hook before logging is reachable.
 """
+
 from __future__ import annotations
 
 import hashlib
@@ -92,6 +93,6 @@ def redact_text(text: str) -> str:
         # The IIFE pattern (immediate lambda call) is intentional: each redaction
         # callback needs a unique closure over `tier`. PLC3002 flags the IIFE; the
         # B023 workaround is the reason the lambda is called rather than passed.
-        replacement = (lambda t: (lambda m: _make_replacement(m, t)))(tier)  # noqa: PLC3002
+        replacement = (lambda t: lambda m: _make_replacement(m, t))(tier)  # noqa: PLC3002
         out = pattern.sub(replacement, out)
     return out

@@ -6,11 +6,9 @@ Single write path for all drain events. See spec §3.2, §4.2, §4.6, §6.
 from __future__ import annotations
 
 import asyncio
-import json
+from dataclasses import dataclass, field
 import re
 import time
-from dataclasses import dataclass, field
-from pathlib import Path
 from typing import Any, Literal, TypedDict
 
 from oneiric.core.logging import get_logger
@@ -31,15 +29,15 @@ log = get_logger(__name__)
 
 # Re-export DispatchState (canonical location is fold.py to avoid cycle)
 __all__ = [
-    "DispatchState",
-    "_append_event",
-    "DrainPlan",
     "DispatchResult",
-    "drain_plan",
-    "dispatch_jot",
-    "retry_dispatch",
+    "DispatchState",
+    "DrainPlan",
+    "_append_event",
     "defer_jot",
     "delete_jot",
+    "dispatch_jot",
+    "drain_plan",
+    "retry_dispatch",
 ]
 
 
@@ -90,7 +88,11 @@ _REQUIRED_KEYS: dict[str, tuple[str, ...]] = {
     "dispatch": ("workflow_id", "attempt", "pool_selector", "dispatched_from"),
     "dispatch_done": ("workflow_id", "summary"),
     "dispatch_failed": (
-        "workflow_id", "attempt", "error", "error_id", "retry_budget_exhausted",
+        "workflow_id",
+        "attempt",
+        "error",
+        "error_id",
+        "retry_budget_exhausted",
     ),
     "defer": ("until",),
     "defer_expired": (),
@@ -100,8 +102,15 @@ _REQUIRED_KEYS: dict[str, tuple[str, ...]] = {
 _INT_KEYS = ("attempt",)
 _BOOL_KEYS = ("retry_budget_exhausted",)
 _STR_KEYS = (
-    "workflow_id", "summary", "commit_sha", "error", "error_id",
-    "pool_selector", "dispatched_from", "triggered_by", "reason",
+    "workflow_id",
+    "summary",
+    "commit_sha",
+    "error",
+    "error_id",
+    "pool_selector",
+    "dispatched_from",
+    "triggered_by",
+    "reason",
 )
 _LITERAL_KEYS = {
     "triggered_by": ("first", "auto", "manual"),
@@ -156,7 +165,7 @@ def _is_drain_eligible(jot: JotSummary, now_ms: int) -> bool:
     )
 
 
-MAX_AUTO_ATTEMPTS: int = 2    # total (1 initial + 1 auto-retry)
+MAX_AUTO_ATTEMPTS: int = 2  # total (1 initial + 1 auto-retry)
 
 
 def _should_exhaust_retry_budget(jot: JotSummary) -> bool:
@@ -237,8 +246,8 @@ _append_lock = asyncio.Lock()
 
 class DrainPlanDict(TypedDict):
     query: str | None
-    candidates: list[dict[str, Any]]    # JotSummaryDict-shaped items
-    action_proposals: list["ActionProposalDict"]
+    candidates: list[dict[str, Any]]  # JotSummaryDict-shaped items
+    action_proposals: list[ActionProposalDict]
 
 
 class ActionProposalDict(TypedDict):
@@ -261,7 +270,10 @@ class DispatchResultDict(TypedDict):
 
 
 async def _append_event(
-    op: str, ctx: dict[str, object], *, jot_id: str,
+    op: str,
+    ctx: dict[str, object],
+    *,
+    jot_id: str,
 ) -> None:
     """Validate ctx, auto-fill started_at_ms on dispatch, append to log.
 
@@ -315,17 +327,23 @@ async def _append_event(
 
 # Re-export TypedDicts so callers can import from drain.py
 __all__ = [
-    "DispatchState", "_append_event",
-    "DispatchCtx", "DispatchDoneCtx", "DispatchFailedCtx",
-    "DeferCtx", "DeferExpiredCtx", "DeleteCtx",
-    "DrainPlanDict", "ActionProposalDict", "DispatchResultDict",
+    "ActionProposalDict",
+    "DeferCtx",
+    "DeferExpiredCtx",
+    "DeleteCtx",
+    "DispatchCtx",
+    "DispatchDoneCtx",
+    "DispatchFailedCtx",
+    "DispatchResultDict",
+    "DispatchState",
+    "DrainPlanDict",
+    "_append_event",
 ]
 
 
 @dataclass(frozen=True, slots=True)
 class _Placeholder:
     """Marker for future modules to import. Will be removed in later tasks."""
-    pass
 
 
 # =============================================================================
@@ -333,9 +351,7 @@ class _Placeholder:
 # =============================================================================
 
 
-TERMINAL_STATUSES: frozenset[str] = frozenset(
-    {"COMPLETED", "FAILED", "CANCELLED", "TIMEOUT"}
-)
+TERMINAL_STATUSES: frozenset[str] = frozenset({"COMPLETED", "FAILED", "CANCELLED", "TIMEOUT"})
 STATUS_CALL_TIMEOUT_SECONDS: int = 30
 RECONCILER_TIMEOUT_MS: int = 10 * 60 * 1000  # 10 min
 RECONCILER_INTERVAL_SECONDS: int = 30
@@ -352,8 +368,11 @@ async def _mcp_trigger_workflow(
     try:
         # Imported lazily to avoid module-load cost when drain is unused.
         from mahavishnu.mcp.server_core import trigger_workflow
+
         result: dict[str, object] = await trigger_workflow(
-            adapter=adapter, task_type=task_type, params=params,
+            adapter=adapter,
+            task_type=task_type,
+            params=params,
         )
         return result
     except Exception as exc:
@@ -367,6 +386,7 @@ async def _mcp_get_workflow_status(workflow_id: str) -> dict[str, object]:
     """Thin wrapper over mahavishnu.mcp.server_core.get_workflow_status."""
     try:
         from mahavishnu.mcp.server_core import get_workflow_status
+
         result: dict[str, object] = await get_workflow_status(workflow_id=workflow_id)
         return result
     except Exception as exc:
@@ -383,18 +403,16 @@ async def _auto_retry_after(handle: str, backoff_s: int) -> None:
       - jot still FAILED-eligible (manual retry may have won the race)
       - current_attempt < MAX_AUTO_ATTEMPTS (budget remaining)
     """
-    try:
-        await asyncio.sleep(backoff_s)
-    except asyncio.CancelledError:
-        raise
+    await asyncio.sleep(backoff_s)
 
     try:
         from mahavishnu.jot.fold import build_states, parse_events
         from mahavishnu.jot.handle import resolve_handle
+
         events = parse_events(log_path())
         states = build_states(events, enrich=False).states
         current = resolve_handle(states, handle)
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001 - log path may be unreadable
         log.error(
             "JOT_AUTO_RETRY_FOLD_FAILED",
             handle=handle,
@@ -418,32 +436,42 @@ async def _auto_retry_after(handle: str, backoff_s: int) -> None:
         workflow_id = str(wf_id_raw) if wf_id_raw is not None else ""
     except JotDispatchError as exc:
         try:
-            await _append_event("dispatch_failed", {
-                "workflow_id": f"failed_to_create:{exc.error_id}",
-                "attempt": current.current_attempt + 1,
-                "error": f"{type(exc).__name__}: {exc}",
-                "error_id": exc.error_id,
-                "retry_budget_exhausted": True,
-            }, jot_id=current.id)
+            await _append_event(
+                "dispatch_failed",
+                {
+                    "workflow_id": f"failed_to_create:{exc.error_id}",
+                    "attempt": current.current_attempt + 1,
+                    "error": f"{type(exc).__name__}: {exc}",
+                    "error_id": exc.error_id,
+                    "retry_budget_exhausted": True,
+                },
+                jot_id=current.id,
+            )
         except (JotLogUnwritableError, JotValidationError) as log_exc:
             log.error(
                 "JOT_AUTO_RETRY_LOG_FAILED",
-                handle=handle, error=str(log_exc),
+                handle=handle,
+                error=str(log_exc),
             )
         return
 
     try:
-        await _append_event("dispatch", {
-            "workflow_id": workflow_id,
-            "attempt": current.current_attempt + 1,
-            "pool_selector": "least_loaded",
-            "dispatched_from": "mcp",
-            "triggered_by": "auto",
-        }, jot_id=current.id)
+        await _append_event(
+            "dispatch",
+            {
+                "workflow_id": workflow_id,
+                "attempt": current.current_attempt + 1,
+                "pool_selector": "least_loaded",
+                "dispatched_from": "mcp",
+                "triggered_by": "auto",
+            },
+            jot_id=current.id,
+        )
     except (JotLogUnwritableError, JotValidationError) as exc:
         log.error(
             "JOT_AUTO_RETRY_EVENT_APPEND_FAILED",
-            handle=handle, workflow_id=workflow_id,
+            handle=handle,
+            workflow_id=workflow_id,
             error_id="ERROR_JOT_DISPATCH_EVENT_APPEND",
             error=f"{type(exc).__name__}: {exc}",
         )
@@ -477,28 +505,35 @@ async def _reconcile_if_in_flight(jot: JotSummary) -> None:
     if started_at is not None and (now_ms_ - started_at) >= RECONCILER_TIMEOUT_MS:
         budget_exhausted = _should_exhaust_retry_budget(jot)
         try:
-            await _append_event("dispatch_failed", {
-                "workflow_id": workflow_id,
-                "attempt": jot.current_attempt,
-                "error": "workflow_timeout:tier2",
-                "error_id": "ERROR_JOT_WORKFLOW_TIMEOUT",
-                "retry_budget_exhausted": budget_exhausted,
-            }, jot_id=jot.id)
+            await _append_event(
+                "dispatch_failed",
+                {
+                    "workflow_id": workflow_id,
+                    "attempt": jot.current_attempt,
+                    "error": "workflow_timeout:tier2",
+                    "error_id": "ERROR_JOT_WORKFLOW_TIMEOUT",
+                    "retry_budget_exhausted": budget_exhausted,
+                },
+                jot_id=jot.id,
+            )
             log.error(
                 "JOT_WORKFLOW_TIMEOUT",
-                handle=jot.short_id, workflow_id=workflow_id,
+                handle=jot.short_id,
+                workflow_id=workflow_id,
                 elapsed_ms=now_ms_ - started_at,
                 attempt=jot.current_attempt,
                 error_id="ERROR_JOT_WORKFLOW_TIMEOUT",
             )
             if not budget_exhausted:
                 await _auto_retry_after(
-                    jot.short_id, backoff_s=RETRY_BACKOFF_SECONDS,
+                    jot.short_id,
+                    backoff_s=RETRY_BACKOFF_SECONDS,
                 )
         except (JotLogUnwritableError, JotValidationError) as exc:
             log.error(
                 "JOT_RECONCILE_TIMEOUT_WRITE_FAILED",
-                handle=jot.short_id, error=str(exc),
+                handle=jot.short_id,
+                error=str(exc),
             )
         return
 
@@ -508,16 +543,18 @@ async def _reconcile_if_in_flight(jot: JotSummary) -> None:
             _mcp_get_workflow_status(workflow_id),
             timeout=STATUS_CALL_TIMEOUT_SECONDS,
         )
-    except asyncio.TimeoutError:
+    except TimeoutError:
         log.warning(
             "JOT_RECONCILE_STATUS_TIMEOUT",
-            handle=jot.short_id, workflow_id=workflow_id,
+            handle=jot.short_id,
+            workflow_id=workflow_id,
         )
         return
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001 - status fetch may raise; logged
         log.error(
             "JOT_RECONCILE_STATUS_FAILED",
-            handle=jot.short_id, workflow_id=workflow_id,
+            handle=jot.short_id,
+            workflow_id=workflow_id,
             error_id="ERROR_JOT_RECONCILE_STATUS",
             error=f"{type(exc).__name__}: {exc}",
         )
@@ -530,33 +567,42 @@ async def _reconcile_if_in_flight(jot: JotSummary) -> None:
     succeeded = status_str == "COMPLETED"
     try:
         if succeeded:
-            await _append_event("dispatch_done", {
-                "workflow_id": workflow_id,
-                "summary": (
-                    "ok" if status_dict.get("results_count") else "completed"
-                ),
-                **(
-                    {"commit_sha": status_dict["commit_sha"]}
-                    if status_dict.get("commit_sha") else {}
-                ),
-            }, jot_id=jot.id)
+            await _append_event(
+                "dispatch_done",
+                {
+                    "workflow_id": workflow_id,
+                    "summary": ("ok" if status_dict.get("results_count") else "completed"),
+                    **(
+                        {"commit_sha": status_dict["commit_sha"]}
+                        if status_dict.get("commit_sha")
+                        else {}
+                    ),
+                },
+                jot_id=jot.id,
+            )
         else:
             budget_exhausted = _should_exhaust_retry_budget(jot)
-            await _append_event("dispatch_failed", {
-                "workflow_id": workflow_id,
-                "attempt": jot.current_attempt,
-                "error": f"workflow_status:{status_str}",
-                "error_id": "ERROR_JOT_WORKFLOW_FAILED",
-                "retry_budget_exhausted": budget_exhausted,
-            }, jot_id=jot.id)
+            await _append_event(
+                "dispatch_failed",
+                {
+                    "workflow_id": workflow_id,
+                    "attempt": jot.current_attempt,
+                    "error": f"workflow_status:{status_str}",
+                    "error_id": "ERROR_JOT_WORKFLOW_FAILED",
+                    "retry_budget_exhausted": budget_exhausted,
+                },
+                jot_id=jot.id,
+            )
             if not budget_exhausted:
                 await _auto_retry_after(
-                    jot.short_id, backoff_s=RETRY_BACKOFF_SECONDS,
+                    jot.short_id,
+                    backoff_s=RETRY_BACKOFF_SECONDS,
                 )
     except (JotLogUnwritableError, JotValidationError) as exc:
         log.error(
             "JOT_RECONCILE_WRITE_FAILED",
-            handle=jot.short_id, error=str(exc),
+            handle=jot.short_id,
+            error=str(exc),
         )
 
 
@@ -571,9 +617,10 @@ async def _background_reconciler_loop() -> None:
         await asyncio.sleep(RECONCILER_INTERVAL_SECONDS)
         try:
             from mahavishnu.jot.fold import build_states, parse_events
+
             events = parse_events(log_path())
             jots = build_states(events, enrich=False).states
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001 - log path may be unreadable
             log.error(
                 "JOT_RECONCILER_FOLD_FAILED",
                 error=f"{type(exc).__name__}: {exc}",
@@ -584,7 +631,7 @@ async def _background_reconciler_loop() -> None:
                 continue
             try:
                 await _reconcile_if_in_flight(jot)
-            except Exception as exc:
+            except Exception as exc:  # noqa: BLE001 - per-jot reconcile; logged
                 log.error(
                     "JOT_RECONCLE_PER_JOT_FAILED",
                     handle=jot.short_id,
@@ -674,25 +721,21 @@ def drain_plan(
     try:
         events = parse_events(log_path())
         states = build_states(events, enrich=False).states
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001 - log path may be unreadable
         log.error("JOT_DRAIN_PLAN_FOLD_FAILED", error=f"{type(exc).__name__}: {exc}")
         return DrainPlan(query=query, candidates=[], error=str(exc))
 
     now_ms_ = _now_ms()
     eligible = [s for s in states if _is_drain_eligible(s, now_ms=now_ms_)]
     if not include_in_flight:
-        eligible = [
-            c for c in eligible if c.dispatch_state is not DispatchState.IN_FLIGHT
-        ]
+        eligible = [c for c in eligible if c.dispatch_state is not DispatchState.IN_FLIGHT]
     if query:
         q_tokens = _tokenize(query)
-        eligible = [
-            c for c in eligible
-            if _lexical_score(_tokenize(c.text), q_tokens) >= 0.20
-        ]
+        eligible = [c for c in eligible if _lexical_score(_tokenize(c.text), q_tokens) >= 0.20]
     # Newest first, then truncate.
     eligible_sorted = sorted(
-        eligible, key=lambda s: (-s.last_modified_ms, s.id),
+        eligible,
+        key=lambda s: (-s.last_modified_ms, s.id),
     )
     truncated = eligible_sorted[:limit]
     return DrainPlan(
@@ -736,7 +779,9 @@ def _propose_action(jot: JotSummary) -> ActionProposalDict:
 
 
 async def dispatch_jot(
-    handle: str, *, dispatched_from: str = "mcp",
+    handle: str,
+    *,
+    dispatched_from: str = "mcp",
 ) -> DispatchResult:
     """Dispatch a jot to the workflow substrate (spec §6.2 / Task 9).
 
@@ -772,26 +817,25 @@ async def dispatch_jot(
         )
 
     next_attempt = (jot.current_attempt or 0) + 1
-    try:
-        result = await _mcp_trigger_workflow(
-            adapter="prefect",
-            task_type="jot_dispatch",
-            params={"prompt": jot.text},
-        )
-        wf_id_raw = result.get("workflow_id")
-        workflow_id = str(wf_id_raw) if wf_id_raw is not None else ""
-    except JotDispatchError:
-        raise
+    result = await _mcp_trigger_workflow(
+        adapter="prefect",
+        task_type="jot_dispatch",
+        params={"prompt": jot.text},
+    )
+    wf_id_raw = result.get("workflow_id")
+    workflow_id = str(wf_id_raw) if wf_id_raw is not None else ""
 
-    await _append_event("dispatch", {
-        "workflow_id": workflow_id,
-        "attempt": next_attempt,
-        "pool_selector": "least_loaded",
-        "dispatched_from": dispatched_from,
-        "triggered_by": (
-            "manual" if jot.dispatch_state is DispatchState.FAILED else "first"
-        ),
-    }, jot_id=jot.id)
+    await _append_event(
+        "dispatch",
+        {
+            "workflow_id": workflow_id,
+            "attempt": next_attempt,
+            "pool_selector": "least_loaded",
+            "dispatched_from": dispatched_from,
+            "triggered_by": ("manual" if jot.dispatch_state is DispatchState.FAILED else "first"),
+        },
+        jot_id=jot.id,
+    )
     return DispatchResult(
         handle=jot.short_id,
         workflow_id=workflow_id,
@@ -801,7 +845,9 @@ async def dispatch_jot(
 
 
 async def retry_dispatch(
-    handle: str, *, dispatched_from: str = "mcp",
+    handle: str,
+    *,
+    dispatched_from: str = "mcp",
 ) -> DispatchResult:
     """Manual retry of a FAILED jot (spec §6.2 / Task 9).
 
@@ -814,17 +860,16 @@ async def retry_dispatch(
     states = build_states(events, enrich=False).states
     jot = resolve_handle(states, handle)
     if jot.dispatch_state is not DispatchState.FAILED:
-        current_state: Any = (
-            jot.dispatch_state.value if jot.dispatch_state else "none"
-        )
-        raise JotRetryError(
-            f"jot {jot.short_id} is not in FAILED state (current: {current_state})"
-        )
+        current_state: Any = jot.dispatch_state.value if jot.dispatch_state else "none"
+        raise JotRetryError(f"jot {jot.short_id} is not in FAILED state (current: {current_state})")
     return await dispatch_jot(handle, dispatched_from=dispatched_from)
 
 
 async def defer_jot(
-    handle: str, *, until_ms: int, reason: str | None = None,
+    handle: str,
+    *,
+    until_ms: int,
+    reason: str | None = None,
 ) -> JotSummary:
     """Defer a jot until a future timestamp (spec §6.2 / Task 9).
 
@@ -855,7 +900,9 @@ async def defer_jot(
 
 
 async def delete_jot(
-    handle: str, *, reason: str | None = None,
+    handle: str,
+    *,
+    reason: str | None = None,
 ) -> JotSummary:
     """Soft delete a jot — audit trail preserved in the log.
 
@@ -905,7 +952,7 @@ def _lexical_score(jot_tokens: set[str], ctx_tokens: set[str]) -> float:
 def _cosine_similarity(a: list[float], b: list[float]) -> float:
     if not a or not b or len(a) != len(b):
         return 0.0
-    dot = sum(x * y for x, y in zip(a, b))
+    dot = sum(x * y for x, y in zip(a, b, strict=False))
     na = sum(x * x for x in a) ** 0.5
     nb = sum(x * x for x in b) ** 0.5
     if na == 0 or nb == 0:
@@ -926,20 +973,14 @@ def _semantic_score(jot_text: str, ctx_text: str, embeddings: Any) -> float:
     global _last_surface_degraded
     try:
         emb = embeddings.embed([jot_text, ctx_text])
-    except (asyncio.TimeoutError, Exception):
+    except TimeoutError, Exception:  # noqa: BLE001 - degraded embeddings path
         _last_surface_degraded = True
         return 0.0
     # Defensive: OneiricEmbeddingsAdapter.embed is async; a sync caller
     # receives a coroutine here. Treat that (and any non-list result) as
     # a degraded embeddings path rather than crashing the fold.
     try:
-        if (
-            not emb
-            or len(emb) < 2
-            or not emb[0]
-            or not emb[1]
-            or len(emb[0]) != len(emb[1])
-        ):
+        if not emb or len(emb) < 2 or not emb[0] or not emb[1] or len(emb[0]) != len(emb[1]):
             _last_surface_degraded = True
             return 0.0
     except TypeError:
@@ -972,7 +1013,9 @@ class _Throttle:
     last_skip_reason: str | None = None
 
     def should_fire(
-        self, now_ms: int, context_tokens: int,
+        self,
+        now_ms: int,
+        context_tokens: int,
     ) -> tuple[bool, str | None]:
         if context_tokens < 50:
             self.last_skip_reason = "short_context"
@@ -1010,7 +1053,7 @@ def surface_relevant(
     try:
         events = parse_events(log_path())
         states = build_states(events, enrich=False).states
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001 - log path may be unreadable
         log.warning(
             "JOT_SURFACE_FOLD_FAILED",
             error=f"{type(exc).__name__}: {exc}",
@@ -1057,9 +1100,7 @@ def surface_relevant(
         score = _lexical_score(jot_tokens, ctx_tokens)
         scored.append((jot, score))
 
-    lexical_hits = [
-        (j, s) for j, s in scored if s >= LEXICAL_THRESHOLD
-    ]
+    lexical_hits = [(j, s) for j, s in scored if s >= LEXICAL_THRESHOLD]
 
     if lexical_hits:
         lexical_hits.sort(key=lambda x: (-x[1], x[0].last_modified_ms))
@@ -1087,9 +1128,9 @@ def surface_relevant(
         matches=sem_matches,
         score_threshold_used=LEXICAL_THRESHOLD,
         surface_degraded=degraded,
-        surface_reason="matches" if sem_matches else (
-            "embeddings_down" if degraded else "no_match"
-        ),
+        surface_reason="matches"
+        if sem_matches
+        else ("embeddings_down" if degraded else "no_match"),
     )
 
 
@@ -1105,21 +1146,36 @@ def _build_embeddings_adapter() -> Any:
 
 
 __all__ = [
-    "DispatchState", "_append_event",
-    "DispatchCtx", "DispatchDoneCtx", "DispatchFailedCtx",
-    "DeferCtx", "DeferExpiredCtx", "DeleteCtx",
-    "DrainPlanDict", "ActionProposalDict", "DispatchResultDict",
-    "_is_surface_eligible", "_is_drain_eligible",
-    "MAX_AUTO_ATTEMPTS", "_should_exhaust_retry_budget",
-    "_auto_retry_after", "_reconcile_if_in_flight",
-    "_background_reconciler_loop",
-    "SurfacingResult", "_Throttle", "surface_relevant",
-    "_tokenize", "_lexical_score", "_cosine_similarity",
-    "_semantic_score", "_build_embeddings_adapter",
     "LEXICAL_THRESHOLD",
-    # Task 12 — public drain primitives consumed by cli.py handlers.
-    # Task 9 may refine these; the surface (signature + return TypedDicts)
-    # is part of the public contract.
-    "drain_plan", "dispatch_jot", "retry_dispatch",
-    "defer_jot", "delete_jot",
+    "MAX_AUTO_ATTEMPTS",
+    "ActionProposalDict",
+    "DeferCtx",
+    "DeferExpiredCtx",
+    "DeleteCtx",
+    "DispatchCtx",
+    "DispatchDoneCtx",
+    "DispatchFailedCtx",
+    "DispatchResultDict",
+    "DispatchState",
+    "DrainPlanDict",
+    "SurfacingResult",
+    "_Throttle",
+    "_append_event",
+    "_auto_retry_after",
+    "_background_reconciler_loop",
+    "_build_embeddings_adapter",
+    "_cosine_similarity",
+    "_is_drain_eligible",
+    "_is_surface_eligible",
+    "_lexical_score",
+    "_reconcile_if_in_flight",
+    "_semantic_score",
+    "_should_exhaust_retry_budget",
+    "_tokenize",
+    "defer_jot",
+    "delete_jot",
+    "dispatch_jot",
+    "drain_plan",
+    "retry_dispatch",
+    "surface_relevant",
 ]

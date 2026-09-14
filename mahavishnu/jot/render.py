@@ -82,9 +82,7 @@ def _summary_dict(jot: JotSummary) -> JotSummaryDict:
     for ``DispatchState.IN_FLIGHT``, etc.). ``None`` propagates as ``None``
     for optional fields. ``deleted`` is always emitted as a bool.
     """
-    state_literal = (
-        jot.dispatch_state.value if jot.dispatch_state is not None else None
-    )
+    state_literal = jot.dispatch_state.value if jot.dispatch_state is not None else None
     return JotSummaryDict(
         id=jot.id,
         short_id=jot.short_id,

@@ -2,6 +2,7 @@
 
 Produces the human-facing one-liner shown in stderr after a successful capture.
 """
+
 from __future__ import annotations
 
 from .short_id import short_id

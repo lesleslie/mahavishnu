@@ -13,9 +13,16 @@ from typing import Any, Literal, TypedDict
 # Sub-plan 3 (drain) extends with 6 new ops: dispatch, dispatch_done,
 # dispatch_failed, defer, defer_expired, delete. See spec §4.1.
 Op = Literal[
-    "capture", "edit", "done", "reopen",                  # sub-plan 1+2
-    "dispatch", "dispatch_done", "dispatch_failed",       # NEW (sub-plan 3)
-    "defer", "defer_expired", "delete",                    # NEW (sub-plan 3)
+    "capture",
+    "edit",
+    "done",
+    "reopen",  # sub-plan 1+2
+    "dispatch",
+    "dispatch_done",
+    "dispatch_failed",  # NEW (sub-plan 3)
+    "defer",
+    "defer_expired",
+    "delete",  # NEW (sub-plan 3)
 ]
 
 

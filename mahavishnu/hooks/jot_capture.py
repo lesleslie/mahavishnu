@@ -310,7 +310,10 @@ def _do_capture(body: str, stdin_payload: dict[str, Any]) -> int:
 
 
 def capture_hook(
-    text: str, *, session_id: str = "", files: list[str] | None = None,
+    text: str,
+    *,
+    session_id: str = "",
+    files: list[str] | None = None,
 ) -> int:
     """Capture a prompt as a jot without going through stdin.
 
