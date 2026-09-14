@@ -6,7 +6,12 @@ is verified by tests/integration/plan_index/test_fastmcp_error_serialization.py.
 
 from __future__ import annotations
 
-__all__ = ["PlanIndexError", "PlanIndexUnavailableError", "PlanNotFoundError", "PlanRebuildLockedError"]
+__all__ = [
+    "PlanIndexError",
+    "PlanIndexUnavailableError",
+    "PlanNotFoundError",
+    "PlanRebuildLockedError",
+]
 
 
 class PlanIndexError(Exception):

@@ -744,9 +744,7 @@ def _render_by_kind(entries: list[Entry]) -> str:
         rows.append("|---|---|---|")
         for entry in sorted(kind_entries, key=lambda e: (-_date_sort_key(e.date), e.rel)):
             link = _entry_link(entry.rel, entry.store)
-            rows.append(
-                f"| {link} | {entry.date or '—'} | {entry.title} |"
-            )
+            rows.append(f"| {link} | {entry.date or '—'} | {entry.title} |")
         rows.append("")
 
     return "\n".join(rows)
@@ -875,9 +873,7 @@ def _load_exclude_patterns(exclude_from: Path | None) -> list[str]:
     if exclude_from is None:
         return []
     if not exclude_from.is_file():
-        sys.stderr.write(
-            f"--exclude-from: file not found: {exclude_from}\n"
-        )
+        sys.stderr.write(f"--exclude-from: file not found: {exclude_from}\n")
         return []
     out: list[str] = []
     try:
@@ -993,9 +989,7 @@ def _run_phase_b(
             await client.aclose()
 
     success, errors, _err_list = asyncio.run(_upsert())
-    sys.stderr.write(
-        f"phase-b: upserted {success} records to Dhara ({errors} errors)\n"
-    )
+    sys.stderr.write(f"phase-b: upserted {success} records to Dhara ({errors} errors)\n")
     return success, errors
 
 
@@ -1163,12 +1157,8 @@ def main(argv: list[str] | None = None) -> int:
     # Compile --exclude / --exclude-from patterns into a path matcher.
     exclude_patterns: list[str] = list(args.exclude)
     if args.exclude_from is not None:
-        exclude_patterns.extend(
-            _load_exclude_patterns(Path(args.exclude_from).resolve())
-        )
-    is_excluded_by_user = (
-        _compile_exclude_matcher(exclude_patterns) if exclude_patterns else None
-    )
+        exclude_patterns.extend(_load_exclude_patterns(Path(args.exclude_from).resolve()))
+    is_excluded_by_user = _compile_exclude_matcher(exclude_patterns) if exclude_patterns else None
 
     # Phase A — scan the repo and collect entries.
     entries_by_store: dict[str, list[Entry]] = {}
@@ -1212,9 +1202,7 @@ def main(argv: list[str] | None = None) -> int:
         try:
             from mahavishnu.plan_index.cron_core import discover_records
         except ImportError as exc:
-            sys.stderr.write(
-                f"phase-b: cannot import plan_index.cron_core: {exc}\n"
-            )
+            sys.stderr.write(f"phase-b: cannot import plan_index.cron_core: {exc}\n")
         else:
             try:
                 from mahavishnu.plan_index.record import PlanRecord  # noqa: TC001
@@ -1222,12 +1210,12 @@ def main(argv: list[str] | None = None) -> int:
 
                 records: list[PlanRecord] = discover_records(repo_root)
                 phase_b_success, phase_b_errors = _run_phase_b(
-                    repo_root, records, args.dhara_url,
+                    repo_root,
+                    records,
+                    args.dhara_url,
                 )
             except Exception as exc:
-                sys.stderr.write(
-                    f"phase-b: dhara upsert failed: {exc}\n"
-                )
+                sys.stderr.write(f"phase-b: dhara upsert failed: {exc}\n")
                 phase_b_errors = -1  # sentinel for "unknown error count"
 
     # --rebuild-from is documented as a one-shot backfill hook. The current
@@ -1269,9 +1257,7 @@ def main(argv: list[str] | None = None) -> int:
             except OSError as exc:
                 sys.stderr.write(f"--check: could not read {out_path}: {exc}\n")
         if rendered != existing:
-            sys.stderr.write(
-                f"--check: drift detected ({out_path}); rendered vs current differ.\n"
-            )
+            sys.stderr.write(f"--check: drift detected ({out_path}); rendered vs current differ.\n")
             return 1
         sys.stderr.write(f"--check: {out_path} is up-to-date.\n")
         return 0

@@ -90,8 +90,6 @@ class PeriodicTaskRunner:
         while not self._stop_event.is_set():
             await self.force_run()
             try:
-                await asyncio.wait_for(
-                    self._stop_event.wait(), timeout=self._cron_every_seconds
-                )
+                await asyncio.wait_for(self._stop_event.wait(), timeout=self._cron_every_seconds)
             except TimeoutError:
                 pass  # Time to run again

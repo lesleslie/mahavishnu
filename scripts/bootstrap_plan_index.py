@@ -193,9 +193,7 @@ def _scan_plan_files(repo_root: Path) -> list[Path]:
                 for p in md.parent.iterdir()
                 if p.is_file()
                 and p.suffix == ".md"
-                and not _is_excluded_file(
-                    p.relative_to(repo_root).as_posix()
-                )
+                and not _is_excluded_file(p.relative_to(repo_root).as_posix())
             ]
             if len(siblings) < 2:
                 continue
@@ -246,19 +244,12 @@ def _record_from_file(
         role=str(front.get("role", "implementation")),
         topic=str(front.get("topic", "—")),
         date=_coerce_date(front.get("date")),
-        last_reviewed=_coerce_date(front.get("last_reviewed"))
-        or _coerce_date(front.get("date")),
-        superseded_by=(
-            str(front["superseded_by"]) if front.get("superseded_by") else None
-        ),
+        last_reviewed=_coerce_date(front.get("last_reviewed")) or _coerce_date(front.get("date")),
+        superseded_by=(str(front["superseded_by"]) if front.get("superseded_by") else None),
         blocks_on=[str(b) for b in front.get("blocks_on", []) or []],
         sha=str(front.get("sha", "0" * 40)),
         repo=repo,
-        lifecycle_state=(
-            str(front["lifecycle_state"])
-            if front.get("lifecycle_state")
-            else None
-        ),
+        lifecycle_state=(str(front["lifecycle_state"]) if front.get("lifecycle_state") else None),
         updated_at_ms=updated_at_ms,
     )
 
@@ -378,10 +369,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--dry-run",
         action="store_true",
-        help=(
-            "Scan + count + report; do not write to Dhara even when "
-            "--dhara-url is set."
-        ),
+        help=("Scan + count + report; do not write to Dhara even when --dhara-url is set."),
     )
     parser.add_argument(
         "--backup-index",
@@ -418,11 +406,7 @@ async def _run_async(args: argparse.Namespace) -> int:
         "success": success,
         "errors_count": errors_count,
         "error_samples": errors[:5],
-        "mode": (
-            "dry-run"
-            if args.dry_run
-            else "audit-only" if dhara_client is None else "live"
-        ),
+        "mode": ("dry-run" if args.dry_run else "audit-only" if dhara_client is None else "live"),
     }
     print(_format_summary(summary))
     if success == 0 and errors_count == 0:

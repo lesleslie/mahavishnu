@@ -9,9 +9,7 @@ from __future__ import annotations
 from typing import Literal, NotRequired, TypedDict
 
 # 4 distinct tripwire states. v0 had "ok" duplicated; fixed.
-TripwireState = Literal[
-    "ok", "no_recent_edits", "no_recent_reads", "review_cadence_lagging"
-]
+TripwireState = Literal["ok", "no_recent_edits", "no_recent_reads", "review_cadence_lagging"]
 
 
 class RebuildErrorCtx(TypedDict, total=False):
@@ -19,6 +17,7 @@ class RebuildErrorCtx(TypedDict, total=False):
 
     NEVER carries raw path or repo. Use path_hash = sha256(path).hexdigest()[:12].
     """
+
     plan_id: NotRequired[str]
     path_hash: NotRequired[str]
     op: NotRequired[str]

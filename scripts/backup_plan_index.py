@@ -45,9 +45,7 @@ BACKUP_SUFFIX = ".backup"
 INDEX_REL = Path("docs") / "plans" / "PLAN_INDEX.md"
 
 
-def backup(
-    plan_index_path: Path, *, now: datetime.datetime | None = None
-) -> Path:
+def backup(plan_index_path: Path, *, now: datetime.datetime | None = None) -> Path:
     """Copy ``plan_index_path`` to a timestamped sibling and return the new path.
 
     The timestamp uses ``%Y%m%dT%H%M%SZ`` (compact ISO 8601 with ``Z``
@@ -101,10 +99,7 @@ def build_parser() -> argparse.ArgumentParser:
         "--index-path",
         type=Path,
         default=None,
-        help=(
-            "Path to PLAN_INDEX.md relative to repo-root "
-            "(default: docs/plans/PLAN_INDEX.md)."
-        ),
+        help=("Path to PLAN_INDEX.md relative to repo-root (default: docs/plans/PLAN_INDEX.md)."),
     )
     parser.add_argument(
         "--keep-last",

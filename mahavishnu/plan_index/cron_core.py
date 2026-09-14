@@ -70,14 +70,22 @@ REBUILD_LOCK_HISTORY_TTL_SECONDS = 7 * 86400
 # soon as arbitration resolves, so they never accumulate across cycles.
 REBUILD_LOCK_CLAIM_KEY_PREFIX = "plan_index/meta/rebuild_lock/claim/"
 
-_FRONTMATTER_RE = re.compile(
-    r"\A---\s*\n(?P<fm>.*?)\n---\s*(?:\n|$)", re.DOTALL
-)
+_FRONTMATTER_RE = re.compile(r"\A---\s*\n(?P<fm>.*?)\n---\s*(?:\n|$)", re.DOTALL)
 _EXCLUDED_DIR_NAMES: frozenset[str] = frozenset(
     {
-        ".git", ".venv", "venv", "__pycache__", "node_modules",
-        "htmlcov", "dist", ".pytest_cache", ".archive", "archive",
-        "backups", "coverage_report", "assets",
+        ".git",
+        ".venv",
+        "venv",
+        "__pycache__",
+        "node_modules",
+        "htmlcov",
+        "dist",
+        ".pytest_cache",
+        ".archive",
+        "archive",
+        "backups",
+        "coverage_report",
+        "assets",
     }
 )
 _EXCLUDED_FILE_NAMES: frozenset[str] = frozenset({"PLAN_INDEX.md"})
@@ -114,10 +122,7 @@ def _new_claim_key() -> str:
     acquisition order; the uuid4 suffix guarantees uniqueness so that two
     concurrent cycles can never overwrite each other's claim.
     """
-    return (
-        f"{REBUILD_LOCK_CLAIM_KEY_PREFIX}"
-        f"{time.time_ns() // 1000:020d}-{uuid.uuid4().hex}"
-    )
+    return f"{REBUILD_LOCK_CLAIM_KEY_PREFIX}{time.time_ns() // 1000:020d}-{uuid.uuid4().hex}"
 
 
 def _claim_is_active(value: str, now_ms: int) -> bool:
@@ -145,9 +150,7 @@ async def _live_lock_holder(dhara: _LockStore, now_ms: int) -> tuple[str, int] |
     return holder_raw, age_ms
 
 
-async def _acquire_rebuild_lock(
-    dhara: _LockStore, new_holder: str, now_ms: int
-) -> None:
+async def _acquire_rebuild_lock(dhara: _LockStore, new_holder: str, now_ms: int) -> None:
     """Claim the rebuild lock, or raise `PlanRebuildLockedError`.
 
     A plain `get`-then-`put` on the holder key is a TOCTOU race: two
@@ -245,9 +248,7 @@ def _parse_frontmatter(text: str) -> dict[str, Any]:
                         if not candidate.startswith((" ", "\t")):
                             break
                         if cand_stripped.startswith("- "):
-                            items.append(
-                                cand_stripped[2:].strip().strip('"').strip("'")
-                            )
+                            items.append(cand_stripped[2:].strip().strip('"').strip("'"))
                             k += 1
                             continue
                         # Indented but not a list item — bail out.
@@ -267,7 +268,7 @@ def _parse_frontmatter(text: str) -> dict[str, Any]:
 def _coerce_date(value: Any) -> str:
     """Coerce a YAML-parsed date (datetime.date or str) to YYYY-MM-DD.
 
-    Returns "" if the value is missing, unparseable, or empty.
+    Returns "" if the value is missing, unparsable, or empty.
     """
     if value is None or value == "" or value == "null" or value == "~":
         return ""
@@ -320,7 +321,7 @@ def _git_blob_sha(repo_root: Path, rel_path: str) -> str:
             timeout=5,
             check=False,
         )
-    except (OSError, subprocess.TimeoutExpired):
+    except OSError, subprocess.TimeoutExpired:
         return ""
     if result.returncode != 0:
         return ""
@@ -434,7 +435,9 @@ def discover_records(repo_root: Path) -> list[PlanRecord]:
 
             superseded_by_raw = _coerce_str(fm.get("superseded_by"))
             superseded_by: str | None = (
-                superseded_by_raw if superseded_by_raw and superseded_by_raw not in {"null", "~"} else None
+                superseded_by_raw
+                if superseded_by_raw and superseded_by_raw not in {"null", "~"}
+                else None
             )
 
             blocks_on = _coerce_blocks_on(fm.get("blocks_on"))
@@ -520,7 +523,9 @@ async def run_rebuild_cycle(
         # Stale lock: log and take over (fall through to write our own).
         _logger.warning(
             "rebuild lock holder=%s is stale (age_ms=%d > ttl=%d); taking over",
-            holder_raw, age_ms, REBUILD_LOCK_TTL_SECONDS * 1000,
+            holder_raw,
+            age_ms,
+            REBUILD_LOCK_TTL_SECONDS * 1000,
         )
         # Retain provenance: write a history key with takeover context.
         # The finally block must NOT delete these history keys (only the
@@ -529,11 +534,13 @@ async def run_rebuild_cycle(
         history_key = f"{REBUILD_LOCK_HISTORY_KEY_PREFIX}{uuid.uuid4().hex}"
         await dhara.put(
             history_key,
-            json.dumps({
-                "previous_holder": holder_raw,
-                "took_over_at_ms": now_ms_for_lock,
-                "took_over_by": new_holder,
-            }),
+            json.dumps(
+                {
+                    "previous_holder": holder_raw,
+                    "took_over_at_ms": now_ms_for_lock,
+                    "took_over_by": new_holder,
+                }
+            ),
             ttl=REBUILD_LOCK_HISTORY_TTL_SECONDS,
         )
 
@@ -542,9 +549,7 @@ async def run_rebuild_cycle(
     await _acquire_rebuild_lock(dhara, new_holder, now_ms_for_lock)
 
     try:
-        records: list[PlanRecord] = (
-            discover_records(repo_root) if repo_root is not None else []
-        )
+        records: list[PlanRecord] = discover_records(repo_root) if repo_root is not None else []
 
         success, error_count, errors = await rebuilder.upsert_all(records, store)
 
@@ -577,7 +582,8 @@ async def run_rebuild_cycle(
                 recent.append({"ts_ms": now_ms, "op": "upsert", "err": "see ctx", "ctx": err})
             recent = recent[-RECENT_ERRORS_MAX:]
             await dhara.put(
-                RECENT_ERRORS_KEY, json.dumps(recent),
+                RECENT_ERRORS_KEY,
+                json.dumps(recent),
                 ttl=RECENT_ERRORS_TTL_DAYS * 86400,
             )
 
@@ -589,6 +595,7 @@ async def run_rebuild_cycle(
             PlanIndexFeedState,
             set_plan_index_feed_state,
         )
+
         feed = PlanIndexFeedState(
             entities_count=success,
             last_updated_timestamp=now_ms,

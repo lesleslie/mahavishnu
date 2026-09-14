@@ -79,29 +79,35 @@ class PlanIndexRebuilder:
                     # normalize_repo_url with raise_on_reject=True signals rejection
                     # via this exception; the static type signature still says
                     # str | None, so defensively check for None before use.
-                    errors.append({
-                        "path_hash": path_hash,
-                        "op": "normalize",
-                        "plan_id": record.plan_id,
-                    })
+                    errors.append(
+                        {
+                            "path_hash": path_hash,
+                            "op": "normalize",
+                            "plan_id": record.plan_id,
+                        }
+                    )
                     error_count += 1
                     continue
                 if normalized is None:
-                    errors.append({
-                        "path_hash": path_hash,
-                        "op": "normalize",
-                        "plan_id": record.plan_id,
-                    })
+                    errors.append(
+                        {
+                            "path_hash": path_hash,
+                            "op": "normalize",
+                            "plan_id": record.plan_id,
+                        }
+                    )
                     error_count += 1
                     continue
                 normalized_record = replace(record, repo=normalized)
                 await store.upsert(normalized_record)
                 success += 1
             except Exception:  # noqa: BLE001 — fail-soft per spec §Error handling
-                errors.append({
-                    "path_hash": path_hash,
-                    "plan_id": record.plan_id,
-                    "op": "upsert",
-                })
+                errors.append(
+                    {
+                        "path_hash": path_hash,
+                        "plan_id": record.plan_id,
+                        "op": "upsert",
+                    }
+                )
                 error_count += 1
         return success, error_count, errors

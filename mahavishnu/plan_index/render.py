@@ -43,9 +43,7 @@ def render(records: list[PlanRecordDict]) -> str:
         return "\n".join(lines)
 
     # Sort by date DESC then path ASC (matches the existing PLAN_INDEX.md convention).
-    sorted_records = sorted(
-        records, key=lambda r: (r["date"], r["path"]), reverse=True
-    )
+    sorted_records = sorted(records, key=lambda r: (r["date"], r["path"]), reverse=True)
 
     lines.append("## Plans")
     lines.append("")

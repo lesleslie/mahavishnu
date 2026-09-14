@@ -54,10 +54,7 @@ class PlanRecord:
             raise ValueError(f"status must be one of {_STATUS_VALUES}, got {self.status!r}")
         if self.role not in _ROLE_VALUES:
             raise ValueError(f"role must be one of {_ROLE_VALUES}, got {self.role!r}")
-        if (
-            self.lifecycle_state is not None
-            and self.lifecycle_state not in _LIFECYCLE_VALUES
-        ):
+        if self.lifecycle_state is not None and self.lifecycle_state not in _LIFECYCLE_VALUES:
             raise ValueError(
                 f"lifecycle_state must be one of {_LIFECYCLE_VALUES} or None, "
                 f"got {self.lifecycle_state!r}"

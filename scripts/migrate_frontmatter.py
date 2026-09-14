@@ -22,6 +22,7 @@ Detection strategy:
 
 Heuristic status mapping per the schema's § Legacy Mapping table.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -87,23 +88,23 @@ LEGACY_STATUS_MAP: dict[str, tuple[str, str | None]] = {
     "superseded": ("complete", "superseded"),
 }
 
-FENCE_RE = re.compile(r"^---\s*$", re.M)
+FENCE_RE = re.compile(r"^---\s*$", re.MULTILINE)
 HAS_FRONT_RE = re.compile(r"\A---\s*\n")
 
 # Code-block-aware patterns: we strip fenced ``` blocks before matching.
-CODE_BLOCK_RE = re.compile(r"```.*?```", re.S)
+CODE_BLOCK_RE = re.compile(r"```.*?```", re.DOTALL)
 # Match status, accepting **Status:** or bare Status: variants. Capture the
 # first word of the phrase (legacy keys are single words).
 STATUS_RE = re.compile(
     r"^\s*\*?\s*[Ss]tatus\s*:\s*\*?\s*([A-Z][A-Za-z]*)",
-    re.M,
+    re.MULTILINE,
 )
 # Match date (YYYY-MM-DD), with or without ** markers.
 DATE_RE = re.compile(
     r"^\s*\*?\s*[Dd]ate\s*:\s*\*?\s*(\d{4}-\d{2}-\d{2})",
-    re.M,
+    re.MULTILINE,
 )
-H1_RE = re.compile(r"^#\s+(.+?)\s*$", re.M)
+H1_RE = re.compile(r"^#\s+(.+?)\s*$", re.MULTILINE)
 FILENAME_DATE_RE = re.compile(r"^(\d{4}-\d{2}-\d{2})")
 
 
@@ -154,7 +155,7 @@ def slugify_topic(path: Path) -> str:
     """Derive a topic slug from filename stem (YYYY-MM-DD-foo-bar-design)."""
     stem = path.stem
     stem = FILENAME_DATE_RE.sub("", stem)  # strip date prefix
-    stem = re.sub(r"-design$", "", stem)   # strip -design suffix
+    stem = re.sub(r"-design$", "", stem)  # strip -design suffix
     stem = re.sub(r"-+", "-", stem)
     return stem.strip("-")
 
@@ -223,15 +224,18 @@ def render_frontmatter(p: Proposal) -> str:
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument(
-        "--apply", action="store_true",
+        "--apply",
+        action="store_true",
         help="Write changes (default: dry-run, prints proposals only)",
     )
     parser.add_argument(
-        "--store", choices=STORES,
+        "--store",
+        choices=STORES,
         help="Limit to one store",
     )
     parser.add_argument(
-        "--only", help="Limit to filenames containing this substring",
+        "--only",
+        help="Limit to filenames containing this substring",
     )
     args = parser.parse_args()
 
