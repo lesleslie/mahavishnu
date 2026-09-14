@@ -1,11 +1,34 @@
 ---
-status: active
+status: partial
 role: implementation
 date: 2026-07-16
 last_reviewed: 2026-09-13
 superseded_by: null
 topic: sb-checkpoint-stash-clobber-fix
 ---
+
+## Re-Review Status (2026-09-13)
+
+**Status**: `partial` — consumer (detector/policy/orchestrator) wired, but the **producer half of the lockfile contract is missing**.
+
+`session_buddy/checkpoint/` ships all planned modules and extras:
+
+```
+session_buddy/checkpoint/
+  __init__.py             orchestrator.py          policy.py
+  subagent_detector.py    snapshot.py              cleanup.py
+  metrics.py              pending.py               scrubbing.py
+```
+
+…with one consolidated test (`tests/unit/checkpoint/test_checkpoint_subsystem.py`) replacing the plan's eight per-component test files.
+
+**Residual (per `docs/followups/2026-07-15-sb-checkpoint-stash-clobber.md`)**:
+
+The `SubagentDetector.is_active()` reader is wired into `policy.py` and `orchestrator.py`, but `.write()` (the producer side that creates `<working_dir>/.session-buddy/subagent.lock` when a subagent starts) is **owned by an external subagent-runtime team** and is not part of this repo. See `session_buddy/checkpoint/subagent_detector.py:33-41`:
+
+> "Until the producer lands, the re-check branch (`subagent_active_during_capture`) is effectively a no-op; the primary `wait_until_idle` gate still protects end-of-task commits because it uses the same lockfile with fail-open → True semantics."
+
+In practical terms: the detect-and-defer mechanism is *structurally* in place but *functionally dormant* until the producer lands. Closing this plan to `complete` requires either (a) the producer landing upstream, or (b) a sibling followup that creates the producer inside session-buddy.
 
 # Session-Buddy Checkpoint Stash-Clobber Fix Implementation Plan
 

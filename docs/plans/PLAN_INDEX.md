@@ -570,7 +570,7 @@ One table per store. Entries are sorted by `date` DESC, with ties broken by path
 | [`docs/plans/2026-05-11-worktree-manage-consolidation-plan.md`](2026-05-11-worktree-manage-consolidation-plan.md) | 2026-07-16 | `complete` | `historical` |  | `worktree-management` | Worktree Manage Consolidation Plan |
 | [`docs/plans/2026-05-23-bodai-routing-feedback-loop-v2.md`](2026-05-23-bodai-routing-feedback-loop-v2.md) | 2026-07-16 | `complete` | `superseded` |  | `routing-composition` | Bodai Ecosystem Feedback Loop — Routing Intelligence via OTel |
 | [`docs/plans/2026-05-23-bodai-routing-feedback-loop-v3.md`](2026-05-23-bodai-routing-feedback-loop-v3.md) | 2026-07-16 | `complete` | `superseded` |  | `routing-composition` | Bodai Ecosystem Feedback Loop — Routing Intelligence via OTel |
-| [`docs/plans/2026-05-23-bodai-routing-feedback-loop-v4.md`](2026-05-23-bodai-routing-feedback-loop-v4.md) | 2026-07-16 | `active` | `implementation` |  | `routing-composition` | Bodai Ecosystem Feedback Loop — Routing Intelligence via OTel |
+| [`docs/plans/2026-05-23-bodai-routing-feedback-loop-v4.md`](2026-05-23-bodai-routing-feedback-loop-v4.md) | 2026-07-16 | `partial` | `implementation` |  | `routing-composition` | Bodai Ecosystem Feedback Loop — Routing Intelligence via OTel |
 | [`docs/plans/2026-05-23-bodai-routing-feedback-loop.md`](2026-05-23-bodai-routing-feedback-loop.md) | 2026-07-16 | `complete` | `superseded` |  | `routing-composition` | Bodai Ecosystem Feedback Loop — Routing Intelligence via OTel |
 | [`docs/plans/2026-05-23-unified-exception-logging.md`](2026-05-23-unified-exception-logging.md) | 2026-07-16 | `complete` | `implementation` |  | `error-handling` | Unified Exception Logging Across Bodai — Design Doc |
 | [`docs/plans/2026-05-24-bodai-deployment-guide.md`](2026-05-24-bodai-deployment-guide.md) | 2026-07-16 | `complete` | `implementation` |  | `convergence-control-plane` | Bodai Deployment Guide: Local vs Serverless |
@@ -693,7 +693,7 @@ One table per store. Entries are sorted by `date` DESC, with ties broken by path
 | [`docs/superpowers/plans/2026-06-01-dhara-crackerjack-critical-bug-fixes.md`](../../docs/superpowers/plans/2026-06-01-dhara-crackerjack-critical-bug-fixes.md) | 2026-07-16 | `draft` | `implementation` |  | `dhara-crackerjack-bug-fixes` | Dhara-Crackerjack Critical Bug Fixes Implementation Plan |
 | [`docs/superpowers/plans/2026-06-19-track1-terminal-gap.md`](../../docs/superpowers/plans/2026-06-19-track1-terminal-gap.md) | 2026-07-16 | `complete` | `historical` |  | `track1-terminal-gap` | Track 1 — Terminal Gap Implementation Plan |
 | [`docs/superpowers/plans/2026-06-19-track2-openhands.md`](../../docs/superpowers/plans/2026-06-19-track2-openhands.md) | 2026-07-16 | `draft` | `implementation` |  | `track2-openhands` | Track 2 — OpenHands Integration Implementation Plan |
-| [`docs/superpowers/plans/2026-06-19-track3-toad-tui.md`](../../docs/superpowers/plans/2026-06-19-track3-toad-tui.md) | 2026-07-16 | `active` | `implementation` |  | `track3-toad-tui` | Track 3 — Toad TUI (Textual + Rich) Implementation Plan |
+| [`docs/superpowers/plans/2026-06-19-track3-toad-tui.md`](../../docs/superpowers/plans/2026-06-19-track3-toad-tui.md) | 2026-07-16 | `partial` | `implementation` |  | `track3-toad-tui` | Track 3 — Toad TUI (Textual + Rich) Implementation Plan |
 | [`docs/superpowers/plans/2026-06-19-track4-turbovec.md`](../../docs/superpowers/plans/2026-06-19-track4-turbovec.md) | 2026-07-16 | `draft` | `implementation` |  | `track4-turbovec` | Track 4 — TurboVec Integration Implementation Plan |
 | [`docs/superpowers/plans/2026-06-19-wave2b-a2a-worker.md`](../../docs/superpowers/plans/2026-06-19-wave2b-a2a-worker.md) | 2026-07-16 | `draft` | `implementation` |  | `wave2b-a2a-worker` | Wave 2b: A2A Worker & Server Implementation Plan |
 | [`docs/superpowers/plans/2026-06-22-adapter-runtime-observability.md`](../../docs/superpowers/plans/2026-06-22-adapter-runtime-observability.md) | 2026-07-16 | `draft` | `implementation` |  | `adapter-runtime-observability` | Adapter Runtime Observability v1.0 Implementation Plan |
@@ -717,7 +717,7 @@ One table per store. Entries are sorted by `date` DESC, with ties broken by path
 | [`docs/superpowers/plans/2026-07-13-mcp-server-family-mcpbase-migration.md`](../../docs/superpowers/plans/2026-07-13-mcp-server-family-mcpbase-migration.md) | 2026-07-16 | `draft` | `implementation` |  | `mcpbase-migration` | MCP Server Family: MCPBaseSettings → OneiricMCPConfig Migration |
 | [`docs/superpowers/plans/2026-07-14-multi-backend-pty.md`](../../docs/superpowers/plans/2026-07-14-multi-backend-pty.md) | 2026-07-16 | `complete` | `historical` |  | `multi-backend-pty` | Multi-Backend PTY Implementation Plan |
 | [`docs/superpowers/plans/2026-07-15-constellation-tui.md`](../../docs/superpowers/plans/2026-07-15-constellation-tui.md) | 2026-07-16 | `draft` | `implementation` |  | `constellation-tui` | Constellation TUI Implementation Plan |
-| [`docs/superpowers/plans/2026-07-15-sb-checkpoint-stash-clobber-fix.md`](../../docs/superpowers/plans/2026-07-15-sb-checkpoint-stash-clobber-fix.md) | 2026-07-16 | `active` | `implementation` |  | `sb-checkpoint-stash-clobber-fix` | Session-Buddy Checkpoint Stash-Clobber Fix Implementation Plan |
+| [`docs/superpowers/plans/2026-07-15-sb-checkpoint-stash-clobber-fix.md`](../../docs/superpowers/plans/2026-07-15-sb-checkpoint-stash-clobber-fix.md) | 2026-07-16 | `partial` | `implementation` |  | `sb-checkpoint-stash-clobber-fix` | Session-Buddy Checkpoint Stash-Clobber Fix Implementation Plan |
 | [`docs/superpowers/plans/2026-07-16-bodai-plugin-standardization.md`](../../docs/superpowers/plans/2026-07-16-bodai-plugin-standardization.md) | 2026-07-16 | `partial` | `implementation` |  | `mcp-design` | Bodai Plugin Standardization Implementation Plan |
 | [`docs/superpowers/plans/2026-07-16-frontmatter-validator-wiring-plan.md`](../../docs/superpowers/plans/2026-07-16-frontmatter-validator-wiring-plan.md) | 2026-07-16 | `draft` | `implementation` |  | `lifecycle` | Frontmatter Validator Wiring + P7 Cross-Repo Implementation Plan |
 | [`docs/superpowers/plans/2026-07-16-plan-lifecycle-unification.md`](../../docs/superpowers/plans/2026-07-16-plan-lifecycle-unification.md) | 2026-07-16 | `draft` | `implementation` |  | `convergence-control-plane` | Plan Lifecycle Unification — Frontmatter Standardization Across Documentation Stores |
@@ -873,9 +873,9 @@ Counts of entries per (lifecycle, role) cell across all 24 stores. Useful as a s
 | Role \\ Lifecycle | draft | active | partial | shipped | complete | Total |
 |---|---|---|---|---|---|---|
 | `canonical` | 19 | 102 | 1 | 2 | 13 | **137** |
-| `implementation` | 134 | 45 | 12 | 34 | 24 | **249** |
+| `implementation` | 134 | 42 | 15 | 34 | 24 | **249** |
 | `umbrella` | · | 1 | · | · | 2 | **3** |
 | `historical` | 11 | 3 | · | 4 | 129 | **147** |
 | `superseded` | · | · | · | · | 12 | **12** |
 
-| **Total** | **164** | **151** | **13** | **40** | **180** | **548** |
+| **Total** | **164** | **148** | **16** | **40** | **180** | **548** |

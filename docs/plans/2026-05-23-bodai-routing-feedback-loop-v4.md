@@ -1,11 +1,27 @@
 ---
-status: active
+status: partial
 role: implementation
 date: 2026-07-16
 last_reviewed: 2026-09-13
 superseded_by: null
 topic: routing-composition
 ---
+
+## Re-Review Status (2026-09-13)
+
+**Status**: `partial` — `query_local_traces` MCP tool shipped on 4 of 5 Bodai ecosystem components; **dhara is missing it.**
+
+| Component | `query_local_traces` MCP tool | Location |
+|-----------|-------------------------------|----------|
+| mahavishnu | ✅ | `mahavishnu/mcp/tools/otel_tools.py:251` |
+| akosha | ✅ | `akosha/mcp/tools/otel_tools.py:30-31` (registered as `akosha_query_local_traces`) |
+| session-buddy | ✅ | `session_buddy/mcp/tools/memory/otel_trace_tools.py:78` |
+| crackerjack | ✅ | `crackerjack/mcp/tools/otel_tools.py:65` |
+| **dhara** | ❌ | not present (`grep -rn "def query_local_traces" /Users/les/Projects/dhara/dhara` returns no match) |
+
+**Why this matters**: Plan §6.1 `KNOWN_SERVICES` lists `{"mahavishnu", "session-buddy", "akosha", "dhara", "crackerjack"}` as the canonical inter-service registry. The Akosha fitness analyzer polls each registered component's `query_local_traces` to aggregate traces; a missing tool on dhara silently degrades the feedback loop with no signal. The plan's Phase 1 Step 2.3 explicitly enumerates "Add `query_local_traces` to Akosha, Session-Buddy, Crackerjack" — but is silent on dhara. The omission is a Phase 1 scope-bug, not an architectural blocker.
+
+**Residual to close**: Add `query_local_traces` to dhara's MCP server, with the same attribute-based time-range filtering that the other 4 components implement.
 
 # Bodai Ecosystem Feedback Loop — Routing Intelligence via OTel
 

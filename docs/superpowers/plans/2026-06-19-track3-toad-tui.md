@@ -1,11 +1,24 @@
 ---
-status: active
+status: partial
 role: implementation
 date: 2026-07-16
 last_reviewed: 2026-09-13
 superseded_by: null
 topic: track3-toad-tui
 ---
+
+## Re-Review Status (2026-09-13)
+
+**Status**: `partial` — Tasks 1-3 shipped, Task 4 (Rich Quality CLI) not yet executed.
+
+| Task | Description | State |
+|------|-------------|-------|
+| 1 | `mahavishnu/tui/__init__.py` module (`TUI_AVAILABLE`, `FallbackRichFormatter`, `get_console`) | ✅ Shipped (`mahavishnu/tui/__init__.py`) |
+| 2 | Textual widgets (`PoolStatusWidget`, `WorkerStatusWidget`) + `MonitorApp` | ✅ Shipped (`mahavishnu/tui/widgets.py`, `monitor_app.py`, plus extras `app.py`, `command_palette.py`) |
+| 3 | `mahavishnu monitor watch` CLI command + Rich upgrade of `get-dashboard` | ✅ Shipped (concurrent CLI refactor landed Rich output; `watch` subcommand backed by `MonitorApp`) |
+| 4 | Rich Quality CLI replacing the stub in `mahavishnu/quality_cli.py` | ❌ **NOT shipped** — `mahavishnu/quality_cli.py:46` still calls `typer.echo("Quality check complete (stub)")`; no `FallbackRichFormatter` import. |
+
+**Residual to close**: Task 4. The track-3 plan's terminal deliverable is a non-stub CLI; until that's wired into `run_quality_check()`, the `track-2 → openhands_tools.py` consumer still sees the stubbed contract.
 
 # Track 3 — Toad TUI (Textual + Rich) Implementation Plan
 
