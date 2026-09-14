@@ -1,7 +1,13 @@
-______________________________________________________________________
-
-## status: active role: deferred topic: tier2-phase-d-cross-repo date: 2026-09-10 last_reviewed: 2026-09-10 superseded_by: null blocks_on: [phase-8-adopted-and-stable]
-
+---
+status: active
+role: deferred
+topic: tier2-phase-d-cross-repo
+date: 2026-09-10
+last_reviewed: 2026-09-13
+superseded_by: None
+blocks_on:
+  - phase-8-adopted-and-stable
+---
 # Tier 2 Follow-up: Phase D Cross-Repo Akosha Detector Wiring
 
 **Created**: 2026-09-10

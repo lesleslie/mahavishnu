@@ -1,7 +1,10 @@
-______________________________________________________________________
-
-## status: complete role: implementation date: 2026-07-16 last_reviewed: 2026-07-16 topic: test-matrix-followups
-
+---
+status: complete
+role: implementation
+date: 2026-07-16
+last_reviewed: 2026-09-13
+topic: test-matrix-followups
+---
 # Deferred MEDIUM / LOW Findings — `scripts/test_matrix.py` review
 
 One-line summary: tracks the medium- and low-severity items from the recent

@@ -1,7 +1,12 @@
-______________________________________________________________________
-
-## status: active role: deferred topic: tier2-multi-metric-drift date: 2026-09-10 last_reviewed: 2026-09-10 superseded_by: null blocks_on: []
-
+---
+status: active
+role: deferred
+topic: tier2-multi-metric-drift
+date: 2026-09-10
+last_reviewed: 2026-09-13
+superseded_by: None
+blocks_on:
+---
 # Tier 2 Follow-up: Multi-Metric Drift Detection
 
 **Created**: 2026-09-10

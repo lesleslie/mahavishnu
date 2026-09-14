@@ -1,7 +1,13 @@
-______________________________________________________________________
-
-## status: active role: canonical topic: followups-index date: 2026-07-16 last_reviewed: 2026-07-16 superseded_by: null blocks_on: []
-
+---
+status: active
+role: canonical
+kind: reference
+topic: followups-index
+date: 2026-07-16
+last_reviewed: 2026-09-13
+superseded_by: None
+blocks_on:
+---
 # `docs/followups/` index
 
 One-line summary: dated follow-up notes — each pairs a bug/task with its

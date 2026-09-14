@@ -1,7 +1,10 @@
-______________________________________________________________________
-
-## status: active role: canonical date: 2026-07-27 last_reviewed: 2026-08-03 topic: acp-v15-followups
-
+---
+status: partial
+role: canonical
+date: 2026-07-27
+last_reviewed: 2026-09-13
+topic: acp-v15-followups
+---
 # 2026-07-27-acp-v15-followups — followup
 
 ## Status

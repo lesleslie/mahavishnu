@@ -1,7 +1,12 @@
-______________________________________________________________________
-
-## status: active role: implementation topic: persistence date: 2026-07-15 last_reviewed: 2026-09-06 superseded_by: null blocks_on: []
-
+---
+status: partial
+role: implementation
+topic: persistence
+date: 2026-07-15
+last_reviewed: 2026-09-13
+superseded_by: null
+blocks_on: []
+---
 # Session-Buddy Checkpoint Stash-Clobber Pattern (Second Observation)
 
 ## **Created**: 2026-07-15 **Status**: Recurring defect — second observation; companion to parent memory **Parent memory**: `session-buddy-checkpoint-hooks-fire-during-subagent-sessions` (`~/.claude/projects/-Users-les-Projects-mahavishnu/memory/session-buddy-checkpoint-hooks-fire-during-subagent-sessions.md`) **Recorded in pickup prompt**: `docs/followups/2026-07-15-pickup-bodai-hooks-and-sb-debug.md` (Step 3e verification + acceptance criterion #6) **Originating session**: 2026-07-15 comprehensive-hooks-cleanup wave (checkpoint at `docs/followups/2026-07-15-comprehensive-hooks-cleanup-checkpoint.md`)
