@@ -23,8 +23,13 @@ from __future__ import annotations
 from datetime import UTC, datetime, timedelta
 from typing import TYPE_CHECKING
 
-import duckdb
 import pytest
+
+# duckdb is not declared in pyproject.toml — it gets pulled in
+# transitively by some environments and is missing in others.
+# importorskip at module level gracefully skips the file in venvs
+# without duckdb instead of failing collection with ModuleNotFoundError.
+duckdb = pytest.importorskip("duckdb", reason="duckdb not installed")
 
 from mahavishnu.distill.health import distilled_workflow_health
 from mahavishnu.distill.schema import apply_distill_schema

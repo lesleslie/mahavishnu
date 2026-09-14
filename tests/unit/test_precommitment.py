@@ -6,9 +6,19 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
-from dhara.lock.sql import SQLBackendLock
-import duckdb
 import pytest
+
+# duckdb is not declared in pyproject.toml — it gets pulled in
+# transitively by some environments and is missing in others.
+# importorskip at module level gracefully skips the file in venvs
+# without duckdb instead of failing collection with ModuleNotFoundError.
+# MUST run BEFORE ``from dhara.lock.sql import SQLBackendLock`` because
+# dhara's ``lock/sql`` module does ``import duckdb`` at its own module
+# load — the import order here is the ordering guard against transitive
+# duckdb pulls from sibling Bodai packages.
+duckdb = pytest.importorskip("duckdb", reason="duckdb not installed")
+
+from dhara.lock.sql import SQLBackendLock  # noqa: E402  -- after importorskip guard
 
 from mahavishnu.core.precommitment import (
     Hypothesis,
