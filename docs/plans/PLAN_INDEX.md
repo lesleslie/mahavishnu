@@ -554,13 +554,13 @@ One table per store. Entries are sorted by `date` DESC, with ties broken by path
 | [`docs/plans/2026-08-25-bodai-tui-shell-surface-implementation.md`](2026-08-25-bodai-tui-shell-surface-implementation.md) | 2026-08-25 | `active` | `implementation` |  | `bodai-tui-shell-surface` | Bodai TUI & Admin Shell Surface Implementation Plan |
 | [`docs/plans/2026-08-25-bodai-tui-shell-surface.md`](2026-08-25-bodai-tui-shell-surface.md) | 2026-08-25 | `active` | `implementation` |  | `bodai-tui-shell-surface` | Bodai TUI & Admin Shell Surface |
 | [`docs/plans/2026-08-24-claude-env-audit-remediation.md`](2026-08-24-claude-env-audit-remediation.md) | 2026-08-24 | `partial` | `implementation` |  | `claude-env-remediation` | Claude Environment Audit Remediation |
-| [`docs/plans/2026-08-20-mahavishnu-lifespan-health-bypass.md`](2026-08-20-mahavishnu-lifespan-health-bypass.md) | 2026-08-20 | `active` | `canonical` |  | `mcp-lifespan-startup-ordering` | Mahavishnu MCP `/health` Lifespan Bypass |
-| [`docs/plans/2026-07-26-mahavishnu-acp-server.md`](2026-07-26-mahavishnu-acp-server.md) | 2026-07-26 | `active` | `implementation` |  | `acp-server` | Mahavishnu ACP Server — Build Plan |
-| [`docs/plans/2026-04-02-storage-consolidation-and-akosha-role.md`](2026-04-02-storage-consolidation-and-akosha-role.md) | 2026-07-16 | `active` | `canonical` |  | `storage-consolidation` | Storage Consolidation And Akosha Role Plan |
+| [`docs/plans/2026-08-20-mahavishnu-lifespan-health-bypass.md`](2026-08-20-mahavishnu-lifespan-health-bypass.md) | 2026-08-20 | `complete` | `canonical` |  | `mcp-lifespan-startup-ordering` | Mahavishnu MCP `/health` Lifespan Bypass |
+| [`docs/plans/2026-07-26-mahavishnu-acp-server.md`](2026-07-26-mahavishnu-acp-server.md) | 2026-07-26 | `draft` | `implementation` |  | `acp-server` | Mahavishnu ACP Server — Build Plan |
+| [`docs/plans/2026-04-02-storage-consolidation-and-akosha-role.md`](2026-04-02-storage-consolidation-and-akosha-role.md) | 2026-07-16 | `complete` | `canonical` |  | `storage-consolidation` | Storage Consolidation And Akosha Role Plan |
 | [`docs/plans/2026-04-25-ecosystem-docs-canonicalization-plan.md`](2026-04-25-ecosystem-docs-canonicalization-plan.md) | 2026-07-16 | `complete` | `implementation` |  | `convergence-control-plane` | Ecosystem Docs Canonicalization Plan |
 | [`docs/plans/2026-04-25-mahavishnu-ecosystem-control-plane-update-plan.md`](2026-04-25-mahavishnu-ecosystem-control-plane-update-plan.md) | 2026-07-16 | `shipped` | `implementation` |  | `observability` | Mahavishnu Ecosystem Control Plane Update Plan |
 | [`docs/plans/2026-05-07-mahavishnu-master-backlog.md`](2026-05-07-mahavishnu-master-backlog.md) | 2026-07-16 | `complete` | `implementation` |  | `convergence-control-plane` | Mahavishnu Master Backlog |
-| [`docs/plans/2026-05-07-unified-config-design.md`](2026-05-07-unified-config-design.md) | 2026-07-16 | `active` | `canonical` |  | `mcp-design` | P3 Design Note — UnifiedConfig and Startup Validation |
+| [`docs/plans/2026-05-07-unified-config-design.md`](2026-05-07-unified-config-design.md) | 2026-07-16 | `complete` | `canonical` |  | `mcp-design` | P3 Design Note — UnifiedConfig and Startup Validation |
 | [`docs/plans/2026-05-10-bodai-control-plane-convergence-plan.md`](2026-05-10-bodai-control-plane-convergence-plan.md) | 2026-07-16 | `complete` | `umbrella` |  | `convergence-control-plane` | Bodai Control Plane Convergence Plan |
 | [`docs/plans/2026-05-10-minimax27-provider-migration.md`](2026-05-10-minimax27-provider-migration.md) | 2026-07-16 | `complete` | `historical` |  | `convergence-control-plane` | MiniMax 2.7 Provider Migration Plan |
 | [`docs/plans/2026-05-10-terminal-worker-unification-plan.md`](2026-05-10-terminal-worker-unification-plan.md) | 2026-07-16 | `complete` | `implementation` |  | `terminal` | Terminal Worker Unification Plan |
@@ -600,7 +600,7 @@ One table per store. Entries are sorted by `date` DESC, with ties broken by path
 | [`docs/plans/session-buddy-multi-channel-spec.md`](session-buddy-multi-channel-spec.md) | 2026-07-16 | `shipped` | `implementation` |  | `memory-architecture` | Session-Buddy Multi-Channel Tracking — Concrete Spec |
 | [`docs/plans/tensorzero-gateway-plan.md`](tensorzero-gateway-plan.md) | 2026-07-16 | `complete` | `superseded` |  | `routing-composition` | TensorZero Gateway — Final Implementation Plan |
 | [`docs/plans/2026-05-09-unified-event-bus-spec.md`](2026-05-09-unified-event-bus-spec.md) | 2026-05-09 | `draft` | `implementation` |  | `observability` | Bodai Unified Event Bus — Standardization Plan |
-| [`docs/plans/2026-05-07-dhara-state-backend-addendum.md`](2026-05-07-dhara-state-backend-addendum.md) | 2026-05-07 | `active` | `canonical` |  | `storage-consolidation` | P2 Addendum — DharaStateBackend Interface |
+| [`docs/plans/2026-05-07-dhara-state-backend-addendum.md`](2026-05-07-dhara-state-backend-addendum.md) | 2026-05-07 | `complete` | `canonical` |  | `storage-consolidation` | P2 Addendum — DharaStateBackend Interface |
 | [`docs/plans/2026-04-25-type-adapter-migration-plan.md`](2026-04-25-type-adapter-migration-plan.md) | 2026-04-25 | `shipped` | `historical` |  | `adapter-architecture` | Type Adapter Migration Plan |
 | [`docs/plans/2026-04-16-bodai-agent-platform-master-spec.md`](2026-04-16-bodai-agent-platform-master-spec.md) | 2026-04-16 | `complete` | `canonical` |  | `mcp-design` | Bodai Agent Platform Master Spec |
 | [`docs/plans/2026-04-16-bodai-master-implementation-plan.md`](2026-04-16-bodai-master-implementation-plan.md) | 2026-04-16 | `complete` | `superseded` |  | `convergence-control-plane` | Bodai Master Implementation Plan |
@@ -716,7 +716,7 @@ One table per store. Entries are sorted by `date` DESC, with ties broken by path
 | [`docs/superpowers/plans/2026-06-27-dhara-substrate-implementation.md`](../../docs/superpowers/plans/2026-06-27-dhara-substrate-implementation.md) | 2026-07-16 | `draft` | `implementation` |  | `dhara-substrate-implementation` | Dhara Substrate Implementation Plan |
 | [`docs/superpowers/plans/2026-07-13-mcp-server-family-mcpbase-migration.md`](../../docs/superpowers/plans/2026-07-13-mcp-server-family-mcpbase-migration.md) | 2026-07-16 | `draft` | `implementation` |  | `mcpbase-migration` | MCP Server Family: MCPBaseSettings → OneiricMCPConfig Migration |
 | [`docs/superpowers/plans/2026-07-14-multi-backend-pty.md`](../../docs/superpowers/plans/2026-07-14-multi-backend-pty.md) | 2026-07-16 | `complete` | `historical` |  | `multi-backend-pty` | Multi-Backend PTY Implementation Plan |
-| [`docs/superpowers/plans/2026-07-15-constellation-tui.md`](../../docs/superpowers/plans/2026-07-15-constellation-tui.md) | 2026-07-16 | `active` | `implementation` |  | `constellation-tui` | Constellation TUI Implementation Plan |
+| [`docs/superpowers/plans/2026-07-15-constellation-tui.md`](../../docs/superpowers/plans/2026-07-15-constellation-tui.md) | 2026-07-16 | `draft` | `implementation` |  | `constellation-tui` | Constellation TUI Implementation Plan |
 | [`docs/superpowers/plans/2026-07-15-sb-checkpoint-stash-clobber-fix.md`](../../docs/superpowers/plans/2026-07-15-sb-checkpoint-stash-clobber-fix.md) | 2026-07-16 | `active` | `implementation` |  | `sb-checkpoint-stash-clobber-fix` | Session-Buddy Checkpoint Stash-Clobber Fix Implementation Plan |
 | [`docs/superpowers/plans/2026-07-16-bodai-plugin-standardization.md`](../../docs/superpowers/plans/2026-07-16-bodai-plugin-standardization.md) | 2026-07-16 | `partial` | `implementation` |  | `mcp-design` | Bodai Plugin Standardization Implementation Plan |
 | [`docs/superpowers/plans/2026-07-16-frontmatter-validator-wiring-plan.md`](../../docs/superpowers/plans/2026-07-16-frontmatter-validator-wiring-plan.md) | 2026-07-16 | `draft` | `implementation` |  | `lifecycle` | Frontmatter Validator Wiring + P7 Cross-Repo Implementation Plan |
@@ -872,10 +872,10 @@ Counts of entries per (lifecycle, role) cell across all 24 stores. Useful as a s
 
 | Role \\ Lifecycle | draft | active | partial | shipped | complete | Total |
 |---|---|---|---|---|---|---|
-| `canonical` | 19 | 106 | 1 | 2 | 9 | **137** |
-| `implementation` | 132 | 47 | 12 | 34 | 24 | **249** |
+| `canonical` | 19 | 102 | 1 | 2 | 13 | **137** |
+| `implementation` | 134 | 45 | 12 | 34 | 24 | **249** |
 | `umbrella` | · | 1 | · | · | 2 | **3** |
 | `historical` | 11 | 3 | · | 4 | 129 | **147** |
 | `superseded` | · | · | · | · | 12 | **12** |
 
-| **Total** | **162** | **157** | **13** | **40** | **176** | **548** |
+| **Total** | **164** | **151** | **13** | **40** | **180** | **548** |
