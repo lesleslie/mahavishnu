@@ -12,7 +12,6 @@ from mahavishnu.pools.queueing.scorer import (
     DEFAULT_WARMUP_MIN_OBSERVATIONS,
     DEFAULT_WARMUP_MIN_SECONDS,
     QueueingObservationBuffer,
-    QueueingScorer,
 )
 from mahavishnu.core.status import PoolStatus
 
@@ -139,84 +138,11 @@ class TestQueueingObservationBuffer:
 
 
 # ---------------------------------------------------------------------------
-# QueueingScorer
+# QueueingScorer removed in round-4 (general/safety HIGH-1):
+# the actual production re-ranking lives in
+# PoolManager._apply_queueing_penalty (tests/unit/pools/test_queueing_scorer.py::TestApplyQueueingPenalty).
+# The standalone QueueingScorer class is exported but never instantiated.
 # ---------------------------------------------------------------------------
-
-
-@pytest.mark.unit
-class TestQueueingScorer:
-    def test_warmup_returns_zero_delta(self) -> None:
-        """When no model is set and no buffer is passed, scorer returns 0.0 delta."""
-        s = QueueingScorer(inner=None)  # type: ignore[arg-type]
-        # Build a minimal pool/tuple so the call works
-        # QueueingScorer.score returns the *delta* to apply
-        pool = PoolMetrics(
-            pool_id="x",
-            status=PoolStatus.RUNNING,
-            active_workers=2,
-            total_workers=2,
-        )
-        delta = s.score(pool, None)  # type: ignore[arg-type]
-        assert delta == 0.0
-
-    def test_with_fitted_model_returns_penalty(self) -> None:
-        """When a fitted model is provided, the delta is -weight * predicted_wait."""
-        m = MmcQueue(arrival_rate=0.5, service_rate=1.0, num_workers=2)
-        s = QueueingScorer(inner=None, model=m, penalty_weight=0.1)  # type: ignore[arg-type]
-        pool = PoolMetrics(
-            pool_id="x",
-            status=PoolStatus.RUNNING,
-            active_workers=2,
-            total_workers=2,
-        )
-        delta = s.score(pool, None)  # type: ignore[arg-type]
-        # delta = -0.1 * W_q
-        # W_q at rho=0.25 is (0.25/0.75)/1 = 0.333
-        assert delta < 0.0
-        assert delta == pytest.approx(-0.1 * (0.25 / 0.75), rel=1e-6)
-
-    def test_unstable_rho_returns_strong_negative(self) -> None:
-        """rho >= 1 should return a strongly negative score (do-not-route)."""
-        m = MmcQueue(arrival_rate=5.0, service_rate=1.0, num_workers=1)
-        s = QueueingScorer(inner=None, model=m)  # type: ignore[arg-type]
-        pool = PoolMetrics(
-            pool_id="x",
-            status=PoolStatus.RUNNING,
-            active_workers=1,
-            total_workers=1,
-        )
-        delta = s.score(pool, None)  # type: ignore[arg-type]
-        assert delta == -1e9
-
-    def test_with_buffer_fitted_model(self) -> None:
-        """When a buffer is provided with a fitted model, scorer uses it."""
-        buf = QueueingObservationBuffer(pool_id="x", min_observations=2)
-        buf.append(1.0, 0.5)
-        buf.append(1.0, 0.5)
-        m = buf.fit(num_workers=2)
-        assert m is not None
-        s = QueueingScorer(inner=None)  # type: ignore[arg-type]
-        pool = PoolMetrics(
-            pool_id="x",
-            status=PoolStatus.RUNNING,
-            active_workers=2,
-            total_workers=2,
-        )
-        delta = s.score(pool, None, buffer=buf)  # type: ignore[arg-type]
-        assert delta < 0.0
-
-    def test_penalty_weight_scales_delta(self) -> None:
-        m = MmcQueue(arrival_rate=0.5, service_rate=1.0, num_workers=2)
-        pool = PoolMetrics(
-            pool_id="x",
-            status=PoolStatus.RUNNING,
-            active_workers=2,
-            total_workers=2,
-        )
-        d1 = QueueingScorer(inner=None, model=m, penalty_weight=0.1).score(pool, None)  # type: ignore[arg-type]
-        d2 = QueueingScorer(inner=None, model=m, penalty_weight=0.5).score(pool, None)  # type: ignore[arg-type]
-        # Larger weight → more negative delta
-        assert d2 < d1
 
 
 # ---------------------------------------------------------------------------
@@ -318,12 +244,20 @@ class TestPydanticPoolConfigQueueing:
 
 @pytest.mark.unit
 class TestModuleExports:
-    def test_init_exports_scorer(self) -> None:
+    def test_init_exports_buffer_only(self) -> None:
+        """Round-4 general/safety (HIGH-1): QueueingScorer removed.
+
+        Production queueing re-ranking lives in
+        ``PoolManager._apply_queueing_penalty``. The standalone
+        ``QueueingScorer`` class was an orphan — exported in
+        ``__all__`` but never instantiated. Removed in round-4 to
+        avoid the built-but-not-wired trap.
+        """
         from mahavishnu.pools import queueing
 
-        assert hasattr(queueing, "QueueingScorer")
+        assert not hasattr(queueing, "QueueingScorer")
         assert hasattr(queueing, "QueueingObservationBuffer")
-        assert "QueueingScorer" in queueing.__all__
+        assert "QueueingScorer" not in queueing.__all__
         assert "QueueingObservationBuffer" in queueing.__all__
         assert "MmcQueue" in queueing.__all__
 
