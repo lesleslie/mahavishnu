@@ -843,6 +843,15 @@ Refactor target: `class HotStore(DuckdbHotStore):` — subclass that calls `supe
 
 **Goal:** Delete `dhara/mcp/` entirely. Slim pyproject.toml. Cut Dhara v1.0.0. Provision alerting + migration guide + runbook + ecosystem health.
 
+> **Cross-repo coordination (crackerjack-side, separate commit):** every
+> `mcp__dhara__*` consumer in every Bodai repo must be removed or replaced
+> in lockstep with this phase's server deletion (per §4.9 "same commit"
+> rule). The crackerjack-side followup — filed ahead of Phase 8 — is at
+> `crackerjack/docs/followups/2026-09-14-delete-dhara-mcp-client-after-decomposition.md`.
+> It lists 4 files to touch in the crackerjack repo (1 source deletion, 2
+> production callers to rewire to `mcp__mahavishnu__upsert_service` /
+> `mcp__mahavishnu__record_event`, 3 test files to delete or rewrite).
+
 **Tasks:**
 
 1. Delete `dhara/mcp/` directory (every file: `__init__.py`, `__main__.py`, `adapter_lookup.py`, `adapter_tools.py`, `agent_schema.py`, `auth.py`, `ecosystem_state.py`, `fastmcp_auth.py`, `kv_timeseries.py`, `middleware.py`, `profiles.py`, `server.py`, `server_core.py`, `signer_feed.py`, `skill_schema.py`, `substrate_routes.py`, `tools/`). **Explicit documentation for files not in §4.2's destination table** (resolves Agent B's "odd" finding):
