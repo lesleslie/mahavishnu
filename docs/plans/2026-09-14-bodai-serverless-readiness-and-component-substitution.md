@@ -7,11 +7,13 @@ last_reviewed: 2026-09-14
 superseded_by: null
 blocks_on:
   - docs/plans/REVIEW_serverless.md
+  - docs/plans/2026-07-26-mahavishnu-acp-server.md  # REQ-HARNESS-ACP-INTEGRATION validates through the active ACP server plan
 related:
   - docs/plans/2026-04-02-storage-consolidation-and-akosha-role.md
   - docs/plans/dhara-outstanding-items-plan.md
   - docs/plans/2026-04-16-bodai-master-implementation-plan.md
   - docs/plans/2026-04-25-mahavishnu-ecosystem-control-plane-update-plan.md
+  - docs/plans/2026-09-14-bodai-serverless-readiness-phase-1-fixes.md  # 14 precondition REQs
 review_summary:
   reviewers_dispatched: 8
   reviewers_returned: 8
@@ -24,7 +26,7 @@ review_summary:
   re_review_findings_deferred: "see Appendix F"
   post_pause_additions:
     - "Phase 11 (Harness-agnostic enablement) added 2026-09-14"
-    - "14 new REQs covering Qwen Code v0.23.4 + Codex CLI 0.155.0-alpha.4 targets"
+    - "14 new REQs covering Qwen Code v0.23.4 target (Codex CLI deferred per user decision 2026-09-14)"
     - "spec-kit workflow + superpowers skill-schema + bodai-skill-schema PyPI package adopted"
 ---
 
@@ -160,13 +162,15 @@ With:
 | `python -c "from oneiric.adapters.memory import MemoryStore"` | Imports successfully | CI logs |
 | `python -c "from oneiric.adapters.observer import HarnessObserver"` | Imports successfully | CI logs |
 | `pytest tests/integration/test_harness_qwen_code.py` | End-to-end test passes against Qwen Code v0.23.4 | CI |
-| `pytest tests/integration/test_harness_codex_cli.py` | End-to-end test passes against Codex CLI 0.155.0-alpha.4 | CI |
+| `pytest tests/integration/test_harness_codex_cli.py` | Codex test deferred 2026-09-14 | n/a |
 | `python scripts/manifest_gen.py --target=qwen --dry-run` | Generates valid `.qwen/settings.json` referencing all 15 Bodai MCP servers | stdout |
-| `python scripts/manifest_gen.py --target=codex --dry-run` | Generates valid `.codex/config.toml` referencing all 15 Bodai MCP servers | stdout |
+| `python scripts/manifest_gen.py --target=codex --dry-run` | Codex target deferred 2026-09-14 | n/a |
 | `pytest tests/test_agents_md_sanitization.py` | Detects tool-call injection patterns; escapes or rejects | CI |
 | `mcp__mahavishnu__get_harness_metrics` | Returns per-harness invocation counts after test workload | MCP introspection |
 | `pip show bodai-skill-schema` (or `python -c "import bodai_skill_schema"`) | Package installed with frontmatter schema | CI |
 | `docs/harness-portability.md` exists with 10+ portability entries | File present, contains at least 10 entries | shell |
+| `python -c "from oneiric.adapters.transport.acp import AcpTransport"` | Imports successfully, speaks ACP JSON-RPC | CI logs |
+| `pytest tests/integration/test_acp_transport.py` | ACP round-trip succeeds against 2+ ACP clients | CI |
 | `docs/ops/eventbridge-wal.md` exists with sections for redis-provisioning, consumer-group-config, idempotency, dlq-recovery | File present, contains all 4 sections | shell |
 ```
 
@@ -476,20 +480,21 @@ Phase 3 of this plan adds 6 new Oneiric adapters to fill this gap.
 | REQ-AKOSHA-FITNESS | `akosha/processing/fitness_analyzer.py` retained; `mahavishnu/pools/fitness_analyzer.py` deleted | Phase 6 |
 | REQ-AKOSHA-FEDERATION | Federation catalog tools (`list_skills`/`get_skill`/`list_agents`/`get_agent`/`list_ecosystem_skills`) retained | Phase 6 |
 | REQ-EVENTBRIDGE-WAL | New `mahavishnu/core/events/eventbridge_wal.py` adapter wrapping Oneiric `queue.redis_streams`; `XADD` envelope JSON to `envelopes:{topic}` stream on `bridge.emit()`; config-gated by `eventbridge.wal_backend` (default `redis_streams`) | Phase 8 |
-| REQ-HARNESS-CONTRACT | New `docs/architecture/harness-contract.md` defining the 3-section contract (what Bodai promises / what Bodai expects / what's harness-specific). Targets Qwen Code v0.23.4 + Codex CLI 0.155.0-alpha.4. | Phase 11 |
+| REQ-HARNESS-CONTRACT | New `docs/architecture/harness-contract.md` defining the 3-section contract (what Bodai promises / what Bodai expects / what's harness-specific). Targets Claude Code (current) + Qwen Code v0.23.4. | Phase 11 |
 | REQ-HARNESS-AGENT-SCHEMA | New `docs/schemas/agent-v1.md` portable agent schema using capability names (`read_file`, `write_file`, `terminal`, `delegate_task`, `semantic_search`) instead of Claude-Code tool names. Migrate 5 pilot agents as proof. | Phase 11 |
 | REQ-HARNESS-MEMORY-INTERFACE | New `oneiric.adapters.memory` category with `MemoryStore` protocol + `ClaudeCodeMemoryStore`, `FileMemoryStore`, `SessionBuddyMemoryStore` implementations. Per-user setting `memory.store_backend: file` for unknown harnesses. | Phase 11 |
 | REQ-HARNESS-OBSERVER | New `oneiric.adapters.observer` category with `HarnessObserver` protocol + `MCPOnlyObserver` (default, works any harness) + `ClaudeCodeObserver` (hook-bridged) + `NoOpObserver`. | Phase 11 |
-| REQ-HARNESS-AGENTS-MD-CANONICAL | New `AGENTS.md` at repo root — canonical conventions file (Codex convention; Qwen also reads it). Existing `CLAUDE.md` content migrates. | Phase 11 |
+| REQ-HARNESS-AGENTS-MD-CANONICAL | New `AGENTS.md` at repo root — canonical conventions file (Linux Foundation convention; Qwen Code + Codex + Cursor + Zed + Aider all read it; Claude Code reads CLAUDE.md which becomes the symlink). Existing `CLAUDE.md` content migrates. **Note:** Qwen Code's user-level `QWEN.md` (`~/.qwen/QWEN.md`) is Qwen-managed and separate from project AGENTS.md; Bodai does not need to emit QWEN.md, only respect it. | Phase 11 |
 | REQ-HARNESS-CLAUDE-MD-SHIM | `CLAUDE.md` becomes symlink to `AGENTS.md` for backward compat. `readlink CLAUDE.md` returns `AGENTS.md`. | Phase 11 |
-| REQ-HARNESS-MANIFEST-GENERATION | Generator for `.qwen/settings.json` (Qwen) + `.codex/config.toml` (Codex) referencing all 15 Bodai MCP servers. Handles Qwen's 63-char name truncation + Codex's `<server>__<tool>` prefix convention. | Phase 11 |
-| REQ-HARNESS-INJECTION-SANITIZATION | Sanitize instructions on AGENTS.md read (per Backslash Security 2026-07-06 finding that Codex CLI's AGENTS.md is injection-vulnerable). Strip executable-looking content, escape tool-call syntax, log suspicious patterns. | Phase 11 |
-| REQ-HARNESS-TEST-MATRIX-QWEN | `tests/integration/test_harness_qwen_code.py`: end-to-end test (start session → load AGENTS.md → invoke 5 MCP tools across 3 Bodai components → save reflection → trigger workflow → exit). Validated via Qwen Code CLI v0.23.4. | Phase 11 |
-| REQ-HARNESS-TEST-MATRIX-CODEX | `tests/integration/test_harness_codex_cli.py`: same end-to-end test against Codex CLI 0.155.0-alpha.4. Uses memory shim. | Phase 11 |
+| REQ-HARNESS-MANIFEST-GENERATION | Generator for `.qwen/settings.json` (Qwen Code) referencing all 15 Bodai MCP servers. Handles Qwen's 63-char name truncation. **Codex support deferred** per user decision 2026-09-14. | Phase 11 |
+| REQ-HARNESS-INJECTION-SANITIZATION | Sanitize instructions on AGENTS.md read (per Backslash Security 2026-07-06 finding that AGENTS.md is injection-vulnerable in some harnesses). Strip executable-looking content, escape tool-call syntax, log suspicious patterns. | Phase 11 |
+| REQ-HARNESS-TEST-MATRIX-QWEN | `tests/integration/test_harness_qwen_code.py`: end-to-end test (start session → load AGENTS.md → invoke 5 MCP tools across 3 Bodai components → save reflection → trigger workflow → exit). Validated against Qwen Code CLI v0.23.4. **Codex matrix deferred** per user decision 2026-09-14. | Phase 11 |
 | REQ-HARNESS-PORTABILITY-CHECKLIST | New `docs/harness-portability.md` checklist (10+ entries) listing every Claude-Code-specific surface, what it maps to in alternative harnesses, and migration notes. Analogous to `docs/architecture/deploy/minio-maintenance-mode.md`. | Phase 11 |
 | REQ-HARNESS-SPEC-KIT | Adopt `github/spec-kit` Spec/Plan/Tasks loop as the harness-agnostic plan-then-execute workflow. Map `specify`/`plan`/`tasks` slash commands onto Bodai's existing plan template. | Phase 11 |
 | REQ-HARNESS-SUPERPOWERS-SCHEMA | Adopt superpowers (`obra/superpowers`) Skill.md frontmatter shape as the de-facto portable skill schema. Frontmatter fields: `name`, `description`, `triggers`. Documented in `docs/schemas/skill-v1.md`. | Phase 11 |
 | REQ-HARNESS-BODAI-SKILL-SCHEMA-PKG | Publish a new PyPI package `bodai-skill-schema` (or extend `oneiric` with `oneiric.skills.schema`) carrying the versioned frontmatter + body schema (name, description, triggers, body, dependencies, harness-compat matrix). Net-new — no equivalent exists today. | Phase 11 |
+| REQ-HARNESS-ACP-INTEGRATION | **Consolidated with active plan `docs/plans/2026-07-26-mahavishnu-acp-server.md`** (status: active). That plan already builds Mahavishnu as an ACP server (`mahavishnu/acp/`, `mahavishnu acp serve` CLI, stdio JSON-RPC 2.0). Phase 11 validates Qwen Code can drive Mahavishnu through the existing ACP server surface via any ACP client (Zed, JetBrains, Toad). **No new ACP code in Phase 11**; this REQ is purely validation that the existing ACP server works for harness-agnostic use cases. ACP itself is at https://github.com/agentclientprotocol/agent-client-protocol — Apache 2.0, 4.2k stars, maintained by Zed/JetBrains/OpenHands/GitHub/Pydantic. | Phase 11 |
+| REQ-HARNESS-AWESOME-COPILOT-SCHEMA | Reference `github/awesome-copilot` (39k stars, MIT) for the de-facto skill/agent/instructions directory shape: `agents/<name>/agent.md` + `skills/<name>/SKILL.md` + `plugins/<name>/plugin.json`. Mirror this structure in Bodai's portable layer. | Phase 11 |
 | REQ-EVENTBRIDGE-CONSUMER | New `mahavishnu/core/events/eventbridge_consumer.py` per-instance async task: `XREADGROUP` from `mahavishnu-{consumer-group}`, route to local `EventDispatcher.dispatch(envelope)`, `XACK` after `_run_handler` returns; spawned by `resolve_event_publisher()` wiring when `wal_enabled: true` | Phase 8 |
 | REQ-EVENTBRIDGE-DLQ | After `max_attempts` exhausted, consumer writes envelope to `envelopes-dlq:{topic}` stream with `{original_topic, attempts, last_error, dead_lettered_at}` headers; retry-policy tunable per-handler | Phase 8 |
 | REQ-EVENTBRIDGE-CROSS-INSTANCE | Consumer-group fanout: every Bodai instance joins `mahavishnu-shared` group by default (load-balanced), OR `mahavishnu-{instance-id}` (broadcast); documented in `docs/ops/eventbridge-wal.md` with two config snippets | Phase 8 |
@@ -706,7 +711,7 @@ Phase 3 of this plan adds 6 new Oneiric adapters to fill this gap.
 
 ### Phase 11 — Harness-agnostic enablement
 
-**Goal:** Bodai's MCP servers + orchestrator + Oneiric adapters are already harness-agnostic (verified via the 8-reviewer fanout 2026-09-14). The wrapper layer — `CLAUDE.md`, `.claude/agents/`, `.claude/skills/`, `.claude/commands/`, `.claude/hooks/` — is Claude Code-specific. Phase 11 generalizes the wrapper so Bodai runs unchanged on **Qwen Code** and **Codex CLI** (both verified MCP-ready 2026-09-14), with portable abstractions that any future harness can consume.
+**Goal:** Bodai's MCP servers + orchestrator + Oneiric adapters are already harness-agnostic (verified via the 8-reviewer fanout 2026-09-14). The wrapper layer — `CLAUDE.md`, `.claude/agents/`, `.claude/skills/`, `.claude/commands/`, `.claude/hooks/` — is Claude Code-specific. Phase 11 generalizes the wrapper so Bodai runs unchanged on **Claude Code** (already wired) + **Qwen Code v0.23.4** (validated 2026-09-14), with portable abstractions any future harness can consume. **Codex CLI integration deferred** per user decision 2026-09-14.
 
 **Target harnesses (verified 2026-09-14):**
 
@@ -714,7 +719,7 @@ Phase 3 of this plan adds 6 new Oneiric adapters to fill this gap.
 |---|---|---|---|---|---|---|
 | **Claude Code** (current) | ✅ | CLAUDE.md | `~/.claude/projects/.../memory/` | First-class | Task tool | Already wired |
 | **Qwen Code v0.23.4** (Alibaba) | ✅ stdio + HTTP/SSE + OAuth | `AGENTS.md` + `CLAUDE.md` (both) | "Auto-Memory" (markdown-named extensions) | First-class (v0.23.4 added `permission_mode`/`agent_id`/`prompt_id` to every hook input) | Builtins + "agent board" cross-agent sharing | **Ready to target** — drop-in compatible |
-| **Codex CLI 0.155.0-alpha.4** (OpenAI) | ✅ stdio + HTTP/SSE | `AGENTS.md` only (canonical file in repo) | **No cross-session memory** (per-session SQLite only) | First-class (`~/.codex/hooks.toml`) | `[agents]` config + `codex --agent <name>` | **Ready with caveats** — needs memory shim + CLAUDE.md shim |
+| **Codex CLI 0.155.0-alpha.4** (OpenAI) | ✅ stdio + HTTP/SSE | `AGENTS.md` only | **No cross-session memory** | First-class (`~/.codex/hooks.toml`) | `[agents]` config + `codex --agent <name>` | **Deferred** per user decision 2026-09-14 — re-evaluate when Qwen Code integration ships |
 | Nanobot | ✅ | `AGENTS.md` only | Skill-based markdown | No | None | Wait — too thin |
 | Hermes / OpenClaw | — | — | — | — | — | Skip — no MCP-first CLI product |
 
@@ -724,39 +729,42 @@ Phase 3 of this plan adds 6 new Oneiric adapters to fill this gap.
 - `docs/schemas/agent-v1.md` — portable agent schema using capability names (`read_file`, `write_file`, `terminal`, `delegate_task`, `semantic_search`) instead of Claude-Code tool names
 - `oneiric/adapters/memory/` (new category) — `MemoryStore` protocol + `ClaudeCodeMemoryStore`, `FileMemoryStore`, `SessionBuddyMemoryStore` implementations
 - `oneiric/adapters/observer/` (new category) — `HarnessObserver` protocol + `MCPOnlyObserver` (default) + `ClaudeCodeObserver` (hook-bridged) + `NoOpObserver`
-- `AGENTS.md` — canonical conventions file (Codex convention; Qwen also reads it)
+- `AGENTS.md` — canonical conventions file (Linux Foundation convention; Qwen Code + Cursor + Zed + Aider all read it)
 - `CLAUDE.md` — symlink to `AGENTS.md` (backward compat for current users)
-- `.qwen/settings.json` + `.codex/config.toml` — generated manifest files referencing Bodai's MCP servers
-- `tests/integration/test_harness_qwen_code.py` + `tests/integration/test_harness_codex_cli.py` — validate Bodai via each harness's CI
+- `.qwen/settings.json` — generated manifest file referencing Bodai's MCP servers (Codex deferred)
+- `tests/integration/test_harness_qwen_code.py` — validates Bodai via Qwen Code CLI
 - `docs/harness-portability.md` — portability checklist (10+ entries)
 
-**Tasks:** REQ-HARNESS-CONTRACT, REQ-HARNESS-AGENT-SCHEMA, REQ-HARNESS-MEMORY-INTERFACE, REQ-HARNESS-OBSERVER, REQ-HARNESS-AGENTS-MD-CANONICAL, REQ-HARNESS-CLAUDE-MD-SHIM, REQ-HARNESS-MANIFEST-GENERATION, REQ-HARNESS-INJECTION-SANITIZATION, REQ-HARNESS-TEST-MATRIX-QWEN, REQ-HARNESS-TEST-MATRIX-CODEX, REQ-HARNESS-PORTABILITY-CHECKLIST, REQ-HARNESS-SPEC-KIT, REQ-HARNESS-SUPERPOWERS-SCHEMA, REQ-HARNESS-BODAI-SKILL-SCHEMA-PKG.
+**Tasks:** REQ-HARNESS-CONTRACT, REQ-HARNESS-AGENT-SCHEMA, REQ-HARNESS-MEMORY-INTERFACE, REQ-HARNESS-OBSERVER, REQ-HARNESS-AGENTS-MD-CANONICAL, REQ-HARNESS-CLAUDE-MD-SHIM, REQ-HARNESS-MANIFEST-GENERATION, REQ-HARNESS-INJECTION-SANITIZATION, REQ-HARNESS-TEST-MATRIX-QWEN, REQ-HARNESS-PORTABILITY-CHECKLIST, REQ-HARNESS-SPEC-KIT, REQ-HARNESS-SUPERPOWERS-SCHEMA, REQ-HARNESS-BODAI-SKILL-SCHEMA-PKG, REQ-HARNESS-ACP-INTEGRATION, REQ-HARNESS-AWESOME-COPILOT-SCHEMA.
 
 **Exit criteria:**
 
-- Two harnesses (Qwen Code + Codex CLI) each complete a 10-step end-to-end test (start session → load AGENTS.md → invoke 5 MCP tools across 3 Bodai components → save a reflection → trigger a workflow → exit). Both pass.
+- Qwen Code v0.23.4 completes a 10-step end-to-end test (start session → load AGENTS.md → invoke 5 MCP tools across 3 Bodai components → save a reflection → trigger a workflow → exit). Test passes.
 - AGENTS.md file is the canonical conventions doc; CLAUDE.md is a symlink. `readlink CLAUDE.md` shows `AGENTS.md`.
-- Bodai's existing 197 MCP tools register in both harnesses without name-prefix collisions (Qwen truncates names >63 chars; Codex prefixes with `<server>__`).
-- Memory shim works: a Codex user without cross-session memory can call `mcp__session-buddy__store_reflection` and the entry persists across sessions (Bodai's Session-Buddy becomes the cross-session memory layer for Codex).
+- Bodai's existing 197 MCP tools register in Qwen Code without name-prefix collisions (Qwen truncates names >63 chars).
 - `HarnessObserver.MCPOnlyObserver` round-trips: a Mahavishnu MCP tool call emits an audit log line that any harness can read.
+- ACP integration validated: Qwen Code user can drive Mahavishnu through any ACP client (Zed, JetBrains, Toad) connected to `mahavishnu acp serve` per `docs/plans/2026-07-26-mahavishnu-acp-server.md`.
 
 #### Integration Contract
 
-- **Triggered from**: Existing `.claude/`-locked wrapper layer; Qwen Code and Codex CLI users attempting to use Bodai without modification
+- **Triggered from**: Existing `.claude/`-locked wrapper layer; Qwen Code users attempting to use Bodai without modification
 - **Returns to / updates**: New `docs/architecture/harness-contract.md`; new `docs/schemas/agent-v1.md`; `AGENTS.md` becomes canonical; new Oneiric adapter categories (`memory`, `observer`)
 - **Demonstrable by**:
   - `readlink CLAUDE.md` returns `AGENTS.md`
   - `python -c "from oneiric.adapters.memory import MemoryStore"` imports successfully
-  - `pytest tests/integration/test_harness_qwen_code.py` and `tests/integration/test_harness_codex_cli.py` both pass
+  - `pytest tests/integration/test_harness_qwen_code.py` passes against Qwen Code v0.23.4
   - `mcp__mahavishnu__pool_route_execute` invoked via Qwen Code CLI completes a real task (round-trip via MCP HTTP)
-- **Rollback signal**: Each harness adapter has a `--disable-harness=<name>` flag; falling back to in-process path is one env-var flip
+  - `mahavishnu acp serve` accepts connections from an ACP client (Zed or JetBrains) and drives a workflow (per active plan `2026-07-26-mahavishnu-acp-server.md`)
+- **Rollback signal**: `--disable-harness=qwen-code` env var; falling back to in-process path is one env-var flip
 - **Observability added**:
   - `mcp__mahavishnu__get_harness_metrics` MCP tool exposes: `harness_active`, `harness_tool_invocations_total`, `harness_memory_writes_total`, `harness_observer_events_total`
   - Per-harness OTel span: `harness.<name>.tool_invoke.duration_ms`
 
-**Security note (from Backslash Security 2026-07-06):** Codex CLI's `AGENTS.md` is injection-vulnerable — adversarial content in a project-local AGENTS.md can exfiltrate credentials via tool calls. Bodai's portable agent loader MUST sanitize instructions on read. See REQ-HARNESS-INJECTION-SANITIZATION.
+**ACP consolidation note:** REQ-HARNESS-ACP-INTEGRATION does NOT build new ACP code. The active plan `docs/plans/2026-07-26-mahavishnu-acp-server.md` (status: active) already builds `mahavishnu/acp/` — Mahavishnu as an ACP server (stdio JSON-RPC 2.0). Phase 11's role is to **validate** that Qwen Code users (or any ACP-client-using harness) can reach Mahavishnu through the existing ACP server surface via any ACP client (Zed, JetBrains, Toad). If the active ACP plan ships first, Phase 11's validation is trivial; if Phase 11 ships first, it documents the ACP client contract and waits for the active plan to provide the server.
 
-**Scope discipline:** Phase 11 ships Claude Code (already working) + Qwen Code (validated) + Codex CLI (validated with shims). Nanobot, Hermes, OpenClaw are deferred — revisit when their MCP/conventions/memory stabilize. The abstractions (MemoryStore, HarnessObserver, portable agent schema) are the durable win; per-harness adapters can land incrementally after the abstractions exist.
+**Security note (from Backslash Security 2026-07-06):** AGENTS.md is injection-vulnerable in some harnesses — adversarial content in a project-local AGENTS.md can exfiltrate credentials via tool calls. Bodai's portable agent loader MUST sanitize instructions on read. See REQ-HARNESS-INJECTION-SANITIZATION.
+
+**Scope discipline:** Phase 11 ships Claude Code (already working) + Qwen Code (validated). Codex CLI, Nanobot, Hermes, OpenClaw are deferred — revisit when their MCP/conventions/memory stabilize. The abstractions (MemoryStore, HarnessObserver, portable agent schema) are the durable win; per-harness adapters can land incrementally after the abstractions exist.
 
 ## 6. Required Code Changes
 
@@ -841,10 +849,9 @@ Phase 3 of this plan adds 6 new Oneiric adapters to fill this gap.
 - [ ] `oneiric/adapters/observer/__init__.py` + `mcp_only.py` + `claude_code.py` + `noop.py` — new category, HarnessObserver protocol + 3 implementations (REQ-HARNESS-OBSERVER)
 - [ ] `AGENTS.md` at repo root — new canonical conventions file (REQ-HARNESS-AGENTS-MD-CANONICAL)
 - [ ] `CLAUDE.md` becomes symlink → `AGENTS.md` (REQ-HARNESS-CLAUDE-MD-SHIM)
-- [ ] `mahavishnu/cli/manifest_gen.py` + `templates/qwen-settings.json.j2` + `templates/codex-config.toml.j2` — manifest generator for Qwen + Codex (REQ-HARNESS-MANIFEST-GENERATION)
+- [ ] `mahavishnu/cli/manifest_gen.py` + `templates/qwen-settings.json.j2` — manifest generator for Qwen (Codex deferred) (REQ-HARNESS-MANIFEST-GENERATION)
 - [ ] `mahavishnu/core/harness_loader.py` — sanitize AGENTS.md content on read (REQ-HARNESS-INJECTION-SANITIZATION)
-- [ ] `tests/integration/test_harness_qwen_code.py` — end-to-end validation (REQ-HARNESS-TEST-MATRIX-QWEN)
-- [ ] `tests/integration/test_harness_codex_cli.py` — end-to-end validation (REQ-HARNESS-TEST-MATRIX-CODEX)
+- [ ] `tests/integration/test_harness_qwen_code.py` — end-to-end validation against Qwen Code v0.23.4 (REQ-HARNESS-TEST-MATRIX-QWEN)
 - [ ] `docs/harness-portability.md` — portability checklist (REQ-HARNESS-PORTABILITY-CHECKLIST)
 - [ ] `mahavishnu/cli/spec_kit.py` — spec-kit `specify`/`plan`/`tasks` slash commands (REQ-HARNESS-SPEC-KIT)
 - [ ] `bodai-skill-schema` PyPI package — net-new, versioned frontmatter + body schema (REQ-HARNESS-BODAI-SKILL-SCHEMA-PKG)
@@ -884,10 +891,10 @@ Phase 3 of this plan adds 6 new Oneiric adapters to fill this gap.
 | The audit scripts flag too many false positives and get disabled | Medium | Start with `--warn-only` mode; tighten regexes based on real violations |
 | `broadcast_settle_transition` wiring changes WebSocket traffic patterns; downstream consumers break | Low | Verify subscribers exist before wiring; document channel addition |
 | Oneiric's `LocalStorageAdapter.init()` `LifecycleError` triggers on first call in cloud-primary mode | Low | Phase 4 verifies the error message; if triggered, fall through to cloud adapter |
-| Qwen Code or Codex CLI ships a breaking MCP change before Phase 11 ships | Low | Pin to tested versions (Qwen v0.23.4, Codex 0.155.0-alpha.4); fall back to in-process path via `--disable-harness=<name>` |
+| Qwen Code ships a breaking MCP change before Phase 11 ships | Low | Pin to tested version (Qwen v0.23.4); fall back to in-process path via `--disable-harness=qwen-code` |
 | AGENTS.md injection bypasses sanitization (REQ-HARNESS-INJECTION-SANITIZATION) | Medium | Adversarial test suite (`tests/test_agents_md_sanitization.py`); log injection attempts; consider allowlist-only mode for untrusted sources |
 | Portable agent schema breaks an existing `.claude/agents/` file | Medium | 5-agent pilot validates the migration shape before any auto-migration; per-agent rollback via `git revert` |
-| Cross-harness test matrix becomes flaky (Qwen/Codex CLI updates break Bodai) | Medium | Pin tested versions in CI; matrix runs against fixed versions, not `latest` |
+| Qwen Code test matrix becomes flaky (Qwen updates break Bodai) | Medium | Pin tested version in CI; matrix runs against fixed v0.23.4, not `latest` |
 | spec-kit workflow integration confuses users (spec/plan/tasks overlaps Bodai's existing plan-then-execute) | Low | Phase 11 ships spec-kit integration as opt-in; default workflow remains Bodai's existing template |
 
 ## 9. Decision Rule
@@ -1182,7 +1189,7 @@ Two reviewers were dispatched 2026-09-14 after `status: draft → active` to do 
 The user explicitly added Phase 11 (Harness-agnostic enablement) to this plan rather than spinning a separate plan. The decision was driven by:
 
 1. **Strategic positioning.** Bodai's value proposition includes "harness-agnostic orchestration." The serverless-readiness plan was the natural place to also generalize the wrapper layer.
-2. **Already-verified targets.** Qwen Code v0.23.4 (released 2026-09-14, the same day this phase was added) and Codex CLI 0.155.0-alpha.4 are both ready to target.
+2. **Already-verified target.** Qwen Code v0.23.4 (released 2026-09-14, the same day this phase was added) is ready to target. Codex CLI 0.155.0-alpha.4 verified but deferred per user decision 2026-09-14.
 3. **Reuse of cross-cutting infrastructure.** Phase 11's portable abstractions (MemoryStore, HarnessObserver, portable agent schema) share audit, MCP, and settings-loading code with the rest of the plan.
 
 **Phase 11 additions (14 new REQs):**
@@ -1195,19 +1202,21 @@ The user explicitly added Phase 11 (Harness-agnostic enablement) to this plan ra
 | REQ-HARNESS-OBSERVER | `oneiric.adapters.observer` — HarnessObserver protocol + 3 impls |
 | REQ-HARNESS-AGENTS-MD-CANONICAL | New `AGENTS.md` at repo root |
 | REQ-HARNESS-CLAUDE-MD-SHIM | `CLAUDE.md` → symlink to `AGENTS.md` |
-| REQ-HARNESS-MANIFEST-GENERATION | Generator for Qwen `.qwen/settings.json` + Codex `.codex/config.toml` |
+| REQ-HARNESS-MANIFEST-GENERATION | Generator for Qwen `.qwen/settings.json` (Codex deferred) |
 | REQ-HARNESS-INJECTION-SANITIZATION | Sanitize AGENTS.md content on read (Backslash Security 2026-07-06 finding) |
 | REQ-HARNESS-TEST-MATRIX-QWEN | `tests/integration/test_harness_qwen_code.py` |
-| REQ-HARNESS-TEST-MATRIX-CODEX | `tests/integration/test_harness_codex_cli.py` |
+| REQ-HARNESS-TEST-MATRIX-CODEX | **(deferred 2026-09-14)** Codex end-to-end test |
 | REQ-HARNESS-PORTABILITY-CHECKLIST | `docs/harness-portability.md` |
 | REQ-HARNESS-SPEC-KIT | Adopt `github/spec-kit` Spec/Plan/Tasks loop |
 | REQ-HARNESS-SUPERPOWERS-SCHEMA | Adopt superpowers `Skill.md` frontmatter shape |
 | REQ-HARNESS-BODAI-SKILL-SCHEMA-PKG | Publish net-new `bodai-skill-schema` PyPI package |
+| REQ-HARNESS-ACP-INTEGRATION | Integrate Agent Client Protocol (Apache 2.0, 4.2k stars, maintained by Zed/JetBrains/OpenHands/GitHub/Pydantic) as the portable agent↔client transport |
+| REQ-HARNESS-AWESOME-COPILOT-SCHEMA | Mirror github/awesome-copilot's `agents/<n>/agent.md` + `skills/<n>/SKILL.md` + `plugins/<n>/plugin.json` directory shape |
 
 **Research findings applied (2026-09-14):**
 
 - **Qwen Code v0.23.4** — MCP fully supported (stdio + HTTP/SSE + OAuth); reads both AGENTS.md and CLAUDE.md; hooks first-class; subagents with "agent board" sharing
-- **Codex CLI 0.155.0-alpha.4** — MCP fully supported; reads AGENTS.md only; **no cross-session memory** (memory shim required); hooks at `~/.codex/hooks.toml`
+- **Codex CLI 0.155.0-alpha.4** — verified 2026-09-14; **deferred** per user decision. Re-evaluate after Qwen Code integration ships.
 - **Nanobot** — Too thin (4k LoC, skill-based memory); wait until memory/conventions stabilize
 - **Hermes / OpenClaw** — No current MCP-first CLI product; skip
 
@@ -1215,16 +1224,20 @@ The user explicitly added Phase 11 (Harness-agnostic enablement) to this plan ra
 
 | Package | Verdict |
 |---|---|
+| **Agent Client Protocol (ACP)** at github.com/agentclientprotocol/agent-client-protocol | **Integrate** — only credible open JSON-RPC transport for agent↔client. Maintained by Zed/JetBrains/OpenHands/GitHub/Pydantic. Apache 2.0, 4.2k stars, 2,230 commits. **This is the load-bearing reference for Phase 11's transport layer.** |
 | `agents.md` convention | **Adopt** — Linux Foundation / 60k+ projects. No formal schema needed; just markdown. |
 | `github/spec-kit` | **Integrate** — Spec/Plan/Tasks loop maps cleanly to Bodai's plan-then-execute |
-| `obra/superpowers` | **Integrate** — Closest existing skill-package format with portable frontmatter |
+| `obra/superpowers` | **Integrate** — Closest existing skill-package format with portable frontmatter; ships plugin scaffolds for Claude Code, Codex, Cursor, Gemini CLI, GitHub Copilot CLI, Hermes, etc. |
+| `github/awesome-copilot` (39k stars, MIT) | **Reference** — `agents/<n>/agent.md` + `skills/<n>/SKILL.md` + `plugins/<n>/plugin.json` directory shape is the de-facto skill packaging convention |
 | `bodai-skill-schema` (net-new PyPI) | **Adopt** — No equivalent exists; Bodai fills the gap |
 | `modelcontextprotocol/skill-registry` (RFC v0.4) | **Track only** — too early to depend on |
+| OpenHands Software Agent SDK | **Reference** — ACP integration is the right primitive to depend on, not the agent abstraction |
+| `agent-skills` / `agentskills-fs` / `skillmeta` / `agent-skill-search` (PyPI) | **Skip** — all experimental, no dominant schema |
+| `@anthropic-ai/claude-agent-sdk` | **Skip** — proprietary Commercial Terms |
 | Continue.dev | **Skip** — archived, acquired by Cursor |
-| Aider | **Reference only** — git-pair patterns |
-| OpenHands SDK | **Reference only** — runtime shape |
+| Aider | **Reference only** — confirms `AGENTS.md` portability |
 | Agent Spec arXiv (2510.04173) | **Reference only** — paper-stage |
 | `everything-claude-code` | **Skip** — Claude-specific |
-| PyPI `agent-schema`/`skill-schema` | **Skip** — don't exist |
-| Homebrew `agents-md` | **Skip** — doesn't exist |
+| PyPI `agent-schema`/`skill-schema` | **Skip** — don't exist as portable schemas |
+| Homebrew `agents-md` | **Skip** — doesn't exist; only individual tool formulae |
 | Bodai's own `akosha_list_ecosystem_skills` | **Already the substrate** — Phase 4 federation |
