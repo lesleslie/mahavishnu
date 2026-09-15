@@ -25,7 +25,6 @@ from oneiric.core.logging import get_logger
 
 from mahavishnu.core.permissions import Permission
 from mahavishnu.mcp.auth import require_mcp_auth
-from mahavishnu.plan_index import PlanId
 from mahavishnu.plan_index.errors import PlanNotFoundError
 from mahavishnu.plan_index.store import PlanIndexStore
 from mahavishnu.plan_index.testing import FakeDhara
@@ -34,6 +33,8 @@ if TYPE_CHECKING:
     from collections.abc import Callable
 
     from mcp_common.fastmcp import FastMCP
+
+    from mahavishnu.plan_index import PlanId
 
     #: Zero-arg factory returning the store a tool invocation should read from.
     StoreProvider = Callable[[], PlanIndexStore]

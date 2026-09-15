@@ -9,7 +9,7 @@ import asyncio
 from dataclasses import dataclass, field
 import re
 import time
-from typing import Any, Callable, Literal, TypedDict, cast
+from typing import TYPE_CHECKING, Any, Literal, TypedDict, cast
 
 from oneiric.core.logging import get_logger
 
@@ -24,6 +24,9 @@ from mahavishnu.jot.events import JotEvent, Op, serialize
 from mahavishnu.jot.fold import DispatchState, JotSummary  # re-export target
 from mahavishnu.jot.hlc import get_node, hlc_now, read_tail_hlc
 from mahavishnu.jot.paths import log_path, node_path
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
 
 log = get_logger(__name__)
 

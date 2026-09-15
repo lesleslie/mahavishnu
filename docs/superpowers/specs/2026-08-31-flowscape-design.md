@@ -656,8 +656,8 @@ enrichment:                       # v1 (rev 3): CLIENT-MODE scapy-mcp enrichment
 
 | Group | Deps | Justification |
 |---|---|---|
-| `dev` | `pytest`, `hypothesis`, `ruff`, `mypy`, `pyright`, `bandit`, `complexipy`, `commitizen`, `betterproto2[cli]`, `pip-licenses` | full local development |
-| `macos` | `py2app`, `betterproto2[cli]`, `pcapy-ng` | macOS `.app` build only |
+| `dev` | `pytest`, `hypothesis`, `ruff`, `mypy`, `pyright`, `bandit`, `complexipy`, `commitizen`, `betterproto2-compiler`, `pip-licenses` | full local development |
+| `macos` | `py2app`, `betterproto2-compiler`, `pcapy-ng` | macOS `.app` build only |
 | `runtime` (default) | `dpkt`, `numpy`, `betterproto2`, `protobuf`, `orjson` | bundled into wheel and `.app` |
 | `mcp-enrichment` (optional, new in rev 3) | `scapy-mcp`, `mcp` (Python SDK) | Enables `EnrichmentRegistry` to call scapy-mcp via MCP client. **Off by default** — user opts in via `flowscape config` setting `enrichment.scapy_mcp_enabled = true`. Aligns with scapy-mcp plan + ADR 0016. |
 

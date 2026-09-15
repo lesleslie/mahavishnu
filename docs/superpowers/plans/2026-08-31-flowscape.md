@@ -290,8 +290,8 @@ The spec at `docs/superpowers/specs/2026-08-31-flowscape-design.md` was authored
   mkdir -p "$PYTHON_OUT" "$SWIFT_OUT"
   protoc \
     --proto_path="$REPO_ROOT/proto" \
-    --plugin=protoc-gen-better-python="$(which protoc-gen-betterproto2)" \
-    --better-python_out="$PYTHON_OUT" \
+    --plugin=protoc-gen-python_betterproto2="$(which protoc-gen-python_betterproto2)" \
+    --python_betterproto2_out="$PYTHON_OUT" \
     --plugin=protoc-gen-swift="$(which protoc-gen-swift)" \
     --swift_out="$SWIFT_OUT" \
     "$REPO_ROOT/proto/flowscape.proto"

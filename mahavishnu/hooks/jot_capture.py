@@ -30,7 +30,7 @@ from pathlib import Path
 import sys
 import time
 import traceback
-from typing import TYPE_CHECKING, Any
+from typing import Any
 import uuid
 
 from mahavishnu.jot.capture_echo import format_echo
@@ -38,9 +38,6 @@ from mahavishnu.jot.events import JotEvent, serialize
 from mahavishnu.jot.hlc import NodePersistError, get_node, hlc_now, read_tail_hlc
 from mahavishnu.jot.paths import errors_log_path, jot_dir, log_path, node_path
 from mahavishnu.jot.redact import redact_text
-
-if TYPE_CHECKING:
-    from pathlib import Path
 
 # H2: rotation threshold and generation count for errors.log
 MAX_ERRORS_LOG_SIZE = 1_048_576  # 1 MB

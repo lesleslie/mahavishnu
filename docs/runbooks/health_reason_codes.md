@@ -234,7 +234,7 @@ runbook with the new action guidance.
   section that mandated this runbook.
 - [`docs/followups/2026-09-14-akosha-hnsw-on-duckdb.md`](../followups/2026-09-14-akosha-hnsw-on-duckdb.md) — HNSW
   root cause for the original ``feed_never_populated`` symptom.
-- PromQL alert rules in [`mahavishnu/config/alerts/health_alerts.yaml`](../../config/alerts/health_alerts.yaml)
-  (when added) — wire ``runbook_url`` annotations to this page.
+- PromQL alert rules in [`mahavishnu/config/prometheus/health_aggregator_alerts.yml`](../../config/prometheus/health_aggregator_alerts.yml)
+  — wire ``runbook_url`` annotations to this page.
 
 Co-Authored-By: Claude Code <noreply@anthropic.com>
