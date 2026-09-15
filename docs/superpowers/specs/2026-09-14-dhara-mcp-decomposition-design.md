@@ -196,7 +196,20 @@ from fastmcp import FastMCP
 from mcp_common.auth.middleware import AuthMiddleware
 from mcp_common.auth import require_auth, Permission
 from oneiric.adapters.bootstrap import builtin_adapter_metadata, register_builtin_adapters
-from oneiric.runtime.mcp_health import HealthMonitor, ComponentHealth, HealthStatus
+from mcp_common.health.aggregator import (
+    FeedSnapshot,
+    HealthSnapshot,
+    aggregate_feed_states,
+)
+from mcp_common.health.feed import (
+    HealthFeedState,
+    ReasonCode,
+    StatusValue,
+    is_healthy,
+    record_error,
+    record_success,
+)
+from mcp_common.health.metrics import update_health_metrics
 
 
 class OneiricMCPServer:
@@ -212,10 +225,10 @@ class OneiricMCPServer:
         # ...
 
     def _register_health_route(self):
-        # /health endpoint backed by HealthMonitor aggregating 7 tool feeds
-        # Returns 503 if any feed reports degraded (per mcp-backend-wiring-discipline.md)
-        # Each feed exposes: feed.entities_count, feed.last_updated_timestamp,
-        #                    feed.errors_total, feed.cycles_total
+        # /health endpoint backed by mcp_common.health.aggregator.aggregate_feed_states
+        # aggregating 7 tool feeds (HealthFeedState dict keyed by feed name)
+        # Returns 503 if any feed reports degraded/failed (per mcp-backend-wiring-discipline.md)
+        # Each feed exposes: entities_count, last_updated_timestamp, errors_total, cycles_total
         # ...
 
     async def run_http_async(self, host: str = "127.0.0.1", port: int = 8683):
@@ -257,14 +270,17 @@ $ oneiric mcp restart    # stop + start
 $ oneiric mcp config     # show resolved config
 ```
 
-The `oneiric/runtime/mcp_health.py` runtime module provides the base primitives (`HealthStatus`, `ComponentHealth`, `HealthMonitor.create_health_response`) but **lacks the per-feed counter primitives the spec requires**. Phase 1 task 6 extends `HealthMonitor` with:
-- `record_invocation(name: str, errored: bool) -> None` — increments `cycles_total`, optionally `errors_total`, sets `last_updated_timestamp`
-- `set_entities_count(name: str, n: int) -> None` — updates entity count
-- `get_feed(name: str) -> ComponentHealth | None` — per-feed lookup (currently not exposed)
+The `mcp-common/mcp_common/health/` module (shipped in v0.26.4, commit 7acdcfb) provides the canonical health primitives: `HealthFeedState` (per-feed state dataclass), `StatusValue` (severity-ordered `StrEnum`: `healthy` < `warming_up` < `degraded` < `failed`), `ReasonCode` (per-feed diagnostic codes including the HNSW-hardening `FEED_NEVER_POPULATED`), `record_success`/`record_error` (mutators), `is_healthy` (per-feed verdict with time-bounded decay predicate), `aggregate_feed_states` (cross-feed worst-case rollup), and `update_health_metrics` (Prometheus metrics emission for Plan §11.4 PromQL alerts). Phase 1 task 6 extension to the legacy oneiric `HealthMonitor` is **obsolete** — the canonical home moved to mcp-common per ADR 017 substrate ownership. Consumers (session-buddy, akosha, dhara) import from `mcp_common.health.aggregator` + `mcp_common.health.metrics` directly. Phase 4 task 7 (`--health-disable-decay` CLI flag on `MCPServerCLIFactory.start`) propagates the decay-disabled sentinel through `HEALTH_FEED_HALFLIFE_SECONDS=0` to `is_healthy(halflife_seconds=0)`. Phase 4 task 6 (HNSW hardening) distinguishes `cycles_total == 0` + `ingester_running=True` as `DEGRADED` with `FEED_NEVER_POPULATED` (broken-before-first-success producer) rather than `WARMING_UP`. The primitives the spec requires are now:
+- `record_success(state: HealthFeedState)` / `record_error(state: HealthFeedState)` — mutators; producer-side code calls one of these after each cycle. Direct attribute assignment (`state.entities_count = N`, `state.cycles_total += 1`, `state.last_updated_timestamp = time.time()`) replaces oneiric's `set_entities_count`/`record_invocation` indirection.
+- `is_healthy(state: HealthFeedState, halflife_seconds: float = 300) -> tuple[bool, StatusValue, list[ReasonCode]]` — per-feed predicate; `halflife_seconds <= 0` disables the time-bounded decay (Phase 4 task 7 `--health-disable-decay`).
+- `aggregate_feed_states(states: dict[str, HealthFeedState], halflife_seconds: float = 300) -> HealthSnapshot` — worst-case rollup; `HealthSnapshot.status` is the max severity across feeds.
+- `update_health_metrics(registry, snap, repo, halflife_seconds, duration_ms)` — Prometheus emission for the Plan §11.4 PromQL alerts.
+
+Lookup by feed name is `dict[str, HealthFeedState]` passed to `aggregate_feed_states` — replaces oneiric's `get_feed(name)` indirection.
 
 Without these primitives, Phase 1 task 8's e2e test ("/health returns 200 with 7 healthy feeds on warm startup") cannot construct feeds with non-zero `cycles_total` and read per-feed signals.
 
-**Per-tool feed commitment:** Each of the 7 adapter_registry tools registers a `ComponentHealth` feed exposing `feed.entities_count`, `feed.last_updated_timestamp`, `feed.errors_total`, `feed.cycles_total` per `.claude/decisions/mcp-backend-wiring-discipline.md`. The aggregator increments these counters on every tool invocation.
+**Per-tool feed commitment:** Each of the 7 adapter_registry tools registers a `HealthFeedState` (in mcp-common parlance, the equivalent of oneiric's legacy `ComponentHealth`) exposing `entities_count`, `last_updated_timestamp`, `errors_total`, `cycles_total` per `.claude/decisions/mcp-backend-wiring-discipline.md`. The aggregator increments these counters on every tool invocation.
 
 **Tool profile gating (Phase 1):** Wire via `mcp_common.tools.dispatch.apply_tool_profile(profile_env_var="ONEIRIC_TOOL_PROFILE")` with explicit group definitions:
 
@@ -282,17 +298,20 @@ The spec's per-feed observability commitment is tightened across four axes that 
 
 **Per-tool OTel span wrapping.** `oneiric/core/observability.py:87-101` defines `observed_span()` as an explicit context manager — **NOT auto-instrumented**. Every Phase that adds MCP tools must wrap each tool body in `with observed_span("<server>.mcp.tool.<name>", component="<server>.mcp", attributes={"tool.name": ..., "tool.duration_ms": ...}):`. Phase 1 task 7 commits to wrapping each of the 7 adapter_registry tools; Phases 3, 4, 5, 7 commit similarly. A new `mcp_common.tools.observed_tool_span` decorator is the preferred path (avoids per-tool wrapping repetition); Phase 1 task 7 implements the decorator if not already present.
 
-**HealthStatus threshold semantics.** `oneiric/runtime/mcp_health.py:13-18` defines 5 states. The spec commits to the following threshold contract (every Phase applies this):
+**StatusValue threshold semantics.** `mcp-common/mcp_common/health/feed.py:24-44` defines 4 `StatusValue` (severity-ordered `StrEnum`). The spec commits to the following threshold contract (every Phase applies this). Note: this collapses the legacy 5-state oneiric enum (`STARTING`/`HEALTHY`/`DEGRADED`/`UNHEALTHY`/`SHUTTING_DOWN`) into 4 states — `STARTING` is no longer a separate state (a feed with `cycles_total == 0` + `ingester_running=True` is `DEGRADED` with `FEED_NEVER_POPULATED` per Phase 4 task 6 HNSW hardening); `SHUTTING_DOWN` is no longer a feed status (it's process-lifecycle state, surfaced separately).
 
-| Status | Condition |
-|--------|-----------|
-| `STARTING` | Feed initialized, `cycles_total == 0`. |
-| `HEALTHY` | `cycles_total > 0` AND `errors_total == 0` AND `last_updated_timestamp` within `5 × polling_interval` of now. |
-| `DEGRADED` | `errors_total > 0` AND `last_updated_timestamp` within `5 × polling_interval` of now, OR `last_updated_timestamp` is older than `5 × polling_interval`. |
-| `UNHEALTHY` | `entities_count == 0` after warmup (cycles_total > some-warmup-threshold, e.g. 10), OR N consecutive `DEGRADED` cycles (N=5 by default), OR per-component-DuckDB-file-missing (Phase 5 endpoint check). |
-| `SHUTTING_DOWN` | Feed explicitly marked for shutdown. |
+| Status | Severity | Condition (per `is_healthy` predicate) |
+|--------|----------|----------------------------------------|
+| `healthy` | 0 | No recent error AND feed populated, OR error aged out past `halflife_seconds`. |
+| `warming_up` | 1 | Feed empty (`entities_count == 0`), `ingester_running=True`, `cycles_total > 0` (at least one cycle completed). |
+| `degraded` | 2 | `last_error_at` within `halflife_seconds` of now (terminal: errors override everything else), OR HNSW hardening (`cycles_total == 0` + `ingester_running=True` → `FEED_NEVER_POPULATED`). |
+| `failed` | 3 | Feed empty AND `ingester_running=False` (producer dead, no data). |
 
-`HealthMonitor._determine_overall_status` (oneiric/runtime/mcp_health.py:107-116) maps any `UNHEALTHY` component to overall `UNHEALTHY`, any `DEGRADED` to overall `DEGRADED`, otherwise `HEALTHY`. The overall status drives the `/health` HTTP response: `HEALTHY` → 200, `DEGRADED` → 200 (operational but imperfect), `UNHEALTHY` → 503.
+Per-feed `reason_codes` (from `ReasonCode` enum) carry diagnostic context the legacy per-component `_determine_overall_status` lost in aggregation: `WARMING_UP_EMPTY_FEED`, `WARMING_UP_NEVER_CYCLED`, `INGESTER_NOT_RUNNING`, `FEED_NEVER_POPULATED`, `RECENT_ERROR_IN_WINDOW`, `ERROR_OUTSIDE_HALFLIFE`, `ERROR_WITHIN_HALFLIFE`, `NO_PRODUCER_EVER_CYCLED`, `PRODUCER_NOT_ALIVE`.
+
+The aggregator's `aggregate_feed_states` returns a `HealthSnapshot` whose top-level `status` is the **maximum severity** across all feeds (`failed > degraded > warming_up > healthy`). The HTTP `/health` response uses this: `healthy` and `warming_up` → 200 (operational, possibly still loading); `degraded` and `failed` → 503 (operators see `reason_codes` from the worst feed). `HEALTH_FEED_HALFLIFE_SECONDS` env var (or `--health-disable-decay` CLI flag) controls `is_healthy`'s time-bounded decay predicate; `halflife_seconds <= 0` disables the "recent error → degraded" branch entirely.
+
+`mcp_common.health.aggregator.aggregate_feed_states` rolls per-feed `HealthFeedState` snapshots into a `HealthSnapshot` whose top-level `status` is the **maximum severity** across all feeds (worst-case: `failed` > `degraded` > `warming_up` > `healthy`). The HTTP `/health` response uses this top-level status: `healthy` and `warming_up` → 200 (operational, possibly still loading); `degraded` and `failed` → 503 (operators see the `reason_codes` list from the worst feed). Note: this collapses the legacy 5-state oneiric enum (`HEALTHY`/`DEGRADED`/`UNHEALTHY`/`SHUTTING_DOWN`) into 4 states — `SHUTTING_DOWN` is no longer a feed status (it's a process-lifecycle state, surfaced separately). Per-feed `reason_codes` (from `mcp_common.health.feed.ReasonCode`) carry the diagnostic context that oneiric's per-component `_determine_overall_status` lost in aggregation.
 
 **Alert routing (HIGH).** 503 responses from `/health` emit a structured OTel log event at `ERROR` level with attributes `server.name`, `feed.name`, `feed.status`, `feed.errors_total`, `last_updated_timestamp`. **Grafana Alertmanager rules are provisioned to page the Bodai on-call channel on sustained 503 (≥2 minutes) from any Bodai MCP server.** This is committed by Phase 8 task 16 (cross-component provisioning): add Grafana Alertmanager rules at `monitoring/grafana/alertmanager-rules.yaml` covering all 4 Bodai MCP servers (Oneiric:8683, Mahavishnu:8680, Akosha:8682, Crackerjack:8676). Phase 8 demonstrates the wiring with `amtool check-config monitoring/grafana/alertmanager-rules.yaml`.
 
@@ -302,7 +321,7 @@ The spec's per-feed observability commitment is tightened across four axes that 
 
 **Bus publish error tracking.** Phase 12's `bodai_hook_bridge._publish()` is **not fire-and-forget** in the silent-no-op sense — failure modes (Redis Streams unreachable, adapter missing) **increment `hook_bridge_feed.errors_total`** before swallowing. The feed exposes `feed.entities_count`, `feed.cycles_total`, `feed.errors_total`, AND `feed.publish_failures_total` — the latter is a sub-counter of `errors_total` reserved for publish-side failures. Silent no-op is a wiring-discipline violation per `mcp-backend-wiring-discipline.md` ("a process being alive is not the same as a process being functional"). The bridge remains non-blocking on the hot path; tracking failures is observational, not blocking.
 
-**Bus subscriber per-feed signals.** Subscriber-side loops (`mahavishnu/jot/drain.py` — inline subscription per the plan's MCP-integration H5 fix; the `mahavishnu/bus_subscribers/` package was rejected in favor of inline subscription in `drain.py`) own their own `ComponentHealth` feed exposing `feed.entities_count` (number of envelopes drained), `feed.last_updated_timestamp`, `feed.errors_total`, `feed.cycles_total`. The publish-side `hook_bridge_feed` does NOT count subscriber activity. Without subscriber-side feeds, a dead consumer fills the bus silently — same wiring-discipline failure mode the publish-side fix above addresses.
+**Bus subscriber per-feed signals.** Subscriber-side loops (`mahavishnu/jot/drain.py` — inline subscription per the plan's MCP-integration H5 fix; the `mahavishnu/bus_subscribers/` package was rejected in favor of inline subscription in `drain.py`) own their own `HealthFeedState` (in mcp-common parlance) exposing `entities_count` (number of envelopes drained), `last_updated_timestamp`, `errors_total`, `cycles_total`. The publish-side `hook_bridge_feed` does NOT count subscriber activity. Without subscriber-side feeds, a dead consumer fills the bus silently — same wiring-discipline failure mode the publish-side fix above addresses.
 
 **Canonical `polling_interval`.** The §4.8 threshold contract's "5 × polling_interval" is anchored to a single canonical value: **`polling_interval = 60 seconds`** (configurable per-component, but the default and the contract reference are 60s). Each component's `OtelTracesConfig.component_endpoints` polling loop MUST default to 60s; per-component overrides are allowed but the threshold semantics (`HEALTHY`/`DEGRADED`/`UNHEALTHY` boundaries) assume 60s unless the override is also documented in the spec.
 
@@ -340,7 +359,7 @@ Per second-pass data-retention review (MEDIUM #4), each Dhara substrate has a do
 
 - **OTel span**: name = `bodai.migration.<substrate>` (e.g. `bodai.migration.adapter_registry`, `bodai.migration.ecosystem_state`, `bodai.migration.kv_timeseries`); attributes include `substrate` (string), `source_path` (string), `records_read` (int), `records_written` (int), `outcome` (`success`|`partial`|`failure`), `error_class` (when failure).
 - **Audit event**: `mcp.migration.<substrate>` event_type with the same field set; `INFO` on success, `WARN` on partial / failure. Emitted via `mcp_common.auth.audit.AuditLogger.migration_event(...)` extending the same shape as `tool_invocation`.
-- **Health-feed surface**: each migration's target feed carries a `migration_completed_at` timestamp field on `ComponentHealth`. Operators can correlate `entities_count > 0` + `migration_completed_at is None` (fresh install) against `entities_count > 0` + `migration_completed_at not None` (migrated) against `entities_count == 0` + `migration_completed_at not None and outcome == 'failure'` (silent-failure mode). Demonstrable by `oneiric mcp health.adapter_registry.migration_completed_at is not None` on a pre-0.20.1 install after Phase 1.
+- **Health-feed surface**: each migration's target feed carries a `migration_completed_at` timestamp field on its `HealthFeedState` (mcp-common parlance; legacy oneiric `ComponentHealth` was the same concept). Operators can correlate `entities_count > 0` + `migration_completed_at is None` (fresh install) against `entities_count > 0` + `migration_completed_at not None` (migrated) against `entities_count == 0` + `migration_completed_at not None and outcome == 'failure'` (silent-failure mode). Demonstrable by `oneiric mcp health.adapter_registry.migration_completed_at is not None` on a pre-0.20.1 install after Phase 1.
 
 The hard cutover stance (per spec Phase 12a task 5 + §4.13.4) extends here: migrations are atomic from the operator's perspective — either `migration_completed_at` is set with outcome `success`/`partial`, or it's not set (and the operator inspects OTel + audit logs for the failure). KV-time-series remains the asymmetric case (explicit CLI rather than auto-migrate); its audit event lands when the operator runs `dhara migrate kv-timeseries`.
 
@@ -505,13 +524,13 @@ Phase ordering matters because the migrations cascade and each phase leaves the 
 
 5. Wire tool profile gating via `mcp_common.tools.dispatch.apply_tool_profile` with explicit `ONEIRIC_TOOL_PROFILE` semantics per §4.6.
 
-6. **Extend `HealthMonitor`** with `record_invocation(name, errored)`, `set_entities_count(name, n)`, `get_feed(name)`, per §4.8 (oneiric HIGH #3 — primitives don't exist yet). Wire each of the 7 tools to register a `ComponentHealth` feed and call `health_monitor.record_invocation(name, errored=...)` after each tool invocation. `/health` endpoint returns 503 if any feed's status is `UNHEALTHY` per the §4.8 threshold contract.
+6. **Wire each tool to a `HealthFeedState`** (shipped in `mcp_common.health.feed` v0.26.4): each tool instantiates a `HealthFeedState` (or accepts one via DI) and calls `record_success(state)` / `record_error(state)` after each invocation. The aggregator's `is_healthy(state, halflife_seconds)` reads the mutator outputs and emits the per-feed `FeedSnapshot`. The `HealthFeedState` dataclass replaces oneiric's `ComponentHealth`; `record_success`/`record_error` replace `HealthMonitor.record_invocation`; direct attribute assignment (`state.entities_count = N`) replaces `HealthMonitor.set_entities_count(name, n)`. Lookup by feed name is `dict[str, HealthFeedState]` passed to `aggregate_feed_states` — replaces `HealthMonitor.get_feed(name)`. `/health` endpoint returns 503 if any feed's status is `degraded` or `failed` per the §4.8 threshold contract.
 
 7. **Migrate historical `AsyncAdapterRegistry` data** on first Oneiric startup (per §4.10). One-shot read-and-write from Dhara's on-disk file to Oneiric's adapter catalog store. Demonstrable by `oneiric mcp health.adapter_registry.entities_count > 0` on a pre-0.20.1 install.
 
 8. Add `tests/integration/test_<tool>_e2e.py` for each of the 7 tools (per wire-up contract). Each test asserts the tool emits an OTel span and updates the per-feed counters.
 
-9. Add `tests/integration/test_oneiric_mcp_health.py` asserting (a) `/health` returns 200 with 7 healthy feeds on warm startup, (b) returns 503 when any feed reports `UNHEALTHY` per the §4.8 threshold contract, (c) each feed's `entities_count`, `last_updated_timestamp`, `errors_total`, `cycles_total` are exposed per `.claude/decisions/mcp-backend-wiring-discipline.md`.
+9. Add consumer-side e2e tests asserting (a) `/health` returns 200 with all feeds `healthy` on warm startup, (b) returns 503 when any feed reports `degraded`/`failed` per the §4.8 threshold contract, (c) each feed's `entities_count`, `last_updated_timestamp`, `errors_total`, `cycles_total` are exposed per `.claude/decisions/mcp-backend-wiring-discipline.md`, (d) `update_health_metrics` emits the four `health_feed_status`/`health_feed_errors_within_window`/`mcp_common_health_halflife_seconds`/`mcp_common_health_aggregate_duration_ms` metrics on each `/health` call (this is what makes the Plan §11.4 PromQL alerts fire live). The contract surface is pinned by `mcp-common/tests/unit/health/test_aggregator.py` + `test_feed.py` + `test_metrics.py` (66 tests, mcp-common v0.26.4); reference consumer implementations are `session-buddy/session_buddy/server_optimized.py:316-407` (full wiring including `update_health_metrics` with try/ImportError fallback) and `akosha/akosha/mcp/server.py:764-949`.
 
 10. Update `mahavishnu/tests/fixtures/full/tool_names.json` to remove the strings `"adapter_list"` and `"adapter_metadata"` (Mahavishnu's parallel fixture — currently has these as golden-fixture strings).
 
@@ -587,7 +606,7 @@ Phase ordering matters because the migrations cascade and each phase leaves the 
 - **Returns to / updates:** the consolidated `mcp-common` modules own the canonical wrapper implementations; components own only their domain tools.
 - **Demonstrable by:** each wrapper-category commit (5 commits total) passes `pytest` in all four affected components; picker shows `mcp__<component>__<wrapper>_<verb>` for every existing prompt reference.
 - **Rollback signal:** any e2e test fails, or the consolidated module raises on `mount(server)`, or any cross-component call breaks.
-- **Observability added:** each wrapper tracks invocation count via the existing `HealthMonitor.record_invocation` from Phase 1 task 6; per-feed signals at `mcp-common.health_tools` surface aggregated across all mounted wrappers.
+- **Observability added:** each wrapper tracks invocation count via `mcp_common.health.feed.record_success` / `record_error` (Phase 4 foundation shipped in mcp-common v0.26.4, commit 7acdcfb); per-feed signals at `mcp_common.health_tools` surface aggregated across all mounted wrappers.
 
 ### Phase 2 — Auth consolidation
 
@@ -670,7 +689,7 @@ Phase ordering matters because the migrations cascade and each phase leaves the 
 7. Wire auth (RBAC: WRITE permission required for registration; READ for listing).
 8. Update `crackerjack/mcp/profiles.py`: set `CRACKERJACK_MANDATORY_GROUPS = {REG_KEY_AGENT_REGISTRY, REG_KEY_SKILL_REGISTRY, REG_KEY_HEALTH}` per the picker-parity logic that Dhara documented in `dhara/mcp/profiles.py:215-228`. Without this, `CRACKERJACK_TOOL_PROFILE=minimal` would not expose `list_agents` / `list_skills`, breaking the picker surface inside Mahavishnu and other consumers.
 9. Add 4 e2e tests in `tests/integration/test_<tool>_e2e.py`.
-10. Wire per-feed health aggregator: each tool registers a `ComponentHealth` feed exposing `feed.entities_count`, `feed.last_updated_timestamp`, `feed.errors_total`, `feed.cycles_total`.
+10. Wire per-feed health aggregator: each tool registers a `HealthFeedState` (mcp-common parlance) exposing `entities_count`, `last_updated_timestamp`, `errors_total`, `cycles_total`. The aggregator's `aggregate_feed_states` rolls them into the worst-case `HealthSnapshot` consumed by `/health` and emitted to Prometheus via `update_health_metrics`.
 
 **Phase 10 cross-reference:** Tasks 2 and 4 ship the canonical schema files to `mcp-common.canonical_schemas`; Phase 10 task 2 then **deletes the sed-replicated copies** in AkoSHA / Session-Buddy / Mahavishnu and forces those components to import from the canonical home. Phase 4 + Phase 10 together eliminate the DRY violation documented at `akosha/mcp/agent_schema.py` (the "canonical source" comment) and the 3 sed-replicated siblings.
 
@@ -823,7 +842,7 @@ Refactor target: `class HotStore(DuckdbHotStore):` — subclass that calls `supe
 1. Port `dhara/mcp/substrate_routes.py` (531 LOC) to `oneiric/http/routes/substrate.py`.
 2. Register with Oneiric's HTTP server. Add `oneiric http start|stop|status` subcommand (analog to `oneiric mcp start|stop|status`).
 3. Update `.claude/decisions/mcp-backend-wiring-discipline.md` if it referenced these routes as Dhara's.
-4. Add per-route health aggregator: each HTTP route registers a `ComponentHealth` feed with `feed.entities_count`, `feed.last_updated_timestamp`, `feed.errors_total`, `feed.cycles_total`. `/health` returns 503 if any route is degraded.
+4. Add per-route health aggregator: each HTTP route registers a `HealthFeedState` (mcp-common parlance) with `entities_count`, `last_updated_timestamp`, `errors_total`, `cycles_total`. `/health` returns 503 if any route is degraded.
 5. Add integration test: `pytest oneiric/tests/integration/test_substrate_routes_e2e.py` — `curl http://localhost:<port>/substrate/settings` returns 200 with non-empty payload; same for `/substrate/context` and `/substrate/progress`.
 
 **Hard cutover:**
@@ -1119,9 +1138,9 @@ The `dhara_pusher.py` adapter is the most consequential: its purpose is to push 
 
 ### R9 — Oneiric MCP server primitives that don't yet exist
 
-**Risk:** The spec cites `HealthMonitor.record_invocation`, `set_entities_count`, `get_feed`, and per-feed `ComponentHealth` lookup as ready-to-use primitives. They are not implemented in `oneiric/runtime/mcp_health.py` today. Phase 1 cannot ship without them. Without these primitives, Phase 1 task 8's e2e test ("/health returns 200 with 7 healthy feeds on warm startup") cannot construct feeds with non-zero `cycles_total` and read per-feed signals.
+**Risk:** This risk is **resolved**. The spec historically cited `HealthMonitor.record_invocation`, `set_entities_count`, `get_feed`, and per-feed `ComponentHealth` lookup as ready-to-use primitives in `oneiric/runtime/mcp_health.py` — they did not exist there. Per the decomposition plan's ADR 017 substrate ownership decision, these primitives moved to `mcp-common/mcp_common/health/` (shipped in v0.26.4, commit 7acdcfb + 837d64a + 12f61aa + f52bdb2). `HealthFeedState` + `record_success`/`record_error` + `aggregate_feed_states` + `update_health_metrics` are now the canonical primitives; consumers import from mcp-common directly. Phase 1 task 8's e2e test ("/health returns 200 with 7 healthy feeds on warm startup") can construct feeds with non-zero `cycles_total` and read per-feed signals using `HealthFeedState(cycles_total=1, entities_count=N, last_updated_timestamp=time.time(), errors_total=0, ingester_running=True)`.
 
-**Mitigation:** Phase 1 task 6 explicitly extends `HealthMonitor` with the primitives. The extension is small (~50 LOC) but is a precondition for the e2e test passing. Without it, Phase 1 is broken at runtime despite looking correct on paper.
+**Mitigation:** The mitigation is **resolved**. Phase 1 task 6 (oneiric `HealthMonitor` extension) was retargeted to land the primitives in mcp-common instead. mcp-common v0.26.4 ships `HealthFeedState` + `record_success`/`record_error` + `aggregate_feed_states` + `update_health_metrics` + `--health-disable-decay` CLI flag. The extension size grew from ~50 LOC to ~700 LOC (commit 7acdcfb + 837d64a + tests) but lives in the canonical substrate library, so all Bodai MCP consumers share one implementation. No consumer-side reimplementation needed.
 
 ### R10 — Dormant pgvector code paths (AkoSHA + Mahavishnu)
 
@@ -1213,5 +1232,5 @@ All resolved 2026-09-14, plus OQ #5 / OQ #6 added 2026-09-14 from the topology r
 - `.claude/decisions/wire-up-contract.md` — Integration Contract pattern used in every phase.
 - `.claude/decisions/mcp-backend-wiring-discipline.md` — per-feed health aggregator pattern for new MCP servers.
 - `oneiric/core/cli.py` — `MCPServerBase` + `MCPServerCLIFactory` primitives used to build the Oneiric MCP server.
-- `oneiric/runtime/mcp_health.py` — health infrastructure reused.
+- `mcp-common/mcp_common/health/` — canonical home for per-feed state, aggregator, Prometheus metrics emission (v0.26.4, commit 7acdcfb). Per ADR 017 substrate ownership, health primitives live here so no cross-component mcp-common consumer reaches back into oneiric. The on-disk `oneiric/runtime/mcp_health.py` is now **legacy** (no longer extended; the `HealthMonitor` class it contains is unused by any consumer post-Phase 4).
 - `mcp_common/auth/*` — 14 files, 1,570 LOC; canonical auth surface.
