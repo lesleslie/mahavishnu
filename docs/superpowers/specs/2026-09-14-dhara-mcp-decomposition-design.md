@@ -372,6 +372,71 @@ The Postgres / pgvector analysis from the topology review surfaces three distinc
 
 **Mahavishnu dual-write migration debt.** `mahavishnu/settings/mahavishnu.yaml:140` shows `persistence.write_mode: "dual"` — Mahavishnu writes to BOTH Dhara (legacy) AND Postgres simultaneously. Dual-write is a migration state, not a steady state. Phase 5 commits a single-source decision: either Dhara OR Postgres, delete the other write path. **Without this, the spec's "decompose Dhara's MCP" goal is undermined** — Dhara's substrate role is not cleanly retired while Mahavishnu keeps dual-writing.
 
+### 4.13 Hook coordination via Oneiric event bus — added 2026-09-14
+
+The four hook channels (`mahavishnu/.git/hooks/`, `mahavishnu/.claude/hooks/`, `~/.claude/hooks/`, plus Qwen/Codex bridges) currently run local action logic and emit events to an in-house JSON-file queue (`~/.mahavishnu/bodai-event-queue.json`). Phase 12 introduces a one-canonical-handler / four-bridge pattern; the bus arm reduces friction for cross-component subscribers.
+
+**§4.13.1 Design principle.**
+
+- **Canonical handler**: a single Python module owns all hook logic. The seven project-scoped Claude hooks (`mahavishnu/.claude/hooks/*.py`) have per-file bodies today; the bridge refactor moves them into `mahavishnu/bodai_hook_bridge.py` as named functions.
+- **Per-harness bridges**: each hook location gets a ≤20-line bridge that reads harness-specific JSON, normalizes to a canonical envelope, and invokes the canonical handler. Bridges are the only harness-specific code; the canonical handler is harness-agnostic.
+- **Sync-blocking preservation**: `PreToolUse`, `SubagentStop`, `UserPromptSubmit`, `UserPromptExpansion`, `Stop`, and other events whose exit code blocks the harness stay sync. The bus publish (where it fires) is post-decision, fire-and-forget — the blocking semantics never depend on a bus round-trip.
+- **Bus choice**: `oneiric.adapters.queue.redis_streams` (per the brainstorming session 2026-09-14; aligned with the active serverless-readiness plan Phase 8 WAL substrate).
+- **Multi-harness support**: Claude Code today; Qwen Code added in Phase 12b; Codex bridge deferred to when Codex ships a stable hook surface.
+- **Handler home**: `mahavishnu/bodai_hook_bridge.py`, project-local (matches the existing `_hook_io.py` module location and keeps project-context knowledge in the same repo).
+
+**§4.13.2 Canonical envelope schema.**
+
+The bridge normalizes the harness-specific stdin JSON to a single canonical envelope. Qwen's docs state "compatibility with light field remapping"; the schema below is the superset both harnesses can normalize into.
+
+| Field | Claude Code | Qwen Code | Canonical envelope |
+|---|---|---|---|
+| `event` | `hook_event_name` | `hook_event_name` | pass-through (literal event name) |
+| `harness` | (set by bridge) | (set by bridge) | literal — bridge sets "claude", "qwen", "git", "codex" |
+| `session_id` | stdin | stdin | pass-through (str) |
+| `cwd` | stdin | stdin | pass-through (str) |
+| `tool_name` | display name (e.g. `WriteFile`) | runtime id (e.g. `write_file`) | store both; canonical uses runtime id (Qwen convention) |
+| `tool_input` | object | object | pass-through |
+| `tool_use_id` | `toolu_xxx` | `toolu_xxx` | pass-through |
+| `tool_call_id` | (absent) | `call_xxx` (optional) | optional canonical field |
+| `permission_mode` | `default \| plan \| acceptEdits \| auto \| dontAsk \| bypassPermissions` | `default \| plan \| auto_edit \| auto \| yolo` | store both raw enums; canonical writer picks per project |
+| `agent_id`, `agent_type` | subagent fields | subagent fields | pass-through |
+| `effort` | `{ level: low\|medium\|high\|xhigh\|max }` | (absent) | optional canonical field, Claude-only |
+| `timestamp` | (absent) | present | always set (ISO 8601) |
+
+Tools subscribing to the bus read the canonical envelope; harness-specific schema divergences stay at the bridge layer.
+
+**§4.13.3 Sync-blocking events (no bus-arm blocking dependency).**
+
+These events' *observation* may still publish to the bus (post-decision), but their *blocking semantics* never depend on a bus round-trip:
+
+| Event | Reason |
+|---|---|
+| `PreToolUse` | Exit 2 blocks the tool call; sync execution required |
+| `UserPromptSubmit` | Can block the prompt; sync required |
+| `Stop` | Can block the model from stopping; sync required |
+| `SubagentStop` | Can block subagent return; sync required |
+| `UserPromptExpansion` | Can block expansion; sync required |
+
+**§4.13.4 Migration path.**
+
+`~/.mahavishnu/bodai-event-queue.json` (current) → `oneiric.adapters.queue.redis_streams` (target). **Hard cutover in Phase 12a task 5** — all in-process Bodai producers either publish to the bus or are retired; the JSON-file path is deleted. No dual-write migration state (Phase 5 R11 cautionary tale: `persistence.write_mode: "dual"` is precisely the kind of debt this design rule rejects).
+
+**§4.13.5 Multi-harness compatibility.**
+
+Each new harness adds a ≤20-line bridge file at the harness-specific hook location:
+
+```python
+#!/usr/bin/env python3
+# /Users/les/hooks/qwen/PostToolUse (10-15 lines)
+import sys, json, os
+sys.path.insert(0, os.environ["QWEN_PROJECT_DIR"])
+from bodai_hook_bridge import handle
+handle(event_name=os.environ["QWEN_HOOK_EVENT_NAME"], harness="qwen", payload=json.load(sys.stdin))
+```
+
+Adding Codex hooks (or any future harness) is ~15 lines per event. The canonical handler is one Python module.
+
 ### 4.7 ADR cross-references
 
 - **ADR 013 (active) — REVERSAL.** ADR-013's existing 2026-09-14 amendment (lines 169-199) explicitly states "**Option C (remove Mahavishnu's surface) is not chosen by this amendment.**" This spec **overturns** that amendment and adopts Option C (remove `mcp__mahavishnu__adapter_list` and `mcp__mahavishnu__adapter_metadata`). The rationale for reversal: Oneiric regaining an MCP server (Phase 1 of this spec) removes the original justification for the B-framing. With Oneiric's MCP server as the canonical surface per ADR-013's own "if Option C is later adopted" branch (lines 141-152), keeping Mahavishnu's adapter tools creates duplication, not boundary clarity. The amended ADR-013 must record this reversal explicitly with date and rationale; this spec is the contract for that amendment.
@@ -859,6 +924,58 @@ Phase ordering matters because the migrations cascade and each phase leaves the 
 - **Demonstrable by:** ADR 018 lands with a concrete option recommendation + metrics.
 - **Rollback signal:** none (evaluation, not a runtime feature).
 
+### Phase 12 — Hook bus coordination — added 2026-09-14
+
+**Goal:** The existing JSON-file hook queue (`~/.mahavishnu/bodai-event-queue.json`) is the in-house event surface. Phase 12 introduces a canonical handler with per-harness bridges and re-platforms to `oneiric.adapters.queue.redis_streams`. **Hard cutover** — no dual-write state. **Post-event hooks only** get bus arms; sync-blocking events (`PreToolUse`, `SubagentStop`, `UserPromptSubmit`, `Stop`, `UserPromptExpansion`) stay sync per spec §4.13.3.
+
+**Demonstrable by:** `pytest tests/integration/test_hook_bridge_e2e.py` returns exit 0; `oneiric mcp health.hook_bridge_feed.entities_count > 0` after one Claude session; `grep -rn "bodai-event-queue" mahavishnu/` returns 0 hits.
+
+**Triggered from:** Claude Code runs the bridge wrapper; git invokes the bash wrapper; pre-existing `mahavishnu/events`-style modules emit to the bus.
+
+**Returns to / updates:** `oneiric.adapters.queue.redis_streams` channel `bodai.hooks.*` (subject: `event_name`; body: canonical envelope per spec §4.13.2).
+
+**Rollback signal:** subscribed consumers (jot drainer, observability) show empty queue after warmup; existing Claude-specific behavior (worktree isolation, license-guard) doesn't fire.
+
+**Observability added:** per-feed `hook_bridge_feed.entities_count`, `.cycles_total`, `.errors_total`. New OTel spans per hook event.
+
+#### Phase 12a — Claude hook bridge + git-hook wrappers + JSON-queue hard cutover
+
+0. **Pre-flight gate** — `ls -la mahavishnu/.claude/hooks/*.py | grep -v __pycache__` should list 7 files: `_hook_io.py`, `bodai-activity-post-tool-use.py`, `bodai-activity-subscriber.py`, `jot-capture.py`, `jot-post-tool-use.py`, `jot-session-start.py`, `worktree-session-isolation.py`. The 4 active git hooks are `mahavishnu/.git/hooks/{pre-commit, post-commit, post-merge, post-rewrite}`.
+1. **Create `mahavishnu/bodai_hook_bridge.py`** — canonical handler. Each existing Claude hook's body becomes a named function (`handle_post_tool_use`, `handle_session_start`, `handle_pre_tool_use`, etc.). `read_stdin()` re-exports the existing `_hook_io.HookPayload` shape. Each handler runs the existing logic AND publishes a normalized event to `oneiric.adapters.queue.redis_streams` (fire-and-forget). Sync-blocking events skip the post-event publish step per §4.13.3; the canonical handler still runs.
+2. **Replace `mahavishnu/.claude/hooks/*.py` with bridge wrappers** — each file becomes:
+   ```python
+   #!/usr/bin/env python3
+   import sys, json, os
+   sys.path.insert(0, os.environ["CLAUDE_PROJECT_DIR"])
+   from bodai_hook_bridge import handle
+   payload = json.load(sys.stdin) or {}
+   event = payload.get("hook_event_name", "?")
+   handle(event_name=event, harness="claude", payload=payload)
+   ```
+   The legacy Python logic moves into `bodai_hook_bridge.py` named functions; the bridge file becomes a thin dispatcher. Per `claude-code-hook-commands-use-claude-project-dir` memory, hooks anchor with `$CLAUDE_PROJECT_DIR` so this works in sibling repos.
+3. **Add `mahavishnu git-hook <event>` Typer sub-command** — git hook entry. Event handlers `post_commit`, `post_merge`, `post_rewrite`, `pre_commit` re-implement the existing 378-662-byte action lines from `.git/hooks/<event>` (which are not version-controlled — git hooks live per-clone) and publish to the bus. The git hook script shrinks to:
+   ```bash
+   #!/bin/bash
+   exec mahavishnu git-hook post-commit "$@"
+   ```
+4. **Update `.git/hooks/<event>` shell scripts** to call the new Typer sub-command (per the local git checkout — operator commit).
+5. **Hard-cutover the JSON-file queue** — `bodai-activity-subscriber.py` rewrites to consume Redis Streams only; the JSON-file write path is deleted. Other producers that wrote to the queue (e.g. `mahavishnu/jot/drain.py`, `mahavishnu/mcp/tools/jot_tools.py` consumers) publish directly to the bus instead. Verify: `grep -rn "bodai-event-queue\|bodai-event-queue\.json" mahavishnu/` returns 0 hits after Phase 12a commits.
+6. **Add `tests/integration/test_hook_bridge_e2e.py`** — asserts:
+   - `BodaiHookBridge.handle("PostToolUse", harness="claude", payload={...})` invokes the canonical handler.
+   - Publish reaches `oneiric.adapters.queue.redis_streams` channel `bodai.hooks.post-tool-use`.
+   - `mahavishnu git-hook post-commit` runs the legacy crackerjack action AND publishes to the bus.
+   - The JSON-file queue is no longer written.
+   - `PreToolUse` returns exit 2 unchanged (sync-blocking preserved).
+7. **Commit** — same-commit guard: producers and consumers flip together.
+
+#### Phase 12b — Qwen Code bridge + Codex bridge (deferred)
+
+1. **Inventory Qwen events with no Claude equivalent** — `PostToolUseFailure`, `SessionDelete`, `MessageDisplay`, `StopFailure`, `SubagentStart`, `PreCompact`, `PostCompact`, `PermissionRequest`, `PermissionDenied`, `TodoCreated`, `TodoCompleted`. Each gets a canonical handler function in `mahavishnu/bodai_hook_bridge.py`.
+2. **Create `~/.qwen/hooks/<event>` bridge files** — 10-line scripts that normalize Qwen's JSON to the canonical envelope and invoke the canonical handler. Both Claude and Qwen field semantics per spec §4.13.2.
+3. **Update `~/.qwen/settings.json`** to register bridges for each event.
+4. **Add `tests/integration/test_qwen_hook_bridge_e2e.py`** — asserts the Qwen bridge normalizes correctly.
+5. **Codex bridge deferred to when Codex ships hooks** — no-op until Codex docs land; same ~15-line-per-event pattern.
+
 ## 6. Risks & Mitigations
 
 ### R1 — Hard cutover breaks internal callers of `mcp__dhara__*` tools
@@ -945,6 +1062,12 @@ Carrying dormant pgvector code paths ages badly: the upstream APIs (asyncpg, pgv
 
 **Mitigation:** Phase 5 task 9 commits to single-source persistence (default Option B = Postgres-only, per ADR 017 substrate ownership). Phase 5 removes `write_mode: "dual"` from `mahavishnu/settings/mahavishnu.yaml:140`; Phase 5 documents the Option A (Dhara-only) fallback path in `docs/ops/persistence-modes.md` for operators who cannot migrate to Postgres immediately. Phase 5's e2e tests + the Dhara-as-engine connection (`dhara db start --port 8685`) demonstrate that the engine stays available for non-Mahavishnu consumers.
 
+### R12 — Hook migration hard-cutover breaks in-process subscribers (added 2026-09-14)
+
+**Risk:** Phase 12a hard-cuts from `~/.mahavishnu/bodai-event-queue.json` to `oneiric.adapters.queue.redis_streams`. Any in-process Bodai code still writing to (or reading from) the JSON file breaks immediately at the commit boundary. Examples: `mahavishnu/jot/drain.py` may write envelopes; `mahavishnu/mcp/tools/jot_tools.py` consumers may read them; external subscribers may be on the file path.
+
+**Mitigation:** Phase 12a task 5 enumerates every producer and reader in `mahavishnu/` before the cutover (mirrors Phase 1 task #0's enumeration discipline). Each one updates in the same commit as the file's deletion. External consumers documented in `docs/runbooks/hook-migration.md`. The hard-cutover stance matches the spec's user-2026-09-14 decision (no deprecation window); the alternative — dual-write — is rejected per Phase 5 R11 cautionary tale.
+
 ## 7. Open Questions
 
 All resolved 2026-09-14, plus OQ #5 / OQ #6 added 2026-09-14 from the topology review:
@@ -960,6 +1083,8 @@ All resolved 2026-09-14, plus OQ #5 / OQ #6 added 2026-09-14 from the topology r
 5. **`substrate_routes` HTTP gateway location — Oneiric vs Mahavishnu.** **Resolved for Phase 7: Oneiric owns the HTTP gateway** (per OQ #2). **Re-evaluation point for Phase 11:** Phase 11's gateway-pattern evaluation (newly added) revisits whether the HTTP gateway should live on Mahavishnu instead of Oneiric. If Mahavishnu becomes the gateway for read-only wrappers (Phase 11 Option C), it may make sense to also move the substrate routes there for operational consistency. Decision deferred to Phase 11 ADR-018.
 
 6. **`agent_schema.py` / `skill_schema.py` canonical location.** **Resolved: `mcp-common.canonical_schemas`.** AkoSHA's `agent_schema.py` and `skill_schema.py` are currently marked "canonical source" in their docstrings (per `akosha/mcp/agent_schema.py`'s comment); the other three components sed-replicate. This DRY violation is fixed by Phase 4 tasks 2 + 4 (move canonical files to `mcp-common`) and Phase 10 task 2 (delete the sed-replicated copies in AkoSHA / Session-Buddy / Mahavishnu, with Crackerjack following Phase 4's import-from-canonical-home change).
+
+7. **Hook-channel migration scope (added 2026-09-14).** **Resolved: bridge pattern, project-local canonical handler, hard cutover from JSON-file queue to Redis Streams.** Per the brainstorming-session-2026-09-14 answers (Q4): handler lives at `mahavishnu/bodai_hook_bridge.py`. The bridge pattern (≤20-line JSON normalizer per harness) absorbs harness-specific schema differences — Claude Code's ~30 events vs Qwen Code's ~19; divergent `permission_mode` enums; Claude-only `effort` field per spec §4.13.2. Multi-harness compatibility is bounded to ~15 lines per new harness. Phase 12a ships the Claude bridge + git-hook wrappers; Phase 12b adds Qwen and (eventually) Codex.
 
 ## 8. What Changes for Operators
 
