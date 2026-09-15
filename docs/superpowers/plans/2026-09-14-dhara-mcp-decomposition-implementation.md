@@ -34,7 +34,7 @@ The full TDD expansion of Phases 1-11 lived in a prior version of this plan file
 | Phase 2 — Auth consolidation (docs only) | spec §5 Phase 2 | One task: update `2026-04-27-bodai-auth-standardization-design.md` |
 | Phase 3 — ecosystem_state → Mahavishnu | spec §5 Phase 3 | 8 tasks; rename functions to `ecosystem_*` prefix |
 | Phase 4 — agent/skill catalog → Crackerjack | spec §5 Phase 4 | 9 tasks; signer_feed → mcp-common; canonical schemas → mcp-common.canonical_schemas |
-| Phase 5 — otel_traces → Akosha | spec §5 Phase 5 | 9 tasks; drop `akosha_query_local_traces`; flip Mahavishnu's `from akosha.storage import HotStore` → `from oneiric.adapters.vector.pgvector import PgvectorAdapter` |
+| Phase 5 — otel_traces → Akosha | spec §5 Phase 5 | 9 tasks; drop `akosha_query_local_traces`; flip Mahavishnu's `from akosha.storage import HotStore` → `from oneiric.adapters.vector.hot_store import HotStore` (Protocol lifted 2026-09-15 in oneiric commit `93f60cd`); concrete DuckdbHotStore class still needs to follow |
 | Phase 6 — kv_time_series + sql_proxy | spec §5 Phase 6 | Wrap `kv_time_series` as Oneiric cache adapter; drop `sql_proxy` |
 | Phase 7 — substrate_routes → Oneiric HTTP | spec §5 Phase 7 | 5 tasks; Oneiric HTTP `start|stop|status` subcommand |
 | Phase 8 — Retire Dhara MCP server | spec §5 Phase 8 | 23 tasks; user runs `crackerjack run -p major` (Phase 8 task 15) |

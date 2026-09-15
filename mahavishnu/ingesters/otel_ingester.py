@@ -38,7 +38,9 @@ except ImportError:
     TextEmbedding: type[Any] | None = None  # type: ignore[no-redef]
 
 if TYPE_CHECKING:
-    from akosha.storage import HotStore  # ty: ignore[unresolved-import]
+    from oneiric.adapters.vector.hot_store import HotStore  # substrate Protocol (ADR 017)
+else:
+    from oneiric.adapters.vector.hot_store import HotStore  # runtime-safe: Oneiric is a substrate library dep
 
 from mahavishnu.core.errors import ValidationError
 from mahavishnu.ingesters.turboquant_compressor import TQPackedVector, TurboQuantCompressor
