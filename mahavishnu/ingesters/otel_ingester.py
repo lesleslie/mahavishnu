@@ -604,9 +604,9 @@ class OtelIngester:
     async def _initialize_duckdb(self) -> None:
         """Initialize DuckDB (HotStore) storage backend."""
         if self._hot_store is None:
-            from akosha.storage import HotStore  # ty: ignore[unresolved-import]
+            from oneiric.adapters.vector.duckdb_hot_store import DuckdbHotStore
 
-            self._hot_store = HotStore(database_path=self._duckdb_path)
+            self._hot_store = DuckdbHotStore(database_path=self._duckdb_path)
             await self._hot_store.initialize()
         logger.info(f"DuckDB (HotStore) storage initialized (path={self._duckdb_path})")
 
@@ -1333,9 +1333,9 @@ async def create_otel_ingester(
 
     # For DuckDB, create HotStore if path provided
     if storage_type == StorageType.DUCKDB and hot_store_path != ":memory:":
-        from akosha.storage import HotStore  # ty: ignore[unresolved-import]
+        from oneiric.adapters.vector.duckdb_hot_store import DuckdbHotStore
 
-        hot_store = HotStore(database_path=hot_store_path)
+        hot_store = DuckdbHotStore(database_path=hot_store_path)
         await hot_store.initialize()
         ingester._hot_store = hot_store
 
