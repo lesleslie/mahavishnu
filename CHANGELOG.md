@@ -5,6 +5,298 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.24.0] - 2026-09-14
+
+### Added
+
+- /jot slash command (vitals only per R6)
+- Add JotSummaryDict/JotVitalsDict surfaces + _summary_dict/_vitals_dict
+- audit: Cross-module __all__ resolution + tests
+- audit: Recognise @pytest.fixture as a registration decorator
+- audit: Treat pytest-discoverable tests/ symbols as wired (Phase 5 loop-3)
+- auth: FastMCP session-context user_id extraction (Task 11.9)
+- Auto-generate BODAI_REPO_REGISTRY.md from canonical sources
+- changepoint: Add TwoStageDetector (warn/confirm) + config fields
+- changepoint: Wire TwoStageDetector into ObservabilityManager; emit drift_warning span
+- cleanup: Delete unused record_key + triage remaining audit orphans
+- cli: `mahavishnu plan` subcommand (list/show/vitals/search/purge)
+- config: Add JotSettings nested under MahavishnuSettings
+- jot-cli: Add 6 drain subcommand handlers + smoke tests
+- jot-cli: Register 6 drain subcommands with Typer
+- jot-drain: Add Task 8 — surfacing scorers + throttle + surface_relevant
+- jot-mcp: Add 6 drain tools + remove duplicate JotSummaryDict/JotVitalsDict
+- jot: 8 MCP tools with TypedDict returns (R1, R11)
+- jot: Add _auto_retry_after, _reconcile_if_in_flight, _background_reconciler_loop
+- jot: Add _is_surface_eligible, _is_drain_eligible, _should_exhaust_retry_budget
+- jot: Build_states two-pass fold with parking (R3, R7 part 2)
+- jot: Capture sub-plan 1 — hook + log + redaction
+- jot: CLI handlers — list, show, vitals + write stubs
+- jot: Cmd_search lexical substring fallback
+- jot: Drain refactor + cli/hook/mcp-tools alignment + errors rename
+- jot: Drain.py skeleton with _append_event + TypedDict validation
+- jot: Extend errors.py with drain error hierarchy
+- jot: Extend fold with _derive_dispatch_fields + DispatchState
+- jot: Extend Op literal with 6 drain event types
+- jot: FoldResult + parse_events (TD-B3, R7 part 1)
+- jot: Git enrichment via subprocess (R4)
+- jot: Register 8 tools in profiles + CI guards
+- jot: Render layer (list, show, vitals)
+- jot: Resolve_handle with ambiguity error (R8)
+- jot: Typer app with 8 subcommands (R2)
+- jot: Wire per-op TypedDicts via MCP-tools import
+- jot: Write CLI handler tests for done/reopen/edit/add
+- JotError hierarchy (TD-B2)
+- mahavishnu: Flip otel_ingester HotStore forward-ref to Oneiric Protocol
+- mahavishnu: Flip otel_ingester runtime HotStore to Oneiric DuckdbHotStore
+- mahavishnu: Migrate to mcp-common CommonMCPClient (Phase 3 REQ-004, REQ-009)
+- mcp-profiles: Register 6 drain tool names in FULL + REGISTRATION_MAP
+- mcp: Agent catalog + tool consolidation
+- mcp: Phase 1 server-published skills (list_skills + get_skill)
+- mcp: Phase 3 task #5 H-3 specialist dispatcher
+- mcp: Register plan_* tools in FULL profile (5-edit dance)
+- observability: Changepoint detectors (CUSUM + 3-sigma) + integration
+- observability: Close merge.semantic.duration_ms instrumentation across all 3 entry points
+- observability: Ship changepoint operator opt-in (finish-partial Phase 1)
+- permissions: Add READ_PLAN_INDEX for plan_index MCP tools
+- Plan_* tools with @require_mcp_auth (REQ-PLAN-010)
+- plan_index,health: Wire plan_index feed into /health aggregator
+- plan_index: Foundation — PlanId, errors hierarchy, paths
+- plan_index: Normalize_repo_url security helper
+- plan_index: PeriodicTaskRunner + cron_core + lock + DLQ (round-3 BLOCKER fix)
+- plan_index: PlanIndexFeedState with strict 4-signal contract
+- plan_index: PlanIndexRebuilder with normalize_repo_url integration
+- plan_index: PlanIndexStore Dhara-backed CRUD with vitals
+- plan_index: PlanRecord frozen dataclass
+- plan_index: Renderer (pure) + Writer (I/O)
+- plan_index: TypedDicts — plan surface types
+- pools: Drop dead QueueingScorer class (round-4 general/safety HIGH-1)
+- quality_cli: Wire Rich-formatted Crackerjack output (track3-toad-tui Task 4)
+- Regenerate_plan_index.py orchestrator + fix discover_records field gap
+- Register plan_app in main CLI app
+- scripts: Add migrate_frontmatter migrator (Phase 1 of no-frontmatter migration plan)
+- settle: Register merge.semantic.duration_ms histogram + thread mergiraf path
+- skills_signer: Phase 1.5 replication to mahavishnu
+- state_backends: Add DharaKv string-shape adapter for PlanIndexStore
+- Task 9 — high-level drain primitives (drain_plan, dispatch_jot, retry_dispatch, defer_jot, delete_jot)
+- tier1-math: Phase 1 — MmcQueue queueing library (REQ-001)
+- tier1-math: Phase 2 — QueueingScorer + PoolManager integration (REQ-002, REQ-003, REQ-008)
+- tier1-math: Phase 3 + 7 — integration tests + validation reports
+- tier1-math: Phase 4 + 8 — promote queueing + changepoint defaults (adopted)
+- tier1-math: Phase 5 — CUSUM, Page-Hinkley, AnomalyResult (REQ-004, REQ-006)
+- tier1-math: Phase 6 — change-point observability integration (REQ-005, REQ-006, REQ-009)
+- tier1-math: Phase 9 — feature eligibility script + Makefile + followups (REQ-007)
+
+### Changed
+
+- core: App/health/cli alignment + health CLI test scaffold
+- jot-drain: Apply 14 reviewer findings to polish spec
+- jot-drain: Polish implementation plan — 7 tasks
+- jot-drain: Polish spec — 6 items (slash command, reconciler revert, ctx whitelist, bundling note, action-proposal lock, action_proposals docs)
+- jot: 20-task implementation plan for zero-turn inbox
+- jot: Add noqa for fail-open Exception catches + B023 fix
+- jot: Apply 5-agent review fixes (round 1)
+- jot: Apply 5-agent round-3 review findings
+- jot: Apply final-review critical fix batch (round 2)
+- jot: Apply user-approved cuts and round-2 self-fixes
+- jot: Type _summary_dict/_detail_dict; strengthen MCP round-trip test
+- observability: Extract _canonical_detector_name helper to remove detector-name normalization duplication
+- observability: Use elif in two-stage dispatch for mutually exclusive states
+- skills_signer: Minor alignment across keys/manifest/verify
+
+### Fixed
+
+- auth: Add required_permission to 5 session_buddy decorators (Task 11.8)
+- auth: Defense-in-depth audit + remove Permission.READ fallback (Task 11.10)
+- auth: Thread rbac_manager through capability_tools (Task 11.8)
+- auth: Thread rbac_manager through webhook_tools (Task 11.8)
+- auth: Thread rbac_manager through workflow_tools (Task 11.8)
+- auth: Wire rbac_manager at 5 bootstrap.py callsites (Task 11.8)
+- config: Correct Crow port and MCP server URL defaults
+- docs(plans)+audit: Phase 5 loop-2 (audit script fix, plan move, revert to partial)
+- docs+test(changepoint): round-6 fixes per task-7 review (default-detector drift + test count + drift_warning span parity)
+- jot-drain: Thread jot id through _append_event + restore DrainPlan.action_proposals
+- jot: Add noqa for PLC3002 IIFE lambda workaround
+- jot: Clamp replayed last_modified_ms + clear parked + I3 tests
+- jot: Make _wrap_at_import graceful when fastmcp is not installed
+- jot: Remove dead MOD_WIDTH constant from render.py
+- jot: Remove extraneous parens around min() generator (ruff UP034)
+- jot: Thread event_id through CLI edit/done/reopen (latent no-op bug)
+- jot: UD5 short_id is last 6 hex chars (was first 6)
+- jot: Widen enrich_ctx catch + hoist git spawn (Task 5 fix round 1)
+- mcp/lifecycle: Wire DharaKvClient into plan_index, drop synthetic fallback
+- observability: Add severity= and samples= to drift_warning log for parity with drift_detected
+- otel_ingester: Normalise _extract_timestamp to naive UTC
+- plan_index,auth: Enforce READ_PLAN_INDEX via RBACManager (BLOCKER Task 11.7)
+- plan_index: Atomic lock acquisition in cron_core (Task 14.6)
+- plan_index: Atomic writes, JSON parse safety, prefix validation, TTL consistency
+- plan_index: Reject Unicode line/paragraph separators in normalize_repo_url
+- plan_index: Restore Task 16 orphaned files (check_step8 + tracking)
+- plan_index: Retain lock-history on stale takeover (Task 14.7)
+- plans: Wrap bare blocks_on string in list (2026-09-13)
+- Preserve epoch-zero oldest_ms in jot_vitals (collapses-with-or-None bug)
+- Report latest HLC (not capture HLC) in JotDetail per spec R9
+- round5-followup: Add --section flag to mahavishnu health for merge_driver
+- spec: Resolve 6-agent review criticals — phantom APIs, JSON bool retry flag, TypedDicts, hook wiring, error handling
+- spec: Resolve round-2 6-agent re-review criticals + importants
+- spec: Resolve round-3 5-agent re-review defects
+- tier1-round2: Address CR-1, CR-2, S-1, S-4, S-5, S-6, CAL-1, CAL-2
+- tier1-round2: Doc honesty + allowlist hardening (security review)
+- tier1-round3: Address R3-C1+C2, M-1, H5, CR-1/CR-2 test
+- tier1-round3: Correct stale doc numbers (R3-DOCS)
+- tier1-round4-final: Monotonic drift_age gauge + M5 label allowlist route + audit doc test count
+- tier1-round4: Close two CRITICALs + M2 regression test
+- tier1-round5: Close deferred M#/m# findings from settle-semantic-merge review
+- tier1: Pair arrivals with real service durations (was placeholder 1.0)
+- tier1: Promote changepoint config to top-level ChangepointConfig
+- tier1: Target_mean config + drift counter + complete OTel span attrs
+- tier1: Track inter-arrival timestamps against last arrival, not last fit
+- tier1: Wire QueueingScorer penalty into actual pool selection
+- tier1: §7 gate test now actually measures (was vacuous)
+
+### Documentation
+
+- Add frontmatter to jot-drain-polish plan (mark active)
+- Add jot capture implementation plan (9 tasks)
+- Archive 19 completed plans (2026-09-13)
+- audit: Correct changepoint test count to 115 across 8 files (post-F10 dispatch seam test)
+- changepoint: Document warn re-fire updates _last_warning_result in TwoStageDetector state diagram
+- decisions: Tag 38 decision docs with kind: decision (2026-09-13)
+- Dhara MCP decomposition implementation plan with Phase 12 hook coordination
+- Drop Codex from Phase 11; consolidate ACP with active plan
+- feature-tracking: Cross-link Phase 8 promotion as the two-stage migration window
+- feature-tracking: Document round-7 polish knockouts (10 LOW items + bundle-split recovery)
+- feature-tracking: Flip orphan-sweep to status: wired (5/5 resolved)
+- feature-tracking: Flip status to wired; document round-6 shipped
+- Flip 2026-09-13 migrate-no-frontmatter-plans to status: complete
+- followups: Park 11 LOW polish items from changepoint two-stage review (round-7/8)
+- followups: Record HNSW-on-DuckDB bug for akosha code_graphs_feed
+- Implementation plan for plan-index Dhara canonical layer
+- Jot inbox design spec (post six-lens review)
+- jot: Apply all BLOCKERs + HIGHs from multi-subagent review of sub-plan 2
+- jot: Sub-plan 2 (Read) implementation plan
+- Lifecycle ADRs, ARCHITECTURE refresh, version stamps, LLM provider
+- MCP: Regenerate tools reference and specification from source
+- observability: Note defensive isinstance guard rationale in _on_drift_warning
+- plan+runbook+audit: Document two-stage warn/confirm architecture (round-5)
+- plan: Add Phase 11 harness-agnostic enablement + ACP integration
+- plan: Add phase-1 precondition fixes (14 deferred findings)
+- plan: Add §10.4 cross-server review + update §10.1/§10.2/§11 to 5/5 complete
+- plan: Add §10.5 Phase 1 cross-server review + completion markers
+- plan: Correct changepoint test count to 115 across 8 files
+- plan: D2 reviewer fixes — §10.3 wiring contract + stale-path corrections
+- plan: Promote skill-agent-distribution to active, close B-1
+- plan: V3 — cron real-scan + --render-to flag + 5 security tests
+- plan: §10.2 — mark Phase 2 + Phase 6 SHIPPED + update Week 4/5/6 sub-lists
+- plan: §10.2 — mark Phase 3 dispatcher + Phase 5 SHIPPED
+- plan: §10.6 — Phase 3+4+6 cross-server review with str_strip_whitespace fix entries
+- plans: 2026-09-12 plan audit pass
+- plans: 2026-09-13 overlap-followup fixes
+- plans: 3 PARTIAL status flips + Re-Review notes (2026-09-13)
+- plans: 6 status flips from completeness audit (2026-09-13)
+- plans: Add CommonMCPClient transport unification umbrella plan
+- plans: Add frontmatter to bodai-tui-shell-surface-implementation (2026-09-13)
+- plans: Add frontmatter to fastmcp-4-upgrade + cross-link to Cluster A (2026-09-13)
+- plans: Add Phase Status table to finish-partial-implementations
+- plans: Auth → complete; bump 6 last_reviewed; flip Cluster A 4 → complete (2026-09-13)
+- plans: Close routing-feedback-loop-v4 partial — query_local_traces now ships on all 5 Bodai components
+- plans: Create plan for migrating 40 no-frontmatter files (2026-09-13)
+- plans: Cross-link TUI/storage clusters; defer flowscape + zsh (2026-09-13)
+- plans: Drop HotStore JSON-path bug caveat — fixed upstream in Akosha 9845c5c
+- plans: Finish-partial Phase 5 (post-close audit) + plan → complete
+- plans: Fix broken local links surfaced by check-local-links
+- plans: Flip 2026-05-14-doc-sync-and-channel-phase2 to status: complete
+- plans: Flip 2026-06-19-track3-toad-tui to status: complete
+- plans: Flip 2026-07-11-ultracode-integration-wiring to status: complete
+- plans: Flip 2026-07-16-bodai-plugin-standardization to status: complete (path-not-taken)
+- plans: Flip 2026-08-24-claude-env-audit-remediation to status: complete
+- plans: Flip 2026-09-10-bodai-math-initiatives-tier1 to status: shipped (finish-partial Phase 4)
+- plans: Flip 2026-09-10-settle-semantic-merge to status: shipped
+- plans: Flip dhara-outstanding-items-plan to status: complete
+- plans: Flip finish-partial meta-plan to status: complete
+- plans: Flip track3-toad-tui draft -> active; regen index (2026-09-13)
+- plans: Reflow 9 single-line-after-heading frontmatter blocks (2026-09-13)
+- plans: Refresh 2026-09-13 no-frontmatter migration plan with live inventory
+- plans: Refresh migration plan for +1 file drift (38 -> 39)
+- plans: Regen PLAN_INDEX.md to reflect 2026-09-14 plan state
+- plans: Regenerate PLAN_INDEX after 6 status flips (2026-09-13)
+- plans: Regenerate PLAN_INDEX after dhara-outstanding-items-plan flip to complete
+- plans: Regenerate PLAN_INDEX after kind: decision + reflows (2026-09-13)
+- plans: Regenerate PLAN_INDEX.md — includes jot-drain-polish (active)
+- plans: Render kind column + add by-kind section to PLAN_INDEX (2026-09-13)
+- plans: Update decision-kind description to cover ADRs (2026-09-13)
+- plans: Update tier1-math inline text + regenerate PLAN_INDEX
+- plans: V2 — review fixes for transport unification plan
+- Promote serverless-readiness plan to active + ADR 017
+- Re-review 8 stale plans (last_reviewed: 2026-07-16 -> 2026-09-13)
+- Refresh canonical reference docs against current codebase
+- Refresh references + math-spec audits + archive metadata
+- registry: Add scapy-mcp, archive-org-mcp, medium-mcp
+- Relocate stray session PNGs to docs/assets/images/.scratch/
+- runbook: Add healthy drift_warning_total rate heuristic (~30 per 10,080 design point)
+- runbook: Explain detector attribute dual-convention for two-stage warn/confirm spans
+- schemas: Add optional kind discriminator to frontmatter v1.1 (2026-09-13)
+- scripts: Migrate 1 docs/followups/ to v1 schema
+- scripts: Migrate 1 docs/plans/ to v1 schema
+- scripts: Migrate 15 docs/superpowers/specs/ to v1 schema
+- scripts: Migrate 22 docs/superpowers/plans/ to v1 schema
+- spec+plan: Apply multi-agent review fixes (PATH A)
+- spec: Add jot inbox capture sub-plan 1 design
+- spec: Add jot inbox drain sub-plan 3 design
+- spec: Add jot inbox read sub-plan 2 design
+- spec: Add §4.13 + Phase 12 hook bus coordination
+- spec: Apply review fixes to Dhara MCP decomposition design
+- spec: Apply second-pass review fixes (3 fresh agents)
+- spec: Draft Dhara MCP decomposition design
+- spec: Incorporate topology + Postgres consolidation review
+- spec: Plan-index Dhara canonical metadata layer (v2, pentaverate-revised)
+- spec: Plan-index Dhara canonical metadata layer (v3, round-2 fixes)
+- specs: Flip 2026-05-16-llm-routing-standardization-design to complete+superseded
+- specs: Flip 2026-07-15-constellation-tui-design to complete
+- Update capture plan to reflect post-review implementation
+- Update capture plan to reflect post-review implementation
+- V2 — apply 4-agent plan review fixes
+
+### Testing
+
+- audit: Cover cross-module __all__ resolution
+- auth: Add cross-cutting RBAC sweep tests (Task 11.8)
+- auth: Cover Principal.has_scope
+- changepoint: Add boundary-sample test for confirm firing on confirm_window_samples-th sample
+- changepoint: Integration benchmark for TwoStageDetector; bench.json keys for §1/§7
+- CI gate integration coverage
+- cleanup: Remove contradictory stale_pid test + fix auth test for new fail-fast contract
+- Cover CrossRepoAggregator.get_repos_needing_attention
+- Cover MahavishnuApp budget_watchdog lifecycle methods
+- dhara_kv: Cover DharaKvClient contract + cron int(dict) reproducer
+- distill,precommitment: Skip cleanly at collection when duckdb is missing
+- E2e scaffolds for agents + settle-merge + agent metadata schema
+- Fix mypy strict on test_audit_plan_index.py:179 (REQ-PLAN-009)
+- jot-drain: Property tests for idempotency, state invariants, surfacing ranking
+- jot: Add return-type Any check to test_no_any.py
+- jot: End-to-end pipeline integration tests
+- jot: End-to-end pipeline integration tests
+- jot: Update capture_echo tests for UD5 last-6 short_id
+- mcp: Per-tool e2e + smoke tests for plan_index (REQ-PLAN-013)
+- plan_index: Concurrency, DLQ, OTel flag, lock format, /health aggregation
+- plan_index: Golden render + feature-tracking + partial failure + dict roundtrip
+- plan_index: Round-2 security & auth-gate test coverage (REQ-PLAN-010/011/012)
+- pools: Drop dead TestQueueingScorer coverage (general/safety HIGH-1)
+- websocket: Cover broadcast_settle_transition in parametrized suite
+- wiring: Close 3 demo unsubscribe_* orphans via Attribute reference
+- wiring: Close audit_orphans findings for 7 residual symbols
+- wiring: Use Attribute access so audit walker counts the references
+
+### Internal
+
+- Bump to v0.23.0 and correct tool/repo counts
+- deps: Bump mcp-common floor to >=0.26.0,<0.27.0 (Phase 2.5)
+- jot: Trivial docstring/comment typo + trailing newline fixes
+- Maintenance + audit-apply scripts
+- plan_index: Maintenance scripts + module touch-ups
+- plan_index: Migration run steps 1-5 (operator runbook + scripts)
+- plan_index: Migration step 6 complete — MCP tools wired
+- plan_index: Migration steps 7-8 — skill cut-over + adopted
+
 ## [0.23.0] - 2026-09-09
 
 ### Added

@@ -729,6 +729,58 @@ Phase ordering matters because the migrations cascade and each phase leaves the 
 - **Rollback signal:** Empty results when traces are expected, or any e2e test failure, or per-component DuckDB file not found (missing endpoint config).
 - **Observability added:** OTel span `akosha.mcp.tool.query_local_traces_fitness`. Per-feed signals: `feed.entities_count` (total fitness-shaped rows returned), `feed.last_updated_timestamp`, `feed.errors_total`, `feed.cycles_total` exposed at `akosha mcp health.query_local_traces_fitness`.
 
+#### Deferred follow-up: AkoSHA `HotStore` → `DuckdbHotStore` subclass (post-Phase 5, pre-Phase 10)
+
+Phase 5 task 8 lifted the **substrate** layers to Oneiric (Protocol + DuckdbHotStore concrete). That fixed the cross-component coupling — `grep -rn "^from akosha\|^import akosha" mahavishnu/` returns 0 matches. But AkoSHA's own `HotStore` class still duplicates the conversations-table surface that now lives in `oneiric.adapters.vector.duckdb_hot_store`. The follow-up refactor is **AkoSHA-internal**: drop the duplicated surface and inherit from substrate.
+
+**Why deferred (not part of Phase 5):**
+
+1. **Cross-component vs. intra-component.** Phase 5's task 8 was the cross-component fix (Mahavishnu must not reference AkoSHA). The remaining work is AkoSHA-internal simplification — different blast radius, different review surface. Mixing them bloats Phase 5 task 8.
+2. **Depends on Phase 10 pgvector fate.** `akosha/storage/pgvector_hot_store.py` (241 LOC, currently unreachable per W2 — `akosha/settings/akosha.yaml:95` ships `hot_store.pg_url: ""`) is unresolved until Phase 10 picks Option A (commit + fix upstream bug) or Option B (delete). The subclass refactor's scope depends on which pgvector fate wins. If Option B deletes pgvector, the refactor only touches `HotStore`; if Option A keeps it, `PgvectorHotStore` also needs the subclass treatment.
+3. **Substrate had to land first.** The Oneiric Protocol + concrete classes were a precondition. They shipped in oneiric commits `93f60cd` (Protocol) and `198564e` (concrete). The AkoSHA-side refactor now has substrate to inherit from.
+
+**What the refactor does:**
+
+`akosha/storage/hot_store.py` currently contains two surfaces in one class:
+
+| Surface | Substrate? | Action |
+|---------|------------|--------|
+| `__init__`, `initialize`, `insert`, `search_similar`, `close`, `_compute_content_hash`, `conn` attribute | **Yes** — duplicated from `oneiric.adapters.vector.duckdb_hot_store.DuckdbHotStore` | Drop; inherit |
+| `initialize_code_graphs_table`, `store_code_graph`, `get_code_graph`, `list_code_graphs` | **No** — AkoSHA-only (cross-repo pattern ingestion, akosha domain) | Keep |
+
+Refactor target: `class HotStore(DuckdbHotStore):` — subclass that calls `super().__init__()` and adds the four code-graph methods. No public API change for callers (same `insert(record)`, `search_similar(...)`, `close()` call shapes).
+
+**Files touched (when taken up):**
+
+- Modify: `akosha/storage/hot_store.py` (~700 LOC → ~200 LOC; net deletion of the conversations-table surface; code-graph methods stay)
+- Modify: `akosha/storage/_records.py` (or co-locate) — AkoSHA's `_HotRecord` dataclass stays (substrate duck-types `record.embedding`; AkoSHA keeps its typed model)
+- Test: `akosha/tests/unit/test_hot_store.py` — adjust imports; add `assert issubclass(HotStore, DuckdbHotStore)`
+- Test: `akosha/tests/integration/test_hot_store_e2e.py` — verify code-graph CRUD still works end-to-end after refactor
+- No change to callers: `grep -rn "akosha.storage.hot_store" akosha/` import sites stay the same.
+
+**Acceptance criteria:**
+
+- `class HotStore(DuckdbHotStore):` is the only class in `akosha/storage/hot_store.py`
+- `akosha/storage/hot_store.py` LOC ≤ 200 (was ~700)
+- `grep -c "CREATE TABLE" akosha/storage/hot_store.py` returns 1 (the code-graph table only; conversations-table DDL removed)
+- `pytest akosha/tests/unit/test_hot_store.py akosha/tests/integration/test_hot_store_e2e.py` exits 0
+- `grep -rn "akosha.storage.hot_store" akosha/` returns the same import sites as before refactor (no caller changes)
+- Substrate remains the single source of truth for conversations-table DDL: `grep -rn "conversations.*TIMESTAMP\|FLOAT\[" akosha/storage/hot_store.py` returns 0 (table DDL exists only in `oneiric/adapters/vector/duckdb_hot_store.py:143-156`)
+
+**Wiring contract:**
+
+- **Triggered from:** AkoSHA-internal callers (`akosha/mcp/...`, `akosha/storage/index.py`, `akosha/api/...`) — same import path, no caller changes.
+- **Returns to / updates:** Oneiric `DuckdbHotStore` (conversations table) + AkoSHA `HotStore` subclass (code-graph tables).
+- **Demonstrable by:** `grep -c "class HotStore" akosha/storage/hot_store.py` returns 1; `pytest akosha/tests/` passes; conversations-table DDL exists only in `oneiric/adapters/vector/duckdb_hot_store.py`.
+- **Rollback signal:** Any AkoSHA test that calls `insert` or `search_similar` on a `HotStore` instance fails; or code-graph insert/query e2e test fails.
+- **Observability added:** None (refactor is a no-op behavior change).
+
+**Cross-references:**
+
+- Substrate-side context: `oneiric/adapters/vector/duckdb_hot_store.py:16-20` ("NOT in scope (stay in AkoSHA): code-graph sub-features")
+- Phase 5 task 8 commit `6183fec6`: Mahavishnu runtime flip; this refactor is the AkoSHA-side sibling.
+- Phase 10: pgvector fate decision gates the refactor's full scope (Option A also requires `PgvectorHotStore` subclass treatment; Option B keeps the refactor focused on `HotStore`).
+
 ### Phase 6 — Decide kv_time_series and sql_proxy fate
 
 **Goal:** Two remaining tool groups resolved. **Hard cutover (no deprecation window).**

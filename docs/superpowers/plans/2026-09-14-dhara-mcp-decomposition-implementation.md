@@ -34,7 +34,7 @@ The full TDD expansion of Phases 1-11 lived in a prior version of this plan file
 | Phase 2 — Auth consolidation (docs only) | spec §5 Phase 2 | One task: update `2026-04-27-bodai-auth-standardization-design.md` |
 | Phase 3 — ecosystem_state → Mahavishnu | spec §5 Phase 3 | 8 tasks; rename functions to `ecosystem_*` prefix |
 | Phase 4 — agent/skill catalog → Crackerjack | spec §5 Phase 4 | 9 tasks; signer_feed → mcp-common; canonical schemas → mcp-common.canonical_schemas |
-| Phase 5 — otel_traces → Akosha | spec §5 Phase 5 | 9 tasks; drop `akosha_query_local_traces`; flip Mahavishnu's `from akosha.storage import HotStore` → `from oneiric.adapters.vector.hot_store import HotStore` (Protocol) AND `from oneiric.adapters.vector.duckdb_hot_store import DuckdbHotStore` (concrete) — both layers lifted 2026-09-15 in oneiric commits `93f60cd` + `198564e`; full concrete flip completes the dependency-arrow flip |
+| Phase 5 — otel_traces → Akosha | spec §5 Phase 5 | 9 tasks; drop `akosha_query_local_traces`; flip Mahavishnu's `from akosha.storage import HotStore` → `from oneiric.adapters.vector.hot_store import HotStore` (Protocol) AND `from oneiric.adapters.vector.duckdb_hot_store import DuckdbHotStore` (concrete) — both layers lifted 2026-09-15 in oneiric commits `93f60cd` + `198564e`; full concrete flip completes the dependency-arrow flip. **AkoSHA-side dedup deferred to post-Phase 5 follow-up** (see "Phase 5 follow-up" section below + spec §Phase 5 follow-up) |
 | Phase 6 — kv_time_series + sql_proxy | spec §5 Phase 6 | Wrap `kv_time_series` as Oneiric cache adapter; drop `sql_proxy` |
 | Phase 7 — substrate_routes → Oneiric HTTP | spec §5 Phase 7 | 5 tasks; Oneiric HTTP `start|stop|status` subcommand |
 | Phase 8 — Retire Dhara MCP server | spec §5 Phase 8 | 23 tasks; user runs `crackerjack run -p major` (Phase 8 task 15) |
@@ -1243,6 +1243,288 @@ Co-Authored-By: Claude Code <noreply@anthropic.com>"
 ```
 
 **Phase 12b closes here.** Qwen Code bridges installed (operator-side); Codex bridge deferred.
+
+---
+
+## Phase 5 Follow-up: AkoSHA `HotStore` → `DuckdbHotStore` subclass (deferred)
+
+The substrate-side lift completed in oneiric commits `93f60cd` (Protocol) and `198564e` (DuckdbHotStore concrete) plus mahavishnu commits `e3228095` and `6183fec6`. Cross-component coupling is fixed: `grep -rn "^from akosha\|^import akosha" /Users/les/Projects/mahavishnu/mahavishnu/` returns 0 matches.
+
+The remaining work is **AkoSHA-internal deduplication**. AkoSHA's `HotStore` class duplicates the conversations-table surface that now lives in Oneiric's `DuckdbHotStore`. The refactor is deferred (post-Phase 5, pre-Phase 10) for the three reasons documented in the spec: (1) cross-component vs. intra-component split, (2) depends on Phase 10 pgvector fate decision, (3) substrate had to land first.
+
+### Task F1: Write the failing subclass-relationship test
+
+**Files:**
+- Create: `akosha/tests/unit/test_hot_store_subclass.py` (~25 LOC)
+
+- [ ] **Step 1: Write the failing test**
+
+```python
+"""Pin HotStore subclass relationship to substrate (Oneiric DuckdbHotStore).
+
+Post-Phase 5 follow-up to spec §Phase 5 follow-up. This test FAILS
+until `akosha/storage/hot_store.py` is refactored to inherit from
+`oneiric.adapters.vector.duckdb_hot_store.DuckdbHotStore`.
+"""
+from oneiric.adapters.vector.duckdb_hot_store import DuckdbHotStore
+from akosha.storage.hot_store import HotStore
+
+
+def test_hot_store_subclasses_duckdb_hot_store() -> None:
+    """HotStore must inherit substrate conversations-table surface."""
+    assert issubclass(HotStore, DuckdbHotStore)
+
+
+def test_hot_store_module_is_small() -> None:
+    """Refactored HotStore is mostly the code-graph overlay; the
+    conversations-table surface is gone. ~200 LOC upper bound (was ~700).
+    """
+    import akosha.storage.hot_store as mod
+    import inspect
+    source = inspect.getsource(mod)
+    assert len(source.splitlines()) <= 200, (
+        f"HotStore module grew to {len(source.splitlines())} LOC; "
+        "expected ≤200 after subclass refactor"
+    )
+
+
+def test_hot_store_module_no_conversations_table_ddl() -> None:
+    """Conversations-table DDL is substrate's, not AkoSHA's."""
+    import akosha.storage.hot_store as mod
+    import inspect
+    source = inspect.getsource(mod)
+    assert "CREATE TABLE" in source  # the code-graph table is fine
+    assert "conversations" not in source.lower(), (
+        "conversations-table DDL belongs in "
+        "oneiric.adapters.vector.duckdb_hot_store, not AkoSHA"
+    )
+```
+
+- [ ] **Step 2: Run test to verify it fails**
+
+Run: `cd /Users/les/Projects/akosha && .venv/bin/pytest tests/unit/test_hot_store_subclass.py -v`
+Expected: FAIL — `HotStore` is currently its own class (not subclassing `DuckdbHotStore`), the module is ~700 LOC, and `conversations` DDL is present.
+
+### Task F2: Refactor `HotStore` to subclass `DuckdbHotStore`
+
+**Files:**
+- Modify: `akosha/storage/hot_store.py` (~700 LOC → ~200 LOC)
+- Test: `akosha/tests/unit/test_hot_store.py` (adjust imports if needed; add `assert issubclass(HotStore, DuckdbHotStore)`)
+- Test: `akosha/tests/integration/test_hot_store_e2e.py` (verify code-graph CRUD)
+
+- [ ] **Step 1: Read current `akosha/storage/hot_store.py` and identify the conversations-table surface**
+
+The conversations-table surface is: `__init__`, `initialize`, `insert`, `search_similar`, `close`, `_compute_content_hash` static method, `conn` attribute, and the conversations-table CREATE TABLE DDL.
+
+The code-graph surface (KEEP) is: `initialize_code_graphs_table`, `store_code_graph`, `get_code_graph`, `list_code_graphs`, and the code-graph CREATE TABLE DDL.
+
+- [ ] **Step 2: Drop the conversations-table surface; subclass DuckdbHotStore**
+
+```python
+# akosha/storage/hot_store.py
+"""AkoSHA HotStore — extends Oneiric DuckdbHotStore with code-graph overlay.
+
+Post-Phase 5 follow-up (spec §Phase 5 follow-up). The conversations-table
+surface (`__init__`, `initialize`, `insert`, `search_similar`, `close`,
+`_compute_content_hash`, `conn`) is inherited from Oneiric's substrate:
+
+    from oneiric.adapters.vector.duckdb_hot_store import DuckdbHotStore
+
+AkoSHA retains only the code-graph sub-features (cross-repo pattern
+ingestion; AkoSHA's domain).
+
+Substrate is the single source of truth for conversations-table DDL:
+    oneiric/adapters/vector/duckdb_hot_store.py:143-156
+
+Refs:
+- docs/superpowers/specs/2026-09-14-dhara-mcp-decomposition-design.md
+  §Phase 5 follow-up
+- oneiric commits 93f60cd (Protocol) + 198564e (concrete)
+"""
+from __future__ import annotations
+
+from typing import Any
+
+from oneiric.adapters.vector.duckdb_hot_store import DuckdbHotStore
+
+
+class HotStore(DuckdbHotStore):
+    """AkoSHA's HotStore: Oneiric DuckdbHotStore + code-graph overlay.
+
+    Subclass relationship: AkoSHA inherits the conversations-table surface
+    (init, initialize, insert, search_similar, close) from substrate. AkoSHA
+    adds four code-graph methods and the code-graph table DDL.
+
+    No public-API change for callers: same `insert(record)`,
+    `search_similar(...)`, `close()` call shapes.
+    """
+
+    async def initialize_code_graphs_table(self) -> None:
+        """Idempotent CREATE TABLE for the code_graphs table."""
+        if not self.conn:
+            raise RuntimeError("Hot store not initialized")
+        self.conn.execute("""
+            CREATE TABLE IF NOT EXISTS code_graphs (
+                repo_path VARCHAR,
+                commit_hash VARCHAR,
+                nodes_count INTEGER,
+                graph_data JSON,
+                indexed_at TIMESTAMP DEFAULT NOW(),
+                PRIMARY KEY (repo_path, commit_hash)
+            )
+        """)
+
+    async def store_code_graph(
+        self,
+        repo_path: str,
+        commit_hash: str,
+        nodes_count: int,
+        graph_data: dict[str, Any],
+    ) -> None:
+        """Insert or replace a code-graph snapshot."""
+        if not self.conn:
+            raise RuntimeError("Hot store not initialized")
+        self.conn.execute(
+            """
+            INSERT OR REPLACE INTO code_graphs
+                (repo_path, commit_hash, nodes_count, graph_data)
+            VALUES (?, ?, ?, ?)
+            """,
+            [repo_path, commit_hash, nodes_count, graph_data],
+        )
+
+    async def get_code_graph(
+        self,
+        repo_path: str,
+        commit_hash: str,
+    ) -> dict[str, Any] | None:
+        """Fetch a code-graph snapshot, or None if missing."""
+        if not self.conn:
+            raise RuntimeError("Hot store not initialized")
+        row = self.conn.execute(
+            """
+            SELECT repo_path, commit_hash, nodes_count, graph_data, indexed_at
+            FROM code_graphs WHERE repo_path = ? AND commit_hash = ?
+            """,
+            [repo_path, commit_hash],
+        ).fetchone()
+        if not row:
+            return None
+        return {
+            "repo_path": row[0],
+            "commit_hash": row[1],
+            "nodes_count": row[2],
+            "graph_data": row[3],
+            "indexed_at": row[4],
+        }
+
+    async def list_code_graphs(
+        self,
+        repo_path: str | None = None,
+        limit: int = 100,
+    ) -> list[dict[str, Any]]:
+        """List code-graph snapshots, optionally filtered by repo_path."""
+        if not self.conn:
+            raise RuntimeError("Hot store not initialized")
+        if repo_path is not None:
+            rows = self.conn.execute(
+                """
+                SELECT repo_path, commit_hash, nodes_count, indexed_at
+                FROM code_graphs WHERE repo_path = ?
+                ORDER BY indexed_at DESC LIMIT ?
+                """,
+                [repo_path, limit],
+            ).fetchall()
+        else:
+            rows = self.conn.execute(
+                """
+                SELECT repo_path, commit_hash, nodes_count, indexed_at
+                FROM code_graphs
+                ORDER BY indexed_at DESC LIMIT ?
+                """,
+                [limit],
+            ).fetchall()
+        return [
+            {
+                "repo_path": r[0],
+                "commit_hash": r[1],
+                "nodes_count": r[2],
+                "indexed_at": r[3],
+            }
+            for r in rows
+        ]
+
+
+__all__ = ["HotStore"]
+```
+
+Note: Adjust the code-graph table DDL to match the actual schema in AkoSHA's `akosha/storage/hot_store.py` — verify the existing column names, types, and indexes before deleting them. The above is the post-refactor target shape; preserve any indexes or unique constraints the existing schema has.
+
+- [ ] **Step 3: Run akosha HotStore tests**
+
+Run: `cd /Users/les/Projects/akosha && .venv/bin/pytest tests/unit/test_hot_store.py tests/unit/test_hot_store_subclass.py tests/integration/test_hot_store_e2e.py -v`
+Expected: PASS — subclass test passes; code-graph CRUD tests pass; conversations-table tests pass (inherited from substrate).
+
+- [ ] **Step 4: Verify acceptance criteria**
+
+Run:
+```bash
+cd /Users/les/Projects/akosha
+grep -c "class HotStore" akosha/storage/hot_store.py
+# Expected: 1
+
+wc -l akosha/storage/hot_store.py
+# Expected: ≤ 200
+
+grep -c "CREATE TABLE" akosha/storage/hot_store.py
+# Expected: 1 (the code-graph table)
+
+grep -rn "akosha.storage.hot_store" akosha/ | wc -l
+# Expected: same count as before refactor (no caller changes)
+
+grep -rn "conversations.*TIMESTAMP\|FLOAT\[" akosha/storage/hot_store.py
+# Expected: 0 (conversations-table DDL is substrate's)
+
+grep -rn "^from akosha\|^import akosha" /Users/les/Projects/mahavishnu/mahavishnu/
+# Expected: 0 (Phase 5 task 8 invariant preserved)
+```
+
+- [ ] **Step 5: Commit**
+
+```bash
+cd /Users/les/Projects/akosha
+git add akosha/storage/hot_store.py \
+        akosha/tests/unit/test_hot_store_subclass.py \
+        akosha/tests/unit/test_hot_store.py
+git commit -m "refactor(akosha): HotStore subclasses Oneiric DuckdbHotStore
+
+Post-Phase 5 follow-up to spec §Phase 5 follow-up.
+
+Drop the duplicated conversations-table surface (init, initialize, insert,
+search_similar, close, _compute_content_hash, conn) — inherit from
+oneiric.adapters.vector.duckdb_hot_store.DuckdbHotStore.
+
+Keep only the code-graph sub-features (initialize_code_graphs_table,
+store_code_graph, get_code_graph, list_code_graphs) — AkoSHA's domain.
+
+Result:
+- akosha/storage/hot_store.py: ~700 LOC → ~200 LOC
+- conversations-table DDL: exists only in Oneiric substrate
+- No caller changes: same import path, same public API shape
+- substrate-relationship pin: tests/unit/test_hot_store_subclass.py
+
+Refs:
+- docs/superpowers/specs/2026-09-14-dhara-mcp-decomposition-design.md §Phase 5 follow-up
+- docs/superpowers/plans/2026-09-14-dhara-mcp-decomposition-implementation.md Phase 5 follow-up
+
+Co-Authored-By: Claude Code <noreply@anthropic.com>"
+```
+
+### Why this lives as a "follow-up" and not a Phase 5 task
+
+- **Blast radius.** Phase 5 task 8 was the cross-component fix (Mahavishnu must not reference AkoSHA). This is intra-component: AkoSHA's own class simplifies. Different reviewers, different concern.
+- **Phase 10 dependency.** AkoSHA's `PgvectorHotStore` (241 LOC, currently unreachable per spec §6 R10) is unresolved until Phase 10 picks Option A (commit + fix upstream bug) or Option B (delete). The subclass treatment for `PgvectorHotStore` is gated on that decision.
+- **Substrate precedence.** The Protocol + concrete classes had to land in Oneiric before AkoSHA could inherit from them. They shipped in `93f60cd` + `198564e`. The substrate lift was the harder, prerequisite work; the AkoSHA-side subclass refactor is mechanical once the substrate exists.
 
 ---
 
