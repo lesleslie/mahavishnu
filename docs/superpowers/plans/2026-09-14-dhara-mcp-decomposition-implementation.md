@@ -216,25 +216,53 @@ from typing import Any, Callable
 
 @dataclass
 class CanonicalEnvelope:
+    """Canonical hook-event envelope per spec §4.13.2.
+
+    Fields populated from each harness's stdin JSON via ``_normalize()``.
+    ``caller_session_id`` is the cross-correlation key per spec §4.8
+    "Audit cross-correlation" — joins audit ↔ OTel ↔ hook-bus ↔ session log.
+    """
     event: str
     harness: str
     session_id: str
     cwd: str
     tool_name: str | None = None
     tool_input: dict[str, Any] | None = None
+    tool_use_id: str | None = None  # Claude `toolu_xxx`, Qwen `toolu_xxx`
+    tool_call_id: str | None = None  # Qwen `call_xxx`, optional
+    permission_mode: str | None = None  # `default|plan|acceptEdits|auto|dontAsk|bypassPermissions`
+    agent_id: str | None = None  # subagent fields
+    agent_type: str | None = None
+    effort: str | None = None  # `{ level: low|medium|high|xhigh|max }` (Claude-only)
+    timestamp: str | None = None  # ISO 8601; always set
+    caller_session_id: str | None = None  # cross-correlation key per spec §4.8
     raw: dict[str, Any] = field(default_factory=dict)
 
 
 def _normalize(harness: str, raw: dict[str, Any]) -> CanonicalEnvelope:
-    """Normalize Claude/Qwen/git JSON to canonical envelope per spec §4.13.2."""
+    """Normalize Claude/Qwen/git JSON to canonical envelope per spec §4.13.2.
+
+    Populates all 13 fields. Missing fields default to ``None`` (or empty
+    string for the always-present trio ``event``, ``harness``, ``session_id``,
+    ``cwd``).
+    """
+    from datetime import UTC, datetime
     raw_dict = raw if isinstance(raw, dict) else {}
     return CanonicalEnvelope(
-        event=raw_dict.get("hook_event_name", raw_dict.get("event", "?")),
+        event=str(raw_dict.get("hook_event_name") or raw_dict.get("event") or "?"),
         harness=harness,
         session_id=str(raw_dict.get("session_id") or ""),
         cwd=str(raw_dict.get("cwd") or ""),
         tool_name=raw_dict.get("tool_name"),
         tool_input=raw_dict.get("tool_input"),
+        tool_use_id=raw_dict.get("tool_use_id"),
+        tool_call_id=raw_dict.get("tool_call_id"),
+        permission_mode=raw_dict.get("permission_mode"),
+        agent_id=raw_dict.get("agent_id"),
+        agent_type=raw_dict.get("agent_type"),
+        effort=(raw_dict.get("effort") or {}).get("level") if isinstance(raw_dict.get("effort"), dict) else raw_dict.get("effort"),
+        timestamp=raw_dict.get("timestamp") or datetime.now(UTC).isoformat(),
+        caller_session_id=raw_dict.get("caller_session_id"),
         raw=raw_dict,
     )
 
@@ -271,7 +299,14 @@ def _publish(channel: str, envelope: CanonicalEnvelope) -> None:
 
 
 def _channel_for(event: str) -> str:
-    return "bodai.hooks." + event.lower().replace("_", "-")
+    """Map event name to bus channel per spec §4.13.4.
+
+    CamelCase → kebab-case. E.g. ``PostToolUse`` → ``post-tool-use``,
+    ``PreToolUse`` → ``pre-tool-use``, ``UserPromptSubmit`` → ``user-prompt-submit``.
+    Single-word events (``Stop``) pass through lowercased.
+    """
+    import re
+    return "bodai.hooks." + re.sub(r"(?<!^)(?=[A-Z])", "-", event).lower()
 
 
 # === Per-event handlers (preserve existing logic; append bus arm) ===
@@ -330,6 +365,21 @@ def handle_subagent_stop(env: CanonicalEnvelope) -> int:
     return 0
 
 
+def handle_stop(env: CanonicalEnvelope) -> int:
+    """Sync-blocking per spec §4.13.3. Exit 2 = block the model from stopping.
+
+    Default permissive (return 0). A future cancellation guard may inspect
+    ``env`` and return 2 to block stop. Per spec §4.13.3, blocking semantics
+    never depend on the bus round-trip.
+    """
+    return 0
+
+
+def handle_user_prompt_expansion(env: CanonicalEnvelope) -> int:
+    """Sync-blocking per spec §4.13.3. Exit 2 = block the expansion."""
+    return 0
+
+
 def handle_unknown(env: CanonicalEnvelope) -> int:
     return 0
 
@@ -341,6 +391,8 @@ _EVENT_HANDLERS: dict[str, Callable[[CanonicalEnvelope], int]] = {
     "UserPromptSubmit": handle_user_prompt_submit,
     "PreToolUse": handle_pre_tool_use,
     "SubagentStop": handle_subagent_stop,
+    "Stop": handle_stop,
+    "UserPromptExpansion": handle_user_prompt_expansion,
 }
 
 
@@ -468,7 +520,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from bodai_hook_bridge import handle  # noqa: E402
 
 # Specific event name for each bridge:
-EVENT_NAME = "<PostToolUse|SessionStart|SessionEnd|UserPromptSubmit|PreToolUse|SubagentStop>"
+EVENT_NAME = sys.argv[1] if len(sys.argv) > 1 else "PostToolUse"
 
 
 def main() -> int:
@@ -710,16 +762,21 @@ Co-Authored-By: Claude Code <noreply@anthropic.com>"
 **Files:**
 - Modify: `.git/hooks/{pre-commit,post-commit,post-merge,post-rewrite}` (4 files; per-clone, not version-controlled)
 
-- [ ] **Step 1: Replace each git hook body with a one-liner**
+- [ ] **Step 1: Replace each git hook body with a one-liner (per-clone, not version-controlled)**
 
-For each of the 4 git hooks, replace the existing 378-662-byte body with:
+Git never tracks files under `.git/hooks/` — these scripts are per-clone. Per `mahavishnu-launcher-venv-discovery` (never hardcode `/Users/les/...` paths), and per `claude-code-hook-commands-use-claude-project-dir` (anchor with `$CLAUDE_PROJECT_DIR`).
+
+For each of the 4 git hooks, replace the existing body with:
 
 ```bash
 #!/bin/sh
-exec uv run --project /Users/les/Projects/mahavishnu mahavishnu git-hook post-commit "$@"
+# Per-clone git hook wrapper (Phase 12a task 4).
+# Derive the event name from this script's own filename so the same
+# one-liner works for pre-commit, post-commit, post-merge, post-rewrite.
+exec mahavishnu git-hook "$(basename "$0")" "$@"
 ```
 
-Per-event `mahavishnu git-hook <event>` argument. chmod +x if necessary.
+The script must be executable (`chmod +x .git/hooks/<event>`).
 
 - [ ] **Step 2: Verify each script**
 
@@ -729,26 +786,27 @@ for event in pre-commit post-commit post-merge post-rewrite; do
   echo "=== $event ==="
   cat /Users/les/Projects/mahavishnu/mahavishnu/.git/hooks/$event
 done
+ls -l /Users/les/Projects/mahavishnu/mahavishnu/.git/hooks/{pre-commit,post-commit,post-merge,post-rewrite}
 ```
-Expected: 4 one-liner scripts.
+Expected: 4 one-liner scripts, all executable.
 
-- [ ] **Step 3: Commit**
+- [ ] **Step 3: Operator-install script (NOT a git-tracked commit)**
 
-This is an operator-side commit (the Bash hook files are per-clone). Either commit them in this repo (if they live in the working tree) or document for the operator to run on each clone.
+Git hooks cannot be staged via `git add .git/hooks/` (git never tracks files under `.git/hooks/`). Replace the in-repo commit step with an operator-install script:
 
 ```bash
 cd /Users/les/Projects/mahavishnu
-git add .git/hooks/
-git commit -m "build(git-hooks): mahavishnu git-hook wrappers (Phase 12a task 4)
-
-The 4 active git hooks (.git/hooks/{pre-commit,post-commit,post-merge,
-post-rewrite}) shrink to one-liner exec lines; action logic moves
-to mahavishnu.git_hook_handlers.dispatch_git_hook().
-
-Refs: docs/superpowers/specs/2026-09-14-dhara-mcp-decomposition-design.md §5 Phase 12a task 4
-
-Co-Authored-By: Claude Code <noreply@anthropic.com>"
+# Verify scripts are in place and executable
+test -x mahavishnu/.git/hooks/pre-commit && test -x mahavishnu/.git/hooks/post-commit
 ```
+
+Document a `scripts/install_git_hooks.sh` operator-tooling script (per-clone installer) that:
+1. Iterates over the 4 hook event names.
+2. For each, writes the one-liner body to `mahavishnu/.git/hooks/<event>`.
+3. Runs `chmod +x` on each.
+4. Skips silently if the script already has the expected body (idempotent).
+
+This is operator-side state; not part of any in-repo commit.
 
 #### Task 5: Hard-cutover the JSON-file queue → Redis Streams
 
@@ -847,8 +905,7 @@ Expected: 0 hits.
 
 ```bash
 cd /Users/les/Projects/mahavishnu
-git add mahavishnu/jot/ mahavishnu/mcp/tools/jot_tools.py \
-        mahavishnu/bus_subscribers/
+git add mahavishnu/jot/ mahavishnu/mcp/tools/jot_tools.py
 git commit -m "feat(mahavishnu): hard-cutover JSON-file queue → Redis Streams (Phase 12a task 5)
 
 Per spec §4.13.4, hard cutover (no dual-write per Q4). All in-process
@@ -884,10 +941,11 @@ def test_handle_post_tool_use_publishes_to_bus():
 
 def test_pre_tool_use_returns_exit_two_for_blocking():
     """Spec §4.13.3: PreToolUse stays sync-blocking; exit 2 blocks the tool."""
-    from mahavishnu.bodai_hook_bridge import handle
+    from mahavishnu.bodai_hook_bridge import handle, _EVENT_HANDLERS
     # When the license guard denies (return 2), handle must propagate 2.
-    with patch("mahavishnu.bodai_hook_bridge.handle_pre_tool_use") as guard:
-        guard.return_value = 2
+    # Patching the name on the module wouldn't update the dispatch
+    # dict's captured reference; patch the dict entry instead.
+    with patch.dict(_EVENT_HANDLERS, {"PreToolUse": lambda env: 2}):
         exit_code = handle(event_name="PreToolUse", harness="claude", payload={"hook_event_name": "PreToolUse"})
     assert exit_code == 2
 
@@ -1309,7 +1367,12 @@ Expected: FAIL — `HotStore` is currently its own class (not subclassing `Duckd
 
 **Files:**
 - Modify: `akosha/storage/hot_store.py` (~700 LOC → ~200 LOC)
-- Test: `akosha/tests/unit/test_hot_store.py` (adjust imports if needed; add `assert issubclass(HotStore, DuckdbHotStore)`)
+- Test: `akosha/tests/unit/test_hot_store.py` — enumerate the changes:
+  - Add `assert issubclass(HotStore, DuckdbHotStore)` at module scope (after imports; the test fails until F2 lands).
+  - Existing tests that construct `HotStore(...)` directly continue to work — the constructor signature is inherited from `DuckdbHotStore.__init__(database_path, embedding_dim)`.
+  - Tests that mock the conversations-table surface (`_compute_content_hash`, the table DDL) must drop those mocks; the surface moves to substrate.
+  - Tests that verify the conversations-table surface (insert/search_similar/close semantics) must import `DuckdbHotStore` directly or run against the subclass instance (the behavior is the same).
+  - Code-graph tests (`store_code_graph`, `get_code_graph`, etc.) — no change; the methods stay on `HotStore`.
 - Test: `akosha/tests/integration/test_hot_store_e2e.py` (verify code-graph CRUD)
 
 - [ ] **Step 1: Read current `akosha/storage/hot_store.py` and identify the conversations-table surface**
@@ -1482,8 +1545,10 @@ grep -c "CREATE TABLE" akosha/storage/hot_store.py
 grep -rn "akosha.storage.hot_store" akosha/ | wc -l
 # Expected: same count as before refactor (no caller changes)
 
-grep -rn "conversations.*TIMESTAMP\|FLOAT\[" akosha/storage/hot_store.py
+grep -nE "CREATE TABLE[[:space:]]+IF NOT EXISTS[[:space:]]+conversations" akosha/storage/hot_store.py
 # Expected: 0 (conversations-table DDL is substrate's)
+# Use a specific DDL-pattern grep, not a substring grep, to avoid
+# false positives from `FLOAT[` appearing in comments or list literals.
 
 grep -rn "^from akosha\|^import akosha" /Users/les/Projects/mahavishnu/mahavishnu/
 # Expected: 0 (Phase 5 task 8 invariant preserved)
