@@ -1,0 +1,171 @@
+# Prometheus Alerting Rules for the Health Aggregator
+#
+# Phase 4 of
+# docs/plans/2026-09-14-common-mcp-client-transport-unification.md §11.4:
+# per-feed health aggregator alert rules for the Bodai MCP servers
+# (akosha, session-buddy, mahavishnu, dhara, crackerjack). The alerts
+# surface operator-facing signals — HTTP 503 from /health, recent
+# error rates per feed, and silent decay-disable windows.
+#
+# Usage:
+#   Add to prometheus.yml's rule_files list alongside alerting_rules.yml:
+#     rule_files:
+#       - "alerting_rules.yml"
+#       - "health_aggregator_alerts.yml"
+#
+# Runbook: docs/runbooks/health_reason_codes.md — every alert annotation
+# includes a ``runbook_url`` so operators triage via the canonical
+# ReasonCode action guidance.
+#
+# NOTE on metric sources:
+# - ``probe_http_status_code`` (blackbox_exporter) and ``probe_success``
+#   fire today — they read the /health HTTP status code that each
+#   Bodai MCP server publishes.
+# - ``mcp_common_health_halflife_seconds{repo}`` and
+#   ``health.feed.errors_within_window{repo, feed}`` are the OTel
+#   metrics named in plan §4 Integration Contract Observability.
+#   These land when the OTel exporter wiring ships in a followup
+#   commit; alerts that depend on them are kept as forward-looking
+#   targets so the rule files are complete on day one.
+
+groups:
+  - name: bodai-health-aggregator
+    interval: 30s
+    rules:
+
+      # ------------------------------------------------------------------
+      # /health HTTP 5xx (always actionable)
+      # ------------------------------------------------------------------
+
+      - alert: BodaiMCPServerHealthDown
+        expr: |
+          probe_success{job=~"bodai-mcp-.*"} == 0
+        for: 2m
+        labels:
+          severity: critical
+          component: health-aggregator
+          bodai_repo: "{{ $labels.job }}"
+        annotations:
+          summary: "{{ $labels.job }} /health returning 5xx for 2m+"
+          description: |
+            The /health endpoint for {{ $labels.job }} has been returning
+            non-2xx for at least 2 minutes. Per plan §5 Phase 4 contract,
+            200 = healthy/warming_up, 503 = degraded/failed.
+            Check the per-feed status + reason_codes in /health body.
+          runbook_url: "https://github.com/lesleslie/mahavishnu/blob/main/docs/runbooks/health_reason_codes.md"
+
+      - alert: BodaiMCPServerHealthDegraded
+        expr: |
+          probe_http_status_code{job=~"bodai-mcp-.*"} == 503
+        for: 5m
+        labels:
+          severity: warning
+          component: health-aggregator
+          bodai_repo: "{{ $labels.job }}"
+        annotations:
+          summary: "{{ $labels.job }} /health degraded for 5m+"
+          description: |
+            The /health endpoint for {{ $labels.job }} has been returning
+            503 for 5+ minutes. The aggregator's worst-case status is
+            degraded or failed. Read the JSON body's ``checks`` map for
+            per-feed verdicts and reason_codes.
+          runbook_url: "https://github.com/lesleslie/mahavishnu/blob/main/docs/runbooks/health_reason_codes.md"
+
+      # ------------------------------------------------------------------
+      # /health body-level alerts (forward-looking — needs OTel wiring)
+      # ------------------------------------------------------------------
+      # These alerts read the OTel metrics named in plan §4 Integration
+      # Contract Observability. The metrics are emitted by
+      # ``aggregate_feed_states`` in mcp-common once the OTel wiring
+      # ships; until then these rules silently produce no data. Kept
+      # here so the rule files are complete on day one — operators can
+      # ``promtool check rules`` the file today and the alerts become
+      # live once the metrics land.
+
+      - alert: BodaiFeedRecentErrorWithinHalflife
+        expr: |
+          health_feed_errors_within_window{repo=~"bodai-mcp-.*"} > 0
+        for: 5m
+        labels:
+          severity: warning
+          component: health-aggregator
+          bodai_repo: "{{ $labels.repo }}"
+          feed: "{{ $labels.feed }}"
+        annotations:
+          summary: "Feed {{ $labels.feed }} on {{ $labels.repo }} has fresh errors"
+          description: |
+            Feed ``{{ $labels.feed }}`` on repo ``{{ $labels.repo }}``
+            has accumulated errors within the halflife window
+            (default 300s). The aggregator escalates this to DEGRADED.
+            Read the producer's stderr log for the most recent traceback.
+          runbook_url: "https://github.com/lesleslie/mahavishnu/blob/main/docs/runbooks/health_reason_codes.md#error_within_halflife"
+
+      - alert: BodaiFeedNeverPopulated
+        expr: |
+          health_feed_status{repo=~"bodai-mcp-.*",status="degraded"} > 0
+        for: 10m
+        labels:
+          severity: critical
+          component: health-aggregator
+          bodai_repo: "{{ $labels.repo }}"
+          feed: "{{ $labels.feed }}"
+        annotations:
+          summary: "Feed {{ $labels.feed }} on {{ $labels.repo }} broken-before-first-success"
+          description: |
+            Feed ``{{ $labels.feed }}`` on repo ``{{ $labels.repo }}``
+            has been reporting ``status=degraded`` with the
+            ``feed_never_populated`` reason code for 10+ minutes.
+            This is the HNSW hardening case — the producer is alive
+            but the very first cycle raised an exception (cycles_total=0).
+            Common root causes: pgvector misconfigured, embedding service
+            unreachable, upstream API down.
+          runbook_url: "https://github.com/lesleslie/mahavishnu/blob/main/docs/runbooks/health_reason_codes.md#feed_never_populated"
+
+      - alert: BodaiFeedFailedIngesterNotRunning
+        expr: |
+          health_feed_status{repo=~"bodai-mcp-.*",status="failed"} > 0
+        for: 5m
+        labels:
+          severity: critical
+          component: health-aggregator
+          bodai_repo: "{{ $labels.repo }}"
+          feed: "{{ $labels.feed }}"
+        annotations:
+          summary: "Feed {{ $labels.feed }} on {{ $labels.repo }} producer dead"
+          description: |
+            Feed ``{{ $labels.feed }}`` on repo ``{{ $labels.repo }}``
+            has been reporting ``status=failed`` with the
+            ``ingester_not_running`` reason code for 5+ minutes.
+            The producer task is not alive. Check the lifespan logs
+            for whether the producer was intentionally skipped
+            (``AKOSHA_SKIP_*=1``) or whether it died unexpectedly.
+          runbook_url: "https://github.com/lesleslie/mahavishnu/blob/main/docs/runbooks/health_reason_codes.md#ingester_not_running"
+
+      # ------------------------------------------------------------------
+      # Decay-disable escape hatch (silent decode)
+      # ------------------------------------------------------------------
+      # Plan §5 task 7 / §4 Integration Contract Rollback signal:
+      # ``mcp_common_health_halflife_seconds{repo} == 0`` for >5m
+      # flags silent decay-disable. The CLI flag
+      # ``--health-disable-decay`` is an operator escape hatch for
+      # incident triage; it's not meant to stay set indefinitely.
+
+      - alert: BodaiHealthDecayDisabled
+        expr: |
+          mcp_common_health_halflife_seconds{repo=~"bodai-mcp-.*"} == 0
+        for: 5m
+        labels:
+          severity: warning
+          component: health-aggregator
+          bodai_repo: "{{ $labels.repo }}"
+        annotations:
+          summary: "Decay disabled on {{ $labels.repo }} for 5m+"
+          description: |
+            The ``--health-disable-decay`` CLI flag (or
+            ``HEALTH_FEED_HALFLIFE_SECONDS=0`` env var) has been set on
+            ``{{ $labels.repo }}`` for 5+ minutes. Fresh errors are NOT
+            escalating feeds to DEGRADED via the halflife predicate.
+            This is an operator escape hatch for incident triage — if
+            the upstream issue is resolved, restart the server without
+            the flag (or with ``HEALTH_FEED_HALFLIFE_SECONDS=300``).
+          runbook_url: "https://github.com/lesleslie/mahavishnu/blob/main/docs/runbooks/health_reason_codes.md"
