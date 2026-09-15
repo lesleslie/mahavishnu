@@ -6,7 +6,7 @@ date: 2026-09-14
 last_reviewed: 2026-09-14
 superseded_by: null
 blocks_on: []
-topic: merge-semantic-duration-ms-instrumentation
+topic: merge-semantic-duration-instrumentation
 ---
 
 # Followup — `merge.semantic.duration_ms` OTel histogram

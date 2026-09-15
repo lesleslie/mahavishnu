@@ -8,7 +8,7 @@ from enum import Enum
 import logging
 import math
 import time
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, cast
 
 if TYPE_CHECKING:
     from mahavishnu.observability.sampler import MetricSampler
@@ -732,6 +732,10 @@ class ObservabilityManager:
     def _on_drift_detected(self, metric_name: str, value: float, result) -> None:
         """OTel span + Prometheus counter emission for a drift detection.
 
+        Thin orchestrator — actual work is in the 8 ``_drift_*`` helpers
+        below. Keeping the orchestrator small keeps cyclomatic complexity
+        low (the heavy lifting is per-helper).
+
         C6: increment ``mahavishnu.observability.drift_detected_total``
         with labels ``{metric_name, detector, severity}``. Add
         ``result.samples_since_reset`` to
@@ -748,38 +752,44 @@ class ObservabilityManager:
         When OTel is unavailable, fall back to a structured log line
         so observability survives without OTel.
         """
-        import os
-        import socket
-
-        def _resolve_runbook_url() -> str:
-            """Resolve the runbook URL for OTel span emission.
-
-            R3-L2 (round-3 review): a repo-relative path is not a
-            URL — operators following it from a trace viewer at 3 a.m.
-            hit a 404 because the path is not absolute. Operators can
-            override via ``settings/mahavishnu.yaml`` under
-            ``observability.drift_runbook_url`` or via the
-            ``MAHAVISHNU_OBSERVABILITY__DRIFT_RUNBOOK_URL`` env var.
-            Defaults to the repo-relative path (kept for offline /
-            local-only deployments).
-            """
-            default = "docs/runbooks/mahavishnu-drift-detection.md"
-            try:
-                cfg = getattr(self.config, "observability", None)
-                override = getattr(cfg, "drift_runbook_url", None)
-            except Exception:  # noqa: BLE001
-                override = None
-            return override or default
-
         # R3-M5: lowercase detector name so dashboards written against
         # the documented "cusum" / "page_hinkley" tokens work.
         detector_name = self._canonical_detector_name(getattr(self, "_changepoint_detector", None))
         severity = self._classify_drift_severity(result.score, result.threshold)
+        baseline_mean, baseline_std = self._compute_drift_baseline_stats(metric_name)
+        trace_id_str = self._get_otel_trace_id()
+        span_attributes = self._build_drift_span_attributes(
+            metric_name,
+            value,
+            result,
+            detector_name,
+            severity,
+            baseline_mean,
+            baseline_std,
+            trace_id_str,
+        )
+        self._attach_two_stage_drift_attrs(span_attributes)
+        self._emit_drift_prometheus_counters(metric_name, detector_name, severity, result)
+        self._reset_changepoint_detector_after_fire()
+        self._emit_drift_otel_span(span_attributes)
+        self._log_drift_event(
+            metric_name,
+            value,
+            result,
+            detector_name,
+            severity,
+            baseline_mean,
+            baseline_std,
+            trace_id_str,
+            span_attributes,
+        )
 
-        # Compute baseline statistics from the recent sampler window
-        # (60-sample default) so the on-call can compare the fire's
-        # value against the in-control mean + std without leaving
-        # the trace viewer.
+    def _compute_drift_baseline_stats(self, metric_name: str) -> tuple[float, float]:
+        """Mean + stddev over the recent 60-sample window.
+
+        Lets the on-call compare the fire's value against the
+        in-control mean + std without leaving the trace viewer.
+        """
         baseline_mean = 0.0
         baseline_std = 0.0
         try:
@@ -791,7 +801,10 @@ class ObservabilityManager:
                     baseline_std = math.sqrt(variance) if variance > 0 else 0.0
         except Exception:
             self.logger.debug("baseline stddev calculation failed; using 0.0", exc_info=True)
+        return baseline_mean, baseline_std
 
+    def _get_otel_trace_id(self) -> str:
+        """Extract ``trace_id`` from the current OTel span context."""
         trace_id_str = ""
         if OTEL_AVAILABLE:
             try:
@@ -803,8 +816,44 @@ class ObservabilityManager:
                     trace_id_str = _otel_trace.format_trace_id(ctx.trace_id)
             except Exception:
                 self.logger.debug("OTel trace context unavailable", exc_info=True)
+        return trace_id_str
 
-        span_attributes = {
+    def _resolve_drift_runbook_url(self) -> str:
+        """Resolve the runbook URL for OTel span emission.
+
+        R3-L2 (round-3 review): a repo-relative path is not a
+        URL — operators following it from a trace viewer at 3 a.m.
+        hit a 404 because the path is not absolute. Operators can
+        override via ``settings/mahavishnu.yaml`` under
+        ``observability.drift_runbook_url`` or via the
+        ``MAHAVISHNU_OBSERVABILITY__DRIFT_RUNBOOK_URL`` env var.
+        Defaults to the repo-relative path (kept for offline /
+        local-only deployments).
+        """
+        default = "docs/runbooks/mahavishnu-drift-detection.md"
+        try:
+            cfg = getattr(self.config, "observability", None)
+            override = getattr(cfg, "drift_runbook_url", None)
+        except Exception:  # noqa: BLE001
+            override = None
+        return override or default
+
+    def _build_drift_span_attributes(
+        self,
+        metric_name: str,
+        value: float,
+        result,
+        detector_name: str,
+        severity: str,
+        baseline_mean: float,
+        baseline_std: float,
+        trace_id_str: str,
+    ) -> dict[str, object]:
+        """Build the §6 Phase 6 OTel span attribute set (C4 spec)."""
+        import os
+        import socket
+
+        return {
             "metric_name": metric_name,
             "detector": detector_name,
             "changepoint.detector": detector_name,
@@ -815,34 +864,51 @@ class ObservabilityManager:
             "samples_since_reset": int(result.samples_since_reset),
             "direction": str(result.direction),
             "severity": severity,
-            # C4 attributes added below
             "current_value": float(value),
             "baseline_mean": float(baseline_mean),
             "baseline_std": float(baseline_std),
             "host": socket.gethostname(),
             "instance_id": os.environ.get("MAHAVISHNU_INSTANCE_ID", "default"),
             "trace_id": trace_id_str,
-            "runbook_url": _resolve_runbook_url(),
+            "runbook_url": self._resolve_drift_runbook_url(),
         }
 
-        # Two-stage extension: include the correlation window info when the
-        # detector is a TwoStageDetector that just produced a "confirmed"
-        # result. The single-detector path leaves this attribute unset.
+    def _attach_two_stage_drift_attrs(self, span_attributes: dict[str, object]) -> None:
+        """Include the two-stage correlation window info when applicable.
+
+        The single-detector path leaves these attributes unset.
+        """
         two_stage_result = getattr(self, "_last_two_stage_result", None)
         if two_stage_result is not None:
             span_attributes["samples_since_warning"] = int(two_stage_result.samples_since_warning)
             span_attributes["confirm_detector"] = two_stage_result.detector_confirm
 
-        # C6: Prometheus counter — the §7 stage-1 gate's source-of-truth.
-        # R3-H2 (rename): the gauge is now detector_age_samples_total
-        # (cumulative semantic). The original R3-H2 commit left a
-        # duplicate except handler below that the round-4 observability
-        # review caught as a CRITICAL UnboundLocalError hazard; cleaned
-        # up here.
-        # R4-M5: route through _validate_labels BEFORE calling add() so
-        # unknown label keys raise at emit time rather than spawning
-        # unbounded series. The previous implementation called
-        # counter.add() directly, bypassing the allowlist guard.
+    def _emit_drift_prometheus_counters(
+        self,
+        metric_name: str,
+        detector_name: str,
+        severity: str,
+        result,
+    ) -> None:
+        """C6 Prometheus counter emission with label allowlist validation.
+
+        R3-H2 (rename): the gauge is now detector_age_samples_total
+        (cumulative semantic). The original R3-H2 commit left a
+        duplicate except handler that the round-4 observability
+        review caught as a CRITICAL UnboundLocalError hazard; cleaned
+        up here.
+
+        R4-M5: route through ``_validate_labels`` BEFORE calling
+        ``add()`` so unknown label keys raise at emit time rather
+        than spawning unbounded series. The previous implementation
+        called ``counter.add()`` directly, bypassing the allowlist
+        guard.
+
+        Two-stage extension: clear the cache after the Prometheus
+        counter has consumed it. Keeping the cache around after the
+        OTel span / counter emission would risk leaking it into the
+        next single-detector emission on the next call.
+        """
         from mahavishnu.observability.metrics import _validate_labels
 
         _validate_labels(
@@ -874,19 +940,16 @@ class ObservabilityManager:
                 )
         except Exception as exc:  # noqa: BLE001 - boundary handler
             self._log_debug("drift counter increment failed: %s", exc)
-
-        # Two-stage extension: clear the cache after the Prometheus counter
-        # has consumed it. Keeping the cache around after the OTel span /
-        # counter emission would risk leaking it into the next single-detector
-        # emission on the next call.
         self._last_two_stage_result = None  # type: ignore[attr-defined]
 
-        # S-1 (round-2 review): reset the detector after fire so
-        # subsequent samples don't continuously re-fire on the same
-        # drift event. Without this, the first drift produces one
-        # alert per sampler tick forever (the CUSUM score stays
-        # above threshold). The reset mirrors the production
-        # §6 Phase 6 "reset_after_fire" semantic.
+    def _reset_changepoint_detector_after_fire(self) -> None:
+        """S-1 (round-2 review): reset the detector after fire.
+
+        Without this, the first drift produces one alert per sampler
+        tick forever (the CUSUM score stays above threshold). The
+        reset mirrors the production §6 Phase 6 "reset_after_fire"
+        semantic.
+        """
         try:
             detector_obj = getattr(self, "_changepoint_detector", None)
             if detector_obj is not None and hasattr(detector_obj, "reset"):
@@ -894,19 +957,34 @@ class ObservabilityManager:
         except Exception as exc:  # noqa: BLE001 - boundary handler
             self._log_debug("detector reset failed: %s", exc)
 
-        # OTel span emission (best-effort).
+    def _emit_drift_otel_span(self, span_attributes: dict[str, object]) -> None:
+        """OTel span emission (best-effort)."""
         try:
             if OTEL_AVAILABLE and getattr(self, "tracer", None) is not None:
+                # Cast to Any: real OTel Tracer accepts Mapping[str, primitive];
+                # MockTracer (in-test fallback) takes the narrower
+                # dict[str, str]. The union call needs the loosest type.
                 with self.tracer.start_as_current_span(  # type: ignore[union-attr]
                     "mahavishnu.observability.drift_detected",
-                    attributes=span_attributes,
+                    attributes=cast("Any", span_attributes),
                 ):
                     pass
         except Exception as exc:  # noqa: BLE001 - boundary handler
             self._log_debug("OTel span emission failed: %s", exc)
 
-        # Always log a structured event so observability survives
-        # even when OTel is disabled.
+    def _log_drift_event(
+        self,
+        metric_name: str,
+        value: float,
+        result,
+        detector_name: str,
+        severity: str,
+        baseline_mean: float,
+        baseline_std: float,
+        trace_id_str: str,
+        span_attributes: dict[str, object],
+    ) -> None:
+        """Always log a structured event so observability survives OTel-off."""
         self._log_warning(
             "drift_detected metric=%s detector=%s value=%.3f baseline_mean=%.3f baseline_std=%.3f score=%.3f threshold=%.3f severity=%s direction=%s samples=%d trace_id=%s host=%s",
             metric_name,
@@ -1031,9 +1109,11 @@ class ObservabilityManager:
                 "runbook_url": _resolve_runbook_url(),
             }
             if OTEL_AVAILABLE and getattr(self, "tracer", None) is not None:
+                # Cast to Any: real OTel accepts Mapping[str, primitive];
+                # MockTracer takes narrower dict[str, str].
                 with self.tracer.start_as_current_span(  # type: ignore[union-attr]
                     "mahavishnu.observability.drift_warning",
-                    attributes=span_attributes,
+                    attributes=cast("Any", span_attributes),
                 ):
                     pass
         except Exception as exc:  # noqa: BLE001

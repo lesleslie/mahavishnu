@@ -376,7 +376,7 @@ def init_observability(app: Any):
         # that runs, the detector is silent: this is operationally
         # identical to the spec's Phase 6 default, but the §7 stage-1
         # rollout gate will see zero drift events. Surface this loudly.
-        from oneiric.logging import get_logger
+        from oneiric.core.logging import get_logger
 
         logger = get_logger(__name__)
         logger.warning(

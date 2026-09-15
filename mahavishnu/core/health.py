@@ -897,7 +897,7 @@ def merge_driver_health(app: MahavishnuApp | None = None) -> dict[str, Any]:
             },
         ) as probe_span:
             binary = shutil.which("mergiraf")
-            probe_span.set_attribute("merge.binary_path", binary)
+            probe_span.set_attribute("merge.binary_path", binary or "")
             if binary is None:
                 # M2: do NOT clear the degraded stamp here. The
                 # degraded stamp records "we fell back at some point

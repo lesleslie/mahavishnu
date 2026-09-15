@@ -26,6 +26,7 @@ from __future__ import annotations
 
 import json
 import os
+from pathlib import Path
 import sys
 import time
 import traceback
@@ -268,7 +269,7 @@ def _do_capture(body: str, stdin_payload: dict[str, Any]) -> int:
 
     # Step 4: Build event
     hlc = hlc_now(node, last_hlc)
-    ctx = _build_capture_ctx(stdin_payload, dict(os.environ), cwd=os.getcwd())
+    ctx = _build_capture_ctx(stdin_payload, dict(os.environ), cwd=str(Path.cwd()))
     text = redact_text(body)
 
     # B8 shape gate: long bodies OR multi-line → capture AND exit 0 (not 2)

@@ -1,5 +1,5 @@
 ---
-status: proposed
+status: draft
 role: canonical
 kind: decision
 date: 2026-09-14

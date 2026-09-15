@@ -9,7 +9,7 @@ import asyncio
 from dataclasses import dataclass, field
 import re
 import time
-from typing import Any, Literal, TypedDict
+from typing import Any, Callable, Literal, TypedDict, cast
 
 from oneiric.core.logging import get_logger
 
@@ -20,7 +20,7 @@ from mahavishnu.jot.errors import (
     JotRetryError,
     JotValidationError,
 )
-from mahavishnu.jot.events import JotEvent, serialize
+from mahavishnu.jot.events import JotEvent, Op, serialize
 from mahavishnu.jot.fold import DispatchState, JotSummary  # re-export target
 from mahavishnu.jot.hlc import get_node, hlc_now, read_tail_hlc
 from mahavishnu.jot.paths import log_path, node_path
@@ -181,6 +181,60 @@ def _should_exhaust_retry_budget(jot: JotSummary) -> bool:
     return max(jot.current_attempt, 1) >= MAX_AUTO_ATTEMPTS
 
 
+def _is_pure_int(v: object) -> bool:
+    """``True`` for ``int`` but NOT ``bool`` (Python bools subclass int)."""
+    return isinstance(v, int) and not isinstance(v, bool)
+
+
+def _is_bool(v: object) -> bool:
+    """``True`` for ``bool``."""
+    return isinstance(v, bool)
+
+
+def _is_str(v: object) -> bool:
+    """``True`` for ``str``."""
+    return isinstance(v, str)
+
+
+def _check_required_keys(op: str, ctx: dict[str, object]) -> None:
+    """Raise JotValidationError if any required key is missing for ``op``."""
+    missing = [k for k in _REQUIRED_KEYS[op] if k not in ctx]
+    if missing:
+        raise JotValidationError(
+            f"missing required keys for op={op!r}: {missing}",
+            field=f"ctx.{missing[0]}",
+            error_id="ERROR_JOT_VALIDATION",
+        )
+
+
+def _check_typed_keys(
+    op: str,
+    ctx: dict[str, object],
+    keys: tuple[str, ...],
+    type_name: str,
+    predicate: Callable[[object], bool],
+) -> None:
+    """Raise JotValidationError if any key in ``keys`` has the wrong type."""
+    for k in keys:
+        if k in ctx and not predicate(ctx[k]):
+            raise JotValidationError(
+                f"{op}.{k} must be {type_name}, got {type(ctx[k]).__name__}",
+                field=f"ctx.{k}",
+                error_id="ERROR_JOT_VALIDATION",
+            )
+
+
+def _check_literal_keys(op: str, ctx: dict[str, object]) -> None:
+    """Raise JotValidationError if any literal key has a value outside its allowed set."""
+    for k, allowed in _LITERAL_KEYS.items():
+        if k in ctx and ctx[k] not in allowed:
+            raise JotValidationError(
+                f"{op}.{k} must be one of {allowed}, got {ctx[k]!r}",
+                field=f"ctx.{k}",
+                error_id="ERROR_JOT_VALIDATION",
+            )
+
+
 def _validate_ctx(op: str, ctx: dict[str, object]) -> None:
     """Hard-fail validation against per-op TypedDict + required keys.
 
@@ -193,44 +247,11 @@ def _validate_ctx(op: str, ctx: dict[str, object]) -> None:
             field="op",
             error_id="ERROR_JOT_VALIDATION",
         )
-
-    required = _REQUIRED_KEYS[op]
-    missing = [k for k in required if k not in ctx]
-    if missing:
-        raise JotValidationError(
-            f"missing required keys for op={op!r}: {missing}",
-            field=f"ctx.{missing[0]}",
-            error_id="ERROR_JOT_VALIDATION",
-        )
-
-    for k in _INT_KEYS:
-        if k in ctx and (not isinstance(ctx[k], int) or isinstance(ctx[k], bool)):
-            raise JotValidationError(
-                f"{op}.{k} must be int, got {type(ctx[k]).__name__}",
-                field=f"ctx.{k}",
-                error_id="ERROR_JOT_VALIDATION",
-            )
-    for k in _BOOL_KEYS:
-        if k in ctx and not isinstance(ctx[k], bool):
-            raise JotValidationError(
-                f"{op}.{k} must be bool, got {type(ctx[k]).__name__}",
-                field=f"ctx.{k}",
-                error_id="ERROR_JOT_VALIDATION",
-            )
-    for k in _STR_KEYS:
-        if k in ctx and not isinstance(ctx[k], str):
-            raise JotValidationError(
-                f"{op}.{k} must be str, got {type(ctx[k]).__name__}",
-                field=f"ctx.{k}",
-                error_id="ERROR_JOT_VALIDATION",
-            )
-    for k, allowed in _LITERAL_KEYS.items():
-        if k in ctx and ctx[k] not in allowed:
-            raise JotValidationError(
-                f"{op}.{k} must be one of {allowed}, got {ctx[k]!r}",
-                field=f"ctx.{k}",
-                error_id="ERROR_JOT_VALIDATION",
-            )
+    _check_required_keys(op, ctx)
+    _check_typed_keys(op, ctx, _INT_KEYS, "int", _is_pure_int)
+    _check_typed_keys(op, ctx, _BOOL_KEYS, "bool", _is_bool)
+    _check_typed_keys(op, ctx, _STR_KEYS, "str", _is_str)
+    _check_literal_keys(op, ctx)
 
 
 # Shared in-process asyncio lock. Both capture (sub-plan 1) and drain
@@ -303,7 +324,7 @@ async def _append_event(
     hlc = hlc_now(node, last_hlc)
     event = JotEvent(
         id=jot_id,
-        op=op,  # type: ignore[arg-type]
+        op=cast("Op", op),
         text="",  # drain events have no user-text payload
         ctx=ctx,
         hlc=hlc,
@@ -367,7 +388,7 @@ async def _mcp_trigger_workflow(
     """
     try:
         # Imported lazily to avoid module-load cost when drain is unused.
-        from mahavishnu.mcp.server_core import trigger_workflow
+        from mahavishnu.mcp.server_core import trigger_workflow  # ty: ignore[unresolved-import]
 
         result: dict[str, object] = await trigger_workflow(
             adapter=adapter,
@@ -385,7 +406,7 @@ async def _mcp_trigger_workflow(
 async def _mcp_get_workflow_status(workflow_id: str) -> dict[str, object]:
     """Thin wrapper over mahavishnu.mcp.server_core.get_workflow_status."""
     try:
-        from mahavishnu.mcp.server_core import get_workflow_status
+        from mahavishnu.mcp.server_core import get_workflow_status  # ty: ignore[unresolved-import]
 
         result: dict[str, object] = await get_workflow_status(workflow_id=workflow_id)
         return result

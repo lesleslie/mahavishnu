@@ -39,8 +39,6 @@ except ImportError:
 
 if TYPE_CHECKING:
     from oneiric.adapters.vector.hot_store import HotStore  # substrate Protocol (ADR 017)
-else:
-    from oneiric.adapters.vector.hot_store import HotStore  # runtime-safe: Oneiric is a substrate library dep
 
 from mahavishnu.core.errors import ValidationError
 from mahavishnu.ingesters.turboquant_compressor import TQPackedVector, TurboQuantCompressor

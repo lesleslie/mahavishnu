@@ -185,9 +185,7 @@ class DharaThinClient:
         """Call the tool through the direct MCP client."""
         if self._client is None:
             # Defensive: someone called after aclose(). Re-open on demand.
-            self._client = CommonMCPClient(
-                base_url=self.base_url, timeout=self.timeout, token=None
-            )
+            self._client = CommonMCPClient(base_url=self.base_url, timeout=self.timeout, token=None)
 
         try:
             return await self._client.call_tool(tool_name, arguments)

@@ -76,12 +76,13 @@ def require_mcp_auth(
         # the offender surfaces as a hard import error rather than silently
         # granting the broad ``read`` namespace.
         if required_permission is None:
+            func_name = getattr(func, "__name__", repr(func))
             raise ConfigurationError(
                 message=(
-                    f"@require_mcp_auth on {func.__name__!r} requires explicit "
+                    f"@require_mcp_auth on {func_name!r} requires explicit "
                     "required_permission; Permission.READ fallback is removed."
                 ),
-                details={"function": func.__name__},
+                details={"function": func_name},
             )
         perm = cast("Permission", required_permission)
 

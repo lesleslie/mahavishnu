@@ -7,7 +7,7 @@ last_reviewed: 2026-08-23
 topic: streaming-tar-evolution
 supersedes: []
 blocks_on:
-  - "015-worktree-and-cache-storage-v4"
+  - "docs/adr/015-worktree-and-cache-storage-v4.md"
 related:
   - "015-worktree-and-cache-storage-v4"
   - "015-multi-agent-review"

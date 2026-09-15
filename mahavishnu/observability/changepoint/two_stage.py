@@ -33,7 +33,7 @@ Req: REQ-005 (extension — composes existing CUSUMDetector + PageHinkleyDetecto
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Literal
+from typing import TYPE_CHECKING, Literal, cast
 
 from mahavishnu.observability.changepoint.severity import classify_severity
 
@@ -208,7 +208,10 @@ class TwoStageDetector:
             self._last_warning_result = warn_result
             self.warn_detector.reset()
         if confirm_fired:
-            severity = classify_severity(confirm_result.score, confirm_result.threshold)
+            severity = cast(
+                "Literal['minor', 'moderate', 'critical'] | None",
+                classify_severity(confirm_result.score, confirm_result.threshold),
+            )
             self._state = "confirmed"
             # The integration layer reads the "confirmed" result and
             # emits the alert; on the NEXT update() we'll see state ==

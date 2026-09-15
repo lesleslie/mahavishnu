@@ -344,7 +344,9 @@ class SessionBuddyPoller:
         )
 
         async def _post_tool() -> dict[str, Any]:
-            result = await self._mcp.call_tool(tool_name, payload)  # type: ignore[union-attr]
+            if self._mcp is None:
+                raise RuntimeError("session_buddy_poller: MCP client not initialized")
+            result = await self._mcp.call_tool(tool_name, payload)
             if not isinstance(result, dict):
                 # ValueError is handled below as the invalid-response contract.
                 raise ValueError(f"Invalid response type: {type(result)}")  # noqa: TRY004

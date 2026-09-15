@@ -1,5 +1,5 @@
 ---
-status: part-implemented
+status: partial
 role: implementation
 kind: plan
 date: 2026-09-14

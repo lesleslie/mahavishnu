@@ -3,7 +3,7 @@ from __future__ import annotations
 from collections import defaultdict
 from datetime import UTC, datetime
 import logging
-from typing import Protocol, runtime_checkable
+from typing import Any, Protocol, cast, runtime_checkable
 from uuid import uuid4
 
 from mcp_common.clients.common_mcp_client import CommonMCPClient
@@ -132,7 +132,7 @@ class EvidenceRetriever:
                 logger.warning("akosha_search_failed: %s", exc)
                 return []
 
-            items: list[dict[str, object]] = []
+            items: list[dict[str, Any]] = []
             if isinstance(result, dict):
                 items = result.get("results") or result.get("content") or result.get("items") or []
                 if isinstance(items, dict):
@@ -165,9 +165,7 @@ class EvidenceRetriever:
 
     async def _search_session_buddy(self, query: str, limit: int) -> list[RetrievedEvidence]:
         try:
-            client = CommonMCPClient(
-                base_url=self._session_buddy_url, timeout=self._timeout
-            )
+            client = CommonMCPClient(base_url=self._session_buddy_url, timeout=self._timeout)
             try:
                 try:
                     result = await client.call_tool(
@@ -179,7 +177,7 @@ class EvidenceRetriever:
                     return []
 
                 if isinstance(result, dict):
-                    items: list[dict[str, object]] = result.get("conversations", [])
+                    items: list[dict[str, Any]] = result.get("conversations", [])
                 elif isinstance(result, list):
                     items = result  # type: ignore[assignment]
                 else:
@@ -187,7 +185,7 @@ class EvidenceRetriever:
 
                 results: list[RetrievedEvidence] = []
                 for item in items:
-                    meta = item.get("metadata", {})
+                    meta = cast("dict[str, Any]", item.get("metadata", {}))
                     if meta.get("artifact_type") != "learning_evidence":
                         continue
                     results.append(

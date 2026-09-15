@@ -26,6 +26,7 @@ if TYPE_CHECKING:
     from mahavishnu.plan_index import PlanId
     from mahavishnu.plan_index.record import PlanRecord
     from mahavishnu.plan_index.types import (
+        PlanRebuildErrorDict,
         PlanRebuildStatusDict,
         PlanRecordDict,
         PlanVitalsDict,
@@ -288,7 +289,7 @@ class PlanIndexStore:
             "cycles_total": cycles_total or 0,
             "successful_cycles_total": successful_cycles_total or 0,
             "errors_total": errors_total or 0,
-            "recent_errors": recent_errors,  # type: ignore[typeddict-item]
+            "recent_errors": cast("list[PlanRebuildErrorDict]", recent_errors),
             "tripwire": tripwire,
         }
         if last_rebuild_ms is not None:
@@ -363,7 +364,7 @@ class PlanIndexStore:
             "cycles_total": cycles_total or 0,
             "successful_cycles_total": successful_cycles_total or 0,
             "errors_total": errors_total or 0,
-            "recent_errors": recent_errors,  # type: ignore[typeddict-item]
+            "recent_errors": cast("list[PlanRebuildErrorDict]", recent_errors),
             "stale": stale,
         }
         if last_rebuild_ms is not None:

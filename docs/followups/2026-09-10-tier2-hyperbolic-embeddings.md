@@ -1,10 +1,9 @@
 ---
 status: active
-role: deferred
+role: historical
 topic: tier2-hyperbolic-embeddings
 date: 2026-09-10
 last_reviewed: 2026-09-13
-superseded_by: None
 blocks_on:
 ---
 # Tier 2 Follow-up: Hyperbolic Embeddings for Session-Buddy Code Graphs

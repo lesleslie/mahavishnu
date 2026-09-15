@@ -916,7 +916,7 @@ class PoolManager:
                 )
             return inner_pool_id, None, selector.value, False
 
-        best_pool = min(predicted_waits, key=predicted_waits.get)
+        best_pool = min(predicted_waits, key=predicted_waits.get)  # ty: ignore[no-matching-overload]
         best_wait = predicted_waits[best_pool]
 
         if best_pool == inner_pool_id:

@@ -18,7 +18,6 @@ from typing import TYPE_CHECKING, Any
 from uuid import UUID
 
 from mcp_common.clients.common_mcp_client import CommonMCPClient
-from mcp_common.exceptions import MCPServerError
 from mcp_common.websocket import (  # exposed for tests via patch()
     MessageType,
     WebSocketMessage,
@@ -291,10 +290,9 @@ def register_search_tools(mcp: FastMCP) -> None:
                         # CommonMCPClient unwraps the JSON-RPC envelope, so
                         # the payload may be the bare dict OR a wrapper
                         # ``{"result": {"results": [...]}}``. Handle both.
-                        akosha_results = (
-                            akosha_payload.get("results", [])
-                            or akosha_payload.get("result", {}).get("results", [])
-                        )
+                        akosha_results = akosha_payload.get("results", []) or akosha_payload.get(
+                            "result", {}
+                        ).get("results", [])
                     elif isinstance(akosha_payload, list):
                         akosha_results = akosha_payload
                     else:

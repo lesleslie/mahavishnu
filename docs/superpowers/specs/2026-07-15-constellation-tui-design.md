@@ -1,6 +1,6 @@
 ---
 status: complete
-role: design
+role: canonical
 topic: terminal
 date: 2026-07-16
 last_reviewed: '2026-09-14'

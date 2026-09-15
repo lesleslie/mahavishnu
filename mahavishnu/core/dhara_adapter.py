@@ -27,9 +27,7 @@ class DharaClient:
     def __init__(self, base_url: str, timeout: float = 30.0, token: str | None = None) -> None:
         self.base_url = base_url.rstrip("/")
         self.timeout = timeout
-        self._mcp = CommonMCPClient(
-            base_url=self.base_url, timeout=timeout, token=token
-        )
+        self._mcp = CommonMCPClient(base_url=self.base_url, timeout=timeout, token=token)
 
     @property
     def tools_url(self) -> str:

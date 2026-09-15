@@ -15,13 +15,13 @@
 These apply to every Phase 12 task. The spec is the source of truth (re-read §4.8, §4.9, §4.13, §6, §7 first; they bind).
 
 1. **Hard cutover** (user decision 2026-09-14): no deprecation window, no dual-write states.
-2. **Wire-up contract** (per `.claude/decisions/wire-up-contract.md`): every deliverable includes Triggered-from / Returns-to / Demonstrable-by / Rollback-signal / Observability-added.
-3. **Per-feed observability** (per `.claude/decisions/mcp-backend-wiring-discipline.md` + spec §4.8): every MCP tool registers a `ComponentHealth` feed; `/health` returns 503 if any feed is `UNHEALTHY`.
-4. **OTel span per tool** (spec §4.8): wrap each tool body in `@observed_tool_span(server_name, tool_name)`.
-5. **No cross-component direct imports** (ADR 017): cross-component state goes through Oneiric adapters or MCP/HTTP.
-6. **User-controlled publish** (per `feedback-mcp-common-version-bump-is-user`): never bump versions yourself.
-7. **User-controlled push** (per `feedback-bodai-push-is-user-controlled`): never `git push` for any Bodai repo.
-8. **Hook sync-blocking preservation** (spec §4.13.3): `PreToolUse`, `SubagentStop`, `UserPromptSubmit`, `Stop`, `UserPromptExpansion` stay sync; bus publish (where it fires) is post-decision.
+1. **Wire-up contract** (per `.claude/decisions/wire-up-contract.md`): every deliverable includes Triggered-from / Returns-to / Demonstrable-by / Rollback-signal / Observability-added.
+1. **Per-feed observability** (per `.claude/decisions/mcp-backend-wiring-discipline.md` + spec §4.8): every MCP tool registers a `ComponentHealth` feed; `/health` returns 503 if any feed is `UNHEALTHY`.
+1. **OTel span per tool** (spec §4.8): wrap each tool body in `@observed_tool_span(server_name, tool_name)`.
+1. **No cross-component direct imports** (ADR 017): cross-component state goes through Oneiric adapters or MCP/HTTP.
+1. **User-controlled publish** (per `feedback-mcp-common-version-bump-is-user`): never bump versions yourself.
+1. **User-controlled push** (per `feedback-bodai-push-is-user-controlled`): never `git push` for any Bodai repo.
+1. **Hook sync-blocking preservation** (spec §4.13.3): `PreToolUse`, `SubagentStop`, `UserPromptSubmit`, `Stop`, `UserPromptExpansion` stay sync; bus publish (where it fires) is post-decision.
 
 ## Source Map: Phases 1-11 → spec §5
 
@@ -45,7 +45,7 @@ The full TDD expansion of Phases 1-11 lived in a prior version of this plan file
 
 For Phases 1-11 TDD expansion: regenerate from the spec section cited in the column above; the writing-plans skill template at the top of this file applies uniformly. Each phase's tasks translate to `pytest`-then-implement steps, ending with a commit message that quotes the wire-up contract from the spec.
 
----
+______________________________________________________________________
 
 ## Phase 12 — Hook Bus Coordination (canonical bridge + bus re-platform)
 
@@ -64,6 +64,7 @@ For Phases 1-11 TDD expansion: regenerate from the spec section cited in the col
 ### Phase 12a — Claude hook bridge + git-hook wrappers + JSON-queue hard cutover
 
 **Files (12a):**
+
 - Create: `mahavishnu/bodai_hook_bridge.py` (~140 LOC; canonical handler + per-event functions)
 - Modify: `mahavishnu/.claude/hooks/{_hook_io,bodai-activity-post-tool-use,bodai-activity-subscriber,jot-capture,jot-post-tool-use,jot-session-start,worktree-session-isolation}.py` (7 files → bridge wrappers)
 - Create: `mahavishnu/git_hook_handlers.py` (~60 LOC; 4 git-event handler functions)
@@ -73,6 +74,7 @@ For Phases 1-11 TDD expansion: regenerate from the spec section cited in the col
 - Create: `tests/integration/test_hook_bridge_e2e.py`
 
 **Interfaces:**
+
 - Consumes: existing 7 hook bodies (move to named functions in `bodai_hook_bridge.py`); existing `_hook_io.read_session_payload()` (re-imported); `oneiric.adapters.bootstrap.queued_publisher()` (lazy import for fire-and-forget)
 - Produces: `mahavishnu.bodai_hook_bridge.handle(event_name, *, harness, payload) -> int` (canonical entry); `mahavishnu git-hook <event>` CLI (4 sub-commands); bridge-wrapped `.claude/hooks/*.py` files
 
@@ -81,39 +83,49 @@ For Phases 1-11 TDD expansion: regenerate from the spec section cited in the col
 - [ ] **Step 1: Confirm the 7 active project hooks exist**
 
 Run:
+
 ```bash
 ls -la /Users/les/Projects/mahavishnu/mahavishnu/.claude/hooks/*.py 2>&1 | grep -v __pycache__
 ```
+
 Expected: 7 files (`_hook_io.py`, `bodai-activity-post-tool-use.py`, `bodai-activity-subscriber.py`, `jot-capture.py`, `jot-post-tool-use.py`, `jot-session-start.py`, `worktree-session-isolation.py`). If any file is missing, abort and document the discrepancy.
 
 - [ ] **Step 2: Confirm the 4 active git hooks exist (operator-side verification)**
 
 Run:
+
 ```bash
 ls -la /Users/les/Projects/mahavishnu/mahavishnu/.git/hooks/{pre-commit,post-commit,post-merge,post-rewrite} 2>&1
 ```
+
 Expected: 4 files (non-sample — Aug 29 timestamps). The `.sample` files are git's defaults; not in scope.
 
 - [ ] **Step 3: Confirm the JSON-file queue is the active path**
 
 Run:
+
 ```bash
 grep -rn "bodai-event-queue" /Users/les/Projects/mahavishnu/mahavishnu/ --include="*.py" 2>&1 | head -20
 ```
+
 Expected: hits in `mahavishnu/jot/drain.py`, `mahavishnu/mcp/tools/jot_tools.py`, and the seven hook files. These are the producers/consumers for Phase 12a task 5 to flip.
 
 - [ ] **Step 4: Verify Oneiric bus adapter accessibility**
 
 Run:
+
 ```bash
 cd /Users/les/Projects/mahavishnu && uv run python -c "from oneiric.adapters.bootstrap import queued_publisher; print(queued_publisher)"
 ```
+
 Expected: a function reference or a stub that returns a publisher object. If absent, document and proceed (the canonical handler's fire-and-forget design falls back to no-op).
 
 #### Task 1: Create `mahavishnu/bodai_hook_bridge.py` with named event handlers
 
 **Files:**
+
 - Create: `mahavishnu/bodai_hook_bridge.py`
+
 - Create: `tests/unit/test_bodai_hook_bridge.py`
 
 - [ ] **Step 1: Write the failing test for `handle()`**
@@ -445,6 +457,7 @@ Co-Authored-By: Claude Code <noreply@anthropic.com>"
 #### Task 2: Replace `mahavishnu/.claude/hooks/*.py` with bridge wrappers
 
 **Files:**
+
 - Modify: 7 files in `mahavishnu/.claude/hooks/` (`_hook_io.py`, `bodai-activity-post-tool-use.py`, `bodai-activity-subscriber.py`, `jot-capture.py`, `jot-post-tool-use.py`, `jot-session-start.py`, `worktree-session-isolation.py`)
 
 - [ ] **Step 1: Write the failing e2e test that depends on the bridge routing**
@@ -536,12 +549,19 @@ if __name__ == "__main__":
 ```
 
 Per-file `EVENT_NAME` mapping (matches the spec's hook-event usage in `mahavishnu/.claude/settings.json`):
+
 - `bodai-activity-post-tool-use.py` → `PostToolUse`
+
 - `bodai-activity-subscriber.py` → `SessionStart` (also `SessionEnd` — one file handles both via env var; see step 4)
+
 - `jot-capture.py` → `UserPromptSubmit`
+
 - `jot-post-tool-use.py` → `PostToolUse`
+
 - `jot-session-start.py` → `SessionStart`
+
 - `worktree-session-isolation.py` → `SessionStart` (also `SessionEnd`; see step 4)
+
 - `_hook_io.py` → keep as-is (it's a helper module, not a hook itself)
 
 - [ ] **Step 4: Handle the dual-event hooks**
@@ -562,12 +582,14 @@ Expected: PASS for all 6 hook files (excluding `_hook_io.py`).
 - [ ] **Step 6: Verify existing behavior preserved (manual smoke test)**
 
 Run:
+
 ```bash
 echo '{"hook_event_name": "PostToolUse", "session_id": "test", "cwd": "/tmp", "tool_name": "Read", "tool_input": {"file_path": "/etc/hostname"}}' \
   | CLAUDE_PROJECT_DIR=/Users/les/Projects/mahavishnu uv run python \
       /Users/les/Projects/mahavishnu/mahavishnu/.claude/hooks/jot-post-tool-use.py
 echo "exit_code=$?"
 ```
+
 Expected: exit 0; no exception. (Sync behavior preserved; smoke test only — full e2e in Task 6.)
 
 - [ ] **Step 7: Commit**
@@ -589,7 +611,9 @@ Co-Authored-By: Claude Code <noreply@anthropic.com>"
 #### Task 3: Add `mahavishnu git-hook <event>` Typer sub-command + handler module
 
 **Files:**
+
 - Create: `mahavishnu/git_hook_handlers.py`
+
 - Modify: `mahavishnu/cli.py` (add `git-hook` sub-command registration)
 
 - [ ] **Step 1: Write the failing test for `git-hook` Typer command**
@@ -760,6 +784,7 @@ Co-Authored-By: Claude Code <noreply@anthropic.com>"
 #### Task 4: Update `.git/hooks/<event>` shell scripts (operator commit)
 
 **Files:**
+
 - Modify: `.git/hooks/{pre-commit,post-commit,post-merge,post-rewrite}` (4 files; per-clone, not version-controlled)
 
 - [ ] **Step 1: Replace each git hook body with a one-liner (per-clone, not version-controlled)**
@@ -781,6 +806,7 @@ The script must be executable (`chmod +x .git/hooks/<event>`).
 - [ ] **Step 2: Verify each script**
 
 Run:
+
 ```bash
 for event in pre-commit post-commit post-merge post-rewrite; do
   echo "=== $event ==="
@@ -788,6 +814,7 @@ for event in pre-commit post-commit post-merge post-rewrite; do
 done
 ls -l /Users/les/Projects/mahavishnu/mahavishnu/.git/hooks/{pre-commit,post-commit,post-merge,post-rewrite}
 ```
+
 Expected: 4 one-liner scripts, all executable.
 
 - [ ] **Step 3: Operator-install script (NOT a git-tracked commit)**
@@ -801,18 +828,22 @@ test -x mahavishnu/.git/hooks/pre-commit && test -x mahavishnu/.git/hooks/post-c
 ```
 
 Document a `scripts/install_git_hooks.sh` operator-tooling script (per-clone installer) that:
+
 1. Iterates over the 4 hook event names.
-2. For each, writes the one-liner body to `mahavishnu/.git/hooks/<event>`.
-3. Runs `chmod +x` on each.
-4. Skips silently if the script already has the expected body (idempotent).
+1. For each, writes the one-liner body to `mahavishnu/.git/hooks/<event>`.
+1. Runs `chmod +x` on each.
+1. Skips silently if the script already has the expected body (idempotent).
 
 This is operator-side state; not part of any in-repo commit.
 
 #### Task 5: Hard-cutover the JSON-file queue → Redis Streams
 
 **Files:**
+
 - Modify: `mahavishnu/jot/drain.py`
+
 - Modify: `mahavishnu/mcp/tools/jot_tools.py`
+
 - Modify: `mahavishnu/.claude/hooks/bodai-activity-subscriber.py` (already replaced as bridge in Task 2; verify the bridge calls bus reader not file reader)
 
 - [ ] **Step 1: Inventory all JSON-file queue writers and readers**
@@ -820,6 +851,7 @@ This is operator-side state; not part of any in-repo commit.
 Per multi-agent review (Data-retention H4): extend the grep scope to all file types and operator-global locations, not just `.py` files under `mahavishnu/`:
 
 Run:
+
 ```bash
 grep -rn "bodai-event-queue\|MAHAVISHNU_BODAI_QUEUE_PATH" /Users/les/Projects/mahavishnu/ \
   --include="*.py" --include="*.sh" --include="*.md" --include="*.json" \
@@ -828,6 +860,7 @@ grep -rn "bodai-event-queue\|MAHAVISHNU_BODAI_QUEUE_PATH" /Users/les/Projects/ma
 grep -rn "bodai-event-queue\|MAHAVISHNU_BODAI_QUEUE_PATH" \
   /Users/les/.mahavishnu/ /Users/les/.qwen/hooks/ 2>&1 | head -20
 ```
+
 Expected: hits in `mahavishnu/jot/drain.py`, `mahavishnu/mcp/tools/jot_tools.py`, the seven (now-bridge) hook files, and possibly `~/.mahavishnu/bodai-event-queue.json` runtime state. After Task 2, the subscriber is already a bridge.
 
 - [ ] **Step 2: Update each producer to publish to the bus (no JSON-file fallback)**
@@ -920,6 +953,7 @@ Co-Authored-By: Claude Code <noreply@anthropic.com>"
 #### Task 6: Add `tests/integration/test_hook_bridge_e2e.py` (full assertion)
 
 **Files:**
+
 - Create: `mahavishnu/tests/integration/test_hook_bridge_e2e.py` (already created in Task 2's failing-test step; expand here)
 
 - [ ] **Step 1: Extend the e2e test with bus publish assertions**
@@ -983,6 +1017,7 @@ Co-Authored-By: Claude Code <noreply@anthropic.com>"
 - [ ] **Step 1: Run full exit criteria**
 
 Run:
+
 ```bash
 pytest mahavishnu/tests/integration/test_hook_bridge_e2e.py -v  # exits 0
 grep -rn "bodai-event-queue" /Users/les/Projects/mahavishnu/mahavishnu/ | wc -l  # 0 hits
@@ -999,7 +1034,7 @@ Expected: 0 hits.
 
 **Phase 12a closes here.** 7 commits land. Bridge pattern is the project's hook contract. JSON-file queue is retired.
 
----
+______________________________________________________________________
 
 ### Phase 12b — Qwen Code bridge + Codex bridge (deferred)
 
@@ -1020,6 +1055,7 @@ Expected: 0 hits.
 - [ ] **Step 1: List the Qwen events that have no Claude equivalent**
 
 Per spec §4.13.2 schema table:
+
 ```
 PostToolUseFailure
 SessionDelete
@@ -1109,6 +1145,7 @@ Co-Authored-By: Claude Code <noreply@anthropic.com>"
 - [ ] **Step 1: Create the directory + 11 bridge files**
 
 Run:
+
 ```bash
 mkdir -p ~/.qwen/hooks
 ```
@@ -1153,9 +1190,11 @@ Each file gets `chmod +x`.
 - [ ] **Step 2: Verify each bridge file exists**
 
 Run:
+
 ```bash
 ls -la ~/.qwen/hooks/
 ```
+
 Expected: 11 bridge files (one per Qwen event listed in Task 1).
 
 - [ ] **Step 3: Commit (operator-side)**
@@ -1219,6 +1258,7 @@ Run: `cat ~/.qwen/settings.json | python -m json.tool | head -50`
 #### Task 4: Add `tests/integration/test_qwen_hook_bridge_e2e.py`
 
 **Files:**
+
 - Create: `mahavishnu/tests/integration/test_qwen_hook_bridge_e2e.py`
 
 - [ ] **Step 1: Write the failing test**
@@ -1302,7 +1342,7 @@ Co-Authored-By: Claude Code <noreply@anthropic.com>"
 
 **Phase 12b closes here.** Qwen Code bridges installed (operator-side); Codex bridge deferred.
 
----
+______________________________________________________________________
 
 ## Phase 5 Follow-up: AkoSHA `HotStore` → `DuckdbHotStore` subclass (deferred)
 
@@ -1313,6 +1353,7 @@ The remaining work is **AkoSHA-internal deduplication**. AkoSHA's `HotStore` cla
 ### Task F1: Write the failing subclass-relationship test
 
 **Files:**
+
 - Create: `akosha/tests/unit/test_hot_store_subclass.py` (~25 LOC)
 
 - [ ] **Step 1: Write the failing test**
@@ -1366,13 +1407,17 @@ Expected: FAIL — `HotStore` is currently its own class (not subclassing `Duckd
 ### Task F2: Refactor `HotStore` to subclass `DuckdbHotStore`
 
 **Files:**
+
 - Modify: `akosha/storage/hot_store.py` (~700 LOC → ~200 LOC)
+
 - Test: `akosha/tests/unit/test_hot_store.py` — enumerate the changes:
+
   - Add `assert issubclass(HotStore, DuckdbHotStore)` at module scope (after imports; the test fails until F2 lands).
   - Existing tests that construct `HotStore(...)` directly continue to work — the constructor signature is inherited from `DuckdbHotStore.__init__(database_path, embedding_dim)`.
   - Tests that mock the conversations-table surface (`_compute_content_hash`, the table DDL) must drop those mocks; the surface moves to substrate.
   - Tests that verify the conversations-table surface (insert/search_similar/close semantics) must import `DuckdbHotStore` directly or run against the subclass instance (the behavior is the same).
   - Code-graph tests (`store_code_graph`, `get_code_graph`, etc.) — no change; the methods stay on `HotStore`.
+
 - Test: `akosha/tests/integration/test_hot_store_e2e.py` (verify code-graph CRUD)
 
 - [ ] **Step 1: Read current `akosha/storage/hot_store.py` and identify the conversations-table surface**
@@ -1531,6 +1576,7 @@ Expected: PASS — subclass test passes; code-graph CRUD tests pass; conversatio
 - [ ] **Step 4: Verify acceptance criteria**
 
 Run:
+
 ```bash
 cd /Users/les/Projects/akosha
 grep -c "class HotStore" akosha/storage/hot_store.py
@@ -1591,11 +1637,12 @@ Co-Authored-By: Claude Code <noreply@anthropic.com>"
 - **Phase 10 dependency.** AkoSHA's `PgvectorHotStore` (241 LOC, currently unreachable per spec §6 R10) is unresolved until Phase 10 picks Option A (commit + fix upstream bug) or Option B (delete). The subclass treatment for `PgvectorHotStore` is gated on that decision.
 - **Substrate precedence.** The Protocol + concrete classes had to land in Oneiric before AkoSHA could inherit from them. They shipped in `93f60cd` + `198564e`. The substrate lift was the harder, prerequisite work; the AkoSHA-side subclass refactor is mechanical once the substrate exists.
 
----
+______________________________________________________________________
 
 ## Self-Review Notes (Phase 12)
 
 **Spec coverage (Phase 12):**
+
 - §4.13 Hook coordination via Oneiric event bus → Phase 12a tasks 1-2 (canonical handler + bridge wrappers) and 12b tasks 1-4 (Qwen bridges)
 - §4.13.1 Design principle → Phase 12a task 1
 - §4.13.2 Canonical envelope → Phase 12a task 1 (the `_normalize()` function implements the schema)
@@ -1608,12 +1655,13 @@ Co-Authored-By: Claude Code <noreply@anthropic.com>"
 **Placeholder scan:** "TBD" appears in Phase 12a task 4 step 1 (chmod +x conditional) — handles real-world edge case. No "TODO", "implement later", "fill in details", or "similar to task N" patterns.
 
 **Type consistency:**
+
 - `CanonicalEnvelope(event, harness, session_id, cwd, tool_name, tool_input, raw)` — used in Task 1 (definition), Task 1's tests (assertion), Task 6 (assertion in tests).
 - `handle(event_name, *, harness, payload)` → returns int — Task 1 (definition), Task 2 (bridge uses), Task 6 (e2e test).
 - `_publish(channel, envelope)` → Task 1 (definition), Task 6 (test patches it).
 - `dispatch_git_hook(event)` → returns int — Task 3 (definition), Task 3's test.
 
----
+______________________________________________________________________
 
 ## Execution Handoff
 
@@ -1623,7 +1671,6 @@ Plan complete and saved to `docs/superpowers/plans/2026-09-14-dhara-mcp-decompos
 
 1. **Subagent-Driven (recommended)** — I dispatch a fresh subagent per task, review between tasks. Best for the scale (~100 tasks across 7 repositories, including the new Phase 12 hook bridge work).
 
-2. **Inline Execution** — Execute tasks in this session using `superpowers:executing-plans`.
+1. **Inline Execution** — Execute tasks in this session using `superpowers:executing-plans`.
 
 **Which approach?**
-

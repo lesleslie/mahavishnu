@@ -446,16 +446,16 @@ def discover_records(repo_root: Path) -> list[PlanRecord]:
 
             records.append(
                 PlanRecord(
-                    plan_id=plan_id,
+                    plan_id=plan_id,  # ty: ignore[invalid-argument-type]
                     path=rel,
                     title=title,
-                    status=status,  # type: ignore[arg-type]
-                    role=role,  # type: ignore[arg-type]
+                    status=status,  # ty: ignore[invalid-argument-type]
+                    role=role,  # ty: ignore[invalid-argument-type]
                     topic=topic,
                     date=date,
                     last_reviewed=last_reviewed,
                     superseded_by=superseded_by,
-                    blocks_on=blocks_on,
+                    blocks_on=blocks_on,  # ty: ignore[invalid-argument-type]
                     sha=sha,
                     repo=repo,
                     lifecycle_state=None,
@@ -465,23 +465,23 @@ def discover_records(repo_root: Path) -> list[PlanRecord]:
     return records
 
 
-def _write_error_log(errors: list[dict[str, Any]]) -> None:
+def _write_error_log(errors: list[Any]) -> None:
     """Append structured error lines to `errors.log`. Never raises."""
     if not errors:
         return
     try:
         path = errors_log_path()
         with path.open("a", encoding="utf-8") as fh:
-            for err in errors:
-                fh.write(
-                    json.dumps(
-                        {
-                            "ts_ms": int(datetime.now(tz=UTC).timestamp() * 1000),
-                            "err": err,
-                        }
-                    )
-                    + "\n"
+            fh.writelines(
+                json.dumps(
+                    {
+                        "ts_ms": int(datetime.now(tz=UTC).timestamp() * 1000),
+                        "err": err,
+                    }
                 )
+                + "\n"
+                for err in errors
+            )
     except OSError as exc:
         _logger.warning("could not write errors.log: %s", exc)
 

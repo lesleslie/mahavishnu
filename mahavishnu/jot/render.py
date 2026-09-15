@@ -51,7 +51,7 @@ class JotSummaryDict(TypedDict, total=False):
     status: Literal["open", "done"]
     last_modified_ms: int
     # NEW (drain sub-plan 3) — absent or None for jots with no dispatch history
-    dispatch_state: Literal["in_flight", "succeeded", "failed"]
+    dispatch_state: Literal["in_flight", "succeeded", "failed"] | None
     dispatch_workflow_id: str | None
     current_attempt: int
     dispatch_started_at_ms: int | None
@@ -89,7 +89,7 @@ def _summary_dict(jot: JotSummary) -> JotSummaryDict:
         text=jot.text,
         status=jot.status,
         last_modified_ms=jot.last_modified_ms,
-        dispatch_state=state_literal,  # type: ignore[typeddict-item]
+        dispatch_state=state_literal,  # ty: ignore[invalid-key]
         dispatch_workflow_id=jot.dispatch_workflow_id,
         current_attempt=jot.current_attempt,
         dispatch_started_at_ms=jot.dispatch_started_at_ms,

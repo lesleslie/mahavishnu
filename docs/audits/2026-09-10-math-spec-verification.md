@@ -10,7 +10,7 @@ topic: math-spec-verification
 
 # Math Spec Verification Audit — 2026-09-10
 
-> **Purpose**: Preserve the reasoning from the 3-agent verification pass that drove the v2→v3 patch of [`docs/plans/2026-09-10-bodai-math-initiatives-tier1.md`](../plans/2026-09-10-bodai-math-initiatives-tier1.md). Future contributors asking "why does v3 say X?" should find their answer here.
+> **Purpose**: Preserve the reasoning from the 3-agent verification pass that drove the v2→v3 patch of [`docs/plans/.archive/2026-09-10-bodai-math-initiatives-tier1.md`](../plans/.archive/2026-09-10-bodai-math-initiatives-tier1.md). Future contributors asking "why does v3 say X?" should find their answer here.
 >
 > **Reading guide**: §1 Overview → §2 Synthesis (BLOCKER/CRITICAL/HIGH taxonomy) → §3 v2→v3 mapping table → §4 Per-agent findings. §5 Notes on what's preserved verbatim vs. summarized.
 >
@@ -196,7 +196,7 @@ If a future contributor needs a specific fact that isn't in this doc, the JSONL 
 
 ## 6. References
 
-- [`docs/plans/2026-09-10-bodai-math-initiatives-tier1.md`](../plans/2026-09-10-bodai-math-initiatives-tier1.md) — the v3 spec this verification drove
+- [`docs/plans/.archive/2026-09-10-bodai-math-initiatives-tier1.md`](../plans/.archive/2026-09-10-bodai-math-initiatives-tier1.md) — the v3 spec this verification drove
 - [`docs/audits/2026-09-10-math-spec-review.md`](2026-09-10-math-spec-review.md) — the round-1 (9-agent) review that drove v1→v2
 - `docs/plans/TEMPLATE.md` — integration-contract template the spec follows
 - `.claude/decisions/wire-up-contract.md` — Integration Contract policy

@@ -100,13 +100,13 @@ except ImportError:  # pragma: no cover — exercised only when opentelemetry ab
         ) -> _NoopSpan:
             return _NoopSpan()
 
-    _tracer = _NoopTracer()  # type: ignore[assignment,misc]
+    _tracer = _NoopTracer()  # ty: ignore[invalid-assignment]
 
     class _NoopCounter:
         def add(self, amount: int, attributes: dict[str, object] | None = None) -> None:
             pass
 
-    _merge_fallback_counter: _Counter = _NoopCounter()  # type: ignore[assignment,misc]
+    _merge_fallback_counter: _Counter = _NoopCounter()  # ty: ignore[invalid-assignment]
 
     class _NoopHistogram:
         def record(

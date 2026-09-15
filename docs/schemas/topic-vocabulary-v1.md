@@ -133,6 +133,8 @@ contribution workflow below.
 | `workflows` | Crackerjack coverage fan-out workflow — assign parallel test writers to independent packages. |
 | `worktree-autoremove` | Worktree Prune-Merged CLI |
 | `worktree-autoremove-v4-followup` | Followups from the worktree-prune-merged v4 retrospective — items deferred when the v4 cut landed, tracked separately for the next iteration. |
+| `scapy-mcp-integration-review` | Multi-agent review of scapy-mcp integration (ADR 0016 review artifact). |
+| `mcp-enrichment-posture` | MCP enrichment posture — how scapy-mcp integrates with the broader Bodai MCP surface (ADR 0016). |
 
 ## Contribution Workflow
 

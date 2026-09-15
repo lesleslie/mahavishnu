@@ -5,12 +5,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.24.1] - 2026-09-15
+
+### Fixed
+
+- spec+plan: Apply critical-audit findings to Phase 12 (4 CRITICAL + 7 HIGH)
+
+### Documentation
+
+- spec: Link crackerjack-side followup from Phase 8 cross-repo coordination
+
 ## [0.24.0] - 2026-09-14
 
 ### Added
 
 - /jot slash command (vitals only per R6)
-- Add JotSummaryDict/JotVitalsDict surfaces + _summary_dict/_vitals_dict
+- Add JotSummaryDict/JotVitalsDict surfaces + \_summary_dict/\_vitals_dict
 - audit: Cross-module __all__ resolution + tests
 - audit: Recognise @pytest.fixture as a registration decorator
 - audit: Treat pytest-discoverable tests/ symbols as wired (Phase 5 loop-3)
@@ -26,16 +36,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - jot-drain: Add Task 8 — surfacing scorers + throttle + surface_relevant
 - jot-mcp: Add 6 drain tools + remove duplicate JotSummaryDict/JotVitalsDict
 - jot: 8 MCP tools with TypedDict returns (R1, R11)
-- jot: Add _auto_retry_after, _reconcile_if_in_flight, _background_reconciler_loop
-- jot: Add _is_surface_eligible, _is_drain_eligible, _should_exhaust_retry_budget
+- jot: Add \_auto_retry_after, \_reconcile_if_in_flight, \_background_reconciler_loop
+- jot: Add \_is_surface_eligible, \_is_drain_eligible, \_should_exhaust_retry_budget
 - jot: Build_states two-pass fold with parking (R3, R7 part 2)
 - jot: Capture sub-plan 1 — hook + log + redaction
 - jot: CLI handlers — list, show, vitals + write stubs
 - jot: Cmd_search lexical substring fallback
 - jot: Drain refactor + cli/hook/mcp-tools alignment + errors rename
-- jot: Drain.py skeleton with _append_event + TypedDict validation
+- jot: Drain.py skeleton with \_append_event + TypedDict validation
 - jot: Extend errors.py with drain error hierarchy
-- jot: Extend fold with _derive_dispatch_fields + DispatchState
+- jot: Extend fold with \_derive_dispatch_fields + DispatchState
 - jot: Extend Op literal with 6 drain event types
 - jot: FoldResult + parse_events (TD-B3, R7 part 1)
 - jot: Git enrichment via subprocess (R4)
@@ -53,12 +63,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - mcp: Agent catalog + tool consolidation
 - mcp: Phase 1 server-published skills (list_skills + get_skill)
 - mcp: Phase 3 task #5 H-3 specialist dispatcher
-- mcp: Register plan_* tools in FULL profile (5-edit dance)
+- mcp: Register plan\_\* tools in FULL profile (5-edit dance)
 - observability: Changepoint detectors (CUSUM + 3-sigma) + integration
 - observability: Close merge.semantic.duration_ms instrumentation across all 3 entry points
 - observability: Ship changepoint operator opt-in (finish-partial Phase 1)
 - permissions: Add READ_PLAN_INDEX for plan_index MCP tools
-- Plan_* tools with @require_mcp_auth (REQ-PLAN-010)
+- Plan\_\* tools with @require_mcp_auth (REQ-PLAN-010)
 - plan_index,health: Wire plan_index feed into /health aggregator
 - plan_index: Foundation — PlanId, errors hierarchy, paths
 - plan_index: Normalize_repo_url security helper
@@ -98,8 +108,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - jot: Apply 5-agent round-3 review findings
 - jot: Apply final-review critical fix batch (round 2)
 - jot: Apply user-approved cuts and round-2 self-fixes
-- jot: Type _summary_dict/_detail_dict; strengthen MCP round-trip test
-- observability: Extract _canonical_detector_name helper to remove detector-name normalization duplication
+- jot: Type \_summary_dict/\_detail_dict; strengthen MCP round-trip test
+- observability: Extract \_canonical_detector_name helper to remove detector-name normalization duplication
 - observability: Use elif in two-stage dispatch for mutually exclusive states
 - skills_signer: Minor alignment across keys/manifest/verify
 
@@ -114,10 +124,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - config: Correct Crow port and MCP server URL defaults
 - docs(plans)+audit: Phase 5 loop-2 (audit script fix, plan move, revert to partial)
 - docs+test(changepoint): round-6 fixes per task-7 review (default-detector drift + test count + drift_warning span parity)
-- jot-drain: Thread jot id through _append_event + restore DrainPlan.action_proposals
+- jot-drain: Thread jot id through \_append_event + restore DrainPlan.action_proposals
 - jot: Add noqa for PLC3002 IIFE lambda workaround
 - jot: Clamp replayed last_modified_ms + clear parked + I3 tests
-- jot: Make _wrap_at_import graceful when fastmcp is not installed
+- jot: Make \_wrap_at_import graceful when fastmcp is not installed
 - jot: Remove dead MOD_WIDTH constant from render.py
 - jot: Remove extraneous parens around min() generator (ruff UP034)
 - jot: Thread event_id through CLI edit/done/reopen (latent no-op bug)
@@ -125,7 +135,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - jot: Widen enrich_ctx catch + hoist git spawn (Task 5 fix round 1)
 - mcp/lifecycle: Wire DharaKvClient into plan_index, drop synthetic fallback
 - observability: Add severity= and samples= to drift_warning log for parity with drift_detected
-- otel_ingester: Normalise _extract_timestamp to naive UTC
+- otel_ingester: Normalise \_extract_timestamp to naive UTC
 - plan_index,auth: Enforce READ_PLAN_INDEX via RBACManager (BLOCKER Task 11.7)
 - plan_index: Atomic lock acquisition in cron_core (Task 14.6)
 - plan_index: Atomic writes, JSON parse safety, prefix validation, TTL consistency
@@ -159,7 +169,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Add jot capture implementation plan (9 tasks)
 - Archive 19 completed plans (2026-09-13)
 - audit: Correct changepoint test count to 115 across 8 files (post-F10 dispatch seam test)
-- changepoint: Document warn re-fire updates _last_warning_result in TwoStageDetector state diagram
+- changepoint: Document warn re-fire updates \_last_warning_result in TwoStageDetector state diagram
 - decisions: Tag 38 decision docs with kind: decision (2026-09-13)
 - Dhara MCP decomposition implementation plan with Phase 12 hook coordination
 - Drop Codex from Phase 11; consolidate ACP with active plan
@@ -176,7 +186,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - jot: Sub-plan 2 (Read) implementation plan
 - Lifecycle ADRs, ARCHITECTURE refresh, version stamps, LLM provider
 - MCP: Regenerate tools reference and specification from source
-- observability: Note defensive isinstance guard rationale in _on_drift_warning
+- observability: Note defensive isinstance guard rationale in \_on_drift_warning
 - plan+runbook+audit: Document two-stage warn/confirm architecture (round-5)
 - plan: Add Phase 11 harness-agnostic enablement + ACP integration
 - plan: Add phase-1 precondition fixes (14 deferred findings)
@@ -282,14 +292,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - plan_index: Round-2 security & auth-gate test coverage (REQ-PLAN-010/011/012)
 - pools: Drop dead TestQueueingScorer coverage (general/safety HIGH-1)
 - websocket: Cover broadcast_settle_transition in parametrized suite
-- wiring: Close 3 demo unsubscribe_* orphans via Attribute reference
+- wiring: Close 3 demo unsubscribe\_\* orphans via Attribute reference
 - wiring: Close audit_orphans findings for 7 residual symbols
 - wiring: Use Attribute access so audit walker counts the references
 
 ### Internal
 
 - Bump to v0.23.0 and correct tool/repo counts
-- deps: Bump mcp-common floor to >=0.26.0,<0.27.0 (Phase 2.5)
+- deps: Bump mcp-common floor to >=0.26.0,\<0.27.0 (Phase 2.5)
 - jot: Trivial docstring/comment typo + trailing newline fixes
 - Maintenance + audit-apply scripts
 - plan_index: Maintenance scripts + module touch-ups

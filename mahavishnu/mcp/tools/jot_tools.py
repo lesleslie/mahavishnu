@@ -28,12 +28,6 @@ import uuid
 
 from mahavishnu.jot.cli import _detail_from_summary
 from mahavishnu.jot.drain import (
-    DeleteCtx,
-    DeferCtx,
-    DeferExpiredCtx,
-    DispatchCtx,
-    DispatchDoneCtx,
-    DispatchFailedCtx,
     DispatchResultDict,
     DrainPlanDict,
 )
@@ -98,7 +92,7 @@ def _emit(
     hlc = hlc_now(node, last)
     ev = JotEvent(
         id=event_id or uuid.uuid4().hex,
-        op=op,
+        op=op,  # ty: ignore[invalid-argument-type]
         hlc=hlc,
         text=text,
         ctx=ctx or {},
@@ -249,7 +243,7 @@ def jot_drain(
     proposals = list(plan.action_proposals) if hasattr(plan, "action_proposals") else []
     return DrainPlanDict(
         query=plan.query,
-        candidates=[_summary_dict(s) for s in plan.candidates],
+        candidates=[_summary_dict(s) for s in plan.candidates],  # ty: ignore[invalid-argument-type]
         action_proposals=proposals,
     )
 

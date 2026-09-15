@@ -1,10 +1,10 @@
 ---
-status: superseded
-role: archive
+status: complete
+role: superseded
 kind: decision
 date: 2026-07-16
 last_reviewed: 2026-09-09
-superseded_by: null
+superseded_by: docs/adr/015-worktree-and-cache-storage-v4.md
 blocks_on: []
 decision_date: 2026-02-18
 topic: zero-downtime-migration

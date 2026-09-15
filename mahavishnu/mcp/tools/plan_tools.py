@@ -25,6 +25,7 @@ from oneiric.core.logging import get_logger
 
 from mahavishnu.core.permissions import Permission
 from mahavishnu.mcp.auth import require_mcp_auth
+from mahavishnu.plan_index import PlanId
 from mahavishnu.plan_index.errors import PlanNotFoundError
 from mahavishnu.plan_index.store import PlanIndexStore
 from mahavishnu.plan_index.testing import FakeDhara
@@ -114,7 +115,7 @@ def register_plan_tools(
     async def plan_show(plan_id: str, user_id: str | None = None) -> dict[str, Any]:
         """Show one plan by ``plan_id``. Raises ``PlanNotFoundError`` if absent."""
         store = provider()
-        record = await store.get(plan_id)
+        record = await store.get(cast("PlanId", plan_id))
         if record is None:
             raise PlanNotFoundError(plan_id)
         return cast("dict[str, Any]", record)

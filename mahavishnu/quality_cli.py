@@ -59,7 +59,7 @@ def quality_check(
             "[yellow]crackerjack not installed.[/yellow] Install: [cyan]uv add crackerjack[/cyan]"
         )
         return
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
         logger.warning("Quality check failed: %s", e)
         formatter.format_dict(
             {"status": "[red]ERROR[/red]", "error": str(e)},

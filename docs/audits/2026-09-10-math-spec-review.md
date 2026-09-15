@@ -10,7 +10,7 @@ topic: math-spec-review
 
 # Math Spec Multi-Agent Review — 2026-09-10
 
-> **Purpose**: Preserve the reasoning from the 9-agent multi-perspective review that drove the v1→v2 rewrite of [`docs/plans/2026-09-10-bodai-math-initiatives-tier1.md`](../plans/2026-09-10-bodai-math-initiatives-tier1.md). Future contributors asking "why does the spec say X?" should find their answer here.
+> **Purpose**: Preserve the reasoning from the 9-agent multi-perspective review that drove the v1→v2 rewrite of [`docs/plans/.archive/2026-09-10-bodai-math-initiatives-tier1.md`](../plans/.archive/2026-09-10-bodai-math-initiatives-tier1.md). Future contributors asking "why does the spec say X?" should find their answer here.
 >
 > **Reading guide**: §1 Overview → §2 Synthesis → §3 v1→v2 mapping table → §4 Per-agent findings (search within with Ctrl-F for a specific fact). §5 Notes on what's preserved verbatim vs. summarized.
 >
@@ -306,7 +306,7 @@ If a future contributor needs a specific fact that isn't in this doc, the JSONL 
 
 ## 6. References
 
-- [`docs/plans/2026-09-10-bodai-math-initiatives-tier1.md`](../plans/2026-09-10-bodai-math-initiatives-tier1.md) — the v2 spec this review drove
+- [`docs/plans/.archive/2026-09-10-bodai-math-initiatives-tier1.md`](../plans/.archive/2026-09-10-bodai-math-initiatives-tier1.md) — the v2 spec this review drove
 - `docs/plans/TEMPLATE.md` — integration-contract template the spec follows
 - `.claude/decisions/wire-up-contract.md` — policy the Integration Contract block requirement implements
 - `.claude/decisions/bodai-observability-pattern.md` — second-control-plane prohibition cited by architecture-council

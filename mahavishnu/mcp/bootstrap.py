@@ -1126,7 +1126,7 @@ def _register_plan_tools(server: FastMCPServer) -> None:
 
     def _store_provider() -> PlanIndexStore:
         # Production wiring: real Dhara-backed store.
-        return PlanIndexStore(_resolve_dhara_client(server))
+        return PlanIndexStore(_resolve_dhara_client(server))  # ty: ignore[invalid-argument-type]
 
     rbac_manager = getattr(server.app, "rbac_manager", None)
     register_plan_tools(server.server, store_provider=_store_provider, rbac_manager=rbac_manager)
@@ -1139,4 +1139,4 @@ def _resolve_dhara_client(server: FastMCPServer) -> object:
     Tests: a FakeDhara stand-in is acceptable for the smoke test;
     the integration test for this lives in tests/integration/mcp/.
     """
-    return server.app.state.dhara  # type: ignore[attr-defined]
+    return server.app.state.dhara  # ty: ignore[unresolved-attribute]

@@ -5,7 +5,6 @@ kind: reference
 topic: followups-index
 date: 2026-07-16
 last_reviewed: 2026-09-13
-superseded_by: None
 blocks_on:
 ---
 # `docs/followups/` index

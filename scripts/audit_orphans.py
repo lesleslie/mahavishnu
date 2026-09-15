@@ -20,6 +20,7 @@ import re
 import subprocess
 import sys
 from collections import defaultdict
+from collections.abc import Iterable
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone, UTC
 from pathlib import Path
@@ -763,11 +764,7 @@ def collect_references(
                 # `__all__ = ["foo", MAX_LEN]` would be a misfeature
                 # — best to ignore the symbolic-name form).
                 for target in node.targets:
-                    target_name = (
-                        target.id
-                        if isinstance(target, ast.Name)
-                        else None
-                    )
+                    target_name = target.id if isinstance(target, ast.Name) else None
                     if target_name != "__all__":
                         continue
                     value = node.value
@@ -781,10 +778,7 @@ def collect_references(
                     if not container:
                         continue
                     for elt in container:
-                        if (
-                            isinstance(elt, ast.Constant)
-                            and isinstance(elt.value, str)
-                        ):
+                        if isinstance(elt, ast.Constant) and isinstance(elt.value, str):
                             refs[elt.value].add(path)
 
     # Cross-module __all__ resolution: a module's __all__ is the canonical

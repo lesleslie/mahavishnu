@@ -1,8 +1,9 @@
 ---
-role: spec
+role: canonical
 topic: jot-inbox
 status: draft
 last_reviewed: 2026-09-09
+date: 2026-09-09
 ---
 
 # Jot — zero-turn quick-capture inbox

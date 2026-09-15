@@ -5,7 +5,7 @@ kind: decision
 date: 2026-08-23
 last_reviewed: 2026-08-23
 superseded_by: null
-blocks_on: ["015-worktree-and-cache-storage-v2"]
+blocks_on: ["docs/adr/.archive/015-worktree-and-cache-storage-v2.md"]
 decision_date: null
 topic: storage-abstraction-review
 related: ["015-worktree-and-cache-storage", "015-worktree-and-cache-storage-v2"]
