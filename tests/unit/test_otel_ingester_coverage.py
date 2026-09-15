@@ -1128,7 +1128,13 @@ class TestSpanHelpers:
         ingester = _make_ingester()
         spans = [{"start_time": "2024-01-01T00:00:00Z"}]
         ts = ingester._extract_timestamp(spans)
-        assert ts == datetime(2024, 1, 1, 0, 0, 0, tzinfo=UTC)
+        # Naive UTC by contract — DuckDB TIMESTAMP is tz-naive.
+        # The expected value is tz-aware UTC reduced to naive; the
+        # ``.replace(tzinfo=None)`` form avoids the DTZ lint family
+        # while still pinning the contract.
+        expected = datetime(2024, 1, 1, 0, 0, 0, tzinfo=UTC).replace(tzinfo=None)
+        assert ts == expected
+        assert ts.tzinfo is None
 
     def test_extract_timestamp_int_unix_ns(self) -> None:
         ingester = _make_ingester()
@@ -1136,25 +1142,30 @@ class TestSpanHelpers:
         ns = 1704067200 * 1_000_000_000
         spans = [{"start_time": ns}]
         ts = ingester._extract_timestamp(spans)
-        assert ts == datetime.fromtimestamp(1704067200, tz=UTC)
+        # Naive UTC by contract — strip tz before returning.
+        assert ts == datetime.fromtimestamp(1704067200, tz=UTC).replace(tzinfo=None)
+        assert ts.tzinfo is None
 
     def test_extract_timestamp_empty_spans(self) -> None:
         ingester = _make_ingester()
         ts = ingester._extract_timestamp([])
         # Just verify it's a datetime, not exact value
         assert isinstance(ts, datetime)
+        assert ts.tzinfo is None
 
     def test_extract_timestamp_no_start_time(self) -> None:
         ingester = _make_ingester()
         spans = [{}]
         ts = ingester._extract_timestamp(spans)
         assert isinstance(ts, datetime)
+        assert ts.tzinfo is None
 
     def test_extract_timestamp_invalid_falls_back(self) -> None:
         ingester = _make_ingester()
         spans = [{"start_time": "not-a-date"}]
         ts = ingester._extract_timestamp(spans)
         assert isinstance(ts, datetime)
+        assert ts.tzinfo is None
 
     def test_extract_attributes(self) -> None:
         ingester = _make_ingester()

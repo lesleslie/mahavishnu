@@ -1167,31 +1167,46 @@ class OtelIngester:
     def _extract_timestamp(self, spans: list[dict[str, Any]]) -> datetime:
         """Extract timestamp from first span.
 
+        Normalises the result to naive UTC so the downstream
+        ``HotStore.insert`` sees the same value regardless of whether
+        the upstream OTel span carried a tz-aware ISO string or no tz
+        at all. DuckDB ``TIMESTAMP`` stores naive wall-clock values;
+        passing tz-aware datetimes through this path would otherwise
+        let the session-tz bind shift the value on insert.
+
         Args:
             spans: List of span dictionaries
 
         Returns:
-            Datetime object (UTC)
+            Naive UTC datetime (tzinfo is None).
         """
         if not spans:
-            return datetime.now(UTC)
+            return datetime.now(UTC).replace(tzinfo=None)
 
         first_span = spans[0]
         start_time = first_span.get("start_time")
 
+        parsed: datetime | None = None
         if start_time:
             try:
                 # Parse ISO 8601 timestamp
                 if isinstance(start_time, str):
-                    # Handle various ISO 8601 formats
-                    return datetime.fromisoformat(start_time)
+                    parsed = datetime.fromisoformat(start_time)
                 elif isinstance(start_time, int):
-                    # Handle Unix timestamp (nanoseconds)
-                    return datetime.fromtimestamp(start_time / 1_000_000_000, tz=UTC)
+                    # Unix timestamp (nanoseconds)
+                    parsed = datetime.fromtimestamp(start_time / 1_000_000_000, tz=UTC)
             except (ValueError, TypeError, OverflowError, OSError) as e:
                 logger.warning(f"Failed to parse timestamp {start_time}: {e}")
 
-        return datetime.now(UTC)
+        if parsed is None:
+            return datetime.now(UTC).replace(tzinfo=None)
+
+        # Normalise to naive UTC. If the parsed value is tz-aware,
+        # convert to UTC first; otherwise it's already naive and we
+        # trust it as UTC (matching what HotStore columns expect).
+        if parsed.tzinfo is not None:
+            return parsed.astimezone(UTC).replace(tzinfo=None)
+        return parsed
 
     def _extract_attributes(self, spans: list[dict[str, Any]]) -> dict[str, Any]:
         """Extract all attributes from spans.

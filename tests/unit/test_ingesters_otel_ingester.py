@@ -947,44 +947,54 @@ class TestSpanHelpers:
         assert ingester._build_content([]) == "Empty trace"
 
     def test_extract_timestamp_parses_iso_string(self) -> None:
-        """An ISO 8601 string is parsed into a timezone-aware datetime."""
+        """An ISO 8601 string is parsed and normalised to naive UTC.
+
+        DuckDB ``TIMESTAMP`` stores naive wall-clock values; the
+        bound datetime must be tz-naive UTC so the value lands at
+        the same instant regardless of session tz.
+        """
         ingester = _make_ingester(preferred_backend="text_only")
         spans = [{"start_time": "2024-05-01T12:34:56Z"}]
         ts = ingester._extract_timestamp(spans)
         assert isinstance(ts, datetime)
-        assert ts.tzinfo is not None
+        # tz-aware ISO string 'Z' parses as UTC; result is naive UTC.
+        assert ts.tzinfo is None
         assert ts.year == 2024 and ts.month == 5 and ts.day == 1
+        assert ts.hour == 12 and ts.minute == 34 and ts.second == 56
 
     def test_extract_timestamp_handles_unix_nanoseconds(self) -> None:
-        """An integer (assumed Unix nanoseconds) is converted to a datetime."""
+        """An integer (assumed Unix nanoseconds) is converted to naive UTC."""
         ingester = _make_ingester(preferred_backend="text_only")
         # 2024-01-01T00:00:00Z in nanoseconds
         ns = int(datetime(2024, 1, 1, tzinfo=UTC).timestamp() * 1_000_000_000)
         spans = [{"start_time": ns}]
         ts = ingester._extract_timestamp(spans)
-        assert ts.tzinfo is not None
+        # Raw nanosecond value is treated as UTC; result strips tz.
+        assert ts.tzinfo is None
         assert ts.year == 2024
 
     def test_extract_timestamp_falls_back_to_now(self) -> None:
         """Without a start_time, _extract_timestamp returns datetime.now(UTC)."""
         ingester = _make_ingester(preferred_backend="text_only")
-        before = datetime.now(UTC)
+        before = datetime.now(UTC).replace(tzinfo=None)
         ts = ingester._extract_timestamp([{}])
-        after = datetime.now(UTC)
+        after = datetime.now(UTC).replace(tzinfo=None)
         assert before <= ts <= after
 
     def test_extract_timestamp_handles_empty_spans(self) -> None:
-        """An empty span list falls back to datetime.now(UTC)."""
+        """An empty span list falls back to naive UTC now()."""
         ingester = _make_ingester(preferred_backend="text_only")
         ts = ingester._extract_timestamp([])
         assert isinstance(ts, datetime)
-        assert ts.tzinfo is not None
+        # Naive UTC by contract (no tzinfo).
+        assert ts.tzinfo is None
 
     def test_extract_timestamp_handles_invalid_string(self) -> None:
-        """An unparsable start_time string falls back to datetime.now(UTC)."""
+        """An unparsable start_time string falls back to naive UTC now()."""
         ingester = _make_ingester(preferred_backend="text_only")
         ts = ingester._extract_timestamp([{"start_time": "not-a-timestamp"}])
         assert isinstance(ts, datetime)
+        assert ts.tzinfo is None
 
     def test_extract_attributes_merges_all_spans(self) -> None:
         """_extract_attributes merges attributes across all spans."""
