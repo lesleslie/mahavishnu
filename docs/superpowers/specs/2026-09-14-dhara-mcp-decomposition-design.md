@@ -328,6 +328,50 @@ Per second-pass data-retention review (MEDIUM #4), each Dhara substrate has a do
 | `AsyncEcosystemStateStore` (service registry + event log) | Phase 3: Mahavishnu | **Migrate on first startup.** One-shot read-and-write task: load existing service/event records from Dhara's on-disk file, write to Mahavishnu's ecosystem_state store. Demonstrable by `mahavishnu mcp health.ecosystem_state.entities_count > 0` on a pre-0.20.1 install. |
 | `dhara_query_local_traces` DuckDB file | Phase 5: Akosha | **No migration needed.** The DuckDB file is read through `OtelTracesConfig.component_endpoints` (Phase 5 task 3). Historical traces are read unchanged. Phase 8 documents the no-op. |
 
+### 4.11 Wrapper consolidation principle (Layer 1)
+
+Per the third-pass topology analysis (`docs/adr/017-oneiric-shared-persistence-substrate.md` already establishes the persistence substrate; this spec extends the same substrate principle to the **MCP-tool wrapper layer**):
+
+The four Bodai application components (Mahavishnu, AkoSHA, Session-Buddy, Crackerjack) independently ship the same thin wrappers over shared infrastructure:
+
+| Wrapper | Count today | Shared underlying service |
+|---|---|---|
+| PyCharm/IDE wrappers (`search_code_patterns`, `find_usages`, `get_ide_diagnostics`, `get_symbol_info`, `pycharm_health`) | 5 tools × 4 components = **20 duplicate slots** | `pycharm` MCP |
+| `discover_tools` | 4 copies | Each component's own tool inventory |
+| `list_*_skills` / `list_*_agents` / `get_*_skill` / `get_*_agent` | 4 tools × 4 components = **16 duplicate slots** | Canonical Dhara substrate (per Phase 4 / mcp-common.canonical_schemas) |
+| Health probes (`get_liveness`, `get_readiness`, `health_check_service`, `health_check_all`, `wait_for_dependency`) | 5 tools × 4 components = **20 duplicate slots** | `mcp_common.health` |
+| `query_local_traces` | 3 copies (Mahavishnu, AkoSHA, Crackerjack) | Per-component DuckDB files |
+
+Each component **declares its own copy** of these wrappers, all routing to the same underlying service. This is the natural shape of an MCP server exposing a canonical surface — but it costs 60+ duplicate tool slots, four launchd processes, four mcp-common instantiations, four auth secret env vars, and four `name=` overrides for picker visibility.
+
+**The consolidation opportunity lives in `mcp-common`, not in component absorption.** Components keep their distinct business responsibilities (orchestration / intelligence / session / quality); the *wrappers over shared infrastructure* move to `mcp-common`.
+
+**Layer 1 commitment:** The Phase 1.5 wrapper consolidation phase (added to §5) extracts these wrappers into `mcp-common` modules. Each component mounts them under a local-namespace prefix (e.g., `mcp__mahavishnu__pycharm_*`) via `mcp_common.tools.dispatch` registration. After Layer 1 ships, each component's MCP surface drops from 30-200 tools down to just its domain tools.
+
+**What Layer 1 does NOT do:** It does not fold components together, does not consolidate the storage layers (still per-component DuckDB / SQLite / Dhara), does not change the four-process architecture. Layer 1 is wrapper-extraction only.
+
+**Pre-flight gate:** the wrapper extraction must use the existing `mcp-common` modules where they exist (`mcp_common.health`, `mcp_common.auth`). New wrappers (`mcp-common.ide.pycharm_tools`, `mcp-common.discovery`, `mcp-common.catalog`, `mcp-common.traces`) live alongside existing modules. Phase 1.5 task 0 enumerates each wrapper's current call sites across all four components before extraction.
+
+### 4.12 Postgres consolidation principle
+
+The Postgres / pgvector analysis from the topology review surfaces three distinct layers of "consolidation" — only one of which requires component-level changes:
+
+**Layer 2 — pgvector adapter (Oneiric owns it).** Already consolidated per ADR 017 (`oneiric/adapters/vector/pgvector.py:49`). AkoSHA wraps it as `PgvectorHotStore` (HotStore collection contract on a specific collection); Mahavishnu wraps it as `PgvectorAdapter` (HNSW-extended driver). These wrappers are at different abstraction layers and add genuinely different behavior. **Do not merge the wrappers** — folding them would lose the HotStore collection contract and the HNSW driver config separately. **Verdict: nothing to do.**
+
+**Layer 3 — Postgres server co-tenancy.** A deployment-config decision the repos do not make. Each component has its own DSN site (`akosha/settings/akosha.yaml:95`, `mahavishnu/settings/mahavishnu.yaml:144`, `mahavishnu/core/database.py:59-84`, `mahavishnu/core/config.py:789`). Co-tenancy on one Postgres server is feasible (different schema namespaces, no collisions) but nothing in the code assumes it. **Verdict: deployment decision, not a spec decision.**
+
+**Dormant-code hygiene (the real work).** Both Mahavishnu and AkoSHA have full pgvector code paths that are wired in code but disabled in committed config:
+
+| Component | Dormant signal | Decision |
+|---|---|---|
+| AkoSHA | `hot_store.pg_url: ""` (`akosha/settings/akosha.yaml:95`); `akosha_query_local_traces` integration test gated on `AKOSHA_TEST_PGVECTOR_URL` (header docstring notes Oneiric upstream bug `WITH (lists := 100)` rejected by Postgres 18 blocking the suite) | Phase 10 commits-or-deletes: pick one |
+| Mahavishnu | `otel_storage.enabled=false` (`mahavishnu/settings/mahavishnu.yaml:59`); `persistence.postgres_url=""` (`mahavishnu/settings/mahavishnu.yaml:144`) | Phase 10 commits-or-deletes: pick one |
+| Oneiric | `OTelStorageSettings.connection_string` default `"postgresql://postgres: postgres@localhost: 5432/otel"` has spaces around the colon; Mahavishnu's stricter validator (`mahavishnu/core/config.py:880-916`) would reject it | Phase 10 fixes the default and makes Oneiric's `OTelStorageSettings` the canonical model Mahavishnu imports |
+
+**Cross-component Postgres coupling.** `mahavishnu/ingesters/otel_ingester.py:41` does `from akosha.storage import HotStore` — a direct cross-component Python import ADR 017 §Implementation evidence lines 147-148 cite as Phase-5 work to be removed. The replacement path is **Oneiric adapter access** (not AkoSHA's storage). The dependency arrow flips: Mahavishnu → Oneiric, never Mahavishnu → AkoSHA. Phase 5 task 4 implements this flip.
+
+**Mahavishnu dual-write migration debt.** `mahavishnu/settings/mahavishnu.yaml:140` shows `persistence.write_mode: "dual"` — Mahavishnu writes to BOTH Dhara (legacy) AND Postgres simultaneously. Dual-write is a migration state, not a steady state. Phase 5 commits a single-source decision: either Dhara OR Postgres, delete the other write path. **Without this, the spec's "decompose Dhara's MCP" goal is undermined** — Dhara's substrate role is not cleanly retired while Mahavishnu keeps dual-writing.
+
 ### 4.7 ADR cross-references
 
 - **ADR 013 (active) — REVERSAL.** ADR-013's existing 2026-09-14 amendment (lines 169-199) explicitly states "**Option C (remove Mahavishnu's surface) is not chosen by this amendment.**" This spec **overturns** that amendment and adopts Option C (remove `mcp__mahavishnu__adapter_list` and `mcp__mahavishnu__adapter_metadata`). The rationale for reversal: Oneiric regaining an MCP server (Phase 1 of this spec) removes the original justification for the B-framing. With Oneiric's MCP server as the canonical surface per ADR-013's own "if Option C is later adopted" branch (lines 141-152), keeping Mahavishnu's adapter tools creates duplication, not boundary clarity. The amended ADR-013 must record this reversal explicitly with date and rationale; this spec is the contract for that amendment.
@@ -429,6 +473,41 @@ Phase ordering matters because the migrations cascade and each phase leaves the 
 - **Rollback signal:** 503 on `/health`, or 0 `entities_count` on any feed after startup, or any e2e test failure.
 - **Observability added:** OTel span `oneiric.mcp.tool.<name>` with attribute `tool.name`, `tool.duration_ms`. Per-feed signals at `/health`: `feed.entities_count`, `feed.last_updated_timestamp`, `feed.errors_total`, `feed.cycles_total` for each of the 7 tools (per `.claude/decisions/mcp-backend-wiring-discipline.md`).
 
+### Phase 1.5 — Wrapper consolidation → mcp-common (Layer 1)
+
+**Goal:** Extract duplicated infrastructure wrappers from the four Bodai MCP servers (Mahavishnu, AkoSHA, Session-Buddy, Crackerjack) into `mcp-common` modules per §4.11. Each component mounts the consolidated wrappers under a local-namespace prefix; component-specific tools remain in their own component. **Hard cutover per component** (each wrapper consolidated in its own commit when its tests pass).
+
+**Pre-flight gate (Phase 1.5 task #0):** Enumerate every wrapper call site across all four components for each of the five wrapper categories in §4.11. Verified counts at Phase 1.5 start:
+- **PyCharm wrappers**: 5 tools × 4 components = 20 call sites (`akosha/mcp/tools/pycharm*.py`, `mahavishnu/mcp/tools/pycharm*.py`, `session-buddy/mcp/tools/pycharm*.py`, `crackerjack/mcp/tools/pycharm*.py`)
+- **`discover_tools`**: 4 implementations (`akosha/mcp/tools/__init__.py`, `mahavishnu/mcp/tools/ecosystem_tools.py`, `session-buddy/mcp/server.py`, `crackerjack/mcp/tools/discovery_tools.py`)
+- **`list_*_skills` / `list_*_agents` / `get_*_skill` / `get_*_agent`**: 16 implementations across `akosha/mcp/tools/skill_*.py` + `akosha/mcp/tools/agent_*.py`, etc.
+- **Health probes**: 20 implementations (5 tools × 4 components)
+- **`query_local_traces`**: 3 implementations (Mahavishnu, AkoSHA, Crackerjack)
+
+**Tasks (per wrapper category — one commit per category):**
+
+1. **PyCharm wrappers → `mcp_common.ide.pycharm_tools`**. Extract `pycharm_search_code_patterns`, `pycharm_find_usages`, `pycharm_get_ide_diagnostics`, `pycharm_get_symbol_info`, `pycharm_health` into a single `mcp_common.ide.pycharm_tools` module. Each component's MCP server registers them via `mcp_common.tools.dispatch.register_local_namespace(component="mahavishnu"|"akosha"|"session_buddy"|"crackerjack", tools=[...])` so the picker still sees `mcp__<component>__pycharm_*`. **Demonstrable by:** each component's `mcp/__main__.py` imports the consolidated module and registers it under the local namespace prefix; existing agent prompts (`.claude/agents/akosha-specialist.md`, etc.) continue to work unchanged because the tool names are stable. **Rollback signal:** any e2e test fails, or `pycharm_health` returns non-200 in any component.
+
+2. **`discover_tools` → `mcp_common.discovery`**. Extract the 4 `discover_tools` implementations into a single `mcp_common.discovery.discover_tools(component=...)` factory. Each component calls `mcp_common.discovery.mount(server)` to wire it locally. The Akosha-only `akosha_list_ecosystem_skills` (which fans out to all 4 servers) stays in AkoSHA — it's the federation aggregator, not a per-component wrapper. **Demonstrable by:** `mcp__mahavishnu__discover_tools` (and 3 siblings) return non-empty `loaded_tools` lists after a fresh component restart. **Rollback signal:** any discover call returns an empty list when tools exist, or federation aggregator misses any component.
+
+3. **`list_*_skills` / `list_*_agents` → `mcp-common.canonical_schemas` + `mcp_common.catalog`**. The current sed-replicated `agent_schema.py` / `skill_schema.py` (canonical in AkoSHA, sed-copied to the other 3) moves to `mcp-common.canonical_schemas`. The 16 tool implementations (4 sets of 4) collapse to a single `mcp_common.catalog.register(server)` that exposes `list_skills`, `get_skill`, `list_agents`, `get_agent` under the local namespace. **Demonstrable by:** `mcp__mahavishnu__list_skills` (and 3 siblings) return the same canonical catalog; deleting AkoSHA's canonical schema files (`akosha/mcp/agent_schema.py`, `akosha/mcp/skill_schema.py`) leaves the other three components still functional because they import from `mcp-common.canonical_schemas`. **Rollback signal:** any catalog query fails signature verification, or any component reports empty `list_agents` after a populated install. Phase 10 commits to this fix as part of the sed-replication cleanup.
+
+4. **Health probes → `mcp_common.health_tools`**. The 20 implementations (5 tools × 4 components) collapse to a single `mcp_common.health_tools.mount(server)` registration. Each component's `mcp/auth.py` and `mcp/tools/health*.py` files shrink to mount-time imports. **Demonstrable by:** `mcp__<component>__get_liveness` (and 4 siblings × 4 components = 16 total) return consistent envelope shapes; `/health` HTTP endpoint returns 200 / 503 per §4.8 threshold contract. **Rollback signal:** any component's `/health` returns the wrong status code, or a probe returns non-canonical envelope.
+
+5. **`query_local_traces` → `mcp_common.traces.endpoint_resolver`**. The 3 implementations (Mahavishnu, AkoSHA, Crackerjack) collapse to a single `mcp_common.traces.query_local_traces(component_endpoints=...)` factory. Per-component DuckDB paths become env-var-driven (`MAHAVISHNU_TRACES_PATH`, `AKOSHA_TRACES_PATH`, `CRACKERJACK_TRACES_PATH`, `SESSION_BUDDY_TRACES_PATH`, `DHARA_TRACES_PATH` if Dhara still emits traces post-Phase-8). **This replaces the hard-coded paths in Phase 5 task 3** (see §5 Phase 5 update below). Demonstrable by: each component's `query_local_traces` reads from its env-var-resolved path; the AkoSHA-side `OtelTracesConfig.component_endpoints` map becomes a default that operators can override. **Rollback signal:** `entities_count == 0` after warmup, or endpoint-resolver raises on any path lookup.
+
+**Mahavishnu / AkoSHA / Session-Buddy / Crackerjack changes (in each wrapper-category commit):**
+- Delete the local wrapper file(s); replace with `from mcp_common.<module> import ...; mount(server)`.
+- Update test fixtures (`tests/fixtures/{minimal,standard,full}/tool_names.json`) to reflect the new registration source.
+- Update `.claude/decisions/mcp-backend-wiring-discipline.md` to cite `mcp-common` as the canonical home.
+
+**Integration contract:**
+- **Triggered from:** each component's `mcp/server_core.py` startup calls the consolidated `mount(server)` helper before registering component-specific tools.
+- **Returns to / updates:** the consolidated `mcp-common` modules own the canonical wrapper implementations; components own only their domain tools.
+- **Demonstrable by:** each wrapper-category commit (5 commits total) passes `pytest` in all four affected components; picker shows `mcp__<component>__<wrapper>_<verb>` for every existing prompt reference.
+- **Rollback signal:** any e2e test fails, or the consolidated module raises on `mount(server)`, or any cross-component call breaks.
+- **Observability added:** each wrapper tracks invocation count via the existing `HealthMonitor.record_invocation` from Phase 1 task 6; per-feed signals at `mcp-common.health_tools` surface aggregated across all mounted wrappers.
+
 ### Phase 2 — Auth consolidation
 
 **Goal:** Complete the auth consolidation by closing out Dhara's row in `2026-04-27-bodai-auth-standardization-design.md`. **Critical correction:** Dhara's auth is **file-based `TokenAuth`** (SHA-256 hashed tokens with per-token `Role` mapping and rate limits — see `dhara/mcp/auth.py:252-436`), NOT JWT. There is no JWT migration. Phase 2 is essentially a no-op for code change because Dhara's auth goes away with the server in Phase 8.
@@ -493,24 +572,28 @@ Phase ordering matters because the migrations cascade and each phase leaves the 
 - **Rollback signal:** 503 or 0 entities_count on ecosystem_state feed, or any e2e test failure.
 - **Observability added:** OTel span `mahavishnu.mcp.tool.ecosystem_state.<name>`. Per-feed signals: `feed.entities_count`, `feed.last_updated_timestamp`, `feed.errors_total`, `feed.cycles_total` exposed at `mahavishnu mcp health.ecosystem_state`.
 
-### Phase 4 — Move agent_registry + skill_registry + signer_feed → Crackerjack
+### Phase 4 — Move agent_registry + skill_registry → Crackerjack; signer_feed → mcp-common
 
-**Goal:** Phase 1.5 of the active ACP plan, but routed through Crackerjack not Dhara. LOC breakdown: agent_registry (426) + agent_schema (223) + skill_registry (353) + skill_schema (173) + signer_feed (254) = **1,429 LOC** of code moved (plus ~400 LOC of tests + scaffolding = ~1,830 LOC total — the previous ~1,800 estimate in §R2 was in this range).
+**Goal:** Phase 1.5 of the active ACP plan, with split routing per the topology review. The agent/skill catalogs (which are Crackerjack's domain — federation-wide catalogs are quality-tooling's natural neighbor) move to Crackerjack. The signer infrastructure (a cryptographic primitive used by both catalogs) moves to `mcp-common` as cross-cutting infra. LOC breakdown: agent_registry (426) + agent_schema (223) + skill_registry (353) + skill_schema (173) = **1,175 LOC** → Crackerjack; signer_feed (254) + `dhara/skills_signer/` → `mcp-common` (254 LOC + package).
 
-**Pre-flight gate (resolves OQ #1):** `dhara/skills_signer/` exists at `/Users/les/Projects/dhara/dhara/skills_signer/` per `ls dhara/` listing. Move it to Crackerjack in this phase. After move, **delete** the Dhara-side directory (subsumed by Crackerjack's copy — no dual-location reason).
+**Pre-flight gate (resolves OQ #1 + OQ-6):** `dhara/skills_signer/` exists at `/Users/les/Projects/dhara/dhara/skills_signer/`. Move it to `mcp-common` (not Crackerjack) — signer is cross-cutting infra, not a quality-tooling concern. After move, **delete** the Dhara-side directory. The canonical `agent_schema.py` / `skill_schema.py` files (currently sed-replicated across 4 components) move to `mcp-common.canonical_schemas` (this is the Phase 10 commit referenced from Phase 1.5 task 3; Phase 4 ships the Crackerjack-side import from the canonical home).
 
 **Tasks:**
 
-1. Port `dhara/mcp/tools/agent_registry.py` (426 LOC) to `crackerjack/mcp/tools/agent_registry.py`.
-2. Port `dhara/mcp/agent_schema.py` (223 LOC) to `crackerjack/mcp/schemas/agent.py`.
-3. Port `dhara/mcp/tools/skill_registry.py` (353 LOC) to `crackerjack/mcp/tools/skill_registry.py`.
-4. Port `dhara/mcp/skill_schema.py` (173 LOC) to `crackerjack/mcp/schemas/skill.py`.
-5. Port `dhara/mcp/signer_feed.py` (254 LOC) to `crackerjack/mcp/signer.py` (private; not exposed as a tool).
-6. Move `dhara/skills_signer/` to `crackerjack/skills_signer/`. **Delete the Dhara-side directory after move.**
+1. Port `dhara/mcp/tools/agent_registry.py` (426 LOC) to `crackerjack/mcp/tools/agent_registry.py`. **Imports `agent_schema` from `mcp-common.canonical_schemas`** (not from a local copy).
+2. Port `dhara/mcp/agent_schema.py` (223 LOC) to `mcp-common/mcp_common/canonical_schemas/agent.py` (the canonical home referenced by Phase 1.5 task 3).
+3. Port `dhara/mcp/tools/skill_registry.py` (353 LOC) to `crackerjack/mcp/tools/skill_registry.py`. **Imports `skill_schema` from `mcp-common.canonical_schemas`**.
+4. Port `dhara/mcp/skill_schema.py` (173 LOC) to `mcp-common/mcp_common/canonical_schemas/skill.py`.
+5. **Port `dhara/mcp/signer_feed.py` (254 LOC) to `mcp-common/mcp_common/signing/skills_signer.py`** (cross-cutting crypto primitive, not a Crackerjack-domain concern). **Not exposed as an MCP tool**; consumed by the agent/skill catalogs as a library import. The ed25519 signing is the same primitive Phase 1.5 of the active ACP plan ships through `oneiric.actions.security.SecuritySignatureAction`; Phase 4 consolidates around `mcp-common`'s canonical home.
+6. Move `dhara/skills_signer/` package to `mcp-common/mcp_common/signing/dhara_skills_signer/` (rename optional; preserving the original namespace avoids breaking the import paths the active ACP plan Phase 1.5 already shipped). **Delete the Dhara-side directory after move.**
 7. Wire auth (RBAC: WRITE permission required for registration; READ for listing).
 8. Update `crackerjack/mcp/profiles.py`: set `CRACKERJACK_MANDATORY_GROUPS = {REG_KEY_AGENT_REGISTRY, REG_KEY_SKILL_REGISTRY, REG_KEY_HEALTH}` per the picker-parity logic that Dhara documented in `dhara/mcp/profiles.py:215-228`. Without this, `CRACKERJACK_TOOL_PROFILE=minimal` would not expose `list_agents` / `list_skills`, breaking the picker surface inside Mahavishnu and other consumers.
 9. Add 4 e2e tests in `tests/integration/test_<tool>_e2e.py`.
 10. Wire per-feed health aggregator: each tool registers a `ComponentHealth` feed exposing `feed.entities_count`, `feed.last_updated_timestamp`, `feed.errors_total`, `feed.cycles_total`.
+
+**Phase 10 cross-reference:** Tasks 2 and 4 ship the canonical schema files to `mcp-common.canonical_schemas`; Phase 10 task 2 then **deletes the sed-replicated copies** in AkoSHA / Session-Buddy / Mahavishnu and forces those components to import from the canonical home. Phase 4 + Phase 10 together eliminate the DRY violation documented at `akosha/mcp/agent_schema.py` (the "canonical source" comment) and the 3 sed-replicated siblings.
+
+**Why signer_feed moves to mcp-common, not Crackerjack:** The ed25519 signer is shared infrastructure between `agent_registry` and `skill_registry`. Both catalogs move to Crackerjack, but the signer does not — keeping it in mcp-common means any future catalog (e.g. a workflow catalog, a memory-catalog) can sign its entries without depending on Crackerjack. Cryptographic primitives belong in the cross-cutting infra layer, not in any single application component.
 
 **Hard cutover:**
 
@@ -541,11 +624,16 @@ Phase ordering matters because the migrations cascade and each phase leaves the 
 
 1. **Drop Akosha's existing `akosha_query_local_traces`** (`akosha/mcp/tools/otel_tools.py:30-78`). Delete the tool registration. Update `akosha/mcp/tool_versions.py:TOOL_VERSIONS` to remove the entry.
 2. **Port Dhara's `dhara_query_local_traces`** (`dhara/mcp/tools/otel_traces.py:52-187`) to `akosha/mcp/tools/query_local_traces_fitness.py`. Rename to `akosha_query_local_traces_fitness`. Preserve the fitness-shaped signature: `task_class: str`, `time_range_minutes: int = 60`, `system_id: str | None = None`, `limit: int = 100`. Preserve the cross-component polling pattern (opens HotStore against a config-supplied DuckDB file).
-3. **Resolve per-component DuckDB routing** (resolves akosha-specialist HIGH #2). Add `OtelTracesConfig` (or extend Akosha's existing config) with a per-component endpoint map: `akosha://component_endpoint/{system_id}` → DuckDB file path. Components publish their own config; Akosha's tool resolves the path via the map before opening HotStore. This restores the cross-component polling behavior Dhara's tool had. Initial entries: `mahavishnu → /Users/les/.local/share/mahavishnu/traces.duckdb`, `akosha → /Users/les/.local/share/akosha/traces.duckdb`, `crackerjack → /Users/les/.local/share/crackerjack/traces.duckdb`, `session_buddy → /Users/les/.local/share/session-buddy/traces.duckdb`, `dhara → /Users/les/.local/share/dhara/traces.duckdb` (if Dhara still emits traces post-Phase-8).
+3. **Resolve per-component DuckDB routing** (resolves akosha-specialist HIGH #2). Use **`mcp_common.traces.endpoint_resolver`** (the Phase 1.5 wrapper consolidation lands this helper at `mcp-common/mcp_common/traces/endpoint_resolver.py`). Per-component DuckDB paths are env-var-driven, not hardcoded: `MAHAVISHNU_TRACES_PATH` (default `/Users/les/.local/share/mahavishnu/traces.duckdb`), `AKOSHA_TRACES_PATH`, `CRACKERJACK_TRACES_PATH`, `SESSION_BUDDY_TRACES_PATH`, `DHARA_TRACES_PATH` (only set if Dhara still emits traces post-Phase-8). AkoSHA's `OtelTracesConfig.component_endpoints` becomes a **default override layer** that operators can configure when env-vars are insufficient (e.g. for multi-region trace sources). **Demonstrable by:** `akosha mcp health.query_local_traces_fitness` returns 200 with `entities_count > 0` even when one component's DuckDB file is moved (env-var follows it). **Rollback signal:** endpoint_resolver raises on missing path, or `entities_count == 0` after warmup.
 4. **Remove `akosha>=0.17.1` from Dhara's `[dependency-groups].otel-traces`** — Dhara no longer needs it after the port. Verified: the only `import akosha` in Dhara runtime code is `dhara/mcp/tools/otel_traces.py:99` (`from akosha.storage import HotStore`); other matches are docstrings. Do NOT move the dep group to Akosha (Akosha already depends on its own storage in-tree — adding a self-referential group creates circular install hazard).
 5. Add e2e test in `tests/integration/test_query_local_traces_fitness_e2e.py` — assert the fitness analyzer can poll all 5 components and compute fitness signals correctly. The e2e test verifies (a) all 5 component DuckDB files exist at startup (proactive check), (b) each file is readable, (c) the fitness analyzer returns fitness-shaped tuples with non-empty `entities_count`.
 6. Update `.claude/agents/akosha-specialist.md` and `architecture-council.md` cross-references.
 7. **Add `traces_endpoints_health` feed** (observability MEDIUM #5 — proactive, not reactive). Each of the 5 component DuckDB files is a separate feed with `feed.entities_count = number_of_reachable_endpoints`. The feed transitions `HEALTHY` → `UNHEALTHY` if any endpoint file is missing or unreadable. Per §4.8 threshold contract: `UNHEALTHY` if `entities_count < 5` after warmup. Rollback signal becomes proactive: "503 or `entities_count < 5` on `traces_endpoints` feed at `/health`, or any e2e test failure." Each tool body wraps work in `with observed_span("akosha.mcp.tool.query_local_traces_fitness", attributes={"tool.name": ..., "tool.duration_ms": ...}):`.
+8. **Replace Mahavishnu's `from akosha.storage import HotStore`** (resolves §4.12 cross-component Postgres coupling + ADR 017 §Implementation evidence line 147). The direct import at `mahavishnu/ingesters/otel_ingester.py:41` is the worst cross-component Python import in the Bodai tree (AkoSHA → Dhara was OK; Mahavishnu → AkoSHA is not). **Replacement path:** `from oneiric.adapters.vector.pgvector import PgvectorAdapter` (or the DuckDB-in-Oneiric equivalent) for the pgvector path; **never** `from akosha.storage import HotStore`. The dependency arrow flips: Mahavishnu → Oneiric, never Mahavishnu → AkoSHA. **Demonstrable by:** `grep -rn "from akosha" mahavishnu/` returns 0 matches after Phase 5 commits; the OTel ingester continues to read/write trace data via the Oneiric adapter; the e2e test from Phase 5 task 5 passes with the new adapter path. **Rollback signal:** trace ingestion returns 0 records, or `pytest mahavishnu/tests/integration/test_otel_ingester_e2e.py` fails.
+9. **Resolve Mahavishnu's `persistence.write_mode: "dual"`** (resolves §4.12 dual-write migration debt + ADR 017 substrate ownership). Mahavishnu currently writes to BOTH Dhara (legacy) AND Postgres (`mahavishnu/settings/mahavishnu.yaml:140`). Dual-write is a migration state, not a steady state. **Phase 5 commits a single-source decision:**
+   - **Option A (Dhara only):** keep Dhara as the substrate; delete Mahavishnu's Postgres write path; remove `mahavishnu/migrations/` Postgres DDL files. Simpler, but loses the serverless-readiness substrate framing in the active plan's Phase 5.
+   - **Option B (Postgres only):** migrate the substrate to Oneiric's `PostgresDatabaseAdapter`; delete Mahavishnu's Dhara write path. Aligns with the active plan's substrate framing.
+   - **Default (per ADR 017 substrate ownership): Option B.** Dhara's MCP server is being retired in Phase 8; Dhara the engine stays (Dhara-as-engine is the user's choice per `dhara` 2026-09-14 decision). Phase 5 picks Option B: substrate lives on Oneiric's `PostgresDatabaseAdapter`; Mahavishnu's `write_mode: "dual"` setting is removed; `persistence.postgres_url` becomes the canonical substrate URL (operator-configurable). **Demonstrable by:** `mahavishnu mcp health.persistence.entities_count > 0` after a single write (proves Postgres is the substrate); `grep -rn "write_mode.*dual" mahavishnu/` returns 0 matches; the Dhara-as-engine connection (`dhara db start --port 8685`) continues to work for operators who use it for non-Mahavishnu state (the engine stays). **Rollback signal:** Postgres write fails on the operator's deployment, or a Dhara-engine consumer of Mahavishnu state reports missing data. Phase 5 documents the Option A fallback path in `docs/ops/persistence-modes.md` for operators who cannot migrate to Postgres immediately.
 
 **Hard cutover:**
 
@@ -595,7 +683,7 @@ Phase ordering matters because the migrations cascade and each phase leaves the 
 
 **Goal:** The HTTP routes (settings/context/progress) move to Oneiric alongside the new MCP server.
 
-**Pre-flight gate (resolves OQ #2):** substrate_routes' storage layer lives in Oneiric's registry (not Dhara's). The HTTP routes read/write Oneiric's own state. Rationale: Oneiric is the persistence substrate per ADR-017; substrate state is Oneiric's responsibility. **Confirmed 2026-09-14.** No double-storage between Dhara and Oneiric.
+**Pre-flight gate (resolves OQ #2, with re-evaluation point tracked in OQ #5):** substrate_routes' storage layer lives in Oneiric's registry (not Dhara's). The HTTP routes read/write Oneiric's own state. Rationale: Oneiric is the persistence substrate per ADR-017; substrate state is Oneiric's responsibility. **Confirmed 2026-09-14.** No double-storage between Dhara and Oneiric. **Re-evaluation point:** OQ #5 tracks whether the HTTP gateway should live on Mahavishnu instead (Phase 11 gateway-pattern evaluation will revisit this).
 
 **Tasks:**
 
@@ -624,7 +712,9 @@ Phase ordering matters because the migrations cascade and each phase leaves the 
 
 **Tasks:**
 
-1. Delete `dhara/mcp/` directory (every file: `__init__.py`, `__main__.py`, `adapter_lookup.py`, `adapter_tools.py`, `agent_schema.py`, `auth.py`, `ecosystem_state.py`, `fastmcp_auth.py`, `kv_timeseries.py`, `middleware.py`, `profiles.py`, `server.py`, `server_core.py`, `signer_feed.py`, `skill_schema.py`, `substrate_routes.py`, `tools/`).
+1. Delete `dhara/mcp/` directory (every file: `__init__.py`, `__main__.py`, `adapter_lookup.py`, `adapter_tools.py`, `agent_schema.py`, `auth.py`, `ecosystem_state.py`, `fastmcp_auth.py`, `kv_timeseries.py`, `middleware.py`, `profiles.py`, `server.py`, `server_core.py`, `signer_feed.py`, `skill_schema.py`, `substrate_routes.py`, `tools/`). **Explicit documentation for files not in §4.2's destination table** (resolves Agent B's "odd" finding):
+   - **`adapter_lookup.py`** — internal lookup helper under `adapter_tools.py:adapter_lookup`; subsumed by Oneiric's `oneiric/mcp/tools/adapter_registry.py` port (Phase 1 task 3). Not exposed as an MCP tool; deletion-with-directory is correct.
+   - **`server.py`** — alternative CLI entry point or ASGI host variant; distinct from `server_core.py` (which becomes Oneiric's `oneiric/mcp/server_core.py`). Phase 1 explicitly does NOT use this factory path (see §4.6 for the verified pattern). Deletion-with-directory is correct.
 2. Delete `dhara/skills_signer/` (moved to Crackerjack in Phase 4).
 3. Verify `aiosqlite` usage: if only used by `dhara/mcp/`, drop from `pyproject.toml`. If used by engine code (likely, since `AsyncFileStorage` wraps `AsyncSqliteStorage`), keep it. Decision recorded in pyproject comments.
 4. Update `dhara/__init__.py` to drop MCP imports.
@@ -712,6 +802,63 @@ Phase ordering matters because the migrations cascade and each phase leaves the 
 
 **Phase 11 name-uniqueness re-verification.** Per §6 R7 (Phase 11 harness-portability checklist must re-verify name uniqueness *after* Dhara MCP is fully retired, not at Phase 11 ship time). The 197-tool Bodai MCP surface must be re-validated for Qwen Code's 63-char name truncation constraint once Dhara's tools are gone.
 
+### Phase 10 — Postgres consolidation hygiene
+
+**Goal:** Resolve dormant pgvector code paths in AkoSHA and Mahavishnu, fix Oneiric's invalid OTel default URL, and complete the sed-replication cleanup of `agent_schema.py` / `skill_schema.py` per §4.12. **Both pgvector decisions must land in the same release** — two components carrying dormant pgvector code paths is technical debt that blocks ADR 017's "Oneiric is the substrate" promise.
+
+**Pre-flight gate (resolves OQ #6):** The canonical `agent_schema.py` / `skill_schema.py` files now live in `mcp-common.canonical_schemas` (Phase 4 tasks 2 and 4 ship them there). Phase 10 task 2 then **deletes the sed-replicated copies** in AkoSHA / Session-Buddy / Mahavishnu and forces those components to import from the canonical home. Pre-flight: `grep -rn "agent_schema\|skill_schema" /Users/les/Projects/{mahavishnu,akosha,session-buddy}/` returns only `mcp-common` import paths (no local schema files).
+
+**Tasks:**
+
+1. **AkoSHA pgvector path — commit or delete.** Two options:
+   - **Option A (commit):** add `AKOSHA__STORAGE__HOT__PG_URL` to `akosha/.envrc.example` (a real local Postgres DSN the operator can override); fix the Oneiric upstream bug (`WITH (lists := 100)` rejected by Postgres 18) so `akosha/tests/integration/test_pgvector_hot_store_e2e.py` actually runs; commit a CI workflow that spins up Postgres 16 + 17 + 18 to verify all three. Production-grade option; honors the adapter-layer investment.
+   - **Option B (delete):** delete `akosha/storage/pgvector_hot_store.py` (241 LOC) + `akosha/tests/integration/test_pgvector_hot_store_e2e.py` + `akosha/tests/unit/test_main_start_hot_store_wiring.py`; remove `pgvector` from `akosha/settings/akosha.yaml:96-99`; remove any `pg_url` references from `akosha/akosha/config.py:84-89`. Reduces AkoSHA's surface to its actual production backend (DuckDB).
+   - **Default: Option B (delete).** Rationale: AkoSHA has shipped pgvector support since 0.17.x with no production adoption; the dormant code path is technical debt, not a feature. ADR 017 explicitly rejected "mandate Postgres for everything" (lines 122-128). Deletion aligns with the substrate framing. **Demonstrable by:** `grep -rn "pgvector\|pg_url" akosha/` returns 0 matches after the commit; AkoSHA's e2e test suite passes on DuckDB-only.
+2. **Mahavishnu pgvector path — commit or delete.** Two options:
+   - **Option A (commit):** wire `MAHAVISHNU_OTEL_STORAGE__CONNECTION_STRING` to a real Postgres URL in `mahavishnu/settings/local.yaml`; fix the Oneiric OTel default URL (task 3 below) so Mahavishnu's stricter validator accepts it; commit `mahavishnu/migrations/` Postgres DDL as the canonical Mahavishnu schema.
+   - **Option B (delete):** delete `mahavishnu/adapters/pgvector_adapter.py` (685 LOC) + `mahavishnu/tests/unit/test_adapters_pgvector_adapter.py` + `mahavishnu/examples/otel_pgvector_test.py`; remove `mahavishnu/migrations/` directory (Postgres DDL); remove `OTelStorageConfig` from `mahavishnu/core/config.py:782-918`; remove `OTelIngesterConfig.storage_type` from `mahavishnu/core/config.py:943-995`; simplify `OTelIngester._initialize_pgvector` to `OtelIngester._initialize_duckdb_only` (`mahavishnu/ingesters/otel_ingester.py:611-636`); remove pgvector branch from `_ingest_trace_pgvector` (`mahavishnu/ingesters/otel_ingester.py:754`).
+   - **Default: Option A (commit) — but ONLY if Phase 5 task 9 also commits to Postgres-only persistence** (Option B in Phase 5 task 9). Rationale: keeping pgvector code paths live while committing Postgres-only persistence is incoherent; if we choose Postgres as the substrate, the OTel traces should live there too. **If Phase 5 task 9 chose Option A (Dhara only):** Mahavishnu's pgvector path goes the same way (Option B / delete).
+3. **Fix Oneiric's invalid OTel default URL.** `oneiric/adapters/observability/settings.py:7-52` defaults `OTelStorageSettings.connection_string` to `"postgresql://postgres: postgres@localhost: 5432/otel"` — **spaces around the colon** that Mahavishnu's validator (`mahavishnu/core/config.py:880-916`) would reject. Two options:
+   - **Option A (fix the default):** change the default to `"postgresql://postgres:postgres@localhost:5432/otel"` (no spaces).
+   - **Option B (make Oneiric's `OTelStorageSettings` the canonical model Mahavishnu imports):** Mahavishnu imports `from oneiric.adapters.observability.settings import OTelStorageSettings` instead of redefining the field in `mahavishnu/core/config.py:782-918`. Validator is moved into Oneiric.
+   - **Default: Option B (canonical import).** Aligns with ADR 017's "Oneiric owns the substrate" framing; removes the duplicated config model.
+4. **Delete sed-replicated `agent_schema.py` / `skill_schema.py`** in AkoSHA / Session-Buddy / Mahavishnu. Files to delete:
+   - `akosha/mcp/agent_schema.py`, `akosha/mcp/skill_schema.py` (the canonical source — these are the files that AkoSHA owns today; deletion moves the canonical home to `mcp-common`)
+   - `mahavishnu/mcp/agent_schema.py`, `mahavishnu/mcp/skill_schema.py` (sed-replicated copies)
+   - `session-buddy/mcp/agent_schema.py`, `session-buddy/mcp/skill_schema.py` (sed-replicated copies)
+   - `crackerjack/mcp/agent_schema.py`, `crackerjack/mcp/skill_schema.py` (sed-replicated copies — Phase 4 ships the import-from-canonical-home change)
+   - All consumers update to `from mcp_common.canonical_schemas.agent import ...` and `from mcp_common.canonical_schemas.skill import ...`. **Demonstrable by:** `grep -rn "agent_schema\|skill_schema" /Users/les/Projects/{mahavishnu,akosha,session-buddy,crackerjack}/` returns only `mcp_common.canonical_schemas` import paths; each component's `list_agents` / `list_skills` / `get_agent` / `get_skill` tool continues to work (verified by Phase 1.5 task 3 e2e tests).
+5. Add e2e tests in `mcp-common/tests/integration/test_canonical_schemas_e2e.py` — assert the canonical schemas are importable from all four components and produce identical `AdapterMetadata` / `SkillMetadata` shapes for the same input. Demonstrable by the e2e suite passing on the four components' test matrix.
+
+**Integration contract:**
+- **Triggered from:** AkoSHA / Mahavishnu's CI run + Phase 5 task 9's substrate decision.
+- **Returns to / updates:** AkoSHA and Mahavishnu's pgvector paths are either live (with real Postgres URLs) or deleted; Oneiric's OTel default is fixed; the four sed-replicated schema files are gone.
+- **Demonstrable by:** `grep -rn "pgvector" /Users/les/Projects/{mahavishnu,akosha}/` returns 0 matches (Option B) OR a real CI workflow runs the pgvector e2e suite (Option A); `grep -rn "agent_schema\|skill_schema" /Users/les/Projects/{mahavishnu,akosha,session-buddy,crackerjack}/` returns only `mcp_common` import paths.
+- **Rollback signal:** e2e test fails, OR AkoSHA / Mahavishnu reports `entities_count == 0` after pgvector is committed live.
+- **Observability added:** the canonical-schemas e2e test surfaces schema-shape stability across components.
+
+### Phase 11 — Gateway pattern evaluation (post-Phase-10)
+
+**Goal:** After Phase 10 lands, evaluate whether to mount the four component libraries (Mahavishnu, AkoSHA, Crackerjack, Oneiric) under a single Mahavishnu MCP gateway process. **This is an evaluation, not a commitment.** The decision lives in a follow-up spec if the operator chooses to proceed.
+
+**Pre-flight gate:** Phase 10 must have shipped. Phase 1.5 wrapper consolidation must have shipped (so each component's surface is already mostly shared infrastructure, leaving only domain tools). Phase 5 task 9 substrate decision must be in (single-source persistence). Without these preconditions, Phase 11's evaluation cannot make a clean call.
+
+**Tasks:**
+
+1. **Document the gateway trade-offs** in `docs/adr/018-gateway-pattern-evaluation.md`. Three options:
+   - **Option A (status quo — four processes):** keep current architecture. Preserves independent release cadence for each component; per-component failure isolation. Costs: 4 launchd plists, 4 health endpoints, 4 mcp-common instantiations, 4 auth secret env vars.
+   - **Option B (gateway — one process, four libraries):** Mahavishnu becomes the only MCP server process; AkoSHA / Crackerjack / Oneiric expose their tools via `mcp_common.dispatch.mount(server=...)` registration. Single auth surface, single `/health`, single set of launchd plists. Costs: single point of failure, coordinated release for cross-component API changes, larger Mahavishnu binary.
+   - **Option C (hybrid — gateway for read-only, direct for stateful):** Mahavishnu gateways read-only wrapper tools (the Phase 1.5 consolidated wrappers); stateful domain tools stay in their own process. Splits the operational complexity cleanly: gateway handles the cross-cutting infra, components handle the stateful work.
+2. **Estimate the cost of each option** with concrete metrics: launchd plist count, /health endpoint count, auth secret env vars, OTel span propagation overhead, cross-component MCP call latency, operator muscle-memory disruption.
+3. **Recommend one option** based on the Phase 10 substrate outcomes (whether Postgres is the substrate or Dhara-as-engine is).
+4. **If Option B or C is recommended:** write a follow-up spec (`docs/superpowers/specs/2026-XX-XX-gateway-pattern-implementation.md`) describing the migration. The follow-up spec gets its own reviews and its own implementation plan.
+
+**Integration contract:**
+- **Triggered from:** ADR 018's option recommendation.
+- **Returns to / updates:** either "do nothing" (Option A) or a follow-up spec for Option B/C.
+- **Demonstrable by:** ADR 018 lands with a concrete option recommendation + metrics.
+- **Rollback signal:** none (evaluation, not a runtime feature).
+
 ## 6. Risks & Mitigations
 
 ### R1 — Hard cutover breaks internal callers of `mcp__dhara__*` tools
@@ -782,17 +929,37 @@ The `dhara_pusher.py` adapter is the most consequential: its purpose is to push 
 
 **Mitigation:** Phase 1 task 6 explicitly extends `HealthMonitor` with the primitives. The extension is small (~50 LOC) but is a precondition for the e2e test passing. Without it, Phase 1 is broken at runtime despite looking correct on paper.
 
+### R10 — Dormant pgvector code paths (AkoSHA + Mahavishnu)
+
+**Risk:** Both AkoSHA and Mahavishnu ship full pgvector code paths that are wired in code but disabled in committed config:
+- AkoSHA: `hot_store.pg_url: ""` (`akosha/settings/akosha.yaml:95`); `akosha/tests/integration/test_pgvector_hot_store_e2e.py` gated on `AKOSHA_TEST_PGVECTOR_URL` (header docstring notes Oneiric upstream bug `WITH (lists := 100)` rejected by Postgres 18 blocking the suite).
+- Mahavishnu: `otel_storage.enabled=false` (`mahavishnu/settings/mahavishnu.yaml:59`); `persistence.postgres_url=""` (`mahavishnu/settings/mahavishnu.yaml:144`).
+
+Carrying dormant pgvector code paths ages badly: the upstream APIs (asyncpg, pgvector extension versions, Oneiric adapter changes) drift; the integration test never runs; the CI never catches the rot. Two components with dormant pgvector also block ADR 017's "Oneiric is the substrate" framing — the substrate is shared, but each component re-implements its own pgvector layer.
+
+**Mitigation:** Phase 10 commits-or-deletes both pgvector paths in the same release. The decisions are coupled to Phase 5 task 9's substrate choice: if Phase 5 picks Option B (Postgres-only substrate), Mahavishnu keeps pgvector live (commit Option A in Phase 10); if Phase 5 picks Option A (Dhara-only substrate), Mahavishnu deletes pgvector (delete Option B in Phase 10). AkoSHA's decision defaults to delete (no production adoption since 0.17.x; ADR 017 explicitly rejected mandate-Postgres). Phase 10's e2e tests + integration tests catch the rot before it ships.
+
+### R11 — Mahavishnu dual-write mode (`persistence.write_mode: "dual"`)
+
+**Risk:** `mahavishnu/settings/mahavishnu.yaml:140` shows `persistence.write_mode: "dual"` — Mahavishnu writes to BOTH Dhara (legacy) AND Postgres simultaneously. Dual-write is a migration state, not a steady state. **Without Phase 5 task 9 committing a single-source decision, the spec's "decompose Dhara's MCP" goal is undermined** — Dhara's substrate role is not cleanly retired while Mahavishnu keeps dual-writing to it. Operators who read the spec and try to retire Dhara-as-substrate will find Mahavishnu still writing there.
+
+**Mitigation:** Phase 5 task 9 commits to single-source persistence (default Option B = Postgres-only, per ADR 017 substrate ownership). Phase 5 removes `write_mode: "dual"` from `mahavishnu/settings/mahavishnu.yaml:140`; Phase 5 documents the Option A (Dhara-only) fallback path in `docs/ops/persistence-modes.md` for operators who cannot migrate to Postgres immediately. Phase 5's e2e tests + the Dhara-as-engine connection (`dhara db start --port 8685`) demonstrate that the engine stays available for non-Mahavishnu consumers.
+
 ## 7. Open Questions
 
-All resolved 2026-09-14:
+All resolved 2026-09-14, plus OQ #5 / OQ #6 added 2026-09-14 from the topology review:
 
-1. **Dhara's `dhara/skills_signer/` directory fate.** **Resolved: move to Crackerjack in Phase 4, then delete Dhara's copy.** Subsumed by Crackerjack's copy; no dual-location reason. Phase 4 task 6 implements this.
+1. **Dhara's `dhara/skills_signer/` directory fate.** **Resolved: move to `mcp-common` in Phase 4, then delete Dhara's copy.** The ed25519 signer is a cryptographic primitive shared by both agent/skill catalogs; cross-cutting infra lives in `mcp-common`, not in any single application component. Phase 4 task 5 + task 6 implement this.
 
-2. **`dhara/mcp/substrate_routes.py` storage location.** **Resolved: Oneiric owns the storage** (per ADR-017 framing). Oneiric is the persistence substrate; substrate state is Oneiric's responsibility. No double-storage between Dhara and Oneiric. Phase 7 implements this.
+2. **`dhara/mcp/substrate_routes.py` storage location.** **Resolved: Oneiric owns the storage** (per ADR-017 framing). Oneiric is the persistence substrate; substrate state is Oneiric's responsibility. No double-storage between Dhara and Oneiric. Phase 7 implements this. **Re-evaluation point:** OQ #5 below tracks whether the HTTP gateway should live on Mahavishnu instead (Phase 11 gateway-pattern evaluation).
 
 3. **Oneiric MCP server port.** **Resolved: 8683** (Dhara's old port, reclaimed). Per `BODAI_REPO_REGISTRY.md` port conventions: Akosha=8682, Mahavishnu=8680, Crackerjack=8676, Session-Buddy=8678. 8683 was Dhara's port; reclaiming it preserves operator muscle memory. The Dhara plist on operator machines is retired as part of Phase 8 (R4 mitigation).
 
 4. **`dhara/mcp/__main__.py` fate.** **Resolved: delete in Phase 8.** No stub release cycle. Hard cutover per user decision. The directory `dhara/mcp/` is deleted whole; no per-file ceremony.
+
+5. **`substrate_routes` HTTP gateway location — Oneiric vs Mahavishnu.** **Resolved for Phase 7: Oneiric owns the HTTP gateway** (per OQ #2). **Re-evaluation point for Phase 11:** Phase 11's gateway-pattern evaluation (newly added) revisits whether the HTTP gateway should live on Mahavishnu instead of Oneiric. If Mahavishnu becomes the gateway for read-only wrappers (Phase 11 Option C), it may make sense to also move the substrate routes there for operational consistency. Decision deferred to Phase 11 ADR-018.
+
+6. **`agent_schema.py` / `skill_schema.py` canonical location.** **Resolved: `mcp-common.canonical_schemas`.** AkoSHA's `agent_schema.py` and `skill_schema.py` are currently marked "canonical source" in their docstrings (per `akosha/mcp/agent_schema.py`'s comment); the other three components sed-replicate. This DRY violation is fixed by Phase 4 tasks 2 + 4 (move canonical files to `mcp-common`) and Phase 10 task 2 (delete the sed-replicated copies in AkoSHA / Session-Buddy / Mahavishnu, with Crackerjack following Phase 4's import-from-canonical-home change).
 
 ## 8. What Changes for Operators
 
