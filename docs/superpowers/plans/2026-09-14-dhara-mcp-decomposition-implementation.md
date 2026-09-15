@@ -240,15 +240,34 @@ def _normalize(harness: str, raw: dict[str, Any]) -> CanonicalEnvelope:
 
 
 def _publish(channel: str, envelope: CanonicalEnvelope) -> None:
-    """Fire-and-forget publish to oneiric.adapters.queue.redis_streams.
+    """Publish to oneiric.adapters.queue.redis_streams.
 
-    Failures are swallowed (sync decisions don't depend on the bus).
+    Per spec §4.8 "Bus publish error tracking": failure modes (Redis
+    Streams unreachable, adapter missing) increment
+    `hook_bridge_feed.errors_total` (and the sub-counter
+    `publish_failures_total`) BEFORE the exception is swallowed. The
+    bridge remains non-blocking on the hook hot path; tracking failures
+    is observational.
+
+    Refs: docs/superpowers/specs/2026-09-14-dhara-mcp-decomposition-design.md §4.8.
     """
     try:
         from oneiric.adapters.bootstrap import queued_publisher  # type: ignore
         queued_publisher().publish(channel=channel, payload=envelope.__dict__)
-    except Exception:
-        pass  # fire-and-forget; never block the hook caller
+    except Exception as exc:
+        # Track the failure on the bridge's own ComponentHealth feed
+        # (created in OneiricMCPServer._register_tools()). Silent
+        # no-op is forbidden per mcp-backend-wiring-discipline.md.
+        try:
+            from mahavishnu.bodai_hook_bridge import _health_monitor  # type: ignore
+            feed = _health_monitor.get_feed("hook_bridge_feed")
+            if feed is not None:
+                feed.errors_total = getattr(feed, "errors_total", 0) + 1
+                feed.publish_failures_total = getattr(feed, "publish_failures_total", 0) + 1
+        except Exception:
+            pass  # feed tracking itself may not exist before first MCP tool registration; do not block
+        # Do not block the hook caller; bus publish failure is observation-only.
+        return
 
 
 def _channel_for(event: str) -> str:
@@ -261,7 +280,7 @@ def handle_post_tool_use(env: CanonicalEnvelope) -> int:
     """Existing logic from bodai-activity-post-tool-use.py — drains the queue
     and emits one ``[component] event_type key=value`` line per envelope that
     has arrived since the last run."""
-    sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent / ".claude" / "hooks"))
+    sys.path.insert(0, str(Path(__file__).resolve().parent.parent / ".claude" / "hooks"))
     try:
         from _hook_io import read_session_payload
         payload = read_session_payload()
@@ -274,7 +293,7 @@ def handle_post_tool_use(env: CanonicalEnvelope) -> int:
 def handle_session_start(env: CanonicalEnvelope) -> int:
     """Existing logic from worktree-session-isolation.py (SessionStart arm) +
     jot-session-start.py — auto-provisions worktree, captures jot session info."""
-    sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent / ".claude" / "hooks"))
+    sys.path.insert(0, str(Path(__file__).resolve().parent.parent / ".claude" / "hooks"))
     try:
         from _hook_io import read_session_payload
         # ... original SessionStart body preserved verbatim ...
@@ -740,53 +759,78 @@ Co-Authored-By: Claude Code <noreply@anthropic.com>"
 
 - [ ] **Step 1: Inventory all JSON-file queue writers and readers**
 
+Per multi-agent review (Data-retention H4): extend the grep scope to all file types and operator-global locations, not just `.py` files under `mahavishnu/`:
+
 Run:
 ```bash
-grep -rn "bodai-event-queue\.json\|MAHAVISHNU_BODAI_QUEUE_PATH" /Users/les/Projects/mahavishnu/mahavishnu/ --include="*.py"
+grep -rn "bodai-event-queue\|MAHAVISHNU_BODAI_QUEUE_PATH" /Users/les/Projects/mahavishnu/ \
+  --include="*.py" --include="*.sh" --include="*.md" --include="*.json" \
+  --include="*.yaml" --include="*.yml" --include="*.toml" \
+  | grep -v ".venv/" | grep -v ".git/hooks/"
+grep -rn "bodai-event-queue\|MAHAVISHNU_BODAI_QUEUE_PATH" \
+  /Users/les/.mahavishnu/ /Users/les/.qwen/hooks/ 2>&1 | head -20
 ```
-Expected: hits in jot/drain.py, jot_tools.py, and any remaining references. (After Task 2, the subscriber is already a bridge.)
+Expected: hits in `mahavishnu/jot/drain.py`, `mahavishnu/mcp/tools/jot_tools.py`, the seven (now-bridge) hook files, and possibly `~/.mahavishnu/bodai-event-queue.json` runtime state. After Task 2, the subscriber is already a bridge.
 
-- [ ] **Step 2: Update each producer to publish to the bus**
+- [ ] **Step 2: Update each producer to publish to the bus (no JSON-file fallback)**
 
-For each producer file, replace the JSON-file write with a bus publish:
+For each producer file, replace the JSON-file write with a direct bus publish via `oneiric.adapters.bootstrap.queued_publisher()`. **No `MAHAVISHNU_BODAI_QUEUE_PATH` env var — that path is being deleted, not re-routed.** Per multi-agent review (Plan M2):
 
 ```python
-# Before:
+# Before (somewhere in jot/drain.py or event tools):
 import json
 from pathlib import Path
 
-queue_path = Path(os.environ.get("MAHAVISHNU_BODAI_QUEUE_PATH", "~/.mahavishnu/bodai-event-queue.json")).expanduser()
+queue_path = Path("~/.mahavishnu/bodai-event-queue.json").expanduser()
 queue_path.parent.mkdir(parents=True, exist_ok=True)
 queue_path.write_text(json.dumps(envelope) + "\n", append=True)
 
-# After:
+# After (direct bus publish — no JSON-file fallback):
 try:
     from oneiric.adapters.bootstrap import queued_publisher
     queued_publisher().publish(channel="bodai.hooks.<event>", payload=envelope)
-except Exception:
-    pass  # fire-and-forget
+except Exception as exc:
+    # Track publish-side failure on the producer's own ComponentHealth feed
+    # (see spec §4.8 "Bus publish error tracking").
+    raise  # let the producer surface the error; the bridge swallows via its own tracker
 ```
 
-- [ ] **Step 3: Update each reader to consume from the bus (or REPL-style poll)**
+The `MAHAVISHNU_BODAI_QUEUE_PATH` env-var path is removed entirely (per R12 mitigation). The hard cutover stance (per spec §4.13.4) holds — JSON-file readers keep working only until Phase 12a Task 5's same commit retires them.
 
-For each reader file, replace file reads with a bus subscription. For the `bodai-activity-subscriber.py` pattern (which the bridge now drives), the bus reader lives at `mahavishnu/bus_subscribers/jot_drainer.py`:
+- [ ] **Step 3: Update each reader to consume from the bus directly**
+
+Per multi-agent review (MCP-integration H5): the plan previously invented `mahavishnu/bus_subscribers/jot_drainer.py` as a separate package. The spec names `oneiric.adapters.queue.redis_streams` directly; no intermediate `bus_subscribers/` package. Adopt the spec's exact module path.
+
+For each reader file, replace file reads with a direct bus subscription using `oneiric.adapters.bootstrap.queued_publisher().subscribe()` (which is the canonical entry point per spec §4.13 / oneiric bootstrap):
 
 ```python
-# mahavishnu/bus_subscribers/jot_drainer.py
+# mahavishnu/jot/drain.py (refactored — replaces the JSON-file poll loop)
 from __future__ import annotations
 import asyncio
-import os
 
 async def drain_jot_events() -> None:
-    """Subscribe to bus channel 'bodai.hooks.post-tool-use' and drain to jot store."""
+    """Subscribe to bus channel 'bodai.hooks.post-tool-use' and drain to jot store.
+
+    Per spec §4.8 subscriber-side per-feed signals: this loop owns its own
+    ComponentHealth feed ('jot_drainer_feed') with entities_count,
+    last_updated_timestamp, errors_total, cycles_total. A dead consumer
+    must not fill the bus silently.
+    """
     from oneiric.adapters.bootstrap import queued_publisher
+    from mahavishnu.health_monitor_registry import register_subscriber_feed
+    feed = register_subscriber_feed("jot_drainer_feed")
     pub = queued_publisher()
     async for env in pub.subscribe(channel="bodai.hooks.post-tool-use"):
-        # ... emit one [component] event_type key=value line per envelope ...
-        pass
+        try:
+            feed.cycles_total = getattr(feed, "cycles_total", 0) + 1
+            # ... emit one [component] event_type key=value line per envelope ...
+            feed.entities_count = getattr(feed, "entities_count", 0) + 1
+            feed.last_updated_timestamp = _now()
+        except Exception:
+            feed.errors_total = getattr(feed, "errors_total", 0) + 1
 ```
 
-(Migrate any ad-hoc consumers from `mahavishnu/jot/drain.py` to use this subscriber; the old file poll loop dies.)
+The reader loop runs as a daemon process (`mahavishnu jot drain --daemon`) or a Typer sub-command under `mahavishnu jot`. It does NOT live under a new package.
 
 - [ ] **Step 4: Delete the JSON-file path entirely**
 
