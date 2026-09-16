@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import json
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, datetime
 from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock, patch
@@ -106,19 +106,17 @@ def test_engine_helpers_and_paths() -> None:
     with pytest.raises(typer.Exit): m._fetch_engine_metrics("postgres", None, "url", None)
 
 
-def test_bodai_helpers_and_loaders(tmp_path: Path) -> None:
-    missing = tmp_path / "missing"
-    assert m._load_bodai_queue(missing) == [] and m._load_bodai_state(missing) is None
-    q = tmp_path / "q"; q.write_text("{}")
-    s = tmp_path / "s"; s.write_text("[]")
-    assert m._load_bodai_queue(q) == [] and m._load_bodai_state(s) is None
-    assert m._parse_bodai_timestamp(0) is not None
-    assert m._parse_bodai_timestamp("bad") is None
-    ev = [{"headers":{"source":"akosha","timestamp":datetime.now(UTC).isoformat()},"payload":{"workflow_id":"w"},"topic":"t"}]
-    assert m._component_counts(ev)["akosha"] == 1
-    assert m._component_last_seen(ev)["akosha"] is not None
-    m._render_recent_event(ev); m._render_recent_event([{"topic":"x","payload":{}}])
-    m._render_filter_note(1, "akosha")
+def test_bodai_helpers_and_loaders() -> None:
+    """Removed: the bodai event-bridge helpers (``_load_bodai_queue``,
+    ``_load_bodai_state``, ``_parse_bodai_timestamp``, ``_component_counts``,
+    ``_component_last_seen``, ``_render_recent_event``, ``_render_filter_note``)
+    no longer exist in ``mahavishnu/metrics_cli.py``. The pre-event-bridge
+    migration prototype they targeted was deleted and no production code path
+    reproduces them. Skipped here so the rest of the file stays green; if a
+    successor surface is reintroduced, this test should be restored against
+    the new API. See commit message for the deletion rationale.
+    """
+    pytest.skip("bodai event-bridge helpers removed; see commit message")
 
 
 def test_dhara_helpers_and_renderers() -> None:
