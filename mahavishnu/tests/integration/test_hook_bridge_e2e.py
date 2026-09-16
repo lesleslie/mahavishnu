@@ -137,7 +137,6 @@ def hook_state(
     repo_root = str(Path(__file__).resolve().parents[3])
     monkeypatch.setenv("CLAUDE_PROJECT_DIR", repo_root)
     for key in (
-        "MAHAVISHNU_BODAI_QUEUE_PATH",
         "MAHAVISHNU_HOME",
         "MAHAVISHNU_BODAI_DEBUG",
     ):

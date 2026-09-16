@@ -6,10 +6,18 @@ Wraps existing ``broadcast_workflow_started`` / ``broadcast_workflow_completed``
 Mahavishnu event publisher (an
 :class:`OneiricEventPublisherProtocol` implementation).
 
-The result: events appear in the unified Bodai queue
-(``~/.mahavishnu/bodai-event-queue.json``) for consumption by ``/bodai-status``
-and the PostToolUse hook, in addition to the existing WebSocket broadcasts
-(which are kept for non-Claude consumers).
+The result: workflow events appear on the unified Bodai EventBridge
+stream (Redis Streams via Oneiric) for consumption by ``/bodai-status``,
+the PostToolUse hook, and any other Oneiric-aware subscriber — in
+addition to the existing WebSocket broadcasts (which are kept for
+non-Claude consumers).
+
+The pre-Phase-12a ``~/.mahavishnu/bodai-event-queue.json`` file path is
+NOT a destination here — that legacy JSON-file queue was retired in
+Phase 12a Task 5 in favour of the Oneiric bus. This module publishes
+to the bus; the queue file is the historical daemon-only artifact in
+:mod:`mahavishnu.core.events.bodai_subscriber` (kept for backward
+compatibility with long-running observer scripts).
 
 Public API
 ----------

@@ -1,18 +1,12 @@
 """Bodai EventBridge subscriber — Mahavishnu-side consumer of Oneiric EventBridge.
 
-This module is the Mahavishnu-side consumer for the unified Bodai activity
-event stream. It consumes ``oneiric.runtime.events.EventEnvelope`` objects
-from Oneiric EventBridge (Redis Streams transport) and persists them to a
-local queue file at ``~/.mahavishnu/bodai-event-queue.json`` (atomic write,
-cap at 100 entries, oldest dropped first).
-
-Phase 5's ``.claude/hooks/mahavishnu-activity-stream.py`` is the
-WebSocket-based transition state (Mahavishnu-only). This module is the
-EventBridge-based steady state, replacing the Phase 5 hook in Phase 6.4
-of the Bodai observability plan. See
-``docs/plans/2026-07-11-phase-6-bodai-observability.md`` and
-``.claude/decisions/bodai-observability-pattern.md`` for the operational
-pattern this module implements.
+Phase 12a (2026-09) reshaped this module's primary role. The one-shot
+reader (:func:`read_bodai_events_since`) is the production path used
+by the Claude PostToolUse hook and ``/bodai-status`` to surface fresh
+Bodai activity. The long-running daemon (:func:`subscribe_to_bodai_events`)
+remains available for backward compatibility with any observer script
+that wants continuous subscription + local queue-file persistence —
+no production Claude hook or CLI invokes it after Task 5's cutover.
 
 The canonical envelope is the Oneiric msgspec ``EventEnvelope``
 (``oneiric.runtime.events.EventEnvelope``) — fields are ``topic``,
@@ -30,6 +24,12 @@ Decoding priority per Redis-stream message:
    is enabled, decode the raw blob via the Pydantic
    ``mahavishnu.core.events.envelope.EventEnvelope.from_json`` and hand
    the Pydantic envelope to the callback unchanged.
+
+Phase 5's ``.claude/hooks/mahavishnu-activity-stream.py`` was the
+WebSocket-based transition state (Mahavishnu-only) and is also retired.
+See ``docs/plans/2026-07-11-phase-6-bodai-observability.md`` and
+``.claude/decisions/bodai-observability-pattern.md`` for the operational
+pattern this module implements.
 """
 
 from __future__ import annotations
