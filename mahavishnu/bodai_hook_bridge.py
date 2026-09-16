@@ -139,15 +139,43 @@ def _publish(*, channel: str, envelope: CanonicalEnvelope) -> None:
             # the bus publish be non-blocking on the caller.
             asyncio.run(coro)
 
+    async def _init_and_publish() -> None:
+        """Single-coroutine init → publish.
+
+        coredis 6.x binds the connection pool to the event loop.
+        ``asyncio.run(coro)`` creates a fresh loop for each call; if
+        ``init()`` runs in loop A (where ``__aenter__`` initialises
+        the pool), and ``publish()`` runs in loop B (where the pool
+        is uninitialised for this context), the publish raises
+        ``RuntimeError: Connection pool is not initialized or has
+        exited``. Keeping both calls in one coroutine + one
+        ``asyncio.run`` keeps the pool initialisation alive.
+        """
+        init = getattr(adapter, "init", None)
+        if init is not None:
+            await init()
+        await adapter.publish(channel=channel, payload=envelope.__dict__)
+
     try:
         from oneiric.adapters.bootstrap import queued_publisher
-
-        adapter = queued_publisher()
-        # Sequence: init (if needed) → publish. Both may be async.
-        _drive(getattr(adapter, "init", lambda: None)())
-        _drive(
-            adapter.publish(channel=channel, payload=envelope.__dict__)
+        from oneiric.adapters.queue.redis_streams import (
+            RedisStreamsQueueSettings,
+            STREAM_NAME as _DEFAULT_QUEUE_STREAM,
         )
+
+        # The bus reader (``read_bodai_events_since``) defaults to the
+        # ``bodai:events`` stream. The oneiric queue adapter defaults
+        # to ``oneiric-queue`` — different stream, so bridges would
+        # publish successfully but the slash command (``/bodai-status``)
+        # would never see them. Override the adapter's stream to
+        # ``bodai:events`` so producer + consumer agree.
+        if _DEFAULT_QUEUE_STREAM != "bodai:events":
+            adapter = queued_publisher(
+                settings=RedisStreamsQueueSettings(stream="bodai:events"),
+            )
+        else:
+            adapter = queued_publisher()
+        _drive(_init_and_publish())
     except Exception:
         logger.exception(
             "hook_bridge: publish to channel=%r failed; "
