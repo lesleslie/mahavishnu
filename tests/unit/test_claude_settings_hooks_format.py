@@ -103,11 +103,32 @@ def test_project_settings_no_flat_event_keys() -> None:
     )
 
 
+def _expand_project_dir(token: str) -> str:
+    """Expand ``$CLAUDE_PROJECT_DIR`` to the test's known PROJECT_ROOT.
+
+    Per ``claude-code-hook-commands-use-claude-project-dir`` — hook
+    commands anchor BOTH the python interpreter AND the script path
+    with ``$CLAUDE_PROJECT_DIR`` so sibling-repo CWD changes don't
+    break the hook (and so hardcoded ``/Users/<user>/...`` paths
+    don't get baked into the project). Claude Code sets the env var
+    at runtime; the test mirrors that expansion for the existence
+    check.
+
+    Only ``$CLAUDE_PROJECT_DIR`` is expanded — other env vars are
+    left untouched (Claude Code's runtime expansion is responsible
+    for the rest, but PROJECT_ROOT is the only one this project's
+    conventions require).
+    """
+    return token.replace("$CLAUDE_PROJECT_DIR", str(PROJECT_ROOT))
+
+
 def test_project_settings_hook_commands_resolve() -> None:
     """Every hook command's script path must exist on disk.
 
     Relative paths are resolved against the repo root (Claude Code runs
-    the hook with CWD at the project root).
+    the hook with CWD at the project root). Tokens starting with
+    ``$CLAUDE_PROJECT_DIR`` are expanded to the test's PROJECT_ROOT
+    before the interpreter/script classification runs.
     """
     settings = _load_settings()
     hooks = settings.get("hooks")
@@ -127,19 +148,26 @@ def test_project_settings_hook_commands_resolve() -> None:
                 cmd = handler.get("command") if isinstance(handler, dict) else None
                 if not isinstance(cmd, str):
                     continue
-                # Take the first whitespace-separated token; commands may
-                # have args appended (e.g. ``...py session-start``).
-                first_token = cmd.split()[0]
-                # Strip a leading ``python3`` / ``python`` interpreter
-                # — the second token is the actual script.
-                tokens = cmd.split()
-                script_token = (
-                    tokens[1]
-                    if tokens[0] in {"python", "python3"} and len(tokens) > 1
-                    else first_token
-                )
-                # Absolute paths are resolved as-is; relative paths are
-                # resolved against the project root (Claude Code's CWD).
+                # Expand ``$CLAUDE_PROJECT_DIR`` on every token before
+                # classification so the interpreter/script heuristic
+                # operates on the resolved paths Claude Code will see
+                # at runtime.
+                tokens = [_expand_project_dir(t) for t in cmd.split()]
+                if not tokens:
+                    continue
+                # Skip a leading interpreter (literal ``python`` /
+                # ``python3`` OR a path ending in ``/python`` /
+                # ``/python3`` — the basename check covers both
+                # ``python script.py`` and
+                # ``/abs/path/python3 /abs/path/script.py``).
+                first_basename = Path(tokens[0]).name
+                if first_basename in {"python", "python3"} and len(tokens) > 1:
+                    script_token = tokens[1]
+                else:
+                    script_token = tokens[0]
+                # Absolute paths are resolved as-is; relative paths
+                # are resolved against the project root (Claude Code's
+                # CWD when the hook fires).
                 script_path = Path(script_token)
                 if not script_path.is_absolute():
                     script_path = PROJECT_ROOT / script_path
