@@ -55,13 +55,10 @@ class TestDharaThinClientInit:
 class TestExecute:
     async def test_execute_insert_returns_rowcount_and_status(self):
         client = DharaThinClient("http://localhost")
-        mock_response = MagicMock()
-        mock_response.status_code = 200
-        mock_response.json.return_value = {"result": {"rowcount": 1, "status": "INSERT"}}
-        mock_response.raise_for_status = MagicMock()
-
         client._client = AsyncMock()
-        client._client.post = AsyncMock(return_value=mock_response)
+        client._client.call_tool = AsyncMock(
+            return_value={"rowcount": 1, "status": "INSERT"}
+        )
 
         result = await client.execute(
             "INSERT INTO tenants(id, name) VALUES ($1, $2)",
@@ -71,12 +68,10 @@ class TestExecute:
 
     async def test_execute_update(self):
         client = DharaThinClient("http://localhost")
-        mock_response = MagicMock()
-        mock_response.json.return_value = {"result": {"rowcount": 3, "status": "UPDATE"}}
-        mock_response.raise_for_status = MagicMock()
-
         client._client = AsyncMock()
-        client._client.post = AsyncMock(return_value=mock_response)
+        client._client.call_tool = AsyncMock(
+            return_value={"rowcount": 3, "status": "UPDATE"}
+        )
 
         result = await client.execute(
             "UPDATE workflows SET status = $1 WHERE tenant_id = $2",
@@ -86,57 +81,51 @@ class TestExecute:
 
     async def test_execute_delete(self):
         client = DharaThinClient("http://localhost")
-        mock_response = MagicMock()
-        mock_response.json.return_value = {"result": {"rowcount": 0, "status": "DELETE"}}
-        mock_response.raise_for_status = MagicMock()
-
         client._client = AsyncMock()
-        client._client.post = AsyncMock(return_value=mock_response)
+        client._client.call_tool = AsyncMock(
+            return_value={"rowcount": 0, "status": "DELETE"}
+        )
 
         result = await client.execute("DELETE FROM adapters WHERE id = $1", {"id": "x"})
         assert result == {"rowcount": 0, "status": "DELETE"}
 
     async def test_execute_without_params(self):
         client = DharaThinClient("http://localhost")
-        mock_response = MagicMock()
-        mock_response.json.return_value = {"result": {"rowcount": 1, "status": "INSERT"}}
-        mock_response.raise_for_status = MagicMock()
-
         client._client = AsyncMock()
-        client._client.post = AsyncMock(return_value=mock_response)
+        client._client.call_tool = AsyncMock(
+            return_value={"rowcount": 1, "status": "INSERT"}
+        )
 
         await client.execute("INSERT INTO foo DEFAULT VALUES")
 
-        call_kwargs = client._client.post.call_args
-        body = call_kwargs[1]["json"]
-        assert body["name"] == "sql_proxy_execute"
+        call_args = client._client.call_tool.call_args
+        tool_name, arguments = call_args.args
+        assert tool_name == "sql_proxy_execute"
         # When params is None we still pass an empty dict so the proxy gets
         # a stable payload shape.
-        assert body["arguments"]["sql"] == "INSERT INTO foo DEFAULT VALUES"
-        assert body["arguments"]["params"] == {}
+        assert arguments["sql"] == "INSERT INTO foo DEFAULT VALUES"
+        assert arguments["params"] == {}
 
     async def test_execute_forwards_params(self):
         client = DharaThinClient("http://localhost")
-        mock_response = MagicMock()
-        mock_response.json.return_value = {"result": {"rowcount": 1, "status": "INSERT"}}
-        mock_response.raise_for_status = MagicMock()
-
         client._client = AsyncMock()
-        client._client.post = AsyncMock(return_value=mock_response)
+        client._client.call_tool = AsyncMock(
+            return_value={"rowcount": 1, "status": "INSERT"}
+        )
 
         await client.execute(
             "INSERT INTO workflows(id, status) VALUES ($1, $2)",
             {"id": "wf1", "status": "pending"},
         )
 
-        call_kwargs = client._client.post.call_args
-        body = call_kwargs[1]["json"]
-        assert body["arguments"]["params"] == {"id": "wf1", "status": "pending"}
+        call_args = client._client.call_tool.call_args
+        arguments = call_args.args[1]
+        assert arguments["params"] == {"id": "wf1", "status": "pending"}
 
     async def test_execute_connection_failure_raises_proxy_error(self):
         client = DharaThinClient("http://localhost")
         client._client = AsyncMock()
-        client._client.post = AsyncMock(
+        client._client.call_tool = AsyncMock(
             side_effect=httpx.ConnectError("connection refused"),
         )
 
@@ -163,54 +152,41 @@ class TestExecute:
 class TestQuery:
     async def test_query_returns_rows_as_dicts(self):
         client = DharaThinClient("http://localhost")
-        mock_response = MagicMock()
-        mock_response.status_code = 200
-        mock_response.json.return_value = {
-            "result": {"rows": [{"id": "1", "name": "alpha"}, {"id": "2", "name": "beta"}]}
-        }
-        mock_response.raise_for_status = MagicMock()
-
         client._client = AsyncMock()
-        client._client.post = AsyncMock(return_value=mock_response)
+        client._client.call_tool = AsyncMock(
+            return_value={"rows": [{"id": "1", "name": "alpha"}, {"id": "2", "name": "beta"}]}
+        )
 
         rows = await client.query("SELECT id, name FROM tenants")
         assert rows == [{"id": "1", "name": "alpha"}, {"id": "2", "name": "beta"}]
 
     async def test_query_empty_result(self):
         client = DharaThinClient("http://localhost")
-        mock_response = MagicMock()
-        mock_response.json.return_value = {"result": {"rows": []}}
-        mock_response.raise_for_status = MagicMock()
-
         client._client = AsyncMock()
-        client._client.post = AsyncMock(return_value=mock_response)
+        client._client.call_tool = AsyncMock(return_value={"rows": []})
 
         rows = await client.query("SELECT * FROM tenants WHERE 1=0")
         assert rows == []
 
     async def test_query_forwards_params(self):
         client = DharaThinClient("http://localhost")
-        mock_response = MagicMock()
-        mock_response.json.return_value = {"result": {"rows": []}}
-        mock_response.raise_for_status = MagicMock()
-
         client._client = AsyncMock()
-        client._client.post = AsyncMock(return_value=mock_response)
+        client._client.call_tool = AsyncMock(return_value={"rows": []})
 
         await client.query(
             "SELECT id FROM workflows WHERE tenant_id = $1",
             {"tenant_id": "t1"},
         )
 
-        call_kwargs = client._client.post.call_args
-        body = call_kwargs[1]["json"]
-        assert body["name"] == "sql_proxy_query"
-        assert body["arguments"]["params"] == {"tenant_id": "t1"}
+        call_args = client._client.call_tool.call_args
+        tool_name, arguments = call_args.args
+        assert tool_name == "sql_proxy_query"
+        assert arguments["params"] == {"tenant_id": "t1"}
 
     async def test_query_connection_failure_raises_proxy_error(self):
         client = DharaThinClient("http://localhost")
         client._client = AsyncMock()
-        client._client.post = AsyncMock(
+        client._client.call_tool = AsyncMock(
             side_effect=httpx.ConnectError("nope"),
         )
 
