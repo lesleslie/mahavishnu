@@ -81,6 +81,21 @@ class HealthResponse(BaseModel):
     Purpose: "Is this service running?"
     Called by: Platform health checks (Cloud Run, Kubernetes, etc.)
     Frequency: Every 10-30 seconds by platform
+
+    Phase 4 (commit forthcoming): the body delegates per-feed evaluation
+    to ``mcp_common.health.aggregator.aggregate_feed_states`` (mirrors
+    session-buddy's ``server_optimized.py:316-407`` and akosha's
+    ``mcp/server.py:764-949``). The aggregator's worst-case verdict is
+    mapped to ``status`` (HealthStatus.OK for ``healthy``/``warming_up``,
+    HealthStatus.DEGRADED for ``degraded``, HealthStatus.UNHEALTHY for
+    ``failed``) and surfaced alongside per-feed detail.
+
+    Backward compatibility: the ``status``, ``service``, ``version``,
+    ``uptime_seconds``, ``timestamp`` fields are unchanged from the
+    pre-Phase-4 schema. The new ``feed_states``, ``worst_status``,
+    ``reason_codes``, ``aggregate_duration_ms`` fields default to
+    ``None`` / empty so existing API consumers parsing the legacy
+    five-field shape still work.
     """
 
     status: HealthStatus = Field(description="Overall health status")
@@ -89,6 +104,42 @@ class HealthResponse(BaseModel):
     uptime_seconds: float = Field(description="Service uptime in seconds")
     timestamp: datetime = Field(
         default_factory=lambda: datetime.now(UTC), description="Response timestamp"
+    )
+    # Phase 4 aggregator rollup (optional; populated when the
+    # ``/health`` route delegates to ``aggregate_mahavishnu_health``).
+    worst_status: str | None = Field(
+        default=None,
+        description=(
+            "Worst-case ``mcp_common.health.feed.StatusValue`` across "
+            "all feeds (``healthy``/``warming_up``/``degraded``/``failed``). "
+            "Set when the route delegates to the aggregator."
+        ),
+    )
+    feed_states: dict[str, dict[str, object]] = Field(
+        default_factory=dict,
+        description=(
+            "Per-feed verdicts keyed by feed name. Each entry is the "
+            "``FeedSnapshot`` dict shape: ``status`` (StatusValue str), "
+            "``healthy`` (bool), ``reason_codes`` (list[ReasonCode str]). "
+            "Set when the route delegates to the aggregator."
+        ),
+    )
+    reason_codes: list[str] = Field(
+        default_factory=list,
+        description=(
+            "Worst-feed's ``ReasonCode`` strings (deduped union across "
+            "tied worst-status feeds). Empty when the route doesn't "
+            "delegate to the aggregator."
+        ),
+    )
+    aggregate_duration_ms: float | None = Field(
+        default=None,
+        description=(
+            "Wall-time duration of the ``aggregate_feed_states()`` call "
+            "in milliseconds. Operators can graph p50/p95/p99 from the "
+            "``mcp_common_health_aggregate_duration_ms`` histogram to "
+            "track /health latency."
+        ),
     )
 
     model_config = {
@@ -100,6 +151,26 @@ class HealthResponse(BaseModel):
                     "version": "0.3.2",
                     "uptime_seconds": 3600,
                     "timestamp": "2026-02-27T14:00:00Z",
+                    "worst_status": "healthy",
+                    "feed_states": {
+                        "storage": {
+                            "status": "healthy",
+                            "healthy": True,
+                            "reason_codes": [],
+                        },
+                        "message_bus": {
+                            "status": "healthy",
+                            "healthy": True,
+                            "reason_codes": [],
+                        },
+                        "adapters": {
+                            "status": "healthy",
+                            "healthy": True,
+                            "reason_codes": [],
+                        },
+                    },
+                    "reason_codes": [],
+                    "aggregate_duration_ms": 0.42,
                 }
             ]
         }
