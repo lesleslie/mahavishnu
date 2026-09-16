@@ -1,12 +1,20 @@
 #!/usr/bin/env python3
-"""Bodai activity PostToolUse hook — drains the queue and emits summaries.
+"""Bodai activity PostToolUse hook — surfaces fresh Bodai bus activity.
 
 When called via the Claude Code PostToolUse hook (matcher ``mcp__*``),
-this script reads ``~/.mahavishnu/bodai-event-queue.json`` and emits one
-``[component] event_type key=value`` line per envelope that has arrived
-since the last run. The last-read timestamp persists in
-``~/.mahavishnu/bodai-post-tool-use-state.json`` so subsequent calls only
-surface fresh activity.
+this script does a one-shot XREAD against the Bodai EventBridge
+stream (Redis Streams transport via
+``mahavishnu.core.events.bodai_subscriber.read_bodai_events_since``)
+and emits one ``[component] event_type key=value`` line per envelope
+that has arrived since the last run. The last-seen Redis stream
+``message_id`` persists in
+``~/.mahavishnu/bodai-post-tool-use-state.json`` so subsequent calls
+only surface fresh activity.
+
+Phase 12a Task 5 replaces the previous JSON-queue polling path
+(``~/.mahavishnu/bodai-event-queue.json`` written by the now-retired
+``bodai-activity-subscriber.py`` daemon). The hook now reads from
+the bus directly — one process removed from the lifecycle.
 
 Only envelopes whose ``headers["source"]`` is one of
 ``{"mahavishnu", "akosha", "crackerjack"}`` are surfaced; envelopes from
@@ -15,9 +23,9 @@ for additional Bodai components).
 
 Configuration via environment variables (defaults shown):
 
-* ``MAHAVISHNU_BODAI_QUEUE_PATH`` — ``~/.mahavishnu/bodai-event-queue.json``
 * ``MAHAVISHNU_BODAI_POST_TOOL_USE_STATE_PATH`` —
   ``~/.mahavishnu/bodai-post-tool-use-state.json``
+* ``MAHAVISHNU_BODAI_REDIS_URL`` — ``redis://localhost:6379/0``
 * ``MAHAVISHNU_BODAI_DEBUG`` — set to a truthy value to log DEBUG messages
   to stderr; default off (forward-compatible ``unknown source`` skips).
 
@@ -26,6 +34,7 @@ are visible to Claude Code but never block tool execution.
 """
 from __future__ import annotations
 
+import asyncio
 import json
 import os
 from pathlib import Path
@@ -44,18 +53,15 @@ def _mahavishnu_home() -> Path:
     return Path.home() / ".mahavishnu"
 
 
-def _queue_path() -> Path:
-    override = os.environ.get("MAHAVISHNU_BODAI_QUEUE_PATH")
-    if override:
-        return Path(override).expanduser()
-    return _mahavishnu_home() / "bodai-event-queue.json"
-
-
 def _state_path() -> Path:
     override = os.environ.get("MAHAVISHNU_BODAI_POST_TOOL_USE_STATE_PATH")
     if override:
         return Path(override).expanduser()
     return _mahavishnu_home() / "bodai-post-tool-use-state.json"
+
+
+def _redis_url() -> str:
+    return os.environ.get("MAHAVISHNU_BODAI_REDIS_URL", "redis://localhost:6379/0")
 
 
 def _debug_enabled() -> bool:
@@ -77,36 +83,33 @@ def _log_debug(message: str) -> None:
 
 
 # ---------------------------------------------------------------------------
-# Queue + state I/O
+# State I/O
 # ---------------------------------------------------------------------------
 
 
-def _read_queue() -> list[dict[str, Any]]:
-    path = _queue_path()
-    if not path.exists():
-        return []
-    try:
-        with path.open("r", encoding="utf-8") as fh:
-            data = json.load(fh)
-    except (OSError, json.JSONDecodeError):
-        return []
-    if not isinstance(data, list):
-        return []
-    return data
-
-
 def _read_state() -> dict[str, Any]:
-    """Return the post-tool-use state file as a dict (empty if missing)."""
+    """Return the post-tool-use state file as a dict.
+
+    Phase 12a Task 5 schema: ``{"last_message_id": str | None}``. The
+    legacy JSON-queue state used ``{"last_read_at": float}``; for
+    forward compatibility, an old ``last_read_at`` is tolerated and
+    discarded (treated as "no cursor" — the next call reads from the
+    beginning of the stream and updates the schema).
+    """
     path = _state_path()
     if not path.exists():
-        return {"last_read_at": 0.0}
+        return {"last_message_id": None}
     try:
         with path.open("r", encoding="utf-8") as fh:
             data = json.load(fh)
     except (OSError, json.JSONDecodeError):
-        return {"last_read_at": 0.0}
+        return {"last_message_id": None}
     if not isinstance(data, dict):
-        return {"last_read_at": 0.0}
+        return {"last_message_id": None}
+    # Strip legacy fields if present so the file migrates cleanly.
+    if "last_message_id" not in data:
+        data["last_message_id"] = None
+    data.pop("last_read_at", None)
     return data
 
 
@@ -132,14 +135,6 @@ def _write_state(state: dict[str, Any]) -> None:
 # ---------------------------------------------------------------------------
 
 
-def _envelope_received_at(envelope: dict[str, Any]) -> float:
-    """Return the envelope's ``received_at`` timestamp; default ``0.0``."""
-    value = envelope.get("received_at")
-    if isinstance(value, (int, float)):
-        return float(value)
-    return 0.0
-
-
 def _envelope_source(envelope: dict[str, Any]) -> str | None:
     headers = envelope.get("headers") if isinstance(envelope, dict) else None
     if not isinstance(headers, dict):
@@ -154,8 +149,7 @@ def _format_summary(envelope: dict[str, Any]) -> str:
     """Render an envelope as a one-line ``[component] event_type key=value`` summary.
 
     Mirrors :func:`mahavishnu.core.events.bodai_subscriber.format_bodai_summary`
-    but operates directly on the dict shape persisted by ``subscribe_to_bodai_events``
-    so this hook has no project-import requirement.
+    so output stays stable across the JSON-queue → bus migration.
     """
     source = _envelope_source(envelope)
     source_str = source if source else "unknown"
@@ -185,6 +179,32 @@ def _format_summary(envelope: dict[str, Any]) -> str:
 
 
 # ---------------------------------------------------------------------------
+# Bus read
+# ---------------------------------------------------------------------------
+
+
+async def _read_new_envelopes(
+    *,
+    last_message_id: str | None,
+    redis_url: str,
+) -> list[tuple[str, dict[str, Any]]]:
+    """One-shot read of new envelopes from the bus.
+
+    Returns ``[(message_id, envelope_dict), ...]`` for entries with
+    Redis stream ``message_id`` strictly greater than ``last_message_id``.
+    When ``last_message_id`` is ``None``, reads from the start of the
+    stream. Imports :func:`read_bodai_events_since` lazily so the
+    hook module loads cleanly even when the bus deps are absent.
+    """
+    from mahavishnu.core.events.bodai_subscriber import read_bodai_events_since
+
+    return await read_bodai_events_since(
+        last_id=last_message_id,
+        redis_url=redis_url,
+    )
+
+
+# ---------------------------------------------------------------------------
 # Mode: post-tool-use
 # ---------------------------------------------------------------------------
 
@@ -192,53 +212,58 @@ def _format_summary(envelope: dict[str, Any]) -> str:
 def _post_tool_use() -> int:
     """Surface newly-arrived Bodai envelopes to the conversation.
 
-    Reads the queue, filters envelopes whose ``received_at`` exceeds the
-    stored cursor, formats each surviving envelope as
-    ``[component] event_type key=value`` and writes the lines to stdout.
-    The cursor is updated to the maximum ``received_at`` that was
-    surfaced (or kept at its current value when nothing matches).
+    Reads from the bus (one-shot XREAD), filters envelopes whose
+    ``headers["source"]`` is in ``ALLOWED_SOURCES``, formats each
+    surviving envelope as ``[component] event_type key=value`` and
+    writes the lines to stdout. The cursor advances to the maximum
+    message_id surfaced (including unknown-source skips so we don't
+    re-evaluate them on subsequent calls).
     """
     state = _read_state()
-    last_read_at = float(state.get("last_read_at", 0.0) or 0.0)
+    last_message_id = state.get("last_message_id")
 
-    envelopes = _read_queue()
-    if not envelopes:
-        # Nothing to do; keep the cursor so we don't lose future events
+    try:
+        envelopes = asyncio.run(
+            _read_new_envelopes(
+                last_message_id=last_message_id if isinstance(last_message_id, str) else None,
+                redis_url=_redis_url(),
+            )
+        )
+    except Exception as exc:  # noqa: BLE001 - boundary handler preserves the existing exit code
+        _log(f"bodai-activity-post-tool-use: bus read failed: {exc}")
         return 0
 
-    new_max_at = last_read_at
+    if not envelopes:
+        return 0
+
+    new_last_id = last_message_id
     surfaced = 0
     skipped_unknown = 0
 
-    for envelope in envelopes:
+    for message_id, envelope in envelopes:
         if not isinstance(envelope, dict):
-            continue
-        received_at = _envelope_received_at(envelope)
-        if received_at <= last_read_at:
-            # Already surfaced; skip without bumping the cursor
             continue
         source = _envelope_source(envelope)
         if source not in ALLOWED_SOURCES:
             skipped_unknown += 1
             _log_debug(
                 f"bodai-activity-post-tool-use: skipping envelope from unknown "
-                f"source={source!r} topic={envelope.get('topic')!r}"
+                f"source={source!r} topic={envelope.get('topic')!r} message_id={message_id!r}"
             )
-            # Still advance the cursor so we don't keep re-evaluating it
-            new_max_at = max(new_max_at, received_at)
+            new_last_id = message_id
             continue
         try:
             summary = _format_summary(envelope)
         except Exception:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
             _log("bodai-activity-post-tool-use: failed to format envelope")
-            new_max_at = max(new_max_at, received_at)
+            new_last_id = message_id
             continue
         print(summary, flush=True)
         surfaced += 1
-        new_max_at = max(new_max_at, received_at)
+        new_last_id = message_id
 
-    if surfaced or skipped_unknown or new_max_at > last_read_at:
-        state["last_read_at"] = new_max_at
+    if new_last_id != last_message_id or surfaced or skipped_unknown:
+        state["last_message_id"] = new_last_id
         try:
             _write_state(state)
         except OSError:

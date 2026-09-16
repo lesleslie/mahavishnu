@@ -819,5 +819,115 @@ __all__ = [
     "STREAM_NAME",
     "append_to_queue",
     "format_bodai_summary",
+    "read_bodai_events_since",
     "subscribe_to_bodai_events",
 ]
+
+
+# ---------------------------------------------------------------------------
+# Phase 12a Task 5 — one-shot reader (replaces JSON-queue polling)
+# ---------------------------------------------------------------------------
+
+
+async def read_bodai_events_since(
+    *,
+    last_id: str | None = None,
+    count: int = 100,
+    redis_url: str | None = None,
+    stream_name: str | None = None,
+    client_factory: Callable[..., Any] | None = None,
+) -> list[tuple[str, dict[str, Any]]]:
+    """One-shot ``XREAD`` against the Bodai EventBridge stream (no consumer group).
+
+    Phase 12a Task 5 replaces the JSON-queue polling path in
+    ``.claude/hooks/bodai-activity-post-tool-use.py``. The Claude hook
+    is invoked once per PostToolUse event — it needs to surface
+    envelopes that have arrived since the last invocation, but does
+    NOT need work-queue coordination across consumers. Plain XREAD
+    (no group, no ack) is the right shape.
+
+    Returns ``[(message_id, envelope_dict), ...]`` for entries with
+    Redis stream ``message_id`` strictly greater than ``last_id``.
+    When ``last_id`` is ``None`` or empty, reads from the start of
+    the stream (capped by ``count``). The caller advances its own
+    cursor by adopting the last ``message_id`` in the returned list.
+
+    Each ``envelope_dict`` carries the canonical Oneiric envelope
+    fields (``topic``, ``payload``, ``headers``) plus the envelope
+    schema's extras (``event_id``, ``version``, ``timestamp``,
+    ``received_at``). Decoding follows the same priority as the
+    daemon: ``envelope=<JSON>`` field → ``decode_oneiric_envelope``
+    (canonical), else direct ``topic/payload/headers`` triplet →
+    ``create_oneiric_envelope`` (canonical), else legacy Pydantic
+    fallback (when ``MAHAVISHNU_BODAI_ACCEPT_LEGACY_WIRE`` is on).
+
+    Args:
+        last_id: Redis stream message_id (e.g. ``"1737120000000-0"``).
+            Pass the last message_id from the previous call to read
+            only fresh envelopes. ``None`` / empty reads from the
+            beginning.
+        count: Maximum envelopes to return. Default 100.
+        redis_url: Redis URL. Defaults to ``MAHAVISHNU_BODAI_REDIS_URL``
+            env var or ``redis://localhost:6379/0``.
+        stream_name: Redis stream key. Defaults to ``STREAM_NAME``.
+        client_factory: Test seam. Defaults to
+            ``redis.asyncio.from_url``.
+
+    Returns:
+        ``[(message_id, envelope_dict), ...]`` ordered by stream
+        arrival. Empty list when no new envelopes are available.
+
+    Raises:
+        RuntimeError: When ``redis.asyncio`` is unavailable AND no
+            ``client_factory`` is supplied. The Claude hook contract
+            catches this and exits 0 (the hook never blocks tool
+            execution on bus unavailability — spec §4.13.3
+            fire-and-forget).
+    """
+    effective_url = redis_url or os.environ.get(
+        "MAHAVISHNU_BODAI_REDIS_URL", "redis://localhost:6379/0"
+    )
+    effective_stream = stream_name or STREAM_NAME
+    start_id = last_id if last_id else "0"
+
+    client = _create_redis_client(effective_url, client_factory)
+    if client is None:
+        raise RuntimeError(
+            "read_bodai_events_since: redis.asyncio is unavailable; "
+            "install 'redis' or pass client_factory"
+        )
+
+    try:
+        # XREAD with block=0 → one-shot read, return immediately if no data.
+        # XREADGROUP is NOT used here: there is no work-queue coordination,
+        # every consumer (Claude session) wants to see every message.
+        raw = await client.xread(
+            streams={effective_stream: start_id},
+            count=count,
+            block=0,
+        )
+    finally:
+        await _close_redis_client(client)
+
+    result: list[tuple[str, dict[str, Any]]] = []
+    if not raw:
+        return result
+
+    # raw shape: ``[[stream_name, [(message_id, fields), ...]], ...]`` —
+    # one outer entry per stream. We always pass a single stream key, so
+    # the outer list has length 1 (or 0 if Redis returned nothing).
+    for stream_entry in raw:
+        if not isinstance(stream_entry, (list, tuple)) or len(stream_entry) < 2:
+            continue
+        entries = stream_entry[1]
+        if not isinstance(entries, (list, tuple)):
+            continue
+        for entry in entries:
+            normalized = _normalize_stream_entry(entry)
+            if normalized is None:
+                continue
+            message_id, payload = normalized
+            envelope = _decode_envelope(payload)
+            envelope_dict = _envelope_to_dict(envelope)
+            result.append((message_id, envelope_dict))
+    return result

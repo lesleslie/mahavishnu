@@ -928,3 +928,176 @@ def test_create_oneiric_envelope_helper_in_canonical_path() -> None:
         assert key in envelope.headers
     assert envelope.headers["source"] == "mahavishnu"
     assert envelope.topic == "sanity_check"
+
+
+# ---------------------------------------------------------------------------
+# Phase 12a Task 5 — read_bodai_events_since (one-shot XREAD)
+# ---------------------------------------------------------------------------
+
+
+def _make_xread_mock_client(
+    xread_response: Any,
+    *,
+    xread_side_effect: Any = None,
+) -> MagicMock:
+    """Construct an AsyncMock-shaped redis client for one-shot reads.
+
+    Mirrors :func:`_make_redis_mock` but stubs ``xread`` instead of
+    ``xreadgroup`` and omits xack/xgroup_create (the one-shot reader
+    has no consumer-group semantics).
+    """
+    client = MagicMock()
+    client.xread = AsyncMock(
+        return_value=xread_response, side_effect=xread_side_effect
+    )
+    client.aclose = AsyncMock(return_value=None)
+    client.close = AsyncMock(return_value=None)
+    return client
+
+
+def test_read_bodai_events_since_returns_empty_when_no_messages() -> None:
+    """When XREAD returns no entries, the function returns an empty list."""
+    from mahavishnu.core.events.bodai_subscriber import read_bodai_events_since
+
+    client = _make_xread_mock_client(xread_response=[])
+    result = asyncio.run(
+        read_bodai_events_since(
+            redis_url="redis://localhost:6379/0",
+            client_factory=lambda _url: client,
+        )
+    )
+    assert result == []
+    client.aclose.assert_awaited_once()
+
+
+def test_read_bodai_events_since_returns_envelope_dicts_with_message_ids() -> None:
+    """XREAD returning two entries yields two (message_id, envelope_dict) tuples."""
+    from mahavishnu.core.events.bodai_subscriber import read_bodai_events_since
+
+    canonical_envelope = {
+        "topic": "workflow_completed",
+        "payload": {"workflow_id": "wid_xyz"},
+        "headers": {
+            "source": "mahavishnu",
+            "event_id": "evt_001",
+            "version": "1.0.0",
+            "timestamp": "2026-01-15T10:00:00+00:00",
+        },
+    }
+    raw_response = [
+        [
+            b"bodai:events",
+            [
+                (b"1737120000000-0", {b"envelope": json.dumps(canonical_envelope).encode("utf-8")}),
+                (b"1737120000001-0", {b"envelope": json.dumps(canonical_envelope).encode("utf-8")}),
+            ],
+        ],
+    ]
+    client = _make_xread_mock_client(xread_response=raw_response)
+    result = asyncio.run(
+        read_bodai_events_since(
+            redis_url="redis://localhost:6379/0",
+            client_factory=lambda _url: client,
+        )
+    )
+    assert len(result) == 2
+    assert result[0][0] == "1737120000000-0"
+    assert result[1][0] == "1737120000001-0"
+    for _msg_id, envelope_dict in result:
+        assert envelope_dict["topic"] == "workflow_completed"
+        assert envelope_dict["payload"] == {"workflow_id": "wid_xyz"}
+        assert envelope_dict["headers"]["source"] == "mahavishnu"
+    client.aclose.assert_awaited_once()
+
+
+def test_read_bodai_events_since_passes_last_id_to_xread() -> None:
+    """The ``last_id`` argument is forwarded to XREAD as the stream start position."""
+    from mahavishnu.core.events.bodai_subscriber import read_bodai_events_since
+
+    client = _make_xread_mock_client(xread_response=[])
+    asyncio.run(
+        read_bodai_events_since(
+            last_id="1737120000000-0",
+            redis_url="redis://localhost:6379/0",
+            client_factory=lambda _url: client,
+        )
+    )
+    client.xread.assert_awaited_once()
+    kwargs = client.xread.await_args.kwargs
+    assert kwargs["streams"] == {"bodai:events": "1737120000000-0"}
+    assert kwargs["count"] == 100
+    assert kwargs["block"] == 0
+
+
+def test_read_bodai_events_since_defaults_to_stream_start_when_no_last_id() -> None:
+    """When ``last_id`` is None, XREAD starts from stream id ``"0"``."""
+    from mahavishnu.core.events.bodai_subscriber import read_bodai_events_since
+
+    client = _make_xread_mock_client(xread_response=[])
+    asyncio.run(
+        read_bodai_events_since(
+            redis_url="redis://localhost:6379/0",
+            client_factory=lambda _url: client,
+        )
+    )
+    kwargs = client.xread.await_args.kwargs
+    assert kwargs["streams"] == {"bodai:events": "0"}
+
+
+def test_read_bodai_events_since_raises_when_redis_unavailable() -> None:
+    """When ``redis.asyncio`` is missing and no ``client_factory`` is supplied,
+    the function raises RuntimeError so the Claude hook contract can
+    catch it and exit 0 (fire-and-forget per spec §4.13.3).
+    """
+    from unittest.mock import patch
+
+    from mahavishnu.core.events.bodai_subscriber import read_bodai_events_since
+
+    # Patch _create_redis_client to simulate "redis.asyncio not installed":
+    # it returns None when client_factory is None and the import fails.
+    # We invoke with client_factory=None so the function tries to import.
+    with patch(
+        "mahavishnu.core.events.bodai_subscriber._create_redis_client",
+        return_value=None,
+    ):
+        with pytest.raises(RuntimeError, match="redis.asyncio is unavailable"):
+            asyncio.run(
+                read_bodai_events_since(
+                    redis_url="redis://localhost:6379/0",
+                    client_factory=None,
+                )
+            )
+
+
+def test_read_bodai_events_since_decodes_envelopes_via_canonical_path() -> None:
+    """A canonical ``envelope=<JSON>`` field is decoded into the Oneiric shape."""
+    from mahavishnu.core.events.bodai_subscriber import read_bodai_events_since
+
+    envelope_blob = {
+        "topic": "test_run_completed",
+        "payload": {"tests_passed": 42},
+        "headers": {
+            "source": "crackerjack",
+            "event_id": "evt_xyz",
+            "version": "1.0.0",
+            "timestamp": "2026-01-15T10:00:00+00:00",
+        },
+    }
+    raw_response = [
+        [
+            b"bodai:events",
+            [(b"1737120000000-0", {b"envelope": json.dumps(envelope_blob).encode("utf-8")})],
+        ],
+    ]
+    client = _make_xread_mock_client(xread_response=raw_response)
+    result = asyncio.run(
+        read_bodai_events_since(
+            redis_url="redis://localhost:6379/0",
+            client_factory=lambda _url: client,
+        )
+    )
+    assert len(result) == 1
+    _msg_id, envelope_dict = result[0]
+    assert envelope_dict["topic"] == "test_run_completed"
+    assert envelope_dict["payload"] == {"tests_passed": 42}
+    assert envelope_dict["headers"]["source"] == "crackerjack"
