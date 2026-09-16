@@ -1,7 +1,11 @@
 """Capture golden fixtures for each tool profile.
 
-Used by Task 2 (W1.1: Backfill mahavishnu) to capture the current
-output of each profile BEFORE the refactor to apply_tool_profile().
+Uses the production ``build_mahavishnu_mcp_server()`` entry point so the
+captured fixtures match what ``test_wiring.py`` sees at runtime. The
+previous capture path went through ``register_profile_tools`` directly,
+which undercounts tools because it bypasses the mcp-common
+``apply_tool_profile`` helper that adds the always-on groups (health,
+lifecycle, ecosystem, etc.).
 """
 
 from __future__ import annotations
@@ -17,14 +21,9 @@ async def capture(profile: str, output_path: Path) -> None:
     """Capture the tool list for the given profile to output_path."""
     os.environ["MAHAVISHNU_TOOL_PROFILE"] = profile
 
-    from mahavishnu.mcp.bootstrap import register_profile_tools
-    from mahavishnu.mcp.server_core import FastMCPServer
-    from mahavishnu.mcp.tools.profiles import PROFILE_REGISTRATIONS, get_active_profile
+    from mahavishnu.mcp.server import build_mahavishnu_mcp_server
 
-    server = FastMCPServer()
-    resolved = get_active_profile()
-    methods_set = set(PROFILE_REGISTRATIONS[resolved])
-    await register_profile_tools(server, methods_set)
+    server = await build_mahavishnu_mcp_server()
     tools = await server.server.list_tools()
     names = sorted(t.name for t in tools)
     output_path.write_text(json.dumps(names, indent=2) + "\n")
