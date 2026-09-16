@@ -344,9 +344,20 @@ def register(mcp) -> None:  # type: ignore[no-untyped-def]
     ]
     module = sys.modules[__name__]
     for name in names:
-        plain = getattr(module, name).fn
-        wrapped = mcp.tool()(plain)
-        setattr(module, name, wrapped)
+        attr = getattr(module, name)
+        # ``_wrap_at_import`` rebinds module attrs as FunctionTool so the
+        # ``.fn`` accessor works for tests. On a fresh process the attr may
+        # still be the plain function (e.g. if FastMCP was unavailable at
+        # import time); recover ``plain`` from either shape.
+        plain = attr.fn if hasattr(attr, "fn") else attr
+        # ``mcp.tool()(plain)`` registers the tool on the FastMCP server
+        # and returns the original callable — it does NOT return a
+        # FunctionTool. Re-binding the module attr to that plain callable
+        # would erase the FunctionTool wrapper and break subsequent
+        # ``register(mcp)`` calls (and the test-only ``.fn`` accessor).
+        # Register the side-effect with the FastMCP server and leave the
+        # module attr (FunctionTool) in place.
+        mcp.tool()(plain)
 
 
 # Wrap each tool at module load so `jot_tools.jot_list.fn(...)` works for tests

@@ -222,20 +222,20 @@ REGISTRATION_MAP: dict[str, Callable] = {
     # .jot_tools) which is idempotent — the first call wraps all 14
     # tools against the server, subsequent calls re-bind the wrappers
     # harmlessly.
-    "jot_list": lambda s: _register_jot_tools(s._mhv_server),  # type: ignore[attr-defined]
-    "jot_show": lambda s: _register_jot_tools(s._mhv_server),  # type: ignore[attr-defined]
-    "jot_add": lambda s: _register_jot_tools(s._mhv_server),  # type: ignore[attr-defined]
-    "jot_edit": lambda s: _register_jot_tools(s._mhv_server),  # type: ignore[attr-defined]
-    "jot_done": lambda s: _register_jot_tools(s._mhv_server),  # type: ignore[attr-defined]
-    "jot_reopen": lambda s: _register_jot_tools(s._mhv_server),  # type: ignore[attr-defined]
-    "jot_vitals": lambda s: _register_jot_tools(s._mhv_server),  # type: ignore[attr-defined]
-    "jot_search": lambda s: _register_jot_tools(s._mhv_server),  # type: ignore[attr-defined]
-    "jot_drain": lambda s: _register_jot_tools(s._mhv_server),  # type: ignore[attr-defined]
-    "jot_dispatch": lambda s: _register_jot_tools(s._mhv_server),  # type: ignore[attr-defined]
-    "jot_defer": lambda s: _register_jot_tools(s._mhv_server),  # type: ignore[attr-defined]
-    "jot_delete": lambda s: _register_jot_tools(s._mhv_server),  # type: ignore[attr-defined]
-    "jot_retry": lambda s: _register_jot_tools(s._mhv_server),  # type: ignore[attr-defined]
-    "jot_resurface": lambda s: _register_jot_tools(s._mhv_server),  # type: ignore[attr-defined]
+    "jot_list": lambda s: _register_jot_tools(s),  # type: ignore[arg-type]
+    "jot_show": lambda s: _register_jot_tools(s),  # type: ignore[arg-type]
+    "jot_add": lambda s: _register_jot_tools(s),  # type: ignore[arg-type]
+    "jot_edit": lambda s: _register_jot_tools(s),  # type: ignore[arg-type]
+    "jot_done": lambda s: _register_jot_tools(s),  # type: ignore[arg-type]
+    "jot_reopen": lambda s: _register_jot_tools(s),  # type: ignore[arg-type]
+    "jot_vitals": lambda s: _register_jot_tools(s),  # type: ignore[arg-type]
+    "jot_search": lambda s: _register_jot_tools(s),  # type: ignore[arg-type]
+    "jot_drain": lambda s: _register_jot_tools(s),  # type: ignore[arg-type]
+    "jot_dispatch": lambda s: _register_jot_tools(s),  # type: ignore[arg-type]
+    "jot_defer": lambda s: _register_jot_tools(s),  # type: ignore[arg-type]
+    "jot_delete": lambda s: _register_jot_tools(s),  # type: ignore[arg-type]
+    "jot_retry": lambda s: _register_jot_tools(s),  # type: ignore[arg-type]
+    "jot_resurface": lambda s: _register_jot_tools(s),  # type: ignore[arg-type]
 }
 
 
