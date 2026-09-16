@@ -4,12 +4,12 @@ from __future__ import annotations
 
 from unittest.mock import AsyncMock
 
+from mcp_common.exceptions import MCPServerError
 from mcp_common.websocket import WebSocketProtocol
 import pytest
 
 from tests.fixtures.chaos_harness import (
     build_failing_pool_manager,
-    build_http_failure_response,
     build_task_router,
     build_websocket_server,
     create_mock_websocket,
@@ -82,12 +82,16 @@ async def test_resource_exhaustion_backs_pressure_into_local_buffer() -> None:
     pool_manager = build_failing_pool_manager("pool-chaos", memory_items)
 
     aggregator = MemoryAggregator(sync_interval=1.0)
-    failed_response = build_http_failure_response()
-    aggregator._mcp_client.post = AsyncMock(return_value=failed_response)
+    # All 505 inserts fail at the MCP layer; after 5 failures the circuit
+    # opens and every remaining item is buffered (FIFO eviction against the
+    # 500-slot deque drops the oldest 5).
+    aggregator._mcp_client.call_tool = AsyncMock(
+        side_effect=MCPServerError("service unavailable"),
+    )
 
     try:
         first_result = await aggregator.collect_and_sync(pool_manager)
-        first_call_count = aggregator._mcp_client.post.await_count
+        first_call_count = aggregator._mcp_client.call_tool.await_count
 
         assert first_result["memory_items_synced"] == 505
         stats = aggregator.get_circuit_breaker_stats()
@@ -102,7 +106,10 @@ async def test_resource_exhaustion_backs_pressure_into_local_buffer() -> None:
         second_result = await aggregator.collect_and_sync(smaller_pool_manager)
 
         assert second_result["memory_items_synced"] == 1
-        assert aggregator._mcp_client.post.await_count == first_call_count + 1
+        # Circuit is still open so no new MCP calls are dispatched; the item
+        # is buffered directly (drops the oldest entry since the buffer is
+        # already at its 500-item max).
+        assert aggregator._mcp_client.call_tool.await_count == first_call_count
 
         stats = aggregator.get_circuit_breaker_stats()
         assert stats["session_buddy"]["circuit_open"] is True
