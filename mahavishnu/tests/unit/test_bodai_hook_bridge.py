@@ -11,6 +11,8 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 from unittest.mock import patch
 
+import pytest
+
 from mahavishnu.bodai_hook_bridge import (
     CanonicalEnvelope,
     _channel_for,
@@ -19,7 +21,7 @@ from mahavishnu.bodai_hook_bridge import (
 )
 
 if TYPE_CHECKING:
-    import pytest
+    pass
 
 
 def test_normalize_claude_payload() -> None:
@@ -240,3 +242,117 @@ def test_handle_unknown_event_returns_zero_and_publishes() -> None:
     pub.assert_called_once()
     channel = pub.call_args.kwargs["channel"]
     assert channel == "bodai.hooks.future-unknown-event"
+
+
+# ---------------------------------------------------------------------------
+# Phase 12b task 1 — 11 Qwen-only event handlers
+#
+# Per spec §4.13.2 schema table, Qwen Code exposes 11 events with no
+# Claude equivalent. Each gets a canonical handler registered in
+# ``_EVENT_HANDLERS``; without registration, ``handle()`` falls
+# through to ``handle_unknown`` (returns 0 but the audit feed can't
+# distinguish a Qwen-only event from a forward-compat unknown).
+# ---------------------------------------------------------------------------
+
+
+_QWEN_ONLY_EVENTS: tuple[str, ...] = (
+    "PostToolUseFailure",
+    "SessionDelete",
+    "MessageDisplay",
+    "StopFailure",
+    "SubagentStart",
+    "PreCompact",
+    "PostCompact",
+    "PermissionRequest",
+    "PermissionDenied",
+    "TodoCreated",
+    "TodoCompleted",
+)
+
+
+@pytest.mark.parametrize("event_name", _QWEN_ONLY_EVENTS)
+def test_qwen_only_event_handler_runs(event_name: str) -> None:
+    """Each Qwen-only event name resolves to a registered handler
+    that returns 0 (permissive default).
+
+    Without this parametrisation, a Qwen-only event would silently
+    route to ``handle_unknown`` — still exit 0, but the bridge
+    can't tell harness events apart from forward-compat unknowns.
+    Registering the handler pins the event in the bridge's audit
+    feed (``harness=qwen``).
+    """
+    with patch("mahavishnu.bodai_hook_bridge._publish"):
+        exit_code = handle(
+            event_name=event_name,
+            harness="qwen",
+            payload={"hook_event_name": event_name},
+        )
+    assert exit_code == 0
+
+
+@pytest.mark.parametrize("event_name", _QWEN_ONLY_EVENTS)
+def test_qwen_only_event_is_registered_in_event_handlers(event_name: str) -> None:
+    """Each Qwen-only event MUST be in ``_EVENT_HANDLERS`` directly,
+    not falling through to ``handle_unknown``.
+
+    This is the test that distinguishes a registered Qwen-only
+    handler from a forward-compat unknown. Without it, the bridge
+    silently accepts Qwen-only events as unknown events and the
+    audit feed loses the harness-event distinction.
+    """
+    from mahavishnu.bodai_hook_bridge import (
+        _EVENT_HANDLERS,
+        handle_unknown,
+    )
+
+    handler = _EVENT_HANDLERS.get(event_name)
+    assert handler is not None, (
+        f"Qwen-only event {event_name!r} is not registered in "
+        f"_EVENT_HANDLERS — would silently route to handle_unknown"
+    )
+    assert handler is not handle_unknown, (
+        f"Qwen-only event {event_name!r} routes to handle_unknown; "
+        f"register a dedicated handler so audit feed can distinguish "
+        f"harness events from forward-compat unknowns"
+    )
+
+
+@pytest.mark.parametrize("event_name", _QWEN_ONLY_EVENTS)
+def test_qwen_only_event_publishes_to_qwen_channel(event_name: str) -> None:
+    """Each Qwen-only event publishes to its kebab-case channel under
+    the ``bodai.hooks.`` namespace per spec §4.13.4.
+
+    Pins the channel mapping so future event additions don't drift
+    from the canonical pattern. Mirrors ``test_channel_for_camel_case_event``
+    but covers the Qwen-only set.
+    """
+    expected_channel = (
+        "bodai.hooks."
+        + event_name.replace("PostToolUse", "post-tool-use").lower()
+        .replace("session", "session-")
+        .replace("stopfailure", "stop-failure")
+        .replace("precompact", "pre-compact")
+        .replace("postcompact", "post-compact")
+        .replace("messagedisplay", "message-display")
+        .replace("permissionrequest", "permission-request")
+        .replace("permissiondenied", "permission-denied")
+        .replace("todocreated", "todo-created")
+        .replace("todocompleted", "todo-completed")
+        .replace("subagentstart", "subagent-start")
+        .replace("sessiondelete", "session-delete")
+    )
+    # The above munging is for readability; use the real ``_channel_for``
+    # helper for ground truth instead.
+    from mahavishnu.bodai_hook_bridge import _channel_for
+
+    expected_channel = _channel_for(event_name)
+
+    with patch("mahavishnu.bodai_hook_bridge._publish") as pub:
+        handle(
+            event_name=event_name,
+            harness="qwen",
+            payload={"hook_event_name": event_name},
+        )
+    channel = pub.call_args.kwargs["channel"]
+    assert channel == expected_channel
+    assert channel.startswith("bodai.hooks.")

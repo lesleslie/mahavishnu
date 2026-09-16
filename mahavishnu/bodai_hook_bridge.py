@@ -281,6 +281,113 @@ def handle_unknown(env: CanonicalEnvelope) -> int:
     return 0
 
 
+def handle_post_tool_use_failure(env: CanonicalEnvelope) -> int:
+    """Qwen-only (Phase 12b): tool call completed but failed.
+
+    No Claude equivalent. Permissive default (return 0); the bridge
+    publishes the failure envelope so subscribers can audit tool
+    failure rates per source.
+    """
+    return 0
+
+
+def handle_session_delete(env: CanonicalEnvelope) -> int:
+    """Qwen-only (Phase 12b): explicit session deletion event.
+
+    Distinct from ``SessionEnd`` (session normal exit) — ``SessionDelete``
+    fires when the user/host deletes the session record. Permissive
+    default; subscribers can use this to audit session lifecycle
+    churn vs. natural completion.
+    """
+    return 0
+
+
+def handle_message_display(env: CanonicalEnvelope) -> int:
+    """Qwen-only (Phase 12b): assistant message about to be displayed.
+
+    Pre-render hook — fired before Qwen renders the assistant turn
+    to the user. Permissive default; future content-guard logic could
+    inspect ``env.tool_input`` / ``env.payload`` here and return 2
+    to block rendering.
+    """
+    return 0
+
+
+def handle_stop_failure(env: CanonicalEnvelope) -> int:
+    """Qwen-only (Phase 12b): stop hook returned a non-zero exit.
+
+    Distinct from ``Stop`` (normal stop attempt) — ``StopFailure``
+    fires when the model's stop sequence fails (timeout, panic, etc.).
+    Permissive default; subscribers can audit stop reliability.
+    """
+    return 0
+
+
+def handle_subagent_start(env: CanonicalEnvelope) -> int:
+    """Qwen-only (Phase 12b): subagent invocation starting.
+
+    Mirror of ``SubagentStop`` but at subagent start. Permissive
+    default; subscribers can audit subagent launch rate.
+    """
+    return 0
+
+
+def handle_pre_compact(env: CanonicalEnvelope) -> int:
+    """Qwen-only (Phase 12b): context about to be compacted.
+
+    Pre-compaction audit hook. Permissive default; future
+    context-guard logic could inspect the impending compaction and
+    return 2 to block.
+    """
+    return 0
+
+
+def handle_post_compact(env: CanonicalEnvelope) -> int:
+    """Qwen-only (Phase 12b): context compacted.
+
+    Post-compaction audit hook. Permissive default; subscribers can
+    audit compaction frequency.
+    """
+    return 0
+
+
+def handle_permission_request(env: CanonicalEnvelope) -> int:
+    """Qwen-only (Phase 12b): user-facing permission prompt.
+
+    Pre-decision hook — fired when Qwen is about to ask the user for
+    permission. Permissive default; a future permission-policy guard
+    could inspect the request and return 2 to auto-deny.
+    """
+    return 0
+
+
+def handle_permission_denied(env: CanonicalEnvelope) -> int:
+    """Qwen-only (Phase 12b): permission request was denied.
+
+    Post-decision audit hook. Permissive default; subscribers can
+    audit denial rate.
+    """
+    return 0
+
+
+def handle_todo_created(env: CanonicalEnvelope) -> int:
+    """Qwen-only (Phase 12b): todo item created.
+
+    Audit hook. Permissive default; subscribers can audit todo
+    churn rate.
+    """
+    return 0
+
+
+def handle_todo_completed(env: CanonicalEnvelope) -> int:
+    """Qwen-only (Phase 12b): todo item completed.
+
+    Audit hook. Permissive default; subscribers can audit todo
+    completion rate.
+    """
+    return 0
+
+
 _EVENT_HANDLERS: dict[str, Callable[[CanonicalEnvelope], int]] = {
     "PostToolUse": handle_post_tool_use,
     "SessionStart": handle_session_start,
@@ -290,6 +397,20 @@ _EVENT_HANDLERS: dict[str, Callable[[CanonicalEnvelope], int]] = {
     "SubagentStop": handle_subagent_stop,
     "Stop": handle_stop,
     "UserPromptExpansion": handle_user_prompt_expansion,
+    # Phase 12b: Qwen-only events (no Claude equivalent).
+    # Permissive defaults; each exists so the audit feed can
+    # distinguish a Qwen-only event from a forward-compat unknown.
+    "PostToolUseFailure": handle_post_tool_use_failure,
+    "SessionDelete": handle_session_delete,
+    "MessageDisplay": handle_message_display,
+    "StopFailure": handle_stop_failure,
+    "SubagentStart": handle_subagent_start,
+    "PreCompact": handle_pre_compact,
+    "PostCompact": handle_post_compact,
+    "PermissionRequest": handle_permission_request,
+    "PermissionDenied": handle_permission_denied,
+    "TodoCreated": handle_todo_created,
+    "TodoCompleted": handle_todo_completed,
 }
 
 
