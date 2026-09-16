@@ -128,6 +128,20 @@ dev = [
     {include-group = "content-ingest"},
     {include-group = "storage-pg"},
     {include-group = "compression-zstd"},
+    {include-group = "bus"},
+]
+
+# Bus delivery (Oneiric Redis Streams / pubsub). Adds ``coredis``
+# directly because oneiric publishes its optional Redis client under
+# PEP 735 ``[dependency-groups].cache`` rather than
+# ``[project.optional-dependencies].cache`` — so ``oneiric[cache]``
+# is not a real installable extra on PyPI. The
+# ``bodai_hook_bridge`` is fire-and-forget (spec §4.13.3) — when this
+# group is not installed the bridge silently swallows the coredis-
+# not-installed LifecycleError and exits cleanly. Install via
+# ``uv sync --group bus`` (already pulled in by ``dev``).
+bus = [
+    "coredis>=6.7.0",
 ]
 
 # Bodai ecosystem integrations
