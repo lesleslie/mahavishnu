@@ -6,6 +6,8 @@ import json
 import logging
 from typing import TYPE_CHECKING, Any, cast
 
+import httpx2 as httpx
+
 from mcp_common.clients.common_mcp_client import CommonMCPClient
 from mcp_common.exceptions import MCPServerError
 
