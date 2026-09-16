@@ -26,7 +26,7 @@ client = OpenAI(
 )
 
 resp = client.chat.completions.create(
-    model="MiniMax-M3",                       # or MiniMax-M3-highspeed
+    model="MiniMax-M3",                       # M3 only — MiniMax-M3-highspeed does not exist on minimax's API (error 2013)
     messages=[{"role": "user", "content": prompt}],
     tools=tool_schemas,                        # function-calling / tool use
 )

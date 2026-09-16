@@ -243,7 +243,7 @@ class LLMProviderFactory:
         Base URL: https://api.minimax.io/v1
 
         Args:
-            model_id: MiniMax model identifier (e.g., 'MiniMax-M3', 'MiniMax-M3-highspeed')
+            model_id: MiniMax model identifier (e.g., 'MiniMax-M3'). Note: 'MiniMax-M3-highspeed' is not a valid model name on minimax's API — use 'MiniMax-M3' or 'MiniMax-M2.7-highspeed' instead.
 
         Returns:
             OpenAIChat model instance configured for MiniMax

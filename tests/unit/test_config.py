@@ -102,8 +102,13 @@ def test_models_yaml_defaults_to_minimax() -> None:
     assert data["minimax"]["api_key"] == "${MINIMAX_API_KEY}"
     assert data["minimax"]["base_url"] == "https://api.minimax.io/v1"
     assert data["minimax"]["task_routing"]["CODE_GENERATION"] == "MiniMax-M3"
-    assert data["minimax"]["task_routing"]["SWARM"] == "MiniMax-M3-highspeed"
-    assert data["minimax"]["task_routing"]["QUICK"] == "MiniMax-M3-highspeed"
+    # SWARM/QUICK/AGENT_LOOP/CREATIVE/GENERAL all route to MiniMax-M3 —
+    # minimax's API does not expose a distinct MiniMax-M3-highspeed variant
+    # (verified 2026-09-16; minimax returns error 2013 "unknown model").
+    # For a real speed differential, override these via settings/local.yaml
+    # to point at MiniMax-M2.7-highspeed.
+    assert data["minimax"]["task_routing"]["SWARM"] == "MiniMax-M3"
+    assert data["minimax"]["task_routing"]["QUICK"] == "MiniMax-M3"
 
 
 def test_config_validation_bounds():

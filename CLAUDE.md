@@ -306,8 +306,7 @@ Mahavishnu uses MiniMax M3 models as the primary cloud LLM provider. M2.7 is ret
 - **Primary provider**: `minimax` (OpenAI-compatible API at `https://api.minimax.io/v1`)
 - **Local fallbacks**: `ollama` at `http://localhost:11434` and `llama_server` (llama.cpp) at `http://localhost:8081` with `qwen3.5`
 - **Default models**:
-  - `MiniMax-M3` — primary for quality-sensitive tasks
-  - `MiniMax-M3-highspeed` — used for SWARM, QUICK, AGENT_LOOP, CREATIVE, GENERAL
+  - `MiniMax-M3` — primary for all task categories (SWARM, QUICK, AGENT_LOOP, CREATIVE, GENERAL also route here; minimax's API does not expose a distinct MiniMax-M3-highspeed variant — verified 2026-09-16, model name rejected with error 2013)
   - `MiniMax-M2.7` and `MiniMax-M2.7-highspeed` — final fallback when M3 is unavailable
 - **Optional compatibility provider**: `zai` (OpenAI-compatible API at `https://api.z.ai/api/coding/paas/v4`) when explicitly configured
 - **Auth env var**: `MINIMAX_API_KEY` (in the parent shell) is required by both the cloud worker and the `minimax-coding-plan` MCP server in `.mcp.json` — export it in your shell rc, never inline the literal. Region selector `MINIMAX_API_HOST` is already pinned to `https://api.minimax.io` in `.mcp.json`.
@@ -318,7 +317,7 @@ Mahavishnu uses MiniMax M3 models as the primary cloud LLM provider. M2.7 is ret
 | Categories | Cloud Model |
 |------------|-------------|
 | CODE_GENERATION, CODE_REVIEW, DEBUGGING, REFACTORING, TESTING, REASONING, ANALYSIS, DOCUMENTATION, VISION, EMBEDDING, ML_INFERENCE | `MiniMax-M3` |
-| SWARM, QUICK, AGENT_LOOP, CREATIVE, GENERAL | `MiniMax-M3-highspeed` |
+| SWARM, QUICK, AGENT_LOOP, CREATIVE, GENERAL | `MiniMax-M3` |
 
 For local fallbacks (`llama_server`, `ollama`), see `settings/models.yaml`.
 

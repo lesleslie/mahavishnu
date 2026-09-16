@@ -49,12 +49,12 @@ Neither router imports the other. The composition is implicit: the Task Router s
 
 ## TaskCategory → Model Mapping (MiniMax provider)
 
-The MiniMax routing below mirrors `settings/models.yaml` (provider chain: minimax → llama_server → ollama). M3 is the quality-sensitive primary; M3-highspeed is used for high-volume categories; M2.7/M2.7-highspeed are retained as the final fallback when M3 is unavailable.
+The MiniMax routing below mirrors `settings/models.yaml` (provider chain: minimax → llama_server → ollama). M3 is the primary for all task categories — minimax's API does not expose a distinct M3-highspeed variant (verified 2026-09-16; that name returns error 2013). M2.7/M2.7-highspeed are retained as the final fallback when M3 is unavailable.
 
 | TaskCategory | Cloud Model (MiniMax) | Local Model |
 |-------------|-------------|-------------|
 | `CODE_GENERATION`, `CODE_REVIEW`, `DEBUGGING`, `REFACTORING`, `TESTING`, `REASONING`, `ANALYSIS`, `DOCUMENTATION`, `VISION`, `ML_INFERENCE` | `MiniMax-M3` | qwen3.5 (llama_server) / qwen2.5-coder:7b (ollama) |
-| `SWARM`, `QUICK`, `AGENT_LOOP`, `CREATIVE`, `GENERAL` | `MiniMax-M3-highspeed` | qwen3.5 (llama_server) / qwen2.5-coder:7b (ollama) |
+| `SWARM`, `QUICK`, `AGENT_LOOP`, `CREATIVE`, `GENERAL` | `MiniMax-M3` | qwen3.5 (llama_server) / qwen2.5-coder:7b (ollama) |
 | `FALLBACK` (any category, when M3 unavailable) | `MiniMax-M2.7` | llama3:8b |
 | `FALLBACK_HIGHSPEED` (high-volume, when M3 unavailable) | `MiniMax-M2.7-highspeed` | qwen2.5-coder:7b |
 

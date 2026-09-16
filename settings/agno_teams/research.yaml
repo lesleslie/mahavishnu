@@ -30,7 +30,7 @@ team:
   members:
     - name: "web_researcher"
       role: "Web search and content extraction"
-      model: "MiniMax-M3-highspeed"
+      model: "MiniMax-M3"
       instructions: |
         Search the web for relevant information and extract key insights.
 

@@ -107,7 +107,7 @@ class AgentMetadata(BaseModel):
     version: str = "0.0.0"
 
     # ``model`` is a free-form string (e.g. ``sonnet``, ``opus``,
-    # ``MiniMax-M3-highspeed``) — not a Literal — so the schema can
+    # ``MiniMax-M3``) — not a Literal — so the schema can
     # accept new model identifiers without a schema bump.
     model: str
 

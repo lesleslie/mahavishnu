@@ -112,10 +112,10 @@ Supported route headers:
 Current task mappings:
 
 - `think` -> `minimax-openai/MiniMax-M3`
-- `long_context` or `longContext` -> `minimax-openai/MiniMax-M3-highspeed`
-- `web_search` or `webSearch` -> `minimax-openai/MiniMax-M3-highspeed`
+- `long_context` or `longContext` -> `minimax-openai/MiniMax-M3`
+- `web_search` or `webSearch` -> `minimax-openai/MiniMax-M3`
 - `image` -> deferred until a supported MiniMax multimodal route exists
-- `background`, `cheap`, or `high_throughput` -> `minimax-openai/MiniMax-M3-highspeed`
+- `background`, `cheap`, or `high_throughput` -> `minimax-openai/MiniMax-M3`
 
 Notes:
 
