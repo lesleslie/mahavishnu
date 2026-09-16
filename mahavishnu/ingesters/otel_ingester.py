@@ -229,8 +229,8 @@ class AkoshaEmbedder:
         if self._available is not None:
             return self._available
 
-        client = self._get_client()
         try:
+            client = self._get_client()
             await client.call_tool(
                 "generate_embedding",
                 {"text": "test"},
