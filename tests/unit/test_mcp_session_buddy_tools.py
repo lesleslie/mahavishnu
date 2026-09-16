@@ -9,6 +9,7 @@ and a mocked ``mcp_client`` for the delegated Session-Buddy calls.
 from __future__ import annotations
 
 import asyncio
+from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
@@ -76,7 +77,7 @@ def registered(stub_mcp, fake_mcp_client) -> _StubMCP:
         stub_mcp,
         session_manager=MagicMock(),
         mcp_client=fake_mcp_client,
-        rbac_manager=None,
+        rbac_manager=SimpleNamespace(check_permission=AsyncMock(return_value=True)),
     )
     return stub_mcp
 

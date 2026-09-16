@@ -355,12 +355,12 @@ class TestSessionBuddyDelegation:
     @pytest.mark.integration
     async def test_session_buddy_pool_spawn(self):
         """Test spawning Session-Buddy delegated pool."""
-        # Mock Session-Buddy MCP client
-        with patch("mahavishnu.pools.session_buddy_pool.httpx.AsyncClient") as mock_httpx:
-            mock_response = MagicMock()
-            mock_response.status_code = 200
-            mock_response.json.return_value = {"result": ["worker_1", "worker_2", "worker_3"]}
-            mock_httpx.return_value.post = AsyncMock(return_value=mock_response)
+        # Mock Session-Buddy MCP client (Phase 3 REQ-004: CommonMCPClient.call_tool)
+        with patch(
+            "mcp_common.clients.common_mcp_client.CommonMCPClient.call_tool",
+            new_callable=AsyncMock,
+        ) as mock_call:
+            mock_call.return_value = {"result": ["worker_1", "worker_2", "worker_3"]}
 
             from mahavishnu.pools import PoolConfig
             from mahavishnu.pools.session_buddy_pool import SessionBuddyPool
@@ -380,25 +380,22 @@ class TestSessionBuddyDelegation:
     @pytest.mark.integration
     async def test_session_buddy_execute_task(self):
         """Test executing task via Session-Buddy delegation."""
-        with patch("mahavishnu.pools.session_buddy_pool.httpx.AsyncClient") as mock_httpx:
-            # Mock spawn
-            spawn_response = MagicMock()
-            spawn_response.status_code = 200
-            spawn_response.json.return_value = {"result": ["worker_1", "worker_2", "worker_3"]}
-
-            # Mock execute
-            execute_response = MagicMock()
-            execute_response.status_code = 200
-            execute_response.json.return_value = {
-                "result": {
-                    "status": "completed",
-                    "output": "Task completed via Session-Buddy",
-                }
-            }
-
-            post_mock = AsyncMock()
-            post_mock.side_effect = [spawn_response, execute_response]
-            mock_httpx.return_value.post = post_mock
+        with patch(
+            "mcp_common.clients.common_mcp_client.CommonMCPClient.call_tool",
+            new_callable=AsyncMock,
+        ) as mock_call:
+            # Phase 3 REQ-004: CommonMCPClient.call_tool returns the tool
+            # result payload directly. Spawn needs {"result": [worker_ids]};
+            # execute needs {"result": {"status": ..., "output": ...}}.
+            mock_call.side_effect = [
+                {"result": ["worker_1", "worker_2", "worker_3"]},
+                {
+                    "result": {
+                        "status": "completed",
+                        "output": "Task completed via Session-Buddy",
+                    }
+                },
+            ]
 
             from mahavishnu.pools import PoolConfig
             from mahavishnu.pools.session_buddy_pool import SessionBuddyPool
@@ -464,20 +461,16 @@ class TestMemoryAggregation:
     @pytest.mark.integration
     async def test_cross_pool_search(self):
         """Test searching across all pools via Session-Buddy."""
-        with patch("mahavishnu.pools.memory_aggregator.httpx.AsyncClient") as mock_httpx:
-            # Mock search response
-            search_response = MagicMock()
-            search_response.status_code = 200
-            search_response.json.return_value = {
-                "result": {
-                    "conversations": [
-                        {"content": "Result 1", "metadata": {"pool_id": "pool0"}},
-                        {"content": "Result 2", "metadata": {"pool_id": "pool1"}},
-                    ]
-                }
+        with patch(
+            "mcp_common.clients.common_mcp_client.CommonMCPClient.call_tool",
+            new_callable=AsyncMock,
+        ) as mock_call:
+            mock_call.return_value = {
+                "conversations": [
+                    {"content": "Result 1", "metadata": {"pool_id": "pool0"}},
+                    {"content": "Result 2", "metadata": {"pool_id": "pool1"}},
+                ]
             }
-
-            mock_httpx.return_value.post = AsyncMock(return_value=search_response)
 
             from mahavishnu.pools.memory_aggregator import MemoryAggregator
 
