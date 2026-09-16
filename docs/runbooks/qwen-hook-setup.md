@@ -97,13 +97,15 @@ import os
 import sys
 from pathlib import Path
 
-# QWEN_PROJECT_DIR points at the mahavishnu repo root so the
-# ``from bodai_hook_bridge import handle`` import below resolves.
-# Set this in your shell rc, e.g.
+# QWEN_PROJECT_DIR points at the mahavishnu repo root. The
+# ``bodai_hook_bridge`` module lives under the ``mahavishnu/``
+# package subdirectory, so the path we add to ``sys.path`` is
+# ``<repo>/mahavishnu`` — NOT the repo root.
+# Set QWEN_PROJECT_DIR in your shell rc, e.g.
 #     export QWEN_PROJECT_DIR=/Users/les/Projects/mahavishnu
 QWEN_PROJECT_DIR = os.environ.get("QWEN_PROJECT_DIR")
 if QWEN_PROJECT_DIR:
-    sys.path.insert(0, str(Path(QWEN_PROJECT_DIR)))
+    sys.path.insert(0, str(Path(QWEN_PROJECT_DIR) / "mahavishnu"))
 
 from bodai_hook_bridge import handle  # noqa: E402
 

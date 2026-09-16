@@ -158,23 +158,48 @@ def _publish(*, channel: str, envelope: CanonicalEnvelope) -> None:
 
     try:
         from oneiric.adapters.bootstrap import queued_publisher
-        from oneiric.adapters.queue.redis_streams import (
-            RedisStreamsQueueSettings,
-            STREAM_NAME as _DEFAULT_QUEUE_STREAM,
-        )
+        from oneiric.adapters.queue.redis_streams import RedisStreamsQueueSettings
 
         # The bus reader (``read_bodai_events_since``) defaults to the
         # ``bodai:events`` stream. The oneiric queue adapter defaults
         # to ``oneiric-queue`` — different stream, so bridges would
         # publish successfully but the slash command (``/bodai-status``)
-        # would never see them. Override the adapter's stream to
-        # ``bodai:events`` so producer + consumer agree.
-        if _DEFAULT_QUEUE_STREAM != "bodai:events":
-            adapter = queued_publisher(
-                settings=RedisStreamsQueueSettings(stream="bodai:events"),
-            )
-        else:
-            adapter = queued_publisher()
+        # would never see them. Read the model's actual default from
+        # ``RedisStreamsQueueSettings.model_fields`` rather than trying
+        # to import a constant that does NOT exist on the oneiric
+        # side (``STREAM_NAME`` lived only in
+        # ``mahavishnu.core.events.bodai_subscriber`` — pre-fix this
+        # file imported it from oneiric and the ImportError was
+        # silently swallowed by the outer ``try/except Exception``,
+        # dropping every publish). When the defaults already match,
+        # skip the override entirely.
+        #
+        # URL handling: ``bodai_subscriber`` honors
+        # ``MAHAVISHNU_BODAI_REDIS_URL``; pre-fix the publisher
+        # hardcoded ``redis://localhost:6379/0``, so any environment
+        # where the env var was set to a non-localhost host silently
+        # diverged (subscriber reads remote, publisher writes local).
+        # Read the same env var here so producer + consumer share one
+        # transport. Empty string / unset → fall back to the model's
+        # own default (which is itself ``redis://localhost:6379/0``
+        # in oneiric).
+        import os
+
+        stream_default = RedisStreamsQueueSettings.model_fields["stream"].default
+        url_default = RedisStreamsQueueSettings.model_fields["url"].default
+        env_url = os.environ.get("MAHAVISHNU_BODAI_REDIS_URL", "").strip()
+
+        settings_kwargs: dict[str, object] = {}
+        if stream_default != "bodai:events":
+            settings_kwargs["stream"] = "bodai:events"
+        if env_url and env_url != url_default:
+            settings_kwargs["url"] = env_url
+
+        adapter = (
+            queued_publisher(settings=RedisStreamsQueueSettings(**settings_kwargs))
+            if settings_kwargs
+            else queued_publisher()
+        )
         _drive(_init_and_publish())
     except Exception:
         logger.exception(

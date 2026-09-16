@@ -206,11 +206,21 @@ class TestGetModelForTask:
         assert model == "fallback-model"
 
     def test_minimax_highspeed_for_swarm_quick(self):
-        """MiniMax routing uses highspeed variant for latency-sensitive categories.
+        """MiniMax routing for latency-sensitive categories uses M3.
 
-        Covers SWARM, QUICK, AGENT_LOOP, CREATIVE, and GENERAL — the categories
-        that trade quality headroom for throughput. If any of these regress to
-        the non-highspeed M3, this test fires.
+        Covers SWARM, QUICK, AGENT_LOOP, CREATIVE, and GENERAL — the
+        categories that previously routed to a ``MiniMax-M3-highspeed``
+        variant. That variant does not exist on the MiniMax API (it
+        returns error 2013, verified 2026-09-16); commit ``9d337b30``
+        collapsed all five to ``MiniMax-M3``. This test pins the
+        post-fix routing — if any of these regress to a stale
+        ``MiniMax-M3-highspeed`` reference in YAML or code, this
+        test fires.
+
+        Pre-fix the test asserted ``"highspeed" in model`` (the OLD
+        behavior), which started failing once the routing collapsed
+        to ``MiniMax-M3``. CI went red on this test until the
+        assertion was flipped.
         """
         highspeed_cats = (
             TaskCategory.SWARM,
@@ -221,7 +231,17 @@ class TestGetModelForTask:
         )
         for cat in highspeed_cats:
             model, _ = get_model_for_task("do it fast", DEFAULT_MINIMAX_ROUTING, "default")
-            assert "highspeed" in model, f"{cat} should use highspeed model, got {model}"
+            assert model == "MiniMax-M3", (
+                f"{cat} should route to MiniMax-M3 (the only M-series "
+                f"variant the MiniMax API exposes). Got {model!r}. "
+                f"If a future MiniMax model is added, update this "
+                f"assertion AND DEFAULT_MINIMAX_ROUTING together."
+            )
+            assert "highspeed" not in model, (
+                f"{cat} resolved to a non-existent MiniMax-M3-highspeed "
+                f"variant — that model name is rejected with error "
+                f"2013 by the MiniMax API. Got {model!r}."
+            )
 
     def test_llama_server_single_model_all_categories(self):
         """Llama-server uses single model for all categories."""

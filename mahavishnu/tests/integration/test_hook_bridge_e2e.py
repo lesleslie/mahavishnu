@@ -504,3 +504,173 @@ def test_full_round_trip_bridge_publishes_then_hook_consumes(
         f"hook re-emitted after cursor advance.\n"
         f"captured={second_out!r}"
     )
+
+
+# ---------------------------------------------------------------------------
+# Regression tests — exercise the REAL _publish path
+# ---------------------------------------------------------------------------
+
+
+class _RecordingAdapter:
+    """In-process adapter stand-in that records how it was constructed
+    and what ``init/publish`` was called with.
+
+    Replaces ``queued_publisher`` so the bridge's real ``_publish``
+    code path runs (imports, settings construction, init+publish in
+    one coroutine) — the path the ``captured_publish`` fixture above
+    bypasses. The unit suite mocks ``_publish`` entirely; this suite
+    is what catches "the imports inside _publish are broken".
+    """
+
+    def __init__(self) -> None:
+        self.settings: Any = None
+        self.init_calls = 0
+        self.publish_calls: list[dict[str, Any]] = []
+
+    async def init(self) -> None:
+        self.init_calls += 1
+
+    async def publish(self, *, channel: str, payload: Any) -> None:
+        self.publish_calls.append({"channel": channel, "payload": payload})
+
+
+def _install_recording_adapter(
+    monkeypatch: pytest.MonkeyPatch, env_url: str | None = None
+) -> _RecordingAdapter:
+    """Replace ``queued_publisher`` and (optionally) ``RedisStreamsQueueSettings``
+    with a recorder. Returns the recorder for assertions."""
+    recorder = _RecordingAdapter()
+
+    def _factory(*, settings: Any = None) -> _RecordingAdapter:
+        recorder.settings = settings
+        return recorder
+
+    monkeypatch.setattr(
+        "oneiric.adapters.bootstrap.queued_publisher",
+        _factory,
+        raising=False,
+    )
+    if env_url is not None:
+        monkeypatch.setenv("MAHAVISHNU_BODAI_REDIS_URL", env_url)
+    else:
+        monkeypatch.delenv("MAHAVISHNU_BODAI_REDIS_URL", raising=False)
+    return recorder
+
+
+def test_publish_constructs_stream_override_on_default(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Regression: ``_publish`` MUST construct the adapter with
+    ``stream="bodai:events"`` so producer + subscriber agree.
+
+    Pre-fix the bridge imported a non-existent ``STREAM_NAME``
+    constant from oneiric, raising ImportError that the outer
+    ``try/except Exception`` silently swallowed — every publish was
+    dropped. This test exercises the real ``_publish`` path with a
+    recording adapter and asserts the adapter is constructed with
+    the correct stream override.
+    """
+    from oneiric.adapters.queue.redis_streams import RedisStreamsQueueSettings
+
+    from mahavishnu.bodai_hook_bridge import CanonicalEnvelope, _publish
+
+    recorder = _install_recording_adapter(monkeypatch)
+
+    # Confirm the pre-condition: oneiric default IS NOT bodai:events.
+    # If this assertion ever fails, the override branch becomes
+    # unnecessary and the test should be revisited.
+    assert (
+        RedisStreamsQueueSettings.model_fields["stream"].default != "bodai:events"
+    )
+
+    env = CanonicalEnvelope(
+        event="PostToolUse",
+        harness="claude",
+        session_id="sess_publish_001",
+        cwd="/tmp",
+    )
+    _publish(channel="bodai.hooks.post-tool-use", envelope=env)
+
+    assert recorder.settings is not None, (
+        "adapter was never constructed — _publish silently dropped "
+        "the publish. This is the regression class that e4429dc2 "
+        "introduced and b6... commit fixed."
+    )
+    assert recorder.settings.stream == "bodai:events", (
+        f"adapter stream drifted from bus reader; producer/consumer "
+        f"will disagree. Got stream={recorder.settings.stream!r}"
+    )
+    assert recorder.init_calls == 1, (
+        "init must run before publish in the same coroutine "
+        "(coredis 6.x binds the pool to the event loop)"
+    )
+    assert len(recorder.publish_calls) == 1
+    assert recorder.publish_calls[0]["channel"] == "bodai.hooks.post-tool-use"
+
+
+def test_publish_honors_mahavishnu_bodai_redis_url(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The subscriber honors ``MAHAVISHNU_BODAI_REDIS_URL``; pre-fix
+    the publisher hardcoded ``redis://localhost:6379/0``, so any
+    environment that set the env var to a non-localhost host silently
+    diverged. This test asserts the publisher reads the same env var.
+    """
+    from mahavishnu.bodai_hook_bridge import CanonicalEnvelope, _publish
+
+    recorder = _install_recording_adapter(
+        monkeypatch, env_url="redis://broker.example.com:6379/5"
+    )
+
+    env = CanonicalEnvelope(
+        event="PostToolUse",
+        harness="claude",
+        session_id="sess_pub_url",
+        cwd="/tmp",
+    )
+    _publish(channel="bodai.hooks.post-tool-use", envelope=env)
+
+    assert recorder.settings is not None, (
+        "_publish dropped the publish before constructing the adapter"
+    )
+    assert recorder.settings.url == "redis://broker.example.com:6379/5", (
+        f"publisher ignored MAHAVISHNU_BODAI_REDIS_URL — subscriber "
+        f"reads remote but publisher writes localhost. "
+        f"Got url={recorder.settings.url!r}"
+    )
+
+
+def test_publish_swallows_settings_construction_failure(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Regression: if the import or adapter construction inside
+    ``_publish`` raises, the fire-and-forget contract MUST hold — the
+    caller never sees a publish failure.
+
+    Pre-fix the ImportError on the broken ``STREAM_NAME`` import was
+    silently caught, which is fine — but it ALSO meant every publish
+    was dropped, which is NOT fine. These two regressions are
+    independent and both must be guarded: the catch must hold AND
+    the publish must succeed under normal conditions (see
+    test_publish_constructs_stream_override_on_default).
+    """
+    from mahavishnu.bodai_hook_bridge import CanonicalEnvelope, _publish
+
+    def _boom(*, settings: Any = None) -> Any:
+        raise ImportError("simulated broken import")
+
+    monkeypatch.setattr(
+        "oneiric.adapters.bootstrap.queued_publisher",
+        _boom,
+        raising=False,
+    )
+
+    env = CanonicalEnvelope(
+        event="PostToolUse",
+        harness="claude",
+        session_id="sess_pub_boom",
+        cwd="/tmp",
+    )
+    # Must NOT raise — fire-and-forget contract.
+    result = _publish(channel="bodai.hooks.post-tool-use", envelope=env)
+    assert result is None
