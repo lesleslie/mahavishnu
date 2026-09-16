@@ -283,138 +283,103 @@ class TestAkoshaEmbedder:
         assert result == [0.2] * embedder._dimension
 
     async def test_encode_async_success(self) -> None:
-        """_encode_async POSTs to /tools/call and parses the JSON content."""
+        """_encode_async uses CommonMCPClient.call_tool and parses the embedding payload."""
         embedder = AkoshaEmbedder()
-        fake_response = MagicMock()
-        fake_response.status_code = 200
-        fake_response.raise_for_status = MagicMock()
-        fake_response.json.return_value = {
-            "content": [
-                {
-                    "type": "text",
-                    "text": json.dumps({"embedding": [0.5] * 384}),
-                }
-            ]
-        }
+        mock_client = MagicMock()
+        mock_client.call_tool = AsyncMock(return_value={"embedding": [0.5] * 384})
 
-        with patch.object(
-            embedder,
-            "_get_client",
-            AsyncMock(return_value=MagicMock(post=AsyncMock(return_value=fake_response))),
-        ):
+        with patch.object(embedder, "_get_client", return_value=mock_client):
             result = await embedder._encode_async("test")
         assert result == [0.5] * 384
 
     async def test_encode_async_unexpected_response(self) -> None:
         """Unexpected content shape returns a zero vector."""
         embedder = AkoshaEmbedder()
-        fake_response = MagicMock()
-        fake_response.raise_for_status = MagicMock()
-        fake_response.json.return_value = {"no_content": True}
+        mock_client = MagicMock()
+        mock_client.call_tool = AsyncMock(return_value={"no_embedding_key": True})
 
-        with patch.object(
-            embedder,
-            "_get_client",
-            AsyncMock(return_value=MagicMock(post=AsyncMock(return_value=fake_response))),
-        ):
+        with patch.object(embedder, "_get_client", return_value=mock_client):
             result = await embedder._encode_async("test")
         assert result == [0.0] * 384
 
     async def test_encode_async_exception_returns_zeros(self) -> None:
         embedder = AkoshaEmbedder()
-        with patch.object(embedder, "_get_client", AsyncMock(side_effect=RuntimeError("boom"))):
+        with patch.object(embedder, "_get_client", side_effect=RuntimeError("boom")):
             result = await embedder._encode_async("test")
         assert result == [0.0] * 384
 
     async def test_check_available_success(self) -> None:
         embedder = AkoshaEmbedder()
-        fake_response = MagicMock()
-        fake_response.status_code = 200
+        mock_client = MagicMock()
+        mock_client.call_tool = AsyncMock(return_value={"embedding": [0.1] * 384})
 
-        with patch.object(
-            embedder,
-            "_get_client",
-            AsyncMock(return_value=MagicMock(post=AsyncMock(return_value=fake_response))),
-        ):
+        with patch.object(embedder, "_get_client", return_value=mock_client):
             available = await embedder.check_available()
         assert available is True
         assert embedder._available is True
-        # Second call should not re-check
+        # Second call should not re-check (cache hit)
         with patch.object(
-            embedder, "_get_client", AsyncMock(side_effect=AssertionError("should not be called"))
+            embedder, "_get_client", side_effect=AssertionError("should not be called")
         ):
             available2 = await embedder.check_available()
         assert available2 is True
 
     async def test_check_available_failure(self) -> None:
         embedder = AkoshaEmbedder()
-        with patch.object(embedder, "_get_client", AsyncMock(side_effect=RuntimeError("nope"))):
+        with patch.object(embedder, "_get_client", side_effect=RuntimeError("nope")):
             available = await embedder.check_available()
         assert available is False
         assert embedder._available is False
 
     async def test_check_available_non_200(self) -> None:
+        """Server returning 5xx raises MCPClientHTTPError; we treat as unavailable."""
+        from mcp_common.clients.common_mcp_client import MCPClientHTTPError
+
         embedder = AkoshaEmbedder()
-        fake_response = MagicMock()
-        fake_response.status_code = 500
-        with patch.object(
-            embedder,
-            "_get_client",
-            AsyncMock(return_value=MagicMock(post=AsyncMock(return_value=fake_response))),
-        ):
+        mock_client = MagicMock()
+        mock_client.call_tool = AsyncMock(
+            side_effect=MCPClientHTTPError("HTTP 500", status_code=500)
+        )
+        with patch.object(embedder, "_get_client", return_value=mock_client):
             available = await embedder.check_available()
         assert available is False
 
     async def test_encode_batch_async_success(self) -> None:
         embedder = AkoshaEmbedder()
-        fake_response = MagicMock()
-        fake_response.raise_for_status = MagicMock()
-        fake_response.json.return_value = {
-            "content": [
-                {
-                    "type": "text",
-                    "text": json.dumps({"embeddings": [[0.1] * 384, [0.2] * 384]}),
-                }
-            ]
-        }
-        with patch.object(
-            embedder,
-            "_get_client",
-            AsyncMock(return_value=MagicMock(post=AsyncMock(return_value=fake_response))),
-        ):
+        mock_client = MagicMock()
+        mock_client.call_tool = AsyncMock(
+            return_value={"embeddings": [[0.1] * 384, [0.2] * 384]}
+        )
+        with patch.object(embedder, "_get_client", return_value=mock_client):
             result = await embedder.encode_batch_async(["a", "b"])
         assert result == [[0.1] * 384, [0.2] * 384]
 
     async def test_encode_batch_async_unexpected(self) -> None:
         embedder = AkoshaEmbedder()
-        fake_response = MagicMock()
-        fake_response.raise_for_status = MagicMock()
-        fake_response.json.return_value = {"content": []}
-        with patch.object(
-            embedder,
-            "_get_client",
-            AsyncMock(return_value=MagicMock(post=AsyncMock(return_value=fake_response))),
-        ):
+        mock_client = MagicMock()
+        mock_client.call_tool = AsyncMock(return_value={"nothing_useful": True})
+        with patch.object(embedder, "_get_client", return_value=mock_client):
             result = await embedder.encode_batch_async(["a", "b"])
         assert result == [[0.0] * 384, [0.0] * 384]
 
     async def test_encode_batch_async_exception(self) -> None:
         embedder = AkoshaEmbedder()
-        with patch.object(embedder, "_get_client", AsyncMock(side_effect=RuntimeError("boom"))):
+        with patch.object(embedder, "_get_client", side_effect=RuntimeError("boom")):
             result = await embedder.encode_batch_async(["a"])
         assert result == [[0.0] * 384]
 
     async def test_get_client_lazy(self) -> None:
         embedder = AkoshaEmbedder()
-        client = await embedder._get_client()
+        # _get_client is sync — lazy-creates the CommonMCPClient on first call.
+        client = embedder._get_client()
         # Second call returns the same client instance
-        client2 = await embedder._get_client()
+        client2 = embedder._get_client()
         assert client is client2
 
     async def test_close_releases_client(self) -> None:
         embedder = AkoshaEmbedder()
-        # Force client creation
-        await embedder._get_client()
+        # Force client creation (sync)
+        embedder._get_client()
         assert embedder._client is not None
         await embedder.close()
         assert embedder._client is None
@@ -564,7 +529,9 @@ class TestInitialize:
         ingester = _make_ingester()
         mock_hot = AsyncMock()
         mock_hot.initialize = AsyncMock()
-        with patch("akosha.storage.HotStore", return_value=mock_hot):
+        with patch(
+            "oneiric.adapters.vector.duckdb_hot_store.DuckdbHotStore", return_value=mock_hot
+        ):
             await ingester.initialize()
         assert ingester._hot_store is mock_hot
         mock_hot.initialize.assert_awaited_once()
@@ -573,7 +540,7 @@ class TestInitialize:
         existing = AsyncMock()
         existing.initialize = AsyncMock()
         ingester = _make_ingester(hot_store=existing)
-        with patch("akosha.storage.HotStore") as cls:
+        with patch("oneiric.adapters.vector.duckdb_hot_store.DuckdbHotStore") as cls:
             await ingester.initialize()
         cls.assert_not_called()
         existing.initialize.assert_not_called()
@@ -1205,7 +1172,9 @@ class TestCreateOtelIngester:
         mock_hot = AsyncMock()
         mock_hot.initialize = AsyncMock()
         mock_hot.close = AsyncMock()
-        with patch("akosha.storage.HotStore", return_value=mock_hot):
+        with patch(
+            "oneiric.adapters.vector.duckdb_hot_store.DuckdbHotStore", return_value=mock_hot
+        ):
             ingester = await create_otel_ingester(
                 preferred_backend="text_only",
                 storage_type="duckdb",
@@ -1221,7 +1190,9 @@ class TestCreateOtelIngester:
         mock_hot = AsyncMock()
         mock_hot.initialize = AsyncMock()
         mock_hot.close = AsyncMock()
-        with patch("akosha.storage.HotStore", return_value=mock_hot):
+        with patch(
+            "oneiric.adapters.vector.duckdb_hot_store.DuckdbHotStore", return_value=mock_hot
+        ):
             ingester = await create_otel_ingester(
                 storage_type="duckdb",
                 preferred_backend="text_only",
@@ -1238,7 +1209,9 @@ class TestCreateOtelIngester:
         mock_hot.initialize = AsyncMock()
         mock_hot.close = AsyncMock()
         monkeypatch.setenv("MAHAVISHNU__OTEL_INGESTER__STORAGE__TYPE", "duckdb")
-        with patch("akosha.storage.HotStore", return_value=mock_hot):
+        with patch(
+            "oneiric.adapters.vector.duckdb_hot_store.DuckdbHotStore", return_value=mock_hot
+        ):
             ingester = await create_otel_ingester(
                 storage_type="duckdb",
                 preferred_backend="text_only",
@@ -1255,7 +1228,9 @@ class TestCreateOtelIngester:
         mock_hot.initialize = AsyncMock()
         mock_hot.close = AsyncMock()
         monkeypatch.setenv("MAHAVISHNU__OTEL_INGESTER__STORAGE__PG_URL", "postgres://env-host/db")
-        with patch("akosha.storage.HotStore", return_value=mock_hot):
+        with patch(
+            "oneiric.adapters.vector.duckdb_hot_store.DuckdbHotStore", return_value=mock_hot
+        ):
             ingester = await create_otel_ingester(
                 storage_type="duckdb",
                 preferred_backend="text_only",
@@ -1273,7 +1248,9 @@ class TestCreateOtelIngester:
         mock_hot = AsyncMock()
         mock_hot.initialize = AsyncMock()
         mock_hot.close = AsyncMock()
-        with patch("akosha.storage.HotStore", return_value=mock_hot) as cls:
+        with patch(
+            "oneiric.adapters.vector.duckdb_hot_store.DuckdbHotStore", return_value=mock_hot
+        ) as cls:
             ingester = await create_otel_ingester(
                 preferred_backend="text_only",
                 hot_store_path="/tmp/test_otel.duckdb",
@@ -1289,7 +1266,9 @@ class TestCreateOtelIngester:
         mock_hot = AsyncMock()
         mock_hot.initialize = AsyncMock()
         mock_hot.close = AsyncMock()
-        with patch("akosha.storage.HotStore", return_value=mock_hot):
+        with patch(
+            "oneiric.adapters.vector.duckdb_hot_store.DuckdbHotStore", return_value=mock_hot
+        ):
             ingester = await create_otel_ingester(
                 preferred_backend="text_only",
                 hot_store_path="~/test_otel.duckdb",
