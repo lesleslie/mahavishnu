@@ -5,6 +5,44 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.25.0] - 2026-09-16
+
+### Added
+
+- mahavishnu: 11 Qwen-only event handlers (Phase 12b task 1)
+- mahavishnu: Add bus dependency-group with coredis
+- mahavishnu: Augment 6 Claude hooks with bridge routing (Phase 12a Task 2)
+- mahavishnu: Canonical hook bridge handler (Phase 12a Task 1)
+- mahavishnu: Git-hook Typer subcommand (Phase 12a Task 3)
+- mahavishnu: Hard-cutover PostToolUse hook JSON-queue → bus XREAD (Phase 12a Task 5 partial)
+- mahavishnu: Install-bodai-git-hooks.sh operator script (Phase 12a Task 4)
+- mahavishnu: Qwen bridge e2e + operator runbook (Phase 12b tasks 2+3+4)
+- mahavishnu: Retire bodai-activity daemon + metrics bodai CLI (Phase 12a Task 5 final)
+- mahavishnu: Wire Phase 4 health aggregator (Plan §4 + §5 task 7 + §11.4)
+
+### Fixed
+
+- mahavishnu: Address 3 critical + 2 high findings from multi-agent review
+- mahavishnu: Bridge publishes to bodai:events stream + single-coroutine init/publish
+- mahavishnu: Drop non-existent MiniMax-M3-highspeed model name
+- mahavishnu: Handle async publish in bodai_hook_bridge + redirect oneiric to local path
+- mahavishnu: Read_bodai_events_since per-entry decode resilience
+
+### Documentation
+
+- mahavishnu: Retire stale bodai-event-queue.json references (Phase 12a task 7)
+- Refresh BODAI_REPO_REGISTRY.md to current regen output
+- spec+test: Point Phase 4 health references at mcp-common canonical home
+
+### Testing
+
+- mahavishnu: Fix hook command parser to honour $CLAUDE_PROJECT_DIR
+- mahavishnu: Full bridge e2e suite (Phase 12a task 6)
+
+### Internal
+
+- Sync uv.lock to 0.24.2 (lockfile lagged behind the 5ab9e780 version bump)
+
 ## [0.24.2] - 2026-09-15
 
 ### Documentation

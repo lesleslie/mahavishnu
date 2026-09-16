@@ -55,13 +55,9 @@ def fake_bridge_handle(monkeypatch: pytest.MonkeyPatch) -> list[dict[str, Any]]:
     calls: list[dict[str, Any]] = []
 
     def _fake_handle(*, event_name: str, harness: str, payload: dict[str, Any]) -> None:
-        calls.append(
-            {"event_name": event_name, "harness": harness, "payload": payload}
-        )
+        calls.append({"event_name": event_name, "harness": harness, "payload": payload})
 
-    monkeypatch.setattr(
-        "mahavishnu.bodai_hook_bridge.handle", _fake_handle
-    )
+    monkeypatch.setattr("mahavishnu.bodai_hook_bridge.handle", _fake_handle)
     return calls
 
 
@@ -181,9 +177,7 @@ def test_bridge_failure_does_not_alter_exit_code(
     def _exploding_handle(**_kwargs: Any) -> None:
         raise RuntimeError("bus down")
 
-    monkeypatch.setattr(
-        "mahavishnu.bodai_hook_bridge.handle", _exploding_handle
-    )
+    monkeypatch.setattr("mahavishnu.bodai_hook_bridge.handle", _exploding_handle)
 
     # Action returns 0 (our fake subprocess) — bridge raising must
     # NOT turn this into a non-zero exit code.

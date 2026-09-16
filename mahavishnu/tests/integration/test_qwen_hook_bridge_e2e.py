@@ -18,9 +18,9 @@ explicit path (``testpaths = ["tests"]`` does not auto-discover
 from __future__ import annotations
 
 import json
+from pathlib import Path
 import subprocess
 import sys
-from pathlib import Path
 
 import pytest
 
@@ -74,8 +74,7 @@ def test_each_qwen_bridge_invokes_canonical_handler(event_name: str) -> None:
     bridge_path = BRIDGE_DIR / event_name
     if not bridge_path.exists():
         pytest.skip(
-            f"Qwen bridge {bridge_path} not installed "
-            f"(see docs/runbooks/qwen-hook-setup.md)"
+            f"Qwen bridge {bridge_path} not installed (see docs/runbooks/qwen-hook-setup.md)"
         )
     payload = {
         "hook_event_name": event_name,
@@ -83,21 +82,21 @@ def test_each_qwen_bridge_invokes_canonical_handler(event_name: str) -> None:
         "cwd": "/tmp",
     }
     try:
+        # check=False: the test inspects result.returncode manually
+        # (assert below accepts 0=accept and 2=block). Raising on any
+        # non-zero exit would obscure the handler-vs-publish distinction.
         result = subprocess.run(
             [sys.executable, str(bridge_path), event_name],
             input=json.dumps(payload),
             capture_output=True,
             text=True,
             timeout=10,
+            check=False,
             env={
                 # Subprocess inherits env by default but we add
                 # QWEN_PROJECT_DIR explicitly so the bridge import
                 # of ``bodai_hook_bridge`` resolves.
-                **{
-                    k: v
-                    for k, v in __import__("os").environ.items()
-                    if k != "QT_QPA_PLATFORM"
-                },
+                **{k: v for k, v in __import__("os").environ.items() if k != "QT_QPA_PLATFORM"},
                 "QWEN_PROJECT_DIR": str(REPO_ROOT),
             },
         )
@@ -108,8 +107,7 @@ def test_each_qwen_bridge_invokes_canonical_handler(event_name: str) -> None:
     # inside ``_publish``; the bridge's exit code reflects the handler
     # decision, not the bus.
     assert result.returncode in (0, 2), (
-        f"Qwen bridge {event_name} exited {result.returncode}; "
-        f"stderr={result.stderr!r}"
+        f"Qwen bridge {event_name} exited {result.returncode}; stderr={result.stderr!r}"
     )
 
 
@@ -122,9 +120,7 @@ def test_qwen_bridge_module_documents_runbook_reference() -> None:
     existence so it doesn't get silently deleted in a docs cleanup.
     """
     runbook = REPO_ROOT / "docs" / "runbooks" / "qwen-hook-setup.md"
-    assert runbook.is_file(), (
-        f"Qwen bridge runbook missing: {runbook}. See Phase 12b task 2."
-    )
+    assert runbook.is_file(), f"Qwen bridge runbook missing: {runbook}. See Phase 12b task 2."
     contents = runbook.read_text(encoding="utf-8")
     # Pin the operator-script reference so the runbook stays useful.
     assert "~/.qwen/hooks/" in contents

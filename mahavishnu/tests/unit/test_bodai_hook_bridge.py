@@ -8,7 +8,6 @@ codes.
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
 from unittest.mock import patch
 
 import pytest
@@ -19,9 +18,6 @@ from mahavishnu.bodai_hook_bridge import (
     _normalize,
     handle,
 )
-
-if TYPE_CHECKING:
-    pass
 
 
 def test_normalize_claude_payload() -> None:
@@ -134,7 +130,7 @@ def test_handle_pre_tool_use_delegates_to_license_guard_when_present(
 
     monkeypatch.setitem(sys.modules, "mahavishnu.hook_guards", stub_module)
 
-    stub_module.license_guard = _blocking_guard
+    setattr(stub_module, "license_guard", _blocking_guard)
     env_block = CanonicalEnvelope(
         event="PreToolUse",
         harness="claude",
@@ -146,7 +142,7 @@ def test_handle_pre_tool_use_delegates_to_license_guard_when_present(
     )
     assert handle_pre_tool_use(env_block) == 2
 
-    stub_module.license_guard = _permissive_guard
+    setattr(stub_module, "license_guard", _permissive_guard)
     env_permit = CanonicalEnvelope(
         event="PreToolUse",
         harness="claude",
@@ -326,20 +322,16 @@ def test_qwen_only_event_publishes_to_qwen_channel(event_name: str) -> None:
     from the canonical pattern. Mirrors ``test_channel_for_camel_case_event``
     but covers the Qwen-only set.
     """
-    expected_channel = (
-        "bodai.hooks."
-        + event_name.replace("PostToolUse", "post-tool-use").lower()
-        .replace("session", "session-")
-        .replace("stopfailure", "stop-failure")
-        .replace("precompact", "pre-compact")
-        .replace("postcompact", "post-compact")
-        .replace("messagedisplay", "message-display")
-        .replace("permissionrequest", "permission-request")
-        .replace("permissiondenied", "permission-denied")
-        .replace("todocreated", "todo-created")
-        .replace("todocompleted", "todo-completed")
-        .replace("subagentstart", "subagent-start")
-        .replace("sessiondelete", "session-delete")
+    expected_channel = "bodai.hooks." + event_name.replace(
+        "PostToolUse", "post-tool-use"
+    ).lower().replace("session", "session-").replace("stopfailure", "stop-failure").replace(
+        "precompact", "pre-compact"
+    ).replace("postcompact", "post-compact").replace("messagedisplay", "message-display").replace(
+        "permissionrequest", "permission-request"
+    ).replace("permissiondenied", "permission-denied").replace(
+        "todocreated", "todo-created"
+    ).replace("todocompleted", "todo-completed").replace("subagentstart", "subagent-start").replace(
+        "sessiondelete", "session-delete"
     )
     # The above munging is for readability; use the real ``_channel_for``
     # helper for ground truth instead.

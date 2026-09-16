@@ -12,9 +12,9 @@ publish is fire-and-forget (failures do not alter the exit code).
 
 from __future__ import annotations
 
-import os
 import subprocess
 import sys
+from pathlib import Path
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
@@ -56,7 +56,7 @@ def _publish_git_event(event: str) -> None:
     payload: dict[str, object] = {
         "event": event,
         "harness": "git",
-        "cwd": os.getcwd(),
+        "cwd": str(Path.cwd()),
         "argv": sys.argv[1:],
         "timestamp": None,
         "tool_name": None,

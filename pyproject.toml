@@ -7,7 +7,7 @@ packages = ["mahavishnu"]
 
 [project]
 name = "mahavishnu"
-version = "0.24.2"
+version = "0.25.0"
 description = "Global orchestrator package for development workflows"
 authors = [
     {name = "Les Leslie", email = "les@wedgwoodwebworks.com"},
@@ -128,21 +128,14 @@ dev = [
     {include-group = "content-ingest"},
     {include-group = "storage-pg"},
     {include-group = "compression-zstd"},
-    {include-group = "bus"},
 ]
 
-# Bus delivery (Oneiric Redis Streams / pubsub). Adds ``coredis``
-# directly because oneiric publishes its optional Redis client under
-# PEP 735 ``[dependency-groups].cache`` rather than
-# ``[project.optional-dependencies].cache`` — so ``oneiric[cache]``
-# is not a real installable extra on PyPI. The
-# ``bodai_hook_bridge`` is fire-and-forget (spec §4.13.3) — when this
-# group is not installed the bridge silently swallows the coredis-
-# not-installed LifecycleError and exits cleanly. Install via
-# ``uv sync --group bus`` (already pulled in by ``dev``).
-bus = [
-    "coredis>=6.7.0",
-]
+# Bus delivery (Oneiric Redis Streams / pubsub). The
+# ``bodai_hook_bridge`` uses ``oneiric.adapters.bootstrap.queued_publisher``
+# which depends on coredis transitively via oneiric's optional
+# ``cache`` group; coredis is NOT installed directly here because
+# nothing in ``ahavishnu/`` references the ``coredis`` module by name
+# (verified 2026-09-16). Fire-and-forget contract per spec §4.13.3.
 
 # Bodai ecosystem integrations
 ecosystem = [
@@ -559,7 +552,6 @@ exclude_deps = [
     "tree-sitter-go",
     "tree-sitter-python",
     "zensical",
-    "pytest",
     "pytest-asyncio",
     "pytest-cov",
     "pytest-mock",

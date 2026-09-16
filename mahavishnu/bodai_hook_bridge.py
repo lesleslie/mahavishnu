@@ -16,13 +16,12 @@ from dataclasses import dataclass, field
 from datetime import UTC, datetime
 import logging
 import re
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Protocol
 
 logger = logging.getLogger(__name__)
 
 if TYPE_CHECKING:
     from collections.abc import Callable
-
 
 
 # ---------------------------------------------------------------------------
@@ -75,9 +74,7 @@ def _normalize(harness: str, raw: dict[str, Any]) -> CanonicalEnvelope:
     if isinstance(effort_value, dict):
         effort_value = effort_value.get("level")
     return CanonicalEnvelope(
-        event=str(
-            raw_dict.get("hook_event_name") or raw_dict.get("event") or "?"
-        ),
+        event=str(raw_dict.get("hook_event_name") or raw_dict.get("event") or "?"),
         harness=harness,
         session_id=str(raw_dict.get("session_id") or ""),
         cwd=str(raw_dict.get("cwd") or ""),
@@ -157,9 +154,6 @@ def _publish(*, channel: str, envelope: CanonicalEnvelope) -> None:
         await adapter.publish(channel=channel, payload=envelope.__dict__)
 
     try:
-        from oneiric.adapters.bootstrap import queued_publisher
-        from oneiric.adapters.queue.redis_streams import RedisStreamsQueueSettings
-
         # The bus reader (``read_bodai_events_since``) defaults to the
         # ``bodai:events`` stream. The oneiric queue adapter defaults
         # to ``oneiric-queue`` — different stream, so bridges would
@@ -185,11 +179,14 @@ def _publish(*, channel: str, envelope: CanonicalEnvelope) -> None:
         # in oneiric).
         import os
 
+        from oneiric.adapters.bootstrap import queued_publisher
+        from oneiric.adapters.queue.redis_streams import RedisStreamsQueueSettings
+
         stream_default = RedisStreamsQueueSettings.model_fields["stream"].default
         url_default = RedisStreamsQueueSettings.model_fields["url"].default
         env_url = os.environ.get("MAHAVISHNU_BODAI_REDIS_URL", "").strip()
 
-        settings_kwargs: dict[str, object] = {}
+        settings_kwargs: dict[str, str] = {}
         if stream_default != "bodai:events":
             settings_kwargs["stream"] = "bodai:events"
         if env_url and env_url != url_default:
@@ -203,8 +200,7 @@ def _publish(*, channel: str, envelope: CanonicalEnvelope) -> None:
         _drive(_init_and_publish())
     except Exception:
         logger.exception(
-            "hook_bridge: publish to channel=%r failed; "
-            "hook caller not blocked",
+            "hook_bridge: publish to channel=%r failed; hook caller not blocked",
             channel,
         )
         # Track the failure on the bridge's own ComponentHealth
@@ -214,13 +210,12 @@ def _publish(*, channel: str, envelope: CanonicalEnvelope) -> None:
         try:
             from mahavishnu.bodai_hook_bridge import _health_monitor
 
-            feed = _health_monitor.get_feed("hook_bridge_feed")
-            if feed is not None:
-                feed.errors_total = getattr(feed, "errors_total", 0) + 1
-                feed.publish_failures_total = (
-                    getattr(feed, "publish_failures_total", 0) + 1
-                )
-        except (ImportError, AttributeError):
+            if _health_monitor is not None:
+                feed = _health_monitor.get_feed("hook_bridge_feed")
+                if feed is not None:
+                    feed.errors_total = getattr(feed, "errors_total", 0) + 1
+                    feed.publish_failures_total = getattr(feed, "publish_failures_total", 0) + 1
+        except ImportError, AttributeError:
             pass
         return
 
@@ -503,7 +498,19 @@ def handle(
 # via ``setattr(mahavishnu.bodai_hook_bridge, "_health_monitor", hm)``.
 # ``_publish`` already handles the unset case (ImportError catch
 # below) so module import is safe even without the monitor.
-_health_monitor: object | None = None  # type: ignore[assignment]
+class _HealthMonitorLike(Protocol):
+    """Duck-typed protocol describing what ``_health_monitor`` must provide.
+
+    Set externally at runtime via ``setattr``; ``object`` was the previous
+    annotation and tripped ty because ``object.get_feed`` doesn't exist.
+    ``get_feed`` returns a mutable record with integer fields that the
+    bridge increments via ``getattr(..., default=0) + 1``.
+    """
+
+    def get_feed(self, name: str) -> Any: ...
+
+
+_health_monitor: _HealthMonitorLike | None = None  # type: ignore[assignment]
 
 
 __all__ = [

@@ -40,11 +40,10 @@ from __future__ import annotations
 
 import importlib.util
 import json
-import sys
 from pathlib import Path
-import uuid
 from typing import Any
 from unittest.mock import patch
+import uuid
 
 import pytest
 
@@ -126,14 +125,10 @@ def exploding_queued_publisher(monkeypatch: pytest.MonkeyPatch) -> None:
 
 
 @pytest.fixture
-def hook_state(
-    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
-) -> dict[str, Path]:
+def hook_state(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> dict[str, Path]:
     """Wire the post-tool-use hook state to a fresh tmp file."""
     state = tmp_path / "bodai-post-tool-use-state.json"
-    monkeypatch.setenv(
-        "MAHAVISHNU_BODAI_POST_TOOL_USE_STATE_PATH", str(state)
-    )
+    monkeypatch.setenv("MAHAVISHNU_BODAI_POST_TOOL_USE_STATE_PATH", str(state))
     repo_root = str(Path(__file__).resolve().parents[3])
     monkeypatch.setenv("CLAUDE_PROJECT_DIR", repo_root)
     for key in (
@@ -178,11 +173,7 @@ def bus_mock(
         # Model XREAD semantics: return only entries strictly newer
         # than last_id. message_ids are Redis stream ids of the form
         # "<ms>-<seq>" so lexicographic comparison is correct.
-        return [
-            (msg_id, env)
-            for msg_id, env in batch
-            if msg_id > last_id
-        ]
+        return [(msg_id, env) for msg_id, env in batch if msg_id > last_id]
 
     monkeypatch.setattr(
         "mahavishnu.core.events.bodai_subscriber.read_bodai_events_since",
@@ -258,9 +249,7 @@ def test_git_hook_dispatch_publishes_to_bus(monkeypatch: pytest.MonkeyPatch) -> 
 
     monkeypatch.setattr(git_hook_handlers.subprocess, "run", _fake_run)
 
-    with patch(
-        "mahavishnu.git_hook_handlers._publish_git_event"
-    ) as pub:
+    with patch("mahavishnu.git_hook_handlers._publish_git_event") as pub:
         dispatch_git_hook(event="post-commit")
 
     pub.assert_called_once_with("post-commit")
@@ -387,9 +376,7 @@ def test_every_documented_event_maps_to_expected_channel() -> None:
         "GitPostRewrite": "bodai.hooks.git-post-rewrite",
     }
     for event, want in expected.items():
-        assert _channel_for(event) == want, (
-            f"_channel_for({event!r}) drifted from spec §4.13.4"
-        )
+        assert _channel_for(event) == want, f"_channel_for({event!r}) drifted from spec §4.13.4"
 
 
 # ---------------------------------------------------------------------------
@@ -482,12 +469,8 @@ def test_full_round_trip_bridge_publishes_then_hook_consumes(
     # Payload keys are alphabetically sorted in the summary format.
     assert (
         "[mahavishnu] post_tool_use status=success tool_name="
-        "mcp__mahavishnu__pool_route_execute workflow_id=wid_e2e_001"
-        in captured_out
-    ), (
-        f"expected summary line not found in hook stdout.\n"
-        f"captured={captured_out!r}"
-    )
+        "mcp__mahavishnu__pool_route_execute workflow_id=wid_e2e_001" in captured_out
+    ), f"expected summary line not found in hook stdout.\ncaptured={captured_out!r}"
 
     # Phase 4: cursor advanced to the consumed message_id.
     state = json.loads(hook_state["state_path"].read_text())
@@ -500,10 +483,7 @@ def test_full_round_trip_bridge_publishes_then_hook_consumes(
     rc2 = post_tool_use_module._post_tool_use()
     assert rc2 == 0
     second_out = capsys.readouterr().out
-    assert second_out == "", (
-        f"hook re-emitted after cursor advance.\n"
-        f"captured={second_out!r}"
-    )
+    assert second_out == "", f"hook re-emitted after cursor advance.\ncaptured={second_out!r}"
 
 
 # ---------------------------------------------------------------------------
@@ -579,9 +559,7 @@ def test_publish_constructs_stream_override_on_default(
     # Confirm the pre-condition: oneiric default IS NOT bodai:events.
     # If this assertion ever fails, the override branch becomes
     # unnecessary and the test should be revisited.
-    assert (
-        RedisStreamsQueueSettings.model_fields["stream"].default != "bodai:events"
-    )
+    assert RedisStreamsQueueSettings.model_fields["stream"].default != "bodai:events"
 
     env = CanonicalEnvelope(
         event="PostToolUse",
@@ -618,9 +596,7 @@ def test_publish_honors_mahavishnu_bodai_redis_url(
     """
     from mahavishnu.bodai_hook_bridge import CanonicalEnvelope, _publish
 
-    recorder = _install_recording_adapter(
-        monkeypatch, env_url="redis://broker.example.com:6379/5"
-    )
+    recorder = _install_recording_adapter(monkeypatch, env_url="redis://broker.example.com:6379/5")
 
     env = CanonicalEnvelope(
         event="PostToolUse",

@@ -118,9 +118,7 @@ def create_health_app(
             feed_name: {
                 "status": feed_snapshot["status"].value,
                 "healthy": feed_snapshot["healthy"],
-                "reason_codes": [
-                    rc.value for rc in feed_snapshot["reason_codes"]
-                ],
+                "reason_codes": [rc.value for rc in feed_snapshot["reason_codes"]],
             }
             for feed_name, feed_snapshot in verdict.snapshot["checks"].items()
         }
@@ -128,14 +126,10 @@ def create_health_app(
         # Worst-feed's reason codes (deduped union across tied
         # worst-status feeds; ``aggregate_feed_states`` already
         # dedupes).
-        reason_codes_json: list[str] = [
-            rc.value for rc in verdict.snapshot["reason_codes"]
-        ]
+        reason_codes_json: list[str] = [rc.value for rc in verdict.snapshot["reason_codes"]]
 
         body = HealthResponse(
-            status=_WORST_STATUS_TO_LEGACY.get(
-                verdict.worst_status.value, HealthStatus.UNHEALTHY
-            ),
+            status=_WORST_STATUS_TO_LEGACY.get(verdict.worst_status.value, HealthStatus.UNHEALTHY),
             service=server_name,
             version=version,
             uptime_seconds=uptime,
@@ -253,9 +247,7 @@ def create_health_app(
         and require a separate OTel collector — out of scope here.
         """
         try:
-            text = prometheus_client.generate_latest(
-                get_health_metrics_registry()
-            )
+            text = prometheus_client.generate_latest(get_health_metrics_registry())
         except Exception:
             logger.exception("metrics endpoint: registry render failed")
             return Response(

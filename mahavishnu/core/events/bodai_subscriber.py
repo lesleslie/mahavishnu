@@ -204,12 +204,36 @@ def format_bodai_summary(envelope: EventEnvelope) -> str:
     return " ".join(parts)
 
 
-def _envelope_to_dict(envelope: EventEnvelope) -> dict[str, Any]:
-    """Serialize an ``EventEnvelope`` into the queue's plain-dict shape."""
+def _envelope_to_dict(
+    envelope: EventEnvelope | MahavishnuEventEnvelope,
+) -> dict[str, Any]:
+    """Serialize an envelope into the queue's plain-dict shape.
+
+    Accepts both the canonical Oneiric ``EventEnvelope`` (fields:
+    ``topic`` / ``payload`` / ``headers``) and the local
+    ``MahavishnuEventEnvelope`` (fields: ``event_type`` / ``payload`` /
+    ``metadata``). Both envelopes share a ``payload`` field; the
+    surrounding metadata keys differ and are mapped to the canonical
+    ``topic`` / ``headers`` shape expected downstream.
+
+    Branches on the runtime-importable ``MahavishnuEventEnvelope``
+    first so the Oneiric ``EventEnvelope`` (only imported under
+    ``TYPE_CHECKING``) doesn't need to resolve at runtime for the
+    isinstance call.
+    """
+    if isinstance(envelope, MahavishnuEventEnvelope):
+        topic = envelope.event_type
+        payload = envelope.payload
+        headers = envelope.metadata
+    else:
+        # Oneiric EventEnvelope (canonical).
+        topic = envelope.topic
+        payload = envelope.payload
+        headers = envelope.headers
     return {
-        "topic": str(envelope.topic),
-        "payload": dict(envelope.payload) if isinstance(envelope.payload, dict) else {},
-        "headers": dict(envelope.headers) if isinstance(envelope.headers, dict) else {},
+        "topic": str(topic),
+        "payload": dict(payload) if isinstance(payload, dict) else {},
+        "headers": dict(headers) if isinstance(headers, dict) else {},
         "received_at": asyncio.get_event_loop().time(),
     }
 
@@ -938,8 +962,7 @@ async def read_bodai_events_since(
                 # Restoring it so a single malformed envelope on the
                 # bus doesn't hide every other recent event.
                 _logger.warning(
-                    "bodai.read: failed to decode envelope; "
-                    "skipping message_id=%s: %s",
+                    "bodai.read: failed to decode envelope; skipping message_id=%s: %s",
                     message_id,
                     exc,
                     exc_info=True,

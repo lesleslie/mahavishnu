@@ -23,7 +23,7 @@ for the cross-component view.
 Run the following Python via the Bash tool (tool ID `Bash`) to read
 from the bus and group by source. The hook reads the most recent
 100 envelopes from the stream (full history is bounded by Redis
-Streams' MAXLEN policy); adjust ``count`` if you need more.
+Streams' MAXLEN policy); adjust `count` if you need more.
 
 ```python
 import asyncio
