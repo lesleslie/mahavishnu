@@ -927,7 +927,24 @@ async def read_bodai_events_since(
             if normalized is None:
                 continue
             message_id, payload = normalized
-            envelope = _decode_envelope(payload)
+            try:
+                envelope = _decode_envelope(payload)
+            except Exception as exc:
+                # Per-entry decode failure must NOT poison the whole
+                # read. The legacy daemon
+                # (``subscribe_to_bodai_events`` → ``_process_stream_entry``)
+                # caught this with a log + continue; the one-shot
+                # reader dropped that resilience in Phase 12a Task 5.
+                # Restoring it so a single malformed envelope on the
+                # bus doesn't hide every other recent event.
+                _logger.warning(
+                    "bodai.read: failed to decode envelope; "
+                    "skipping message_id=%s: %s",
+                    message_id,
+                    exc,
+                    exc_info=True,
+                )
+                continue
             envelope_dict = _envelope_to_dict(envelope)
             result.append((message_id, envelope_dict))
     return result

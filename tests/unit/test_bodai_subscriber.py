@@ -1101,3 +1101,83 @@ def test_read_bodai_events_since_decodes_envelopes_via_canonical_path() -> None:
     assert envelope_dict["topic"] == "test_run_completed"
     assert envelope_dict["payload"] == {"tests_passed": 42}
     assert envelope_dict["headers"]["source"] == "crackerjack"
+
+
+def test_read_bodai_events_since_skips_malformed_entries() -> None:
+    """A single malformed entry must NOT poison the whole read.
+
+    Regression: Phase 12a Task 5 introduced the one-shot reader
+    (replacing the daemon) and dropped the per-entry ``try/except`` that
+    the legacy daemon used. A single bad envelope (e.g. one published
+    by a misbehaving producer before the canonical wire format was
+    enforced) used to fail the entire ``read_bodai_events_since`` call
+    and surface 0 envelopes — masking every other recent event from
+    /bodai-status. This test pins the resilience: one bad entry +
+    two good ones → 2 good results returned.
+    """
+    from mahavishnu.core.events.bodai_subscriber import read_bodai_events_since
+
+    good_envelope = {
+        "topic": "workflow_completed",
+        "payload": {"workflow_id": "wid_good"},
+        "headers": {
+            "source": "mahavishnu",
+            "event_id": "evt_good",
+            "version": "1.0.0",
+            "timestamp": "2026-01-15T10:00:00+00:00",
+        },
+    }
+    # Malformed: payload is a string instead of an object — fails the
+    # `_validate_oneiric_envelope` ``payload must be dict`` check.
+    bad_envelope = {
+        "topic": "bad_event",
+        "payload": "not a dict",
+        "headers": {
+            "source": "unknown",
+            "event_id": "evt_bad",
+            "version": "1.0.0",
+            "timestamp": "2026-01-15T10:00:00+00:00",
+        },
+    }
+    raw_response = [
+        [
+            b"bodai:events",
+            [
+                # Good entry first — must surface.
+                (
+                    b"1737120000000-0",
+                    {
+                        b"envelope": json.dumps(good_envelope).encode("utf-8")
+                    },
+                ),
+                # Bad entry second — must be skipped (logged WARNING).
+                (
+                    b"1737120000001-0",
+                    {
+                        b"envelope": json.dumps(bad_envelope).encode("utf-8")
+                    },
+                ),
+                # Good entry third — must surface.
+                (
+                    b"1737120000002-0",
+                    {
+                        b"envelope": json.dumps(good_envelope).encode("utf-8")
+                    },
+                ),
+            ],
+        ],
+    ]
+    client = _make_xread_mock_client(xread_response=raw_response)
+    result = asyncio.run(
+        read_bodai_events_since(
+            redis_url="redis://localhost:6379/0",
+            client_factory=lambda _url: client,
+        )
+    )
+    # Two good entries surface; the bad one is skipped.
+    assert len(result) == 2
+    assert result[0][0] == "1737120000000-0"
+    assert result[1][0] == "1737120000002-0"
+    for _msg_id, envelope_dict in result:
+        assert envelope_dict["topic"] == "workflow_completed"
+        assert envelope_dict["payload"] == {"workflow_id": "wid_good"}
