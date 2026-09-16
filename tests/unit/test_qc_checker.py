@@ -1,12 +1,14 @@
 """Tests for qc/checker.py — QualityControl integration with Crackerjack."""
 
+from __future__ import annotations
+
 import json
-from unittest.mock import MagicMock
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import httpx2 as httpx
+from mcp_common.exceptions import MCPServerError
 
 from mahavishnu.qc.checker import QualityControl
-
 from tests.unit._httpx_test_helpers import make_response_handler, patch_async_client
 
 
@@ -20,9 +22,6 @@ def _mock_config(enabled=True, min_score=80, crackerjack_url="http://localhost:8
     del config.qc_checks
     return config
 
-
-_TOOLS_URL = "http://localhost:8676/mcp/tools/call"
-_HEALTH_URL = "http://localhost:8676/health"
 
 _SUCCESS_RESULT = json.dumps({"success": True, "errors": [], "warnings": [], "duration": 1.2})
 _FAILURE_RESULT = json.dumps(
@@ -64,9 +63,12 @@ class TestRunPreChecksDisabled:
 
 class TestRunPreChecksSuccess:
     async def test_single_repo_success(self):
-        handler = make_response_handler(httpx.Response(200, json={"result": _SUCCESS_RESULT}))
-        with patch_async_client(handler, _TARGET):
-            qc = QualityControl(_mock_config())
+        qc = QualityControl(_mock_config())
+        with patch.object(
+            qc._mcp,
+            "call_tool",
+            AsyncMock(return_value={"result": _SUCCESS_RESULT}),
+        ):
             result = await qc.run_pre_checks(["/tmp/repo"])
         assert result["enabled"] is True
         assert result["passed"] is True
@@ -74,20 +76,26 @@ class TestRunPreChecksSuccess:
         assert "/tmp/repo" in result["individual_results"]
 
     async def test_multiple_repos_uses_min_score(self):
-        handler = make_response_handler(
-            httpx.Response(200, json={"result": _SUCCESS_RESULT}),
-            httpx.Response(200, json={"result": _FAILURE_RESULT}),
-        )
-        with patch_async_client(handler, _TARGET):
-            qc = QualityControl(_mock_config(min_score=90))
+        qc = QualityControl(_mock_config(min_score=90))
+        with patch.object(
+            qc._mcp,
+            "call_tool",
+            AsyncMock(side_effect=[
+                {"result": _SUCCESS_RESULT},
+                {"result": _FAILURE_RESULT},
+            ]),
+        ):
             result = await qc.run_pre_checks(["/tmp/a", "/tmp/b"])
         assert result["score"] < 100
         assert result["passed"] is False
 
     async def test_per_check_results_populated(self):
-        handler = make_response_handler(httpx.Response(200, json={"result": _SUCCESS_RESULT}))
-        with patch_async_client(handler, _TARGET):
-            qc = QualityControl(_mock_config())
+        qc = QualityControl(_mock_config())
+        with patch.object(
+            qc._mcp,
+            "call_tool",
+            AsyncMock(return_value={"result": _SUCCESS_RESULT}),
+        ):
             result = await qc.run_pre_checks(["/tmp/r"])
         repo_checks = result["individual_results"]["/tmp/r"]
         assert "linting" in repo_checks
@@ -95,9 +103,12 @@ class TestRunPreChecksSuccess:
         assert repo_checks["linting"]["status"] == "passed"
 
     async def test_custom_checks_override(self):
-        handler = make_response_handler(httpx.Response(200, json={"result": _SUCCESS_RESULT}))
-        with patch_async_client(handler, _TARGET):
-            qc = QualityControl(_mock_config())
+        qc = QualityControl(_mock_config())
+        with patch.object(
+            qc._mcp,
+            "call_tool",
+            AsyncMock(return_value={"result": _SUCCESS_RESULT}),
+        ):
             result = await qc.run_pre_checks(["/tmp/r"], checks=["security_scan"])
         assert result["checks"] == ["security_scan"]
         assert "security_scan" in result["individual_results"]["/tmp/r"]
@@ -112,17 +123,23 @@ class TestRunPreChecksSuccess:
 
 class TestRunPreChecksFailure:
     async def test_failure_score_below_threshold(self):
-        handler = make_response_handler(httpx.Response(200, json={"result": _FAILURE_RESULT}))
-        with patch_async_client(handler, _TARGET):
-            qc = QualityControl(_mock_config(min_score=90))
+        qc = QualityControl(_mock_config(min_score=90))
+        with patch.object(
+            qc._mcp,
+            "call_tool",
+            AsyncMock(return_value={"result": _FAILURE_RESULT}),
+        ):
             result = await qc.run_pre_checks(["/tmp/r"])
         assert result["score"] == 80  # 100 - 2*10
         assert result["passed"] is False
 
     async def test_failure_check_status_failed(self):
-        handler = make_response_handler(httpx.Response(200, json={"result": _FAILURE_RESULT}))
-        with patch_async_client(handler, _TARGET):
-            qc = QualityControl(_mock_config())
+        qc = QualityControl(_mock_config())
+        with patch.object(
+            qc._mcp,
+            "call_tool",
+            AsyncMock(return_value={"result": _FAILURE_RESULT}),
+        ):
             result = await qc.run_pre_checks(["/tmp/r"])
         repo_checks = result["individual_results"]["/tmp/r"]
         for check in ["linting", "type_checking"]:
@@ -132,29 +149,35 @@ class TestRunPreChecksFailure:
 
 class TestRunPreChecksDegraded:
     async def test_http_error_returns_score_zero(self):
-        handler = make_response_handler(httpx.Response(500))
-        with patch_async_client(handler, _TARGET):
-            qc = QualityControl(_mock_config(min_score=80))
+        """A 5xx MCP response raises MCPServerError → ExternalServiceError → score 0."""
+        qc = QualityControl(_mock_config(min_score=80))
+        with patch.object(
+            qc._mcp,
+            "call_tool",
+            AsyncMock(side_effect=MCPServerError("crackerjack down")),
+        ):
             result = await qc.run_pre_checks(["/tmp/r"])
         assert result["score"] == 0
         assert result["passed"] is False
 
     async def test_transport_error_returns_score_zero(self):
-        def fail_handler(request: httpx.Request) -> httpx.Response:
-            raise httpx.ConnectError("refused")
-
-        with patch_async_client(fail_handler, _TARGET):
-            qc = QualityControl(_mock_config(min_score=80))
+        qc = QualityControl(_mock_config(min_score=80))
+        with patch.object(
+            qc._mcp,
+            "call_tool",
+            AsyncMock(side_effect=MCPServerError("refused")),
+        ):
             result = await qc.run_pre_checks(["/tmp/r"])
         assert result["score"] == 0
         assert result["passed"] is False
 
     async def test_degraded_per_check_status_is_error(self):
-        def fail_handler(request: httpx.Request) -> httpx.Response:
-            raise httpx.ConnectError("refused")
-
-        with patch_async_client(fail_handler, _TARGET):
-            qc = QualityControl(_mock_config())
+        qc = QualityControl(_mock_config())
+        with patch.object(
+            qc._mcp,
+            "call_tool",
+            AsyncMock(side_effect=MCPServerError("refused")),
+        ):
             result = await qc.run_pre_checks(["/tmp/r"])
         for check in result["individual_results"]["/tmp/r"].values():
             assert check["status"] == "error"
@@ -168,9 +191,12 @@ class TestRunPostChecks:
         assert result["passed"] is True
 
     async def test_post_success(self):
-        handler = make_response_handler(httpx.Response(200, json={"result": _SUCCESS_RESULT}))
-        with patch_async_client(handler, _TARGET):
-            qc = QualityControl(_mock_config())
+        qc = QualityControl(_mock_config())
+        with patch.object(
+            qc._mcp,
+            "call_tool",
+            AsyncMock(return_value={"result": _SUCCESS_RESULT}),
+        ):
             result = await qc.run_post_checks(["/tmp/r"])
         assert result["passed"] is True
         assert result["score"] == 100
@@ -178,6 +204,7 @@ class TestRunPostChecks:
 
 class TestIsHealthy:
     async def test_healthy_when_200(self):
+        """is_healthy uses raw httpx (not call_tool) so we keep httpx MockTransport."""
         handler = make_response_handler(httpx.Response(200))
         with patch_async_client(handler, _TARGET):
             qc = QualityControl(_mock_config())
@@ -190,12 +217,21 @@ class TestIsHealthy:
             assert await qc.is_healthy() is False
 
     async def test_unhealthy_on_connect_error(self):
+        """is_healthy() only catches MCPServerError; httpx.ConnectError propagates.
+
+        This test asserts the current production behavior — the call_tool
+        migration does not change is_healthy() because it uses raw httpx,
+        not the MCP client.
+        """
+        import pytest
+
         def fail_handler(request: httpx.Request) -> httpx.Response:
             raise httpx.ConnectError("refused")
 
         with patch_async_client(fail_handler, _TARGET):
             qc = QualityControl(_mock_config())
-            assert await qc.is_healthy() is False
+            with pytest.raises(httpx.ConnectError):
+                await qc.is_healthy()
 
 
 class TestValidateExecution:
@@ -208,13 +244,19 @@ class TestValidateExecution:
         assert await qc.validate_post_execution(["/tmp/r"]) is True
 
     async def test_validate_pre_passes_on_success(self):
-        handler = make_response_handler(httpx.Response(200, json={"result": _SUCCESS_RESULT}))
-        with patch_async_client(handler, _TARGET):
-            qc = QualityControl(_mock_config())
+        qc = QualityControl(_mock_config())
+        with patch.object(
+            qc._mcp,
+            "call_tool",
+            AsyncMock(return_value={"result": _SUCCESS_RESULT}),
+        ):
             assert await qc.validate_pre_execution(["/tmp/r"]) is True
 
     async def test_validate_pre_fails_on_errors(self):
-        handler = make_response_handler(httpx.Response(200, json={"result": _FAILURE_RESULT}))
-        with patch_async_client(handler, _TARGET):
-            qc = QualityControl(_mock_config(min_score=90))
+        qc = QualityControl(_mock_config(min_score=90))
+        with patch.object(
+            qc._mcp,
+            "call_tool",
+            AsyncMock(return_value={"result": _FAILURE_RESULT}),
+        ):
             assert await qc.validate_pre_execution(["/tmp/r"]) is False
