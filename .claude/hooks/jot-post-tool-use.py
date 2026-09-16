@@ -13,11 +13,19 @@ so any unhandled exception is logged to stderr and swallowed.
 from __future__ import annotations
 
 import json
+import os
 import sys
 
 from mahavishnu.jot.drain import surface_relevant
 
+EVENT_NAME = "PostToolUse"
 TOOL_RESULT_MAX_CHARS = 4096
+
+# Bridge dispatch — fire-and-forget; sync-blocking exit codes are preserved.
+CLAUDE_PROJECT_DIR = os.environ.get("CLAUDE_PROJECT_DIR")
+if CLAUDE_PROJECT_DIR:
+    sys.path.insert(0, CLAUDE_PROJECT_DIR)
+from mahavishnu.bodai_hook_bridge import handle
 
 
 def _format_matches(matches: list[object]) -> str:
@@ -35,9 +43,16 @@ def _format_matches(matches: list[object]) -> str:
     return "\n".join(lines)
 
 
-def _safe_parse_payload() -> dict[str, object]:
-    """Parse stdin JSON; return empty dict on any parse failure."""
-    raw = sys.stdin.read()
+def _safe_parse_payload(raw: str | None = None) -> dict[str, object]:
+    """Parse JSON; return empty dict on any parse failure.
+
+    When called with no argument, reads from stdin (original behaviour).
+    When called with ``raw`` text, parses that text instead — used by
+    ``main`` so stdin is consumed exactly once for both ``_run_hook`` and
+    the bridge dispatch.
+    """
+    if raw is None:
+        raw = sys.stdin.read()
     if not raw.strip():
         return {}
     try:
@@ -47,8 +62,12 @@ def _safe_parse_payload() -> dict[str, object]:
     return data if isinstance(data, dict) else {}
 
 
-def main() -> int:
-    payload = _safe_parse_payload()
+def _run_hook(payload: dict[str, object]) -> int:
+    """Original hook logic, parameterised on the parsed stdin payload.
+
+    Returns the exit code (always 0 on the success paths; failure paths
+    also return 0 because PostToolUse must never block tool execution).
+    """
     tool_result = payload.get("tool_result", "")
     if not isinstance(tool_result, str):
         tool_result = str(tool_result) if tool_result is not None else ""
@@ -81,6 +100,23 @@ def main() -> int:
         sys.stderr.flush()
         return 0
     return 0
+
+
+def main() -> int:
+    payload_text = sys.stdin.read()
+    payload = _safe_parse_payload(payload_text)
+
+    exit_code = _run_hook(payload)
+
+    # Bridge routing for bus publish + audit (fire-and-forget; does not
+    # influence the existing exit code).
+    try:
+        handle(event_name=EVENT_NAME, harness="claude", payload=payload)
+    except Exception as exc:  # noqa: BLE001 - boundary handler
+        sys.stderr.write(f"Hook output: jot-post-tool-use bridge dispatch failed: {exc}\n")
+        sys.stderr.flush()
+
+    return exit_code
 
 
 if __name__ == "__main__":

@@ -32,6 +32,8 @@ from pathlib import Path
 import sys
 from typing import Any
 
+EVENT_NAME: str = "PostToolUse"
+
 ALLOWED_SOURCES: frozenset[str] = frozenset({"mahavishnu", "akosha", "crackerjack"})
 
 
@@ -251,9 +253,35 @@ def _post_tool_use() -> int:
     return 0
 
 
-def main(argv: list[str] | None = None) -> int:
+def _run_hook(payload: dict[str, Any]) -> int:
     # The hook is invoked without --mode; it is PostToolUse-only.
     return _post_tool_use()
+
+
+def main(argv: list[str] | None = None) -> int:
+    # Read the Claude Code payload from stdin (augmentation for bridge routing).
+    payload_text = sys.stdin.read()
+    try:
+        payload = json.loads(payload_text) if payload_text else {}
+    except json.JSONDecodeError:
+        payload = {}
+    # Preserve the original exit code from the existing hook logic.
+    exit_code = _run_hook(payload)
+    # Fire-and-forget bridge routing for bus publish + audit (Option B augmentation).
+    # The bridge call is intentionally NOT allowed to influence exit_code — the
+    # existing hook semantics (always exit 0) are authoritative per spec §4.13.3.
+    try:
+        _CLAUDE_PROJECT_DIR = os.environ.get("CLAUDE_PROJECT_DIR")
+        if _CLAUDE_PROJECT_DIR:
+            sys.path.insert(0, _CLAUDE_PROJECT_DIR)
+        from mahavishnu.bodai_hook_bridge import handle
+        handle(event_name=EVENT_NAME, harness="claude", payload=payload)
+    except Exception as exc:  # noqa: BLE001 - boundary handler preserves the existing exit code
+        sys.stderr.write(
+            f"Hook output: bodai-activity-post-tool-use: bridge routing failed: {exc}\n"
+        )
+        sys.stderr.flush()
+    return exit_code
 
 
 if __name__ == "__main__":

@@ -37,6 +37,7 @@ Reference: plan ``/Users/les/.claude/plans/cheerful-marinating-fountain.md``
 """
 from __future__ import annotations
 
+import json
 import os
 from pathlib import Path
 import subprocess  # nosec B404 — argv-list only, no shell
@@ -44,7 +45,58 @@ import sys
 
 # Shared helper lives in the same .claude/hooks directory.
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from _hook_io import read_session_payload
+from _hook_io import (
+    read_session_payload,  # noqa: F401 — kept for back-compat; main() reads stdin directly via json.loads
+)
+
+# Map the CLI mode (`session-start` / `session-end`) that this hook
+# is invoked with to the canonical Claude Code event name. The plan
+# routes this hook through the Bodai bridge for bus publish + audit;
+# the bridge's handler registry keys on the canonical
+# (PascalCase) names (see ``mahavishnu.bodai_hook_bridge._EVENT_HANDLERS``).
+_CLAUDE_MODE_TO_EVENT = {
+    "session-start": "SessionStart",
+    "session-end": "SessionEnd",
+}
+
+
+def _resolve_event_name() -> str:
+    """Canonical Claude Code event name for this invocation.
+
+    Resolution order (the order matters because the same script is
+    wired into both the ``SessionStart`` and ``SessionEnd`` hook
+    arrays in ``.claude/settings.json``, hence dual-event):
+    1. ``$CLAUDE_HOOK_EVENT_NAME`` env var — set by Claude Code per
+       invocation; wins over argv.
+    2. ``sys.argv[1]`` (positional) — Claude Code's wire format per
+       settings.json (``session-start`` / ``session-end``).
+    3. ``--mode`` flag — downstream tooling back-compat.
+    4. Default ``SessionStart``.
+
+    The returned name is always one of the canonical PascalCase
+    strings (``SessionStart`` / ``SessionEnd``). Unknown argv values
+    pass through unchanged so the bridge's ``handle_unknown`` path
+    still publishes them (forward-compat signal).
+    """
+    env_event = os.environ.get("CLAUDE_HOOK_EVENT_NAME")
+    if env_event:
+        return env_event
+    args = sys.argv[1:]
+    if args and not args[0].startswith("-"):
+        return _CLAUDE_MODE_TO_EVENT.get(args[0], args[0])
+    if "--mode" in args:
+        i = args.index("--mode")
+        if i + 1 < len(args):
+            mode = args[i + 1]
+            return _CLAUDE_MODE_TO_EVENT.get(mode, mode)
+    return "SessionStart"
+
+
+# Canonical event name for this invocation. The bridge call below
+# routes against this constant (so the bridge publishes to the right
+# bus channel regardless of how the hook was triggered).
+EVENT_NAME = _resolve_event_name()
+
 
 # Environment variable that gates the whole feature.
 OPT_IN_ENV = "MAHAVISHNU_AUTO_WORKTREE"
@@ -451,8 +503,29 @@ def _maybe_print_discovery_hint(cwd: str, mode: str) -> None:
     )
 
 
-def main() -> int:
-    """Dispatch on mode (positional argv[1] OR ``--mode`` flag).
+def _coerce_str_inline(value: object) -> str:
+    """Inline duplicate of ``_hook_io._coerce_str``.
+
+    Mirrors the fail-closed coercion in ``_hook_io.read_session_payload``
+    so that ``_run_hook`` can extract ``session_id`` and ``cwd`` from the
+    dict payload injected by ``main()`` without re-reading stdin via
+    ``read_session_payload()`` (which would drain stdin a second time
+    on top of ``main()``'s single read).
+    """
+    return value if isinstance(value, str) else ""
+
+
+def _run_hook(payload: dict) -> int:
+    """Original SessionStart/SessionEnd dispatch — preserved verbatim.
+
+    Behavior-preserving augmentation: this body is the original
+    ``main()`` from before the Phase 12a Task 2 refactor, with the
+    ``read_session_payload()`` call replaced by dict access against
+    the injected ``payload`` parameter. ``main()`` (below) reads
+    stdin exactly once and threads the parsed JSON dict through here
+    so the bridge can publish against the same snapshot.
+
+    Dispatch on mode (positional argv[1] OR ``--mode`` flag).
 
     Accepts both forms because Claude Code's wire format passes
     positional ``session-start`` / ``session-end`` (per ``.claude/settings.json``),
@@ -464,6 +537,10 @@ def main() -> int:
     (the prior cwd-based heuristic broke when SessionEnd payloads
     also carried a ``cwd`` field, per the multi-agent review).
     """
+    raw_dict = payload if isinstance(payload, dict) else {}
+    session_id_full = _coerce_str_inline(raw_dict.get("session_id"))
+    cwd = _coerce_str_inline(raw_dict.get("cwd"))
+
     args = sys.argv[1:]
     mode: str | None = None
     # Positional first (Claude Code's wire format).
@@ -474,10 +551,6 @@ def main() -> int:
         i = args.index("--mode")
         if i + 1 < len(args):
             mode = args[i + 1]
-
-    payload = read_session_payload()
-    session_id_full = payload.session_id
-    cwd = payload.cwd
 
     if mode is None:
         _log("no mode provided (neither positional argv[1] nor --mode); skipping")
@@ -503,6 +576,75 @@ def main() -> int:
     if mode == "session-start":
         return _run_session_start(session_id_full, cwd)
     return _run_session_end(session_id_full)
+
+
+def main() -> int:
+    """Read stdin once → dispatch to ``_run_hook`` → route to bridge.
+
+    Phase 12a Task 2 (Option B — behavior-preserving augmentation):
+    the existing SessionStart / SessionEnd logic still runs (via
+    ``_run_hook``) and additionally fires the canonical Bodai bridge
+    so the event gets published to the Oneiric event bus and audited.
+
+    Sync-blocking exit codes are preserved per spec §4.13.3 — the
+    bridge call is fire-and-forget and its return value is
+    deliberately discarded. ``_run_hook``'s return value is the
+    authoritative exit code.
+
+    The bridge import path is injected before invoking ``_run_hook``
+    so that the gate-closed path (env-gate bypass without
+    ``MAHAVISHNU_AUTO_WORKTREE`` set) still has ``mahavishnu`` on
+    ``sys.path`` for the subsequent ``from
+    mahavishnu.bodai_hook_bridge import handle``.
+    """
+    # Ensure mahavishnu is importable for both the existing logic
+    # AND the bridge. The hook lives in ``.claude/hooks/`` (not
+    # inside the ``mahavishnu/`` package). ``CLAUDE_PROJECT_DIR`` is
+    # the canonical anchor Claude Code sets; ``_ensure_mahavishnu_importable``
+    # already adds the parent of ``.claude/`` for back-compat.
+    claude_project_dir = os.environ.get("CLAUDE_PROJECT_DIR")
+    if claude_project_dir and claude_project_dir not in sys.path:
+        sys.path.insert(0, claude_project_dir)
+
+    # Read stdin ONCE — preserve the original hook's exit-0 contract
+    # regardless of payload shape (empty, malformed, or missing).
+    try:
+        payload_text = sys.stdin.read()
+    except OSError:
+        payload_text = ""
+
+    # Parse JSON defensively (mirrors ``_hook_io.read_session_payload``):
+    # empty / non-JSON / non-dict payloads become ``{}`` rather than
+    # raising. Hooks must never block Claude startup on a malformed
+    # payload.
+    if payload_text.strip():
+        try:
+            parsed = json.loads(payload_text)
+        except json.JSONDecodeError:
+            parsed = {}
+    else:
+        parsed = {}
+
+    payload = parsed if isinstance(parsed, dict) else {}
+
+    # Existing behavior — preserve exit code (authoritative).
+    exit_code = _run_hook(payload)
+
+    # Bridge routing — fire-and-forget. Failure modes (import error,
+    # bus publish error) MUST NOT affect the authoritative exit code
+    # or block the hook hot path.
+    try:
+        from mahavishnu.bodai_hook_bridge import handle
+
+        handle(event_name=EVENT_NAME, harness="claude", payload=payload)
+    except Exception as exc:  # noqa: BLE001 — defensive; bridge is fire-and-forget, never blocks hook hot path
+        sys.stderr.write(
+            f"mahavishnu: bodai_hook_bridge routing failed: "
+            f"{type(exc).__name__}: {exc}\n"
+        )
+        sys.stderr.flush()
+
+    return exit_code
 
 
 if __name__ == "__main__":
