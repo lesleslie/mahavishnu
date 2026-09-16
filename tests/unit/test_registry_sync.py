@@ -126,7 +126,9 @@ class TestMigrationOutcome:
     """Post-migration invariants on the canonical manifest."""
 
     def test_entry_count_is_thirty_five(self) -> None:
-        assert len(_repos(ECOSYSTEM_PATH)) == 35
+        assert len(_repos(ECOSYSTEM_PATH)) == 35, (
+            "update pinned count to match current canonical manifest"
+        )
 
     def test_no_duplicate_names(self) -> None:
         names = [repo["name"] for repo in _repos(ECOSYSTEM_PATH)]
