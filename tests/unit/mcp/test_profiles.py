@@ -34,9 +34,15 @@ pytestmark = pytest.mark.unit
 # =============================================================================
 
 
-def test_minimal_registrations_only_health() -> None:
-    """MINIMAL profile should only register the health-tool group."""
-    assert MINIMAL_REGISTRATIONS == ["_register_health_tools"]
+def test_minimal_registrations_includes_health_and_signer() -> None:
+    """MINIMAL profile must register the health and skills_signer groups.
+
+    Skills signer is mandatory from MINIMAL upward (per plan §10.3.1) because
+    signing verification runs on every Phase 2/6 install — it cannot be
+    gated behind a higher profile tier.
+    """
+    assert "_register_health_tools" in MINIMAL_REGISTRATIONS
+    assert "_register_skills_signer_tools" in MINIMAL_REGISTRATIONS
 
 
 def test_minimal_registrations_contains_strings_with_register_prefix() -> None:
