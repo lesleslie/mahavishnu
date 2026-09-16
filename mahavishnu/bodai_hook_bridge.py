@@ -105,13 +105,49 @@ def _publish(*, channel: str, envelope: CanonicalEnvelope) -> None:
     The bridge remains non-blocking on the hook hot path; tracking
     failures is observational.
 
+    Fire-and-forget from sync context: most queue adapters expose
+    ``async def init`` + ``async def publish`` coroutines; the
+    bridge calls them from sync hook entry points. The bridge
+    drives both to completion in a transient loop when no loop
+    is running, or schedules ``create_task`` when one is. Init
+    must complete before publish (the adapter raises
+    ``LifecycleError: <adapter>-client-not-initialized`` if its
+    underlying client isn't ready).
+
     Refs: ``docs/superpowers/specs/2026-09-14-dhara-mcp-decomposition-
     design.md`` §4.8.
     """
+    import asyncio
+
+    def _drive(coro: object) -> None:
+        """Run ``coro`` to completion, or schedule-and-forget if a
+        loop is running. Errors propagate to the caller's except.
+        """
+        if not asyncio.iscoroutine(coro):
+            return
+        try:
+            loop = asyncio.get_running_loop()
+        except RuntimeError:
+            loop = None
+        if loop is not None:
+            loop.create_task(coro)
+        else:
+            # No loop running — drive the coroutine to completion
+            # in a transient loop. Blocking briefly is acceptable;
+            # spec §4.13.3 only mandates that SYNC-BLOCKING events
+            # (PreToolUse etc.) preserve their exit codes, not that
+            # the bus publish be non-blocking on the caller.
+            asyncio.run(coro)
+
     try:
         from oneiric.adapters.bootstrap import queued_publisher
 
-        queued_publisher().publish(channel=channel, payload=envelope.__dict__)
+        adapter = queued_publisher()
+        # Sequence: init (if needed) → publish. Both may be async.
+        _drive(getattr(adapter, "init", lambda: None)())
+        _drive(
+            adapter.publish(channel=channel, payload=envelope.__dict__)
+        )
     except Exception:
         logger.exception(
             "hook_bridge: publish to channel=%r failed; "

@@ -3803,7 +3803,7 @@ requires-dist = [
     { name = "llama-index-vector-stores-opensearch", specifier = ">=0.6.3,<0.7.0" },
     { name = "mcp-common", specifier = ">=0.26.0,<0.27.0" },
     { name = "msgspec", specifier = ">=0.21.1,<0.22" },
-    { name = "oneiric", specifier = ">=0.19.0" },
+    { name = "oneiric", editable = "../oneiric" },
     { name = "opentelemetry-api", specifier = ">=1.44.0" },
     { name = "opentelemetry-exporter-otlp-proto-grpc", specifier = ">=1.44.0" },
     { name = "opentelemetry-instrumentation", specifier = ">=0.65b0" },
@@ -4536,7 +4536,7 @@ wheels = [
 [[package]]
 name = "oneiric"
 version = "0.21.6"
-source = { registry = "https://pypi.org/simple" }
+source = { editable = "../oneiric" }
 dependencies = [
     { name = "aiobreaker" },
     { name = "anyio" },
@@ -4557,10 +4557,148 @@ dependencies = [
     { name = "typer" },
     { name = "watchfiles" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/c4/49/bc20f1b2da88f92feb2dbe365134477af2d69726605fc11e988b0a894e70/oneiric-0.21.6.tar.gz", hash = "sha256:9e80e504c6a0e870e407297278f5209963296baff70e8d590ca4be3e88d4f737", size = 1692944, upload-time = "2026-09-15T06:19:44.674Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/87/4a/69dfc8b7a53bab95bc7123fb3707d67a8d07ea5d1b1975f74508a16607fc/oneiric-0.21.6-py3-none-any.whl", hash = "sha256:11d0ef9962fa37abdac0a25ea3077a0fe301e8dfc2bc551c2b4d11d827b378b8", size = 398916, upload-time = "2026-09-15T06:19:42.342Z" },
+
+[package.metadata]
+requires-dist = [
+    { name = "aiobreaker", specifier = ">=1.2.0" },
+    { name = "anyio", specifier = ">=4.14.1" },
+    { name = "cryptography", specifier = ">=49.0.0" },
+    { name = "dhara", specifier = ">=0.11.2" },
+    { name = "email-validator", specifier = ">=2.3.0" },
+    { name = "google-cloud-secret-manager", specifier = ">=2.29.0" },
+    { name = "google-cloud-storage", specifier = ">=3.12.0" },
+    { name = "ipython", specifier = ">=9.15.0" },
+    { name = "msgspec", specifier = ">=0.21.1" },
+    { name = "networkx", specifier = ">=3.6.1" },
+    { name = "numpy", specifier = ">=2.5.0" },
+    { name = "opentelemetry-api", specifier = ">=1.42.1" },
+    { name = "pydantic", specifier = ">=2.12.5" },
+    { name = "pyyaml", specifier = ">=6.0.3" },
+    { name = "structlog", specifier = ">=26.1.0" },
+    { name = "tenacity", specifier = ">=9.1.4" },
+    { name = "typer", specifier = ">=0.26.8" },
+    { name = "watchfiles", specifier = ">=1.2.0" },
 ]
+
+[package.metadata.requires-dev]
+ai = [
+    { name = "anthropic", specifier = ">=0.113.0" },
+    { name = "openai", specifier = ">=2.44.0" },
+]
+cache = [{ name = "coredis", specifier = ">=6.7.0" }]
+compression-zstd = [{ name = "zstandard", specifier = ">=0.23.0" }]
+database = [
+    { name = "aiomysql", specifier = ">=0.3.2" },
+    { name = "aiosqlite", specifier = ">=0.22.1" },
+    { name = "asyncpg", specifier = ">=0.31.0" },
+]
+database-mysql = [{ name = "aiomysql", specifier = ">=0.3.2" }]
+database-postgres = [{ name = "asyncpg", specifier = ">=0.31.0" }]
+database-sqlite = [{ name = "aiosqlite", specifier = ">=0.22.1" }]
+dev = [
+    { name = "crackerjack", specifier = ">=0.70.0" },
+    { name = "fakeredis", specifier = ">=2.21.0" },
+    { name = "filelock", specifier = ">=3.29.4" },
+    { name = "freezegun", specifier = ">=1.5.5" },
+    { name = "hypothesis", specifier = ">=6.155.7,<7" },
+    { name = "pgvector", specifier = ">=0.4.2" },
+    { name = "pytest", specifier = ">=9.1.1" },
+    { name = "pytest-asyncio", specifier = ">=1.4.0" },
+    { name = "pytest-benchmark", specifier = ">=5.2.3" },
+    { name = "pytest-cov", specifier = ">=7.1.0" },
+    { name = "pytest-timeout", specifier = ">=2.4.0" },
+    { name = "session-buddy", specifier = ">=0.19.18" },
+    { name = "sqlalchemy", extras = ["asyncio"], specifier = ">=2.0.51" },
+    { name = "uv-bump", specifier = ">=0.5.0" },
+    { name = "zensical", specifier = ">=0.0.46" },
+]
+dns = [{ name = "google-cloud-dns", specifier = ">=0.37.0" }]
+dns-gcdns = [{ name = "google-cloud-dns", specifier = ">=0.37.0" }]
+embedding = [{ name = "openai", specifier = ">=2.44.0" }]
+embedding-openai = [{ name = "openai", specifier = ">=2.44.0" }]
+file-transfer = [
+    { name = "aioftp", specifier = ">=0.27.2" },
+    { name = "asyncssh", specifier = ">=2.24.0" },
+]
+graph-arangodb = [{ name = "python-arango", specifier = ">=8.3.3" }]
+graph-duckdb-pgq = [{ name = "duckdb", specifier = ">=1.6.0.dev211" }]
+graph-neo4j = [{ name = "neo4j", specifier = ">=6.2.0" }]
+http-aiohttp = [{ name = "aiohttp", specifier = ">=3.14.1" }]
+identity-auth0 = [{ name = "pyjwt", specifier = ">=2.8" }]
+llm = [
+    { name = "anthropic", specifier = ">=0.113.0" },
+    { name = "openai", specifier = ">=2.44.0" },
+]
+llm-anthropic = [{ name = "anthropic", specifier = ">=0.113.0" }]
+llm-openai = [{ name = "openai", specifier = ">=2.44.0" }]
+messaging-apns = [{ name = "aioapns", specifier = ">=4.0" }]
+messaging-fcm = [{ name = "firebase-admin", specifier = ">=7.4.0" }]
+messaging-mailgun = [{ name = "httpx2", specifier = ">=0.28.1" }]
+messaging-sendgrid = [
+    { name = "email-validator", specifier = ">=2.3.0" },
+    { name = "httpx2", specifier = ">=0.28.1" },
+]
+messaging-twilio = [{ name = "httpx2", specifier = ">=0.28.1" }]
+messaging-webpush = [{ name = "pywebpush", specifier = ">=2.3.0" }]
+monitoring = [
+    { name = "opentelemetry-exporter-otlp", specifier = ">=1.42.1" },
+    { name = "opentelemetry-sdk", specifier = ">=1.42.1" },
+    { name = "sentry-sdk", specifier = ">=3.0.0a7" },
+]
+monitoring-logfire = [{ name = "logfire", specifier = ">=4.37.0" }]
+monitoring-netdata = [{ name = "httpx2", specifier = ">=0.28.1" }]
+monitoring-otlp = [
+    { name = "opentelemetry-exporter-otlp", specifier = ">=1.42.1" },
+    { name = "opentelemetry-sdk", specifier = ">=1.42.1" },
+]
+monitoring-sentry = [{ name = "sentry-sdk", specifier = ">=3.0.0a7" }]
+nosql = [
+    { name = "aioboto3", specifier = ">=15.5.0" },
+    { name = "google-cloud-firestore", specifier = ">=2.28.0" },
+    { name = "motor", specifier = ">=3.7.1" },
+]
+nosql-dynamo = [{ name = "aioboto3", specifier = ">=15.5.0" }]
+nosql-firestore = [{ name = "google-cloud-firestore", specifier = ">=2.28.0" }]
+nosql-mongo = [{ name = "motor", specifier = ">=3.7.1" }]
+queue-kafka = [{ name = "aiokafka", specifier = ">=0.14.0" }]
+queue-lavinmq = [
+    { name = "aio-pika", specifier = ">=9.6.2" },
+    { name = "aiomqtt", specifier = ">=3.0.0a1" },
+]
+queue-lavinmq-full = [
+    { name = "aio-pika", specifier = ">=9.6.2" },
+    { name = "aiomqtt", specifier = ">=3.0.0a1" },
+    { name = "httpx2", specifier = ">=0.28.1" },
+]
+queue-nats = [{ name = "nats-py", specifier = ">=2.15.0" }]
+queue-rabbitmq = [{ name = "aio-pika", specifier = ">=9.6.2" }]
+queue-streaming = [
+    { name = "aio-pika", specifier = ">=9.6.2" },
+    { name = "aiokafka", specifier = ">=0.14.0" },
+]
+scheduler-gcp = [
+    { name = "google-cloud-pubsub", specifier = ">=2.39.0" },
+    { name = "google-cloud-tasks", specifier = ">=2.23.0" },
+]
+secrets-keyring = [{ name = "keyring", specifier = ">=25.7.0" }]
+storage = [
+    { name = "aioboto3", specifier = ">=15.5.0" },
+    { name = "azure-storage-blob", specifier = ">=12.30.0" },
+]
+storage-azure = [{ name = "azure-storage-blob", specifier = ">=12.30.0" }]
+storage-s3 = [{ name = "aioboto3", specifier = ">=15.5.0" }]
+vector = [
+    { name = "asyncpg", specifier = ">=0.31.0" },
+    { name = "pgvector", specifier = ">=0.4.2" },
+    { name = "pinecone-client", specifier = ">=6.0.0" },
+    { name = "qdrant-client", specifier = ">=1.18.0" },
+]
+vector-pgvector = [
+    { name = "asyncpg", specifier = ">=0.31.0" },
+    { name = "pgvector", specifier = ">=0.4.2" },
+]
+vector-pinecone = [{ name = "pinecone-client", specifier = ">=6.0.0" }]
+vector-qdrant = [{ name = "qdrant-client", specifier = ">=1.18.0" }]
 
 [[package]]
 name = "openai"
