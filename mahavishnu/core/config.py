@@ -21,6 +21,8 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator, model_valida
 from pydantic._internal._utils import deep_update
 from pydantic_settings import BaseSettings, SettingsConfigDict, YamlConfigSettingsSource
 
+from oneiric.adapters.observability.settings import OTelStorageSettings as _OneiricOTelStorageSettings
+
 from ..terminal.config import TerminalSettings
 from .paths import get_worktree_base_path
 
@@ -779,65 +781,68 @@ class HNSWIndexConfig(BaseModel):
     model_config = {"extra": "forbid"}
 
 
-class OTelStorageConfig(BaseModel):
-    """OpenTelemetry trace storage with PostgreSQL + pgvector."""
+class OTelStorageConfig(_OneiricOTelStorageSettings):
+    """OpenTelemetry trace storage with PostgreSQL + pgvector.
 
-    enabled: bool = Field(
-        default=False,
-        description="Enable OTel trace storage with PostgreSQL + pgvector",
-    )
+    Inherits the canonical connection-string / embedding / batching /
+    circuit-breaker fields from
+    ``oneiric.adapters.observability.settings.OTelStorageSettings`` (the
+    upstream Bodai shared settings) and layers on three mahavishnu-only
+    extensions:
+
+      - ``enabled`` feature toggle (OTel storage is opt-in here; oneiric
+        assumes the caller always wires a pgvector adapter and has no
+        concept of "off")
+      - ``cache_size`` default + upper bound bumped to 10K / 100K (vs
+        oneiric's 1K / 10K) to match the higher-throughput Mahavishnu
+        workload
+      - ``hnsw`` HNSW index tuning block for 10K+ QPS vector search
+        (oneiric has no high-QPS path)
+
+    The ``connection_string`` default is also overridden to ``""`` (vs
+    oneiric's insecure ``postgres:postgres@localhost`` literal) so a
+    fresh ``OTelStorageConfig()`` instantiation does not leak a known
+    credential. ``enabled=False`` plus the overridden default means the
+    stricter security validator below only fires when the operator has
+    actually opted in.
+
+    The ``validate_connection_string`` field validator is also overridden
+    to enforce mahavishnu's stricter ruleset on top of oneiric's basic
+    ``postgresql://`` scheme check:
+      - non-empty when ``enabled=True``
+      - rejection of common default credentials
+        (``postgres:postgres``, ``postgres:password``, ``admin:admin``,
+        ``root:root``, ``test:test``, bare ``password@``)
+      - structural checks for ``@`` separator and database-name segment
+    """
+
+    # Override oneiric's insecure default. Operators opt-in explicitly
+    # via ``enabled=True`` + connection string; ``enabled=False`` keeps
+    # the empty default valid.
     connection_string: str = Field(
         default="",
-        description="PostgreSQL connection string for OTel trace storage (required if enabled, set via MAHAVISHNU_OTEL_STORAGE__CONNECTION_STRING)",
+        description=(
+            "PostgreSQL connection string for OTel trace storage. "
+            "Required if ``enabled=True``; set via "
+            "MAHAVISHNU_OTEL_STORAGE__CONNECTION_STRING."
+        ),
     )
-    embedding_model: str = Field(
-        default="all-MiniLM-L6-v2",
-        description="Sentence transformer model for semantic search",
-    )
-    embedding_dimension: int = Field(
-        default=384,
-        ge=128,
-        le=1024,
-        description="Vector dimension for embeddings (128-1024)",
-    )
+
+    # Override cache_size default + upper bound to keep the higher
+    # in-memory cache capacity Mahavishnu has shipped since the
+    # ``(increased from 1000)`` field note.
     cache_size: int = Field(
         default=10000,
         ge=100,
         le=100000,
         description="Maximum number of embeddings to cache in memory (increased from 1000)",
     )
-    similarity_threshold: float = Field(
-        default=0.85,
-        ge=0.0,
-        le=1.0,
-        description="Minimum similarity score for semantic search (0.0-1.0)",
-    )
-    batch_size: int = Field(
-        default=100,
-        ge=10,
-        le=1000,
-        description="Number of traces to batch in single write operation",
-    )
-    batch_interval_seconds: int = Field(
-        default=5,
-        ge=1,
-        le=60,
-        description="Seconds between batch flushes",
-    )
-    max_retries: int = Field(
-        default=3,
-        ge=1,
-        le=10,
-        description="Maximum retry attempts for failed operations",
-    )
-    circuit_breaker_threshold: int = Field(
-        default=5,
-        ge=3,
-        le=20,
-        description="Failures before circuit breaker opens",
-    )
 
-    # HNSW index configuration for 10K+ QPS
+    # Mahavishnu-only fields (no upstream equivalent).
+    enabled: bool = Field(
+        default=False,
+        description="Enable OTel trace storage with PostgreSQL + pgvector",
+    )
     hnsw: HNSWIndexConfig = Field(
         default_factory=HNSWIndexConfig,
         description="HNSW index configuration for high-performance vector search",
@@ -848,10 +853,20 @@ class OTelStorageConfig(BaseModel):
     def validate_connection_string(cls, v: str, info) -> str:
         """Validate OTel storage connection string for security and format.
 
+        Stricter than oneiric's base check (which only verifies the
+        ``postgresql://`` scheme prefix). Adds:
+
         SECURITY CHECKS:
-        - Requires non-empty connection string when enabled=True
         - Rejects default credentials (e.g., "password@", "postgres:postgres@")
         - Validates postgresql:// or postgres:// scheme
+        - Structural checks for ``@`` separator and database name
+
+        The cross-field ``enabled => non-empty connection_string`` gate
+        is enforced separately by ``_validate_enabled_requires_connection``
+        below. ``field_validator`` cannot reliably depend on
+        ``info.data["enabled"]`` because oneiric's parent class
+        declares ``connection_string`` first, so this validator runs
+        before ``enabled`` is bound.
 
         Args:
             v: Connection string value
@@ -863,16 +878,7 @@ class OTelStorageConfig(BaseModel):
         Raises:
             ValueError: If validation fails
         """
-        storage_enabled = info.data.get("enabled", False)
-
-        # Require connection string when storage is enabled
-        if storage_enabled and not v:
-            raise ValueError(
-                "connection_string must be set via MAHAVISHNU_OTEL_STORAGE__CONNECTION_STRING "
-                "environment variable when enabled is true"
-            )
-
-        # Allow empty when disabled
+        # Allow empty (enabled-gating is done at the model level)
         if not v:
             return v
 
@@ -915,6 +921,23 @@ class OTelStorageConfig(BaseModel):
             )
 
         return v
+
+    @model_validator(mode="after")
+    def _validate_enabled_requires_connection(self) -> OTelStorageConfig:
+        """Cross-field gate: ``enabled=True`` requires a non-empty connection string.
+
+        Run as a model-level (post-field) validator so both ``enabled``
+        and ``connection_string`` are bound. A pure ``field_validator``
+        cannot enforce this reliably because oneiric's parent class
+        declares ``connection_string`` first, so the per-field validator
+        fires before ``enabled`` is in ``info.data``.
+        """
+        if self.enabled and not self.connection_string:
+            raise ValueError(
+                "connection_string must be set via MAHAVISHNU_OTEL_STORAGE__CONNECTION_STRING "
+                "environment variable when enabled is true"
+            )
+        return self
 
     model_config = {"extra": "forbid"}
 
