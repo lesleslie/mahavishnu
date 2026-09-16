@@ -1274,6 +1274,60 @@ def dispatch_metrics(
     )
 
 
+@metrics_app.command("bodai")
+def show_bodai_events(
+    queue_path: Path = typer.Option(
+        Path("~/.mahavishnu/bodai-events.json"),
+        "--queue-path",
+        help="Path to the Bodai event queue file (JSON list of envelopes).",
+    ),
+    state_path: Path | None = typer.Option(
+        None,
+        "--state-path",
+        help="Optional output path where drained envelopes are persisted.",
+    ),
+) -> None:
+    """Render Bodai event summaries from the local queue file.
+
+    Each envelope is printed as a one-line ``[source] topic key=value`` summary
+    (matches ``format_bodai_summary``). When ``--state-path`` is given the
+    drained envelopes are written there so a follow-up run can resume.
+
+    Examples:
+        mahavishnu metrics bodai
+        mahavishnu metrics bodai --queue-path /tmp/q.json --state-path /tmp/s.json
+    """
+    from oneiric.runtime.events import EventEnvelope as OneiricEventEnvelope
+
+    from mahavishnu.core.events.bodai_subscriber import (
+        _read_queue,
+        format_bodai_summary,
+    )
+
+    envelopes = _read_queue(queue_path)
+    if state_path is not None:
+        state_path.parent.mkdir(parents=True, exist_ok=True)
+        state_path.write_text(json.dumps(envelopes, indent=2, sort_keys=True))
+    for raw in envelopes:
+        try:
+            # Queue entries are written by ``_envelope_to_dict`` in the
+            # canonical Oneiric shape (``topic`` / ``payload`` / ``headers``);
+            # build the msgspec Struct directly so ``format_bodai_summary``
+            # sees the attributes it expects.
+            envelope = OneiricEventEnvelope(
+                topic=str(raw.get("topic", "")),
+                payload=dict(raw.get("payload") or {}),
+                headers=dict(raw.get("headers") or {}),
+            )
+        except Exception as exc:  # noqa: BLE001 — surface but never abort CLI
+            console.print(f"[warn] skipping malformed envelope: {exc}")
+            continue
+        # ``format_bodai_summary`` emits literal ``[source]`` brackets, which
+        # the Rich Console would otherwise interpret as markup style tags.
+        # Disable markup for the summary line so the brackets reach stdout.
+        console.print(format_bodai_summary(envelope), markup=False)
+
+
 def add_metrics_commands(app: typer.Typer) -> None:
     """Add metrics commands to the Mahavishnu CLI app.
 
