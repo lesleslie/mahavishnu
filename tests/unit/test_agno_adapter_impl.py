@@ -377,7 +377,7 @@ class TestAgnoToolsConfigModel:
     def test_default_values(self) -> None:
         """Test default tools config values."""
         config = ImplAgnoToolsConfig()
-        assert config.mcp_server_url == "http://localhost:8677/mcp"
+        assert config.mcp_server_url == "http://localhost:8680/mcp"
         assert config.mcp_transport == "sse"
         assert len(config.enabled_tools) == 6
         assert config.tool_timeout_seconds == 60
