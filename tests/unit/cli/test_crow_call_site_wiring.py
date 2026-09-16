@@ -105,7 +105,7 @@ def test_resolve_crow_mcp_client_uses_defaults_when_no_settings() -> None:
 @pytest.mark.unit
 @pytest.mark.parametrize(
     "call_site_line",
-    [1328, 1581],
+    [1424, 1686],
     ids=["workers_spawn", "pool_spawn"],
 )
 def test_call_sites_route_through_helper(reload_main_cli, call_site_line) -> None:
@@ -117,10 +117,10 @@ def test_call_sites_route_through_helper(reload_main_cli, call_site_line) -> Non
     Line numbers are pinned to the actual call sites in
     ``mahavishnu/_main_cli.py``:
     - ``workers_spawn`` resolves the crow client into a local variable
-      on line 1328 (``crow_client = _resolve_crow_mcp_client(...)``),
-      then passes it to ``TerminalManager.create`` on line 1336.
+      on line 1424 (``crow_client = _resolve_crow_mcp_client(...)``),
+      then passes it to ``TerminalManager.create``.
     - ``pool_spawn`` calls ``_resolve_crow_mcp_client`` inline on
-      line 1581 (``mcp_client=_resolve_crow_mcp_client(...)``).
+      line 1686 (``mcp_client=_resolve_crow_mcp_client(...)``).
     """
     import inspect
 
