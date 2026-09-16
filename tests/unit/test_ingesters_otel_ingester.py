@@ -348,8 +348,11 @@ class TestInitializeDuckDB:
         """When hot_store is None and storage is DuckDB, initialize creates one."""
         ingester = _make_ingester(hot_store=None, preferred_backend="text_only")
 
-        # Patch the imported HotStore class inside otel_ingester module
-        with patch("akosha.storage.HotStore") as HotStoreCls:
+        # Patch the substrate class that production now imports lazily inside
+        # _initialize_duckdb (post-ADR-017 HotStore migration to oneiric).
+        with patch(
+            "oneiric.adapters.vector.duckdb_hot_store.DuckdbHotStore"
+        ) as HotStoreCls:
             instance = MagicMock()
             instance.initialize = AsyncMock()
             HotStoreCls.return_value = instance
