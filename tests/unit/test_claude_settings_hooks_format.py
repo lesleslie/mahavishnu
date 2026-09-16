@@ -22,11 +22,14 @@ of in production.
 
 The bug was discovered during the 2026-07-15 comprehensive-hooks-cleanup
 wave (see ``docs/followups/2026-07-15-bodai-hooks-sb-debug.md``):
-``bodai-activity-post-tool-use.py`` and ``bodai-activity-subscriber.py``
-were wired but never fired because the project's ``.claude/settings.json``
-used the flat layout. The ``~/.claude/settings.local.json`` overlay
-already uses the correct nested layout for its ``sb_*`` scripts and those
-fire as expected.
+``bodai-activity-post-tool-use.py`` was wired but never fired because
+the project's ``.claude/settings.json`` used the flat layout. The
+``~/.claude/settings.local.json`` overlay already uses the correct
+nested layout for its ``sb_*`` scripts and those fire as expected.
+
+Phase 12a Task 5 (2026-09) retired the daemon counterpart
+(``.claude/hooks/bodai-activity-subscriber.py``); only the
+``PostToolUse`` hook remains under that name.
 """
 from __future__ import annotations
 
@@ -165,8 +168,6 @@ def test_project_settings_known_bodai_hooks_present() -> None:
 
     expected_substrings = (
         "bodai-activity-post-tool-use.py",
-        "bodai-activity-subscriber.py session-start",
-        "bodai-activity-subscriber.py session-end",
     )
 
     flattened = json.dumps(hooks)
