@@ -57,6 +57,7 @@ or higher.
 | Repo | Path | Current `requires-python` | Notes |
 |---|---|---|---|
 | archive-org-mcp | /Users/les/Projects/archive-org-mcp/ | >=3.14 | requires-python >=3.14 |
+| chat-bridge-mcp | /Users/les/Projects/chat-bridge-mcp/ | >=3.14 | Bridge MCP for Claude Desktop + ChatGPT Desktop via CDP; renamed from cross-llm-mcp (`2026-09-16`). https://github.com/lesleslie/chat-bridge-mcp |
 | css-mcp | /Users/les/Projects/css-mcp/ | >=3.14 | **Phase 0.8**. FastMCP **>=4.0.3** (`2026-09-06`) |
 | excalidraw-mcp | /Users/les/Projects/excalidraw-mcp/ | >=3.14 | discovered |
 | graphics-mcp | /Users/les/Projects/graphics-mcp/ | >=3.14 | **Phase 0.8**. pulled in httpcore2/httpx2 transitively. FastMCP **>=4.0.3** (`2026-09-06`) |
@@ -105,13 +106,13 @@ or higher.
 
 - Core 7 (in-scope for streaming tar Phase 3): 7
 - Web / framework libraries: 5
-- Bodai MCP servers (standalone; per `bodai-mcp-servers-not-mycelium-core.md`): 19
+- Bodai MCP servers (standalone; per `bodai-mcp-servers-not-mycelium-core.md`): 20
 - Extensions: 1
 - Desktop / GUI: 1
 - Meta: 1
 - Deprecated/Archived: 2
 
-**Total active Bodai repos: 34**
+**Total active Bodai repos: 35**
 
 ## Per-project MCP server and agent scoping
 
