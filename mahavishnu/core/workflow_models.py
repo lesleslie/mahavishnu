@@ -6,6 +6,8 @@ with globally unique ULID identifiers for cross-system correlation.
 
 from datetime import UTC, datetime
 
+from oneiric.core.ulid import generate as _generate_ulid
+from oneiric.core.ulid import is_ulid as _is_ulid
 from pydantic import BaseModel, Field, field_validator
 
 
@@ -14,48 +16,18 @@ def _now_utc() -> datetime:
     return datetime.now(UTC)
 
 
-try:
-    from oneiric.core.ulid import generate_config_id, is_config_ulid
-except ImportError:
-    # Try Dhara directly (the actual ULID implementation)
-    try:
-        from dhara import generate as generate_ulid
-        from dhara import is_ulid
+def generate_config_id() -> str:
+    """Generate a new ULID for a config / workflow / pool execution record.
 
-        def generate_config_id() -> str:
-            return generate_ulid()  # type: ignore[no-any-return]
+    Delegates to :func:`oneiric.core.ulid.generate` (drop-in for the
+    previous ``dhara.generate`` per Phase 8 Task 6).
+    """
+    return _generate_ulid()
 
-        def is_config_ulid(value: str) -> bool:
-            return is_ulid(value)  # type: ignore[no-any-return]
-    except ImportError:
-        # Last resort: timestamp-based ULID generation
-        import os
-        import time
 
-        def generate_config_id() -> str:
-            # Generate ULID-compatible timestamp-based ID
-            timestamp_ms = int(time.time() * 1000)
-            timestamp_bytes = timestamp_ms.to_bytes(6, byteorder="big")
-
-            # Generate 10 bytes of randomness
-            randomness = os.urandom(10)
-
-            # Combine: 6 bytes timestamp + 10 bytes randomness = 16 bytes
-            ulid_bytes = timestamp_bytes + randomness
-
-            # Encode to Crockford Base32 (Dhara's alphabet)
-            alphabet = "0123456789abcdefghjkmnpqrstvwxyz"
-
-            def b32_encode(data):
-                return "".join([alphabet[(b >> 35) & 31] for b in data])
-
-            return b32_encode(ulid_bytes)  # type: ignore[no-any-return]
-
-        def is_config_ulid(value: str) -> bool:
-            # Basic validation: 26 chars, alphanumeric
-            if len(value) != 26:
-                return False
-            return value.isalnum() and value.islower()
+def is_config_ulid(value: str) -> bool:
+    """Return True iff ``value`` is a syntactically valid ULID."""
+    return _is_ulid(value)
 
 
 class WorkflowExecution(BaseModel):
