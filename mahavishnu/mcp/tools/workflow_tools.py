@@ -5,9 +5,10 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any
 
 import dhara
-from dhara.schema import WorkflowOutcome, from_dict
+import msgspec
 from oneiric.core.logging import get_logger
 
+from mahavishnu.core.models.persistence import WorkflowOutcome
 from mahavishnu.core.permissions import Permission
 from mahavishnu.mcp.auth import require_mcp_auth
 from mahavishnu.mcp.tools._workflow_id_guard import validate_workflow_id
@@ -62,7 +63,7 @@ async def workflow_get_outcome(
     payload = await get_fn(f"workflow-results/{workflow_id}/")
     if payload is None:
         return None
-    return from_dict("workflow_outcome", payload)  # ty: ignore[invalid-return-type]
+    return msgspec.convert(payload, WorkflowOutcome)  # ty: ignore[invalid-return-type]
 
 
 def register_workflow_tools(mcp: FastMCP, rbac_manager: Any | None = None) -> None:

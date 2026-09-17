@@ -1,9 +1,9 @@
 """Durable webhook receiver.
 
-Validates inbound webhook payloads against the substrate-managed
-:class:`dhara.schema.WebhookIngress` schema and persists the typed
-record via :func:`dhara.put` so downstream consumers (M-WEBHOOK-DURABLE)
-can pick it up durably.
+Validates inbound webhook payloads against the locally-owned
+:class:`mahavishnu.core.models.persistence.WebhookIngress` schema and
+persists the typed record via :func:`dhara.put` so downstream consumers
+(M-WEBHOOK-DURABLE) can pick it up durably.
 
 This module is intentionally separate from :mod:`mahavishnu.webhooks.router`
 (OpenClaw-typed sweep / workflow endpoints) — the receiver accepts an
@@ -22,7 +22,7 @@ from __future__ import annotations
 
 import os
 
-from dhara.schema import SchemaValidationError, WebhookIngress, validate
+import msgspec
 from fastapi import FastAPI, HTTPException, status
 from fastapi.responses import JSONResponse
 from oneiric.core.logging import get_logger
@@ -32,6 +32,7 @@ from mahavishnu.core._dhara_substrate_compat import (
     stamp_dhara_attr,
 )
 from mahavishnu.core._producer_metrics import COUNTERS
+from mahavishnu.core.models.persistence import WebhookIngress
 
 # Substrate-compat: `dhara.put` is not a module-level attribute on the
 # installed dhara package — real callers pass a Dhara client instance
@@ -86,12 +87,12 @@ def receive_webhook(payload: dict[str, object]) -> JSONResponse | dict[str, str]
 
     Raises:
         HTTPException: 422 when the payload fails schema validation. The
-            underlying :class:`SchemaValidationError` is logged with the
+            underlying :class:`msgspec.ValidationError` is logged with the
             ``invalid_webhook`` event key (no exception message in ``extra``).
     """
     try:
-        validated: WebhookIngress = validate("webhook_ingress", payload)  # ty: ignore[invalid-assignment]
-    except SchemaValidationError:
+        validated: WebhookIngress = msgspec.convert(payload, WebhookIngress)  # ty: ignore[invalid-assignment]
+    except msgspec.ValidationError:
         logger.warning(
             "invalid_webhook",
             extra={"source": _safe_source(payload)},

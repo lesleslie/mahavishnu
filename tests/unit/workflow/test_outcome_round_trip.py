@@ -30,9 +30,9 @@ from __future__ import annotations
 
 from datetime import UTC, datetime
 
-from dhara.schema import WorkflowOutcome
 import pytest
 
+from mahavishnu.core.models.persistence import WorkflowOutcome
 from mahavishnu.core.workflow.outcome_writer import record_workflow_outcome
 from mahavishnu.mcp.tools.workflow_tools import workflow_get_outcome
 

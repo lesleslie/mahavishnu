@@ -20,8 +20,10 @@ from __future__ import annotations
 import os
 from typing import TYPE_CHECKING
 
-from dhara.schema import WorkflowOutcome, validate
+import msgspec
 from oneiric.core.logging import get_logger
+
+from mahavishnu.core.models.persistence import WorkflowOutcome
 
 from mahavishnu.core._dhara_substrate_compat import (
     dhara_calltime,
@@ -72,7 +74,7 @@ def record_workflow_outcome(
         "finished_at": finished_at,
         "metadata": metadata or {},
     }
-    validated: WorkflowOutcome = validate("workflow_outcome", payload)  # ty: ignore[invalid-assignment]
+    validated: WorkflowOutcome = msgspec.convert(payload, WorkflowOutcome)  # ty: ignore[invalid-assignment]
 
     # Substrate-compat gate: only persist when dhara.put is exposed.
     put = dhara_calltime("put")

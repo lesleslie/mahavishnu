@@ -1,8 +1,9 @@
 """Durable webhook replay consumer.
 
-Reads back :class:`dhara.schema.WebhookIngress` records persisted by
-:mod:`mahavishnu.webhooks.receiver` and returns validated typed structs
-via :func:`dhara.schema.from_dict`. The consumer/producer contract is
+Reads back :class:`mahavishnu.core.models.persistence.WebhookIngress`
+records persisted by :mod:`mahavishnu.webhooks.receiver` and returns
+validated typed structs via :func:`msgspec.convert`. The
+consumer/producer contract is
 the persistence key ``f"webhook-ingress/{webhook_id}/"`` — producers
 write here via :func:`dhara.put`, consumers read here via
 :func:`dhara.get`.
@@ -18,9 +19,10 @@ returns ``None`` instead of raising ``AttributeError``.
 from __future__ import annotations
 
 import dhara
-from dhara.schema import WebhookIngress, from_dict
+import msgspec
 from oneiric.core.logging import get_logger
 
+from mahavishnu.core.models.persistence import WebhookIngress
 from mahavishnu.mcp.tools._workflow_id_guard import validate_webhook_id
 
 # Substrate-compat: `dhara.get` is not a module-level attribute on the
@@ -112,10 +114,9 @@ def webhook_replay(
     if payload is None:
         return None
 
-    # The registry returns a WebhookIngress for name='webhook_ingress';
     # msgspec.Struct is duck-typed so we read fields directly without an
     # isinstance check (bandit B101 forbids asserts in production).
-    return from_dict("webhook_ingress", payload)  # ty: ignore[invalid-return-type]
+    return msgspec.convert(payload, WebhookIngress)  # ty: ignore[invalid-return-type]
 
 
 __all__ = ["webhook_replay"]

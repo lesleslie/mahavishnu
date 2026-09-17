@@ -6,10 +6,11 @@ import datetime as _dt
 from typing import Any
 from unittest.mock import MagicMock
 
-from dhara.schema import ApprovalLog, SchemaValidationError
+import msgspec
 import pytest
 
 from mahavishnu.core.approval.decision_writer import record_approval_decision
+from mahavishnu.core.models.persistence import ApprovalLog
 
 
 @pytest.fixture
@@ -53,7 +54,7 @@ def test_record_approval_decision_rejects_invalid_decision(
     dhara_storage: MagicMock,
 ) -> None:
     """Literal['approved','denied','requested'] enforced by substrate."""
-    with pytest.raises(SchemaValidationError):
+    with pytest.raises(msgspec.ValidationError):
         record_approval_decision(
             approval_id="apr-002",
             decision="invalid_value",

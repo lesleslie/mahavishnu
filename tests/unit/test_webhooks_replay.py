@@ -13,8 +13,9 @@ from datetime import UTC, datetime
 import logging
 from unittest.mock import MagicMock
 
-from dhara.schema import WebhookIngress
 import pytest
+
+from mahavishnu.core.models.persistence import WebhookIngress
 
 from mahavishnu.webhooks import replay as replay_module
 from mahavishnu.webhooks.replay import webhook_replay

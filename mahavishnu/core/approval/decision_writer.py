@@ -1,8 +1,8 @@
 """Approval decision writer — validate-on-write at decision boundary.
 
-Persists :class:`dhara.schema.ApprovalLog` records to Dhara at
-``approval-history/{approval_id}/``. Validation happens at the decision
-boundary so bad payloads never reach the durable store.
+Persists :class:`mahavishnu.core.models.persistence.ApprovalLog` records
+to Dhara at ``approval-history/{approval_id}/``. Validation happens at
+the decision boundary so bad payloads never reach the durable store.
 
 Feature flag: ``APPROVAL_LOG_V1_ENABLED`` (default True). When False, the
 caller is expected to skip ``record_approval_decision`` entirely and fall
@@ -26,8 +26,10 @@ from datetime import UTC, datetime
 import os
 from typing import Any
 
-from dhara.schema import ApprovalLog, validate
+import msgspec
 from oneiric.core.logging import get_logger
+
+from mahavishnu.core.models.persistence import ApprovalLog
 
 from mahavishnu.core._dhara_substrate_compat import (
     dhara_calltime,
@@ -69,7 +71,7 @@ def record_approval_decision(
         The validated :class:`ApprovalLog` struct that was persisted.
 
     Raises:
-        dhara.schema.SchemaValidationError: If ``decision`` is not in the
+        msgspec.ValidationError: If ``decision`` is not in the
             Literal type or any required field is malformed.
     """
     merged_metadata: dict[str, Any] = dict(metadata) if metadata else {}
@@ -83,7 +85,7 @@ def record_approval_decision(
         "metadata": merged_metadata,
     }
 
-    validated: ApprovalLog = validate("approval_log", payload)  # ty: ignore[invalid-assignment]
+    validated: ApprovalLog = msgspec.convert(payload, ApprovalLog)  # ty: ignore[invalid-assignment]
 
     # Substrate-compat gate: only persist when dhara.put is exposed.
     put = dhara_calltime("put")

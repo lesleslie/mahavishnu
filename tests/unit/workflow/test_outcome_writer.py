@@ -6,9 +6,10 @@ import asyncio
 from datetime import UTC, datetime
 from unittest.mock import MagicMock
 
-from dhara.schema import SchemaValidationError, WorkflowOutcome
+import msgspec
 import pytest
 
+from mahavishnu.core.models.persistence import WorkflowOutcome
 from mahavishnu.core.workflow import outcome_writer
 from mahavishnu.core.workflow.outcome_writer import record_workflow_outcome
 
@@ -51,7 +52,7 @@ def test_record_workflow_outcome_rejects_invalid_status(
     dhara_storage: MagicMock,
 ) -> None:
     """Literal['succeeded','failed','cancelled'] enforced by substrate."""
-    with pytest.raises(SchemaValidationError):
+    with pytest.raises(msgspec.ValidationError):
         record_workflow_outcome(
             workflow_id="wf-123",
             status="unknown",

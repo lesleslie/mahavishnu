@@ -17,10 +17,10 @@ from datetime import UTC, datetime
 from unittest.mock import MagicMock
 
 import dhara
-from dhara.schema import WebhookIngress
 from fastapi.testclient import TestClient
 import pytest
 
+from mahavishnu.core.models.persistence import WebhookIngress
 from mahavishnu.webhooks import replay as replay_module
 from mahavishnu.webhooks.receiver import app
 

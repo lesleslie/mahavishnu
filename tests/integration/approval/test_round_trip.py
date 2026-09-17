@@ -16,11 +16,11 @@ from __future__ import annotations
 
 from typing import Any
 
-from dhara.schema import ApprovalLog
 import pytest
 
 from mahavishnu.cli.approval_cli import list_approval_history
 from mahavishnu.core.approval.decision_writer import record_approval_decision
+from mahavishnu.core.models.persistence import ApprovalLog
 
 
 @pytest.fixture

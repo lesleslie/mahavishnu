@@ -7,10 +7,11 @@ import logging
 from typing import Any
 from unittest.mock import MagicMock
 
-from dhara.schema import ApprovalLog
+import msgspec
 import pytest
 
 from mahavishnu.cli.approval_cli import list_approval_history
+from mahavishnu.core.models.persistence import ApprovalLog
 
 
 @pytest.fixture
@@ -122,7 +123,7 @@ def test_list_approval_history_returns_empty_when_dhara_unbound(
     assert "'reason': 'dhara.list_unbound'" in msg, msg
     # Sanity: the WARNING must NOT carry exception text in the extras payload.
     assert "Traceback" not in msg
-    assert "SchemaValidationError" not in msg.split("extra=", 1)[-1]
+    assert "ValidationError" not in msg.split("extra=", 1)[-1]
 
 
 def test_list_approval_history_skips_invalid_payloads(
@@ -159,10 +160,10 @@ def test_list_entry_skipped_log_carries_bound_exception_type(
     """`approval_list_entry_skipped` log carries the bound exc type, not a constant string.
 
     Regression guard for the constant-string bug:
-    `type(SchemaValidationError).__name__` evaluates to the literal string
-    "SchemaValidationError" because the surrounding `except` already
+    `type(msgspec.ValidationError).__name__` evaluates to the literal
+    string "ValidationError" because the surrounding `except` already
     narrowed the type. The fix binds the exception as ``exc`` and logs
-    ``type(exc).__name__``. We trigger a real `SchemaValidationError`
+    ``type(exc).__name__``. We trigger a real `msgspec.ValidationError`
     via an invalid `action` Literal (same shape as
     `test_list_approval_history_skips_invalid_payloads`) and assert the
     structured log carries the bound-exception class name.
@@ -202,7 +203,7 @@ def test_list_entry_skipped_log_carries_bound_exception_type(
     # Oneiric renders `extra={...}` into the formatted message; parse for
     # the `reason` field and assert it's the bound-exception class name.
     msg = rec.message
-    assert "'reason': 'SchemaValidationError'" in msg, (
+    assert "'reason': 'ValidationError'" in msg, (
         f"Expected bound-exception type name, got: {msg!r}"
     )
     # No exception text leaked into the structured payload.

@@ -15,9 +15,10 @@ from __future__ import annotations
 from typing import Any
 
 import dhara
-from dhara.schema import ApprovalLog, SchemaValidationError, from_dict
+import msgspec
 from oneiric.core.logging import get_logger
 
+from mahavishnu.core.models.persistence import ApprovalLog
 from mahavishnu.mcp.tools._workflow_id_guard import validate_approval_id
 
 logger = get_logger(__name__)
@@ -106,8 +107,8 @@ def list_approval_history(
     results: list[ApprovalLog] = []
     for payload in raw_payloads:
         try:
-            record: ApprovalLog = from_dict("approval_log", payload)  # ty: ignore[invalid-assignment]
-        except SchemaValidationError as exc:
+            record: ApprovalLog = msgspec.convert(payload, ApprovalLog)  # ty: ignore[invalid-assignment]
+        except msgspec.ValidationError as exc:
             # Skip-bad not raise-all: partial-failure resilience so a single
             # corrupted entry does not mask the rest of the history. Log the
             # bound exception's type — never the message, which may carry

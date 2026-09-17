@@ -49,7 +49,7 @@ def validate_webhook_id(webhook_id: str) -> bool:
     into ``f"webhook-ingress/{webhook_id}/"``.
 
     The producer side is server-generated (see
-    :mod:`dhara.schema.webhook_ingress`); this guard exists so the
+    :mod:`mahavishnu.core.models.persistence`); this guard exists so the
     consumer side rejects caller-supplied traversal attempts before the
     value reaches the Dhara key path.
     """

@@ -6,9 +6,10 @@ import asyncio
 from datetime import UTC, datetime
 from unittest.mock import AsyncMock
 
-from dhara.schema import WorkflowOutcome
 from fastmcp import FastMCP
 import pytest
+
+from mahavishnu.core.models.persistence import WorkflowOutcome
 
 from mahavishnu.mcp.tools import workflow_tools
 from mahavishnu.mcp.tools.workflow_tools import (
