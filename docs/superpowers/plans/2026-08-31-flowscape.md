@@ -762,11 +762,16 @@ The spec at `docs/superpowers/specs/2026-08-31-flowscape-design.md` was authored
 
 **Steps:**
 - [ ] Write failing tests: `test_layout_runs_on_empty_graph`, `test_layout_converges_within_n_iterations`, `test_total_energy_decreases_monotonically`.
+- [ ] Write failing tests: `test_layout_terminates_early_when_converged`, `test_layout_resumes_active_when_graph_changes`, `test_layout_capped_metric_increments`, `test_layout_p99_under_16ms_at_1000_nodes_with_layout_active` (annotated `@pytest.mark.slow`).
 - [ ] Implement `ForceDirectedLayout` running on `DispatchQueue` at `.userInteractive` QoS.
 - [ ] O(n²) repulsion + spring + damping per spec `LayoutSettings`.
 - [ ] Initial positions seeded random-on-sphere, deterministic by SHA-256 of `HostNode.id`.
+- [ ] Implement three-state convergence machine per spec §"Layout convergence state machine": `converged` (skip iteration, render current) / `active` (run up to `max_iterations_per_frame`) / `capped` (budget exhausted, render anyway + emit OSSignposter event). Threshold ε = `convergence_energy_per_node_epsilon`, window = `soft_convergence_window_frames`, budget = `max_iterations_per_frame`.
+- [ ] Maintain `dirty_set` in `ForceDirectedLayout` populated by `SnapshotBuffer` diff; drained at frame start to re-arm `active` state on topology change (new edge, new node, removed node).
+- [ ] Emit `flowscape.layout.capped_ticks_total` counter + `OSSignposter` interval for `capped` state transitions.
 - [ ] Atomic swap of two `MTLBuffer` pointers for snapshot handoff to Renderer (no triple-buffer needed for CPU layout at ≤1000 nodes).
-- [ ] Commit "feat(layout): CPU force-directed 3D layout with atomic MTLBuffer swap".
+- [ ] Compute Holten HEB control points per edge per frame: LCP lookup against `HostNode.subnet_path`, 8-point Catmull-Rom path generation (`edge_bundling_subdivision_levels = 4`). Control points feed the same MTLBuffer handoff path; no separate buffer needed.
+- [ ] Commit "feat(layout): CPU force-directed 3D layout with convergence state machine + HEB control points".
 
 #### Task 4.2: NodeRenderer (instanced spheres, 10k-node capacity)
 **Files:**
@@ -784,9 +789,14 @@ The spec at `docs/superpowers/specs/2026-08-31-flowscape-design.md` was authored
 
 **Steps:**
 - [ ] Write failing test: `test_renders_50000_edges_p99_under_16ms` (marked `@pytest.mark.slow`).
+- [ ] Write failing tests: `test_bundling_reduces_visual_crossings_in_dense_subgraph`, `test_bundling_disabled_falls_back_to_straight_cylinder`, `test_bundling_subnet_hierarchy_is_deterministic_across_snapshots`, `test_bundling_compatibility_test_falls_back_on_incompatible_edges`.
 - [ ] Implement instanced line-segment rendering for edges (cylinder quads).
 - [ ] Edge thickness scales with `bytes` (clamped); color from sender's protocol.
-- [ ] Commit "feat(renderer): instanced edge rendering at 50k-edge capacity".
+- [ ] Integrate Holten HEB edge bundling per spec §"Edge bundling": tessellate the 8-point Catmull-Rom spline from Task 4.1 into `edge_bundling_subdivision_levels + 4 = 8` segments, draw 8 cylinder quads between consecutive sample points.
+- [ ] Apply Holten §3.2 compatibility test; incompatible edges fall back to straight cylinder quads with zero overhead.
+- [ ] Apply bundling-specific visual encoding: 10% lightness reduction on bundled color, thickness clamp `[0.5, 2.0]` px (vs `[0.5, 4.0]` un-bundled), 0.5 Hz hue oscillation per protocol class.
+- [ ] Honour `edge_bundling_fade_with_zoom`: when camera distance drops below zoom threshold, render un-bundled edges only (skip HEB control point computation).
+- [ ] Commit "feat(renderer): instanced edge rendering + Holten HEB bundling at 50k-edge capacity".
 
 #### Task 4.4: Camera controls + SceneFilter
 **Files:**
@@ -806,6 +816,25 @@ The spec at `docs/superpowers/specs/2026-08-31-flowscape-design.md` was authored
 - [ ] Write failing tests: `test_click_returns_node_id`, `test_hover_highlights_node`.
 - [ ] Implement GPU picking + CPU ray-against-bounding-sphere fallback.
 - [ ] Commit "feat(renderer): click/hover picking".
+
+#### Task 4.6: Choreographer (initial-frame + departure + camera intro)
+**Files:**
+- Create: `src/Flowscape/Renderer/Choreographer.swift`, `Tests/FlowscapeTests/ChoreographerTests.swift`
+- Modify: `src/Flowscape/Renderer/Renderer.swift` (consume Choreographer output per frame)
+- Modify: `src/Flowscape/Renderer/NodeRenderer.swift` (vertex shader reads `first_seen_frame`)
+- Modify: `src/Flowscape/Renderer/EdgeRenderer.swift` (vertex shader reads both endpoint opacities)
+
+**Pre-req (not part of this task; flag for Phase 0b.1 codegen update):** `proto/flowscape.proto` must add `first_seen_frame` (uint64) to `HostNode` so the choreographer has data to read. `aggregate.py` populates this on first sight per host.
+
+**Steps:**
+- [ ] Write failing tests: `test_choreographer_initialises_with_zero_opacity`, `test_node_opacity_reaches_one_after_fade_in_duration`, `test_edge_opacity_gated_by_endpoint_opacity`, `test_camera_intro_arc_completes_in_72_frames`, `test_departure_triggers_fade_out_then_buffer_released`.
+- [ ] Implement `Choreographer` actor: owns per-host opacity state (keyed by `HostNode.id`), per-frame tick that advances opacity toward target, departure detection by comparing current snapshot to previous snapshot.
+- [ ] Implement `CameraIntroController`: deterministic ease-out arc from far vantage to working distance over `camera_intro_duration_frames = 72`. No IPC.
+- [ ] Modify NodeRenderer vertex shader: read `first_seen_frame` and `current_frame_index` from instance buffer, output alpha multiplier = `clamp((current_frame_index - first_seen_frame) / fade_in_duration_frames, 0, 1)`.
+- [ ] Modify EdgeRenderer vertex shader: read both endpoint opacities from Choreographer, output alpha multiplier = `endpoint_a_alpha * endpoint_b_alpha * fade_in_edge_factor`. Edge stays invisible until both endpoints reach ≥80% opacity.
+- [ ] Implement departure fade-out: when a host disappears from the snapshot for ≥ 1 slow-window tick, Choreographer sets opacity target to 0 over `fade_out_duration_frames = 12`; buffer slot reverts to pool after fade completes.
+- [ ] Wire Choreographer → Renderer actor: per-frame `Choreographer.tick()` called from `Renderer.draw(in:)` flow, before the instanced draw calls.
+- [ ] Commit "feat(renderer): Choreographer with opacity ramps + camera intro + departure fade-out".
 
 #### Integration Contract — Phase4
 - **Triggered from:** Phase 3's SceneView with `PlaceholderRenderer` is live; Python's `flowscape live` is emitting.

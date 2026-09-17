@@ -139,8 +139,8 @@ ______________________________________________________________________
 | `App.swift` | SwiftUI `App` entrypoint; consent gate; window + menu commands. | 200 |
 | `Sidebar.swift` | Capture source picker, filter controls, legend, alerts list, status indicator. | 400 |
 | `SceneView.swift` | `NSViewRepresentable` wrapping `MTKView`; the GPU scene lives here. | 200 |
-| `Renderer/` (actor) | Metal pipeline + custom shaders. **Edge rendering strategy: compute-pass writes line segments (cylinder quads) into a shared vertex buffer, instanced per-edge.** MTKView config pinned: `colorPixelFormat=.bgra10_xr_srgb`, `depthStencilPixelFormat=.depth32Float`, `sampleCount=4`, `enableSetNeedsDisplay=false`, `preferredFramesPerSecond` follows `RenderSettings.target_fps` (default 60, configurable up to 120 for ProMotion). MTLBuffer pools allocated once at startup with capacity = `max_nodes * node_size + max_edges * edge_size`, never reallocated during runtime. | 1,500-2,000 |
-| `Layout/` | 3D force-directed (GPU compute kernel, not CPU on render thread). Triple-buffered positions. | 300 |
+| `Renderer/` (actor) | Metal pipeline + custom shaders. **Edge rendering strategy: compute-pass writes line segments (cylinder quads) into a shared vertex buffer, instanced per-edge.** MTKView config pinned: `colorPixelFormat=.bgra10_xr_srgb`, `depthStencilPixelFormat=.depth32Float`, `sampleCount=4`, `enableSetNeedsDisplay=false`, `preferredFramesPerSecond` follows `RenderSettings.target_fps` (default 60, configurable up to 120 for ProMotion). MTLBuffer pools allocated once at startup with capacity = `max_nodes * node_size + max_edges * edge_size`, never reallocated during runtime. Edge bundles (Holten HEB) thread through the same cylinder-quad path — bundling changes *which control points* the cylinders connect, not the render path itself. Hosts the `Choreographer` actor for opacity ramps and camera intro (see §"Visual rendering details"). | 1,500-2,000 |
+| `Layout/` | 3D force-directed (GPU compute kernel, not CPU on render thread). Triple-buffered positions. Three-state convergence machine (`converged` / `active` / `capped`) per §"Layout convergence state machine" — ε=1e-3, 24 iters/frame, 12-frame soft window. Holten HEB control-point computation lives here too: per-edge LCP lookup, 8-point Catmull-Rom arc generation. | 500-600 |
 | `IPCSocket.swift` (actor) | Two `SOCK_SEQPACKET` Unix-socket clients. Partial-read state machine. JSON-RPC dispatcher on control.sock. Bidirectional heartbeat. | 600 |
 | `AlertModel.swift` | Heuristic alerts surfaced in sidebar (dismissable, severity-aware, TTL-aware). | 150 |
 | `HelperInstall/` | Launchd plist + helper binary source for the privileged ChmodBPF-style helper. | 300 |
@@ -208,6 +208,8 @@ ______________________________________________________________________
 | Aggregation tick (slow) | **every 30 s** | Periodicity detection only; sparse timestamps |
 | IPC publish | **10 Hz** | Same as fast aggregation |
 | Layout (GPU compute) | **60 Hz** | Metal render thread pacing |
+| Layout convergence state machine | **per tick** | `converged` (skip iteration, render current) / `active` (run up to `max_iterations_per_frame`) / `capped` (budget exhausted, render anyway + emit OSSignposter event) — see §"Layout convergence state machine" |
+| Choreographer (fade-in/out, camera intro) | **60 Hz** | per-frame opacity multiplier from `first_seen_frame` index + `(now - first_seen_frame) / fade_in_duration_frames`; window-system paced |
 | Renderer | **`RenderSettings.target_fps`** (default 60, configurable up to 120 for ProMotion) | MTKView `preferredFramesPerSecond` reads from settings |
 
 These are starting values exposed as settings. Tune empirically after we have a real network; wiring is the deliverable, not the numbers.
@@ -237,10 +239,93 @@ T+600ms  Swift responds with its version
 T+700ms  Swift sends start_capture on control.sock
 T+900ms  Python begins packet ingest
 T+1000ms First snapshot arrives → first render frame
-T+1100ms Animations begin (camera intro, node fade-in)
+         Layout seeds positions (deterministic SHA-256 of HostNode.id; see §"Visual rendering details")
+         Choreographer initialises with per-node opacity = 0
+T+1000ms Camera intro begins — 1.2 s ease-out arc from far vantage → working distance
+T+1200ms Layout soft-convergence hits for first ~30% of nodes (12-frame window elapsed)
+T+1200ms Per-node opacity ramp begins — 0→1 over 600 ms, staggered by `first_seen_frame` index
+         (older nodes finish first; new nodes still ramping)
+T+1800ms Camera intro complete; ≥90% nodes at full opacity
+T+2000ms Steady state — only late-arriving nodes ramp in; departures fade out over 200 ms,
+         then buffer slot is reused for the next host with that identity (deterministic re-seed)
 ```
 
 600-1000 ms to first snapshot is realistic (Python imports + Oneiric load + libpcap open are not free). The placeholder must be informative enough that users don't think the app is hung.
+
+## Visual rendering details
+
+This section closes three architectural gaps surfaced during Phase 4 review: layout convergence criterion, initial-frame choreography, and edge bundling. These are the rendering-layer commitments that turn the spec's headline "3D interactive scene" into measurable, testable behaviors.
+
+### Layout convergence state machine
+
+`ForceDirectedLayout` runs a three-state machine each frame, gated by three settings on `LayoutSettings`:
+
+| Setting | Default | Purpose |
+|---|---|---|
+| `convergence_energy_per_node_epsilon` | `1e-3` | Per-node kinetic-energy threshold (Newton-units, post-damping). Below this counts as "at rest". |
+| `max_iterations_per_frame` | `24` | Iteration budget per frame. At 60 Hz this is 6.7 ms of CPU work. |
+| `soft_convergence_window_frames` | `12` | Consecutive frames below ε required to enter `converged` state. 200 ms at 60 Hz. Filters single-frame oscillation noise. |
+
+States:
+
+- **`converged`** — energy < ε for `soft_convergence_window_frames` consecutive ticks. Skip force iteration entirely; render current positions. CPU nearly idle.
+- **`active`** — energy ≥ ε OR consecutive-frame counter reset. Run up to `max_iterations_per_frame` force computations per frame.
+- **`capped`** — energy ≥ ε AND iteration budget exhausted in current frame. Render current positions anyway; increment `flowscape.layout.capped_ticks_total` counter; emit `OSSignposter` event for telemetry.
+
+Re-entry from `converged` to `active` is triggered by any graph mutation that invalidates the equilibrium (new edge with displacement above a per-edge threshold; new node; removed node). Maintained cheaply via a `dirty_set` in `ForceDirectedLayout`, populated by `SnapshotBuffer` diff, drained at frame start.
+
+**p99 ≤ 16 ms DoD math** (per Phase 4 spec): 24 iterations × 1000 nodes² repulsion × ~50 ns/op ≈ 1.2 ms force computation + 0.3 ms spring pass + 0.2 ms damping integration + 0.1 ms atomic buffer swap + 14 ms render budget headroom = ~16 ms ceiling on Apple M2 Pro.
+
+### Initial-frame choreography
+
+The cold-start timestamps above specify *when* things happen; this section specifies *what is seen* between them.
+
+**Per-node visibility ramp.** Each `HostNode` carries a `first_seen_frame` index (computed by `aggregate.py`, included in `GraphSnapshot`). The Renderer vertex shader reads `(current_frame_index - first_seen_frame) / fade_in_duration_frames` as an alpha multiplier, clamped to `[0, 1]`. Default `fade_in_duration_frames = 36` (600 ms at 60 Hz). New nodes ramp in linearly while older nodes have already finished ramping.
+
+**Per-edge visibility ramp.** Edges become visible only when both endpoint nodes are ≥ 80% opacity (`fade_in_edge_duration_frames = 18`, 300 ms). Avoids the visual dissonance of "edge arrives before its endpoints exist."
+
+**Departure behavior.** When a node disappears from the aggregator for ≥ 1 slow-window tick, the Choreographer kicks off a 200 ms linear fade-out (`fade_out_duration_frames = 12`). Edges to the departing node fade out in lockstep. After the fade, the buffer slot reverts to the pool — but the layout position is keyed by `HostNode.id`, so when a host with the same identity returns (e.g. WiFi roam), its prior position is reseeded deterministically rather than assigned a fresh slot.
+
+**Camera intro.** A 1.2 s ease-out arc from a far vantage point to the working distance (`camera_intro_duration_frames = 72`). Driven entirely on the Renderer side; no IPC. The arc is deterministic (cosine easing on distance, ease-out cubic on pitch/yaw).
+
+**Why staggered, not synchronized?** Synchronized fade-in reads as "curtain raising" — theatrical, but signals "loading." Staggered by arrival order reads as "system coming alive" — incremental discovery. The same principle applies to most "system is alive" UX cues: avoid patterns that suggest "the system was waiting."
+
+### Edge bundling (Holten HEB)
+
+At the spec'd 50k-edge capacity, un-bundled cylinder quads become visual spaghetti. The renderer ships **Holten's Hierarchical Edge Bundling (Holten 2006)** as the v1 visual differentiator over Etherape.
+
+**Why HEB and not the alternatives:**
+
+| Algorithm | Why not / Why |
+|---|---|
+| Holten HEB (2006) | **Selected.** Control points per-edge; Catmull-Rom spline is GPU-friendly; well-understood visual aesthetic; cubic Bézier evaluation per edge per frame fits the 16 ms budget. |
+| Selassie FDEB (2011) | O(E²) edge-edge springs = 2.5B ops at 50k edges. Won't scale to the capacity target. Defer to v2 if HEB proves inadequate. |
+| Density-based clustering (Lampe et al., 2010) | Has to re-cluster on topology changes; latency during burst traffic. Defer to v2. |
+
+**Hierarchy synthesis.** The hierarchy is computed lazily in `aggregate.py` on first sight of each host and serialized into `HostNode.subnet_path` as a `repeated uint32` proto field (root → /8 → /16 → /24 → IP, max `subnet_hierarchy_levels = 5` levels). Lives in the proto, not derived at render time — bundling must work even before the Python backend has had time to compute a hierarchy from scratch (e.g. on reconnect, after backend restart).
+
+**Per-edge control points.** For edge `(src, dst)`: walk `src.subnet_path ∩ dst.subnet_path` to find the longest common prefix (LCP). The spline control points are `src_pos + N points along arc to LCP centroid + N points along arc to dst_pos + dst_pos`, where `N = edge_bundling_subdivision_levels` (default 4, giving an 8-point Catmull-Rom path). Each control-point arc is a quadratic Bézier through the LCP centroid.
+
+**Tessellation.** Existing `EdgeRenderer` cylinder-quad code is reused unchanged: subdivide the spline into `M = edge_bundling_subdivision_levels + 4` segments, draw M+1 oriented cylinders between consecutive sample points. The render path itself is bundling-agnostic — HEB just changes *which control points* the cylinder quads thread through.
+
+**Compatibility test (Holten §3.2).** Edges are only bundled when angle compatibility and length-scale compatibility both pass (default angle threshold: `edge_bundling_compatibility_angle_rad = π/6`). Incompatible edges fall back to straight cylinder quads with zero bundling overhead — the visual worst case is identical to no-bundling behavior.
+
+**Tunables (on `RenderSettings`):**
+
+```python
+edge_bundling_enabled: bool = True
+edge_bundling_subdivision_levels: PositiveInt = 4
+edge_bundling_compatibility_angle_rad: float = π/6
+edge_bundling_fade_with_zoom: bool = True  # un-bundle when zoomed in past threshold
+```
+
+**Visual encoding interaction.** The spec already commits to thickness-by-bytes and color-by-protocol for edges. Bundling compresses both signals (bundled edges stack). To preserve readability:
+
+- **Color** — same protocol hue, but lightness reduced by 10% when bundled, pushing bundled edges visually behind the un-bundled focal edges.
+- **Thickness** — clamped to `[0.5, 2.0]` px on bundled edges (vs `[0.5, 4.0]` on un-bundled), so the byte-volume signal stays visible without overwhelming the bundle aesthetic.
+- **Animation** — bundled edges oscillate in hue by ±5% at 0.5 Hz per protocol class, so the bundle visually "breathes." Un-bundled edges stay static.
+
+**Enabled by default.** `edge_bundling_enabled` ships as `True` because the visual differentiator is *why a user opens flowscape over Etherape*. Power users can disable via `flowscape config set renderer.edge_bundling_enabled false`.
 
 ______________________________________________________________________
 
@@ -495,6 +580,17 @@ class LayoutSettings(BaseModel):
     damping: float = Field(0.85, gt=0.0, le=1.0)
     bounds_min: tuple[float, float, float] = (-50.0, -50.0, -50.0)
     bounds_max: tuple[float, float, float] = (50.0, 50.0, 50.0)
+    # Convergence state machine (see §"Layout convergence state machine")
+    convergence_energy_per_node_epsilon: NonNegativeFloat = 1e-3
+    max_iterations_per_frame: PositiveInt = 24
+    soft_convergence_window_frames: PositiveInt = 12
+    # Initial-frame choreography (see §"Initial-frame choreography")
+    fade_in_duration_frames: PositiveInt = 36   # 600 ms @ 60 Hz
+    fade_in_edge_duration_frames: PositiveInt = 18  # 300 ms
+    fade_out_duration_frames: PositiveInt = 12   # 200 ms
+    camera_intro_duration_frames: PositiveInt = 72  # 1.2 s @ 60 Hz
+    # Edge bundling hierarchy (Holten HEB; see §"Edge bundling")
+    subnet_hierarchy_levels: PositiveInt = 5  # root → /8 → /16 → /24 → IP
     @model_validator(mode="after")
     def _check_bounds(self) -> "LayoutSettings":
         for a, b in zip(self.bounds_min, self.bounds_max, strict=True):
@@ -514,6 +610,12 @@ class RenderSettings(BaseModel):
         Protocol.ICMPV6: PColor("#ff453a"),
     })
     edge_thickness_scale: PositiveInt = 1
+    # Edge bundling (Holten HEB); see §"Edge bundling". Enabled by default —
+    # it's the headline visual differentiator over Etherape.
+    edge_bundling_enabled: bool = True
+    edge_bundling_subdivision_levels: PositiveInt = 4  # Catmull-Rom sample count
+    edge_bundling_compatibility_angle_rad: float = 0.5235987755982988  # π/6
+    edge_bundling_fade_with_zoom: bool = True  # un-bundle when zoomed past threshold
 
 class HeuristicSettings(BaseModel):
     enabled: list[HeuristicName] = Field(default_factory=lambda: [
@@ -580,6 +682,17 @@ layout:
   damping: 0.85
   bounds_min: [-50, -50, -50]
   bounds_max: [50, 50, 50]
+  # Convergence state machine (see §"Layout convergence state machine")
+  convergence_energy_per_node_epsilon: 0.001
+  max_iterations_per_frame: 24
+  soft_convergence_window_frames: 12
+  # Initial-frame choreography (see §"Initial-frame choreography")
+  fade_in_duration_frames: 36
+  fade_in_edge_duration_frames: 18
+  fade_out_duration_frames: 12
+  camera_intro_duration_frames: 72
+  # Edge bundling hierarchy (Holten HEB)
+  subnet_hierarchy_levels: 5
 
 renderer:
   target_fps: 60
@@ -590,6 +703,11 @@ renderer:
     icmp: "#ff453a"
     arp: "#bf5af2"
   edge_thickness_scale: 1.0
+  # Edge bundling (Holten HEB); see §"Edge bundling". Enabled by default.
+  edge_bundling_enabled: true
+  edge_bundling_subdivision_levels: 4
+  edge_bundling_compatibility_angle_rad: 0.5235987755982988  # π/6
+  edge_bundling_fade_with_zoom: true
 
 heuristics:
   enabled: ["beaconing", "port_scan", "top_n_churn"]
