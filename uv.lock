@@ -3651,7 +3651,7 @@ wheels = [
 
 [[package]]
 name = "mahavishnu"
-version = "0.24.2"
+version = "0.25.0"
 source = { editable = "." }
 dependencies = [
     { name = "agno" },
@@ -3750,7 +3750,6 @@ dev = [
 ecosystem = [
     { name = "akosha" },
     { name = "crackerjack" },
-    { name = "dhara" },
     { name = "session-buddy" },
 ]
 gpu = [
@@ -3875,7 +3874,6 @@ dev = [
 ecosystem = [
     { name = "akosha", specifier = ">=0.12.0" },
     { name = "crackerjack", specifier = ">=0.75.3" },
-    { name = "dhara", specifier = ">=0.17.0" },
     { name = "session-buddy", specifier = ">=0.24.0" },
 ]
 gpu = [{ name = "runpod-flash", specifier = ">=1.19.0" }]
