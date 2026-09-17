@@ -13,7 +13,7 @@ import uuid
 from mahavishnu.core.errors import ErrorCode, MahavishnuError
 
 if TYPE_CHECKING:
-    from dhara.lock import DharaLock
+    from mahavishnu.core._lock_sentinel import Lock
 
 
 # Exceptions (unchanged shape)
@@ -104,10 +104,15 @@ def _decode_lock_result(payload: Mapping[str, Any]) -> LockResult:
 
 
 class HypothesisLock:
-    """Async, D-LOCK backed."""
+    """Async, local-Lock-backed hypothesis registry.
 
-    def __init__(self, *, dhara_lock: DharaLock, owner_token: str = "precommit-cli") -> None:
-        self._lock = dhara_lock
+    Replaces the previous D-LOCK (dhara.lock) backing per Phase 8
+    Task 5 — see ``mahavishnu/core/_lock_sentinel.py`` for the
+    in-process lock service this delegates to.
+    """
+
+    def __init__(self, *, lock: Lock, owner_token: str = "precommit-cli") -> None:
+        self._lock = lock
         self._owner = owner_token
 
     def _key(self, lock_id: str) -> str:

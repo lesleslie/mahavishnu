@@ -1,25 +1,25 @@
-"""Precommitment tests — D-LOCK backed, async."""
+"""Precommitment tests — local Lock backed, async.
+
+Migrated from dhara.lock.sql.SQLBackendLock to
+``mahavishnu.core._lock_sentinel.Lock`` per Phase 8 Task 5 of the
+Dhara MCP retirement plan. The cross-instance persistence test
+(``test_cross_instance_persistence``) is intentionally dropped:
+an in-process dict-backed sentinel cannot provide that guarantee
+across separate processes. If cross-instance persistence is required
+in the future, a SQL/DuckDB-backed lock service would need to be
+plugged into ``_lock_sentinel.py``.
+"""
 
 from __future__ import annotations
 
+from dataclasses import replace
 from datetime import UTC, datetime
-from pathlib import Path
 from typing import Any
+from unittest.mock import patch
 
 import pytest
 
-# duckdb is not declared in pyproject.toml — it gets pulled in
-# transitively by some environments and is missing in others.
-# importorskip at module level gracefully skips the file in venvs
-# without duckdb instead of failing collection with ModuleNotFoundError.
-# MUST run BEFORE ``from dhara.lock.sql import SQLBackendLock`` because
-# dhara's ``lock/sql`` module does ``import duckdb`` at its own module
-# load — the import order here is the ordering guard against transitive
-# duckdb pulls from sibling Bodai packages.
-duckdb = pytest.importorskip("duckdb", reason="duckdb not installed")
-
-from dhara.lock.sql import SQLBackendLock  # noqa: E402  -- after importorskip guard
-
+from mahavishnu.core._lock_sentinel import Lock
 from mahavishnu.core.precommitment import (
     Hypothesis,
     HypothesisLock,
@@ -28,25 +28,11 @@ from mahavishnu.core.precommitment import (
     compute_signature,
 )
 
-_MIGRATION_0003 = (
-    Path(__file__).parents[3] / "dhara" / "dhara" / "migrations" / "sql" / "0003_locks.sql"
-).read_text()
-
 
 @pytest.fixture
-def file_db(tmp_path: Path) -> Any:
-    """File-backed DuckDB; precreate schema so per-test connections share it."""
-    db_path = tmp_path / "precommit_test.db"
-    init = duckdb.connect(str(db_path))
-    init.execute(_MIGRATION_0003)
-    init.close()
-    return str(db_path)
-
-
-@pytest.fixture
-def lock(file_db: str) -> HypothesisLock:
-    """HypothesisLock backed by a fresh SQLBackendLock against file_db."""
-    return HypothesisLock(dhara_lock=SQLBackendLock(duckdb.connect(file_db)))
+def lock() -> HypothesisLock:
+    """HypothesisLock backed by a fresh in-process Lock sentinel."""
+    return HypothesisLock(lock=Lock())
 
 
 def _hypo(claim: str = "test claim") -> Hypothesis:
@@ -69,7 +55,7 @@ def test_compute_signature_is_deterministic() -> None:
 
 @pytest.mark.asyncio
 async def test_lock_persists_with_signature(lock: HypothesisLock) -> None:
-    """Spec test: SQL-backed storage preserves metadata JSON and signature."""
+    """Spec test: in-process storage preserves metadata JSON and signature."""
     h = _hypo("claim A")
     expected_sig = compute_signature(h)
     result = await lock.lock(h)
@@ -81,8 +67,6 @@ async def test_lock_persists_with_signature(lock: HypothesisLock) -> None:
 @pytest.mark.asyncio
 async def test_duplicate_lock_raises(lock: HypothesisLock) -> None:
     """Spec: duplicate-permanent raises ValueError when a lock with the same key already exists."""
-    from unittest.mock import patch
-
     h = _hypo()
     # Force two lock() calls to generate the same lock_id (so they hit the same key).
     with patch("mahavishnu.core.precommitment.uuid.uuid4") as mock_uuid:
@@ -91,13 +75,11 @@ async def test_duplicate_lock_raises(lock: HypothesisLock) -> None:
         # Second call: try_acquire returns None (held) → raises ValueError
         with pytest.raises(ValueError, match="duplicate lock_id"):
             await lock.lock(h)
-    # Verify the first lock was actually written
-    sql = lock._lock._db  # type: ignore[attr-defined]
-    fetched = sql.execute(
-        "SELECT lock_key FROM substrate_locks WHERE lock_key = ?",
-        ["precommit:l:L-abcdef012345"],
-    ).fetchone()
-    assert fetched is not None, "first lock must be persisted"
+    # Verify the first lock was actually written to the in-process sentinel.
+    items: dict[str, Any] = lock._lock._items  # type: ignore[attr-defined]
+    assert items.get("precommit:l:L-abcdef012345") is not None, (
+        "first lock must be persisted"
+    )
 
 
 @pytest.mark.asyncio
@@ -111,8 +93,9 @@ async def test_signature_mismatch_raises(lock: HypothesisLock) -> None:
     h = _hypo("original")
     result = await lock.lock(h)
 
-    # Tamper by overwriting the stored metadata with a tampered payload
-    import json
+    # Tamper by overwriting the stored metadata with a tampered payload.
+    # Local sentinel stores metadata as a dict (no JSON round-trip
+    # in-process), unlike the SQL backend which stored it as a JSON string.
     tampered_metadata = {
         "lock_id": result.lock_id,
         "signature": result.signature,  # signature unchanged
@@ -124,11 +107,9 @@ async def test_signature_mismatch_raises(lock: HypothesisLock) -> None:
             "locked_at": result.hypothesis.locked_at.isoformat(),
         },
     }
-    sql = lock._lock._db  # type: ignore[attr-defined]
-    sql.execute(
-        "UPDATE substrate_locks SET metadata = ? WHERE lock_key = ?",
-        [json.dumps(tampered_metadata), f"precommit:l:{result.lock_id}"],
-    )
+    items: dict[str, Any] = lock._lock._items  # type: ignore[attr-defined]
+    key = f"precommit:l:{result.lock_id}"
+    items[key] = replace(items[key], metadata=tampered_metadata)
     with pytest.raises(SignatureMismatchError):
         await lock.verify_lock(result.lock_id)
 
@@ -146,18 +127,3 @@ async def test_check_post_hoc_drift_raises(lock: HypothesisLock) -> None:
     result = await lock.lock(h)
     with pytest.raises(HypothesisViolationError):
         await lock.check_post_hoc(result.lock_id, observed_claim="different claim")
-
-
-@pytest.mark.asyncio
-async def test_cross_instance_persistence(file_db: str) -> None:
-    """C6 fix: a fresh DharaLock connection against the same file sees prior acquire."""
-    # First connection: write
-    lock1 = HypothesisLock(dhara_lock=SQLBackendLock(duckdb.connect(file_db)))
-    h = _hypo("persisted")
-    result = await lock1.lock(h)
-    assert result.lock_id.startswith("L-")
-
-    # Second connection: read
-    lock2 = HypothesisLock(dhara_lock=SQLBackendLock(duckdb.connect(file_db)))
-    fetched = await lock2.verify_lock(result.lock_id)
-    assert fetched is True, "cross-instance persistence must round-trip via file-backed DuckDB"

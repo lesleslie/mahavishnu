@@ -1,13 +1,13 @@
-"""Precommit CLI commands — async, D-LOCK backed."""
+"""Precommit CLI commands — async, local-Lock-backed."""
 
 from __future__ import annotations
 
 import asyncio
 from datetime import UTC, datetime
 
-from dhara.lock.in_memory import InMemoryDharaLock
 import typer
 
+from mahavishnu.core._lock_sentinel import Lock
 from mahavishnu.core.precommitment import (
     Hypothesis,
     HypothesisLock,
@@ -18,13 +18,14 @@ precommit_app = typer.Typer(help="Precommitment hypothesis lock CLI.")
 
 
 def _make_lock() -> HypothesisLock:
-    """Construct a D-LOCK backed HypothesisLock.
+    """Construct a HypothesisLock backed by the local in-process lock sentinel.
 
-    Production wiring (out of scope for v1): instantiate the SQLBackendLock
-    from a configured DharaSettings.storage_path. Tests use InMemoryDharaLock;
-    CLI smoke runs use the in-memory impl by default.
+    Replaces the previous D-LOCK (dhara.lock) backing per Phase 8 Task 5
+    of the Dhara MCP retirement plan. The local sentinel is in-process
+    only; for cross-instance persistence a future SQL/DuckDB backend
+    could be plugged in here.
     """
-    return HypothesisLock(dhara_lock=InMemoryDharaLock())
+    return HypothesisLock(lock=Lock())
 
 
 @precommit_app.command("lock")
