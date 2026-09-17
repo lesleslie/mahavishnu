@@ -10,7 +10,6 @@ Mahavishnu is the control plane for the **Bodai Ecosystem**:
 |-----------|------|------|
 | **Mahavishnu** | Orchestrator | 8680 |
 | [Akosha](https://github.com/lesleslie/akosha) | Seer (Intelligence) | 8682 |
-| [Dhara](https://github.com/lesleslie/dhara) | Curator (State) | 8683 |
 | [Session-Buddy](https://github.com/lesleslie/session-buddy) | Builder (Memory) MCP | 8678 |
 | [Session-Buddy WebSocket](https://github.com/lesleslie/session-buddy) | Real-time metrics | 8765 |
 | [Crackerjack](https://github.com/lesleslie/crackerjack) | Inspector (Quality) | 8676 |
@@ -25,7 +24,7 @@ Mahavishnu is the control plane for the **Bodai Ecosystem**:
 | **Bifrost** | LLM gateway (`bifrost-http`) | 8471 |
 | [Oneiric](https://github.com/lesleslie/oneiric) | Foundation | N/A |
 
-Routes tasks to Akosha, persists state to Dhara, tracks context in Session-Buddy, validates with Crackerjack.
+Routes tasks to Akosha, tracks context in Session-Buddy, validates with Crackerjack.
 
 > **Portmap note**: Prefect (8675) and Bodai Crow (8693) used to both default
 > to 8675, which made Crow's bundled HTTP server collide with Prefect's
@@ -365,7 +364,7 @@ Use `mcp__mahavishnu__*` tools when the task:
 - Touches **more than one file** (refactors, multi-file edits, dependency updates)
 - Involves **builds, tests, or test runs** (`pytest`, `crackerjack`, `ruff`, `mypy`, type checks)
 - Is described as **"refactor," "analyze," "audit," "deploy," "build," "test,"** or **"review"**
-- Should appear in **ecosystem observability** (Dhara, Akosha, Grafana dashboards)
+- Should appear in **ecosystem observability** (Akosha, Grafana dashboards)
 - Might need **retry, recovery, or cross-server delegation**
 - Involves **multiple repositories** or cross-cutting changes
 

@@ -16,7 +16,7 @@ Mahavishnu is maintained as ecosystem infrastructure for Bodai-owned repos.
 
 ## Bodai Ecosystem Role
 
-Mahavishnu is the **orchestrator** of the [Bodai ecosystem](https://github.com/lesleslie/bodai) — it coordinates work across the other components: routing tasks through worker pools, sweeping workflows across multiple Bodai repos, and managing the lifecycle of ecosystem services (Akosha, Dhara, Session-Buddy, Crackerjack, Oneiric).
+Mahavishnu is the **orchestrator** of the [Bodai ecosystem](https://github.com/lesleslie/bodai) — it coordinates work across the other components: routing tasks through worker pools, sweeping workflows across multiple Bodai repos, and managing the lifecycle of ecosystem services (Akosha, Session-Buddy, Crackerjack, Oneiric).
 
 Standalone, Mahavishnu is a general-purpose multi-repo orchestration system — useful for any team that needs to coordinate workflows, tools, and AI-capable backends across many repositories. See [bodai/docs](https://github.com/lesleslie/bodai) for the full integration story.
 
@@ -30,7 +30,6 @@ Crackerjack is the standard quality-control and CI/CD gate across Mahavishnu and
 |-----------|------|------|-------------|
 | [Mahavishnu](https://github.com/lesleslie/mahavishnu) | Orchestrator | 8680 | Multi-engine workflow orchestration |
 | [Akosha](https://github.com/lesleslie/akosha) | Seer | 8682 | Cross-system intelligence & embeddings |
-| [Dhara](https://github.com/lesleslie/dhara) | Curator | 8683 | Persistent object storage with ACID |
 | [Session-Buddy](https://github.com/lesleslie/session-buddy) | Builder | 8678 | Session lifecycle & knowledge graphs |
 | [Crackerjack](https://github.com/lesleslie/crackerjack) | Inspector | 8676 | Quality gates & CI/CD validation |
 | [Oneiric](https://github.com/lesleslie/oneiric) | Foundation | N/A | Component resolution, lifecycle management, adapter system, action kits, domain bridges, runtime orchestration, remote delivery |
@@ -52,7 +51,7 @@ Mahavishnu is best understood as an ecosystem control plane, not as a general-pu
 - **OpenTelemetry ingestion and search** - Ingest traces and search them semantically
 - **Role-based organization and routing** - Classify repos and route work by role and task type
 - **Jot inbox and workflow dispatch** - Capture, search, defer, and dispatch durable jots
-- **Plan index and agent surfaces** - Inspect Dhara-backed plans and registered specialist agents
+- **Plan index and agent surfaces** - Inspect plan index and registered specialist agents
 
 ## Orchestrator Landscape
 
@@ -698,7 +697,7 @@ mahavishnu/
 |   +-- workers/        # Worker orchestration
 |   +-- cli/            # Typer subcommands (teams, jots, plans, monitoring, etc.)
 |   +-- jot/            # Durable Jot inbox and workflow dispatch
-|   +-- plan_index/     # Dhara-backed plan index
+|   +-- plan_index/     # Plan index (active plans registry)
 |   +-- _main_cli.py    # CLI entrypoint
 +-- tests/              # Test suite
 +-- docs/               # Documentation
