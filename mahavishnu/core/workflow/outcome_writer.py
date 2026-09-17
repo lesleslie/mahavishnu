@@ -25,22 +25,11 @@ from oneiric.core.logging import get_logger
 
 from mahavishnu.core.models.persistence import WorkflowOutcome
 
-from mahavishnu.core._dhara_substrate_compat import (
-    dhara_calltime,
-    stamp_dhara_attr,
-)
+from mahavishnu.core._dhara_substrate_compat import dhara_calltime
 from mahavishnu.core._producer_metrics import COUNTERS
 
 if TYPE_CHECKING:
     from datetime import datetime
-
-# Substrate-compat: `dhara.put` is not a module-level attribute on the
-# installed dhara package — real callers pass a Dhara client instance
-# (e.g. `await self.dhara.put(...)`) or import a configured binding into
-# `dhara.put` at integration time. Tests substitute via
-# `monkeypatch.setattr("writer.dhara.put", ...)`; the hasattr guard lets
-# that patch land even when the host package has not injected a binding.
-stamp_dhara_attr("put")
 
 # Producer name used for Prometheus label cardinality.
 _PRODUCER_NAME = "workflow_outcome_writer"

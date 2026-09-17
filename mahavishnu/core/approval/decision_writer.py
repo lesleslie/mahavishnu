@@ -31,18 +31,10 @@ from oneiric.core.logging import get_logger
 
 from mahavishnu.core.models.persistence import ApprovalLog
 
-from mahavishnu.core._dhara_substrate_compat import (
-    dhara_calltime,
-    stamp_dhara_attr,
-)
+from mahavishnu.core._dhara_substrate_compat import dhara_calltime
 from mahavishnu.core._producer_metrics import COUNTERS
 
 logger = get_logger(__name__)
-
-# Substrate-compat: dhara.put is not part of the static substrate API on
-# the local install. Tests monkeypatch this attribute; production builds
-# that expose dhara.put will see a real callable at runtime.
-stamp_dhara_attr("put")  # pragma: no cover - substrate introspection
 
 # Producer name used for Prometheus label cardinality.
 _PRODUCER_NAME = "decision_writer"
