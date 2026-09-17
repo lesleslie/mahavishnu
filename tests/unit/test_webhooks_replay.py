@@ -1,16 +1,22 @@
-"""Verify webhook_replay reads WebhookIngress via dhara.get and validates via from_dict.
+"""Verify webhook_replay reads WebhookIngress via the substrate-compat shim.
 
 Mirrors the canonical substrate-compat test pattern used by
 ``tests/unit/test_webhooks_receiver.py`` and ``tests/unit/approval/test_list_history.py``
-- a single fixture substitutes ``dhara.get`` with a capture mock so the
-consumer's happy/unbound/missing-key paths can be exercised without a
-real substrate.
+- a single fixture substitutes the substrate-compat shim's
+``dhara_calltime`` with a capture mock so the consumer's happy / unbound
+/ missing-key paths can be exercised without a real substrate.
+
+Phase 8 Task 5 update: the previous patches targeted
+``replay.dhara.get`` directly (the live dhara module). After Wave A
+the producer module no longer imports ``dhara``; the patch target is
+now the local ``dhara_calltime`` import in ``mahavishnu.webhooks.replay``.
 """
 
 from __future__ import annotations
 
 from datetime import UTC, datetime
 import logging
+from typing import Any
 from unittest.mock import MagicMock
 
 import pytest
@@ -21,16 +27,25 @@ from mahavishnu.webhooks import replay as replay_module
 from mahavishnu.webhooks.replay import webhook_replay
 
 
+def _make_dhara_calltime_patcher(monkeypatch: pytest.MonkeyPatch, mock_get: MagicMock) -> None:
+    """Replace ``replay_module.dhara_calltime`` with a routing stub.
+
+    Returns ``mock_get`` when ``name == "get"`` (the only attribute
+    ``webhook_replay`` queries via the shim) and ``None`` for everything
+    else. Patches the local import name so the rest of the module
+    surface is untouched.
+    """
+    def fake_calltime(name: str) -> Any:
+        return mock_get if name == "get" else None
+
+    monkeypatch.setattr("mahavishnu.webhooks.replay.dhara_calltime", fake_calltime)
+
+
 @pytest.fixture
 def substrate_get(monkeypatch: pytest.MonkeyPatch) -> MagicMock:
-    """Stub dhara.get after module import so the substrate-compat guard sees it.
-
-    ``raising=False`` lets the monkeypatch land even when the host dhara
-    package has not injected a ``dhara.get`` binding (mirrors the
-    receiver's substrate-compat fixture pattern).
-    """
+    """Stub the substrate-compat shim's get-resolution with a capture mock."""
     mock_get = MagicMock(return_value=None)
-    monkeypatch.setattr(replay_module.dhara, "get", mock_get, raising=False)
+    _make_dhara_calltime_patcher(monkeypatch, mock_get)
     return mock_get
 
 
@@ -47,7 +62,7 @@ def _payload(webhook_id: str = "evt-789") -> dict[str, object]:
 def test_webhook_replay_returns_validated_struct(
     substrate_get: MagicMock,
 ) -> None:
-    """Happy path: payload returned by dhara.get -> WebhookIngress instance."""
+    """Happy path: payload returned by substrate get -> WebhookIngress instance."""
     substrate_get.return_value = _payload("evt-789")
 
     result = webhook_replay("evt-789", token="header.payload.signature")
@@ -72,7 +87,7 @@ def test_webhook_replay_uses_persistence_key_format(
 def test_webhook_replay_returns_none_when_record_missing(
     substrate_get: MagicMock,
 ) -> None:
-    """dhara.get returns None -> webhook_replay returns None (no spurious struct)."""
+    """Substrate get returns None -> webhook_replay returns None (no spurious struct)."""
     substrate_get.return_value = None
 
     result = webhook_replay("evt-missing", token="header.payload.signature")
@@ -84,14 +99,17 @@ def test_webhook_replay_returns_none_when_dhara_unbound(
     monkeypatch: pytest.MonkeyPatch,
     caplog: pytest.LogCaptureFixture,
 ) -> None:
-    """dhara.get unbound -> None + structured warning (mirrors receiver's skipped path).
+    """Shim returns None -> webhook_replay returns None + structured warning.
 
     Mirrors the approval_list_skipped pattern from
     ``tests/unit/approval/test_list_history.py``: when the substrate
-    attribute is missing the consumer must skip gracefully instead of
-    raising AttributeError.
+    shim returns None (unbound or missing attribute) the consumer
+    must skip gracefully instead of raising AttributeError.
     """
-    monkeypatch.setattr(replay_module.dhara, "get", None, raising=False)
+    def fake_calltime(name: str) -> Any:
+        return None  # everything unbound
+
+    monkeypatch.setattr("mahavishnu.webhooks.replay.dhara_calltime", fake_calltime)
 
     with caplog.at_level(logging.WARNING, logger="mahavishnu.webhooks.replay"):
         result = webhook_replay("evt-unbound", token="header.payload.signature")
@@ -111,7 +129,7 @@ def test_webhook_replay_returns_none_when_dhara_unbound(
 
 
 def test_webhook_replay_rejects_missing_token(monkeypatch, caplog):
-    """RBAC gate: missing token returns None before any Dhara call.
+    """RBAC gate: missing token returns None before any substrate call.
 
     Multi-agent review flagged HIGH-severity missing auth on this read
     path. Mirrors the same shape as the approval-cli gate.
@@ -119,7 +137,7 @@ def test_webhook_replay_rejects_missing_token(monkeypatch, caplog):
     from mahavishnu.webhooks import replay
 
     dhara_get = MagicMock(return_value={"webhook_id": "evt-1"})
-    monkeypatch.setattr(replay.dhara, "get", dhara_get, raising=False)
+    _make_dhara_calltime_patcher(monkeypatch, dhara_get)
 
     with caplog.at_level("WARNING", logger="mahavishnu.webhooks.replay"):
         result = replay.webhook_replay(webhook_id="evt-1", token=None)
@@ -137,7 +155,7 @@ def test_webhook_replay_rejects_non_jwt_token(monkeypatch, caplog):
     from mahavishnu.webhooks import replay
 
     dhara_get = MagicMock(return_value={"webhook_id": "evt-2"})
-    monkeypatch.setattr(replay.dhara, "get", dhara_get, raising=False)
+    _make_dhara_calltime_patcher(monkeypatch, dhara_get)
 
     with caplog.at_level("WARNING", logger="mahavishnu.webhooks.replay"):
         result = replay.webhook_replay(webhook_id="evt-2", token="opaque")
@@ -152,7 +170,7 @@ def test_webhook_replay_passes_with_jwt_shaped_token(monkeypatch):
 
     payload = _payload("evt-3")
     dhara_get = MagicMock(return_value=payload)
-    monkeypatch.setattr(replay.dhara, "get", dhara_get, raising=False)
+    _make_dhara_calltime_patcher(monkeypatch, dhara_get)
 
     token = "header.payload.signature"
     result = replay.webhook_replay(webhook_id="evt-3", token=token)

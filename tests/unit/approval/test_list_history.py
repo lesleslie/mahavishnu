@@ -16,11 +16,21 @@ from mahavishnu.core.models.persistence import ApprovalLog
 
 @pytest.fixture
 def substrate_list(monkeypatch: pytest.MonkeyPatch) -> MagicMock:
-    """Stub dhara.list after module import so the substrate-compat guard sees it."""
-    import mahavishnu.cli.approval_cli as cli
+    """Stub the substrate-compat shim's list-resolution with a capture mock.
 
+    Phase 8 Task 5 update: the previous fixture patched
+    ``mahavishnu.cli.approval_cli.dhara.list``. After Wave A the
+    approval_cli module no longer imports ``dhara`` directly; the patch
+    target is now the local ``dhara_calltime`` import.
+    """
     mock_list = MagicMock(return_value=[])
-    monkeypatch.setattr(cli.dhara, "list", mock_list, raising=False)
+
+    def fake_calltime(name: str) -> Any:
+        return mock_list if name == "list" else None
+
+    monkeypatch.setattr(
+        "mahavishnu.cli.approval_cli.dhara_calltime", fake_calltime,
+    )
     return mock_list
 
 
@@ -95,11 +105,11 @@ def test_list_approval_history_returns_empty_when_dhara_unbound(
     monkeypatch: pytest.MonkeyPatch,
     caplog: pytest.LogCaptureFixture,
 ) -> None:
-    """When the local substrate install does not expose dhara.list, return [] and warn."""
+    """When the substrate-compat shim's list-resolution returns None, return [] and warn."""
     import mahavishnu.cli.approval_cli as cli
 
     # Force the substrate-unbound path even if a prior test monkeypatched it.
-    monkeypatch.setattr(cli.dhara, "list", None, raising=False)
+    monkeypatch.setattr(cli, "dhara_calltime", lambda _name: None)
 
     with caplog.at_level(logging.WARNING, logger="mahavishnu.cli.approval_cli"):
         results = list_approval_history(
@@ -219,7 +229,10 @@ def test_list_approval_history_rejects_missing_token(monkeypatch, caplog):
     from mahavishnu.cli import approval_cli
 
     list_fn = MagicMock(return_value=[{"approval_id": "apr-1"}])
-    monkeypatch.setattr(approval_cli.dhara, "list", list_fn, raising=False)
+    monkeypatch.setattr(
+        approval_cli, "dhara_calltime",
+        lambda _name, _fn=list_fn: _fn,
+    )
 
     with caplog.at_level("WARNING", logger="mahavishnu.cli.approval_cli"):
         result = approval_cli.list_approval_history(
@@ -246,7 +259,10 @@ def test_list_approval_history_rejects_non_jwt_token(monkeypatch, caplog):
     from mahavishnu.cli import approval_cli
 
     list_fn = MagicMock(return_value=[])
-    monkeypatch.setattr(approval_cli.dhara, "list", list_fn, raising=False)
+    monkeypatch.setattr(
+        approval_cli, "dhara_calltime",
+        lambda _name, _fn=list_fn: _fn,
+    )
 
     with caplog.at_level("WARNING", logger="mahavishnu.cli.approval_cli"):
         result = approval_cli.list_approval_history(
@@ -271,7 +287,10 @@ def test_list_approval_history_passes_with_jwt_shaped_token(monkeypatch):
 
     payload = _make_payload("apr-3", action="approved", actor="reviewer-1")
     list_fn = MagicMock(return_value=[payload])
-    monkeypatch.setattr(approval_cli.dhara, "list", list_fn, raising=False)
+    monkeypatch.setattr(
+        approval_cli, "dhara_calltime",
+        lambda _name, _fn=list_fn: _fn,
+    )
 
     token = "header.payload.signature"
 

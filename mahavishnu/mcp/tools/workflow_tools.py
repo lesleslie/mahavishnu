@@ -4,10 +4,10 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
-import dhara
 import msgspec
 from oneiric.core.logging import get_logger
 
+from mahavishnu.core._dhara_substrate_compat import dhara_calltime
 from mahavishnu.core.models.persistence import WorkflowOutcome
 from mahavishnu.core.permissions import Permission
 from mahavishnu.mcp.auth import require_mcp_auth
@@ -15,16 +15,6 @@ from mahavishnu.mcp.tools._workflow_id_guard import validate_workflow_id
 
 if TYPE_CHECKING:
     from mcp_common.fastmcp import FastMCP
-
-# Substrate-compat: `dhara.get` is not a module-level attribute on the
-# installed dhara package — real callers pass a configured Dhara client
-# (e.g. `await self.dhara.get(...)`) or import a configured binding into
-# `dhara.get` at integration time. Tests substitute via
-# `monkeypatch.setattr("workflow_tools.dhara.get", ...)`; the hasattr
-# guard lets that patch land even when the host package has not injected
-# a binding.
-if not hasattr(dhara, "get"):
-    dhara.get = None  # type: ignore[attr-defined]
 
 logger = get_logger(__name__)
 
@@ -50,7 +40,11 @@ async def workflow_get_outcome(
 
     # Substrate-compat gate: only read when dhara.get is exposed. Missing
     # substrate → return None and warn (do not conflate with "no record").
-    get_fn = getattr(dhara, "get", None)
+    # Tests substitute via `monkeypatch.setattr(
+    # "mahavishnu.core._dhara_substrate_compat.dhara_calltime", ...)` —
+    # the call-time resolution routes through whatever is bound on the
+    # ``dhara`` module at the moment of the read.
+    get_fn = dhara_calltime("get")
     if get_fn is None:
         logger.warning(
             "workflow_outcome_read_skipped",

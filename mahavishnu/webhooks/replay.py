@@ -18,22 +18,12 @@ returns ``None`` instead of raising ``AttributeError``.
 
 from __future__ import annotations
 
-import dhara
 import msgspec
 from oneiric.core.logging import get_logger
 
+from mahavishnu.core._dhara_substrate_compat import dhara_calltime
 from mahavishnu.core.models.persistence import WebhookIngress
 from mahavishnu.mcp.tools._workflow_id_guard import validate_webhook_id
-
-# Substrate-compat: `dhara.get` is not a module-level attribute on the
-# installed dhara package — real callers pass a Dhara client instance
-# (e.g. `await self.dhara.get(...)`) or import a configured binding into
-# `dhara.get` at integration time. Tests substitute via
-# `monkeypatch.setattr("replay.dhara.get", ...)`; the hasattr guard
-# lets that patch land even when the host package has not injected a
-# binding.
-if not hasattr(dhara, "get"):
-    dhara.get = None  # type: ignore[attr-defined]
 
 logger = get_logger(__name__)
 
@@ -99,7 +89,7 @@ def webhook_replay(
         )
         return None
 
-    get = getattr(dhara, "get", None)
+    get = dhara_calltime("get")
     if get is None:
         logger.warning(
             "webhook_replay_skipped",

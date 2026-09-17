@@ -1,9 +1,17 @@
-"""Verify workflow_get_outcome returns a validated WorkflowOutcome struct."""
+"""Verify workflow_get_outcome returns a validated WorkflowOutcome struct.
+
+Phase 8 Task 5 update: the previous tests patched
+``mahavishnu.mcp.tools.workflow_tools.dhara.get`` directly. After Wave A
+the workflow_tools module no longer imports ``dhara``; the patch target
+is now the local ``dhara_calltime`` import. The AsyncMock stub returns
+an awaitable that resolves to the fixture payload.
+"""
 
 from __future__ import annotations
 
 import asyncio
 from datetime import UTC, datetime
+from typing import Any
 from unittest.mock import AsyncMock
 
 from fastmcp import FastMCP
@@ -18,6 +26,22 @@ from mahavishnu.mcp.tools.workflow_tools import (
 )
 
 pytestmark = pytest.mark.unit
+
+
+def _patch_dhara_get(monkeypatch: pytest.MonkeyPatch, fake_get: Any) -> None:
+    """Replace ``workflow_tools.dhara_calltime`` so calls to ``dhara_calltime("get")`` route to ``fake_get``.
+
+    The shim's call-time resolution means ``fake_get`` must be awaitable
+    when the production code does ``await get_fn(...)``. We accept any
+    callable and let the production path drive awaitability.
+    """
+
+    def fake_calltime(name: str) -> Any:
+        return fake_get if name == "get" else None
+
+    monkeypatch.setattr(
+        "mahavishnu.mcp.tools.workflow_tools.dhara_calltime", fake_calltime,
+    )
 
 
 @pytest.mark.asyncio
@@ -35,10 +59,7 @@ async def test_workflow_get_outcome_returns_validated_struct(
     async def fake_get(key: str):
         return payload
 
-    monkeypatch.setattr(
-        "mahavishnu.mcp.tools.workflow_tools.dhara.get",
-        fake_get,
-    )
+    _patch_dhara_get(monkeypatch, fake_get)
     result = await workflow_get_outcome("wf-abc")
     assert isinstance(result, WorkflowOutcome)
     assert result.workflow_id == "wf-abc"
@@ -54,10 +75,7 @@ async def test_workflow_get_outcome_returns_none_when_missing(
     async def fake_get(key: str):
         return None
 
-    monkeypatch.setattr(
-        "mahavishnu.mcp.tools.workflow_tools.dhara.get",
-        fake_get,
-    )
+    _patch_dhara_get(monkeypatch, fake_get)
     result = await workflow_get_outcome("wf-missing")
     assert result is None
 
@@ -93,10 +111,7 @@ async def test_registered_tool_delegates_to_module_function(
     async def fake_get(key: str):
         return payload
 
-    monkeypatch.setattr(
-        "mahavishnu.mcp.tools.workflow_tools.dhara.get",
-        fake_get,
-    )
+    _patch_dhara_get(monkeypatch, fake_get)
     mcp = FastMCP(name="test-workflow-tools")
     register_workflow_tools(mcp)
     tool = next(t for t in await mcp.list_tools() if t.name == "workflow_get_outcome_tool")
@@ -119,11 +134,11 @@ async def test_workflow_get_outcome_rejects_path_traversal(monkeypatch: pytest.M
     Mirrors the sibling parity gate in ``pool_tools.workflow_result``: when
     ``workflow_id`` is anything other than ``^[A-Za-z0-9._-]{1,128}$``, the
     function returns the sentinel ``{"status": "invalid_workflow_id"}`` and
-    Dhara is never queried. Without this gate, a caller could read arbitrary
-    Dhara keys via ``workflow_id="../../etc/passwd"``.
+    the substrate is never queried. Without this gate, a caller could read
+    arbitrary keys via ``workflow_id="../../etc/passwd"``.
     """
     dhara_get = AsyncMock()
-    monkeypatch.setattr(workflow_tools.dhara, "get", dhara_get)
+    _patch_dhara_get(monkeypatch, dhara_get)
 
     result = await workflow_get_outcome("../../etc/passwd")
 
@@ -138,14 +153,14 @@ async def test_workflow_get_outcome_rejects_path_traversal(monkeypatch: pytest.M
 async def test_registered_tool_rejects_path_traversal(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """End-to-end: registered MCP tool returns sentinel and never touches Dhara.
+    """End-to-end: registered MCP tool returns sentinel and never touches substrate.
 
     Walks the FastMCP-registered ``workflow_get_outcome_tool`` so we know the
     guard is wired in the production registration path, not only on the
     module-level coroutine.
     """
     dhara_get = AsyncMock()
-    monkeypatch.setattr(workflow_tools.dhara, "get", dhara_get)
+    _patch_dhara_get(monkeypatch, dhara_get)
 
     mcp = FastMCP(name="test-workflow-tools-traversal")
     register_workflow_tools(mcp)
@@ -164,9 +179,7 @@ async def test_workflow_get_outcome_tool_rejects_without_user_id(monkeypatch):
     """@require_mcp_auth wrapper rejects calls missing user_id.
 
     Without user_id the wrapper returns the AUTH_REQUIRED error envelope
-    before the underlying workflow_get_outcome runs. Mirrors the brief's
-    "rejection without permission" contract: the read never reaches the
-    Dhara substrate.
+    before the underlying workflow_get_outcome runs.
     """
     from mcp_common.fastmcp import FastMCP
 
@@ -174,7 +187,7 @@ async def test_workflow_get_outcome_tool_rejects_without_user_id(monkeypatch):
     from mahavishnu.mcp.tools.workflow_tools import register_workflow_tools
 
     dhara_get = AsyncMock()
-    monkeypatch.setattr(workflow_tools.dhara, "get", dhara_get)
+    _patch_dhara_get(monkeypatch, dhara_get)
 
     mcp = FastMCP(name="test-workflow-tools-auth")
     register_workflow_tools(mcp)
@@ -192,7 +205,7 @@ async def test_workflow_get_outcome_tool_passes_with_user_id(monkeypatch):
     """@require_mcp_auth wrapper passes when user_id is supplied.
 
     With user_id the wrapper falls through to workflow_get_outcome. The
-    substrate-compat gate still returns None when dhara.get returns None
+    substrate-compat gate still returns None when substrate.get returns None
     — we assert the wrapper did NOT short-circuit on auth.
     """
     from mcp_common.fastmcp import FastMCP
@@ -201,7 +214,7 @@ async def test_workflow_get_outcome_tool_passes_with_user_id(monkeypatch):
     from mahavishnu.mcp.tools.workflow_tools import register_workflow_tools
 
     dhara_get = AsyncMock(return_value=None)
-    monkeypatch.setattr(workflow_tools.dhara, "get", dhara_get)
+    _patch_dhara_get(monkeypatch, dhara_get)
 
     mcp = FastMCP(name="test-workflow-tools-auth-ok")
     register_workflow_tools(mcp)

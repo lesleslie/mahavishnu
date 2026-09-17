@@ -5,29 +5,24 @@ Dhara substrate and returns validated :class:`ApprovalLog` structs. The
 producer counterpart is :func:`mahavishnu.core.approval.decision_writer.record_approval_decision`.
 
 Substrate-compat: ``dhara.list`` is not part of the static substrate API on
-the local install. The module stamps it to ``None`` at import time if absent;
-tests (and any future Dhara substrate builds that expose ``list``) can
-monkeypatch ``approval_cli.dhara.list`` to a callable.
+the local install. The call-time resolution routes through the substrate
+compat shim; tests (and any future Dhara substrate builds that expose
+``list``) can monkeypatch ``dhara.list`` on the live ``dhara`` module to
+inject a callable.
 """
 
 from __future__ import annotations
 
 from typing import Any
 
-import dhara
 import msgspec
 from oneiric.core.logging import get_logger
 
+from mahavishnu.core._dhara_substrate_compat import dhara_calltime
 from mahavishnu.core.models.persistence import ApprovalLog
 from mahavishnu.mcp.tools._workflow_id_guard import validate_approval_id
 
 logger = get_logger(__name__)
-
-# Substrate-compat: dhara.list is not part of the static substrate API on
-# the local install. Tests monkeypatch this attribute; production builds
-# that expose dhara.list will see a real callable at runtime.
-if not hasattr(dhara, "list"):  # pragma: no cover - substrate introspection
-    dhara.list = None  # type: ignore[attr-defined]
 
 
 def list_approval_history(
@@ -87,7 +82,7 @@ def list_approval_history(
         )
         return []
 
-    list_fn = getattr(dhara, "list", None)
+    list_fn = dhara_calltime("list")
     if list_fn is None:
         logger.warning(
             "approval_list_skipped",
