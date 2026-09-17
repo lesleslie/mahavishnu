@@ -6,111 +6,40 @@ the registered tools via ``mcp.list_tools()``, and exercise both the
 happy path (read returns a dict) and the AUTH_REQUIRED gate
 (@require_mcp_auth rejects missing ``user_id``).
 
-The tests monkeypatch ``mahavishnu.webhooks.replay.dhara.get`` so the
+The tests patch ``mahavishnu.webhooks.replay.dhara_calltime`` so the
 leaf :func:`webhook_replay` reads from a controlled fake without
 touching the real Dhara substrate. webhook_replay reads
-``dhara.get`` at call time, so the patch is picked up on every
-invocation.
-
-``mahavishnu.webhooks.replay`` imports ``from dhara.schema import
-WebhookIngress, from_dict`` — a Dhara substrate-compat module that
-isn't always present in test environments. We pre-warm a minimal
-stub with the registry-style ``from_dict(name, payload)`` signature
-that ``webhook_replay`` actually invokes at line 118.
+``dhara_calltime("get")`` at call time, so the patch is picked up on
+every invocation.
 """
 
 from __future__ import annotations
 
 import asyncio
 from datetime import UTC, datetime
-import sys
-from types import ModuleType
 from unittest.mock import MagicMock
 
 from fastmcp import FastMCP
 import pytest
 
-# Pre-warm a minimal ``dhara.schema`` stub so ``mahavishnu.webhooks.replay``
-# and ``mahavishnu.mcp.tools.webhook_tools`` can import in environments where
-# the upstream ``dhara`` package is missing the ``schema`` submodule. The
-# stub exposes the surface :func:`webhook_replay` and the MCP wrapper read:
-#
-# - ``WebhookIngress`` (mirrors msgspec.Struct shape via ``to_dict()``)
-# - ``from_dict(name, payload)`` — registry-style 2-arg call signature
-# - ``to_dict(record)`` — registry-style struct→dict serializer used by
-#   ``mahavishnu/mcp/tools/webhook_tools.py`` line 77
-# - ``SchemaValidationError``, ``validate`` (passthrough)
-_DHARA_SCHEMA_STUB: ModuleType = ModuleType("dhara.schema")
-
-
-class _StubWebhookIngress:
-    """Stand-in for ``dhara.schema.WebhookIngress``.
-
-    Mirrors the msgspec.Struct surface :func:`webhook_replay` and the
-    MCP wrapper (``record.to_dict()``) read.
-    """
-
-    def __init__(self, payload: dict) -> None:
-        self._payload = payload
-
-    def to_dict(self) -> dict:
-        return self._payload
-
-
-def _stub_from_dict(name: str, payload: dict) -> _StubWebhookIngress:
-    """Stand-in for ``dhara.schema.from_dict``.
-
-    Mirrors the registry call shape ``from_dict(name, payload)`` used at
-    ``mahavishnu/webhooks/replay.py``.
-    """
-    return _StubWebhookIngress(payload)
-
-
-def _stub_to_dict(record: object) -> dict:
-    """Stand-in for ``dhara.schema.to_dict`` used by webhook_tools.
-
-    Mirrors the registry call shape ``to_dict(record)`` at
-    ``mahavishnu/mcp/tools/webhook_tools.py`` line 77. Accepts either a
-    stub ``WebhookIngress`` (with ``._payload``) or a plain ``dict`` and
-    returns a dict either way.
-    """
-    if isinstance(record, _StubWebhookIngress):
-        return record._payload
-    if isinstance(record, dict):
-        return record
-    return dict(record)
-
-
-class _StubSchemaValidationError(Exception):
-    """Stand-in for ``dhara.schema.SchemaValidationError``."""
-
-
-def _stub_validate(_name: str, payload: object) -> object:
-    """Stand-in for ``dhara.schema.validate``; returns ``payload`` unchanged."""
-    return payload
-
-
-_DHARA_SCHEMA_STUB.WebhookIngress = _StubWebhookIngress
-_DHARA_SCHEMA_STUB.from_dict = _stub_from_dict
-_DHARA_SCHEMA_STUB.to_dict = _stub_to_dict
-_DHARA_SCHEMA_STUB.SchemaValidationError = _StubSchemaValidationError
-_DHARA_SCHEMA_STUB.validate = _stub_validate
-# Only install the stub when the real ``dhara.schema`` package is NOT
-# importable. The pinned ``dhara`` package in this venv ships a real
-# ``dhara.schema`` module — replacing it would shadow the msgspec Structs
-# and break the ``WebhookIngress``/``WorkflowOutcome`` import in sibling
-# tests. Falls back to the stub only when the upstream package is missing
-# the submodule entirely (substrate-compat guard for legacy test envs).
-if "dhara.schema" not in sys.modules:
-    try:
-        import dhara.schema  # noqa: F401
-    except ImportError:
-        sys.modules["dhara.schema"] = _DHARA_SCHEMA_STUB
-
-from mahavishnu.mcp.tools import webhook_tools  # noqa: E402,F401
-from mahavishnu.mcp.tools.webhook_tools import register_webhook_tools  # noqa: E402
+from mahavishnu.mcp.tools import webhook_tools  # noqa: F401  (intentional import for side effects)
+from mahavishnu.mcp.tools.webhook_tools import register_webhook_tools
+from mahavishnu.webhooks import replay as replay_module
 
 pytestmark = pytest.mark.unit
+
+
+def _patch_dhara_calltime(monkeypatch: pytest.MonkeyPatch, *, get: object | None) -> None:
+    """Replace ``replay.dhara_calltime`` with a routing stub.
+
+    Returns ``get`` when the leaf asks for ``"get"``; returns ``None``
+    for everything else. Mirrors the pattern in
+    ``tests/unit/channel/test_state_writer.py``.
+    """
+    def fake(name: str) -> object | None:
+        return get if name == "get" else None
+
+    monkeypatch.setattr(replay_module, "dhara_calltime", fake)
 
 
 @pytest.mark.asyncio
@@ -134,10 +63,11 @@ async def test_registered_tool_returns_dict_for_known_webhook(
 ) -> None:
     """End-to-end: calling the registered MCP tool returns the persisted dict.
 
-    The leaf ``webhook_replay`` calls ``dhara.get`` at function-call time;
-    we monkeypatch the source-module binding so the leaf sees the fake
-    without needing a real Dhara substrate. ``from_dict`` (stubbed) then
-    rebuilds the WebhookIngress Struct, and the wrapper calls ``.to_dict()``.
+    The leaf ``webhook_replay`` calls ``dhara_calltime("get")`` at
+    function-call time; we patch the source-module binding so the leaf
+    sees the fake without needing a real Dhara substrate. The
+    msgspec.Struct round-trip then rebuilds ``WebhookIngress`` from the
+    payload, and the wrapper calls ``msgspec.to_builtins()``.
     """
     payload = {
         "webhook_id": "wh-abc",
@@ -148,7 +78,7 @@ async def test_registered_tool_returns_dict_for_known_webhook(
     }
 
     fake_get = MagicMock(return_value=payload)
-    monkeypatch.setattr("mahavishnu.webhooks.replay.dhara.get", fake_get)
+    _patch_dhara_calltime(monkeypatch, get=fake_get)
 
     mcp = FastMCP(name="test-webhook-tools-roundtrip")
     register_webhook_tools(mcp)
@@ -172,7 +102,7 @@ async def test_registered_tool_returns_none_when_record_missing(
 ) -> None:
     """End-to-end: when the substrate returns ``None``, the tool returns ``None``."""
     fake_get = MagicMock(return_value=None)
-    monkeypatch.setattr("mahavishnu.webhooks.replay.dhara.get", fake_get)
+    _patch_dhara_calltime(monkeypatch, get=fake_get)
 
     mcp = FastMCP(name="test-webhook-tools-missing")
     register_webhook_tools(mcp)
@@ -199,7 +129,7 @@ async def test_registered_tool_rejects_without_user_id(
     "rejection without permission" contract.
     """
     fake_get = MagicMock()
-    monkeypatch.setattr("mahavishnu.webhooks.replay.dhara.get", fake_get)
+    _patch_dhara_calltime(monkeypatch, get=fake_get)
 
     mcp = FastMCP(name="test-webhook-tools-auth")
     register_webhook_tools(mcp)
@@ -219,7 +149,7 @@ async def test_registered_tool_rejects_path_traversal(
 ) -> None:
     """Path-traversal webhook_id is refused by the leaf guard before Dhara is touched."""
     fake_get = MagicMock()
-    monkeypatch.setattr("mahavishnu.webhooks.replay.dhara.get", fake_get)
+    _patch_dhara_calltime(monkeypatch, get=fake_get)
 
     mcp = FastMCP(name="test-webhook-tools-traversal")
     register_webhook_tools(mcp)
@@ -237,9 +167,7 @@ async def test_registered_tool_rejects_path_traversal(
 
 
 # NOTE: A FastAPI mount integration test (``mount_durable_webhooks`` + TestClient +
-# POST /durable-webhooks/webhook) is deferred. The receiver's validate path returns
-# a msgspec.Struct (real dhara.schema) — the test env's pre-warmed stub returns a
-# dict, so the receiver's ``validated.webhook_id`` access fails. The 5 tests above
-# cover the MCP tool surface; the mount is structurally validated at
-# ``mahavishnu/mcp/bootstrap.py:413-415`` (manual code review). Add the integration
-# test once dhara.schema ships in mahavishnu's pinned dhara version.
+# POST /durable-webhooks/webhook) is exercised by
+# ``tests/unit/test_webhooks_mount.py`` (separate fixture using the same
+# receiver.dhara_calltime patching pattern). The 5 tests above cover the
+# MCP tool surface; the mount coverage lives in the sibling file.

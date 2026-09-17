@@ -1,41 +1,22 @@
 """Verify the durable webhook receiver is mounted under /durable-webhooks.
 
 Mirrors the existing ``tests/unit/test_webhooks_receiver.py`` pattern:
-monkeypatch ``dhara.put`` on the live ``dhara`` module, then POST through
-the parent app's TestClient and assert the receiver's
-``receive_webhook`` handler fires (status 202, ``webhook_id`` echoed
-back).
+patch ``mahavishnu.webhooks.receiver.dhara_calltime`` to a fake that
+returns our mock put, then POST through the parent app's TestClient
+and assert the receiver's ``receive_webhook`` handler fires (status
+202, ``webhook_id`` echoed back).
 """
 
 from __future__ import annotations
 
-import sys
-from types import ModuleType
 from unittest.mock import MagicMock
 
-import dhara
-from dhara.schema import SchemaValidationError as _RealSchemaValidationError
-from dhara.schema import validate as _real_validate
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 import pytest
 
-# Pre-warm a minimal ``dhara.schema`` stub so ``mahavishnu.webhooks.receiver``
-# can import in environments where the upstream ``dhara`` package is missing
-# the ``schema`` submodule. Only installed when the real package is
-# unavailable (substrate-compat guard); the pinned ``dhara`` package ships
-# a real ``dhara.schema`` module so the real WebhookIngress/validate
-# surface is preferred and the mount test exercises the real contract.
-_DHARA_SCHEMA_STUB: ModuleType = ModuleType("dhara.schema")
-
-if "dhara.schema" not in sys.modules:
-    try:
-        import dhara.schema  # noqa: F401
-    except ImportError:
-        sys.modules["dhara.schema"] = _DHARA_SCHEMA_STUB
-
-
 from mahavishnu.webhooks import mount_durable_webhooks  # noqa: E402
+from mahavishnu.webhooks import receiver as receiver_module
 
 pytestmark = pytest.mark.unit
 
@@ -51,21 +32,18 @@ def parent_app_with_mount(monkeypatch: pytest.MonkeyPatch) -> tuple[FastAPI, Mag
     """
     captured: list[tuple[str, object]] = []
     mock_put = MagicMock(side_effect=lambda key, value: captured.append((key, value)))
-    # The receiver resolves ``dhara.put`` at request time via
-    # ``dhara_calltime("put")`` which reads ``getattr(dhara, "put", None)``,
-    # so the substrate-compat gate sees whatever attribute is bound on the
-    # live ``dhara`` module.
-    monkeypatch.setattr(dhara, "put", mock_put, raising=False)
+    # Patch the receiver's local ``dhara_calltime`` binding — the receiver
+    # calls ``put = dhara_calltime("put")`` at request time, so replacing
+    # the binding on the receiver module makes the leaf see the fake.
+    monkeypatch.setattr(
+        receiver_module,
+        "dhara_calltime",
+        lambda name: mock_put if name == "put" else None,
+    )
 
     app = FastAPI()
     mount_durable_webhooks(app)
     return app, mock_put
-
-
-# Re-export real schema symbols so test bodies can reference them by name
-# without rebinding in every test function.
-SchemaValidationError = _RealSchemaValidationError
-validate = _real_validate
 
 
 def test_mount_durable_webhooks_reaches_receiver(

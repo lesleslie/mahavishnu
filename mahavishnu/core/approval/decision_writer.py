@@ -8,10 +8,13 @@ Feature flag: ``APPROVAL_LOG_V1_ENABLED`` (default True). When False, the
 caller is expected to skip ``record_approval_decision`` entirely and fall
 back to the legacy delete-on-resolve path.
 
-Substrate-compat: ``dhara.put`` is a runtime-attached attribute on the
-local substrate install, so the module stamps it to ``None`` at import
-time if absent. Tests (and any future Dhara substrate builds that expose
-``put``) can monkeypatch ``writer.dhara.put`` to a callable.
+Substrate-compat: the module calls ``dhara_calltime("put")`` (a
+lazy-load helper from ``mahavishnu.core._dhara_substrate_compat``) at
+write time; the helper returns ``None`` when no Dhara substrate is
+installed, so persistence is silently skipped (logged + Prometheus
+``skipped`` counter incremented). Tests patch
+``decision_writer.dhara_calltime`` with a routing stub that returns the
+fake ``put`` callable when asked for ``"put"``.
 
 Substrate contract: ``dhara.put(...)`` is synchronous at the call boundary —
 internal async (MemoryOutbox flush, PostgresBackendLock resolution) is the
