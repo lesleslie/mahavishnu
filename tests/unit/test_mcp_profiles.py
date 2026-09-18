@@ -39,8 +39,16 @@ class TestProfileConstants:
     """Tests for profile registration lists."""
 
     def test_minimal_registrations_only_health(self):
-        """MINIMAL profile should only register health tools."""
-        assert MINIMAL_REGISTRATIONS == ["_register_health_tools"]
+        """MINIMAL profile should register health and skills_signer tools.
+
+        Per Phase 1.5 plan §10.3.1, skills_signer is infrastructure-critical
+        (signing verification is on every Phase 2/6 install) and MUST be
+        visible from MINIMAL upward alongside the health probes.
+        """
+        assert MINIMAL_REGISTRATIONS == [
+            "_register_health_tools",
+            "_register_skills_signer_tools",
+        ]
 
     def test_standard_includes_minimal(self):
         """STANDARD profile should be a superset of MINIMAL."""
@@ -86,12 +94,18 @@ class TestProfileRegistrations:
             assert profile in PROFILE_REGISTRATIONS
 
     def test_profile_mappings_use_list_values(self):
-        """Each profile maps to a list of registration method names."""
+        """Each profile maps to a list of registration method names.
+
+        FULL tier also includes ``jot_*`` trampoline keys (Task 13 + sub-plan
+        3 Drain) which delegate to ``_register_jot_tools`` via the
+        REGISTRATION_MAP. They are exempt from the ``_register_`` prefix
+        check because they are idempotent re-decorate keys, not method names.
+        """
         for profile, methods in PROFILE_REGISTRATIONS.items():
             assert isinstance(methods, list), f"{profile} should map to a list"
             for method in methods:
                 assert isinstance(method, str)
-                assert method.startswith("_register_")
+                assert method.startswith("_register_") or method.startswith("jot_")
 
     def test_minimal_registration_maps_correctly(self):
         """MINIMAL profile maps to MINIMAL_REGISTRATIONS list."""

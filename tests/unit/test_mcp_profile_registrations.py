@@ -18,8 +18,17 @@ class TestProfileEnumValues:
     """Test that each profile level has the correct registration methods."""
 
     def test_minimal_registrations_contains_only_health_tools(self) -> None:
-        """MINIMAL profile should register only health-related tools."""
-        assert MINIMAL_REGISTRATIONS == ["_register_health_tools"]
+        """MINIMAL profile registers health + skills_signer tools.
+
+        The historical "only_health" name is retained for invariant id but
+        MINIMAL canonical (per Phase 1.5 plan §10.3.1) now also includes
+        the skills_signer group, which is infrastructure-critical for
+        Phase 2/6 install signing verification.
+        """
+        assert MINIMAL_REGISTRATIONS == [
+            "_register_health_tools",
+            "_register_skills_signer_tools",
+        ]
 
     def test_standard_registrations_includes_minimal(self) -> None:
         """STANDARD profile should include all MINIMAL registrations plus more."""
@@ -50,13 +59,18 @@ class TestProfileEnumValues:
 class TestGetProfileTools:
     """Test that get_profile_tools returns the correct tools for each profile."""
 
-    def test_minimal_has_health_tools_only(self) -> None:
-        """MINIMAL profile should map to only MINIMAL_REGISTRATIONS."""
+    def test_minimal_has_health_and_skills_signer(self) -> None:
+        """MINIMAL profile maps to MINIMAL_REGISTRATIONS (health + skills_signer).
+
+        Per Phase 1.5 plan §10.3.1 the skills_signer group MUST be visible
+        from MINIMAL upward alongside the health probes (infrastructure-
+        critical for Phase 2/6 install signing verification).
+        """
         from mcp_common.tools import ToolProfile
 
         tools = PROFILE_REGISTRATIONS[ToolProfile.MINIMAL]
         assert tools == MINIMAL_REGISTRATIONS
-        assert tools == ["_register_health_tools"]
+        assert tools == ["_register_health_tools", "_register_skills_signer_tools"]
 
     def test_standard_has_core_groups(self) -> None:
         """STANDARD profile includes terminal, pool, worker, messaging, git, session_buddy."""
