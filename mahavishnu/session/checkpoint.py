@@ -53,7 +53,7 @@ class SessionBuddy:
             async with httpx.AsyncClient(timeout=5.0) as client:
                 r = await client.get(health_url)
             return r.status_code == 200
-        except MCPServerError:
+        except (MCPServerError, httpx.HTTPError):  # fmt: skip
             return False
 
     async def create_checkpoint(self, session_id: str, state: dict[str, Any]) -> str:
