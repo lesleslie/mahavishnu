@@ -164,7 +164,7 @@ class LLMProviderFactory:
         try:
             self._model_instance = self._instantiate_model(provider, model_id, factory_name)
             return self._model_instance
-        except AgnoError, ConfigurationError:
+        except (AgnoError, ConfigurationError):  # fmt: skip
             raise
         except Exception as e:
             raise AgnoError(
