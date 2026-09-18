@@ -8,6 +8,7 @@ both via ``patch``.
 
 from __future__ import annotations
 
+from typing import Any
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -15,6 +16,19 @@ import pytest
 from mahavishnu.mcp.tools import git_analytics
 
 pytestmark = pytest.mark.unit
+
+
+def _fake_rbac_manager() -> Any:
+    """Return a fake RBAC manager that allows all checks.
+
+    The ``@require_mcp_auth`` decorator calls
+    ``rbac_manager.check_permission`` as an awaitable. ``AsyncMock``
+    returning ``True`` satisfies the gate so tests can drive the
+    tool bodies without standing up a real RBAC.
+    """
+    rbac = MagicMock()
+    rbac.check_permission = AsyncMock(return_value=True)
+    return rbac
 
 
 # =============================================================================
@@ -46,7 +60,9 @@ def server() -> _StubMCP:
 def registered(server):
     """Register the 3 git analytics tools onto a stub MCP server."""
     mcp_client = MagicMock()
-    git_analytics.register_git_analytics_tools(server, mcp_client, rbac_manager=None)
+    git_analytics.register_git_analytics_tools(
+        server, mcp_client, rbac_manager=_fake_rbac_manager()
+    )
     return server
 
 
