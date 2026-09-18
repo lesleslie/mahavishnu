@@ -28,6 +28,13 @@ class Permission(StrEnum):
     READ_APPROVAL = "read_approval"
     READ_WEBHOOK = "read_webhook"
     READ_PLAN_INDEX = "read_plan_index"
+    # Phase 3 of Dhara MCP retirement — durable ecosystem service/event records
+    # (see ``docs/plans/2026-09-16-dhara-mcp-retirement-plan.md``). ``READ_*``
+    # gates ``mahavishnu_get_service`` / ``mahavishnu_list_services`` /
+    # ``mahavishnu_list_events``; ``WRITE_*`` gates ``mahavishnu_upsert_service``
+    # / ``mahavishnu_record_event``.
+    READ_ECOSYSTEM_STATE = "read_ecosystem_state"
+    WRITE_ECOSYSTEM_STATE = "write_ecosystem_state"
 
 
 class Role(BaseModel):

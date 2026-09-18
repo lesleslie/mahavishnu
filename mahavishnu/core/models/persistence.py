@@ -85,3 +85,43 @@ class WebhookIngress(msgspec.Struct, frozen=True):
     received_at: datetime
     payload_hash: str
     metadata: dict[str, Any] = msgspec.field(default_factory=dict)
+
+
+class EcosystemService(msgspec.Struct, frozen=True):
+    """Durable ecosystem service registration record.
+
+    Mirrors Dhara's ``dhara_upsert_service`` payload (see
+    ``docs/plans/2026-09-16-dhara-mcp-retirement-plan.md`` Phase 3).
+    Persisted by Mahavishnu's ecosystem-state writer so sibling Bodai
+    components can resolve services without depending on Dhara's MCP.
+    """
+
+    service_id: str
+    service_type: str
+    capabilities: list[str] = msgspec.field(default_factory=list)
+    metadata: dict[str, Any] = msgspec.field(default_factory=dict)
+    status: str = "unknown"
+    lease_expires_at: str | None = None
+    heartbeat_at: str | None = None
+    created_at: str | None = None
+    updated_at: str | None = None
+    schema_version: int = 1
+
+
+class EcosystemEvent(msgspec.Struct, frozen=True):
+    """Durable ecosystem event record — append-only.
+
+    Mirrors Dhara's ``dhara_record_event`` payload (see
+    ``docs/plans/2026-09-16-dhara-mcp-retirement-plan.md`` Phase 3).
+    Retained with a configurable retention window; old events are pruned
+    by the writer (default 30 days, matching Dhara's
+    :class:`EventRetention`).
+    """
+
+    event_id: str
+    event_type: str
+    source_service: str
+    timestamp: str
+    related_service: str | None = None
+    payload: dict[str, Any] = msgspec.field(default_factory=dict)
+    schema_version: int = 1

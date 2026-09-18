@@ -840,6 +840,7 @@ async def register_profile_tools(server: FastMCPServer, methods_set: set[str]) -
     await _register_optional_tools(server, methods_set)
 
     from ..mcp.tools.ecosystem_tools import register_ecosystem_tools
+    from ..mcp.tools.ecosystem_state_tools import register_ecosystem_state_tools
     from ..mcp.tools.health_tools import register_health_tools
     from ..mcp.tools.webhook_tools import register_webhook_tools
     from ..mcp.tools.workflow_tools import register_workflow_tools
@@ -852,6 +853,13 @@ async def register_profile_tools(server: FastMCPServer, methods_set: set[str]) -
     logger.info("Registered workflow outcome tools with MCP server")
     register_webhook_tools(server.server, rbac_manager=getattr(server.app, "rbac_manager", None))
     logger.info("Registered webhook replay tools with MCP server")
+    register_ecosystem_state_tools(
+        server.server, rbac_manager=getattr(server.app, "rbac_manager", None)
+    )
+    logger.info(
+        "Registered 5 durable ecosystem-state tools "
+        "(upsert/get/list_services + record/list_events) with MCP server"
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -894,6 +902,25 @@ def _register_webhook_tools(server: FastMCPServer) -> None:
     rbac_manager = getattr(server.app, "rbac_manager", None)
     register_webhook_tools(server.server, rbac_manager=rbac_manager)
     logger.info("Registered webhook replay tools with MCP server")
+
+
+def _register_ecosystem_state_tools(server: FastMCPServer) -> None:
+    """Register 5 durable ecosystem-state tools (always-on).
+
+    Phase 3 of the Dhara MCP retirement
+    (``docs/plans/2026-09-16-dhara-mcp-retirement-plan.md``). Mirrors
+    the always-on treatment of workflow + webhook tools so sibling
+    Bodai components can resolve services / events without depending
+    on Dhara's MCP at any tool profile.
+    """
+    from ..mcp.tools.ecosystem_state_tools import register_ecosystem_state_tools
+
+    rbac_manager = getattr(server.app, "rbac_manager", None)
+    register_ecosystem_state_tools(server.server, rbac_manager=rbac_manager)
+    logger.info(
+        "Registered 5 durable ecosystem-state tools "
+        "(upsert/get/list_services + record/list_events) with MCP server"
+    )
 
 
 def _register_terminal_tools(server: FastMCPServer) -> None:

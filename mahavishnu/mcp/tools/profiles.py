@@ -37,6 +37,7 @@ from ..bootstrap import (
     _register_capability_tools,
     _register_clone_tools,
     _register_dispatch_specialist_tools,
+    _register_ecosystem_state_tools,
     _register_ecosystem_tools,
     _register_git_analytics_tools,
     _register_goal_team_tools,
@@ -175,6 +176,12 @@ REGISTRATION_MAP: dict[str, Callable] = {
     "_register_ecosystem_tools": lambda s: _register_ecosystem_tools(s._mhv_server),  # type: ignore[attr-defined]
     "_register_workflow_tools": lambda s: _register_workflow_tools(s._mhv_server),  # type: ignore[attr-defined]
     "_register_webhook_tools": lambda s: _register_webhook_tools(s._mhv_server),  # type: ignore[attr-defined]
+    # Phase 3 of Dhara MCP retirement (2026-09-16 plan). Durable ecosystem
+    # service / event records — see ``_register_ecosystem_state_tools`` in
+    # ``bootstrap.py``. Always-on alongside workflow + webhook because
+    # sibling Bodai components resolve services and read events via this
+    # surface at any tool profile.
+    "_register_ecosystem_state_tools": lambda s: _register_ecosystem_state_tools(s._mhv_server),  # type: ignore[attr-defined]
     # Phase 1.5 — skills_signer (per plan §10.3.1). The actual signer
     # init runs in start() because mahavishnu has no async lifespan.
     "_register_skills_signer_tools": lambda s: _register_skills_signer_tools(s._mhv_server),  # type: ignore[attr-defined]
@@ -256,6 +263,10 @@ MAHAVISHNU_MANDATORY_GROUPS: set[str] = {
     "_register_ecosystem_tools",
     "_register_workflow_tools",
     "_register_webhook_tools",
+    # Phase 3 of Dhara MCP retirement (2026-09-16 plan). Service / event
+    # records are the substrate for sibling Bodai component discovery —
+    # must be reachable at MINIMAL alongside the other always-on groups.
+    "_register_ecosystem_state_tools",
     # Phase 1.5 — see §10.3.1.
     "_register_skills_signer_tools",
     # Phase 3 — agents MUST be reachable at every tier (per plan §5
