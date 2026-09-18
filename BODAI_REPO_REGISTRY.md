@@ -57,7 +57,7 @@ or higher.
 | Repo | Path | Current `requires-python` | Notes |
 |---|---|---|---|
 | archive-org-mcp | /Users/les/Projects/archive-org-mcp/ | >=3.14 | requires-python >=3.14 |
-| chat-bridge-mcp | /Users/les/Projects/chat-bridge-mcp/ | >=3.14 | Bridge MCP for Claude Desktop + ChatGPT Desktop via CDP; renamed from cross-llm-mcp (`2026-09-16`). https://github.com/lesleslie/chat-bridge-mcp |
+| chat-bridge-mcp | /Users/les/Projects/chat-bridge-mcp/ | >=3.14 | Bridge MCP for Claude Desktop + ChatGPT Desktop via CDP; v0.1.0 (`2026-09-17`) — 6-tool surface complete, wire-up fixes landed; renamed from cross-llm-mcp (`2026-09-16`). https://github.com/lesleslie/chat-bridge-mcp |
 | css-mcp | /Users/les/Projects/css-mcp/ | >=3.14 | **Phase 0.8**. FastMCP **>=4.0.3** (`2026-09-06`) |
 | excalidraw-mcp | /Users/les/Projects/excalidraw-mcp/ | >=3.14 | discovered |
 | graphics-mcp | /Users/les/Projects/graphics-mcp/ | >=3.14 | **Phase 0.8**. pulled in httpcore2/httpx2 transitively. FastMCP **>=4.0.3** (`2026-09-06`) |
