@@ -13,11 +13,11 @@ test paths). On extraction failure (no Bearer header, malformed token),
 state is set to ``None`` and the decorator's AUTH_REQUIRED branch fires
 when both Context state and kwargs are empty.
 
-FastMCP 4.0.3 API:
+FastMCP 4.0.3 API (resolved through ``mcp_common.fastmcp`` — Plan 7
+Phase 2 centralized FastMCP re-export surface):
 
-* :class:`Middleware` lives at
-  ``fastmcp.server.middleware.middleware.Middleware`` (NOT
-  ``fastmcp.middleware``, which does not exist).
+* :class:`Middleware` lives at ``mcp_common.fastmcp.Middleware``
+  (re-export of ``fastmcp.server.middleware.middleware.Middleware``).
 * Override :meth:`Middleware.on_call_tool`; ``call_next`` is a coroutine
   taking the same ``MiddlewareContext`` object.
 * The FastMCP ``Context`` (with ``set_state`` / ``get_state``) is
@@ -29,11 +29,20 @@ from __future__ import annotations
 import logging
 from typing import TYPE_CHECKING, Any
 
-from fastmcp.server.middleware.middleware import Middleware
+# Centralized FastMCP re-export — Plan 7 Phase 2 contract. Direct upstream
+# ``fastmcp.server.middleware.middleware`` imports break
+# ``tests/unit/test_mcp_common_fastmcp_imports.py``; the ``mcp_common``
+# re-export lets us swap the pinned FastMCP version in one place.
+from mcp_common.fastmcp import Middleware
 
 from mahavishnu.mcp.auth import extract_auth_from_request
 
 if TYPE_CHECKING:
+    # TYPE_CHECKING-only imports stay on the upstream path because they
+    # never run at import time (no runtime attribute lookup happens for
+    # them) and ``mcp_common.fastmcp`` only re-exports the runtime
+    # symbols. The forward reference via ``"`` quotes still resolves
+    # through :mod:`mcp_common.fastmcp` at type-check time.
     from fastmcp.server.context import Context
     from fastmcp.server.middleware.middleware import CallNext, MiddlewareContext
 

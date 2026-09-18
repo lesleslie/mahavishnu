@@ -488,6 +488,13 @@ class MahavishnuError(Exception):
             "Switch to an alternative worker type if available",
             "Review settings/mahavishnu.yaml for the workers configuration",
         ],
+        ErrorCode.MERGE_DRIVER_UNAVAILABLE: [
+            "The mergiraf merge driver is required but the binary is missing on PATH",
+            "Install mergiraf: https://github.com/mergiraf/mergiraf/releases",
+            "Verify 'mergiraf --version' succeeds in the same shell that runs mahavishnu",
+            "Switch the merge_driver_default to 'git' in settings/mahavishnu.yaml to disable the mergiraf requirement",
+            "See docs/superpowers/specs/2026-09-12-settle-semantic-merge-design.md for the full fallback policy",
+        ],
         # Prefect/Orchestration error recovery guidance
         ErrorCode.PREFECT_CONNECTION_ERROR: [
             "Check if Prefect server is running",

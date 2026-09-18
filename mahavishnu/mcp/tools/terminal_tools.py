@@ -287,8 +287,37 @@ def register_terminal_tools(
             "goose": "Block's goose serve over HTTP (Rust-fast; 70+ MCP extensions)",
         }
 
+        # Adapters that should be hidden from the listing when their
+        # opt-in config flag is off. ``crow`` (requires
+        # ``crow_enabled=true`` + the bundled crow-mcp server) and
+        # ``goose`` (requires ``goose_enabled=true`` + a configured
+        # bearer secret) are both opt-in; when their flags are off we
+        # still register their NAME in the adapter registry so internal
+        # resolution paths (e.g. ``switch_adapter``) can accept the
+        # name and emit a clear "disabled" error. The list_adapters
+        # tool, however, only surfaces what the operator can actually
+        # select — matching the pre-D0 behavior the
+        # ``TestTerminalListAdapters`` test fixtures pin.
+        _OPT_IN_ADAPTERS = {"crow", "goose"}
+
+        # ``getattr(..., None)`` lets the tool survive terminal-manager
+        # implementations that don't expose ``config`` (the fixture for
+        # ``test_handles_missing_config`` deletes the attribute).
+        config = getattr(terminal_manager, "config", None)
+        crow_enabled = bool(getattr(config, "crow_enabled", False))
+        goose_enabled = bool(getattr(config, "goose_enabled", False))
+
+        def _visible(name: str) -> bool:
+            if name == "crow":
+                return crow_enabled
+            if name == "goose":
+                return goose_enabled
+            return True
+
         adapters: dict[str, dict[str, str]] = {}
         for name in list_adapter_names():
+            if not _visible(name):
+                continue
             adapters[name] = {
                 "status": "available",
                 "description": _ADAPTER_DESCRIPTIONS.get(

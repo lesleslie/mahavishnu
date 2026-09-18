@@ -100,6 +100,13 @@ class CoordinationMemory:
         self.session_buddy = session_buddy_client
         self.collection = "mahavishnu_coordination"
         self._akosha_url = akosha_url
+        # ``CommonMCPClient`` wraps the JSON-RPC envelope and the per-call
+        # error translation; tests that exercise this path either patch
+        # ``_mcp.call_tool`` directly (test_coordination_memory_coverage)
+        # or use ``tests/unit/_httpx_test_helpers.py:patch_async_client`` —
+        # the latter is updated by cluster 10 to patch the underlying
+        # ``mcp_common.clients.common_mcp_client.httpx.AsyncClient`` so
+        # the MockTransport hookup reaches the inner client.
         self._mcp: CommonMCPClient | None = (
             CommonMCPClient(base_url=akosha_url, timeout=10.0) if akosha_url else None
         )
