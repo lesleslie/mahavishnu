@@ -25,7 +25,10 @@ dependencies = [
     "oneiric>=0.19.0",
     # Shared infrastructure (mcp-common)
     # 0.18.0+ required for `apply_tool_profile()` (ToolProfile dispatch helper).
-    "mcp-common>=0.26.0,<0.27.0",
+    # 0.27.0+ required for the session-scoped Principal propagation fix
+    # (BearerTokenMiddleware persists Principal across the streamable-HTTP
+    # ASGI-task → anyio-worker-task boundary via fastmcp._state_store).
+    "mcp-common>=0.27.0",
     # Fast JSON serialization for the canonical event wire
     "msgspec>=0.21.1,<0.22",
     # MCP server
