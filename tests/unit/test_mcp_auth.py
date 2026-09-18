@@ -4,6 +4,7 @@ from mcp_common.auth.audit import AuditLogger
 import pytest
 
 from mahavishnu.core.auth import AuthenticationError
+from mahavishnu.core.permissions import Permission
 import mahavishnu.mcp.auth as mcp_auth
 from mahavishnu.mcp.auth import (
     CredentialManager,
@@ -37,15 +38,14 @@ async def test_require_mcp_auth_passes_with_user_id():
     ``error_code == "AUTH_NOT_CONFIGURED"``. The test wires a permissive
     fake so the wrapped function runs and returns the greeting.
     """
-    from mahavishnu.core.permissions import Permission  # noqa: TC001  # annotation-only
 
     class _AlwaysAllow:
-        async def check_permission(
-            self, user_id: str, repo: str, permission: Permission
-        ) -> bool:
+        async def check_permission(self, user_id: str, repo: str, permission: Permission) -> bool:
             return True
 
-    decorator = require_mcp_auth(rbac_manager=_AlwaysAllow())
+    decorator = require_mcp_auth(
+        rbac_manager=_AlwaysAllow(), required_permission=Permission.READ_REPO
+    )
 
     @decorator
     async def test_function(user_id: str | None = None) -> str:
@@ -63,15 +63,14 @@ async def test_require_mcp_auth_no_user_id():
     the ``user_id`` check (AUTH_NOT_CONFIGURED fires first when no
     manager is supplied; the brief's fail-closed contract).
     """
-    from mahavishnu.core.permissions import Permission  # noqa: TC001  # annotation-only
 
     class _AlwaysAllow:
-        async def check_permission(
-            self, user_id: str, repo: str, permission: Permission
-        ) -> bool:
+        async def check_permission(self, user_id: str, repo: str, permission: Permission) -> bool:
             return True
 
-    decorator = require_mcp_auth(rbac_manager=_AlwaysAllow())
+    decorator = require_mcp_auth(
+        rbac_manager=_AlwaysAllow(), required_permission=Permission.READ_REPO
+    )
 
     @decorator
     async def test_function(param1: str) -> dict:
@@ -95,7 +94,7 @@ async def test_require_mcp_auth_no_rbac_manager_fails_closed():
     (any caller passing a non-empty ``user_id`` reached the wrapped
     function); it is intentionally removed.
     """
-    decorator = require_mcp_auth(rbac_manager=None)
+    decorator = require_mcp_auth(rbac_manager=None, required_permission=Permission.READ_REPO)
 
     @decorator
     async def test_function(param1: str, user_id: str | None = None) -> dict:

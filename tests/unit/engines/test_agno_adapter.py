@@ -187,7 +187,10 @@ class TestAgnoToolsConfig:
     def test_default_config(self) -> None:
         """Test default tools configuration values."""
         config = AgnoToolsConfig()
-        assert config.mcp_server_url == "http://localhost:8677/mcp"
+        # Default points at Mahavishnu's own MCP port (8680) — the
+        # AgnoToolsConfig was migrated from 8677 (a stale session-buddy port)
+        # to align with the Mahavishnu MCP server.
+        assert config.mcp_server_url == "http://localhost:8680/mcp"
         assert config.mcp_transport == "sse"
         assert len(config.enabled_tools) == 6
         assert config.tool_timeout_seconds == 60
