@@ -1399,11 +1399,16 @@ def test_apply_merge_uses_base_as_theirs_default(
     bindings_content = {"a.py": "ours"}
     captured: dict = {}
 
-    async def fake_merge(*, base: str, ours: str, theirs: str, label: str):
+    async def fake_merge(*, base: str, ours: str, theirs: str, label: str, strategy: object | None = None):
+        # ``strategy`` kwarg added when :func:`merge_three_way` grew the
+        # REQ-SM-004 per-binding ``strategy`` parameter; the captured
+        # callback only checks the merge-file inputs and intentionally
+        # ignores the new parameter so the test stays strategy-agnostic.
         captured["base"] = base
         captured["ours"] = ours
         captured["theirs"] = theirs
         captured["label"] = label
+        captured["strategy"] = strategy
         return MergeResult(merged="merged", conflict_count=0)
 
     monkeypatch.setattr(tools, "merge_three_way", fake_merge)
@@ -1434,7 +1439,9 @@ def test_apply_merge_passes_theirs_when_provided(
     bindings_theirs = {"a.py": "theirs-content"}
     captured: dict = {}
 
-    async def fake_merge(*, base: str, ours: str, theirs: str, label: str):
+    async def fake_merge(*, base: str, ours: str, theirs: str, label: str, strategy: object | None = None):
+        # Accept-and-ignore the new ``strategy`` kwarg; this fake only
+        # cares about the (base, ours, theirs) triple the test asserts on.
         captured["base"] = base
         captured["ours"] = ours
         captured["theirs"] = theirs

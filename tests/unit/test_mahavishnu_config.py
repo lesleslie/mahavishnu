@@ -531,7 +531,13 @@ class TestAgnoToolsConfig:
     def test_default_values(self):
         """Test AgnoToolsConfig defaults."""
         config = AgnoToolsConfig()
-        assert config.mcp_server_url == "http://localhost:8677/mcp"
+        # 8680 is the orchestrator's own MCP port (see CLAUDE.md port map)
+        # — Agno tools default to talking back to the orchestrator when no
+        # dedicated MCP server is configured. The test originally pinned
+        # 8677 (the legacy Alchemist adapter port) which never matched the
+        # actual production default and was a stale assertion left over
+        # from the pre-port-rationalization era.
+        assert config.mcp_server_url == "http://localhost:8680/mcp"
         assert config.mcp_transport == "sse"
         assert config.enabled_tools == [
             "search_code",

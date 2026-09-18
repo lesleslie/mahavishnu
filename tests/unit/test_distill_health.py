@@ -52,7 +52,16 @@ def _insert_workflow(
     last_reinforced_offset_days: int,
     approved: bool = False,
 ) -> None:
-    last = datetime(2026, 6, 26, tzinfo=UTC) - timedelta(days=last_reinforced_offset_days)
+    # Anchor on ``datetime.now(UTC)`` so the ``last_reinforced_offset_days``
+    # argument stays relative to whatever the test runner's wall clock is.
+    # The fixture previously hardcoded ``datetime(2026, 6, 26)`` as the
+    # anchor, which made ``01J_FRESH`` (offset=10d) drift into "stale"
+    # territory once wall-clock time advanced past mid-September 2026;
+    # ``distilled_workflow_health`` compares ``last_reinforced_at`` to
+    # ``now() - threshold_days`` and the fixed anchor pushed the row
+    # more than 90 days into the past, tripping the stale classifier.
+    anchor = datetime.now(UTC)
+    last = anchor - timedelta(days=last_reinforced_offset_days)
     created = last - timedelta(days=1)
     conn.execute(
         """
@@ -72,7 +81,7 @@ def _insert_workflow(
             "heuristic",
             created,
             last,
-            datetime(2026, 6, 26, tzinfo=UTC) if approved else None,
+            anchor if approved else None,
             "reviewer@example.com" if approved else None,
         ],
     )

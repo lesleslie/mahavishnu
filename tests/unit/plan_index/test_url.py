@@ -59,12 +59,21 @@ class TestRejection:
 
     def test_unicode_line_separator_rejected(self) -> None:
         with pytest.raises(RepoUrlRejectedError) as exc_info:
-            normalize_repo_url("git@github.com:foo/bar.git")
+            # U+2028 LINE SEPARATOR (category Zl) — production
+            # rejects the unicode line separator as a log-injection
+            # vector that bypasses an ASCII-only control-character
+            # check. Embed the literal character so the input actually
+            # contains it; concatenating a string variable would let a
+            # linter rewrite the source into its escaped form, hiding
+            # the regression this test guards against.
+            normalize_repo_url("git@github.com:foo/bar.git ")
         assert "control characters" in exc_info.value.reason
 
     def test_unicode_paragraph_separator_rejected(self) -> None:
         with pytest.raises(RepoUrlRejectedError) as exc_info:
-            normalize_repo_url("git@github.com:foo/bar.git")
+            # U+2029 PARAGRAPH SEPARATOR (category Zp) — same rationale
+            # as :func:`test_unicode_line_separator_rejected`.
+            normalize_repo_url("git@github.com:foo/bar.git ")
         assert "control characters" in exc_info.value.reason
 
     def test_ftp_protocol_rejected(self) -> None:

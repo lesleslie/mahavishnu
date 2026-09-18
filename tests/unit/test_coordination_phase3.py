@@ -13,7 +13,7 @@ from __future__ import annotations
 import os
 import tempfile
 from typing import Any
-from unittest.mock import AsyncMock
+from unittest.mock import AsyncMock, patch
 
 import httpx2 as httpx
 import pytest
@@ -22,13 +22,36 @@ import yaml
 from mahavishnu.core.coordination.manager import CoordinationManager, _run_command_safe
 from mahavishnu.core.coordination.memory import CoordinationMemory
 
-from tests.unit._httpx_test_helpers import (
-    make_recording_handler,
-    make_response_handler,
-    patch_async_client,
-)
+from tests.unit._httpx_test_helpers import make_recording_handler
 
 _AKOSHA_TARGET = "mahavishnu.core.coordination.memory"
+
+# The Phase-3 ``TestAkoshaIntegration`` tests now patch the Akosha
+# client via :func:`patch.object(memory._mcp, "call_tool", ...)`. The
+# earlier ``patch_async_client(target_module)`` helper assumed the
+# target module exposed an ``httpx`` attribute (so it could do
+# ``patch(f"{module}.httpx.AsyncClient", ...)``), but ``memory.py``
+# delegates to ``CommonMCPClient`` (which owns its own ``httpx2``
+# import under ``mcp_common.clients.common_mcp_client``). Patching
+# ``memory.httpx`` raised ``AttributeError`` because the module never
+# imported ``httpx``. Patching ``_mcp.call_tool`` instead targets the
+# exact seam the production code goes through, so the test's
+# ``AsyncMock(return_value=...)`` matches the same calls
+# ``make_recording_handler`` would observe via a real ``httpx``
+# transport. This keeps the existing coverage tests
+# (``test_coordination_memory_coverage.py``) that already patch
+# ``_mcp.call_tool`` working unchanged.
+
+
+def _patch_call_tool(memory: CoordinationMemory, side_effect_or_return: Any) -> Any:
+    """Patch ``memory._mcp.call_tool`` and return the mock for assertions."""
+    return patch.object(
+        memory._mcp,
+        "call_tool",
+        new=AsyncMock(side_effect=side_effect_or_return)
+        if isinstance(side_effect_or_return, BaseException)
+        else AsyncMock(return_value=side_effect_or_return),
+    )
 
 # ---------------------------------------------------------------------------
 # Helpers (mirrors test_coordination.py pattern)
@@ -191,62 +214,70 @@ class TestGetEcosystemStatus:
 
 class TestAkoshaIntegration:
     async def test_push_to_akosha_on_store(self):
-        captured, handler = make_recording_handler(
-            httpx.Response(200, json={"result": "ok"})
+        sb = AsyncMock()
+        memory = CoordinationMemory(
+            session_buddy_client=sb,
+            akosha_url="http://localhost:8682/mcp",
         )
-        with patch_async_client(handler, _AKOSHA_TARGET):
-            sb = AsyncMock()
-            memory = CoordinationMemory(
-                session_buddy_client=sb,
-                akosha_url="http://localhost:8682/mcp",
-            )
+        mock_call = AsyncMock(return_value={"result": "ok"})
+        with patch.object(memory._mcp, "call_tool", new=mock_call):
             await memory._store_memory("test content", {"key": "val"})
-        assert len(captured) == 1
-        import json
-
-        payload = json.loads(captured[0].content)
-        assert payload["name"] == "store_memory"
-        assert payload["arguments"]["content"] == "test content"
+        mock_call.assert_awaited_once()
+        args, kwargs = mock_call.await_args
+        # The production code calls ``call_tool(name, arguments)``
+        # positionally; both ``args`` and ``kwargs`` carry the same data
+        # depending on how the helper forwards them.
+        name = args[0] if args else kwargs.get("name")
+        arguments = args[1] if len(args) > 1 else kwargs.get("arguments", {})
+        assert name == "store_memory"
+        assert arguments["content"] == "test content"
+        assert arguments["metadata"] == {"key": "val"}
 
     async def test_akosha_push_degrades_on_connect_error(self):
-        def fail_handler(request: httpx.Request) -> httpx.Response:
-            raise httpx.ConnectError("refused")
+        sb = AsyncMock()
+        memory = CoordinationMemory(
+            session_buddy_client=sb,
+            akosha_url="http://localhost:8682/mcp",
+        )
+        # ``MCPServerError`` is what ``CommonMCPClient.call_tool`` raises
+        # on transport / 5xx failures — matches the production code's
+        # ``except MCPServerError`` branch in ``_push_to_akosha``.
+        from mcp_common.exceptions import MCPServerError
 
-        with patch_async_client(fail_handler, _AKOSHA_TARGET):
-            sb = AsyncMock()
-            memory = CoordinationMemory(
-                session_buddy_client=sb,
-                akosha_url="http://localhost:8682/mcp",
-            )
-            # Should not raise
+        mock_call = AsyncMock(side_effect=MCPServerError("refused"))
+        with patch.object(memory._mcp, "call_tool", new=mock_call):
+            # Should not raise — the method logs and returns.
             await memory._push_to_akosha("content", {})
+        mock_call.assert_awaited_once()
 
     async def test_akosha_push_skipped_when_no_url(self):
-        captured, handler = make_recording_handler(
-            httpx.Response(200, json={"result": "ok"})
-        )
-        with patch_async_client(handler, _AKOSHA_TARGET):
-            sb = AsyncMock()
-            memory = CoordinationMemory(session_buddy_client=sb, akosha_url=None)
-            await memory._push_to_akosha("content", {})
-        assert len(captured) == 0
+        sb = AsyncMock()
+        memory = CoordinationMemory(session_buddy_client=sb, akosha_url=None)
+        # No ``_mcp`` is constructed when ``akosha_url`` is None, so no
+        # patch is applied and no call is issued.
+        await memory._push_to_akosha("content", {})
 
     async def test_search_semantic_returns_results(self):
-        handler = make_response_handler(
-            httpx.Response(200, json={"results": [{"id": "r1", "score": 0.9}]})
-        )
-        with patch_async_client(handler, _AKOSHA_TARGET):
-            memory = CoordinationMemory(akosha_url="http://localhost:8682/mcp")
+        memory = CoordinationMemory(akosha_url="http://localhost:8682/mcp")
+        mock_call = AsyncMock(return_value={"results": [{"id": "r1", "score": 0.9}]})
+        with patch.object(memory._mcp, "call_tool", new=mock_call):
             results = await memory.search_semantic("test query")
         assert len(results) == 1
         assert results[0]["id"] == "r1"
+        # Confirm the right tool name + args flowed through.
+        mock_call.assert_awaited_once()
+        args, kwargs = mock_call.await_args
+        name = args[0] if args else kwargs.get("name")
+        arguments = args[1] if len(args) > 1 else kwargs.get("arguments", {})
+        assert name == "search_all_systems"
+        assert arguments["query"] == "test query"
 
     async def test_search_semantic_returns_empty_on_error(self):
-        def fail_handler(request: httpx.Request) -> httpx.Response:
-            raise httpx.ConnectError("refused")
+        from mcp_common.exceptions import MCPServerError
 
-        with patch_async_client(fail_handler, _AKOSHA_TARGET):
-            memory = CoordinationMemory(akosha_url="http://localhost:8682/mcp")
+        memory = CoordinationMemory(akosha_url="http://localhost:8682/mcp")
+        mock_call = AsyncMock(side_effect=MCPServerError("refused"))
+        with patch.object(memory._mcp, "call_tool", new=mock_call):
             results = await memory.search_semantic("test query")
         assert results == []
 
@@ -256,9 +287,20 @@ class TestAkoshaIntegration:
         assert results == []
 
     async def test_close_releases_http_client(self):
+        from mcp_common.clients.common_mcp_client import CommonMCPClient
+
         memory = CoordinationMemory(akosha_url="http://localhost:8682/mcp")
-        assert memory._http is not None
-        await memory.close()
+        # The attribute is named ``_mcp`` after the ``CommonMCPClient``
+        # wrapper it holds (NOT ``_http`` — that name was used in an
+        # earlier draft of this test). The ``CommonMCPClient`` instance
+        # owns the underlying ``httpx.AsyncClient`` and ``aclose()`` is
+        # the seam ``close()`` invokes.
+        assert memory._mcp is not None
+        assert isinstance(memory._mcp, CommonMCPClient)
+        mock_aclose = AsyncMock()
+        with patch.object(memory._mcp, "aclose", new=mock_aclose):
+            await memory.close()
+        mock_aclose.assert_awaited_once()
 
     async def test_close_no_op_when_no_url(self):
         memory = CoordinationMemory(akosha_url=None)

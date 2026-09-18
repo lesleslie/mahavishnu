@@ -132,6 +132,19 @@ def test_allowed_label_keys_is_a_stable_set() -> None:
         # and streaming_op_total{op,backend,success}.
         "op",
         "success",
+        # Tier 1 Phase 2 — queueing routing counters
+        # (mahavishnu_routing_decisions_total). Closed-cardinality buckets
+        # emitted by the routing-metrics helper.
+        "predicted_wait_bucket",
+        "effective_selector",
+        # Tier 1 Phase 8 — drift-detection counters
+        # (drift_detected_total, detector_age_samples). Closed-cardinality
+        # labels: ``metric_name`` is the operator-supplied target,
+        # ``detector`` one of {'cusum', 'page_hinkley'}, ``severity`` one
+        # of {'minor', 'moderate', 'critical'}.
+        "metric_name",
+        "detector",
+        "severity",
     }
     assert set(_ALLOWED_LABEL_KEYS) == expected
 
