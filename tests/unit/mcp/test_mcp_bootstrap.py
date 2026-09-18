@@ -29,6 +29,7 @@ from __future__ import annotations
 import importlib.util
 import pathlib
 import shutil
+import time
 from types import SimpleNamespace
 from typing import Any
 from unittest.mock import AsyncMock, MagicMock
@@ -283,6 +284,25 @@ class TestHealthEndpointHandlers:
     @pytest.fixture
     def recorder(self) -> _RouteRecorder:
         """Register the endpoints against a route-recording FastMCP double."""
+        # Initialize feed states so /health returns 200 (not 503). Production
+        # runs these during start(); the test bypasses start() so we install
+        # both feeds here to mirror the post-start() state.
+        from mahavishnu.mcp.signer_feed import init_signer_feed_state
+        from mahavishnu.plan_index.health import (
+            PlanIndexFeedState,
+            set_plan_index_feed_state,
+        )
+
+        init_signer_feed_state()
+        set_plan_index_feed_state(
+            PlanIndexFeedState(
+                entities_count=0,
+                last_updated_timestamp=int(time.time() * 1000),
+                errors_total=0,
+                cycles_total=0,
+            )
+        )
+
         rec = _RouteRecorder()
         bootstrap.register_health_endpoint(
             _stub_server(fastmcp=rec),  # ty: ignore[invalid-argument-type]
