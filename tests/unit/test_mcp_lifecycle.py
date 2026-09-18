@@ -21,6 +21,7 @@ async def test_start_server_uses_profile_registration(monkeypatch: pytest.Monkey
         _active_profile=None,
         _update_registered_tool_metrics=Mock(),
         server=SimpleNamespace(run_http_async=run_http_async),
+        app=SimpleNamespace(config=SimpleNamespace(pools_enabled=False)),
     )
     monkeypatch.setattr(
         "mahavishnu.mcp.lifecycle._register_profile_tools_helper",
