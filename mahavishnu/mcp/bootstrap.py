@@ -328,13 +328,22 @@ async def _register_core_integration_tools(server: FastMCPServer, methods_set: s
     if "_register_session_buddy_tools" in methods_set:
         from ..mcp.tools.session_buddy_tools import register_session_buddy_tools
 
-        register_session_buddy_tools(server.server, server.app, getattr(server, "mcp_client", None))
+        register_session_buddy_tools(
+            server.server,
+            server.app,
+            getattr(server, "mcp_client", None),
+            rbac_manager=getattr(server.app, "rbac_manager", None),
+        )
         logger.info("Registered Session Buddy integration tools with MCP server")
 
     if "_register_git_analytics_tools" in methods_set:
         from ..mcp.tools.git_analytics import register_git_analytics_tools
 
-        register_git_analytics_tools(server.server, getattr(server, "mcp_client", None))
+        register_git_analytics_tools(
+            server.server,
+            getattr(server, "mcp_client", None),
+            rbac_manager=getattr(server.app, "rbac_manager", None),
+        )
         logger.info("Registered 3 Git analytics tools with MCP server")
 
     if "_register_repository_messaging_tools" in methods_set:
@@ -839,9 +848,9 @@ async def register_profile_tools(server: FastMCPServer, methods_set: set[str]) -
     logger.info("Registered health check tools with MCP server")
     register_ecosystem_tools(server.server)
     logger.info("Registered 3 canonical ecosystem status tools with MCP server")
-    register_workflow_tools(server.server)
+    register_workflow_tools(server.server, rbac_manager=getattr(server.app, "rbac_manager", None))
     logger.info("Registered workflow outcome tools with MCP server")
-    register_webhook_tools(server.server)
+    register_webhook_tools(server.server, rbac_manager=getattr(server.app, "rbac_manager", None))
     logger.info("Registered webhook replay tools with MCP server")
 
 
