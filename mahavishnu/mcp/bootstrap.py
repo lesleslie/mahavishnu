@@ -833,7 +833,18 @@ _OPTIONAL_TOOL_BLOCKS: tuple[tuple[str, Callable[[FastMCPServer], None]], ...] =
 
 
 async def register_profile_tools(server: FastMCPServer, methods_set: set[str]) -> None:
-    """Register the profile-gated MCP tool groups on the server."""
+    """Register the profile-gated MCP tool groups on the server.
+
+    This legacy path now mirrors the canonical W0 helper surface
+    (``REGISTRATION_MAP`` in ``mahavishnu/mcp/tools/profiles.py``): every
+    group the W0 helper registers — including the Phase 1.5 skills_signer
+    (mandatory at MINIMAL), Phase 3 agents + dispatch specialist, and the
+    14 ``jot_*`` trampoline keys — is also registered here. If any runtime
+    path falls back to this legacy path, those groups MUST still be wired;
+    silently dropping them leaves skills_signer signing, the jot inbox,
+    and the new Phase 3 specialists (dhara/crackerjack/session-buddy)
+    unreachable.
+    """
     await _register_core_integration_tools(server, methods_set)
     await _register_worker_pool_tools(server, methods_set)
     await server.register_worktree_tools()
@@ -842,6 +853,7 @@ async def register_profile_tools(server: FastMCPServer, methods_set: set[str]) -
     from ..mcp.tools.ecosystem_tools import register_ecosystem_tools
     from ..mcp.tools.ecosystem_state_tools import register_ecosystem_state_tools
     from ..mcp.tools.health_tools import register_health_tools
+    from ..mcp.tools.jot_tools import register as _register_jot_tools
     from ..mcp.tools.webhook_tools import register_webhook_tools
     from ..mcp.tools.workflow_tools import register_workflow_tools
 
@@ -860,6 +872,20 @@ async def register_profile_tools(server: FastMCPServer, methods_set: set[str]) -
         "Registered 5 durable ecosystem-state tools "
         "(upsert/get/list_services + record/list_events) with MCP server"
     )
+
+    # Phase 1.5 + Phase 3 + jot — mirror REGISTRATION_MAP so the legacy path
+    # is no longer missing groups that the canonical W0 helper registers.
+    _register_skills_signer_tools(server)
+    _register_agents_tools(server)
+    _register_dispatch_specialist_tools(server)
+    # _register_jot_tools is idempotent per profiles.py:228-231 — repeated
+    # calls re-bind the 14 wrappers harmlessly. Pass the inner FastMCP
+    # server (``server.server``) since ``register(mcp)`` calls
+    # ``mcp.tool()(plain)``; the canonical REGISTRATION_MAP lambda gets
+    # away with passing the wrapper because the production FastMCPServer
+    # instance exposes ``.tool()`` via its instrumented decorator, but
+    # test stubs are SimpleNamespace and lack that surface.
+    _register_jot_tools(server.server)
 
 
 # ---------------------------------------------------------------------------
