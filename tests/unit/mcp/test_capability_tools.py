@@ -18,7 +18,7 @@ from __future__ import annotations
 
 import asyncio
 from typing import Any
-from unittest.mock import MagicMock
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 from fastmcp import FastMCP
@@ -31,6 +31,20 @@ from mahavishnu.mcp.tools.capability_tools import register_capability_tools
 
 
 pytestmark = pytest.mark.unit
+
+
+def _fake_rbac_manager() -> Any:
+    """Return a fake RBAC manager that allows all checks.
+
+    The ``@require_mcp_auth`` decorator calls
+    ``rbac_manager.check_permission`` as an awaitable. ``AsyncMock``
+    returning ``True`` satisfies the gate so tests can drive the
+    AUTH_REQUIRED path (missing ``user_id``) without standing up a
+    real RBAC.
+    """
+    rbac = MagicMock()
+    rbac.check_permission = AsyncMock(return_value=True)
+    return rbac
 
 
 # ---------------------------------------------------------------------------
@@ -140,7 +154,7 @@ def test_list_capabilities_is_ungated_and_returns_registrations() -> None:
         worker_entries=[_worker_entry(provides=["worker:bash"])],
     )
     server = FastMCP("test-list")
-    register_capability_tools(server, settings)
+    register_capability_tools(server, settings, rbac_manager=_fake_rbac_manager())
 
     tool = _tool(server, "list_capabilities")
     result = asyncio.run(tool.fn())
@@ -159,12 +173,10 @@ def test_resolve_capabilities_short_circuits_when_feature_flag_off() -> None:
     """When capability_enabled=False, FEATURE_DISABLED is surfaced."""
     settings = _settings(capability_enabled=False, capability_scopes=["alice"])
     server = FastMCP("test-feat")
-    register_capability_tools(server, settings)
+    register_capability_tools(server, settings, rbac_manager=_fake_rbac_manager())
     tool = _tool(server, "resolve_capabilities")
 
-    result = asyncio.run(
-        tool.fn(requires=["engine:durable-flow"], prompt="x", user_id="alice")
-    )
+    result = asyncio.run(tool.fn(requires=["engine:durable-flow"], prompt="x", user_id="alice"))
 
     assert result["status"] == "error"
     assert result["error_code"] == ErrorCode.FEATURE_DISABLED.value
@@ -173,12 +185,14 @@ def test_resolve_capabilities_short_circuits_when_feature_flag_off() -> None:
 def test_plan_capability_short_circuits_when_feature_flag_off() -> None:
     settings = _settings(capability_enabled=False, capability_scopes=["alice"])
     server = FastMCP("test-feat-plan")
-    register_capability_tools(server, settings)
+    register_capability_tools(server, settings, rbac_manager=_fake_rbac_manager())
     tool = _tool(server, "plan_capability")
 
     result = asyncio.run(
         tool.fn(
-            requires=["engine:durable-flow"], prompt="x", user_id="alice",
+            requires=["engine:durable-flow"],
+            prompt="x",
+            user_id="alice",
         )
     )
 
@@ -189,12 +203,14 @@ def test_plan_capability_short_circuits_when_feature_flag_off() -> None:
 def test_execute_capability_short_circuits_when_feature_flag_off() -> None:
     settings = _settings(capability_enabled=False, capability_scopes=["alice"])
     server = FastMCP("test-feat-exec")
-    register_capability_tools(server, settings)
+    register_capability_tools(server, settings, rbac_manager=_fake_rbac_manager())
     tool = _tool(server, "execute_capability")
 
     result = asyncio.run(
         tool.fn(
-            requires=["engine:durable-flow"], prompt="x", trace_id="a" * 32,
+            requires=["engine:durable-flow"],
+            prompt="x",
+            trace_id="a" * 32,
             user_id="alice",
         )
     )
@@ -217,12 +233,10 @@ def test_resolve_capabilities_requires_user_id() -> None:
     """
     settings = _settings(capability_scopes=["alice"])
     server = FastMCP("test-no-user")
-    register_capability_tools(server, settings)
+    register_capability_tools(server, settings, rbac_manager=_fake_rbac_manager())
     tool = _tool(server, "resolve_capabilities")
 
-    result = asyncio.run(
-        tool.fn(requires=["engine:durable-flow"], prompt="x", user_id=None)
-    )
+    result = asyncio.run(tool.fn(requires=["engine:durable-flow"], prompt="x", user_id=None))
     assert result["status"] == "error"
     assert result["error_code"] == "AUTH_REQUIRED"
 
@@ -231,12 +245,14 @@ def test_resolve_capabilities_rejects_user_outside_allow_list() -> None:
     """A user not in capability_scopes surfaces AUTHORIZATION_ERROR in the dict."""
     settings = _settings(capability_scopes=["alice"])
     server = FastMCP("test-bad-user")
-    register_capability_tools(server, settings)
+    register_capability_tools(server, settings, rbac_manager=_fake_rbac_manager())
     tool = _tool(server, "resolve_capabilities")
 
     result = asyncio.run(
         tool.fn(
-            requires=["engine:durable-flow"], prompt="x", user_id="mallory",
+            requires=["engine:durable-flow"],
+            prompt="x",
+            user_id="mallory",
         )
     )
     assert result["status"] == "error"
@@ -246,12 +262,14 @@ def test_resolve_capabilities_rejects_user_outside_allow_list() -> None:
 def test_plan_capability_rejects_user_outside_allow_list() -> None:
     settings = _settings(capability_scopes=["alice"])
     server = FastMCP("test-bad-user-plan")
-    register_capability_tools(server, settings)
+    register_capability_tools(server, settings, rbac_manager=_fake_rbac_manager())
     tool = _tool(server, "plan_capability")
 
     result = asyncio.run(
         tool.fn(
-            requires=["engine:durable-flow"], prompt="x", user_id="mallory",
+            requires=["engine:durable-flow"],
+            prompt="x",
+            user_id="mallory",
         )
     )
     assert result["status"] == "error"
@@ -261,12 +279,14 @@ def test_plan_capability_rejects_user_outside_allow_list() -> None:
 def test_execute_capability_rejects_user_outside_allow_list() -> None:
     settings = _settings(capability_scopes=["alice"])
     server = FastMCP("test-bad-user-exec")
-    register_capability_tools(server, settings)
+    register_capability_tools(server, settings, rbac_manager=_fake_rbac_manager())
     tool = _tool(server, "execute_capability")
 
     result = asyncio.run(
         tool.fn(
-            requires=["engine:durable-flow"], prompt="x", trace_id="a" * 32,
+            requires=["engine:durable-flow"],
+            prompt="x",
+            trace_id="a" * 32,
             user_id="mallory",
         )
     )
@@ -286,7 +306,7 @@ def test_empty_scope_allow_list_accepts_any_authenticated_user() -> None:
         worker_entries=[_worker_entry(provides=["worker:bash"])],
     )
     server = FastMCP("test-empty-scopes")
-    register_capability_tools(server, settings)
+    register_capability_tools(server, settings, rbac_manager=_fake_rbac_manager())
     tool = _tool(server, "resolve_capabilities")
 
     # With an empty scope list, "alice" passes the gate. The resolve call
@@ -294,7 +314,9 @@ def test_empty_scope_allow_list_accepts_any_authenticated_user() -> None:
     # — neither surfaces an AUTHORIZATION_ERROR.
     result = asyncio.run(
         tool.fn(
-            requires=["worker:bash"], prompt="x", user_id="alice",
+            requires=["worker:bash"],
+            prompt="x",
+            user_id="alice",
         )
     )
     assert result["status"] == "ok"
@@ -313,12 +335,14 @@ def test_plan_capability_returns_execution_dag_shape() -> None:
         worker_entries=[_worker_entry(provides=["worker:bash"])],
     )
     server = FastMCP("test-e2e-plan")
-    register_capability_tools(server, settings)
+    register_capability_tools(server, settings, rbac_manager=_fake_rbac_manager())
     tool = _tool(server, "plan_capability")
 
     result = asyncio.run(
         tool.fn(
-            requires=["worker:bash"], prompt="x", user_id="alice",
+            requires=["worker:bash"],
+            prompt="x",
+            user_id="alice",
             trace_id="a" * 32,
         )
     )
@@ -337,12 +361,14 @@ def test_execute_capability_returns_capability_execution_result_shape() -> None:
         worker_entries=[_worker_entry(provides=["worker:bash"])],
     )
     server = FastMCP("test-e2e-exec")
-    register_capability_tools(server, settings)
+    register_capability_tools(server, settings, rbac_manager=_fake_rbac_manager())
     tool = _tool(server, "execute_capability")
 
     result = asyncio.run(
         tool.fn(
-            requires=["worker:bash"], prompt="x", trace_id="b" * 32,
+            requires=["worker:bash"],
+            prompt="x",
+            trace_id="b" * 32,
             user_id="alice",
         )
     )
@@ -361,12 +387,14 @@ def test_resolve_capabilities_returns_candidates_when_match() -> None:
         worker_entries=[_worker_entry(provides=["worker:bash"])],
     )
     server = FastMCP("test-e2e-resolve")
-    register_capability_tools(server, settings)
+    register_capability_tools(server, settings, rbac_manager=_fake_rbac_manager())
     tool = _tool(server, "resolve_capabilities")
 
     result = asyncio.run(
         tool.fn(
-            requires=["worker:bash"], prompt="x", user_id="alice",
+            requires=["worker:bash"],
+            prompt="x",
+            user_id="alice",
         )
     )
 
@@ -383,12 +411,14 @@ def test_resolve_capabilities_rejects_unknown_selector() -> None:
         worker_entries=[_worker_entry(provides=["worker:bash"])],
     )
     server = FastMCP("test-bad-sel")
-    register_capability_tools(server, settings)
+    register_capability_tools(server, settings, rbac_manager=_fake_rbac_manager())
     tool = _tool(server, "resolve_capabilities")
 
     result = asyncio.run(
         tool.fn(
-            requires=["worker:bash"], prompt="x", user_id="alice",
+            requires=["worker:bash"],
+            prompt="x",
+            user_id="alice",
             selector="not-a-strategy",
         )
     )

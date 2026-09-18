@@ -67,6 +67,20 @@ class _RouteRecorder:
         self.mounted.append((app, prefix))
 
 
+def _fake_rbac_manager() -> Any:
+    """Return a fake RBAC manager that allows all checks.
+
+    The ``@require_mcp_auth`` decorator calls
+    ``rbac_manager.check_permission`` as an awaitable. ``AsyncMock``
+    returning ``True`` satisfies the gate so tests can drive the
+    AUTH_REQUIRED path (missing ``user_id``) without standing up a
+    real RBAC.
+    """
+    rbac = MagicMock()
+    rbac.check_permission = AsyncMock(return_value=True)
+    return rbac
+
+
 def _stub_server(
     *,
     terminal_manager: Any = None,
@@ -204,10 +218,15 @@ class TestResolveTerminalAdapter:
         adapter = bootstrap._resolve_terminal_adapter(config, mcp_client="client")
 
         assert adapter is sentinel
-        assert called == [((), {
-            "config": config,
-            "mcp_client": "client",
-        })]
+        assert called == [
+            (
+                (),
+                {
+                    "config": config,
+                    "mcp_client": "client",
+                },
+            )
+        ]
 
     def test_iterm2_preference_warns_and_falls_back_to_mock(self) -> None:
         """The removed iTerm2 adapter emits DeprecationWarning, returns mock."""
@@ -794,7 +813,11 @@ def test_capability_block_skips_reader_when_registration_fails(
 
     bootstrap._register_capability_block(server)  # ty: ignore[invalid-argument-type]
 
-    core_register.assert_called_once_with(server.server, server.app.config)
+    core_register.assert_called_once_with(
+        server.server,
+        server.app.config,
+        rbac_manager=None,
+    )
 
 
 # =============================================================================
@@ -1252,8 +1275,17 @@ class TestCoreIntegrationDispatcher:
         )
 
         registrars["terminal"].assert_called_once_with(server.server, manager, None)
-        registrars["session_buddy"].assert_called_once_with(server.server, server.app, None)
-        registrars["git"].assert_called_once_with(server.server, None)
+        registrars["session_buddy"].assert_called_once_with(
+            server.server,
+            server.app,
+            None,
+            rbac_manager=None,
+        )
+        registrars["git"].assert_called_once_with(
+            server.server,
+            None,
+            rbac_manager=None,
+        )
         registrars["messaging"].assert_called_once_with(server.server, server.app, None)
 
 

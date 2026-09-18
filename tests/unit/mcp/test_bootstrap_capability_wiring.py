@@ -21,6 +21,7 @@ orphan-check; this file enforces the call-time contract.
 
 from __future__ import annotations
 
+from typing import Any
 from unittest.mock import MagicMock
 
 import pytest
@@ -112,7 +113,7 @@ def test_capability_block_skips_get_capability_result_when_dhara_init_fails() ->
     server = _StubServer()
     captured: dict[str, MagicMock] = {}
 
-    def _capture_register_capability_tools(fastmcp, settings) -> None:
+    def _capture_register_capability_tools(fastmcp, settings, **kwargs: Any) -> None:
         captured["core"] = fastmcp
 
     def _boom(*args, **kwargs) -> None:
