@@ -22,6 +22,7 @@ from mahavishnu.mcp.tools.profiles import (
     FULL_REGISTRATIONS,
     MINIMAL_REGISTRATIONS,
     PROFILE_REGISTRATIONS,
+    REGISTRATION_MAP,
     STANDARD_REGISTRATIONS,
     get_active_profile,
 )
@@ -149,13 +150,28 @@ def test_profile_registrations_covers_all_profiles() -> None:
 
 
 def test_profile_registrations_values_are_lists() -> None:
-    """Each mapped value must be a non-empty list of method names."""
+    """Each mapped value must be a non-empty list of dispatch keys.
+
+    Every key must be either a registrar group name
+    (``_register_<group>_tools``) or a per-tool name resolvable through
+    ``REGISTRATION_MAP`` -- the latter is the Phase 1.5 jot inbox design
+    where each ``jot_*`` tool name lives in PROFILE_REGISTRATIONS and
+    maps (via ``REGISTRATION_MAP``) to the shared ``_register_jot_tools``
+    callable. This is the W0 helper's two-axis dispatch contract:
+    ``registrations`` entries may be either group keys (legacy
+    convention) or callable keys (W0 convention), both routed through
+    ``REGISTRATION_MAP``.
+    """
     for profile, methods in PROFILE_REGISTRATIONS.items():
         assert isinstance(methods, list), f"{profile} should map to a list"
         assert methods, f"{profile} must register at least one method"
         for method in methods:
             assert isinstance(method, str)
-            assert method.startswith("_register_")
+            assert method.startswith("_register_") or method in REGISTRATION_MAP, (
+                f"{profile} entry {method!r} must either start with "
+                "'_register_' (group key) or appear as a key in "
+                "REGISTRATION_MAP (per-tool key)"
+            )
 
 
 def test_profile_registrations_keys_are_toolprofile_enum() -> None:
@@ -227,10 +243,7 @@ def test_custom_env_var_name(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("MY_CUSTOM_PROFILE_VAR", "standard")
     # Ensure the default env var is not interfering.
     monkeypatch.delenv("MAHAVISHNU_TOOL_PROFILE", raising=False)
-    assert (
-        get_active_profile(env_var="MY_CUSTOM_PROFILE_VAR")
-        == ToolProfile.STANDARD
-    )
+    assert get_active_profile(env_var="MY_CUSTOM_PROFILE_VAR") == ToolProfile.STANDARD
 
 
 def test_custom_env_var_unset_falls_back_to_full(

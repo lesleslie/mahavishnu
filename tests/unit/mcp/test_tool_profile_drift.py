@@ -5,15 +5,28 @@ Pins the contract documented in
 tool-profile gating must resolve to an actual dispatch site so a
 declared-but-unwired profile name cannot silently no-op.
 
-The mechanism (verified against ``mahavishnu/mcp/bootstrap.py`` and
-``mahavishnu/mcp/lifecycle.py``) is ``string-gated dispatch``:
+The mechanism spans TWO dispatch surfaces, both verified below:
 
-    if "_register_<group>_tools" in methods_set:
-        registrar(server)
+1. ``mahavishnu/mcp/bootstrap.py`` legacy path: ``string-gated dispatch``
+   (``if "_register_<group>_tools" in methods_set: registrar(server)``)
+   plus a tuple dispatch table ``_OPTIONAL_TOOL_BLOCKS`` for the
+   FULL-only groups. Used by ``mahavishnu/mcp/lifecycle.py:start_server``
+   on the production ``mahavishnu mcp start`` boot path.
 
-plus a tuple dispatch table ``_OPTIONAL_TOOL_BLOCKS`` for the FULL-only
-groups. The names are NOT methods on ``FastMCPServer`` -- the docstring's
-"scheduled vs called" framing targets exactly this dispatch topology.
+2. ``mahavishnu/mcp/tools/profiles.py:REGISTRATION_MAP`` (the W0 helper
+   path). ``FastMCPServer.apply_tool_profile`` in
+   ``mahavishnu/mcp/server_core.py`` delegates to
+   ``mcp_common.tools.dispatch._apply_tool_profile`` which walks this
+   map. This is the canonical dispatch surface for the in-process
+   ``build_mahavishnu_mcp_server()`` entry point
+   (``mahavishnu/mcp/server.py``) and for any future caller that prefers
+   the W0 contract.
+
+A profile name is NOT orphaned when it has a dispatch site on EITHER
+surface. The W0 helper accepts both ``_register_<group>_tools`` keys
+(groups) and per-tool names (e.g. ``jot_list``) -- the latter is the
+Phase 1.5 jot inbox design where every tool name lives in
+``REGISTRATION_MAP`` and resolves to one shared registrar callable.
 
 Path note: existing MCP unit tests live at ``tests/unit/mcp/`` (the
 sibling ``test_profiles.py`` ships alongside this file). The user's
@@ -24,8 +37,8 @@ file below lands in the canonical tests root.
 
 from __future__ import annotations
 
-import re
 from pathlib import Path
+import re
 
 from mcp_common.tools import ToolProfile
 import pytest
@@ -34,6 +47,7 @@ from mahavishnu.mcp.tools.profiles import (
     FULL_REGISTRATIONS,
     MINIMAL_REGISTRATIONS,
     PROFILE_REGISTRATIONS,
+    REGISTRATION_MAP,
     STANDARD_REGISTRATIONS,
 )
 
@@ -48,15 +62,9 @@ def _src_path(*parts: str) -> Path:
     return Path(__file__).resolve().parents[3].joinpath(*parts)
 
 
-BOOTSTRAP_SRC = _src_path(
-    "mahavishnu", "mcp", "bootstrap.py"
-).read_text(encoding="utf-8")
-LIFECYCLE_SRC = _src_path(
-    "mahavishnu", "mcp", "lifecycle.py"
-).read_text(encoding="utf-8")
-SERVER_CORE_SRC = _src_path(
-    "mahavishnu", "mcp", "server_core.py"
-).read_text(encoding="utf-8")
+BOOTSTRAP_SRC = _src_path("mahavishnu", "mcp", "bootstrap.py").read_text(encoding="utf-8")
+LIFECYCLE_SRC = _src_path("mahavishnu", "mcp", "lifecycle.py").read_text(encoding="utf-8")
+SERVER_CORE_SRC = _src_path("mahavishnu", "mcp", "server_core.py").read_text(encoding="utf-8")
 
 
 # -- Dispatch-site extractors -------------------------------------------------
@@ -118,11 +126,22 @@ def _extract_unconditional_registrations(source: str = BOOTSTRAP_SRC) -> set[str
     keys: set[str] = set(_TABLE_KEY_RE.findall(post_gate))
     keys.update(
         re.findall(
-            r"register_([a-z_]+_tools)\s*\(", post_gate,
+            r"register_([a-z_]+_tools)\s*\(",
+            post_gate,
         ),
     )
     # Map back to the ``_register_*`` form (the profile-list naming).
     return {f"_register_{name}" for name in keys}
+
+
+# W0 helper dispatch surface -- the canonical path via REGISTRATION_MAP.
+# Per ``mahavishnu/mcp/server_core.py:apply_tool_profile`` the W0 helper
+# looks up ``REGISTRATION_MAP[name]`` for each string entry in
+# PROFILE_REGISTRATIONS. Any name present as a REGISTRATION_MAP key is
+# therefore a wired dispatch site on the W0 surface.
+def _extract_registration_map_keys() -> set[str]:
+    """Return every key declared in ``REGISTRATION_MAP`` (W0 dispatch surface)."""
+    return set(REGISTRATION_MAP.keys())
 
 
 # -- Tests -------------------------------------------------------------------
@@ -144,8 +163,12 @@ def test_no_orphan_registrations() -> None:
     2. ``bootstrap.py`` table-gated site: key in ``_OPTIONAL_TOOL_BLOCKS``
     3. ``bootstrap.py`` unconditional: registrar invoked outside the gated
        dispatch loop (always-on tool group whose profile marker is nominal)
+    4. ``profiles.py:REGISTRATION_MAP`` key -- the W0 helper dispatch
+       surface used by ``FastMCPServer.apply_tool_profile``. The W0
+       helper is the canonical dispatch path (per ``server_core.py``
+       docstring); any name with a REGISTRATION_MAP entry is wired.
 
-    Any name absent from all three surfaces is ORPHANED: declared in a
+    Any name absent from all four surfaces is ORPHANED: declared in a
     profile but never wired to a registrar. This is the drift vector the
     doc warns about ("scheduled vs called").
     """
@@ -153,15 +176,18 @@ def test_no_orphan_registrations() -> None:
     string_gated = _extract_string_gated()
     table_gated = _extract_table_gated()
     unconditional = _extract_unconditional_registrations()
+    registration_map = _extract_registration_map_keys()
 
-    dispatched = string_gated | table_gated | unconditional
+    dispatched = string_gated | table_gated | unconditional | registration_map
     orphans = sorted(names - dispatched)
 
     assert not orphans, (
-        "Profile names with no dispatch site in mahavishnu/mcp/bootstrap.py: "
+        "Profile names with no dispatch site: "
         f"{orphans}. Each PROFILE_REGISTRATIONS entry must either gate a "
-        "registrar (string-gate or _OPTIONAL_TOOL_BLOCKS key) or be "
-        "registered unconditionally. See "
+        "registrar (string-gate or _OPTIONAL_TOOL_BLOCKS key in "
+        "mahavishnu/mcp/bootstrap.py), be registered unconditionally in "
+        "bootstrap.py, or appear as a key in REGISTRATION_MAP "
+        "(the W0 helper dispatch surface). See "
         "docs/architecture/MEMORY_ARCHITECTURE.md Section 5 Contract 5.x."
     )
 
@@ -204,7 +230,8 @@ def test_profile_application_present() -> None:
     # Verify start_server actually consults PROFILE_REGISTRATIONS to pick
     # the methods list. Without this the import would be dead code.
     assert re.search(
-        r"PROFILE_REGISTRATIONS\s*\[", LIFECYCLE_SRC,
+        r"PROFILE_REGISTRATIONS\s*\[",
+        LIFECYCLE_SRC,
     ), "lifecycle.py never indexes PROFILE_REGISTRATIONS[...] -- registration cannot dispatch."
 
     # And discover_tools (server_core) must surface profile state.
@@ -221,26 +248,34 @@ def test_profile_application_present() -> None:
 
 
 def test_lazy_profile_methods_recoverable() -> None:
-    """Every FULL_REGISTRATIONS name must resolve to a dispatch site in bootstrap.py.
+    """Every FULL_REGISTRATIONS name must resolve to a dispatch site.
 
     This is the strict version of ``test_no_orphan_registrations``: it
     fails specifically when a FULL-tier feature group is declared but
     not wired, catching the "function got renamed or removed" case.
+
+    Resolution surface covers BOTH the bootstrap.py legacy path
+    (``_register_core_integration_tools``, ``_register_worker_pool_tools``,
+    ``_register_optional_tools`` string/table gates, and the
+    unconditional calls in ``register_profile_tools()`` exit) AND the
+    W0 helper path (REGISTRATION_MAP keys).
     """
     full_names = set(FULL_REGISTRATIONS)
     string_gated = _extract_string_gated()
     table_gated = _extract_table_gated()
     unconditional = _extract_unconditional_registrations()
+    registration_map = _extract_registration_map_keys()
 
-    dispatched = string_gated | table_gated | unconditional
+    dispatched = string_gated | table_gated | unconditional | registration_map
     orphans = sorted(full_names - dispatched)
 
     assert not orphans, (
-        "FULL_REGISTRATIONS names with no dispatch site in bootstrap.py: "
-        f"{orphans}. Each FULL-tier group must wire to a registrar in "
+        f"FULL_REGISTRATIONS names with no dispatch site: {orphans}. "
+        "Each FULL-tier group must wire to a registrar in "
         "_register_core_integration_tools, _register_worker_pool_tools, "
         "_register_optional_tools, or be unconditionally invoked at "
-        "register_profile_tools() exit."
+        "register_profile_tools() exit (bootstrap.py legacy path) OR "
+        "appear as a REGISTRATION_MAP key (W0 helper path)."
     )
 
 
@@ -271,16 +306,23 @@ def test_active_profile_default_is_full() -> None:
 def test_every_profile_name_has_a_string_or_table_or_unconditional_dispatch(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """Auxiliary: pairwise check tying each profile to bootstrap.
+    """Auxiliary: pairwise check tying each profile to its dispatch site.
 
     Walks every profile name explicitly and reports the resolution path
-    (string-gate / table / unconditional). Useful diagnostic for future
-    maintainers -- surfaces drift instead of swallowing it.
+    (string-gate / table / unconditional / registration-map). Useful
+    diagnostic for future maintainers -- surfaces drift instead of
+    swallowing it.
+
+    The W0 helper path (``REGISTRATION_MAP``) is treated as a fourth,
+    canonical dispatch surface. Names resolved exclusively through it
+    (e.g. the Phase 1.5 jot inbox ``jot_*`` keys) are NOT orphans --
+    they are wired through the W0 helper that lives in mcp-common.
     """
     monkeypatch.delenv("MAHAVISHNU_TOOL_PROFILE", raising=False)
     string_gated = _extract_string_gated()
     table_gated = _extract_table_gated()
     unconditional = _extract_unconditional_registrations()
+    registration_map = _extract_registration_map_keys()
 
     report: dict[str, str] = {}
     for profile, methods in PROFILE_REGISTRATIONS.items():
@@ -291,6 +333,8 @@ def test_every_profile_name_has_a_string_or_table_or_unconditional_dispatch(
                 report[f"{profile.value}/{name}"] = "table-gate"
             elif name in unconditional:
                 report[f"{profile.value}/{name}"] = "unconditional"
+            elif name in registration_map:
+                report[f"{profile.value}/{name}"] = "registration-map"
             else:
                 report[f"{profile.value}/{name}"] = "ORPHAN"
 
