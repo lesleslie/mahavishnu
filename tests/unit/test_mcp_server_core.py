@@ -144,6 +144,13 @@ class TestFastMCPServerInit:
 
     def test_init_with_tracing_disabled_skips_middleware(self, mock_app: MagicMock) -> None:
         """Telemetry middleware should NOT be added when tracing is disabled."""
+        # Import via mahavishnu.mcp.server_core (not mcp_common.server.telemetry)
+        # because test_fastmcp_version.py evicts mcp_common from sys.modules.
+        # Re-fetching from the already-loaded mahavishnu module namespace gives
+        # us the SAME class object the production code uses to build the
+        # middleware, so isinstance() matches after the eviction.
+        from mahavishnu.mcp.server_core import FastMCPOpenTelemetryMiddleware
+
         mock_app.config.observability = MagicMock(tracing_enabled=False)
 
         with (
@@ -152,7 +159,16 @@ class TestFastMCPServerInit:
         ):
             FastMCPServer(app=mock_app)
 
-            mock_add.assert_not_called()
+            # AuthContextMiddleware is always added regardless of tracing config,
+            # so filter by middleware TYPE rather than counting raw calls.
+            tracing_calls = [
+                c
+                for c in mock_add.call_args_list
+                if isinstance(c.args[0], FastMCPOpenTelemetryMiddleware)
+            ]
+            assert not tracing_calls, (
+                f"Tracing middleware should not be added, but got {tracing_calls}"
+            )
 
     def test_init_with_tracing_enabled_adds_middleware(self, mock_app: MagicMock) -> None:
         """Telemetry middleware should be added when tracing is enabled."""
@@ -177,10 +193,17 @@ class TestFastMCPServerInit:
         try:
             FastMCPServer(app=mock_app)
 
-            # Confirm middleware is an instance of the OTel middleware
-            assert mock_add.called
-            middleware_arg = mock_add.call_args.args[0]
-            assert isinstance(middleware_arg, FastMCPOpenTelemetryMiddleware)
+            # AuthContextMiddleware is always added in addition to the OTel
+            # tracing middleware, so filter by middleware TYPE rather than
+            # inspecting the last call's args (which would be AuthContext).
+            tracing_calls = [
+                c
+                for c in mock_add.call_args_list
+                if isinstance(c.args[0], FastMCPOpenTelemetryMiddleware)
+            ]
+            assert len(tracing_calls) == 1, (
+                f"Expected exactly 1 tracing middleware, got {len(tracing_calls)}"
+            )
         finally:
             add_patcher.stop()
             auth_patcher.stop()
@@ -444,9 +467,7 @@ class TestLifecycle:
         await server.stop()
 
     @pytest.mark.asyncio
-    async def test_stop_invokes_client_stop_when_present(
-        self, mock_app: MagicMock
-    ) -> None:
+    async def test_stop_invokes_client_stop_when_present(self, mock_app: MagicMock) -> None:
         """stop() should call _client.stop when mcp_client IS configured."""
         mock_client = MagicMock()
         mock_client._client.stop = AsyncMock()
