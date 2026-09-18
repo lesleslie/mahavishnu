@@ -1,14 +1,12 @@
 """Tests for session/checkpoint.py — SessionBuddy write-forward sink."""
 
-import json
-from unittest.mock import MagicMock
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import httpx2 as httpx
+from mcp_common.exceptions import MCPServerError
 
 from mahavishnu.session.checkpoint import SessionBuddy
-
 from tests.unit._httpx_test_helpers import (
-    make_recording_handler,
     make_response_handler,
     patch_async_client,
 )
@@ -29,6 +27,8 @@ _SUCCESS_RESPONSE = {
     "result": "✅ Conversation checkpoint stored successfully!\n📝 Conversation ID: abc-123"
 }
 
+# Patch target for raw-httpx paths (is_healthy uses module-level httpx after
+# the import was promoted to module scope — see mahavishnu/session/checkpoint.py).
 _TARGET = "mahavishnu.session.checkpoint"
 
 
@@ -50,50 +50,60 @@ class TestCreateCheckpoint:
         assert result.startswith("checkpoint_disabled_sess-1")
 
     async def test_enabled_returns_uuid(self):
-        handler = make_response_handler(httpx.Response(200, json=_SUCCESS_RESPONSE))
-        with patch_async_client(handler, _TARGET):
-            sb = SessionBuddy(_mock_config())
+        sb = SessionBuddy(_mock_config())
+        with patch.object(sb._mcp, "call_tool", AsyncMock(return_value=_SUCCESS_RESPONSE)):
             checkpoint_id = await sb.create_checkpoint("sess-1", {})
         # UUID format: 8-4-4-4-12
         assert len(checkpoint_id) == 36
         assert checkpoint_id.count("-") == 4
 
     async def test_calls_store_conversation_checkpoint(self):
-        captured, handler = make_recording_handler(
-            httpx.Response(200, json=_SUCCESS_RESPONSE)
-        )
-        with patch_async_client(handler, _TARGET):
-            sb = SessionBuddy(_mock_config())
+        captured: dict = {}
+
+        async def capture(name, arguments, **_kwargs):
+            captured["name"] = name
+            captured["arguments"] = arguments
+            return _SUCCESS_RESPONSE
+
+        sb = SessionBuddy(_mock_config())
+        with patch.object(sb._mcp, "call_tool", side_effect=capture):
             await sb.create_checkpoint("sess-1", {})
-        assert len(captured) == 1
-        payload = json.loads(captured[0].content)
-        assert payload["name"] == "store_conversation_checkpoint"
+        assert captured["name"] == "store_conversation_checkpoint"
+        assert captured["arguments"]["checkpoint_type"] == "workflow"
 
     async def test_degraded_on_http_error_still_returns_uuid(self):
-        handler = make_response_handler(httpx.Response(500))
-        with patch_async_client(handler, _TARGET):
-            sb = SessionBuddy(_mock_config())
+        sb = SessionBuddy(_mock_config())
+        with patch.object(
+            sb._mcp,
+            "call_tool",
+            AsyncMock(side_effect=MCPServerError("500 server error")),
+        ):
             checkpoint_id = await sb.create_checkpoint("sess-1", {})
         assert len(checkpoint_id) == 36
 
     async def test_degraded_on_connect_error_still_returns_uuid(self):
-        def fail_handler(request: httpx.Request) -> httpx.Response:
-            raise httpx.ConnectError("refused")
-
-        with patch_async_client(fail_handler, _TARGET):
-            sb = SessionBuddy(_mock_config())
+        # CommonMCPClient surfaces connection failures as MCPServerError — exercise
+        # that degraded path; create_checkpoint must still return a local UUID.
+        sb = SessionBuddy(_mock_config())
+        with patch.object(
+            sb._mcp,
+            "call_tool",
+            AsyncMock(side_effect=MCPServerError("connect refused")),
+        ):
             checkpoint_id = await sb.create_checkpoint("sess-1", {})
         assert len(checkpoint_id) == 36
 
     async def test_passes_quality_score_when_present(self):
-        captured, handler = make_recording_handler(
-            httpx.Response(200, json=_SUCCESS_RESPONSE)
-        )
-        with patch_async_client(handler, _TARGET):
-            sb = SessionBuddy(_mock_config())
+        captured: dict = {}
+
+        async def capture(name, arguments, **_kwargs):
+            captured["arguments"] = arguments
+            return _SUCCESS_RESPONSE
+
+        sb = SessionBuddy(_mock_config())
+        with patch.object(sb._mcp, "call_tool", side_effect=capture):
             await sb.create_checkpoint("sess-1", {"quality_score": 85})
-        payload = json.loads(captured[0].content)
-        assert payload["arguments"]["quality_score"] == 85
+        assert captured["arguments"]["quality_score"] == 85
 
 
 class TestUpdateCheckpoint:
@@ -102,41 +112,36 @@ class TestUpdateCheckpoint:
         assert await sb.update_checkpoint("ckpt-1", "running") is True
 
     async def test_non_terminal_does_not_call_service(self):
-        captured, handler = make_recording_handler(
-            httpx.Response(200, json=_SUCCESS_RESPONSE)
-        )
-        with patch_async_client(handler, _TARGET):
-            sb = SessionBuddy(_mock_config())
+        sb = SessionBuddy(_mock_config())
+        mock_call = AsyncMock(return_value=_SUCCESS_RESPONSE)
+        with patch.object(sb._mcp, "call_tool", mock_call):
             result = await sb.update_checkpoint("ckpt-1", "running")
         assert result is True
-        assert len(captured) == 0
+        assert mock_call.call_count == 0
 
     async def test_terminal_completed_calls_service(self):
-        captured, handler = make_recording_handler(
-            httpx.Response(200, json=_SUCCESS_RESPONSE)
-        )
-        with patch_async_client(handler, _TARGET):
-            sb = SessionBuddy(_mock_config())
+        sb = SessionBuddy(_mock_config())
+        mock_call = AsyncMock(return_value=_SUCCESS_RESPONSE)
+        with patch.object(sb._mcp, "call_tool", mock_call):
             result = await sb.update_checkpoint("ckpt-1", "completed")
         assert result is True
-        assert len(captured) == 1
+        assert mock_call.call_count == 1
 
     async def test_terminal_failed_calls_service(self):
-        captured, handler = make_recording_handler(
-            httpx.Response(200, json=_SUCCESS_RESPONSE)
-        )
-        with patch_async_client(handler, _TARGET):
-            sb = SessionBuddy(_mock_config())
+        sb = SessionBuddy(_mock_config())
+        mock_call = AsyncMock(return_value=_SUCCESS_RESPONSE)
+        with patch.object(sb._mcp, "call_tool", mock_call):
             result = await sb.update_checkpoint("ckpt-1", "failed")
         assert result is True
-        assert len(captured) == 1
+        assert mock_call.call_count == 1
 
     async def test_degraded_returns_false(self):
-        def fail_handler(request: httpx.Request) -> httpx.Response:
-            raise httpx.ConnectError("refused")
-
-        with patch_async_client(fail_handler, _TARGET):
-            sb = SessionBuddy(_mock_config())
+        sb = SessionBuddy(_mock_config())
+        with patch.object(
+            sb._mcp,
+            "call_tool",
+            AsyncMock(side_effect=MCPServerError("connect refused")),
+        ):
             result = await sb.update_checkpoint("ckpt-1", "completed")
         assert result is False
 

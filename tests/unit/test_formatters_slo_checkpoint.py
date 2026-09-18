@@ -6,7 +6,7 @@
 """
 
 from datetime import UTC, datetime, timedelta
-from unittest.mock import MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
@@ -560,6 +560,10 @@ def _mock_config(enabled=True, checkpoint_interval=30):
     config = MagicMock()
     config.session.enabled = enabled
     config.session.checkpoint_interval = checkpoint_interval
+    # SessionBuddy.__init__ reads this unconditionally to construct
+    # CommonMCPClient(base_url=...) which calls urlparse(); a bare MagicMock
+    # trips urlparse with TypeError. Provide a valid URL string.
+    config.pools.session_buddy_url = "http://localhost:8678"
     return config
 
 
@@ -580,7 +584,9 @@ class TestSessionBuddy:
 
     async def test_create_checkpoint_enabled(self):
         sb = SessionBuddy(_mock_config(enabled=True))
-        cid = await sb.create_checkpoint("sess-2", {"key": "val"})
+        # Mock the MCP call so the test doesn't reach out to a real server.
+        with patch.object(sb._mcp, "call_tool", AsyncMock(return_value={"result": "ok"})):
+            cid = await sb.create_checkpoint("sess-2", {"key": "val"})
         assert len(cid) == 36  # UUID format
 
     async def test_update_checkpoint_disabled(self):

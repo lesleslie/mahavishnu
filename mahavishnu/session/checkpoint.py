@@ -6,6 +6,7 @@ import logging
 from typing import TYPE_CHECKING, Any, cast
 import uuid
 
+import httpx2 as httpx
 from mcp_common.clients.common_mcp_client import CommonMCPClient
 from mcp_common.exceptions import MCPServerError
 
@@ -49,8 +50,6 @@ class SessionBuddy:
     async def is_healthy(self) -> bool:
         health_url = self._base_url.replace("/mcp", "/health")
         try:
-            import httpx2 as httpx
-
             async with httpx.AsyncClient(timeout=5.0) as client:
                 r = await client.get(health_url)
             return r.status_code == 200
