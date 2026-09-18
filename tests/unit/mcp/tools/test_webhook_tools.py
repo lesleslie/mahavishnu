@@ -17,7 +17,8 @@ from __future__ import annotations
 
 import asyncio
 from datetime import UTC, datetime
-from unittest.mock import MagicMock
+from typing import Any
+from unittest.mock import AsyncMock, MagicMock
 
 from fastmcp import FastMCP
 import pytest
@@ -27,6 +28,20 @@ from mahavishnu.mcp.tools.webhook_tools import register_webhook_tools
 from mahavishnu.webhooks import replay as replay_module
 
 pytestmark = pytest.mark.unit
+
+
+def _fake_rbac_manager() -> Any:
+    """Return a fake RBAC manager that allows all checks.
+
+    The ``@require_mcp_auth`` decorator calls
+    ``rbac_manager.check_permission`` as an awaitable. ``AsyncMock``
+    returning ``True`` satisfies the gate so tests can drive the
+    AUTH_REQUIRED path (missing ``user_id``) without standing up a
+    real RBAC.
+    """
+    rbac = MagicMock()
+    rbac.check_permission = AsyncMock(return_value=True)
+    return rbac
 
 
 def _patch_dhara_calltime(monkeypatch: pytest.MonkeyPatch, *, get: object | None) -> None:
@@ -81,7 +96,7 @@ async def test_registered_tool_returns_dict_for_known_webhook(
     _patch_dhara_calltime(monkeypatch, get=fake_get)
 
     mcp = FastMCP(name="test-webhook-tools-roundtrip")
-    register_webhook_tools(mcp)
+    register_webhook_tools(mcp, rbac_manager=_fake_rbac_manager())
     tool = next(t for t in await mcp.list_tools() if t.name == "webhook_replay_tool")
 
     # The leaf requires a JWT-shaped token; pass one so the RBAC gate
@@ -105,7 +120,7 @@ async def test_registered_tool_returns_none_when_record_missing(
     _patch_dhara_calltime(monkeypatch, get=fake_get)
 
     mcp = FastMCP(name="test-webhook-tools-missing")
-    register_webhook_tools(mcp)
+    register_webhook_tools(mcp, rbac_manager=_fake_rbac_manager())
     tool = next(t for t in await mcp.list_tools() if t.name == "webhook_replay_tool")
 
     result = await tool.fn(
@@ -132,7 +147,7 @@ async def test_registered_tool_rejects_without_user_id(
     _patch_dhara_calltime(monkeypatch, get=fake_get)
 
     mcp = FastMCP(name="test-webhook-tools-auth")
-    register_webhook_tools(mcp)
+    register_webhook_tools(mcp, rbac_manager=_fake_rbac_manager())
     tool = next(t for t in await mcp.list_tools() if t.name == "webhook_replay_tool")
 
     result = await tool.fn(webhook_id="wh-1", token="a.b.c")
@@ -152,7 +167,7 @@ async def test_registered_tool_rejects_path_traversal(
     _patch_dhara_calltime(monkeypatch, get=fake_get)
 
     mcp = FastMCP(name="test-webhook-tools-traversal")
-    register_webhook_tools(mcp)
+    register_webhook_tools(mcp, rbac_manager=_fake_rbac_manager())
     tool = next(t for t in await mcp.list_tools() if t.name == "webhook_replay_tool")
 
     result = await tool.fn(

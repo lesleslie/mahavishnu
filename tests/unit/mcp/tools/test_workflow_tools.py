@@ -12,7 +12,7 @@ from __future__ import annotations
 import asyncio
 from datetime import UTC, datetime
 from typing import Any
-from unittest.mock import AsyncMock
+from unittest.mock import AsyncMock, MagicMock
 
 from fastmcp import FastMCP
 import pytest
@@ -42,6 +42,20 @@ def _patch_dhara_get(monkeypatch: pytest.MonkeyPatch, fake_get: Any) -> None:
     monkeypatch.setattr(
         "mahavishnu.mcp.tools.workflow_tools.dhara_calltime", fake_calltime,
     )
+
+
+def _fake_rbac_manager() -> Any:
+    """Return a fake RBAC manager that allows all checks.
+
+    The ``@require_mcp_auth`` decorator calls
+    ``rbac_manager.check_permission`` as an awaitable. ``AsyncMock``
+    returning ``True`` satisfies the gate so tests can drive the
+    AUTH_REQUIRED path (missing ``user_id``) without standing up a
+    real RBAC.
+    """
+    rbac = MagicMock()
+    rbac.check_permission = AsyncMock(return_value=True)
+    return rbac
 
 
 @pytest.mark.asyncio
@@ -113,7 +127,7 @@ async def test_registered_tool_delegates_to_module_function(
 
     _patch_dhara_get(monkeypatch, fake_get)
     mcp = FastMCP(name="test-workflow-tools")
-    register_workflow_tools(mcp)
+    register_workflow_tools(mcp, rbac_manager=_fake_rbac_manager())
     tool = next(t for t in await mcp.list_tools() if t.name == "workflow_get_outcome_tool")
     result = await tool.fn(workflow_id="wf-e2e", user_id="viewer-1")
     assert isinstance(result, WorkflowOutcome)
@@ -163,7 +177,7 @@ async def test_registered_tool_rejects_path_traversal(
     _patch_dhara_get(monkeypatch, dhara_get)
 
     mcp = FastMCP(name="test-workflow-tools-traversal")
-    register_workflow_tools(mcp)
+    register_workflow_tools(mcp, rbac_manager=_fake_rbac_manager())
     tool = next(t for t in await mcp.list_tools() if t.name == "workflow_get_outcome_tool")
 
     result = await tool.fn(workflow_id="../../etc/passwd", user_id="viewer-1")
@@ -190,7 +204,7 @@ async def test_workflow_get_outcome_tool_rejects_without_user_id(monkeypatch):
     _patch_dhara_get(monkeypatch, dhara_get)
 
     mcp = FastMCP(name="test-workflow-tools-auth")
-    register_workflow_tools(mcp)
+    register_workflow_tools(mcp, rbac_manager=_fake_rbac_manager())
     tool = next(t for t in await mcp.list_tools() if t.name == "workflow_get_outcome_tool")
 
     result = await tool.fn(workflow_id="wf-1")
@@ -217,7 +231,7 @@ async def test_workflow_get_outcome_tool_passes_with_user_id(monkeypatch):
     _patch_dhara_get(monkeypatch, dhara_get)
 
     mcp = FastMCP(name="test-workflow-tools-auth-ok")
-    register_workflow_tools(mcp)
+    register_workflow_tools(mcp, rbac_manager=_fake_rbac_manager())
     tool = next(t for t in await mcp.list_tools() if t.name == "workflow_get_outcome_tool")
 
     result = await tool.fn(workflow_id="wf-ok", user_id="viewer-1")
