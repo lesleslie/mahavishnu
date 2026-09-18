@@ -4,9 +4,22 @@ Tests cover create / query / close lifecycle, input validation, mcp_client deleg
 and error handling — all without a live Session-Buddy connection.
 """
 
+from typing import Any
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
+
+
+def _fake_rbac_manager() -> Any:
+    """Return a fake RBAC manager that allows all checks.
+
+    The ``@require_mcp_auth`` decorator calls ``rbac_manager.check_permission``
+    as an awaitable. ``AsyncMock`` returning ``True`` satisfies the gate so
+    tests can drive the tool path without standing up a real RBAC.
+    """
+    rbac = MagicMock()
+    rbac.check_permission = AsyncMock(return_value=True)
+    return rbac
 
 
 def _make_server_and_client():
@@ -33,7 +46,12 @@ def _make_server_and_client():
 
     from mahavishnu.mcp.tools.session_buddy_tools import register_session_buddy_tools
 
-    register_session_buddy_tools(server, session_manager=None, mcp_client=mcp_client)
+    register_session_buddy_tools(
+        server,
+        session_manager=None,
+        mcp_client=mcp_client,
+        rbac_manager=_fake_rbac_manager(),
+    )
 
     # Wrap each registered function so tests don't need to pass user_id every time.
     authed: dict[str, object] = {}
