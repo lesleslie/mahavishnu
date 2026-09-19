@@ -284,6 +284,14 @@ def _validate_ctx(op: str, ctx: dict[str, object]) -> None:
 # per spec §4.6 (cross-process atomicity is out of scope).
 _append_lock = asyncio.Lock()
 
+# Per-jot waiter events for adversarial test observability of
+# _auto_retry_after. The reconciler schedules retries as fire-and-forget
+# background tasks via asyncio.create_task; tests observe completion by
+# awaiting _retry_waiters[handle]. _auto_retry_after sets the event after
+# its post-sleep fold/validate path completes (success or failure —
+# set unconditionally so tests aren't sensitive to the failure path).
+_retry_waiters: dict[str, asyncio.Event] = {}
+
 
 # =============================================================================
 # Surfaces + Result types for MCP return shapes (TypedDicts, no Any)
@@ -456,82 +464,90 @@ async def _mcp_get_workflow_status(workflow_id: str) -> dict[str, object]:
 async def _auto_retry_after(handle: str, backoff_s: int) -> None:
     """Auto-retry a FAILED-dispatched jot after backoff. Spec §6.4.
 
+    Records an event in `_retry_waiters` before sleeping so adversarial
+    tests can await the retry completing without blocking the reconciler.
+
     Pre-conditions checked after the sleep:
       - jot still FAILED-eligible (manual retry may have won the race)
       - current_attempt < MAX_AUTO_ATTEMPTS (budget remaining)
     """
-    await asyncio.sleep(backoff_s)
-
+    event = asyncio.Event()
+    _retry_waiters[handle] = event
     try:
-        from mahavishnu.jot.fold import build_states, parse_events
-        from mahavishnu.jot.handle import resolve_handle
+        await asyncio.sleep(backoff_s)
 
-        events = parse_events(log_path())
-        states = build_states(events, enrich=False).states
-        current = resolve_handle(states, handle)
-    except Exception as exc:  # noqa: BLE001 - log path may be unreadable
-        log.error(
-            "JOT_AUTO_RETRY_FOLD_FAILED",
-            handle=handle,
-            error=f"{type(exc).__name__}: {exc}",
-        )
-        return
+        try:
+            from mahavishnu.jot.fold import build_states, parse_events
+            from mahavishnu.jot.handle import resolve_handle
 
-    if current.dispatch_state is not DispatchState.FAILED:
-        return  # user retried manually; auto-retry exits
+            events = parse_events(log_path())
+            states = build_states(events, enrich=False).states
+            current = resolve_handle(states, handle)
+        except Exception as exc:  # noqa: BLE001 - log path may be unreadable
+            log.error(
+                "JOT_AUTO_RETRY_FOLD_FAILED",
+                handle=handle,
+                error=f"{type(exc).__name__}: {exc}",
+            )
+            return
 
-    if current.current_attempt >= MAX_AUTO_ATTEMPTS:
-        return  # budget exhausted before this sleep completed
+        if current.dispatch_state is not DispatchState.FAILED:
+            return  # user retried manually; auto-retry exits
 
-    try:
-        result = await _mcp_trigger_workflow(
-            adapter="prefect",
-            task_type="jot_dispatch",
-            params={"prompt": current.text},
-        )
-        wf_id_raw = result.get("workflow_id")
-        workflow_id = str(wf_id_raw) if wf_id_raw is not None else ""
-    except JotDispatchError as exc:
+        if current.current_attempt >= MAX_AUTO_ATTEMPTS:
+            return  # budget exhausted before this sleep completed
+
+        try:
+            result = await _mcp_trigger_workflow(
+                adapter="prefect",
+                task_type="jot_dispatch",
+                params={"prompt": current.text},
+            )
+            wf_id_raw = result.get("workflow_id")
+            workflow_id = str(wf_id_raw) if wf_id_raw is not None else ""
+        except JotDispatchError as exc:
+            try:
+                await _append_event(
+                    "dispatch_failed",
+                    {
+                        "workflow_id": f"failed_to_create:{exc.error_id}",
+                        "attempt": current.current_attempt + 1,
+                        "error": f"{type(exc).__name__}: {exc}",
+                        "error_id": exc.error_id,
+                        "retry_budget_exhausted": True,
+                    },
+                    jot_id=current.id,
+                )
+            except (JotLogUnwritableError, JotValidationError) as log_exc:
+                log.error(
+                    "JOT_AUTO_RETRY_LOG_FAILED",
+                    handle=handle,
+                    error=str(log_exc),
+                )
+            return
+
         try:
             await _append_event(
-                "dispatch_failed",
+                "dispatch",
                 {
-                    "workflow_id": f"failed_to_create:{exc.error_id}",
+                    "workflow_id": workflow_id,
                     "attempt": current.current_attempt + 1,
-                    "error": f"{type(exc).__name__}: {exc}",
-                    "error_id": exc.error_id,
-                    "retry_budget_exhausted": True,
+                    "pool_selector": "least_loaded",
+                    "dispatched_from": "mcp",
+                    "triggered_by": "auto",
                 },
                 jot_id=current.id,
             )
-        except (JotLogUnwritableError, JotValidationError) as log_exc:
+        except (JotLogUnwritableError, JotValidationError) as exc:
             log.error(
-                "JOT_AUTO_RETRY_LOG_FAILED",
+                "JOT_AUTO_RETRY_EVENT_APPEND_FAILED",
                 handle=handle,
-                error=str(log_exc),
+                workflow_id=workflow_id,
+                error_id="ERROR_JOT_DISPATCH_EVENT_APPEND",
+                error=f"{type(exc).__name__}: {exc}",
             )
-        return
-
-    try:
-        await _append_event(
-            "dispatch",
-            {
-                "workflow_id": workflow_id,
-                "attempt": current.current_attempt + 1,
-                "pool_selector": "least_loaded",
-                "dispatched_from": "mcp",
-                "triggered_by": "auto",
-            },
-            jot_id=current.id,
-        )
-    except (JotLogUnwritableError, JotValidationError) as exc:
-        log.error(
-            "JOT_AUTO_RETRY_EVENT_APPEND_FAILED",
-            handle=handle,
-            workflow_id=workflow_id,
-            error_id="ERROR_JOT_DISPATCH_EVENT_APPEND",
-            error=f"{type(exc).__name__}: {exc}",
-        )
+    finally:
+        event.set()
 
 
 async def _reconcile_if_in_flight(jot: JotSummary) -> None:
@@ -582,9 +598,13 @@ async def _reconcile_if_in_flight(jot: JotSummary) -> None:
                 error_id="ERROR_JOT_WORKFLOW_TIMEOUT",
             )
             if not budget_exhausted:
-                await _auto_retry_after(
-                    jot.short_id,
-                    backoff_s=RETRY_BACKOFF_SECONDS,
+                # Fire-and-forget: don't block the reconciler on the
+                # 30s backoff. Tests observe via _retry_waiters[handle].
+                asyncio.create_task(
+                    _auto_retry_after(
+                        jot.short_id,
+                        backoff_s=RETRY_BACKOFF_SECONDS,
+                    ),
                 )
         except (JotLogUnwritableError, JotValidationError) as exc:
             log.error(
@@ -651,9 +671,13 @@ async def _reconcile_if_in_flight(jot: JotSummary) -> None:
                 jot_id=jot.id,
             )
             if not budget_exhausted:
-                await _auto_retry_after(
-                    jot.short_id,
-                    backoff_s=RETRY_BACKOFF_SECONDS,
+                # Fire-and-forget: don't block the reconciler on the
+                # 30s backoff. Tests observe via _retry_waiters[handle].
+                asyncio.create_task(
+                    _auto_retry_after(
+                        jot.short_id,
+                        backoff_s=RETRY_BACKOFF_SECONDS,
+                    ),
                 )
     except (JotLogUnwritableError, JotValidationError) as exc:
         log.error(
